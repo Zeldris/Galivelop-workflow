@@ -23,7 +23,8 @@
 6. **Este repo usa su propio flujo** desde la Fase 1, aplicado como copia igual que en cualquier proyecto.
 7. **Skills según la especificación Agent Skills** (`name`, `description`, `license`, `compatibility`,
    `metadata.version`); las cosas comprobables las hacen scripts (p. ej. `doctor`), no skills.
-
+8. **Recogida de mejoras desde los proyectos** (usuario, 2026-10-21): skill `gw-harvest` (§5.1) que revisa los
+   repos conectados que usan el flujo y apunta como propuestas sus cambios, skills nuevas e ideas.
 
 ## 1. Qué es y para qué
 
@@ -118,11 +119,13 @@ Galivelop-workflow/
 │   ├── prototype/  research/
 │   ├── gw-init/                  # arranca el flujo en un repo (§5.4)
 │   ├── gw-update/                # trae las plantillas del repo a la versión del plugin
-│   └── gw-doctor/                # comprueba que el flujo está bien montado
+│   ├── gw-doctor/                # comprueba que el flujo está bien montado
+│   └── gw-harvest/               # recoge como propuestas los cambios de los repos que usan el flujo
 ├── hooks/
 │   └── hooks.json                # SessionStart (startup|resume|clear, clear|compact) y PreToolUse (PR a main)
 ├── scripts/                      # lo que llaman ganchos y skills; raíz por ${CLAUDE_PLUGIN_ROOT}
 │   ├── session-start.sh  revision-antes-de-main.sh
+│   ├── recoger.py                # parte determinista de gw-harvest
 │   ├── recuperar.py  medir.py  es-codigo.sh  revisado.sh  bitacora.py  prepush-ramas.sh
 │   ├── doctor.py                 # comprobación determinista del flujo (la usa gw-doctor y el CI)
 │   ├── aplicar.py                # copia plantillas, skills y scripts sin pisar nada (etapa 1 y base de la 2)
@@ -206,6 +209,19 @@ Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con 
   proyecto, en `.claude/gw/opt-tokens.md`.
 - **`retro`**: añade una salida nueva: si una mejora vale para cualquier proyecto, la propuesta es un **issue o
   PR al repo `Galivelop-workflow`**, no un parche local. Así el flujo aprende de todos los proyectos.
+- **`gw-harvest`** (se usa desde este repo; el «tirar» que complementa el «empujar» de `retro`): para cada repo
+  conectado a la sesión que tenga `.claude/gw.json`, recoge lo nuevo desde la última recogida:
+  - **cambios locales a piezas del flujo** (skills, scripts, plantillas): lo copiado comparado con la versión del flujo
+    con que se aplicó (`metadata.version` y cabeceras);
+  - **skills nuevas** nacidas en el proyecto (en `.claude/skills/` y que no son del flujo);
+  - **ideas y mejoras generales** en sus retros y su bitácora.
+
+  Lo mecánico (qué archivos difieren, qué skills son nuevas, qué commits hay desde la última vez) lo hace
+  `scripts/recoger.py`, sin IA; el agente solo juzga si cada cambio es general o propio del proyecto y lo redacta.
+  Escribe `docs/propuestas/AAAA-MM-DD-<repo>.md` (origen con ruta y commit, qué cambia, general/propio, versión que
+  pediría: parche, menor o mayor) y guarda en `docs/propuestas/estado.json` el último commit recogido de cada repo.
+  **Nunca aplica nada sin confirmación**: lo aprobado entra como cambio normal, con CHANGELOG y versión nueva. Los
+  repos se leen en solo lectura, con subagente.
 - **`gw-init`, `gw-update`, `gw-doctor`**: ver §5.4.
 
 ### 5.2 Ganchos de Claude Code (`hooks/hooks.json`)
@@ -316,7 +332,7 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
 |---|---|---|
 | **0. Verificar** ✅ | Doc oficial de plugins, marketplaces y hooks; pruebas en la nube; tres casos reales; estándares | §0 decidido; notas en `docs/investigacion/` |
 | **1. Esqueleto** | `LICENSE`, `AGENTS.md` + `CLAUDE.md`, README ES/EN, bitácora, CHANGELOG `0.1.0`, `.claude-plugin/` válido, CI (shellcheck, JSON, pares ES/EN, versión == CHANGELOG) | CI en verde y el repo trabajándose con su propio `AGENTS.md` |
-| **2. Skills** | Portar las skills (§3) pieza a pieza, con campos de Agent Skills y test que los valida | Todas validan; `writing-for-agents` pasado a las propias; licencias y créditos |
+| **2. Skills** | Portar las skills (§3) pieza a pieza, con campos de Agent Skills y test que los valida; `gw-harvest` + `scripts/recoger.py` | Todas validan; `writing-for-agents` pasado a las propias; licencias y créditos; `gw-harvest` recoge propuestas reales de Tarkor, el instalador y el portal |
 | **3. Ganchos y scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recuperar.py`, `revision-antes-de-main.sh`, `es-codigo.sh`, `revisado.sh`, `bitacora.py`, `prepush-ramas.sh`, `medir.py`, plantilla `pre-push`. Tests contra repo temporal: categorías de los 29 fallos, clon superficial, marcas de conflicto, otro gestor de ganchos. Aplicados a este repo | Tests en verde en Linux y macOS; fallan cerrado sin config |
 | **4. Plantillas y aplicación** | `templates/es` y `templates/en`, `gw.schema.json`, `aplicar.py`, `aplicar.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `problemas.md` | Un agente aplica el flujo a un repo vacío y `doctor.py` lo da por bueno; dos veces no cambia nada |
 | **5. Piloto: Portal-Galivelop** | En una sesión del portal (con permiso): un agente lo aplica siguiendo `aplicar.md` y sustituye su copia | `npm run check` en verde, `pre-push` y marca funcionando, tarea semanal sin cambios |

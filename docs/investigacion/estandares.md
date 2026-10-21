@@ -95,6 +95,7 @@ los dos **[1ª]**).
 | El script no encuentra el repo | La nube arranca en `/home/user`; `$CLAUDE_PROJECT_DIR`/cwd no son la raíz | Raíz desde la ruta del script o `git rev-parse --show-toplevel` |
 | «La marca no es antecesora» sin motivo | Clon superficial | `git fetch --deepen=200 origin <rama>` |
 | El `pre-push` no se ejecuta | `core.hooksPath` sin poner, o lo puso otro gestor; falta el bit de ejecución (Windows) | `git config core.hooksPath .githooks`; `git update-index --chmod=+x .githooks/pre-push` |
+| Un script falla solo en macOS | La `bash` de macOS es la 3.2: sin `mapfile` ni arrays asociativos (el `pre-push` del portal usa `mapfile`) | Escribir para bash 3.2; el CI corre también en macOS |
 | Fallos raros en Windows | CRLF en scripts, enlaces simbólicos | `.gitattributes` con `*.sh text eol=lf`; Git Bash o WSL; sin enlaces simbólicos |
 | `CLAUDE.md` existe y `AGENTS.md` no se lee | Claude solo lee `AGENTS.md` si no hay `CLAUDE.md` **[1ª]** | `@AGENTS.md` en `CLAUDE.md` |
 

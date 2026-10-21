@@ -11,7 +11,7 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 
 1. Lee [`docs/traspaso.md`](docs/traspaso.md): rama, fase en curso, pendiente y siguiente paso.
 2. `git fetch origin <rama>` y comprueba que el último commit coincide con lo que dice la bitácora.
-3. Si la bitácora dice que hay tests, comprueba que están como dice antes de tocar nada.
+3. Comprueba que el check está en verde antes de tocar nada: `bash tests/comprobar.sh`.
 4. Sigue por el **siguiente paso** de la bitácora, salvo que el usuario pida otra cosa.
 5. Al empezar cada tarea, trae `main` si existe (`git fetch origin main` y `git merge origin/main`; merge, nunca
    rebase: las ramas están subidas).
@@ -26,6 +26,13 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 - Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla.
 - **Al cerrar cada fase**, se para y se informa al usuario de qué queda hecho y cuál es la siguiente.
 - Si el usuario dice que se para, se para: se sube lo que haya y se deja la bitácora al día.
+
+## Comprobar
+
+- **Check del repo:** `bash tests/comprobar.sh` (sintaxis y shellcheck de scripts, Python, JSON, manifiestos,
+  versión con entrada en el CHANGELOG, pares ES/EN). Lo corre el CI (`.github/workflows/comprobar.yml`, Linux y
+  macOS) en cada push que no sea a `main` y en cada PR.
+- Los scripts de shell, compatibles con **bash 3.2** (macOS): nada de `mapfile` ni arrays asociativos.
 
 ## Mensajes de commit
 

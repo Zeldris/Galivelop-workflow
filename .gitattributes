@@ -1,0 +1,4 @@
+# Scripts must keep LF line endings on every platform (Windows checkouts included).
+*.sh text eol=lf
+*.py text eol=lf
+.githooks/* text eol=lf

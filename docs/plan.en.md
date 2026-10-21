@@ -24,6 +24,8 @@
 6. **This repo uses its own workflow** from Phase 1, applied as a copy like in any project.
 7. **Skills follow the Agent Skills specification** (`name`, `description`, `license`, `compatibility`,
    `metadata.version`); checkable things are done by scripts (e.g. `doctor`), not skills.
+8. **Harvesting improvements from projects** (user, 2026-10-21): a `gw-harvest` skill (§5.1) that reviews the
+   connected repos using the workflow and records their changes, new skills and ideas as proposals.
 
 
 ## 1. What it is and why
@@ -119,11 +121,13 @@ Galivelop-workflow/
 │   ├── prototype/  research/
 │   ├── gw-init/                  # bootstraps the workflow in a repo (§5.4)
 │   ├── gw-update/                # brings the repo's templates up to the plugin version
-│   └── gw-doctor/                # checks the workflow is set up correctly
+│   ├── gw-doctor/                # checks the workflow is set up correctly
+│   └── gw-harvest/               # records changes from repos using the workflow as proposals
 ├── hooks/
 │   └── hooks.json                # SessionStart (startup|resume|clear, clear|compact) and PreToolUse (PR to main)
 ├── scripts/                      # called by hooks and skills; root via ${CLAUDE_PLUGIN_ROOT}
 │   ├── session-start.sh  revision-antes-de-main.sh
+│   ├── recoger.py                # deterministic part of gw-harvest
 │   ├── recuperar.py  medir.py  es-codigo.sh  revisado.sh  bitacora.py  prepush-ramas.sh
 │   ├── doctor.py                 # deterministic workflow check (used by gw-doctor and CI)
 │   ├── aplicar.py                # copies templates, skills and scripts without overwriting (stage 1, base of 2)
@@ -208,6 +212,19 @@ it. mattpocock's keep their text; the own ones are rewritten generically:
   material in `.claude/gw/opt-tokens.md`.
 - **`retro`**: gains a new outlet: if an improvement applies to any project, the proposal is an **issue or PR on
   the `Galivelop-workflow` repo**, not a local patch. That way the workflow learns from every project.
+- **`gw-harvest`** (used from this repo; the "pull" that complements `retro`'s "push"): for each repo connected to
+  the session that has `.claude/gw.json`, it collects what is new since the last harvest:
+  - **local changes to workflow pieces** (skills, scripts, templates): the copy compared with the workflow version it
+    was applied with (`metadata.version` and headers);
+  - **new skills** born in the project (in `.claude/skills/` and not part of the workflow);
+  - **general ideas and improvements** in its retros and its log.
+
+  The mechanical part (which files differ, which skills are new, which commits since last time) is done by
+  `scripts/recoger.py`, without AI; the agent only judges whether each change is general or project-specific and
+  writes it up. Output: `docs/propuestas/YYYY-MM-DD-<repo>.md` (source with path and commit, what changes,
+  general/specific, version bump it would need: patch, minor or major), and the last harvested commit per repo in
+  `docs/propuestas/estado.json`. **It never applies anything without confirmation**: what is approved goes in as a
+  normal change, with a CHANGELOG entry and a new version. Repos are read-only, via a subagent.
 - **`gw-init`, `gw-update`, `gw-doctor`**: see §5.4.
 
 ### 5.2 Claude Code hooks (`hooks/hooks.json`)
@@ -318,7 +335,7 @@ with the large model; porting skills and templates with the medium one. From Pha
 |---|---|---|
 | **0. Verify** ✅ | Official docs on plugins, marketplaces and hooks; cloud tests; three real cases; standards | §0 decided; notes in `docs/investigacion/` |
 | **1. Skeleton** | `LICENSE`, `AGENTS.md` + `CLAUDE.md`, README ES/EN, log, CHANGELOG `0.1.0`, valid `.claude-plugin/`, CI (shellcheck, JSON, ES/EN pairs, version == CHANGELOG) | CI green and the repo worked on with its own `AGENTS.md` |
-| **2. Skills** | Port the skills (§3) piece by piece, with Agent Skills fields and a test that validates them | All validate; `writing-for-agents` applied to the own ones; licences and credits |
+| **2. Skills** | Port the skills (§3) piece by piece, with Agent Skills fields and a test that validates them; `gw-harvest` + `scripts/recoger.py` | All validate; `writing-for-agents` applied to the own ones; licences and credits; `gw-harvest` collects real proposals from Tarkor, the installer and the portal |
 | **3. Hooks and scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recuperar.py`, `revision-antes-de-main.sh`, `es-codigo.sh`, `revisado.sh`, `bitacora.py`, `prepush-ramas.sh`, `medir.py`, `pre-push` template. Tests against a temporary repo: the 29 bugs' categories, shallow clone, conflict markers, another hook manager. Applied to this repo | Tests green on Linux and macOS; fail closed without config |
 | **4. Templates and apply** | `templates/es` and `templates/en`, `gw.schema.json`, `aplicar.py`, `apply.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `troubleshooting.md` | An agent applies the workflow to an empty repo and `doctor.py` accepts it; twice changes nothing |
 | **5. Pilot: Portal-Galivelop** | In a portal session (with permission): an agent applies it following `apply.md` and replaces its copy | `npm run check` green, `pre-push` and mark working, weekly task unchanged |

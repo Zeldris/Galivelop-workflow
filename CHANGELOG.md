@@ -1,0 +1,25 @@
+# Changelog
+
+Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) · Versiones: [SemVer](https://semver.org/).
+Cada entrada lleva `### ES` y `### EN`. La versión vive solo en `.claude-plugin/plugin.json`; el CI comprueba que
+tiene entrada aquí.
+
+Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [SemVer](https://semver.org/). Each
+entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
+here.
+
+## [0.1.0] - Unreleased
+
+### ES
+
+- Esqueleto del repo: licencia MIT, `AGENTS.md` y `CLAUDE.md` (el repo usa su propio flujo), README en inglés y
+  español, bitácora, manifiestos de plugin y marketplace, y CI que valida JSON, scripts, pares ES/EN y que esta
+  versión tenga entrada.
+- Plan revisado tras la Fase 0 (`docs/plan.md` §0) e investigación en `docs/investigacion/`.
+
+### EN
+
+- Repository skeleton: MIT licence, `AGENTS.md` and `CLAUDE.md` (the repo uses its own workflow), README in English
+  and Spanish, log, plugin and marketplace manifests, and CI that validates JSON, scripts, ES/EN pairs and that this
+  version has an entry.
+- Plan revised after Phase 0 (`docs/plan.en.md` §0) and research in `docs/investigacion/`.
