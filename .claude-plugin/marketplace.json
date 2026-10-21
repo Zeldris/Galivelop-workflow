@@ -1,0 +1,8 @@
+{
+  "name": "galivelop-workflow",
+  "description": "Galivelop-workflow served from its own repository.",
+  "owner": { "name": "Galivelop" },
+  "plugins": [
+    { "name": "galivelop-workflow", "source": "./", "description": "Galivelop workshop's workflow for Claude Code." }
+  ]
+}

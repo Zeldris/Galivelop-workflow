@@ -1,0 +1,10 @@
+{
+  "extraKnownMarketplaces": {
+    "galivelop-workflow": {
+      "source": { "source": "github", "repo": "Zeldris/Galivelop-workflow", "ref": "claude/galivelop-workflow-inicio" }
+    }
+  },
+  "enabledPlugins": {
+    "galivelop-workflow@galivelop-workflow": true
+  }
+}
