@@ -10,9 +10,9 @@
 |---|---|
 | Rama | `claude/galivelop-workflow-inicio` (`main` creada el 2026-10-21 en `f2739f1`) |
 | Check | `bash tests/comprobar.sh` — en verde en local y en el CI |
-| Fase en curso | **2. Skills** (plan §9, etapa 1) — en curso: 11 de mattpocock + `gw-harvest` |
-| Último punto estable | Fase 2: `gw-harvest` + `scripts/recoger.py` (probado con Tarkor y VeriNews) y `tests/test_recoger.py` |
-| Siguiente paso | Revisar las skills propias que porta un subagente (`selector`, `orchestrate-dealer`, `opt-tokens`, `scout-updates`; sin commitear aún) y hacer la primera recogida real |
+| Fase en curso | **2. Skills** (plan §9, etapa 1) — 16 skills portadas; falta la primera recogida real |
+| Último punto estable | Fase 2: skills propias `selector`, `orchestrate-dealer`, `opt-tokens` (+ `medir.py`) y `scout-updates` (+ scripts y 11 tests) generalizadas y revisadas |
+| Siguiente paso | Primera recogida real con `gw-harvest` sobre Tarkor, instalador, portal y VeriNews → `docs/propuestas/`; luego cerrar la Fase 2 |
 
 ### Fases
 

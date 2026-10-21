@@ -24,6 +24,12 @@ if [[ -n "$(git ls-files '*.py')" ]]; then
   git ls-files -z '*.py' | xargs -0 python3 -m py_compile || fail=1
 fi
 python3 -m unittest discover -s tests -p 'test_*.py' || fail=1
+# Tests bundled with skills (skills/<name>/scripts/test_*.py), each folder on its own.
+for d in skills/*/scripts; do
+  if [[ -n "$(git ls-files "$d/test_*.py")" ]]; then
+    python3 -m unittest discover -s "$d" -p 'test_*.py' || fail=1
+  fi
+done
 
 if ((fail)); then echo "CHECK FAILED"; exit 1; fi
 echo "CHECK OK"
