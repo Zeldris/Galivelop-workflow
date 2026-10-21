@@ -1,0 +1,70 @@
+---
+name: gw-harvest
+description: Collect, as proposals, what projects using Galivelop-workflow changed or invented (edited workflow skills and scripts, new skills, ideas in their retros) since the last harvest. Use from the Galivelop-workflow repo when the user asks to harvest, review or gather improvements from connected projects, or before planning a new workflow version.
+disable-model-invocation: true
+license: MIT
+compatibility: Run in the Galivelop-workflow repo with the project repos cloned locally; git and python3.
+metadata:
+  version: "0.1.0"
+  source: "Galivelop workshop"
+---
+
+# gw-harvest
+
+The workflow learns from the projects that use it. `retro` pushes general ideas from a project; this skill pulls
+them, plus anything a project changed in its copy of the workflow. **It proposes; it never applies.**
+
+## Steps
+
+1. **Pick the projects.** The repositories connected to this session (or the paths the user names), cloned
+   locally. Projects are read-only: never edit, commit or push in them.
+2. **Run the mechanical part** from this repo:
+
+   ```bash
+   python3 scripts/recoger.py <project-path> [<project-path> ...]
+   ```
+
+   It lists, per project and since the last harvest (`docs/propuestas/estado.json`): workflow skills whose body
+   differs, skills born in the project, copied workflow scripts that differ, retro files and their
+   `## For Galivelop-workflow` sections, and the commits. If it reports missing history, deepen the clone as it says
+   and run it again.
+3. **Look at each finding with a subagent** that returns a short summary with paths, never whole files in the main
+   session. For a changed skill, `python3 scripts/recoger.py --diff <skill> <project-path>` gives the diff.
+4. **Classify each finding**:
+   - **General**: would help any project (a fix, a clearer rule, a missing check, a reusable skill) → proposal.
+   - **Project-specific**: domain wording, stack commands, local paths → note it as "stays in the project".
+   - **Already here**: the workflow has it in a newer form → note it, no proposal.
+5. **Write the proposals** in `docs/propuestas/YYYY-MM-DD-<repo-name>.md` using the template below, in the
+   workflow repo's language for human docs. One file per project and harvest.
+6. **Present them to the user**, most valuable first, and wait. What the user approves becomes a normal change in
+   this repo: the piece updated, a CHANGELOG entry and a version bump (patch, minor or major per plan §7).
+7. **Record the harvest** once the proposals file is committed:
+   `python3 scripts/recoger.py --update-state <project-path> ...`, then commit `docs/propuestas/estado.json` in the
+   same commit as the proposals.
+
+## Proposal template
+
+```markdown
+# Harvest <repo> — YYYY-MM-DD
+
+From `<last>` to `<head>` (`scripts/recoger.py`).
+
+## P1. <short title>
+
+- **Source:** `<path>` @ `<commit>` (<skill | script | retro | new skill>)
+- **What changes:** <one or two sentences>
+- **Why it is general:** <the problem it solves for any project>
+- **Version bump:** patch | minor | major
+- **Status:** proposed
+
+## Stays in the project
+
+- `<path>`: <why it is project-specific>
+```
+
+## Rules
+
+- A proposal cites the exact source path and commit; never paraphrase without a source.
+- A project's local edit to a copied workflow file is a signal, not a patch: propose the general version here so the
+  next update reaches every project.
+- Don't harvest secrets, personal data or private names into this repo.

@@ -10,9 +10,9 @@
 |---|---|
 | Rama | `claude/galivelop-workflow-inicio` (`main` creada el 2026-10-21 en `f2739f1`) |
 | Check | `bash tests/comprobar.sh` — en verde en local y en el CI |
-| Fase en curso | **2. Skills** (plan §9, etapa 1) — en curso: 11 de mattpocock portadas |
-| Último punto estable | Fase 2: 11 skills de mattpocock (upstream `5beb35b`) con `license` y `metadata.version`; `retro` con salida al flujo; `tests/test_skills.py`; `CREDITS.md` |
-| Siguiente paso | Fase 2: skills propias (`selector`, `orchestrate-dealer`, `opt-tokens` + `medir.py`, `scout-updates`) portadas por subagente desde la mejor versión |
+| Fase en curso | **2. Skills** (plan §9, etapa 1) — en curso: 11 de mattpocock + `gw-harvest` |
+| Último punto estable | Fase 2: `gw-harvest` + `scripts/recoger.py` (probado con Tarkor y VeriNews) y `tests/test_recoger.py` |
+| Siguiente paso | Revisar las skills propias que porta un subagente (`selector`, `orchestrate-dealer`, `opt-tokens`, `scout-updates`; sin commitear aún) y hacer la primera recogida real |
 
 ### Fases
 
