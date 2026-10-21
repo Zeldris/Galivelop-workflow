@@ -11,8 +11,8 @@
 | Rama | `claude/galivelop-workflow-inicio` (`main` creada el 2026-10-21 en `f2739f1`) |
 | Check | `bash tests/comprobar.sh` — en verde en local y en el CI |
 | Fase en curso | **3. Ganchos y scripts** (plan §9, etapa 1) — en curso |
-| Último punto estable | Fase 3 (C): `revision-antes-de-main.sh` (32 casos) y `hooks/hooks.json` del plugin |
-| Siguiente paso | Fase 3 (D): `session-start.sh`, `recuperar.py` + `registro_sesion.py`, `doctor.py` (WMF P4, VeriNews P1/P3), plantilla de `.claude/settings.json` y SessionStart en `hooks.json` |
+| Último punto estable | Fase 3 (D): `session-start.sh`, `registro_sesion.py`, `recuperar.py`, `doctor.py`, plantilla `templates/claude/settings.json` y SessionStart en `hooks.json` (37 tests) |
+| Siguiente paso | Fase 3 (E): `bitacora.py`, `prepush-ramas.sh`, `fusionar.sh`, `rojo-sin-arreglo.sh`, `tests-relacionados.sh`, `enlaces-md.py` (WMF P6, P7, P9; Instalador P2) |
 
 ### Fases
 

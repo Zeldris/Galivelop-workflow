@@ -1,5 +1,25 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"${CLAUDE_PLUGIN_ROOT}\"/scripts/session-start.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/recuperar.py --estado"
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "^mcp__github__(create_pull_request|merge_pull_request|enable_pr_auto_merge|update_pull_request)$|^Bash$",

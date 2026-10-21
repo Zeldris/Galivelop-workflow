@@ -58,5 +58,7 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 - **Ganchos y scripts** (plan §4.3 y §12): raíz desde la ruta del script o `git rev-parse --show-toplevel`, nunca
   desde `$CLAUDE_PROJECT_DIR` ni el directorio actual; un gancho de subida comprueba el commit que se sube; fallan
   cerrados si les falta un dato; cada cambio lleva su caso en los tests.
+- **Reparto a subagentes autorizado:** el trabajo de más de un paso se reparte a subagentes con la skill
+  `orchestrate-dealer` sin preguntar cada vez; la sesión principal planea, decide y revisa.
 - **Lo comprobable lo hace un script**, no un agente; las skills y guías solo deciden lo que exige criterio.
 - **Calidad primero:** un ahorro de tokens que empeora el resultado no es ahorro.
