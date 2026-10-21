@@ -33,7 +33,14 @@ The workflow rules live in `AGENTS.md` (an open standard any agent reads); skill
 - [Workflow overview](docs/en/workflow.md)
 - [Plan](docs/plan.en.md) · [Changelog](CHANGELOG.md)
 
+## Acknowledgements
+
+We learned to work this way from **[Matt Pocock](https://github.com/mattpocock)**'s work, above all his
+[mattpocock/skills](https://github.com/mattpocock/skills): the idea of steering agents with small, well-written
+skills, the review-and-retro loop, and many of the skills shipped here, which are his (MIT), credited in each one and
+listed in [`CREDITS.md`](CREDITS.md). Thank you, Matt.
+
 ## Licence
 
-[MIT](LICENSE). Some skills come from [mattpocock/skills](https://github.com/mattpocock/skills) (MIT); credits will be
-in `CREDITS.md`.
+[MIT](LICENSE). Skills from [mattpocock/skills](https://github.com/mattpocock/skills) keep their MIT licence
+([`LICENSE-mattpocock-skills`](LICENSE-mattpocock-skills)); see [`CREDITS.md`](CREDITS.md).

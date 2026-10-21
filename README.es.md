@@ -34,7 +34,14 @@ abierto [Agent Skills](https://github.com/agentskills/agentskills).
 - [Visión general del flujo](docs/es/flujo.md)
 - [Plan](docs/plan.md) · [Changelog](CHANGELOG.md)
 
+## Agradecimientos
+
+Aprendimos a trabajar así gracias al trabajo de **[Matt Pocock](https://github.com/mattpocock)**, sobre todo su
+[mattpocock/skills](https://github.com/mattpocock/skills): la idea de guiar a los agentes con skills pequeñas y bien
+escritas, el ciclo de revisión y retro, y muchas de las skills que se incluyen aquí, que son suyas (MIT), con su
+mención en cada una y en [`CREDITS.md`](CREDITS.md). Gracias, Matt.
+
 ## Licencia
 
-[MIT](LICENSE). Algunas skills vienen de [mattpocock/skills](https://github.com/mattpocock/skills) (MIT); los
-créditos estarán en `CREDITS.md`.
+[MIT](LICENSE). Las skills de [mattpocock/skills](https://github.com/mattpocock/skills) conservan su licencia MIT
+([`LICENSE-mattpocock-skills`](LICENSE-mattpocock-skills)); ver [`CREDITS.md`](CREDITS.md).

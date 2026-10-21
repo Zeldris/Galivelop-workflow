@@ -8,4 +8,6 @@ metadata:
   source: "mattpocock/skills@5beb35b"
 ---
 
+> Original skill by Matt Pocock ([mattpocock/skills](https://github.com/mattpocock/skills), MIT).
+
 Call the Skill tool twice, for "grilling" and "domain-modeling".

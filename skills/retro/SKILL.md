@@ -8,6 +8,8 @@ metadata:
   source: "mattpocock/skills@5beb35b"
 ---
 
+> Original skill by Matt Pocock ([mattpocock/skills](https://github.com/mattpocock/skills), MIT).
+
 The user has asked for a **retrospective**. You are suggesting improvements to the coding agent's **environment** to improve future runs.
 
 ## Steps

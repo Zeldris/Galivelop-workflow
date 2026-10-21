@@ -21,6 +21,12 @@ llegue a la rama protegida.
 | Ganchos | Recuperar el estado tras `/clear`, no subir código sin revisión ni con el check en rojo |
 | `.claude/gw.json` | Lo que cambia de un proyecto a otro (idioma, bitácora, check, rama protegida…) |
 
+## De dónde sale
+
+De los proyectos del taller Galivelop y, antes, del trabajo de **Matt Pocock**
+([mattpocock/skills](https://github.com/mattpocock/skills)), de quien aprendimos esta forma de trabajar con agentes.
+Sus skills incluidas aquí llevan su mención y su licencia ([créditos](../../CREDITS.md)).
+
 ## Las reglas que más importan
 
 1. **Lo que no está subido no existe:** commit + push en cada punto estable.

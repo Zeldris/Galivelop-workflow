@@ -63,6 +63,13 @@ class Skills(unittest.TestCase):
                 lines = len(text.splitlines())
                 self.assertLessEqual(lines, MAX_LINES, f"{d.name}: SKILL.md has {lines} lines (max {MAX_LINES})")
 
+    def test_matt_pocock_is_credited_in_each_of_his_skills(self):
+        for d in self.dirs:
+            text = (d / "SKILL.md").read_text(encoding="utf-8")
+            if "mattpocock/skills@" in text:
+                with self.subTest(skill=d.name):
+                    self.assertIn("Original skill by Matt Pocock", text, f"{d.name}: keep the credit line to Matt Pocock")
+
     def test_upstream_licence_is_bundled(self):
         uses_upstream = [d.name for d in self.dirs if "mattpocock" in (d / "SKILL.md").read_text(encoding="utf-8")]
         if uses_upstream:

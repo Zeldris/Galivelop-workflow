@@ -21,6 +21,12 @@ nothing unreviewed reaches the protected branch.
 | Hooks | Recover the state after `/clear`; don't push code without review or with the check failing |
 | `.claude/gw.json` | What varies between projects (language, log, check, protected branch…) |
 
+## Where it comes from
+
+From the Galivelop workshop's projects and, before that, from **Matt Pocock**'s work
+([mattpocock/skills](https://github.com/mattpocock/skills)), from whom we learned this way of working with agents.
+His skills included here carry his credit and licence ([credits](../../CREDITS.md)).
+
 ## The rules that matter most
 
 1. **What isn't pushed doesn't exist:** commit + push at every stable point.

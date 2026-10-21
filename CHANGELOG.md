@@ -16,6 +16,8 @@ here.
   español, bitácora, manifiestos de plugin y marketplace, y CI que valida JSON, scripts, pares ES/EN y que esta
   versión tenga entrada.
 - Plan revisado tras la Fase 0 (`docs/plan.md` §0) e investigación en `docs/investigacion/`.
+- Skills de Matt Pocock (mattpocock/skills, MIT) con su mención en cada una, `CREDITS.md` y agradecimiento en los
+  README: de su trabajo aprendimos esta forma de trabajar.
 
 ### EN
 
@@ -23,3 +25,5 @@ here.
   and Spanish, log, plugin and marketplace manifests, and CI that validates JSON, scripts, ES/EN pairs and that this
   version has an entry.
 - Plan revised after Phase 0 (`docs/plan.en.md` §0) and research in `docs/investigacion/`.
+- Matt Pocock's skills (mattpocock/skills, MIT) with his credit in each one, `CREDITS.md` and acknowledgements in the
+  READMEs: we learned this way of working from his work.
