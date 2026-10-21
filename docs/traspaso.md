@@ -10,9 +10,9 @@
 |---|---|
 | Rama | `claude/galivelop-workflow-inicio` (`main` creada el 2026-10-21 en `f2739f1`) |
 | Check | `bash tests/comprobar.sh` — en verde en local y en el CI |
-| Fase en curso | **2. Skills** (plan §9, etapa 1) — sin empezar |
-| Último punto estable | Fase 1 cerrada: esqueleto y CI en verde (Linux + macOS, run 39685415440); VeriNews_AI añadido como cuarto caso |
-| Siguiente paso | Fase 2: portar skills pieza a pieza (tabla de `docs/investigacion/casos-reales.md`), con campos de Agent Skills y test; `gw-harvest` + `scripts/recoger.py` |
+| Fase en curso | **2. Skills** (plan §9, etapa 1) — en curso: 11 de mattpocock portadas |
+| Último punto estable | Fase 2: 11 skills de mattpocock (upstream `5beb35b`) con `license` y `metadata.version`; `retro` con salida al flujo; `tests/test_skills.py`; `CREDITS.md` |
+| Siguiente paso | Fase 2: skills propias (`selector`, `orchestrate-dealer`, `opt-tokens` + `medir.py`, `scout-updates`) portadas por subagente desde la mejor versión |
 
 ### Fases
 
