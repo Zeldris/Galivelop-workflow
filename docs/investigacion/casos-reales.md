@@ -1,7 +1,7 @@
-# Fase 0 — Dos casos reales del flujo
+# Fase 0 — Tres casos reales del flujo
 
-> Inventario del 2026-10-21 de **World-Maker-Fantasy (Tarkor)** y **Instalador-WMF-Tarkor**, leídos en solo lectura
-> con un subagente. Sirve para contrastar el plan con lo que de verdad se usa. Rutas relativas a la raíz de cada
+> Inventario del 2026-10-21 de **World-Maker-Fantasy (Tarkor)**, **Instalador-WMF-Tarkor** y **Portal-Galivelop**
+> (este último es público; clon anónimo de solo lectura), leídos con subagentes. Sirve para contrastar el plan con lo que de verdad se usa. Rutas relativas a la raíz de cada
 > repo. Antes de la Fase 8 (público) este archivo se resume o se quita (§10: nada privado).
 
 ## Resumen
@@ -20,6 +20,41 @@
 | Roadmap | `docs/producto/21-roadmap.md`, `tools/roadmap/cobertura.py`, `tools/roadmap/cerrar.py` | No: plan con casillas `INS-n` en `docs/05-plan-de-trabajo.md` | — |
 | CI | `ci.yml`: jobs `roadmap`, `backend`, `frontend` | `comprobar.yml`: `linux`, `windows`, `qa` | — |
 | Stack | Node/TS + Postgres + React; utilidades en Python | Tauri v2 (Rust) + React/TS | — |
+
+## Portal-Galivelop (fuente principal según el plan)
+
+- **Sube a `main` directamente** (GitHub Pages), con confirmación; la tarea programada semanal sube la rama de
+  trabajo a `main` **sin** confirmación, así que la rama tiene que estar siempre publicable.
+- **Bitácora** `docs/traspaso.md` sin filas por rama ni límite de caracteres (no tiene `bitacora.py`).
+- **Marca de revisado versionada** en `docs/registros/revisado.txt`; `revisado.sh` exige árbol limpio, HEAD ==
+  `origin/<rama>` y `origin/main` como antecesor, y hace commit «Revisado: …». No exige retro.
+- **`pre-push`**: lee stdin primero, corre `npm run check` sobre **el commit que se sube** (worktree temporal si no es
+  HEAD limpio), y a `main` exige la marca como antecesora sin código después (`es-codigo.sh`). Falla cerrado.
+- **Raíz** desde `dirname "$0"` o `git rev-parse` en todos los ganchos (la lección de la §12 sí está aplicada).
+- **Los «29 fallos»** no tienen archivo de retro: son dos rondas de `/code-review` (14 + 15) apuntadas en la bitácora
+  y en `REVIEW.md` § «Ganchos y scripts». Categorías: raíz desde `$CLAUDE_PROJECT_DIR`/cwd; el gancho miraba la
+  carpeta y no el commit subido; fallar abierto sin datos; flujo por PR y marca ignorada sin adaptar a subida directa;
+  falta de tests. `tools/qa/tests/test-ganchos.sh` cubre **8 casos de `pre-push`** y nada más (ni
+  `revision-antes-de-main.sh`, ni `session-start.sh`, ni `revisado.sh`, ni `recuperar.py`).
+- **Skills** recortadas respecto a Tarkor; solo aporta la fila «Traer algo de otro repo» del `selector` y el respaldo
+  de `medir.py` para sesiones que arrancan en `/home/user`.
+- `npm run check` = `tsc -b && vitest run && bash tools/qa/tests/test-ganchos.sh`; CI `comprobar.yml` en PR y en
+  push a ramas que no son `main`.
+
+### La mejor versión de cada pieza
+
+| Pieza | De dónde portarla |
+|---|---|
+| `pre-push` (commit subido en worktree, marca para `main`, fallar cerrado) | Portal, + lo genérico del instalador (`prepush-ramas.sh`, lista de commits subidos) |
+| `revision-antes-de-main.sh` | Instalador (`git ls-remote` sin escribir refs, auto-merge y `update_pull_request` cuentan, matcher anclado) + del portal: statuses además de check-runs, raíz por `dirname` |
+| Marca de revisado | Portal (versionada; vale para subida directa y para PR) |
+| `revisado.sh` | Portal + retro exigida de Tarkor/instalador como opción del config |
+| Bitácora con filas por rama + `bitacora.py` | Instalador (`ROADMAPS` configurable, `[x]`) |
+| `recuperar.py`, `medir.py` | Portal (respaldo de rutas en la nube) |
+| `selector`, `orchestrate-dealer`, `retro`, `opt-tokens` | Tarkor/instalador (más completos) + fila «traer de otro repo» del portal |
+| Tests de ganchos | Portal como base; faltan casos del resto de scripts |
+| `REVIEW.md` § «Un dato, un sitio» y § «Ganchos y scripts» | Portal |
+| Roadmap e hitos | Tarkor (`cobertura.py`, `cerrar.py`) |
 
 ## Lo que el plan no recoge (propuesto para el inventario, §3)
 
@@ -41,17 +76,22 @@ Piezas genéricas que existen en los dos repos y el plan no menciona:
 
 ## Lo que choca con el plan
 
-1. **Marca de revisado.** El plan (§5.3) la quiere versionada en `docs/registros/revisado.txt` para que la vean
-   otras cuentas y tareas programadas; los dos repos la tienen en `.claude/revision-main.sha` ignorada por git. Me
-   quedo con la del plan (la usa el portal, según el plan) — conviene confirmarlo al leer el portal.
+1. **Marca de revisado.** Tarkor y el instalador la tienen en `.claude/revision-main.sha` ignorada por git; el portal,
+   versionada, como dice el plan (§5.3). Confirmado: la versionada vale para los dos modos de subida.
 2. **Un solo `check`.** Ninguno de los dos tiene una orden única: el check real es el `pre-push` + la CI. Propuesta:
    `check` admite una lista de órdenes, y `/gw-init` propone crear un `tools/check.sh` si no hay ninguna.
 3. **Raíz del repo.** Los ganchos de Tarkor usan `$CLAUDE_PROJECT_DIR` o `pwd`, justo lo que la §12 prohíbe. El
-   portal ya lo arregló (según el plan); confirma que la fuente buena es la del portal.
+   portal lo tiene arreglado (confirmado).
 4. **`session-start.sh` falla cerrado en Tarkor y abierto en el instalador.** Para el plugin: la parte genérica
    (`core.hooksPath`, avisos) falla abierta con aviso; lo que bloquee de verdad está en `pre-push` y `PreToolUse`.
-5. **Fuente principal.** El plan toma el portal como fuente, pero esta sesión no lo tiene. El instalador trae
-   versiones más nuevas de varias piezas (lista arriba). Hay que comparar las tres antes de portar (Fase 2–3).
+5. **Fuente principal.** No hay una: el portal es mejor en ganchos de subida y rutas, pero tiene las skills
+   recortadas y no tiene bitácora por ramas; el instalador es más nuevo en `revision-antes-de-main.sh`. Se porta pieza
+   a pieza según la tabla de arriba, no «del portal».
+6. **Tests de los 29 fallos.** La Fase 3 pide incluirlos, pero solo existen 8 casos de `pre-push`. Los demás hay que
+   escribirlos a partir de las categorías.
+7. **Subida sin confirmación.** La tarea semanal del portal sube a `main` sola. El flujo tiene que admitir esa
+   excepción explícita (documentada en `patrones.md`) sin abrir un agujero en los ganchos: la marca de revisado sigue
+   siendo obligatoria si hay código.
 
 ## Lo que no va al plugin
 
