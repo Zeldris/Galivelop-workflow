@@ -332,11 +332,11 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
 |---|---|---|
 | **0. Verificar** ✅ | Doc oficial de plugins, marketplaces y hooks; pruebas en la nube; tres casos reales; estándares | §0 decidido; notas en `docs/investigacion/` |
 | **1. Esqueleto** | `LICENSE`, `AGENTS.md` + `CLAUDE.md`, README ES/EN, bitácora, CHANGELOG `0.1.0`, `.claude-plugin/` válido, CI (shellcheck, JSON, pares ES/EN, versión == CHANGELOG) | CI en verde y el repo trabajándose con su propio `AGENTS.md` |
-| **2. Skills** | Portar las skills (§3) pieza a pieza, con campos de Agent Skills y test que los valida; `gw-harvest` + `scripts/recoger.py` | Todas validan; `writing-for-agents` pasado a las propias; licencias y créditos; `gw-harvest` recoge propuestas reales de Tarkor, el instalador y el portal |
+| **2. Skills** | Portar las skills (§3) pieza a pieza, con campos de Agent Skills y test que los valida; `gw-harvest` + `scripts/recoger.py` | Todas validan; `writing-for-agents` pasado a las propias; licencias y créditos; `gw-harvest` recoge propuestas reales de Tarkor, el instalador, el portal y VeriNews |
 | **3. Ganchos y scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recuperar.py`, `revision-antes-de-main.sh`, `es-codigo.sh`, `revisado.sh`, `bitacora.py`, `prepush-ramas.sh`, `medir.py`, plantilla `pre-push`. Tests contra repo temporal: categorías de los 29 fallos, clon superficial, marcas de conflicto, otro gestor de ganchos. Aplicados a este repo | Tests en verde en Linux y macOS; fallan cerrado sin config |
 | **4. Plantillas y aplicación** | `templates/es` y `templates/en`, `gw.schema.json`, `aplicar.py`, `aplicar.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `problemas.md` | Un agente aplica el flujo a un repo vacío y `doctor.py` lo da por bueno; dos veces no cambia nada |
 | **5. Piloto: Portal-Galivelop** | En una sesión del portal (con permiso): un agente lo aplica siguiendo `aplicar.md` y sustituye su copia | `npm run check` en verde, `pre-push` y marca funcionando, tarea semanal sin cambios |
-| **6. Piloto: Tarkor e instalador** | Igual en World-Maker-Fantasy (`roadmap: true`, PR) y en Instalador-WMF-Tarkor (Rust) | Relevo entre cuentas sin perder nada; lo que falte vuelve como versión nueva |
+| **6. Piloto: Tarkor, instalador y VeriNews** | Igual en World-Maker-Fantasy (`roadmap: true`, PR), Instalador-WMF-Tarkor (Rust) y VeriNews_AI (Java + Vite) | Relevo entre cuentas sin perder nada; lo que falte vuelve como versión nueva |
 | **7. Rodaje etapa 1** | Uso real semanas; cada `retro` con mejora general → issue/PR aquí | Criterios de la §10 para la etapa 1 |
 
 **Etapa 2 — instalación automática sin IA**
@@ -349,7 +349,7 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
 
 ## 10. Criterios para «100 % funcional y aplicable a cualquier sistema» (paso a 1.0)
 
-- Funciona en **tres proyectos** de stacks distintos (al menos uno sin Node: el instalador de Tarkor es el candidato)
+- Funciona en **tres proyectos** de stacks distintos (al menos uno sin Node: el instalador de Tarkor o VeriNews son los candidatos)
   durante **≥ 4 semanas** cada uno.
 - **Relevos probados**: al menos 5 cortes de sesión (tokens, `/clear`, cambio de cuenta) sin pérdida, comprobado
   con la bitácora.

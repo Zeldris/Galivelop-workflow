@@ -335,11 +335,11 @@ with the large model; porting skills and templates with the medium one. From Pha
 |---|---|---|
 | **0. Verify** ✅ | Official docs on plugins, marketplaces and hooks; cloud tests; three real cases; standards | §0 decided; notes in `docs/investigacion/` |
 | **1. Skeleton** | `LICENSE`, `AGENTS.md` + `CLAUDE.md`, README ES/EN, log, CHANGELOG `0.1.0`, valid `.claude-plugin/`, CI (shellcheck, JSON, ES/EN pairs, version == CHANGELOG) | CI green and the repo worked on with its own `AGENTS.md` |
-| **2. Skills** | Port the skills (§3) piece by piece, with Agent Skills fields and a test that validates them; `gw-harvest` + `scripts/recoger.py` | All validate; `writing-for-agents` applied to the own ones; licences and credits; `gw-harvest` collects real proposals from Tarkor, the installer and the portal |
+| **2. Skills** | Port the skills (§3) piece by piece, with Agent Skills fields and a test that validates them; `gw-harvest` + `scripts/recoger.py` | All validate; `writing-for-agents` applied to the own ones; licences and credits; `gw-harvest` collects real proposals from Tarkor, the installer, the portal and VeriNews |
 | **3. Hooks and scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recuperar.py`, `revision-antes-de-main.sh`, `es-codigo.sh`, `revisado.sh`, `bitacora.py`, `prepush-ramas.sh`, `medir.py`, `pre-push` template. Tests against a temporary repo: the 29 bugs' categories, shallow clone, conflict markers, another hook manager. Applied to this repo | Tests green on Linux and macOS; fail closed without config |
 | **4. Templates and apply** | `templates/es` and `templates/en`, `gw.schema.json`, `aplicar.py`, `apply.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `troubleshooting.md` | An agent applies the workflow to an empty repo and `doctor.py` accepts it; twice changes nothing |
 | **5. Pilot: Portal-Galivelop** | In a portal session (with permission): an agent applies it following `apply.md` and replaces its copy | `npm run check` green, `pre-push` and mark working, weekly task unchanged |
-| **6. Pilot: Tarkor and installer** | Same in World-Maker-Fantasy (`roadmap: true`, PR) and Instalador-WMF-Tarkor (Rust) | Hand-off between accounts with nothing lost; gaps come back as a new version |
+| **6. Pilot: Tarkor, installer and VeriNews** | Same in World-Maker-Fantasy (`roadmap: true`, PR), Instalador-WMF-Tarkor (Rust) and VeriNews_AI (Java + Vite) | Hand-off between accounts with nothing lost; gaps come back as a new version |
 | **7. Stage-1 run-in** | Weeks of real use; every `retro` with a general improvement → issue/PR here | §10 criteria for stage 1 |
 
 **Stage 2 — automatic installation without AI**
@@ -352,8 +352,8 @@ with the large model; porting skills and templates with the medium one. From Pha
 
 ## 10. Criteria for "100 % functional and applicable to any system" (move to 1.0)
 
-- Works in **three projects** on different stacks (at least one without Node: the Tarkor installer is the
-  candidate) for **≥ 4 weeks** each.
+- Works in **three projects** on different stacks (at least one without Node: the Tarkor installer or VeriNews
+  are the candidates) for **≥ 4 weeks** each.
 - **Hand-offs proven**: at least 5 session cuts (tokens, `/clear`, account switch) with no loss, verified
   against the log.
 - **Hooks**: no false positives and no unreviewed push to `main` during the run-in; hook tests green on Linux and

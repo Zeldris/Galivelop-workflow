@@ -1,4 +1,4 @@
-# Fase 0 — Tres casos reales del flujo
+# Fase 0 — Casos reales del flujo
 
 > Inventario del 2026-10-21 de **World-Maker-Fantasy (Tarkor)**, **Instalador-WMF-Tarkor** y **Portal-Galivelop**
 > (este último es público; clon anónimo de solo lectura), leídos con subagentes. Sirve para contrastar el plan con lo que de verdad se usa. Rutas relativas a la raíz de cada
@@ -46,15 +46,44 @@
 | Pieza | De dónde portarla |
 |---|---|
 | `pre-push` (commit subido en worktree, marca para `main`, fallar cerrado) | Portal, + lo genérico del instalador (`prepush-ramas.sh`, lista de commits subidos) |
-| `revision-antes-de-main.sh` | Instalador (`git ls-remote` sin escribir refs, auto-merge y `update_pull_request` cuentan, matcher anclado) + del portal: statuses además de check-runs, raíz por `dirname` |
+| `revision-antes-de-main.sh` | Instalador (`git ls-remote` sin escribir refs, auto-merge y `update_pull_request` cuentan, matcher anclado) + VeriNews (`gh pr` por Bash, check-runs y statuses) + portal (raíz por `dirname`) |
+| `pre-commit` antisecretos | VeriNews (con modo `--rango` y gancho de la rama base en el CI) |
+| Localizar la sesión (`registro_sesion.py`) | VeriNews |
 | Marca de revisado | Portal (versionada; vale para subida directa y para PR) |
 | `revisado.sh` | Portal + retro exigida de Tarkor/instalador como opción del config |
-| Bitácora con filas por rama + `bitacora.py` | Instalador (`ROADMAPS` configurable, `[x]`) |
+| Bitácora con filas por rama + `bitacora.py` | Instalador (`ROADMAPS` configurable, `[x]`) + VeriNews (`re.S`, alternativa sin base remota en `prepush-ramas.sh`) |
 | `recuperar.py`, `medir.py` | Portal (respaldo de rutas en la nube) |
 | `selector`, `orchestrate-dealer`, `retro`, `opt-tokens` | Tarkor/instalador (más completos) + fila «traer de otro repo» del portal |
 | Tests de ganchos | Portal como base; faltan casos del resto de scripts |
 | `REVIEW.md` § «Un dato, un sitio» y § «Ganchos y scripts» | Portal |
 | Roadmap e hitos | Tarkor (`cobertura.py`, `cerrar.py`) |
+
+## VeriNews_AI (cuarto caso, añadido al cerrar la Fase 1)
+
+Leído en solo lectura con un subagente. Java 17 + Spring Boot (Maven) y frontend Vite/npm; docs en español; flujo
+portado de Tarkor (`CLAUDE.md`, `AGENTS.md`, bitácora `docs/registros/traspaso.md` con filas por rama, mismas
+skills, PR a `main` con las tres fases, roadmap con `cobertura.py`/`cerrar.py`). **Ninguna skill nueva.** Es el
+candidato más claro a piloto sin Node, junto al instalador (Rust).
+
+**Más reciente aquí que en Tarkor** (a traer al flujo):
+
+- `revision-antes-de-main.sh` vigila también `gh pr create|merge` por **Bash** (solo una orden real, no un `grep`
+  que lo mencione; analiza los argumentos y deja pasar un `--base` que no sea `main`) y, al fusionar, exige
+  check-runs **y** commit statuses (p. ej. Vercel).
+- `pre-commit` genérico **antisecretos** (por archivo: `.env` salvo `.env.example`, `.pem`, `.key`…; por contenido:
+  formatos de clave conocidos y propiedades con secreto literal), con modo `--rango base..head` para el CI.
+- El CI corre el **gancho de la rama base** sobre el rango del PR: un PR no puede debilitar la comprobación que lo
+  revisa.
+- `tools/qa/registro_sesion.py`: busca el `.jsonl` de la sesión en la carpeta del repo o en una superior y avisa si
+  la sesión se abrió fuera del repo (entonces no carga `.claude/settings.json`).
+- `bitacora.py` con `re.S` (tareas tachadas en varias líneas); `prepush-ramas.sh` con alternativa
+  `git log --not --remotes` en clones de una sola rama; `session-start.sh` pone `core.hooksPath`; registros del
+  `pre-push` en `$TMPDIR`.
+- Patrón para proyectos existentes con deuda: «lint solo de lo que cambia mientras haya una tarea de deuda abierta»;
+  y comprobar en el CI que los artefactos generados están commiteados.
+
+**No se generaliza:** la regla de SQL de producción con `ddl-auto=validate`, el i18n de cinco idiomas, Render/Vercel,
+los nombres de personas y las etiquetas `WMF QA-nn`.
 
 ## Lo que el plan no recoge (propuesto para el inventario, §3)
 

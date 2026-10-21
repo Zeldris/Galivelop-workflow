@@ -52,7 +52,7 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   `README.es.md`); las `SKILL.md`, solo en inglés; los mensajes de los scripts, en inglés con la orden que arregla
   el fallo.
 - **Otros repos se leen, nunca se modifican** desde aquí (Portal-Galivelop, World-Maker-Fantasy,
-  Instalador-WMF-Tarkor). Se leen con un subagente que devuelve un resumen con rutas.
+  Instalador-WMF-Tarkor, VeriNews_AI). Se leen con un subagente que devuelve un resumen con rutas.
 - **Un dato, un sitio:** la versión solo en `.claude-plugin/plugin.json`; el config del proyecto solo lo lee
   `scripts/config.py`.
 - **Ganchos y scripts** (plan §4.3 y §12): raíz desde la ruta del script o `git rev-parse --show-toplevel`, nunca
