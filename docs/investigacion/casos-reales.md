@@ -76,6 +76,8 @@ Piezas genéricas que existen en los dos repos y el plan no menciona:
 
 ## Lo que choca con el plan
 
+> **Decidido (2026-10-21):** el usuario aprobó las propuestas; ver `docs/plan.md` §0.
+
 1. **Marca de revisado.** Tarkor y el instalador la tienen en `.claude/revision-main.sha` ignorada por git; el portal,
    versionada, como dice el plan (§5.3). Confirmado: la versionada vale para los dos modos de subida.
 2. **Un solo `check`.** Ninguno de los dos tiene una orden única: el check real es el `pre-push` + la CI. Propuesta:

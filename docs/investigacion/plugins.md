@@ -97,6 +97,8 @@ en la nube, lo cargue») **no se sostiene**. El plan B de la §8 deja de ser sol
 
 ## Propuesta (pendiente de tu decisión)
 
+> **Decidido (2026-10-21):** el usuario aprobó las propuestas; ver `docs/plan.md` §0.
+
 La distribución como plugin solo funciona en local. Como el taller trabaja mucho en la nube, propongo:
 
 - **Opción A — Copia gestionada como vía principal.** El repo mantiene la forma de plugin + marketplace (vale para

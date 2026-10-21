@@ -100,6 +100,8 @@ los dos **[1ª]**).
 
 ## 4. Propuesta del usuario: dos etapas
 
+> **Decidido (2026-10-21):** el usuario aprobó las propuestas; ver `docs/plan.md` §0.
+
 **Etapa 1 — un agente aplica el flujo leyendo este repo.** **Etapa 2 — instalación automática sin IA**, para
-proyectos nuevos (lo recomendado) y existentes. Valoración y cómo encaja, en la respuesta al usuario del
-2026-10-21 y, cuando la confirme, en `docs/plan.md`.
+proyectos nuevos (lo recomendado) y existentes. Aprobada con la copia en el repo como base de la etapa 1, reglas
+en `AGENTS.md` y scripts deterministas para todo lo comprobable (`docs/plan.md` §0 y §9).

@@ -3,6 +3,27 @@
 > Documento para la sesión de Claude que cree el repo. Léelo entero antes de empezar y síguelo por fases: cada
 > fase acaba con commit + push y su casilla marcada en `docs/traspaso.md` del repo nuevo.
 > Redactado el 2026-10-21 a partir del flujo en uso en **Portal-Galivelop** y **World-Maker-Fantasy (Tarkor)**.
+> **Revisado el 2026-10-21 al cerrar la Fase 0** con las decisiones del usuario (§0). Investigación en
+> `docs/investigacion/`.
+
+## 0. Cambios tras la Fase 0 (decisiones del usuario, 2026-10-21)
+
+1. **Dos etapas.** *Etapa 1:* un agente de IA aplica el flujo a un proyecto leyendo este repo (guía para agentes +
+   plantillas + scripts deterministas). *Etapa 2:* instalación automática **sin IA**, para proyectos nuevos (lo
+   recomendado) y existentes. No se empieza la etapa 2 hasta que la 1 sea estable en los pilotos.
+2. **El flujo se copia al repo destino** (skills, scripts y ganchos, con su versión) como vía base: es lo que hace un
+   agente al aplicarlo y funciona en la nube, que **no carga plugins declarados en el repo** (comprobado). El plugin
+   y el marketplace pasan a ser una vía opcional de la etapa 2 (local, o el script de configuración del entorno).
+3. **Reglas del flujo en `AGENTS.md`** (estándar abierto, válido para cualquier agente); `CLAUDE.md` = `@AGENTS.md`
+   + lo propio de Claude.
+4. **Claves de `gw.json` en inglés**; **`check` es una lista de órdenes**; **marca de revisado versionada** en el
+   repo para los dos modos de subida.
+5. **Se porta pieza a pieza** desde el repo que tiene la mejor versión de cada una (tabla en
+   `docs/investigacion/casos-reales.md`), no «del portal».
+6. **Este repo usa su propio flujo** desde la Fase 1, aplicado como copia igual que en cualquier proyecto.
+7. **Skills según la especificación Agent Skills** (`name`, `description`, `license`, `compatibility`,
+   `metadata.version`); las cosas comprobables las hacen scripts (p. ej. `doctor`), no skills.
+
 
 ## 1. Qué es y para qué
 
@@ -36,7 +57,9 @@ publicarlo también en npm.
 | Versionado | El repo es el punto de versión de todas las skills y mejoras |
 | Publicación | Público + ficha en Galivelop solo cuando el flujo esté probado como 100 % funcional y aplicable a cualquier sistema |
 
-**Por qué plugin y no un script que copia archivos:** el plugin trae versión, actualización (`/plugin update`) y
+> **Revisado en §0:** la distribución base es la copia gestionada; el plugin queda como opción de la etapa 2.
+
+**Por qué plugin y no un script que copia archivos** (razonamiento original): el plugin trae versión, actualización (`/plugin update`) y
 desinstalación de serie; las skills no se duplican en cada repo; y en un proyecto basta una línea en
 `.claude/settings.json` para que cualquier sesión (también en la nube) lo cargue. Lo que **no** puede vivir en el
 plugin (ganchos de git, `CLAUDE.md`, la bitácora, lo propio del proyecto) lo crea en el repo destino una skill de
@@ -67,6 +90,14 @@ su retro del 2026-10-21). Tarkor aporta lo que el portal quitó por ser «de web
 | `es-codigo.sh`, `revisado.sh` | `tools/qa/` | Al plugin; los patrones de «contenido» salen del config |
 | Tests de ganchos | `tools/qa/tests/test-ganchos.sh` | Al plugin, ampliados para que corran contra un repo de prueba temporal |
 | Roadmap e hitos (opcional) | Tarkor: `tools/roadmap/cobertura.py`, `docs/producto/21-roadmap.md` | Módulo opcional activable en el config (`roadmap: true`) |
+| Bitácora por ramas | Instalador: `tools/qa/bitacora.py`, `tools/qa/prepush-ramas.sh` | Una fila por rama, límite de caracteres y ruta del plan configurables |
+| Utilidades de QA | Tarkor/instalador: `fusionar.sh`, `rojo-sin-arreglo.sh`, `tests-relacionados.sh`, `enlaces-md.py` | Genéricas; la orden de tests relacionados sale del config |
+| Cierre de tareas | Tarkor: `tools/roadmap/cerrar.py` | Parte del módulo `roadmap` |
+| Retro exigida antes de la marca | Tarkor/instalador: `revisado.sh` | Opción del config (`requireRetro`) |
+| `scout-updates` | Tarkor: `.claude/skills/scout-updates/` | Skill opcional |
+
+> **Fuente por pieza (Fase 0):** la tabla «La mejor versión de cada pieza» de `docs/investigacion/casos-reales.md`
+> manda sobre la columna «Origen» de arriba.
 
 **No se trae:** lo propio de cada proyecto (tres idiomas del portal, lore de Tarkor, tarea semanal concreta,
 `opt-ai`, `scout-updates`, rondas de pruebas jugando). La **tarea programada semanal** se documenta como patrón
@@ -76,9 +107,10 @@ opcional en `docs/<lang>/patrones.md`, sin prompt concreto.
 
 ```text
 Galivelop-workflow/
-├── .claude-plugin/
+├── AGENTS.md                     # reglas del flujo para trabajar EN este repo (cualquier agente)
+├── .claude-plugin/               # se mantiene válido; vía opcional de la etapa 2
 │   ├── marketplace.json          # el repo es su propio marketplace (un plugin)
-│   └── plugin.json               # nombre, versión (semver), descripción, autor, licencia
+│   └── plugin.json               # nombre, versión (semver: la única fuente), descripción, autor, licencia
 ├── skills/                       # una carpeta por skill, SKILL.md en inglés (§4.4)
 │   ├── selector/  orchestrate-dealer/  opt-tokens/  retro/  pr/
 │   ├── grilling/  grill-with-docs/  domain-modeling/  diagnosing-bugs/
@@ -91,10 +123,12 @@ Galivelop-workflow/
 │   └── hooks.json                # SessionStart (startup|resume|clear, clear|compact) y PreToolUse (PR a main)
 ├── scripts/                      # lo que llaman ganchos y skills; raíz por ${CLAUDE_PLUGIN_ROOT}
 │   ├── session-start.sh  revision-antes-de-main.sh
-│   ├── recuperar.py  medir.py  es-codigo.sh  revisado.sh
+│   ├── recuperar.py  medir.py  es-codigo.sh  revisado.sh  bitacora.py  prepush-ramas.sh
+│   ├── doctor.py                 # comprobación determinista del flujo (la usa gw-doctor y el CI)
+│   ├── aplicar.py                # copia plantillas, skills y scripts sin pisar nada (etapa 1 y base de la 2)
 │   └── config.py                 # lee y valida .claude/gw.json del proyecto (único lector)
 ├── templates/                    # lo que /gw-init copia al repo destino, en es/ y en/
-│   ├── es/  CLAUDE.md  REVIEW.md  GLOSSARY.md  traspaso.md  opt-tokens.md
+│   ├── es/  AGENTS.md  CLAUDE.md  REVIEW.md  GLOSSARY.md  traspaso.md  opt-tokens.md
 │   ├── en/  (los mismos)
 │   ├── githooks/pre-push
 │   ├── github/comprobar.yml      # CI mínimo: el check del proyecto
@@ -104,9 +138,10 @@ Galivelop-workflow/
 │   ├── test-ganchos.sh           # crea un repo git temporal y prueba cada gancho y script
 │   └── test-plantillas.sh        # /gw-init sobre un repo vacío produce lo esperado; idempotente
 ├── docs/
-│   ├── es/  flujo.md  instalar.md  config.md  patrones.md  contribuir.md
-│   └── en/  (los mismos)
-├── CLAUDE.md                     # instrucciones para trabajar EN este repo (usa su propio flujo)
+│   ├── es/  flujo.md  aplicar.md  instalar.md  config.md  patrones.md  problemas.md  contribuir.md
+│   └── en/  workflow.md  apply.md  install.md  config.md  patterns.md  troubleshooting.md  contributing.md
+├── CLAUDE.md                     # @AGENTS.md + lo propio de Claude
+├── .claude/  .githooks/          # el flujo aplicado a este repo (copia generada por scripts/aplicar.py)
 ├── docs/traspaso.md              # su bitácora
 ├── REVIEW.md  GLOSSARY.md
 ├── README.md  (en)   README.es.md
@@ -120,20 +155,25 @@ Galivelop-workflow/
 
 ### 4.1 El repo usa su propio flujo
 
-Desde la Fase 1, el repo se trabaja con su propio plugin instalado desde la carpeta local
-(`/plugin marketplace add ./`). Es la primera prueba de rodaje: si algo del flujo estorba aquí, estorba en todas
-partes.
+Desde la Fase 1, el repo se trabaja con su propio flujo, **aplicado igual que en cualquier proyecto**: `AGENTS.md`,
+`CLAUDE.md`, bitácora y, según se construyan, la copia de skills en `.claude/skills/`, scripts en `.claude/gw/` y
+ganchos. Esa copia la genera `scripts/aplicar.py` desde `skills/` y `scripts/`, y un test comprueba que no diverge.
+Es la primera prueba de rodaje: si algo del flujo estorba aquí, estorba en todas partes.
 
 ### 4.2 Nombres
 
-- Plugin: `galivelop-workflow`. Las skills se ven como `galivelop-workflow:selector`, etc.
+- Proyecto y plugin: `galivelop-workflow`. Copiadas al repo destino, las skills se llaman por su nombre (`selector`);
+  vía plugin, `galivelop-workflow:selector`.
 - Las skills propias de gestión llevan prefijo `gw-` para no chocar con skills del proyecto.
-- Config del proyecto: `.claude/gw.json`. Archivos propios del flujo en el repo destino: `.claude/gw/`.
+- Config del proyecto: `.claude/gw.json`. Archivos propios del flujo en el repo destino: `.claude/gw/` (scripts) y
+  `.claude/skills/<skill>/` (skills). Todo lo copiado lleva su versión (`metadata.version` en las skills, cabecera
+  `galivelop-workflow vX.Y.Z` en scripts y plantillas).
 
 ### 4.3 Rutas
 
 Todo script saca su raíz de su propia ruta (`$(dirname "$0")`) o de `${CLAUDE_PLUGIN_ROOT}`, y la del proyecto de
-`git rev-parse --show-toplevel`, **nunca** de `$CLAUDE_PROJECT_DIR` ni del directorio actual: en la nube la sesión
+`git rev-parse --show-toplevel`. En `.claude/settings.json`, `$CLAUDE_PROJECT_DIR` solo sirve para **localizar** el
+script; dentro, la raíz se calcula como se acaba de decir, **nunca** de `$CLAUDE_PROJECT_DIR` ni del directorio actual: en la nube la sesión
 puede arrancar en `/home/user` (lección del portal, `REVIEW.md` §«Ganchos y scripts»).
 
 ### 4.4 Idiomas: español e inglés
@@ -143,7 +183,7 @@ puede arrancar en `/home/user` (lección del portal, `REVIEW.md` §«Ganchos y s
   Un test comprueba que cada archivo de `docs/es/` tiene su par en `docs/en/` y viceversa.
 - **Skills (`SKILL.md`)**: en **inglés, una sola versión**. Se cargan en el contexto del agente; duplicarlas
   dobla su coste. Las skills de mattpocock ya están en inglés. El agente responde en el idioma del proyecto
-  (`idioma` del config), y eso lo dice el `CLAUDE.md` generado.
+  (`language` del config), y eso lo dice el `CLAUDE.md` generado.
 - **Plantillas**: `/gw-init` copia las de `templates/<idioma>/` según el config.
 - **Mensajes de los scripts**: en inglés, con la orden concreta que arregla el fallo.
 
@@ -158,7 +198,7 @@ Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con 
   otro repo, revisar antes de `main`, cierre de bloque, escribir para agentes) con skill, modelo de sesión y modelo
   de subagentes. Reglas: el modelo de sesión lo elige el usuario y Claude lo dice en una línea; escalera de
   subagentes `sonnet low → sonnet medium → opus medium → opus high`, dos fallos y se para; en la duda, la fila de
-  más riesgo. Lee filas extra de `selector.casos` del config.
+  más riesgo. Lee filas extra de `selector.cases` del config.
 - **`orchestrate-dealer`**: la principal planea, decide y revisa; los subagentes leen, implementan trozos y
   suben. Plantilla de encargo con punteros, criterio de hecho y respuesta de ≤15 líneas
   (`HECHO · COMMIT · FALTA · PREGUNTAS`). Uno a la vez en la misma rama si escriben.
@@ -172,7 +212,7 @@ Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con 
 
 | Evento | Qué hace |
 |---|---|
-| `SessionStart` (`startup\|resume\|clear`) | `session-start.sh`: `core.hooksPath=.githooks` si no hay otro, dependencias en la nube (`instalar` del config, solo si `CLAUDE_CODE_REMOTE=true` y el lockfile cambió), aviso si `gw.json` falta o la versión de plantillas va por detrás del plugin |
+| `SessionStart` (`startup\|resume\|clear`) | `session-start.sh`: `core.hooksPath=.githooks` si no hay otro, dependencias en la nube (`install` del config, solo si `CLAUDE_CODE_REMOTE=true` y el lockfile cambió), aviso si `gw.json` falta o la versión copiada va por detrás de la del flujo |
 | `SessionStart` (`clear\|compact`) | `recuperar.py --estado`: fila de estado de la bitácora, `git status`, últimos commits, cómo buscar un detalle |
 | `PreToolUse` (`create_pull_request\|merge_pull_request` del MCP de GitHub y `gh pr create\|merge` por Bash) | `revision-antes-de-main.sh`: sin marca de revisado del mismo código o con CI sin verde, bloquea. Falla cerrado |
 
@@ -181,50 +221,54 @@ Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con 
 - `.githooks/pre-push` (copiado por `/gw-init`, con cabecera `# galivelop-workflow vX.Y.Z`): corre `check` del
   config **sobre el commit que se sube** (worktree temporal si no es la carpeta de trabajo); a la rama protegida,
   exige la marca de revisado si trae código. `--no-verify` solo para `WIP:` en rojo.
-- Marca de revisado: `revisado.sh` escribe el sha en `marca` del config (por defecto
+- Marca de revisado: `revisado.sh` escribe el sha en `reviewMark` del config (por defecto
   `docs/registros/revisado.txt`) y hace commit. Viaja con el repo, así la ven tareas programadas y otras cuentas.
-- `es-codigo.sh`: «código» es todo lo que no casa con `contenido` del config. Solo lo que es código pide revisión.
-- `.github/workflows/comprobar.yml`: `instalar` + `check` en cada push que no sea a la rama protegida y en cada PR.
+- `es-codigo.sh`: «código» es todo lo que no casa con `content` del config. Solo lo que es código pide revisión.
+- `.github/workflows/comprobar.yml`: `install` + `check` en cada push que no sea a la rama protegida y en cada PR.
 
-### 5.4 `/gw-init`, `/gw-update`, `/gw-doctor`
+### 5.4 Aplicar, actualizar y comprobar
 
-- **`/gw-init`**: pregunta lo mínimo (o lo deduce: `package.json`, `pyproject.toml`, `Cargo.toml`, `Makefile`…),
-  escribe `.claude/gw.json` y copia las plantillas sin pisar nada que exista (si `CLAUDE.md` ya existe, propone un
-  bloque para añadir y lo enseña antes). Añade a `.claude/settings.json` el marketplace y el plugin habilitado,
-  más `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`. Commit `Flujo Galivelop-workflow vX.Y.Z` y `Siguiente:`.
-- **`/gw-update`**: compara la cabecera de versión de cada plantilla copiada con la del plugin; enseña el diff
-  del cambio de plantilla (no del archivo, que el proyecto habrá rellenado) y aplica lo que el usuario confirme.
-- **`/gw-doctor`**: comprueba y lista con la orden que arregla cada cosa: config válido contra el schema,
-  `core.hooksPath`, `pre-push` ejecutable y de la versión actual, bitácora con sus secciones, `check` que existe,
-  CI presente, plugin habilitado en `settings.json`.
+- **`docs/<lang>/aplicar.md` (etapa 1):** la guía que sigue un agente para aplicar el flujo. Separa lo que exige
+  criterio (deducir `install`/`check` de `package.json`, `pyproject.toml`, `Cargo.toml`, `Makefile`…; fusionar un
+  `CLAUDE.md`/`AGENTS.md` existente, enseñando el bloque antes) de lo mecánico, que siempre es un script.
+- **`scripts/aplicar.py`:** escribe `.claude/gw.json`, copia plantillas, skills y scripts **sin pisar nada** (lo que
+  ya existe queda como propuesta `*.gw-nuevo` para revisar), añade los ganchos a `.claude/settings.json` y
+  `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`, y pone `core.hooksPath` si no hay otro gestor. Idempotente. Commit
+  `Flujo Galivelop-workflow vX.Y.Z` y `Siguiente:`.
+- **`/gw-init`, `/gw-update`** (skills con `disable-model-invocation: true`): envoltorios finos de `aplicar.md` y
+  `aplicar.py`. `gw-update` compara versiones y enseña el diff del cambio de plantilla (no del archivo que el
+  proyecto rellenó) antes de aplicar lo que el usuario confirme.
+- **`scripts/doctor.py`** (y `/gw-doctor`, que lo llama): comprueba y lista con la orden que arregla cada cosa:
+  config válido contra el schema, `core.hooksPath` y convivencia con otros gestores, `pre-push` ejecutable y de la
+  versión actual, bitácora con sus secciones, órdenes de `check` existentes, CI presente, copia sin divergir.
 
 ## 6. El config del proyecto: `.claude/gw.json`
 
-Todo lo que cambia de un proyecto a otro, y nada más. Lo lee solo `scripts/config.py` (un dato, un sitio).
+Todo lo que cambia de un proyecto a otro, y nada más. Lo lee solo `scripts/config.py` (un dato, un sitio). Claves en
+inglés (decisión de la Fase 0).
 
 ```jsonc
 {
   "$schema": "https://raw.githubusercontent.com/zeldris/Galivelop-workflow/v1.0.0/schema/gw.schema.json",
-  "version": "0.1.0",                       // versión del plugin con la que se generaron las plantillas
-  "idioma": "es",                           // es | en: plantillas y lengua de las respuestas
-  "idiomasVisibles": ["es", "gl", "en"],    // opcional: lo que REVIEW.md exige al texto visible
-  "bitacora": "docs/traspaso.md",
-  "ramaProtegida": "main",
-  "subidaAProtegida": "directa",            // directa | pr: qué gancho vigila (pre-push o PreToolUse)
-  "instalar": "npm ci",
-  "check": "npm run check",
-  "marca": "docs/registros/revisado.txt",
-  "contenido": ["^docs/", "^public/", "^src/data/", "\\.md$"],   // regex: lo que NO pide /code-review
+  "version": "0.1.0",                       // versión del flujo con la que se aplicó
+  "language": "es",                         // es | en: plantillas y lengua de las respuestas
+  "visibleLanguages": ["es", "gl", "en"],   // opcional: lo que REVIEW.md exige al texto visible
+  "log": "docs/traspaso.md",                // bitácora
+  "logRows": false,                         // opcional: una fila por rama con límite (bitacora.py)
+  "protectedBranch": "main",
+  "pushToProtected": "direct",              // direct | pr: qué gancho vigila (pre-push o PreToolUse)
+  "install": ["npm ci"],
+  "check": ["npm run check"],               // lista de órdenes; se corren en orden sobre el commit que se sube
+  "reviewMark": "docs/registros/revisado.txt",
+  "requireRetro": false,                    // opcional: revisado.sh exige una retro en la rama
+  "content": ["^docs/", "^public/", "^src/data/", "\\.md$"],   // regex: lo que NO pide /code-review
   "roadmap": false,                         // módulo opcional de hitos (Tarkor)
-  "selector": { "casos": [] }               // filas extra propias del proyecto
+  "selector": { "cases": [] }               // filas extra propias del proyecto
 }
 ```
 
-> Las claves van en español por continuidad con los repos actuales; la Fase 0 puede decidir pasarlas a inglés
-> antes de la `1.0.0` (después sería un cambio mayor).
-
-Ejemplos que la Fase 5 tiene que cubrir: el portal (Node, subida directa, tres idiomas visibles) y Tarkor (backend
-+ frontend, roadmap con hitos, varias cuentas). La Fase 7 añade uno que no sea Node (Python o Rust).
+Ejemplos que los pilotos tienen que cubrir: el portal (Node, subida directa, tres idiomas visibles), Tarkor (backend
++ frontend, roadmap con hitos, varias cuentas, PR) y el instalador de Tarkor (Rust/Tauri: el caso sin Node).
 
 ## 7. Versionado
 
@@ -239,56 +283,71 @@ Ejemplos que la Fase 5 tiene que cubrir: el portal (Node, subida directa, tres i
   actualizaciones automáticas. Lo normal: seguir `main` y `/plugin update`.
 - Versión `0.x` durante todo el rodaje; `1.0.0` solo con la §10 cumplida.
 
-## 8. Instalación en un proyecto (lo que contará `docs/<lang>/instalar.md`)
+## 8. Instalación en un proyecto
+
+**Etapa 1 (lo que contará `docs/<lang>/aplicar.md`):** desde una sesión con el proyecto y este repo a mano, se
+pide al agente «aplica Galivelop-workflow siguiendo `docs/es/aplicar.md`». El agente decide lo que exige criterio,
+lanza `scripts/aplicar.py` y termina con `scripts/doctor.py` en verde. En la nube funciona sin configurar nada,
+porque el resultado vive en el repo.
+
+**Etapa 2 (lo que contará `docs/<lang>/instalar.md`):** instalación sin IA, p. ej. con Copier (merge a tres bandas
+para actualizar) o un script propio sin dependencias más allá de git, bash y python3; se decide en su fase. Vías
+opcionales: el plugin desde el marketplace del repo (local) o instalado por el script de configuración del entorno
+de la nube:
 
 ```text
-/plugin marketplace add zeldris/Galivelop-workflow
-/plugin install galivelop-workflow@galivelop-workflow
-/galivelop-workflow:gw-init
+claude plugin marketplace add zeldris/Galivelop-workflow
+claude plugin install galivelop-workflow@galivelop-workflow
 ```
 
-`/gw-init` deja en `.claude/settings.json` del proyecto `extraKnownMarketplaces` y `enabledPlugins`, para que
-cualquier sesión que abra el repo (otra cuenta, la nube) lo cargue sin pasos a mano.
-
-> **A comprobar en la Fase 0** (no darlo por hecho): que una sesión en la nube instala un marketplace de un repo
-> **privado** con el acceso de GitHub de la sesión. Si no puede, el plan B mientras sea privado es que
-> `/gw-init` copie también las skills a `.claude/skills/` con cabecera de versión y `/gw-update` las refresque.
-> Comprobar también los nombres exactos de campos de `plugin.json`, `marketplace.json` y `hooks.json` contra la
-> documentación oficial de plugins de Claude Code del día.
+> Comprobado en la Fase 0 (`docs/investigacion/plugins.md`): un repo privado se añade como marketplace desde la
+> CLI, también en la nube; la nube **no** carga lo declarado en `.claude/settings.json` del repo; un plugin
+> instalado antes de que arranque Claude sí carga.
 
 ## 9. Fases de construcción
 
 Cada fase: rama de trabajo, pasos con commit + push en cada punto estable, bitácora en el mismo commit, tests en
-verde, y al cerrar `/code-review` antes de subir a `main` (con confirmación). Modelo según el `selector` del
-portal: diseño y ganchos con el grande; portar skills y plantillas con el medio.
+verde, y al cerrar `/code-review` antes de subir a `main` (con confirmación). Modelo según el `selector`: diseño y
+ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1, todo con el propio flujo (§4.1).
+
+**Etapa 1 — aplicable por un agente**
 
 | Fase | Qué | Hecho cuando |
 |---|---|---|
-| **0. Verificar** | Leer la doc oficial de plugins, marketplaces y hooks; probar en la nube un marketplace privado; anotar en `docs/investigacion/plugins.md` (skill `research`) | Las dudas de la §8 respondidas y el plan ajustado si hace falta |
-| **1. Esqueleto** | Crear repo, `LICENSE`, `.claude-plugin/`, README ES/EN, `CLAUDE.md`, bitácora, CHANGELOG `0.1.0`, CI con shellcheck y validación JSON. Instalar el plugin desde local | `/plugin` lo lista y el CI está en verde |
-| **2. Skills** | Portar las 14 skills (§3) y escribir `gw-doctor` | Todas cargan; `writing-for-agents` pasado a las propias; licencias y créditos en su sitio |
-| **3. Ganchos y scripts** | `config.py`, `session-start.sh`, `recuperar.py`, `revision-antes-de-main.sh`, `es-codigo.sh`, `revisado.sh`, `medir.py` y plantilla `pre-push`, todo leyendo el config. `tests/test-ganchos.sh` contra un repo temporal, incluidos los casos de los 29 fallos del portal | Tests en verde en Linux y macOS (matriz del CI); fallan cerrado sin config |
-| **4. Plantillas e init** | `templates/es` y `templates/en`, `gw.schema.json`, `gw-init`, `gw-update`, `test-plantillas.sh` | `gw-init` sobre un repo vacío deja un flujo que `gw-doctor` da por bueno; dos veces seguidas no cambia nada |
-| **5. Piloto: Portal-Galivelop** | En una rama del portal (con permiso del usuario en esa sesión): sustituir su copia por el plugin + `gw.json`. Comparar comportamiento con el anterior | `npm run check` en verde, `pre-push` y marca de revisado funcionando, tarea semanal sin cambios. Lo que falte vuelve como versión nueva del plugin |
-| **6. Piloto: Tarkor** | Igual en World-Maker-Fantasy, con `roadmap: true` | Relevo entre las dos cuentas con el plugin sin perder nada |
-| **7. Rodaje** | Un proyecto que no sea Node; uso real semanas. Cada `retro` con mejora general → issue/PR aquí | Criterios de la §10 |
-| **8. Público** | Revisión de seguridad (`/security-review`), quitar rutas o nombres privados, `1.0.0`, repo público, ficha en el portal Galivelop (tres idiomas, enlace al repo público), valorar npm (§11) | Repo público y ficha publicada |
+| **0. Verificar** ✅ | Doc oficial de plugins, marketplaces y hooks; pruebas en la nube; tres casos reales; estándares | §0 decidido; notas en `docs/investigacion/` |
+| **1. Esqueleto** | `LICENSE`, `AGENTS.md` + `CLAUDE.md`, README ES/EN, bitácora, CHANGELOG `0.1.0`, `.claude-plugin/` válido, CI (shellcheck, JSON, pares ES/EN, versión == CHANGELOG) | CI en verde y el repo trabajándose con su propio `AGENTS.md` |
+| **2. Skills** | Portar las skills (§3) pieza a pieza, con campos de Agent Skills y test que los valida | Todas validan; `writing-for-agents` pasado a las propias; licencias y créditos |
+| **3. Ganchos y scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recuperar.py`, `revision-antes-de-main.sh`, `es-codigo.sh`, `revisado.sh`, `bitacora.py`, `prepush-ramas.sh`, `medir.py`, plantilla `pre-push`. Tests contra repo temporal: categorías de los 29 fallos, clon superficial, marcas de conflicto, otro gestor de ganchos. Aplicados a este repo | Tests en verde en Linux y macOS; fallan cerrado sin config |
+| **4. Plantillas y aplicación** | `templates/es` y `templates/en`, `gw.schema.json`, `aplicar.py`, `aplicar.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `problemas.md` | Un agente aplica el flujo a un repo vacío y `doctor.py` lo da por bueno; dos veces no cambia nada |
+| **5. Piloto: Portal-Galivelop** | En una sesión del portal (con permiso): un agente lo aplica siguiendo `aplicar.md` y sustituye su copia | `npm run check` en verde, `pre-push` y marca funcionando, tarea semanal sin cambios |
+| **6. Piloto: Tarkor e instalador** | Igual en World-Maker-Fantasy (`roadmap: true`, PR) y en Instalador-WMF-Tarkor (Rust) | Relevo entre cuentas sin perder nada; lo que falte vuelve como versión nueva |
+| **7. Rodaje etapa 1** | Uso real semanas; cada `retro` con mejora general → issue/PR aquí | Criterios de la §10 para la etapa 1 |
+
+**Etapa 2 — instalación automática sin IA**
+
+| Fase | Qué | Hecho cuando |
+|---|---|---|
+| **8. Instalador** | Elegir Copier o script propio; proyecto nuevo (recomendado) y existente (sin pisar, conflictos marcados); actualización | Instalación y actualización sin IA en un repo nuevo y en los pilotos, `doctor.py` en verde |
+| **9. Plugin y npm** | Marketplace del repo como vía opcional (local y script de entorno de la nube); valorar npm (§11) | Decidido y documentado |
+| **10. Público** | `/security-review`, quitar rutas o nombres privados, `1.0.0`, repo público, ficha en el portal (tres idiomas) | Repo público y ficha publicada |
 
 ## 10. Criterios para «100 % funcional y aplicable a cualquier sistema» (paso a 1.0)
 
-- Funciona en **tres proyectos** de stacks distintos (al menos uno sin Node) durante **≥ 4 semanas** cada uno.
+- Funciona en **tres proyectos** de stacks distintos (al menos uno sin Node: el instalador de Tarkor es el candidato)
+  durante **≥ 4 semanas** cada uno.
 - **Relevos probados**: al menos 5 cortes de sesión (tokens, `/clear`, cambio de cuenta) sin pérdida, comprobado
   con la bitácora.
 - **Ganchos**: ningún falso positivo ni subida sin revisar a `main` en el rodaje; tests de ganchos en Linux y
   macOS en verde. Windows: documentado (Git Bash o WSL) y probado al menos una vez.
-- **Instalación limpia**: `gw-init` + `gw-doctor` en un repo nuevo sin tocar nada a mano.
+- **Instalación limpia**: etapa 1, un agente con `aplicar.md` + `doctor.py` en un repo nuevo sin tocar nada a mano;
+  etapa 2, lo mismo sin IA.
 - **Nada privado** en el repo: ni rutas de Tarkor o el portal, ni identificadores internos, ni datos personales.
 - Documentación ES/EN completa y emparejada (lo comprueba el test).
 
 ## 11. npm (al final, opcional)
 
 Paquete `galivelop-workflow` (o con ámbito `@galivelop/workflow`) con un binario `npx galivelop-workflow init`
-que instala el marketplace y lanza el init para quien no quiera usar `/plugin`. Decidir en la Fase 8 si aporta algo
+que instala el marketplace y lanza el init para quien no quiera usar `/plugin`. Decidir en la Fase 9 si aporta algo
 sobre el marketplace de GitHub; si se publica, `release.yml` también hace `npm publish` y la versión sale del
 mismo `plugin.json`.
 
