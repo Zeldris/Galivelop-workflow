@@ -283,7 +283,11 @@ Keys in English (Phase 0 decision).
   "requireRetro": false,                    // optional: revisado.sh requires a retro on the branch
   "content": ["^docs/", "^public/", "^src/data/", "\\.md$"],   // regex: what does NOT need /code-review
   "roadmap": false,                         // optional milestones module (Tarkor)
-  "selector": { "cases": [] }               // extra project-specific rows
+  "selector": { "cases": [] },              // extra project-specific rows
+  "designReferences": [],                   // optional: what design is contrasted with (grilling, selector)
+  "protectedPaths": [],                     // optional: paths an agent may not commit (pre-commit)
+  "staleRefs": [],                          // optional: patterns that must not appear in docs/ (enlaces-md.py)
+  "relatedTests": { "fast": [], "slow": [] } // optional: tests of what changed, in pre-push
 }
 ```
 

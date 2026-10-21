@@ -10,7 +10,7 @@ skills nacidas (`opt-ai`, `to-questionnaire`) son idénticas a las de Tarkor: ve
 - **What changes:** `tests/` incluye, contra un repo temporal, estos casos de `revision-antes-de-main.sh`: otra base, sin marca, marca igual a la rama en GitHub, `update_pull_request` sin base, fusión automática, `update_pull_request_branch` ignorado, `head` como `dueño:rama`, error de `origin` visible.
 - **Why it is general:** el gancho solo se había probado a mano y la revisión halló siete fallos en lo traído; `casos-reales.md` pide tests de ganchos pero solo existen 8 casos de `pre-push`.
 - **Version bump:** patch
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-21)
 
 ## P2. Comprobación de identificadores y referencias obsoletos
 
@@ -18,7 +18,7 @@ skills nacidas (`opt-ai`, `to-questionnaire`) son idénticas a las de Tarkor: ve
 - **What changes:** `enlaces-md.py` (o un test hermano) acepta `staleRefs` en el config, patrones que no deben aparecer en `docs/` ni en el README (insensible a mayúsculas, números de dos cifras, rutas con espacios, saltando bitácora y `.claude/`). `/gw-update` lo rellena al renumerar.
 - **Why it is general:** renombrar ids de tarea al traer el flujo dejó «fase 3.5» en dos documentos; solo lo vio la revisión.
 - **Version bump:** minor
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-21)
 
 ## P3. Editar ganchos y `settings.json` pide permiso en modo automático
 
@@ -26,7 +26,7 @@ skills nacidas (`opt-ai`, `to-questionnaire`) son idénticas a las de Tarkor: ve
 - **What changes:** línea en `docs/<lang>/problemas.md` y en `aplicar.md`: el clasificador del modo automático bloquea editar `.claude/hooks/` y `.claude/settings.json`; pedir permiso antes, y que `aplicar.py` lo diga al ir a tocarlos.
 - **Why it is general:** `/gw-init` y `/gw-update` escriben justo esos archivos; el fallo aparece a mitad de la aplicación.
 - **Version bump:** patch
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-21)
 
 ## P4. Lo que depende del equipo de la persona no se da por probado
 
@@ -34,7 +34,7 @@ skills nacidas (`opt-ai`, `to-questionnaire`) son idénticas a las de Tarkor: ve
 - **What changes:** línea en la plantilla de `CLAUDE.md`: lo que depende de una máquina concreta (otro sistema operativo, un dispositivo) no se declara probado con tests; se apunta como pendiente en el plan, con quién lo comprueba.
 - **Why it is general:** evita cerrar tareas con una prueba que nunca corrió donde importa.
 - **Version bump:** patch
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-21)
 
 ## Se queda en el proyecto
 

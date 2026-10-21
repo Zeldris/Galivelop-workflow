@@ -10,7 +10,7 @@ Tarkor); las 14 skills que difieren llevan notas de idioma, `GLOSSARY.md` y Mave
 - **What changes:** la plantilla de `CLAUDE.md` incluye «el usuario autoriza repartir con `orchestrate-dealer` sin preguntar cada vez»; `doctor.py` avisa si falta.
 - **Why it is general:** sin esa frase, el sistema de Claude Code no lanza subagentes sin que se pidan y `orchestrate-dealer` y el `selector` quedan en papel; en esta sesión no se repartió nada y se arrastraron ~5M de tokens.
 - **Version bump:** minor
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-21)
 
 ## P2. Lo traído de otro repo se adapta a los contratos de este
 
@@ -18,7 +18,7 @@ Tarkor); las 14 skills que difieren llevan notas de idioma, `GLOSSARY.md` y Mave
 - **What changes:** sección en la plantilla de `REVIEW.md`: formatos, rutas, patrones de nombres, constantes y ids de tarea se comprueban contra este repo, no contra el original; en `test-plantillas.sh`, que la tabla de ejemplo de cada runbook la lea su script.
 - **Why it is general:** 6 de 12 hallazgos eran exactamente eso (extensiones sin `.java`/`.jsx`, claves de proveedores, constante que ya no existía); el plan §12 solo cubre la forma de subir.
 - **Version bump:** minor
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-21)
 
 ## P3. Sesión abierta fuera del repo: qué hacer y qué avisar
 
@@ -26,7 +26,7 @@ Tarkor); las 14 skills que difieren llevan notas de idioma, `GLOSSARY.md` y Mave
 - **What changes:** línea en la plantilla de `CLAUDE.md`: si la sesión no arrancó en la raíz del repo (no carga `settings.json`: sin tope de compactación ni gancho de inicio), activar `core.hooksPath` y avisar al usuario. `doctor.py` lo comprueba con `registro_sesion.py`; el paso 1 de `opt-tokens` dice usar `--sesion`.
 - **Why it is general:** contexto medio de 262k y ganchos sin activar; `registro_sesion.py` y el respaldo de `medir.py` ya se portan, falta la regla y el aviso al usuario.
 - **Version bump:** patch
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-21)
 
 ## Se queda en el proyecto
 

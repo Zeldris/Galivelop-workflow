@@ -58,3 +58,9 @@ This section is the only change to the upstream skill.
 - Sort each candidate into one of two outlets and say which:
   - **Project-specific** (paths, stack, domain rules): propose the patch in this repo.
   - **General** (would help any project using the workflow: a skill, a hook, a template, a rule in `AGENTS.md`): propose it **to the workflow itself** as an issue or PR on the `Galivelop-workflow` repository, or leave it in the retro file under a `## For Galivelop-workflow` heading so `gw-harvest` collects it. Do not patch the copied workflow files locally; local edits drift and are overwritten by the next update.
+- **Review the project's own skills too.** Look at how `selector`, `orchestrate-dealer`, `opt-tokens`, `pr`, the code
+  review and this retro performed; read the skill list before proposing. When a skill failed, the proposal changes
+  that skill (or proposes the change to the workflow), not a loose new rule in `AGENTS.md`/`CLAUDE.md`.
+- **Present the retro before the PR**, even when the user said "merge directly": that skips waiting for reviews, not
+  the retro. Its `**Estado:**`/`**Status:**` line records what the user decided (applied, rejected, deferred), not just
+  "done"; `revisado.sh` checks it when `requireRetro` is set.

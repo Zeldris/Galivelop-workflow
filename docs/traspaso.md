@@ -11,7 +11,7 @@
 | Rama | `claude/galivelop-workflow-inicio` (`main` creada el 2026-10-21 en `f2739f1`) |
 | Check | `bash tests/comprobar.sh` — en verde en local y en el CI |
 | Fase en curso | **3. Ganchos y scripts** (plan §9, etapa 1) — sin empezar |
-| Último punto estable | Fase 2 cerrada: 17 skills (11 de Matt Pocock, 6 propias con `opt-ai` y `scout-updates` opcionales) + `gw-harvest`; primera recogida con 20 propuestas |
+| Último punto estable | Propuestas aprobadas (20); las de skills aplicadas (`retro`, `selector`, `grilling`, `prototype`, `to-questionnaire`); reparto en `docs/propuestas/2026-10-21-reparto.md` |
 | Siguiente paso | Fase 3: `config.py` + `gw.schema.json` mínimo, `doctor.py`, ganchos y scripts desde la mejor versión (`casos-reales.md`), tests contra repo temporal; aplicar a este repo (incluida la copia de skills en `.claude/skills/`) |
 
 ### Fases
@@ -56,7 +56,7 @@ trabajo hasta que el usuario la cambie en Settings → Branches.
 
 ## Pendiente
 
-- **Decisión del usuario:** propuestas de la primera recogida (`docs/propuestas/2026-10-21-*.md`).
+- Propuestas aprobadas pendientes por fase: `docs/propuestas/2026-10-21-reparto.md`.
 
 - Plantilla de `.claude/gw/opt-ai.md` (y de `opt-tokens.md`, `scout-updates.md`) en `templates/` en la Fase 4.
 - Que el usuario cambie la rama por defecto de GitHub a `main` (Settings → Branches); no hay herramienta para ello.

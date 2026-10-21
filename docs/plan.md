@@ -280,7 +280,11 @@ inglés (decisión de la Fase 0).
   "requireRetro": false,                    // opcional: revisado.sh exige una retro en la rama
   "content": ["^docs/", "^public/", "^src/data/", "\\.md$"],   // regex: lo que NO pide /code-review
   "roadmap": false,                         // módulo opcional de hitos (Tarkor)
-  "selector": { "cases": [] }               // filas extra propias del proyecto
+  "selector": { "cases": [] },              // filas extra propias del proyecto
+  "designReferences": [],                   // opcional: con qué se contrasta el diseño (grilling, selector)
+  "protectedPaths": [],                     // opcional: rutas que un agente no puede commitear (pre-commit)
+  "staleRefs": [],                          // opcional: patrones que no deben aparecer en docs/ (enlaces-md.py)
+  "relatedTests": { "fast": [], "slow": [] } // opcional: tests de lo que cambia, en pre-push
 }
 ```
 
