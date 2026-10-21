@@ -11,8 +11,8 @@
 | Rama | `claude/galivelop-workflow-inicio` (`main` creada el 2026-10-21 en `f2739f1`) |
 | Check | `bash tests/comprobar.sh` — en verde en local y en el CI |
 | Fase en curso | **2. Skills** (plan §9, etapa 1) — 16 skills portadas; falta la primera recogida real |
-| Último punto estable | Fase 2: skills propias `selector`, `orchestrate-dealer`, `opt-tokens` (+ `medir.py`) y `scout-updates` (+ scripts y 11 tests) generalizadas y revisadas |
-| Siguiente paso | Revisar y subir `skills/opt-ai` (portándose por subagente) y la primera recogida de `gw-harvest` (en curso por subagente); luego cerrar la Fase 2 |
+| Último punto estable | Fase 2: primera recogida real de `gw-harvest` (20 propuestas en `docs/propuestas/`, pendientes de decisión del usuario) |
+| Siguiente paso | Revisar y subir `skills/opt-ai` (portándose por subagente); presentar las propuestas al usuario; cerrar la Fase 2 |
 
 ### Fases
 
@@ -53,6 +53,8 @@ trabajo hasta que el usuario la cambie en Settings → Branches.
 9. 2026-10-21 — Plan guardado tal cual en `docs/plan.md` (y `docs/plan.en.md`); bitácora creada.
 
 ## Pendiente
+
+- **Decisión del usuario:** propuestas de la primera recogida (`docs/propuestas/2026-10-21-*.md`).
 
 - Que el usuario cambie la rama por defecto de GitHub a `main` (Settings → Branches); no hay herramienta para ello.
 - Opción D (plugin desde el script de entorno de la nube): queda para la Fase 9.
