@@ -11,8 +11,8 @@
 | Rama | `claude/galivelop-workflow-inicio` (`main` creada el 2026-10-21 en `f2739f1`) |
 | Check | `bash tests/comprobar.sh` — en verde en local y en el CI |
 | Fase en curso | **3. Ganchos y scripts** (plan §9, etapa 1) — en curso |
-| Último punto estable | Fase 3: `schema/gw.schema.json`, `scripts/config.py` (único lector, falla cerrado, 7 tests) y `.claude/gw.json` de este repo |
-| Siguiente paso | Fase 3, por subagentes uno a uno: (B) `revisado.sh`, `es-codigo.sh`, `pre-push`, `pre-commit`; (C) `revision-antes-de-main.sh`; (D) `session-start.sh`, `recuperar.py`, `registro_sesion.py`, `doctor.py`; (E) `bitacora.py`, `prepush-ramas.sh`, `fusionar.sh`, `rojo-sin-arreglo.sh`, `tests-relacionados.sh`, `enlaces-md.py`; (F) aplicarlo a este repo |
+| Último punto estable | Fase 3 (B): `es-codigo.sh`, `revisado.sh`, plantillas `pre-push` y `pre-commit`, `tests/test_ganchos.py` (33 casos) |
+| Siguiente paso | Fase 3 (C): `revision-antes-de-main.sh` (instalador + VeriNews + portal) con los casos de Instalador P1 |
 
 ### Fases
 

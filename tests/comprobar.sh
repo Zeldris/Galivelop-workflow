@@ -7,11 +7,11 @@ cd "$root" || exit 1
 fail=0
 
 echo "== shell scripts"
-scripts="$(git ls-files '*.sh' '.githooks/*')"
+scripts="$(git ls-files '*.sh' '.githooks/*' 'templates/githooks/*')"
 if [[ -n "$scripts" ]]; then
   while IFS= read -r f; do bash -n "$f" || fail=1; done <<<"$scripts"
   if command -v shellcheck >/dev/null 2>&1; then
-    git ls-files -z '*.sh' '.githooks/*' | xargs -0 shellcheck || fail=1
+    git ls-files -z '*.sh' '.githooks/*' 'templates/githooks/*' | xargs -0 shellcheck || fail=1
   elif [[ "${CI:-}" == "true" ]]; then
     echo "shellcheck is missing in CI; install it (apt-get install shellcheck / brew install shellcheck)"; fail=1
   else
