@@ -1,0 +1,13 @@
+{
+  "$schema": "../schema/gw.schema.json",
+  "version": "0.1.0",
+  "language": "es",
+  "log": "docs/traspaso.md",
+  "protectedBranch": "main",
+  "pushToProtected": "direct",
+  "install": [],
+  "check": ["bash tests/comprobar.sh"],
+  "reviewMark": "docs/registros/revisado.txt",
+  "content": ["^docs/", "^README(\\.es)?\\.md$", "^CHANGELOG\\.md$", "^CREDITS\\.md$", "^LICENSE"],
+  "staleRefs": []
+}
