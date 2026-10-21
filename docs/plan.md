@@ -95,13 +95,14 @@ su retro del 2026-10-21). Tarkor aporta lo que el portal quitó por ser «de web
 | Utilidades de QA | Tarkor/instalador: `fusionar.sh`, `rojo-sin-arreglo.sh`, `tests-relacionados.sh`, `enlaces-md.py` | Genéricas; la orden de tests relacionados sale del config |
 | Cierre de tareas | Tarkor: `tools/roadmap/cerrar.py` | Parte del módulo `roadmap` |
 | Retro exigida antes de la marca | Tarkor/instalador: `revisado.sh` | Opción del config (`requireRetro`) |
-| `scout-updates` | Tarkor: `.claude/skills/scout-updates/` | Skill opcional |
+| `scout-updates` | Tarkor: `.claude/skills/scout-updates/` | Skill opcional (solo a petición) |
+| `opt-ai` + `medir.py` | Tarkor/instalador: `.claude/skills/opt-ai/` | Skill opcional para proyectos con modelos de IA locales; lo propio en `.claude/gw/opt-ai.md` |
 
 > **Fuente por pieza (Fase 0):** la tabla «La mejor versión de cada pieza» de `docs/investigacion/casos-reales.md`
 > manda sobre la columna «Origen» de arriba.
 
 **No se trae:** lo propio de cada proyecto (tres idiomas del portal, lore de Tarkor, tarea semanal concreta,
-`opt-ai`, `scout-updates`, rondas de pruebas jugando). La **tarea programada semanal** se documenta como patrón
+rondas de pruebas jugando). `opt-ai` y `scout-updates` sí se traen, como skills opcionales (tabla de arriba). La **tarea programada semanal** se documenta como patrón
 opcional en `docs/<lang>/patrones.md`, sin prompt concreto.
 
 ## 4. Estructura del repo

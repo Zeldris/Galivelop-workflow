@@ -12,7 +12,7 @@
 | Check | `bash tests/comprobar.sh` — en verde en local y en el CI |
 | Fase en curso | **2. Skills** (plan §9, etapa 1) — 16 skills portadas; falta la primera recogida real |
 | Último punto estable | Fase 2: skills propias `selector`, `orchestrate-dealer`, `opt-tokens` (+ `medir.py`) y `scout-updates` (+ scripts y 11 tests) generalizadas y revisadas |
-| Siguiente paso | Primera recogida real con `gw-harvest` sobre Tarkor, instalador, portal y VeriNews → `docs/propuestas/`; luego cerrar la Fase 2 |
+| Siguiente paso | Revisar y subir `skills/opt-ai` (portándose por subagente) y la primera recogida de `gw-harvest` (en curso por subagente); luego cerrar la Fase 2 |
 
 ### Fases
 

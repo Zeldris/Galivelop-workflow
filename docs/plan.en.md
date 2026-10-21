@@ -97,13 +97,14 @@ retro). Tarkor contributes what the portal dropped as "small-website-irrelevant"
 | QA utilities | Tarkor/installer: `fusionar.sh`, `rojo-sin-arreglo.sh`, `tests-relacionados.sh`, `enlaces-md.py` | Generic; the related-tests command comes from the config |
 | Closing tasks | Tarkor: `tools/roadmap/cerrar.py` | Part of the `roadmap` module |
 | Retro required before the mark | Tarkor/installer: `revisado.sh` | Config option (`requireRetro`) |
-| `scout-updates` | Tarkor: `.claude/skills/scout-updates/` | Optional skill |
+| `scout-updates` | Tarkor: `.claude/skills/scout-updates/` | Optional skill (on request only) |
+| `opt-ai` + `medir.py` | Tarkor/installer: `.claude/skills/opt-ai/` | Optional skill for projects with local AI models; project specifics in `.claude/gw/opt-ai.md` |
 
 > **Source per piece (Phase 0):** the "best version of each piece" table in `docs/investigacion/casos-reales.md`
 > overrides the "Source" column above.
 
 **Not brought over:** project-specific material (the portal's three languages, Tarkor's lore, the concrete weekly
-task, `opt-ai`, `scout-updates`, play-test rounds). The **weekly scheduled task** is documented as an optional
+task, play-test rounds). `opt-ai` and `scout-updates` are brought over as optional skills (table above). The **weekly scheduled task** is documented as an optional
 pattern in `docs/<lang>/patterns.md`, without a concrete prompt.
 
 ## 4. Repository layout
