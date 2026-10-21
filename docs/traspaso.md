@@ -10,8 +10,8 @@
 |---|---|
 | Rama | `claude/galivelop-workflow-inicio` |
 | Fase en curso | **0. Verificar** (plan §9) |
-| Último punto estable | Plan guardado en `docs/plan.md` y bitácora creada |
-| Siguiente paso | Fase 0: leer la doc oficial de plugins, marketplaces y hooks; anotar en `docs/investigacion/plugins.md` |
+| Último punto estable | Fase 0: doc oficial leída y pruebas hechas; notas en `docs/investigacion/plugins.md` |
+| Siguiente paso | Esperar la decisión del usuario sobre la distribución en la nube (opción A) y las claves de `gw.json` |
 
 ### Fases
 
@@ -31,12 +31,15 @@ Nada aún (no hay versión publicada; `main` no existe todavía).
 
 ## Hecho (10 últimas)
 
-1. 2026-10-21 — Plan guardado tal cual en `docs/plan.md` (y `docs/plan.en.md`); bitácora creada.
+1. 2026-10-21 — Fase 0: la nube no carga plugins declarados en el repo; `.claude/skills/` sí; repo privado como
+   marketplace funciona desde la CLI. Propuesta en `docs/investigacion/plugins.md`.
+2. 2026-10-21 — Sonda mínima de plugin y marketplace (`.claude-plugin/`, skills `gw-ping*`, `.claude/settings.json`).
+3. 2026-10-21 — Plan guardado tal cual en `docs/plan.md` (y `docs/plan.en.md`); bitácora creada.
 
 ## Pendiente
 
-- Fase 0: responder las dudas de la §8 del plan (repo privado como marketplace en la nube; nombres exactos de
-  campos de `plugin.json`, `marketplace.json`, `hooks.json`) y decidir si las claves de `gw.json` pasan a inglés.
+- **Decisión del usuario:** distribución para la nube (opción A recomendada) y claves de `gw.json` en inglés.
+- Fase 0: confirmar la vía de plugins sincronizados desde claude.ai; quitar las skills `gw-ping*` al cerrar.
 - A `main`, solo con confirmación del usuario.
 
 ## Comprobar el estado
