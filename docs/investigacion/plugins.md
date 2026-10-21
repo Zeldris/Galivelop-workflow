@@ -43,6 +43,16 @@ en la nube, lo cargue») **no se sostiene**. El plan B de la §8 deja de ser sol
 - «Plugins declared in the repository's `.claude/settings.json` and plugins enabled only in your user settings don't
   load in cloud sessions.» (`/skills`)
 - Las sesiones en la nube no leen `~/.claude/settings.json` ni `.claude/settings.local.json` (`/settings`).
+- Lo que **sí** carga la nube: `.claude/skills/`, `.claude/agents/`, `.claude/commands/` del repo («Part of the
+  clone») y los ganchos y permisos de `.claude/settings.json`, **pero solo en una sesión con un único repositorio**:
+  «a session with several repositories doesn't load hooks from any repository's `.claude/settings.json`»
+  (`/cloud-environments`). Las skills de proyecto tampoco cargan en «cloud threads in a project» (`/skills`).
+- Las skills que el usuario habilita **en su cuenta de claude.ai** se cargan solas en las sesiones en la nube
+  (`/cloud-environments`, `/skills`). Los *plugins* sincronizados desde claude.ai solo constan para terminal y Cowork,
+  no para la nube (`/plugins/loading`).
+- El **script de configuración del entorno** (setup script) corre «when a new cloud session starts, before Claude Code
+  launches» (`/cloud-environments`). La doc no dice que `claude plugin install` funcione ahí, pero la prueba 1 muestra
+  que un plugin instalado antes de arrancar sí carga. `/plugin` no está disponible en la nube.
 - Acceso a GitHub en la nube: las credenciales se quedan en los servidores de Anthropic y un proxy las añade
   (`/claude-code-on-the-web`). Por eso la prueba 1 funcionó sin token en el contenedor.
 
@@ -96,8 +106,18 @@ La distribución como plugin solo funciona en local. Como el taller trabaja much
   versión nueva desde este repo y enseña el diff; `/gw-doctor` avisa si la copia diverge. Sigue habiendo **una sola
   fuente** (este repo); la copia es generada, no editada a mano. *Recomendada.*
 - **Opción B — Solo plugin + ajustes de usuario.** No sirve para la nube. Descartable.
+- **Opción D — Plugin instalado por el script de configuración del entorno.** Una línea en el setup script de cada
+  entorno de la nube (`claude plugin marketplace add Zeldris/Galivelop-workflow && claude plugin install
+  galivelop-workflow@galivelop-workflow`). Ventajas: una sola vía (el plugin), sin copias, y los ganchos del plugin
+  no dependen de que la sesión tenga un solo repo. Inconvenientes: se configura **por entorno y por cuenta**, no por
+  repo (`/gw-init` no puede escribirlo, solo indicarlo), y falta probar que el setup script puede clonar el repo
+  privado antes de que arranque Claude. Probarlo requiere que tú añadas esa línea a un entorno.
 - **Opción C — Ambas a la vez en un mismo repo** (plugin en local + copia): duplicaría skills y ganchos en las
   sesiones locales. Si se quiere el plugin en local, `/gw-init` debería elegir una de las dos vías por repo.
+
+Mi recomendación tras la segunda consulta: **probar D primero** (si funciona, es la vía más limpia y coincide con
+la decisión original de plugin) y dejar **A como respaldo** para quien no controle el entorno. Ojo con A: sus
+ganchos no corren en sesiones con varios repos, que es justo el caso de una sesión que trae otro repo como lectura.
 
 Efectos en el plan si eliges A: §2 (motivo del plugin), §4 (`scripts/` debe funcionar tanto desde
 `${CLAUDE_PLUGIN_ROOT}` como desde `.claude/gw/scripts/`), §5.4 (`gw-init`/`gw-update` copian skills y scripts),
@@ -115,7 +135,7 @@ añadido), y el plan B de la §8 deja de ser provisional.
 
 ## Pendiente de verificar
 
-- Plugins sincronizados desde la cuenta de claude.ai hacia la nube (`CLAUDE_CODE_SYNC_PLUGINS`, `marketplace add
-  --claudeai`): podría ser otra vía para la nube. Consulta en curso.
+- Opción D: que el setup script del entorno clona el repo privado e instala el plugin (necesita que el usuario
+  edite un entorno). `CLAUDE_CODE_SYNC_PLUGINS` existe en el binario pero no en la doc; no se usa.
 - Semántica exacta de `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en la doc.
 - Las skills de prueba `gw-ping` y `gw-ping-local` se quitan al cerrar la Fase 0.

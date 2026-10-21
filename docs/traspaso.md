@@ -11,7 +11,7 @@
 | Rama | `claude/galivelop-workflow-inicio` |
 | Fase en curso | **0. Verificar** (plan §9) |
 | Último punto estable | Fase 0: doc oficial leída y pruebas hechas; notas en `docs/investigacion/plugins.md` |
-| Siguiente paso | Esperar la decisión del usuario sobre la distribución en la nube (opción A) y las claves de `gw.json` |
+| Siguiente paso | Esperar la decisión del usuario sobre la distribución en la nube (probar D / respaldo A) y las claves de `gw.json` |
 
 ### Fases
 
@@ -38,8 +38,8 @@ Nada aún (no hay versión publicada; `main` no existe todavía).
 
 ## Pendiente
 
-- **Decisión del usuario:** distribución para la nube (opción A recomendada) y claves de `gw.json` en inglés.
-- Fase 0: confirmar la vía de plugins sincronizados desde claude.ai; quitar las skills `gw-ping*` al cerrar.
+- **Decisión del usuario:** distribución para la nube (probar D, A de respaldo) y claves de `gw.json` en inglés.
+- Fase 0: probar la opción D (setup script del entorno); quitar las skills `gw-ping*` al cerrar.
 - A `main`, solo con confirmación del usuario.
 
 ## Comprobar el estado
