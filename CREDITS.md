@@ -15,4 +15,4 @@
 - EN: these skills are copied unchanged except for the frontmatter (`license`, `metadata.version`, `metadata.source`) and, in `retro`, a final "In a Galivelop-workflow project" section.
 - ES: estas skills se copian sin cambios salvo el frontmatter (`license`, `metadata.version`, `metadata.source`) y, en `retro`, una sección final «In a Galivelop-workflow project».
 
-The workflow's own skills (`selector`, `orchestrate-dealer`, `opt-tokens`, `gw-*`…) come from the Galivelop workshop's projects · Las skills propias del flujo salen de los proyectos del taller Galivelop.
+The workflow's own skills (`selector`, `orchestrate-dealer`, `opt-tokens`, `opt-ai`, `scout-updates`, `gw-*`) come from the Galivelop workshop's projects · Las skills propias del flujo salen de los proyectos del taller Galivelop.
