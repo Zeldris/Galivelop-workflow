@@ -342,14 +342,14 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
 | **3. Ganchos y scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recuperar.py`, `revision-antes-de-main.sh`, `es-codigo.sh`, `revisado.sh`, `bitacora.py`, `prepush-ramas.sh`, `medir.py`, plantilla `pre-push`. Tests contra repo temporal: categorías de los 29 fallos, clon superficial, marcas de conflicto, otro gestor de ganchos. Aplicados a este repo | Tests en verde en Linux y macOS; fallan cerrado sin config |
 | **4. Plantillas y aplicación** | `templates/es` y `templates/en`, `gw.schema.json`, `aplicar.py`, `aplicar.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `problemas.md` | Un agente aplica el flujo a un repo vacío y `doctor.py` lo da por bueno; dos veces no cambia nada |
 | **5. Piloto: Portal-Galivelop** | En una sesión del portal (con permiso): un agente lo aplica siguiendo `aplicar.md` y sustituye su copia | `npm run check` en verde, `pre-push` y marca funcionando, tarea semanal sin cambios |
-| **6. Piloto: Tarkor, instalador y VeriNews** | Igual en World-Maker-Fantasy (`roadmap: true`, PR), Instalador-WMF-Tarkor (Rust) y VeriNews_AI (Java + Vite) | Relevo entre cuentas sin perder nada; lo que falte vuelve como versión nueva |
+| **6. Piloto: Tarkor e instalador** | Igual en World-Maker-Fantasy (`roadmap: true`, PR) e Instalador-WMF-Tarkor (Rust). VeriNews_AI (Java + Vite) queda para la Fase 8, ya sin agente de IA | Relevo entre cuentas sin perder nada; lo que falte vuelve como versión nueva |
 | **7. Rodaje etapa 1** | Uso real semanas; cada `retro` con mejora general → issue/PR aquí | Criterios de la §10 para la etapa 1 |
 
 **Etapa 2 — instalación automática sin IA**
 
 | Fase | Qué | Hecho cuando |
 |---|---|---|
-| **8. Instalador** | Elegir Copier o script propio; proyecto nuevo (recomendado) y existente (sin pisar, conflictos marcados); actualización | Instalación y actualización sin IA en un repo nuevo y en los pilotos, `doctor.py` en verde |
+| **8. Instalador** | Elegir Copier o script propio; proyecto nuevo (recomendado) y existente (sin pisar, conflictos marcados); actualización | Instalación y actualización sin IA en un repo nuevo, en los pilotos y en VeriNews_AI (primera aplicación), `doctor.py` en verde |
 | **9. Plugin y npm** | Marketplace del repo como vía opcional (local y script de entorno de la nube); valorar npm (§11) | Decidido y documentado |
 | **10. Público** | `/security-review`, quitar rutas o nombres privados, `1.0.0`, repo público, ficha en el portal (tres idiomas) | Repo público y ficha publicada |
 

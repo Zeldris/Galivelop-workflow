@@ -345,14 +345,14 @@ with the large model; porting skills and templates with the medium one. From Pha
 | **3. Hooks and scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recuperar.py`, `revision-antes-de-main.sh`, `es-codigo.sh`, `revisado.sh`, `bitacora.py`, `prepush-ramas.sh`, `medir.py`, `pre-push` template. Tests against a temporary repo: the 29 bugs' categories, shallow clone, conflict markers, another hook manager. Applied to this repo | Tests green on Linux and macOS; fail closed without config |
 | **4. Templates and apply** | `templates/es` and `templates/en`, `gw.schema.json`, `aplicar.py`, `apply.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `troubleshooting.md` | An agent applies the workflow to an empty repo and `doctor.py` accepts it; twice changes nothing |
 | **5. Pilot: Portal-Galivelop** | In a portal session (with permission): an agent applies it following `apply.md` and replaces its copy | `npm run check` green, `pre-push` and mark working, weekly task unchanged |
-| **6. Pilot: Tarkor, installer and VeriNews** | Same in World-Maker-Fantasy (`roadmap: true`, PR), Instalador-WMF-Tarkor (Rust) and VeriNews_AI (Java + Vite) | Hand-off between accounts with nothing lost; gaps come back as a new version |
+| **6. Pilot: Tarkor and installer** | Same in World-Maker-Fantasy (`roadmap: true`, PR) and Instalador-WMF-Tarkor (Rust). VeriNews_AI (Java + Vite) moves to Phase 8, with no AI agent | Hand-off between accounts with nothing lost; gaps come back as a new version |
 | **7. Stage-1 run-in** | Weeks of real use; every `retro` with a general improvement → issue/PR here | §10 criteria for stage 1 |
 
 **Stage 2 — automatic installation without AI**
 
 | Phase | What | Done when |
 |---|---|---|
-| **8. Installer** | Choose Copier or an own script; new project (recommended) and existing one (no overwrites, conflicts marked); updates | Install and update without AI on a new repo and on the pilots, `doctor.py` green |
+| **8. Installer** | Choose Copier or an own script; new project (recommended) and existing one (no overwrites, conflicts marked); updates | Install and update without AI on a new repo, on the pilots and on VeriNews_AI (first application), `doctor.py` green |
 | **9. Plugin and npm** | The repo's marketplace as an optional path (local and cloud setup script); consider npm (§11) | Decided and documented |
 | **10. Public** | `/security-review`, remove private paths or names, `1.0.0`, public repo, portal page (three languages) | Repo public and page published |
 

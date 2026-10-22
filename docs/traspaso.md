@@ -12,7 +12,7 @@
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
 | Fase en curso | **5. Piloto: Portal-Galivelop** — publicado en el portal (`673602b`); propuestas aplicadas (2026-10-22); `v0.2.0` publicada; la fase sigue abierta hasta cerrarla con el usuario |
 | Último punto estable | **Versión `0.2.0`**: `version.py 0.2.0`, entrada del CHANGELOG (19 filas, R1-R3, arreglos de las revisiones) y los tests leen la versión de `plugin.json`; check en verde en local; el CI no arranca (cupo de Actions) |
-| Siguiente paso | Fase 6 (piloto en Tarkor, instalador y VeriNews), tras `/clear` |
+| Siguiente paso | Fase 6: preparar el encargo de aplicación para las sesiones de World-Maker-Fantasy e Instalador-WMF-Tarkor (VeriNews pasa a la Fase 8, decidido por el usuario 2026-10-22) |
 
 ### Fases
 
@@ -22,7 +22,7 @@
 - [x] 3. Ganchos y scripts (2026-10-22; CI en verde en Linux y macOS)
 - [x] 4. Plantillas y aplicación (2026-10-22)
 - [ ] 5. Piloto: Portal-Galivelop
-- [ ] 6. Piloto: Tarkor, instalador y VeriNews
+- [ ] 6. Piloto: Tarkor e instalador (VeriNews, en la Fase 8)
 - [ ] 7. Rodaje etapa 1
 - [ ] 8. Instalador sin IA (etapa 2)
 - [ ] 9. Plugin y npm
