@@ -11,8 +11,8 @@
 | Rama | `claude/galivelop-workflow-inicio` (`main` creada el 2026-10-21 en `f2739f1`) |
 | Check | `bash tests/comprobar.sh` — en verde en local; el CI no arranca desde el bloque B (los jobs mueren en ~2 s sin pasos: ¿cuota de Actions?) |
 | Fase en curso | **5. Piloto: Portal-Galivelop** (plan §9) — sin empezar; necesita una sesión del portal con permiso del usuario |
-| Último punto estable | Subida a `main`, fase 1 (código): `/code-review` de `origin/main...HEAD` con 10 hallazgos, todos arreglados con su test; `AGENTS.md` alineado con las tres fases |
-| Siguiente paso | Subida a `main`, fase 2 (entorno): `/opt-tokens` y `/retro`, presentar al usuario y aplicar lo que confirme; fase 3: revisión de lo nuevo, `revisado.sh`, push a `main` |
+| Último punto estable | Subida a `main`, fase 2: `/opt-tokens` medido y `/retro` escrita (`docs/registros/retro-2026-10-22-fases-0-4.md`), pendientes de la decisión del usuario |
+| Siguiente paso | Usuario decide las propuestas de opt-tokens (T1–T4) y la retro (R1–R6); aplicar lo aprobado; fase 3: revisión de lo nuevo, `revisado.sh`, push a `main` |
 
 ### Fases
 
