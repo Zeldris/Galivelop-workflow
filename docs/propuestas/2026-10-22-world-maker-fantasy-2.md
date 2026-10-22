@@ -13,7 +13,7 @@ por subagente. Las cuatro tocan sobre todo `skills/orchestrate-dealer` y caben e
 - **What changes:** paso 2 de `skills/orchestrate-dealer/SKILL.md` y la fila «Closed plan, scoped implementation» de `skills/selector/SKILL.md`: los arreglos de una revisión (el revisor ya cerró el plan: sitio y qué cambiar) van con `sonnet`; `opus` solo si hay que depurar algo no obvio.
 - **Why it is general:** tres agentes de arreglos con `opus` gastaron 7,4 M de entrada cada uno. El flujo dice «sonnet para implementar», pero no nombra los arreglos de una revisión y el agente los trata como trabajo de criterio.
 - **Version bump:** patch
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-22)
 
 ## P2. Un arreglo de un archivo con el sitio ya dado por el revisor lo hace la principal (T2, QA-202)
 
@@ -21,7 +21,7 @@ por subagente. Las cuatro tocan sobre todo `skills/orchestrate-dealer` y caben e
 - **What changes:** una línea en el paso 1 («Split»): un arreglo de un solo archivo cuyo sitio ya señala el revisor no es un trozo; lo hace la principal, con sus tests.
 - **Why it is general:** un subagente paga ~52k al arrancar y en Tarkor hizo 70-80 llamadas para lo que la principal cerró en ~10. Es el contrapeso de «la principal no lee más de 200 líneas»: hoy ninguna skill dice cuándo repartir no compensa.
 - **Version bump:** patch
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-22)
 
 ## P3. En la fase 1 previa al PR, solo lo grave (R1, QA-203)
 
@@ -29,7 +29,7 @@ por subagente. Las cuatro tocan sobre todo `skills/orchestrate-dealer` y caben e
 - **What changes:** regla nueva en `skills/orchestrate-dealer/SKILL.md` y una frase en la fase 1 de `templates/*/AGENTS.md` y `docs/es/flujo.md` ↔ `docs/en/workflow.md`: antes del PR se arregla lo grave o medio y lo que el propio arreglo rompe; lo leve se anota como pendiente en la bitácora y no vuelve a revisarse en ese PR (`/code-review --max-findings all` sigue sirviendo para anotarlo).
 - **Why it is general:** cada arreglo se revisaba otra vez y traía hallazgos nuevos; el bucle revisión-arreglo no tenía límite y el PR crecía hasta ser difícil de revisar.
 - **Version bump:** patch
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-22)
 
 ## P4. El encargo comprueba la rama de partida del worktree (R2, QA-204)
 
@@ -37,7 +37,7 @@ por subagente. Las cuatro tocan sobre todo `skills/orchestrate-dealer` y caben e
 - **What changes:** primera línea de la plantilla del encargo: si `git log -1` no coincide con `origin/<branch>`, `git fetch origin <branch> && git reset --hard origin/<branch>` antes de nada (solo en un worktree recién creado y limpio).
 - **Why it is general:** varios worktrees de agentes salieron de `main` y no de la rama de trabajo; pasa en cualquier proyecto que use `isolation: "worktree"`. La plantilla da la rama pero no manda comprobarla.
 - **Version bump:** patch
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-22)
 
 ## Stays in the project
 
