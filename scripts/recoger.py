@@ -6,7 +6,8 @@ For each project repository it reports, without judging anything:
   * skills born in the project (in .claude/skills/ and not part of the workflow);
   * workflow scripts copied into the project that differ (same file name as in scripts/);
   * retro files and "For Galivelop-workflow" sections added since the last harvest;
-  * commits since the last harvested commit.
+  * commits since the last harvested commit;
+  * a warning when the clone is behind its remote branch (as of its last fetch: fetch first).
 
 The agent running gw-harvest reads this report, decides what is general and writes the proposals.
 
@@ -86,7 +87,15 @@ def harvest(repo, state):
     report = {"repo": rid, "path": str(repo), "head": head, "last": last,
               "uses_gw_json": (repo / ".claude" / "gw.json").is_file(),
               "commits": [], "history": "full", "skills_changed": [], "skills_new": [],
-              "skills_missing": [], "scripts_changed": [], "retros": [], "ideas": []}
+              "skills_missing": [], "scripts_changed": [], "retros": [], "ideas": [], "behind": None}
+
+    # A stale clone harvests old work and reports "nothing new": compare HEAD with its remote branch as last fetched.
+    upstream = git(repo, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}") \
+        or git(repo, "rev-parse", "--abbrev-ref", "origin/HEAD")
+    if upstream and git(repo, "merge-base", "--is-ancestor", "HEAD", upstream) is not None:
+        count = int(git(repo, "rev-list", "--count", f"HEAD..{upstream}") or 0)
+        if count:
+            report["behind"] = {"ref": upstream, "commits": count}
 
     changed_files = None
     if last and last != head:
@@ -143,6 +152,10 @@ def markdown(report):
            f"- Path: `{report['path']}` · HEAD `{report['head'][:12]}` · last harvest "
            f"`{(report['last'] or 'never')[:12]}` · `.claude/gw.json`: {'yes' if report['uses_gw_json'] else 'no'}",
            f"- History: {report['history']}"]
+    if report["behind"]:
+        b = report["behind"]
+        out.append(f"- **WARNING:** the clone is {b['commits']} commit(s) behind `{b['ref']}`; this harvest misses them. "
+                   f"Update it and harvest again: `git -C {report['path']} merge --ff-only {b['ref']}`")
     if report["commits"]:
         out.append(f"- Commits since last harvest: {len(report['commits'])}")
         out += [f"  - {c}" for c in report["commits"][:30]]

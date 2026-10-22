@@ -42,7 +42,7 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    function), never the pasted text. Template:
 
    ```text
-   You work in this repository on branch <branch>. Read {log} (your row, if it has one per branch) and, if you touch code, REVIEW.md and
+   You work in this repository on branch <branch>. Read your state with `python3 .claude/gw/scripts/recuperar.py --estado` (your row of {log}, not the whole log) and, if you touch code, REVIEW.md and
    AGENTS.md. Follow the project's commit and push rules: commit and push each stable point, log update in the
    same commit.
    Task: <what, in one or two sentences>.
@@ -71,7 +71,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
 
 ## Rules
 
-- **Guard code gets its own review:** every chunk that touches hooks, push/merge guards or the scripts they call
+- **Code from a subagent gets its own review:** every chunk that changes code (always the hooks, push/merge guards
+  and the scripts they call; also code a subagent commits on the working branch, not only worktree branches)
   passes a short `/code-review` by a reviewer subagent as soon as the chunk returns, before the next chunk starts
   (commit it first, as `WIP:` if needed, so nothing is lost if the session ends). The reviewer compares the diff with
   the contract (`AGENTS.md`, `REVIEW.md`, the callers), not the diff alone; its fixes land before moving on.
@@ -87,9 +88,16 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
 - **What names files of a branch, after merging it:** indexes and docs that link to files created in a worktree are
   written in the main session after that branch is merged; before, the links point at files that do not exist yet.
 - **Manual or end-to-end batches run in a `sonnet` subagent, in series:** the main session does not drive the
-  tool itself; it deals batches and logs what returns. Batches share the environment, so each leaves it in a state the
+  tool itself; it deals batches and logs what returns. **Size a batch by its items: 6-8 checks**, and split it on
+  the fly when it grows (batches of 11-14 blew the 60-call cap; 6-8 kept within it). Screenshots only when the finding
+  is visual; otherwise the text tool's output. Batches share the environment, so each leaves it in a state the
   next can resume from and says so under `MISSING`.
 - **A subagent never talks to the user:** what it needs from them returns as `QUESTIONS`.
+- **A subagent cut off by a usage or API limit is resumed, not restarted:** send it a message (SendMessage to its id)
+  once the limit resets; it continues from its transcript. A new subagent would redo the work. Commit its partial
+  work as `WIP:` meanwhile.
+- **Intermediate state stays out of git:** dumps, screenshots, scratch logs and bench outputs go to a scratch folder
+  (or a path in `.gitignore`); only results, tests and the log are committed.
 - **Measure:** `/opt-tokens` before each PR compares the average context per call, the compactions and the per-model
   split with the previous session; if they do not fall, the dealing is staying in the main session.
 - **Automatic compaction is the net, not the plan:** at task boundaries write the handover in `log` and recommend

@@ -19,6 +19,8 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
 1. **Pick the projects.** The repositories connected to this session (or the paths the user names), cloned
    locally. Projects are read-only: never edit, commit or push in them, and do not register them as session roots
    (their same-name skills would shadow this repo's).
+   **Bring each clone up to date first** (`git -C <project> fetch origin && git -C <project> merge --ff-only`):
+   `recoger.py` harvests the clone's `HEAD` and warns when it is behind its remote branch.
 2. **Run the mechanical part** from this repo:
 
    ```bash

@@ -11,8 +11,8 @@
 | Rama | `claude/galivelop-workflow-inicio`; `main` = `603ca36` (primera subida, 2026-10-22) |
 | Check | `bash tests/comprobar.sh` — en verde en local y en el CI (Linux y macOS, run 39739419422 sobre `78cddb5`, con el repo público un rato el 2026-10-22); con el repo privado el CI no arranca hasta que se renueve el cupo de Actions |
 | Fase en curso | **5. Piloto: Portal-Galivelop** (plan §9) — sin empezar; necesita una sesión del portal con permiso del usuario |
-| Último punto estable | Arreglos de la revisión de `version.py`, `release.yml` y el mensaje del `pre-push` terminados (subidos en el WIP `68be6bf`, verificados); segunda recogida de Tarkor con 7 propuestas |
-| Siguiente paso | Usuario: decidir las 7 propuestas de `docs/propuestas/2026-10-22-world-maker-fantasy.md`; aplicarlas; tres fases y subida a `main`; Fase 5 cuando abra la sesión del portal |
+| Último punto estable | Las 7 propuestas de la segunda recogida de Tarkor, aprobadas y aplicadas (skills y `recoger.py` con test) |
+| Siguiente paso | Tres fases y segunda subida a `main` (con fecha en el CHANGELOG para etiquetar `v0.1.0`); Fase 5 cuando el usuario abra la sesión del portal |
 
 ### Fases
 

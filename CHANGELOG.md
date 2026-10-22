@@ -34,6 +34,9 @@ here.
 - `scripts/version.py` (comprueba y sube todos los marcadores de versión) y `release.yml` (release desde la entrada
   del CHANGELOG al etiquetar `vX.Y.Z`); el `pre-push` ya no pregunta «did you commit?» al mover una rama a commits que
   el remoto ya tiene en otra.
+- Segunda recogida de Tarkor (7 propuestas aplicadas): `orchestrate-dealer` revisa todo el código de subagentes, tandas
+  de 6-8 puntos, encargos que leen su fila con `recuperar.py --estado`, subagentes cortados se retoman, estado
+  intermedio fuera de git; `opt-ai` no compara con menos de ~8 turnos; `recoger.py` avisa de un clon atrasado.
 - Skills de Matt Pocock (mattpocock/skills, MIT) con su mención en cada una, `CREDITS.md` y agradecimiento en los
   README: de su trabajo aprendimos esta forma de trabajar.
 
@@ -60,5 +63,8 @@ here.
 - `scripts/version.py` (checks and bumps every version marker) and `release.yml` (release from the CHANGELOG entry when
   tagging `vX.Y.Z`); `pre-push` no longer asks "did you commit?" when moving a branch to commits the remote already has
   in another.
+- Second Tarkor harvest (7 proposals applied): `orchestrate-dealer` reviews all subagent code, batches of 6-8 items,
+  briefs read their row with `recuperar.py --estado`, cut-off subagents are resumed, intermediate state out of git;
+  `opt-ai` does not compare with fewer than ~8 turns; `recoger.py` warns about a stale clone.
 - Matt Pocock's skills (mattpocock/skills, MIT) with his credit in each one, `CREDITS.md` and acknowledgements in the
   READMEs: we learned this way of working from his work.

@@ -54,7 +54,8 @@ retries and redone work.
      that returns what matters, `grep`/`head`, a hook that trims test output) or send it to a subagent that returns
      the summary.
    - **Files re-read** (`BY FILE`): a big file read many times wants a pointer in a map or a tool that returns the
-     part needed.
+     part needed. Subagents reading the whole log is the usual case: their brief should point to
+     `recuperar.py --estado` (their row), not to the log file.
    - **Images.** A screenshot costs what hundreds of text lines do. If one served a non-visual purpose, improve the
      text tool so it gives that next time.
    - **Rediscovering the known.** Exploring what a document, a skill or a saved scenario already says: write it once

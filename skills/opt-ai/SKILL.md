@@ -55,7 +55,9 @@ create it from the shape below with the user before measuring. Shape:
    time to first token, tok/s, cold loads, truncated prompts and errors (failed calls count in neither p50 nor
    tok/s), plus the retrieval table. **The minimum profile always**, even if the round was played on another: with
    no rows for it, say so and ask for them. *Done when* every row has its difference from the previous round (or
-   "no previous") and every task with no profile is flagged.
+   "no previous") and every task with no profile is flagged. **Too few samples, no comparison:** with fewer than ~8
+   turns (or calls per task) in either round, report the figures but do not call anything a regression or an
+   improvement; propose running the project's benchmark when the batch closes instead.
 2. **Retrieval quality against the round's wrong answers** (skip when there is no RAG).
    - **Case first.** Turn each wrong answer into a **fixed case** (question, expected chunk) and make it go
      **red** with the project's evaluation command (`diagnosing-bugs`, phase 1: a *tight* loop that is red on
