@@ -107,8 +107,8 @@ class Release(unittest.TestCase):
 
     def test_run_steps_pass_shellcheck(self):
         if not shutil.which("shellcheck"):
-            if os.environ.get("CI"):
-                self.fail("shellcheck is missing in CI; install it (apt-get install shellcheck)")
+            if os.environ.get("CI") or os.environ.get("CLAUDE_CODE_REMOTE") == "true":
+                self.fail("shellcheck is missing; install it (apt-get install shellcheck / pip install shellcheck-py)")
             self.skipTest("shellcheck not installed locally; CI runs it")
         for name, body in self.steps.items():
             with self.subTest(step=name):
@@ -200,6 +200,37 @@ class Pairs(unittest.TestCase):
     def test_folders_have_the_same_number_of_docs(self):
         es, en = tracked("docs/es/*.md"), tracked("docs/en/*.md")
         self.assertEqual(len(es), len(en), "docs/es and docs/en must have the same number of files")
+
+
+class ShellcheckStep(unittest.TestCase):
+    """tests/shellcheck.sh without shellcheck on PATH: a warning on a person's machine, a failure in a cloud session
+    (where no CI would make up for it) and in CI."""
+
+    def run_without_shellcheck(self, **env):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-shellcheck-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        for tool in ("git", "dirname", "xargs"):
+            (tmp / tool).symlink_to(shutil.which(tool))
+        base = {k: v for k, v in os.environ.items() if k not in ("CI", "CLAUDE_CODE_REMOTE") and not k.startswith("GIT_")}
+        r = subprocess.run([shutil.which("bash"), str(ROOT / "tests" / "shellcheck.sh")], cwd=ROOT,
+                           capture_output=True, text=True, env=dict(base, PATH=str(tmp), **env))
+        return r.returncode, r.stdout + r.stderr
+
+    def test_local_machine_only_warns(self):
+        code, out = self.run_without_shellcheck()
+        self.assertEqual(code, 0, out)
+        self.assertIn("warning: shellcheck not installed locally", out)
+
+    def test_cloud_session_fails_with_the_install_command(self):
+        code, out = self.run_without_shellcheck(CLAUDE_CODE_REMOTE="true")
+        self.assertEqual(code, 1, out)
+        self.assertIn("missing in this cloud session", out)
+        self.assertIn("pip install shellcheck-py", out)
+
+    def test_ci_fails(self):
+        code, out = self.run_without_shellcheck(CI="true")
+        self.assertEqual(code, 1, out)
+        self.assertIn("shellcheck is missing in CI", out)
 
 
 if __name__ == "__main__":

@@ -17,13 +17,7 @@ echo "== shell scripts"
 scripts="$(git ls-files -- '*.sh' 'templates/githooks/*' "${copies[@]}")"
 if [[ -n "$scripts" ]]; then
   while IFS= read -r f; do bash -n "$f" || fail=1; done <<<"$scripts"
-  if command -v shellcheck >/dev/null 2>&1; then
-    git ls-files -z -- '*.sh' 'templates/githooks/*' "${copies[@]}" | xargs -0 shellcheck || fail=1
-  elif [[ "${CI:-}" == "true" ]]; then
-    echo "shellcheck is missing in CI; install it (apt-get install shellcheck / brew install shellcheck)"; fail=1
-  else
-    echo "warning: shellcheck not installed locally; CI will run it"
-  fi
+  bash tests/shellcheck.sh || fail=1
 fi
 
 echo "== markdown links and stale references"

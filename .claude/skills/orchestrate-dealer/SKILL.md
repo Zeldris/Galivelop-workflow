@@ -110,5 +110,11 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   (or a path in `.gitignore`); only results, tests and the log are committed.
 - **Measure:** `/opt-tokens` before each PR compares the average context per call, the compactions and the per-model
   split with the previous session; if they do not fall, the dealing is staying in the main session.
+- **A batch of approved rows is dealt, not worked inline:** the rows of an approved proposal or a findings list go
+  one per subagent (or 2-3 small related rows per subagent), in series on the working branch, each reviewed as in
+  step 3. A row the main session keeps (a one-file fix) counts against a stretch: every 4-5 rows, or as soon as the
+  context passes ~150k, it writes the handover in `log` and recommends a `/clear`. Saying "dealt out" and then
+  working 18 rows inline cost a 191k average context over 157 calls.
 - **Automatic compaction is the net, not the plan:** at task boundaries write the handover in `log` and recommend
-  a `/clear` to the user rather than letting the context grow.
+  a `/clear` to the user rather than letting the context grow. In the cloud the net may be missing: the session
+  starts outside the repo and does not load its `.claude/settings.json` (`doctor.py` warns).

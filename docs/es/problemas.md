@@ -42,6 +42,7 @@ python3 .claude/gw/scripts/doctor.py
 | `agents` (WARN) | Ninguno menciona `orchestrate-dealer`: la sesión podría no repartir a subagentes | Añade a `AGENTS.md`: «El trabajo de más de un paso se reparte a subagentes (skill `orchestrate-dealer`); la sesión principal planea, decide y revisa.» |
 | `skills` (WARN) | Skills copiadas con versión distinta de la de `gw.json` | `/gw-update` |
 | `session` (WARN) | La última sesión se abrió fuera del repo y puede no haber cargado `.claude/settings.json` | Reabre Claude Code desde el repo: `cd <repo> && claude` |
+| `compaction` (WARN) | Sesión en la nube sin `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en su entorno: arranca en `/home/user` (y a menudo con varios repos), no carga `.claude/settings.json` y el contexto crece sin tope | Añade `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` a las variables del entorno de la nube (menú del entorno → Edit); las sesiones nuevas lo cogen |
 
 ## Al subir (`pre-push`)
 
@@ -94,6 +95,10 @@ comprobación manual antes de subir a la rama protegida.
 Abierta fuera del repo, el aviso de `session-start.sh` **no puede salir**, porque el gancho tampoco se carga; la
 comprobación fiable es `python3 .claude/gw/scripts/doctor.py`. Sin compactación, el contexto crece sin tope y es casi todo el
 gasto: al cerrar cada fase, bitácora al día y `/clear`.
+
+**En la nube** la sesión siempre arranca en `/home/user`, así que reabrir desde el repo no es posible: el tope de
+compactación va en las variables del entorno de la nube (`CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`; `doctor.py` avisa
+si falta), y tras una compactación se corre a mano `python3 .claude/gw/scripts/recuperar.py --estado`.
 
 ## Skills con el mismo nombre en varios repos de la sesión
 

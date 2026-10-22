@@ -380,6 +380,24 @@ def check_session(rep, root):
         rep.ok("session", "no session opened outside the repo")
 
 
+def check_compaction(rep, root):
+    """A cloud session starts in /home/user, often with several repos, so it does not load .claude/settings.json and
+    its compaction window: only the environment's own variables reach it."""
+    if os.environ.get("CLAUDE_CODE_REMOTE") != "true":
+        return
+    key = "CLAUDE_CODE_AUTO_COMPACT_WINDOW"
+    if os.environ.get(key):
+        rep.ok("compaction", f"cloud session with {key}={os.environ[key]} in its environment")
+        return
+    try:
+        value = json.loads((root / ".claude" / "settings.json").read_text())["env"][key]
+    except (OSError, ValueError, KeyError, TypeError):
+        value = "200000"
+    rep.warn("compaction", f"cloud session without {key} in its environment: .claude/settings.json may not load "
+             f"(session started in /home/user or with several repos), so the context grows with no cap",
+             f"add {key}={value} to the cloud environment's variables (environment menu > Edit); new sessions get it")
+
+
 def run(root):
     rep = Report()
     cfg = check_config(rep, root)
@@ -395,6 +413,7 @@ def run(root):
     proposals = check_proposals(rep, root)
     check_skills(rep, root, version, proposals)
     check_session(rep, root)
+    check_compaction(rep, root)
     return rep
 
 

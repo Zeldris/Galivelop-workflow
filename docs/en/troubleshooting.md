@@ -42,6 +42,7 @@ python3 .claude/gw/scripts/doctor.py
 | `agents` (WARN) | Neither mentions `orchestrate-dealer`: the session may not deal work to subagents | Add to `AGENTS.md`: "Multi-step work is dealt to subagents (skill `orchestrate-dealer`); the main session plans, decides and reviews." |
 | `skills` (WARN) | Copied skills at a version different from `gw.json`'s | `/gw-update` |
 | `session` (WARN) | The newest session was opened outside the repo and may not have loaded `.claude/settings.json` | Reopen Claude Code from the repo: `cd <repo> && claude` |
+| `compaction` (WARN) | Cloud session without `CLAUDE_CODE_AUTO_COMPACT_WINDOW` in its environment: it starts in `/home/user` (often with several repos), does not load `.claude/settings.json` and the context grows with no cap | Add `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` to the cloud environment's variables (environment menu → Edit); new sessions get it |
 
 ## Pushing (`pre-push`)
 
@@ -94,6 +95,10 @@ the protected branch.
 Opened outside the repo, the warning from `session-start.sh` **cannot appear**, because the hook is not loaded
 either; the reliable check is `python3 .claude/gw/scripts/doctor.py`. Without compaction the context grows without a cap and is
 almost all the spend: when each phase closes, log up to date and `/clear`.
+
+**In the cloud** the session always starts in `/home/user`, so reopening from the repo is not possible: the
+compaction cap goes in the cloud environment's variables (`CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`; `doctor.py` warns
+when it is missing), and after a compaction run `python3 .claude/gw/scripts/recuperar.py --estado` by hand.
 
 ## Skills with the same name in several repos of the session
 

@@ -11,12 +11,17 @@ las crea una vez; desde entonces son del proyecto.
   compactación.
 - `orchestrate-dealer`: el trabajo de más de un paso, repartido a subagentes de contexto limpio.
 - `docs/mapa-agente.md`: punto único para los encargos a subagentes.
+- `python3 scripts/doctor.py`: en la nube avisa (`compaction`) si falta `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en el entorno.
+- `orchestrate-dealer`, regla «A batch of approved rows is dealt»: filas de una propuesta, una por subagente, o
+  `/clear` cada 4-5 filas en la principal.
 
 ## Costes conocidos
 
 <!-- Lo que se ha visto que cuesta mucho en este proyecto (archivos grandes leídos enteros, salidas largas...). -->
 - Sesión abierta fuera del repo: sin `.claude/settings.json` no hay compactación (2026-10-22: contexto medio 321k,
   0 compactaciones). Abrir desde el repo y `/clear` al cerrar cada fase.
+- En la nube, la sesión arranca en `/home/user` con varios repos y tampoco carga `.claude/settings.json`: la
+  compactación va en las variables del entorno de la nube (retro de la Fase 5, R1).
 - Encargos a subagentes que mandan leer muchos documentos: arranque de 52-60k. Apuntar a `docs/mapa-agente.md`.
 - Herramientas que devuelven JSON largo (`list_sessions`, `list_events`): pedir lo mínimo (`limit`, `kinds`).
 - Modelo: el grande se mantiene para ganchos, guardas y seguridad; el medio para guías y porte mecánico (bajar de
@@ -31,3 +36,6 @@ las crea una vez; desde entonces son del proyecto.
 <!-- Cifras medidas con las que comparar: fecha, sesión, contexto medio, llamadas, total. -->
 - 2026-10-22, sesión de creación (fases 0-4): principal 213 llamadas, contexto medio 321k, techo 534k, 0
   compactaciones, 68M de entrada; subagentes 16 (304 llamadas, 35M, arranque medio 52k).
+- 2026-10-22, Fase 5 (tres sesiones en la nube): S1 67 llamadas, 110k de media, 1 compactación, 7,4M; S2 157
+  llamadas, 191k de media, techo 294k, 0 compactaciones, 30M (18 filas en la principal, 0 subagentes); S3 48
+  llamadas, 124k, 6,0M.

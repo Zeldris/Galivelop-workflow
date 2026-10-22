@@ -201,6 +201,23 @@ class Doctor(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertLine(out, "WARN", "outside the", f"cd {p.work} && claude")
 
+    def test_cloud_session_without_the_compaction_window_warns(self):
+        code, out = self.doctor_env({"CLAUDE_CODE_REMOTE": "true"})
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "compaction", "CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000 to the cloud environment")
+
+    def test_cloud_session_with_the_compaction_window_passes(self):
+        code, out = self.doctor_env({"CLAUDE_CODE_REMOTE": "true", "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200000"})
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "OK", "compaction", "200000")
+
+    def test_local_session_says_nothing_about_compaction(self):
+        code, out = self.doctor()
+        self.assertNotIn("compaction", out)
+
+    def doctor_env(self, env):
+        return self.p.run("python3", str(self.p.scripts / "doctor.py"), env=env, cwd=self.tmp)
+
 
 class TemplatesAgree(unittest.TestCase):
     def test_plugin_hooks_and_project_template_use_the_same_matchers_and_scripts(self):
