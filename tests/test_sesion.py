@@ -174,6 +174,27 @@ class Recuperar(Base):
         self.assertIn("Compactions in this session: unknown", out)
         self.assertIn("--buscar", out)
 
+    def test_pending_section_comes_back_too(self):
+        self.p.write("docs/log.md", "# Log\n\n## State\n\nnow\n\n## Done\n\nold stuff\n\n## Pending\n\n- the left-over task\n")
+        code, out = self.p.recuperar("--estado")
+        self.assertIn("section 'Pending'", out)
+        self.assertIn("the left-over task", out)
+        self.assertNotIn("old stuff", out)
+
+    def test_log_sections_from_the_config(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["logSections"] = ["Done", "Missing one"]
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.write("docs/log.md", "# Log\n\n## State\n\nstate-text\n\n## Done:\n\nold stuff\n### detail\nkept\n\n## Pending\n\nx\n")
+        code, out = p.recuperar("--estado")
+        self.assertEqual(code, 0, out)
+        self.assertIn("section 'Done'", out)
+        self.assertIn("old stuff", out)
+        self.assertIn("kept", out)  # a subsection belongs to its section
+        self.assertNotIn("state-text", out)
+        self.assertIn("no section 'Missing one' (logSections in .claude/gw.json)", out)
+
     def test_long_first_section_is_trimmed(self):
         self.p.write("docs/log.md", "# Log\n\n## State\n" + "".join(f"line {i}\n" for i in range(60)))
         code, out = self.p.recuperar("--estado")

@@ -152,6 +152,28 @@ def row_for_branch(text, branch):
     return None
 
 
+def named_section(text, heading):
+    """The '#'-heading section whose title is heading (case and trailing colon ignored), up to the next heading of the
+    same or a higher level; None when the log has none."""
+    lines = text.splitlines()
+    want = heading.strip().rstrip(":").lower()
+    for i, line in enumerate(lines):
+        m = re.match(r"^(#{1,6})\s+(.*?)\s*:?\s*$", line)
+        if m and m.group(2).lower() == want:
+            level, out = len(m.group(1)), [line]
+            for nxt in lines[i + 1:]:
+                h = re.match(r"^(#{1,6})\s", nxt)
+                if h and len(h.group(1)) <= level:
+                    break
+                out.append(nxt)
+            while out and not out[-1].strip():
+                out.pop()
+            if len(out) > LOG_LINES:
+                out = out[:LOG_LINES] + ["… (trimmed; the rest is in the log)"]
+            return out
+    return None
+
+
 def first_section(text):
     """The log's first section (from the first '## ' heading or table to the next '## '), ~25 lines."""
     lines = text.splitlines()
@@ -184,7 +206,27 @@ def log_state(root, branch):
         if row is None:
             return [f"- Log ({cfg['log']}): no row for branch `{branch}`; add your '… · `{branch}`' row to the log"]
         return [f"- Log ({cfg['log']}), row for `{branch}`: {row}"]
-    return [f"- Log ({cfg['log']}), first section:"] + ["  " + l if l else "" for l in first_section(text)]
+    def indented(lines):
+        return ["  " + l if l else "" for l in lines]
+    wanted = cfg.get("logSections") or []
+    if wanted:
+        out = []
+        for heading in wanted:
+            section = named_section(text, heading)
+            if section is None:
+                out.append(f"- Log ({cfg['log']}): no section '{heading}' (logSections in .claude/gw.json); fix the "
+                           f"heading or the key")
+            else:
+                out += [f"- Log ({cfg['log']}), section '{heading}':"] + indented(section)
+        return out
+    first = first_section(text)
+    out = [f"- Log ({cfg['log']}), first section:"] + indented(first)
+    for heading in ("Pendiente", "Pending"):
+        section = named_section(text, heading)
+        if section is not None and section[0] not in first:
+            out += [f"- Log ({cfg['log']}), section '{heading}':"] + indented(section)
+            break
+    return out
 
 
 def state(root, transcript):

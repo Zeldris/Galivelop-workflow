@@ -11,8 +11,8 @@
 | Rama | `ccr-76251061-b1yiwq` (sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `9b97d7b` = **release `v0.1.0`** (2026-10-22) |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
 | Fase en curso | **5. Piloto: Portal-Galivelop** — publicado en el portal (`673602b`); propuestas decididas (2026-10-22), aplicándolas para `v0.2.0` |
-| Último punto estable | Reparto filas 1-16 hechas (Portal P1, P16, P9, P2 a-b, P5, P19, P17, P21, P4, P3, P7, P12, P10, P18, P13 en parte y P14 a-c); P14: `es-codigo.sh --explicar` y la regla «un test que espera un fallo comprueba el motivo» |
-| Siguiente paso | Fila 17 del reparto: **Portal P15 (a)** (`--estado` con las secciones de la config). Luego las filas 18-19 en orden; tres fases y `v0.2.0` (la entrada `0.2.0` del CHANGELOG se escribe al publicar, con las filas hechas) |
+| Último punto estable | Reparto filas 1-17 hechas (Portal P1, P16, P9, P2 a-b, P5, P19, P17, P21, P4, P3, P7, P12, P10, P18, P13 en parte, P14 a-c y P15 a); P15: `--estado` devuelve las secciones de `logSections` o, por defecto, la primera y «Pendiente» |
+| Siguiente paso | Fila 18 del reparto: **Portal P11** (leer el flujo con un subagente al aplicarlo; fila en `selector`; aviso en `opt-tokens`). Luego la fila 19; tres fases y `v0.2.0` (la entrada `0.2.0` del CHANGELOG se escribe al publicar, con las filas hechas) |
 
 ### Fases
 
@@ -35,26 +35,26 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 
 ## Hecho (10 últimas)
 
-1. 2026-10-22 — Portal P14 (a, c): `es-codigo.sh --explicar <ruta>...` dice código o contenido y por qué; plantillas de
+1. 2026-10-22 — Portal P15 (a): clave `logSections` (esquema, plantilla, `config.md`); `recuperar.py --estado` devuelve esas
+   secciones o, por defecto, la primera y la «Pendiente»/«Pending»; 2 casos en `test_sesion`.
+2. 2026-10-22 — Portal P14 (a, c): `es-codigo.sh --explicar <ruta>...` dice código o contenido y por qué; plantillas de
    `AGENTS.md`/`REVIEW.md` (y el `AGENTS.md` de este repo): un test que espera un fallo comprueba el motivo.
-2. 2026-10-22 — Portal P13 (parte): `templates/github/comprobar.yml` con `setup-node`/`setup-python`/`setup-java`
+3. 2026-10-22 — Portal P13 (parte): `templates/github/comprobar.yml` con `setup-node`/`setup-python`/`setup-java`
    condicionados a `hashFiles`, así el archivo queda del flujo sin tocar; guías ES/EN; test de orden y condiciones.
-3. 2026-10-22 — Portal P18: `REVIEW.md`/`GLOSSARY.md` que ya existían: `aplicar.py` imprime su diff con la plantilla (sin
+4. 2026-10-22 — Portal P18: `REVIEW.md`/`GLOSSARY.md` que ya existían: `aplicar.py` imprime su diff con la plantilla (sin
    escribir) mientras no lleven la marca de la versión; `aplicar.md` §3 dice qué pasar a mano; caso en `test_plantillas`.
-4. 2026-10-22 — Portal P10: `--init` con `--require-retro`, `--visible-language` y `--design-reference`; `requireRetro`
+5. 2026-10-22 — Portal P10: `--init` con `--require-retro`, `--visible-language` y `--design-reference`; `requireRetro`
    `false` en `templates/gw.json` y en el esquema; la tabla del paso 1 de `aplicar.md` lo pregunta.
-5. 2026-10-22 — Portal P12: `aplicar.md`/`apply.md` §6 prueban la protección con `git push --dry-run` y aceptan los dos
+6. 2026-10-22 — Portal P12: `aplicar.md`/`apply.md` §6 prueban la protección con `git push --dry-run` y aceptan los dos
    rechazos (sin marca, código tras la marca); test de que el simulacro pasa por el `pre-push`.
-6. 2026-10-22 — Portal P7: `doctor.py` da WARN con los `*.gw-nuevo` pendientes (y sin «skills OK» mientras haya en
+7. 2026-10-22 — Portal P7: `doctor.py` da WARN con los `*.gw-nuevo` pendientes (y sin «skills OK» mientras haya en
    `.claude/skills/`) y con ganchos que corren scripts del flujo desde otra carpeta; `aplicar.py` los lista al fusionar.
-7. 2026-10-22 — Portal P3: `git check-ignore` sobre config, scripts, `settings.json`, una skill y `pre-push`: FAIL en
+8. 2026-10-22 — Portal P3: `git check-ignore` sobre config, scripts, `settings.json`, una skill y `pre-push`: FAIL en
    `doctor.py` y aviso en `aplicar.py` con la línea `!…` del `.gitignore`; casos en `test_doctor` y `test_aplicar`.
-8. 2026-10-22 — Portal P4: `retro` sin `disable-model-invocation` y con descripción de cuándo usarla (cuadra con `AGENTS.md`,
+9. 2026-10-22 — Portal P4: `retro` sin `disable-model-invocation` y con descripción de cuándo usarla (cuadra con `AGENTS.md`,
    `selector` y `revisado.sh`); test de las skills que el flujo lanza solo.
-9. 2026-10-22 — Portal P21: `recoger.py` busca `## For|Para Galivelop-workflow` en todo `.md` rastreado cambiado desde
+10. 2026-10-22 — Portal P21: `recoger.py` busca `## For|Para Galivelop-workflow` en todo `.md` rastreado cambiado desde
    la última recogida (notas de piloto incluidas); `gw-harvest` lo dice; caso en `test_recoger`.
-10. 2026-10-22 — Portal P17: `aplicar.py` copia `LICENSE-mattpocock-skills` a `.claude/skills/` si alguna skill la cita;
-   `doctor.py` avisa si falta; `version.py --release` la cuenta como copiable. Casos en `test_aplicar` y `test_doctor`.
 
 ## Pendiente
 

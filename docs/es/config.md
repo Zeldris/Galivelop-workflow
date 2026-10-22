@@ -39,6 +39,7 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
 | `requireRetro` | `revisado.sh` exige una `retro` con la decisión de la persona en la rama antes de marcar | `false` (también en `templates/gw.json`; `--init --require-retro true` lo activa) | `true` | `revisado.sh`, skill `retro` |
 | `roadmap` | Reservada para el módulo opcional de hitos; ningún script la lee todavía | `false` | `false` | (nadie aún) |
 | `selector` | `{ "cases": [ { "case", "skill", "sessionModel", "subagentModel" } ] }`: filas propias del proyecto para el `selector` | sin filas | `{"cases": [{"case": "Migración de datos", "skill": "orchestrate-dealer", "sessionModel": "Opus"}]}` | skill `selector` |
+| `logSections` | Encabezados de las secciones de la bitácora que `recuperar.py --estado` devuelve tras compactar o `/clear` (sin `logRows`) | `[]`: la primera sección y la que se llame «Pendiente»/«Pending» | `["Estado actual", "Pendiente"]` | `recuperar.py` |
 | `designReferences` | Productos, marcos o estándares con los que se contrasta cada propuesta de diseño | `[]` | `["WCAG 2.2", "Material Design 3"]` | skills `grilling` y `selector` |
 | `protectedPaths` | Prefijos de ruta que un agente (`CLAUDECODE=1`) no puede commitear: borradores de otras personas | `[]` | `["docs/borradores/"]` | `.githooks/pre-commit` |
 | `staleRefs` | Expresiones (sin distinguir mayúsculas) que no deben aparecer en `docs/` ni en los README: una tarea renombrada, una fase borrada | `[]` | `["fase 9 \\(vieja\\)"]` | `enlaces-md.py` |

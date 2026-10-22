@@ -14,6 +14,7 @@
   "content": ["^docs/", "^(README|GLOSSARY|REVIEW|CLAUDE|AGENTS)\\.md$", "^\\.claude/skills/.*\\.md$"],
   "roadmap": false,
   "selector": {"cases": []},
+  "logSections": [],
   "designReferences": [],
   "protectedPaths": [],
   "staleRefs": [],

@@ -135,6 +135,15 @@
         }
       }
     },
+    "logSections": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": [],
+      "description": "Headings of the log sections recuperar.py --estado shows after a compaction or /clear (without logRows). Empty: the first section and the one named Pendiente/Pending."
+    },
     "designReferences": {
       "type": "array",
       "items": {

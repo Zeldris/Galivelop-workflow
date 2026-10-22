@@ -39,6 +39,7 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
 | `requireRetro` | `revisado.sh` requires a `retro` with the person's decision on the branch before marking | `false` (in `templates/gw.json` too; `--init --require-retro true` turns it on) | `true` | `revisado.sh`, `retro` skill |
 | `roadmap` | Reserved for the optional milestones module; no script reads it yet | `false` | `false` | (nobody yet) |
 | `selector` | `{ "cases": [ { "case", "skill", "sessionModel", "subagentModel" } ] }`: the project's own rows for the `selector` | no rows | `{"cases": [{"case": "Data migration", "skill": "orchestrate-dealer", "sessionModel": "Opus"}]}` | `selector` skill |
+| `logSections` | Headings of the log sections `recuperar.py --estado` puts back after a compaction or `/clear` (without `logRows`) | `[]`: the first section and the one named "Pendiente"/"Pending" | `["Current state", "Pending"]` | `recuperar.py` |
 | `designReferences` | Products, frameworks or standards each design proposal is contrasted with | `[]` | `["WCAG 2.2", "Material Design 3"]` | `grilling` and `selector` skills |
 | `protectedPaths` | Path prefixes an agent (`CLAUDECODE=1`) may not commit: other people's drafts | `[]` | `["docs/drafts/"]` | `.githooks/pre-commit` |
 | `staleRefs` | Case-insensitive regexes that must not appear in `docs/` or the READMEs: a renamed task, a removed phase | `[]` | `["old phase 9"]` | `enlaces-md.py` |
