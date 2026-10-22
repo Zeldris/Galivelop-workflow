@@ -407,16 +407,26 @@ def es_codigo(root, scripts, a, b, rev):
     return [line for line in r.stdout.splitlines() if line.strip()]
 
 
-def config_at(root, rev):
-    """The config as commit `rev` has it, or None when that commit has no .claude/gw.json (an invalid one blocks)."""
+_configs = {}
+
+
+def config_at(root, rev, strict=True):
+    """The config as commit `rev` has it, or None when that commit has no .claude/gw.json. An invalid one blocks, or
+    with strict=False is None too (it names no protected branch). Loaded once per commit."""
     import config  # on sys.path since project()
-    if git(root, "cat-file", "-e", f"{rev}:.claude/gw.json").returncode != 0:
-        return None
-    try:
-        return config.load(root, rev=rev)
-    except config.ConfigError as exc:
-        block(f"cannot read the config of {rev[:12]}: {exc}",
+    if rev not in _configs:
+        if git(root, "cat-file", "-e", f"{rev}:.claude/gw.json").returncode != 0:
+            _configs[rev] = (None, None)
+        else:
+            try:
+                _configs[rev] = (config.load(root, rev=rev), None)
+            except config.ConfigError as exc:
+                _configs[rev] = (None, exc)
+    cfg, error = _configs[rev]
+    if error is not None and strict:
+        block(f"cannot read the config of {rev[:12]}: {error}",
               f"fix it on that branch and retry: python3 {os.path.join(HERE, 'config.py')} --rev {rev[:12]} validate")
+    return cfg
 
 
 def protected_tip(cfg, root, base):
@@ -427,7 +437,7 @@ def protected_tip(cfg, root, base):
     if base == cfg["protectedBranch"]:
         return True, tip
     if tip and ensure(root, tip, [base]):
-        remote = config_at(root, tip)
+        remote = config_at(root, tip, strict=False)  # an invalid one there must not block a PR to an open branch
         if remote is not None and remote["protectedBranch"] == base:
             return True, tip
     return False, tip

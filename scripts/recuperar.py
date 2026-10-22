@@ -261,7 +261,7 @@ def state(root, transcript):
           f"{script_command(root)}{session} --buscar '<text>'; never read the transcript whole.")
 
 
-def hook_transcript(wait=0.2):
+def hook_transcript(wait=1.0):
     """The transcript_path Claude Code passes to a hook on stdin. Read only when data arrives within `wait` seconds:
     an agent's Bash tool or `cmd | recuperar.py` leaves stdin open with nothing on it, and --estado must not hang."""
     if sys.stdin is None or sys.stdin.isatty():

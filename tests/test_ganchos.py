@@ -211,6 +211,16 @@ class ProtectedBranchMark(Base):
         self.assertNotEqual(code, 0, out)
         self.assertIn(f"in commit {broken[:7]}", out)
 
+    def test_invalid_config_on_an_open_branch_tip_does_not_block_its_fix(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "wip", p.base)
+        p.write(".claude/gw.json", "{not json"); p.git("commit", "-q", "-a", "--no-verify", "-m", "WIP: broken config")
+        p.git("push", "-q", "--no-verify", "origin", "HEAD:refs/heads/wip")
+        p.git("checkout", "-q", p.base, "--", ".claude/gw.json"); p.commit("fix the config")
+        code, out = p.push("origin", "HEAD:refs/heads/wip")
+        self.assertEqual(code, 0, out)
+        self.assertIn("WARNING: the .claude/gw.json of refs/heads/wip's tip", out)
+
     def test_unknown_remote_protected_sha_fails_closed(self):
         line = f"refs/heads/feature {self.marked} refs/heads/main {'1' * 40}\n"
         code, out = self.p.run(str(self.p.work / ".githooks" / "pre-push"), "origin", str(self.p.bare), stdin=line)

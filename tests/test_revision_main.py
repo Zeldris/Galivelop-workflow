@@ -208,6 +208,13 @@ class Hook(unittest.TestCase):
         self.mark(); self.push()
         self.assertAllowed(self.create())
 
+    def test_pr_to_an_open_branch_with_an_invalid_config_allowed(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "wip", p.base)
+        p.write(".claude/gw.json", "{not json"); p.commit("broken config"); self.push("wip")
+        p.git("checkout", "-q", "feature")
+        self.assertAllowed(self.create(base="wip"))
+
     def test_branch_with_only_content_needs_no_mark(self):
         p = self.p
         p.git("checkout", "-q", "-b", "texts", p.base)

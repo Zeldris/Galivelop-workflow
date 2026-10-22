@@ -172,8 +172,13 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   if [ "$remote_sha" != "$zero" ] && [ "$branch" != "$remote_ref" ]; then
     git cat-file -e "$remote_sha^{commit}" 2>/dev/null || git fetch -q "$remote" "$branch" >/dev/null 2>&1
     if git cat-file -e "$remote_sha:.claude/gw.json" 2>/dev/null; then
-      remote_protected="$(cfg_at "$remote_sha" protectedBranch)" || exit 1
-      [ "$remote_protected" = "$branch" ] && is_protected=true
+      # An invalid config there (a WIP: commit pushed with --no-verify) names no branch: the next push must be able to
+      # fix it. The pushed commit's and the working tree's configs still count, and a protected tip is judged below.
+      if remote_protected="$(python3 "$config" --root "$root" --rev "$remote_sha" get protectedBranch 2>/dev/null)"; then
+        [ "$remote_protected" = "$branch" ] && is_protected=true
+      else
+        echo "pre-push: WARNING: the .claude/gw.json of $remote_ref's tip (${remote_sha:0:7}) is invalid; this push can fix it"
+      fi
     fi
   fi
   wt_protected="$(python3 "$config" --root "$root" get protectedBranch 2>/dev/null)" || wt_protected=""

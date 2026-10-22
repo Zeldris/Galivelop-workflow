@@ -61,6 +61,7 @@ HERE = Path(__file__).resolve().parent
 WORKFLOW = HERE.parent
 sys.path.insert(0, str(HERE))
 import config  # noqa: E402
+from doctor import ignored_paths, stale_flow_hooks  # noqa: E402  (one list each, shared with doctor.py)
 
 WORKFLOW_ONLY_SCRIPTS = {"recoger.py", "aplicar.py", "version.py"}
 WORKFLOW_ONLY_SKILLS = {"gw-harvest"}
@@ -77,7 +78,6 @@ ROOT_TEMPLATES = (("AGENTS.md", "merged"), ("CLAUDE.md", "merged"), ("REVIEW.md"
 NOTES = (("opt-tokens.md", None), ("opt-ai.md", "opt-ai"), ("scout-updates.md", "scout-updates"))
 LOG_BY_LANGUAGE = {"es": "docs/traspaso.md", "en": "docs/handoff.md"}
 HEADER = re.compile(r"galivelop-workflow v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)")
-FLOW_HOOK_SCRIPTS = ("session-start.sh", "recuperar.py", "revision-antes-de-main.sh")  # as in doctor.py
 SKILL_LICENSE = "LICENSE-mattpocock-skills"  # at the workflow's root; copied next to the skills that cite it
 SENSITIVE = (".claude/settings.json", ".claude/gw/scripts/", ".githooks/")
 
@@ -276,15 +276,9 @@ class Plan:
             current = {}
         merged, added = merge_settings(current, tmpl)
         hooks = merged.get("hooks") if isinstance(merged.get("hooks"), dict) else {}
-        for event in ("SessionStart", "PreToolUse"):
-            for entry in hooks.get(event) or []:
-                for h in (entry.get("hooks") or []) if isinstance(entry, dict) else []:
-                    command = h.get("command", "") if isinstance(h, dict) else ""
-                    if (any(re.search(rf"(^|[/\s\"']){re.escape(n)}\b", command) for n in FLOW_HOOK_SCRIPTS)
-                            and ".claude/gw/scripts/" not in command):
-                        self.warnings.append(f".claude/settings.json {event} also runs '{command}', a workflow script "
-                                          f"from outside .claude/gw/scripts/ (an older copy?); delete that entry if "
-                                          f"so, or it runs twice")
+        for event, command in stale_flow_hooks(hooks):
+            self.warnings.append(f".claude/settings.json {event} also runs '{command}', a workflow script from "
+                                 f"outside .claude/gw/scripts/ (an older copy?); delete that entry if so, or it runs twice")
         if not path.exists():
             self.actions.append(("create", rel, dump(merged), False, ""))
         elif added:
@@ -446,22 +440,6 @@ def build(root, version, update, extra_skills, cfg):
 
 
 # ----------------------------------------------------------------- output
-# What a commit must carry for the workflow to work; a `.gitignore` with `.claude/*` would leave it out.
-MUST_BE_TRACKED = (".claude/gw.json", ".claude/gw/scripts/config.py", ".claude/settings.json",
-                   ".claude/skills/selector/SKILL.md", ".githooks/pre-push")
-
-
-def ignored_paths(root):
-    """[(path, the .gitignore rule that ignores it)] for MUST_BE_TRACKED; a tracked file is never ignored."""
-    out = []
-    for rel in MUST_BE_TRACKED:
-        r = subprocess.run(["git", "-C", str(root), "check-ignore", "-v", "--", rel], capture_output=True, text=True)
-        if r.returncode == 0:
-            rule = r.stdout.split("\t")[0].strip()
-            out.append((rel, rule))
-    return out
-
-
 def sensitive(rel):
     s = str(rel).replace(os.sep, "/")
     return any(s == p or s.startswith(p) for p in SENSITIVE)
