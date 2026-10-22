@@ -7,7 +7,7 @@ For each project repository it reports, without judging anything:
     whose body equals an earlier commit's here (an older copy, listed on its own: not the project's edits);
   * skills born in the project (in .claude/skills/ and not part of the workflow);
   * workflow scripts copied into the project that differ (same file name as in scripts/), older copies apart;
-  * retro files and "For Galivelop-workflow" sections added since the last harvest;
+  * retro files, and "For Galivelop-workflow" sections in any tracked .md changed since the last harvest;
   * commits since the last harvested commit;
   * a warning when the clone is behind its upstream branch (as of its last fetch: fetch first), or has no upstream
     (then nobody can tell whether it is up to date).
@@ -172,8 +172,11 @@ def harvest(repo, state):
                     report["scripts_older"].append({"script": name, "path": rel, "matches": older})
                 else:
                     report["scripts_changed"].append({"script": name, "path": rel})
-        if RETRO_NAME.search(rel) and (changed_files is None or rel in changed_files):
-            report["retros"].append(rel)
+        if rel.endswith(".md") and (changed_files is None or rel in changed_files):
+            if RETRO_NAME.search(rel):
+                report["retros"].append(rel)
+            if not (repo / rel).is_file():
+                continue
             text = (repo / rel).read_text(encoding="utf-8", errors="replace")
             for match in IDEAS_HEADING.finditer(text):
                 nxt = re.search(r"^#{1,4}\s", text[match.end():], re.M)

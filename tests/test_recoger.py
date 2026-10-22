@@ -63,6 +63,17 @@ class Recoger(unittest.TestCase):
         self.assertEqual(r["retros"], ["docs/retro-2026-01-01-x.md"])
         self.assertEqual(r["ideas"][0]["text"], "Check shallow clones.")
 
+    def test_ideas_come_from_any_changed_md_not_only_retros(self):
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        note = self.repo / "docs" / "registros" / "piloto.md"
+        note.parent.mkdir(parents=True)
+        note.write_text("# Piloto\n\n## For Galivelop-workflow\n\nF21: markers in base..local.\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "pilot notes")
+        r = self.harvest()
+        self.assertEqual(r["retros"], [])
+        self.assertEqual(r["ideas"], [{"path": "docs/registros/piloto.md", "text": "F21: markers in base..local."}])
+
     def track_origin(self):
         """Give the project a remote with main as its upstream; return a second clone that can push to it."""
         origin = self.tmp / "origin.git"
