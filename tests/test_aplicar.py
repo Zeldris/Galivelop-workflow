@@ -81,6 +81,7 @@ class Aplicar(unittest.TestCase):
         self.assertTrue(os.access(str(scripts / "session-start.sh"), os.X_OK))
         self.assertFalse((scripts / "aplicar.py").exists())
         self.assertFalse((scripts / "recoger.py").exists())
+        self.assertFalse((scripts / "version.py").exists())  # workflow-only, like recoger.py and aplicar.py
         self.assertTrue((p.work / ".claude" / "gw" / "schema" / "gw.schema.json").is_file())
         self.assertTrue(os.access(str(p.work / ".githooks" / "pre-push"), os.X_OK))
         self.assertTrue((p.work / ".claude" / "skills" / "selector" / "SKILL.md").is_file())

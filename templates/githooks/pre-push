@@ -105,10 +105,18 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   if [ -z "$new" ]; then
     if [ "$local_sha" = "$remote_sha" ]; then
       echo "pre-push: nothing new to push to $remote_ref (it is already at ${local_sha:0:7}; did you commit?)"
+    elif [ "$remote_sha" = "$zero" ]; then
+      echo "pre-push: creating $remote_ref at ${local_sha:0:7}: all its commits are already on the remote"
+    elif [ -z "$known" ]; then
+      echo "pre-push: moving $remote_ref from ${remote_sha:0:7} to ${local_sha:0:7}; ${remote_sha:0:7} is not in this clone, so the commits it gains or loses cannot be counted (git fetch $remote to see them)"
+    elif git merge-base --is-ancestor "$local_sha" "$known"; then
+      # Rewind (force push to an older commit): warn, do not block; the protected-branch rules below still apply.
+      left="$(git rev-list --count "$local_sha..$known")" || fail "cannot count the commits between ${local_sha:0:7} and ${known:0:7}; fetch and retry: git fetch $remote"
+      echo "pre-push: WARNING: rewinding $remote_ref from ${known:0:7} to ${local_sha:0:7}: $left commit(s) leave this branch"
     else
-      # The ref moves, but its commits are already on the remote in other branches (e.g. work branch -> main).
-      if [ -n "$known" ]; then moved="$(git rev-list --count "$known..$local_sha")"; else moved="$(git rev-list --count "$local_sha")"; fi
-      echo "pre-push: moving $remote_ref to ${local_sha:0:7}: $moved commit(s), already on the remote in other branches"
+      # The ref moves to commits the remote already has in other branches (e.g. work branch -> main).
+      gained="$(git rev-list --count "$known..$local_sha")" || fail "cannot count the commits between ${known:0:7} and ${local_sha:0:7}; fetch and retry: git fetch $remote"
+      echo "pre-push: moving $remote_ref to ${local_sha:0:7}: $gained commit(s) it gains, already on the remote in other branches"
     fi
   else
     count="$(printf '%s\n' "$new" | grep -c .)"

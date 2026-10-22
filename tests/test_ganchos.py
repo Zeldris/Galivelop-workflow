@@ -219,11 +219,43 @@ class PrePush(Base):
         self.assertIn("all green", out)
 
     def test_nothing_new_is_said_plainly(self):
+        p = self.p  # git skips up-to-date refs, so the hook is fed the line directly
+        code, out = p.run("bash", ".githooks/pre-push", "origin", str(p.bare),
+                          stdin=f"refs/heads/main {p.base} refs/heads/main {p.base}\n")
+        self.assertEqual(code, 0, out)
+        self.assertIn("nothing new to push to refs/heads/main", out)
+        self.assertIn("did you commit?", out)
+
+    def test_new_ref_on_known_commits_is_a_creation(self):
         code, out = self.p.push("origin", "HEAD:refs/heads/copy")
         self.assertEqual(code, 0, out)
-        self.assertIn("moving refs/heads/copy to", out)
-        self.assertIn("already on the remote in other branches", out)
+        self.assertIn(f"creating refs/heads/copy at {self.p.base[:7]}: all its commits are already on the remote", out)
+        self.assertNotIn("commit(s)", out)
         self.assertNotIn("did you commit?", out)
+
+    def test_rewind_warns_with_the_commits_that_leave(self):
+        p = self.p
+        p.write("src/a.py", "a = 1\n"); p.commit("one")
+        p.write("src/a.py", "a = 2\n"); p.commit("two")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        code, out = p.push("-f", "origin", f"{p.base}:refs/heads/feature")
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"WARNING: rewinding refs/heads/feature from {p.sha()[:7]} to {p.base[:7]}: "
+                      "2 commit(s) leave this branch", out)
+        self.assertNotIn("did you commit?", out)
+
+    def test_fast_forward_to_commits_of_other_branches_counts_what_it_gains(self):
+        p = self.p
+        p.write("src/a.py", "a = 1\n"); p.commit("one")
+        p.write("src/a.py", "a = 2\n"); p.commit("two")
+        p.write("src/a.py", "a = 3\n"); p.commit("three")
+        self.assertEqual(p.push("origin", "feature")[0], 0)
+        self.assertEqual(p.push("origin", f"{p.base}:refs/heads/other")[0], 0)
+        code, out = p.push("origin", "feature:refs/heads/other")
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"moving refs/heads/other to {p.sha()[:7]}: 3 commit(s) it gains, "
+                      "already on the remote in other branches", out)
 
     def test_failing_check_blocks_the_push(self):
         p = self.p

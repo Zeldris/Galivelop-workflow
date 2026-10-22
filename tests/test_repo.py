@@ -3,8 +3,11 @@
 Run: python3 -m unittest discover -s tests -p 'test_*.py'
 """
 import json
+import os
 import re
+import shutil
 import subprocess
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -16,6 +19,29 @@ PAIR_LINK = re.compile(r"\[(?:English|Español)\]\(([^)]+\.md)\)")
 def tracked(pattern):
     out = subprocess.run(["git", "ls-files", pattern], cwd=ROOT, capture_output=True, text=True, check=True)
     return [ROOT / line for line in out.stdout.splitlines() if line]
+
+
+def run_blocks(path):
+    """{step name: shell script} for the `run:` steps of a GitHub workflow (no YAML library needed)."""
+    blocks, name, lines = {}, None, path.read_text(encoding="utf-8").splitlines()
+    for i, line in enumerate(lines):
+        m = re.match(r"^\s*- name:\s*(.+)$", line)
+        if m:
+            name = m.group(1).strip()
+        m = re.match(r"^(\s*)run:\s*(.*)$", line)
+        if not m:
+            continue
+        if m.group(2).strip() != "|":
+            blocks[name] = m.group(2) + "\n"
+            continue
+        indent, body = len(m.group(1)), []
+        for nxt in lines[i + 1:]:
+            if nxt.strip() and len(nxt) - len(nxt.lstrip()) <= indent:
+                break
+            body.append(nxt)
+        cut = min(len(b) - len(b.lstrip()) for b in body if b.strip())
+        blocks[name] = "\n".join(b[cut:] for b in body) + "\n"
+    return {k: re.sub(r"\$\{\{[^}]*\}\}", "x", v) for k, v in blocks.items()}
 
 
 def load(rel):
@@ -61,6 +87,89 @@ class Changelog(unittest.TestCase):
         self.assertIsNotNone(match, f"CHANGELOG.md has no '## [{version}]' entry; add one")
         self.assertIn("### ES", match.group(1), f"entry {version} lacks '### ES'")
         self.assertIn("### EN", match.group(1), f"entry {version} lacks '### EN'")
+
+
+class Release(unittest.TestCase):
+    """.github/workflows/release.yml: its run steps pass shellcheck and refuse what must not be released."""
+    WORKFLOW = ROOT / ".github" / "workflows" / "release.yml"
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="gw-release-"))
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.steps = run_blocks(self.WORKFLOW)
+
+    def step(self, name, cwd, **env):
+        script = self.tmp / "step.sh"
+        script.write_text(self.steps[name])
+        r = subprocess.run(["bash", "-e", str(script)], cwd=cwd, capture_output=True, text=True,
+                           env=dict({k: v for k, v in os.environ.items() if not k.startswith("GIT_")}, **env))
+        return r.returncode, r.stdout + r.stderr
+
+    def test_run_steps_pass_shellcheck(self):
+        if not shutil.which("shellcheck"):
+            if os.environ.get("CI"):
+                self.fail("shellcheck is missing in CI; install it (apt-get install shellcheck)")
+            self.skipTest("shellcheck not installed locally; CI runs it")
+        for name, body in self.steps.items():
+            with self.subTest(step=name):
+                path = self.tmp / "block.sh"
+                path.write_text("#!/usr/bin/env bash\n" + body)
+                r = subprocess.run(["shellcheck", str(path)], capture_output=True, text=True)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def notes(self, changelog, tag="v1.2.3"):
+        (self.tmp / "CHANGELOG.md").write_text(changelog)
+        return self.step("Release notes from the CHANGELOG entry", self.tmp, GITHUB_REF_NAME=tag)
+
+    def test_notes_take_the_entry_of_the_tag(self):
+        code, out = self.notes("# Changelog\n\n## [1.2.3] - 2026-10-22\n\n- fixed\n\n## [1.2.2] - 2026-10-01\n\n- old\n")
+        self.assertEqual(code, 0, out)
+        notes = (self.tmp / "notes.md").read_text()
+        self.assertIn("- fixed", notes)
+        self.assertNotIn("- old", notes)
+
+    def test_notes_dots_are_not_wildcards(self):
+        code, out = self.notes("# Changelog\n\n## [1x2x3] - 2026-10-22\n\n- not this one\n")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("no entry for 1.2.3", out)
+
+    def test_notes_only_whitespace_are_refused(self):
+        code, out = self.notes("# Changelog\n\n## [1.2.3] - 2026-10-22\n\n   \n\t\n\n## [1.2.2] - 2026-10-01\n\n- old\n")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("or it is empty", out)
+
+    def test_notes_unreleased_is_refused(self):
+        code, out = self.notes("# Changelog\n\n## [1.2.3] - Unreleased\n\n- fixed\n")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("still says Unreleased", out)
+
+    def test_tag_off_main_is_refused(self):
+        env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        cfg = self.tmp / "gitconfig"
+        cfg.write_text("[user]\n\tname = T\n\temail = t@example.com\n[commit]\n\tgpgsign = false\n"
+                       "[init]\n\tdefaultBranch = main\n")
+        env.update(GIT_CONFIG_GLOBAL=str(cfg), GIT_CONFIG_NOSYSTEM="1")
+
+        def git(*args, cwd=self.tmp):
+            return subprocess.run(["git", *args], cwd=cwd, env=env, capture_output=True, text=True,
+                                  check=True).stdout.strip()
+        git("init", "-q", "--bare", "origin.git")
+        git("init", "-q", "work")
+        work = self.tmp / "work"
+        git("remote", "add", "origin", str(self.tmp / "origin.git"), cwd=work)
+        git("commit", "-q", "--allow-empty", "-m", "on main", cwd=work)
+        git("push", "-q", "origin", "main", cwd=work)
+        on_main = git("rev-parse", "HEAD", cwd=work)
+        git("commit", "-q", "--allow-empty", "-m", "not on main", cwd=work)
+        off_main = git("rev-parse", "HEAD", cwd=work)
+        name = "The tagged commit is on main"
+        code, out = self.step(name, work, GITHUB_SHA=off_main, GITHUB_REF_NAME="v1.2.3",
+                              GIT_CONFIG_GLOBAL=str(cfg), GIT_CONFIG_NOSYSTEM="1")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("not on main", out)
+        code, out = self.step(name, work, GITHUB_SHA=on_main, GITHUB_REF_NAME="v1.2.3",
+                              GIT_CONFIG_GLOBAL=str(cfg), GIT_CONFIG_NOSYSTEM="1")
+        self.assertEqual(code, 0, out)
 
 
 class Pairs(unittest.TestCase):

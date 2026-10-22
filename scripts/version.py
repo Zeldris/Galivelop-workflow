@@ -3,12 +3,20 @@
 """The workflow's version markers: check them or bump them all at once (workflow repo only).
 
 The version lives in .claude-plugin/plugin.json; copies of it mark every workflow-owned file so aplicar.py and
-gw-update can tell versions apart: `galivelop-workflow vX.Y.Z` headers (scripts, templates, schema) and
-`metadata.version` in skills. This keeps them equal.
+gw-update can tell versions apart. A marker is only one of these, nothing else (prose and code examples are never
+read nor rewritten):
+  - a `galivelop-workflow vX.Y.Z` header within the first 5 lines of a file (scripts, templates, the schema's
+    "$comment"): the rule of header_version() in aplicar.py, imported from there;
+  - `metadata.version` inside the frontmatter of a SKILL.md;
+  - `"version"` in templates/gw.json.
+.claude/gw.json is this repo's installed copy: only aplicar.py writes it.
 
   python3 scripts/version.py            # list files whose marker differs from plugin.json; exit 1 if any
-  python3 scripts/version.py 0.2.0      # bump plugin.json, every marker and templates/gw.json; add a CHANGELOG entry
+  python3 scripts/version.py 0.2.0      # set plugin.json and every marker to 0.2.0; add a CHANGELOG entry
+  python3 scripts/version.py <current>  # re-sync stale markers to plugin.json's version
 Then: python3 scripts/aplicar.py .  (refresh this repo's copy) and fill in the CHANGELOG entry.
+Files are read and written as strict UTF-8 keeping their line endings; a non-UTF-8 file with a marker is reported
+and left alone.
 """
 import json
 import re
@@ -16,70 +24,137 @@ import sys
 from pathlib import Path
 
 sys.dont_write_bytecode = True
-ROOT = Path(__file__).resolve().parent.parent
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parent
+sys.path.insert(0, str(HERE))
+from aplicar import HEADER, header_version  # noqa: E402
+
 PLUGIN = ROOT / ".claude-plugin" / "plugin.json"
+TEMPLATE_GW = ROOT / "templates" / "gw.json"
 SEMVER = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$")
-HEADER = re.compile(r"(galivelop-workflow v)(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)")
-SKILL = re.compile(r'^(\s+version:\s*")([^"]+)(")', re.M)
+JSON_VERSION = re.compile(r'("version"\s*:\s*")([^"]*)(")')
 SCOPES = ("scripts", "skills", "templates", "schema")
+HEAD_LINES = 5  # same as header_version()
 
 
 def marked_files():
     for scope in SCOPES:
         for path in sorted((ROOT / scope).rglob("*")):
-            if path.is_file() and "__pycache__" not in path.parts:
+            if path.is_file() and "__pycache__" not in path.parts and path != TEMPLATE_GW:
                 yield path
 
 
-def markers(text, is_skill):
-    found = [m.group(2) for m in HEADER.finditer(text)]
-    if is_skill:
-        found += [m.group(2) for m in SKILL.finditer(text)]
+def read(path):
+    with open(path, encoding="utf-8", newline="") as f:
+        return f.read()
+
+
+def write(path, text):
+    with open(path, "w", encoding="utf-8", newline="") as f:
+        f.write(text)
+
+
+def header_span(text):
+    """(start, end) of the header version in the first lines, or None (same match as header_version())."""
+    head = "".join(text.splitlines(keepends=True)[:HEAD_LINES])
+    m = HEADER.search(head)
+    return m.span(1) if m else None
+
+
+def skill_span(text):
+    """(start, end) of metadata.version's value inside a SKILL.md frontmatter, or None."""
+    fm = re.match(r"---\r?\n(.*?)\r?\n---(?:\r?\n|$)", text, re.S)
+    if not fm:
+        return None
+    pos, inside = fm.start(1), False
+    for line in fm.group(1).splitlines(keepends=True):
+        bare = line.rstrip("\r\n")
+        if re.match(r"metadata:\s*$", bare):
+            inside = True
+        elif inside:
+            sub = re.match(r"(\s+)([A-Za-z_-]+):\s*([\"']?)([^\"'\s]*)", bare)
+            if not sub:
+                break
+            if sub.group(2) == "version":
+                return pos + sub.start(4), pos + sub.end(4)
+        pos += len(line)
+    return None
+
+
+def spans(path, text):
+    found = [s for s in (header_span(text),) if s]
+    if path.name == "SKILL.md":
+        found += [s for s in (skill_span(text),) if s]
     return found
 
 
-def check(version):
-    stale = []
+def scan(version):
+    """[(path, text, stale spans)] for files with a marker other than version, and the non-UTF-8 ones with a marker."""
+    stale, unreadable = [], []
     for path in marked_files():
-        text = path.read_text(encoding="utf-8", errors="replace")
-        bad = [v for v in markers(text, path.name == "SKILL.md") if v != version]
+        try:
+            text = read(path)
+        except UnicodeDecodeError:
+            if header_version(path.read_bytes()):
+                unreadable.append(path)
+            continue
+        bad = [s for s in spans(path, text) if text[s[0]:s[1]] != version]
         if bad:
-            stale.append(f"{path.relative_to(ROOT)}: {', '.join(sorted(set(bad)))}")
-    gw = json.loads((ROOT / "templates" / "gw.json").read_text(encoding="utf-8"))
-    if gw.get("version") != version:
-        stale.append(f"templates/gw.json: version {gw.get('version')}")
-    return stale
+            stale.append((path, text, bad))
+    return stale, unreadable
 
 
-def bump(old, new):
+def json_version(path):
+    m = JSON_VERSION.search(read(path))
+    return m.group(2) if m else None
+
+
+def check(version):
+    stale, unreadable = scan(version)
+    lines = [f"{p.relative_to(ROOT)}: {', '.join(sorted({t[a:b] for a, b in s}))}" for p, t, s in stale]
+    lines += [f"{p.relative_to(ROOT)}: not UTF-8, its marker cannot be checked" for p in unreadable]
+    if json_version(TEMPLATE_GW) != version:
+        lines.append(f"templates/gw.json: version {json_version(TEMPLATE_GW)}")
+    return lines
+
+
+def set_json_version(path, new):
+    text = read(path)
+    out = JSON_VERSION.sub(lambda m: m.group(1) + new + m.group(3), text, count=1)
+    if out != text:
+        write(path, out)
+        return True
+    return False
+
+
+def sync(new):
+    """One pass: every marker that is not `new` becomes `new`. Returns (changed, skipped non-UTF-8 files)."""
+    stale, unreadable = scan(new)
     changed = []
-    for path in marked_files():
-        text = path.read_text(encoding="utf-8", errors="replace")
-        out = HEADER.sub(lambda m: m.group(1) + new if m.group(2) == old else m.group(0), text)
-        if path.name == "SKILL.md":
-            out = SKILL.sub(lambda m: m.group(1) + new + m.group(3) if m.group(2) == old else m.group(0), out)
-        if out != text:
-            path.write_text(out, encoding="utf-8")
+    for path, text, found in stale:
+        for a, b in sorted(found, reverse=True):
+            text = text[:a] + new + text[b:]
+        write(path, text)
+        changed.append(path)
+    for path in (TEMPLATE_GW, PLUGIN):
+        if set_json_version(path, new):
             changed.append(path)
-    for rel in ("templates/gw.json", ".claude/gw.json", ".claude-plugin/plugin.json"):
-        path = ROOT / rel
-        text = path.read_text(encoding="utf-8")
-        out = re.sub(r'("version":\s*")' + re.escape(old) + '"', r"\g<1>" + new + '"', text, count=1)
-        if out != text:
-            path.write_text(out, encoding="utf-8")
-            changed.append(path)
+    return changed, unreadable
+
+
+def add_changelog_entry(new):
     log = ROOT / "CHANGELOG.md"
-    text = log.read_text(encoding="utf-8")
-    if f"## [{new}]" not in text:
-        entry = f"## [{new}] - Unreleased\n\n### ES\n\n- (por completar)\n\n### EN\n\n- (to be filled in)\n\n"
-        text = re.sub(r"^## \[", entry + "## [", text, count=1, flags=re.M)
-        log.write_text(text, encoding="utf-8")
-        changed.append(log)
-    return changed
+    text = read(log)
+    if f"## [{new}]" in text:
+        return
+    nl = "\r\n" if "\r\n" in text else "\n"
+    entry = nl.join([f"## [{new}] - Unreleased", "", "### ES", "", "- (por completar)", "", "### EN", "",
+                     "- (to be filled in)", "", ""])
+    write(log, re.sub(r"^## \[", lambda m: entry + "## [", text, count=1, flags=re.M))
 
 
 def main(argv):
-    current = json.loads(PLUGIN.read_text(encoding="utf-8"))["version"]
+    current = json.loads(read(PLUGIN))["version"]
     if not argv:
         stale = check(current)
         for line in stale:
@@ -93,17 +168,14 @@ def main(argv):
     if not SEMVER.match(new):
         print(f"{new!r} is not SemVer (X.Y.Z); retry: python3 scripts/version.py 0.2.0", file=sys.stderr)
         return 2
-    old = current
-    if new == old:  # re-sync stale markers to the current version
-        stale_versions = set()
-        for path in marked_files():
-            stale_versions |= set(markers(path.read_text(encoding="utf-8", errors="replace"), path.name == "SKILL.md"))
-        for v in stale_versions - {new}:
-            bump(v, new)
-    else:
-        bump(old, new)
-    print(f"version {old} -> {new}; now: python3 scripts/aplicar.py . && fill in the CHANGELOG entry")
-    return 0
+    _, skipped = sync(new)
+    if new != current:
+        add_changelog_entry(new)
+    for path in skipped:
+        print(f"skipped {path.relative_to(ROOT)}: not UTF-8; convert it and retry: python3 scripts/version.py {new}",
+              file=sys.stderr)
+    print(f"version {current} -> {new}; now: python3 scripts/aplicar.py . && fill in the CHANGELOG entry")
+    return 1 if skipped else 0
 
 
 if __name__ == "__main__":

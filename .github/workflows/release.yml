@@ -12,6 +12,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: The tagged commit is on main
+        run: |
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/main; then
+            echo "tag $GITHUB_REF_NAME points to ${GITHUB_SHA:0:7}, which is not on main; merge it to main and tag again: git tag -f $GITHUB_REF_NAME origin/main" >&2
+            exit 1
+          fi
       - name: Tag, plugin.json and markers agree
         run: |
           tag="${GITHUB_REF_NAME#v}"
@@ -26,13 +35,17 @@ jobs:
       - name: Release notes from the CHANGELOG entry
         run: |
           version="${GITHUB_REF_NAME#v}"
-          awk -v v="$version" '
-            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+          # Fixed-string match on the heading: the dots of a version are not regex wildcards.
+          awk -v head="## [$version]" '
+            index($0, head) == 1 { on = 1; next }
             on && /^## \[/ { exit }
             on { print }
           ' CHANGELOG.md > notes.md
-          if [ ! -s notes.md ]; then echo "CHANGELOG.md has no entry for $version" >&2; exit 1; fi
-          if grep -q 'Unreleased' <(grep "^## \[$version\]" CHANGELOG.md); then
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "CHANGELOG.md has no entry for $version, or it is empty; write it and tag again" >&2
+            exit 1
+          fi
+          if awk -v head="## [$version]" 'index($0, head) == 1 { print; exit }' CHANGELOG.md | grep -q 'Unreleased'; then
             echo "the CHANGELOG entry for $version still says Unreleased; set the date and tag again" >&2
             exit 1
           fi
