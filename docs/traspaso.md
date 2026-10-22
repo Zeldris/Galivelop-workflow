@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | `claude/galivelop-workflow-inicio`; `main` = `603ca36` (primera subida, 2026-10-22) |
-| Check | `bash tests/comprobar.sh` — en verde en local y en el CI (Linux y macOS, run 39739419422 sobre `78cddb5`, con el repo público un rato el 2026-10-22); con el repo privado el CI no arranca hasta que se renueve el cupo de Actions |
-| Fase en curso | **5. Piloto: Portal-Galivelop** (plan §9) — sin empezar; necesita una sesión del portal con permiso del usuario |
-| Último punto estable | Segunda subida a `main`, fase 2 decidida y aplicada (R2 en `orchestrate-dealer`); CHANGELOG `0.1.0` fechado |
-| Siguiente paso | Fase 3: revisión de lo de la fase 2, `revisado.sh`, push a `main`; etiqueta `v0.1.0` con el repo público un momento |
+| Rama | `claude/galivelop-workflow-inicio`; `main` = `9b97d7b` = **release `v0.1.0`** (2026-10-22) |
+| Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
+| Fase en curso | **5. Piloto: Portal-Galivelop** (plan §9) — esperando a que el usuario abra la sesión del portal con el prompt de `docs/registros/prompt-piloto-portal.md` |
+| Último punto estable | Segunda subida a `main` con las tres fases y **release `v0.1.0`** publicada por `release.yml` (la etiqueta la subió el usuario: el proxy de la sesión rechaza subir etiquetas) |
+| Siguiente paso | **Abrir una sesión nueva desde la carpeta del repo** (retro R1: esta llegó a 585k de contexto sin compactar). Fase 5: el usuario lanza el piloto en una sesión del portal; al acabar, `gw-harvest` sobre el portal desde aquí |
 
 ### Fases
 
@@ -30,30 +30,30 @@
 
 ## Para la próxima publicación
 
-`0.1.0` está en `main` sin etiqueta ni release (el CI no ha podido pasar: cupo de Actions). Desde entonces, en la rama:
-mensaje del `pre-push` aclarado, `scripts/version.py` y `release.yml`. Publicar = tres fases, fecha en el CHANGELOG y
-etiqueta `v0.1.0`.
+`0.1.0` publicada. Para la siguiente: `release.yml` con lanzamiento manual desde Actions que cree la etiqueta (la
+sesión en la nube no puede subir etiquetas: 403 del proxy).
 
 ## Hecho (10 últimas)
 
-1. 2026-10-22 — **Primera subida a `main`** (`603ca36`) siguiendo las tres fases del flujo.
-2. 2026-10-22 — **Fase 4 cerrada.** Plantillas ES/EN, `aplicar.py --init`, guías y skills `gw-*`; prueba con un agente sin
+1. 2026-10-22 — **Release `v0.1.0`** (`9b97d7b`): segunda subida a `main` con las tres fases; segunda recogida de Tarkor
+   aplicada; `version.py` y `release.yml`.
+2. 2026-10-22 — **Primera subida a `main`** (`603ca36`) siguiendo las tres fases del flujo.
+3. 2026-10-22 — **Fase 4 cerrada.** Plantillas ES/EN, `aplicar.py --init`, guías y skills `gw-*`; prueba con un agente sin
    contexto sobre un repo vacío superada; 9 puntos de la guía corregidos.
-3. 2026-10-22 — Fase 3 completa en local: config, ganchos de subida y de PR, arranque y recuperación, `doctor.py`,
+4. 2026-10-22 — Fase 3 completa en local: config, ganchos de subida y de PR, arranque y recuperación, `doctor.py`,
    utilidades y `aplicar.py`; el flujo ya se aplica a este repo (sus propios `pre-commit` y `pre-push` activos).
-4. 2026-10-21 — **Fase 2 cerrada.** Skills portadas y validadas (Agent Skills, ≤200 líneas, mención a Matt Pocock);
+5. 2026-10-21 — **Fase 2 cerrada.** Skills portadas y validadas (Agent Skills, ≤200 líneas, mención a Matt Pocock);
    `opt-ai` añadida como opcional a petición del usuario; `gw-harvest` + `recoger.py`; primera recogida real.
-5. 2026-10-21 — **Fase 1 cerrada** (CI en verde en Linux y macOS). VeriNews_AI leído en solo lectura: cuarto caso
+6. 2026-10-21 — **Fase 1 cerrada** (CI en verde en Linux y macOS). VeriNews_AI leído en solo lectura: cuarto caso
    y piloto sin Node; aporta el gancho de PR por Bash, el pre-commit antisecretos y `registro_sesion.py`.
-6. 2026-10-21 — Fase 1: esqueleto (LICENSE, `.gitattributes`, README ES/EN, CHANGELOG `0.1.0`, `docs/es/flujo.md` ↔
+7. 2026-10-21 — Fase 1: esqueleto (LICENSE, `.gitattributes`, README ES/EN, CHANGELOG `0.1.0`, `docs/es/flujo.md` ↔
    `docs/en/workflow.md`, `tests/test_repo.py`, `tests/comprobar.sh`, CI `comprobar.yml`). Plan: skill `gw-harvest`.
-7. 2026-10-21 — **Fase 0 cerrada.** Plan revisado (§0: dos etapas, copia en el repo como base, `AGENTS.md`,
+8. 2026-10-21 — **Fase 0 cerrada.** Plan revisado (§0: dos etapas, copia en el repo como base, `AGENTS.md`,
    claves en inglés, `check` como lista, marca versionada, portar pieza a pieza). `AGENTS.md` + `CLAUDE.md` de este
    repo. Sondas `gw-ping*` y `.claude/settings.json` de prueba quitadas.
-8. 2026-10-21 — Fase 0: estándares (AGENTS.md, Agent Skills, Copier), mejoras y problemas conocidos en
+9. 2026-10-21 — Fase 0: estándares (AGENTS.md, Agent Skills, Copier), mejoras y problemas conocidos en
    `docs/investigacion/estandares.md`.
-9. 2026-10-21 — Fase 0: Portal-Galivelop leído (solo lectura) y tabla de la mejor versión de cada pieza.
-10. 2026-10-21 — Fase 0: inventario de Tarkor e Instalador-WMF-Tarkor (solo lectura) en
+10. 2026-10-21 — Fase 0: Portal-Galivelop leído (solo lectura) y tabla de la mejor versión de cada pieza.
    `docs/investigacion/casos-reales.md`; piezas genéricas que el plan no recoge y choques con el plan.
    marketplace funciona desde la CLI. Propuesta en `docs/investigacion/plugins.md`.
 
