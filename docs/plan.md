@@ -284,6 +284,7 @@ inglés (decisión de la Fase 0).
   "designReferences": [],                   // opcional: con qué se contrasta el diseño (grilling, selector)
   "protectedPaths": [],                     // opcional: rutas que un agente no puede commitear (pre-commit)
   "staleRefs": [],                          // opcional: patrones que no deben aparecer en docs/ (enlaces-md.py)
+  "plan": [], "taskId": "[A-Z]{2,5}-\\d+",   // opcional: plan con casillas e ids de tarea (bitacora.py)
   "relatedTests": { "fast": [], "slow": [] } // opcional: tests de lo que cambia, en pre-push
 }
 ```

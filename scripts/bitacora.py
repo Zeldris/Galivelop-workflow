@@ -19,7 +19,8 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  before the PR, so main does not inherit a stale "Next")
 
 Common options: --root PATH (default: from this script's folder, via config.py), --plan PATH (repeatable; a file or a
-folder with the plan/roadmap; env GW_PLAN, ':'-separated), --id-regex REGEX (task ids; env GW_TASK_ID; default
+folder with the plan/roadmap; env GW_PLAN, ':'-separated; config `plan`), --id-regex REGEX (task ids; env GW_TASK_ID;
+config `taskId`; default
 `[A-Z]{2,5}-\\d+[a-z]?`). Without a plan, `closed` and `in-progress` have nothing to compare and pass.
 Exit 0 ok, 1 rule broken (each message ends with the command that fixes it), 2 bad usage or config.
 Python 3.8+, stdlib only.
@@ -59,9 +60,9 @@ class Ctx:
             raise Usage(f"{exc}; fix it: python3 {HERE / 'config.py'} validate")
         self.root = self.config["_root"]
         self.log = self.config["log"]
-        plans = args.plan or [p for p in os.environ.get("GW_PLAN", "").split(":") if p]
+        plans = args.plan or [p for p in os.environ.get("GW_PLAN", "").split(":") if p] or list(self.config.get("plan") or [])
         self.plans = plans
-        pattern = args.id_regex or os.environ.get("GW_TASK_ID") or DEFAULT_ID
+        pattern = args.id_regex or os.environ.get("GW_TASK_ID") or self.config.get("taskId") or DEFAULT_ID
         try:
             self.id = re.compile(pattern)
         except re.error as exc:

@@ -287,6 +287,7 @@ Keys in English (Phase 0 decision).
   "designReferences": [],                   // optional: what design is contrasted with (grilling, selector)
   "protectedPaths": [],                     // optional: paths an agent may not commit (pre-commit)
   "staleRefs": [],                          // optional: patterns that must not appear in docs/ (enlaces-md.py)
+  "plan": [], "taskId": "[A-Z]{2,5}-\\d+",   // optional: plan with ticks and task ids (bitacora.py)
   "relatedTests": { "fast": [], "slow": [] } // optional: tests of what changed, in pre-push
 }
 ```
