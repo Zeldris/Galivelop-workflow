@@ -16,7 +16,8 @@ check flags one that lacks it (exceptions, with the reason, in UNMARKED).
   python3 scripts/version.py            # list files whose marker differs from plugin.json; exit 1 if any
   python3 scripts/version.py 0.2.0      # set plugin.json and every marker to 0.2.0; add a CHANGELOG entry
   python3 scripts/version.py <current>  # re-sync stale markers to plugin.json's version
-  python3 scripts/version.py --release  # the check, and: copyable files (scripts/, skills/, templates/, schema/)
+  python3 scripts/version.py --release  # the check, and: copyable files (scripts/, skills/, templates/, schema/,
+                                        # LICENSE-mattpocock-skills)
                                         # changed since the last vX.Y.Z tag before HEAD need a new version
 Then: python3 scripts/aplicar.py .  (refresh this repo's copy) and fill in the CHANGELOG entry.
 Files are read and written as strict UTF-8 keeping their line endings; a non-UTF-8 file with a marker is reported
@@ -32,7 +33,7 @@ sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
-from aplicar import HEADER, header_version, skill_version_span  # noqa: E402
+from aplicar import HEADER, SKILL_LICENSE, header_version, skill_version_span  # noqa: E402
 
 PLUGIN = ROOT / ".claude-plugin" / "plugin.json"
 TEMPLATE_GW = ROOT / "templates" / "gw.json"
@@ -149,7 +150,7 @@ def release_check(version):
                 "fetch the tags and retry: git fetch --tags origin && python3 scripts/version.py --release"]
     if tag[1:] != version:
         return []
-    code, changed = git("diff", "--name-only", tag, "HEAD", "--", *SCOPES)
+    code, changed = git("diff", "--name-only", tag, "HEAD", "--", *SCOPES, SKILL_LICENSE)
     if code != 0:
         return [f"cannot diff against {tag}; fetch it and retry: git fetch --tags origin && "
                 "python3 scripts/version.py --release"]

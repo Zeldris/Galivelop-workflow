@@ -74,6 +74,7 @@ ROOT_TEMPLATES = (("AGENTS.md", "merged"), ("CLAUDE.md", "merged"), ("REVIEW.md"
 NOTES = (("opt-tokens.md", None), ("opt-ai.md", "opt-ai"), ("scout-updates.md", "scout-updates"))
 LOG_BY_LANGUAGE = {"es": "docs/traspaso.md", "en": "docs/handoff.md"}
 HEADER = re.compile(r"galivelop-workflow v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)")
+SKILL_LICENSE = "LICENSE-mattpocock-skills"  # at the workflow's root; copied next to the skills that cite it
 SENSITIVE = (".claude/settings.json", ".claude/gw/scripts/", ".githooks/")
 
 
@@ -408,6 +409,9 @@ def build(root, version, update, extra_skills, cfg):
         dest = Path(".claude/skills") / name
         owner = skill_version(root / dest / "SKILL.md")
         plan.tree(WORKFLOW / "skills" / name, dest, owner_version=owner, owned=owner is not None)
+    # Skills adapted from Matt Pocock's say "license: MIT (see LICENSE-mattpocock-skills)": the file goes with them.
+    if any(SKILL_LICENSE in (WORKFLOW / "skills" / n / "SKILL.md").read_text(encoding="utf-8") for n in wanted_skills):
+        plan.file(WORKFLOW / SKILL_LICENSE, Path(".claude/skills") / SKILL_LICENSE)
 
     hooks_src = WORKFLOW / "templates" / "githooks"
     names = files_under(hooks_src)

@@ -35,6 +35,7 @@ PR_TOOLS = ("create_pull_request", "merge_pull_request")
 PR_GUARD = "revision-antes-de-main.sh"
 INTERPRETERS = {"bash", "sh", "zsh", "python", "python3", "node", "env", "exec"}
 SOURCES = re.compile(r"galivelop|workflow|mattpocock", re.I)
+SKILL_LICENSE = "LICENSE-mattpocock-skills"  # aplicar.py copies it next to the skills that cite it
 
 
 class Report:
@@ -298,6 +299,10 @@ def check_skills(rep, root, version):
         meta = skill_metadata(skill)
         if SOURCES.search(meta.get("source", "")) and meta.get("version") != version:
             stale.append(f"{skill.parent.name} ({meta.get('version') or 'no version'})")
+    cites = [s.parent.name for s in sorted(base.glob("*/SKILL.md"))
+             if SKILL_LICENSE in s.read_text(encoding="utf-8", errors="replace")]
+    if cites and not (base / SKILL_LICENSE).is_file():
+        rep.warn("skills", f"{', '.join(cites)} cite {SKILL_LICENSE}, missing from .claude/skills/", "/gw-update")
     if stale:
         rep.warn("skills", f"copied workflow skills not at version {version}: {', '.join(stale)}", "/gw-update")
     else:

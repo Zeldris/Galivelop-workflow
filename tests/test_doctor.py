@@ -153,6 +153,15 @@ class Doctor(unittest.TestCase):
         line = self.assertLine(out, "WARN", "selector (0.0.5)", "/gw-update")
         self.assertNotIn("local", line)
 
+    def test_skill_citing_a_missing_license(self):
+        self.p.write(".claude/skills/grilling/SKILL.md",
+                     SKILL.format(version="0.1.0").replace("---\n", "---\nlicense: MIT (see LICENSE-mattpocock-skills)\n", 1))
+        code, out = self.doctor()
+        self.assertLine(out, "WARN", "grilling cite LICENSE-mattpocock-skills", "/gw-update")
+        self.p.write(".claude/skills/LICENSE-mattpocock-skills", "MIT\n")
+        code, out = self.doctor()
+        self.assertNotIn("cite LICENSE-mattpocock-skills", out)
+
     def test_invalid_config_fails_with_validate_command(self):
         (self.p.work / ".claude" / "gw.json").write_text("{}")
         code, out = self.doctor()

@@ -86,6 +86,8 @@ class Aplicar(unittest.TestCase):
         self.assertTrue(os.access(str(p.work / ".githooks" / "pre-push"), os.X_OK))
         self.assertTrue((p.work / ".claude" / "skills" / "selector" / "SKILL.md").is_file())
         self.assertFalse((p.work / ".claude" / "skills" / "gw-harvest").exists())
+        self.assertEqual(p.read(".claude/skills/LICENSE-mattpocock-skills"),
+                         (ROOT / "LICENSE-mattpocock-skills").read_text())  # the license the adapted skills cite
         self.assertEqual(p.hooks_path(), ".githooks")
         self.assertFalse(list(p.work.rglob("__pycache__")))
 
