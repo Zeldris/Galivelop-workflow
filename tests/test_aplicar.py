@@ -146,6 +146,12 @@ class Aplicar(unittest.TestCase):
         self.assertIn(f"update  {rel}", out)
         self.assertEqual(p.read(rel), original)
 
+    def test_git_ignored_workflow_files_are_warned_about(self):
+        self.p.write(".gitignore", ".githooks/\n")
+        out = self.applied()
+        self.assertIn("WARNING: git ignores .githooks/pre-push (.gitignore:1:.githooks/)", out)
+        self.assertIn("git check-ignore -v .githooks/pre-push", out)
+
     def test_locally_newer_owned_file_is_never_overwritten(self):
         p = self.p
         self.applied()

@@ -121,6 +121,32 @@ def check_config(rep, root):
     rep.ok("config", f".claude/gw.json valid (version {cfg['version']})")
     return cfg
 
+# What a commit must carry for the workflow to work; a `.gitignore` with `.claude/*` would leave it out.
+MUST_BE_TRACKED = (".claude/gw.json", ".claude/gw/scripts/config.py", ".claude/settings.json",
+                   ".claude/skills/selector/SKILL.md", ".githooks/pre-push")
+
+
+def ignored_paths(root):
+    """[(path, the .gitignore rule that ignores it)] for MUST_BE_TRACKED; a tracked file is never ignored."""
+    out = []
+    for rel in MUST_BE_TRACKED:
+        r = subprocess.run(["git", "-C", str(root), "check-ignore", "-v", "--", rel], capture_output=True, text=True)
+        if r.returncode == 0:
+            rule = r.stdout.split("\t")[0].strip()
+            out.append((rel, rule))
+    return out
+
+
+def check_ignored(rep, root):
+    found = ignored_paths(root)
+    if found:
+        rules = "; ".join(f"{rel} by {rule}" for rel, rule in found)
+        rep.fail("ignored", f"git ignores workflow files, so a commit leaves them out: {rules}",
+                 "add to .gitignore: " + " ".join(f"!{rel}" for rel, _ in found)
+                 + " (and git check-ignore -v <path> until none is ignored)")
+    else:
+        rep.ok("ignored", "no workflow file is git-ignored")
+
 
 def check_hooks_path(rep, root):
     current = git(root, "config", "--get", "core.hooksPath")
@@ -323,6 +349,7 @@ def run(root):
     cfg = check_config(rep, root)
     version = cfg["version"] if cfg else None
     check_hooks_path(rep, root)
+    check_ignored(rep, root)
     check_githooks(rep, root, version)
     check_log(rep, root, cfg)
     check_commands(rep, root, cfg)

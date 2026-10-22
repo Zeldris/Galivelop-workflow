@@ -162,6 +162,14 @@ class Doctor(unittest.TestCase):
         code, out = self.doctor()
         self.assertNotIn("cite LICENSE-mattpocock-skills", out)
 
+    def test_git_ignored_workflow_files_fail(self):
+        self.p.write(".gitignore", ".claude/*\n")
+        self.p.git("rm", "-q", "--cached", ".claude/settings.json")  # as if just installed, before the first commit
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", ".claude/settings.json by .gitignore:1:.claude/*", "!.claude/settings.json")
+        self.assertNotIn(".claude/gw.json by", out)  # tracked files are never ignored
+
     def test_invalid_config_fails_with_validate_command(self):
         (self.p.work / ".claude" / "gw.json").write_text("{}")
         code, out = self.doctor()

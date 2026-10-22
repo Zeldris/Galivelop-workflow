@@ -428,6 +428,21 @@ def build(root, version, update, extra_skills, cfg):
 
 
 # ----------------------------------------------------------------- output
+# What a commit must carry for the workflow to work; a `.gitignore` with `.claude/*` would leave it out.
+MUST_BE_TRACKED = (".claude/gw.json", ".claude/gw/scripts/config.py", ".claude/settings.json",
+                   ".claude/skills/selector/SKILL.md", ".githooks/pre-push")
+
+
+def ignored_paths(root):
+    """[(path, the .gitignore rule that ignores it)] for MUST_BE_TRACKED; a tracked file is never ignored."""
+    out = []
+    for rel in MUST_BE_TRACKED:
+        r = subprocess.run(["git", "-C", str(root), "check-ignore", "-v", "--", rel], capture_output=True, text=True)
+        if r.returncode == 0:
+            rule = r.stdout.split("\t")[0].strip()
+            out.append((rel, rule))
+    return out
+
 
 def sensitive(rel):
     s = str(rel).replace(os.sep, "/")
@@ -602,6 +617,9 @@ def main(argv=None):
         print(line)
     apply(plan)
     report(plan)
+    for rel, rule in ignored_paths(root):
+        print(f"aplicar: WARNING: git ignores {rel} ({rule}), so the commit would leave it out; add !{rel} to "
+              f".gitignore and check: git check-ignore -v {rel}")
     if cfg.get("version") != version:
         print(f"aplicar: .claude/gw.json says version {cfg.get('version')}; set it to {version} once the "
               f"proposals are reviewed: edit \"version\" in {root / config.CONFIG_REL}")
