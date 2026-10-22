@@ -36,7 +36,7 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
 | `visibleLanguages` | Idiomas en los que debe existir todo texto que vea la usuaria | `[]` | `["es", "gl", "en"]` | `REVIEW.md` (lo aplican `/code-review` y los agentes) |
 | `logRows` | Bitácora con **una fila por rama**, de como mucho 600 caracteres: cada rama escribe solo en la suya | `false` | `true` | `bitacora.py`, `prepush-ramas.sh`, `recuperar.py` |
 | `install` | Órdenes que instalan dependencias (en la nube y en el CI) | `[]` | `["npm ci"]` | `session-start.sh` (solo en la nube y si cambió el lockfile), CI, `doctor.py` |
-| `requireRetro` | `revisado.sh` exige una `retro` con la decisión de la persona en la rama antes de marcar | `false` (pero `templates/gw.json`, y por tanto `aplicar.py --init`, lo pone a `true`) | `true` | `revisado.sh`, skill `retro` |
+| `requireRetro` | `revisado.sh` exige una `retro` con la decisión de la persona en la rama antes de marcar | `false` (también en `templates/gw.json`; `--init --require-retro true` lo activa) | `true` | `revisado.sh`, skill `retro` |
 | `roadmap` | Reservada para el módulo opcional de hitos; ningún script la lee todavía | `false` | `false` | (nadie aún) |
 | `selector` | `{ "cases": [ { "case", "skill", "sessionModel", "subagentModel" } ] }`: filas propias del proyecto para el `selector` | sin filas | `{"cases": [{"case": "Migración de datos", "skill": "orchestrate-dealer", "sessionModel": "Opus"}]}` | skill `selector` |
 | `designReferences` | Productos, marcos o estándares con los que se contrasta cada propuesta de diseño | `[]` | `["WCAG 2.2", "Material Design 3"]` | skills `grilling` y `selector` |

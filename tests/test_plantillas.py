@@ -186,6 +186,23 @@ class Init(unittest.TestCase):
         self.assertEqual(code, 2, out)
         self.assertIn("only go with --init", out)
 
+    def test_init_flags_for_the_keys_the_project_decides(self):
+        p = self.project()
+        code, out = p.init("en", "--require-retro", "true", "--visible-language", "es", "--visible-language", "en",
+                           "--design-reference", "WCAG 2.2")
+        self.assertEqual(code, 0, out)
+        cfg = json.loads(p.read(".claude/gw.json"))
+        self.assertEqual((cfg["requireRetro"], cfg["visibleLanguages"], cfg["designReferences"]),
+                         (True, ["es", "en"], ["WCAG 2.2"]))
+        code, out = p.aplicar("--require-retro", "false")
+        self.assertEqual(code, 2, out)
+        self.assertIn("only go with --init", out)
+
+    def test_require_retro_has_one_default(self):
+        schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())
+        sample = json.loads((TEMPLATES / "gw.json").read_text())
+        self.assertEqual(sample["requireRetro"], schema["properties"]["requireRetro"]["default"])
+
     def test_init_dry_run_writes_nothing(self):
         p = self.project()
         code, out = p.init("en", "--dry-run", "--protected-branch", "trunk", "--push-to-protected", "pr")

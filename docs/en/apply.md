@@ -39,6 +39,8 @@ Collect these facts **before** running anything. They all go into `.claude/gw.js
 | Protected branch (`protectedBranch`) | The one that deploys or publishes: `git symbolic-ref --short refs/remotes/origin/HEAD`; if that fails (a fresh or local remote), `git remote show origin \| sed -n 's/.*HEAD branch: //p'`; otherwise ask the person |
 | Pushing to it (`pushToProtected`) | `direct` if people push straight to it; `pr` if it only takes pull requests |
 | Content (`content`) | Regexes for what is **not** code and needs no `/code-review`: docs, data, texts |
+| Required retro (`requireRetro`) | Ask: "`/retro` on every push to the protected branch, or only on big changes?". Every push: `--require-retro true` (`revisado.sh` will not mark without a decided retro on the branch); otherwise `false` |
+| Visible languages and design references (`visibleLanguages`, `designReferences`) | Only if the project has them: `--visible-language` and `--design-reference`, one flag per value |
 | Optional skills | `opt-ai` (local AI models) and `scout-updates` (update scouting); only if the person asks |
 
 **Inferring `install` and `check`.** Read the build file and propose commands that really exist:

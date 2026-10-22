@@ -38,6 +38,8 @@ Reúne estos datos **antes** de ejecutar nada. Todo va a `.claude/gw.json` (cada
 | Rama protegida (`protectedBranch`) | La que despliega o publica: `git symbolic-ref --short refs/remotes/origin/HEAD`; si falla (remoto nuevo o local), `git remote show origin \| sed -n 's/.*HEAD branch: //p'`; si no, pregunta a la persona |
 | Subir a ella (`pushToProtected`) | `direct` si se hace push directo; `pr` si solo entra por pull request |
 | Contenido (`content`) | Expresiones regulares de lo que **no** es código y no necesita `/code-review`: docs, datos, textos |
+| Retro obligatoria (`requireRetro`) | Pregunta: «¿`/retro` en cada subida a la rama protegida, o solo en cambios grandes?». En cada subida: `--require-retro true` (`revisado.sh` no marca sin una retro decidida en la rama); si no, `false` |
+| Idiomas visibles y referencias de diseño (`visibleLanguages`, `designReferences`) | Solo si el proyecto los tiene: `--visible-language` y `--design-reference`, una bandera por valor |
 | Skills opcionales | `opt-ai` (modelos de IA locales) y `scout-updates` (revisar actualizaciones); solo si la persona las pide |
 
 **Inferir `install` y `check`.** Mira el archivo de construcción y propón órdenes que existan de verdad:

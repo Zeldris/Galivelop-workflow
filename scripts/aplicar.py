@@ -5,7 +5,7 @@
   python3 <workflow>/scripts/aplicar.py [PROJECT] [--update] [--check] [--dry-run] [--with SKILL ...]
   python3 <workflow>/scripts/aplicar.py [PROJECT] --init --check-command CMD [--language es|en] [--log PATH]
           [--install CMD ...] [--protected-branch B] [--push-to-protected direct|pr] [--content REGEX ...]
-          [--review-mark PATH]
+          [--review-mark PATH] [--require-retro true|false] [--visible-language LANG ...] [--design-reference REF ...]
 
 Runs FROM the workflow repo (this script's own repo is the source) ONTO a project: PROJECT, else the git top level
 of the current directory. The project must have a valid .claude/gw.json (fails closed, exit 2), except with --init:
@@ -515,9 +515,13 @@ def init_config(args, version):
     new["check"] = args.check_commands
     new["install"] = args.install
     for key, flag in (("protectedBranch", args.protected_branch), ("pushToProtected", args.push_to_protected),
-                      ("reviewMark", args.review_mark), ("content", args.content or None)):
+                      ("reviewMark", args.review_mark), ("content", args.content or None),
+                      ("visibleLanguages", args.visible_languages or None),
+                      ("designReferences", args.design_references or None)):
         if flag:
             new[key] = flag
+    if args.require_retro is not None:
+        new["requireRetro"] = args.require_retro == "true"
     schema = json.loads((WORKFLOW / "schema" / "gw.schema.json").read_text(encoding="utf-8"))
     errors = config.validate(new, schema)
     if errors:
@@ -543,6 +547,12 @@ def main(argv=None):
     init.add_argument("--install", action="append", default=[], metavar="CMD", help="an `install` command (repeatable)")
     init.add_argument("--protected-branch", metavar="BRANCH")
     init.add_argument("--push-to-protected", choices=["direct", "pr"])
+    init.add_argument("--require-retro", choices=["true", "false"],
+                      help="revisado.sh requires a decided retro on the branch (default: false)")
+    init.add_argument("--visible-language", dest="visible_languages", action="append", default=[], metavar="LANG",
+                      help="a language every user-visible text must exist in (repeatable)")
+    init.add_argument("--design-reference", dest="design_references", action="append", default=[], metavar="REF",
+                      help="a product or standard design proposals are contrasted with (repeatable)")
     init.add_argument("--content", action="append", default=[], metavar="REGEX", help="a `content` regex (repeatable)")
     init.add_argument("--review-mark", metavar="PATH")
     args = parser.parse_args(argv)
@@ -550,7 +560,9 @@ def main(argv=None):
                                  ("--check-command", args.check_commands), ("--install", args.install),
                                  ("--protected-branch", args.protected_branch),
                                  ("--push-to-protected", args.push_to_protected), ("--content", args.content),
-                                 ("--review-mark", args.review_mark)) if v]
+                                 ("--review-mark", args.review_mark), ("--require-retro", args.require_retro),
+                                 ("--visible-language", args.visible_languages),
+                                 ("--design-reference", args.design_references)) if v]
     if init_flags and not args.init:
         parser.error(f"{', '.join(init_flags)} only go with --init")
     if args.init and args.check:
