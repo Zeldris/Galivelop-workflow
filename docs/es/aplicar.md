@@ -209,9 +209,8 @@ entra el código ya hoy.
 
 ## Lo que el agente no hace
 
-- Registrar como raíz de la sesión los repos que solo lee (el del flujo incluido): sus skills homónimas taparían las
-  del proyecto ([problemas](problemas.md)).
-
+- No registra como raíz de la sesión los repos que solo lee (el del flujo incluido): sus skills homónimas taparían
+  las del proyecto ([problemas](problemas.md)).
 - No ejecuta `aplicar.py --update` ni sobrescribe archivos del proyecto sin que la persona lo pida.
 - No inventa `install` ni `check`: si no puede ejecutarlo, pregunta.
 - No hace commit ni push antes de pasar `doctor.py` sin `FAIL`.

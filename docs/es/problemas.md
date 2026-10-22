@@ -86,12 +86,13 @@ verde, y `git config core.hooksPath .githooks` antes del primer commit.
 
 Si Claude Code se abre en otra carpeta (la que contiene varios repos, la de usuario), no carga el
 `.claude/settings.json` del proyecto: ni el tope de compactación, ni el gancho de inicio, ni el guardián de PR.
-`session-start.sh` y `doctor.py` avisan («the newest session transcript is in …» / «this session was started in …»).
+`doctor.py` lo detecta («the newest session transcript is in …»); `session-start.sh` solo avisa («this session was
+started in …») cuando se carga, es decir, cuando la sesión se abre en una subcarpeta del repo, no fuera de él.
 Arreglo: reabrir desde el repo (`cd <repo> && claude`). Mientras tanto: `git config core.hooksPath .githooks` y
 comprobación manual antes de subir a la rama protegida.
 
-Ojo: en ese caso el aviso de `session-start.sh` **no puede salir**, porque el gancho tampoco se carga; la comprobación
-fiable es `python3 .claude/gw/scripts/doctor.py`. Sin compactación, el contexto crece sin tope y es casi todo el
+Abierta fuera del repo, el aviso de `session-start.sh` **no puede salir**, porque el gancho tampoco se carga; la
+comprobación fiable es `python3 .claude/gw/scripts/doctor.py`. Sin compactación, el contexto crece sin tope y es casi todo el
 gasto: al cerrar cada fase, bitácora al día y `/clear`.
 
 ## Skills con el mismo nombre en varios repos de la sesión

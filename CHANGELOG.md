@@ -27,6 +27,10 @@ here.
   scripts de guarda fuera de `content`; rama protegida configurable en las utilidades; falsos positivos del
   antisecretos; tests relacionados sobre el commit subido; scripts opcionales sin bit de ejecución; retro sin decidir
   rechazada; un solo backend de la API).
+- Tras la retro de las fases 0-4: `requireRetro` activado por defecto en `templates/gw.json` (`revisado.sh` pide una
+  retro decidida antes de marcar); las plantillas `AGENTS.md` piden `/clear` al cerrar cada fase y mirar el CI al
+  cerrar cada bloque; `orchestrate-dealer` pide revisar las guardas al volver cada trozo; `gw-harvest` y las guías
+  piden no registrar en la sesión los repos que solo se leen; `docs/mapa-agente.md` para los encargos.
 - Skills de Matt Pocock (mattpocock/skills, MIT) con su mención en cada una, `CREDITS.md` y agradecimiento en los
   README: de su trabajo aprendimos esta forma de trabajar.
 
@@ -46,5 +50,9 @@ here.
   and `gh api`; config read from the pushed commit; review mark required on every direct push to the protected branch;
   guard scripts out of `content`; configurable protected branch in the utilities; secret-scan false positives; related
   tests on the pushed commit; optional scripts without the exec bit; undecided retro refused; a single API backend).
+- After the phase 0-4 retro: `requireRetro` on by default in `templates/gw.json` (`revisado.sh` asks for a decided
+  retro before marking); the `AGENTS.md` templates ask for `/clear` when each phase closes and a CI look when each block
+  closes; `orchestrate-dealer` asks for a review of guard code as each chunk returns; `gw-harvest` and the guides say
+  not to register read-only repos in the session; `docs/mapa-agente.md` for briefs.
 - Matt Pocock's skills (mattpocock/skills, MIT) with his credit in each one, `CREDITS.md` and acknowledgements in the
   READMEs: we learned this way of working from his work.

@@ -208,9 +208,8 @@ how code already reaches it today.
 
 ## What the agent leaves alone
 
-- Registering as session roots the repos it only reads (the workflow's included): their same-name skills would
+- Does not register as session roots the repos it only reads (the workflow's included): their same-name skills would
   shadow the project's ([troubleshooting](troubleshooting.md)).
-
 - `aplicar.py --update` and overwriting project files happen only when the person asks.
 - `install` and `check` are never invented: if the agent cannot run them, it asks.
 - Commit and push come after `doctor.py` shows no `FAIL`.

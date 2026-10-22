@@ -85,13 +85,14 @@ check by hand what that hook would check: the `revisado.sh` mark of the same com
 ## Session opened outside the repo
 
 If Claude Code is opened in another folder (the one holding several repos, the home folder), it does not load the
-project's `.claude/settings.json`: no compaction limit, no start hook, no PR guard. `session-start.sh` and
-`doctor.py` warn ("the newest session transcript is in …" / "this session was started in …"). Fix: reopen from the
+project's `.claude/settings.json`: no compaction limit, no start hook, no PR guard. `doctor.py` detects it
+("the newest session transcript is in …"); `session-start.sh` only warns ("this session was started in …") when it is
+loaded, that is, when the session is opened in a subfolder of the repo, not outside it. Fix: reopen from the
 repo (`cd <repo> && claude`). Meanwhile: `git config core.hooksPath .githooks` and a manual check before pushing to
 the protected branch.
 
-Note: in that case the warning from `session-start.sh` **cannot appear**, because the hook is not loaded either; the
-reliable check is `python3 .claude/gw/scripts/doctor.py`. Without compaction the context grows without a cap and is
+Opened outside the repo, the warning from `session-start.sh` **cannot appear**, because the hook is not loaded
+either; the reliable check is `python3 .claude/gw/scripts/doctor.py`. Without compaction the context grows without a cap and is
 almost all the spend: when each phase closes, log up to date and `/clear`.
 
 ## Skills with the same name in several repos of the session

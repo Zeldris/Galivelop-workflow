@@ -36,7 +36,7 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
 | `visibleLanguages` | Languages every user-visible text must exist in | `[]` | `["es", "gl", "en"]` | `REVIEW.md` (applied by `/code-review` and agents) |
 | `logRows` | Log with **one row per branch**, at most 600 characters: each branch writes only in its own | `false` | `true` | `bitacora.py`, `prepush-ramas.sh`, `recuperar.py` |
 | `install` | Commands that install dependencies (in the cloud and CI) | `[]` | `["npm ci"]` | `session-start.sh` (cloud only, when the lockfile changed), CI, `doctor.py` |
-| `requireRetro` | `revisado.sh` requires a `retro` with the person's decision on the branch before marking | `false` | `true` | `revisado.sh`, `retro` skill |
+| `requireRetro` | `revisado.sh` requires a `retro` with the person's decision on the branch before marking | `false` (but `templates/gw.json`, and so `aplicar.py --init`, sets it to `true`) | `true` | `revisado.sh`, `retro` skill |
 | `roadmap` | Reserved for the optional milestones module; no script reads it yet | `false` | `false` | (nobody yet) |
 | `selector` | `{ "cases": [ { "case", "skill", "sessionModel", "subagentModel" } ] }`: the project's own rows for the `selector` | no rows | `{"cases": [{"case": "Data migration", "skill": "orchestrate-dealer", "sessionModel": "Opus"}]}` | `selector` skill |
 | `designReferences` | Products, frameworks or standards each design proposal is contrasted with | `[]` | `["WCAG 2.2", "Material Design 3"]` | `grilling` and `selector` skills |

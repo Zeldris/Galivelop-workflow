@@ -9,10 +9,10 @@
 | Campo | Valor |
 |---|---|
 | Rama | `claude/galivelop-workflow-inicio` (`main` creada el 2026-10-21 en `f2739f1`) |
-| Check | `bash tests/comprobar.sh` — en verde en local; el CI no arranca desde el bloque B (los jobs mueren en ~2 s sin pasos: ¿cuota de Actions?) |
+| Check | `bash tests/comprobar.sh` — en verde en local; el CI no arranca porque el cupo de Actions está agotado (causa confirmada por el usuario); para pasarlo, el usuario hace el repo público un rato |
 | Fase en curso | **5. Piloto: Portal-Galivelop** (plan §9) — sin empezar; necesita una sesión del portal con permiso del usuario |
-| Último punto estable | Subida a `main`, fase 2 aplicada: propuestas de `/opt-tokens` y retro aprobadas y aplicadas (mapa para agentes, `/clear` por fase, CI al cerrar bloques, `requireRetro`, skills homónimas, revisión de guardas antes del commit) |
-| Siguiente paso | Fase 3 de la subida: `/code-review` de los commits de la fase 2, `revisado.sh`, push a `main`; CI con el repo público un rato (lo hace el usuario) |
+| Último punto estable | Subida a `main`, fase 3: `/code-review` de la fase 2 (9 incoherencias de documentación, arregladas) |
+| Siguiente paso | `revisado.sh` y push a `main`; luego prompt del piloto del portal para el usuario |
 
 ### Fases
 

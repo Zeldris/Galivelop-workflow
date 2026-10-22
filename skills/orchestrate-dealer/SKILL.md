@@ -71,9 +71,10 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
 
 ## Rules
 
-- **Guard code gets a review before its commit:** every chunk that touches hooks, push/merge guards or the scripts
-  they call passes a short `/code-review` by a reviewer subagent before it is committed, not only worktree branches.
-  The reviewer compares the diff with the contract (`AGENTS.md`, `REVIEW.md`, the callers), not the diff alone.
+- **Guard code gets its own review:** every chunk that touches hooks, push/merge guards or the scripts they call
+  passes a short `/code-review` by a reviewer subagent as soon as the chunk returns, before the next chunk starts
+  (commit it first, as `WIP:` if needed, so nothing is lost if the session ends). The reviewer compares the diff with
+  the contract (`AGENTS.md`, `REVIEW.md`, the callers), not the diff alone; its fixes land before moving on.
 - **One writing subagent at a time on the same branch.** Two that commit to the same branch collide in the log and in
   shared files. In parallel, only what does not write (searching, reading, measuring).
 - **Code fixes of the frontier, in parallel, in isolated worktrees:** each subagent runs with `isolation: "worktree"` in

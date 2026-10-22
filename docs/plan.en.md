@@ -280,7 +280,7 @@ Keys in English (Phase 0 decision).
   "install": ["npm ci"],
   "check": ["npm run check"],               // list of commands, run in order on the commit being pushed
   "reviewMark": "docs/registros/revisado.txt",
-  "requireRetro": false,                    // optional: revisado.sh requires a retro on the branch
+  "requireRetro": true,                     // optional (on in the template): revisado.sh requires a retro on the branch
   "content": ["^docs/", "^public/", "^src/data/", "\\.md$"],   // regex: what does NOT need /code-review
   "roadmap": false,                         // optional milestones module (Tarkor)
   "selector": { "cases": [] },              // extra project-specific rows

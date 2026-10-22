@@ -277,7 +277,7 @@ inglés (decisión de la Fase 0).
   "install": ["npm ci"],
   "check": ["npm run check"],               // lista de órdenes; se corren en orden sobre el commit que se sube
   "reviewMark": "docs/registros/revisado.txt",
-  "requireRetro": false,                    // opcional: revisado.sh exige una retro en la rama
+  "requireRetro": true,                     // opcional (por defecto en la plantilla): revisado.sh exige una retro en la rama
   "content": ["^docs/", "^public/", "^src/data/", "\\.md$"],   // regex: lo que NO pide /code-review
   "roadmap": false,                         // módulo opcional de hitos (Tarkor)
   "selector": { "cases": [] },              // filas extra propias del proyecto
