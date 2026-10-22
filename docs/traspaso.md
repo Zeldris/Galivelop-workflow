@@ -9,17 +9,17 @@
 | Campo | Valor |
 |---|---|
 | Rama | `claude/galivelop-workflow-inicio`; `main` = `603ca36` (primera subida, 2026-10-22) |
-| Check | `bash tests/comprobar.sh` — en verde en local; el CI no arranca porque el cupo de Actions está agotado (causa confirmada por el usuario); para pasarlo, el usuario hace el repo público un rato |
+| Check | `bash tests/comprobar.sh` — en verde en local y en el CI (Linux y macOS, run 39739419422 sobre `78cddb5`, con el repo público un rato el 2026-10-22); con el repo privado el CI no arranca hasta que se renueve el cupo de Actions |
 | Fase en curso | **5. Piloto: Portal-Galivelop** (plan §9) — sin empezar; necesita una sesión del portal con permiso del usuario |
 | Último punto estable | Primera subida a `main` (`603ca36`) con las tres fases: code review + 10 arreglos, opt-tokens + retro aplicadas, revisión de la fase 2, marca de `revisado.sh`; el `pre-push` comprobó la marca |
-| Siguiente paso | Usuario: CI con el repo público un rato (tras decidir lo privado que contiene) y Fase 5 en una sesión del portal con el prompt dado |
+| Siguiente paso | Fase 5: el usuario abre una sesión en Portal-Galivelop con el prompt dado; después, `gw-harvest` sobre el portal desde aquí |
 
 ### Fases
 
 - [x] 0. Verificar (2026-10-21)
 - [x] 1. Esqueleto (2026-10-21)
 - [x] 2. Skills (2026-10-21)
-- [x] 3. Ganchos y scripts (2026-10-22; falta ver el CI en verde)
+- [x] 3. Ganchos y scripts (2026-10-22; CI en verde en Linux y macOS)
 - [x] 4. Plantillas y aplicación (2026-10-22)
 - [ ] 5. Piloto: Portal-Galivelop
 - [ ] 6. Piloto: Tarkor, instalador y VeriNews
@@ -60,8 +60,6 @@ del `pre-push` al subir a una rama commits que ya están en otra («nothing new�
 
 - Propuestas aprobadas pendientes por fase: `docs/propuestas/2026-10-21-reparto.md`.
 
-- Repo público un rato para pasar el CI: antes, decidir qué hacer con lo que nombra repos privados (`docs/investigacion/`,
-  `docs/propuestas/`, la retro, el plan).
 - Que el usuario cambie la rama por defecto de GitHub a `main` (Settings → Branches); no hay herramienta para ello.
 - R2 de la retro: que `doctor.py` detecte skills homónimas en la sesión (sin forma fiable aún; queda en las guías).
 - Opción D (plugin desde el script de entorno de la nube): queda para la Fase 9.
