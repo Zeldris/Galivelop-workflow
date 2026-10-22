@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | `claude/galivelop-workflow-inicio`; `main` = `9b97d7b` = **release `v0.1.0`** (2026-10-22) |
+| Rama | `ccr-76251061-b1yiwq` (sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `9b97d7b` = **release `v0.1.0`** (2026-10-22) |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
 | Fase en curso | **5. Piloto: Portal-Galivelop** — hecho y publicado en el `main` del portal (`673602b`); recogida hecha, 21 propuestas pendientes de decisión |
-| Último punto estable | Recogida del piloto del portal en `docs/propuestas/2026-10-22-portal-galivelop.md` (21 propuestas; P1 es grave: un commit que añade `".*"` a `content` sube código a `main` sin marca) |
-| Siguiente paso | **Sesión nueva desde la carpeta del repo.** 1) Actualizar el clon de Tarkor (`git -C /home/user/world-maker-fantasy fetch origin main && git -C … merge --ff-only origin/main`) y lanzar `gw-harvest` sobre él (última recogida: `11a201b7`). 2) Presentar al usuario las propuestas del portal (empezar por P1: leer `content`/`protectedBranch`/`reviewMark`/`pushToProtected` de la rama protegida remota, no del commit subido, y contar `gw.json` y los scripts de guarda como código) y las de Tarkor; aplicar lo aprobado; tres fases y `v0.1.1` |
+| Último punto estable | Tercera recogida de Tarkor (`11a201b7`→`76ec6aeb`) en `docs/propuestas/2026-10-22-world-maker-fantasy-2.md` (4 propuestas patch para `orchestrate-dealer`); la del portal (21 propuestas, P1 grave) sigue pendiente de decisión |
+| Siguiente paso | **Esperando la decisión del usuario** sobre las propuestas del portal (`2026-10-22-portal-galivelop.md`, empezar por P1: leer la política de la rama protegida remota, no del commit subido, y contar `gw.json` como código) y las 4 de Tarkor (`2026-10-22-world-maker-fantasy-2.md`). Luego aplicar lo aprobado con `orchestrate-dealer`, tres fases y `v0.1.1` |
 
 ### Fases
 
@@ -35,27 +35,26 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 
 ## Hecho (10 últimas)
 
-1. 2026-10-22 — **Release `v0.1.0`** (`9b97d7b`): segunda subida a `main` con las tres fases; segunda recogida de Tarkor
+1. 2026-10-22 — Tercera recogida de Tarkor (`76ec6aeb`, 99 commits): 4 propuestas para `orchestrate-dealer` (arreglos con
+   `sonnet`, arreglos de un archivo en la principal, solo lo grave antes del PR, rama de partida del worktree).
+2. 2026-10-22 — **Release `v0.1.0`** (`9b97d7b`): segunda subida a `main` con las tres fases; segunda recogida de Tarkor
    aplicada; `version.py` y `release.yml`.
-2. 2026-10-22 — **Primera subida a `main`** (`603ca36`) siguiendo las tres fases del flujo.
-3. 2026-10-22 — **Fase 4 cerrada.** Plantillas ES/EN, `aplicar.py --init`, guías y skills `gw-*`; prueba con un agente sin
+3. 2026-10-22 — **Primera subida a `main`** (`603ca36`) siguiendo las tres fases del flujo.
+4. 2026-10-22 — **Fase 4 cerrada.** Plantillas ES/EN, `aplicar.py --init`, guías y skills `gw-*`; prueba con un agente sin
    contexto sobre un repo vacío superada; 9 puntos de la guía corregidos.
-4. 2026-10-22 — Fase 3 completa en local: config, ganchos de subida y de PR, arranque y recuperación, `doctor.py`,
+5. 2026-10-22 — Fase 3 completa en local: config, ganchos de subida y de PR, arranque y recuperación, `doctor.py`,
    utilidades y `aplicar.py`; el flujo ya se aplica a este repo (sus propios `pre-commit` y `pre-push` activos).
-5. 2026-10-21 — **Fase 2 cerrada.** Skills portadas y validadas (Agent Skills, ≤200 líneas, mención a Matt Pocock);
+6. 2026-10-21 — **Fase 2 cerrada.** Skills portadas y validadas (Agent Skills, ≤200 líneas, mención a Matt Pocock);
    `opt-ai` añadida como opcional a petición del usuario; `gw-harvest` + `recoger.py`; primera recogida real.
-6. 2026-10-21 — **Fase 1 cerrada** (CI en verde en Linux y macOS). VeriNews_AI leído en solo lectura: cuarto caso
+7. 2026-10-21 — **Fase 1 cerrada** (CI en verde en Linux y macOS). VeriNews_AI leído en solo lectura: cuarto caso
    y piloto sin Node; aporta el gancho de PR por Bash, el pre-commit antisecretos y `registro_sesion.py`.
-7. 2026-10-21 — Fase 1: esqueleto (LICENSE, `.gitattributes`, README ES/EN, CHANGELOG `0.1.0`, `docs/es/flujo.md` ↔
+8. 2026-10-21 — Fase 1: esqueleto (LICENSE, `.gitattributes`, README ES/EN, CHANGELOG `0.1.0`, `docs/es/flujo.md` ↔
    `docs/en/workflow.md`, `tests/test_repo.py`, `tests/comprobar.sh`, CI `comprobar.yml`). Plan: skill `gw-harvest`.
-8. 2026-10-21 — **Fase 0 cerrada.** Plan revisado (§0: dos etapas, copia en el repo como base, `AGENTS.md`,
+9. 2026-10-21 — **Fase 0 cerrada.** Plan revisado (§0: dos etapas, copia en el repo como base, `AGENTS.md`,
    claves en inglés, `check` como lista, marca versionada, portar pieza a pieza). `AGENTS.md` + `CLAUDE.md` de este
    repo. Sondas `gw-ping*` y `.claude/settings.json` de prueba quitadas.
-9. 2026-10-21 — Fase 0: estándares (AGENTS.md, Agent Skills, Copier), mejoras y problemas conocidos en
+10. 2026-10-21 — Fase 0: estándares (AGENTS.md, Agent Skills, Copier), mejoras y problemas conocidos en
    `docs/investigacion/estandares.md`.
-10. 2026-10-21 — Fase 0: Portal-Galivelop leído (solo lectura) y tabla de la mejor versión de cada pieza.
-   `docs/investigacion/casos-reales.md`; piezas genéricas que el plan no recoge y choques con el plan.
-   marketplace funciona desde la CLI. Propuesta en `docs/investigacion/plugins.md`.
 
 ## Pendiente
 
