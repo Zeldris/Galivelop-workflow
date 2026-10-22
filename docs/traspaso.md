@@ -11,8 +11,8 @@
 | Rama | `claude/galivelop-workflow-inicio` (`main` creada el 2026-10-21 en `f2739f1`) |
 | Check | `bash tests/comprobar.sh` — en verde en local; el CI no arranca desde el bloque B (los jobs mueren en ~2 s sin pasos: ¿cuota de Actions?) |
 | Fase en curso | **5. Piloto: Portal-Galivelop** (plan §9) — sin empezar; necesita una sesión del portal con permiso del usuario |
-| Último punto estable | Subida a `main`, fase 2: `/opt-tokens` medido y `/retro` escrita (`docs/registros/retro-2026-10-22-fases-0-4.md`), pendientes de la decisión del usuario |
-| Siguiente paso | Usuario decide las propuestas de opt-tokens (T1–T4) y la retro (R1–R6); aplicar lo aprobado; fase 3: revisión de lo nuevo, `revisado.sh`, push a `main` |
+| Último punto estable | Subida a `main`, fase 2 aplicada: propuestas de `/opt-tokens` y retro aprobadas y aplicadas (mapa para agentes, `/clear` por fase, CI al cerrar bloques, `requireRetro`, skills homónimas, revisión de guardas antes del commit) |
+| Siguiente paso | Fase 3 de la subida: `/code-review` de los commits de la fase 2, `revisado.sh`, push a `main`; CI con el repo público un rato (lo hace el usuario) |
 
 ### Fases
 
@@ -61,6 +61,7 @@ trabajo hasta que el usuario la cambie en Settings → Branches.
 - Propuestas aprobadas pendientes por fase: `docs/propuestas/2026-10-21-reparto.md`.
 
 - Que el usuario cambie la rama por defecto de GitHub a `main` (Settings → Branches); no hay herramienta para ello.
+- R2 de la retro: que `doctor.py` detecte skills homónimas en la sesión (sin forma fiable aún; queda en las guías).
 - Opción D (plugin desde el script de entorno de la nube): queda para la Fase 9.
 
 ## Comprobar el estado

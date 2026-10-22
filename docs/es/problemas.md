@@ -90,6 +90,17 @@ Si Claude Code se abre en otra carpeta (la que contiene varios repos, la de usua
 Arreglo: reabrir desde el repo (`cd <repo> && claude`). Mientras tanto: `git config core.hooksPath .githooks` y
 comprobación manual antes de subir a la rama protegida.
 
+Ojo: en ese caso el aviso de `session-start.sh` **no puede salir**, porque el gancho tampoco se carga; la comprobación
+fiable es `python3 .claude/gw/scripts/doctor.py`. Sin compactación, el contexto crece sin tope y es casi todo el
+gasto: al cerrar cada fase, bitácora al día y `/clear`.
+
+## Skills con el mismo nombre en varios repos de la sesión
+
+Si se añaden a la sesión otros repos y se registran como raíz (en la nube, `register_repo_root`), sus
+`.claude/skills/` entran también, y una skill homónima de otro repo (`retro`, `selector`…) puede tapar la del
+proyecto. Arreglo: los repos que solo se leen **no se registran**; basta clonarlos y leerlos con un subagente. Si ya
+están registrados, invoca la skill del proyecto comprobando la ruta que muestra al cargarse (`Base directory`).
+
 ## Modo automático de Claude Code
 
 El clasificador del modo automático puede pedir permiso, o rechazar, al editar `.claude/settings.json`,

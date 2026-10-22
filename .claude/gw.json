@@ -6,8 +6,17 @@
   "protectedBranch": "main",
   "pushToProtected": "direct",
   "install": [],
-  "check": ["bash tests/comprobar.sh"],
+  "check": [
+    "bash tests/comprobar.sh"
+  ],
   "reviewMark": "docs/registros/revisado.txt",
-  "content": ["^docs/", "^README(\\.es)?\\.md$", "^CHANGELOG\\.md$", "^CREDITS\\.md$", "^LICENSE"],
-  "staleRefs": []
+  "content": [
+    "^docs/",
+    "^README(\\.es)?\\.md$",
+    "^CHANGELOG\\.md$",
+    "^CREDITS\\.md$",
+    "^LICENSE"
+  ],
+  "staleRefs": [],
+  "requireRetro": true
 }

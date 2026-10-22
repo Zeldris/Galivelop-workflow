@@ -90,6 +90,17 @@ project's `.claude/settings.json`: no compaction limit, no start hook, no PR gua
 repo (`cd <repo> && claude`). Meanwhile: `git config core.hooksPath .githooks` and a manual check before pushing to
 the protected branch.
 
+Note: in that case the warning from `session-start.sh` **cannot appear**, because the hook is not loaded either; the
+reliable check is `python3 .claude/gw/scripts/doctor.py`. Without compaction the context grows without a cap and is
+almost all the spend: when each phase closes, log up to date and `/clear`.
+
+## Skills with the same name in several repos of the session
+
+If other repos are added to the session and registered as roots (in the cloud, `register_repo_root`), their
+`.claude/skills/` come in too, and a same-name skill from another repo (`retro`, `selector`…) may shadow the
+project's. Fix: repos that are only read are **not registered**; cloning them and reading them with a subagent is
+enough. If they already are, invoke the project's skill and check the path it shows when it loads (`Base directory`).
+
 ## Claude Code auto mode
 
 The auto-mode classifier may ask for permission, or refuse, when editing `.claude/settings.json`, `.claude/hooks/`

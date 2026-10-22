@@ -10,7 +10,7 @@
   "install": [],
   "check": ["make check"],
   "reviewMark": "docs/registros/revisado.txt",
-  "requireRetro": false,
+  "requireRetro": true,
   "content": ["^docs/", "\\.md$", "^\\.claude/skills/"],
   "roadmap": false,
   "selector": {"cases": []},

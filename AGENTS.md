@@ -24,7 +24,12 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   falla y por qué.
 - Push a la rama de trabajo (`git push -u origin <rama>`); si falla por red, reintentar con espera 2, 4, 8 y 16 s.
 - Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla.
-- **Al cerrar cada fase**, se para y se informa al usuario de qué queda hecho y cuál es la siguiente.
+- **Al cerrar cada fase**, se para y se informa al usuario de qué queda hecho y cuál es la siguiente; con la bitácora
+  al día, se recomienda `/clear` antes de la siguiente (la bitácora basta para retomar).
+- **La sesión se abre desde la carpeta del repo** (`cd Galivelop-workflow && claude`): abierta en otra no carga
+  `.claude/settings.json` (ni la compactación a 200k ni los ganchos); `python3 scripts/doctor.py` lo detecta.
+- **Al cerrar cada bloque o fase, mira el CI de la última subida.** Un CI que no arranca (por ejemplo, sin cuota de
+  Actions) cuenta como rojo: se dice al usuario y no se da nada por comprobado en el CI.
 - Si el usuario dice que se para, se para: se sube lo que haya y se deja la bitácora al día.
 
 ## Comprobar
@@ -63,6 +68,8 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 - **Ganchos y scripts** (plan §4.3 y §12): raíz desde la ruta del script o `git rev-parse --show-toplevel`, nunca
   desde `$CLAUDE_PROJECT_DIR` ni el directorio actual; un gancho de subida comprueba el commit que se sube; fallan
   cerrados si les falta un dato; cada cambio lleva su caso en los tests.
+- **Mapa para agentes:** [`docs/mapa-agente.md`](docs/mapa-agente.md) dice dónde está cada contrato y qué lo
+  implementa; los encargos a subagentes apuntan a él en vez de a varios documentos.
 - **Reparto a subagentes autorizado:** el trabajo de más de un paso se reparte a subagentes con la skill
   `orchestrate-dealer` sin preguntar cada vez; la sesión principal planea, decide y revisa.
 - **Lo comprobable lo hace un script**, no un agente; las skills y guías solo deciden lo que exige criterio.
