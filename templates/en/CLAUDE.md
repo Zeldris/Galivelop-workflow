@@ -14,5 +14,5 @@
   start hook runs `python3 .claude/gw/scripts/recuperar.py --estado`, which puts back the log's state and the last
   commits; a detail that was lost is searched with `python3 .claude/gw/scripts/recuperar.py --buscar "<text>"`.
   What must survive goes into `{{log}}`.
-- **Auto mode** may ask for permission to edit `.claude/settings.json`, `.claude/hooks/` and `.githooks/`: ask the
+- **Auto mode** may ask for permission to edit `.claude/settings.json`, `.claude/gw/scripts/` and `.githooks/`: ask the
   user before touching them, or let them run the change themselves.

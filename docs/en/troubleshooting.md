@@ -104,7 +104,7 @@ enough. If they already are, invoke the project's skill and check the path it sh
 
 ## Claude Code auto mode
 
-The auto-mode classifier may ask for permission, or refuse, when editing `.claude/settings.json`, `.claude/hooks/`
+The auto-mode classifier may ask for permission, or refuse, when editing `.claude/settings.json`, `.claude/gw/scripts/`
 and `.githooks/`: exactly what `/gw-init` and `/gw-update` write, so the failure shows up halfway through the
 application. `aplicar.py` prints a note ("Claude Code's auto mode may ask for permission…").
 

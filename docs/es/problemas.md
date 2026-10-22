@@ -105,7 +105,7 @@ están registrados, invoca la skill del proyecto comprobando la ruta que muestra
 ## Modo automático de Claude Code
 
 El clasificador del modo automático puede pedir permiso, o rechazar, al editar `.claude/settings.json`,
-`.claude/hooks/` y `.githooks/`: justo lo que escriben `/gw-init` y `/gw-update`, así que el fallo sale a mitad de la
+`.claude/gw/scripts/` y `.githooks/`: justo lo que escriben `/gw-init` y `/gw-update`, así que el fallo sale a mitad de la
 aplicación. `aplicar.py` imprime un aviso («Claude Code's auto mode may ask for permission…»).
 
 - **Pide permiso a la persona antes** de ejecutar `aplicar.py`, o que la persona lo ejecute en su terminal:

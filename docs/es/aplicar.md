@@ -92,7 +92,7 @@ Qué hace (el detalle completo, en `--help`): copia `scripts/` a `.claude/gw/scr
 nadie más lo usa. **Nunca hace commit.** Es idempotente: ejecutarlo dos veces no cambia nada.
 
 **Modo automático de Claude Code.** El clasificador del modo automático puede pedir permiso al editar
-`.claude/settings.json`, `.claude/hooks/` y `.githooks/`, y el fallo aparece a mitad de la aplicación. `aplicar.py`
+`.claude/settings.json`, `.claude/gw/scripts/` y `.githooks/`, y el fallo aparece a mitad de la aplicación. `aplicar.py`
 lo avisa justo antes de escribirlos. **Pide permiso a la persona antes** de lanzarlo (o que lo lance ella en su
 terminal con la misma orden) en vez de reintentar a ciegas; tras un rechazo, `git status` y `git diff` antes de
 repetir.

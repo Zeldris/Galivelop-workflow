@@ -74,7 +74,7 @@ ROOT_TEMPLATES = (("AGENTS.md", "merged"), ("CLAUDE.md", "merged"), ("REVIEW.md"
 NOTES = (("opt-tokens.md", None), ("opt-ai.md", "opt-ai"), ("scout-updates.md", "scout-updates"))
 LOG_BY_LANGUAGE = {"es": "docs/traspaso.md", "en": "docs/handoff.md"}
 HEADER = re.compile(r"galivelop-workflow v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)")
-SENSITIVE = (".claude/settings.json", ".claude/hooks/", ".githooks/")
+SENSITIVE = (".claude/settings.json", ".claude/gw/scripts/", ".githooks/")
 
 
 class ApplyError(Exception):
@@ -454,7 +454,7 @@ def report(plan):
 def apply(plan):
     if any(sensitive(a[1]) for a in plan.actions):
         print("aplicar: note: Claude Code's auto mode may ask for permission to edit .claude/settings.json, "
-              ".claude/hooks/ and .githooks/; approve it, or run this script yourself: "
+              ".claude/gw/scripts/ and .githooks/; approve it, or run this script yourself: "
               f"python3 {Path(__file__).resolve()} {plan.root}")
     for kind, rel, data, want_exec, _detail in plan.actions:
         dest = plan.root / rel

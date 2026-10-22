@@ -93,7 +93,7 @@ the git hooks to `.githooks/`, the CI to `.github/workflows/comprobar.yml`; **me
 else owns it. **It never commits.** It is idempotent: running it twice changes nothing.
 
 **Claude Code auto mode.** The auto-mode classifier may ask for permission when editing `.claude/settings.json`,
-`.claude/hooks/` and `.githooks/`, and the failure shows up halfway through the application. `aplicar.py` says so
+`.claude/gw/scripts/` and `.githooks/`, and the failure shows up halfway through the application. `aplicar.py` says so
 right before writing them. **Ask the person for permission first** before launching it (or have them run it in their
 own terminal with the same command) instead of retrying blindly; after a refusal, `git status` and `git diff`
 before repeating.

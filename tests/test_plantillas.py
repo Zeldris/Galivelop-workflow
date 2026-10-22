@@ -115,6 +115,15 @@ class Templates(unittest.TestCase):
                     lines = len((TEMPLATES / lang / name).read_text(encoding="utf-8").splitlines())
                     self.assertLessEqual(lines, 200)
 
+    def test_no_path_the_workflow_no_longer_uses(self):
+        obsolete = (".claude/hooks/",)  # the workflow's scripts live in .claude/gw/scripts/
+        places = [TEMPLATES, ROOT / "scripts", ROOT / "skills", ROOT / "docs" / "es", ROOT / "docs" / "en"]
+        files = [f for d in places for f in d.rglob("*") if f.is_file() and "__pycache__" not in f.parts]
+        files += [ROOT / "README.md", ROOT / "README.es.md"]
+        found = [f"{f.relative_to(ROOT)}: {path}" for f in files for path in obsolete
+                 if path in f.read_text(encoding="utf-8", errors="replace")]
+        self.assertEqual(found, [], "paths the workflow no longer creates")
+
     def test_sample_config_is_valid(self):
         sample = json.loads((TEMPLATES / "gw.json").read_text())
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())
