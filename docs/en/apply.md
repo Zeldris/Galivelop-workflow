@@ -125,7 +125,12 @@ Also fill in the log's placeholders (at least branch, phase and next step; the o
 until there is something to write) and add the project's own rules to the "Project rules" sections of `REVIEW.md`
 and `AGENTS.md` and its terms to `GLOSSARY.md`: the workflow never writes those files again.
 
-Done when: no `*.gw-nuevo` is left and the log has a next-step line.
+**A `REVIEW.md` or `GLOSSARY.md` that already existed:** `aplicar.py` leaves it alone, but prints how it differs from
+the template while it lacks the current version's marker. Bring over by hand what it misses (for instance the
+"bash 3.2", "brought from another repo: this repo's contracts" and "visible languages" rules of `REVIEW.md`) and put
+`<!-- galivelop-workflow vX.Y.Z -->` on its first line; from then on the diff is no longer printed.
+
+Done when: no `*.gw-nuevo` is left, no `REVIEW.md`/`GLOSSARY.md` diff is printed, and the log has a next-step line.
 
 ## 4. Check with `doctor.py`
 

@@ -267,6 +267,21 @@ class Init(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertEqual(p.read("docs/traspaso.md"), "# Bitácora propia\n\nSiguiente paso: seguir.\n")
 
+    def test_existing_review_md_gets_the_template_diff_printed_not_written(self):
+        p = self.project()
+        p.write("REVIEW.md", "# Our review rules\n\n- Keep it short.\n")
+        code, out = p.init("en")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(p.read("REVIEW.md"), "# Our review rules\n\n- Keep it short.\n")
+        self.assertFalse((p.work / "REVIEW.md.gw-nuevo").exists())
+        self.assertIn("REVIEW.md exists and is never written; what differs from the", out)
+        self.assertIn("+++ REVIEW.md (template)", out)
+        self.assertIn("-- Keep it short.", out)
+        self.assertEqual(p.aplicar("--check")[0], 0)  # a printed diff is not drift
+        p.write("REVIEW.md", MARKER + "\n# Our review rules, merged\n")  # marked at this version: settled
+        code, out = p.aplicar()
+        self.assertNotIn("REVIEW.md exists", out)
+
     def test_workflow_repo_skips_its_root_templates(self):
         r = subprocess.run(["python3", str(APLICAR), str(ROOT), "--dry-run"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)

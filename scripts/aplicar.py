@@ -47,6 +47,7 @@ In the workflow repo itself the copy is generated from scripts/ and skills/, so 
 Exit 2 on a missing or invalid config or settings file. Python 3.8+ standard library only.
 """
 import argparse
+import difflib
 import json
 import os
 import re
@@ -69,6 +70,8 @@ PROPOSAL = ".gw-nuevo"
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
 TEXT_KEYS = ("log", "protectedBranch", "reviewMark", "language")
 LIST_KEYS = ("check", "install")
+DIFFED = ("REVIEW.md", "GLOSSARY.md")  # seeded files whose template diff is printed while unmarked or older
+DIFF_LINES = 80
 ROOT_TEMPLATES = (("AGENTS.md", "merged"), ("CLAUDE.md", "merged"), ("REVIEW.md", "seeded"),
                   ("GLOSSARY.md", "seeded"))
 NOTES = (("opt-tokens.md", None), ("opt-ai.md", "opt-ai"), ("scout-updates.md", "scout-updates"))
@@ -166,6 +169,7 @@ class Plan:
         self.actions = []   # (kind, rel, data, exec, detail); kind: create | update | propose | chmod | merge
         self.notes = []     # reported, never acted on
         self.warnings = []  # the same, about the project's own files
+        self.diffs = []     # (rel, project's bytes, template bytes): printed, never written
         self.pending = []   # proposals already written and still current
         self.orphans = []   # files the workflow no longer has
         self.hooks_path = None  # None, or the hint line about core.hooksPath
@@ -231,6 +235,8 @@ class Plan:
         found = header_version(current)
         older = found is not None and version_key(found) < version_key(self.version)
         if kind == "seeded":
+            if str(rel) in DIFFED and (found is None or older):
+                self.diffs.append((rel, current, data))
             if older:
                 self.notes.append(f"{rel} comes from the v{found} template and the template is now v{self.version}; "
                                   f"the project's file is never overwritten: review the template change with "
@@ -478,6 +484,16 @@ def report(plan):
         print(f"aplicar: {rel} is no longer in the workflow (kept); delete it if nothing uses it: git rm {rel}")
     for note in plan.notes:
         print(f"aplicar: template update: {note}")
+    for rel, current, data in plan.diffs:
+        print(f"aplicar: {rel} exists and is never written; what differs from the v{plan.version} template (bring the "
+              f"missing rules by hand, then set its first line to <!-- galivelop-workflow v{plan.version} -->):")
+        diff = list(difflib.unified_diff(current.decode("utf-8", "replace").splitlines(),
+                                         data.decode("utf-8", "replace").splitlines(),
+                                         f"{rel} (project)", f"{rel} (template)", lineterm=""))
+        for line in diff[:DIFF_LINES]:
+            print(f"  {line}")
+        if len(diff) > DIFF_LINES:
+            print(f"  … {len(diff) - DIFF_LINES} more line(s)")
     for warning in plan.warnings:
         print(f"aplicar: WARNING: {warning}")
     if plan.hooks_path:

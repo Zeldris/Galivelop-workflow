@@ -124,7 +124,12 @@ quedarse como viene hasta que haya algo que escribir) y añade las reglas propia
 «Reglas del proyecto» de `REVIEW.md` y `AGENTS.md` y sus términos en `GLOSSARY.md`: el flujo nunca vuelve a escribir
 esos archivos.
 
-Criterio de fin: no queda ningún `*.gw-nuevo` y la bitácora tiene una línea de siguiente paso.
+**`REVIEW.md` y `GLOSSARY.md` que ya existían:** `aplicar.py` no los toca, pero imprime su diferencia con la plantilla
+mientras no lleven la marca de la versión actual. Pasa a mano lo que les falte (por ejemplo, las reglas «bash 3.2»,
+«traído de otro repo: contratos de este» e «idiomas visibles» de `REVIEW.md`) y pon en su primera línea
+`<!-- galivelop-workflow vX.Y.Z -->`; desde entonces el diff ya no sale.
+
+Criterio de fin: no queda ningún `*.gw-nuevo`, ni diff impreso de `REVIEW.md`/`GLOSSARY.md`, y la bitácora tiene una línea de siguiente paso.
 
 ## 4. Comprobar con `doctor.py`
 
