@@ -12,7 +12,7 @@
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
 | Fase en curso | **5. Piloto: Portal-Galivelop** — publicado en el portal (`673602b`); propuestas aplicadas (2026-10-22); falta publicar `v0.2.0` |
 | Último punto estable | **Fase 1 (código) antes de `main`**: `/code-review` del diff contra `origin/main` hecho (10 hallazgos) y arreglados los confirmados; check en verde en local; el CI de GitHub no arranca (cupo de Actions) |
-| Siguiente paso | Fase 2 (`/opt-tokens` y `/retro`) y cierre con `revisado.sh`; subir la versión (`python3 scripts/version.py 0.2.0`, entrada del CHANGELOG con las 19 filas) y `v0.2.0`, todo **con confirmación del usuario** |
+| Siguiente paso | Fase 2: retro `docs/registros/retro-2026-10-22-fase-5.md` (con la medida de `/opt-tokens`) presentada; esperar la decisión del usuario sobre R1-R4, aplicar lo aprobado en la rama, luego fase 3 (`revisado.sh`), `version.py 0.2.0` y `v0.2.0`, todo **con confirmación del usuario** |
 
 ### Fases
 
