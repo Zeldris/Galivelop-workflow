@@ -19,7 +19,8 @@ pide criterio. La rellena el proyecto; el flujo nunca la sobrescribe una vez cre
 - Los ganchos **fallan cerrados** cuando les falta un dato (un commit que el clon no tiene, una API que no responde),
   con la orden que lo arregla.
 - Los scripts de shell corren en bash 3.2 (macOS): nada de `mapfile` ni arrays asociativos.
-- Cada cambio en un gancho o un script lleva su caso en los tests.
+- Cada cambio en un gancho o un script lleva su caso en los tests; un caso que espera un fallo comprueba el motivo,
+  no solo el código de salida.
 
 ## Traído de otro repo: se adapta a los contratos de este
 

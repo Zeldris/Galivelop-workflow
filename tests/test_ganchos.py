@@ -517,6 +517,21 @@ class EsCodigo(Base):
         code, out = p.run("bash", script, "", "HEAD")
         self.assertIn("check.sh", out.split())
 
+    def test_explicar_says_code_or_content_and_why(self):
+        p = self.p
+        script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
+        code, out = p.run("bash", script, "--explicar", "src/a.py", "docs/x.md", ".githooks/pre-push",
+                          "docs/revisado.txt")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out.splitlines(), [
+            "src/a.py: code (matches no content regex)",
+            'docs/x.md: content (matches content regex "^docs/")',
+            ".githooks/pre-push: code (the workflow policy and guards are always code)",
+            "docs/revisado.txt: content (it is the review mark file, reviewMark)"])
+        code, out = p.run("bash", script, "--explicar")
+        self.assertEqual(code, 2, out)
+        self.assertIn("usage", out)
+
     def test_workflow_guards_are_code_whatever_content_says(self):
         p = self.p
         cfg = json.loads((p.work / ".claude" / "gw.json").read_text())

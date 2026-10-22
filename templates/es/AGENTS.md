@@ -52,6 +52,8 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
   el equipo del usuario): se apunta como pendiente en el plan, con quién lo comprueba y dónde.
 - Un test nuevo tiene que fallar sin su arreglo: `bash .claude/gw/scripts/rojo-sin-arreglo.sh "<orden del test>"
   <archivo-del-arreglo>...`.
+- Un test que espera un fallo comprueba **el motivo** (el mensaje o la causa), no solo el código de salida: si no,
+  pasa también cuando falla por otra razón.
 - `python3 .claude/gw/scripts/doctor.py` dice si el flujo está bien montado, con la orden que arregla cada problema.
 
 ## Mensajes de commit

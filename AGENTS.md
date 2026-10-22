@@ -69,7 +69,8 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   `scripts/config.py`.
 - **Ganchos y scripts** (plan §4.3 y §12): raíz desde la ruta del script o `git rev-parse --show-toplevel`, nunca
   desde `$CLAUDE_PROJECT_DIR` ni el directorio actual; un gancho de subida comprueba el commit que se sube; fallan
-  cerrados si les falta un dato; cada cambio lleva su caso en los tests.
+  cerrados si les falta un dato; cada cambio lleva su caso en los tests, y un caso que espera un fallo comprueba el
+  motivo, no solo el código de salida.
 - **Mapa para agentes:** [`docs/mapa-agente.md`](docs/mapa-agente.md) dice dónde está cada contrato y qué lo
   implementa; los encargos a subagentes apuntan a él en vez de a varios documentos.
 - **Reparto a subagentes autorizado:** el trabajo de más de un paso se reparte a subagentes con la skill

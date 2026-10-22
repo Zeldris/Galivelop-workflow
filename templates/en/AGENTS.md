@@ -52,6 +52,8 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - **What depends on a particular machine is not declared tested by tests** (another operating system, a device, the
   user's own computer): it is written down as pending in the plan, with who checks it and where.
 - A new test must fail without its fix: `bash .claude/gw/scripts/rojo-sin-arreglo.sh "<test command>" <fix-file>...`.
+- A test that expects a failure checks **the reason** (the message or the cause), not only the exit code: otherwise
+  it also passes when it fails for another reason.
 - `python3 .claude/gw/scripts/doctor.py` says whether the workflow is set up right, with the command that fixes each
   problem.
 

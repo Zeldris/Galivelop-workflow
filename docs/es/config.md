@@ -59,7 +59,8 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
 - **`content` y la marca.** Un cambio que solo toca archivos de `content` no necesita revisión; cualquier otro, sí.
   `revisado.sh` escribe en `reviewMark` el commit revisado y la marca debe ser antecesora de lo que se sube y no tener
   código después. `.claude/gw.json`, `.claude/settings.json`, `.claude/gw/` y `.githooks/` son siempre código, diga
-  lo que diga `content`.
+  lo que diga `content`. Para ver cómo se clasifica una ruta y por qué:
+  `bash .claude/gw/scripts/es-codigo.sh --explicar <ruta>...`.
 - **`logRows`** va con la plantilla de bitácora de filas (`| **Tarea en curso · \`rama\`** | … |`); el push comprueba
   que cada rama escribe solo en su fila.
 - Tras actualizar el flujo, sube `version` a mano (`/gw-update` lo hace): ese número es lo que `doctor.py`

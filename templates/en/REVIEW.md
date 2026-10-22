@@ -19,7 +19,8 @@ judgement. The project fills it in; the workflow never overwrites it once it exi
 - Hooks **fail closed** when a fact is missing (a commit the clone lacks, an API that does not answer), with the
   command that fixes it.
 - Shell scripts run on bash 3.2 (macOS): no `mapfile`, no associative arrays.
-- Every change to a hook or script comes with its test case.
+- Every change to a hook or script comes with its test case; a case that expects a failure checks the reason, not
+  only the exit code.
 
 ## Brought from another repo: adapt to this repo's contracts
 
