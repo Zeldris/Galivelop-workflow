@@ -157,18 +157,21 @@ Criterio de fin: el push ha subido, `doctor.py` sigue en verde y la bitácora di
 
 ## 6. Comprobar que la protección funciona
 
-En la rama de trabajo, haz commit de un cambio pequeño de código e intenta subirlo directamente a la rama protegida:
+En la rama de trabajo, haz commit de un cambio pequeño de código e intenta subirlo directamente a la rama protegida,
+en simulacro (el `pre-push` corre igual, no se sube nada aunque pasara, y el modo automático de Claude Code no lo
+bloquea como bloquea la subida real a la rama protegida):
 
 ```bash
-git push origin HEAD:<protectedBranch>
+git push --dry-run origin HEAD:<protectedBranch>
 ```
 
-Con cualquier `pushToProtected` **tiene que rechazarse** con «the pushed commit has no review mark» (con `pr`, la
-misma comprobación ocurre además al crear o fusionar el pull request). Después quita el commit de prueba
+Con cualquier `pushToProtected` **tiene que rechazarse**, con uno de estos dos motivos: «the pushed commit has no
+review mark» (no hay marca) o «code changed after the review mark» (hay marca y código detrás). Con `pr`, la misma
+comprobación ocurre además al crear o fusionar el pull request. Después quita el commit de prueba
 (`git reset --hard HEAD~1`, solo si no se ha subido a ningún sitio). La entrada normal es `/code-review`, arreglos,
 `bash .claude/gw/scripts/revisado.sh` y la subida.
 
-Criterio de fin: la subida sin marca se rechazó y el commit de prueba ya no está.
+Criterio de fin: el simulacro se rechazó por uno de esos dos motivos y el commit de prueba ya no está.
 
 ## Proyectos existentes
 

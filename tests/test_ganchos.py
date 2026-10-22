@@ -132,6 +132,13 @@ class ProtectedBranchMark(Base):
         code, out = self.push_main(self.marked)
         self.assertEqual(code, 0, out)
 
+    def test_dry_run_to_the_protected_branch_runs_the_hook(self):
+        # aplicar.md step 6 proves the protection with --dry-run: the hook must refuse it, and nothing moves.
+        code, out = self.p.push("--dry-run", "origin", f"{self.code}:refs/heads/main")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("no review mark", out)
+        self.assertEqual(self.p.git("rev-parse", "main", cwd=self.p.bare).stdout.strip(), self.p.base)
+
     def test_code_after_mark_refused(self):
         code, out = self.push_main(self.after_mark)
         self.assertNotEqual(code, 0, out)

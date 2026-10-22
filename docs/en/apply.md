@@ -157,18 +157,21 @@ Done when: the push went through, `doctor.py` is still green and the log says wh
 
 ## 6. Prove the protection works
 
-On the working branch, commit a small code change and try to push it straight to the protected branch:
+On the working branch, commit a small code change and try to push it straight to the protected branch, as a dry
+run (`pre-push` runs all the same, nothing is pushed even if it passed, and Claude Code's auto mode does not block it
+as it blocks the real push to the protected branch):
 
 ```bash
-git push origin HEAD:<protectedBranch>
+git push --dry-run origin HEAD:<protectedBranch>
 ```
 
-With either `pushToProtected` it **must be refused** with "the pushed commit has no review mark" (with `pr`, the
-same check also happens when the pull request is created or merged). Then drop the test commit
+With either `pushToProtected` it **must be refused**, for one of two reasons: "the pushed commit has no review mark"
+(there is no mark) or "code changed after the review mark" (there is a mark, with code after it). With `pr`, the same
+check also happens when the pull request is created or merged. Then drop the test commit
 (`git reset --hard HEAD~1`, only if it was not pushed anywhere). The normal way in is `/code-review`, fixes,
 `bash .claude/gw/scripts/revisado.sh` and the push.
 
-Done when: the push without a mark was refused and the test commit is gone.
+Done when: the dry run was refused for one of those two reasons and the test commit is gone.
 
 ## Existing projects
 
