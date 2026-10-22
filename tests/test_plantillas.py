@@ -124,6 +124,16 @@ class Templates(unittest.TestCase):
                  if path in f.read_text(encoding="utf-8", errors="replace")]
         self.assertEqual(found, [], "paths the workflow no longer creates")
 
+    def test_ci_sets_up_the_toolchain_from_the_project_files(self):
+        text = (TEMPLATES / "github" / "comprobar.yml").read_text()
+        install = text.index("- name: Install")
+        for action, files in (("setup-node", "'package.json'"), ("setup-python", "'pyproject.toml'"),
+                              ("setup-java", "'pom.xml'")):
+            with self.subTest(action=action):
+                at = text.index(f"actions/{action}@")
+                self.assertLess(at, install, f"{action} must run before Install")
+                self.assertIn(f"if: hashFiles({files}", text[at:install])
+
     def test_sample_config_is_valid(self):
         sample = json.loads((TEMPLATES / "gw.json").read_text())
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())

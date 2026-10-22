@@ -157,8 +157,9 @@ project asks for in the same final block. The commit already goes through the ne
 and, for agents, the `protectedPaths`); if it stops, read its message. Then `git push -u origin <branch>`: the new `pre-push` runs the `check` on
 the commit being pushed; if it fails, fix it and push again (never with `--no-verify`, except a red `WIP:`).
 
-If the project has CI, check that the `Comprobar` workflow passes; it may first need the toolchain setup steps
-(setup-node, setup-java…) that the header of `comprobar.yml` mentions.
+If the project has CI, check that the `Comprobar` workflow passes. Node, Python and Java are set up on their own when
+`package.json`, `pyproject.toml`/`requirements*.txt` or `pom.xml`/`build.gradle*` exist; another toolchain
+(rust-toolchain…) must be added, as the header of `comprobar.yml` says.
 
 Done when: the push went through, `doctor.py` is still green and the log says what comes next.
 

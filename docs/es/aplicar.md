@@ -157,8 +157,9 @@ secretos y, para agentes, las `protectedPaths`); si se para, lee su mensaje. Des
 corre el `check` sobre el commit que se sube; si falla, se arregla y se vuelve a subir (nunca con `--no-verify`, salvo
 un `WIP:` en rojo).
 
-Si el proyecto tiene CI, comprueba que el workflow `Comprobar` pasa; puede necesitar antes los pasos de instalar la
-cadena de herramientas (setup-node, setup-java…) que `comprobar.yml` indica en su cabecera.
+Si el proyecto tiene CI, comprueba que el workflow `Comprobar` pasa. Node, Python y Java se instalan solos si están
+`package.json`, `pyproject.toml`/`requirements*.txt` o `pom.xml`/`build.gradle*`; otra cadena de herramientas
+(rust-toolchain…) hay que añadirla, como dice la cabecera de `comprobar.yml`.
 
 Criterio de fin: el push ha subido, `doctor.py` sigue en verde y la bitácora dice lo que sigue.
 
