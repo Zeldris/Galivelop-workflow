@@ -8,6 +8,106 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.2.0] - 2026-10-22
+
+### ES
+
+Propuestas del piloto del portal y de la tercera recogida de Tarkor (reparto en
+`docs/propuestas/2026-10-22-reparto.md`):
+
+- `pre-push` y el gancho de PR juzgan la rama protegida con la config de la propia rama remota; `.claude/gw.json`
+  cuenta como código (P1).
+- Se buscan marcadores de conflicto en todo `base..local` (P16).
+- `content` por defecto acotado en `templates/gw.json` (P9).
+- Versión obligatoria si cambia algo copiable; los mensajes distinguen «edición local» de «copia anterior» (P2 a, b).
+- `recuperar.py --estado` ya no se cuelga sin entrada (`select`) ni con la tubería cerrada (`BrokenPipeError`) (P5).
+- Fuera las referencias a `.claude/hooks/` de la plantilla de `CLAUDE.md`, con un test de rutas obsoletas (P19).
+- `aplicar.py` copia `LICENSE-mattpocock-skills` con las skills adaptadas (P17).
+- `recoger.py` saca ideas de cualquier `.md` cambiado (P21).
+- `retro` sin `disable-model-invocation`: el agente puede lanzarla (P4).
+- `doctor.py` y `aplicar.py` avisan de archivos del flujo ignorados por git (`git check-ignore`) (P3).
+- `doctor.py` avisa de propuestas `*.gw-nuevo` pendientes y de ganchos duplicados (P7).
+- `aplicar.md`, paso 6: la prueba de la protección en simulacro (`--dry-run`) y sus dos mensajes (P12).
+- `aplicar.py --init` con banderas para las claves que decide el proyecto; `requireRetro` con un solo valor por
+  defecto (P10).
+- `aplicar.py` imprime el diff de un `REVIEW.md` o `GLOSSARY.md` que ya existía (P18).
+- El CI de la plantilla (`comprobar.yml`) detecta e instala su cadena con `setup-node`/`setup-python` (P13, en parte).
+- `es-codigo.sh --explicar`; los tests de un fallo comprueban el motivo (P14 a, c).
+- `recuperar.py --estado` muestra las secciones de la config que importan (P15 a).
+- Al aplicar el flujo se lee con un subagente; fila nueva en `selector` y aviso en `opt-tokens` (P11).
+- `orchestrate-dealer` (Tarkor P1-P4): los arreglos de una revisión van con `sonnet`; un arreglo de un archivo con el
+  sitio dado lo hace la principal; antes del PR solo lo grave o medio; el worktree del encargo parte de
+  `origin/<rama>`.
+
+Retro antes de `main`:
+
+- R1: `doctor.py` avisa (`compaction`) de una sesión en la nube sin `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en el entorno;
+  fila en `problemas.md` / `troubleshooting.md`.
+- R2: `orchestrate-dealer` reparte las filas aprobadas a subagentes, o la principal cierra cada 4-5 filas con
+  `/clear`.
+- R3: `tests/shellcheck.sh`; en la nube y en el CI falla sin shellcheck (remedio: `pip install shellcheck-py`); en
+  local solo avisa.
+
+Arreglos de las revisiones de código antes de `main`:
+
+- Un `.claude/gw.json` inválido en la punta remota de una rama no protegida ya no bloquea la subida que lo arregla
+  ni un PR hacia ella; el gancho de PR carga cada config una vez.
+- `README.es.md`, `CHANGELOG.md` y `CREDITS.md` cuentan como contenido en `templates/gw.json`.
+- `recuperar.py` espera 1 s la entrada del gancho `SessionStart`.
+- `aplicar.py` importa `ignored_paths` y `stale_flow_hooks` de `doctor.py` (un dato, un sitio).
+- `version.py --release` corre en el `pre-push` hacia `main` (`GW_PUSH_PROTECTED`) y compara con la última etiqueta
+  alcanzable desde `HEAD`; `release.yml` ya no lo llama.
+- `.claude/gw.json` de este repo instala `shellcheck-py` en la nube; `doctor.py` solo mira la ventana de
+  compactación si el `settings.json` del proyecto la fija; `tests/shellcheck.sh` recibe los archivos de
+  `comprobar.sh`.
+
+### EN
+
+Proposals from the portal pilot and the third Tarkor harvest (split in `docs/propuestas/2026-10-22-reparto.md`):
+
+- `pre-push` and the PR hook judge the protected branch by the remote branch's own config; `.claude/gw.json` counts
+  as code (P1).
+- Conflict markers are searched in all of `base..local` (P16).
+- Narrower default `content` in `templates/gw.json` (P9).
+- A version bump is required when anything copyable changes; messages tell "local edit" from "older copy" (P2 a, b).
+- `recuperar.py --estado` no longer hangs without input (`select`) nor on a closed pipe (`BrokenPipeError`) (P5).
+- No more `.claude/hooks/` references in the `CLAUDE.md` template, with a stale-path test (P19).
+- `aplicar.py` copies `LICENSE-mattpocock-skills` along with the adapted skills (P17).
+- `recoger.py` takes ideas from any changed `.md` (P21).
+- `retro` without `disable-model-invocation`: the agent can launch it (P4).
+- `doctor.py` and `aplicar.py` warn about workflow files ignored by git (`git check-ignore`) (P3).
+- `doctor.py` warns about pending `*.gw-nuevo` proposals and duplicated hooks (P7).
+- `aplicar.md`, step 6: the protection test as a dry run (`--dry-run`) and its two messages (P12).
+- `aplicar.py --init` with flags for the keys the project decides; `requireRetro` with a single default (P10).
+- `aplicar.py` prints the diff of a `REVIEW.md` or `GLOSSARY.md` that already existed (P18).
+- The template CI (`comprobar.yml`) detects and installs its toolchain with `setup-node`/`setup-python` (P13, part).
+- `es-codigo.sh --explicar`; tests of a failure check the reason (P14 a, c).
+- `recuperar.py --estado` shows the config sections that matter (P15 a).
+- The workflow is read by a subagent when applying it; new row in `selector` and a warning in `opt-tokens` (P11).
+- `orchestrate-dealer` (Tarkor P1-P4): review fixes go to `sonnet`; a one-file fix with its place given is done by
+  the main session; before the PR only severe or medium findings; the task's worktree starts from `origin/<branch>`.
+
+Retro before `main`:
+
+- R1: `doctor.py` warns (`compaction`) about a cloud session without `CLAUDE_CODE_AUTO_COMPACT_WINDOW` in its
+  environment; row in `problemas.md` / `troubleshooting.md`.
+- R2: `orchestrate-dealer` deals approved rows to subagents, or the main session closes every 4-5 rows with
+  `/clear`.
+- R3: `tests/shellcheck.sh`; in the cloud and in CI it fails without shellcheck (fix: `pip install shellcheck-py`);
+  locally it only warns.
+
+Fixes from the code reviews before `main`:
+
+- An invalid `.claude/gw.json` at the remote tip of an unprotected branch no longer blocks the push that fixes it nor
+  a PR into it; the PR hook loads each config once.
+- `README.es.md`, `CHANGELOG.md` and `CREDITS.md` count as content in `templates/gw.json`.
+- `recuperar.py` waits 1 s for the `SessionStart` hook's input.
+- `aplicar.py` imports `ignored_paths` and `stale_flow_hooks` from `doctor.py` (one fact, one place).
+- `version.py --release` runs in the `pre-push` to `main` (`GW_PUSH_PROTECTED`) and compares with the last tag
+  reachable from `HEAD`; `release.yml` no longer calls it.
+- This repo's `.claude/gw.json` installs `shellcheck-py` in the cloud; `doctor.py` only checks the compaction window
+  if the project's `settings.json` sets it; `tests/shellcheck.sh` gets its files from `comprobar.sh`.
+
 ## [0.1.0] - 2026-10-22
 
 ### ES

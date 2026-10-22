@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.1.0
+# galivelop-workflow v0.2.0
 """Check that a project has the workflow set up (used by /gw-doctor and CI). No AI, no network.
 
   python3 doctor.py            # one line per check: OK / WARN / FAIL, each problem with the command that fixes it

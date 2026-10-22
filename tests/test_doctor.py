@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_ganchos import ROOT
+from test_ganchos import ROOT, VERSION
 from test_sesion import SessionProject
 
 SKILL = """---
@@ -33,7 +33,7 @@ class Doctor(unittest.TestCase):
         p.write(".github/workflows/check.yml", "name: check\n")
         p.write("AGENTS.md", "# Rules\n\nDeal multi-step work to subagents (skill orchestrate-dealer).\n")
         p.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| Next step | write tests |\n")
-        p.write(".claude/skills/selector/SKILL.md", SKILL.format(version="0.1.0"))
+        p.write(".claude/skills/selector/SKILL.md", SKILL.format(version=VERSION))
         p.commit("set up")
 
     def doctor(self, *args):
@@ -94,7 +94,7 @@ class Doctor(unittest.TestCase):
 
     def test_wrong_hook_version(self):
         hook = self.p.work / ".githooks" / "pre-push"
-        hook.write_text(hook.read_text().replace("# galivelop-workflow v0.1.0", "# galivelop-workflow v0.0.1", 1))
+        hook.write_text(hook.read_text().replace(f"# galivelop-workflow v{VERSION}", "# galivelop-workflow v0.0.1", 1))
         code, out = self.doctor()
         self.assertEqual(code, 0, out)
         self.assertLine(out, "WARN", "pre-push", "0.0.1", "/gw-update")
@@ -156,7 +156,7 @@ class Doctor(unittest.TestCase):
 
     def test_skill_citing_a_missing_license(self):
         self.p.write(".claude/skills/grilling/SKILL.md",
-                     SKILL.format(version="0.1.0").replace("---\n", "---\nlicense: MIT (see LICENSE-mattpocock-skills)\n", 1))
+                     SKILL.format(version=VERSION).replace("---\n", "---\nlicense: MIT (see LICENSE-mattpocock-skills)\n", 1))
         code, out = self.doctor()
         self.assertLine(out, "WARN", "grilling cite LICENSE-mattpocock-skills", "/gw-update")
         self.p.write(".claude/skills/LICENSE-mattpocock-skills", "MIT\n")

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.1.0
+# galivelop-workflow v0.2.0
 """Deterministic part of the gw-harvest skill: what changed in projects that use the workflow.
 
 For each project repository it reports, without judging anything:

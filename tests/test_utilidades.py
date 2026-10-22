@@ -12,7 +12,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_ganchos import BASE_CONFIG, Project, ROOT, ZERO
+from test_ganchos import BASE_CONFIG, Project, ROOT, VERSION, ZERO
 
 sys.dont_write_bytecode = True
 SCRIPTS = ("bitacora.py", "prepush-ramas.sh", "fusionar.sh", "rojo-sin-arreglo.sh", "tests-relacionados.sh",
@@ -586,7 +586,7 @@ class RepoItself(unittest.TestCase):
             with self.subTest(script=name):
                 self.assertTrue(path.stat().st_mode & 0o111, f"{name} must be executable: chmod +x scripts/{name}")
                 head = path.read_text(encoding="utf-8").splitlines()[:3]
-                self.assertIn("# galivelop-workflow v0.1.0", head)
+                self.assertIn(f"# galivelop-workflow v{VERSION}", head)
                 self.assertTrue(head[0].startswith("#!"))
 
     def test_python_scripts_do_not_write_bytecode(self):
@@ -596,7 +596,7 @@ class RepoItself(unittest.TestCase):
     def test_gw_json_of_this_repo_is_valid(self):
         r = subprocess.run([sys.executable, str(ROOT / "scripts" / "config.py"), "validate"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual(BASE_CONFIG["version"], "0.1.0")
+        self.assertEqual(json.loads((ROOT / ".claude" / "gw.json").read_text())["version"], VERSION)
 
 
 if __name__ == "__main__":

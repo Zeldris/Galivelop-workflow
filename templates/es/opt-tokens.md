@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.1.0 -->
+<!-- galivelop-workflow v0.2.0 -->
 # opt-tokens — notas del proyecto
 
 Las lee la skill `opt-tokens` antes de proponer nada, y se actualizan cuando el usuario aprueba un cambio. El flujo

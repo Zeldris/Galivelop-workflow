@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.1.0 -->
+<!-- galivelop-workflow v0.2.0 -->
 # opt-ai — project notes
 
 Read by the `opt-ai` skill first; everything specific to this project's local AI models lives here. Created by the
