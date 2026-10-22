@@ -49,6 +49,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    same commit.
    Task: <what, in one or two sentences>.
    Done when: <checkable criterion>. Run before pushing: {check}.
+   For guard code or scripts: first list the edge cases (git states, platforms, empty or odd input) and write a
+   test for each before calling the chunk done; the review afterwards is the safety net, not the first pass.
    Do not: <what belongs to another chunk or needs a user decision>.
    If you change a function or a field, grep every user of it and adjust them, or list them under MISSING.
    If you touch processes, paths or permissions, write it for every platform the project supports.

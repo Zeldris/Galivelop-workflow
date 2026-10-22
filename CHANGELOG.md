@@ -8,7 +8,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-10-22
 
 ### ES
 
@@ -37,6 +37,8 @@ here.
 - Segunda recogida de Tarkor (7 propuestas aplicadas): `orchestrate-dealer` revisa todo el código de subagentes, tandas
   de 6-8 puntos, encargos que leen su fila con `recuperar.py --estado`, subagentes cortados se retoman, estado
   intermedio fuera de git; `opt-ai` no compara con menos de ~8 turnos; `recoger.py` avisa de un clon atrasado.
+- Retro de la segunda subida: los encargos de código de guarda piden listar los casos límite y probar cada uno antes
+  de entregar.
 - Skills de Matt Pocock (mattpocock/skills, MIT) con su mención en cada una, `CREDITS.md` y agradecimiento en los
   README: de su trabajo aprendimos esta forma de trabajar.
 
@@ -66,5 +68,6 @@ here.
 - Second Tarkor harvest (7 proposals applied): `orchestrate-dealer` reviews all subagent code, batches of 6-8 items,
   briefs read their row with `recuperar.py --estado`, cut-off subagents are resumed, intermediate state out of git;
   `opt-ai` does not compare with fewer than ~8 turns; `recoger.py` warns about a stale clone.
+- Second-push retro: briefs for guard code ask to list the edge cases and test each one before delivering.
 - Matt Pocock's skills (mattpocock/skills, MIT) with his credit in each one, `CREDITS.md` and acknowledgements in the
   READMEs: we learned this way of working from his work.

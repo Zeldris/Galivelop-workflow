@@ -1,6 +1,6 @@
 # Retro — segunda subida a `main` (2026-10-22)
 
-**Estado:** pendiente de la decisión del usuario.
+**Estado:** aplicadas todas (decisión del usuario, 2026-10-22).
 
 Lo revisado: desde la primera subida (`603ca36`) hasta `d01091e`. El mensaje del `pre-push`, `version.py`,
 `release.yml`, la segunda recogida de Tarkor (7 propuestas aplicadas) y dos rondas de `/code-review` con 10
@@ -38,4 +38,5 @@ compactaciones; 5 subagentes con 79 llamadas y un arranque medio de 61k.
 
 ## Decisión del usuario
 
-_(pendiente)_
+Aprobadas R1 y R2. R2, aplicada en el encargo de `orchestrate-dealer`. R1: esta sesión se cierra tras la subida a
+`main` y la etiqueta `v0.1.0`; se sigue en una sesión abierta desde el repo.

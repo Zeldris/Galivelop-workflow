@@ -11,8 +11,8 @@
 | Rama | `claude/galivelop-workflow-inicio`; `main` = `603ca36` (primera subida, 2026-10-22) |
 | Check | `bash tests/comprobar.sh` — en verde en local y en el CI (Linux y macOS, run 39739419422 sobre `78cddb5`, con el repo público un rato el 2026-10-22); con el repo privado el CI no arranca hasta que se renueve el cupo de Actions |
 | Fase en curso | **5. Piloto: Portal-Galivelop** (plan §9) — sin empezar; necesita una sesión del portal con permiso del usuario |
-| Último punto estable | Segunda subida a `main`, fase 1: `/code-review` de `origin/main...HEAD` con 10 hallazgos, arreglados con sus tests |
-| Siguiente paso | Fase 2: `/opt-tokens` y `/retro` presentados al usuario; fase 3: revisión de lo nuevo, `revisado.sh`, push a `main` |
+| Último punto estable | Segunda subida a `main`, fase 2 decidida y aplicada (R2 en `orchestrate-dealer`); CHANGELOG `0.1.0` fechado |
+| Siguiente paso | Fase 3: revisión de lo de la fase 2, `revisado.sh`, push a `main`; etiqueta `v0.1.0` con el repo público un momento |
 
 ### Fases
 
