@@ -103,7 +103,13 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   # shellcheck disable=SC2086  # $known is one sha or nothing
   new="$(git rev-list --reverse "$local_sha" --not --remotes $known)" || fail "cannot list the commits of ${local_sha:0:7}; fetch and retry: git fetch $remote"
   if [ -z "$new" ]; then
-    echo "pre-push: nothing new to push to $remote_ref (every commit of ${local_sha:0:7} is already on the remote; did you commit?)"
+    if [ "$local_sha" = "$remote_sha" ]; then
+      echo "pre-push: nothing new to push to $remote_ref (it is already at ${local_sha:0:7}; did you commit?)"
+    else
+      # The ref moves, but its commits are already on the remote in other branches (e.g. work branch -> main).
+      if [ -n "$known" ]; then moved="$(git rev-list --count "$known..$local_sha")"; else moved="$(git rev-list --count "$local_sha")"; fi
+      echo "pre-push: moving $remote_ref to ${local_sha:0:7}: $moved commit(s), already on the remote in other branches"
+    fi
   else
     count="$(printf '%s\n' "$new" | grep -c .)"
     echo "pre-push: pushing $count commit(s) to $remote_ref:"

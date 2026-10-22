@@ -11,7 +11,7 @@
 | Rama | `claude/galivelop-workflow-inicio`; `main` = `603ca36` (primera subida, 2026-10-22) |
 | Check | `bash tests/comprobar.sh` — en verde en local y en el CI (Linux y macOS, run 39739419422 sobre `78cddb5`, con el repo público un rato el 2026-10-22); con el repo privado el CI no arranca hasta que se renueve el cupo de Actions |
 | Fase en curso | **5. Piloto: Portal-Galivelop** (plan §9) — sin empezar; necesita una sesión del portal con permiso del usuario |
-| Último punto estable | Primera subida a `main` (`603ca36`) con las tres fases: code review + 10 arreglos, opt-tokens + retro aplicadas, revisión de la fase 2, marca de `revisado.sh`; el `pre-push` comprobó la marca |
+| Último punto estable | Mensaje del `pre-push` aclarado (con test), `scripts/version.py` (marcadores de versión) y `.github/workflows/release.yml` |
 | Siguiente paso | Fase 5: el usuario abre una sesión en Portal-Galivelop con el prompt dado; después, `gw-harvest` sobre el portal desde aquí |
 
 ### Fases
@@ -30,8 +30,9 @@
 
 ## Para la próxima publicación
 
-`0.1.0` está en `main` sin etiqueta ni release (el CI no ha podido pasar: cupo de Actions). Para `0.1.1`: el mensaje
-del `pre-push` al subir a una rama commits que ya están en otra («nothing new… did you commit?») confunde.
+`0.1.0` está en `main` sin etiqueta ni release (el CI no ha podido pasar: cupo de Actions). Desde entonces, en la rama:
+mensaje del `pre-push` aclarado, `scripts/version.py` y `release.yml`. Publicar = tres fases, fecha en el CHANGELOG y
+etiqueta `v0.1.0`.
 
 ## Hecho (10 últimas)
 

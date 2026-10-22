@@ -221,7 +221,9 @@ class PrePush(Base):
     def test_nothing_new_is_said_plainly(self):
         code, out = self.p.push("origin", "HEAD:refs/heads/copy")
         self.assertEqual(code, 0, out)
-        self.assertIn("nothing new to push to refs/heads/copy", out)
+        self.assertIn("moving refs/heads/copy to", out)
+        self.assertIn("already on the remote in other branches", out)
+        self.assertNotIn("did you commit?", out)
 
     def test_failing_check_blocks_the_push(self):
         p = self.p

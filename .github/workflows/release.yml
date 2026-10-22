@@ -1,0 +1,42 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Tag, plugin.json and markers agree
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(python3 -c 'import json; print(json.load(open(".claude-plugin/plugin.json"))["version"])')"
+          if [ "$tag" != "$version" ]; then
+            echo "tag v$tag but plugin.json says $version; fix it: python3 scripts/version.py $tag" >&2
+            exit 1
+          fi
+          python3 scripts/version.py
+      - name: Check
+        run: bash tests/comprobar.sh
+      - name: Release notes from the CHANGELOG entry
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          awk -v v="$version" '
+            $0 ~ "^## \\[" v "\\]" { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then echo "CHANGELOG.md has no entry for $version" >&2; exit 1; fi
+          if grep -q 'Unreleased' <(grep "^## \[$version\]" CHANGELOG.md); then
+            echo "the CHANGELOG entry for $version still says Unreleased; set the date and tag again" >&2
+            exit 1
+          fi
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "Galivelop-workflow $GITHUB_REF_NAME" --notes-file notes.md --verify-tag

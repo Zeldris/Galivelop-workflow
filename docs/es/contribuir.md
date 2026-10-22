@@ -74,7 +74,12 @@ Mientras dure el rodaje la versión es `0.x`; `1.0.0` solo al cumplir los criter
 Cada versión tiene una entrada en [`CHANGELOG.md`](../../CHANGELOG.md) con `### ES` y `### EN`, ambas con el mismo
 contenido; el check falla si la versión de `plugin.json` no tiene entrada. Al subir la versión, el `metadata.version` de
 **todas** las skills (lo exige `test_skills.py`) y las cabeceras `# galivelop-workflow vX.Y.Z` de scripts y plantillas se mueven con
-ella, y los proyectos la recogen con `/gw-update`.
+ella, y los proyectos la recogen con `/gw-update`. No se tocan a mano: `python3 scripts/version.py X.Y.Z` los mueve
+todos y deja la entrada del CHANGELOG por rellenar; sin argumento, comprueba que ninguno se ha quedado atrás.
+
+**Publicar una versión:** en `main` (con las tres fases hechas), la entrada del CHANGELOG con fecha en vez de
+«Unreleased», y la etiqueta: `git tag vX.Y.Z && git push origin vX.Y.Z`. El workflow `release.yml` comprueba que la
+etiqueta, `plugin.json` y los marcadores coinciden, pasa el check y crea la release con esa entrada.
 
 ## Commit, bitácora y `main`
 

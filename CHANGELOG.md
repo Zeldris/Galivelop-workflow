@@ -31,6 +31,9 @@ here.
   retro decidida antes de marcar); las plantillas `AGENTS.md` piden `/clear` al cerrar cada fase y mirar el CI al
   cerrar cada bloque; `orchestrate-dealer` pide revisar las guardas al volver cada trozo; `gw-harvest` y las guías
   piden no registrar en la sesión los repos que solo se leen; `docs/mapa-agente.md` para los encargos.
+- `scripts/version.py` (comprueba y sube todos los marcadores de versión) y `release.yml` (release desde la entrada
+  del CHANGELOG al etiquetar `vX.Y.Z`); el `pre-push` ya no pregunta «did you commit?» al mover una rama a commits que
+  el remoto ya tiene en otra.
 - Skills de Matt Pocock (mattpocock/skills, MIT) con su mención en cada una, `CREDITS.md` y agradecimiento en los
   README: de su trabajo aprendimos esta forma de trabajar.
 
@@ -54,5 +57,8 @@ here.
   retro before marking); the `AGENTS.md` templates ask for `/clear` when each phase closes and a CI look when each block
   closes; `orchestrate-dealer` asks for a review of guard code as each chunk returns; `gw-harvest` and the guides say
   not to register read-only repos in the session; `docs/mapa-agente.md` for briefs.
+- `scripts/version.py` (checks and bumps every version marker) and `release.yml` (release from the CHANGELOG entry when
+  tagging `vX.Y.Z`); `pre-push` no longer asks "did you commit?" when moving a branch to commits the remote already has
+  in another.
 - Matt Pocock's skills (mattpocock/skills, MIT) with his credit in each one, `CREDITS.md` and acknowledgements in the
   READMEs: we learned this way of working from his work.

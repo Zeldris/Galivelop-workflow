@@ -14,7 +14,7 @@ is required, the log defaults to docs/traspaso.md in Spanish and docs/handoff.md
 applies as usual.
 
 What it copies (workflow -> project):
-  scripts/*                     -> .claude/gw/scripts/   (not recoger.py nor aplicar.py: workflow-only), exec bits kept
+  scripts/*                     -> .claude/gw/scripts/   (not recoger.py, aplicar.py nor version.py: workflow-only), exec bits kept
   schema/gw.schema.json         -> .claude/gw/schema/
   skills/<name>/                -> .claude/skills/<name>/ (not the optional opt-ai and scout-updates unless --with
                                    or already installed; not the workflow-only gw-harvest; all of them when PROJECT
@@ -61,7 +61,7 @@ WORKFLOW = HERE.parent
 sys.path.insert(0, str(HERE))
 import config  # noqa: E402
 
-WORKFLOW_ONLY_SCRIPTS = {"recoger.py", "aplicar.py"}
+WORKFLOW_ONLY_SCRIPTS = {"recoger.py", "aplicar.py", "version.py"}
 WORKFLOW_ONLY_SKILLS = {"gw-harvest"}
 OPTIONAL_SKILLS = {"opt-ai", "scout-updates"}
 IGNORED = {"__pycache__", ".DS_Store"}

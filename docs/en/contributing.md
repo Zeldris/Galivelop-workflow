@@ -74,7 +74,12 @@ Throughout the run-in the version is `0.x`; `1.0.0` only once the plan's criteri
 Each version has an entry in [`CHANGELOG.md`](../../CHANGELOG.md) with `### ES` and `### EN`, both with the same
 content; the check fails when `plugin.json`'s version has no entry. When the version goes up, **every** skill's
 `metadata.version` (`test_skills.py` requires it) and the `# galivelop-workflow vX.Y.Z` headers of scripts and templates move with it, and projects
-pick it up with `/gw-update`.
+pick it up with `/gw-update`. They are not edited by hand: `python3 scripts/version.py X.Y.Z` moves them all and
+leaves the CHANGELOG entry to fill in; without an argument it checks none was left behind.
+
+**Releasing a version:** on `main` (with the three phases done), the CHANGELOG entry dated instead of
+"Unreleased", and the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`. The `release.yml` workflow checks that the tag,
+`plugin.json` and the markers agree, runs the check and creates the release with that entry.
 
 ## Commit, log and `main`
 
