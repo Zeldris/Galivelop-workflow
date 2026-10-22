@@ -65,7 +65,7 @@ the push, the last line is the command that fixes it.
 ## Creating or merging a PR (`revision-antes-de-main.sh`)
 
 The `PreToolUse` hook that guards `create_pull_request`, `merge_pull_request` and `gh pr create|merge`. It **fails
-closed**: if it cannot check, it blocks and says why. With `pushToProtected: direct`, the `pre-push` guards instead.
+closed**: if it cannot check, it blocks and says why. A direct push to the protected branch is guarded by `pre-push`, in both `pushToProtected` modes.
 
 | Block | Cause | Fix |
 |---|---|---|

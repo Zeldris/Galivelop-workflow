@@ -122,6 +122,12 @@ class Templates(unittest.TestCase):
         self.assertEqual(set(sample), set(schema["properties"]), "templates/gw.json must show every key")
         self.assertEqual(sample["version"], VERSION)
 
+    def test_default_content_keeps_the_guard_scripts_as_code(self):
+        content = json.loads((TEMPLATES / "gw.json").read_text())["content"]
+        self.assertIn("^\\.claude/skills/", content)
+        for path in (".claude/gw/scripts/es-codigo.sh", ".claude/gw/scripts/config.py", ".claude/gw/schema/gw.schema.json"):
+            self.assertFalse(any(re.search(p, path) for p in content), f"{path} must stay code (reviewed)")
+
 
 class Init(unittest.TestCase):
     def setUp(self):

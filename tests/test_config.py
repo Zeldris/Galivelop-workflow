@@ -63,6 +63,26 @@ class Config(unittest.TestCase):
         self.write(VALID)
         self.assertEqual(cli(self.tmp, "get", "nope").returncode, 2)
 
+    def test_rev_reads_the_config_of_that_commit(self):
+        git = ["git", "-C", str(self.tmp), "-c", "user.name=T", "-c", "user.email=t@example.com",
+               "-c", "commit.gpgsign=false"]
+        subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "no config"], check=True)
+        self.write(VALID)
+        subprocess.run([*git, "add", "-A"], check=True)
+        subprocess.run([*git, "commit", "-q", "-m", "config"], check=True)
+        self.write(dict(VALID, protectedBranch="trunk"))  # the working tree says otherwise
+        self.assertEqual(cli(self.tmp, "get", "protectedBranch").stdout.strip(), "trunk")
+        r = cli(self.tmp, "--rev", "HEAD", "get", "protectedBranch")
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "main"), r.stderr)
+        self.assertEqual(cli(self.tmp, "--rev", "HEAD", "get", "requireRetro").stdout.strip(), "false")
+        r = cli(self.tmp, "--rev", "HEAD~1", "get", "protectedBranch")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("not in commit HEAD~1", r.stderr)
+        subprocess.run([*git, "commit", "-q", "--allow-empty", "-m", "x"], check=True)
+        (self.tmp / ".claude" / "gw.json").write_text("{}")
+        subprocess.run([*git, "commit", "-q", "-am", "broken"], check=True)
+        self.assertEqual(cli(self.tmp, "--rev", "HEAD", "validate").returncode, 2)
+
     def test_not_a_git_repo_fails(self):
         plain = Path(tempfile.mkdtemp())
         try:

@@ -23,7 +23,7 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
 | `language` | Language of templates and replies: `es` or `en` | (none) | `"en"` | `aplicar.py` (which templates it copies), `revisado.sh` (message language) |
 | `log` | Path of the hand-off log, from the repo root | (none; `--init` sets `docs/traspaso.md` for es and `docs/handoff.md` for en) | `"docs/handoff.md"` | `recuperar.py`, `doctor.py`, `prepush-ramas.sh`, `aplicar.py` |
 | `protectedBranch` | The branch that takes only reviewed code | (none) | `"main"` | `pre-push`, `revision-antes-de-main.sh`, `revisado.sh`, `fusionar.sh`, templates and CI |
-| `pushToProtected` | Who guards it: `direct` (`pre-push` requires the review mark) or `pr` (the `PreToolUse` hook guards PR creation and merging) | (none) | `"pr"` | `pre-push`, `revision-antes-de-main.sh` |
+| `pushToProtected` | How code reaches it: `direct` (pushed straight) or `pr` (by pull request: the `PreToolUse` hook also guards PR creation and merging). In both, `pre-push` requires the review mark on every direct push that brings code | (none) | `"pr"` | `pre-push`, `revision-antes-de-main.sh` |
 | `check` | Commands run **in order** on the commit being pushed; all must pass. At least one | (none) | `["npm run check"]` | `pre-push`, `fusionar.sh`, `doctor.py`, CI |
 | `reviewMark` | Committed file holding the reviewed commit's sha | (none; `--init` sets `docs/registros/revisado.txt`) | `"docs/registros/revisado.txt"` | `revisado.sh` (writes it), `es-codigo.sh`, `pre-push`, `revision-antes-de-main.sh` |
 | `content` | Regexes (on repo-relative paths) of what **is content, not code**: it needs no `/code-review` | (none; may be `[]`, then everything is code) | `["^docs/", "\\.md$"]` | `es-codigo.sh`, and through it `pre-push` and `revision-antes-de-main.sh` |
@@ -50,8 +50,9 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
 
 - **`check` is a list of commands**, not a single script: each runs with `bash -c` at the root of the commit being
   pushed. One that does not exist is caught by `doctor.py` before a push fails.
-- **`pushToProtected`** changes which hook the protection rests on: with `pr` the `pre-push` asks for no mark (the PR
-  hook does); with `direct` the `pre-push` asks for it. Choose how code reaches the protected branch today.
+- **`pushToProtected`** says how code reaches the protected branch today. A direct push that brings code always needs
+  the mark in `pre-push`, with `direct` and with `pr`; with `pr`, the PR hook also asks for it when the pull request
+  is created or merged. The config is read from the pushed commit, not the working copy.
 - **`content` and the mark.** A change touching only `content` files needs no review; any other does. `revisado.sh`
   writes the reviewed commit to `reviewMark`, and the mark must be an ancestor of what is pushed with no code after it.
 - **`logRows`** goes with the row-based log template (``| **Current task · `branch`** | … |``); the push checks that

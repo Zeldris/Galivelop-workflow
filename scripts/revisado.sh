@@ -49,7 +49,9 @@ if [ "$retro" = "true" ]; then
   while IFS= read -r file; do
     [ -n "$file" ] || continue
     status="$(git show "HEAD:$file" | grep -m1 -E '^\*\*(Estado|Status)' || true)"
-    if printf '%s\n' "$status" | grep -qiE 'aplicad|rechazad|aplazad|decidid|applied|rejected|deferred|decided'; then
+    # Whole words only ("undecided" is not "decided"), and a line that also says it is still pending is not a decision.
+    if printf '%s\n' "$status" | grep -qiwE '(aplicad[ao]s?|rechazad[ao]s?|aplazad[ao]s?|decidid[ao]s?|applied|rejected|deferred|decided)' \
+      && ! printf '%s\n' "$status" | grep -qiE 'pendiente|pending|undecided|sin decidir|aún no|not yet'; then
       decided="$file"
     fi
   done <<<"$added"

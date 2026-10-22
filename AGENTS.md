@@ -43,7 +43,12 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 ## Ramas y `main`
 
 - Se trabaja en la rama que indique la bitácora (hoy `claude/galivelop-workflow-inicio`).
-- **A `main` solo con confirmación del usuario**, y antes `/code-review` del diff contra `origin/main`.
+- **A `main` solo con confirmación del usuario**, y antes las tres fases del flujo:
+  1. **Código:** `/code-review` del diff contra `origin/main` (con `git fetch` antes); arreglos subidos con sus tests.
+  2. **Entorno:** `/opt-tokens` y `/retro`; sus propuestas se presentan al usuario y lo que confirme se aplica en la
+     rama (lo general para el flujo se aplica aquí mismo: este repo es el flujo).
+  3. **Cierre:** si la fase 2 trajo código, `/code-review` de esos commits; luego `bash scripts/revisado.sh` y la
+     subida (el `pre-push` exige la marca).
 - Este repo, una vez publicado, es lo que instalan otros proyectos: `main` = última versión publicada (plan §7).
 
 ## Reglas del proyecto

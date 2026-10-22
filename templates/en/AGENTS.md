@@ -66,7 +66,8 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - Merge, never rebase: branches are pushed.
 - **To `{{protectedBranch}}` only when the user confirms**, and it is written into the log. Depending on
   `pushToProtected` in `.claude/gw.json`, the work goes straight to it (`direct`: `.githooks/pre-push` asks for the
-  review mark) or by pull request (`pr`: a Claude Code hook asks for the mark before creating or merging it).
+  review mark) or by pull request (`pr`: a Claude Code hook asks for the mark before creating or merging it; a direct
+  push still needs it).
 - **Merged only with CI green**, also when the user says "merge directly": that skips waiting for more reviews, never
   the CI nor the retro presented to the user.
 - A subagent's branch comes back with `bash .claude/gw/scripts/fusionar.sh <branch> "<message>"`, which runs the check

@@ -66,7 +66,7 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
 - Merge, nunca rebase: las ramas están subidas.
 - **A `{{protectedBranch}}` solo con confirmación del usuario**, y se apunta en la bitácora. Según `pushToProtected`
   de `.claude/gw.json`, se sube directo (`direct`: `.githooks/pre-push` pide la marca de revisión) o por pull request
-  (`pr`: un gancho de Claude Code pide la marca antes de crearlo o fusionarlo).
+  (`pr`: un gancho de Claude Code pide la marca antes de crearlo o fusionarlo; un push directo la sigue pidiendo).
 - **Se fusiona solo con el CI en verde**, también cuando el usuario dice «fusiona directamente»: eso quita esperar a
   más revisiones, nunca el CI ni la retro presentada al usuario.
 - La rama de un subagente vuelve con `bash .claude/gw/scripts/fusionar.sh <rama> "<mensaje>"`, que corre el check y

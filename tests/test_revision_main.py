@@ -17,7 +17,8 @@ from test_ganchos import ROOT, Project
 
 FAKE_GH = """#!/bin/sh
 case "$1" in
-  auth) [ -z "${GH_UNAUTH:-}" ] || { echo "not logged in" >&2; exit 1; }; exit 0 ;;
+  auth) [ -z "${GH_UNAUTH:-}" ] || { echo "not logged in" >&2; exit 1; }
+        if [ -n "${GH_AUTH_ONCE:-}" ]; then [ ! -e "$GH_AUTH_ONCE" ] || exit 1; : > "$GH_AUTH_ONCE"; fi; exit 0 ;;
   api) ;;
   *) echo "fake gh: unsupported $*" >&2; exit 1 ;;
 esac
@@ -252,9 +253,48 @@ class Hook(unittest.TestCase):
         self.assertBlocked(self.bash("gh pr merge 7 -R o/r --squash", pr=self.pr(), runs=red), "linux: failure")
         self.assertAllowed(self.bash("gh pr merge 7 -R o/r --squash", pr=self.pr()))
 
+    def test_gh_pr_merge_with_global_repo_flag_guarded(self):
+        self.assertBlocked(self.bash("gh -R o/r pr merge 7 --squash", pr=self.pr()), "no review mark")
+        self.assertBlocked(self.bash("gh --repo o2/r2 pr merge 7", pr=self.pr(), env={"GH_FAIL": "1"}),
+                           "PR #7 of o2/r2")
+        self.assertBlocked(self.bash("GH_REPO=o3/r3 gh pr merge 7", pr=self.pr(), env={"GH_FAIL": "1"}),
+                           "PR #7 of o3/r3")
+
+    def test_gh_pr_merge_inside_a_shell_or_eval_guarded(self):
+        for command in ('bash -c "gh pr merge 7 -R o/r"', "sh -c 'gh pr merge 7 -R o/r --squash'",
+                        'zsh -lc "cd x && gh -R o/r pr merge 7"', 'eval "gh pr merge 7 -R o/r"', "eval gh pr merge 7 -R o/r"):
+            self.assertBlocked(self.bash(command, pr=self.pr()), "no review mark")
+
+    def test_gh_pr_merge_through_xargs_guarded(self):
+        code, out = self.bash("echo 7 | xargs gh pr merge", pr=self.pr())
+        self.assertEqual(code, 2, out)
+        self.assertBlocked(self.bash("echo 7 | xargs -n 1 gh pr merge 7 -R o/r", pr=self.pr()), "no review mark")
+
+    def test_gh_api_merge_guarded(self):
+        for command in ("gh api -X PUT repos/o/r/pulls/7/merge", "gh api --method PUT /repos/o/r/pulls/7/merge",
+                        "gh api --method=PUT repos/o/r/pulls/7/merge", "gh api repos/o/r/pulls/7/merge -f merge_method=squash"):
+            self.assertBlocked(self.bash(command, pr=self.pr()), "no review mark")
+        # {owner}/{repo}: gh fills them from the current repo, here not on github.com, so it cannot be checked
+        self.assertBlocked(self.bash("gh api -XPUT 'repos/{owner}/{repo}/pulls/7/merge'", pr=self.pr()), "owner/repo")
+        self.assertBlocked(self.bash("gh api -X PUT repos/o4/r4/pulls/7/merge", pr=self.pr(), env={"GH_FAIL": "1"}),
+                           "PR #7 of o4/r4")
+        self.assertAllowed(self.bash("gh api repos/o/r/pulls/7/merge"))  # GET: is it merged?
+        self.assertAllowed(self.bash("gh api repos/o/r/pulls/7"))
+
+    def test_unparseable_command_that_looks_like_a_merge_blocked(self):
+        self.assertBlocked(self.bash('gh pr merge 7 --body "unterminated'), "cannot parse")
+        self.assertAllowed(self.bash('echo "unterminated'))
+
+    def test_api_backend_is_decided_once(self):
+        self.mark(); self.push()
+        env = {"GH_AUTH_ONCE": str(self.tmp / "authed"), "GITHUB_TOKEN": "t0k3n"}  # gw-allow-secret: fake token for the test
+        self.assertAllowed(self.merge(pr=self.pr(), env=env))
+        self.assertFalse((self.tmp / "curl.log").exists(), "gh and curl mixed in one run")
+
     def test_text_that_mentions_gh_pr_not_guarded(self):
         self.assertAllowed(self.bash('grep "gh pr merge" docs/notes.md'))
         self.assertAllowed(self.bash("echo 'run gh pr create --base main later'"))
+        self.assertAllowed(self.bash('git commit -m "gh pr merge after review"'))
 
     def test_unrelated_tool_exits_0_silently(self):
         code, out = self.hook("Read", {"file_path": "/etc/hosts"})

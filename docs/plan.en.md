@@ -276,7 +276,7 @@ Keys in English (Phase 0 decision).
   "log": "docs/traspaso.md",
   "logRows": false,                         // optional: one row per branch with a limit (bitacora.py)
   "protectedBranch": "main",
-  "pushToProtected": "direct",              // direct | pr: which hook guards it (pre-push or PreToolUse)
+  "pushToProtected": "direct",              // direct | pr: direct push (pre-push asks for the mark in both) or PR (PreToolUse too)
   "install": ["npm ci"],
   "check": ["npm run check"],               // list of commands, run in order on the commit being pushed
   "reviewMark": "docs/registros/revisado.txt",

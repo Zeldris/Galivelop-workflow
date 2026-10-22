@@ -7,13 +7,15 @@
 #     the branch on GitHub, read with `git ls-remote origin` (never the local HEAD; nothing written under refs/).
 #     Its commit must carry the config's `reviewMark` naming an ancestor with no code after it (es-codigo.sh). A head
 #     that brings no code against the protected branch needs no mark.
-#   - Merge: mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge and `gh pr merge` in Bash. Same
-#     mark rule on the PR head, plus CI green: every check-run completed with success/neutral/skipped and every
+#   - Merge: mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge, and in Bash `gh pr merge` (also
+#     `gh -R o/r pr merge`, inside `bash -c`/`eval`, after `xargs`) and `gh api` PUT on repos/<o>/<r>/pulls/<n>/merge
+#     (-R/--repo and GH_REPO= name the repo). Same mark rule on the PR head, plus CI green: every check-run completed with success/neutral/skipped and every
 #     commit status success (a commit with no CI reported at all is not green).
 #   - Anything else (other tools, update_pull_request_branch, other bases, Bash that only mentions `gh pr`) exits 0
 #     silently. pushToProtected does not matter: a PR is another way into the protected branch.
-# GitHub API: `gh api` when gh is on PATH and authenticated, else curl with $GITHUB_TOKEN or $GH_TOKEN. No way to
-# ask, or any API error: blocked (fail closed), as is any missing commit, config or script.
+# GitHub API: `gh api` when gh is on PATH and authenticated, else curl with $GITHUB_TOKEN or $GH_TOKEN, decided once
+# per run. No way to ask, or any API error: blocked (fail closed), as is any missing commit, config or script, and a
+# Bash command that cannot be parsed but looks like `gh … pr merge|create`.
 # Decision: exit 2 with the reason on stderr (Claude Code shows it to the agent); the last line is the command that
 # fixes it. Exit 0 lets the call through. Never the JSON permissionDecision, so there is one way to read it.
 # Project root: the git top level of this script's folder when it holds .claude/gw.json (the copy in
@@ -53,12 +55,24 @@ def run(cmd, cwd=None, stdin=None):
 
 
 # ---- what the tool call does -------------------------------------------------------------------------------------
-# Only as a command (start, or after ; & | ( ` or a newline, past VAR=x / env / command prefixes), never inside text
-# that names it, e.g. grep "gh pr merge".
-GH_PR = re.compile(r"(?:^|[;&|(`\n])\s*(?:\w+=\S*\s+)*(?:(?:env|command|exec|time|sudo)\s+)*gh\s+pr\s+(create|merge)\b"
-                   r"([^;&|`)\n]*)")
+# Each command segment of a Bash call is tokenised (shlex) and read as a command: past VAR=x assignments, prefixes
+# (env, command, exec, time, sudo, nohup, xargs and its options, shell keywords), into `bash|sh|zsh -c '<script>'` and
+# `eval <words>`, then `gh [-R|--repo X] [--hostname X] pr create|merge …` or `gh api` PUT on repos/<o>/<r>/pulls/<n>/
+# merge. Text that only names it (grep "gh pr merge", echo '…') is an argument of another command, so not guarded.
+SEPARATORS = set(";&|()\n")
+PREFIXES = {"env", "command", "exec", "time", "sudo", "nohup", "nice", "!", "{", "}", "if", "then", "else", "elif",
+            "do", "while", "until"}
+SHELLS = {"bash", "sh", "zsh", "dash", "ksh"}
+XARGS_VALUE = {"-I", "-L", "-n", "-P", "-s", "-d", "-E", "-a", "--delimiter", "--max-args", "--max-procs",
+               "--arg-file", "--replace", "--max-lines", "--eof", "--max-chars"}
+GH_GLOBAL_VALUE = {"-R", "--repo", "--hostname"}
+API_VALUE = {"-X", "--method", "-H", "--header", "-f", "--raw-field", "-F", "--field", "--input", "-q", "--jq", "-t",
+             "--template", "--hostname", "-p", "--preview", "--cache"}
+API_FIELDS = ("-f", "-F", "--field", "--raw-field", "--input")
+API_MERGE = re.compile(r"^/?repos/([^/]+)/([^/]+)/pulls/(\d+)/merge/?$")
 MERGE_VALUE_FLAGS = {"-R", "--repo", "-b", "--body", "-F", "--body-file", "-t", "--subject", "-A",
                      "--author-email", "--match-head-commit"}
+SUSPECT = re.compile(r"\bgh\b[\s\S]*\bpr\b[\s\S]*\b(merge|create)\b|\bgh\b[\s\S]*\bpulls/[^\s]*merge")
 
 
 def flag(args, names):
@@ -70,41 +84,159 @@ def flag(args, names):
                 value = args[i + 1]
             elif n.startswith("--") and a.startswith(n + "="):
                 value = a.split("=", 1)[1]
+            elif not n.startswith("--") and len(n) == 2 and a.startswith(n) and len(a) > 2 and not a.startswith("--"):
+                value = a[2:]
     return value
 
 
-def from_bash(command):
+def segments(command):
+    """Lists of words, one per command segment (split on ; & | ( ) and newlines). Raises ValueError (bad quoting)."""
+    lex = shlex.shlex(command, posix=True, punctuation_chars=";&|()<>\n")
+    lex.whitespace = " \t\r"
+    lex.whitespace_split = True
+    lex.commenters = ""  # a comment would swallow the newline that ends the segment
+    out, cur, skip = [], [], False
+    for tok in lex:
+        if tok and all(c in SEPARATORS for c in tok):
+            if cur:
+                out.append(cur)
+            cur, skip = [], False
+        elif tok and all(c in "<>&" for c in tok) and ("<" in tok or ">" in tok):
+            skip = True  # a redirection: the next word is its target
+        elif skip:
+            skip = False
+        else:
+            cur.append(tok)
+    if cur:
+        out.append(cur)
+    return out
+
+
+def from_bash(command, depth=0):
+    if depth > 5:
+        block("the command nests shells too deeply to check.", "run the gh command directly and retry")
+    try:
+        segs = segments(command)
+    except ValueError as exc:
+        if SUSPECT.search(command):
+            block(f"cannot parse the command ({exc}) and it looks like a PR create/merge; blocked because it could "
+                  "not be checked.", "write it as a plain command and retry, e.g.: gh pr merge <number> -R <owner>/<repo>")
+        return []
     actions = []
-    for m in GH_PR.finditer(command):
-        try:
-            args = shlex.split(m.group(2))
-        except ValueError:
-            args = m.group(2).split()
-        repo = flag(args, ("-R", "--repo"))
-        if m.group(1) == "create":
-            actions.append({"kind": "create", "base": flag(args, ("-B", "--base")), "head": flag(args, ("-H", "--head")),
-                            "repo": repo, "number": None, "how": "gh pr create"})
-            continue
-        selector, skip = None, False
-        for a in args:
-            if skip:
-                skip = False
-            elif a in MERGE_VALUE_FLAGS:
-                skip = True
-            elif not a.startswith("-") and selector is None:
-                selector = a
-        number, branch = None, None
-        if selector:
-            url = re.search(r"github\.com/([^/]+/[^/]+)/pull/(\d+)", selector)
-            if url:
-                repo, number = repo or url.group(1), url.group(2)
-            elif selector.lstrip("#").isdigit():
-                number = selector.lstrip("#")
-            else:
-                branch = selector
-        actions.append({"kind": "merge", "base": None, "head": branch, "repo": repo, "number": number,
-                        "how": "gh pr merge"})
+    for words in segs:
+        actions += from_words(words, depth)
     return actions
+
+
+def from_words(words, depth):
+    env_repo = None
+    i = 0
+    while i < len(words):
+        w = words[i].lstrip("`")
+        if not w or w == "$":
+            i += 1
+        elif re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", w):
+            if w.startswith("GH_REPO="):
+                env_repo = w.split("=", 1)[1] or None
+            i += 1
+        elif w in PREFIXES:
+            i += 1
+            if w == "env":
+                while i < len(words) and words[i].startswith("-"):
+                    i += 1
+        elif os.path.basename(w) == "xargs":
+            i += 1
+            while i < len(words) and words[i].startswith("-"):
+                i += 2 if words[i] in XARGS_VALUE else 1
+        else:
+            break
+    if i >= len(words):
+        return []
+    cmd, args = os.path.basename(words[i].lstrip("`")), [a.rstrip("`") for a in words[i + 1:]]
+    if cmd in SHELLS:
+        for j, a in enumerate(args):
+            if re.match(r"^-[A-Za-z]*c[A-Za-z]*$", a) and j + 1 < len(args):
+                return from_bash(args[j + 1], depth + 1)
+        return []
+    if cmd == "eval":
+        return from_bash(" ".join(args), depth + 1)
+    if cmd != "gh":
+        return []
+    repo, j = env_repo, 0
+    while j < len(args) and args[j].startswith("-"):
+        a = args[j]
+        if a in GH_GLOBAL_VALUE and j + 1 < len(args):
+            if a in ("-R", "--repo"):
+                repo = args[j + 1]
+            j += 2
+            continue
+        if a.startswith("--repo="):
+            repo = a.split("=", 1)[1]
+        elif a.startswith("-R") and len(a) > 2:
+            repo = a[2:]
+        j += 1
+    rest = args[j:]
+    if len(rest) >= 2 and rest[0] == "pr" and rest[1] in ("create", "merge"):
+        return [pr_action(rest[1], rest[2:], repo)]
+    if rest and rest[0] == "api":
+        return api_action(rest[1:], repo)
+    return []
+
+
+def pr_action(kind, args, repo):
+    repo = flag(args, ("-R", "--repo")) or repo
+    if kind == "create":
+        return {"kind": "create", "base": flag(args, ("-B", "--base")), "head": flag(args, ("-H", "--head")),
+                "repo": repo, "number": None, "how": "gh pr create"}
+    selector, skip = None, False
+    for a in args:
+        if skip:
+            skip = False
+        elif a in MERGE_VALUE_FLAGS:
+            skip = True
+        elif not a.startswith("-") and selector is None:
+            selector = a
+    number, branch = None, None
+    if selector:
+        url = re.search(r"github\.com/([^/]+/[^/]+)/pull/(\d+)", selector)
+        if url:
+            repo, number = repo or url.group(1), url.group(2)
+        elif selector.lstrip("#").isdigit():
+            number = selector.lstrip("#")
+        else:
+            branch = selector
+    return {"kind": "merge", "base": None, "head": branch, "repo": repo, "number": number, "how": "gh pr merge"}
+
+
+def api_action(args, repo):
+    method, fields, path, skip = None, False, None, False
+    for i, a in enumerate(args):
+        if skip:
+            skip = False
+            continue
+        if a in ("-X", "--method"):
+            method = args[i + 1] if i + 1 < len(args) else None
+            skip = True
+        elif a.startswith("--method="):
+            method = a.split("=", 1)[1]
+        elif a.startswith("-X") and len(a) > 2:
+            method = a[2:]
+        elif a in API_FIELDS or any(a.startswith(f + "=") for f in API_FIELDS if f.startswith("--")) or \
+                (a[:2] in ("-f", "-F") and len(a) > 2):
+            fields = True
+            skip = a in API_FIELDS
+        elif a in API_VALUE:
+            skip = True
+        elif not a.startswith("-") and path is None:
+            path = a
+    m = API_MERGE.match(path or "")
+    if not m or not ((method or "").upper() == "PUT" or (method is None and fields)):
+        return []
+    owner, name = m.group(1), m.group(2)
+    if "{" not in owner + name:  # {owner}/{repo} placeholders: gh fills them from the current repo
+        repo = f"{owner}/{name}"
+    return [{"kind": "merge", "base": None, "head": None, "repo": repo, "number": m.group(3),
+             "how": f"gh api PUT {path}"}]
 
 
 def classify(event):
@@ -198,15 +330,28 @@ def origin_repo(root):
     return f"{m.group(1)}/{m.group(2)}" if m else None
 
 
+_BACKEND = []  # decided once per run: ("gh", None) or ("curl", token); never mixed within a run
+
+
+def backend():
+    if not _BACKEND:
+        if shutil.which("gh") and run(["gh", "auth", "status"]).returncode == 0:
+            _BACKEND.append(("gh", None))
+        else:
+            token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+            if not token:
+                raise ApiError("gh is not installed or not authenticated, and neither GITHUB_TOKEN nor GH_TOKEN is set")
+            if not shutil.which("curl"):
+                raise ApiError("gh is not authenticated and curl is not installed")
+            _BACKEND.append(("curl", token))
+    return _BACKEND[0]
+
+
 def api(path):
-    if shutil.which("gh") and run(["gh", "auth", "status"]).returncode == 0:
+    kind, token = backend()
+    if kind == "gh":
         r, how = run(["gh", "api", path]), "gh api " + path
     else:
-        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-        if not token:
-            raise ApiError("gh is not installed or not authenticated, and neither GITHUB_TOKEN nor GH_TOKEN is set")
-        if not shutil.which("curl"):
-            raise ApiError("gh is not authenticated and curl is not installed")
         # The token goes on stdin (-H @-), never on the command line where other processes could read it.
         r = run(["curl", "-sS", "-f", "-L", "-H", "Accept: application/vnd.github+json",
                  "-H", "X-GitHub-Api-Version: 2022-11-28", "-H", "@-", "https://api.github.com/" + path],
@@ -389,7 +534,7 @@ input="$(cat)"
 # Cheap pre-filter: the matcher includes every Bash call, so anything that cannot be a PR action leaves here without
 # needing python3 (a missing python3 must not block unrelated commands). Only PR tools or text with "gh" and "pr" go on.
 case "$input" in
-  *pull_request*|*auto_merge*|*gh*pr*) ;;
+  *pull_request*|*auto_merge*|*gh*pr*|*gh*pull*) ;;
   *) exit 0 ;;
 esac
 printf '%s' "$input" | python3 -I -c "$prog" "$here"

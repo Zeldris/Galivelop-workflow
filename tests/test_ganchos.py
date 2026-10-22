@@ -163,12 +163,33 @@ class ProtectedBranchMark(Base):
         self.assertNotEqual(code, 0, out)
         self.assertIn("git fetch origin main", out)
 
-    def test_pr_mode_does_not_require_the_mark(self):
-        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+    def test_pr_mode_still_requires_the_mark_on_a_direct_push(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "pr-mode", self.code)
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
         cfg["pushToProtected"] = "pr"
-        (self.p.work / ".claude" / "gw.json").write_text(json.dumps(cfg))  # read from the working tree
+        p.write(".claude/gw.json", json.dumps(cfg)); p.commit("pr mode")
+        code, out = self.push_main(p.sha())
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("no review mark", out)
+
+    def test_config_is_read_from_the_pushed_commit_not_the_working_tree(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["content"] = cfg["content"] + ["^src/"]       # uncommitted: would turn the pushed code into content
+        cfg["pushToProtected"] = "pr"
+        p.write(".claude/gw.json", json.dumps(cfg))
         code, out = self.push_main(self.code)
-        self.assertEqual(code, 0, out)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("no review mark", out)
+
+    def test_pushed_commit_without_a_config_refused(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "no-config", p.base)
+        p.git("rm", "-q", ".claude/gw.json"); p.git("commit", "-q", "--no-verify", "-m", "drop config")
+        code, out = p.push("origin", "HEAD:refs/heads/no-config")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("in the pushed commit", out)
 
     def test_shallow_clone_fails_closed_with_deepen_command(self):
         p = self.p
@@ -268,6 +289,17 @@ class PrePush(Base):
         self.assertIn("related saw refs/heads/feature", out)
 
 
+    def test_optional_script_without_exec_bit_still_runs(self):
+        p = self.p
+        hook = p.work / ".claude" / "gw" / "scripts" / "tests-relacionados.sh"
+        hook.write_text("#!/usr/bin/env bash\necho related-ran-and-failed; exit 1\n")
+        hook.chmod(0o644)  # lost its exec bit: present still means it runs
+        p.write("src/a.py", "a = 1\n"); p.commit("code")
+        code, out = p.push("origin", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("related-ran-and-failed", out)
+
+
 class Revisado(Base):
     def setUp(self):
         super().setUp()
@@ -326,6 +358,18 @@ class RevisadoSpanishWithRetro(Base):
         code, out = self.retro("hecha")
         self.assertNotEqual(code, 0, out)
 
+    def test_undecided_refused(self):
+        code, out = self.retro("undecided")
+        self.assertNotEqual(code, 0, out)
+
+    def test_pending_with_a_decision_word_refused(self):
+        code, out = self.retro("pendiente; la propuesta 2 aún no aplicada")
+        self.assertNotEqual(code, 0, out)
+
+    def test_english_decisions_accepted(self):
+        code, out = self.retro("Rejected: x; applied: y")
+        self.assertEqual(code, 0, out)
+
     def test_applied_retro_accepted_and_spanish_subject(self):
         code, out = self.retro("aplicada (propuestas 1 y 2), la 3 rechazada")
         self.assertEqual(code, 0, out)
@@ -347,8 +391,20 @@ class EsCodigo(Base):
         p = self.p
         script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
         self.assertEqual(p.run("bash", script, "1" * 40, "HEAD")[0], 2)
-        (p.work / ".claude" / "gw.json").unlink()
-        self.assertEqual(p.run("bash", script, p.base, "HEAD")[0], 2)
+        p.git("rm", "-q", ".claude/gw.json"); p.git("commit", "-q", "--no-verify", "-m", "drop config")
+        code, out = p.run("bash", script, p.base, "HEAD")
+        self.assertEqual(code, 2, out)
+        self.assertEqual(p.run("bash", script, "--rev", p.base, p.base, "HEAD")[0], 0)
+
+    def test_config_comes_from_the_commit_not_the_working_tree(self):
+        p = self.p
+        p.write("src/a.py", "a\n"); p.commit("code")
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["content"] = cfg["content"] + ["^src/"]
+        p.write(".claude/gw.json", json.dumps(cfg))  # uncommitted
+        script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
+        code, out = p.run("bash", script, p.base, "HEAD")
+        self.assertEqual((code, out.split()), (0, ["src/a.py"]))
 
 
 class PreCommit(Base):
@@ -386,6 +442,17 @@ class PreCommit(Base):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("git restore --staged", r.stderr)
         self.assertEqual(p.commit("person commit", ok=False).returncode, 0)
+
+    def test_actions_permissions_and_short_values_are_not_secrets(self):
+        p = self.p
+        p.write(".github/workflows/ci.yml", "permissions:\n  id-token: write\n  contents: read\n"
+                "jobs:\n  x:\n    with:\n      token: false\n      github-token: none\n      api_key: abc123\n")
+        r = p.commit("workflow", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        p.write("config/app.yml", "api_" + "key: abcdefgh12345\n")
+        r = p.commit("real", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("literal secret", r.stderr)
 
     def test_this_test_file_passes_the_scan(self):
         shutil.copy2(Path(__file__), self.p.work / "test_ganchos.py")

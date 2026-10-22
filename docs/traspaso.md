@@ -11,8 +11,8 @@
 | Rama | `claude/galivelop-workflow-inicio` (`main` creada el 2026-10-21 en `f2739f1`) |
 | Check | `bash tests/comprobar.sh` — en verde en local; el CI no arranca desde el bloque B (los jobs mueren en ~2 s sin pasos: ¿cuota de Actions?) |
 | Fase en curso | **5. Piloto: Portal-Galivelop** (plan §9) — sin empezar; necesita una sesión del portal con permiso del usuario |
-| Último punto estable | Fase 4 cerrada: un agente sin contexto aplicó el flujo a un proyecto Python vacío solo con `docs/en/apply.md` (doctor sin FAIL, idempotente, push por los ganchos, subida a `main` sin marca rechazada); guía corregida con lo que encontró |
-| Siguiente paso | Usuario: decidir el CI (cuota de Actions) y si se sube a `main` (con `/code-review` antes); después, Fase 5 en una sesión del portal |
+| Último punto estable | Subida a `main`, fase 1 (código): `/code-review` de `origin/main...HEAD` con 10 hallazgos, todos arreglados con su test; `AGENTS.md` alineado con las tres fases |
+| Siguiente paso | Subida a `main`, fase 2 (entorno): `/opt-tokens` y `/retro`, presentar al usuario y aplicar lo que confirme; fase 3: revisión de lo nuevo, `revisado.sh`, push a `main` |
 
 ### Fases
 

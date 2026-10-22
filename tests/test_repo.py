@@ -45,6 +45,14 @@ class Manifests(unittest.TestCase):
         self.assertNotIn("version", entries[0], "remove 'version' from marketplace.json; keep it in plugin.json")
 
 
+class SchemaVersion(unittest.TestCase):
+    def test_schema_carries_the_workflow_version(self):
+        # aplicar.py treats the copied schema as workflow-owned through this marker (header_version).
+        version = load(".claude-plugin/plugin.json")["version"]
+        self.assertEqual(load("schema/gw.schema.json").get("$comment"), f"galivelop-workflow v{version}",
+                         "set $comment in schema/gw.schema.json to 'galivelop-workflow v<version>'")
+
+
 class Changelog(unittest.TestCase):
     def test_plugin_version_has_bilingual_entry(self):
         version = load(".claude-plugin/plugin.json")["version"]

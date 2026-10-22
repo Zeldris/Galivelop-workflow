@@ -59,9 +59,10 @@ Rules:
 - **When unsure, ask the person**; do not invent a command. With several candidates, offer them numbered.
 - A project with no tests: `check` can be a linter or a `bash -n`; say so and note it as debt in the log.
 - `content` is proposed by reading the tree: `^docs/`, `\\.md$`, `^public/`… (in JSON the backslash is doubled).
-  When in doubt, put less in `content`: what counts as code gets reviewed. The workflow's own copies
-  (`^\.claude/gw/`, `^\.claude/skills/`) are reviewed in the workflow repo and are in the template's default `content`;
-  keep them there, or every push to the protected branch lists them as unreviewed code.
+  When in doubt, put less in `content`: what counts as code gets reviewed. The copied skills (`^\.claude/skills/`) are
+  reviewed in the workflow repo and are in the template's default `content`; keep them there. The scripts in
+  `.claude/gw/` do **not** go in `content`: they are the hooks that guard the branch, and a change to them is reviewed
+  like any code.
 
 Done when: every row of the table has an answer (or a question put to the person), and `check` has run once.
 
@@ -160,8 +161,8 @@ On the working branch, commit a small code change and try to push it straight to
 git push origin HEAD:<protectedBranch>
 ```
 
-With `pushToProtected: direct` it **must be refused** with "the pushed commit has no review mark" (with `pr`, the
-equivalent check happens when the pull request is created or merged). Then drop the test commit
+With either `pushToProtected` it **must be refused** with "the pushed commit has no review mark" (with `pr`, the
+same check also happens when the pull request is created or merged). Then drop the test commit
 (`git reset --hard HEAD~1`, only if it was not pushed anywhere). The normal way in is `/code-review`, fixes,
 `bash .claude/gw/scripts/revisado.sh` and the push.
 
@@ -201,8 +202,9 @@ check the state. `doctor.py` requires a "Next step" (or "Siguiente paso") line.
 **Existing CI.** `comprobar.yml` is one more workflow; if the project already runs its check, keep one of the two to
 avoid duplicating it, but keep the step that runs the base branch's `pre-commit` over the PR.
 
-**A protected branch with several people.** With `pushToProtected: pr`, the guard is the `PreToolUse` hook on
-creating and merging pull requests; with `direct`, the `pre-push`. Choose by how code already reaches it today.
+**A protected branch with several people.** `pre-push` asks for the mark on every direct push with code; with
+`pushToProtected: pr`, the `PreToolUse` hook also asks for it when pull requests are created and merged. Choose by
+how code already reaches it today.
 
 ## What the agent leaves alone
 

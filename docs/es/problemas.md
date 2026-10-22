@@ -65,7 +65,7 @@ el último renglón es la orden que lo arregla.
 ## Crear o fusionar un PR (`revision-antes-de-main.sh`)
 
 Es el gancho `PreToolUse` que guarda `create_pull_request`, `merge_pull_request` y `gh pr create|merge`. Falla
-**cerrado**: si no puede comprobar, bloquea y dice por qué. Con `pushToProtected: direct` lo guarda el `pre-push`.
+**cerrado**: si no puede comprobar, bloquea y dice por qué. Un push directo a la rama protegida lo guarda el `pre-push`, en los dos modos de `pushToProtected`.
 
 | Bloqueo | Causa | Arreglo |
 |---|---|---|

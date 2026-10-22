@@ -212,8 +212,9 @@ def cmd_closed(ctx, args):
         before.append(ctx.show(args.base, f))
         after.append(ctx.show(args.sha, f))
     new = ctx.closed_ids("\n".join(after)) - ctx.closed_ids("\n".join(before))
-    for f in sorted(set(files)):  # already closed on main: it comes with a merge of main, not this branch's
-        on_main = ctx.git("show", f"origin/main:{f}")
+    protected = ctx.config["protectedBranch"]
+    for f in sorted(set(files)):  # already closed on the protected branch: it comes with a merge of it, not this branch's
+        on_main = ctx.git("show", f"refs/remotes/origin/{protected}:{f}")
         if on_main.returncode == 0:
             new -= ctx.closed_ids(on_main.stdout)
     if not new:

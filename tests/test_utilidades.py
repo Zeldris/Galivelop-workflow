@@ -173,6 +173,17 @@ class BitacoraTasks(Base):
         self.p.commit("log", env=DAY)
         self.assertEqual(self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())[0], 0)
 
+    def test_closed_on_the_configured_protected_branch_needs_no_done_entry(self):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        self.p = Utilidades(self.tmp, {"protectedBranch": "trunk"})
+        self.p.branch("feat-a")
+        base = self.plan("- [ ] **INS-3** the thing\n")
+        sha = self.plan("- [x] **INS-3** the thing\n", "close INS-3 (from trunk)")
+        self.p.git("push", "-q", "--no-verify", "origin", "HEAD:trunk")
+        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, sha)
+        self.assertEqual(code, 0, out)
+
     def test_struck_multiline_task_and_custom_id_regex(self):
         self.p.branch("feat-a")
         base = self.plan("- TASK-1 one\n- TASK-2 two\n")
@@ -269,6 +280,31 @@ class PrepushRamas(Base):
         self.assertEqual(changed, ["src/x.txt"])
         sha = self.edit(b="A rewrote B")
         code, out, _, _ = self.run_hook(sha)
+        self.assertEqual(code, 1, out)
+
+    def test_forks_from_the_configured_protected_branch(self):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        p = self.p = Utilidades(self.tmp, {"protectedBranch": "trunk"})
+        p.git("push", "-q", "--no-verify", "origin", "main:trunk")
+        p.git("update-ref", "-d", "refs/remotes/origin/main")  # only trunk is the protected branch here
+        p.branch("feat-a")
+        p.write("src/x1.txt", "1\n"); p.commit("x1", env=DAY)
+        p.git("push", "-q", "--no-verify", "origin", "HEAD:refs/heads/feat-a-old")  # already on a remote ref
+        p.write("src/x2.txt", "2\n"); p.commit("x2", env=DAY)
+        code, out, changed, _ = self.run_hook(p.sha())
+        self.assertEqual(code, 0, out)
+        self.assertEqual(changed, ["src/x1.txt", "src/x2.txt"])
+
+    def test_protected_branch_row_is_never_borrowed(self):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        self.p = Utilidades(self.tmp, {"protectedBranch": "feat-b"})
+        self.p.branch("feat-b")
+        self.edit(b="B moved on")
+        self.p.branch("feat-a", "main")
+        self.p.git("merge", "-q", "--ff-only", "feat-b")
+        code, out, _, _ = self.run_hook(self.p.sha())
         self.assertEqual(code, 1, out)
 
     def test_pre_push_calls_it(self):
@@ -419,6 +455,7 @@ class TestsRelacionados(Base):
         listing = self.tmp / "changed"
         listing.write_text("".join(f + "\n" for f in changed))
         (self.p.work / "out.log").write_text("")
+        self.p.git("add", "-A"); self.p.git("commit", "-q", "--no-verify", "-m", "related setup")
         code, out = self.p.script("tests-relacionados.sh", str(listing), stdin="refs/heads/x 1 refs/heads/x 2\n")
         return code, out, (self.p.work / "out.log").read_text().splitlines()
 
@@ -468,6 +505,25 @@ class TestsRelacionados(Base):
         code, out = self.p.push("origin", "feat-a")
         self.assertEqual(code, 0, out)
         self.assertIn("src/b.py", (self.p.work / "related.log").read_text())
+
+    def test_pre_push_runs_them_on_the_pushed_commit(self):
+        p = self.p
+        out_log = self.tmp / "related.log"
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["relatedTests"] = {"fast": [f"echo {{files}} > {out_log}; cat src/b.py >> {out_log}"]}
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.branch("feat-a")
+        p.write("src/b.py", "committed-b\n"); p.write("src/gone.py", "g\n")
+        p.commit("add b", env=DAY)
+        p.git("rm", "-q", "src/gone.py"); p.git("commit", "-q", "--no-verify", "-m", "drop gone")
+        (p.work / "src" / "b.py").unlink()            # dirty working tree: the file is only in the commit
+        p.write("src/gone.py", "untracked again\n")   # and this one only on disk
+        code, out = p.push("origin", "feat-a")
+        self.assertEqual(code, 0, out)
+        text = out_log.read_text()
+        self.assertIn("src/b.py", text)
+        self.assertNotIn("src/gone.py", text)
+        self.assertIn("committed-b", text)
 
 
 class EnlacesMd(Base):

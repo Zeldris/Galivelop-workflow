@@ -23,7 +23,7 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
 | `language` | Idioma de plantillas y respuestas: `es` o `en` | (sin defecto) | `"es"` | `aplicar.py` (qué plantillas copia), `revisado.sh` (idioma del mensaje) |
 | `log` | Ruta de la bitácora, desde la raíz del repo | (sin defecto; `--init` pone `docs/traspaso.md` en es y `docs/handoff.md` en en) | `"docs/traspaso.md"` | `recuperar.py`, `doctor.py`, `prepush-ramas.sh`, `aplicar.py` |
 | `protectedBranch` | La rama que solo recibe código revisado | (sin defecto) | `"main"` | `pre-push`, `revision-antes-de-main.sh`, `revisado.sh`, `fusionar.sh`, plantillas y CI |
-| `pushToProtected` | Quién la guarda: `direct` (el `pre-push` exige la marca de revisión) o `pr` (el gancho `PreToolUse` guarda crear y fusionar PR) | (sin defecto) | `"pr"` | `pre-push`, `revision-antes-de-main.sh` |
+| `pushToProtected` | Cómo entra el código: `direct` (push directo) o `pr` (por pull request: además, el gancho `PreToolUse` guarda crear y fusionar PR). En los dos, el `pre-push` exige la marca de revisión a todo push directo que traiga código | (sin defecto) | `"pr"` | `pre-push`, `revision-antes-de-main.sh` |
 | `check` | Órdenes que se ejecutan **en orden** sobre el commit que se sube; todas deben pasar. Al menos una | (sin defecto) | `["npm run check"]` | `pre-push`, `fusionar.sh`, `doctor.py`, CI |
 | `reviewMark` | Archivo versionado con el sha del commit revisado | (sin defecto; `--init` pone `docs/registros/revisado.txt`) | `"docs/registros/revisado.txt"` | `revisado.sh` (lo escribe), `es-codigo.sh`, `pre-push`, `revision-antes-de-main.sh` |
 | `content` | Expresiones regulares (sobre rutas relativas) de lo que **es contenido, no código**: no necesita `/code-review` | (sin defecto; puede ser `[]`, entonces todo es código) | `["^docs/", "\\.md$"]` | `es-codigo.sh`, y con él `pre-push` y `revision-antes-de-main.sh` |
@@ -50,8 +50,9 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
 
 - **`check` es una lista de órdenes**, no un script único: cada una se ejecuta con `bash -c` en la raíz del commit que
   se sube. Una que no existe la detecta `doctor.py` antes de que falle un push.
-- **`pushToProtected`** cambia de qué gancho depende la protección: con `pr` el `pre-push` no pide marca (la pide el
-  gancho de PR); con `direct` la pide el `pre-push`. Elige cómo entra hoy el código en la rama protegida.
+- **`pushToProtected`** dice cómo entra hoy el código en la rama protegida. Un push directo que trae código pide
+  siempre la marca en el `pre-push`, con `direct` y con `pr`; con `pr`, además, el gancho de PR la pide al crear o
+  fusionar el pull request. El config se lee del commit que se sube, no de la copia de trabajo.
 - **`content` y la marca.** Un cambio que solo toca archivos de `content` no necesita revisión; cualquier otro, sí.
   `revisado.sh` escribe en `reviewMark` el commit revisado y la marca debe ser antecesora de lo que se sube y no tener
   código después.

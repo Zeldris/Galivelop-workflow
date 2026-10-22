@@ -9,6 +9,8 @@ defaults the schema declares. Shell scripts call the CLI; Python scripts import 
   python3 config.py get KEY             # scalar: one line; list: one item per line; object: JSON
   python3 config.py get KEY --json      # always JSON
   python3 config.py root                # the project root it resolved
+  python3 config.py --rev REV get KEY   # the config as commit REV has it (git show REV:.claude/gw.json), e.g. the
+                                        # commit a hook is about to push; absent or invalid at REV -> exit 2
 
 Project root: --root, else the git top level of this script's folder when that repo has .claude/gw.json (the copy
 in a project lives in .claude/gw/scripts/), else the git top level of $CLAUDE_PROJECT_DIR, else of the current
@@ -109,15 +111,34 @@ def with_defaults(config, schema):
     return filled
 
 
-def load(root=None):
-    """Return the validated config with defaults, plus '_root' (Path). Raises ConfigError."""
+def read_at(root, rev):
+    """Text of .claude/gw.json in commit `rev`. Raises ConfigError when the commit or the file is not there."""
+    try:
+        r = subprocess.run(["git", "-C", str(root), "show", f"{rev}:{CONFIG_REL.as_posix()}"],
+                           capture_output=True, text=True)
+    except OSError as exc:
+        raise ConfigError(f"cannot run git to read {CONFIG_REL} at {rev}: {exc}")
+    if r.returncode != 0:
+        raise ConfigError(f"{CONFIG_REL} is not in commit {rev} ({r.stderr.strip()[:200]}); commit a valid one: "
+                          f"git add {CONFIG_REL.as_posix()} && git commit")
+    return r.stdout
+
+
+def load(root=None, rev=None):
+    """Return the validated config with defaults, plus '_root' (Path). With `rev`, the config as that commit has it
+    instead of the working tree's. Raises ConfigError."""
     root = find_root(root)
     path = root / CONFIG_REL
-    if not path.is_file():
+    if rev:
+        text = read_at(root, rev)
+        path = f"{rev}:{CONFIG_REL.as_posix()}"
+    elif not path.is_file():
         raise ConfigError(f"{path} not found; apply the workflow first (see docs/en/apply.md) "
                           f"or create it from templates/gw.json")
+    else:
+        text = path.read_text(encoding="utf-8")
     try:
-        config = json.loads(path.read_text(encoding="utf-8"))
+        config = json.loads(text)
     except json.JSONDecodeError as exc:
         raise ConfigError(f"{path}: invalid JSON at line {exc.lineno}: {exc.msg}")
     schema = json.loads(schema_path().read_text(encoding="utf-8"))
@@ -132,6 +153,7 @@ def load(root=None):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", help="project path (default: see above)")
+    parser.add_argument("--rev", help="read the config from this commit instead of the working tree")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("validate")
     sub.add_parser("root")
@@ -140,12 +162,12 @@ def main(argv=None):
     get.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
-        config = load(args.root)
+        config = load(args.root, args.rev)
     except ConfigError as exc:
         print(f"gw config: {exc}", file=sys.stderr)
         return 2
     if args.command == "validate":
-        print(f"{config['_root'] / CONFIG_REL}: valid")
+        print(f"{args.rev + ':' + CONFIG_REL.as_posix() if args.rev else config['_root'] / CONFIG_REL}: valid")
         return 0
     if args.command == "root":
         print(config["_root"])

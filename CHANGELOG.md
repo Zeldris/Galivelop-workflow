@@ -22,6 +22,11 @@ here.
 - Ganchos y scripts (`config.py`, `pre-push`, `pre-commit`, `revisado.sh`, gancho de PR a la rama protegida,
   arranque, recuperación, `doctor.py`, utilidades) y `aplicar.py`; plantillas ES/EN; guías para aplicar el flujo,
   problemas conocidos, config, patrones y cómo contribuir; skills `gw-init`, `gw-update`, `gw-doctor`.
+- Antes de la primera publicación, `/code-review` del conjunto: 10 arreglos (gancho de PR ante `gh -R`, `bash -c`,
+  `xargs` y `gh api`; config leído del commit que se sube; marca exigida en toda subida directa a la rama protegida;
+  scripts de guarda fuera de `content`; rama protegida configurable en las utilidades; falsos positivos del
+  antisecretos; tests relacionados sobre el commit subido; scripts opcionales sin bit de ejecución; retro sin decidir
+  rechazada; un solo backend de la API).
 - Skills de Matt Pocock (mattpocock/skills, MIT) con su mención en cada una, `CREDITS.md` y agradecimiento en los
   README: de su trabajo aprendimos esta forma de trabajar.
 
@@ -37,5 +42,9 @@ here.
 - Hooks and scripts (`config.py`, `pre-push`, `pre-commit`, `revisado.sh`, PR-to-protected-branch hook, session
   start, recovery, `doctor.py`, utilities) and `aplicar.py`; ES/EN templates; guides to apply the workflow,
   troubleshooting, config, patterns and contributing; `gw-init`, `gw-update`, `gw-doctor` skills.
+- Before the first release, `/code-review` of the whole set: 10 fixes (PR hook against `gh -R`, `bash -c`, `xargs`
+  and `gh api`; config read from the pushed commit; review mark required on every direct push to the protected branch;
+  guard scripts out of `content`; configurable protected branch in the utilities; secret-scan false positives; related
+  tests on the pushed commit; optional scripts without the exec bit; undecided retro refused; a single API backend).
 - Matt Pocock's skills (mattpocock/skills, MIT) with his credit in each one, `CREDITS.md` and acknowledgements in the
   READMEs: we learned this way of working from his work.

@@ -1,4 +1,5 @@
 {
+  "$comment": "galivelop-workflow v0.1.0",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/zeldris/Galivelop-workflow/main/schema/gw.schema.json",
   "title": "Galivelop-workflow project config (.claude/gw.json)",
@@ -58,7 +59,7 @@
         "direct",
         "pr"
       ],
-      "description": "direct: pre-push guards the protected branch; pr: the PreToolUse hook guards PR create/merge."
+      "description": "How code reaches the protected branch. Both modes: pre-push requires the review mark on any direct push that brings code. pr: the PreToolUse hook also guards PR create/merge."
     },
     "install": {
       "type": "array",

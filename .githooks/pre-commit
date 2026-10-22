@@ -53,16 +53,18 @@ if [ -n "$found" ]; then
 fi
 
 # Assignments with a literal value: NAME = "value" anywhere; NAME=value unquoted in config files. Names end in
-# secret, password, passwd, token or api_key/apikey. ${VAR}, $VAR, <placeholder> and empty values pass.
+# secret, password, passwd, token or api_key/apikey. ${VAR}, $VAR, <placeholder> and empty values pass; unquoted, so
+# do read/write/none/true/false and values under 8 characters (GitHub Actions' `id-token: write`, `token: false`).
 NAME='[A-Za-z0-9_.-]*([Ss][Ee][Cc][Rr][Ee][Tt]|[Pp][Aa][Ss][Ss][Ww]([Oo][Rr])?[Dd]|[Tt][Oo][Kk][Ee][Nn]|[Aa][Pp][Ii][_-]?[Kk][Ee][Yy])'
 QUOTED="^\\+.*${NAME}[\"']?[[:space:]]*(:=|=|:)[[:space:]]*(\"[^\"\$<{][^\"]{3,}\"|'[^'\$<{][^']{3,}')"
 UNQUOTED="^\\+[[:space:]]*(export[[:space:]]+)?${NAME}[[:space:]]*[=:][[:space:]]*[^[:space:]\$<{\"'#]"
+HARMLESS="^\\+[[:space:]]*(export[[:space:]]+)?${NAME}[[:space:]]*[=:][[:space:]]*([Rr][Ee][Aa][Dd]|[Ww][Rr][Ii][Tt][Ee]|[Nn][Oo][Nn][Ee]|[Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee]|[^[:space:]#]{1,7})[[:space:]]*(#.*)?$"
 added_lines() { grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -v 'gw-allow-secret' || true; }
 examples=(':!*.env.example' ':!*.env.sample' ':!*.env.template')
 literal="$(diff_of -U0 --no-renames --diff-filter=ACMR -- . "${examples[@]}" | added_lines | grep -E "$QUOTED" | head -n 5 || true)"
 config_added="$(diff_of -U0 --no-renames --diff-filter=ACMR -- '*.env' '.env*' '*.properties' '*.yml' '*.yaml' \
   '*.toml' '*.ini' '*.cfg' '*.conf' "${examples[@]}" | added_lines)"
-literal="$literal$(printf '\n%s' "$(printf '%s\n' "$config_added" | grep -E "$UNQUOTED" | head -n 5 || true)")"
+literal="$literal$(printf '\n%s' "$(printf '%s\n' "$config_added" | grep -E "$UNQUOTED" | grep -vE "$HARMLESS" | head -n 5 || true)")"
 literal="$(printf '%s\n' "$literal" | grep . | sed -E 's/^\+[[:space:]]*//; s/^(.{40}).*/\1…/' | sort -u || true)"
 if [ -n "$literal" ]; then
   echo "pre-commit: these lines assign a literal secret; use an environment reference such as \${VAR} instead:" >&2

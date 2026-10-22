@@ -4,7 +4,7 @@
 # otherwise). Called by .githooks/pre-push as:   prepush-ramas.sh <changed-files-file> <pushed-commits-file>
 # with git's ref lines ("local-ref local-sha remote-ref remote-sha" per ref) on stdin. For each pushed ref:
 #   - appends to $1 the files that change (from what the remote branch already has; else from where it forked from
-#     origin/main; else, in a single-branch clone with neither, from the commits no remote has) and, if $2 is
+#     origin/<protectedBranch>; else, in a single-branch clone with neither, from the commits no remote has) and, if $2 is
 #     empty, writes to it the new commits, one sha per line;
 #   - bitacora.py closed: tasks closed in the plan are also listed in "Done" (only against the remote branch);
 #   - bitacora.py in-progress: WARNING for 🚧 tasks the commits name whose plan entry did not change;
@@ -32,6 +32,8 @@ rows="$(python3 "$config" --root "$root" get logRows)" || {
 [ "$rows" = "true" ] || exit 0
 log="$(python3 "$config" --root "$root" get log)" || {
   echo "prepush-ramas: cannot read log; fix the config: python3 $config --root $root validate" >&2; exit 1; }
+protected="$(python3 "$config" --root "$root" get protectedBranch)" || {
+  echo "prepush-ramas: cannot read protectedBranch; fix the config: python3 $config --root $root validate" >&2; exit 1; }
 zero=0000000000000000000000000000000000000000
 bita() { python3 "$bitacora" --root "$root" "$@"; }
 
@@ -47,14 +49,15 @@ while read -r local_ref sha_local remote_ref sha_remote; do
   case "$remote_ref" in refs/tags/*) continue ;; esac
   git cat-file -e "$sha_local^{commit}" 2>/dev/null || { echo "prepush-ramas: commit $sha_local is not in this clone; fetch it: git fetch" >&2; exit 1; }
 
-  # Where to look from: what the remote branch has if that commit is here; else where it forked from main.
+  # Where to look from: what the remote branch has if that commit is here; else where it forked from the protected
+  # branch.
   base=""
   if [ "$sha_remote" != "$zero" ] && git cat-file -e "$sha_remote^{commit}" 2>/dev/null; then
     base="$sha_remote"
   else
-    base="$(git merge-base "$sha_local" origin/main 2>/dev/null || echo "")"
+    base="$(git merge-base "$sha_local" "refs/remotes/origin/$protected" 2>/dev/null || echo "")"
   fi
-  # The commits no remote-tracking ref has (a single-branch clone has no origin/main: this is the fallback).
+  # The commits no remote-tracking ref has (a single-branch clone may lack origin/<protected>: this is the fallback).
   new="$(git rev-list --reverse "$sha_local" --not --remotes 2>/dev/null)"
   against_remote=""
   [ -n "$base" ] && [ "$base" = "$sha_remote" ] && against_remote=1
@@ -68,7 +71,7 @@ while read -r local_ref sha_local remote_ref sha_remote; do
   if [ -n "$pushed_was_empty" ] && [ -n "$new" ]; then printf '%s\n' "$new" >> "$pushed"; fi
 
   if [ -n "$base" ]; then
-    # Only against the remote branch: from main it would ask for tasks that already left the Done section.
+    # Only against the remote branch: from the protected branch it would ask for tasks that already left the Done section.
     if [ -n "$against_remote" ]; then bita closed "$base" "$sha_local" || exit 1; fi
     bita in-progress "$base" "$sha_local"
   fi
@@ -76,14 +79,14 @@ while read -r local_ref sha_local remote_ref sha_remote; do
   branch="${remote_ref#refs/heads/}"
   { [ -n "$branch" ] && [ "$branch" != "$remote_ref" ]; } || branch="$(git branch --show-current 2>/dev/null)"
 
-  # Own row: the log of each new commit that is not a merge (merges bring rows from main or from other branches).
+  # Own row: the log of each new commit that is not a merge (merges bring rows from the protected branch or others).
   while IFS= read -r commit; do
     [ -n "$commit" ] || continue
     git diff-tree --no-commit-id --name-only -r "$commit" | grep -qxF "$log" || continue
     bita own-row "$commit" "$branch" ${shared[@]+"${shared[@]}"} >/dev/null 2>&1 && continue
     ok=""
     while IFS= read -r other; do
-      case "$other" in ""|"$branch"|main|master|"("*) continue ;; esac
+      case "$other" in ""|"$branch"|"$protected"|"("*) continue ;; esac
       if bita own-row "$commit" "$other" ${shared[@]+"${shared[@]}"} >/dev/null 2>&1; then ok=1; break; fi
     done <<<"$(git branch --contains "$commit" --format='%(refname:short)' 2>/dev/null)"
     [ -n "$ok" ] || bita own-row "$commit" "$branch" ${shared[@]+"${shared[@]}"} \

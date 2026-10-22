@@ -58,9 +58,10 @@ Reglas:
 - **Si hay duda, pregunta a la persona**; no inventes una orden. Con varios candidatos, ofrécelos numerados.
 - Un proyecto sin tests: `check` puede ser un linter o un `bash -n`; dilo y apúntalo como deuda en la bitácora.
 - `content` se propone leyendo el árbol: `^docs/`, `\\.md$`, `^public/`… (en JSON, la barra se escribe doble).
-  Cuando dudes, deja menos en `content`: lo que cuenta como código se revisa. Las copias del propio flujo
-  (`^\.claude/gw/`, `^\.claude/skills/`) se revisan en el repo del flujo y están en el `content` por defecto de la
-  plantilla; déjalas, o cada subida a la rama protegida las listará como código sin revisar.
+  Cuando dudes, deja menos en `content`: lo que cuenta como código se revisa. Las skills copiadas
+  (`^\.claude/skills/`) se revisan en el repo del flujo y están en el `content` por defecto de la plantilla; déjalas.
+  Los scripts de `.claude/gw/` **no** van en `content`: son los ganchos que guardan la rama, y un cambio en ellos se
+  revisa como cualquier código.
 
 Criterio de fin: tienes una respuesta (o una pregunta hecha a la persona) por cada fila de la tabla, y `check` se
 ha ejecutado una vez.
@@ -160,8 +161,8 @@ En la rama de trabajo, haz commit de un cambio pequeño de código e intenta sub
 git push origin HEAD:<protectedBranch>
 ```
 
-Con `pushToProtected: direct` **tiene que rechazarse** con «the pushed commit has no review mark» (con `pr`, la
-comprobación equivalente ocurre al crear o fusionar el pull request). Después quita el commit de prueba
+Con cualquier `pushToProtected` **tiene que rechazarse** con «the pushed commit has no review mark» (con `pr`, la
+misma comprobación ocurre además al crear o fusionar el pull request). Después quita el commit de prueba
 (`git reset --hard HEAD~1`, solo si no se ha subido a ningún sitio). La entrada normal es `/code-review`, arreglos,
 `bash .claude/gw/scripts/revisado.sh` y la subida.
 
@@ -202,8 +203,9 @@ estado. `doctor.py` exige una línea de «Siguiente paso»/«Next step».
 **CI existente.** `comprobar.yml` es un workflow más; si el proyecto ya corre su check, deja uno de los dos para no
 duplicarlo, pero conserva el paso del `pre-commit` de la rama base sobre el PR.
 
-**Rama protegida con varias personas.** Con `pushToProtected: pr`, el guardián es el gancho de `PreToolUse` sobre
-crear y fusionar pull requests; con `direct`, el `pre-push`. Elige según cómo entra el código ya hoy.
+**Rama protegida con varias personas.** El `pre-push` pide la marca a todo push directo con código; con
+`pushToProtected: pr`, además, el gancho de `PreToolUse` la pide al crear y fusionar pull requests. Elige según cómo
+entra el código ya hoy.
 
 ## Lo que el agente no hace
 

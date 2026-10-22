@@ -273,7 +273,7 @@ inglés (decisión de la Fase 0).
   "log": "docs/traspaso.md",                // bitácora
   "logRows": false,                         // opcional: una fila por rama con límite (bitacora.py)
   "protectedBranch": "main",
-  "pushToProtected": "direct",              // direct | pr: qué gancho vigila (pre-push o PreToolUse)
+  "pushToProtected": "direct",              // direct | pr: push directo (pre-push pide la marca en los dos) o PR (además, PreToolUse)
   "install": ["npm ci"],
   "check": ["npm run check"],               // lista de órdenes; se corren en orden sobre el commit que se sube
   "reviewMark": "docs/registros/revisado.txt",
