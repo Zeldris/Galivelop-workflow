@@ -36,7 +36,7 @@ do the case without it and say so.
 - **Subagent model:** pass the table's subagent column as the `model` parameter. Delegate searches, long reads and
   mechanical work; design and decisions stay in the main session.
 - **Closed plan, scoped implementation:** goes to a `sonnet` subagent and the main session reviews its diff before
-  the commit. Anything of more than one step runs through `orchestrate-dealer`.
+  the commit. The fixes from a review are a closed plan too (`sonnet`); `opus` only to debug something non-obvious. Anything of more than one step runs through `orchestrate-dealer`.
 - **Subagent ladder:** `sonnet low` → `sonnet medium` → `opus medium` → `opus high`. Start at the lowest rung that
   fits; when a subagent does not finish its brief, the next attempt climbs one rung. **Two failures at one rung: stop
   and ask the user.** A subagent that never starts (tool error) is retried on the same rung and does not count as a

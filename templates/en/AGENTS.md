@@ -85,7 +85,8 @@ Never on work that is already merged.
 
 1. **Code:** `git fetch origin {{protectedBranch}}`, then a review of the diff against `origin/{{protectedBranch}}`
    with every finding (in Claude Code, `/code-review --max-findings all`), with the criteria of `REVIEW.md`. Fixes
-   committed and pushed. Only code needs review: what matches `content` in `.claude/gw.json` is content.
+   committed and pushed: what is serious or medium, and what the fix itself breaks; minor findings are logged as
+   pending and not reviewed again in that PR. Only code needs review: what matches `content` in `.claude/gw.json` is content.
 2. **Environment:** the `opt-tokens` skill, then `retro` (plus `opt-ai` if there were measurements with a local AI
    model). Their proposals are **presented to the user**; what they confirm is applied on the branch. A retro written
    without presenting it does not count.

@@ -32,7 +32,8 @@ His skills included here carry his credit and licence ([credits](../../CREDITS.m
 1. **What isn't pushed doesn't exist:** commit + push at every stable point.
 2. **The log goes in the same commit** as the work it describes.
 3. **Last line of the commit:** `Next: <concrete step>` (`Siguiente:` in Spanish projects).
-4. **To the protected branch, only with confirmation** and with the diff reviewed.
+4. **To the protected branch, only with confirmation** and with the diff reviewed: serious or medium findings are
+   fixed; minor ones are logged as pending and not reviewed again in that PR.
 5. **What can be checked is checked by a script**, not by an agent's opinion.
 
 ## Guides

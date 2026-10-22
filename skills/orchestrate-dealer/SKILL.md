@@ -35,14 +35,17 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    a module, a screen, a command. Each chunk gets a **done criterion** that can be checked (a green test, a green
    CI job, a pushed commit) and a list of what blocks it. The **frontier** is the chunks nothing pending blocks:
    they go out together (see Rules). Cap a subagent at ~60 tool calls; at the cap it saves its state in `log` and the
-   next one resumes from it.
+   next one resumes from it. A one-file fix whose place the reviewer already gave is not a chunk: the main session
+   makes it, with its tests (a subagent pays ~50k just to start and rediscovers what the session knows).
 2. **Deal.** One subagent per chunk with the Agent tool, in the foreground when the next chunk depends on it. Model and
-   effort follow the `selector` ladder: `sonnet` to implement, `opus` to debug something non-obvious. The brief carries
+   effort follow the `selector` ladder: `sonnet` to implement, `opus` to debug something non-obvious. Fixes from a
+   review go to `sonnet` too: the reviewer already closed the plan (where and what to change). The brief carries
    **pointers, not copies**: where the material is (the log row, the plan task, a doc, a commit, a file and
    function), never the pasted text. Template:
 
    ```text
-   You work in this repository on branch <branch>. Read your state with
+   You work in this repository on branch <branch>. In a fresh, clean worktree, first check that `git log -1` matches
+   `origin/<branch>`; if not, `git fetch origin <branch> && git reset --hard origin/<branch>`. Read your state with
    `python3 .claude/gw/scripts/recuperar.py --estado`; if it reports no row for your branch or the log has no
    per-branch rows, read the next step and pending sections of {log}. If you touch code, read REVIEW.md and
    AGENTS.md. Follow the project's commit and push rules: commit and push each stable point, log update in the
@@ -80,6 +83,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   passes a short `/code-review` by a reviewer subagent as soon as the chunk returns, before the next chunk starts
   (commit it first, as `WIP:` if needed, so nothing is lost if the session ends). The reviewer compares the diff with
   the contract (`AGENTS.md`, `REVIEW.md`, the callers), not the diff alone; its fixes land before moving on.
+- **Before the PR, only what matters:** fix what is serious or medium, and what the fix itself breaks; log the minor
+  findings as pending in `log` and do not review them again in this PR (`/code-review --max-findings all` still
+  serves to list them). Otherwise every fix is reviewed again, brings new findings and the PR grows without end.
 - **One writing subagent at a time on the same branch.** Two that commit to the same branch collide in the log and in
   shared files. In parallel, only what does not write (searching, reading, measuring).
 - **Code fixes of the frontier, in parallel, in isolated worktrees:** each subagent runs with `isolation: "worktree"` in

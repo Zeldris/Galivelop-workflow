@@ -84,7 +84,8 @@ Nunca sobre trabajo ya fusionado.
 
 1. **Código:** `git fetch origin {{protectedBranch}}` y revisión del diff contra `origin/{{protectedBranch}}` con
    todos los hallazgos (en Claude Code, `/code-review --max-findings all`), con el criterio de `REVIEW.md`. Arreglos
-   con commit y subidos. Solo el código necesita revisión: lo que casa con `content` de `.claude/gw.json` es
+   con commit y subidos: lo grave o medio y lo que el propio arreglo rompe; lo leve se apunta como pendiente en la
+   bitácora y no vuelve a revisarse en ese PR. Solo el código necesita revisión: lo que casa con `content` de `.claude/gw.json` es
    contenido.
 2. **Entorno:** la skill `opt-tokens` y luego `retro` (más `opt-ai` si hubo medidas con un modelo de IA local). Sus
    propuestas se **presentan al usuario**; lo que confirme se aplica en la rama. Una retro escrita sin presentarla no
