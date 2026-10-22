@@ -124,8 +124,11 @@ class Templates(unittest.TestCase):
 
     def test_default_content_keeps_the_guard_scripts_as_code(self):
         content = json.loads((TEMPLATES / "gw.json").read_text())["content"]
-        self.assertIn("^\\.claude/skills/", content)
-        for path in (".claude/gw/scripts/es-codigo.sh", ".claude/gw/scripts/config.py", ".claude/gw/schema/gw.schema.json"):
+        for path in (".claude/skills/retro/SKILL.md", "docs/plan.md", "README.md", "AGENTS.md"):
+            self.assertTrue(any(re.search(p, path) for p in content), f"{path} should be content")
+        for path in (".claude/gw/scripts/es-codigo.sh", ".claude/gw/scripts/config.py", ".claude/gw/schema/gw.schema.json",
+                     ".claude/skills/opt-tokens/scripts/medir.py", ".claude/skills/x/agents/openai.yaml",
+                     "src/AGENTS.md", "src/notes.md"):
             self.assertFalse(any(re.search(p, path) for p in content), f"{path} must stay code (reviewed)")
 
 

@@ -11,7 +11,7 @@
   "check": ["make check"],
   "reviewMark": "docs/registros/revisado.txt",
   "requireRetro": true,
-  "content": ["^docs/", "\\.md$", "^\\.claude/skills/"],
+  "content": ["^docs/", "^(README|GLOSSARY|REVIEW|CLAUDE|AGENTS)\\.md$", "^\\.claude/skills/.*\\.md$"],
   "roadmap": false,
   "selector": {"cases": []},
   "designReferences": [],

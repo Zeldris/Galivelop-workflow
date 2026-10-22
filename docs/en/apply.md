@@ -58,9 +58,11 @@ Rules:
   command that does not exist or does not pass is found late and gets in the way of every push.
 - **When unsure, ask the person**; do not invent a command. With several candidates, offer them numbered.
 - A project with no tests: `check` can be a linter or a `bash -n`; say so and note it as debt in the log.
-- `content` is proposed by reading the tree: `^docs/`, `\\.md$`, `^public/`… (in JSON the backslash is doubled).
-  When in doubt, put less in `content`: what counts as code gets reviewed. The copied skills (`^\.claude/skills/`) are
-  reviewed in the workflow repo and are in the template's default `content`; keep them there. The scripts in
+- `content` is proposed by reading the tree: `^docs/`, `^public/`… (in JSON the backslash is doubled). **What is
+  `content` goes up without a mark:** do not put scripts there, nor what an agent reads as instructions (an
+  `AGENTS.md` in a subfolder, a prompt template). When in doubt, put less: what counts as code gets reviewed. The
+  `.md` files of the copied skills (`^\.claude/skills/.*\.md$`) are reviewed in the workflow repo and are in the
+  template's default `content`; keep them there (their scripts, no). The scripts in
   `.claude/gw/` do **not** go in `content`: they are the hooks that guard the branch, and a change to them is reviewed
   like any code.
 
@@ -70,7 +72,7 @@ Done when: every row of the table has an answer (or a question put to the person
 
 From the project root or giving it as the argument; the flags come from `--help`. `--check-command`, `--install` and
 `--content` **repeat**: one flag per command or regex (two checks = two `--check-command`). Without `--content`, the
-template's default applies (`^docs/`, `\.md$` and the workflow's copies):
+template's default applies (`^docs/`, the root `.md` files that are documentation and the copied skills' `.md`):
 
 ```bash
 python3 <workflow>/scripts/aplicar.py <project> --dry-run --init --language en \

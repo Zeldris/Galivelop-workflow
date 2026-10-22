@@ -26,7 +26,7 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
 | `pushToProtected` | How code reaches it: `direct` (pushed straight) or `pr` (by pull request: the `PreToolUse` hook also guards PR creation and merging). In both, `pre-push` requires the review mark on every direct push that brings code | (none) | `"pr"` | `pre-push`, `revision-antes-de-main.sh` |
 | `check` | Commands run **in order** on the commit being pushed; all must pass. At least one | (none) | `["npm run check"]` | `pre-push`, `fusionar.sh`, `doctor.py`, CI |
 | `reviewMark` | Committed file holding the reviewed commit's sha | (none; `--init` sets `docs/registros/revisado.txt`) | `"docs/registros/revisado.txt"` | `revisado.sh` (writes it), `es-codigo.sh`, `pre-push`, `revision-antes-de-main.sh` |
-| `content` | Regexes (on repo-relative paths) of what **is content, not code**: it needs no `/code-review` | (none; may be `[]`, then everything is code) | `["^docs/", "\\.md$"]` | `es-codigo.sh`, and through it `pre-push` and `revision-antes-de-main.sh` |
+| `content` | Regexes (on repo-relative paths) of what **is content, not code**: it needs no `/code-review` (no scripts, nor what an agent reads as instructions: it goes up without a mark) | (none; may be `[]`, then everything is code; `--init` sets `^docs/`, the root documentation `.md` files and the `.md` files under `.claude/skills/`) | `["^docs/", "^README\\.md$"]` | `es-codigo.sh`, and through it `pre-push` and `revision-antes-de-main.sh` |
 
 ## Optional keys
 

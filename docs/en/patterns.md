@@ -24,7 +24,8 @@ How it is set up, generically:
    - `pushToProtected: pr`: it opens a pull request; the PR hook and CI stand guard and a person decides.
    - `direct`: it may push to the protected branch **only if the review mark covers the code** (`pre-push` requires it
      and fails closed). If the task changes code without review, it does not push: it leaves the branch with its log
-     for a person to review. A `content`-only change needs no mark.
+     for a person to review. A `content`-only change needs no mark (that is why `content` holds no scripts nor
+     instructions for agents).
 5. **It ends with a short report** in the log: what it did, what it left pending and the next step.
 
 Authorisation: a task that pushes to the protected branch with nobody present deserves to be written as a rule in

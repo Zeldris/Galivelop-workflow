@@ -57,9 +57,11 @@ Reglas:
   tarda. Una orden que no existe o no pasa se detecta tarde y estorba en cada push.
 - **Si hay duda, pregunta a la persona**; no inventes una orden. Con varios candidatos, ofrécelos numerados.
 - Un proyecto sin tests: `check` puede ser un linter o un `bash -n`; dilo y apúntalo como deuda en la bitácora.
-- `content` se propone leyendo el árbol: `^docs/`, `\\.md$`, `^public/`… (en JSON, la barra se escribe doble).
-  Cuando dudes, deja menos en `content`: lo que cuenta como código se revisa. Las skills copiadas
-  (`^\.claude/skills/`) se revisan en el repo del flujo y están en el `content` por defecto de la plantilla; déjalas.
+- `content` se propone leyendo el árbol: `^docs/`, `^public/`… (en JSON, la barra se escribe doble). **Lo que sea
+  `content` sube sin marca:** no pongas ahí scripts ni lo que un agente lee como instrucciones (un `AGENTS.md` en una
+  subcarpeta, una plantilla de prompt). Cuando dudes, deja menos: lo que cuenta como código se revisa. Los `.md` de
+  las skills copiadas (`^\.claude/skills/.*\.md$`) se revisan en el repo del flujo y están en el `content` por
+  defecto de la plantilla; déjalos (sus scripts, no).
   Los scripts de `.claude/gw/` **no** van en `content`: son los ganchos que guardan la rama, y un cambio en ellos se
   revisa como cualquier código.
 
@@ -70,7 +72,7 @@ ha ejecutado una vez.
 
 Desde la raíz del proyecto o indicándola; las banderas salen de `--help`. `--check-command`, `--install` y
 `--content` **se repiten**: una bandera por orden o regex (dos checks = dos `--check-command`). Sin `--content`, vale
-el de la plantilla (`^docs/`, `\.md$` y las copias del flujo):
+el de la plantilla (`^docs/`, los `.md` de la raíz que son documentación y los `.md` de las skills copiadas):
 
 ```bash
 python3 <flujo>/scripts/aplicar.py <proyecto> --dry-run --init --language es \

@@ -24,7 +24,8 @@ Cómo se plantea, en genérico:
    - `pushToProtected: pr`: abre un pull request; el gancho de PR y el CI hacen de guardia y la persona decide.
    - `direct`: puede subir a la rama protegida **solo si la marca de revisión cubre el código** (el `pre-push` lo exige
      y falla cerrado). Si la tarea cambia código sin revisión, no sube: deja la rama con su bitácora para que una
-     persona la revise. Un cambio solo de `content` no necesita marca.
+     persona la revise. Un cambio solo de `content` no necesita marca (por eso en `content` no van scripts ni
+     instrucciones para agentes).
 5. **Termina con un informe corto** en la bitácora: qué hizo, qué dejó pendiente y el siguiente paso.
 
 Autorización: una tarea que sube a la rama protegida sin nadie delante merece escribirse como regla en `AGENTS.md`,
