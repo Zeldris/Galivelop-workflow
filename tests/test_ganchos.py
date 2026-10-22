@@ -366,6 +366,33 @@ class PrePush(Base):
         self.assertNotEqual(code, 0, out)
         self.assertIn(".rej", out)
 
+    def test_conflict_markers_already_on_another_branch_refused_on_the_protected_branch(self):
+        p = self.p  # a task that publishes alone: git push origin <branch>:main, its commits already on the remote
+        p.write("src/merged.py", "\n".join([MARK_OPEN, "a = 1", "=======", "a = 2", MARK_CLOSE, ""]))
+        p.commit("bad merge")
+        self.assertEqual(p.push("--no-verify", "origin", "feature")[0], 0)
+        code, out = p.push("origin", "feature:main")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("this push to main has conflict markers", out)
+        self.assertIn("src/merged.py", out)
+
+    def test_rej_already_on_another_branch_refused_on_the_protected_branch(self):
+        p = self.p
+        p.write("src/a.py.orig", "leftover\n"); p.commit("leftover")
+        self.assertEqual(p.push("--no-verify", "origin", "feature")[0], 0)
+        code, out = p.push("origin", "feature:main")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("this push to main adds *.rej / *.orig leftovers", out)
+
+    def test_leftovers_only_on_the_protected_branch_already_are_not_blamed_on_the_push(self):
+        p = self.p  # main already carries a marker: a push that does not touch that file is not refused for it
+        p.git("checkout", "-q", "main")
+        p.write("docs/old.md", "\n".join([MARK_OPEN, "x", MARK_CLOSE, ""])); p.commit("old marker")
+        self.assertEqual(p.push("--no-verify", "origin", "main")[0], 0)
+        p.write("docs/notes.md", "content only\n"); p.commit("content")
+        code, out = p.push("origin", "main")
+        self.assertEqual(code, 0, out)
+
     def test_deleting_a_branch_is_not_checked(self):
         p = self.p
         self.assertEqual(p.push("origin", "feature")[0], 0)

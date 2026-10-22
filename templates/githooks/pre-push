@@ -2,7 +2,8 @@
 # galivelop-workflow v0.1.0
 # Git pre-push hook (copied into projects as .githooks/pre-push; enable with: git config core.hooksPath .githooks).
 #   - Says which commits each ref pushes, or that it pushes nothing new.
-#   - Refuses conflict markers and added *.rej / *.orig files in what is pushed.
+#   - Refuses conflict markers and added *.rej / *.orig files in what is pushed (to the protected branch, in all it
+#     gains from the remote tip, commits other branches already have included).
 #   - Reads .claude/gw.json as each pushed commit has it (never the working tree's); a pushed commit without a valid
 #     one is refused.
 #   - Runs every `check` command of that config on the commit being pushed (a temporary worktree when it is not
@@ -89,6 +90,23 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
   done <<<"$checks"
 }
 
+scan_leftovers() {  # scan_leftovers <sha> <files> <what>: conflict markers and *.rej / *.orig files among <files> in <sha>
+  local sha="$1" files="$2" what="$3" leftovers first markers
+  leftovers="$(printf '%s\n' "$files" | grep -E '\.(rej|orig)$' | while IFS= read -r f; do
+    git cat-file -e "$sha:$f" 2>/dev/null && echo "$f"; done)"
+  if [ -n "$leftovers" ]; then
+    printf '  %s\n' "$leftovers" >&2
+    first="$(printf '%s\n' "$leftovers" | head -n 1)"
+    fail "$what adds *.rej / *.orig leftovers (above); remove them and commit: git rm -- '$first' && git commit"
+  fi
+  markers=""
+  [ -z "$files" ] || markers="$(printf '%s\n' "$files" | grep . | tr '\n' '\0' | xargs -0 git grep -n -I -E '^(<<<<<<< |>>>>>>> )' "$sha" -- 2>/dev/null | head -n 10)"
+  if [ -n "$markers" ]; then
+    printf '  %s\n' "$markers" >&2
+    fail "$what has conflict markers (above); resolve them and commit: git commit -a"
+  fi
+}
+
 checked=""
 while read -r local_ref local_sha remote_ref remote_sha; do
   [ -n "${local_sha:-}" ] || continue
@@ -136,20 +154,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     files="$(git log -m --format= --name-only --no-renames "$local_sha" --not --remotes $known | sort -u)"
     printf '%s\n' "$files" | grep . >> "$work/changed"
 
-    # Leftovers of a merge or a patch: conflict markers and *.rej / *.orig files in the pushed commit.
-    leftovers="$(printf '%s\n' "$files" | grep -E '\.(rej|orig)$' | while IFS= read -r f; do
-      git cat-file -e "$local_sha:$f" 2>/dev/null && echo "$f"; done)"
-    if [ -n "$leftovers" ]; then
-      printf '  %s\n' "$leftovers" >&2
-      first="$(printf '%s\n' "$leftovers" | head -n 1)"
-      fail "the push adds *.rej / *.orig leftovers (above); remove them and commit: git rm -- '$first' && git commit"
-    fi
-    markers=""
-    [ -z "$files" ] || markers="$(printf '%s\n' "$files" | grep . | tr '\n' '\0' | xargs -0 git grep -n -I -E '^(<<<<<<< |>>>>>>> )' "$local_sha" -- 2>/dev/null | head -n 10)"
-    if [ -n "$markers" ]; then
-      printf '  %s\n' "$markers" >&2
-      fail "the push has conflict markers (above); resolve them and commit: git commit -a"
-    fi
+    scan_leftovers "$local_sha" "$files" "the push"
   fi
 
   if [ "$checked" != "$local_sha" ]; then
@@ -183,6 +188,14 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         || fail "the remote $protected is at ${remote_sha:0:7}, which this clone does not have; fetch it and push again: $(fetch_hint)"
       base="$remote_sha"
     fi
+    # Everything the protected branch gains, not only what no remote has yet: a commit already pushed to another
+    # branch (a task that publishes with git push origin <branch>:main) skips the scan above.
+    if [ -n "$base" ]; then
+      gains="$(git diff --name-only --no-renames "$base" "$local_sha")" || fail "cannot list what ${local_sha:0:7} changes from ${base:0:7}; fetch and retry: $(fetch_hint)"
+    else
+      gains="$(git ls-tree -r --name-only "$local_sha")" || fail "cannot list the files of ${local_sha:0:7}; fetch and retry: git fetch $remote"
+    fi
+    scan_leftovers "$local_sha" "$gains" "this push to $protected"
     if [ -n "$base" ] && git cat-file -e "$base:.claude/gw.json" 2>/dev/null; then
       policy="$base"  # an invalid config there fails closed in cfg_at
     else
