@@ -10,9 +10,9 @@
 |---|---|
 | Rama | `claude/galivelop-workflow-inicio`; `main` = `9b97d7b` = **release `v0.1.0`** (2026-10-22) |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
-| Fase en curso | **5. Piloto: Portal-Galivelop** (plan §9) — esperando a que el usuario abra la sesión del portal con el prompt de `docs/registros/prompt-piloto-portal.md` |
-| Último punto estable | Segunda subida a `main` con las tres fases y **release `v0.1.0`** publicada por `release.yml` (la etiqueta la subió el usuario: el proxy de la sesión rechaza subir etiquetas) |
-| Siguiente paso | **Abrir una sesión nueva desde la carpeta del repo** (retro R1: esta llegó a 585k de contexto sin compactar). Fase 5: el usuario lanza el piloto en una sesión del portal; al acabar, `gw-harvest` sobre el portal desde aquí |
+| Fase en curso | **5. Piloto: Portal-Galivelop** — hecho y publicado en el `main` del portal (`673602b`); recogida hecha, 21 propuestas pendientes de decisión |
+| Último punto estable | Recogida del piloto del portal en `docs/propuestas/2026-10-22-portal-galivelop.md` (21 propuestas; P1 es grave: un commit que añade `".*"` a `content` sube código a `main` sin marca) |
+| Siguiente paso | **Sesión nueva desde la carpeta del repo.** 1) Actualizar el clon de Tarkor (`git -C /home/user/world-maker-fantasy fetch origin main && git -C … merge --ff-only origin/main`) y lanzar `gw-harvest` sobre él (última recogida: `11a201b7`). 2) Presentar al usuario las propuestas del portal (empezar por P1: leer `content`/`protectedBranch`/`reviewMark`/`pushToProtected` de la rama protegida remota, no del commit subido, y contar `gw.json` y los scripts de guarda como código) y las de Tarkor; aplicar lo aprobado; tres fases y `v0.1.1` |
 
 ### Fases
 
