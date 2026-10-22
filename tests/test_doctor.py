@@ -170,6 +170,24 @@ class Doctor(unittest.TestCase):
         self.assertLine(out, "FAIL", ".claude/settings.json by .gitignore:1:.claude/*", "!.claude/settings.json")
         self.assertNotIn(".claude/gw.json by", out)  # tracked files are never ignored
 
+    def test_pending_proposals_warn_and_hold_back_skills_ok(self):
+        self.p.write(".claude/skills/selector/SKILL.md.gw-nuevo", "new\n")
+        code, out = self.doctor()
+        self.assertLine(out, "WARN", "1 pending .gw-nuevo proposal(s)",
+                        "git diff --no-index .claude/skills/selector/SKILL.md .claude/skills/selector/SKILL.md.gw-nuevo")
+        self.assertNotIn("OK   skills", out)
+
+    def test_flow_script_run_from_another_folder_warns(self):
+        path = self.p.work / ".claude" / "settings.json"
+        settings = json.loads(path.read_text())
+        settings["hooks"]["SessionStart"].append(
+            {"matcher": "startup", "hooks": [{"type": "command", "command": "bash scripts/session-start.sh"}]})
+        path.write_text(json.dumps(settings))
+        (self.p.work / "scripts").mkdir()
+        (self.p.work / "scripts" / "session-start.sh").write_text("true\n")
+        code, out = self.doctor()
+        self.assertLine(out, "WARN", "'bash scripts/session-start.sh' runs a workflow script from outside", "delete")
+
     def test_invalid_config_fails_with_validate_command(self):
         (self.p.work / ".claude" / "gw.json").write_text("{}")
         code, out = self.doctor()

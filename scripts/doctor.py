@@ -35,6 +35,8 @@ PR_TOOLS = ("create_pull_request", "merge_pull_request")
 PR_GUARD = "revision-antes-de-main.sh"
 INTERPRETERS = {"bash", "sh", "zsh", "python", "python3", "node", "env", "exec"}
 SOURCES = re.compile(r"galivelop|workflow|mattpocock", re.I)
+PROPOSAL = ".gw-nuevo"  # aplicar.py's proposals for files with local edits
+FLOW_HOOK_SCRIPTS = ("session-start.sh", "recuperar.py", "revision-antes-de-main.sh")  # the settings template's
 SKILL_LICENSE = "LICENSE-mattpocock-skills"  # aplicar.py copies it next to the skills that cite it
 
 
@@ -229,6 +231,33 @@ def hook_files(command, root):
     return files
 
 
+def stale_flow_hooks(hooks):
+    """[(event, command)] of SessionStart/PreToolUse hooks that run a workflow script from another folder."""
+    out = []
+    for event in ("SessionStart", "PreToolUse"):
+        for entry in hooks.get(event) or []:
+            for h in (entry.get("hooks") or []) if isinstance(entry, dict) else []:
+                command = h.get("command", "") if isinstance(h, dict) else ""
+                if (any(re.search(rf"(^|[/\s\"']){re.escape(n)}\b", command) for n in FLOW_HOOK_SCRIPTS)
+                        and ".claude/gw/scripts/" not in command):
+                    out.append((event, command))
+    return out
+
+
+def check_proposals(rep, root):
+    """WARN with every pending *.gw-nuevo; returns them."""
+    listed = git(root, "ls-files", "-co", "--exclude-standard") or ""
+    found = sorted(f for f in listed.splitlines() if f.endswith(PROPOSAL))
+    if found:
+        first = found[0][:-len(PROPOSAL)]
+        rep.warn("proposals", f"{len(found)} pending {PROPOSAL} proposal(s), not reviewed: {', '.join(found[:10])}"
+                 + (" …" if len(found) > 10 else ""),
+                 f"merge each by hand and delete it; see one: git diff --no-index {first} {first}{PROPOSAL}")
+    else:
+        rep.ok("proposals", f"no pending {PROPOSAL} proposal")
+    return found
+
+
 def check_settings(rep, root):
     path = root / ".claude" / "settings.json"
     if not path.is_file():
@@ -269,6 +298,10 @@ def check_settings(rep, root):
                         rel = os.path.relpath(f, str(root))
                         rep.fail(f"settings {event}", f"hook command points to {rel}, which does not exist",
                                  "restore it (/gw-update) or fix the command in .claude/settings.json")
+    for event, command in stale_flow_hooks(hooks):
+        problems += 1
+        rep.warn(f"settings {event}", f"'{command}' runs a workflow script from outside .claude/gw/scripts/ "
+                 f"(an older copy?), so it may run twice", "delete that entry from .claude/settings.json")
     guard = any(isinstance(e, dict) and all(t in (e.get("matcher") or "") for t in PR_TOOLS)
                 and any(PR_GUARD in (h.get("command") or "") for h in e.get("hooks") or [] if isinstance(h, dict))
                 for e in hooks.get("PreToolUse") or [])
@@ -316,7 +349,7 @@ def skill_metadata(path):
     return meta
 
 
-def check_skills(rep, root, version):
+def check_skills(rep, root, version, proposals=()):
     base = root / ".claude" / "skills"
     if not version or not base.is_dir():
         return
@@ -331,6 +364,9 @@ def check_skills(rep, root, version):
         rep.warn("skills", f"{', '.join(cites)} cite {SKILL_LICENSE}, missing from .claude/skills/", "/gw-update")
     if stale:
         rep.warn("skills", f"copied workflow skills not at version {version}: {', '.join(stale)}", "/gw-update")
+    elif any(p.startswith(".claude/skills/") for p in proposals):
+        rep.warn("skills", "copied workflow skills at their version, with pending proposals (above)",
+                 "review the .claude/skills/ proposals first")
     else:
         rep.ok("skills", f"copied workflow skills at version {version}")
 
@@ -356,7 +392,8 @@ def run(root):
     check_ci(rep, root)
     check_settings(rep, root)
     check_subagents(rep, root)
-    check_skills(rep, root, version)
+    proposals = check_proposals(rep, root)
+    check_skills(rep, root, version, proposals)
     check_session(rep, root)
     return rep
 

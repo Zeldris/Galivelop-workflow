@@ -152,6 +152,16 @@ class Aplicar(unittest.TestCase):
         self.assertIn("WARNING: git ignores .githooks/pre-push (.gitignore:1:.githooks/)", out)
         self.assertIn("git check-ignore -v .githooks/pre-push", out)
 
+    def test_older_flow_hook_in_settings_is_listed(self):
+        p = self.p
+        self.applied()
+        settings = json.loads(p.read(".claude/settings.json"))
+        settings["hooks"]["SessionStart"].append(
+            {"matcher": "startup", "hooks": [{"type": "command", "command": "bash .claude/hooks/session-start.sh"}]})
+        p.write(".claude/settings.json", json.dumps(settings))
+        out = self.applied()
+        self.assertIn("WARNING: .claude/settings.json SessionStart also runs 'bash .claude/hooks/session-start.sh'", out)
+
     def test_locally_newer_owned_file_is_never_overwritten(self):
         p = self.p
         self.applied()
