@@ -22,6 +22,7 @@ import argparse
 import json
 import os
 import re
+import select
 import subprocess
 import sys
 
@@ -218,9 +219,16 @@ def state(root, transcript):
           f"{script_command(root)}{session} --buscar '<text>'; never read the transcript whole.")
 
 
-def hook_transcript():
-    """The transcript_path Claude Code passes to a hook on stdin."""
+def hook_transcript(wait=0.2):
+    """The transcript_path Claude Code passes to a hook on stdin. Read only when data arrives within `wait` seconds:
+    an agent's Bash tool or `cmd | recuperar.py` leaves stdin open with nothing on it, and --estado must not hang."""
     if sys.stdin is None or sys.stdin.isatty():
+        return None
+    try:
+        ready, _, _ = select.select([sys.stdin], [], [], wait)
+    except (OSError, ValueError, TypeError):  # no select on this stream (Windows pipes, a closed stdin)
+        return None
+    if not ready:
         return None
     try:
         data = json.loads(sys.stdin.read() or "{}")
@@ -243,6 +251,8 @@ def main(argv=None):
         try:
             root = config.find_root(args.root)
             state(root, args.sesion or hook_transcript())
+        except BrokenPipeError:
+            raise
         except Exception as exc:  # fail open: the hook must never break the session
             print(f"recuperar.py --estado could not finish ({exc}); run it by hand to see why: "
                   f"python3 {os.path.abspath(__file__)} --estado")
@@ -262,4 +272,10 @@ def main(argv=None):
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        code = main()
+        sys.stdout.flush()
+    except BrokenPipeError:  # `--estado | head`: the reader left; say nothing more and exit 0
+        os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+        code = 0
+    sys.exit(code)

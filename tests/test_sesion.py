@@ -6,7 +6,9 @@ HOME points to a temp folder, so nothing reads or writes the real ~/.claude; git
 import json
 import os
 import shutil
+import subprocess
 import tempfile
+import threading
 import time
 import unittest
 from pathlib import Path
@@ -226,6 +228,30 @@ class Recuperar(Base):
         code, out = p.recuperar("--estado")
         self.assertEqual(code, 0, out)
         self.assertIn("Log: unknown", out)
+
+    def test_estado_does_not_wait_on_an_open_empty_stdin(self):
+        p = self.p  # an agent's Bash tool, or `sleep 3 | recuperar.py --estado`: stdin open, nothing on it
+        proc = subprocess.Popen(["python3", str(p.scripts / "recuperar.py"), "--estado"], cwd=p.work, env=p.env,
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        watchdog = threading.Timer(10, proc.kill)  # a hang is killed, and fails below with a negative exit code
+        watchdog.start()
+        try:
+            out = proc.stdout.read()
+        finally:
+            watchdog.cancel()
+            proc.stdin.close()
+        self.assertEqual(proc.wait(timeout=10), 0, out)
+        self.assertIn("Log:", out)
+
+    def test_estado_into_a_closed_pipe_exits_zero_quietly(self):
+        p = self.p  # `recuperar.py --estado | head -n 1`: the reader leaves before the writer is done
+        proc = subprocess.Popen(["python3", str(p.scripts / "recuperar.py"), "--estado"], cwd=p.work, env=p.env,
+                                stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        proc.stdout.close()
+        err = proc.stderr.read()
+        self.assertEqual(proc.wait(timeout=10), 0, err)
+        self.assertNotIn("BrokenPipeError", err)
+        self.assertNotIn("Traceback", err)
 
     def test_buscar_finds_fragments_with_context(self):
         p = self.p
