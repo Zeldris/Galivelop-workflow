@@ -206,13 +206,12 @@ class ShellcheckStep(unittest.TestCase):
     """tests/shellcheck.sh without shellcheck on PATH: a warning on a person's machine, a failure in a cloud session
     (where no CI would make up for it) and in CI."""
 
-    def run_without_shellcheck(self, **env):
-        tmp = Path(tempfile.mkdtemp(prefix="gw-shellcheck-"))
+    def run_without_shellcheck(self, *files, **env):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-shellcheck-"))  # empty PATH: the script only uses bash builtins
         self.addCleanup(shutil.rmtree, tmp, True)
-        for tool in ("git", "dirname", "xargs"):
-            (tmp / tool).symlink_to(shutil.which(tool))
         base = {k: v for k, v in os.environ.items() if k not in ("CI", "CLAUDE_CODE_REMOTE") and not k.startswith("GIT_")}
-        r = subprocess.run([shutil.which("bash"), str(ROOT / "tests" / "shellcheck.sh")], cwd=ROOT,
+        files = files or ("tests/comprobar.sh",)
+        r = subprocess.run([shutil.which("bash"), str(ROOT / "tests" / "shellcheck.sh"), *files], cwd=ROOT,
                            capture_output=True, text=True, env=dict(base, PATH=str(tmp), **env))
         return r.returncode, r.stdout + r.stderr
 
@@ -231,6 +230,11 @@ class ShellcheckStep(unittest.TestCase):
         code, out = self.run_without_shellcheck(CI="true")
         self.assertEqual(code, 1, out)
         self.assertIn("shellcheck is missing in CI", out)
+
+    def test_no_files_passes_without_shellcheck(self):
+        r = subprocess.run([shutil.which("bash"), str(ROOT / "tests" / "shellcheck.sh")], cwd=ROOT,
+                           capture_output=True, text=True, env=dict(os.environ, CI="true"))
+        self.assertEqual((r.returncode, r.stdout + r.stderr), (0, ""))
 
 
 if __name__ == "__main__":

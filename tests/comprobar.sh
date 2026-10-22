@@ -16,8 +16,9 @@ python3 scripts/aplicar.py --check . || fail=1
 echo "== shell scripts"
 scripts="$(git ls-files -- '*.sh' 'templates/githooks/*' "${copies[@]}")"
 if [[ -n "$scripts" ]]; then
-  while IFS= read -r f; do bash -n "$f" || fail=1; done <<<"$scripts"
-  bash tests/shellcheck.sh || fail=1
+  files=()
+  while IFS= read -r f; do bash -n "$f" || fail=1; files+=("$f"); done <<<"$scripts"
+  bash tests/shellcheck.sh "${files[@]}" || fail=1
 fi
 
 echo "== markdown links and stale references"

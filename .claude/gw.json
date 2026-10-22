@@ -5,7 +5,9 @@
   "log": "docs/traspaso.md",
   "protectedBranch": "main",
   "pushToProtected": "direct",
-  "install": [],
+  "install": [
+    "pip install shellcheck-py"
+  ],
   "check": [
     "bash tests/comprobar.sh",
     "[ \"${GW_PUSH_PROTECTED:-}\" != true ] || python3 scripts/version.py --release"

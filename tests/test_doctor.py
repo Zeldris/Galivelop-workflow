@@ -2,6 +2,7 @@
 the command that fixes it. HOME points to a temp folder (no real ~/.claude); git runs isolated as in test_ganchos.
 """
 import json
+import re
 import shutil
 import tempfile
 import unittest
@@ -211,9 +212,26 @@ class Doctor(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertLine(out, "OK", "compaction", "200000")
 
+    def test_cloud_session_warns_with_the_project_value(self):
+        settings = self.settings()
+        settings["env"]["CLAUDE_CODE_AUTO_COMPACT_WINDOW"] = "150000"
+        self.save_settings(settings)
+        code, out = self.doctor_env({"CLAUDE_CODE_REMOTE": "true"})
+        self.assertLine(out, "WARN", "compaction", "CLAUDE_CODE_AUTO_COMPACT_WINDOW=150000 to the cloud environment")
+
+    def test_project_without_a_compaction_window_says_nothing_about_it(self):
+        settings = self.settings()
+        del settings["env"]["CLAUDE_CODE_AUTO_COMPACT_WINDOW"]
+        self.save_settings(settings)
+        code, out = self.doctor_env({"CLAUDE_CODE_REMOTE": "true"})
+        self.assertEqual(self.compaction_lines(out), [], out)
+
     def test_local_session_says_nothing_about_compaction(self):
         code, out = self.doctor()
-        self.assertNotIn("compaction", out)
+        self.assertEqual(self.compaction_lines(out), [], out)
+
+    def compaction_lines(self, out):
+        return [l for l in out.splitlines() if re.match(r"(OK|WARN|FAIL) +compaction:", l)]
 
     def doctor_env(self, env):
         return self.p.run("python3", str(self.p.scripts / "doctor.py"), env=env, cwd=self.tmp)

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # galivelop-workflow v0.1.0
-"""Deterministic check that a project has the workflow set up (used by /gw-doctor and CI). No AI, no network.
+"""Check that a project has the workflow set up (used by /gw-doctor and CI). No AI, no network.
 
   python3 doctor.py            # one line per check: OK / WARN / FAIL, each problem with the command that fixes it
   python3 doctor.py --json     # the same as a JSON list of {status, check, message, fix}
@@ -10,7 +10,10 @@ Exit 1 if any check FAILs (WARNs do not fail). Checks: the config; core.hooksPat
 hooks (present, executable, version); the log and its next step; the `check` and `install` commands exist; a CI
 workflow; .claude/settings.json (WMF P4: SessionStart matchers, `compact` only runs recuperar.py --estado, hook
 commands point to existing files, the PR guard on PreToolUse); AGENTS.md/CLAUDE.md authorise dealing work to
-subagents (VeriNews P1); copied skills at the config's version; a session opened outside the repo (VeriNews P3).
+subagents (VeriNews P1); copied skills at the config's version; a session opened outside the repo (VeriNews P3);
+in a cloud session (CLAUDE_CODE_REMOTE=true), the compaction window the project's settings.json sets is in the
+environment. That last check and the session one read the machine running doctor, not only the project, so their
+lines can differ between a person's machine, CI and a cloud session.
 Python 3.8+ standard library only.
 """
 import argparse
@@ -386,13 +389,13 @@ def check_compaction(rep, root):
     if os.environ.get("CLAUDE_CODE_REMOTE") != "true":
         return
     key = "CLAUDE_CODE_AUTO_COMPACT_WINDOW"
-    if os.environ.get(key):
-        rep.ok("compaction", f"cloud session with {key}={os.environ[key]} in its environment")
-        return
     try:
         value = json.loads((root / ".claude" / "settings.json").read_text())["env"][key]
     except (OSError, ValueError, KeyError, TypeError):
-        value = "200000"
+        return  # the project sets no window: nothing to carry over to the cloud environment
+    if os.environ.get(key):
+        rep.ok("compaction", f"cloud session with {key}={os.environ[key]} in its environment")
+        return
     rep.warn("compaction", f"cloud session without {key} in its environment: .claude/settings.json may not load "
              f"(session started in /home/user or with several repos), so the context grows with no cap",
              f"add {key}={value} to the cloud environment's variables (environment menu > Edit); new sessions get it")
