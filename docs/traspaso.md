@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | `ccr-6dfbc880-ddr41g` (avance rápido de `ccr-76251061-b1yiwq`, que sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `01d1a75` (versión `0.2.0`, sin etiqueta aún); `v0.1.0` = `9b97d7b` |
+| Rama | `ccr-6dfbc880-ddr41g` (avance rápido de `ccr-76251061-b1yiwq`, que sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `01d1a75` = **release `v0.2.0`** (2026-10-22, etiqueta y release creadas a mano en GitHub); `v0.1.0` = `9b97d7b` |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
-| Fase en curso | **5. Piloto: Portal-Galivelop** — publicado en el portal (`673602b`); propuestas aplicadas (2026-10-22); `0.2.0` en `main` (`01d1a75`, 2026-10-22); falta la etiqueta `v0.2.0` |
+| Fase en curso | **5. Piloto: Portal-Galivelop** — publicado en el portal (`673602b`); propuestas aplicadas (2026-10-22); `v0.2.0` publicada; la fase sigue abierta hasta cerrarla con el usuario |
 | Último punto estable | **Versión `0.2.0`**: `version.py 0.2.0`, entrada del CHANGELOG (19 filas, R1-R3, arreglos de las revisiones) y los tests leen la versión de `plugin.json`; check en verde en local; el CI no arranca (cupo de Actions) |
-| Siguiente paso | El usuario crea la etiqueta `v0.2.0` sobre `01d1a75` en GitHub (Releases → Draft a new release; la nube no puede subir etiquetas) con las notas de la entrada `0.2.0` del CHANGELOG; luego, Fase 6 |
+| Siguiente paso | Fase 6 (piloto en Tarkor, instalador y VeriNews), tras `/clear` |
 
 ### Fases
 
@@ -30,7 +30,7 @@
 
 ## Para la próxima publicación
 
-`0.1.0` publicada. Para la siguiente: `release.yml` con lanzamiento manual desde Actions que cree la etiqueta (la
+`0.2.0` publicada (etiqueta y release a mano en GitHub, título `Galivelop-workflow vX.Y.Z`, notas de la entrada del CHANGELOG). Para la siguiente: `release.yml` con lanzamiento manual desde Actions que cree la etiqueta (la
 sesión en la nube no puede subir etiquetas: 403 del proxy).
 
 ## Hecho (10 últimas)
