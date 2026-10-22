@@ -1,0 +1,38 @@
+{
+  "env": {
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200000"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/session-start.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/recuperar.py --estado"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "^mcp__github__(create_pull_request|merge_pull_request|enable_pr_auto_merge|update_pull_request)$|^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/revision-antes-de-main.sh"
+          }
+        ]
+      }
+    ]
+  }
+}
