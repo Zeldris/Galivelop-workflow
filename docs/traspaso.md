@@ -10,9 +10,9 @@
 |---|---|
 | Rama | `ccr-6dfbc880-ddr41g` (avance rápido de `ccr-76251061-b1yiwq`, que sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `01d1a75` = **release `v0.2.0`** (2026-10-22, etiqueta y release creadas a mano en GitHub); `v0.1.0` = `9b97d7b` |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
-| Fase en curso | **6. Piloto: Tarkor e instalador** — prompts listos en `docs/registros/prompt-piloto-tarkor.md`; falta pegarlos en las sesiones de cada repo |
+| Fase en curso | **6. Piloto: Tarkor e instalador** — prompts enviados (2026-10-22) a las sesiones «Tarkor Develop» (WMF) y «Tarkor Installer»; trabajan en `claude/piloto-galivelop-workflow` de cada repo |
 | Último punto estable | **Versión `0.2.0`**: `version.py 0.2.0`, entrada del CHANGELOG (19 filas, R1-R3, arreglos de las revisiones) y los tests leen la versión de `plugin.json`; check en verde en local; el CI no arranca (cupo de Actions) |
-| Siguiente paso | Fase 6: el usuario pega los prompts de `docs/registros/prompt-piloto-tarkor.md` en sesiones de World-Maker-Fantasy y del instalador; aquí, recoger con `gw-harvest` lo que devuelvan |
+| Siguiente paso | Esperar a que cada piloto deje `docs/registros/piloto-galivelop-workflow.md`; luego `gw-harvest` de los dos repos |
 
 ### Fases
 
