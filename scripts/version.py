@@ -16,12 +16,15 @@ check flags one that lacks it (exceptions, with the reason, in UNMARKED).
   python3 scripts/version.py            # list files whose marker differs from plugin.json; exit 1 if any
   python3 scripts/version.py 0.2.0      # set plugin.json and every marker to 0.2.0; add a CHANGELOG entry
   python3 scripts/version.py <current>  # re-sync stale markers to plugin.json's version
+  python3 scripts/version.py --release  # the check, and: copyable files (scripts/, skills/, templates/, schema/)
+                                        # changed since the last vX.Y.Z tag before HEAD need a new version
 Then: python3 scripts/aplicar.py .  (refresh this repo's copy) and fill in the CHANGELOG entry.
 Files are read and written as strict UTF-8 keeping their line endings; a non-UTF-8 file with a marker is reported
 and left alone.
 """
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -132,6 +135,32 @@ def check(version):
     return lines
 
 
+def git(*args):
+    r = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True)
+    return r.returncode, r.stdout.strip()
+
+
+def release_check(version):
+    """Problems for a release: copyable files changed since the last vX.Y.Z tag before HEAD while plugin.json still
+    has that tag's version (a project that copied between the two would see "local edits" it never made)."""
+    code, tag = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD^")
+    if code != 0 or not tag:
+        return ["no earlier vX.Y.Z tag in this clone, so the version cannot be compared with the last release; "
+                "fetch the tags and retry: git fetch --tags origin && python3 scripts/version.py --release"]
+    if tag[1:] != version:
+        return []
+    code, changed = git("diff", "--name-only", tag, "HEAD", "--", *SCOPES)
+    if code != 0:
+        return [f"cannot diff against {tag}; fetch it and retry: git fetch --tags origin && "
+                "python3 scripts/version.py --release"]
+    if not changed:
+        return []
+    files = changed.splitlines()
+    shown = ", ".join(files[:5]) + (f" and {len(files) - 5} more" if len(files) > 5 else "")
+    return [f"unbumped release: {len(files)} copyable file(s) changed since {tag} ({shown}) but the version is still "
+            f"{version}; bump it (patch at least) and fill in the CHANGELOG: python3 scripts/version.py X.Y.Z"]
+
+
 def bump_plan(path, new):
     """The new text of a JSON file with only its top-level "version" set to new; None when already there."""
     rel = path.relative_to(ROOT)
@@ -190,8 +219,11 @@ def main(argv):
         print('version: .claude-plugin/plugin.json has no top-level "version" (the source of every marker); add it '
               '("version": "X.Y.Z") and retry: python3 scripts/version.py', file=sys.stderr)
         return 1
+    release = argv[:1] == ["--release"]
+    if release:
+        argv = argv[1:]
     if not argv:
-        problems = check(current)
+        problems = check(current) + (release_check(current) if release else [])
         for line in problems:
             print(line)
         if any(line.startswith("stale") for line in problems):

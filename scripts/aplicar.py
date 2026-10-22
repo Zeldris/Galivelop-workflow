@@ -190,7 +190,8 @@ class Plan:
         newer = owned and owner_version and version_key(owner_version) > version_key(self.version)
         older = owned and owner_version and version_key(owner_version) < version_key(self.version)
         if owned and owner_version and not newer and (self.update or older):
-            why = f"v{owner_version} -> v{self.version}" if older else f"v{owner_version}, local edits replaced (--update)"
+            why = (f"v{owner_version} -> v{self.version}" if older
+                   else f"v{owner_version}, local edits or an older copy of that version replaced (--update)")
             self.actions.append(("update", rel, data, want_exec, why))
             return
         if not owned:
@@ -198,7 +199,8 @@ class Plan:
         elif newer:
             why = f"the project's copy is v{owner_version}, newer than the workflow's v{self.version}"
         else:
-            why = f"v{owner_version} with local edits (rerun with --update to replace them)"
+            why = (f"differs from the workflow's v{owner_version}: local edits or an older copy of that version; see it: "
+                   f"diff {rel} {rel}{PROPOSAL} (rerun with --update to replace it)")
         self.propose(rel, data, want_exec, why)
 
     def propose(self, rel, data, want_exec, why):

@@ -3,9 +3,10 @@
 """Deterministic part of the gw-harvest skill: what changed in projects that use the workflow.
 
 For each project repository it reports, without judging anything:
-  * workflow skills whose copy in the project differs from this repo's version (body diff stats);
+  * workflow skills whose copy in the project differs from this repo's version (body diff stats), apart from those
+    whose body equals an earlier commit's here (an older copy, listed on its own: not the project's edits);
   * skills born in the project (in .claude/skills/ and not part of the workflow);
-  * workflow scripts copied into the project that differ (same file name as in scripts/);
+  * workflow scripts copied into the project that differ (same file name as in scripts/), older copies apart;
   * retro files and "For Galivelop-workflow" sections added since the last harvest;
   * commits since the last harvested commit;
   * a warning when the clone is behind its upstream branch (as of its last fetch: fetch first), or has no upstream
@@ -73,6 +74,23 @@ def body_diff(ours, theirs):
     return added, removed
 
 
+def earlier_match(rel, text, body_only=False):
+    """The short sha of the latest commit of this repo whose rel (followed through renames) has the same text (only the
+    body for a SKILL.md), or None: the project then holds an older copy of the workflow, not edits of its own."""
+    log = git(ROOT, "log", "--follow", "--format=%H", "--name-only", "--", rel) or ""
+    def comparable(t):
+        return (split_frontmatter(t)[1] if body_only else t).strip()
+    want, sha = comparable(text), None
+    for line in log.splitlines():
+        if re.fullmatch(r"[0-9a-f]{40}", line):
+            sha = line
+        elif line.strip() and sha:
+            old = git(ROOT, "show", f"{sha}:{line.strip()}")
+            if old is not None and comparable(old + "\n") == want:
+                return sha[:7]
+    return None
+
+
 def skill_files(base):
     return {p.parent.name: p for p in sorted(Path(base).glob("*/SKILL.md"))}
 
@@ -92,7 +110,7 @@ def harvest(repo, state):
     report = {"repo": rid, "path": str(repo), "head": head, "last": last,
               "uses_gw_json": (repo / ".claude" / "gw.json").is_file(),
               "commits": [], "history": "full", "skills_changed": [], "skills_new": [],
-              "skills_missing": [], "scripts_changed": [], "retros": [], "ideas": [], "behind": None,
+              "skills_missing": [], "skills_older": [], "scripts_changed": [], "scripts_older": [], "retros": [], "ideas": [], "behind": None,
               "upstream": None}
 
     # A stale clone harvests old work and reports "nothing new": compare HEAD with its own upstream as last fetched
@@ -129,8 +147,13 @@ def harvest(repo, state):
             mine = ours[name].read_text(encoding="utf-8")
             added, removed = body_diff(mine, text)
             if added or removed:
-                report["skills_changed"].append({"skill": name, "path": rel, "added": added, "removed": removed,
-                                                 "their_version": meta_version(text)})
+                older = earlier_match(f"skills/{name}/SKILL.md", text, body_only=True)
+                item = {"skill": name, "path": rel, "added": added, "removed": removed,
+                        "their_version": meta_version(text)}
+                if older:
+                    report["skills_older"].append(dict(item, matches=older))
+                else:
+                    report["skills_changed"].append(item)
         else:
             report["skills_new"].append({"skill": name, "path": rel, "description": description(text)})
     report["skills_missing"] = sorted(set(ours) - set(theirs))
@@ -144,7 +167,11 @@ def harvest(repo, state):
                 continue
             theirs_text = (repo / rel).read_text(encoding="utf-8", errors="replace")
             if theirs_text != our_scripts[name].read_text(encoding="utf-8"):
-                report["scripts_changed"].append({"script": name, "path": rel})
+                older = earlier_match(f"scripts/{name}", theirs_text)
+                if older:
+                    report["scripts_older"].append({"script": name, "path": rel, "matches": older})
+                else:
+                    report["scripts_changed"].append({"script": name, "path": rel})
         if RETRO_NAME.search(rel) and (changed_files is None or rel in changed_files):
             report["retros"].append(rel)
             text = (repo / rel).read_text(encoding="utf-8", errors="replace")
@@ -175,9 +202,15 @@ def markdown(report):
     sections = [
         ("Workflow skills changed in the project", "skills_changed",
          lambda s: f"`{s['skill']}` (`{s['path']}`): +{s['added']} −{s['removed']} lines in the body; "
+                   f"their version {s['their_version'] or 'none'}; it matches no earlier workflow copy, so local edits "
+                   f"(see them: `python3 scripts/recoger.py --diff {s['skill']} {report['path']}`)"),
+        ("Older workflow copies (not project changes)", "skills_older",
+         lambda s: f"`{s['skill']}` (`{s['path']}`): body equal to the workflow's at `{s['matches']}`; "
                    f"their version {s['their_version'] or 'none'}"),
         ("Skills born in the project", "skills_new", lambda s: f"`{s['skill']}` (`{s['path']}`): {s['description']}"),
         ("Workflow scripts changed in the project", "scripts_changed", lambda s: f"`{s['script']}` (`{s['path']}`)"),
+        ("Older workflow scripts (not project changes)", "scripts_older",
+         lambda s: f"`{s['script']}` (`{s['path']}`): equal to the workflow's at `{s['matches']}`"),
         ("Retro files", "retros", lambda r: f"`{r}`"),
         ("Ideas for Galivelop-workflow", "ideas", lambda i: f"`{i['path']}`:\n\n{i['text']}\n"),
     ]

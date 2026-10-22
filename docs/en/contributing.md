@@ -77,9 +77,14 @@ content; the check fails when `plugin.json`'s version has no entry. When the ver
 pick it up with `/gw-update`. They are not edited by hand: `python3 scripts/version.py X.Y.Z` moves them all and
 leaves the CHANGELOG entry to fill in; without an argument it checks none was left behind.
 
+**Every change to a copyable file** (`scripts/`, `skills/`, `templates/`, `schema/`) between two releases **bumps the
+version**, a patch at least: a project that copied in between would see "local edits" it never made.
+`python3 scripts/version.py --release` checks it against the last `vX.Y.Z` tag (it needs the tags:
+`git fetch --tags origin`), and `release.yml` requires it.
+
 **Releasing a version:** on `main` (with the three phases done), the CHANGELOG entry dated instead of
 "Unreleased", and the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`. The `release.yml` workflow checks that the tag,
-`plugin.json` and the markers agree, runs the check and creates the release with that entry.
+`plugin.json` and the markers agree and that the version went up, runs the check and creates the release with that entry.
 
 ## Commit, log and `main`
 

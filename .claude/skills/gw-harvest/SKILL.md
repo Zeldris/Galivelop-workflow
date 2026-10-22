@@ -30,8 +30,9 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
 
    It lists, per project and since the last harvest (`docs/propuestas/estado.json`): workflow skills whose body
    differs, skills born in the project, copied workflow scripts that differ, retro files and their
-   `## For Galivelop-workflow` sections, and the commits. If it reports missing history, deepen the clone as it says
-   and run it again.
+   `## For Galivelop-workflow` sections, and the commits. A copy equal to an earlier workflow commit is listed apart
+   as an older copy: the project's stale text, never a proposal. If it reports missing history, deepen the clone as
+   it says and run it again.
 3. **Look at each finding with a subagent** that returns a short summary with paths, never whole files in the main
    session. For a changed skill, `python3 scripts/recoger.py --diff <skill> <project-path>` gives the diff.
 4. **Classify each finding**:

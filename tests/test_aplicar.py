@@ -131,6 +131,8 @@ class Aplicar(unittest.TestCase):
         p.write(rel, original + "# local edit\n")
         out = self.applied()
         self.assertIn(f"propose {rel}.gw-nuevo", out)
+        self.assertIn("local edits or an older copy of that version", out)
+        self.assertIn(f"diff {rel} {rel}.gw-nuevo", out)
         self.assertIn("# local edit", p.read(rel))
         self.assertEqual(p.read(rel + ".gw-nuevo"), original)
         out = self.applied()

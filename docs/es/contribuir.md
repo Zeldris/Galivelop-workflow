@@ -77,9 +77,14 @@ contenido; el check falla si la versión de `plugin.json` no tiene entrada. Al s
 ella, y los proyectos la recogen con `/gw-update`. No se tocan a mano: `python3 scripts/version.py X.Y.Z` los mueve
 todos y deja la entrada del CHANGELOG por rellenar; sin argumento, comprueba que ninguno se ha quedado atrás.
 
+**Todo cambio en un archivo copiable** (`scripts/`, `skills/`, `templates/`, `schema/`) entre dos publicaciones **sube
+la versión**, aunque sea un parche: un proyecto que copió entre las dos vería «ediciones locales» que no hizo.
+`python3 scripts/version.py --release` lo comprueba contra la última etiqueta `vX.Y.Z` (necesita las etiquetas:
+`git fetch --tags origin`), y `release.yml` lo exige.
+
 **Publicar una versión:** en `main` (con las tres fases hechas), la entrada del CHANGELOG con fecha en vez de
 «Unreleased», y la etiqueta: `git tag vX.Y.Z && git push origin vX.Y.Z`. El workflow `release.yml` comprueba que la
-etiqueta, `plugin.json` y los marcadores coinciden, pasa el check y crea la release con esa entrada.
+etiqueta, `plugin.json` y los marcadores coinciden y que la versión subió, pasa el check y crea la release con esa entrada.
 
 ## Commit, bitácora y `main`
 

@@ -125,6 +125,38 @@ class Recoger(unittest.TestCase):
         self.assertIn("not in this clone", r["history"])
         self.assertTrue(r["skills_changed"])
 
+    def test_an_older_workflow_copy_is_not_a_project_change(self):
+        # A workflow repo of its own (CI clones are shallow): grilling and revisado.sh with two commits each.
+        wf = self.tmp / "wf"
+        shutil.copytree(ROOT / "scripts", wf / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        (wf / "skills" / "grilling").mkdir(parents=True)
+        skill = (ROOT / "skills" / "grilling" / "SKILL.md").read_text()
+        git(self.tmp, "init", "-q", str(wf))
+        (wf / "skills/grilling/SKILL.md").write_text(skill + "\nOld line.\n")
+        (wf / "scripts/revisado.sh").write_text("echo old\n")
+        git(wf, "add", "-A"); git(wf, "commit", "-qm", "old")
+        (wf / "skills/grilling/SKILL.md").write_text(skill)
+        (wf / "scripts/revisado.sh").write_text("echo new\n")
+        git(wf, "add", "-A"); git(wf, "commit", "-qm", "new")
+        old_sha = git(wf, "rev-parse", "--short=7", "HEAD~1").strip()
+        # The project: grilling as the old commit had it (frontmatter aside), and the old revisado.sh.
+        (self.repo / ".claude/skills/grilling/SKILL.md").write_text(skill + "\nOld line.\n")
+        (self.repo / "revisado.sh").write_text("echo old\n")
+        git(self.repo, "add", "-A"); git(self.repo, "commit", "-qm", "older copies")
+        out = run("python3", str(wf / "scripts" / "recoger.py"), "--json", "--state", str(self.state), str(self.repo))
+        r = json.loads(out)[0]
+        self.assertEqual(r["skills_changed"], [])
+        self.assertEqual([(s["skill"], s["matches"]) for s in r["skills_older"]], [("grilling", old_sha)])
+        self.assertEqual(r["scripts_changed"], [])
+        self.assertEqual([(s["script"], s["matches"]) for s in r["scripts_older"]], [("revisado.sh", old_sha)])
+        out = run("python3", str(wf / "scripts" / "recoger.py"), "--state", str(self.state), str(self.repo))
+        self.assertIn("Older workflow copies (not project changes)", out)
+
+    def test_project_edits_say_how_to_see_them(self):
+        out = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
+        self.assertIn("matches no earlier workflow copy, so local edits", out)
+        self.assertIn("recoger.py --diff grilling", out)
+
 
 if __name__ == "__main__":
     unittest.main()

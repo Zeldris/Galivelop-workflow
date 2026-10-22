@@ -29,6 +29,42 @@ class Version(unittest.TestCase):
         r = run(ROOT)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
+    def git(self, *args):
+        subprocess.run(["git", "-C", str(self.tmp), "-c", "user.name=t", "-c", "user.email=t@t",
+                        "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false", *args], check=True, capture_output=True)
+
+    def commit_all(self, message):
+        self.git("add", "-A")
+        self.git("commit", "-qm", message)
+
+    def test_release_needs_a_new_version_when_copyable_files_changed_since_the_tag(self):
+        tmp = self.tmp
+        self.git("init", "-q")
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        (tmp / "README.md").write_text("not copyable\n"); self.commit_all("docs only")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        script = tmp / "scripts" / "doctor.py"
+        script.write_text(script.read_text() + "# changed\n"); self.commit_all("copyable change")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn(f"changed since v{VERSION} (scripts/doctor.py)", r.stdout)
+        self.assertIn("python3 scripts/version.py X.Y.Z", r.stdout)
+        self.assertEqual(run(tmp).returncode, 0, "without --release only the markers are checked")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.commit_all("bump")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_release_without_an_earlier_tag_fails_closed(self):
+        self.git("init", "-q")
+        self.commit_all("one")
+        (self.tmp / "README.md").write_text("x\n"); self.commit_all("two")
+        r = run(self.tmp, "--release")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("git fetch --tags origin", r.stdout)
+
     def test_bump_moves_every_marker_and_adds_a_changelog_entry(self):
         tmp = self.tmp
         r = run(tmp, "9.8.7")
