@@ -50,7 +50,9 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
 ## Notes
 
 - **`check` is a list of commands**, not a single script: each runs with `bash -c` at the root of the commit being
-  pushed. One that does not exist is caught by `doctor.py` before a push fails.
+  pushed. One that does not exist is caught by `doctor.py` before a push fails. The `pre-push` passes them
+  `GW_PUSH_PROTECTED=true` when the push goes to the protected branch (`false` otherwise; unset outside the hook), so a
+  command can run only before `main`, e.g. `[ "${GW_PUSH_PROTECTED:-}" != true ] || <command>`.
 - **`pushToProtected`** says how code reaches the protected branch today. A direct push that brings code always needs
   the mark in `pre-push`, with `direct` and with `pr`; with `pr`, the PR hook also asks for it when the pull request
   is created or merged. The config is read from the pushed commit, not the working copy; for the protected branch,

@@ -7,7 +7,7 @@
 #   - Reads .claude/gw.json as each pushed commit has it (never the working tree's); a pushed commit without a valid
 #     one is refused.
 #   - Runs every `check` command of that config on the commit being pushed (a temporary worktree when it is not
-#     the clean working copy).
+#     the clean working copy), with GW_PUSH_PROTECTED=true when it goes to the protected branch (false otherwise).
 #   - To the protected branch, in both pushToProtected modes (with `pr` the PR hook also guards PRs): code needs the
 #     review mark (scripts/revisado.sh) to name an ancestor with no code after it. The branch is protected when the
 #     pushed commit, the remote tip or the working tree names it so; what is content and where the mark lives come
@@ -83,7 +83,7 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     n=$((n + 1))
     log="${TMPDIR:-/tmp}/gw-pre-push-check-$n.log"
     echo "pre-push: check '$cmd' on ${sha:0:7}…"
-    if ! (cd "$dir" && bash -c "$cmd") > "$log" 2>&1 < /dev/null; then
+    if ! (cd "$dir" && GW_PUSH_PROTECTED="$is_protected" bash -c "$cmd") > "$log" 2>&1 < /dev/null; then
       tail -n 30 "$log" >&2
       fail "check failed on ${sha:0:7}: '$cmd' (full log: $log)" "fix it, commit and push again; reproduce with: $cmd"
     fi
@@ -157,13 +157,6 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     scan_leftovers "$local_sha" "$files" "the push"
   fi
 
-  if [ "$checked" != "$local_sha" ]; then
-    run_checks "$local_sha"
-    checked="$local_sha"
-  fi
-
-  # To the protected branch: code must be reviewed up to the mark, whatever pushToProtected says (a direct push
-  # skips the PR hook that guards the `pr` mode).
   # Protected if any config names this branch: the pushed commit's, the remote tip's or the working tree's (a commit
   # that renames protectedBranch must not unprotect the branch it is pushed to).
   branch="${remote_ref#refs/heads/}"
@@ -183,6 +176,13 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   fi
   wt_protected="$(python3 "$config" --root "$root" get protectedBranch 2>/dev/null)" || wt_protected=""
   [ -n "$wt_protected" ] && [ "$remote_ref" = "refs/heads/$wt_protected" ] && is_protected=true
+  if [ "$checked" != "$local_sha:$is_protected" ]; then
+    run_checks "$local_sha"
+    checked="$local_sha:$is_protected"
+  fi
+
+  # To the protected branch: code must be reviewed up to the mark, whatever pushToProtected says (a direct push
+  # skips the PR hook that guards the `pr` mode).
   if [ "$is_protected" = "true" ]; then
     protected="$branch"
     base=""

@@ -50,7 +50,9 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
 ## Notas
 
 - **`check` es una lista de órdenes**, no un script único: cada una se ejecuta con `bash -c` en la raíz del commit que
-  se sube. Una que no existe la detecta `doctor.py` antes de que falle un push.
+  se sube. Una que no existe la detecta `doctor.py` antes de que falle un push. El `pre-push` les pasa
+  `GW_PUSH_PROTECTED=true` cuando la subida va a la rama protegida (`false` si no; fuera del gancho, sin definir): así
+  una orden puede correr solo antes de `main`, p. ej. `[ "${GW_PUSH_PROTECTED:-}" != true ] || <orden>`.
 - **`pushToProtected`** dice cómo entra hoy el código en la rama protegida. Un push directo que trae código pide
   siempre la marca en el `pre-push`, con `direct` y con `pr`; con `pr`, además, el gancho de PR la pide al crear o
   fusionar el pull request. El config se lee del commit que se sube, no de la copia de trabajo; para la rama

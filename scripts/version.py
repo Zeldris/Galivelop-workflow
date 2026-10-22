@@ -18,7 +18,8 @@ check flags one that lacks it (exceptions, with the reason, in UNMARKED).
   python3 scripts/version.py <current>  # re-sync stale markers to plugin.json's version
   python3 scripts/version.py --release  # the check, and: copyable files (scripts/, skills/, templates/, schema/,
                                         # LICENSE-mattpocock-skills)
-                                        # changed since the last vX.Y.Z tag before HEAD need a new version
+                                        # changed since the last vX.Y.Z tag reachable from HEAD need a
+                                        # new version (the pre-push check of a push to main)
 Then: python3 scripts/aplicar.py .  (refresh this repo's copy) and fill in the CHANGELOG entry.
 Files are read and written as strict UTF-8 keeping their line endings; a non-UTF-8 file with a marker is reported
 and left alone.
@@ -142,9 +143,10 @@ def git(*args):
 
 
 def release_check(version):
-    """Problems for a release: copyable files changed since the last vX.Y.Z tag before HEAD while plugin.json still
-    has that tag's version (a project that copied between the two would see "local edits" it never made)."""
-    code, tag = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD^")
+    """Problems for a push to main: copyable files changed since the last vX.Y.Z tag reachable from HEAD while
+    plugin.json still has that tag's version (a project that copied between the two would see "local edits" it never
+    made). Run by the pre-push check on a push to the protected branch (GW_PUSH_PROTECTED=true)."""
+    code, tag = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD")
     if code != 0 or not tag:
         return ["no earlier vX.Y.Z tag in this clone, so the version cannot be compared with the last release; "
                 "fetch the tags and retry: git fetch --tags origin && python3 scripts/version.py --release"]

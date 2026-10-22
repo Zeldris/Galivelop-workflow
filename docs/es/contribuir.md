@@ -79,8 +79,9 @@ todos y deja la entrada del CHANGELOG por rellenar; sin argumento, comprueba que
 
 **Todo cambio en un archivo copiable** (`scripts/`, `skills/`, `templates/`, `schema/`) entre dos publicaciones **sube
 la versión**, aunque sea un parche: un proyecto que copió entre las dos vería «ediciones locales» que no hizo.
-`python3 scripts/version.py --release` lo comprueba contra la última etiqueta `vX.Y.Z` (necesita las etiquetas:
-`git fetch --tags origin`), y `release.yml` lo exige.
+`python3 scripts/version.py --release` lo comprueba contra la última etiqueta `vX.Y.Z` alcanzable desde el commit
+(necesita las etiquetas: `git fetch --tags origin`), y el `check` de este repo lo corre en cada subida a `main`
+(`GW_PUSH_PROTECTED`).
 
 **Publicar una versión:** en `main` (con las tres fases hechas), la entrada del CHANGELOG con fecha en vez de
 «Unreleased», y la etiqueta: `git tag vX.Y.Z && git push origin vX.Y.Z`. El workflow `release.yml` comprueba que la

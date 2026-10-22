@@ -57,6 +57,13 @@ class Version(unittest.TestCase):
         r = run(tmp, "--release")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
+    def test_release_on_the_tagged_commit_itself_passes(self):
+        self.git("init", "-q")
+        self.commit_all("first release")
+        self.git("tag", f"v{VERSION}")  # the only tag, on HEAD: nothing changed since it
+        r = run(self.tmp, "--release")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
     def test_release_without_an_earlier_tag_fails_closed(self):
         self.git("init", "-q")
         self.commit_all("one")

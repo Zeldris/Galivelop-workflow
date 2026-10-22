@@ -29,7 +29,7 @@ jobs:
             echo "tag v$tag but plugin.json says $version; fix it: python3 scripts/version.py $tag" >&2
             exit 1
           fi
-          python3 scripts/version.py --release
+          python3 scripts/version.py
       - name: Check
         run: bash tests/comprobar.sh
       - name: Release notes from the CHANGELOG entry

@@ -359,6 +359,17 @@ class PrePush(Base):
         self.assertIn("check failed", out)
         self.assertEqual(p.git("worktree", "list").stdout.count("\n"), 1, "temporary worktree left behind")
 
+    def test_checks_know_whether_the_push_goes_to_the_protected_branch(self):
+        p = self.p
+        p.write("check.sh", 'echo "protected=$GW_PUSH_PROTECTED"; [ "$GW_PUSH_PROTECTED" = false ]\n')
+        p.commit("check only passes off the protected branch")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        code, out = p.push("origin", "HEAD:refs/heads/feature", "HEAD:refs/heads/main")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("check failed", out)
+        self.assertIn("protected=true", out)
+
     def test_checks_run_in_order_and_all_must_pass(self):
         p = self.p
         cfg = json.loads((p.work / ".claude" / "gw.json").read_text())

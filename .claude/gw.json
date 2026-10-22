@@ -7,7 +7,8 @@
   "pushToProtected": "direct",
   "install": [],
   "check": [
-    "bash tests/comprobar.sh"
+    "bash tests/comprobar.sh",
+    "[ \"${GW_PUSH_PROTECTED:-}\" != true ] || python3 scripts/version.py --release"
   ],
   "reviewMark": "docs/registros/revisado.txt",
   "content": [
