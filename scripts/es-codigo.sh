@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # galivelop-workflow v0.1.0
 # Lists the files that are code among those changed between two commits: everything that matches none of the
-# config's `content` regexes (Python syntax, on repo-relative paths). The review mark file itself is never code.
+# config's `content` regexes (Python syntax, on repo-relative paths). The review mark file itself is never code; the
+# workflow's own policy and guards always are, whatever `content` says (.claude/gw.json, .claude/settings.json,
+# .claude/gw/ and .githooks/): otherwise a commit could widen `content` and pass its own code as content.
 # Only code needs /code-review (plan §5.3). Used by .githooks/pre-push and the PR hook.
 #   bash es-codigo.sh [--rev REV] A B   # A empty = from the empty tree (a brand-new branch)
 # The config (`content`, `reviewMark`) is read as commit REV has it (default B, the commit being checked), never
@@ -40,8 +42,9 @@ printf '%s\n' "$changed" | python3 -c '
 import json, re, sys
 patterns = [re.compile(p) for p in json.loads(sys.argv[1])]
 mark = sys.argv[2]
+guard = re.compile(r"^(\.claude/(gw\.json|settings\.json|gw/)|\.githooks/)")
 for line in sys.stdin:
     path = line.rstrip("\n")
-    if path and path != mark and not any(p.search(path) for p in patterns):
+    if path and path != mark and (guard.search(path) or not any(p.search(path) for p in patterns)):
         print(path)
 ' "$content" "$mark" || { echo "es-codigo: a content regex in .claude/gw.json is invalid; fix it: python3 $config --root $root validate" >&2; exit 2; }

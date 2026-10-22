@@ -11,8 +11,8 @@
 | Rama | `ccr-76251061-b1yiwq` (sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `9b97d7b` = **release `v0.1.0`** (2026-10-22) |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
 | Fase en curso | **5. Piloto: Portal-Galivelop** — publicado en el portal (`673602b`); propuestas decididas (2026-10-22), aplicándolas para `v0.2.0` |
-| Último punto estable | 25 propuestas decididas (22 aprobadas, 4 de ellas en parte; 3 aplazadas); orden de trabajo en `docs/propuestas/2026-10-22-reparto.md` |
-| Siguiente paso | Fila 1 del reparto: **Portal P1** (`templates/githooks/pre-push` y `scripts/revision-antes-de-main.sh` leen `content`/`check`/`protectedBranch`/`reviewMark` de la rama protegida remota; `gw.json` es código; casos en los tests). Luego las filas 2-19 en orden; tres fases y `v0.2.0` |
+| Último punto estable | Reparto fila 1 (Portal P1) hecha: la rama protegida se juzga con la config de su punta remota; `gw.json`, `settings.json`, `.claude/gw/` y `.githooks/` son siempre código |
+| Siguiente paso | Fila 2 del reparto: **Portal P16** (marcadores de conflicto en `base..local`). Luego las filas 3-19 en orden; tres fases y `v0.2.0` (la entrada `0.2.0` del CHANGELOG se escribe al publicar, con las filas hechas) |
 
 ### Fases
 
@@ -35,25 +35,24 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 
 ## Hecho (10 últimas)
 
-1. 2026-10-22 — Decididas las 25 propuestas pendientes (portal y Tarkor): 22 aprobadas, 3 aplazadas; reparto para `v0.2.0`.
-2. 2026-10-22 — Tercera recogida de Tarkor (`76ec6aeb`, 99 commits): 4 propuestas para `orchestrate-dealer` (arreglos con
+1. 2026-10-22 — Portal P1: `pre-push` y gancho de PR leen `content`/`reviewMark` (y si la rama es protegida) de la
+   punta remota de la rama protegida; las rutas del flujo son siempre código; 11 casos nuevos en los tests.
+2. 2026-10-22 — Decididas las 25 propuestas pendientes (portal y Tarkor): 22 aprobadas, 3 aplazadas; reparto para `v0.2.0`.
+3. 2026-10-22 — Tercera recogida de Tarkor (`76ec6aeb`, 99 commits): 4 propuestas para `orchestrate-dealer` (arreglos con
    `sonnet`, arreglos de un archivo en la principal, solo lo grave antes del PR, rama de partida del worktree).
-3. 2026-10-22 — **Release `v0.1.0`** (`9b97d7b`): segunda subida a `main` con las tres fases; segunda recogida de Tarkor
+4. 2026-10-22 — **Release `v0.1.0`** (`9b97d7b`): segunda subida a `main` con las tres fases; segunda recogida de Tarkor
    aplicada; `version.py` y `release.yml`.
-4. 2026-10-22 — **Primera subida a `main`** (`603ca36`) siguiendo las tres fases del flujo.
-5. 2026-10-22 — **Fase 4 cerrada.** Plantillas ES/EN, `aplicar.py --init`, guías y skills `gw-*`; prueba con un agente sin
+5. 2026-10-22 — **Primera subida a `main`** (`603ca36`) siguiendo las tres fases del flujo.
+6. 2026-10-22 — **Fase 4 cerrada.** Plantillas ES/EN, `aplicar.py --init`, guías y skills `gw-*`; prueba con un agente sin
    contexto sobre un repo vacío superada; 9 puntos de la guía corregidos.
-6. 2026-10-22 — Fase 3 completa en local: config, ganchos de subida y de PR, arranque y recuperación, `doctor.py`,
+7. 2026-10-22 — Fase 3 completa en local: config, ganchos de subida y de PR, arranque y recuperación, `doctor.py`,
    utilidades y `aplicar.py`; el flujo ya se aplica a este repo (sus propios `pre-commit` y `pre-push` activos).
-7. 2026-10-21 — **Fase 2 cerrada.** Skills portadas y validadas (Agent Skills, ≤200 líneas, mención a Matt Pocock);
+8. 2026-10-21 — **Fase 2 cerrada.** Skills portadas y validadas (Agent Skills, ≤200 líneas, mención a Matt Pocock);
    `opt-ai` añadida como opcional a petición del usuario; `gw-harvest` + `recoger.py`; primera recogida real.
-8. 2026-10-21 — **Fase 1 cerrada** (CI en verde en Linux y macOS). VeriNews_AI leído en solo lectura: cuarto caso
+9. 2026-10-21 — **Fase 1 cerrada** (CI en verde en Linux y macOS). VeriNews_AI leído en solo lectura: cuarto caso
    y piloto sin Node; aporta el gancho de PR por Bash, el pre-commit antisecretos y `registro_sesion.py`.
-9. 2026-10-21 — Fase 1: esqueleto (LICENSE, `.gitattributes`, README ES/EN, CHANGELOG `0.1.0`, `docs/es/flujo.md` ↔
+10. 2026-10-21 — Fase 1: esqueleto (LICENSE, `.gitattributes`, README ES/EN, CHANGELOG `0.1.0`, `docs/es/flujo.md` ↔
    `docs/en/workflow.md`, `tests/test_repo.py`, `tests/comprobar.sh`, CI `comprobar.yml`). Plan: skill `gw-harvest`.
-10. 2026-10-21 — **Fase 0 cerrada.** Plan revisado (§0: dos etapas, copia en el repo como base, `AGENTS.md`,
-   claves en inglés, `check` como lista, marca versionada, portar pieza a pieza). `AGENTS.md` + `CLAUDE.md` de este
-   repo. Sondas `gw-ping*` y `.claude/settings.json` de prueba quitadas.
 
 ## Pendiente
 

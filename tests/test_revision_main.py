@@ -182,6 +182,32 @@ class Hook(unittest.TestCase):
         self.p.write("docs/notes.md", "after review\n"); self.p.commit("content"); self.push()
         self.assertAllowed(self.create())
 
+    def relax(self, **changes):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg.update(changes)
+        p.write(".claude/gw.json", json.dumps(cfg)); p.commit("relax the rule"); self.push()
+
+    def test_pr_cannot_widen_content_to_pass_its_own_code(self):
+        self.relax(content=[".*"])
+        self.assertBlocked(self.create(), "no review mark", ".claude/gw.json", "src/code.py")
+
+    def test_pr_cannot_unprotect_its_base(self):
+        self.relax(protectedBranch="release")
+        self.assertBlocked(self.create(), "no review mark")
+        self.assertBlocked(self.merge(pr=self.pr()), "no review mark")
+
+    def test_pr_cannot_move_the_mark_to_a_file_it_writes(self):
+        p = self.p
+        self.relax(reviewMark="src/mark.txt")
+        p.write("src/mark.txt", p.sha() + "\n"); p.commit("own mark"); self.push()
+        self.assertBlocked(self.create(), "no review mark (docs/revisado.txt)")
+
+    def test_reviewed_config_change_allowed(self):
+        self.relax(content=[".*"])
+        self.mark(); self.push()
+        self.assertAllowed(self.create())
+
     def test_branch_with_only_content_needs_no_mark(self):
         p = self.p
         p.git("checkout", "-q", "-b", "texts", p.base)

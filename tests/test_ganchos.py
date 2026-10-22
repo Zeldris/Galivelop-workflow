@@ -154,8 +154,55 @@ class ProtectedBranchMark(Base):
     def test_new_protected_branch_compares_against_empty_tree(self):
         code, out = self.push_main(self.code, remote_main=None)
         self.assertNotEqual(code, 0, out)
+        self.assertIn("WARNING: main has no .claude/gw.json on the remote yet", out)
         code, out = self.push_main(self.marked, remote_main=None)
         self.assertEqual(code, 0, out)
+
+    def relax(self, start, **changes):
+        """A commit on `start` that adds code and edits its own config to let that code through."""
+        p = self.p
+        p.git("checkout", "-q", "-B", "relax", start)
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg.update(changes)
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.write("src/sneaky.py", "z = 1\n"); p.commit("relax the rule")
+        return p.sha()
+
+    def test_a_commit_cannot_widen_content_to_pass_its_own_code(self):
+        code, out = self.push_main(self.relax(self.p.base, content=[".*"]))
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("no review mark", out)
+        self.assertIn(".claude/gw.json", out)
+
+    def test_a_commit_cannot_unprotect_the_branch_it_is_pushed_to(self):
+        code, out = self.push_main(self.relax(self.p.base, protectedBranch="release"))
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("no review mark", out)
+
+    def test_a_commit_cannot_move_the_mark_to_a_file_it_writes(self):
+        p = self.p
+        relaxed = self.relax(p.base, reviewMark="src/mark.txt")
+        p.write("src/mark.txt", relaxed + "\n"); p.commit("own mark")
+        code, out = self.push_main(p.sha())
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("no review mark (docs/revisado.txt)", out)
+
+    def test_a_reviewed_config_change_is_accepted(self):
+        p = self.p
+        relaxed = self.relax(p.base, content=[".*"])
+        p.write("docs/revisado.txt", relaxed + "\n"); p.commit("mark")
+        code, out = self.push_main(p.sha())
+        self.assertEqual(code, 0, out)
+
+    def test_invalid_config_on_the_remote_tip_fails_closed(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "broken", p.base)
+        p.write(".claude/gw.json", "{not json"); p.git("commit", "-q", "-a", "--no-verify", "-m", "broken config")
+        broken = p.sha()
+        p.git("push", "-q", "--no-verify", "origin", f"{broken}:refs/heads/broken")
+        code, out = self.push_main(self.marked, remote_main=broken)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn(f"in commit {broken[:7]}", out)
 
     def test_unknown_remote_protected_sha_fails_closed(self):
         line = f"refs/heads/feature {self.marked} refs/heads/main {'1' * 40}\n"
@@ -189,7 +236,7 @@ class ProtectedBranchMark(Base):
         p.git("rm", "-q", ".claude/gw.json"); p.git("commit", "-q", "--no-verify", "-m", "drop config")
         code, out = p.push("origin", "HEAD:refs/heads/no-config")
         self.assertNotEqual(code, 0, out)
-        self.assertIn("in the pushed commit", out)
+        self.assertIn("from .claude/gw.json in commit", out)
 
     def test_shallow_clone_fails_closed_with_deepen_command(self):
         p = self.p
@@ -435,6 +482,19 @@ class EsCodigo(Base):
         self.assertEqual((code, out.split()), (0, ["src/a.py"]))
         code, out = p.run("bash", script, "", "HEAD")
         self.assertIn("check.sh", out.split())
+
+    def test_workflow_guards_are_code_whatever_content_says(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["content"] = [".*"]
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.write(".githooks/pre-push", "exit 0\n"); p.write(".claude/settings.json", "{}\n")
+        p.write(".claude/gw/scripts/extra.sh", "true\n"); p.write("src/a.py", "a\n")
+        p.commit("guards", env=None)
+        script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
+        code, out = p.run("bash", script, p.base, "HEAD")
+        self.assertEqual((code, sorted(out.split())), (0, [".claude/gw.json", ".claude/gw/scripts/extra.sh",
+                                                          ".claude/settings.json", ".githooks/pre-push"]))
 
     def test_missing_commit_or_config_exits_2(self):
         p = self.p

@@ -52,10 +52,14 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   se sube. Una que no existe la detecta `doctor.py` antes de que falle un push.
 - **`pushToProtected`** dice cómo entra hoy el código en la rama protegida. Un push directo que trae código pide
   siempre la marca en el `pre-push`, con `direct` y con `pr`; con `pr`, además, el gancho de PR la pide al crear o
-  fusionar el pull request. El config se lee del commit que se sube, no de la copia de trabajo.
+  fusionar el pull request. El config se lee del commit que se sube, no de la copia de trabajo; para la rama
+  protegida, `content` y `reviewMark` salen de su punta remota (de lo que se sube solo si aún no tiene config, con
+  un aviso), y la rama es protegida si lo dice cualquiera de las dos o la copia de trabajo: un commit no puede
+  relajar la regla que lo juzga.
 - **`content` y la marca.** Un cambio que solo toca archivos de `content` no necesita revisión; cualquier otro, sí.
   `revisado.sh` escribe en `reviewMark` el commit revisado y la marca debe ser antecesora de lo que se sube y no tener
-  código después.
+  código después. `.claude/gw.json`, `.claude/settings.json`, `.claude/gw/` y `.githooks/` son siempre código, diga
+  lo que diga `content`.
 - **`logRows`** va con la plantilla de bitácora de filas (`| **Tarea en curso · \`rama\`** | … |`); el push comprueba
   que cada rama escribe solo en su fila.
 - Tras actualizar el flujo, sube `version` a mano (`/gw-update` lo hace): ese número es lo que `doctor.py`

@@ -52,9 +52,13 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   pushed. One that does not exist is caught by `doctor.py` before a push fails.
 - **`pushToProtected`** says how code reaches the protected branch today. A direct push that brings code always needs
   the mark in `pre-push`, with `direct` and with `pr`; with `pr`, the PR hook also asks for it when the pull request
-  is created or merged. The config is read from the pushed commit, not the working copy.
+  is created or merged. The config is read from the pushed commit, not the working copy; for the protected branch,
+  `content` and `reviewMark` come from its remote tip (from what is pushed only while it has no config yet, with a
+  warning), and the branch is protected if either of them or the working copy says so: a commit cannot relax the
+  rule that judges it.
 - **`content` and the mark.** A change touching only `content` files needs no review; any other does. `revisado.sh`
   writes the reviewed commit to `reviewMark`, and the mark must be an ancestor of what is pushed with no code after it.
+  `.claude/gw.json`, `.claude/settings.json`, `.claude/gw/` and `.githooks/` are always code, whatever `content` says.
 - **`logRows`** goes with the row-based log template (``| **Current task · `branch`** | … |``); the push checks that
   each branch writes only in its own row.
 - After changing the workflow version, bump `version` by hand (`/gw-update` does it): `doctor.py` compares that number

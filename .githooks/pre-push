@@ -8,8 +8,11 @@
 #   - Runs every `check` command of that config on the commit being pushed (a temporary worktree when it is not
 #     the clean working copy).
 #   - To the protected branch, in both pushToProtected modes (with `pr` the PR hook also guards PRs): code needs the
-#     review mark (scripts/revisado.sh) to name an ancestor with no code after it. Fails closed when a commit is
-#     missing (shallow clones included).
+#     review mark (scripts/revisado.sh) to name an ancestor with no code after it. The branch is protected when the
+#     pushed commit, the remote tip or the working tree names it so; what is content and where the mark lives come
+#     from the remote tip's config, so a commit cannot relax the rule that judges it (only a protected branch without
+#     a config yet takes the pushed commit's, with a warning). Fails closed when a commit is missing (shallow clones
+#     included).
 #   - Then calls prepush-ramas.sh <changed-file> <pushed-file> and tests-relacionados.sh <changed-file> <checkout-dir>
 #     (the folder where the last pushed commit is checked out) from the workflow's scripts folder whenever they exist
 #     (run with bash, executable or not), with git's ref lines on stdin.
@@ -43,9 +46,9 @@ fail() {  # fail <message lines...>: the last line is the command that fixes it
   echo "pre-push: (only a WIP: commit may skip this hook: git push --no-verify)" >&2
   exit 1
 }
-cfg_at() {  # cfg_at <sha> <key>: the key as the pushed commit's .claude/gw.json has it
+cfg_at() {  # cfg_at <sha> <key>: the key as commit <sha>'s .claude/gw.json has it (the pushed one or the remote tip)
   python3 "$config" --root "$root" --rev "$1" get "$2" \
-    || fail "cannot read '$2' from .claude/gw.json in the pushed commit ${1:0:7}; commit a valid one and push again: python3 $config --root $root --rev ${1:0:7} validate"
+    || fail "cannot read '$2' from .claude/gw.json in commit ${1:0:7}; commit a valid one and push again: python3 $config --root $root --rev ${1:0:7} validate"
 }
 [ -f "$config" ] || fail "the workflow scripts are missing ($config); reinstall them: /gw-update"
 protected=""
@@ -95,7 +98,6 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   git cat-file -e "$local_sha^{commit}" 2>/dev/null || fail "commit ${local_sha:0:7} is not in this clone; fetch it and retry: git fetch $remote"
   checks="$(cfg_at "$local_sha" check)" || exit 1
   protected="$(cfg_at "$local_sha" protectedBranch)" || exit 1
-  mark_file="$(cfg_at "$local_sha" reviewMark)" || exit 1
 
   # What this push adds: commits no remote-tracking ref (nor the remote's current tip) already has.
   known=""
@@ -157,15 +159,37 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 
   # To the protected branch: code must be reviewed up to the mark, whatever pushToProtected says (a direct push
   # skips the PR hook that guards the `pr` mode).
-  if [ "$remote_ref" = "refs/heads/$protected" ]; then
+  # Protected if any config names this branch: the pushed commit's, the remote tip's or the working tree's (a commit
+  # that renames protectedBranch must not unprotect the branch it is pushed to).
+  branch="${remote_ref#refs/heads/}"
+  is_protected=false
+  [ "$remote_ref" = "refs/heads/$protected" ] && is_protected=true
+  if [ "$remote_sha" != "$zero" ] && [ "$branch" != "$remote_ref" ]; then
+    git cat-file -e "$remote_sha^{commit}" 2>/dev/null || git fetch -q "$remote" "$branch" >/dev/null 2>&1
+    if git cat-file -e "$remote_sha:.claude/gw.json" 2>/dev/null; then
+      remote_protected="$(cfg_at "$remote_sha" protectedBranch)" || exit 1
+      [ "$remote_protected" = "$branch" ] && is_protected=true
+    fi
+  fi
+  wt_protected="$(python3 "$config" --root "$root" get protectedBranch 2>/dev/null)" || wt_protected=""
+  [ -n "$wt_protected" ] && [ "$remote_ref" = "refs/heads/$wt_protected" ] && is_protected=true
+  if [ "$is_protected" = "true" ]; then
+    protected="$branch"
     base=""
+    policy="$local_sha"
     if [ "$remote_sha" != "$zero" ]; then
       git cat-file -e "$remote_sha^{commit}" 2>/dev/null || git fetch -q "$remote" "$protected" >/dev/null 2>&1
       git cat-file -e "$remote_sha^{commit}" 2>/dev/null \
         || fail "the remote $protected is at ${remote_sha:0:7}, which this clone does not have; fetch it and push again: $(fetch_hint)"
       base="$remote_sha"
     fi
-    code="$(bash "$scripts/es-codigo.sh" --rev "$local_sha" "$base" "$local_sha")" || fail "cannot tell code from content; fix the error above and push again: $(fetch_hint)"
+    if [ -n "$base" ] && git cat-file -e "$base:.claude/gw.json" 2>/dev/null; then
+      policy="$base"  # an invalid config there fails closed in cfg_at
+    else
+      echo "pre-push: WARNING: $protected has no .claude/gw.json on the remote yet; judging this push by the pushed commit's config"
+    fi
+    mark_file="$(cfg_at "$policy" reviewMark)" || exit 1
+    code="$(bash "$scripts/es-codigo.sh" --rev "$policy" "$base" "$local_sha")" || fail "cannot tell code from content; fix the error above and push again: $(fetch_hint)"
     if [ -n "$code" ]; then
       mark="$(git show "$local_sha:$mark_file" 2>/dev/null | tr -d '[:space:]')"
       reason=""
@@ -176,7 +200,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       elif ! git merge-base --is-ancestor "$mark" "$local_sha" 2>/dev/null; then
         reason="the review mark (${mark:0:7}) is not an ancestor of ${local_sha:0:7}"
       else
-        after="$(bash "$scripts/es-codigo.sh" --rev "$local_sha" "$mark" "$local_sha")" || fail "cannot tell code from content; fix the error above and push again: $(fetch_hint)"
+        after="$(bash "$scripts/es-codigo.sh" --rev "$policy" "$mark" "$local_sha")" || fail "cannot tell code from content; fix the error above and push again: $(fetch_hint)"
         [ -z "$after" ] || { reason="code changed after the review mark (${mark:0:7})"; code="$after"; }
       fi
       if [ -n "$reason" ]; then
