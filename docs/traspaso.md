@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | `ccr-6dfbc880-ddr41g` (avance rápido de `ccr-76251061-b1yiwq`, que sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `9b97d7b` = **release `v0.1.0`** (2026-10-22) |
+| Rama | `ccr-6dfbc880-ddr41g` (avance rápido de `ccr-76251061-b1yiwq`, que sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `01d1a75` (versión `0.2.0`, sin etiqueta aún); `v0.1.0` = `9b97d7b` |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
-| Fase en curso | **5. Piloto: Portal-Galivelop** — publicado en el portal (`673602b`); propuestas aplicadas (2026-10-22); versión subida a `0.2.0` con su entrada del CHANGELOG; falta subir a `main` y etiquetar |
+| Fase en curso | **5. Piloto: Portal-Galivelop** — publicado en el portal (`673602b`); propuestas aplicadas (2026-10-22); `0.2.0` en `main` (`01d1a75`, 2026-10-22); falta la etiqueta `v0.2.0` |
 | Último punto estable | **Versión `0.2.0`**: `version.py 0.2.0`, entrada del CHANGELOG (19 filas, R1-R3, arreglos de las revisiones) y los tests leen la versión de `plugin.json`; check en verde en local; el CI no arranca (cupo de Actions) |
-| Siguiente paso | Con **confirmación del usuario** (ya vio el diff): `git push origin HEAD:main`, luego `git tag v0.2.0 && git push origin v0.2.0` |
+| Siguiente paso | El usuario crea la etiqueta `v0.2.0` sobre `01d1a75` en GitHub (Releases → Draft a new release; la nube no puede subir etiquetas) con las notas de la entrada `0.2.0` del CHANGELOG; luego, Fase 6 |
 
 ### Fases
 
