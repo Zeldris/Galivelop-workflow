@@ -14,7 +14,11 @@ which do not load plugins declared in the repo.
 
 1. The project is cloned and is a git repo (`git init` if it is new).
 2. This repo, the workflow's, is cloned next to the project, or the person has added it to the session. From here on
-   it is `<workflow>`.
+   it is `<workflow>`. **It is read by a subagent** (`orchestrate-dealer`), which returns the step-1 table and the
+   conflicts with the project, with paths; the main session only decides. In the cloud, keep the workflow repo from
+   becoming a working folder of the session (it would load its `CLAUDE.md` and skills): if it is public, a plain
+   `git clone`; if it is added with `add_repo`, do not register it as a root, and check the path it returns with `ls`
+   (it may come lowercased and not exist).
 3. **The session is opened with the project as its working folder.** Opened elsewhere, it does not load
    `.claude/settings.json` (nor the hooks). If it is not, ask the person to reopen it from the project.
 4. `git status` is clean in the project, or the person knows what is unpushed. Generated files (`__pycache__/`,

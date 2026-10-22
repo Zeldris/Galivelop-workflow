@@ -44,7 +44,9 @@ retries and redone work.
    "use or improve it", not as a new rule; what a skill itself spent (its loaded `SKILL.md`) is measured like any
    other context.
 3. **Hunt the waste**, heaviest first:
-   - **Long context.** Every call rereads the whole history (at cache price, but whole). If the average is high:
+   - **Long context.** Every call rereads the whole history (at cache price, but whole). If the main session's average
+     context passed ~150k (the `orchestrate-dealer` threshold), say so in the report and list the big reads
+     (`BY FILE`, `BY TOOL`) a subagent should have made. If the average is high:
      close tasks with a written handover and start fresh (`/clear`), or compact at task boundaries
      (`/compact <what to keep>`), instead of stretching one session.
    - **Number of calls.** With a long context each call costs the average context. Steps that belong together

@@ -84,6 +84,11 @@ class Skills(unittest.TestCase):
                 self.assertNotIn("disable-model-invocation", text.split("\n---", 1)[0],
                                  f"{name}: the agent must be able to invoke it; drop disable-model-invocation")
 
+    def test_applying_the_workflow_points_to_a_reading_subagent(self):
+        # The pilot read the workflow whole in the main session: the selector row existed and gw-init did not cite it.
+        self.assertIn("| Apply or update the workflow (`gw-init`", (SKILLS / "selector" / "SKILL.md").read_text())
+        self.assertIn("`orchestrate-dealer`", (SKILLS / "gw-init" / "SKILL.md").read_text())
+
 
 if __name__ == "__main__":
     unittest.main()

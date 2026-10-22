@@ -102,6 +102,10 @@ Si se añaden a la sesión otros repos y se registran como raíz (en la nube, `r
 proyecto. Arreglo: los repos que solo se leen **no se registran**; basta clonarlos y leerlos con un subagente. Si ya
 están registrados, invoca la skill del proyecto comprobando la ruta que muestra al cargarse (`Base directory`).
 
+Al aplicar el flujo en la nube pasa lo mismo con el repo del flujo: clónalo con `git clone` si es público, o, si se
+añade con `add_repo`, no lo registres como raíz y comprueba con `ls` la ruta que devuelve (puede venir en minúsculas
+y no existir).
+
 ## Modo automático de Claude Code
 
 El clasificador del modo automático puede pedir permiso, o rechazar, al editar `.claude/settings.json`,

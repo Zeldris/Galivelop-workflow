@@ -20,6 +20,7 @@ Classify the task with the table, then act on its row. Reply in the project's `l
 | Scoped change: one component, one adjustment, one test, one small endpoint | none | medium | none |
 | Mechanical: docs, log, renames, adapting tests to a new signature, converting files | none | medium or light | light |
 | Bring something from another repo (a workflow, skills, documents) | `orchestrate-dealer` | large, to decide what to adapt | light `Explore` that reads the other repo and returns a summary with paths; the main session never reads the files whole |
+| Apply or update the workflow (`gw-init`, `gw-update`, `gw-doctor`) | `orchestrate-dealer` | large, to decide | light, to read the workflow's guide and scripts and return the decisions with paths |
 | Review before the protected branch | `/code-review`, then `pr` for the description | large | none |
 | Closing a block or phase | `retro` (Claude runs it, the user confirms its proposals); now and then `improve-codebase-architecture` | large | none |
 | Writing for agents (`AGENTS.md`, `CLAUDE.md`, skills, docs agents read) | `writing-for-agents` | medium | none |

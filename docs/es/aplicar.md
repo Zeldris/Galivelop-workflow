@@ -14,7 +14,11 @@ sesiones en la nube, que no cargan plugins declarados en el repo.
 
 1. El proyecto está clonado y es un repo git (`git init` si es nuevo).
 2. Este repo, el del flujo, está clonado junto al proyecto, o la persona lo ha añadido a la sesión. Desde aquí se
-   llama `<flujo>`.
+   llama `<flujo>`. **Se lee con un subagente** (`orchestrate-dealer`), que devuelve la tabla del paso 1 y los
+   conflictos con el proyecto, con rutas; la sesión principal solo decide. En la nube, que el repo del flujo no pase a
+   ser carpeta de trabajo de la sesión (cargaría su `CLAUDE.md` y sus skills): si es público, `git clone` directo; si
+   se añade con `add_repo`, no se registra como raíz, y la ruta que devuelve se comprueba con `ls` (puede venir en
+   minúsculas y no existir).
 3. **La sesión está abierta con el proyecto como carpeta de trabajo.** Abierta en otra carpeta no carga
    `.claude/settings.json` (ni los ganchos). Si no es así, pide a la persona que la reabra desde el proyecto.
 4. `git status` limpio en el proyecto, o la persona sabe qué hay sin subir. Los archivos generados (`__pycache__/`,

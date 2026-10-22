@@ -102,6 +102,10 @@ If other repos are added to the session and registered as roots (in the cloud, `
 project's. Fix: repos that are only read are **not registered**; cloning them and reading them with a subagent is
 enough. If they already are, invoke the project's skill and check the path it shows when it loads (`Base directory`).
 
+Applying the workflow in the cloud, the same goes for the workflow repo: clone it with `git clone` if it is public,
+or, if it is added with `add_repo`, do not register it as a root and check with `ls` the path it returns (it may
+come lowercased and not exist).
+
 ## Claude Code auto mode
 
 The auto-mode classifier may ask for permission, or refuse, when editing `.claude/settings.json`, `.claude/gw/scripts/`
