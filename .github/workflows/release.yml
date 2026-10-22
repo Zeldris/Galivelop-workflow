@@ -49,6 +49,10 @@ jobs:
             echo "the CHANGELOG entry for $version still says Unreleased; set the date and tag again" >&2
             exit 1
           fi
+          if grep -qF -e '(por completar)' -e '(to be filled in)' notes.md; then
+            echo "the CHANGELOG entry for $version still has the placeholders of scripts/version.py; write the notes and tag again" >&2
+            exit 1
+          fi
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# galivelop-workflow v0.1.0
 """Deterministic part of the gw-harvest skill: what changed in projects that use the workflow.
 
 For each project repository it reports, without judging anything:
@@ -7,7 +8,8 @@ For each project repository it reports, without judging anything:
   * workflow scripts copied into the project that differ (same file name as in scripts/);
   * retro files and "For Galivelop-workflow" sections added since the last harvest;
   * commits since the last harvested commit;
-  * a warning when the clone is behind its remote branch (as of its last fetch: fetch first).
+  * a warning when the clone is behind its upstream branch (as of its last fetch: fetch first), or has no upstream
+    (then nobody can tell whether it is up to date).
 
 The agent running gw-harvest reads this report, decides what is general and writes the proposals.
 
@@ -27,6 +29,9 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent  # this workflow repo
+sys.dont_write_bytecode = True
+sys.path.insert(0, str(ROOT / "scripts"))
+from aplicar import skill_version_span  # noqa: E402  (the one parser of skill versions)
 STATE = ROOT / "docs" / "propuestas" / "estado.json"
 IDEAS_HEADING = re.compile(r"^#{2,4}\s*(?:For|Para)\s+Galivelop-workflow\b.*$", re.I | re.M)
 RETRO_NAME = re.compile(r"(^|/)retro-[^/]*\.md$")
@@ -50,9 +55,9 @@ def split_frontmatter(text):
     return (match.group(1), text[match.end():]) if match else ("", text)
 
 
-def meta_version(frontmatter):
-    match = re.search(r'^\s+version:\s*"?([^"\n]+)"?\s*$', frontmatter, re.M)
-    return match.group(1).strip() if match else None
+def meta_version(text):
+    span = skill_version_span(text)
+    return text[span[0]:span[1]] or None if span else None
 
 
 def body_diff(ours, theirs):
@@ -87,15 +92,18 @@ def harvest(repo, state):
     report = {"repo": rid, "path": str(repo), "head": head, "last": last,
               "uses_gw_json": (repo / ".claude" / "gw.json").is_file(),
               "commits": [], "history": "full", "skills_changed": [], "skills_new": [],
-              "skills_missing": [], "scripts_changed": [], "retros": [], "ideas": [], "behind": None}
+              "skills_missing": [], "scripts_changed": [], "retros": [], "ideas": [], "behind": None,
+              "upstream": None}
 
-    # A stale clone harvests old work and reports "nothing new": compare HEAD with its remote branch as last fetched.
-    upstream = git(repo, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}") \
-        or git(repo, "rev-parse", "--abbrev-ref", "origin/HEAD")
-    if upstream and git(repo, "merge-base", "--is-ancestor", "HEAD", upstream) is not None:
-        count = int(git(repo, "rev-list", "--count", f"HEAD..{upstream}") or 0)
-        if count:
-            report["behind"] = {"ref": upstream, "commits": count}
+    # A stale clone harvests old work and reports "nothing new": compare HEAD with its own upstream as last fetched
+    # (never a guess such as origin/HEAD: that may be another branch). Behind counts even when diverged.
+    upstream = git(repo, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}")
+    report["upstream"] = upstream
+    if upstream:
+        behind = int(git(repo, "rev-list", "--count", "HEAD..@{upstream}") or 0)
+        ahead = int(git(repo, "rev-list", "--count", "@{upstream}..HEAD") or 0)
+        if behind:
+            report["behind"] = {"ref": upstream, "commits": behind, "diverged": ahead > 0}
 
     changed_files = None
     if last and last != head:
@@ -122,7 +130,7 @@ def harvest(repo, state):
             added, removed = body_diff(mine, text)
             if added or removed:
                 report["skills_changed"].append({"skill": name, "path": rel, "added": added, "removed": removed,
-                                                 "their_version": meta_version(split_frontmatter(text)[0])})
+                                                 "their_version": meta_version(text)})
         else:
             report["skills_new"].append({"skill": name, "path": rel, "description": description(text)})
     report["skills_missing"] = sorted(set(ours) - set(theirs))
@@ -152,10 +160,15 @@ def markdown(report):
            f"- Path: `{report['path']}` · HEAD `{report['head'][:12]}` · last harvest "
            f"`{(report['last'] or 'never')[:12]}` · `.claude/gw.json`: {'yes' if report['uses_gw_json'] else 'no'}",
            f"- History: {report['history']}"]
-    if report["behind"]:
+    fix = (f"update this read-only clone (`git -C {report['path']} fetch && git -C {report['path']} merge --ff-only "
+           f"@{{upstream}}`, only if it has no local work) or harvest a fresh clone")
+    if report["upstream"] is None:
+        out.append(f"- **WARNING:** no upstream: cannot tell whether the clone is up to date; {fix}")
+    elif report["behind"]:
         b = report["behind"]
-        out.append(f"- **WARNING:** the clone is {b['commits']} commit(s) behind `{b['ref']}`; this harvest misses them. "
-                   f"Update it and harvest again: `git -C {report['path']} merge --ff-only {b['ref']}`")
+        state = "diverged from" if b["diverged"] else "behind"
+        out.append(f"- **WARNING:** the clone has {state} `{b['ref']}`: {b['commits']} commit(s) behind it, which "
+                   f"this harvest misses; {fix}, then harvest again")
     if report["commits"]:
         out.append(f"- Commits since last harvest: {len(report['commits'])}")
         out += [f"  - {c}" for c in report["commits"][:30]]

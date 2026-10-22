@@ -17,10 +17,11 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
 ## Steps
 
 1. **Pick the projects.** The repositories connected to this session (or the paths the user names), cloned
-   locally. Projects are read-only: never edit, commit or push in them, and do not register them as session roots
-   (their same-name skills would shadow this repo's).
-   **Bring each clone up to date first** (`git -C <project> fetch origin && git -C <project> merge --ff-only`):
-   `recoger.py` harvests the clone's `HEAD` and warns when it is behind its remote branch.
+   locally. Projects are read-only: never commit, push, edit files or rewrite history in them (updating a dedicated,
+   clean clone with fetch + fast-forward is allowed: it is how you see their latest state), and do not register them
+   as session roots (their same-name skills would shadow this repo's).
+   **Bring each clone up to date first** (`git -C <project> fetch && git -C <project> merge --ff-only @{upstream}`):
+   `recoger.py` harvests the clone's `HEAD` and warns when it is behind or diverged from its upstream, or has none.
 2. **Run the mechanical part** from this repo:
 
    ```bash

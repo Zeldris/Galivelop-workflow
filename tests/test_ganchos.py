@@ -245,6 +245,21 @@ class PrePush(Base):
                       "2 commit(s) leave this branch", out)
         self.assertNotIn("did you commit?", out)
 
+    def test_sideways_force_push_warns_with_the_commits_that_leave(self):
+        p = self.p
+        p.write("src/a.py", "a = 1\n"); p.commit("one")
+        p.write("src/a.py", "a = 2\n"); p.commit("two")
+        self.assertEqual(p.push("origin", "feature")[0], 0)
+        old = p.sha()
+        p.git("checkout", "-q", "-b", "other", p.base)
+        p.write("src/b.py", "b = 1\n"); p.commit("elsewhere")
+        self.assertEqual(p.push("origin", "other")[0], 0)
+        code, out = p.push("-f", "origin", "other:refs/heads/feature")
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"moving refs/heads/feature to {p.sha()[:7]}: 1 commit(s) it gains", out)
+        self.assertIn(f"WARNING: moving refs/heads/feature sideways from {old[:7]} to {p.sha()[:7]}: "
+                      "2 commit(s) leave this branch", out)
+
     def test_fast_forward_to_commits_of_other_branches_counts_what_it_gains(self):
         p = self.p
         p.write("src/a.py", "a = 1\n"); p.commit("one")

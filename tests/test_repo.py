@@ -143,6 +143,13 @@ class Release(unittest.TestCase):
         self.assertNotEqual(code, 0, out)
         self.assertIn("still says Unreleased", out)
 
+    def test_notes_with_version_py_placeholders_are_refused(self):
+        for placeholder in ("(por completar)", "(to be filled in)"):
+            with self.subTest(placeholder=placeholder):
+                code, out = self.notes(f"# Changelog\n\n## [1.2.3] - 2026-10-22\n\n### ES\n\n- {placeholder}\n")
+                self.assertNotEqual(code, 0, out)
+                self.assertIn("placeholders of scripts/version.py", out)
+
     def test_tag_off_main_is_refused(self):
         env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
         cfg = self.tmp / "gitconfig"

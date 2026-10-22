@@ -1,4 +1,5 @@
 """scripts/version.py: markers in sync with plugin.json, and a bump that moves them all."""
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -88,6 +89,73 @@ class Version(unittest.TestCase):
         text = body.read_text()
         self.assertIn('metadata:\n  version: "9.8.7"\n---', text)
         self.assertTrue(text.endswith('version: "0.0.2"\n'))
+
+    def test_skill_version_is_read_the_same_by_aplicar_and_version_py(self):
+        tmp = self.tmp
+        crlf = tmp / "skills" / "crlf" / "SKILL.md"
+        crlf.parent.mkdir()
+        crlf.write_bytes(f"---\r\nname: crlf\r\nmetadata:\r\n  version: \"{VERSION}\"\r\n---\r\n\r\nBody\r\n".encode())
+        note = tmp / "skills" / "note" / "SKILL.md"
+        note.parent.mkdir()
+        note.write_text(f"---\nname: note\nmetadata:\n  version: {VERSION}  # note\n---\n\nBody\n")
+        spec = importlib.util.spec_from_file_location("aplicar_under_test", ROOT / "scripts" / "aplicar.py")
+        aplicar = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(aplicar)
+        self.assertEqual(aplicar.skill_version(crlf), VERSION)
+        self.assertEqual(aplicar.skill_version(note), VERSION)
+        r = run(tmp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.assertIn(b'  version: "9.8.7"\r\n---\r\n', crlf.read_bytes())
+        self.assertIn("  version: 9.8.7  # note\n", note.read_text())
+
+    def test_a_workflow_file_without_a_marker_is_flagged(self):
+        tmp = self.tmp
+        (tmp / "scripts" / "nuevo.sh").write_text("#!/usr/bin/env bash\necho hi\n")
+        (tmp / "templates" / "es" / "NUEVO.md").write_text("# Nuevo\n")
+        skill = tmp / "skills" / "bare" / "SKILL.md"
+        skill.parent.mkdir()
+        skill.write_text("---\nname: bare\n---\n\nBody\n")
+        (tmp / "skills" / "bare" / "notes.md").write_text("owned through its SKILL.md: no header needed\n")
+        r = run(tmp)
+        self.assertEqual(r.returncode, 1, r.stdout)
+        for rel in ("scripts/nuevo.sh", "templates/es/NUEVO.md", "skills/bare/SKILL.md"):
+            self.assertIn(f"missing marker: {rel}", r.stdout)
+        self.assertNotIn("notes.md", r.stdout)
+        self.assertNotIn("templates/claude/settings.json", r.stdout)
+
+    def test_bump_touches_only_the_top_level_json_version(self):
+        tmp = self.tmp
+        for rel in ("templates/gw.json", ".claude-plugin/plugin.json"):
+            path = tmp / rel
+            data = json.loads(path.read_text())
+            data = dict({"$schema": "x", "nested": {"version": "keep-me"}}, **data)
+            path.write_text(json.dumps(data, indent=2) + "\n")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        for rel in ("templates/gw.json", ".claude-plugin/plugin.json"):
+            data = json.loads((tmp / rel).read_text())
+            self.assertEqual(data["version"], "9.8.7", rel)
+            self.assertEqual(data["nested"], {"version": "keep-me"}, rel)
+
+    def test_bump_fails_loudly_without_a_top_level_version_or_a_changelog_heading(self):
+        tmp = self.tmp
+        gw = tmp / "templates" / "gw.json"
+        original = gw.read_text()
+        data = json.loads(original)
+        del data["version"]
+        gw.write_text(json.dumps(data, indent=2) + "\n")
+        plugin_before = (tmp / ".claude-plugin" / "plugin.json").read_bytes()
+        r = run(tmp, "9.8.7")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn('templates/gw.json has no top-level "version"', r.stderr)
+        self.assertIn("python3 scripts/version.py 9.8.7", r.stderr)
+        self.assertEqual((tmp / ".claude-plugin" / "plugin.json").read_bytes(), plugin_before, "nothing written")
+        gw.write_text(original)
+        (tmp / "CHANGELOG.md").write_text("# Changelog\n\nNo entries yet.\n")
+        r = run(tmp, "9.8.7")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("CHANGELOG.md has no `## [x.y.z]` heading", r.stderr)
+        self.assertEqual((tmp / ".claude-plugin" / "plugin.json").read_bytes(), plugin_before, "nothing written")
 
     def test_not_semver_is_refused(self):
         self.assertEqual(run(ROOT, "1.2").returncode, 2)

@@ -63,7 +63,8 @@ class Recoger(unittest.TestCase):
         self.assertEqual(r["retros"], ["docs/retro-2026-01-01-x.md"])
         self.assertEqual(r["ideas"][0]["text"], "Check shallow clones.")
 
-    def test_a_clone_behind_its_remote_branch_is_flagged(self):
+    def track_origin(self):
+        """Give the project a remote with main as its upstream; return a second clone that can push to it."""
         origin = self.tmp / "origin.git"
         git(self.tmp, "init", "-q", "--bare", str(origin))
         git(self.repo, "remote", "add", "origin", str(origin))
@@ -71,18 +72,52 @@ class Recoger(unittest.TestCase):
         git(self.repo, "branch", "-q", "--set-upstream-to=origin/main")
         other = self.tmp / "other"
         git(self.tmp, "clone", "-q", "-b", "main", str(origin), str(other))
+        return other
+
+    def push_newer(self, other):
         (other / "new.txt").write_text("x\n")
         git(other, "add", "-A")
         git(other, "commit", "-qm", "newer")
         git(other, "push", "-q", "origin", "HEAD:main")
         git(self.repo, "fetch", "-q", "origin")
+
+    def test_a_clone_behind_its_upstream_is_flagged(self):
+        self.push_newer(self.track_origin())
         r = self.harvest()
-        self.assertEqual(r["behind"], {"ref": "origin/main", "commits": 1})
+        self.assertEqual(r["behind"], {"ref": "origin/main", "commits": 1, "diverged": False})
         out = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
-        self.assertIn("1 commit(s) behind `origin/main`", out)
+        self.assertIn("behind `origin/main`: 1 commit(s) behind it", out)
+        self.assertIn("merge --ff-only @{upstream}`, only if it has no local work) or harvest a fresh clone", out)
+
+    def test_a_diverged_clone_is_flagged(self):
+        self.push_newer(self.track_origin())
+        (self.repo / "local.txt").write_text("y\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "local")
+        r = self.harvest()
+        self.assertEqual(r["behind"], {"ref": "origin/main", "commits": 1, "diverged": True})
+        out = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
+        self.assertIn("diverged from `origin/main`", out)
+
+    def test_no_upstream_is_reported(self):
+        origin = self.tmp / "origin.git"
+        git(self.tmp, "init", "-q", "--bare", str(origin))
+        git(self.repo, "remote", "add", "origin", str(origin))
+        git(self.repo, "push", "-q", "origin", "HEAD:refs/heads/main")
+        git(self.repo, "remote", "set-head", "origin", "main")
+        r = self.harvest()
+        self.assertIsNone(r["upstream"])
+        self.assertIsNone(r["behind"])
+        out = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
+        self.assertIn("no upstream: cannot tell whether the clone is up to date", out)
 
     def test_up_to_date_clone_is_not_flagged(self):
-        self.assertIsNone(self.harvest()["behind"])
+        self.track_origin()
+        r = self.harvest()
+        self.assertEqual(r["upstream"], "origin/main")
+        self.assertIsNone(r["behind"])
+        out = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
+        self.assertNotIn("WARNING", out)
 
     def test_unknown_last_commit_falls_back_to_full_scan(self):
         self.state.write_text(json.dumps({"proj": "0" * 40}))

@@ -7,8 +7,10 @@ gw-update can tell versions apart. A marker is only one of these, nothing else (
 read nor rewritten):
   - a `galivelop-workflow vX.Y.Z` header within the first 5 lines of a file (scripts, templates, the schema's
     "$comment"): the rule of header_version() in aplicar.py, imported from there;
-  - `metadata.version` inside the frontmatter of a SKILL.md;
-  - `"version"` in templates/gw.json.
+  - `metadata.version` inside the frontmatter of a SKILL.md: skill_version_span() in aplicar.py, imported too;
+  - the top-level `"version"` of templates/gw.json (and of plugin.json, the source).
+Every file under scripts/, every SKILL.md and every file under templates/ and schema/ must carry its marker; the
+check flags one that lacks it (exceptions, with the reason, in UNMARKED).
 .claude/gw.json is this repo's installed copy: only aplicar.py writes it.
 
   python3 scripts/version.py            # list files whose marker differs from plugin.json; exit 1 if any
@@ -27,14 +29,22 @@ sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
-from aplicar import HEADER, header_version  # noqa: E402
+from aplicar import HEADER, header_version, skill_version_span  # noqa: E402
 
 PLUGIN = ROOT / ".claude-plugin" / "plugin.json"
 TEMPLATE_GW = ROOT / "templates" / "gw.json"
 SEMVER = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$")
-JSON_VERSION = re.compile(r'("version"\s*:\s*")([^"]*)(")')
+TOP_VERSION = re.compile(r'^(  "version"\s*:\s*")([^"]*)(")', re.M)  # a top-level key: two-space indent
 SCOPES = ("scripts", "skills", "templates", "schema")
 HEAD_LINES = 5  # same as header_version()
+UNMARKED = {  # workflow files that carry no header marker, and why
+    "templates/gw.json": "JSON; its marker is the top-level \"version\", checked on its own",
+    "templates/claude/settings.json": "JSON merged key by key into the project's settings, never owned",
+}
+
+
+class VersionError(Exception):
+    """A file the bump needs is not shaped as expected; the message ends with the command that fixes it."""
 
 
 def marked_files():
@@ -61,106 +71,132 @@ def header_span(text):
     return m.span(1) if m else None
 
 
-def skill_span(text):
-    """(start, end) of metadata.version's value inside a SKILL.md frontmatter, or None."""
-    fm = re.match(r"---\r?\n(.*?)\r?\n---(?:\r?\n|$)", text, re.S)
-    if not fm:
-        return None
-    pos, inside = fm.start(1), False
-    for line in fm.group(1).splitlines(keepends=True):
-        bare = line.rstrip("\r\n")
-        if re.match(r"metadata:\s*$", bare):
-            inside = True
-        elif inside:
-            sub = re.match(r"(\s+)([A-Za-z_-]+):\s*([\"']?)([^\"'\s]*)", bare)
-            if not sub:
-                break
-            if sub.group(2) == "version":
-                return pos + sub.start(4), pos + sub.end(4)
-        pos += len(line)
-    return None
-
-
 def spans(path, text):
     found = [s for s in (header_span(text),) if s]
     if path.name == "SKILL.md":
-        found += [s for s in (skill_span(text),) if s]
+        found += [s for s in (skill_version_span(text),) if s]
     return found
 
 
+def needs_marker(path):
+    """True when a workflow-owned file must carry a marker: SKILL.md (metadata.version) or a header elsewhere."""
+    rel = path.relative_to(ROOT)
+    if rel.as_posix() in UNMARKED:
+        return False
+    return rel.parts[0] != "skills" or path.name == "SKILL.md"
+
+
+def own_marker(path, text):
+    return skill_version_span(text) if path.name == "SKILL.md" else header_span(text)
+
+
 def scan(version):
-    """[(path, text, stale spans)] for files with a marker other than version, and the non-UTF-8 ones with a marker."""
-    stale, unreadable = [], []
+    """Files with a marker other than version [(path, text, stale spans)], the non-UTF-8 ones with a marker, and the
+    ones that must carry a marker and lack it."""
+    stale, unreadable, missing = [], [], []
     for path in marked_files():
         try:
             text = read(path)
         except UnicodeDecodeError:
             if header_version(path.read_bytes()):
                 unreadable.append(path)
+            elif needs_marker(path):
+                missing.append(path)
             continue
+        if needs_marker(path) and own_marker(path, text) is None:
+            missing.append(path)
         bad = [s for s in spans(path, text) if text[s[0]:s[1]] != version]
         if bad:
             stale.append((path, text, bad))
-    return stale, unreadable
+    return stale, unreadable, missing
 
 
-def json_version(path):
-    m = JSON_VERSION.search(read(path))
-    return m.group(2) if m else None
+def top_version(path):
+    """The top-level "version" of a JSON file, or None when it has none (or is not a JSON object)."""
+    data = json.loads(read(path))
+    return data.get("version") if isinstance(data, dict) else None
 
 
 def check(version):
-    stale, unreadable = scan(version)
-    lines = [f"{p.relative_to(ROOT)}: {', '.join(sorted({t[a:b] for a, b in s}))}" for p, t, s in stale]
-    lines += [f"{p.relative_to(ROOT)}: not UTF-8, its marker cannot be checked" for p in unreadable]
-    if json_version(TEMPLATE_GW) != version:
-        lines.append(f"templates/gw.json: version {json_version(TEMPLATE_GW)}")
+    stale, unreadable, missing = scan(version)
+    lines = [f"stale marker: {p.relative_to(ROOT)}: {', '.join(sorted({t[a:b] for a, b in s}))}"
+             for p, t, s in stale]
+    lines += [f"stale marker: {p.relative_to(ROOT)}: not UTF-8, its marker cannot be checked" for p in unreadable]
+    lines += [f"missing marker: {p.relative_to(ROOT)}: add "
+              + ("metadata.version to its frontmatter" if p.name == "SKILL.md"
+                 else f"a `galivelop-workflow v{version}` comment in its first {HEAD_LINES} lines")
+              for p in missing]
+    found = top_version(TEMPLATE_GW)  # read once
+    if found != version:
+        lines.append(f"stale marker: templates/gw.json: version {found if found is not None else 'missing'}")
     return lines
 
 
-def set_json_version(path, new):
+def bump_plan(path, new):
+    """The new text of a JSON file with only its top-level "version" set to new; None when already there."""
+    rel = path.relative_to(ROOT)
     text = read(path)
-    out = JSON_VERSION.sub(lambda m: m.group(1) + new + m.group(3), text, count=1)
-    if out != text:
-        write(path, out)
-        return True
-    return False
+    data = json.loads(text)
+    if not isinstance(data, dict) or "version" not in data:
+        raise VersionError(f"{rel} has no top-level \"version\" to bump; add it (\"version\": \"{new}\" as a "
+                           f"top-level key) and retry: python3 scripts/version.py {new}")
+    if data["version"] == new:
+        return None
+    out, n = TOP_VERSION.subn(lambda m: m.group(1) + new + m.group(3), text, count=1)
+    if n != 1 or json.loads(out) != dict(data, version=new):
+        raise VersionError(f"{rel}: its top-level \"version\" is not on its own line indented by two spaces, so it "
+                           f"cannot be rewritten safely; reformat it that way and retry: python3 scripts/version.py {new}")
+    return out
 
 
-def sync(new):
-    """One pass: every marker that is not `new` becomes `new`. Returns (changed, skipped non-UTF-8 files)."""
-    stale, unreadable = scan(new)
-    changed = []
+def changelog_plan(new):
+    """The new CHANGELOG text with an entry for new; None when it already has one."""
+    log = ROOT / "CHANGELOG.md"
+    text = read(log)
+    if f"## [{new}]" in text:
+        return None
+    if not re.search(r"^## \[", text, re.M):
+        raise VersionError("CHANGELOG.md has no `## [x.y.z]` heading to put the new entry before; add the first one "
+                           f"by hand (## [{new}] - Unreleased, with ### ES and ### EN) and retry: "
+                           f"python3 scripts/version.py {new}")
+    nl = "\r\n" if "\r\n" in text else "\n"
+    entry = nl.join([f"## [{new}] - Unreleased", "", "### ES", "", "- (por completar)", "", "### EN", "",
+                     "- (to be filled in)", "", ""])
+    return re.sub(r"^## \[", lambda m: entry + "## [", text, count=1, flags=re.M)
+
+
+def sync(new, with_changelog):
+    """One pass: every marker that is not `new` becomes `new`. Everything is planned (and may raise VersionError)
+    before anything is written. Returns (changed, skipped non-UTF-8 files)."""
+    planned = [(path, bump_plan(path, new)) for path in (TEMPLATE_GW, PLUGIN)]
+    if with_changelog:
+        planned.append((ROOT / "CHANGELOG.md", changelog_plan(new)))
+    stale, unreadable, _ = scan(new)
     for path, text, found in stale:
         for a, b in sorted(found, reverse=True):
             text = text[:a] + new + text[b:]
-        write(path, text)
-        changed.append(path)
-    for path in (TEMPLATE_GW, PLUGIN):
-        if set_json_version(path, new):
+        planned.append((path, text))
+    changed = []
+    for path, text in planned:
+        if text is not None:
+            write(path, text)
             changed.append(path)
     return changed, unreadable
 
 
-def add_changelog_entry(new):
-    log = ROOT / "CHANGELOG.md"
-    text = read(log)
-    if f"## [{new}]" in text:
-        return
-    nl = "\r\n" if "\r\n" in text else "\n"
-    entry = nl.join([f"## [{new}] - Unreleased", "", "### ES", "", "- (por completar)", "", "### EN", "",
-                     "- (to be filled in)", "", ""])
-    write(log, re.sub(r"^## \[", lambda m: entry + "## [", text, count=1, flags=re.M))
-
-
 def main(argv):
-    current = json.loads(read(PLUGIN))["version"]
+    current = top_version(PLUGIN)
+    if not isinstance(current, str):
+        print('version: .claude-plugin/plugin.json has no top-level "version" (the source of every marker); add it '
+              '("version": "X.Y.Z") and retry: python3 scripts/version.py', file=sys.stderr)
+        return 1
     if not argv:
-        stale = check(current)
-        for line in stale:
-            print(f"stale marker: {line}")
-        if stale:
+        problems = check(current)
+        for line in problems:
+            print(line)
+        if any(line.startswith("stale") for line in problems):
             print(f"markers differ from plugin.json ({current}); fix them: python3 scripts/version.py {current}")
+        if problems:
             return 1
         print(f"all markers at {current}")
         return 0
@@ -168,9 +204,11 @@ def main(argv):
     if not SEMVER.match(new):
         print(f"{new!r} is not SemVer (X.Y.Z); retry: python3 scripts/version.py 0.2.0", file=sys.stderr)
         return 2
-    _, skipped = sync(new)
-    if new != current:
-        add_changelog_entry(new)
+    try:
+        _, skipped = sync(new, new != current)
+    except VersionError as e:
+        print(f"version: {e}", file=sys.stderr)
+        return 1
     for path in skipped:
         print(f"skipped {path.relative_to(ROOT)}: not UTF-8; convert it and retry: python3 scripts/version.py {new}",
               file=sys.stderr)

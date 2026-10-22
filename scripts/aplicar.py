@@ -98,25 +98,37 @@ def header_version(data):
     return m.group(1) if m else None
 
 
+def skill_version_span(text):
+    """(start, end) of metadata.version's value inside a SKILL.md frontmatter, or None. LF or CRLF; the value runs up
+    to whitespace, a quote or `#` (its quotes and a trailing comment are not part of it). The one parser of skill
+    versions: version.py imports it."""
+    fm = re.match(r"---\r?\n(.*?)\r?\n---(?:\r?\n|$)", text, re.S)
+    if not fm:
+        return None
+    pos, inside = fm.start(1), False
+    for line in fm.group(1).splitlines(keepends=True):
+        bare = line.rstrip("\r\n")
+        if re.match(r"metadata:\s*(?:#.*)?$", bare):
+            inside = True
+        elif inside:
+            sub = re.match(r"(\s+)([A-Za-z_-]+):\s*([\"']?)([^\"'\s#]*)", bare)
+            if not sub:
+                break
+            if sub.group(2) == "version":
+                return pos + sub.start(4), pos + sub.end(4)
+        pos += len(line)
+    return None
+
+
 def skill_version(path):
     """metadata.version from a SKILL.md frontmatter, or None."""
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        with open(path, encoding="utf-8", errors="replace", newline="") as f:
+            text = f.read()
     except OSError:
         return None
-    m = re.match(r"^---\n(.*?)\n---", text, re.S)
-    inside = False
-    for line in (m.group(1).splitlines() if m else []):
-        if re.match(r"^metadata:\s*$", line):
-            inside = True
-            continue
-        if inside:
-            sub = re.match(r"^\s+([A-Za-z_-]+):\s*(.*)$", line)
-            if not sub:
-                break
-            if sub.group(1) == "version":
-                return sub.group(2).strip().strip("\"'") or None
-    return None
+    span = skill_version_span(text)
+    return text[span[0]:span[1]] or None if span else None
 
 
 def files_under(folder):

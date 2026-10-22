@@ -11,8 +11,8 @@
 | Rama | `claude/galivelop-workflow-inicio`; `main` = `603ca36` (primera subida, 2026-10-22) |
 | Check | `bash tests/comprobar.sh` — en verde en local y en el CI (Linux y macOS, run 39739419422 sobre `78cddb5`, con el repo público un rato el 2026-10-22); con el repo privado el CI no arranca hasta que se renueve el cupo de Actions |
 | Fase en curso | **5. Piloto: Portal-Galivelop** (plan §9) — sin empezar; necesita una sesión del portal con permiso del usuario |
-| Último punto estable | Las 7 propuestas de la segunda recogida de Tarkor, aprobadas y aplicadas (skills y `recoger.py` con test) |
-| Siguiente paso | Tres fases y segunda subida a `main` (con fecha en el CHANGELOG para etiquetar `v0.1.0`); Fase 5 cuando el usuario abra la sesión del portal |
+| Último punto estable | Segunda subida a `main`, fase 1: `/code-review` de `origin/main...HEAD` con 10 hallazgos, arreglados con sus tests |
+| Siguiente paso | Fase 2: `/opt-tokens` y `/retro` presentados al usuario; fase 3: revisión de lo nuevo, `revisado.sh`, push a `main` |
 
 ### Fases
 

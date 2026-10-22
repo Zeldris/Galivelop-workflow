@@ -42,7 +42,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    function), never the pasted text. Template:
 
    ```text
-   You work in this repository on branch <branch>. Read your state with `python3 .claude/gw/scripts/recuperar.py --estado` (your row of {log}, not the whole log) and, if you touch code, REVIEW.md and
+   You work in this repository on branch <branch>. Read your state with
+   `python3 .claude/gw/scripts/recuperar.py --estado`; if it reports no row for your branch or the log has no
+   per-branch rows, read the next step and pending sections of {log}. If you touch code, read REVIEW.md and
    AGENTS.md. Follow the project's commit and push rules: commit and push each stable point, log update in the
    same commit.
    Task: <what, in one or two sentences>.

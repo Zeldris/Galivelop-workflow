@@ -109,14 +109,19 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       echo "pre-push: creating $remote_ref at ${local_sha:0:7}: all its commits are already on the remote"
     elif [ -z "$known" ]; then
       echo "pre-push: moving $remote_ref from ${remote_sha:0:7} to ${local_sha:0:7}; ${remote_sha:0:7} is not in this clone, so the commits it gains or loses cannot be counted (git fetch $remote to see them)"
-    elif git merge-base --is-ancestor "$local_sha" "$known"; then
-      # Rewind (force push to an older commit): warn, do not block; the protected-branch rules below still apply.
-      left="$(git rev-list --count "$local_sha..$known")" || fail "cannot count the commits between ${local_sha:0:7} and ${known:0:7}; fetch and retry: git fetch $remote"
-      echo "pre-push: WARNING: rewinding $remote_ref from ${known:0:7} to ${local_sha:0:7}: $left commit(s) leave this branch"
     else
-      # The ref moves to commits the remote already has in other branches (e.g. work branch -> main).
+      # The ref moves to commits the remote already has: forward (work branch -> main), back (a rewind) or sideways
+      # (a force push to another branch's tip). Warn about what leaves, do not block; the protected-branch rules
+      # below still apply.
       gained="$(git rev-list --count "$known..$local_sha")" || fail "cannot count the commits between ${known:0:7} and ${local_sha:0:7}; fetch and retry: git fetch $remote"
-      echo "pre-push: moving $remote_ref to ${local_sha:0:7}: $gained commit(s) it gains, already on the remote in other branches"
+      dropped="$(git rev-list --count "$local_sha..$known")" || fail "cannot count the commits between ${local_sha:0:7} and ${known:0:7}; fetch and retry: git fetch $remote"
+      if [ "$gained" -gt 0 ]; then
+        echo "pre-push: moving $remote_ref to ${local_sha:0:7}: $gained commit(s) it gains, already on the remote in other branches"
+      fi
+      if [ "$dropped" -gt 0 ]; then
+        if [ "$gained" -gt 0 ]; then how="moving $remote_ref sideways"; else how="rewinding $remote_ref"; fi
+        echo "pre-push: WARNING: $how from ${known:0:7} to ${local_sha:0:7}: $dropped commit(s) leave this branch"
+      fi
     fi
   else
     count="$(printf '%s\n' "$new" | grep -c .)"
