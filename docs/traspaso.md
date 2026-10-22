@@ -11,8 +11,8 @@
 | Rama | `claude/galivelop-workflow-inicio` (`main` creada el 2026-10-21 en `f2739f1`) |
 | Check | `bash tests/comprobar.sh` — en verde en local; el CI no arranca desde el bloque B (los jobs mueren en ~2 s sin pasos: ¿cuota de Actions?) |
 | Fase en curso | **4. Plantillas y aplicación** (plan §9, etapa 1) — en curso (Fase 3 hecha a falta del CI) |
-| Último punto estable | Fase 4 (A): plantillas ES/EN (AGENTS, CLAUDE, REVIEW, GLOSSARY, bitácora, notas), `templates/gw.json`, CI de ejemplo, `aplicar.py --init` y render; 195 tests |
-| Siguiente paso | Fase 4 (B): guías `aplicar.md`/`apply.md`, `problemas.md`/`troubleshooting.md`, `config.md`, `patrones.md`/`patterns.md`, `contribuir.md`/`contributing.md` y skills `gw-init`, `gw-update`, `gw-doctor` |
+| Último punto estable | Fase 4 (B): guías ES/EN (`aplicar`, `problemas`, `config`, `patrones`, `contribuir`) y skills `gw-init`, `gw-update`, `gw-doctor` |
+| Siguiente paso | Cierre de la Fase 4: un agente sin contexto aplica el flujo a un repo vacío siguiendo solo `docs/en/apply.md`; `doctor.py` sin FAIL; dos veces sin cambios |
 
 ### Fases
 

@@ -34,3 +34,11 @@ Sus skills incluidas aquí llevan su mención y su licencia ([créditos](../../C
 3. **Último renglón del commit:** `Siguiente: <paso concreto>`.
 4. **A la rama protegida, solo con confirmación** y con revisión del diff.
 5. **Lo comprobable lo comprueba un script**, no la opinión de un agente.
+
+## Guías
+
+- [Aplicar el flujo a un proyecto](aplicar.md) (la guía del agente, proyectos nuevos y existentes)
+- [Configuración: `gw.json`](config.md)
+- [Patrones opcionales](patrones.md)
+- [Problemas conocidos](problemas.md)
+- [Cambiar el flujo](contribuir.md)

@@ -34,3 +34,11 @@ His skills included here carry his credit and licence ([credits](../../CREDITS.m
 3. **Last line of the commit:** `Next: <concrete step>` (`Siguiente:` in Spanish projects).
 4. **To the protected branch, only with confirmation** and with the diff reviewed.
 5. **What can be checked is checked by a script**, not by an agent's opinion.
+
+## Guides
+
+- [Applying the workflow to a project](apply.md) (the agent's guide, new and existing projects)
+- [Configuration: `gw.json`](config.md)
+- [Optional patterns](patterns.md)
+- [Troubleshooting](troubleshooting.md)
+- [Changing the workflow](contributing.md)

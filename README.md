@@ -31,6 +31,8 @@ The workflow rules live in `AGENTS.md` (an open standard any agent reads); skill
 ## Documentation
 
 - [Workflow overview](docs/en/workflow.md)
+- [Applying it to a project](docs/en/apply.md) · [Configuration](docs/en/config.md) · [Patterns](docs/en/patterns.md)
+- [Troubleshooting](docs/en/troubleshooting.md) · [Changing the workflow](docs/en/contributing.md)
 - [Plan](docs/plan.en.md) · [Changelog](CHANGELOG.md)
 
 ## Acknowledgements

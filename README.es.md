@@ -32,6 +32,8 @@ abierto [Agent Skills](https://github.com/agentskills/agentskills).
 ## Documentación
 
 - [Visión general del flujo](docs/es/flujo.md)
+- [Aplicarlo a un proyecto](docs/es/aplicar.md) · [Configuración](docs/es/config.md) · [Patrones](docs/es/patrones.md)
+- [Problemas conocidos](docs/es/problemas.md) · [Cambiar el flujo](docs/es/contribuir.md)
 - [Plan](docs/plan.md) · [Changelog](CHANGELOG.md)
 
 ## Agradecimientos

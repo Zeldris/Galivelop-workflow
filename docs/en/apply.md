@@ -1,0 +1,194 @@
+# Applying the workflow to a project (guide for the agent)
+
+> [Español](../es/aplicar.md)
+
+This is the guide an AI agent follows to apply Galivelop-workflow to a project, **new** (recommended) or **existing**
+(its own section, below). What needs judgement is decided by the agent with the person; the rest is done by a script
+(`scripts/aplicar.py`) and checked by another (`scripts/doctor.py`). In Claude Code, the `/gw-init` skill is a thin
+wrapper over this guide.
+
+The result lives **in the project's repo** (scripts, skills, hooks, templates), so it also works in cloud sessions,
+which do not load plugins declared in the repo.
+
+## 0. Before starting
+
+1. The project is cloned and is a git repo (`git init` if it is new).
+2. This repo, the workflow's, is cloned next to the project, or the person has added it to the session. From here on
+   it is `<workflow>`.
+3. **The session is opened with the project as its working folder.** Opened elsewhere, it does not load
+   `.claude/settings.json` (nor the hooks). If it is not, ask the person to reopen it from the project.
+4. `git status` is clean in the project, or the person knows what is unpushed.
+5. `python3` 3.8 or later, `git` and `bash` are available (on Windows, Git Bash or WSL: see
+   [troubleshooting](troubleshooting.md)).
+
+Done when: `python3 <workflow>/scripts/aplicar.py --help` and `git -C <project> status` run without error.
+
+## 1. Decide what needs judgement
+
+Collect these facts **before** running anything. They all go into `.claude/gw.json` (every key is in
+[config](config.md)).
+
+| Fact | How it is decided |
+|---|---|
+| Language (`language`: `es` or `en`) | The person's and the project docs'; it drives the templates and the replies |
+| Log path (`log`) | Default `docs/traspaso.md` (es) or `docs/handoff.md` (en); the project's own if it already has one |
+| Install command(s) (`install`) | Inferred (below); empty if there are no dependencies |
+| Check command(s) (`check`) | Inferred (below); **at least one**, it is what `pre-push` and CI run |
+| Protected branch (`protectedBranch`) | The one that deploys or publishes: `git symbolic-ref --short refs/remotes/origin/HEAD` |
+| Pushing to it (`pushToProtected`) | `direct` if people push straight to it; `pr` if it only takes pull requests |
+| Content (`content`) | Regexes for what is **not** code and needs no `/code-review`: docs, data, texts |
+| Optional skills | `opt-ai` (local AI models) and `scout-updates` (update scouting); only if the person asks |
+
+**Inferring `install` and `check`.** Read the build file and propose commands that really exist:
+
+| File | `install` | `check` (the most complete one there is) |
+|---|---|---|
+| `package.json` | `npm ci` (or `pnpm i --frozen-lockfile`, `yarn --frozen-lockfile` per the lockfile) | the `check` script, or `lint` + `test`: `npm run check` |
+| `pyproject.toml` | `pip install -e .[dev]` or `uv sync` | `pytest`, plus `ruff check .` if configured |
+| `Cargo.toml` | (empty) | `cargo clippy -- -D warnings` and `cargo test` |
+| `pom.xml` | (empty) | `mvn -q verify` |
+| `go.mod` | (empty) | `go vet ./...` and `go test ./...` |
+| `Makefile` | (empty) | `make check` or `make test`, if the target exists (`make -n check`) |
+
+Rules:
+
+- Read the build file's scripts and **run the `check` command once** to see that it works and how long it takes. A
+  command that does not exist or does not pass is found late and gets in the way of every push.
+- **When unsure, ask the person**; do not invent a command. With several candidates, offer them numbered.
+- A project with no tests: `check` can be a linter or a `bash -n`; say so and note it as debt in the log.
+- `content` is proposed by reading the tree: `^docs/`, `\\.md$`, `^public/`… (in JSON the backslash is doubled).
+  When in doubt, put less in `content`: what counts as code gets reviewed.
+
+Done when: every row of the table has an answer (or a question put to the person), and `check` has run once.
+
+## 2. Apply
+
+From the project root or giving it as the argument; the flags come from `--help` (`--check-command`, `--install`
+and `--content` repeat):
+
+```bash
+python3 <workflow>/scripts/aplicar.py <project> --dry-run --init --language en \
+  --log docs/handoff.md --install "npm ci" --check-command "npm run check" \
+  --protected-branch main --push-to-protected direct --content '^docs/' --content '\.md$'
+```
+
+`--dry-run` prints the plan without writing. When it is the one you want, repeat the same command **without**
+`--dry-run`.
+
+Options: `--review-mark PATH` (default `docs/registros/revisado.txt`), `--with opt-ai` and `--with scout-updates`.
+`--init` writes `.claude/gw.json` only when it does not exist, validates it and applies as usual.
+
+What it does (full detail in `--help`): copies `scripts/` to `.claude/gw/scripts/`, the skills to `.claude/skills/`,
+the git hooks to `.githooks/`, the CI to `.github/workflows/comprobar.yml`; **merges** the Claude Code hooks and
+`CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` into `.claude/settings.json`, removing nothing; creates `AGENTS.md`,
+`CLAUDE.md`, `REVIEW.md`, `GLOSSARY.md` and the log when missing; and sets `core.hooksPath=.githooks` when nothing
+else owns it. **It never commits.** It is idempotent: running it twice changes nothing.
+
+**Claude Code auto mode.** The auto-mode classifier may ask for permission when editing `.claude/settings.json`,
+`.claude/hooks/` and `.githooks/`, and the failure shows up halfway through the application. `aplicar.py` says so
+right before writing them. **Ask the person for permission first** before launching it (or have them run it in their
+own terminal with the same command) instead of retrying blindly; after a refusal, `git status` and `git diff`
+before repeating.
+
+Done when: the command ends without error and you know what was created, what was updated and what was left as
+`*.gw-nuevo`.
+
+## 3. Review every `*.gw-nuevo` with the person
+
+When a file already exists and is the project's (an `AGENTS.md`, a `CLAUDE.md` without the `galivelop-workflow`
+marker), `aplicar.py` **does not touch it**: it leaves `<file>.gw-nuevo` next to it with the proposal.
+
+```bash
+git -C <project> ls-files --others --exclude-standard | grep '\.gw-nuevo$'
+```
+
+For each one:
+
+1. Show the person what the proposal brings that the file lacks (`git diff --no-index <file> <file>.gw-nuevo`).
+2. **`AGENTS.md` and `CLAUDE.md`: merge by hand**, block by block. The project's rules stay; the workflow's blocks
+   are added (session start, hand-offs, checking, commits, branches). `CLAUDE.md` ends up with `@AGENTS.md` plus
+   what is Claude's own. Keep the `<!-- galivelop-workflow vX.Y.Z -->` marker on the first line.
+3. Other files: accept the whole proposal (`mv <file>.gw-nuevo <file>`) only if the person confirms.
+4. Delete the `.gw-nuevo` when done. `aplicar.py --check` counts it as a difference while it exists.
+
+Also fill in the `_(…)_` gaps of the log (branch, phase, next step) and of `REVIEW.md` and `GLOSSARY.md`: the
+workflow never writes them again.
+
+Done when: no `*.gw-nuevo` is left and the log has a next-step line.
+
+## 4. Check with `doctor.py`
+
+```bash
+python3 <project>/.claude/gw/scripts/doctor.py
+```
+
+It prints `OK`, `WARN` or `FAIL` per check, and with each problem the command that fixes it. Repeat (fix, run again)
+until **no `FAIL` is left**; explain the `WARN`s to the person (what each means is in
+[troubleshooting](troubleshooting.md)). With `--json` the output is machine-readable.
+
+Done when: `doctor.py` exits 0.
+
+## 5. Commit and push
+
+`aplicar.py` ended by printing a suggested commit:
+
+```bash
+git add -A && git commit -m "Galivelop-workflow v0.1.0 workflow" -m "Next: <next concrete step>"
+```
+
+Replace the last line with the real concrete step (the one the log declares) and add any attribution lines the
+project asks for in the same final block. Then `git push -u origin <branch>`: the new `pre-push` runs the `check` on
+the commit being pushed; if it fails, fix it and push again (never with `--no-verify`, except a red `WIP:`).
+
+If the project has CI, check that the `Comprobar` workflow passes; it may first need the toolchain setup steps
+(setup-node, setup-java…) that the header of `comprobar.yml` mentions.
+
+Done when: the push went through, `doctor.py` is still green and the log says what comes next.
+
+## Existing projects
+
+Everything above applies; these are the points that change.
+
+**A hook manager already installed (husky, lefthook, pre-commit…).** `aplicar.py` does not overwrite
+`core.hooksPath` when another manager owns it, and `doctor.py` and the session-start warning say so. **Chain, do not
+overwrite.** Add as the last line of the manager's `pre-push` and `pre-commit` (with `<hook>` the file's name):
+
+```bash
+"$(git rev-parse --show-toplevel)/.githooks/<hook>" "$@" || exit 1
+```
+
+The workflow's `pre-push` reads git's ref lines from standard input: if the manager does not forward them (in
+lefthook, `use_stdin: true`), it cannot tell what is being pushed. Check with a real push: it must print
+`pre-push: pushing N commit(s)`.
+
+**An existing `CLAUDE.md` or `AGENTS.md`.** Merge by hand (step 3). If there is only a `CLAUDE.md` holding Claude's
+own bits, keep that text and move the shared rules to `AGENTS.md`. If the project already has a different rule for
+something the workflow covers (branches, commit messages), **the project's wins**: note the difference in the merge.
+
+**A red check or lint on adoption.** Do not block the first push or switch the check off. Two ways:
+
+1. Fix it first, as a task of its own, if it is small.
+2. If it is large debt, open a **debt task** in the log and make `check` look **only at what changes while that task
+   stays open**: e.g. a script that runs the linter on `git diff --name-only origin/<protected branch>...HEAD`. When
+   the debt is closed, `check` goes back to checking everything. New code comes out clean without blocking the rest.
+
+**A log that already exists.** If the project has one, set it as `log` (it is what the whole workflow reads) and add
+by hand what the template has and it lacks: current state with a next step, recent work, pending items and how to
+check the state. `doctor.py` requires a "Next step" (or "Siguiente paso") line.
+
+**Existing CI.** `comprobar.yml` is one more workflow; if the project already runs its check, keep one of the two to
+avoid duplicating it, but keep the step that runs the base branch's `pre-commit` over the PR.
+
+**A protected branch with several people.** With `pushToProtected: pr`, the guard is the `PreToolUse` hook on
+creating and merging pull requests; with `direct`, the `pre-push`. Choose by how code already reaches it today.
+
+## What the agent leaves alone
+
+- `aplicar.py --update` and overwriting project files happen only when the person asks.
+- `install` and `check` are never invented: if the agent cannot run them, it asks.
+- Commit and push come after `doctor.py` shows no `FAIL`.
+- The protected branch gets pushes only with the person's confirmation.
+- A hook is never skipped with `git push --no-verify` or by pointing `core.hooksPath` elsewhere.
+- Files the workflow reports it no longer has are reported to the person, not deleted.
+- Other repos are read, never edited: the workflow's repo is read from the project session, never changed.
+- Another project's `.claude/settings.json` is never copied: `aplicar.py` merges it.

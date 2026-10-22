@@ -1,0 +1,61 @@
+# Configuración: `.claude/gw.json`
+
+> [English](../en/config.md)
+
+Todo lo que cambia de un proyecto a otro, y nada más. Solo `scripts/config.py` lo lee (un dato, un sitio); el resto
+de scripts le piden las claves. Se valida contra [`schema/gw.schema.json`](../../schema/gw.schema.json): una clave
+desconocida o mal escrita es un error, y los scripts **fallan cerrados** (salida 2) con la orden que lo comprueba:
+
+```bash
+python3 .claude/gw/scripts/config.py validate     # ¿es válido?
+python3 .claude/gw/scripts/config.py get check    # valor de una clave (con su valor por defecto)
+```
+
+El ejemplo completo y comentable está en [`templates/gw.json`](../../templates/gw.json); `aplicar.py --init` lo
+rellena con las banderas ([aplicar](aplicar.md)). Las listas se escriben como arrays JSON. Las expresiones regulares
+usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`).
+
+## Claves obligatorias
+
+| Clave | Qué es | Defecto | Ejemplo | La leen |
+|---|---|---|---|---|
+| `version` | Versión del flujo con la que se aplicó al proyecto (`X.Y.Z`). Se sube a mano tras `/gw-update` | (sin defecto) | `"0.1.0"` | `session-start.sh` y `doctor.py` (avisan si la copia no coincide), `aplicar.py` |
+| `language` | Idioma de plantillas y respuestas: `es` o `en` | (sin defecto) | `"es"` | `aplicar.py` (qué plantillas copia), `revisado.sh` (idioma del mensaje) |
+| `log` | Ruta de la bitácora, desde la raíz del repo | (sin defecto; `--init` pone `docs/traspaso.md` en es y `docs/handoff.md` en en) | `"docs/traspaso.md"` | `recuperar.py`, `doctor.py`, `prepush-ramas.sh`, `aplicar.py` |
+| `protectedBranch` | La rama que solo recibe código revisado | (sin defecto) | `"main"` | `pre-push`, `revision-antes-de-main.sh`, `revisado.sh`, `fusionar.sh`, plantillas y CI |
+| `pushToProtected` | Quién la guarda: `direct` (el `pre-push` exige la marca de revisión) o `pr` (el gancho `PreToolUse` guarda crear y fusionar PR) | (sin defecto) | `"pr"` | `pre-push`, `revision-antes-de-main.sh` |
+| `check` | Órdenes que se ejecutan **en orden** sobre el commit que se sube; todas deben pasar. Al menos una | (sin defecto) | `["npm run check"]` | `pre-push`, `fusionar.sh`, `doctor.py`, CI |
+| `reviewMark` | Archivo versionado con el sha del commit revisado | (sin defecto; `--init` pone `docs/registros/revisado.txt`) | `"docs/registros/revisado.txt"` | `revisado.sh` (lo escribe), `es-codigo.sh`, `pre-push`, `revision-antes-de-main.sh` |
+| `content` | Expresiones regulares (sobre rutas relativas) de lo que **es contenido, no código**: no necesita `/code-review` | (sin defecto; puede ser `[]`, entonces todo es código) | `["^docs/", "\\.md$"]` | `es-codigo.sh`, y con él `pre-push` y `revision-antes-de-main.sh` |
+
+## Claves opcionales
+
+| Clave | Qué es | Defecto | Ejemplo | La leen |
+|---|---|---|---|---|
+| `$schema` | Ruta o URL del esquema, para el editor | – | `"gw/schema/gw.schema.json"` | el editor |
+| `visibleLanguages` | Idiomas en los que debe existir todo texto que vea la usuaria | `[]` | `["es", "gl", "en"]` | `REVIEW.md` (lo aplican `/code-review` y los agentes) |
+| `logRows` | Bitácora con **una fila por rama**, de como mucho 600 caracteres: cada rama escribe solo en la suya | `false` | `true` | `bitacora.py`, `prepush-ramas.sh`, `recuperar.py` |
+| `install` | Órdenes que instalan dependencias (en la nube y en el CI) | `[]` | `["npm ci"]` | `session-start.sh` (solo en la nube y si cambió el lockfile), CI, `doctor.py` |
+| `requireRetro` | `revisado.sh` exige una `retro` con la decisión de la persona en la rama antes de marcar | `false` | `true` | `revisado.sh`, skill `retro` |
+| `roadmap` | Reservada para el módulo opcional de hitos; ningún script la lee todavía | `false` | `false` | (nadie aún) |
+| `selector` | `{ "cases": [ { "case", "skill", "sessionModel", "subagentModel" } ] }`: filas propias del proyecto para el `selector` | sin filas | `{"cases": [{"case": "Migración de datos", "skill": "orchestrate-dealer", "sessionModel": "Opus"}]}` | skill `selector` |
+| `designReferences` | Productos, marcos o estándares con los que se contrasta cada propuesta de diseño | `[]` | `["WCAG 2.2", "Material Design 3"]` | skills `grilling` y `selector` |
+| `protectedPaths` | Prefijos de ruta que un agente (`CLAUDECODE=1`) no puede commitear: borradores de otras personas | `[]` | `["docs/borradores/"]` | `.githooks/pre-commit` |
+| `staleRefs` | Expresiones (sin distinguir mayúsculas) que no deben aparecer en `docs/` ni en los README: una tarea renombrada, una fase borrada | `[]` | `["fase 9 \\(vieja\\)"]` | `enlaces-md.py` |
+| `relatedTests` | `{ "fast": [...], "slow": [...] }`: las pruebas de lo que cambia. `fast` corre en cada push; `slow`, solo si algún archivo cambiado sigue existiendo; `{files}` se sustituye por los archivos cambiados | sin órdenes | `{"fast": ["npx vitest related {files}"], "slow": []}` | `tests-relacionados.sh` (lo llama el `pre-push`) |
+| `plan` | Archivos o carpetas de plan o roadmap donde las tareas se tachan o marcan | `[]` | `["docs/producto/21-roadmap.md"]` | `bitacora.py` |
+| `taskId` | Expresión de los identificadores de tarea | `[A-Z]{2,5}-\\d+` | `"INS-\\d+"` | `bitacora.py` |
+
+## Notas
+
+- **`check` es una lista de órdenes**, no un script único: cada una se ejecuta con `bash -c` en la raíz del commit que
+  se sube. Una que no existe la detecta `doctor.py` antes de que falle un push.
+- **`pushToProtected`** cambia de qué gancho depende la protección: con `pr` el `pre-push` no pide marca (la pide el
+  gancho de PR); con `direct` la pide el `pre-push`. Elige cómo entra hoy el código en la rama protegida.
+- **`content` y la marca.** Un cambio que solo toca archivos de `content` no necesita revisión; cualquier otro, sí.
+  `revisado.sh` escribe en `reviewMark` el commit revisado y la marca debe ser antecesora de lo que se sube y no tener
+  código después.
+- **`logRows`** va con la plantilla de bitácora de filas (`| **Tarea en curso · \`rama\`** | … |`); el push comprueba
+  que cada rama escribe solo en su fila.
+- Tras actualizar el flujo, sube `version` a mano (`/gw-update` lo hace): ese número es lo que `doctor.py`
+  compara con las cabeceras copiadas.

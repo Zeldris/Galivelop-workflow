@@ -19,6 +19,9 @@ here.
 - Skills: 11 de Matt Pocock; propias `selector`, `orchestrate-dealer`, `opt-tokens` (+ `medir.py`), y opcionales
   `opt-ai` (IA local) y `scout-updates`; `gw-harvest` + `scripts/recoger.py` para recoger propuestas de los
   proyectos. Todas validadas contra la especificación Agent Skills.
+- Ganchos y scripts (`config.py`, `pre-push`, `pre-commit`, `revisado.sh`, gancho de PR a la rama protegida,
+  arranque, recuperación, `doctor.py`, utilidades) y `aplicar.py`; plantillas ES/EN; guías para aplicar el flujo,
+  problemas conocidos, config, patrones y cómo contribuir; skills `gw-init`, `gw-update`, `gw-doctor`.
 - Skills de Matt Pocock (mattpocock/skills, MIT) con su mención en cada una, `CREDITS.md` y agradecimiento en los
   README: de su trabajo aprendimos esta forma de trabajar.
 
@@ -31,5 +34,8 @@ here.
 - Skills: 11 by Matt Pocock; own `selector`, `orchestrate-dealer`, `opt-tokens` (+ `medir.py`), and optional
   `opt-ai` (local AI) and `scout-updates`; `gw-harvest` + `scripts/recoger.py` to harvest proposals from projects.
   All validated against the Agent Skills specification.
+- Hooks and scripts (`config.py`, `pre-push`, `pre-commit`, `revisado.sh`, PR-to-protected-branch hook, session
+  start, recovery, `doctor.py`, utilities) and `aplicar.py`; ES/EN templates; guides to apply the workflow,
+  troubleshooting, config, patterns and contributing; `gw-init`, `gw-update`, `gw-doctor` skills.
 - Matt Pocock's skills (mattpocock/skills, MIT) with his credit in each one, `CREDITS.md` and acknowledgements in the
   READMEs: we learned this way of working from his work.
