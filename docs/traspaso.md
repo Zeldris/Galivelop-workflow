@@ -10,9 +10,9 @@
 |---|---|
 | Rama | `claude/galivelop-workflow-inicio` (`main` creada el 2026-10-21 en `f2739f1`) |
 | Check | `bash tests/comprobar.sh` — en verde en local; el CI no arranca desde el bloque B (los jobs mueren en ~2 s sin pasos: ¿cuota de Actions?) |
-| Fase en curso | **3. Ganchos y scripts** (plan §9, etapa 1) — hecha a falta de ver el CI en verde (Linux y macOS) |
-| Último punto estable | Fase 3 (F): `aplicar.py` (núcleo) y flujo aplicado a este repo: `.claude/gw/`, `.claude/skills/`, `.githooks/`, `.claude/settings.json`; `doctor.py` sin FAIL; 182 tests |
-| Siguiente paso | Que el CI vuelva a arrancar (cuota de Actions, pendiente del usuario) y verlo en verde; luego Fase 4: plantillas ES/EN, `templates/gw.json`, `aplicar.md`, `gw-init`/`gw-update`, `problemas.md` |
+| Fase en curso | **4. Plantillas y aplicación** (plan §9, etapa 1) — en curso (Fase 3 hecha a falta del CI) |
+| Último punto estable | Fase 4 (A): plantillas ES/EN (AGENTS, CLAUDE, REVIEW, GLOSSARY, bitácora, notas), `templates/gw.json`, CI de ejemplo, `aplicar.py --init` y render; 195 tests |
+| Siguiente paso | Fase 4 (B): guías `aplicar.md`/`apply.md`, `problemas.md`/`troubleshooting.md`, `config.md`, `patrones.md`/`patterns.md`, `contribuir.md`/`contributing.md` y skills `gw-init`, `gw-update`, `gw-doctor` |
 
 ### Fases
 

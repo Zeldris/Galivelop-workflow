@@ -3,9 +3,15 @@
 """Apply or update the workflow in a project: the deterministic core of /gw-init and /gw-update (plan §5.4).
 
   python3 <workflow>/scripts/aplicar.py [PROJECT] [--update] [--check] [--dry-run] [--with SKILL ...]
+  python3 <workflow>/scripts/aplicar.py [PROJECT] --init --check-command CMD [--language es|en] [--log PATH]
+          [--install CMD ...] [--protected-branch B] [--push-to-protected direct|pr] [--content REGEX ...]
+          [--review-mark PATH]
 
 Runs FROM the workflow repo (this script's own repo is the source) ONTO a project: PROJECT, else the git top level
-of the current directory. The project must have a valid .claude/gw.json (fails closed, exit 2).
+of the current directory. The project must have a valid .claude/gw.json (fails closed, exit 2), except with --init:
+that writes .claude/gw.json from templates/gw.json plus the flags (only when it does not exist yet; --check-command
+is required, the log defaults to docs/traspaso.md in Spanish and docs/handoff.md in English), validates it and then
+applies as usual.
 
 What it copies (workflow -> project):
   scripts/*                     -> .claude/gw/scripts/   (not recoger.py nor aplicar.py: workflow-only), exec bits kept
@@ -16,6 +22,16 @@ What it copies (workflow -> project):
   templates/githooks/*          -> .githooks/
   templates/claude/settings.json   merged into .claude/settings.json: missing env keys and hook entries are added
                                    (matched by event + matcher + command); nothing is removed or rewritten
+  templates/<language>/ (`language` of the config), with {{key}} placeholders rendered from the config:
+    AGENTS.md, CLAUDE.md        -> the project root; created when missing; an existing one without the
+                                   galivelop-workflow marker, or with an older one, gets a .gw-nuevo proposal to merge
+                                   by hand (the project fills in its own rules there, so they are never overwritten)
+    REVIEW.md, GLOSSARY.md      -> the project root  } created when missing and NEVER written again (the project
+    log.md                      -> the config's `log` } fills them in); an older marker is reported as a template
+    opt-tokens.md (+ opt-ai.md,  -> .claude/gw/       } update to review with /gw-update
+      scout-updates.md when that optional skill is installed)
+  templates/github/comprobar.yml -> .github/workflows/comprobar.yml (workflow-owned, like the scripts)
+In the workflow repo itself the root templates and the CI file are skipped: it has its own AGENTS.md, log and CI.
 and sets core.hooksPath to .githooks when it is unset and no other hook manager owns the hooks.
 
 For each file: identical -> skip; missing -> create; different -> overwritten only when the project's file is
@@ -50,6 +66,13 @@ WORKFLOW_ONLY_SKILLS = {"gw-harvest"}
 OPTIONAL_SKILLS = {"opt-ai", "scout-updates"}
 IGNORED = {"__pycache__", ".DS_Store"}
 PROPOSAL = ".gw-nuevo"
+PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
+TEXT_KEYS = ("log", "protectedBranch", "reviewMark", "language")
+LIST_KEYS = ("check", "install")
+ROOT_TEMPLATES = (("AGENTS.md", "merged"), ("CLAUDE.md", "merged"), ("REVIEW.md", "seeded"),
+                  ("GLOSSARY.md", "seeded"))
+NOTES = (("opt-tokens.md", None), ("opt-ai.md", "opt-ai"), ("scout-updates.md", "scout-updates"))
+LOG_BY_LANGUAGE = {"es": "docs/traspaso.md", "en": "docs/handoff.md"}
 HEADER = re.compile(r"galivelop-workflow v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)")
 SENSITIVE = (".claude/settings.json", ".claude/hooks/", ".githooks/")
 
@@ -135,10 +158,11 @@ class Plan:
 
     # ------------------------------------------------------------- files
 
-    def file(self, src, rel, owner_version=None, owned=None):
-        """Plan one copy. owner_version/owned: for skill files, from the project's SKILL.md (read before writes)."""
-        data = src.read_bytes()
-        want_exec = is_exec(src)
+    def file(self, src, rel, owner_version=None, owned=None, data=None):
+        """Plan one copy. owner_version/owned: for skill files, from the project's SKILL.md (read before writes).
+        data: rendered content instead of src's bytes (a template; never executable)."""
+        want_exec = is_exec(src) if data is None else False
+        data = src.read_bytes() if data is None else data
         dest = self.root / rel
         if not dest.exists():
             self.actions.append(("create", rel, data, want_exec, ""))
@@ -163,12 +187,44 @@ class Plan:
             why = f"the project's copy is v{owner_version}, newer than the workflow's v{self.version}"
         else:
             why = f"v{owner_version} with local edits (rerun with --update to replace them)"
+        self.propose(rel, data, want_exec, why)
+
+    def propose(self, rel, data, want_exec, why):
         proposal = Path(str(rel) + PROPOSAL)
         pdest = self.root / proposal
         if pdest.is_file() and pdest.read_bytes() == data:
             self.pending.append((rel, why))
         else:
             self.actions.append(("propose", proposal, data, want_exec, f"{rel} differs: {why}"))
+
+    def template(self, rel, data, kind):
+        """Plan one rendered template. kind: owned (like a script), merged (AGENTS.md/CLAUDE.md: the project adds its
+        rules, so never overwritten; a proposal when unmarked or older) or seeded (created once, never written
+        again; an older marker is only reported)."""
+        if kind == "owned":
+            self.file(None, rel, data=data)
+            return
+        dest = self.root / rel
+        if not dest.exists():
+            self.actions.append(("create", rel, data, False, ""))
+            return
+        current = dest.read_bytes()
+        if current == data:
+            return
+        found = header_version(current)
+        older = found is not None and version_key(found) < version_key(self.version)
+        if kind == "seeded":
+            if older:
+                self.notes.append(f"{rel} comes from the v{found} template and the template is now v{self.version}; "
+                                  f"the project's file is never overwritten: review the template change with "
+                                  f"/gw-update, then set its marker line to v{self.version}")
+            return
+        if found is not None and not older:
+            return  # the project's own edits at this version (or a newer copy)
+        why = (f"v{found}, the template is now v{self.version}" if found is not None
+               else "not workflow-owned (no galivelop-workflow marker)")
+        self.propose(rel, data, False, why + "; merge this block by hand or with the agent, keeping the marker line "
+                     "at the top")
 
     def tree(self, src_dir, dest_rel, owner_version=None, owned=None, only=None):
         names = only if only is not None else files_under(src_dir)
@@ -274,7 +330,46 @@ def plan_hooks_path(plan):
     plan.set_hooks_path = True
 
 
-def build(root, version, update, extra_skills):
+def inline_list(items):
+    return ", ".join(f"`{i}`" for i in items) if items else "—"
+
+
+def render(text, cfg, root, version, name):
+    """Replace {{key}}: config keys (lists as an inline code list), {{version}} (the workflow's), {{project}}."""
+    def value(m):
+        key = m.group(1)
+        if key in TEXT_KEYS:
+            return str(cfg[key])
+        if key in LIST_KEYS:
+            return inline_list(cfg.get(key) or [])
+        if key == "version":
+            return version
+        if key == "project":
+            return root.name
+        raise ApplyError(f"aplicar: template {name} has an unknown placeholder {{{{{key}}}}}; fix the template in "
+                         f"{WORKFLOW / 'templates'}")
+    return PLACEHOLDER.sub(value, text)
+
+
+def plan_templates(plan, cfg, self_apply, wanted_skills):
+    lang_dir = WORKFLOW / "templates" / cfg["language"]
+
+    def rendered(src):
+        return render(src.read_text(encoding="utf-8"), cfg, plan.root, plan.version,
+                      str(src.relative_to(WORKFLOW))).encode("utf-8")
+
+    if not self_apply:
+        for name, kind in ROOT_TEMPLATES:
+            plan.template(Path(name), rendered(lang_dir / name), kind)
+        plan.template(Path(cfg["log"]), rendered(lang_dir / "log.md"), "seeded")
+        plan.template(Path(".github/workflows/comprobar.yml"),
+                      rendered(WORKFLOW / "templates" / "github" / "comprobar.yml"), "owned")
+    for name, skill in NOTES:
+        if skill is None or skill in wanted_skills:
+            plan.template(Path(".claude/gw") / name, rendered(lang_dir / name), "seeded")
+
+
+def build(root, version, update, extra_skills, cfg):
     self_apply = root.resolve() == WORKFLOW.resolve()
     plan = Plan(root, version, update or self_apply)
     scripts = [Path(p.name) for p in sorted((WORKFLOW / "scripts").iterdir())
@@ -289,11 +384,13 @@ def build(root, version, update, extra_skills):
         raise ApplyError(f"aplicar: unknown skill(s) for --with: {', '.join(unknown)}; available: "
                          f"{', '.join(available)}")
     installed = root / ".claude" / "skills"
+    wanted_skills = set()
     for name in available:
         wanted = (self_apply or name in extra_skills or (installed / name / "SKILL.md").is_file()
                   or name not in OPTIONAL_SKILLS | WORKFLOW_ONLY_SKILLS)
         if not wanted:
             continue
+        wanted_skills.add(name)
         dest = Path(".claude/skills") / name
         owner = skill_version(root / dest / "SKILL.md")
         plan.tree(WORKFLOW / "skills" / name, dest, owner_version=owner, owned=owner is not None)
@@ -307,6 +404,7 @@ def build(root, version, update, extra_skills):
             plan.orphans.append(Path(".githooks") / name)
 
     plan.settings(WORKFLOW / "templates" / "claude" / "settings.json")
+    plan_templates(plan, cfg, self_apply, wanted_skills)
     plan_hooks_path(plan)
     return plan
 
@@ -333,6 +431,8 @@ def report(plan):
               f"rm {rel}{PROPOSAL}")
     for rel in plan.orphans:
         print(f"aplicar: {rel} is no longer in the workflow (kept); delete it if nothing uses it: git rm {rel}")
+    for note in plan.notes:
+        print(f"aplicar: template update: {note}")
     if plan.hooks_path:
         print(f"aplicar: {plan.hooks_path}")
 
@@ -355,6 +455,30 @@ def apply(plan):
             print("aplicar: could not set core.hooksPath; set it by hand: git config core.hooksPath .githooks")
 
 
+def init_config(args, version):
+    """The new .claude/gw.json: templates/gw.json with the flags on top. Raises ApplyError when invalid."""
+    if not args.check_commands:
+        raise ApplyError("aplicar: --init needs the project's check, at least one --check-command \"<command>\" "
+                         "(e.g. --check-command \"npm test\"); rerun with it")
+    new = json.loads((WORKFLOW / "templates" / "gw.json").read_text(encoding="utf-8"))
+    new["version"] = version
+    if args.language:
+        new["language"] = args.language
+    new["log"] = args.log or LOG_BY_LANGUAGE.get(new["language"], new["log"])
+    new["check"] = args.check_commands
+    new["install"] = args.install
+    for key, flag in (("protectedBranch", args.protected_branch), ("pushToProtected", args.push_to_protected),
+                      ("reviewMark", args.review_mark), ("content", args.content or None)):
+        if flag:
+            new[key] = flag
+    schema = json.loads((WORKFLOW / "schema" / "gw.schema.json").read_text(encoding="utf-8"))
+    errors = config.validate(new, schema)
+    if errors:
+        raise ApplyError("aplicar: the config --init would write is invalid:\n  " + "\n  ".join(errors)
+                         + "\naplicar: fix the flags and rerun")
+    return new, schema
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("project", nargs="?", help="the project (default: git top level of the current directory)")
@@ -363,7 +487,27 @@ def main(argv=None):
     parser.add_argument("--dry-run", action="store_true", help="print the plan, no writes")
     parser.add_argument("--with", dest="extra", action="append", default=[], metavar="SKILL",
                         help="also install an optional skill (repeatable)")
+    init = parser.add_argument_group("--init (write .claude/gw.json first, only when it does not exist)")
+    init.add_argument("--init", action="store_true", help="write .claude/gw.json from templates/gw.json + flags")
+    init.add_argument("--language", choices=["es", "en"])
+    init.add_argument("--log", metavar="PATH")
+    init.add_argument("--check-command", dest="check_commands", action="append", default=[], metavar="CMD",
+                      help="a `check` command (repeatable; at least one)")
+    init.add_argument("--install", action="append", default=[], metavar="CMD", help="an `install` command (repeatable)")
+    init.add_argument("--protected-branch", metavar="BRANCH")
+    init.add_argument("--push-to-protected", choices=["direct", "pr"])
+    init.add_argument("--content", action="append", default=[], metavar="REGEX", help="a `content` regex (repeatable)")
+    init.add_argument("--review-mark", metavar="PATH")
     args = parser.parse_args(argv)
+    init_flags = [f for f, v in (("--language", args.language), ("--log", args.log),
+                                 ("--check-command", args.check_commands), ("--install", args.install),
+                                 ("--protected-branch", args.protected_branch),
+                                 ("--push-to-protected", args.push_to_protected), ("--content", args.content),
+                                 ("--review-mark", args.review_mark)) if v]
+    if init_flags and not args.init:
+        parser.error(f"{', '.join(init_flags)} only go with --init")
+    if args.init and args.check:
+        parser.error("--init writes files; run --check after it")
 
     start = args.project or os.getcwd()
     root = config.git_toplevel(start)
@@ -371,20 +515,41 @@ def main(argv=None):
         print(f"aplicar: {start} is not inside a git repository; create it first: git init {start}", file=sys.stderr)
         return 2
     root = root.resolve()
-    if not (root / config.CONFIG_REL).is_file():
-        print(f"aplicar: {root / config.CONFIG_REL} not found, so the workflow cannot be applied; create it "
-              f"(a template arrives in Phase 4) and validate it: python3 {HERE / 'config.py'} --root {root} validate",
-              file=sys.stderr)
-        return 2
-    try:
-        cfg = config.load(str(root))
-    except config.ConfigError as exc:
-        print(f"aplicar: {exc}\naplicar: fix it and validate: python3 {HERE / 'config.py'} --root {root} validate",
-              file=sys.stderr)
-        return 2
     version = workflow_version()
+    cfg = None
+    if args.init:
+        if (root / config.CONFIG_REL).is_file():
+            print(f"aplicar: {root / config.CONFIG_REL} already exists; left as is (the --init flags are ignored)")
+        else:
+            try:
+                new, schema = init_config(args, version)
+            except ApplyError as exc:
+                print(exc, file=sys.stderr)
+                return 2
+            text = json.dumps(new, indent=2, ensure_ascii=False) + "\n"
+            if args.dry_run:
+                print(f"aplicar: --init would write {root / config.CONFIG_REL}:\n{text}", end="")
+                cfg = config.with_defaults(new, schema)
+                cfg["_root"] = root
+            else:
+                (root / ".claude").mkdir(parents=True, exist_ok=True)
+                (root / config.CONFIG_REL).write_text(text, encoding="utf-8")
+                print(f"aplicar: wrote {root / config.CONFIG_REL}")
+    if cfg is None and not (root / config.CONFIG_REL).is_file():
+        print(f"aplicar: {root / config.CONFIG_REL} not found, so the workflow cannot be applied; create it "
+              f"with --init, or by hand from {WORKFLOW / 'templates' / 'gw.json'}: python3 {Path(__file__).resolve()} "
+              f"{root} --init --check-command \"<the project's check>\" (by hand, validate it: python3 "
+              f"{HERE / 'config.py'} --root {root} validate)", file=sys.stderr)
+        return 2
+    if cfg is None:
+        try:
+            cfg = config.load(str(root))
+        except config.ConfigError as exc:
+            print(f"aplicar: {exc}\naplicar: fix it and validate: python3 {HERE / 'config.py'} --root {root} validate",
+                  file=sys.stderr)
+            return 2
     try:
-        plan = build(root, version, args.update, args.extra)
+        plan = build(root, version, args.update, args.extra, cfg)
     except ApplyError as exc:
         print(exc, file=sys.stderr)
         return 2

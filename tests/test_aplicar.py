@@ -18,7 +18,7 @@ VERSION = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())["ver
 
 
 class Fixture:
-    """A git repo with a valid .claude/gw.json and what doctor.py needs besides the workflow copy."""
+    """A git repo with a valid .claude/gw.json and what doctor.py needs besides the workflow copy and templates."""
 
     def __init__(self, tmp, config=None):
         self.work = tmp / "work"
@@ -33,9 +33,9 @@ class Fixture:
         self.run("git", "init", "-q", str(self.work), cwd=tmp)
         self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, **(config or {})), indent=2) + "\n")
         self.write("check.sh", "exit 0\n")
+        # The project's own log (no marker): aplicar.py must leave it alone. AGENTS.md and the CI file come from the
+        # workflow's templates (tests/test_plantillas.py).
         self.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| Next step | write tests |\n")
-        self.write("AGENTS.md", "# Rules\n\nDeal multi-step work to subagents (skill orchestrate-dealer).\n")
-        self.write(".github/workflows/check.yml", "name: check\n")
 
     def run(self, *cmd, cwd=None):
         r = subprocess.run(list(cmd), cwd=str(cwd or self.work), env=self.env, capture_output=True, text=True,
