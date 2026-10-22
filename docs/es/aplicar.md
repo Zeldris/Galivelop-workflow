@@ -17,8 +17,10 @@ sesiones en la nube, que no cargan plugins declarados en el repo.
    llama `<flujo>`.
 3. **La sesión está abierta con el proyecto como carpeta de trabajo.** Abierta en otra carpeta no carga
    `.claude/settings.json` (ni los ganchos). Si no es así, pide a la persona que la reabra desde el proyecto.
-4. `git status` limpio en el proyecto, o la persona sabe qué hay sin subir.
-5. `python3` 3.8 o superior, `git` y `bash` disponibles (en Windows, Git Bash o WSL: ver
+4. `git status` limpio en el proyecto, o la persona sabe qué hay sin subir. Los archivos generados (`__pycache__/`,
+   `node_modules/`, `target/`, salidas de compilación) están en `.gitignore`: correr el check no debe ensuciar el árbol.
+5. git tiene identidad para los commits (`git config user.name` y `user.email`); ponla si la máquina es nueva.
+6. `python3` 3.8 o superior, `git` y `bash` disponibles (en Windows, Git Bash o WSL: ver
    [problemas](problemas.md)).
 
 Criterio de fin: puedes ejecutar `python3 <flujo>/scripts/aplicar.py --help` y `git -C <proyecto> status` sin error.
@@ -33,7 +35,7 @@ Reúne estos datos **antes** de ejecutar nada. Todo va a `.claude/gw.json` (cada
 | Ruta de la bitácora (`log`) | Por defecto `docs/traspaso.md` (es) o `docs/handoff.md` (en); si el proyecto ya tiene una, esa |
 | Orden de instalación (`install`) | Se infiere (abajo); vacío si no hay dependencias |
 | Orden(es) de comprobación (`check`) | Se infiere (abajo); **al menos una**, es lo que corre el `pre-push` y el CI |
-| Rama protegida (`protectedBranch`) | La que despliega o publica: `git symbolic-ref --short refs/remotes/origin/HEAD` |
+| Rama protegida (`protectedBranch`) | La que despliega o publica: `git symbolic-ref --short refs/remotes/origin/HEAD`; si falla (remoto nuevo o local), `git remote show origin \| sed -n 's/.*HEAD branch: //p'`; si no, pregunta a la persona |
 | Subir a ella (`pushToProtected`) | `direct` si se hace push directo; `pr` si solo entra por pull request |
 | Contenido (`content`) | Expresiones regulares de lo que **no** es código y no necesita `/code-review`: docs, datos, textos |
 | Skills opcionales | `opt-ai` (modelos de IA locales) y `scout-updates` (revisar actualizaciones); solo si la persona las pide |
@@ -56,20 +58,23 @@ Reglas:
 - **Si hay duda, pregunta a la persona**; no inventes una orden. Con varios candidatos, ofrécelos numerados.
 - Un proyecto sin tests: `check` puede ser un linter o un `bash -n`; dilo y apúntalo como deuda en la bitácora.
 - `content` se propone leyendo el árbol: `^docs/`, `\\.md$`, `^public/`… (en JSON, la barra se escribe doble).
-  Cuando dudes, deja menos en `content`: lo que cuenta como código se revisa.
+  Cuando dudes, deja menos en `content`: lo que cuenta como código se revisa. Las copias del propio flujo
+  (`^\.claude/gw/`, `^\.claude/skills/`) se revisan en el repo del flujo y están en el `content` por defecto de la
+  plantilla; déjalas, o cada subida a la rama protegida las listará como código sin revisar.
 
 Criterio de fin: tienes una respuesta (o una pregunta hecha a la persona) por cada fila de la tabla, y `check` se
 ha ejecutado una vez.
 
 ## 2. Aplicar
 
-Desde la raíz del proyecto o indicándola; las banderas salen de `--help` (cada `--check-command`, `--install`
-y `--content` se repite):
+Desde la raíz del proyecto o indicándola; las banderas salen de `--help`. `--check-command`, `--install` y
+`--content` **se repiten**: una bandera por orden o regex (dos checks = dos `--check-command`). Sin `--content`, vale
+el de la plantilla (`^docs/`, `\.md$` y las copias del flujo):
 
 ```bash
 python3 <flujo>/scripts/aplicar.py <proyecto> --dry-run --init --language es \
-  --log docs/traspaso.md --install "npm ci" --check-command "npm run check" \
-  --protected-branch main --push-to-protected direct --content '^docs/' --content '\.md$'
+  --log docs/traspaso.md --install "npm ci" --check-command "npm run lint" --check-command "npm test" \
+  --protected-branch main --push-to-protected direct
 ```
 
 `--dry-run` imprime el plan sin escribir. Cuando sea el que quieres, repite la misma orden **sin** `--dry-run`.
@@ -109,8 +114,10 @@ Para cada uno:
 3. Otros archivos: acepta la propuesta entera (`mv <archivo>.gw-nuevo <archivo>`) solo si la persona lo confirma.
 4. Borra el `.gw-nuevo` al terminar. `aplicar.py --check` lo cuenta como diferencia mientras exista.
 
-Rellena también los huecos `_(…)_` de la bitácora (rama, fase, siguiente paso) y de `REVIEW.md` y `GLOSSARY.md`: el
-flujo nunca los vuelve a escribir.
+Rellena también los huecos de la bitácora (como mínimo rama, fase y siguiente paso; el resto de secciones puede
+quedarse como viene hasta que haya algo que escribir) y añade las reglas propias del proyecto en las secciones
+«Reglas del proyecto» de `REVIEW.md` y `AGENTS.md` y sus términos en `GLOSSARY.md`: el flujo nunca vuelve a escribir
+esos archivos.
 
 Criterio de fin: no queda ningún `*.gw-nuevo` y la bitácora tiene una línea de siguiente paso.
 
@@ -135,7 +142,8 @@ git add -A && git commit -m "Flujo Galivelop-workflow v0.1.0" -m "Siguiente: <pr
 ```
 
 Sustituye la última línea por el paso concreto de verdad (el que la bitácora declara) y añade las líneas de
-atribución que pida el proyecto en el mismo bloque final. Después, `git push -u origin <rama>`: el nuevo `pre-push`
+atribución que pida el proyecto en el mismo bloque final. El commit ya pasa por el nuevo `pre-commit` (rechaza
+secretos y, para agentes, las `protectedPaths`); si se para, lee su mensaje. Después, `git push -u origin <rama>`: el nuevo `pre-push`
 corre el `check` sobre el commit que se sube; si falla, se arregla y se vuelve a subir (nunca con `--no-verify`, salvo
 un `WIP:` en rojo).
 
@@ -143,6 +151,21 @@ Si el proyecto tiene CI, comprueba que el workflow `Comprobar` pasa; puede neces
 cadena de herramientas (setup-node, setup-java…) que `comprobar.yml` indica en su cabecera.
 
 Criterio de fin: el push ha subido, `doctor.py` sigue en verde y la bitácora dice lo que sigue.
+
+## 6. Comprobar que la protección funciona
+
+En la rama de trabajo, haz commit de un cambio pequeño de código e intenta subirlo directamente a la rama protegida:
+
+```bash
+git push origin HEAD:<protectedBranch>
+```
+
+Con `pushToProtected: direct` **tiene que rechazarse** con «the pushed commit has no review mark» (con `pr`, la
+comprobación equivalente ocurre al crear o fusionar el pull request). Después quita el commit de prueba
+(`git reset --hard HEAD~1`, solo si no se ha subido a ningún sitio). La entrada normal es `/code-review`, arreglos,
+`bash .claude/gw/scripts/revisado.sh` y la subida.
+
+Criterio de fin: la subida sin marca se rechazó y el commit de prueba ya no está.
 
 ## Proyectos existentes
 

@@ -17,8 +17,10 @@ which do not load plugins declared in the repo.
    it is `<workflow>`.
 3. **The session is opened with the project as its working folder.** Opened elsewhere, it does not load
    `.claude/settings.json` (nor the hooks). If it is not, ask the person to reopen it from the project.
-4. `git status` is clean in the project, or the person knows what is unpushed.
-5. `python3` 3.8 or later, `git` and `bash` are available (on Windows, Git Bash or WSL: see
+4. `git status` is clean in the project, or the person knows what is unpushed. Generated files (`__pycache__/`,
+   `node_modules/`, `target/`, build output) are in `.gitignore`: running the check must not dirty the tree.
+5. git has an identity for commits (`git config user.name` and `user.email`); set it if it is a fresh machine.
+6. `python3` 3.8 or later, `git` and `bash` are available (on Windows, Git Bash or WSL: see
    [troubleshooting](troubleshooting.md)).
 
 Done when: `python3 <workflow>/scripts/aplicar.py --help` and `git -C <project> status` run without error.
@@ -34,7 +36,7 @@ Collect these facts **before** running anything. They all go into `.claude/gw.js
 | Log path (`log`) | Default `docs/traspaso.md` (es) or `docs/handoff.md` (en); the project's own if it already has one |
 | Install command(s) (`install`) | Inferred (below); empty if there are no dependencies |
 | Check command(s) (`check`) | Inferred (below); **at least one**, it is what `pre-push` and CI run |
-| Protected branch (`protectedBranch`) | The one that deploys or publishes: `git symbolic-ref --short refs/remotes/origin/HEAD` |
+| Protected branch (`protectedBranch`) | The one that deploys or publishes: `git symbolic-ref --short refs/remotes/origin/HEAD`; if that fails (a fresh or local remote), `git remote show origin \| sed -n 's/.*HEAD branch: //p'`; otherwise ask the person |
 | Pushing to it (`pushToProtected`) | `direct` if people push straight to it; `pr` if it only takes pull requests |
 | Content (`content`) | Regexes for what is **not** code and needs no `/code-review`: docs, data, texts |
 | Optional skills | `opt-ai` (local AI models) and `scout-updates` (update scouting); only if the person asks |
@@ -57,19 +59,22 @@ Rules:
 - **When unsure, ask the person**; do not invent a command. With several candidates, offer them numbered.
 - A project with no tests: `check` can be a linter or a `bash -n`; say so and note it as debt in the log.
 - `content` is proposed by reading the tree: `^docs/`, `\\.md$`, `^public/`… (in JSON the backslash is doubled).
-  When in doubt, put less in `content`: what counts as code gets reviewed.
+  When in doubt, put less in `content`: what counts as code gets reviewed. The workflow's own copies
+  (`^\.claude/gw/`, `^\.claude/skills/`) are reviewed in the workflow repo and are in the template's default `content`;
+  keep them there, or every push to the protected branch lists them as unreviewed code.
 
 Done when: every row of the table has an answer (or a question put to the person), and `check` has run once.
 
 ## 2. Apply
 
-From the project root or giving it as the argument; the flags come from `--help` (`--check-command`, `--install`
-and `--content` repeat):
+From the project root or giving it as the argument; the flags come from `--help`. `--check-command`, `--install` and
+`--content` **repeat**: one flag per command or regex (two checks = two `--check-command`). Without `--content`, the
+template's default applies (`^docs/`, `\.md$` and the workflow's copies):
 
 ```bash
 python3 <workflow>/scripts/aplicar.py <project> --dry-run --init --language en \
-  --log docs/handoff.md --install "npm ci" --check-command "npm run check" \
-  --protected-branch main --push-to-protected direct --content '^docs/' --content '\.md$'
+  --log docs/handoff.md --install "npm ci" --check-command "npm run lint" --check-command "npm test" \
+  --protected-branch main --push-to-protected direct
 ```
 
 `--dry-run` prints the plan without writing. When it is the one you want, repeat the same command **without**
@@ -111,8 +116,9 @@ For each one:
 3. Other files: accept the whole proposal (`mv <file>.gw-nuevo <file>`) only if the person confirms.
 4. Delete the `.gw-nuevo` when done. `aplicar.py --check` counts it as a difference while it exists.
 
-Also fill in the `_(…)_` gaps of the log (branch, phase, next step) and of `REVIEW.md` and `GLOSSARY.md`: the
-workflow never writes them again.
+Also fill in the log's placeholders (at least branch, phase and next step; the other sections can stay as they come
+until there is something to write) and add the project's own rules to the "Project rules" sections of `REVIEW.md`
+and `AGENTS.md` and its terms to `GLOSSARY.md`: the workflow never writes those files again.
 
 Done when: no `*.gw-nuevo` is left and the log has a next-step line.
 
@@ -137,13 +143,29 @@ git add -A && git commit -m "Galivelop-workflow v0.1.0 workflow" -m "Next: <next
 ```
 
 Replace the last line with the real concrete step (the one the log declares) and add any attribution lines the
-project asks for in the same final block. Then `git push -u origin <branch>`: the new `pre-push` runs the `check` on
+project asks for in the same final block. The commit already goes through the new `pre-commit` (it refuses secrets
+and, for agents, the `protectedPaths`); if it stops, read its message. Then `git push -u origin <branch>`: the new `pre-push` runs the `check` on
 the commit being pushed; if it fails, fix it and push again (never with `--no-verify`, except a red `WIP:`).
 
 If the project has CI, check that the `Comprobar` workflow passes; it may first need the toolchain setup steps
 (setup-node, setup-java…) that the header of `comprobar.yml` mentions.
 
 Done when: the push went through, `doctor.py` is still green and the log says what comes next.
+
+## 6. Prove the protection works
+
+On the working branch, commit a small code change and try to push it straight to the protected branch:
+
+```bash
+git push origin HEAD:<protectedBranch>
+```
+
+With `pushToProtected: direct` it **must be refused** with "the pushed commit has no review mark" (with `pr`, the
+equivalent check happens when the pull request is created or merged). Then drop the test commit
+(`git reset --hard HEAD~1`, only if it was not pushed anywhere). The normal way in is `/code-review`, fixes,
+`bash .claude/gw/scripts/revisado.sh` and the push.
+
+Done when: the push without a mark was refused and the test commit is gone.
 
 ## Existing projects
 
