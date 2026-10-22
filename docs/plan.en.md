@@ -46,19 +46,19 @@ What the workflow solves:
 4. **Spending few tokens without losing quality.** `orchestrate-dealer`, compaction at 200k, recovery after
    `/clear`, and `opt-tokens` + `retro`, which measure and propose environment improvements.
 
-**End of the road:** after a long run-in on real projects and with the criteria in §10 met, the repo goes public,
-is published on the Galivelop portal as a project (page in Spanish, Galician and English), and publishing it on npm
-is considered.
+**End of the road:** after a long run-in on real projects and with the criteria in §10 met, **`1.0.0`, and only
+that one**, is published in a separate public repo; it is published on the Galivelop portal as a project (page in
+Spanish, Galician and English), and publishing it on npm is considered. Later versions stay private.
 
 ## 2. Decisions already made (by the user, 2026-10-21)
 
 | Decision | Value |
 |---|---|
-| Repo name | `Galivelop-workflow` (private until §10) |
+| Repo name | `Galivelop-workflow`, always private; `1.0.0` is published in a separate public repo (§10) |
 | Languages | **Spanish and English** (see §4.4) |
 | Distribution | The most convenient and clean: **a Claude Code plugin served from the repo itself as a marketplace**. npm considered at the end |
 | Versioning | The repo is the version point for all skills and improvements |
-| Publishing | Public + Galivelop page only once the workflow is proven 100 % functional and applicable to any system |
+| Publishing | Only `1.0.0` is public (+ Galivelop page), once the workflow is proven 100 % functional and applicable to any system; from the next one on, private (decided by the user, 2026-10-22) |
 
 > **Revised in §0:** the base distribution is the managed copy; the plugin stays as a stage-2 option.
 
@@ -366,7 +366,7 @@ with the large model; porting skills and templates with the medium one. From Pha
 |---|---|---|
 | **8. Installer** | Choose Copier or an own script; one command that **installs** (new project, or existing one without the workflow: no overwrites, conflicts marked) or **updates** (with `gw.json`, or an older copy without it) depending on what it finds (§8) | Install without AI on a new repo; update without AI the pilots (from their version to the new one) and VeriNews_AI (older copy without `gw.json`); `doctor.py` green |
 | **9. Plugin and npm** | The repo's marketplace as an optional path (local and cloud setup script); consider npm (§11) | Decided and documented |
-| **10. Public** | `/security-review`, remove private paths or names, `1.0.0`, public repo, portal page (three languages) | Repo public and page published |
+| **10. Public** | `/security-review`, remove private paths or names, `1.0.0` copied into a separate public repo **without the history** (a single commit; this repo stays private and goes on with `1.0.x`/`1.1`), portal page (three languages). If there is npm, only `1.0.0` | Public repo with `1.0.0` and page published; nothing later outside the private repo |
 
 ## 10. Criteria for "100 % functional and applicable to any system" (move to 1.0)
 

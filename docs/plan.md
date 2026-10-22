@@ -44,19 +44,19 @@ Lo que resuelve el flujo:
 4. **Gastar pocos tokens sin perder calidad.** `orchestrate-dealer`, compactación a 200k, recuperación tras
    `/clear`, y `opt-tokens` + `retro` que miden y proponen mejoras del entorno.
 
-**Fin del camino:** tras mucho rodaje en proyectos reales y con los criterios de la §10 cumplidos, el repo se hace
-público, se publica en el portal Galivelop como proyecto (ficha en castellano, gallego e inglés) y se valora
-publicarlo también en npm.
+**Fin del camino:** tras mucho rodaje en proyectos reales y con los criterios de la §10 cumplidos, se publica la
+**`1.0.0`, y solo esa**, en un repo público aparte; se publica en el portal Galivelop como proyecto (ficha en
+castellano, gallego e inglés) y se valora publicarla también en npm. Las versiones siguientes siguen privadas.
 
 ## 2. Decisiones ya tomadas (del usuario, 2026-10-21)
 
 | Decisión | Valor |
 |---|---|
-| Nombre del repo | `Galivelop-workflow` (privado hasta la §10) |
+| Nombre del repo | `Galivelop-workflow`, siempre privado; la `1.0.0` se publica en un repo público aparte (§10) |
 | Idiomas | **Español e inglés** (ver §4.4) |
 | Distribución | La más cómoda y limpia: **plugin de Claude Code servido desde el propio repo como marketplace**. npm se valora al final |
 | Versionado | El repo es el punto de versión de todas las skills y mejoras |
-| Publicación | Público + ficha en Galivelop solo cuando el flujo esté probado como 100 % funcional y aplicable a cualquier sistema |
+| Publicación | Solo la `1.0.0` es pública (+ ficha en Galivelop), cuando el flujo esté probado como 100 % funcional y aplicable a cualquier sistema; de la siguiente en adelante, privadas (decidido por el usuario, 2026-10-22) |
 
 > **Revisado en §0:** la distribución base es la copia gestionada; el plugin queda como opción de la etapa 2.
 
@@ -362,7 +362,7 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
 |---|---|---|
 | **8. Instalador** | Elegir Copier o script propio; una orden que **instala** (proyecto nuevo o existente sin el flujo, sin pisar, conflictos marcados) o **actualiza** (con `gw.json`, o una copia anterior sin él) según lo que encuentre (§8) | Instalar sin IA en un repo nuevo; actualizar sin IA los pilotos (de su versión a la nueva) y VeriNews_AI (copia anterior sin `gw.json`); `doctor.py` en verde |
 | **9. Plugin y npm** | Marketplace del repo como vía opcional (local y script de entorno de la nube); valorar npm (§11) | Decidido y documentado |
-| **10. Público** | `/security-review`, quitar rutas o nombres privados, `1.0.0`, repo público, ficha en el portal (tres idiomas) | Repo público y ficha publicada |
+| **10. Público** | `/security-review`, quitar rutas o nombres privados, `1.0.0` copiada en un repo público aparte **sin el historial** (un solo commit; este repo sigue privado y continúa en `1.0.x`/`1.1`), ficha en el portal (tres idiomas). Si hay npm, solo la `1.0.0` | Repo público con la `1.0.0` y ficha publicada; nada posterior fuera del repo privado |
 
 ## 10. Criterios para «100 % funcional y aplicable a cualquier sistema» (paso a 1.0)
 
