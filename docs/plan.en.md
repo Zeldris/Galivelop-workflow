@@ -49,6 +49,9 @@ What the workflow solves:
 **End of the road:** after a long run-in on real projects and with the criteria in §10 met, **`1.0.0`, and only
 that one**, is published in a separate public repo; it is published on the Galivelop portal as a project (page in
 Spanish, Galician and English), and publishing it on npm is considered. Later versions stay private.
+`1.0.0` is available **only as a plugin**: having the workflow locally (copied into a repo) is for the private repo,
+invited collaborators or a possible sale. So the (public) portal removes its copy of the workflow and depends on the
+plugin instead (decided by the user, 2026-10-22).
 
 ## 2. Decisions already made (by the user, 2026-10-21)
 
@@ -61,6 +64,13 @@ Spanish, Galician and English), and publishing it on npm is considered. Later ve
 | Publishing | Only `1.0.0` is public (+ Galivelop page), once the workflow is proven 100 % functional and applicable to any system; from the next one on, private (decided by the user, 2026-10-22) |
 
 > **Revised in §0:** the base distribution is the managed copy; the plugin stays as a stage-2 option.
+>
+> **Revised again (2026-10-22):** up to Phase 8, the managed copy stays the working base in the private pilots;
+> from Phase 9 on, the plugin becomes **the only outward distribution**. Limits to solve there: a plugin downloads
+> its files to whoever installs it, so what controls use is the **license** (the current MIT allows
+> redistribution; the one for `1.0.0` stays open until Phase 10, and Matt Pocock's skills keep their MIT); in the
+> cloud the environment setup script installs the plugin (Option D); git hooks (`pre-push`, review mark) have to
+> come from the plugin, and that is untested.
 
 **Why a plugin and not a file-copying script** (original reasoning): the plugin comes with versioning, updates (`/plugin update`) and
 uninstall out of the box; skills are not duplicated in every repo; and in a project a single entry in
@@ -365,8 +375,8 @@ with the large model; porting skills and templates with the medium one. From Pha
 | Phase | What | Done when |
 |---|---|---|
 | **8. Installer** | Choose Copier or an own script; one command that **installs** (new project, or existing one without the workflow: no overwrites, conflicts marked) or **updates** (with `gw.json`, or an older copy without it) depending on what it finds (§8) | Install without AI on a new repo; update without AI the pilots (from their version to the new one) and VeriNews_AI (older copy without `gw.json`); `doctor.py` green |
-| **9. Plugin and npm** | The repo's marketplace as an optional path (local and cloud setup script); consider npm (§11) | Decided and documented |
-| **10. Public** | `/security-review`, remove private paths or names, `1.0.0` copied into a separate public repo **without the history** (a single commit; this repo stays private and goes on with `1.0.x`/`1.1`), portal page (three languages). If there is npm, only `1.0.0` | Public repo with `1.0.0` and page published; nothing later outside the private repo |
+| **9. Plugin and npm** | The plugin becomes the only outward distribution: marketplace in the private repo with invite-only access, installed locally and by the cloud environment setup script (Option D); the plugin also brings the git hooks (`pre-push`, review mark); consider npm (§11) | A project (the portal) working with the plugin only, locally and in the cloud, hooks included |
+| **10. Public** | Choose the `1.0.0` license (no redistribution or resale; MIT only for third-party parts), `/security-review`, remove private paths or names, `1.0.0` **as a plugin only** copied into a separate public repo **without the history** (a single commit; this repo stays private and goes on with `1.0.x`/`1.1`), portal page (three languages); the portal removes its copy of the workflow (from a portal session) and depends on the plugin. If there is npm, only `1.0.0` | Public repo with `1.0.0` as a plugin and page published; the portal without a copy of the workflow; nothing later outside the private repo |
 
 ## 10. Criteria for "100 % functional and applicable to any system" (move to 1.0)
 

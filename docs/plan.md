@@ -47,6 +47,9 @@ Lo que resuelve el flujo:
 **Fin del camino:** tras mucho rodaje en proyectos reales y con los criterios de la §10 cumplidos, se publica la
 **`1.0.0`, y solo esa**, en un repo público aparte; se publica en el portal Galivelop como proyecto (ficha en
 castellano, gallego e inglés) y se valora publicarla también en npm. Las versiones siguientes siguen privadas.
+La `1.0.0` se obtiene **solo como plugin**: tener el flujo en local (copiado en un repo) queda para el repo privado,
+los colaboradores invitados o una posible venta. Por eso el portal (público) quita su copia del flujo y pasa a
+depender del plugin (decidido por el usuario, 2026-10-22).
 
 ## 2. Decisiones ya tomadas (del usuario, 2026-10-21)
 
@@ -59,6 +62,13 @@ castellano, gallego e inglés) y se valora publicarla también en npm. Las versi
 | Publicación | Solo la `1.0.0` es pública (+ ficha en Galivelop), cuando el flujo esté probado como 100 % funcional y aplicable a cualquier sistema; de la siguiente en adelante, privadas (decidido por el usuario, 2026-10-22) |
 
 > **Revisado en §0:** la distribución base es la copia gestionada; el plugin queda como opción de la etapa 2.
+>
+> **Revisado de nuevo (2026-10-22):** hasta la Fase 8, la copia gestionada sigue siendo la base de trabajo en los
+> pilotos privados; desde la Fase 9, el plugin pasa a ser **la única distribución hacia fuera**. Límites que hay que
+> resolver ahí: un plugin baja sus archivos a quien lo instala, así que lo que controla el uso es la **licencia**
+> (la MIT actual permite redistribuir; la de la `1.0.0` queda abierta para la Fase 10, y las skills de Matt Pocock
+> conservan su MIT); en la nube el plugin lo instala el script de entorno (Opción D); los ganchos de git
+> (`pre-push`, marca de revisado) tienen que llegar desde el plugin, y eso está sin probar.
 
 **Por qué plugin y no un script que copia archivos** (razonamiento original): el plugin trae versión, actualización (`/plugin update`) y
 desinstalación de serie; las skills no se duplican en cada repo; y en un proyecto basta una línea en
@@ -361,8 +371,8 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
 | Fase | Qué | Hecho cuando |
 |---|---|---|
 | **8. Instalador** | Elegir Copier o script propio; una orden que **instala** (proyecto nuevo o existente sin el flujo, sin pisar, conflictos marcados) o **actualiza** (con `gw.json`, o una copia anterior sin él) según lo que encuentre (§8) | Instalar sin IA en un repo nuevo; actualizar sin IA los pilotos (de su versión a la nueva) y VeriNews_AI (copia anterior sin `gw.json`); `doctor.py` en verde |
-| **9. Plugin y npm** | Marketplace del repo como vía opcional (local y script de entorno de la nube); valorar npm (§11) | Decidido y documentado |
-| **10. Público** | `/security-review`, quitar rutas o nombres privados, `1.0.0` copiada en un repo público aparte **sin el historial** (un solo commit; este repo sigue privado y continúa en `1.0.x`/`1.1`), ficha en el portal (tres idiomas). Si hay npm, solo la `1.0.0` | Repo público con la `1.0.0` y ficha publicada; nada posterior fuera del repo privado |
+| **9. Plugin y npm** | El plugin pasa a ser la única distribución hacia fuera: marketplace en el repo privado con acceso por invitación, instalado en local y por el script de entorno de la nube (Opción D); que el plugin traiga también los ganchos de git (`pre-push`, marca de revisado); valorar npm (§11) | Un proyecto (el portal) funcionando solo con el plugin, en local y en la nube, ganchos incluidos |
+| **10. Público** | Elegir la licencia de la `1.0.0` (que no permita redistribuirla ni venderla; MIT solo en lo de terceros), `/security-review`, quitar rutas o nombres privados, `1.0.0` **solo como plugin** copiada en un repo público aparte **sin el historial** (un solo commit; este repo sigue privado y continúa en `1.0.x`/`1.1`), ficha en el portal (tres idiomas); el portal quita su copia del flujo (desde una sesión del portal) y depende del plugin. Si hay npm, solo la `1.0.0` | Repo público con la `1.0.0` como plugin y ficha publicada; el portal sin copia del flujo; nada posterior fuera del repo privado |
 
 ## 10. Criterios para «100 % funcional y aplicable a cualquier sistema» (paso a 1.0)
 

@@ -78,6 +78,9 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 - Que el usuario cambie la rama por defecto de GitHub a `main` (Settings → Branches); no hay herramienta para ello.
 - R2 de la retro: que `doctor.py` detecte skills homónimas en la sesión (sin forma fiable aún; queda en las guías).
 - Opción D (plugin desde el script de entorno de la nube): queda para la Fase 9.
+- La `1.0.0` solo como plugin (decidido 2026-10-22): en la Fase 9, plugin como única distribución hacia fuera y
+  ganchos de git desde el plugin (sin probar); en la Fase 10, licencia de la `1.0.0` (abierta) y el portal quita su
+  copia del flujo desde una sesión suya. Su historial seguirá teniendo la copia `0.2.0` (MIT).
 
 ## Comprobar el estado
 
