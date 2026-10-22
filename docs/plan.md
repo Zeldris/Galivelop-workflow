@@ -315,7 +315,18 @@ porque el resultado vive en el repo.
 **Etapa 2 (lo que contará `docs/<lang>/instalar.md`):** instalación sin IA, p. ej. con Copier (merge a tres bandas
 para actualizar) o un script propio sin dependencias más allá de git, bash y python3; se decide en su fase. Vías
 opcionales: el plugin desde el marketplace del repo (local) o instalado por el script de configuración del entorno
-de la nube:
+de la nube.
+
+El instalador cubre **las dos cosas, instalar y actualizar**, con una sola orden que mira el proyecto y decide:
+
+- **Instalar:** el proyecto no tiene el flujo (nuevo, o existente sin él): crea `.claude/gw.json` y copia todo sin
+  pisar lo que ya exista.
+- **Actualizar:** el proyecto ya tiene `.claude/gw.json`: lleva el flujo de su `version` a la nueva, respeta lo propio
+  del proyecto y marca los conflictos.
+- **Copia anterior sin `gw.json`** (como VeriNews_AI o los pilotos antes de aplicar el flujo): se trata como
+  actualización, sustituyendo esa copia; nunca como instalación limpia que la duplique.
+
+Las dos vías tienen sus tests y se prueban en los pilotos.
 
 ```text
 claude plugin marketplace add zeldris/Galivelop-workflow
@@ -349,7 +360,7 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
 
 | Fase | Qué | Hecho cuando |
 |---|---|---|
-| **8. Instalador** | Elegir Copier o script propio; proyecto nuevo (recomendado) y existente (sin pisar, conflictos marcados); actualización | Instalación y actualización sin IA en un repo nuevo, en los pilotos y en VeriNews_AI (primera aplicación), `doctor.py` en verde |
+| **8. Instalador** | Elegir Copier o script propio; una orden que **instala** (proyecto nuevo o existente sin el flujo, sin pisar, conflictos marcados) o **actualiza** (con `gw.json`, o una copia anterior sin él) según lo que encuentre (§8) | Instalar sin IA en un repo nuevo; actualizar sin IA los pilotos (de su versión a la nueva) y VeriNews_AI (copia anterior sin `gw.json`); `doctor.py` en verde |
 | **9. Plugin y npm** | Marketplace del repo como vía opcional (local y script de entorno de la nube); valorar npm (§11) | Decidido y documentado |
 | **10. Público** | `/security-review`, quitar rutas o nombres privados, `1.0.0`, repo público, ficha en el portal (tres idiomas) | Repo público y ficha publicada |
 

@@ -317,7 +317,19 @@ result lives in the repo.
 
 **Stage 2 (what `docs/<lang>/install.md` will say):** installation without AI, e.g. with Copier (three-way merge for
 updates) or an own script needing only git, bash and python3; decided in its phase. Optional paths: the plugin from
-the repo's marketplace (local) or installed by the cloud environment's setup script:
+the repo's marketplace (local) or installed by the cloud environment's setup script.
+
+The installer covers **both things, installing and updating**, with a single command that looks at the project and
+decides:
+
+- **Install:** the project has no workflow (new, or existing without it): it creates `.claude/gw.json` and copies
+  everything without overwriting what already exists.
+- **Update:** the project already has `.claude/gw.json`: it moves the workflow from its `version` to the new one,
+  keeps what is the project's own and marks the conflicts.
+- **Older copy without `gw.json`** (like VeriNews_AI, or the pilots before applying the workflow): treated as an
+  update that replaces that copy; never as a clean install that duplicates it.
+
+Both paths have their tests and are tried on the pilots.
 
 ```text
 claude plugin marketplace add zeldris/Galivelop-workflow
@@ -352,7 +364,7 @@ with the large model; porting skills and templates with the medium one. From Pha
 
 | Phase | What | Done when |
 |---|---|---|
-| **8. Installer** | Choose Copier or an own script; new project (recommended) and existing one (no overwrites, conflicts marked); updates | Install and update without AI on a new repo, on the pilots and on VeriNews_AI (first application), `doctor.py` green |
+| **8. Installer** | Choose Copier or an own script; one command that **installs** (new project, or existing one without the workflow: no overwrites, conflicts marked) or **updates** (with `gw.json`, or an older copy without it) depending on what it finds (§8) | Install without AI on a new repo; update without AI the pilots (from their version to the new one) and VeriNews_AI (older copy without `gw.json`); `doctor.py` green |
 | **9. Plugin and npm** | The repo's marketplace as an optional path (local and cloud setup script); consider npm (§11) | Decided and documented |
 | **10. Public** | `/security-review`, remove private paths or names, `1.0.0`, public repo, portal page (three languages) | Repo public and page published |
 
