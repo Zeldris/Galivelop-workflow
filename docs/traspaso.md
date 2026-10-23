@@ -10,9 +10,9 @@
 |---|---|
 | Rama | `ccr-6dfbc880-ddr41g` (avance rápido de `ccr-76251061-b1yiwq`, que sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `01d1a75` = **release `v0.2.0`** (2026-10-22, etiqueta y release creadas a mano en GitHub); `v0.1.0` = `9b97d7b` |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
-| Fase en curso | **6 cerrada** y `0.3.0` publicada en `main` (2026-10-23); P7 del instalador aplicada en la rama (`0.4.0`, sin publicar). Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | P7 aplicada (versión `0.4.0` sin publicar); check en verde en local; el CI no arranca (cupo de Actions): comprobado solo en local |
-| Siguiente paso | Empezar la **Fase 7 (rodaje etapa 1)**: ver el plan (§ fases) y elegir con el usuario el primer proyecto del rodaje |
+| Fase en curso | **6 cerrada** y `0.3.0` publicada en `main` (2026-10-23); P7 del instalador aplicada en la rama (`0.4.0`, sin publicar); recogida de la `0.4.0` hecha, propuestas presentadas al usuario. Próxima: **7. Rodaje etapa 1** |
+| Último punto estable | Recogida de la `0.4.0` (`docs/propuestas/2026-10-23-portal-galivelop.md`, `estado.json` al día); check en verde en local; el CI no arranca (cupo de Actions): comprobado solo en local |
+| Siguiente paso | Aplicar lo que el usuario apruebe de `docs/propuestas/2026-10-23-portal-galivelop.md`; añadir la regla «una recogida al empezar cada versión» y su comprobación en `version.py --release` con sus tests; luego la **Fase 7 (rodaje etapa 1)** |
 
 ### Fases
 
@@ -35,16 +35,16 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 
 ## Hecho (5 últimas)
 
-1. 2026-10-23 — P7 del instalador aplicada (`0.4.0`, sin publicar): sin CI, el check en local vale con la confirmación
+1. 2026-10-23 — Recogida de la `0.4.0` (portal, WMF, instalador, VeriNews): 5 propuestas del portal en
+   `docs/propuestas/2026-10-23-portal-galivelop.md`; los otros tres, nada nuevo. El usuario decide recoger en cada versión.
+2. 2026-10-23 — P7 del instalador aplicada (`0.4.0`, sin publicar): sin CI, el check en local vale con la confirmación
    de la persona («comprobado solo en local»), en `AGENTS.md` y plantillas; el gancho lo nombra al bloquear.
-2. 2026-10-23 — **`0.3.0` publicada en `main`** (ea81c9f). El usuario decide la P7: un check que pasó en local vale
+3. 2026-10-23 — **`0.3.0` publicada en `main`** (ea81c9f). El usuario decide la P7: un check que pasó en local vale
    cuando Actions no arranca.
-3. 2026-10-23 — Fase 2 antes de `main`: `/opt-tokens` (tope de ~35 llamadas por subagente, «Hecho» de 5 entradas
+4. 2026-10-23 — Fase 2 antes de `main`: `/opt-tokens` (tope de ~35 llamadas por subagente, «Hecho» de 5 entradas
    cortas, check en segundo plano) y `/retro` (regla de `/tmp` en `REVIEW.md`); retro en `docs/registros/`.
-4. 2026-10-23 — Revisión de los arreglos antes de `main`: carpeta de worktrees del `pre-push` por usuario, 700, sin
+5. 2026-10-23 — Revisión de los arreglos antes de `main`: carpeta de worktrees del `pre-push` por usuario, 700, sin
    symlinks (688da4d, 6aaf2cc); menores en «Pendiente».
-5. 2026-10-23 — Fase 1 antes de `main`: arreglos del `/code-review` contra `origin/main` (3b47af1): worktree fuera de
-   `.git/` y `worktreeDir`, huérfanos de >24 h, guardas que fallan cerradas.
 
 ## Pendiente
 
