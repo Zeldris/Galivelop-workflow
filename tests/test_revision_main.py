@@ -259,7 +259,8 @@ class Hook(unittest.TestCase):
 
     def test_merge_with_no_ci_reported_blocked(self):
         self.mark(); self.push()
-        self.assertBlocked(self.merge(pr=self.pr(), runs={"total_count": 0, "check_runs": []}), "no CI")
+        self.assertBlocked(self.merge(pr=self.pr(), runs={"total_count": 0, "check_runs": []}), "no CI",
+                           "checked only locally", "with their confirmation")
 
     def test_merge_to_other_base_allowed(self):
         self.assertAllowed(self.merge(pr=self.pr(base="develop")))

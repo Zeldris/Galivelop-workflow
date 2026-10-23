@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.3.0 -->
+<!-- galivelop-workflow v0.4.0 -->
 # {{project}} — instrucciones para agentes
 
 Este proyecto se trabaja por relevos: una sesión puede acabarse en cualquier momento (tokens, contenedor, cambio de
@@ -40,7 +40,9 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
 - **Al cerrar una fase** (o una tarea grande), con la bitácora al día, se recomienda `/clear` antes de la siguiente: el contexto
   largo es casi todo el gasto, y la bitácora basta para retomar.
 - **Al cerrar cada bloque o fase, mira el CI de la última subida.** Un CI que no arranca (sin cuota, sin runners)
-  cuenta como rojo: se dice a la persona y no se da nada por comprobado en el CI.
+  cuenta como rojo: se dice a la persona y no se da nada por comprobado en el CI. Entonces vale el check pasado en
+  local sobre el mismo commit (el de `.githooks/pre-push`) **solo si la persona lo confirma**, y se dice y se apunta en
+  la bitácora como «comprobado solo en local». Un CI que arrancó y falló nunca se sustituye así.
 
 ## Comprobar
 
@@ -74,7 +76,9 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
   de `.claude/gw.json`, se sube directo (`direct`: `.githooks/pre-push` pide la marca de revisión) o por pull request
   (`pr`: un gancho de Claude Code pide la marca antes de crearlo o fusionarlo; un push directo la sigue pidiendo).
 - **Se fusiona solo con el CI en verde**, también cuando la persona dice «fusiona directamente»: eso quita esperar a
-  más revisiones, nunca el CI ni la retro presentada a la persona.
+  más revisiones, nunca el CI ni la retro presentada a la persona. Si el CI no arranca, vale el check en local de
+  «Relevos» con la confirmación de la persona: se sube directo (el `pre-push` corre el check) o fusiona ella; el
+  gancho no deja al agente fusionar un pull request sin CI.
 - La rama de un subagente vuelve con `bash .claude/gw/scripts/fusionar.sh <rama> "<mensaje>"`, que corre el check y
   limpia su worktree.
 

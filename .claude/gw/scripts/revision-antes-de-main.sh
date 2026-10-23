@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# galivelop-workflow v0.3.0
+# galivelop-workflow v0.4.0
 # Claude Code PreToolUse hook: no pull request reaches the protected branch without /code-review of the same code,
 # and none is merged with CI not green (plan §5.2). Reads the hook JSON (tool_name, tool_input) on stdin.
 #   - Create: mcp__github__create_pull_request, mcp__github__update_pull_request that sets `base` to the protected
@@ -12,7 +12,8 @@
 #   - Merge: mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge, and in Bash `gh pr merge` (also
 #     `gh -R o/r pr merge`, inside `bash -c`/`eval`, after `xargs`) and `gh api` PUT on repos/<o>/<r>/pulls/<n>/merge
 #     (-R/--repo and GH_REPO= name the repo). Same mark rule on the PR head, plus CI green: every check-run completed with success/neutral/skipped and every
-#     commit status success (a commit with no CI reported at all is not green).
+#     commit status success (a commit with no CI reported at all is not green; that block names the path the person
+#     can confirm instead: the local check, said as "checked only locally").
 #   - Anything else (other tools, update_pull_request_branch, other bases, Bash that only mentions `gh pr`) exits 0
 #     silently. pushToProtected does not matter: a PR is another way into the protected branch.
 #   - A PR that is already closed or merged: blocked with that fact (and `gh pr view`), no config is asked of its branch;
@@ -40,6 +41,7 @@ NAME = "revision-antes-de-main"
 GIT_ENV = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
 GIT_ENV["GIT_TERMINAL_PROMPT"] = "0"
 GREEN_RUNS = ("success", "neutral", "skipped")
+NO_CI = "no CI has reported on this commit yet"
 
 
 class Blocked(Exception):
@@ -403,7 +405,7 @@ def ci_problems(repo, sha):
         page += 1
     statuses = api(f"repos/{repo}/commits/{sha}/status?per_page=100")["statuses"]
     if not runs and not statuses:
-        return ["no CI has reported on this commit yet"]
+        return [NO_CI]
     bad = [f"{c.get('name', '?')}: {c.get('conclusion') or c.get('status')}" for c in runs
            if c.get("status") != "completed" or c.get("conclusion") not in GREEN_RUNS]
     bad += [f"{s.get('context', '?')}: {s.get('state')}" for s in statuses if s.get("state") != "success"]
@@ -562,6 +564,11 @@ def handle(action, cfg, root, scripts):
         block(f"Blocked: could not verify CI of PR #{number} ({info['sha'][:12]}): {exc}",
               f"check CI in the PR ({info['url']}); once it is all green, authenticate (gh auth login, or export "
               "GITHUB_TOKEN) and retry the merge")
+    if bad == [NO_CI]:
+        block(f"Blocked: no CI has reported on PR #{number} ({info['sha'][:12]}).",
+              f"if CI does not start (no Actions quota, no runners), tell the person: with their confirmation the check "
+              f"passed locally counts, said as 'checked only locally'; they merge it ({info['url']}) or the branch is "
+              "pushed directly, where .githooks/pre-push runs the check")
     if bad:
         block(f"Blocked: CI of PR #{number} ({info['sha'][:12]}) is not green: {'; '.join(bad)}",
               f"wait until every check passes ({info['url']}), fix what failed if needed, then retry the merge")

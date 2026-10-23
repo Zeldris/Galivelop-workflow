@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.3.0 -->
+<!-- galivelop-workflow v0.4.0 -->
 # Glosario
 
 Vocabulario de {{project}}. Primero van los términos del flujo; el proyecto añade debajo los de su dominio y los

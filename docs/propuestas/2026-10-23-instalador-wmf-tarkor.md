@@ -80,7 +80,9 @@ Lo que coincide con WMF está en [`2026-10-23-world-maker-fantasy.md`](2026-10-2
 - **Why it is general:** sin cupo de Actions, el flujo bloquea la subida a `main` en todos los proyectos. Es lo más
   delicado de esta recogida, porque relaja una puerta; antes hay que decidir qué cuenta como prueba.
 - **Version bump:** minor
-- **Status:** aplazada: se habla aparte con el usuario (2026-10-23)
+- **Status:** aprobada por el usuario (2026-10-23) y aplicada en `0.4.0`: el check en local vale cuando el CI no
+  arranca, solo con la confirmación de la persona y dicho como «comprobado solo en local»; el gancho sigue bloqueando
+  la fusión sin CI y nombra ese camino.
 
 ## P8. Los tests de los scripts del flujo no llegan al proyecto
 

@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.3.0 -->
+<!-- galivelop-workflow v0.4.0 -->
 # {{project}} — instructions for agents
 
 This project is worked on in hand-offs: a session can end at any moment (tokens, container, account switch) and the
@@ -41,7 +41,9 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - **When a phase closes** (or a large task), with the log up to date, recommend `/clear` before the next one: a long context is
   almost all the spend, and the log is enough to resume.
 - **When each block or phase closes, look at the CI of the last push.** A CI that does not start (no quota, no
-  runners) counts as red: tell the person and treat nothing as checked by CI.
+  runners) counts as red: tell the person and treat nothing as checked by CI. Then the check passed locally on the
+  same commit (the one `.githooks/pre-push` runs) counts **only if the person confirms it**, and it is said and logged
+  as "checked only locally". A CI that started and failed is never replaced this way.
 
 ## Checking
 
@@ -75,7 +77,9 @@ Each session may run in a throwaway container: **what is not pushed does not exi
   review mark) or by pull request (`pr`: a Claude Code hook asks for the mark before creating or merging it; a direct
   push still needs it).
 - **Merged only with CI green**, also when the person says "merge directly": that skips waiting for more reviews, never
-  the CI nor the retro presented to the person.
+  the CI nor the retro presented to the person. If CI does not start, the local check under "Hand-offs" counts with
+  the person's confirmation: push directly (`pre-push` runs the check) or they merge it; the hook does not let the
+  agent merge a pull request without CI.
 - A subagent's branch comes back with `bash .claude/gw/scripts/fusionar.sh <branch> "<message>"`, which runs the check
   and cleans up its worktree.
 

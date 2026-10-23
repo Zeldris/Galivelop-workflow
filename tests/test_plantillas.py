@@ -115,6 +115,16 @@ class Templates(unittest.TestCase):
                     lines = len((TEMPLATES / lang / name).read_text(encoding="utf-8").splitlines())
                     self.assertLessEqual(lines, 200)
 
+    def test_ci_that_does_not_start_allows_the_local_check_only_with_confirmation(self):
+        texts = {"es": ("comprobado solo en local", "solo si la persona lo confirma", "nunca se sustituye"),
+                 "en": ("checked only locally", "only if the person confirms it", "never replaced")}
+        for lang, needles in texts.items():
+            agents = (TEMPLATES / lang / "AGENTS.md").read_text(encoding="utf-8")
+            for needle in needles:
+                with self.subTest(lang=lang, text=needle):
+                    self.assertIn(needle, agents)
+        self.assertIn("comprobado solo en local", (ROOT / "AGENTS.md").read_text(encoding="utf-8"))
+
     def test_no_path_the_workflow_no_longer_uses(self):
         obsolete = (".claude/hooks/",)  # the workflow's scripts live in .claude/gw/scripts/
         places = [TEMPLATES, ROOT / "scripts", ROOT / "skills", ROOT / "docs" / "es", ROOT / "docs" / "en"]

@@ -8,6 +8,24 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.4.0] - Unreleased
+
+### ES
+
+- La P7 del instalador (`docs/propuestas/2026-10-23-instalador-wmf-tarkor.md`), decidida por el usuario: si el CI no
+  arranca (sin cupo de Actions, sin runners), el check pasado en local sobre el mismo commit vale **solo con la
+  confirmación de la persona**, y se dice y se apunta como «comprobado solo en local»; un CI que arrancó y falló no se
+  sustituye. Reglas en `AGENTS.md` y sus plantillas; `revision-antes-de-main.sh` sigue bloqueando la fusión sin CI,
+  pero su mensaje nombra ese camino.
+
+### EN
+
+- Installer P7 (`docs/propuestas/2026-10-23-instalador-wmf-tarkor.md`), decided by the user: when CI does not start
+  (no Actions quota, no runners), the check passed locally on the same commit counts **only with the person's
+  confirmation**, and it is said and logged as "checked only locally"; a CI that started and failed is never replaced.
+  Rules in `AGENTS.md` and its templates; `revision-antes-de-main.sh` still blocks a merge without CI, but its message
+  names that path.
+
 ## [0.3.0] - 2026-10-23
 
 ### ES

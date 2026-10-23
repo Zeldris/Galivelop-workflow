@@ -30,7 +30,10 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   `.claude/settings.json` (ni la compactación a 200k ni los ganchos); `python3 scripts/doctor.py` lo detecta. En la
   nube, que arranca en `/home/user`, la compactación va en las variables del entorno (`doctor.py` avisa si falta).
 - **Al cerrar cada bloque o fase, mira el CI de la última subida.** Un CI que no arranca (por ejemplo, sin cuota de
-  Actions) cuenta como rojo: se dice al usuario y no se da nada por comprobado en el CI.
+  Actions) cuenta como rojo: se dice al usuario y no se da nada por comprobado en el CI. Entonces vale el check
+  pasado en local sobre el mismo commit (`bash tests/comprobar.sh`, o el del `pre-push`) **solo si el usuario lo
+  confirma**, y se dice y se apunta en la bitácora como «comprobado solo en local». Un CI que arrancó y falló nunca
+  se sustituye así.
 - Si el usuario dice que se para, se para: se sube lo que haya y se deja la bitácora al día.
 
 ## Comprobar
