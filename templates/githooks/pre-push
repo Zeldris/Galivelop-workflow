@@ -66,7 +66,7 @@ fetch_hint() {
   if [ "$shallow" = "true" ]; then echo "git fetch --deepen=200 $remote $protected"; else echo "git fetch $remote $protected"; fi
 }
 
-gwdir=""  # <worktreeDir or ${TMPDIR:-/tmp}>/gw-pre-push-wt-<repo id>: where the temporary worktrees live
+gwdir=""  # <worktreeDir or ${TMPDIR:-/tmp}>/gw-pre-push-wt-<uid>-<repo id>: where the temporary worktrees live
 stale_worktrees() {  # remove worktrees an interrupted push (kill -9, power cut) left behind; a live push's stay
   local m pid err  # each push owns a marker file wt.XXXXXX holding its pid; its worktree is wt.XXXXXX.d
   for m in "$gwdir"/wt.*.d; do  # a worktree whose marker is gone is an orphan too
@@ -131,8 +131,10 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     common="$(cd "$(git rev-parse --git-common-dir)" && pwd)" \
       || fail "cannot find the repository's git dir; check the repository: git rev-parse --git-common-dir"
     id="$(printf '%s' "$common" | cksum | cut -d' ' -f1)"  # one folder per repo (its linked worktrees share it)
-    gwdir="${base%/}/gw-pre-push-wt-$id"
-    mkdir -p "$gwdir" || fail "cannot create $gwdir; make it writable or set worktreeDir in .claude/gw.json: python3 $config --root $root validate"
+    gwdir="${base%/}/gw-pre-push-wt-$(id -u)-$id"  # per user: $TMPDIR is often /tmp, writable by everyone
+    [ ! -L "$gwdir" ] || fail "$gwdir is a symlink, not the hook's own folder; remove it and retry: rm $gwdir && git push"
+    mkdir -p -m 700 "$gwdir" || fail "cannot create $gwdir; make it writable or set worktreeDir in .claude/gw.json: python3 $config --root $root validate"
+    [ -O "$gwdir" ] || fail "$gwdir belongs to another user; remove it or set worktreeDir in .claude/gw.json: python3 $config --root $root validate"
     stale_worktrees
     marker="$(mktemp "$gwdir/wt.XXXXXX")" || fail "cannot create a temporary worktree in $gwdir; free space or permissions and retry: git push"
     echo "$$" > "$marker"

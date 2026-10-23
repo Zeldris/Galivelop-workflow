@@ -61,10 +61,10 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   `GW_PUSH_PROTECTED=true` when the push goes to the protected branch (`false` otherwise; unset outside the hook), so a
   command can run only before `main`, e.g. `[ "${GW_PUSH_PROTECTED:-}" != true ] || <command>`.
 - **`check` runs in a temporary worktree** when the working copy is not clean (or the push is not what it holds): it
-  lives in `${TMPDIR:-/tmp}/gw-pre-push-wt-<repo id>/wt.XXXXXX.d` (or under `worktreeDir`), never inside `.git/`
+  lives in `${TMPDIR:-/tmp}/gw-pre-push-wt-<uid>-<repo id>/wt.XXXXXX.d` (or under `worktreeDir`; the folder is mode 700, and a symlink in its place is refused), never inside `.git/`
   (jest and similar tools ignore any path with a `/.git/` segment), and is removed on every exit (also on Ctrl-C or
   `kill`). If a push dies unable to clean up, the next one removes the orphaned worktrees older than 24 h whose process
-  is gone; two pushes at once do not step on each other. What is linked from the main checkout is set by `worktreeLinks`. A failing command's log
+  is gone; two pushes at once do not step on each other. After changing `worktreeDir`, the old folder is no longer cleaned: delete it by hand. What is linked from the main checkout is set by `worktreeLinks`. A failing command's log
   is kept (`full log: <path>`); when it passes, it is deleted.
 - **`pushToProtected`** says how code reaches the protected branch today. A direct push that brings code always needs
   the mark in `pre-push`, with `direct` and with `pr`; with `pr`, the PR hook also asks for it when the pull request

@@ -61,10 +61,10 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   `GW_PUSH_PROTECTED=true` cuando la subida va a la rama protegida (`false` si no; fuera del gancho, sin definir): así
   una orden puede correr solo antes de `main`, p. ej. `[ "${GW_PUSH_PROTECTED:-}" != true ] || <orden>`.
 - **El `check` corre en un worktree temporal** cuando la copia de trabajo no está limpia (o la subida no es lo que hay
-  en ella): vive en `${TMPDIR:-/tmp}/gw-pre-push-wt-<id del repo>/wt.XXXXXX.d` (o bajo `worktreeDir`), nunca dentro
+  en ella): vive en `${TMPDIR:-/tmp}/gw-pre-push-wt-<uid>-<id del repo>/wt.XXXXXX.d` (o bajo `worktreeDir`; carpeta con permisos 700, y un symlink en su lugar se rechaza), nunca dentro
   de `.git/` (jest y otras herramientas ignoran toda ruta con un segmento `/.git/`), y se borra en toda salida
   (también con Ctrl-C o `kill`). Si un push muere sin poder limpiar, el siguiente borra los worktrees huérfanos de más
-  de 24 h cuyo proceso ya no existe; dos pushes a la vez no se pisan. Lo enlazado desde la copia principal lo dice `worktreeLinks`. El registro de una orden fallida
+  de 24 h cuyo proceso ya no existe; dos pushes a la vez no se pisan. Al cambiar `worktreeDir`, la carpeta anterior ya no se limpia: bórrala a mano. Lo enlazado desde la copia principal lo dice `worktreeLinks`. El registro de una orden fallida
   se conserva (`full log: <ruta>`); si pasa, se borra.
 - **`pushToProtected`** dice cómo entra hoy el código en la rama protegida. Un push directo que trae código pide
   siempre la marca en el `pre-push`, con `direct` y con `pr`; con `pr`, además, el gancho de PR la pide al crear o

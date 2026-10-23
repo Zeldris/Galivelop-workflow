@@ -465,11 +465,11 @@ class PrePushWorktree(Base):
         self.gwdir = self.gw_folder(self.tmp)
 
     def gw_folder(self, base, project=None):
-        """<base>/gw-pre-push-wt-<cksum of the common git dir>: the hook's per-repo folder."""
+        """<base>/gw-pre-push-wt-<uid>-<cksum of the common git dir>: the hook's per-user, per-repo folder."""
         project = project or self.p
         r = subprocess.run(["bash", "-c", 'cd "$(git rev-parse --git-common-dir)" && pwd | tr -d "\\n" | cksum'],
                            cwd=project.work, env=project.env, capture_output=True, text=True, check=True)
-        return Path(base) / ("gw-pre-push-wt-" + r.stdout.split()[0])
+        return Path(base) / f"gw-pre-push-wt-{os.getuid()}-{r.stdout.split()[0]}"
 
     def age(self, path, hours=25):
         old = time.time() - hours * 3600
@@ -556,6 +556,22 @@ class PrePushWorktree(Base):
         self.assertNotEqual(code, 0, out)
         self.assertIn("cannot create", out)
         self.assertIn("worktreeDir", out)
+
+    def test_worktree_folder_is_private_to_the_user(self):
+        self.where_check_ran(self.tmp / "pwd.txt")
+        code, out = self.p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.gwdir.stat().st_mode & 0o777, 0o700)
+
+    def test_a_symlinked_worktree_folder_is_refused(self):
+        elsewhere = self.tmp / "elsewhere"
+        elsewhere.mkdir()
+        self.gwdir.symlink_to(elsewhere)
+        self.where_check_ran(self.tmp / "pwd.txt")
+        code, out = self.p.push("origin", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("is a symlink", out)
+        self.assertEqual(list(elsewhere.iterdir()), [], "nothing may be written through the symlink")
 
     def test_clean_working_copy_runs_in_place(self):
         pwd_file = self.tmp / "pwd.txt"
