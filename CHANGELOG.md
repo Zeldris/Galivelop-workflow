@@ -24,6 +24,8 @@ here.
 - `recoger.py` informa también de las líneas «Propuesta para el flujo» / «Proposal for the workflow» de los `.md`
   cambiados (como las apuntan los proyectos en su bitácora), y la skill `gw-harvest` lo dice (portal P1).
 - Plantilla `CLAUDE.md` (ES): «El modelo de la sesión lo elige» (portal P4).
+- `recuperar.py --estado` espera 3 s (antes 1) el `transcript_path` del gancho y, si cae al registro más nuevo de la
+  carpeta, avisa de que puede ser el de otra sesión abierta en el repo (portal P3).
 
 ### EN
 
@@ -39,6 +41,8 @@ here.
 - `recoger.py` also reports the lines of changed `.md` files that start with "Propuesta para el flujo" / "Proposal for
   the workflow" (how projects note requests in their hand-off log), and the `gw-harvest` skill says so (portal P1).
 - `CLAUDE.md` template (ES): grammatical agreement in "El modelo de la sesión lo elige" (portal P4).
+- `recuperar.py --estado` waits 3 s (was 1) for the hook's `transcript_path` and, when it falls back to the folder's
+  newest transcript, warns that it may belong to another session open in the repo (portal P3).
 
 ## [0.3.0] - 2026-10-23
 

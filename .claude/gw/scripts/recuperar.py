@@ -251,6 +251,10 @@ def state(root, transcript):
     if path and not own:
         print(f"- Warning: this transcript is in {os.path.basename(os.path.dirname(path))}, not the repo's folder: "
               f"the session was opened outside the repo; restart it from the repo: cd {root} && claude")
+    if path and not transcript:
+        print("- Warning: no transcript_path arrived from the hook, so this is the newest transcript of the folder; with "
+              "two sessions open in this repo it may be the other one's: check it with "
+              f"{script_command(root)} --sesion <path> --buscar '<text you know>'")
     if path:
         n = count_compactions(path)
         print(f"- Compactions in this session: {n} (compare with the task's compaction budget in the log)")
@@ -261,9 +265,11 @@ def state(root, transcript):
           f"{script_command(root)}{session} --buscar '<text>'; never read the transcript whole.")
 
 
-def hook_transcript(wait=1.0):
+def hook_transcript(wait=3.0):
     """The transcript_path Claude Code passes to a hook on stdin. Read only when data arrives within `wait` seconds:
-    an agent's Bash tool or `cmd | recuperar.py` leaves stdin open with nothing on it, and --estado must not hang."""
+    an agent's Bash tool or `cmd | recuperar.py` leaves stdin open with nothing on it, and --estado must not hang.
+    One second was too short on a loaded machine: the fallback (the folder's newest transcript) may be another
+    session's, and state() says so when it falls back."""
     if sys.stdin is None or sys.stdin.isatty():
         return None
     try:

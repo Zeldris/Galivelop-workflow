@@ -386,6 +386,25 @@ class Recuperar(Base):
         code, out = p.recuperar("--estado", stdin=json.dumps({"transcript_path": str(other)}))
         self.assertIn("Compactions in this session: 1", out)
 
+    def test_hook_transcript_arriving_late_still_wins(self):
+        p = self.p  # a loaded machine: the hook's JSON arrives after more than a second
+        other = p.transcript(self.tmp / "elsewhere", [{"type": "system", "subtype": "compact_boundary"}])
+        p.transcript(p.work, [{}])
+        proc = subprocess.Popen(["python3", str(p.scripts / "recuperar.py"), "--estado"], cwd=p.work, env=p.env,
+                                stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        time.sleep(1.5)
+        out, _ = proc.communicate(json.dumps({"transcript_path": str(other)}), timeout=20)
+        self.assertIn("Compactions in this session: 1", out)
+        self.assertNotIn("newest transcript", out)
+
+    def test_falling_back_to_the_newest_transcript_says_it_may_be_another_session(self):
+        p = self.p
+        p.transcript(p.work, [{}])
+        code, out = p.recuperar("--estado")
+        self.assertEqual(code, 0, out)
+        self.assertIn("no transcript_path arrived from the hook", out)
+        self.assertIn("may be the other one's", out)
+
     def test_estado_never_fails(self):
         p = self.p
         (p.work / ".claude" / "gw.json").unlink()

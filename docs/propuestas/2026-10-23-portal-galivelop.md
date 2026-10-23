@@ -46,7 +46,7 @@ Las otras tres recogidas de esta versión no traen nada para el flujo:
 - **Why it is general:** con dos sesiones a la vez en el mismo repo, el estado tras una compactación puede venir de la
   sesión equivocada.
 - **Version bump:** patch
-- **Status:** sin decidir (2026-10-23): pendiente de preguntar al usuario
+- **Status:** aprobada (usuario, 2026-10-23) y aplicada en la `0.4.0`: espera 3 s y avisa al caer al más nuevo
 
 ## P4. Plantilla `CLAUDE.md` (ES): «El modelo de la sesión la elige» → «lo elige»
 
