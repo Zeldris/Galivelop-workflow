@@ -240,6 +240,16 @@ class BitacoraTasks(Base):
         self.p.commit("log", env=DAY)
         code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())
         self.assertEqual(code, 0, out)
+        # the id on an indented continuation line of a dated entry counts; a new unstruck item after it does not
+        self.p.write(LOG, log_text().replace("1. nothing yet", "1. 2026-10-21 — the fix\n   that closes INS-3"))
+        self.p.commit("log", env=DAY)
+        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())
+        self.assertEqual(code, 0, out)
+        self.p.write(LOG, log_text().replace("1. nothing yet", "1. 2026-10-21 — the fix\n   - INS-3 pending"))
+        self.p.commit("log", env=DAY)
+        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())
+        self.assertEqual(code, 1, out)
+        self.assertIn("INS-3 is closed in the plan", out)
 
     def test_check_fails_on_a_task_row_without_a_branch_even_with_good_rows(self):
         self.p.write(LOG, log_text().replace("| **Branches**", "| **Tarea en curso** | no branch here |\n| **Branches**"))

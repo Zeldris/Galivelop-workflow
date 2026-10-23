@@ -41,6 +41,7 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
    comparte ambas funciones) y avisa de términos repetidos en `GLOSSARY.md`; `bitacora.py closed` solo da por apuntada
    una tarea tachada en «Hecho» o nombrada en línea con fecha, y `check` falla con una fila «Tarea en curso» sin rama;
    `rojo-sin-arreglo.sh --ran-one REGEX` (exactamente una línea de test ejecutado). 10 casos; guías ES/EN.
+   Revisión: `closed` cuenta también las líneas de continuación sangradas de la entrada con fecha (arreglado).
 2. 2026-10-23 — `gw-harvest` de los dos pilotos de la Fase 6: ninguna skill ni script del flujo cambiado allí;
    22 propuestas (fallos comprobados a mano: `taskId` con captura rompe `bitacora.py closed`, `revisado.sh` cuenta los
    no seguidos y lee solo la 1.ª línea del Estado, `pre-commit` sin `unset GIT_DIR`, log fijo del `pre-push`);
@@ -81,6 +82,9 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 
 - Propuestas aprobadas para `v0.2.0`, en orden: `docs/propuestas/2026-10-22-reparto.md` (la de 2026-10-21, toda hecha).
 
+- Menores de la revisión de la tanda A (no se revisan otra vez en este PR): `non_capturing` toca paréntesis en
+  comentarios `(?x)`/`(?#…)`; `--ran-one` cuenta dos veces si el ejecutor repite el nombre del test en el resumen;
+  `header_version` solo mira las 5 primeras líneas.
 - Que el usuario cambie la rama por defecto de GitHub a `main` (Settings → Branches); no hay herramienta para ello.
 - R2 de la retro: que `doctor.py` detecte skills homónimas en la sesión (sin forma fiable aún; queda en las guías).
 - Opción D (plugin desde el script de entorno de la nube): queda para la Fase 9.

@@ -46,6 +46,7 @@ ROW = re.compile(r"^\|\s*\*\*(?P<label>.+?) · `(?P<branch>[^`]+)`\*\*\s*\|(?P<t
 STATE_HEADING = re.compile(r"^##\s+(Estado actual|Current state|Status)\b.*$", re.M | re.I)
 DONE_HEADING = re.compile(r"^##\s+(Hecho|Done)\b.*$", re.M | re.I)
 TASK_ROW = re.compile(r"^\|\s*\*\*(Tarea en curso|Task in progress)\b.*?\*\*\s*\|", re.I)
+LIST_ITEM = re.compile(r"^\s*(?:[-*]|\d+\.)\s")
 DATE_LINE = re.compile(r"^\s*(?:[-*]|\d+\.)?\s*(?:\*\*|`|\[)?\s*\d{4}-\d{2}-\d{2}\b")
 RANGE = r"\s*(?:…|\.\.\.|–|—|\ba\b|\bto\b)\s*"
 CLOSED_TEXT = {"es": "Al fusionarse, rama terminada: no queda nada pendiente en ella.",
@@ -233,11 +234,16 @@ def cmd_closed(ctx, args):
     text = log_at(ctx, args.sha)
     m = DONE_HEADING.search(text)
     done = text[m.end():].split("\n## ", 1)[0] if m else ""
-    # recorded = struck through in "Done", or named on a line that starts with a date (an id that is merely
-    # mentioned, or listed unstruck, does not count)
+    # recorded = struck through in "Done", or named in an entry that starts with a date, its indented continuation
+    # lines included (an id that is merely mentioned, or listed unstruck, does not count)
     listed = ctx.struck_ids(done)
+    dated = False
     for line in done.splitlines():
         if DATE_LINE.match(line):
+            dated = True
+        elif not (dated and line[:1].isspace() and line.strip() and not LIST_ITEM.match(line)):
+            dated = False
+        if dated:
             listed |= set(ctx.ids(line))
     missing = sorted(new - listed)
     for t in missing:
