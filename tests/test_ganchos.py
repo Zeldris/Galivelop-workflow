@@ -461,11 +461,32 @@ class Revisado(Base):
         self.assertEqual(p.push("-u", "origin", "feature")[0], 0)
         self.script = str(p.work / ".claude" / "gw" / "scripts" / "revisado.sh")
 
-    def test_dirty_tree_refused(self):
-        self.p.write("stray.txt", "x\n")
-        code, out = self.p.run("bash", self.script)
+    def test_tracked_edit_refused_untracked_draft_ignored(self):
+        p = self.p
+        p.write("src/a.py", "a = 2\n")  # an edit to a tracked file
+        code, out = p.run("bash", self.script)
         self.assertNotEqual(code, 0, out)
-        self.assertIn("uncommitted or untracked", out)
+        self.assertIn("uncommitted changes to tracked files", out)
+        self.assertIn("git add -u && git commit && git push", out)
+        p.git("checkout", "--", "src/a.py")
+        p.write("draft.txt", "not mine to commit\n")  # a draft that git does not track
+        code, out = p.run("bash", self.script)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(p.git("status", "--porcelain").stdout.strip(), "?? draft.txt")  # left where it was
+
+    def test_footer_becomes_the_last_line_of_the_mark_commit(self):
+        p = self.p
+        code, out = p.run("bash", self.script, "--footer", "Siguiente: push and open the PR")
+        self.assertEqual(code, 0, out)
+        body = p.git("log", "-1", "--format=%B").stdout.rstrip("\n").splitlines()
+        self.assertEqual((body[0], body[-1]), (f"Reviewed: {p.git('rev-parse', 'HEAD~1').stdout.strip()}", "Siguiente: push and open the PR"))
+
+    def test_bad_arguments_refused_with_the_usage(self):
+        for args, text in ((["--footer"], "--footer needs a line"), ([ "--footer", ""], "--footer needs a line"),
+                           (["--nope"], "unknown argument '--nope'")):
+            code, out = self.p.run("bash", self.script, *args)
+            self.assertEqual(code, 1, out)
+            self.assertIn(text, out)
 
     def test_not_pushed_refused(self):
         p = self.p
@@ -522,6 +543,45 @@ class RevisadoSpanishWithRetro(Base):
         code, out = self.retro("Rejected: x; applied: y")
         self.assertEqual(code, 0, out)
 
+    def test_approved_accepted_in_both_languages(self):
+        for status in ("aprobada (P1, P2)", "Aprobadas todas", "approved with changes"):
+            code, out = self.retro(status)
+            self.assertEqual(code, 0, f"{status}: {out}")
+            self.p.git("reset", "-q", "--hard", "HEAD~1")  # undo the mark commit, keep the retro pushed
+
+    def test_whole_status_paragraph_is_read_not_only_its_first_line(self):
+        p = self.p
+        p.write("docs/registros/retro-2026-10-22.md",
+                "# Retro\n\n**Estado:** revisada con la persona el 2026-10-22;\nla propuesta 1 aprobada y la 2 rechazada.\n\nOtro texto pendiente.\n")
+        p.commit("multi-line status")
+        self.assertEqual(p.push("-u", "origin", "feature")[0], 0)
+        code, out = p.run("bash", self.script)
+        self.assertEqual(code, 0, out)
+
+    def test_pending_on_a_later_line_of_the_paragraph_refused(self):
+        p = self.p
+        p.write("docs/registros/retro-2026-10-22.md", "# Retro\n\n**Estado:** aprobada la 1;\nla 2 pendiente de la persona.\n")
+        p.commit("pending on line 2")
+        self.assertEqual(p.push("-u", "origin", "feature")[0], 0)
+        code, out = p.run("bash", self.script)
+        self.assertNotEqual(code, 0, out)
+
+    def test_refusal_lists_the_valid_words(self):
+        code, out = self.retro("hecha")
+        self.assertNotEqual(code, 0, out)
+        for word in ("aplicad*", "rechazad*", "aplazad*", "decidid*", "aprobad*", "pendiente/pending"):
+            self.assertIn(word, out)
+        self.assertIn("bash ", out)
+
+    def test_no_estado_line_at_all_refused(self):
+        p = self.p
+        p.write("docs/registros/retro-2026-10-22.md", "# Retro\n\nSin línea de estado, aplicada.\n")
+        p.commit("no status line")
+        self.assertEqual(p.push("-u", "origin", "feature")[0], 0)
+        code, out = p.run("bash", self.script)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("**Estado:**/**Status:** paragraph", out)
+
     def test_applied_retro_accepted_and_spanish_subject(self):
         code, out = self.retro("aplicada (propuestas 1 y 2), la 3 rechazada")
         self.assertEqual(code, 0, out)
@@ -553,6 +613,44 @@ class EsCodigo(Base):
         code, out = p.run("bash", script, "--explicar")
         self.assertEqual(code, 2, out)
         self.assertIn("usage", out)
+
+    def test_invalid_content_regex_is_named_and_other_failures_are_not_blamed_on_it(self):
+        p = self.p
+        script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
+        p.write("src/a.py", "a\n"); p.commit("code")
+        good = (p.work / ".claude" / "gw.json").read_text()
+        cfg = json.loads(good)
+        cfg["content"] = ["^docs/", "(unclosed"]
+        p.write(".claude/gw.json", json.dumps(cfg)); p.git("commit", "-q", "-am", "bad regex", "--no-verify")
+        for args in ((p.base, "HEAD"), ("--explicar", "src/a.py")):
+            code, out = p.run("bash", script, *args)
+            self.assertEqual(code, 2, out)
+            self.assertIn('content regex "(unclosed" is invalid', out)
+            self.assertIn("fix the regex in .claude/gw.json", out)
+        # The same classifier failing for another reason (no python3 to run it) is not called a bad regex.
+        p.write(".claude/gw.json", good); p.git("commit", "-q", "-am", "good again", "--no-verify")
+        tools = self.tmp / "tools"
+        tools.mkdir()
+        real = shutil.which("python3")
+        (tools / "python3").write_text(
+            f'#!/bin/sh\ncase "$*" in *config.py*) exec {real} "$@" ;; *) echo "boom" >&2; exit 1 ;; esac\n')
+        (tools / "python3").chmod(0o755)
+        code, out = p.run("bash", script, p.base, "HEAD", env={"PATH": f"{tools}:{p.env['PATH']}"})
+        self.assertEqual(code, 2, out)
+        self.assertIn("classification failed (exit 1), not because of a content regex", out)
+        self.assertNotIn("invalid", out)
+
+    def test_reader_closing_the_pipe_early_is_not_an_error(self):
+        p = self.p
+        script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
+        for i in range(3000):
+            p.write(f"src/f{i}.py", "x\n")
+        p.commit("many files")
+        code, out = p.run("bash", "-c", f'bash "{script}" {p.base} HEAD | head -1; exit "${{PIPESTATUS[0]}}"')
+        self.assertEqual(code, 0, out)
+        self.assertEqual(len(out.splitlines()), 1, out)
+        self.assertNotIn("invalid", out)
+        self.assertNotIn("Traceback", out)
 
     def test_workflow_guards_are_code_whatever_content_says(self):
         p = self.p
@@ -638,6 +736,32 @@ class PreCommit(Base):
         shutil.copy2(Path(__file__), self.p.work / "test_ganchos.py")
         r = self.p.commit("tests", ok=False)
         self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_commit_inside_a_linked_worktree_finds_its_root(self):
+        """Git exports GIT_DIR (and GIT_INDEX_FILE) to the hook there: the root must still come from the hook's path,
+        or the CLAUDECODE=1 check cannot find .claude/gw/scripts and every commit fails."""
+        p = self.p
+        linked = self.tmp / "linked"
+        p.git("worktree", "add", "-q", "-b", "side", str(linked))
+        env = {"CLAUDECODE": "1"}
+        (linked / "src").mkdir()
+        (linked / "src" / "side.py").write_text("s = 1\n")
+        p.git("add", "-A", cwd=linked)
+        r = p.git("commit", "-q", "-m", "on side", cwd=linked, env=env, ok=False)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("cannot read protectedPaths", r.stdout + r.stderr)
+        # The checks still run against the linked worktree's own index.
+        (linked / "drafts").mkdir()
+        (linked / "drafts" / "wip.md").write_text("wip\n")
+        (linked / "src" / "leak.py").write_text(f'GITHUB = "{FAKE_TOKEN}"\n')
+        p.git("add", "-A", cwd=linked)
+        r = p.git("commit", "-q", "-m", "leak", cwd=linked, env=env, ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("shaped like a key", r.stderr)
+        p.git("reset", "-q", "src/leak.py", cwd=linked)
+        r = p.git("commit", "-q", "-m", "draft", cwd=linked, env=env, ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("under protectedPaths", r.stderr)
 
     def test_range_mode_for_ci(self):
         p = self.p

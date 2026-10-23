@@ -70,7 +70,8 @@ the push, the last line is the command that fixes it.
 ## Creating or merging a PR (`revision-antes-de-main.sh`)
 
 The `PreToolUse` hook that guards `create_pull_request`, `merge_pull_request` and `gh pr create|merge`. It **fails
-closed**: if it cannot check, it blocks and says why. A direct push to the protected branch is guarded by `pre-push`, in both `pushToProtected` modes.
+closed**: if it cannot check, it blocks and says why. It only looks at calls to the PR tools and commands with the word
+`gh` followed by `pr` or `pulls` ("github" and "projects" do not count). A direct push to the protected branch is guarded by `pre-push`, in both `pushToProtected` modes.
 
 | Block | Cause | Fix |
 |---|---|---|
@@ -79,9 +80,11 @@ closed**: if it cannot check, it blocks and says why. A direct push to the prote
 | `cannot read PR #N` / `cannot query origin` | No network or no credential | Authenticate and retry; it blocks because it could not check |
 | `the PR head … is not in this clone` | Shallow clone or branch not fetched | `git fetch --deepen=200 origin <branch>` |
 | `no open PR for <branch>` / `without a PR number` | Merging with no number and no open PR for the branch | Pass the number: `gh pr merge <number>` |
-| `requireRetro is on and the branch adds no retro-*.md…` (from `revisado.sh`) | With `requireRetro`, a retro with the person's decision is missing | `/retro`, present it, apply what is approved, record the status and run `revisado.sh` again |
-| `revisado: the tree has uncommitted…` / `HEAD is not what origin/<branch> has` / `the branch does not include the latest origin/<protected>` | The mark is only written over what is pushed and up to date | Commit and push; `git merge origin/<protected>`; review again and mark |
-| `the check could not run… Install python3 3.8+` | `python3` is missing | Install Python 3.8 or later |
+| `PR #N of <repo> is closed` / `already merged` | The PR is no longer open: there is nothing to guard | `gh pr view <number> -R <repo>`; reopen it if it should go on |
+| `requireRetro is on and the branch adds no retro-*.md…` (from `revisado.sh`) | With `requireRetro`, the branch lacks a new retro whose `**Status:**` paragraph (up to the first blank line) has a whole word among `aplicad*`, `rechazad*`, `aplazad*`, `decidid*`, `aprobad*` (or `applied`, `rejected`, `deferred`, `decided`, `approved`) and no `pendiente`/`pending`/`sin decidir`/`aún no`/`not yet` | `/retro`, present it, apply what is approved, record the status in that form and run `revisado.sh` again |
+| `revisado: the tree has uncommitted changes to tracked files…` / `HEAD is not what origin/<branch> has` / `the branch does not include the latest origin/<protected>` | The mark is only written over what is pushed and up to date; untracked files do not count, modified ones do | Commit and push; `git merge origin/<protected>`; review again and mark. If a `commit-msg` hook demands the `Siguiente:` line: `bash .claude/gw/scripts/revisado.sh --footer "Siguiente: …"` |
+| `es-codigo: content regex "…" is invalid` / `the classification failed (exit N), not because of a content regex` | A `content` regex does not compile (the reason is printed), or something else failed (python3, closed pipe) | Fix the regex: `python3 .claude/gw/scripts/config.py validate`; otherwise `python3 --version` and retry |
+| `python3 is missing, so this PR call cannot be checked` / `the check could not run… Check python3 3.8+` | `python3` is missing (or crashed) and the command creates or merges a PR; other commands, `gh pr view` included, pass | Install Python 3.8 or later: `python3 --version` |
 
 **Multi-repo (cloud) session.** It loads no project hooks. Before creating or merging a PR to the protected branch,
 check by hand what that hook would check: the `revisado.sh` mark of the same commit and a green CI, and run

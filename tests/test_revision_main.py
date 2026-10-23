@@ -17,11 +17,15 @@ from test_ganchos import ROOT, Project
 
 FAKE_GH = """#!/bin/sh
 case "$1" in
-  auth) [ -z "${GH_UNAUTH:-}" ] || { echo "not logged in" >&2; exit 1; }
-        if [ -n "${GH_AUTH_ONCE:-}" ]; then [ ! -e "$GH_AUTH_ONCE" ] || exit 1; : > "$GH_AUTH_ONCE"; fi; exit 0 ;;
+  auth) echo "fake gh: the hook must check access with gh api user, not gh auth status" >&2; exit 1 ;;
   api) ;;
   *) echo "fake gh: unsupported $*" >&2; exit 1 ;;
 esac
+if [ "$2" = "user" ]; then
+  [ -z "${GH_UNAUTH:-}" ] || { echo "not logged in" >&2; exit 1; }
+  if [ -n "${GH_AUTH_ONCE:-}" ]; then [ ! -e "$GH_AUTH_ONCE" ] || exit 1; : > "$GH_AUTH_ONCE"; fi
+  echo '{"login":"someone"}'; exit 0
+fi
 if [ -n "${GH_FAIL:-}" ]; then echo "gh: HTTP 502: Bad Gateway (fake)" >&2; exit 1; fi
 case "$2" in
   *check-runs*) printf '%s' "$GH_RUNS" ;;
@@ -329,6 +333,22 @@ class Hook(unittest.TestCase):
         self.assertAllowed(self.bash("echo 'run gh pr create --base main later'"))
         self.assertAllowed(self.bash('git commit -m "gh pr merge after review"'))
 
+    def test_closed_or_merged_pr_says_so_instead_of_asking_for_a_config(self):
+        for state, merged, text in (("closed", False, "is closed"), ("closed", True, "already merged")):
+            pr = dict(self.pr(), state=state, merged=merged)
+            self.assertBlocked(self.merge(pr=pr), text, "gh pr view 7 -R o/r")
+            code, out = self.merge(pr=pr)
+            self.assertNotIn("gw.json", out)
+        # even when the PR's branch is gone or carries no config
+        self.assertBlocked(self.bash("gh pr merge 7 -R o/r", pr=dict(self.pr(), state="closed")), "is closed")
+        self.assertBlocked(self.merge(pr=dict(self.pr(), state="closed", merged_at="2026-10-01T00:00:00Z")),
+                           "already merged")
+
+    def test_access_is_checked_with_gh_api_user(self):
+        self.mark(); self.push()
+        self.assertAllowed(self.merge(pr=self.pr()))  # the fake gh refuses `gh auth status`: it would fall to curl
+        self.assertFalse((self.tmp / "curl.log").exists())
+
     def test_unrelated_tool_exits_0_silently(self):
         code, out = self.hook("Read", {"file_path": "/etc/hosts"})
         self.assertEqual((code, out), (0, ""))
@@ -346,17 +366,65 @@ if __name__ == "__main__":
 
 
 class PreFilter(unittest.TestCase):
-    """The matcher includes every Bash call: unrelated commands must pass even without python3."""
+    """The matcher includes every Bash call: unrelated commands must pass even without python3, and without starting it."""
+
+    def setUp(self):
+        self.tools = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tools, True)
+        for name in ("cat", "dirname"):
+            (self.tools / name).symlink_to(shutil.which(name))
+        self.hook = ROOT / "scripts" / "revision-antes-de-main.sh"
+
+    def run_hook(self, tool, data):
+        return subprocess.run([shutil.which("bash"), str(self.hook)], env={"PATH": str(self.tools)},
+                              input=json.dumps({"tool_name": tool, "tool_input": data}), capture_output=True, text=True)
+
+    def bash(self, command):
+        r = self.run_hook("Bash", {"command": command})
+        return r.returncode, r.stderr
 
     def test_unrelated_bash_passes_without_python(self):
-        tools = Path(tempfile.mkdtemp())
-        try:
-            for name in ("cat", "dirname"):
-                (tools / name).symlink_to(shutil.which(name))
-            hook = ROOT / "scripts" / "revision-antes-de-main.sh"
-            r = subprocess.run([shutil.which("bash"), str(hook)], env={"PATH": str(tools)},
-                               input=json.dumps({"tool_name": "Bash", "tool_input": {"command": "ls -la"}}),
+        self.assertEqual(self.bash("ls -la"), (0, ""))
+
+    def test_github_and_projects_are_not_gh_and_pr(self):
+        stub = self.tools / "python3"  # records that it started
+        stub.write_text(f'#!/bin/sh\n: > "{self.tools}/started"\nexit 5\n')
+        stub.chmod(0o755)
+        for command in ("grep -rn github projects/", "cat docs/github-projects.md", "git clone https://github.com/o/r",
+                        "echo ghost pr", "ls gh-pages/pr"):
+            self.assertEqual(self.bash(command), (0, ""), command)
+        self.assertFalse((self.tools / "started").exists(), "python3 was started for an unrelated command")
+        self.assertEqual(self.run_hook("Write", {"content": "gh pr merge 7"}).returncode, 0)
+        self.assertEqual(self.run_hook("mcp__github__pull_request_read", {"pullNumber": 7}).returncode, 0)
+        self.assertFalse((self.tools / "started").exists())
+
+    def test_real_pr_commands_do_start_python(self):
+        stub = self.tools / "python3"
+        stub.write_text(f'#!/bin/sh\n: > "{self.tools}/started"\nexit 2\n')
+        stub.chmod(0o755)
+        for command in ("gh pr merge 7", "cd x && gh -R o/r pr create --base main", "echo a\ngh pr view 7",
+                        "GH_REPO=o/r gh api -X PUT repos/o/r/pulls/7/merge"):
+            (self.tools / "started").unlink(missing_ok=True)
+            self.assertEqual(self.bash(command)[0], 2, command)
+            self.assertTrue((self.tools / "started").exists(), command)
+
+    def test_without_python_a_pr_call_fails_closed_and_an_unrelated_gh_call_passes(self):
+        for command in ("gh pr merge 7", "gh pr create --fill", "cd r && gh api -X PUT repos/o/r/pulls/7/merge",
+                        "true\ngh pr merge 7"):
+            code, err = self.bash(command)
+            self.assertEqual(code, 2, command)
+            self.assertIn("python3 is missing", err)
+            self.assertIn("python3 --version", err)
+        for command in ("gh pr view 7", "gh pr list --state open", "gh api repos/o/r/pulls/7"):
+            self.assertEqual(self.bash(command), (0, ""), command)
+        for tool in ("create_pull_request", "update_pull_request", "merge_pull_request", "enable_pr_auto_merge"):
+            r = self.run_hook(f"mcp__github__{tool}", {"owner": "o", "repo": "r"})
+            self.assertEqual(r.returncode, 2, tool)
+            self.assertIn("python3 is missing", r.stderr)
+        self.assertEqual(self.run_hook("mcp__github__update_pull_request_branch", {}).returncode, 0)
+
+    def test_empty_and_odd_input_without_python(self):
+        for text in ("", "not json", "{}"):
+            r = subprocess.run([shutil.which("bash"), str(self.hook)], env={"PATH": str(self.tools)}, input=text,
                                capture_output=True, text=True)
-            self.assertEqual((r.returncode, r.stderr), (0, ""))
-        finally:
-            shutil.rmtree(tools)
+            self.assertEqual((r.returncode, r.stderr), (0, ""), repr(text))

@@ -70,7 +70,8 @@ el último renglón es la orden que lo arregla.
 ## Crear o fusionar un PR (`revision-antes-de-main.sh`)
 
 Es el gancho `PreToolUse` que guarda `create_pull_request`, `merge_pull_request` y `gh pr create|merge`. Falla
-**cerrado**: si no puede comprobar, bloquea y dice por qué. Un push directo a la rama protegida lo guarda el `pre-push`, en los dos modos de `pushToProtected`.
+**cerrado**: si no puede comprobar, bloquea y dice por qué. Solo mira las llamadas a las herramientas de PR y las órdenes
+con la palabra `gh` seguida de `pr` o `pulls` («github» y «projects» no cuentan). Un push directo a la rama protegida lo guarda el `pre-push`, en los dos modos de `pushToProtected`.
 
 | Bloqueo | Causa | Arreglo |
 |---|---|---|
@@ -79,9 +80,11 @@ Es el gancho `PreToolUse` que guarda `create_pull_request`, `merge_pull_request`
 | `cannot read PR #N` / `cannot query origin` | Sin red o sin credencial | Autentícate y repite; se bloquea porque no pudo comprobar |
 | `the PR head … is not in this clone` | Clon superficial o rama sin traer | `git fetch --deepen=200 origin <rama>` |
 | `no open PR for <rama>` / `without a PR number` | Fusionar sin número ni PR abierto de la rama | Pasa el número: `gh pr merge <número>` |
-| `requireRetro is on and the branch adds no retro-*.md…` (de `revisado.sh`) | Con `requireRetro`, falta una retro con decisión de la persona | `/retro`, presenta, aplica lo aprobado, anota el estado y repite `revisado.sh` |
-| `revisado: the tree has uncommitted…` / `HEAD is not what origin/<rama> has` / `the branch does not include the latest origin/<protegida>` | La marca solo se escribe sobre lo ya subido y al día | Commit y push; `git merge origin/<protegida>`; revisa de nuevo y marca |
-| `the check could not run… Install python3 3.8+` | Falta `python3` | Instala Python 3.8 o superior |
+| `PR #N of <repo> is closed` / `already merged` | El PR ya no está abierto: no hay nada que guardar | `gh pr view <número> -R <repo>`; si debe seguir, reábrelo |
+| `requireRetro is on and the branch adds no retro-*.md…` (de `revisado.sh`) | Con `requireRetro`, falta una retro nueva en la rama cuyo párrafo `**Estado:**` (hasta la primera línea en blanco) tenga una palabra entera de `aplicad*`, `rechazad*`, `aplazad*`, `decidid*`, `aprobad*` (o `applied`, `rejected`, `deferred`, `decided`, `approved`) y ningún `pendiente`/`pending`/`sin decidir`/`aún no`/`not yet` | `/retro`, presenta, aplica lo aprobado, anota el estado con esa forma y repite `revisado.sh` |
+| `revisado: the tree has uncommitted changes to tracked files…` / `HEAD is not what origin/<rama> has` / `the branch does not include the latest origin/<protegida>` | La marca solo se escribe sobre lo ya subido y al día; los archivos sin seguimiento no cuentan, los modificados sí | Commit y push; `git merge origin/<protegida>`; revisa de nuevo y marca. Si un gancho `commit-msg` exige la línea `Siguiente:`: `bash .claude/gw/scripts/revisado.sh --footer "Siguiente: …"` |
+| `es-codigo: content regex "…" is invalid` / `the classification failed (exit N), not because of a content regex` | Una regex de `content` no compila (sale el motivo), o falló otra cosa (python3, tubería cerrada) | Corrige la regex: `python3 .claude/gw/scripts/config.py validate`; en el otro caso, `python3 --version` y repite |
+| `python3 is missing, so this PR call cannot be checked` / `the check could not run… Check python3 3.8+` | Falta `python3` (o falló) y la orden es crear o fusionar un PR; las demás órdenes, `gh pr view` incluida, pasan | Instala Python 3.8 o superior: `python3 --version` |
 
 **Sesión de varios repos (nube).** No carga los ganchos del proyecto. Antes de crear o fusionar un PR a la rama
 protegida, comprueba a mano lo que ese gancho comprobaría: la marca de `revisado.sh` del mismo commit y el CI en
