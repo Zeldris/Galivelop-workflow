@@ -12,7 +12,7 @@
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
 | Fase en curso | **6 cerrada** y `0.3.0` publicada en `main` (2026-10-23); P7 del instalador aplicada en la rama (`0.4.0`, sin publicar); recogida de la `0.4.0` hecha y decidida (P1, P3, P4, P5 aplicadas; P2 aplazada). Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | P1, P3, P4 y P5 de la recogida de la `0.4.0` aplicadas (`recuperar.py` espera 3 s y avisa al caer al registro más nuevo); check en verde en local; el CI no arranca (cupo de Actions): comprobado solo en local |
-| Siguiente paso | **Fase 7 (rodaje etapa 1)**, o publicar la `0.4.0` con las tres fases si el usuario lo pide |
+| Siguiente paso | La `0.4.0` queda **abierta una semana, hasta el 2026-10-30** (usuario, 2026-10-23), por si salen más mejoras; mientras, **Fase 7 (rodaje etapa 1)**. El 2026-10-30: otra pasada de `gw-harvest` (lo de esa semana) y publicar con las tres fases |
 
 ### Fases
 
@@ -29,6 +29,9 @@
 - [ ] 10. Público
 
 ## Para la próxima publicación
+
+`0.4.0`: abierta hasta el 2026-10-30 (usuario, 2026-10-23); antes de publicarla, otra pasada de `gw-harvest` sobre lo de
+esa semana.
 
 `0.2.0` publicada (etiqueta y release a mano en GitHub, título `Galivelop-workflow vX.Y.Z`, notas de la entrada del CHANGELOG). Para la siguiente: `release.yml` con lanzamiento manual desde Actions que cree la etiqueta (la
 sesión en la nube no puede subir etiquetas: 403 del proxy).
