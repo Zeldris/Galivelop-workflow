@@ -5,7 +5,7 @@ disable-model-invocation: true
 license: MIT
 compatibility: Run in the Galivelop-workflow repo with the project repos cloned locally; git and python3.
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
   source: "Galivelop workshop"
 ---
 

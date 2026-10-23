@@ -5,7 +5,7 @@ disable-model-invocation: true
 license: MIT
 compatibility: Projects with local or self-hosted AI models; python3 (standard library) for scripts/medir.py
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
   source: "Galivelop workshop; generalised from the Tarkor and installer opt-ai"
 ---
 

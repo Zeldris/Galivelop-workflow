@@ -4,7 +4,7 @@ description: Token-spend retrospective: measures where a session's tokens went a
 license: MIT
 compatibility: Claude Code or any Agent Skills agent; git; python3 for scripts/medir.py (standard library only)
 metadata:
-  version: "0.2.0"
+  version: "0.3.0"
   source: "Galivelop workshop; generalised from the Tarkor, installer, portal and VeriNews opt-tokens"
 ---
 

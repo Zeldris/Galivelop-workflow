@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.2.0 -->
+<!-- galivelop-workflow v0.3.0 -->
 # {{project}} — instructions for agents
 
 This project is worked on in hand-offs: a session can end at any moment (tokens, container, account switch) and the

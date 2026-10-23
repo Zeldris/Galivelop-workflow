@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# galivelop-workflow v0.2.0
+# galivelop-workflow v0.3.0
 # Git pre-push hook (copied into projects as .githooks/pre-push; enable with: git config core.hooksPath .githooks).
 #   - Says which commits each ref pushes, or that it pushes nothing new.
 #   - Refuses conflict markers and added *.rej / *.orig files in what is pushed (to the protected branch, in all it

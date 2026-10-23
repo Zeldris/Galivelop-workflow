@@ -10,9 +10,9 @@
 |---|---|
 | Rama | `ccr-6dfbc880-ddr41g` (avance rápido de `ccr-76251061-b1yiwq`, que sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `01d1a75` = **release `v0.2.0`** (2026-10-22, etiqueta y release creadas a mano en GitHub); `v0.1.0` = `9b97d7b` |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
-| Fase en curso | **6. Piloto: Tarkor e instalador** — los dos pilotos terminados y fusionados en su `main` (WMF `e433d1d`, instalador `89bb2ee`, PR #5); recogida hecha (2026-10-23): `docs/propuestas/2026-10-23-world-maker-fantasy.md` (P1-P13) y `…-instalador-wmf-tarkor.md` (P1-P9), esperando la decisión del usuario |
-| Último punto estable | **Versión `0.2.0`**: `version.py 0.2.0`, entrada del CHANGELOG (19 filas, R1-R3, arreglos de las revisiones) y los tests leen la versión de `plugin.json`; check en verde en local; el CI no arranca (cupo de Actions) |
-| Siguiente paso | Tanda G de las propuestas aprobadas del 2026-10-23: versión `0.3.0` con `scripts/version.py` y su entrada del CHANGELOG; luego cerrar la Fase 6 (A-F hechas; P7 del instalador aplazada) |
+| Fase en curso | **6 cerrada** (2026-10-23): propuestas de los dos pilotos aplicadas (tandas A-G) y versión `0.3.0` en la rama, sin publicar; P7 del instalador (CI pasado en local) aplazada para hablarla con el usuario. Próxima: **7. Rodaje etapa 1** |
+| Último punto estable | **Versión `0.3.0`**: `version.py 0.3.0`, entrada del CHANGELOG (tandas A-F) y notas de `.claude/gw/` al día; check en verde en local; el CI no arranca (cupo de Actions) |
+| Siguiente paso | Con el visto bueno del usuario: las tres fases antes de `main` (`/code-review` contra `origin/main`, `/opt-tokens` + `/retro`, `revisado.sh`) y publicar `0.3.0`; hablar la P7 del instalador; luego la Fase 7 |
 
 ### Fases
 
@@ -22,7 +22,7 @@
 - [x] 3. Ganchos y scripts (2026-10-22; CI en verde en Linux y macOS)
 - [x] 4. Plantillas y aplicación (2026-10-22)
 - [x] 5. Piloto: Portal-Galivelop (2026-10-22; cerrada con el usuario)
-- [ ] 6. Piloto: Tarkor e instalador (VeriNews, en la Fase 8)
+- [x] 6. Piloto: Tarkor e instalador (2026-10-23; VeriNews, en la Fase 8)
 - [ ] 7. Rodaje etapa 1
 - [ ] 8. Instalador sin IA (etapa 2)
 - [ ] 9. Plugin y npm
@@ -35,15 +35,17 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 
 ## Hecho (10 últimas)
 
-1. 2026-10-23 — Tanda F (instalador P5, P8, P9): plantillas con «la persona»/«the person» (sin clave nueva);
+1. 2026-10-23 — Tanda G y cierre de la Fase 6: versión `0.3.0` (`version.py`), entrada del CHANGELOG ES/EN con las
+   propuestas de los dos pilotos, marcas de `.claude/gw/*.md` y `.claude/gw.json` a `0.3.0`.
+2. 2026-10-23 — Tanda F (instalador P5, P8, P9): plantillas con «la persona»/«the person» (sin clave nueva);
    `aplicar.md` ↔ `apply.md` (`.gitignore` con `.claude/*`, scripts del flujo no se editan en el proyecto, migrar:
    skills sustituidas, ganchos viejos, `recuperar.py`, `install` a mano) y `REVIEW.md` ES/EN. El `add_repo` (paso 0) y
    el clasificador (paso 2) ya estaban donde se pedía.
-2. 2026-10-23 — Tanda E, arreglos de la revisión de 972ca92: `quality_bench.py summary` cuenta cada par una vez
+3. 2026-10-23 — Tanda E, arreglos de la revisión de 972ca92: `quality_bench.py summary` cuenta cada par una vez
    (`judged`/`x_bias`; `repeated` = pares repetidos) y, si `pairs.jsonl` no casa con la clave, sale diciendo que se
    regenere con `pairs --seed`; `opt-ai/medir.py` cuenta en `error_pct` los turnos fallidos sin tiempo; `scout_dir`
    con config ilegible, con test. Copias resincronizadas, check en verde.
-3. 2026-10-23 — Tanda E de las propuestas aprobadas (skills): cada `SKILL.md` lee `.claude/gw/<skill>.md` si existe
+4. 2026-10-23 — Tanda E de las propuestas aprobadas (skills): cada `SKILL.md` lee `.claude/gw/<skill>.md` si existe
    (una línea tras el título; regla en `writing-for-agents/SKILL-MECHANICS.md`). `opt-tokens/medir.py` avisa con
    `--hours 0` si la sesión mezcla ventanas de compactación (tramos cerrados con picos que difieren más de 1,5x) y
    gana `test_medir.py` (los 8 casos de WMF adaptados, más el del aviso). `opt-ai/medir.py` gana la tabla por turno
@@ -53,7 +55,7 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
    se porta como `scripts/quality_bench.py` (en inglés, con 7 casos) y entra como herramienta opcional del paso 5.
    `aplicar.md` ↔ `apply.md` dicen cómo se descubren las pruebas de las skills. Copias resincronizadas. Los marcadores
    de `.claude/gw/*.md` (v0.1.0) siguen avisando de plantilla nueva: es de la versión, no de esta tanda.
-4. 2026-10-23 — Tanda D de las propuestas aprobadas: `ciInstall` (la plantilla de CI lo usa y, si la clave no está, cae
+5. 2026-10-23 — Tanda D de las propuestas aprobadas: `ciInstall` (la plantilla de CI lo usa y, si la clave no está, cae
    a `install`; un `[]` explícito no instala nada; no está en `templates/gw.json` a propósito); `setup` (órdenes que
    `session-start.sh` corre en la nube justo después de `install`, en orden y con el mismo sello; una que falla o pasa
    de `GW_COMMAND_TIMEOUT` s, 900 por defecto, se cuenta con la orden a mano y el gancho sale 0); `doctor.py` solo
@@ -66,7 +68,7 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
    mata el grupo de procesos, «timed out» solo si disparó el vigilante); `glob_regex` acepta rutas sin comodines y
    `docs/**` incluye `docs`; `doctor.py` ignora comentarios y exige frontera tras la orden; la plantilla de CI cae a
    `install` solo si falta `ciInstall`; `enlaces-md.py` resuelve `/x` desde la raíz y avisa de enlaces fuera del repo.
-5. 2026-10-23 — Tanda C de las propuestas aprobadas: claves `checkWrapper` (prefijo literal de cada `check` y
+6. 2026-10-23 — Tanda C de las propuestas aprobadas: claves `checkWrapper` (prefijo literal de cada `check` y
    `relatedTests`; con `cwd`, `bash -c 'cd … && …'`) y `worktreeLinks` (por defecto `node_modules`, `.venv`);
    `relatedTests` acepta `{command, paths, cwd}` además del texto; el `pre-push` crea el worktree en
    `<git-dir común>/gw-pre-push/wt.XXXXXX.d` (no en `$TMPDIR`), lo borra en toda salida (INT/TERM/HUP), limpia los
@@ -78,35 +80,30 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
    Revisión de 758a5ea (arreglada): enlaces de `worktreeLinks` que salen del worktree por un symlink commiteado (falla
    cerrado), sin `git worktree prune` global, marcador vacío y EPERM cuentan como vivos, `checkWrapper` siempre
    `<wrapper> bash -c '<orden>'` (pre-push, `fusionar.sh`, `config.py related`).
-6. 2026-10-23 — Tanda B de las propuestas aprobadas: `revisado.sh` ignora lo no seguido, lee todo el párrafo de
+7. 2026-10-23 — Tanda B de las propuestas aprobadas: `revisado.sh` ignora lo no seguido, lee todo el párrafo de
    `**Estado:**`, acepta «aprobad*», lista las palabras válidas en el error y admite `--footer` (la skill `retro`
    fija la forma de la línea); `pre-commit` quita `GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE` antes de buscar la raíz
    (worktree enlazado); `revision-antes-de-main.sh` sale pronto sin python3 salvo en llamadas de PR, comprueba el
    acceso con `gh api user` y avisa si el PR ya está cerrado o fusionado; `es-codigo.sh` distingue una regex
    `content` inválida de otros fallos (BrokenPipe); casos en `tests/test_ganchos.py` y `tests/test_revision_main.py`,
    docs ES/EN y copias `.claude/gw/` resincronizadas.
-7. 2026-10-23 — Tanda A de las propuestas aprobadas: `taskId` con grupos de captura se normaliza (`config.non_capturing`,
+8. 2026-10-23 — Tanda A de las propuestas aprobadas: `taskId` con grupos de captura se normaliza (`config.non_capturing`,
    lo usa `bitacora.py`; ya no rompe `closed`); `doctor.py` acepta «Siguientes pasos», reconoce un gancho del flujo por
    su cabecera (un `session-start.sh` propio no avisa), añade `reviewMark` a lo que git no debe ignorar (`aplicar.py`
    comparte ambas funciones) y avisa de términos repetidos en `GLOSSARY.md`; `bitacora.py closed` solo da por apuntada
    una tarea tachada en «Hecho» o nombrada en línea con fecha, y `check` falla con una fila «Tarea en curso» sin rama;
    `rojo-sin-arreglo.sh --ran-one REGEX` (exactamente una línea de test ejecutado). 10 casos; guías ES/EN.
    Revisión: `closed` cuenta también las líneas de continuación sangradas de la entrada con fecha (arreglado).
-8. 2026-10-23 — `gw-harvest` de los dos pilotos de la Fase 6: ninguna skill ni script del flujo cambiado allí;
+9. 2026-10-23 — `gw-harvest` de los dos pilotos de la Fase 6: ninguna skill ni script del flujo cambiado allí;
    22 propuestas (fallos comprobados a mano: `taskId` con captura rompe `bitacora.py closed`, `revisado.sh` cuenta los
    no seguidos y lee solo la 1.ª línea del Estado, `pre-commit` sin `unset GIT_DIR`, log fijo del `pre-push`);
    `estado.json` al día.
-9. 2026-10-22 — Fase 3 antes de `main`: `/code-review` de `a9850a1..57a8884`. Arreglado: `.claude/gw.json` instala
+10. 2026-10-22 — Fase 3 antes de `main`: `/code-review` de `a9850a1..57a8884`. Arreglado: `.claude/gw.json` instala
    `shellcheck-py` en la nube (sin él, el `pre-push` fallaba en cada contenedor nuevo); `doctor.py` solo mira la
    compactación si el `settings.json` del proyecto fija la ventana y propone ese valor (no un 200000 inventado), y su
    docstring lo cuenta; `tests/shellcheck.sh` recibe los archivos de `comprobar.sh` (las exclusiones, en un sitio),
    ya no usa `git`/`xargs` y es ejecutable; los tests de compactación miran solo las líneas `compaction:` y el de
    shellcheck no depende de `which`. 3 casos nuevos.
-10. 2026-10-22 — Fase 2 antes de `main`: retro de la Fase 5 con la medida de `/opt-tokens` (S2: 191k de media, 30M, sin
-   compactación por arrancar en `/home/user`). Aplicadas R1 (`doctor.py` avisa `compaction` en la nube sin
-   `CLAUDE_CODE_AUTO_COMPACT_WINDOW`; `problemas.md` ES/EN; `AGENTS.md`), R2 (`orchestrate-dealer`: las filas
-   aprobadas se reparten o `/clear` cada 4-5) y R3 (`tests/shellcheck.sh`: en la nube falla sin `shellcheck`, con
-   `pip install shellcheck-py`). R4 rechazada. 6 casos nuevos.
 
 ## Pendiente
 

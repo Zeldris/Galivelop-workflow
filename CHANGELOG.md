@@ -8,6 +8,65 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.3.0] - 2026-10-23
+
+### ES
+
+Propuestas de los pilotos de la Fase 6, World-Maker-Fantasy y el instalador
+(`docs/propuestas/2026-10-23-world-maker-fantasy.md` y `…-instalador-wmf-tarkor.md`). La P7 del instalador (CI pasado
+en local) queda aplazada.
+
+- `taskId` con grupos de captura ya no rompe `bitacora.py closed`; `doctor.py` acepta «Siguientes pasos» (inst. P1, P2).
+- `revisado.sh`: ignora los archivos sin seguimiento, lee el párrafo entero del Estado, acepta «aprobad*» y añade
+  `--footer` para la línea `Siguiente:` (WMF P1).
+- `pre-commit` limpia `GIT_DIR`, `GIT_WORK_TREE` y `GIT_INDEX_FILE` en un worktree enlazado (WMF P2).
+- `doctor.py`: reconoce los ganchos del flujo por su cabecera, exige que `reviewMark` esté en seguimiento y avisa de
+  términos repetidos en `GLOSSARY.md` (WMF P3, P9).
+- `bitacora.py closed` y `check`, más estrictos; `rojo-sin-arreglo.sh --ran-one` (WMF P4).
+- Gancho del PR: sale pronto si la orden no es suya, usa `gh api user` y explica un PR cerrado o fusionado (WMF P5).
+- `es-codigo.sh` distingue una regex inválida de otros fallos (WMF P6).
+- Claves nuevas: `checkWrapper`, `worktreeLinks`, `relatedTests` con `paths` y `cwd`, `ciInstall`, `setup`,
+  `staleRefs` con `skip`, `linkRoots` y `scoutDir` (WMF P10-P13, inst. P3, P6).
+- `pre-push`: worktree dentro de `.git/` con limpieza de huérfanos, logs con `mktemp` y rutas enlazadas que no salen
+  del worktree (WMF P10).
+- `session-start.sh`: `setup` tras `install`, con un límite por orden (`GW_COMMAND_TIMEOUT`) que mata su grupo de
+  procesos (WMF P11).
+- Toda skill lee sus notas en `.claude/gw/<skill>.md` (inst. P4).
+- `opt-tokens/medir.py` con test y aviso de ventanas de compactación mezcladas; `opt-ai/medir.py` con tabla por turno;
+  `scout-updates`: títulos en el idioma del proyecto y banco por pares a ciegas `quality_bench.py` (WMF P7, P8, P13).
+- Plantillas con «la persona»; `aplicar.md`: `.gitignore` con `.claude/*`, scripts del flujo que no se editan en el
+  proyecto, migrar desde una copia anterior y tests de las skills (inst. P5, P8, P9).
+
+### EN
+
+Proposals from the Phase 6 pilots, World-Maker-Fantasy and the installer
+(`docs/propuestas/2026-10-23-world-maker-fantasy.md` and `…-instalador-wmf-tarkor.md`). Installer P7 (CI run
+locally) is postponed.
+
+- A `taskId` with capturing groups no longer breaks `bitacora.py closed`; `doctor.py` accepts «Siguientes pasos»
+  (inst. P1, P2).
+- `revisado.sh`: ignores untracked files, reads the whole Estado paragraph, accepts «aprobad*» and adds `--footer` for
+  the `Siguiente:` line (WMF P1).
+- `pre-commit` unsets `GIT_DIR`, `GIT_WORK_TREE` and `GIT_INDEX_FILE` in a linked worktree (WMF P2).
+- `doctor.py`: recognises the flow's hooks by their header, requires `reviewMark` to be tracked and warns about
+  repeated terms in `GLOSSARY.md` (WMF P3, P9).
+- Stricter `bitacora.py closed` and `check`; `rojo-sin-arreglo.sh --ran-one` (WMF P4).
+- PR hook: exits early for commands that are not its own, uses `gh api user` and explains a closed or merged PR
+  (WMF P5).
+- `es-codigo.sh` tells an invalid regex apart from other failures (WMF P6).
+- New keys: `checkWrapper`, `worktreeLinks`, `relatedTests` with `paths` and `cwd`, `ciInstall`, `setup`,
+  `staleRefs` with `skip`, `linkRoots` and `scoutDir` (WMF P10-P13, inst. P3, P6).
+- `pre-push`: worktree inside `.git/` with orphan cleanup, `mktemp` logs and linked paths that cannot leave the
+  worktree (WMF P10).
+- `session-start.sh`: `setup` after `install`, with a per-command limit (`GW_COMMAND_TIMEOUT`) that kills its process
+  group (WMF P11).
+- Every skill reads its notes from `.claude/gw/<skill>.md` (inst. P4).
+- `opt-tokens/medir.py` with tests and a mixed-compaction-windows warning; `opt-ai/medir.py` with a per-turn table;
+  `scout-updates`: headings in the project's language and the blind pairwise bench `quality_bench.py` (WMF P7, P8,
+  P13).
+- Templates say «the person»; `apply.md`: `.gitignore` with `.claude/*`, flow scripts are not edited in the project,
+  migrating from an earlier copy and skill tests (inst. P5, P8, P9).
+
 ## [0.2.0] - 2026-10-22
 
 ### ES
