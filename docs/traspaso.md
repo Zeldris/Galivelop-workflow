@@ -12,7 +12,7 @@
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
 | Fase en curso | **6. Piloto: Tarkor e instalador** — los dos pilotos terminados y fusionados en su `main` (WMF `e433d1d`, instalador `89bb2ee`, PR #5); recogida hecha (2026-10-23): `docs/propuestas/2026-10-23-world-maker-fantasy.md` (P1-P13) y `…-instalador-wmf-tarkor.md` (P1-P9), esperando la decisión del usuario |
 | Último punto estable | **Versión `0.2.0`**: `version.py 0.2.0`, entrada del CHANGELOG (19 filas, R1-R3, arreglos de las revisiones) y los tests leen la versión de `plugin.json`; check en verde en local; el CI no arranca (cupo de Actions) |
-| Siguiente paso | Que el usuario decida las propuestas de las dos recogidas del 2026-10-23; aplicar las aprobadas como `0.3.0` (hay claves nuevas: minor) y con eso cerrar la Fase 6 (plan: «lo que falte vuelve como versión nueva») |
+| Siguiente paso | Aplicar las propuestas aprobadas del 2026-10-23 (todas menos P7 del instalador, aplazada) por tandas con `orchestrate-dealer`: A) `bitacora.py`/`config.py`/`doctor.py`/`rojo-sin-arreglo.sh`; B) `revisado.sh`, gancho del PR, `es-codigo.sh`, `pre-commit`; C) `pre-push` y `relatedTests`; D) CI, `setup`, `staleRefs`, `linkRoots`; E) skills; F) `aplicar.md`; G) versión `0.3.0` y cierre de la Fase 6 |
 
 ### Fases
 

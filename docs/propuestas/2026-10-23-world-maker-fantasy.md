@@ -23,7 +23,7 @@ tiene su propia recogida, [`2026-10-23-instalador-wmf-tarkor.md`](2026-10-23-ins
 - **Why it is general:** es la fricción más repetida en los dos pilotos y bloquea el cierre antes de `main`.
   Comprobado aquí: la línea 28 cuenta los archivos sin seguimiento y la 51 usa `grep -m1`.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P2. `pre-commit` no limpia `GIT_DIR` en un worktree enlazado
 
@@ -34,7 +34,7 @@ tiene su propia recogida, [`2026-10-23-instalador-wmf-tarkor.md`](2026-10-23-ins
 - **Why it is general:** un merge dentro de un worktree enlazado falla en cualquier proyecto. Comprobado aquí: las
   líneas 15-17 del gancho no limpian esas variables.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P3. `doctor.py`: WARN falso por el nombre del script y `reviewMark` ignorado sin aviso
 
@@ -46,7 +46,7 @@ tiene su propia recogida, [`2026-10-23-instalador-wmf-tarkor.md`](2026-10-23-ins
 - **Why it is general:** el WARN falso empuja a borrar un gancho que deja la nube sin entorno, y una marca ignorada
   por `.gitignore` rompe el `pre-push` sin explicarlo.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P4. `bitacora.py closed` y `check`, más estrictos
 
@@ -57,7 +57,7 @@ tiene su propia recogida, [`2026-10-23-instalador-wmf-tarkor.md`](2026-10-23-ins
   - `check` falla si una fila «Tarea en curso» no tiene rama, aunque haya otras filas buenas.
 - **Why it is general:** hoy una tarea se da por cerrada con un punto sin tachar.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P5. Gancho del PR: salir pronto y explicar mejor (también el instalador)
 
@@ -71,7 +71,7 @@ tiene su propia recogida, [`2026-10-23-instalador-wmf-tarkor.md`](2026-10-23-ins
   - con el PR ya cerrado o fusionado, decirlo en vez de pedir un `gw.json` en su rama.
 - **Why it is general:** los falsos bloqueos frenan órdenes que no tienen nada que ver con el PR.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P6. `es-codigo.sh` distingue una regex de `content` inválida de otros fallos
 
@@ -80,7 +80,7 @@ tiene su propia recogida, [`2026-10-23-instalador-wmf-tarkor.md`](2026-10-23-ins
   como «content regex invalid». Hay que distinguir los casos.
 - **Why it is general:** un mensaje que no es el motivo real hace perder tiempo en cualquier proyecto.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P7. Tests y medidas de las skills (también el instalador)
 
@@ -92,7 +92,7 @@ tiene su propia recogida, [`2026-10-23-instalador-wmf-tarkor.md`](2026-10-23-ins
   - `aplicar.md` dice que los tests de las skills se descubren con `-s <skill>/scripts`.
 - **Why it is general:** un proyecto que exige un test a cada herramienta se para con `medir.py`.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P8. `scout-updates`: títulos en el idioma del proyecto
 
@@ -100,14 +100,14 @@ tiene su propia recogida, [`2026-10-23-instalador-wmf-tarkor.md`](2026-10-23-ins
 - **What changes:** `compare.py` acepta los títulos en el `language` del proyecto (`sello`, `Restricciones`…).
 - **Why it is general:** un proyecto en español no puede usar la memoria de la skill sin traducir sus títulos.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P9. `doctor.py` avisa de términos repetidos en `GLOSSARY.md`
 
 - **Source:** registro (fricción 15) @ `e433d1d2`
 - **What changes:** un WARN si el mismo `**Término**:` aparece dos veces.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## Claves nuevas del config (minor)
 
@@ -124,7 +124,7 @@ tiene su propia recogida, [`2026-10-23-instalador-wmf-tarkor.md`](2026-10-23-ins
 - **Why it is general:** sin esto, un proyecto con la app en una subcarpeta no puede usar el `pre-push` del flujo:
   WMF lo reescribió y el instalador se apaña con su propio `en-app.sh`.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P11. CI y entorno: `ciInstall`, paso `setup` y `comprobar.yml` que no duplique
 
@@ -137,7 +137,7 @@ tiene su propia recogida, [`2026-10-23-instalador-wmf-tarkor.md`](2026-10-23-ins
 - **Why it is general:** la plantilla de CI solo vale para una plataforma sin Rust, y los dos pilotos se quedaron
   con su CI propia.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P12. `enlaces-md.py`: carpetas que enlazan desde la raíz (`linkRoots`)
 
@@ -145,7 +145,7 @@ tiene su propia recogida, [`2026-10-23-instalador-wmf-tarkor.md`](2026-10-23-ins
 - **What changes:** una clave `linkRoots`, o como mínimo decir en la skill `pr` que la descripción guardada enlaza
   desde su carpeta.
 - **Version bump:** minor (o patch si solo se documenta)
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P13. `scout-updates`: carpeta de la memoria configurable y banco por pares a ciegas
 
@@ -154,7 +154,7 @@ tiene su propia recogida, [`2026-10-23-instalador-wmf-tarkor.md`](2026-10-23-ins
   - `scoutDir` en `gw.json`;
   - traer como opción del paso 5 el banco de WMF, `tools/qa/banco-calidad.py`, con su test. Antes hay que revisarlo.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## No se propone
 

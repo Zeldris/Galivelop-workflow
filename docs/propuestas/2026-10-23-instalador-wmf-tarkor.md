@@ -23,7 +23,7 @@ Lo que coincide con WMF está en [`2026-10-23-world-maker-fantasy.md`](2026-10-2
   decir por qué. Comprobado aquí: el `findall` de la línea 95 devuelve 4 grupos por coincidencia y el desempaquetado
   `a, b` da `ValueError`.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P2. `doctor.py` acepta «Siguientes pasos»
 
@@ -31,7 +31,7 @@ Lo que coincide con WMF está en [`2026-10-23-world-maker-fantasy.md`](2026-10-2
 - **What changes:** `NEXT_STEP` pasa a `siguientes? pasos?|next steps?` (`scripts/doctor.py:36`).
 - **Why it is general:** una bitácora con el título en plural da FAIL sin motivo.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P3. `relatedTests` con filtro de rutas y carpeta por orden
 
@@ -42,7 +42,7 @@ Lo que coincide con WMF está en [`2026-10-23-world-maker-fantasy.md`](2026-10-2
 - **Why it is general:** hoy cada proyecto con la app en una subcarpeta escribe un script que filtra rutas y les quita
   el prefijo; aquí es `tools/qa/tests-app.sh`.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P4. Que toda skill lea sus notas del proyecto en `.claude/gw/<skill>.md`
 
@@ -52,7 +52,7 @@ Lo que coincide con WMF está en [`2026-10-23-world-maker-fantasy.md`](2026-10-2
 - **Why it is general:** las notas del resto de skills (`pr`, `retro`, `grilling`…) acaban en un runbook aparte que
   la skill no encuentra.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P5. Cómo llamar a la persona en las plantillas
 
@@ -61,7 +61,7 @@ Lo que coincide con WMF está en [`2026-10-23-world-maker-fantasy.md`](2026-10-2
   copiar `AGENTS.md`, `CLAUDE.md` y `GLOSSARY.md`, o bien una redacción neutra en las plantillas.
 - **Why it is general:** hoy se corrige a mano en cada proyecto.
 - **Version bump:** minor (o patch con la redacción neutra, que no añade clave)
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P6. `staleRefs` puede saltarse carpetas
 
@@ -69,7 +69,7 @@ Lo que coincide con WMF está en [`2026-10-23-world-maker-fantasy.md`](2026-10-2
 - **What changes:** una lista de globs que `enlaces-md.py` no revisa. Hoy solo se salta la bitácora, y los `retro-*.md`,
   que citan rutas antiguas, chocan.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P7. Camino «sin cupo de Actions, CI pasado en local»
 
@@ -80,7 +80,7 @@ Lo que coincide con WMF está en [`2026-10-23-world-maker-fantasy.md`](2026-10-2
 - **Why it is general:** sin cupo de Actions, el flujo bloquea la subida a `main` en todos los proyectos. Es lo más
   delicado de esta recogida, porque relaja una puerta; antes hay que decidir qué cuenta como prueba.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aplazada: se habla aparte con el usuario (2026-10-23)
 
 ## P8. Los tests de los scripts del flujo no llegan al proyecto
 
@@ -90,7 +90,7 @@ Lo que coincide con WMF está en [`2026-10-23-world-maker-fantasy.md`](2026-10-2
   - copiar los tests junto con los scripts (minor);
   - documentar que esos scripts se prueban en el repo del flujo y no se editan en el proyecto (patch).
 - **Version bump:** patch o minor, según la salida
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## P9. `aplicar.md`, más claro para quien migra desde una copia anterior
 
@@ -102,7 +102,7 @@ Lo que coincide con WMF está en [`2026-10-23-world-maker-fantasy.md`](2026-10-2
   - subir al paso 0 lo de `add_repo` sin registrar el repo como raíz;
   - cómo correr `install` a mano, ya que solo corre cuando cambian los lockfiles.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-10-23)
 
 ## Se queda en el proyecto
 
