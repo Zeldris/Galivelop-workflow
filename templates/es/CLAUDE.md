@@ -5,7 +5,7 @@
 
 - Responde en el idioma del proyecto (`{{language}}`).
 - Al empezar cada tarea, di en una línea qué skill y qué modelo pide el caso, con la skill `selector`. El modelo de
-  la sesión lo elige el usuario; los subagentes, el más barato que haga bien el trabajo.
+  la sesión la elige la persona; los subagentes, el más barato que haga bien el trabajo.
 - Antes de ir a `{{protectedBranch}}`: `/code-review --max-findings all` del diff contra
   `origin/{{protectedBranch}}`, con el criterio de `REVIEW.md` (fase 1 de las tres de `AGENTS.md`).
 - Lo mecánico, a subagentes con modelos baratos (`orchestrate-dealer`); la sesión principal planea, decide y revisa.
@@ -14,4 +14,4 @@
   la bitácora y los últimos commits; un detalle perdido se busca con
   `python3 .claude/gw/scripts/recuperar.py --buscar "<texto>"`. Lo que tenga que sobrevivir va a `{{log}}`.
 - **El modo automático** puede pedir permiso para editar `.claude/settings.json`, `.claude/gw/scripts/` y `.githooks/`:
-  pregunta al usuario antes de tocarlos, o deja que haga él el cambio.
+  pide permiso a la persona antes de tocarlos, o que la propia persona haga el cambio.

@@ -27,7 +27,7 @@ _(lo que va a `{{protectedBranch}}` a continuación, y a qué espera)_
 
 ## Pendiente
 
-- _(decisiones del usuario que bloquean algo, problemas conocidos, ideas sin planificar)_
+- _(decisiones de la persona que bloquean algo, problemas conocidos, ideas sin planificar)_
 
 ## Comprobar el estado
 

@@ -12,15 +12,15 @@ mantiene al día (skill `domain-modeling`). El flujo nunca sobrescribe este arch
 - **Punto estable**: un estado con el check en verde, con commit y subido.
 - **Check**: las órdenes del proyecto que tienen que pasar en cada commit que se sube: {{check}}.
 - **Commit `WIP:`**: un commit subido con algo a medias o en rojo; la bitácora dice qué falla y por qué.
-- **Rama protegida**: `{{protectedBranch}}`, lo publicado; solo recibe trabajo revisado, con confirmación del
-  usuario.
+- **Rama protegida**: `{{protectedBranch}}`, lo publicado; solo recibe trabajo revisado, con confirmación
+  de la persona.
 - **Marca de revisión**: `{{reviewMark}}`, el archivo versionado con el sha del último commit revisado; los ganchos
   aceptan código hasta él.
 - **Contenido frente a código**: el contenido (lo que casa con `content` de `.claude/gw.json`) no necesita revisión
   de código; todo lo demás es código.
 - **Encargo a un subagente**: lo que recibe un subagente: objetivo, rutas, restricciones, el check que debe pasar y
   qué tiene que devolver.
-- **Retro**: la retrospectiva de la sesión antes de ir a la rama protegida; sus propuestas se presentan al usuario y
+- **Retro**: la retrospectiva de la sesión antes de ir a la rama protegida; sus propuestas se presentan a la persona y
   lo que confirme se aplica en la rama.
 - **Propuesta (`.gw-nuevo`)**: un archivo del flujo que la actualización no pudo aplicar sin perder cambios locales;
   se fusiona a mano y luego se borra.

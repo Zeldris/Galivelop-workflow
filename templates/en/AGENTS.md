@@ -11,13 +11,13 @@ skills in `.claude/skills/` and its settings in `.claude/gw.json` (read only by 
 1. Read the log, `{{log}}`: branch, task in progress, what is pending and the next step.
 2. `git fetch origin <branch>` and check that the last commit matches what the log says.
 3. Check the state is green before touching anything: {{check}}.
-4. Carry on with the log's **next step**, unless the user asks for something else.
+4. Carry on with the log's **next step**, unless the person asks for something else.
 5. At the start of every task, bring in the protected branch: `git fetch origin {{protectedBranch}}` and, if it brings
    commits, `git merge origin/{{protectedBranch}}` (merge, never rebase: branches are pushed). If the conflict touches
-   the same logic on both sides, stop and ask the user.
+   the same logic on both sides, stop and ask the person.
 6. **The session is opened with the repo as its working folder.** Opened anywhere else (a folder holding several
    repos, the home folder), it does not load `.claude/settings.json`: no compaction limit, no start hook, no guard on
-   the protected branch. If that happens, tell the user so they reopen it from the repo; meanwhile run
+   the protected branch. If that happens, tell the person so they reopen it from the repo; meanwhile run
    `git config core.hooksPath .githooks` before the first commit, and before pushing to `{{protectedBranch}}` or
    creating or merging a pull request, check by hand what that guard checks: the review mark of the same commit and
    a green CI.
@@ -37,11 +37,11 @@ Each session may run in a throwaway container: **what is not pushed does not exi
   8 and 16 s.
 - **After an interrupted or rejected call, run `git status` and `git diff` before repeating it**: the change may
   already be saved, or even pushed, and repeating it duplicates it.
-- If the user says stop, stop: push what there is, leave the log up to date and do nothing else.
+- If the person says stop, stop: push what there is, leave the log up to date and do nothing else.
 - **When a phase closes** (or a large task), with the log up to date, recommend `/clear` before the next one: a long context is
   almost all the spend, and the log is enough to resume.
 - **When each block or phase closes, look at the CI of the last push.** A CI that does not start (no quota, no
-  runners) counts as red: tell the user and treat nothing as checked by CI.
+  runners) counts as red: tell the person and treat nothing as checked by CI.
 
 ## Checking
 
@@ -50,7 +50,7 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - **What can be checked is checked by a script**, not by an agent: skills and guides only decide what needs
   judgement. If a rule keeps being broken, it becomes a check.
 - **What depends on a particular machine is not declared tested by tests** (another operating system, a device, the
-  user's own computer): it is written down as pending in the plan, with who checks it and where.
+  person's own computer): it is written down as pending in the plan, with who checks it and where.
 - A new test must fail without its fix: `bash .claude/gw/scripts/rojo-sin-arreglo.sh "<test command>" <fix-file>...`.
 - A test that expects a failure checks **the reason** (the message or the cause), not only the exit code: otherwise
   it also passes when it fails for another reason.
@@ -70,12 +70,12 @@ Each session may run in a throwaway container: **what is not pushed does not exi
   use by another session, create `claude/<topic>` from it and write only in your own part of the log. Your work goes
   back by `git merge` before going to `{{protectedBranch}}`.
 - Merge, never rebase: branches are pushed.
-- **To `{{protectedBranch}}` only when the user confirms**, and it is written into the log. Depending on
+- **To `{{protectedBranch}}` only when the person confirms**, and it is written into the log. Depending on
   `pushToProtected` in `.claude/gw.json`, the work goes straight to it (`direct`: `.githooks/pre-push` asks for the
   review mark) or by pull request (`pr`: a Claude Code hook asks for the mark before creating or merging it; a direct
   push still needs it).
-- **Merged only with CI green**, also when the user says "merge directly": that skips waiting for more reviews, never
-  the CI nor the retro presented to the user.
+- **Merged only with CI green**, also when the person says "merge directly": that skips waiting for more reviews, never
+  the CI nor the retro presented to the person.
 - A subagent's branch comes back with `bash .claude/gw/scripts/fusionar.sh <branch> "<message>"`, which runs the check
   and cleans up its worktree.
 
@@ -88,7 +88,7 @@ Never on work that is already merged.
    committed and pushed: what is serious or medium, and what the fix itself breaks; minor findings are logged as
    pending and not reviewed again in that PR. Only code needs review: what matches `content` in `.claude/gw.json` is content.
 2. **Environment:** the `opt-tokens` skill, then `retro` (plus `opt-ai` if there were measurements with a local AI
-   model). Their proposals are **presented to the user**; what they confirm is applied on the branch. A retro written
+   model). Their proposals are **presented to the person**; what they confirm is applied on the branch. A retro written
    without presenting it does not count.
 3. **Close:** if phase 2 brought code, review only those commits and their fixes; then
    `bash .claude/gw/scripts/revisado.sh` (writes the review mark, `{{reviewMark}}`, and commits it) and `git push`;

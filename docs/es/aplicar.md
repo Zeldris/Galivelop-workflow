@@ -26,6 +26,11 @@ sesiones en la nube, que no cargan plugins declarados en el repo.
 5. git tiene identidad para los commits (`git config user.name` y `user.email`); ponla si la máquina es nueva.
 6. `python3` 3.8 o superior, `git` y `bash` disponibles (en Windows, Git Bash o WSL: ver
    [problemas](problemas.md)).
+7. **El `.gitignore` no ignora lo que se va a copiar.** Un `.gitignore` con `.claude/*` ignora también `.claude/gw*`
+   (`.claude/gw/` y `.claude/gw.json`), y un commit dejaría fuera los scripts y el config. Antes de copiar, añade
+   debajo de esa línea las excepciones (`!.claude/gw/`, `!.claude/gw.json`, `!.claude/settings.json`,
+   `!.claude/skills/`) y comprueba con `git check-ignore -v <ruta>` que ninguna sale ignorada. `doctor.py` lo da por
+   `FAIL` (`ignored`) con las líneas exactas si se olvida.
 
 Criterio de fin: puedes ejecutar `python3 <flujo>/scripts/aplicar.py --help` y `git -C <proyecto> status` sin error.
 
@@ -97,6 +102,11 @@ Qué hace (el detalle completo, en `--help`): copia `scripts/` a `.claude/gw/scr
 `.claude/settings.json` los ganchos de Claude Code y `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` sin quitar nada; crea
 `AGENTS.md`, `CLAUDE.md`, `REVIEW.md`, `GLOSSARY.md` y la bitácora si faltan; y pone `core.hooksPath=.githooks` si
 nadie más lo usa. **Nunca hace commit.** Es idempotente: ejecutarlo dos veces no cambia nada.
+
+**Los scripts de `.claude/gw/scripts/` no se editan en el proyecto.** Se prueban en el repo del flujo (allí están
+sus tests) y `--update` los sobrescribe. Si uno falla o falta algo, el cambio va al flujo como propuesta, con la
+skill `gw-harvest` (`scripts/recoger.py`). La regla de `REVIEW.md` «cada cambio en un script lleva su caso en los
+tests» vale para los scripts **propios** del proyecto.
 
 **Modo automático de Claude Code.** El clasificador del modo automático puede pedir permiso al editar
 `.claude/settings.json`, `.claude/gw/scripts/` y `.githooks/`, y el fallo aparece a mitad de la aplicación. `aplicar.py`
@@ -228,6 +238,21 @@ propone `comprobar.yml` cuando otro workflow ya corre el `check`.
 **Rama protegida con varias personas.** El `pre-push` pide la marca a todo push directo con código; con
 `pushToProtected: pr`, además, el gancho de `PreToolUse` la pide al crear y fusionar pull requests. Elige según cómo
 entra el código ya hoy.
+
+**Migrar desde una copia anterior del flujo.** Además de lo anterior:
+
+- **Archivos de una skill que el flujo sustituye** (por ejemplo, el banco y los `evals` de un `scout-updates`
+  propio): `aplicar.py` no los borra, los lista como «no longer in the workflow (kept)». Muévelos a una carpeta del
+  proyecto (p. ej. `tools/scout/`) o bórralos con `git rm` si nada los usa; no los dejes dentro de `.claude/skills/`.
+- **Ganchos viejos en `.claude/settings.json`.** `aplicar.py` fusiona los nuevos sin quitar nada, y avisa
+  («also runs '…'») de una entrada de `SessionStart` o `PreToolUse` que ejecuta un script del flujo desde fuera de
+  `.claude/gw/scripts/`; `doctor.py` también. Bórrala a mano, o correrá dos veces.
+- **`recuperar.py` por línea de órdenes**, para recuperar lo que una compactación o un `/clear` se llevó:
+  `python3 .claude/gw/scripts/recuperar.py --estado` (la bitácora, `git status` y los últimos commits) y
+  `--buscar TEXTO` (fragmentos de la sesión que casan; `--max N`, `--ancho N`, `--sesion RUTA`).
+- **`install` a mano.** `session-start.sh` solo lo corre en la nube y cuando cambian las órdenes de `install`/`setup`
+  o los lockfiles. Para forzarlo, borra el sello (`rm "$(git rev-parse --git-path gw-install.sha)"`) y abre la sesión
+  de nuevo, o ejecuta tú las órdenes de `install` del config.
 
 ## Lo que el agente no hace
 

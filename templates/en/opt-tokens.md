@@ -1,7 +1,7 @@
 <!-- galivelop-workflow v0.2.0 -->
 # opt-tokens — project notes
 
-Read by the `opt-tokens` skill before proposing anything, and updated when the user approves a change. Created by
+Read by the `opt-tokens` skill before proposing anything, and updated when the person approves a change. Created by
 the workflow once; from then on it belongs to the project.
 
 ## Tools that already save

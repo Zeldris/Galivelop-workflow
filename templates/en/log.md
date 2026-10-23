@@ -27,7 +27,7 @@ _(what goes to `{{protectedBranch}}` next, and what it is waiting for)_
 
 ## Pending
 
-- _(decisions of the user that block something, known problems, ideas not yet planned)_
+- _(decisions of the person that block something, known problems, ideas not yet planned)_
 
 ## Check the state
 

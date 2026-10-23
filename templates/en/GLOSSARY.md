@@ -11,7 +11,7 @@ them up to date (skill `domain-modeling`). The workflow never overwrites this fi
 - **Stable point**: a state with the check green, committed and pushed.
 - **Check**: the project's commands that must pass on every pushed commit: {{check}}.
 - **`WIP:` commit**: a commit pushed with something half-done or red; the log says what fails and why.
-- **Protected branch**: `{{protectedBranch}}`, what is published; it only receives reviewed work, with the user's
+- **Protected branch**: `{{protectedBranch}}`, what is published; it only receives reviewed work, with the person's
   confirmation.
 - **Review mark**: `{{reviewMark}}`, the committed file holding the sha of the last reviewed commit; the hooks
   accept code up to it.
@@ -19,7 +19,7 @@ them up to date (skill `domain-modeling`). The workflow never overwrites this fi
   is code.
 - **Subagent brief**: what a subagent receives: goal, paths, constraints, the check to run and what to report back.
 - **Retro**: the session retrospective before going to the protected branch; its proposals are presented to the
-  user, and what they confirm is applied on the branch.
+  person, and what they confirm is applied on the branch.
 - **Proposal (`.gw-nuevo`)**: a workflow file the update could not apply without losing local changes; merged by
   hand, then deleted.
 

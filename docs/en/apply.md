@@ -26,6 +26,11 @@ which do not load plugins declared in the repo.
 5. git has an identity for commits (`git config user.name` and `user.email`); set it if it is a fresh machine.
 6. `python3` 3.8 or later, `git` and `bash` are available (on Windows, Git Bash or WSL: see
    [troubleshooting](troubleshooting.md)).
+7. **The `.gitignore` does not ignore what is about to be copied.** A `.gitignore` with `.claude/*` also ignores
+   `.claude/gw*` (`.claude/gw/` and `.claude/gw.json`), and a commit would leave the scripts and the config out.
+   Before copying, add the exceptions below that line (`!.claude/gw/`, `!.claude/gw.json`, `!.claude/settings.json`,
+   `!.claude/skills/`) and check with `git check-ignore -v <path>` that none is still ignored. `doctor.py` reports it
+   as a `FAIL` (`ignored`) with the exact lines if forgotten.
 
 Done when: `python3 <workflow>/scripts/aplicar.py --help` and `git -C <project> status` run without error.
 
@@ -98,6 +103,11 @@ the git hooks to `.githooks/`, the CI to `.github/workflows/comprobar.yml`; **me
 `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` into `.claude/settings.json`, removing nothing; creates `AGENTS.md`,
 `CLAUDE.md`, `REVIEW.md`, `GLOSSARY.md` and the log when missing; and sets `core.hooksPath=.githooks` when nothing
 else owns it. **It never commits.** It is idempotent: running it twice changes nothing.
+
+**The scripts under `.claude/gw/scripts/` are not edited in the project.** They are tested in the workflow's repo
+(their tests live there) and `--update` overwrites them. If one fails or lacks something, the change goes to the
+workflow as a proposal, with the `gw-harvest` skill (`scripts/recoger.py`). The `REVIEW.md` rule "every script change
+has its test" applies to the project's **own** scripts.
 
 **Claude Code auto mode.** The auto-mode classifier may ask for permission when editing `.claude/settings.json`,
 `.claude/gw/scripts/` and `.githooks/`, and the failure shows up halfway through the application. `aplicar.py` says so
@@ -227,6 +237,21 @@ the config; `doctor.py` does not suggest `comprobar.yml` when another workflow a
 **A protected branch with several people.** `pre-push` asks for the mark on every direct push with code; with
 `pushToProtected: pr`, the `PreToolUse` hook also asks for it when pull requests are created and merged. Choose by
 how code already reaches it today.
+
+**Migrating from an earlier copy of the workflow.** On top of the above:
+
+- **Files of a skill the workflow replaces** (for instance the bench and `evals` of a project-made `scout-updates`):
+  `aplicar.py` does not delete them, it lists them as "no longer in the workflow (kept)". Move them to a folder of the
+  project (e.g. `tools/scout/`) or `git rm` them if nothing uses them; do not leave them inside `.claude/skills/`.
+- **Old hooks in `.claude/settings.json`.** `aplicar.py` merges the new ones without removing anything, and warns
+  ("also runs '…'") about a `SessionStart` or `PreToolUse` entry that runs a workflow script from outside
+  `.claude/gw/scripts/`; so does `doctor.py`. Delete it by hand, or it runs twice.
+- **`recuperar.py` on the command line**, to get back what a compaction or a `/clear` dropped:
+  `python3 .claude/gw/scripts/recuperar.py --estado` (the log, `git status` and the last commits) and
+  `--buscar TEXT` (matching session fragments; `--max N`, `--ancho N`, `--sesion PATH`).
+- **`install` by hand.** `session-start.sh` runs it only in the cloud and only when the `install`/`setup` commands or
+  the lockfiles change. To force it, delete the stamp (`rm "$(git rev-parse --git-path gw-install.sha)"`) and open the
+  session again, or run the config's `install` commands yourself.
 
 ## What the agent leaves alone
 

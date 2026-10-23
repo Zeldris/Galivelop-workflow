@@ -20,7 +20,8 @@ judgement. The project fills it in; the workflow never overwrites it once it exi
   command that fixes it.
 - Shell scripts run on bash 3.2 (macOS): no `mapfile`, no associative arrays.
 - Every change to a hook or script comes with its test case; a case that expects a failure checks the reason, not
-  only the exit code.
+  only the exit code. The scripts under `.claude/gw/scripts/` are tested in the workflow's repo and are not edited here
+  (a change goes to the workflow as a proposal, with `gw-harvest`); this rule applies to the project's own scripts.
 
 ## Brought from another repo: adapt to this repo's contracts
 
