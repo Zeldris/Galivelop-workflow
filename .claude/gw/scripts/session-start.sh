@@ -4,8 +4,9 @@
 #   - git hooks: sets core.hooksPath to .githooks when it is unset and .githooks exists; when another hook manager
 #     owns the hooks (core.hooksPath elsewhere, or hooks installed in .git/hooks), it says how to chain the
 #     workflow's hooks instead of overwriting anything.
-#   - cloud (CLAUDE_CODE_REMOTE=true): runs the config's `install` commands only when the lockfiles (or the commands)
-#     changed since the last successful run; the hash lives in the git dir (gw-install.sha).
+#   - cloud (CLAUDE_CODE_REMOTE=true): runs the config's `install` commands and then its `setup` commands, in order,
+#     only when the lockfiles (or the commands) changed since the last successful run; the hash lives in the git dir
+#     (gw-install.sha). A failing or hanging command (GW_COMMAND_TIMEOUT seconds, default 900) is reported.
 #   - warns when .claude/gw.json is missing or invalid, when its `version` is older than this copy of the workflow
 #     (the `# galivelop-workflow vX.Y.Z` header of this script), and when the session was started outside the repo
 #     root (its .claude/settings.json may not have loaded; VeriNews P3).
@@ -111,15 +112,20 @@ else
   fi
 fi
 
-# --- Cloud dependencies -----------------------------------------------------------------------------------------
+# --- Cloud dependencies and setup -------------------------------------------------------------------------------
+# `install` commands, then `setup` commands, one after another in this one hook (separate SessionStart hooks run in
+# parallel, so ordering has to live here). A command that fails or runs past GW_COMMAND_TIMEOUT seconds (default 900)
+# is reported and stops the sequence; the stamp is not written, so the next session tries again.
 if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && [ -n "$config_ok" ]; then
   installs="$(python3 "$config" --root "$root" get install 2>/dev/null)"
-  if [ -n "$installs" ]; then
+  setups="$(python3 "$config" --root "$root" get setup 2>/dev/null)"
+  if [ -n "$installs" ] || [ -n "$setups" ]; then
     locks="$(git ls-files -- 'package-lock.json' '*/package-lock.json' 'npm-shrinkwrap.json' 'yarn.lock' '*/yarn.lock' \
       'pnpm-lock.yaml' '*/pnpm-lock.yaml' 'bun.lock' 'bun.lockb' '*/bun.lock' 'Cargo.lock' '*/Cargo.lock' \
       'poetry.lock' '*/poetry.lock' 'uv.lock' '*/uv.lock' 'Pipfile.lock' 'requirements*.txt' '*/requirements*.txt' \
       'Gemfile.lock' 'go.sum' '*/go.sum' 'composer.lock' 'pom.xml' '*/pom.xml' 2>/dev/null)"
     sum="$( { printf '%s\n' "$installs"
+              if [ -n "$setups" ]; then printf 'setup:\n%s\n' "$setups"; fi
               printf '%s\n' "$locks" | while IFS= read -r f; do
                 [ -n "$f" ] && [ -f "$f" ] && printf '%s %s\n' "$(git hash-object -- "$f")" "$f"
               done; } | git hash-object --stdin)"
@@ -129,17 +135,27 @@ if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && [ -n "$config_ok" ]; then
       :
     else
       failed=""
-      while IFS= read -r cmd; do
-        [ -n "$cmd" ] || continue
-        echo "gw session-start: installing dependencies: $cmd"
-        log="${TMPDIR:-/tmp}/gw-install.log"
-        if ! bash -c "$cmd" > "$log" 2>&1 < /dev/null; then
+      limit="${GW_COMMAND_TIMEOUT:-900}"
+      case "$limit" in ''|*[!0-9]*) limit=900 ;; esac
+      while IFS= read -r entry; do
+        [ -n "$entry" ] || continue
+        kind="${entry%%:*}"; cmd="${entry#*:}"
+        echo "gw session-start: running $kind command: $cmd"
+        log="${TMPDIR:-/tmp}/gw-$kind.log"
+        if command -v timeout >/dev/null 2>&1; then
+          timeout "$limit" bash -c "$cmd" > "$log" 2>&1 < /dev/null
+        else
+          bash -c "$cmd" > "$log" 2>&1 < /dev/null
+        fi
+        status=$?
+        if [ "$status" -ne 0 ]; then
           tail -n 10 "$log"
-          warn "install command failed: '$cmd' (log: $log); fix it, then run it by hand: $cmd"
+          why="failed"; [ "$status" -eq 124 ] && why="timed out after ${limit}s"
+          warn "$kind command $why: '$cmd' (log: $log); fix it, then run it by hand: $cmd"
           failed=1
           break
         fi
-      done <<<"$installs"
+      done <<<"$(printf '%s\n' "$installs" | sed 's/^/install:/;/^install:$/d'; printf '%s\n' "$setups" | sed 's/^/setup:/;/^setup:$/d')"
       if [ -z "$failed" ] && [ -n "$sum" ]; then printf '%s\n' "$sum" > "$stamp" 2>/dev/null || true; fi
     fi
   fi

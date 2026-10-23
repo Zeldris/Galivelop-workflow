@@ -14,6 +14,8 @@ metadata:
 
 > Original skill by Matt Pocock ([mattpocock/skills](https://github.com/mattpocock/skills), MIT).
 
+If the PR description is saved as a file in the repo, its links are relative to its own folder, unless that folder is listed in `linkRoots` of `.claude/gw.json` (then they are relative to the repo root).
+
 Use this template for writing the PR body:
 
 ```markdown

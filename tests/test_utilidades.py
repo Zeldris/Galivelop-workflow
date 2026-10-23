@@ -734,6 +734,127 @@ class EnlacesMd(Base):
         self.assertIn("not a valid regex", out)
 
 
+class EnlacesMdSkipAndRoots(Base):
+    """`staleRefs.skip` (globs the stale-reference check does not read) and `linkRoots` (folders that link from the
+    repo root)."""
+
+    def project(self, config):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        self.p = Utilidades(self.tmp, config)
+
+    def run_it(self, *args):
+        self.p.git("add", "-A")
+        return self.p.script("enlaces-md.py", *args)
+
+    def stale(self, **skip):
+        return {"staleRefs": dict({"patterns": ["fase 3\\.5"]}, **skip)}
+
+    def test_old_list_form_still_works_and_skips_nothing_extra(self):
+        self.project({"staleRefs": ["fase 3\\.5"]})
+        self.p.write("docs/registros/retro-1.md", "fase 3.5\n")
+        code, out = self.run_it()
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/registros/retro-1.md:1: stale reference", out)
+
+    def test_skip_globs_hide_matching_files_only(self):
+        self.project(self.stale(skip=["docs/registros/retro-*.md", "docs/historia/", "docs/**/old.md"]))
+        for rel in ("docs/registros/retro-1.md", "docs/historia/a.md", "docs/historia/sub/b.md", "docs/x/y/old.md",
+                    "docs/old.md"):
+            self.p.write(rel, "fase 3.5\n")
+        self.p.write("docs/registros/other.md", "fase 3.5\n")           # not matched by the glob
+        self.p.write("docs/registros/sub/retro-2.md", "fase 3.5\n")     # `*` does not cross folders
+        code, out = self.run_it()
+        self.assertEqual(code, 1, out)
+        hits = sorted(l.split(":")[0] for l in out.splitlines() if "stale reference" in l)
+        self.assertEqual(hits, ["docs/registros/other.md", "docs/registros/sub/retro-2.md"])
+
+    def test_empty_skip_and_a_glob_matching_nothing_hide_nothing(self):
+        for skip in ([], ["nothing/here/*.md"]):
+            with self.subTest(skip=skip):
+                self.project(self.stale(skip=skip))
+                self.p.write("docs/a.md", "fase 3.5\n")
+                code, out = self.run_it()
+                self.assertEqual(code, 1, out)
+                self.assertIn("docs/a.md:1: stale reference", out)
+
+    def test_missing_patterns_or_an_empty_object_check_nothing(self):
+        for config in ({"staleRefs": {"skip": ["docs/"]}}, {"staleRefs": {}}):
+            with self.subTest(config=config):
+                self.project(config)
+                self.p.write("docs/a.md", "fase 3.5\n")
+                code, out = self.run_it()
+                self.assertEqual(code, 0, out)
+
+    def test_skip_does_not_hide_broken_links(self):
+        self.project(self.stale(skip=["docs/"]))
+        self.p.write("docs/a.md", "[x](gone.md)\n")
+        code, out = self.run_it()
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/a.md:1: no such file gone.md", out)
+
+    def test_bad_skip_glob_fails_closed_with_the_fix(self):
+        for bad in ("/abs/path", "../up", ""):
+            with self.subTest(glob=bad):
+                self.project(self.stale(skip=[bad]))
+                code, out = self.run_it()
+                self.assertEqual(code, 2, out)
+                self.assertIn("staleRefs.skip[0]", out)
+                self.assertIn("config.py", out)
+
+    def test_staleRefs_object_with_an_unknown_key_fails_closed(self):
+        self.project({"staleRefs": {"patterns": [], "skips": ["docs/"]}})
+        code, out = self.run_it()
+        self.assertEqual(code, 2, out)
+        self.assertIn("matches none of the allowed forms", out)
+
+    def test_link_roots_resolve_from_the_repo_root(self):
+        self.project({"linkRoots": ["docs/prs"]})
+        self.p.write("docs/notes.md", "# Notes\n")
+        self.p.write("docs/prs/pr-1.md", "[ok](docs/notes.md#notes) [gone](docs/nope.md)\n")
+        self.p.write("docs/prs/sub/pr-2.md", "[ok](docs/notes.md)\n")
+        self.p.write("docs/other.md", "[own](notes.md) [rootish](docs/notes.md)\n")   # outside linkRoots: own folder
+        code, out = self.run_it()
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/prs/pr-1.md:1: no such file docs/nope.md", out)
+        self.assertNotIn("docs/prs/pr-1.md:1: no such file docs/notes.md", out)
+        self.assertNotIn("anchor", out)
+        self.assertIn("docs/other.md:1: no such file docs/notes.md", out)
+        self.assertNotIn("docs/prs/sub/pr-2.md", out)
+
+    def test_without_link_roots_the_own_folder_rule_is_unchanged(self):
+        for config in (None, {"linkRoots": []}):
+            with self.subTest(config=config):
+                self.project(config)
+                self.p.write("docs/notes.md", "# Notes\n")
+                self.p.write("docs/prs/pr-1.md", "[from root](docs/notes.md)\n")
+                code, out = self.run_it()
+                self.assertEqual(code, 1, out)
+                self.assertIn("docs/prs/pr-1.md:1: no such file docs/notes.md", out)
+
+    def test_link_roots_with_slashes_dot_and_prefix_lookalikes(self):
+        self.project({"linkRoots": ["./docs/prs/"]})
+        self.p.write("docs/notes.md", "x\n")
+        self.p.write("docs/prs/a.md", "[ok](docs/notes.md)\n")
+        self.p.write("docs/prs-old/b.md", "[ok](docs/notes.md)\n")         # `docs/prs-old` is not under docs/prs
+        code, out = self.run_it()
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/prs-old/b.md:1: no such file", out)
+        self.assertNotIn("docs/prs/a.md", out)
+        self.project({"linkRoots": ["."]})
+        self.p.write("docs/notes.md", "x\n")
+        self.p.write("docs/prs/a.md", "[ok](docs/notes.md)\n")
+        self.assertEqual(self.run_it()[0], 0)
+
+    def test_link_roots_must_stay_inside_the_repo(self):
+        for bad in ("/abs", "../up"):
+            with self.subTest(root=bad):
+                self.project({"linkRoots": [bad]})
+                code, out = self.run_it()
+                self.assertEqual(code, 2, out)
+                self.assertIn("linkRoots[0]", out)
+
+
 class RepoItself(unittest.TestCase):
     def test_scripts_are_executable_and_versioned(self):
         for name in SCRIPTS:

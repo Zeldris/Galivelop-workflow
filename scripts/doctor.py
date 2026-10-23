@@ -7,7 +7,7 @@
   python3 doctor.py --root R   # check the project at R (default: config.find_root)
 
 Exit 1 if any check FAILs (WARNs do not fail). Checks: the config; core.hooksPath and other hook managers; the git
-hooks (present, executable, version); the log and its next step; the `check` and `install` commands exist; a CI
+hooks (present, executable, version); the log and its next step; the `check`, `install` and `setup` commands exist; a CI
 workflow; .claude/settings.json (WMF P4: SessionStart matchers, `compact` only runs recuperar.py --estado, hook
 commands point to existing files, the PR guard on PreToolUse); AGENTS.md/CLAUDE.md authorise dealing work to
 subagents (VeriNews P1); copied skills at the config's version; a session opened outside the repo (VeriNews P3);
@@ -220,7 +220,7 @@ def check_commands(rep, root, cfg):
         else:
             rep.fail("checkWrapper", f"'{wrapper}': '{word}' is not a command on PATH nor a file in the repo",
                      f"fix checkWrapper in .claude/gw.json, then: python3 {HERE / 'doctor.py'}")
-    for key, bad in (("check", rep.fail), ("install", rep.warn)):
+    for key, bad in (("check", rep.fail), ("install", rep.warn), ("setup", rep.warn)):
         for command in cfg.get(key) or []:
             word = first_word(command)
             if resolves(word, root):
@@ -230,15 +230,31 @@ def check_commands(rep, root, cfg):
                     f"install {word} or fix '{key}' in .claude/gw.json, then: python3 {HERE / 'doctor.py'}")
 
 
-def check_ci(rep, root):
+def runs_check(text, cfg):
+    """True when a workflow's text runs the project's check: it reads `check` through config.py, is the workflow's
+    own comprobar.yml, or spells out one of the `check` commands."""
+    if "config.py get check" in text or ("galivelop-workflow v" in text and "pre-commit --rango" in text):
+        return True
+    return any(c.strip() and c.strip() in text for c in (cfg or {}).get("check") or [])
+
+
+def check_ci(rep, root, cfg=None):
     wf = root / ".github" / "workflows"
-    found = sorted(p.name for p in wf.glob("*.y*ml")) if wf.is_dir() else []
-    if found:
-        rep.ok("ci", f"CI workflow(s): {', '.join(found)}")
-    else:
+    found = sorted(p for p in wf.glob("*.y*ml")) if wf.is_dir() else []
+    if not found:
         rep.warn("ci", "no CI workflow under .github/workflows, so nothing checks pushes outside this machine",
                  "copy the workflow's CI template: mkdir -p .github/workflows && cp <workflow>/templates/github/"
                  "comprobar.yml .github/workflows/")
+        return
+    names = ", ".join(p.name for p in found)
+    running = [p.name for p in found if runs_check(p.read_text(encoding="utf-8", errors="replace"), cfg)]
+    if running:
+        rep.ok("ci", f"CI workflow(s): {names}; {', '.join(running)} run(s) the check")
+    else:
+        rep.warn("ci", f"CI workflow(s) {names}, but none seems to run the project's `check` commands",
+                 "add the check to one of them, or copy the workflow's CI template (mkdir -p .github/workflows && cp "
+                 "<workflow>/templates/github/comprobar.yml .github/workflows/); to keep your own CI, add only its "
+                 "step that runs the base branch's .githooks/pre-commit --rango (docs/en/apply.md, Existing CI)")
 
 
 def hook_files(command, root):
@@ -470,7 +486,7 @@ def run(root):
     check_githooks(rep, root, version)
     check_log(rep, root, cfg)
     check_commands(rep, root, cfg)
-    check_ci(rep, root)
+    check_ci(rep, root, cfg)
     check_settings(rep, root)
     check_subagents(rep, root)
     check_glossary(rep, root)

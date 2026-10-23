@@ -179,6 +179,42 @@ def with_defaults(config, schema):
     return filled
 
 
+def stale_refs(config):
+    """(patterns, skip) of the `staleRefs` key, whichever form it has: a list of regexes (skip empty) or
+    {"patterns": [...], "skip": [globs]} (both optional)."""
+    value = config.get("staleRefs") or []
+    if isinstance(value, dict):
+        return list(value.get("patterns") or []), list(value.get("skip") or [])
+    return list(value), []
+
+
+def glob_regex(glob):
+    """Compile a repo-relative glob to a regex: `*` and `?` stay inside one folder, `**` crosses folders (`**/` also
+    matches no folder), a trailing `/` means everything under that folder, a leading `./` is dropped."""
+    glob = glob[2:] if glob.startswith("./") else glob
+    if glob.endswith("/"):
+        glob += "**"
+    out, i = [], 0
+    while i < len(glob):
+        c = glob[i]
+        if glob.startswith("**/", i):
+            out.append("(?:.*/)?")
+            i += 3
+        elif glob.startswith("**", i):
+            out.append(".*")
+            i += 2
+        elif c == "*":
+            out.append("[^/]*")
+            i += 1
+        elif c == "?":
+            out.append("[^/]")
+            i += 1
+        else:
+            out.append(re.escape(c))
+            i += 1
+    return re.compile("".join(out) + r"\Z")
+
+
 def read_at(root, rev):
     """Text of .claude/gw.json in commit `rev`. Raises ConfigError when the commit or the file is not there."""
     try:

@@ -30,7 +30,7 @@ class Doctor(unittest.TestCase):
         p = self.p = SessionProject(self.tmp)
         shutil.copy2(ROOT / "scripts" / "revision-antes-de-main.sh", p.scripts / "revision-antes-de-main.sh")
         shutil.copy2(ROOT / "templates" / "claude" / "settings.json", p.work / ".claude" / "settings.json")
-        p.write(".github/workflows/check.yml", "name: check\n")
+        p.write(".github/workflows/check.yml", "name: check\njobs:\n  c:\n    steps:\n      - run: bash check.sh\n")
         p.write("AGENTS.md", "# Rules\n\nDeal multi-step work to subagents (skill orchestrate-dealer).\n")
         p.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| Next step | write tests |\n")
         p.write(".claude/skills/selector/SKILL.md", SKILL.format(version=VERSION))
@@ -153,6 +153,42 @@ class Doctor(unittest.TestCase):
         shutil.rmtree(self.p.work / ".github")
         code, out = self.doctor()
         self.assertLine(out, "WARN", "no CI workflow", "comprobar.yml")
+
+    def test_empty_workflows_folder_warns(self):
+        for f in (self.p.work / ".github" / "workflows").iterdir():
+            f.unlink()
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "no CI workflow", "comprobar.yml")
+
+    def test_ci_that_already_runs_the_check_is_not_asked_for_comprobar_yml(self):
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        line = self.assertLine(out, "OK", "ci", "check.yml run(s) the check")
+        self.assertNotIn("comprobar.yml", line)
+        self.assertNotIn("WARN  ci", out)
+
+    def test_ci_that_does_not_run_the_check_proposes_comprobar_yml_or_the_pre_commit_step(self):
+        self.p.write(".github/workflows/deploy.yml", "name: deploy\njobs:\n  d:\n    steps:\n      - run: ./deploy.sh\n")
+        (self.p.work / ".github" / "workflows" / "check.yml").unlink()
+        self.p.commit("only deploy")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "deploy.yml", "none seems to run", "comprobar.yml", "pre-commit --rango")
+
+    def test_ci_from_the_workflow_template_counts_as_running_the_check(self):
+        (self.p.work / ".github" / "workflows" / "check.yml").unlink()
+        self.p.write(".github/workflows/comprobar.yml", (ROOT / "templates" / "github" / "comprobar.yml").read_text())
+        code, out = self.doctor()
+        self.assertLine(out, "OK", "ci", "comprobar.yml run(s) the check")
+
+    def test_missing_setup_command_warns(self):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["setup"] = ["no-such-setup-tool-xyz --build"]
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "setup command", "no-such-setup-tool-xyz")
 
     def test_no_subagent_authorisation(self):
         self.p.write("AGENTS.md", "# Rules\n\nWork alone.\n")

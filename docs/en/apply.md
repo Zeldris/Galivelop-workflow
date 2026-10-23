@@ -217,7 +217,11 @@ by hand what the template has and it lacks: current state with a next step, rece
 check the state. `doctor.py` requires a "Next step" (or "Siguiente paso") line.
 
 **Existing CI.** `comprobar.yml` is one more workflow; if the project already runs its check, keep one of the two to
-avoid duplicating it, but keep the step that runs the base branch's `pre-commit` over the PR.
+avoid duplicating it, but keep the step that runs the base branch's `pre-commit` over the PR. That step works as a
+standalone piece in an existing CI: copy only the "Base branch's pre-commit over the pull request" step of
+`comprobar.yml` (it needs `fetch-depth: 0`); it runs `bash .githooks/pre-commit --rango <base>..HEAD` with the base
+branch's `pre-commit`, so a PR cannot weaken the review that checks it. If CI installs differently, set `ciInstall` in
+the config; `doctor.py` does not suggest `comprobar.yml` when another workflow already runs the `check`.
 
 **A protected branch with several people.** `pre-push` asks for the mark on every direct push with code; with
 `pushToProtected: pr`, the `PreToolUse` hook also asks for it when pull requests are created and merged. Choose by

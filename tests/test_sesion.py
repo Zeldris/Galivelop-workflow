@@ -124,6 +124,71 @@ class SessionStart(Base):
         p.session_start(env=cloud)
         self.assertEqual((p.work / "tries.log").read_text().count("try"), 2)
 
+    def cloud_config(self, **keys):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg.update(keys)
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.write(".gitignore", "*.log\n")
+        p.commit("cloud config")
+        return {"CLAUDE_CODE_REMOTE": "true"}
+
+    def test_setup_runs_after_install_in_order_and_only_when_install_would(self):
+        cloud = self.cloud_config(install=["echo install-1 >> order.log", "echo install-2 >> order.log"],
+                                  setup=["echo setup-1 >> order.log", "echo setup-2 >> order.log"])
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.p.work / "order.log").read_text().split(),
+                         ["install-1", "install-2", "setup-1", "setup-2"])
+        self.assertIn("running setup command: echo setup-1", out)
+        self.p.session_start(env=cloud)                      # same commands and lockfiles: nothing reruns
+        self.assertEqual(len((self.p.work / "order.log").read_text().split()), 4)
+        self.assertEqual(self.p.session_start()[0], 0)       # local session: neither
+        self.assertEqual(len((self.p.work / "order.log").read_text().split()), 4)
+
+    def test_setup_alone_runs_and_a_changed_setup_reruns(self):
+        cloud = self.cloud_config(setup=["echo built >> setup.log"])
+        self.p.session_start(env=cloud)
+        self.assertEqual((self.p.work / "setup.log").read_text().count("built"), 1)
+        self.cloud_config(setup=["echo built >> setup.log", "echo again >> setup.log"])
+        self.p.session_start(env=cloud)
+        self.assertEqual((self.p.work / "setup.log").read_text().split(), ["built", "built", "again"])
+
+    def test_empty_install_and_setup_run_nothing(self):
+        cloud = self.cloud_config(install=[], setup=[])
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("running", out)
+        self.assertFalse((self.p.work / ".git" / "gw-install.sha").exists())
+
+    def test_failed_setup_is_reported_with_its_command_and_retried(self):
+        cloud = self.cloud_config(install=["echo i >> ran.log"], setup=["echo s1 >> ran.log; echo boom >&2; exit 4",
+                                                                       "echo s2 >> ran.log"])
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertIn("setup command failed: 'echo s1 >> ran.log; echo boom >&2; exit 4'", out)
+        self.assertIn("then run it by hand", out)
+        self.assertFalse((self.p.work / ".git" / "gw-install.sha").exists())
+        self.assertNotIn("s2", (self.p.work / "ran.log").read_text())   # the sequence stopped
+        self.p.session_start(env=cloud)
+        self.assertEqual((self.p.work / "ran.log").read_text().split().count("s1"), 2)
+
+    def test_failed_install_skips_setup(self):
+        cloud = self.cloud_config(install=["exit 3"], setup=["echo s >> ran.log"])
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertIn("install command failed: 'exit 3'", out)
+        self.assertFalse((self.p.work / "ran.log").exists())
+
+    def test_hanging_setup_times_out_and_is_reported(self):
+        cloud = self.cloud_config(setup=["sleep 30"])
+        cloud["GW_COMMAND_TIMEOUT"] = "1"
+        started = time.time()
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertLess(time.time() - started, 20, out)
+        self.assertIn("setup command timed out after 1s: 'sleep 30'", out)
+
     def test_never_exits_non_zero(self):
         p = self.p
         (p.work / ".claude" / "gw.json").write_text("{not json")

@@ -70,6 +70,23 @@
       "default": [],
       "description": "Commands that install dependencies (run in cloud sessions and CI)."
     },
+    "ciInstall": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "description": "Commands that install dependencies in CI only (the CI template runs them instead of `install`). Absent: CI runs `install`; [] : CI installs nothing."
+    },
+    "setup": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": [],
+      "description": "Commands run in cloud sessions after every `install` command, one after another (e.g. a build or a database seed); rerun only when `install` reruns."
+    },
     "check": {
       "type": "array",
       "items": {
@@ -180,13 +197,50 @@
       "description": "Path prefixes an agent (CLAUDECODE=1) may not commit; pre-commit refuses them."
     },
     "staleRefs": {
+      "anyOf": [
+        {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "patterns": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "default": []
+            },
+            "skip": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$"
+              },
+              "default": []
+            }
+          }
+        }
+      ],
+      "default": [],
+      "description": "Case-insensitive regexes that must not appear in docs (enlaces-md.py): a list, or {\"patterns\": [...], \"skip\": [globs]} where skip lists repo-relative files or folders the check does not read (`*` stays inside a folder, `**` crosses; a trailing / means the whole folder)."
+    },
+    "linkRoots": {
       "type": "array",
       "items": {
         "type": "string",
-        "minLength": 1
+        "minLength": 1,
+        "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$"
       },
       "default": [],
-      "description": "Case-insensitive regexes that must not appear in docs (enlaces-md.py)."
+      "description": "Folders (relative to the repo root, no '..') whose Markdown files write relative links from the repo root instead of from their own folder (enlaces-md.py)."
     },
     "relatedTests": {
       "type": "object",

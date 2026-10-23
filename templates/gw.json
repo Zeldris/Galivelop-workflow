@@ -8,6 +8,7 @@
   "protectedBranch": "main",
   "pushToProtected": "direct",
   "install": [],
+  "setup": [],
   "check": ["make check"],
   "checkWrapper": "",
   "worktreeLinks": ["node_modules", ".venv"],
@@ -20,6 +21,7 @@
   "designReferences": [],
   "protectedPaths": [],
   "staleRefs": [],
+  "linkRoots": [],
   "relatedTests": {"fast": [], "slow": []},
   "plan": [],
   "taskId": "[A-Z]{2,5}-\\d+"

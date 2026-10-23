@@ -32,6 +32,45 @@ class Config(unittest.TestCase):
     def test_this_repo_config_is_valid(self):
         self.assertEqual(cli(ROOT, "validate").returncode, 0)
 
+    def test_ci_install_is_unset_until_given_and_an_empty_list_is_a_value(self):
+        self.write(VALID)
+        r = cli(self.tmp, "get", "ciInstall")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("key 'ciInstall' is not set and has no default", r.stderr)
+        self.write(dict(VALID, ciInstall=[]))
+        r = cli(self.tmp, "get", "ciInstall", "--json")
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "[]"))
+        self.write(dict(VALID, ciInstall=["npm ci"], setup=["make build"]))
+        self.assertEqual(cli(self.tmp, "get", "ciInstall").stdout.splitlines(), ["npm ci"])
+        self.assertEqual(cli(self.tmp, "get", "setup").stdout.splitlines(), ["make build"])
+
+    def test_new_keys_default_to_empty_and_reject_bad_values(self):
+        self.write(VALID)
+        for key in ("setup", "linkRoots", "staleRefs"):
+            self.assertEqual(cli(self.tmp, "get", key, "--json").stdout.strip(), "[]", key)
+        for bad, needle in ((dict(VALID, setup="make"), "$.setup: expected array"),
+                            (dict(VALID, ciInstall=[""]), "$.ciInstall[0]: must not be empty"),
+                            (dict(VALID, linkRoots=["../x"]), "$.linkRoots[0]"),
+                            (dict(VALID, staleRefs={"skip": ["/abs"]}), "matches none of the allowed forms")):
+            self.write(bad)
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn(needle, r.stderr)
+
+    def test_stale_refs_forms_and_globs(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import config
+        self.assertEqual(config.stale_refs({}), ([], []))
+        self.assertEqual(config.stale_refs({"staleRefs": ["a"]}), (["a"], []))
+        self.assertEqual(config.stale_refs({"staleRefs": {"skip": ["d/"]}}), ([], ["d/"]))
+        self.assertEqual(config.stale_refs({"staleRefs": {"patterns": ["a"], "skip": ["d/"]}}), (["a"], ["d/"]))
+        for glob, path, hit in (("docs/*.md", "docs/a.md", True), ("docs/*.md", "docs/x/a.md", False),
+                                ("docs/**/a.md", "docs/a.md", True), ("docs/**/a.md", "docs/x/y/a.md", True),
+                                ("docs/x/", "docs/x/y/a.md", True), ("docs/x/", "docs/xy/a.md", False),
+                                ("./docs/a.md", "docs/a.md", True), ("a?.md", "ab.md", True), ("a.md", "axmd", False)):
+            self.assertEqual(bool(config.glob_regex(glob).match(path)), hit, (glob, path))
+
     def test_get_list_scalar_bool_and_default(self):
         self.write(VALID)
         self.assertEqual(cli(self.tmp, "get", "check").stdout.splitlines(), ["make check", "make lint"])

@@ -134,11 +134,51 @@ class Templates(unittest.TestCase):
                 self.assertLess(at, install, f"{action} must run before Install")
                 self.assertIn(f"if: hashFiles({files}", text[at:install])
 
+    def ci_install(self, **keys):
+        """Run the CI template's Install step in a temp project whose gw.json has `keys`; return the commands run."""
+        text = (TEMPLATES / "github" / "comprobar.yml").read_text()
+        step = text.split("- name: Install\n        run: |\n", 1)[1].split("      - name:", 1)[0]
+        script = "\n".join(l[10:] for l in step.splitlines())
+        tmp = Path(tempfile.mkdtemp(prefix="gw-ci-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / ".claude" / "gw").mkdir(parents=True)
+        shutil.copytree(ROOT / "scripts", tmp / ".claude" / "gw" / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(ROOT / "schema", tmp / ".claude" / "gw" / "schema")
+        cfg = {"version": VERSION, "language": "en", "log": "docs/log.md", "protectedBranch": "main",
+               "pushToProtected": "direct", "check": ["true"], "reviewMark": "r.txt", "content": ["^docs/"]}
+        (tmp / ".claude" / "gw.json").write_text(json.dumps(dict(cfg, **keys)))
+        subprocess.run(["git", "init", "-q", str(tmp)], check=True)
+        r = subprocess.run(["bash", "-e", "-c", script], cwd=tmp, capture_output=True, text=True)
+        return r
+
+    def test_ci_installs_ci_install_and_falls_back_to_install(self):
+        cases = ((dict(install=["echo a"]), ["== echo a"]),
+                 (dict(install=["echo a"], ciInstall=["echo b"]), ["== echo b"]),
+                 (dict(install=["echo a"], ciInstall=[]), []),
+                 ({}, []))
+        for keys, expected in cases:
+            with self.subTest(keys=keys):
+                r = self.ci_install(**keys)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertEqual([l for l in r.stdout.splitlines() if l.startswith("==")], expected)
+
+    def test_ci_install_fails_closed_on_a_bad_config(self):
+        r = self.ci_install(install="npm ci")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("$.install: expected array", r.stderr)
+
+    def test_ci_template_does_not_apply_check_wrapper_or_setup(self):
+        text = (TEMPLATES / "github" / "comprobar.yml").read_text()
+        self.assertNotIn("get checkWrapper", text)
+        self.assertNotIn("get setup", text)
+
     def test_sample_config_is_valid(self):
         sample = json.loads((TEMPLATES / "gw.json").read_text())
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())
         self.assertEqual(config.validate(sample, schema), [])
-        self.assertEqual(set(sample), set(schema["properties"]), "templates/gw.json must show every key")
+        # ciInstall is left out on purpose: absent means "CI runs `install`", while [] would mean "CI installs nothing"
+        self.assertEqual(set(sample), set(schema["properties"]) - {"ciInstall"},
+                         "templates/gw.json must show every key but ciInstall")
         self.assertEqual(sample["version"], VERSION)
 
     def test_default_content_keeps_the_guard_scripts_as_code(self):

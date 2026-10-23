@@ -218,7 +218,11 @@ a mano lo que falte de la plantilla: estado actual con siguiente paso, hecho rec
 estado. `doctor.py` exige una línea de «Siguiente paso»/«Next step».
 
 **CI existente.** `comprobar.yml` es un workflow más; si el proyecto ya corre su check, deja uno de los dos para no
-duplicarlo, pero conserva el paso del `pre-commit` de la rama base sobre el PR.
+duplicarlo, pero conserva el paso del `pre-commit` de la rama base sobre el PR. Ese paso sirve suelto en una CI que ya
+exista: copia solo los pasos «Base branch's pre-commit over the pull request» de `comprobar.yml` (necesita
+`fetch-depth: 0`); corre `bash .githooks/pre-commit --rango <base>..HEAD` con el `pre-commit` de la rama base, para que
+un PR no debilite la revisión que lo revisa. Si instalas distinto en CI, usa `ciInstall` en el config; `doctor.py` no
+propone `comprobar.yml` cuando otro workflow ya corre el `check`.
 
 **Rama protegida con varias personas.** El `pre-push` pide la marca a todo push directo con código; con
 `pushToProtected: pr`, además, el gancho de `PreToolUse` la pide al crear y fusionar pull requests. Elige según cómo
