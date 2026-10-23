@@ -21,9 +21,10 @@ shaped as ``| **Current task · `<branch>`** | task, what is missing and the nex
 
 _(what goes to `{{protectedBranch}}` next, and what it is waiting for)_
 
-## Done (last 10)
+## Done (last 5)
 
-1. _(date — what was closed; the oldest entry goes when there are more than 10, the history is in git)_
+1. _(date — what was closed, in two lines at most: the detail is in the commit; the oldest entry goes when there are
+   more than 5, the history is in git)_
 
 ## Pending
 

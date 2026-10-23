@@ -21,9 +21,10 @@ la forma ``| **Tarea en curso · `<rama>`** | tarea, qué falta y siguiente paso
 
 _(lo que va a `{{protectedBranch}}` a continuación, y a qué espera)_
 
-## Hecho (10 últimas)
+## Hecho (5 últimas)
 
-1. _(fecha — qué se cerró; la más antigua sale cuando hay más de 10, el historial está en git)_
+1. _(fecha — qué se cerró, en dos líneas como mucho: el detalle está en el commit; la más antigua sale cuando hay más
+   de 5, el historial está en git)_
 
 ## Pendiente
 

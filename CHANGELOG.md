@@ -38,6 +38,9 @@ en local) queda aplazada.
   `scout-updates`: títulos en el idioma del proyecto y banco por pares a ciegas `quality_bench.py` (WMF P7, P8, P13).
 - Plantillas con «la persona»; `aplicar.md`: `.gitignore` con `.claude/*`, scripts del flujo que no se editan en el
   proyecto, migrar desde una copia anterior y tests de las skills (inst. P5, P8, P9).
+- `orchestrate-dealer`: tope de ~35 llamadas por subagente (una o dos filas); la bitácora guarda las 5 últimas de
+  «Hecho», en dos líneas cada una (`/opt-tokens` antes de `main`). `REVIEW.md`: carpetas temporales por usuario.
+- `pre-push`: la carpeta de worktrees es por usuario, con permisos 700, y se rechaza si es un symlink o de otro usuario.
 
 ### EN
 
@@ -69,6 +72,9 @@ locally) is postponed.
   P13).
 - Templates say «the person»; `apply.md`: `.gitignore` with `.claude/*`, flow scripts are not edited in the project,
   migrating from an earlier copy and skill tests (inst. P5, P8, P9).
+- `orchestrate-dealer`: cap of ~35 calls per subagent (one or two rows); the log keeps the last 5 «Done» entries,
+  two lines each (`/opt-tokens` before `main`). `REVIEW.md`: per-user temporary folders.
+- `pre-push`: the worktree folder is per user, mode 700, and refused if it is a symlink or owned by another user.
 
 ## [0.2.0] - 2026-10-22
 

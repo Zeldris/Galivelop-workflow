@@ -95,7 +95,7 @@ retro). Tarkor contributes what the portal dropped as "small-website-irrelevant"
 | `REVIEW.md` | `REVIEW.md` | Target-repo template with the generic sections ("One fact, one place", "Hooks and scripts") and slots for project rules |
 | `GLOSSARY.md` | `GLOSSARY.md` | Empty template with the workflow's terms (log, stable point, review mark…) |
 | `CLAUDE.md` | root of both repos | Template: "At the start of every session", hand-off and commit rules, with `{{…}}` slots |
-| Log | `docs/traspaso.md` (portal) and `docs/registros/traspaso.md` (Tarkor) | Template with the portal's sections: Current state · For the next release · Done (last 10) · Pending · Check the state |
+| Log | `docs/traspaso.md` (portal) and `docs/registros/traspaso.md` (Tarkor) | Template with the portal's sections: Current state · For the next release · Done (last 5) · Pending · Check the state |
 | `SessionStart` hook | `.claude/hooks/session-start.sh` | To the plugin. Sets `core.hooksPath`, installs dependencies in the cloud with the config's command |
 | Recovery after `/clear` | `tools/qa/recuperar.py` | To the plugin; reads the log path from the config |
 | PR-to-`main` hook | `.claude/hooks/revision-antes-de-main.sh` | To the plugin; protected branch and mark path from the config |

@@ -12,6 +12,8 @@ las crea una vez; desde entonces son del proyecto.
 - `orchestrate-dealer`: el trabajo de más de un paso, repartido a subagentes de contexto limpio.
 - `docs/mapa-agente.md`: punto único para los encargos a subagentes.
 - `python3 scripts/doctor.py`: en la nube avisa (`compaction`) si falta `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en el entorno.
+- `bash tests/comprobar.sh` tarda más de 2 min: se lanza en segundo plano y se espera su aviso (no un bucle con
+  `pgrep -f`, que se encuentra a sí mismo).
 - `orchestrate-dealer`, regla «A batch of approved rows is dealt»: filas de una propuesta, una por subagente, o
   `/clear` cada 4-5 filas en la principal.
 
@@ -39,3 +41,6 @@ las crea una vez; desde entonces son del proyecto.
 - 2026-10-22, Fase 5 (tres sesiones en la nube): S1 67 llamadas, 110k de media, 1 compactación, 7,4M; S2 157
   llamadas, 191k de media, techo 294k, 0 compactaciones, 30M (18 filas en la principal, 0 subagentes); S3 48
   llamadas, 124k, 6,0M.
+- 2026-10-23, Fase 6 (una sesión en la nube, 4 compactaciones): principal 236 llamadas, 106k de media, techo 144k,
+  25M; subagentes 20 (457 llamadas, 43M, ~100k de media, arranque 50k). Cambios: tope de ~35 llamadas por subagente
+  y «Hecho» de 5 entradas cortas.

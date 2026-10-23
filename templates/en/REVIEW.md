@@ -19,6 +19,8 @@ judgement. The project fills it in; the workflow never overwrites it once it exi
 - Hooks **fail closed** when a fact is missing (a commit the clone lacks, an API that does not answer), with the
   command that fixes it.
 - Shell scripts run on bash 3.2 (macOS): no `mapfile`, no associative arrays.
+- A fixed-name folder in a shared directory (`$TMPDIR`, `/tmp`) is per user, created with mode 700 and refused if it
+  already exists as a symlink or owned by another user; single files use `mktemp`.
 - Every change to a hook or script comes with its test case; a case that expects a failure checks the reason, not
   only the exit code. The scripts under `.claude/gw/scripts/` are tested in the workflow's repo and are not edited here
   (a change goes to the workflow as a proposal, with `gw-harvest`); this rule applies to the project's own scripts.

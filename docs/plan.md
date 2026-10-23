@@ -93,7 +93,7 @@ su retro del 2026-10-21). Tarkor aporta lo que el portal quitó por ser «de web
 | `REVIEW.md` | `REVIEW.md` | Plantilla para el repo destino con las secciones genéricas («Un dato, un sitio», «Ganchos y scripts») y huecos para lo propio |
 | `GLOSSARY.md` | `GLOSSARY.md` | Plantilla vacía con los términos del flujo (bitácora, punto estable, marca de revisado…) |
 | `CLAUDE.md` | raíz de ambos repos | Plantilla: «Al empezar cualquier sesión», reglas de relevo y commits, con huecos `{{…}}` |
-| Bitácora | `docs/traspaso.md` (portal) y `docs/registros/traspaso.md` (Tarkor) | Plantilla con las secciones del portal: Estado actual · Para la próxima publicación · Hecho (10 últimas) · Pendiente · Comprobar el estado |
+| Bitácora | `docs/traspaso.md` (portal) y `docs/registros/traspaso.md` (Tarkor) | Plantilla con las secciones del portal: Estado actual · Para la próxima publicación · Hecho (5 últimas) · Pendiente · Comprobar el estado |
 | Gancho `SessionStart` | `.claude/hooks/session-start.sh` | Al plugin. Activa `core.hooksPath`, instala dependencias en la nube con la orden del config |
 | Recuperación tras `/clear` | `tools/qa/recuperar.py` | Al plugin; lee la ruta de la bitácora del config |
 | Gancho de PR a `main` | `.claude/hooks/revision-antes-de-main.sh` | Al plugin; rama protegida y ruta de la marca del config |
