@@ -309,6 +309,9 @@ Ejemplos que los pilotos tienen que cubrir: el portal (Node, subida directa, tre
 - **`CHANGELOG.md`** (Keep a Changelog), una entrada por versión con `### ES` y `### EN`. El CI falla si la
   versión de `plugin.json` no tiene entrada.
 - **Etiquetas `vX.Y.Z`** y release de GitHub con la entrada del CHANGELOG (`release.yml`).
+- **Cada versión empieza con una recogida** (`gw-harvest`, §5.1; usuario, 2026-10-23): lo que traen los proyectos
+  entra en la versión que se abre. `scripts/version.py --release` no deja publicar sin una recogida (`# Harvest …`
+  en `docs/propuestas/`) añadida desde la última etiqueta.
 - **Rama `main` = última versión publicada**; se trabaja en ramas y se sube a `main` solo con confirmación (el
   propio flujo).
 - **Fijar versión en un proyecto**: el marketplace se añade con `#vX.Y.Z` cuando un proyecto no quiera

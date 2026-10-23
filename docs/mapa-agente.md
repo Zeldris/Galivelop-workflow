@@ -16,7 +16,7 @@ documentos. Si mueves una pieza, actualiza su fila en el mismo commit.
 | Aplicar y actualizar el flujo | [`es/aplicar.md`](es/aplicar.md), [`en/apply.md`](en/apply.md) | `scripts/aplicar.py` (`--init`, `--update`, `--check`) |
 | Plantillas para proyectos | `templates/es`, `templates/en`, `templates/gw.json` | `tests/test_plantillas.py` |
 | Skills | `skills/<nombre>/SKILL.md` (formato Agent Skills) | `tests/test_skills.py`; copia en `.claude/skills/` |
-| Recogida de mejoras | `skills/gw-harvest/SKILL.md` | `scripts/recoger.py`, `docs/propuestas/` |
+| Recogida de mejoras (una por versión) | `skills/gw-harvest/SKILL.md`, `AGENTS.md` | `scripts/recoger.py`, `docs/propuestas/`; `scripts/version.py --release` la exige |
 | Tests | `tests/test_*.py`, `skills/*/scripts/test_*.py` | `tests/comprobar.sh` |
 | Problemas conocidos | [`es/problemas.md`](es/problemas.md), [`en/troubleshooting.md`](en/troubleshooting.md) | — |
 

@@ -53,7 +53,38 @@ class Version(unittest.TestCase):
         self.assertIn("python3 scripts/version.py X.Y.Z", r.stdout)
         self.assertEqual(run(tmp).returncode, 0, "without --release only the markers are checked")
         self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.harvest()
         self.commit_all("bump")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def harvest(self, first_line="# Harvest portal — 2026-10-23"):
+        (self.tmp / "docs" / "propuestas").mkdir(parents=True, exist_ok=True)
+        (self.tmp / "docs" / "propuestas" / "2026-10-23-portal.md").write_text(first_line + "\n\nNada nuevo.\n")
+
+    def test_a_new_version_needs_a_harvest_added_since_the_last_tag(self):
+        tmp = self.tmp
+        self.git("init", "-q")
+        self.harvest()
+        self.commit_all("released, with the harvest of that version")
+        self.git("tag", f"v{VERSION}")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.commit_all("bump")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("no harvest for 9.8.7", r.stdout)
+        self.assertIn(f"since v{VERSION}", r.stdout)
+        self.assertIn("gw-harvest", r.stdout)
+        (tmp / "docs" / "propuestas" / "2026-10-24-reparto.md").write_text("# Reparto — 2026-10-24\n")
+        self.commit_all("a proposals file that is not a harvest")
+        r = run(tmp, "--release")
+        self.assertIn("no harvest for 9.8.7", r.stdout, "only a '# Harvest' file counts")
+        (tmp / "docs" / "propuestas" / "2026-10-23-portal.md").write_text("# Harvest portal — editada\n")
+        self.commit_all("an edit of the old harvest")
+        r = run(tmp, "--release")
+        self.assertIn("no harvest for 9.8.7", r.stdout, "editing an earlier harvest is not a new one")
+        (tmp / "docs" / "propuestas" / "2026-10-25-wmf.md").write_text("# Harvest wmf — 2026-10-25\n")
+        self.commit_all("harvest")
         r = run(tmp, "--release")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 

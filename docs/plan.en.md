@@ -312,6 +312,9 @@ milestone roadmap, several accounts, PR) and the Tarkor installer (Rust/Tauri: t
 - **`CHANGELOG.md`** (Keep a Changelog), one entry per version with `### ES` and `### EN`. CI fails if the
   `plugin.json` version has no entry.
 - **Tags `vX.Y.Z`** and a GitHub release with the CHANGELOG entry (`release.yml`).
+- **Every version starts with a harvest** (`gw-harvest`, §5.1; user, 2026-10-23): what the projects bring goes into
+  the version being opened. `scripts/version.py --release` blocks a release without a harvest (`# Harvest …` in
+  `docs/propuestas/`) added since the last tag.
 - **`main` branch = latest published version**; work happens on branches and goes to `main` only with
   confirmation (the workflow itself).
 - **Pinning a version in a project**: add the marketplace with `#vX.Y.Z` when a project doesn't want automatic

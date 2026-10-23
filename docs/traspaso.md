@@ -11,8 +11,8 @@
 | Rama | `ccr-6dfbc880-ddr41g` (avance rápido de `ccr-76251061-b1yiwq`, que sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `01d1a75` = **release `v0.2.0`** (2026-10-22, etiqueta y release creadas a mano en GitHub); `v0.1.0` = `9b97d7b` |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
 | Fase en curso | **6 cerrada** y `0.3.0` publicada en `main` (2026-10-23); P7 del instalador aplicada en la rama (`0.4.0`, sin publicar); recogida de la `0.4.0` hecha, propuestas presentadas al usuario. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | Recogida de la `0.4.0` (`docs/propuestas/2026-10-23-portal-galivelop.md`, `estado.json` al día); check en verde en local; el CI no arranca (cupo de Actions): comprobado solo en local |
-| Siguiente paso | Aplicar lo que el usuario apruebe de `docs/propuestas/2026-10-23-portal-galivelop.md`; añadir la regla «una recogida al empezar cada versión» y su comprobación en `version.py --release` con sus tests; luego la **Fase 7 (rodaje etapa 1)** |
+| Último punto estable | Regla «una recogida por versión» y su candado en `version.py --release`, tras la recogida de la `0.4.0`; check en verde en local; el CI no arranca (cupo de Actions): comprobado solo en local |
+| Siguiente paso | Aplicar lo que el usuario apruebe de `docs/propuestas/2026-10-23-portal-galivelop.md` (P1-P5, sin decidir); luego la **Fase 7 (rodaje etapa 1)** |
 
 ### Fases
 
@@ -36,7 +36,8 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 ## Hecho (5 últimas)
 
 1. 2026-10-23 — Recogida de la `0.4.0` (portal, WMF, instalador, VeriNews): 5 propuestas del portal en
-   `docs/propuestas/2026-10-23-portal-galivelop.md`; los otros tres, nada nuevo. El usuario decide recoger en cada versión.
+   `docs/propuestas/2026-10-23-portal-galivelop.md`; los otros tres, nada nuevo. Regla nueva: cada versión empieza con
+   una recogida (`AGENTS.md`, plan §7, skill), y `version.py --release` la exige.
 2. 2026-10-23 — P7 del instalador aplicada (`0.4.0`, sin publicar): sin CI, el check en local vale con la confirmación
    de la persona («comprobado solo en local»), en `AGENTS.md` y plantillas; el gancho lo nombra al bloquear.
 3. 2026-10-23 — **`0.3.0` publicada en `main`** (ea81c9f). El usuario decide la P7: un check que pasó en local vale

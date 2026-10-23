@@ -19,7 +19,9 @@ check flags one that lacks it (exceptions, with the reason, in UNMARKED).
   python3 scripts/version.py --release  # the check, and: copyable files (scripts/, skills/, templates/, schema/,
                                         # LICENSE-mattpocock-skills)
                                         # changed since the last vX.Y.Z tag reachable from HEAD need a
-                                        # new version (the pre-push check of a push to main)
+                                        # new version (the pre-push check of a push to main), and a new
+                                        # version needs a harvest since that tag: a docs/propuestas/*.md
+                                        # added after it whose first line is "# Harvest …" (skill gw-harvest)
 Then: python3 scripts/aplicar.py .  (refresh this repo's copy) and fill in the CHANGELOG entry.
 Files are read and written as strict UTF-8 keeping their line endings; a non-UTF-8 file with a marker is reported
 and left alone.
@@ -41,6 +43,7 @@ TEMPLATE_GW = ROOT / "templates" / "gw.json"
 SEMVER = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$")
 TOP_VERSION = re.compile(r'^(  "version"\s*:\s*")([^"]*)(")', re.M)  # a top-level key: two-space indent
 SCOPES = ("scripts", "skills", "templates", "schema")
+PROPOSALS = "docs/propuestas"  # where gw-harvest writes its "# Harvest <repo> — <date>" files
 HEAD_LINES = 5  # same as header_version()
 UNMARKED = {  # workflow files that carry no header marker, and why
     "templates/gw.json": "JSON; its marker is the top-level \"version\", checked on its own",
@@ -145,13 +148,13 @@ def git(*args):
 def release_check(version):
     """Problems for a push to main: copyable files changed since the last vX.Y.Z tag reachable from HEAD while
     plugin.json still has that tag's version (a project that copied between the two would see "local edits" it never
-    made). Run by the pre-push check on a push to the protected branch (GW_PUSH_PROTECTED=true)."""
+    made), and a new version without a harvest since that tag (harvest_check). Run by the pre-push check on a push to the protected branch (GW_PUSH_PROTECTED=true)."""
     code, tag = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD")
     if code != 0 or not tag:
         return ["no earlier vX.Y.Z tag in this clone, so the version cannot be compared with the last release; "
                 "fetch the tags and retry: git fetch --tags origin && python3 scripts/version.py --release"]
     if tag[1:] != version:
-        return []
+        return harvest_check(version, tag)
     code, changed = git("diff", "--name-only", tag, "HEAD", "--", *SCOPES, SKILL_LICENSE)
     if code != 0:
         return [f"cannot diff against {tag}; fetch it and retry: git fetch --tags origin && "
@@ -162,6 +165,23 @@ def release_check(version):
     shown = ", ".join(files[:5]) + (f" and {len(files) - 5} more" if len(files) > 5 else "")
     return [f"unbumped release: {len(files)} copyable file(s) changed since {tag} ({shown}) but the version is still "
             f"{version}; bump it (patch at least) and fill in the CHANGELOG: python3 scripts/version.py X.Y.Z"]
+
+
+def harvest_check(version, tag):
+    """Problems for releasing `version` after `tag`: every version starts with a harvest of the projects that use the
+    workflow (AGENTS.md), so some file added under docs/propuestas/ since the tag must be a gw-harvest one."""
+    code, added = git("diff", "--name-only", "--no-renames", "--diff-filter=A", tag, "HEAD", "--", PROPOSALS)
+    if code != 0:
+        return [f"cannot diff against {tag}; fetch it and retry: git fetch --tags origin && "
+                "python3 scripts/version.py --release"]
+    for path in added.splitlines():
+        if path.endswith(".md"):
+            code, text = git("show", f"HEAD:{path}")
+            if code == 0 and text.startswith("# Harvest "):
+                return []
+    return [f"no harvest for {version}: no {PROPOSALS}/*.md starting with '# Harvest' was added since {tag}; run the "
+            "gw-harvest skill on the projects that use the workflow, commit its proposals file (one per harvest, also "
+            "when nothing is new) and retry: python3 scripts/version.py --release"]
 
 
 def bump_plan(path, new):

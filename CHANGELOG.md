@@ -17,6 +17,10 @@ here.
   confirmación de la persona**, y se dice y se apunta como «comprobado solo en local»; un CI que arrancó y falló no se
   sustituye. Reglas en `AGENTS.md` y sus plantillas; `revision-antes-de-main.sh` sigue bloqueando la fusión sin CI,
   pero su mensaje nombra ese camino.
+- **Cada versión empieza con una recogida** (usuario, 2026-10-23): `gw-harvest` sobre los proyectos al abrir la
+  versión, en `AGENTS.md`, el plan (§7) y la skill; `version.py --release` (el `pre-push` a `main`) no deja publicar
+  sin un `docs/propuestas/*.md` `# Harvest` añadido desde la última etiqueta. La de la `0.4.0`:
+  `docs/propuestas/2026-10-23-portal-galivelop.md`.
 
 ### EN
 
@@ -25,6 +29,10 @@ here.
   confirmation**, and it is said and logged as "checked only locally"; a CI that started and failed is never replaced.
   Rules in `AGENTS.md` and its templates; `revision-antes-de-main.sh` still blocks a merge without CI, but its message
   names that path.
+- **Every version starts with a harvest** (user, 2026-10-23): `gw-harvest` over the projects when the version opens,
+  in `AGENTS.md`, the plan (§7) and the skill; `version.py --release` (the `pre-push` to `main`) blocks a release
+  without a `docs/propuestas/*.md` `# Harvest` file added since the last tag. The one for `0.4.0`:
+  `docs/propuestas/2026-10-23-portal-galivelop.md`.
 
 ## [0.3.0] - 2026-10-23
 

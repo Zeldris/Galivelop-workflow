@@ -1,6 +1,6 @@
 ---
 name: gw-harvest
-description: Collect, as proposals, what projects using Galivelop-workflow changed or invented (edited workflow skills and scripts, new skills, ideas in their retros) since the last harvest. Use from the Galivelop-workflow repo when the user asks to harvest, review or gather improvements from connected projects, or before planning a new workflow version.
+description: Collect, as proposals, what projects using Galivelop-workflow changed or invented (edited workflow skills and scripts, new skills, ideas in their retros) since the last harvest. Use from the Galivelop-workflow repo when the user asks to harvest, review or gather improvements from connected projects, and at the start of every new workflow version (AGENTS.md; `version.py --release` checks it).
 disable-model-invocation: true
 license: MIT
 compatibility: Run in the Galivelop-workflow repo with the project repos cloned locally; git and python3.
@@ -42,7 +42,9 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
    - **Project-specific**: domain wording, stack commands, local paths → note it as "stays in the project".
    - **Already here**: the workflow has it in a newer form → note it, no proposal.
 5. **Write the proposals** in `docs/propuestas/YYYY-MM-DD-<repo-name>.md` using the template below, in the
-   workflow repo's language for human docs. One file per project and harvest.
+   workflow repo's language for human docs. One file per project and harvest; projects with nothing new go as one line
+   each in another project's file, or in one file of their own when no project brings anything (every version needs
+   a `# Harvest` file added since the last tag: `python3 scripts/version.py --release`).
 6. **Present them to the user**, most valuable first, and wait. What the user approves becomes a normal change in
    this repo: the piece updated, a CHANGELOG entry and a version bump (patch, minor or major per plan §7).
 7. **Record the harvest** once the proposals file is committed:
