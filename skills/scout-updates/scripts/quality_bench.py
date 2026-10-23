@@ -297,7 +297,8 @@ def main(argv=None):
             print('consistency when flipped: %s | X wins: %s | judged %d, unjudged %d'
                   % (res['consistency'], res['x_bias'], res['judged'], res['unjudged']))
             if res['repeated']:
-                print('WARNING: %d pairs judged more than once are not counted; remove the repeated verdicts'
+                print('WARNING: %d repeated verdicts (pairs judged more than once): the first verdict of each '
+                      'pair counts and later ones are ignored; remove the repeated lines from the verdicts file'
                       % res['repeated'])
             if a.detail:
                 print_detail(res)

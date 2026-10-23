@@ -17,15 +17,20 @@ from test_ganchos import ROOT, Project
 
 FAKE_GH = """#!/bin/sh
 case "$1" in
-  auth) echo "fake gh: the hook must check access with gh api user, not gh auth status" >&2; exit 1 ;;
+  auth) echo "fake gh: the hook must check access by reading the repo, not gh auth status" >&2; exit 1 ;;
   api) ;;
   *) echo "fake gh: unsupported $*" >&2; exit 1 ;;
 esac
-if [ "$2" = "user" ]; then
-  [ -z "${GH_UNAUTH:-}" ] || { echo "not logged in" >&2; exit 1; }
-  if [ -n "${GH_AUTH_ONCE:-}" ]; then [ ! -e "$GH_AUTH_ONCE" ] || exit 1; : > "$GH_AUTH_ONCE"; fi
-  echo '{"login":"someone"}'; exit 0
-fi
+# Like a GitHub App installation token: /user is 403, the repo itself can be read.
+[ "$2" != "user" ] || { echo "gh: Resource not accessible by integration (HTTP 403)" >&2; exit 1; }
+case "$2" in
+  repos/*/*/*) ;;
+  repos/*/*)
+    [ -z "${GH_UNAUTH:-}" ] || { echo "not logged in" >&2; exit 1; }
+    if [ -n "${GH_AUTH_ONCE:-}" ]; then [ ! -e "$GH_AUTH_ONCE" ] || exit 1; : > "$GH_AUTH_ONCE"; fi
+    [ -z "${GH_PROBE_LOG:-}" ] || echo "$2" >> "$GH_PROBE_LOG"
+    echo '{"full_name":"x"}'; exit 0 ;;
+esac
 if [ -n "${GH_FAIL:-}" ]; then echo "gh: HTTP 502: Bad Gateway (fake)" >&2; exit 1; fi
 case "$2" in
   *check-runs*) printf '%s' "$GH_RUNS" ;;
@@ -344,10 +349,32 @@ class Hook(unittest.TestCase):
         self.assertBlocked(self.merge(pr=dict(self.pr(), state="closed", merged_at="2026-10-01T00:00:00Z")),
                            "already merged")
 
-    def test_access_is_checked_with_gh_api_user(self):
+    def test_access_is_checked_by_reading_the_repo_not_user(self):
+        """A GitHub App installation token gets 403 on /user but can read the repo (the fake gh behaves so)."""
         self.mark(); self.push()
-        self.assertAllowed(self.merge(pr=self.pr()))  # the fake gh refuses `gh auth status`: it would fall to curl
-        self.assertFalse((self.tmp / "curl.log").exists())
+        probes = self.tmp / "probes.log"
+        self.assertAllowed(self.merge(pr=self.pr(), env={"GH_PROBE_LOG": str(probes)}))
+        self.assertFalse((self.tmp / "curl.log").exists())  # the fake gh refuses `gh auth status`: it would fall to curl
+        self.assertEqual(probes.read_text().split(), ["repos/o/r"])
+
+    def test_no_access_to_the_repo_and_no_token_fails_closed(self):
+        self.mark(); self.push()
+        self.assertBlocked(self.merge(pr=self.pr(), env={"GH_UNAUTH": "1"}),
+                           "cannot read repos/o/r", "GITHUB_TOKEN")
+
+    def test_update_that_reopens_a_closed_pr_is_judged_like_an_open_one(self):
+        closed = dict(self.pr(), state="closed", merged=False)
+        update = {"owner": "o", "repo": "r", "pullNumber": 7, "base": "main"}
+        reopen = dict(update, state="open")
+        self.assertBlocked(self.hook("mcp__github__update_pull_request", update, pr=closed), "is closed")
+        code, out = self.hook("mcp__github__update_pull_request", reopen, pr=closed)
+        self.assertEqual(code, 2, out)
+        self.assertNotIn("is closed", out)
+        self.assertIn("no review mark", out)  # judged on its head like any other retarget
+        self.mark(); self.push()
+        self.assertAllowed(self.hook("mcp__github__update_pull_request", reopen, pr=dict(closed, head={"sha": self.p.sha(), "ref": "feature"})))
+        merged = dict(closed, merged=True)
+        self.assertBlocked(self.hook("mcp__github__update_pull_request", reopen, pr=merged), "already merged")
 
     def test_unrelated_tool_exits_0_silently(self):
         code, out = self.hook("Read", {"file_path": "/etc/hosts"})

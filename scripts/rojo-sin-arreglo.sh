@@ -28,6 +28,11 @@ if [ $# -lt 2 ]; then
   echo "rojo-sin-arreglo: $usage" >&2; exit 2
 fi
 cmd="$1"; shift
+for re in "$pattern" "$one"; do  # an invalid regex would make grep print nothing and the check pass: refuse it now
+  [ -n "$re" ] || continue
+  printf '\n' | grep -Eq -- "$re" 2>/dev/null
+  [ $? -ne 2 ] || { echo "rojo-sin-arreglo: /$re/ is not a valid extended regex (grep -E); fix it and rerun: $usage" >&2; exit 2; }
+done
 root="$(git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
   echo "rojo-sin-arreglo: $here is not inside a git repository; reinstall the workflow: /gw-update" >&2; exit 2; }
 cd "$root" || exit 2
@@ -68,6 +73,7 @@ if [ -n "$pattern" ] && ! grep -Eq -- "$pattern" "$out/without.log"; then
 fi
 if [ -n "$one" ]; then
   ran="$(grep -Ec -- "$one" "$out/with.log")"
+  case "$ran" in '' | *[!0-9]*) echo "rojo-sin-arreglo: cannot count the lines matching /$one/; check the regex and rerun: $usage" >&2; exit 2 ;; esac
   if [ "$ran" -ne 1 ]; then
     tail -n 20 "$out/with.log" >&2
     echo "rojo-sin-arreglo: $ran lines match /$one/ in the run with the fix, expected exactly 1 (the new test); narrow the command's test filter so it runs only that test, then rerun" >&2; exit 1

@@ -18,10 +18,11 @@ and % errors (over all rows). Failed calls (`app.error`) count in neither percen
 result. With --previous, every row shows its difference from the earlier log. Corrupt lines are skipped with a
 warning; tasks with no profile are warned about.
 
-Per turn: calls that carry the same `app.turn` (any id the project picks for one user-facing step) form a turn. One row
-per profile (`profile/turn/-`): n turns, p50, p95 and max of the turn (start of its first call to end of its last,
-from `ts` and `app.duration_ms`), mean calls per turn and % of turns with a failed call. Calls without `app.turn`, or
-without a readable `ts` and `app.duration_ms`, are left out of this table; there is no table without `app.turn`.
+Per turn: calls (retrieval included) that carry the same `app.turn` (any id the project picks for one user-facing
+step) form a turn. One row per profile (`profile/turn/-`): n turns, p50, p95 and max of the turn (start of its first
+call to end of its last, from `ts` and `app.duration_ms`), mean calls per turn and % of turns with a failed call.
+Calls without `app.turn`, or without a readable `ts` and `app.duration_ms`, are left out of this table; there is no
+table without `app.turn`.
 Anything finer (which calls of a turn are the user-visible wait) depends on the project's own task names: derive it
 from the log with a project script.
 """
@@ -163,7 +164,7 @@ def group(records, profile=None, excluded=DEFAULT_EXCLUDED, cold_ms=COLD_MS):
         if t in excluded:
             continue
         m = r.get('gen_ai.request.model') or NO_MODEL
-        if r.get('app.turn') and r.get('gen_ai.operation.name') != 'retrieval':
+        if r.get('app.turn'):  # retrieval calls too: the turn is everything the user waited for
             turns.setdefault(p, {}).setdefault(r['app.turn'], []).append(r)
         target = rag if r.get('gen_ai.operation.name') == 'retrieval' else calls
         target.setdefault((p, t, m), []).append(r)

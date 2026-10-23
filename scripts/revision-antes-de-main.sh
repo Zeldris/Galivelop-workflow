@@ -15,11 +15,13 @@
 #     commit status success (a commit with no CI reported at all is not green).
 #   - Anything else (other tools, update_pull_request_branch, other bases, Bash that only mentions `gh pr`) exits 0
 #     silently. pushToProtected does not matter: a PR is another way into the protected branch.
-#   - A PR that is already closed or merged: blocked with that fact (and `gh pr view`), no config is asked of its branch.
+#   - A PR that is already closed or merged: blocked with that fact (and `gh pr view`), no config is asked of its branch;
+#     an update_pull_request that itself reopens a closed PR (state: open) is judged like any other call on it.
 #   - Before python3 starts, a bash pre-filter lets through everything that has no PR tool name and no word `gh` followed
 #     by the word `pr`/`pulls` ("github", "projects" do not count). Without python3, a PR create/merge call is blocked
 #     with the command that checks it (python3 --version); any other call, `gh pr view` included, passes.
-# GitHub API: `gh api` when gh is on PATH and `gh api user` answers, else curl with $GITHUB_TOKEN or $GH_TOKEN, decided once
+# GitHub API: `gh api` when gh is on PATH and `gh api repos/<owner>/<repo>` answers (a GitHub App token cannot read
+# /user but can read the repo), else curl with $GITHUB_TOKEN or $GH_TOKEN, decided once
 # per run. No way to ask, or any API error: blocked (fail closed), as is any missing commit, config or script, and a
 # Bash command that cannot be parsed but looks like `gh … pr merge|create`.
 # Decision: exit 2 with the reason on stderr (Claude Code shows it to the agent); the last line is the command that
@@ -266,7 +268,7 @@ def classify(event):
         if not data.get("base"):
             return []  # editing title/body/state takes nothing to another branch
         return [{"kind": "retarget", "base": data["base"], "head": None, "repo": repo, "number": number,
-                 "how": "update_pull_request"}]
+                 "how": "update_pull_request", "reopens": data.get("state") == "open"}]
     if name in ("merge_pull_request", "enable_pr_auto_merge"):
         return [{"kind": "merge", "base": None, "head": None, "repo": repo, "number": number, "how": name}]
     return []  # update_pull_request_branch and the rest bring nothing new to the protected branch
@@ -339,15 +341,19 @@ def origin_repo(root):
 _BACKEND = []  # decided once per run: ("gh", None) or ("curl", token); never mixed within a run
 
 
-def backend():
+def backend(path):
     if not _BACKEND:
-        # `gh api user` proves the token works; `gh auth status` also fails over an unrelated stale account or host.
-        if shutil.which("gh") and run(["gh", "api", "user"]).returncode == 0:
+        # Reading the repo itself proves the token works for it: `gh api user` answers 403 to a GitHub App
+        # installation token that can still read the repo, and `gh auth status` also fails over an unrelated stale
+        # account or host.
+        m = re.match(r"repos/([^/?]+)/([^/?]+)", path)
+        probe = f"repos/{m.group(1)}/{m.group(2)}" if m else path
+        if shutil.which("gh") and run(["gh", "api", probe]).returncode == 0:
             _BACKEND.append(("gh", None))
         else:
             token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
             if not token:
-                raise ApiError("gh is not installed or not authenticated, and neither GITHUB_TOKEN nor GH_TOKEN is set")
+                raise ApiError(f"gh is not installed or cannot read {probe}, and neither GITHUB_TOKEN nor GH_TOKEN is set")
             if not shutil.which("curl"):
                 raise ApiError("gh is not authenticated and curl is not installed")
             _BACKEND.append(("curl", token))
@@ -355,7 +361,7 @@ def backend():
 
 
 def api(path):
-    kind, token = backend()
+    kind, token = backend(path)
     if kind == "gh":
         r, how = run(["gh", "api", path]), "gh api " + path
     else:
@@ -536,7 +542,8 @@ def handle(action, cfg, root, scripts):
     if number is None:
         block(f"{action['how']} without a PR number; cannot check it.", "pass pullNumber and retry")
     info = pr_info(repo, number)
-    if info["state"] != "open":  # nothing to guard: say so instead of asking for a gw.json on a finished branch
+    reopened = action.get("reopens") and not info["merged"]  # the call itself reopens it: judge it as open
+    if info["state"] != "open" and not reopened:  # nothing to guard: say so instead of asking for a gw.json on a finished branch
         done = "already merged" if info["merged"] else "closed"
         block(f"PR #{number} of {repo} is {done}, so {action['how']} has nothing to do.",
               f"check it: gh pr view {number} -R {repo}" + ("" if info["merged"] else " (reopen it if it should still be merged)"))

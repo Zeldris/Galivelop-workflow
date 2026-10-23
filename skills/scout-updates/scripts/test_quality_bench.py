@@ -129,6 +129,26 @@ class BenchTest(unittest.TestCase):
             self.assertIn('consistency when flipped: 0.0 | X wins: 1.0 | judged 4, unjudged 0', buf.getvalue())
             self.assertIn('head to head', buf.getvalue())
 
+    def test_cli_repeated_verdicts_say_the_first_counts(self):
+        """A pair judged twice keeps its first verdict; the warning says so instead of 'not counted'."""
+        with tempfile.TemporaryDirectory() as d:
+            def path(n):
+                return os.path.join(d, n)
+            bench.write_jsonl(path('cases.jsonl'), self.CASES)
+            for m, batch in zip('ab', self.batches()):
+                bench.write_jsonl(path(m + '.jsonl'), batch)
+            with redirect_stdout(io.StringIO()):
+                bench.main(['pairs', path('a.jsonl'), path('b.jsonl'), '--cases', path('cases.jsonl'),
+                            '--output', path('pairs.jsonl'), '--key', path('key.json')])
+            pair_list = bench.read_jsonl(path('pairs.jsonl'))
+            verdicts = [{'pair': p['pair'], 'winner': 'X'} for p in pair_list]
+            bench.write_jsonl(path('v.jsonl'), verdicts + [dict(verdicts[0], winner='Y')])
+            with redirect_stdout(io.StringIO()) as buf:
+                bench.main(['summary', path('pairs.jsonl'), path('key.json'), path('v.jsonl')])
+            self.assertIn('WARNING: 1 repeated verdicts', buf.getvalue())
+            self.assertIn('the first verdict of each pair counts and later ones are ignored', buf.getvalue())
+            self.assertIn('judged 4, unjudged 0', buf.getvalue())
+
 
 if __name__ == '__main__':
     unittest.main()

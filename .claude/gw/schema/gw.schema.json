@@ -114,6 +114,11 @@
       ],
       "description": "Paths (relative to the repo root, no '..') the pre-push symlinks from the main checkout into the temporary worktree where it runs `check`; a missing source is skipped."
     },
+    "worktreeDir": {
+      "type": "string",
+      "default": "",
+      "description": "Folder (absolute, or relative to the repo root) under which the pre-push creates its temporary worktrees, for a sandbox that cannot see $TMPDIR; empty for ${TMPDIR:-/tmp}."
+    },
     "reviewMark": {
       "type": "string",
       "minLength": 1,

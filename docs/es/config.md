@@ -50,6 +50,7 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
 | `checkWrapper` | Prefijo de cada orden de `check` y de `relatedTests` (p. ej. `docker compose run --rm app`): siempre se ejecuta `<prefijo> bash -c '<orden>'` (con `cd <cwd> &&` dentro si la entrada lleva `cwd`), así que cubre también una orden compuesta (`a && b`). La plantilla de CI no aplica `checkWrapper`: es para el equipo local (p. ej. un sandbox); los runners de CI no lo necesitan. | `""` (sin prefijo) | `"docker compose run --rm app"` | `pre-push`, `tests-relacionados.sh` |
 | `relatedTests` | `{ "fast": [...], "slow": [...] }`: las pruebas de lo que cambia. Cada entrada es una orden (texto) o `{ "command", "paths", "cwd" }`: `paths` es una expresión que filtra los archivos cambiados y `cwd` una carpeta desde la que corre la orden (`{files}` va relativo a ella). `fast` corre en cada push; `slow`, solo si algún archivo cambiado (de su ámbito) sigue existiendo; `{files}` se sustituye por los archivos cambiados | sin órdenes | `{"fast": [{"command": "npx vitest related {files}", "paths": "\\.tsx?$", "cwd": "web"}], "slow": []}` | `tests-relacionados.sh` (lo llama el `pre-push`) |
 | `worktreeLinks` | Rutas (relativas, sin `..`) de la copia principal que el `pre-push` enlaza en el worktree temporal donde corre el `check`; las que no existen se omiten y nunca se pisa una ruta del commit | `["node_modules", ".venv"]` | `["node_modules", "backend/node_modules", ".env"]` | `pre-push` |
+| `worktreeDir` | Carpeta (absoluta o relativa a la raíz del repo) bajo la que el `pre-push` crea sus worktrees temporales, para un sandbox que no ve `$TMPDIR` (p. ej. Flatpak); si es relativa, conviene que esté en `.gitignore` y fuera de `.git/` | `""` (`${TMPDIR:-/tmp}`) | `".cache/gw-worktrees"` | `pre-push` |
 | `plan` | Archivos o carpetas de plan o roadmap donde las tareas se tachan o marcan | `[]` | `["docs/producto/21-roadmap.md"]` | `bitacora.py` |
 | `taskId` | Expresión de los identificadores de tarea | `[A-Z]{2,5}-\\d+` | `"(INS\|FLU)-\\d+"` (los grupos con captura se tratan como sin captura) | `bitacora.py` |
 
@@ -60,9 +61,10 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   `GW_PUSH_PROTECTED=true` cuando la subida va a la rama protegida (`false` si no; fuera del gancho, sin definir): así
   una orden puede correr solo antes de `main`, p. ej. `[ "${GW_PUSH_PROTECTED:-}" != true ] || <orden>`.
 - **El `check` corre en un worktree temporal** cuando la copia de trabajo no está limpia (o la subida no es lo que hay
-  en ella): vive en `<git-dir común>/gw-pre-push/wt.XXXXXX.d`, nunca en `$TMPDIR`, y se borra en toda salida (también
-  con Ctrl-C o `kill`). Si un push muere sin poder limpiar, el siguiente borra los worktrees huérfanos; dos pushes a
-  la vez no se pisan. Lo enlazado desde la copia principal lo dice `worktreeLinks`. El registro de una orden fallida
+  en ella): vive en `${TMPDIR:-/tmp}/gw-pre-push-wt-<id del repo>/wt.XXXXXX.d` (o bajo `worktreeDir`), nunca dentro
+  de `.git/` (jest y otras herramientas ignoran toda ruta con un segmento `/.git/`), y se borra en toda salida
+  (también con Ctrl-C o `kill`). Si un push muere sin poder limpiar, el siguiente borra los worktrees huérfanos de más
+  de 24 h cuyo proceso ya no existe; dos pushes a la vez no se pisan. Lo enlazado desde la copia principal lo dice `worktreeLinks`. El registro de una orden fallida
   se conserva (`full log: <ruta>`); si pasa, se borra.
 - **`pushToProtected`** dice cómo entra hoy el código en la rama protegida. Un push directo que trae código pide
   siempre la marca en el `pre-push`, con `direct` y con `pr`; con `pr`, además, el gancho de PR la pide al crear o

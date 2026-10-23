@@ -23,11 +23,13 @@ en local) queda aplazada.
 - `doctor.py`: reconoce los ganchos del flujo por su cabecera, exige que `reviewMark` esté en seguimiento y avisa de
   términos repetidos en `GLOSSARY.md` (WMF P3, P9).
 - `bitacora.py closed` y `check`, más estrictos; `rojo-sin-arreglo.sh --ran-one` (WMF P4).
-- Gancho del PR: sale pronto si la orden no es suya, usa `gh api user` y explica un PR cerrado o fusionado (WMF P5).
+- Gancho del PR: sale pronto si la orden no es suya, prueba el acceso leyendo el propio repo (`gh api repos/<o>/<r>`,
+  que también vale con un token de GitHub App) y explica un PR cerrado o fusionado (WMF P5).
 - `es-codigo.sh` distingue una regex inválida de otros fallos (WMF P6).
 - Claves nuevas: `checkWrapper`, `worktreeLinks`, `relatedTests` con `paths` y `cwd`, `ciInstall`, `setup`,
   `staleRefs` con `skip`, `linkRoots` y `scoutDir` (WMF P10-P13, inst. P3, P6).
-- `pre-push`: worktree dentro de `.git/` con limpieza de huérfanos, logs con `mktemp` y rutas enlazadas que no salen
+- `pre-push`: worktree en una carpeta por repo bajo `${TMPDIR:-/tmp}` (o `worktreeDir`, clave nueva, para un sandbox
+  que no ve `$TMPDIR`), con limpieza de huérfanos de más de 24 h, logs con `mktemp` y rutas enlazadas que no salen
   del worktree (WMF P10).
 - `session-start.sh`: `setup` tras `install`, con un límite por orden (`GW_COMMAND_TIMEOUT`) que mata su grupo de
   procesos (WMF P11).
@@ -51,12 +53,13 @@ locally) is postponed.
 - `doctor.py`: recognises the flow's hooks by their header, requires `reviewMark` to be tracked and warns about
   repeated terms in `GLOSSARY.md` (WMF P3, P9).
 - Stricter `bitacora.py closed` and `check`; `rojo-sin-arreglo.sh --ran-one` (WMF P4).
-- PR hook: exits early for commands that are not its own, uses `gh api user` and explains a closed or merged PR
-  (WMF P5).
+- PR hook: exits early for commands that are not its own, probes access by reading the repo itself
+  (`gh api repos/<o>/<r>`, which also works with a GitHub App token) and explains a closed or merged PR (WMF P5).
 - `es-codigo.sh` tells an invalid regex apart from other failures (WMF P6).
 - New keys: `checkWrapper`, `worktreeLinks`, `relatedTests` with `paths` and `cwd`, `ciInstall`, `setup`,
   `staleRefs` with `skip`, `linkRoots` and `scoutDir` (WMF P10-P13, inst. P3, P6).
-- `pre-push`: worktree inside `.git/` with orphan cleanup, `mktemp` logs and linked paths that cannot leave the
+- `pre-push`: worktree in a per-repo folder under `${TMPDIR:-/tmp}` (or `worktreeDir`, a new key, for a sandbox that
+  cannot see `$TMPDIR`), with cleanup of orphans older than 24 h, `mktemp` logs and linked paths that cannot leave the
   worktree (WMF P10).
 - `session-start.sh`: `setup` after `install`, with a per-command limit (`GW_COMMAND_TIMEOUT`) that kills its process
   group (WMF P11).

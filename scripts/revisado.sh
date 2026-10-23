@@ -62,9 +62,10 @@ if [ "$retro" = "true" ]; then
     [ -n "$file" ] || continue
     # The whole paragraph of the Estado/Status line (up to the next blank line), not only its first line.
     status="$(git show "HEAD:$file" | awk '/^\*\*(Estado|Status)/ { on = 1 } on && /^[[:space:]]*$/ { exit } on { print }' || true)"
-    # Whole words only ("undecided" is not "decided"), and a paragraph that also says it is still pending is not a decision.
+    # Whole words only ("undecided" is not "decided"; "spending" or "dependiente" is not "pending"), and a paragraph
+    # that also says it is still pending is not a decision.
     if printf '%s\n' "$status" | grep -qiwE '(aplicad[ao]s?|rechazad[ao]s?|aplazad[ao]s?|decidid[ao]s?|aprobad[ao]s?|applied|rejected|deferred|decided|approved)' \
-      && ! printf '%s\n' "$status" | grep -qiE 'pendiente|pending|undecided|sin decidir|aún no|not yet'; then
+      && ! printf '%s\n' "$status" | grep -qiE '(^|[^[:alpha:]])(pendientes?|pending|undecided|sin decidir|aún no|not yet)([^[:alpha:]]|$)'; then
       decided="$file"
     fi
   done <<<"$added"
@@ -72,7 +73,7 @@ if [ "$retro" = "true" ]; then
     echo "revisado: requireRetro is on and the branch adds no retro-*.md whose **Estado:**/**Status:** paragraph records" >&2
     echo "the user's decision. Valid whole words: aplicad*, rechazad*, aplazad*, decidid*, aprobad* (applied, rejected," >&2
     echo "deferred, decided, approved); 'done' alone is not enough, and pendiente/pending/undecided/sin decidir/aún no/" >&2
-    echo "not yet anywhere in that paragraph (up to the next blank line) cancels it." >&2
+    echo "not yet as whole words anywhere in that paragraph (up to the next blank line) cancels it." >&2
     echo "Run /retro, present it, apply what the user approves, record it in the Status line, push and mark again: bash $0" >&2
     exit 1
   fi

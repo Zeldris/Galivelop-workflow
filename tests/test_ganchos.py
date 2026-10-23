@@ -462,7 +462,18 @@ class PrePushWorktree(Base):
     def setUp(self):
         super().setUp()
         self.p.git("checkout", "-q", "-b", "feature")
-        self.gwdir = self.p.work / ".git" / "gw-pre-push"
+        self.gwdir = self.gw_folder(self.tmp)
+
+    def gw_folder(self, base, project=None):
+        """<base>/gw-pre-push-wt-<cksum of the common git dir>: the hook's per-repo folder."""
+        project = project or self.p
+        r = subprocess.run(["bash", "-c", 'cd "$(git rev-parse --git-common-dir)" && pwd | tr -d "\\n" | cksum'],
+                           cwd=project.work, env=project.env, capture_output=True, text=True, check=True)
+        return Path(base) / ("gw-pre-push-wt-" + r.stdout.split()[0])
+
+    def age(self, path, hours=25):
+        old = time.time() - hours * 3600
+        os.utime(path, (old, old))
 
     def configure(self, **keys):
         p = self.p
@@ -486,7 +497,7 @@ class PrePushWorktree(Base):
         self.p.commit("check records where it runs")
         self.p.write("dirty", "untracked\n")
 
-    def test_worktree_lives_in_the_git_dir_not_tmpdir(self):
+    def test_worktree_lives_in_a_per_repo_tmpdir_folder_never_in_the_git_dir(self):
         pwd_file = self.tmp / "pwd.txt"
         self.where_check_ran(pwd_file)
         code, out = self.p.push("origin", "feature")
@@ -494,7 +505,57 @@ class PrePushWorktree(Base):
         ran = Path(pwd_file.read_text().strip())
         self.assertEqual(ran.parent, self.gwdir.resolve())
         self.assertRegex(ran.name, r"^wt\.[A-Za-z0-9]{6}\.d$")
+        self.assertNotIn("/.git/", str(ran) + "/", "jest-haste-map and others ignore paths under .git/")
+        self.assertFalse((self.p.work / ".git" / "gw-pre-push").exists())
         self.assertNoWorktreeLeft()
+
+    def test_two_repos_get_separate_worktree_folders(self):
+        other = Project(Path(tempfile.mkdtemp(prefix="gw-ganchos-b-", dir=self.tmp)).resolve())
+        self.assertNotEqual(self.gwdir, self.gw_folder(self.tmp, other))
+        other.git("checkout", "-q", "-b", "feature")
+        other.write("dirty", "untracked\n")
+        self.p.write("dirty", "untracked\n")
+        for project in (self.p, other):
+            code, out = project.push("origin", "feature")
+            self.assertEqual(code, 0, out)
+        self.assertNoWorktreeLeft()
+
+    def test_worktree_dir_relative_to_the_repo_root(self):
+        p = self.p
+        pwd_file = self.tmp / "pwd.txt"
+        self.configure(worktreeDir=".cache/wt")
+        p.write(".gitignore", ".cache/\ndirty\n")
+        self.where_check_ran(pwd_file)
+        p.write("dirty2", "untracked\n")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        ran = Path(pwd_file.read_text().strip())
+        self.gwdir = self.gw_folder(p.work / ".cache" / "wt")
+        self.assertEqual(ran.parent, self.gwdir.resolve())
+        self.assertNoWorktreeLeft()
+
+    def test_worktree_dir_absolute(self):
+        p = self.p
+        pwd_file = self.tmp / "pwd.txt"
+        shared = self.tmp / "sandbox visible"
+        self.configure(worktreeDir=str(shared) + "/")
+        self.where_check_ran(pwd_file)
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.gwdir = self.gw_folder(shared)
+        self.assertEqual(Path(pwd_file.read_text().strip()).parent, self.gwdir.resolve())
+        self.assertNoWorktreeLeft()
+
+    def test_unwritable_worktree_dir_fails_closed_naming_the_key(self):
+        p = self.p
+        blocker = self.tmp / "a-file"
+        blocker.write_text("not a folder\n")
+        self.configure(worktreeDir=str(blocker / "sub"))
+        self.where_check_ran(self.tmp / "pwd.txt")
+        code, out = p.push("origin", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("cannot create", out)
+        self.assertIn("worktreeDir", out)
 
     def test_clean_working_copy_runs_in_place(self):
         pwd_file = self.tmp / "pwd.txt"
@@ -529,9 +590,10 @@ class PrePushWorktree(Base):
     def test_default_links_and_listed_paths_incl_spaces_files_and_missing_sources(self):
         p = self.p
         self.configure(worktreeLinks=["my dir/deps", "backend/node_modules", ".env", "absent", "docs/", "trailing/"])
+        ran_check = self.tmp / "ran-check"
         p.write("check.sh", 'test -e "my dir/deps/d" && test -e backend/node_modules/b && test -e .env '
                             '&& test ! -e absent && test ! -L docs && test -L .env && test ! -e node_modules '
-                            '&& test -e trailing/t && echo ok >> "$(dirname "$0")/../../../../../ran-check"\n')
+                            f'&& test -e trailing/t && echo ok >> "{ran_check}"\n')
         p.commit("check sees the links")
         for rel in ("my dir/deps/d", "backend/node_modules/b", "node_modules/default", "trailing/t"):
             p.write(rel, "x\n")
@@ -573,7 +635,7 @@ class PrePushWorktree(Base):
         self.tmp = Path(tempfile.mkdtemp(prefix="gw ganchos ")).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.p = p = Project(self.tmp)
-        self.gwdir = p.work / ".git" / "gw-pre-push"
+        self.gwdir = self.gw_folder(self.tmp)
         p.git("checkout", "-q", "-b", "feature")
         self.configure(worktreeLinks=["my deps"])
         p.write("check.sh", 'test -e "my deps/d"\n')
@@ -632,6 +694,7 @@ class PrePushWorktree(Base):
         self.gwdir.mkdir()
         (self.gwdir / "wt.nogit0.d").mkdir()
         (self.gwdir / "wt.nogit0").write_text("999999999\n")
+        self.age(self.gwdir / "wt.nogit0")
         p.write("dirty", "untracked\n")
         code, out = p.push("origin", "feature")
         self.assertEqual(code, 0, out)
@@ -719,13 +782,13 @@ class PrePushWorktree(Base):
     def test_a_worktree_left_by_a_dead_push_is_removed_but_a_live_one_stays(self):
         p = self.p
         self.gwdir.mkdir()
-        dead_pid = subprocess.run(["true"]).pid if False else None
         proc = subprocess.Popen(["true"]); proc.wait(); dead_pid = proc.pid
         live = subprocess.Popen(["sleep", "60"])
         self.addCleanup(live.kill)
         for name, pid in (("wt.dead00", dead_pid), ("wt.live00", live.pid)):
             p.git("worktree", "add", "-q", "--detach", str(self.gwdir / (name + ".d")), "HEAD")
             (self.gwdir / name).write_text(f"{pid}\n")
+            self.age(self.gwdir / name)
         p.write("dirty", "untracked\n")
         code, out = p.push("origin", "feature")
         self.assertEqual(code, 0, out)
@@ -733,6 +796,20 @@ class PrePushWorktree(Base):
         self.assertTrue((self.gwdir / "wt.live00.d").is_dir())
         self.assertFalse((self.gwdir / "wt.dead00.d").exists())
         self.assertNotIn("wt.dead00", p.git("worktree", "list").stdout)
+
+    def test_a_recent_marker_with_an_unknown_pid_stays(self):
+        """A push from another pid namespace (container, sandbox) gives "No such process" here: under 24 h it stays."""
+        p = self.p
+        self.gwdir.mkdir()
+        proc = subprocess.Popen(["true"]); proc.wait()
+        p.git("worktree", "add", "-q", "--detach", str(self.gwdir / "wt.other1.d"), "HEAD")
+        (self.gwdir / "wt.other1").write_text(f"{proc.pid}\n")
+        self.age(self.gwdir / "wt.other1", hours=23)
+        p.write("dirty", "untracked\n")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.leftovers(), ["wt.other1", "wt.other1.d"])
+        self.worktrees_before = 2
 
     def test_interrupting_the_hook_removes_its_worktree(self):
         p = self.p
@@ -887,6 +964,18 @@ class RevisadoSpanishWithRetro(Base):
         self.assertEqual(p.push("-u", "origin", "feature")[0], 0)
         code, out = p.run("bash", self.script)
         self.assertNotEqual(code, 0, out)
+
+    def test_pending_words_veto_only_as_whole_words(self):
+        for status in ("aprobada; spending cut by 20 %", "aplicada, dependiente de la CI", "approved; unpending"):
+            code, out = self.retro(status)
+            self.assertEqual(code, 0, f"{status}: {out}")
+            self.p.git("reset", "-q", "--hard", "HEAD~1")  # undo the mark commit, keep the retro pushed
+        for status in ("aprobada, pending P2", "aprobada; quedan 2 pendientes", "approved (Pending: P3)",
+                       "aplicada la 1, la 2 aún no", "approved, not yet P2"):
+            code, out = self.retro(status)
+            self.assertNotEqual(code, 0, f"{status}: {out}")
+            self.assertIn("paragraph records", out)
+            self.assertIn("as whole words", out)
 
     def test_refusal_lists_the_valid_words(self):
         code, out = self.retro("hecha")

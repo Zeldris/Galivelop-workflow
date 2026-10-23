@@ -3,6 +3,8 @@
 
 Usage:
   compare.py [<architecture.md>] [--root <root>] [--json] [--report <report.md>]
+  (default root: the project holding this copy in .claude/skills, else `git rev-parse --show-toplevel`; never the
+  current directory, so it works from a subfolder)
   compare.py [<architecture.md>] --section <title>   print only that section (to reread it without the whole file)
 
 Without <architecture.md>, it is `architecture.md` in the `scoutDir` folder of the project's `.claude/gw.json`
@@ -146,14 +148,30 @@ def section(text, title):
     return '\n'.join(chunks) or None
 
 
+def default_root():
+    """The project root, never the current directory: the project that holds this copy (it is installed in
+    <root>/.claude/skills/scout-updates/scripts), else the git top level (from the plugin cache)."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    parts = here.replace(os.sep, '/').rstrip('/').split('/')
+    if parts[-4:] == ['.claude', 'skills', 'scout-updates', 'scripts']:
+        return os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(here))))
+    r = subprocess.run(['git', 'rev-parse', '--show-toplevel'], capture_output=True, text=True)
+    if r.returncode != 0 or not r.stdout.strip():
+        sys.exit('compare.py: not inside a git repository, so the project root is unknown; pass it: '
+                 'python3 compare.py --root <project root>')
+    return r.stdout.strip()
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('architecture', nargs='?', help='default: <scoutDir>/architecture.md of the project config')
-    ap.add_argument('--root', default='.', help='project root (default: current directory)')
+    ap.add_argument('--root', help='project root (default: the project holding this copy, else the git top level)')
     ap.add_argument('--json', action='store_true')
     ap.add_argument('--report', help='step-6 report: checks its coverage table')
     ap.add_argument('--section', help='print only the sections whose title contains this text')
     a = ap.parse_args(argv)
+    if not a.root:
+        a.root = default_root()
     if not a.architecture:
         a.architecture = os.path.join(a.root, scout_dir(a.root), 'architecture.md')
     if a.section:

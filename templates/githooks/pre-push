@@ -8,10 +8,11 @@
 #     one is refused.
 #   - Runs every `check` command of that config on the commit being pushed (a temporary worktree when it is not
 #     the clean working copy), with GW_PUSH_PROTECTED=true when it goes to the protected branch (false otherwise).
-#     `checkWrapper` prefixes each command (`<wrapper> bash -c '<command>'`). The worktree lives in <git common dir>/gw-pre-push (not $TMPDIR),
+#     `checkWrapper` prefixes each command (`<wrapper> bash -c '<command>'`). The worktree lives in a per-repo folder
+#     under ${TMPDIR:-/tmp} (or under `worktreeDir`), never inside .git/ (jest and others ignore any /.git/ path),
 #     gets the `worktreeLinks` paths symlinked from the main checkout, and is removed on every exit (also on
-#     Ctrl-C or kill; one left by a hard kill is removed by the next push, unless its push still runs). Each
-#     command logs to its own mktemp file, kept only when it fails.
+#     Ctrl-C or kill; one left by a hard kill is removed by a later push once it is over 24 h old and its pid is
+#     gone). Each command logs to its own mktemp file, kept only when it fails.
 #   - To the protected branch, in both pushToProtected modes (with `pr` the PR hook also guards PRs): code needs the
 #     review mark (scripts/revisado.sh) to name an ancestor with no code after it. The branch is protected when the
 #     pushed commit, the remote tip or the working tree names it so; what is content and where the mark lives come
@@ -65,7 +66,7 @@ fetch_hint() {
   if [ "$shallow" = "true" ]; then echo "git fetch --deepen=200 $remote $protected"; else echo "git fetch $remote $protected"; fi
 }
 
-gwdir=""  # <common git dir>/gw-pre-push: where the temporary worktrees live (never $TMPDIR: a sandbox may not see it)
+gwdir=""  # <worktreeDir or ${TMPDIR:-/tmp}>/gw-pre-push-wt-<repo id>: where the temporary worktrees live
 stale_worktrees() {  # remove worktrees an interrupted push (kill -9, power cut) left behind; a live push's stay
   local m pid err  # each push owns a marker file wt.XXXXXX holding its pid; its worktree is wt.XXXXXX.d
   for m in "$gwdir"/wt.*.d; do  # a worktree whose marker is gone is an orphan too
@@ -80,6 +81,9 @@ stale_worktrees() {  # remove worktrees an interrupted push (kill -9, power cut)
       err="$(LC_ALL=C kill -0 "$pid" 2>&1)" && continue
       case "$err" in *"No such process"*) ;; *) continue ;; esac  # EPERM (another user's process) is alive too
     fi
+    # A push from another pid namespace (a container or sandbox sharing the folder) looks dead from here: only a
+    # marker over 24 h old is an orphan (find -mmin works on GNU and BSD).
+    [ -n "$(find "$m" -prune -mmin +1440 2>/dev/null)" ] || continue
     git worktree remove --force "$m.d" >/dev/null 2>&1; rm -rf "$m.d" "$m"
   done
 }
@@ -120,11 +124,15 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
   if [ "$sha" = "$(git rev-parse HEAD)" ] && [ -z "$(git status --porcelain)" ]; then
     dir="$root"
   else
-    if [ -z "$gwdir" ]; then
-      gwdir="$(cd "$(git rev-parse --git-common-dir)" && pwd)/gw-pre-push" \
-        || fail "cannot find the repository's git dir; check the repository: git rev-parse --git-common-dir"
-      mkdir -p "$gwdir" || fail "cannot create $gwdir; make the git dir writable and retry: git push"
-    fi
+    local base common id
+    base="$(cfg_at "$sha" worktreeDir)" || exit 1
+    [ -n "$base" ] || base="${TMPDIR:-/tmp}"
+    case "$base" in /*) ;; *) base="$root/$base" ;; esac
+    common="$(cd "$(git rev-parse --git-common-dir)" && pwd)" \
+      || fail "cannot find the repository's git dir; check the repository: git rev-parse --git-common-dir"
+    id="$(printf '%s' "$common" | cksum | cut -d' ' -f1)"  # one folder per repo (its linked worktrees share it)
+    gwdir="${base%/}/gw-pre-push-wt-$id"
+    mkdir -p "$gwdir" || fail "cannot create $gwdir; make it writable or set worktreeDir in .claude/gw.json: python3 $config --root $root validate"
     stale_worktrees
     marker="$(mktemp "$gwdir/wt.XXXXXX")" || fail "cannot create a temporary worktree in $gwdir; free space or permissions and retry: git push"
     echo "$$" > "$marker"

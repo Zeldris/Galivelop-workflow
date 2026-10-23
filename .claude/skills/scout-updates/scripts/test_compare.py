@@ -129,6 +129,35 @@ class CompareTest(unittest.TestCase):
             compare.main(['--root', self.d])
         self.assertIn('same       AI models', out.getvalue())
 
+    def test_default_root_is_never_the_current_directory(self):
+        """Run from a subfolder without --root: the installed copy takes the project holding it, the source copy the
+        git top level; either way the Dockerfile at the root is seen (from the subfolder it would not be)."""
+        with open(os.path.join(self.d, 'Dockerfile'), 'w') as f:
+            f.write('FROM node:22\n')
+        sub = os.path.join(self.d, 'sub', 'deeper')
+        os.makedirs(sub)
+        here = os.path.dirname(os.path.abspath(__file__))
+        installed = os.path.join(self.d, '.claude', 'skills', 'scout-updates', 'scripts')
+        os.makedirs(installed)
+        for name in ('compare.py', 'inventory.py'):
+            shutil.copy(os.path.join(here, name), installed)
+        r = subprocess.run([sys.executable, os.path.join(installed, 'compare.py'), self.arch, '--json'], cwd=sub,
+                           capture_output=True, text=True)
+        self.assertIn('Dockerfile', json.loads(r.stdout)['uncounted'], r.stderr)
+        cwd = os.getcwd()
+        self.addCleanup(os.chdir, cwd)
+        os.chdir(sub)
+        out = io.StringIO()
+        with redirect_stdout(out):
+            compare.main([self.arch, '--json'])
+        self.assertIn('Dockerfile', json.loads(out.getvalue())['uncounted'])
+        outside = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, outside)
+        os.chdir(outside)
+        with self.assertRaises(SystemExit) as e:
+            compare.main([self.arch])
+        self.assertIn('--root <project root>', str(e.exception.code))
+
     def test_exit_code(self):
         with open(self.arch, 'w') as f:
             f.write('## Runtimes\n<!-- seal: 2026-01-10 | %s | .nvmrc, package.json, .env.example -->\n' % self.commit)

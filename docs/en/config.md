@@ -50,6 +50,7 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
 | `checkWrapper` | Prefix of every `check` and `relatedTests` command (e.g. `docker compose run --rm app`): it always runs `<prefix> bash -c '<command>'` (with `cd <cwd> &&` inside when the entry has `cwd`), so it also covers a compound command (`a && b`). The CI template does not apply `checkWrapper`: it is for the local host (e.g. a sandbox); CI runners do not need it. | `""` (no prefix) | `"docker compose run --rm app"` | `pre-push`, `tests-relacionados.sh` |
 | `relatedTests` | `{ "fast": [...], "slow": [...] }`: tests of what changed. Each entry is a command (string) or `{ "command", "paths", "cwd" }`: `paths` is a regex filtering the changed files and `cwd` a folder the command runs from (`{files}` is relative to it). `fast` runs on every push; `slow` only when some changed file (in its scope) still exists; `{files}` is replaced by the changed files | no commands | `{"fast": [{"command": "npx vitest related {files}", "paths": "\\.tsx?$", "cwd": "web"}], "slow": []}` | `tests-relacionados.sh` (called by `pre-push`) |
 | `worktreeLinks` | Paths (relative, no `..`) of the main checkout that `pre-push` links into the temporary worktree where `check` runs; missing ones are skipped and a path of the commit is never overwritten | `["node_modules", ".venv"]` | `["node_modules", "backend/node_modules", ".env"]` | `pre-push` |
+| `worktreeDir` | Folder (absolute, or relative to the repo root) under which `pre-push` creates its temporary worktrees, for a sandbox that cannot see `$TMPDIR` (e.g. Flatpak); a relative one should be in `.gitignore` and outside `.git/` | `""` (`${TMPDIR:-/tmp}`) | `".cache/gw-worktrees"` | `pre-push` |
 | `plan` | Plan or roadmap files or folders where tasks are ticked or struck through | `[]` | `["docs/roadmap.md"]` | `bitacora.py` |
 | `taskId` | Regex of the project's task ids | `[A-Z]{2,5}-\\d+` | `"(INS\|FLU)-\\d+"` (capturing groups are treated as non-capturing) | `bitacora.py` |
 
@@ -60,9 +61,10 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   `GW_PUSH_PROTECTED=true` when the push goes to the protected branch (`false` otherwise; unset outside the hook), so a
   command can run only before `main`, e.g. `[ "${GW_PUSH_PROTECTED:-}" != true ] || <command>`.
 - **`check` runs in a temporary worktree** when the working copy is not clean (or the push is not what it holds): it
-  lives in `<common git dir>/gw-pre-push/wt.XXXXXX.d`, never in `$TMPDIR`, and is removed on every exit (also on
-  Ctrl-C or `kill`). If a push dies unable to clean up, the next one removes the orphaned worktrees; two pushes at once
-  do not step on each other. What is linked from the main checkout is set by `worktreeLinks`. A failing command's log
+  lives in `${TMPDIR:-/tmp}/gw-pre-push-wt-<repo id>/wt.XXXXXX.d` (or under `worktreeDir`), never inside `.git/`
+  (jest and similar tools ignore any path with a `/.git/` segment), and is removed on every exit (also on Ctrl-C or
+  `kill`). If a push dies unable to clean up, the next one removes the orphaned worktrees older than 24 h whose process
+  is gone; two pushes at once do not step on each other. What is linked from the main checkout is set by `worktreeLinks`. A failing command's log
   is kept (`full log: <path>`); when it passes, it is deleted.
 - **`pushToProtected`** says how code reaches the protected branch today. A direct push that brings code always needs
   the mark in `pre-push`, with `direct` and with `pr`; with `pr`, the PR hook also asks for it when the pull request

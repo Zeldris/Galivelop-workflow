@@ -544,6 +544,17 @@ class RojoSinArreglo(Base):
         self.assertIn("--ran-one needs a regex", out)
 
 
+    def test_an_invalid_regex_fails_closed_before_touching_the_fix(self):
+        cmd = "echo 'ok 1'; grep -q good fix.txt"
+        for option in ("--ran-one", "--fails-with"):
+            code, out = self.p.script("rojo-sin-arreglo.sh", option, "ok[", cmd, "fix.txt")
+            self.assertEqual(code, 2, out)
+            self.assertIn("/ok[/ is not a valid extended regex", out)
+            self.assertNotIn("OK, the test fails", out)
+        self.assertEqual((self.p.work / "fix.txt").read_text(), "good\n")
+        self.assertEqual(self.stashes(), "")
+
+
 class TestsRelacionados(Base):
     def run_with(self, related, changed=("src/a.py",), files=(), wrapper=None):
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())

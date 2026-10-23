@@ -12,6 +12,7 @@
   "check": ["make check"],
   "checkWrapper": "",
   "worktreeLinks": ["node_modules", ".venv"],
+  "worktreeDir": "",
   "reviewMark": "docs/registros/revisado.txt",
   "requireRetro": false,
   "content": ["^docs/", "^(README|GLOSSARY|REVIEW|CLAUDE|AGENTS|CHANGELOG|CREDITS)(\\.[a-z]{2})?\\.md$", "^\\.claude/skills/.*\\.md$"],

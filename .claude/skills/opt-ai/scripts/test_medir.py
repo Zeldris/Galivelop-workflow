@@ -127,6 +127,13 @@ class MedirTest(unittest.TestCase):
         self.assertIn('TURNS', text)
         self.assertIn('small/turn/-  2  3000  4800  5000  1.5  50', text)
 
+    def test_retrieval_calls_with_the_turn_belong_to_it(self):
+        rag = {'gen_ai.operation.name': 'retrieval', 'app.machine_profile': 'small', 'app.task': 'search',
+               'app.duration_ms': 3000, 'app.turn': 'a', 'ts': '2026-01-01T10:00:05Z'}  # 2 s to 5 s
+        path = self.log([rag, call(4000, **{'app.turn': 'a', 'ts': '2026-01-01T10:00:10Z'})])  # 6 s to 10 s
+        t = medir.analyse(path)['turns'][('small', 'turn', '-')]
+        self.assertEqual((t['n'], t['max_ms'], t['calls_per_turn']), (1, 8000, 2))
+
     def test_untimed_failed_turn_counts_in_error_pct(self):
         path = self.log([call(1000, **{'app.turn': 'a', 'ts': '2026-01-01T10:00:10Z'}),
                          call(100, **{'app.turn': 'b', 'app.error': 'x'})])  # failed, no ts: no timing
