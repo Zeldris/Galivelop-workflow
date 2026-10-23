@@ -16,4 +16,4 @@ Fase 2 de las tres antes de `main`, tras la fase 1 (code review contra `origin/m
 
 **Estado:** aprobadas por el usuario y aplicadas en la rama opt-tokens P1-P3 y retro R1.
 
-R2 queda para hablarla con el usuario después de publicar.
+R2 decidida por el usuario el mismo día: sí; se aplica en la rama tras publicar `0.3.0`.

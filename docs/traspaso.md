@@ -10,9 +10,9 @@
 |---|---|
 | Rama | `ccr-6dfbc880-ddr41g` (avance rápido de `ccr-76251061-b1yiwq`, que sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `01d1a75` = **release `v0.2.0`** (2026-10-22, etiqueta y release creadas a mano en GitHub); `v0.1.0` = `9b97d7b` |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
-| Fase en curso | **6 cerrada** (2026-10-23): propuestas de los dos pilotos aplicadas (tandas A-G) y versión `0.3.0` en la rama, sin publicar; P7 del instalador (CI pasado en local) aplazada para hablarla con el usuario. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | **Versión `0.3.0`** con los arreglos de la fase 1 antes de `main` (code review contra `origin/main`); check en verde en local; el CI no arranca (cupo de Actions) |
-| Siguiente paso | Fase 3 antes de `main`: `bash scripts/revisado.sh` y, con la confirmación del usuario, publicar `0.3.0` en `main`; hablar la P7 (R2 de la retro del 2026-10-23); luego la Fase 7 |
+| Fase en curso | **6 cerrada** y `0.3.0` publicada en `main` (2026-10-23); P7 del instalador decidida (sí), por aplicar. Próxima: **7. Rodaje etapa 1** |
+| Último punto estable | **`0.3.0` publicada en `main`** (ea81c9f), tras las tres fases; check en verde en local; el CI no arranca (cupo de Actions) |
+| Siguiente paso | Aplicar la P7 decidida (un check que pasó en local vale cuando Actions no arranca, dicho como «comprobado solo en local»): reglas de `AGENTS.md` y plantillas, y su caso en los tests; luego la Fase 7 |
 
 ### Fases
 
@@ -35,15 +35,16 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 
 ## Hecho (5 últimas)
 
-1. 2026-10-23 — Fase 2 antes de `main`: `/opt-tokens` (tope de ~35 llamadas por subagente, «Hecho» de 5 entradas
+1. 2026-10-23 — **`0.3.0` publicada en `main`** (ea81c9f). El usuario decide la P7: un check que pasó en local vale
+   cuando Actions no arranca.
+2. 2026-10-23 — Fase 2 antes de `main`: `/opt-tokens` (tope de ~35 llamadas por subagente, «Hecho» de 5 entradas
    cortas, check en segundo plano) y `/retro` (regla de `/tmp` en `REVIEW.md`); retro en `docs/registros/`.
-2. 2026-10-23 — Revisión de los arreglos antes de `main`: carpeta de worktrees del `pre-push` por usuario, 700, sin
+3. 2026-10-23 — Revisión de los arreglos antes de `main`: carpeta de worktrees del `pre-push` por usuario, 700, sin
    symlinks (688da4d, 6aaf2cc); menores en «Pendiente».
-3. 2026-10-23 — Fase 1 antes de `main`: arreglos del `/code-review` contra `origin/main` (3b47af1): worktree fuera de
+4. 2026-10-23 — Fase 1 antes de `main`: arreglos del `/code-review` contra `origin/main` (3b47af1): worktree fuera de
    `.git/` y `worktreeDir`, huérfanos de >24 h, guardas que fallan cerradas.
-4. 2026-10-23 — Cierre de la Fase 6: versión `0.3.0` y CHANGELOG ES/EN (tanda G, 58d1fe8); tanda F, plantillas y
+5. 2026-10-23 — Cierre de la Fase 6: versión `0.3.0` y CHANGELOG ES/EN (tanda G, 58d1fe8); tanda F, plantillas y
    `aplicar.md` (024b3dc).
-5. 2026-10-23 — Tandas A-E de las propuestas de los pilotos (WMF e instalador): ver `git log` y el CHANGELOG `0.3.0`.
 
 ## Pendiente
 
