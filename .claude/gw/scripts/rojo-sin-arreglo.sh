@@ -7,18 +7,25 @@
 #   e.g.  bash rojo-sin-arreglo.sh "npx vitest run src/a.test.ts -t 'name'" src/a.ts
 #   --fails-with REGEX  the failing run must also print REGEX (guards against failing for another reason, such as a
 #                       typo in the test name or a missing import).
+#   --ran-one REGEX     the run WITH the fix must print exactly one line matching REGEX, where REGEX is what your test
+#                       runner prints once per test that ran (e.g. '^ok ' for TAP, '^PASSED|PASSED$' for pytest -v,
+#                       '^test .* \.\.\. ok$' for cargo). Zero lines = the filter matched nothing; two or more = it ran
+#                       more than the new test. It reads output, so it works with any runner that prints one line per test.
 # Make the command run exactly the new test (by its exact name): a filter that matches nothing may "pass" without
 # running it. Every fix file must have uncommitted changes (a new, untracked file counts).
 # Bash 3.2 compatible. Root from this script's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 pattern=""
-if [ "${1:-}" = "--fails-with" ]; then
-  [ $# -ge 2 ] || { echo "rojo-sin-arreglo: --fails-with needs a regex; usage: bash $0 [--fails-with REGEX] \"<test command>\" <fix-file>..." >&2; exit 2; }
-  pattern="$2"; shift 2
-fi
+one=""
+usage="usage: bash $0 [--fails-with REGEX] [--ran-one REGEX] \"<test command>\" <fix-file>..."
+while [ "${1:-}" = "--fails-with" ] || [ "${1:-}" = "--ran-one" ]; do
+  [ $# -ge 2 ] || { echo "rojo-sin-arreglo: $1 needs a regex; $usage" >&2; exit 2; }
+  if [ "$1" = "--fails-with" ]; then pattern="$2"; else one="$2"; fi
+  shift 2
+done
 if [ $# -lt 2 ]; then
-  echo "rojo-sin-arreglo: usage: bash $0 [--fails-with REGEX] \"<test command>\" <fix-file>..." >&2; exit 2
+  echo "rojo-sin-arreglo: $usage" >&2; exit 2
 fi
 cmd="$1"; shift
 root="$(git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
@@ -58,6 +65,13 @@ fi
 if [ -n "$pattern" ] && ! grep -Eq -- "$pattern" "$out/without.log"; then
   tail -n 20 "$out/without.log" >&2
   echo "rojo-sin-arreglo: it fails without the fix but not with /$pattern/, maybe for another reason; check the output above and rerun" >&2; exit 1
+fi
+if [ -n "$one" ]; then
+  ran="$(grep -Ec -- "$one" "$out/with.log")"
+  if [ "$ran" -ne 1 ]; then
+    tail -n 20 "$out/with.log" >&2
+    echo "rojo-sin-arreglo: $ran lines match /$one/ in the run with the fix, expected exactly 1 (the new test); narrow the command's test filter so it runs only that test, then rerun" >&2; exit 1
+  fi
 fi
 echo "rojo-sin-arreglo: OK, the test fails without the fix and passes with it"
 exit 0

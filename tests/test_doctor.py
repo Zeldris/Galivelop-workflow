@@ -185,9 +185,42 @@ class Doctor(unittest.TestCase):
             {"matcher": "startup", "hooks": [{"type": "command", "command": "bash scripts/session-start.sh"}]})
         path.write_text(json.dumps(settings))
         (self.p.work / "scripts").mkdir()
-        (self.p.work / "scripts" / "session-start.sh").write_text("true\n")
+        (self.p.work / "scripts" / "session-start.sh").write_text(f"#!/usr/bin/env bash\n# galivelop-workflow v{VERSION}\ntrue\n")
         code, out = self.doctor()
         self.assertLine(out, "WARN", "'bash scripts/session-start.sh' runs a workflow script from outside", "delete")
+
+    def test_project_own_script_with_a_flow_name_does_not_warn(self):
+        settings = self.settings()
+        settings["hooks"]["SessionStart"].append(
+            {"matcher": "startup", "hooks": [{"type": "command", "command": "bash scripts/session-start.sh"}]})
+        self.save_settings(settings)
+        self.p.write("scripts/session-start.sh", "#!/usr/bin/env bash\necho my own setup\n")
+        self.p.commit("own hook")
+        code, out = self.doctor()
+        self.assertNotIn("runs a workflow script from outside", out)
+        self.assertNotIn("WARN", out)
+
+    def test_review_mark_ignored_by_git_fails(self):
+        mark = json.loads((self.p.work / ".claude" / "gw.json").read_text())["reviewMark"]
+        self.p.write(".gitignore", f"{mark}\n")
+        self.p.commit("ignore the mark")
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", f"{mark} by .gitignore:1:{mark}", f"!{mark}")
+
+    def test_next_steps_in_the_plural_are_accepted(self):
+        self.p.write("docs/log.md", "# Log\n\n## Siguientes pasos\n\n1. write tests\n")
+        self.assertLine(self.doctor()[1], "OK", "log", "has a next step")
+        self.p.write("docs/log.md", "# Log\n\n## Next steps\n\n1. write tests\n")
+        self.assertLine(self.doctor()[1], "OK", "log", "has a next step")
+
+    def test_repeated_glossary_term_warns(self):
+        self.p.write("GLOSSARY.md", "# Glossary\n\n- **Mark**: one.\n- **Other**: two.\n- **mark**: again.\n")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "glossary", "same term twice: mark (line 3)", "merge the entries")
+        self.p.write("GLOSSARY.md", "# Glossary\n\n- **Mark**: one.\n- **Other**: two.\n")
+        self.assertLine(self.doctor()[1], "OK", "glossary")
 
     def test_invalid_config_fails_with_validate_command(self):
         (self.p.work / ".claude" / "gw.json").write_text("{}")

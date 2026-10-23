@@ -194,6 +194,62 @@ class BitacoraTasks(Base):
         self.assertIn("TASK-1", out)
         self.assertNotIn("TASK-2", out)
 
+    def test_task_id_with_capturing_groups_does_not_crash_closed_and_still_checks(self):
+        self.p.branch("feat-a")
+        base = self.plan("- INS-1 one\n- FLU-2 two\n- INS-3 three\n- INS-1 to INS-3 range\n")
+        self.plan("- ~~INS-1 to INS-3 range~~\n- INS-1 one\n- FLU-2 two\n", "close")
+        args = ("--plan", self.PLAN, "--id-regex", r"(INS|FLU)-\d+", "closed", base, self.p.sha())
+        code, out = self.p.script("bitacora.py", *args)
+        self.assertEqual(code, 1, out)
+        self.assertNotIn("Traceback", out)
+        self.assertIn("INS-1 is closed in the plan", out)
+        self.assertIn("INS-3 is closed in the plan", out)
+        self.assertNotIn("FLU-2", out)
+        self.p.write(LOG, log_text().replace("1. nothing yet", "1. ~~INS-1 to INS-3~~ done"))
+        self.p.commit("log", env=DAY)
+        args = args[:-1] + (self.p.sha(),)
+        self.assertEqual(self.p.script("bitacora.py", *args)[0], 0)
+
+    def test_task_id_from_the_config_with_groups(self):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        self.p = Utilidades(self.tmp, {"taskId": r"(INS|FLU)-\d+"})
+        self.p.branch("feat-a")
+        base = self.plan("- FLU-9 nine\n")
+        self.plan("- ~~FLU-9 nine~~\n", "close FLU-9")
+        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())
+        self.assertEqual(code, 1, out)
+        self.assertIn("FLU-9 is closed in the plan", out)
+
+    def test_backreference_in_the_id_regex_is_a_usage_error(self):
+        code, out = self.p.script("bitacora.py", "--id-regex", r"(a)\1", "closed", "HEAD", "HEAD")
+        self.assertEqual(code, 2, out)
+        self.assertIn("back-reference", out)
+
+    def test_only_struck_or_dated_lines_in_done_record_a_task(self):
+        self.p.branch("feat-a")
+        base = self.plan("- [ ] **INS-3** the thing\n")
+        self.plan("- [x] **INS-3** the thing\n", "close INS-3")
+        for text in ("1. INS-3 done, not struck", "- [x] **INS-3** ticked", "1. mentioned later: INS-3 pending"):
+            self.p.write(LOG, log_text().replace("1. nothing yet", text))
+            self.p.commit("log", env=DAY)
+            code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())
+            self.assertEqual(code, 1, f"{text}: {out}")
+            self.assertIn("INS-3 is closed in the plan", out)
+        self.p.write(LOG, log_text().replace("1. nothing yet", "1. 2026-10-21 — closed INS-3 with the fix"))
+        self.p.commit("log", env=DAY)
+        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())
+        self.assertEqual(code, 0, out)
+
+    def test_check_fails_on_a_task_row_without_a_branch_even_with_good_rows(self):
+        self.p.write(LOG, log_text().replace("| **Branches**", "| **Tarea en curso** | no branch here |\n| **Branches**"))
+        code, out = self.p.script("bitacora.py", "check")
+        self.assertEqual(code, 1, out)
+        self.assertIn("task row without a branch", out)
+        self.assertIn("Tarea en curso", out)
+        self.p.write(LOG, log_text())
+        self.assertEqual(self.p.script("bitacora.py", "check")[0], 0)
+
 
 class BitacoraCloseRow(Base):
     def test_close_row_writes_merged_text_only_in_that_row(self):
@@ -442,6 +498,27 @@ class RojoSinArreglo(Base):
         self.assertEqual(code, 1, out)
         self.assertIn("another reason", out)
         self.assertEqual((self.p.work / "fix.txt").read_text(), "good\n")
+
+    def test_ran_one_requires_exactly_one_matching_line(self):
+        one = "echo 'ok 1 - a'; grep -q good fix.txt"
+        self.assertEqual(self.p.script("rojo-sin-arreglo.sh", "--ran-one", "^ok ", one, "fix.txt")[0], 0)
+        two = "echo 'ok 1 - a'; echo 'ok 2 - b'; grep -q good fix.txt"
+        code, out = self.p.script("rojo-sin-arreglo.sh", "--ran-one", "^ok ", two, "fix.txt")
+        self.assertEqual(code, 1, out)
+        self.assertIn("2 lines match /^ok /", out)
+        code, out = self.p.script("rojo-sin-arreglo.sh", "--ran-one", "^ok ", "grep -q good fix.txt", "fix.txt")
+        self.assertEqual(code, 1, out)
+        self.assertIn("0 lines match /^ok /", out)
+        self.assertEqual((self.p.work / "fix.txt").read_text(), "good\n")
+        self.assertEqual(self.stashes(), "")
+
+    def test_options_combine_and_need_a_value(self):
+        cmd = "echo boom; echo 'ok 1'; grep -q good fix.txt"
+        code, out = self.p.script("rojo-sin-arreglo.sh", "--fails-with", "boom", "--ran-one", "^ok ", cmd, "fix.txt")
+        self.assertEqual(code, 0, out)
+        code, out = self.p.script("rojo-sin-arreglo.sh", "--ran-one")
+        self.assertEqual(code, 2, out)
+        self.assertIn("--ran-one needs a regex", out)
 
 
 class TestsRelacionados(Base):

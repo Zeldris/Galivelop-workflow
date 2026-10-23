@@ -39,6 +39,10 @@ estorba en todos los proyectos. Lee primero [`AGENTS.md`](../../AGENTS.md) y la 
   bash scripts/rojo-sin-arreglo.sh "python3 -m unittest tests.test_doctor.Clase.test_caso" scripts/doctor.py
   ```
 
+  Opciones: `--fails-with REGEX` (el fallo sin el arreglo debe imprimir REGEX, para que no falle por otro motivo) y
+  `--ran-one REGEX` (la ejecución con el arreglo debe imprimir exactamente una línea que case con REGEX, la que tu
+  ejecutor saca por cada test, p. ej. `'^ok '`: si el filtro no casa con nada o ejecuta más de un test, falla).
+
 - Una **skill** nueva o cambiada pasa `tests/test_skills.py` (nombre = carpeta, `description` de 1 a 1024 caracteres,
   `license`, `compatibility`, `metadata.version`, menos de 200 líneas). Se escribe en **inglés** y aplicando la skill
   `writing-for-agents`.

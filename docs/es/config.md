@@ -45,7 +45,7 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
 | `staleRefs` | Expresiones (sin distinguir mayúsculas) que no deben aparecer en `docs/` ni en los README: una tarea renombrada, una fase borrada | `[]` | `["fase 9 \\(vieja\\)"]` | `enlaces-md.py` |
 | `relatedTests` | `{ "fast": [...], "slow": [...] }`: las pruebas de lo que cambia. `fast` corre en cada push; `slow`, solo si algún archivo cambiado sigue existiendo; `{files}` se sustituye por los archivos cambiados | sin órdenes | `{"fast": ["npx vitest related {files}"], "slow": []}` | `tests-relacionados.sh` (lo llama el `pre-push`) |
 | `plan` | Archivos o carpetas de plan o roadmap donde las tareas se tachan o marcan | `[]` | `["docs/producto/21-roadmap.md"]` | `bitacora.py` |
-| `taskId` | Expresión de los identificadores de tarea | `[A-Z]{2,5}-\\d+` | `"INS-\\d+"` | `bitacora.py` |
+| `taskId` | Expresión de los identificadores de tarea | `[A-Z]{2,5}-\\d+` | `"(INS\|FLU)-\\d+"` (los grupos con captura se tratan como sin captura) | `bitacora.py` |
 
 ## Notas
 
@@ -65,6 +65,7 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   lo que diga `content`. Para ver cómo se clasifica una ruta y por qué:
   `bash .claude/gw/scripts/es-codigo.sh --explicar <ruta>...`.
 - **`logRows`** va con la plantilla de bitácora de filas (`| **Tarea en curso · \`rama\`** | … |`); el push comprueba
-  que cada rama escribe solo en su fila.
+  que cada rama escribe solo en su fila, que toda fila «Tarea en curso» lleva su rama y que cada tarea cerrada en el
+  plan consta en «Hecho»: tachada allí, o nombrada en una línea que empieza por fecha (un punto sin tachar no basta).
 - Tras actualizar el flujo, sube `version` a mano (`/gw-update` lo hace): ese número es lo que `doctor.py`
   compara con las cabeceras copiadas.

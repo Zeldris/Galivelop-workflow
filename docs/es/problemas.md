@@ -31,6 +31,10 @@ python3 .claude/gw/scripts/doctor.py
 | `githook pre-push` / `pre-commit` (FAIL) | Falta el archivo o no es ejecutable | `/gw-update`; o `chmod +x .githooks/<hook>` (en Windows, `git update-index --chmod=+x .githooks/<hook>`) |
 | `githook …` (WARN) | Versión distinta de la de `.claude/gw.json` | `/gw-update` |
 | `log` (FAIL) | La bitácora no existe, o no tiene línea de «Siguiente paso»/«Next step» | Créala con `/gw-update`; añade la línea al archivo que dice `log` |
+| `log` (OK/FAIL) | «Siguientes pasos» / «Next steps» en plural también cuenta como línea de siguiente paso | — |
+| `glossary` (WARN) | El mismo `**Término**:` aparece dos veces en `GLOSSARY.md` | Fusiona las entradas en una |
+| `ignored` (FAIL) | Git ignora un archivo del flujo, o el de `reviewMark`: el commit lo dejaría fuera | Añade `!<ruta>` a `.gitignore` y comprueba `git check-ignore -v <ruta>` |
+| `settings <evento>` (WARN) | Una orden de gancho ejecuta un script del flujo (por su cabecera `# galivelop-workflow v…`) desde fuera de `.claude/gw/scripts/`; un script propio con el mismo nombre no avisa | Borra esa entrada de `.claude/settings.json` |
 | `check command` (FAIL) | La primera palabra de una orden de `check` no está en el `PATH` ni es un archivo del repo | Instala esa herramienta o corrige `check` en `.claude/gw.json` |
 | `install command` (WARN) | Lo mismo para `install` | Igual |
 | `ci` (WARN) | No hay ningún workflow en `.github/workflows` | `mkdir -p .github/workflows && cp <flujo>/templates/github/comprobar.yml .github/workflows/` |

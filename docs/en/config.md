@@ -45,7 +45,7 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
 | `staleRefs` | Case-insensitive regexes that must not appear in `docs/` or the READMEs: a renamed task, a removed phase | `[]` | `["old phase 9"]` | `enlaces-md.py` |
 | `relatedTests` | `{ "fast": [...], "slow": [...] }`: tests of what changed. `fast` runs on every push; `slow` only when some changed file still exists; `{files}` is replaced by the changed files | no commands | `{"fast": ["npx vitest related {files}"], "slow": []}` | `tests-relacionados.sh` (called by `pre-push`) |
 | `plan` | Plan or roadmap files or folders where tasks are ticked or struck through | `[]` | `["docs/roadmap.md"]` | `bitacora.py` |
-| `taskId` | Regex of the project's task ids | `[A-Z]{2,5}-\\d+` | `"INS-\\d+"` | `bitacora.py` |
+| `taskId` | Regex of the project's task ids | `[A-Z]{2,5}-\\d+` | `"(INS\|FLU)-\\d+"` (capturing groups are treated as non-capturing) | `bitacora.py` |
 
 ## Notes
 
@@ -64,6 +64,8 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   `.claude/gw.json`, `.claude/settings.json`, `.claude/gw/` and `.githooks/` are always code, whatever `content` says.
   To see how a path is classified and why: `bash .claude/gw/scripts/es-codigo.sh --explicar <path>...`.
 - **`logRows`** goes with the row-based log template (``| **Current task · `branch`** | … |``); the push checks that
-  each branch writes only in its own row.
+  each branch writes only in its own row, that every "Task in progress" row names its branch, and that each task
+  closed in the plan is recorded in "Done": struck through there, or named on a line that starts with a date (an
+  unstruck bullet is not enough).
 - After changing the workflow version, bump `version` by hand (`/gw-update` does it): `doctor.py` compares that number
   with the copied headers.

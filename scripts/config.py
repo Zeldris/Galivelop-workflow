@@ -42,6 +42,51 @@ def git_toplevel(path):
         return None
 
 
+def non_capturing(pattern):
+    """`pattern` with every capturing group made non-capturing: `(A|B)-\\d+` -> `(?:A|B)-\\d+`, so re.findall of a
+    task id (taskId) returns whole matches and not the groups. Escaped parentheses, `[...]` classes and `(?...)`
+    constructs are left alone; a named group `(?P<n>` becomes `(?:`. Raises ConfigError on a back-reference, which
+    cannot survive the change."""
+    out, i, n, in_class = [], 0, len(pattern), False
+    backref = f"the pattern {pattern!r} uses a back-reference; write it without capturing groups"
+    while i < n:
+        c = pattern[i]
+        if c == "\\" and i + 1 < n:
+            if not in_class and pattern[i + 1] in "123456789":
+                raise ConfigError(backref)
+            out.append(pattern[i:i + 2])
+            i += 2
+            continue
+        if in_class:
+            in_class = c != "]"
+        elif c == "[":
+            in_class = True
+            out.append(c)
+            i += 1
+            if pattern[i:i + 1] == "^":
+                out.append("^")
+                i += 1
+            if pattern[i:i + 1] == "]":  # a leading ] is a literal
+                out.append("]")
+                i += 1
+            continue
+        elif c == "(":
+            if pattern.startswith("(?P=", i):
+                raise ConfigError(backref)
+            named = re.match(r"\(\?P<[^>]*>", pattern[i:])
+            if named:
+                out.append("(?:")
+                i += named.end()
+                continue
+            if pattern[i + 1:i + 2] != "?":
+                out.append("(?:")
+                i += 1
+                continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
 def find_root(explicit=None):
     if explicit:
         root = git_toplevel(explicit)

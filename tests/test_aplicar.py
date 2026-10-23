@@ -159,8 +159,19 @@ class Aplicar(unittest.TestCase):
         settings["hooks"]["SessionStart"].append(
             {"matcher": "startup", "hooks": [{"type": "command", "command": "bash .claude/hooks/session-start.sh"}]})
         p.write(".claude/settings.json", json.dumps(settings))
+        p.write(".claude/hooks/session-start.sh", f"#!/usr/bin/env bash\n# galivelop-workflow v{VERSION}\ntrue\n")
         out = self.applied()
         self.assertIn("WARNING: .claude/settings.json SessionStart also runs 'bash .claude/hooks/session-start.sh'", out)
+
+    def test_project_own_script_with_a_flow_name_is_not_listed(self):
+        p = self.p
+        self.applied()
+        settings = json.loads(p.read(".claude/settings.json"))
+        settings["hooks"]["SessionStart"].append(
+            {"matcher": "startup", "hooks": [{"type": "command", "command": "bash .claude/hooks/session-start.sh"}]})
+        p.write(".claude/settings.json", json.dumps(settings))
+        p.write(".claude/hooks/session-start.sh", "#!/usr/bin/env bash\necho mine\n")
+        self.assertNotIn("also runs", self.applied())
 
     def test_locally_newer_owned_file_is_never_overwritten(self):
         p = self.p

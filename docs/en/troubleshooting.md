@@ -31,6 +31,10 @@ python3 .claude/gw/scripts/doctor.py
 | `githook pre-push` / `pre-commit` (FAIL) | The file is missing or not executable | `/gw-update`; or `chmod +x .githooks/<hook>` (on Windows, `git update-index --chmod=+x .githooks/<hook>`) |
 | `githook …` (WARN) | A version different from `.claude/gw.json`'s | `/gw-update` |
 | `log` (FAIL) | The log does not exist, or has no "Next step" / "Siguiente paso" line | Create it with `/gw-update`; add the line to the file named by `log` |
+| `log` (OK/FAIL) | "Siguientes pasos" / "Next steps" in the plural also counts as a next-step line | — |
+| `glossary` (WARN) | The same `**Term**:` appears twice in `GLOSSARY.md` | Merge the entries into one |
+| `ignored` (FAIL) | Git ignores a workflow file, or the `reviewMark` file: a commit would leave it out | Add `!<path>` to `.gitignore` and check `git check-ignore -v <path>` |
+| `settings <event>` (WARN) | A hook command runs a workflow script (recognised by its `# galivelop-workflow v…` header) from outside `.claude/gw/scripts/`; a project's own script with the same name does not warn | Delete that entry from `.claude/settings.json` |
 | `check command` (FAIL) | The first word of a `check` command is neither on `PATH` nor a file in the repo | Install that tool or fix `check` in `.claude/gw.json` |
 | `install command` (WARN) | The same for `install` | Same |
 | `ci` (WARN) | No workflow under `.github/workflows` | `mkdir -p .github/workflows && cp <workflow>/templates/github/comprobar.yml .github/workflows/` |

@@ -276,7 +276,7 @@ class Plan:
             current = {}
         merged, added = merge_settings(current, tmpl)
         hooks = merged.get("hooks") if isinstance(merged.get("hooks"), dict) else {}
-        for event, command in stale_flow_hooks(hooks):
+        for event, command in stale_flow_hooks(hooks, self.root):
             self.warnings.append(f".claude/settings.json {event} also runs '{command}', a workflow script from "
                                  f"outside .claude/gw/scripts/ (an older copy?); delete that entry if so, or it runs twice")
         if not path.exists():

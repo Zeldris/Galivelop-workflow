@@ -39,6 +39,10 @@ here, it gets in the way in every project. Read [`AGENTS.md`](../../AGENTS.md) a
   bash scripts/rojo-sin-arreglo.sh "python3 -m unittest tests.test_doctor.Class.test_case" scripts/doctor.py
   ```
 
+  Options: `--fails-with REGEX` (the failure without the fix must print REGEX, so it does not fail for another
+  reason) and `--ran-one REGEX` (the run with the fix must print exactly one line matching REGEX, the one your
+  runner prints per test, e.g. `'^ok '`: it fails if the filter matches nothing or runs more than one test).
+
 - A new or changed **skill** passes `tests/test_skills.py` (name = folder, `description` 1 to 1024 characters,
   `license`, `compatibility`, `metadata.version`, under 200 lines). It is written in **English**, applying the
   `writing-for-agents` skill.

@@ -91,5 +91,20 @@ class Config(unittest.TestCase):
             shutil.rmtree(plain)
 
 
+class NonCapturing(unittest.TestCase):
+    def test_groups_become_non_capturing_and_the_rest_is_left_alone(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import config
+        cases = {r"(INS|FLU)-\d+": r"(?:INS|FLU)-\d+", r"\(x\)(a|b)": r"\(x\)(?:a|b)", r"[(]a(b)": r"[(]a(?:b)",
+                 r"(?:a)(?P<n>c)": r"(?:a)(?:c)", r"[^]()](z)": r"[^]()](?:z)", r"(?i)a(b)": r"(?i)a(?:b)",
+                 r"[A-Z]{2,5}-\d+[a-z]?": r"[A-Z]{2,5}-\d+[a-z]?"}
+        for src, want in cases.items():
+            self.assertEqual(config.non_capturing(src), want)
+        with self.assertRaises(config.ConfigError) as ctx:
+            config.non_capturing(r"(a)\1")
+        self.assertIn("back-reference", str(ctx.exception))
+
+
 if __name__ == "__main__":
     unittest.main()
