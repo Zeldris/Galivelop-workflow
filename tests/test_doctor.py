@@ -136,6 +136,19 @@ class Doctor(unittest.TestCase):
         self.assertLine(out, "OK", "FOO=1 bash check.sh")
         self.assertLine(out, "WARN", "./missing-install.sh")
 
+    def test_check_wrapper_must_exist(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["checkWrapper"] = "tools/qa/host.sh"
+        p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", "checkWrapper", "'tools/qa/host.sh' is not a command on PATH nor a file in the repo")
+        p.write("tools/qa/host.sh", "exec \"$@\"\n")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "OK", "checkWrapper", "tools/qa/host.sh")
+
     def test_no_ci(self):
         shutil.rmtree(self.p.work / ".github")
         code, out = self.doctor()

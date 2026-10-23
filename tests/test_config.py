@@ -39,6 +39,43 @@ class Config(unittest.TestCase):
         self.assertEqual(cli(self.tmp, "get", "requireRetro").stdout.strip(), "false")
         self.assertEqual(cli(self.tmp, "get", "install", "--json").stdout.strip(), "[]")
 
+    def test_check_wrapper_and_worktree_links_defaults_and_values(self):
+        self.write(VALID)
+        self.assertEqual(cli(self.tmp, "get", "checkWrapper").stdout, "\n")
+        self.assertEqual(cli(self.tmp, "get", "worktreeLinks").stdout.splitlines(), ["node_modules", ".venv"])
+        self.write(dict(VALID, checkWrapper="tools/qa/host.sh", worktreeLinks=["backend/node_modules", ".env"]))
+        self.assertEqual(cli(self.tmp, "get", "checkWrapper").stdout.strip(), "tools/qa/host.sh")
+        self.assertEqual(cli(self.tmp, "get", "worktreeLinks").stdout.splitlines(), ["backend/node_modules", ".env"])
+        self.write(dict(VALID, worktreeLinks=[]))
+        self.assertEqual(cli(self.tmp, "get", "worktreeLinks", "--json").stdout.strip(), "[]")
+
+    def test_worktree_links_must_stay_inside_the_repo(self):
+        for bad in ("/etc", "../x", "a/../b", "a/..", ".."):
+            self.write(dict(VALID, worktreeLinks=[bad]))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn("worktreeLinks[0]", r.stderr)
+            self.assertIn("does not match", r.stderr)
+        self.write(dict(VALID, worktreeLinks=["..hidden", "a..b/c"]))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+
+    def test_related_tests_entries_are_strings_or_objects(self):
+        ok = {"fast": ["npx vitest", {"command": "npm test {files}", "paths": "^app/", "cwd": "app"}], "slow": []}
+        self.write(dict(VALID, relatedTests=ok))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        self.write(dict(VALID, relatedTests={"fast": [5]}))
+        r = cli(self.tmp, "validate")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("relatedTests.fast[0]: matches none of the allowed forms", r.stderr)
+
+    def test_related_picks_the_commands_that_apply(self):
+        entries = ["echo always", {"command": "run {files}", "paths": "\\.ts$", "cwd": "app"}]
+        self.write(dict(VALID, relatedTests={"fast": entries}, checkWrapper="w.sh"))
+        r = subprocess.run(["python3", str(SCRIPT), "--root", str(self.tmp), "related", "--kind", "fast"],
+                           input="app/a b.ts\nsrc/x.py\n", capture_output=True, text=True)
+        self.assertEqual(r.stdout.split("\0")[:-1],
+                         ["w.sh echo always", "w.sh bash -c 'cd app && run '\"'\"'a b.ts'\"'\"''"])
+
     def test_missing_config_fails_closed(self):
         r = cli(self.tmp, "get", "check")
         self.assertEqual(r.returncode, 2)

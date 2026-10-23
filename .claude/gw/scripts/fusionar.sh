@@ -24,6 +24,8 @@ cd "$root" || exit 2
 config="$here/config.py"
 checks="$(python3 "$config" --root "$root" get check)" || {
   echo "fusionar: cannot read check; fix the config: python3 $config --root $root validate" >&2; exit 2; }
+wrapper="$(python3 "$config" --root "$root" get checkWrapper)" || {
+  echo "fusionar: cannot read checkWrapper; fix the config: python3 $config --root $root validate" >&2; exit 2; }
 protected="$(python3 "$config" --root "$root" get protectedBranch)" || {
   echo "fusionar: cannot read protectedBranch; fix the config: python3 $config --root $root validate" >&2; exit 2; }
 logs="$(mktemp -d "${TMPDIR:-/tmp}/gw-fusionar.XXXXXX")" || { echo "fusionar: cannot create a temp dir; free space and retry" >&2; exit 2; }
@@ -47,6 +49,7 @@ n=0
 while IFS= read -r cmd; do
   [ -n "$cmd" ] || continue
   n=$((n + 1))
+  [ -z "$wrapper" ] || cmd="$wrapper $cmd"
   if bash -c "$cmd" > "$logs/check-$n.log" 2>&1 < /dev/null; then
     echo "fusionar: check OK: $cmd"
   else

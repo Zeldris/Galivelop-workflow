@@ -79,6 +79,24 @@
       "minItems": 1,
       "description": "Commands run in order on the commit being pushed; all must pass."
     },
+    "checkWrapper": {
+      "type": "string",
+      "default": "",
+      "description": "Prefix put before every `check` and `relatedTests` command (e.g. tools/qa/host.sh); empty for none."
+    },
+    "worktreeLinks": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$"
+      },
+      "default": [
+        "node_modules",
+        ".venv"
+      ],
+      "description": "Paths (relative to the repo root, no '..') the pre-push symlinks from the main checkout into the temporary worktree where it runs `check`; a missing source is skipped."
+    },
     "reviewMark": {
       "type": "string",
       "minLength": 1,
@@ -177,19 +195,77 @@
         "fast": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "command"
+                ],
+                "properties": {
+                  "command": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The command; {files} is replaced by the changed files that apply."
+                  },
+                  "paths": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Regex (Python syntax) searched in each changed repo-relative path; the command runs only if one matches, and {files} holds only those."
+                  },
+                  "cwd": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$",
+                    "description": "Folder of the repo the command runs in; {files} arrive relative to it (files outside it are left out). No leading / and no '..'."
+                  }
+                }
+              }
+            ]
           }
         },
         "slow": {
           "type": "array",
           "items": {
-            "type": "string",
-            "minLength": 1
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "command"
+                ],
+                "properties": {
+                  "command": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The command; {files} is replaced by the changed files that apply."
+                  },
+                  "paths": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Regex (Python syntax) searched in each changed repo-relative path; the command runs only if one matches, and {files} holds only those."
+                  },
+                  "cwd": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$",
+                    "description": "Folder of the repo the command runs in; {files} arrive relative to it (files outside it are left out). No leading / and no '..'."
+                  }
+                }
+              }
+            ]
           }
         }
       },
-      "description": "Commands for tests of what changed; {files} is replaced by the changed files."
+      "description": "Commands for tests of what changed; {files} is replaced by the changed files. Each entry is a string or {command, paths?, cwd?}."
     },
     "plan": {
       "type": "array",

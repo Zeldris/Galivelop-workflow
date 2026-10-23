@@ -9,6 +9,8 @@ defaults the schema declares. Shell scripts call the CLI; Python scripts import 
   python3 config.py get KEY             # scalar: one line; list: one item per line; object: JSON
   python3 config.py get KEY --json      # always JSON
   python3 config.py root                # the project root it resolved
+  python3 config.py related --kind fast|slow   # relatedTests commands to run, NUL-terminated, ready for `bash -c`
+                                        # (reads the changed files that exist, one per line, on stdin)
   python3 config.py --rev REV get KEY   # the config as commit REV has it (git show REV:.claude/gw.json), e.g. the
                                         # commit a hook is about to push; absent or invalid at REV -> exit 2
 
@@ -20,7 +22,9 @@ Python 3.8+ (macOS ships 3.9).
 import argparse
 import json
 import os
+import posixpath
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -123,6 +127,10 @@ def validate(value, schema, path="$"):
         ok = isinstance(value, TYPES[expected]) and not (expected in ("integer", "number") and isinstance(value, bool))
         if not ok:
             return [f"{path}: expected {expected}, got {type(value).__name__}"]
+    if "anyOf" in schema:
+        tried = [validate(value, option, path) for option in schema["anyOf"]]
+        if all(tried):
+            return [f"{path}: matches none of the allowed forms: " + " | ".join("; ".join(t) for t in tried)]
     if "enum" in schema and value not in schema["enum"]:
         errors.append(f"{path}: must be one of {schema['enum']}, got {value!r}")
     if isinstance(value, str):
@@ -145,6 +153,21 @@ def validate(value, schema, path="$"):
                 errors += validate(item, props[key], f"{path}.{key}")
             elif schema.get("additionalProperties") is False:
                 errors.append(f"{path}: unknown key '{key}' (check spelling; allowed: {', '.join(sorted(props))})")
+    return errors
+
+
+def semantic_errors(config):
+    """Problems the schema subset cannot express: a relatedTests `paths` that is not a valid regex."""
+    errors = []
+    related = config.get("relatedTests")
+    if isinstance(related, dict):
+        for kind in ("fast", "slow"):
+            for i, entry in enumerate(related.get(kind) or []):
+                if isinstance(entry, dict) and isinstance(entry.get("paths"), str):
+                    try:
+                        re.compile(entry["paths"])
+                    except re.error as exc:
+                        errors.append(f"$.relatedTests.{kind}[{i}].paths: {entry['paths']!r} is not a valid regex ({exc})")
     return errors
 
 
@@ -187,12 +210,45 @@ def load(root=None, rev=None):
     except json.JSONDecodeError as exc:
         raise ConfigError(f"{path}: invalid JSON at line {exc.lineno}: {exc.msg}")
     schema = json.loads(schema_path().read_text(encoding="utf-8"))
-    errors = validate(config, schema)
+    errors = validate(config, schema) or semantic_errors(config)
     if errors:
         raise ConfigError(f"{path} is invalid:\n  " + "\n  ".join(errors))
     config = with_defaults(config, schema)
     config["_root"] = root
     return config
+
+
+def related_commands(config, kind, files):
+    """The relatedTests commands of `kind` that apply to `files` (repo-relative paths that exist in the commit), each
+    as one shell command line. An entry is a string or {"command", "paths"?, "cwd"?}. `paths` (a regex searched in the
+    repo-relative path) narrows {files} and makes the entry run only when some file matches; `cwd` (a folder of the
+    repo) is where it runs and {files} arrive relative to it, files outside it being left out. Without either, the
+    old rules: a fast command runs always unless it uses {files}; a slow one only when some file changed. Every
+    command gets `checkWrapper` as a prefix; with `cwd` the wrapper runs from the root around `bash -c 'cd CWD && ...'`."""
+    wrapper = (config.get("checkWrapper") or "").strip()
+    out = []
+    for entry in (config.get("relatedTests") or {}).get(kind) or []:
+        spec = {"command": entry} if isinstance(entry, str) else entry
+        command, paths, cwd = spec["command"], spec.get("paths"), spec.get("cwd")
+        scope = list(files)
+        if paths:
+            scope = [f for f in scope if re.search(paths, f)]
+        if cwd:
+            cwd = posixpath.normpath(cwd)
+            if cwd != ".":
+                scope = [f[len(cwd) + 1:] for f in scope if f.startswith(cwd + "/")]
+        uses_files = "{files}" in command
+        if kind == "slow" or paths or uses_files:
+            if not scope:
+                continue
+        inner = command.replace("{files}", " ".join(shlex.quote(f) for f in scope))
+        if cwd:
+            inner = f"cd {shlex.quote(cwd)} && {inner}"
+            full = f"{wrapper} bash -c {shlex.quote(inner)}" if wrapper else inner
+        else:
+            full = f"{wrapper} {inner}" if wrapper else inner
+        out.append(full)
+    return out
 
 
 def main(argv=None):
@@ -202,6 +258,8 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("validate")
     sub.add_parser("root")
+    related = sub.add_parser("related", help="relatedTests commands that apply to the files on stdin")
+    related.add_argument("--kind", choices=("fast", "slow"), required=True)
     get = sub.add_parser("get")
     get.add_argument("key", help="top-level key, or dotted (relatedTests.fast)")
     get.add_argument("--json", action="store_true")
@@ -216,6 +274,11 @@ def main(argv=None):
         return 0
     if args.command == "root":
         print(config["_root"])
+        return 0
+    if args.command == "related":
+        files = [line for line in sys.stdin.read().splitlines() if line]
+        for full in related_commands(config, args.kind, files):
+            sys.stdout.write(full + "\0")
         return 0
     value = config
     for part in args.key.split("."):

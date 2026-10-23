@@ -212,6 +212,14 @@ def check_log(rep, root, cfg):
 def check_commands(rep, root, cfg):
     if cfg is None:
         return
+    wrapper = (cfg.get("checkWrapper") or "").strip()
+    if wrapper:
+        word = first_word(wrapper)
+        if resolves(word, root):
+            rep.ok("checkWrapper", f"'{wrapper}' ({word} found)")
+        else:
+            rep.fail("checkWrapper", f"'{wrapper}': '{word}' is not a command on PATH nor a file in the repo",
+                     f"fix checkWrapper in .claude/gw.json, then: python3 {HERE / 'doctor.py'}")
     for key, bad in (("check", rep.fail), ("install", rep.warn)):
         for command in cfg.get(key) or []:
             word = first_word(command)

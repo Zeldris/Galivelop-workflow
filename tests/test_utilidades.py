@@ -411,6 +411,19 @@ class Fusionar(Base):
         self.assertNotIn("worktree-agent-1", self.branches())
         self.assertNotIn("--reviewed", out.replace("no --reviewed", ""))
 
+    def test_check_wrapper_prefixes_every_check(self):
+        self.p.write("wrap.sh", 'echo "wrapped: $*" >> wrap.log; "$@"\n')
+        self.p.write("check.sh", "echo ran >> check.log\n")
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["checkWrapper"] = "bash wrap.sh"
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.commit("wrapper", env=DAY)
+        self.agent()
+        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertIn("check OK: bash wrap.sh bash check.sh", out)
+        self.assertEqual((self.p.work / "wrap.log").read_text(), "wrapped: bash check.sh\n")
+
     def test_reminds_about_review_without_the_flag(self):
         self.agent()
         code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1")
@@ -532,19 +545,74 @@ class RojoSinArreglo(Base):
 
 
 class TestsRelacionados(Base):
-    def run_with(self, related, changed=("src/a.py",)):
+    def run_with(self, related, changed=("src/a.py",), files=(), wrapper=None):
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         if related is not None:
             cfg["relatedTests"] = related
+        if wrapper is not None:
+            cfg["checkWrapper"] = wrapper
         (self.p.work / ".claude" / "gw.json").write_text(json.dumps(cfg))
-        for f in ("src/a.py", "name with space.txt"):
+        for f in ("src/a.py", "name with space.txt", *files):
             self.p.write(f, "x\n")
         listing = self.tmp / "changed"
         listing.write_text("".join(f + "\n" for f in changed))
         (self.p.work / "out.log").write_text("")
-        self.p.git("add", "-A"); self.p.git("commit", "-q", "--no-verify", "-m", "related setup")
+        self.p.git("add", "-A"); self.p.git("commit", "-q", "--no-verify", "--allow-empty", "-m", "related setup")
         code, out = self.p.script("tests-relacionados.sh", str(listing), stdin="refs/heads/x 1 refs/heads/x 2\n")
         return code, out, (self.p.work / "out.log").read_text().splitlines()
+
+    def test_paths_limits_an_entry_to_the_files_that_match(self):
+        py = {"command": "for f in {files}; do echo \"py:$f\" >> out.log; done", "paths": "\\.py$"}
+        md = {"command": "echo md-ran >> out.log", "paths": "\\.md$"}
+        md_files = {"command": "echo \"md:{files}\" >> out.log", "paths": "\\.md$"}
+        code, out, lines = self.run_with({"fast": [py, md, md_files], "slow": [dict(py, command="echo slow-py >> out.log")]},
+                                         ("src/a.py", "name with space.txt"))
+        self.assertEqual(code, 0, out)
+        self.assertEqual(lines, ["py:src/a.py", "slow-py"])
+
+    def test_cwd_runs_there_with_files_relative_to_it(self):
+        entry = {"command": "for f in {files}; do echo \"$(basename \"$PWD\"):$f\" >> ../out.log; done", "cwd": "app"}
+        code, out, lines = self.run_with({"fast": [entry]}, ("src/a.py", "app/src/x.ts", "app/my file.ts"),
+                                         files=("app/src/x.ts", "app/my file.ts"))
+        self.assertEqual(code, 0, out)
+        self.assertEqual(lines, ["app:src/x.ts", "app:my file.ts"])
+
+    def test_cwd_skips_an_entry_with_no_file_inside_it(self):
+        fast = {"command": "echo fast-ran >> ../out.log", "cwd": "app", "paths": "\\.ts$"}
+        slow = {"command": "echo slow-ran >> ../out.log", "cwd": "app"}
+        code, out, lines = self.run_with({"fast": [fast], "slow": [slow]}, ("src/a.py",), files=("app/x.ts",))
+        self.assertEqual((code, lines), (0, []), out)
+        code, out, lines = self.run_with({"fast": [fast], "slow": [slow]}, ("app/x.ts",), files=("app/x.ts",))
+        self.assertEqual((code, lines), (0, ["fast-ran", "slow-ran"]), out)
+
+    def test_cwd_alone_still_runs_a_fast_command_without_files(self):
+        entry = {"command": "echo ran-in-$(basename \"$PWD\") >> ../out.log", "cwd": "app"}
+        code, out, lines = self.run_with({"fast": [entry]}, (), files=("app/x.ts",))
+        self.assertEqual((code, lines), (0, ["ran-in-app"]), out)
+
+    def test_string_and_object_entries_mix(self):
+        code, out, lines = self.run_with({"fast": ["echo plain >> out.log", {"command": "echo obj >> out.log"}]})
+        self.assertEqual((code, lines), (0, ["plain", "obj"]), out)
+
+    def test_wrapper_prefixes_every_command_and_runs_from_the_root_with_cwd(self):
+        self.p.write("wrap.sh", 'echo "wrap:$(basename "$PWD"):$1" >> out.log; "$@"\n')
+        slow = {"command": "echo \"in-$(basename \"$PWD\")\" >> ../out.log", "cwd": "app"}
+        code, out, lines = self.run_with({"fast": ["echo plain >> out.log"], "slow": [slow]}, ("app/x.ts",),
+                                         files=("app/x.ts",), wrapper="bash wrap.sh")
+        self.assertEqual(code, 0, out)
+        self.assertIn("related tests (fast): bash wrap.sh echo plain", out)
+        self.assertEqual(lines, ["wrap:work:echo", "plain", "wrap:work:bash", "in-app"])
+
+    def test_invalid_entries_fail_closed_with_the_reason(self):
+        for bad, reason in (({"paths": "x"}, "missing required key 'command'"),
+                            ({"command": "x", "paths": "("}, "is not a valid regex"),
+                            ({"command": "x", "cwd": "../up"}, "does not match"),
+                            ({"command": "x", "cwd": "/abs"}, "does not match"),
+                            ({"command": "x", "other": 1}, "unknown key 'other'")):
+            code, out, _ = self.run_with({"fast": [bad]})
+            self.assertEqual(code, 1, out)
+            self.assertIn("config is invalid", out)
+            self.assertIn(reason, out)
 
     def test_fast_then_slow_with_quoted_existing_files(self):
         fast = "for f in {files}; do echo \"fast:$f\" >> out.log; done"

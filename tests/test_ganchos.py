@@ -7,9 +7,12 @@ the suite behaves the same on a machine that signs commits and on a CI runner wi
 """
 import json
 import os
+import re
 import shutil
+import signal
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -450,6 +453,260 @@ class PrePush(Base):
         code, out = p.push("origin", "feature")
         self.assertNotEqual(code, 0, out)
         self.assertIn("related-ran-and-failed", out)
+
+
+class PrePushWorktree(Base):
+    """The temporary worktree the pre-push runs `check` in (anything but the clean working copy), its linked paths,
+    the wrapper and the logs. `dirty` is an untracked file: it makes the working copy not clean."""
+
+    def setUp(self):
+        super().setUp()
+        self.p.git("checkout", "-q", "-b", "feature")
+        self.gwdir = self.p.work / ".git" / "gw-pre-push"
+
+    def configure(self, **keys):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg.update(keys)
+        p.write(".claude/gw.json", json.dumps(cfg))
+
+    def leftovers(self):
+        return sorted(x.name for x in self.gwdir.glob("wt.*")) if self.gwdir.is_dir() else []
+
+    def assertNoWorktreeLeft(self, repo=None):
+        repo = repo or self.p.work
+        self.assertEqual(self.p.git("worktree", "list", cwd=repo).stdout.count("\n"),
+                         self.worktrees_before, "temporary worktree left in git's list")
+        self.assertEqual(self.leftovers(), [], "temporary worktree left on disk")
+
+    worktrees_before = 1
+
+    def where_check_ran(self, pwd_file):
+        self.p.write("check.sh", f'pwd -P >> "{pwd_file}"\n')
+        self.p.commit("check records where it runs")
+        self.p.write("dirty", "untracked\n")
+
+    def test_worktree_lives_in_the_git_dir_not_tmpdir(self):
+        pwd_file = self.tmp / "pwd.txt"
+        self.where_check_ran(pwd_file)
+        code, out = self.p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        ran = Path(pwd_file.read_text().strip())
+        self.assertEqual(ran.parent, self.gwdir.resolve())
+        self.assertRegex(ran.name, r"^wt\.[A-Za-z0-9]{6}\.d$")
+        self.assertNoWorktreeLeft()
+
+    def test_clean_working_copy_runs_in_place(self):
+        pwd_file = self.tmp / "pwd.txt"
+        self.p.write("check.sh", f'pwd -P >> "{pwd_file}"\n')
+        self.p.commit("check records where it runs")
+        code, out = self.p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(Path(pwd_file.read_text().strip()), self.p.work.resolve())
+        self.assertFalse(self.gwdir.exists())
+
+    def test_linked_worktree_uses_the_common_git_dir(self):
+        p = self.p
+        pwd_file = self.tmp / "pwd.txt"
+        self.where_check_ran(pwd_file)
+        (p.work / "dirty").unlink()
+        linked = self.tmp / "linked"
+        p.git("worktree", "add", "-q", "-b", "side", str(linked))
+        (linked / "node_modules").mkdir()
+        (linked / "node_modules" / "m").write_text("m\n")
+        p.write("check.sh", f'pwd -P >> "{pwd_file}"; test -e node_modules/m\n')
+        (linked / "check.sh").write_text(f'pwd -P >> "{pwd_file}"; test -e node_modules/m\n')
+        p.git("add", "-A", cwd=linked)
+        p.git("commit", "-q", "-m", "side change", cwd=linked)
+        (linked / "dirty").write_text("untracked\n")
+        r = p.git("push", "origin", "side", cwd=linked, ok=False)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        ran = Path(pwd_file.read_text().strip())
+        self.assertEqual(ran.parent, self.gwdir.resolve(), "must be the common git dir, not .git/worktrees/<name>")
+        self.worktrees_before = 2
+        self.assertNoWorktreeLeft(linked)
+
+    def test_default_links_and_listed_paths_incl_spaces_files_and_missing_sources(self):
+        p = self.p
+        self.configure(worktreeLinks=["my dir/deps", "backend/node_modules", ".env", "absent", "docs/", "trailing/"])
+        p.write("check.sh", 'test -e "my dir/deps/d" && test -e backend/node_modules/b && test -e .env '
+                            '&& test ! -e absent && test ! -L docs && test -L .env && test ! -e node_modules '
+                            '&& test -e trailing/t && echo ok >> "$(dirname "$0")/../../../../../ran-check"\n')
+        p.commit("check sees the links")
+        for rel in ("my dir/deps/d", "backend/node_modules/b", "node_modules/default", "trailing/t"):
+            p.write(rel, "x\n")
+        p.write(".env", "SECRET=1\n")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertNoWorktreeLeft()
+        self.assertEqual((p.work / "docs" / "notes.md").read_text(), "notes\n", "a tracked path is never replaced")
+
+    def test_default_worktree_links_are_node_modules_and_venv(self):
+        p = self.p
+        p.write("check.sh", 'test -e node_modules/m && test -e .venv/v && test ! -e other/o\n')
+        p.commit("check sees the default links")
+        p.write("node_modules/m", "m\n"); p.write(".venv/v", "v\n"); p.write("other/o", "o\n")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+
+    def test_empty_worktree_links_link_nothing(self):
+        p = self.p
+        self.configure(worktreeLinks=[])
+        p.write("check.sh", 'test ! -e node_modules\n')
+        p.commit("check sees no link")
+        p.write("node_modules/m", "m\n")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+
+    def test_worktree_links_outside_the_repo_are_refused_with_the_command(self):
+        p = self.p
+        self.configure(worktreeLinks=["../outside"])
+        p.git("add", "-A"); p.git("commit", "-q", "--no-verify", "-m", "bad link")
+        code, out = p.push("origin", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("cannot read 'check' from .claude/gw.json", out)
+        self.assertIn("config.py", out)
+        self.assertIn("validate", out)
+
+    def test_path_with_spaces_everywhere(self):
+        shutil.rmtree(self.tmp)
+        self.tmp = Path(tempfile.mkdtemp(prefix="gw ganchos ")).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.p = p = Project(self.tmp)
+        self.gwdir = p.work / ".git" / "gw-pre-push"
+        p.git("checkout", "-q", "-b", "feature")
+        self.configure(worktreeLinks=["my deps"])
+        p.write("check.sh", 'test -e "my deps/d"\n')
+        p.commit("check sees the link")
+        p.write("my deps/d", "d\n")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertNoWorktreeLeft()
+
+    def test_check_wrapper_prefixes_each_check(self):
+        p = self.p
+        p.write("wrap.sh", 'echo "wrapped: $*" >> "$WRAP_LOG"; "$@"\n')
+        self.configure(checkWrapper="bash wrap.sh", check=["bash check.sh", "test -e check.sh"])
+        p.commit("wrapper")
+        p.write("dirty", "untracked\n")
+        log = self.tmp / "wrap.log"
+        code, out = p.push("origin", "feature", env={"WRAP_LOG": str(log)})
+        self.assertEqual(code, 0, out)
+        self.assertEqual(log.read_text().splitlines(), ["wrapped: bash check.sh", "wrapped: test -e check.sh"])
+        self.assertIn("check 'bash wrap.sh bash check.sh'", out)
+
+    def test_failing_wrapper_blocks_and_names_the_full_command(self):
+        p = self.p
+        p.write("wrap.sh", 'echo wrapper-refused; exit 3\n')
+        self.configure(checkWrapper="bash wrap.sh")
+        p.commit("wrapper that refuses")
+        code, out = p.push("origin", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("check failed", out)
+        self.assertIn("'bash wrap.sh bash check.sh'", out)
+        self.assertIn("wrapper-refused", out)
+        self.assertIn("reproduce with: bash wrap.sh bash check.sh", out)
+
+    def test_each_failing_check_keeps_its_own_log(self):
+        p = self.p
+        p.write("check.sh", 'echo "boom-$RANDOM-$$"; exit 1\n')
+        p.commit("failing check")
+        logs = []
+        for _ in range(2):
+            code, out = p.push("origin", "feature")
+            self.assertNotEqual(code, 0, out)
+            found = re.search(r"full log: (\S+)\)", out)
+            self.assertIsNotNone(found, out)
+            logs.append(Path(found.group(1)))
+        self.assertNotEqual(logs[0], logs[1], "a second push must not overwrite the first one's log")
+        for log in logs:
+            self.assertRegex(log.name, r"^gw-pre-push-check\.[A-Za-z0-9]{6}$")
+            self.assertIn("boom-", log.read_text())
+
+    def test_passing_checks_leave_no_log(self):
+        code, out = self.p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(list(self.tmp.glob("gw-pre-push-check.*")), [])
+
+    def test_two_pushes_at_once_do_not_touch_each_others_worktree(self):
+        p = self.p
+        pwds = self.tmp / "pwds.txt"
+        p.write("check.sh", f'pwd -P >> "{pwds}"; sleep 3; test -f check.sh\n')
+        p.commit("slow check")
+        p.git("branch", "other")
+        p.write("more.txt", "more\n"); p.commit("one more")
+        p.write("dirty", "untracked\n")
+
+        def start(*args):
+            return subprocess.Popen(["git", "push", *args], cwd=p.work, env=p.env, stdout=subprocess.PIPE,
+                                    stderr=subprocess.STDOUT, text=True)
+        first = start("origin", "feature")
+        for _ in range(100):
+            if pwds.exists():
+                break
+            time.sleep(0.1)
+        second = start("origin", "other:refs/heads/other")
+        out1, out2 = first.communicate(timeout=60)[0], second.communicate(timeout=60)[0]
+        self.assertEqual((first.returncode, second.returncode), (0, 0), out1 + out2)
+        self.assertEqual(len(set(pwds.read_text().split("\n")) - {""}), 2, "each push needs a worktree of its own")
+        self.assertNoWorktreeLeft()
+
+    def test_a_worktree_left_by_a_dead_push_is_removed_but_a_live_one_stays(self):
+        p = self.p
+        self.gwdir.mkdir()
+        dead_pid = subprocess.run(["true"]).pid if False else None
+        proc = subprocess.Popen(["true"]); proc.wait(); dead_pid = proc.pid
+        live = subprocess.Popen(["sleep", "60"])
+        self.addCleanup(live.kill)
+        for name, pid in (("wt.dead00", dead_pid), ("wt.live00", live.pid)):
+            p.git("worktree", "add", "-q", "--detach", str(self.gwdir / (name + ".d")), "HEAD")
+            (self.gwdir / name).write_text(f"{pid}\n")
+        p.write("dirty", "untracked\n")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.leftovers(), ["wt.live00", "wt.live00.d"])
+        self.assertTrue((self.gwdir / "wt.live00.d").is_dir())
+        self.assertFalse((self.gwdir / "wt.dead00.d").exists())
+        self.assertNotIn("wt.dead00", p.git("worktree", "list").stdout)
+
+    def test_interrupting_the_hook_removes_its_worktree(self):
+        p = self.p
+        started = self.tmp / "started"
+        p.write("check.sh", f'touch "{started}"; sleep 30\n')
+        p.commit("hanging check")
+        p.write("dirty", "untracked\n")
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            started.unlink() if started.exists() else None
+            proc = subprocess.Popen(["bash", ".githooks/pre-push", "origin", str(p.bare)], cwd=p.work, env=p.env,
+                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                    start_new_session=True)
+            proc.stdin.write(f"refs/heads/feature {p.sha()} refs/heads/feature {ZERO}\n"); proc.stdin.close()
+            for _ in range(100):
+                if started.exists():
+                    break
+                time.sleep(0.1)
+            self.assertTrue(started.exists(), "the check never started")
+            self.assertEqual(len(self.leftovers()), 2, "a worktree and its marker exist while it runs")
+            os.killpg(proc.pid, sig)
+            proc.communicate(timeout=30)
+            self.assertNotEqual(proc.returncode, 0)
+            self.assertNoWorktreeLeft()
+
+
+class PortableShell(unittest.TestCase):
+    """macOS ships bash 3.2 and a BSD mktemp: no mapfile / associative arrays, and mktemp templates end in XXXXXX."""
+
+    FILES = ("templates/githooks/pre-push", "templates/githooks/pre-commit", "scripts/tests-relacionados.sh",
+             "scripts/fusionar.sh")
+
+    def test_no_bash_4_features_and_bsd_safe_mktemp_templates(self):
+        for rel in self.FILES:
+            for n, line in enumerate((ROOT / rel).read_text().splitlines(), 1):
+                code = line.split("#", 1)[0] if not line.lstrip().startswith("#") else ""
+                self.assertNotRegex(code, r"\bmapfile\b|\breadarray\b|declare -A|typeset -A|\$\{[A-Za-z_]+,,\}|\$\{[A-Za-z_]+\^\^\}",
+                                    f"{rel}:{n} uses a bash 4 feature")
+                for template in re.findall(r'mktemp\b[^\n]*?"([^"]*X[^"]*)"', code):
+                    self.assertRegex(template, r"XXXXXX$", f"{rel}:{n}: BSD mktemp needs the template to end in XXXXXX")
 
 
 class Revisado(Base):
