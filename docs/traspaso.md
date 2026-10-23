@@ -53,6 +53,9 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 
 ## Pendiente
 
+- Revisar [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) en busca de mejoras para el flujo
+  (usuario, 2026-10-23; solo apuntado, sin revisar todavía).
+
 - Propuestas aprobadas para `v0.2.0`, en orden: `docs/propuestas/2026-10-22-reparto.md` (la de 2026-10-21, toda hecha).
 
 - Menores de la revisión de la tanda A (no se revisan otra vez en este PR): `non_capturing` toca paréntesis en
