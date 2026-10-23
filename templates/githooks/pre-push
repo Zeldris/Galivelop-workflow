@@ -133,7 +133,7 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     id="$(printf '%s' "$common" | cksum | cut -d' ' -f1)"  # one folder per repo (its linked worktrees share it)
     gwdir="${base%/}/gw-pre-push-wt-$(id -u)-$id"  # per user: $TMPDIR is often /tmp, writable by everyone
     [ ! -L "$gwdir" ] || fail "$gwdir is a symlink, not the hook's own folder; remove it and retry: rm $gwdir && git push"
-    mkdir -p -m 700 "$gwdir" || fail "cannot create $gwdir; make it writable or set worktreeDir in .claude/gw.json: python3 $config --root $root validate"
+    { [ -d "$gwdir" ] || { mkdir -p "${base%/}" && mkdir -m 700 "$gwdir"; } || [ -d "$gwdir" ]; } || fail "cannot create $gwdir; make it writable or set worktreeDir in .claude/gw.json: python3 $config --root $root validate"
     [ -O "$gwdir" ] || fail "$gwdir belongs to another user; remove it or set worktreeDir in .claude/gw.json: python3 $config --root $root validate"
     stale_worktrees
     marker="$(mktemp "$gwdir/wt.XXXXXX")" || fail "cannot create a temporary worktree in $gwdir; free space or permissions and retry: git push"
