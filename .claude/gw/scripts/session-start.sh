@@ -131,9 +131,9 @@ run_limited() {
   wd=$!
   set +m
   wait "$pid" 2>/dev/null; status=$?
-  if [ -e "$flag" ]; then
+  if [ "$status" -ne 0 ] && [ -e "$flag" ]; then
     timed_out=1                       # the watchdog finishes its KILL pass on its own
-  else
+  else                                # also a command that succeeded just as the watchdog fired
     kill -- "-$wd" 2>/dev/null || kill "$wd" 2>/dev/null   # command finished first: stop the watchdog and its sleeper
     wait "$wd" 2>/dev/null
   fi
@@ -166,6 +166,7 @@ if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && [ -n "$config_ok" ]; then
       failed=""
       limit="${GW_COMMAND_TIMEOUT:-900}"
       case "$limit" in ''|*[!0-9]*) limit=900 ;; esac
+      [ "$((10#$limit))" -gt 0 ] || limit=900   # 0 would kill every command at once
       while IFS= read -r entry; do
         [ -n "$entry" ] || continue
         kind="${entry%%:*}"; cmd="${entry#*:}"

@@ -243,6 +243,30 @@ class SessionStart(Base):
         left = subprocess.run(["pgrep", "-f", "sleep 33"], capture_output=True, text=True).stdout
         self.assertEqual(left.strip(), "", "the watchdog's sleeper outlived the command")
 
+    def test_a_zero_or_non_numeric_limit_falls_back_to_the_default(self):
+        cloud = self.cloud_config(setup=["sleep 1; echo ok >> ok.log"])
+        for value in ("0", "00", "abc", "-5"):
+            with self.subTest(value=value):
+                cloud["GW_COMMAND_TIMEOUT"] = value
+                code, out = self.p.session_start(env=cloud)
+                self.assertEqual(code, 0, out)
+                self.assertNotIn("timed out", out)
+                self.assertNotIn("command failed", out)
+                self.assertEqual((self.p.work / "ok.log").read_text().strip(), "ok")
+                (self.p.work / "ok.log").unlink()
+                stamp = subprocess.run(["git", "rev-parse", "--git-path", "gw-install.sha"], cwd=self.p.work,
+                                       capture_output=True, text=True).stdout.strip()
+                (self.p.work / stamp).unlink()
+
+    def test_a_command_that_ignores_term_is_killed(self):
+        cloud = self.cloud_config(setup=["trap '' TERM; sleep 30"])
+        cloud["GW_COMMAND_TIMEOUT"] = "1"
+        started = time.time()
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertLess(time.time() - started, 20, out)
+        self.assertIn("setup command timed out after 1s", out)
+
     def test_never_exits_non_zero(self):
         p = self.p
         (p.work / ".claude" / "gw.json").write_text("{not json")
