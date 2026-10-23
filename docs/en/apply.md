@@ -64,6 +64,7 @@ Rules:
   command that does not exist or does not pass is found late and gets in the way of every push.
 - **When unsure, ask the person**; do not invent a command. With several candidates, offer them numbered.
 - A project with no tests: `check` can be a linter or a `bash -n`; say so and note it as debt in the log.
+- The copied skills bring their tests next to their scripts: they are discovered with `python3 -m unittest discover -s <skill>/scripts` (the workflow repo's check does it for each one).
 - `content` is proposed by reading the tree: `^docs/`, `^public/`… (in JSON the backslash is doubled). **What is
   `content` goes up without a mark:** do not put scripts there, nor what an agent reads as instructions (an
   `AGENTS.md` in a subfolder, a prompt template). When in doubt, put less: what counts as code gets reviewed. The

@@ -22,6 +22,7 @@
   "protectedPaths": [],
   "staleRefs": [],
   "linkRoots": [],
+  "scoutDir": ".claude/gw/scout",
   "relatedTests": {"fast": [], "slow": []},
   "plan": [],
   "taskId": "[A-Z]{2,5}-\\d+"

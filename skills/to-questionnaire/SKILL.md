@@ -29,6 +29,8 @@ Frame the document as a **discovery questionnaire**: the user lacks context, the
 
 # <Questionnaire title>
 
+If `.claude/gw/to-questionnaire.md` exists in the project, read it first: it holds what is specific to the project.
+
 **Purpose:** why this questionnaire exists and the decision riding on it.
 
 **From:** <the user>, **To:** <the recipient>, **How your answers will be used:** <where they go>

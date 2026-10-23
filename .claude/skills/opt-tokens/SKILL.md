@@ -36,7 +36,8 @@ retries and redone work.
 
    **The curve first** (`Average context`, `Stretches between compactions`): average context × calls is almost all
    of the spend, and a ceiling far above the floor says compaction comes late. That is the first proposal when it
-   holds, before any tool. When one figure does not match another (more calls than responses, usage that doubles),
+   holds, before any tool. If `medir.py` warns that the session mixes compaction windows, the averages blend two
+   regimes: measure the current one with `--since`. When one figure does not match another (more calls than responses, usage that doubles),
    fix `medir.py` before proposing anything from it.
 2. **Read project notes.** If `.claude/gw/opt-tokens.md` exists in the project, read it: the tools that already
    save and the known costs, so you do not propose what is there. Read the project's skill list too: a cost a skill

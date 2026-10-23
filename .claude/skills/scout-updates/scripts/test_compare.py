@@ -1,4 +1,5 @@
 import io
+import json
 import os
 import shutil
 import subprocess
@@ -77,6 +78,48 @@ class CompareTest(unittest.TestCase):
         self.assertEqual(compare.uncovered(arch, report), ['chronicler'])
         self.assertEqual(compare.uncovered(arch, report + '| chronicler | no news |\n'), [])
         self.assertEqual(compare.uncovered(arch, '| narrator | outside Coverage |\n'), ['narrator', 'chronicler'])
+
+    def test_spanish_titles(self):
+        """A Spanish memory (`sello`, `Restricciones`, `Cobertura`, `Componente`) is read like the English one."""
+        with open(self.arch, 'w') as f:
+            f.write('# A\n\n## Restricciones\n\n| Componente | x |\n|---|---|\n| memoria | 6 GB |\n\n'
+                    '## Modelos de IA\n<!-- sello: 2026-01-10 | %s | .env.example -->\n\n'
+                    '| Componente | Versión |\n|---|---|\n| narrador | a |\n\n'
+                    '## Entornos\n<!-- sello: 2026-01-10 | %s | .nvmrc, package.json -->\n' % (self.commit, self.commit))
+        res = compare.compare(self.arch, self.d)
+        self.assertEqual([s['section'] for s in res['same']], ['Modelos de IA', 'Entornos'])
+        self.assertEqual(res['unsealed'], [])
+        report = '# I\n\n## Cobertura\n\n| Componente | Resultado |\n|---|---|\n| Narrador | P-001 |\n'
+        with open(self.arch) as f:
+            arch = f.read()
+        self.assertEqual(compare.uncovered(arch, report), [])  # `memoria` (Restricciones) is no component
+        self.assertEqual(compare.uncovered(arch, '## Cobertura\n\n| Componente |\n|---|\n'), ['narrador'])
+
+    def test_default_architecture_from_scout_dir(self):
+        """Without a path, it is `<scoutDir>/architecture.md`; the message says how to fix a missing config.py."""
+        with self.assertRaises(SystemExit) as e:
+            compare.main(['--root', self.d])
+        self.assertIn('scoutDir: ', str(e.exception.code))
+        self.assertIn('config.py not found', str(e.exception.code))
+        self.assertIn('aplicar.py --update', str(e.exception.code))
+        repo = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', '..')
+        gw = os.path.join(self.d, '.claude', 'gw')
+        os.makedirs(os.path.join(gw, 'scripts'))
+        os.makedirs(os.path.join(gw, 'schema'))
+        shutil.copy(os.path.join(repo, 'scripts', 'config.py'), os.path.join(gw, 'scripts'))
+        shutil.copy(os.path.join(repo, 'schema', 'gw.schema.json'), os.path.join(gw, 'schema'))
+        config = {'version': '0.2.0', 'language': 'es', 'log': 'l.md', 'protectedBranch': 'main',
+                  'pushToProtected': 'pr', 'check': ['true'], 'reviewMark': 'r.txt', 'content': ['^docs/']}
+        for scout, folder in ((None, '.claude/gw/scout'), ('docs/scout', 'docs/scout')):
+            with open(os.path.join(self.d, '.claude', 'gw.json'), 'w') as f:
+                json.dump(dict(config, **({'scoutDir': scout} if scout else {})), f)
+            self.assertEqual(compare.scout_dir(self.d), folder)
+        os.makedirs(os.path.join(self.d, 'docs', 'scout'))
+        shutil.move(self.arch, os.path.join(self.d, 'docs', 'scout', 'architecture.md'))
+        out = io.StringIO()
+        with redirect_stdout(out):
+            compare.main(['--root', self.d])
+        self.assertIn('same       AI models', out.getvalue())
 
     def test_exit_code(self):
         with open(self.arch, 'w') as f:

@@ -7,6 +7,8 @@ metadata:
   source: "mattpocock/skills@5beb35b"
 ---
 
+If `.claude/gw/research.md` exists in the project, read it first: it holds what is specific to the project.
+
 > Original skill by Matt Pocock ([mattpocock/skills](https://github.com/mattpocock/skills), MIT).
 
 Spin up a **background agent** to do the research, so you keep working while it reads.

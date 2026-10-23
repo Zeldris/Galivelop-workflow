@@ -10,6 +10,8 @@ metadata:
 
 # Selector
 
+If `.claude/gw/selector.md` exists in the project, read it first: it holds what is specific to the project.
+
 Classify the task with the table, then act on its row. Reply in the project's `language` (`.claude/gw.json`).
 
 | Case | Skill(s) | Session model | Subagent model |

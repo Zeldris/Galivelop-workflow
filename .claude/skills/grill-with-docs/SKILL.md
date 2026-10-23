@@ -8,6 +8,8 @@ metadata:
   source: "mattpocock/skills@5beb35b"
 ---
 
+If `.claude/gw/grill-with-docs.md` exists in the project, read it first: it holds what is specific to the project.
+
 > Original skill by Matt Pocock ([mattpocock/skills](https://github.com/mattpocock/skills), MIT).
 
 Call the Skill tool twice, for "grilling" and "domain-modeling".

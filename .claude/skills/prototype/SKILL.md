@@ -11,6 +11,8 @@ metadata:
 
 # Prototype
 
+If `.claude/gw/prototype.md` exists in the project, read it first: it holds what is specific to the project.
+
 A prototype is **throwaway code that answers a question**. The question decides the shape.
 
 ## Pick a branch

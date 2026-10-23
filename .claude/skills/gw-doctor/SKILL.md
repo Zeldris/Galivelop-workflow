@@ -11,6 +11,8 @@ metadata:
 
 # gw-doctor
 
+If `.claude/gw/gw-doctor.md` exists in the project, read it first: it holds what is specific to the project.
+
 The check itself is a script, `doctor.py`: deterministic, no AI, no network. This skill runs it, explains what it
 prints and applies fixes the user approves. Reply in the project's `language` (`.claude/gw.json`).
 

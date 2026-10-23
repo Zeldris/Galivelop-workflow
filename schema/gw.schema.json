@@ -242,6 +242,13 @@
       "default": [],
       "description": "Folders (relative to the repo root, no '..') whose Markdown files write relative links from the repo root instead of from their own folder (enlaces-md.py)."
     },
+    "scoutDir": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$",
+      "default": ".claude/gw/scout",
+      "description": "Folder (relative to the repo root, no '..') where scout-updates keeps its memory: architecture.md, proposals.md and the reports."
+    },
     "relatedTests": {
       "type": "object",
       "additionalProperties": false,

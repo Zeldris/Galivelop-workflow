@@ -11,6 +11,8 @@ metadata:
 
 # gw-init
 
+If `.claude/gw/gw-init.md` exists in the project, read it first: it holds what is specific to the project.
+
 A thin wrapper: the procedure lives in the workflow repo's guide, `docs/en/apply.md` (Spanish: `docs/es/aplicar.md`).
 Follow it step by step. This skill only fixes where to find things and what to confirm.
 

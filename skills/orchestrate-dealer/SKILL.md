@@ -10,6 +10,8 @@ metadata:
 
 # orchestrate-dealer
 
+If `.claude/gw/orchestrate-dealer.md` exists in the project, read it first: it holds what is specific to the project.
+
 The main session is the **orchestrator**: it holds the plan, the decisions and the thread with the user, and deals each
 chunk of work to a subagent that starts with an empty context. Every deal is an automatic `/clear`: the main session
 receives a short summary and grows slowly. Reply to the user in the project's `language`.

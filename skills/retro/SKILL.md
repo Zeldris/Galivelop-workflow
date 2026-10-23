@@ -7,6 +7,8 @@ metadata:
   source: "mattpocock/skills@5beb35b"
 ---
 
+If `.claude/gw/retro.md` exists in the project, read it first: it holds what is specific to the project.
+
 > Original skill by Matt Pocock ([mattpocock/skills](https://github.com/mattpocock/skills), MIT).
 
 The user has asked for a **retrospective**. You are suggesting improvements to the coding agent's **environment** to improve future runs.

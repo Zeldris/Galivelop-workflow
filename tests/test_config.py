@@ -57,6 +57,17 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn(needle, r.stderr)
 
+    def test_scout_dir_default_and_bad_values(self):
+        self.write(VALID)
+        self.assertEqual(cli(self.tmp, "get", "scoutDir").stdout.strip(), ".claude/gw/scout")
+        self.write(dict(VALID, scoutDir="docs/scout"))
+        self.assertEqual(cli(self.tmp, "get", "scoutDir").stdout.strip(), "docs/scout")
+        for bad in ("../x", "/abs", ""):
+            self.write(dict(VALID, scoutDir=bad))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn("$.scoutDir", r.stderr)
+
     def test_stale_refs_forms_and_globs(self):
         import sys
         sys.path.insert(0, str(ROOT / "scripts"))

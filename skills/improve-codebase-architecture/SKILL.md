@@ -12,6 +12,8 @@ metadata:
 
 # Improve Codebase Architecture
 
+If `.claude/gw/improve-codebase-architecture.md` exists in the project, read it first: it holds what is specific to the project.
+
 Surface architectural friction and propose **deepening opportunities**: refactors that turn shallow modules into deep ones. The aim is testability and AI-navigability.
 
 This command is _informed_ by the project's domain model and built on a shared design vocabulary:

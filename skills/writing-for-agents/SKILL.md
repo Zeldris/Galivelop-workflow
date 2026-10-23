@@ -7,6 +7,8 @@ metadata:
   source: "mattpocock/skills@5beb35b"
 ---
 
+If `.claude/gw/writing-for-agents.md` exists in the project, read it first: it holds what is specific to the project.
+
 > Original skill by Matt Pocock ([mattpocock/skills](https://github.com/mattpocock/skills), MIT).
 
 Reference for writing any document an agent consumes: a skill, an `AGENTS.md` / `CLAUDE.md`, a doc reached by a pointer. The packaging differs; the writing does not: the same levers make each one predictable, since the agent takes the same _process_ every run rather than producing the same output.

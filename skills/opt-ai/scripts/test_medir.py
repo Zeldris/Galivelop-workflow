@@ -111,6 +111,35 @@ class MedirTest(unittest.TestCase):
         self.assertEqual((f['n'], f['embed_p50_ms'], f['search_p50_ms']), (2, 20, 5))
         self.assertAlmostEqual(f['score_1'], 0.7)
 
+    def test_turn_table(self):
+        def turn_call(tid, end, dur, **extra):
+            return call(dur, **{'app.turn': tid, 'ts': f'2026-01-01T10:00:{end:02d}Z'}, **extra)
+        path = self.log([turn_call('a', 10, 2000), turn_call('a', 13, 1000),  # a: 8 s to 13 s
+                         turn_call('b', 30, 1000, **{'app.error': 'x'}),
+                         call(500),  # no app.turn: not in the table
+                         call(900, task='warmup', **{'app.turn': 'w', 'ts': '2026-01-01T10:01:00Z'}),
+                         call(100, **{'app.turn': 'c'})])  # no ts: the turn has no timing
+        t = medir.analyse(path)['turns'][('small', 'turn', '-')]
+        # a: start 10 s - 2 s = 8 s, end 13 s -> 5000 ms; b: 1000 ms.
+        self.assertEqual((t['n'], t['p50_ms'], t['max_ms'], t['calls_per_turn'], t['error_pct']),
+                         (2, 3000, 5000, 1.5, 50))
+        text = self.run_main([path])
+        self.assertIn('TURNS', text)
+        self.assertIn('small/turn/-  2  3000  4800  5000  1.5  50', text)
+
+    def test_no_turn_field_no_turn_table(self):
+        path = self.log([call(10)])
+        self.assertEqual(medir.analyse(path)['turns'], {})
+        self.assertNotIn('TURNS', self.run_main([path]))
+
+    def test_turn_difference(self):
+        def turn_call(end, dur):
+            return call(dur, **{'app.turn': 'a', 'ts': f'2026-01-01T10:00:{end:02d}Z'})
+        cur, prev = self.log([turn_call(10, 4000)]), self.log([turn_call(10, 3000)])
+        d = json.loads(self.run_main([cur, '--previous', prev, '--json']))
+        self.assertEqual(d['difference_turns']['small/turn/-']['p50_ms'], 1000)
+        self.assertEqual(d['turns']['small/turn/-']['n'], 1)
+
     def test_comparison_json_and_text(self):
         cur = self.log([call(2000, **{'gen_ai.request.model': 'a'}), call(100, **{'gen_ai.request.model': 'b'})])
         prev = self.log([call(1500, **{'gen_ai.request.model': 'a'})])

@@ -11,6 +11,8 @@ metadata:
 
 # Diagnosing Bugs
 
+If `.claude/gw/diagnosing-bugs.md` exists in the project, read it first: it holds what is specific to the project.
+
 A discipline for hard bugs. Skip phases only when explicitly justified.
 
 When exploring the codebase, read `GLOSSARY.md` (if it exists) to get a clear mental model of the relevant modules, and check ADRs in the area you're touching.

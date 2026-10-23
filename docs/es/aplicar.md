@@ -63,6 +63,7 @@ Reglas:
   tarda. Una orden que no existe o no pasa se detecta tarde y estorba en cada push.
 - **Si hay duda, pregunta a la persona**; no inventes una orden. Con varios candidatos, ofrécelos numerados.
 - Un proyecto sin tests: `check` puede ser un linter o un `bash -n`; dilo y apúntalo como deuda en la bitácora.
+- Las skills copiadas traen sus pruebas junto a sus scripts: se descubren con `python3 -m unittest discover -s <skill>/scripts` (el check del repo del flujo lo hace con cada una).
 - `content` se propone leyendo el árbol: `^docs/`, `^public/`… (en JSON, la barra se escribe doble). **Lo que sea
   `content` sube sin marca:** no pongas ahí scripts ni lo que un agente lee como instrucciones (un `AGENTS.md` en una
   subcarpeta, una plantilla de prompt). Cuando dudes, deja menos: lo que cuenta como código se revisa. Los `.md` de

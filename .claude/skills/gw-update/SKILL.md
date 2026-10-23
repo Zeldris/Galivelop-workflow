@@ -11,6 +11,8 @@ metadata:
 
 # gw-update
 
+If `.claude/gw/gw-update.md` exists in the project, read it first: it holds what is specific to the project.
+
 Updates what the workflow owns (scripts, skills, git hooks, settings entries, CI) and reports changes in what the
 project fills in (log, `REVIEW.md`, `GLOSSARY.md`, notes). The mechanical part is `aplicar.py`; this skill adds the
 judgement: what changed, what the user wants, what to merge by hand. Reply in the project's `language`.

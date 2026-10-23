@@ -11,6 +11,8 @@ metadata:
 
 # gw-harvest
 
+If `.claude/gw/gw-harvest.md` exists in the project, read it first: it holds what is specific to the project.
+
 The workflow learns from the projects that use it. `retro` pushes general ideas from a project; this skill pulls
 them, plus anything a project changed in its copy of the workflow. **It proposes; it never applies.**
 

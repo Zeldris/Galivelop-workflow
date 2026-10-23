@@ -7,6 +7,8 @@ metadata:
   source: "mattpocock/skills@5beb35b"
 ---
 
+If `.claude/gw/grilling.md` exists in the project, read it first: it holds what is specific to the project.
+
 > Original skill by Matt Pocock ([mattpocock/skills](https://github.com/mattpocock/skills), MIT).
 
 Interview the user relentlessly until you reach a shared understanding. Map this as a **design tree**: every decision branches into the decisions that hang off it.
