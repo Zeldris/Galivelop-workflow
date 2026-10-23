@@ -86,8 +86,13 @@ def broken_links(root, md_files, files_only, link_roots=()):
                 where, _, frag = target.partition('#')
                 frag = urllib.parse.unquote(frag).lower()  # GitHub accepts upper case and encoded accents
                 where = urllib.parse.unquote(where)
-                dest = (base / where).resolve() if where else path
-                if where and not dest.exists():
+                if where.startswith('/'):
+                    dest = (root / where.lstrip('/')).resolve()   # `/x` is the repo root, as on GitHub
+                else:
+                    dest = (base / where).resolve() if where else path
+                if where and not (dest == root.resolve() or root.resolve() in dest.parents):
+                    problems.append(f'{rel}:{n}: link {where} leaves the repo; point it inside the repo')
+                elif where and not dest.exists():
                     problems.append(f'{rel}:{n}: no such file {where}; fix the link or create the file')
                 elif frag and not files_only and dest.suffix == '.md' and dest.is_file() and frag not in anchors_of(dest):
                     problems.append(f'{rel}:{n}: {where or "(this file)"} has no heading with the anchor #{frag}')

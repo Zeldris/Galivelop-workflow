@@ -176,6 +176,25 @@ class Doctor(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertLine(out, "WARN", "deploy.yml", "none seems to run", "comprobar.yml", "pre-commit --rango")
 
+    def test_ci_check_command_in_a_comment_or_a_longer_command_does_not_count(self):
+        for body in ("name: x\njobs:\n  c:\n    steps:\n      # - run: bash check.sh\n      - run: ./deploy.sh\n",
+                     "name: x\njobs:\n  c:\n    steps:\n      - run: bash check.sh-fast\n"):
+            with self.subTest(body=body):
+                (self.p.work / ".github" / "workflows" / "check.yml").unlink(missing_ok=True)
+                self.p.write(".github/workflows/check.yml", body)
+                self.p.commit("ci")
+                code, out = self.doctor()
+                self.assertLine(out, "WARN", "check.yml", "none seems to run")
+
+    def test_ci_check_command_followed_by_a_boundary_counts(self):
+        for body in ("      - run: bash check.sh\n", "      - run: bash check.sh && echo ok\n",
+                     "      - run: bash check.sh; echo\n", "      - run: |\n          bash check.sh"):
+            with self.subTest(body=body):
+                self.p.write(".github/workflows/check.yml", "name: x\njobs:\n  c:\n    steps:\n" + body)
+                self.p.commit("ci")
+                code, out = self.doctor()
+                self.assertLine(out, "OK", "ci", "check.yml run(s) the check")
+
     def test_ci_from_the_workflow_template_counts_as_running_the_check(self):
         (self.p.work / ".github" / "workflows" / "check.yml").unlink()
         self.p.write(".github/workflows/comprobar.yml", (ROOT / "templates" / "github" / "comprobar.yml").read_text())

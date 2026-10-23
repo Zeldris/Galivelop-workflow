@@ -68,7 +68,12 @@ class Config(unittest.TestCase):
         for glob, path, hit in (("docs/*.md", "docs/a.md", True), ("docs/*.md", "docs/x/a.md", False),
                                 ("docs/**/a.md", "docs/a.md", True), ("docs/**/a.md", "docs/x/y/a.md", True),
                                 ("docs/x/", "docs/x/y/a.md", True), ("docs/x/", "docs/xy/a.md", False),
-                                ("./docs/a.md", "docs/a.md", True), ("a?.md", "ab.md", True), ("a.md", "axmd", False)):
+                                ("./docs/a.md", "docs/a.md", True), ("a?.md", "ab.md", True), ("a.md", "axmd", False),
+                                ("docs/registros", "docs/registros", True), ("docs/registros", "docs/registros/a.md", True),
+                                ("docs/registros/", "docs/registros", True), ("docs/registros", "docs/registros-old/a.md", False),
+                                ("/docs/registros", "docs/registros/a/b.md", True), ("docs/a.md", "docs/a.md/x", True),
+                                ("docs/**", "docs", True), ("docs/**", "docs/x/y.md", True), ("docs/**", "docsx", False),
+                                ("docs/x*", "docs/xy/z.md", False)):
             self.assertEqual(bool(config.glob_regex(glob).match(path)), hit, (glob, path))
 
     def test_get_list_scalar_bool_and_default(self):

@@ -38,8 +38,13 @@ jobs:
       - name: Install
         run: |
           # `ciInstall` when the config sets it (even empty); otherwise `install`. `setup` is for cloud sessions only.
-          cmds="$(python3 .claude/gw/scripts/config.py get ciInstall 2>/dev/null)" \
-            || cmds="$(python3 .claude/gw/scripts/config.py get install)"
+          # A config that fails to load fails the job with its message; only an absent `ciInstall` falls back.
+          python3 .claude/gw/scripts/config.py validate >/dev/null
+          if python3 .claude/gw/scripts/config.py get ciInstall --json >/dev/null 2>&1; then
+            cmds="$(python3 .claude/gw/scripts/config.py get ciInstall)"
+          else
+            cmds="$(python3 .claude/gw/scripts/config.py get install)"
+          fi
           while IFS= read -r cmd; do
             [ -n "$cmd" ] || continue
             echo "== $cmd"

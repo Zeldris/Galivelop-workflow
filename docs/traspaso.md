@@ -44,6 +44,10 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
    resuelven desde la raíz) y una línea en `skills/pr`; `config.py` gana `stale_refs()` y `glob_regex()`. `aplicar.md`
    ↔ `apply.md` explican el paso `pre-commit --rango` suelto. Casos en `test_utilidades`, `test_sesion`, `test_doctor`,
    `test_config`, `test_plantillas`; copias resincronizadas.
+   Revisión de 86afc95 (arreglada): el límite de `session-start.sh` es un vigilante en bash portable (sin `timeout`,
+   mata el grupo de procesos, «timed out» solo si disparó el vigilante); `glob_regex` acepta rutas sin comodines y
+   `docs/**` incluye `docs`; `doctor.py` ignora comentarios y exige frontera tras la orden; la plantilla de CI cae a
+   `install` solo si falta `ciInstall`; `enlaces-md.py` resuelve `/x` desde la raíz y avisa de enlaces fuera del repo.
 2. 2026-10-23 — Tanda C de las propuestas aprobadas: claves `checkWrapper` (prefijo literal de cada `check` y
    `relatedTests`; con `cwd`, `bash -c 'cd … && …'`) y `worktreeLinks` (por defecto `node_modules`, `.venv`);
    `relatedTests` acepta `{command, paths, cwd}` además del texto; el `pre-push` crea el worktree en

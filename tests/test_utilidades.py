@@ -822,6 +822,21 @@ class EnlacesMdSkipAndRoots(Base):
         self.assertIn("docs/other.md:1: no such file docs/notes.md", out)
         self.assertNotIn("docs/prs/sub/pr-2.md", out)
 
+    def test_link_roots_slash_links_resolve_from_the_repo_root_and_never_leave_it(self):
+        self.project({"linkRoots": ["docs/prs"]})
+        self.p.write("docs/notes.md", "# Notes\n")
+        self.p.write("docs/prs/a.md", "[ok](/docs/notes.md#notes) [gone](/docs/nope.md)\n")
+        self.p.write("docs/other.md", "[abs](/docs/notes.md)\n")           # outside linkRoots: `/` is still the repo root
+        self.p.write("docs/prs/out.md", "[up](../../../../../../etc/hostname) [etc](/etc/hostname) [dots](../../../x.md)\n")
+        code, out = self.run_it()
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/prs/a.md:1: no such file /docs/nope.md", out)
+        self.assertNotIn("docs/prs/a.md:1: no such file /docs/notes.md", out)
+        self.assertNotIn("docs/other.md", out)
+        self.assertIn("docs/prs/out.md:1: link ../../../../../../etc/hostname leaves the repo; point it inside the repo", out)
+        self.assertIn("docs/prs/out.md:1: no such file /etc/hostname", out)
+        self.assertIn("link ../../../x.md leaves the repo", out)
+
     def test_without_link_roots_the_own_folder_rule_is_unchanged(self):
         for config in (None, {"linkRoots": []}):
             with self.subTest(config=config):

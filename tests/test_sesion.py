@@ -189,6 +189,60 @@ class SessionStart(Base):
         self.assertLess(time.time() - started, 20, out)
         self.assertIn("setup command timed out after 1s: 'sleep 30'", out)
 
+    def path_without(self, *hidden):
+        """A PATH made of symlinks to every executable on the current one except the `hidden` names (stock macOS
+        has no `timeout`)."""
+        d = self.tmp / "bin-without"
+        d.mkdir()
+        for folder in os.environ["PATH"].split(os.pathsep):
+            try:
+                names = os.listdir(folder)
+            except OSError:
+                continue
+            for name in names:
+                src = Path(folder) / name
+                if name not in hidden and not (d / name).exists() and os.access(src, os.X_OK) and src.is_file():
+                    (d / name).symlink_to(src)
+        return str(d)
+
+    def test_timeout_is_enforced_without_the_timeout_command(self):
+        cloud = self.cloud_config(setup=["sleep 30"])
+        cloud.update(GW_COMMAND_TIMEOUT="1", PATH=self.path_without("timeout"))
+        self.assertFalse((Path(cloud["PATH"]) / "timeout").exists())
+        started = time.time()
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertLess(time.time() - started, 20, out)
+        self.assertIn("setup command timed out after 1s: 'sleep 30'", out)
+
+    def test_timeout_kills_the_children_of_the_command_too(self):
+        cloud = self.cloud_config(setup=["sleep 31.5 & sleep 32.5 & wait"])
+        cloud["GW_COMMAND_TIMEOUT"] = "1"
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertIn("setup command timed out after 1s", out)
+        time.sleep(1)
+        left = subprocess.run(["pgrep", "-f", "sleep 3[12]\\.5"], capture_output=True, text=True).stdout
+        self.assertEqual(left.strip(), "", "children of the timed-out command survived")
+
+    def test_exit_124_of_the_command_is_a_failure_not_a_timeout(self):
+        cloud = self.cloud_config(setup=["exit 124"])
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertIn("setup command failed: 'exit 124'", out)
+        self.assertNotIn("timed out", out)
+
+    def test_a_fast_command_leaves_no_watchdog_running(self):
+        cloud = self.cloud_config(setup=["echo ok >> ok.log"])
+        cloud["GW_COMMAND_TIMEOUT"] = "33"
+        started = time.time()
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertLess(time.time() - started, 15, out)
+        self.assertEqual((self.p.work / "ok.log").read_text().strip(), "ok")
+        left = subprocess.run(["pgrep", "-f", "sleep 33"], capture_output=True, text=True).stdout
+        self.assertEqual(left.strip(), "", "the watchdog's sleeper outlived the command")
+
     def test_never_exits_non_zero(self):
         p = self.p
         (p.work / ".claude" / "gw.json").write_text("{not json")

@@ -189,15 +189,24 @@ def stale_refs(config):
 
 
 def glob_regex(glob):
-    """Compile a repo-relative glob to a regex: `*` and `?` stay inside one folder, `**` crosses folders (`**/` also
-    matches no folder), a trailing `/` means everything under that folder, a leading `./` is dropped."""
+    """Compile a repo-relative glob to a regex. Only `*`, `**` and `?` are special (no brackets, no gitignore rules):
+    `*` and `?` stay inside one folder, `**` crosses folders (`**/` also matches no folder), a leading `./` or `/` is
+    dropped. An entry without metacharacters (`docs/registros`, with or without a trailing `/`) matches that file or
+    that folder and everything under it; a trailing `/` after metacharacters, or `/**`, also matches the folder."""
     glob = glob[2:] if glob.startswith("./") else glob
+    glob = glob.lstrip("/")
     if glob.endswith("/"):
-        glob += "**"
+        glob = glob.rstrip("/")
+        glob += "/**" if re.search(r"[*?]", glob) else ""
+    if not re.search(r"[*?]", glob):
+        return re.compile(re.escape(glob) + r"(?:/.*)?\Z")
     out, i = [], 0
     while i < len(glob):
         c = glob[i]
-        if glob.startswith("**/", i):
+        if glob.startswith("/**", i) and i + 3 == len(glob):
+            out.append("(?:/.*)?")
+            i += 3
+        elif glob.startswith("**/", i):
             out.append("(?:.*/)?")
             i += 3
         elif glob.startswith("**", i):

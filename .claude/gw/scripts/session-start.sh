@@ -7,6 +7,9 @@
 #   - cloud (CLAUDE_CODE_REMOTE=true): runs the config's `install` commands and then its `setup` commands, in order,
 #     only when the lockfiles (or the commands) changed since the last successful run; the hash lives in the git dir
 #     (gw-install.sha). A failing or hanging command (GW_COMMAND_TIMEOUT seconds, default 900) is reported.
+#     The limit is a portable bash watchdog (no `timeout` needed, so it also works on stock macOS): the command runs
+#     in its own process group and, past the limit, the whole group gets TERM and, a few seconds later, KILL. A
+#     process that detaches itself from the group (setsid, nohup in a new session, a daemon) can survive.
 #   - warns when .claude/gw.json is missing or invalid, when its `version` is older than this copy of the workflow
 #     (the `# galivelop-workflow vX.Y.Z` header of this script), and when the session was started outside the repo
 #     root (its .claude/settings.json may not have loaded; VeriNews P3).
@@ -112,6 +115,32 @@ else
   fi
 fi
 
+# run_limited <seconds> <command> <log>: runs the command with bash in its own process group (set -m), output to the
+# log. A watchdog sleeps <seconds> and then marks the run as timed out, sends TERM to the group and, 5 s later, KILL.
+# Sets `timed_out` only when the watchdog fired (a command that exits 124 by itself is a plain failure). Returns the
+# command's exit status.
+run_limited() {
+  local limit="$1" cmd="$2" log="$3" flag pid wd status
+  flag="$(mktemp "${TMPDIR:-/tmp}/gw-timeout.XXXXXX")" || flag="${TMPDIR:-/tmp}/gw-timeout.$$"
+  rm -f "$flag"; timed_out=""
+  set -m
+  bash -c "$cmd" > "$log" 2>&1 < /dev/null &
+  pid=$!
+  ( sleep "$limit"; : > "$flag"; kill -TERM -- "-$pid" 2>/dev/null || kill -TERM "$pid" 2>/dev/null
+    sleep 5; kill -KILL -- "-$pid" 2>/dev/null || kill -KILL "$pid" 2>/dev/null ) > /dev/null 2>&1 < /dev/null &
+  wd=$!
+  set +m
+  wait "$pid" 2>/dev/null; status=$?
+  if [ -e "$flag" ]; then
+    timed_out=1                       # the watchdog finishes its KILL pass on its own
+  else
+    kill -- "-$wd" 2>/dev/null || kill "$wd" 2>/dev/null   # command finished first: stop the watchdog and its sleeper
+    wait "$wd" 2>/dev/null
+  fi
+  rm -f "$flag"
+  return "$status"
+}
+
 # --- Cloud dependencies and setup -------------------------------------------------------------------------------
 # `install` commands, then `setup` commands, one after another in this one hook (separate SessionStart hooks run in
 # parallel, so ordering has to live here). A command that fails or runs past GW_COMMAND_TIMEOUT seconds (default 900)
@@ -142,15 +171,11 @@ if [ "${CLAUDE_CODE_REMOTE:-}" = "true" ] && [ -n "$config_ok" ]; then
         kind="${entry%%:*}"; cmd="${entry#*:}"
         echo "gw session-start: running $kind command: $cmd"
         log="${TMPDIR:-/tmp}/gw-$kind.log"
-        if command -v timeout >/dev/null 2>&1; then
-          timeout "$limit" bash -c "$cmd" > "$log" 2>&1 < /dev/null
-        else
-          bash -c "$cmd" > "$log" 2>&1 < /dev/null
-        fi
+        run_limited "$limit" "$cmd" "$log"
         status=$?
         if [ "$status" -ne 0 ]; then
           tail -n 10 "$log"
-          why="failed"; [ "$status" -eq 124 ] && why="timed out after ${limit}s"
+          why="failed"; [ -n "$timed_out" ] && why="timed out after ${limit}s"
           warn "$kind command $why: '$cmd' (log: $log); fix it, then run it by hand: $cmd"
           failed=1
           break

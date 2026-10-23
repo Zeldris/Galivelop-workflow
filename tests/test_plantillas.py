@@ -146,7 +146,8 @@ class Templates(unittest.TestCase):
         shutil.copytree(ROOT / "schema", tmp / ".claude" / "gw" / "schema")
         cfg = {"version": VERSION, "language": "en", "log": "docs/log.md", "protectedBranch": "main",
                "pushToProtected": "direct", "check": ["true"], "reviewMark": "r.txt", "content": ["^docs/"]}
-        (tmp / ".claude" / "gw.json").write_text(json.dumps(dict(cfg, **keys)))
+        raw = keys.pop("_raw", None)
+        (tmp / ".claude" / "gw.json").write_text(raw if raw is not None else json.dumps(dict(cfg, **keys)))
         subprocess.run(["git", "init", "-q", str(tmp)], check=True)
         r = subprocess.run(["bash", "-e", "-c", script], cwd=tmp, capture_output=True, text=True)
         return r
@@ -166,6 +167,16 @@ class Templates(unittest.TestCase):
         r = self.ci_install(install="npm ci")
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("$.install: expected array", r.stderr)
+
+    def test_ci_install_fails_closed_when_python_is_missing_or_the_config_is_unreadable(self):
+        r = self.ci_install(install=["echo a"], ciInstall="npm ci")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("$.ciInstall: expected array", r.stderr)
+        self.assertNotIn("== ", r.stdout)
+        r = self.ci_install(install=["echo a"], _raw="{not json")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("invalid JSON", r.stderr)
+        self.assertNotIn("== echo a", r.stdout)
 
     def test_ci_template_does_not_apply_check_wrapper_or_setup(self):
         text = (TEMPLATES / "github" / "comprobar.yml").read_text()

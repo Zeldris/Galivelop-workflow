@@ -235,7 +235,9 @@ def runs_check(text, cfg):
     own comprobar.yml, or spells out one of the `check` commands."""
     if "config.py get check" in text or ("galivelop-workflow v" in text and "pre-commit --rango" in text):
         return True
-    return any(c.strip() and c.strip() in text for c in (cfg or {}).get("check") or [])
+    code = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#"))
+    return any(c.strip() and re.search(r"(?<![\w./-])" + re.escape(c.strip()) + r"(?![\w./-])", code)
+               for c in (cfg or {}).get("check") or [])
 
 
 def check_ci(rep, root, cfg=None):
