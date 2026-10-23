@@ -131,18 +131,20 @@ def instant(ts):
 
 
 def turn_row(turns):
-    """turns: list of lists of call records (same profile, same `app.turn`). Turns with no readable timing are left
-    out. Duration: earliest start (`ts` - `app.duration_ms`) to latest end (`ts`)."""
-    durations, sizes, failed = [], [], 0
+    """turns: list of lists of call records (same profile, same `app.turn`). A turn with no readable timing is left
+    out unless it failed: it still counts in `n` and `error_pct`, with no duration. Duration: earliest start (`ts` - `app.duration_ms`) to latest end (`ts`)."""
+    durations, sizes, failed, n = [], [], 0, 0
     for rs in turns:
         timed = [r for r in rs if is_num(r.get('app.duration_ms')) and instant(r.get('ts')) is not None]
-        if not timed:
+        has_error = any(r.get('app.error') for r in rs)
+        if not timed and not has_error:
             continue
-        start = min(instant(r['ts']) * 1000 - r['app.duration_ms'] for r in timed)
-        durations.append(max(instant(r['ts']) * 1000 for r in timed) - start)
+        n += 1
+        failed += has_error
         sizes.append(len(rs))
-        failed += any(r.get('app.error') for r in rs)
-    n = len(durations)
+        if timed:
+            start = min(instant(r['ts']) * 1000 - r['app.duration_ms'] for r in timed)
+            durations.append(max(instant(r['ts']) * 1000 for r in timed) - start)
     return {'n': n, 'p50_ms': percentile(durations, 50), 'p95_ms': percentile(durations, 95),
             'max_ms': max(durations) if durations else None, 'calls_per_turn': mean(sizes),
             'error_pct': pct(failed, n)}

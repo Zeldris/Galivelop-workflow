@@ -127,6 +127,12 @@ class MedirTest(unittest.TestCase):
         self.assertIn('TURNS', text)
         self.assertIn('small/turn/-  2  3000  4800  5000  1.5  50', text)
 
+    def test_untimed_failed_turn_counts_in_error_pct(self):
+        path = self.log([call(1000, **{'app.turn': 'a', 'ts': '2026-01-01T10:00:10Z'}),
+                         call(100, **{'app.turn': 'b', 'app.error': 'x'})])  # failed, no ts: no timing
+        t = medir.analyse(path)['turns'][('small', 'turn', '-')]
+        self.assertEqual((t['n'], t['p50_ms'], t['error_pct']), (2, 1000, 50))
+
     def test_no_turn_field_no_turn_table(self):
         path = self.log([call(10)])
         self.assertEqual(medir.analyse(path)['turns'], {})

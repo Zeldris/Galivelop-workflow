@@ -166,10 +166,17 @@ def summary(pair_list, key, verdicts):
     by_round = {}  # (case, pair of models) -> [winning model, or None for a tie]
     x_wins = judged = 0
     losses = {}  # model -> pairs it loses, with the judge's reason
+    seen = {}  # pair -> accepted rounds, to count every pair once
     for v in verdicts:
         pair = v['pair']
         if pair not in key or 'error' in v:
             continue
+        if pair not in case_of:
+            sys.exit('Pair %s is in the key but not in the pairs file; they come from different runs. Regenerate both '
+                     'with the same seed: python3 quality_bench.py pairs ... --seed <n> --key <key.json>' % pair)
+        seen[pair] = seen.get(pair, 0) + 1
+        if seen[pair] > 1:
+            continue  # the same pair judged again (verdicts appended twice): counted once, reported in `repeated`
         judged += 1
         w = v.get('winner')  # a hand-written verdict without winner counts as a tie, like an unreadable one
         x_wins += w == 'X'
@@ -181,11 +188,9 @@ def summary(pair_list, key, verdicts):
                                                  'reason': v.get('reason', '')})
     points, played = {}, {}
     head, per_case = {}, {}
-    consistent = complete = repeated = 0
+    consistent = complete = 0
+    repeated = sum(1 for n in seen.values() if n > 1)  # pairs judged more than once: only the first verdict counts
     for (case, models), winners in by_round.items():
-        if len(winners) > 2:  # the same pair judged again (verdicts appended twice): not counted
-            repeated += 1
-            continue
         if len(winners) == 2:
             complete += 1
             if winners[0] == winners[1]:

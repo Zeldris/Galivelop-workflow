@@ -63,8 +63,18 @@ class BenchTest(unittest.TestCase):
         self.assertEqual(res['repeated'], 0)
         # a repeated verdict is not counted twice and is reported; one without winner is a tie
         res = bench.summary(pair_list, key, verdicts + verdicts[:1] + [{'pair': verdicts[1]['pair']}])
-        self.assertGreaterEqual(res['repeated'], 1)
-        self.assertLess(res['models'].get('a', {}).get('played', 0), 5)
+        self.assertEqual(res['repeated'], 2)
+        self.assertEqual((res['judged'], res['x_bias']), (4, 0.75))  # same as without the repeats
+        self.assertEqual(res['models']['a']['played'], 4)
+
+    def test_pairs_not_matching_key_say_how_to_fix(self):
+        pair_list, key = bench.pairs(self.batches(), self.CASES)
+        other = [dict(p, pair='q%s' % p['pair']) for p in pair_list]
+        with self.assertRaises(SystemExit) as e:
+            bench.summary(other, key, [{'pair': pair_list[0]['pair'], 'winner': 'X'}])
+        self.assertIn('different runs', str(e.exception.code))
+        self.assertIn('quality_bench.py pairs', str(e.exception.code))
+        self.assertIn('--seed', str(e.exception.code))
 
     def test_unreadable_judge_is_a_tie(self):
         pair_list, key = bench.pairs(self.batches(), self.CASES)

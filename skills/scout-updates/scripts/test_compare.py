@@ -114,6 +114,14 @@ class CompareTest(unittest.TestCase):
             with open(os.path.join(self.d, '.claude', 'gw.json'), 'w') as f:
                 json.dump(dict(config, **({'scoutDir': scout} if scout else {})), f)
             self.assertEqual(compare.scout_dir(self.d), folder)
+        with open(os.path.join(self.d, '.claude', 'gw.json'), 'w') as f:
+            f.write('{not json')
+        with self.assertRaises(SystemExit) as e:
+            compare.scout_dir(self.d)
+        self.assertIn('could not read it', str(e.exception.code))
+        self.assertIn('config.py validate', str(e.exception.code))
+        with open(os.path.join(self.d, '.claude', 'gw.json'), 'w') as f:
+            json.dump(dict(config, scoutDir='docs/scout'), f)
         os.makedirs(os.path.join(self.d, 'docs', 'scout'))
         shutil.move(self.arch, os.path.join(self.d, 'docs', 'scout', 'architecture.md'))
         out = io.StringIO()
