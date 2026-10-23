@@ -32,7 +32,9 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
 
    It lists, per project and since the last harvest (`docs/propuestas/estado.json`): workflow skills whose body
    differs, skills born in the project, copied workflow scripts that differ, retro files, the
-   `## For Galivelop-workflow` sections of every changed `.md` (pilot notes too, not only retros), and the commits. A copy equal to an earlier workflow commit is listed apart
+   `## For Galivelop-workflow` sections of every changed `.md` (pilot notes too, not only retros), the lines there that
+   start with "Propuesta para el flujo" / "Proposal for the workflow" (how projects note requests in their hand-off
+   log), and the commits. A copy equal to an earlier workflow commit is listed apart
    as an older copy: the project's stale text, never a proposal. If it reports missing history, deepen the clone as
    it says and run it again.
 3. **Look at each finding with a subagent** that returns a short summary with paths, never whole files in the main

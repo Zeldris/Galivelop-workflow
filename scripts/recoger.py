@@ -7,7 +7,9 @@ For each project repository it reports, without judging anything:
     whose body equals an earlier commit's here (an older copy, listed on its own: not the project's edits);
   * skills born in the project (in .claude/skills/ and not part of the workflow);
   * workflow scripts copied into the project that differ (same file name as in scripts/), older copies apart;
-  * retro files, and "For Galivelop-workflow" sections in any tracked .md changed since the last harvest;
+  * retro files, and "For Galivelop-workflow" sections in any tracked .md changed since the last harvest, plus the
+    lines there that start with "Propuesta para el flujo" / "Proposal for the workflow" (with their indented
+    continuation lines), the way projects note requests in their hand-off log;
   * commits since the last harvested commit;
   * a warning when the clone is behind its upstream branch (as of its last fetch: fetch first), or has no upstream
     (then nobody can tell whether it is up to date).
@@ -35,6 +37,8 @@ sys.path.insert(0, str(ROOT / "scripts"))
 from aplicar import skill_version_span  # noqa: E402  (the one parser of skill versions)
 STATE = ROOT / "docs" / "propuestas" / "estado.json"
 IDEAS_HEADING = re.compile(r"^#{2,4}\s*(?:For|Para)\s+Galivelop-workflow\b.*$", re.I | re.M)
+IDEAS_LINE = re.compile(r"^([ \t]*)(?:[-*+]\s+|\d+\.\s+)?[*_]{0,2}(?:Propuestas?\s+para\s+el\s+flujo|Proposals?\s+for\s+the\s+workflow)\b",
+                        re.I | re.M)
 RETRO_NAME = re.compile(r"(^|/)retro-[^/]*\.md$")
 
 
@@ -182,6 +186,14 @@ def harvest(repo, state):
                 nxt = re.search(r"^#{1,4}\s", text[match.end():], re.M)
                 section = text[match.end(): match.end() + nxt.start()] if nxt else text[match.end():]
                 report["ideas"].append({"path": rel, "text": section.strip()[:2000]})
+            for match in IDEAS_LINE.finditer(text):
+                lines = text[match.start():].split("\n")
+                indent, kept = len(match.group(1).expandtabs()), [lines[0]]
+                for line in lines[1:]:
+                    if not line.strip() or len(line) - len(line.lstrip()) <= indent:
+                        break
+                    kept.append(line)
+                report["ideas"].append({"path": rel, "text": "\n".join(kept).strip()[:2000]})
     return report
 
 

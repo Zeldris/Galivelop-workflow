@@ -24,7 +24,7 @@ Las otras tres recogidas de esta versión no traen nada para el flujo:
 - **Why it is general:** los proyectos apuntan lo que piden al flujo donde trabajan, en la bitácora; esta recogida lo
   encontró solo leyendo la bitácora a mano. Es el mismo hueco que la P21 de la recogida anterior, en otro sitio.
 - **Version bump:** patch (entra en la `0.4.0`)
-- **Status:** proposed
+- **Status:** aprobada (usuario, 2026-10-23) y aplicada en la `0.4.0`
 
 ## P2. Un sitio en el CI para los pasos propios del proyecto (`ci.setup` / `ci.after`)
 
@@ -36,7 +36,7 @@ Las otras tres recogidas de esta versión no traen nada para el flujo:
 - **Why it is general:** la P13 se aplazó «hasta que un proyecto las pida»; el portal las pide, tras perder dos veces
   Node 22, la caché de npm y su build en una actualización.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aplazada a la siguiente versión (usuario, 2026-10-23): necesita claves nuevas en la configuración
 
 ## P3. `recuperar.py`: el gancho espera 1 s la entrada y puede leer otra sesión
 
@@ -46,7 +46,7 @@ Las otras tres recogidas de esta versión no traen nada para el flujo:
 - **Why it is general:** con dos sesiones a la vez en el mismo repo, el estado tras una compactación puede venir de la
   sesión equivocada.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** sin decidir (2026-10-23): pendiente de preguntar al usuario
 
 ## P4. Plantilla `CLAUDE.md` (ES): «El modelo de la sesión la elige» → «lo elige»
 
@@ -54,7 +54,7 @@ Las otras tres recogidas de esta versión no traen nada para el flujo:
 - **What changes:** la concordancia de la frase.
 - **Why it is general:** sale en el `CLAUDE.md` de todos los proyectos en español.
 - **Version bump:** patch (entra en la `0.4.0`)
-- **Status:** proposed
+- **Status:** aprobada (usuario, 2026-10-23) y aplicada en la `0.4.0`
 
 ## P5. Menores de la revisión del flujo 0.3.0 que se reproducen o son plausibles
 
@@ -75,7 +75,7 @@ Las otras tres recogidas de esta versión no traen nada para el flujo:
     sale: arreglarla con un PR revisado, o la persona sube a mano.
 - **Why it is general:** son del código del flujo; cada uno lo tiene cualquier proyecto.
 - **Version bump:** patch, cuando se arreglen
-- **Status:** proposed
+- **Status:** aprobada (usuario, 2026-10-23): apuntados en «Pendiente» de `docs/traspaso.md`
 
 ## Ya está aquí
 

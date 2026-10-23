@@ -74,6 +74,21 @@ class Recoger(unittest.TestCase):
         self.assertEqual(r["retros"], [])
         self.assertEqual(r["ideas"], [{"path": "docs/registros/piloto.md", "text": "F21: markers in base..local."}])
 
+    def test_ideas_come_from_workflow_proposal_lines_in_a_hand_off_log(self):
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        log = self.repo / "docs" / "traspaso.md"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.write_text("# Traspaso\n\n## Pendiente\n\n- Arreglar el login.\n"
+                       "- **Propuesta para el flujo:** que aplicar.py respete\n  los pasos propios del CI.\n"
+                       "- Otra cosa local.\n\nProposal for the workflow: wait longer for the transcript.\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "hand-off")
+        r = self.harvest()
+        self.assertEqual(r["ideas"], [
+            {"path": "docs/traspaso.md",
+             "text": "- **Propuesta para el flujo:** que aplicar.py respete\n  los pasos propios del CI."},
+            {"path": "docs/traspaso.md", "text": "Proposal for the workflow: wait longer for the transcript."}])
+
     def track_origin(self):
         """Give the project a remote with main as its upstream; return a second clone that can push to it."""
         origin = self.tmp / "origin.git"

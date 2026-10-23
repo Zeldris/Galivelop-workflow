@@ -21,6 +21,9 @@ here.
   versión, en `AGENTS.md`, el plan (§7) y la skill; `version.py --release` (el `pre-push` a `main`) no deja publicar
   sin un `docs/propuestas/*.md` `# Harvest` añadido desde la última etiqueta. La de la `0.4.0`:
   `docs/propuestas/2026-10-23-portal-galivelop.md`.
+- `recoger.py` informa también de las líneas «Propuesta para el flujo» / «Proposal for the workflow» de los `.md`
+  cambiados (como las apuntan los proyectos en su bitácora), y la skill `gw-harvest` lo dice (portal P1).
+- Plantilla `CLAUDE.md` (ES): «El modelo de la sesión lo elige» (portal P4).
 
 ### EN
 
@@ -33,6 +36,9 @@ here.
   in `AGENTS.md`, the plan (§7) and the skill; `version.py --release` (the `pre-push` to `main`) blocks a release
   without a `docs/propuestas/*.md` `# Harvest` file added since the last tag. The one for `0.4.0`:
   `docs/propuestas/2026-10-23-portal-galivelop.md`.
+- `recoger.py` also reports the lines of changed `.md` files that start with "Propuesta para el flujo" / "Proposal for
+  the workflow" (how projects note requests in their hand-off log), and the `gw-harvest` skill says so (portal P1).
+- `CLAUDE.md` template (ES): grammatical agreement in "El modelo de la sesión lo elige" (portal P4).
 
 ## [0.3.0] - 2026-10-23
 

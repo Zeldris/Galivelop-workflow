@@ -10,9 +10,9 @@
 |---|---|
 | Rama | `ccr-6dfbc880-ddr41g` (avance rápido de `ccr-76251061-b1yiwq`, que sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `01d1a75` = **release `v0.2.0`** (2026-10-22, etiqueta y release creadas a mano en GitHub); `v0.1.0` = `9b97d7b` |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
-| Fase en curso | **6 cerrada** y `0.3.0` publicada en `main` (2026-10-23); P7 del instalador aplicada en la rama (`0.4.0`, sin publicar); recogida de la `0.4.0` hecha, propuestas presentadas al usuario. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | Regla «una recogida por versión» y su candado en `version.py --release`, tras la recogida de la `0.4.0`; check en verde en local; el CI no arranca (cupo de Actions): comprobado solo en local |
-| Siguiente paso | Aplicar lo que el usuario apruebe de `docs/propuestas/2026-10-23-portal-galivelop.md` (P1-P5, sin decidir); luego la **Fase 7 (rodaje etapa 1)** |
+| Fase en curso | **6 cerrada** y `0.3.0` publicada en `main` (2026-10-23); P7 del instalador aplicada en la rama (`0.4.0`, sin publicar); recogida de la `0.4.0` hecha y decidida (P1, P4, P5 aplicadas; P2 aplazada; P3 sin decidir). Próxima: **7. Rodaje etapa 1** |
+| Último punto estable | P1, P4 y P5 de la recogida de la `0.4.0` aplicadas (`recoger.py` ve «Propuesta para el flujo»); check en verde en local; el CI no arranca (cupo de Actions): comprobado solo en local |
+| Siguiente paso | Que el usuario decida la P3 de `docs/propuestas/2026-10-23-portal-galivelop.md` (`recuperar.py` y otra sesión); luego la **Fase 7 (rodaje etapa 1)** |
 
 ### Fases
 
@@ -35,17 +35,18 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 
 ## Hecho (5 últimas)
 
-1. 2026-10-23 — Recogida de la `0.4.0` (portal, WMF, instalador, VeriNews): 5 propuestas del portal en
+1. 2026-10-23 — Recogida de la `0.4.0` decidida: P1 (`recoger.py` informa de las líneas «Propuesta para el flujo»,
+   con su test), P4 (plantilla «lo elige») y P5 (menores a «Pendiente») aplicadas; P2 (`ci.setup`/`ci.after`)
+   aplazada a la siguiente versión; P3 sin decidir.
+2. 2026-10-23 — Recogida de la `0.4.0` (portal, WMF, instalador, VeriNews): 5 propuestas del portal en
    `docs/propuestas/2026-10-23-portal-galivelop.md`; los otros tres, nada nuevo. Regla nueva: cada versión empieza con
    una recogida (`AGENTS.md`, plan §7, skill), y `version.py --release` la exige.
-2. 2026-10-23 — P7 del instalador aplicada (`0.4.0`, sin publicar): sin CI, el check en local vale con la confirmación
+3. 2026-10-23 — P7 del instalador aplicada (`0.4.0`, sin publicar): sin CI, el check en local vale con la confirmación
    de la persona («comprobado solo en local»), en `AGENTS.md` y plantillas; el gancho lo nombra al bloquear.
-3. 2026-10-23 — **`0.3.0` publicada en `main`** (ea81c9f). El usuario decide la P7: un check que pasó en local vale
+4. 2026-10-23 — **`0.3.0` publicada en `main`** (ea81c9f). El usuario decide la P7: un check que pasó en local vale
    cuando Actions no arranca.
-4. 2026-10-23 — Fase 2 antes de `main`: `/opt-tokens` (tope de ~35 llamadas por subagente, «Hecho» de 5 entradas
+5. 2026-10-23 — Fase 2 antes de `main`: `/opt-tokens` (tope de ~35 llamadas por subagente, «Hecho» de 5 entradas
    cortas, check en segundo plano) y `/retro` (regla de `/tmp` en `REVIEW.md`); retro en `docs/registros/`.
-5. 2026-10-23 — Revisión de los arreglos antes de `main`: carpeta de worktrees del `pre-push` por usuario, 700, sin
-   symlinks (688da4d, 6aaf2cc); menores en «Pendiente».
 
 ## Pendiente
 
@@ -71,6 +72,16 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
   `cksum` de 32 bits puede juntar dos repos en una carpeta (el borrado sigue exigiendo 24 h y proceso muerto);
   `update_pull_request` con `state:open` y sin `base` no se juzga como reapertura; `compare.py default_root` da
   traceback sin git y, desde la caché del plugin, cae al cwd (exigir `--root`).
+- Menores de la revisión del flujo 0.3.0 que hizo el portal (P5 de `docs/propuestas/2026-10-23-portal-galivelop.md`):
+  `config.py related` acepta un `cwd` con `..` o absoluto en `relatedTests` (que `validate` lo rechace);
+  `session-start.sh`: `kill -- -$wd` no es un grupo y el `sleep` del vigilante queda vivo hasta el tope;
+  `revision-antes-de-main.sh` sondea `gh api repos/<o>/<r>` en cada llamada y juzga cambios de título o base de un PR
+  cerrado; `doctor.py` da por bueno un `npm run check` citado en un comentario (y avisos del glosario repetidos por
+  mayúsculas, por comprobar); `validate` no avisa de un `worktreeDir` dentro del repo ni de un `checkWrapper` que
+  limpia el entorno. Con la config de la punta de `main` rota, `pre-push` y el gancho fallan cerrados a propósito: se
+  sale con un PR revisado que la arregle, o la persona sube a mano.
+- P2 de `docs/propuestas/2026-10-23-portal-galivelop.md` (`ci.setup`/`ci.after` y `aplicar.py --update` sin pisar un
+  `comprobar.yml` con pasos propios): aplazada a la siguiente versión.
 - Que el usuario cambie la rama por defecto de GitHub a `main` (Settings → Branches); no hay herramienta para ello.
 - R2 de la retro: que `doctor.py` detecte skills homónimas en la sesión (sin forma fiable aún; queda en las guías).
 - Opción D (plugin desde el script de entorno de la nube): queda para la Fase 9.

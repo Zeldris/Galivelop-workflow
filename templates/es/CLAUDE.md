@@ -5,7 +5,7 @@
 
 - Responde en el idioma del proyecto (`{{language}}`).
 - Al empezar cada tarea, di en una línea qué skill y qué modelo pide el caso, con la skill `selector`. El modelo de
-  la sesión la elige la persona; los subagentes, el más barato que haga bien el trabajo.
+  la sesión lo elige la persona; los subagentes, el más barato que haga bien el trabajo.
 - Antes de ir a `{{protectedBranch}}`: `/code-review --max-findings all` del diff contra
   `origin/{{protectedBranch}}`, con el criterio de `REVIEW.md` (fase 1 de las tres de `AGENTS.md`).
 - Lo mecánico, a subagentes con modelos baratos (`orchestrate-dealer`); la sesión principal planea, decide y revisa.
