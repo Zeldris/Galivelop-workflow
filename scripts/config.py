@@ -224,7 +224,8 @@ def related_commands(config, kind, files):
     repo-relative path) narrows {files} and makes the entry run only when some file matches; `cwd` (a folder of the
     repo) is where it runs and {files} arrive relative to it, files outside it being left out. Without either, the
     old rules: a fast command runs always unless it uses {files}; a slow one only when some file changed. Every
-    command gets `checkWrapper` as a prefix; with `cwd` the wrapper runs from the root around `bash -c 'cd CWD && ...'`."""
+    command is run as `<checkWrapper> bash -c '<command>'` (with `cd CWD &&` inside when `cwd` is set), so the wrapper
+    covers a compound command whole."""
     wrapper = (config.get("checkWrapper") or "").strip()
     out = []
     for entry in (config.get("relatedTests") or {}).get(kind) or []:
@@ -244,10 +245,7 @@ def related_commands(config, kind, files):
         inner = command.replace("{files}", " ".join(shlex.quote(f) for f in scope))
         if cwd:
             inner = f"cd {shlex.quote(cwd)} && {inner}"
-            full = f"{wrapper} bash -c {shlex.quote(inner)}" if wrapper else inner
-        else:
-            full = f"{wrapper} {inner}" if wrapper else inner
-        out.append(full)
+        out.append(f"{wrapper} bash -c {shlex.quote(inner)}" if wrapper else inner)
     return out
 
 

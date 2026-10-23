@@ -74,7 +74,7 @@ class Config(unittest.TestCase):
         r = subprocess.run(["python3", str(SCRIPT), "--root", str(self.tmp), "related", "--kind", "fast"],
                            input="app/a b.ts\nsrc/x.py\n", capture_output=True, text=True)
         self.assertEqual(r.stdout.split("\0")[:-1],
-                         ["w.sh echo always", "w.sh bash -c 'cd app && run '\"'\"'a b.ts'\"'\"''"])
+                         ["w.sh bash -c 'echo always'", "w.sh bash -c 'cd app && run '\"'\"'a b.ts'\"'\"''"])
 
     def test_missing_config_fails_closed(self):
         r = cli(self.tmp, "get", "check")

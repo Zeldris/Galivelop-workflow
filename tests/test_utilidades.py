@@ -421,8 +421,8 @@ class Fusionar(Base):
         self.agent()
         code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
         self.assertEqual(code, 0, out)
-        self.assertIn("check OK: bash wrap.sh bash check.sh", out)
-        self.assertEqual((self.p.work / "wrap.log").read_text(), "wrapped: bash check.sh\n")
+        self.assertIn("check OK: bash wrap.sh bash -c 'bash check.sh'", out)
+        self.assertEqual((self.p.work / "wrap.log").read_text(), "wrapped: bash -c bash check.sh\n")
 
     def test_reminds_about_review_without_the_flag(self):
         self.agent()
@@ -600,8 +600,8 @@ class TestsRelacionados(Base):
         code, out, lines = self.run_with({"fast": ["echo plain >> out.log"], "slow": [slow]}, ("app/x.ts",),
                                          files=("app/x.ts",), wrapper="bash wrap.sh")
         self.assertEqual(code, 0, out)
-        self.assertIn("related tests (fast): bash wrap.sh echo plain", out)
-        self.assertEqual(lines, ["wrap:work:echo", "plain", "wrap:work:bash", "in-app"])
+        self.assertIn("related tests (fast): bash wrap.sh bash -c 'echo plain >> out.log'", out)
+        self.assertEqual(lines, ["wrap:work:bash", "plain", "wrap:work:bash", "in-app"])
 
     def test_invalid_entries_fail_closed_with_the_reason(self):
         for bad, reason in (({"paths": "x"}, "missing required key 'command'"),

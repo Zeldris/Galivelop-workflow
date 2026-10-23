@@ -44,6 +44,9 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
    adaptados; casos en `test_ganchos` (worktree, enlaces con espacios, enlazado, wrapper, logs, concurrencia,
    huérfanos, señales, bash 3.2), `test_config`, `test_utilidades`, `test_doctor`; docs ES/EN; copias resincronizadas.
    Queda para la tanda D: la plantilla de CI no aplica `checkWrapper`.
+   Revisión de 758a5ea (arreglada): enlaces de `worktreeLinks` que salen del worktree por un symlink commiteado (falla
+   cerrado), sin `git worktree prune` global, marcador vacío y EPERM cuentan como vivos, `checkWrapper` siempre
+   `<wrapper> bash -c '<orden>'` (pre-push, `fusionar.sh`, `config.py related`).
 2. 2026-10-23 — Tanda B de las propuestas aprobadas: `revisado.sh` ignora lo no seguido, lee todo el párrafo de
    `**Estado:**`, acepta «aprobad*», lista las palabras válidas en el error y admite `--footer` (la skill `retro`
    fija la forma de la línea); `pre-commit` quita `GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE` antes de buscar la raíz

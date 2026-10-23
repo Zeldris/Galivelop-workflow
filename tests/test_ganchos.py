@@ -592,8 +592,73 @@ class PrePushWorktree(Base):
         log = self.tmp / "wrap.log"
         code, out = p.push("origin", "feature", env={"WRAP_LOG": str(log)})
         self.assertEqual(code, 0, out)
-        self.assertEqual(log.read_text().splitlines(), ["wrapped: bash check.sh", "wrapped: test -e check.sh"])
-        self.assertIn("check 'bash wrap.sh bash check.sh'", out)
+        self.assertEqual(log.read_text().splitlines(), ["wrapped: bash -c bash check.sh", "wrapped: bash -c test -e check.sh"])
+        self.assertIn("check 'bash wrap.sh bash -c 'bash check.sh''", out)
+
+    def test_check_wrapper_wraps_a_compound_check_as_a_whole(self):
+        p = self.p
+        p.write("wrap.sh", 'echo "args:$#" >> "$WRAP_LOG"; "$@"\n')
+        out_file = self.tmp / "both.txt"
+        self.configure(checkWrapper="bash wrap.sh", check=[f'echo a >> "{out_file}" && echo b >> "{out_file}"'])
+        p.commit("compound check")
+        log = self.tmp / "wrap.log"
+        code, out = p.push("origin", "feature", env={"WRAP_LOG": str(log)})
+        self.assertEqual(code, 0, out)
+        self.assertEqual(log.read_text().splitlines(), ["args:3"], "the wrapper gets `bash -c <whole a && b>`")
+        self.assertEqual(out_file.read_text(), "a\nb\n")
+
+    def test_worktree_links_through_a_committed_symlink_never_write_outside(self):
+        p = self.p
+        outside = self.tmp / "outside"
+        outside.mkdir()
+        self.configure(worktreeLinks=["cache/x"])
+        os.symlink(str(outside), p.work / "cache")
+        p.commit("evil symlink")
+        (p.work / "cache").unlink()  # the working copy has a real folder; the pushed tree has the symlink
+        p.write("cache/x", "x\n")
+        code, out = p.push("origin", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("resolves outside the temporary worktree", out)
+        self.assertIn("worktreeLinks", out)
+        self.assertEqual(list(outside.iterdir()), [], "nothing may be created outside the worktree")
+        self.assertNoWorktreeLeft()
+
+    def test_orphan_cleanup_prunes_nothing_else(self):
+        p = self.p
+        gone = self.tmp / "gone-worktree"
+        p.git("worktree", "add", "-q", "--detach", str(gone), "HEAD")
+        shutil.rmtree(gone)  # git still lists it (prunable): not ours to prune
+        self.worktrees_before = 2
+        self.gwdir.mkdir()
+        (self.gwdir / "wt.nogit0.d").mkdir()
+        (self.gwdir / "wt.nogit0").write_text("999999999\n")
+        p.write("dirty", "untracked\n")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertIn("gone-worktree", p.git("worktree", "list").stdout)
+        self.assertEqual(self.leftovers(), [], "an orphan git does not know is removed with a plain rm")
+
+    def test_a_marker_still_empty_belongs_to_a_push_starting_up(self):
+        p = self.p
+        self.gwdir.mkdir()
+        (self.gwdir / "wt.empty0").write_text("")
+        p.write("dirty", "untracked\n")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.leftovers(), ["wt.empty0"])
+
+    def test_a_process_of_another_user_counts_as_alive(self):
+        p = self.p
+        self.gwdir.mkdir()
+        p.git("worktree", "add", "-q", "--detach", str(self.gwdir / "wt.other0.d"), "HEAD")
+        (self.gwdir / "wt.other0").write_text("4242\n")
+        fake = self.tmp / "fake-kill.sh"
+        fake.write_text('kill() { echo "bash: kill: ($2) - Operation not permitted" >&2; return 1; }\n')
+        p.write("dirty", "untracked\n")
+        code, out = p.push("origin", "feature", env={"BASH_ENV": str(fake)})
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.leftovers(), ["wt.other0", "wt.other0.d"])
+        self.worktrees_before = 2
 
     def test_failing_wrapper_blocks_and_names_the_full_command(self):
         p = self.p
@@ -603,9 +668,9 @@ class PrePushWorktree(Base):
         code, out = p.push("origin", "feature")
         self.assertNotEqual(code, 0, out)
         self.assertIn("check failed", out)
-        self.assertIn("'bash wrap.sh bash check.sh'", out)
+        self.assertIn("'bash wrap.sh bash -c 'bash check.sh''", out)
         self.assertIn("wrapper-refused", out)
-        self.assertIn("reproduce with: bash wrap.sh bash check.sh", out)
+        self.assertIn("reproduce with: bash wrap.sh bash -c 'bash check.sh'", out)
 
     def test_each_failing_check_keeps_its_own_log(self):
         p = self.p

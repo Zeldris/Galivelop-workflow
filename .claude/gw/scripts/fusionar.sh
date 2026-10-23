@@ -49,7 +49,7 @@ n=0
 while IFS= read -r cmd; do
   [ -n "$cmd" ] || continue
   n=$((n + 1))
-  [ -z "$wrapper" ] || cmd="$wrapper $cmd"
+  [ -z "$wrapper" ] || cmd="$wrapper bash -c '$(printf '%s' "$cmd" | sed "s/'/'\\\\''/g")'"
   if bash -c "$cmd" > "$logs/check-$n.log" 2>&1 < /dev/null; then
     echo "fusionar: check OK: $cmd"
   else
