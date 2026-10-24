@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | `ccr-6dfbc880-ddr41g` (avance rápido de `ccr-76251061-b1yiwq`, que sale de `claude/galivelop-workflow-inicio` en `0f36412`); `main` = `01d1a75` = **release `v0.2.0`** (2026-10-22, etiqueta y release creadas a mano en GitHub); `v0.1.0` = `9b97d7b` |
+| Rama | `ccr-6dfbc880-ddr41g`; `main` = `ea81c9f` = **release `v0.3.0`** (2026-10-23). `claude/galivelop-workflow-inicio` está **obsoleta** (se quedó en `0f36412`): no se trabaja en ella |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
 | Fase en curso | **6 cerrada** y `0.3.0` publicada en `main` (2026-10-23); P7 del instalador aplicada en la rama (`0.4.0`, sin publicar); recogida de la `0.4.0` hecha y decidida (P1, P3, P4, P5 aplicadas; P2 aplazada). Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | P1, P3, P4 y P5 de la recogida de la `0.4.0` aplicadas (`recuperar.py` espera 3 s y avisa al caer al registro más nuevo); check en verde en local; el CI no arranca (cupo de Actions): comprobado solo en local |
-| Siguiente paso | La `0.4.0` queda **abierta una semana, hasta el 2026-10-30** (usuario, 2026-10-23), por si salen más mejoras; mientras, **Fase 7 (rodaje etapa 1)**. El 2026-10-30: otra pasada de `gw-harvest` (lo de esa semana) y publicar con las tres fases |
+| Último punto estable | Recogida del 2026-10-25 (Tarkor `076fe877`, Labs-Log-Detective `bc501f91`) decidida y aplicada en la `0.4.0`: gancho `commit-msg` del flujo, `doctor.py` y las negaciones del `.gitignore`, skill `wait-what`, `/clear` por tarea, precondición en tandas, fases en la fila de tarea y migración en `aplicar.md`; check en verde en local (el CI no arranca: comprobado solo en local) |
+| Siguiente paso | La `0.4.0` sigue abierta hasta el **2026-10-30**: entonces otra pasada de `gw-harvest` y publicar con las tres fases. Aplazada a la Fase 7: P3 de Labs (`to-spec` y `wayfinder`, decidir antes su destino Markdown por defecto). Mientras, Fase 7 (rodaje etapa 1) |
 
 ### Fases
 
@@ -38,18 +38,20 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 
 ## Hecho (5 últimas)
 
-1. 2026-10-23 — Recogida de la `0.4.0` decidida: P1 (`recoger.py` informa de las líneas «Propuesta para el flujo»,
+1. 2026-10-25 — Recogida de Tarkor (`4d54eeaf`..`076fe877`) y primera de Labs-Log-Detective (`bc501f91`, instaló la
+   `0.3.0`): `docs/propuestas/2026-10-25-world-maker-fantasy.md` (P1 `commit-msg` con `bitacora.py check`, P2 precondición
+   en tandas, P3 fases en la fila de tarea) y `2026-10-25-labs-log-detective.md` (P1 bug de `doctor.py`, P2-P3 skills
+   `wait-what`, `to-spec`, `wayfinder`, P4 `/clear` por tarea, P5 migrar desde copia a mano). Aprobadas y aplicadas todas menos P3 de Labs (aplazada a la Fase 7).
+2. 2026-10-23 — Recogida de la `0.4.0` decidida: P1 (`recoger.py` informa de las líneas «Propuesta para el flujo»,
    con su test), P3 (`recuperar.py` espera 3 s el transcript del gancho y avisa al caer al más nuevo), P4
    (plantilla «lo elige») y P5 (menores a «Pendiente») aplicadas; P2 (`ci.setup`/`ci.after`) aplazada.
-2. 2026-10-23 — Recogida de la `0.4.0` (portal, WMF, instalador, VeriNews): 5 propuestas del portal en
+3. 2026-10-23 — Recogida de la `0.4.0` (portal, WMF, instalador, VeriNews): 5 propuestas del portal en
    `docs/propuestas/2026-10-23-portal-galivelop.md`; los otros tres, nada nuevo. Regla nueva: cada versión empieza con
    una recogida (`AGENTS.md`, plan §7, skill), y `version.py --release` la exige.
-3. 2026-10-23 — P7 del instalador aplicada (`0.4.0`, sin publicar): sin CI, el check en local vale con la confirmación
+4. 2026-10-23 — P7 del instalador aplicada (`0.4.0`, sin publicar): sin CI, el check en local vale con la confirmación
    de la persona («comprobado solo en local»), en `AGENTS.md` y plantillas; el gancho lo nombra al bloquear.
-4. 2026-10-23 — **`0.3.0` publicada en `main`** (ea81c9f). El usuario decide la P7: un check que pasó en local vale
+5. 2026-10-23 — **`0.3.0` publicada en `main`** (ea81c9f). El usuario decide la P7: un check que pasó en local vale
    cuando Actions no arranca.
-5. 2026-10-23 — Fase 2 antes de `main`: `/opt-tokens` (tope de ~35 llamadas por subagente, «Hecho» de 5 entradas
-   cortas, check en segundo plano) y `/retro` (regla de `/tmp` en `REVIEW.md`); retro en `docs/registros/`.
 
 ## Pendiente
 

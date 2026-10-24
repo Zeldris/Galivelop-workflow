@@ -27,8 +27,8 @@ python3 .claude/gw/scripts/doctor.py
 |---|---|---|
 | `config` (FAIL) | `.claude/gw.json` falta, no es JSON o no cumple el esquema (clave desconocida, vacía…) | `python3 .claude/gw/scripts/config.py validate` dice la línea; claves en [config](config.md); si falta, aplica el flujo ([aplicar](aplicar.md)) |
 | `hooks-path` (FAIL) | `core.hooksPath` sin poner: los ganchos de git del flujo no corren | `git config core.hooksPath .githooks` |
-| `hooks-path` (WARN) | Lo usa otro gestor (husky, lefthook…): los ganchos del flujo solo corren si se encadenan | Añade a `pre-push` y `pre-commit` del gestor: `"$(git rev-parse --show-toplevel)/.githooks/<hook>" "$@" \|\| exit 1` |
-| `githook pre-push` / `pre-commit` (FAIL) | Falta el archivo o no es ejecutable | `/gw-update`; o `chmod +x .githooks/<hook>` (en Windows, `git update-index --chmod=+x .githooks/<hook>`) |
+| `hooks-path` (WARN) | Lo usa otro gestor (husky, lefthook…): los ganchos del flujo solo corren si se encadenan | Añade a `pre-push`, `pre-commit` y `commit-msg` del gestor: `"$(git rev-parse --show-toplevel)/.githooks/<hook>" "$@" \|\| exit 1` |
+| `githook pre-push` / `pre-commit` / `commit-msg` (FAIL) | Falta el archivo o no es ejecutable | `/gw-update`; o `chmod +x .githooks/<hook>` (en Windows, `git update-index --chmod=+x .githooks/<hook>`) |
 | `githook …` (WARN) | Versión distinta de la de `.claude/gw.json` | `/gw-update` |
 | `log` (FAIL) | La bitácora no existe, o no tiene línea de «Siguiente paso»/«Next step» | Créala con `/gw-update`; añade la línea al archivo que dice `log` |
 | `log` (OK/FAIL) | «Siguientes pasos» / «Next steps» en plural también cuenta como línea de siguiente paso | — |

@@ -25,7 +25,7 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 - Push a la rama de trabajo (`git push -u origin <rama>`); si falla por red, reintentar con espera 2, 4, 8 y 16 s.
 - Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla.
 - **Al cerrar cada fase**, se para y se informa al usuario de qué queda hecho y cuál es la siguiente; con la bitácora
-  al día, se recomienda `/clear` antes de la siguiente (la bitácora basta para retomar).
+  al día, se recomienda `/clear` antes de la siguiente (la bitácora basta para retomar). Igual al cerrar cada tarea o PR.
 - **La sesión se abre desde la carpeta del repo** (`cd Galivelop-workflow && claude`): abierta en otra no carga
   `.claude/settings.json` (ni la compactación a 200k ni los ganchos); `python3 scripts/doctor.py` lo detecta. En la
   nube, que arranca en `/home/user`, la compactación va en las variables del entorno (`doctor.py` avisa si falta).

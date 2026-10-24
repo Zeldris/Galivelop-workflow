@@ -66,6 +66,8 @@ Done when every fact has an answer the user confirmed.
    after a refused call run `git status` and `git diff` before repeating it.
 3. Review every `*.gw-nuevo` with the user (guide, step 3). Merge `AGENTS.md` and `CLAUDE.md` blocks by hand; keep
    the `galivelop-workflow` marker line. Delete each `.gw-nuevo` once merged.
+   Coming from an earlier or hand-made copy, expect many: merge one at a time, the workflow's version whole and the
+   project's own part in `.claude/gw/<skill>.md` (guide, "Migrating from an earlier copy").
 4. Fill the `_(…)_` gaps of the log with branch, phase and a concrete next step.
 
 Done when no `*.gw-nuevo` is left and the log has a next-step line.

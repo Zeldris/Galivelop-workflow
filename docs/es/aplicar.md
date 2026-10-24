@@ -168,7 +168,7 @@ git add -A && git commit -m "Flujo Galivelop-workflow v0.1.0" -m "Siguiente: <pr
 
 Sustituye la última línea por el paso concreto de verdad (el que la bitácora declara) y añade las líneas de
 atribución que pida el proyecto en el mismo bloque final. El commit ya pasa por el nuevo `pre-commit` (rechaza
-secretos y, para agentes, las `protectedPaths`); si se para, lee su mensaje. Después, `git push -u origin <rama>`: el nuevo `pre-push`
+secretos y, para agentes, las `protectedPaths`) y, con `logRows`, por `commit-msg` (revisa la bitácora preparada con `bitacora.py check`); si se para, lee su mensaje. Después, `git push -u origin <rama>`: el nuevo `pre-push`
 corre el `check` sobre el commit que se sube; si falla, se arregla y se vuelve a subir (nunca con `--no-verify`, salvo
 un `WIP:` en rojo).
 
@@ -202,7 +202,7 @@ Lo anterior vale igual; estos son los puntos que cambian.
 
 **Gestor de ganchos ya instalado (husky, lefthook, pre-commit…).** `aplicar.py` no pisa `core.hooksPath` si lo
 usa otro, y `doctor.py` y el aviso de inicio de sesión lo dicen. **Se encadena, no se sobrescribe.** Añade como
-última línea de `pre-push` y `pre-commit` del gestor (con `<hook>` el nombre del archivo):
+última línea de `pre-push`, `pre-commit` y `commit-msg` del gestor (con `<hook>` el nombre del archivo):
 
 ```bash
 "$(git rev-parse --show-toplevel)/.githooks/<hook>" "$@" || exit 1
@@ -241,6 +241,9 @@ entra el código ya hoy.
 
 **Migrar desde una copia anterior del flujo.** Además de lo anterior:
 
+- **Muchas propuestas `.gw-nuevo` son lo normal** (una copia a mano dio 17): cada skill o script que el proyecto
+  retocó sale como propuesta. Fusiónalas de una en una: la versión del flujo entra entera y lo propio del proyecto
+  (idioma, rutas, reglas locales) va a `.claude/gw/<skill>.md`, que el flujo no sobrescribe.
 - **Archivos de una skill que el flujo sustituye** (por ejemplo, el banco y los `evals` de un `scout-updates`
   propio): `aplicar.py` no los borra, los lista como «no longer in the workflow (kept)». Muévelos a una carpeta del
   proyecto (p. ej. `tools/scout/`) o bórralos con `git rm` si nada los usa; no los dejes dentro de `.claude/skills/`.

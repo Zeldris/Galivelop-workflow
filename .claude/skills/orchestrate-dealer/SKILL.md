@@ -104,7 +104,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   tool itself; it deals batches and logs what returns. **Size a batch by its items: 6-8 checks**, and split it on
   the fly when it grows (batches of 11-14 blew a 60-call cap; 6-8 kept within it). Screenshots only when the finding
   is visual; otherwise the text tool's output. Batches share the environment, so each leaves it in a state the
-  next can resume from and says so under `MISSING`.
+  next can resume from and says so under `MISSING`. **Before dealing a batch, check that the starting state gives
+  each check its precondition** (the scenario, data or account it needs); if not, the first chunk prepares it.
+  Checks dealt on a state that cannot reach them burn whole subagent calls.
 - **A subagent never talks to the user:** what it needs from them returns as `QUESTIONS`.
 - **A subagent cut off by a usage or API limit is resumed, not restarted:** send it a message (SendMessage to its id)
   once the limit resets; it continues from its transcript. A new subagent would redo the work. Commit its partial

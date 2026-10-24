@@ -30,6 +30,7 @@ class Doctor(unittest.TestCase):
         p = self.p = SessionProject(self.tmp)
         shutil.copy2(ROOT / "scripts" / "revision-antes-de-main.sh", p.scripts / "revision-antes-de-main.sh")
         shutil.copy2(ROOT / "templates" / "claude" / "settings.json", p.work / ".claude" / "settings.json")
+        shutil.copy2(ROOT / "templates" / "githooks" / "commit-msg", p.work / ".githooks" / "commit-msg")
         p.write(".github/workflows/check.yml", "name: check\njobs:\n  c:\n    steps:\n      - run: bash check.sh\n")
         p.write("AGENTS.md", "# Rules\n\nDeal multi-step work to subagents (skill orchestrate-dealer).\n")
         p.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| Next step | write tests |\n")
@@ -238,6 +239,13 @@ class Doctor(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertLine(out, "FAIL", ".claude/settings.json by .gitignore:1:.claude/*", "!.claude/settings.json")
         self.assertNotIn(".claude/gw.json by", out)  # tracked files are never ignored
+
+    def test_negated_gitignore_rule_is_not_ignored(self):
+        # git check-ignore -v exits 0 on a matching `!` rule too: the file is un-ignored, not ignored
+        self.p.write(".gitignore", ".claude/*\n!.claude/settings.json\n")
+        self.p.git("rm", "-q", "--cached", ".claude/settings.json")
+        code, out = self.doctor()
+        self.assertNotIn(".claude/settings.json by", out)
 
     def test_pending_proposals_warn_and_hold_back_skills_ok(self):
         self.p.write(".claude/skills/selector/SKILL.md.gw-nuevo", "new\n")

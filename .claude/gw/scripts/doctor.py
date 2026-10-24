@@ -85,7 +85,7 @@ def header_version(path):
 
 
 def chain_hint(hooks_dir):
-    return (f"add as the last line of {hooks_dir}/pre-push and {hooks_dir}/pre-commit (with <hook> = the file's "
+    return (f"add as the last line of {hooks_dir}/pre-push, {hooks_dir}/pre-commit and {hooks_dir}/commit-msg (with <hook> = the file's "
             f"name): \"$(git rev-parse --show-toplevel)/.githooks/<hook>\" \"$@\" || exit 1")
 
 
@@ -148,8 +148,9 @@ def ignored_paths(root):
     out = []
     for rel in must_be_tracked(root):
         r = subprocess.run(["git", "-C", str(root), "check-ignore", "-v", "--", rel], capture_output=True, text=True)
-        if r.returncode == 0:
-            rule = r.stdout.split("\t")[0].strip()
+        # -v also prints (and exits 0 on) a matching `!` rule, which un-ignores the path: <source>:<line>:<pattern>
+        rule = r.stdout.split("\t")[0].strip()
+        if r.returncode == 0 and not rule.split(":", 2)[-1].startswith("!"):
             out.append((rel, rule))
     return out
 
@@ -178,7 +179,7 @@ def check_hooks_path(rep, root):
 
 
 def check_githooks(rep, root, version):
-    for name in ("pre-push", "pre-commit"):
+    for name in ("pre-push", "pre-commit", "commit-msg"):
         path = root / ".githooks" / name
         check = f"githook {name}"
         if not path.is_file():

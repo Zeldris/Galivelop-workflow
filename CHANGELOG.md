@@ -26,6 +26,19 @@ here.
 - Plantilla `CLAUDE.md` (ES): «El modelo de la sesión lo elige» (portal P4).
 - `recuperar.py --estado` espera 3 s (antes 1) el `transcript_path` del gancho y, si cae al registro más nuevo de la
   carpeta, avisa de que puede ser el de otra sesión abierta en el repo (portal P3).
+- Recogida del 2026-10-25 (`docs/propuestas/2026-10-25-world-maker-fantasy.md` y
+  `2026-10-25-labs-log-detective.md`):
+  - **Gancho `commit-msg` del flujo:** si el commit toca la bitácora, corre `bitacora.py check` sobre la versión del
+    índice; los fallos salen al hacer el commit y no en el `pre-push`, con varios commits ya apilados (WMF P1).
+  - `doctor.py` ya no da por ignorado un archivo que una regla `!` del `.gitignore` des-ignora (Labs P1).
+  - Skill nueva `wait-what`, de mattpocock/skills, para pedir que se vuelva a explicar algo (Labs P2).
+  - `orchestrate-dealer`: antes de repartir una tanda manual, comprobar que el estado de partida da la precondición
+    de cada comprobación (WMF P2).
+  - Plantilla de la bitácora: la fila de tarea dice qué fases antes de la rama protegida van hechas (WMF P3).
+  - Pedir un `/clear` al cerrar cada tarea o PR, no solo cada fase: plantillas `AGENTS.md`, `selector` y
+    `opt-tokens` (Labs P4).
+  - `aplicar.md` y `gw-init`: al migrar desde una copia a mano, muchas `.gw-nuevo` son lo normal y cómo fusionarlas
+    (Labs P5).
 
 ### EN
 
@@ -43,6 +56,19 @@ here.
 - `CLAUDE.md` template (ES): grammatical agreement in "El modelo de la sesión lo elige" (portal P4).
 - `recuperar.py --estado` waits 3 s (was 1) for the hook's `transcript_path` and, when it falls back to the folder's
   newest transcript, warns that it may belong to another session open in the repo (portal P3).
+- Harvest of 2026-10-25 (`docs/propuestas/2026-10-25-world-maker-fantasy.md` and
+  `2026-10-25-labs-log-detective.md`):
+  - **Workflow `commit-msg` hook:** when the commit touches the log, it runs `bitacora.py check` on the index
+    version, so errors show at commit time and not at `pre-push` with several commits already stacked (WMF P1).
+  - `doctor.py` no longer reports as ignored a file that a `!` rule in `.gitignore` un-ignores (Labs P1).
+  - New `wait-what` skill, from mattpocock/skills, to ask for something to be explained again (Labs P2).
+  - `orchestrate-dealer`: before dealing a manual batch, check that the starting state gives each check its
+    precondition (WMF P2).
+  - Log template: the task row says which phases before the protected branch are done (WMF P3).
+  - Ask for a `/clear` when each task or PR closes, not only each phase: `AGENTS.md` templates, `selector` and
+    `opt-tokens` (Labs P4).
+  - `apply.md` and `gw-init`: when migrating from a hand-made copy, many `.gw-nuevo` files are normal, and how to merge
+    them (Labs P5).
 
 ## [0.3.0] - 2026-10-23
 

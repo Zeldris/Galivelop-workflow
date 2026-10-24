@@ -9,13 +9,13 @@
 | Campo | Valor |
 |---|---|
 | **Rama** | _(rama de trabajo)_ |
-| **Fase / tarea** | _(fase y tarea en curso)_ |
+| **Fase / tarea** | _(fase y tarea en curso; con la rama camino de `{{protectedBranch}}`, qué fases de antes van hechas: «1 hecha (`<commit>`), 2 pendiente»)_ |
 | **Último punto estable** | _(último commit con el check en verde, y qué trajo)_ |
 | **Siguiente paso** | _(el próximo paso concreto, para que la siguiente sesión no tenga que preguntar nada)_ |
 | **Check** | {{check}}: _(verde / rojo, y qué falla)_ |
 
 Con `logRows` en `.claude/gw.json`, cada rama escribe solo en su fila de esta tabla, como mucho 600 caracteres, con
-la forma ``| **Tarea en curso · `<rama>`** | tarea, qué falta y siguiente paso |``; el push lo comprueba.
+la forma ``| **Tarea en curso · `<rama>`** | tarea, fases antes de `{{protectedBranch}}`, qué falta y siguiente paso |``; el push lo comprueba.
 
 ## Para la próxima publicación
 

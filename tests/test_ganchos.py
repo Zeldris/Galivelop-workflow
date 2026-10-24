@@ -30,7 +30,7 @@ MARK_OPEN, MARK_CLOSE = "<" * 7 + " HEAD", ">" * 7 + " other"
 class Project:
     """A bare origin and a clone (`work`) with .claude/gw.json, the workflow's scripts and the git hooks."""
 
-    def __init__(self, tmp, config=None, check="exit 0"):
+    def __init__(self, tmp, config=None, check="exit 0", hooks=("pre-push", "pre-commit")):
         self.tmp = tmp
         self.bare = tmp / "origin.git"
         self.work = tmp / "work"
@@ -46,11 +46,11 @@ class Project:
         gw = self.work / ".claude" / "gw"
         (gw / "scripts").mkdir(parents=True)
         (gw / "schema").mkdir()
-        for name in ("config.py", "es-codigo.sh", "revisado.sh"):
+        for name in ("config.py", "es-codigo.sh", "revisado.sh", "bitacora.py"):
             shutil.copy2(ROOT / "scripts" / name, gw / "scripts" / name)
         shutil.copy2(ROOT / "schema" / "gw.schema.json", gw / "schema" / "gw.schema.json")
         (self.work / ".githooks").mkdir()
-        for name in ("pre-push", "pre-commit"):
+        for name in hooks:  # commit-msg only where a test asks: other suites commit broken configs and old logs
             shutil.copy2(ROOT / "templates" / "githooks" / name, self.work / ".githooks" / name)
         (self.work / ".claude" / "gw.json").write_text(json.dumps(dict(BASE_CONFIG, **(config or {})), indent=2))
         (self.work / "check.sh").write_text(check + "\n")
@@ -98,11 +98,12 @@ class Project:
 
 class Base(unittest.TestCase):
     config = None
+    hooks = ("pre-push", "pre-commit")
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="gw-ganchos-")).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, True)
-        self.p = Project(self.tmp, self.config)
+        self.p = Project(self.tmp, self.config, hooks=self.hooks)
 
 
 class ProtectedBranchMark(Base):
@@ -1200,6 +1201,85 @@ class PreCommit(Base):
         code, out = p.run("bash", hook, "--rango", f"{p.base}..HEAD")
         self.assertNotEqual(code, 0, out)
         self.assertIn("rotate the credential", out)
+
+
+class CommitMsg(Base):
+    """templates/githooks/commit-msg: bitacora.py check on the staged log, at commit time."""
+    config = {"logRows": True}
+    hooks = ("pre-push", "pre-commit", "commit-msg")
+
+    def log_text(self, updated=None):
+        today = updated or time.strftime("%Y-%m-%d")
+        return (f"# Log\n\n## Current state\n\n| **Updated** | {today} |\n| **Phase · `main`** | working |\n")
+
+    def test_passes_when_the_log_is_not_staged(self):
+        self.p.write("docs/notes.md", "other\n")
+        self.assertEqual(self.p.commit("notes", ok=False).returncode, 0)
+
+    def test_stale_updated_date_refused_naming_the_fix(self):
+        self.p.write("docs/log.md", self.log_text("2000-01-01"))
+        r = self.p.commit("log", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Updated", r.stderr)
+        self.assertIn("commit-msg:", r.stderr)
+        self.assertIn("git add docs/log.md", r.stderr)
+
+    def test_valid_log_passes(self):
+        self.p.write("docs/log.md", self.log_text())
+        self.assertEqual(self.p.commit("log", ok=False).returncode, 0)
+
+    def test_checks_the_staged_version_not_the_working_tree(self):
+        p = self.p
+        p.write("docs/log.md", self.log_text("2000-01-01"))
+        p.git("add", "docs/log.md")
+        p.write("docs/log.md", self.log_text())  # fixed in the working tree only
+        r = p.git("commit", "-q", "-m", "log", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+
+    def test_deleting_the_log_is_not_checked(self):
+        p = self.p
+        p.write("docs/log.md", self.log_text())
+        p.commit("log")
+        os.remove(p.work / "docs" / "log.md")
+        self.assertEqual(p.commit("drop", ok=False).returncode, 0)
+
+    def test_skipped_while_finishing_a_merge(self):
+        p = self.p
+        (p.work / ".git" / "MERGE_HEAD").write_text(p.sha() + "\n")
+        p.write("docs/log.md", self.log_text("2000-01-01"))
+        self.assertEqual(p.commit("merge", ok=False).returncode, 0)
+
+    def test_skipped_during_a_rebase(self):
+        p = self.p
+        (p.work / ".git" / "rebase-merge").mkdir()
+        p.write("docs/log.md", self.log_text("2000-01-01"))
+        self.assertEqual(p.commit("pick", ok=False).returncode, 0)
+
+    def test_config_without_a_log_key_is_invalid_and_fails_closed(self):  # `log` is required by the schema
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        del cfg["log"]
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.write("docs/log.md", self.log_text("2000-01-01"))
+        r = p.commit("no log key", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("gw.json", r.stderr)
+
+    def test_fails_closed_without_config_py(self):
+        p = self.p
+        os.remove(p.work / ".claude" / "gw" / "scripts" / "config.py")
+        p.write("docs/notes.md", "x\n")
+        r = p.commit("no config.py", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("/gw-update", r.stderr)
+
+    def test_fails_closed_without_bitacora_py_when_the_log_is_staged(self):
+        p = self.p
+        os.remove(p.work / ".claude" / "gw" / "scripts" / "bitacora.py")
+        p.write("docs/log.md", self.log_text())
+        r = p.commit("no bitacora", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("/gw-update", r.stderr)
 
 
 if __name__ == "__main__":

@@ -334,7 +334,7 @@ def merge_settings(current, template):
 # ----------------------------------------------------------------- planning
 
 def chain_hint(hooks_dir):
-    return (f"add as the last line of {hooks_dir}/pre-push and {hooks_dir}/pre-commit (with <hook> = the file's "
+    return (f"add as the last line of {hooks_dir}/pre-push, {hooks_dir}/pre-commit and {hooks_dir}/commit-msg (with <hook> = the file's "
             f"name): \"$(git rev-parse --show-toplevel)/.githooks/<hook>\" \"$@\" || exit 1")
 
 

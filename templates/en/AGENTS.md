@@ -38,8 +38,8 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - **After an interrupted or rejected call, run `git status` and `git diff` before repeating it**: the change may
   already be saved, or even pushed, and repeating it duplicates it.
 - If the person says stop, stop: push what there is, leave the log up to date and do nothing else.
-- **When a phase closes** (or a large task), with the log up to date, recommend `/clear` before the next one: a long context is
-  almost all the spend, and the log is enough to resume.
+- **When each task or PR closes** (and each phase), with everything pushed and the log up to date, ask the person for a
+  `/clear` in one line, saying why: a long context is almost all the spend, and the log is enough to resume.
 - **When each block or phase closes, look at the CI of the last push.** A CI that does not start (no quota, no
   runners) counts as red: tell the person and treat nothing as checked by CI. Then the check passed locally on the
   same commit (the one `.githooks/pre-push` runs) counts **only if the person confirms it**, and it is said and logged

@@ -9,13 +9,13 @@
 | Field | Value |
 |---|---|
 | **Branch** | _(working branch)_ |
-| **Phase / task** | _(phase and task in progress)_ |
+| **Phase / task** | _(phase and task in progress; with the branch heading for `{{protectedBranch}}`, which of the phases before it are done: "1 done (`<commit>`), 2 pending")_ |
 | **Last stable point** | _(last commit with the check green, and what it brought)_ |
 | **Next step** | _(the next concrete step, so the next session needs to ask nothing)_ |
 | **Check** | {{check}}: _(green / red, and what fails)_ |
 
 With `logRows` in `.claude/gw.json`, each branch writes only in its own row of this table, at most 600 characters,
-shaped as ``| **Current task · `<branch>`** | task, what is missing and the next step |``; the push checks it.
+shaped as ``| **Current task · `<branch>`** | task, phases before `{{protectedBranch}}`, what is missing and the next step |``; the push checks it.
 
 ## For the next release
 

@@ -48,7 +48,7 @@ retries and redone work.
    - **Long context.** Every call rereads the whole history (at cache price, but whole). If the main session's average
      context passed ~150k (the `orchestrate-dealer` threshold), say so in the report and list the big reads
      (`BY FILE`, `BY TOOL`) a subagent should have made. If the average is high:
-     close tasks with a written handover and start fresh (`/clear`), or compact at task boundaries
+     close each task or PR with a written handover and ask for a `/clear`, or compact at task boundaries
      (`/compact <what to keep>`), instead of stretching one session.
    - **Number of calls.** With a long context each call costs the average context. Steps that belong together
      (click and read the state, edit and check) go in one command; no "let's see what happens" calls and no blind

@@ -27,8 +27,8 @@ python3 .claude/gw/scripts/doctor.py
 |---|---|---|
 | `config` (FAIL) | `.claude/gw.json` is missing, not JSON, or breaks the schema (unknown key, empty value…) | `python3 .claude/gw/scripts/config.py validate` names the line; keys in [config](config.md); if missing, apply the workflow ([apply](apply.md)) |
 | `hooks-path` (FAIL) | `core.hooksPath` is unset: the workflow's git hooks do not run | `git config core.hooksPath .githooks` |
-| `hooks-path` (WARN) | Another manager owns it (husky, lefthook…): the workflow's hooks run only if chained | Add to the manager's `pre-push` and `pre-commit`: `"$(git rev-parse --show-toplevel)/.githooks/<hook>" "$@" \|\| exit 1` |
-| `githook pre-push` / `pre-commit` (FAIL) | The file is missing or not executable | `/gw-update`; or `chmod +x .githooks/<hook>` (on Windows, `git update-index --chmod=+x .githooks/<hook>`) |
+| `hooks-path` (WARN) | Another manager owns it (husky, lefthook…): the workflow's hooks run only if chained | Add to the manager's `pre-push`, `pre-commit` and `commit-msg`: `"$(git rev-parse --show-toplevel)/.githooks/<hook>" "$@" \|\| exit 1` |
+| `githook pre-push` / `pre-commit` / `commit-msg` (FAIL) | The file is missing or not executable | `/gw-update`; or `chmod +x .githooks/<hook>` (on Windows, `git update-index --chmod=+x .githooks/<hook>`) |
 | `githook …` (WARN) | A version different from `.claude/gw.json`'s | `/gw-update` |
 | `log` (FAIL) | The log does not exist, or has no "Next step" / "Siguiente paso" line | Create it with `/gw-update`; add the line to the file named by `log` |
 | `log` (OK/FAIL) | "Siguientes pasos" / "Next steps" in the plural also counts as a next-step line | — |

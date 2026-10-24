@@ -193,6 +193,22 @@ class Aplicar(unittest.TestCase):
         self.assertEqual(p.read(".githooks/pre-push"), foreign)
         self.assertEqual(p.read(".githooks/pre-push.gw-nuevo"), (ROOT / "templates/githooks/pre-push").read_text())
 
+    def test_foreign_commit_msg_gets_a_proposal_and_the_hook_is_installed(self):
+        p = self.p
+        foreign = "#!/bin/sh\necho mine\n"
+        p.write(".githooks/commit-msg", foreign)
+        out = self.applied("--update")
+        self.assertIn("propose .githooks/commit-msg.gw-nuevo", out)
+        self.assertEqual(p.read(".githooks/commit-msg"), foreign)
+        self.assertEqual(p.read(".githooks/commit-msg.gw-nuevo"), (ROOT / "templates/githooks/commit-msg").read_text())
+
+    def test_commit_msg_is_installed_and_named_in_the_chain_hint(self):
+        p = self.p
+        p.run("git", "config", "core.hooksPath", ".husky")
+        out = self.applied()
+        self.assertEqual(p.read(".githooks/commit-msg"), (ROOT / "templates/githooks/commit-msg").read_text())
+        self.assertIn("/commit-msg", out)
+
     def test_owned_skill_older_version_is_updated_and_orphans_reported(self):
         p = self.p
         self.applied()

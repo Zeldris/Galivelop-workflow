@@ -169,7 +169,7 @@ git add -A && git commit -m "Galivelop-workflow v0.1.0 workflow" -m "Next: <next
 
 Replace the last line with the real concrete step (the one the log declares) and add any attribution lines the
 project asks for in the same final block. The commit already goes through the new `pre-commit` (it refuses secrets
-and, for agents, the `protectedPaths`); if it stops, read its message. Then `git push -u origin <branch>`: the new `pre-push` runs the `check` on
+and, for agents, the `protectedPaths`) and, with `logRows`, through `commit-msg` (it checks the staged log with `bitacora.py check`); if it stops, read its message. Then `git push -u origin <branch>`: the new `pre-push` runs the `check` on
 the commit being pushed; if it fails, fix it and push again (never with `--no-verify`, except a red `WIP:`).
 
 If the project has CI, check that the `Comprobar` workflow passes. Node, Python and Java are set up on their own when
@@ -202,7 +202,7 @@ Everything above applies; these are the points that change.
 
 **A hook manager already installed (husky, lefthook, pre-commit…).** `aplicar.py` does not overwrite
 `core.hooksPath` when another manager owns it, and `doctor.py` and the session-start warning say so. **Chain, do not
-overwrite.** Add as the last line of the manager's `pre-push` and `pre-commit` (with `<hook>` the file's name):
+overwrite.** Add as the last line of the manager's `pre-push`, `pre-commit` and `commit-msg` (with `<hook>` the file's name):
 
 ```bash
 "$(git rev-parse --show-toplevel)/.githooks/<hook>" "$@" || exit 1
@@ -240,6 +240,9 @@ how code already reaches it today.
 
 **Migrating from an earlier copy of the workflow.** On top of the above:
 
+- **Many `.gw-nuevo` proposals are normal** (a hand-made copy gave 17): every skill or script the project touched
+  comes out as a proposal. Merge them one at a time: the workflow's version goes in whole and the project's own part
+  (language, paths, local rules) goes to `.claude/gw/<skill>.md`, which the workflow never overwrites.
 - **Files of a skill the workflow replaces** (for instance the bench and `evals` of a project-made `scout-updates`):
   `aplicar.py` does not delete them, it lists them as "no longer in the workflow (kept)". Move them to a folder of the
   project (e.g. `tools/scout/`) or `git rm` them if nothing uses them; do not leave them inside `.claude/skills/`.
