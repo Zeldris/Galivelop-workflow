@@ -31,6 +31,10 @@ judgement. The project fills it in; the workflow never overwrites it once it exi
 - Every change to a hook or script comes with its test case; a case that expects a failure checks the reason, not
   only the exit code. The scripts under `.claude/gw/scripts/` are tested in the workflow's repo and are not edited here
   (a change goes to the workflow as a proposal, with `gw-harvest`); this rule applies to the project's own scripts.
+- A hook that asks or blocks is reviewed by **trying to get around it**: wrappers whose options take a value
+  (`sudo -u X`, `sudo -uX`, `env -u X`, `nice -n 5`, `timeout 5`, `xargs -I{}`), the destination of copiers (`cp`,
+  `install`, `rsync`, `dd of=`, `-t DIR`), an ancestor of the protected folder and a relative path or one with `..`;
+  and the usual false positives (reading or copying **from** the folder, `git restore --staged`). Each form, its case.
 
 ## Brought from another repo: adapt to this repo's contracts
 

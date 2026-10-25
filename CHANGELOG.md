@@ -120,6 +120,10 @@ here.
   `.gw-nuevo` y avisa con `diff <origen> <destino>` (`--check` no falla por ello ni por una nota que falta). Rechaza con un aviso
   los nombres `*.gw-nuevo` y los de archivos del flujo. Nunca al repo del flujo;
   `--sin-notas-personales` las salta. `gw-update`, `gw-init` y `config.md` ↔ `config.md` lo cuentan.
+- Retro antes de la `0.4.0` (`docs/registros/retro-2026-10-25-antes-de-main-0-4-0.md`): la plantilla del encargo de
+  `orchestrate-dealer` lleva el tope («hacia las 30 llamadas, commit y lo que falte en MISSING») y qué hacer si el
+  push se rechaza (fetch + merge, nunca rebase); `REVIEW.md` (ES/EN) pide revisar los ganchos que preguntan o bloquean
+  probando las formas de saltárselos.
 
 ### EN
 
@@ -230,6 +234,10 @@ here.
   `GW_NOTAS_PERSONALES`) to each project's `.claude/gw/`: it creates a missing one; a differing one is neither
   overwritten nor given a `.gw-nuevo`, and is reported with `diff <source> <target>` (`--check` does not fail for it, nor for a missing note). Names
   `*.gw-nuevo` and those of workflow files are rejected with a warning. Never to the workflow repo; `--sin-notas-personales` skips them. `gw-update`, `gw-init` and `config.md` explain it.
+- Retro before `0.4.0` (`docs/registros/retro-2026-10-25-antes-de-main-0-4-0.md`): the `orchestrate-dealer` brief
+  template carries the cap ("at ~30 calls, commit and list what is left under MISSING") and what to do when the push
+  is rejected (fetch + merge, never rebase); `REVIEW.md` (ES/EN) asks to review hooks that ask or block by trying the
+  ways around them.
 
 ## [0.3.0] - 2026-10-23
 

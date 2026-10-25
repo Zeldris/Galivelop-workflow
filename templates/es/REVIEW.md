@@ -31,6 +31,10 @@ pide criterio. La rellena el proyecto; el flujo nunca la sobrescribe una vez cre
 - Cada cambio en un gancho o un script lleva su caso en los tests; un caso que espera un fallo comprueba el motivo,
   no solo el código de salida. Los scripts de `.claude/gw/scripts/` se prueban en el repo del flujo y no se editan
   aquí (un cambio va al flujo como propuesta, con `gw-harvest`); esta regla vale para los scripts propios del proyecto.
+- Un gancho que pregunta o bloquea se revisa **probando cómo saltárselo**: envoltorios con opciones que llevan valor
+  (`sudo -u X`, `sudo -uX`, `env -u X`, `nice -n 5`, `timeout 5`, `xargs -I{}`), el destino de los copiadores (`cp`,
+  `install`, `rsync`, `dd of=`, `-t DIR`), una carpeta antecesora de la protegida y una ruta relativa o con `..`; y
+  los falsos positivos habituales (leer o copiar **desde** la carpeta, `git restore --staged`). Cada forma, su caso.
 
 ## Traído de otro repo: se adapta a los contratos de este
 

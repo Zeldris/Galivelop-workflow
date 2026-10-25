@@ -54,7 +54,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    `python3 .claude/gw/scripts/recuperar.py --estado`; if it reports no row for your branch or the log has no
    per-branch rows, read the next step and pending sections of {log}. If you touch code, read REVIEW.md and
    AGENTS.md. Follow the project's commit and push rules: commit and push each stable point, log update in the
-   same commit.
+   same commit. If the push is rejected, `git fetch` and `git merge` (never rebase), then push again.
+   At ~30 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
    Task: <what, in one or two sentences>.
    Files: <paths you touch>. Create: <exact names of what is new>. A path not listed here: stop and return it
    under QUESTIONS.

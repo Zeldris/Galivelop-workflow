@@ -41,6 +41,8 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 - **Check del repo:** `bash tests/comprobar.sh` (sintaxis y shellcheck de scripts, Python, JSON, manifiestos,
   versión con entrada en el CHANGELOG, pares ES/EN). Lo corre el CI (`.github/workflows/comprobar.yml`, Linux y
   macOS) en cada push que no sea a `main` y en cada PR.
+- **Un solo archivo de tests:** `python3 -B -m unittest discover -s tests -p 'test_X.py'` (`-m unittest tests.test_X`
+  falla: `tests/` no es un paquete).
 - Los scripts de shell, compatibles con **bash 3.2** (macOS): nada de `mapfile` ni arrays asociativos.
 
 ## Mensajes de commit

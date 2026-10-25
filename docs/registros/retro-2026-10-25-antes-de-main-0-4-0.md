@@ -5,7 +5,7 @@ arreglados por ser serios o medios, con la revisión de esos arreglos y de los s
 bitácora). Une `/opt-tokens` y `/retro` de la sesión `e9650d36` (recogida de la 0.4.0, `gw-media-content`, notas
 personales y arreglos antes de `main`).
 
-**Estado:** pendiente de la decisión del usuario.
+**Estado:** aprobadas todas (P1-P7) por el usuario el 2026-10-25; se aplican en la rama antes de `main`.
 
 ## Medida (`medir.py --hours 0`)
 
