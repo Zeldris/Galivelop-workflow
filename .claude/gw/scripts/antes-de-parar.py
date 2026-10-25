@@ -11,9 +11,11 @@ agent remembered it. It blocks the stop when:
      the three phases, so Claude cannot fix it alone and a block would only make it push without asking. There it is a
      warning to the user (`systemMessage`: the commits are not pushed, and pushing needs their confirmation), never
      a block;
-     While the workflow's pre-push hook is running (marker `gw-push-en-curso` in the git common dir, with a live pid
-     and under an hour old) it does not block either: a second push would race the first, so it is a warning that
-     says to wait and check `git status -sb`. A dead, old, empty or unreadable marker blocks as before;
+     While the workflow's pre-push hook is pushing this very HEAD (marker `gw-push-en-curso` in the git common dir:
+     a live pid, under an hour old, the current HEAD sha among the local shas it lists) it does not block either: a
+     second push would race the first, so it is a warning that says to wait and check `git status -sb`. A marker of
+     another branch or of an older HEAD (commits made after the push started), dead, old, empty or unreadable
+     blocks as before;
   b. the working tree has changes (`git status`, untracked files included, but not untracked paths under
      `.claude/worktrees/`, where Claude Code keeps its isolated worktrees) and the log (`log` in .claude/gw.json) is
      not among them. The reason says to commit the log, updated, in the same commit as the work.
@@ -110,11 +112,13 @@ def unpushed(root):
 
 
 def push_in_progress(root):
-    """The branch text (maybe empty) of a push the workflow's pre-push hook is running right now, else None.
+    """The branch name of the push of the current HEAD that the workflow's pre-push hook is running right now, else None.
 
-    The hook keeps `gw-push-en-curso` in the git common dir (shared by linked worktrees): line 1 its pid, line 2 the
-    branch(es). It counts only with a live pid (PermissionError: another user's process is alive too) and an mtime
-    under PUSH_MARKER_MAX_AGE seconds old. Anything else (absent, unreadable, garbage, dead pid, old) is None."""
+    The hook keeps `gw-push-en-curso` in the git common dir (shared by linked worktrees): line 1 its pid, then one
+    "<local sha> <branch>" line per ref it pushes. It counts only with a live pid (PermissionError: another user's
+    process is alive too), an mtime under PUSH_MARKER_MAX_AGE seconds old, and the current HEAD sha among its shas: a
+    push of another branch, or of an older HEAD, does not carry what is unpushed here. Anything else (absent,
+    unreadable, garbage, dead pid, old, other sha) is None."""
     try:
         common = git(root, "rev-parse", "--git-common-dir")[1].strip()
         path = os.path.join(str(root), common)
@@ -134,7 +138,12 @@ def push_in_progress(root):
             return None
         except PermissionError:
             pass
-        return " ".join(lines[1].split()) if len(lines) > 1 else ""
+        head = git(root, "rev-parse", "-q", "--verify", "HEAD^{commit}")[1].strip()
+        for line in lines[1:]:
+            fields = line.split()
+            if fields and fields[0] == head:
+                return " ".join(fields[1:])
+        return None
     except (GitError, OSError, ValueError, IndexError):
         return None
 
@@ -196,7 +205,7 @@ def main():
                                       f"not pushed does not exist for the next session; push it now: git push -u "
                                       f"origin {branch}")
                     else:
-                        notes.append(f"A push is in progress (the pre-push hook is running"
+                        notes.append(f"A push of this commit is in progress (the pre-push hook is running"
                                      f"{' for ' + pushing if pushing else ''}); branch '{branch}' has "
                                      f"{plural(count, 'commit')} not pushed ({where}) until it ends. Do not push "
                                      f"again: wait for it and check git status -sb afterwards.")

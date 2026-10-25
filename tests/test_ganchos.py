@@ -357,7 +357,7 @@ class PrePush(Base):
         self.assertEqual(code, 0, out)
         lines = self.snap.read_text().splitlines()
         self.assertTrue(lines[0].isdigit(), lines)  # the hook's pid
-        self.assertEqual(lines[1], "feature")
+        self.assertEqual(lines[1:], [f"{p.sha()} feature"], "the local sha being pushed, then the branch")
         self.assertFalse(self.marker.exists(), "the marker must go when the push ends")
         self.assertEqual([f.name for f in (p.work / ".git").glob("gw-push-en-curso*")], [])
 
@@ -391,6 +391,22 @@ class PrePush(Base):
             proc.communicate(timeout=30)
             self.assertNotEqual(proc.returncode, 0)
             self.assertFalse(marker.exists(), f"the marker must go when the hook gets {sig.name}")
+
+    def test_push_marker_lists_the_local_sha_of_each_ref_and_skips_deletions(self):
+        p = self.p
+        first = p.sha()
+        p.write("src/a.py", "a = 1\n"); p.commit("second commit")
+        second = p.sha()
+        self.marker_check("exit 0")
+        third = p.sha()
+        self.snap = self.tmp / "snap.txt"
+        stdin = (f"refs/heads/feature {third} refs/heads/feature {ZERO}\n"
+                 f"refs/heads/old {ZERO} refs/heads/gone {first}\n"
+                 f"HEAD~1 {second} refs/heads/other {ZERO}\n")
+        code, out = p.run("bash", ".githooks/pre-push", "origin", str(p.bare), stdin=stdin)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.snap.read_text().splitlines()[1:], [f"{third} feature", f"{second} other"])
+        self.assertFalse(self.marker.exists())
 
     def test_push_marker_that_cannot_be_written_does_not_fail_the_push(self):
         p = self.p
