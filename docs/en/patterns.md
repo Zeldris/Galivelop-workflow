@@ -64,6 +64,32 @@ Split it like this:
 The PR hook blocks creating or merging without the mark of the same commit, so a slip (something pushed after "PR
 ready") shows up as a block, not as unreviewed code.
 
+## Social content
+
+Two skills prepare, **without publishing**, posts about the project: `gw-media-content` proposes up to 10 (post type, hook,
+networks, facts with their source) and `gw-media-content-now` produces one piece in a dated folder: one file per channel
+and language, plus the images. Starting networks: X, Reddit, LinkedIn and Discord; the project may declare others
+(*extra channels*). Per-network limits live in `reglas.json`, marked `P` (verified), `S` (per the source) or `NV` (not
+verified: the skill says so when a proposal leans on one). The person publishes; no skill does.
+
+They need Python 3 and git for the figures (`cifras.py`). Rendering images (`render.mjs`) also needs Node with Playwright
+and ImageMagick with WebP; `comprobar.py` runs without them, and **CI does not cover the real render** (its tests use a
+stand-in except where Chromium is present).
+
+Without a project note the defaults apply (and it is said once). To change them, `.claude/gw/gw-media-content.md`, one
+`key: value` line per item; the workflow neither creates nor overwrites it. A generic example:
+
+```
+Folder: docs/difusion
+Languages: es, en
+Channels: x, reddit, linkedin, discord
+Extra channels: mastodon (500 characters, friendly tone, WebP image)
+Palette: --fondo #101418; --acento #4cc38a
+Screenshots: start the app (npm run dev), open /panel, capture the window at 1280x720
+Task prefixes: INS,FLU   (passed to comprobar.py --prefijos-tarea)
+Reddit: r/example, rules pasted by the person on 2026-10-25: "no self-promotion more than once a month; tag [Project]"
+```
+
 ## Harvesting improvements back
 
 The workflow learns from the projects that use it. There are two halves:

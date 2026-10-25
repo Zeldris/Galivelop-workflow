@@ -22,7 +22,7 @@ script del flujo cambia en el proyecto. Sale una skill nueva (`gw-media-content`
   por canal → imágenes → comprobar que no se cuela jerga interna); el comprobador y los tests ya existen y son
   reutilizables.
 - **Version bump:** minor
-- **Status:** approved (2026-10-25), rediseñada: se parte en `gw-media-content` (hasta 10 propuestas) y `gw-media-content-now` (una pieza en carpeta con fecha); redes de inicio X, Reddit, LinkedIn y Discord; base en `docs/investigacion/redes-sociales.md`
+- **Status:** approved (2026-10-25), rediseñada: se parte en `gw-media-content` (hasta 10 propuestas) y `gw-media-content-now` (una pieza en carpeta con fecha); redes de inicio X, Reddit, LinkedIn y Discord; base en `docs/investigacion/redes-sociales.md`; **applied** (2026-10-25, `0.4.0`): `reglas.json` y `comprobar.py` (b1), plantilla y `render.mjs` (b2), las dos `SKILL.md` con `catalogo.md` y `cifras.py` en `3cd53a9` y `534b2e6` (b3a), alta en el mapa, `selector`, patrón ES/EN y CHANGELOG (b3b)
 
 ## P2. El check falla si un script de skill propia no tiene su `test_*.py`
 

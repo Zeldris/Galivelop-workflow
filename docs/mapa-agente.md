@@ -17,6 +17,7 @@ documentos. Si mueves una pieza, actualiza su fila en el mismo commit.
 | Aplicar y actualizar el flujo | [`es/aplicar.md`](es/aplicar.md), [`en/apply.md`](en/apply.md) | `scripts/aplicar.py` (`--init`, `--update`, `--check`) |
 | Plantillas para proyectos | `templates/es`, `templates/en`, `templates/gw.json` | `tests/test_plantillas.py` |
 | Skills | `skills/<nombre>/SKILL.md` (formato Agent Skills) | `tests/test_skills.py`; copia en `.claude/skills/` |
+| Contenido para redes (`gw-media-content`, `gw-media-content-now`) | `skills/gw-media-content/SKILL.md`, `skills/gw-media-content-now/SKILL.md`; límites por red en `reglas.json` (`P` verificado, `S` por fuente, `NV` sin verificar), tipos de post en `catalogo.md`; investigación en `docs/investigacion/redes-sociales.md`; nota del proyecto `.claude/gw/gw-media-content.md` | `skills/gw-media-content/scripts/` (`cifras.py`, `comprobar.py`, `render.mjs` y sus `test_*.py`; el render real necesita Playwright e ImageMagick y no lo cubre el CI) |
 | Recogida de mejoras (una por versión) | `skills/gw-harvest/SKILL.md`, `AGENTS.md` | `scripts/recoger.py`, `docs/propuestas/`; `scripts/version.py --release` la exige |
 | Tests | `tests/test_*.py`, `skills/*/scripts/test_*.py` | `tests/comprobar.sh` |
 | Problemas conocidos | [`es/problemas.md`](es/problemas.md), [`en/troubleshooting.md`](en/troubleshooting.md) | — |

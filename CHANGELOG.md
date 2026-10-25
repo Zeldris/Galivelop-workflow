@@ -34,6 +34,14 @@ here.
     índice; los fallos salen al hacer el commit y no en el `pre-push`, con varios commits ya apilados (WMF P1).
   - `doctor.py` ya no da por ignorado un archivo que una regla `!` del `.gitignore` des-ignora (Labs P1).
   - Skill nueva `wait-what`, de mattpocock/skills, para pedir que se vuelva a explicar algo (Labs P2).
+  - Skills nuevas `gw-media-content` (propone hasta 10 publicaciones sin publicar sobre el proyecto) y
+    `gw-media-content-now` (produce una pieza en una carpeta con fecha: textos por canal e idioma, más imágenes), de la
+    P1 de la segunda recogida de WMF, rediseñada. Cuatro redes de inicio (X, Reddit, LinkedIn y Discord) y canales
+    extra que declara el proyecto en `.claude/gw/gw-media-content.md`; `reglas.json` marca los límites por red como
+    `P` (verificado), `S` (según la fuente) o `NV` (sin verificar). `comprobar.py` valida la pieza y `cifras.py` saca
+    las cifras del repo; `render.mjs` necesita Playwright e ImageMagick con WebP, y **el render real no lo cubre el CI**
+    (sin esas herramientas sus tests usan un doble). Patrón en `docs/es/patrones.md` ↔ `docs/en/patterns.md`, fila en
+    `selector` y en el mapa para agentes.
   - `orchestrate-dealer`: antes de repartir una tanda manual, comprobar que el estado de partida da la precondición
     de cada comprobación (WMF P2).
   - Plantilla de la bitácora: la fila de tarea dice qué fases antes de la rama protegida van hechas (WMF P3).
@@ -85,6 +93,14 @@ here.
     version, so errors show at commit time and not at `pre-push` with several commits already stacked (WMF P1).
   - `doctor.py` no longer reports as ignored a file that a `!` rule in `.gitignore` un-ignores (Labs P1).
   - New `wait-what` skill, from mattpocock/skills, to ask for something to be explained again (Labs P2).
+  - New skills `gw-media-content` (proposes up to 10 unpublished posts about the project) and
+    `gw-media-content-now` (produces one piece in a dated folder: texts per channel and language, plus images), from
+    WMF's second-harvest P1, redesigned. Four starting networks (X, Reddit, LinkedIn and Discord) and extra channels the
+    project declares in `.claude/gw/gw-media-content.md`; `reglas.json` marks each network limit `P` (verified), `S` (per
+    the source) or `NV` (not verified). `comprobar.py` validates the piece and `cifras.py` pulls the repo's figures;
+    `render.mjs` needs Playwright and ImageMagick with WebP, and **CI does not cover the real render** (without those
+    tools its tests use a stand-in). Pattern in `docs/es/patrones.md` ↔ `docs/en/patterns.md`, a row in `selector` and
+    in the agent map.
   - `orchestrate-dealer`: before dealing a manual batch, check that the starting state gives each check its
     precondition (WMF P2).
   - Log template: the task row says which phases before the protected branch are done (WMF P3).
