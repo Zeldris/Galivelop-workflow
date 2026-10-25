@@ -53,25 +53,52 @@ for last; do :; done
 # the stub only creates the output (the tests run with an empty PATH, so no cp or cat)
 : > "$last"
 """
-# A Playwright with just what render.mjs calls. GW_STUB_BROKEN lists broken images, GW_STUB_OVERFLOW overflows.
+# A Playwright with just what render.mjs calls. The environment makes it misbehave: GW_STUB_BROKEN lists broken images,
+# GW_STUB_OVERFLOW overflows, GW_STUB_GAPS leaves {{ in the text, GW_STUB_PAGEERROR throws in the page, GW_STUB_REQFAIL
+# fails a request and GW_STUB_PDFPAGES sets the pages of the PDF. The page evaluates three times: images, gaps, overflow.
 PLAYWRIGHT = """
 const fs = require('fs');
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+const registrar = (obj) => fs.appendFileSync(process.env.GW_STUB_LOG, JSON.stringify(obj) + '\\n');
 exports.chromium = { launch: async () => {
   if (process.env.GW_STUB_NO_CHROMIUM) throw new Error('Executable does not exist at /nowhere\\nsecond line');
-  return { close: async () => {}, newPage: async (opciones) => {
-    let llamadas = 0;
-    return {
-      goto: async () => {},
-      evaluate: async () => (++llamadas === 1 ? (process.env.GW_STUB_BROKEN ? ['rota.png'] : []) : !!process.env.GW_STUB_OVERFLOW),
-      screenshot: async ({ path, clip }) => {
-        fs.writeFileSync(path, png);
-        fs.appendFileSync(process.env.GW_STUB_LOG, JSON.stringify({ clip, viewport: opciones.viewport, scale: opciones.deviceScaleFactor }) + '\\n');
+  return { close: async () => {}, newContext: async (opciones) => {
+    const contexto = {
+      route: async (patron, manejador) => {
+        let abortada = false;
+        await manejador({ abort: async () => { abortada = true; } });
+        registrar({ route: patron.source, flags: patron.flags, http: patron.test('http://a.b/c'), https: patron.test('https://a.b/c'), file: patron.test('file:///a'), abortada });
       },
-      pdf: async ({ path, width, height }) => fs.writeFileSync(path, '%PDF-1.4 ' + width + 'x' + height),
-      locator: () => ({ count: async () => Number(process.env.GW_STUB_SLIDES ?? 3) }),
       close: async () => {},
+      newPage: async () => {
+        let llamadas = 0;
+        const manejadores = {};
+        return {
+          on: (evento, f) => { manejadores[evento] = f; },
+          goto: async () => {
+            if (process.env.GW_STUB_PAGEERROR) manejadores.pageerror(new Error(process.env.GW_STUB_PAGEERROR + '\\n    at x'));
+            if (process.env.GW_STUB_REQFAIL) manejadores.requestfailed({ url: () => process.env.GW_STUB_REQFAIL });
+          },
+          evaluate: async () => {
+            const n = ++llamadas;
+            if (n === 1) return process.env.GW_STUB_BROKEN ? ['rota.png'] : [];
+            if (n === 2) return !!process.env.GW_STUB_GAPS;
+            return process.env.GW_STUB_OVERFLOW ? ['div.ventana has more content than room (9x9 in 1x1)'] : [];
+          },
+          screenshot: async ({ path, clip }) => {
+            fs.writeFileSync(path, png);
+            registrar({ clip, viewport: opciones.viewport, scale: opciones.deviceScaleFactor });
+          },
+          pdf: async (o) => {
+            registrar({ pdf: o });
+            const n = Number(process.env.GW_STUB_PDFPAGES ?? process.env.GW_STUB_SLIDES ?? 3);
+            fs.writeFileSync(o.path, '%PDF-1.4 ' + o.width + 'x' + o.height + '\\n' + '<</Type /Page /Parent 1 0 R>>\\n'.repeat(n) + '<</Type /Pages /Count ' + n + '>>');
+          },
+          locator: () => ({ count: async () => Number(process.env.GW_STUB_SLIDES ?? 3) }),
+        };
+      },
     };
+    return contexto;
   } };
 } };
 """
@@ -124,6 +151,14 @@ class Argumentos(Base):
         self.assertEqual(r.returncode, 2)
         self.assertIn("usage: node render.mjs", r.stderr)
 
+    def test_se_ejecuta_tambien_por_un_enlace_simbolico(self):
+        # npx and node_modules/.bin run the script through a link: the main guard has to resolve it
+        enlace = self.tmp / "render-enlace.mjs"
+        os.symlink(RENDER, enlace)
+        r = subprocess.run([NODE, str(enlace)], capture_output=True, text=True, cwd=self.tmp, env={"PATH": str(self.vacio)})
+        self.assertEqual(r.returncode, 2, "through a symlink the script did nothing")
+        self.assertIn("usage: node render.mjs", r.stderr)
+
     def test_ayuda(self):
         r = self.render("--help")
         self.assertEqual((r.returncode, "usage: node render.mjs" in r.stdout), (0, True))
@@ -157,6 +192,30 @@ class Argumentos(Base):
     def test_tamano_de_la_etiqueta_gw_size(self):
         self.fuente("a.html", '<meta charset="utf-8">\n<meta name="gw-size" content="1080x1350">')
         self.assertEqual(self.plan(self.pieza)[0]["fuentes"][0]["tamano"], {"width": 1080, "height": 1350})
+
+    def test_tamano_con_los_atributos_al_reves_mayusculas_y_signo_por(self):
+        for fuente in ('<meta content="1080x1350" name="gw-size">', "<META NAME='GW-SIZE' CONTENT='1080X1350'>",
+                       '<meta name="gw-size" content="1080 \u00d7 1350">', "<meta name=gw-size content=1080x1350>",
+                       '<meta\n  name="gw-size"\n  content="1080 x 1350"\n>'):
+            with self.subTest(fuente=fuente):
+                self.fuente("a.html", fuente)
+                self.assertEqual(self.plan(self.pieza)[0]["fuentes"][0]["tamano"], {"width": 1080, "height": 1350})
+
+    def test_una_etiqueta_gw_size_comentada_no_cuenta(self):
+        self.fuente("a.html", '<!-- <meta name="gw-size" content="50x50"> -->\n<meta name="gw-size" content="1080x1350">')
+        self.assertEqual(self.plan(self.pieza)[0]["fuentes"][0]["tamano"], {"width": 1080, "height": 1350})
+        self.fuente("a.html", '<!-- <meta name="gw-size" content="1080x1350"> -->')
+        self.assertEqual(self.plan(self.pieza)[0]["fuentes"][0]["tamano"], {"width": 1200, "height": 675})
+
+    def test_un_gw_size_que_no_se_entiende_falla(self):
+        for fuente in ('<meta name="gw-size" content="grande">', '<meta name="gw-size" content="1080">', '<meta name="gw-size">',
+                       '<meta name="gw-size" content="1080x">', "<!-- gw-size: ancho por alto -->"):
+            with self.subTest(fuente=fuente):
+                self.fuente("a.html", fuente)
+                r = self.render("--plan", self.pieza)
+                self.assertEqual(r.returncode, 1)
+                self.assertIn("cannot be read as WIDTHxHEIGHT", r.stderr)
+                self.assertIn('<meta name="gw-size" content="1200x675">', r.stderr)  # the fix
 
     def test_tamano_de_un_svg_en_un_comentario(self):
         self.fuente("logo.svg", "<!-- gw-size: 800x400 --><svg xmlns='http://www.w3.org/2000/svg'/>")
@@ -295,7 +354,7 @@ class ConPlaywrightFalso(Base):
         self.fuente("a.html", '<meta name="gw-size" content="1000x500">')
         r = self.render(self.pieza, path=self.bin)
         self.assertEqual(r.returncode, 0, r.stderr)
-        visto = json.loads((self.tmp / "stub.log").read_text().splitlines()[0])
+        (visto,) = [json.loads(l) for l in (self.tmp / "stub.log").read_text().splitlines() if '"clip"' in l]
         tam = {"width": 1000, "height": 500}
         self.assertEqual((visto["viewport"], visto["clip"], visto["scale"]), (tam, {"x": 0, "y": 0, **tam}, 1))
 
@@ -303,9 +362,24 @@ class ConPlaywrightFalso(Base):
         self.fuente("carrusel.html", '<meta name="gw-size" content="1080x1350">')
         r = self.render(self.pieza, path=self.bin)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertEqual((self.pieza / "medios" / "carrusel.pdf").read_text(), "%PDF-1.4 1080pxx1350px")
+        self.assertTrue((self.pieza / "medios" / "carrusel.pdf").read_text().startswith("%PDF-1.4 1080pxx1350px"))
         self.assertIn("(3 pages", r.stdout)
         self.assertFalse((self.pieza / "medios" / "carrusel.webp").exists())
+
+    def test_el_pdf_toma_el_tamano_de_gw_size_y_no_el_de_la_hoja_de_estilo(self):
+        self.fuente("carrusel.html", '<meta name="gw-size" content="1080x1350"><style>@page { size: 500px 500px }</style>')
+        r = self.render(self.pieza, path=self.bin)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        (opciones,) = [json.loads(l)["pdf"] for l in (self.tmp / "stub.log").read_text().splitlines() if '"pdf"' in l]
+        self.assertEqual((opciones["width"], opciones["height"]), ("1080px", "1350px"))
+        self.assertNotIn("preferCSSPageSize", opciones)
+
+    def test_un_pdf_con_mas_paginas_que_slides_falla_y_no_deja_salida(self):
+        self.fuente("carrusel.html")
+        r = self.render(self.pieza, path=self.bin, env={"GW_STUB_SLIDES": "3", "GW_STUB_PDFPAGES": "5"})
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("the PDF has 5 page(s) and the carousel 3 slide(s)", r.stderr)
+        self.assertFalse((self.pieza / "medios" / "carrusel.pdf").exists())
 
     def test_un_carrusel_sin_slides_falla(self):
         self.fuente("carrusel.html")
@@ -324,7 +398,37 @@ class ConPlaywrightFalso(Base):
         self.fuente("a.html")
         r = self.render(self.pieza, path=self.bin, env={"GW_STUB_OVERFLOW": "1"})
         self.assertEqual(r.returncode, 1)
-        self.assertIn("the content overflows 1200x675", r.stderr)
+        self.assertIn("the content overflows 1200x675 (div.ventana has more content than room (9x9 in 1x1))", r.stderr)
+
+    def test_un_error_de_la_pagina_falla(self):
+        self.fuente("a.html")
+        r = self.render(self.pieza, path=self.bin, env={"GW_STUB_PAGEERROR": "boom is not defined"})
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("a.html: the page's script fails: boom is not defined; fix the script in the source", r.stderr)
+        self.assertNotIn("at x", r.stderr)
+        self.assertFalse((self.pieza / "medios" / "a.webp").exists())
+
+    def test_un_hueco_sin_rellenar_falla(self):
+        self.fuente("a.html")
+        r = self.render(self.pieza, path=self.bin, env={"GW_STUB_GAPS": "1"})
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("fill the gaps in a.html", r.stderr)
+        self.assertFalse((self.pieza / "medios" / "a.webp").exists())
+
+    def test_la_red_va_bloqueada(self):
+        self.fuente("a.html")
+        r = self.render(self.pieza, path=self.bin)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        (ruta,) = [json.loads(l) for l in (self.tmp / "stub.log").read_text().splitlines() if '"route"' in l]
+        self.assertEqual((ruta["http"], ruta["https"], ruta["file"], ruta["abortada"]), (True, True, False, True))
+
+    def test_una_peticion_que_falla_es_un_recurso_que_no_carga(self):
+        self.fuente("a.html")
+        r = self.render(self.pieza, path=self.bin, env={"GW_STUB_REQFAIL": "https://example.com/a.css"})
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("resource(s) that do not load: https://example.com/a.css", r.stderr)
+        self.assertIn("the network is blocked", r.stderr)
+        self.assertFalse((self.pieza / "medios" / "a.webp").exists())
 
     def test_un_fallo_no_impide_renderizar_el_resto(self):
         self.fuente("a.html")
@@ -363,6 +467,15 @@ def hay_render_real():
     return False, "ImageMagick with WebP support is not installed; the real render needs it"
 
 
+# What would reach the network: a src, href, poster or srcset with http(s):// or protocol-relative //, a CSS url() the
+# same way, @import and <link>.
+RED = re.compile(r"""(?ix)
+    \b(?:src|href|poster|data|action)\s*=\s*["']?\s*(?:https?:)?//
+  | \bsrcset\s*=\s*["'][^"']*?(?:https?:)?//
+  | url\(\s*["']?\s*(?:https?:)?//
+  | @import | <link\b""")
+
+
 def rellenar(texto: str) -> str:
     """Fixture filler: the template's placeholders become valid text (a date for AAAA-MM-DD, a number for JSON)."""
     texto = texto.replace("AAAA-MM-DD", "2026-10-25").replace("<tema>", "prueba")
@@ -389,9 +502,23 @@ class Plantilla(Base):
             self.assertTrue(m, f"{f.name}: no gw-size")
             esperado = ("1080", "1350") if f.name.startswith("carrusel") else ("1200", "675")
             self.assertEqual(m.groups(), esperado, f.name)
-            self.assertNotRegex(t, r"(?i)(src|href)=[\"']https?:|@import|<link\b", f"{f.name}: needs the network")
+            self.assertNotRegex(t, RED, f"{f.name}: needs the network")
+            if f.name.startswith("carrusel"):
+                self.assertNotRegex(t, r"@page[^}]*\bsize\b", f"{f.name}: the PDF page size is the gw-size, not an @page size")
             self.assertIn("--fondo:", t, f"{f.name}: palette variables")
             self.assertNotIn("{{", t.split("</head>")[0], f"{f.name}: a gap in the head (the comments must not hold braces)")
+
+    def test_la_regex_de_red_ve_lo_que_sale_a_internet(self):
+        for texto in ('<img src="https://x.com/a.png">', "<img src='//cdn.x.com/a.png'>", '<img srcset="a.png 1x, //x.com/b.png 2x">',
+                      "div { background: url(//x.com/a.png) }", 'div { background: url( "http://x.com/a.png" ) }',
+                      "@font-face { src: URL(https://x.com/f.woff2) }", '<a href = "http://x.com">', '<video poster="//x.com/p.png">',
+                      "<style>@import 'a.css';</style>", '<link rel="stylesheet" href="a.css">'):
+            with self.subTest(texto=texto):
+                self.assertRegex(texto, RED)
+        for texto in ('<svg xmlns="http://www.w3.org/2000/svg">', '<img src="a.png">', "div { background: url(a.png) }",
+                      'div { background: url("data:image/png;base64,AAAA") }', '<img srcset="a.png 1x, b.png 2x">', "<a href=\"#x\">"):
+            with self.subTest(texto=texto):
+                self.assertNotRegex(texto, RED)
 
     def test_los_huecos_de_la_plantilla_en_bruto(self):
         pieza = self.copiar()
@@ -427,19 +554,47 @@ class Plantilla(Base):
 
 @unittest.skipUnless(*hay_render_real())
 class RenderReal(Base):
-    def test_las_plantillas_rellenas_se_renderizan(self):
+    """Playwright's Chromium and ImageMagick for real. CI has neither (adding them costs Actions quota), so these run
+    only where they are installed."""
+
+    def pieza_real(self):
         pieza = self.tmp / "difusion" / "2026-10-25" / "01-prueba"
         shutil.copytree(PLANTILLA / "medios", pieza / "medios")
         for f in (pieza / "medios" / "fuente").glob("*.html"):
-            t = rellenar(f.read_text(encoding="utf-8")).replace("texto de prueba</pre>", "const a = 1; // x</pre>")
+            t = rellenar(f.read_text(encoding="utf-8").replace("{{cifra}}", "42")).replace("texto de prueba</pre>", "const a = 1; // x</pre>")
             f.write_text(t, encoding="utf-8")
         for n in ("antes", "despues"):
             (pieza / "medios" / "fuente" / f"{n}.png").write_bytes(png_valido())
-        env = dict(os.environ)
-        r = subprocess.run([NODE, str(RENDER), str(pieza)], capture_output=True, text=True, env=env,
+        return pieza
+
+    def correr(self, pieza, *fuentes):
+        r = subprocess.run([NODE, str(RENDER), str(pieza), *fuentes], capture_output=True, text=True, env=dict(os.environ),
                            cwd=os.environ.get("GW_PLAYWRIGHT_DIR") or os.getcwd())
         if "cannot start Chromium" in r.stderr:
             self.skipTest("Chromium is not installed (npx playwright install chromium); the real render needs it")
+        return r
+
+    def cambiar(self, pieza, fuente, viejo, nuevo):
+        ruta = pieza / "medios" / "fuente" / fuente
+        t = ruta.read_text(encoding="utf-8")
+        self.assertIn(viejo, t)
+        ruta.write_text(t.replace(viejo, nuevo, 1), encoding="utf-8")
+
+    def debe_fallar(self, pieza, fuente, motivo):
+        r = self.correr(pieza, fuente)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn(motivo, r.stderr)
+        self.assertFalse((pieza / "medios" / (Path(fuente).stem + ".webp")).exists(), "a failed render leaves no output")
+
+    def fuente_suelta(self, html):
+        pieza = self.tmp / "difusion" / "2026-10-25" / "01-prueba"
+        (pieza / "medios" / "fuente").mkdir(parents=True)
+        (pieza / "medios" / "fuente" / "x.html").write_text(html, encoding="utf-8")
+        return pieza
+
+    def test_las_plantillas_rellenas_se_renderizan(self):
+        pieza = self.pieza_real()
+        r = self.correr(pieza)
         self.assertEqual(r.returncode, 0, r.stderr)
         medios = pieza / "medios"
         for n in ("tarjeta", "diagrama", "metricas", "cita", "codigo", "antes-despues"):
@@ -449,6 +604,62 @@ class RenderReal(Base):
         self.assertEqual(comprobar.dimensiones(medios / "tarjeta-mini.webp")[0], 720)
         self.assertEqual(comprobar.dimensiones(medios / "tarjeta.png")[0], 1200)
         self.assertEqual(comprobar.paginas_pdf(medios / "carrusel.pdf"), 4)
+
+    def test_un_titular_larguisimo_en_la_tarjeta_desborda(self):
+        pieza = self.pieza_real()
+        self.cambiar(pieza, "tarjeta.html", "<h1>texto de prueba</h1>", "<h1>" + "titular largo " * 40 + "</h1>")
+        self.debe_fallar(pieza, "tarjeta.html", "tarjeta.html: the content overflows 1200x675")
+
+    def test_una_linea_de_codigo_de_120_caracteres_desborda(self):
+        pieza = self.pieza_real()
+        self.cambiar(pieza, "codigo.html", "const a = 1; // x</pre>", "const resultado = " + "a + " * 28 + "1;</pre>")
+        self.debe_fallar(pieza, "codigo.html", "div.ventana has more content than room")
+
+    def test_demasiadas_lineas_de_codigo_desbordan(self):
+        pieza = self.pieza_real()
+        self.cambiar(pieza, "codigo.html", "const a = 1; // x</pre>", "\n".join(f"const a{i} = {i};" for i in range(14)) + "</pre>")
+        self.debe_fallar(pieza, "codigo.html", "the content overflows 1200x675")
+
+    def test_diez_lineas_de_codigo_caben(self):
+        pieza = self.pieza_real()
+        self.cambiar(pieza, "codigo.html", "const a = 1; // x</pre>", "\n".join(f"const a{i} = {i};" for i in range(10)) + "</pre>")
+        r = self.correr(pieza, "codigo.html")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_una_imagen_rota_falla(self):
+        pieza = self.pieza_real()
+        (pieza / "medios" / "fuente" / "antes.png").unlink()
+        self.debe_fallar(pieza, "antes-despues.html", "antes-despues.html: image(s) that do not load: antes.png")
+
+    def test_un_elemento_en_el_relleno_del_cuerpo_desborda(self):
+        # inside the page, so the document does not scroll, but outside the content box of the body
+        pieza = self.fuente_suelta('<body style="margin:0;padding:60px;width:1200px;height:675px"><div style="margin-left:-40px;background:red">x</div>')
+        self.debe_fallar(pieza, "x.html", "div leaves the content box of body")
+
+    def test_un_texto_cortado_por_su_caja_desborda(self):
+        pieza = self.fuente_suelta('<body style="margin:0"><div style="width:100px;height:24px;overflow:hidden;white-space:nowrap">'
+                                   "un texto mucho mas largo que su caja</div>")
+        self.debe_fallar(pieza, "x.html", "div has more content than room")
+
+    def test_la_red_esta_bloqueada(self):
+        pieza = self.fuente_suelta('<head><link rel="stylesheet" href="https://example.com/a.css"></head><body>hola</body>')
+        self.debe_fallar(pieza, "x.html", "resource(s) that do not load: https://example.com/a.css")
+
+    def test_un_error_del_script_falla(self):
+        pieza = self.fuente_suelta("<body>hola<script>funcionQueNoExiste()</script></body>")
+        self.debe_fallar(pieza, "x.html", "the page's script fails: funcionQueNoExiste is not defined")
+
+    def test_un_hueco_sin_rellenar_falla(self):
+        pieza = self.pieza_real()
+        self.cambiar(pieza, "tarjeta.html", "<h1>texto de prueba</h1>", "<h1>{{titular}}</h1>")
+        self.debe_fallar(pieza, "tarjeta.html", "fill the gaps in tarjeta.html")
+
+    def test_el_carrusel_tiene_las_paginas_de_sus_slides(self):
+        pieza = self.pieza_real()
+        r = self.correr(pieza, "carrusel.html")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("(4 pages", r.stdout)
+        self.assertEqual(comprobar.paginas_pdf(pieza / "medios" / "carrusel.pdf"), 4)
 
 
 if __name__ == "__main__":

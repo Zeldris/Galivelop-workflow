@@ -142,7 +142,7 @@ class Estructura(Base):
     def test_sin_argumentos_es_un_error_de_uso(self):
         r = subprocess.run([sys.executable, str(AQUI / "comprobar.py")], capture_output=True, text=True)
         self.assertEqual(r.returncode, 2)
-        self.assertIn("usage:", r.stdout)
+        self.assertIn("usage: comprobar.py [--prefijos-tarea A,B,...]", r.stdout)
 
     def test_la_carpeta_de_fecha_expande_a_sus_piezas(self):
         self.assertEqual([p.name for p in comprobar.piezas(self.carpeta.parent)], ["01-lanzamiento"])
@@ -247,11 +247,43 @@ class Texto(Base):
 
     def test_jerga_interna_en_un_canal(self):
         for jerga, texto in (("P3", "hallazgo P3"), ("F12", "finding F12"), ("P1", "ver (P1)"), ("QA-215", "QA-215"),
-                             ("INS-3", "INS-3"), ("claude/rama-x", "claude/rama-x"), ("WIP:", "WIP:")):
+                             ("EPIC-3", "EPIC-3"), ("claude/rama-x", "claude/rama-x"), ("WIP:", "WIP:")):
             with self.subTest(jerga=jerga):
                 self.cambiar("linkedin.md", "Long text.", f"Long text {texto}.")
                 self.assertFallo(f"linkedin.md: internal jargon «{jerga}»")
                 self.cambiar("linkedin.md", f"Long text {texto}.", "Long text.")
+
+    def test_los_prefijos_de_un_proyecto_no_son_jerga_por_defecto(self):
+        for texto in ("INS-3", "FLU-12", "WMF-7"):
+            with self.subTest(texto=texto):
+                self.cambiar("linkedin.md", "Long text.", f"Long text {texto}.")
+                self.assertEqual(self.fallos(), "")
+                self.cambiar("linkedin.md", f"Long text {texto}.", "Long text.")
+
+    def test_los_prefijos_se_añaden_con_el_argumento(self):
+        self.cambiar("linkedin.md", "Long text.", "Long text INS-3 y FLU-12.")
+        problemas = "\n".join(comprobar.comprobar(self.carpeta, self.reglas, ("INS", "FLU")))
+        self.assertIn("linkedin.md: internal jargon «INS-3»", problemas)
+        self.assertIn("linkedin.md: internal jargon «FLU-12»", problemas)
+        self.assertEqual(comprobar.jerga("QA-1 y INS-3", ("INS",)), ["INS-3", "QA-1"])  # the generic ones stay
+
+    def test_cli_prefijos_tarea(self):
+        self.cambiar("linkedin.md", "Long text.", "Long text INS-3.")
+        for args in (["--prefijos-tarea", "INS,FLU"], ["--prefijos-tarea=ins, flu"]):
+            r = subprocess.run([sys.executable, str(AQUI / "comprobar.py"), *args, str(self.carpeta)], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 1, args)
+            self.assertIn("internal jargon «INS-3»", r.stdout)
+        sin = subprocess.run([sys.executable, str(AQUI / "comprobar.py"), str(self.carpeta)], capture_output=True, text=True)
+        self.assertEqual((sin.returncode, sin.stdout.strip()), (0, "OK"))
+
+    def test_cli_prefijos_tarea_mal_escrito(self):
+        for args, motivo in ((["--prefijos-tarea"], "--prefijos-tarea needs prefixes"),
+                             (["--prefijos-tarea", "IN S-1"], "--prefijos-tarea needs prefixes"),
+                             (["--rapido"], "unknown option --rapido")):
+            r = subprocess.run([sys.executable, str(AQUI / "comprobar.py"), *args, str(self.carpeta)], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 2, args)
+            self.assertIn(motivo, r.stdout)
+            self.assertIn("usage: comprobar.py [--prefijos-tarea A,B,...]", r.stdout)
 
     def test_la_jerga_permitida_no_salta(self):
         self.cambiar("linkedin.md", "Long text.", "Long text con GPT-4, UTF-8 y P2P.")
