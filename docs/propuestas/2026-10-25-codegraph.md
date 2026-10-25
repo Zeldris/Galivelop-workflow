@@ -66,7 +66,7 @@ cuenta para `version.py --release`. Leído en un clon de solo lectura; nada se h
 - **Why it is general:** un mapa que apunta a lo que ya no existe es peor que no tenerlo (el agente se fía de él), y
   todos los proyectos tienen mapa; hoy solo WMF lo comprueba.
 - **Version bump:** minor
-- **Status:** sin decidir
+- **Status:** aplicada (2026-10-25)
 
 ## P3. «Anti-patrones» y «Límites» en el mapa y en `writing-for-agents`
 
