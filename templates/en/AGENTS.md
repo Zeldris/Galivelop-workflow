@@ -93,7 +93,10 @@ Never on work that is already merged.
    pending and not reviewed again in that PR. Only code needs review: what matches `content` in `.claude/gw.json` is content.
 2. **Environment:** the `opt-tokens` skill, then `retro` (plus `opt-ai` if there were measurements with a local AI
    model). Their proposals are **presented to the person**; what they confirm is applied on the branch. A retro written
-   without presenting it does not count.
+   without presenting it does not count. If the person asked to go to `{{protectedBranch}}` and is not there to decide
+   the retro, leave everything ready (retro with `**Status:** pending`, check green on the merge with
+   `{{protectedBranch}}`, pull request description) and stop before `revisado.sh`: their confirmation of the retro is
+   the only missing step; do not write the decision for them.
 3. **Close:** if phase 2 brought code, review only those commits and their fixes; then
    `bash .claude/gw/scripts/revisado.sh` (writes the review mark, `{{reviewMark}}`, and commits it) and `git push`;
    for a pull request, its description with the `pr` skill. Only then push to `{{protectedBranch}}` or create the

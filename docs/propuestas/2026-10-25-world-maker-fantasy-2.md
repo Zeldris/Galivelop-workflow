@@ -17,12 +17,13 @@ script del flujo cambia en el proyecto. Sale una skill nueva (`gw-media-content`
   ImageMagick. Portarla exige quitar lo de WMF: la carpeta (`docs/difusion/`) y las plantillas `_plantilla/` pasan a
   ser configurables y a vivir en `templates/` o en `.claude/gw/gw-media-content.md` (idiomas, canales, paleta,
   escenarios de captura); las dependencias (Playwright, ImageMagick) pasan a `compatibility` y a un aviso de
-  `doctor.py` solo si la skill se usa.
+  `doctor.py` solo si la skill se usa (el aviso, aplicado en `cf57265`: `media tools`, con la señal de la nota
+  `.claude/gw/gw-media-content.md` o su carpeta).
 - **Why it is general:** cualquier proyecto con novedades públicas repite el mismo ciclo (hechos con fuente → textos
   por canal → imágenes → comprobar que no se cuela jerga interna); el comprobador y los tests ya existen y son
   reutilizables.
 - **Version bump:** minor
-- **Status:** approved (2026-10-25), rediseñada: se parte en `gw-media-content` (hasta 10 propuestas) y `gw-media-content-now` (una pieza en carpeta con fecha); redes de inicio X, Reddit, LinkedIn y Discord; base en `docs/investigacion/redes-sociales.md`; **applied** (2026-10-25, `0.4.0`): `reglas.json` y `comprobar.py` (b1), plantilla y `render.mjs` (b2), las dos `SKILL.md` con `catalogo.md` y `cifras.py` en `3cd53a9` y `534b2e6` (b3a), alta en el mapa, `selector`, patrón ES/EN y CHANGELOG (b3b)
+- **Status:** approved (2026-10-25), rediseñada: se parte en `gw-media-content` (hasta 10 propuestas) y `gw-media-content-now` (una pieza en carpeta con fecha); redes de inicio X, Reddit, LinkedIn y Discord; base en `docs/investigacion/redes-sociales.md`; **applied** (2026-10-25, `0.4.0`; el aviso de `doctor.py`, en `cf57265`): `reglas.json` y `comprobar.py` (b1), plantilla y `render.mjs` (b2), las dos `SKILL.md` con `catalogo.md` y `cifras.py` en `3cd53a9` y `534b2e6` (b3a), alta en el mapa, `selector`, patrón ES/EN y CHANGELOG (b3b)
 
 ## P2. El check falla si un script de skill propia no tiene su `test_*.py`
 
@@ -32,7 +33,7 @@ script del flujo cambia en el proyecto. Sale una skill nueva (`gw-media-content`
   skills del flujo solo si existen; esto cubre las skills nacidas en el proyecto.
 - **Why it is general:** en la sesión, 11 de 13 hallazgos de la revisión eran de robustez de un script sin tests.
 - **Version bump:** patch
-- **Status:** approved (2026-10-25)
+- **Status:** approved (2026-10-25); **applied** (`cf57265`, `0.4.0`): aviso `skill tests` en `doctor.py` y exigencia en el check de este repo (`tests/test_skills.py`)
 
 ## P3. `bitacora.py` dentro del `check` por defecto
 
@@ -54,7 +55,7 @@ script del flujo cambia en el proyecto. Sale una skill nueva (`gw-media-content`
   es el único paso que falta.
 - **Why it is general:** con `requireRetro` no hay forma de avanzar sin la decisión; hoy cada sesión lo improvisa.
 - **Version bump:** patch
-- **Status:** approved (2026-10-25)
+- **Status:** approved (2026-10-25); **applied** (`0.4.0`): regla en `skills/retro/SKILL.md`, en la fase 2 de las plantillas `AGENTS.md` (ES/EN), en `AGENTS.md` de este repo y en `requireRetro` de `docs/es/config.md` ↔ `docs/en/config.md`
 
 ## Se queda en el proyecto
 

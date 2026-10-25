@@ -111,6 +111,10 @@ here.
   Y, solo en un proyecto que usa `gw-media-content` (existe su nota `.claude/gw/gw-media-content.md` o la carpeta que
   nombra, `docs/difusion` por defecto), avisa (`media tools`) de que faltan `node`, Playwright (desde la carpeta
   actual o `GW_PLAYWRIGHT_DIR`, como `render.mjs`) o ImageMagick con WebP (`magick` o `convert` con WEBP).
+- P4 de la segunda recogida de WMF: con `requireRetro`, si la persona pide ir a la rama protegida y no está para decidir la
+  retro, se deja todo listo (retro con `**Estado:** pendiente`, check en verde sobre la fusión, descripción del PR) y
+  se para antes de `revisado.sh`; su confirmación es el único paso que falta. En la skill `retro`, la fase 2 de las
+  plantillas `AGENTS.md` y `docs/es/config.md` ↔ `docs/en/config.md`.
 
 ### EN
 
@@ -213,6 +217,10 @@ here.
   `.claude/gw/gw-media-content.md` exists, or the folder it names, `docs/difusion` by default), it warns
   (`media tools`) when `node`, Playwright (from the current folder or `GW_PLAYWRIGHT_DIR`, as `render.mjs` resolves
   it) or ImageMagick with WebP (`magick` or `convert` listing WEBP) is missing.
+- P4 of WMF's second harvest: with `requireRetro`, if the person asks to go to the protected branch and is not there to
+  decide the retro, everything is left ready (retro with `**Status:** pending`, check green on the merge, PR
+  description) and the work stops before `revisado.sh`; their confirmation is the only missing step. In the `retro`
+  skill, phase 2 of the `AGENTS.md` templates and `docs/es/config.md` ↔ `docs/en/config.md`.
 
 ## [0.3.0] - 2026-10-23
 

@@ -93,7 +93,10 @@ Nunca sobre trabajo ya fusionado.
    contenido.
 2. **Entorno:** la skill `opt-tokens` y luego `retro` (más `opt-ai` si hubo medidas con un modelo de IA local). Sus
    propuestas se **presentan a la persona**; lo que confirme se aplica en la rama. Una retro escrita sin presentarla no
-   vale.
+   vale. Si la persona pidió ir a `{{protectedBranch}}` y no está para decidir la retro, se deja todo listo (retro con
+   `**Estado:** pendiente`, check en verde sobre la fusión con `{{protectedBranch}}`, descripción del pull request) y
+   se para antes de `revisado.sh`: su confirmación de la retro es el único paso que falta; la decisión no se escribe
+   por ella.
 3. **Cierre:** si la fase 2 trajo código, revisión solo de esos commits y sus arreglos; luego
    `bash .claude/gw/scripts/revisado.sh` (escribe la marca de revisión, `{{reviewMark}}`, y hace su commit) y
    `git push`; para un pull request, su descripción con la skill `pr`. Solo entonces se sube a `{{protectedBranch}}`
