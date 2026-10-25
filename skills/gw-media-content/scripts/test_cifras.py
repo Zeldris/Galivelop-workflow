@@ -1,6 +1,7 @@
 """Tests of cifras.py: each case builds a git repo in a tempdir; every failure case asserts its message.
 Run: python3 -m unittest discover -s skills/gw-media-content/scripts"""
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -15,16 +16,23 @@ CONFIG = {"version": "0.4.0", "language": "es", "log": "docs/traspaso.md", "chec
 CHANGELOG = "# Changelog\n\n## [1.1.0] - 2026-10-02\n\n### Added\n\n- a\n\n### Fixed\n\n- b\n\n## [1.0.0]\n\n### Old\n"
 
 
+def clean_env(**extra):
+    """The environment without any inherited GIT_* variable (GIT_DIR, GIT_WORK_TREE, GIT_INDEX_FILE... leak in when the
+    tests run from a git hook and would point git at the wrong repository), plus a fixed identity and no user config."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    env.update(ENV, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_NOSYSTEM="1")
+    env.update(extra)
+    return env
+
+
 def git(cwd, *args, date=None):
-    import os
-    env = dict(os.environ, **ENV)
-    if date:
-        env["GIT_AUTHOR_DATE"] = env["GIT_COMMITTER_DATE"] = date
-    subprocess.run(["git", "-C", str(cwd), *args], check=True, capture_output=True, env=env)
+    extra = {"GIT_AUTHOR_DATE": date, "GIT_COMMITTER_DATE": date} if date else {}
+    subprocess.run(["git", "-C", str(cwd), *args], check=True, capture_output=True, env=clean_env(**extra))
 
 
 def run(cwd, *args):
-    proc = subprocess.run([sys.executable, str(CIFRAS), *args], cwd=str(cwd), capture_output=True, text=True)
+    proc = subprocess.run([sys.executable, str(CIFRAS), *args], cwd=str(cwd), capture_output=True, text=True,
+                          env=clean_env())
     return proc
 
 
@@ -82,7 +90,15 @@ class Cifras(unittest.TestCase):
         self.assertIn("no version found in it", proc.stderr)
 
     def test_bad_option_exits_2(self):
-        self.assertEqual(run(self.repo, "--nada").returncode, 2)
+        proc = run(self.repo, "--nada")
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("unrecognized arguments: --nada", proc.stderr)
+
+    def test_inherited_git_env_does_not_leak_into_the_script(self):
+        # a GIT_DIR pointing elsewhere (as in a hook) must not matter: the helpers drop every GIT_* variable
+        os.environ["GIT_DIR"] = str(Path(self._tmp.name) / "otro.git")
+        self.addCleanup(os.environ.pop, "GIT_DIR", None)
+        self.assertEqual(self.cifras()["cifras"]["commits_desde"]["valor"], 1)
 
     def test_without_tags_counts_the_whole_history(self):
         self.commit("b.txt", "dos\n", "segundo", "2026-10-03T10:00:00")
@@ -92,7 +108,7 @@ class Cifras(unittest.TestCase):
         self.assertEqual(c["commits_desde"]["valor"], 2)
         self.assertEqual(c["commits_desde"]["fuente"], "git rev-list --count HEAD")
         self.assertIsNone(c["ultima_etiqueta"]["valor"])
-        self.assertIn("no tags", c["ultima_etiqueta"]["nota"])
+        self.assertIn("no version tags", c["ultima_etiqueta"]["nota"])
         self.assertEqual(c["rango_fechas"]["valor"], {"primero": "2026-09-01", "ultimo": "2026-10-03"})
         self.assertEqual(c["archivos_cambiados"]["valor"], {"archivos": 2})
         self.assertEqual([s.split(" ", 1)[1] for s in c["commits_asuntos"]["valor"]], ["segundo", "primero"])
@@ -135,9 +151,8 @@ class Cifras(unittest.TestCase):
         self.assertEqual(out["cifras"]["commits_desde"]["valor"], 2)
         self.assertEqual(out["cifras"]["ultima_etiqueta"]["valor"], "v1.1.0")
 
-    def test_zero_commits_since_the_tag(self):
-        git(self.repo, "tag", "v1.0.0")
-        c = self.cifras()["cifras"]
+    def test_zero_commits_since_the_ref(self):
+        c = self.cifras("--desde", "HEAD")["cifras"]
         self.assertEqual(c["commits_desde"]["valor"], 0)
         self.assertIsNone(c["rango_fechas"]["valor"])
         self.assertIn("no commits in the range", c["rango_fechas"]["nota"])
@@ -153,6 +168,182 @@ class Cifras(unittest.TestCase):
         self.assertEqual(self.cifras()["cifras"]["version_proyecto"]["valor"], "0.9.1")  # first in the list wins
         self.commit("VERSION", "7.0.0\n", "ver")
         self.assertEqual(self.cifras("--version-file", "VERSION")["cifras"]["version_proyecto"]["valor"], "7.0.0")
+
+    def version(self, rel, text, *args):
+        """Commit a version file with these exact bytes and read the version figure back."""
+        path = self.repo / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(text if isinstance(text, bytes) else text.encode("utf-8"))
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-q", "-m", f"ver {rel}")
+        return self.cifras(*args)["cifras"]["version_proyecto"]
+
+    def assert_not_readable(self, fig, rel, why):
+        self.assertIsNone(fig["valor"])
+        self.assertIn(f"{rel} found, but its version is not readable", fig["nota"])
+        self.assertIn(why, fig["nota"])
+        self.assertNotIn("no known version file", fig["nota"])
+
+    def test_pyproject_reads_project_not_the_first_version_of_any_table(self):
+        v = self.version("pyproject.toml", '[tool.mypy]\nversion = "3.11"\n\n[tool.poetry.dependencies]\n'
+                         'version = "9.9"\n\n[project]\nname = "x"\nversion = "2.3.4"\n')
+        self.assertEqual((v["valor"], v["fuente"]), ("2.3.4", "read pyproject.toml"))
+
+    def test_pyproject_with_a_version_only_outside_project_is_not_readable(self):
+        v = self.version("pyproject.toml", '[tool.mypy]\nversion = "3.11"\n[project]\nname = "x"\n')
+        self.assert_not_readable(v, "pyproject.toml", "no version key")
+
+    def test_pyproject_falls_back_to_tool_poetry(self):
+        v = self.version("pyproject.toml", '[tool.black]\nversion = "1"\n[tool.poetry]\nname = "x"\nversion = "0.7.1"\n')
+        self.assertEqual(v["valor"], "0.7.1")
+
+    def test_single_quoted_and_commented_versions(self):
+        v = self.version("pyproject.toml", "[project]\nversion = '1.2.3'  # bump me\n")
+        self.assertEqual(v["valor"], "1.2.3")
+
+    def test_dynamic_version_is_not_a_number(self):
+        v = self.version("pyproject.toml", '[project]\nname = "x"\ndynamic = ["readme", "version"]\n')
+        self.assert_not_readable(v, "pyproject.toml", 'dynamic = ["version"]')
+        v = self.version("pyproject.toml", "[project]\nname = 'x'\ndynamic = [\n  'version',\n]\n")
+        self.assert_not_readable(v, "pyproject.toml", 'dynamic = ["version"]')
+
+    def test_dynamic_without_version_in_the_list_does_not_hide_the_version(self):
+        v = self.version("pyproject.toml", '[project]\nversion = "1.0.0"\ndynamic = ["readme"]\n')
+        self.assertEqual(v["valor"], "1.0.0")
+
+    def test_cargo_package_version_and_workspace_inheritance(self):
+        v = self.version("Cargo.toml", '[package]\nname = "x"\nversion = "0.1.0"\n\n[dependencies.foo]\nversion = "9"\n')
+        self.assertEqual((v["valor"], v["fuente"]), ("0.1.0", "read Cargo.toml"))
+        v = self.version("Cargo.toml", '[package]\nname = "x"\nversion.workspace = true\n\n[dependencies]\n'
+                         'foo = { version = "9" }\n[dev-dependencies.bar]\nversion = "2"\n')
+        self.assert_not_readable(v, "Cargo.toml", "inherits it from the workspace")
+        v = self.version("Cargo.toml", '[package]\nname = "x"\nversion = { workspace = true }\n')
+        self.assert_not_readable(v, "Cargo.toml", "inherits it from the workspace")
+        v = self.version("Cargo.toml", '[workspace]\nmembers = ["a"]\n[workspace.package]\nversion = "3.0.0"\n')
+        self.assertEqual(v["valor"], "3.0.0")
+
+    def test_bom_is_ignored_in_every_kind_of_file(self):
+        bom = b"\xef\xbb\xbf"
+        self.assertEqual(self.version("pyproject.toml", bom + b'[project]\nversion = "1.0.1"\n')["valor"], "1.0.1")
+        self.assertEqual(self.version("package.json", bom + b'{"version": "1.0.2"}')["valor"], "1.0.2")
+        (self.repo / "package.json").unlink()
+        (self.repo / "pyproject.toml").unlink()
+        self.assertEqual(self.version("VERSION", bom + b"1.0.3\n")["valor"], "1.0.3")
+
+    def test_plain_version_file_skips_blank_lines_and_comments(self):
+        v = self.version("VERSION", "\n# the release\n\n  4.5.6  \n# trailing\n")
+        self.assertEqual(v["valor"], "4.5.6")
+
+    def test_plain_version_file_with_only_comments_is_not_readable(self):
+        v = self.version("VERSION", "# nothing yet\n\n")
+        self.assert_not_readable(v, "VERSION", "blank or a # comment")
+
+    def test_json_without_a_string_version_is_not_readable(self):
+        v = self.version("package.json", '{"name": "x", "version": 3}')
+        self.assert_not_readable(v, "package.json", 'no string "version" key')
+        v = self.version("package.json", "{not json")
+        self.assert_not_readable(v, "package.json", "not valid JSON")
+
+    def test_an_unreadable_file_does_not_hide_a_later_readable_one(self):
+        self.commit("pyproject.toml", '[project]\ndynamic = ["version"]\n', "py dinamico")
+        v = self.version("VERSION", "8.0.0\n")
+        self.assertEqual((v["valor"], v["fuente"]), ("8.0.0", "read VERSION"))
+
+    def test_every_unreadable_file_is_named_in_the_note(self):
+        self.commit("pyproject.toml", '[project]\ndynamic = ["version"]\n', "py dinamico")
+        v = self.version("VERSION", "# none\n")
+        self.assertIsNone(v["valor"])
+        self.assertIn("pyproject.toml found, but its version is not readable", v["nota"])
+        self.assertIn("VERSION found, but its version is not readable", v["nota"])
+        self.assertIn("--version-file", v["nota"])
+
+    def test_explicit_version_file_that_is_not_readable_fails_with_the_reason(self):
+        self.commit("pyproject.toml", '[project]\ndynamic = ["version"]\n', "py dinamico")
+        proc = run(self.repo, "--version-file", "pyproject.toml")
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("no version found in it", proc.stderr)
+        self.assertIn('dynamic = ["version"]', proc.stderr)
+
+    def test_shallow_clone_fails_closed_with_the_fix(self):
+        self.commit("b.txt", "dos\n", "segundo", "2026-10-03T10:00:00")
+        git(self.repo, "tag", "v1.0.0")
+        self.commit("c.txt", "tres\n", "tercero", "2026-10-04T10:00:00")
+        clone = Path(self._tmp.name) / "clon"
+        subprocess.run(["git", "clone", "-q", "--depth", "1", self.repo.resolve().as_uri(), str(clone)], check=True,
+                       capture_output=True, env=clean_env())
+        proc = run(clone)
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("shallow clone", proc.stderr)
+        self.assertIn("git fetch --unshallow --tags", proc.stderr)
+        self.assertEqual(proc.stdout, "")
+        proc = run(clone, "--desde", "HEAD")  # a flag must not bypass it
+        self.assertEqual(proc.returncode, 2)
+        self.assertIn("git fetch --unshallow --tags", proc.stderr)
+        subprocess.run(["git", "-C", str(clone), "fetch", "-q", "--unshallow", "--tags"], check=True,
+                       capture_output=True, env=clean_env())
+        proc = run(clone)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        c = json.loads(proc.stdout)["cifras"]
+        self.assertEqual((c["ultima_etiqueta"]["valor"], c["commits_desde"]["valor"]), ("v1.0.0", 1))
+
+    def test_tag_on_head_counts_from_the_previous_tag(self):
+        git(self.repo, "tag", "v1.0.0")
+        self.commit("b.txt", "dos\n", "segundo", "2026-10-03T10:00:00")
+        self.commit("c.txt", "tres\n", "tercero", "2026-10-04T10:00:00")
+        git(self.repo, "tag", "-a", "-m", "release", "v1.1.0")
+        out = self.cifras()
+        self.assertEqual(out["desde"], "tag v1.1.0 on HEAD; counting from previous tag v1.0.0")
+        c = out["cifras"]
+        self.assertEqual(c["ultima_etiqueta"]["valor"], "v1.1.0")
+        self.assertIn("points at HEAD", c["ultima_etiqueta"]["nota"])
+        self.assertEqual(c["commits_desde"]["valor"], 2)
+        self.assertEqual(c["commits_desde"]["fuente"], "git rev-list --count v1.0.0..HEAD")
+        self.assertEqual(c["archivos_cambiados"]["valor"]["archivos"], 2)
+
+    def test_tag_on_head_without_a_previous_tag_counts_from_the_first_commit(self):
+        self.commit("b.txt", "dos\n", "segundo", "2026-10-03T10:00:00")
+        git(self.repo, "tag", "v0.1")
+        out = self.cifras()
+        self.assertEqual(out["desde"], "tag v0.1 on HEAD and no previous version tag; counting from the first commit")
+        self.assertEqual(out["cifras"]["commits_desde"]["valor"], 2)
+        self.assertEqual(out["cifras"]["commits_desde"]["fuente"], "git rev-list --count HEAD")
+
+    def test_desde_wins_over_a_tag_on_head(self):
+        git(self.repo, "tag", "v1.0.0")
+        self.commit("b.txt", "dos\n", "segundo", "2026-10-03T10:00:00")
+        git(self.repo, "tag", "v1.1.0")
+        out = self.cifras("--desde", "v1.1.0")
+        self.assertEqual(out["desde"], "--desde v1.1.0")
+        self.assertEqual(out["cifras"]["commits_desde"]["valor"], 0)
+
+    def test_moving_lightweight_tags_are_not_the_last_tag(self):
+        git(self.repo, "tag", "v1.0.0")
+        self.commit("b.txt", "dos\n", "segundo", "2026-10-03T10:00:00")
+        self.commit("c.txt", "tres\n", "tercero", "2026-10-04T10:00:00")
+        for name in ("latest", "nightly", "1st-draft"):
+            git(self.repo, "tag", name)  # all on HEAD
+        out = self.cifras()
+        self.assertEqual(out["desde"], "last tag v1.0.0")
+        self.assertEqual(out["cifras"]["ultima_etiqueta"]["valor"], "v1.0.0")
+        self.assertEqual(out["cifras"]["commits_desde"]["valor"], 2)
+
+    def test_only_moving_tags_means_no_version_tag(self):
+        git(self.repo, "tag", "latest")
+        out = self.cifras()
+        self.assertIn("first commit", out["desde"])
+        self.assertIsNone(out["cifras"]["ultima_etiqueta"]["valor"])
+        self.assertIn("no version tags", out["cifras"]["ultima_etiqueta"]["nota"])
+
+    def test_dates_and_file_lists_use_portable_git_options(self):
+        self.commit("con espacio y ñ.txt", "x\n", "raro", "2026-10-03T23:30:00")
+        self.commit("tests/test ñ_a.py", "", "test raro", "2026-10-04T10:00:00")
+        c = self.cifras()["cifras"]
+        self.assertEqual(c["rango_fechas"]["valor"], {"primero": "2026-09-01", "ultimo": "2026-10-04"})
+        self.assertIn("--date=short", c["rango_fechas"]["fuente"])
+        self.assertEqual(c["archivos_cambiados"]["valor"], {"archivos": 3})
+        self.assertEqual(c["archivos_de_test"]["valor"], 0)  # "test ñ_a.py" is not a test_*.py name
+        self.commit("tests/test_ñ.py", "", "test con ñ")
+        self.assertEqual(self.cifras()["cifras"]["archivos_de_test"]["valor"], 1)
 
     def test_changelog_latest_section(self):
         self.assertIsNone(self.cifras()["cifras"]["changelog_ultima_seccion"]["valor"])
