@@ -39,7 +39,7 @@ PR_GUARD = "revision-antes-de-main.sh"
 INTERPRETERS = {"bash", "sh", "zsh", "python", "python3", "node", "env", "exec"}
 SOURCES = re.compile(r"galivelop|workflow|mattpocock", re.I)
 PROPOSAL = ".gw-nuevo"  # aplicar.py's proposals for files with local edits
-FLOW_HOOK_SCRIPTS = ("session-start.sh", "recuperar.py", "revision-antes-de-main.sh")  # the settings template's
+FLOW_HOOK_SCRIPTS = ("session-start.sh", "recuperar.py", "revision-antes-de-main.sh", "antes-de-parar.py")  # the template's
 # Zero-width, bidi and BOM characters, written as escapes so the fix command can embed them. A zero width joiner (U+200D)
 # is fine only inside an emoji sequence (family, profession, flag, heart): after an emoji, a variation selector or a
 # skin tone, and before an emoji. Between letters, accents or punctuation (`и‍г`, `é‍ñ`), next to ASCII, a line edge
@@ -303,10 +303,10 @@ def is_flow_script(command, root):
 
 
 def stale_flow_hooks(hooks, root):
-    """[(event, command)] of SessionStart/PreToolUse hooks that run a workflow script (by name and by its header)
-    from another folder."""
+    """[(event, command)] of SessionStart/PreToolUse/Stop hooks that run a workflow script (by name and by its
+    header) from another folder."""
     out = []
-    for event in ("SessionStart", "PreToolUse"):
+    for event in ("SessionStart", "PreToolUse", "Stop"):
         for entry in hooks.get(event) or []:
             for h in (entry.get("hooks") or []) if isinstance(entry, dict) else []:
                 command = h.get("command", "") if isinstance(h, dict) else ""

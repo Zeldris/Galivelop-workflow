@@ -252,7 +252,7 @@ entra el código ya hoy.
   propio): `aplicar.py` no los borra, los lista como «no longer in the workflow (kept)». Muévelos a una carpeta del
   proyecto (p. ej. `tools/scout/`) o bórralos con `git rm` si nada los usa; no los dejes dentro de `.claude/skills/`.
 - **Ganchos viejos en `.claude/settings.json`.** `aplicar.py` fusiona los nuevos sin quitar nada, y avisa
-  («also runs '…'») de una entrada de `SessionStart` o `PreToolUse` que ejecuta un script del flujo desde fuera de
+  («also runs '…'») de una entrada de `SessionStart`, `PreToolUse` o `Stop` que ejecuta un script del flujo desde fuera de
   `.claude/gw/scripts/`; `doctor.py` también. Bórrala a mano, o correrá dos veces.
 - **`recuperar.py` por línea de órdenes**, para recuperar lo que una compactación o un `/clear` se llevó:
   `python3 .claude/gw/scripts/recuperar.py --estado` (la bitácora, `git status` y los últimos commits) y

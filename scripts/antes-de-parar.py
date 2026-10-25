@@ -1,0 +1,172 @@
+#!/usr/bin/env python3
+# galivelop-workflow v0.4.0
+"""Stop hook: do not let Claude finish with commits that are not pushed, or with changes the log does not mention.
+
+"What is not pushed does not exist" (AGENTS.md) is the workflow's most important rule and, until this hook, only the
+agent remembered it. It blocks the stop when:
+
+  a. the current branch has commits its upstream does not (`git rev-list @{u}..HEAD`); with no upstream, commits no
+     remote branch has (`git rev-list HEAD --not --remotes`). The reason names `git push -u origin <branch>`;
+  b. the working tree has changes (`git status`, untracked files included) and the log (`log` in .claude/gw.json) is
+     not among them. The reason says to commit the log, updated, in the same commit as the work.
+
+Output format (https://code.claude.com/docs/en/hooks.md, "Stop decision control"): a block is a JSON object on stdout
+with exit 0, `{"decision": "block", "reason": "..."}`; Claude Code feeds `reason` back to Claude as the explanation
+for why it should continue ("`reason` ... Tells Claude why it should continue"). The page also documents exit 2 with
+the reason on stderr as equivalent; JSON is used because the same exit-0 answer can carry `systemMessage`
+("Warning message shown to the user"), which is what the warnings below use.
+
+No loop: when stdin says `stop_hook_active` is true (Claude Code is already continuing because of a stop hook) it
+exits 0 silently, as the page asks ("Check this value ... to avoid blocking on a condition that will never resolve").
+
+It is a reminder, not a gate. Without git, without a valid config, with a git command that fails or with a stdin it
+cannot read it never blocks: it exits 0 and shows the user a `systemMessage` that names `python3 <here>/doctor.py`.
+The same for a repository with no remote (there is nothing to push to).
+
+Project root: config.find_root (the script's own repo when it holds .claude/gw.json, else the project the hook runs
+in), so it works from the plugin's scripts/ and from a project's .claude/gw/scripts/. Python 3.8+ standard library only.
+"""
+import json
+import os
+import posixpath
+import select
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.dont_write_bytecode = True  # no __pycache__ in the project's .claude/gw/scripts
+sys.path.insert(0, HERE)
+import config  # noqa: E402
+
+STDIN_WAIT = 3.0
+GIT_TIMEOUT = 30
+
+
+class GitError(Exception):
+    pass
+
+
+def git(root, *args, check=True):
+    """(returncode, stdout) of `git -C root ...`; with check, a failure raises GitError naming the command."""
+    try:
+        r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, timeout=GIT_TIMEOUT)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise GitError(f"git {args[0]} could not run ({exc})")
+    if check and r.returncode != 0:
+        raise GitError(f"git {' '.join(args)} failed: {(r.stderr or r.stdout).strip() or 'exit ' + str(r.returncode)}")
+    return r.returncode, r.stdout
+
+
+def read_event():
+    """The hook's JSON object from stdin, or None when there is none (nothing arrives, not JSON, not an object)."""
+    if sys.stdin is None or sys.stdin.isatty():
+        return None
+    try:
+        ready, _, _ = select.select([sys.stdin], [], [], STDIN_WAIT)
+        if not ready:
+            return None
+        data = json.loads(sys.stdin.read())
+    except (OSError, ValueError, TypeError):  # no select on this stream, closed stdin, empty or invalid JSON
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def plural(n, word):
+    return f"{n} {word}" + ("" if n == 1 else "s")
+
+
+def unpushed(root):
+    """(branch, count, where) of the commits the current branch has that nowhere else has; None when there is
+    nothing to push or nothing to compare with (detached HEAD, no commits). Raises GitError."""
+    rc, branch = git(root, "symbolic-ref", "-q", "--short", "HEAD", check=False)
+    branch = branch.strip()
+    if rc != 0 or not branch:
+        return None  # detached HEAD: no branch to push
+    if git(root, "rev-parse", "-q", "--verify", "HEAD", check=False)[0] != 0:
+        return None  # no commits yet
+    rc, upstream = git(root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", check=False)
+    if rc == 0 and upstream.strip():
+        upstream = upstream.strip()
+        count = int(git(root, "rev-list", "--count", f"{upstream}..HEAD")[1].strip() or 0)
+        where = f"not on {upstream}"
+    else:
+        if not git(root, "remote")[1].strip():
+            raise GitError("this repository has no remote, so there is nothing to push to")
+        count = int(git(root, "rev-list", "--count", "HEAD", "--not", "--remotes")[1].strip() or 0)
+        where = "no upstream branch, and not on any remote branch"
+    return (branch, count, where) if count else None
+
+
+def changed_paths(root):
+    """The set of paths `git status` lists (untracked files included; both sides of a rename). Raises GitError."""
+    out = git(root, "status", "--porcelain=v1", "-z", "--untracked-files=all")[1]
+    entries = out.split("\0")
+    paths, i = set(), 0
+    while i < len(entries):
+        entry = entries[i]
+        i += 1
+        if len(entry) < 4:
+            continue
+        paths.add(posixpath.normpath(entry[3:]))
+        if entry[0] in "RC" or entry[1] in "RC":  # `-z` puts the origin of a rename in the next entry
+            if i < len(entries) and entries[i]:
+                paths.add(posixpath.normpath(entries[i]))
+            i += 1
+    return paths
+
+
+def main():
+    doctor = f"python3 {os.path.join(HERE, 'doctor.py')}"
+    warns, blocks = [], []
+
+    event = read_event()
+    if event is None:  # without stop_hook_active it could loop, so it only warns
+        print(json.dumps({"systemMessage": f"antes-de-parar.py could not read the hook JSON on stdin, so it checked "
+                                           f"nothing; Claude may stop. Diagnose the setup with: {doctor}"}))
+        return 0
+    if event.get("stop_hook_active") is True:
+        return 0  # Claude is already continuing because of a stop hook: let it stop, never loop
+
+    cfg = None
+    try:
+        cfg = config.load(config.find_root())
+    except config.ConfigError as exc:
+        warns.append(str(exc).strip().splitlines()[0] if str(exc).strip() else "no usable config")
+    if cfg is not None:
+        root = cfg["_root"]
+        log = posixpath.normpath(cfg["log"])
+        try:
+            found = unpushed(root)
+            if found:
+                branch, count, where = found
+                blocks.append(f"Branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). What is not "
+                              f"pushed does not exist for the next session; push it now: git push -u origin {branch}")
+        except GitError as exc:
+            warns.append(str(exc))
+        try:
+            paths = changed_paths(root)
+            if paths and log not in paths:
+                blocks.append(f"The working tree has {plural(len(paths), 'uncommitted change')} and the log ({log}) "
+                              f"is not among them. Update the log (what is done, what is left, the next step) and "
+                              f"commit it in the same commit as the work: git add {log} <files> && git commit")
+        except GitError as exc:
+            warns.append(str(exc))
+
+    answer = {}
+    if blocks:
+        answer.update(decision="block", reason="\n".join(blocks))
+    if warns:
+        answer["systemMessage"] = (f"antes-de-parar.py could not check everything ({'; '.join(warns)}); it is a "
+                                   f"reminder, so Claude may stop. Diagnose the setup with: {doctor}")
+    if answer:
+        print(json.dumps(answer))
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except Exception as exc:  # a reminder must never fail the turn: say what broke and let Claude stop
+        print(json.dumps({"systemMessage": f"antes-de-parar.py failed ({type(exc).__name__}: {exc}); Claude may stop. "
+                                           f"Diagnose the setup with: python3 {os.path.join(HERE, 'doctor.py')}"}))
+        sys.exit(0)
