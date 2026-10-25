@@ -61,6 +61,10 @@ la vez.
   pregunta por dónde iba. Tras un `/clear` o una compactación, `recuperar.py --estado` se lo recuerda.
 - Al cerrar la rama, `bitacora.py close-row <rama>` deja su fila como «fusionada, rama terminada» para que la rama
   protegida no herede un «Siguiente» viejo.
+- **Bitácora corta, con o sin `logRows`:** `bitacora.py check --strict` falla si una celda de la tabla de estado pasa de
+  800 caracteres o si «Hecho (5 últimas)» tiene más de 5 elementos, mal numerados o pegados en una línea (sin
+  `--strict` solo avisa con `WARNING:`). `bitacora.py done "texto"` añade el elemento `1.` con la fecha, renumera y
+  quita los que sobran, sin tocar el resto del archivo.
 
 ## Sesión local que no puede crear PRs
 

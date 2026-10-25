@@ -1317,6 +1317,15 @@ class CommitMsg(Base):
         self.assertIn("commit-msg:", r.stderr)
         self.assertIn("git add docs/log.md", r.stderr)
 
+    def test_size_and_done_warnings_are_shown_but_do_not_stop_the_commit(self):
+        text = self.log_text().replace("| **Updated**", "| **Notes** | " + "n" * 801 + " |\n| **Updated**")
+        text += "\n## Done (last 5)\n\n" + "".join(f"{i}. 2026-10-2{i} — x\n" for i in range(1, 7))
+        self.p.write("docs/log.md", text)
+        r = self.p.commit("log", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("WARNING: bitacora: a cell of the state table (\"Notes\") has 801 characters (limit 800)", r.stderr)
+        self.assertIn("WARNING: bitacora: the Done section has 6 items (limit 5)", r.stderr)
+
     def test_valid_log_passes(self):
         self.p.write("docs/log.md", self.log_text())
         self.assertEqual(self.p.commit("log", ok=False).returncode, 0)
