@@ -1,7 +1,7 @@
 # Catalog of post types
 
 Shared by `gw-media-content` (proposes up to 10) and `gw-media-content-now` (produces one). Research:
-[`docs/investigacion/redes-sociales.md`](../../docs/investigacion/redes-sociales.md): §2 topics, §3 formats, §4.1
+`docs/investigacion/redes-sociales.md` of the Galivelop-workflow repo: §2 topics, §3 formats, §4.1
 catalog, §4.2 rules, §5 per-network rules. Evidence marks follow the research: P primary source, S secondary, J
 judgement (validate with the project's own results).
 
