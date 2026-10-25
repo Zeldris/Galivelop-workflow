@@ -163,6 +163,17 @@ class Aplicar(unittest.TestCase):
         out = self.applied()
         self.assertIn("WARNING: .claude/settings.json SessionStart also runs 'bash .claude/hooks/session-start.sh'", out)
 
+    def test_older_stop_hook_in_settings_is_listed(self):
+        p = self.p
+        self.applied()
+        settings = json.loads(p.read(".claude/settings.json"))
+        settings["hooks"]["Stop"].append(
+            {"hooks": [{"type": "command", "command": "python3 .claude/hooks/antes-de-parar.py"}]})
+        p.write(".claude/settings.json", json.dumps(settings))
+        p.write(".claude/hooks/antes-de-parar.py", f"#!/usr/bin/env python3\n# galivelop-workflow v{VERSION}\n")
+        out = self.applied()
+        self.assertIn("WARNING: .claude/settings.json Stop also runs 'python3 .claude/hooks/antes-de-parar.py'", out)
+
     def test_project_own_script_with_a_flow_name_is_not_listed(self):
         p = self.p
         self.applied()
@@ -233,10 +244,11 @@ class Aplicar(unittest.TestCase):
         s = json.loads(p.read(".claude/settings.json"))
         self.assertEqual(s["model"], "opus")
         self.assertEqual(s["env"], {"MY_VAR": "1", "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "100000"})
-        self.assertEqual(s["hooks"]["Stop"], mine["hooks"]["Stop"])
+        self.assertEqual(s["hooks"]["Stop"][0]["hooks"][0], mine["hooks"]["Stop"][0]["hooks"][0])  # theirs first
         self.assertEqual(s["hooks"]["SessionStart"][0], mine["hooks"]["SessionStart"][0])
-        commands = [h["command"] for e in s["hooks"]["SessionStart"] + s["hooks"]["PreToolUse"] for h in e["hooks"]]
-        for script in ("session-start.sh", "recuperar.py --estado", "revision-antes-de-main.sh"):
+        commands = [h["command"] for e in s["hooks"]["SessionStart"] + s["hooks"]["PreToolUse"] + s["hooks"]["Stop"]
+                    for h in e["hooks"]]
+        for script in ("session-start.sh", "recuperar.py --estado", "revision-antes-de-main.sh", "antes-de-parar.py"):
             self.assertEqual(sum(script in c for c in commands), 1, commands)
         self.assertTrue(p.read(".claude/settings.json").endswith("}\n"))
         before = p.read(".claude/settings.json")

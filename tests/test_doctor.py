@@ -28,7 +28,8 @@ class Doctor(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="gw-doctor-")).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, True)
         p = self.p = SessionProject(self.tmp)
-        shutil.copy2(ROOT / "scripts" / "revision-antes-de-main.sh", p.scripts / "revision-antes-de-main.sh")
+        for name in ("revision-antes-de-main.sh", "antes-de-parar.py"):
+            shutil.copy2(ROOT / "scripts" / name, p.scripts / name)
         shutil.copy2(ROOT / "templates" / "claude" / "settings.json", p.work / ".claude" / "settings.json")
         shutil.copy2(ROOT / "templates" / "githooks" / "commit-msg", p.work / ".githooks" / "commit-msg")
         p.write(".github/workflows/check.yml", "name: check\njobs:\n  c:\n    steps:\n      - run: bash check.sh\n")
@@ -92,6 +93,17 @@ class Doctor(unittest.TestCase):
         code, out = self.doctor()
         self.assertEqual(code, 1, out)
         self.assertLine(out, "FAIL", "PreToolUse", "revision-antes-de-main.sh")
+
+    def test_older_stop_hook_runs_twice(self):
+        s = self.settings()
+        s["hooks"]["Stop"].append({"hooks": [{"type": "command", "command": "python3 .claude/hooks/antes-de-parar.py"}]})
+        self.save_settings(s)
+        (self.p.work / ".claude" / "hooks").mkdir()
+        (self.p.work / ".claude" / "hooks" / "antes-de-parar.py").write_text(
+            f"#!/usr/bin/env python3\n# galivelop-workflow v{VERSION}\n")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "settings Stop", "outside .claude/gw/scripts/", "delete that entry")
 
     def test_wrong_hook_version(self):
         hook = self.p.work / ".githooks" / "pre-push"
@@ -406,8 +418,8 @@ class TemplatesAgree(unittest.TestCase):
         project = project["hooks"]
         self.assertEqual(sorted(plugin), sorted(project))
         for event in plugin:
-            mine = [(e["matcher"], [h["command"].rsplit("/", 1)[-1] for h in e["hooks"]]) for e in plugin[event]]
-            theirs = [(e["matcher"], [h["command"].rsplit("/", 1)[-1] for h in e["hooks"]]) for e in project[event]]
+            mine = [(e.get("matcher"), [h["command"].rsplit("/", 1)[-1] for h in e["hooks"]]) for e in plugin[event]]
+            theirs = [(e.get("matcher"), [h["command"].rsplit("/", 1)[-1] for h in e["hooks"]]) for e in project[event]]
             self.assertEqual(mine, theirs, event)
 
 

@@ -251,7 +251,7 @@ how code already reaches it today.
   `aplicar.py` does not delete them, it lists them as "no longer in the workflow (kept)". Move them to a folder of the
   project (e.g. `tools/scout/`) or `git rm` them if nothing uses them; do not leave them inside `.claude/skills/`.
 - **Old hooks in `.claude/settings.json`.** `aplicar.py` merges the new ones without removing anything, and warns
-  ("also runs '…'") about a `SessionStart` or `PreToolUse` entry that runs a workflow script from outside
+  ("also runs '…'") about a `SessionStart`, `PreToolUse` or `Stop` entry that runs a workflow script from outside
   `.claude/gw/scripts/`; so does `doctor.py`. Delete it by hand, or it runs twice.
 - **`recuperar.py` on the command line**, to get back what a compaction or a `/clear` dropped:
   `python3 .claude/gw/scripts/recuperar.py --estado` (the log, `git status` and the last commits) and

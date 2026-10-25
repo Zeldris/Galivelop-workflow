@@ -43,6 +43,8 @@ la vez.
   (p. ej. añadir tu rama a «Ramas de trabajo»), `BITACORA_COMPARTIDA=1 git push`.
 - **Merge, nunca rebase**, al empezar cada tarea (`git fetch origin <protegida>` y `git merge origin/<protegida>`):
   las ramas están subidas. Lo suyo vuelve a la rama principal por `git merge` antes del PR.
+- **Al parar**, el gancho `Stop` (`antes-de-parar.py`) no deja acabar con commits sin subir ni con cambios sin la
+  bitácora; si no puede comprobarlo (sin git, sin config), avisa en vez de bloquear.
 - **Al empezar**, la sesión nueva lee la bitácora y comprueba que el último commit coincide con lo que dice; no
   pregunta por dónde iba. Tras un `/clear` o una compactación, `recuperar.py --estado` se lo recuerda.
 - Al cerrar la rama, `bitacora.py close-row <rama>` deja su fila como «fusionada, rama terminada» para que la rama
