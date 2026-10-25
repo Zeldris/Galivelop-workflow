@@ -25,6 +25,11 @@ class StopProject(Project):
         self.commit("script and log")
         self.git("push", "-q", "-u", "origin", "main")
 
+    def work_branch(self, name="claude/trabajo"):
+        """A pushed working branch: the protected branch (main here) is not where the work goes."""
+        self.git("checkout", "-q", "-b", name)
+        self.git("push", "-q", "-u", "origin", name)
+
     def stop(self, payload=None, stdin=None, cwd=None, script=None):
         """(exit code, stdout, stderr-and-stdout) of the hook; `payload` is the hook's JSON object."""
         text = json.dumps({"hook_event_name": "Stop", "stop_hook_active": False, **(payload or {})}) \
@@ -69,11 +74,34 @@ class Commits(Base):
 
     def test_unpushed_commit_blocks_with_the_push_command(self):
         p = self.p
+        p.work_branch()
         p.write("src/a.py", "x = 1\n"); p.commit("local only")
         code, out = p.stop()
         self.assertEqual(code, 0, out)
-        data = self.assertBlocks(out, "1 commit", "main", "git push -u origin main")
+        data = self.assertBlocks(out, "1 commit", "claude/trabajo", "git push -u origin claude/trabajo")
         self.assertNotIn(LOG, data["reason"], "a clean tree needs no log reminder")
+
+    def test_unpushed_commit_on_the_protected_branch_warns_without_telling_to_push(self):
+        p = self.p  # AGENTS.md: a push to the protected branch needs the user's confirmation and the three phases
+        p.write("src/a.py", "x = 1\n"); p.commit("local only")
+        code, out = p.stop()
+        self.assertLetsStop(code, out)
+        data = decision(self, out)
+        self.assertNotIn("decision", data, out)
+        message = data.get("systemMessage", "")
+        for needle in ("1 commit", "'main'", "protected branch", "not pushed", "confirmation", "three phases"):
+            self.assertIn(needle, message, out)
+        self.assertNotIn("git push", message, out)
+
+    def test_protected_branch_unpushed_and_dirty_blocks_only_for_the_log(self):
+        p = self.p
+        p.write("src/a.py", "x = 1\n"); p.commit("local only")
+        p.write("src/b.py", "y = 1\n")
+        code, out = p.stop()
+        self.assertEqual(code, 0, out)
+        data = self.assertBlocks(out, LOG)
+        self.assertNotIn("git push", data["reason"])
+        self.assertIn("confirmation", data["systemMessage"])
 
     def test_branch_without_upstream_blocks_with_the_push_command(self):
         p = self.p
@@ -163,18 +191,20 @@ class WorkingTree(Base):
 
     def test_unpushed_and_dirty_without_log_reports_both(self):
         p = self.p
+        p.work_branch()
         p.write("src/a.py", "x = 1\n"); p.commit("local only")
         p.write("src/b.py", "y = 1\n")
         code, out = p.stop()
         self.assertEqual(code, 0, out)
-        self.assertBlocks(out, "git push -u origin main", LOG)
+        self.assertBlocks(out, "git push -u origin claude/trabajo", LOG)
 
     def test_unpushed_with_the_log_modified_still_blocks_on_the_push(self):
         p = self.p
+        p.work_branch()
         p.write("src/a.py", "x = 1\n"); p.commit("local only")
         p.write(LOG, "log\nmore\n")
         code, out = p.stop()
-        data = self.assertBlocks(out, "git push -u origin main")
+        data = self.assertBlocks(out, "git push -u origin claude/trabajo")
         self.assertNotIn("git add", data["reason"])
 
     def test_gitignored_changes_do_not_count(self):

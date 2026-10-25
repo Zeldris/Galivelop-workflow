@@ -1238,6 +1238,29 @@ class CommitMsg(Base):
         self.p.write("docs/log.md", self.log_text())
         self.assertEqual(self.p.commit("log", ok=False).returncode, 0)
 
+    def test_a_log_configured_with_a_dot_slash_prefix_is_still_checked(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["log"] = "./docs/log.md"
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.git("add", ".claude/gw.json")
+        p.write("docs/log.md", self.log_text("2000-01-01"))
+        r = p.commit("log", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Updated", r.stderr)
+        self.assertIn("git add docs/log.md", r.stderr)
+
+    def test_a_log_configured_with_a_double_slash_is_still_checked(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["log"] = "docs//log.md"
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.git("add", ".claude/gw.json")
+        p.write("docs/log.md", self.log_text("2000-01-01"))
+        r = p.commit("log", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Updated", r.stderr)
+
     def test_checks_the_staged_version_not_the_working_tree(self):
         p = self.p
         p.write("docs/log.md", self.log_text("2000-01-01"))

@@ -24,6 +24,9 @@ python3 "$config" --root "$root" validate >/dev/null || {
   echo "commit-msg: cannot read .claude/gw.json; fix it: python3 $config --root $root validate" >&2; exit 1; }
 log="$(python3 "$config" --root "$root" get log 2>/dev/null)" || log=""
 [ -n "$log" ] || exit 0
+# `git diff --name-only` prints normalised paths: compare with the log as antes-de-parar.py does (./docs/x.md, a//b).
+log="$(python3 -c 'import posixpath, sys; print(posixpath.normpath(sys.argv[1]))' "$log")" || {
+  echo "commit-msg: cannot normalise the log path '$log'; check python3: python3 --version" >&2; exit 1; }
 
 for head in MERGE_HEAD REVERT_HEAD CHERRY_PICK_HEAD; do
   [ -e "$(git rev-parse --git-path "$head")" ] && exit 0

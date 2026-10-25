@@ -195,6 +195,112 @@ class BashWrites(Base):
         'ls',
     ]
 
+    def assertEachAsks(self, commands, named=None):
+        for command in commands:
+            with self.subTest(command=command):
+                reason = self.assertAsks(self.p.tool("Bash", command=command), "this command writes to",
+                                         "only with the user's OK")
+                if named:
+                    self.assertIn(f"writes to {named}:", reason)
+
+    def assertEachAllowed(self, commands):
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertAllowed(self.p.tool("Bash", command=command))
+
+    def test_a_writer_whose_destination_is_an_ancestor_folder_asks(self):
+        self.assertEachAsks([
+            'cp templates/claude/settings.json .claude/',
+            'cp -r templates/claude/. .claude',
+            'cp -r /tmp/x ./.claude/gw/',
+            'install -m 644 /tmp/x .claude/',
+            'rsync -a /tmp/x/ .claude/gw',
+            'ln -sf /tmp/x .claude/',
+            'cp -t .claude /tmp/x',
+            'cp --target-directory=.claude /tmp/x',
+            'cp /tmp/x "$CLAUDE_PROJECT_DIR/.claude"',
+            'sudo cp /tmp/x .claude/',
+            'cd src; cp /tmp/x ../.claude/',
+            'cd .claude && cp /tmp/x .',
+        ])
+
+    def test_an_ancestor_folder_as_the_source_of_a_copy_is_allowed(self):
+        self.assertEachAllowed([
+            'cp -r .claude /tmp/backup',
+            'cp -r .claude/ /tmp/backup/',
+            'rsync -a .claude/gw /tmp/backup',
+            'cp /tmp/a.txt .',
+            'cp -r /tmp/x/. src',
+            'cp -r .claude .claude-backup',
+        ])
+
+    def test_a_whole_tree_git_restore_asks(self):
+        self.assertEachAsks([
+            'git checkout -- .',
+            'git checkout .',
+            'git restore .',
+            'git restore --source=HEAD~1 --worktree .',
+            'git checkout main -- .',
+            'git checkout -- .claude',
+            'git restore .claude/',
+            'git -C . checkout -- .',
+            'cd .claude && git checkout -- .',
+        ])
+
+    def test_git_commands_that_do_not_cover_a_protected_file_are_allowed(self):
+        self.assertEachAllowed([
+            'git checkout main',
+            'git checkout -b feature',
+            'git switch feature',
+            'git restore src/a.py',
+            'git checkout -- src',
+            'git -C . restore src/a.py',
+            'git -C . status',
+            'cd src && git checkout -- .',
+            'git status',
+            'git add .',
+            'git diff .',
+            'git log -- .',
+        ])
+
+    def test_option_values_of_wrappers_are_skipped(self):
+        self.assertEachAsks([
+            'sudo -u me rm .claude/gw.json',
+            'sudo -Eu me rm .githooks/pre-push',
+            'sudo --user me rm .githooks/pre-push',
+            'sudo -u me nice -n 5 rm .claude/gw.json',
+            'env -u VAR rm .claude/gw.json',
+            'env -i FOO=1 rm .githooks/pre-push',
+            'nice -n 5 tee .claude/gw.json',
+            'nice -5 tee .claude/gw.json',
+            'time -p rm .githooks/pre-push',
+            'timeout 5 rm .githooks/pre-push',
+            'timeout -s KILL 5 rm .githooks/pre-push',
+            'stdbuf -o0 tee .claude/gw.json',
+            'doas -u me rm .githooks/pre-push',
+            'xargs -I{} cp {} .githooks/pre-push',
+            'xargs -I {} cp {} .githooks/pre-push',
+            'xargs -n 1 -P 4 cp /tmp/x .githooks/pre-push',
+            'echo x | xargs -0 rm .githooks/pre-push',
+            'sudo -u me bash -c "rm .githooks/pre-push"',
+        ])
+
+    def test_reads_behind_wrappers_with_option_values_are_allowed(self):
+        self.assertEachAllowed([
+            'sudo -u me cat .claude/gw.json',
+            'env -u VAR cat .claude/settings.json',
+            'nice -n 5 grep x .githooks/pre-push',
+            'timeout 5 cat .claude/gw.json',
+            'xargs -I{} echo {} .githooks/pre-push',
+            'sudo -u me cp /tmp/x src/a.py',
+        ])
+
+    def test_a_redirection_before_the_command_asks(self):
+        self.assertEachAsks(['> .claude/gw.json echo x', '>> .githooks/pre-push echo x', '2>/dev/null > .claude/gw.json'])
+
+    def test_a_redirection_to_another_file_before_the_command_is_allowed(self):
+        self.assertEachAllowed(['> /tmp/out cat .claude/gw.json', '2>&1 cat .claude/gw.json'])
+
     def test_writes_ask_naming_the_file(self):
         for command in self.WRITES:
             with self.subTest(command=command):

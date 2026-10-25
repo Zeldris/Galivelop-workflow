@@ -6,7 +6,11 @@
 agent remembered it. It blocks the stop when:
 
   a. the current branch has commits its upstream does not (`git rev-list @{u}..HEAD`); with no upstream, commits no
-     remote branch has (`git rev-list HEAD --not --remotes`). The reason names `git push -u origin <branch>`;
+     remote branch has (`git rev-list HEAD --not --remotes`). The reason names `git push -u origin <branch>`. On the
+     protected branch (`protectedBranch`) it does not: AGENTS.md says a push there needs the user's confirmation and
+     the three phases, so Claude cannot fix it alone and a block would only make it push without asking. There it is a
+     warning to the user (`systemMessage`: the commits are not pushed, and pushing needs their confirmation), never
+     a block;
   b. the working tree has changes (`git status`, untracked files included) and the log (`log` in .claude/gw.json) is
      not among them. The reason says to commit the log, updated, in the same commit as the work.
 
@@ -117,7 +121,7 @@ def changed_paths(root):
 
 def main():
     doctor = f"python3 {os.path.join(HERE, 'doctor.py')}"
-    warns, blocks = [], []
+    warns, blocks, notes = [], [], []
 
     event = read_event()
     if event is None:  # without stop_hook_active it could loop, so it only warns
@@ -139,8 +143,15 @@ def main():
             found = unpushed(root)
             if found:
                 branch, count, where = found
-                blocks.append(f"Branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). What is not "
-                              f"pushed does not exist for the next session; push it now: git push -u origin {branch}")
+                if branch == cfg["protectedBranch"]:
+                    notes.append(f"Branch '{branch}' is the protected branch and has {plural(count, 'commit')} not "
+                                 f"pushed ({where}). They are not pushed: pushing to it needs the user's "
+                                 f"confirmation and the three phases of the workflow (code review, environment, "
+                                 f"close), so Claude has not pushed them.")
+                else:
+                    blocks.append(f"Branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). What is not "
+                                  f"pushed does not exist for the next session; push it now: git push -u origin "
+                                  f"{branch}")
         except GitError as exc:
             warns.append(str(exc))
         try:
@@ -155,9 +166,12 @@ def main():
     answer = {}
     if blocks:
         answer.update(decision="block", reason="\n".join(blocks))
+    messages = list(notes)
     if warns:
-        answer["systemMessage"] = (f"antes-de-parar.py could not check everything ({'; '.join(warns)}); it is a "
-                                   f"reminder, so Claude may stop. Diagnose the setup with: {doctor}")
+        messages.append(f"antes-de-parar.py could not check everything ({'; '.join(warns)}); it is a reminder, so "
+                        f"Claude may stop. Diagnose the setup with: {doctor}")
+    if messages:
+        answer["systemMessage"] = " ".join(messages)
     if answer:
         print(json.dumps(answer))
     return 0

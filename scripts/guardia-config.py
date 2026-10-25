@@ -23,8 +23,15 @@ What it looks at, in the event on stdin (`tool_name`, `tool_input`, `cwd`):
                               `bash -c '...'` and `eval` recursively). It asks when a command names a protected path AND
                               writes to it: a redirection (`>`, `>>`, `>|`) to it, `tee`, `sed -i`, `perl -i`, `cp`,
                               `mv`, `rm`, `install`, `ln`, `chmod`, `chown`, `truncate`, `touch`, `dd`, `rsync`,
-                              `find -delete`, `git checkout|restore|rm|mv|clean`. A plain read (`cat`, `grep`, `git
-                              diff`, `python3 .claude/gw/scripts/x.py`) is allowed. Not seen, on purpose (a hook cannot
+                              `find -delete`, `git checkout|restore|rm|mv|clean`. A folder that holds protected files
+                              (`.claude`, `.claude/gw`) counts when `rm`/`mv`/`unlink`/`shred`/`rmdir` name it, when
+                              it is the destination of `cp`/`mv`/`install`/`ln`/`rsync` (the last argument, or `-t`),
+                              and when a `git` write names it; so does `.` (the whole project) for `git checkout -- .`
+                              and `git restore .`, which overwrite every protected file with the committed one.
+                              Wrappers are looked through with their options and the values of those
+                              (`sudo -u me`, `env -u X`, `nice -n 5`, `timeout -s KILL 5`, `xargs -I{}`), and a
+                              redirection before the command (`> f cmd`). A plain read (`cat`, `grep`, `git
+                              diff`, `cp .claude /tmp/backup`, `python3 .claude/gw/scripts/x.py`) is allowed. Not seen, on purpose (a hook cannot
                               parse a shell): a path built at run time, and code that opens the file inside
                               `python3 -c`. A `cd` to a literal folder is followed; `rm -r .claude` counts.
 
@@ -53,10 +60,25 @@ ANCESTORS = (".claude", ".claude/gw")  # removing or moving one takes protected 
 WRITERS = {"tee", "cp", "mv", "rm", "install", "ln", "chmod", "chown", "chgrp", "truncate", "touch", "dd", "rsync",
            "unlink", "shred", "rmdir", "patch"}
 DESTRUCTIVE = {"rm", "mv", "unlink", "shred", "rmdir"}  # these also count when they name an ancestor folder
+COPIERS = {"cp", "mv", "install", "ln", "rsync"}  # these also count when their destination is an ancestor folder
 IN_PLACE = {"sed", "gsed", "perl", "ruby"}
 GIT_WRITES = {"checkout", "restore", "rm", "mv", "clean"}
 SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
-WRAPPERS = {"sudo", "doas", "env", "command", "exec", "time", "nohup", "nice", "xargs", "builtin"}
+# Commands that run another one, and the options of each that take a value in the next word (`sudo -u me`, `env -u X`,
+# `nice -n 5`, `timeout -s KILL 5`): the same list as PREFIX_OPTIONS in revision-antes-de-main.sh, plus `doas`.
+WRAPPER_OPTIONS = {
+    "env": {"-u", "--unset", "-C", "--chdir", "-S", "--split-string"},
+    "nice": {"-n", "--adjustment"},
+    "time": {"-f", "--format", "-o", "--output"},
+    "timeout": {"-s", "--signal", "-k", "--kill-after"},
+    "stdbuf": {"-i", "--input", "-o", "--output", "-e", "--error"},
+    "sudo": {"-u", "--user", "-g", "--group", "-h", "--host", "-p", "--prompt", "-C", "-D", "--chdir", "-R", "-r",
+             "-t", "-T", "-U"},
+    "doas": {"-u", "-C"},
+    "exec": {"-a"}, "command": set(), "nohup": set(), "builtin": set(),
+}
+XARGS_VALUE = {"-I", "-L", "-n", "-P", "-s", "-d", "-E", "-a", "--delimiter", "--max-args", "--max-procs",
+               "--arg-file", "--replace", "--max-lines", "--eof", "--max-chars"}
 RULE = ("these files change only with the user's OK (the workflow's rule). If the user approves, go ahead; to "
         "regenerate the applied copy from the workflow, run: python3 scripts/aplicar.py . (in a project, /gw-update)")
 
@@ -87,7 +109,7 @@ def ask(reason):
 
 
 def classify(token, base, root):
-    """The project-relative, normalised path `token` names and its kind: ('protected' | 'ancestor' | None). `base`
+    """The project-relative, normalised path `token` names and its kind: ('protected' | 'ancestor' | 'root' | None). `base`
     is the folder relative paths are read from; `root` the real project root."""
     if not token or token.startswith("~"):
         return None, None
@@ -105,6 +127,8 @@ def classify(token, base, root):
         return rel, "protected"
     if low in ANCESTORS:
         return rel, "ancestor"
+    if rel == ".":
+        return rel, "root"  # the project folder itself: only a pathspec that covers every protected file cares
     return rel, None
 
 
@@ -142,23 +166,66 @@ def segments(words):
     return out
 
 
+def is_redirect_operator(word):
+    """`>`, `>>`, `>&`, `>|`, `<`, `&>`: a redirection whose target is the next word."""
+    return is_redirect(word) and bool(re.fullmatch(r"[0-9]*(&>>?|[<>]+[&|]?)", word))
+
+
+def fd_before_redirect(words, i):
+    """True for the `2` of `2>file`: the file descriptor the shell reads as part of the redirection."""
+    return words[i].isdigit() and i + 1 < len(words) and is_redirect(words[i + 1])
+
+
+def skip_options(words, i, takes_value):
+    """The index after the options at words[i:] (`takes_value` says which ones also consume the next word)."""
+    while i < len(words) and words[i].startswith("-") and words[i] != "-":
+        opt = words[i]
+        # `-u X`, and combined short flags whose last letter takes the value (`sudo -Eu root`)
+        takes = opt in takes_value or (len(opt) > 2 and opt[1] != "-" and "-" + opt[-1] in takes_value)
+        i += 2 if takes else 1
+        if opt == "--":
+            break
+    return i
+
+
 def command_word(words):
-    """(index, word) of the command a simple command runs: after variable assignments, wrappers (`sudo`, `env`, ...)
-    and the options that follow them."""
-    skipping = False
-    for i, w in enumerate(words):
+    """(index, word) of the command a simple command runs: after redirections, variable assignments, wrappers
+    (`sudo`, `env`, `timeout`, `xargs`, ...) and the options of each, values included."""
+    i = 0
+    while i < len(words):
+        w = words[i]
         if is_redirect(w):
+            i += 2 if is_redirect_operator(w) else 1  # `> file cmd`: the file is not the command
             continue
-        if re.match(r"[A-Za-z_][A-Za-z0-9_]*=", w):
-            continue
-        if skipping and w.startswith("-"):
+        if fd_before_redirect(words, i) or re.match(r"[A-Za-z_][A-Za-z0-9_]*=", w):
+            i += 1
             continue
         name = os.path.basename(w)
-        if name in WRAPPERS:
-            skipping = True
-            continue
-        return i, name
+        if name == "xargs":
+            i = skip_options(words, i + 1, XARGS_VALUE)
+        elif name in WRAPPER_OPTIONS:
+            i = skip_options(words, i + 1, WRAPPER_OPTIONS[name])
+            if name == "timeout" and i < len(words):
+                i += 1  # the duration
+        else:
+            return i, name
     return None, None
+
+
+def destination(seg, i):
+    """Index of the word a copier (`cp`, `mv`, `install`, `ln`, `rsync`) writes into: the `-t`/`--target-directory`
+    value, else the last word that is not an option or a redirection. None when there is no clear one."""
+    last = None
+    for j in range(i + 1, len(seg)):
+        w = seg[j]
+        if w in ("-t", "--target-directory") and j + 1 < len(seg):
+            return j + 1
+        if w.startswith("--target-directory="):
+            return -j - 1  # the value is inside the word itself (see bash_hits)
+        if w.startswith("-") or is_redirect(w) or fd_before_redirect(seg, j) or is_redirect_operator(seg[j - 1]):
+            continue
+        last = j
+    return last
 
 
 def in_place_flag(words):
@@ -181,14 +248,20 @@ def bash_hits(command, base, root, depth=0):
             for j, w in enumerate(seg):
                 if j > (i or 0) and (cmd == "eval" or seg[j - 1] == "-c" or re.match(r"-[a-z]*c$", seg[j - 1])):
                     hits += bash_hits(w, base, root, depth + 1)
-        writes = False
+        dest = destination(seg, i) if cmd in COPIERS and i is not None else None
+        if dest is not None and dest < 0:  # `--target-directory=X`
+            rel, kind = classify(seg[-dest - 1].split("=", 1)[1], base, root)
+            dest = None
+            if kind in ("protected", "ancestor"):
+                hits.append(rel)
+        writes = git_write = False
         if cmd in WRITERS:
             writes = True
         elif cmd in IN_PLACE and in_place_flag(args):
             writes = True
         elif cmd == "git":
             sub = next((w for k, w in enumerate(args) if not w.startswith("-") and (k == 0 or args[k - 1] not in ("-C", "-c"))), "")
-            writes = sub in GIT_WRITES
+            writes = git_write = sub in GIT_WRITES
         elif cmd == "find":
             writes = "-delete" in args
         for j, w in enumerate(seg):
@@ -200,7 +273,9 @@ def bash_hits(command, base, root, depth=0):
             redirected = j > 0 and ">" in seg[j - 1]  # `>`, `>>`, `>|`, `&>`: the word after it is written
             if kind == "protected" and (redirected or writes):
                 hits.append(rel)
-            elif kind == "ancestor" and (redirected or cmd in DESTRUCTIVE):
+            elif kind == "ancestor" and (redirected or cmd in DESTRUCTIVE or j == dest or git_write):
+                hits.append(rel)
+            elif kind == "root" and git_write and seg[j - 1] not in ("-C", "-c"):  # `git checkout -- .`, `git restore .`: the pathspec covers it all
                 hits.append(rel)
     return hits
 
