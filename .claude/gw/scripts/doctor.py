@@ -41,13 +41,15 @@ SOURCES = re.compile(r"galivelop|workflow|mattpocock", re.I)
 PROPOSAL = ".gw-nuevo"  # aplicar.py's proposals for files with local edits
 FLOW_HOOK_SCRIPTS = ("session-start.sh", "recuperar.py", "revision-antes-de-main.sh")  # the settings template's
 # Zero-width, bidi and BOM characters, written as escapes so the fix command can embed them. A zero width joiner (U+200D)
-# is fine inside an emoji sequence (family, profession and flag emoji): both neighbours non-ASCII and not themselves
-# invisible; next to ASCII, a line edge or another invisible character it is flagged like the rest.
-INVISIBLE_SET = r"\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff"  # every invisible character, U+200D included
+# is fine only inside an emoji sequence (family, profession, flag, heart): after an emoji, a variation selector or a
+# skin tone, and before an emoji. Between letters, accents or punctuation (`и‍г`, `é‍ñ`), next to ASCII, a line edge
+# or another invisible character it is flagged like the rest, since it can hide a split inside a word.
 ALWAYS_INVISIBLE = r"\u200b\u200c\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff"  # flagged wherever they are
+EMOJI = r"\U0001f000-\U0001faff\u2600-\u27bf\u2b00-\u2bff"  # symbols and pictographs, dingbats, arrows and stars
+BEFORE_JOINER = rf"{EMOJI}\ufe0f\U0001f3fb-\U0001f3ff"  # an emoji, its variation selector or a skin tone
 INVISIBLE_PATTERN = (rf"[{ALWAYS_INVISIBLE}]"
-                     rf"|(?:(?<![^\x00-\x7f])|(?<=[{INVISIBLE_SET}]))\u200d"
-                     rf"|\u200d(?:(?![^\x00-\x7f])|(?=[{INVISIBLE_SET}]))")
+                     rf"|(?<![{BEFORE_JOINER}])\u200d"
+                     rf"|\u200d(?![{EMOJI}])")
 INVISIBLE = re.compile(INVISIBLE_PATTERN)
 WARN_LINES, FAIL_LINES = 150, 250  # AGENTS.md / CLAUDE.md: every session loads them whole
 SKILL_LICENSE = "LICENSE-mattpocock-skills"  # aplicar.py copies it next to the skills that cite it

@@ -140,18 +140,51 @@ def segments(command):
     return out
 
 
+COMMENT_START = re.compile(r"(?:^|[\s;&|()])#")
+
+
+def join_lines(command, glue, comments_end_lines):
+    """The command with its line continuations joined by glue. A newline continues the line only after an odd run of
+    backslashes (`\\\\<newline>` is a literal backslash and the newline ends the command); with comments_end_lines, also
+    only when the line has no comment (a comment ends at the newline, a backslash in it continues nothing)."""
+    lines = command.split("\n")
+    out = []
+    for n, line in enumerate(lines):
+        body = line[:-1] if line.endswith("\r") and n < len(lines) - 1 else line
+        run = len(body) - len(body.rstrip("\\"))
+        if n < len(lines) - 1 and run % 2 == 1:
+            if comments_end_lines and COMMENT_START.search(body):
+                out.append(body[:-1] + "\n")  # inert in a comment; dropped so shlex does not glue the newline to a word
+            else:
+                out.append(body[:-1] + glue)
+        else:
+            out.append(line + ("\n" if n < len(lines) - 1 else ""))
+    return "".join(out)
+
+
 def from_bash(command, depth=0):
     if depth > 5:
         block("the command nests shells too deeply to check.", "run the gh command directly and retry")
-    # A backslash-newline continuation: shlex would glue the newline to the next word (`gh \<nl>pr` -> `\npr`). Bash
-    # joins the lines (`pulls/7/\<nl>merge` is `pulls/7/merge`, `gh\<nl>pr` is `ghpr`); both readings are judged, the
-    # joined one as bash runs it and the one with a space, which can only judge more.
-    actions = []
-    for glue in (" ", ""):
-        text = command.replace("\\\r\n", glue).replace("\\\n", glue)
-        if glue == "" and text == command.replace("\\\r\n", " ").replace("\\\n", " "):
-            break
-        actions += from_text(text, depth)
+    # Bash joins a backslash-newline continuation (`pulls/7/\\<nl>merge` is `pulls/7/merge`, `gh\\<nl>pr` is `ghpr`),
+    # but not after an escaped backslash, and a comment ends at the newline. The reader cannot tell quoting from that
+    # apart, so the union of readings is judged: the text as it is, the continuations joined (glued, or with a space,
+    # with and without comments ending their line) and every physical line alone. Each action once.
+    readings = {command: None}
+    for glue in ("", " "):
+        for comments in (False, True):
+            readings[join_lines(command, glue, comments)] = None
+    for line in command.split("\n"):
+        run = len(line) - len(line.rstrip("\\"))
+        line = line[:-1] if run % 2 == 1 else line  # a lone trailing backslash is a continuation, not an error
+        if line.strip():
+            readings[line] = None
+    actions, seen = [], set()
+    for text in readings:
+        for action in from_text(text, depth):
+            key = json.dumps(action, sort_keys=True, default=str)
+            if key not in seen:
+                seen.add(key)
+                actions.append(action)
     return actions
 
 

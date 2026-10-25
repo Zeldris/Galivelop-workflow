@@ -32,6 +32,7 @@ case "$2" in
     [ -z "${GH_PROBE_LOG:-}" ] || echo "$2" >> "$GH_PROBE_LOG"
     echo '{"full_name":"x"}'; exit 0 ;;
 esac
+[ -z "${GH_CALL_LOG:-}" ] || echo "$2" >> "$GH_CALL_LOG"
 if [ -n "${GH_FAIL:-}" ]; then echo "gh: HTTP 502: Bad Gateway (fake)" >&2; exit 1; fi
 case "$2" in
   *check-runs*) printf '%s' "$GH_RUNS" ;;
@@ -322,6 +323,27 @@ class Hook(unittest.TestCase):
                 self.assertBlocked(self.bash(command), "no review mark")
         self.assertAllowed(self.bash("gh\tpr\tcreate\t--base\tdevelop"))
         self.assertAllowed(self.bash("gh\tpr\tview\t7"))
+
+    def test_escaped_backslash_before_a_newline_does_not_continue_the_line(self):
+        # In bash `\\<newline>` is a literal backslash and the newline ends the command: the next line runs on its own.
+        for command in ("echo x \\\\\ngh pr merge 7 -R o/r", "x=\\\\\ngh pr merge 1 -R o/r", "echo x \\\\\\\\\ngh pr merge 7 -R o/r"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), "no review mark")
+        self.assertAllowed(self.bash("echo x \\\\\ngh pr view 7 -R o/r"))
+
+    def test_a_newline_always_ends_a_comment(self):
+        # `# x\\<newline>` does not continue the comment in bash: the next line is a command.
+        for command in ("true # x\\\ngh pr merge 7 -R o/r", "true # x\\\ngh pr \\\nmerge 7 -R o/r"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), "no review mark")
+
+    def test_a_repeated_reading_judges_each_action_once(self):
+        # `gh pr merge 7 \\<newline>x` is read joined and with a space: same action, one set of API calls.
+        self.mark(); self.push()
+        log = self.tmp / "gh-calls.log"
+        self.assertAllowed(self.bash("gh pr merge 7 -R o/r \\\nx", pr=self.pr(), env={"GH_CALL_LOG": str(log)}))
+        calls = log.read_text().splitlines()
+        self.assertEqual(len(calls), len(set(calls)), f"repeated API calls: {calls}")
 
     def test_gh_pr_merge_through_xargs_guarded(self):
         code, out = self.bash("echo 7 | xargs gh pr merge", pr=self.pr())

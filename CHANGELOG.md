@@ -52,9 +52,12 @@ here.
 - `revision-antes-de-main.sh` juzga `gh pr merge|create` escrito con tabuladores o con continuaciones de línea
   (`gh<TAB>pr<TAB>merge`, `gh \<salto>pr merge`): el filtro previo, que lee el JSON en bruto, solo aceptaba `\t`/`\n`
   como separador antes de `gh`, y el juez de Python pegaba el salto a la palabra siguiente. Los dos lo tratan ya como
-  separador (en Python se juzgan la lectura de bash, con la continuación unida, y la que la cambia por un espacio).
-- `doctor.py` ya no da `FAIL` por un U+200D dentro de un emoji compuesto (👩‍💻); sigue marcándolo junto a ASCII, al borde
-  de una línea o de otro carácter invisible, y la orden que los quita respeta los emojis.
+  separador (en Python se juzga la unión de lecturas: el texto tal cual, las continuaciones unidas pegadas o con un espacio, y cada
+  línea sola; una barra escapada `\\` antes del salto no continúa la línea y un comentario acaba en el salto; cada acción
+  se juzga una vez).
+- `doctor.py` ya no da `FAIL` por un U+200D dentro de un emoji compuesto (👩‍💻); solo lo admite entre emojis (no entre letras ni
+  acentos, donde esconde cortes de palabra); sigue marcándolo junto a ASCII, al borde de una línea o de otro
+  carácter invisible, y la orden que los quita respeta los emojis.
 
 ### EN
 
@@ -98,9 +101,11 @@ here.
 - `revision-antes-de-main.sh` judges `gh pr merge|create` written with tabs or line continuations
   (`gh<TAB>pr<TAB>merge`, `gh \<newline>pr merge`): the pre-filter, which reads the raw JSON, only accepted `\t`/`\n` as a
   separator before `gh`, and the Python judge glued the newline to the next word. Both now treat them as separators
-  (Python judges bash's reading, continuation joined, and the one that turns it into a space).
-- `doctor.py` no longer reports `FAIL` for a U+200D inside a compound emoji (👩‍💻); it still flags it next to ASCII, at a
-  line edge or beside another invisible character, and the command that removes them keeps the emojis.
+  (Python judges the union of readings: the text as is, continuations joined glued or with a space, and each line on its
+  own; an escaped backslash `\\` before the newline does not continue the line and a comment ends at the newline; each
+  action is judged once).
+- `doctor.py` no longer reports `FAIL` for a U+200D inside a compound emoji (👩‍💻); it only allows it between emojis (not between letters or
+  accents, where it hides word splits) and still flags it next to ASCII, at a line edge or beside another invisible character, and the command that removes them keeps the emojis.
 
 ## [0.3.0] - 2026-10-23
 
