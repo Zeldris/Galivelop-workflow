@@ -14,9 +14,10 @@ subagents (VeriNews P1); copied skills at the config's version; a session opened
 in a cloud session (CLAUDE_CODE_REMOTE=true), the compaction window the project's settings.json sets is in the
 environment; a skill script under .claude/skills/*/scripts/ without a test_<name>.py next to it (WMF 2026-10-25 P2); and,
 only in a project that uses gw-media-content (its note .claude/gw/gw-media-content.md or its folder exists), node,
-Playwright and ImageMagick with WebP (WMF 2026-10-25 P1). The compaction check, the session one and the media tools one
-read the machine running doctor, not only the project, so their lines can differ between a person's machine, CI and a
-cloud session.
+Playwright and ImageMagick with WebP (WMF 2026-10-25 P1); and, when `origin` is on GitHub, a way to read the CI state
+(`gh` logged in, or GITHUB_TOKEN/GH_TOKEN set). The compaction check, the session one, the media tools one and the CI
+access one read the machine running doctor, not only the project, so their lines can differ between a person's machine,
+CI and a cloud session.
 Python 3.8+ standard library only.
 """
 import argparse
@@ -639,6 +640,43 @@ def check_media_tools(rep, root):
         rep.ok("media tools", f"gw-media-content: {', '.join(found)} found")
 
 
+GITHUB_REMOTE = re.compile(r"^(?:https?://(?:[^/@]+@)?|ssh://(?:[^/@]+@)?|[^/@:]+@)github\.com[:/]", re.I)
+
+
+def github_remote(root):
+    """The `origin` URL when it points at github.com (https, ssh:// or git@github.com: form); else None."""
+    url = git(root, "remote", "get-url", "origin")
+    return url if url and GITHUB_REMOTE.match(url) else None
+
+
+def check_ci_access(rep, root):
+    """AGENTS.md asks to look at the CI of the last push when a block closes: with `origin` on GitHub, that needs `gh`
+    (logged in) or a token in the environment (P5 of docs/registros/retro-2026-10-25-antes-de-main-0-4-0.md). Never
+    prints a token. No remote, or a remote elsewhere: nothing to check."""
+    if github_remote(root) is None:
+        return
+    if os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN"):
+        rep.ok("ci access", "GITHUB_TOKEN/GH_TOKEN is set, so the CI state of origin can be read")
+        return
+    why = ("origin is on GitHub, but the agent cannot read the CI state of a push (AGENTS.md asks to look at it when "
+           "each block closes)")
+    if not shutil.which("gh"):
+        rep.warn("ci access", f"{why}: neither `gh` is on PATH nor GITHUB_TOKEN/GH_TOKEN is set",
+                 "install GitHub CLI and run `gh auth login`, or export GITHUB_TOKEN")
+        return
+    try:
+        # Only github.com: another configured host (an expired GHE login) must not fail it.
+        logged_in = subprocess.run(["gh", "auth", "status", "--hostname", "github.com"], capture_output=True,
+                                   text=True, timeout=10, cwd=str(root)).returncode == 0
+    except (OSError, subprocess.SubprocessError):
+        logged_in = False
+    if logged_in:
+        rep.ok("ci access", "`gh` is logged in, so the CI state of origin can be read")
+    else:
+        rep.warn("ci access", f"{why}: `gh auth status` fails and no GITHUB_TOKEN/GH_TOKEN is set",
+                 "run `gh auth login` (or export GITHUB_TOKEN)")
+
+
 def run(root):
     rep = Report()
     cfg = check_config(rep, root)
@@ -649,6 +687,7 @@ def run(root):
     check_log(rep, root, cfg)
     check_commands(rep, root, cfg)
     check_ci(rep, root, cfg)
+    check_ci_access(rep, root)
     check_settings(rep, root)
     check_subagents(rep, root)
     check_glossary(rep, root)

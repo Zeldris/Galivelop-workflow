@@ -47,6 +47,8 @@ prints and applies fixes the user approves. Reply in the project's `language` (`
 - **`check command` FAIL:** the tool is missing or the command is wrong. Ask the user which; do not invent one.
 - **`session` WARN:** the session was opened outside the repo. The fix is to reopen it from the repo, so tell the
   user; the script cannot do it.
+- **`ci access` WARN:** the agent cannot read the CI state of GitHub pushes. Installing `gh` and logging in
+  (`gh auth login`) or exporting a token is the user's call (credentials): tell them; never ask for or print the token.
 - **`config` FAIL:** run `python3 .claude/gw/scripts/config.py validate` for the exact line; keys are in
   `docs/en/config.md`.
 
