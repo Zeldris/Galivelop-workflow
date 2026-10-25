@@ -44,7 +44,13 @@ same time.
 - **Merge, never rebase**, at the start of every task (`git fetch origin <protected>` and `git merge
   origin/<protected>`): branches are pushed. Their work returns to the main branch by `git merge` before the PR.
 - **On stop**, the `Stop` hook (`antes-de-parar.py`) does not let a session finish with unpushed commits or with
-  changes the log does not mention; if it cannot check (no git, no config), it warns instead of blocking.
+  changes the log does not mention; if it cannot check (no git, no config), it warns instead of blocking. While a
+  `pre-push` is running (its `gw-push-en-curso` marker in git's common dir, with a live pid, under an hour old and
+  the current `HEAD` sha among the local shas it lists) it does not block either: it warns that this commit is being
+  pushed and not to push again (two concurrent pushes race); wait and check `git status -sb`. A marker of another
+  branch or of an older `HEAD` (commits made after the push started), with a dead pid, too old or unreadable blocks
+  as usual. Untracked files
+  under `.claude/worktrees/` (Claude Code's isolated worktrees) do not count as uncommitted changes.
 - **On touching the workflow's configuration**, the `PreToolUse` hook `guardia-config.py` asks the person before
   `.claude/settings.json`, `.claude/gw.json`, `.githooks/` or `.claude/gw/scripts/` are edited (with `Edit`, `Write` or
   a `Bash` command that writes there); if it cannot read the event it asks too. To regenerate the applied copy:

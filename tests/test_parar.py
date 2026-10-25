@@ -5,8 +5,12 @@ on stdin, the answer on stdout with exit 0.
 Every case checks the reason that comes out, not only the exit code.
 """
 import json
+import os
 import shutil
+import subprocess
+import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -219,6 +223,194 @@ class WorkingTree(Base):
         p.write("src/a.py", "x = 1\n")
         code, out = p.stop(cwd=p.work / "src")
         self.assertBlocks(out, LOG)
+
+
+class ClaudeWorktrees(Base):
+    """Claude Code keeps isolated worktrees under .claude/worktrees/ inside the repo: untracked there is not work."""
+
+    def test_only_untracked_worktrees_does_not_block(self):
+        p = self.p
+        p.write(".claude/worktrees/agent-1/src/a.py", "x = 1\n")
+        code, out = p.stop()
+        self.assertLetsStop(code, out)
+        self.assertEqual(out.strip(), "")
+
+    def test_worktrees_plus_a_real_change_blocks_counting_only_the_real_one(self):
+        p = self.p
+        p.write(".claude/worktrees/agent-1/src/a.py", "x = 1\n")
+        p.write(".claude/worktrees/agent-2/b.py", "y = 1\n")
+        p.write("src/real.py", "z = 1\n")
+        code, out = p.stop()
+        data = self.assertBlocks(out, LOG, "1 uncommitted change")
+        self.assertNotIn("2 uncommitted", data["reason"])
+        self.assertNotIn("3 uncommitted", data["reason"])
+
+    def test_a_similar_prefix_still_counts(self):
+        p = self.p
+        p.write(".claude/worktrees-old/a.py", "x = 1\n")
+        p.write(".claude/worktreesx", "x\n")
+        code, out = p.stop()
+        self.assertBlocks(out, "2 uncommitted changes")
+
+    def test_a_tracked_file_under_worktrees_still_counts(self):
+        p = self.p
+        p.write(".claude/worktrees/keep.md", "k\n"); p.commit("track one")
+        p.git("push", "-q")
+        p.write(".claude/worktrees/keep.md", "changed\n")
+        code, out = p.stop()
+        self.assertBlocks(out, "1 uncommitted change", LOG)
+
+
+class PushInProgress(Base):
+    """P7: while pre-push pushes this very HEAD (marker gw-push-en-curso in the git common dir: a pid, then one
+    "<local sha> <branch>" line per ref) a second push would race it. A push of another sha does not carry this HEAD."""
+
+    def setUp(self):
+        super().setUp()
+        self.p.work_branch()
+        self.p.write("src/a.py", "x = 1\n")
+        self.p.commit("local only")
+        self.marker = self.p.work / ".git" / "gw-push-en-curso"
+
+    def put(self, text, age=0):
+        self.marker.write_text(text)
+        if age:
+            old = time.time() - age
+            os.utime(self.marker, (old, old))
+
+    def mark(self, pid=None, sha=None, branch="claude/trabajo", age=0):
+        """A marker as pre-push writes it; the sha defaults to the current HEAD."""
+        self.put(f"{os.getpid() if pid is None else pid}\n{sha or self.p.sha()} {branch}\n", age=age)
+
+    def dead_pid(self):
+        child = subprocess.Popen([sys.executable, "-c", "pass"])
+        child.wait()
+        return child.pid
+
+    def assertWarnsWithoutBlocking(self, out, *needles):
+        self.assertNotIn('"block"', out)
+        data = decision(self, out)
+        self.assertNotIn("decision", data, out)
+        for needle in ("push of this commit is in progress", "Do not push again", "git status -sb", *needles):
+            self.assertIn(needle, data.get("systemMessage", ""), out)
+
+    def assertStillBlocks(self, out):
+        self.assertBlocks(out, "1 commit", "claude/trabajo", "git push -u origin claude/trabajo")
+        self.assertNotIn("push of this commit is in progress", out)
+
+    def test_marker_with_the_head_sha_warns_instead_of_blocking(self):
+        self.mark()
+        code, out = self.p.stop()
+        self.assertEqual(code, 0, out)
+        self.assertWarnsWithoutBlocking(out, "claude/trabajo", "1 commit")
+
+    def test_marker_among_several_refs_warns_when_one_is_head(self):
+        self.put(f"{os.getpid()}\n{'a' * 40} claude/otra\n{self.p.sha()} claude/trabajo\n")
+        self.assertWarnsWithoutBlocking(self.p.stop()[1], "claude/trabajo")
+
+    def test_marker_for_another_sha_blocks(self):
+        self.mark(sha="a" * 40, branch="claude/otra")  # a subagent pushing another branch
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_marker_for_another_branch_with_its_own_commit_blocks(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "claude/otra", "main")
+        p.write("src/o.py", "o = 1\n"); p.commit("other branch")
+        other = p.sha()
+        p.git("checkout", "-q", "claude/trabajo")
+        self.mark(sha=other, branch="claude/otra")
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_head_advanced_after_the_push_started_blocks(self):
+        p = self.p
+        self.mark()  # the push started with this commit...
+        p.write(LOG, "log\nmore\n"); p.commit("log updated while the push runs")  # ...and the log came after
+        self.assertStillBlocks_n(p.stop()[1], "2 commits")
+
+    def assertStillBlocks_n(self, out, count):
+        self.assertBlocks(out, count, "git push -u origin claude/trabajo")
+        self.assertNotIn("push of this commit is in progress", out)
+
+    def test_marker_without_shas_blocks(self):
+        self.put(f"{os.getpid()}\n")
+        self.assertStillBlocks(self.p.stop()[1])
+        self.put(f"{os.getpid()}\nclaude/trabajo\n")  # an old-format marker: a branch, no sha
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_pid_of_another_user_counts_as_alive(self):
+        self.mark(pid=1)  # init: alive; kill(1, 0) is a PermissionError unless root
+        self.assertWarnsWithoutBlocking(self.p.stop()[1])
+
+    def test_dead_pid_blocks(self):
+        self.mark(pid=self.dead_pid())
+        code, out = self.p.stop()
+        self.assertEqual(code, 0, out)
+        self.assertStillBlocks(out)
+
+    def test_old_marker_blocks_even_with_a_live_pid(self):
+        self.mark(age=3601)
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_marker_just_under_an_hour_old_still_counts(self):
+        self.mark(age=3500)
+        self.assertWarnsWithoutBlocking(self.p.stop()[1])
+
+    def test_marker_dated_far_in_the_future_blocks(self):
+        self.mark(age=-7200)
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_garbage_content_blocks(self):
+        sha = self.p.sha()
+        for text in ("not a pid\nclaude/trabajo\n", "", "\n", f"-5\n{sha} b\n", f"0\n{sha} b\n", f"12abc\n{sha} b\n",
+                     "\x00\xff garbage", f"1.5\n{sha} b\n"):
+            with self.subTest(text=text):
+                self.put(text)
+                self.assertStillBlocks(self.p.stop()[1])
+
+    def test_unreadable_marker_blocks(self):
+        self.marker.mkdir()  # a directory where the file should be
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_absent_marker_blocks_as_before(self):
+        self.assertFalse(self.marker.exists())
+        code, out = self.p.stop()
+        self.assertStillBlocks(out)
+
+    def test_marker_in_a_linked_worktree_is_shared(self):
+        p = self.p
+        linked = p.tmp / "linked"
+        p.git("worktree", "add", "-q", "-b", "claude/otra", str(linked))
+        p.git("push", "-q", "-u", "origin", "claude/otra", cwd=linked)
+        (linked / "src").mkdir(exist_ok=True)
+        (linked / "src" / "b.py").write_text("y = 1\n")
+        p.git("add", "-A", cwd=linked)
+        p.git("commit", "-q", "-m", "in the linked worktree", cwd=linked)
+        script = linked / ".claude" / "gw" / "scripts" / SCRIPT
+        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
+        # the marker of the main worktree's push (another sha) does not silence the linked one...
+        self.mark()
+        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
+        # ...and one written in the common dir for the linked worktree's HEAD does
+        self.mark(sha=p.git("rev-parse", "HEAD", cwd=linked).stdout.strip(), branch="claude/otra")
+        self.assertWarnsWithoutBlocking(p.stop(cwd=linked, script=script)[1], "claude/otra")
+
+    def test_uncommitted_changes_still_block_while_a_push_runs(self):
+        self.mark()
+        self.p.write("src/b.py", "y = 1\n")
+        code, out = self.p.stop()
+        data = self.assertBlocks(out, LOG, "1 uncommitted change")
+        self.assertNotIn("git push", data["reason"])
+        self.assertIn("push of this commit is in progress", data["systemMessage"])
+
+    def test_protected_branch_note_is_unchanged_with_a_marker(self):
+        p = self.p
+        p.git("checkout", "-q", "main")
+        p.write("src/c.py", "z = 1\n"); p.commit("on main")
+        self.mark(branch="main")
+        code, out = p.stop()
+        data = decision(self, out)
+        self.assertIn("protected branch", data["systemMessage"])
+        self.assertNotIn("push of this commit is in progress", data["systemMessage"])
 
 
 class ReminderNotGate(Base):

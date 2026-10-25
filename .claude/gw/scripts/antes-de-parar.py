@@ -11,7 +11,13 @@ agent remembered it. It blocks the stop when:
      the three phases, so Claude cannot fix it alone and a block would only make it push without asking. There it is a
      warning to the user (`systemMessage`: the commits are not pushed, and pushing needs their confirmation), never
      a block;
-  b. the working tree has changes (`git status`, untracked files included) and the log (`log` in .claude/gw.json) is
+     While the workflow's pre-push hook is pushing this very HEAD (marker `gw-push-en-curso` in the git common dir:
+     a live pid, under an hour old, the current HEAD sha among the local shas it lists) it does not block either: a
+     second push would race the first, so it is a warning that says to wait and check `git status -sb`. A marker of
+     another branch or of an older HEAD (commits made after the push started), dead, old, empty or unreadable
+     blocks as before;
+  b. the working tree has changes (`git status`, untracked files included, but not untracked paths under
+     `.claude/worktrees/`, where Claude Code keeps its isolated worktrees) and the log (`log` in .claude/gw.json) is
      not among them. The reason says to commit the log, updated, in the same commit as the work.
 
 Output format (https://code.claude.com/docs/en/hooks.md, "Stop decision control"): a block is a JSON object on stdout
@@ -36,6 +42,7 @@ import posixpath
 import select
 import subprocess
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.dont_write_bytecode = True  # no __pycache__ in the project's .claude/gw/scripts
@@ -44,6 +51,9 @@ import config  # noqa: E402
 
 STDIN_WAIT = 3.0
 GIT_TIMEOUT = 30
+PUSH_MARKER = "gw-push-en-curso"  # written by templates/githooks/pre-push while it runs
+PUSH_MARKER_MAX_AGE = 3600  # seconds: an older marker is a push that died without cleaning up
+WORKTREES_PREFIX = ".claude/worktrees/"
 
 
 class GitError(Exception):
@@ -101,8 +111,46 @@ def unpushed(root):
     return (branch, count, where) if count else None
 
 
+def push_in_progress(root):
+    """The branch name of the push of the current HEAD that the workflow's pre-push hook is running right now, else None.
+
+    The hook keeps `gw-push-en-curso` in the git common dir (shared by linked worktrees): line 1 its pid, then one
+    "<local sha> <branch>" line per ref it pushes. It counts only with a live pid (PermissionError: another user's
+    process is alive too), an mtime under PUSH_MARKER_MAX_AGE seconds old, and the current HEAD sha among its shas: a
+    push of another branch, or of an older HEAD, does not carry what is unpushed here. Anything else (absent,
+    unreadable, garbage, dead pid, old, other sha) is None."""
+    try:
+        common = git(root, "rev-parse", "--git-common-dir")[1].strip()
+        path = os.path.join(str(root), common)
+        marker = os.path.join(path, PUSH_MARKER)
+        age = time.time() - os.stat(marker).st_mtime
+        with open(marker, encoding="utf-8") as f:
+            lines = f.read(4096).splitlines()
+        pid_text = lines[0].strip() if lines else ""
+        if not pid_text.isdigit() or not (-300 < age < PUSH_MARKER_MAX_AGE):
+            return None
+        pid = int(pid_text)
+        if pid < 1:
+            return None  # kill(0, 0) would signal the whole process group
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return None
+        except PermissionError:
+            pass
+        head = git(root, "rev-parse", "-q", "--verify", "HEAD^{commit}")[1].strip()
+        for line in lines[1:]:
+            fields = line.split()
+            if fields and fields[0] == head:
+                return " ".join(fields[1:])
+        return None
+    except (GitError, OSError, ValueError, IndexError):
+        return None
+
+
 def changed_paths(root):
-    """The set of paths `git status` lists (untracked files included; both sides of a rename). Raises GitError."""
+    """The set of paths `git status` lists (untracked files included; both sides of a rename). Raises GitError.
+    Untracked paths under `.claude/worktrees/` (Claude Code's isolated worktrees live there) do not count."""
     out = git(root, "status", "--porcelain=v1", "-z", "--untracked-files=all")[1]
     entries = out.split("\0")
     paths, i = set(), 0
@@ -110,6 +158,8 @@ def changed_paths(root):
         entry = entries[i]
         i += 1
         if len(entry) < 4:
+            continue
+        if entry.startswith("?? ") and posixpath.normpath(entry[3:]).startswith(WORKTREES_PREFIX):
             continue
         paths.add(posixpath.normpath(entry[3:]))
         if entry[0] in "RC" or entry[1] in "RC":  # `-z` puts the origin of a rename in the next entry
@@ -149,9 +199,16 @@ def main():
                                  f"confirmation and the three phases of the workflow (code review, environment, "
                                  f"close), so Claude has not pushed them.")
                 else:
-                    blocks.append(f"Branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). What is not "
-                                  f"pushed does not exist for the next session; push it now: git push -u origin "
-                                  f"{branch}")
+                    pushing = push_in_progress(root)
+                    if pushing is None:
+                        blocks.append(f"Branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). What is "
+                                      f"not pushed does not exist for the next session; push it now: git push -u "
+                                      f"origin {branch}")
+                    else:
+                        notes.append(f"A push of this commit is in progress (the pre-push hook is running"
+                                     f"{' for ' + pushing if pushing else ''}); branch '{branch}' has "
+                                     f"{plural(count, 'commit')} not pushed ({where}) until it ends. Do not push "
+                                     f"again: wait for it and check git status -sb afterwards.")
         except GitError as exc:
             warns.append(str(exc))
         try:

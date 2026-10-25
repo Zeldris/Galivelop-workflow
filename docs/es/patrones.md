@@ -44,7 +44,12 @@ la vez.
 - **Merge, nunca rebase**, al empezar cada tarea (`git fetch origin <protegida>` y `git merge origin/<protegida>`):
   las ramas están subidas. Lo suyo vuelve a la rama principal por `git merge` antes del PR.
 - **Al parar**, el gancho `Stop` (`antes-de-parar.py`) no deja acabar con commits sin subir ni con cambios sin la
-  bitácora; si no puede comprobarlo (sin git, sin config), avisa en vez de bloquear.
+  bitácora; si no puede comprobarlo (sin git, sin config), avisa en vez de bloquear. Mientras un `pre-push` corre
+  (su marca `gw-push-en-curso`, en el directorio común de git, con su pid vivo, de menos de una hora y el sha del
+  `HEAD` actual entre los shas locales que lista) tampoco bloquea: avisa de que se está subiendo este commit y de que
+  no se suba otra vez (dos pushes a la vez se pisan); espera y mira `git status -sb`. Una marca de otra rama o de un
+  `HEAD` anterior (commits hechos después de empezar el push), con pid muerto, vieja o ilegible bloquea como siempre.
+  No cuenta como cambio sin commitear lo no versionado bajo `.claude/worktrees/` (los worktrees aislados de Claude Code).
 - **Al tocar la configuración del flujo**, el gancho `PreToolUse` `guardia-config.py` pide permiso a la persona antes de
   editar `.claude/settings.json`, `.claude/gw.json`, `.githooks/` o `.claude/gw/scripts/` (con `Edit`, `Write` o una
   orden de `Bash` que escriba ahí); si no entiende la entrada, también pregunta. Para regenerar la copia aplicada:
