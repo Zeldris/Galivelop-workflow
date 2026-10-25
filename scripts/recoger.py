@@ -45,7 +45,8 @@ RETRO_NAME = re.compile(r"(^|/)retro-[^/]*\.md$")
 
 def git(repo, *args):
     """Run a read-only git command; return stdout or None on failure."""
-    proc = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, text=True)
+    # errors="replace": diffs carry the projects' text, which may not be UTF-8.
+    proc = subprocess.run(["git", "-C", str(repo), *args], capture_output=True, encoding="utf-8", errors="replace")
     return proc.stdout.strip() if proc.returncode == 0 else None
 
 
@@ -110,8 +111,9 @@ def added_lines(repo, base, rel):
     None when everything counts: no base (first harvest), the file is new since it, or git could not say."""
     if base is None or git(repo, "cat-file", "-e", f"{base}:{rel}") is None:
         return None
-    diff = git(repo, "diff", "-U0", "--no-renames", base, "--", rel)
-    if diff is None:
+    # Plain diff whatever the person's git config says (color.diff=always, diff.external, textconv).
+    diff = git(repo, "diff", "-U0", "--no-renames", "--no-color", "--no-ext-diff", "--no-textconv", base, "--", rel)
+    if diff is None or (diff and "\n@@ " not in "\n" + diff):  # e.g. "Binary files differ": count it all
         return None
     lines = set()
     for m in re.finditer(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@", diff, re.M):
@@ -303,7 +305,11 @@ def main():
             state[r["repo"]] = r["head"]
         args.state.parent.mkdir(parents=True, exist_ok=True)
         args.state.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-        print(f"State updated: {args.state.relative_to(ROOT) if args.state.is_relative_to(ROOT) else args.state}")
+        try:  # not Path.is_relative_to: that is Python 3.9+
+            shown = args.state.relative_to(ROOT)
+        except ValueError:
+            shown = args.state
+        print(f"State updated: {shown}")
         return 0
     if args.json:
         print(json.dumps(reports, indent=2, ensure_ascii=False))

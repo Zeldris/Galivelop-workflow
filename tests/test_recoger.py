@@ -146,6 +146,29 @@ class Recoger(unittest.TestCase):
             "path": "docs/traspaso.md",
             "text": "- Propuesta para el flujo: que haga X\n\t\ty luego Y.\n\t\totra linea."}])
 
+    def test_a_log_that_is_not_utf8_does_not_break_the_harvest(self):
+        log = self.repo / "docs" / "traspaso.md"
+        log.parent.mkdir(parents=True)
+        log.write_bytes("# Traspaso\n\nEstado: café\n".encode("latin-1"))
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "log one")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        log.write_bytes("# Traspaso\n\nEstado: café dos\n\n- Propuesta para el flujo: nueva\n".encode("latin-1"))
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "log two")
+        self.assertEqual(self.harvest()["ideas"], [{"path": "docs/traspaso.md",
+                                                    "text": "- Propuesta para el flujo: nueva"}])
+
+    def test_a_colored_diff_config_does_not_hide_new_ideas(self):
+        git(self.repo, "config", "color.diff", "always")
+        r = self.harvest_after("# T\n\nEstado: uno\n", "# T\n\nEstado: uno\n\n- Propuesta para el flujo: nueva\n")
+        self.assertEqual(r["ideas"], [{"path": "docs/traspaso.md", "text": "- Propuesta para el flujo: nueva"}])
+
+    def test_a_diff_without_hunks_counts_the_whole_file(self):
+        (self.repo / ".gitattributes").write_text("*.md binary\n")
+        r = self.harvest_after("# T\n\nEstado: uno\n", "# T\n\nEstado: dos\n\n- Propuesta para el flujo: nueva\n")
+        self.assertEqual(r["ideas"], [{"path": "docs/traspaso.md", "text": "- Propuesta para el flujo: nueva"}])
+
     def track_origin(self):
         """Give the project a remote with main as its upstream; return a second clone that can push to it."""
         origin = self.tmp / "origin.git"
