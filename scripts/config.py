@@ -153,14 +153,23 @@ def validate(value, schema, path="$"):
         for key, item in value.items():
             if key in props:
                 errors += validate(item, props[key], f"{path}.{key}")
+            elif isinstance(schema.get("additionalProperties"), dict):
+                errors += validate(item, schema["additionalProperties"], f"{path}.{key}")
             elif schema.get("additionalProperties") is False:
                 errors.append(f"{path}: unknown key '{key}' (check spelling; allowed: {', '.join(sorted(props))})")
     return errors
 
 
 def semantic_errors(config):
-    """Problems the schema subset cannot express: a relatedTests `paths` that is not a valid regex."""
+    """Problems the schema subset cannot express: a relatedTests `paths` that is not a valid regex, an agentMap
+    prefix that is not one folder name."""
     errors = []
+    agent_map = config.get("agentMap")
+    if isinstance(agent_map, dict) and isinstance(agent_map.get("prefixes"), dict):
+        for short in agent_map["prefixes"]:
+            if not re.fullmatch(r"[^/\s]+/?", short) or short in (".", "..", "./", "../"):
+                errors.append(f"$.agentMap.prefixes: key {short!r} must be one folder-like name, with or without a "
+                              f"trailing '/' (e.g. \"b/\")")
     related = config.get("relatedTests")
     if isinstance(related, dict):
         for kind in ("fast", "slow"):

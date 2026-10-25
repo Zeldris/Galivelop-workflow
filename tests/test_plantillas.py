@@ -202,6 +202,10 @@ class Templates(unittest.TestCase):
                          "templates/gw.json must show every key but ciInstall")
         self.assertEqual(sample["version"], VERSION)
 
+    def test_sample_check_runs_the_agent_map_script(self):
+        sample = json.loads((TEMPLATES / "gw.json").read_text())
+        self.assertIn("python3 .claude/gw/scripts/mapa-agente.py", sample["check"])
+
     def test_default_content_keeps_the_guard_scripts_as_code(self):
         content = json.loads((TEMPLATES / "gw.json").read_text())["content"]
         for path in (".claude/skills/retro/SKILL.md", "docs/plan.md", "README.md", "AGENTS.md",

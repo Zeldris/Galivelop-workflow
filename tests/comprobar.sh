@@ -24,6 +24,9 @@ fi
 echo "== markdown links and stale references"
 python3 scripts/enlaces-md.py || fail=1
 
+echo "== agent map paths"
+python3 scripts/mapa-agente.py || fail=1
+
 echo "== python"
 if [[ -n "$(git ls-files -- '*.py' "${copies[@]}")" ]]; then
   git ls-files -z -- '*.py' "${copies[@]}" | xargs -0 python3 -m py_compile || fail=1
