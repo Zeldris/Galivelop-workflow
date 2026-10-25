@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import date
 import zlib
 from pathlib import Path
 
@@ -478,7 +479,9 @@ RED = re.compile(r"""(?ix)
 
 def rellenar(texto: str) -> str:
     """Fixture filler: the template's placeholders become valid text (a date for AAAA-MM-DD, a number for JSON)."""
-    texto = texto.replace("AAAA-MM-DD", "2026-10-25").replace("<tema>", "prueba")
+    texto = texto.replace("AAAA-MM-DD", date.today().isoformat()).replace("<tema>", "prueba")
+    texto = texto.replace("{{pega aquí las normas del subreddit, tal cual}}", "texto de prueba " * 15)
+    texto = texto.replace("{{subreddit}}", "prueba")
     texto = texto.replace("{{número}}", "5").replace("{{antes.png}}", "antes.png").replace("{{despues.png}}", "despues.png")
     return re.sub(r"\{\{[^}]*\}\}", "texto de prueba", texto)
 

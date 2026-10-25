@@ -26,16 +26,24 @@ Idiomas: es, en
 
 ## Reddit
 
-Solo si `reddit` está en `## Canales`: pega las normas del subreddit, léelas y apunta aquí el día.
+Solo si `reddit` está en `## Canales`. Por cada subreddit, una línea `Subreddit:` y, debajo, un apartado
+`### Normas de r/<nombre>` con las normas pegadas tal cual (200 caracteres como mínimo). Lee las normas y apunta el día:
+`Normas leídas:` no puede estar en el futuro ni tener más de 90 días.
 
-- **Subreddit:** {{r/…}}
+- **Subreddit:** r/{{subreddit}}
 - **Normas leídas:** AAAA-MM-DD
 - **Autopromoción:** {{lo que dicen las normas sobre promocionar lo propio, y cómo lo cumple esta pieza}}
+
+### Normas de r/{{subreddit}}
+
+{{pega aquí las normas del subreddit, tal cual}}
 
 ## Imágenes
 
 Una fila por cada archivo de `medios/` que se usa (`.webp` para X y Discord, `.png` para LinkedIn, `.pdf` para un
 carrusel de LinkedIn). El texto alternativo describe lo que se ve de la pieza, con el formato `es: texto / en: text`.
+El primer idioma de `Idiomas:` usa `medios/<n>.webp`; otro idioma puede tener su propia imagen
+`medios/<n>.<idioma>.webp` (fuente `<n>.<idioma>.html`), con su fila y el texto alternativo en ese idioma.
 
 | Imagen | Texto alternativo | Canales |
 |---|---|---|

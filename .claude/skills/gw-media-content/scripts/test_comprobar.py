@@ -8,12 +8,17 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import date, timedelta
 from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
 sys.path.insert(0, str(AQUI))
 import comprobar  # noqa: E402
 
+HOY = date.today()
+NORMAS = ("1. Sé amable con los demás miembros. 2. Nada de spam. 3. La autopromoción solo los sábados y con una "
+          "publicación de aportación por cada una de promoción. 4. Pon etiqueta a los mensajes. 5. Sin enlaces acortados. ")
+assert len(NORMAS) >= 200
 FICHA = """# Ficha: lanzamiento
 
 Idiomas: es, en
@@ -34,8 +39,12 @@ Idiomas: es, en
 ## Reddit
 
 - **Subreddit:** r/gamedev
-- **Normas leídas:** 2026-10-25
+- **Normas leídas:** {hoy}
 - **Autopromoción:** solo los sábados
+
+### Normas de r/gamedev
+
+{normas}
 
 ## Imágenes
 
@@ -52,7 +61,7 @@ Tarea QA-12 en la rama claude/algo.
 
 | Canal | Idioma | Fecha | Enlace |
 |---|---|---|---|
-"""
+""".replace("{hoy}", HOY.isoformat()).replace("{normas}", NORMAS)
 CANALES = {
     "x": "## es\n\n**1/** Sale la versión.\nImagen: medios/tarjeta.webp\n\n**2/** Detalles.\n\n## en\n\n**1/** Release out.\n\n**2/** Details.\n",
     "reddit": "## es\n\n**Título:** Sale la versión\n\nTexto.\n\n## en\n\n**Title:** Release out\n\nText.\n",
@@ -416,7 +425,7 @@ class Reddit(Base):
         self.assertFallo("«Autopromoción:» line")
 
     def test_fecha_de_normas_no_valida(self):
-        self.cambiar("ficha.md", "2026-10-25\n- **Auto", "ayer\n- **Auto")
+        self.cambiar("ficha.md", HOY.isoformat() + "\n- **Auto", "ayer\n- **Auto")
         self.assertFallo("«Normas leídas:» «ayer» has no valid AAAA-MM-DD date")
 
     def test_sin_reddit_no_se_piden_sus_datos(self):
@@ -729,7 +738,459 @@ class Reglas(unittest.TestCase):
 
     def test_reddit_no_tiene_datos_verificados(self):
         reglas = comprobar.cargar_reglas()
-        self.assertEqual({r["marca"] for r in reglas["reddit"].values()}, {"NV"})
+        self.assertEqual({r["marca"] for k, r in reglas["reddit"].items() if k in ("titulo", "normas")}, {"NV"})
+
+    def test_los_valores_de_convencion_de_reddit_y_de_los_canales_extra_estan_en_reglas(self):
+        reglas = comprobar.cargar_reglas()
+        self.assertEqual((reglas["reddit"]["normas_dias"]["valor"], reglas["reddit"]["normas_dias"]["marca"]), (90, "C"))
+        self.assertEqual(reglas["reddit"]["normas_min_caracteres"]["valor"], 200)
+        self.assertEqual(reglas["canal_extra"]["imagen_formatos"]["valor"], [".webp", ".png", ".jpg"])
+
+
+class Idiomas(Base):
+    def test_cualquier_codigo_iso_de_dos_letras_vale(self):
+        self.cambiar("ficha.md", "Idiomas: es, en", "Idiomas: es, gl, en")
+        for c in CANALES:
+            t = (self.carpeta / f"{c}.md").read_text(encoding="utf-8")
+            self.escribir(f"{c}.md", t + "\n## gl\n\n" + ("**Title:** Galego\n\n" if c == "reddit" else "")
+                          + ("**1/** Galego.\n" if c == "x" else "Galego.\n" if c != "discord" else "### Galego\n"))
+        self.cambiar("ficha.md", "Release card | x |", "Release card / gl: Tarxeta | x |")
+        self.cambiar("ficha.md", "Release card | linkedin |", "Release card / gl: Tarxeta | linkedin |")
+        self.assertEqual(self.fallos(), "")
+
+    def test_un_codigo_que_no_son_dos_letras_minusculas_es_un_error(self):
+        for malo in ("ESP", "e", "en-US", "e1"):
+            with self.subTest(malo):
+                self.cambiar("ficha.md", "Idiomas: es, en", f"Idiomas: es, en, {malo}")
+                self.assertFallo(f"ficha.md: «Idiomas:» has «{malo}»; use two-letter lowercase ISO 639-1 codes")
+                self.cambiar("ficha.md", f"Idiomas: es, en, {malo}", "Idiomas: es, en")
+
+    def test_la_seccion_de_un_idioma_libre_se_reconoce(self):
+        self.escribir("linkedin.md", CANALES["linkedin"] + "\n## ja\n\nTexto.\n")
+        self.assertFallo("linkedin.md: language «ja» is not in the piece")
+        self.cambiar("ficha.md", "Idiomas: es, en", "Idiomas: es, en, ja")
+        self.assertNotIn("language «ja»", self.fallos())
+        self.assertFallo("x.md: no «## ja» section")
+
+
+class ImagenesPorIdioma(Base):
+    """Idiomas: es, en, gl. The first language uses medios/<n>.webp; the others may have medios/<n>.<lang>.webp."""
+
+    def setUp(self):
+        super().setUp()
+        self.cambiar("ficha.md", "Idiomas: es, en", "Idiomas: es, en, gl")
+        self.cambiar("ficha.md", "| `medios/tarjeta.webp` | es: Tarjeta de la versión / en: Release card | x |",
+                     "| `medios/tarjeta.webp` | es: Tarjeta / en: Card / gl: Tarxeta | x |")
+        self.cambiar("ficha.md", "es: Tarjeta de la versión / en: Release card | linkedin |",
+                     "es: Tarjeta / en: Card / gl: Tarxeta | linkedin |")
+        self.escribir("x.md", "## es\n\n**1/** Sale.\nImagen: medios/tarjeta.webp\n\n## en\n\n**1/** Out.\nImagen: medios/tarjeta.webp\n\n"
+                      "## gl\n\n**1/** Sae.\nImagen: medios/tarjeta.webp\n")
+        t = (self.carpeta / "linkedin.md").read_text(encoding="utf-8")
+        self.escribir("linkedin.md", t + "\n## gl\n\nTexto longo.\nImagen: medios/tarjeta.png\n")
+        self.escribir("reddit.md", CANALES["reddit"] + "\n## gl\n\n**Título:** Sae\n\nTexto.\n")
+        self.escribir("discord.md", CANALES["discord"] + "\n## gl\n\n### Novas\n")
+        self.assertEqual(self.fallos(), "")
+
+    def imagen_gallega(self, ext=".webp", canal="x", canales="x"):
+        """The gl section of a channel points to its own render, listed in the table."""
+        medios = self.carpeta / "medios"
+        (medios / f"tarjeta.gl{ext}").write_bytes(webp() if ext == ".webp" else png(100, 50))
+        if ext == ".webp":
+            (medios / "tarjeta.gl-mini.webp").write_bytes(webp(10, 5))
+        if ext == ".webp":
+            (medios / "fuente" / "tarjeta.gl.html").write_text("<p>gl</p>")
+        t = (self.carpeta / f"{canal}.md").read_text(encoding="utf-8")
+        i = t.index("## gl")
+        self.escribir(f"{canal}.md", t[:i] + t[i:].replace(f"medios/tarjeta{ext}", f"medios/tarjeta.gl{ext}"))
+        fila = f"| `medios/tarjeta.gl{ext}` | gl: Tarxeta propia | {canales} |\n"
+        f = (self.carpeta / "ficha.md").read_text(encoding="utf-8")
+        self.escribir("ficha.md", f.replace("\n\n## Uso interno", "\n" + fila + "\n## Uso interno", 1))
+
+    def test_la_imagen_propia_de_un_idioma_con_su_fila_pasa(self):
+        self.imagen_gallega()
+        self.assertEqual(self.fallos(), "")
+
+    def test_la_fila_de_la_imagen_propia_pide_el_alt_solo_en_su_idioma(self):
+        self.imagen_gallega()
+        self.cambiar("ficha.md", "gl: Tarxeta propia", "es: Propia")
+        self.assertFallo("ficha.md: «medios/tarjeta.gl.webp» has no alt text in «gl»")
+        self.assertNotIn("«medios/tarjeta.gl.webp» has no alt text in «es»", self.fallos())
+
+    def test_la_imagen_propia_necesita_su_mini(self):
+        self.imagen_gallega()
+        (self.carpeta / "medios" / "tarjeta.gl-mini.webp").unlink()
+        self.assertFallo("ficha.md: «medios/tarjeta.gl.webp» has no -mini.webp; render it again")
+
+    def test_la_imagen_propia_sin_renderizar(self):
+        self.imagen_gallega()
+        (self.carpeta / "medios" / "tarjeta.gl.webp").unlink()
+        self.assertFallo("x.md: «Imagen: medios/tarjeta.gl.webp» does not exist; render it ("
+                         f"{RENDER} {self.carpeta})")
+
+    def test_la_fuente_con_sufijo_se_comprueba_como_cualquier_fuente(self):
+        self.imagen_gallega()
+        (self.carpeta / "medios" / "tarjeta.gl.webp").unlink()
+        (self.carpeta / "medios" / "tarjeta.gl-mini.webp").unlink()
+        self.assertFallo("medios/fuente/tarjeta.gl.html: not rendered")
+
+    def test_la_imagen_propia_se_comprueba_con_las_reglas_del_canal(self):
+        reglas = json.loads(json.dumps(self.reglas))
+        reglas["x"]["imagen_bytes"]["valor"] = 20
+        self.imagen_gallega()
+        self.assertFallo("medios/tarjeta.gl.webp: 30 bytes (max 20 for x)", reglas=reglas)
+
+    def test_linkedin_con_imagen_propia_en_png_y_el_webp_sigue_siendo_error(self):
+        self.imagen_gallega(".png", "linkedin", "linkedin")
+        self.assertEqual(self.fallos(), "")
+        self.cambiar("linkedin.md", "Imagen: medios/tarjeta.gl.png", "Imagen: medios/tarjeta.gl.webp")
+        self.cambiar("ficha.md", "`medios/tarjeta.gl.png`", "`medios/tarjeta.gl.webp`")
+        (self.carpeta / "medios" / "tarjeta.gl.webp").write_bytes(webp())
+        (self.carpeta / "medios" / "tarjeta.gl-mini.webp").write_bytes(webp(10, 5))
+        self.assertFallo("linkedin.md: «medios/tarjeta.gl.webp» is a .webp and linkedin takes .png, .jpg, .gif")
+
+    def test_un_sufijo_de_un_idioma_que_no_esta_en_idiomas_es_un_error(self):
+        (self.carpeta / "medios" / "tarjeta.fr.webp").write_bytes(webp())
+        (self.carpeta / "medios" / "tarjeta.fr-mini.webp").write_bytes(webp(10, 5))
+        self.cambiar("x.md", "## gl\n\n**1/** Sae.\nImagen: medios/tarjeta.webp", "## gl\n\n**1/** Sae.\nImagen: medios/tarjeta.fr.webp")
+        self.cambiar("ficha.md", "\n\n## Uso interno", "\n| `medios/tarjeta.fr.webp` | es: a / en: b / gl: c | x |\n\n## Uso interno")
+        out = self.fallos()
+        self.assertIn("x.md: «medios/tarjeta.fr.webp» has the language suffix «.fr.» but «fr» is not in «Idiomas:» of ficha.md; "
+                      "add it there or rename the file", out)
+        self.assertIn("ficha.md: «medios/tarjeta.fr.webp» has the language suffix «.fr.»", out)
+
+    def test_una_fuente_con_sufijo_de_un_idioma_que_no_esta_es_un_error(self):
+        (self.carpeta / "medios" / "fuente" / "tarjeta.fr.html").write_text("<p>fr</p>")
+        self.assertFallo("medios/fuente/tarjeta.fr.html: «medios/fuente/tarjeta.fr.html» has the language suffix «.fr.» "
+                         "but «fr» is not in «Idiomas:»")
+
+    def test_el_primer_idioma_no_lleva_sufijo(self):
+        (self.carpeta / "medios" / "tarjeta.es.webp").write_bytes(webp())
+        (self.carpeta / "medios" / "tarjeta.es-mini.webp").write_bytes(webp(10, 5))
+        self.cambiar("x.md", "Sale.\nImagen: medios/tarjeta.webp", "Sale.\nImagen: medios/tarjeta.es.webp")
+        self.assertFallo("x.md: «medios/tarjeta.es.webp» has the suffix «.es.» but «es» is the first language and uses the "
+                         "file without suffix; rename it to «medios/tarjeta.webp»")
+
+    def test_la_imagen_de_otro_idioma_en_una_seccion_es_un_error(self):
+        self.imagen_gallega()
+        self.cambiar("x.md", "## en\n\n**1/** Out.\nImagen: medios/tarjeta.webp", "## en\n\n**1/** Out.\nImagen: medios/tarjeta.gl.webp")
+        self.assertFallo("x.md (en): «medios/tarjeta.gl.webp» is the image of «gl» but sits in the «## en» section; "
+                         "move the line to «## gl»")
+
+    def test_la_fila_de_una_imagen_propia_pide_la_linea_imagen(self):
+        self.imagen_gallega()
+        self.cambiar("x.md", "Imagen: medios/tarjeta.gl.webp", "")
+        self.assertFallo("ficha.md: «medios/tarjeta.gl.webp» lists channel «x» but x.md has no «Imagen: medios/tarjeta.gl.webp» line")
+
+    def test_un_nombre_con_un_punto_que_no_es_idioma_no_es_sufijo(self):
+        self.assertIsNone(comprobar.idioma_de_archivo("medios/v1.0.webp"))
+        self.assertIsNone(comprobar.idioma_de_archivo("medios/tarjeta.webp"))
+        self.assertIsNone(comprobar.idioma_de_archivo("medios/foo.bar.webp"))
+        self.assertEqual(comprobar.idioma_de_archivo("medios/tarjeta.gl-mini.webp"), "gl")
+        self.assertEqual(comprobar.idioma_de_archivo("medios/fuente/tarjeta.gl.html"), "gl")
+
+
+class NormasDeReddit(Base):
+    def normas(self, texto):
+        f = (self.carpeta / "ficha.md").read_text(encoding="utf-8")
+        self.escribir("ficha.md", re.sub(r"(### Normas de r/gamedev\n\n).*?(\n\n## Imágenes)",
+                                         lambda m: m.group(1) + texto + m.group(2), f, flags=re.S))
+
+    def test_sin_el_bloque_de_normas(self):
+        self.normas("")
+        self.cambiar("ficha.md", "### Normas de r/gamedev\n", "")
+        self.assertFallo("ficha.md: no rules block for r/gamedev; paste the rules text (at least 200 characters, copied "
+                         "from reddit.com/r/gamedev/about/rules) under a «### Normas de r/gamedev» heading inside «## Reddit» "
+                         "of ficha.md")
+
+    def test_bloque_demasiado_corto(self):
+        self.normas("1. Sé amable.")
+        self.assertFallo("ficha.md: the rules block of r/gamedev has 13 characters (min 200); paste the complete rules "
+                         "text under «### Normas de r/gamedev» in «## Reddit» of ficha.md")
+
+    def test_los_espacios_y_saltos_no_cuentan_para_el_minimo(self):
+        self.normas("a" + "\n" * 300 + "   " * 100 + "b")
+        self.assertFallo("has 3 characters (min 200)")
+
+    def test_justo_en_el_minimo_pasa(self):
+        self.normas("a" * 200)
+        self.assertEqual(self.fallos(), "")
+        self.normas("a" * 199)
+        self.assertFallo("has 199 characters (min 200)")
+
+    def test_el_minimo_sale_de_reglas_json(self):
+        reglas = json.loads(json.dumps(self.reglas))
+        reglas["reddit"]["normas_min_caracteres"]["valor"] = 5000
+        self.assertFallo("min 5000", reglas=reglas)
+
+    def test_un_bloque_por_subreddit(self):
+        self.cambiar("ficha.md", "- **Subreddit:** r/gamedev\n", "- **Subreddit:** r/gamedev, r/IndieDev\n- **Subreddit:** r/spain\n")
+        out = self.fallos()
+        self.assertIn("no rules block for r/IndieDev; paste the rules text", out)
+        self.assertIn("no rules block for r/spain; paste the rules text", out)
+        self.assertNotIn("no rules block for r/gamedev", out)
+        f = (self.carpeta / "ficha.md").read_text(encoding="utf-8")
+        self.escribir("ficha.md", f.replace("## Imágenes", f"### Normas de r/IndieDev\n\n{NORMAS}\n### Normas de r/spain\n\n{NORMAS}\n## Imágenes", 1))
+        self.assertEqual(self.fallos(), "")
+
+    def test_el_nombre_del_subreddit_no_distingue_mayusculas_ni_r_barra(self):
+        self.cambiar("ficha.md", "r/gamedev\n- **Normas", "GameDev\n- **Normas")
+        self.assertEqual(self.fallos(), "")
+
+    def test_un_bloque_de_un_subreddit_que_no_esta_listado(self):
+        self.cambiar("ficha.md", "### Normas de r/gamedev", "### Normas de r/otro")
+        out = self.fallos()
+        self.assertIn("no rules block for r/gamedev", out)
+        self.assertIn("«### Normas de r/otro» matches no «Subreddit:» line; add r/otro to «Subreddit:» or remove the block", out)
+
+    def test_bloque_repetido(self):
+        self.cambiar("ficha.md", "## Imágenes", f"### Normas de r/gamedev\n\n{NORMAS}\n## Imágenes")
+        self.assertFallo("«### Normas de r/gamedev» appears more than once; merge the blocks into one")
+
+    def test_un_subreddit_con_un_nombre_raro(self):
+        self.cambiar("ficha.md", "r/gamedev\n- **Normas", "r/game.dev\n- **Normas")
+        self.assertFallo("ficha.md: «Subreddit:» «r/game.dev» is not a subreddit name; write it as r/<name>")
+
+    def test_las_normas_pegadas_pueden_llevar_almohadillas_y_listas(self):
+        self.normas("# Normas\n\n- " + NORMAS + "\n- Más.")
+        self.assertEqual(self.fallos(), "")
+
+    def test_el_bloque_de_otro_subreddit_no_cuenta_para_este(self):
+        self.normas("corto")
+        self.cambiar("ficha.md", "- **Subreddit:** r/gamedev\n", "- **Subreddit:** r/gamedev, r/otro\n")
+        self.cambiar("ficha.md", "## Imágenes", f"### Normas de r/otro\n\n{NORMAS}\n## Imágenes")
+        out = self.fallos()
+        self.assertIn("the rules block of r/gamedev has 5 characters", out)
+        self.assertNotIn("r/otro has", out)
+
+    def test_fecha_de_hoy_pasa_y_manana_es_futuro(self):
+        self.assertEqual(self.fallos(), "")
+        dia = (HOY + timedelta(days=1)).isoformat()
+        self.cambiar("ficha.md", HOY.isoformat() + "\n- **Auto", dia + "\n- **Auto")
+        self.assertFallo(f"ficha.md: «Normas leídas:» «{dia}» is in the future; write the day you read the rules")
+
+    def test_fecha_de_hace_90_dias_pasa_y_91_no(self):
+        for dias, bien in ((90, True), (91, False), (400, False)):
+            with self.subTest(dias=dias):
+                dia = (HOY - timedelta(days=dias)).isoformat()
+                self.cambiar("ficha.md", "Normas leídas:** " + HOY.isoformat(), "Normas leídas:** " + dia)
+                if bien:
+                    self.assertEqual(self.fallos(), "")
+                else:
+                    self.assertFallo(f"ficha.md: «Normas leídas:» «{dia}» is {dias} days old (max 90); read the rules again, "
+                                     "paste them under «### Normas de r/<name>» and write today's date")
+                self.cambiar("ficha.md", "Normas leídas:** " + dia, "Normas leídas:** " + HOY.isoformat())
+
+    def test_los_dias_salen_de_reglas_json(self):
+        reglas = json.loads(json.dumps(self.reglas))
+        reglas["reddit"]["normas_dias"]["valor"] = 7
+        dia = (HOY - timedelta(days=8)).isoformat()
+        self.cambiar("ficha.md", "Normas leídas:** " + HOY.isoformat(), "Normas leídas:** " + dia)
+        self.assertFallo("is 8 days old (max 7)", reglas=reglas)
+        self.assertNotIn("days old", self.fallos())
+
+    def test_la_fecha_se_mide_contra_hoy_que_se_le_da(self):
+        out = comprobar.comprobar(self.carpeta, self.reglas, hoy=HOY + timedelta(days=91))
+        self.assertIn("days old (max 90)", "\n".join(out))
+
+    def test_sin_reddit_no_se_piden_bloques(self):
+        self.cambiar("ficha.md", "- reddit\n", "")
+        (self.carpeta / "reddit.md").unlink()
+        self.cambiar("ficha.md", "### Normas de r/gamedev", "### Notas")
+        self.assertEqual(self.fallos(), "")
+
+
+class CanalesExtra(Base):
+    def extra(self, nombre="portal", texto=None):
+        self.cambiar("ficha.md", "- discord\n", f"- discord\n- {nombre}\n")
+        self.escribir(f"{nombre}.md", texto if texto is not None else "## es\n\nHola.\n\n## en\n\nHello.\n")
+
+    def test_sin_opciones_pide_secciones_y_no_limita(self):
+        self.extra(texto="## es\n\n" + "a" * 9000 + "\n")
+        out = self.fallos()
+        self.assertIn("portal.md: no «## en» section", out)
+        self.assertNotIn("characters (max", out)
+
+    def test_limite_por_seccion_de_idioma(self):
+        self.extra(texto="## es\n\n" + "a" * 11 + "\n\n## en\n\n" + "b" * 10 + "\n")
+        out = "\n".join(comprobar.comprobar(self.carpeta, self.reglas, limites={"portal": 10}))
+        self.assertIn("portal.md (es): 11 characters (max 10, set with --limite portal=10); shorten it by 1", out)
+        self.assertNotIn("portal.md (en)", out)
+
+    def test_el_limite_no_cuenta_las_lineas_imagen(self):
+        self.cambiar("ficha.md", "Release card | x |", "Release card | x, portal |")
+        self.extra(texto="## es\n\n" + "a" * 10 + "\nImagen: medios/tarjeta.webp\n\n## en\n\nb\nImagen: medios/tarjeta.webp\n")
+        self.assertEqual("\n".join(comprobar.comprobar(self.carpeta, self.reglas, limites={"portal": 10})), "")
+
+    def test_el_limite_de_otro_canal_no_afecta(self):
+        self.extra(texto="## es\n\n" + "a" * 50 + "\n\n## en\n\nb\n")
+        self.assertEqual("\n".join(comprobar.comprobar(self.carpeta, self.reglas, limites={"otro": 10})), "")
+
+    def test_formato_propio_exige_archivo_no_vacio_y_no_secciones(self):
+        self.extra(texto='{"titulo": "Hola", "cuerpo": "Hello"}\n')
+        self.assertEqual("\n".join(comprobar.comprobar(self.carpeta, self.reglas, propios=["portal"])), "")
+        self.escribir("portal.md", "  \n")
+        self.assertIn("portal.md: empty (channel set with --formato-propio); write the content the other system reads",
+                      "\n".join(comprobar.comprobar(self.carpeta, self.reglas, propios=["portal"])))
+
+    def test_formato_propio_con_archivo_ausente(self):
+        self.extra()
+        (self.carpeta / "portal.md").unlink()
+        self.assertIn("portal.md: listed under «## Canales» but missing",
+                      "\n".join(comprobar.comprobar(self.carpeta, self.reglas, propios=["portal"])))
+
+    def test_formato_propio_sigue_buscando_huecos_y_jerga(self):
+        self.extra(texto='{"t": "WIP: {{titulo}}"}\n')
+        out = "\n".join(comprobar.comprobar(self.carpeta, self.reglas, propios=["portal"]))
+        self.assertIn("portal.md: internal jargon «WIP:»", out)
+        self.assertIn("portal.md: template gap «{{titulo}}»", out)
+
+    def test_formato_propio_no_aporta_idiomas_deducidos(self):
+        self.cambiar("ficha.md", "Idiomas: es, en\n", "")
+        self.extra(texto='{"es": 1, "zz": 2}\n')
+        out = "\n".join(comprobar.comprobar(self.carpeta, self.reglas, propios=["portal"]))
+        self.assertIn('no languages: add "Idiomas: es, en" to ficha.md', out)
+
+    def test_imagenes_de_un_canal_extra_webp_png_y_jpg(self):
+        self.extra()
+        for ext, datos in ((".png", png(100, 50)), (".jpg", jpeg(100, 50))):
+            with self.subTest(ext):
+                (self.carpeta / "medios" / f"otra{ext}").write_bytes(datos)
+                self.cambiar("ficha.md", "\n\n## Uso interno", f"\n| `medios/otra{ext}` | es: a / en: b | portal |\n\n## Uso interno")
+                self.escribir("portal.md", f"## es\n\nHola.\nImagen: medios/otra{ext}\n\n## en\n\nHello.\nImagen: medios/otra{ext}\n")
+                self.assertEqual(self.fallos(), "")
+                (self.carpeta / "medios" / f"otra{ext}").unlink()
+                self.cambiar("ficha.md", f"\n| `medios/otra{ext}` | es: a / en: b | portal |", "")
+
+    def test_un_webp_de_la_ficha_tambien_vale_en_un_canal_extra(self):
+        self.cambiar("ficha.md", "Release card | x |", "Release card | x, portal |")
+        self.extra(texto="## es\n\nHola.\nImagen: medios/tarjeta.webp\n\n## en\n\nHello.\nImagen: medios/tarjeta.webp\n")
+        self.assertEqual(self.fallos(), "")
+
+    def test_un_gif_no_vale_en_un_canal_extra(self):
+        self.cambiar("ficha.md", "\n\n## Uso interno", "\n| `medios/anim.gif` | es: a / en: b | portal |\n\n## Uso interno")
+        (self.carpeta / "medios" / "anim.gif").write_bytes(gif(10, 10))
+        self.extra(texto="## es\n\nHola.\nImagen: medios/anim.gif\n\n## en\n\nHello.\nImagen: medios/anim.gif\n")
+        self.assertFallo("portal.md: «medios/anim.gif» is a .gif and portal takes .webp, .png, .jpg; point to medios/<name>.webp")
+
+    def test_nombres_de_canal_en_minusculas(self):
+        for malo in ("Portal", "mi canal", "../x", "web_site", "x (principal)"):
+            with self.subTest(malo):
+                self.cambiar("ficha.md", "- discord\n", f"- discord\n- {malo}\n")
+                self.assertFallo(f"ficha.md: channel «{malo}» under «## Canales» is not a valid name; use lowercase letters, "
+                                 "digits and hyphens ([a-z0-9-]+), one channel per line")
+                self.cambiar("ficha.md", f"- discord\n- {malo}\n", "- discord\n")
+
+    def test_un_canal_con_guion_y_digitos_vale(self):
+        self.extra("web-2", "## es\n\nHola.\n\n## en\n\nHello.\n")
+        self.assertEqual(self.fallos(), "")
+
+    def test_mayusculas_en_x_ya_no_se_perdonan(self):
+        self.cambiar("ficha.md", "- x\n", "- X\n")
+        self.assertFallo("ficha.md: channel «X» under «## Canales» is not a valid name")
+
+
+class Opciones(unittest.TestCase):
+    def test_limite_y_formato_propio_se_pueden_repetir(self):
+        r = comprobar.leer_opciones(["--limite", "portal=500", "--limite=blog=900", "--formato-propio", "web",
+                                     "--formato-propio=api", "--prefijos-tarea", "INS", "carpeta"])
+        self.assertEqual(r, (["carpeta"], ["INS"], {"portal": 500, "blog": 900}, ["web", "api"], None))
+
+    def test_opciones_mal_escritas(self):
+        casos = (
+            (["--limite", "portal", "c"], "--limite needs channel=N with a lowercase channel name and N >= 1"),
+            (["--limite", "portal=0", "c"], "--limite needs channel=N"),
+            (["--limite", "portal=diez", "c"], "--limite needs channel=N"),
+            (["--limite", "Portal=5", "c"], "--limite needs channel=N"),
+            (["--limite"], "--limite needs channel=N"),
+            (["--limite", "x=100", "c"], "--limite is for extra channels; the limit of x is in reglas.json"),
+            (["--formato-propio", "linkedin", "c"], "--formato-propio is for extra channels; linkedin has its own checks"),
+            (["--formato-propio", "Web", "c"], "--formato-propio needs a lowercase channel name"),
+            (["--formato-propio"], "--formato-propio needs a lowercase channel name"),
+            (["--limite", "web=5", "--formato-propio", "web", "c"], "web is in --limite and --formato-propio"),
+            (["--otra", "c"], "unknown option --otra"),
+        )
+        for args, motivo in casos:
+            with self.subTest(args=args):
+                self.assertIn(motivo, comprobar.leer_opciones(args)[4])
+
+    def correr(self, *args):
+        return subprocess.run([sys.executable, str(AQUI / "comprobar.py"), *args], capture_output=True, text=True)
+
+    def test_cli_con_opciones_mal_escritas_sale_con_dos_y_dice_el_uso(self):
+        r = self.correr("--limite", "x=100", "carpeta")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("--limite is for extra channels; the limit of x is in reglas.json. usage: comprobar.py", r.stdout)
+
+    def test_cli_limite_y_formato_propio_sobre_una_pieza(self):
+        tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, tmp)
+        carpeta = tmp / "2026-10-25" / "01-pieza"
+        carpeta.mkdir(parents=True)
+        (carpeta / "medios").mkdir()
+        (carpeta / "ficha.md").write_text("Idiomas: es, en\n\n## Canales\n\n- portal\n- web\n\n## Imágenes\n\n"
+                                          "| Imagen | Texto alternativo | Canales |\n|---|---|---|\n\n## Publicado\n", encoding="utf-8")
+        (carpeta / "portal.md").write_text("## es\n\n" + "a" * 30 + "\n\n## en\n\nb\n", encoding="utf-8")
+        (carpeta / "web.md").write_text('{"a": 1}\n', encoding="utf-8")
+        r = self.correr("--limite", "portal=20", "--formato-propio", "web", str(carpeta))
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("portal.md (es): 30 characters (max 20, set with --limite portal=20); shorten it by 10", r.stdout)
+        self.assertNotIn("web.md", r.stdout)
+        r = self.correr("--limite", "portal=30", "--formato-propio", "web", str(carpeta))
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "OK"))
+        r = self.correr(str(carpeta))
+        self.assertIn("web.md: no «## es» section", r.stdout)
+
+
+class Lectura(Base):
+    def test_utf8_invalido_en_la_ficha_es_un_error_limpio(self):
+        (self.carpeta / "ficha.md").write_bytes(b"Idiomas: es\n\xff\xfe")
+        self.assertEqual(comprobar.comprobar(self.carpeta, self.reglas), ["ficha.md: not valid UTF-8 text; open it in an editor and save it as UTF-8"])
+
+    def test_utf8_invalido_en_un_canal_no_tapa_el_resto(self):
+        (self.carpeta / "x.md").write_bytes(b"## es\n\xe9\n")
+        self.cambiar("linkedin.md", "Texto largo.", "WIP: x")
+        out = self.fallos()
+        self.assertIn("x.md: not valid UTF-8 text; open it in an editor and save it as UTF-8", out)
+        self.assertIn("linkedin.md: internal jargon «WIP:»", out)
+        self.assertNotIn("x.md: listed under", out)
+
+    def test_la_cli_con_utf8_invalido_no_da_traceback(self):
+        (self.carpeta / "discord.md").write_bytes(b"\x80\x81")
+        r = subprocess.run([sys.executable, str(AQUI / "comprobar.py"), str(self.carpeta)], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("discord.md: not valid UTF-8 text", r.stdout)
+        self.assertNotIn("Traceback", r.stdout + r.stderr)
+
+    def test_un_bom_al_principio_no_rompe_las_secciones(self):
+        t = (self.carpeta / "linkedin.md").read_text(encoding="utf-8")
+        (self.carpeta / "linkedin.md").write_bytes(b"\xef\xbb\xbf" + t.encode("utf-8"))
+        self.assertEqual(self.fallos(), "")
+
+
+class PiezasMalNombradas(Base):
+    def test_una_carpeta_mal_nombrada_sin_ficha_se_comprueba_y_se_avisa(self):
+        mala = self.carpeta.parent / "mi-pieza"
+        mala.mkdir()
+        (mala / "x.md").write_text("## es\n\nHola\n", encoding="utf-8")
+        self.assertEqual([p.name for p in comprobar.piezas(self.carpeta.parent)], ["01-lanzamiento", "mi-pieza"])
+        out = "\n".join(comprobar.comprobar(mala, self.reglas))
+        self.assertIn("folder name: expected <dir>/AAAA-MM-DD/NN-<tema>", out)
+        self.assertIn("no ficha.md", out)
+
+    def test_la_cli_la_cuenta_como_fallo(self):
+        mala = self.tmp / "2026-10-25" / "sin-numero"
+        (mala / "medios").mkdir(parents=True)
+        r = subprocess.run([sys.executable, str(AQUI / "comprobar.py"), str(self.tmp)], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(f"{mala}: folder name: expected", r.stdout)
+        self.assertIn(f"{mala}: no ficha.md", r.stdout)
+
+    def test_las_carpetas_que_no_son_piezas_no_se_tocan(self):
+        (self.tmp / "propuestas").mkdir()
+        (self.tmp / "propuestas" / "2026-10-25.md").write_text("# Propuestas\n", encoding="utf-8")
+        (self.tmp / "2026-10-25" / "notas").mkdir()
+        (self.tmp / "2026-10-25" / "notas" / "a.md").write_text("x", encoding="utf-8")
+        self.assertEqual([p.name for p in comprobar.piezas(self.tmp)], ["01-lanzamiento"])
 
 
 if __name__ == "__main__":
