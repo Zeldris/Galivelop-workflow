@@ -45,11 +45,12 @@ if [ -n "$bad_files" ]; then
 fi
 
 added="$(diff_of -U0 --no-renames --diff-filter=ACMR | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -v 'gw-allow-secret' || true)"
-KEY_FORMATS='-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,}|xox[abposr]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|sk-(ant-)?[A-Za-z0-9_-]{20,}|gsk_[A-Za-z0-9]{20,}|[rs]k_live_[0-9A-Za-z]{20,}|glpat-[0-9A-Za-z_-]{20,}'
+# The left edge stops a word that merely ends in a prefix (musk-tells-…, task-…) from matching.
+KEY_FORMATS='(^|[^A-Za-z0-9])(-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,}|xox[abposr]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|sk-(ant-)?[A-Za-z0-9_-]{20,}|gsk_[A-Za-z0-9]{20,}|[rs]k_live_[0-9A-Za-z]{20,}|glpat-[0-9A-Za-z_-]{20,})'
 found="$(printf '%s\n' "$added" | grep -oE -e "$KEY_FORMATS" | head -n 5 || true)"
 if [ -n "$found" ]; then
   echo "pre-commit: the commit adds something shaped like a key or token:" >&2
-  printf '%s\n' "$found" | sed -E 's/^(.{8}).*/  \1…/' >&2
+  printf '%s\n' "$found" | sed -E 's/^[^A-Za-z0-9-]//; s/^(.{8}).*/  \1…/' >&2
   echo "pre-commit: keys belong in environment variables or a secrets manager, never in the repo; $fix_line" >&2
   exit 1
 fi

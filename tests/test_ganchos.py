@@ -1122,6 +1122,16 @@ class PreCommit(Base):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("shaped like a key", r.stderr)
 
+    def test_word_ending_in_key_prefix_passes(self):
+        p = self.p
+        p.write("docs/fuentes.md", "- https://ppc.land/x-drops-link-penalty-musk-tells-zuckerberg-on-platform/\n")
+        p.commit("url")
+        p.write("src/llm.py", "KEY=" + "sk-" + "ant-" + "A1b2C3d4" * 3 + "\n")
+        r = p.commit("leak", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("shaped like a key", r.stderr)
+        self.assertIn("  sk-ant-A", r.stderr)
+
     def test_literal_assignment_refused_env_reference_allowed(self):
         p = self.p
         p.write("src/db.py", "db_pass" + 'word = "hunter2-real"\n')

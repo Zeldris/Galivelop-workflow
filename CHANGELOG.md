@@ -12,6 +12,8 @@ here.
 
 ### ES
 
+- El `pre-commit` ya no toma por clave una palabra que solo acaba en un prefijo de clave (`musk-tells-…` en una URL
+  casaba con `sk-…`): los formatos de clave exigen un borde a su izquierda.
 - La P7 del instalador (`docs/propuestas/2026-10-23-instalador-wmf-tarkor.md`), decidida por el usuario: si el CI no
   arranca (sin cupo de Actions, sin runners), el check pasado en local sobre el mismo commit vale **solo con la
   confirmación de la persona**, y se dice y se apunta como «comprobado solo en local»; un CI que arrancó y falló no se
@@ -42,6 +44,8 @@ here.
 
 ### EN
 
+- `pre-commit` no longer takes a word that merely ends in a key prefix for a key (`musk-tells-…` in a URL matched
+  `sk-…`): key formats now need an edge on their left.
 - Installer P7 (`docs/propuestas/2026-10-23-instalador-wmf-tarkor.md`), decided by the user: when CI does not start
   (no Actions quota, no runners), the check passed locally on the same commit counts **only with the person's
   confirmation**, and it is said and logged as "checked only locally"; a CI that started and failed is never replaced.
