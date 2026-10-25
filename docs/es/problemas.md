@@ -47,6 +47,8 @@ python3 .claude/gw/scripts/doctor.py
 | `skills` (WARN) | Skills copiadas con versión distinta de la de `gw.json` | `/gw-update` |
 | `session` (WARN) | La última sesión se abrió fuera del repo y puede no haber cargado `.claude/settings.json` | Reabre Claude Code desde el repo: `cd <repo> && claude` |
 | `compaction` (WARN) | Sesión en la nube sin `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en su entorno: arranca en `/home/user` (y a menudo con varios repos), no carga `.claude/settings.json` y el contexto crece sin tope | Añade `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` a las variables del entorno de la nube (menú del entorno → Edit); las sesiones nuevas lo cogen |
+| `skill tests` (WARN) | Un `.claude/skills/*/scripts/*.py` no tiene `test_<nombre>.py` al lado (`__init__.py`, los `test_*.py` y las subcarpetas no cuentan) | Escribe `scripts/test_<nombre>.py`; el aviso da la ruta y `python3 -m unittest discover -s <scripts> -p 'test_*.py'` lo corre |
+| `media tools` (WARN) | Solo si el proyecto usa `gw-media-content` (existe `.claude/gw/gw-media-content.md` o la carpeta que nombra, `docs/difusion` por defecto): falta `node`, Playwright (desde la carpeta actual o `GW_PLAYWRIGHT_DIR`) o ImageMagick con WebP (`magick` o `convert` con WEBP en `-list format`) | `apt install imagemagick webp` / `brew install imagemagick webp`; en el proyecto, `npm i -D playwright && npx playwright install chromium` |
 
 ## Al subir (`pre-push`)
 

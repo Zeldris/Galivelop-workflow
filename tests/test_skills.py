@@ -85,6 +85,24 @@ class Skills(unittest.TestCase):
                 lines = len(text.splitlines())
                 self.assertLessEqual(lines, MAX_LINES, f"{d.name}: SKILL.md has {lines} lines (max {MAX_LINES})")
 
+    def test_every_skill_script_has_its_test(self):
+        missing = [f"skills/{p.relative_to(SKILLS).as_posix()}" for p in doctor.skill_scripts_without_test(SKILLS)]
+        self.assertEqual(missing, [], "skill scripts without a test_<name>.py next to them; write "
+                         "scripts/test_<name>.py for each (the check keeps this repo as honest as doctor.py asks "
+                         "projects to be)")
+
+    def test_a_skill_script_without_its_test_is_caught(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            scripts = Path(tmp) / "own" / "scripts"
+            scripts.mkdir(parents=True)
+            for name in ("a.py", "b.py", "test_a.py", "__init__.py"):
+                (scripts / name).write_text("")
+            (scripts / "sub").mkdir()
+            (scripts / "sub" / "c.py").write_text("")
+            self.assertEqual([p.name for p in doctor.skill_scripts_without_test(Path(tmp))], ["b.py"])
+        self.assertEqual(doctor.skill_scripts_without_test(Path(tmp)), [])  # a folder that is gone
+
     def test_frontmatter_rules_catch_their_cases(self):
         good = {"name": "x", "description": "Does a thing. Use when asked.", "license": "MIT", "metadata": {}}
         self.assertEqual(description_problems(good), [])

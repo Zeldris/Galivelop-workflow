@@ -83,7 +83,8 @@ verified: the skill says so when a proposal leans on one). The person publishes;
 
 They need Python 3 and git for the figures (`cifras.py`). Rendering images (`render.mjs`) also needs Node with Playwright
 and ImageMagick with WebP; `comprobar.py` runs without them, and **CI does not cover the real render** (its tests use a
-stand-in except where Chromium is present).
+stand-in except where Chromium is present). If the project has the skill's note or folder, `doctor.py` warns about
+whatever is missing (`media tools`).
 
 Without a project note the defaults apply (and it is said once). To change them, `.claude/gw/gw-media-content.md`, one
 `key: value` line per item (the keys are those of the table in `skills/gw-media-content/nota.md`, in English); the

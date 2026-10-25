@@ -82,7 +82,8 @@ verificar: se avisa al apoyarse en uno). La persona publica; ninguna skill lo ha
 
 Necesitan Python 3 y git para las cifras (`cifras.py`). El render de imágenes (`render.mjs`) necesita además Node con
 Playwright e ImageMagick con WebP; `comprobar.py` se puede correr sin ellos, y **el render real no lo cubre el CI**
-(sus tests usan un doble salvo donde haya Chromium).
+(sus tests usan un doble salvo donde haya Chromium). Si el proyecto tiene la nota o la carpeta de la skill, `doctor.py`
+avisa de lo que falte (`media tools`).
 
 Sin nota del proyecto rigen los valores por defecto (y se dice una vez). Para cambiarlos, `.claude/gw/gw-media-content.md`,
 una línea `clave: valor` por dato (las claves, las de la tabla de `skills/gw-media-content/nota.md`, en inglés); el flujo no

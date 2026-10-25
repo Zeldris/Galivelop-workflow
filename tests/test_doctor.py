@@ -445,6 +445,124 @@ class Doctor(unittest.TestCase):
     def doctor_env(self, env):
         return self.p.run("python3", str(self.p.scripts / "doctor.py"), env=env, cwd=self.tmp)
 
+    # --- skill scripts without a test (WMF 2026-10-25 P2)
+
+    def test_skill_script_without_a_test_warns_with_the_file_and_the_fix(self):
+        self.p.write(".claude/skills/own/SKILL.md", "---\nname: own\n---\n")
+        self.p.write(".claude/skills/own/scripts/tool.py", "print(1)\n")
+        self.p.write(".claude/skills/own/scripts/__init__.py", "")
+        self.p.write(".claude/skills/own/scripts/test_other.py", "")
+        self.p.write(".claude/skills/own/scripts/sub/deep.py", "print(2)\n")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        line = self.assertLine(out, "WARN", "skill tests", ".claude/skills/own/scripts/tool.py has no test next to it")
+        self.assertIn("write .claude/skills/own/scripts/test_tool.py", line)
+        self.assertEqual(out.count("WARN skill tests"), 1, out)  # __init__.py, a test_*.py and a subfolder: no warning
+
+    def test_skill_script_with_its_test_passes(self):
+        self.p.write(".claude/skills/own/scripts/tool.py", "print(1)\n")
+        self.p.write(".claude/skills/own/scripts/test_tool.py", "")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "OK", "skill tests", "every skill script has its test_<name>.py")
+
+    def test_a_test_for_another_script_does_not_cover_it(self):
+        self.p.write(".claude/skills/own/scripts/a.py", "")
+        self.p.write(".claude/skills/own/scripts/b.py", "")
+        self.p.write(".claude/skills/own/scripts/test_a.py", "")
+        code, out = self.doctor()
+        self.assertLine(out, "WARN", "skill tests", "scripts/b.py has no test", "scripts/test_b.py")
+        self.assertNotIn("scripts/a.py has no test", out)
+
+    # --- gw-media-content tools (WMF 2026-10-25 P1)
+
+    def tools(self, node=True, magick=None, convert=None):
+        """An env whose PATH holds only python3, git, bash and sh plus fake tools: magick/convert answer
+        `-list format` with the text given (None = absent)."""
+        bin_dir = self.tmp / "bin"
+        shutil.rmtree(bin_dir, True)
+        bin_dir.mkdir()
+        for name in ("python3", "git", "bash", "sh"):
+            (bin_dir / name).symlink_to(shutil.which(name))
+        if node:
+            (bin_dir / "node").write_text("#!/bin/sh\n")
+        for name, formats in (("magick", magick), ("convert", convert)):
+            if formats is not None:
+                (bin_dir / name).write_text(f"#!/bin/sh\necho '{formats}'\n")
+        for f in bin_dir.iterdir():
+            if not f.is_symlink():
+                f.chmod(0o755)
+        return {"PATH": str(bin_dir)}
+
+    def media_lines(self, out):
+        return [l for l in out.splitlines() if re.match(r"(OK|WARN|FAIL) +media tools:", l)]
+
+    def use_media(self):
+        self.p.write(".claude/gw/gw-media-content.md", "Folder: docs/social\n")
+
+    def install_playwright(self, base):
+        pw = base / "node_modules" / "playwright"
+        pw.mkdir(parents=True)
+        (pw / "package.json").write_text("{}")
+
+    def test_project_that_does_not_use_gw_media_content_is_not_asked_for_its_tools(self):
+        code, out = self.doctor_env(self.tools(node=False))
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.media_lines(out), [], out)
+
+    def test_media_tools_all_present_passes(self):
+        self.use_media()
+        self.install_playwright(self.tmp)
+        code, out = self.doctor_env(self.tools(magick="  WEBP* rw+ WebP"))
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "OK", "media tools", "node, Playwright, ImageMagick with WebP (magick) found")
+
+    def test_missing_node_playwright_and_imagemagick_warn_with_their_fixes(self):
+        self.use_media()
+        code, out = self.doctor_env(self.tools(node=False))
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "media tools", "node, which is not on PATH", "install Node.js")
+        self.assertLine(out, "WARN", "media tools", "Playwright, which is not found", "GW_PLAYWRIGHT_DIR",
+                        "npm i -D playwright && npx playwright install chromium")
+        self.assertLine(out, "WARN", "media tools", "ImageMagick with WebP support, not found",
+                        "apt install imagemagick webp")
+        self.assertEqual(len(self.media_lines(out)), 3, out)
+
+    def test_the_media_folder_alone_marks_the_project_as_a_user(self):
+        (self.p.work / "docs" / "difusion").mkdir(parents=True)  # the default `Folder`
+        code, out = self.doctor_env(self.tools(node=False))
+        self.assertLine(out, "WARN", "media tools", "node")
+
+    def test_the_folder_the_note_names_marks_the_project_as_a_user(self):
+        self.p.write(".claude/gw/other.md", "x")  # a note of another skill is no signal
+        self.assertEqual(self.media_lines(self.doctor_env(self.tools(node=False))[1]), [])
+        (self.p.work / "docs" / "social").mkdir(parents=True)
+        self.p.write(".claude/gw/gw-media-content.md", "Folder: `docs/social`\n")
+        self.assertLine(self.doctor_env(self.tools(node=False))[1], "WARN", "media tools", "node")
+
+    def test_imagemagick_without_webp_warns_and_convert_with_webp_counts(self):
+        self.use_media()
+        self.install_playwright(self.tmp)
+        code, out = self.doctor_env(self.tools(magick="  PNG* rw- PNG", convert="  PNG* rw- PNG"))
+        self.assertLine(out, "WARN", "media tools", "ImageMagick with WebP support, not found")
+        self.assertEqual(len(self.media_lines(out)), 1, out)
+        code, out = self.doctor_env(self.tools(magick="  PNG* rw- PNG", convert="  WEBP* rw+ WebP"))
+        self.assertLine(out, "OK", "media tools", "ImageMagick with WebP (convert)")
+
+    def test_playwright_resolved_from_gw_playwright_dir_or_a_parent_of_the_current_folder(self):
+        self.use_media()
+        elsewhere = self.tmp / "elsewhere"
+        elsewhere.mkdir()
+        self.install_playwright(elsewhere)
+        env = dict(self.tools(magick="WEBP"), GW_PLAYWRIGHT_DIR=str(elsewhere))
+        self.assertLine(self.doctor_env(env)[1], "OK", "media tools", "Playwright")
+        env = self.tools(magick="WEBP")
+        env["NODE_PATH"] = str(elsewhere / "node_modules")
+        self.assertLine(self.doctor_env(env)[1], "OK", "media tools", "Playwright")
+        self.assertLine(self.doctor_env(self.tools(magick="WEBP"))[1], "WARN", "media tools", "Playwright")
+        self.install_playwright(self.tmp)  # doctor runs in self.tmp; a node_modules above also resolves
+        self.assertLine(self.doctor_env(self.tools(magick="WEBP"))[1], "OK", "media tools", "Playwright")
+
 
 class TemplatesAgree(unittest.TestCase):
     def test_plugin_hooks_and_project_template_use_the_same_matchers_and_scripts(self):

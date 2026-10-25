@@ -105,6 +105,12 @@ here.
 - P9 de `repos-x`, plantilla `REVIEW.md` (ES/EN): intentar refutar cada hallazgo y acabar con `SHIP` /
   `SHIP WITH FIXES` / `DO NOT SHIP`.
 - P10 de `repos-x`: apuntes de las Fases 9 y 10 en el plan (sin cambio de comportamiento).
+- P2 y P1 (resto) de la segunda recogida de WMF (`docs/propuestas/2026-10-25-world-maker-fantasy-2.md`): `doctor.py`
+  avisa (`skill tests`) de cada `.claude/skills/*/scripts/*.py` sin `test_<nombre>.py` al lado, con el archivo y el
+  que hay que escribir, y el check de este repo lo **exige** para `skills/*/scripts/*.py` (`tests/test_skills.py`).
+  Y, solo en un proyecto que usa `gw-media-content` (existe su nota `.claude/gw/gw-media-content.md` o la carpeta que
+  nombra, `docs/difusion` por defecto), avisa (`media tools`) de que faltan `node`, Playwright (desde la carpeta
+  actual o `GW_PLAYWRIGHT_DIR`, como `render.mjs`) o ImageMagick con WebP (`magick` o `convert` con WEBP).
 
 ### EN
 
@@ -200,6 +206,13 @@ here.
 - `repos-x` P9, `REVIEW.md` template (ES/EN): try to refute each finding and end with `SHIP` / `SHIP WITH FIXES` /
   `DO NOT SHIP`.
 - `repos-x` P10: notes for Phases 9 and 10 in the plan (no behaviour change).
+- P2 and P1 (rest) of WMF's second harvest (`docs/propuestas/2026-10-25-world-maker-fantasy-2.md`): `doctor.py`
+  warns (`skill tests`) about each `.claude/skills/*/scripts/*.py` with no `test_<name>.py` next to it, naming the
+  file and the one to write, and this repo's check **requires** it for `skills/*/scripts/*.py`
+  (`tests/test_skills.py`). And, only in a project that uses `gw-media-content` (its note
+  `.claude/gw/gw-media-content.md` exists, or the folder it names, `docs/difusion` by default), it warns
+  (`media tools`) when `node`, Playwright (from the current folder or `GW_PLAYWRIGHT_DIR`, as `render.mjs` resolves
+  it) or ImageMagick with WebP (`magick` or `convert` listing WEBP) is missing.
 
 ## [0.3.0] - 2026-10-23
 

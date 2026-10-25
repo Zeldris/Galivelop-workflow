@@ -12,8 +12,11 @@ workflow; .claude/settings.json (WMF P4: SessionStart matchers, `compact` only r
 commands point to existing files, the PR guard on PreToolUse); AGENTS.md/CLAUDE.md authorise dealing work to
 subagents (VeriNews P1); copied skills at the config's version; a session opened outside the repo (VeriNews P3);
 in a cloud session (CLAUDE_CODE_REMOTE=true), the compaction window the project's settings.json sets is in the
-environment. That last check and the session one read the machine running doctor, not only the project, so their
-lines can differ between a person's machine, CI and a cloud session.
+environment; a skill script under .claude/skills/*/scripts/ without a test_<name>.py next to it (WMF 2026-10-25 P2); and,
+only in a project that uses gw-media-content (its note .claude/gw/gw-media-content.md or its folder exists), node,
+Playwright and ImageMagick with WebP (WMF 2026-10-25 P1). The compaction check, the session one and the media tools one
+read the machine running doctor, not only the project, so their lines can differ between a person's machine, CI and a
+cloud session.
 Python 3.8+ standard library only.
 """
 import argparse
@@ -53,6 +56,8 @@ INVISIBLE_PATTERN = (rf"[{ALWAYS_INVISIBLE}]"
                      rf"|\u200d(?![{EMOJI}])")
 INVISIBLE = re.compile(INVISIBLE_PATTERN)
 WARN_LINES, FAIL_LINES = 150, 250  # AGENTS.md / CLAUDE.md: every session loads them whole
+MEDIA_NOTE = ".claude/gw/gw-media-content.md"  # the project's note of gw-media-content (skills/gw-media-content/nota.md)
+MEDIA_FOLDER = "docs/difusion"  # its default `Folder`
 SKILL_LICENSE = "LICENSE-mattpocock-skills"  # aplicar.py copies it next to the skills that cite it
 
 
@@ -535,6 +540,105 @@ def check_instructions(rep, root):
         rep.ok("instructions", "AGENTS.md/CLAUDE.md and skills: no invisible characters, size within limits")
 
 
+def skill_scripts_without_test(skills_dir):
+    """Paths of the skills_dir/*/scripts/*.py that have no test_<name>.py next to them (test_*.py and __init__.py need
+    none; subfolders are not looked at). The repo's own test_skills.py applies it to skills/ too."""
+    return [path for path in sorted(skills_dir.glob("*/scripts/*.py")) if skills_dir.is_dir()
+            and path.name != "__init__.py" and not path.name.startswith("test_")
+            and not (path.parent / f"test_{path.name}").is_file()]
+
+
+def check_skill_tests(rep, root):
+    """WARN with every .claude/skills/*/scripts/*.py that has no test_<name>.py next to it: a skill born in the project
+    is code too (P2 of docs/propuestas/2026-10-25-world-maker-fantasy-2.md)."""
+    missing = skill_scripts_without_test(root / ".claude" / "skills")
+    for path in missing:
+        rel = path.relative_to(root).as_posix()
+        folder, name = rel.rsplit("/", 1)
+        rep.warn("skill tests", f"{rel} has no test next to it", f"write {folder}/test_{name} "
+                 f"(python3 -m unittest discover -s {folder} -p 'test_*.py' runs it)")
+    if not missing:
+        rep.ok("skill tests", "every skill script has its test_<name>.py")
+
+
+def media_folder(root):
+    """The `Folder:` line of the gw-media-content note, or its default; None when it points outside the project."""
+    try:
+        text = (root / MEDIA_NOTE).read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        text = ""
+    m = re.search(r"^[\s>*-]*Folder\s*:\s*`?([^`\n]+?)`?\s*$", text, re.M)
+    folder = m.group(1) if m else MEDIA_FOLDER
+    path = Path(folder)
+    return None if path.is_absolute() or ".." in path.parts else root / path
+
+
+def uses_media_content(root):
+    """The project uses gw-media-content when its note exists or the folder the note names (default docs/difusion) does.
+    The skill itself is in every project that applied the workflow, so its presence says nothing."""
+    folder = media_folder(root)
+    return (root / MEDIA_NOTE).is_file() or (folder is not None and folder.is_dir())
+
+
+def playwright_found():
+    """True when `playwright` resolves as render.mjs does: from the current folder or from GW_PLAYWRIGHT_DIR, up the
+    node_modules folders (and NODE_PATH, which Node also searches)."""
+    bases = [Path.cwd()]
+    if os.environ.get("GW_PLAYWRIGHT_DIR"):
+        bases.append(Path(os.environ["GW_PLAYWRIGHT_DIR"]).resolve())
+    for base in bases:
+        for folder in [base, *base.parents]:
+            if folder.name != "node_modules" and (folder / "node_modules" / "playwright" / "package.json").is_file():
+                return True
+        if (base / "playwright" / "package.json").is_file():
+            return True
+    return any((Path(d) / "playwright" / "package.json").is_file()
+               for d in os.environ.get("NODE_PATH", "").split(os.pathsep) if d)
+
+
+def imagemagick_webp():
+    """The command (`magick`, else `convert`) whose `-list format` has WEBP, as render.mjs checks it; else None."""
+    for command in ("magick", "convert"):
+        if not shutil.which(command):
+            continue
+        try:
+            r = subprocess.run([command, "-list", "format"], capture_output=True, text=True, timeout=30)
+        except (OSError, subprocess.SubprocessError):
+            continue
+        if r.returncode == 0 and re.search(r"\bWEBP\b", r.stdout):
+            return command
+    return None
+
+
+def check_media_tools(rep, root):
+    """Only for a project that uses gw-media-content: node, Playwright and ImageMagick with WebP, which
+    skills/gw-media-content/scripts/render.mjs needs (the machine running doctor is the one that renders)."""
+    if not uses_media_content(root):
+        return
+    found = []
+    if shutil.which("node"):
+        found.append("node")
+    else:
+        rep.warn("media tools", "gw-media-content renders images with node, which is not on PATH",
+                 "install Node.js 18+ (https://nodejs.org, or: apt install nodejs / brew install node)")
+    if playwright_found():
+        found.append("Playwright")
+    else:
+        rep.warn("media tools", "gw-media-content renders images with Playwright, which is not found from the current "
+                 "folder nor from GW_PLAYWRIGHT_DIR",
+                 "in the project: npm i -D playwright && npx playwright install chromium (then run from its folder, "
+                 "or set GW_PLAYWRIGHT_DIR)")
+    command = imagemagick_webp()
+    if command:
+        found.append(f"ImageMagick with WebP ({command})")
+    else:
+        rep.warn("media tools", "gw-media-content converts images with ImageMagick with WebP support, not found "
+                 "(neither `magick` nor `convert` lists WEBP)",
+                 "apt install imagemagick webp (Debian/Ubuntu) or brew install imagemagick webp (macOS)")
+    if len(found) == 3:
+        rep.ok("media tools", f"gw-media-content: {', '.join(found)} found")
+
+
 def run(root):
     rep = Report()
     cfg = check_config(rep, root)
@@ -549,6 +653,8 @@ def run(root):
     check_subagents(rep, root)
     check_glossary(rep, root)
     check_instructions(rep, root)
+    check_skill_tests(rep, root)
+    check_media_tools(rep, root)
     proposals = check_proposals(rep, root)
     check_skills(rep, root, version, proposals)
     check_session(rep, root)
