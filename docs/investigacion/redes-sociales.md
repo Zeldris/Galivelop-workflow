@@ -31,7 +31,10 @@ Leyenda de fuente: **P** = primaria; **S** = secundaria (con fecha); **NV** = no
 | Implicación | Las conversaciones (y que el autor responda) pesan mucho más que likes. Preguntas y respuestas rápidas del autor. | derivado de P |
 | Enlaces externos | Bier (jefe de producto) calificó de «fake news» el deboost de enlaces (abril 2026) y recomienda el enlace en el cuerpo con contexto; en julio de 2026 Musk dijo que no se penaliza «desde hace más de un año». Antes (2023-2025) circulaba que sí. No hay documento oficial. | S: Social Media Today, ppc.land, roboin.io, siecledigital.fr (abril y julio 2026) |
 | Formato, longitud, hashtags, horarios | Estudio de Sprout 2025: X rinde martes-jueves 9-14 h; Buffer: lunes y viernes 11 h (más de 1 M de posts). Contradicen en parte. | S: Sprout 2025 (vía Social Media Today), Buffer (fecha 2025-2026 sin confirmar) |
-| Límites técnicos de imagen/vídeo | No verificado esta sesión. | NV |
+| Longitud | 280 caracteres; letras latinas = 1, emoji/CJK = 2; toda URL cuenta 23 (t.co); medios = 0; hashtags cuentan normal. Premium: 25 000 (una página de ayuda antigua dice 4 000). | P: docs.x.com/fundamentals/counting-characters (2026-10-25); Premium: S (extracto de búsqueda de help.x.com/en/using-x/x-premium) |
+| Medios | Un post lleva 4 fotos, o 1 GIF, o 1 vídeo (no mezclables). Imagen ≤5 MB (JPG/PNG/GIF/WEBP); GIF ≤15 MB, ≤1280×1080, ≤350 frames; vídeo 0,5 s-20 min y ≤8 GB (Premium: 125 min, 16 GB); H.264/AAC, ≤60 fps, relación obligatoria entre 1:3 y 3:1 (recomendada 16:9 o 1:1). Texto alternativo: la documentación no da límite. | P: docs.x.com/x-api/media/introduction y /quickstart/best-practices (2026-10-25) |
+| Encuestas, hashtags, menciones | Encuesta: hasta 4 opciones de ≤25 caracteres, de 5 min a 7 días. Sin tope de hashtags, pero «hashtags excesivos y sin relación» y menciones/respuestas no solicitadas en masa son spam. | S: extractos de búsqueda de help.x.com/en/using-x/x-polls y help.x.com/en/rules-and-policies/authenticity (las páginas dieron 403 al abrirlas) |
+| Repositorio `twitter/the-algorithm` | El README no dice nada de enlaces, medios ni límites de texto (solo describe light/heavy ranker, SimClusters, TweepCred, filtros de visibilidad). No confirma ni desmiente la penalización de enlaces. | P: raw.githubusercontent.com/twitter/the-algorithm/main/README.md |
 | Blog de ingeniería de X (2023-03-31) | No pudo abrirse (403). | — |
 
 ### 1.2 LinkedIn
@@ -40,9 +43,14 @@ Leyenda de fuente: **P** = primaria; **S** = secundaria (con fecha); **NV** = no
 |---|---|---|
 | Algoritmo | LinkedIn reconstruyó el feed con LLM (LLaMA 3 afinado como dual encoder para recuperación, 2000 candidatos) y modelos transformer; prioriza relevancia temática y patrones de interacción. | P parcial: arXiv 2510.14223 («Large Scale Retrieval for the LinkedIn Feed using Causal Language Models»); resúmenes S: ppc.land (marzo 2026), Search Engine Land |
 | Documentos/carruseles | PDF/PPT/DOC hasta **100 MB y 300 páginas**; vídeos/animaciones dentro del documento se muestran estáticos. | P: linkedin.com/help/linkedin/answer/97459 |
-| Vídeo | Máx. 10 min (personal) / 30 min (página): solo API de terceros. | S: docs.zernio.com (2026) |
+| Vídeo | **Corregido:** MP4, de 3 s a 30 min y de 75 KB a 500 MB (la fuente secundaria decía 10 min personal / 30 min página). Relación de aspecto y resolución: la API no las fija. | P: learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/videos-api (2026-10-25). Límites de la interfaz web: NV |
 | Horarios | Sprout 2025: martes-jueves, 10-13 h. Buffer 2026: tramo 17-20 h; contradice. | S |
-| Enlaces, hashtags, longitud, frecuencia | Sin fuente primaria hallada. Práctica común (NV): enlace en comentario o en el cuerpo, 3-5 hashtags. | NV |
+| Longitud | Un post admite hasta 3 000 caracteres; más, se escribe como artículo. LinkedIn puede limitar cuántos posts publica un miembro o página y restringir la visibilidad si detecta automatización o actividad inauténtica. | P: linkedin.com/help/linkedin/answer/a528176 (2026-10-25) |
+| Imágenes | JPG, PNG y GIF (GIF ≤250 frames), <36 152 320 píxeles; multimagen de 2 a 20 imágenes; texto alternativo hasta 4 086 caracteres (recomendado <120). Peso máximo y relación de aspecto: no figuran. | P: Microsoft Learn, images-api y multiimage-post-api (2026-10-25) |
+| Documentos y carrusel | PPT, PPTX, DOC, DOCX y PDF, ≤100 MB y ≤300 páginas. El carrusel orgánico no existe en la API (solo anuncios): un «carrusel» orgánico es un PDF. | P: Microsoft Learn, documents-api y posts-api; linkedin.com/help/linkedin/answer/97459 |
+| Encuestas | Pregunta ≤140 caracteres, 2-4 opciones de ≤30, duración 1, 3, 7 o 14 días; no se piden opiniones políticas ni datos sensibles. | P: Microsoft Learn, poll-post-api |
+| Hashtags y menciones | `#palabra` en el texto; la mención exige el nombre exacto, sensible a mayúsculas (organización: nombre completo; persona: basta una parte). Sin tope oficial de hashtags. | P: Microsoft Learn, posts-api («Mentions and Hashtags»); tope: NV |
+| Enlaces | La API no extrae vista previa: título, descripción y miniatura se dan a mano. La ayuda no dice nada de enlaces en comentario frente a cuerpo. | P (API); práctica de enlace: NV |
 
 ### 1.3 Reddit
 
@@ -50,15 +58,19 @@ Leyenda de fuente: **P** = primaria; **S** = secundaria (con fecha); **NV** = no
 |---|---|---|
 | Autopromoción | La reddiquette y las reglas de r/gamedev no pudieron abrirse (403 / bloqueado). Guía de marketing: «mira mi juego, wishlist» no funciona; devlogs y postmortems sí; r/gamedev tiene un hilo recurrente Screenshot Saturday. | S: presskit.gg/field-guides/reddit-marketing-indie-games (fecha no indicada) |
 | Norma comunitaria | Cada sub tiene normas propias y algunos suspenden sus días de promoción (ejemplo r/iosgaming). | S: redlib/r/iosgaming |
-| «Regla 9:1» / 10 % de la reddiquette | No confirmada. | NV |
-| r/IndieDev, r/indiegaming, r/programming, r/ClaudeAI | No se verificó cada regla. La skill debe pedir al usuario que lea la barra lateral/wiki antes de publicar y registrar la fecha de lectura. | NV |
+| «Regla 9:1» / 10 % de la reddiquette | No confirmada: support.reddithelp.com devolvió 403; redditinc.com y reddit.com están bloqueados para WebFetch/WebSearch. | NV |
+| Reglas por subreddit (intento 2026-10-25) | `www.reddit.com/r/<sub>/about/rules.json` da 403; `old.reddit.com/.../about/rules` devuelve la página de inicio de sesión sin reglas. No se insistió con otras vías para no saltar el bloqueo. | NV |
+| r/gamedev, r/IndieDev, r/indiegaming, r/programming, r/ClaudeAI | Reglas no verificables desde aquí (ver arriba). La skill debe pedir al usuario que lea la barra lateral/wiki antes de publicar y registrar la fecha de lectura. | NV |
 
 ### 1.4 Discord
 
 | Aspecto | Hallazgo | Fuente |
 |---|---|---|
 | Canales de anuncios | Canal de tipo Announcement con botón Follow; lo publicado aparece en los servidores que lo siguen; `@everyone/@here` no se propagan. | P: support.discord.com/hc/en-us/articles/360028384531 |
-| Foros | Sin documentación oficial hallada; seguimiento de foros solo con bots de terceros. | NV |
+| Foros | Canal tipo foro: nombre del hilo 1-100 caracteres, hasta 20 etiquetas por foro y 5 por hilo, opción de exigir etiqueta, tema del foro hasta 4 096 caracteres, mensaje inicial como un mensaje normal. Seguimiento de foros solo con bots de terceros (NV). | P: docs.discord.com/developers/resources/channel (2026-10-25) |
+| Mensajes y embeds | Texto ≤2 000 caracteres; hasta 10 embeds; título 256, descripción 4 096, 25 campos (nombre 256, valor 1 024), pie 2 048, autor 256, y 6 000 en total por mensaje; texto alternativo de adjunto ≤1 024; petición ≤25 MiB. | P: docs.discord.com/developers/resources/message |
+| Adjuntos | 20 MiB por archivo por defecto (más con Nitro o nivel de boost); ayuda: gratis 20 MB, Nitro Basic 50 MB, Nitro 1 GB. Número máximo de adjuntos por mensaje: no figura. | P: docs.discord.com/developers/reference; S: extracto de support.discord.com File Attachments FAQ (403 al abrirla) y discord.com/blog/discord-update-october-22-2026 |
+| Encuestas | Pregunta ≤300 caracteres, hasta 10 respuestas de ≤55, duración hasta 32 días (768 h), 24 h por defecto. | P: docs.discord.com/developers/resources/poll |
 | Uso en la skill | Discord es canal de comunidad, no de alcance: posts de changelog, hilos de feedback, vista previa a testers. | juicio |
 
 ### 1.5 Instagram y Threads
@@ -152,10 +164,10 @@ Tamaños: P = oficial; S = secundaria; NV = no verificado.
 | Formato | Redes | Especificación | Autogenerable desde el repo |
 |---|---|---|---|
 | Carrusel / PDF | LinkedIn (PDF ≤300 págs, ≤100 MB — P); Instagram carrusel 4:5 1080×1350 (S) | Una idea por tarjeta | Sí: HTML → PDF con Playwright (`page.pdf`) o PNG por tarjeta |
-| GIF | X, Bluesky (vía vídeo), Mastodon, Reddit | NV: tamaños | Sí: grabación de Playwright (vídeo) → ffmpeg `palettegen/paletteuse` |
+| GIF | X, Bluesky (vía vídeo), Mastodon, Reddit | X: ≤15 MB, ≤1280×1080, ≤350 frames (P); LinkedIn: ≤250 frames (P); Discord: 20 MiB por archivo (P); resto NV | Sí: grabación de Playwright (vídeo) → ffmpeg `palettegen/paletteuse` |
 | Vídeo corto vertical | TikTok, Reels, Shorts (Shorts: vertical/cuadrado ≤3 min — P) | 9:16, 1080×1920, H.264/AAC (S) | Sí: ffmpeg + grabación de Playwright; subtítulos quemados con `subtitles` |
 | Clip con subtítulos | todas | La mayoría ve sin sonido (NV) | Sí: ffmpeg + `.srt` |
-| Encuestas | X, LinkedIn, Instagram stories, Discord, Mastodon, Bluesky (NV) | Texto corto | Solo el texto |
+| Encuestas | X (4 × 25 car.), LinkedIn (4 × 30), Discord (10 × 55), Instagram stories, Mastodon, Bluesky (NV) | Texto corto; límites en §5 | Solo el texto |
 | Antes/después | Instagram, X, TikTok | Mismo encuadre | Sí: dos capturas lado a lado (HTML→PNG) o `git stash`/dos commits |
 | Tarjeta de cita | LinkedIn, X, Instagram | 1:1 o 1,91:1 | Sí: HTML→PNG |
 | Infografía | LinkedIn, blog | Vertical largo | Sí: HTML/SVG→PNG |
@@ -204,21 +216,99 @@ Tamaños: P = oficial; S = secundaria; NV = no verificado.
 4. **Enlace en el cuerpo con contexto** (X, 2026) salvo que el usuario prefiera comentario; en Reddit, valor primero y regla del subreddit leída.
 5. **Los datos salen del repo**; las cifras se calculan con script, no las inventa el agente («lo comprobable lo hace un script»).
 6. **No prometer horarios**: ofrecer una franja y registrar resultados.
-7. **Verificar de nuevo** los puntos NV antes de fijarlos (reglas de Reddit, TikTok oficial, X en GitHub, Instagram oficial, límites de LinkedIn vídeo).
+7. **Verificar de nuevo** los puntos NV antes de fijarlos (reglas de Reddit, TikTok oficial, Instagram oficial); los de X, LinkedIn y Discord están en §5.
 8. **Seguridad:** no incluir secretos, rutas privadas ni datos de otros repos; de otros proyectos solo se lee.
 
 ### 4.3 Pendiente de investigar
 
-- Reglas actuales de r/gamedev, r/IndieDev, r/indiegaming, r/programming y r/ClaudeAI (leer a mano; Reddit bloquea la lectura automática).
-- Documentación oficial de Mastodon y Threads; ayuda oficial de Instagram (carrusel, Reels); límites de X.
+Revisados el 2026-10-25 para X, LinkedIn, Reddit y Discord (resultado en §5). Queda:
+
+- **Reddit (bloqueado):** reglas actuales de r/gamedev, r/IndieDev, r/indiegaming, r/programming y r/ClaudeAI, y la política de autopromoción de support.reddithelp.com. Ninguna herramienta automática las lee (403 o inicio de sesión); las copia a mano el usuario, o la skill las pide antes de preparar un post de Reddit.
+- **X:** límite del texto alternativo, longitud exacta de Premium (25 000 frente a 4 000 en páginas viejas) y encuestas/spam leídos solo por extracto (help.x.com da 403).
+- **LinkedIn:** peso máximo y relación de aspecto de imágenes, límites de vídeo en la interfaz web, tope de hashtags y de enlaces.
+- **Discord:** adjuntos por mensaje, límite de publicación de canales de anuncios, normas de autopromoción (cada servidor decide; Community Guidelines sin leer).
+- Documentación oficial de Mastodon y Threads; ayuda oficial de Instagram (carrusel, Reels).
 - Blog de Steamworks sobre marketing y postmortems del GDC con cifras.
 - Estudios completos de Sprout y Buffer (fechas exactas).
+
+---
+
+## 5. Reglas por red (verificadas)
+
+Consulta: 2026-10-25. Pensada para copiarse a un archivo de reglas de la skill. **P** = leído en la fuente primaria; **S** = la página oficial solo se vio por extracto de búsqueda (la página dio 403) o es secundaria; **NV** = no verificado. La skill trata NV como pregunta al usuario, no como regla.
+
+### 5.1 X
+
+| Regla | Valor | Marca | Fuente |
+|---|---|---|---|
+| Longitud | 280 (latino = 1, emoji/CJK = 2); URL = 23; medios = 0 | P | https://docs.x.com/fundamentals/counting-characters |
+| Longitud Premium | 25 000 (hay páginas con 4 000) | S | https://help.x.com/en/using-x/x-premium |
+| Combinación de medios | 4 fotos, o 1 GIF, o 1 vídeo | P | https://docs.x.com/x-api/media/introduction |
+| Imagen | ≤5 MB; JPG, PNG, GIF, WEBP; relación de aspecto: sin regla oficial | P | https://docs.x.com/x-api/media/introduction |
+| GIF | ≤15 MB, ≤1280×1080, ≤350 frames | P | https://docs.x.com/x-api/media/quickstart/best-practices |
+| Vídeo | 0,5 s-20 min, ≤8 GB (Premium 125 min, 16 GB); H.264 + AAC, ≤60 fps; relación entre 1:3 y 3:1 (recomendada 16:9 o 1:1); recomendado 1280×720, 720×1280 o 720×720 | P | https://docs.x.com/x-api/media/quickstart/best-practices |
+| Texto alternativo | Límite no publicado en la documentación; usar ≤1 000 como prudencia (NV) | NV | https://docs.x.com/x-api/media/introduction |
+| Encuesta | ≤4 opciones, ≤25 caracteres cada una, 5 min-7 días | S | https://help.x.com/en/using-x/x-polls |
+| Enlaces | Cuentan 23 caracteres; penalización: sin documento oficial (README de the-algorithm no la menciona) | P/NV | https://github.com/twitter/the-algorithm |
+| Hashtags | Sin tope; «hashtags excesivos y sin relación» es spam; usar 1-2 | S | https://help.x.com/en/rules-and-policies/authenticity |
+| Menciones | Las respuestas/menciones masivas no solicitadas son spam; las que se escriben a mano cuentan en los 280 | S/P | https://help.x.com/en/rules-and-policies/authenticity; https://docs.x.com/fundamentals/counting-characters |
+| Autopromoción | Sin regla específica; solo las de spam y manipulación de la plataforma | S | https://help.x.com/en/rules-and-policies/x-rules |
+
+### 5.2 Reddit
+
+Ninguna regla se pudo leer (2026-10-25): `about/rules.json` da 403, `old.reddit.com` devuelve la página de inicio de sesión, y support.reddithelp.com da 403. Todas las filas son **NV**; la skill pide al usuario que pegue las reglas vigentes y anota la fecha.
+
+| Subreddit | Autopromoción | Días o hilos permitidos | Flair | Marca | Fuente |
+|---|---|---|---|---|---|
+| r/gamedev | Sin leer | Hilo recurrente Screenshot Saturday (S: presskit.gg) | Sin leer | NV | https://www.reddit.com/r/gamedev/about/rules (403) |
+| r/IndieDev | Sin leer | Sin leer | Sin leer | NV | https://www.reddit.com/r/IndieDev/about/rules (403) |
+| r/indiegaming | Sin leer | Sin leer | Sin leer | NV | https://www.reddit.com/r/indiegaming/about/rules (403) |
+| r/programming | Sin leer | Sin leer | Sin leer | NV | https://www.reddit.com/r/programming/about/rules (403) |
+| r/ClaudeAI | Sin leer | Sin leer | Sin leer | NV | https://www.reddit.com/r/ClaudeAI/about/rules (403) |
+
+Reglas generales de Reddit (política de contenido, 10 % de la reddiquette): NV, mismo bloqueo.
+
+### 5.3 LinkedIn
+
+| Regla | Valor | Marca | Fuente |
+|---|---|---|---|
+| Longitud del post | ≤3 000 caracteres; más, artículo | P | https://www.linkedin.com/help/linkedin/answer/a528176 |
+| Imagen | JPG, PNG, GIF (≤250 frames); <36 152 320 píxeles; peso y relación de aspecto: no figuran | P/NV | https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api |
+| Varias imágenes | 2-20 por post | P | https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/multiimage-post-api |
+| Texto alternativo | ≤4 086 caracteres; recomendado <120 | P | https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api |
+| Documento / carrusel | PDF, PPT, PPTX, DOC, DOCX; ≤100 MB; ≤300 páginas; el carrusel orgánico es un PDF (la API no lo ofrece) | P | https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/documents-api |
+| Vídeo | MP4; 3 s-30 min; 75 KB-500 MB; relación de aspecto: no figura | P | https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/videos-api |
+| Encuesta | Pregunta ≤140; 2-4 opciones ≤30; 1, 3, 7 o 14 días; sin preguntas políticas ni de salud | P | https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/poll-post-api |
+| Hashtags | `#palabra` en el texto; tope oficial: no figura (usar 3-5, NV) | P/NV | https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api |
+| Menciones | Nombre exacto, sensible a mayúsculas; organizaciones con el nombre completo | P | https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api |
+| Enlaces | Vista previa de artículo con título, descripción y miniatura manuales en la API; enlace en cuerpo o comentario: NV | P/NV | https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api |
+| Frecuencia y automatización | LinkedIn puede limitar posts por periodo y restringir la visibilidad si detecta automatización | P | https://www.linkedin.com/help/linkedin/answer/a528176 |
+| Autopromoción | Sin regla específica en la ayuda de publicación | NV | https://www.linkedin.com/help/linkedin/answer/a528176 |
+
+### 5.4 Discord
+
+| Regla | Valor | Marca | Fuente |
+|---|---|---|---|
+| Mensaje | ≤2 000 caracteres; petición ≤25 MiB | P | https://docs.discord.com/developers/resources/message |
+| Embeds | ≤10 por mensaje; título 256; descripción 4 096; ≤25 campos (nombre 256, valor 1 024); pie 2 048; autor 256; suma ≤6 000 | P | https://docs.discord.com/developers/resources/message |
+| Archivo | 20 MiB por defecto; Nitro Basic 50 MB, Nitro 1 GB | P (20 MiB) / S (resto) | https://docs.discord.com/developers/reference |
+| Adjuntos por mensaje | No figura (el campo `files[n]` no fija tope) | NV | https://docs.discord.com/developers/reference |
+| Texto alternativo | ≤1 024 caracteres | P | https://docs.discord.com/developers/resources/message |
+| Encuesta | Pregunta ≤300; ≤10 respuestas de ≤55; hasta 32 días; 24 h por defecto | P | https://docs.discord.com/developers/resources/poll |
+| Foro | Título del hilo 1-100; ≤20 etiquetas por foro y 5 por hilo; etiqueta obligatoria opcional; descripción ≤4 096 | P | https://docs.discord.com/developers/resources/channel |
+| Canal de anuncios | Se publica y los servidores seguidores lo reciben; `@everyone` y `@here` no se propagan; límite de publicación por hora: NV | P/NV | https://support.discord.com/hc/en-us/articles/360028384531 |
+| Enlaces | Embeds con la misma URL se deduplican (solo se muestra el primero) | P | https://docs.discord.com/developers/resources/message |
+| Hashtags y menciones | Sin concepto de hashtag; `allowed_mentions` ≤100 usuarios y ≤100 roles por mensaje; evitar `@everyone` | P | https://docs.discord.com/developers/resources/message |
+| Autopromoción | La fija cada servidor (canal propio, reglas de la comunidad); Community Guidelines sin leer | NV | sin fuente leída |
 
 ---
 
 ## Fuentes (consultadas el 2026-10-25)
 
 Primarias:
+- https://docs.x.com/fundamentals/counting-characters, https://docs.x.com/x-api/media/introduction, https://docs.x.com/x-api/media/quickstart/best-practices, https://docs.x.com/x-api/posts/manage-tweets/introduction, https://github.com/twitter/the-algorithm (README)
+- https://www.linkedin.com/help/linkedin/answer/a528176 y Microsoft Learn (LinkedIn API): posts-api, post-api-schema, images-api, multiimage-post-api, documents-api, videos-api, poll-post-api (versión li-lms-2026-10)
+- https://docs.discord.com/developers/resources/message, /resources/poll, /resources/channel, /reference
 - https://github.com/twitter/the-algorithm-ml/blob/main/projects/home/recap/README.md (pesos del heavy ranker, abril 2023)
 - https://www.linkedin.com/help/linkedin/answer/97459 (documentos en LinkedIn)
 - https://support.google.com/youtube/answer/15424877 (Shorts de tres minutos)
@@ -244,4 +334,4 @@ Secundarias:
 - https://dev.to/grabbit/open-graph-image-sizes-and-dimensions-the-complete-2026-guide-1k16
 - https://docs.zernio.com/platforms/linkedin
 
-No abiertas (403 o bloqueo): support.reddithelp.com (reddiquette), reddit.com/r/gamedev/wiki/rules, blog.x.com (ingeniería, algoritmo 2023), tiktok.com (página directa).
+No abiertas (403 o bloqueo): help.x.com (polls, imágenes, reglas; solo extractos de búsqueda), support.discord.com (File Attachments FAQ, Forum FAQ), reddit.com y old.reddit.com (reglas de r/gamedev, r/IndieDev, r/indiegaming, r/programming, r/ClaudeAI), redditinc.com, support.reddithelp.com (reddiquette), reddit.com/r/gamedev/wiki/rules, blog.x.com (ingeniería, algoritmo 2023), tiktok.com (página directa).
