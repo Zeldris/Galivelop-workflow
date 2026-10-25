@@ -25,10 +25,10 @@ have its own `medios/<name>.<lang>.webp` (+ `<name>.<lang>-mini.webp`, rendered 
 the `## Imágenes` table may list both (the `.<lang>.` row needs the alt text only in its language). A `.<lang>.` suffix
 for a language that is not in `Idiomas:` (or the suffix of the first language) is an error.
 Reddit: with reddit.md, `## Reddit` in ficha.md holds `Subreddit:` lines (r/<name>, one or several), `Normas leídas:`
-(AAAA-MM-DD, not in the future and at most `reddit.normas_dias` days old) and `Autopromoción:`; and, for every
-subreddit, a subsection `### Normas de r/<name>` with the rules text pasted as is (at least
-`reddit.normas_min_caracteres` characters once whitespace is collapsed; the block ends at the next `### Normas de`
-heading or at the next `##`).
+(AAAA-MM-DD, not in the future and at most `reddit.normas_dias` days old, counted at the date folder of the piece) and
+`Autopromoción:`, all before the first `###`; and, for every subreddit, a subsection `### Normas de r/<name>` with the
+rules text pasted as is (at least `reddit.normas_min_caracteres` characters once whitespace is collapsed; the block
+ends at the next line that starts with `##`, so the pasted text cannot contain `#` headings: paste them as plain lines).
 Known channels (in reglas.json): x, reddit, linkedin, discord. Any other ("extra") channel listed in `## Canales`
 has its file `<canal>.md` and takes images .webp, .png and .jpg (`canal_extra.imagen_formatos`). Without options it gets
 the generic checks only: template gaps, jargon, `Imagen:` lines and a `## <lang>` section per language, with no length
@@ -37,8 +37,10 @@ limit. Options (before the folders, both repeatable):
                               lines excluded)
     --formato-propio canal    <canal>.md is consumed by another system (e.g. a JSON block for a website): it must exist
                               and not be empty; no `## <lang>` sections and no length check (template gaps and jargon
-                              are still looked for)
-A known channel in either option, or the same channel in both, is a usage error.
+                              are still looked for); a `## Imágenes` row that lists it needs the image path
+                              (`medios/x.webp`) somewhere in the file's text, instead of an `Imagen:` line
+A known channel in either option, the same channel in both, or a channel that no checked piece lists under
+`## Canales` is a usage error (exit 2).
 
 Prints OK, or one line per problem with the fix; exit 1 on any problem (2 on bad usage).
 """
@@ -215,7 +217,7 @@ def apartado(texto: str, titulo: str) -> str:
 
 def campo(texto: str, *nombres) -> str:
     for n in nombres:
-        m = re.search(r"(?mi)^[\s>*-]*\*{0,2}" + re.escape(n) + r"\s*:\s*\*{0,2}[ \t]*(.*)$", texto)
+        m = re.search(r"(?mi)^[\s>*-]*\*{0,2}" + re.escape(n) + r"[ \t]*:[ \t]*\*{0,2}[ \t]*(.*)$", texto)
         if m and m.group(1).strip():
             return m.group(1).strip()
     return ""
@@ -402,6 +404,7 @@ def comprobar_propio(canal, texto, prefijos=()):
 
 
 NOMBRE_SUB = re.compile(r"[A-Za-z0-9_]{2,21}")
+FIN_BLOQUE = re.compile(r"(?m)^#{2,}(?:[ \t]|$)")
 BLOQUE_NORMAS = re.compile(r"(?mi)^###[ \t]+Normas[ \t]+de[ \t]+(?:/?r/)?(\S+)[ \t]*$")
 
 
@@ -434,6 +437,7 @@ def bloques_normas(seccion: str):
     trozos = BLOQUE_NORMAS.split(seccion)
     bloques, repetidos = {}, []
     for nombre, texto in zip(trozos[1::2], trozos[2::2]):
+        texto = FIN_BLOQUE.split(texto, 1)[0]  # the block ends at the next heading of level 2 or more
         k = nombre.strip("`*_").lower()
         if k in bloques:
             repetidos.append(nombre)
@@ -441,17 +445,20 @@ def bloques_normas(seccion: str):
     return bloques, repetidos
 
 
-def comprobar_reddit(ficha, reglas=None, hoy=None):
+def comprobar_reddit(ficha, reglas=None, hoy=None, dia_pieza=None):
+    """dia_pieza: the date of the piece's folder; `Normas leídas:` is aged against it (against hoy when None), and a
+    date after hoy is always in the future."""
     reglas = reglas or cargar_reglas()
     hoy = hoy or date.today()
+    referencia = dia_pieza or hoy
     f = []
     cab = cabecera_reddit(ficha)
     for etiqueta, nombres in (("Subreddit", ("Subreddit", "Subreddits")), ("Normas leídas", ("Normas leídas", "Normas leidas")),
                               ("Autopromoción", ("Autopromoción", "Autopromocion"))):
         v = campo(cab, *nombres)
         if not v or v == "…":
-            f.append(f"ficha.md: reddit.md needs «{etiqueta}:» in ficha.md; paste the subreddit rules and write the "
-                     f"«{etiqueta}:» line")
+            f.append(f"ficha.md: reddit.md needs «{etiqueta}:» in ficha.md; put the field before the first «###» block of "
+                     f"«## Reddit», paste the subreddit rules and write the «{etiqueta}:» line")
         elif etiqueta == "Normas leídas":
             m = FECHA.search(v)
             try:
@@ -459,14 +466,18 @@ def comprobar_reddit(ficha, reglas=None, hoy=None):
             except (AttributeError, ValueError):
                 f.append(f"ficha.md: «Normas leídas:» «{v}» has no valid AAAA-MM-DD date; write the day you read the rules")
                 continue
-            dias, mx = (hoy - dia).days, regla(reglas, "reddit", "normas_dias")
-            if dias < 0:
+            dias, mx = (referencia - dia).days, regla(reglas, "reddit", "normas_dias")
+            if dia > hoy:
                 f.append(f"ficha.md: «Normas leídas:» «{v}» is in the future; write the day you read the rules")
             elif dias > mx:
                 f.append(f"ficha.md: «Normas leídas:» «{v}» is {dias} days old (max {mx}); read the rules again, paste "
-                         "them under «### Normas de r/<name>» and write today's date")
+                         "them under «### Normas de r/<name>» and write today's date"
+                         + (f" (the age is counted at the piece date {referencia})" if referencia != hoy else ""))
     nombres, problemas = subreddits(cab)
     f += problemas
+    valor = campo(cab, "Subreddit", "Subreddits")
+    if not nombres and not problemas and valor not in ("", "…") and "{{" not in valor:
+        f.append("ficha.md: no subreddit: write «- **Subreddit:** r/<name>» in «## Reddit» before the first «###» block")
     bloques, repetidos = bloques_normas(apartado(ficha, "Reddit"))
     for r in repetidos:
         f.append(f"ficha.md: «### Normas de r/{r}» appears more than once; merge the blocks into one")
@@ -478,7 +489,9 @@ def comprobar_reddit(ficha, reglas=None, hoy=None):
                      f"reddit.com/r/{n}/about/rules) under a «### Normas de r/{n}» heading inside «## Reddit» of ficha.md")
         elif len(texto) < minimo:
             f.append(f"ficha.md: the rules block of r/{n} has {len(texto)} characters (min {minimo}); paste the complete "
-                     f"rules text under «### Normas de r/{n}» in «## Reddit» of ficha.md")
+                     f"rules text under «### Normas de r/{n}» in «## Reddit» of ficha.md; the pasted text ends at the next "
+                     "line starting with «##», so paste headings as plain lines without «#», and the «Subreddit:» fields "
+                     "go before the first «###» block")
     for k in bloques:
         if "{{" not in k and k not in [n.lower() for n in nombres]:
             f.append(f"ficha.md: «### Normas de r/{k}» matches no «Subreddit:» line; add r/{k} to «Subreddit:» or remove "
@@ -510,7 +523,7 @@ def problema_de_sufijo(ruta: str, idiomas, donde: str):
     return None
 
 
-def comprobar_imagenes(carpeta, ficha, texto_canales, idiomas, reglas, prefijos=()):
+def comprobar_imagenes(carpeta, ficha, texto_canales, idiomas, reglas, prefijos=(), propios=()):
     f = []
     orden = f"{RENDER} {carpeta}"
     tabla = tabla_imagenes(ficha)
@@ -575,7 +588,10 @@ def comprobar_imagenes(carpeta, ficha, texto_canales, idiomas, reglas, prefijos=
             elif dimensiones(carpeta / mini) is None:
                 f.append(f"{mini}: not a valid image; render it again ({orden})")
         for c in canales_de_celda(celda):
-            if c in texto_canales and ruta not in lineas.get(c, []):
+            if c in propios and c in texto_canales and ruta not in texto_canales[c]:
+                f.append(f"ficha.md: «{ruta}» lists channel «{c}» but {c}.md does not contain the path «{ruta}» (channel "
+                         f"with its own format); write the path in the file or remove «{c}» from the Canales cell")
+            elif c in texto_canales and c not in propios and ruta not in lineas.get(c, []):
                 f.append(f"ficha.md: «{ruta}» lists channel «{c}» but {c}.md has no «Imagen: {ruta}» line; add the line "
                          f"or remove «{c}» from the Canales cell")
             if c in texto_canales and (carpeta / ruta).is_file():
@@ -650,7 +666,7 @@ def leer(ruta: Path, rel: str):
 def comprobar(carpeta: Path, reglas=None, prefijos=(), limites=None, propios=(), hoy=None) -> list:
     """The problems of one piece folder. limites {channel: max characters per language section} and propios (channels
     whose file has its own format) are the --limite and --formato-propio options; hoy is the date `Normas leídas:` is
-    measured against (today)."""
+    measured against when the piece is not under a date folder (today)."""
     limites, propios = limites or {}, set(propios)
     try:
         reglas = reglas or cargar_reglas()
@@ -725,8 +741,8 @@ def comprobar(carpeta: Path, reglas=None, prefijos=(), limites=None, propios=(),
         else:
             f += comprobar_canal(c, textos[c], idiomas, reglas, prefijos, limites.get(c))
     if "reddit" in activos:
-        f += comprobar_reddit(ficha, reglas, hoy)
-    f += comprobar_imagenes(carpeta, ficha, textos, idiomas, reglas, prefijos)
+        f += comprobar_reddit(ficha, reglas, hoy, date.fromisoformat(padre) if ok_fecha else None)
+    f += comprobar_imagenes(carpeta, ficha, textos, idiomas, reglas, prefijos, propios)
     return list(dict.fromkeys(f))
 
 
@@ -734,21 +750,25 @@ def piezas(arg: Path) -> list:
     """A piece folder, or the pieces below a date folder or the whole <dir>."""
     if (arg / "ficha.md").is_file() or not arg.is_dir():
         return [arg]
+    en_fecha = bool(FECHA.fullmatch(arg.resolve().name))
     hijos = sorted(p for p in arg.iterdir() if p.is_dir() and not p.name.startswith(("_", ".")))
     out = []
     for h in hijos:
         if CARPETA_PIEZA.match(h.name) or (h / "ficha.md").is_file():
             out.append(h)
-        elif re.fullmatch(r"\d{4}-\d{2}-\d{2}", h.name):
+        elif FECHA.fullmatch(h.name):
             out += piezas(h)
-        elif parece_pieza(h):  # a misnamed folder without ficha.md: checked, so that it is reported
+        elif parece_pieza(h, en_fecha):  # a misnamed folder without ficha.md: checked, so that it is reported
             out.append(h)
     return out or [arg]
 
 
-def parece_pieza(p: Path) -> bool:
-    """A folder with a medios/ folder or the file of a known channel is a piece, whatever its name."""
-    return (p / "medios").is_dir() or any((p / f"{c}.md").is_file() for c in CONOCIDOS)
+def parece_pieza(p: Path, en_fecha=False) -> bool:
+    """A folder with a medios/ folder or the file of a known channel is a piece, whatever its name; under a date folder
+    any folder with a .md file is (a piece with only <extra channel>.md files); propuestas/ at the root is not."""
+    if (p / "medios").is_dir() or any((p / f"{c}.md").is_file() for c in CONOCIDOS):
+        return True
+    return en_fecha and any(p.glob("*.md"))
 
 
 USO = ("usage: comprobar.py [--prefijos-tarea A,B,...] [--limite canal=N]... [--formato-propio canal]... "
@@ -766,8 +786,9 @@ def leer_opciones(args: list):
         if not igual:
             valor = args.pop(0) if args else ""
         if nombre == "--prefijos-tarea":
-            prefijos += [x.strip().upper() for x in valor.split(",") if x.strip()]
-            if not prefijos or not all(re.fullmatch(r"[A-Z][A-Z0-9]*", x) for x in prefijos):
+            nuevos = [x.strip().upper() for x in valor.split(",") if x.strip()]
+            prefijos += nuevos
+            if not nuevos or not all(re.fullmatch(r"[A-Z][A-Z0-9]*", x) for x in nuevos):
                 return args, prefijos, limites, propios, "--prefijos-tarea needs prefixes of letters and digits separated by commas (INS,FLU)"
         elif nombre == "--limite":
             canal, _, n = valor.partition("=")
@@ -789,6 +810,25 @@ def leer_opciones(args: list):
     return args, prefijos, limites, propios, None
 
 
+def opciones_sin_uso(carpetas: list, limites: dict, propios) -> str:
+    """The error for a --limite or --formato-propio channel that no checked piece lists under `## Canales`, or None.
+    Pieces without a readable ficha.md say so on their own; when none can be read there is nothing to compare."""
+    declarados, leidas = [], 0
+    for c in carpetas:
+        ficha, _ = leer(Path(c) / "ficha.md", "ficha.md")
+        if ficha is not None:
+            leidas += 1
+            declarados += [x for x in canales_pedidos(ficha) if x not in declarados]
+    if not leidas:
+        return None
+    lista = ", ".join(declarados) or "none"
+    for opcion, canal in [(f"--limite {k}={v}", k) for k, v in limites.items()] + [(f"--formato-propio {c}", c) for c in propios]:
+        if canal not in declarados:
+            return (f"{opcion} names a channel that no checked piece declares in «## Canales» (declared: {lista}); fix the "
+                    "channel name or drop the option")
+    return None
+
+
 def main(args: list) -> int:
     args, prefijos, limites, propios, error = leer_opciones(args)
     if error:
@@ -802,11 +842,15 @@ def main(args: list) -> int:
     except ReglasIncompletas as e:
         print(e)
         return 1
-    for a in args:
-        for p in piezas(Path(a)):
-            for problema in comprobar(p, reglas, prefijos, limites, propios):
-                hay = True
-                print(f"{p}: {problema}")
+    todas = [p for a in args for p in piezas(Path(a))]
+    error = opciones_sin_uso(todas, limites, propios)
+    if error:
+        print(f"{error}. {USO}")
+        return 2
+    for p in todas:
+        for problema in comprobar(p, reglas, prefijos, limites, propios):
+            hay = True
+            print(f"{p}: {problema}")
     if not hay:
         print("OK")
     return 1 if hay else 0
