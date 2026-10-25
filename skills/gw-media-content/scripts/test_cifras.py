@@ -126,7 +126,7 @@ class Cifras(unittest.TestCase):
         self.assertEqual(c["commits_sin_merges"]["valor"], 3)
         self.assertEqual(c["commits_desde"]["fuente"], "git rev-list --count v1.0.0..HEAD")
         self.assertEqual(c["archivos_cambiados"]["valor"], {"archivos": 2, "lineas_anadidas": 3, "lineas_borradas": 0})
-        self.assertEqual(c["archivos_cambiados"]["fuente"], "git diff --numstat v1.0.0 HEAD")
+        self.assertEqual(c["archivos_cambiados"]["fuente"], "git diff --numstat v1.0.0...HEAD")
         self.assertEqual(c["rango_fechas"]["valor"], {"primero": "2026-10-03", "ultimo": "2026-10-06"})
 
     def test_merge_commits_are_counted_apart_and_not_listed(self):
@@ -307,6 +307,31 @@ class Cifras(unittest.TestCase):
         self.assertEqual(out["desde"], "tag v0.1 on HEAD and no previous version tag; counting from the first commit")
         self.assertEqual(out["cifras"]["commits_desde"]["valor"], 2)
         self.assertEqual(out["cifras"]["commits_desde"]["fuente"], "git rev-list --count HEAD")
+
+    def test_tagged_merge_finds_the_previous_tag_through_the_second_parent(self):
+        git(self.repo, "checkout", "-q", "-b", "feat")
+        self.commit("f.txt", "rama\n", "en la rama", "2026-10-02T10:00:00")
+        git(self.repo, "checkout", "-q", "-")
+        self.commit("b.txt", "dos\n", "segundo", "2026-10-03T10:00:00")
+        git(self.repo, "tag", "v1.0.0")
+        git(self.repo, "checkout", "-q", "feat")
+        git(self.repo, "merge", "-q", "--no-edit", "-", date="2026-10-04T10:00:00")
+        git(self.repo, "tag", "v1.1.0")
+        out = self.cifras()
+        self.assertEqual(out["desde"], "tag v1.1.0 on HEAD; counting from previous tag v1.0.0")
+        c = out["cifras"]
+        self.assertEqual((c["commits_desde"]["valor"], c["commits_sin_merges"]["valor"]), (2, 1))
+        self.assertEqual(c["archivos_cambiados"]["valor"]["archivos"], 1)
+
+    def test_desde_off_the_history_diffs_from_the_merge_base(self):
+        git(self.repo, "checkout", "-q", "-b", "vieja")
+        self.commit("solo-vieja.txt", "x\n", "solo en la rama vieja", "2026-10-02T10:00:00")
+        git(self.repo, "checkout", "-q", "-")
+        self.commit("b.txt", "dos\n", "segundo", "2026-10-03T10:00:00")
+        c = self.cifras("--desde", "vieja")["cifras"]
+        self.assertEqual(c["commits_desde"]["valor"], 1)
+        self.assertEqual(c["archivos_cambiados"]["valor"], {"archivos": 1, "lineas_anadidas": 1, "lineas_borradas": 0})
+        self.assertEqual(c["archivos_cambiados"]["fuente"], "git diff --numstat vieja...HEAD")
 
     def test_desde_wins_over_a_tag_on_head(self):
         git(self.repo, "tag", "v1.0.0")

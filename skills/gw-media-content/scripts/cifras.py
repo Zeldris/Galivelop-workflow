@@ -195,9 +195,9 @@ def changelog_headings(root):
                   "first '## ' section of CHANGELOG.md and its sub-headings")
 
 
-def version_tag(root, rev):
-    """The nearest tag reachable from REV whose name looks like a version; `latest`, `nightly`... are skipped."""
-    excluded = []
+def version_tag(root, rev, skip=()):
+    """The nearest tag reachable from REV whose name looks like a version; `latest`, `nightly`... and SKIP are skipped."""
+    excluded = list(skip)
     while True:
         args = ["describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "--match", "[0-9]*"]
         for name in excluded:
@@ -231,7 +231,9 @@ def compute(root, desde, version_file):
         cifras["bitacora"] = figure(log, cmd, None if log else error or "gw.json has no 'log'")
     tag = version_tag(root, "HEAD")
     on_head = bool(tag) and git(root, "rev-parse", "--verify", "-q", f"refs/tags/{tag}^{{commit}}", check=False) == head
-    previous = version_tag(root, "HEAD^") if on_head else None
+    # From HEAD itself, not HEAD^: on a tagged merge the previous tag may be reachable only through the second parent
+    # (tag names have no whitespace, so split() is safe; git tag has no -z).
+    previous = version_tag(root, "HEAD", git(root, "tag", "--points-at", "HEAD").split()) if on_head else None
     cifras["ultima_etiqueta"] = figure(
         tag, "git describe --tags --abbrev=0 --match 'v[0-9]*' --match '[0-9]*'",
         "points at HEAD" if on_head else None if tag else "the repo has no version tags (names like v1.2.3)")
@@ -260,14 +262,15 @@ def compute(root, desde, version_file):
     cifras["rango_fechas"] = figure({"primero": dates[0], "ultimo": dates[-1]} if dates else None,
                                     f"git log --format=%ad --date=short {rng}", None if dates else "no commits in the range")
     if base:
-        names = git_list(root, "diff", "--name-only", base, "HEAD")
+        # Three dots: from the merge base, like the base..HEAD commit count, even when BASE is not an ancestor of HEAD.
+        names = git_list(root, "diff", "--name-only", f"{base}...HEAD")
         add = rem = 0
-        for line in git(root, "diff", "--numstat", base, "HEAD").splitlines():
+        for line in git(root, "diff", "--numstat", f"{base}...HEAD").splitlines():
             a, r, _ = (line.split("\t", 2) + ["", ""])[:3]
             add += int(a) if a.isdigit() else 0
             rem += int(r) if r.isdigit() else 0
         cifras["archivos_cambiados"] = figure({"archivos": len(names), "lineas_anadidas": add, "lineas_borradas": rem},
-                                              f"git diff --numstat {base} HEAD")
+                                              f"git diff --numstat {base}...HEAD")
     else:
         files = git_list(root, "ls-files")
         cifras["archivos_cambiados"] = figure({"archivos": len(files)}, "git ls-files | wc -l",
