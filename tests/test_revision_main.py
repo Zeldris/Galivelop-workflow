@@ -435,6 +435,17 @@ class Hook(unittest.TestCase):
                 self.assertLess(time.monotonic() - start, 1.0, f"{name}: blocked case took 1 s or more")
                 self.assertBlocked(blocked, "cannot parse")
 
+    def test_many_continuations_are_judged_in_under_a_second(self):
+        # The pre-filter joins backslash-newline continuations; bash's ${x//pat/} is quadratic in the matches (5.8 s on
+        # 224 KB of `echo a\<nl>`), and it runs on every Bash call.
+        head = "echo a \\\n b\n" * 25000
+        self.assertGreater(len(head), 200000)
+        start = time.monotonic()
+        allowed = self.bash(head + "true")
+        self.assertLess(time.monotonic() - start, 1.0, "allowed case took 1 s or more")
+        self.assertAllowed(allowed)
+        self.assertBlocked(self.bash(head + "g\\\nh pr create --fill"), "no review mark")  # python3 judges it: not timed
+
     def test_unparseable_command_that_looks_like_a_merge_blocked(self):
         self.assertBlocked(self.bash('gh pr merge 7 --body "unterminated'), "cannot parse")
         self.assertAllowed(self.bash('echo "unterminated'))
