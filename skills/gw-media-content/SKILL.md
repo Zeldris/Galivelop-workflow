@@ -5,7 +5,7 @@ license: MIT
 compatibility: "Needs Python 3 and git for the figures; the pieces themselves are made by gw-media-content-now (Node with Playwright, ImageMagick with WebP)."
 metadata:
   version: "0.4.0"
-  source: "Galivelop workshop; generalised from the World-Maker-Fantasy social-media skill"
+  source: "Galivelop workshop; generalised from a project's social-media skill"
 ---
 
 # gw-media-content
@@ -17,36 +17,38 @@ user posts and records where. Every number in a proposal comes from `cifras.py` 
 commit, never from memory.
 
 Shared material in `.claude/skills/gw-media-content/`: `catalogo.md` (post types), `reglas.json` (per-network limits),
-`plantilla/` (the piece template), `scripts/` (`cifras.py`, `comprobar.py`, `render.mjs`).
+`plantilla/` (the piece template), `nota.md` (the project note), `scripts/` (`cifras.py`, `comprobar.py`, `render.mjs`).
 
 ## Project note
 
-`.claude/gw/gw-media-content.md` is a list of `key: value` lines; without it the defaults apply and you say so once.
-
-| Key | Default | Holds |
-|---|---|---|
-| Folder | `docs/difusion` | the `<dir>` of every path below |
-| Languages | `es, en` | one `## <lang>` section per language in every channel file |
-| Channels | `x, reddit, linkedin, discord` | the active channels |
-| Extra channels | none | a channel the project declares: name, length limit, tone, image format |
-| Palette | the template's | CSS variable overrides for `medios/fuente/*.html` |
-| Screenshots | none | the steps that produce a screenshot of the running app |
-| Task prefixes | none | e.g. `INS,FLU`: passed to `comprobar.py --prefijos-tarea` |
-| Reddit | none | per subreddit: the rules pasted by the user and the date read |
+`.claude/gw/gw-media-content.md` (shape in [`nota.md`](nota.md)) sets `<dir>`, the folder below, and the active
+channels and languages.
 
 ## Steps
 
-1. **Read the ground.** Done when you know: the newest `<dir>/propuestas/*.md` (its `Base:` commit and which proposals
-   are still `proposed`), and the title and `## Canales` of every `ficha.md` in `<dir>/*/*/`.
+1. **Read the ground.** Done when you can list what is already published, already a piece or still `proposed`: every
+   `<dir>/propuestas/*.md` (its `Base:` commit, the topic and status of each proposal; the newest file gives the
+   `Base:` for step 2), and the title, `## Canales` and `## Publicado` of every `ficha.md` in `<dir>/*/*/`.
 2. **Gather what happened.** From the repo root, run `python3 .claude/skills/gw-media-content/scripts/cifras.py`
-   with `--desde <Base>` set to the `Base:` of the newest proposals file (no file yet: no `--desde`, it starts at the
-   last tag). Then read what the figures point at: the CHANGELOG section, the log file, the commits, ADRs, plan or roadmap, test and CI results, `/opt-tokens` and
-   `/retro` reports, new screenshots. Done when each candidate has a fact you can cite.
-3. **Choose.** Match the facts to rows of `catalogo.md`. Drop what is already published, already a piece, or still
-   `proposed` in an earlier file. Done when the set has **at most 10** proposals, **no more than 2 of one topic**, and
-   a topic mix (a set that is all releases has missed the catalog); fewer than 10 when the facts run out.
-4. **Write `<dir>/propuestas/AAAA-MM-DD.md`** (today; folder created if missing). First lines: `# Proposals AAAA-MM-DD`
-   and `Base: <HEAD short sha>`. Then one block per proposal:
+   with `--desde <Base>` set to the newest `Base:` (no proposals file yet: no `--desde`).
+   - Without `--desde` it starts at the last version tag; when that tag points at HEAD it uses the previous one and
+     says so in `desde` and in the note «points at HEAD» of `ultima_etiqueta`.
+   - A `Base` that git no longer knows (rebased, garbage-collected) makes it exit 2: run it again without `--desde`
+     and tell the user the range changed.
+   - A shallow clone exits 2 as well: run `git fetch --unshallow --tags`, then again.
+   - A note «found, but its version is not readable» on `version_proyecto`: pass `--version-file <path>` or leave the
+     version out of the proposals.
+   Then read what the figures point at: the CHANGELOG section, the log file, the commits, ADRs, plan or roadmap, test
+   and CI results, `/opt-tokens` and `/retro` reports, new screenshots. Done when each candidate has a fact you can
+   cite. What is presented as done is merged work; the roadmap and behind-the-scenes types may use open plans,
+   labelled as plans and never as shipped.
+3. **Choose.** Match the facts to rows of `catalogo.md`. Drop what step 1 found published, in a piece or `proposed`.
+   Done when the set has **at most 10** proposals, **no more than 2 of one topic**, and a topic mix (a set that is
+   all releases has missed the catalog); fewer than 10 when the facts run out.
+4. **Write `<dir>/propuestas/AAAA-MM-DD.md`** (today; folder created if missing). A new file starts with
+   `# Proposals AAAA-MM-DD` and `Base: <HEAD short sha>`. If today's file exists, append a section that opens with
+   its own `Base:` line and continue the numbering after its last `P<n>`; the file is never overwritten and the
+   newest `Base:` counts. One block per proposal:
 
    ```
    ## P1: <short title>

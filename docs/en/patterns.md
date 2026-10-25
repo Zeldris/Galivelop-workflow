@@ -86,13 +86,18 @@ and ImageMagick with WebP; `comprobar.py` runs without them, and **CI does not c
 stand-in except where Chromium is present).
 
 Without a project note the defaults apply (and it is said once). To change them, `.claude/gw/gw-media-content.md`, one
-`key: value` line per item; the workflow neither creates nor overwrites it. A generic example:
+`key: value` line per item (the keys are those of the table in `skills/gw-media-content/nota.md`, in English); the
+workflow neither creates nor overwrites it. An *extra channel* is declared with `límite: N` (checked with
+`--limite <channel>=N`) or with `formato: propio` and `plantilla: <path>` (its file is consumed by another system;
+checked with `--formato-propio <channel>`). A generic example:
 
 ```
 Folder: docs/difusion
 Languages: es, en
 Channels: x, reddit, linkedin, discord
-Extra channels: mastodon (500 characters, friendly tone, WebP image)
+Extra channels:
+- mastodon: límite: 500; tono: cercano
+- portal: formato: propio; plantilla: docs/difusion/portal.json
 Palette: --fondo #101418; --acento #4cc38a
 Screenshots: start the app (npm run dev), open /panel, capture the window at 1280x720
 Task prefixes: INS,FLU   (passed to comprobar.py --prefijos-tarea)
