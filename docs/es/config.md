@@ -95,5 +95,12 @@ lleva a `<proyecto>/.claude/gw/<nombre>`:
   subcarpetas, enlaces simbólicos ni archivos ocultos. Si la carpeta no existe, no pasa nada y no se dice nada.
 - Si la nota falta en el proyecto, se crea (y se avisa como «personal note»). Si es idéntica, nada. Si **difiere**,
   nunca se sobrescribe ni se deja un `.gw-nuevo` (el proyecto puede haberla adaptado a propósito): se imprime una
-  línea con `diff <origen> <destino>` y `--check` no falla por ello.
-- Nunca se aplican al propio repo del flujo: nada personal va a él. `--sin-notas-personales` las salta en un proyecto.
+  línea con `diff <origen> <destino>` en cada ejecución. `--check` **no falla** ni por una nota que falta (solo dice
+  «would create personal note …») ni por una que difiere.
+- Una nota se salta con un `WARNING` y la orden de renombrarla cuando su nombre acaba en `.gw-nuevo` (`doctor.py` lo
+  toma por una propuesta pendiente), cuando es el de un archivo del flujo en `.claude/gw/` (se compara sin mirar
+  mayúsculas y aunque ese archivo no esté instalado: `opt-tokens.md`, `opt-ai.md`, `scout-updates.md`, `scripts`,
+  `schema`…) o cuando su destino no es un archivo normal. Una carpeta de notas ilegible o que es un archivo, y una
+  nota que no se puede leer, también avisan (una carpeta ausente, no).
+- Nunca se aplican al propio repo del flujo: nada personal va a él. `--sin-notas-personales` las salta en una
+  ejecución. Una `GW_NOTAS_PERSONALES` relativa se resuelve desde la carpeta donde se lanza.

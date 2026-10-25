@@ -105,6 +105,10 @@ the git hooks to `.githooks/`, the CI to `.github/workflows/comprobar.yml`; **me
 `CLAUDE.md`, `REVIEW.md`, `GLOSSARY.md` and the log when missing; and sets `core.hooksPath=.githooks` when nothing
 else owns it. **It never commits.** It is idempotent: running it twice changes nothing.
 
+**Personal notes.** If the person keeps notes in `~/.claude/gw/notas/` (or in the folder of `GW_NOTAS_PERSONALES`),
+`aplicar.py` creates the missing ones in `.claude/gw/` and leaves alone those the project already has with other
+content ([config](config.md#personal-notes)); `--sin-notas-personales` skips them for one run.
+
 **The scripts under `.claude/gw/scripts/` are not edited in the project.** They are tested in the workflow's repo
 (their tests live there) and `--update` overwrites them. If one fails or lacks something, the change goes to the
 workflow as a proposal, with the `gw-harvest` skill (`scripts/recoger.py`). The `REVIEW.md` rule "every script change

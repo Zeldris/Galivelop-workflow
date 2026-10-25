@@ -117,7 +117,8 @@ here.
   plantillas `AGENTS.md` y `docs/es/config.md` ↔ `docs/en/config.md`.
 - **Notas personales** (usuario, 2026-10-25): `aplicar.py` lleva los archivos de `~/.claude/gw/notas/` (otra carpeta con
   `GW_NOTAS_PERSONALES`) a `.claude/gw/` de cada proyecto: crea la que falta; si difiere, no la sobrescribe ni deja
-  `.gw-nuevo` y avisa con `diff <origen> <destino>` (`--check` no falla por ello). Nunca al repo del flujo;
+  `.gw-nuevo` y avisa con `diff <origen> <destino>` (`--check` no falla por ello ni por una nota que falta). Rechaza con un aviso
+  los nombres `*.gw-nuevo` y los de archivos del flujo. Nunca al repo del flujo;
   `--sin-notas-personales` las salta. `gw-update`, `gw-init` y `config.md` ↔ `config.md` lo cuentan.
 
 ### EN
@@ -227,8 +228,8 @@ here.
   skill, phase 2 of the `AGENTS.md` templates and `docs/es/config.md` ↔ `docs/en/config.md`.
 - **Personal notes** (user, 2026-10-25): `aplicar.py` carries the files of `~/.claude/gw/notas/` (another folder through
   `GW_NOTAS_PERSONALES`) to each project's `.claude/gw/`: it creates a missing one; a differing one is neither
-  overwritten nor given a `.gw-nuevo`, and is reported with `diff <source> <target>` (`--check` does not fail for it).
-  Never to the workflow repo; `--sin-notas-personales` skips them. `gw-update`, `gw-init` and `config.md` explain it.
+  overwritten nor given a `.gw-nuevo`, and is reported with `diff <source> <target>` (`--check` does not fail for it, nor for a missing note). Names
+  `*.gw-nuevo` and those of workflow files are rejected with a warning. Never to the workflow repo; `--sin-notas-personales` skips them. `gw-update`, `gw-init` and `config.md` explain it.
 
 ## [0.3.0] - 2026-10-23
 

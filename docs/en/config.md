@@ -95,6 +95,12 @@ them to `<project>/.claude/gw/<name>`:
   files are ignored. If the folder does not exist, nothing happens and nothing is said.
 - A note missing in the project is created (reported as a "personal note"). An identical one: nothing. One that
   **differs** is never overwritten and gets no `.gw-nuevo` (the project may have adapted it on purpose): one line
-  with `diff <source> <target>` is printed and `--check` does not fail for it.
+  with `diff <source> <target>` is printed on every run. `--check` **does not fail** for a missing note (it only says
+  "would create personal note …") or for a differing one.
+- A note is skipped with a `WARNING` and the order to rename it when its name ends in `.gw-nuevo` (`doctor.py` takes
+  it for a pending proposal), when it is the name of a workflow file in `.claude/gw/` (compared ignoring case and
+  even if that file is not installed: `opt-tokens.md`, `opt-ai.md`, `scout-updates.md`, `scripts`, `schema`…) or
+  when its target is not a regular file. A notes folder that is unreadable or is a file, and a note that cannot be
+  read, warn too (an absent folder does not).
 - They are never applied to the workflow's own repo: nothing personal goes into it. `--sin-notas-personales` skips
-  them for one run.
+  them for one run. A relative `GW_NOTAS_PERSONALES` is resolved from the folder where the command is launched.

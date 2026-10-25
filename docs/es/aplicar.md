@@ -104,6 +104,10 @@ Qué hace (el detalle completo, en `--help`): copia `scripts/` a `.claude/gw/scr
 `AGENTS.md`, `CLAUDE.md`, `REVIEW.md`, `GLOSSARY.md` y la bitácora si faltan; y pone `core.hooksPath=.githooks` si
 nadie más lo usa. **Nunca hace commit.** Es idempotente: ejecutarlo dos veces no cambia nada.
 
+**Notas personales.** Si la persona tiene notas en `~/.claude/gw/notas/` (o en la carpeta de `GW_NOTAS_PERSONALES`),
+`aplicar.py` crea en `.claude/gw/` las que faltan y no toca las que el proyecto ya tiene distintas
+([config](config.md#notas-personales)); `--sin-notas-personales` las salta en esa ejecución.
+
 **Los scripts de `.claude/gw/scripts/` no se editan en el proyecto.** Se prueban en el repo del flujo (allí están
 sus tests) y `--update` los sobrescribe. Si uno falla o falta algo, el cambio va al flujo como propuesta, con la
 skill `gw-harvest` (`scripts/recoger.py`). La regla de `REVIEW.md` «cada cambio en un script lleva su caso en los

@@ -3,8 +3,10 @@ are updated by version, foreign or locally edited ones get a .gw-nuevo proposal,
 losing anything, optional skills come only with --with, and core.hooksPath is respected. HOME is a temp folder and
 git runs isolated as in test_ganchos.
 """
+import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -406,16 +408,120 @@ class NotasPersonales(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn(want, out)
 
-    def test_dry_run_and_check_write_nothing(self):
+    def test_dry_run_writes_nothing(self):
         self.note("style.md")
         out = self.applied("--dry-run")
         self.assertIn("style.md", out)
         self.assertIn("personal note", out)
         self.assertFalse(self.target("style.md").exists())
+
+    def test_check_does_not_fail_for_a_missing_note_and_says_what_a_normal_run_does(self):
+        self.applied("--sin-notas-personales")  # the workflow copy itself is up to date
+        self.note("style.md")
         code, out = self.p.aplicar("--check")
-        self.assertEqual(code, 1, out)  # a missing note is something to create
-        self.assertIn("style.md", out)
+        self.assertEqual(code, 0, out)  # the note is not drift of the workflow copy
+        self.assertIn("would create personal note style.md", out)
+        self.assertIn("without --check", out)
+        self.assertNotIn("differs from the workflow", out)
         self.assertFalse(self.target("style.md").exists())
+        self.applied()  # a normal run still creates it
+        self.assertTrue(self.target("style.md").is_file())
+
+    def test_check_still_fails_for_real_drift_when_a_note_is_missing(self):
+        self.applied()
+        (self.p.work / ".claude" / "gw" / "scripts" / "config.py").write_text("# local edit\n")
+        self.note("other.md")
+        code, out = self.p.aplicar("--check")
+        self.assertEqual(code, 1, out)
+        self.assertIn("would create personal note other.md", out)
+
+    def test_name_ending_in_gw_nuevo_is_rejected_with_a_warning(self):
+        self.note("style.md.gw-nuevo")
+        self.note("Other.GW-NUEVO")
+        out = self.applied()
+        self.assertIn("WARNING", out)
+        self.assertIn("style.md.gw-nuevo", out)
+        self.assertIn(".gw-nuevo", out)
+        self.assertIn("pending proposal", out)
+        self.assertIn("rename", out)
+        self.assertFalse(self.target("style.md.gw-nuevo").exists())
+        self.assertFalse(self.target("Other.GW-NUEVO").exists())
+
+    def test_names_of_workflow_files_are_rejected_even_when_not_installed_and_ignoring_case(self):
+        names = ("OPT-TOKENS.md", "opt-ai.md", "Scout-Updates.md", "scripts", "SCHEMA", "gw.json",
+                 "opt-tokens.md.gw-nuevo")
+        for name in names:
+            self.note(name)
+        (self.p.work / ".claude" / "skills").mkdir(parents=True, exist_ok=True)
+        out = self.applied()
+        for name in ("OPT-TOKENS.md", "opt-ai.md", "Scout-Updates.md", "scripts", "SCHEMA", "gw.json"):
+            self.assertRegex(out, rf"WARNING: personal note {re.escape(name)} has the name of a workflow file")
+        self.assertIn("rename", out)
+        for name in ("OPT-TOKENS.md", "opt-ai.md", "Scout-Updates.md", "SCHEMA", "gw.json"):
+            self.assertFalse(self.target(name).exists(), name)
+        self.assertFalse(self.target("scripts").is_file())
+        self.assertFalse((self.p.work / ".claude" / "gw" / "opt-ai.md").exists())
+
+    def test_unreadable_source_note_is_a_clean_line_not_a_traceback(self):
+        src = self.note("style.md")
+        os.chmod(src, 0)
+        self.addCleanup(os.chmod, src, 0o644)
+        if os.access(src, os.R_OK):
+            self.skipTest("running as a user that ignores file permissions")
+        out = self.applied()
+        self.assertNotIn("Traceback", out)
+        self.assertIn(f"personal note {src} cannot be read", out)
+        self.assertIn("fix its permissions", out)
+        self.assertFalse(self.target("style.md").exists())
+
+    def test_unreadable_destination_note_is_a_clean_line_not_a_traceback(self):
+        self.note("style.md")
+        self.applied()
+        dest = self.target("style.md")
+        os.chmod(dest, 0)
+        self.addCleanup(os.chmod, dest, 0o644)
+        if os.access(dest, os.R_OK):
+            self.skipTest("running as a user that ignores file permissions")
+        out = self.applied()
+        self.assertNotIn("Traceback", out)
+        self.assertIn(f"personal note style.md: {dest} cannot be read", out)
+        self.assertIn("fix its permissions", out)
+
+    def test_notes_folder_that_is_a_file_or_unreadable_warns_but_absent_is_silent(self):
+        self.notas.write_text("not a folder\n")
+        out = self.applied()
+        self.assertIn(f"WARNING: personal notes path {self.notas} is not a folder", out)
+        self.assertIn("GW_NOTAS_PERSONALES", out)
+        self.notas.unlink()
+        self.notas.mkdir()
+        os.chmod(self.notas, 0)
+        self.addCleanup(os.chmod, self.notas, 0o755)
+        if os.access(self.notas, os.R_OK):
+            self.skipTest("running as a user that ignores directory permissions")
+        out = self.applied()
+        self.assertNotIn("Traceback", out)
+        self.assertIn(f"WARNING: personal notes folder {self.notas} cannot be read", out)
+        self.assertIn("chmod", out)
+
+    def test_relative_env_folder_is_resolved_to_an_absolute_path(self):
+        src = self.note("style.md", "mine\n")
+        self.applied()
+        self.target("style.md").write_text("adapted\n")
+        self.p.env["GW_NOTAS_PERSONALES"] = "../notas"  # relative to the project, where the script runs
+        out = self.applied()
+        self.assertIn(f"diff {src} {self.target('style.md')}", out)
+
+    def test_is_workflow_repo_fails_closed_when_its_own_plugin_json_is_unreadable(self):
+        spec = importlib.util.spec_from_file_location("aplicar_closed", APLICAR)
+        aplicar = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(aplicar)
+        aplicar.WORKFLOW = self.tmp / "no-such-workflow"
+        self.assertTrue(aplicar.is_workflow_repo(self.p.work))
+        broken = self.tmp / "broken"
+        (broken / ".claude-plugin").mkdir(parents=True)
+        (broken / ".claude-plugin" / "plugin.json").write_text("{not json")
+        aplicar.WORKFLOW = broken
+        self.assertTrue(aplicar.is_workflow_repo(self.p.work))
 
     def test_symlink_dotfile_subfolder_and_bad_names_are_skipped(self):
         real = self.note("real.md")

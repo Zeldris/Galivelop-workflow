@@ -53,7 +53,8 @@ class Project:
                              "[init]\n\tdefaultBranch = main\n")
         self.env = {k: v for k, v in os.environ.items()
                     if not k.startswith("GIT_") and k not in ("CLAUDECODE", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_REMOTE")}
-        self.env.update(GIT_CONFIG_GLOBAL=str(gitconfig), GIT_CONFIG_NOSYSTEM="1", TMPDIR=str(tmp), HOME=str(home))
+        self.env.update(GIT_CONFIG_GLOBAL=str(gitconfig), GIT_CONFIG_NOSYSTEM="1", TMPDIR=str(tmp), HOME=str(home),
+                        GW_NOTAS_PERSONALES=str(tmp / "no-personal-notes"))  # never the real notes, nor an exported one
         self.run("git", "init", "-q", str(self.work), cwd=tmp)
         self.write("check.sh", "exit 0\n")
 
