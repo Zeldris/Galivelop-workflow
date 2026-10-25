@@ -66,12 +66,24 @@ def run(cmd, cwd=None, stdin=None):
 
 # ---- what the tool call does -------------------------------------------------------------------------------------
 # Each command segment of a Bash call is tokenised (shlex) and read as a command: past VAR=x assignments, prefixes
-# (env, command, exec, time, sudo, nohup, xargs and its options, shell keywords), into `bash|sh|zsh -c '<script>'` and
-# `eval <words>`, then `gh [-R|--repo X] [--hostname X] pr create|merge …` or `gh api` PUT on repos/<o>/<r>/pulls/<n>/
+# (env, command, exec, time, sudo, nohup, nice, timeout, stdbuf with their options, xargs and its options, shell keywords), into `bash|sh|zsh -c '<script>'` and
+# `eval <words>`, then `gh [-R|--repo X] [--hostname X] pr [-R X] create|merge …` or `gh api` PUT on repos/<o>/<r>/pulls/<n>/
 # merge. Text that only names it (grep "gh pr merge", echo '…') is an argument of another command, so not guarded.
 SEPARATORS = set(";&|()\n")
-PREFIXES = {"env", "command", "exec", "time", "sudo", "nohup", "nice", "!", "{", "}", "if", "then", "else", "elif",
-            "do", "while", "until"}
+PREFIXES = {"env", "command", "exec", "time", "sudo", "nohup", "nice", "timeout", "stdbuf", "!", "{", "}", "if", "then",
+            "else", "elif", "do", "while", "until"}
+# Prefixes that take options (and which options take a value in the next word): `nice -n 5`, `time -p`,
+# `timeout -s KILL 5`, `env -u X`, `stdbuf -o0`, `sudo -u root`. `timeout` also takes a duration before the command.
+PREFIX_OPTIONS = {
+    "env": {"-u", "--unset", "-C", "--chdir", "-S", "--split-string"},
+    "nice": {"-n", "--adjustment"},
+    "time": {"-f", "--format", "-o", "--output"},
+    "timeout": {"-s", "--signal", "-k", "--kill-after"},
+    "stdbuf": {"-i", "--input", "-o", "--output", "-e", "--error"},
+    "sudo": {"-u", "--user", "-g", "--group", "-h", "--host", "-p", "--prompt", "-C", "-D", "--chdir", "-R", "-r",
+             "-t", "-T", "-U"},
+    "command": set(), "exec": set(), "nohup": set(),
+}
 SHELLS = {"bash", "sh", "zsh", "dash", "ksh"}
 XARGS_VALUE = {"-I", "-L", "-n", "-P", "-s", "-d", "-E", "-a", "--delimiter", "--max-args", "--max-procs",
                "--arg-file", "--replace", "--max-lines", "--eof", "--max-chars"}
@@ -167,20 +179,18 @@ def from_bash(command, depth=0):
         block("the command nests shells too deeply to check.", "run the gh command directly and retry")
     # Bash joins a backslash-newline continuation (`pulls/7/\\<nl>merge` is `pulls/7/merge`, `gh\\<nl>pr` is `ghpr`),
     # but not after an escaped backslash, and a comment ends at the newline. The reader cannot tell quoting from that
-    # apart, so the union of readings is judged: the text as it is, the continuations joined (glued, or with a space,
-    # with and without comments ending their line) and every physical line alone. Each action once.
+    # apart, so the union of readings is judged: the text as it is, and the continuations joined (glued, or with a
+    # space, with and without comments ending their line). Never a physical line alone: a line cut out of a quoted
+    # string or a heredoc body would be read as a command (git commit -m "…<nl>gh pr merge 7 …"). Only the text as
+    # it is blocks when it cannot be parsed; a joined reading that does not parse is ignored (the text as it is
+    # parsed or already blocked). Each action once.
     readings = {command: None}
     for glue in ("", " "):
         for comments in (False, True):
             readings[join_lines(command, glue, comments)] = None
-    for line in command.split("\n"):
-        run = len(line) - len(line.rstrip("\\"))
-        line = line[:-1] if run % 2 == 1 else line  # a lone trailing backslash is a continuation, not an error
-        if line.strip():
-            readings[line] = None
     actions, seen = [], set()
     for text in readings:
-        for action in from_text(text, depth):
+        for action in from_text(text, depth, text == command):
             key = json.dumps(action, sort_keys=True, default=str)
             if key not in seen:
                 seen.add(key)
@@ -188,11 +198,11 @@ def from_bash(command, depth=0):
     return actions
 
 
-def from_text(command, depth):
+def from_text(command, depth, original=True):
     try:
         segs = segments(command)
     except ValueError as exc:
-        if looks_like_pr_action(command):
+        if original and looks_like_pr_action(command):
             block(f"cannot parse the command ({exc}) and it looks like a PR create/merge; blocked because it could "
                   "not be checked.", "write it as a plain command and retry, e.g.: gh pr merge <number> -R <owner>/<repo>")
         return []
@@ -215,9 +225,14 @@ def from_words(words, depth):
             i += 1
         elif w in PREFIXES:
             i += 1
-            if w == "env":
-                while i < len(words) and words[i].startswith("-"):
-                    i += 1
+            if w in PREFIX_OPTIONS:
+                while i < len(words) and words[i].startswith("-") and words[i] != "-":
+                    opt = words[i]
+                    i += 2 if opt in PREFIX_OPTIONS[w] else 1
+                    if opt == "--":
+                        break
+                if w == "timeout" and i < len(words):
+                    i += 1  # the duration
         elif os.path.basename(w) == "xargs":
             i += 1
             while i < len(words) and words[i].startswith("-"):
@@ -236,7 +251,20 @@ def from_words(words, depth):
         return from_bash(" ".join(args), depth + 1)
     if cmd != "gh":
         return []
-    repo, j = env_repo, 0
+    j, repo = gh_flags(args, 0, env_repo)
+    rest = args[j:]
+    if rest and rest[0] == "pr":  # `gh pr --repo o/r merge 7`: -R/--repo also goes between `pr` and the subcommand
+        j, repo = gh_flags(rest, 1, repo)
+        rest = ["pr"] + rest[j:]
+    if len(rest) >= 2 and rest[0] == "pr" and rest[1] in ("create", "merge"):
+        return [pr_action(rest[1], rest[2:], repo)]
+    if rest and rest[0] == "api":
+        return api_action(rest[1:], repo)
+    return []
+
+
+def gh_flags(args, j, repo):
+    """Skip the leading flags of args from index j (-R/--repo/--hostname take a value); returns (index, repo)."""
     while j < len(args) and args[j].startswith("-"):
         a = args[j]
         if a in GH_GLOBAL_VALUE and j + 1 < len(args):
@@ -249,12 +277,7 @@ def from_words(words, depth):
         elif a.startswith("-R") and len(a) > 2:
             repo = a[2:]
         j += 1
-    rest = args[j:]
-    if len(rest) >= 2 and rest[0] == "pr" and rest[1] in ("create", "merge"):
-        return [pr_action(rest[1], rest[2:], repo)]
-    if rest and rest[0] == "api":
-        return api_action(rest[1:], repo)
-    return []
+    return j, repo
 
 
 def pr_action(kind, args, repo):

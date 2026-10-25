@@ -345,6 +345,42 @@ class Hook(unittest.TestCase):
         calls = log.read_text().splitlines()
         self.assertEqual(len(calls), len(set(calls)), f"repeated API calls: {calls}")
 
+    def test_multiline_quoted_text_and_heredoc_bodies_that_mention_a_merge_are_not_guarded(self):
+        # Regression of fafe0ab: each physical line was judged alone, so a quote left open by a line ("cannot parse")
+        # or a heredoc body inside "$(cat <<'EOF' ...)" was read as a command. This repo's own commit messages
+        # mention `gh pr merge`.
+        for command in ('git commit -m "Fix\n\ngh pr merge 7 is judged"', 'echo "x\nuse gh pr create later"',
+                        "git commit -m 'Fix\n\ngh pr create --base main later'",
+                        "git commit -m \"$(cat <<'EOF'\nTitle\n\ngh pr merge 7 is mentioned here\nEOF\n)\""):
+            with self.subTest(command=command):
+                self.assertAllowed(self.bash(command, pr=self.pr()))
+        # ...but the command after such a text is still judged
+        self.assertBlocked(self.bash('git commit -m "a\nb"\ngh pr merge 7 -R o/r', pr=self.pr()), "no review mark")
+        self.assertBlocked(self.bash('echo "x\ny" && gh pr create --fill'), "no review mark")
+
+    def test_flags_between_pr_and_the_subcommand_are_read(self):
+        for command in ("gh pr --repo o/r merge 7", "gh pr -R o/r merge 7 --squash", "gh pr --repo=o/r merge 7",
+                        "gh pr -Ro/r merge 7"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), "no review mark")
+        for command in ("gh pr -R o/r create --base main", "gh pr --repo o/r create --fill"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "no review mark")
+        # the repo given there is the one judged
+        self.assertBlocked(self.bash("gh pr --repo o2/r2 merge 7", pr=self.pr(), env={"GH_FAIL": "1"}), "PR #7 of o2/r2")
+        self.assertAllowed(self.bash("gh pr -R o/r create --base develop"))
+        self.assertAllowed(self.bash("gh pr -R o/r view 7"))
+
+    def test_command_prefixes_that_take_an_argument_are_skipped(self):
+        for prefix in ("nice -n 5", "nice -n5", "nice --adjustment=5", "time -p", "timeout 5", "timeout -s KILL 5",
+                       "timeout --signal=KILL -k 2 5s", "env -u X", "env -u X -i FOO=1", "env -C /tmp", "stdbuf -o0",
+                       "stdbuf -oL -e 0", "sudo -u root", "nohup", "timeout --foreground 5 nice -n 5"):
+            with self.subTest(prefix=prefix):
+                self.assertBlocked(self.bash(f"{prefix} gh pr merge 7 -R o/r", pr=self.pr()), "no review mark")
+                self.assertBlocked(self.bash(f"{prefix} gh pr create --fill"), "no review mark")
+                self.assertAllowed(self.bash(f"{prefix} gh pr view 7"))
+                self.assertAllowed(self.bash(f"{prefix} gh pr create --base develop"))
+
     def test_gh_pr_merge_through_xargs_guarded(self):
         code, out = self.bash("echo 7 | xargs gh pr merge", pr=self.pr())
         self.assertEqual(code, 2, out)
