@@ -15,10 +15,13 @@ documentos. Si mueves una pieza, actualiza su fila en el mismo commit.
 | Bitácora por ramas | config `logRows`, `plan`, `taskId` | `scripts/bitacora.py`, `prepush-ramas.sh` |
 | Aplicar y actualizar el flujo | [`es/aplicar.md`](es/aplicar.md), [`en/apply.md`](en/apply.md) | `scripts/aplicar.py` (`--init`, `--update`, `--check`) |
 | Plantillas para proyectos | `templates/es`, `templates/en`, `templates/gw.json` | `tests/test_plantillas.py` |
-| Skills | `skills/<nombre>/SKILL.md` (formato Agent Skills) | `tests/test_skills.py`; copia en `.claude/skills/` |
+| Skills | `skills/<nombre>/SKILL.md` (formato Agent Skills); consultas de disparo en `skills/<nombre>/evals/triggers.json` (a mano) | `tests/test_skills.py`; copia en `.claude/skills/` |
 | Recogida de mejoras | `skills/gw-harvest/SKILL.md` | `scripts/recoger.py`, `docs/propuestas/` |
 | Tests | `tests/test_*.py`, `skills/*/scripts/test_*.py` | `tests/comprobar.sh` |
 | Problemas conocidos | [`es/problemas.md`](es/problemas.md), [`en/troubleshooting.md`](en/troubleshooting.md) | — |
 
 La copia del flujo aplicada a este repo (`.claude/gw/`, `.claude/skills/`, `.githooks/`, `.claude/settings.json`) se
 genera con `python3 scripts/aplicar.py .`; no se edita a mano (el check lo comprueba con `--check`).
+
+**Qué no leer** salvo que el encargo lo pida: `docs/investigacion/` y `docs/propuestas/` (notas y recogidas, no
+contratos), `docs/registros/` (historial) y `CHANGELOG*` (lo lleva la sesión principal).

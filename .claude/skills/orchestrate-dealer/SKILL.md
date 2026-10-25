@@ -35,8 +35,10 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
 
 1. **Split.** With the `selector` already applied, cut the task into chunks one subagent can close in one go: a fix,
    a module, a screen, a command. Each chunk gets a **done criterion** that can be checked (a green test, a green
-   CI job, a pushed commit) and a list of what blocks it. The **frontier** is the chunks nothing pending blocks:
-   they go out together (see Rules). Cap a subagent at ~35 tool calls (one or two proposal rows); at the cap it saves its state in `log` and the
+   CI job, a pushed commit), a list of what blocks it and the files it touches. The **frontier** (one wave) is the chunks
+   nothing pending blocks: they go out together (see Rules), but two chunks of one wave never share a file: the second
+   waits for the first. With more than ~5 chunks, a cheap-model subagent may review the split before launch (missing
+   blockers, shared files, criteria that cannot be checked). Cap a subagent at ~35 tool calls (one or two proposal rows); at the cap it saves its state in `log` and the
    next one resumes from it. A subagent's context grows with every call: chunks of 44-55 calls averaged 100-116k,
    and splitting them costs one more ~50k startup but far less than the drag. A one-file fix whose place the reviewer already gave is not a chunk: the main session
    makes it, with its tests (a subagent pays ~50k just to start and rediscovers what the session knows).
@@ -54,6 +56,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    AGENTS.md. Follow the project's commit and push rules: commit and push each stable point, log update in the
    same commit.
    Task: <what, in one or two sentences>.
+   Files: <paths you touch>. Create: <exact names of what is new>. A path not listed here: stop and return it
+   under QUESTIONS.
    Done when: <checkable criterion>. Run before pushing: {check}.
    For guard code or scripts: first list the edge cases (git states, platforms, empty or odd input) and write a
    test for each before calling the chunk done; the review afterwards is the safety net, not the first pass.
@@ -62,7 +66,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    If you touch processes, paths or permissions, write it for every platform the project supports.
    If something needs a user decision, stop and return it as a question. Never merge into {protectedBranch}.
    Write your reply and commit message in {language}. Reply in at most 15 lines:
-   DONE: … · COMMIT: <sha> · MISSING: … · QUESTIONS: …
+   DONE: … · COMMIT: <sha> · EVIDENCE: <command and summarised result> · MISSING: … · QUESTIONS: …
+   If the chunk cannot be tested, reply NOT_TESTABLE: <reason> + the command that checks it another way, in place of
+   EVIDENCE. Every number you report you counted yourself.
    Add FOUND: (one line per finding) and TOOLS: (failures of the project's scripts, hooks or CI) only if you have any.
    ```
 
@@ -70,6 +76,7 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    for each project rule a fresh agent could miss.
 3. **Review what returns.** Fetch and check the commit (`git fetch`, `git log -1 --stat`) and that the done
    criterion holds. If it does not close, the retry climbs one ladder rung; two failures, stop and tell the user.
+   Chunks that depended on the failed one are marked "cancelled: blocked by X" and listed to the user, never left waiting.
    For every subagent branch built in a worktree, **before merging it**, a subagent reviewer runs a short
    `/code-review` of its diff and returns only the findings; nothing merges until they are fixed. The reviewer's
    brief asks it to compare the diff with the **contract**: the doc that describes it and the real callers outside
@@ -77,7 +84,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    a script against its backend, a doc against its code, two branches that edit the same rule.
    Log what comes back: `FOUND` and `TOOLS` into `log` (or the records the project keeps for them). `QUESTIONS`
    go to the user as they are, with the answer you recommend.
-4. **Continue.** Next chunk. One line to the user per chunk closed; the detail lives in `log`.
+4. **Close the wave.** After merging the whole wave, one reviewer subagent compares the merged result with the task
+   and returns `MISSING_ITEMS`: what the task asks for and no chunk covers. Each item becomes a chunk or a question.
+5. **Continue.** Next chunk. One line to the user per chunk closed; the detail lives in `log`.
 
 ## Rules
 

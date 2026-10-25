@@ -374,6 +374,14 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
 | **9. Plugin y npm** | El plugin pasa a ser la única distribución hacia fuera: marketplace en el repo privado con acceso por invitación, instalado en local y por el script de entorno de la nube (Opción D); que el plugin traiga también los ganchos de git (`pre-push`, marca de revisado); valorar npm (§11) | Un proyecto (el portal) funcionando solo con el plugin, en local y en la nube, ganchos incluidos |
 | **10. Público** | Elegir la licencia de la `1.0.0` (que no permita redistribuirla ni venderla; MIT solo en lo de terceros), `/security-review`, quitar rutas o nombres privados, `1.0.0` **solo como plugin** copiada en un repo público aparte **sin el historial** (un solo commit; este repo sigue privado y continúa en `1.0.x`/`1.1`), ficha en el portal (tres idiomas); el portal quita su copia del flujo (desde una sesión del portal) y depende del plugin. Si hay npm, solo la `1.0.0` | Repo público con la `1.0.0` como plugin y ficha publicada; el portal sin copia del flujo; nada posterior fuera del repo privado |
 
+**Apuntes para las Fases 9 y 10** (recogida de 2026-10-25, sin cambio ahora; se miran al abrir cada fase):
+
+- **Fase 9:** validar el marketplace en el CI fijando el `sha` de las entradas `git-subdir`; si se porta a Codex,
+  tope de 8 KB por skill; `"strict": false` con lista de skills como forma de partir el plugin (comportamiento sin
+  comprobar).
+- **Fase 10:** tabla amenaza / contramedida / evidencia como documento de seguridad; acciones del CI fijadas por
+  `sha` y `permissions: {}` por defecto (hoy `comprobar.yml` y `release.yml` usan `@v4` / `@v5`).
+
 ## 10. Criterios para «100 % funcional y aplicable a cualquier sistema» (paso a 1.0)
 
 - Funciona en **tres proyectos** de stacks distintos (al menos uno sin Node: el instalador de Tarkor o VeriNews son los candidatos)
