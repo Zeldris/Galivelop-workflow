@@ -11,6 +11,7 @@ import re
 import shutil
 import signal
 import subprocess
+import sys
 import tempfile
 import time
 import unittest
@@ -1260,6 +1261,42 @@ class CommitMsg(Base):
         r = p.commit("log", ok=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("Updated", r.stderr)
+
+    def set_log(self, rel):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["log"] = rel
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.git("add", ".claude/gw.json")
+
+    def test_a_log_with_non_ascii_characters_in_its_path_is_still_checked(self):
+        # git quotes such paths in `diff --name-only` ("docs/bit\303\241cora.md") unless core.quotepath is off
+        p = self.p
+        self.set_log("docs/bitácora.md")
+        p.write("docs/bitácora.md", self.log_text("2000-01-01"))
+        r = p.commit("log", ok=False)
+        self.assertNotEqual(r.returncode, 0, "the hook skipped a log whose path has an accent")
+        self.assertIn("Updated", r.stderr)
+        self.assertIn("git add docs/bitácora.md", r.stderr)
+
+    def test_a_valid_log_with_non_ascii_characters_in_its_path_passes(self):
+        p = self.p
+        self.set_log("docs/bitácora.md")
+        p.write("docs/bitácora.md", self.log_text())
+        self.assertEqual(p.commit("log", ok=False).returncode, 0)
+
+    def test_a_python_that_cannot_normalise_names_the_log_path_in_the_message(self):
+        p = self.p
+        self.set_log("./docs/log.md")
+        fake = self.tmp / "fakebin"
+        fake.mkdir()
+        (fake / "python3").write_text(f'#!/bin/sh\ncase "$*" in *posixpath*) exit 1;; esac\nexec {sys.executable} "$@"\n')
+        os.chmod(fake / "python3", 0o755)
+        p.write("docs/log.md", self.log_text())
+        r = p.commit("log", env={"PATH": f"{fake}{os.pathsep}{os.environ['PATH']}"}, ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("cannot normalise the log path './docs/log.md'", r.stderr)
+        self.assertIn("python3 --version", r.stderr)
 
     def test_checks_the_staged_version_not_the_working_tree(self):
         p = self.p

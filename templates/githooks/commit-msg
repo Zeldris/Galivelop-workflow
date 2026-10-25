@@ -25,8 +25,9 @@ python3 "$config" --root "$root" validate >/dev/null || {
 log="$(python3 "$config" --root "$root" get log 2>/dev/null)" || log=""
 [ -n "$log" ] || exit 0
 # `git diff --name-only` prints normalised paths: compare with the log as antes-de-parar.py does (./docs/x.md, a//b).
-log="$(python3 -c 'import posixpath, sys; print(posixpath.normpath(sys.argv[1]))' "$log")" || {
-  echo "commit-msg: cannot normalise the log path '$log'; check python3: python3 --version" >&2; exit 1; }
+log_raw="$log"
+log="$(python3 -c 'import posixpath, sys; print(posixpath.normpath(sys.argv[1]))' "$log_raw")" || {
+  echo "commit-msg: cannot normalise the log path '$log_raw'; check python3: python3 --version" >&2; exit 1; }
 
 for head in MERGE_HEAD REVERT_HEAD CHERRY_PICK_HEAD; do
   [ -e "$(git rev-parse --git-path "$head")" ] && exit 0
@@ -35,7 +36,8 @@ for dir in rebase-merge rebase-apply; do
   [ -d "$(git rev-parse --git-path "$dir")" ] && exit 0
 done
 
-staged="$(git diff --cached --name-only --no-renames --diff-filter=d)" || {
+# core.quotepath=false: otherwise git prints a path with accents quoted ("docs/bit\303\241cora.md") and it never matches.
+staged="$(git -c core.quotepath=false diff --cached --name-only --no-renames --diff-filter=d)" || {
   echo "commit-msg: git diff failed; check the repository: git status" >&2; exit 1; }
 printf '%s\n' "$staged" | grep -Fxq -- "$log" || exit 0
 

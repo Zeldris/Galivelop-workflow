@@ -234,6 +234,85 @@ class BashWrites(Base):
             'cp -r .claude .claude-backup',
         ])
 
+    def test_the_value_of_a_copier_option_is_not_the_destination(self):
+        self.assertEachAllowed([
+            'rsync -a ./ /tmp/x/ --exclude .claude',
+            'rsync -a ./ /tmp/x/ --exclude .claude/gw',
+            'rsync -a --exclude .claude ./ /tmp/x/',
+            'rsync -a --exclude=.claude ./ /tmp/x/',
+            'rsync -a --include .claude --exclude "*" ./ /tmp/x/',
+            "rsync -a --filter '- .claude' ./ /tmp/x/",
+            'rsync -a ./ /tmp/x/ --exclude-from .claude',
+            'rsync -a ./ /tmp/x/ --include-from .claude/gw',
+            'rsync -ae .claude ./ /tmp/x/',
+            'rsync -a -e .claude ./ /tmp/x/',
+            'cp -S .claude a src/',
+            'cp --suffix .claude a src/',
+            'install -m 644 -o root -g root /tmp/x src/a',
+            'install -S .claude /tmp/x src/a',
+        ])
+
+    def test_a_copier_option_value_does_not_hide_the_real_destination(self):
+        self.assertEachAsks(['rsync -a --exclude .git /tmp/x/ .claude/gw/', 'rsync -e ssh /tmp/x/ .claude/gw',
+                             'rsync -a /tmp/x/ .claude/gw --exclude .git', 'rsync -ae ssh /tmp/x/ .claude/gw',
+                             'install -m 644 -o me /tmp/x .claude/gw', 'cp -S .bak /tmp/x .claude/gw',
+                             'cp -at .claude/gw /tmp/x'],
+                            named=".claude/gw")
+
+    def test_dd_asks_when_of_names_a_protected_file(self):
+        self.assertEachAsks(['dd of=.claude/gw.json', 'dd if=/tmp/x of=.githooks/pre-push',
+                             'dd if=/dev/zero of=./.claude/settings.json bs=1 count=1 conv=notrunc',
+                             'dd of="$CLAUDE_PROJECT_DIR/.claude/gw.json" if=/tmp/x'])
+        self.assertEachAsks(['dd if=/tmp/x of=.githooks/pre-push'], named=".githooks/pre-push")
+        self.assertEachAsks(['dd of=.claude/gw.json'], named=".claude/gw.json")
+
+    def test_dd_reading_a_protected_file_or_writing_elsewhere_is_allowed(self):
+        self.assertEachAllowed(['dd if=.claude/gw.json of=/tmp/x', 'dd if=.githooks/pre-push', 'dd of=src/a.bin',
+                                'dd if=.githooks/pre-push of=src/copy'])
+
+    def test_git_restore_of_the_index_only_is_not_a_write(self):
+        self.assertEachAllowed(['git restore --staged .', 'git restore -S .', 'git restore --staged .claude/gw.json',
+                                'git restore -S .githooks/pre-push', 'git restore --staged -- .claude',
+                                'git restore --source=HEAD --staged .', 'git -C . restore --staged .'])
+
+    def test_git_restore_of_the_worktree_still_asks(self):
+        self.assertEachAsks(['git restore --staged --worktree .githooks/pre-push', 'git restore -S -W .githooks/pre-push',
+                             'git restore -SW .githooks/pre-push', 'git restore --worktree .githooks/pre-push',
+                             'git restore --staged .githooks/pre-push && git restore .githooks/pre-push'],
+                            named=".githooks/pre-push")
+        self.assertEachAsks(['git restore --staged --worktree .', 'git restore -W .'], named=".")
+
+    def test_git_rm_cached_is_not_a_write(self):
+        self.assertEachAllowed(['git rm --cached -r .', 'git rm --cached .claude/gw.json', 'git rm -r --cached .claude',
+                                'git rm --cached .githooks/pre-push'])
+        self.assertEachAsks(['git rm -r .githooks', 'git rm -f .claude/gw.json'])
+
+    def test_git_clean_dry_run_is_not_a_write(self):
+        self.assertEachAllowed(['git clean -n', 'git clean --dry-run .githooks', 'git clean -n -- .claude',
+                                'git clean -nd .claude', 'git clean -dn .githooks'])
+        self.assertEachAsks(['git clean -f .githooks', 'git clean -fd .claude'])
+
+    def test_reading_or_copying_from_a_protected_path_is_allowed(self):
+        self.assertEachAllowed([
+            'cp .claude/gw.json /tmp/', 'cp .githooks/pre-push /tmp', 'cp -r .githooks /tmp/backup',
+            'cp .claude/settings.json src/a.json', 'install -m 755 .githooks/pre-push /tmp/hook',
+            'rsync -a .githooks/ /tmp/x/', 'rsync -a .claude/gw/scripts/ /tmp/x/',
+            'ln -s .claude/gw.json /tmp/link', 'ln .githooks/pre-push /tmp/hard', 'cp -t /tmp .claude/gw.json',
+            'cp --target-directory=/tmp .githooks/pre-push', 'sudo cp .claude/gw.json /tmp/',
+        ])
+
+    def test_a_copier_still_asks_when_the_protected_path_is_the_destination(self):
+        self.assertEachAsks(['cp .claude/gw.json .githooks/pre-push', 'install .githooks/pre-push .claude/gw.json',
+                             'ln -sf .claude/gw.json .claude/settings.json'])
+
+    def test_rsync_that_removes_its_sources_writes_them(self):
+        self.assertEachAsks(['rsync -a --remove-source-files .githooks/ /tmp/x/'], named=".githooks")
+
+    def test_mv_from_a_protected_path_is_a_write_of_it(self):
+        self.assertEachAsks(['mv .claude/gw.json /tmp/', 'mv .githooks/pre-push /tmp/hook', 'mv -t /tmp .claude/gw.json'],
+                            named=None)
+        self.assertEachAsks(['mv .claude/gw.json /tmp/'], named=".claude/gw.json")
+
     def test_a_whole_tree_git_restore_asks(self):
         self.assertEachAsks([
             'git checkout -- .',
@@ -285,6 +364,21 @@ class BashWrites(Base):
             'sudo -u me bash -c "rm .githooks/pre-push"',
         ])
 
+    def test_grouped_short_options_with_the_value_attached_do_not_swallow_the_command(self):
+        # `-uroot` is `-u root` in one word: the next word is the command, not a value
+        self.assertEachAsks(['sudo -uroot rm .githooks/pre-push', 'sudo -Euroot rm .githooks/pre-push',
+                             'sudo -u root -ggrp rm .githooks/pre-push', 'doas -uroot rm .githooks/pre-push'],
+                            named=".githooks/pre-push")
+        self.assertEachAsks(['nice -n5 tee .claude/gw.json', 'env -uVAR rm .claude/gw.json',
+                             'timeout -sKILL 5 rm .claude/gw.json', 'timeout -k5 -s KILL 9 rm .claude/gw.json',
+                             'xargs -I{} rm .claude/gw.json', 'xargs -n1 -P4 rm .claude/gw.json'],
+                            named=".claude/gw.json")
+
+    def test_a_group_whose_last_letter_takes_a_value_still_consumes_the_next_word(self):
+        self.assertEachAsks(['sudo -Eu root rm .githooks/pre-push', 'sudo -Ei -u root rm .githooks/pre-push'],
+                            named=".githooks/pre-push")
+        self.assertEachAllowed(['sudo -Eu root cat .githooks/pre-push'])
+
     def test_reads_behind_wrappers_with_option_values_are_allowed(self):
         self.assertEachAllowed([
             'sudo -u me cat .claude/gw.json',
@@ -317,9 +411,8 @@ class BashWrites(Base):
             with self.subTest(command=command):
                 self.assertAllowed(self.p.tool("Bash", command=command))
 
-    def test_cp_from_a_protected_file_asks_too(self):  # cp counts as a write whenever it names a protected path
-        self.assertAsks(self.p.tool("Bash", command="cp .claude/settings.json /tmp/copy.json"),
-                        ".claude/settings.json")
+    def test_cp_from_a_protected_file_is_a_read(self):  # only the destination of a copy is written
+        self.assertAllowed(self.p.tool("Bash", command="cp .claude/settings.json /tmp/copy.json"))
 
     def test_relative_paths_use_the_event_cwd(self):
         p = self.p

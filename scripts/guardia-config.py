@@ -29,11 +29,16 @@ What it looks at, in the event on stdin (`tool_name`, `tool_input`, `cwd`):
                               and when a `git` write names it; so does `.` (the whole project) for `git checkout -- .`
                               and `git restore .`, which overwrite every protected file with the committed one.
                               Wrappers are looked through with their options and the values of those
-                              (`sudo -u me`, `env -u X`, `nice -n 5`, `timeout -s KILL 5`, `xargs -I{}`), and a
-                              redirection before the command (`> f cmd`). A plain read (`cat`, `grep`, `git
-                              diff`, `cp .claude /tmp/backup`, `python3 .claude/gw/scripts/x.py`) is allowed. Not seen, on purpose (a hook cannot
-                              parse a shell): a path built at run time, and code that opens the file inside
-                              `python3 -c`. A `cd` to a literal folder is followed; `rm -r .claude` counts.
+                              (`sudo -u me`, `sudo -uroot`, `env -u X`, `nice -n 5`, `timeout -s KILL 5`,
+                              `xargs -I{}`), and a redirection before the command (`> f cmd`). A plain read (`cat`,
+                              `grep`, `git diff`, `cp .claude/gw.json /tmp/`, `python3 .claude/gw/scripts/x.py`) is
+                              allowed: of `cp`/`install`/`ln`/`rsync` only the destination counts as written (the
+                              value of an option such as `rsync --exclude .claude` is not a destination), while `mv`
+                              also writes its sources, and so does `rsync --remove-source-files`. `dd` writes what
+                              `of=` names (`if=` only reads). `git restore --staged` (without `--worktree`),
+                              `git rm --cached` and `git clean -n` leave the worktree alone and are allowed. Not seen, on
+                              purpose (a hook cannot parse a shell): a path built at run time, and code that opens the
+                              file inside `python3 -c`. A `cd` to a literal folder is followed; `rm -r .claude` counts.
 
 Project root: config.find_root (the script's own repo when it holds .claude/gw.json, else the project the hook runs
 in); it does not read or validate the config. Fails closed: stdin it cannot read, an event without the tool name or
@@ -61,8 +66,22 @@ WRITERS = {"tee", "cp", "mv", "rm", "install", "ln", "chmod", "chown", "chgrp", 
            "unlink", "shred", "rmdir", "patch"}
 DESTRUCTIVE = {"rm", "mv", "unlink", "shred", "rmdir"}  # these also count when they name an ancestor folder
 COPIERS = {"cp", "mv", "install", "ln", "rsync"}  # these also count when their destination is an ancestor folder
+READ_SOURCES = {"cp", "install", "ln", "rsync"}  # of these only the destination is written (`mv` removes its sources)
+# Options of each copier that take a value in the next word (the value is not the destination: `--exclude .claude`).
+COPIER_VALUE = {
+    "rsync": {"-e", "-f", "--rsh", "--filter", "--exclude", "--include", "--exclude-from", "--include-from",
+              "--files-from", "--log-file", "--chmod", "--rsync-path", "--partial-dir", "--backup-dir", "--suffix",
+              "--compare-dest", "--copy-dest", "--link-dest", "--temp-dir", "-T", "--max-size", "--min-size"},
+    "cp": {"-S", "--suffix"},
+    "mv": {"-S", "--suffix"},
+    "ln": {"-S", "--suffix"},
+    "install": {"-S", "--suffix", "-m", "--mode", "-o", "--owner", "-g", "--group"},
+}
 IN_PLACE = {"sed", "gsed", "perl", "ruby"}
 GIT_WRITES = {"checkout", "restore", "rm", "mv", "clean"}
+GIT_NOT_WRITES = {  # (git subcommand, long flag, short letter): with this flag the call writes no file of the worktree
+    ("rm", "--cached", None), ("clean", "--dry-run", "n"),
+}
 SHELLS = {"sh", "bash", "zsh", "dash", "ksh"}
 # Commands that run another one, and the options of each that take a value in the next word (`sudo -u me`, `env -u X`,
 # `nice -n 5`, `timeout -s KILL 5`): the same list as PREFIX_OPTIONS in revision-antes-de-main.sh, plus `doas`.
@@ -176,13 +195,23 @@ def fd_before_redirect(words, i):
     return words[i].isdigit() and i + 1 < len(words) and is_redirect(words[i + 1])
 
 
+def takes_next(opt, takes_value):
+    """True when option word `opt` leaves its value to the next word: `-u`, or a group of short flags whose LAST letter
+    takes one (`sudo -Eu root`). A value-taking letter that is not last has its value attached (`-uroot`, `-n5`)."""
+    if opt in takes_value:
+        return True
+    if len(opt) > 2 and opt[1] != "-":
+        for k, letter in enumerate(opt[1:]):
+            if "-" + letter in takes_value:
+                return k == len(opt) - 2
+    return False
+
+
 def skip_options(words, i, takes_value):
     """The index after the options at words[i:] (`takes_value` says which ones also consume the next word)."""
     while i < len(words) and words[i].startswith("-") and words[i] != "-":
         opt = words[i]
-        # `-u X`, and combined short flags whose last letter takes the value (`sudo -Eu root`)
-        takes = opt in takes_value or (len(opt) > 2 and opt[1] != "-" and "-" + opt[-1] in takes_value)
-        i += 2 if takes else 1
+        i += 2 if takes_next(opt, takes_value) else 1
         if opt == "--":
             break
     return i
@@ -212,20 +241,43 @@ def command_word(words):
     return None, None
 
 
-def destination(seg, i):
+def destination(seg, i, cmd):
     """Index of the word a copier (`cp`, `mv`, `install`, `ln`, `rsync`) writes into: the `-t`/`--target-directory`
-    value, else the last word that is not an option or a redirection. None when there is no clear one."""
+    value, else the last word that is not an option, an option's value or a redirection. None when there is no clear one."""
+    values = COPIER_VALUE.get(cmd, set())
     last = None
-    for j in range(i + 1, len(seg)):
+    j = i + 1
+    while j < len(seg):
         w = seg[j]
-        if w in ("-t", "--target-directory") and j + 1 < len(seg):
+        if (w in ("-t", "--target-directory") or takes_next(w, {"-t"})) and j + 1 < len(seg):
             return j + 1
         if w.startswith("--target-directory="):
             return -j - 1  # the value is inside the word itself (see bash_hits)
-        if w.startswith("-") or is_redirect(w) or fd_before_redirect(seg, j) or is_redirect_operator(seg[j - 1]):
+        if w.startswith("-") and w != "-":
+            j += 2 if takes_next(w, values) else 1  # an option and, maybe, its value
             continue
-        last = j
+        if not (is_redirect(w) or fd_before_redirect(seg, j) or is_redirect_operator(seg[j - 1])):
+            last = j
+        j += 1
     return last
+
+
+def git_write_call(args, k):
+    """False for the `git` calls that name a path but leave the worktree alone: `restore --staged` (index only,
+    unless `--worktree`/`-W` too), `rm --cached`, `clean -n`/`--dry-run`. `k` is the index of the subcommand in `args`."""
+    sub, rest = args[k], []
+    for w in args[k + 1:]:
+        if w == "--":
+            break
+        rest.append(w)
+    shorts = "".join(w[1:] for w in rest if re.fullmatch(r"-[A-Za-z]+", w))
+
+    def has(long_flag, letter):
+        return long_flag in rest or (letter is not None and letter in shorts)
+
+    if sub == "restore":
+        return not has("--staged", "S") or has("--worktree", "W")
+    return not any(sub == s and has(flag, letter) for s, flag, letter in GIT_NOT_WRITES)
 
 
 def in_place_flag(words):
@@ -248,7 +300,7 @@ def bash_hits(command, base, root, depth=0):
             for j, w in enumerate(seg):
                 if j > (i or 0) and (cmd == "eval" or seg[j - 1] == "-c" or re.match(r"-[a-z]*c$", seg[j - 1])):
                     hits += bash_hits(w, base, root, depth + 1)
-        dest = destination(seg, i) if cmd in COPIERS and i is not None else None
+        dest = destination(seg, i, cmd) if cmd in COPIERS and i is not None else None
         if dest is not None and dest < 0:  # `--target-directory=X`
             rel, kind = classify(seg[-dest - 1].split("=", 1)[1], base, root)
             dest = None
@@ -260,18 +312,22 @@ def bash_hits(command, base, root, depth=0):
         elif cmd in IN_PLACE and in_place_flag(args):
             writes = True
         elif cmd == "git":
-            sub = next((w for k, w in enumerate(args) if not w.startswith("-") and (k == 0 or args[k - 1] not in ("-C", "-c"))), "")
-            writes = git_write = sub in GIT_WRITES
+            k = next((k for k, w in enumerate(args) if not w.startswith("-") and (k == 0 or args[k - 1] not in ("-C", "-c"))), None)
+            writes = git_write = k is not None and args[k] in GIT_WRITES and git_write_call(args, k)
         elif cmd == "find":
             writes = "-delete" in args
+        removes_sources = cmd == "rsync" and any(w.startswith("--remove-source") for w in args)
         for j, w in enumerate(seg):
             if is_redirect(w) or j == i:
                 continue
+            if cmd == "dd" and w.startswith("of="):
+                w = w[3:]  # `dd of=FILE` writes FILE; `if=FILE` only reads it
             rel, kind = classify(w, base, root)
             if kind is None:
                 continue
             redirected = j > 0 and ">" in seg[j - 1]  # `>`, `>>`, `>|`, `&>`: the word after it is written
-            if kind == "protected" and (redirected or writes):
+            written = writes and (cmd not in READ_SOURCES or j == dest or removes_sources)  # a copy only reads its sources
+            if kind == "protected" and (redirected or written):
                 hits.append(rel)
             elif kind == "ancestor" and (redirected or cmd in DESTRUCTIVE or j == dest or git_write):
                 hits.append(rel)
