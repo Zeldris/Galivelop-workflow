@@ -55,8 +55,9 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 
 ## Pendiente
 
-- Revisar [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) en busca de mejoras para el flujo
-  (usuario, 2026-10-23; solo apuntado, sin revisar todavía).
+- [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) revisado (2026-10-25): 4 propuestas sin
+  decidir en `docs/propuestas/2026-10-25-codegraph.md` (P1 gancho que inyecta la fila del mapa, P2 comprobador
+  genérico del mapa, P3 anti-patrones en `writing-for-agents`, P4 probar la herramienta en WMF, se recomienda aplazar).
 
 - Propuestas aprobadas para `v0.2.0`, en orden: `docs/propuestas/2026-10-22-reparto.md` (la de 2026-10-21, toda hecha).
 
