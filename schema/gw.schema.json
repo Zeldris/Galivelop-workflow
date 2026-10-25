@@ -346,6 +346,12 @@
       "type": "string",
       "minLength": 1,
       "description": "Regex of the project's task ids (bitacora.py); default [A-Z]{2,5}-\\d+."
+    },
+    "subagentCap": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 30,
+      "description": "Subagents (Agent/Task calls) one session may launch before tope-subagentes.py asks the user to check they are not looping, and again every 10 after."
     }
   }
 }

@@ -53,6 +53,7 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
 | `worktreeDir` | Folder (absolute, or relative to the repo root) under which `pre-push` creates its temporary worktrees, for a sandbox that cannot see `$TMPDIR` (e.g. Flatpak); a relative one should be in `.gitignore` and outside `.git/` | `""` (`${TMPDIR:-/tmp}`) | `".cache/gw-worktrees"` | `pre-push` |
 | `plan` | Plan or roadmap files or folders where tasks are ticked or struck through | `[]` | `["docs/roadmap.md"]` | `bitacora.py` |
 | `taskId` | Regex of the project's task ids | `[A-Z]{2,5}-\\d+` | `"(INS\|FLU)-\\d+"` (capturing groups are treated as non-capturing) | `bitacora.py` |
+| `subagentCap` | Integer ≥ 1: subagents (`Agent`/`Task` calls) a session launches before the `PreToolUse` hook `tope-subagentes.py` asks the person to check they are not looping, and again every 10 (it never blocks). If the config cannot be read, the default applies | `30` | `50` | `tope-subagentes.py` |
 
 ## Notes
 

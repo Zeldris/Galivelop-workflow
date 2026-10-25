@@ -45,6 +45,13 @@ la vez.
   las ramas están subidas. Lo suyo vuelve a la rama principal por `git merge` antes del PR.
 - **Al parar**, el gancho `Stop` (`antes-de-parar.py`) no deja acabar con commits sin subir ni con cambios sin la
   bitácora; si no puede comprobarlo (sin git, sin config), avisa en vez de bloquear.
+- **Al tocar la configuración del flujo**, el gancho `PreToolUse` `guardia-config.py` pide permiso a la persona antes de
+  editar `.claude/settings.json`, `.claude/gw.json`, `.githooks/` o `.claude/gw/scripts/` (con `Edit`, `Write` o una
+  orden de `Bash` que escriba ahí); si no entiende la entrada, también pregunta. Para regenerar la copia aplicada:
+  `python3 scripts/aplicar.py .`.
+- **Al repartir a subagentes**, el gancho `PreToolUse` `tope-subagentes.py` cuenta los `Agent`/`Task` de la sesión y,
+  al llegar a `subagentCap` (30 por defecto) y cada 10 después, pide a la persona que compruebe que no están en bucle
+  (`opt-tokens`); nunca bloquea.
 - **Al empezar**, la sesión nueva lee la bitácora y comprueba que el último commit coincide con lo que dice; no
   pregunta por dónde iba. Tras un `/clear` o una compactación, `recuperar.py --estado` se lo recuerda.
 - Al cerrar la rama, `bitacora.py close-row <rama>` deja su fila como «fusionada, rama terminada» para que la rama

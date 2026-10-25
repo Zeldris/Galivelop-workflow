@@ -68,6 +68,20 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn("$.scoutDir", r.stderr)
 
+    def test_subagent_cap_default_and_bad_values(self):
+        self.write(VALID)
+        self.assertEqual(cli(self.tmp, "get", "subagentCap").stdout.strip(), "30")
+        self.write(dict(VALID, subagentCap=50))
+        self.assertEqual(cli(self.tmp, "get", "subagentCap").stdout.strip(), "50")
+        cases = {0: "must be at least 1, got 0", -3: "must be at least 1, got -3", "x": "expected integer, got str",
+                 2.5: "expected integer, got float", True: "expected integer, got bool"}
+        for bad, why in cases.items():
+            self.write(dict(VALID, subagentCap=bad))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn("$.subagentCap", r.stderr)
+            self.assertIn(why, r.stderr)
+
     def test_stale_refs_forms_and_globs(self):
         import sys
         sys.path.insert(0, str(ROOT / "scripts"))
