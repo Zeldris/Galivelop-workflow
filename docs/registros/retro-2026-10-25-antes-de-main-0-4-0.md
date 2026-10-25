@@ -5,7 +5,9 @@ arreglados por ser serios o medios, con la revisión de esos arreglos y de los s
 bitácora). Une `/opt-tokens` y `/retro` de la sesión `e9650d36` (recogida de la 0.4.0, `gw-media-content`, notas
 personales y arreglos antes de `main`).
 
-**Estado:** aprobadas todas (P1-P7) por el usuario el 2026-10-25; se aplican en la rama antes de `main`.
+**Estado:** aprobadas todas (P1-P7) por el usuario el 2026-10-25 y aplicadas en la rama antes de `main` (P3, P4, P6
+en `8c980ad`; P1+P2, P5 y P7 por subagentes, revisadas y fusionadas). Añadido en P7: el gancho de parada no cuenta
+`.claude/worktrees/`.
 
 ## Medida (`medir.py --hours 0`)
 

@@ -124,6 +124,15 @@ here.
   `orchestrate-dealer` lleva el tope («hacia las 30 llamadas, commit y lo que falte en MISSING») y qué hacer si el
   push se rechaza (fetch + merge, nunca rebase); `REVIEW.md` (ES/EN) pide revisar los ganchos que preguntan o bloquean
   probando las formas de saltárselos.
+- `bitacora.py check`, con o sin `logRows`, avisa (o falla con `--strict`, como en el check de este repo) si una celda
+  de la tabla de estado pasa de 800 caracteres o «Hecho (5 últimas)» tiene más de 5 entradas, mal numeradas o pegadas
+  en una línea; el gancho `commit-msg` muestra esos avisos. Nuevo `bitacora.py done "<texto>"`: añade la entrada `1.`
+  con la fecha, renumera y deja 5.
+- `doctor.py` avisa (`ci access`) cuando `origin` está en GitHub y el agente no puede leer el CI (sin `gh` con sesión
+  en github.com ni `GITHUB_TOKEN`/`GH_TOKEN`), con la orden que lo arregla.
+- El gancho de parada (`antes-de-parar.py`) ya no manda subir otra vez mientras el `pre-push` está subiendo ese mismo
+  commit (marca `gw-push-en-curso` con pid vivo, menos de una hora y el sha de `HEAD`): avisa en vez de bloquear. Y no
+  cuenta como cambio sin confirmar lo no versionado bajo `.claude/worktrees/`.
 
 ### EN
 
@@ -238,6 +247,15 @@ here.
   template carries the cap ("at ~30 calls, commit and list what is left under MISSING") and what to do when the push
   is rejected (fetch + merge, never rebase); `REVIEW.md` (ES/EN) asks to review hooks that ask or block by trying the
   ways around them.
+- `bitacora.py check`, with or without `logRows`, warns (or fails with `--strict`, as in this repo's check) when a
+  state-table cell exceeds 800 characters or "Done (last 5)" has more than 5 items, badly numbered or glued on one
+  line; the `commit-msg` hook shows those warnings. New `bitacora.py done "<text>"`: adds the dated `1.` item,
+  renumbers and keeps 5.
+- `doctor.py` warns (`ci access`) when `origin` is on GitHub and the agent cannot read the CI (no `gh` logged in to
+  github.com and no `GITHUB_TOKEN`/`GH_TOKEN`), with the command that fixes it.
+- The Stop hook (`antes-de-parar.py`) no longer says to push again while `pre-push` is pushing that very commit
+  (`gw-push-en-curso` marker with a live pid, under an hour old and holding the `HEAD` sha): it warns instead of
+  blocking. And untracked paths under `.claude/worktrees/` no longer count as uncommitted changes.
 
 ## [0.3.0] - 2026-10-23
 

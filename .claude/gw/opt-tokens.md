@@ -16,6 +16,10 @@ las crea una vez; desde entonces son del proyecto.
   `pgrep -f`, que se encuentra a sí mismo).
 - `orchestrate-dealer`, regla «A batch of approved rows is dealt»: filas de una propuesta, una por subagente, o
   `/clear` cada 4-5 filas en la principal.
+- Bitácora corta (retro 2026-10-25, P1/P2): `bitacora.py check --strict` en el check (celdas de estado de 800
+  caracteres como mucho, «Hecho» con 5 entradas) y `python3 scripts/bitacora.py done "<texto>"` para añadir a «Hecho».
+- Encargo de `orchestrate-dealer` con el tope (~30 llamadas, commit y MISSING) y fetch + merge si se rechaza el push
+  (P3). Medida de la sesión e9650d36: 4 subagentes por encima de 35 llamadas, ~4,2M de entrada de más.
 
 ## Costes conocidos
 
