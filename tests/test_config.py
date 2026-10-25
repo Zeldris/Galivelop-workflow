@@ -57,6 +57,22 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn(needle, r.stderr)
 
+    def test_agent_map_defaults_and_bad_values(self):
+        self.write(VALID)
+        self.assertEqual(cli(self.tmp, "get", "agentMap", "--json").stdout.strip(), "{}")
+        self.write(dict(VALID, agentMap={"path": "docs/m.md", "prefixes": {"b/": "backend/src/"}, "roots": ["backend"]}))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        for bad, needle in ((dict(VALID, agentMap={"oops": 1}), "$.agentMap: unknown key 'oops'"),
+                            (dict(VALID, agentMap={"path": "../m.md"}), "$.agentMap.path"),
+                            (dict(VALID, agentMap={"prefixes": {"b/": "../x"}}), "$.agentMap.prefixes.b/"),
+                            (dict(VALID, agentMap={"prefixes": {"b/": 3}}), "$.agentMap.prefixes.b/: expected string"),
+                            (dict(VALID, agentMap={"prefixes": {"a/b/": "x"}}), "must be one folder-like name"),
+                            (dict(VALID, agentMap={"roots": ["/abs"]}), "$.agentMap.roots[0]")):
+            self.write(bad)
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn(needle, r.stderr)
+
     def test_scout_dir_default_and_bad_values(self):
         self.write(VALID)
         self.assertEqual(cli(self.tmp, "get", "scoutDir").stdout.strip(), ".claude/gw/scout")

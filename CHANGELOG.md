@@ -90,6 +90,11 @@ here.
   `ask` con «N subagents in this session (subagentCap C in .claude/gw.json): check they are not looping (opt-tokens)».
   Nunca deniega. Clave nueva `subagentCap` del config (entero ≥ 1, defecto 30; el esquema admite ahora `minimum`); sin
   `session_id` o con una entrada ilegible pregunta que no puede contar, y un config ilegible usa el defecto.
+- P2 de `codegraph`: `scripts/mapa-agente.py` comprueba que cada ruta, `ruta#nombre`, nombre suelto tras él y enlace
+  que cita el mapa para agentes (`docs/mapa-agente.md` o `agentMap.path`) existe. Clave nueva `agentMap` (`path`,
+  `prefixes` como `{"b/": "backend/src/"}`, `roots`); el validador del config admite `additionalProperties` como
+  esquema. Sin mapa sale con 0; con un `agentMap.path` que no existe, 1; con un config inválido, 2. Va en el `check` de
+  la plantilla y en `tests/comprobar.sh`, que valida el mapa de este repo.
 
 ### EN
 
@@ -170,6 +175,11 @@ here.
   in this session (subagentCap C in .claude/gw.json): check they are not looping (opt-tokens)". It never denies. New
   config key `subagentCap` (integer >= 1, default 30; the schema now supports `minimum`); with no `session_id` or
   unreadable input it asks that it cannot count, and an unreadable config uses the default.
+- `codegraph` P2: `scripts/mapa-agente.py` checks that every path, `path#name`, loose name after it and link that the
+  agent map (`docs/mapa-agente.md` or `agentMap.path`) cites exists. New config key `agentMap` (`path`, `prefixes` such
+  as `{"b/": "backend/src/"}`, `roots`); the config validator now takes `additionalProperties` as a schema. With no map
+  it exits 0; with an `agentMap.path` that does not exist, 1; with an invalid config, 2. It is in the template's
+  `check` and in `tests/comprobar.sh`, which validates this repo's map.
 
 ## [0.3.0] - 2026-10-23
 

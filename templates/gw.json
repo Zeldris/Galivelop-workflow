@@ -9,7 +9,7 @@
   "pushToProtected": "direct",
   "install": [],
   "setup": [],
-  "check": ["make check"],
+  "check": ["make check", "python3 .claude/gw/scripts/mapa-agente.py"],
   "checkWrapper": "",
   "worktreeLinks": ["node_modules", ".venv"],
   "worktreeDir": "",
@@ -27,5 +27,6 @@
   "relatedTests": {"fast": [], "slow": []},
   "plan": [],
   "taskId": "[A-Z]{2,5}-\\d+",
-  "subagentCap": 30
+  "subagentCap": 30,
+  "agentMap": {"prefixes": {}, "roots": []}
 }
