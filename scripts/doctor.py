@@ -665,8 +665,9 @@ def check_ci_access(rep, root):
                  "install GitHub CLI and run `gh auth login`, or export GITHUB_TOKEN")
         return
     try:
-        logged_in = subprocess.run(["gh", "auth", "status"], capture_output=True, text=True, timeout=15,
-                                   cwd=str(root)).returncode == 0
+        # Only github.com: another configured host (an expired GHE login) must not fail it.
+        logged_in = subprocess.run(["gh", "auth", "status", "--hostname", "github.com"], capture_output=True,
+                                   text=True, timeout=10, cwd=str(root)).returncode == 0
     except (OSError, subprocess.SubprocessError):
         logged_in = False
     if logged_in:

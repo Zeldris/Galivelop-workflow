@@ -452,7 +452,7 @@ class Doctor(unittest.TestCase):
         env = self.tools()
         if gh is not None:
             fake = Path(env["PATH"]) / "gh"
-            fake.write_text(f"#!/bin/sh\n[ \"$1 $2\" = \"auth status\" ] && exit {gh}\nexit 9\n")
+            fake.write_text(f"#!/bin/sh\n[ \"$*\" = \"auth status --hostname github.com\" ] && exit {gh}\nexit 9\n")
             fake.chmod(0o755)
         env.update(GITHUB_TOKEN=token or "", GH_TOKEN="")
         return env
@@ -497,6 +497,14 @@ class Doctor(unittest.TestCase):
     def test_gh_not_logged_in_warns_with_gh_auth_login(self):
         self.github()
         code, out = self.doctor_env(self.ci_env(gh=1))
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "ci access", "`gh auth status` fails", "run `gh auth login`")
+
+    def test_gh_that_cannot_run_warns_instead_of_crashing(self):
+        self.github()
+        env = self.ci_env(gh=0)
+        (Path(env["PATH"]) / "gh").write_text("#!/nonexistent/interpreter\n")  # exec fails with OSError
+        code, out = self.doctor_env(env)
         self.assertEqual(code, 0, out)
         self.assertLine(out, "WARN", "ci access", "`gh auth status` fails", "run `gh auth login`")
 
