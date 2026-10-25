@@ -72,9 +72,10 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
   decidir en `docs/propuestas/2026-10-25-codegraph.md` (P1 gancho que inyecta la fila del mapa, P2 comprobador
   genérico del mapa, P3 anti-patrones en `writing-for-agents`, P4 probar la herramienta en WMF, se recomienda aplazar).
 - Diez repos de una lista de X revisados (2026-10-25): 10 propuestas en `docs/propuestas/2026-10-25-repos-x.md`. P4
-  (regex) y P7 (skills e instrucciones) aplicadas (eea8892) y el arreglo posterior (gancho de `main` con tabuladores y
-  saltos escapados; ZWJ en emojis); el resto en curso, la siguiente es P5 (`recuperar.py`): P1 gancho `Stop`, P2 guarda
-  de config, P3 tope de subagentes, P5 `recuperar.py`, P6 dealer, P8 disparo de skills, P9 `REVIEW.md`, P10 apuntes 9-10.
+  (regex), P5 (`recuperar.py`: tope de 9.500 caracteres y fragmentos como datos) y P7 (skills e instrucciones)
+  aplicadas (P4 y P7 en eea8892) y el arreglo posterior (gancho de `main` con tabuladores y saltos escapados; ZWJ en
+  emojis); el resto en curso, la siguiente es P1: P1 gancho `Stop`, P2 guarda de config, P3 tope de subagentes, P6 dealer,
+  P8 disparo de skills, P9 `REVIEW.md`, P10 apuntes 9-10.
 
 - Propuestas aprobadas para `v0.2.0`, en orden: `docs/propuestas/2026-10-22-reparto.md` (la de 2026-10-21, toda hecha).
 

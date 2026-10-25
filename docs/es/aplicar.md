@@ -256,7 +256,8 @@ entra el código ya hoy.
   `.claude/gw/scripts/`; `doctor.py` también. Bórrala a mano, o correrá dos veces.
 - **`recuperar.py` por línea de órdenes**, para recuperar lo que una compactación o un `/clear` se llevó:
   `python3 .claude/gw/scripts/recuperar.py --estado` (la bitácora, `git status` y los últimos commits) y
-  `--buscar TEXTO` (fragmentos de la sesión que casan; `--max N`, `--ancho N`, `--sesion RUTA`).
+  `--buscar TEXTO` (fragmentos de la sesión que casan, como datos tras una línea de cabecera y sin caracteres de
+  control; `--max N`, `--ancho N`, `--sesion RUTA`). `--estado` se corta en 9.500 caracteres, por línea entera, y lo dice.
 - **`install` a mano.** `session-start.sh` solo lo corre en la nube y cuando cambian las órdenes de `install`/`setup`
   o los lockfiles. Para forzarlo, borra el sello (`rm "$(git rev-parse --git-path gw-install.sha)"`) y abre la sesión
   de nuevo, o ejecuta tú las órdenes de `install` del config.

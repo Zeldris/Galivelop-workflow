@@ -255,7 +255,8 @@ how code already reaches it today.
   `.claude/gw/scripts/`; so does `doctor.py`. Delete it by hand, or it runs twice.
 - **`recuperar.py` on the command line**, to get back what a compaction or a `/clear` dropped:
   `python3 .claude/gw/scripts/recuperar.py --estado` (the log, `git status` and the last commits) and
-  `--buscar TEXT` (matching session fragments; `--max N`, `--ancho N`, `--sesion PATH`).
+  `--buscar TEXT` (matching session fragments, printed as data after a header line, with control characters
+  stripped; `--max N`, `--ancho N`, `--sesion PATH`). `--estado` stops at 9,500 characters, at a whole line, and says so.
 - **`install` by hand.** `session-start.sh` runs it only in the cloud and only when the `install`/`setup` commands or
   the lockfiles change. To force it, delete the stamp (`rm "$(git rev-parse --git-path gw-install.sha)"`) and open the
   session again, or run the config's `install` commands yourself.
