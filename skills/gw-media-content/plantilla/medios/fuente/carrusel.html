@@ -5,7 +5,7 @@
 <!-- Document carousel for LinkedIn: each section.slide is one page of medios/carrusel.pdf (the file name must
      start with "carrusel"). 4:5 portrait, 1080x1350. One idea per slide: cover, two to eight content slides,
      closing. Copy a section to add a slide, delete one to remove it. Keep the text short: a slide whose
-     content does not fit makes the render fail. Fill every gap written between double braces. -->
+     content does not fit makes the render fail. The page size of the PDF is the gw-size below. Fill every gap written between double braces. -->
 <meta name="gw-size" content="1080x1350">
 <title>Carrusel</title>
 <style>
@@ -17,7 +17,7 @@
     --fuente: system-ui, -apple-system, "Segoe UI", "Helvetica Neue", Arial, "DejaVu Sans", "Liberation Sans", sans-serif;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", "Liberation Mono", monospace;
   }
-  @page { size: 1080px 1350px; margin: 0; }
+  @page { margin: 0; }
   * { box-sizing: border-box; margin: 0; }
   html, body { background: var(--fondo); }
   body { font-family: var(--fuente); color: var(--texto); }

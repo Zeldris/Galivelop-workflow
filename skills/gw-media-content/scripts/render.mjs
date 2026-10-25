@@ -8,9 +8,10 @@
 // medios/fuente/ is rendered. Sources live in <piece>/medios/fuente/:
 //   *.html, *.svg   rendered with Playwright's Chromium at the size they declare, <meta name="gw-size"
 //                   content="1200x675"> (an SVG declares it in a comment: <!-- gw-size: 1200x675 -->; default
-//                   1200x675), to medios/<name>.webp (1600 px wide at most), medios/<name>-mini.webp (720 px) and
+//                   1200x675; a gw-size that cannot be read is an error), with the network blocked, to medios/<name>.webp (1600 px wide at most), medios/<name>-mini.webp (720 px) and
 //                   medios/<name>.png (the same size as the .webp: LinkedIn takes JPG, PNG and GIF, not WebP)
-//   carrusel*.html  a document carousel: each <section class="slide"> becomes a page of medios/<name>.pdf
+//   carrusel*.html  a document carousel: each <section class="slide"> becomes a page of medios/<name>.pdf, whose
+//                   page size is the gw-size (the render fails if the pages are not the number of slides)
 //   *.png, *.jpg    screenshots: converted as they are to medios/<name>.webp, <name>-mini.webp and <name>.png
 // Without [source...] every source is rendered; with them, only those (file names inside medios/fuente/).
 //
@@ -19,11 +20,11 @@
 //     (install: npm i -D playwright && npx playwright install chromium)
 //   ImageMagick with WebP support (`magick`, or `convert` in version 6) for the WebP and PNG files
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { basename, extname, join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const USO = 'usage: node render.mjs [--plan] <piece-folder | date-folder> [source...]';
 const PAGINAS = new Set(['.html', '.svg']);
@@ -50,16 +51,28 @@ export function parsearArgumentos(argv) {
   return { carpeta: resto[0], pedidas: resto.slice(1).map((p) => basename(p)), plan };
 }
 
-export function parsearTamano(texto) {
-  const m =
-    texto.match(/<meta\s+name=["']gw-size["']\s+content=["'](\d+)x(\d+)["']/i) ||
-    texto.match(/<!--\s*gw-size\s*:\s*(\d+)x(\d+)\s*-->/i);
-  if (!m) return { ...TAMANO_POR_DEFECTO };
+const ETIQUETA_TAMANO = 'write it as <meta name="gw-size" content="1200x675"> (an SVG: <!-- gw-size: 1200x675 -->)';
+
+function leerTamano(valor) {
+  const m = /^\s*(\d+)\s*[x\u00d7]\s*(\d+)\s*$/i.exec(valor ?? '');
+  if (!m) throw new Fallo(`gw-size "${String(valor ?? '').trim()}" cannot be read as WIDTHxHEIGHT; ${ETIQUETA_TAMANO}`);
   const tamano = { width: Number(m[1]), height: Number(m[2]) };
   if (tamano.width < 100 || tamano.height < 100 || tamano.width > 4000 || tamano.height > 4000) {
     throw new Fallo(`gw-size ${m[1]}x${m[2]} is out of range (100 to 4000 px on each side); fix the size in the source`);
   }
   return tamano;
+}
+
+export function parsearTamano(texto) {
+  const sinComentarios = texto.replace(/<!--[\s\S]*?-->/g, '');
+  for (const [etiqueta] of sinComentarios.matchAll(/<meta\b[^>]*>/gi)) {
+    if (!/\bname\s*=\s*["']?\s*gw-size\b/i.test(etiqueta)) continue;
+    const c = /\bcontent\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(etiqueta);
+    return leerTamano(c ? (c[1] ?? c[2] ?? c[3]) : '');
+  }
+  const comentario = /<!--\s*gw-size\s*:([\s\S]*?)-->/i.exec(texto);
+  if (comentario) return leerTamano(comentario[1]);
+  return { ...TAMANO_POR_DEFECTO };
 }
 
 const esFuente = (f) => PAGINAS.has(extname(f).toLowerCase()) || CAPTURAS.has(extname(f).toLowerCase());
@@ -148,34 +161,122 @@ function aImagenes(im, entrada, nombre, salidaDir) {
   }
 }
 
-async function prepararPagina(navegador, entrada, mensajeTamano) {
-  const pagina = await navegador.newPage({ viewport: entrada.tamano, deviceScaleFactor: 1 });
-  await pagina.goto(pathToFileURL(entrada.ruta).href, { waitUntil: 'load' });
-  const rotas = await pagina.evaluate(async () => {
-    await document.fonts.ready;
-    const fallan = [];
-    for (const i of document.images) {
-      try {
-        await i.decode();
-      } catch {
-        fallan.push(i.getAttribute('src') || '(empty src)');
-      }
+// Runs in the page. Returns the places where the content does not fit: an element that scrolls (non-visible
+// overflow with more content than room), or an element or a line of text outside the content box (padding
+// excluded) of the body, or of the .slide when the page has slides.
+function buscarDesbordes([w, h]) {
+  const raiz = document.documentElement;
+  const cuerpo = document.body;
+  const fuera = [];
+  const nombre = (el) => el.tagName.toLowerCase() + (el.id ? `#${el.id}` : '') + (typeof el.className === 'string' && el.className.trim() ? `.${el.className.trim().split(/\s+/).join('.')}` : '');
+  const conSlides = !!document.querySelector('section.slide'); // a carousel is taller than one page
+  if (raiz.scrollWidth > w + 1 || (!conSlides && raiz.scrollHeight > h + 1)) fuera.push(`the document scrolls (${raiz.scrollWidth}x${raiz.scrollHeight})`);
+  if (!cuerpo) return fuera;
+  for (const el of cuerpo.querySelectorAll('*')) {
+    const e = getComputedStyle(el);
+    if (e.overflowX === 'visible' && e.overflowY === 'visible') continue;
+    if (el.scrollWidth > el.clientWidth + 1 || el.scrollHeight > el.clientHeight + 1) {
+      fuera.push(`${nombre(el)} has more content than room (${el.scrollWidth}x${el.scrollHeight} in ${el.clientWidth}x${el.clientHeight})`);
     }
-    return fallan;
-  });
-  if (rotas.length) throw new Fallo(`${entrada.fuente}: image(s) that do not load: ${rotas.join(', ')}; fix the path (relative to medios/fuente/)`);
-  const { width, height } = entrada.tamano;
-  const desborda = await pagina.evaluate(
-    ([w, h]) => {
-      const el = document.documentElement;
-      const slides = [...document.querySelectorAll('section.slide')];
-      if (slides.length) return slides.some((s) => s.scrollHeight > s.clientHeight + 1 || s.scrollWidth > s.clientWidth + 1);
-      return el.scrollWidth > w + 1 || el.scrollHeight > h + 1;
-    },
-    [width, height],
-  );
-  if (desborda) throw new Fallo(`${entrada.fuente}: the content overflows ${width}x${height}; ${mensajeTamano}`);
-  return pagina;
+  }
+  const slides = [...document.querySelectorAll('section.slide')];
+  for (const contenedor of slides.length ? slides : [cuerpo]) {
+    const cs = getComputedStyle(contenedor);
+    const r = contenedor.getBoundingClientRect();
+    const caja = {
+      left: r.left + contenedor.clientLeft + parseFloat(cs.paddingLeft),
+      top: r.top + contenedor.clientTop + parseFloat(cs.paddingTop),
+      right: r.left + contenedor.clientLeft + contenedor.clientWidth - parseFloat(cs.paddingRight),
+      bottom: r.top + contenedor.clientTop + contenedor.clientHeight - parseFloat(cs.paddingBottom),
+    };
+    const total = { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
+    // vertical slack: the glyph box of a text with a tight line-height is taller than its line
+    const sale = (c, k, v = 1) => c.left < k.left - 1 || c.top < k.top - v || c.right > k.right + 1 || c.bottom > k.bottom + v;
+    // placed on purpose (a page number in the padding): it, and what is inside it, only has to stay inside the container
+    const colocadoEn = (el) => {
+      for (let x = el; x && x !== contenedor; x = x.parentElement) {
+        const p = getComputedStyle(x).position;
+        if (p === 'absolute' || p === 'fixed') return true;
+      }
+      return false;
+    };
+    for (const el of contenedor.querySelectorAll('*')) {
+      if (['SCRIPT', 'STYLE', 'TEMPLATE', 'NOSCRIPT'].includes(el.tagName)) continue;
+      const e = getComputedStyle(el);
+      if (e.display === 'none' || e.display === 'contents' || e.visibility === 'hidden') continue;
+      const c = el.getBoundingClientRect();
+      if (!c.width && !c.height) continue;
+      const colocado = colocadoEn(el);
+      if (sale(c, colocado ? total : caja)) fuera.push(`${nombre(el)} leaves the ${colocado ? 'box' : 'content box'} of ${nombre(contenedor)}`);
+    }
+    const paseo = document.createTreeWalker(contenedor, NodeFilter.SHOW_TEXT);
+    for (let t = paseo.nextNode(); t; t = paseo.nextNode()) {
+      if (!t.data.trim() || ['SCRIPT', 'STYLE'].includes(t.parentElement?.tagName)) continue;
+      const rango = document.createRange();
+      rango.selectNodeContents(t);
+      const c = rango.getBoundingClientRect();
+      const colocado = colocadoEn(t.parentElement);
+      const holgura = Math.max(1, 0.25 * parseFloat(getComputedStyle(t.parentElement).fontSize));
+      if ((c.width || c.height) && sale(c, colocado ? total : caja, holgura)) fuera.push(`text "${t.data.trim().slice(0, 30)}" leaves the content box of ${nombre(contenedor)}`);
+    }
+  }
+  return [...new Set(fuera)];
+}
+
+async function prepararPagina(navegador, entrada, mensajeTamano) {
+  const contexto = await navegador.newContext({ viewport: entrada.tamano, deviceScaleFactor: 1 });
+  try {
+    // the network is blocked: a source has to be self-contained, and a request that is aborted is a resource that does not load
+    await contexto.route(/^https?:/, (r) => r.abort());
+    const pagina = await contexto.newPage();
+    const errores = [];
+    const peticiones = [];
+    pagina.on('pageerror', (err) => errores.push(String(err?.message ?? err).split('\n')[0]));
+    pagina.on('requestfailed', (p) => {
+      const url = p.url();
+      if (!url.startsWith('data:')) peticiones.push(url);
+    });
+    await pagina.goto(pathToFileURL(entrada.ruta).href, { waitUntil: 'load' });
+    const rotas = await pagina.evaluate(async () => {
+      await document.fonts.ready;
+      const fallan = [];
+      for (const i of document.images ?? []) {
+        try {
+          await i.decode();
+        } catch {
+          fallan.push(i.getAttribute('src') || '(empty src)');
+        }
+      }
+      return fallan;
+    });
+    const otras = [...new Set(peticiones)].filter((u) => !rotas.some((r) => u.endsWith(r) || decodeURI(u).endsWith(r)));
+    if (rotas.length || otras.length) {
+      const partes = [];
+      if (rotas.length) partes.push(`image(s) that do not load: ${rotas.join(', ')}`);
+      if (otras.length) partes.push(`resource(s) that do not load: ${otras.join(', ')}`);
+      throw new Fallo(`${entrada.fuente}: ${partes.join('; ')}; fix the path (relative to medios/fuente/); the network is blocked, so everything the source uses has to be a file next to it`);
+    }
+    if (errores.length) throw new Fallo(`${entrada.fuente}: the page's script fails: ${errores.join(' | ')}; fix the script in the source`);
+    const huecos = await pagina.evaluate(() => {
+      const raiz = document.body ?? document.documentElement;
+      return (raiz.innerText ?? raiz.textContent ?? '').includes('{{');
+    });
+    if (huecos) throw new Fallo(`fill the gaps in ${entrada.fuente}: it still has text between double braces ({{…}}); replace each one with the real text`);
+    const { width, height } = entrada.tamano;
+    const desborda = await pagina.evaluate(buscarDesbordes, [width, height]);
+    if (desborda.length) {
+      const lista = desborda.slice(0, 5).join('; ') + (desborda.length > 5 ? `; and ${desborda.length - 5} more` : '');
+      throw new Fallo(`${entrada.fuente}: the content overflows ${width}x${height} (${lista}); ${mensajeTamano}`);
+    }
+    return { pagina, contexto };
+  } catch (err) {
+    await contexto.close();
+    throw err;
+  }
+}
+
+function contarPaginasPdf(datos) {
+  return (datos.toString('latin1').match(/\/Type\s*\/Page(?![A-Za-z])/g) ?? []).length;
 }
 
 async function ejecutar(entradas, salidaDir) {
@@ -202,36 +303,44 @@ async function ejecutar(entradas, salidaDir) {
       }
     }
     for (const e of entradas) {
+      let contexto;
       try {
         if (e.tipo === 'captura') {
           aImagenes(im, e.ruta, e.nombre, salidaDir);
           continue;
         }
         if (e.tipo === 'pdf') {
-          const pagina = await prepararPagina(navegador, e, 'shorten the text of the slide or split it in two');
+          let pagina;
+          ({ pagina, contexto } = await prepararPagina(navegador, e, 'shorten the text of the slide or split it in two'));
           const n = await pagina.locator('section.slide').count();
           if (!n) throw new Fallo(`${e.fuente}: no <section class="slide"> in the carousel; each slide is one <section class="slide">`);
           const { width, height } = e.tamano;
+          // the page size is the gw-size and nothing else (no preferCSSPageSize: an @page size in the source would override it)
           await pagina.pdf({
             path: e.salidas[0],
             width: `${width}px`,
             height: `${height}px`,
             printBackground: true,
             margin: { top: '0', right: '0', bottom: '0', left: '0' },
-            preferCSSPageSize: true,
           });
-          await pagina.close();
+          const paginas = contarPaginasPdf(readFileSync(e.salidas[0]));
+          if (paginas !== n) {
+            rmSync(e.salidas[0], { force: true });
+            throw new Fallo(`${e.fuente}: the PDF has ${paginas} page(s) and the carousel ${n} slide(s); a slide taller than ${height}px or a stray element after the last slide splits the pages: fix the slides in the source`);
+          }
           console.log(`${e.salidas[0]} (${n} pages, ${Math.round(statSync(e.salidas[0]).size / 1024)} KB)`);
         } else {
-          const pagina = await prepararPagina(navegador, e, 'shorten the text or lower the font size');
+          let pagina;
+          ({ pagina, contexto } = await prepararPagina(navegador, e, 'shorten the text or lower the font size'));
           const png = join(tmp, `${e.nombre}.png`);
           await pagina.screenshot({ path: png, clip: { x: 0, y: 0, ...e.tamano } });
-          await pagina.close();
           aImagenes(im, png, e.nombre, salidaDir);
         }
       } catch (err) {
         console.error(err instanceof Fallo ? `ERROR: ${err.message.replace(/^ERROR: /, '')}` : `ERROR: ${e.fuente}: ${err.message}`);
         fallos++;
+      } finally {
+        await contexto?.close();
       }
     }
   } finally {
@@ -257,7 +366,16 @@ async function main() {
   return fallos ? 1 : 0;
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1] ?? '').href) {
+// Run as a program, also through a symlink (npx, a link in node_modules/.bin): both paths are resolved first
+function esPrincipal() {
+  try {
+    return realpathSync(process.argv[1]) === realpathSync(fileURLToPath(import.meta.url));
+  } catch {
+    return false;
+  }
+}
+
+if (esPrincipal()) {
   try {
     process.exitCode = await main();
   } catch (err) {

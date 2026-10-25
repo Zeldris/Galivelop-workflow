@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """gw-media-content: checks a piece folder before anything is published.
 
-    python3 comprobar.py <dir>/AAAA-MM-DD/NN-<tema> [more folders]
+    python3 comprobar.py [--prefijos-tarea A,B,...] <dir>/AAAA-MM-DD/NN-<tema> [more folders]
 
 A folder argument may also be a date folder or the whole <dir> (default docs/difusion): every piece below it is
 checked. No config: the per-network limits are read from ../reglas.json.
@@ -47,10 +47,10 @@ CARPETA_PIEZA = re.compile(r"^\d{2}-[a-z0-9][a-z0-9-]*$")
 HUECO = re.compile(r"\{\{[^}]*\}\}|(?m:^[ \t>*_-]*(?:\*{0,2}[^\n:]{1,40}:\*{0,2}[ \t]*)?…[ \t]*$)|<tema>|AAAA-MM-DD")
 IMAGEN = re.compile(r"(?mi)^[ \t>*_-]*Imagen:[ \t]*(.*)$")
 # Internal jargon: finding numbers (P3, F12) named as findings, task ids with a known prefix (QA-215), branch names,
-# WIP: markers. A link is never read for jargon, and AES-256, WPA-3, AK-47, P1/P2 or F5 in prose pass.
-PREFIJOS_TAREA = ("QA", "TASK", "TICKET", "ISSUE", "BUG", "JIRA", "INS", "FLU", "WMF", "GW", "EPIC", "STORY")
+# WIP: markers. A link is never read for jargon, and AES-256, WPA-3, AK-47, P1/P2 or F5 in prose pass. The prefixes
+# are the generic ones; a project adds its own with --prefijos-tarea A,B,... (its INS-3 or FLU-12 ids).
+PREFIJOS_TAREA = ("QA", "TASK", "TICKET", "ISSUE", "BUG", "JIRA", "GW", "EPIC", "STORY")
 JERGA = (
-    re.compile(r"\b(?:" + "|".join(PREFIJOS_TAREA) + r")-\d{1,5}\b"),
     re.compile(r"\b(?:claude|feat|fix|chore|hotfix|release)/[\w./-]*\w|\bccr-[\w-]*\w|\bWIP:"),
     re.compile(r"(?i:\b(?:hallazgos?|findings?|propuestas?|proposals?|ítems?|items?))[ \t]+#?([PF]\d{1,3})\b"
                r"|[\[(]([PF]\d{1,3})[\])]"),
@@ -95,9 +95,16 @@ def formatos(reglas: dict, canal: str) -> tuple:
     return tuple(regla(reglas, canal, "imagen_formatos") or FORMATO_BASE)
 
 
-def jerga(texto: str) -> list:
+def patrones_jerga(prefijos=()) -> tuple:
+    """The jargon patterns: the fixed ones and the task ids with the generic prefixes plus the project's own."""
+    todos = dict.fromkeys(PREFIJOS_TAREA + tuple(prefijos))
+    return (re.compile(r"\b(?:" + "|".join(map(re.escape, todos)) + r")-\d{1,5}\b"),) + JERGA
+
+
+def jerga(texto: str, prefijos=()) -> list:
     texto = URL.sub(" ", texto)
-    return sorted({next(g for g in m.groups() if g) if m.groups() else m.group(0) for p in JERGA for m in p.finditer(texto)})
+    return sorted({next(g for g in m.groups() if g) if m.groups() else m.group(0)
+                   for p in patrones_jerga(prefijos) for m in p.finditer(texto)})
 
 
 def peso_x(c: str) -> int:
@@ -300,7 +307,7 @@ def _hueco(m) -> str:
     return "…" if t.endswith("…") and "{{" not in t else t
 
 
-def comprobar_canal(canal, texto, idiomas, reglas):
+def comprobar_canal(canal, texto, idiomas, reglas, prefijos=()):
     f = []
     nombre = canal + ".md"
     partes = secciones(texto)
@@ -312,7 +319,7 @@ def comprobar_canal(canal, texto, idiomas, reglas):
     for i in partes:
         if i not in idiomas:
             f.append(f"{nombre}: language «{i}» is not in the piece; remove the section or add it to «Idiomas:» in ficha.md")
-    for j in jerga(texto):
+    for j in jerga(texto, prefijos):
         f.append(f"{nombre}: internal jargon «{j}»; move it to «## Uso interno» in ficha.md and remove it from the post")
     for m in HUECO.finditer(texto):
         f.append(f"{nombre}: template gap «{_hueco(m)}» left; write the text")
@@ -376,7 +383,7 @@ def canales_de_celda(celda: str) -> list:
     return [c for c in (x.strip("`*_ ").lower() for x in re.split(r"[,;\s]+", celda)) if c]
 
 
-def comprobar_imagenes(carpeta, ficha, texto_canales, idiomas, reglas):
+def comprobar_imagenes(carpeta, ficha, texto_canales, idiomas, reglas, prefijos=()):
     f = []
     orden = f"{RENDER} {carpeta}"
     tabla = tabla_imagenes(ficha)
@@ -415,7 +422,7 @@ def comprobar_imagenes(carpeta, ficha, texto_canales, idiomas, reglas):
         for i in idiomas:
             if not porIdioma.get(i) or porIdioma[i] == "…":
                 f.append(f"ficha.md: «{ruta}» has no alt text in «{i}»; write «{i}: …» in its alt cell (es: … / en: …)")
-        for j in jerga(alt):
+        for j in jerga(alt, prefijos):
             f.append(f"ficha.md: alt text of «{ruta}» has internal jargon «{j}»; remove it")
         if not (carpeta / ruta).is_file():
             f.append(f"ficha.md: «{ruta}» does not exist; render it ({orden})")
@@ -484,7 +491,7 @@ def comprobar_archivo(ruta, rel, canal, alt, reglas, orden):
     return f
 
 
-def comprobar(carpeta: Path, reglas=None) -> list:
+def comprobar(carpeta: Path, reglas=None, prefijos=()) -> list:
     try:
         reglas = reglas or cargar_reglas()
         validar_reglas(reglas)
@@ -532,10 +539,10 @@ def comprobar(carpeta: Path, reglas=None) -> list:
         f.append('no languages: add "Idiomas: es, en" to ficha.md')
     idiomas = declarados or sorted({i for t in textos.values() for i in secciones(t)}, key=IDIOMAS.index)
     for c in activos:
-        f += comprobar_canal(c, textos[c], idiomas, reglas)
+        f += comprobar_canal(c, textos[c], idiomas, reglas, prefijos)
     if "reddit" in activos:
         f += comprobar_reddit(ficha)
-    f += comprobar_imagenes(carpeta, ficha, textos, idiomas, reglas)
+    f += comprobar_imagenes(carpeta, ficha, textos, idiomas, reglas, prefijos)
     return list(dict.fromkeys(f))
 
 
@@ -553,9 +560,24 @@ def piezas(arg: Path) -> list:
     return out or [arg]
 
 
+USO = ("usage: comprobar.py [--prefijos-tarea A,B,...] <dir>/AAAA-MM-DD/NN-<tema> [...]  "
+       "(e.g. docs/difusion/2026-10-25/01-release; --prefijos-tarea adds the task-id prefixes of the project, e.g. INS,FLU)")
+
+
 def main(args: list) -> int:
+    args, prefijos = list(args), []
+    while args and args[0].startswith("--"):
+        opcion = args.pop(0)
+        valor = opcion.partition("=")[2] if "=" in opcion else (args.pop(0) if args else "")
+        if opcion.partition("=")[0] != "--prefijos-tarea":
+            print(f"unknown option {opcion.partition('=')[0]}. {USO}")
+            return 2
+        prefijos += [x.strip().upper() for x in valor.split(",") if x.strip()]
+        if not prefijos or not all(re.fullmatch(r"[A-Z][A-Z0-9]*", x) for x in prefijos):
+            print(f"--prefijos-tarea needs prefixes of letters and digits separated by commas (INS,FLU). {USO}")
+            return 2
     if not args:
-        print("usage: comprobar.py <dir>/AAAA-MM-DD/NN-<tema> [...]  (e.g. docs/difusion/2026-10-25/01-release)")
+        print(USO)
         return 2
     try:
         reglas, hay = cargar_reglas(), False
@@ -564,7 +586,7 @@ def main(args: list) -> int:
         return 1
     for a in args:
         for p in piezas(Path(a)):
-            for problema in comprobar(p, reglas):
+            for problema in comprobar(p, reglas, prefijos):
                 hay = True
                 print(f"{p}: {problema}")
     if not hay:
