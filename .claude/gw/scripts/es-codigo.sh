@@ -51,6 +51,7 @@ try:
             print(path, flush=True)
 except BrokenPipeError:  # the reader closed early (| head -1): it has what it wanted, not an error
     os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
+    sys.stdin.read()  # drain it: with pipefail, a writer killed by SIGPIPE (141) would fail the whole pipeline
 '
 # The classifier exits 3 for a bad content regex (it already printed which one); any other code is some other failure.
 classify_failed() {

@@ -1154,8 +1154,8 @@ class EsCodigo(Base):
     def test_reader_closing_the_pipe_early_is_not_an_error(self):
         p = self.p
         script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
-        for i in range(3000):
-            p.write(f"src/f{i}.py", "x\n")
+        for i in range(3000):  # ~300 KB of paths: more than a pipe buffer, so the writer is still writing
+            p.write(f"src/{'d' * 90}/f{i}.py", "x\n")
         p.commit("many files")
         code, out = p.run("bash", "-c", f'bash "{script}" {p.base} HEAD | head -1; exit "${{PIPESTATUS[0]}}"')
         self.assertEqual(code, 0, out)

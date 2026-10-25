@@ -284,6 +284,14 @@ class BitacoraSizeAndDone(Base):
         self.assertEqual(new, self.doc(done=expected))
         self.assertEqual(self.check(new, "--strict")[0], 0)
 
+    def test_done_keeps_a_free_paragraph_after_the_items_when_the_last_one_drops(self):
+        done = self.items(5) + ["", "The full history is in git log.", "Second line of it."]
+        code, out, new = self.run_done(self.doc(done=done))
+        self.assertEqual(code, 0, out)
+        self.assertIn("1 oldest dropped", out)
+        self.assertEqual(new, self.doc(done=["1. 2026-10-26 — new one"] + [
+            f"{i + 1}. 2026-10-{30 - i} — item {i}" for i in range(1, 5)] + done[5:]))
+
     def test_done_with_many_items_drops_all_the_extra_ones(self):
         code, out, new = self.run_done(self.doc(done=self.items(8)))
         self.assertEqual(code, 0, out)

@@ -133,6 +133,8 @@ here.
 - El gancho de parada (`antes-de-parar.py`) ya no manda subir otra vez mientras el `pre-push` está subiendo ese mismo
   commit (marca `gw-push-en-curso` con pid vivo, menos de una hora y el sha de `HEAD`): avisa en vez de bloquear. Y no
   cuenta como cambio sin confirmar lo no versionado bajo `.claude/worktrees/`.
+- `es-codigo.sh`: con un lector que corta la salida (`| head -1`) y una lista de archivos mayor que el búfer de la
+  tubería, ya no falla con 141 (el clasificador lee el resto de su entrada).
 
 ### EN
 
@@ -256,6 +258,8 @@ here.
 - The Stop hook (`antes-de-parar.py`) no longer says to push again while `pre-push` is pushing that very commit
   (`gw-push-en-curso` marker with a live pid, under an hour old and holding the `HEAD` sha): it warns instead of
   blocking. And untracked paths under `.claude/worktrees/` no longer count as uncommitted changes.
+- `es-codigo.sh`: with a reader that cuts the output short (`| head -1`) and a file list larger than the pipe buffer,
+  it no longer fails with 141 (the classifier drains the rest of its input).
 
 ## [0.3.0] - 2026-10-23
 

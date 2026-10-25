@@ -379,10 +379,15 @@ def cmd_done(ctx, args):
     if not lines[head].endswith("\n"):
         lines[head] += eol
     end = next((i for i in range(head + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
-    pre, items = [], []  # lines before the first item; each item = its first line + continuation lines
-    for line in lines[head + 1:end]:
-        if ITEM_START.match(line.rstrip("\r\n")):
+    pre, items, post = [], [], []  # lines before the first item; each item = its first line + continuation lines;
+    for line in lines[head + 1:end]:  # post = from an unindented paragraph after a blank line on, kept as it is
+        bare = line.rstrip("\r\n")
+        if post:
+            post.append(line)
+        elif ITEM_START.match(bare):
             items.append([line])
+        elif items and bare.strip() and not bare[0].isspace() and not items[-1][-1].strip():
+            post.append(line)
         elif items:
             items[-1].append(line)
         else:
@@ -409,7 +414,7 @@ def cmd_done(ctx, args):
             content[-1] += eol
         body = content + [eol, entry] + (tail or ([eol] if end < len(lines) else []))
         dropped = 0
-    lines[head + 1:end] = body
+    lines[head + 1:end] = body + post
     path.write_bytes("".join(lines).encode("utf-8"))
     print(f"bitacora: entry added to the Done section of {path}" + (f" ({dropped} oldest dropped)" if dropped else "")
           + "; commit it with the rest of the work")
