@@ -89,6 +89,63 @@ class Recoger(unittest.TestCase):
              "text": "- **Propuesta para el flujo:** que aplicar.py respete\n  los pasos propios del CI."},
             {"path": "docs/traspaso.md", "text": "Proposal for the workflow: wait longer for the transcript."}])
 
+    def commit_log(self, text, msg):
+        log = self.repo / "docs" / "traspaso.md"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.write_text(text)
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", msg)
+
+    def harvest_after(self, first_text, second_text):
+        """Commit first_text, record it as harvested, commit second_text and harvest again."""
+        self.commit_log(first_text, "log one")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        self.commit_log(second_text, "log two")
+        return self.harvest()
+
+    def test_ideas_already_harvested_are_not_reported_again(self):
+        old = ("# Traspaso\n\nEstado: uno\n\n- **Propuesta para el flujo:** vieja idea\n  con su continuacion.\n\n"
+               "## Para Galivelop-workflow\n\nIdea de seccion antigua.\n")
+        r = self.harvest_after(old, old.replace("Estado: uno", "Estado: dos"))
+        self.assertEqual(r["ideas"], [], "the log changed, but neither idea did")
+
+    def test_only_the_idea_lines_added_since_the_last_harvest_are_reported(self):
+        old = "# Traspaso\n\n- **Propuesta para el flujo:** vieja idea\n\nEstado: uno\n"
+        new = old + "\nProposal for the workflow: a new one.\n"
+        r = self.harvest_after(old, new)
+        self.assertEqual(r["ideas"], [{"path": "docs/traspaso.md", "text": "Proposal for the workflow: a new one."}])
+
+    def test_an_edited_continuation_line_reports_its_whole_proposal(self):
+        old = "# T\n\n- Propuesta para el flujo: que haga X\n  y luego Y.\n\nOtra cosa.\n"
+        r = self.harvest_after(old, old.replace("y luego Y.", "y luego Z."))
+        self.assertEqual(r["ideas"], [{"path": "docs/traspaso.md",
+                                       "text": "- Propuesta para el flujo: que haga X\n  y luego Z."}])
+
+    def test_an_edited_section_is_reported_once_and_its_proposal_line_is_not_repeated(self):
+        old = ("# T\n\n## Para Galivelop-workflow\n\n- Propuesta para el flujo: A\n\nTexto.\n\n## Otra\n\nlocal\n")
+        r = self.harvest_after(old, old.replace("Texto.", "Texto cambiado."))
+        self.assertEqual(len(r["ideas"]), 1, r["ideas"])
+        self.assertIn("Propuesta para el flujo: A", r["ideas"][0]["text"])
+        self.assertIn("Texto cambiado.", r["ideas"][0]["text"])
+        self.assertNotIn("local", r["ideas"][0]["text"])
+
+    def test_a_proposal_line_inside_a_section_is_reported_once_on_the_first_harvest(self):
+        self.commit_log("# T\n\n## For Galivelop-workflow\n\nProposal for the workflow: only once.\n", "log")
+        r = self.harvest()
+        self.assertEqual(r["ideas"], [{"path": "docs/traspaso.md",
+                                       "text": "Proposal for the workflow: only once."}])
+
+    def test_a_new_file_reports_all_its_ideas(self):
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        self.commit_log("# T\n\n- Propuesta para el flujo: nueva\n", "log")
+        self.assertEqual(len(self.harvest()["ideas"]), 1)
+
+    def test_tab_indented_continuation_lines_are_kept(self):
+        self.commit_log("# T\n\n\t- Propuesta para el flujo: que haga X\n\t\ty luego Y.\n\t\totra linea.\n\n\tFuera.\n", "log")
+        self.assertEqual(self.harvest()["ideas"], [{
+            "path": "docs/traspaso.md",
+            "text": "- Propuesta para el flujo: que haga X\n\t\ty luego Y.\n\t\totra linea."}])
+
     def track_origin(self):
         """Give the project a remote with main as its upstream; return a second clone that can push to it."""
         origin = self.tmp / "origin.git"

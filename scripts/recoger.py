@@ -9,7 +9,8 @@ For each project repository it reports, without judging anything:
   * workflow scripts copied into the project that differ (same file name as in scripts/), older copies apart;
   * retro files, and "For Galivelop-workflow" sections in any tracked .md changed since the last harvest, plus the
     lines there that start with "Propuesta para el flujo" / "Proposal for the workflow" (with their indented
-    continuation lines), the way projects note requests in their hand-off log;
+    continuation lines), the way projects note requests in their hand-off log; after an earlier harvest, only the
+    ones with a line added or changed since it (never a proposal line twice: inside a section it is part of it);
   * commits since the last harvested commit;
   * a warning when the clone is behind its upstream branch (as of its last fetch: fetch first), or has no upstream
     (then nobody can tell whether it is up to date).
@@ -104,6 +105,51 @@ def description(text):
     return match.group(1).strip().strip('"')[:200] if match else ""
 
 
+def added_lines(repo, base, rel):
+    """Numbers (1-based) of the lines of rel's working-tree text that were added or changed since commit `base`, or
+    None when everything counts: no base (first harvest), the file is new since it, or git could not say."""
+    if base is None or git(repo, "cat-file", "-e", f"{base}:{rel}") is None:
+        return None
+    diff = git(repo, "diff", "-U0", "--no-renames", base, "--", rel)
+    if diff is None:
+        return None
+    lines = set()
+    for m in re.finditer(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@", diff, re.M):
+        start, count = int(m.group(1)), int(m.group(2) if m.group(2) is not None else 1)
+        lines.update(range(start, start + count))
+    return lines
+
+
+def ideas_in(text, rel, added):
+    """The ideas for this workflow in one Markdown text: "For/Para Galivelop-workflow" sections and "Propuesta para
+    el flujo" lines (with their indented continuation lines). With `added` (line numbers changed since the last
+    harvest) only the ones that have a line there; a proposal line inside a reported section is not reported twice."""
+    lines = text.split("\n")
+    def touched(first, last):
+        return added is None or any(n in added for n in range(first, last + 1))
+    ideas, sections = [], []
+    for match in IDEAS_HEADING.finditer(text):
+        nxt = re.search(r"^#{1,4}\s", text[match.end():], re.M)
+        end = match.end() + nxt.start() if nxt else len(text)
+        first = text.count("\n", 0, match.start()) + 1
+        last = text.count("\n", 0, end) + (1 if end == len(text) else 0)  # up to the line before the next heading
+        sections.append((first, last))
+        if touched(first, last):
+            ideas.append({"path": rel, "text": text[match.end():end].strip()[:2000]})
+    for match in IDEAS_LINE.finditer(text):
+        first = text.count("\n", 0, match.start()) + 1
+        if any(a <= first <= b for a, b in sections):
+            continue  # inside a section: reported with it, or unchanged with it
+        indent, kept = len(match.group(1).expandtabs()), [lines[first - 1]]
+        for line in lines[first:]:
+            if not line.strip() or len(line[:len(line) - len(line.lstrip())].expandtabs()) <= indent:
+                break
+            kept.append(line)
+        if touched(first, first + len(kept) - 1):
+            ideas.append({"path": rel, "text": "\n".join(kept).strip()[:2000]})
+    return ideas
+
+
 def harvest(repo, state):
     repo = Path(repo).resolve()
     head = git(repo, "rev-parse", "HEAD")
@@ -127,7 +173,7 @@ def harvest(repo, state):
         if behind:
             report["behind"] = {"ref": upstream, "commits": behind, "diverged": ahead > 0}
 
-    changed_files = None
+    changed_files, base = None, None
     if last and last != head:
         if git(repo, "cat-file", "-e", f"{last}^{{commit}}") is None:
             report["history"] = (f"commit {last[:12]} not in this clone; run "
@@ -137,6 +183,7 @@ def harvest(repo, state):
             report["commits"] = log.splitlines()
             names = git(repo, "diff", "--name-only", last, head) or ""
             changed_files = set(names.splitlines())
+            base = last
     elif last == head:
         report["history"] = "nothing new since the last harvest"
         changed_files = set()
@@ -182,18 +229,7 @@ def harvest(repo, state):
             if not (repo / rel).is_file():
                 continue
             text = (repo / rel).read_text(encoding="utf-8", errors="replace")
-            for match in IDEAS_HEADING.finditer(text):
-                nxt = re.search(r"^#{1,4}\s", text[match.end():], re.M)
-                section = text[match.end(): match.end() + nxt.start()] if nxt else text[match.end():]
-                report["ideas"].append({"path": rel, "text": section.strip()[:2000]})
-            for match in IDEAS_LINE.finditer(text):
-                lines = text[match.start():].split("\n")
-                indent, kept = len(match.group(1).expandtabs()), [lines[0]]
-                for line in lines[1:]:
-                    if not line.strip() or len(line) - len(line.lstrip()) <= indent:
-                        break
-                    kept.append(line)
-                report["ideas"].append({"path": rel, "text": "\n".join(kept).strip()[:2000]})
+            report["ideas"] += ideas_in(text, rel, added_lines(repo, base, rel))
     return report
 
 

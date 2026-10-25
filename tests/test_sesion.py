@@ -455,19 +455,47 @@ class Recuperar(Base):
         self.assertEqual(code, 0, out)
         self.assertIn("0 fragment(s)", out)
 
-    def test_estado_over_the_cap_ends_with_a_pointer_to_the_log(self):
+    def test_estado_over_the_cap_cuts_the_log_section_and_keeps_the_fixed_ones(self):
         p = self.p  # 20 long lines in the log's section: far over 9,500 characters
         p.write("docs/log.md", "# Log\n\n## State\n\n" + "".join(f"row{i:02d} " + "x" * 600 + "\n" for i in range(20)))
+        for i in range(3):
+            p.write(f"new{i}.txt", "x\n")
         code, out = p.recuperar("--estado")
         self.assertEqual(code, 0, out)
         self.assertLessEqual(len(out), 9500)
         lines = out.splitlines()
-        self.assertEqual(lines[-1], "… output incomplete (over 9500 characters): read docs/log.md whole.")
+        self.assertIn("  … log section cut here (--estado is capped at 9500 characters): read docs/log.md whole.", lines)
         self.assertIn("row00", out)
         self.assertNotIn("row19", out)
+        self.assertNotIn("output incomplete", out)
+        # what comes after the log survives: uncommitted count, last commits, compactions and the --buscar pointer
+        self.assertLess(out.index("log section cut here"), out.index("Uncommitted: 4 file(s)"))
+        self.assertIn("- Last commits:", out)
+        self.assertIn("Compactions in this session", out)
+        self.assertIn("never read the transcript whole.", lines[-1])
         for line in lines:  # cut at a line boundary: no log line is partial
             if "row" in line:
                 self.assertEqual(len(line.strip()), 606, line[:40])
+
+    def test_estado_over_the_cap_keeps_the_warnings_after_the_log(self):
+        p = self.p
+        p.write("docs/log.md", "# Log\n\n## State\n\n" + "".join(f"row{i:02d} " + "x" * 600 + "\n" for i in range(20)))
+        p.transcript(self.tmp, [{"type": "user", "message": {"content": "hi"}}])  # opened outside the repo
+        code, out = p.recuperar("--estado")
+        self.assertEqual(code, 0, out)
+        self.assertIn("log section cut here", out)
+        self.assertIn("the session was opened outside the repo", out)
+        self.assertLessEqual(len(out), 9500)
+
+    def test_estado_with_one_huge_log_line_keeps_the_fixed_sections(self):
+        p = self.p
+        p.write("docs/log.md", "# Log\n\n## State\n\n" + "y" * 20000 + "\n")
+        code, out = p.recuperar("--estado")
+        self.assertEqual(code, 0, out)
+        self.assertLessEqual(len(out), 9500)
+        self.assertIn("log section cut here", out)
+        self.assertIn("Uncommitted:", out)
+        self.assertIn("never read the transcript whole.", out.splitlines()[-1])
 
     def test_estado_under_the_cap_has_no_pointer(self):
         self.p.write("docs/log.md", "# Log\n\n## State\n\nshort\n")

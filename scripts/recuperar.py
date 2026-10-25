@@ -6,7 +6,8 @@
                                 state (with logRows, the current branch's row; else the log's first section, ~25
                                 lines), `git status --short` (15 lines at most), the last 5 commits, the compactions
                                 in this session (WMF P10: compare them with the task's budget) and how to search the
-                                transcript for a detail.
+                                transcript for a detail. Over ~9,500 characters the log section gives way (its start
+                                stays, with a line saying it was cut); the lines after it always survive.
   recuperar.py --buscar TEXT    the transcript fragments (main conversation: user, Claude, tool calls and results)
                                 matching TEXT (case-insensitive regex; plain text if it is not a valid regex), newest
                                 last. --max N (10), --ancho N (300 characters per fragment).
@@ -239,12 +240,31 @@ def log_state(root, branch, logs=None):
     return out
 
 
+def fit_log(log_lines, room, log):
+    """The log section's lines cut (whole lines, from the start) to at most `room` characters, plus a line that says
+    it was cut and which file to read whole. The log is the variable part of --estado: it is what gives way, so the
+    fixed lines after it (uncommitted files, last commits, warnings, the --buscar pointer) always survive."""
+    if sum(len(l) + 1 for l in log_lines) <= room:
+        return log_lines
+    note = f"  … log section cut here (--estado is capped at {OUTPUT_CAP} characters): read {log or 'the log'} whole."
+    kept, size = [], len(note) + 1
+    for line in log_lines:
+        if size + len(line) + 1 > room:
+            break
+        kept.append(line)
+        size += len(line) + 1
+    if not kept and log_lines:  # even the first line is too long: keep its start
+        kept = [log_lines[0][:max(0, room - len(note) - 1)]]
+    return kept + [note]
+
+
 def state(root, transcript, out, logs):
     """Append the --estado lines to `out` (and the log's relative path to `logs`); the caller measures and prints."""
-    say = out.append
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD") or "?"
-    say(f"State after compaction or /clear (galivelop-workflow), branch {branch}:")
-    out.extend(log_state(root, branch, logs))
+    head = [f"State after compaction or /clear (galivelop-workflow), branch {branch}:"]
+    log_lines = log_state(root, branch, logs)
+    tail = []
+    say = tail.append
     status = git(root, "status", "--short").splitlines()
     if status:
         say(f"- Uncommitted: {len(status)} file(s)")
@@ -274,6 +294,8 @@ def state(root, transcript, out, logs):
     session = f" --sesion {path}" if path else ""
     say(f"- A detail from before (an error, a piece of code, what the user said): "
         f"{script_command(root)}{session} --buscar '<text>'; never read the transcript whole.")
+    fixed = sum(len(l) + 1 for l in head + tail)
+    out.extend(head + fit_log(log_lines, OUTPUT_CAP - fixed, logs[0] if logs else None) + tail)
 
 
 def capped(lines, log):
