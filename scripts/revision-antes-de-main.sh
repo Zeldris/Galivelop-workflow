@@ -82,7 +82,7 @@ PREFIX_OPTIONS = {
     "stdbuf": {"-i", "--input", "-o", "--output", "-e", "--error"},
     "sudo": {"-u", "--user", "-g", "--group", "-h", "--host", "-p", "--prompt", "-C", "-D", "--chdir", "-R", "-r",
              "-t", "-T", "-U"},
-    "command": set(), "exec": set(), "nohup": set(),
+    "exec": {"-a"}, "command": set(), "nohup": set(),
 }
 SHELLS = {"bash", "sh", "zsh", "dash", "ksh"}
 XARGS_VALUE = {"-I", "-L", "-n", "-P", "-s", "-d", "-E", "-a", "--delimiter", "--max-args", "--max-procs",
@@ -181,16 +181,24 @@ def from_bash(command, depth=0):
     # but not after an escaped backslash, and a comment ends at the newline. The reader cannot tell quoting from that
     # apart, so the union of readings is judged: the text as it is, and the continuations joined (glued, or with a
     # space, with and without comments ending their line). Never a physical line alone: a line cut out of a quoted
-    # string or a heredoc body would be read as a command (git commit -m "…<nl>gh pr merge 7 …"). Only the text as
-    # it is blocks when it cannot be parsed; a joined reading that does not parse is ignored (the text as it is
-    # parsed or already blocked). Each action once.
+    # string or a heredoc body would be read as a command (git commit -m "…<nl>gh pr merge 7 …"). When the text as
+    # it is parses, a joined reading that does not is ignored. When it does not (an apostrophe in a comment, $'…'),
+    # the joined ones fail the same way, so the command is blocked if ANY reading looks like a PR create/merge (a
+    # continuation can split the words: `gh pr mer\\<nl>ge 7`). Each action once.
     readings = {command: None}
     for glue in ("", " "):
         for comments in (False, True):
             readings[join_lines(command, glue, comments)] = None
     actions, seen = [], set()
     for text in readings:
-        for action in from_text(text, depth, text == command):
+        found = from_text(text, depth)
+        if found is None:
+            if text == command and any(looks_like_pr_action(t) for t in readings):
+                block(f"cannot parse the command ({parse_error(command)}) and it looks like a PR create/merge; blocked "
+                      "because it could not be checked.",
+                      "write it as a plain command and retry, e.g.: gh pr merge <number> -R <owner>/<repo>")
+            continue
+        for action in found:
             key = json.dumps(action, sort_keys=True, default=str)
             if key not in seen:
                 seen.add(key)
@@ -198,14 +206,20 @@ def from_bash(command, depth=0):
     return actions
 
 
-def from_text(command, depth, original=True):
+def parse_error(command):
+    try:
+        segments(command)
+    except ValueError as exc:
+        return str(exc)
+    return "bad quoting"
+
+
+def from_text(command, depth):
+    """The actions of one reading, or None when it cannot be parsed."""
     try:
         segs = segments(command)
-    except ValueError as exc:
-        if original and looks_like_pr_action(command):
-            block(f"cannot parse the command ({exc}) and it looks like a PR create/merge; blocked because it could "
-                  "not be checked.", "write it as a plain command and retry, e.g.: gh pr merge <number> -R <owner>/<repo>")
-        return []
+    except ValueError:
+        return None
     actions = []
     for words in segs:
         actions += from_words(words, depth)
@@ -228,7 +242,10 @@ def from_words(words, depth):
             if w in PREFIX_OPTIONS:
                 while i < len(words) and words[i].startswith("-") and words[i] != "-":
                     opt = words[i]
-                    i += 2 if opt in PREFIX_OPTIONS[w] else 1
+                    # `-u X`, and combined short flags whose last letter takes the value (`sudo -Eu root`)
+                    takes = opt in PREFIX_OPTIONS[w] or (
+                        len(opt) > 2 and opt[1] != "-" and "-" + opt[-1] in PREFIX_OPTIONS[w])
+                    i += 2 if takes else 1
                     if opt == "--":
                         break
                 if w == "timeout" and i < len(words):
@@ -728,8 +745,18 @@ gh_does_pr() {
 }
 own=""  # 1 when the call is one this hook decides on (a PR tool, or gh creating/merging), for the python3-missing case
 if [[ $input =~ $pr_tools ]]; then own=1
-elif [[ $input =~ $bash_tool ]] && after_first "$input" "$gh" && [[ $after =~ $any_pr ]]; then
-  if gh_does_pr "$input"; then own=1; else own=0; fi
+elif [[ $input =~ $bash_tool ]]; then
+  # A backslash-newline continuation can split a word (`g\<nl>h pr merge 7` is `gh pr merge 7`); in the raw JSON it is
+  # backslash, backslash, backslash + n (or + r, backslash, n). The text with them removed is looked at too; a wrong
+  # join only makes python3 run.
+  cont_crlf='\\\r\n'; cont_lf='\\\n'
+  joined="${input//"$cont_crlf"/}"; joined="${joined//"$cont_lf"/}"
+  for text in "$input" "$joined"; do
+    if after_first "$text" "$gh" && [[ $after =~ $any_pr ]]; then
+      if gh_does_pr "$text"; then own=1; elif [ "$own" != "1" ]; then own=0; fi
+    fi
+  done
+  [ -n "$own" ] || exit 0
 else exit 0
 fi
 if ! command -v python3 >/dev/null 2>&1; then

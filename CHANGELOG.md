@@ -55,8 +55,8 @@ here.
   separador (en Python se juzga la unión de lecturas: el texto tal cual y las continuaciones unidas pegadas o con un espacio,
   nunca una línea suelta, para no leer como orden el texto de un `git commit -m "…"` o de un heredoc que menciona `gh pr merge`;
   una barra escapada `\\` antes del salto no continúa la línea y un comentario acaba en el salto; cada acción se juzga una
-  vez). También lee las opciones entre `pr` y la subórden (`gh pr -R o/r merge 7`) y los prefijos con argumento
-  (`nice -n 5`, `time -p`, `timeout -s KILL 5`, `env -u X`, `stdbuf -o0`, `sudo -u u`).
+  vez; si el texto tal cual no se puede parsear, bloquea cuando cualquier lectura parece un `gh pr merge|create`, también si una continuación parte la palabra, y el filtro previo une igual las continuaciones). También lee las opciones entre `pr` y la subórden (`gh pr -R o/r merge 7`) y los prefijos con argumento
+  (`nice -n 5`, `time -p`, `timeout -s KILL 5`, `env -u X`, `stdbuf -o0`, `sudo -Eu u`, `exec -a x`).
 - `doctor.py` ya no da `FAIL` por un U+200D dentro de un emoji compuesto (👩‍💻); solo lo admite entre emojis (no entre letras ni
   acentos, donde esconde cortes de palabra); sigue marcándolo junto a ASCII, al borde de una línea o de otro
   carácter invisible, y la orden que los quita respeta los emojis.
@@ -106,8 +106,8 @@ here.
   (Python judges the union of readings: the text as is and continuations joined glued or with a space, never a single
   line, so the text of a `git commit -m "…"` or a heredoc that mentions `gh pr merge` is not read as a command; an escaped
   backslash `\\` before the newline does not continue the line and a comment ends at the newline; each action is judged
-  once). It also reads options between `pr` and the subcommand (`gh pr -R o/r merge 7`) and prefixes that take an
-  argument (`nice -n 5`, `time -p`, `timeout -s KILL 5`, `env -u X`, `stdbuf -o0`, `sudo -u u`).
+  once; if the text as is cannot be parsed, it blocks when any reading looks like a `gh pr merge|create`, even when a continuation splits the word, and the pre-filter joins continuations the same way). It also reads options between `pr` and the subcommand (`gh pr -R o/r merge 7`) and prefixes that take an
+  argument (`nice -n 5`, `time -p`, `timeout -s KILL 5`, `env -u X`, `stdbuf -o0`, `sudo -Eu u`, `exec -a x`).
 - `doctor.py` no longer reports `FAIL` for a U+200D inside a compound emoji (👩‍💻); it only allows it between emojis (not between letters or
   accents, where it hides word splits) and still flags it next to ASCII, at a line edge or beside another invisible character, and the command that removes them keeps the emojis.
 

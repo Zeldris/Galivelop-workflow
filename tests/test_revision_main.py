@@ -358,6 +358,23 @@ class Hook(unittest.TestCase):
         self.assertBlocked(self.bash('git commit -m "a\nb"\ngh pr merge 7 -R o/r', pr=self.pr()), "no review mark")
         self.assertBlocked(self.bash('echo "x\ny" && gh pr create --fill'), "no review mark")
 
+    def test_a_command_that_cannot_be_parsed_is_blocked_if_any_reading_looks_like_a_merge(self):
+        # Regression of 8f4150b: an apostrophe in a comment, `$'..'` or a heredoc body makes the text unparseable, the
+        # joined readings fail too, and a continuation splits the word (`mer\\<nl>ge`) so the text as it is does not
+        # look like a merge. Bash runs it: it must be blocked, with the parse reason.
+        for command in ("true # don't\ngh pr mer\\\nge 7", "echo $'it\\'s'; gh pr mer\\\nge 7",
+                        "cat <<EOF\ndon't\nEOF\ngh pr mer\\\nge 7",
+                        "true # don't\ngh api -X PUT repos/o/r/pulls/7/\\\nmerge", "true # don't\ngh pr cre\\\nate --fill"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), "cannot parse the command")
+        self.assertAllowed(self.bash("true # don't\ngh pr vi\\\new 7"))
+
+    def test_prefix_options_combined_and_exec_a(self):
+        for prefix in ("sudo -Eu root", "sudo -Eu root -g wheel", "exec -a x"):
+            with self.subTest(prefix=prefix):
+                self.assertBlocked(self.bash(f"{prefix} gh pr merge 7 -R o/r", pr=self.pr()), "no review mark")
+                self.assertAllowed(self.bash(f"{prefix} gh pr view 7"))
+
     def test_flags_between_pr_and_the_subcommand_are_read(self):
         for command in ("gh pr --repo o/r merge 7", "gh pr -R o/r merge 7 --squash", "gh pr --repo=o/r merge 7",
                         "gh pr -Ro/r merge 7"):
@@ -546,6 +563,22 @@ class PreFilter(unittest.TestCase):
             code, err = self.bash(command)
             self.assertEqual(code, 2, repr(command))
             self.assertIn("python3 is missing", err)
+
+    def test_a_continuation_that_splits_a_word_is_joined_in_the_prefilter(self):
+        # `g\\<nl>h pr merge 7` is `gh pr merge 7` in bash; the raw JSON has `g` + backslash x3 + `nh`.
+        stub = self.tools / "python3"
+        stub.write_text(f'#!/bin/sh\n: > "{self.tools}/started"\nexit 2\n')
+        stub.chmod(0o755)
+        for command in ("true # don't\ng\\\nh pr merge 7", "g\\\r\nh pr create", "gh p\\\nr merge 7", "gh pr mer\\\nge 7"):
+            (self.tools / "started").unlink(missing_ok=True)
+            self.assertEqual(self.bash(command)[0], 2, repr(command))
+            self.assertTrue((self.tools / "started").exists(), repr(command))
+        (self.tools / "python3").unlink()
+        for command in ("g\\\nh pr view 7", "echo a\\\nb"):
+            self.assertEqual(self.bash(command), (0, ""), repr(command))
+        code, err = self.bash("g\\\nh pr merge 7")
+        self.assertEqual(code, 2)
+        self.assertIn("python3 is missing", err)
 
     def test_without_python_a_pr_call_fails_closed_and_an_unrelated_gh_call_passes(self):
         for command in ("gh pr merge 7", "gh pr create --fill", "cd r && gh api -X PUT repos/o/r/pulls/7/merge",
