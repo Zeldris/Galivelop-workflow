@@ -10,11 +10,17 @@ file:line / commit the post's ficha.md cites.
 
   --desde REF         count from REF (tag, branch or commit; exclusive) up to HEAD. Default: the last tag reachable
                       from HEAD; with no tag, the whole history (the "desde" field says so).
-  --version-file P    file (relative to the root) that holds the project's version; default: the first that exists
-                      of package.json, .claude-plugin/plugin.json, pyproject.toml, Cargo.toml, VERSION.
+  --version-file P    file (relative to the root) that holds the project's version; default: the first of
+                      package.json, .claude-plugin/plugin.json, pyproject.toml, Cargo.toml, VERSION that has a
+                      readable version. TOML: only [project] or [tool.poetry] (pyproject) and [package] or
+                      [workspace.package] (Cargo) count; a dynamic or workspace-inherited version is "not readable".
 
-Fails closed (exit 2, message on stderr) outside a git repository, with no commits, or with a REF git does not know.
-Python 3.8+.
+"Last tag" means the nearest tag that looks like a version (v1.2, 1.2.3...); moving tags such as `latest` or `nightly`
+are ignored. When that tag points at HEAD the count would be zero, so it starts at the previous version tag instead
+(the "desde" field says so); with no previous tag it starts at the first commit.
+
+Fails closed (exit 2, message on stderr) outside a git repository, with no commits, in a shallow clone (its history is
+truncated, so every figure would be wrong), or with a REF git does not know. Needs git 2.13+ and Python 3.7+.
 """
 import argparse
 import datetime
@@ -24,6 +30,13 @@ import subprocess
 import sys
 from pathlib import Path
 
+VERSION_TAG = re.compile(r"^v?\d+\.\d+")
+TOML_TABLES = ("project", "tool.poetry", "package", "workspace.package")
+TOML_HEADER = re.compile(r"^\s*\[\[?\s*([^\[\]]+?)\s*\]\]?\s*(?:#.*)?$")
+TOML_VERSION = re.compile(r"""^\s*version\s*=\s*(?:"([^"]*)"|'([^']*)')\s*(?:#.*)?$""")
+TOML_INHERITED = re.compile(r"^\s*(?:version\s*\.\s*workspace\s*=\s*true|version\s*=\s*\{\s*workspace\s*=\s*true\s*\})"
+                            r"\s*(?:#.*)?$")
+TOML_DYNAMIC = re.compile(r"""(?s)(?:^|\n)\s*dynamic\s*=\s*\[[^\]]*["']version["']""")
 VERSION_FILES = ("package.json", ".claude-plugin/plugin.json", "pyproject.toml", "Cargo.toml", "VERSION")
 TEST_NAME = re.compile(r"(?:^|/)(?:test_[^/]+\.(?:py|sh|mjs|js)|[^/]+_test\.(?:py|go|rb)|[^/]+\.(?:test|spec)\.(?:[cm]?[jt]sx?)"
                        r"|[^/]+Test\.java)$")
@@ -35,11 +48,18 @@ class Fallo(Exception):
     pass
 
 
-def git(root, *args, check=True):
-    proc = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
+def git(root, *args, check=True, raw=False):
+    proc = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, errors="replace")
     if check and proc.returncode != 0:
         raise Fallo(f"git {' '.join(args)} failed: {(proc.stderr or proc.stdout).strip()}")
-    return proc.stdout.strip() if proc.returncode == 0 else None
+    if proc.returncode != 0:
+        return None
+    return proc.stdout if raw else proc.stdout.strip()
+
+
+def git_list(root, *args):
+    """NUL-separated git output (-z) as a list: safe for names with spaces, quotes or non-ASCII characters."""
+    return [x for x in git(root, args[0], "-z", *args[1:], raw=True).split("\0") if x]
 
 
 def find_root():
@@ -59,32 +79,81 @@ def figure(value, source, note=None):
     return out
 
 
+def toml_sections(text):
+    """{table name: its lines}; tables that appear twice are joined. Enough for the version keys, not a TOML parser."""
+    sections, current = {"": []}, ""
+    for line in text.splitlines():
+        m = TOML_HEADER.match(line)
+        if m:
+            current = re.sub(r"\s*\.\s*", ".", m.group(1).strip()).replace('"', "").replace("'", "")
+            sections.setdefault(current, [])
+        else:
+            sections[current].append(line)
+    return sections
+
+
+def toml_version(text):
+    """(version, None) or (None, why it is not readable). Only the tables that name the project's own version."""
+    sections = toml_sections(text)
+    why = []
+    for table in TOML_TABLES:
+        lines = sections.get(table)
+        if lines is None:
+            continue
+        for line in lines:
+            m = TOML_VERSION.match(line)
+            if m and (m.group(1) or m.group(2)):
+                return m.group(1) or m.group(2), None
+            if TOML_INHERITED.match(line):
+                why.append(f"[{table}] inherits it from the workspace")
+                break
+        else:
+            if table == "project" and TOML_DYNAMIC.search("\n".join(lines)):
+                why.append('[project] declares dynamic = ["version"]')
+    return None, "; ".join(why) or "no version key in [project], [tool.poetry], [package] or [workspace.package]"
+
+
+def read_version(path):
+    """(version, None) or (None, why it is not readable) for one file; BOM-tolerant."""
+    text = path.read_text(encoding="utf-8-sig", errors="replace")
+    if path.suffix == ".json":
+        try:
+            data = json.loads(text)
+        except ValueError:
+            return None, "not valid JSON"
+        found = data.get("version") if isinstance(data, dict) else None
+        if isinstance(found, str) and found.strip():
+            return found.strip(), None
+        return None, 'no string "version" key'
+    if path.suffix == ".toml":
+        return toml_version(text)
+    for line in text.splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            return line, None
+    return None, "no line that is not blank or a # comment"
+
+
 def project_version(root, explicit):
-    """The project's own version, from the first known file (or --version-file)."""
+    """The project's own version, from the first known file that has a readable one (or --version-file)."""
     candidates = (explicit,) if explicit else VERSION_FILES
+    unreadable = []
     for rel in candidates:
         path = root / rel
         if not path.is_file():
             if explicit:
                 raise Fallo(f"--version-file {explicit}: no such file in {root}; pass a path relative to the root")
             continue
-        text = path.read_text(encoding="utf-8", errors="replace")
-        found = None
-        if path.suffix == ".json":
-            try:
-                data = json.loads(text)
-            except ValueError:
-                data = None
-            found = data.get("version") if isinstance(data, dict) else None
-        elif path.suffix == ".toml":
-            m = re.search(r'(?m)^version\s*=\s*"([^"]+)"', text)
-            found = m.group(1) if m else None
-        else:
-            found = text.strip().splitlines()[0].strip() if text.strip() else None
+        found, why = read_version(path)
         if found:
-            return figure(str(found), f"read {rel}")
+            return figure(found, f"read {rel}")
         if explicit:
-            raise Fallo(f"--version-file {explicit}: no version found in it; point to the file that holds it")
+            raise Fallo(f"--version-file {explicit}: no version found in it ({why}); point to the file that holds it")
+        unreadable.append((rel, why))
+    if unreadable:
+        return figure(None, "read " + ", ".join(rel for rel, _ in unreadable),
+                      "; ".join(f"{rel} found, but its version is not readable ({why})" for rel, why in unreadable)
+                      + "; pass --version-file <path> to read another file")
     return figure(None, "package.json, .claude-plugin/plugin.json, pyproject.toml, Cargo.toml, VERSION",
                   "no known version file; pass --version-file <path>")
 
@@ -99,7 +168,7 @@ def config_reader(root):
 
 def config_value(root, reader, key):
     proc = subprocess.run([sys.executable, str(reader), "--root", str(root), "get", key],
-                          capture_output=True, text=True)
+                          capture_output=True, text=True, errors="replace")
     if proc.returncode != 0:
         return None, (proc.stderr.strip().splitlines() or ["the config reader failed"])[0]
     return proc.stdout.strip() or None, None
@@ -110,7 +179,7 @@ def changelog_headings(root):
     if not path.is_file():
         return figure(None, "CHANGELOG.md", "no CHANGELOG.md at the root")
     section, headings = None, []
-    for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    for line in path.read_text(encoding="utf-8-sig", errors="replace").splitlines():
         m = re.match(r"^(#{2,6})\s+(.*\S)\s*$", line)
         if not m:
             continue
@@ -126,8 +195,33 @@ def changelog_headings(root):
                   "first '## ' section of CHANGELOG.md and its sub-headings")
 
 
+def version_tag(root, rev):
+    """The nearest tag reachable from REV whose name looks like a version; `latest`, `nightly`... are skipped."""
+    excluded = []
+    while True:
+        args = ["describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "--match", "[0-9]*"]
+        for name in excluded:
+            args += ["--exclude", name]
+        tag = git(root, *args, rev, check=False)
+        if not tag:
+            return None
+        if VERSION_TAG.match(tag):
+            return tag
+        excluded.append(tag)
+
+
+def is_shallow(root):
+    if git(root, "rev-parse", "--is-shallow-repository", check=False) == "true":
+        return True
+    marker = git(root, "rev-parse", "--git-path", "shallow", check=False)  # git older than 2.15 has no such flag
+    return bool(marker) and (root / marker).is_file()
+
+
 def compute(root, desde, version_file):
-    git(root, "rev-parse", "--verify", "-q", "HEAD^{commit}", check=False) or _no_commits()
+    head = git(root, "rev-parse", "--verify", "-q", "HEAD^{commit}", check=False) or _no_commits()
+    if is_shallow(root):
+        raise Fallo("this is a shallow clone: its history is truncated, so commit counts, dates and the last tag would "
+                    "be wrong; fetch the full history first: git fetch --unshallow --tags")
     cifras = {}
     cifras["version_proyecto"] = project_version(root, version_file)
     reader = config_reader(root)
@@ -135,17 +229,25 @@ def compute(root, desde, version_file):
         cmd = f"python3 {reader.relative_to(root).as_posix()} get log"
         log, error = config_value(root, reader, "log")
         cifras["bitacora"] = figure(log, cmd, None if log else error or "gw.json has no 'log'")
-    tag = git(root, "describe", "--tags", "--abbrev=0", check=False)
-    cifras["ultima_etiqueta"] = figure(tag, "git describe --tags --abbrev=0", None if tag else "the repo has no tags")
+    tag = version_tag(root, "HEAD")
+    on_head = bool(tag) and git(root, "rev-parse", "--verify", "-q", f"refs/tags/{tag}^{{commit}}", check=False) == head
+    previous = version_tag(root, "HEAD^") if on_head else None
+    cifras["ultima_etiqueta"] = figure(
+        tag, "git describe --tags --abbrev=0 --match 'v[0-9]*' --match '[0-9]*'",
+        "points at HEAD" if on_head else None if tag else "the repo has no version tags (names like v1.2.3)")
     if desde:
         if not git(root, "rev-parse", "--verify", "-q", f"{desde}^{{commit}}", check=False):
             raise Fallo(f"--desde {desde}: git does not know that ref; use a tag, branch or commit "
                         f"(git tag --list, git log --oneline)")
         base, base_text = desde, f"--desde {desde}"
+    elif on_head and previous:
+        base, base_text = previous, f"tag {tag} on HEAD; counting from previous tag {previous}"
+    elif on_head:
+        base, base_text = None, f"tag {tag} on HEAD and no previous version tag; counting from the first commit"
     elif tag:
         base, base_text = tag, f"last tag {tag}"
     else:
-        base, base_text = None, "first commit (the repo has no tags)"
+        base, base_text = None, "first commit (the repo has no version tags)"
     rng = f"{base}..HEAD" if base else "HEAD"
     n = int(git(root, "rev-list", "--count", rng))
     cifras["commits_desde"] = figure(n, f"git rev-list --count {rng}")
@@ -154,11 +256,11 @@ def compute(root, desde, version_file):
     subjects = git(root, "log", "--no-merges", f"--max-count={MAX_SUBJECTS}", "--format=%h %s", rng).splitlines()
     cifras["commits_asuntos"] = figure(subjects, f"git log --no-merges --max-count={MAX_SUBJECTS} --format='%h %s' {rng}",
                                        f"the newest {MAX_SUBJECTS} at most" if plain > MAX_SUBJECTS else None)
-    dates = sorted(git(root, "log", "--format=%as", rng).split())
+    dates = sorted(git(root, "log", "--format=%ad", "--date=short", rng).split())
     cifras["rango_fechas"] = figure({"primero": dates[0], "ultimo": dates[-1]} if dates else None,
-                                    f"git log --format=%as {rng}", None if dates else "no commits in the range")
+                                    f"git log --format=%ad --date=short {rng}", None if dates else "no commits in the range")
     if base:
-        names = [x for x in git(root, "diff", "--name-only", base, "HEAD").splitlines() if x]
+        names = git_list(root, "diff", "--name-only", base, "HEAD")
         add = rem = 0
         for line in git(root, "diff", "--numstat", base, "HEAD").splitlines():
             a, r, _ = (line.split("\t", 2) + ["", ""])[:3]
@@ -167,11 +269,11 @@ def compute(root, desde, version_file):
         cifras["archivos_cambiados"] = figure({"archivos": len(names), "lineas_anadidas": add, "lineas_borradas": rem},
                                               f"git diff --numstat {base} HEAD")
     else:
-        files = git(root, "ls-files").splitlines()
+        files = git_list(root, "ls-files")
         cifras["archivos_cambiados"] = figure({"archivos": len(files)}, "git ls-files | wc -l",
                                               "no base ref: every tracked file counts as new")
     cifras["changelog_ultima_seccion"] = changelog_headings(root)
-    tests = [f for f in git(root, "ls-files").splitlines() if TEST_NAME.search(f)]
+    tests = [f for f in git_list(root, "ls-files") if TEST_NAME.search(f)]
     cifras["archivos_de_test"] = figure(len(tests), f"git ls-files, names matching {TEST_NAME_TEXT}")
     return base_text, cifras
 
