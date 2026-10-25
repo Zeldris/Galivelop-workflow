@@ -445,6 +445,71 @@ class Doctor(unittest.TestCase):
     def doctor_env(self, env):
         return self.p.run("python3", str(self.p.scripts / "doctor.py"), env=env, cwd=self.tmp)
 
+    # --- CI access (retro 2026-10-25 P5)
+
+    def ci_env(self, gh=None, token=None):
+        """tools() PATH (no real gh) plus a fake `gh` whose `auth status` exits with `gh` (None = no gh), and a token."""
+        env = self.tools()
+        if gh is not None:
+            fake = Path(env["PATH"]) / "gh"
+            fake.write_text(f"#!/bin/sh\n[ \"$1 $2\" = \"auth status\" ] && exit {gh}\nexit 9\n")
+            fake.chmod(0o755)
+        env.update(GITHUB_TOKEN=token or "", GH_TOKEN="")
+        return env
+
+    def ci_lines(self, out):
+        return [l for l in out.splitlines() if re.match(r"(OK|WARN|FAIL) +ci access:", l)]
+
+    def github(self, url="https://github.com/galivelop/repo.git"):
+        self.p.git("remote", "set-url", "origin", url)
+
+    def test_github_https_remote_without_gh_nor_token_warns_with_the_fix(self):
+        self.github()
+        code, out = self.doctor_env(self.ci_env())
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "ci access", "neither `gh` is on PATH nor GITHUB_TOKEN/GH_TOKEN is set",
+                        "AGENTS.md", "install GitHub CLI and run `gh auth login`, or export GITHUB_TOKEN")
+
+    def test_github_ssh_remotes_warn_too(self):
+        for url in ("git@github.com:galivelop/repo.git", "ssh://git@github.com/galivelop/repo.git"):
+            self.github(url)
+            out = self.doctor_env(self.ci_env())[1]
+            self.assertLine(out, "WARN", "ci access", "neither `gh` is on PATH")
+
+    def test_a_token_in_the_environment_is_enough_and_is_never_printed(self):
+        self.github()
+        value = "not-to-be-printed-1234"
+        code, out = self.doctor_env(self.ci_env(token=value))
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "OK", "ci access", "GITHUB_TOKEN/GH_TOKEN is set")
+        self.assertNotIn(value, out)
+        env = self.ci_env()
+        env.update(GH_TOKEN="x", GITHUB_TOKEN="")
+        self.assertLine(self.doctor_env(env)[1], "OK", "ci access", "GITHUB_TOKEN/GH_TOKEN is set")
+
+    def test_gh_logged_in_passes(self):
+        self.github()
+        code, out = self.doctor_env(self.ci_env(gh=0))
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "OK", "ci access", "`gh` is logged in")
+        self.assertNotIn("WARN", "\n".join(self.ci_lines(out)))
+
+    def test_gh_not_logged_in_warns_with_gh_auth_login(self):
+        self.github()
+        code, out = self.doctor_env(self.ci_env(gh=1))
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "ci access", "`gh auth status` fails", "run `gh auth login`")
+
+    def test_remote_elsewhere_or_missing_is_not_asked_for_ci_access(self):
+        self.assertEqual(self.ci_lines(self.doctor_env(self.ci_env())[1]), [])  # local path
+        for url in ("https://gitlab.com/galivelop/repo.git", "https://example.com/github.com/x.git",
+                    "git@notgithub.com:x/y.git"):
+            self.github(url)
+            self.assertEqual(self.ci_lines(self.doctor_env(self.ci_env())[1]), [], url)
+        self.p.git("remote", "remove", "origin")
+        code, out = self.doctor_env(self.ci_env())
+        self.assertEqual(self.ci_lines(out), [], out)
+
     # --- skill scripts without a test (WMF 2026-10-25 P2)
 
     def test_skill_script_without_a_test_warns_with_the_file_and_the_fix(self):
