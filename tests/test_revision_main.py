@@ -32,6 +32,7 @@ case "$2" in
     [ -z "${GH_PROBE_LOG:-}" ] || echo "$2" >> "$GH_PROBE_LOG"
     echo '{"full_name":"x"}'; exit 0 ;;
 esac
+[ -z "${GH_CALL_LOG:-}" ] || echo "$2" >> "$GH_CALL_LOG"
 if [ -n "${GH_FAIL:-}" ]; then echo "gh: HTTP 502: Bad Gateway (fake)" >&2; exit 1; fi
 case "$2" in
   *check-runs*) printf '%s' "$GH_RUNS" ;;
@@ -322,6 +323,63 @@ class Hook(unittest.TestCase):
                 self.assertBlocked(self.bash(command), "no review mark")
         self.assertAllowed(self.bash("gh\tpr\tcreate\t--base\tdevelop"))
         self.assertAllowed(self.bash("gh\tpr\tview\t7"))
+
+    def test_escaped_backslash_before_a_newline_does_not_continue_the_line(self):
+        # In bash `\\<newline>` is a literal backslash and the newline ends the command: the next line runs on its own.
+        for command in ("echo x \\\\\ngh pr merge 7 -R o/r", "x=\\\\\ngh pr merge 1 -R o/r", "echo x \\\\\\\\\ngh pr merge 7 -R o/r"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), "no review mark")
+        self.assertAllowed(self.bash("echo x \\\\\ngh pr view 7 -R o/r"))
+
+    def test_a_newline_always_ends_a_comment(self):
+        # `# x\\<newline>` does not continue the comment in bash: the next line is a command.
+        for command in ("true # x\\\ngh pr merge 7 -R o/r", "true # x\\\ngh pr \\\nmerge 7 -R o/r"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), "no review mark")
+
+    def test_a_repeated_reading_judges_each_action_once(self):
+        # `gh pr merge 7 \\<newline>x` is read joined and with a space: same action, one set of API calls.
+        self.mark(); self.push()
+        log = self.tmp / "gh-calls.log"
+        self.assertAllowed(self.bash("gh pr merge 7 -R o/r \\\nx", pr=self.pr(), env={"GH_CALL_LOG": str(log)}))
+        calls = log.read_text().splitlines()
+        self.assertEqual(len(calls), len(set(calls)), f"repeated API calls: {calls}")
+
+    def test_multiline_quoted_text_and_heredoc_bodies_that_mention_a_merge_are_not_guarded(self):
+        # Regression of fafe0ab: each physical line was judged alone, so a quote left open by a line ("cannot parse")
+        # or a heredoc body inside "$(cat <<'EOF' ...)" was read as a command. This repo's own commit messages
+        # mention `gh pr merge`.
+        for command in ('git commit -m "Fix\n\ngh pr merge 7 is judged"', 'echo "x\nuse gh pr create later"',
+                        "git commit -m 'Fix\n\ngh pr create --base main later'",
+                        "git commit -m \"$(cat <<'EOF'\nTitle\n\ngh pr merge 7 is mentioned here\nEOF\n)\""):
+            with self.subTest(command=command):
+                self.assertAllowed(self.bash(command, pr=self.pr()))
+        # ...but the command after such a text is still judged
+        self.assertBlocked(self.bash('git commit -m "a\nb"\ngh pr merge 7 -R o/r', pr=self.pr()), "no review mark")
+        self.assertBlocked(self.bash('echo "x\ny" && gh pr create --fill'), "no review mark")
+
+    def test_flags_between_pr_and_the_subcommand_are_read(self):
+        for command in ("gh pr --repo o/r merge 7", "gh pr -R o/r merge 7 --squash", "gh pr --repo=o/r merge 7",
+                        "gh pr -Ro/r merge 7"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), "no review mark")
+        for command in ("gh pr -R o/r create --base main", "gh pr --repo o/r create --fill"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "no review mark")
+        # the repo given there is the one judged
+        self.assertBlocked(self.bash("gh pr --repo o2/r2 merge 7", pr=self.pr(), env={"GH_FAIL": "1"}), "PR #7 of o2/r2")
+        self.assertAllowed(self.bash("gh pr -R o/r create --base develop"))
+        self.assertAllowed(self.bash("gh pr -R o/r view 7"))
+
+    def test_command_prefixes_that_take_an_argument_are_skipped(self):
+        for prefix in ("nice -n 5", "nice -n5", "nice --adjustment=5", "time -p", "timeout 5", "timeout -s KILL 5",
+                       "timeout --signal=KILL -k 2 5s", "env -u X", "env -u X -i FOO=1", "env -C /tmp", "stdbuf -o0",
+                       "stdbuf -oL -e 0", "sudo -u root", "nohup", "timeout --foreground 5 nice -n 5"):
+            with self.subTest(prefix=prefix):
+                self.assertBlocked(self.bash(f"{prefix} gh pr merge 7 -R o/r", pr=self.pr()), "no review mark")
+                self.assertBlocked(self.bash(f"{prefix} gh pr create --fill"), "no review mark")
+                self.assertAllowed(self.bash(f"{prefix} gh pr view 7"))
+                self.assertAllowed(self.bash(f"{prefix} gh pr create --base develop"))
 
     def test_gh_pr_merge_through_xargs_guarded(self):
         code, out = self.bash("echo 7 | xargs gh pr merge", pr=self.pr())

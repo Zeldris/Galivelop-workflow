@@ -113,12 +113,18 @@ class Skills(unittest.TestCase):
 
     def test_zero_width_joiner_is_fine_only_inside_an_emoji_sequence(self):
         woman_technologist = "\U0001F469\u200d\U0001F4BB"
+        for ok in ("\u2764\ufe0f\u200d\U0001F525", "\U0001F44D\U0001F3FD\u200d\u2640\ufe0f", "\U0001F3F3\ufe0f\u200d\U0001F308"):
+            self.assertEqual(doctor.invisible_chars(ok), [], ok)
         self.assertEqual(doctor.invisible_chars(f"ok {woman_technologist} and \U0001F468\u200d\U0001F469\u200d\U0001F467\n"), [])
         for text, found in (("a\u200db", [(1, 2, "U+200D")]), ("\u200d" + woman_technologist, [(1, 1, "U+200D")]),
                             (woman_technologist + "\u200d", [(1, 4, "U+200D")]),
                             ("\U0001F469\u200d\u200d\U0001F4BB", [(1, 2, "U+200D"), (1, 3, "U+200D")]),
                             ("x\n\u200d\U0001F469", [(2, 1, "U+200D")]), ("\U0001F469\u200d\nx", [(1, 2, "U+200D")]),
-                            ("\U0001F469\u200b\u200d\U0001F4BB", [(1, 2, "U+200B"), (1, 3, "U+200D")])):
+                            ("\U0001F469\u200b\u200d\U0001F4BB", [(1, 2, "U+200B"), (1, 3, "U+200D")]),
+                            # not between letters, accents or punctuation, even though both are non-ASCII
+                            ("\u0438\u200d\u0433", [(1, 2, "U+200D")]), ("\u00e9\u200d\u00f1", [(1, 2, "U+200D")]),
+                            ("\u00ab\u200d\u00bb", [(1, 2, "U+200D")]), ("\U0001F469\u200d\u0433", [(1, 2, "U+200D")]),
+                            ("\u0438\u200d\U0001F4BB", [(1, 2, "U+200D")])):
             with self.subTest(text=text):
                 self.assertEqual(doctor.invisible_chars(text), found)
 
