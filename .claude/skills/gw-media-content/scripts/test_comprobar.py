@@ -99,7 +99,7 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp)
-        self.carpeta = self.tmp / "2026-10-25" / "01-lanzamiento"
+        self.carpeta = self.tmp / HOY.isoformat() / "01-lanzamiento"
         (self.carpeta / "medios" / "fuente").mkdir(parents=True)
         self.escribir("ficha.md", FICHA)
         for c, t in CANALES.items():
@@ -890,6 +890,15 @@ class ImagenesPorIdioma(Base):
 
 
 class NormasDeReddit(Base):
+    leidas = HOY.isoformat()
+
+    def mover_a(self, dia):
+        """Rename the date folder of the piece to <dia> (a date)."""
+        nueva = self.tmp / dia.isoformat()
+        self.carpeta.parent.rename(nueva)
+        self.carpeta = nueva / self.carpeta.name
+        self.leidas = HOY.isoformat()
+
     def normas(self, texto):
         f = (self.carpeta / "ficha.md").read_text(encoding="utf-8")
         self.escribir("ficha.md", re.sub(r"(### Normas de r/gamedev\n\n).*?(\n\n## Imágenes)",
@@ -988,9 +997,70 @@ class NormasDeReddit(Base):
         self.assertFallo("is 8 days old (max 7)", reglas=reglas)
         self.assertNotIn("days old", self.fallos())
 
-    def test_la_fecha_se_mide_contra_hoy_que_se_le_da(self):
-        out = comprobar.comprobar(self.carpeta, self.reglas, hoy=HOY + timedelta(days=91))
-        self.assertIn("days old (max 90)", "\n".join(out))
+    def test_hoy_solo_decide_lo_futuro(self):
+        out = comprobar.comprobar(self.carpeta, self.reglas, hoy=HOY - timedelta(days=1))
+        self.assertIn("is in the future", "\n".join(out))
+
+    def test_la_fecha_se_mide_contra_el_dia_de_la_carpeta_de_la_pieza(self):
+        carpeta_dia = HOY - timedelta(days=200)
+        self.mover_a(carpeta_dia)
+        for leidas, bien in ((0, True), (90, True), (91, False)):
+            with self.subTest(leidas=leidas):
+                dia = (carpeta_dia - timedelta(days=leidas)).isoformat()
+                self.cambiar("ficha.md", "Normas leídas:** " + self.leidas, "Normas leídas:** " + dia)
+                self.leidas = dia
+                if bien:
+                    self.assertEqual(self.fallos(), "")
+                else:
+                    self.assertFallo(f"ficha.md: «Normas leídas:» «{dia}» is 91 days old (max 90); read the rules again, "
+                                     "paste them under «### Normas de r/<name>» and write today's date")
+
+    def test_una_fecha_futura_se_rechaza_contra_hoy_aunque_la_carpeta_sea_de_ayer(self):
+        self.mover_a(HOY - timedelta(days=30))
+        dia = (HOY + timedelta(days=1)).isoformat()
+        self.cambiar("ficha.md", "Normas leídas:** " + HOY.isoformat(), "Normas leídas:** " + dia)
+        self.assertFallo(f"ficha.md: «Normas leídas:» «{dia}» is in the future; write the day you read the rules")
+
+    def test_fuera_de_una_carpeta_de_fecha_se_mide_contra_hoy(self):
+        otra = self.tmp / "sueltas" / "01-lanzamiento"
+        otra.parent.mkdir()
+        self.carpeta.rename(otra)
+        self.carpeta = otra
+        dia = (HOY - timedelta(days=91)).isoformat()
+        self.cambiar("ficha.md", "Normas leídas:** " + HOY.isoformat(), "Normas leídas:** " + dia)
+        self.assertFallo(f"«Normas leídas:» «{dia}» is 91 days old (max 90)")
+
+    def test_un_subreddit_vacio_no_toma_la_linea_siguiente(self):
+        self.cambiar("ficha.md", "- **Subreddit:** r/gamedev\n", "- **Subreddit:**\n")
+        self.assertFallo("reddit.md needs «Subreddit:» in ficha.md")
+        self.assertEqual(comprobar.campo("Idiomas:\n\n## Canales\n", "Idiomas"), "")
+        self.assertEqual(comprobar.campo("- **Subreddit:**   \n- **Normas leídas:** 2026-01-01", "Subreddit"), "")
+
+    def test_un_subreddit_sin_nombre(self):
+        for valor in (",", "r/", "/r/ ;"):
+            with self.subTest(valor):
+                self.cambiar("ficha.md", "- **Subreddit:** r/gamedev\n", f"- **Subreddit:** {valor}\n")
+                self.assertFallo("ficha.md: no subreddit: write «- **Subreddit:** r/<name>» in «## Reddit» before the first «###» block")
+                self.cambiar("ficha.md", f"- **Subreddit:** {valor}\n", "- **Subreddit:** r/gamedev\n")
+
+    def test_un_apartado_posterior_no_completa_las_normas(self):
+        self.normas("corto\n\n### Notas\n\n" + NORMAS)
+        self.assertFallo("the rules block of r/gamedev has 5 characters (min 200); paste the complete rules text under "
+                         "«### Normas de r/gamedev» in «## Reddit» of ficha.md; the pasted text ends at the next line "
+                         "starting with «##», so paste headings as plain lines without «#», and the «Subreddit:» fields go "
+                         "before the first «###» block")
+
+    def test_un_titulo_dentro_del_pegado_corta_el_bloque(self):
+        self.normas("corto\n#### Regla 2\n" + NORMAS)
+        self.assertFallo("has 5 characters (min 200)")
+        self.normas(NORMAS + "\n## Otra cosa\n\ntexto")
+        self.assertEqual(self.fallos(), "")
+
+    def test_los_campos_despues_de_un_bloque_no_se_ven(self):
+        self.cambiar("ficha.md", "- **Normas leídas:** " + HOY.isoformat() + "\n", "")
+        self.cambiar("ficha.md", "## Imágenes", "- **Normas leídas:** " + HOY.isoformat() + "\n\n## Imágenes")
+        self.assertFallo("reddit.md needs «Normas leídas:» in ficha.md; put the field before the first «###» block of "
+                         "«## Reddit», paste the subreddit rules and write the «Normas leídas:» line")
 
     def test_sin_reddit_no_se_piden_bloques(self):
         self.cambiar("ficha.md", "- reddit\n", "")
@@ -1050,6 +1120,56 @@ class CanalesExtra(Base):
         out = "\n".join(comprobar.comprobar(self.carpeta, self.reglas, propios=["portal"]))
         self.assertIn('no languages: add "Idiomas: es, en" to ficha.md', out)
 
+    def test_formato_propio_acepta_la_imagen_si_su_ruta_esta_en_el_texto(self):
+        self.cambiar("ficha.md", "Release card | x |", "Release card | x, portal |")
+        self.extra(texto='{"imagen": "medios/tarjeta.webp", "titulo": "Hola"}\n')
+        self.assertEqual("\n".join(comprobar.comprobar(self.carpeta, self.reglas, propios=["portal"])), "")
+
+    def test_formato_propio_sin_la_ruta_de_la_imagen_en_el_texto(self):
+        self.cambiar("ficha.md", "Release card | x |", "Release card | x, portal |")
+        self.extra(texto='{"titulo": "Hola"}\n')
+        self.assertIn("ficha.md: «medios/tarjeta.webp» lists channel «portal» but portal.md does not contain the path "
+                      "«medios/tarjeta.webp» (channel with its own format); write the path in the file or remove «portal» "
+                      "from the Canales cell",
+                      "\n".join(comprobar.comprobar(self.carpeta, self.reglas, propios=["portal"])))
+
+    def test_formato_propio_mantiene_las_comprobaciones_de_la_imagen(self):
+        self.cambiar("ficha.md", "\n\n## Uso interno", "\n| `medios/anim.gif` | es: a / en: b | portal |\n\n## Uso interno")
+        (self.carpeta / "medios" / "anim.gif").write_bytes(gif(10, 10))
+        self.extra(texto='{"imagen": "medios/anim.gif"}\n')
+        self.assertIn("portal.md: «medios/anim.gif» is a .gif and portal takes .webp, .png, .jpg",
+                      "\n".join(comprobar.comprobar(self.carpeta, self.reglas, propios=["portal"])))
+        self.cambiar("ficha.md", "es: a / en: b | portal", "es: a | portal")
+        self.assertIn("«medios/anim.gif» has no alt text in «en»",
+                      "\n".join(comprobar.comprobar(self.carpeta, self.reglas, propios=["portal"])))
+
+    def test_opciones_de_canales_que_ninguna_pieza_declara_salen_con_dos(self):
+        self.extra()
+        for args, opcion in ((["--limite", "portl=5"], "--limite portl=5"), (["--formato-propio", "web"], "--formato-propio web")):
+            with self.subTest(args):
+                r = subprocess.run([sys.executable, str(AQUI / "comprobar.py"), *args, str(self.carpeta.parent)],
+                                   capture_output=True, text=True)
+                self.assertEqual(r.returncode, 2)
+                self.assertIn(f"{opcion} names a channel that no checked piece declares in «## Canales» (declared: x, reddit, "
+                              "linkedin, discord, portal); fix the channel name or drop the option", r.stdout)
+        r = subprocess.run([sys.executable, str(AQUI / "comprobar.py"), "--limite", "portal=500", "--formato-propio", "portal",
+                            str(self.carpeta)], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("portal is in --limite and --formato-propio", r.stdout)
+        r = subprocess.run([sys.executable, str(AQUI / "comprobar.py"), "--limite", "portal=500", str(self.carpeta)],
+                           capture_output=True, text=True)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "OK"))
+
+    def test_una_opcion_usada_por_una_sola_pieza_vale(self):
+        self.extra()
+        otra = self.carpeta.parent / "02-otra"
+        shutil.copytree(self.carpeta, otra)
+        self.cambiar("ficha.md", "- discord\n- portal\n", "- discord\n")
+        (self.carpeta / "portal.md").unlink()
+        r = subprocess.run([sys.executable, str(AQUI / "comprobar.py"), "--limite", "portal=500", str(self.carpeta.parent)],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout)
+
     def test_imagenes_de_un_canal_extra_webp_png_y_jpg(self):
         self.extra()
         for ext, datos in ((".png", png(100, 50)), (".jpg", jpeg(100, 50))):
@@ -1108,6 +1228,9 @@ class Opciones(unittest.TestCase):
             (["--formato-propio"], "--formato-propio needs a lowercase channel name"),
             (["--limite", "web=5", "--formato-propio", "web", "c"], "web is in --limite and --formato-propio"),
             (["--otra", "c"], "unknown option --otra"),
+            (["--prefijos-tarea", "A", "--prefijos-tarea", "", "c"], "--prefijos-tarea needs prefixes"),
+            (["--prefijos-tarea", "A", "--prefijos-tarea", " , ", "c"], "--prefijos-tarea needs prefixes"),
+            (["--prefijos-tarea=", "c"], "--prefijos-tarea needs prefixes"),
         )
         for args, motivo in casos:
             with self.subTest(args=args):
@@ -1188,8 +1311,24 @@ class PiezasMalNombradas(Base):
     def test_las_carpetas_que_no_son_piezas_no_se_tocan(self):
         (self.tmp / "propuestas").mkdir()
         (self.tmp / "propuestas" / "2026-10-25.md").write_text("# Propuestas\n", encoding="utf-8")
-        (self.tmp / "2026-10-25" / "notas").mkdir()
-        (self.tmp / "2026-10-25" / "notas" / "a.md").write_text("x", encoding="utf-8")
+        notas = self.carpeta.parent / "notas"
+        notas.mkdir()
+        (notas / "a.txt").write_text("x", encoding="utf-8")
+        self.assertEqual([p.name for p in comprobar.piezas(self.tmp)], ["01-lanzamiento"])
+
+    def test_una_carpeta_mal_nombrada_con_solo_un_canal_extra_se_comprueba(self):
+        mala = self.carpeta.parent / "web"
+        mala.mkdir()
+        (mala / "web.md").write_text('{"a": 1}\n', encoding="utf-8")
+        self.assertEqual([p.name for p in comprobar.piezas(self.tmp)], ["01-lanzamiento", "web"])
+        r = subprocess.run([sys.executable, str(AQUI / "comprobar.py"), str(self.tmp)], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(f"{mala}: folder name: expected <dir>/AAAA-MM-DD/NN-<tema>", r.stdout)
+        self.assertIn(f"{mala}: no ficha.md", r.stdout)
+
+    def test_propuestas_en_la_raiz_no_es_una_pieza_aunque_tenga_md(self):
+        (self.tmp / "propuestas").mkdir()
+        (self.tmp / "propuestas" / "web.md").write_text("# Propuestas\n", encoding="utf-8")
         self.assertEqual([p.name for p in comprobar.piezas(self.tmp)], ["01-lanzamiento"])
 
 
