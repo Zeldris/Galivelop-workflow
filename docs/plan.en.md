@@ -319,7 +319,11 @@ milestone roadmap, several accounts, PR) and the Tarkor installer (Rust/Tauri: t
   confirmation (the workflow itself).
 - **Pinning a version in a project**: add the marketplace with `#vX.Y.Z` when a project doesn't want automatic
   updates. Normal case: follow `main` and `/plugin update`.
-- Version `0.x` throughout the run-in; `1.0.0` only once §10 is met.
+- **`0.4` is the last `0.x` minor** (user, 2026-10-25): the stable release before `1.0`. Every harvest still runs and
+  sorts what it brings: fixes to what already exists go to the next patch (`0.4.x`); a new feature or improvement
+  (skill, hook, enhancement) is noted for **`1.0.0`** and does not go into `0.4`. `1.0.0` and later are the line that
+  grows and the long-term product. So there is no chain of new features between `0.4` and `1.0`. `0.4.x` patches are merged into the `1.0.0` branch too. To be
+  decided: whether `1.0.0` reaches `main` before §10 is met (Phase 10's public copy still requires it).
 
 ## 8. Installing in a project
 

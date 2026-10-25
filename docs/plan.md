@@ -316,7 +316,13 @@ Ejemplos que los pilotos tienen que cubrir: el portal (Node, subida directa, tre
   propio flujo).
 - **Fijar versión en un proyecto**: el marketplace se añade con `#vX.Y.Z` cuando un proyecto no quiera
   actualizaciones automáticas. Lo normal: seguir `main` y `/plugin update`.
-- Versión `0.x` durante todo el rodaje; `1.0.0` solo con la §10 cumplida.
+- **La `0.4` es la última menor `0.x`** (usuario, 2026-10-25): la versión estable antes de la `1.0`. Cada recogida
+  sigue haciéndose y reparte lo que trae: las correcciones de lo que ya hay van al siguiente parche (`0.4.x`); un
+  evolutivo o algo nuevo (skill, gancho, mejora) se apunta para la **`1.0.0`** y no entra en la `0.4`. La `1.0.0` y
+  siguientes son la línea que crece y el producto a largo plazo. Así no hay una cadena de evolutivos entre la `0.4` y
+  la `1.0`. Los parches de la `0.4.x` se fusionan
+  también en la rama de la `1.0.0`. Por decidir: si la `1.0.0` llega a `main` antes de cumplir la §10 (la copia
+  pública de la Fase 10 la sigue pidiendo).
 
 ## 8. Instalación en un proyecto
 

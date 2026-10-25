@@ -53,7 +53,7 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 
 ## Ramas y `main`
 
-- Se trabaja en la rama que indique la bitácora (hoy `claude/galivelop-workflow-inicio`).
+- Se trabaja en la rama que indique la bitácora.
 - **A `main` solo con confirmación del usuario**, y antes las tres fases del flujo:
   1. **Código:** `/code-review` del diff contra `origin/main` (con `git fetch` antes); arreglos subidos con sus tests.
   2. **Entorno:** `/opt-tokens` y `/retro`; sus propuestas se presentan al usuario y lo que confirme se aplica en la
@@ -67,6 +67,8 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   proyectos que usan el flujo, y sus propuestas se presentan al usuario. `python3 scripts/version.py --release` (lo
   corre el `pre-push` de una subida a `main`) exige un `docs/propuestas/*.md` que empiece por `# Harvest` añadido
   desde la última etiqueta `vX.Y.Z`; una recogida sin nada nuevo también deja su archivo.
+- **La `0.4` solo recibe correcciones** (usuario, 2026-10-25, plan §7): de una recogida, los arreglos van a un parche
+  `0.4.x` y los evolutivos se apuntan para la `1.0.0` (nunca una `0.5`).
 
 ## Reglas del proyecto
 

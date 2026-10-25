@@ -8,7 +8,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
-## [0.4.0] - Unreleased
+## [0.4.0] - 2026-10-25
 
 ### ES
 
@@ -135,6 +135,12 @@ here.
   cuenta como cambio sin confirmar lo no versionado bajo `.claude/worktrees/`.
 - `es-codigo.sh`: con un lector que corta la salida (`| head -1`) y una lista de archivos mayor que el búfer de la
   tubería, ya no falla con 141 (el clasificador lee el resto de su entrada).
+- `version.py --release` (el `pre-push` de una subida a `main`) exige que la entrada de la versión nueva tenga fecha
+  (`## [X.Y.Z] - AAAA-MM-DD`, no «Unreleased») y no conserve el «(por completar)» del salto: la `0.4.0` llegó a `main`
+  sin fecha y `release.yml` la habría rechazado al etiquetar.
+- **Política de versiones** (usuario, 2026-10-25): la `0.4` es la última menor `0.x`, la estable antes de la `1.0`:
+  de una recogida, las correcciones van a un parche `0.4.x` y los evolutivos se apuntan para la `1.0.0` y siguientes (plan §7, `AGENTS.md`, `docs/es/contribuir.md` ↔
+  `docs/en/contributing.md`).
 
 ### EN
 
@@ -260,6 +266,12 @@ here.
   blocking. And untracked paths under `.claude/worktrees/` no longer count as uncommitted changes.
 - `es-codigo.sh`: with a reader that cuts the output short (`| head -1`) and a file list larger than the pipe buffer,
   it no longer fails with 141 (the classifier drains the rest of its input).
+- `version.py --release` (the `pre-push` of a push to `main`) requires the new version's entry to be dated
+  (`## [X.Y.Z] - YYYY-MM-DD`, not "Unreleased") and free of the bump's "(to be filled in)": `0.4.0` reached `main`
+  undated and `release.yml` would have rejected it at tag time.
+- **Version policy** (user, 2026-10-25): `0.4` is the last `0.x` minor, the stable one before `1.0`: from a
+  harvest, fixes go to a `0.4.x` patch and new features are noted for `1.0.0` and later (plan §7, `AGENTS.md`, `docs/es/contribuir.md` ↔
+  `docs/en/contributing.md`).
 
 ## [0.3.0] - 2026-10-23
 

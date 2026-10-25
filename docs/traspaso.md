@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | `ccr-6dfbc880-ddr41g`; `main` = `ea81c9f` = **release `v0.3.0`** (2026-10-23). `claude/galivelop-workflow-inicio` está **obsoleta** (se quedó en `0f36412`): no se trabaja en ella |
-| Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
-| Fase en curso | **6 cerrada** y `0.3.0` publicada en `main` (2026-10-23); P7 del instalador aplicada en la rama (`0.4.0`, sin publicar); recogida de la `0.4.0` hecha y decidida (P1, P3, P4, P5 aplicadas; P2 aplazada). Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | `f84870a` (2026-10-25): las tres fases antes de `main` cerradas (retro P1-P7 aplicada, arreglos de la revisión de la fase 3); check local en verde, y `main` (`ea81c9f`) ya contenido en la rama; el detalle de la `0.4.0`, en el CHANGELOG, «Hecho» y `git log` |
-| Siguiente paso | **Publicar la `0.4.0` en `main`** (pedido por el usuario el 2026-10-25): `bash scripts/revisado.sh` y la subida a `main` con el check local (CI sin cuota: **comprobado solo en local**, confirmado por el usuario). La release de GitHub `v0.4.0` **la hace el usuario desde Claude cloud** (2026-10-25): no se crea desde aquí. Aplazada a la Fase 7: P3 de Labs (`to-spec`, `wayfinder`) |
+| Rama | `ccr-6dfbc880-ddr41g`; `main` = `d7dd18f` = **`0.4.0`** (2026-10-25, subida por la sesión local), con etiqueta y release `v0.4.0` (creadas a mano por el usuario, 2026-10-25; la etiqueta, sobre `d7dd18f`, cuyo CHANGELOG aún dice «Unreleased»). `claude/galivelop-workflow-inicio` está **obsoleta** (se quedó en `0f36412`): no se trabaja en ella |
+| Check | `bash tests/comprobar.sh` en verde (**comprobado solo en local**: sin cuota de Actions el CI no arranca, confirmado por el usuario); `main` (`d7dd18f`) comprobado en local el 2026-10-25 |
+| Fase en curso | **6 cerrada**; `0.4.0` en `main` (2026-10-25). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
+| Último punto estable | Commit «Fase 7: entrada 0.4.0 con fecha…» (2026-10-25): la entrada `0.4.0` del CHANGELOG con fecha (llegó a `main` como «Unreleased»), `version.py --release` exige fecha y relleno (test nuevo), la política `0.4.x` en el plan, `AGENTS.md` y `contribuir`, y los textos de la release en `docs/registros/release-v0.4.0.md` (ya publicada) |
+| Siguiente paso | Con confirmación del usuario, **parche `0.4.1`**: lleva la fecha de la entrada `0.4.0` y `changelog_check` de `version.py`; como `version.py` cambió desde `v0.4.0`, `version.py --release` exige subir versión. Pasos: recogida (`gw-harvest`, aunque no traiga nada), `python3 scripts/version.py 0.4.1` y su entrada, las tres fases reducidas, `revisado.sh` y la etiqueta y release a mano. Aplazada a la Fase 7: P3 de Labs (`to-spec`, `wayfinder`) |
 
 ### Fases
 
@@ -30,25 +30,22 @@
 
 ## Para la próxima publicación
 
-`0.4.0`: abierta hasta el 2026-10-30 (usuario, 2026-10-23); antes de publicarla, otra pasada de `gw-harvest` sobre lo de
-esa semana.
+**Política de versiones** (usuario, 2026-10-25, plan §7): la `0.4` es la última menor `0.x`, la estable antes de la `1.0`.
+Cada recogida reparte lo que trae: las correcciones van a un parche `0.4.x` (que se fusiona también en la rama de la
+`1.0.0`) y los evolutivos se apuntan para la `1.0.0`, nunca una `0.5`. La `1.0.0`+ es la línea que crece. Por
+decidir: si la `1.0.0` llega a `main` antes de cumplir la §10.
 
-Subida a `main` en espera (usuario, 2026-10-25): las tres fases y la publicación se deciden cuando esté subido lo de
-la sesión local y cerrada la parte 2b de `gw-media-content`. Mientras el CI no arranque (sin cuota de Actions), vale el
-check en local sobre el mismo commit (`bash tests/comprobar.sh`), y se apunta como «comprobado solo en local».
-Parte 2b cerrada (b5c1e31). La sesión local está acabando sus ajustes y subirá la `0.4.0` a `main`; cuando llegue,
-se preparan los textos de la release de GitHub (el usuario avisa).
-
-`0.2.0` publicada (etiqueta y release a mano en GitHub, título `Galivelop-workflow vX.Y.Z`, notas de la entrada del CHANGELOG). Para la siguiente: `release.yml` con lanzamiento manual desde Actions que cree la etiqueta (la
-sesión en la nube no puede subir etiquetas: 403 del proxy).
+La release `v0.4.0` la creó el usuario a mano (2026-10-25), con los textos de `docs/registros/release-v0.4.0.md`. La
+sesión en la nube no puede subir etiquetas (403 del proxy) y sin cuota de Actions `release.yml` no corre. Para la siguiente: `release.yml` con
+lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-10-25 — Fase 3 antes de la `0.4.0`: revisión de los commits de la fase 2 (un medio y cinco menores). Arreglados `bitacora.py done`, que ya conserva un párrafo libre al final de «Hecho», y `es-codigo.sh`, que con `| head -1` y una salida mayor que el búfer de la tubería fallaba con 141 (intermitente en el `pre-push`); los menores, en «Pendiente».
-2. 2026-10-25 — Retro antes de la `0.4.0` aplicada: P3, P4 y P6 (`8c980ad`); P1+P2 (`bitacora.py check` con tope de celda y forma de «Hecho», `bitacora.py done`), P5 (`doctor.py`, `ci access`) y P7 (marca `gw-push-en-curso` y `.claude/worktrees/` fuera del gancho de parada), con su revisión y sus arreglos.
-3. 2026-10-25 — Arreglos de la revisión de `recoger.py` (`c80b184`): `git()` decodifica con `errors="replace"` (un `.md` del proyecto que no es UTF-8 tumbaba la recogida entera); `git diff` con `--no-color --no-ext-diff --no-textconv` (con `color.diff=always` las ideas nuevas se perdían sin avisar) y un diff sin `@@` (binario) cuenta el archivo entero; `--update-state` sin `Path.is_relative_to` (Python 3.9+). Tests primero (3 casos).
-4. 2026-10-25 — Arreglos de la revisión de `guardia-config.py` y `commit-msg`: `sudo -uroot` (valor pegado) ya no se come la orden y solo la última letra de un grupo consume la palabra siguiente; el valor de una opción de `rsync`/`cp`/`install` (`--exclude .claude`, `-m`, `-o`, `-S`…) no cuenta como destino; `dd of=` se clasifica; `git restore --staged` (sin `--worktree`), `git rm --cached` y `git clean -n` no son escritura; en `cp`/`install`/`ln`/`rsync` solo el destino se escribe (leer o copiar desde `.claude`/`.githooks` se permite; `mv` y `rsync --remove-source-files` sí escriben el origen); `commit-msg` nombra la ruta original en su error de normalización y usa `core.quotepath=false` (un `log` con acentos se saltaba en silencio). Tests primero, un caso por borde.
-5. 2026-10-25 — Arreglos de la revisión antes de `main` (recuperar, recoger): `recuperar.py --estado` ya no pierde lo de después de la bitácora (recuento de archivos sin subir, últimos commits, avisos como «sesión abierta fuera del repo» y el puntero a `--buscar`): lo que se recorta es la sección de la bitácora (se conserva su principio, con una línea que dice que se cortó y qué archivo leer entero) y el tope de 9.500 caracteres queda como último recurso; `recoger.py` con una recogida anterior solo da las ideas cuyas líneas se añadieron o cambiaron desde ella (`git diff -U0`), no repite una línea «Propuesta para el flujo» dentro de una sección «Para Galivelop-workflow» y mide con `expandtabs()` también las líneas de continuación. Tests primero, un caso por borde (3 en `test_sesion.py`, 6 en `test_recoger.py`).
+1. 2026-10-25 — Entrada `0.4.0` del CHANGELOG con fecha (llegó a `main` como «Unreleased» y `release.yml` la habría rechazado); `version.py --release` exige ya fecha y relleno (`changelog_check`, test primero: sin el arreglo falla); política de versiones (la `0.4` solo parches, lo nuevo a la `1.0.0`) en el plan §7 ES/EN, `AGENTS.md` y `contribuir`/`contributing`; textos de la release en `docs/registros/release-v0.4.0.md`; el usuario publicó la release `v0.4.0` sobre `d7dd18f`.
+2. 2026-10-25 — Fase 3 antes de la `0.4.0`: revisión de los commits de la fase 2 (un medio y cinco menores). Arreglados `bitacora.py done`, que ya conserva un párrafo libre al final de «Hecho», y `es-codigo.sh`, que con `| head -1` y una salida mayor que el búfer de la tubería fallaba con 141 (intermitente en el `pre-push`); los menores, en «Pendiente».
+3. 2026-10-25 — Retro antes de la `0.4.0` aplicada: P3, P4 y P6 (`8c980ad`); P1+P2 (`bitacora.py check` con tope de celda y forma de «Hecho», `bitacora.py done`), P5 (`doctor.py`, `ci access`) y P7 (marca `gw-push-en-curso` y `.claude/worktrees/` fuera del gancho de parada), con su revisión y sus arreglos.
+4. 2026-10-25 — Arreglos de la revisión de `recoger.py` (`c80b184`): `git()` decodifica con `errors="replace"` (un `.md` del proyecto que no es UTF-8 tumbaba la recogida entera); `git diff` con `--no-color --no-ext-diff --no-textconv` (con `color.diff=always` las ideas nuevas se perdían sin avisar) y un diff sin `@@` (binario) cuenta el archivo entero; `--update-state` sin `Path.is_relative_to` (Python 3.9+). Tests primero (3 casos).
+5. 2026-10-25 — Arreglos de la revisión de `guardia-config.py` y `commit-msg`: `sudo -uroot` (valor pegado) ya no se come la orden y solo la última letra de un grupo consume la palabra siguiente; el valor de una opción de `rsync`/`cp`/`install` (`--exclude .claude`, `-m`, `-o`, `-S`…) no cuenta como destino; `dd of=` se clasifica; `git restore --staged` (sin `--worktree`), `git rm --cached` y `git clean -n` no son escritura; en `cp`/`install`/`ln`/`rsync` solo el destino se escribe (leer o copiar desde `.claude`/`.githooks` se permite; `mv` y `rsync --remove-source-files` sí escriben el origen); `commit-msg` nombra la ruta original en su error de normalización y usa `core.quotepath=false` (un `log` con acentos se saltaba en silencio). Tests primero, un caso por borde.
 
 ## Pendiente
 
