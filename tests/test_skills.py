@@ -56,9 +56,7 @@ def frontmatter(text):
 class Skills(unittest.TestCase):
     def setUp(self):
         self.version = json.loads((ROOT / ".claude-plugin/plugin.json").read_text())["version"]
-        # gw-media-content only has its shared material (b1) until its SKILL.md lands (b3): remove it from here then.
-        sin_skill_md = {"gw-media-content"}
-        self.dirs = sorted(p for p in SKILLS.iterdir() if p.is_dir() and p.name not in sin_skill_md)
+        self.dirs = sorted(p for p in SKILLS.iterdir() if p.is_dir())
 
     def test_there_are_skills(self):
         self.assertTrue(self.dirs, "skills/ is empty")
