@@ -85,13 +85,18 @@ Playwright e ImageMagick con WebP; `comprobar.py` se puede correr sin ellos, y *
 (sus tests usan un doble salvo donde haya Chromium).
 
 Sin nota del proyecto rigen los valores por defecto (y se dice una vez). Para cambiarlos, `.claude/gw/gw-media-content.md`,
-una línea `clave: valor` por dato (las claves, las de la tabla de la skill, en inglés); el flujo no la crea ni la pisa. Ejemplo genérico:
+una línea `clave: valor` por dato (las claves, las de la tabla de `skills/gw-media-content/nota.md`, en inglés); el flujo no
+la crea ni la pisa. Un *canal extra* se declara con `límite: N` (comprobado con `--limite <canal>=N`) o con
+`formato: propio` y `plantilla: <ruta>` (su archivo lo consume otro sistema; comprobado con `--formato-propio <canal>`).
+Ejemplo genérico:
 
 ```
 Folder: docs/difusion
 Languages: es, en
 Channels: x, reddit, linkedin, discord
-Extra channels: mastodon (500 caracteres, tono cercano, imagen WebP)
+Extra channels:
+- mastodon: límite: 500; tono: cercano
+- portal: formato: propio; plantilla: docs/difusion/portal.json
 Palette: --fondo #101418; --acento #4cc38a
 Screenshots: arrancar la app (npm run dev), abrir /panel, captura de la ventana a 1280x720
 Task prefixes: INS,FLU   (se pasa a comprobar.py --prefijos-tarea)
