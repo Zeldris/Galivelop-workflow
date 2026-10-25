@@ -477,7 +477,7 @@ class Doctor(unittest.TestCase):
     # --- gw-media-content tools (WMF 2026-10-25 P1)
 
     def tools(self, node=True, magick=None, convert=None):
-        """An env whose PATH holds only python3, git, bash and sh plus fake tools: magick/convert answer
+        """An env whose PATH holds only python3, git, bash and sh plus fake tools (and no NODE_PATH): magick/convert answer
         `-list format` with the text given (None = absent)."""
         bin_dir = self.tmp / "bin"
         shutil.rmtree(bin_dir, True)
@@ -492,7 +492,7 @@ class Doctor(unittest.TestCase):
         for f in bin_dir.iterdir():
             if not f.is_symlink():
                 f.chmod(0o755)
-        return {"PATH": str(bin_dir)}
+        return {"PATH": str(bin_dir), "NODE_PATH": ""}  # a host NODE_PATH may hold a global Playwright
 
     def media_lines(self, out):
         return [l for l in out.splitlines() if re.match(r"(OK|WARN|FAIL) +media tools:", l)]
