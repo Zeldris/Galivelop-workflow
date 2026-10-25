@@ -1,6 +1,6 @@
 ---
 name: gw-update
-description: Bring a project's copy of Galivelop-workflow up to the workflow repo's current version, showing the template changes before applying what the user confirms. Run by hand with /gw-update after the workflow publishes a new version.
+description: Bring a project's copy of Galivelop-workflow up to the workflow repo's current version, showing the template changes before applying what the user confirms. Use after the workflow publishes a new version (run by hand with /gw-update).
 disable-model-invocation: true
 license: MIT
 compatibility: Claude Code or any Agent Skills agent; git and python3 3.8+; the Galivelop-workflow repo cloned or added to the session

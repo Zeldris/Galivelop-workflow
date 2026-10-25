@@ -157,6 +157,10 @@ It prints `OK`, `WARN` or `FAIL` per check, and with each problem the command th
 until **no `FAIL` is left**; explain the `WARN`s to the person (what each means is in
 [troubleshooting](troubleshooting.md)). With `--json` the output is machine-readable.
 
+It also reports `FAIL` if `AGENTS.md`, `CLAUDE.md` or a `SKILL.md` holds invisible or bidirectional characters (a hidden
+instruction is an injection; the line carries the command that removes them) and warns when `AGENTS.md`/`CLAUDE.md`
+run past 150 lines (`FAIL` from 250).
+
 Done when: `doctor.py` exits 0.
 
 ## 5. Commit and push

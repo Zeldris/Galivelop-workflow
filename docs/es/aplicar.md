@@ -156,6 +156,10 @@ Imprime `OK`, `WARN` o `FAIL` por comprobación, y con cada problema la orden qu
 volver a correr) hasta que **no quede ningún `FAIL`**; los `WARN` se explican a la persona (qué significa cada uno,
 en [problemas](problemas.md)). Con `--json` sale legible por máquina.
 
+También da `FAIL` si `AGENTS.md`, `CLAUDE.md` o una `SKILL.md` llevan caracteres invisibles o bidi (una instrucción
+escondida es una inyección; la orden que los quita viene en la línea) y avisa si `AGENTS.md`/`CLAUDE.md` pasan de 150
+líneas (`FAIL` a partir de 250).
+
 Criterio de fin: `doctor.py` sale con código 0.
 
 ## 5. Commit y subida

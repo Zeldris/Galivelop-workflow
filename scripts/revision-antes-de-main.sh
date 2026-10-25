@@ -82,7 +82,25 @@ API_FIELDS = ("-f", "-F", "--field", "--raw-field", "--input")
 API_MERGE = re.compile(r"^/?repos/([^/]+)/([^/]+)/pulls/(\d+)/merge/?$")
 MERGE_VALUE_FLAGS = {"-R", "--repo", "-b", "--body", "-F", "--body-file", "-t", "--subject", "-A",
                      "--author-email", "--match-head-commit"}
-SUSPECT = re.compile(r"\bgh\b[\s\S]*\bpr\b[\s\S]*\b(merge|create)\b|\bgh\b[\s\S]*\bpulls/[^\s]*merge")
+GH_WORD = re.compile(r"\bgh\b")
+PR_WORD = re.compile(r"\bpr\b")
+PR_ACTION = re.compile(r"\b(merge|create)\b")
+PULLS_TOKEN = re.compile(r"pulls/\S*")
+
+
+def looks_like_pr_action(command):
+    """Does an unparseable command look like `gh ... pr ... merge|create` or `gh ... pulls/...merge`?
+
+    The words must come in that order; the earliest `gh`, then the earliest `pr` after it, is enough. One scan per
+    word: a single regex chaining `[\\s\\S]*` between them backtracks without end on a long command (P4 of
+    docs/propuestas/2026-10-25-repos-x.md; tests/test_revision_main.py times it)."""
+    gh = GH_WORD.search(command)
+    if not gh:
+        return False
+    pr = PR_WORD.search(command, gh.end())
+    if pr and PR_ACTION.search(command, pr.end()):
+        return True
+    return any("merge" in m.group()[len("pulls/"):] for m in PULLS_TOKEN.finditer(command, gh.end()))
 
 
 def flag(args, names):
@@ -128,7 +146,7 @@ def from_bash(command, depth=0):
     try:
         segs = segments(command)
     except ValueError as exc:
-        if SUSPECT.search(command):
+        if looks_like_pr_action(command):
             block(f"cannot parse the command ({exc}) and it looks like a PR create/merge; blocked because it could "
                   "not be checked.", "write it as a plain command and retry, e.g.: gh pr merge <number> -R <owner>/<repo>")
         return []
@@ -609,14 +627,38 @@ word='[^[:alnum:]_-]'
 tool='"tool_name"[[:space:]]*:[[:space:]]*'
 pr_tools="${tool}\"mcp__[^\"]*(create_pull_request|update_pull_request|merge_pull_request|enable_pr_auto_merge)\""
 bash_tool="${tool}\"Bash\""
-gh="(^|$word|\\\\[nt])gh$word(.*$word)?"
+gh="(^|$word|\\\\[nt])gh$word"
 end="($word|\$)"
-any_pr="${gh}(pr|pulls)${end}"
-do_pr="${gh}(pr$word(.*$word)?(create|merge)|pulls/[^[:space:]]*merge)${end}"
+any_pr="(^|$word)(pr|pulls)${end}"
+pr_word="(^|$word)pr$word"
+pr_action="(^|$word)(create|merge)${end}"
+# One regex per word, each on what follows the previous match: a single regex with `.*` between the words backtracks
+# quadratically on a long command (P4 of docs/propuestas/2026-10-25-repos-x.md; tests/test_revision_main.py times it).
+# after_first <text> <regex> sets `after` to the text following the first match of the regex, or fails.
+after=""
+after_first() {
+  [[ $1 =~ $2 ]] || return 1
+  local lit="${BASH_REMATCH[0]}" before
+  before="${1%%"$lit"*}"
+  after="${1:$((${#before} + ${#lit}))}"
+}
+# gh creating/merging: `gh ... pr ... create|merge` or `gh ... pulls/... merge`, the words in that order.
+gh_does_pr() {
+  local rest
+  after_first "$1" "$gh" || return 1
+  rest="$after"
+  if after_first "$rest" "$pr_word" && [[ $after =~ $pr_action ]]; then return 0; fi
+  # pulls/ and then merge, anywhere after it (not only in the same word): the regex for "in the same word" backtracks
+  # quadratically on one long word. A looser match here only makes python3 run, or a call without python3 be refused.
+  local before="${rest%%pulls/*}"
+  [[ ${#before} -lt ${#rest} ]] || return 1
+  rest="${rest:$((${#before} + 6))}"
+  [[ $rest == *merge* ]]
+}
 own=""  # 1 when the call is one this hook decides on (a PR tool, or gh creating/merging), for the python3-missing case
 if [[ $input =~ $pr_tools ]]; then own=1
-elif [[ $input =~ $bash_tool && $input =~ $any_pr ]]; then
-  if [[ $input =~ $do_pr ]]; then own=1; else own=0; fi
+elif [[ $input =~ $bash_tool ]] && after_first "$input" "$gh" && [[ $after =~ $any_pr ]]; then
+  if gh_does_pr "$input"; then own=1; else own=0; fi
 else exit 0
 fi
 if ! command -v python3 >/dev/null 2>&1; then

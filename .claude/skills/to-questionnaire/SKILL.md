@@ -1,6 +1,6 @@
 ---
 name: to-questionnaire
-description: Turn a decision you can't fully answer into a questionnaire for someone else to fill in.
+description: Turn a decision you can't fully answer into a questionnaire for someone else to fill in. Use when the user needs answers from another person to decide.
 disable-model-invocation: true
 license: MIT (see LICENSE-mattpocock-skills)
 metadata:

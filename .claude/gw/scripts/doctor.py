@@ -40,6 +40,8 @@ INTERPRETERS = {"bash", "sh", "zsh", "python", "python3", "node", "env", "exec"}
 SOURCES = re.compile(r"galivelop|workflow|mattpocock", re.I)
 PROPOSAL = ".gw-nuevo"  # aplicar.py's proposals for files with local edits
 FLOW_HOOK_SCRIPTS = ("session-start.sh", "recuperar.py", "revision-antes-de-main.sh")  # the settings template's
+INVISIBLE = re.compile("[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]")  # zero-width, bidi and BOM characters
+WARN_LINES, FAIL_LINES = 150, 250  # AGENTS.md / CLAUDE.md: every session loads them whole
 SKILL_LICENSE = "LICENSE-mattpocock-skills"  # aplicar.py copies it next to the skills that cite it
 
 
@@ -480,6 +482,49 @@ def check_compaction(rep, root):
              f"add {key}={value} to the cloud environment's variables (environment menu > Edit); new sessions get it")
 
 
+def invisible_chars(text):
+    """[(line, column, 'U+XXXX')] of invisible characters in text; a BOM as the very first character is fine."""
+    found = []
+    for n, line in enumerate(text.split("\n"), 1):
+        for m in INVISIBLE.finditer(line):
+            if n == 1 and m.start() == 0 and m.group() == "\ufeff":
+                continue
+            found.append((n, m.start() + 1, f"U+{ord(m.group()):04X}"))
+    return found
+
+
+def strip_invisible_command(name):
+    return ("python3 -c 'import re,sys;p=sys.argv[1];t=open(p,encoding=\"utf-8\").read();"
+            "open(p,\"w\",encoding=\"utf-8\").write(re.sub(\"[\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069"
+            f"\\ufeff]\",\"\",t))' {name}")
+
+
+def check_instructions(rep, root):
+    """Invisible characters in the files agents obey (a hidden instruction is an injection) and the size of
+    AGENTS.md/CLAUDE.md (P7 of docs/propuestas/2026-10-25-repos-x.md)."""
+    files = [root / n for n in ("AGENTS.md", "CLAUDE.md") if (root / n).is_file()]
+    files += sorted((root / ".claude" / "skills").glob("*/SKILL.md"))
+    bad = False
+    for path in files:
+        rel = path.relative_to(root).as_posix()
+        text = path.read_text(encoding="utf-8", errors="replace")
+        found = invisible_chars(text)
+        if found:
+            bad = True
+            where = ", ".join(f"line {n} col {c} {cp}" for n, c, cp in found[:5])
+            rep.fail("invisible", f"{rel} has invisible or bidirectional characters ({where}"
+                     f"{', ...' if len(found) > 5 else ''}); an agent obeys what a person cannot see",
+                     f"remove them: {strip_invisible_command(rel)}")
+        lines = len(text.splitlines())
+        if path.name in ("AGENTS.md", "CLAUDE.md") and lines > WARN_LINES:
+            bad = True
+            report = rep.fail if lines > FAIL_LINES else rep.warn
+            report("size", f"{rel} has {lines} lines (warn above {WARN_LINES}, fail above {FAIL_LINES}); every "
+                   "session loads it whole", f"move detail out of {rel} into docs/ and link it from there")
+    if not bad:
+        rep.ok("instructions", "AGENTS.md/CLAUDE.md and skills: no invisible characters, size within limits")
+
+
 def run(root):
     rep = Report()
     cfg = check_config(rep, root)
@@ -493,6 +538,7 @@ def run(root):
     check_settings(rep, root)
     check_subagents(rep, root)
     check_glossary(rep, root)
+    check_instructions(rep, root)
     proposals = check_proposals(rep, root)
     check_skills(rep, root, version, proposals)
     check_session(rep, root)

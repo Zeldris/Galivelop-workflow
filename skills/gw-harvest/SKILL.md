@@ -1,6 +1,6 @@
 ---
 name: gw-harvest
-description: Collect, as proposals, what projects using Galivelop-workflow changed or invented (edited workflow skills and scripts, new skills, ideas in their retros) since the last harvest. Use from the Galivelop-workflow repo when the user asks to harvest, review or gather improvements from connected projects, and at the start of every new workflow version (AGENTS.md; `version.py --release` checks it).
+description: Collect, as proposals, what projects using Galivelop-workflow changed or invented (edited workflow skills and scripts, new skills, ideas in their retros) since the last harvest. Use when, from the Galivelop-workflow repo, the user asks to harvest, review or gather improvements from connected projects, and at the start of every new workflow version (AGENTS.md; `version.py --release` checks it).
 disable-model-invocation: true
 license: MIT
 compatibility: Run in the Galivelop-workflow repo with the project repos cloned locally; git and python3.

@@ -41,6 +41,14 @@ here.
     `opt-tokens` (Labs P4).
   - `aplicar.md` y `gw-init`: al migrar desde una copia a mano, muchas `.gw-nuevo` son lo normal y cómo fusionarlas
     (Labs P5).
+- P7 de `repos-x`: `tests/test_skills.py` exige claves de frontmatter dentro de una lista cerrada, descripción sin
+  `<` ni `>` y con cláusula de disparo (`Use when/for/at/before/after/to`; nueve skills la ganaron). `doctor.py` da `FAIL`
+  por caracteres invisibles o bidi en `AGENTS.md`, `CLAUDE.md` y `SKILL.md` (archivo, línea, punto de código y la orden
+  que los quita) y avisa a 150 líneas de `AGENTS.md`/`CLAUDE.md` (`FAIL` a 250); el check del repo aplica lo mismo a
+  sus archivos y a las plantillas.
+- P4 de `repos-x`: `revision-antes-de-main.sh` ya no se atasca con una orden Bash larga: el filtro previo en bash y la
+  sospecha de una orden que no se puede leer casaban `gh … pr … merge|create` con varios `.*` seguidos (cuadrático o
+  peor, minutos con 50 KB); ahora buscan cada palabra por separado. Un test con 50 KB exige menos de 1 s.
 
 ### EN
 
@@ -73,6 +81,14 @@ here.
     `opt-tokens` (Labs P4).
   - `apply.md` and `gw-init`: when migrating from a hand-made copy, many `.gw-nuevo` files are normal, and how to merge
     them (Labs P5).
+- `repos-x` P7: `tests/test_skills.py` requires frontmatter keys from a closed list, a description without `<` or `>`
+  and with a trigger clause (`Use when/for/at/before/after/to`; nine skills gained one). `doctor.py` reports `FAIL` for
+  invisible or bidi characters in `AGENTS.md`, `CLAUDE.md` and `SKILL.md` (file, line, code point and the command that
+  removes them) and warns at 150 lines of `AGENTS.md`/`CLAUDE.md` (`FAIL` at 250); the repo check applies the same to
+  its own files and the templates.
+- `repos-x` P4: `revision-antes-de-main.sh` no longer stalls on a long Bash command: the bash pre-filter and the
+  suspicion check for an unparseable command matched `gh ... pr ... merge|create` with several chained `.*`
+  (quadratic or worse, minutes on 50 KB); each word is now searched on its own. A 50 KB test requires under 1 s.
 
 ## [0.3.0] - 2026-10-23
 

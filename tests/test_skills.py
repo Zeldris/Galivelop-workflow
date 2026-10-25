@@ -4,13 +4,33 @@ Spec: https://github.com/agentskills/agentskills (docs/specification.mdx).
 """
 import json
 import re
+import sys
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+sys.dont_write_bytecode = True
+import doctor  # noqa: E402  (the invisible-character and size checks live there, for projects too)
 SKILLS = ROOT / "skills"
 NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+ALLOWED_KEYS = {"name", "description", "license", "allowed-tools", "metadata", "compatibility",
+                "disable-model-invocation"}  # closed list (anthropics/skills quick_validate.py)
+TRIGGER = re.compile(r"\bUse (when|for|at|before|after|to)\b")
 MAX_LINES = 200  # plan §5.1 (the spec allows 500; we keep skills shorter)
+
+
+def description_problems(fm):
+    """Why a skill's frontmatter fails the closed-keys, no-angle-brackets and trigger-clause rules ([] if fine)."""
+    problems = [f"unknown frontmatter key '{k}' (allowed: {', '.join(sorted(ALLOWED_KEYS))})"
+                for k in fm if k not in ALLOWED_KEYS]
+    desc = fm.get("description", "")
+    if "<" in desc or ">" in desc:
+        problems.append("the description contains '<' or '>'")
+    if not TRIGGER.search(desc):
+        problems.append("the description has no trigger clause ('Use when ...', 'Use for', 'Use at', 'Use before', "
+                        "'Use after' or 'Use to')")
+    return problems
 
 
 def frontmatter(text):
@@ -62,8 +82,36 @@ class Skills(unittest.TestCase):
                 self.assertIsInstance(meta, dict, f"{d.name}: add a 'metadata' map with 'version'")
                 self.assertEqual(meta.get("version"), self.version,
                                  f"{d.name}: metadata.version must be {self.version} (plugin.json)")
+                self.assertEqual(description_problems(fm), [], f"{d.name}: frontmatter rules")
+                self.assertEqual(doctor.invisible_chars(text), [], f"{d.name}: invisible characters in SKILL.md")
                 lines = len(text.splitlines())
                 self.assertLessEqual(lines, MAX_LINES, f"{d.name}: SKILL.md has {lines} lines (max {MAX_LINES})")
+
+    def test_frontmatter_rules_catch_their_cases(self):
+        good = {"name": "x", "description": "Does a thing. Use when asked.", "license": "MIT", "metadata": {}}
+        self.assertEqual(description_problems(good), [])
+        self.assertEqual(description_problems(dict(good, description="Use to pick; Use for more.")), [])
+        self.assertIn("unknown frontmatter key 'version'", description_problems(dict(good, version="1"))[0])
+        self.assertIn("contains '<' or '>'", description_problems(dict(good, description="Use when <x>."))[0])
+        self.assertIn("no trigger clause", description_problems(dict(good, description="Use only when asked."))[0])
+        self.assertIn("no trigger clause", description_problems(dict(good, description="Reuse it."))[0])
+
+    def test_instruction_files_have_no_invisible_characters_and_stay_short(self):
+        files = [ROOT / "AGENTS.md", ROOT / "CLAUDE.md"]
+        for kind in ("AGENTS.md", "CLAUDE.md"):
+            files += sorted((ROOT / "templates").glob(f"*/{kind}"))
+        self.assertGreaterEqual(len(files), 6)
+        for path in files:
+            with self.subTest(file=path.relative_to(ROOT).as_posix()):
+                text = path.read_text(encoding="utf-8")
+                self.assertEqual(doctor.invisible_chars(text), [], "invisible or bidi characters")
+                self.assertLessEqual(len(text.splitlines()), doctor.WARN_LINES, "over doctor's warning size")
+
+    def test_invisible_char_detection(self):
+        self.assertEqual(doctor.invisible_chars("\ufeffok\nfine\n"), [])
+        self.assertEqual(doctor.invisible_chars("a\u200bb\nc\u2067"), [(1, 2, "U+200B"), (2, 2, "U+2067")])
+        self.assertEqual(doctor.invisible_chars("x\n\ufeffy"), [(2, 1, "U+FEFF")])
+        self.assertEqual(doctor.invisible_chars("\u202a"), [(1, 1, "U+202A")])
 
     def test_matt_pocock_is_credited_in_each_of_his_skills(self):
         for d in self.dirs:
