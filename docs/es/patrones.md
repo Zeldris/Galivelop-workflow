@@ -63,6 +63,32 @@ reparte así:
 El gancho de PR bloquea crear o fusionar sin la marca del mismo commit, de modo que un descuido (algo subido después
 de «PR listo») sale como bloqueo y no como código sin revisar.
 
+## Contenido para redes
+
+Dos skills preparan, **sin publicar**, publicaciones sobre el proyecto: `gw-media-content` propone hasta 10 (tipo de post,
+gancho, redes, hechos con su fuente) y `gw-media-content-now` produce una pieza en una carpeta con fecha: un archivo por
+canal y por idioma, más las imágenes. Redes de partida: X, Reddit, LinkedIn y Discord; el proyecto puede declarar otras
+(*canales extra*). Los límites por red están en `reglas.json`, marcados `P` (verificado), `S` (según la fuente) o `NV` (sin
+verificar: se avisa al apoyarse en uno). La persona publica; ninguna skill lo hace.
+
+Necesitan Python 3 y git para las cifras (`cifras.py`). El render de imágenes (`render.mjs`) necesita además Node con
+Playwright e ImageMagick con WebP; `comprobar.py` se puede correr sin ellos, y **el render real no lo cubre el CI**
+(sus tests usan un doble salvo donde haya Chromium).
+
+Sin nota del proyecto rigen los valores por defecto (y se dice una vez). Para cambiarlos, `.claude/gw/gw-media-content.md`,
+una línea `clave: valor` por dato (las claves, las de la tabla de la skill, en inglés); el flujo no la crea ni la pisa. Ejemplo genérico:
+
+```
+Folder: docs/difusion
+Languages: es, en
+Channels: x, reddit, linkedin, discord
+Extra channels: mastodon (500 caracteres, tono cercano, imagen WebP)
+Palette: --fondo #101418; --acento #4cc38a
+Screenshots: arrancar la app (npm run dev), abrir /panel, captura de la ventana a 1280x720
+Task prefixes: INS,FLU   (se pasa a comprobar.py --prefijos-tarea)
+Reddit: r/ejemplo, reglas pegadas por la persona el 2026-10-25: «sin autopromoción más de una vez al mes; etiqueta [Proyecto]»
+```
+
 ## Recoger mejoras de vuelta
 
 El flujo aprende de los proyectos que lo usan. Hay dos mitades:
