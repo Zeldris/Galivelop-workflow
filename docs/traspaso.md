@@ -75,14 +75,15 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
   sin fuente y falta de medios/fuente/ pasan; el alt `es: Sí / no: nada` se parte mal.
 - [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) revisado (2026-10-25): 4 propuestas sin
   propuestas en `docs/propuestas/2026-10-25-codegraph.md`: P2 (comprobador genérico del mapa, `scripts/mapa-agente.py`)
-  aplicada; P3 (anti-patrones en `writing-for-agents`) en curso; P1 (gancho que inyecta la fila del mapa) y P4 (probar
+  y P3 (anti-patrones en `writing-for-agents`)
+  aplicadas; P1 (gancho que inyecta la fila del mapa) y P4 (probar
   la herramienta en WMF) sin decidir, se recomienda aplazar. Al aplicar en WMF: declarar
   `agentMap.prefixes` `{"b/": "backend/src/", "f/": "frontend/src/"}` antes de cambiar su comprobador por este.
 - Diez repos de una lista de X revisados (2026-10-25): 10 propuestas en `docs/propuestas/2026-10-25-repos-x.md`. P4
   (regex), P5 (`recuperar.py`: tope de 9.500 caracteres y fragmentos como datos) y P7 (skills e instrucciones)
   aplicadas (P4 y P7 en eea8892) y el arreglo posterior (gancho de `main` con tabuladores y saltos escapados; ZWJ en
-  emojis; gancho de PR en 8f4150b, 16f6cbd y efc72c9); P1 gancho `Stop`, P2 guarda de config y P3 tope de subagentes aplicadas (2026-10-25); el resto en curso, la siguiente es P6: P6 dealer,
-  P8 disparo de skills, P9 `REVIEW.md`, P10 apuntes 9-10.
+  emojis; gancho de PR en 8f4150b, 16f6cbd y efc72c9); P1 gancho `Stop`, P2 guarda de config, P3 tope de subagentes, P6 dealer, P8 disparo de skills
+  y P9 `REVIEW.md` aplicadas (2026-10-25); P10 apuntada en el plan. Todas hechas.
 
 - Propuestas aprobadas para `v0.2.0`, en orden: `docs/propuestas/2026-10-22-reparto.md` (la de 2026-10-21, toda hecha).
 

@@ -95,6 +95,16 @@ here.
   `prefixes` como `{"b/": "backend/src/"}`, `roots`); el validador del config admite `additionalProperties` como
   esquema. Sin mapa sale con 0; con un `agentMap.path` que no existe, 1; con un config inválido, 2. Va en el `check` de
   la plantilla y en `tests/comprobar.sh`, que valida el mapa de este repo.
+- P6 de `repos-x`, `orchestrate-dealer`: los dependientes de un chunk que falló dos veces se cancelan y se listan;
+  el brief lleva `Files:`/`Create:` (sin archivos compartidos en una ola; parar ante una ruta no listada); la respuesta
+  lleva `EVIDENCE:` o `NOT_TESTABLE:` y «toda cifra la has contado tú»; revisión de la ola con `MISSING_ITEMS` y
+  revisión opcional del reparto con más de ~5 chunks.
+- P8 de `repos-x` y P3 de `codegraph`, `writing-for-agents`: nombrar en la descripción las formas de pedir la tarea y
+  guardar consultas en `evals/triggers.json` (a mano, sin runner; las primeras, para `selector`; el test valida su
+  formato); sección para los documentos que se leen en cada sesión (anti-patrones, límites, qué no leer en el mapa).
+- P9 de `repos-x`, plantilla `REVIEW.md` (ES/EN): intentar refutar cada hallazgo y acabar con `SHIP` /
+  `SHIP WITH FIXES` / `DO NOT SHIP`.
+- P10 de `repos-x`: apuntes de las Fases 9 y 10 en el plan (sin cambio de comportamiento).
 
 ### EN
 
@@ -180,6 +190,16 @@ here.
   as `{"b/": "backend/src/"}`, `roots`); the config validator now takes `additionalProperties` as a schema. With no map
   it exits 0; with an `agentMap.path` that does not exist, 1; with an invalid config, 2. It is in the template's
   `check` and in `tests/comprobar.sh`, which validates this repo's map.
+- `repos-x` P6, `orchestrate-dealer`: dependents of a chunk that failed twice are cancelled and listed; the brief
+  carries `Files:`/`Create:` (no shared files within a wave; stop on an unlisted path); replies carry `EVIDENCE:` or
+  `NOT_TESTABLE:` and "every number you report you counted"; a wave-level review listing `MISSING_ITEMS` and an
+  optional cheap-model review of the split with more than ~5 chunks.
+- `repos-x` P8 and `codegraph` P3, `writing-for-agents`: name in the description the ways people ask for the task and
+  store trigger queries in `evals/triggers.json` (by hand, no runner; the first ones for `selector`; the test checks
+  their format); a section for documents read every session (anti-patterns, limits, what not to read in the map).
+- `repos-x` P9, `REVIEW.md` template (ES/EN): try to refute each finding and end with `SHIP` / `SHIP WITH FIXES` /
+  `DO NOT SHIP`.
+- `repos-x` P10: notes for Phases 9 and 10 in the plan (no behaviour change).
 
 ## [0.3.0] - 2026-10-23
 

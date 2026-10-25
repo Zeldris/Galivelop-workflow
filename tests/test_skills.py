@@ -128,6 +128,22 @@ class Skills(unittest.TestCase):
             with self.subTest(text=text):
                 self.assertEqual(doctor.invisible_chars(text), found)
 
+    def test_trigger_queries_are_well_formed(self):
+        # skills/<name>/evals/triggers.json: queries that should and should not fire the skill (run by hand).
+        for d in self.dirs:
+            path = d / "evals" / "triggers.json"
+            if not path.is_file():
+                continue
+            with self.subTest(skill=d.name):
+                data = json.loads(path.read_text(encoding="utf-8"))
+                self.assertIsInstance(data, list, f"{d.name}: triggers.json must be a list")
+                for item in data:
+                    self.assertEqual(sorted(item), ["query", "should_trigger"], f"{d.name}: bad entry {item!r}")
+                    self.assertTrue(item["query"].strip(), f"{d.name}: empty query")
+                    self.assertIsInstance(item["should_trigger"], bool, f"{d.name}: should_trigger must be true/false")
+                flags = {item["should_trigger"] for item in data}
+                self.assertEqual(flags, {True, False}, f"{d.name}: needs queries that fire it and queries that do not")
+
     def test_matt_pocock_is_credited_in_each_of_his_skills(self):
         for d in self.dirs:
             text = (d / "SKILL.md").read_text(encoding="utf-8")

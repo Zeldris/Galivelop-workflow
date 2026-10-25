@@ -20,7 +20,7 @@ documentos. Si mueves una pieza, actualiza su fila en el mismo commit.
 | Mapa para agentes: rutas que cita | [`mapa-agente.md`](mapa-agente.md) (este archivo); config `agentMap` (`path`, `prefixes`, `roots`) en [`schema/gw.schema.json`](../schema/gw.schema.json) y [`es/config.md`](es/config.md) | `scripts/mapa-agente.py` (en el `check` de las plantillas y de este repo; tests en `tests/test_mapa.py`) |
 | Aplicar y actualizar el flujo | [`es/aplicar.md`](es/aplicar.md), [`en/apply.md`](en/apply.md) | `scripts/aplicar.py` (`--init`, `--update`, `--check`) |
 | Plantillas para proyectos | `templates/es`, `templates/en`, `templates/gw.json` | `tests/test_plantillas.py` |
-| Skills | `skills/<nombre>/SKILL.md` (formato Agent Skills) | `tests/test_skills.py`; copia en `.claude/skills/` |
+| Skills | `skills/<nombre>/SKILL.md` (formato Agent Skills); consultas de disparo en `skills/<nombre>/evals/triggers.json` (a mano) | `tests/test_skills.py`; copia en `.claude/skills/` |
 | Contenido para redes (`gw-media-content`, `gw-media-content-now`) | `skills/gw-media-content/SKILL.md`, `skills/gw-media-content-now/SKILL.md`; límites por red en `reglas.json` (`P` verificado, `S` por fuente, `NV` sin verificar), tipos de post en `catalogo.md`; investigación en `docs/investigacion/redes-sociales.md`; nota del proyecto (`gw-media-content.md`, junto a las demás notas de `.claude/gw/` del proyecto que lo use) | `skills/gw-media-content/scripts/` (`cifras.py`, `comprobar.py`, `render.mjs` y sus `test_*.py`; el render real necesita Playwright e ImageMagick y no lo cubre el CI) |
 | Recogida de mejoras (una por versión) | `skills/gw-harvest/SKILL.md`, `AGENTS.md` | `scripts/recoger.py`, `docs/propuestas/`; `scripts/version.py --release` la exige |
 | Tests | `tests/test_*.py`, `skills/*/scripts/test_*.py` | `tests/comprobar.sh` |
@@ -28,3 +28,6 @@ documentos. Si mueves una pieza, actualiza su fila en el mismo commit.
 
 La copia del flujo aplicada a este repo (`.claude/gw/`, `.claude/skills/`, `.githooks/`, `.claude/settings.json`) se
 genera con `python3 scripts/aplicar.py .`; no se edita a mano (el check lo comprueba con `--check`).
+
+**Qué no leer** salvo que el encargo lo pida: `docs/investigacion/` y `docs/propuestas/` (notas y recogidas, no
+contratos), `docs/registros/` (historial) y `CHANGELOG*` (lo lleva la sesión principal).
