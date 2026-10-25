@@ -321,6 +321,22 @@ class Doctor(unittest.TestCase):
         self.assertEqual((self.p.work / "AGENTS.md").read_text(encoding="utf-8"),
                          "# Rules\n\nDeal work (orchestrate-dealer).\nhidden\n")
 
+    def test_zero_width_joiner_in_an_emoji_passes_and_a_lone_one_fails_with_a_fix_that_keeps_the_emoji(self):
+        emoji = "\U0001F469\u200d\U0001F4BB"
+        self.p.write("AGENTS.md", f"# Rules {emoji}\n\nDeal work to subagents (skill orchestrate-dealer).\n")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "OK", "instructions")
+        self.p.write("AGENTS.md", f"# Rules {emoji}\n\nDeal work (orchestrate-dealer).\nhid\u200dden {emoji}\u200d\n")
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        line = self.assertLine(out, "FAIL", "invisible", "AGENTS.md", "line 4 col 4 U+200D", "line 4 col 12 U+200D")
+        code, out = self.p.run("bash", "-c", line.split("remove them: ", 1)[1], cwd=self.p.work)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.p.work / "AGENTS.md").read_text(encoding="utf-8"),
+                         f"# Rules {emoji}\n\nDeal work (orchestrate-dealer).\nhidden {emoji}\n")
+        self.assertLine(self.doctor()[1], "OK", "instructions")
+
     def test_long_instruction_files_warn_then_fail(self):
         base = "# Rules\n\nDeal work to subagents (skill orchestrate-dealer).\n"
         self.p.write("AGENTS.md", base + "line\n" * 148)  # 151 lines

@@ -113,6 +113,17 @@ class Skills(unittest.TestCase):
         self.assertEqual(doctor.invisible_chars("x\n\ufeffy"), [(2, 1, "U+FEFF")])
         self.assertEqual(doctor.invisible_chars("\u202a"), [(1, 1, "U+202A")])
 
+    def test_zero_width_joiner_is_fine_only_inside_an_emoji_sequence(self):
+        woman_technologist = "\U0001F469\u200d\U0001F4BB"
+        self.assertEqual(doctor.invisible_chars(f"ok {woman_technologist} and \U0001F468\u200d\U0001F469\u200d\U0001F467\n"), [])
+        for text, found in (("a\u200db", [(1, 2, "U+200D")]), ("\u200d" + woman_technologist, [(1, 1, "U+200D")]),
+                            (woman_technologist + "\u200d", [(1, 4, "U+200D")]),
+                            ("\U0001F469\u200d\u200d\U0001F4BB", [(1, 2, "U+200D"), (1, 3, "U+200D")]),
+                            ("x\n\u200d\U0001F469", [(2, 1, "U+200D")]), ("\U0001F469\u200d\nx", [(1, 2, "U+200D")]),
+                            ("\U0001F469\u200b\u200d\U0001F4BB", [(1, 2, "U+200B"), (1, 3, "U+200D")])):
+            with self.subTest(text=text):
+                self.assertEqual(doctor.invisible_chars(text), found)
+
     def test_matt_pocock_is_credited_in_each_of_his_skills(self):
         for d in self.dirs:
             text = (d / "SKILL.md").read_text(encoding="utf-8")

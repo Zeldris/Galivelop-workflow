@@ -71,16 +71,17 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 - [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) revisado (2026-10-25): 4 propuestas sin
   decidir en `docs/propuestas/2026-10-25-codegraph.md` (P1 gancho que inyecta la fila del mapa, P2 comprobador
   genérico del mapa, P3 anti-patrones en `writing-for-agents`, P4 probar la herramienta en WMF, se recomienda aplazar).
-- Diez repos de una lista de X revisados (2026-10-25): 10 propuestas sin decidir en
-  `docs/propuestas/2026-10-25-repos-x.md` (P1 gancho `Stop`, P2 guarda de config, P3 tope de subagentes, P4 test de
-  regex, P5 `recuperar.py`, P6 dealer, P7 check de skills, P8 disparo de skills, P9 `REVIEW.md`, P10 apuntes 9-10).
+- Diez repos de una lista de X revisados (2026-10-25): 10 propuestas en `docs/propuestas/2026-10-25-repos-x.md`. P4
+  (regex) y P7 (skills e instrucciones) aplicadas (eea8892) y el arreglo posterior (gancho de `main` con tabuladores y
+  saltos escapados; ZWJ en emojis); el resto en curso, la siguiente es P5 (`recuperar.py`): P1 gancho `Stop`, P2 guarda
+  de config, P3 tope de subagentes, P5 `recuperar.py`, P6 dealer, P8 disparo de skills, P9 `REVIEW.md`, P10 apuntes 9-10.
 
 - Propuestas aprobadas para `v0.2.0`, en orden: `docs/propuestas/2026-10-22-reparto.md` (la de 2026-10-21, toda hecha).
 
 - Menores de la revisión de la tanda A (no se revisan otra vez en este PR): `non_capturing` toca paréntesis en
   comentarios `(?x)`/`(?#…)`; `--ran-one` cuenta dos veces si el ejecutor repite el nombre del test en el resumen;
   `header_version` solo mira las 5 primeras líneas.
-- Menores de la revisión de la tanda B: sin python3, `revision-antes-de-main.sh` deja pasar `gh pr<TAB>create` y
+- Menores de la revisión de la tanda B: sin python3, `revision-antes-de-main.sh` deja pasar
   `gh api …/pulls -f title=` (crear el PR por la API; el hueco ya existía) y bloquea `gh pr view 3 && echo create`
   (exceso de celo).
 - Menores de la revisión del vigilante (89fdf09): el KILL de los 5 s podría dar con un pgid reutilizado (se acepta:

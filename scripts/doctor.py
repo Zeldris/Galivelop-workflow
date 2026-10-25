@@ -40,7 +40,15 @@ INTERPRETERS = {"bash", "sh", "zsh", "python", "python3", "node", "env", "exec"}
 SOURCES = re.compile(r"galivelop|workflow|mattpocock", re.I)
 PROPOSAL = ".gw-nuevo"  # aplicar.py's proposals for files with local edits
 FLOW_HOOK_SCRIPTS = ("session-start.sh", "recuperar.py", "revision-antes-de-main.sh")  # the settings template's
-INVISIBLE = re.compile("[\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff]")  # zero-width, bidi and BOM characters
+# Zero-width, bidi and BOM characters, written as escapes so the fix command can embed them. A zero width joiner (U+200D)
+# is fine inside an emoji sequence (family, profession and flag emoji): both neighbours non-ASCII and not themselves
+# invisible; next to ASCII, a line edge or another invisible character it is flagged like the rest.
+INVISIBLE_SET = r"\u200b-\u200f\u202a-\u202e\u2066-\u2069\ufeff"  # every invisible character, U+200D included
+ALWAYS_INVISIBLE = r"\u200b\u200c\u200e\u200f\u202a-\u202e\u2066-\u2069\ufeff"  # flagged wherever they are
+INVISIBLE_PATTERN = (rf"[{ALWAYS_INVISIBLE}]"
+                     rf"|(?:(?<![^\x00-\x7f])|(?<=[{INVISIBLE_SET}]))\u200d"
+                     rf"|\u200d(?:(?![^\x00-\x7f])|(?=[{INVISIBLE_SET}]))")
+INVISIBLE = re.compile(INVISIBLE_PATTERN)
 WARN_LINES, FAIL_LINES = 150, 250  # AGENTS.md / CLAUDE.md: every session loads them whole
 SKILL_LICENSE = "LICENSE-mattpocock-skills"  # aplicar.py copies it next to the skills that cite it
 
@@ -495,8 +503,7 @@ def invisible_chars(text):
 
 def strip_invisible_command(name):
     return ("python3 -c 'import re,sys;p=sys.argv[1];t=open(p,encoding=\"utf-8\").read();"
-            "open(p,\"w\",encoding=\"utf-8\").write(re.sub(\"[\\u200b-\\u200f\\u202a-\\u202e\\u2066-\\u2069"
-            f"\\ufeff]\",\"\",t))' {name}")
+            f"open(p,\"w\",encoding=\"utf-8\").write(re.sub(\"{INVISIBLE_PATTERN}\",\"\",t))' {name}")
 
 
 def check_instructions(rep, root):
