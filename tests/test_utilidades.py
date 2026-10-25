@@ -4,6 +4,7 @@ rojo-sin-arreglo.sh, tests-relacionados.sh and enlaces-md.py.
 Same conventions as test_ganchos.py (it provides the temporary project): git runs isolated from this machine's
 configuration and every commit that matters has a fixed date, so the suite does not depend on today's date.
 """
+import datetime
 import json
 import shutil
 import subprocess
@@ -105,6 +106,195 @@ class BitacoraRows(Base):
         self.assertEqual(p.script("bitacora.py", "check")[0], 0)
         self.assertEqual(p.script("bitacora.py", "close-row", "feat-a")[0], 0)
         self.assertNotIn("Merged", (p.work / LOG).read_text())
+
+
+class BitacoraSizeAndDone(Base):
+    """`check` on the state-table cells and the Done section (any log, warnings unless --strict) and `done`."""
+    config = {"logRows": False}  # these rules do not depend on logRows
+
+    def log(self, text, name="x.md", newline=None):
+        path = self.tmp / name
+        data = text.replace("\n", newline) if newline else text
+        path.write_bytes(data.encode("utf-8"))
+        return path
+
+    def check(self, text, *flags, **kw):
+        return self.p.script("bitacora.py", "check", str(self.log(text, **kw)), *flags)
+
+    @staticmethod
+    def doc(cell="short", done=None):
+        done = ["1. 2026-10-25 — a", "2. 2026-10-24 — b"] if done is None else done
+        return ("# Log\n\n## Estado actual\n\n| Campo | Valor |\n|---|---|\n"
+                f"| **Siguiente paso** | {cell} |\n| Rama | `x` |\n\n## Hecho (5 últimas)\n\n" + "\n".join(done)
+                + "\n\n## Pendiente\n\n- nothing\n")
+
+    @staticmethod
+    def items(n):
+        return [f"{i}. 2026-10-{30 - i} — item {i}" for i in range(1, n + 1)]
+
+    def test_long_cell_warns_with_exit_0_and_fails_with_strict(self):
+        text = self.doc(cell="x" * 801)
+        code, out = self.check(text)
+        self.assertEqual(code, 0, out)
+        self.assertIn("WARNING: bitacora: a cell of the state table (\"Siguiente paso\") has 801 characters (limit 800)", out)
+        self.assertIn("bitacora.py done", out)  # the message ends with the command that helps
+        code, out = self.check(text, "--strict")
+        self.assertEqual(code, 1, out)
+        self.assertIn("has 801 characters (limit 800)", out)
+        self.assertNotIn("WARNING", out)
+        self.assertEqual(self.check(self.doc(cell="x" * 800), "--strict")[0], 0)
+
+    def test_cell_rules_ignore_other_tables_headers_and_escaped_pipes(self):
+        other = self.doc().replace("## Pendiente\n\n", "## Pendiente\n\n| a | " + "y" * 900 + " |\n\n")
+        self.assertEqual(self.check(other, "--strict")[0], 0)
+        escaped = self.doc(cell="a \\| " + "z" * 790)  # 795 characters: the escaped pipe does not split the cell
+        self.assertEqual(self.check(escaped, "--strict")[0], 0)
+        code, out = self.check(self.doc(cell="a | " + "z" * 801), "--strict")  # an unescaped pipe does: 2 cells, 1 too long
+        self.assertEqual(code, 1, out)
+        self.assertIn("has 801 characters", out)
+        english = self.doc(cell="w" * 801).replace("## Estado actual", "## Current state")
+        self.assertEqual(self.check(english, "--strict")[0], 1)
+
+    def test_log_without_the_sections_has_nothing_to_check(self):
+        for text in ("", "\n", "# Log\n\nplain text\n", "## Estado actual\n\nno table here\n",
+                     "| **Rama** | " + "q" * 900 + " |\n"):
+            code, out = self.check(text, "--strict")
+            self.assertEqual((code, out.strip()), (0, ""), text)
+
+    def test_table_without_value_rows_is_fine(self):
+        text = "## Estado actual\n\n| Campo | Valor |\n|---|---|\n\n## Hecho (5 últimas)\n\n"
+        self.assertEqual(self.check(text, "--strict")[0], 0)
+
+    def test_six_items_warn_and_fail_with_strict(self):
+        text = self.doc(done=self.items(6))
+        code, out = self.check(text)
+        self.assertEqual(code, 0, out)
+        self.assertIn("WARNING: bitacora: the Done section has 6 items (limit 5)", out)
+        code, out = self.check(text, "--strict")
+        self.assertEqual(code, 1, out)
+        self.assertIn("has 6 items (limit 5)", out)
+        self.assertEqual(self.check(self.doc(done=self.items(5)), "--strict")[0], 0)
+
+    def test_bad_numbering_is_reported(self):
+        for done, shown in ((["1. a", "3. b"], "1, 3"), (["2. a", "3. b"], "2, 3"), (["1. a", "1. b"], "1, 1")):
+            code, out = self.check(self.doc(done=done), "--strict")
+            self.assertEqual(code, 1, done)
+            self.assertIn(f"the Done items are numbered {shown}; number them 1..n in order", out)
+
+    def test_glued_item_is_reported(self):
+        done = ["1. 2026-10-25 — first (`abc`).2. 2026-10-24 — second glued", "3. 2026-10-23 — third"]
+        code, out = self.check(self.doc(done=done), "--strict")
+        self.assertEqual(code, 1, out)
+        self.assertIn("an item is glued to the end of another one", out)
+        self.assertIn("put each item on its own line", out)
+        self.assertIn("numbered 1, 3", out)  # the glued one is not counted as an item of its own
+
+    def test_continuation_lines_and_numbers_inside_text_are_not_items(self):
+        done = ["1. 2026-10-25 — a long one,", "   2. indented sub point, dated 2026-10-24", "2. 2026-10-24 — b"]
+        self.assertEqual(self.check(self.doc(done=done), "--strict")[0], 0)
+
+    def test_crlf_log_is_checked(self):
+        text = self.doc(cell="x" * 801, done=self.items(6))
+        code, out = self.check(text, "--strict", newline="\r\n")
+        self.assertEqual(code, 1, out)
+        self.assertIn("has 801 characters", out)
+        self.assertIn("has 6 items", out)
+        self.assertEqual(self.check(self.doc(), "--strict", newline="\r\n")[0], 0)
+
+    def test_logrows_keeps_its_rules_and_the_new_ones_stack(self):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        self.p = Utilidades(self.tmp, {"logRows": True})
+        text = log_text(a="x" * 601).replace("1. nothing yet", "\n".join(self.items(6)))
+        code, out = self.check(text)
+        self.assertEqual(code, 1, out)  # the row rule still fails on its own
+        self.assertIn("601 characters (limit 600)", out)
+        self.assertIn("WARNING: bitacora: the Done section has 6 items", out)
+
+    def test_repo_templates_follow_the_rules(self):
+        for template in ("es", "en"):
+            code, out = self.p.script("bitacora.py", "check", str(ROOT / "templates" / template / "log.md"), "--strict")
+            self.assertEqual(code, 0, out)
+
+    # done
+
+    def run_done(self, text, entry="new one", **kw):
+        path = self.log(text, **kw)
+        code, out = self.p.script("bitacora.py", "done", entry, str(path), "--date", "2026-10-26")
+        return code, out, path.read_bytes().decode("utf-8")
+
+    def test_done_inserts_on_top_and_renumbers_leaving_the_rest_identical(self):
+        text = self.doc()
+        code, out, new = self.run_done(text)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(new, text.replace("1. 2026-10-25 — a\n2. 2026-10-24 — b",
+                                           "1. 2026-10-26 — new one\n2. 2026-10-25 — a\n3. 2026-10-24 — b"))
+        self.assertEqual(self.check(new, "--strict")[0], 0)
+
+    def test_done_rotates_after_five_and_keeps_multiline_items_whole(self):
+        done = ["1. 2026-10-25 — a", "2. 2026-10-24 — b", "   continued b", "3. 2026-10-23 — c",
+                "4. 2026-10-22 — d", "   continued d", "   and more d", "5. 2026-10-21 — e", "   continued e (dropped)"]
+        code, out, new = self.run_done(self.doc(done=done), "multi   word\nentry")
+        self.assertEqual(code, 0, out)
+        self.assertIn("1 oldest dropped", out)
+        expected = ["1. 2026-10-26 — multi word entry", "2. 2026-10-25 — a", "3. 2026-10-24 — b", "   continued b",
+                    "4. 2026-10-23 — c", "5. 2026-10-22 — d", "   continued d", "   and more d"]
+        self.assertEqual(new, self.doc(done=expected))
+        self.assertEqual(self.check(new, "--strict")[0], 0)
+
+    def test_done_with_many_items_drops_all_the_extra_ones(self):
+        code, out, new = self.run_done(self.doc(done=self.items(8)))
+        self.assertEqual(code, 0, out)
+        self.assertIn("4 oldest dropped", out)
+        self.assertEqual(new, self.doc(done=["1. 2026-10-26 — new one"] + [
+            f"{i + 1}. 2026-10-{30 - i} — item {i}" for i in range(1, 5)]))
+
+    def test_done_fails_closed_without_the_section_and_changes_nothing(self):
+        text = "# Log\n\n## Estado actual\n\ntext\n\n## Pendiente\n\n1. not a done item\n"
+        code, out, new = self.run_done(text)
+        self.assertEqual(code, 1, out)
+        self.assertIn("has no \"## Hecho\" / \"## Done\" section", out)
+        self.assertIn("rerun: python3", out)
+        self.assertEqual(new, text)
+        code, out, new = self.run_done("")
+        self.assertEqual((code, new), (1, ""))
+
+    def test_done_in_an_empty_section_and_at_the_end_of_the_file(self):
+        code, out, new = self.run_done("## Done (last 5)\n\n## Pending\n")
+        self.assertEqual((code, new), (0, "## Done (last 5)\n\n1. 2026-10-26 — new one\n\n## Pending\n"), out)
+        code, out, new = self.run_done("# L\n\n## Done (last 5)\n")
+        self.assertEqual((code, new), (0, "# L\n\n## Done (last 5)\n\n1. 2026-10-26 — new one\n"), out)
+        code, out, new = self.run_done("# L\n\n## Done (last 5)")
+        self.assertEqual((code, new), (0, "# L\n\n## Done (last 5)\n\n1. 2026-10-26 — new one\n"), out)
+        code, out, new = self.run_done("# L\n\n## Done (last 5)\n\n1. 2026-10-25 — a")  # no newline after the last item
+        self.assertEqual((code, new), (0, "# L\n\n## Done (last 5)\n\n1. 2026-10-26 — new one\n2. 2026-10-25 — a"), out)
+
+    def test_done_keeps_crlf_and_blank_lines_between_items(self):
+        text = self.doc(done=["1. 2026-10-25 — a", "", "2. 2026-10-24 — b"])
+        code, out, new = self.run_done(text, newline="\r\n")
+        self.assertEqual(code, 0, out)
+        want = self.doc(done=["1. 2026-10-26 — new one", "", "2. 2026-10-25 — a", "", "3. 2026-10-24 — b"])
+        self.assertEqual(new, want.replace("\n", "\r\n"))
+
+    def test_done_defaults_to_today_and_to_the_logs_file(self):
+        before = (self.p.work / LOG).read_text()
+        code, out = self.p.script("bitacora.py", "done", "from the default file")
+        self.assertEqual(code, 0, out)
+        today = datetime.date.today().isoformat()
+        self.assertEqual((self.p.work / LOG).read_text(),
+                         before.replace("1. nothing yet", f"1. {today} — from the default file\n2. nothing yet"))
+
+    def test_done_bad_usage_is_exit_2(self):
+        path = self.log(self.doc())
+        missing = str(self.tmp / "missing.md")
+        for args, message in ((("done", "text", str(path), "--date", "tomorrow"), "--date must be YYYY-MM-DD"),
+                              (("done", "   ", str(path)), "TEXT is empty"),
+                              (("done", "text", missing), "cannot read")):
+            code, out = self.p.script("bitacora.py", *args)
+            self.assertEqual(code, 2, args)
+            self.assertIn(message, out)
+        self.assertEqual(self.p.script("bitacora.py", "done")[0], 2)
+        self.assertEqual(path.read_bytes().decode("utf-8"), self.doc())
 
 
 class BitacoraOwnRow(Base):

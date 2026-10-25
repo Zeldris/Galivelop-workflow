@@ -27,6 +27,9 @@ python3 scripts/enlaces-md.py || fail=1
 echo "== agent map paths"
 python3 scripts/mapa-agente.py || fail=1
 
+echo "== hand-off log (state-table cells, Done section)"
+python3 scripts/bitacora.py check --strict || fail=1
+
 echo "== python"
 if [[ -n "$(git ls-files -- '*.py' "${copies[@]}")" ]]; then
   git ls-files -z -- '*.py' "${copies[@]}" | xargs -0 python3 -m py_compile || fail=1

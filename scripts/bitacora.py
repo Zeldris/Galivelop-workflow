@@ -1,14 +1,26 @@
 #!/usr/bin/env python3
 # galivelop-workflow v0.4.0
-"""Hand-off log rules, for projects with `"logRows": true` in .claude/gw.json (a no-op otherwise).
+"""Hand-off log rules. The branch-row rules need `"logRows": true` in .claude/gw.json (a no-op otherwise); the
+size and "Done" rules of `check`, and the `done` subcommand, work on any log.
 
 The log (config `log`) has a state table with one row per branch, labelled "<anything> · `<branch>`" (for example
 "| **Task in progress · `claude/topic`** | text |"). Two accounts writing in the same cell ended in two tasks and two
 contradicting "Next" lines, so each branch writes only in its own row and the row stays short.
 
-  bitacora.py check [FILE] [--date YYYY-MM-DD]   rows well formed, one per branch, <= 600 characters; with --date,
-                                                 the "Updated" row is not older than that day; a "Task in progress"
-                                                 row with no `branch` fails even if the other rows are fine
+  bitacora.py check [FILE] [--date YYYY-MM-DD] [--strict]
+                                                 with logRows: rows well formed, one per branch, <= 600 characters;
+                                                 with --date, the "Updated" row is not older than that day; a "Task
+                                                 in progress" row with no `branch` fails even if the other rows are
+                                                 fine. On any log: every value cell of the state table (first
+                                                 "Estado actual" / "Current state" section) <= 800 characters, and
+                                                 the "Hecho (5 últimas)" / "Done (last 5)" section has <= 5 items,
+                                                 numbered 1..n, each on its own line ("N. "). These last rules only
+                                                 print `WARNING: ...` and exit 0; with --strict they fail (exit 1)
+  bitacora.py done TEXT [FILE] [--date YYYY-MM-DD]
+                                                 insert "1. <date> — TEXT" at the top of the Done section (date
+                                                 default: today), renumber, drop items beyond 5 (a multi-line item
+                                                 moves whole), leave the rest of the file byte for byte; exit 1 if
+                                                 the section is missing
   bitacora.py own-row COMMIT BRANCH [--shared]   fail if COMMIT changes another branch's row or a shared row of the
                                                  state table ("Updated" and "Tests" are free); --shared, or
                                                  BITACORA_COMPARTIDA=1 / GW_SHARED_LOG=1, allows it
@@ -28,6 +40,7 @@ Exit 0 ok, 1 rule broken (each message ends with the command that fixes it), 2 b
 Python 3.8+, stdlib only.
 """
 import argparse
+import datetime
 import os
 import re
 import subprocess
@@ -40,13 +53,18 @@ sys.path.insert(0, str(HERE))
 import config as gwconfig  # noqa: E402
 
 LIMIT = 600
+CELL_LIMIT = 800  # a value cell of the state table (any log, not only logRows)
+DONE_ITEMS = 5  # items kept in the Done section
 FREE_ROWS = {"Actualizado", "Tests", "Updated"}  # shared rows every commit may touch
 DEFAULT_ID = r"[A-Z]{2,5}-\d+[a-z]?"
 ROW = re.compile(r"^\|\s*\*\*(?P<label>.+?) · `(?P<branch>[^`]+)`\*\*\s*\|(?P<text>.*)\|\s*$")
 STATE_HEADING = re.compile(r"^##\s+(Estado actual|Current state|Status)\b.*$", re.M | re.I)
 DONE_HEADING = re.compile(r"^##\s+(Hecho|Done)\b.*$", re.M | re.I)
 TASK_ROW = re.compile(r"^\|\s*\*\*(Tarea en curso|Task in progress)\b.*?\*\*\s*\|", re.I)
-LIST_ITEM = re.compile(r"^\s*(?:[-*]|\d+\.)\s")
+ITEM_START = re.compile(r"^(\d+)\.(?:\s|$)")
+GLUED_ITEM = re.compile(r"(?<=[^\s\d])\d{1,2}\. \d{4}-\d{2}-\d{2}")  # "…).3. 2026-10-25 — …"
+CELL_SPLIT = re.compile(r"(?<!\\)\|")
+LIST_ITEM =re.compile(r"^\s*(?:[-*]|\d+\.)\s")
 DATE_LINE = re.compile(r"^\s*(?:[-*]|\d+\.)?\s*(?:\*\*|`|\[)?\s*\d{4}-\d{2}-\d{2}\b")
 RANGE = r"\s*(?:…|\.\.\.|–|—|\ba\b|\bto\b)\s*"
 CLOSED_TEXT = {"es": "Al fusionarse, rama terminada: no queda nada pendiente en ella.",
@@ -159,12 +177,66 @@ def log_at(ctx, rev):
     return ctx.show(rev, ctx.log)
 
 
+def section_lines(text, heading):
+    """Lines under the first `heading` match, up to the next `## ` heading (None if the heading is missing)."""
+    m = heading.search(text)
+    return text[m.end():].split("\n## ", 1)[0].split("\n")[1:] if m else None
+
+
+def long_cells(text):
+    """(label, size) of each value cell of the state table with more than CELL_LIMIT characters."""
+    found = []
+    for line in section_lines(text, STATE_HEADING) or []:
+        if not line.lstrip().startswith("|"):
+            continue
+        cells = [c.strip() for c in CELL_SPLIT.split(line.strip())[1:-1]]
+        if len(cells) < 2 or all(re.fullmatch(r":?-+:?", c) for c in cells):
+            continue
+        label = cells[0].replace("*", "").replace("`", "").strip()
+        found += [(label, len(c)) for c in cells[1:] if len(c) > CELL_LIMIT]
+    return found
+
+
+def done_problems(text):
+    """Messages about the Done section: items not on their own line, numbering not 1..n, more than DONE_ITEMS."""
+    lines = section_lines(text, DONE_HEADING)
+    if lines is None:
+        return []
+    out, numbers = [], []
+    for line in lines:
+        m = ITEM_START.match(line)
+        if m:
+            numbers.append(int(m.group(1)))
+        glued = GLUED_ITEM.search(line)
+        if glued:
+            out.append(f"an item is glued to the end of another one (\"…{line[max(glued.start() - 15, 0):glued.end() + 10]}…\"); "
+                       "put each item on its own line, as \"N. \"")
+    if numbers and numbers != list(range(1, len(numbers) + 1)):
+        out.append("the Done items are numbered " + ", ".join(map(str, numbers)) + "; number them 1..n in order")
+    if len(numbers) > DONE_ITEMS:
+        out.append(f"the Done section has {len(numbers)} items (limit {DONE_ITEMS}); delete the oldest ones, the history is in git")
+    return out
+
+
 def cmd_check(ctx, args):
     path = Path(args.file) if args.file else ctx.root / ctx.log
     try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError as exc:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
         raise Usage(f"cannot read {path} ({exc}); create the log or fix `log` in .claude/gw.json")
+    soft = [f"a cell of the state table (\"{label}\") has {size} characters (limit {CELL_LIMIT}); shorten it and move what "
+            f"is done to the Done section: python3 {HERE / 'bitacora.py'} done \"<text>\"" for label, size in long_cells(text)]
+    soft += done_problems(text)
+    problems = rows_problems(ctx, args, text.splitlines()) if ctx.config.get("logRows") else []
+    if args.strict:
+        problems += soft
+    else:
+        for w in soft:
+            print(f"WARNING: bitacora: {w}")
+    return report(problems, f"edit {ctx.log} and commit again: git commit --amend")
+
+
+def rows_problems(ctx, args, lines):
     problems = []
     if args.date:
         found = next((m.group(1) for m in (re.match(r"\|\s*\*\*(?:Actualizado|Updated)\*\*\s*\|\s*[`*]*(\d{4}-\d{2}-\d{2})", l)
@@ -193,7 +265,7 @@ def cmd_check(ctx, args):
                             "move what is done to the Done section and shorten the row")
     for b in sorted({b for b in branches if branches.count(b) > 1}):
         problems.append(f"two rows for {b}; keep one per branch")
-    return report(problems, f"edit {ctx.log} and commit again: git commit --amend")
+    return problems
 
 
 def report(problems, fix):
@@ -271,6 +343,67 @@ def cmd_in_progress(ctx, args):
     return 0
 
 
+def split_blank(block):
+    """(content, trailing blank lines) of a list of lines."""
+    n = len(block)
+    while n and not block[n - 1].strip():
+        n -= 1
+    return block[:n], block[n:]
+
+
+def cmd_done(ctx, args):
+    path = Path(args.file) if args.file else ctx.root / ctx.log
+    text = " ".join(args.text.split())
+    if not text:
+        raise Usage("TEXT is empty; give the entry: bitacora.py done \"what was closed\"")
+    try:
+        raw = path.read_bytes().decode("utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise Usage(f"cannot read {path} ({exc}); create the log or fix `log` in .claude/gw.json")
+    lines = re.findall(r"[^\n]*\n|[^\n]+", raw)  # keeps each line ending: the rest of the file stays byte for byte
+    head = next((i for i, l in enumerate(lines) if DONE_HEADING.match(l.rstrip("\r\n"))), None)
+    if head is None:
+        print(f"bitacora: {path} has no \"## Hecho\" / \"## Done\" section; add the line \"## Done (last {DONE_ITEMS})\" "
+              f"to it and rerun: python3 {HERE / 'bitacora.py'} done \"{text}\" {path}")
+        return 1
+    eol = "\r\n" if lines[head].endswith("\r\n") else "\n"
+    if not lines[head].endswith("\n"):
+        lines[head] += eol
+    end = next((i for i in range(head + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
+    pre, items = [], []  # lines before the first item; each item = its first line + continuation lines
+    for line in lines[head + 1:end]:
+        if ITEM_START.match(line.rstrip("\r\n")):
+            items.append([line])
+        elif items:
+            items[-1].append(line)
+        else:
+            pre.append(line)
+    entry = f"1. {args.date} — {text}{eol}"
+    if items:
+        parts = [split_blank(i) for i in items]
+        gap = parts[0][1] if len(parts) > 1 else []  # blank lines the log keeps between items
+        tail = parts[-1][1]  # and the ones that close the section
+        kept = [[entry]] + [p[0] for p in parts[:DONE_ITEMS - 1]]
+        body = list(pre)
+        for n, block in enumerate(kept):
+            if n:
+                body += gap
+            body += [re.sub(r"^\d+\.", f"{n + 1}.", block[0], count=1)] + block[1:]
+        body += tail
+        dropped = max(len(items) + 1 - DONE_ITEMS, 0)
+    else:
+        content, tail = split_blank(pre)
+        if content and not content[-1].endswith("\n"):
+            content[-1] += eol
+        body = content + [eol, entry] + (tail or ([eol] if end < len(lines) else []))
+        dropped = 0
+    lines[head + 1:end] = body
+    path.write_bytes("".join(lines).encode("utf-8"))
+    print(f"bitacora: entry added to the Done section of {path}" + (f" ({dropped} oldest dropped)" if dropped else "")
+          + "; commit it with the rest of the work")
+    return 0
+
+
 def cmd_close_row(ctx, args):
     path = ctx.root / ctx.log
     try:
@@ -301,7 +434,12 @@ def main(argv=None):
     c = sub.add_parser("check")
     c.add_argument("file", nargs="?")
     c.add_argument("--date")
-    o = sub.add_parser("own-row")
+    c.add_argument("--strict", action="store_true")
+    d = sub.add_parser("done")
+    d.add_argument("text")
+    d.add_argument("file", nargs="?")
+    d.add_argument("--date")
+    o =sub.add_parser("own-row")
     o.add_argument("commit")
     o.add_argument("branch")
     o.add_argument("--shared", action="store_true")
@@ -318,9 +456,11 @@ def main(argv=None):
         return 2
     try:
         ctx = Ctx(args)
-        if not ctx.config.get("logRows"):
-            return 0  # the module is off: nothing to check
-        return {"check": cmd_check, "own-row": cmd_own_row, "closed": cmd_closed,
+        if args.cmd == "done":
+            args.date = args.date or datetime.date.today().isoformat()
+        elif not ctx.config.get("logRows") and args.cmd != "check":
+            return 0  # the branch-row module is off: nothing to check (`check` still reads the size and Done rules)
+        return {"check": cmd_check, "done": cmd_done, "own-row": cmd_own_row, "closed": cmd_closed,
                 "in-progress": cmd_in_progress, "close-row": cmd_close_row}[args.cmd](ctx, args)
     except Usage as exc:
         print(f"bitacora: {exc}", file=sys.stderr)

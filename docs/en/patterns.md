@@ -56,6 +56,10 @@ same time.
   where things stood. After a `/clear` or compaction, `recuperar.py --estado` reminds it.
 - When the branch closes, `bitacora.py close-row <branch>` leaves its row as "merged, branch finished" so the
   protected branch does not inherit a stale "Next".
+- **A short log, with or without `logRows`:** `bitacora.py check --strict` fails if a cell of the state table passes
+  800 characters or if "Done (last 5)" has more than 5 items, badly numbered or glued on one line (without
+  `--strict` it only prints `WARNING:`). `bitacora.py done "text"` adds the `1.` item with the date, renumbers and
+  drops the extra ones, leaving the rest of the file alone.
 
 ## A local session that cannot create PRs
 
