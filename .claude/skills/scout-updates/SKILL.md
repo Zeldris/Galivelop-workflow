@@ -1,6 +1,6 @@
 ---
 name: scout-updates
-description: Optional scout of updates, improvements and migration candidates for a project's dependencies, runtimes, container images, CI actions, tools and AI models. It inventories the architecture, searches primary sources, filters by the project's constraints and only proposes. Use only when the user asks for it (it spends many tokens), for example before an upgrade round or when a runtime or model nears end of life.
+description: Optional scout of updates, improvements and migration candidates for a project's dependencies, runtimes, container images, CI actions, tools and AI models. It inventories the architecture, searches primary sources, filters by the project's constraints and only proposes. Use when the user asks for it, and only then (it spends many tokens), for example before an upgrade round or when a runtime or model nears end of life.
 disable-model-invocation: true
 license: MIT
 compatibility: Claude Code or any Agent Skills agent; git; python3 for scripts/ (standard library only); web search for step 3

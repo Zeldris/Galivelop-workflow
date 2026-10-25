@@ -298,6 +298,42 @@ class Doctor(unittest.TestCase):
         self.p.write("GLOSSARY.md", "# Glossary\n\n- **Mark**: one.\n- **Other**: two.\n")
         self.assertLine(self.doctor()[1], "OK", "glossary")
 
+    def test_invisible_characters_in_instructions_fail_with_the_fix(self):
+        self.p.write("AGENTS.md", "# Rules\n\nDeal work to subagents (skill orchestrate-dealer).\nhid\u200bden\n")
+        self.p.write(".claude/skills/selector/SKILL.md",
+                     SKILL.format(version=VERSION).replace("Pick", "Pi\u202eck"))
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", "invisible", "AGENTS.md", "line 4 col 4 U+200B", "remove them: python3 -c")
+        self.assertLine(out, "FAIL", "invisible", ".claude/skills/selector/SKILL.md", "U+202E")
+        self.p.write("AGENTS.md", "\ufeff# Rules\n\nDeal work to subagents (skill orchestrate-dealer).\n")
+        self.p.write(".claude/skills/selector/SKILL.md", SKILL.format(version=VERSION))
+        code, out = self.doctor()  # a BOM as the first character is allowed
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "OK", "instructions")
+
+    def test_the_fix_command_for_invisible_characters_works(self):
+        self.p.write("AGENTS.md", "# Rules\n\nDeal work (orchestrate-dealer).\nhid\u200bden\u2066\n")
+        line = self.assertLine(self.doctor()[1], "FAIL", "invisible", "AGENTS.md")
+        command = line.split("remove them: ", 1)[1]
+        code, out = self.p.run("bash", "-c", command, cwd=self.p.work)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.p.work / "AGENTS.md").read_text(encoding="utf-8"),
+                         "# Rules\n\nDeal work (orchestrate-dealer).\nhidden\n")
+
+    def test_long_instruction_files_warn_then_fail(self):
+        base = "# Rules\n\nDeal work to subagents (skill orchestrate-dealer).\n"
+        self.p.write("AGENTS.md", base + "line\n" * 148)  # 151 lines
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "size", "AGENTS.md has 151 lines", "warn above 150", "move detail out")
+        self.p.write("AGENTS.md", base + "line\n" * 147)  # 150 lines: still fine
+        self.assertNotIn("size:", self.doctor()[1])
+        self.p.write("CLAUDE.md", base + "line\n" * 248)  # 251 lines
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", "size", "CLAUDE.md has 251 lines", "fail above 250")
+
     def test_invalid_config_fails_with_validate_command(self):
         (self.p.work / ".claude" / "gw.json").write_text("{}")
         code, out = self.doctor()

@@ -1,6 +1,6 @@
 ---
 name: gw-init
-description: Apply Galivelop-workflow to the current project by following the workflow repo's apply guide (new or existing project). Run by hand with /gw-init when starting the workflow in a repo.
+description: Apply Galivelop-workflow to the current project by following the workflow repo's apply guide (new or existing project). Use when starting the workflow in a repo (run by hand with /gw-init).
 disable-model-invocation: true
 license: MIT
 compatibility: Claude Code or any Agent Skills agent; git, bash and python3 3.8+; the Galivelop-workflow repo cloned or added to the session

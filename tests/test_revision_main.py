@@ -10,6 +10,7 @@ import json
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -323,6 +324,26 @@ class Hook(unittest.TestCase):
                            "PR #7 of o4/r4")
         self.assertAllowed(self.bash("gh api repos/o/r/pulls/7/merge"))  # GET: is it merged?
         self.assertAllowed(self.bash("gh api repos/o/r/pulls/7"))
+
+    def test_long_unparseable_commands_are_judged_in_under_a_second(self):
+        # P4 of docs/propuestas/2026-10-25-repos-x.md: the old SUSPECT regex chained three `[\\s\\S]*` and backtracked
+        # for minutes on ~50 KB of `gh pr gh pr ...`. A hook that slow would stall every Bash call of every session.
+        cases = {
+            "gh pr tokens": ('echo "unterminated ' + "gh pr " * 8000, " merge"),
+            "pulls/ words": ('echo "unterminated gh ' + "pulls/x " * 6000, " pulls/merge"),
+            "pulls/ in one token": ('echo "unterminated gh ' + "pulls/" * 8000, "merge"),
+        }
+        for name, (head, tail) in cases.items():
+            with self.subTest(name=name):
+                self.assertGreater(len(head), 45000)
+                start = time.monotonic()
+                allowed = self.bash(head)
+                self.assertLess(time.monotonic() - start, 1.0, f"{name}: allowed case took 1 s or more")
+                self.assertAllowed(allowed)
+                start = time.monotonic()
+                blocked = self.bash(head + tail)
+                self.assertLess(time.monotonic() - start, 1.0, f"{name}: blocked case took 1 s or more")
+                self.assertBlocked(blocked, "cannot parse")
 
     def test_unparseable_command_that_looks_like_a_merge_blocked(self):
         self.assertBlocked(self.bash('gh pr merge 7 --body "unterminated'), "cannot parse")

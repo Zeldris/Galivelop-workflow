@@ -1,6 +1,6 @@
 ---
 name: gw-doctor
-description: Check that Galivelop-workflow is set up correctly in the current project and explain every failure with its fix. Run by hand with /gw-doctor when something in the workflow misbehaves or after applying or updating it.
+description: Check that Galivelop-workflow is set up correctly in the current project and explain every failure with its fix. Use when something in the workflow misbehaves or after applying or updating it (run by hand with /gw-doctor).
 disable-model-invocation: true
 license: MIT
 compatibility: Claude Code or any Agent Skills agent; git and python3 3.8+; reads .claude/gw.json
