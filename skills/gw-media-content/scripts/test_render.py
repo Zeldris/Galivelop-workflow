@@ -402,8 +402,8 @@ class Plantilla(Base):
         self.assertEqual(len(huecos_html), 7, problemas)
         # nothing else is wrong with the raw template: the rest is the renders that do not exist yet
         otros = [p for p in problemas if "template gap" not in p and "does not exist" not in p and "not rendered" not in p]
-        # the date line is the same gap seen by the Reddit check; comprobar.py does not take the LinkedIn .png yet
-        otros = [p for p in otros if "«Normas leídas:» «AAAA-MM-DD»" not in p and not (p.startswith("linkedin.md") and "tarjeta.png" in p)]
+        # the date line is the same gap seen by the Reddit check
+        otros = [p for p in otros if "«Normas leídas:» «AAAA-MM-DD»" not in p]
         self.assertEqual(otros, [])
 
     def test_la_plantilla_rellena_pasa_comprobar(self):
@@ -416,11 +416,8 @@ class Plantilla(Base):
                 f.unlink()
         (medios / "tarjeta.webp").write_bytes(webp())
         (medios / "tarjeta-mini.webp").write_bytes(webp(10, 5))
-        (medios / "tarjeta.png").write_bytes(b"\x89PNG\r\n\x1a\n")
-        problemas = comprobar.comprobar(pieza)
-        # LinkedIn takes the .png; comprobar.py is being updated to accept it (webp and pdf only for now)
-        problemas = [p for p in problemas if not (p.startswith("linkedin.md") and "tarjeta.png" in p)]
-        self.assertEqual(problemas, [])
+        (medios / "tarjeta.png").write_bytes(png_valido(100, 50))
+        self.assertEqual(comprobar.comprobar(pieza), [])
 
     def test_el_alt_de_la_plantilla_pide_los_dos_idiomas(self):
         pieza = self.copiar()

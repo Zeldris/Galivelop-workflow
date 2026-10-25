@@ -1,5 +1,5 @@
 {
-  "_doc": "Single place for the per-network limits that gw-media-content checks (scripts/comprobar.py reads this file; no other file may repeat these numbers). Each rule has valor, marca, fuente (URL) and comprobado (date read). Marks: P = read in the primary source; S = secondary source or search excerpt only; NV = not verified (the check still applies it as a cautious cap, and the skill asks the user to confirm); C = convention of the skill, not a network limit. To refresh: re-read each fuente, update valor/marca/comprobado, keep the same keys (comprobar.py looks them up by key), run `python3 skills/gw-media-content/scripts/test_comprobar.py`, and update docs/investigacion/redes-sociales.md section 5 with the new reading. Keys read by comprobar.py: x.longitud, x.url_peso, x.simbolo_ancho_peso, x.hilo_posts, x.imagen_bytes, x.alt_max, linkedin.longitud, linkedin.imagen_pixeles, linkedin.alt_max, linkedin.documento_bytes, linkedin.documento_paginas, discord.mensaje, discord.imagen_bytes, discord.alt_max, reddit.titulo.",
+  "_doc": "Single place for the per-network limits that gw-media-content checks (scripts/comprobar.py reads this file; no other file may repeat these numbers). Each rule has valor, marca, fuente (URL) and comprobado (date read). Marks: P = read in the primary source; S = secondary source or search excerpt only; NV = not verified (the check still applies it as a cautious cap, and the skill asks the user to confirm); C = convention of the skill, not a network limit. To refresh: re-read each fuente, update valor/marca/comprobado, keep the same keys (comprobar.py looks them up by key and fails closed when one of its CLAVES is missing), run `python3 skills/gw-media-content/scripts/test_comprobar.py`, and update docs/investigacion/redes-sociales.md section 5 with the new reading. Keys read by comprobar.py: x.longitud, x.url_peso, x.simbolo_ancho_peso, x.hilo_posts, x.imagen_bytes, x.alt_max, linkedin.longitud, linkedin.imagen_pixeles, linkedin.imagen_formatos, linkedin.alt_max, linkedin.documento_bytes, linkedin.documento_paginas, discord.mensaje, discord.imagen_bytes, discord.alt_max, reddit.titulo.",
   "x": {
     "longitud": {
       "valor": 280,
@@ -83,6 +83,17 @@
       "fuente": "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api",
       "comprobado": "2026-10-25",
       "nota": "an image must have fewer pixels than this; weight and aspect ratio are not published"
+    },
+    "imagen_formatos": {
+      "valor": [
+        ".png",
+        ".jpg",
+        ".gif"
+      ],
+      "marca": "P",
+      "fuente": "https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api",
+      "comprobado": "2026-10-25",
+      "nota": "LinkedIn takes JPG, PNG and GIF, not WebP (section 5.3 of docs/investigacion/redes-sociales.md); every channel without this key takes .webp (a convention of the skill)"
     },
     "alt_max": {
       "valor": 4086,
