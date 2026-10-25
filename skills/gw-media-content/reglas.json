@@ -1,5 +1,5 @@
 {
-  "_doc": "Single place for the per-network limits that gw-media-content checks (scripts/comprobar.py reads this file; no other file may repeat these numbers). Each rule has valor, marca, fuente (URL) and comprobado (date read). Marks: P = read in the primary source; S = secondary source or search excerpt only; NV = not verified (the check still applies it as a cautious cap, and the skill asks the user to confirm); C = convention of the skill, not a network limit. To refresh: re-read each fuente, update valor/marca/comprobado, keep the same keys (comprobar.py looks them up by key and fails closed when one of its CLAVES is missing), run `python3 skills/gw-media-content/scripts/test_comprobar.py`, and update docs/investigacion/redes-sociales.md section 5 with the new reading. Keys read by comprobar.py: x.longitud, x.url_peso, x.simbolo_ancho_peso, x.hilo_posts, x.imagen_bytes, x.alt_max, linkedin.longitud, linkedin.imagen_pixeles, linkedin.imagen_formatos, linkedin.alt_max, linkedin.documento_bytes, linkedin.documento_paginas, discord.mensaje, discord.imagen_bytes, discord.alt_max, reddit.titulo.",
+  "_doc": "Single place for the per-network limits that gw-media-content checks (scripts/comprobar.py reads this file; no other file may repeat these numbers). Each rule has valor, marca, fuente (URL) and comprobado (date read). Marks: P = read in the primary source; S = secondary source or search excerpt only; NV = not verified (the check still applies it as a cautious cap, and the skill asks the user to confirm); C = convention of the skill, not a network limit. To refresh: re-read each fuente, update valor/marca/comprobado, keep the same keys (comprobar.py looks them up by key and fails closed when one of its CLAVES is missing), run `python3 skills/gw-media-content/scripts/test_comprobar.py`, and update docs/investigacion/redes-sociales.md section 5 with the new reading. Keys read by comprobar.py: x.longitud, x.url_peso, x.simbolo_ancho_peso, x.hilo_posts, x.imagen_bytes, x.alt_max, reddit.titulo, reddit.normas_dias, reddit.normas_min_caracteres, canal_extra.imagen_formatos, linkedin.longitud, linkedin.imagen_pixeles, linkedin.imagen_formatos, linkedin.alt_max, linkedin.documento_bytes, linkedin.documento_paginas, discord.mensaje, discord.imagen_bytes, discord.alt_max.",
   "x": {
     "longitud": {
       "valor": 280,
@@ -63,10 +63,37 @@
       "nota": "applied as a cautious cap on the title"
     },
     "normas": {
-      "valor": "The subreddit rules must be pasted by the user and dated in ficha.md (subreddit, date read, self-promotion rule)",
+      "valor": "The subreddit rules must be pasted by the user under «### Normas de r/<subreddit>» in ficha.md, with the date read and the self-promotion rule",
       "marca": "NV",
       "fuente": "https://www.reddit.com/r/<subreddit>/about/rules (403 to automatic readers)",
       "comprobado": "2026-10-25"
+    },
+    "normas_dias": {
+      "valor": 90,
+      "marca": "C",
+      "fuente": "skill convention",
+      "comprobado": "2026-10-25",
+      "nota": "«Normas leídas:» may be at most this many days old and not in the future; subreddits change their rules without notice"
+    },
+    "normas_min_caracteres": {
+      "valor": 200,
+      "marca": "C",
+      "fuente": "skill convention",
+      "comprobado": "2026-10-25",
+      "nota": "the pasted rules block of each subreddit has at least this many characters (whitespace collapsed); it proves the rules were pasted, not that they were read"
+    }
+  },
+  "canal_extra": {
+    "imagen_formatos": {
+      "valor": [
+        ".webp",
+        ".png",
+        ".jpg"
+      ],
+      "marca": "C",
+      "fuente": "skill convention",
+      "comprobado": "2026-10-25",
+      "nota": "image formats of a channel that is not x, reddit, linkedin or discord (render.mjs writes .webp and .png; a .jpg is accepted as is)"
     }
   },
   "linkedin": {
