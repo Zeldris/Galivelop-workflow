@@ -62,9 +62,10 @@ STATE_HEADING = re.compile(r"^##\s+(Estado actual|Current state|Status)\b.*$", r
 DONE_HEADING = re.compile(r"^##\s+(Hecho|Done)\b.*$", re.M | re.I)
 TASK_ROW = re.compile(r"^\|\s*\*\*(Tarea en curso|Task in progress)\b.*?\*\*\s*\|", re.I)
 ITEM_START = re.compile(r"^(\d+)\.(?:\s|$)")
-GLUED_ITEM = re.compile(r"(?<=[^\s\d])\d{1,2}\. \d{4}-\d{2}-\d{2}")  # "…).3. 2026-10-25 — …"
+GLUED_ITEM = re.compile(r"(?<=[^\s\d])(?<!\d\.)\d{1,2}\. \d{4}-\d{2}-\d{2}")  # "…).3. 2026-10-25 — …", not "v1.2. 2026-10-25"
+PLACEHOLDER = re.compile(r"^\d+\.\s+_\((?:fecha|date)\b")  # the template's example item
 CELL_SPLIT = re.compile(r"(?<!\\)\|")
-LIST_ITEM =re.compile(r"^\s*(?:[-*]|\d+\.)\s")
+LIST_ITEM = re.compile(r"^\s*(?:[-*]|\d+\.)\s")
 DATE_LINE = re.compile(r"^\s*(?:[-*]|\d+\.)?\s*(?:\*\*|`|\[)?\s*\d{4}-\d{2}-\d{2}\b")
 RANGE = r"\s*(?:…|\.\.\.|–|—|\ba\b|\bto\b)\s*"
 CLOSED_TEXT = {"es": "Al fusionarse, rama terminada: no queda nada pendiente en ella.",
@@ -197,8 +198,9 @@ def long_cells(text):
     return found
 
 
-def done_problems(text):
-    """Messages about the Done section: items not on their own line, numbering not 1..n, more than DONE_ITEMS."""
+def done_problems(text, add, recheck):
+    """Messages about the Done section: items not on their own line, numbering not 1..n, more than DONE_ITEMS.
+    `add` is the command that adds an entry (and renumbers), `recheck` the one that checks the log again."""
     lines = section_lines(text, DONE_HEADING)
     if lines is None:
         return []
@@ -210,23 +212,30 @@ def done_problems(text):
         glued = GLUED_ITEM.search(line)
         if glued:
             out.append(f"an item is glued to the end of another one (\"…{line[max(glued.start() - 15, 0):glued.end() + 10]}…\"); "
-                       "put each item on its own line, as \"N. \"")
+                       f"put each item on its own line, as \"N. \", then rerun: {recheck}")
     if numbers and numbers != list(range(1, len(numbers) + 1)):
-        out.append("the Done items are numbered " + ", ".join(map(str, numbers)) + "; number them 1..n in order")
+        out.append("the Done items are numbered " + ", ".join(map(str, numbers)) + "; number them 1..n in order "
+                   f"(the next entry renumbers them: {add})")
     if len(numbers) > DONE_ITEMS:
-        out.append(f"the Done section has {len(numbers)} items (limit {DONE_ITEMS}); delete the oldest ones, the history is in git")
+        out.append(f"the Done section has {len(numbers)} items (limit {DONE_ITEMS}); delete the oldest ones, the history "
+                   f"is in git (the next entry drops them: {add})")
     return out
 
 
 def cmd_check(ctx, args):
     path = Path(args.file) if args.file else ctx.root / ctx.log
+    me = f"python3 {HERE / 'bitacora.py'}"
     try:
         text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError) as exc:
-        raise Usage(f"cannot read {path} ({exc}); create the log or fix `log` in .claude/gw.json")
+        message = f"cannot read {path} ({exc}); create the log or fix `log` in .claude/gw.json, and save it as UTF-8"
+        if ctx.config.get("logRows") or args.strict:
+            raise Usage(message)
+        print(f"WARNING: bitacora: {message}")  # the module is off: an unreadable log must not block the commit
+        return 0
     soft = [f"a cell of the state table (\"{label}\") has {size} characters (limit {CELL_LIMIT}); shorten it and move what "
-            f"is done to the Done section: python3 {HERE / 'bitacora.py'} done \"<text>\"" for label, size in long_cells(text)]
-    soft += done_problems(text)
+            f"is done to the Done section: {me} done \"<text>\"" for label, size in long_cells(text)]
+    soft += done_problems(text, f"{me} done \"<text>\"", f"{me} check {path} --strict")
     problems = rows_problems(ctx, args, text.splitlines()) if ctx.config.get("logRows") else []
     if args.strict:
         problems += soft
@@ -379,10 +388,12 @@ def cmd_done(ctx, args):
         else:
             pre.append(line)
     entry = f"1. {args.date} — {text}{eol}"
-    if items:
-        parts = [split_blank(i) for i in items]
+    parts = [split_blank(i) for i in items]
+    closing = parts[-1][1] if parts else []  # blank lines that close the section
+    parts = [p for p in parts if not PLACEHOLDER.match(p[0][0])]  # the template's example item goes away
+    if parts:
         gap = parts[0][1] if len(parts) > 1 else []  # blank lines the log keeps between items
-        tail = parts[-1][1]  # and the ones that close the section
+        tail = closing
         kept = [[entry]] + [p[0] for p in parts[:DONE_ITEMS - 1]]
         body = list(pre)
         for n, block in enumerate(kept):
@@ -390,9 +401,10 @@ def cmd_done(ctx, args):
                 body += gap
             body += [re.sub(r"^\d+\.", f"{n + 1}.", block[0], count=1)] + block[1:]
         body += tail
-        dropped = max(len(items) + 1 - DONE_ITEMS, 0)
+        dropped = max(len(parts) + 1 - DONE_ITEMS, 0)
     else:
         content, tail = split_blank(pre)
+        tail = closing or tail
         if content and not content[-1].endswith("\n"):
             content[-1] += eol
         body = content + [eol, entry] + (tail or ([eol] if end < len(lines) else []))
@@ -439,7 +451,7 @@ def main(argv=None):
     d.add_argument("text")
     d.add_argument("file", nargs="?")
     d.add_argument("--date")
-    o =sub.add_parser("own-row")
+    o = sub.add_parser("own-row")
     o.add_argument("commit")
     o.add_argument("branch")
     o.add_argument("--shared", action="store_true")
@@ -451,9 +463,14 @@ def main(argv=None):
     r.add_argument("branch")
     r.add_argument("--text")
     args = p.parse_args(argv)
-    if getattr(args, "date", None) and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.date):
-        print("bitacora: --date must be YYYY-MM-DD; fix it and rerun", file=sys.stderr)
-        return 2
+    if getattr(args, "date", None):
+        try:
+            if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.date):
+                raise ValueError(args.date)
+            datetime.date.fromisoformat(args.date)
+        except ValueError:
+            print(f"bitacora: --date must be YYYY-MM-DD and a real date, not \"{args.date}\"; fix it and rerun", file=sys.stderr)
+            return 2
     try:
         ctx = Ctx(args)
         if args.cmd == "done":

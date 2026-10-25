@@ -189,6 +189,48 @@ class BitacoraSizeAndDone(Base):
         self.assertIn("put each item on its own line", out)
         self.assertIn("numbered 1, 3", out)  # the glued one is not counted as an item of its own
 
+    def test_a_version_number_before_a_date_is_not_a_glued_item(self):
+        done = ["1. 2026-10-25 — released v1.2. 2026-10-24 is the date before", "2. 2026-10-24 — b"]
+        self.assertEqual(self.check(self.doc(done=done), "--strict")[0], 0)
+        self.assertEqual(self.check(self.doc(done=["1. 2026-10-25 — a (`x`).2. 2026-10-24 — b"]), "--strict")[0], 1)
+
+    def test_done_messages_end_with_the_command_that_fixes_them(self):
+        for done in (self.items(6), ["1. a", "3. b"], ["1. 2026-10-25 — a.2. 2026-10-24 — b"]):
+            out = self.check(self.doc(done=done), "--strict")[1]
+            self.assertRegex(out, r"(bitacora\.py done \"<text>\"\)|rerun: python3 \S+bitacora\.py check \S+ --strict)", done)
+
+    def test_unreadable_log_without_logrows_warns_and_does_not_block(self):
+        path = self.tmp / "latin.md"
+        path.write_bytes("## Estado actual\n\n| a | caf\xe9 |\n".encode("latin-1"))
+        code, out = self.p.script("bitacora.py", "check", str(path))
+        self.assertEqual(code, 0, out)
+        self.assertIn("WARNING: bitacora: cannot read", out)
+        self.assertIn("save it as UTF-8", out)
+        code, out = self.p.script("bitacora.py", "check", str(path), "--strict")
+        self.assertEqual(code, 2, out)
+        self.assertIn("cannot read", out)
+        code, out = self.p.script("bitacora.py", "check", str(self.tmp / "missing.md"))
+        self.assertEqual((code, "WARNING: bitacora: cannot read" in out), (0, True), out)
+
+    def test_unreadable_log_with_logrows_still_fails(self):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        self.p = Utilidades(self.tmp, {"logRows": True})
+        path = self.tmp / "latin.md"
+        path.write_bytes("caf\xe9\n".encode("latin-1"))
+        code, out = self.p.script("bitacora.py", "check", str(path))
+        self.assertEqual(code, 2, out)
+        self.assertIn("cannot read", out)
+
+    def test_date_must_be_a_real_date(self):
+        path = self.log(self.doc())
+        for bad in ("2026-13-45", "2026-02-30", "26-10-25", "tomorrow"):
+            for args in (("check", str(path), "--date", bad), ("done", "t", str(path), "--date", bad)):
+                code, out = self.p.script("bitacora.py", *args)
+                self.assertEqual(code, 2, (args, out))
+                self.assertIn("--date must be YYYY-MM-DD and a real date", out)
+        self.assertEqual(path.read_bytes().decode("utf-8"), self.doc())
+
     def test_continuation_lines_and_numbers_inside_text_are_not_items(self):
         done = ["1. 2026-10-25 — a long one,", "   2. indented sub point, dated 2026-10-24", "2. 2026-10-24 — b"]
         self.assertEqual(self.check(self.doc(done=done), "--strict")[0], 0)
@@ -268,6 +310,24 @@ class BitacoraSizeAndDone(Base):
         self.assertEqual((code, new), (0, "# L\n\n## Done (last 5)\n\n1. 2026-10-26 — new one\n"), out)
         code, out, new = self.run_done("# L\n\n## Done (last 5)\n\n1. 2026-10-25 — a")  # no newline after the last item
         self.assertEqual((code, new), (0, "# L\n\n## Done (last 5)\n\n1. 2026-10-26 — new one\n2. 2026-10-25 — a"), out)
+
+    def test_done_drops_the_templates_placeholder_item(self):
+        for lang, heading, example, other in (("es", "Hecho (5 últimas)", "_(fecha — qué se cerró)_", "Pendiente"),
+                                              ("en", "Done (last 5)", "_(date — what was closed)_", "Pending")):
+            text = f"# L\n\n## {heading}\n\n1. {example}\n   second line of the example)_\n\n## {other}\n"
+            code, out, new = self.run_done(text)
+            self.assertEqual((code, new), (0, f"# L\n\n## {heading}\n\n1. 2026-10-26 — new one\n\n## {other}\n"), (lang, out))
+        with_real = "## Done (last 5)\n\n1. 2026-10-25 — real\n2. _(date — example)_\n\n## Pending\n"
+        code, out, new = self.run_done(with_real)
+        self.assertEqual(new, "## Done (last 5)\n\n1. 2026-10-26 — new one\n2. 2026-10-25 — real\n\n## Pending\n", out)
+        for template in ("es", "en"):  # the real templates
+            body = (ROOT / "templates" / template / "log.md").read_text(encoding="utf-8")
+            code, out, new = self.run_done(body)
+            self.assertEqual(code, 0, out)
+            self.assertIn("1. 2026-10-26 — new one", new)
+            self.assertNotIn("1. _(", new)
+            self.assertNotIn("_(fecha — qué se cerró", new)
+            self.assertNotIn("_(date — what was closed", new)
 
     def test_done_keeps_crlf_and_blank_lines_between_items(self):
         text = self.doc(done=["1. 2026-10-25 — a", "", "2. 2026-10-24 — b"])
