@@ -309,6 +309,20 @@ class Hook(unittest.TestCase):
                         'zsh -lc "cd x && gh -R o/r pr merge 7"', 'eval "gh pr merge 7 -R o/r"', "eval gh pr merge 7 -R o/r"):
             self.assertBlocked(self.bash(command, pr=self.pr()), "no review mark")
 
+    def test_gh_pr_with_tabs_and_escaped_newlines_guarded(self):
+        # The pre-filter reads the raw JSON, where a tab is `\t` and a newline `\n` (backslash + letter): those are
+        # word separators, and a backslash-newline continuation joins the words of one command.
+        for command in ("gh\tpr\tmerge 7 -R o/r", "gh\tpr\tmerge\t7\t-R\to/r", "gh \\\npr merge 7 -R o/r",
+                        "gh\\\npr merge 7 -R o/r", "gh pr \\\n  merge 7 -R o/r", "gh pr\\\r\nmerge 7 -R o/r",
+                        "gh\tapi\t-X\tPUT\trepos/o/r/pulls/7/merge", "gh api -X PUT repos/o/r/pulls/7/\\\nmerge"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), "no review mark")
+        for command in ("gh\tpr\tcreate\t--base\tmain", "gh \\\npr \\\ncreate --fill", "gh\\\npr create --fill"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "no review mark")
+        self.assertAllowed(self.bash("gh\tpr\tcreate\t--base\tdevelop"))
+        self.assertAllowed(self.bash("gh\tpr\tview\t7"))
+
     def test_gh_pr_merge_through_xargs_guarded(self):
         code, out = self.bash("echo 7 | xargs gh pr merge", pr=self.pr())
         self.assertEqual(code, 2, out)
@@ -332,6 +346,7 @@ class Hook(unittest.TestCase):
             "gh pr tokens": ('echo "unterminated ' + "gh pr " * 8000, " merge"),
             "pulls/ words": ('echo "unterminated gh ' + "pulls/x " * 6000, " pulls/merge"),
             "pulls/ in one token": ('echo "unterminated gh ' + "pulls/" * 8000, "merge"),
+            "tabs and continuations": ('echo "unterminated gh\t' + "pr\t\\\n" * 10000, " merge"),
         }
         for name, (head, tail) in cases.items():
             with self.subTest(name=name):
@@ -456,6 +471,23 @@ class PreFilter(unittest.TestCase):
             (self.tools / "started").unlink(missing_ok=True)
             self.assertEqual(self.bash(command)[0], 2, command)
             self.assertTrue((self.tools / "started").exists(), command)
+
+    def test_tabs_and_escaped_newlines_are_separators_in_the_prefilter(self):
+        stub = self.tools / "python3"
+        stub.write_text(f'#!/bin/sh\n: > "{self.tools}/started"\nexit 2\n')
+        stub.chmod(0o755)
+        for command in ("gh\tpr\tmerge 7", "gh\tpr\tcreate", "gh \\\npr merge 7", "gh\\\npr merge 7", "gh pr\\\r\nmerge 7",
+                        "x\tgh\tapi\t-X\tPUT\trepos/o/r/pulls/7/merge", "a;\tgh\tpr\tmerge"):
+            (self.tools / "started").unlink(missing_ok=True)
+            self.assertEqual(self.bash(command)[0], 2, repr(command))
+            self.assertTrue((self.tools / "started").exists(), repr(command))
+        (self.tools / "python3").unlink()  # unrelated or read-only calls must pass without python3
+        for command in ("gh\tpr\tview\t7", "echo\tghost\tpr\tmerge", "grep\tgithub\tprojects/"):
+            self.assertEqual(self.bash(command), (0, ""), repr(command))
+        for command in ("gh\tpr\tmerge 7", "gh \\\npr create"):
+            code, err = self.bash(command)
+            self.assertEqual(code, 2, repr(command))
+            self.assertIn("python3 is missing", err)
 
     def test_without_python_a_pr_call_fails_closed_and_an_unrelated_gh_call_passes(self):
         for command in ("gh pr merge 7", "gh pr create --fill", "cd r && gh api -X PUT repos/o/r/pulls/7/merge",

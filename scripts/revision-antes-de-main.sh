@@ -143,6 +143,19 @@ def segments(command):
 def from_bash(command, depth=0):
     if depth > 5:
         block("the command nests shells too deeply to check.", "run the gh command directly and retry")
+    # A backslash-newline continuation: shlex would glue the newline to the next word (`gh \<nl>pr` -> `\npr`). Bash
+    # joins the lines (`pulls/7/\<nl>merge` is `pulls/7/merge`, `gh\<nl>pr` is `ghpr`); both readings are judged, the
+    # joined one as bash runs it and the one with a space, which can only judge more.
+    actions = []
+    for glue in (" ", ""):
+        text = command.replace("\\\r\n", glue).replace("\\\n", glue)
+        if glue == "" and text == command.replace("\\\r\n", " ").replace("\\\n", " "):
+            break
+        actions += from_text(text, depth)
+    return actions
+
+
+def from_text(command, depth):
     try:
         segs = segments(command)
     except ValueError as exc:
@@ -623,11 +636,13 @@ input="$(cat)"
 # Cheap pre-filter, in bash with no external tools: the matcher includes every Bash call, so what cannot be a PR action
 # leaves here without python3 (a missing python3 must not block unrelated commands). It goes on for the PR tools, and
 # for text with the word `gh` (not "github") followed by the word `pr` or `pulls` (not "projects").
-word='[^[:alnum:]_-]'
+# A word separator: anything but a letter, digit, _ or -; and the JSON escapes of a tab, newline or carriage return
+# (backslash + letter in the raw input, also after a backslash continuation), which separate words like a space.
+word='(\\([tnr]|u000[9aAdD])|[^[:alnum:]_-])'
 tool='"tool_name"[[:space:]]*:[[:space:]]*'
 pr_tools="${tool}\"mcp__[^\"]*(create_pull_request|update_pull_request|merge_pull_request|enable_pr_auto_merge)\""
 bash_tool="${tool}\"Bash\""
-gh="(^|$word|\\\\[nt])gh$word"
+gh="(^|$word)gh$word"
 end="($word|\$)"
 any_pr="(^|$word)(pr|pulls)${end}"
 pr_word="(^|$word)pr$word"

@@ -49,6 +49,12 @@ here.
 - P4 de `repos-x`: `revision-antes-de-main.sh` ya no se atasca con una orden Bash larga: el filtro previo en bash y la
   sospecha de una orden que no se puede leer casaban `gh … pr … merge|create` con varios `.*` seguidos (cuadrático o
   peor, minutos con 50 KB); ahora buscan cada palabra por separado. Un test con 50 KB exige menos de 1 s.
+- `revision-antes-de-main.sh` juzga `gh pr merge|create` escrito con tabuladores o con continuaciones de línea
+  (`gh<TAB>pr<TAB>merge`, `gh \<salto>pr merge`): el filtro previo, que lee el JSON en bruto, solo aceptaba `\t`/`\n`
+  como separador antes de `gh`, y el juez de Python pegaba el salto a la palabra siguiente. Los dos lo tratan ya como
+  separador (en Python se juzgan la lectura de bash, con la continuación unida, y la que la cambia por un espacio).
+- `doctor.py` ya no da `FAIL` por un U+200D dentro de un emoji compuesto (👩‍💻); sigue marcándolo junto a ASCII, al borde
+  de una línea o de otro carácter invisible, y la orden que los quita respeta los emojis.
 
 ### EN
 
@@ -89,6 +95,12 @@ here.
 - `repos-x` P4: `revision-antes-de-main.sh` no longer stalls on a long Bash command: the bash pre-filter and the
   suspicion check for an unparseable command matched `gh ... pr ... merge|create` with several chained `.*`
   (quadratic or worse, minutes on 50 KB); each word is now searched on its own. A 50 KB test requires under 1 s.
+- `revision-antes-de-main.sh` judges `gh pr merge|create` written with tabs or line continuations
+  (`gh<TAB>pr<TAB>merge`, `gh \<newline>pr merge`): the pre-filter, which reads the raw JSON, only accepted `\t`/`\n` as a
+  separator before `gh`, and the Python judge glued the newline to the next word. Both now treat them as separators
+  (Python judges bash's reading, continuation joined, and the one that turns it into a space).
+- `doctor.py` no longer reports `FAIL` for a U+200D inside a compound emoji (👩‍💻); it still flags it next to ASCII, at a
+  line edge or beside another invisible character, and the command that removes them keeps the emojis.
 
 ## [0.3.0] - 2026-10-23
 

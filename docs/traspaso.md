@@ -11,7 +11,7 @@
 | Rama | `ccr-6dfbc880-ddr41g`; `main` = `ea81c9f` = **release `v0.3.0`** (2026-10-23). `claude/galivelop-workflow-inicio` está **obsoleta** (se quedó en `0f36412`): no se trabaja en ella |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
 | Fase en curso | **6 cerrada** y `0.3.0` publicada en `main` (2026-10-23); P7 del instalador aplicada en la rama (`0.4.0`, sin publicar); recogida de la `0.4.0` hecha y decidida (P1, P3, P4, P5 aplicadas; P2 aplazada). Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | `gw-media-content` (b2 de 3): `skills/gw-media-content/plantilla/` (pieza genérica: `ficha.md`, `x.md`, `reddit.md`, `linkedin.md`, `discord.md` y 7 fuentes HTML autónomas en `medios/fuente/`: tarjeta, diagrama, métricas, cita, código, antes-después y carrusel, con la paleta en variables CSS y el tamaño en `<meta name="gw-size">`) y `scripts/render.mjs` (Playwright resuelto desde la carpeta actual o `GW_PLAYWRIGHT_DIR`, ImageMagick con WebP; escribe `<n>.webp`, `<n>-mini.webp` y `<n>.png`, y `carrusel*.html` a PDF; falla cerrado y avisa de lo que desborda o de imágenes rotas) con `test_render.py` (38 casos; probado también con Chromium real). Pendiente de b1: `comprobar.py` aún no acepta `Imagen: medios/<n>.png` (lo pide LinkedIn; el test de la plantilla lo filtra y debe dejar de hacerlo). Faltan b3 (SKILL.md de `gw-media-content` y `-now`, `cifras.py`). Antes: b1 (`reglas.json`, `comprobar.py` + `test_comprobar.py`) y la segunda recogida del 2026-10-25 decidida (`docs/propuestas/2026-10-25-world-maker-fantasy-2.md`), investigación de redes en `docs/investigacion/redes-sociales.md` |
+| Último punto estable | Fase 7: P4 y P7 de `repos-x` (eea8892) y su arreglo (el gancho de `main` juzga `gh` con tabuladores y saltos escapados; el ZWJ de un emoji ya no falla `doctor.py`). Antes, `gw-media-content` (b2 de 3): `skills/gw-media-content/plantilla/` (ficha, x, reddit, linkedin, discord y 7 fuentes HTML en `medios/fuente/`) y `scripts/render.mjs` (Playwright, ImageMagick; `<n>.webp`, `-mini.webp`, `.png`, PDF del carrusel) con `test_render.py` (38 casos). Pendiente de b1: `comprobar.py` aún no acepta `Imagen: medios/<n>.png`. Faltan b3 (SKILL.md de `gw-media-content` y `-now`, `cifras.py`) |
 | Siguiente paso | Tanda de la segunda recogida, en este orden: (a) verificar los datos NV de X, Reddit, LinkedIn y Discord en `docs/investigacion/redes-sociales.md`; (b) portar `gw-media-content` (hasta 10 propuestas) y crear `gw-media-content-now` (una pieza a `<carpeta>/AAAA-MM-DD-<tema>/`), redes X, Reddit, LinkedIn y Discord, origen WMF `.claude/skills/gw-media-content/` @ `a9eb7bbf`; (c) P2; (d) P4. Luego la `0.4.0` sigue hasta el **2026-10-30** (otra recogida y publicar). Aplazada a la Fase 7: P3 de Labs (`to-spec`, `wayfinder`) |
 
 ### Fases
@@ -58,16 +58,17 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 - [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) revisado (2026-10-25): 4 propuestas sin
   decidir en `docs/propuestas/2026-10-25-codegraph.md` (P1 gancho que inyecta la fila del mapa, P2 comprobador
   genérico del mapa, P3 anti-patrones en `writing-for-agents`, P4 probar la herramienta en WMF, se recomienda aplazar).
-- Diez repos de una lista de X revisados (2026-10-25): 10 propuestas sin decidir en
-  `docs/propuestas/2026-10-25-repos-x.md` (P1 gancho `Stop`, P2 guarda de config, P3 tope de subagentes, P4 test de
-  regex, P5 `recuperar.py`, P6 dealer, P7 check de skills, P8 disparo de skills, P9 `REVIEW.md`, P10 apuntes 9-10).
+- Diez repos de una lista de X revisados (2026-10-25): 10 propuestas en `docs/propuestas/2026-10-25-repos-x.md`. P4
+  (regex) y P7 (skills e instrucciones) aplicadas (eea8892) y el arreglo posterior (gancho de `main` con tabuladores y
+  saltos escapados; ZWJ en emojis); el resto en curso, la siguiente es P5 (`recuperar.py`): P1 gancho `Stop`, P2 guarda
+  de config, P3 tope de subagentes, P5 `recuperar.py`, P6 dealer, P8 disparo de skills, P9 `REVIEW.md`, P10 apuntes 9-10.
 
 - Propuestas aprobadas para `v0.2.0`, en orden: `docs/propuestas/2026-10-22-reparto.md` (la de 2026-10-21, toda hecha).
 
 - Menores de la revisión de la tanda A (no se revisan otra vez en este PR): `non_capturing` toca paréntesis en
   comentarios `(?x)`/`(?#…)`; `--ran-one` cuenta dos veces si el ejecutor repite el nombre del test en el resumen;
   `header_version` solo mira las 5 primeras líneas.
-- Menores de la revisión de la tanda B: sin python3, `revision-antes-de-main.sh` deja pasar `gh pr<TAB>create` y
+- Menores de la revisión de la tanda B: sin python3, `revision-antes-de-main.sh` deja pasar
   `gh api …/pulls -f title=` (crear el PR por la API; el hueco ya existía) y bloquea `gh pr view 3 && echo create`
   (exceso de celo).
 - Menores de la revisión del vigilante (89fdf09): el KILL de los 5 s podría dar con un pgid reutilizado (se acepta:
