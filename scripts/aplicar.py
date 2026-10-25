@@ -3,6 +3,7 @@
 """Apply or update the workflow in a project: the deterministic core of /gw-init and /gw-update (plan §5.4).
 
   python3 <workflow>/scripts/aplicar.py [PROJECT] [--update] [--check] [--dry-run] [--with SKILL ...]
+          [--sin-notas-personales]
   python3 <workflow>/scripts/aplicar.py [PROJECT] --init --check-command CMD [--language es|en] [--log PATH]
           [--install CMD ...] [--protected-branch B] [--push-to-protected direct|pr] [--content REGEX ...]
           [--review-mark PATH] [--require-retro true|false] [--visible-language LANG ...] [--design-reference REF ...]
@@ -32,6 +33,13 @@ What it copies (workflow -> project):
       scout-updates.md when that optional skill is installed)
   templates/github/comprobar.yml -> .github/workflows/comprobar.yml (workflow-owned, like the scripts)
 In the workflow repo itself the root templates and the CI file are skipped: it has its own AGENTS.md, log and CI.
+  ~/.claude/gw/notas/*          -> .claude/gw/           PERSONAL NOTES of the person running this (folder overridable
+                                   with the env var GW_NOTAS_PERSONALES; absent folder = nothing happens). Only regular
+                                   files directly in it, named [A-Za-z0-9][A-Za-z0-9._-]* (no subfolders, symlinks or
+                                   dotfiles). Missing in the project -> created; identical -> nothing; different ->
+                                   NEVER overwritten and no .gw-nuevo (the project may have adapted it): one line with
+                                   `diff <source> <target>`, and --check does not fail for it. Never applied to the
+                                   workflow repo itself (nothing personal goes in it); --sin-notas-personales skips them.
 and sets core.hooksPath to .githooks when it is unset and no other hook manager owns the hooks.
 
 For each file: identical -> skip; missing -> create; different -> overwritten only when the project's file is
@@ -44,6 +52,7 @@ In the workflow repo itself the copy is generated from scripts/ and skills/, so 
               a pending .gw-nuevo proposal, or a file the workflow no longer has); core.hooksPath is reported but
               does not fail it (a local git setting: a fresh clone in CI has it unset). The drift test.
   --dry-run   print the plan, no writes, exit 0.
+  --sin-notas-personales   do not carry the personal notes (env GW_NOTAS_PERSONALES, default ~/.claude/gw/notas/).
 Exit 2 on a missing or invalid config or settings file. Python 3.8+ standard library only.
 """
 import argparse
@@ -77,6 +86,8 @@ ROOT_TEMPLATES = (("AGENTS.md", "merged"), ("CLAUDE.md", "merged"), ("REVIEW.md"
                   ("GLOSSARY.md", "seeded"))
 NOTES = (("opt-tokens.md", None), ("opt-ai.md", "opt-ai"), ("scout-updates.md", "scout-updates"))
 LOG_BY_LANGUAGE = {"es": "docs/traspaso.md", "en": "docs/handoff.md"}
+NOTES_ENV = "GW_NOTAS_PERSONALES"
+NOTE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 HEADER = re.compile(r"galivelop-workflow v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)")
 SKILL_LICENSE = "LICENSE-mattpocock-skills"  # at the workflow's root; copied next to the skills that cite it
 SENSITIVE = (".claude/settings.json", ".claude/gw/scripts/", ".githooks/")
@@ -170,6 +181,7 @@ class Plan:
         self.notes = []     # reported, never acted on
         self.warnings = []  # the same, about the project's own files
         self.diffs = []     # (rel, project's bytes, template bytes): printed, never written
+        self.personal = []  # info lines about personal notes the project has differently: never drift
         self.pending = []   # proposals already written and still current
         self.orphans = []   # files the workflow no longer has
         self.hooks_path = None  # None, or the hint line about core.hooksPath
@@ -396,7 +408,57 @@ def plan_templates(plan, cfg, self_apply, wanted_skills):
             plan.template(Path(".claude/gw") / name, rendered(lang_dir / name), "seeded")
 
 
-def build(root, version, update, extra_skills, cfg):
+def personal_notes_dir():
+    """The folder of the person's own notes: env GW_NOTAS_PERSONALES, else ~/.claude/gw/notas."""
+    custom = os.environ.get(NOTES_ENV)
+    if custom:
+        return Path(os.path.expanduser(custom))
+    return Path(os.path.expanduser("~")) / ".claude" / "gw" / "notas"
+
+
+def is_workflow_repo(root):
+    """True when root is this workflow's repo (same folder as this script's repo, or a plugin.json with its name)."""
+    if root.resolve() == WORKFLOW.resolve():
+        return True
+    try:
+        mine = json.loads((WORKFLOW / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))["name"]
+        theirs = json.loads((root / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")).get("name")
+    except (OSError, ValueError, KeyError, AttributeError):
+        return False
+    return theirs == mine
+
+
+def plan_personal_notes(plan):
+    """Carry the person's own notes into the project's .claude/gw/: create the missing ones, report (never touch)
+    the ones that differ. Nothing happens when the folder is absent."""
+    folder = personal_notes_dir()
+    try:
+        sources = sorted(p for p in folder.iterdir()
+                         if not p.is_symlink() and p.is_file() and NOTE_NAME.fullmatch(p.name))
+    except OSError:
+        return  # absent or unreadable folder: nothing to carry, nothing to say
+    planned = {str(a[1]) for a in plan.actions}
+    for src in sources:
+        rel = Path(".claude/gw") / src.name
+        dest = plan.root / rel
+        try:
+            data = src.read_bytes()
+        except OSError as exc:
+            plan.personal.append(f"personal note {src} cannot be read ({exc.strerror}); fix its permissions and rerun")
+            continue
+        if str(rel) in planned:
+            plan.personal.append(f"personal note {src.name} has the name of a workflow file ({rel}); rename it in "
+                                 f"{folder} to carry it")
+        elif dest.is_symlink() or (dest.exists() and not dest.is_file()):
+            plan.personal.append(f"personal note {src.name}: {rel} is not a regular file; left as is")
+        elif not dest.exists():
+            plan.actions.append(("create", rel, data, False, "personal note"))
+        elif dest.read_bytes() != data:
+            plan.personal.append(f"personal note {src.name} differs from the project's {rel}, which is kept (it may "
+                                 f"be adapted on purpose); see it: diff {src} {dest}")
+
+
+def build(root, version, update, extra_skills, cfg, personal=True):
     self_apply = root.resolve() == WORKFLOW.resolve()
     plan = Plan(root, version, update or self_apply)
     scripts = [Path(p.name) for p in sorted((WORKFLOW / "scripts").iterdir())
@@ -435,6 +497,8 @@ def build(root, version, update, extra_skills, cfg):
 
     plan.settings(WORKFLOW / "templates" / "claude" / "settings.json")
     plan_templates(plan, cfg, self_apply, wanted_skills)
+    if personal and not is_workflow_repo(root):
+        plan_personal_notes(plan)
     plan_hooks_path(plan)
     return plan
 
@@ -472,6 +536,8 @@ def report(plan):
             print(f"  {line}")
         if len(diff) > DIFF_LINES:
             print(f"  … {len(diff) - DIFF_LINES} more line(s)")
+    for line in plan.personal:
+        print(f"aplicar: {line}")
     for warning in plan.warnings:
         print(f"aplicar: WARNING: {warning}")
     if plan.hooks_path:
@@ -530,6 +596,8 @@ def main(argv=None):
     parser.add_argument("--update", action="store_true", help="replace local edits in workflow-owned files")
     parser.add_argument("--check", action="store_true", help="no writes; exit 1 if the copy differs")
     parser.add_argument("--dry-run", action="store_true", help="print the plan, no writes")
+    parser.add_argument("--sin-notas-personales", dest="no_personal", action="store_true",
+                        help=f"do not carry the personal notes (env {NOTES_ENV}, default ~/.claude/gw/notas/)")
     parser.add_argument("--with", dest="extra", action="append", default=[], metavar="SKILL",
                         help="also install an optional skill (repeatable)")
     init = parser.add_argument_group("--init (write .claude/gw.json first, only when it does not exist)")
@@ -602,7 +670,7 @@ def main(argv=None):
                   file=sys.stderr)
             return 2
     try:
-        plan = build(root, version, args.update, args.extra, cfg)
+        plan = build(root, version, args.update, args.extra, cfg, not args.no_personal)
     except ApplyError as exc:
         print(exc, file=sys.stderr)
         return 2

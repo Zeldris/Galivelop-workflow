@@ -68,6 +68,8 @@ Done when every fact has an answer the user confirmed.
    the `galivelop-workflow` marker line. Delete each `.gw-nuevo` once merged.
    Coming from an earlier or hand-made copy, expect many: merge one at a time, the workflow's version whole and the
    project's own part in `.claude/gw/<skill>.md` (guide, "Migrating from an earlier copy").
+   The run also carries the user's personal notes from `~/.claude/gw/notas/` (if any) to `.claude/gw/`; a project
+   copy that differs is left as is and reported (`diff <source> <target>`); `--sin-notas-personales` skips them.
 4. Fill the `_(…)_` gaps of the log with branch, phase and a concrete next step.
 
 Done when no `*.gw-nuevo` is left and the log has a next-step line.

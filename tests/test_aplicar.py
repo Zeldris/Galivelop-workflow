@@ -29,7 +29,8 @@ class Fixture:
                              "[init]\n\tdefaultBranch = main\n")
         self.env = {k: v for k, v in os.environ.items()
                     if not k.startswith("GIT_") and k not in ("CLAUDECODE", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_REMOTE")}
-        self.env.update(GIT_CONFIG_GLOBAL=str(gitconfig), GIT_CONFIG_NOSYSTEM="1", TMPDIR=str(tmp), HOME=str(home))
+        self.env.update(GIT_CONFIG_GLOBAL=str(gitconfig), GIT_CONFIG_NOSYSTEM="1", TMPDIR=str(tmp), HOME=str(home),
+                        GW_NOTAS_PERSONALES=str(tmp / "no-personal-notes"))  # never the real ~/.claude/gw/notas
         self.run("git", "init", "-q", str(self.work), cwd=tmp)
         self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, **(config or {})), indent=2) + "\n")
         self.write("check.sh", "exit 0\n")
@@ -327,6 +328,149 @@ class Aplicar(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn(f"Flujo Galivelop-workflow v{VERSION}", out)
         self.assertIn("Siguiente:", out)
+
+
+class NotasPersonales(unittest.TestCase):
+    """Personal notes: regular files of GW_NOTAS_PERSONALES (default ~/.claude/gw/notas) copied to
+    <project>/.claude/gw/ when missing; a differing one is reported and never touched."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="gw-notas-")).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.p = Fixture(self.tmp)
+        self.notas = self.tmp / "notas"
+        self.p.env["GW_NOTAS_PERSONALES"] = str(self.notas)
+
+    def note(self, name, text="my note\n"):
+        self.notas.mkdir(exist_ok=True)
+        (self.notas / name).write_text(text)
+        return self.notas / name
+
+    def target(self, name):
+        return self.p.work / ".claude" / "gw" / name
+
+    def applied(self, *args):
+        code, out = self.p.aplicar(*args)
+        self.assertEqual(code, 0, out)
+        return out
+
+    def test_absent_folder_does_nothing_and_says_nothing(self):
+        self.assertNotIn("personal", self.applied())
+        self.assertEqual(self.p.aplicar("--check")[0], 0)
+
+    def test_folder_pointing_to_a_missing_path_does_nothing(self):
+        self.p.env["GW_NOTAS_PERSONALES"] = str(self.tmp / "nope" / "missing")
+        self.assertNotIn("personal", self.applied())
+        self.assertFalse((self.tmp / "nope").exists())
+
+    def test_empty_folder_does_nothing(self):
+        self.notas.mkdir()
+        self.assertNotIn("personal", self.applied())
+
+    def test_default_folder_is_under_the_home_dir(self):
+        folder = Path(self.p.env["HOME"]) / ".claude" / "gw" / "notas"  # the fixture's HOME, never the real one
+        folder.mkdir(parents=True)
+        (folder / "from-home.md").write_text("home note\n")
+        del self.p.env["GW_NOTAS_PERSONALES"]
+        out = self.applied()
+        self.assertIn("personal note", out)
+        self.assertEqual(self.target("from-home.md").read_text(), "home note\n")
+
+    def test_missing_note_is_created_and_reported(self):
+        self.note("style.md", "I like short answers\n")
+        out = self.applied()
+        self.assertEqual(self.target("style.md").read_text(), "I like short answers\n")
+        self.assertIn("personal note", out)
+        self.assertIn("style.md", out)
+        self.assertFalse((self.p.work / ".claude" / "gw" / "style.md.gw-nuevo").exists())
+        self.assertNotIn("personal", self.applied())  # second run: identical, silent
+
+    def test_identical_note_is_silent_and_check_passes(self):
+        self.note("style.md")
+        self.applied()
+        code, out = self.p.aplicar("--check")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("personal", out)
+
+    def test_different_note_is_reported_untouched_and_check_still_passes(self):
+        src = self.note("style.md", "mine\n")
+        self.applied()
+        self.target("style.md").write_text("adapted for this project\n")
+        want = f"diff {src} {self.target('style.md')}"
+        out = self.applied()
+        self.assertEqual(self.target("style.md").read_text(), "adapted for this project\n")
+        self.assertFalse((self.p.work / ".claude" / "gw" / "style.md.gw-nuevo").exists())
+        self.assertIn("personal note", out)
+        self.assertIn(want, out)
+        code, out = self.p.aplicar("--check")
+        self.assertEqual(code, 0, out)
+        self.assertIn(want, out)
+
+    def test_dry_run_and_check_write_nothing(self):
+        self.note("style.md")
+        out = self.applied("--dry-run")
+        self.assertIn("style.md", out)
+        self.assertIn("personal note", out)
+        self.assertFalse(self.target("style.md").exists())
+        code, out = self.p.aplicar("--check")
+        self.assertEqual(code, 1, out)  # a missing note is something to create
+        self.assertIn("style.md", out)
+        self.assertFalse(self.target("style.md").exists())
+
+    def test_symlink_dotfile_subfolder_and_bad_names_are_skipped(self):
+        real = self.note("real.md")
+        (self.notas / "link.md").symlink_to(real)
+        for bad in (".hidden.md", "-dash.md", "bad name.md", "a$b.md", "é.md"):
+            self.note(bad)
+        (self.notas / "sub").mkdir()
+        (self.notas / "sub" / "inner.md").write_text("x\n")
+        (self.notas / "dir.md").mkdir()
+        self.note("1.v2-x.txt")
+        self.note("a_b.md")
+        self.applied()
+        created = sorted(p.name for p in (self.p.work / ".claude" / "gw").iterdir()
+                         if p.name in {"real.md", "link.md", ".hidden.md", "-dash.md", "bad name.md", "a$b.md",
+                                       "é.md", "sub", "inner.md", "dir.md", "1.v2-x.txt", "a_b.md"})
+        self.assertEqual(created, ["1.v2-x.txt", "a_b.md", "real.md"])
+
+    def test_workflow_repo_itself_never_gets_personal_notes(self):
+        self.note("style.md")
+        code, out = self.p.run("python3", str(APLICAR), str(ROOT), "--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("style.md", out)
+        self.assertNotIn("personal", out)
+
+    def test_a_project_with_this_workflows_plugin_json_is_skipped(self):
+        self.note("style.md")
+        self.p.write(".claude-plugin/plugin.json", json.dumps({"name": "galivelop-workflow", "version": VERSION}))
+        self.assertNotIn("personal", self.applied())
+        self.assertFalse(self.target("style.md").exists())
+
+    def test_a_project_with_another_plugin_json_gets_the_notes(self):
+        self.note("style.md")
+        self.p.write(".claude-plugin/plugin.json", json.dumps({"name": "something-else", "version": "1.0.0"}))
+        self.applied()
+        self.assertTrue(self.target("style.md").is_file())
+
+    def test_opt_out_flag(self):
+        self.note("style.md")
+        self.assertNotIn("personal", self.applied("--sin-notas-personales"))
+        self.assertFalse(self.target("style.md").exists())
+        self.assertEqual(self.p.aplicar("--check", "--sin-notas-personales")[0], 0)
+
+    def test_target_that_is_not_a_regular_file_is_reported_not_replaced(self):
+        self.note("style.md")
+        self.target("style.md").mkdir(parents=True)
+        out = self.applied()
+        self.assertTrue(self.target("style.md").is_dir())
+        self.assertIn("personal note", out)
+        self.assertIn("not a regular file", out)
+
+    def test_help_mentions_the_notes_and_the_flag(self):
+        code, out = self.p.run("python3", str(APLICAR), "--help")
+        self.assertEqual(code, 0, out)
+        self.assertIn("GW_NOTAS_PERSONALES", out)
+        self.assertIn("--sin-notas-personales", out)
 
 
 if __name__ == "__main__":

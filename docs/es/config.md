@@ -84,3 +84,16 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   plan consta en «Hecho»: tachada allí, o nombrada en una línea que empieza por fecha (un punto sin tachar no basta).
 - Tras actualizar el flujo, sube `version` a mano (`/gw-update` lo hace): ese número es lo que `doctor.py`
   compara con las cabeceras copiadas.
+
+## Notas personales
+
+Si tienes notas que deben llegar a todos los proyectos donde aplicas el flujo, guárdalas **fuera de cualquier
+repo**, en `~/.claude/gw/notas/` (otra carpeta con la variable de entorno `GW_NOTAS_PERSONALES`). `aplicar.py` las
+lleva a `<proyecto>/.claude/gw/<nombre>`:
+
+- Solo archivos normales directamente en esa carpeta, con nombre `[A-Za-z0-9][A-Za-z0-9._-]*`; no se miran
+  subcarpetas, enlaces simbólicos ni archivos ocultos. Si la carpeta no existe, no pasa nada y no se dice nada.
+- Si la nota falta en el proyecto, se crea (y se avisa como «personal note»). Si es idéntica, nada. Si **difiere**,
+  nunca se sobrescribe ni se deja un `.gw-nuevo` (el proyecto puede haberla adaptado a propósito): se imprime una
+  línea con `diff <origen> <destino>` y `--check` no falla por ello.
+- Nunca se aplican al propio repo del flujo: nada personal va a él. `--sin-notas-personales` las salta en un proyecto.

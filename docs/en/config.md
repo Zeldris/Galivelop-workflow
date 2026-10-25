@@ -84,3 +84,17 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   unstruck bullet is not enough).
 - After changing the workflow version, bump `version` by hand (`/gw-update` does it): `doctor.py` compares that number
   with the copied headers.
+
+## Personal notes
+
+If you have notes that should reach every project where you apply the workflow, keep them **outside any repo**, in
+`~/.claude/gw/notas/` (another folder through the `GW_NOTAS_PERSONALES` environment variable). `aplicar.py` carries
+them to `<project>/.claude/gw/<name>`:
+
+- Only regular files directly in that folder, named `[A-Za-z0-9][A-Za-z0-9._-]*`; subfolders, symlinks and hidden
+  files are ignored. If the folder does not exist, nothing happens and nothing is said.
+- A note missing in the project is created (reported as a "personal note"). An identical one: nothing. One that
+  **differs** is never overwritten and gets no `.gw-nuevo` (the project may have adapted it on purpose): one line
+  with `diff <source> <target>` is printed and `--check` does not fail for it.
+- They are never applied to the workflow's own repo: nothing personal goes into it. `--sin-notas-personales` skips
+  them for one run.
