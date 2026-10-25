@@ -11,8 +11,8 @@
 | Rama | `ccr-6dfbc880-ddr41g`; `main` = `ea81c9f` = **release `v0.3.0`** (2026-10-23). `claude/galivelop-workflow-inicio` está **obsoleta** (se quedó en `0f36412`): no se trabaja en ella |
 | Check | `bash tests/comprobar.sh` en verde; CI y `release.yml` en verde sobre `9b97d7b` (Linux y macOS) con el repo público un rato; en privado el CI espera a que se renueve el cupo de Actions |
 | Fase en curso | **6 cerrada** y `0.3.0` publicada en `main` (2026-10-23); P7 del instalador aplicada en la rama (`0.4.0`, sin publicar); recogida de la `0.4.0` hecha y decidida (P1, P3, P4, P5 aplicadas; P2 aplazada). Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | `9eabd08` (2026-10-25): fases 1 y 2 antes de `main` cerradas (retro P1-P7 aplicada); después, los arreglos de la revisión de la fase 3 (`bitacora.py done`, `es-codigo.sh`); el detalle de la `0.4.0`, en el CHANGELOG, «Hecho» y `git log` |
-| Siguiente paso | **Publicar la `0.4.0` en `main`** (pedido por el usuario el 2026-10-25). Fases 1, 2 y la revisión de la 3 hechas (retro `docs/registros/retro-2026-10-25-antes-de-main-0-4-0.md`, P1-P7 aplicadas). Falta: check en verde sobre la fusión con `main`, `bash scripts/revisado.sh` y la subida a `main` con el check local (CI sin cuota: **comprobado solo en local**, confirmado por el usuario). Después, la release de GitHub. Aplazada a la Fase 7: P3 de Labs (`to-spec`, `wayfinder`) |
+| Último punto estable | `f84870a` (2026-10-25): las tres fases antes de `main` cerradas (retro P1-P7 aplicada, arreglos de la revisión de la fase 3); check local en verde, y `main` (`ea81c9f`) ya contenido en la rama; el detalle de la `0.4.0`, en el CHANGELOG, «Hecho» y `git log` |
+| Siguiente paso | **Publicar la `0.4.0` en `main`** (pedido por el usuario el 2026-10-25): `bash scripts/revisado.sh` y la subida a `main` con el check local (CI sin cuota: **comprobado solo en local**, confirmado por el usuario). La release de GitHub `v0.4.0` **la hace el usuario desde Claude cloud** (2026-10-25): no se crea desde aquí. Aplazada a la Fase 7: P3 de Labs (`to-spec`, `wayfinder`) |
 
 ### Fases
 
