@@ -748,9 +748,13 @@ if [[ $input =~ $pr_tools ]]; then own=1
 elif [[ $input =~ $bash_tool ]]; then
   # A backslash-newline continuation can split a word (`g\<nl>h pr merge 7` is `gh pr merge 7`); in the raw JSON it is
   # backslash, backslash, backslash + n (or + r, backslash, n). The text with them removed is looked at too; a wrong
-  # join only makes python3 run.
-  cont_crlf='\\\r\n'; cont_lf='\\\n'
-  joined="${input//"$cont_crlf"/}"; joined="${joined//"$cont_lf"/}"
+  # join only makes python3 run. sed, not ${input//…/}: bash's replace is quadratic in the number of continuations.
+  cont_crlf='\\\r\n'; cont_lf='\\\n'; joined="$input"
+  case $input in *'\\\n'* | *'\\\r\n'*)
+    # Without sed (or if it fails), the slow join in bash: never skip the joined text.
+    joined="$(printf '%s' "$input" | sed -e 's/\\\\\\r\\n//g' -e 's/\\\\\\n//g' 2>/dev/null)" ||
+      { joined="${input//"$cont_crlf"/}"; joined="${joined//"$cont_lf"/}"; } ;;
+  esac
   for text in "$input" "$joined"; do
     if after_first "$text" "$gh" && [[ $after =~ $any_pr ]]; then
       if gh_does_pr "$text"; then own=1; elif [ "$own" != "1" ]; then own=0; fi
