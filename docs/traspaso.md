@@ -58,6 +58,9 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 - [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) revisado (2026-10-25): 4 propuestas sin
   decidir en `docs/propuestas/2026-10-25-codegraph.md` (P1 gancho que inyecta la fila del mapa, P2 comprobador
   genérico del mapa, P3 anti-patrones en `writing-for-agents`, P4 probar la herramienta en WMF, se recomienda aplazar).
+- Diez repos de una lista de X revisados (2026-10-25): 10 propuestas sin decidir en
+  `docs/propuestas/2026-10-25-repos-x.md` (P1 gancho `Stop`, P2 guarda de config, P3 tope de subagentes, P4 test de
+  regex, P5 `recuperar.py`, P6 dealer, P7 check de skills, P8 disparo de skills, P9 `REVIEW.md`, P10 apuntes 9-10).
 
 - Propuestas aprobadas para `v0.2.0`, en orden: `docs/propuestas/2026-10-22-reparto.md` (la de 2026-10-21, toda hecha).
 
