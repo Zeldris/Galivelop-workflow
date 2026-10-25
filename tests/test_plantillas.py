@@ -86,6 +86,14 @@ class Templates(unittest.TestCase):
                 self.assertEqual(headings(TEMPLATES / "es" / name), headings(TEMPLATES / "en" / name),
                                  f"templates/es/{name} and templates/en/{name} must have the same headings")
 
+    def test_review_template_asks_to_refute_and_to_end_with_a_verdict(self):
+        for lang in ("es", "en"):
+            text = (TEMPLATES / lang / "REVIEW.md").read_text(encoding="utf-8")
+            with self.subTest(lang=lang):
+                for verdict in ("`SHIP`", "`SHIP WITH FIXES`", "`DO NOT SHIP`"):
+                    self.assertIn(verdict, text, f"{lang}/REVIEW.md: the three verdicts are missing")
+                self.assertRegex(text, r"refut", f"{lang}/REVIEW.md: it must ask to refute each finding")
+
     def test_every_template_starts_with_the_version_marker(self):
         for lang in ("es", "en"):
             for name in lang_files(lang):

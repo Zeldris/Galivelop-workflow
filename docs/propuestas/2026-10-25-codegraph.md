@@ -77,7 +77,7 @@ cuenta para `version.py --release`. Leído en un clon de solo lectura; nada se h
   mapa para agentes gana una columna o nota «qué no leer» donde no la tenga.
 - **Why it is general:** dice al agente lo que no debe hacer en el sitio donde lo va a leer, sin alargar `AGENTS.md`.
 - **Version bump:** patch
-- **Status:** sin decidir
+- **Status:** aplicada (2026-10-25)
 
 ## P4. Probar codegraph en un proyecto, como experimento medido
 

@@ -5,6 +5,13 @@ What the reviewer (`/code-review`, or any agent reviewing a diff) checks in ever
 usual bugs. The mechanical part is already done by the check ({{check}}) and the git hooks; this is what needs
 judgement. The project fills it in; the workflow never overwrites it once it exists.
 
+## How to report
+
+- Before reporting a finding, try to refute it: look for the code, test or hook that already covers it. Only what
+  survives is reported, with its path and line.
+- The review ends with one verdict of three: `SHIP` (nothing to fix), `SHIP WITH FIXES` (there are fixes, none blocks)
+  or `DO NOT SHIP` (something serious or breaking).
+
 ## One fact, one place
 
 - A fact that already lives somewhere (a config file, a data file, a constant) is not repeated by hand in code,

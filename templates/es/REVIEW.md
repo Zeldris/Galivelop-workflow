@@ -5,6 +5,13 @@ Lo que el revisor (`/code-review`, o cualquier agente que revise un diff) compru
 además de los fallos de siempre. Lo mecánico ya lo hacen el check ({{check}}) y los ganchos de git; aquí está lo que
 pide criterio. La rellena el proyecto; el flujo nunca la sobrescribe una vez creada.
 
+## Cómo se informa
+
+- Antes de dar un hallazgo, intenta refutarlo: busca el código, el test o el gancho que ya lo cubre. Solo se informa
+  de lo que sobrevive, con la ruta y la línea.
+- La revisión acaba con un veredicto, uno de tres: `SHIP` (nada que arreglar), `SHIP WITH FIXES` (hay arreglos, ninguno
+  bloquea) o `DO NOT SHIP` (algo grave o que rompe).
+
 ## Un dato, un sitio
 
 - Un dato que ya vive en un sitio (un archivo de configuración, uno de datos, una constante) no se repite a mano en

@@ -381,6 +381,13 @@ with the large model; porting skills and templates with the medium one. From Pha
 | **9. Plugin and npm** | The plugin becomes the only outward distribution: marketplace in the private repo with invite-only access, installed locally and by the cloud environment setup script (Option D); the plugin also brings the git hooks (`pre-push`, review mark); consider npm (§11) | A project (the portal) working with the plugin only, locally and in the cloud, hooks included |
 | **10. Public** | Choose the `1.0.0` license (no redistribution or resale; MIT only for third-party parts), `/security-review`, remove private paths or names, `1.0.0` **as a plugin only** copied into a separate public repo **without the history** (a single commit; this repo stays private and goes on with `1.0.x`/`1.1`), portal page (three languages); the portal removes its copy of the workflow (from a portal session) and depends on the plugin. If there is npm, only `1.0.0` | Public repo with `1.0.0` as a plugin and page published; the portal without a copy of the workflow; nothing later outside the private repo |
 
+**Notes for Phases 9 and 10** (2026-10-25 harvest, no change now; looked at when each phase opens):
+
+- **Phase 9:** validate the marketplace in CI by pinning the `sha` of the `git-subdir` entries; if ported to Codex,
+  an 8 KB cap per skill; `"strict": false` with a skills list as a way to split the plugin (behaviour unchecked).
+- **Phase 10:** a threat / countermeasure / evidence table as the security document; CI actions pinned by `sha` and
+  `permissions: {}` by default (today `comprobar.yml` and `release.yml` use `@v4` / `@v5`).
+
 ## 10. Criteria for "100 % functional and applicable to any system" (move to 1.0)
 
 - Works in **three projects** on different stacks (at least one without Node: the Tarkor installer or VeriNews
