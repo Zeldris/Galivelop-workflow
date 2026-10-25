@@ -49,6 +49,9 @@ same time.
   `.claude/settings.json`, `.claude/gw.json`, `.githooks/` or `.claude/gw/scripts/` are edited (with `Edit`, `Write` or
   a `Bash` command that writes there); if it cannot read the event it asks too. To regenerate the applied copy:
   `python3 scripts/aplicar.py .`.
+- **When dealing work to subagents**, the `PreToolUse` hook `tope-subagentes.py` counts the session's `Agent`/`Task`
+  calls and, at `subagentCap` (30 by default) and every 10 after, asks the person to check they are not looping
+  (`opt-tokens`); it never blocks.
 - **On start**, the new session reads the log and checks that the last commit matches what it says; it does not ask
   where things stood. After a `/clear` or compaction, `recuperar.py --estado` reminds it.
 - When the branch closes, `bitacora.py close-row <branch>` leaves its row as "merged, branch finished" so the

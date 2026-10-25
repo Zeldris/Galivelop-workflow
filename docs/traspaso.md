@@ -74,7 +74,7 @@ sesión en la nube no puede subir etiquetas: 403 del proxy).
 - Diez repos de una lista de X revisados (2026-10-25): 10 propuestas en `docs/propuestas/2026-10-25-repos-x.md`. P4
   (regex), P5 (`recuperar.py`: tope de 9.500 caracteres y fragmentos como datos) y P7 (skills e instrucciones)
   aplicadas (P4 y P7 en eea8892) y el arreglo posterior (gancho de `main` con tabuladores y saltos escapados; ZWJ en
-  emojis); P1 gancho `Stop` y P2 guarda de config aplicadas (2026-10-25); el resto en curso, la siguiente es P3: P3 tope de subagentes, P6 dealer,
+  emojis); P1 gancho `Stop`, P2 guarda de config y P3 tope de subagentes aplicadas (2026-10-25); el resto en curso, la siguiente es P6: P6 dealer,
   P8 disparo de skills, P9 `REVIEW.md`, P10 apuntes 9-10.
 
 - Propuestas aprobadas para `v0.2.0`, en orden: `docs/propuestas/2026-10-22-reparto.md` (la de 2026-10-21, toda hecha).

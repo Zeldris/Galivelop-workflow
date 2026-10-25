@@ -84,6 +84,12 @@ here.
   `.claude/settings.json`, `.claude/gw.json`, `.githooks/` o `.claude/gw/scripts/`; las lecturas pasan. La razón nombra
   el archivo y la regla, y `python3 scripts/aplicar.py .` para regenerar la copia aplicada. Con una entrada ilegible
   o sin raíz de proyecto pregunta (falla cerrado). `doctor.py` y `aplicar.py` avisan de un gancho viejo duplicado.
+- P3 de `repos-x`: gancho `PreToolUse` `scripts/tope-subagentes.py` (matcher `Agent|Task`, en `hooks/hooks.json` y en la
+  plantilla de `settings.json`): cuenta las llamadas de la sesión (un archivo por `session_id` en el directorio
+  temporal, bajo bloqueo; `GW_SUBAGENT_COUNTER_DIR` lo cambia) y, al llegar a `subagentCap` y cada 10 después, devuelve
+  `ask` con «N subagents in this session (subagentCap C in .claude/gw.json): check they are not looping (opt-tokens)».
+  Nunca deniega. Clave nueva `subagentCap` del config (entero ≥ 1, defecto 30; el esquema admite ahora `minimum`); sin
+  `session_id` o con una entrada ilegible pregunta que no puede contar, y un config ilegible usa el defecto.
 
 ### EN
 
@@ -158,6 +164,12 @@ here.
   `.claude/gw.json`, `.githooks/` or `.claude/gw/scripts/`; reads pass. The reason names the file and the rule, and
   `python3 scripts/aplicar.py .` to regenerate the applied copy. With unreadable input or no project root it asks
   (fails closed). `doctor.py` and `aplicar.py` warn about an older duplicated hook.
+- `repos-x` P3: `PreToolUse` hook `scripts/tope-subagentes.py` (matcher `Agent|Task`, in `hooks/hooks.json` and in the
+  `settings.json` template): it counts the session's calls (one file per `session_id` in the temp directory, under a
+  lock; `GW_SUBAGENT_COUNTER_DIR` changes it) and, at `subagentCap` and every 10 after, returns `ask` with "N subagents
+  in this session (subagentCap C in .claude/gw.json): check they are not looping (opt-tokens)". It never denies. New
+  config key `subagentCap` (integer >= 1, default 30; the schema now supports `minimum`); with no `session_id` or
+  unreadable input it asks that it cannot count, and an unreadable config uses the default.
 
 ## [0.3.0] - 2026-10-23
 

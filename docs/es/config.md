@@ -53,6 +53,7 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
 | `worktreeDir` | Carpeta (absoluta o relativa a la raíz del repo) bajo la que el `pre-push` crea sus worktrees temporales, para un sandbox que no ve `$TMPDIR` (p. ej. Flatpak); si es relativa, conviene que esté en `.gitignore` y fuera de `.git/` | `""` (`${TMPDIR:-/tmp}`) | `".cache/gw-worktrees"` | `pre-push` |
 | `plan` | Archivos o carpetas de plan o roadmap donde las tareas se tachan o marcan | `[]` | `["docs/producto/21-roadmap.md"]` | `bitacora.py` |
 | `taskId` | Expresión de los identificadores de tarea | `[A-Z]{2,5}-\\d+` | `"(INS\|FLU)-\\d+"` (los grupos con captura se tratan como sin captura) | `bitacora.py` |
+| `subagentCap` | Entero ≥ 1: subagentes (llamadas a `Agent`/`Task`) que una sesión lanza antes de que el gancho `PreToolUse` `tope-subagentes.py` pregunte a la persona si no están en bucle, y otra vez cada 10 (nunca bloquea). Si el config no se puede leer, vale el defecto | `30` | `50` | `tope-subagentes.py` |
 
 ## Notas
 

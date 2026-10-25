@@ -187,6 +187,19 @@ class Aplicar(unittest.TestCase):
         self.applied()
         self.assertEqual(p.read(".claude/settings.json"), before, "a second run adds nothing")
 
+    def test_subagent_cap_is_applied_once_with_its_own_matcher(self):
+        p = self.p
+        out = self.applied()
+        self.assertTrue((p.work / ".claude/gw/scripts/tope-subagentes.py").is_file(), out)
+        s = json.loads(p.read(".claude/settings.json"))
+        caps = [e for e in s["hooks"]["PreToolUse"]
+                if any("tope-subagentes.py" in h["command"] for h in e["hooks"])]
+        self.assertEqual(len(caps), 1, s["hooks"]["PreToolUse"])
+        self.assertEqual(caps[0]["matcher"], "Agent|Task")
+        before = p.read(".claude/settings.json")
+        self.applied()
+        self.assertEqual(p.read(".claude/settings.json"), before, "a second run adds nothing")
+
     def test_project_own_script_with_a_flow_name_is_not_listed(self):
         p = self.p
         self.applied()
@@ -262,7 +275,7 @@ class Aplicar(unittest.TestCase):
         commands = [h["command"] for e in s["hooks"]["SessionStart"] + s["hooks"]["PreToolUse"] + s["hooks"]["Stop"]
                     for h in e["hooks"]]
         for script in ("session-start.sh", "recuperar.py --estado", "revision-antes-de-main.sh", "antes-de-parar.py",
-                       "guardia-config.py"):
+                       "guardia-config.py", "tope-subagentes.py"):
             self.assertEqual(sum(script in c for c in commands), 1, commands)
         self.assertTrue(p.read(".claude/settings.json").endswith("}\n"))
         before = p.read(".claude/settings.json")

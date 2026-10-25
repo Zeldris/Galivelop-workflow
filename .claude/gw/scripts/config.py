@@ -133,6 +133,8 @@ def validate(value, schema, path="$"):
             return [f"{path}: matches none of the allowed forms: " + " | ".join("; ".join(t) for t in tried)]
     if "enum" in schema and value not in schema["enum"]:
         errors.append(f"{path}: must be one of {schema['enum']}, got {value!r}")
+    if isinstance(value, (int, float)) and not isinstance(value, bool) and value < schema.get("minimum", value):
+        errors.append(f"{path}: must be at least {schema['minimum']}, got {value!r}")
     if isinstance(value, str):
         if len(value) < schema.get("minLength", 0):
             errors.append(f"{path}: must not be empty")

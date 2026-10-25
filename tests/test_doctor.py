@@ -28,7 +28,7 @@ class Doctor(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="gw-doctor-")).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, True)
         p = self.p = SessionProject(self.tmp)
-        for name in ("revision-antes-de-main.sh", "antes-de-parar.py", "guardia-config.py"):
+        for name in ("revision-antes-de-main.sh", "antes-de-parar.py", "guardia-config.py", "tope-subagentes.py"):
             shutil.copy2(ROOT / "scripts" / name, p.scripts / name)
         shutil.copy2(ROOT / "templates" / "claude" / "settings.json", p.work / ".claude" / "settings.json")
         shutil.copy2(ROOT / "templates" / "githooks" / "commit-msg", p.work / ".githooks" / "commit-msg")
@@ -122,6 +122,24 @@ class Doctor(unittest.TestCase):
         code, out = self.doctor()
         self.assertEqual(code, 1, out)
         self.assertLine(out, "FAIL", "settings PreToolUse", "guardia-config.py", "does not exist")
+
+    def test_older_subagent_cap_runs_twice(self):
+        s = self.settings()
+        s["hooks"]["PreToolUse"].append({"matcher": "Agent", "hooks": [
+            {"type": "command", "command": "python3 .claude/hooks/tope-subagentes.py"}]})
+        self.save_settings(s)
+        (self.p.work / ".claude" / "hooks").mkdir()
+        (self.p.work / ".claude" / "hooks" / "tope-subagentes.py").write_text(
+            f"#!/usr/bin/env python3\n# galivelop-workflow v{VERSION}\n")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "settings PreToolUse", "outside .claude/gw/scripts/", "delete that entry")
+
+    def test_missing_subagent_cap_script_fails(self):
+        (self.p.scripts / "tope-subagentes.py").unlink()
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", "settings PreToolUse", "tope-subagentes.py", "does not exist")
 
     def test_wrong_hook_version(self):
         hook = self.p.work / ".githooks" / "pre-push"
