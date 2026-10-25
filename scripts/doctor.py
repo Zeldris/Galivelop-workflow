@@ -39,7 +39,8 @@ PR_GUARD = "revision-antes-de-main.sh"
 INTERPRETERS = {"bash", "sh", "zsh", "python", "python3", "node", "env", "exec"}
 SOURCES = re.compile(r"galivelop|workflow|mattpocock", re.I)
 PROPOSAL = ".gw-nuevo"  # aplicar.py's proposals for files with local edits
-FLOW_HOOK_SCRIPTS = ("session-start.sh", "recuperar.py", "revision-antes-de-main.sh", "antes-de-parar.py")  # the template's
+FLOW_HOOK_SCRIPTS = ("session-start.sh", "recuperar.py", "revision-antes-de-main.sh", "antes-de-parar.py",
+                     "guardia-config.py")  # the settings template's
 # Zero-width, bidi and BOM characters, written as escapes so the fix command can embed them. A zero width joiner (U+200D)
 # is fine only inside an emoji sequence (family, profession, flag, heart): after an emoji, a variation selector or a
 # skin tone, and before an emoji. Between letters, accents or punctuation (`и‍г`, `é‍ñ`), next to ASCII, a line edge

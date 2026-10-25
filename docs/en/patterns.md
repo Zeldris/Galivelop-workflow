@@ -45,6 +45,10 @@ same time.
   origin/<protected>`): branches are pushed. Their work returns to the main branch by `git merge` before the PR.
 - **On stop**, the `Stop` hook (`antes-de-parar.py`) does not let a session finish with unpushed commits or with
   changes the log does not mention; if it cannot check (no git, no config), it warns instead of blocking.
+- **On touching the workflow's configuration**, the `PreToolUse` hook `guardia-config.py` asks the person before
+  `.claude/settings.json`, `.claude/gw.json`, `.githooks/` or `.claude/gw/scripts/` are edited (with `Edit`, `Write` or
+  a `Bash` command that writes there); if it cannot read the event it asks too. To regenerate the applied copy:
+  `python3 scripts/aplicar.py .`.
 - **On start**, the new session reads the log and checks that the last commit matches what it says; it does not ask
   where things stood. After a `/clear` or compaction, `recuperar.py --estado` reminds it.
 - When the branch closes, `bitacora.py close-row <branch>` leaves its row as "merged, branch finished" so the

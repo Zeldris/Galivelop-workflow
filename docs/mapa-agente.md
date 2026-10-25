@@ -14,6 +14,7 @@ documentos. Si mueves una pieza, actualiza su fila en el mismo commit.
 | Bitácora en el commit | `log` y `logRows` del config; cabecera de `templates/githooks/commit-msg` | `templates/githooks/commit-msg` (corre `bitacora.py check` sobre la bitácora preparada; tests en `tests/test_ganchos.py`) |
 | Arranque, recuperación y diagnóstico | [`plan.md`](plan.md) §5.2; ganchos y ventana de compactación en `templates/claude/settings.json` (y `hooks/hooks.json` para el plugin) | `scripts/session-start.sh`, `recuperar.py`, `registro_sesion.py`, `doctor.py` |
 | Cierre de turno: nada sin subir ni sin bitácora (gancho `Stop`) | cabecera de `scripts/antes-de-parar.py`; `Stop` en `templates/claude/settings.json` y `hooks/hooks.json` | `scripts/antes-de-parar.py` (tests en `tests/test_parar.py`); `doctor.py` y `aplicar.py` avisan de un `Stop` duplicado |
+| Configuración del flujo protegida (gancho `PreToolUse` que pide permiso) | cabecera de `scripts/guardia-config.py`; `PreToolUse` en `templates/claude/settings.json` y `hooks/hooks.json` | `scripts/guardia-config.py` (tests en `tests/test_guardia.py`); `doctor.py` y `aplicar.py` avisan de un gancho viejo duplicado |
 | Bitácora por ramas | config `logRows`, `plan`, `taskId` | `scripts/bitacora.py`, `prepush-ramas.sh` |
 | Aplicar y actualizar el flujo | [`es/aplicar.md`](es/aplicar.md), [`en/apply.md`](en/apply.md) | `scripts/aplicar.py` (`--init`, `--update`, `--check`) |
 | Plantillas para proyectos | `templates/es`, `templates/en`, `templates/gw.json` | `tests/test_plantillas.py` |

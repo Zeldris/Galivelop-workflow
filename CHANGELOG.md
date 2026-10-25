@@ -78,6 +78,12 @@ here.
   el árbol (los archivos sin seguir cuentan) si la bitácora no está entre ellos. Con `stop_hook_active` deja
   salir; sin git, sin config, con un error de git o con una entrada ilegible no bloquea: avisa con un `systemMessage`
   que nombra `python3 <ruta>/doctor.py`. `doctor.py` y `aplicar.py` avisan de un `Stop` viejo que lo duplicaría.
+- P2 de `repos-x`: gancho `PreToolUse` `scripts/guardia-config.py` (en `hooks/hooks.json` y en la plantilla de
+  `settings.json`, con el matcher `Edit|Write|MultiEdit|NotebookEdit|Bash`): devuelve `ask` si una edición o una orden
+  de `Bash` que escribe (redirección, `tee`, `sed -i`, `cp`/`mv`/`rm`, `chmod`, `git checkout --`…) toca
+  `.claude/settings.json`, `.claude/gw.json`, `.githooks/` o `.claude/gw/scripts/`; las lecturas pasan. La razón nombra
+  el archivo y la regla, y `python3 scripts/aplicar.py .` para regenerar la copia aplicada. Con una entrada ilegible
+  o sin raíz de proyecto pregunta (falla cerrado). `doctor.py` y `aplicar.py` avisan de un gancho viejo duplicado.
 
 ### EN
 
@@ -146,6 +152,12 @@ here.
   working tree (untracked files included) when the log is not among them. With `stop_hook_active` it lets Claude stop;
   with no git, no config, a git error or unreadable stdin it never blocks: it warns with a `systemMessage` naming
   `python3 <path>/doctor.py`. `doctor.py` and `aplicar.py` warn about an older `Stop` entry that would run it twice.
+- `repos-x` P2: `PreToolUse` hook `scripts/guardia-config.py` (in `hooks/hooks.json` and in the `settings.json`
+  template, matcher `Edit|Write|MultiEdit|NotebookEdit|Bash`): it returns `ask` when an edit or a `Bash` command that
+  writes (redirection, `tee`, `sed -i`, `cp`/`mv`/`rm`, `chmod`, `git checkout --`…) touches `.claude/settings.json`,
+  `.claude/gw.json`, `.githooks/` or `.claude/gw/scripts/`; reads pass. The reason names the file and the rule, and
+  `python3 scripts/aplicar.py .` to regenerate the applied copy. With unreadable input or no project root it asks
+  (fails closed). `doctor.py` and `aplicar.py` warn about an older duplicated hook.
 
 ## [0.3.0] - 2026-10-23
 

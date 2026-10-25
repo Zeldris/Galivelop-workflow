@@ -174,6 +174,19 @@ class Aplicar(unittest.TestCase):
         out = self.applied()
         self.assertIn("WARNING: .claude/settings.json Stop also runs 'python3 .claude/hooks/antes-de-parar.py'", out)
 
+    def test_config_guard_is_applied_once_with_its_own_matcher(self):
+        p = self.p
+        out = self.applied()
+        self.assertTrue((p.work / ".claude/gw/scripts/guardia-config.py").is_file(), out)
+        s = json.loads(p.read(".claude/settings.json"))
+        guards = [e for e in s["hooks"]["PreToolUse"]
+                  if any("guardia-config.py" in h["command"] for h in e["hooks"])]
+        self.assertEqual(len(guards), 1, s["hooks"]["PreToolUse"])
+        self.assertEqual(guards[0]["matcher"], "Edit|Write|MultiEdit|NotebookEdit|Bash")
+        before = p.read(".claude/settings.json")
+        self.applied()
+        self.assertEqual(p.read(".claude/settings.json"), before, "a second run adds nothing")
+
     def test_project_own_script_with_a_flow_name_is_not_listed(self):
         p = self.p
         self.applied()
@@ -248,7 +261,8 @@ class Aplicar(unittest.TestCase):
         self.assertEqual(s["hooks"]["SessionStart"][0], mine["hooks"]["SessionStart"][0])
         commands = [h["command"] for e in s["hooks"]["SessionStart"] + s["hooks"]["PreToolUse"] + s["hooks"]["Stop"]
                     for h in e["hooks"]]
-        for script in ("session-start.sh", "recuperar.py --estado", "revision-antes-de-main.sh", "antes-de-parar.py"):
+        for script in ("session-start.sh", "recuperar.py --estado", "revision-antes-de-main.sh", "antes-de-parar.py",
+                       "guardia-config.py"):
             self.assertEqual(sum(script in c for c in commands), 1, commands)
         self.assertTrue(p.read(".claude/settings.json").endswith("}\n"))
         before = p.read(".claude/settings.json")
