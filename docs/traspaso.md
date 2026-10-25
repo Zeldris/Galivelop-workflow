@@ -36,6 +36,8 @@ esa semana.
 Subida a `main` en espera (usuario, 2026-10-25): las tres fases y la publicación se deciden cuando esté subido lo de
 la sesión local y cerrada la parte 2b de `gw-media-content`. Mientras el CI no arranque (sin cuota de Actions), vale el
 check en local sobre el mismo commit (`bash tests/comprobar.sh`), y se apunta como «comprobado solo en local».
+Parte 2b cerrada (b5c1e31). La sesión local está acabando sus ajustes y subirá la `0.4.0` a `main`; cuando llegue,
+se preparan los textos de la release de GitHub (el usuario avisa).
 
 `0.2.0` publicada (etiqueta y release a mano en GitHub, título `Galivelop-workflow vX.Y.Z`, notas de la entrada del CHANGELOG). Para la siguiente: `release.yml` con lanzamiento manual desde Actions que cree la etiqueta (la
 sesión en la nube no puede subir etiquetas: 403 del proxy).
