@@ -802,6 +802,39 @@ class RojoSinArreglo(Base):
         self.assertIn("--ran-one needs a regex", out)
 
 
+    def test_test_in_the_same_file_as_the_fix_is_refused(self):
+        """INS P2: stashing the fix would take an uncommitted test with it, and the check would lie about the cause."""
+        self.p.write("m.py", "def f(x):\n    return x\n\n\ndef test_f():\n    assert f(1) == 1\n")
+        self.p.commit("old test", env=DAY)
+        self.p.write("m.py", "def f(x):\n    return x + 1\n\n\ndef test_f():\n    assert f(1) == 2\n")
+        cmd = "python3 -c 'import m; m.test_f()'"
+        code, out = self.p.script("rojo-sin-arreglo.sh", cmd, "m.py")
+        self.assertEqual(code, 2, out)
+        self.assertIn("m.py has uncommitted changes that touch test code", out)
+        self.assertIn("def test_f", out)  # the line that gave it away
+        self.assertIn("Put the test in its own file or commit it first", out)
+        self.assertNotIn("also passes WITHOUT the fix", out)
+        self.assertNotIn("OK, the test fails", out)
+        self.assertEqual(self.stashes(), "")  # refused before stashing anything
+        self.assertIn("return x + 1", (self.p.work / "m.py").read_text())
+
+    def test_new_fix_file_with_a_test_is_refused_too(self):
+        self.p.write("added.js", "it('works', () => {})\n")
+        code, out = self.p.script("rojo-sin-arreglo.sh", "true", "added.js")
+        self.assertEqual(code, 2, out)
+        self.assertIn("added.js has uncommitted changes that touch test code", out)
+        self.assertEqual(self.stashes(), "")
+
+    def test_test_committed_apart_from_the_fix_is_accepted(self):
+        """The same file holds an old committed test, but the uncommitted change only touches the code: no refusal."""
+        self.p.write("m.py", "def f(x):\n    return x\n\n\ndef test_f():\n    assert f(1) == 2\n")
+        self.p.commit("test first", env=DAY)
+        self.p.write("m.py", "def f(x):\n    return x + 1\n\n\ndef test_f():\n    assert f(1) == 2\n")
+        code, out = self.p.script("rojo-sin-arreglo.sh", "python3 -c 'import m; m.test_f()'", "m.py")
+        self.assertEqual(code, 0, out)
+        self.assertIn("OK", out)
+        self.assertIn("return x + 1", (self.p.work / "m.py").read_text())
+
     def test_an_invalid_regex_fails_closed_before_touching_the_fix(self):
         cmd = "echo 'ok 1'; grep -q good fix.txt"
         for option in ("--ran-one", "--fails-with"):

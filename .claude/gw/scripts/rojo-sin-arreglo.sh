@@ -13,6 +13,11 @@
 #                       more than the new test. It reads output, so it works with any runner that prints one line per test.
 # Make the command run exactly the new test (by its exact name): a filter that matches nothing may "pass" without
 # running it. Every fix file must have uncommitted changes (a new, untracked file counts).
+# The test must NOT be uncommitted in a fix file: stashing the fix would take the test with it and the check could not
+# tell (it may report "also passes WITHOUT the fix"). So a fix file whose uncommitted changes touch test code (a
+# `def test_`, `it(`, `#[test]`... line changed, or named in a hunk header, or in a new file) is refused with exit 2:
+# commit the test first (`git add -p` for just its hunks, or move it to its own file) and pass only the fix files.
+# It reads the diff, not the command: a command may legitimately name a fix file (grep, a linter, `foo.py --selftest`).
 # Bash 3.2 compatible. Root from this script's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -39,6 +44,19 @@ cd "$root" || exit 2
 for f in "$@"; do
   [ -n "$(git status --porcelain -- "$f")" ] || {
     echo "rojo-sin-arreglo: $f has no uncommitted changes (is it the fix file? the fix must not be committed yet); check: git status -- $f" >&2; exit 2; }
+done
+# Test code in the uncommitted changes of a fix file (-U0: changed lines plus the enclosing function in the hunk header).
+test_re='(def|fn|func|function)[[:space:]]+_?[Tt]est|(^|[^[:alnum:]_.])(it|test|describe)[[:space:]]*\(|#\[test\]|@Test|unittest\.TestCase|^[+@ -]*test_[A-Za-z0-9_]*[[:space:]]*\(\)'
+for f in "$@"; do
+  if git ls-files --error-unmatch -- "$f" > /dev/null 2>&1; then
+    hit="$(git diff HEAD -U0 -- "$f" 2>/dev/null | grep -Ev '^(\+\+\+|---|diff --git|index )' | grep -Em1 -- "$test_re")"
+  elif [ -f "$f" ]; then
+    hit="$(grep -Em1 -- "$test_re" "$f")"
+  else
+    hit=""
+  fi
+  [ -z "$hit" ] || {
+    echo "rojo-sin-arreglo: $f has uncommitted changes that touch test code ($hit); stashing the fix would remove that test too, so the check could not tell if the test covers the fix. Put the test in its own file or commit it first (git add -p), then rerun with only the fix files: bash $0 \"$cmd\" <fix-file>..." >&2; exit 2; }
 done
 out="$(mktemp -d "${TMPDIR:-/tmp}/gw-rojo.XXXXXX")" || { echo "rojo-sin-arreglo: cannot create a temp dir; free space and retry" >&2; exit 2; }
 stashes_before="$(git stash list | grep -c .)"
