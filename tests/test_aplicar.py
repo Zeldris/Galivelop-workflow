@@ -300,6 +300,16 @@ class Aplicar(unittest.TestCase):
         self.assertEqual(code, 2, out)
         self.assertIn("unknown skill", out)
 
+    def test_installed_scout_updates_tests_pass_in_the_project(self):
+        """The skill's own tests find config.py in .claude/gw (installed layout), not three folders up (INS P1)."""
+        p = self.p
+        self.applied("--with", "scout-updates")
+        scripts = p.work / ".claude" / "skills" / "scout-updates" / "scripts"
+        code, out = p.run("python3", "-B", "-m", "unittest", "discover", "-s", str(scripts), "-p", "test_compare.py")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("config.py", out)
+        self.assertIn("OK", out)
+
     def test_no_config_fails_closed(self):
         p = self.p
         (p.work / ".claude" / "gw.json").unlink()
