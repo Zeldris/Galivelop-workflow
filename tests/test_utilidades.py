@@ -553,6 +553,138 @@ class BitacoraTasks(Base):
         self.assertEqual(self.p.script("bitacora.py", "check")[0], 0)
 
 
+class BitacoraClash(Base):
+    """WMF P2: two branches that open the same task id for different tasks."""
+    PLAN = "docs/plan.md"
+    START = "- [ ] **INS-1** first\n- [ ] **INS-2** second\n"
+
+    def setUp(self):
+        super().setUp()
+        self.plan(self.START)
+        self.p.git("push", "-q", "--no-verify", "origin", "main")
+        self.base = self.p.sha()
+
+    def plan(self, text, message="plan"):
+        self.p.write(self.PLAN, text)
+        self.p.commit(message, env=DAY)
+        return self.p.sha()
+
+    def clash(self, *args):
+        return self.p.script("bitacora.py", "--plan", self.PLAN, "clash", *args)
+
+    def two_branches(self, a="the form", b="the export"):
+        self.p.branch("feat-b", self.base)
+        b_sha = self.plan(self.START + f"- [ ] **INS-3** {b}\n", "B opens INS-3")
+        self.p.branch("feat-a", self.base)
+        a_sha = self.plan(self.START + f"- [ ] **INS-3** {a}\n", "A opens INS-3")
+        return a_sha, b_sha
+
+    def test_same_id_for_two_tasks_refused_with_a_free_id(self):
+        a, b = self.two_branches()
+        code, out = self.clash(a, b)
+        self.assertEqual(code, 1, out)
+        self.assertIn('INS-3 is a new task on this branch ("the form")', out)
+        self.assertIn(f'on {b} ("the export")', out)
+        self.assertIn("give yours a free id (INS-4)", out)
+        self.assertIn("fix: renumber the task", out)
+
+    def test_same_task_brought_over_passes_whatever_its_markup_state_or_detail(self):
+        a, b = self.two_branches("The form: with a date", "~~**the form**~~ ✅ 2026-10-21 done")
+        self.assertEqual(self.clash(a, b), (0, ""))
+
+    def test_ids_the_merge_base_has_and_indented_mentions_are_not_clashes(self):
+        self.p.branch("feat-b", self.base)
+        b = self.plan("- [ ] **INS-1** first, renamed\n- [ ] **INS-2** second\n  - INS-3 later maybe\n")
+        self.p.branch("feat-a", self.base)
+        a = self.plan(self.START + "| INS-3 | a table task |\n")
+        self.assertEqual(self.clash(a, b), (0, ""))
+
+    def test_table_rows_and_struck_entries_are_entries(self):
+        self.p.branch("feat-b", self.base)
+        b = self.plan(self.START + "| INS-3 | the export |\n")
+        self.p.branch("feat-a", self.base)
+        a = self.plan(self.START + "- ~~**INS-3 · the form**~~ ✅ 2026-10-21\n")
+        code, out = self.clash(a, b)
+        self.assertEqual(code, 1, out)
+        self.assertIn('("the form")', out)
+        self.assertIn('("the export")', out)
+
+    def test_warn_prints_and_passes_and_skips_missing_refs(self):
+        a, b = self.two_branches()
+        code, out = self.clash("--warn", a, "origin/gone", b)
+        self.assertEqual(code, 0, out)
+        self.assertIn("WARNING: bitacora: INS-3 is a new task", out)
+        self.assertNotIn("fix:", out)
+        code, out = self.clash(a, "origin/gone")
+        self.assertEqual(code, 2, out)
+        self.assertIn("origin/gone is not a commit in this clone; fetch it: git fetch origin", out)
+
+    def test_no_common_history_fails_closed_unless_warn(self):
+        a, _ = self.two_branches()
+        self.p.git("checkout", "-q", "--orphan", "lonely")
+        orphan = self.plan(self.START + "- [ ] **INS-3** the export\n", "orphan")
+        code, out = self.clash(a, orphan)
+        self.assertEqual(code, 2, out)
+        self.assertIn("no common history here; fetch more of it: git fetch --deepen=200 origin", out)
+        self.assertEqual(self.clash("--warn", a, orphan), (0, ""))
+
+    def test_merge_that_kept_both_tasks_refused_until_one_is_renumbered(self):
+        a, b = self.two_branches()
+        self.p.git("merge", "-q", "--no-edit", "-s", "ours", b)  # keeps A's plan: one title, nothing to report
+        self.assertEqual(self.clash("--merge", self.p.sha()), (0, ""))
+        self.p.git("reset", "-q", "--hard", a)
+        both = self.START + "- [ ] **INS-3** the form\n- [ ] **INS-3** the export\n"
+        self.p.git("merge", "-q", "--no-commit", "-s", "ours", b)
+        self.p.write(self.PLAN, both)
+        self.p.git("add", self.PLAN)
+        self.p.git("commit", "-q", "--no-verify", "--no-edit")
+        merge = self.p.sha()
+        code, out = self.clash("--merge", merge)
+        self.assertEqual(code, 1, out)
+        self.assertIn('keeps two different tasks with the id INS-3: "the form" on this branch and "the export" '
+                      "on the merged one; give this branch's a free id (INS-4)", out)
+        self.assertIn("in a new commit: git commit -a", out)
+        fixed = self.plan(both.replace("INS-3** the form", "INS-4** the form"), "renumber")
+        self.assertEqual(self.clash("--merge", merge, "--tip", fixed), (0, ""))
+        self.assertEqual(self.clash("--merge", a), (0, ""))  # not a merge
+
+    def test_merging_checks_the_index_of_a_merge_in_progress(self):
+        a, b = self.two_branches()
+        self.assertEqual(self.clash("--merging"), (0, ""))  # no merge in progress
+        self.p.git("merge", "-q", "--no-commit", "-s", "ours", b)
+        self.p.write(self.PLAN, self.START + "- [ ] **INS-3** the form\n- [ ] **INS-3** the export\n")
+        self.p.write("other.md", "not staged\n")
+        code, out = self.clash("--merging")
+        self.assertEqual(code, 0, out)  # the work tree has both, the index does not yet
+        self.p.git("add", self.PLAN)
+        code, out = self.clash("--merging")
+        self.assertEqual(code, 1, out)
+        self.assertIn("give this branch's a free id (INS-4)", out)
+        self.assertIn("then: git add -A && git commit", out)
+        self.p.write(self.PLAN, self.START + "- [ ] **INS-4** the form\n- [ ] **INS-3** the export\n")
+        self.p.git("add", self.PLAN)
+        self.assertEqual(self.clash("--merging"), (0, ""))
+
+    def test_bad_usage_is_exit_2(self):
+        for args in ((), ("HEAD",), ("--merging", "HEAD"), ("--merge", "HEAD", "--warn"), ("--tip", "HEAD", "HEAD", "HEAD"),
+                     ("--merging", "--merge", "HEAD")):
+            code, out = self.clash(*args)
+            self.assertEqual(code, 2, f"{args}: {out}")
+            self.assertIn("clash takes REV OTHER", out)
+
+    def test_off_without_a_plan_or_without_logrows(self):
+        a, b = self.two_branches()
+        code, out = self.p.script("bitacora.py", "clash", a, b)  # no plan in the config
+        self.assertEqual((code, out), (0, ""))
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        self.p = Utilidades(self.tmp, {"logRows": False})
+        self.plan(self.START)
+        self.base = self.p.sha()
+        a, b = self.two_branches()
+        self.assertEqual(self.clash(a, b), (0, ""))
+
+
 class BitacoraCloseRow(Base):
     def test_close_row_writes_merged_text_only_in_that_row(self):
         code, out = self.p.script("bitacora.py", "close-row", "feat-a")
@@ -673,6 +805,51 @@ class PrepushRamas(Base):
         self.assertIn("Task in progress · feat-b", out)
         self.assertIn("prepush-ramas.sh refused the push", out)
         code, out = self.p.push("origin", "feat-a", env={"BITACORA_COMPARTIDA": "1"})
+        self.assertEqual(code, 0, out)
+
+
+    def test_task_id_clash_with_the_protected_branch_refused_and_with_another_branch_warned(self):
+        plan, env = "docs/plan.md", {"GW_PLAN": "docs/plan.md"}
+        start = "- [ ] **INS-1** first\n"
+        self.p.write(plan, start); self.p.commit("plan", env=DAY)
+        self.p.git("push", "-q", "--no-verify", "origin", "main")
+        base = self.p.sha()
+        self.p.write(plan, start + "- [ ] **INS-2** the export\n"); self.p.commit("main opens INS-2", env=DAY)
+        self.p.git("push", "-q", "--no-verify", "origin", "main")
+        self.p.branch("feat-b", base)
+        self.p.write(plan, start + "- [ ] **INS-3** the import\n"); self.p.commit("B opens INS-3", env=DAY)
+        self.p.git("push", "-q", "--no-verify", "origin", "feat-b")
+        self.p.branch("feat-a", base)
+        self.p.write(plan, start + "- [ ] **INS-3** the form\n"); self.p.commit("A opens INS-3", env=DAY)
+        code, out, _, _ = self.run_hook(self.p.sha(), env=env)
+        self.assertEqual(code, 0, out)
+        self.assertIn('WARNING: bitacora: INS-3 is a new task on this branch ("the form") and on refs/remotes/origin/feat-b', out)
+        self.p.write(plan, start + "- [ ] **INS-2** the form\n"); self.p.commit("A opens INS-2", env=DAY)
+        code, out, _, _ = self.run_hook(self.p.sha(), env=env)
+        self.assertEqual(code, 1, out)
+        self.assertIn('INS-2 is a new task on this branch ("the form") and on refs/remotes/origin/main ("the export")', out)
+        self.assertIn("give yours a free id (INS-3)", out)
+
+    def test_new_merge_that_kept_two_tasks_under_one_id_refused(self):
+        plan, env = "docs/plan.md", {"GW_PLAN": "docs/plan.md"}
+        start = "- [ ] **INS-1** first\n"
+        self.p.write(plan, start); self.p.commit("plan", env=DAY)
+        self.p.git("push", "-q", "--no-verify", "origin", "main")
+        base = self.p.sha()
+        self.p.write(plan, start + "- [ ] **INS-2** the export\n"); self.p.commit("main opens INS-2", env=DAY)
+        self.p.git("push", "-q", "--no-verify", "origin", "main")
+        self.p.branch("feat-a", base)
+        self.p.write(plan, start + "- [ ] **INS-2** the form\n"); self.p.commit("A opens INS-2", env=DAY)
+        self.p.git("merge", "-q", "--no-commit", "-s", "ours", "origin/main")
+        self.p.write(plan, start + "- [ ] **INS-2** the form\n- [ ] **INS-2** the export\n")
+        self.p.git("add", plan)
+        self.p.git("commit", "-q", "--no-verify", "--no-edit")
+        code, out, _, _ = self.run_hook(self.p.sha(), env=env)
+        self.assertEqual(code, 1, out)
+        self.assertIn("the merge keeps two different tasks with the id INS-2", out)
+        self.assertIn("bitacora: in merge", out)
+        self.p.write(plan, start + "- [ ] **INS-3** the form\n- [ ] **INS-2** the export\n"); self.p.commit("renumber", env=DAY)
+        code, out, _, _ = self.run_hook(self.p.sha(), env=env)
         self.assertEqual(code, 0, out)
 
 

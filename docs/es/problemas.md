@@ -76,6 +76,7 @@ una hora o con su pid muerto; se puede borrar a mano.
 | `cannot read '<clave>' from .claude/gw.json` | Config inválida | `python3 .claude/gw/scripts/config.py validate` |
 | `the workflow scripts are missing` | Falta `.claude/gw/scripts/` | `/gw-update` |
 | `prepush-ramas.sh refused the push` | Con `logRows`: una fila de la bitácora ajena, demasiado larga, o tareas cerradas sin pasar a «Hecho» | Lo que imprime; una fila compartida: `BITACORA_COMPARTIDA=1 git push` |
+| `bitacora: <ID> is a new task on this branch` / `the merge keeps two different tasks with the id <ID>` | Con `logRows` y `plan`: tu rama y otra (o `main`) dieron de alta el mismo id para tareas distintas | Renumera la tuya con el id libre que propone, en el plan y donde se nombre, y haz commit; si es la misma tarea, pon el mismo título en las dos |
 | `bitacora: <ID> is closed in the plan` (en el `pre-commit`) | Con `logRows` y `plan`: el commit cierra una tarea que no consta en «Hecho» | Táchala en «Hecho» de la bitácora, `git add` de la bitácora y vuelve a hacer el commit |
 | `the related tests failed` | Fallan los `relatedTests` | Arréglalos o ajusta la clave |
 | El `pre-push` no se ejecuta | `core.hooksPath` sin poner o de otro gestor; sin bit de ejecución (Windows) | `git config core.hooksPath .githooks`; `git update-index --chmod=+x .githooks/pre-push` |

@@ -1940,6 +1940,27 @@ class PreCommitDone(Base):
         self.assertIn("config.py is missing; reinstall the workflow scripts: /gw-update", r.stderr)
 
 
+    def test_conflicted_merge_keeping_two_tasks_under_one_id_refused(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "other")
+        p.write("docs/plan.md", "- [ ] **INS-3** the thing\n- [ ] **INS-4** the export\n")
+        p.git("add", "-A"); p.git("commit", "-q", "--no-verify", "-m", "other opens INS-4")
+        p.git("checkout", "-q", "main")
+        p.write("docs/plan.md", "- [ ] **INS-3** the thing\n- [ ] **INS-4** the form\n")
+        p.git("add", "-A"); p.git("commit", "-q", "--no-verify", "-m", "main opens INS-4")
+        self.assertNotEqual(p.git("merge", "-q", "other", ok=False).returncode, 0)  # conflicted: pre-commit runs
+        p.write("docs/plan.md", "- [ ] **INS-3** the thing\n- [ ] **INS-4** the form\n- [ ] **INS-4** the export\n")
+        p.git("add", "-A")
+        r = p.git("commit", "-q", "--no-edit", ok=False)
+        self.assertNotEqual(r.returncode, 0, r.stderr)
+        self.assertIn("the merge keeps two different tasks with the id INS-4", r.stderr)
+        self.assertIn("give this branch's a free id (INS-5)", r.stderr)
+        p.write("docs/plan.md", "- [ ] **INS-3** the thing\n- [ ] **INS-5** the form\n- [ ] **INS-4** the export\n")
+        p.git("add", "-A")
+        r = p.git("commit", "-q", "--no-edit", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+
 class CommitMsg(Base):
     """templates/githooks/commit-msg: bitacora.py check on the staged log, at commit time."""
     config = {"logRows": True}

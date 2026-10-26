@@ -6,8 +6,9 @@ CHANGELOG de la `1.0.0`.
 
 ## De la recogida del 2026-10-26
 
-- [ ] **WMF P2:** detectar un id de tarea dado de alta a la vez en dos ramas al traer `main` (`bitacora.py` o un
-  script nuevo). [`2026-10-26-world-maker-fantasy.md`](../propuestas/2026-10-26-world-maker-fantasy.md)
+- [x] **WMF P2** (2026-10-26): `bitacora.py clash` detecta un id de tarea dado de alta a la vez en dos ramas para
+  tareas distintas; lo corren el `pre-push` (contra `main` y los merges nuevos; aviso con otras ramas) y el
+  `pre-commit` de un merge con conflictos. [`2026-10-26-world-maker-fantasy.md`](../propuestas/2026-10-26-world-maker-fantasy.md)
 - [x] **WMF P3** (2026-10-26): `recuperar.py --estado` enseña los otros worktrees con su rama y su fila de la bitácora.
   [`2026-10-26-world-maker-fantasy.md`](../propuestas/2026-10-26-world-maker-fantasy.md)
 - [ ] **INS P3 (segunda parte):** un `ci-local` genérico que lee `docs/registros/ci-local.md` (la corrección mínima

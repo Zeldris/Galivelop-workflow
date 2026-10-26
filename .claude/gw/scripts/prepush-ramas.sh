@@ -11,6 +11,8 @@
 #   - bitacora.py own-row: no new commit changes another branch's row or a shared one (BITACORA_COMPARTIDA=1 or
 #     GW_SHARED_LOG=1 allows it); the branch is the remote one pushed to, or the current one; a commit that comes
 #     from another local branch (a sub-branch merged back) may write in that branch's row instead;
+#   - bitacora.py clash: no task id the branch opens in the plan is also a different task on origin/<protectedBranch>,
+#     and no new merge kept two tasks under one id (a WARNING for the 10 most recent other remote branches);
 #   - bitacora.py check: the log as each new commit has it (not the working copy): rows well formed, <= 600
 #     characters, one per branch, and "Updated" not older than the commit if the commit changes the log.
 # Plan folder and task-id regex: GW_PLAN and GW_TASK_ID (see bitacora.py). Exit 1 if a rule is broken.
@@ -80,6 +82,23 @@ while read -r local_ref sha_local remote_ref sha_remote; do
 
   branch="${remote_ref#refs/heads/}"
   { [ -n "$branch" ] && [ "$branch" != "$remote_ref" ]; } || branch="$(git branch --show-current 2>/dev/null)"
+
+  # A task id this branch opens that the protected branch (or a merge of it) also took for another task; other
+  # remote branches, the 10 most recent, only warn (they may never be merged).
+  if git rev-parse -q --verify "refs/remotes/origin/$protected^{commit}" >/dev/null 2>&1; then
+    bita clash "$sha_local" "refs/remotes/origin/$protected" || exit 1
+  fi
+  while IFS= read -r commit; do
+    [ -n "$commit" ] || continue
+    bita clash --merge "$commit" --tip "$sha_local" || { echo "bitacora: in merge $(git log -1 --format='%h %s' "$commit")"; exit 1; }
+  done <<<"$(git rev-list --merges "$sha_local" --not --remotes 2>/dev/null)"
+  others=()
+  while IFS= read -r ref; do
+    case "$ref" in ""|refs/remotes/origin/HEAD|"refs/remotes/origin/$protected"|"refs/remotes/origin/$branch") continue ;; esac
+    others+=("$ref")
+    [ "${#others[@]}" -ge 10 ] && break
+  done <<<"$(git for-each-ref --sort=-committerdate --format='%(refname)' refs/remotes/origin/ 2>/dev/null)"
+  if [ "${#others[@]}" -gt 0 ]; then bita clash --warn "$sha_local" "${others[@]}"; fi
 
   # Own row: the log of each new commit that is not a merge (merges bring rows from the protected branch or others).
   while IFS= read -r commit; do

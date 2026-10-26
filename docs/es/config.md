@@ -97,7 +97,9 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   que cada rama escribe solo en su fila, que toda fila «Tarea en curso» lleva su rama y que cada tarea cerrada en el
   plan consta en «Hecho»: tachada allí, o nombrada en una línea que empieza por fecha (un punto sin tachar no basta).
   Esta última también la mira el `pre-commit`, sobre la bitácora preparada, para que el cierre se apunte en el mismo
-  commit (y no con un `--amend` antes del push).
+  commit (y no con un `--amend` antes del push). Con `plan`, el push también rechaza un id de tarea que la rama da de
+  alta y `origin/<protectedBranch>` usa para otra tarea (o un merge nuevo que dejó las dos con el mismo id), y avisa
+  si choca con otra rama remota (`bitacora.py clash`); el `pre-commit` de un merge con conflictos lo mira antes.
 - Tras actualizar el flujo, sube `version` a mano (`/gw-update` lo hace): ese número es lo que `doctor.py`
   compara con las cabeceras copiadas.
 

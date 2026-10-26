@@ -54,6 +54,14 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   archivo del plan, y se salta al cerrar un merge, un cherry-pick o un rebase (el `pre-push` lo vuelve a mirar sobre
   todo el rango). Con un `gw.json` ilegible avisa y deja pasar (el commit puede ser el que lo arregla; el `pre-push`
   falla cerrado); si falta `bitacora.py` o `config.py`, el `pre-commit` falla cerrado.
+- Con `logRows` y `plan`, se detecta un id de tarea que dos ramas dan de alta a la vez para tareas distintas (WMF P2).
+  `bitacora.py clash REV OTRA...` falla si las dos abren una entrada del plan (una línea sin sangría `- …ID` o
+  `| ID`, hecha o no) con un id que su base común no tiene y títulos distintos (el título es el texto tras el id hasta
+  `:`, `.`, `(`, `—`, `✅` o `|`, sin marcas ni mayúsculas; el mismo título en las dos es la misma tarea, traída), y
+  propone el siguiente id libre. El `pre-push` lo corre contra `origin/<protectedBranch>` (falla), contra las 10 ramas
+  remotas más recientes (solo aviso) y sobre cada merge nuevo (`clash --merge`: falla si el merge dejó las dos tareas
+  con el mismo id y el commit subido aún las tiene); el `pre-commit` de un merge con conflictos lo mira sobre el índice
+  (`clash --merging`). Sin historia común (clon superficial) falla cerrado con `git fetch --deepen=200 origin`.
 
 ### EN
 
@@ -93,6 +101,14 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   and is skipped while closing a merge, cherry-pick or rebase (`pre-push` checks the whole range again). With an
   unreadable `gw.json` it warns and lets the commit through (it may be the one that fixes it; `pre-push` fails
   closed); without `bitacora.py` or `config.py`, `pre-commit` fails closed.
+- With `logRows` and `plan`, a task id two branches open at the same time for different tasks is caught (WMF P2).
+  `bitacora.py clash REV OTHER...` fails if both open a plan entry (an unindented `- …ID` or `| ID` line, done or
+  not) with an id their merge base lacks and different titles (the title is the text after the id up to `:`, `.`,
+  `(`, `—`, `✅` or `|`, markup and case ignored; the same title on both is the same task, brought over), and names
+  the next free id. `pre-push` runs it against `origin/<protectedBranch>` (fails), against the 10 most recent other
+  remote branches (warning only) and on each new merge (`clash --merge`: fails if the merge kept both tasks under one
+  id and the pushed commit still has them); the `pre-commit` of a conflicted merge checks the index (`clash
+  --merging`). Without common history (a shallow clone) it fails closed with `git fetch --deepen=200 origin`.
 
 ## [0.4.1] - 2026-10-26
 

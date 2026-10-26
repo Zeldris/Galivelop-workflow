@@ -96,7 +96,10 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   each branch writes only in its own row, that every "Task in progress" row names its branch, and that each task
   closed in the plan is recorded in "Done": struck through there, or named on a line that starts with a date (an
   unstruck bullet is not enough). That last rule is also checked by `pre-commit`, on the staged log, so a closure is
-  recorded in the same commit (not with an `--amend` before the push).
+  recorded in the same commit (not with an `--amend` before the push). With `plan`, the push also refuses a task id
+  the branch opens that `origin/<protectedBranch>` uses for another task (or a new merge that kept both under one id),
+  and warns when it clashes with another remote branch (`bitacora.py clash`); the `pre-commit` of a conflicted merge
+  checks it earlier.
 - After changing the workflow version, bump `version` by hand (`/gw-update` does it): `doctor.py` compares that number
   with the copied headers.
 

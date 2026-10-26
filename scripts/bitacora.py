@@ -34,6 +34,17 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  entry did not change (it may still say "Next: X" with X done)
   bitacora.py close-row BRANCH [--text TEXT]     rewrite BRANCH's row as "merged, branch finished" (last commit
                                                  before the PR, so main does not inherit a stale "Next")
+  bitacora.py clash REV OTHER... [--warn]        fail if REV and an OTHER both open a plan entry (an unindented
+                                                 "- …ID" / "| ID", done or not) for an id their merge base does not
+                                                 have, with different titles (two tasks that took the same id; the
+                                                 same title on both sides is the same task, brought over); --warn
+                                                 only prints WARNING and exits 0, and skips an OTHER with no common
+                                                 history. The title is the text after the id up to ":", ".", "(",
+                                                 "—", "✅" or "|", markup and case ignored
+  bitacora.py clash --merge M [--tip T]          fail if merge commit M kept both tasks of a clash between its two
+                                                 parents and T (default M) still has both titles under that id
+  bitacora.py clash --merging                    the same for the merge being concluded (HEAD, MERGE_HEAD and the
+                                                 index; the pre-commit hook); passes when no merge is in progress
 
 Common options: --root PATH (default: from this script's folder, via config.py), --plan PATH (repeatable; a file or a
 folder with the plan/roadmap; env GW_PLAN, ':'-separated; config `plan`), --id-regex REGEX (task ids; env GW_TASK_ID;
@@ -72,6 +83,7 @@ CELL_SPLIT = re.compile(r"(?<!\\)\|")
 LIST_ITEM = re.compile(r"^\s*(?:[-*]|\d+\.)\s")
 DATE_LINE = re.compile(r"^\s*(?:[-*]|\d+\.)?\s*(?:\*\*|`|\[)?\s*\d{4}-\d{2}-\d{2}\b")
 RANGE = r"\s*(?:…|\.\.\.|–|—|\ba\b|\bto\b)\s*"
+TITLE_END = re.compile(r"\s*(?::(?:\s|$)|\.(?:\s|$)|\(|—|✅|\|)")
 CLOSED_TEXT = {"es": "Al fusionarse, rama terminada: no queda nada pendiente en ella.",
                "en": "Merged, branch finished: nothing is pending on it."}
 
@@ -103,6 +115,7 @@ class Ctx:
         self.sep = rf"(?:{RANGE}|\s*(?:,|\by\b|\band\b)\s*)"
         self.closed_box = re.compile(rf"^\s*[-*]\s*\[[xX]\]\s*(?:\*\*)?`?(?P<id>{self.id_src})", re.M)
         self.entry = re.compile(rf"[-|]\s*(?:\[(?P<box>[ xX])\]\s*)?(?P<strike>~~)?\s*(?:\*\*)?`?(?P<id>{self.id_src})")
+        self._titles, self._blob_titles = {}, {}
 
     def git(self, *a):
         return subprocess.run(["git", "-C", str(self.root), *a], capture_output=True, text=True)
@@ -143,6 +156,36 @@ class Ctx:
     def show(self, rev, path):
         r = self.git("show", f"{rev}:{path}")  # INDEX ("") gives ":path", the staged version
         return r.stdout if r.returncode == 0 else ""
+
+    def plan_blobs(self, rev):
+        """{path: blob sha} of the plan files at `rev` (INDEX = the staged ones)."""
+        out = {}
+        for p in self.plans:
+            r = self.git("ls-files", "-s", "--", p) if rev == INDEX else self.git("ls-tree", "-r", rev, "--", p)
+            for line in r.stdout.splitlines():
+                meta, _, path = line.partition("\t")  # "mode sha stage\tpath" / "mode type sha\tpath"
+                if path.endswith(".md"):
+                    out[path] = meta.split()[1 if rev == INDEX else 2]
+        return out
+
+    def titles(self, rev):
+        """Task id -> set of titles of the plan entries that open it at `rev`: unindented lines that `entry` matches,
+        done or not (cached by rev and by blob: several revs share most plan files)."""
+        if rev not in self._titles:
+            res = {}
+            for blob in self.plan_blobs(rev).values():
+                if blob not in self._blob_titles:
+                    found = {}
+                    for line in self.git("cat-file", "blob", blob).stdout.splitlines():
+                        m = self.entry.match(line)
+                        if m:
+                            rest = re.sub(r"\[[ xX]\]|[*`~]", "", line[m.end("id"):]).lstrip(" ·:—–-|")
+                            found.setdefault(m.group("id"), set()).add(" ".join(TITLE_END.split(rest, 1)[0].split()).casefold())
+                    self._blob_titles[blob] = found
+                for i, t in self._blob_titles[blob].items():
+                    res.setdefault(i, set()).update(t)
+            self._titles[rev] = res
+        return self._titles[rev]
 
     def entries(self, text):
         """Open plan entries: id -> text from the line that opens it to the next unindented line. Struck and
@@ -353,6 +396,87 @@ def cmd_closed(ctx, args):
     return 1 if missing else 0
 
 
+def commit_of(ctx, rev):
+    sha = ctx.git("rev-parse", "-q", "--verify", f"{rev}^{{commit}}").stdout.strip()
+    if not sha:
+        raise Usage(f"{rev} is not a commit in this clone; fetch it: git fetch origin")
+    return sha
+
+
+def clashes(ctx, a, b):
+    """{id: (titles at a, titles at b)} of the ids both open and their merge base does not, with different titles.
+    None if a and b have no common history (a shallow clone, unrelated branches)."""
+    base = ctx.git("merge-base", a, b).stdout.strip()
+    if not base:
+        return None
+    ta, tb, t0 = ctx.titles(a), ctx.titles(b), ctx.titles(base)
+    return {i: (ta[i], tb[i]) for i in sorted(ta.keys() & tb.keys()) if i not in t0 and ta[i] != tb[i]}
+
+
+def free_id(ctx, revs, taken):
+    """The next id after the highest one with `taken`'s prefix that any of `revs` opens."""
+    prefix = taken.rsplit("-", 1)[0]
+    top = 0
+    for rev in revs:
+        for i in ctx.titles(rev):
+            head, _, num = i.rpartition("-")
+            m = re.match(r"\d+", num)
+            if head == prefix and m:
+                top = max(top, int(m.group(0)))
+    return f"{prefix}-{top + 1}"
+
+
+def quote(titles):
+    return " / ".join(f"\"{t}\"" for t in sorted(titles))
+
+
+def cmd_clash(ctx, args):
+    if not ctx.plans:
+        return 0
+    if args.merging or args.merge:
+        if args.merging:
+            path = Path(ctx.git("rev-parse", "--git-path", "MERGE_HEAD").stdout.strip())
+            path = path if path.is_absolute() else ctx.root / path
+            if not path.exists():
+                return 0
+            p1, p2, tip = "HEAD", path.read_text().split()[0], INDEX
+            fix = "renumber this branch's task in the plan (and wherever it is named), then: git add -A && git commit"
+        else:
+            m = commit_of(ctx, args.merge)
+            parents = ctx.git("rev-parse", f"{m}^1", f"{m}^2").stdout.split()
+            if len(parents) != 2:
+                return 0  # not a merge
+            p1, p2 = parents
+            tip = commit_of(ctx, args.tip) if args.tip else m
+            fix = "renumber this branch's task in the plan (and wherever it is named) in a new commit: git commit -a"
+        found = clashes(ctx, p1, p2) or {}
+        bad = [i for i, (t1, t2) in found.items() if (t1 | t2) <= ctx.titles(tip).get(i, set())]
+        for i in bad:
+            t1, t2 = found[i]
+            print(f"bitacora: the merge keeps two different tasks with the id {i}: {quote(t1)} on this branch and "
+                  f"{quote(t2)} on the merged one; give this branch's a free id ({free_id(ctx, [p1, p2], i)})")
+        if bad:
+            print(f"bitacora: fix: {fix}")
+        return 1 if bad else 0
+    rev, bad = commit_of(ctx, args.revs[0]), []
+    for other in args.revs[1:]:
+        if args.warn and not ctx.git("rev-parse", "-q", "--verify", f"{other}^{{commit}}").stdout.strip():
+            continue
+        found = clashes(ctx, rev, commit_of(ctx, other))
+        if found is None:
+            if args.warn:
+                continue
+            raise Usage(f"{args.revs[0]} and {other} have no common history here; fetch more of it: git fetch --deepen=200 origin")
+        for i, (ta, tb) in found.items():
+            bad.append(i)
+            print(f"{'WARNING: ' if args.warn else ''}bitacora: {i} is a new task on this branch ({quote(ta)}) and on "
+                  f"{other} ({quote(tb)}); give yours a free id ({free_id(ctx, [rev, other], i)}) or, if it is the "
+                  "same task, the same title on both")
+    if bad and not args.warn:
+        print("bitacora: fix: renumber the task in the plan (and wherever it is named), then: git commit -a")
+    return 1 if bad and not args.warn else 0
+
+
 def cmd_in_progress(ctx, args):
     if not ctx.plans:
         return 0
@@ -486,12 +610,24 @@ def main(argv=None):
     s = sub.add_parser("in-progress")
     s.add_argument("base")
     s.add_argument("sha")
+    k = sub.add_parser("clash")
+    k.add_argument("revs", nargs="*")
+    k.add_argument("--warn", action="store_true")
+    k.add_argument("--merge")
+    k.add_argument("--tip")
+    k.add_argument("--merging", action="store_true")
     r = sub.add_parser("close-row")
     r.add_argument("branch")
     r.add_argument("--text")
     args = p.parse_args(argv)
     if args.cmd == "closed" and (bool(args.staged) == (args.sha is not None) or (args.base is None) != (args.sha is None)):
         print("bitacora: closed takes BASE SHA, or --staged alone; run: bitacora.py closed --staged", file=sys.stderr)
+        return 2
+    if args.cmd == "clash" and not ((args.merging and not (args.revs or args.merge or args.tip or args.warn))
+                                    or (args.merge and not (args.revs or args.warn or args.merging))
+                                    or (len(args.revs) >= 2 and not (args.merge or args.tip or args.merging))):
+        print("bitacora: clash takes REV OTHER... [--warn], --merge M [--tip T], or --merging alone; run: "
+              "bitacora.py clash HEAD origin/main", file=sys.stderr)
         return 2
     if getattr(args, "date", None):
         try:
@@ -505,17 +641,18 @@ def main(argv=None):
         try:
             ctx = Ctx(args)
         except Usage as exc:
-            if not (args.cmd == "closed" and args.staged):
+            if not ((args.cmd == "closed" and args.staged) or (args.cmd == "clash" and args.merging)):
                 raise
             # A commit may be the one that fixes (or breaks) the config: the pre-push fails closed on it instead.
-            print(f"bitacora: WARNING: skipping the \"Done\" check of this commit: {exc}", file=sys.stderr)
+            what = "\"Done\"" if args.cmd == "closed" else "task-id clash"
+            print(f"bitacora: WARNING: skipping the {what} check of this commit: {exc}", file=sys.stderr)
             return 0
         if args.cmd == "done":
             args.date = args.date or datetime.date.today().isoformat()
         elif not ctx.config.get("logRows") and args.cmd != "check":
             return 0  # the branch-row module is off: nothing to check (`check` still reads the size and Done rules)
         return {"check": cmd_check, "done": cmd_done, "own-row": cmd_own_row, "closed": cmd_closed,
-                "in-progress": cmd_in_progress, "close-row": cmd_close_row}[args.cmd](ctx, args)
+                "in-progress": cmd_in_progress, "close-row": cmd_close_row, "clash": cmd_clash}[args.cmd](ctx, args)
     except Usage as exc:
         print(f"bitacora: {exc}", file=sys.stderr)
         return 2
