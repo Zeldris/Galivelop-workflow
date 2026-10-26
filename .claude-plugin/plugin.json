@@ -1,6 +1,6 @@
 {
   "name": "galivelop-workflow",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Galivelop workshop's way of working with Claude Code: hand-offs, model selection, review before main, token economy.",
   "author": { "name": "Galivelop" },
   "license": "MIT",

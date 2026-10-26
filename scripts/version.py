@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.4.0
+# galivelop-workflow v0.4.1
 """The workflow's version markers: check them or bump them all at once (workflow repo only).
 
 The version lives in .claude-plugin/plugin.json; copies of it mark every workflow-owned file so aplicar.py and

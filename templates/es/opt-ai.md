@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.4.0 -->
+<!-- galivelop-workflow v0.4.1 -->
 # opt-ai — notas del proyecto
 
 Las lee primero la skill `opt-ai`; aquí vive todo lo propio de los modelos de IA local de este proyecto. El flujo

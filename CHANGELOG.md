@@ -8,6 +8,47 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.4.1] - 2026-10-26
+
+Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-26-*.md`); los evolutivos van a la
+`1.0.0`. / Bug-fix patch from the 2026-10-26 harvest; the new features go to `1.0.0`.
+
+### ES
+
+- `opt-tokens`: un cambio a un archivo copiado del flujo (`.claude/gw/scripts/`, `.claude/skills/`, los ganchos) no se
+  parchea en el proyecto: va al flujo, como dice `retro` (instalador P4).
+- Los scripts hallan la raíz del repo dentro de un worktree enlazado: `config.py` y los `.sh` piden la raíz a git sin
+  `GIT_DIR`, `GIT_WORK_TREE` ni `GIT_INDEX_FILE` heredados, y `find_root` ya no usa `$CLAUDE_PROJECT_DIR` (ruta del
+  script y luego el directorio actual); fuera de un proyecto falla cerrado y pide `--root` (WMF P1).
+- Los tests de `scout-updates` pasan también en la copia instalada (`.claude/skills/scout-updates/scripts`), que
+  busca el flujo en `.claude/gw` (instalador P1).
+- `rojo-sin-arreglo.sh` se niega, con un mensaje que dice cómo seguir, cuando el archivo del arreglo tiene sin
+  commitear cambios que tocan código de test: el stash quitaba el test junto con el arreglo (instalador P2).
+- `revision-antes-de-main.sh` reconoce el CI que GitHub no arrancó por facturación o límite de gasto (en el resumen
+  o las anotaciones del check-run): bloquea igual, pero dice que no se ejecutó nada y nombra el camino de
+  «comprobado solo en local» (instalador P3).
+- Sin aviso falso de «sesión abierta fuera del repo» en la nube (`CLAUDE_CODE_REMOTE=true`, que siempre arranca en
+  `/home/user`): ni en `doctor.py`, ni en `opt-tokens/medir.py`, ni en `recuperar.py --estado`, ni en
+  `registro_sesion.py`, ni en `session-start.sh`. Fuera de la nube el aviso sigue (portal P1).
+
+### EN
+
+- `opt-tokens`: a change to a file copied from the workflow (`.claude/gw/scripts/`, `.claude/skills/`, the hooks) is
+  not patched in the project: it goes to the workflow, as `retro` says (installer P4).
+- Scripts find the repo root inside a linked worktree: `config.py` and the `.sh` scripts ask git for the root without
+  inherited `GIT_DIR`, `GIT_WORK_TREE` or `GIT_INDEX_FILE`, and `find_root` no longer uses `$CLAUDE_PROJECT_DIR`
+  (the script's path, then the current directory); outside a project it fails closed and asks for `--root` (WMF P1).
+- The `scout-updates` tests also pass in the installed copy (`.claude/skills/scout-updates/scripts`), which looks for
+  the workflow in `.claude/gw` (installer P1).
+- `rojo-sin-arreglo.sh` refuses, with a message saying how to proceed, when the fix file has uncommitted changes
+  touching test code: the stash removed the test along with the fix (installer P2).
+- `revision-antes-de-main.sh` recognises CI that GitHub did not start because of billing or a spending limit (in the
+  check run's summary or annotations): it still blocks, but says nothing ran and names the "checked locally only"
+  path (installer P3).
+- No false "session opened outside the repo" warning in the cloud (`CLAUDE_CODE_REMOTE=true`, which always starts in
+  `/home/user`): not in `doctor.py`, `opt-tokens/medir.py`, `recuperar.py --estado`, `registro_sesion.py` or
+  `session-start.sh`. Outside the cloud the warning stays (portal P1).
+
 ## [0.4.0] - 2026-10-25
 
 ### ES
