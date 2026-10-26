@@ -65,6 +65,9 @@ una hora o con su pid muerto; se puede borrar a mano.
 | Mensaje | Causa | Arreglo |
 |---|---|---|
 | `check failed on <sha>: '<orden>'` | Falla una orden de `check` **en el commit que se sube** (no en tu copia de trabajo); el log completo está en la ruta que imprime | Reprodúcelo con la misma orden, arregla, commit y push; `--no-verify` solo para un commit `WIP:` en rojo |
+| `check already green on this tree (<árbol>) with the same commands <n> min ago; skipping it` | No es un fallo: el mismo árbol, las mismas órdenes y el mismo `checkWrapper` pasaron el `check` hace menos de 24 h (lo apuntó `check.sh` o una subida anterior) | Para correrlo igualmente: `GW_CHECK_CACHE=0 git push` |
+| `check: all green (not recorded…)` / `…the work tree changed during the run…` / `check-verde: …` | `check.sh` pasó el `check` pero no lo apuntó (caché apagada o no disponible, árbol cambiado durante la ejecución, `skip-worktree`/`assume-unchanged`, submódulo con cambios, sin permiso de escritura en el directorio de git): la subida correrá el `check` | Lo que imprime; con el árbol quieto, `bash .claude/gw/scripts/check.sh` otra vez |
+| `the check left changes in the work tree, so it is not recorded` | El `check` escribió archivos en la copia de trabajo: lo que vio no es el árbol que se sube | `git status`; haz que el `check` no escriba en el árbol o ignora esos archivos |
 | `the push adds *.rej / *.orig leftovers` | Restos de un parche o una fusión | `git rm -- <archivo> && git commit` |
 | `the push has conflict markers` | Quedaron `<<<<<<<` o `>>>>>>>` en lo que se sube | Resuelve y `git commit -a` |
 | `the pushed commit has no review mark` / `the review mark … is not an ancestor` / `code changed after the review mark` | Subida directa a la rama protegida con código sin revisar | `/code-review` del diff contra `origin/<rama protegida>`, sube los arreglos, luego `bash .claude/gw/scripts/revisado.sh && git push` |

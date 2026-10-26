@@ -68,6 +68,19 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   `kill`). If a push dies unable to clean up, the next one removes the orphaned worktrees older than 24 h whose process
   is gone; two pushes at once do not step on each other. After changing `worktreeDir`, the old folder is no longer cleaned: delete it by hand. What is linked from the main checkout is set by `worktreeLinks`. A failing command's log
   is kept (`full log: <path>`); when it passes, it is deleted.
+- **`pre-push` does not repeat a `check` that already passed.** The key is the pushed commit's tree, the `check`
+  commands and `checkWrapper`; it is recorded in `<git common dir>/gw-check-verde` (linked worktrees share it), expires
+  after 24 h and keeps the last 50. If the key is there, `pre-push` says `check already green on this tree…` and skips
+  the `check` (`relatedTests` still run); otherwise it runs the `check` and, when green, records it (if it ran in the
+  working copy itself, only when it left it clean). The earlier way to record it is
+  `bash .claude/gw/scripts/check.sh` (`scripts/check.sh` in this repo): it runs the `check` on the working copy and,
+  if it passes and the tree (what `git add -A` would commit) did not change during the run, records the green, so the
+  push does not repeat it. A `check` run by hand (e.g. `bash tests/comprobar.sh`) records nothing. Limits: a push to
+  the protected branch never reads nor writes the cache; nothing is recorded with `assume-unchanged` or
+  `skip-worktree` entries (sparse checkout) or a submodule with changes; any failure of the cache only means the
+  `check` runs; `check.sh` runs with the working copy's ignored files (`.env`, generated ones), whereas a push with a
+  dirty working copy used to check in a clean worktree. `GW_CHECK_CACHE=0` turns it off (`GW_CHECK_CACHE=0 git push`
+  runs the `check` even if it is recorded).
 - **`pushToProtected`** says how code reaches the protected branch today. A direct push that brings code always needs
   the mark in `pre-push`, with `direct` and with `pr`; with `pr`, the PR hook also asks for it when the pull request
   is created or merged. The config is read from the pushed commit, not the working copy; for the protected branch,

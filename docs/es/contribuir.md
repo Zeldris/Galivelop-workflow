@@ -23,7 +23,7 @@ estorba en todos los proyectos. Lee primero [`AGENTS.md`](../../AGENTS.md) y la 
 4. **Añade el caso de prueba** (abajo) y corre el check:
 
    ```bash
-   bash tests/comprobar.sh
+   bash scripts/check.sh      # corre bash tests/comprobar.sh y apunta el verde: el pre-push no lo repite
    ```
 
 5. **Entrada en el CHANGELOG**, **bitácora**, commit y push, en el mismo commit (abajo).

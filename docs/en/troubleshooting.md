@@ -65,6 +65,9 @@ an hour or with a dead pid; it can be deleted by hand.
 | Message | Cause | Fix |
 |---|---|---|
 | `check failed on <sha>: '<command>'` | A `check` command fails **on the commit being pushed** (not your working copy); the full log is at the path it prints | Reproduce with the same command, fix, commit and push; `--no-verify` only for a red `WIP:` commit |
+| `check already green on this tree (<tree>) with the same commands <n> min ago; skipping it` | Not a failure: the same tree, commands and `checkWrapper` passed the `check` less than 24 h ago (recorded by `check.sh` or an earlier push) | To run it anyway: `GW_CHECK_CACHE=0 git push` |
+| `check: all green (not recorded…)` / `…the work tree changed during the run…` / `check-verde: …` | `check.sh` passed the `check` but did not record it (cache off or unavailable, tree changed during the run, `skip-worktree`/`assume-unchanged`, submodule with changes, no write access to the git dir): the push will run the `check` | What it prints; with the tree still, `bash .claude/gw/scripts/check.sh` again |
+| `the check left changes in the work tree, so it is not recorded` | The `check` wrote files in the working copy: what it saw is not the pushed tree | `git status`; make the `check` not write in the tree or ignore those files |
 | `the push adds *.rej / *.orig leftovers` | Leftovers of a patch or merge | `git rm -- <file> && git commit` |
 | `the push has conflict markers` | `<<<<<<<` or `>>>>>>>` left in what is pushed | Resolve and `git commit -a` |
 | `the pushed commit has no review mark` / `the review mark … is not an ancestor` / `code changed after the review mark` | Direct push to the protected branch with unreviewed code | `/code-review` of the diff against `origin/<protected>`, push the fixes, then `bash .claude/gw/scripts/revisado.sh && git push` |

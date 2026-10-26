@@ -64,7 +64,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    Task: <what, in one or two sentences>.
    Files: <paths you touch>. Create: <exact names of what is new>. A path not listed here: stop and return it
    under QUESTIONS.
-   Done when: <checkable criterion>. Run before pushing: {check}.
+   Done when: <checkable criterion>. Run before pushing: `bash .claude/gw/scripts/check.sh` (runs {check} and records
+   the green so the push does not repeat it).
    For guard code or scripts: first list the edge cases (git states, platforms, empty or odd input) and write a
    test for each before calling the chunk done; the review afterwards is the safety net, not the first pass.
    Do not: <what belongs to another chunk or needs a user decision>.

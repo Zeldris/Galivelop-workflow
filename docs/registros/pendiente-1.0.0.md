@@ -26,8 +26,10 @@ CHANGELOG de la `1.0.0`.
 
 ## De la retro del parche `0.4.1`
 
-- [ ] **P3:** el `pre-push` no repite un check ya en verde sobre el mismo árbol y las mismas órdenes (caché en el
-  directorio común de git, con tests de árbol distinto, órdenes distintas y rojo que no se guarda).
+- [x] **P3** (2026-10-26, `4e3af46`, `b50ccb6`, `f50072e`): el `pre-push` no repite un check ya en verde sobre el
+  mismo árbol y las mismas órdenes (caché en el directorio común de git, con tests de árbol distinto, órdenes
+  distintas y rojo que no se guarda). Documentada en la `1.0.0` del CHANGELOG, `config.md`, `problemas.md` y
+  `AGENTS.md`; falta, como mejora posible, que `fusionar.sh` también apunte el verde.
   [`retro-2026-10-26-parche-0-4-1.md`](retro-2026-10-26-parche-0-4-1.md)
 
 ## Del usuario

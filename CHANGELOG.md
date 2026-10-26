@@ -8,6 +8,41 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [1.0.0] - Unreleased
+
+Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendiente-1.0.0.md`). La versión de
+`plugin.json` no sube hasta publicarla. / Features of `1.0.0` (branch `version/1.0.0`; list in
+`docs/registros/pendiente-1.0.0.md`). The `plugin.json` version does not move until it is released.
+
+### ES
+
+- El `pre-push` no repite un `check` que ya pasó en verde sobre el mismo árbol, las mismas órdenes y el mismo
+  `checkWrapper` (P3 de la retro del parche `0.4.1`). `scripts/check.sh` (en los proyectos,
+  `.claude/gw/scripts/check.sh`) corre el `check` sobre la copia de trabajo y, si pasa y el árbol no cambió durante la
+  ejecución, apunta el verde; `scripts/check-verde.sh` es la caché (`<directorio común de git>/gw-check-verde`, 50
+  entradas, 24 h, compartida por los worktrees enlazados). El `pre-push` se salta el `check` si la clave del commit
+  que se sube está (los `relatedTests` corren igual) y, si no, lo corre y apunta el verde. Nunca se lee ni se escribe
+  en una subida a la rama protegida; `GW_CHECK_CACHE=0` la desactiva; un fallo de la caché solo hace que el `check`
+  corra; no se apunta nada con `assume-unchanged`/`skip-worktree` ni con un submódulo con cambios. Límite: `check.sh`
+  corre con los archivos ignorados de la copia de trabajo (`.env`, generados), y antes una subida con la copia sucia
+  comprobaba en un worktree limpio. Solo ahorra quien pase el `check` con `check.sh`. Documentado en `AGENTS.md` y su
+  plantilla, `orchestrate-dealer` (el encargo manda correr `check.sh`), `docs/es/config.md`, `contribuir.md` y
+  `problemas.md`.
+
+### EN
+
+- `pre-push` does not repeat a `check` that already passed on the same tree, commands and `checkWrapper` (P3 of the
+  `0.4.1` patch retro). `scripts/check.sh` (in projects, `.claude/gw/scripts/check.sh`) runs the `check` on the working
+  copy and, if it passes and the tree did not change during the run, records the green; `scripts/check-verde.sh` is
+  the cache (`<git common dir>/gw-check-verde`, 50 entries, 24 h, shared by linked worktrees). `pre-push` skips the
+  `check` when the pushed commit's key is there (`relatedTests` still run) and otherwise runs it and records the green.
+  A push to the protected branch never reads nor writes it; `GW_CHECK_CACHE=0` turns it off; a cache failure only
+  means the `check` runs; nothing is recorded with `assume-unchanged`/`skip-worktree` entries or a submodule with
+  changes. Limit: `check.sh` runs with the working copy's ignored files (`.env`, generated ones), and a push with a
+  dirty working copy used to check in a clean worktree. Only whoever runs the `check` with `check.sh` saves time.
+  Documented in `AGENTS.md` and its template, `orchestrate-dealer` (the brief tells to run `check.sh`),
+  `docs/en/config.md`, `contributing.md` and `troubleshooting.md`.
+
 ## [0.4.1] - 2026-10-26
 
 Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-26-*.md`); los evolutivos van a la

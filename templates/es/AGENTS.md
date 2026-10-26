@@ -48,6 +48,8 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
 
 - **El check del proyecto:** {{check}}. `.githooks/pre-push` lo corre sobre el commit que se sube, y el CI
   (`.github/workflows/comprobar.yml`) en cada push fuera de `{{protectedBranch}}` y en cada pull request.
+- **Antes de subir, pásalo con `bash .claude/gw/scripts/check.sh`**: corre el check y, si sale en verde, lo apunta; el
+  `pre-push` no lo repite sobre el mismo árbol (`GW_CHECK_CACHE=0` lo desactiva).
 - **Lo comprobable lo hace un script**, no un agente: las skills y guías solo deciden lo que exige criterio. Si una
   regla se sigue rompiendo, se convierte en una comprobación.
 - **Lo que depende de una máquina concreta no se da por probado con tests** (otro sistema operativo, un dispositivo,

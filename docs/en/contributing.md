@@ -23,7 +23,7 @@ here, it gets in the way in every project. Read [`AGENTS.md`](../../AGENTS.md) a
 4. **Add the test case** (below) and run the check:
 
    ```bash
-   bash tests/comprobar.sh
+   bash scripts/check.sh      # runs bash tests/comprobar.sh and records the green: pre-push does not repeat it
    ```
 
 5. **CHANGELOG entry**, **log**, commit and push, in the same commit (below).

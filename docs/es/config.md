@@ -68,6 +68,19 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   (también con Ctrl-C o `kill`). Si un push muere sin poder limpiar, el siguiente borra los worktrees huérfanos de más
   de 24 h cuyo proceso ya no existe; dos pushes a la vez no se pisan. Al cambiar `worktreeDir`, la carpeta anterior ya no se limpia: bórrala a mano. Lo enlazado desde la copia principal lo dice `worktreeLinks`. El registro de una orden fallida
   se conserva (`full log: <ruta>`); si pasa, se borra.
+- **El `pre-push` no repite un `check` que ya pasó en verde.** La clave es el árbol del commit que se sube, las
+  órdenes de `check` y `checkWrapper`; se apunta en `<directorio común de git>/gw-check-verde` (los worktrees
+  enlazados la comparten), caduca a las 24 h y guarda las últimas 50. Si la clave está, el `pre-push` dice
+  `check already green on this tree…` y se salta el `check` (los `relatedTests` corren igual); si no, corre el
+  `check` y, en verde, lo apunta (si corrió en la propia copia, solo si la dejó limpia). Quien lo apunta antes es
+  `bash .claude/gw/scripts/check.sh` (`scripts/check.sh` en este repo): corre el `check` sobre la copia de trabajo y,
+  si pasa y el árbol (lo que commitearía `git add -A`) no cambió durante la ejecución, apunta el verde; así la subida
+  no lo repite. Un `check` pasado a mano (p. ej. `bash tests/comprobar.sh`) no apunta nada. Límites: una subida a la
+  rama protegida nunca lee ni escribe la caché; no se apunta nada con entradas `assume-unchanged` o `skip-worktree`
+  (sparse checkout) ni con un submódulo con cambios; cualquier fallo de la caché solo significa que el `check` corre;
+  `check.sh` corre con los archivos ignorados de la copia de trabajo (`.env`, generados), mientras que antes una
+  subida con la copia sucia comprobaba en un worktree limpio. `GW_CHECK_CACHE=0` la desactiva (`GW_CHECK_CACHE=0 git
+  push` corre el `check` aunque esté apuntado).
 - **`pushToProtected`** dice cómo entra hoy el código en la rama protegida. Un push directo que trae código pide
   siempre la marca en el `pre-push`, con `direct` y con `pr`; con `pr`, además, el gancho de PR la pide al crear o
   fusionar el pull request. El config se lee del commit que se sube, no de la copia de trabajo; para la rama
