@@ -28,6 +28,10 @@ How it is set up, generically:
      instructions for agents).
 5. **It ends with a short report** in the log: what it did, what it left pending and the next step.
 
+The task's brief (its runbook under `docs/`, or the saved prompt) runs with nobody watching: it stays out of
+`content` or is reviewed as code, and every change to it is reviewed before the task follows it
+([`REVIEW.md`](../../templates/en/REVIEW.md)).
+
 Authorisation: a task that pushes to the protected branch with nobody present deserves to be written as a rule in
 `AGENTS.md`, so it is on record who allowed it.
 

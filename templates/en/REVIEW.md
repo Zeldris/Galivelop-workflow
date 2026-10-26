@@ -9,6 +9,11 @@ judgement. The project fills it in; the workflow never overwrites it once it exi
 
 - Before reporting a finding, try to refute it: look for the code, test or hook that already covers it. Only what
   survives is reported, with its path and line.
+- Findings are also written to a file outside the tree (the scratchpad, or `"$(git rev-parse --git-dir)/review.md"`),
+  not only to the conversation: a compaction or a handover loses them, and that file feeds the fix briefs and the
+  minor findings logged as pending.
+- A fact that expires (a version, a price, a quota, a limit of an outside service) written in the diff carries its
+  date and source; if not, it is a finding.
 - The review ends with one verdict of three: `SHIP` (nothing to fix), `SHIP WITH FIXES` (there are fixes, none blocks)
   or `DO NOT SHIP` (something serious or breaking).
 
@@ -35,6 +40,11 @@ judgement. The project fills it in; the workflow never overwrites it once it exi
   (`sudo -u X`, `sudo -uX`, `env -u X`, `nice -n 5`, `timeout 5`, `xargs -I{}`), the destination of copiers (`cp`,
   `install`, `rsync`, `dd of=`, `-t DIR`), an ancestor of the protected folder and a relative path or one with `..`;
   and the usual false positives (reading or copying **from** the folder, `git restore --staged`). Each form, its case.
+- `pkill -f <pattern>` (and `pgrep -f`) also matches the command that launches it when the pattern is in it
+  (`bash -c "… pkill -f server"`), and kills it: use a pidfile, `pgrep -x` or a pattern that does not match itself
+  (`[s]erver`).
+- A runbook or brief that a scheduled task follows (a session with nobody watching) is reviewed as code, even if it
+  matches `content`: what it says runs as it is.
 
 ## Brought from another repo: adapt to this repo's contracts
 

@@ -28,6 +28,10 @@ Cómo se plantea, en genérico:
      instrucciones para agentes).
 5. **Termina con un informe corto** en la bitácora: qué hizo, qué dejó pendiente y el siguiente paso.
 
+El encargo de la tarea (su runbook en `docs/`, o el prompt guardado) se ejecuta sin nadie delante: queda fuera de
+`content` o se revisa como código, y cada cambio pasa por la revisión antes de que la tarea lo siga
+([`REVIEW.md`](../../templates/es/REVIEW.md)).
+
 Autorización: una tarea que sube a la rama protegida sin nadie delante merece escribirse como regla en `AGENTS.md`,
 para que quede dicho quién lo permitió.
 

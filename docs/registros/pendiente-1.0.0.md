@@ -16,10 +16,10 @@ CHANGELOG de la `1.0.0`.
   protegida), no de toda la sesión. [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
 - [ ] **INS P6:** el `pre-commit` comprueba las tareas cerradas frente a «Hecho» (hoy solo `prepush-ramas.sh`).
   [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
-- [ ] **INS P7:** cuatro frases en skills (`orchestrate-dealer`: buscar las otras apariciones de un fallo de patrón y
+- [x] **INS P7** (2026-10-26): cuatro frases en skills (`orchestrate-dealer`: buscar las otras apariciones de un fallo de patrón y
   repartir también los arreglos de la revisión; `pr`: `/clear` tras fusionar; revisión: hallazgos a un archivo).
   [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
-- [ ] **Portal P2:** avisos y reglas (`pkill -f` se mata a sí mismo; runbooks de tareas programadas revisados como
+- [x] **Portal P2** (2026-10-26): avisos y reglas (`pkill -f` se mata a sí mismo; runbooks de tareas programadas revisados como
   código; marcar en `REVIEW.md` los datos que caducan). [`2026-10-26-portal-galivelop.md`](../propuestas/2026-10-26-portal-galivelop.md)
 - [ ] **Portal P3:** `gw-media-content` deja un `web.md` opcional con el bloque del muro, en forma genérica.
   [`2026-10-26-portal-galivelop.md`](../propuestas/2026-10-26-portal-galivelop.md)

@@ -70,6 +70,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    test for each before calling the chunk done; the review afterwards is the safety net, not the first pass.
    Do not: <what belongs to another chunk or needs a user decision>.
    If you change a function or a field, grep every user of it and adjust them, or list them under MISSING.
+   If the bug is a pattern (a wrong check, a missing quote, a case left out), grep its other occurrences and fix
+   them too, or list them under MISSING.
    If you touch processes, paths or permissions, write it for every platform the project supports.
    If something needs a user decision, stop and return it as a question. Never merge into {protectedBranch}.
    Write your reply and commit message in {language}. Reply in at most 15 lines:
@@ -88,7 +90,14 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    `/code-review` of its diff and returns only the findings; nothing merges until they are fixed. The reviewer's
    brief asks it to compare the diff with the **contract**: the doc that describes it and the real callers outside
    the branch (grep on the working branch), not the diff alone. Short per-branch reviews miss cross-branch breaks:
-   a script against its backend, a doc against its code, two branches that edit the same rule.
+   a script against its backend, a doc against its code, two branches that edit the same rule. It also asks it to
+   flag data that expire (versions, prices, quotas, limits of an outside service) written without their date and
+   source, and to write its findings to a file outside the tree (the scratchpad, or
+   `"$(git rev-parse --git-dir)/review.md"`) as well as replying: a compaction or a handover loses them from the
+   conversation, and the fix briefs and the minor ones for `log` are taken from that file.
+   The fixes go back to **the subagent that wrote the chunk** (SendMessage to its id): it still holds the context, and
+   a fresh subagent per round of fixes pays the startup and the rediscovery again (four rounds that way cost ~1.5M
+   each).
    Log what comes back: `FOUND` and `TOOLS` into `log` (or the records the project keeps for them). `QUESTIONS`
    go to the user as they are, with the answer you recommend.
 4. **Close the wave.** After merging the whole wave, one reviewer subagent compares the merged result with the task
@@ -107,6 +116,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
 - **Before the PR, only what matters:** fix what is serious or medium, and what the fix itself breaks; log the minor
   findings as pending in `log` and do not review them again in this PR (`/code-review --max-findings all` still
   serves to list them). Otherwise every fix is reviewed again, brings new findings and the PR grows without end.
+  The fixes of that review are dealt too, as the rows of the next rule (the findings file as the pointer); only a
+  one-file fix whose place the reviewer gave stays in the main session.
 - **One writing subagent at a time on the same branch.** Two that commit to the same branch collide in the log and in
   shared files. In parallel, only what does not write (searching, reading, measuring).
 - **Code fixes of the frontier, in parallel, in isolated worktrees:** each subagent runs with `isolation: "worktree"` in

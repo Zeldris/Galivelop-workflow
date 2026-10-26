@@ -9,6 +9,11 @@ pide criterio. La rellena el proyecto; el flujo nunca la sobrescribe una vez cre
 
 - Antes de dar un hallazgo, intenta refutarlo: busca el código, el test o el gancho que ya lo cubre. Solo se informa
   de lo que sobrevive, con la ruta y la línea.
+- Los hallazgos se escriben también en un archivo fuera del árbol (el scratchpad, o
+  `"$(git rev-parse --git-dir)/review.md"`), no solo en la conversación: una compactación o un relevo se los lleva, y
+  de ese archivo salen los encargos de los arreglos y los leves que se apuntan en la bitácora.
+- Un dato que caduca (una versión, un precio, una cuota, un límite de un servicio externo) escrito en el diff lleva su
+  fecha y su fuente; si no, es un hallazgo.
 - La revisión acaba con un veredicto, uno de tres: `SHIP` (nada que arreglar), `SHIP WITH FIXES` (hay arreglos, ninguno
   bloquea) o `DO NOT SHIP` (algo grave o que rompe).
 
@@ -35,6 +40,11 @@ pide criterio. La rellena el proyecto; el flujo nunca la sobrescribe una vez cre
   (`sudo -u X`, `sudo -uX`, `env -u X`, `nice -n 5`, `timeout 5`, `xargs -I{}`), el destino de los copiadores (`cp`,
   `install`, `rsync`, `dd of=`, `-t DIR`), una carpeta antecesora de la protegida y una ruta relativa o con `..`; y
   los falsos positivos habituales (leer o copiar **desde** la carpeta, `git restore --staged`). Cada forma, su caso.
+- `pkill -f <patrón>` (y `pgrep -f`) casa también con la orden que lo lanza cuando el patrón va en ella
+  (`bash -c "… pkill -f servidor"`), y la mata: un pidfile, `pgrep -x` o un patrón que no se case a sí mismo
+  (`[s]ervidor`).
+- Un runbook o encargo que sigue una tarea programada (una sesión sin persona delante) se revisa como código, aunque
+  case con `content`: lo que dice se ejecuta tal cual.
 
 ## Traído de otro repo: se adapta a los contratos de este
 

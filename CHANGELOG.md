@@ -35,6 +35,14 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   va tras la línea de tijeras de `git commit --verbose`; se comprueba también en un merge y se salta en un rebase.
   `aplicar.py --init --agent-signatures true|false`. Este repo la tiene a `false`. Documentada en `config.md`,
   `aplicar.md`, `problemas.md`, la plantilla de `AGENTS.md` y el mapa para agentes.
+- Reglas de revisión y de reparto (INS P7 y Portal P2 de la recogida del 2026-10-26). `orchestrate-dealer`: un fallo
+  de patrón se busca en sus otras apariciones; el revisor de cada trozo marca los datos que caducan sin fecha ni
+  fuente y deja sus hallazgos también en un archivo fuera del árbol; los arreglos vuelven al subagente que escribió el
+  trozo, y los de la revisión previa al PR también se reparten. `pr`: tras fusionar, se recomienda un `/clear`.
+  Plantillas de `REVIEW.md`: hallazgos a un archivo, datos que caducan con fecha y fuente, aviso de que
+  `pkill -f`/`pgrep -f` casan con la orden que los lanza, y el runbook de una tarea programada se revisa como código
+  aunque case con `content` (también en `patrones.md`). `aplicar` nunca sobrescribe un `REVIEW.md` existente: en los
+  proyectos que ya lo tienen, estas reglas se copian a mano.
 
 ### EN
 
@@ -56,6 +64,13 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   scissors line of `git commit --verbose`; it also checks a merge and is skipped during a rebase.
   `aplicar.py --init --agent-signatures true|false`. This repo has it at `false`. Documented in `config.md`,
   `apply.md`, `troubleshooting.md`, the `AGENTS.md` template and the agent map.
+- Review and dealing rules (INS P7 and Portal P2 of the 2026-10-26 harvest). `orchestrate-dealer`: a pattern bug is
+  searched for in its other occurrences; each chunk's reviewer flags expiring data without date or source and also
+  writes its findings to a file outside the tree; fixes go back to the subagent that wrote the chunk, and the fixes of
+  the pre-PR review are dealt too. `pr`: after merging, a `/clear` is recommended. `REVIEW.md` templates: findings to
+  a file, expiring data with date and source, a warning that `pkill -f`/`pgrep -f` match the command that launches
+  them, and a scheduled task's runbook is reviewed as code even if it matches `content` (also in `patterns.md`).
+  `aplicar` never overwrites an existing `REVIEW.md`: projects that already have one copy these rules by hand.
 
 ## [0.4.1] - 2026-10-26
 
