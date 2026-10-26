@@ -12,7 +12,7 @@
 | Check | `bash tests/comprobar.sh` en verde (**comprobado solo en local**: sin cuota de Actions el CI no arranca, confirmado por el usuario); `main` (`56212e8`) comprobado en local el 2026-10-26 |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.1` en `main` (`56212e8`, 2026-10-26), con confirmación del usuario: fases 1-3 hechas, marca de revisión `a3cc2dc`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde sobre `56212e8` para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.1.md` |
-| Siguiente paso | El usuario crea a mano la etiqueta `v0.4.1` sobre `56212e8` y la release con `docs/registros/release-v0.4.1.md`. La `0.4.x` queda parada hasta otra recogida con correcciones. Lo siguiente, la `1.0.0` en `version/1.0.0`: elegir con el usuario por cuál de `docs/registros/pendiente-1.0.0.md` empezar |
+| Siguiente paso | Segunda recogida del 2026-10-26 hecha (`docs/propuestas/2026-10-26-*-2.md` y `-verinews_ai.md`): el usuario decide qué propuestas entran. Correcciones candidatas al parche `0.4.2`: P8 del Instalador (`--amend` en `bitacora.py`) y P3/P4 de VeriNews; el resto, evolutivos para `version/1.0.0`. Nada se aplica sin su aprobación. Pendiente aparte: la etiqueta `v0.4.1` sobre `56212e8` y su release, a mano por el usuario |
 
 ### Fases
 
@@ -41,11 +41,11 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-10-26 — Fase 2 del parche `0.4.1`: `/opt-tokens` (P1-P4: `gw-harvest` clona sin registrar y verifica en paralelo; encargo a ~25 llamadas) y `/retro` aprobada entera: P1 y P2 en `orchestrate-dealer`, P4 en `CLAUDE.md`, P5 en `AGENTS.md`; P3 (caché del check en el `pre-push`) a la `1.0.0`. Regla nueva: commits y PR a nombre de `Zeldris`, sin firmas de Claude.
-2. 2026-10-26 — Rama `version/1.0.0` creada desde `ccr-6dfbc880-ddr41g` para ir llevando lo de la `1.0.0` (plan §7 ES/EN); el parche `0.4.1`, aplazado.
-3. 2026-10-25 — Entrada `0.4.0` del CHANGELOG con fecha (llegó a `main` como «Unreleased» y `release.yml` la habría rechazado); `version.py --release` exige ya fecha y relleno (`changelog_check`, test primero: sin el arreglo falla); política de versiones (la `0.4` solo parches, lo nuevo a la `1.0.0`) en el plan §7 ES/EN, `AGENTS.md` y `contribuir`/`contributing`; textos de la release en `docs/registros/release-v0.4.0.md`; el usuario publicó la release `v0.4.0` sobre `d7dd18f`.
-4. 2026-10-25 — Fase 3 antes de la `0.4.0`: revisión de los commits de la fase 2 (un medio y cinco menores). Arreglados `bitacora.py done`, que ya conserva un párrafo libre al final de «Hecho», y `es-codigo.sh`, que con `| head -1` y una salida mayor que el búfer de la tubería fallaba con 141 (intermitente en el `pre-push`); los menores, en «Pendiente».
-5. 2026-10-25 — Retro antes de la `0.4.0` aplicada: P3, P4 y P6 (`8c980ad`); P1+P2 (`bitacora.py check` con tope de celda y forma de «Hecho», `bitacora.py done`), P5 (`doctor.py`, `ci access`) y P7 (marca `gw-push-en-curso` y `.claude/worktrees/` fuera del gancho de parada), con su revisión y sus arreglos.
+1. 2026-10-26 — Segunda recogida (`gw-harvest`) sobre los cinco proyectos: propuestas en `docs/propuestas/2026-10-26-{instalador-wmf-tarkor-2,world-maker-fantasy-2,portal-galivelop-2,verinews_ai,sin-novedades-2}.md` y `estado.json` al día; labs sin novedades. Por decidir con el usuario.
+2. 2026-10-26 — Fase 2 del parche `0.4.1`: `/opt-tokens` (P1-P4: `gw-harvest` clona sin registrar y verifica en paralelo; encargo a ~25 llamadas) y `/retro` aprobada entera: P1 y P2 en `orchestrate-dealer`, P4 en `CLAUDE.md`, P5 en `AGENTS.md`; P3 (caché del check en el `pre-push`) a la `1.0.0`. Regla nueva: commits y PR a nombre de `Zeldris`, sin firmas de Claude.
+3. 2026-10-26 — Rama `version/1.0.0` creada desde `ccr-6dfbc880-ddr41g` para ir llevando lo de la `1.0.0` (plan §7 ES/EN); el parche `0.4.1`, aplazado.
+4. 2026-10-25 — Entrada `0.4.0` del CHANGELOG con fecha (llegó a `main` como «Unreleased» y `release.yml` la habría rechazado); `version.py --release` exige ya fecha y relleno (`changelog_check`, test primero: sin el arreglo falla); política de versiones (la `0.4` solo parches, lo nuevo a la `1.0.0`) en el plan §7 ES/EN, `AGENTS.md` y `contribuir`/`contributing`; textos de la release en `docs/registros/release-v0.4.0.md`; el usuario publicó la release `v0.4.0` sobre `d7dd18f`.
+5. 2026-10-25 — Fase 3 antes de la `0.4.0`: revisión de los commits de la fase 2 (un medio y cinco menores). Arreglados `bitacora.py done`, que ya conserva un párrafo libre al final de «Hecho», y `es-codigo.sh`, que con `| head -1` y una salida mayor que el búfer de la tubería fallaba con 141 (intermitente en el `pre-push`); los menores, en «Pendiente».
 
 ## Pendiente
 
