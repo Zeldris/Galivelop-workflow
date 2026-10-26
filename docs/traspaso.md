@@ -12,7 +12,7 @@
 | Check | `bash tests/comprobar.sh` en verde (**comprobado solo en local**: sin cuota de Actions el CI no arranca, confirmado por el usuario); `main` (`56212e8`) comprobado en local el 2026-10-26 |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.1` en `main` (`56212e8`, 2026-10-26), con confirmación del usuario: fases 1-3 hechas, marca de revisión `a3cc2dc`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde sobre `56212e8` para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.1.md` |
-| Siguiente paso | En `version/1.0.0`: elegir con el usuario el siguiente pendiente de `docs/registros/pendiente-1.0.0.md` (P3, la caché del check del `pre-push`, hecha). El usuario aún debe crear a mano la etiqueta `v0.4.1` sobre `56212e8` y la release con `docs/registros/release-v0.4.1.md`. La `0.4.x` queda parada hasta otra recogida con correcciones |
+| Siguiente paso | En `version/1.0.0`: elegir con el usuario el siguiente pendiente de `docs/registros/pendiente-1.0.0.md` (hechos: P3, la caché del check del `pre-push`, y la autoría sin firmas). El usuario aún debe crear a mano la etiqueta `v0.4.1` sobre `56212e8` y la release con `docs/registros/release-v0.4.1.md`. La `0.4.x` queda parada hasta otra recogida con correcciones |
 
 ### Fases
 
@@ -41,11 +41,11 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-10-26 — P3 de la retro del parche `0.4.1` (en `version/1.0.0`, commits `4e3af46`, `b50ccb6`, `f50072e` y la documentación): el `pre-push` no repite un `check` en verde sobre el mismo árbol, órdenes y `checkWrapper`. `scripts/check.sh` pasa el `check` y apunta el verde; `scripts/check-verde.sh` es la caché (`<dir. común de git>/gw-check-verde`, 24 h, 50 entradas); nunca en subidas a la rama protegida; `GW_CHECK_CACHE=0` la apaga. Documentada en `AGENTS.md` y su plantilla, `orchestrate-dealer`, `config.md`, `problemas.md`, `contribuir.md`, mapa y CHANGELOG (`1.0.0` sin publicar).
-2. 2026-10-26 — Fase 2 del parche `0.4.1`: `/opt-tokens` (P1-P4: `gw-harvest` clona sin registrar y verifica en paralelo; encargo a ~25 llamadas) y `/retro` aprobada entera: P1 y P2 en `orchestrate-dealer`, P4 en `CLAUDE.md`, P5 en `AGENTS.md`; P3 (caché del check en el `pre-push`) a la `1.0.0`. Regla nueva: commits y PR a nombre de `Zeldris`, sin firmas de Claude.
-3. 2026-10-26 — Rama `version/1.0.0` creada desde `ccr-6dfbc880-ddr41g` para ir llevando lo de la `1.0.0` (plan §7 ES/EN); el parche `0.4.1`, aplazado.
-4. 2026-10-25 — Entrada `0.4.0` del CHANGELOG con fecha (llegó a `main` como «Unreleased» y `release.yml` la habría rechazado); `version.py --release` exige ya fecha y relleno (`changelog_check`, test primero: sin el arreglo falla); política de versiones (la `0.4` solo parches, lo nuevo a la `1.0.0`) en el plan §7 ES/EN, `AGENTS.md` y `contribuir`/`contributing`; textos de la release en `docs/registros/release-v0.4.0.md`; el usuario publicó la release `v0.4.0` sobre `d7dd18f`.
-5. 2026-10-25 — Fase 3 antes de la `0.4.0`: revisión de los commits de la fase 2 (un medio y cinco menores). Arreglados `bitacora.py done`, que ya conserva un párrafo libre al final de «Hecho», y `es-codigo.sh`, que con `| head -1` y una salida mayor que el búfer de la tubería fallaba con 141 (intermitente en el `pre-push`); los menores, en «Pendiente».
+1. 2026-10-26 — Autoría sin firmas (en `version/1.0.0`, commits `7b3c91c`, `f7de072`, `7785a98`): opción `agentSignatures` en `gw.json` (por defecto `true`; este repo, `false`) y `aplicar --init --agent-signatures`. Con `false`, el `commit-msg` rechaza a principio de línea un `Co-Authored-By` de Claude (`noreply@anthropic.com` o nombre de modelo), `Claude-Session`, «Generated with Claude Code» y el enlace de sesión; pasan un humano llamado Claude y un cuerpo que solo los cita; ignora comentarios (`commentString`/`commentChar`) y lo que va tras las tijeras de `commit -v`; mira merges y se salta en rebase. Tests en `CommitMsgSignatures` (cada guarda falla sin su arreglo); documentada en `AGENTS.md` y sus plantillas, `config`, `aplicar`, `problemas`, mapa y CHANGELOG.
+2. 2026-10-26 — P3 de la retro del parche `0.4.1` (en `version/1.0.0`, commits `4e3af46`, `b50ccb6`, `f50072e` y la documentación): el `pre-push` no repite un `check` en verde sobre el mismo árbol, órdenes y `checkWrapper`. `scripts/check.sh` pasa el `check` y apunta el verde; `scripts/check-verde.sh` es la caché (`<dir. común de git>/gw-check-verde`, 24 h, 50 entradas); nunca en subidas a la rama protegida; `GW_CHECK_CACHE=0` la apaga. Documentada en `AGENTS.md` y su plantilla, `orchestrate-dealer`, `config.md`, `problemas.md`, `contribuir.md`, mapa y CHANGELOG (`1.0.0` sin publicar).
+3. 2026-10-26 — Fase 2 del parche `0.4.1`: `/opt-tokens` (P1-P4: `gw-harvest` clona sin registrar y verifica en paralelo; encargo a ~25 llamadas) y `/retro` aprobada entera: P1 y P2 en `orchestrate-dealer`, P4 en `CLAUDE.md`, P5 en `AGENTS.md`; P3 (caché del check en el `pre-push`) a la `1.0.0`. Regla nueva: commits y PR a nombre de `Zeldris`, sin firmas de Claude.
+4. 2026-10-26 — Rama `version/1.0.0` creada desde `ccr-6dfbc880-ddr41g` para ir llevando lo de la `1.0.0` (plan §7 ES/EN); el parche `0.4.1`, aplazado.
+5. 2026-10-25 — Entrada `0.4.0` del CHANGELOG con fecha (llegó a `main` como «Unreleased» y `release.yml` la habría rechazado); `version.py --release` exige ya fecha y relleno (`changelog_check`, test primero: sin el arreglo falla); política de versiones (la `0.4` solo parches, lo nuevo a la `1.0.0`) en el plan §7 ES/EN, `AGENTS.md` y `contribuir`/`contributing`; textos de la release en `docs/registros/release-v0.4.0.md`; el usuario publicó la release `v0.4.0` sobre `d7dd18f`.
 
 ## Pendiente
 
@@ -53,11 +53,12 @@ lanzamiento manual desde Actions que cree la etiqueta.
   corre con `.env` y generados de la copia; antes, una subida con copia sucia comprobaba en un worktree limpio) está
   documentado en `config.md`, `problemas.md` y el CHANGELOG. Posible mejora: que `fusionar.sh` también apunte el verde
   (hoy solo lo apuntan `check.sh` y el propio `pre-push`).
-- **Sin firmas de Claude** (usuario, 2026-10-26): commits y PR a nombre de `Zeldris`, sin trailers ni pies de Claude
-  (`AGENTS.md`, «Mensajes de commit»). Desde `f2da5d5` (excluido) ya va así; el historial anterior de la rama y de `main`
-  lleva autor Claude y trailers: reescribirlo exige force-push, solo si el usuario lo pide. Para la `1.0.0`
-  (evolutivo): opción del flujo para los proyectos (`gw.json`) con comprobación en `commit-msg`/`pre-push` que
-  rechace autor o trailers del agente, y quitar la mención a «líneas de atribución» de plantillas y `aplicar`/`apply`.
+- **Sin firmas de Claude** (usuario, 2026-10-26): commits y PR a nombre de `Zeldris`, sin trailers ni pies de Claude;
+  desde la `1.0.0` lo comprueba el `commit-msg` (`agentSignatures: false`). Desde `f2da5d5` (excluido) ya va así; el
+  historial anterior de la rama y de `main` lleva autor Claude y trailers: reescribirlo exige force-push, solo si el
+  usuario lo pide. Límites conocidos del gancho: con git anterior a 2.45 y `core.commentString` puesto, lee ese valor
+  aunque git use `#` (las tijeras no se reconocerían); `--amend` de un commit antiguo con firma se rechaza hasta
+  quitarla (coherente); el autor del commit no se comprueba, solo el mensaje.
 - Menores de la revisión de la `0.4.1` (2026-10-26): `rojo-sin-arreglo` (`test_re`) da falsos positivos («it (»,
   «test(», `def testable`, comentarios que se describen a sí mismos, como los del propio script); `NOT_STARTED` del
   gancho de fusión solo reconoce dos frases exactas de GitHub (falta «billing», «account is locked»); `cloud_start`

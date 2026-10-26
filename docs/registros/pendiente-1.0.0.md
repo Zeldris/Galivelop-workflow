@@ -34,9 +34,11 @@ CHANGELOG de la `1.0.0`.
 
 ## Del usuario
 
-- [ ] **Autoría sin firmas** (usuario, 2026-10-26): una opción en `gw.json`, la comprobación en `commit-msg` (sin
-  `Co-Authored-By`, `Claude-Session` ni «Generated with Claude Code») y las plantillas limpias de firmas. Hoy es
-  solo una regla de `AGENTS.md`.
+- [x] **Autoría sin firmas** (2026-10-26, `7b3c91c`, `f7de072`, `7785a98`): `agentSignatures` en `gw.json` (por
+  defecto `true`; este repo, `false`) y `aplicar --init --agent-signatures`; con `false`, el `commit-msg` rechaza un
+  `Co-Authored-By` de Claude (`noreply@anthropic.com` o nombre de modelo), `Claude-Session`, «Generated with Claude
+  Code» y el enlace de sesión a principio de línea, sin mirar comentarios ni lo que va tras las tijeras de
+  `commit -v`; se salta en rebase. Plantillas `AGENTS.md`, `config`, `aplicar`, `problemas`, mapa y CHANGELOG.
 
 ## De recogidas anteriores
 

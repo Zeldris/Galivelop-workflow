@@ -178,7 +178,7 @@ git add -A && git commit -m "Galivelop-workflow v0.1.0 workflow" -m "Next: <next
 ```
 
 Replace the last line with the real concrete step (the one the log declares) and add any attribution lines the
-project asks for in the same final block. The commit already goes through the new `pre-commit` (it refuses secrets
+project asks for in the same final block (no agent signature with `agentSignatures: false`). The commit already goes through the new `pre-commit` (it refuses secrets
 and, for agents, the `protectedPaths`) and, with `logRows`, through `commit-msg` (it checks the staged log with `bitacora.py check`); if it stops, read its message. Then `git push -u origin <branch>`: the new `pre-push` runs the `check` on
 the commit being pushed; if it fails, fix it and push again (never with `--no-verify`, except a red `WIP:`).
 

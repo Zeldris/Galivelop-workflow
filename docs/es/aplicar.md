@@ -177,7 +177,7 @@ git add -A && git commit -m "Flujo Galivelop-workflow v0.1.0" -m "Siguiente: <pr
 ```
 
 Sustituye la última línea por el paso concreto de verdad (el que la bitácora declara) y añade las líneas de
-atribución que pida el proyecto en el mismo bloque final. El commit ya pasa por el nuevo `pre-commit` (rechaza
+atribución que pida el proyecto en el mismo bloque final (ninguna firma del agente con `agentSignatures: false`). El commit ya pasa por el nuevo `pre-commit` (rechaza
 secretos y, para agentes, las `protectedPaths`) y, con `logRows`, por `commit-msg` (revisa la bitácora preparada con `bitacora.py check`); si se para, lee su mensaje. Después, `git push -u origin <rama>`: el nuevo `pre-push`
 corre el `check` sobre el commit que se sube; si falla, se arregla y se vuelve a subir (nunca con `--no-verify`, salvo
 un `WIP:` en rojo).
