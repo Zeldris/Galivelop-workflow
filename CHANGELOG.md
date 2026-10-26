@@ -33,6 +33,9 @@ Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-2
 - Sin aviso falso de «sesión abierta fuera del repo» en la nube (`CLAUDE_CODE_REMOTE=true`, que siempre arranca en
   `/home/user`): ni en `doctor.py`, ni en `opt-tokens/medir.py`, ni en `recuperar.py --estado`, ni en
   `registro_sesion.py`, ni en `session-start.sh`. Fuera de la nube el aviso sigue (portal P1).
+- Gasto (`/opt-tokens` del parche): `gw-harvest` clona los proyectos solo para lectura en una carpeta temporal, sin
+  adjuntarlos a la sesión (sus `CLAUDE.md`, `AGENTS.md` y skills entraban en cada llamada, ~17 %), y los verifica con
+  un subagente por proyecto en paralelo; el encargo de `orchestrate-dealer` corta a las ~25 llamadas (tope ~30).
 
 ### EN
 
@@ -54,6 +57,9 @@ Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-2
 - No false "session opened outside the repo" warning in the cloud (`CLAUDE_CODE_REMOTE=true`, which always starts in
   `/home/user`): not in `doctor.py`, `opt-tokens/medir.py`, `recuperar.py --estado`, `registro_sesion.py` or
   `session-start.sh`. Outside the cloud the warning stays (portal P1).
+- Spend (the patch's `/opt-tokens`): `gw-harvest` clones the projects read-only into a scratch folder without
+  attaching them to the session (their `CLAUDE.md`, `AGENTS.md` and skills entered every call, ~17 %), and checks
+  them with one subagent per project in parallel; the `orchestrate-dealer` brief stops at ~25 calls (cap ~30).
 
 ## [0.4.0] - 2026-10-25
 

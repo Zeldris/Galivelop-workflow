@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.4.0 -->
+<!-- galivelop-workflow v0.4.1 -->
 # opt-tokens — notas del proyecto
 
 Las lee la skill `opt-tokens` antes de proponer nada, y se actualizan cuando la persona aprueba un cambio. El flujo
@@ -19,7 +19,10 @@ las crea una vez; desde entonces son del proyecto.
 - Bitácora corta (retro 2026-10-25, P1/P2): `bitacora.py check --strict` en el check (celdas de estado de 800
   caracteres como mucho, «Hecho» con 5 entradas) y `python3 scripts/bitacora.py done "<texto>"` para añadir a «Hecho».
 - Encargo de `orchestrate-dealer` con el tope (~30 llamadas, commit y MISSING) y fetch + merge si se rechaza el push
-  (P3). Medida de la sesión e9650d36: 4 subagentes por encima de 35 llamadas, ~4,2M de entrada de más.
+  (P3). Medida de la sesión e9650d36: 4 subagentes por encima de 35 llamadas, ~4,2M de entrada de más. Desde la
+  `0.4.1`, el encargo corta a las ~25 llamadas y el tope es ~30 (9 de los 10 subagentes más caros pasaron de 33).
+- `gw-harvest` (`0.4.1`): los proyectos se clonan solo para lectura en una carpeta temporal, sin adjuntarlos a la
+  sesión, y su verificación va con un subagente por proyecto en paralelo.
 
 ## Costes conocidos
 
@@ -30,6 +33,10 @@ las crea una vez; desde entonces son del proyecto.
   compactación va en las variables del entorno de la nube (retro de la Fase 5, R1).
 - Encargos a subagentes que mandan leer muchos documentos: arranque de 52-60k. Apuntar a `docs/mapa-agente.md`.
 - Herramientas que devuelven JSON largo (`list_sessions`, `list_events`): pedir lo mínimo (`limit`, `kinds`).
+- Repos hermanos adjuntos a la sesión (recogida del 2026-10-26): sus `CLAUDE.md`, `AGENTS.md` y skills entraban en
+  cada llamada, ~19M (17 %). Clonarlos aparte (`gw-harvest`, paso 1).
+- Comprobar una release: `get_latest_release` o `list_releases` (`perPage` pequeño), no `get_release_by_tag` a
+  ciegas con etiquetas que quizá no existen.
 - Modelo: el grande se mantiene para ganchos, guardas y seguridad; el medio para guías y porte mecánico (bajar de
   modelo en guardas costaría calidad).
 
@@ -48,3 +55,5 @@ las crea una vez; desde entonces son del proyecto.
 - 2026-10-23, Fase 6 (una sesión en la nube, 4 compactaciones): principal 236 llamadas, 106k de media, techo 144k,
   25M; subagentes 20 (457 llamadas, 43M, ~100k de media, arranque 50k). Cambios: tope de ~35 llamadas por subagente
   y «Hecho» de 5 entradas cortas.
+- 2026-10-26, parche `0.4.1` (una sesión en la nube, últimas 24 h): principal 369 llamadas, 125k de media, suelo
+  108k y techo 142k, 46M; subagentes 30 (616 llamadas, 64M, arranque 69k). Cambios: P1-P4 de arriba.

@@ -22,6 +22,9 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
    locally. Projects are read-only: never commit, push, edit files or rewrite history in them (updating a dedicated,
    clean clone with fetch + fast-forward is allowed: it is how you see their latest state), and do not register them
    as session roots (their same-name skills would shadow this repo's).
+   **Clone them read-only into a scratch folder** outside the session's working directory, and do not attach or
+   register them (`register_repo_root`): an attached project loads its `CLAUDE.md`, `AGENTS.md` and skill list into
+   every call of the session (~17 % of a harvest session's input in one measure).
    **Bring each clone up to date first** (`git -C <project> fetch && git -C <project> merge --ff-only @{upstream}`):
    `recoger.py` harvests the clone's `HEAD` and warns when it is behind or diverged from its upstream, or has none.
 2. **Run the mechanical part** from this repo:
@@ -37,8 +40,8 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
    log), and the commits. A copy equal to an earlier workflow commit is listed apart
    as an older copy: the project's stale text, never a proposal. If it reports missing history, deepen the clone as
    it says and run it again.
-3. **Look at each finding with a subagent** that returns a short summary with paths, never whole files in the main
-   session. For a changed skill, `python3 scripts/recoger.py --diff <skill> <project-path>` gives the diff.
+3. **Look at the findings with one subagent per project, all in parallel** (one message with several Agent calls),
+   each returning a short summary with paths per finding, never whole files in the main session. For a changed skill, `python3 scripts/recoger.py --diff <skill> <project-path>` gives the diff.
 4. **Classify each finding**:
    - **General**: would help any project (a fix, a clearer rule, a missing check, a reusable skill) → proposal.
    - **Project-specific**: domain wording, stack commands, local paths → note it as "stays in the project".

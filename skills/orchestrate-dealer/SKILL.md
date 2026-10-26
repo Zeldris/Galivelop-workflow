@@ -38,8 +38,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    CI job, a pushed commit), a list of what blocks it and the files it touches. The **frontier** (one wave) is the chunks
    nothing pending blocks: they go out together (see Rules), but two chunks of one wave never share a file: the second
    waits for the first. With more than ~5 chunks, a cheap-model subagent may review the split before launch (missing
-   blockers, shared files, criteria that cannot be checked). Cap a subagent at ~35 tool calls (one or two proposal rows); at the cap it saves its state in `log` and the
-   next one resumes from it. A subagent's context grows with every call: chunks of 44-55 calls averaged 100-116k,
+   blockers, shared files, criteria that cannot be checked). Cap a subagent at ~30 tool calls (one or two proposal rows); at the cap it saves its state in `log` and the
+   next one resumes from it. A subagent's context grows with every call: chunks of 44-55 calls averaged 100-116k (and 9 of the 10
+   costliest subagents of one session went past 33 calls),
    and splitting them costs one more ~50k startup but far less than the drag. A one-file fix whose place the reviewer already gave is not a chunk: the main session
    makes it, with its tests (a subagent pays ~50k just to start and rediscovers what the session knows).
 2. **Deal.** One subagent per chunk with the Agent tool, in the foreground when the next chunk depends on it. Model and
@@ -55,7 +56,7 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    per-branch rows, read the next step and pending sections of {log}. If you touch code, read REVIEW.md and
    AGENTS.md. Follow the project's commit and push rules: commit and push each stable point, log update in the
    same commit. If the push is rejected, `git fetch` and `git merge` (never rebase), then push again.
-   At ~30 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
+   At ~25 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
    Task: <what, in one or two sentences>.
    Files: <paths you touch>. Create: <exact names of what is new>. A path not listed here: stop and return it
    under QUESTIONS.
