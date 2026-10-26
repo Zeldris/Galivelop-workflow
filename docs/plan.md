@@ -320,8 +320,8 @@ Ejemplos que los pilotos tienen que cubrir: el portal (Node, subida directa, tre
   sigue haciéndose y reparte lo que trae: las correcciones de lo que ya hay van al siguiente parche (`0.4.x`); un
   evolutivo o algo nuevo (skill, gancho, mejora) se apunta para la **`1.0.0`** y no entra en la `0.4`. La `1.0.0` y
   siguientes son la línea que crece y el producto a largo plazo. Así no hay una cadena de evolutivos entre la `0.4` y
-  la `1.0`. Los parches de la `0.4.x` se fusionan
-  también en la rama de la `1.0.0`. Por decidir: si la `1.0.0` llega a `main` antes de cumplir la §10 (la copia
+  la `1.0`. Lo de la `1.0.0` se va llevando a su rama, `version/1.0.0` (desde 2026-10-26), y los parches de la
+  `0.4.x` se fusionan también en ella. Por decidir: si la `1.0.0` llega a `main` antes de cumplir la §10 (la copia
   pública de la Fase 10 la sigue pidiendo).
 
 ## 8. Instalación en un proyecto
