@@ -411,6 +411,24 @@ class Doctor(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertLine(out, "WARN", "outside the", f"cd {p.work} && claude")
 
+    def test_cloud_session_started_in_home_user_is_not_outside(self):
+        self.p.transcript(Path("/home/user"), [{"type": "user", "message": {"content": "x"}}])
+        code, out = self.doctor_env({"CLAUDE_CODE_REMOTE": "true"})
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "OK", "session", "cloud session: it starts in /home/user", "checked under compaction")
+        self.assertNotIn("outside the repo", out)
+
+    def test_local_session_in_home_user_still_warns(self):
+        self.p.transcript(Path("/home/user"), [{"type": "user", "message": {"content": "x"}}])
+        code, out = self.doctor_env({"CLAUDE_CODE_REMOTE": ""})
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "session", "-home-user", "opened outside the repo")
+
+    def test_cloud_session_in_another_folder_still_warns(self):
+        self.p.transcript(self.tmp, [{"type": "user", "message": {"content": "x"}}])
+        code, out = self.doctor_env({"CLAUDE_CODE_REMOTE": "true"})
+        self.assertLine(out, "WARN", "session", "opened outside the repo")
+
     def test_cloud_session_without_the_compaction_window_warns(self):
         code, out = self.doctor_env({"CLAUDE_CODE_REMOTE": "true"})
         self.assertEqual(code, 0, out)
