@@ -67,6 +67,9 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   3. **Cierre:** si la fase 2 trajo código, `/code-review` de esos commits; luego `bash scripts/revisado.sh` y la
      subida (el `pre-push` exige la marca).
 - Este repo, una vez publicado, es lo que instalan otros proyectos: `main` = última versión publicada (plan §7).
+- **Tras la subida a `main`**, se escribe `docs/registros/release-vX.Y.Z.md` (como `release-v0.4.0.md`): el título y
+  el cuerpo de la release, cada uno en un bloque listo para pegar, y se dan al usuario sin que los pida (él crea la
+  etiqueta y la release a mano).
 - **Cada versión empieza con una recogida** (usuario, 2026-10-23): al abrir una versión nueva, `gw-harvest` sobre los
   proyectos que usan el flujo, y sus propuestas se presentan al usuario. `python3 scripts/version.py --release` (lo
   corre el `pre-push` de una subida a `main`) exige un `docs/propuestas/*.md` que empiece por `# Harvest` añadido

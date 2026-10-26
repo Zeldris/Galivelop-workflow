@@ -36,6 +36,10 @@ Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-2
 - Gasto (`/opt-tokens` del parche): `gw-harvest` clona los proyectos solo para lectura en una carpeta temporal, sin
   adjuntarlos a la sesión (sus `CLAUDE.md`, `AGENTS.md` y skills entraban en cada llamada, ~17 %), y los verifica con
   un subagente por proyecto en paralelo; el encargo de `orchestrate-dealer` corta a las ~25 llamadas (tope ~30).
+- `orchestrate-dealer` (retro del parche): si la sesión no se abre en la raíz del repo (la nube arranca en
+  `/home/user`), los worktrees se crean a mano con `git -C <repo> worktree add` en vez de `isolation`; el encargo dice
+  cómo esperar (`run_in_background` y su aviso, nunca `sleep` en primer plano ni sondeos; `Monitor` tras cargarlo) y
+  cómo subir (salida a un archivo y el motivo del `pre-push` leído antes de reintentar).
 
 ### EN
 
@@ -60,6 +64,10 @@ Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-2
 - Spend (the patch's `/opt-tokens`): `gw-harvest` clones the projects read-only into a scratch folder without
   attaching them to the session (their `CLAUDE.md`, `AGENTS.md` and skills entered every call, ~17 %), and checks
   them with one subagent per project in parallel; the `orchestrate-dealer` brief stops at ~25 calls (cap ~30).
+- `orchestrate-dealer` (the patch's retro): when the session is not opened at the repo root (the cloud starts in
+  `/home/user`), worktrees are created by hand with `git -C <repo> worktree add` instead of `isolation`; the brief says
+  how to wait (`run_in_background` and its notification, never a foreground `sleep` or polling; `Monitor` after
+  loading it) and how to push (output to a file, and the `pre-push` reason read before retrying).
 
 ## [0.4.0] - 2026-10-25
 

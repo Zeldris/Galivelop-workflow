@@ -57,6 +57,10 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    AGENTS.md. Follow the project's commit and push rules: commit and push each stable point, log update in the
    same commit. If the push is rejected, `git fetch` and `git merge` (never rebase), then push again.
    At ~25 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
+   To wait for something long, run it with `run_in_background` and wait for its notification; never a foreground
+   `sleep` or polling. Load `Monitor` with ToolSearch before using it.
+   Push with its output to a file (`git push … > push.log 2>&1`); if it fails, read the pre-push reason in that file
+   before retrying.
    Task: <what, in one or two sentences>.
    Files: <paths you touch>. Create: <exact names of what is new>. A path not listed here: stop and return it
    under QUESTIONS.
@@ -88,7 +92,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    go to the user as they are, with the answer you recommend.
 4. **Close the wave.** After merging the whole wave, one reviewer subagent compares the merged result with the task
    and returns `MISSING_ITEMS`: what the task asks for and no chunk covers. Each item becomes a chunk or a question.
-5. **Continue.** Next chunk. One line to the user per chunk closed; the detail lives in `log`.
+5. **Continue.** Next chunk. One line to the user per chunk closed; the detail lives in `log`. When something long
+   starts (a push with its check, a background subagent), one line to the user with what runs and roughly how long it
+   takes; then wait for its notification.
 
 ## Rules
 
@@ -105,7 +111,10 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
 - **Code fixes of the frontier, in parallel, in isolated worktrees:** each subagent runs with `isolation: "worktree"` in
   the background, commits at every stable point (`WIP:` if still red, so a restart loses nothing), does not touch the
   log or push, and returns its branch. The main session has each one reviewed (step 3), merges them one by one
-  (merge, never rebase; `check` after each), writes the log and pushes.
+  (merge, never rebase; `check` after each), writes the log and pushes. When the session folder is not the repo root
+  (a cloud session starts in `/home/user`, next to other repos, and `isolation` lands the worktree in the wrong one),
+  the main session creates each worktree itself with `git -C <repo> worktree add <folder> -b <branch>` and puts that
+  folder in the brief, without `isolation`.
 - **Shared records, main session only:** with parallel subagents none touches `log`, the findings register or any other
   shared record; they return their entries under `FOUND` and the main session writes them. Parallel writes conflict
   on merge.
