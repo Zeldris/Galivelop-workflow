@@ -54,6 +54,8 @@ fi
 real() { (cd "$1" 2>/dev/null && pwd -P); }
 if [ -n "$cwd" ]; then
   rcwd="$(real "$cwd")"; rroot="$(real "$root")"
+  # a cloud session always starts in /home/user, whatever repo it works on: not a mistake to warn about (Portal P1)
+  [ "${CLAUDE_CODE_REMOTE:-}" = true ] && [ "${cwd%/}" = /home/user ] && rcwd="$rroot"
   case "$rcwd/" in
     "$rroot"/*) ;;
     *) warn "this session was started in $cwd, outside the repo root ($root): the repo's .claude/settings.json (hooks, env) may not have loaded; restart Claude Code from the repo: cd $root && claude" ;;

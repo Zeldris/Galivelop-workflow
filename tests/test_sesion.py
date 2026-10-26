@@ -301,6 +301,18 @@ class SessionStart(Base):
         code, out = p.session_start(stdin=json.dumps({"cwd": str(p.work / "docs")}))
         self.assertNotIn("outside the repo root", out)
 
+    def test_cloud_session_started_in_home_user_does_not_warn(self):
+        # Portal P1: the cloud always starts in /home/user, so restarting "from the repo" is not possible there
+        p = self.p
+        cloud = {"CLAUDE_CODE_REMOTE": "true"}
+        code, out = p.session_start(env=cloud, stdin=json.dumps({"cwd": "/home/user"}))
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("outside the repo root", out)
+        code, out = p.session_start(stdin=json.dumps({"cwd": "/home/user"}))  # not the cloud: it still warns
+        self.assertIn("this session was started in /home/user, outside the repo root", out)
+        code, out = p.session_start(env=cloud, stdin=json.dumps({"cwd": str(self.tmp)}))  # cloud, another folder
+        self.assertIn(f"this session was started in {self.tmp}, outside the repo root", out)
+
 
 class Recuperar(Base):
     def test_plain_log_shows_its_first_section(self):
@@ -528,7 +540,29 @@ class Recuperar(Base):
         self.assertIn("--sesion", out)
 
 
+    def test_estado_cloud_start_transcript_has_no_outside_warning(self):
+        # Portal P1: in a cloud session the transcript is always in -home-user; that is not a session to restart
+        p = self.p
+        p.transcript("/home/user", [{"type": "user", "message": {"content": "hi"}}])
+        script = str(p.scripts / "recuperar.py")
+        code, out = p.run("python3", script, "--estado", env={"CLAUDE_CODE_REMOTE": "true"})
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("the session was opened outside the repo", out)
+        self.assertIn("Compactions in this session: 0", out)  # the transcript is still used
+        code, out = p.run("python3", script, "--estado")  # not the cloud: it still warns
+        self.assertIn("this transcript is in -home-user, not the repo's folder: the session was opened outside", out)
+
+
 class RegistroSesion(Base):
+    def test_cloud_start_transcript_found_without_warning_in_the_cloud(self):
+        p = self.p
+        cloud = p.transcript("/home/user", [{}])
+        script = str(p.scripts / "registro_sesion.py")
+        code, out = p.run("python3", script, "--path", env={"CLAUDE_CODE_REMOTE": "true"})
+        self.assertEqual((code, out.strip()), (0, str(cloud)))
+        code, out = p.run("python3", script, "--path")
+        self.assertIn("warning: the session transcript is in -home-user, not the repo's folder", out)
+
     def test_parent_folder_transcript_found_with_warning(self):
         p = self.p
         parent = p.transcript(self.tmp, [{"type": "user", "message": {"content": "x"}}])

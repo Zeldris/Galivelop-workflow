@@ -474,7 +474,7 @@ def check_skills(rep, root, version, proposals=()):
 
 def check_session(rep, root):
     folder = registro_sesion.opened_outside(root)
-    if folder == registro_sesion.CLOUD_START and os.environ.get("CLAUDE_CODE_REMOTE") == "true":
+    if registro_sesion.cloud_start(folder):
         rep.ok("session", "cloud session: it starts in /home/user, not in the repo; its compaction window is "
                "checked under compaction")
     elif folder:
