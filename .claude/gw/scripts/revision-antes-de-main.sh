@@ -14,7 +14,10 @@
 #     (-R/--repo and GH_REPO= name the repo). Same mark rule on the PR head, plus CI green: every check-run completed with success/neutral/skipped and every
 #     commit status success (a commit with no CI reported at all is not green; that block names the path the person
 #     can confirm instead: the local check, said as "checked only locally"). Check-runs that GitHub closed as failed
-#     without starting the job (billing, spending limit) and nothing else failing get that same block.
+#     without starting the job (billing, spending limit) and nothing else failing get that same block. In those two
+#     cases only, a green line of the config's `ciLocalLog` (written by ci-local.py --apuntar, committed on the PR
+#     head) lets the merge through when its commit is an ancestor of the head with only content after it; a CI that
+#     started and failed is never replaced by it.
 #   - Anything else (other tools, update_pull_request_branch, other bases, Bash that only mentions `gh pr`) exits 0
 #     silently. pushToProtected does not matter: a PR is another way into the protected branch.
 #   - A PR that is already closed or merged: blocked with that fact (and `gh pr view`), no config is asked of its branch;
@@ -537,6 +540,25 @@ def ci_problems(repo, sha):
 
 
 # ---- the rules ---------------------------------------------------------------------------------------------------
+# A green line of ci-local.py --apuntar on a clean tree: `- <date> · `<sha>` · green (` (a dirty tree adds
+# " (uncommitted changes)" after the sha, so it never matches).
+LOCAL_GREEN = re.compile(r"^- \S+ · `([0-9a-f]{7,40})` · green \(", re.M)
+
+
+def ci_local_green(root, scripts, head, policy):
+    """The commit of the newest green local CI run recorded on `head` that is an ancestor of it with only content
+    after it, or None."""
+    log = config_at(root, policy)["ciLocalLog"]
+    text = git(root, "show", f"{head}:{log}").stdout
+    for short in reversed(LOCAL_GREEN.findall(text)):
+        r = git(root, "rev-parse", "-q", "--verify", short + "^{commit}")
+        sha = r.stdout.strip()
+        if r.returncode == 0 and git(root, "merge-base", "--is-ancestor", sha, head).returncode == 0 \
+                and not es_codigo(root, scripts, sha, head, policy):
+            return sha
+    return None
+
+
 def es_codigo(root, scripts, a, b, rev):
     r = run(["bash", os.path.join(scripts, "es-codigo.sh"), "--rev", rev, a, b], cwd=root)
     if r.returncode != 0:
@@ -689,12 +711,18 @@ def handle(action, cfg, root, scripts):
               f"check CI in the PR ({info['url']}); once it is all green, authenticate (gh auth login, or export "
               "GITHUB_TOKEN) and retry the merge")
     if bad == [NO_CI] or (bad and unstarted):
+        policy = tip if tip and config_at(root, tip) is not None else info["sha"]
+        if ci_local_green(root, scripts, info["sha"], policy):
+            return  # the CI run locally, green, on this code: the person confirmed it ("checked only locally")
+        log = config_at(root, policy)["ciLocalLog"]
         what = f"no CI has reported on PR #{number} ({info['sha'][:12]})" if bad == [NO_CI] else \
             f"GitHub did not start the CI of PR #{number} ({info['sha'][:12]}): billing or spending limit; nothing ran"
-        block(f"Blocked: {what}.",
-              f"if CI does not start (no Actions quota, no runners), tell the person: with their confirmation the check "
-              f"passed locally counts, said as 'checked only locally'; they merge it ({info['url']}) or the branch is "
-              "pushed directly, where .githooks/pre-push runs the check")
+        block(f"Blocked: {what}, and {log} on the PR head has no green local run of this code (a clean tree, an "
+              "ancestor of the head with only content after it).",
+              f"if CI does not start (no Actions quota, no runners), tell the person: with their confirmation the CI "
+              f"run locally counts, said as 'checked only locally'; then run it, commit and push the log, and retry: "
+              f"python3 {os.path.join(scripts, 'ci-local.py')} --apuntar && git add {log} && "
+              f"git commit -m 'CI run locally' && git push")
     if bad:
         block(f"Blocked: CI of PR #{number} ({info['sha'][:12]}) is not green: {'; '.join(bad)}",
               f"wait until every check passes ({info['url']}), fix what failed if needed, then retry the merge")

@@ -62,6 +62,19 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   remotas más recientes (solo aviso) y sobre cada merge nuevo (`clash --merge`: falla si el merge dejó las dos tareas
   con el mismo id y el commit subido aún las tiene); el `pre-commit` de un merge con conflictos lo mira sobre el índice
   (`clash --merging`). Sin historia común (clon superficial) falla cerrado con `git fetch --deepen=200 origin`.
+- `ci-local.py` corre en la máquina el CI de GitHub Actions del proyecto, para cuando GitHub no lo arranca (sin cuota
+  de Actions, sin runners; INS P3, segunda parte). Lee los workflows de `ciLocalWorkflows` o, si no, los de
+  `.github/workflows/` que dispara el evento (`pull_request` por defecto, con sus filtros de rama y de ruta); corre los
+  jobs del sistema de la máquina, una vez por combinación de la matriz y en el orden de `needs`, con su `env`, los
+  `${{ }}` sustituidos y `GITHUB_ENV`/`GITHUB_PATH`. No corre los pasos `uses:` ni las instalaciones de paquetes del
+  sistema, y lista lo que no cubre (otro sistema, `services`, `container`, expresiones que no sabe evaluar). Con
+  `--apuntar` deja una línea en `ciLocalLog` (por defecto `docs/registros/ci-local.md`; nunca es código para
+  `es-codigo.sh`) con el commit, el resultado y lo no cubierto; `--plan` solo dice qué correría. Si el CI de un PR no
+  arrancó (sin CI o sin arrancar por facturación), `revision-antes-de-main.sh` acepta la línea verde más reciente del
+  registro en la cabeza del PR cuyo commit es antecesor y solo tiene contenido detrás, hecha con el árbol limpio; el
+  registro es el del config de la rama protegida. Un CI que arrancó y falló nunca se sustituye así, y apuntarlo es
+  decisión de la persona («comprobado solo en local»). Claves nuevas `ciLocalLog` y `ciLocalWorkflows`; documentado
+  en `config.md`, `problemas.md`, la plantilla de `AGENTS.md` y el mapa para agentes.
 
 ### EN
 
@@ -109,6 +122,19 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   remote branches (warning only) and on each new merge (`clash --merge`: fails if the merge kept both tasks under one
   id and the pushed commit still has them); the `pre-commit` of a conflicted merge checks the index (`clash
   --merging`). Without common history (a shallow clone) it fails closed with `git fetch --deepen=200 origin`.
+- `ci-local.py` runs the project's GitHub Actions CI on the machine, for when GitHub does not start it (no Actions
+  quota, no runners; INS P3, second part). It reads the workflows of `ciLocalWorkflows` or, if empty, those in
+  `.github/workflows/` the event triggers (`pull_request` by default, with their branch and path filters); it runs the
+  jobs for the machine's OS, once per matrix combination and in `needs` order, with their `env`, `${{ }}` replaced and
+  `GITHUB_ENV`/`GITHUB_PATH`. It skips `uses:` steps and system-package installs, and lists what it does not cover
+  (another OS, `services`, `container`, expressions it cannot evaluate). With `--apuntar` it writes a line to
+  `ciLocalLog` (default `docs/registros/ci-local.md`; never code for `es-codigo.sh`) with the commit, the result and
+  what was not covered; `--plan` only says what would run. When a PR's CI did not start (no CI, or not started for
+  billing), `revision-antes-de-main.sh` accepts the newest green line of the log on the PR head whose commit is an
+  ancestor with only content after it, made on a clean tree; the log is the one in the protected branch's config. A
+  CI that started and failed is never replaced this way, and recording one is the person's call ("checked only
+  locally"). New keys `ciLocalLog` and `ciLocalWorkflows`; documented in `config.md`, `troubleshooting.md`, the
+  `AGENTS.md` template and the agent map.
 
 ## [0.4.1] - 2026-10-26
 

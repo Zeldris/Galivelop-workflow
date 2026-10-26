@@ -91,6 +91,7 @@ con la palabra `gh` seguida de `pr` o `pulls` («github» y «projects» no cuen
 |---|---|---|
 | `Blocked: … has no review mark` / `… not an ancestor` / `code changed after the review mark` | El PR trae código que no cubre la marca de revisión del **mismo commit** | `/code-review` del diff, sube arreglos, `bash .claude/gw/scripts/revisado.sh`, `git push` |
 | `Blocked: CI of PR #N is not green` / `could not verify CI` | El CI no pasó o no se pudo leer | Espera o arregla el CI; autenticación: `gh auth login` o `export GITHUB_TOKEN=…` |
+| `Blocked: no CI was reported…` / `GitHub did not start the CI…`, `and <ciLocalLog> on the PR head has no green local run of this code` | El CI del PR no arrancó (sin cuota de Actions, sin runners) y el registro de CI local no tiene una línea verde válida: hecha con el árbol limpio, de un antecesor de la cabeza y solo con contenido detrás | Dilo a la persona; con su confirmación («comprobado solo en local»): `python3 .claude/gw/scripts/ci-local.py --apuntar`, commit y push del registro, y repite. Un CI que arrancó y falló no se sustituye así |
 | `cannot read PR #N` / `cannot query origin` | Sin red o sin credencial | Autentícate y repite; se bloquea porque no pudo comprobar |
 | `the PR head … is not in this clone` | Clon superficial o rama sin traer | `git fetch --deepen=200 origin <rama>` |
 | `no open PR for <rama>` / `without a PR number` | Fusionar sin número ni PR abierto de la rama | Pasa el número: `gh pr merge <número>` |

@@ -11,8 +11,8 @@ CHANGELOG de la `1.0.0`.
   `pre-commit` de un merge con conflictos. [`2026-10-26-world-maker-fantasy.md`](../propuestas/2026-10-26-world-maker-fantasy.md)
 - [x] **WMF P3** (2026-10-26): `recuperar.py --estado` enseña los otros worktrees con su rama y su fila de la bitácora.
   [`2026-10-26-world-maker-fantasy.md`](../propuestas/2026-10-26-world-maker-fantasy.md)
-- [ ] **INS P3 (segunda parte):** un `ci-local` genérico que lee `docs/registros/ci-local.md` (la corrección mínima
-  ya está en la `0.4.1`). [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
+- [x] **INS P3 (segunda parte)** (2026-10-26): `ci-local.py` corre el CI de GitHub en local y, con `--apuntar`, lo
+  deja en `ciLocalLog`; el gancho de PR acepta esa línea verde si el CI no arrancó (la corrección mínima, en la `0.4.1`). [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
 - [x] **INS P5** (2026-10-26): `recuperar.py` cuenta las compactaciones desde el inicio de la tarea (`merge-base` con la rama
   protegida), no de toda la sesión. [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
 - [x] **INS P6** (2026-10-26): el `pre-commit` comprueba las tareas cerradas frente a «Hecho» (`bitacora.py closed --staged`).

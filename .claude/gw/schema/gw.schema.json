@@ -134,6 +134,18 @@
       "default": true,
       "description": "false: the commit-msg hook rejects agent signatures (a Co-Authored-By of a Claude model or with noreply@anthropic.com, Claude-Session, lines starting with \"Generated with Claude Code\" or a claude.ai/code/session link)."
     },
+    "ciLocalLog": {
+      "type": "string",
+      "default": "docs/registros/ci-local.md",
+      "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+\\.md$",
+      "description": "Repo-relative file where `ci-local.py --apuntar` records each local run of the GitHub CI (a Markdown file). The PR hook takes a green line of it, whose commit has only content after it, as the CI that GitHub did not start (no Actions quota, no runners); it is never code for es-codigo.sh."
+    },
+    "ciLocalWorkflows": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "default": [],
+      "description": "Repo-relative workflow files that `ci-local.py` runs, whatever their triggers; empty: every .github/workflows/*.yml|yaml triggered by the event."
+    },
     "content": {
       "type": "array",
       "items": {

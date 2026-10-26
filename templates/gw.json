@@ -16,6 +16,8 @@
   "reviewMark": "docs/registros/revisado.txt",
   "requireRetro": false,
   "agentSignatures": true,
+  "ciLocalLog": "docs/registros/ci-local.md",
+  "ciLocalWorkflows": [],
   "content": ["^docs/", "^(README|GLOSSARY|REVIEW|CLAUDE|AGENTS|CHANGELOG|CREDITS)(\\.[a-z]{2})?\\.md$", "^\\.claude/skills/.*\\.md$"],
   "roadmap": false,
   "selector": {"cases": []},

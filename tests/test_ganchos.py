@@ -1703,6 +1703,17 @@ class EsCodigo(Base):
         code, out = p.run("bash", script, "--explicar")
         self.assertEqual(code, 2, out)
         self.assertIn("usage", out)
+        # The local CI log is content wherever ciLocalLog puts it, as the commit has it; never a guarded path.
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["ciLocalLog"] = "ci/local.md"
+        p.write(".claude/gw.json", json.dumps(cfg)); p.commit("local CI log outside docs")
+        p.write("ci/local.md", "- green\n"); p.write("src/b.py", "b\n"); p.commit("log and code")
+        code, out = p.run("bash", script, "--explicar", "ci/local.md", "docs/registros/ci-local.md")
+        self.assertEqual(out.splitlines(), [
+            "ci/local.md: content (it is the local CI log, ciLocalLog)",
+            'docs/registros/ci-local.md: content (matches content regex "^docs/")'], out)
+        code, out = p.run("bash", script, "HEAD~1", "HEAD")
+        self.assertEqual((code, out.split()), (0, ["src/b.py"]))
 
     def test_invalid_content_regex_is_named_and_other_failures_are_not_blamed_on_it(self):
         p = self.p

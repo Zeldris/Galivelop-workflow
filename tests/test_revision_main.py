@@ -266,6 +266,90 @@ class Hook(unittest.TestCase):
         self.assertBlocked(self.merge(pr=self.pr(), runs={"total_count": 0, "check_runs": []}), "no CI",
                            "checked only locally", "with their confirmation")
 
+    # Installer P3: a green local run of the CI (ci-local.py --apuntar) stands in for a CI that did not start ----------
+    NO_CI = {"total_count": 0, "check_runs": []}
+
+    def local_log(self, *lines, path="docs/registros/ci-local.md"):
+        """Commits the local CI log with these lines (each "green", "red" or "dirty" with its sha) and pushes."""
+        text = "# Local CI\n\n"
+        for state, sha in lines:
+            mark = " (uncommitted changes)" if state == "dirty" else ""
+            what = "red: job j, step s: exit 1" if state == "red" else "green (3 steps run, event pull_request)"
+            text += f"- 2026-10-26 · `{sha[:12]}`{mark} · {what}\n"
+        self.p.write(path, text); self.p.commit("CI run locally")
+        self.push()
+
+    def assertNeedsLocalRun(self, result):
+        self.assertBlocked(result, "no green local run", "ci-local.py --apuntar", "checked only locally",
+                           "with their confirmation")
+
+    def test_merge_no_ci_with_green_local_run_allowed(self):
+        sha = self.mark()
+        self.local_log(("green", sha))
+        self.assertAllowed(self.merge(pr=self.pr(), runs=self.NO_CI))
+
+    def test_merge_no_ci_green_local_run_then_only_content_allowed(self):
+        sha = self.mark()
+        self.local_log(("red", sha), ("green", sha))
+        self.p.write("docs/notes.md", "more\n"); self.p.commit("docs"); self.push()
+        self.assertAllowed(self.merge(pr=self.pr(), runs=self.NO_CI))
+
+    def test_merge_billing_unstarted_with_green_local_run_allowed(self):
+        sha = self.mark()
+        self.local_log(("green", sha))
+        runs = {"total_count": 1, "check_runs": [{"id": 11, "name": "linux", "status": "completed",
+                                                  "conclusion": "failure", "output": {"summary": self.BILLING}}]}
+        self.assertAllowed(self.merge(pr=self.pr(), runs=runs))
+
+    def test_merge_no_ci_with_only_dirty_or_red_local_runs_blocked(self):
+        sha = self.mark()
+        self.local_log(("dirty", sha), ("red", sha))
+        self.assertNeedsLocalRun(self.merge(pr=self.pr(), runs=self.NO_CI))
+
+    def test_merge_no_ci_green_local_run_of_another_branch_blocked(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "other", "main")
+        p.write("src/other.py", "y = 2\n"); p.commit("other"); other = p.sha()
+        p.git("checkout", "-q", "feature")
+        self.mark()
+        self.local_log(("green", other), ("green", "0123456789ab"))
+        self.assertNeedsLocalRun(self.merge(pr=self.pr(), runs=self.NO_CI))
+
+    def test_merge_no_ci_green_local_run_with_code_after_it_blocked(self):
+        p = self.p
+        before = self.code
+        p.write("src/more.py", "z = 3\n"); p.commit("more code")
+        self.mark()
+        self.local_log(("green", before))
+        self.assertNeedsLocalRun(self.merge(pr=self.pr(), runs=self.NO_CI))
+
+    def test_merge_no_ci_local_log_is_the_protected_branch_one(self):
+        p = self.p
+        gw = p.work / ".claude" / "gw.json"
+        cfg = json.loads(gw.read_text())
+        cfg["ciLocalLog"] = "ci/local.md"
+        gw.write_text(json.dumps(cfg)); p.commit("move the local CI log in the PR only")
+        sha = self.mark()
+        self.local_log(("green", sha), path="ci/local.md")
+        # The PR cannot pick its own log: main's config (the default place) decides.
+        self.assertBlocked(self.merge(pr=self.pr(), runs=self.NO_CI), "docs/registros/ci-local.md on the PR head")
+        p.git("checkout", "-q", "main")
+        gw.write_text(json.dumps(cfg)); p.commit("move the local CI log")
+        p.git("push", "-q", "--no-verify", "origin", "main")
+        p.git("checkout", "-q", "feature")
+        p.git("merge", "-q", "--no-edit", "main")
+        sha = self.mark()
+        self.local_log(("green", sha), path="ci/local.md")
+        self.assertAllowed(self.merge(pr=self.pr(), runs=self.NO_CI))
+
+    def test_merge_real_failure_with_green_local_run_keeps_not_green(self):
+        sha = self.mark()
+        self.local_log(("green", sha))
+        runs = {"total_count": 1, "check_runs": [{"name": "linux", "status": "completed", "conclusion": "failure"}]}
+        code, out = self.merge(pr=self.pr(), runs=runs)
+        self.assertBlocked((code, out), "is not green", "linux: failure")
+        self.assertNotIn("ci-local.py", out)
+
     BILLING = "The job was not started because recent account payments have failed or your spending limit needs to be increased."
 
     def test_merge_check_runs_not_started_for_billing_say_so(self):

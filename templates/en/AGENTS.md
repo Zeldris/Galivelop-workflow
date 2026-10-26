@@ -83,8 +83,9 @@ Each session may run in a throwaway container: **what is not pushed does not exi
   push still needs it).
 - **Merged only with CI green**, also when the person says "merge directly": that skips waiting for more reviews, never
   the CI nor the retro presented to the person. If CI does not start, the local check under "Hand-offs" counts with
-  the person's confirmation: push directly (`pre-push` runs the check) or they merge it; the hook does not let the
-  agent merge a pull request without CI.
+  the person's confirmation: push directly (`pre-push` runs the check) or, for a pull request,
+  `python3 .claude/gw/scripts/ci-local.py --apuntar` runs the CI locally and records it; with that green line pushed,
+  the hook lets the merge through.
 - A subagent's branch comes back with `bash .claude/gw/scripts/fusionar.sh <branch> "<message>"`, which runs the check
   and cleans up its worktree.
 

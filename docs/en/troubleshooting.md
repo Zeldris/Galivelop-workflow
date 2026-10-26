@@ -91,6 +91,7 @@ closed**: if it cannot check, it blocks and says why. It only looks at calls to 
 |---|---|---|
 | `Blocked: … has no review mark` / `… not an ancestor` / `code changed after the review mark` | The PR brings code the review mark of the **same commit** does not cover | `/code-review` of the diff, push the fixes, `bash .claude/gw/scripts/revisado.sh`, `git push` |
 | `Blocked: CI of PR #N is not green` / `could not verify CI` | CI did not pass or could not be read | Wait for or fix CI; authentication: `gh auth login` or `export GITHUB_TOKEN=…` |
+| `Blocked: no CI was reported…` / `GitHub did not start the CI…`, `and <ciLocalLog> on the PR head has no green local run of this code` | The PR's CI did not start (no Actions quota, no runners) and the local CI log has no valid green line: made on a clean tree, of an ancestor of the head, with only content after it | Tell the person; with their confirmation ("checked only locally"): `python3 .claude/gw/scripts/ci-local.py --apuntar`, commit and push the log, and retry. A CI that started and failed is not replaced this way |
 | `cannot read PR #N` / `cannot query origin` | No network or no credential | Authenticate and retry; it blocks because it could not check |
 | `the PR head … is not in this clone` | Shallow clone or branch not fetched | `git fetch --deepen=200 origin <branch>` |
 | `no open PR for <branch>` / `without a PR number` | Merging with no number and no open PR for the branch | Pass the number: `gh pr merge <number>` |

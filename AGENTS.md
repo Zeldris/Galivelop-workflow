@@ -33,7 +33,8 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   Actions) cuenta como rojo: se dice al usuario y no se da nada por comprobado en el CI. Entonces vale el check
   pasado en local sobre el mismo commit (`bash tests/comprobar.sh`, o el del `pre-push`) **solo si el usuario lo
   confirma**, y se dice y se apunta en la bitácora como «comprobado solo en local». Un CI que arrancó y falló nunca
-  se sustituye así.
+  se sustituye así. Para un PR, `python3 scripts/ci-local.py --apuntar` corre el CI en local y deja la línea que
+  acepta el gancho.
 - Si el usuario dice que se para, se para: se sube lo que haya y se deja la bitácora al día.
 
 ## Comprobar

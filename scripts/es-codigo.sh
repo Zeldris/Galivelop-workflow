@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # galivelop-workflow v0.4.1
 # Lists the files that are code among those changed between two commits: everything that matches none of the
-# config's `content` regexes (Python syntax, on repo-relative paths). The review mark file itself is never code; the
-# workflow's own policy and guards always are, whatever `content` says (.claude/gw.json, .claude/settings.json,
+# config's `content` regexes (Python syntax, on repo-relative paths). The review mark file and the local CI log
+# (`ciLocalLog`, written by ci-local.py --apuntar) are never code; the workflow's own policy and guards always are, whatever `content` says (.claude/gw.json, .claude/settings.json,
 # .claude/gw/ and .githooks/): otherwise a commit could widen `content` and pass its own code as content.
 # Only code needs /code-review (plan §5.3). Used by .githooks/pre-push and the PR hook.
 #   bash es-codigo.sh [--rev REV] A B   # A empty = from the empty tree (a brand-new branch)
 #   bash es-codigo.sh [--rev REV] --explicar PATH...   # says, for each path, code or content and why (REV: HEAD)
-# The config (`content`, `reviewMark`) is read as commit REV has it (default B, the commit being checked), never
+# The config (`content`, `reviewMark`, `ciLocalLog`) is read as commit REV has it (default B, the commit being checked), never
 # from the working tree: an uncommitted edit cannot turn the pushed code into content.
 # Exit 0 with the list (possibly empty) on stdout; exit 2 if the config or a commit is missing (fail closed).
 # Bash 3.2 compatible.
@@ -31,7 +31,7 @@ for p in json.loads(sys.argv[1]):
     except re.error as exc:  # exit 3 = a bad content regex only
         print("es-codigo: content regex " + json.dumps(p) + " is invalid: " + str(exc), file=sys.stderr)
         sys.exit(3)
-mark, explain = sys.argv[2], sys.argv[3] == "explain"
+mark, explain, cilog = sys.argv[2], sys.argv[3] == "explain", sys.argv[4]
 guard = re.compile(r"^(\.claude/(gw\.json|settings\.json|gw/)|\.githooks/)")
 try:
     for line in sys.stdin:
@@ -43,6 +43,8 @@ try:
             kind, why = "content", "it is the review mark file, reviewMark"
         elif guard.search(path):
             kind, why = "code", "the workflow policy and guards are always code"
+        elif path == cilog:
+            kind, why = "content", "it is the local CI log, ciLocalLog"
         elif hit is not None:
             kind, why = "content", "matches content regex " + json.dumps(hit)
         else:
@@ -72,7 +74,9 @@ if [ "${1:-}" = "--explicar" ]; then
     echo "es-codigo: cannot read the config of $rev; commit a valid .claude/gw.json: python3 $config --root $root --rev $rev validate" >&2; exit 2; }
   mark="$(python3 "$config" --root "$root" --rev "$rev" get reviewMark)" || {
     echo "es-codigo: cannot read reviewMark of $rev; fix it: python3 $config --root $root --rev $rev validate" >&2; exit 2; }
-  printf '%s\n' "$@" | python3 -c "$classify" "$content" "$mark" explain
+  cilog="$(python3 "$config" --root "$root" --rev "$rev" get ciLocalLog)" || {
+    echo "es-codigo: cannot read ciLocalLog of $rev; fix it: python3 $config --root $root --rev $rev validate" >&2; exit 2; }
+  printf '%s\n' "$@" | python3 -c "$classify" "$content" "$mark" explain "$cilog"
   rc=$?; [ "$rc" -eq 0 ] || classify_failed "$rc"
   exit 0
 fi
@@ -93,8 +97,10 @@ content="$(python3 "$config" --root "$root" --rev "$rev" get content --json)" ||
   echo "es-codigo: cannot read the config of $rev; commit a valid .claude/gw.json: python3 $config --root $root --rev $rev validate" >&2; exit 2; }
 mark="$(python3 "$config" --root "$root" --rev "$rev" get reviewMark)" || {
   echo "es-codigo: cannot read reviewMark of $rev; fix it: python3 $config --root $root --rev $rev validate" >&2; exit 2; }
+cilog="$(python3 "$config" --root "$root" --rev "$rev" get ciLocalLog)" || {
+  echo "es-codigo: cannot read ciLocalLog of $rev; fix it: python3 $config --root $root --rev $rev validate" >&2; exit 2; }
 changed="$(git diff --no-renames --name-only "$from" "$to")" || {
   echo "es-codigo: git diff $from $to failed; check both commits exist: git log -1 $from $to" >&2; exit 2; }
 [ -n "$changed" ] || exit 0
-printf '%s\n' "$changed" | python3 -c "$classify" "$content" "$mark" list
+printf '%s\n' "$changed" | python3 -c "$classify" "$content" "$mark" list "$cilog"
 rc=$?; [ "$rc" -eq 0 ] || classify_failed "$rc"

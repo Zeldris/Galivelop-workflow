@@ -82,8 +82,9 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
   (`pr`: un gancho de Claude Code pide la marca antes de crearlo o fusionarlo; un push directo la sigue pidiendo).
 - **Se fusiona solo con el CI en verde**, también cuando la persona dice «fusiona directamente»: eso quita esperar a
   más revisiones, nunca el CI ni la retro presentada a la persona. Si el CI no arranca, vale el check en local de
-  «Relevos» con la confirmación de la persona: se sube directo (el `pre-push` corre el check) o fusiona ella; el
-  gancho no deja al agente fusionar un pull request sin CI.
+  «Relevos» con la confirmación de la persona: se sube directo (el `pre-push` corre el check) o, para un pull
+  request, `python3 .claude/gw/scripts/ci-local.py --apuntar` corre el CI en local y lo apunta; con esa línea verde
+  subida, el gancho deja fusionar.
 - La rama de un subagente vuelve con `bash .claude/gw/scripts/fusionar.sh <rama> "<mensaje>"`, que corre el check y
   limpia su worktree.
 
