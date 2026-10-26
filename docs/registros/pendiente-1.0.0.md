@@ -44,5 +44,6 @@ CHANGELOG de la `1.0.0`.
 
 ## De recogidas anteriores
 
-- [ ] **Labs P3:** las skills `to-spec` y `wayfinder`, con un destino Markdown local por defecto (aplazada el
-  2026-10-25: decidir antes ese destino). [`2026-10-25-labs-log-detective.md`](../propuestas/2026-10-25-labs-log-detective.md)
+- [x] **Labs P3:** las skills `to-spec` y `wayfinder`, con un destino Markdown local por defecto. ✅ 2026-10-26:
+  `docs/specs/<fecha>-<tema>.md` y `docs/mapas/<tema>.md` (cada ticket, una casilla); cambiable desde
+  `.claude/gw/<skill>.md`; filas nuevas en el `selector`. [`2026-10-25-labs-log-detective.md`](../propuestas/2026-10-25-labs-log-detective.md)

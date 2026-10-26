@@ -243,6 +243,10 @@ Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-2
     índice; los fallos salen al hacer el commit y no en el `pre-push`, con varios commits ya apilados (WMF P1).
   - `doctor.py` ya no da por ignorado un archivo que una regla `!` del `.gitignore` des-ignora (Labs P1).
   - Skill nueva `wait-what`, de mattpocock/skills, para pedir que se vuelva a explicar algo (Labs P2).
+  - Skills nuevas `to-spec` (convierte lo ya hablado en una especificación, en `docs/specs/<fecha>-<tema>.md`) y
+    `wayfinder` (un esfuerzo grande y con niebla como mapa de tickets de decisión, en `docs/mapas/<tema>.md` con cada
+    ticket como casilla), de mattpocock/skills, con destino Markdown local por defecto; cada proyecto puede cambiarlo,
+    o usar su tracker, desde `.claude/gw/<skill>.md`. El `selector` las ofrece (Labs P3).
   - Skills nuevas `gw-media-content` (propone hasta 10 publicaciones sin publicar sobre el proyecto) y
     `gw-media-content-now` (produce una pieza en una carpeta con fecha: textos por canal e idioma, más imágenes), de la
     P1 de la segunda recogida de WMF, rediseñada. Cuatro redes de inicio (X, Reddit, LinkedIn y Discord) y canales
@@ -375,6 +379,10 @@ Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-2
     version, so errors show at commit time and not at `pre-push` with several commits already stacked (WMF P1).
   - `doctor.py` no longer reports as ignored a file that a `!` rule in `.gitignore` un-ignores (Labs P1).
   - New `wait-what` skill, from mattpocock/skills, to ask for something to be explained again (Labs P2).
+  - New skills `to-spec` (turns what was already discussed into a spec, in `docs/specs/<date>-<topic>.md`) and
+    `wayfinder` (a large, foggy effort as a map of decision tickets, in `docs/mapas/<topic>.md` with each ticket as a
+    checkbox), from mattpocock/skills, with a local Markdown destination by default; each project can change it, or
+    use its tracker, from `.claude/gw/<skill>.md`. The `selector` offers them (Labs P3).
   - New skills `gw-media-content` (proposes up to 10 unpublished posts about the project) and
     `gw-media-content-now` (produces one piece in a dated folder: texts per channel and language, plus images), from
     WMF's second-harvest P1, redesigned. Four starting networks (X, Reddit, LinkedIn and Discord) and extra channels the

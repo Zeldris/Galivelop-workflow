@@ -48,7 +48,7 @@ commits anteriores a la instalación y de cómo fue esta.
 - **Why it is general:** el flujo cubre bien una tarea por sesión, pero no tiene pieza para «una idea grande con
   niebla» que no cabe en una; el proyecto le añadió una fila al `selector` para ello.
 - **Version bump:** minor
-- **Status:** aplazada a la Fase 7 (2026-10-25): decidir primero el destino por defecto
+- **Status:** aplicada (2026-10-26), en `version/1.0.0`, con destino `docs/specs/` y `docs/mapas/`
 
 ## Reglas (patch)
 

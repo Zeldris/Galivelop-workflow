@@ -18,6 +18,8 @@ Classify the task with the table, then act on its row. Reply in the project's `l
 |---|---|---|---|
 | Design: new feature, open decision, architecture, UX, anything the user must decide | `grilling` + `domain-modeling`; `prototype` when numbers, rules or screens need trying | large (Opus) | light (Haiku) for `Explore` searches |
 | Bug, red or flaky test, something visibly broken | `diagnosing-bugs` | large if the cause is not obvious; medium (Sonnet) if it shows at first sight | none |
+| Huge or foggy effort that no single session can hold | `wayfinder` (a map of decision tickets, one per session) | large | light, for `research` tickets |
+| Write up a feature already discussed as a spec | `to-spec` | large | none |
 | Large change: several systems, data, migration, concurrency, build or routing | the project's plan for it | large | light, to find usages |
 | Scoped change: one component, one adjustment, one test, one small endpoint | none | medium | none |
 | Mechanical: docs, log, renames, adapting tests to a new signature, converting files | none | medium or light | light |
