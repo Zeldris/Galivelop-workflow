@@ -9,6 +9,10 @@
 #   - Skipped while finishing a merge, revert or cherry-pick (MERGE_HEAD, REVERT_HEAD, CHERRY_PICK_HEAD) and during
 #     a rebase.
 #   - Fails closed when the workflow's config.py or (with the log staged) bitacora.py is missing.
+#   - With `agentSignatures: false` in the config, rejects a message that carries an agent's signature: a
+#     Co-Authored-By trailer naming Claude or Anthropic, a Claude-Session trailer, "Generated with Claude Code" or a
+#     claude.ai/code/session link. A human co-author passes. Comment lines and the --verbose diff below the scissors
+#     line are ignored (git strips them). Checked on merges too; skipped during a rebase (old messages are replayed).
 # Bash 3.2 compatible. Root from this hook's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
 hookdir="$(cd "$(dirname "$0")" && pwd)"
@@ -16,6 +20,8 @@ hookdir="$(cd "$(dirname "$0")" && pwd)"
 # --show-toplevel` answers the hook's own folder. Unset them for this one call (a subshell); the checks below keep them.
 root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$hookdir" rev-parse --show-toplevel 2>/dev/null)" || {
   echo "commit-msg: $hookdir is not inside a git work tree; point git at the project's hooks: git config core.hooksPath .githooks" >&2; exit 1; }
+msg="${1:-}"
+case "$msg" in ""|/*) ;; *) msg="$PWD/$msg" ;; esac
 cd "$root" || exit 1
 if [ -d "$root/.claude/gw/scripts" ]; then scripts="$root/.claude/gw/scripts"; else scripts="$root/scripts"; fi
 config="$scripts/config.py"
@@ -23,6 +29,34 @@ config="$scripts/config.py"
 
 python3 "$config" --root "$root" validate >/dev/null || {
   echo "commit-msg: cannot read .claude/gw.json; fix it: python3 $config --root $root validate" >&2; exit 1; }
+
+in_rebase=false
+for dir in rebase-merge rebase-apply; do
+  [ -d "$(git rev-parse --git-path "$dir")" ] && in_rebase=true
+done
+
+signatures="$(python3 "$config" --root "$root" get agentSignatures 2>/dev/null)" || {
+  echo "commit-msg: cannot read agentSignatures from .claude/gw.json; check it: python3 $config --root $root get agentSignatures" >&2; exit 1; }
+if [ "$signatures" = false ] && [ "$in_rebase" = false ]; then
+  [ -n "$msg" ] && [ -r "$msg" ] || {
+    echo "commit-msg: cannot read the commit message file '${1:-}'; commit again: git commit" >&2; exit 1; }
+  cc="$(git config core.commentChar 2>/dev/null)" || cc=""
+  case "$cc" in ""|auto) cc="#" ;; esac
+  found="$(awk -v cc="$cc" '
+    /^.? ?-+ >8 -+$/ { exit }
+    substr($0, 1, length(cc)) == cc { next }
+    { print }' "$msg" | grep -iE \
+      -e '^[[:space:]]*co-authored-by:.*(claude|anthropic)' \
+      -e '^[[:space:]]*claude-session:' \
+      -e 'generated (with|by) \[?claude code' \
+      -e 'claude\.ai/code/session' | head -n 1)"
+  if [ -n "$found" ]; then
+    echo "commit-msg: the message carries an agent signature, which this project forbids (agentSignatures: false in .claude/gw.json): $found" >&2
+    echo "commit-msg: remove that line and commit again: git commit -e -F $msg" >&2
+    exit 1
+  fi
+fi
+
 log="$(python3 "$config" --root "$root" get log 2>/dev/null)" || log=""
 [ -n "$log" ] || exit 0
 # `git diff --name-only` prints normalised paths: compare with the log as antes-de-parar.py does (./docs/x.md, a//b).
@@ -33,9 +67,7 @@ log="$(python3 -c 'import posixpath, sys; print(posixpath.normpath(sys.argv[1]))
 for head in MERGE_HEAD REVERT_HEAD CHERRY_PICK_HEAD; do
   [ -e "$(git rev-parse --git-path "$head")" ] && exit 0
 done
-for dir in rebase-merge rebase-apply; do
-  [ -d "$(git rev-parse --git-path "$dir")" ] && exit 0
-done
+[ "$in_rebase" = false ] || exit 0
 
 # core.quotepath=false: otherwise git prints a path with accents quoted ("docs/bit\303\241cora.md") and it never matches.
 staged="$(git -c core.quotepath=false diff --cached --name-only --no-renames --diff-filter=d)" || {

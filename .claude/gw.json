@@ -21,5 +21,6 @@
     "^LICENSE"
   ],
   "staleRefs": [],
-  "requireRetro": true
+  "requireRetro": true,
+  "agentSignatures": false
 }

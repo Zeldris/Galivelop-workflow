@@ -129,6 +129,11 @@
       "default": false,
       "description": "revisado.sh requires a retro with a decided status on the branch."
     },
+    "agentSignatures": {
+      "type": "boolean",
+      "default": true,
+      "description": "false: the commit-msg hook rejects agent signatures (a Co-Authored-By naming Claude or Anthropic, Claude-Session, \"Generated with Claude Code\", claude.ai/code/session links)."
+    },
     "content": {
       "type": "array",
       "items": {
