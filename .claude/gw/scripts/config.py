@@ -15,8 +15,10 @@ defaults the schema declares. Shell scripts call the CLI; Python scripts import 
                                         # commit a hook is about to push; absent or invalid at REV -> exit 2
 
 Project root: --root, else the git top level of this script's folder when that repo has .claude/gw.json (the copy
-in a project lives in .claude/gw/scripts/), else the git top level of $CLAUDE_PROJECT_DIR, else of the current
-directory. Fails closed: no config, invalid config or unknown key -> exit 2 with the command that fixes it.
+in a project lives in .claude/gw/scripts/), else the git top level of the current directory (never
+$CLAUDE_PROJECT_DIR: in a linked worktree it names the main checkout). GIT_DIR/GIT_WORK_TREE/GIT_INDEX_FILE are
+ignored: git exports them to hooks, and with GIT_DIR set `rev-parse --show-toplevel` answers the folder it is
+given, not the repo's. Fails closed: no config, invalid config or unknown key -> exit 2 with the command that fixes it.
 Python 3.8+ (macOS ships 3.9).
 """
 import argparse
@@ -38,9 +40,10 @@ class ConfigError(Exception):
 
 
 def git_toplevel(path):
+    env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
     try:
         out = subprocess.run(["git", "-C", str(path), "rev-parse", "--show-toplevel"],
-                             capture_output=True, text=True, check=True).stdout.strip()
+                             capture_output=True, text=True, check=True, env=env).stdout.strip()
         return Path(out) if out else None
     except (OSError, subprocess.CalledProcessError):
         return None
@@ -100,11 +103,9 @@ def find_root(explicit=None):
     own = git_toplevel(HERE)
     if own is not None and (own / CONFIG_REL).is_file():
         return own
-    for candidate in (os.environ.get("CLAUDE_PROJECT_DIR"), os.getcwd()):
-        if candidate:
-            root = git_toplevel(candidate)
-            if root is not None:
-                return root
+    root = git_toplevel(os.getcwd())
+    if root is not None:
+        return root
     raise ConfigError("not inside a git repository; run from the project or pass --root <path>")
 
 
