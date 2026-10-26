@@ -20,7 +20,9 @@ while [ "$#" -gt 0 ]; do
   esac
 done
 here="$(cd "$(dirname "$0")" && pwd)"
-root="$(git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
+# Git exports GIT_DIR (and friends) to hooks, also in a linked worktree; with GIT_DIR set `rev-parse --show-toplevel`
+# answers $here, not the repo root.
+root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
   echo "revisado: $here is not inside a git repository; reinstall the workflow: /gw-update" >&2; exit 1; }
 cd "$root" || exit 1
 config="$here/config.py"

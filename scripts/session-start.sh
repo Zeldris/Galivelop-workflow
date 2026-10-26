@@ -16,8 +16,8 @@
 # Fails open: always exits 0 (a SessionStart hook cannot block); warnings go to stdout, which enters the agent's
 # context, each ending with the command that fixes it.
 # Project root: the git top level of this script's folder when it holds .claude/gw.json (the copy in
-# .claude/gw/scripts); from the plugin cache, the same fallback as config.py (CLAUDE_PROJECT_DIR, then the current
-# directory), only to find the repo. Bash 3.2 compatible.
+# .claude/gw/scripts); from the plugin cache, $CLAUDE_PROJECT_DIR, then the current
+# directory, only to find the repo (config.py itself no longer uses $CLAUDE_PROJECT_DIR). Bash 3.2 compatible.
 set -uo pipefail
 start_pwd="$PWD"
 here="$(cd "$(dirname "$0")" && pwd)" || { echo "gw session-start: cannot find its own folder; reinstall the workflow: /gw-update"; exit 0; }
@@ -26,7 +26,7 @@ warn() { echo "gw session-start: $*"; }
 input=""
 if [ ! -t 0 ]; then input="$(cat 2>/dev/null || true)"; fi
 
-toplevel() { git -C "$1" rev-parse --show-toplevel 2>/dev/null; }
+toplevel() { (unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$1" rev-parse --show-toplevel 2>/dev/null); }
 root="$(toplevel "$here")"
 if [ -z "$root" ] || [ ! -f "$root/.claude/gw.json" ]; then
   root=""

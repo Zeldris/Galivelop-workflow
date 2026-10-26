@@ -18,7 +18,9 @@ here="$(cd "$(dirname "$0")" && pwd)"
 usage() { echo "fusionar: usage: bash $0 <branch> \"<merge message>\" [--reviewed]" >&2; exit 2; }
 { [ $# -eq 2 ] || { [ $# -eq 3 ] && [ "$3" = "--reviewed" ]; }; } || usage
 branch="$1"; message="$2"; reviewed="${3:-}"
-root="$(git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
+# Git exports GIT_DIR (and friends) to hooks, also in a linked worktree; with GIT_DIR set `rev-parse --show-toplevel`
+# answers $here, not the repo root.
+root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
   echo "fusionar: $here is not inside a git repository; reinstall the workflow: /gw-update" >&2; exit 2; }
 cd "$root" || exit 2
 config="$here/config.py"

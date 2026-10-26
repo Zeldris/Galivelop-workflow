@@ -33,7 +33,9 @@ for re in "$pattern" "$one"; do  # an invalid regex would make grep print nothin
   printf '\n' | grep -Eq -- "$re" 2>/dev/null
   [ $? -ne 2 ] || { echo "rojo-sin-arreglo: /$re/ is not a valid extended regex (grep -E); fix it and rerun: $usage" >&2; exit 2; }
 done
-root="$(git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
+# Git exports GIT_DIR (and friends) to hooks, also in a linked worktree; with GIT_DIR set `rev-parse --show-toplevel`
+# answers $here, not the repo root.
+root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
   echo "rojo-sin-arreglo: $here is not inside a git repository; reinstall the workflow: /gw-update" >&2; exit 2; }
 cd "$root" || exit 2
 for f in "$@"; do
