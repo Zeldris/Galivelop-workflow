@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | Correcciones `0.4.x`: `ccr-6dfbc880-ddr41g`. **Evolutivos y novedades: `version/1.0.0`** (usuario, 2026-10-26; creada desde `ccr-6dfbc880-ddr41g`; los parches `0.4.x` se fusionan también en ella; sus evolutivos, en `docs/registros/pendiente-1.0.0.md` de esa rama). `main` = `56212e8` = **`0.4.1`** (2026-10-26); la `0.4.0` tiene etiqueta y release `v0.4.0` sobre `d7dd18f` (a mano por el usuario). `claude/galivelop-workflow-inicio` está **obsoleta** (se quedó en `0f36412`): no se trabaja en ella |
+| Rama | Correcciones `0.4.x`: `ccr-6dfbc880-ddr41g`. **Evolutivos y novedades: `version/1.0.0`** (usuario, 2026-10-26; creada desde `ccr-6dfbc880-ddr41g`; los parches `0.4.x` se fusionan también en ella; sus evolutivos, en `docs/registros/pendiente-1.0.0.md` de esa rama). `main` = `56212e8` = **`0.4.1`** (2026-10-26); etiqueta y release `v0.4.1` sobre `56212e8` y `v0.4.0` sobre `d7dd18f` (a mano por el usuario). `claude/galivelop-workflow-inicio` está **obsoleta** (se quedó en `0f36412`): no se trabaja en ella |
 | Check | `bash tests/comprobar.sh` en verde (**comprobado solo en local**: sin cuota de Actions el CI no arranca, confirmado por el usuario); `main` (`56212e8`) comprobado en local el 2026-10-26 |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.1` en `main` (`56212e8`, 2026-10-26), con confirmación del usuario: fases 1-3 hechas, marca de revisión `a3cc2dc`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde sobre `56212e8` para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.1.md` |
-| Siguiente paso | En `version/1.0.0`: elegir con el usuario el siguiente pendiente de `docs/registros/pendiente-1.0.0.md` (hechos: P3, la caché del check del `pre-push`, la autoría sin firmas, INS P7, Portal P2, WMF P3 e INS P5; propuestos: INS P6 o WMF P2). El usuario aún debe crear a mano la etiqueta `v0.4.1` sobre `56212e8` y la release con `docs/registros/release-v0.4.1.md`. La `0.4.x` queda parada hasta otra recogida con correcciones |
+| Siguiente paso | En `version/1.0.0`: elegir con el usuario el siguiente pendiente de `docs/registros/pendiente-1.0.0.md` (hechos: P3, la caché del check del `pre-push`, la autoría sin firmas, INS P7, Portal P2, WMF P3 e INS P5; propuestos: INS P6 o WMF P2). La `0.4.x` queda parada hasta otra recogida con correcciones |
 
 ### Fases
 
