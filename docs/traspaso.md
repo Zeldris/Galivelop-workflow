@@ -49,6 +49,11 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Pendiente
 
+- **Sin firmas de Claude** (usuario, 2026-10-26): commits y PR a nombre de `Zeldris`, sin trailers ni pies de Claude
+  (`AGENTS.md`, «Mensajes de commit»). Desde `f2da5d5` (excluido) ya va así; el historial anterior de la rama y de `main`
+  lleva autor Claude y trailers: reescribirlo exige force-push, solo si el usuario lo pide. Para la `1.0.0`
+  (evolutivo): opción del flujo para los proyectos (`gw.json`) con comprobación en `commit-msg`/`pre-push` que
+  rechace autor o trailers del agente, y quitar la mención a «líneas de atribución» de plantillas y `aplicar`/`apply`.
 - Menores de la revisión de la `0.4.1` (2026-10-26): `rojo-sin-arreglo` (`test_re`) da falsos positivos («it (»,
   «test(», `def testable`, comentarios que se describen a sí mismos, como los del propio script); `NOT_STARTED` del
   gancho de fusión solo reconoce dos frases exactas de GitHub (falta «billing», «account is locked»); `cloud_start`

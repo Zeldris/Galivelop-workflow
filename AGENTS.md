@@ -49,7 +49,11 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 
 - En español. Primera línea: qué cambia (con la fase, p. ej. `Fase 1: …`).
 - Cuerpo: qué se hizo, qué queda y estado de los tests.
-- **Última línea: `Siguiente: <próximo paso concreto>`**, en el mismo bloque final que las líneas de atribución.
+- **Última línea: `Siguiente: <próximo paso concreto>`**.
+- **Sin firmas del agente** (usuario, 2026-10-26): commits y PR van a nombre del usuario de git (`Zeldris`), nunca
+  como Claude; ni `Co-Authored-By`, ni `Claude-Session`, ni «Generated with Claude Code» ni enlaces de sesión, en
+  ningún sitio (mensajes, PR, comentarios, archivos). En un contenedor nuevo, antes del primer commit:
+  `git config user.name Zeldris` y `git config user.email cordproinf@gmail.com`.
 
 ## Ramas y `main`
 
