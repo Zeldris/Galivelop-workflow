@@ -2,7 +2,7 @@
 """gw-media-content: checks a piece folder before anything is published.
 
     python3 comprobar.py [--prefijos-tarea A,B,...] [--limite canal=N]... [--formato-propio canal]...
-                         <dir>/AAAA-MM-DD/NN-<tema> [more folders]
+                         [--idiomas-web es,gl,en] <dir>/AAAA-MM-DD/NN-<tema> [more folders]
 
 A folder argument may also be a date folder or the whole <dir> (default docs/difusion): every piece below it is
 checked. No config: the per-network limits are read from ../reglas.json.
@@ -29,7 +29,13 @@ Reddit: with reddit.md, `## Reddit` in ficha.md holds `Subreddit:` lines (r/<nam
 `Autopromoción:`, all before the first `###`; and, for every subreddit, a subsection `### Normas de r/<name>` with the
 rules text pasted as is (at least `reddit.normas_min_caracteres` characters once whitespace is collapsed; the block
 ends at the next line that starts with `##`, so the pasted text cannot contain `#` headings: paste them as plain lines).
-Known channels (in reglas.json): x, reddit, linkedin, discord. Any other ("extra") channel listed in `## Canales`
+Web: web.md feeds the project's website and holds one ```json block (copy plantilla/web.md): «estado» ("borrador",
+which the skill writes; "listo" is the user's go to publish), «fecha» (YYYY-MM-DD), «texto» {lang: text} and the
+optional «muro» {titulo {lang}, cuerpo [{lang}], imagenes [{archivo, alt {lang}}]}. The keys of «texto» are the
+languages of web.md: every one of `Idiomas:` plus any other the site needs; every other {lang: text} map has exactly
+those. «archivo» is a render (medios/<name>.webp) or {lang: render}; a `## Imágenes` row that lists web needs its path
+in «muro.imagenes». With --idiomas-web es,gl,en the languages of «texto» must be exactly those.
+Known channels: x, reddit, linkedin, discord (limits in reglas.json) and web. Any other ("extra") channel listed in `## Canales`
 has its file `<canal>.md` and takes images .webp, .png and .jpg (`canal_extra.imagen_formatos`). Without options it gets
 the generic checks only: template gaps, jargon, `Imagen:` lines and a `## <lang>` section per language, with no length
 limit. Options (before the folders, both repeatable):
@@ -39,8 +45,9 @@ limit. Options (before the folders, both repeatable):
                               and not be empty; no `## <lang>` sections and no length check (template gaps and jargon
                               are still looked for); a `## Imágenes` row that lists it needs the image path
                               (`medios/x.webp`) somewhere in the file's text, instead of an `Imagen:` line
-A known channel in either option, the same channel in both, or a channel that no checked piece lists under
-`## Canales` is a usage error (exit 2).
+    --idiomas-web es,gl,en    the exact languages of «texto» in web.md (the site's languages)
+A known channel in --limite or --formato-propio, the same channel in both, or a channel (web for --idiomas-web) that
+no checked piece lists under `## Canales` is a usage error (exit 2).
 
 Prints OK, or one line per problem with the fix; exit 1 on any problem (2 on bad usage).
 """
@@ -54,7 +61,7 @@ from pathlib import Path
 
 AQUI = Path(__file__).resolve().parent
 REGLAS = AQUI.parent / "reglas.json"
-CONOCIDOS = ("x", "reddit", "linkedin", "discord")
+CONOCIDOS = ("x", "reddit", "linkedin", "discord", "web")
 IDIOMA = re.compile(r"[a-z]{2}")  # ISO 639-1, any code
 CANAL = re.compile(r"[a-z0-9-]+")
 SUFIJO_IDIOMA = re.compile(r"\.([a-z]{2})(?:-mini)?\.[A-Za-z0-9]+$")  # medios/<name>.<lang>.webp, <name>.<lang>-mini.webp
@@ -403,6 +410,143 @@ def comprobar_propio(canal, texto, prefijos=()):
     return f
 
 
+BLOQUE_JSON = re.compile(r"(?ms)^```json[ \t]*\n(.*?)^```[ \t]*$")
+CLAVES_WEB = ("estado", "fecha", "texto", "muro")
+CLAVES_MURO = ("titulo", "cuerpo", "imagenes")
+ESTADOS_WEB = ("borrador", "listo")
+
+
+def _mapa(valor, donde, langs) -> list:
+    """The problems of a {lang: text} map that must hold exactly the languages of «texto», each with text."""
+    if not isinstance(valor, dict):
+        return [f"web.md: «{donde}» must be an object with one text per language ({', '.join(langs)}); write it as "
+                '{"' + '": "…", "'.join(langs) + '": "…"}']
+    f = [f"web.md: «{donde}» has no «{i}»; add its text in that language" for i in langs if i not in valor]
+    f += [f"web.md: «{donde}» has «{i}», which is not in «texto»; remove it or add «{i}» to «texto»"
+          for i in valor if i not in langs]
+    f += [f"web.md: «{donde}.{i}» is empty; write the text" for i in langs
+          if i in valor and (not isinstance(valor[i], str) or not valor[i].strip())]
+    return f
+
+
+def _archivos_web(archivo, donde, langs, carpeta, idiomas, orden):
+    """(problems, paths) of a muro image «archivo»: one render for every language, or a {lang: render} map."""
+    if isinstance(archivo, dict):
+        f = _mapa(archivo, donde, langs)
+        pares = [(i, r) for i, r in archivo.items() if i in langs and isinstance(r, str) and r.strip()]
+    elif isinstance(archivo, str) and archivo.strip():
+        f, pares = [], [(None, archivo)]
+    else:
+        return [f"web.md: «{donde}» must be a render path (medios/<name>.webp) or one per language; write it"], []
+    rutas = []
+    for lang, ruta in pares:
+        ruta = ruta.strip()
+        if not RENDERS.match(ruta):
+            f.append(f"web.md: «{donde}» is «{ruta}», not a render; point to medios/<name>.webp")
+            continue
+        propio = idioma_de_archivo(ruta)
+        p = problema_de_sufijo(ruta, idiomas, "web.md")
+        if p:
+            f.append(p)
+        elif lang and propio and propio != lang:
+            f.append(f"web.md: «{ruta}» is the image of «{propio}» but sits under «{lang}» in «{donde}»; move it")
+        if not (carpeta / ruta).is_file():
+            f.append(f"web.md: «{ruta}» does not exist; render it ({orden})")
+        if ruta not in rutas:  # a missing render is reported once, here, not again by its row in «## Imágenes»
+            rutas.append(ruta)
+    return f, rutas
+
+
+def comprobar_web(texto, idiomas, prefijos=(), carpeta=Path("."), idiomas_web=None):
+    """web.md feeds a website: one ```json block with «estado» ("borrador" until the user writes "listo"), «fecha»,
+    «texto» {lang: text} and the optional «muro» {titulo, cuerpo[], imagenes[{archivo, alt}]}. The languages are the
+    keys of «texto»: those of `Idiomas:` and any other the site needs (exactly --idiomas-web when it is set); every other
+    {lang: text} map holds the same ones. Returns (problems, the image paths of «muro.imagenes»)."""
+    orden = f"{RENDER} {carpeta}"
+    f = [f"web.md: internal jargon «{j}»; move it to «## Uso interno» in ficha.md and remove it from the content"
+         for j in jerga(texto, prefijos)]
+    f += [f"web.md: template gap «{_hueco(m)}» left; write the text" for m in HUECO.finditer(texto)]
+    bloques = BLOQUE_JSON.findall(texto)
+    if len(bloques) != 1:
+        hay = "no ```json block" if not bloques else f"{len(bloques)} ```json blocks"
+        return f + [f"web.md: {hay}; keep exactly one, as in the template (plantilla/web.md)"], []
+    try:
+        datos = json.loads(bloques[0])
+    except ValueError as e:
+        return f + [f"web.md: the ```json block is not valid JSON ({e}); fix it"], []
+    if not isinstance(datos, dict):
+        return f + ["web.md: the ```json block must be an object with " + ", ".join(CLAVES_WEB) + "; copy the template"], []
+    f += [f"web.md: unknown key «{k}»; remove it (keys: {', '.join(CLAVES_WEB)})" for k in datos if k not in CLAVES_WEB]
+    f += [f"web.md: no «{k}»; add it as in the template (plantilla/web.md)" for k in CLAVES_WEB[:3] if k not in datos]
+    estado = datos.get("estado")
+    if "estado" in datos and estado not in ESTADOS_WEB:
+        f.append(f"web.md: «estado» is {json.dumps(estado, ensure_ascii=False)}; write \"borrador\" (the skill leaves "
+                 "it so) or \"listo\" (the user's go to publish)")
+    fecha = datos.get("fecha")
+    try:
+        ok = isinstance(fecha, str) and bool(FECHA.fullmatch(fecha)) and bool(date.fromisoformat(fecha))
+    except ValueError:
+        ok = False
+    if "fecha" in datos and not ok and fecha != "AAAA-MM-DD":  # the template's date is reported as a gap
+        f.append(f"web.md: «fecha» is {json.dumps(fecha, ensure_ascii=False)}; write the publication date as "
+                 "\"YYYY-MM-DD\"")
+    texto_web = datos.get("texto")
+    if not isinstance(texto_web, dict) or not texto_web:
+        if "texto" in datos:
+            f.append("web.md: «texto» must be an object with one text per language ({\"es\": \"…\", \"en\": \"…\"}); "
+                     "write it")
+        return f, []
+    langs = [i for i in texto_web if IDIOMA.fullmatch(i)]
+    f += [f"web.md: «texto» has the key «{i}»; use two-letter lowercase ISO 639-1 codes (es, en, gl)"
+          for i in texto_web if not IDIOMA.fullmatch(i)]
+    f += [f"web.md: «texto» has no «{i}» (it is in «Idiomas:» of ficha.md); add its text" for i in idiomas
+          if i not in texto_web]
+    if idiomas_web:
+        lista = ",".join(idiomas_web)
+        f += [f"web.md: «texto» has no «{i}» (set with --idiomas-web {lista}); add its text" for i in idiomas_web
+              if i not in texto_web and i not in idiomas]
+        f += [f"web.md: «texto» has «{i}», which is not in --idiomas-web {lista}; remove it" for i in langs
+              if i not in idiomas_web]
+    f += _mapa({i: texto_web[i] for i in langs}, "texto", langs)
+    muro = datos.get("muro")
+    if muro is None:
+        return f, []
+    if not isinstance(muro, dict):
+        return f + ["web.md: «muro» must be an object with titulo, cuerpo and imagenes; copy it from the template"], []
+    f += [f"web.md: unknown key «muro.{k}»; remove it (keys: {', '.join(CLAVES_MURO)})" for k in muro
+          if k not in CLAVES_MURO]
+    if "titulo" not in muro:
+        f.append("web.md: «muro» has no «titulo»; add one title per language")
+    else:
+        f += _mapa(muro["titulo"], "muro.titulo", langs)
+    cuerpo = muro.get("cuerpo")
+    if "cuerpo" in muro:
+        if not isinstance(cuerpo, list) or not cuerpo:
+            f.append("web.md: «muro.cuerpo» must be a list of paragraphs, each one with a text per language; write "
+                     "one or remove the key")
+        else:
+            for n, parrafo in enumerate(cuerpo):
+                f += _mapa(parrafo, f"muro.cuerpo[{n}]", langs)
+    rutas = []
+    imagenes = muro.get("imagenes")
+    if "imagenes" in muro and not isinstance(imagenes, list):
+        f.append("web.md: «muro.imagenes» must be a list of {archivo, alt}; write it or remove the key")
+    for n, img in enumerate(imagenes if isinstance(imagenes, list) else []):
+        donde = f"muro.imagenes[{n}]"
+        if not isinstance(img, dict):
+            f.append(f"web.md: «{donde}» must be an object with archivo and alt; write it")
+            continue
+        f += [f"web.md: unknown key «{donde}.{k}»; remove it (keys: archivo, alt)" for k in img if k not in ("archivo", "alt")]
+        f += [f"web.md: «{donde}» has no «{k}»; add it" for k in ("archivo", "alt") if k not in img]
+        if "alt" in img:
+            f += _mapa(img["alt"], f"{donde}.alt", langs)
+        if "archivo" in img:
+            p, r = _archivos_web(img["archivo"], f"{donde}.archivo", langs, carpeta, idiomas, orden)
+            f += p
+            rutas += [x for x in r if x not in rutas]
+    return f, rutas
+
+
 NOMBRE_SUB = re.compile(r"[A-Za-z0-9_]{2,21}")
 FIN_BLOQUE = re.compile(r"(?m)^#{2,}(?:[ \t]|$)")
 BLOQUE_NORMAS = re.compile(r"(?mi)^###[ \t]+Normas[ \t]+de[ \t]+(?:/?r/)?(\S+)[ \t]*$")
@@ -523,7 +667,8 @@ def problema_de_sufijo(ruta: str, idiomas, donde: str):
     return None
 
 
-def comprobar_imagenes(carpeta, ficha, texto_canales, idiomas, reglas, prefijos=(), propios=()):
+def comprobar_imagenes(carpeta, ficha, texto_canales, idiomas, reglas, prefijos=(), propios=(), rutas_web=()):
+    """rutas_web: the image paths of «muro.imagenes» in web.md (web.md has no `Imagen:` lines)."""
     f = []
     orden = f"{RENDER} {carpeta}"
     tabla = tabla_imagenes(ficha)
@@ -532,7 +677,11 @@ def comprobar_imagenes(carpeta, ficha, texto_canales, idiomas, reglas, prefijos=
         tabla = {}
     # the `Imagen:` lines of each channel
     lineas, pares = {}, set()
+    if "web" in texto_canales and rutas_web:
+        lineas["web"] = list(rutas_web)
     for canal, texto in texto_canales.items():
+        if canal == "web":
+            continue
         for m in IMAGEN.finditer(texto):
             ruta = m.group(1).strip().strip("`*_ ")
             if not RENDERS.match(ruta):
@@ -548,6 +697,8 @@ def comprobar_imagenes(carpeta, ficha, texto_canales, idiomas, reglas, prefijos=
                 if not (carpeta / ruta).is_file():
                     f.append(f"{canal}.md: «Imagen: {ruta}» does not exist; render it ({orden})")
     for canal, texto in texto_canales.items():  # a `Imagen:` line of another language's file sits in the wrong section
+        if canal == "web":
+            continue
         for lang, seccion in secciones(texto).items():
             for m in IMAGEN.finditer(seccion):
                 ruta = m.group(1).strip().strip("`*_ ")
@@ -588,7 +739,10 @@ def comprobar_imagenes(carpeta, ficha, texto_canales, idiomas, reglas, prefijos=
             elif dimensiones(carpeta / mini) is None:
                 f.append(f"{mini}: not a valid image; render it again ({orden})")
         for c in canales_de_celda(celda):
-            if c in propios and c in texto_canales and ruta not in texto_canales[c]:
+            if c == "web" and c in texto_canales and ruta not in lineas.get(c, []):
+                f.append(f"ficha.md: «{ruta}» lists channel «web» but no «archivo» in «muro.imagenes» of web.md points to "
+                         "it; add it there or remove «web» from the Canales cell")
+            elif c in propios and c in texto_canales and ruta not in texto_canales[c]:
                 f.append(f"ficha.md: «{ruta}» lists channel «{c}» but {c}.md does not contain the path «{ruta}» (channel "
                          f"with its own format); write the path in the file or remove «{c}» from the Canales cell")
             elif c in texto_canales and c not in propios and ruta not in lineas.get(c, []):
@@ -663,10 +817,11 @@ def leer(ruta: Path, rel: str):
         return None, f"{rel}: cannot be read ({e.strerror or e}); check the file and its permissions"
 
 
-def comprobar(carpeta: Path, reglas=None, prefijos=(), limites=None, propios=(), hoy=None) -> list:
+def comprobar(carpeta: Path, reglas=None, prefijos=(), limites=None, propios=(), hoy=None, idiomas_web=None) -> list:
     """The problems of one piece folder. limites {channel: max characters per language section} and propios (channels
     whose file has its own format) are the --limite and --formato-propio options; hoy is the date `Normas leídas:` is
-    measured against when the piece is not under a date folder (today)."""
+    measured against when the piece is not under a date folder (today); idiomas_web (--idiomas-web) are the exact
+    languages of web.md."""
     limites, propios = limites or {}, set(propios)
     try:
         reglas = reglas or cargar_reglas()
@@ -734,15 +889,20 @@ def comprobar(carpeta: Path, reglas=None, prefijos=(), limites=None, propios=(),
             f.append(f"ficha.md: «Idiomas:» has «{i}»; use two-letter lowercase ISO 639-1 codes separated by commas "
                      "(es, en, gl)")
     declarados = [i for i in dict.fromkeys(declarados) if IDIOMA.fullmatch(i)]
-    idiomas = declarados or sorted({i for c, t in textos.items() if c not in propios for i in secciones(t)})
+    idiomas = declarados or sorted({i for c, t in textos.items() if c not in propios and c != "web"
+                                    for i in secciones(t)})
+    rutas_web = []
     for c in activos:
-        if c in propios:
+        if c == "web":
+            p, rutas_web = comprobar_web(textos[c], idiomas, prefijos, carpeta, idiomas_web)
+            f += p
+        elif c in propios:
             f += comprobar_propio(c, textos[c], prefijos)
         else:
             f += comprobar_canal(c, textos[c], idiomas, reglas, prefijos, limites.get(c))
     if "reddit" in activos:
         f += comprobar_reddit(ficha, reglas, hoy, date.fromisoformat(padre) if ok_fecha else None)
-    f += comprobar_imagenes(carpeta, ficha, textos, idiomas, reglas, prefijos, propios)
+    f += comprobar_imagenes(carpeta, ficha, textos, idiomas, reglas, prefijos, propios, rutas_web)
     return list(dict.fromkeys(f))
 
 
@@ -772,14 +932,15 @@ def parece_pieza(p: Path, en_fecha=False) -> bool:
 
 
 USO = ("usage: comprobar.py [--prefijos-tarea A,B,...] [--limite canal=N]... [--formato-propio canal]... "
-       "<dir>/AAAA-MM-DD/NN-<tema> [...]  (e.g. docs/difusion/2026-10-25/01-release; --prefijos-tarea adds the task-id "
-       "prefixes of the project, e.g. INS,FLU; --limite portal=500 caps each language section of an extra channel; "
-       "--formato-propio portal marks an extra channel whose file has its own format)")
+       "[--idiomas-web es,gl,en] <dir>/AAAA-MM-DD/NN-<tema> [...]  (e.g. docs/difusion/2026-10-25/01-release; "
+       "--prefijos-tarea adds the task-id prefixes of the project, e.g. INS,FLU; --limite portal=500 caps each language "
+       "section of an extra channel; --formato-propio portal marks an extra channel whose file has its own format; "
+       "--idiomas-web es,gl,en sets the exact languages of web.md)")
 
 
 def leer_opciones(args: list):
-    """(folders, prefixes, limits, own-format channels, error). The options come before the folders."""
-    args, prefijos, limites, propios = list(args), [], {}, []
+    """(folders, prefixes, limits, own-format channels, web languages, error). The options come before the folders."""
+    args, prefijos, limites, propios, web = list(args), [], {}, [], None
     while args and args[0].startswith("--"):
         opcion = args.pop(0)
         nombre, igual, valor = opcion.partition("=")
@@ -789,29 +950,36 @@ def leer_opciones(args: list):
             nuevos = [x.strip().upper() for x in valor.split(",") if x.strip()]
             prefijos += nuevos
             if not nuevos or not all(re.fullmatch(r"[A-Z][A-Z0-9]*", x) for x in nuevos):
-                return args, prefijos, limites, propios, "--prefijos-tarea needs prefixes of letters and digits separated by commas (INS,FLU)"
+                return args, prefijos, limites, propios, web, "--prefijos-tarea needs prefixes of letters and digits separated by commas (INS,FLU)"
         elif nombre == "--limite":
             canal, _, n = valor.partition("=")
             if not CANAL.fullmatch(canal) or not n.isdigit() or int(n) < 1:
-                return args, prefijos, limites, propios, "--limite needs channel=N with a lowercase channel name and N >= 1 (--limite portal=500)"
+                return args, prefijos, limites, propios, web, "--limite needs channel=N with a lowercase channel name and N >= 1 (--limite portal=500)"
             if canal in CONOCIDOS:
-                return args, prefijos, limites, propios, f"--limite is for extra channels; the limit of {canal} is in reglas.json"
+                return args, prefijos, limites, propios, web, ("--limite is for extra channels; web has its own checks (web.md)" if canal == "web" else
+                                                              f"--limite is for extra channels; the limit of {canal} is in reglas.json")
             limites[canal] = int(n)
         elif nombre == "--formato-propio":
             if not CANAL.fullmatch(valor):
-                return args, prefijos, limites, propios, "--formato-propio needs a lowercase channel name (--formato-propio portal)"
+                return args, prefijos, limites, propios, web, "--formato-propio needs a lowercase channel name (--formato-propio portal)"
             if valor in CONOCIDOS:
-                return args, prefijos, limites, propios, f"--formato-propio is for extra channels; {valor} has its own checks"
+                return args, prefijos, limites, propios, web, f"--formato-propio is for extra channels; {valor} has its own checks"
             propios.append(valor)
+        elif nombre == "--idiomas-web":
+            web = list(dict.fromkeys(x.strip() for x in valor.split(",") if x.strip()))
+            if not web or not all(IDIOMA.fullmatch(x) for x in web):
+                return args, prefijos, limites, propios, web, ("--idiomas-web needs two-letter lowercase language codes "
+                                                               "separated by commas (--idiomas-web es,gl,en)")
         else:
-            return args, prefijos, limites, propios, f"unknown option {nombre}"
+            return args, prefijos, limites, propios, web, f"unknown option {nombre}"
     for canal in sorted(set(propios) & set(limites)):
-        return args, prefijos, limites, propios, f"{canal} is in --limite and --formato-propio; a channel with its own format has no length check"
-    return args, prefijos, limites, propios, None
+        return args, prefijos, limites, propios, web, f"{canal} is in --limite and --formato-propio; a channel with its own format has no length check"
+    return args, prefijos, limites, propios, web, None
 
 
-def opciones_sin_uso(carpetas: list, limites: dict, propios) -> str:
-    """The error for a --limite or --formato-propio channel that no checked piece lists under `## Canales`, or None.
+def opciones_sin_uso(carpetas: list, limites: dict, propios, web=None) -> str:
+    """The error for a --limite or --formato-propio channel (or --idiomas-web without web) that no checked piece lists
+    under `## Canales`, or None.
     Pieces without a readable ficha.md say so on their own; when none can be read there is nothing to compare."""
     declarados, leidas = [], 0
     for c in carpetas:
@@ -822,7 +990,10 @@ def opciones_sin_uso(carpetas: list, limites: dict, propios) -> str:
     if not leidas:
         return None
     lista = ", ".join(declarados) or "none"
-    for opcion, canal in [(f"--limite {k}={v}", k) for k, v in limites.items()] + [(f"--formato-propio {c}", c) for c in propios]:
+    usadas = [(f"--limite {k}={v}", k) for k, v in limites.items()] + [(f"--formato-propio {c}", c) for c in propios]
+    if web:
+        usadas.append((f"--idiomas-web {','.join(web)}", "web"))
+    for opcion, canal in usadas:
         if canal not in declarados:
             return (f"{opcion} names a channel that no checked piece declares in «## Canales» (declared: {lista}); fix the "
                     "channel name or drop the option")
@@ -830,7 +1001,7 @@ def opciones_sin_uso(carpetas: list, limites: dict, propios) -> str:
 
 
 def main(args: list) -> int:
-    args, prefijos, limites, propios, error = leer_opciones(args)
+    args, prefijos, limites, propios, web, error = leer_opciones(args)
     if error:
         print(f"{error}. {USO}")
         return 2
@@ -843,12 +1014,12 @@ def main(args: list) -> int:
         print(e)
         return 1
     todas = [p for a in args for p in piezas(Path(a))]
-    error = opciones_sin_uso(todas, limites, propios)
+    error = opciones_sin_uso(todas, limites, propios, web)
     if error:
         print(f"{error}. {USO}")
         return 2
     for p in todas:
-        for problema in comprobar(p, reglas, prefijos, limites, propios):
+        for problema in comprobar(p, reglas, prefijos, limites, propios, idiomas_web=web):
             hay = True
             print(f"{p}: {problema}")
     if not hay:

@@ -46,8 +46,8 @@ material is in `.claude/skills/gw-media-content/`: `catalogo.md`, `reglas.json`,
    - Render: `node .claude/skills/gw-media-content/scripts/render.mjs <piece-folder>` (it names what is missing and the
      command to fix it). From `medios/fuente/<n>.html` it writes `medios/<n>.webp`, `medios/<n>-mini.webp` and
      `medios/<n>.png`; from `<n>.<lang>.html`, `medios/<n>.<lang>.webp` (+ `-mini`, `.png`); a `carrusel*.html` gives a
-     `.pdf`. Use the `.png` for LinkedIn (it takes `.png`, `.jpg`, `.gif`, not WebP), the `.webp` for X, Reddit and
-     Discord, `.webp`, `.png` or `.jpg` for an extra channel, the `.pdf` carousel for LinkedIn only. Read each render
+     `.pdf`. Use the `.png` for LinkedIn (it takes `.png`, `.jpg`, `.gif`, not WebP), the `.webp` for X, Reddit,
+     Discord and web, `.webp`, `.png` or `.jpg` for an extra channel, the `.pdf` carousel for LinkedIn only. Read each render
      image before using it.
 5. **Channels.** Write each channel file in every language, from the ficha only, in the shape of its template file and
    within `reglas.json` (`comprobar.py` enforces it). Each post names its image on an `Imagen:` line; in an
@@ -58,13 +58,18 @@ material is in `.claude/skills/gw-media-content/`: `catalogo.md`, `reglas.json`,
      plain lines). `Normas leídas:` is counted from the piece's date folder and is at most `reddit.normas_dias` days
      old. Take the rules from the note or the ficha when they are dated within that limit; otherwise ask the user to
      paste them (Reddit cannot be read automatically, and rules are never invented), then continue.
+   - **Web** (`web.md`, see `nota.md`): fill the ```json block of the template; leave `"estado": "borrador"` (only
+     the user writes `"listo"`), `fecha` the planned publication day, one text per language in `texto` and in every
+     `muro` text (the languages of `Idiomas:` plus `Web languages` of the note). Each `muro` image is a `.webp`
+     render whose `## Imágenes` row lists `web`; without a wall entry, delete `muro`.
    - **Extra channels** (declared in the note): one `<canal>.md` as the note says: a section per language within its
      `límite`, or the copied own-format template filled in. If the note gives neither, ask.
-6. **Check.** Build the command from the note as `nota.md` says (`--prefijos-tarea`, and `--limite <canal>=N` or
-   `--formato-propio <canal>` for each extra channel of the piece) and run
+6. **Check.** Build the command from the note as `nota.md` says (`--prefijos-tarea`, `--idiomas-web` when the piece lists
+   `web`, and `--limite <canal>=N` or `--formato-propio <canal>` for each extra channel of the piece) and run
    `python3 .claude/skills/gw-media-content/scripts/comprobar.py [options] <piece-folder>`; it prints `OK`, and each
    line it prints is a fix to make. Then reread the English: natural, not a literal translation.
    Done when `OK` is printed and the reread found nothing to change.
 7. **Close.** Mark the proposal `**Status:** done → <piece folder>`. Commit with the project's commit format; the log
-   row names the folder, its channels and that it is ready to publish. Show the user the texts and image paths.
+   row names the folder, its channels and that it is ready to publish. Show the user the texts and image paths; with `web.md`, tell them
+   the site publishes it only once they set `"estado": "listo"`.
    After publishing, the user fills `## Publicado` in `ficha.md`.

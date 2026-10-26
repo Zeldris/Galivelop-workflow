@@ -8,12 +8,23 @@ apply and you say so once.
 |---|---|---|
 | Folder | `docs/difusion` | the `<dir>` of every path in the skills |
 | Languages | `es, en` | any ISO 639-1 codes (two lowercase letters); the first is the main language; one `## <lang>` section per language in every channel file |
-| Channels | `x, reddit, linkedin, discord` | the active channels |
-| Extra channels | none | a channel beyond those four: see below |
+| Channels | `x, reddit, linkedin, discord` | the active channels; add `web` when the project's website reads the pieces (see below) |
+| Extra channels | none | a channel beyond those five: see below |
+| Web languages | the piece's `Idiomas:` | the website's languages (e.g. `es, gl, en`), passed as `comprobar.py --idiomas-web` |
 | Palette | the template's | CSS variable overrides for `medios/fuente/*.html` |
 | Screenshots | none | the steps that produce a screenshot of the running app |
 | Task prefixes | none | e.g. `INS,FLU`: task-id prefixes of the project, passed to `comprobar.py --prefijos-tarea` |
 | Reddit | none | per subreddit: the rules pasted by the user and the date read |
+
+## Web
+
+`web` is the project's own website: `web.md` holds one ```json block another system reads (copy
+`plantilla/web.md`) with `estado`, `fecha`, `texto` (one text per language) and an optional `muro` (title, paragraphs
+and images, each with its alt text per language). The skill always leaves `"estado": "borrador"`; only the user
+writes `"listo"`, which is the go to publish. The keys of `texto` are the languages of `web.md`: every one of
+`Idiomas:` plus any other the site needs; every other text in the block carries exactly those. With `Web languages`
+in the note, they must be exactly those. Each image of `muro` is a `.webp` render listed in `## Imágenes` with `web`
+in its Canales cell. `web` is never an extra channel.
 
 ## Extra channels
 
@@ -44,12 +55,13 @@ usage error, exit 2). Each extra channel of the piece adds one option:
 ```
 python3 .claude/skills/gw-media-content/scripts/comprobar.py \
   [--prefijos-tarea INS,FLU] \
-  [--limite mastodon=500]... [--formato-propio portal]... \
+  [--limite mastodon=500]... [--formato-propio portal]... [--idiomas-web es,gl,en] \
   <dir>/AAAA-MM-DD/NN-<tema>
 ```
 
 `--prefijos-tarea` carries the `Task prefixes` value; `--limite <canal>=N` is for each `límite: N` channel and
-`--formato-propio <canal>` for each `formato: propio` channel. Options go before the folder.
+`--formato-propio <canal>` for each `formato: propio` channel; `--idiomas-web` carries `Web languages` when the piece
+lists `web`. Options go before the folder.
 
 ## Reddit
 

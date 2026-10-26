@@ -11,6 +11,7 @@ Idiomas: es, en
 - reddit
 - linkedin
 - discord
+- web
 
 ## Qué se cuenta
 
@@ -42,14 +43,14 @@ líneas normales): un título corta el bloque.
 
 ## Imágenes
 
-Una fila por cada archivo de `medios/` que se usa (`.webp` para X y Discord, `.png` para LinkedIn, `.pdf` para un
+Una fila por cada archivo de `medios/` que se usa (`.webp` para X, Discord y la web, `.png` para LinkedIn, `.pdf` para un
 carrusel de LinkedIn). El texto alternativo describe lo que se ve de la pieza, con el formato `es: texto / en: text`.
 El primer idioma de `Idiomas:` usa `medios/<n>.webp`; otro idioma puede tener su propia imagen
 `medios/<n>.<idioma>.webp` (fuente `<n>.<idioma>.html`), con su fila y el texto alternativo en ese idioma.
 
 | Imagen | Texto alternativo | Canales |
 |---|---|---|
-| `medios/tarjeta.webp` | es: {{qué se ve}} / en: {{what is shown}} | x, discord |
+| `medios/tarjeta.webp` | es: {{qué se ve}} / en: {{what is shown}} | x, discord, web |
 | `medios/tarjeta.png` | es: {{qué se ve}} / en: {{what is shown}} | linkedin |
 
 ## Uso interno

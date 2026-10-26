@@ -104,12 +104,16 @@ Without a project note the defaults apply (and it is said once). To change them,
 `key: value` line per item (the keys are those of the table in `skills/gw-media-content/nota.md`, in English); the
 workflow neither creates nor overwrites it. An *extra channel* is declared with `límite: N` (checked with
 `--limite <channel>=N`) or with `formato: propio` and `plantilla: <path>` (its file is consumed by another system;
-checked with `--formato-propio <channel>`). A generic example:
+checked with `--formato-propio <channel>`). The `web` channel is the project's own website: `web.md` holds a JSON
+block with `estado` (`borrador` until the person writes `listo`), `fecha`, the text per language and an optional
+wall entry with its images; the site may have more languages than the piece (`Web languages`, passed with
+`--idiomas-web`). A generic example:
 
 ```
 Folder: docs/difusion
 Languages: es, en
-Channels: x, reddit, linkedin, discord
+Channels: x, reddit, linkedin, discord, web
+Web languages: es, gl, en
 Extra channels:
 - mastodon: límite: 500; tono: cercano
 - portal: formato: propio; plantilla: docs/difusion/portal.json

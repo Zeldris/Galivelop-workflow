@@ -75,6 +75,15 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   registro es el del config de la rama protegida. Un CI que arrancó y falló nunca se sustituye así, y apuntarlo es
   decisión de la persona («comprobado solo en local»). Claves nuevas `ciLocalLog` y `ciLocalWorkflows`; documentado
   en `config.md`, `problemas.md`, la plantilla de `AGENTS.md` y el mapa para agentes.
+- Canal `web` en `gw-media-content` (Portal P3): `web.md`, opcional en cada pieza, lleva un bloque ```json que lee la
+  web del proyecto (`plantilla/web.md`) con `estado` (`"borrador"`, que deja la skill; `"listo"` lo escribe la
+  persona para que se publique), `fecha` (`AAAA-MM-DD`), `texto` (uno por idioma) y un `muro` opcional (`titulo`,
+  `cuerpo` y `imagenes` con `archivo` y `alt` por idioma). Los idiomas son las claves de `texto`: todos los de
+  `Idiomas:` y los que pida la web (p. ej. `gl`), y todos los textos del bloque llevan esos mismos;
+  `comprobar.py --idiomas-web es,gl,en` (clave `Web languages` de la nota) los fija exactos. Cada imagen del muro es
+  un render `.webp` cuya fila de `## Imágenes` lista `web`, y al revés. Documentado en `nota.md`, las dos `SKILL.md`
+  y `patrones.md`. Compatibilidad: `web` ya no es un canal extra (`--limite web=N` y `--formato-propio web` son error
+  de uso), y un `web.md` anterior sin el bloque ni `estado` hay que rehacerlo con la plantilla.
 
 ### EN
 
@@ -135,6 +144,15 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   CI that started and failed is never replaced this way, and recording one is the person's call ("checked only
   locally"). New keys `ciLocalLog` and `ciLocalWorkflows`; documented in `config.md`, `troubleshooting.md`, the
   `AGENTS.md` template and the agent map.
+- `web` channel in `gw-media-content` (Portal P3): `web.md`, optional in each piece, holds one ```json block the
+  project's website reads (`plantilla/web.md`) with `estado` (`"borrador"`, which the skill leaves; the person writes
+  `"listo"` to publish it), `fecha` (`YYYY-MM-DD`), `texto` (one per language) and an optional `muro` (`titulo`,
+  `cuerpo` and `imagenes` with `archivo` and `alt` per language). The languages are the keys of `texto`: every one of
+  `Idiomas:` plus those the site needs (e.g. `gl`), and every text in the block carries those same ones;
+  `comprobar.py --idiomas-web es,gl,en` (note key `Web languages`) pins them exactly. Each wall image is a `.webp`
+  render whose `## Imágenes` row lists `web`, and the other way round. Documented in `nota.md`, both `SKILL.md` files
+  and `patterns.md`. Compatibility: `web` is no longer an extra channel (`--limite web=N` and `--formato-propio web`
+  are usage errors), and an older `web.md` without the block or `estado` must be redone from the template.
 
 ## [0.4.1] - 2026-10-26
 

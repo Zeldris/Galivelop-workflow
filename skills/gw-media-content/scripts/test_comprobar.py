@@ -1145,7 +1145,7 @@ class CanalesExtra(Base):
 
     def test_opciones_de_canales_que_ninguna_pieza_declara_salen_con_dos(self):
         self.extra()
-        for args, opcion in ((["--limite", "portl=5"], "--limite portl=5"), (["--formato-propio", "web"], "--formato-propio web")):
+        for args, opcion in ((["--limite", "portl=5"], "--limite portl=5"), (["--formato-propio", "sitio"], "--formato-propio sitio")):
             with self.subTest(args):
                 r = subprocess.run([sys.executable, str(AQUI / "comprobar.py"), *args, str(self.carpeta.parent)],
                                    capture_output=True, text=True)
@@ -1209,11 +1209,206 @@ class CanalesExtra(Base):
         self.assertFallo("ficha.md: channel «X» under «## Canales» is not a valid name")
 
 
+class Web(Base):
+    """web.md: one ```json block for the project's website (estado, fecha, texto, muro)."""
+
+    def setUp(self):
+        super().setUp()
+        self.cambiar("ficha.md", "- discord\n", "- discord\n- web\n")
+        self.cambiar("ficha.md", "Release card | x |", "Release card | x, web |")
+        self.datos = {
+            "estado": "borrador",
+            "fecha": HOY.isoformat(),
+            "texto": {"es": "Sale la versión.", "en": "Release out."},
+            "muro": {
+                "titulo": {"es": "Versión 1.0", "en": "Version 1.0"},
+                "cuerpo": [{"es": "Primer párrafo.", "en": "First paragraph."}],
+                "imagenes": [{"archivo": "medios/tarjeta.webp", "alt": {"es": "Tarjeta", "en": "Card"}}],
+            },
+        }
+        self.web()
+        self.assertEqual(self.fallos(), "")
+
+    def web(self, datos=None, antes="# Web: lanzamiento\n\n", despues=""):
+        cuerpo = json.dumps(self.datos if datos is None else datos, ensure_ascii=False, indent=2)
+        self.escribir("web.md", f"{antes}```json\n{cuerpo}\n```\n{despues}")
+
+    def con(self, ruta, valor):
+        """self.datos with the key at ruta (a list of keys and indexes) set to valor, or removed when valor is None."""
+        d = json.loads(json.dumps(self.datos))
+        nodo = d
+        for k in ruta[:-1]:
+            nodo = nodo[k]
+        if valor is None:
+            del nodo[ruta[-1]]
+        else:
+            nodo[ruta[-1]] = valor
+        self.web(d)
+
+    def test_sin_muro_y_listo_vale(self):
+        del self.datos["muro"]
+        self.datos["estado"] = "listo"
+        self.web()
+        self.cambiar("ficha.md", "Release card | x, web |", "Release card | x |")
+        self.assertEqual(self.fallos(), "")
+
+    def test_la_plantilla_sin_rellenar_dice_los_huecos_y_rellena_vale(self):
+        plantilla = (AQUI.parent / "plantilla" / "web.md").read_text(encoding="utf-8")
+        self.escribir("web.md", plantilla)
+        out = self.fallos()
+        self.assertIn("web.md: template gap «{{…}}» left; write the text", out)
+        self.assertIn("web.md: template gap «AAAA-MM-DD» left", out)
+        self.assertIn("web.md: template gap «<tema>» left", out)
+        self.assertNotIn("«fecha» is", out)  # the date gap is reported once
+        lleno = (plantilla.replace("{{…}}", "Texto").replace("AAAA-MM-DD", HOY.isoformat())
+                 .replace("<tema>", "lanzamiento"))
+        self.escribir("web.md", lleno)
+        self.assertEqual(self.fallos(), "")
+
+    def test_un_solo_bloque_json_valido(self):
+        self.escribir("web.md", "# Web\n\nSin bloque.\n")
+        self.assertFallo("web.md: no ```json block; keep exactly one, as in the template (plantilla/web.md)")
+        self.web(despues="\n```json\n{}\n```\n")
+        self.assertFallo("web.md: 2 ```json blocks; keep exactly one")
+        self.escribir("web.md", '```json\n{"estado": "borrador",}\n```\n')
+        self.assertFallo("web.md: the ```json block is not valid JSON (")
+        self.escribir("web.md", '```json\n["borrador"]\n```\n')
+        self.assertFallo("web.md: the ```json block must be an object with estado, fecha, texto, muro")
+
+    def test_claves_desconocidas_y_obligatorias(self):
+        self.con(["slug"], "version-1")
+        self.assertFallo("web.md: unknown key «slug»; remove it (keys: estado, fecha, texto, muro)")
+        for k in ("estado", "fecha", "texto"):
+            with self.subTest(k):
+                self.con([k], None)
+                self.assertFallo(f"web.md: no «{k}»; add it as in the template")
+
+    def test_estado_borrador_o_listo(self):
+        self.con(["estado"], "publicado")
+        self.assertFallo('web.md: «estado» is "publicado"; write "borrador" (the skill leaves it so) or "listo"')
+
+    def test_fecha_valida(self):
+        for mala in ("2026-13-01", "26-10-2026", 20261026):
+            with self.subTest(mala):
+                self.con(["fecha"], mala)
+                self.assertFallo(f"web.md: «fecha» is {json.dumps(mala)}; write the publication date as \"YYYY-MM-DD\"")
+
+    def test_texto_lleva_los_idiomas_de_la_ficha(self):
+        self.con(["texto"], {"es": "Sale."})
+        self.assertFallo("web.md: «texto» has no «en» (it is in «Idiomas:» of ficha.md); add its text")
+        self.con(["texto"], {"es": "Sale.", "en": " "})
+        self.assertFallo("web.md: «texto.en» is empty; write the text")
+        self.con(["texto"], {"es": "Sale.", "en": "Out.", "GL": "Sae."})
+        self.assertFallo("web.md: «texto» has the key «GL»; use two-letter lowercase ISO 639-1 codes")
+        self.con(["texto"], "Sale.")
+        self.assertFallo("web.md: «texto» must be an object with one text per language")
+
+    def test_un_idioma_solo_de_la_web_lo_piden_todos_los_textos(self):
+        self.con(["texto"], {"es": "Sale.", "en": "Out.", "gl": "Sae."})
+        out = self.fallos()
+        self.assertIn("web.md: «muro.titulo» has no «gl»; add its text in that language", out)
+        self.assertIn("web.md: «muro.cuerpo[0]» has no «gl»", out)
+        self.assertIn("web.md: «muro.imagenes[0].alt» has no «gl»", out)
+        self.assertNotIn("ficha.md", out)
+        self.con(["muro", "titulo"], {"es": "V", "en": "V", "fr": "V"})
+        self.assertFallo("web.md: «muro.titulo» has «fr», which is not in «texto»; remove it or add «fr» to «texto»")
+
+    def test_idiomas_web_fija_los_idiomas_exactos(self):
+        out = "\n".join(comprobar.comprobar(self.carpeta, self.reglas, idiomas_web=["es", "gl", "en"]))
+        self.assertIn("web.md: «texto» has no «gl» (set with --idiomas-web es,gl,en); add its text", out)
+        self.con(["texto"], {"es": "Sale.", "en": "Out.", "fr": "Sort."})
+        out = "\n".join(comprobar.comprobar(self.carpeta, self.reglas, idiomas_web=["es", "en"]))
+        self.assertIn("web.md: «texto» has «fr», which is not in --idiomas-web es,en; remove it", out)
+
+    def test_muro(self):
+        self.con(["muro", "pie"], "x")
+        self.assertFallo("web.md: unknown key «muro.pie»; remove it (keys: titulo, cuerpo, imagenes)")
+        self.con(["muro", "titulo"], None)
+        self.assertFallo("web.md: «muro» has no «titulo»; add one title per language")
+        self.con(["muro", "cuerpo"], [])
+        self.assertFallo("web.md: «muro.cuerpo» must be a list of paragraphs")
+        self.con(["muro", "titulo"], "Versión 1.0")
+        self.assertFallo("web.md: «muro.titulo» must be an object with one text per language (es, en)")
+        self.con(["muro"], ["a"])
+        self.assertFallo("web.md: «muro» must be an object with titulo, cuerpo and imagenes")
+
+    def test_imagenes_del_muro(self):
+        self.con(["muro", "imagenes"], "medios/tarjeta.webp")
+        self.assertFallo("web.md: «muro.imagenes» must be a list of {archivo, alt}")
+        self.con(["muro", "imagenes", 0, "alt"], None)
+        self.assertFallo("web.md: «muro.imagenes[0]» has no «alt»; add it")
+        self.con(["muro", "imagenes", 0, "ancho"], 100)
+        self.assertFallo("web.md: unknown key «muro.imagenes[0].ancho»; remove it (keys: archivo, alt)")
+        self.con(["muro", "imagenes", 0, "archivo"], "tarjeta.webp")
+        self.assertFallo("web.md: «muro.imagenes[0].archivo» is «tarjeta.webp», not a render; point to medios/<name>.webp")
+        self.con(["muro", "imagenes", 0, "archivo"], "medios/otra.webp")
+        self.assertFallo(f"web.md: «medios/otra.webp» does not exist; render it ({RENDER} {self.carpeta})")
+
+    def test_una_imagen_del_muro_sin_render_se_dice_una_vez(self):
+        (self.carpeta / "medios" / "tarjeta.webp").unlink()
+        out = self.fallos()
+        self.assertIn(f"web.md: «medios/tarjeta.webp» does not exist; render it ({RENDER} {self.carpeta})", out)
+        self.assertNotIn("but no «archivo» in «muro.imagenes»", out)
+
+    def test_la_tabla_y_el_muro_se_corresponden(self):
+        self.con(["muro", "imagenes"], [])
+        self.assertFallo("ficha.md: «medios/tarjeta.webp» lists channel «web» but no «archivo» in «muro.imagenes» of web.md "
+                         "points to it; add it there or remove «web» from the Canales cell")
+        self.con(["muro", "imagenes", 0, "archivo"], "medios/tarjeta.png")
+        out = self.fallos()
+        self.assertIn("web.md: «medios/tarjeta.png» is not listed for «web» in «## Imágenes» of ficha.md", out)
+        self.assertIn("web.md: «medios/tarjeta.png» is a .png and web takes .webp", out)
+
+    def test_imagen_por_idioma(self):
+        medios = self.carpeta / "medios"
+        (medios / "tarjeta.en.webp").write_bytes(webp())
+        (medios / "tarjeta.en-mini.webp").write_bytes(webp(10, 5))
+        self.cambiar("ficha.md", "| `medios/tarjeta.png` |", "| `medios/tarjeta.en.webp` | en: Card | web |\n| `medios/tarjeta.png` |")
+        self.con(["muro", "imagenes", 0, "archivo"], {"es": "medios/tarjeta.webp", "en": "medios/tarjeta.en.webp"})
+        self.assertEqual(self.fallos(), "")
+        self.con(["muro", "imagenes", 0, "archivo"], {"es": "medios/tarjeta.en.webp", "en": "medios/tarjeta.webp"})
+        self.assertFallo("web.md: «medios/tarjeta.en.webp» is the image of «en» but sits under «es» in "
+                         "«muro.imagenes[0].archivo»; move it")
+        self.con(["muro", "imagenes", 0, "archivo"], {"es": "medios/tarjeta.webp"})
+        self.assertFallo("web.md: «muro.imagenes[0].archivo» has no «en»")
+
+    def test_jerga_en_web(self):
+        self.con(["texto", "es"], "Arreglado en QA-12.")
+        self.assertFallo("web.md: internal jargon «QA-12»; move it to «## Uso interno»")
+
+    def test_web_sin_pedir_en_la_ficha(self):
+        self.cambiar("ficha.md", "- web\n", "")
+        self.assertFallo("web.md: channel not requested; delete the file or list «web» under «## Canales» in ficha.md")
+
+    def test_opciones_de_idiomas_web(self):
+        r = comprobar.leer_opciones(["--idiomas-web", "es,gl,en", "c"])
+        self.assertEqual(r, (["c"], [], {}, [], ["es", "gl", "en"], None))
+        for args, motivo in (
+            (["--idiomas-web", "es,GL", "c"], "--idiomas-web needs two-letter lowercase language codes"),
+            (["--idiomas-web=", "c"], "--idiomas-web needs two-letter lowercase language codes"),
+            (["--limite", "web=5", "c"], "--limite is for extra channels; web has its own checks (web.md)"),
+            (["--formato-propio", "web", "c"], "--formato-propio is for extra channels; web has its own checks"),
+        ):
+            with self.subTest(args):
+                self.assertIn(motivo, comprobar.leer_opciones(args)[-1])
+
+    def test_cli_idiomas_web(self):
+        comando = [sys.executable, str(AQUI / "comprobar.py"), "--idiomas-web", "es,en,gl", str(self.carpeta)]
+        r = subprocess.run(comando, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("web.md: «texto» has no «gl» (set with --idiomas-web es,en,gl)", r.stdout)
+        self.cambiar("ficha.md", "- web\n", "")
+        (self.carpeta / "web.md").unlink()
+        r = subprocess.run(comando, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("--idiomas-web es,en,gl names a channel that no checked piece declares in «## Canales»", r.stdout)
+
+
 class Opciones(unittest.TestCase):
     def test_limite_y_formato_propio_se_pueden_repetir(self):
-        r = comprobar.leer_opciones(["--limite", "portal=500", "--limite=blog=900", "--formato-propio", "web",
+        r = comprobar.leer_opciones(["--limite", "portal=500", "--limite=blog=900", "--formato-propio", "sitio",
                                      "--formato-propio=api", "--prefijos-tarea", "INS", "carpeta"])
-        self.assertEqual(r, (["carpeta"], ["INS"], {"portal": 500, "blog": 900}, ["web", "api"], None))
+        self.assertEqual(r, (["carpeta"], ["INS"], {"portal": 500, "blog": 900}, ["sitio", "api"], None, None))
 
     def test_opciones_mal_escritas(self):
         casos = (
@@ -1226,7 +1421,7 @@ class Opciones(unittest.TestCase):
             (["--formato-propio", "linkedin", "c"], "--formato-propio is for extra channels; linkedin has its own checks"),
             (["--formato-propio", "Web", "c"], "--formato-propio needs a lowercase channel name"),
             (["--formato-propio"], "--formato-propio needs a lowercase channel name"),
-            (["--limite", "web=5", "--formato-propio", "web", "c"], "web is in --limite and --formato-propio"),
+            (["--limite", "sitio=5", "--formato-propio", "sitio", "c"], "sitio is in --limite and --formato-propio"),
             (["--otra", "c"], "unknown option --otra"),
             (["--prefijos-tarea", "A", "--prefijos-tarea", "", "c"], "--prefijos-tarea needs prefixes"),
             (["--prefijos-tarea", "A", "--prefijos-tarea", " , ", "c"], "--prefijos-tarea needs prefixes"),
@@ -1234,7 +1429,7 @@ class Opciones(unittest.TestCase):
         )
         for args, motivo in casos:
             with self.subTest(args=args):
-                self.assertIn(motivo, comprobar.leer_opciones(args)[4])
+                self.assertIn(motivo, comprobar.leer_opciones(args)[-1])
 
     def correr(self, *args):
         return subprocess.run([sys.executable, str(AQUI / "comprobar.py"), *args], capture_output=True, text=True)
@@ -1250,18 +1445,18 @@ class Opciones(unittest.TestCase):
         carpeta = tmp / "2026-10-25" / "01-pieza"
         carpeta.mkdir(parents=True)
         (carpeta / "medios").mkdir()
-        (carpeta / "ficha.md").write_text("Idiomas: es, en\n\n## Canales\n\n- portal\n- web\n\n## Imágenes\n\n"
+        (carpeta / "ficha.md").write_text("Idiomas: es, en\n\n## Canales\n\n- portal\n- sitio\n\n## Imágenes\n\n"
                                           "| Imagen | Texto alternativo | Canales |\n|---|---|---|\n\n## Publicado\n", encoding="utf-8")
         (carpeta / "portal.md").write_text("## es\n\n" + "a" * 30 + "\n\n## en\n\nb\n", encoding="utf-8")
-        (carpeta / "web.md").write_text('{"a": 1}\n', encoding="utf-8")
-        r = self.correr("--limite", "portal=20", "--formato-propio", "web", str(carpeta))
+        (carpeta / "sitio.md").write_text('{"a": 1}\n', encoding="utf-8")
+        r = self.correr("--limite", "portal=20", "--formato-propio", "sitio", str(carpeta))
         self.assertEqual(r.returncode, 1)
         self.assertIn("portal.md (es): 30 characters (max 20, set with --limite portal=20); shorten it by 10", r.stdout)
-        self.assertNotIn("web.md", r.stdout)
-        r = self.correr("--limite", "portal=30", "--formato-propio", "web", str(carpeta))
+        self.assertNotIn("sitio.md", r.stdout)
+        r = self.correr("--limite", "portal=30", "--formato-propio", "sitio", str(carpeta))
         self.assertEqual((r.returncode, r.stdout.strip()), (0, "OK"))
         r = self.correr(str(carpeta))
-        self.assertIn("web.md: no «## es» section", r.stdout)
+        self.assertIn("sitio.md: no «## es» section", r.stdout)
 
 
 class Lectura(Base):
@@ -1317,10 +1512,10 @@ class PiezasMalNombradas(Base):
         self.assertEqual([p.name for p in comprobar.piezas(self.tmp)], ["01-lanzamiento"])
 
     def test_una_carpeta_mal_nombrada_con_solo_un_canal_extra_se_comprueba(self):
-        mala = self.carpeta.parent / "web"
+        mala = self.carpeta.parent / "sitio"
         mala.mkdir()
-        (mala / "web.md").write_text('{"a": 1}\n', encoding="utf-8")
-        self.assertEqual([p.name for p in comprobar.piezas(self.tmp)], ["01-lanzamiento", "web"])
+        (mala / "sitio.md").write_text('{"a": 1}\n', encoding="utf-8")
+        self.assertEqual([p.name for p in comprobar.piezas(self.tmp)], ["01-lanzamiento", "sitio"])
         r = subprocess.run([sys.executable, str(AQUI / "comprobar.py"), str(self.tmp)], capture_output=True, text=True)
         self.assertEqual(r.returncode, 1)
         self.assertIn(f"{mala}: folder name: expected <dir>/AAAA-MM-DD/NN-<tema>", r.stdout)
@@ -1328,7 +1523,7 @@ class PiezasMalNombradas(Base):
 
     def test_propuestas_en_la_raiz_no_es_una_pieza_aunque_tenga_md(self):
         (self.tmp / "propuestas").mkdir()
-        (self.tmp / "propuestas" / "web.md").write_text("# Propuestas\n", encoding="utf-8")
+        (self.tmp / "propuestas" / "portal.md").write_text("# Propuestas\n", encoding="utf-8")
         self.assertEqual([p.name for p in comprobar.piezas(self.tmp)], ["01-lanzamiento"])
 
 

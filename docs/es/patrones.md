@@ -102,12 +102,15 @@ Sin nota del proyecto rigen los valores por defecto (y se dice una vez). Para ca
 una línea `clave: valor` por dato (las claves, las de la tabla de `skills/gw-media-content/nota.md`, en inglés); el flujo no
 la crea ni la pisa. Un *canal extra* se declara con `límite: N` (comprobado con `--limite <canal>=N`) o con
 `formato: propio` y `plantilla: <ruta>` (su archivo lo consume otro sistema; comprobado con `--formato-propio <canal>`).
-Ejemplo genérico:
+El canal `web` es la web del propio proyecto: `web.md` lleva un bloque JSON con `estado` (`borrador` hasta que la
+persona escribe `listo`), `fecha`, el texto por idioma y una entrada de muro opcional con sus imágenes; los idiomas
+de la web pueden ser más que los de la pieza (`Web languages`, que se pasa con `--idiomas-web`). Ejemplo genérico:
 
 ```
 Folder: docs/difusion
 Languages: es, en
-Channels: x, reddit, linkedin, discord
+Channels: x, reddit, linkedin, discord, web
+Web languages: es, gl, en
 Extra channels:
 - mastodon: límite: 500; tono: cercano
 - portal: formato: propio; plantilla: docs/difusion/portal.json

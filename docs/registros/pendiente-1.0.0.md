@@ -22,7 +22,8 @@ CHANGELOG de la `1.0.0`.
   [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
 - [x] **Portal P2** (2026-10-26): avisos y reglas (`pkill -f` se mata a sí mismo; runbooks de tareas programadas revisados como
   código; marcar en `REVIEW.md` los datos que caducan). [`2026-10-26-portal-galivelop.md`](../propuestas/2026-10-26-portal-galivelop.md)
-- [ ] **Portal P3:** `gw-media-content` deja un `web.md` opcional con el bloque del muro, en forma genérica.
+- [x] **Portal P3** (2026-10-26): `gw-media-content` deja un `web.md` opcional con el bloque del muro, en forma
+  genérica (canal `web`: `estado`, `fecha`, `texto` por idioma, `muro`; `--idiomas-web`).
   [`2026-10-26-portal-galivelop.md`](../propuestas/2026-10-26-portal-galivelop.md)
 
 ## De la retro del parche `0.4.1`

@@ -493,7 +493,7 @@ class Plantilla(Base):
         return destino
 
     def test_la_plantilla_tiene_todo(self):
-        esperados = {"ficha.md", "x.md", "reddit.md", "linkedin.md", "discord.md"}
+        esperados = {"ficha.md", "x.md", "reddit.md", "linkedin.md", "discord.md", "web.md"}
         self.assertEqual({p.name for p in PLANTILLA.glob("*.md")}, esperados)
         fuentes = {p.name for p in (PLANTILLA / "medios" / "fuente").glob("*.html")}
         self.assertEqual(fuentes, {"tarjeta.html", "diagrama.html", "metricas.html", "cita.html", "codigo.html", "antes-despues.html", "carrusel.html"})
@@ -527,7 +527,7 @@ class Plantilla(Base):
         pieza = self.copiar()
         problemas = comprobar.comprobar(pieza)
         con_hueco = {p.split(":")[0] for p in problemas if "template gap «" in p}
-        self.assertEqual(con_hueco, {"ficha.md", "x.md", "reddit.md", "linkedin.md", "discord.md"})
+        self.assertEqual(con_hueco, {"ficha.md", "x.md", "reddit.md", "linkedin.md", "discord.md", "web.md"})
         huecos_html = {p.split(":")[0].split("/")[-1] for p in problemas if "template gaps {{…}} left" in p}
         self.assertEqual(len(huecos_html), 7, problemas)
         # nothing else is wrong with the raw template: the rest is the renders that do not exist yet
