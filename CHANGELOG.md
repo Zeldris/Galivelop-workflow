@@ -18,8 +18,11 @@ Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-2
 - `opt-tokens`: un cambio a un archivo copiado del flujo (`.claude/gw/scripts/`, `.claude/skills/`, los ganchos) no se
   parchea en el proyecto: va al flujo, como dice `retro` (instalador P4).
 - Los scripts hallan la raíz del repo dentro de un worktree enlazado: `config.py` y los `.sh` piden la raíz a git sin
-  `GIT_DIR`, `GIT_WORK_TREE` ni `GIT_INDEX_FILE` heredados, y `find_root` ya no usa `$CLAUDE_PROJECT_DIR` (ruta del
-  script y luego el directorio actual); fuera de un proyecto falla cerrado y pide `--root` (WMF P1).
+  `GIT_DIR`, `GIT_WORK_TREE` ni `GIT_INDEX_FILE` heredados; `find_root` prefiere el directorio actual cuando es del
+  mismo repo que `$CLAUDE_PROJECT_DIR` (un worktree enlazado), si no `$CLAUDE_PROJECT_DIR` (un gancho del plugin desde
+  un repo hermano o fuera de un repo), y sin ninguno de los dos falla cerrado y pide `--root` (WMF P1).
+- `rojo-sin-arreglo` rechaza también una edición dentro de un método de test indentado (mira las líneas que encierran
+  cada cambio, no solo la cabecera del hunk).
 - Los tests de `scout-updates` pasan también en la copia instalada (`.claude/skills/scout-updates/scripts`), que
   busca el flujo en `.claude/gw` (instalador P1).
 - `rojo-sin-arreglo.sh` se niega, con un mensaje que dice cómo seguir, cuando el archivo del arreglo tiene sin
@@ -36,8 +39,11 @@ Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-2
 - `opt-tokens`: a change to a file copied from the workflow (`.claude/gw/scripts/`, `.claude/skills/`, the hooks) is
   not patched in the project: it goes to the workflow, as `retro` says (installer P4).
 - Scripts find the repo root inside a linked worktree: `config.py` and the `.sh` scripts ask git for the root without
-  inherited `GIT_DIR`, `GIT_WORK_TREE` or `GIT_INDEX_FILE`, and `find_root` no longer uses `$CLAUDE_PROJECT_DIR`
-  (the script's path, then the current directory); outside a project it fails closed and asks for `--root` (WMF P1).
+  inherited `GIT_DIR`, `GIT_WORK_TREE` or `GIT_INDEX_FILE`; `find_root` prefers the current directory when it is
+  in the same repo as `$CLAUDE_PROJECT_DIR` (a linked worktree), else `$CLAUDE_PROJECT_DIR` (a plugin hook run from a
+  sibling repo or outside any repo), and with neither it fails closed and asks for `--root` (WMF P1).
+- `rojo-sin-arreglo` also refuses an edit inside an indented test method (it reads the lines enclosing each change,
+  not only the hunk header).
 - The `scout-updates` tests also pass in the installed copy (`.claude/skills/scout-updates/scripts`), which looks for
   the workflow in `.claude/gw` (installer P1).
 - `rojo-sin-arreglo.sh` refuses, with a message saying how to proceed, when the fix file has uncommitted changes

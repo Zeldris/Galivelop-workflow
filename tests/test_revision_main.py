@@ -275,7 +275,7 @@ class Hook(unittest.TestCase):
             {"id": 12, "name": "macos", "status": "completed", "conclusion": "failure"}]}
         notes = json.dumps([{"message": self.BILLING}])
         code, out = self.merge(pr=self.pr(), runs=runs, env={"GH_NOTES_11": notes, "GH_NOTES_12": notes})
-        self.assertBlocked((code, out), "GitHub did not start the CI", "billing or spending limit",
+        self.assertBlocked((code, out), "GitHub did not start the CI of PR #", "): billing or spending limit",
                            "checked only locally", "with their confirmation")
         self.assertNotIn("is not green", out)
 

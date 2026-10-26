@@ -263,22 +263,57 @@ class LinkedWorktree(unittest.TestCase):
         r = self.run_in_wt("python3", script, "get", "log")
         self.assertEqual((r.returncode, r.stdout.strip()), (0, "wt-log.md"), r.stderr)
 
-    def test_config_py_without_a_project_copy_ignores_claude_project_dir(self):
-        # The workflow's own scripts/ (no .claude/gw.json beside it): the root is the current directory's repo, and
-        # $CLAUDE_PROJECT_DIR (the main checkout, from where Claude Code was opened) is not consulted.
+    def plugin_config(self):
+        """A copy like the plugin's scripts/ (no .claude/gw.json beside it): its root comes from the cwd and
+        $CLAUDE_PROJECT_DIR, not from its own folder."""
         plugin = self.tmp / "plugin" / "scripts"
         plugin.mkdir(parents=True)
         shutil.copy(SCRIPT, plugin / "config.py")
         shutil.copytree(ROOT / "schema", plugin.parent / "schema")
-        r = self.run_in_wt("python3", str(plugin / "config.py"), "root")
+        return str(plugin / "config.py")
+
+    def run_at(self, cwd, *cmd, project=None):
+        full = {k: v for k, v in os.environ.items() if not k.startswith("GIT_") and k != "CLAUDE_PROJECT_DIR"}
+        full["GIT_CEILING_DIRECTORIES"] = str(self.tmp)
+        if project:
+            full["CLAUDE_PROJECT_DIR"] = str(project)
+        return subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, env=full)
+
+    def test_plugin_config_in_a_linked_worktree_prefers_it_over_claude_project_dir(self):
+        # $CLAUDE_PROJECT_DIR names the main checkout (where Claude Code was opened); the worktree is the same repo.
+        r = self.run_in_wt("python3", self.plugin_config(), "root")
         self.assertEqual((r.returncode, r.stdout.strip()), (0, str(self.wt)), r.stderr)
+
+    def test_plugin_config_from_a_sibling_repo_keeps_claude_project_dir(self):
+        # A hook whose cwd is another repo (a sibling, a clone being read) must not take that repo's config.
+        sibling = self.tmp / "sibling"
+        sibling.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=str(sibling), check=True)
+        r = self.run_at(sibling, "python3", self.plugin_config(), "root", project=self.main)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, str(self.main)), r.stderr)
+
+    def test_plugin_config_outside_any_repo_uses_claude_project_dir_or_fails_closed(self):
         outside = self.tmp / "outside"
         outside.mkdir()
-        full = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
-        full.update({"CLAUDE_PROJECT_DIR": str(self.main), "GIT_CEILING_DIRECTORIES": str(self.tmp)})
-        r = subprocess.run(["python3", str(plugin / "config.py"), "root"], cwd=str(outside), capture_output=True, text=True, env=full)
+        script = self.plugin_config()
+        r = self.run_at(outside, "python3", script, "root", project=self.main)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, str(self.main)), r.stderr)
+        r = self.run_at(outside, "python3", script, "root")
         self.assertEqual(r.returncode, 2, r.stdout)
         self.assertIn("not inside a git repository", r.stderr)
+
+    def test_every_shell_script_root_line_finds_the_worktree_with_git_dir_exported(self):
+        # The `root=` line of each script that finds its root from its own folder, run as is inside the worktree.
+        here = self.wt / ".claude" / "gw" / "scripts"
+        names = ("es-codigo.sh", "fusionar.sh", "prepush-ramas.sh", "revisado.sh", "tests-relacionados.sh",
+                 "rojo-sin-arreglo.sh")
+        for name in names:
+            with self.subTest(script=name):
+                lines = [ln for ln in (ROOT / "scripts" / name).read_text().splitlines() if ln.startswith('root="$(')]
+                self.assertEqual(len(lines), 1, lines)
+                line = lines[0].split(" || ")[0]
+                r = self.run_in_wt("bash", "-c", f'here="{here}"; {line} && printf "%s" "$root"')
+                self.assertEqual((r.returncode, r.stdout), (0, str(self.wt)), r.stderr)
 
     def test_shell_script_finds_the_worktree_root_with_git_dir_exported(self):
         # rojo-sin-arreglo.sh stashes the fix file at the root it found: a wrong root says "no uncommitted changes".

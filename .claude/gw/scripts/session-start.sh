@@ -17,7 +17,7 @@
 # context, each ending with the command that fixes it.
 # Project root: the git top level of this script's folder when it holds .claude/gw.json (the copy in
 # .claude/gw/scripts); from the plugin cache, $CLAUDE_PROJECT_DIR, then the current
-# directory, only to find the repo (config.py itself no longer uses $CLAUDE_PROJECT_DIR). Bash 3.2 compatible.
+# directory (config.py, run from that root, resolves the same one). Bash 3.2 compatible.
 set -uo pipefail
 start_pwd="$PWD"
 here="$(cd "$(dirname "$0")" && pwd)" || { echo "gw session-start: cannot find its own folder; reinstall the workflow: /gw-update"; exit 0; }

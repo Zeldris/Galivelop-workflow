@@ -12,7 +12,7 @@
 | Check | `bash tests/comprobar.sh` en verde (**comprobado solo en local**: sin cuota de Actions el CI no arranca, confirmado por el usuario); `main` (`d7dd18f`) comprobado en local el 2026-10-25 |
 | Fase en curso | **6 cerrada**; `0.4.0` en `main` (2026-10-25). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | Commit «Fase 7: entrada 0.4.0 con fecha…» (2026-10-25): la entrada `0.4.0` del CHANGELOG con fecha (llegó a `main` como «Unreleased»), `version.py --release` exige fecha y relleno (test nuevo), la política `0.4.x` en el plan, `AGENTS.md` y `contribuir`, y los textos de la release en `docs/registros/release-v0.4.0.md` (ya publicada) |
-| Siguiente paso | **Parche `0.4.1` en marcha** (usuario, 2026-10-26). Recogida **aprobada** (`docs/propuestas/2026-10-26-*.md`, `estado.json` al día): correcciones para la `0.4.1` (WMF P1, INS P1-P4, Portal P1; INS P4 ya aplicada en `opt-tokens`) y evolutivos para la `1.0.0`. Las seis correcciones, hechas y fusionadas con sus tests (Portal P1 cubre también `recuperar.py`, `registro_sesion.py` y `session-start.sh`). `version.py 0.4.1` y su entrada en el CHANGELOG, hechos. Siguen: las tres fases, `revisado.sh`, subida a `main` con confirmación, etiqueta y release a mano, y fusionar en `version/1.0.0` apuntando los evolutivos |
+| Siguiente paso | **Parche `0.4.1` en marcha** (usuario, 2026-10-26). Recogida aprobada (`docs/propuestas/2026-10-26-*.md`): correcciones a la `0.4.1`, evolutivos a la `1.0.0`. Las seis correcciones, `version.py 0.4.1` y el CHANGELOG, hechos. Fase 1 (`/code-review`): hallazgos 1, 2, 6 y 8 arreglados con tests; los leves, en «Pendiente». Siguen: fase 2 (`/opt-tokens` y `/retro`), fase 3, `revisado.sh`, subida a `main` con confirmación, etiqueta y release a mano, y fusionar en `version/1.0.0` apuntando los evolutivos |
 
 ### Fases
 
@@ -49,6 +49,11 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Pendiente
 
+- Menores de la revisión de la `0.4.1` (2026-10-26): `rojo-sin-arreglo` (`test_re`) da falsos positivos («it (»,
+  «test(», `def testable`, comentarios que se describen a sí mismos, como los del propio script); `NOT_STARTED` del
+  gancho de fusión solo reconoce dos frases exactas de GitHub (falta «billing», «account is locked»); `cloud_start`
+  silencia también la pista «pass it explicitly» (decisión aprobada, Portal P1) y conviene centralizarlo en `find()`
+  y `opened_outside()`.
 - Menores de la retro antes de la `0.4.0` (2026-10-25): `bitacora.py` no entiende bloques de código dentro de
   «Hecho», iguala los huecos en blanco entre entradas y mide cada celda por separado (dos de 790 en una fila pasan);
   `doctor.py` (`ci access`) da por bueno un token sin comprobarlo y no reconoce `ssh.github.com:443` ni GHE; el

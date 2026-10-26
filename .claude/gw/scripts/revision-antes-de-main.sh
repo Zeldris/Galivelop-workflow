@@ -689,9 +689,9 @@ def handle(action, cfg, root, scripts):
               f"check CI in the PR ({info['url']}); once it is all green, authenticate (gh auth login, or export "
               "GITHUB_TOKEN) and retry the merge")
     if bad == [NO_CI] or (bad and unstarted):
-        what = "no CI has reported on" if bad == [NO_CI] else \
-            "GitHub did not start the CI of (billing or spending limit; nothing ran)"
-        block(f"Blocked: {what} PR #{number} ({info['sha'][:12]}).",
+        what = f"no CI has reported on PR #{number} ({info['sha'][:12]})" if bad == [NO_CI] else \
+            f"GitHub did not start the CI of PR #{number} ({info['sha'][:12]}): billing or spending limit; nothing ran"
+        block(f"Blocked: {what}.",
               f"if CI does not start (no Actions quota, no runners), tell the person: with their confirmation the check "
               f"passed locally counts, said as 'checked only locally'; they merge it ({info['url']}) or the branch is "
               "pushed directly, where .githooks/pre-push runs the check")

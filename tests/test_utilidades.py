@@ -818,6 +818,18 @@ class RojoSinArreglo(Base):
         self.assertEqual(self.stashes(), "")  # refused before stashing anything
         self.assertIn("return x + 1", (self.p.work / "m.py").read_text())
 
+    def test_edit_deep_inside_an_indented_test_method_is_refused(self):
+        """The changed line is far from `def test_`, inside a class: the hunk header names only the class."""
+        body = "".join(f"        x{i} = {i}\n" for i in range(8))
+        self.p.write("t.py", "from base import Base\n\n\nclass T(Base):\n    def test_f(self):\n" + body
+                     + "        self.assertEqual(1, 1)\n")
+        self.p.commit("old test", env=DAY)
+        self.p.write("t.py", (self.p.work / "t.py").read_text().replace("assertEqual(1, 1)", "assertEqual(2, 2)"))
+        code, out = self.p.script("rojo-sin-arreglo.sh", "true", "t.py")
+        self.assertEqual(code, 2, out)
+        self.assertIn("t.py has uncommitted changes that touch test code", out)
+        self.assertEqual(self.stashes(), "")
+
     def test_new_fix_file_with_a_test_is_refused_too(self):
         self.p.write("added.js", "it('works', () => {})\n")
         code, out = self.p.script("rojo-sin-arreglo.sh", "true", "added.js")

@@ -15,7 +15,7 @@
 # running it. Every fix file must have uncommitted changes (a new, untracked file counts).
 # The test must NOT be uncommitted in a fix file: stashing the fix would take the test with it and the check could not
 # tell (it may report "also passes WITHOUT the fix"). So a fix file whose uncommitted changes touch test code (a
-# `def test_`, `it(`, `#[test]`... line changed, or named in a hunk header, or in a new file) is refused with exit 2:
+# `def test_`, `it(`, `#[test]`... line changed, or enclosing a changed line, or in a new file) is refused with exit 2:
 # commit the test first (`git add -p` for just its hunks, or move it to its own file) and pass only the fix files.
 # It reads the diff, not the command: a command may legitimately name a fix file (grep, a linter, `foo.py --selftest`).
 # Bash 3.2 compatible. Root from this script's path, never from $CLAUDE_PROJECT_DIR or the current directory.
@@ -47,11 +47,25 @@ for f in "$@"; do
   [ -n "$(git status --porcelain -- "$f")" ] || {
     echo "rojo-sin-arreglo: $f has no uncommitted changes (is it the fix file? the fix must not be committed yet); check: git status -- $f" >&2; exit 2; }
 done
-# Test code in the uncommitted changes of a fix file (-U0: changed lines plus the enclosing function in the hunk header).
+# Test code in the uncommitted changes of a fix file: the changed lines (-U0, with the hunk header) and the lines that
+# enclose each one (walking up, each line less indented than the last), so an edit deep inside an indented test method
+# still shows its `def test_` line, while an edit in a flat file (a shell script, a config) adds nothing around it.
 test_re='(def|fn|func|function)[[:space:]]+_?[Tt]est|(^|[^[:alnum:]_.])(it|test|describe)[[:space:]]*\(|#\[test\]|@Test|unittest\.TestCase|^[+@ -]*test_[A-Za-z0-9_]*[[:space:]]*\(\)'
+changed_lines() {  # `git diff -U0` on stdin -> the new file's line numbers it changes (a deletion: the lines around it)
+  awk '/^@@ /{ split($3, a, ","); s = substr(a[1], 2) + 0; c = (a[2] == "") ? 1 : a[2] + 0
+               if (c == 0) { print s; print s + 1 } else for (i = 0; i < c; i++) print s + i }'
+}
+enclosing() {  # <file>; line numbers on stdin -> the lines above each one that are less indented, nearest first
+  awk -v f="$1" 'function ind(s) { match(s, /^[ \t]*/); return RLENGTH }
+    BEGIN { while ((getline l < f) > 0) L[++n] = l }
+    { t = $1 + 0; if (t < 1 || t > n) next; m = ind(L[t])
+      for (i = t - 1; i >= 1 && m > 0; i--) if (L[i] !~ /^[ \t]*$/ && ind(L[i]) < m) { print L[i]; m = ind(L[i]) } }'
+}
 for f in "$@"; do
   if git ls-files --error-unmatch -- "$f" > /dev/null 2>&1; then
-    hit="$(git diff HEAD -U0 -- "$f" 2>/dev/null | grep -Ev '^(\+\+\+|---|diff --git|index )' | grep -Em1 -- "$test_re")"
+    diff="$(git diff HEAD -U0 -- "$f" 2>/dev/null)"
+    hit="$( { printf '%s\n' "$diff" | grep -Ev '^(\+\+\+|---|diff --git|index )'
+              printf '%s\n' "$diff" | changed_lines | enclosing "$f"; } | grep -Em1 -- "$test_re")"
   elif [ -f "$f" ]; then
     hit="$(grep -Em1 -- "$test_re" "$f")"
   else
