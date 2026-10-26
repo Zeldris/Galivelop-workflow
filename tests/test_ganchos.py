@@ -2076,7 +2076,8 @@ class CommitMsgSignatures(Base):
         self.refused(f"work\n\n{self.CLAUDE_TRAILER}", self.CLAUDE_TRAILER)
 
     def test_an_anthropic_co_author_is_refused_whatever_the_case(self):
-        self.refused("work\n\nco-authored-by: Bot <bot@ANTHROPIC.com>", "co-authored-by: Bot <bot@ANTHROPIC.com>")
+        self.refused("work\n\nco-authored-by: CLAUDE OPUS 5.5 <x@y>", "co-authored-by: CLAUDE OPUS 5.5 <x@y>")
+        self.refused("work\n\nCo-Authored-By: Bot <NOREPLY@ANTHROPIC.COM>", "Co-Authored-By: Bot <NOREPLY@ANTHROPIC.COM>")
 
     def test_a_claude_session_trailer_is_refused(self):
         self.refused("work\n\nClaude-Session: abc123", "Claude-Session: abc123")
@@ -2116,11 +2117,34 @@ class CommitMsgSignatures(Base):
     def test_a_verbose_diff_below_the_scissors_is_not_scanned(self):
         p = self.p
         p.write("docs/notes.md", "verbose\n")
-        p.write("docs/session.md", "see https://claude.ai/code/session_01ABC and Claude-Session: x\n")
+        # The diff line reads "+Generated with Claude Code": it would match if the hook scanned below the scissors.
+        p.write("docs/session.md", "Generated with Claude Code\n")
         p.git("add", "-A")
         r = p.git("commit", "-q", "-v", ok=False, env=self.editor("document the session"))
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(p.git("log", "-1", "--format=%s").stdout.strip(), "document the session")
+
+    def test_the_scissors_follow_core_comment_char(self):
+        p = self.p
+        p.git("config", "core.commentChar", ";")
+        p.write("docs/notes.md", "verbose\n")
+        p.write("docs/session.md", "Generated with Claude Code\n")
+        p.git("add", "-A")
+        r = p.git("commit", "-q", "-v", ok=False, env=self.editor("document the session"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_a_human_called_claude_passes(self):
+        p = self.p
+        p.write("docs/notes.md", "claude\n")
+        r = p.commit("work\n\nCo-Authored-By: Claude Dupont <claude@example.fr>", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_a_body_that_quotes_the_signatures_passes(self):
+        p = self.p
+        p.write("docs/notes.md", "quote\n")
+        r = p.commit("work\n\nThe hook refuses Generated with Claude Code and https://claude.ai/code/session_x lines.",
+                     ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_a_merge_message_with_a_signature_is_refused(self):
         p = self.p

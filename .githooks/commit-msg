@@ -10,9 +10,11 @@
 #     a rebase.
 #   - Fails closed when the workflow's config.py or (with the log staged) bitacora.py is missing.
 #   - With `agentSignatures: false` in the config, rejects a message that carries an agent's signature: a
-#     Co-Authored-By trailer naming Claude or Anthropic, a Claude-Session trailer, "Generated with Claude Code" or a
-#     claude.ai/code/session link. A human co-author passes. Comment lines and the --verbose diff below the scissors
-#     line are ignored (git strips them). Checked on merges too; skipped during a rebase (old messages are replayed).
+#     Co-Authored-By trailer with noreply@anthropic.com or naming Claude Code/Opus/Sonnet/Haiku/Fable, a
+#     Claude-Session trailer, or a line that starts with "Generated with Claude Code" (after any emoji) or with a
+#     claude.ai/code/session link. A human co-author (even one called Claude) and a body that only quotes those texts
+#     pass. Comment lines (core.commentString or core.commentChar) and the --verbose diff below the scissors line are
+#     ignored (git strips them). Checked on merges too; skipped during a rebase (old messages are replayed).
 # Bash 3.2 compatible. Root from this hook's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
 hookdir="$(cd "$(dirname "$0")" && pwd)"
@@ -40,16 +42,18 @@ signatures="$(python3 "$config" --root "$root" get agentSignatures 2>/dev/null)"
 if [ "$signatures" = false ] && [ "$in_rebase" = false ]; then
   [ -n "$msg" ] && [ -r "$msg" ] || {
     echo "commit-msg: cannot read the commit message file '${1:-}'; commit again: git commit" >&2; exit 1; }
-  cc="$(git config core.commentChar 2>/dev/null)" || cc=""
+  # git >= 2.45 reads core.commentString first; "auto" picks a free character, and its comments carry no signature.
+  cc="$(git config core.commentString 2>/dev/null)" || cc="$(git config core.commentChar 2>/dev/null)" || cc=""
   case "$cc" in ""|auto) cc="#" ;; esac
   found="$(awk -v cc="$cc" '
-    /^.? ?-+ >8 -+$/ { exit }
+    substr($0, 1, length(cc)) == cc && $0 ~ / -+ >8 -+$/ { exit }
     substr($0, 1, length(cc)) == cc { next }
     { print }' "$msg" | grep -iE \
-      -e '^[[:space:]]*co-authored-by:.*(claude|anthropic)' \
+      -e '^[[:space:]]*co-authored-by:.*noreply@anthropic\.com' \
+      -e '^[[:space:]]*co-authored-by:[[:space:]]*claude (code|opus|sonnet|haiku|fable)' \
       -e '^[[:space:]]*claude-session:' \
-      -e 'generated (with|by) \[?claude code' \
-      -e 'claude\.ai/code/session' | head -n 1)"
+      -e '^[^[:alnum:]]*generated (with|by) \[?claude code' \
+      -e '^[[:space:]]*<?https?://claude\.ai/code/session' | head -n 1)"
   if [ -n "$found" ]; then
     echo "commit-msg: the message carries an agent signature, which this project forbids (agentSignatures: false in .claude/gw.json): $found" >&2
     echo "commit-msg: remove that line and commit again: git commit -e -F $msg" >&2

@@ -132,7 +132,7 @@
     "agentSignatures": {
       "type": "boolean",
       "default": true,
-      "description": "false: the commit-msg hook rejects agent signatures (a Co-Authored-By naming Claude or Anthropic, Claude-Session, \"Generated with Claude Code\", claude.ai/code/session links)."
+      "description": "false: the commit-msg hook rejects agent signatures (a Co-Authored-By of a Claude model or with noreply@anthropic.com, Claude-Session, lines starting with \"Generated with Claude Code\" or a claude.ai/code/session link)."
     },
     "content": {
       "type": "array",

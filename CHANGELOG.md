@@ -29,8 +29,9 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   plantilla, `orchestrate-dealer` (el encargo manda correr `check.sh`), `docs/es/config.md`, `contribuir.md` y
   `problemas.md`.
 - Clave `agentSignatures` (booleano, por defecto `true`): con `false`, el gancho `commit-msg` rechaza el mensaje que
-  lleve firma de agente (un `Co-Authored-By:` que nombre a Claude o Anthropic, `Claude-Session:`, «Generated with
-  Claude Code» o un enlace `claude.ai/code/session`); un coautor humano pasa. Ignora las líneas de comentario y lo que
+  lleve firma de agente (un `Co-Authored-By:` de un modelo Claude o con `noreply@anthropic.com`, `Claude-Session:`, o
+  una línea que empieza por «Generated with Claude Code» o por un enlace `claude.ai/code/session`); un coautor humano
+  y un cuerpo que solo cite esos textos pasan. Ignora las líneas de comentario y lo que
   va tras la línea de tijeras de `git commit --verbose`; se comprueba también en un merge y se salta en un rebase.
   `aplicar.py --init --agent-signatures true|false`. Este repo la tiene a `false`. Documentada en `config.md`,
   `aplicar.md`, `problemas.md`, la plantilla de `AGENTS.md` y el mapa para agentes.
@@ -49,8 +50,9 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   Documented in `AGENTS.md` and its template, `orchestrate-dealer` (the brief tells to run `check.sh`),
   `docs/en/config.md`, `contributing.md` and `troubleshooting.md`.
 - `agentSignatures` key (boolean, default `true`): with `false`, the `commit-msg` hook rejects a message that carries
-  an agent signature (a `Co-Authored-By:` naming Claude or Anthropic, `Claude-Session:`, "Generated with Claude Code"
-  or a `claude.ai/code/session` link); a human co-author passes. It ignores comment lines and whatever follows the
+  an agent signature (a `Co-Authored-By:` of a Claude model or with `noreply@anthropic.com`, `Claude-Session:`, or a
+  line that starts with "Generated with Claude Code" or with a `claude.ai/code/session` link); a human co-author and a
+  body that only quotes those texts pass. It ignores comment lines and whatever follows the
   scissors line of `git commit --verbose`; it also checks a merge and is skipped during a rebase.
   `aplicar.py --init --agent-signatures true|false`. This repo has it at `false`. Documented in `config.md`,
   `apply.md`, `troubleshooting.md`, the `AGENTS.md` template and the agent map.
