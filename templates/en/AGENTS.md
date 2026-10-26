@@ -66,6 +66,9 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - First line: what changes, in the project's language, with the ids of the tasks touched.
 - Body: what was done, what is left of that task if it is not closed, and the state of the check.
 - **Last line: `Next: <next concrete step>`**, in the same final block as any attribution lines.
+- With `agentSignatures: false` in `.claude/gw.json`, the commit carries **no agent signatures** (no Claude
+  `Co-Authored-By`, no `Claude-Session`, no "Generated with Claude Code", no session links) and the `commit-msg` hook
+  rejects a message that has them.
 
 ## Branches and `{{protectedBranch}}`
 

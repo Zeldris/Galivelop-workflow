@@ -48,6 +48,7 @@ Reúne estos datos **antes** de ejecutar nada. Todo va a `.claude/gw.json` (cada
 | Subir a ella (`pushToProtected`) | `direct` si se hace push directo; `pr` si solo entra por pull request |
 | Contenido (`content`) | Expresiones regulares de lo que **no** es código y no necesita `/code-review`: docs, datos, textos |
 | Retro obligatoria (`requireRetro`) | Pregunta: «¿`/retro` en cada subida a la rama protegida, o solo en cambios grandes?». En cada subida: `--require-retro true` (`revisado.sh` no marca sin una retro decidida en la rama); si no, `false` |
+| Firmas del agente (`agentSignatures`) | Pregunta: «¿El proyecto admite firmas del agente en los commits (`Co-Authored-By` de Claude, enlaces de sesión)?». Si no: `--agent-signatures false` (el `commit-msg` rechaza el mensaje que las lleve); si sí, déjalo en `true` |
 | Idiomas visibles y referencias de diseño (`visibleLanguages`, `designReferences`) | Solo si el proyecto los tiene: `--visible-language` y `--design-reference`, una bandera por valor |
 | Skills opcionales | `opt-ai` (modelos de IA locales) y `scout-updates` (revisar actualizaciones); solo si la persona las pide |
 

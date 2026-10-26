@@ -65,6 +65,9 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
 - Primera línea: qué cambia, en el idioma del proyecto, con los identificadores de las tareas tocadas.
 - Cuerpo: qué se hizo, qué queda de esa tarea si no está cerrada, y estado del check.
 - **Última línea: `Siguiente: <próximo paso concreto>`**, en el mismo bloque final que las líneas de atribución.
+- Con `agentSignatures: false` en `.claude/gw.json`, el commit **no lleva firmas del agente** (ni `Co-Authored-By` de
+  Claude, ni `Claude-Session`, ni «Generated with Claude Code», ni enlaces de sesión) y el gancho `commit-msg` rechaza
+  el mensaje que las traiga.
 
 ## Ramas y `{{protectedBranch}}`
 

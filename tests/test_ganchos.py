@@ -2022,5 +2022,135 @@ class CommitMsg(Base):
         self.assertIn("/gw-update", r.stderr)
 
 
+class CommitMsgSignatures(Base):
+    """templates/githooks/commit-msg with agentSignatures: false rejects an agent's signature in the message."""
+    config = {"agentSignatures": False}
+    hooks = ("pre-push", "pre-commit", "commit-msg")
+    CLAUDE_TRAILER = "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+
+    def set_signatures(self, value):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        if value is None:
+            cfg.pop("agentSignatures", None)
+        else:
+            cfg["agentSignatures"] = value
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.git("add", ".claude/gw.json")
+        p.commit("config")
+
+    def refused(self, message, culprit):
+        p = self.p
+        before = p.sha()
+        p.write("docs/notes.md", f"{message}\n")
+        r = p.commit(message, ok=False)
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("commit-msg:", r.stderr)
+        self.assertIn("agent signature", r.stderr)
+        self.assertIn(culprit, r.stderr)
+        self.assertIn("agentSignatures: false", r.stderr)
+        self.assertEqual(p.sha(), before, "the refused commit was created")
+
+    def editor(self, text):
+        """An editor that puts `text` above whatever git prepared (so -v keeps its diff below the scissors)."""
+        script = self.tmp / "editor.sh"
+        script.write_text(f"#!/bin/sh\nprintf '%s\\n' \"$GW_TEST_MESSAGE\" | cat - \"$1\" > \"$1.new\" && mv \"$1.new\" \"$1\"\n")
+        os.chmod(script, 0o755)
+        return {"GIT_EDITOR": str(script), "GW_TEST_MESSAGE": text}
+
+    def test_a_claude_signature_passes_when_the_key_is_absent(self):
+        p = self.p
+        self.set_signatures(None)
+        p.write("docs/notes.md", "n1\n")
+        r = p.commit(f"work\n\n{self.CLAUDE_TRAILER}", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_a_claude_signature_passes_when_the_key_is_true(self):
+        p = self.p
+        self.set_signatures(True)
+        p.write("docs/notes.md", "n2\n")
+        r = p.commit(f"work\n\n{self.CLAUDE_TRAILER}", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_a_claude_co_author_is_refused(self):
+        self.refused(f"work\n\n{self.CLAUDE_TRAILER}", self.CLAUDE_TRAILER)
+
+    def test_an_anthropic_co_author_is_refused_whatever_the_case(self):
+        self.refused("work\n\nco-authored-by: Bot <bot@ANTHROPIC.com>", "co-authored-by: Bot <bot@ANTHROPIC.com>")
+
+    def test_a_claude_session_trailer_is_refused(self):
+        self.refused("work\n\nClaude-Session: abc123", "Claude-Session: abc123")
+
+    def test_a_generated_with_line_is_refused(self):
+        line = "\U0001f916 Generated with [Claude Code](https://claude.com/claude-code)"
+        self.refused(f"work\n\n{line}", "Generated with [Claude Code]")
+
+    def test_a_session_link_is_refused(self):
+        self.refused("work\n\nhttps://claude.ai/code/session_01ABC", "https://claude.ai/code/session_01ABC")
+
+    def test_a_human_co_author_passes(self):
+        p = self.p
+        p.write("docs/notes.md", "human\n")
+        r = p.commit("work\n\nCo-Authored-By: Ana Perez <ana@example.com>", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_a_comment_line_with_a_signature_passes_with_the_default_cleanup(self):
+        p = self.p
+        p.write("docs/notes.md", "comment\n")
+        p.git("add", "-A")
+        r = p.git("commit", "-q", "-e", ok=False,
+                  env=self.editor("work\n\n# Generated with Claude Code\n# Co-Authored-By: Claude <noreply@anthropic.com>"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("Claude", p.git("log", "-1", "--format=%B").stdout)
+
+    def test_a_signature_above_the_comment_lines_is_still_refused(self):
+        p = self.p
+        before = p.sha()
+        p.write("docs/notes.md", "mixed\n")
+        p.git("add", "-A")
+        r = p.git("commit", "-q", "-e", ok=False, env=self.editor("work\n\nClaude-Session: x\n# a comment"))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("agent signature", r.stderr)
+        self.assertEqual(p.sha(), before)
+
+    def test_a_verbose_diff_below_the_scissors_is_not_scanned(self):
+        p = self.p
+        p.write("docs/notes.md", "verbose\n")
+        p.write("docs/session.md", "see https://claude.ai/code/session_01ABC and Claude-Session: x\n")
+        p.git("add", "-A")
+        r = p.git("commit", "-q", "-v", ok=False, env=self.editor("document the session"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(p.git("log", "-1", "--format=%s").stdout.strip(), "document the session")
+
+    def test_a_merge_message_with_a_signature_is_refused(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "side")
+        p.write("docs/side.md", "side\n"); p.commit("side")
+        p.git("checkout", "-q", "main")
+        p.write("docs/main.md", "main\n"); p.commit("main")
+        before = p.sha()
+        r = p.git("merge", "--no-ff", "-m", f"Merge side\n\n{self.CLAUDE_TRAILER}", "side", ok=False)
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("agent signature", r.stderr)
+        self.assertIn(self.CLAUDE_TRAILER, r.stderr)
+        self.assertEqual(p.sha(), before)
+
+    def test_a_clean_merge_message_passes(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "side")
+        p.write("docs/side.md", "side\n"); p.commit("side")
+        p.git("checkout", "-q", "main")
+        p.write("docs/main.md", "main\n"); p.commit("main")
+        r = p.git("merge", "--no-ff", "-m", "Merge side", "side", ok=False)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_skipped_during_a_rebase(self):
+        p = self.p
+        (p.work / ".git" / "rebase-merge").mkdir()
+        p.write("docs/notes.md", "pick\n")
+        r = p.commit(f"pick\n\n{self.CLAUDE_TRAILER}", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

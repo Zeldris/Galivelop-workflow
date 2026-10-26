@@ -283,6 +283,28 @@ class Init(unittest.TestCase):
         self.assertEqual(code, 2, out)
         self.assertIn("only go with --init", out)
 
+    def test_init_agent_signatures_flag(self):
+        p = self.project()
+        code, out = p.init("en", "--agent-signatures", "false")
+        self.assertEqual(code, 0, out)
+        self.assertIs(json.loads(p.read(".claude/gw.json"))["agentSignatures"], False)
+        code, out = p.aplicar("--agent-signatures", "true")
+        self.assertEqual(code, 2, out)
+        self.assertIn("only go with --init", out)
+        self.assertIn("--agent-signatures", out)
+        p2 = self.project("p2")
+        code, out = p2.init("en")
+        self.assertEqual(code, 0, out)
+        self.assertIs(json.loads(p2.read(".claude/gw.json"))["agentSignatures"], True)
+        code, out = self.project("p3").init("en", "--agent-signatures", "maybe")
+        self.assertEqual(code, 2, out)
+        self.assertIn("invalid choice", out)
+
+    def test_agent_signatures_has_one_default(self):
+        schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())
+        sample = json.loads((TEMPLATES / "gw.json").read_text())
+        self.assertEqual(sample["agentSignatures"], schema["properties"]["agentSignatures"]["default"])
+
     def test_require_retro_has_one_default(self):
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())
         sample = json.loads((TEMPLATES / "gw.json").read_text())

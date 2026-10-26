@@ -56,7 +56,8 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 - **Sin firmas del agente** (usuario, 2026-10-26): commits y PR van a nombre del usuario de git (`Zeldris`), nunca
   como Claude; ni `Co-Authored-By`, ni `Claude-Session`, ni «Generated with Claude Code» ni enlaces de sesión, en
   ningún sitio (mensajes, PR, comentarios, archivos). En un contenedor nuevo, antes del primer commit:
-  `git config user.name Zeldris` y `git config user.email cordproinf@gmail.com`.
+  `git config user.name Zeldris` y `git config user.email cordproinf@gmail.com`. Lo comprueba el gancho `commit-msg`
+  (`agentSignatures: false` en `.claude/gw.json`): rechaza el mensaje que lleve una de esas firmas.
 
 ## Ramas y `main`
 
