@@ -1875,6 +1875,71 @@ class PreCommit(Base):
         self.assertIn("rotate the credential", out)
 
 
+class PreCommitDone(Base):
+    """INS P6: a task closed in the plan is in the log's "Done" before the commit exists."""
+    config = {"logRows": True, "plan": ["docs/plan.md"]}
+    LOG = "# Log\n\n## Done\n\n1. nothing yet\n"
+
+    def setUp(self):
+        super().setUp()
+        self.p.write("docs/log.md", self.LOG)
+        self.p.write("docs/plan.md", "- [ ] **INS-3** the thing\n")
+        self.p.commit("plan and log")
+
+    def test_closing_a_task_without_done_entry_refused(self):
+        p = self.p
+        p.write("docs/plan.md", "- [x] **INS-3** the thing\n")
+        r = p.commit("close INS-3", ok=False)
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("INS-3 is closed in the plan", r.stderr)
+        self.assertIn("git add docs/log.md", r.stderr)
+        p.write("docs/log.md", self.LOG.replace("1. nothing yet", "1. ~~INS-3~~ the thing"))
+        self.assertEqual(p.commit("close INS-3", ok=False).returncode, 0)
+
+    def test_commit_that_does_not_stage_the_plan_passes(self):
+        p = self.p
+        p.write("docs/plan.md", "- [x] **INS-3** the thing\n")
+        p.write("src/a.py", "a = 1\n")
+        p.git("add", "src/a.py")
+        r = p.git("commit", "-q", "-m", "code only", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_merge_bringing_a_closure_passes(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "other")
+        p.write("docs/plan.md", "- [x] **INS-3** the thing\n")
+        p.git("add", "-A"); p.git("commit", "-q", "--no-verify", "-m", "close INS-3 elsewhere")
+        p.git("checkout", "-q", "main")
+        p.write("src/a.py", "a = 1\n"); p.commit("diverge")
+        p.git("merge", "-q", "--no-ff", "--no-commit", "other")
+        r = p.git("commit", "-q", "--no-edit", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_commit_with_an_invalid_config_passes_with_a_warning(self):
+        p = self.p
+        p.write(".claude/gw.json", "{not json")
+        r = p.commit("broken config", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("WARNING: skipping the \"Done\" check", r.stderr)
+        self.assertIn("invalid JSON", r.stderr)
+
+    def test_missing_bitacora_fails_closed(self):
+        p = self.p
+        (p.work / ".claude" / "gw" / "scripts" / "bitacora.py").unlink()
+        p.write("src/a.py", "a = 1\n")
+        r = p.commit("code", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("bitacora.py is missing", r.stderr)
+
+    def test_missing_config_py_fails_closed(self):
+        p = self.p
+        (p.work / ".claude" / "gw" / "scripts" / "config.py").unlink()
+        p.write("src/a.py", "a = 1\n")
+        r = p.commit("code", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("config.py is missing; reinstall the workflow scripts: /gw-update", r.stderr)
+
+
 class CommitMsg(Base):
     """templates/githooks/commit-msg: bitacora.py check on the staged log, at commit time."""
     config = {"logRows": True}

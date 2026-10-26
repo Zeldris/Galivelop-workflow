@@ -95,7 +95,8 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
 - **`logRows`** goes with the row-based log template (``| **Current task · `branch`** | … |``); the push checks that
   each branch writes only in its own row, that every "Task in progress" row names its branch, and that each task
   closed in the plan is recorded in "Done": struck through there, or named on a line that starts with a date (an
-  unstruck bullet is not enough).
+  unstruck bullet is not enough). That last rule is also checked by `pre-commit`, on the staged log, so a closure is
+  recorded in the same commit (not with an `--amend` before the push).
 - After changing the workflow version, bump `version` by hand (`/gw-update` does it): `doctor.py` compares that number
   with the copied headers.
 

@@ -27,6 +27,9 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
   bitacora.py closed BASE SHA                    every task closed in the plan between BASE and SHA ("- [x] **ID**"
                                                  or struck through) is also recorded in the "Done" section of SHA's
                                                  log: struck through there, or named on a line that starts with a date
+  bitacora.py closed --staged                    the same between HEAD and the index (the pre-commit hook); passes at
+                                                 once if no plan file is staged, and while a merge, cherry-pick or
+                                                 rebase is being closed (the pre-push checks those)
   bitacora.py in-progress BASE SHA               WARNING only: a task marked 🚧 that the commits name, whose plan
                                                  entry did not change (it may still say "Next: X" with X done)
   bitacora.py close-row BRANCH [--text TEXT]     rewrite BRANCH's row as "merged, branch finished" (last commit
@@ -55,6 +58,7 @@ import config as gwconfig  # noqa: E402
 LIMIT = 600
 CELL_LIMIT = 800  # a value cell of the state table (any log, not only logRows)
 DONE_ITEMS = 5  # items kept in the Done section
+INDEX = ""  # a "rev" for show()/plan_files(): the staged version
 FREE_ROWS = {"Actualizado", "Tests", "Updated"}  # shared rows every commit may touch
 DEFAULT_ID = r"[A-Z]{2,5}-\d+[a-z]?"
 ROW = re.compile(r"^\|\s*\*\*(?P<label>.+?) · `(?P<branch>[^`]+)`\*\*\s*\|(?P<text>.*)\|\s*$")
@@ -129,15 +133,15 @@ class Ctx:
         return self.struck_ids(text) | {m.group("id") for m in self.closed_box.finditer(text)}
 
     def plan_files(self, rev):
-        """Plan/roadmap files at `rev` (a plan entry may be a folder)."""
+        """Plan/roadmap files at `rev` (a plan entry may be a folder); rev INDEX = the staged ones."""
         out = []
         for p in self.plans:
-            r = self.git("ls-tree", "-r", "--name-only", rev, "--", p)
+            r = self.git("ls-files", "--", p) if rev == INDEX else self.git("ls-tree", "-r", "--name-only", rev, "--", p)
             out += [f for f in r.stdout.splitlines() if f.endswith(".md")]
         return sorted(set(out))
 
     def show(self, rev, path):
-        r = self.git("show", f"{rev}:{path}")
+        r = self.git("show", f"{rev}:{path}")  # INDEX ("") gives ":path", the staged version
         return r.stdout if r.returncode == 0 else ""
 
     def entries(self, text):
@@ -296,9 +300,22 @@ def cmd_own_row(ctx, args):
     return 1 if bad else 0
 
 
+def closing_other_side(ctx):
+    """True while a merge, cherry-pick or rebase is being closed: its closures come from the other side."""
+    for head in ("MERGE_HEAD", "CHERRY_PICK_HEAD", "REBASE_HEAD"):
+        path = Path(ctx.git("rev-parse", "--git-path", head).stdout.strip())
+        if (path if path.is_absolute() else ctx.root / path).exists():
+            return True
+    return False
+
+
 def cmd_closed(ctx, args):
     if not ctx.plans:
         return 0
+    if args.staged:
+        if not ctx.git("diff", "--cached", "--name-only", "--", *ctx.plans).stdout.strip() or closing_other_side(ctx):
+            return 0
+        args.base, args.sha = "HEAD", INDEX
     files = ctx.plan_files(args.sha) + ctx.plan_files(args.base)
     before, after = [], []
     for f in sorted(set(files)):
@@ -329,7 +346,9 @@ def cmd_closed(ctx, args):
     missing = sorted(new - listed)
     for t in missing:
         print(f"bitacora: {t} is closed in the plan; list it in the \"Done\" section of {ctx.log}")
-    if missing:
+    if missing and args.staged:
+        print(f"bitacora: fix: edit {ctx.log}, stage it (git add {ctx.log}) and commit again")
+    elif missing:
         print(f"bitacora: fix: edit {ctx.log}, then git commit --amend")
     return 1 if missing else 0
 
@@ -460,14 +479,20 @@ def main(argv=None):
     o.add_argument("commit")
     o.add_argument("branch")
     o.add_argument("--shared", action="store_true")
-    for name in ("closed", "in-progress"):
-        s = sub.add_parser(name)
-        s.add_argument("base")
-        s.add_argument("sha")
+    s = sub.add_parser("closed")
+    s.add_argument("base", nargs="?")
+    s.add_argument("sha", nargs="?")
+    s.add_argument("--staged", action="store_true")
+    s = sub.add_parser("in-progress")
+    s.add_argument("base")
+    s.add_argument("sha")
     r = sub.add_parser("close-row")
     r.add_argument("branch")
     r.add_argument("--text")
     args = p.parse_args(argv)
+    if args.cmd == "closed" and (bool(args.staged) == (args.sha is not None) or (args.base is None) != (args.sha is None)):
+        print("bitacora: closed takes BASE SHA, or --staged alone; run: bitacora.py closed --staged", file=sys.stderr)
+        return 2
     if getattr(args, "date", None):
         try:
             if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", args.date):
@@ -477,7 +502,14 @@ def main(argv=None):
             print(f"bitacora: --date must be YYYY-MM-DD and a real date, not \"{args.date}\"; fix it and rerun", file=sys.stderr)
             return 2
     try:
-        ctx = Ctx(args)
+        try:
+            ctx = Ctx(args)
+        except Usage as exc:
+            if not (args.cmd == "closed" and args.staged):
+                raise
+            # A commit may be the one that fixes (or breaks) the config: the pre-push fails closed on it instead.
+            print(f"bitacora: WARNING: skipping the \"Done\" check of this commit: {exc}", file=sys.stderr)
+            return 0
         if args.cmd == "done":
             args.date = args.date or datetime.date.today().isoformat()
         elif not ctx.config.get("logRows") and args.cmd != "check":

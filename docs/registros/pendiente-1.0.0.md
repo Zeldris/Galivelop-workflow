@@ -14,7 +14,7 @@ CHANGELOG de la `1.0.0`.
   ya está en la `0.4.1`). [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
 - [x] **INS P5** (2026-10-26): `recuperar.py` cuenta las compactaciones desde el inicio de la tarea (`merge-base` con la rama
   protegida), no de toda la sesión. [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
-- [ ] **INS P6:** el `pre-commit` comprueba las tareas cerradas frente a «Hecho» (hoy solo `prepush-ramas.sh`).
+- [x] **INS P6** (2026-10-26): el `pre-commit` comprueba las tareas cerradas frente a «Hecho» (`bitacora.py closed --staged`).
   [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
 - [x] **INS P7** (2026-10-26): cuatro frases en skills (`orchestrate-dealer`: buscar las otras apariciones de un fallo de patrón y
   repartir también los arreglos de la revisión; `pr`: `/clear` tras fusionar; revisión: hallazgos a un archivo).

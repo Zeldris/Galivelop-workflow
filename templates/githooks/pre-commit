@@ -8,6 +8,8 @@
 #   - With CLAUDECODE=1 (an agent committing): no staged file under the config's protectedPaths (people's drafts).
 #     Outside Claude Code that check does not run. Closing a merge/cherry-pick/rebase lets through files that come
 #     unchanged from the other side.
+#   - With logRows on: a task the commit closes in the plan is also in the log's "Done" (bitacora.py closed --staged;
+#     the pre-push checks it again over the pushed range). Skipped while closing a merge/cherry-pick/rebase.
 # CI mode: pre-commit --rango BASE..HEAD scans what the range adds instead of the staged changes (run the base
 # branch's copy of this hook, so a PR cannot weaken the check that reviews it).
 # Bash 3.2 compatible. Root from this hook's path, never from $CLAUDE_PROJECT_DIR or the current directory.
@@ -114,5 +116,14 @@ if [ "${CLAUDECODE:-}" = "1" ] && [ "$ci" = "0" ]; then
       exit 1
     fi
   fi
+fi
+
+# Tasks closed in the plan, recorded in the log's "Done" before the commit exists (not after, with --amend).
+if [ "$ci" = "0" ]; then
+  if [ -d "$root/.claude/gw/scripts" ]; then scripts="$root/.claude/gw/scripts"; else scripts="$root/scripts"; fi
+  for f in bitacora.py config.py; do
+    [ -f "$scripts/$f" ] || { echo "pre-commit: $scripts/$f is missing; reinstall the workflow scripts: /gw-update" >&2; exit 1; }
+  done
+  python3 "$scripts/bitacora.py" --root "$root" closed --staged >&2 || exit 1
 fi
 exit 0

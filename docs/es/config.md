@@ -96,6 +96,8 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
 - **`logRows`** va con la plantilla de bitácora de filas (`| **Tarea en curso · \`rama\`** | … |`); el push comprueba
   que cada rama escribe solo en su fila, que toda fila «Tarea en curso» lleva su rama y que cada tarea cerrada en el
   plan consta en «Hecho»: tachada allí, o nombrada en una línea que empieza por fecha (un punto sin tachar no basta).
+  Esta última también la mira el `pre-commit`, sobre la bitácora preparada, para que el cierre se apunte en el mismo
+  commit (y no con un `--amend` antes del push).
 - Tras actualizar el flujo, sube `version` a mano (`/gw-update` lo hace): ese número es lo que `doctor.py`
   compara con las cabeceras copiadas.
 

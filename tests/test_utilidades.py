@@ -431,6 +431,40 @@ class BitacoraTasks(Base):
         self.p.commit("log", env=DAY)
         self.assertEqual(self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())[0], 0)
 
+    def test_staged_closure_must_be_in_done(self):
+        self.p.branch("feat-a")
+        self.plan("- [ ] **INS-3** the thing\n")
+        self.p.write(self.PLAN, "- [x] **INS-3** the thing\n")
+        self.p.git("add", self.PLAN)
+        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", "--staged")
+        self.assertEqual(code, 1, out)
+        self.assertIn("INS-3 is closed in the plan", out)
+        self.assertIn(f"git add {LOG}", out)  # the commit does not exist yet: no --amend
+        self.assertNotIn("--amend", out)
+        self.p.write(LOG, log_text().replace("1. nothing yet", "1. ~~INS-3~~ done"))
+        self.p.git("add", LOG)
+        self.assertEqual(self.p.script("bitacora.py", "--plan", self.PLAN, "closed", "--staged")[0], 0)
+
+    def test_staged_reads_the_index_not_the_work_tree(self):
+        self.p.branch("feat-a")
+        self.plan("- [ ] **INS-3** the thing\n- [ ] **INS-4** other\n")
+        self.p.write(self.PLAN, "- [x] **INS-3** the thing\n- [ ] **INS-4** other\n")
+        self.p.git("add", self.PLAN)
+        self.p.write(self.PLAN, "- [x] **INS-3** the thing\n- [x] **INS-4** other\n")  # not staged
+        self.p.write(LOG, log_text().replace("1. nothing yet", "1. ~~INS-3~~ done"))  # not staged either
+        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", "--staged")
+        self.assertEqual(code, 1, out)
+        self.assertIn("INS-3", out)
+        self.assertNotIn("INS-4", out)
+
+    def test_staged_takes_no_range(self):
+        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", "--staged", "HEAD", "HEAD")
+        self.assertEqual(code, 2, out)
+        self.assertIn("--staged alone", out)
+        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", "HEAD")
+        self.assertEqual(code, 2, out)
+        self.assertIn("takes BASE SHA", out)
+
     def test_closed_on_the_configured_protected_branch_needs_no_done_entry(self):
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()

@@ -76,6 +76,7 @@ an hour or with a dead pid; it can be deleted by hand.
 | `cannot read '<key>' from .claude/gw.json` | Invalid config | `python3 .claude/gw/scripts/config.py validate` |
 | `the workflow scripts are missing` | `.claude/gw/scripts/` is missing | `/gw-update` |
 | `prepush-ramas.sh refused the push` | With `logRows`: another branch's log row, too long, or tasks closed but not moved to "Done" | What it prints; for a shared row: `BITACORA_COMPARTIDA=1 git push` |
+| `bitacora: <ID> is closed in the plan` (in `pre-commit`) | With `logRows` and `plan`: the commit closes a task that is not in "Done" | Strike it in the log's "Done", `git add` the log and commit again |
 | `the related tests failed` | The `relatedTests` fail | Fix them or adjust the key |
 | `pre-push` does not run | `core.hooksPath` unset or another manager's; no execute bit (Windows) | `git config core.hooksPath .githooks`; `git update-index --chmod=+x .githooks/pre-push` |
 

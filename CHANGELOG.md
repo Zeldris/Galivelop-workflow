@@ -48,6 +48,12 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   200 caracteres), y cuenta las compactaciones también desde el inicio de la tarea: desde la fecha del commit base con
   la rama protegida (`origin/<protectedBranch>` o la local), no solo las de toda la sesión (INS P5). En la rama
   protegida, o sin ella, queda la cuenta de la sesión.
+- Con `logRows` y `plan`, el `pre-commit` comprueba que cada tarea que el commit cierra en el plan consta en «Hecho»
+  de la bitácora preparada (INS P6): antes se veía en el `pre-push`, con los commits ya apilados y arreglo con
+  `--amend`. `bitacora.py closed --staged` compara `HEAD` con el índice; pasa al momento si el commit no prepara un
+  archivo del plan, y se salta al cerrar un merge, un cherry-pick o un rebase (el `pre-push` lo vuelve a mirar sobre
+  todo el rango). Con un `gw.json` ilegible avisa y deja pasar (el commit puede ser el que lo arregla; el `pre-push`
+  falla cerrado); si falta `bitacora.py` o `config.py`, el `pre-commit` falla cerrado.
 
 ### EN
 
@@ -81,6 +87,12 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   and also counts the compactions since the task started: since the date of the merge base with the protected branch
   (`origin/<protectedBranch>` or the local one), not only the whole session's (INS P5). On the protected branch, or
   without it, the session count stays.
+- With `logRows` and `plan`, `pre-commit` checks that each task the commit closes in the plan is in the staged log's
+  "Done" (INS P6): before, `pre-push` caught it, with the commits already stacked and an `--amend` to fix it.
+  `bitacora.py closed --staged` compares `HEAD` with the index; it passes at once when the commit stages no plan file,
+  and is skipped while closing a merge, cherry-pick or rebase (`pre-push` checks the whole range again). With an
+  unreadable `gw.json` it warns and lets the commit through (it may be the one that fixes it; `pre-push` fails
+  closed); without `bitacora.py` or `config.py`, `pre-commit` fails closed.
 
 ## [0.4.1] - 2026-10-26
 
