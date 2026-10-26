@@ -13,7 +13,7 @@ las retros de INS-43 (`ins43`) y de los parches que el proyecto aplicó a su cop
 - **Why it is general:** reproducido en una instalación de prueba; falla en todo proyecto que corra los tests de sus
   skills.
 - **Version bump:** patch (corrección)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-26)
 
 ## P2. `rojo-sin-arreglo.sh` con el test en el mismo archivo que el arreglo
 
@@ -24,7 +24,7 @@ las retros de INS-43 (`ins43`) y de los parches que el proyecto aplicó a su cop
 - **Why it is general:** reproducido en un repo de prueba: el mensaje actual es falso y empuja a dar por malo un test
   bueno. Ya salió como nota en `2026-10-23-world-maker-fantasy.md`.
 - **Version bump:** patch (corrección)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-26)
 
 ## P3. `revision-antes-de-main.sh` con check-runs en rojo por pago o tope de gasto
 
@@ -36,7 +36,7 @@ las retros de INS-43 (`ins43`) y de los parches que el proyecto aplicó a su cop
 - **Why it is general:** cualquier proyecto sin cuota de Actions se queda sin forma de crear el PR; la regla ya dice
   que un CI que no arranca cuenta como rojo y se sustituye con confirmación, pero el gancho no lo reconoce.
 - **Version bump:** patch (corrección); el `ci-local`, minor → 1.0.0
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-26)
 
 ## P4. `opt-tokens` y `retro` se contradicen sobre aplicar en la copia del flujo
 
@@ -46,7 +46,7 @@ las retros de INS-43 (`ins43`) y de los parches que el proyecto aplicó a su cop
   del flujo se manda al flujo (como en `retro`), no se parchea en el proyecto.
 - **Why it is general:** dos skills del flujo dicen lo contrario; el proyecto parcheó su copia por seguir `opt-tokens`.
 - **Version bump:** patch (corrección de texto)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-26)
 
 ## P5. Compactaciones contadas desde el inicio de la tarea — para la 1.0.0
 
@@ -54,14 +54,14 @@ las retros de INS-43 (`ins43`) y de los parches que el proyecto aplicó a su cop
 - **What changes:** `recuperar.py:107` `count_compactions` cuenta toda la sesión; el parche usa el `merge-base` contra
   la rama protegida como inicio de la tarea. Unas 25 líneas.
 - **Version bump:** minor → **para la 1.0.0** (evolutivo)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-26)
 
 ## P6. El `pre-commit` comprueba las tareas cerradas frente a «Hecho» — para la 1.0.0
 
 - **Source:** retro de INS-43 (script)
 - **What changes:** hoy solo lo hace `prepush-ramas.sh:75`, con commits ya apilados; adelantarlo al commit. 15-25 líneas.
 - **Version bump:** minor → **para la 1.0.0** (evolutivo)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-26)
 
 ## P7. Textos de skills — para la 1.0.0
 
@@ -73,7 +73,7 @@ las retros de INS-43 (`ins43`) y de los parches que el proyecto aplicó a su cop
   - revisión: los hallazgos van a un archivo, no solo a la conversación.
 - **Why it is general:** cuatro olvidos que se repitieron en el proyecto; ninguno es un fallo del flujo actual.
 - **Version bump:** patch cada una, pero son novedades → **para la 1.0.0**
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-26)
 
 ## Ya está aquí
 

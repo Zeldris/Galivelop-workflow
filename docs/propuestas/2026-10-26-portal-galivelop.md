@@ -11,7 +11,7 @@ De `db3f722b` a `b8470762` (`scripts/recoger.py`, 29 commits; `main` del proyect
   En la nube, con la compactación en el entorno, no es un fallo (`AGENTS.md` ya lo dice). Unas 5-10 líneas y un test.
 - **Why it is general:** reproducido: toda sesión en la nube lo ve, y un aviso que siempre sale enseña a no leerlos.
 - **Version bump:** patch (corrección)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-26)
 
 ## P2. Avisos y reglas nuevas — para la 1.0.0
 
@@ -21,7 +21,7 @@ De `db3f722b` a `b8470762` (`scripts/recoger.py`, 29 commits; `main` del proyect
   - los runbooks de tareas programadas se revisan como código;
   - en `REVIEW.md` y en el encargo de revisión, marcar los datos que caducan (versiones, precios, cuotas).
 - **Version bump:** patch cada una, pero son novedades → **para la 1.0.0**
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-26)
 
 ## P3. `gw-media-content` deja un `web.md` con el bloque del muro — para la 1.0.0
 
@@ -30,7 +30,7 @@ De `db3f722b` a `b8470762` (`scripts/recoger.py`, 29 commits; `main` del proyect
   {`titulo`, `cuerpo[]`, `imagenes[]`}, si el proyecto declara un canal web; unas 30-60 líneas. El contrato es del
   portal y usa `gl`, que no está en los idiomas habituales del flujo: hay que hacerlo genérico.
 - **Version bump:** minor → **para la 1.0.0** (evolutivo)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-26)
 
 ## Ya está aquí
 

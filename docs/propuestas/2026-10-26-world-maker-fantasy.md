@@ -16,7 +16,7 @@ la rama `version/1.0.0`.
   config y la bitácora de la copia principal. Rompe la regla de §4.3 («raíz desde la ruta del script o
   `git rev-parse --show-toplevel`, nunca desde `$CLAUDE_PROJECT_DIR`»).
 - **Version bump:** patch (corrección)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-26)
 
 ## P2. Ids de tarea que chocan entre ramas paralelas — para la 1.0.0
 
@@ -26,7 +26,7 @@ la rama `version/1.0.0`.
 - **Why it is general:** dos sesiones en paralelo cogieron el mismo número siguiente; cualquier proyecto con ramas por
   sesión lo puede repetir.
 - **Version bump:** minor → **para la 1.0.0** (evolutivo)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-26)
 
 ## P3. `recuperar.py --estado` enseña los otros worktrees — para la 1.0.0
 
@@ -35,7 +35,7 @@ la rama `version/1.0.0`.
   fila de la bitácora; unas 15-20 líneas, test y CHANGELOG.
 - **Why it is general:** tras una compactación, la sesión no sabe que tiene subagentes trabajando en worktrees.
 - **Version bump:** minor → **para la 1.0.0** (evolutivo)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-26)
 
 ## Ya está aquí
 

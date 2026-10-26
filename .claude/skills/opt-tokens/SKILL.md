@@ -75,7 +75,10 @@ retries and redone work.
    counterweight). Cheapest to apply and biggest saving first. Present them to the user; **the step ends there**:
    the user decides.
 5. **Apply what is approved**, on the working branch. Record the new tool or rule in `.claude/gw/opt-tokens.md`
-   (create it if missing) so the next pass does not propose it again.
+   (create it if missing) so the next pass does not propose it again. A change to a file copied from the workflow
+   (`.claude/gw/scripts/`, `.claude/skills/`, the hooks) is not patched in the project: it goes to the workflow, as
+   `retro` says (under `## For Galivelop-workflow` in the retro file, or as an issue), because the next update
+   overwrites local edits.
 
 ## Reference
 
