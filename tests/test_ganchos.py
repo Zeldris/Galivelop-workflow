@@ -1103,15 +1103,74 @@ class CheckCache(Base):
 
     def test_the_hook_still_sets_up_the_worktree_for_the_related_tests_when_it_skips(self):
         # tests-relacionados.sh gets the folder the pushed commit is checked out in, also when the check is skipped.
-        self.doc_change()
-        shutil.copy2(ROOT / "scripts" / "tests-relacionados.sh", self.p.work / ".claude" / "gw" / "scripts" / "tests-relacionados.sh")
-        self.p.commit("related tests runner")
+        p = self.p
+        where = self.tmp / "related-pwd.txt"
+        shutil.copy2(ROOT / "scripts" / "tests-relacionados.sh", p.work / ".claude" / "gw" / "scripts" / "tests-relacionados.sh")
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["relatedTests"] = {"fast": [f'pwd > "{where}"'], "slow": []}
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.commit("related tests runner that says where it runs")
         self.assertEqual(self.push("origin", "feature")[0], 0)
-        self.p.write("dirty.txt", "makes the work tree dirty: the hook uses a temporary worktree\n")
+        self.assertEqual(where.read_text().strip(), str(p.work))  # clean HEAD: the project itself
+        where.unlink()
+        p.write("dirty.txt", "makes the work tree dirty: the hook uses a temporary worktree\n")
         code, out = self.push("origin", "HEAD:refs/heads/other")
         self.assertEqual(code, 0, out)
         self.assertIn(self.SKIP, out)
-        self.assertNotIn("cannot", out)
+        self.assertIn("related tests (fast)", out)
+        ran_in = where.read_text().strip()
+        self.assertRegex(ran_in, re.escape(str(self.tmp)) + r"/gw-pre-push-wt-\d+-\d+/wt\.\w+\.d$")
+
+    def test_a_check_that_dirties_the_project_it_runs_in_is_not_recorded(self):
+        # With HEAD clean the check runs in the project itself; a file it writes there is not in the pushed tree.
+        p = self.p
+        self.script(f'echo run >> "{self.runs}"; echo report > report.txt')
+        p.commit("check leaves a report behind")
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count(), self.lines()), (0, 1, []), out)
+        self.assertIn("pre-push: the check left changes in the work tree, so it is not recorded and the next push "
+                      "runs it again; see them with: git status", out)
+        (p.work / "report.txt").unlink()
+        code, out = self.push("origin", "HEAD:refs/heads/other")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        self.assertNotIn(self.SKIP, out)
+
+    def test_a_push_protected_only_by_the_remote_tips_config_does_not_read_the_cache(self):
+        p = self.p
+        self.doc_change()
+        pushed = p.sha()
+        self.assertEqual(self.push("origin", "feature")[0], 0)
+        before = self.lines()
+        self.assertEqual(len(before), 1)
+        # The remote's release branch says it is the protected one; the pushed commit and the work tree say main.
+        p.git("checkout", "-q", "-b", "release", p.base)
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["protectedBranch"] = "release"
+        p.write(".claude/gw.json", json.dumps(cfg)); p.commit("release protects itself")
+        p.git("push", "-q", "--no-verify", "origin", "release")
+        p.git("checkout", "-q", "feature")
+        code, out = self.push("-f", "origin", f"{pushed}:refs/heads/release")
+        self.assertEqual(self.count(), 2, out)
+        self.assertNotIn(self.SKIP, out)
+        self.assertIn("check 'bash check.sh'", out)
+        self.assertIn("no review mark", out)  # judged as the protected branch
+        self.assertEqual(self.lines(), before)
+
+    def test_a_push_protected_only_by_the_work_trees_config_does_not_read_the_cache(self):
+        p = self.p
+        self.doc_change()
+        self.assertEqual(self.push("origin", "feature")[0], 0)
+        before = self.lines()
+        self.assertEqual(len(before), 1)
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["protectedBranch"] = "release"
+        p.write(".claude/gw.json", json.dumps(cfg))  # not committed: only the work tree says it
+        code, out = self.push("origin", "HEAD:refs/heads/release")
+        self.assertEqual(self.count(), 2, out)
+        self.assertNotIn(self.SKIP, out)
+        self.assertIn("check 'bash check.sh'", out)
+        self.assertIn("no review mark", out)  # judged as the protected branch
+        self.assertEqual(self.lines(), before)
 
 
 class CheckRunner(Base):
@@ -1172,6 +1231,30 @@ class CheckRunner(Base):
         self.assertIn("not recorded", out)
         self.assertNotIn("will skip the check", out)
         self.assertFalse(self.cache.exists())
+
+    def test_a_check_that_creates_an_untracked_file_is_not_recorded(self):
+        p = self.p
+        p.write("check.sh", f'echo run >> "{self.runs}"; echo out > report.txt\n')
+        p.commit("check leaves a report behind")
+        code, out = self.run_check()
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.assertIn("the work tree changed during the run", out)
+        self.assertNotIn("will skip the check", out)
+        self.assertFalse(self.cache.exists())
+
+    def test_assume_unchanged_or_skip_worktree_entries_run_the_check_but_record_nothing(self):
+        p = self.p
+        for n, flag in enumerate(("--assume-unchanged", "--skip-worktree"), 1):
+            p.git("update-index", flag, "docs/notes.md")
+            p.write("docs/notes.md", f"edit {n} git add -A would not see\n")
+            code, out = self.run_check()
+            self.assertEqual((code, self.count()), (0, n), out)
+            self.assertIn("'docs/notes.md' is assume-unchanged or skip-worktree", out)
+            self.assertIn("git update-index --no-assume-unchanged --no-skip-worktree -- 'docs/notes.md'", out)
+            self.assertIn("not recorded for the pre-push: the cache is unavailable", out)
+            self.assertFalse(self.cache.exists())
+            p.git("update-index", "--no-" + flag[2:], "docs/notes.md")
+            p.git("checkout", "--", "docs/notes.md")
 
     def test_a_failing_check_stops_at_the_failure_names_it_and_records_nothing(self):
         p = self.p
@@ -1275,6 +1358,54 @@ class CheckVerde(Base):
         self.p.git("add", "-A", cwd=solo)
         self.assertEqual(out.strip(), self.p.git("write-tree", cwd=solo).stdout.strip())
 
+    def test_worktree_tree_sees_a_file_edited_in_the_same_second_it_was_staged(self):
+        # Racy git: an entry as new as the index is re-read from disk. A copy of the index with a newer mtime would
+        # trust the entry's size and mtime and stage the old content. checkStat=minimal leaves only size and mtime,
+        # as when the edit happens in the same second (same ctime) on a real machine.
+        p = self.p
+        p.git("config", "core.checkStat", "minimal")
+        f = p.work / "docs" / "racy.md"
+        f.write_text("bbbb\n")
+        p.git("add", "docs/racy.md")
+        st = f.stat()
+        f.write_text("cccc\n")  # same size
+        os.utime(f, ns=(st.st_atime_ns, st.st_mtime_ns))
+        index = p.work / ".git" / "index"
+        os.utime(index, ns=(st.st_atime_ns, st.st_mtime_ns))  # the index written in that same instant
+        time.sleep(1.1)  # the temp copy, if it got a new mtime, would be clearly newer than the entry
+        code, out = self.helper("worktree-tree")
+        self.assertEqual(code, 0, out)
+        blob = p.git("rev-parse", f"{out.strip()}:docs/racy.md").stdout.strip()
+        self.assertEqual(p.git("cat-file", "-p", blob).stdout, "cccc\n")
+
+    def test_worktree_tree_refuses_entries_git_does_not_compare_with_the_disk(self):
+        p = self.p
+        for flag, unflag in (("--assume-unchanged", "--no-assume-unchanged"), ("--skip-worktree", "--no-skip-worktree")):
+            p.git("update-index", flag, "docs/notes.md")
+            p.write("docs/notes.md", "edited but hidden from git add\n")
+            code, out = self.helper("worktree-tree")
+            self.assertEqual(code, 1, out)
+            self.assertIn("'docs/notes.md' is assume-unchanged or skip-worktree", out)
+            self.assertTrue(out.rstrip().endswith("git update-index --no-assume-unchanged --no-skip-worktree -- 'docs/notes.md'"), out)
+            self.assertNotRegex(out, r"(?m)^[0-9a-f]{40}$")
+            p.git("update-index", unflag, "docs/notes.md")
+            p.git("checkout", "--", "docs/notes.md")
+        self.assertEqual(self.helper("worktree-tree")[0], 0)
+
+    def test_worktree_tree_refuses_a_submodule_with_changes_inside(self):
+        p = self.p
+        sub = p.work / "lib"
+        p.git("init", "-q", str(sub))
+        (sub / "a.txt").write_text("one\n")
+        p.git("add", "a.txt", cwd=sub); p.git("commit", "-q", "-m", "sub", cwd=sub)
+        p.git("add", "lib"); p.git("commit", "-q", "--no-verify", "-m", "gitlink")
+        self.assertEqual(self.helper("worktree-tree")[0], 0)
+        (sub / "a.txt").write_text("two\n")
+        code, out = self.helper("worktree-tree")
+        self.assertEqual(code, 1, out)
+        self.assertIn("submodule 'lib' has new commits or changes inside", out)
+        self.assertTrue(out.rstrip().endswith("git -C 'lib' status"), out)
+
     def test_worktree_tree_failure_names_the_command_that_reproduces_it(self):
         self.p.git("config", "core.hooksPath", ".githooks")
         broken = self.tmp / "broken"
@@ -1340,6 +1471,37 @@ class CheckVerde(Base):
         self.assertEqual(code, 0, out)
         self.assertIn("is a directory, check not recorded", out)
         self.assertIn("rm -r", out)
+
+    def test_add_interrupted_leaves_no_temp_file(self):
+        k = self.key()
+        self.cache.write_text(f"{int(time.time())} {self.key(wrapper='old')}\n")
+        bin_dir = self.tmp / "slow-bin"
+        bin_dir.mkdir()
+        started = self.tmp / "awk-started"
+        real_awk = shutil.which("awk")
+        (bin_dir / "awk").write_text(f'#!/bin/sh\ntouch "{started}"\nsleep 2\nexec "{real_awk}" "$@"\n')
+        (bin_dir / "awk").chmod(0o755)
+        env = dict(self.p.env, GW_CHECK_CACHE="", PATH=f"{bin_dir}:{os.environ['PATH']}")
+        proc = subprocess.Popen(["bash", self.HELPER, "add", k], cwd=self.p.work, env=env, stdin=subprocess.DEVNULL,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        for _ in range(100):
+            if started.exists():
+                break
+            time.sleep(0.05)
+        self.assertTrue(started.exists(), "add never reached awk")
+        self.assertEqual(len([e for e in os.listdir(self.cache.parent) if e.startswith("gw-check-verde.")]), 1,
+                         "the temp file exists while add runs")
+        proc.send_signal(signal.SIGTERM)
+        proc.communicate(timeout=30)
+        self.assertEqual(proc.returncode, 143)
+        self.assertEqual([e for e in os.listdir(self.cache.parent) if e.startswith("gw-check-verde.")], [], "temp left behind")
+
+    def test_every_warning_of_add_ends_with_the_command_that_fixes_it(self):
+        text = (ROOT / "scripts" / "check-verde.sh").read_text()
+        warnings = re.findall(r'echo "(check-verde: warning: [^"]*)"', text)
+        self.assertGreaterEqual(len(warnings), 5)
+        for w in warnings:
+            self.assertRegex(w, r"; [^;]*: \S.*$", w)
 
     def test_add_with_a_bad_key_and_unknown_subcommands_say_how_to_call_it(self):
         code, out = self.helper("add", "nope")

@@ -26,7 +26,8 @@ wrapper="$(python3 "$config" --root "$root" get checkWrapper)" || fail "cannot r
 key=""
 tree_before=""
 if [ "${GW_CHECK_CACHE:-}" != "0" ] && [ -f "$helper" ]; then  # any failure of the cache only means no recording
-  tree_before="$(bash "$helper" worktree-tree 2>/dev/null)" || tree_before=""
+  # Its reason for not giving a tree (a skip-worktree entry, a modified submodule) goes to stderr: the check still runs.
+  tree_before="$(bash "$helper" worktree-tree)" || tree_before=""
   if [ -n "$tree_before" ]; then
     key="$(printf '%s\n' "$checks" | bash "$helper" key "$tree_before" "$wrapper" 2>/dev/null)" || key=""
   fi
@@ -42,7 +43,11 @@ while IFS= read -r cmd; do
 done <<<"$checks"
 
 if [ -z "$key" ]; then
-  echo "check: all green (not recorded for the pre-push: the cache is off or unavailable)"
+  if [ "${GW_CHECK_CACHE:-}" = "0" ]; then
+    echo "check: all green (not recorded for the pre-push: the cache is off; to record it: bash $0)"
+  else
+    echo "check: all green (not recorded for the pre-push: the cache is unavailable, see above; after fixing it: bash $0)"
+  fi
   exit 0
 fi
 tree_after="$(bash "$helper" worktree-tree 2>/dev/null)" || tree_after=""

@@ -192,6 +192,12 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     fi
     rm -f "$log"
   done <<<"$checks"
+  # Run in the project itself (HEAD clean), the check must leave it clean: if it wrote a tracked or untracked file,
+  # what it saw is not the pushed tree, so it is not recorded.
+  if [ -n "$key" ] && [ "$dir" = "$root" ] && [ -n "$(git status --porcelain)" ]; then
+    echo "pre-push: the check left changes in the work tree, so it is not recorded and the next push runs it again; see them with: git status"
+    key=""
+  fi
   [ -z "$key" ] || bash "$scripts/check-verde.sh" add "$key" < /dev/null
 }
 
