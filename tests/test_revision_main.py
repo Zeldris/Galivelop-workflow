@@ -35,6 +35,8 @@ esac
 [ -z "${GH_CALL_LOG:-}" ] || echo "$2" >> "$GH_CALL_LOG"
 if [ -n "${GH_FAIL:-}" ]; then echo "gh: HTTP 502: Bad Gateway (fake)" >&2; exit 1; fi
 case "$2" in
+  */annotations) id="${2%/annotations}"; id="${id##*/}"
+    eval "printf '%s' \\"\\${GH_NOTES_$id:-[]}\\"" ;;
   *check-runs*) printf '%s' "$GH_RUNS" ;;
   */status*) printf '%s' "$GH_STATUS" ;;
   *pulls*) printf '%s' "$GH_PR" ;;
@@ -263,6 +265,61 @@ class Hook(unittest.TestCase):
         self.mark(); self.push()
         self.assertBlocked(self.merge(pr=self.pr(), runs={"total_count": 0, "check_runs": []}), "no CI",
                            "checked only locally", "with their confirmation")
+
+    BILLING = "The job was not started because recent account payments have failed or your spending limit needs to be increased."
+
+    def test_merge_check_runs_not_started_for_billing_say_so(self):
+        self.mark(); self.push()
+        runs = {"total_count": 2, "check_runs": [
+            {"id": 11, "name": "linux", "status": "completed", "conclusion": "failure"},
+            {"id": 12, "name": "macos", "status": "completed", "conclusion": "failure"}]}
+        notes = json.dumps([{"message": self.BILLING}])
+        code, out = self.merge(pr=self.pr(), runs=runs, env={"GH_NOTES_11": notes, "GH_NOTES_12": notes})
+        self.assertBlocked((code, out), "GitHub did not start the CI", "billing or spending limit",
+                           "checked only locally", "with their confirmation")
+        self.assertNotIn("is not green", out)
+
+    def test_merge_billing_in_output_summary_without_extra_call(self):
+        self.mark(); self.push()
+        runs = {"total_count": 1, "check_runs": [{"id": 11, "name": "linux", "status": "completed",
+                                                  "conclusion": "failure", "output": {"summary": self.BILLING}}]}
+        self.assertBlocked(self.merge(pr=self.pr(), runs=runs, env={"GH_NOTES_11": "not json"}),
+                           "GitHub did not start the CI", "checked only locally")
+
+    def test_merge_billing_plus_real_failure_keeps_not_green(self):
+        self.mark(); self.push()
+        runs = {"total_count": 2, "check_runs": [
+            {"id": 11, "name": "linux", "status": "completed", "conclusion": "failure"},
+            {"id": 12, "name": "macos", "status": "completed", "conclusion": "failure"}]}
+        env = {"GH_NOTES_11": json.dumps([{"message": self.BILLING}]),  # linux: not started; macos: a real failure
+               "GH_NOTES_12": json.dumps([{"message": "Process completed with exit code 1."}])}
+        code, out = self.merge(pr=self.pr(), runs=runs, env=env)
+        self.assertBlocked((code, out), "is not green", "linux: failure", "macos: failure")
+        self.assertNotIn("did not start", out)
+
+    def test_merge_billing_plus_failed_status_keeps_not_green(self):
+        self.mark(); self.push()
+        runs = {"total_count": 1, "check_runs": [{"id": 11, "name": "linux", "status": "completed",
+                                                  "conclusion": "failure"}]}
+        code, out = self.merge(pr=self.pr(), runs=runs, env={"GH_NOTES_11": json.dumps([{"message": self.BILLING}])},
+                               statuses={"statuses": [{"context": "vercel", "state": "failure"}]})
+        self.assertBlocked((code, out), "is not green", "vercel: failure")
+        self.assertNotIn("did not start", out)
+
+    def test_merge_failure_without_billing_note_keeps_not_green(self):
+        self.mark(); self.push()
+        runs = {"total_count": 1, "check_runs": [{"id": 11, "name": "linux", "status": "completed",
+                                                  "conclusion": "failure"}]}
+        code, out = self.merge(pr=self.pr(), runs=runs, env={"GH_NOTES_11": json.dumps([{"message": "Process exited 1"}])})
+        self.assertBlocked((code, out), "is not green", "linux: failure")
+        self.assertNotIn("did not start", out)
+
+    def test_merge_annotations_call_failing_keeps_not_green(self):
+        self.mark(); self.push()
+        runs = {"total_count": 1, "check_runs": [{"id": 11, "name": "linux", "status": "completed",
+                                                  "conclusion": "failure"}]}
+        self.assertBlocked(self.merge(pr=self.pr(), runs=runs, env={"GH_NOTES_11": "not json"}), "is not green",
+                           "linux: failure")
 
     def test_merge_to_other_base_allowed(self):
         self.assertAllowed(self.merge(pr=self.pr(base="develop")))
