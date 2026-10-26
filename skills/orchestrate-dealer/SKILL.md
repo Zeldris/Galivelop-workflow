@@ -57,10 +57,10 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    AGENTS.md. Follow the project's commit and push rules: commit and push each stable point, log update in the
    same commit. If the push is rejected, `git fetch` and `git merge` (never rebase), then push again.
    At ~25 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
-   To wait for something long, run it with `run_in_background` and wait for its notification; never a foreground
-   `sleep` or polling. Load `Monitor` with ToolSearch before using it.
-   Push with its output to a file (`git push … > push.log 2>&1`); if it fails, read the pre-push reason in that file
-   before retrying.
+   To wait for something long (a push with its check), run it with `run_in_background` and watch it with `Monitor`
+   (load it with ToolSearch first) until it exits; keep your turn open while it runs, and never a foreground `sleep`.
+   Push with its output to a file outside the tree (`git push … > "$(git rev-parse --git-dir)/push.log" 2>&1`); if it
+   fails, read the pre-push reason in that file before retrying.
    Task: <what, in one or two sentences>.
    Files: <paths you touch>. Create: <exact names of what is new>. A path not listed here: stop and return it
    under QUESTIONS.
