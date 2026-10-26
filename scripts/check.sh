@@ -9,7 +9,7 @@
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE  # git exports GIT_DIR to hooks, also in a linked worktree
-root="$(git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
+root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
   echo "check: $here is not inside a git repository; reinstall the workflow: /gw-update" >&2; exit 1; }
 cd "$root" || exit 1
 if [ -d "$root/.claude/gw/scripts" ]; then scripts="$root/.claude/gw/scripts"; else scripts="$root/scripts"; fi

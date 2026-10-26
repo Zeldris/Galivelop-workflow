@@ -306,7 +306,7 @@ class LinkedWorktree(unittest.TestCase):
         # The `root=` line of each script that finds its root from its own folder, run as is inside the worktree.
         here = self.wt / ".claude" / "gw" / "scripts"
         names = ("es-codigo.sh", "fusionar.sh", "prepush-ramas.sh", "revisado.sh", "tests-relacionados.sh",
-                 "rojo-sin-arreglo.sh")
+                 "rojo-sin-arreglo.sh", "check-verde.sh", "check.sh")
         for name in names:
             with self.subTest(script=name):
                 lines = [ln for ln in (ROOT / "scripts" / name).read_text().splitlines() if ln.startswith('root="$(')]
