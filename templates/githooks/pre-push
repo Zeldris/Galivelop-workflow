@@ -17,6 +17,10 @@
 #     gets the `worktreeLinks` paths symlinked from the main checkout, and is removed on every exit (also on
 #     Ctrl-C or kill; one left by a hard kill is removed by a later push once it is over 24 h old and its pid is
 #     gone). Each command logs to its own mktemp file, kept only when it fails.
+#   - Skips that `check` when the same tree already passed it with the same commands and wrapper less than 24 h ago
+#     (a push that is not to the protected branch only; scripts/check-verde.sh keeps the record in the git common dir,
+#     scripts/check.sh writes it, and a green push records it). Protected pushes never read nor write it; if the helper
+#     is missing or fails the check just runs. GW_CHECK_CACHE=0 git push runs it anyway.
 #   - To the protected branch, in both pushToProtected modes (with `pr` the PR hook also guards PRs): code needs the
 #     review mark (scripts/revisado.sh) to name an ancestor with no code after it. The branch is protected when the
 #     pushed commit, the remote tip or the working tree names it so; what is content and where the mark lives come
@@ -164,7 +168,18 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     dir="$worktree"
   fi
   checkdir="$dir"
-  local cmd n=0 log
+  local cmd n=0 log key="" tree age
+  if [ "$is_protected" != "true" ] && [ "${GW_CHECK_CACHE:-}" != "0" ] && [ -f "$scripts/check-verde.sh" ]; then
+    # Any failure of the helper just means the check runs, as it always did.
+    tree="$(git rev-parse "$sha^{tree}" 2>/dev/null)" || tree=""
+    if [ -n "$tree" ]; then
+      key="$(printf '%s\n' "$checks" | bash "$scripts/check-verde.sh" key "$tree" "$wrapper" 2>/dev/null)" || key=""
+    fi
+    if [ -n "$key" ] && age="$(bash "$scripts/check-verde.sh" has "$key" 2>/dev/null < /dev/null)"; then
+      echo "pre-push: check already green on this tree (${tree:0:7}) with the same commands $age min ago; skipping it (to run it anyway: GW_CHECK_CACHE=0 git push)"
+      return 0
+    fi
+  fi
   while IFS= read -r cmd; do
     [ -n "$cmd" ] || continue
     n=$((n + 1))
@@ -177,6 +192,7 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     fi
     rm -f "$log"
   done <<<"$checks"
+  [ -z "$key" ] || bash "$scripts/check-verde.sh" add "$key" < /dev/null
 }
 
 scan_leftovers() {  # scan_leftovers <sha> <files> <what>: conflict markers and *.rej / *.orig files among <files> in <sha>
