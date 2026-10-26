@@ -81,8 +81,9 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   `cuerpo` y `imagenes` con `archivo` y `alt` por idioma). Los idiomas son las claves de `texto`: todos los de
   `Idiomas:` y los que pida la web (p. ej. `gl`), y todos los textos del bloque llevan esos mismos;
   `comprobar.py --idiomas-web es,gl,en` (clave `Web languages` de la nota) los fija exactos. Cada imagen del muro es
-  un render `.webp` cuya fila de `## Imágenes` lista `web`, y al revés. Documentado en `nota.md`, las dos `SKILL.md`
-  y `patrones.md`. Compatibilidad: `web` ya no es un canal extra (`--limite web=N` y `--formato-propio web` son error
+  un render `.webp` cuya fila de `## Imágenes` lista `web`, y al revés; la plantilla de la pieza trae `web.md` y
+  su `ficha.md` lista `web` (se borra si no se usa, como los demás canales). Documentado en `nota.md`, las dos
+  `SKILL.md` y `patrones.md`. Compatibilidad: `web` ya no es un canal extra (`--limite web=N` y `--formato-propio web` son error
   de uso), y un `web.md` anterior sin el bloque ni `estado` hay que rehacerlo con la plantilla.
 
 ### EN
@@ -150,8 +151,9 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   `cuerpo` and `imagenes` with `archivo` and `alt` per language). The languages are the keys of `texto`: every one of
   `Idiomas:` plus those the site needs (e.g. `gl`), and every text in the block carries those same ones;
   `comprobar.py --idiomas-web es,gl,en` (note key `Web languages`) pins them exactly. Each wall image is a `.webp`
-  render whose `## Imágenes` row lists `web`, and the other way round. Documented in `nota.md`, both `SKILL.md` files
-  and `patterns.md`. Compatibility: `web` is no longer an extra channel (`--limite web=N` and `--formato-propio web`
+  render whose `## Imágenes` row lists `web`, and the other way round; the piece template brings `web.md` and its
+  `ficha.md` lists `web` (deleted when unused, like the other channels). Documented in `nota.md`, both `SKILL.md`
+  files and `patterns.md`. Compatibility: `web` is no longer an extra channel (`--limite web=N` and `--formato-propio web`
   are usage errors), and an older `web.md` without the block or `estado` must be redone from the template.
 
 ## [0.4.1] - 2026-10-26
