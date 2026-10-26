@@ -261,7 +261,9 @@ entra el código ya hoy.
   («also runs '…'») de una entrada de `SessionStart`, `PreToolUse` o `Stop` que ejecuta un script del flujo desde fuera de
   `.claude/gw/scripts/`; `doctor.py` también. Bórrala a mano, o correrá dos veces.
 - **`recuperar.py` por línea de órdenes**, para recuperar lo que una compactación o un `/clear` se llevó:
-  `python3 .claude/gw/scripts/recuperar.py --estado` (la bitácora, `git status` y los últimos commits) y
+  `python3 .claude/gw/scripts/recuperar.py --estado` (la bitácora, `git status`, los últimos commits, los otros
+  worktrees con su rama y su fila, y las compactaciones de la sesión y desde el inicio de la tarea, que es el commit
+  base con `protectedBranch`) y
   `--buscar TEXTO` (fragmentos de la sesión que casan, como datos tras una línea de cabecera y sin caracteres de
   control; `--max N`, `--ancho N`, `--sesion RUTA`). `--estado` se corta en 9.500 caracteres, por línea entera, y lo dice.
 - **`install` a mano.** `session-start.sh` solo lo corre en la nube y cuando cambian las órdenes de `install`/`setup`

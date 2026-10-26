@@ -8,11 +8,11 @@ CHANGELOG de la `1.0.0`.
 
 - [ ] **WMF P2:** detectar un id de tarea dado de alta a la vez en dos ramas al traer `main` (`bitacora.py` o un
   script nuevo). [`2026-10-26-world-maker-fantasy.md`](../propuestas/2026-10-26-world-maker-fantasy.md)
-- [ ] **WMF P3:** `recuperar.py --estado` enseña los otros worktrees con su rama y su fila de la bitácora.
+- [x] **WMF P3** (2026-10-26): `recuperar.py --estado` enseña los otros worktrees con su rama y su fila de la bitácora.
   [`2026-10-26-world-maker-fantasy.md`](../propuestas/2026-10-26-world-maker-fantasy.md)
 - [ ] **INS P3 (segunda parte):** un `ci-local` genérico que lee `docs/registros/ci-local.md` (la corrección mínima
   ya está en la `0.4.1`). [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
-- [ ] **INS P5:** `recuperar.py` cuenta las compactaciones desde el inicio de la tarea (`merge-base` con la rama
+- [x] **INS P5** (2026-10-26): `recuperar.py` cuenta las compactaciones desde el inicio de la tarea (`merge-base` con la rama
   protegida), no de toda la sesión. [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
 - [ ] **INS P6:** el `pre-commit` comprueba las tareas cerradas frente a «Hecho» (hoy solo `prepush-ramas.sh`).
   [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)

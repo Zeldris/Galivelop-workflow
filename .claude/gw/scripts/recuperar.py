@@ -4,8 +4,10 @@
 
   recuperar.py --estado         what the SessionStart hook (clear|compact) puts back into the context: the log's
                                 state (with logRows, the current branch's row; else the log's first section, ~25
-                                lines), `git status --short` (15 lines at most), the last 5 commits, the compactions
-                                in this session (WMF P10: compare them with the task's budget) and how to search the
+                                lines), `git status --short` (15 lines at most), the last 5 commits, the repo's other
+                                worktrees (path, branch and, with logRows, their row; 10 at most), the compactions in
+                                this session and since the branch last took the protected branch (its merge base: the
+                                task's start; WMF P10: compare them with the task's budget) and how to search the
                                 transcript for a detail. Over ~9,500 characters the log section gives way (its start
                                 stays, with a line saying it was cut); the lines after it always survive.
   recuperar.py --buscar TEXT    the transcript fragments (main conversation: user, Claude, tool calls and results)
@@ -20,8 +22,10 @@ Project root: config.find_root (the script's own repo when it holds .claude/gw.j
 first). Python 3.8+ standard library only.
 """
 import argparse
+import datetime
 import json
 import os
+import pathlib
 import re
 import select
 import subprocess
@@ -35,6 +39,8 @@ import registro_sesion  # noqa: E402
 
 LOG_LINES = 25
 STATUS_LINES = 15
+WORKTREES = 10
+WORKTREE_ROW = 200  # characters of another worktree's log row
 # Claude Code replaces a hook's output over 10,000 characters with a file path and a 2,000-character preview
 # (https://code.claude.com/docs/en/hooks.md), and a log cut that way looks complete. So --estado measures its own
 # output and, over this cap, cuts at a line boundary and says so in a last line that names the log.
@@ -104,10 +110,23 @@ def entries(path):
                 yield entry
 
 
-def count_compactions(path):
-    """Compaction boundaries in the transcript; if the format has none, compaction summaries instead."""
+def moment(stamp):
+    """An ISO-8601 time with `Z` or an offset as an aware datetime; None when it does not parse or has no zone."""
+    try:
+        when = datetime.datetime.fromisoformat(stamp.strip().replace("Z", "+00:00"))
+    except (AttributeError, ValueError):
+        return None
+    return when if when.tzinfo else None
+
+
+def count_compactions(path, since=None):
+    """Compaction boundaries in the transcript; if the format has none, compaction summaries instead. With `since` (an
+    aware datetime), only those from then on; one without a readable time counts (better one too many than none)."""
     boundaries = summaries = 0
     for entry in entries(path):
+        when = moment(entry.get("timestamp")) if since else None
+        if when and when < since:
+            continue
         if entry.get("subtype") == "compact_boundary" or entry.get("type") == "compact_boundary":
             boundaries += 1
         elif entry.get("isCompactSummary"):
@@ -258,6 +277,69 @@ def fit_log(log_lines, room, log):
     return kept + [note]
 
 
+def other_worktrees(root):
+    """(path, branch) of the repo's other worktrees on a branch, from `git worktree list --porcelain`: a subagent
+    working in one (or the session itself, when it was opened in a worktree) is easy to forget after a compaction
+    (WMF P3). Detached, bare and missing ones are left out."""
+    out, path = [], None
+    for line in git(root, "worktree", "list", "--porcelain").splitlines():
+        if line.startswith("worktree "):
+            path = line[len("worktree "):]
+        elif line.startswith("branch refs/heads/") and path and os.path.isdir(path) \
+                and os.path.realpath(path) != os.path.realpath(str(root)):
+            out.append((path, line[len("branch refs/heads/"):]))
+    return out
+
+
+def worktree_lines(root):
+    """Lines about the other worktrees: path and branch, plus the branch's row of that worktree's own log copy when the
+    project keeps one row per branch (logRows); a branch with no row (a subagent's) shows none."""
+    trees = other_worktrees(root)
+    if not trees:
+        return []
+    try:
+        cfg = config.load(root)
+    except config.ConfigError:
+        cfg = {}
+    out = [f"- Other worktrees: {len(trees)}"]
+    for path, branch in trees[:WORKTREES]:
+        out.append(f"  {path} (branch {branch})")
+        if cfg.get("logRows") and cfg.get("log"):
+            try:
+                text = (pathlib.Path(path) / cfg["log"]).read_text(encoding="utf-8", errors="replace")
+            except OSError:
+                continue
+            row = row_for_branch(text, branch)
+            if row:
+                row = CONTROL.sub("", row)
+                out.append("    row: " + (row if len(row) <= WORKTREE_ROW else row[:WORKTREE_ROW - 1] + "…"))
+    if len(trees) > WORKTREES:
+        out.append(f"  … and {len(trees) - WORKTREES} more (git worktree list)")
+    return out
+
+
+def task_start(root, branch):
+    """Where the current task began: the merge base of HEAD with the protected branch (origin's copy, else the local
+    one), which moves each time the branch takes it (AGENTS.md: at the start of each task), and that commit's time.
+    None on the protected branch itself, without it, or when the merge base is HEAD (nothing done since)."""
+    try:
+        protected = config.load(root).get("protectedBranch") or "main"
+    except config.ConfigError:
+        return None
+    if branch == protected:
+        return None
+    for ref in (f"origin/{protected}", protected):
+        base = git(root, "merge-base", "HEAD", ref)
+        if base:
+            break
+    else:
+        return None
+    if base == git(root, "rev-parse", "HEAD"):
+        return None
+    start = moment(git(root, "log", "-1", "--format=%cI", base))
+    return (base[:7], ref, start) if start else None
+
+
 def state(root, transcript, out, logs):
     """Append the --estado lines to `out` (and the log's relative path to `logs`); the caller measures and prints."""
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD") or "?"
@@ -278,6 +360,7 @@ def state(root, transcript, out, logs):
     say("- Last commits:" + ("" if commits else " none"))
     for line in commits:
         say(f"  {line}")
+    tail.extend(worktree_lines(root))
     path, own = registro_sesion.find(root, transcript, warn=False)
     if path and not own and not registro_sesion.cloud_start(os.path.basename(os.path.dirname(path))):
         say(f"- Warning: this transcript is in {os.path.basename(os.path.dirname(path))}, not the repo's folder: "
@@ -288,7 +371,15 @@ def state(root, transcript, out, logs):
             f"{script_command(root)} --sesion <path> --buscar '<text you know>'")
     if path:
         n = count_compactions(path)
-        say(f"- Compactions in this session: {n} (compare with the task's compaction budget in the log)")
+        task = task_start(root, branch)
+        if task:
+            sha, ref, start = task
+            since = start.astimezone(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M")
+            say(f"- Compactions in this session: {n}; since this task started (merge base with {ref}, {sha}, "
+                f"{since} UTC): {count_compactions(path, start)} (compare these with the task's compaction budget in "
+                f"the log)")
+        else:
+            say(f"- Compactions in this session: {n} (compare with the task's compaction budget in the log)")
     else:
         say("- Compactions in this session: unknown (no session transcript found)")
     session = f" --sesion {path}" if path else ""

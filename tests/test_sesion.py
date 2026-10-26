@@ -392,6 +392,82 @@ class Recuperar(Base):
         self.assertIn("Compactions in this session: 2", out)
         self.assertNotIn("outside the repo", out)
 
+    def test_compactions_since_the_task_started_count_from_the_merge_base(self):
+        p = self.p  # INS P5: origin/main is `base`, made now; a task branch starts there
+        p.git("checkout", "-q", "-b", "feature")
+        p.write("x.txt", "x\n")
+        p.commit("task work")
+        p.transcript(p.work, [{"type": "system", "subtype": "compact_boundary", "timestamp": "2000-01-01T00:00:00Z"},
+                              {"type": "system", "subtype": "compact_boundary", "timestamp": "2999-01-01T00:00:00.123Z"},
+                              {"type": "system", "subtype": "compact_boundary"}])  # no time: it counts
+        code, out = p.recuperar("--estado")
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"Compactions in this session: 3; since this task started (merge base with origin/main, "
+                      f"{p.base[:7]}, ", out)
+        self.assertIn(" UTC): 2 (compare these", out)
+        p.git("checkout", "-q", "main")  # on the protected branch there is no task start: the session count only
+        code, out = p.recuperar("--estado")
+        self.assertIn("Compactions in this session: 3 (compare with", out)
+        self.assertNotIn("since this task started", out)
+
+    def test_compactions_without_the_protected_branch_count_the_session_only(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "feature")
+        p.git("update-ref", "-d", "refs/remotes/origin/main")
+        p.git("branch", "-q", "-m", "main", "other")
+        p.transcript(p.work, [{"type": "system", "subtype": "compact_boundary", "timestamp": "2000-01-01T00:00:00Z"}])
+        code, out = p.recuperar("--estado")
+        self.assertEqual(code, 0, out)
+        self.assertIn("Compactions in this session: 1 (compare with", out)
+
+    def test_other_worktrees_show_their_branch_and_row(self):
+        p = self.p  # WMF P3: after a compaction the session sees the subagents working in worktrees
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["logRows"] = True
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| **Task · `main`** | main work |\n")
+        p.commit("log")
+        sub, plain, loose = self.tmp / "wt-sub", self.tmp / "wt-plain", self.tmp / "wt-loose"
+        p.git("worktree", "add", "-q", "-b", "sub", str(sub))
+        p.git("worktree", "add", "-q", "-b", "plain", str(plain))
+        p.git("worktree", "add", "-q", "--detach", str(loose))
+        (sub / "docs" / "log.md").write_text("# Log\n\n| Field | Value |\n|---|---|\n"
+                                             "| **Task · `sub`** | IMG-3 halfway; " + "y" * 300 + " |\n")
+        code, out = p.recuperar("--estado")
+        self.assertEqual(code, 0, out)
+        self.assertIn("- Other worktrees: 2", out)
+        self.assertIn(f"  {sub} (branch sub)", out)
+        self.assertIn("    row: IMG-3 halfway; ", out)
+        row = next(l for l in out.splitlines() if l.startswith("    row: "))
+        self.assertEqual(len(row), len("    row: ") + 200)  # cut to 200 characters
+        self.assertTrue(row.endswith("…"))
+        self.assertIn(f"  {plain} (branch plain)", out)  # its log has no row for `plain`: path and branch only
+        self.assertEqual(out.count("    row: "), 1)
+        self.assertNotIn(str(loose), out)  # detached: left out
+        self.assertNotIn(f"{p.work} (branch main)", out)  # the session's own checkout is not "another" one
+        # the worktree's own copy (the root comes from the script's path): from there, the main checkout is another one
+        code, out = p.run("python3", str(sub / ".claude" / "gw" / "scripts" / "recuperar.py"), "--estado", cwd=sub)
+        self.assertIn(f"  {p.work} (branch main)", out)
+        self.assertIn("    row: main work", out)
+        self.assertIn("- Log (docs/log.md), row for `sub`: IMG-3 halfway", out)
+
+    def test_worktrees_without_log_rows_and_over_the_limit(self):
+        p = self.p
+        for i in range(12):
+            p.git("worktree", "add", "-q", "-b", f"w{i:02d}", str(self.tmp / f"wt{i:02d}"))
+        code, out = p.recuperar("--estado")
+        self.assertEqual(code, 0, out)
+        self.assertIn("- Other worktrees: 12", out)
+        self.assertIn("(branch w09)", out)
+        self.assertNotIn("(branch w10)", out)
+        self.assertIn("  … and 2 more (git worktree list)", out)
+        self.assertNotIn("row:", out)
+
+    def test_no_other_worktree_says_nothing(self):
+        code, out = self.p.recuperar("--estado")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("Other worktrees", out)
+
     def test_hook_transcript_path_wins(self):
         p = self.p
         other = p.transcript(self.tmp / "elsewhere", [{"type": "system", "subtype": "compact_boundary"}])

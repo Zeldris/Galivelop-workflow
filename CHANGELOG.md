@@ -43,6 +43,11 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   `pkill -f`/`pgrep -f` casan con la orden que los lanza, y el runbook de una tarea programada se revisa como código
   aunque case con `content` (también en `patrones.md`). `aplicar` nunca sobrescribe un `REVIEW.md` existente: en los
   proyectos que ya lo tienen, estas reglas se copian a mano.
+- `recuperar.py --estado` (lo que lee el gancho de inicio tras una compactación o un `/clear`) enseña los otros
+  worktrees del repo con su rama y, con `logRows`, su fila de la bitácora (WMF P3; 10 como mucho, la fila cortada a
+  200 caracteres), y cuenta las compactaciones también desde el inicio de la tarea: desde la fecha del commit base con
+  la rama protegida (`origin/<protectedBranch>` o la local), no solo las de toda la sesión (INS P5). En la rama
+  protegida, o sin ella, queda la cuenta de la sesión.
 
 ### EN
 
@@ -71,6 +76,11 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   a file, expiring data with date and source, a warning that `pkill -f`/`pgrep -f` match the command that launches
   them, and a scheduled task's runbook is reviewed as code even if it matches `content` (also in `patterns.md`).
   `aplicar` never overwrites an existing `REVIEW.md`: projects that already have one copy these rules by hand.
+- `recuperar.py --estado` (what the start hook reads after a compaction or a `/clear`) shows the repo's other
+  worktrees with their branch and, with `logRows`, their log row (WMF P3; 10 at most, the row cut at 200 characters),
+  and also counts the compactions since the task started: since the date of the merge base with the protected branch
+  (`origin/<protectedBranch>` or the local one), not only the whole session's (INS P5). On the protected branch, or
+  without it, the session count stays.
 
 ## [0.4.1] - 2026-10-26
 
