@@ -1253,6 +1253,48 @@ class PreCommit(Base):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("literal secret", r.stderr)
 
+    def test_dotted_and_provider_glued_key_names_refused(self):
+        """api.key (dot), openaikey, OPENAI_KEY: names the first rule missed (VeriNews P3)."""
+        p = self.p
+        cases = [
+            ("src/a.py", 'api.' + 'key = "abcd1234efgh"'),
+            ("src/b.py", 'openai.api.' + 'key = "abcd1234efgh"'),
+            ("src/c.py", 'openai' + 'key = "abcd1234efgh"'),
+            ("src/d.py", 'OPENAI' + '_KEY = "abcd1234efgh"'),
+            ("src/e.js", "anthropic" + "-key: 'abcd1234efgh'"),
+            ("app/app.properties", "openai.api." + "key=abcd1234efgh"),
+            ("config/app.yml", "gemini" + "_key: abcd1234efgh"),
+        ]
+        for path, line in cases:
+            with self.subTest(line=line):
+                p.write(path, line + "\n")
+                r = p.commit("leak", ok=False)
+                self.assertNotEqual(r.returncode, 0, line)
+                self.assertIn("these lines assign a literal secret", r.stderr)
+                self.assertIn("  " + line, r.stderr)
+                p.git("reset", "-q")
+                (p.work / path).unlink()
+
+    def test_everyday_key_names_are_not_secrets(self):
+        """A bare *key suffix must stay unmatched: primary_key, sort_key, monkey and friends are ordinary code."""
+        p = self.p
+        p.write("src/models.py", "\n".join([
+            "primary_key = True",
+            'foreign_key = "user_id_fk"',
+            'sort_key = "created_at_desc"',
+            'monkey = "banana-split"',
+            'keyboard = "qwerty-layout"',
+            'cache_key = "user:{id}"',
+            'public_key = "ssh-rsa-example"',
+            'x = {"key": "some-long-value"}',
+            "- key: ${{ runner.os }}-pip",
+            'api.key = os.environ["API_KEY"]',
+            'openai' + '_key = "${OPENAI_API_KEY}"',
+        ]) + "\n")
+        p.write("config/lists.yml", "items:\n  - key: some-long-value\n  - primary_key: true\n  sort_key: created_at\n")
+        r = p.commit("harmless", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
     def test_this_test_file_passes_the_scan(self):
         shutil.copy2(Path(__file__), self.p.work / "test_ganchos.py")
         r = self.p.commit("tests", ok=False)
