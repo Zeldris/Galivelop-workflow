@@ -15,7 +15,9 @@ sesiones en la nube, que no cargan plugins declarados en el repo.
 1. El proyecto está clonado y es un repo git (`git init` si es nuevo).
 2. Este repo, el del flujo, está clonado junto al proyecto, o la persona lo ha añadido a la sesión. Desde aquí se
    llama `<flujo>`. **Se lee con un subagente** (`orchestrate-dealer`), que devuelve la tabla del paso 1 y los
-   conflictos con el proyecto, con rutas; la sesión principal solo decide. En la nube, que el repo del flujo no pase a
+   conflictos con el proyecto, con rutas; la sesión principal solo decide. **Se clona la última etiqueta publicada, no
+   la rama por defecto** (que puede no ser `main` y ser una versión vieja): `git ls-remote --tags <url>` para verla y
+   `git clone --branch vX.Y.Z <url>`. En la nube, que el repo del flujo no pase a
    ser carpeta de trabajo de la sesión (cargaría su `CLAUDE.md` y sus skills): si es público, `git clone` directo; si
    se añade con `add_repo`, no se registra como raíz, y la ruta que devuelve se comprueba con `ls` (puede venir en
    minúsculas y no existir).
@@ -67,7 +69,7 @@ Reglas:
 - Lee los scripts del archivo de construcción y **ejecuta la orden de `check` una vez** para ver que funciona y cuánto
   tarda. Una orden que no existe o no pasa se detecta tarde y estorba en cada push.
 - **Si hay duda, pregunta a la persona**; no inventes una orden. Con varios candidatos, ofrécelos numerados.
-- Un proyecto sin tests: `check` puede ser un linter o un `bash -n`; dilo y apúntalo como deuda en la bitácora.
+- Un proyecto sin tests: `check` puede ser un linter o un `bash -n`; dilo y apúntalo como deuda en la bitácora. Un `bash -n` solo comprueba el primer archivo (los demás son argumentos): una orden por archivo, o `for f in …; do bash -n "$f"; done` (`doctor.py` lo avisa). Si pones `doctor.py` en `check`, en el CI (`CI=true`) el `hooks-path` sin poner sale en `WARN` y no rompe: el CI no tiene los ganchos de git puestos; en local sigue siendo `FAIL`.
 - Si el proyecto tiene mapa para agentes (`docs/mapa-agente.md`, o el que declare `agentMap.path`), añade `--check-command "python3 .claude/gw/scripts/mapa-agente.py"`: comprueba que cada ruta que cita existe. Sin mapa sale en 0 y no estorba; con prefijos cortos (`b/` por `backend/src/`), configura `agentMap.prefixes` ([`config.md`](config.md)).
 - Las skills copiadas traen sus pruebas junto a sus scripts: se descubren con `python3 -m unittest discover -s <skill>/scripts` (el check del repo del flujo lo hace con cada una).
 - `content` se propone leyendo el árbol: `^docs/`, `^public/`… (en JSON, la barra se escribe doble). **Lo que sea
@@ -185,9 +187,13 @@ Si el proyecto tiene CI, comprueba que el workflow `Comprobar` pasa. Node, Pytho
 `package.json`, `pyproject.toml`/`requirements*.txt` o `pom.xml`/`build.gradle*`; otra cadena de herramientas
 (rust-toolchain…) hay que añadirla, como dice la cabecera de `comprobar.yml`.
 
-Criterio de fin: el push ha subido, `doctor.py` sigue en verde y la bitácora dice lo que sigue.
+Criterio de fin: el push ha subido, `doctor.py` sigue en verde y la bitácora dice lo que sigue. Recuerda el aviso del paso 6: hasta una sesión nueva, la guarda del PR no está activa.
 
 ## 6. Comprobar que la protección funciona
+
+**Aviso:** un `.claude/settings.json` creado a mitad de sesión no se carga hasta la siguiente. En la sesión que aplica
+el flujo el gancho `PreToolUse` (la guarda del PR) **no está activo**: hasta abrir una sesión nueva desde el proyecto,
+comprueba a mano la marca antes de crear o fusionar un PR (`bash .claude/gw/scripts/revisado.sh`).
 
 En la rama de trabajo, haz commit de un cambio pequeño de código e intenta subirlo directamente a la rama protegida,
 en simulacro (el `pre-push` corre igual, no se sube nada aunque pasara, y el modo automático de Claude Code no lo

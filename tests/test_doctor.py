@@ -28,6 +28,7 @@ class Doctor(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="gw-doctor-")).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, True)
         p = self.p = SessionProject(self.tmp)
+        p.env.pop("CI", None)  # the CI's own variable must not change what these tests expect
         for name in ("revision-antes-de-main.sh", "antes-de-parar.py", "guardia-config.py", "tope-subagentes.py"):
             shutil.copy2(ROOT / "scripts" / name, p.scripts / name)
         shutil.copy2(ROOT / "templates" / "claude" / "settings.json", p.work / ".claude" / "settings.json")
@@ -164,6 +165,35 @@ class Doctor(unittest.TestCase):
         code, out = self.doctor()
         self.assertEqual(code, 0, out)
         self.assertLine(out, "WARN", "another hook manager", ".husky/pre-push")
+
+    def test_hooks_path_unset_in_ci_warns_instead_of_failing(self):
+        self.p.git("config", "--unset", "core.hooksPath")
+        code, out = self.p.run("python3", str(self.p.scripts / "doctor.py"), cwd=self.tmp, env={"CI": "true"})
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "hooks-path", "CI", "git config core.hooksPath .githooks")
+        code, out = self.p.run("python3", str(self.p.scripts / "doctor.py"), cwd=self.tmp, env={"CI": "false"})
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", "hooks-path")
+
+    def set_check(self, *commands):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["check"] = list(commands)
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+
+    def test_bash_n_with_several_files_warns_with_the_fix(self):
+        self.set_check("bash -n a.sh b.sh c.sh")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "bash -n reads only the first file", "one `bash -n <file>` command per file",
+                        'for f in a.sh b.sh c.sh; do bash -n "$f"; done')
+        self.set_check("sh -n x.sh y.sh")
+        self.assertLine(self.doctor()[1], "WARN", "bash -n reads only the first file")
+
+    def test_bash_n_with_one_file_or_a_loop_does_not_warn(self):
+        for command in ("bash -n a.sh", 'for f in a.sh b.sh; do bash -n "$f"; done', "bash check.sh a b"):
+            self.set_check(command)
+            code, out = self.doctor()
+            self.assertNotIn("reads only the first file", out, command)
 
     def test_missing_log_next_step(self):
         self.p.write("docs/log.md", "# Log\n\nnothing here\n")

@@ -8,6 +8,40 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.4.3] - 2026-10-27
+
+Parche de correcciones de la primera recogida de galivelop-developer (`docs/propuestas/2026-10-27-galivelop-developer.md`,
+P1-P4); lo nuevo va a la `1.0.0`. / Bug-fix patch from the first galivelop-developer harvest (P1-P4); new features go
+to `1.0.0`.
+
+### ES
+
+- `doctor.py`: con `CI=true` (GitHub Actions), `core.hooksPath` sin poner sale en `WARN` y no en `FAIL`: el CI no puede
+  tener los ganchos de git puestos y rompía el CI de todo proyecto con `doctor.py` en `check`; en local sigue siendo
+  `FAIL` (galivelop-developer P1).
+- `doctor.py` avisa (`WARN`) de una orden de `check` que sea `bash -n` o `sh -n` con más de un archivo: solo se
+  comprueba el primero, y da un verde falso; dice la orden que lo arregla (una por archivo, o un `for`)
+  (galivelop-developer P4).
+- `/gw-init` y la guía de aplicar piden clonar la última etiqueta publicada (`git ls-remote --tags`,
+  `git clone --branch vX.Y.Z`), no la rama por defecto, que puede no ser `main` (galivelop-developer P2).
+- La guía de aplicar y `/gw-init` avisan de que un `.claude/settings.json` creado a mitad de sesión no se carga hasta
+  la siguiente: en la sesión que aplica el flujo la guarda del PR no está activa y la marca se comprueba a mano con
+  `bash .claude/gw/scripts/revisado.sh` (galivelop-developer P3).
+
+### EN
+
+- `doctor.py`: with `CI=true` (GitHub Actions), an unset `core.hooksPath` is a `WARN`, not a `FAIL`: CI cannot have
+  git hooks installed, and it broke the CI of every project with `doctor.py` in `check`; locally it stays a `FAIL`
+  (galivelop-developer P1).
+- `doctor.py` warns (`WARN`) about a `check` command that is `bash -n` or `sh -n` with more than one file: only the
+  first is checked, a false green; it gives the fixing command (one per file, or a `for` loop)
+  (galivelop-developer P4).
+- `/gw-init` and the apply guide ask to clone the latest published tag (`git ls-remote --tags`,
+  `git clone --branch vX.Y.Z`), not the default branch, which may not be `main` (galivelop-developer P2).
+- The apply guide and `/gw-init` warn that a `.claude/settings.json` created mid-session is not loaded until the next
+  one: in the session that applies the workflow the PR guard is not active and the mark is checked by hand with
+  `bash .claude/gw/scripts/revisado.sh` (galivelop-developer P3).
+
 ## [0.4.2] - 2026-10-27
 
 Parche de correcciones de la segunda recogida del 2026-10-26 (`docs/propuestas/2026-10-26-*-2.md` y

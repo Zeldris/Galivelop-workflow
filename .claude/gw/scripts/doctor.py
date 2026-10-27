@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.4.2
+# galivelop-workflow v0.4.3
 """Check that a project has the workflow set up (used by /gw-doctor and CI). No AI, no network.
 
   python3 doctor.py            # one line per check: OK / WARN / FAIL, each problem with the command that fixes it
@@ -189,6 +189,9 @@ def check_hooks_path(rep, root):
     current = git(root, "config", "--get", "core.hooksPath")
     if current in (".githooks", str(root / ".githooks")):
         rep.ok("hooks-path", "core.hooksPath is .githooks")
+    elif not current and os.environ.get("CI", "").lower() == "true":
+        rep.warn("hooks-path", "core.hooksPath is unset (CI run: git hooks are not installed there, so this is not a "
+                 "failure); locally it is a FAIL", "git config core.hooksPath .githooks")
     elif not current:
         rep.fail("hooks-path", "core.hooksPath is unset, so the workflow's git hooks do not run",
                  "git config core.hooksPath .githooks")
@@ -229,6 +232,20 @@ def check_log(rep, root, cfg):
     rep.ok("log", f"{cfg['log']} has a next step")
 
 
+def syntax_only_files(command):
+    """The file arguments of a plain `bash -n` / `sh -n` command, else []. A `for`, `;`, `&&`, `|` or other shell
+    structure is not a plain command, so it is left alone."""
+    try:
+        words = shlex.split(command)
+    except ValueError:
+        return []
+    if len(words) < 3 or os.path.basename(words[0]) not in ("bash", "sh") or words[1] != "-n":
+        return []
+    if any(w in (";", "&&", "||", "|", "&") or w.startswith("$(") for w in words):
+        return []
+    return [w for w in words[2:] if not w.startswith("-")]
+
+
 def check_commands(rep, root, cfg):
     if cfg is None:
         return
@@ -240,6 +257,13 @@ def check_commands(rep, root, cfg):
         else:
             rep.fail("checkWrapper", f"'{wrapper}': '{word}' is not a command on PATH nor a file in the repo",
                      f"fix checkWrapper in .claude/gw.json, then: python3 {HERE / 'doctor.py'}")
+    for command in cfg.get("check") or []:
+        extra = syntax_only_files(command)
+        if len(extra) > 1:
+            rep.warn("check command", f"'{command}': bash -n reads only the first file ({extra[0]}); the other "
+                     f"{len(extra) - 1} are passed as arguments and never checked",
+                     "use one `bash -n <file>` command per file in 'check' in .claude/gw.json, or one command: "
+                     "for f in " + " ".join(extra) + '; do bash -n "$f"; done')
     for key, bad in (("check", rep.fail), ("install", rep.warn), ("setup", rep.warn)):
         for command in cfg.get(key) or []:
             word = first_word(command)

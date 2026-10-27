@@ -26,7 +26,7 @@ python3 .claude/gw/scripts/doctor.py
 | Check | What it says | Fix |
 |---|---|---|
 | `config` (FAIL) | `.claude/gw.json` is missing, not JSON, or breaks the schema (unknown key, empty value…) | `python3 .claude/gw/scripts/config.py validate` names the line; keys in [config](config.md); if missing, apply the workflow ([apply](apply.md)) |
-| `hooks-path` (FAIL) | `core.hooksPath` is unset: the workflow's git hooks do not run | `git config core.hooksPath .githooks` |
+| `hooks-path` (FAIL) | `core.hooksPath` is unset: the workflow's git hooks do not run. With `CI=true` (GitHub Actions) it is a `WARN`: CI has no hooks installed | `git config core.hooksPath .githooks` |
 | `hooks-path` (WARN) | Another manager owns it (husky, lefthook…): the workflow's hooks run only if chained | Add to the manager's `pre-push`, `pre-commit` and `commit-msg`: `"$(git rev-parse --show-toplevel)/.githooks/<hook>" "$@" \|\| exit 1` |
 | `githook pre-push` / `pre-commit` / `commit-msg` (FAIL) | The file is missing or not executable | `/gw-update`; or `chmod +x .githooks/<hook>` (on Windows, `git update-index --chmod=+x .githooks/<hook>`) |
 | `githook …` (WARN) | A version different from `.claude/gw.json`'s | `/gw-update` |

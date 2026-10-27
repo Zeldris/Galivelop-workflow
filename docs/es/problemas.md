@@ -26,7 +26,7 @@ python3 .claude/gw/scripts/doctor.py
 | Comprobación | Qué dice | Arreglo |
 |---|---|---|
 | `config` (FAIL) | `.claude/gw.json` falta, no es JSON o no cumple el esquema (clave desconocida, vacía…) | `python3 .claude/gw/scripts/config.py validate` dice la línea; claves en [config](config.md); si falta, aplica el flujo ([aplicar](aplicar.md)) |
-| `hooks-path` (FAIL) | `core.hooksPath` sin poner: los ganchos de git del flujo no corren | `git config core.hooksPath .githooks` |
+| `hooks-path` (FAIL) | `core.hooksPath` sin poner: los ganchos de git del flujo no corren. Con `CI=true` (GitHub Actions) sale `WARN`: el CI no tiene los ganchos puestos | `git config core.hooksPath .githooks` |
 | `hooks-path` (WARN) | Lo usa otro gestor (husky, lefthook…): los ganchos del flujo solo corren si se encadenan | Añade a `pre-push`, `pre-commit` y `commit-msg` del gestor: `"$(git rev-parse --show-toplevel)/.githooks/<hook>" "$@" \|\| exit 1` |
 | `githook pre-push` / `pre-commit` / `commit-msg` (FAIL) | Falta el archivo o no es ejecutable | `/gw-update`; o `chmod +x .githooks/<hook>` (en Windows, `git update-index --chmod=+x .githooks/<hook>`) |
 | `githook …` (WARN) | Versión distinta de la de `.claude/gw.json` | `/gw-update` |

@@ -12,7 +12,7 @@
 | Check | `bash tests/comprobar.sh` en verde (**comprobado solo en local**: sin cuota de Actions el CI no arranca, confirmado por el usuario); `main` (`56212e8`) comprobado en local el 2026-10-26 |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.2.md` |
-| Siguiente paso | `0.4.2` en `main` (`8a6f367`) y fusionada en `version/1.0.0`, con P3-P5 de su retro en `pendiente-1.0.0.md`. Esta rama queda cerrada. Siguiente: la `1.0.0` en una sesión nueva solo con este repo (P1 de la retro), en `version/1.0.0`. Pendiente del usuario: la etiqueta `v0.4.2` sobre `8a6f367` y su release (`docs/registros/release-v0.4.2.md`) |
+| Siguiente paso | Parche `0.4.3` hecho en esta rama (P1-P4 de `docs/propuestas/2026-10-27-galivelop-developer.md`, en `version/1.0.0`). Siguiente: las tres fases de `AGENTS.md` (`/code-review` contra `origin/main`, `/opt-tokens` + `/retro`, cierre con `revisado.sh`) y subida a `main` solo con confirmación del usuario; luego fusionar en `version/1.0.0` (`fusionar.sh`) |
 
 ### Fases
 
@@ -41,11 +41,11 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-10-27 — Parche `0.4.2` en la rama (de la segunda recogida, decidida con «tu recomendación»): `bitacora.py` sin `--amend` (INS P8), el `pre-commit` ve `api.key` y nombres pegados a un proveedor (VeriNews P3), `fusionar.sh` corre los `relatedTests` (P4) y `mapa-agente.py` reconoce métodos de Java y lenguajes tipados (P11); cada arreglo con su test, rojo sin él. Versión y CHANGELOG `0.4.2`.
-2. 2026-10-26 — Segunda recogida (`gw-harvest`) sobre los cinco proyectos: propuestas en `docs/propuestas/2026-10-26-{instalador-wmf-tarkor-2,world-maker-fantasy-2,portal-galivelop-2,verinews_ai,sin-novedades-2}.md` y `estado.json` al día; labs sin novedades. Por decidir con el usuario.
-3. 2026-10-26 — Fase 2 del parche `0.4.1`: `/opt-tokens` (P1-P4: `gw-harvest` clona sin registrar y verifica en paralelo; encargo a ~25 llamadas) y `/retro` aprobada entera: P1 y P2 en `orchestrate-dealer`, P4 en `CLAUDE.md`, P5 en `AGENTS.md`; P3 (caché del check en el `pre-push`) a la `1.0.0`. Regla nueva: commits y PR a nombre de `Zeldris`, sin firmas de Claude.
-4. 2026-10-26 — Rama `version/1.0.0` creada desde `ccr-6dfbc880-ddr41g` para ir llevando lo de la `1.0.0` (plan §7 ES/EN); el parche `0.4.1`, aplazado.
-5. 2026-10-25 — Entrada `0.4.0` del CHANGELOG con fecha (llegó a `main` como «Unreleased» y `release.yml` la habría rechazado); `version.py --release` exige ya fecha y relleno (`changelog_check`, test primero: sin el arreglo falla); política de versiones (la `0.4` solo parches, lo nuevo a la `1.0.0`) en el plan §7 ES/EN, `AGENTS.md` y `contribuir`/`contributing`; textos de la release en `docs/registros/release-v0.4.0.md`; el usuario publicó la release `v0.4.0` sobre `d7dd18f`.
+1. 2026-10-27 — Parche `0.4.3` en la rama (de la recogida de `galivelop-developer`, aprobada con «tu recomendación»): `doctor.py` da WARN en `hooks-path` con `CI=true` (P1) y avisa de `bash -n` con varios archivos (P4); `gw-init` y `aplicar.md` clonan la última etiqueta (P2) y avisan de que el gancho `PreToolUse` no está activo en la sesión que aplica el flujo (P3). 3 tests nuevos en `test_doctor.py`; versión y CHANGELOG `0.4.3`; check en verde en local.
+2. 2026-10-27 — Parche `0.4.2` en la rama (de la segunda recogida, decidida con «tu recomendación»): `bitacora.py` sin `--amend` (INS P8), el `pre-commit` ve `api.key` y nombres pegados a un proveedor (VeriNews P3), `fusionar.sh` corre los `relatedTests` (P4) y `mapa-agente.py` reconoce métodos de Java y lenguajes tipados (P11); cada arreglo con su test, rojo sin él. Versión y CHANGELOG `0.4.2`.
+3. 2026-10-26 — Segunda recogida (`gw-harvest`) sobre los cinco proyectos: propuestas en `docs/propuestas/2026-10-26-{instalador-wmf-tarkor-2,world-maker-fantasy-2,portal-galivelop-2,verinews_ai,sin-novedades-2}.md` y `estado.json` al día; labs sin novedades. Por decidir con el usuario.
+4. 2026-10-26 — Fase 2 del parche `0.4.1`: `/opt-tokens` (P1-P4: `gw-harvest` clona sin registrar y verifica en paralelo; encargo a ~25 llamadas) y `/retro` aprobada entera: P1 y P2 en `orchestrate-dealer`, P4 en `CLAUDE.md`, P5 en `AGENTS.md`; P3 (caché del check en el `pre-push`) a la `1.0.0`. Regla nueva: commits y PR a nombre de `Zeldris`, sin firmas de Claude.
+5. 2026-10-26 — Rama `version/1.0.0` creada desde `ccr-6dfbc880-ddr41g` para ir llevando lo de la `1.0.0` (plan §7 ES/EN); el parche `0.4.1`, aplazado.
 
 ## Pendiente
 
