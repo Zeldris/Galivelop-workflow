@@ -4,7 +4,7 @@ description: Run the main session as an orchestrator that deals work out to clea
 license: MIT
 compatibility: Claude Code or any Agent Skills agent with subagents; git; reads .claude/gw.json
 metadata:
-  version: "0.4.1"
+  version: "0.4.2"
   source: "Galivelop workshop; generalised from the Tarkor, installer and portal orchestrate-dealer"
 ---
 

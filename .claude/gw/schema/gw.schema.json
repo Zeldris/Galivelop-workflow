@@ -1,5 +1,5 @@
 {
-  "$comment": "galivelop-workflow v0.4.1",
+  "$comment": "galivelop-workflow v0.4.2",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raw.githubusercontent.com/zeldris/Galivelop-workflow/main/schema/gw.schema.json",
   "title": "Galivelop-workflow project config (.claude/gw.json)",
