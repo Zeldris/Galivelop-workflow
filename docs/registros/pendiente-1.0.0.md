@@ -77,6 +77,13 @@ Decididas el 2026-10-27; las correcciones (INS P8, VeriNews P3, P4 y la parte Ja
 - [x] **Del arreglo de INS P8** (arreglado en la `0.4.2`, `4aecf5c`): `prepush-ramas.sh` comprueba la bitácora como
   queda en la punta que se sube, así que un log malo en un commit intermedio se arregla con un commit nuevo encima.
 
+## De la retro del parche `0.4.3`
+
+- [ ] **R1 (`version.py`, CHANGELOG):** comprobar que existe cada ruta del repo citada entre comillas invertidas en la
+  entrada nueva del CHANGELOG (`docs/…`, `scripts/…`, `skills/…`), salvo las que llevan marcadores (`vX.Y.Z`). La
+  entrada `0.4.3` citaba un archivo que solo estaba en `version/1.0.0` y lo cazó la revisión, no el check. Con su test.
+  `retro-2026-10-27-parche-0-4-3.md` (rama `ccr-6dfbc880-ddr41g`).
+
 ## De la retro del parche `0.4.2`
 
 [`retro-2026-10-27-parche-0-4-2.md`](retro-2026-10-27-parche-0-4-2.md), aprobadas por el usuario el 2026-10-27.
