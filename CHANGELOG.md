@@ -28,6 +28,8 @@ go to `1.0.0`.
 - La guía de aplicar y `/gw-init` avisan de que un `.claude/settings.json` creado a mitad de sesión no se carga hasta la
   siguiente: en la sesión que aplica el flujo la guarda del PR no está activa y la marca se comprueba a mano con `bash
   .claude/gw/scripts/revisado.sh` (galivelop-developer P3).
+- Plantilla de `AGENTS.md`: el push y el check largo se lanzan en segundo plano y se espera su aviso, sin bucles de
+  espera (retro del parche, R2).
 
 ### EN
 
@@ -42,6 +44,8 @@ go to `1.0.0`.
 - The apply guide and `/gw-init` warn that a `.claude/settings.json` created mid-session is not loaded until the next
   one: in the session that applies the workflow the PR guard is not active and the mark is checked by hand with `bash
   .claude/gw/scripts/revisado.sh` (galivelop-developer P3).
+- `AGENTS.md` template: the push and the long check run in the background and the agent waits for their notice, with
+  no polling loop (patch retro, R2).
 
 ## [0.4.2] - 2026-10-27
 

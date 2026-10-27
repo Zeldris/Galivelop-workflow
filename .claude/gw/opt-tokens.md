@@ -24,6 +24,9 @@ las crea una vez; desde entonces son del proyecto.
 - `gw-harvest` (`0.4.1`): los proyectos se clonan solo para lectura en una carpeta temporal, sin registrarlos
   (`register_repo_root`), y su verificación va con un subagente por proyecto en paralelo.
 
+- `AGENTS.md` (retro del parche 0.4.3): push y check largo en segundo plano, esperando el aviso (R2); al empezar,
+  de `traspaso.md` solo lo que el gancho `SessionStart` recortó (R4).
+
 ## Costes conocidos
 
 <!-- Lo que se ha visto que cuesta mucho en este proyecto (archivos grandes leídos enteros, salidas largas...). -->

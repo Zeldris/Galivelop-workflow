@@ -9,7 +9,8 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 
 ## Al empezar cualquier sesión
 
-1. Lee [`docs/traspaso.md`](docs/traspaso.md): rama, fase en curso, pendiente y siguiente paso.
+1. Lee [`docs/traspaso.md`](docs/traspaso.md): rama, fase en curso, pendiente y siguiente paso. Si el gancho
+   `SessionStart` ya mostró su estado, lee solo lo que recortó (`… (trimmed …)`).
 2. `git fetch origin <rama>` y comprueba que el último commit coincide con lo que dice la bitácora.
 3. Comprueba que el check está en verde antes de tocar nada: `bash tests/comprobar.sh`.
 4. Sigue por el **siguiente paso** de la bitácora, salvo que el usuario pida otra cosa.
@@ -23,6 +24,7 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 - Si hay que parar con algo a medias o en rojo: commit igualmente con `WIP:` al principio y, en la bitácora, qué
   falla y por qué.
 - Push a la rama de trabajo (`git push -u origin <rama>`); si falla por red, reintentar con espera 2, 4, 8 y 16 s.
+  El push y el check largo se lanzan en segundo plano y se espera su aviso, sin bucles de espera.
 - Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla.
 - **Al cerrar cada fase**, se para y se informa al usuario de qué queda hecho y cuál es la siguiente; con la bitácora
   al día, se recomienda `/clear` antes de la siguiente (la bitácora basta para retomar). Igual al cerrar cada tarea o PR.
