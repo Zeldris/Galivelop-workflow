@@ -50,6 +50,9 @@ jobs:
             echo "== $cmd"
             bash -c "$cmd"
           done <<<"$cmds"
+      - name: Git hooks path
+        # `doctor.py` in `check` fails on an unset core.hooksPath; the hooks are in the checkout, so point git at them.
+        run: git config core.hooksPath .githooks
       - name: Check
         run: |
           cmds="$(python3 .claude/gw/scripts/config.py get check)"

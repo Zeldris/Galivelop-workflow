@@ -26,7 +26,7 @@ python3 .claude/gw/scripts/doctor.py
 | Comprobación | Qué dice | Arreglo |
 |---|---|---|
 | `config` (FAIL) | `.claude/gw.json` falta, no es JSON o no cumple el esquema (clave desconocida, vacía…) | `python3 .claude/gw/scripts/config.py validate` dice la línea; claves en [config](config.md); si falta, aplica el flujo ([aplicar](aplicar.md)) |
-| `hooks-path` (FAIL) | `core.hooksPath` sin poner: los ganchos de git del flujo no corren. Con `CI=true` (GitHub Actions) sale `WARN`: el CI no tiene los ganchos puestos | `git config core.hooksPath .githooks` |
+| `hooks-path` (FAIL) | `core.hooksPath` sin poner: los ganchos de git del flujo no corren. Con `GITHUB_ACTIONS=true` (GitHub Actions) sale `WARN`: el CI no tiene los ganchos puestos | `git config core.hooksPath .githooks` |
 | `hooks-path` (WARN) | Lo usa otro gestor (husky, lefthook…): los ganchos del flujo solo corren si se encadenan | Añade a `pre-push`, `pre-commit` y `commit-msg` del gestor: `"$(git rev-parse --show-toplevel)/.githooks/<hook>" "$@" \|\| exit 1` |
 | `githook pre-push` / `pre-commit` / `commit-msg` (FAIL) | Falta el archivo o no es ejecutable | `/gw-update`; o `chmod +x .githooks/<hook>` (en Windows, `git update-index --chmod=+x .githooks/<hook>`) |
 | `githook …` (WARN) | Versión distinta de la de `.claude/gw.json` | `/gw-update` |
@@ -35,6 +35,7 @@ python3 .claude/gw/scripts/doctor.py
 | `glossary` (WARN) | El mismo `**Término**:` aparece dos veces en `GLOSSARY.md` | Fusiona las entradas en una |
 | `ignored` (FAIL) | Git ignora un archivo del flujo, o el de `reviewMark`: el commit lo dejaría fuera | Añade `!<ruta>` a `.gitignore` y comprueba `git check-ignore -v <ruta>` |
 | `settings <evento>` (WARN) | Una orden de gancho ejecuta un script del flujo (por su cabecera `# galivelop-workflow v…`) desde fuera de `.claude/gw/scripts/`; un script propio con el mismo nombre no avisa | Borra esa entrada de `.claude/settings.json` |
+| `check syntax-only` (WARN) | Una orden de `check` es `bash -n`/`sh -n` con varios archivos, un glob (`*`, `?`, `[`) o `$(…)`: solo se lee el primer archivo y el resto no se comprueba | Una orden por archivo en `check` de `.claude/gw.json`, o `for f in …; do bash -n "$f"; done` (el aviso da la orden) |
 | `check command` (FAIL) | La primera palabra de una orden de `check` no está en el `PATH` ni es un archivo del repo | Instala esa herramienta o corrige `check` en `.claude/gw.json` |
 | `install command` (WARN) | Lo mismo para `install` | Igual |
 | `ci` (WARN) | No hay ningún workflow en `.github/workflows` | `mkdir -p .github/workflows && cp <flujo>/templates/github/comprobar.yml .github/workflows/` |

@@ -16,8 +16,10 @@ sesiones en la nube, que no cargan plugins declarados en el repo.
 2. Este repo, el del flujo, está clonado junto al proyecto, o la persona lo ha añadido a la sesión. Desde aquí se
    llama `<flujo>`. **Se lee con un subagente** (`orchestrate-dealer`), que devuelve la tabla del paso 1 y los
    conflictos con el proyecto, con rutas; la sesión principal solo decide. **Se clona la última etiqueta publicada, no
-   la rama por defecto** (que puede no ser `main` y ser una versión vieja): `git ls-remote --tags <url>` para verla y
-   `git clone --branch vX.Y.Z <url>`. En la nube, que el repo del flujo no pase a
+   la rama por defecto** (que puede no ser `main` y ser una versión vieja): `git ls-remote --tags --refs --sort=-v:refname <url>` para verla (la primera línea es la última) y
+   `git clone --branch vX.Y.Z <url>`. Sea cual sea el origen (clon nuevo, clon hermano ya existente o repo añadido con
+   `add_repo`), comprueba `git -C <flujo> describe --tags` contra la última etiqueta y, si va por detrás,
+   `git -C <flujo> fetch --tags` y `git -C <flujo> checkout vX.Y.Z`. En la nube, que el repo del flujo no pase a
    ser carpeta de trabajo de la sesión (cargaría su `CLAUDE.md` y sus skills): si es público, `git clone` directo; si
    se añade con `add_repo`, no se registra como raíz, y la ruta que devuelve se comprueba con `ls` (puede venir en
    minúsculas y no existir).
@@ -69,7 +71,7 @@ Reglas:
 - Lee los scripts del archivo de construcción y **ejecuta la orden de `check` una vez** para ver que funciona y cuánto
   tarda. Una orden que no existe o no pasa se detecta tarde y estorba en cada push.
 - **Si hay duda, pregunta a la persona**; no inventes una orden. Con varios candidatos, ofrécelos numerados.
-- Un proyecto sin tests: `check` puede ser un linter o un `bash -n`; dilo y apúntalo como deuda en la bitácora. Un `bash -n` solo comprueba el primer archivo (los demás son argumentos): una orden por archivo, o `for f in …; do bash -n "$f"; done` (`doctor.py` lo avisa). Si pones `doctor.py` en `check`, en el CI (`CI=true`) el `hooks-path` sin poner sale en `WARN` y no rompe: el CI no tiene los ganchos de git puestos; en local sigue siendo `FAIL`.
+- Un proyecto sin tests: `check` puede ser un linter o un `bash -n`; dilo y apúntalo como deuda en la bitácora. Un `bash -n` solo comprueba el primer archivo (los demás son argumentos): una orden por archivo, o `for f in …; do bash -n "$f"; done` (`doctor.py` lo avisa en `check syntax-only`, también con un glob o una sustitución `$(…)`). Si pones `doctor.py` en `check`, en GitHub Actions (`GITHUB_ACTIONS=true`) el `hooks-path` sin poner sale en `WARN` y no rompe: el CI no tiene los ganchos de git puestos; en local sigue siendo `FAIL`.
 - Si el proyecto tiene mapa para agentes (`docs/mapa-agente.md`, o el que declare `agentMap.path`), añade `--check-command "python3 .claude/gw/scripts/mapa-agente.py"`: comprueba que cada ruta que cita existe. Sin mapa sale en 0 y no estorba; con prefijos cortos (`b/` por `backend/src/`), configura `agentMap.prefixes` ([`config.md`](config.md)).
 - Las skills copiadas traen sus pruebas junto a sus scripts: se descubren con `python3 -m unittest discover -s <skill>/scripts` (el check del repo del flujo lo hace con cada una).
 - `content` se propone leyendo el árbol: `^docs/`, `^public/`… (en JSON, la barra se escribe doble). **Lo que sea

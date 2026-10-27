@@ -31,7 +31,10 @@ Reply to the user in the language they use; the project's `language` is decided 
 3. Otherwise ask the user to clone it next to the project or add it to the session, and wait. Read it, never edit it.
 
 When cloning it, take the latest published tag, not the default branch (which may not be `main` and may be an old
-version): `git ls-remote --tags <url>` shows the tags, then `git clone --branch vX.Y.Z <url>`.
+version): `git ls-remote --tags --refs --sort=-v:refname <url>` shows the tags (the first line is the latest), then
+`git clone --branch vX.Y.Z <url>`. Whatever the origin (a new clone, a sibling clone that already exists or a repo
+added with `add_repo`), compare `git -C <workflow> describe --tags` with the latest tag and, if it is behind, run
+`git -C <workflow> fetch --tags` and `git -C <workflow> checkout vX.Y.Z`.
 
 Done when `python3 <workflow>/scripts/aplicar.py --help` runs.
 
