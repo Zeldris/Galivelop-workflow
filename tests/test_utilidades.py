@@ -600,6 +600,23 @@ class PrepushRamas(Base):
         self.assertIn(f"bitacora: fix: edit {LOG} and make a new commit with the fix: git add {LOG} && git commit", out)
         self.assertNotIn("--amend", out)
 
+    def test_following_the_hint_lets_the_push_through(self):
+        # the bad log stays in an intermediate commit; the hint's new commit fixes the pushed state
+        self.p.branch("feat-a")
+        self.edit(a="x" * 700)
+        sha = self.edit(a="A fixed it")
+        code, out, _, _ = self.run_hook(sha)
+        self.assertEqual(code, 0, out)
+
+    def test_a_good_intermediate_log_does_not_hide_a_bad_tip(self):
+        self.p.branch("feat-a")
+        self.edit(a="A moved on")
+        sha = self.edit(a="x" * 700)
+        code, out, _, _ = self.run_hook(sha)
+        self.assertEqual(code, 1, out)
+        self.assertIn("700 characters", out)
+        self.assertIn(f"in commit {sha[:7]}", out)
+
     def test_commit_from_another_local_branch_may_use_its_row(self):
         self.p.branch("feat-b")
         self.edit(b="B moved on")

@@ -12,7 +12,7 @@
 | Check | `bash tests/comprobar.sh` en verde (**comprobado solo en local**: sin cuota de Actions el CI no arranca, confirmado por el usuario); `main` (`56212e8`) comprobado en local el 2026-10-26 |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.1` en `main` (`56212e8`, 2026-10-26), con confirmación del usuario: fases 1-3 hechas, marca de revisión `a3cc2dc`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde sobre `56212e8` para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.1.md` |
-| Siguiente paso | Parche `0.4.2` listo en la rama (versión, CHANGELOG, los cuatro arreglos fusionados). Ahora: fusionar `ccr-6dfbc880-ddr41g` en `version/1.0.0` y apuntar en su `pendiente-1.0.0.md` los evolutivos de la segunda recogida (VeriNews P1, P2, P5-P10 y los borrados de P11; INS P9-P13 con WMF P4 y Portal P5; Portal P4) y el límite de `prepush-ramas.sh` con un log malo en un commit intermedio. Luego, con confirmación del usuario, las tres fases hacia `main`. Pendiente aparte: la etiqueta `v0.4.1` sobre `56212e8` y su release, a mano por el usuario |
+| Siguiente paso | Hacia `main` con `0.4.2` (usuario, 2026-10-27: «Si pasalas»). Fase 1 hecha: `/code-review` contra `origin/main`, seis hallazgos arreglados con su test (el `pre-push` comprueba el log de la punta, no el de cada commit intermedio; `mapa-agente.py` sin regresión en JS/TS, sin cruzar líneas en Groovy/Kotlin y sin C/C++; `fusionar.sh` falla cerrado sin `tests-relacionados.sh` y no escribe `changed.txt` en la raíz); los leves, en «Pendiente». Ahora: fase 2 (`/opt-tokens` y `/retro`, presentadas al usuario), fase 3 y subida. Después: fusionar otra vez en `version/1.0.0` (el límite de `prepush-ramas.sh` queda arreglado en `0.4.2`). Pendiente aparte: etiqueta `v0.4.1` sobre `56212e8` y su release, a mano por el usuario |
 
 ### Fases
 
@@ -49,6 +49,12 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Pendiente
 
+- **Leves del `/code-review` de `0.4.2`** (2026-10-27, no bloquean): (1) los commits de fusión `d714267`, `9112a44`,
+  `b4ec2eb` y `8b0260c` no llevan `Siguiente:` (ya subidos; el mensaje que propone `fusionar.sh`, a la retro);
+  (2) `bitacora.py check` sin `--at` da la pista de commit y la ayuda del principio no menciona `--at`; (3) la regla
+  QUOTED del `pre-commit` bloquea etiquetas de i18n (una clave `openaiKey` cuyo valor es el texto «Clave de OpenAI»;
+  lo sufrió esta misma bitácora); (4)
+  `tests-relacionados.sh` se presenta como «pre-push: related tests» también cuando lo llama `fusionar.sh`.
 - **P3 de la retro del parche `0.4.1`, para la `1.0.0`** (evolutivo, aprobado 2026-10-26): el `pre-push` no repite
   un check ya en verde sobre el mismo árbol. Guarda en el directorio común de git un hash del árbol del commit y de las
   órdenes de `check` solo si sale en verde, y `tests/comprobar.sh` también apunta su verde; tests: árbol distinto,

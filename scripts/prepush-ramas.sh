@@ -11,8 +11,9 @@
 #   - bitacora.py own-row: no new commit changes another branch's row or a shared one (BITACORA_COMPARTIDA=1 or
 #     GW_SHARED_LOG=1 allows it); the branch is the remote one pushed to, or the current one; a commit that comes
 #     from another local branch (a sub-branch merged back) may write in that branch's row instead;
-#   - bitacora.py check: the log as each new commit has it (not the working copy): rows well formed, <= 600
-#     characters, one per branch, and "Updated" not older than the commit if the commit changes the log.
+#   - bitacora.py check: the log as the pushed tip has it (not the working copy; a later commit fixes an earlier
+#     one's): rows well formed, <= 600 characters, one per branch, and "Updated" not older than the newest new
+#     commit that changes the log.
 # Plan folder and task-id regex: GW_PLAN and GW_TASK_ID (see bitacora.py). Exit 1 if a rule is broken.
 # Bash 3.2 compatible. Root from this script's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
@@ -95,19 +96,23 @@ while read -r local_ref sha_local remote_ref sha_remote; do
       || { echo "bitacora: in commit $(git log -1 --format='%h %s' "$commit")"; exit 1; }
   done <<<"$(git rev-list --no-merges "$sha_local" --not --remotes 2>/dev/null)"
 
-  # Well-formed log in every new commit (an intermediate one with a bad log would also reach the remote).
-  while IFS= read -r commit; do
-    [ -n "$commit" ] || continue
-    git cat-file -e "$commit:$log" 2>/dev/null || continue
+  # Well-formed log as pushed (the tip's): a later commit fixes an intermediate one's bad log, as the hint says.
+  # "Updated" is checked against the day of the newest new commit that changes the log.
+  if [ -n "$new" ] && git cat-file -e "$sha_local:$log" 2>/dev/null; then
+    last=""
+    while IFS= read -r commit; do
+      [ -n "$commit" ] || continue
+      git diff-tree --no-commit-id --name-only -r "$commit" | grep -qxF "$log" && last="$commit"
+    done <<<"$new"
     tmp="$(mktemp "${TMPDIR:-/tmp}/gw-log.XXXXXX")"
-    git show "$commit:$log" > "$tmp"
+    git show "$sha_local:$log" > "$tmp"
     date=()
-    git diff-tree --no-commit-id --name-only -r "$commit" | grep -qxF "$log" && date=(--date "$(git log -1 --format=%as "$commit")")
+    [ -n "$last" ] && date=(--date "$(git log -1 --format=%as "$last")")
     if ! bita check "$tmp" --at push ${date[@]+"${date[@]}"}; then
-      echo "bitacora: in commit $(git log -1 --format='%h %s' "$commit")"; rm -f "$tmp"; exit 1
+      echo "bitacora: in commit $(git log -1 --format='%h %s' "$sha_local")"; rm -f "$tmp"; exit 1
     fi
     rm -f "$tmp"
-  done <<<"$new"
+  fi
 done
 sort -u -o "$changed" "$changed"
 exit 0
