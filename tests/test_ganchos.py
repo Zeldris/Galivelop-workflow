@@ -1358,6 +1358,10 @@ class CommitMsg(Base):
         self.assertIn("Updated", r.stderr)
         self.assertIn("commit-msg:", r.stderr)
         self.assertIn("git add docs/log.md", r.stderr)
+        # the commit does not exist yet: --amend would rewrite the previous one
+        self.assertIn("bitacora: fix: edit docs/log.md, stage it (git add docs/log.md) and run the commit again: git commit",
+                      r.stderr)
+        self.assertNotIn("--amend", r.stderr)
 
     def test_size_and_done_warnings_are_shown_but_do_not_stop_the_commit(self):
         text = self.log_text().replace("| **Updated**", "| **Notes** | " + "n" * 801 + " |\n| **Updated**")

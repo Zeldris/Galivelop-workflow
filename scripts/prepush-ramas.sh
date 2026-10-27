@@ -103,7 +103,7 @@ while read -r local_ref sha_local remote_ref sha_remote; do
     git show "$commit:$log" > "$tmp"
     date=()
     git diff-tree --no-commit-id --name-only -r "$commit" | grep -qxF "$log" && date=(--date "$(git log -1 --format=%as "$commit")")
-    if ! bita check "$tmp" ${date[@]+"${date[@]}"}; then
+    if ! bita check "$tmp" --at push ${date[@]+"${date[@]}"}; then
       echo "bitacora: in commit $(git log -1 --format='%h %s' "$commit")"; rm -f "$tmp"; exit 1
     fi
     rm -f "$tmp"
