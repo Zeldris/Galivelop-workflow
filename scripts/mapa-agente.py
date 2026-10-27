@@ -85,8 +85,8 @@ def units(text):
 
 
 # Files whose methods are written `[modifiers] ReturnType name(...) [throws X] {` (return type BEFORE the name).
-TYPED_METHOD_SUFFIXES = ('.java', '.kt', '.kts', '.cs', '.scala', '.groovy', '.c', '.h', '.cc', '.cpp', '.cxx',
-                         '.hpp', '.hh')
+# (not C or C++: their return types, `char *dup(`, `std::string name(`, `void Foo::bar(`, `const T& get() const`, do not fit)
+TYPED_METHOD_SUFFIXES = ('.java', '.kt', '.kts', '.cs', '.scala', '.groovy')
 CONTROL = {'if', 'else', 'for', 'while', 'do', 'switch', 'catch', 'try', 'return', 'throw', 'new', 'case',
            'synchronized', 'using', 'lock', 'foreach', 'when', 'yield', 'await'}
 # `<...>` with up to three levels of nesting (`Map<String, List<X>>`, `<?>`)
@@ -95,6 +95,8 @@ METHOD_MODIFIERS = (r'(?:public|private|protected|internal|static|final|abstract
                     r'|override|sealed|async|extern|unsafe|partial|open|inline|suspend|strictfp|transient)')
 # a return type: `void`, `a.b.C`, `List<String>`, `Map<K, List<V>>[]`, `int[][]`, `String?`
 RETURN_TYPE = (rf'(?!(?:{"|".join(sorted(CONTROL))})\b)[\w.]+(?:{GENERIC})?(?:\s*\[\s*\])*\??')
+# a parameter list: it cannot cross `;`, `{` or `}`, and its parentheses balance (one level of nesting: `@Size(max = 1)`)
+PARAMS = r'\((?:[^;{}()]|\([^;{}()]*\))*\)'
 
 
 def defines(text, name, suffix):
@@ -109,14 +111,16 @@ def defines(text, name, suffix):
         rf'^\s*(?:(?:public|private|protected|static|async|override|readonly)\s+)*{n}\s*(?:<[^>]*>)?\([^;]*?\)\s*'
         rf'(?::[^;{{=]*)?\{{',
     ]
-    if name in CONTROL:  # `if (x) {` and `catch (E e) {` are not definitions of `if` and `catch`
+    if suffix in TYPED_METHOD_SUFFIXES and name in CONTROL:
+        # there `if (x) {` and `catch (E e) {` are not definitions of `if` and `catch`; a method named `lock` still
+        # has its return type (typed form below). In JS, TS or Python a method may be named `lock`, `when`, `catch`.
         patterns.pop()
     if suffix in TYPED_METHOD_SUFFIXES:
         # a method with a return type: `[@Annotation] [modifiers] [<T>] Type name(...) [throws X, Y] {`; a call, a
         # `return name(x);` or `new Name() {` (anonymous class) is not one: the type cannot be a control keyword
         patterns.append(
             rf'^[ \t]*(?:@\w[\w.]*(?:\([^)\n]*\))?\s+)*(?:{METHOD_MODIFIERS}\s+)*(?:{GENERIC}\s+)?'
-            rf'{RETURN_TYPE}[ \t]+{n}\s*\([^;]*?\)\s*(?:throws\s+[\w.,\s]+?)?\s*\{{')
+            rf'{RETURN_TYPE}[ \t]+{n}\s*{PARAMS}\s*(?:throws\s+[\w.,\s]+?)?\s*\{{')
     if suffix in ('.sh', '.bash', '.zsh'):
         patterns.append(rf'^\s*(?:function\s+)?{n}\s*\(\s*\)')
     if suffix == '.json':
