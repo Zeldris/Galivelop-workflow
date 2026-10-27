@@ -10,9 +10,10 @@
 #    done: it says how to undo it (git reset --hard HEAD^1) and exits 1; branch and worktree stay.
 #  - after a green check, the related tests the pre-push would run: tests-relacionados.sh gets the files the merge
 #    changed (git diff --name-only --no-renames <HEAD before the merge> HEAD) and runs the `relatedTests` commands
-#    that apply (a no-op without `relatedTests`; skipped, like in the pre-push, if tests-relacionados.sh is not
-#    installed). If they fail it behaves like a failed check: the merge IS already done, it says how to rerun them
-#    and how to undo the merge, exits 1; branch and worktree stay.
+#    that apply (a no-op without `relatedTests`). If they fail it behaves like a failed check: the merge IS already
+#    done, it says how to rerun them and how to undo the merge, exits 1; branch and worktree stay. If `relatedTests`
+#    is configured but tests-relacionados.sh is not installed it fails the same way (reinstall: /gw-update); with an
+#    empty `relatedTests` a missing script is skipped silently.
 #  - after a green check and green related tests: `git worktree remove` (without force: with uncommitted changes it warns and leaves it)
 #    and `git branch -d` (deletes only what is merged; if it refuses it warns and goes on). Only a branch named
 #    worktree-agent-* or whose worktree is under .claude/worktrees/ is cleaned; never the current branch, the
@@ -68,10 +69,21 @@ while IFS= read -r cmd; do
   fi
 done <<<"$checks"
 
-# The related tests the pre-push would run, on the files this merge brought. Like the pre-push, skipped if the script
-# is not installed (tests-relacionados.sh is a no-op without relatedTests); fail closed if the changed list cannot be built.
-if [ -f "$here/tests-relacionados.sh" ]; then
-  rerun="git diff --name-only --no-renames ${before:0:7} HEAD > changed.txt && bash $here/tests-relacionados.sh changed.txt"
+# The related tests the pre-push would run, on the files this merge brought. Fail closed: with commands in
+# `relatedTests` but tests-relacionados.sh not installed they cannot run, so that is an error (with an empty
+# `relatedTests` a missing script has nothing to run); also if the changed list cannot be built.
+related_configured=""
+for kind in fast slow; do
+  value="$(python3 "$config" --root "$root" get "relatedTests.$kind" 2>/dev/null)" && [ -n "$value" ] && related_configured=1
+done
+if [ ! -f "$here/tests-relacionados.sh" ]; then
+  if [ -n "$related_configured" ]; then
+    echo "fusionar: RELATED TESTS CANNOT RUN: relatedTests is configured but $here/tests-relacionados.sh is not installed. The merge is ALREADY done in the current branch; branch and worktree stay." >&2
+    echo "fusionar: reinstall the workflow with: /gw-update (then run the related tests), or undo the merge with: git reset --hard HEAD^1" >&2
+    exit 1
+  fi
+else
+  rerun="f=\$(mktemp) && git diff --name-only --no-renames ${before:0:7} HEAD > \"\$f\" && bash $here/tests-relacionados.sh \"\$f\""
   git diff --name-only --no-renames "$before" HEAD > "$logs/changed" || {
     echo "fusionar: cannot list the files the merge changed. The merge is ALREADY done in the current branch; branch and worktree stay." >&2
     echo "fusionar: run the related tests by hand: $rerun" >&2

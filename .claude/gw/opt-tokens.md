@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.4.1 -->
+<!-- galivelop-workflow v0.4.2 -->
 # opt-tokens — notas del proyecto
 
 Las lee la skill `opt-tokens` antes de proponer nada, y se actualizan cuando la persona aprueba un cambio. El flujo
@@ -35,6 +35,9 @@ las crea una vez; desde entonces son del proyecto.
 - Herramientas que devuelven JSON largo (`list_sessions`, `list_events`): pedir lo mínimo (`limit`, `kinds`).
 - Repos hermanos adjuntos a la sesión (recogida del 2026-10-26): sus `CLAUDE.md`, `AGENTS.md` y skills entraban en
   cada llamada, ~19M (17 %). Clonarlos aparte (`gw-harvest`, paso 1).
+- Sesión que arrastra repos hermanos de una recogida anterior a la `0.4.1` (medida del 2026-10-27): suelo de 108k,
+  ~18-20k por llamada solo de su contexto fijo (16 %) y una compactación cada 24 llamadas. Cada versión nueva, en una
+  sesión nueva con solo este repo.
 - Comprobar una release: `get_latest_release` o `list_releases` (`perPage` pequeño), no `get_release_by_tag` a
   ciegas con etiquetas que quizá no existen.
 - Modelo: el grande se mantiene para ganchos, guardas y seguridad; el medio para guías y porte mecánico (bajar de
@@ -57,3 +60,6 @@ las crea una vez; desde entonces son del proyecto.
   y «Hecho» de 5 entradas cortas.
 - 2026-10-26, parche `0.4.1` (una sesión en la nube, últimas 24 h): principal 369 llamadas, 125k de media, suelo
   108k y techo 142k, 46M; subagentes 30 (616 llamadas, 64M, arranque 69k). Cambios: P1-P4 de arriba.
+- 2026-10-27, parche `0.4.2` (la misma sesión, últimas 24 h): principal 938 llamadas, 123k de media, suelo 108k y
+  techo 141k, 39 compactaciones, 115M; subagentes 16 (332 llamadas, 35M). Cambio: la `1.0.0`, en sesión nueva (P1 de
+  la retro del 2026-10-27).

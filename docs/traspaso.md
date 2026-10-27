@@ -11,8 +11,8 @@
 | Rama | Correcciones `0.4.x`: `ccr-6dfbc880-ddr41g`. **Evolutivos y novedades: `version/1.0.0`** (usuario, 2026-10-26; creada desde `ccr-6dfbc880-ddr41g`; los parches `0.4.x` se fusionan también en ella; sus evolutivos, en `docs/registros/pendiente-1.0.0.md` de esa rama). `main` = `56212e8` = **`0.4.1`** (2026-10-26); etiqueta y release `v0.4.1` sobre `56212e8` y `v0.4.0` sobre `d7dd18f` (a mano por el usuario). `claude/galivelop-workflow-inicio` está **obsoleta** (se quedó en `0f36412`): no se trabaja en ella |
 | Check | `bash tests/comprobar.sh` en verde (**comprobado solo en local**: sin cuota de Actions el CI no arranca, confirmado por el usuario); `main` (`56212e8`) comprobado en local el 2026-10-26 |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | `0.4.1` en `main` (`56212e8`, 2026-10-26), con confirmación del usuario: fases 1-3 hechas, marca de revisión `a3cc2dc`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde sobre `56212e8` para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.1.md` |
-| Siguiente paso | Parche `0.4.2` listo en `ccr-6dfbc880-ddr41g` y fusionado en `version/1.0.0`; los evolutivos de la segunda recogida (VeriNews P1, P2, P5-P10 y los borrados de P11; INS P9-P13 con WMF P4 y Portal P5; Portal P4) y el límite de `prepush-ramas.sh` con un log malo en un commit intermedio, apuntados en `pendiente-1.0.0.md`. Ahora, con confirmación del usuario: las tres fases del `0.4.2` hacia `main` (`/code-review` del diff contra `origin/main`, `/opt-tokens` + `/retro`, `revisado.sh`). Pendiente aparte: la etiqueta `v0.4.1` sobre `56212e8` y su release, a mano por el usuario |
+| Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
+| Siguiente paso | `0.4.2` en `main` (`8a6f367`, 2026-10-27) y fusionado aquí; P3-P5 de su retro y el límite de `prepush-ramas.sh` (arreglado en la `0.4.2`) apuntados en `pendiente-1.0.0.md`. Siguiente: la `1.0.0` en una sesión nueva solo con este repo (P1 de la retro), empezando por la recogida de la versión (`gw-harvest`) y luego `pendiente-1.0.0.md` en orden. Pendiente del usuario: la etiqueta `v0.4.2` sobre `8a6f367` y su release (`docs/registros/release-v0.4.2.md`) |
 
 ### Fases
 
@@ -59,6 +59,12 @@ lanzamiento manual desde Actions que cree la etiqueta.
   usuario lo pide. Límites conocidos del gancho: con git anterior a 2.45 y `core.commentString` puesto, lee ese valor
   aunque git use `#` (las tijeras no se reconocerían); `--amend` de un commit antiguo con firma se rechaza hasta
   quitarla (coherente); el autor del commit no se comprueba, solo el mensaje.
+- **Leves del `/code-review` de `0.4.2`** (2026-10-27, no bloquean): (1) los commits de fusión `d714267`, `9112a44`,
+  `b4ec2eb` y `8b0260c` no llevan `Siguiente:` (ya subidos; el mensaje que propone `fusionar.sh`, a la retro);
+  (2) `bitacora.py check` sin `--at` da la pista de commit y la ayuda del principio no menciona `--at`; (3) la regla
+  QUOTED del `pre-commit` bloquea etiquetas de i18n (una clave `openaiKey` cuyo valor es el texto «Clave de OpenAI»;
+  lo sufrió esta misma bitácora); (4)
+  `tests-relacionados.sh` se presenta como «pre-push: related tests» también cuando lo llama `fusionar.sh`.
 - Menores de la revisión de la `0.4.1` (2026-10-26): `rojo-sin-arreglo` (`test_re`) da falsos positivos («it (»,
   «test(», `def testable`, comentarios que se describen a sí mismos, como los del propio script); `NOT_STARTED` del
   gancho de fusión solo reconoce dos frases exactas de GitHub (falta «billing», «account is locked»); `cloud_start`

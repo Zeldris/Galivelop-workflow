@@ -102,8 +102,39 @@ class Mapa(unittest.TestCase):
         ]:
             with self.subTest(line=line):
                 self.assertTrue(self.defines(line, name, ".java"))
-        self.assertTrue(self.defines("  int main(void) {", "main", ".c"))
         self.assertTrue(self.defines("  public async Task<int> Run() {", "Run", ".cs"))
+        self.assertTrue(self.defines("    public void lock() {", "lock", ".java"))
+
+    def test_a_multiline_signature_with_annotated_parameters_is_a_definition(self):
+        text = ("    public ResponseEntity<?> crear(\n        @Size(max = 1) String a,\n"
+                "        @Valid @RequestBody Req b\n    ) throws IOException {\n")
+        self.assertTrue(self.defines(text, "crear", ".java"))
+
+    def test_the_parameter_list_cannot_run_into_the_next_statement(self):
+        """A Gradle script has no `;`: `implementation project(':core')` is a call, not a definition of `project`."""
+        gradle = "dependencies {\n    implementation project(':core')\n  if (x) {\n    y()\n  }\n}\n"
+        self.assertFalse(self.defines(gradle, "project", ".groovy"))
+        self.assertFalse(self.defines(gradle, "project", ".kts"))
+        # nor across a block: `call(a)` ... `}` ... `other(b) {`
+        self.assertFalse(self.defines("    int v = 1\n    String run(a, b\n}\nfoo(c) {\n", "run", ".groovy"))
+
+    def test_methods_named_like_control_keywords_are_found_outside_the_typed_languages(self):
+        """A `.ts` method called `lock`, `when`, `catch`... is a definition; `origin/main` found them, 0.4.2 lost them."""
+        for name in ("lock", "when", "catch", "using", "do", "new", "try", "yield", "await"):
+            with self.subTest(name=name):
+                self.assertTrue(self.defines(f"class Mutex {{\n  {name}() {{\n  }}\n}}\n", name, ".ts"))
+                self.assertTrue(self.defines(f"class Mutex {{\n  async {name}(a) {{\n  }}\n}}\n", name, ".js"))
+
+    def test_control_statements_are_still_not_definitions_in_the_typed_languages(self):
+        self.assertFalse(self.defines("    lock (gate) {\n", "lock", ".cs"))
+        self.assertFalse(self.defines("    using (var f = open()) {\n", "using", ".cs"))
+        self.assertTrue(self.defines("    public void lock() {\n", "lock", ".cs"))
+
+    def test_c_and_cpp_have_no_return_type_form(self):
+        """`char *dup(`, `std::string name(`, `void Foo::bar(` and `const T& get() const` do not fit it: not half-supported."""
+        for suffix in (".c", ".h", ".cc", ".cpp", ".cxx", ".hpp", ".hh"):
+            with self.subTest(suffix=suffix):
+                self.assertFalse(self.defines("  int main(void) {", "main", suffix))
 
     def test_java_calls_and_control_flow_are_not_definitions(self):
         for name, line in [

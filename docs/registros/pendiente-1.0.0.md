@@ -61,9 +61,21 @@ Decididas el 2026-10-27; las correcciones (INS P8, VeriNews P3, P4 y la parte Ja
   [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
 - [ ] **VeriNews P11 (archivos borrados):** `tests-relacionados.sh` incluye los archivos borrados en `{files}` o corre
   todo si un push solo borra. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
-- [ ] **Del arreglo de INS P8:** `prepush-ramas.sh` comprueba la bitácora de cada commit nuevo, así que un log malo
-  en un commit intermedio no se arregla con un commit nuevo encima (hoy hay que rehacer ese commit). Viene de
-  antes del arreglo, no es una regresión.
+- [x] **Del arreglo de INS P8** (arreglado en la `0.4.2`, `4aecf5c`): `prepush-ramas.sh` comprueba la bitácora como
+  queda en la punta que se sube, así que un log malo en un commit intermedio se arregla con un commit nuevo encima.
+
+## De la retro del parche `0.4.2`
+
+[`retro-2026-10-27-parche-0-4-2.md`](retro-2026-10-27-parche-0-4-2.md), aprobadas por el usuario el 2026-10-27.
+
+- [ ] **P3 (`doctor.py`):** avisar de un `core.hooksPath` absoluto que apunta al `.githooks` del checkout principal
+  (los worktrees correrían los ganchos de otra rama), con la orden que lo arregla
+  (`git config core.hooksPath .githooks`). Test del aviso y de su motivo.
+- [ ] **P4 (`commit-msg`):** comprobar la línea `Siguiente:` en los mensajes, también los de fusión que escribe
+  `fusionar.sh` (o que `fusionar.sh` la exija en su mensaje). Escape `GW_NO_NEXT=1` para un mensaje legítimo sin
+  ella, y el aviso lo dice. Misma familia que la comprobación de firmas del agente.
+- [ ] **P5 (regla QUOTED del `pre-commit`):** sin falsos positivos en `.md` (una etiqueta de traducción citada como
+  ejemplo). Tests de los dos lados: un secreto real en un `.md` sigue bloqueado.
 
 ## De la retro del parche `0.4.1`
 

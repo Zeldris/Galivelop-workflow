@@ -166,30 +166,34 @@ the new features go to `1.0.0`.
 
 - `bitacora.py` ya no sugiere `git commit --amend`: al hacer commit dice que se añada el log y se repita el commit; al
   subir (`check --at push`, que pasa `prepush-ramas.sh`, y `closed`), que se haga un commit nuevo con el arreglo
-  (instalador P8).
+  (instalador P8). Para que ese commit desbloquee la subida, `prepush-ramas.sh` comprueba el log como queda en la
+  punta que se sube, no el de cada commit intermedio.
 - El `pre-commit` ve los secretos con el nombre `api.key` (con punto, como `openai.api.key` en un `.properties`) y
   la clave pegada a un proveedor de IA (`openaikey`, `OPENAI_KEY`, `anthropic-key`…); a propósito no casa un sufijo
   `*key` genérico (`primary_key`, `sort_key`, `cache_key`) (VeriNews P3).
 - `fusionar.sh` corre, tras el check en verde, los tests relacionados (`relatedTests`, con `tests-relacionados.sh`)
   de los archivos que trae la fusión, como el `pre-push`; si fallan, la fusión ya está hecha y dice cómo repetirlos y
-  cómo deshacerla (VeriNews P4).
+  cómo deshacerla (VeriNews P4). Con `relatedTests` configurado y sin `tests-relacionados.sh` instalado, falla en vez
+  de saltárselos.
 - `mapa-agente.py` reconoce los métodos con tipo de retorno de Java y otros lenguajes tipados (`.java`, `.kt`, `.cs`,
-  `.scala`, `.groovy`, C y C++), con modificadores, genéricos, anotaciones y `throws`; las palabras de control
+  `.kts`, `.scala`, `.groovy`), con modificadores, genéricos, anotaciones y `throws`; las palabras de control
   (`if`, `for`, `while`…) no cuentan como método (VeriNews P11).
 
 ### EN
 
 - `bitacora.py` no longer suggests `git commit --amend`: at commit time it says to stage the log and run the commit
   again; at push time (`check --at push`, passed by `prepush-ramas.sh`, and `closed`), to make a new commit with the
-  fix (installer P8).
+  fix (installer P8). So that this commit unblocks the push, `prepush-ramas.sh` checks the log as the pushed tip has
+  it, not each intermediate commit's.
 - The `pre-commit` sees secrets named `api.key` (with a dot, like `openai.api.key` in a `.properties` file) and a key
   glued to an LLM provider (`openaikey`, `OPENAI_KEY`, `anthropic-key`…); on purpose it does not match a bare `*key`
   suffix (`primary_key`, `sort_key`, `cache_key`) (VeriNews P3).
 - `fusionar.sh` runs, after a green check, the related tests (`relatedTests`, via `tests-relacionados.sh`) of the
   files the merge brings, like the `pre-push`; if they fail, the merge is already done and it says how to rerun them
-  and how to undo it (VeriNews P4).
+  and how to undo it (VeriNews P4). With `relatedTests` set and `tests-relacionados.sh` not installed, it fails
+  instead of skipping them.
 - `mapa-agente.py` recognises methods with a return type in Java and other typed languages (`.java`, `.kt`, `.cs`,
-  `.scala`, `.groovy`, C and C++), with modifiers, generics, annotations and `throws`; control keywords (`if`, `for`,
+  `.kts`, `.scala`, `.groovy`), with modifiers, generics, annotations and `throws`; control keywords (`if`, `for`,
   `while`…) do not count as methods (VeriNews P11).
 
 ## [0.4.1] - 2026-10-26
