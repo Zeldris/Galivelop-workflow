@@ -9,7 +9,7 @@ documentos. Si mueves una pieza, actualiza su fila en el mismo commit.
 | Decisiones y fases | [`plan.md`](plan.md) §0 y §9 | [`traspaso.md`](traspaso.md) (estado) |
 | Config del proyecto (`.claude/gw.json`) | [`schema/gw.schema.json`](../schema/gw.schema.json), [`es/config.md`](es/config.md) | `scripts/config.py` (único lector) |
 | Código frente a contenido | `content` del config | `scripts/es-codigo.sh` |
-| Subida y revisión antes de la rama protegida | [`plan.md`](plan.md) §5.3, `AGENTS.md` § ramas | `templates/githooks/pre-push`, `scripts/revisado.sh`, `scripts/revision-antes-de-main.sh`, `scripts/fusionar.sh` (fusión con check) |
+| Subida y revisión antes de la rama protegida | [`plan.md`](plan.md) §5.3, `AGENTS.md` § ramas | `templates/githooks/pre-push`, `scripts/revisado.sh`, `scripts/revision-antes-de-main.sh`, `scripts/fusionar.sh` (fusión con check y tests relacionados) |
 | Secretos y rutas protegidas | Patrones en la cabecera de `templates/githooks/pre-commit`; rutas en la clave `protectedPaths` | `templates/githooks/pre-commit` (tests en `tests/test_ganchos.py`) |
 | Bitácora en el commit | `log` y `logRows` del config; cabecera de `templates/githooks/commit-msg` | `templates/githooks/commit-msg` (corre `bitacora.py check` sobre la bitácora preparada; tests en `tests/test_ganchos.py`) |
 | Arranque, recuperación y diagnóstico | [`plan.md`](plan.md) §5.2; ganchos y ventana de compactación en `templates/claude/settings.json` (y `hooks/hooks.json` para el plugin) | `scripts/session-start.sh`, `recuperar.py`, `registro_sesion.py`, `doctor.py` |

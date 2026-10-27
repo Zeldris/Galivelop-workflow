@@ -713,6 +713,50 @@ class Fusionar(Base):
         self.assertTrue(wt.exists())
         self.assertIn("worktree-agent-1", self.branches())
 
+    def related(self, command="bash related.sh {files}"):
+        """Commit a relatedTests config whose command logs its arguments and passes only for files holding `good`."""
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["relatedTests"] = {"fast": [command]}
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.write("related.sh", 'echo "$@" >> related.log\ngrep -q good "$@"\n')
+        self.p.commit("related tests", env=DAY)
+
+    def test_runs_the_related_tests_on_the_files_the_merge_brought(self):
+        self.related()
+        wt = self.agent(text="good\n")
+        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.p.work / "related.log").read_text(), "a.txt\n", "ran once, on the merged file only")
+        self.assertIn("related tests OK", out)
+        self.assertFalse(wt.exists(), out)
+        self.assertNotIn("worktree-agent-1", self.branches())
+
+    def test_failing_related_tests_say_so_how_to_rerun_and_keep_the_branch(self):
+        self.related()
+        before = self.p.sha()
+        wt = self.agent(text="bad\n")
+        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        self.assertEqual(code, 1, out)
+        self.assertIn("RELATED TESTS FAILED", out)
+        self.assertIn("tests-relacionados: failed (fast): bash related.sh a.txt", out)
+        self.assertIn("tests-relacionados.sh changed.txt", out)
+        self.assertIn("git reset --hard HEAD^1", out)
+        self.assertNotIn("CHECK FAILED", out, "the check itself passed")
+        self.assertEqual(self.p.git("rev-parse", "HEAD^1").stdout.strip(), before, "the merge is done")
+        self.assertEqual((self.p.work / "related.log").read_text(), "a.txt\n")
+        self.assertTrue(wt.exists())
+        self.assertIn("worktree-agent-1", self.branches())
+
+    def test_related_tests_are_skipped_when_the_script_is_not_installed(self):
+        self.related()
+        (self.p.scripts / "tests-relacionados.sh").unlink()
+        wt = self.agent(text="bad\n")
+        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("related tests", out)
+        self.assertFalse((self.p.work / "related.log").exists())
+        self.assertFalse(wt.exists(), out)
+
     def test_session_branches_are_merged_but_not_deleted(self):
         self.p.git("checkout", "-q", "-b", "claude/topic")
         self.p.write("t.txt", "t\n")
