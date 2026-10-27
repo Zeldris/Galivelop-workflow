@@ -28,7 +28,7 @@ the new features go to `1.0.0`.
   cómo deshacerla (VeriNews P4). Con `relatedTests` configurado y sin `tests-relacionados.sh` instalado, falla en vez
   de saltárselos.
 - `mapa-agente.py` reconoce los métodos con tipo de retorno de Java y otros lenguajes tipados (`.java`, `.kt`, `.cs`,
-  `.scala`, `.groovy`, C y C++), con modificadores, genéricos, anotaciones y `throws`; las palabras de control
+  `.kts`, `.scala`, `.groovy`), con modificadores, genéricos, anotaciones y `throws`; las palabras de control
   (`if`, `for`, `while`…) no cuentan como método (VeriNews P11).
 
 ### EN
@@ -45,7 +45,7 @@ the new features go to `1.0.0`.
   and how to undo it (VeriNews P4). With `relatedTests` set and `tests-relacionados.sh` not installed, it fails
   instead of skipping them.
 - `mapa-agente.py` recognises methods with a return type in Java and other typed languages (`.java`, `.kt`, `.cs`,
-  `.scala`, `.groovy`, C and C++), with modifiers, generics, annotations and `throws`; control keywords (`if`, `for`,
+  `.kts`, `.scala`, `.groovy`), with modifiers, generics, annotations and `throws`; control keywords (`if`, `for`,
   `while`…) do not count as methods (VeriNews P11).
 
 ## [0.4.1] - 2026-10-26
