@@ -12,7 +12,7 @@ De `b8470762` a `aa76b34d` (`scripts/recoger.py`, 30 commits). Numeración segui
 - **Why it is general:** la sesión de la nube del Portal cargó las reglas de otro repo por registrarlo; le pasa a
   cualquier proyecto que lea otro.
 - **Version bump:** minor → 1.0.0 (frase nueva en una skill)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P5. Apartado «Navegadores» en `REVIEW.md`
 
@@ -21,7 +21,7 @@ De `b8470762` a `aa76b34d` (`scripts/recoger.py`, 30 commits). Numeración segui
   navegadores y en el móvil (APIs que no están en Safari, `100vh`, foco y teclado).
 - **Why it is general:** sirve a todo proyecto web que use el flujo (Portal, VeriNews).
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta (valor bajo-medio)
+- **Status:** aprobada (2026-10-27)
 
 ## Stays in the project
 

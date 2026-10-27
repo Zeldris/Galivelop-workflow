@@ -11,7 +11,7 @@ seguida de `2026-10-26-world-maker-fantasy.md`.
   comprobar una revisión concreta.
 - **Why it is general:** ver P12 del Instalador.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta (se decide junto con P12 del Instalador)
+- **Status:** aprobada (2026-10-27)
 
 ## P5. Nota sobre ids de tareas de otro proyecto en `REVIEW.md`
 
@@ -21,7 +21,8 @@ seguida de `2026-10-26-world-maker-fantasy.md`.
   QA-259) se queda en el proyecto.
 - **Why it is general:** pasa en cualquier par de repos que se trabajen juntos; aun así, es poco frecuente.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta (valor bajo)
+- **Status:** descartada (2026-10-27): el caso es poco frecuente y el mecanismo (`externalTaskIds`) se queda en el proyecto; una
+  línea en la plantilla de todos para él no compensa
 
 ## Stays in the project
 

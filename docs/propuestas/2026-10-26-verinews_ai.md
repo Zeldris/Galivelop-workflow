@@ -13,7 +13,7 @@ confirmar» se reproduce antes de aplicarlo.
 - **Why it is general:** cualquier proyecto con un despliegue que publica estados en GitHub se queda con el PR
   bloqueado aunque su CI esté en verde.
 - **Version bump:** minor → 1.0.0 (clave nueva)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P2. Firmas del agente en PR, comentarios y `user.email`
 
@@ -23,7 +23,7 @@ confirmar» se reproduce antes de aplicarlo.
   mire el cuerpo de un PR, issue o comentario de las herramientas de GitHub con `agentSignatures: false`.
 - **Why it is general:** los PR y los comentarios son por donde se cuelan las firmas cuando el commit ya está limpio.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P3. Nombres de secretos que el `pre-commit` no ve
 
@@ -33,7 +33,7 @@ confirmar» se reproduce antes de aplicarlo.
   diga el nombre).
 - **Why it is general:** es un hueco del filtro de secretos de todos los proyectos.
 - **Version bump:** patch (corrección, `0.4.2`)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P4. `fusionar.sh` sin los tests relacionados
 
@@ -41,8 +41,8 @@ confirmar» se reproduce antes de aplicarlo.
 - **What changes:** `scripts/fusionar.sh` corre el check pero no `relatedTests` (`tests-relacionados.sh`), que sí
   corre el `pre-push`; la rama de un subagente puede volver con un test roto que solo salta al subir.
 - **Why it is general:** afecta a todo proyecto con `relatedTests`.
-- **Version bump:** patch (corrección) si se reproduce; por confirmar
-- **Status:** propuesta
+- **Version bump:** patch (corrección, `0.4.2`): se reproduce, `fusionar.sh` no llama a `tests-relacionados.sh`
+- **Status:** aprobada (2026-10-27)
 
 ## P5. `rojo-sin-arreglo.sh`: arreglo ya commiteado y tipo de rojo
 
@@ -52,7 +52,7 @@ confirmar» se reproduce antes de aplicarlo.
   un rojo por compilación de uno por la aserción (hoy `--fails-with` solo lo mitiga).
 - **Why it is general:** el script es del flujo y los dos casos salen en cualquier proyecto.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P6. Aviso de código sin revisar desde la última marca
 
@@ -61,7 +61,7 @@ confirmar» se reproduce antes de aplicarlo.
   fase 1) para que los arreglos de la fase 2 no lleguen a `main` sin revisión.
 - **Why it is general:** es el hueco de la fase 3 en todos los proyectos.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P7. `bitacora.py set-row`
 
@@ -70,7 +70,7 @@ confirmar» se reproduce antes de aplicarlo.
   de 600 caracteres comprobado; y su entrada en `docs/es|en/patrones.md`.
 - **Why it is general:** todos editan esa fila a mano varias veces por tarea.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P8. `doctor.py` avisa de `cd <carpeta> && …` sin `worktreeLinks`
 
@@ -79,7 +79,7 @@ confirmar» se reproduce antes de aplicarlo.
   `worktreeLinks`, `doctor.py` avisa: en el worktree temporal del `pre-push` esa carpeta no existe.
 - **Why it is general:** el fallo es difícil de ver y le pasa a cualquier monorepo.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P9. Encargo de revisión con `git diff --stat`
 
@@ -88,7 +88,7 @@ confirmar» se reproduce antes de aplicarlo.
   `git diff --stat origin/main` y pide decir cada archivo leído o descartado.
 - **Why it is general:** evita revisiones que se saltan archivos sin decirlo.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P10. Textos menores de `AGENTS.md` y `opt-tokens`
 
@@ -97,7 +97,7 @@ confirmar» se reproduce antes de aplicarlo.
   subida; `git fetch -q && git status -sb` en el paso 2 de inicio.
 - **Why it is general:** ahorros de tokens pequeños en todos los proyectos.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta (valor bajo)
+- **Status:** aprobada (2026-10-27)
 
 ## P11. Menores por confirmar
 
@@ -108,8 +108,8 @@ confirmar» se reproduce antes de aplicarlo.
   `comprobar.yml` si el `package.json` está en una subcarpeta; aviso de `medir.py` cuando no ve subagentes; receta
   `git merge -s ours` para reiniciar una rama fusionada sin `--force`.
 - **Why it is general:** todas tocan piezas del flujo; las dos primeras serían correcciones si se reproducen.
-- **Version bump:** patch las que se reproduzcan como defecto; el resto, minor → 1.0.0
-- **Status:** propuesta (valor bajo)
+- **Version bump:** patch `0.4.2` (Java en `mapa-agente.py`); minor → 1.0.0 (archivos borrados en `tests-relacionados.sh`)
+- **Status:** aprobada en parte (2026-10-27): `mapa-agente.py` con métodos Java, en la `0.4.2` (se reproduce: ni `void run() {` se reconocía); `tests-relacionados.sh` con archivos borrados, a la `1.0.0` (es el comportamiento que documenta su cabecera, no un defecto); el resto, descartado
 
 ## Stays in the project
 
