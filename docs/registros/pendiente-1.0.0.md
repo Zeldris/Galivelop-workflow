@@ -4,6 +4,19 @@ Los evolutivos aprobados que no entran en la `0.4.x` (plan §7) y esperan en la 
 apunta a su propuesta, que lleva el detalle; al aplicarla, se tacha aquí con la fecha y el commit, y la entrada va al
 CHANGELOG de la `1.0.0`.
 
+## De la recogida del 2026-10-27 (`galivelop-developer`)
+
+P1-P4 van al parche `0.4.3`.
+
+- [ ] **DEV P5**: `orchestrate-dealer`: si la revisión de toda la rama va justo después y ya está decidida, el último
+  bloque no se revisa aparte. [`2026-10-27-galivelop-developer.md`](../propuestas/2026-10-27-galivelop-developer.md)
+- [ ] **DEV P6**: `scripts/ci-estado.py`, que lee el estado de Actions de una rama o commit (token y `gh` de
+  `revision-antes-de-main.sh`). [`2026-10-27-galivelop-developer.md`](../propuestas/2026-10-27-galivelop-developer.md)
+- [ ] **DEV P7**: clave `ciPython` en `gw.json` con las versiones de Python que la plantilla del CI recorre en matriz.
+  [`2026-10-27-galivelop-developer.md`](../propuestas/2026-10-27-galivelop-developer.md)
+- [ ] **DEV P8**: `aplicar.py --init` añade un `.gitignore` por stack en un bloque con marca, sin pisar el existente.
+  [`2026-10-27-galivelop-developer.md`](../propuestas/2026-10-27-galivelop-developer.md)
+
 ## De la recogida del 2026-10-26
 
 - [x] **WMF P2** (2026-10-26): `bitacora.py clash` detecta un id de tarea dado de alta a la vez en dos ramas para
