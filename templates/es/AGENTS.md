@@ -79,8 +79,8 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
   más revisiones, nunca el CI ni la retro presentada a la persona. Si el CI no arranca, vale el check en local de
   «Relevos» con la confirmación de la persona: se sube directo (el `pre-push` corre el check) o fusiona ella; el
   gancho no deja al agente fusionar un pull request sin CI.
-- La rama de un subagente vuelve con `bash .claude/gw/scripts/fusionar.sh <rama> "<mensaje>"`, que corre el check y
-  limpia su worktree.
+- La rama de un subagente vuelve con `bash .claude/gw/scripts/fusionar.sh <rama> "<mensaje>"`, que corre el check y los tests
+  relacionados, y limpia su worktree.
 
 ## Antes de ir a `{{protectedBranch}}`: tres fases
 

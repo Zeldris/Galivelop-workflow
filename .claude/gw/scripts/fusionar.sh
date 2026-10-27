@@ -1,13 +1,19 @@
 #!/usr/bin/env bash
 # galivelop-workflow v0.4.1
 # Merges a subagent's branch into the current one (merge, never rebase: branches are pushed), runs the config's
-# `check` commands on the result and, if they pass, cleans up the subagent's worktree and branch.
+# `check` commands and the related tests (`relatedTests`) on the result and, if they pass, cleans up the subagent's
+# worktree and branch.
 #   bash fusionar.sh <branch> "<merge message>" [--reviewed]
 #  - `git merge --no-ff`. On conflict it stops, lists the files and leaves the merge open (resolve it, or abort
 #    with: git merge --abort), exit 1.
 #  - then every `check` command of .claude/gw.json runs in the project root. If one fails the merge IS already
 #    done: it says how to undo it (git reset --hard HEAD^1) and exits 1; branch and worktree stay.
-#  - after a green check: `git worktree remove` (without force: with uncommitted changes it warns and leaves it)
+#  - after a green check, the related tests the pre-push would run: tests-relacionados.sh gets the files the merge
+#    changed (git diff --name-only --no-renames <HEAD before the merge> HEAD) and runs the `relatedTests` commands
+#    that apply (a no-op without `relatedTests`; skipped, like in the pre-push, if tests-relacionados.sh is not
+#    installed). If they fail it behaves like a failed check: the merge IS already done, it says how to rerun them
+#    and how to undo the merge, exits 1; branch and worktree stay.
+#  - after a green check and green related tests: `git worktree remove` (without force: with uncommitted changes it warns and leaves it)
 #    and `git branch -d` (deletes only what is merged; if it refuses it warns and goes on). Only a branch named
 #    worktree-agent-* or whose worktree is under .claude/worktrees/ is cleaned; never the current branch, the
 #    protected branch or claude/* (session branches).
@@ -61,6 +67,25 @@ while IFS= read -r cmd; do
     exit 1
   fi
 done <<<"$checks"
+
+# The related tests the pre-push would run, on the files this merge brought. Like the pre-push, skipped if the script
+# is not installed (tests-relacionados.sh is a no-op without relatedTests); fail closed if the changed list cannot be built.
+if [ -f "$here/tests-relacionados.sh" ]; then
+  rerun="git diff --name-only --no-renames ${before:0:7} HEAD > changed.txt && bash $here/tests-relacionados.sh changed.txt"
+  git diff --name-only --no-renames "$before" HEAD > "$logs/changed" || {
+    echo "fusionar: cannot list the files the merge changed. The merge is ALREADY done in the current branch; branch and worktree stay." >&2
+    echo "fusionar: run the related tests by hand: $rerun" >&2
+    exit 1; }
+  if bash "$here/tests-relacionados.sh" "$logs/changed" > "$logs/related.log" 2>&1 < /dev/null; then
+    echo "fusionar: related tests OK"
+  else
+    tail -n 20 "$logs/related.log" >&2
+    echo "fusionar: RELATED TESTS FAILED. The merge is ALREADY done in the current branch; branch and worktree stay." >&2
+    echo "fusionar: fix it and commit, or undo the merge with: git reset --hard HEAD^1" >&2
+    echo "fusionar: rerun them with: $rerun" >&2
+    exit 1
+  fi
+fi
 
 cleanup_branch() {
   local current wt

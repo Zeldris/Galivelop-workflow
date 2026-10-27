@@ -80,8 +80,8 @@ Each session may run in a throwaway container: **what is not pushed does not exi
   the CI nor the retro presented to the person. If CI does not start, the local check under "Hand-offs" counts with
   the person's confirmation: push directly (`pre-push` runs the check) or they merge it; the hook does not let the
   agent merge a pull request without CI.
-- A subagent's branch comes back with `bash .claude/gw/scripts/fusionar.sh <branch> "<message>"`, which runs the check
-  and cleans up its worktree.
+- A subagent's branch comes back with `bash .claude/gw/scripts/fusionar.sh <branch> "<message>"`, which runs the check and the
+  related tests, and cleans up its worktree.
 
 ## Before going to `{{protectedBranch}}`: three phases
 
