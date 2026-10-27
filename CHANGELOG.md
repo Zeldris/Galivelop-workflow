@@ -156,6 +156,42 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   files and `patterns.md`. Compatibility: `web` is no longer an extra channel (`--limite web=N` and `--formato-propio web`
   are usage errors), and an older `web.md` without the block or `estado` must be redone from the template.
 
+## [0.4.2] - 2026-10-27
+
+Parche de correcciones de la segunda recogida del 2026-10-26 (`docs/propuestas/2026-10-26-*-2.md` y
+`2026-10-26-verinews_ai.md`); los evolutivos van a la `1.0.0`. / Bug-fix patch from the second 2026-10-26 harvest;
+the new features go to `1.0.0`.
+
+### ES
+
+- `bitacora.py` ya no sugiere `git commit --amend`: al hacer commit dice que se añada el log y se repita el commit; al
+  subir (`check --at push`, que pasa `prepush-ramas.sh`, y `closed`), que se haga un commit nuevo con el arreglo
+  (instalador P8).
+- El `pre-commit` ve los secretos con el nombre `api.key` (con punto, como `openai.api.key` en un `.properties`) y
+  la clave pegada a un proveedor de IA (`openaikey`, `OPENAI_KEY`, `anthropic-key`…); a propósito no casa un sufijo
+  `*key` genérico (`primary_key`, `sort_key`, `cache_key`) (VeriNews P3).
+- `fusionar.sh` corre, tras el check en verde, los tests relacionados (`relatedTests`, con `tests-relacionados.sh`)
+  de los archivos que trae la fusión, como el `pre-push`; si fallan, la fusión ya está hecha y dice cómo repetirlos y
+  cómo deshacerla (VeriNews P4).
+- `mapa-agente.py` reconoce los métodos con tipo de retorno de Java y otros lenguajes tipados (`.java`, `.kt`, `.cs`,
+  `.scala`, `.groovy`, C y C++), con modificadores, genéricos, anotaciones y `throws`; las palabras de control
+  (`if`, `for`, `while`…) no cuentan como método (VeriNews P11).
+
+### EN
+
+- `bitacora.py` no longer suggests `git commit --amend`: at commit time it says to stage the log and run the commit
+  again; at push time (`check --at push`, passed by `prepush-ramas.sh`, and `closed`), to make a new commit with the
+  fix (installer P8).
+- The `pre-commit` sees secrets named `api.key` (with a dot, like `openai.api.key` in a `.properties` file) and a key
+  glued to an LLM provider (`openaikey`, `OPENAI_KEY`, `anthropic-key`…); on purpose it does not match a bare `*key`
+  suffix (`primary_key`, `sort_key`, `cache_key`) (VeriNews P3).
+- `fusionar.sh` runs, after a green check, the related tests (`relatedTests`, via `tests-relacionados.sh`) of the
+  files the merge brings, like the `pre-push`; if they fail, the merge is already done and it says how to rerun them
+  and how to undo it (VeriNews P4).
+- `mapa-agente.py` recognises methods with a return type in Java and other typed languages (`.java`, `.kt`, `.cs`,
+  `.scala`, `.groovy`, C and C++), with modifiers, generics, annotations and `throws`; control keywords (`if`, `for`,
+  `while`…) do not count as methods (VeriNews P11).
+
 ## [0.4.1] - 2026-10-26
 
 Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-26-*.md`); los evolutivos van a la

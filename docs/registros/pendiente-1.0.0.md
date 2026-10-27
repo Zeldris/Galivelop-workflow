@@ -26,6 +26,45 @@ CHANGELOG de la `1.0.0`.
   genérica (canal `web`: `estado`, `fecha`, `texto` por idioma, `muro`; `--idiomas-web`).
   [`2026-10-26-portal-galivelop.md`](../propuestas/2026-10-26-portal-galivelop.md)
 
+## De la recogida del 2026-10-26 (segunda)
+
+Decididas el 2026-10-27; las correcciones (INS P8, VeriNews P3, P4 y la parte Java de P11) van en la `0.4.2`.
+
+- [ ] **VeriNews P1:** `ciIgnore`, estados de CI ajenos (p. ej. un despliegue) que no bloquean la fusión.
+  [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+- [ ] **VeriNews P2:** firmas del agente también en el cuerpo de PR, issues y comentarios de GitHub, y aviso de un
+  `user.email` `noreply@anthropic.com`. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+- [ ] **INS P12 + WMF P4:** el check en una orden con resumen y la salida recortada.
+  [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md),
+  [`2026-10-26-world-maker-fantasy-2.md`](../propuestas/2026-10-26-world-maker-fantasy-2.md)
+- [ ] **INS P9:** `bitacora.py own-row --staged`, la propia fila comprobada al hacer el commit.
+  [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md)
+- [ ] **VeriNews P6:** `revisado.sh` avisa del código sin revisar desde la última marca.
+  [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+- [ ] **VeriNews P5:** `rojo-sin-arreglo.sh --fix-at <commit>` y distinguir un rojo de compilación de uno de la
+  aserción. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+- [ ] **Portal P4:** `orchestrate-dealer`, los repos que solo se leen se clonan aparte y sin registrar.
+  [`2026-10-26-portal-galivelop-2.md`](../propuestas/2026-10-26-portal-galivelop-2.md)
+- [ ] **INS P10:** `doctor.py` avisa de worktrees ya fusionados.
+  [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md)
+- [ ] **VeriNews P7:** `bitacora.py set-row`. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+- [ ] **VeriNews P8:** `doctor.py` avisa de `cd <carpeta> && …` sin `worktreeLinks`.
+  [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+- [ ] **INS P11:** `scout-updates` lee la versión de Rust del proyecto.
+  [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md)
+- [ ] **VeriNews P9:** el encargo de revisión lleva `git diff --stat`.
+  [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+- [ ] **INS P13 + Portal P5:** en la plantilla de `REVIEW.md`, la regla de invariantes y el apartado «Navegadores».
+  [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md),
+  [`2026-10-26-portal-galivelop-2.md`](../propuestas/2026-10-26-portal-galivelop-2.md)
+- [ ] **VeriNews P10:** textos menores (`/clear` tras un commit `WIP:`, `perPage: 1`, `git fetch -q && git status -sb`).
+  [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+- [ ] **VeriNews P11 (archivos borrados):** `tests-relacionados.sh` incluye los archivos borrados en `{files}` o corre
+  todo si un push solo borra. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+- [ ] **Del arreglo de INS P8:** `prepush-ramas.sh` comprueba la bitácora de cada commit nuevo, así que un log malo
+  en un commit intermedio no se arregla con un commit nuevo encima (hoy hay que rehacer ese commit). Viene de
+  antes del arreglo, no es una regresión.
+
 ## De la retro del parche `0.4.1`
 
 - [x] **P3** (2026-10-26, `4e3af46`, `b50ccb6`, `f50072e`): el `pre-push` no repite un check ya en verde sobre el

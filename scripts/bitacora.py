@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.4.1
+# galivelop-workflow v0.4.2
 """Hand-off log rules. The branch-row rules need `"logRows": true` in .claude/gw.json (a no-op otherwise); the
 size and "Done" rules of `check`, and the `done` subcommand, work on any log.
 
@@ -289,7 +289,9 @@ def cmd_check(ctx, args):
     else:
         for w in soft:
             print(f"WARNING: bitacora: {w}")
-    return report(problems, f"edit {ctx.log} and commit again: git commit --amend")
+    if args.at == "push":  # the commit already exists: the fix is a new commit
+        return report(problems, f"edit {ctx.log} and make a new commit with the fix: git add {ctx.log} && git commit")
+    return report(problems, f"edit {ctx.log}, stage it (git add {ctx.log}) and run the commit again: git commit")
 
 
 def rows_problems(ctx, args, lines):
@@ -392,7 +394,7 @@ def cmd_closed(ctx, args):
     if missing and args.staged:
         print(f"bitacora: fix: edit {ctx.log}, stage it (git add {ctx.log}) and commit again")
     elif missing:
-        print(f"bitacora: fix: edit {ctx.log}, then git commit --amend")
+        print(f"bitacora: fix: edit {ctx.log} and make a new commit with the fix: git add {ctx.log} && git commit")
     return 1 if missing else 0
 
 
@@ -595,6 +597,8 @@ def main(argv=None):
     c.add_argument("file", nargs="?")
     c.add_argument("--date")
     c.add_argument("--strict", action="store_true")
+    c.add_argument("--at", choices=("commit", "push"), default="commit",
+                   help="where it runs: at commit time (the commit does not exist yet) or at push time (it does)")
     d = sub.add_parser("done")
     d.add_argument("text")
     d.add_argument("file", nargs="?")

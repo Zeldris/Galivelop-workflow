@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.4.1
+# galivelop-workflow v0.4.2
 """The agent map must not point at anything that no longer exists (a check for CI and `check`).
 
 The map (default docs/mapa-agente.md; config `agentMap.path`) says where each contract lives and what implements it.
@@ -84,6 +84,19 @@ def units(text):
         yield start, ' '.join(current)
 
 
+# Files whose methods are written `[modifiers] ReturnType name(...) [throws X] {` (return type BEFORE the name).
+TYPED_METHOD_SUFFIXES = ('.java', '.kt', '.kts', '.cs', '.scala', '.groovy', '.c', '.h', '.cc', '.cpp', '.cxx',
+                         '.hpp', '.hh')
+CONTROL = {'if', 'else', 'for', 'while', 'do', 'switch', 'catch', 'try', 'return', 'throw', 'new', 'case',
+           'synchronized', 'using', 'lock', 'foreach', 'when', 'yield', 'await'}
+# `<...>` with up to three levels of nesting (`Map<String, List<X>>`, `<?>`)
+GENERIC = r'<(?:[^<>\n]|<(?:[^<>\n]|<[^<>\n]*>)*>)*>'
+METHOD_MODIFIERS = (r'(?:public|private|protected|internal|static|final|abstract|synchronized|native|default|virtual'
+                    r'|override|sealed|async|extern|unsafe|partial|open|inline|suspend|strictfp|transient)')
+# a return type: `void`, `a.b.C`, `List<String>`, `Map<K, List<V>>[]`, `int[][]`, `String?`
+RETURN_TYPE = (rf'(?!(?:{"|".join(sorted(CONTROL))})\b)[\w.]+(?:{GENERIC})?(?:\s*\[\s*\])*\??')
+
+
 def defines(text, name, suffix):
     """True when `text` (a file with extension `suffix`) declares `name`, not merely calls it."""
     n = re.escape(name)
@@ -96,6 +109,14 @@ def defines(text, name, suffix):
         rf'^\s*(?:(?:public|private|protected|static|async|override|readonly)\s+)*{n}\s*(?:<[^>]*>)?\([^;]*?\)\s*'
         rf'(?::[^;{{=]*)?\{{',
     ]
+    if name in CONTROL:  # `if (x) {` and `catch (E e) {` are not definitions of `if` and `catch`
+        patterns.pop()
+    if suffix in TYPED_METHOD_SUFFIXES:
+        # a method with a return type: `[@Annotation] [modifiers] [<T>] Type name(...) [throws X, Y] {`; a call, a
+        # `return name(x);` or `new Name() {` (anonymous class) is not one: the type cannot be a control keyword
+        patterns.append(
+            rf'^[ \t]*(?:@\w[\w.]*(?:\([^)\n]*\))?\s+)*(?:{METHOD_MODIFIERS}\s+)*(?:{GENERIC}\s+)?'
+            rf'{RETURN_TYPE}[ \t]+{n}\s*\([^;]*?\)\s*(?:throws\s+[\w.,\s]+?)?\s*\{{')
     if suffix in ('.sh', '.bash', '.zsh'):
         patterns.append(rf'^\s*(?:function\s+)?{n}\s*\(\s*\)')
     if suffix == '.json':

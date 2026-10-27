@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.4.1 -->
+<!-- galivelop-workflow v0.4.2 -->
 # {{project}} — instrucciones para agentes
 
 Este proyecto se trabaja por relevos: una sesión puede acabarse en cualquier momento (tokens, contenedor, cambio de
@@ -85,8 +85,8 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
   «Relevos» con la confirmación de la persona: se sube directo (el `pre-push` corre el check) o, para un pull
   request, `python3 .claude/gw/scripts/ci-local.py --apuntar` corre el CI en local y lo apunta; con esa línea verde
   subida, el gancho deja fusionar.
-- La rama de un subagente vuelve con `bash .claude/gw/scripts/fusionar.sh <rama> "<mensaje>"`, que corre el check y
-  limpia su worktree.
+- La rama de un subagente vuelve con `bash .claude/gw/scripts/fusionar.sh <rama> "<mensaje>"`, que corre el check y los tests
+  relacionados, y limpia su worktree.
 
 ## Antes de ir a `{{protectedBranch}}`: tres fases
 

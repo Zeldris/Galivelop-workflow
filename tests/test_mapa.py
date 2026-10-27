@@ -1,5 +1,6 @@
 """scripts/mapa-agente.py: every path (and `path#name`) the project's agent map cites must exist, in temporary projects
 laid out like one that applied the workflow (.claude/gw/scripts, .claude/gw/schema, .claude/gw.json)."""
+import importlib.util
 import json
 import shutil
 import subprocess
@@ -87,6 +88,62 @@ class Mapa(unittest.TestCase):
         code, out = self.run_map("- `backend/src/a.ts#resolverOtro`\n")
         self.assertEqual(code, 1, out)
         self.assertIn("does not define resolverOtro", out)
+
+    def test_java_methods_with_a_return_type_are_definitions(self):
+        """VeriNews P11: `public ResponseEntity<?> analizar(...) {` and `void run() {` were not recognised."""
+        for name, line in [
+            ("analizar", "    public ResponseEntity<?> analizar(@RequestBody Req r) {"),
+            ("lista", "    private static List<String>[] lista(int a) throws IOException {"),
+            ("run", "    void run() {"),
+            ("mapa", "    @Override public Map<String, List<X>> mapa() throws A, B {"),
+            ("x", '    @GetMapping("/x")\n    public String x() {'),
+            ("pick", "    static <T> T pick(T a) {"),
+            ("partir", "    public final String partir(int a,\n        int b) {"),
+        ]:
+            with self.subTest(line=line):
+                self.assertTrue(self.defines(line, name, ".java"))
+        self.assertTrue(self.defines("  int main(void) {", "main", ".c"))
+        self.assertTrue(self.defines("  public async Task<int> Run() {", "Run", ".cs"))
+
+    def test_java_calls_and_control_flow_are_not_definitions(self):
+        for name, line in [
+            ("analizar", "        analizar(x);"),
+            ("analizar", "        return analizar(x);"),
+            ("analizar", "        foo = analizar(x) {"),
+            ("analizar", "    int v = analizar(1);"),
+            ("analizar", "    x.analizar(1) {"),
+            ("analizar", "    if (analizar(x)) {"),
+            ("analizar", "    } else if (analizar(x)) {"),
+            ("analizar", "    throw analizar(x) {"),
+            ("Foo", "    new Foo() {"),
+            ("if", "    if (x) {"),
+            ("while", "    while (y) {"),
+            ("for", "    for (int i = 0; i < n; i++) {"),
+            ("switch", "    switch (a) {"),
+            ("catch", "    } catch (E e) {"),
+        ]:
+            with self.subTest(line=line):
+                self.assertFalse(self.defines(line, name, ".java"))
+
+    def test_the_return_type_form_is_only_for_languages_that_write_it_before_the_name(self):
+        self.assertFalse(self.defines("    void run() {", "run", ".ts"))
+        self.assertFalse(self.defines("    void run() {", "run", ".py"))
+
+    def test_a_java_file_cited_by_the_map_is_checked_end_to_end(self):
+        self.write("backend/App.java", "class App {\n    public ResponseEntity<?> analizar(Req r) throws IOException {\n"
+                   "        if (r == null) {\n            return null;\n        }\n        return analizar(r);\n    }\n}\n")
+        code, out = self.run_map("- `backend/App.java#analizar`\n")
+        self.assertEqual(code, 0, out)
+        code, out = self.run_map("- `backend/App.java#if` and `backend/App.java#otra`\n")
+        self.assertEqual(code, 1, out)
+        self.assertIn("backend/App.java does not define if", out)
+        self.assertIn("backend/App.java does not define otra", out)
+
+    def defines(self, text, name, suffix):
+        spec = importlib.util.spec_from_file_location("mapa_agente_under_test", self.script)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.defines(text, name, suffix)
 
     def test_a_loose_name_after_a_path_name_is_looked_up_in_that_file(self):
         code, out = self.run_map("# Map\n\n- `backend/src/a.ts#calcular` and\n  then `pasoDos`\n")

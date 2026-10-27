@@ -13,7 +13,7 @@ seguida de `2026-10-26-instalador-wmf-tarkor.md`.
   `pre-push`, «haz un commit nuevo»), según el gancho que llame; con su caso en `tests/` que compruebe el mensaje.
 - **Why it is general:** el mensaje es falso en todos los proyectos y empuja a reescribir un commit ajeno.
 - **Version bump:** patch (corrección, `0.4.2`)
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P9. Comprobar la propia fila de la bitácora al hacer el commit (`own-row --staged`)
 
@@ -22,7 +22,7 @@ seguida de `2026-10-26-instalador-wmf-tarkor.md`.
   hay que deshacer commits. Un modo `--staged` de `bitacora.py own-row` en el `pre-commit` lo detecta antes.
 - **Why it is general:** todos los proyectos con varias ramas a la vez tienen el mismo `pre-push` tardío.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P10. `doctor.py` avisa de worktrees ya fusionados
 
@@ -32,7 +32,7 @@ seguida de `2026-10-26-instalador-wmf-tarkor.md`.
 - **Why it is general:** los subagentes dejan worktrees en todos los proyectos; los ya fusionados ocupan disco y
   confunden el `git worktree list`.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P11. `scout-updates` lee la versión de Rust del proyecto
 
@@ -41,7 +41,7 @@ seguida de `2026-10-26-instalador-wmf-tarkor.md`.
   `rust-version` de `Cargo.toml`, igual que ya lee las versiones de Node y Python.
 - **Why it is general:** cualquier proyecto con Rust (Tauri, CLI) se queda sin esa parte del inventario.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P12. Check en una orden con resumen y salida recortada
 
@@ -52,7 +52,7 @@ seguida de `2026-10-26-instalador-wmf-tarkor.md`.
 - **Why it is general:** la salida entera del check es el mayor gasto de tokens al arreglar un rojo, en todos los
   proyectos.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## P13. Regla de invariantes en `REVIEW.md`
 
@@ -62,7 +62,7 @@ seguida de `2026-10-26-instalador-wmf-tarkor.md`.
   sitio, un orden de pasos, un estado que no puede darse) se revisa buscando los demás sitios que la sostienen.
 - **Why it is general:** es criterio de revisión, no del proyecto.
 - **Version bump:** minor → 1.0.0
-- **Status:** propuesta
+- **Status:** aprobada (2026-10-27)
 
 ## Stays in the project
 

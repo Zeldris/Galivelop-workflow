@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# galivelop-workflow v0.4.1
+# galivelop-workflow v0.4.2
 # What pre-push checks about the hand-off log of each branch it pushes (for projects with "logRows": true; a no-op
 # otherwise). Called by .githooks/pre-push as:   prepush-ramas.sh <changed-files-file> <pushed-commits-file>
 # with git's ref lines ("local-ref local-sha remote-ref remote-sha" per ref) on stdin. For each pushed ref:
@@ -122,7 +122,7 @@ while read -r local_ref sha_local remote_ref sha_remote; do
     git show "$commit:$log" > "$tmp"
     date=()
     git diff-tree --no-commit-id --name-only -r "$commit" | grep -qxF "$log" && date=(--date "$(git log -1 --format=%as "$commit")")
-    if ! bita check "$tmp" ${date[@]+"${date[@]}"}; then
+    if ! bita check "$tmp" --at push ${date[@]+"${date[@]}"}; then
       echo "bitacora: in commit $(git log -1 --format='%h %s' "$commit")"; rm -f "$tmp"; exit 1
     fi
     rm -f "$tmp"

@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.4.1 -->
+<!-- galivelop-workflow v0.4.2 -->
 # {{project}} — instructions for agents
 
 This project is worked on in hand-offs: a session can end at any moment (tokens, container, account switch) and the
@@ -86,8 +86,8 @@ Each session may run in a throwaway container: **what is not pushed does not exi
   the person's confirmation: push directly (`pre-push` runs the check) or, for a pull request,
   `python3 .claude/gw/scripts/ci-local.py --apuntar` runs the CI locally and records it; with that green line pushed,
   the hook lets the merge through.
-- A subagent's branch comes back with `bash .claude/gw/scripts/fusionar.sh <branch> "<message>"`, which runs the check
-  and cleans up its worktree.
+- A subagent's branch comes back with `bash .claude/gw/scripts/fusionar.sh <branch> "<message>"`, which runs the check and the
+  related tests, and cleans up its worktree.
 
 ## Before going to `{{protectedBranch}}`: three phases
 

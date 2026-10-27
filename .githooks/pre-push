@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# galivelop-workflow v0.4.1
+# galivelop-workflow v0.4.2
 # Git pre-push hook (copied into projects as .githooks/pre-push; enable with: git config core.hooksPath .githooks).
 #   - While it runs, keeps a marker `gw-push-en-curso` in the git common dir (shared by linked worktrees) with its pid
 #     and, per pushed ref, the LOCAL sha and branch, so the Stop hook (antes-de-parar.py) does not tell an agent to
