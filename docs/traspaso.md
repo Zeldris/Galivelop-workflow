@@ -9,10 +9,10 @@
 | Campo | Valor |
 |---|---|
 | Rama | Correcciones `0.4.x`: `ccr-6dfbc880-ddr41g`. **Evolutivos y novedades: `version/1.0.0`** (usuario, 2026-10-26; creada desde `ccr-6dfbc880-ddr41g`; los parches `0.4.x` se fusionan también en ella; sus evolutivos, en `docs/registros/pendiente-1.0.0.md` de esa rama). `main` = `56212e8` = **`0.4.1`** (2026-10-26); la `0.4.0` tiene etiqueta y release `v0.4.0` sobre `d7dd18f` (a mano por el usuario). `claude/galivelop-workflow-inicio` está **obsoleta** (se quedó en `0f36412`): no se trabaja en ella |
-| Check | `bash tests/comprobar.sh` en verde (**comprobado solo en local**: sin cuota de Actions el CI no arranca, confirmado por el usuario); `main` (`56212e8`) comprobado en local el 2026-10-26 |
+| Check | `bash tests/comprobar.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público): estaba en rojo en Ubuntu por dos tests de interrupción del `pre-push` que fallan con Python 3.12 (`communicate()` sobre un stdin ya cerrado); en local pasaban por ser 3.13. Arreglados en este commit; `main` (`0e04504`, `v0.4.3`) sigue con esos dos tests en rojo en el CI |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.2.md` |
-| Siguiente paso | Parche `0.4.3` a `main` (2026-11-01, confirmado por el usuario): con `main` traído (README del usuario) y la recogida de galivelop-developer copiada de `version/1.0.0` (la exige `version.py --release`). Luego `docs/registros/release-v0.4.3.md` y traer el parche a `version/1.0.0` con `fusionar.sh`. |
+| Siguiente paso | Ver el CI de este commit en verde; luego decidir con el usuario si el arreglo de los tests va a `main` como parche `0.4.4` (con D-6 y P5) y traer el parche a `version/1.0.0` con `fusionar.sh ccr-6dfbc880-ddr41g`. |
 
 ### Fases
 
