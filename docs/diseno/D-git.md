@@ -1,6 +1,21 @@
 # D. Git: entornos, releases, tags, trazabilidad, roles
 
-**Estado:** preguntas abiertas (2026-11-01). Nada se implementa hasta cerrar el bloque.
+**Estado:** respondidas 1-4, 6-12 y 15-17 (2026-11-01); abiertas 5, 13 y 14, con su explicación más abajo. Nada se
+implementa hasta cerrar el bloque.
+
+## Respuestas del usuario (2026-11-01)
+
+- **1:** sí, «toveriai» es VeriNews_AI.
+- **2:** el correo de `AGENTS.md` se queda (es el del usuario).
+- **3:** las recogidas se revisan en la `1.0.0`, con el check de datos privados del bloque E.
+- **4:** el historial no se reescribe; la regla vale de aquí en adelante.
+- **6:** `worktree.baseRef: "head"` en el `settings.json` instalado, como arreglo en un parche `0.4.x`. Sale con la
+  cadencia de A-6.
+- **7 y 8:** según la recomendación.
+- **9:** según la recomendación, y además el Management Center (bloque G) permitirá configurar los entornos y añadir
+  otros nuevos según lo que necesite cada proyecto.
+- **10, 11, 12, 15, 16 y 17:** según la recomendación.
+- **5, 13 y 14:** abiertas. El usuario se inclina por el roadmap en la 13 y pidió la opinión del agente.
 
 Fuentes: [`README.md`](README.md) (bloque D), las ideas para D de
 [`ref-aider-graphify-worktrees.md`](../investigacion/ref-aider-graphify-worktrees.md) y el repaso del bloque F.
