@@ -11,8 +11,8 @@ Lo que esté aquí sin su archivo de bloque sigue en bruto, no decidido.
 
 | # | Bloque | Por qué en este orden | Estado |
 |---|---|---|---|
-| 1 | **A. Marco:** público, nombres, versionado | Fija el marco en el que se decide todo lo demás | pendiente |
-| 2 | **F. Referencias a revisar** | Investigación que se lanza ya (subagentes) y alimenta B, D y G | pendiente |
+| 1 | **A. Marco:** público, nombres, versionado | Fija el marco en el que se decide todo lo demás | borrador: [`A-marco.md`](A-marco.md) |
+| 2 | **F. Referencias a revisar** | Investigación que se lanza ya (subagentes) y alimenta B, D y G | en curso (2026-11-01) |
 | 3 | **D. Git:** entornos, releases, tags, trazabilidad, roles | Estructura: decide dónde vive y cómo se enlaza lo que se apunta | pendiente |
 | 4 | **B. Medición de gasto y modelos** | El bloque funcional mayor; usa D (dónde se guarda, cómo se etiqueta) | pendiente |
 | 5 | **C. Preguntas y modo restrictivo** | Pequeño y cerrado; comparte «modos» con B6 | pendiente |
