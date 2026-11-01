@@ -89,3 +89,37 @@ recogida al abrir versión, `metadata.version` en cada skill y cabecera de versi
   español?
 - **A-5. La `1.0.0`:** ¿sale cuando esté hecho su alcance del mapa, o sigue esperando a los criterios de la §10?
 - **A-6. Cadencia:** ¿una publicación al día como máximo, con excepción para lo grave?
+
+## Respuestas del usuario (2026-11-01)
+
+- **A-1:** licencia MIT, se queda.
+- **A-2:** siguen privados `galivelop-voice-generator`, `galivelop-developer` y VeriNews_AI, siempre (por confirmar que
+  «toveriai» es VeriNews_AI). Falta decidir cuándo se quita el correo de `AGENTS.md` y se revisan las recogidas.
+- **A-3:** las skills de terceros conservan su nombre; `gw-` solo en lo que creamos nosotros.
+- **A-4:** rutas del proyecto en inglés, también en los proyectos en español.
+- **A-5:** el usuario propone que la `1.0.0` sea un hito con todo lo que se decida en esta sesión; pidió la
+  recomendación del agente (abajo).
+- **A-6:** pidió que se le explique mejor (abajo).
+
+### Recomendación del agente para A-5
+
+La `1.0.0` lleva **todo lo que rompe compatibilidad y la base de la medición**; lo demás va en menores `1.x`, con el
+mapa entero de versiones decidido ahora (bloque H). Así todo lo decidido en esta sesión tiene versión desde hoy, pero
+la `1.0.0` no espera al Management Center.
+
+Motivos:
+
+1. SemVer: lo que añade sin romper (una skill, un informe, el panel) cabe en una menor; lo que rompe (nombres, rutas,
+   config) tiene que ir junto en la mayor, para migrar una sola vez.
+2. Algunas piezas dependen de datos que aún no existen: la tabla determinista de modelos (B5) necesita semanas de
+   informes del escuchador (B1, B2). No pueden salir en la misma versión.
+3. Mientras no salga la `1.0.0`, la `0.4` solo recibe arreglos: una `1.0.0` enorme deja meses sin nada nuevo.
+
+### Explicación de A-6 (cadencia)
+
+La cadencia es cada cuánto se publica una versión (subida a `main`, etiqueta y release). Ejemplo: el `0.4.1` y el
+`0.4.2` salieron casi seguidos, y el `0.4.3` lo aplazaste para no subir demasiadas versiones en un día. La propuesta
+convierte eso en regla: como mucho una publicación al día; los arreglos que lleguen después esperan en la rama y salen
+juntos en la siguiente; solo un arreglo grave (un gancho que bloquea subidas buenas, pérdida de datos) sale antes, con
+tu confirmación. La alternativa es un calendario fijo, como gstack: publicar ciertos días de la semana con un mínimo de
+horas entre una versión y la siguiente.
