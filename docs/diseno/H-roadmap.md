@@ -103,3 +103,52 @@ Sale cuando exista lo que necesita, y entonces se le pone versión:
    antes, con los nombres de hoy. **Rec.:** sí.
 9. **E-9..E-16** (pruebas de front, en `E-calidad.md`): solo afectan a la `1.2`. **Rec.:** responderlas ahora para
    cerrar el diseño entero, como pediste; si prefieres, se dejan para cuando se abra la `1.2`.
+
+## Respuestas del usuario (2026-11-01)
+
+- **1, 3, 4, 5, 6, 7 y 8:** según la recomendación.
+- **2:** de acuerdo con los pasos, pero antes se revisa el orden de las versiones (abajo).
+- **9:** E-9..E-16 se responden ahora (en `E-calidad.md`).
+- **Propuesta del usuario:** avanzar por la `0.x` (`0.5`, `0.6`…) en vez de saltar a la `1.0.0`, y que la `1.0+` sea
+  la creación del Management Center.
+
+### Opinión del agente sobre la propuesta
+
+Es mejor que el mapa de arriba. Motivos:
+
+1. **SemVer lo permite:** en `0.y.z` una menor puede romper, así que los cambios de nombre y de config caben en una
+   `0.5` sin esperar a una mayor.
+2. **Entregas más pequeñas:** cada menor sale en cuanto cierra su tema y los proyectos la prueban antes; la recogida
+   de cada versión trae lo que falle.
+3. **La `1.0.0` significa algo:** producto completo y estable, con el MMC. Después, romper exige una `2.0`.
+
+Lo que cambia: la regla «la `0.4` solo recibe correcciones (nunca una `0.5`)» de `AGENTS.md` y el plan §7; la lista
+`pendiente-1.0.0.md` y la rama `version/1.0.0` toman el nombre de la versión que les toque. Una condición: **todo lo
+que rompe va en la primera menor** (`0.5`), para migrar una sola vez y que las siguientes solo añadan.
+
+### Mapa nuevo (propuesta)
+
+| Versión | Contenido |
+|---|---|
+| `0.4.3`, `0.4.4` | Los parches de arriba |
+| `0.5` «Base» | Pasos 1-4 y 6-7 de la `1.0.0` anterior: roadmap y plan, nombres, `schemaVersion`, trazabilidad, checks de repo público, reglas deterministas; más lo de `pendiente-1.0.0.md` que no encaje en una menor posterior |
+| `0.6` «Medir» | Ledger (B-1..B-3), informes, `compare`, alerta, modelos (B-4..B-8, B-10, B-11) |
+| `0.7` «Preguntar» | Preguntas y modos (C-1..C-8, C-10), `trace.py` (D-14) |
+| `0.8` «Front y otros agentes» | E-4, E-5, E-7, E-9..E-16, D-7, B-9 |
+| `0.9` «Estable» | Repaso de documentación (E-8) y todo lo que el MMC necesite de los scripts (salidas JSON con versión, G-2) |
+| `1.0` | MMC 1, solo lectura (G-1, G-3, G-6, G-7) |
+| `1.1` | MMC 2, config (G-4) |
+| `1.2` | MMC 3: perfiles, entornos, `rc`, roles (G-5, G-8, D-9, D-10, D-17) |
+| Después | Igual que arriba |
+
+### Preguntas sobre el mapa nuevo
+
+10. **Mapa nuevo:** ¿lo aceptas en lugar del anterior? **Rec.:** sí.
+11. **La medición en la `0.6`** y no en la `0.5`: la `0.5` ya es grande y la medición no rompe nada. **Rec.:** sí;
+    a cambio, el ledger empieza a contar unas semanas más tarde.
+12. **`pendiente-1.0.0.md`:** cada punto a la menor de su tema (los de checks a la `0.5`, los de revisión y skills
+    donde encajen) y la lista pasa a `pendiente.md` con la versión en cada línea. **Rec.:** sí.
+13. **Rama:** al empezar a implementar, `version/0.5.0` desde `version/1.0.0` (que se queda con el diseño ya subido).
+    **Rec.:** sí; no se renombra una rama subida.
+14. **Regla de la `0.4`:** pasa a «solo la última menor publicada recibe parches; los evolutivos van a la siguiente
+    menor», en `AGENTS.md` y el plan §7, como primer commit de la `0.5`. **Rec.:** sí.
