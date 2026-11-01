@@ -1,11 +1,18 @@
 # B. Medición de gasto y modelos
 
-**Estado:** preguntas abiertas (2026-11-01). Nada se implementa hasta cerrar el bloque. B1 y B2 van en la `1.0.0`
+**Estado:** respondidas 1-9 (2026-11-01); abiertas 10-13. Nada se implementa hasta cerrar el bloque. B1 y B2 van en la `1.0.0`
 (A-5); el resto, en menores `1.x` (bloque H).
 
 Fuentes: [`README.md`](README.md) (bloque B y el apéndice con el mapa de modelos),
 [`ref-agentic-openhands-palancas.md`](../investigacion/ref-agentic-openhands-palancas.md) §3 y `medir.py` de
 `opt-tokens`, que ya lee los registros de sesión con su desglose por modelo y por subagente.
+
+## Respuestas del usuario (2026-11-01)
+
+- **1:** (a). El dato sale de los registros de sesión, con un gancho de fin de turno; OpenTelemetry, como opción en
+  una `1.x`.
+- **2:** (a). El registro va en el repo, y el usuario acepta que sea público.
+- **3 a 9:** según la recomendación. En la 8, como resultado cuenta lo comprobable de la recomendación.
 
 ## Preguntas (se responden por número)
 
