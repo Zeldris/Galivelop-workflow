@@ -1,7 +1,7 @@
 # D. Git: entornos, releases, tags, trazabilidad, roles
 
-**Estado:** respondidas 1-4, 6-12 y 15-17 (2026-11-01); abiertas 5, 13 y 14, con su explicación más abajo. Nada se
-implementa hasta cerrar el bloque.
+**Estado:** cerrado (2026-11-01): las 17 preguntas, decididas por el usuario. Se implementa según el mapa de
+versiones (bloque H).
 
 ## Respuestas del usuario (2026-11-01)
 
@@ -15,7 +15,11 @@ implementa hasta cerrar el bloque.
 - **9:** según la recomendación, y además el Management Center (bloque G) permitirá configurar los entornos y añadir
   otros nuevos según lo que necesite cada proyecto.
 - **10, 11, 12, 15, 16 y 17:** según la recomendación.
-- **5, 13 y 14:** abiertas. El usuario se inclina por el roadmap en la 13 y pidió la opinión del agente.
+- **5:** (a). Los `[NC]` se aceptan y cada uno se comprueba cuando se implemente la pieza que lo usa.
+- **13:** el roadmap es la única fuente de ids, con un enlace opcional a una issue. Así funciona sin red, sin la API
+  de GitHub y sin cuota de Actions; el gancho valida leyendo un archivo, y sirve igual para opencode y Codex.
+- **14:** `trace.py <id>` calcula al momento lo que hay de un id: fila del roadmap, bitácora, commits, PR, documentos
+  y lo deducido. No escribe ningún índice, y las comprobaciones solo se fían de lo declarado.
 
 Fuentes: [`README.md`](README.md) (bloque D), las ideas para D de
 [`ref-aider-graphify-worktrees.md`](../investigacion/ref-aider-graphify-worktrees.md) y el repaso del bloque F.
