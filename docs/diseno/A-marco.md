@@ -97,9 +97,9 @@ recogida al abrir versión, `metadata.version` en cada skill y cabecera de versi
   «toveriai» es VeriNews_AI). Falta decidir cuándo se quita el correo de `AGENTS.md` y se revisan las recogidas.
 - **A-3:** las skills de terceros conservan su nombre; `gw-` solo en lo que creamos nosotros.
 - **A-4:** rutas del proyecto en inglés, también en los proyectos en español.
-- **A-5:** el usuario propone que la `1.0.0` sea un hito con todo lo que se decida en esta sesión; pidió la
-  recomendación del agente (abajo).
-- **A-6:** pidió que se le explique mejor (abajo).
+- **A-5:** decidida (2026-11-01): la recomendación del agente (abajo).
+- **A-6:** decidida (2026-11-01): la recomendación del agente (abajo): como mucho una publicación al día.
+- **Abierto:** lo que queda de A-2 va en la lista de preguntas de [`D-git.md`](D-git.md) (puntos 1-4).
 
 ### Recomendación del agente para A-5
 

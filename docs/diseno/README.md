@@ -11,9 +11,9 @@ Lo que esté aquí sin su archivo de bloque sigue en bruto, no decidido.
 
 | # | Bloque | Por qué en este orden | Estado |
 |---|---|---|---|
-| 1 | **A. Marco:** público, nombres, versionado | Fija el marco en el que se decide todo lo demás | borrador: [`A-marco.md`](A-marco.md) |
+| 1 | **A. Marco:** público, nombres, versionado | Fija el marco en el que se decide todo lo demás | decidido salvo A-2 (abierto en `D-git.md`): [`A-marco.md`](A-marco.md) |
 | 2 | **F. Referencias a revisar** | Investigación que se lanza ya (subagentes) y alimenta B, D y G | notas hechas (2026-11-01): `docs/investigacion/ref-*.md`; falta repasarlas con el usuario |
-| 3 | **D. Git:** entornos, releases, tags, trazabilidad, roles | Estructura: decide dónde vive y cómo se enlaza lo que se apunta | pendiente |
+| 3 | **D. Git:** entornos, releases, tags, trazabilidad, roles | Estructura: decide dónde vive y cómo se enlaza lo que se apunta | preguntas: [`D-git.md`](D-git.md) |
 | 4 | **B. Medición de gasto y modelos** | El bloque funcional mayor; usa D (dónde se guarda, cómo se etiqueta) | pendiente |
 | 5 | **C. Preguntas y modo restrictivo** | Pequeño y cerrado; comparte «modos» con B6 | pendiente |
 | 6 | **E. Reglas deterministas, pruebas de front, documentación** | Limpieza y calidad; usa A (público) y D (dónde) | pendiente |
