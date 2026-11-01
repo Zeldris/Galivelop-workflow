@@ -480,16 +480,21 @@ class Hook(unittest.TestCase):
             "pulls/ in one token": ('echo "unterminated gh ' + "pulls/" * 8000, "merge"),
             "tabs and continuations": ('echo "unterminated gh\t' + "pr\t\\\n" * 10000, " merge"),
         }
+        start = time.monotonic()
+        self.assertAllowed(self.bash("echo ok"))
+        limit = time.monotonic() - start + 1.0  # the hook's own start-up, slow on a busy runner, plus 1 s of judging
         for name, (head, tail) in cases.items():
             with self.subTest(name=name):
                 self.assertGreater(len(head), 45000)
                 start = time.monotonic()
                 allowed = self.bash(head)
-                self.assertLess(time.monotonic() - start, 1.0, f"{name}: allowed case took 1 s or more")
+                self.assertLess(time.monotonic() - start, limit,
+                                f"{name}: allowed case took 1 s more than a trivial command")
                 self.assertAllowed(allowed)
                 start = time.monotonic()
                 blocked = self.bash(head + tail)
-                self.assertLess(time.monotonic() - start, 1.0, f"{name}: blocked case took 1 s or more")
+                self.assertLess(time.monotonic() - start, limit,
+                                f"{name}: blocked case took 1 s more than a trivial command")
                 self.assertBlocked(blocked, "cannot parse")
 
     def test_many_continuations_are_judged_in_under_a_second(self):

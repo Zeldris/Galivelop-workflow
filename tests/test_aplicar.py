@@ -468,7 +468,9 @@ class NotasPersonales(unittest.TestCase):
             self.assertRegex(out, rf"WARNING: personal note {re.escape(name)} has the name of a workflow file")
         self.assertIn("rename", out)
         for name in ("OPT-TOKENS.md", "opt-ai.md", "Scout-Updates.md", "SCHEMA", "gw.json"):
-            self.assertFalse(self.target(name).exists(), name)
+            # by exact name: on a case-insensitive disk (macOS) OPT-TOKENS.md "exists" as the workflow's opt-tokens.md
+            parent = self.target(name).parent
+            self.assertNotIn(name, os.listdir(parent) if parent.is_dir() else [], name)
         self.assertFalse(self.target("scripts").is_file())
         self.assertFalse((self.p.work / ".claude" / "gw" / "opt-ai.md").exists())
 
