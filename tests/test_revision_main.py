@@ -471,7 +471,7 @@ class Hook(unittest.TestCase):
         self.assertAllowed(self.bash("gh api repos/o/r/pulls/7/merge"))  # GET: is it merged?
         self.assertAllowed(self.bash("gh api repos/o/r/pulls/7"))
 
-    def test_long_unparseable_commands_are_judged_in_under_a_second(self):
+    def test_long_unparseable_commands_are_judged_in_seconds_not_minutes(self):
         # P4 of docs/propuestas/2026-10-25-repos-x.md: the old SUSPECT regex chained three `[\\s\\S]*` and backtracked
         # for minutes on ~50 KB of `gh pr gh pr ...`. A hook that slow would stall every Bash call of every session.
         cases = {
@@ -482,19 +482,21 @@ class Hook(unittest.TestCase):
         }
         start = time.monotonic()
         self.assertAllowed(self.bash("echo ok"))
-        limit = time.monotonic() - start + 1.0  # the hook's own start-up, slow on a busy runner, plus 1 s of judging
+        # the hook's own start-up plus 5 s of judging: ~0.4 s on Linux, ~1.4 s on the macOS runner, minutes with the
+        # old regex
+        limit = time.monotonic() - start + 5.0
         for name, (head, tail) in cases.items():
             with self.subTest(name=name):
                 self.assertGreater(len(head), 45000)
                 start = time.monotonic()
                 allowed = self.bash(head)
                 self.assertLess(time.monotonic() - start, limit,
-                                f"{name}: allowed case took 1 s more than a trivial command")
+                                f"{name}: allowed case took 5 s more than a trivial command")
                 self.assertAllowed(allowed)
                 start = time.monotonic()
                 blocked = self.bash(head + tail)
                 self.assertLess(time.monotonic() - start, limit,
-                                f"{name}: blocked case took 1 s more than a trivial command")
+                                f"{name}: blocked case took 5 s more than a trivial command")
                 self.assertBlocked(blocked, "cannot parse")
 
     def test_many_continuations_are_judged_in_under_a_second(self):
