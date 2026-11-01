@@ -14,8 +14,8 @@ Lo que esté aquí sin su archivo de bloque sigue en bruto, no decidido.
 | 1 | **A. Marco:** público, nombres, versionado | Fija el marco en el que se decide todo lo demás | cerrado (A-2 en `D-git.md` 1-4): [`A-marco.md`](A-marco.md) |
 | 2 | **F. Referencias a revisar** | Investigación que se lanza ya (subagentes) y alimenta B, D y G | cerrado: notas en `docs/investigacion/ref-*.md`, repasadas en `D-git.md` 5-8 |
 | 3 | **D. Git:** entornos, releases, tags, trazabilidad, roles | Estructura: decide dónde vive y cómo se enlaza lo que se apunta | cerrado: [`D-git.md`](D-git.md) |
-| 4 | **B. Medición de gasto y modelos** | El bloque funcional mayor; usa D (dónde se guarda, cómo se etiqueta) | preguntas: [`B-medicion.md`](B-medicion.md) |
-| 5 | **C. Preguntas y modo restrictivo** | Pequeño y cerrado; comparte «modos» con B6 | pendiente |
+| 4 | **B. Medición de gasto y modelos** | El bloque funcional mayor; usa D (dónde se guarda, cómo se etiqueta) | cerrado: [`B-medicion.md`](B-medicion.md) |
+| 5 | **C. Preguntas y modo restrictivo** | Pequeño y cerrado; comparte «modos» con B6 | preguntas: [`C-preguntas.md`](C-preguntas.md) |
 | 6 | **E. Reglas deterministas, pruebas de front, documentación** | Limpieza y calidad; usa A (público) y D (dónde) | pendiente |
 | 7 | **G. Management Center (MMC)** | Consume todo lo anterior; el final del roadmap | pendiente |
 | 8 | **H. Roadmap y mapa de versiones** | Reparte lo diseñado en versiones `1.0.0+` | pendiente |

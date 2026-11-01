@@ -1,6 +1,6 @@
 # B. Medición de gasto y modelos
 
-**Estado:** respondidas 1-9 (2026-11-01); abiertas 10-13. Nada se implementa hasta cerrar el bloque. B1 y B2 van en la `1.0.0`
+**Estado:** cerrado (2026-11-01): las 13 preguntas, decididas por el usuario. Nada se implementa hasta cerrar el bloque. B1 y B2 van en la `1.0.0`
 (A-5); el resto, en menores `1.x` (bloque H).
 
 Fuentes: [`README.md`](README.md) (bloque B y el apéndice con el mapa de modelos),
@@ -13,6 +13,7 @@ Fuentes: [`README.md`](README.md) (bloque B y el apéndice con el mapa de modelo
   una `1.x`.
 - **2:** (a). El registro va en el repo, y el usuario acepta que sea público.
 - **3 a 9:** según la recomendación. En la 8, como resultado cuenta lo comprobable de la recomendación.
+- **10 a 13:** según la recomendación. El interruptor de modos se diseña en el bloque C.
 
 ## Preguntas (se responden por número)
 
