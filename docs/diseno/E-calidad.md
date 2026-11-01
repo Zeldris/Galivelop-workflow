@@ -73,3 +73,5 @@ investigador (**Rec.**).
 15. **Servicios de pago** (Percy, Chromatic, Lost Pixel Platform): **Rec.:** no. El flujo funciona sin cuentas externas.
 16. **Matriz mínima:** **Rec.:** Chromium en todos los breakpoints. WebKit y Firefox solo en el escritorio y el móvil
     principales.
+
+**Respuestas del usuario (2026-11-01):** E-9..E-16 aprobadas según la recomendación. El bloque E queda cerrado.

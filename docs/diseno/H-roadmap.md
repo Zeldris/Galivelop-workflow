@@ -1,7 +1,8 @@
 # H. Roadmap y mapa de versiones
 
-**Estado:** borrador con preguntas (2026-11-01). Al cerrarlo, pasa a `docs/roadmap.md` (con su par en inglés) y se
-empieza a implementar por la primera tarea de la `1.0.0`.
+**Estado:** cerrado (2026-11-01): H-1..H-14 aprobadas por el usuario; manda el **mapa nuevo** por la `0.x` (abajo),
+que sustituye al primero. Pasa a `docs/roadmap.md` (con su par en inglés) como primera tarea de la `0.5`, en la rama
+`version/0.5.0`.
 
 Reparte todo lo decidido en los bloques A-G y lo que ya esperaba en
 [`pendiente-1.0.0.md`](../registros/pendiente-1.0.0.md). Criterio (A-5): la `1.0.0` lleva lo que rompe compatibilidad y
@@ -152,3 +153,5 @@ que rompe va en la primera menor** (`0.5`), para migrar una sola vez y que las s
     **Rec.:** sí; no se renombra una rama subida.
 14. **Regla de la `0.4`:** pasa a «solo la última menor publicada recibe parches; los evolutivos van a la siguiente
     menor», en `AGENTS.md` y el plan §7, como primer commit de la `0.5`. **Rec.:** sí.
+
+- **10-14** (2026-11-01): aprobadas según la recomendación. El mapa nuevo sustituye al primero.
