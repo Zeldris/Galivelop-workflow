@@ -1,6 +1,8 @@
 # E. Reglas deterministas, pruebas de front, documentación
 
-**Estado:** preguntas abiertas (2026-11-01). Nada se implementa hasta cerrar el bloque.
+**Estado:** cerrado (2026-11-01): las 8 preguntas, aprobadas por el usuario según la recomendación del agente. La
+investigación de la 5 se lanzó el mismo día (`docs/investigacion/ref-pruebas-front.md`); sus preguntas se añadirán
+aquí.
 
 Fuentes: [`README.md`](README.md) (bloque E), A-1 de [`A-marco.md`](A-marco.md) (todo público), D-3 y D-8 de
 [`D-git.md`](D-git.md) (recogidas publicadas, perfiles de instalación).
