@@ -12,7 +12,7 @@
 | Check | `bash tests/comprobar.sh` en verde (**comprobado solo en local**: sin cuota de Actions el CI no arranca, confirmado por el usuario); `main` (`56212e8`) comprobado en local el 2026-10-26 |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.2.md` |
-| Siguiente paso | Parche `0.4.3` en esta rama (P1-P4 de la recogida de galivelop-developer, en `version/1.0.0`). Fases 1 y 2 hechas: `/code-review` con 10 arreglos y retro decidida (`docs/registros/retro-2026-10-27-parche-0-4-3.md`: R2 y R4 aplicadas, R1 a la `1.0.0`). Siguiente: fase 3 (`revisado.sh`) y subida a `main` solo con confirmación del usuario; luego fusionar en `version/1.0.0` (`fusionar.sh`) |
+| Siguiente paso | Parche `0.4.3` a `main` (2026-11-01, confirmado por el usuario): con `main` traído (README del usuario) y la recogida de galivelop-developer copiada de `version/1.0.0` (la exige `version.py --release`). Luego `docs/registros/release-v0.4.3.md` y traer el parche a `version/1.0.0` con `fusionar.sh`. |
 
 ### Fases
 
