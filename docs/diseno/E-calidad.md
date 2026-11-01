@@ -1,8 +1,7 @@
 # E. Reglas deterministas, pruebas de front, documentación
 
 **Estado:** cerrado (2026-11-01): las 8 preguntas, aprobadas por el usuario según la recomendación del agente. La
-investigación de la 5 se lanzó el mismo día (`docs/investigacion/ref-pruebas-front.md`); sus preguntas se añadirán
-aquí.
+investigación de la 5 ya está hecha; sus preguntas, de la 9 a la 16, siguen abiertas.
 
 Fuentes: [`README.md`](README.md) (bloque E), A-1 de [`A-marco.md`](A-marco.md) (todo público), D-3 y D-8 de
 [`D-git.md`](D-git.md) (recogidas publicadas, perfiles de instalación).
@@ -53,3 +52,24 @@ Cada punto lleva la recomendación del agente (**Rec.**).
    nombres y rutas (A-2 y A-4), que tocan casi todos los documentos. Se reparte a subagentes, un documento cada uno,
    con una lista fija: público, sin basura, coherente con el código, ES y EN emparejados. La sesión principal revisa
    cada resultado.
+
+## Preguntas de la investigación de front (E-5)
+
+Salen de [`ref-pruebas-front.md`](../investigacion/ref-pruebas-front.md). Algunos dominios no resolvían desde el
+entorno; lo no confirmado va marcado `[NC]` en la nota, y se trata como en D-5. Cada punto lleva la recomendación del
+investigador (**Rec.**).
+
+9. **Capturas visuales:** ¿se generan y comparan solo en Docker o Linux, en local y en el CI, o se acepta una base por
+   cada sistema? **Rec.:** solo en Docker o Linux. En macOS, la prueba visual corre en Docker o se omite con un aviso.
+10. **Cuándo corre la prueba visual:** ¿en el `pre-push` o solo en el CI y antes de `main`? **Rec.:** solo en el CI y en
+    la fase de cierre. El `pre-push` lleva Stylelint, las pruebas de layout y axe.
+11. **Dónde viven los tokens y breakpoints de cada proyecto:** **Rec.:** en un JSON enlazado desde `gw.json`. De él se
+    generan las reglas de Stylelint y los viewports.
+12. **Preprocesadores:** **Rec.:** CSS y SCSS desde el principio. Less o CSS-in-JS solo si un proyecto real lo exige.
+13. **Accesibilidad:** **Rec.:** axe bloquea por defecto (ninguna violación grave o crítica). Lighthouse CI solo
+    informa.
+14. **Dónde se guardan las capturas de referencia:** **Rec.:** en git mientras sean pocas y pequeñas, y en Git LFS si
+    pasan de un umbral que fija el flujo.
+15. **Servicios de pago** (Percy, Chromatic, Lost Pixel Platform): **Rec.:** no. El flujo funciona sin cuentas externas.
+16. **Matriz mínima:** **Rec.:** Chromium en todos los breakpoints. WebKit y Firefox solo en el escritorio y el móvil
+    principales.
