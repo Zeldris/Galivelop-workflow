@@ -1,6 +1,6 @@
 # C. Preguntas y modo restrictivo
 
-**Estado:** preguntas abiertas (2026-11-01). Nada se implementa hasta cerrar el bloque.
+**Estado:** cerrado (2026-11-01): las 10 preguntas, aprobadas por el usuario según la recomendación del agente.
 
 Fuentes: [`README.md`](README.md) (bloque C), B-10 de [`B-medicion.md`](B-medicion.md) (un solo interruptor de
 modos) y `/careful` y `/freeze` de gstack en [`ref-thinkrail-gstack-ecc.md`](../investigacion/ref-thinkrail-gstack-ecc.md).
