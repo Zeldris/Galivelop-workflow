@@ -17,7 +17,7 @@ Lo que esté aquí sin su archivo de bloque sigue en bruto, no decidido.
 | 4 | **B. Medición de gasto y modelos** | El bloque funcional mayor; usa D (dónde se guarda, cómo se etiqueta) | cerrado: [`B-medicion.md`](B-medicion.md) |
 | 5 | **C. Preguntas y modo restrictivo** | Pequeño y cerrado; comparte «modos» con B6 | cerrado: [`C-preguntas.md`](C-preguntas.md) |
 | 6 | **E. Reglas deterministas, pruebas de front, documentación** | Limpieza y calidad; usa A (público) y D (dónde) | 1-8 cerrado; 9-16 (front) abiertas: [`E-calidad.md`](E-calidad.md) |
-| 7 | **G. Management Center (MMC)** | Consume todo lo anterior; el final del roadmap | preguntas: [`G-mmc.md`](G-mmc.md) |
+| 7 | **G. Management Center (MMC)** | Consume todo lo anterior; el final del roadmap | cerrado: [`G-mmc.md`](G-mmc.md) |
 | 8 | **H. Roadmap y mapa de versiones** | Reparte lo diseñado en versiones `1.0.0+` | pendiente |
 
 ## A. Marco (decisiones ya tomadas por el usuario; se apuntan, no se discuten)
