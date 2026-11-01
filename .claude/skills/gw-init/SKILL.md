@@ -5,7 +5,7 @@ disable-model-invocation: true
 license: MIT
 compatibility: Claude Code or any Agent Skills agent; git, bash and python3 3.8+; the Galivelop-workflow repo cloned or added to the session
 metadata:
-  version: "0.4.2"
+  version: "0.4.3"
   source: "Galivelop workshop"
 ---
 
@@ -29,6 +29,12 @@ Reply to the user in the language they use; the project's `language` is decided 
 1. A sibling of the project: `../Galivelop-workflow`.
 2. A repo already attached to the session (check `ls` of the session's working folders).
 3. Otherwise ask the user to clone it next to the project or add it to the session, and wait. Read it, never edit it.
+
+When cloning it, take the latest published tag, not the default branch (which may not be `main` and may be an old
+version): `git ls-remote --tags --refs --sort=-v:refname <url>` shows the tags (the first line is the latest), then
+`git clone --branch vX.Y.Z <url>`. Whatever the origin (a new clone, a sibling clone that already exists or a repo
+added with `add_repo`), compare `git -C <workflow> describe --tags` with the latest tag and, if it is behind, run
+`git -C <workflow> fetch --tags` and `git -C <workflow> checkout vX.Y.Z`.
 
 Done when `python3 <workflow>/scripts/aplicar.py --help` runs.
 
@@ -81,5 +87,8 @@ Done when no `*.gw-nuevo` is left and the log has a next-step line.
 2. Commit with the message `aplicar.py` suggested, replacing its last line with the real `Next:` (`Siguiente:` in
    Spanish projects), then `git push -u origin <branch>`; the new pre-push runs the check on the pushed commit.
 3. Report: what was created, what the user must decide next, and that nothing went to the protected branch.
+4. Warn the user: a `.claude/settings.json` created mid-session is not loaded until the next session, so the
+   `PreToolUse` hook (the PR guard) is not active in this one. Until they open a new session from the project, check
+   the review mark by hand before any PR: `bash .claude/gw/scripts/revisado.sh`.
 
 Done when the push went through and `doctor.py` exits 0.

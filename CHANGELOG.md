@@ -156,6 +156,45 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   files and `patterns.md`. Compatibility: `web` is no longer an extra channel (`--limite web=N` and `--formato-propio web`
   are usage errors), and an older `web.md` without the block or `estado` must be redone from the template.
 
+## [0.4.3] - 2026-10-27
+
+Parche de correcciones de la recogida de galivelop-developer del 2026-10-27, en `version/1.0.0` (P1-P4); lo nuevo va a
+la `1.0.0`. / Bug-fix patch from the galivelop-developer harvest of 2026-10-27, in `version/1.0.0` (P1-P4); new features
+go to `1.0.0`.
+
+### ES
+
+- `doctor.py`: con `GITHUB_ACTIONS=true` (GitHub Actions), `core.hooksPath` sin poner sale en `WARN` y no en `FAIL`: el
+  CI no puede tener los ganchos de git puestos y rompía el CI de todo proyecto con `doctor.py` en `check`; en local
+  sigue siendo `FAIL` (galivelop-developer P1).
+- `doctor.py` avisa (`WARN`) de una orden de `check` que sea `bash -n` o `sh -n` con más de un archivo, un glob o `$(…)`
+  (check `check syntax-only`): solo se comprueba el primero, y da un verde falso; dice la orden que lo arregla (una por
+  archivo, o un `for`) (galivelop-developer P4).
+- `/gw-init` y la guía de aplicar piden clonar la última etiqueta publicada (`git ls-remote --tags --refs
+  --sort=-v:refname`, `git clone --branch vX.Y.Z`), no la rama por defecto, que puede no ser `main` (galivelop-developer
+  P2).
+- La guía de aplicar y `/gw-init` avisan de que un `.claude/settings.json` creado a mitad de sesión no se carga hasta la
+  siguiente: en la sesión que aplica el flujo la guarda del PR no está activa y la marca se comprueba a mano con `bash
+  .claude/gw/scripts/revisado.sh` (galivelop-developer P3).
+- Plantilla de `AGENTS.md`: el push y el check largo se lanzan en segundo plano y se espera su aviso, sin bucles de
+  espera (retro del parche, R2).
+
+### EN
+
+- `doctor.py`: with `GITHUB_ACTIONS=true` (GitHub Actions), an unset `core.hooksPath` is a `WARN`, not a `FAIL`: CI
+  cannot have git hooks installed, and it broke the CI of every project with `doctor.py` in `check`; locally it stays a
+  `FAIL` (galivelop-developer P1).
+- `doctor.py` warns (`WARN`) about a `check` command that is `bash -n` or `sh -n` with more than one file, a glob or
+  `$(…)` (check `check syntax-only`): only the first is checked, a false green; it gives the fixing command (one per
+  file, or a `for` loop) (galivelop-developer P4).
+- `/gw-init` and the apply guide ask to clone the latest published tag (`git ls-remote --tags --refs --sort=-v:refname`,
+  `git clone --branch vX.Y.Z`), not the default branch, which may not be `main` (galivelop-developer P2).
+- The apply guide and `/gw-init` warn that a `.claude/settings.json` created mid-session is not loaded until the next
+  one: in the session that applies the workflow the PR guard is not active and the mark is checked by hand with `bash
+  .claude/gw/scripts/revisado.sh` (galivelop-developer P3).
+- `AGENTS.md` template: the push and the long check run in the background and the agent waits for their notice, with
+  no polling loop (patch retro, R2).
+
 ## [0.4.2] - 2026-10-27
 
 Parche de correcciones de la segunda recogida del 2026-10-26 (`docs/propuestas/2026-10-26-*-2.md` y

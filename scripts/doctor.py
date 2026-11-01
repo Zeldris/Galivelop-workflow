@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.4.2
+# galivelop-workflow v0.4.3
 """Check that a project has the workflow set up (used by /gw-doctor and CI). No AI, no network.
 
   python3 doctor.py            # one line per check: OK / WARN / FAIL, each problem with the command that fixes it
@@ -7,7 +7,8 @@
   python3 doctor.py --root R   # check the project at R (default: config.find_root)
 
 Exit 1 if any check FAILs (WARNs do not fail). Checks: the config; core.hooksPath and other hook managers; the git
-hooks (present, executable, version); the log and its next step; the `check`, `install` and `setup` commands exist; a CI
+hooks (present, executable, version); the log and its next step; the `check`, `install` and `setup` commands exist (and a
+`bash -n`/`sh -n` `check` command that reads only one file: `check syntax-only`); a CI
 workflow; .claude/settings.json (WMF P4: SessionStart matchers, `compact` only runs recuperar.py --estado, hook
 commands point to existing files, the PR guard on PreToolUse); AGENTS.md/CLAUDE.md authorise dealing work to
 subagents (VeriNews P1); copied skills at the config's version; a session opened outside the repo (VeriNews P3);
@@ -189,6 +190,9 @@ def check_hooks_path(rep, root):
     current = git(root, "config", "--get", "core.hooksPath")
     if current in (".githooks", str(root / ".githooks")):
         rep.ok("hooks-path", "core.hooksPath is .githooks")
+    elif not current and os.environ.get("GITHUB_ACTIONS") == "true":
+        rep.warn("hooks-path", "core.hooksPath is unset (GitHub Actions run: git hooks are not installed there, so "
+                 "this is not a failure); locally it is a FAIL", "git config core.hooksPath .githooks")
     elif not current:
         rep.fail("hooks-path", "core.hooksPath is unset, so the workflow's git hooks do not run",
                  "git config core.hooksPath .githooks")
@@ -229,6 +233,36 @@ def check_log(rep, root, cfg):
     rep.ok("log", f"{cfg['log']} has a next step")
 
 
+def syntax_only(command):
+    """For a plain `bash -n ...` / `sh -n ...` command that checks fewer files than it seems to, return
+    (interpreter, args, why), else None. `why` is "several" (more than one file: only the first is read), "glob"
+    (an argument has `*`, `?` or `[`) or "subst" (`$(...)` or a backtick). A `for`, `;`, `&&`, `|`, a redirection or
+    any other shell structure is not a plain command, so it is left alone."""
+    subst = "$(" in command or "`" in command
+    try:
+        if subst:
+            words = shlex.split(command)
+            ops = any(w in (";", "&&", "||", "|", "&") for w in words)
+        else:
+            lex = shlex.shlex(command, posix=True, punctuation_chars=True)
+            lex.whitespace_split = True
+            words = list(lex)
+            ops = any(re.fullmatch(r"[;&|<>()]+|\d+>.*", w) for w in words)
+    except ValueError:
+        return None
+    if ops or len(words) < 3 or os.path.basename(words[0]) not in ("bash", "sh") or words[1] != "-n":
+        return None
+    interp = os.path.basename(words[0])
+    args = [w for w in words[2:] if not w.startswith("-")]
+    if subst:
+        return interp, [command.split(None, 2)[2]], "subst"
+    if any(c in w for w in args for c in "*?["):
+        return interp, args, "glob"
+    if len(args) > 1:
+        return interp, args, "several"
+    return None
+
+
 def check_commands(rep, root, cfg):
     if cfg is None:
         return
@@ -240,6 +274,22 @@ def check_commands(rep, root, cfg):
         else:
             rep.fail("checkWrapper", f"'{wrapper}': '{word}' is not a command on PATH nor a file in the repo",
                      f"fix checkWrapper in .claude/gw.json, then: python3 {HERE / 'doctor.py'}")
+    for command in cfg.get("check") or []:
+        found = syntax_only(command)
+        if found:
+            interp, args, why = found
+            if why == "several":
+                msg = (f"'{command}': {interp} -n reads only the first file ({args[0]}); the other {len(args) - 1} are "
+                       f"passed as arguments and never checked")
+                loop = " ".join(shlex.quote(a) for a in args)
+            else:
+                what = "a command substitution" if why == "subst" else "a glob"
+                msg = (f"'{command}': {interp} -n reads only the first file, and {what} in the arguments may expand "
+                       f"to several files, so the others are never checked")
+                loop = " ".join(args)
+            rep.warn("check syntax-only", msg,
+                     f"use one `{interp} -n <file>` command per file in 'check' in .claude/gw.json, or one command: "
+                     f'for f in {loop}; do {interp} -n "$f"; done')
     for key, bad in (("check", rep.fail), ("install", rep.warn), ("setup", rep.warn)):
         for command in cfg.get(key) or []:
             word = first_word(command)

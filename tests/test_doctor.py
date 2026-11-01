@@ -28,6 +28,8 @@ class Doctor(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="gw-doctor-")).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, True)
         p = self.p = SessionProject(self.tmp)
+        for var in ("CI", "GITHUB_ACTIONS"):  # the CI's own variables must not change what these tests expect
+            p.env.pop(var, None)
         for name in ("revision-antes-de-main.sh", "antes-de-parar.py", "guardia-config.py", "tope-subagentes.py"):
             shutil.copy2(ROOT / "scripts" / name, p.scripts / name)
         shutil.copy2(ROOT / "templates" / "claude" / "settings.json", p.work / ".claude" / "settings.json")
@@ -164,6 +166,54 @@ class Doctor(unittest.TestCase):
         code, out = self.doctor()
         self.assertEqual(code, 0, out)
         self.assertLine(out, "WARN", "another hook manager", ".husky/pre-push")
+
+    def test_hooks_path_unset_in_github_actions_warns_instead_of_failing(self):
+        self.p.git("config", "--unset", "core.hooksPath")
+        run = lambda env: self.p.run("python3", str(self.p.scripts / "doctor.py"), cwd=self.tmp, env=env)
+        code, out = run({"GITHUB_ACTIONS": "true"})
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "hooks-path", "GitHub Actions", "git config core.hooksPath .githooks")
+        for env in ({"GITHUB_ACTIONS": "false"}, {"CI": "true"}, {"CI": "true", "GITHUB_ACTIONS": ""}):
+            code, out = run(env)
+            self.assertEqual(code, 1, f"{env}: {out}")
+            self.assertLine(out, "FAIL", "hooks-path")
+
+    def set_check(self, *commands):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["check"] = list(commands)
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+
+    def test_bash_n_with_several_files_warns_with_the_fix(self):
+        self.set_check("bash -n a.sh b.sh c.sh")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "check syntax-only", "bash -n reads only the first file",
+                        "one `bash -n <file>` command per file", 'for f in a.sh b.sh c.sh; do bash -n "$f"; done')
+        self.set_check("bash -n 'a b.sh' c.sh")
+        self.assertLine(self.doctor()[1], "WARN", "check syntax-only", "for f in 'a b.sh' c.sh; do")
+
+    def test_sh_n_keeps_its_interpreter(self):
+        self.set_check("sh -n x.sh y.sh")
+        line = self.assertLine(self.doctor()[1], "WARN", "check syntax-only", "sh -n reads only the first file",
+                               'for f in x.sh y.sh; do sh -n "$f"; done', "one `sh -n <file>` command")
+        self.assertNotIn("bash", line)
+
+    def test_bash_n_with_a_glob_or_substitution_warns_even_with_one_argument(self):
+        for command, why in (("bash -n scripts/*.sh", "a glob"), ("bash -n a?.sh", "a glob"),
+                             ("bash -n a[12].sh", "a glob"), ("bash -n $(ls *.sh)", "a command substitution"),
+                             ("bash -n `ls`", "a command substitution")):
+            self.set_check(command)
+            out = self.doctor()[1]
+            self.assertLine(out, "WARN", "check syntax-only", why, "may expand to several files")
+
+    def test_bash_n_with_one_file_or_a_loop_does_not_warn(self):
+        for command in ("bash -n a.sh", 'for f in a.sh b.sh; do bash -n "$f"; done', "bash check.sh a b",
+                        "bash -n a.sh; bash -n b.sh", "bash -n a.sh&&bash -n b.sh", "bash -n a.sh b.sh;",
+                        "bash -n a.sh 2>/dev/null", "bash -n a.sh b.sh > out.txt", "bash -n a.sh b.sh < in.txt",
+                        "bash -n a.sh | cat", "bash -n 'unterminated a.sh b.sh"):
+            self.set_check(command)
+            code, out = self.doctor()
+            self.assertNotIn("check syntax-only", out, command)
 
     def test_missing_log_next_step(self):
         self.p.write("docs/log.md", "# Log\n\nnothing here\n")

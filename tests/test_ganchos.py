@@ -389,6 +389,7 @@ class PrePush(Base):
             self.assertTrue(started.exists(), "the check never started")
             self.assertEqual(marker.read_text().splitlines()[0], str(proc.pid), "the marker holds the hook's pid")
             os.killpg(proc.pid, sig)
+            proc.stdin = None  # already closed: communicate() in Python 3.12 would flush it and raise
             proc.communicate(timeout=30)
             self.assertNotEqual(proc.returncode, 0)
             self.assertFalse(marker.exists(), f"the marker must go when the hook gets {sig.name}")
@@ -931,6 +932,7 @@ class PrePushWorktree(Base):
             self.assertTrue(started.exists(), "the check never started")
             self.assertEqual(len(self.leftovers()), 2, "a worktree and its marker exist while it runs")
             os.killpg(proc.pid, sig)
+            proc.stdin = None  # already closed: communicate() in Python 3.12 would flush it and raise
             proc.communicate(timeout=30)
             self.assertNotEqual(proc.returncode, 0)
             self.assertNoWorktreeLeft()

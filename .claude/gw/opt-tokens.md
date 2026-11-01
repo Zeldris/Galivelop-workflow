@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.4.2 -->
+<!-- galivelop-workflow v0.4.3 -->
 # opt-tokens — notas del proyecto
 
 Las lee la skill `opt-tokens` antes de proponer nada, y se actualizan cuando la persona aprueba un cambio. El flujo
@@ -23,6 +23,9 @@ las crea una vez; desde entonces son del proyecto.
   `0.4.1`, el encargo corta a las ~25 llamadas y el tope es ~30 (9 de los 10 subagentes más caros pasaron de 33).
 - `gw-harvest` (`0.4.1`): los proyectos se clonan solo para lectura en una carpeta temporal, sin registrarlos
   (`register_repo_root`), y su verificación va con un subagente por proyecto en paralelo.
+
+- `AGENTS.md` (retro del parche 0.4.3): push y check largo en segundo plano, esperando el aviso (R2); al empezar,
+  de `traspaso.md` solo lo que el gancho `SessionStart` recortó (R4).
 
 ## Costes conocidos
 

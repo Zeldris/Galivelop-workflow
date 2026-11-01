@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.4.2 -->
+<!-- galivelop-workflow v0.4.3 -->
 # {{project}} — instructions for agents
 
 This project is worked on in hand-offs: a session can end at any moment (tokens, container, account switch) and the
@@ -34,7 +34,7 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - If you have to stop with something half-done or red: commit anyway with `WIP:` at the start of the message and, in
   the log, what fails and why. Never leave work only on the local machine.
 - Push to the working branch (`git push -u origin <branch>`); if it fails because of the network, retry after 2, 4,
-  8 and 16 s.
+  8 and 16 s. The push and the long check run in the background and you wait for their notice, with no polling loop.
 - **After an interrupted or rejected call, run `git status` and `git diff` before repeating it**: the change may
   already be saved, or even pushed, and repeating it duplicates it.
 - If the person says stop, stop: push what there is, leave the log up to date and do nothing else.

@@ -5,7 +5,7 @@ disable-model-invocation: true
 license: MIT
 compatibility: Claude Code or any Agent Skills agent; git and python3 3.8+; reads .claude/gw.json
 metadata:
-  version: "0.4.2"
+  version: "0.4.3"
   source: "Galivelop workshop"
 ---
 
@@ -44,6 +44,8 @@ prints and applies fixes the user approves. Reply in the project's `language` (`
 
 - **`hooks-path` WARN:** another hook manager owns the hooks. Chain the workflow's hooks from it with the line the
   warning gives; never overwrite the manager's files or point `core.hooksPath` back without asking.
+- **`check syntax-only` WARN:** a `bash -n`/`sh -n` check command reads only its first file (several files, a glob or
+  a substitution). Offer the one-command-per-file or `for` loop the warning gives; edit `check` only if the user agrees.
 - **`check command` FAIL:** the tool is missing or the command is wrong. Ask the user which; do not invent one.
 - **`session` WARN:** the session was opened outside the repo. The fix is to reopen it from the repo, so tell the
   user; the script cannot do it.

@@ -15,7 +15,11 @@ which do not load plugins declared in the repo.
 1. The project is cloned and is a git repo (`git init` if it is new).
 2. This repo, the workflow's, is cloned next to the project, or the person has added it to the session. From here on
    it is `<workflow>`. **It is read by a subagent** (`orchestrate-dealer`), which returns the step-1 table and the
-   conflicts with the project, with paths; the main session only decides. In the cloud, keep the workflow repo from
+   conflicts with the project, with paths; the main session only decides. **Clone the latest published tag, not the
+   default branch** (which may not be `main` and may be an old version): `git ls-remote --tags --refs --sort=-v:refname <url>` to see it (the first line is the latest) and
+   `git clone --branch vX.Y.Z <url>`. Whatever the origin (a new clone, an existing sibling clone or a repo added with
+   `add_repo`), compare `git -C <workflow> describe --tags` with the latest tag and, if it is behind,
+   `git -C <workflow> fetch --tags` and `git -C <workflow> checkout vX.Y.Z`. In the cloud, keep the workflow repo from
    becoming a working folder of the session (it would load its `CLAUDE.md` and skills): if it is public, a plain
    `git clone`; if it is added with `add_repo`, do not register it as a root, and check the path it returns with `ls`
    (it may come lowercased and not exist).
@@ -69,7 +73,7 @@ Rules:
 - Read the build file's scripts and **run the `check` command once** to see that it works and how long it takes. A
   command that does not exist or does not pass is found late and gets in the way of every push.
 - **When unsure, ask the person**; do not invent a command. With several candidates, offer them numbered.
-- A project with no tests: `check` can be a linter or a `bash -n`; say so and note it as debt in the log.
+- A project with no tests: `check` can be a linter or a `bash -n`; say so and note it as debt in the log. A `bash -n` checks only the first file (the rest are arguments): one command per file, or `for f in …; do bash -n "$f"; done` (`doctor.py` warns about it as `check syntax-only`, also for a glob or a `$(…)` substitution). If you put `doctor.py` in `check`, in GitHub Actions (`GITHUB_ACTIONS=true`) an unset `hooks-path` is a `WARN` and does not break the run: CI has no git hooks installed; locally it stays a `FAIL`.
 - If the project has an agent map (`docs/mapa-agente.md`, or the one `agentMap.path` declares), add `--check-command "python3 .claude/gw/scripts/mapa-agente.py"`: it checks that every path the map cites exists. With no map it exits 0 and does no harm; with short prefixes (`b/` for `backend/src/`), set `agentMap.prefixes` ([`config.md`](config.md)).
 - The copied skills bring their tests next to their scripts: they are discovered with `python3 -m unittest discover -s <skill>/scripts` (the workflow repo's check does it for each one).
 - `content` is proposed by reading the tree: `^docs/`, `^public/`… (in JSON the backslash is doubled). **What is
@@ -186,9 +190,13 @@ If the project has CI, check that the `Comprobar` workflow passes. Node, Python 
 `package.json`, `pyproject.toml`/`requirements*.txt` or `pom.xml`/`build.gradle*` exist; another toolchain
 (rust-toolchain…) must be added, as the header of `comprobar.yml` says.
 
-Done when: the push went through, `doctor.py` is still green and the log says what comes next.
+Done when: the push went through, `doctor.py` is still green and the log says what comes next. Remember the warning in step 6: until a new session, the PR guard is not active.
 
 ## 6. Prove the protection works
+
+**Warning:** a `.claude/settings.json` created mid-session is not loaded until the next one. In the session that
+applies the workflow the `PreToolUse` hook (the PR guard) is **not active**: until you open a new session from the
+project, check the mark by hand before creating or merging a PR (`bash .claude/gw/scripts/revisado.sh`).
 
 On the working branch, commit a small code change and try to push it straight to the protected branch, as a dry
 run (`pre-push` runs all the same, nothing is pushed even if it passed, and Claude Code's auto mode does not block it
