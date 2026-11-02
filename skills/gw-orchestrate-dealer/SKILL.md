@@ -70,6 +70,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    test for each before calling the chunk done; the review afterwards is the safety net, not the first pass.
    Do not: <what belongs to another chunk or needs a user decision>.
    If you change a function or a field, grep every user of it and adjust them, or list them under MISSING.
+   Your branch is named `agent/<id>-<topic>` (`<id>` = the task id, e.g. `agent/D11-commit-format`); if isolation
+   created another name, rename it first: `git branch -m agent/<id>-<topic>`.
    If the bug is a pattern (a wrong check, a missing quote, a case left out), grep its other occurrences and fix
    them too, or list them under MISSING.
    If you touch processes, paths or permissions, write it for every platform the project supports.
@@ -125,8 +127,10 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   log or push, and returns its branch. The main session has each one reviewed (step 3), merges them one by one
   (merge, never rebase; `check` after each), writes the log and pushes. When the session folder is not the repo root
   (a cloud session starts in `/home/user`, next to other repos, and `isolation` lands the worktree in the wrong one),
-  the main session creates each worktree itself with `git -C <repo> worktree add <folder> -b <branch>` and puts that
-  folder in the brief, without `isolation`.
+  the main session creates each worktree itself with `git -C <repo> worktree add <folder> -b agent/<id>-<topic>` and
+  puts that folder in the brief, without `isolation` (put it under `.claude/worktrees/`: a folder elsewhere is not
+  cleaned by `merge-branch.sh`, remove it by hand with `git worktree remove`). Branches are `agent/<id>-<topic>`: `merge-branch.sh` adds their
+  ids (the name's and the commits' `Refs:`) to the merge message as one `Refs:` trailer and cleans `agent/*` branches.
 - **Shared records, main session only:** with parallel subagents none touches `log`, the findings register or any other
   shared record; they return their entries under `FOUND` and the main session writes them. Parallel writes conflict
   on merge.

@@ -897,14 +897,127 @@ class PrepushBranches(Base):
 
 
 class MergeBranch(Base):
-    def agent(self, name="worktree-agent-1", path="a.txt", text="from the agent\n"):
+    def agent(self, name="worktree-agent-1", path="a.txt", text="from the agent\n", message="agent work"):
         """A subagent's branch with its worktree (under .claude/worktrees/) and one commit."""
         wt = self.p.work / ".claude" / "worktrees" / name
         self.p.git("worktree", "add", "-q", "-b", name, str(wt))
         (wt / path).write_text(text)
         self.p.git("add", "-A", cwd=wt)
-        self.p.git("commit", "-q", "-m", "agent work", cwd=wt, env=DAY)
+        self.p.git("commit", "-q", "-m", message, cwd=wt, env=DAY)
         return wt
+
+    def merge_trailers(self):
+        """The Refs values of the last commit, as git parses them."""
+        body = self.p.git("log", "-1", "--format=%B").stdout
+        r = subprocess.run(["git", "interpret-trailers", "--parse"], input=body, capture_output=True, text=True)
+        return [line for line in r.stdout.splitlines() if line.startswith("Refs:")]
+
+    def test_refs_from_the_branch_name_and_its_commits_join_the_message(self):
+        self.agent(name="agent/D16-x", message="work\n\nRefs: D12")
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.merge_trailers(), ["Refs: D16, D12"])
+
+    def test_refs_are_not_repeated_when_the_message_has_them(self):
+        self.agent(name="agent/D16-x", message="work\n\nRefs: D12, D16 D13")
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent\n\nRefs: D16", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.merge_trailers(), ["Refs: D16, D12, D13"])
+        self.assertEqual(self.p.git("log", "-1", "--format=%B").stdout.count("Refs:"), 1)
+
+    def test_a_message_that_already_has_the_refs_is_left_alone(self):
+        self.agent(name="agent/D16-x")
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent\n\nRefs: D16", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.p.git("log", "-1", "--format=%B").stdout.strip(), "Merge agent\n\nRefs: D16")
+
+    def test_a_branch_without_ids_leaves_the_message_as_it_is(self):
+        self.agent()
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.p.git("log", "-1", "--format=%B").stdout.strip(), "Merge agent 1")
+
+    def test_a_name_id_without_the_shape_of_an_id_is_ignored_but_the_commit_refs_count(self):
+        self.agent(name="agent/misc", message="work\n\nRefs: D5")
+        code, out = self.p.script("merge-branch.sh", "agent/misc", "Merge agent", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.merge_trailers(), ["Refs: D5"])
+
+    def test_the_id_in_the_name_is_checked_against_the_config_task_id(self):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["taskId"] = "T[0-9]+"
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.commit("task id", env=DAY)
+        self.agent(name="agent/D16-x", path="a.txt")
+        self.agent(name="agent/T7-y", path="b.txt")
+        self.p.script("merge-branch.sh", "agent/D16-x", "Merge one", "--reviewed")
+        self.assertEqual(self.merge_trailers(), [], "D16 does not match the configured taskId")
+        self.p.script("merge-branch.sh", "agent/T7-y", "Merge two", "--reviewed")
+        self.assertEqual(self.merge_trailers(), ["Refs: T7"])
+
+    def test_every_old_refs_line_goes_and_the_new_one_leads_so_the_next_step_line_stays_last(self):
+        self.agent(name="agent/D16-x", message="work\n\nRefs: D12")
+        msg = "Merge agent\n\nRefs: D1\nRefs: D2\nSiguiente: lo que sea"
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", msg, "--reviewed")
+        self.assertEqual(code, 0, out)
+        body = self.p.git("log", "-1", "--format=%B").stdout.strip().splitlines()
+        self.assertEqual(body[-1], "Siguiente: lo que sea")
+        self.assertEqual([l for l in body if l.startswith("Refs:")], ["Refs: D1, D2, D16, D12"])
+
+    def test_values_that_do_not_look_like_an_id_are_not_copied_from_the_commits(self):
+        self.agent(name="agent/D16-x", message="work\n\nRefs: D11 (parcial)")
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.merge_trailers(), ["Refs: D16, D11"])
+
+    def test_a_failing_interpret_trailers_stops_before_the_merge(self):
+        fake = self.tmp / "fakebin"
+        fake.mkdir()
+        real = shutil.which("git")
+        (fake / "git").write_text(f'#!/bin/bash\n[ "$1" = interpret-trailers ] && exit 1\nexec {real} "$@"\n')
+        (fake / "git").chmod(0o755)
+        self.agent(name="agent/D16-x")
+        before = self.p.sha()
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed",
+                                  env={"PATH": f"{fake}:{self.p.env['PATH']}"})
+        self.assertEqual(code, 2, out)
+        self.assertIn("cannot read the Refs trailers", out)
+        self.assertIn("then retry: bash", out)
+        self.assertEqual(self.p.sha(), before, "no merge happened")
+        self.assertIn("agent/D16-x", self.branches())
+
+    def test_the_current_branch_is_never_cleaned_even_when_named_agent(self):
+        self.p.git("checkout", "-q", "-b", "agent/D3-cur")
+        self.p.git("branch", "agent/D4-other")
+        code, out = self.p.script("merge-branch.sh", "agent/D3-cur", "Merge agent", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertIn("agent/D3-cur", self.branches())
+
+    def test_cleans_an_agent_branch_and_its_worktree(self):
+        wt = self.agent(name="agent/D16-x")
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertFalse(wt.exists(), out)
+        self.assertNotIn("agent/D16-x", self.branches())
+
+    def test_an_agent_branch_without_a_worktree_is_deleted_once_merged(self):
+        self.p.git("branch", "agent/D1-x")
+        self.p.git("checkout", "-q", "agent/D1-x")
+        (self.p.work / "b.txt").write_text("x\n")
+        self.p.git("add", "-A"); self.p.git("commit", "-q", "-m", "w", env=DAY)
+        self.p.git("checkout", "-q", "-")
+        code, out = self.p.script("merge-branch.sh", "agent/D1-x", "Merge agent", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("agent/D1-x", self.branches(), "an agent/* branch with no worktree is deleted once merged")
+
+    def test_merge_message_with_refs_passes_the_commit_msg_hook(self):
+        hook = ROOT / "templates" / "githooks" / "commit-msg"
+        self.agent(name="agent/D16-x", message="work\n\nRefs: D12")
+        self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed")
+        msg = self.p.work / "msg.txt"
+        msg.write_text(self.p.git("log", "-1", "--format=%B").stdout)
+        r = subprocess.run(["bash", str(hook), str(msg)], cwd=self.p.work, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
     def branches(self):
         return self.p.git("branch", "--format=%(refname:short)").stdout.split()

@@ -143,7 +143,7 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 Deterministic, in Python and in bash that runs on macOS's version: `apply.py` (set up the workflow), `doctor.py`
 (diagnosis with the command that fixes each problem), `reviewed.sh` (review mark), `recover.py` (state after
-`/clear`), `merge-branch.sh` (bring in a subagent's branch with a green check and clean up its working copy),
+`/clear`), `merge-branch.sh` (bring in a subagent's branch, `agent/<id>-<topic>`, with a green check, its `Refs:` in the merge message, and clean up its working copy),
 `red-without-fix.sh`, `harvest.py` and the checks for links and for the agent map.
 
 ### Optional patterns

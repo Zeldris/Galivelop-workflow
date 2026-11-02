@@ -16,6 +16,8 @@ check flags one that lacks it (exceptions, with the reason, in UNMARKED).
   python3 scripts/version.py            # list files whose marker differs from plugin.json; exit 1 if any
   python3 scripts/version.py 0.2.0      # set plugin.json and every marker to 0.2.0; add a CHANGELOG entry
   python3 scripts/version.py <current>  # re-sync stale markers to plugin.json's version
+  python3 scripts/version.py --suggest  # the bump the commits since the last vX.Y.Z tag ask for (D11); only suggests
+                                        # (exit 0); --release prints the same suggestion as a warning
   python3 scripts/version.py --release  # the check, and: copyable files (scripts/, skills/, templates/, schema/,
                                         # LICENSE-mattpocock-skills)
                                         # changed since the last vX.Y.Z tag reachable from HEAD need a
@@ -215,6 +217,85 @@ def harvest_check(version, tag):
             "when nothing is new) and retry: python3 scripts/version.py --release"]
 
 
+COMMIT_TYPES = ("feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert")
+COMMIT_HEAD = re.compile(r"^(?:WIP: )?(" + "|".join(COMMIT_TYPES) + r")(?:\([^()\r\n]*\))?(!)?: \S")
+PATCH_TYPES = ("fix", "perf")
+
+
+def numbers(version):
+    m = re.match(r"^(\d+)\.(\d+)\.(\d+)$", version)
+    return tuple(int(n) for n in m.groups()) if m else None
+
+
+def is_breaking(message):
+    """True when a commit message has `type!:` in its first line or a BREAKING CHANGE trailer (git's own parse)."""
+    first = COMMIT_HEAD.match(message.split("\n", 1)[0])
+    if first and first.group(2):
+        return True
+    r = subprocess.run(["git", "interpret-trailers", "--parse"], input=message, capture_output=True, text=True)
+    if r.returncode != 0:
+        raise VersionError("git interpret-trailers failed on a commit message; update git and retry: "
+                           "python3 scripts/version.py --suggest")
+    if any(line.startswith("BREAKING-CHANGE:") for line in r.stdout.splitlines()):
+        return True
+    # git does not take `BREAKING CHANGE` (with a space, the Conventional Commits spelling) for a trailer token
+    paragraphs = [p for p in re.split(r"\n\s*\n", message.strip()) if p.strip()]
+    return len(paragraphs) > 1 and any(line.startswith("BREAKING CHANGE:") for line in paragraphs[-1].splitlines())
+
+
+def suggest(current):
+    """Lines (all starting `suggest:` or `warning:`) with the bump the non-merge commits since the last vX.Y.Z tag
+    ask for: breaking -> major (minor in 0.x, where a minor may break), feat -> minor, fix/perf -> patch, the rest
+    nothing; commits that do not follow the format are counted. Compares with plugin.json's `current` version."""
+    code, tag = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*.[0-9]*.[0-9]*", "HEAD")
+    base = numbers(tag[1:]) if code == 0 and tag else None
+    if base is None:
+        return ["suggest: no vX.Y.Z tag reachable from HEAD, so no bump can be suggested; fetch the tags and retry: "
+                "git fetch --tags origin && python3 scripts/version.py --suggest"]
+    code, out = git("log", "--no-merges", "--format=%x1e%B", f"{tag}..HEAD")
+    if code != 0:
+        raise VersionError(f"cannot read the commits since {tag}; fetch it and retry: git fetch --tags origin && "
+                           "python3 scripts/version.py --suggest")
+    messages = [m.strip() for m in out.split("\x1e") if m.strip()]
+    counts, loose, breaking = {}, 0, False
+    for message in messages:
+        m = COMMIT_HEAD.match(message.split("\n", 1)[0])
+        if m:
+            counts[m.group(1)] = counts.get(m.group(1), 0) + 1
+        else:
+            loose += 1
+        breaking = is_breaking(message) or breaking
+    major, minor, patch = base
+    if breaking:
+        level = "major" if major >= 1 else "minor"
+    elif counts.get("feat"):
+        level = "minor"
+    elif any(counts.get(t) for t in PATCH_TYPES):
+        level = "patch"
+    else:
+        level = None
+    summary = f"{len(messages)} commit(s) since {tag}"
+    if loose:
+        summary += f", {loose} not in the type(scope): text format (counted, they suggest nothing)"
+    if level is None:
+        return [f"suggest: {summary}: no bump suggested (nothing but docs/chore-like commits or none at all)"]
+    new = {"major": (major + 1, 0, 0), "minor": (major, minor + 1, 0), "patch": (major, minor, patch + 1)}[level]
+    suggested = ".".join(str(n) for n in new)
+    lines = [f"suggest: {summary}: {level} bump, {tag[1:]} -> {suggested}"]
+    now = numbers(current)
+    if now is None:
+        lines.append(f"warning: plugin.json version {current!r} is not X.Y.Z, so it cannot be compared with the "
+                     f"suggested {suggested}; set it: python3 scripts/version.py {suggested}")
+    elif now == new:
+        lines.append(f"warning: plugin.json is already at the suggested {suggested}")
+    elif now is not None and now > new:
+        lines.append(f"warning: plugin.json {current} is ahead of the suggested {suggested}; check that it was intended")
+    else:
+        lines.append(f"warning: plugin.json {current} is behind the suggested {suggested}; bump it: "
+                     f"python3 scripts/version.py {suggested}")
+    return lines
+
+
 def bump_plan(path, new):
     """The new text of a JSON file with only its top-level "version" set to new; None when already there."""
     rel = path.relative_to(ROOT)
@@ -273,6 +354,14 @@ def main(argv):
         print('version: .claude-plugin/plugin.json has no top-level "version" (the source of every marker); add it '
               '("version": "X.Y.Z") and retry: python3 scripts/version.py', file=sys.stderr)
         return 1
+    if argv == ["--suggest"]:
+        try:
+            for line in suggest(current):
+                print(line)
+        except VersionError as e:
+            print(f"version: {e}", file=sys.stderr)
+            return 1
+        return 0
     release = argv[:1] == ["--release"]
     if release:
         argv = argv[1:]
@@ -280,6 +369,12 @@ def main(argv):
         problems = check(current) + (release_check(current) if release else [])
         for line in problems:
             print(line)
+        if release:
+            try:
+                for line in suggest(current):
+                    print(f"warning: {line}" if line.startswith("suggest:") else line)
+            except VersionError as e:
+                print(f"warning: {e}")
         if any(line.startswith("stale") for line in problems):
             print(f"markers differ from plugin.json ({current}); fix them: python3 scripts/version.py {current}")
         if problems:

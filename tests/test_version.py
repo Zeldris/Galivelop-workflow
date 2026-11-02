@@ -1,6 +1,7 @@
 """scripts/version.py: markers in sync with plugin.json, and a bump that moves them all."""
 import importlib.util
 import json
+import re
 import shutil
 import subprocess
 import tempfile
@@ -169,6 +170,102 @@ class Version(unittest.TestCase):
         r = self.release_harvesting_into("docs/proposals", {"proposalsDir": "/abs"})
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertIn("cannot read proposalsDir", r.stdout)
+
+    def suggest_after(self, tag, *messages, plugin=None):
+        """--suggest in a repo tagged `tag` followed by one empty commit per message; plugin.json set to `plugin`."""
+        if plugin is None:
+            plugin = VERSION
+        path = self.tmp / ".claude-plugin" / "plugin.json"
+        path.write_text(re.sub(r'("version": ")[^"]*', lambda m: m.group(1) + plugin, path.read_text(), count=1))
+        self.git("init", "-q")
+        self.commit_all("released")
+        self.git("tag", tag)
+        for message in messages:
+            self.git("commit", "-q", "--allow-empty", "-m", message)
+        return run(self.tmp, "--suggest")
+
+    def test_suggest_without_a_tag_says_so_and_suggests_nothing(self):
+        self.git("init", "-q")
+        self.commit_all("feat: one")
+        r = run(self.tmp, "--suggest")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("no vX.Y.Z tag reachable from HEAD", r.stdout)
+        self.assertIn("git fetch --tags origin && python3 scripts/version.py --suggest", r.stdout)
+        self.assertNotIn("bump,", r.stdout)
+
+    def test_suggest_with_no_commits_since_the_tag(self):
+        r = self.suggest_after("v0.4.3")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("0 commit(s) since v0.4.3: no bump suggested", r.stdout)
+
+    def test_suggest_counts_commits_out_of_format_and_suggests_nothing_for_them(self):
+        r = self.suggest_after("v0.4.3", "Fix the thing", "docs: words", "chore(x): tidy")
+        self.assertIn("3 commit(s) since v0.4.3, 1 not in the type(scope): text format", r.stdout)
+        self.assertIn("no bump suggested", r.stdout)
+
+    def test_suggest_fix_is_a_patch_and_feat_a_minor(self):
+        r = self.suggest_after("v1.2.3", "fix(a): b", "perf: c", plugin="1.2.3")
+        self.assertIn("patch bump, 1.2.3 -> 1.2.4", r.stdout)
+        self.assertIn("warning: plugin.json 1.2.3 is behind the suggested 1.2.4; bump it: python3 scripts/version.py 1.2.4",
+                      r.stdout)
+        self.git("commit", "-q", "--allow-empty", "-m", "feat: d")
+        self.assertIn("minor bump, 1.2.3 -> 1.3.0", run(self.tmp, "--suggest").stdout)
+
+    def test_suggest_breaking_is_a_minor_in_0x_and_a_major_from_1_0(self):
+        for tag, expected in (("v0.4.3", "minor bump, 0.4.3 -> 0.5.0"), ("v1.2.3", "major bump, 1.2.3 -> 2.0.0")):
+            for message in ("feat!: x", "fix(core)!: x", "fix: x\n\nBREAKING CHANGE: the format changes"):
+                with self.subTest(tag=tag, message=message):
+                    shutil.rmtree(self.tmp / ".git", True)
+                    r = self.suggest_after(tag, message)
+                    self.assertIn(expected, r.stdout)
+
+    def test_suggest_ignores_merge_commits_and_reads_wip_prefixed_ones(self):
+        self.git("init", "-q")
+        self.commit_all("released")
+        self.git("tag", "v0.4.3")
+        self.git("checkout", "-q", "-b", "side")
+        self.git("commit", "-q", "--allow-empty", "-m", "WIP: fix: on the side")
+        self.git("checkout", "-q", "-")
+        self.git("merge", "-q", "--no-ff", "side", "-m", "feat!: merge text that must be ignored")
+        r = run(self.tmp, "--suggest")
+        self.assertIn("1 commit(s) since v0.4.3: patch bump, 0.4.3 -> 0.4.4", r.stdout)
+
+    def test_suggest_compares_with_plugin_json(self):
+        cases = (("0.4.4", "is already at the suggested 0.4.4"), ("0.9.0", "is ahead of the suggested 0.4.4"),
+                 ("0.4.3", "is behind the suggested 0.4.4"))
+        for plugin, text in cases:
+            with self.subTest(plugin=plugin):
+                shutil.rmtree(self.tmp / ".git", True)
+                r = self.suggest_after("v0.4.3", "fix: a", plugin=plugin)
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertIn(f"warning: plugin.json", r.stdout)
+                self.assertIn(text, r.stdout)
+
+    def test_release_prints_the_suggestion_as_a_warning_without_changing_its_exit_code(self):
+        self.git("init", "-q")
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        self.git("commit", "-q", "--allow-empty", "-m", "feat: x")
+        r = run(self.tmp, "--release")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("warning: suggest: 1 commit(s) since", r.stdout)
+        self.assertIn("minor bump", r.stdout)
+
+    def test_suggest_with_a_prerelease_tag_or_plugin_version_does_not_pretend(self):
+        r = self.suggest_after("v1.2.3-rc1", "fix: a")
+        self.assertIn("no vX.Y.Z tag reachable", r.stdout)
+        shutil.rmtree(self.tmp / ".git", True)
+        r = self.suggest_after("v0.4.3", "fix: a", plugin="0.4.3-rc1")
+        self.assertIn("is not X.Y.Z", r.stdout)
+        self.assertNotIn("is behind", r.stdout)
+        self.assertIn("python3 scripts/version.py 0.4.4", r.stdout)
+
+    def test_release_keeps_the_missing_tag_line_of_the_suggestion_when_an_odd_tag_exists(self):
+        self.git("init", "-q")
+        self.commit_all("one")
+        self.git("tag", "v1")
+        r = run(self.tmp, "--release")
+        self.assertIn("warning: suggest: no vX.Y.Z tag reachable", r.stdout)
 
     def test_release_on_the_tagged_commit_itself_passes(self):
         self.git("init", "-q")
