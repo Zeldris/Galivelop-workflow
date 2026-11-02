@@ -8,14 +8,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
-## [1.0.0] - Unreleased
+## [0.5.0] - Unreleased
 
-Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendiente-1.0.0.md`). La versión de
-`plugin.json` no sube hasta publicarla. / Features of `1.0.0` (branch `version/1.0.0`; list in
-`docs/registros/pendiente-1.0.0.md`). The `plugin.json` version does not move until it is released.
+Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `docs/roadmap.md`, lista en
+`docs/registros/pendiente.md`). La versión de `plugin.json` no sube hasta publicarla. / Features of `0.5` "Base"
+(formerly planned for `1.0.0`; split in `docs/roadmap.en.md`, list in `docs/registros/pendiente.md`). The
+`plugin.json` version does not move until it is released.
 
 ### ES
 
+- Regla de versiones nueva (H14): solo la última menor publicada recibe parches y los evolutivos van a la siguiente
+  menor; se avanza por la `0.x` y la `1.0` será el Management Center. `docs/roadmap.md` (con `docs/roadmap.en.md`)
+  reparte por versión cada tarea del diseño con su id (D13), y `docs/registros/pendiente.md` (antes
+  `pendiente-1.0.0.md`) lleva la versión en cada línea (H12). En `AGENTS.md`, el plan §7, los README y la guía de
+  contribuir.
 - El `pre-push` no repite un `check` que ya pasó en verde sobre el mismo árbol, las mismas órdenes y el mismo
   `checkWrapper` (P3 de la retro del parche `0.4.1`). `scripts/check.sh` (en los proyectos,
   `.claude/gw/scripts/check.sh`) corre el `check` sobre la copia de trabajo y, si pasa y el árbol no cambió durante la
@@ -88,6 +94,10 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
 
 ### EN
 
+- New version rule (H14): only the latest published minor gets patches and new features go to the next minor; work
+  moves through `0.x` and `1.0` will be the Management Center. `docs/roadmap.en.md` (with `docs/roadmap.md`) splits
+  every design task by version with its id (D13), and `docs/registros/pendiente.md` (formerly `pendiente-1.0.0.md`)
+  has the version on each line (H12). In `AGENTS.md`, plan §7, the READMEs and the contributing guide.
 - `pre-push` does not repeat a `check` that already passed on the same tree, commands and `checkWrapper` (P3 of the
   `0.4.1` patch retro). `scripts/check.sh` (in projects, `.claude/gw/scripts/check.sh`) runs the `check` on the working
   copy and, if it passes and the tree did not change during the run, records the green; `scripts/check-verde.sh` is
