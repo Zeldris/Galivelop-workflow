@@ -156,6 +156,23 @@
       "default": true,
       "description": "false: the commit-msg hook rejects agent signatures (a Co-Authored-By of a Claude model or with noreply@anthropic.com, Claude-Session, lines starting with \"Generated with Claude Code\" or a claude.ai/code/session link)."
     },
+    "commitFormat": {
+      "type": "string",
+      "enum": ["free", "conventional"],
+      "default": "free",
+      "description": "Format of the first line of a commit message: free (any) or conventional (`type(scope)!: text`, checked by the commit-msg hook; WIP: and the lines git writes itself pass)."
+    },
+    "commitRefs": {
+      "type": "boolean",
+      "default": false,
+      "description": "true: the commit-msg hook requires a `Refs: <task id>` trailer (ids separated by commas) whose ids open an entry in refsSources; merges, reverts, cherry-picks and rebases are exempt."
+    },
+    "refsSources": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "default": [],
+      "description": "Repo-relative files or folders (their tracked .md files) whose entries (table rows or list items) give the valid ids of `Refs:`, read from the index. Empty: `plan` plus `log`."
+    },
     "ciLocalLog": {
       "type": "string",
       "default": "docs/records/ci-local.md",
