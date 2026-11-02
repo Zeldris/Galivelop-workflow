@@ -51,8 +51,8 @@ In this order, because each step uses the previous one.
 | D15 | Optional `Agent:` trailer, with no model name | done |
 | D16 | Subagent branches `agent/<id>-…`; `merge-branch.sh` copies `Refs:` | done |
 | E2 | Private-data check in `pre-push` (list in `.claude/gw.local.json`); CI, only keys and emails | done (`8ffc4f5`) |
-| E3 | Published harvests anonymised (`private-project-1`) | pending |
-| D3 | Review of the already published harvests with E2's check | pending |
+| E3 | Published harvests anonymised (`private-project-1`) | done (`d11153f`) |
+| D3 | Review of the already published harvests with E2's check | done (`0cb929b`) |
 | E1 | Audit of `AGENTS.md` and `CLAUDE.md`, with a line-cap check | pending |
 | E6 | Each `REVIEW.md` rule names its check or says "judgement" | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.5` | pending |

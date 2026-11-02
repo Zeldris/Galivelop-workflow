@@ -52,8 +52,8 @@ En este orden, porque cada paso usa el anterior.
 | D15 | Trailer `Agent:` opcional, sin nombre de modelo | hecho |
 | D16 | Ramas de subagente `agent/<id>-…`; `merge-branch.sh` copia `Refs:` | hecho |
 | E2 | Check de datos privados en el `pre-push` (lista en `.claude/gw.local.json`); el CI, solo claves y correos | hecho (`8ffc4f5`) |
-| E3 | Recogidas publicadas anonimizadas (`private-project-1`) | pendiente |
-| D3 | Repaso de las recogidas ya publicadas con el check de E2 | pendiente |
+| E3 | Recogidas publicadas anonimizadas (`private-project-1`) | hecho (`d11153f`) |
+| D3 | Repaso de las recogidas ya publicadas con el check de E2 | hecho (`0cb929b`) |
 | E1 | Auditoría de `AGENTS.md` y `CLAUDE.md`, con check de tope de líneas | pendiente |
 | E6 | Cada regla de `REVIEW.md` nombra su check o dice «criterio» | pendiente |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.5` | pendiente |
