@@ -155,6 +155,17 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   del proyecto que lee su bloque JSON debe pasar a las claves nuevas; las notas viejas (`límite:`, `formato: propio`,
   `plantilla:`) siguen valiendo para el agente.
 
+- A8, trozo 6c: identificadores internos en inglés (funciones, clases, variables, argumentos y variables de shell en
+  `scripts/`, `tests/`, `skills/*/scripts/`, `hooks/` y `templates/`; también las clases y métodos de los tests) y
+  `medir.py` → `measure.py` (con `test_measure.py`) en `gw-opt-ai` y `gw-opt-tokens`; `apply.py` borra el viejo de la
+  copia instalada (`OLD_SKILL_FILES`). El sufijo de las propuestas pasa de `.gw-nuevo` a `.gw-new`: `apply.py` y
+  `doctor.py` siguen reconociendo el viejo, con aviso, durante la `0.x`; skills, plantillas y docs al día. Check
+  nuevo, `scripts/names-check.py` (en `tests/check.sh`, con `tests/test_names_check.py`): falla ante un nombre nuevo
+  en español (rutas, funciones, clases, argumentos, variables, opciones, subórdenes, claves JSON, variables CSS; no
+  mira los textos para personas ni las cadenas de las tablas de migración) y lleva una lista única de excepciones
+  (`EXCEPTIONS`) con su motivo; una excepción que ya no coincide con nada también falla. Solo de este repo (no se
+  instala en los proyectos).
+
 ### EN
 
 - New version rule (H14): only the latest published minor gets patches and new features go to the next minor; work
@@ -291,6 +302,17 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `apply.py`: only when git has them clean) and brings the new ones. **Breaking for whoever reads `web.md`:** a
   project website that reads its JSON block must move to the new keys; old notes (`límite:`, `formato: propio`,
   `plantilla:`) are still understood by the agent.
+
+- A8, chunk 6c: internal identifiers in English (functions, classes, variables, arguments and shell variables in
+  `scripts/`, `tests/`, `skills/*/scripts/`, `hooks/` and `templates/`; test classes and methods too) and `medir.py` →
+  `measure.py` (with `test_measure.py`) in `gw-opt-ai` and `gw-opt-tokens`; `apply.py` removes the old one from the
+  installed copy (`OLD_SKILL_FILES`). The proposal suffix goes from `.gw-nuevo` to `.gw-new`: `apply.py` and
+  `doctor.py` still recognize the old one, with a warning, during `0.x`; skills, templates and docs updated. New
+  check, `scripts/names-check.py` (in `tests/check.sh`, with `tests/test_names_check.py`): it fails on a new Spanish
+  name (paths, functions, classes, arguments, variables, options, subcommands, JSON keys, CSS variables; it does not
+  read documents for people or the strings of the migration tables) and keeps one list of exceptions (`EXCEPTIONS`)
+  with their reasons; an exception that no longer matches anything fails too. This repo only (not installed in
+  projects).
 
 ## [0.4.3] - 2026-10-27
 

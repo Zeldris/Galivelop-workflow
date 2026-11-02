@@ -24,6 +24,9 @@ fi
 echo "== markdown links and stale references"
 python3 scripts/md-links.py || fail=1
 
+echo "== names in English (A8)"
+python3 scripts/names-check.py || fail=1
+
 echo "== agent map paths"
 python3 scripts/agent-map.py || fail=1
 

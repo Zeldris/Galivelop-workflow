@@ -20,7 +20,7 @@ them up to date (skill `domain-modeling`). The workflow never overwrites this fi
 - **Subagent brief**: what a subagent receives: goal, paths, constraints, the check to run and what to report back.
 - **Retro**: the session retrospective before going to the protected branch; its proposals are presented to the
   person, and what they confirm is applied on the branch.
-- **Proposal (`.gw-nuevo`)**: a workflow file the update could not apply without losing local changes; merged by
+- **Proposal (`.gw-new`)**: a workflow file the update could not apply without losing local changes; merged by
   hand, then deleted.
 
 ## Project terms

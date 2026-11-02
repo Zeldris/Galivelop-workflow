@@ -1,5 +1,5 @@
-"""Tests of `medir.py` (skill `gw-opt-tokens`) against a synthetic session log whose lines have the shape of Claude Code's
-real ones. Ported from the World-Maker-Fantasy pilot (tools/qa/tests/test_medir.py, @ e433d1d), with the helpers of its
+"""Tests of `measure.py` (skill `gw-opt-tokens`) against a synthetic session log whose lines have the shape of Claude Code's
+real ones. Ported from the World-Maker-Fantasy pilot (tools/qa/tests/test_measure.py, @ e433d1d), with the helpers of its
 `comun.py` inlined. Run: python3 -m unittest discover -s skills/gw-opt-tokens/scripts"""
 import atexit
 import datetime as dt
@@ -12,7 +12,7 @@ import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-MEDIR = os.path.join(HERE, 'medir.py')
+MEASURE = os.path.join(HERE, 'measure.py')
 
 HOUR = '2026-10-19T10:00:00.000Z'
 _UUID = itertools.count()
@@ -86,7 +86,7 @@ def ago(hours: float) -> str:
     return (dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=hours)).isoformat().replace('+00:00', 'Z')
 
 
-class Medir(unittest.TestCase):
+class Measure(unittest.TestCase):
     def measure(self, parts: list, subagents: dict | None = None, hours: str = '0', extra: tuple = ()) -> str:
         d = folder()
         path = log(os.path.join(d, 's.jsonl'), *parts)
@@ -94,7 +94,7 @@ class Medir(unittest.TestCase):
             write(os.path.join(d, 's', 'subagents', f'{name}.meta.json'),
                   json.dumps(kind if isinstance(kind, dict) else {'agentType': kind}))
             log(os.path.join(d, 's', 'subagents', f'{name}.jsonl'), *sub)
-        r = subprocess.run(['python3', MEDIR, '--session', path, '--hours', hours, *extra],
+        r = subprocess.run(['python3', MEASURE, '--session', path, '--hours', hours, *extra],
                            capture_output=True, text=True, cwd=d)
         self.assertEqual(r.returncode, 0, r.stderr)
         return r.stdout
@@ -137,7 +137,7 @@ class Medir(unittest.TestCase):
             response('m5', 100, call('t5', 'bash tools/host.sh grep -n x docs/y.md && ./tools/z.sh && python3 -I a/b.py')),
             result('t5', 'x' * 350),
             response('m6', 100))
-        r = subprocess.run(['python3', MEDIR, '--session', path, '--hours', '0'], capture_output=True, text=True, cwd=root)
+        r = subprocess.run(['python3', MEASURE, '--session', path, '--hours', '0'], capture_output=True, text=True, cwd=root)
         self.assertEqual(r.returncode, 0, r.stderr)
         out = r.stdout
         self.assertRegex(out, r'backend/src/services/narrator.ts\s+2x\s+200 tok')
@@ -234,10 +234,10 @@ class Medir(unittest.TestCase):
         path = log(os.path.join(repo, 's.jsonl'), response('a', 10, timestamp='2026-01-01T09:00:00Z'),
                    response('b', 20, timestamp='2026-01-01T11:00:00Z'), response('c', 30, timestamp='2026-01-01T12:00:00Z'))
         for value in (sha, sha[:8], '2026-01-01T10:00:00', '2026-01-01T12:00:00+02:00'):
-            r = subprocess.run(['python3', MEDIR, '--session', path, '--since', value], capture_output=True, text=True, cwd=repo)
+            r = subprocess.run(['python3', MEASURE, '--session', path, '--since', value], capture_output=True, text=True, cwd=repo)
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertIn('API calls: 2  |', r.stdout, value)
-        bad = subprocess.run(['python3', MEDIR, '--session', path, '--since', 'no-such-xyz'],
+        bad = subprocess.run(['python3', MEASURE, '--session', path, '--since', 'no-such-xyz'],
                              capture_output=True, text=True, cwd=repo)
         self.assertNotEqual(bad.returncode, 0)
         self.assertIn('--since: "no-such-xyz" is neither a commit nor an ISO-8601 date', bad.stderr)
@@ -264,7 +264,7 @@ class Medir(unittest.TestCase):
         env['HOME'] = home
         if remote is not None:
             env['CLAUDE_CODE_REMOTE'] = remote
-        return subprocess.run(['python3', MEDIR, '--hours', '0'], capture_output=True, text=True, cwd=repo, env=env)
+        return subprocess.run(['python3', MEASURE, '--hours', '0'], capture_output=True, text=True, cwd=repo, env=env)
 
     def test_cloud_start_folder_gives_no_outside_the_repo_warning(self):
         cloud = self.default_log('true')

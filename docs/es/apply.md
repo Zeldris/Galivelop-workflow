@@ -137,25 +137,27 @@ lo avisa justo antes de escribirlos. **Pide permiso a la persona antes** de lanz
 terminal con la misma orden) en vez de reintentar a ciegas; tras un rechazo, `git status` y `git diff` antes de
 repetir.
 
-Criterio de fin: la orden termina sin error y sabes qué se creó, qué se actualizó y qué quedó como `*.gw-nuevo`.
+Criterio de fin: la orden termina sin error y sabes qué se creó, qué se actualizó y qué quedó como `*.gw-new`.
 
-## 3. Revisar cada `*.gw-nuevo` con la persona
+## 3. Revisar cada `*.gw-new` con la persona
 
 Cuando un archivo ya existe y es del proyecto (un `AGENTS.md`, un `CLAUDE.md` sin la marca
-`galivelop-workflow`), `apply.py` **no lo toca**: deja al lado `<archivo>.gw-nuevo` con la propuesta.
+`galivelop-workflow`), `apply.py` **no lo toca**: deja al lado `<archivo>.gw-new` con la propuesta. Una
+propuesta de antes del cambio de nombre (`<archivo>.gw-nuevo`) se sigue reconociendo en la `0.x`, con un aviso; se
+revisa igual.
 
 ```bash
-git -C <proyecto> ls-files --others --exclude-standard | grep '\.gw-nuevo$'
+git -C <proyecto> ls-files --others --exclude-standard | grep '\.gw-new$'
 ```
 
 Para cada uno:
 
-1. Muestra a la persona qué trae la propuesta que el archivo no tiene (`git diff --no-index <archivo> <archivo>.gw-nuevo`).
+1. Muestra a la persona qué trae la propuesta que el archivo no tiene (`git diff --no-index <archivo> <archivo>.gw-new`).
 2. **`AGENTS.md` y `CLAUDE.md`: fusiona a mano**, bloque a bloque. Las reglas del proyecto se quedan; se añaden los
    bloques del flujo (inicio de sesión, relevos, comprobar, commits, ramas). `CLAUDE.md` acaba con `@AGENTS.md` más
    lo propio de Claude. Mantén la marca `<!-- galivelop-workflow vX.Y.Z -->` de la primera línea.
-3. Otros archivos: acepta la propuesta entera (`mv <archivo>.gw-nuevo <archivo>`) solo si la persona lo confirma.
-4. Borra el `.gw-nuevo` al terminar. `apply.py --check` lo cuenta como diferencia mientras exista.
+3. Otros archivos: acepta la propuesta entera (`mv <archivo>.gw-new <archivo>`) solo si la persona lo confirma.
+4. Borra el `.gw-new` al terminar. `apply.py --check` lo cuenta como diferencia mientras exista.
 
 Rellena también los huecos de la bitácora (como mínimo rama, fase y siguiente paso; el resto de secciones puede
 quedarse como viene hasta que haya algo que escribir) y añade las reglas propias del proyecto en las secciones
@@ -167,7 +169,7 @@ mientras no lleven la marca de la versión actual. Pasa a mano lo que les falte 
 «traído de otro repo: contratos de este» e «idiomas visibles» de `REVIEW.md`) y pon en su primera línea
 `<!-- galivelop-workflow vX.Y.Z -->`; desde entonces el diff ya no sale.
 
-Criterio de fin: no queda ningún `*.gw-nuevo`, ni diff impreso de `REVIEW.md`/`GLOSSARY.md`, y la bitácora tiene una línea de siguiente paso.
+Criterio de fin: no queda ningún `*.gw-new`, ni diff impreso de `REVIEW.md`/`GLOSSARY.md`, y la bitácora tiene una línea de siguiente paso.
 
 ## 4. Comprobar con `doctor.py`
 
@@ -272,7 +274,7 @@ entra el código ya hoy.
 
 **Migrar desde una copia anterior del flujo.** Además de lo anterior:
 
-- **Muchas propuestas `.gw-nuevo` son lo normal** (una copia a mano dio 17): cada skill o script que el proyecto
+- **Muchas propuestas `.gw-new` son lo normal** (una copia a mano dio 17): cada skill o script que el proyecto
   retocó sale como propuesta. Fusiónalas de una en una: la versión del flujo entra entera y lo propio del proyecto
   (idioma, rutas, reglas locales) va a `.claude/gw/<skill>.md`, que el flujo no sobrescribe.
 - **Archivos de una skill que el flujo sustituye** (por ejemplo, el banco y los `evals` de un `gw-scout-updates`

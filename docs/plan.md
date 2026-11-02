@@ -89,7 +89,7 @@ su retro del 2026-10-21). Tarkor aporta lo que el portal quitó por ser «de web
 |---|---|---|
 | `gw-selector` | `.claude/skills/gw-selector/SKILL.md` | Quitar casos del portal (rutas, SEO, tres idiomas). Tabla genérica + filas extra que el proyecto declara en su config (§6) |
 | `gw-orchestrate-dealer` | `.claude/skills/gw-orchestrate-dealer/SKILL.md` | Plantilla de encargo con `{check}`, `{bitacora}` e idiomas del proyecto en vez de los fijos |
-| `gw-opt-tokens` + `medir.py` | `.claude/skills/gw-opt-tokens/` | `medir.py` tal cual (ya es genérico) con referencias `QA-*` limpiadas; `proyecto.md` pasa a ser archivo del repo destino (`.claude/gw/gw-opt-tokens.md`) |
+| `gw-opt-tokens` + `measure.py` | `.claude/skills/gw-opt-tokens/` | `measure.py` tal cual (ya es genérico) con referencias `QA-*` limpiadas; `proyecto.md` pasa a ser archivo del repo destino (`.claude/gw/gw-opt-tokens.md`) |
 | `retro` | `.claude/skills/retro/SKILL.md` | Mantener cuerpo MIT; la nota «En este repositorio» pasa a genérica (mirar skills del plugin y proponer cambios **al plugin** si la mejora es general) |
 | `grilling`, `grill-with-docs`, `domain-modeling`, `diagnosing-bugs`, `codebase-design`, `improve-codebase-architecture`, `writing-for-agents`, `pr`, `prototype`, `research` | `.claude/skills/*` | Tal cual (MIT, mattpocock/skills). Solo se quitan las notas del portal. Licencia y créditos se conservan |
 | Runbook del flujo | `docs/runbooks/skills-y-modelos.md` | Se convierte en `docs/<lang>/workflow.md` del plugin, genérico |
@@ -109,7 +109,7 @@ su retro del 2026-10-21). Tarkor aporta lo que el portal quitó por ser «de web
 | Cierre de tareas | Tarkor: `tools/roadmap/cerrar.py` | Parte del módulo `roadmap` |
 | Retro exigida antes de la marca | Tarkor/instalador: `reviewed.sh` | Opción del config (`requireRetro`) |
 | `gw-scout-updates` | Tarkor: `.claude/skills/gw-scout-updates/` | Skill opcional (solo a petición) |
-| `gw-opt-ai` + `medir.py` | Tarkor/instalador: `.claude/skills/gw-opt-ai/` | Skill opcional para proyectos con modelos de IA locales; lo propio en `.claude/gw/gw-opt-ai.md` |
+| `gw-opt-ai` + `measure.py` | Tarkor/instalador: `.claude/skills/gw-opt-ai/` | Skill opcional para proyectos con modelos de IA locales; lo propio en `.claude/gw/gw-opt-ai.md` |
 
 > **Fuente por pieza (Fase 0):** la tabla «La mejor versión de cada pieza» de `docs/research/real-cases.md`
 > manda sobre la columna «Origen» de arriba.
@@ -140,7 +140,7 @@ Galivelop-workflow/
 ├── scripts/                      # lo que llaman ganchos y skills; raíz por ${CLAUDE_PLUGIN_ROOT}
 │   ├── session-start.sh  review-before-main.sh
 │   ├── harvest.py                # parte determinista de gw-harvest
-│   ├── recover.py  medir.py  is-code.sh  reviewed.sh  handoff.py  prepush-branches.sh
+│   ├── recover.py  measure.py  is-code.sh  reviewed.sh  handoff.py  prepush-branches.sh
 │   ├── doctor.py                 # comprobación determinista del flujo (la usa gw-doctor y el CI)
 │   ├── apply.py                # copia plantillas, skills y scripts sin pisar nada (etapa 1 y base de la 2)
 │   └── config.py                 # lee y valida .claude/gw.json del proyecto (único lector)
@@ -262,7 +262,7 @@ Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con 
   criterio (deducir `install`/`check` de `package.json`, `pyproject.toml`, `Cargo.toml`, `Makefile`…; fusionar un
   `CLAUDE.md`/`AGENTS.md` existente, enseñando el bloque antes) de lo mecánico, que siempre es un script.
 - **`scripts/apply.py`:** escribe `.claude/gw.json`, copia plantillas, skills y scripts **sin pisar nada** (lo que
-  ya existe queda como propuesta `*.gw-nuevo` para revisar), añade los ganchos a `.claude/settings.json` y
+  ya existe queda como propuesta `*.gw-new` para revisar), añade los ganchos a `.claude/settings.json` y
   `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`, y pone `core.hooksPath` si no hay otro gestor. Idempotente. Commit
   `Flujo Galivelop-workflow vX.Y.Z` y `Siguiente:`.
 - **`/gw-init`, `/gw-update`** (skills con `disable-model-invocation: true`): envoltorios finos de `apply.md` y
@@ -323,7 +323,7 @@ Ejemplos que los pilotos tienen que cubrir: el portal (Node, subida directa, tre
   `0.x`» del 2026-10-25). Cada recogida reparte lo que trae: las correcciones de lo que ya hay van al siguiente parche
   de esa menor (hoy `0.4.x`); un evolutivo o algo nuevo (skill, gancho, mejora) va a la siguiente menor (hoy la
   `0.5`, rama `version/0.5.0`), y los parches se fusionan también en ella. Se avanza por la `0.x` (`0.5` «Base»,
-  `0.6` «Medir»…): en `0.y.z` una menor puede romper. La `1.0` es el Management Center y sale cuando está hecho lo
+  `0.6` «Measure»…): en `0.y.z` una menor puede romper. La `1.0` es el Management Center y sale cuando está hecho lo
   que el roadmap le asigna (A-5); los criterios de la §10 miden la madurez de la línea `1.x` y no bloquean la
   etiqueta. El reparto por versiones está en [`roadmap.md`](roadmap.md) (diseño en `docs/design/H-roadmap.md`).
 - **Cada versión se publica en este repo** (público, A1): subida a `main`, etiqueta y release. **A lo sumo una
@@ -375,7 +375,7 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
 | **0. Verificar** ✅ | Doc oficial de plugins, marketplaces y hooks; pruebas en la nube; tres casos reales; estándares | §0 decidido; notas en `docs/research/` |
 | **1. Esqueleto** | `LICENSE`, `AGENTS.md` + `CLAUDE.md`, README ES/EN, bitácora, CHANGELOG `0.1.0`, `.claude-plugin/` válido, CI (shellcheck, JSON, pares ES/EN, versión == CHANGELOG) | CI en verde y el repo trabajándose con su propio `AGENTS.md` |
 | **2. Skills** | Portar las skills (§3) pieza a pieza, con campos de Agent Skills y test que los valida; `gw-harvest` + `scripts/harvest.py` | Todas validan; `writing-for-agents` pasado a las propias; licencias y créditos; `gw-harvest` recoge propuestas reales de Tarkor, el instalador, el portal y VeriNews |
-| **3. Ganchos y scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recover.py`, `review-before-main.sh`, `is-code.sh`, `reviewed.sh`, `handoff.py`, `prepush-branches.sh`, `medir.py`, plantilla `pre-push`. Tests contra repo temporal: categorías de los 29 fallos, clon superficial, marcas de conflicto, otro gestor de ganchos. Aplicados a este repo | Tests en verde en Linux y macOS; fallan cerrado sin config |
+| **3. Ganchos y scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recover.py`, `review-before-main.sh`, `is-code.sh`, `reviewed.sh`, `handoff.py`, `prepush-branches.sh`, `measure.py`, plantilla `pre-push`. Tests contra repo temporal: categorías de los 29 fallos, clon superficial, marcas de conflicto, otro gestor de ganchos. Aplicados a este repo | Tests en verde en Linux y macOS; fallan cerrado sin config |
 | **4. Plantillas y aplicación** | `templates/es` y `templates/en`, `gw.schema.json`, `apply.py`, `apply.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `troubleshooting.md` | Un agente aplica el flujo a un repo vacío y `doctor.py` lo da por bueno; dos veces no cambia nada |
 | **5. Piloto: Portal-Galivelop** | En una sesión del portal (con permiso): un agente lo aplica siguiendo `apply.md` y sustituye su copia | `npm run check` en verde, `pre-push` y marca funcionando, tarea semanal sin cambios |
 | **6. Piloto: Tarkor e instalador** | Igual en World-Maker-Fantasy (`roadmap: true`, PR) e Instalador-WMF-Tarkor (Rust). VeriNews_AI (Java + Vite) queda para la Fase 8, ya sin agente de IA | Relevo entre cuentas sin perder nada; lo que falte vuelve como versión nueva |

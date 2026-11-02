@@ -26,7 +26,7 @@ else ask the user). Read it, never edit it. Fetch it first: `git -C <workflow> p
 - Copied headers: `# galivelop-workflow vX.Y.Z` in `.claude/gw/scripts/*` and `.githooks/*`.
 - Workflow version: `version` in `<workflow>/.claude-plugin/plugin.json`, and its entries in `CHANGELOG.md`.
 
-Done when you can say "project at X, workflow at Y". Equal and no `.gw-nuevo` pending: say so and stop. Project
+Done when you can say "project at X, workflow at Y". Equal and no `.gw-new` pending: say so and stop. Project
 newer than the workflow: stop and tell the user to update the workflow clone.
 
 ## 2. Dry run
@@ -64,11 +64,12 @@ hand.
    `python3 <workflow>/scripts/apply.py <project> --update`. Use `--update` only after the user confirms, because
    it also replaces local edits in workflow-owned files. Auto mode may ask permission to edit `.claude/settings.json`
    and `.githooks/`; tell the user first.
-2. A `<file>.gw-nuevo` is a proposal: merge it by hand with the user, then delete it. `AGENTS.md` and `CLAUDE.md`
+2. A `<file>.gw-new` (or the old `<file>.gw-nuevo`, still recognized in `0.x`) is a proposal: merge it by hand with the
+   user, then delete it. `AGENTS.md` and `CLAUDE.md`
    merge block by block, keeping the project's rules and the `galivelop-workflow` marker line.
 3. Files the workflow no longer has are reported, never deleted: ask before `git rm`.
 4. Personal notes: the missing ones are created by the run above. For each `personal note … differs` line, show the
-   user `diff <source> <target>` (the project's copy is never overwritten and gets no `.gw-nuevo`) and merge by hand
+   user `diff <source> <target>` (the project's copy is never overwritten and gets no `.gw-new`) and merge by hand
    only what they accept. Nothing personal ever goes into the workflow repo; `--no-personal-notes` skips them.
 5. Set `version` in `.claude/gw.json` to Y once the proposals are reviewed.
 
@@ -79,4 +80,4 @@ hand.
 2. Commit with the message `apply.py` suggested and a real `Next:` line (`Siguiente:` in Spanish projects), update
    the log in the same commit, and `git push`; the pre-push runs the check.
 
-Done when doctor is green, no `*.gw-nuevo` is left and `version` equals Y.
+Done when doctor is green, no `*.gw-new` is left and `version` equals Y.

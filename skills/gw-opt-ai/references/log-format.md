@@ -3,7 +3,7 @@
 One JSON object per line, in the file the project's log switch names; with the switch off, nothing is written.
 Field names follow the OpenTelemetry GenAI vocabulary (`gen_ai.*`, status "Development" when this was written:
 check it before relying on it); project-specific ones carry the `app.` prefix. Absent fields are omitted, never
-`null`. `scripts/medir.py` reads this format.
+`null`. `scripts/measure.py` reads this format.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -16,10 +16,10 @@ check it before relying on it); project-specific ones carry the `app.` prefix. A
 | `gen_ai.usage.output_tokens` | integer | Generated tokens |
 | `gen_ai.response.finish_reason` | text | `stop`, `length`, `error`... |
 | `app.task` | text | The project's task name (a warm-up task is excluded from the analysis) |
-| `app.machine_profile` | text | Machine profile; unset becomes `unknown` and `medir.py` warns |
+| `app.machine_profile` | text | Machine profile; unset becomes `unknown` and `measure.py` warns |
 | `app.num_ctx` | integer | Context length asked for, or the loaded model's effective one |
-| `app.turn` | text | Id shared by the calls of one user-facing step; `medir.py` adds a per-turn table (needs `ts` and `app.duration_ms`) |
-| `app.event` | text | A marker line with no call; `medir.py` ignores it |
+| `app.turn` | text | Id shared by the calls of one user-facing step; `measure.py` adds a per-turn table (needs `ts` and `app.duration_ms`) |
+| `app.event` | text | A marker line with no call; `measure.py` ignores it |
 | `app.keep_alive` | text | How long the model stays loaded |
 | `app.duration_ms` | number | Whole call, measured by the client |
 | `app.load_ms` | number | Model load time (above the cold threshold = cold start) |

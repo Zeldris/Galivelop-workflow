@@ -43,7 +43,8 @@ PR_TOOLS = ("create_pull_request", "merge_pull_request")
 PR_GUARD = "review-before-main.sh"
 INTERPRETERS = {"bash", "sh", "zsh", "python", "python3", "node", "env", "exec"}
 SOURCES = re.compile(r"galivelop|workflow|mattpocock", re.I)
-PROPOSAL = ".gw-nuevo"  # apply.py's proposals for files with local edits
+PROPOSAL = ".gw-new"  # apply.py's proposals for files with local edits
+OLD_PROPOSAL = ".gw-nuevo"  # A8 (0.x): the suffix before the rename; still recognized, with a warning
 FLOW_HOOK_SCRIPTS = ("session-start.sh", "recover.py", "review-before-main.sh", "before-stop.py",
                      "config-guard.py", "subagent-cap.py")  # the settings template's
 # Zero-width, bidi and BOM characters, written as escapes so the fix command can embed them. A zero width joiner (U+200D)
@@ -391,14 +392,18 @@ def stale_flow_hooks(hooks, root):
 
 
 def check_proposals(rep, root):
-    """WARN with every pending *.gw-nuevo; returns them."""
+    """WARN with every pending *.gw-new (or the old *.gw-nuevo, A8, 0.x); returns them."""
     listed = git(root, "ls-files", "-co", "--exclude-standard") or ""
-    found = sorted(f for f in listed.splitlines() if f.endswith(PROPOSAL))
+    found = sorted(f for f in listed.splitlines() if f.endswith((PROPOSAL, OLD_PROPOSAL)))
     if found:
-        first = found[0][:-len(PROPOSAL)]
+        first = next((f for f in found if f.endswith(PROPOSAL)), found[0])
+        suffix = PROPOSAL if first.endswith(PROPOSAL) else OLD_PROPOSAL
+        base = first[:-len(suffix)]
+        old = [f for f in found if f.endswith(OLD_PROPOSAL)]
         rep.warn("proposals", f"{len(found)} pending {PROPOSAL} proposal(s), not reviewed: {', '.join(found[:10])}"
-                 + (" …" if len(found) > 10 else ""),
-                 f"merge each by hand and delete it; see one: git diff --no-index {first} {first}{PROPOSAL}")
+                 + (" …" if len(found) > 10 else "")
+                 + (f" ({len(old)} with the old suffix {OLD_PROPOSAL}, still recognized until 1.0)" if old else ""),
+                 f"merge each by hand and delete it; see one: git diff --no-index {base} {base}{suffix}")
     else:
         rep.ok("proposals", f"no pending {PROPOSAL} proposal")
     return found

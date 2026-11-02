@@ -41,7 +41,7 @@ def log_text(a="doing A", b="doing B", updated="2026-10-21"):
 """
 
 
-class Utilidades(Project):
+class Utils(Project):
     """The base project plus the utility scripts (committed and pushed) and a log with two branch rows."""
 
     def __init__(self, tmp, config=None, check="exit 0"):
@@ -69,10 +69,10 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="gw-utilidades-")).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, True)
-        self.p = Utilidades(self.tmp, self.config)
+        self.p = Utils(self.tmp, self.config)
 
 
-class BitacoraRows(Base):
+class HandoffRows(Base):
     def test_check_accepts_a_well_formed_log(self):
         code, out = self.p.script("handoff.py", "check")
         self.assertEqual(code, 0, out)
@@ -117,14 +117,14 @@ class BitacoraRows(Base):
     def test_off_without_logrows(self):
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
-        p = Utilidades(self.tmp, {"logRows": False})
+        p = Utils(self.tmp, {"logRows": False})
         p.write(LOG, log_text(a="x" * 900))
         self.assertEqual(p.script("handoff.py", "check")[0], 0)
         self.assertEqual(p.script("handoff.py", "close-row", "feat-a")[0], 0)
         self.assertNotIn("Merged", (p.work / LOG).read_text())
 
 
-class BitacoraSizeAndDone(Base):
+class HandoffSizeAndDone(Base):
     """`check` on the state-table cells and the Done section (any log, warnings unless --strict) and `done`."""
     config = {"logRows": False}  # these rules do not depend on logRows
 
@@ -231,7 +231,7 @@ class BitacoraSizeAndDone(Base):
     def test_unreadable_log_with_logrows_still_fails(self):
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
-        self.p = Utilidades(self.tmp, {"logRows": True})
+        self.p = Utils(self.tmp, {"logRows": True})
         path = self.tmp / "latin.md"
         path.write_bytes("caf\xe9\n".encode("latin-1"))
         code, out = self.p.script("handoff.py", "check", str(path))
@@ -262,7 +262,7 @@ class BitacoraSizeAndDone(Base):
     def test_logrows_keeps_its_rules_and_the_new_ones_stack(self):
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
-        self.p = Utilidades(self.tmp, {"logRows": True})
+        self.p = Utils(self.tmp, {"logRows": True})
         text = log_text(a="x" * 601).replace("1. nothing yet", "\n".join(self.items(6)))
         code, out = self.check(text)
         self.assertEqual(code, 1, out)  # the row rule still fails on its own
@@ -381,7 +381,7 @@ class BitacoraSizeAndDone(Base):
         self.assertEqual(path.read_bytes().decode("utf-8"), self.doc())
 
 
-class BitacoraOwnRow(Base):
+class HandoffOwnRow(Base):
     def commit_log(self, **kw):
         self.p.write(LOG, log_text(**kw))
         self.p.commit("edit the log", env=DAY)
@@ -413,7 +413,7 @@ class BitacoraOwnRow(Base):
         self.assertEqual(self.p.script("handoff.py", "own-row", sha, "feat-a", "--shared")[0], 0)
 
 
-class BitacoraTasks(Base):
+class HandoffTasks(Base):
     PLAN = "docs/plan.md"
 
     def plan(self, text, message="plan"):
@@ -486,7 +486,7 @@ class BitacoraTasks(Base):
     def test_closed_on_the_configured_protected_branch_needs_no_done_entry(self):
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
-        self.p = Utilidades(self.tmp, {"protectedBranch": "trunk"})
+        self.p = Utils(self.tmp, {"protectedBranch": "trunk"})
         self.p.branch("feat-a")
         base = self.plan("- [ ] **INS-3** the thing\n")
         sha = self.plan("- [x] **INS-3** the thing\n", "close INS-3 (from trunk)")
@@ -523,7 +523,7 @@ class BitacoraTasks(Base):
     def test_task_id_from_the_config_with_groups(self):
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
-        self.p = Utilidades(self.tmp, {"taskId": r"(INS|FLU)-\d+"})
+        self.p = Utils(self.tmp, {"taskId": r"(INS|FLU)-\d+"})
         self.p.branch("feat-a")
         base = self.plan("- FLU-9 nine\n")
         self.plan("- ~~FLU-9 nine~~\n", "close FLU-9")
@@ -571,7 +571,7 @@ class BitacoraTasks(Base):
         self.assertEqual(self.p.script("handoff.py", "check")[0], 0)
 
 
-class BitacoraClash(Base):
+class HandoffClash(Base):
     """WMF P2: two branches that open the same task id for different tasks."""
     PLAN = "docs/plan.md"
     START = "- [ ] **INS-1** first\n- [ ] **INS-2** second\n"
@@ -696,14 +696,14 @@ class BitacoraClash(Base):
         self.assertEqual((code, out), (0, ""))
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
-        self.p = Utilidades(self.tmp, {"logRows": False})
+        self.p = Utils(self.tmp, {"logRows": False})
         self.plan(self.START)
         self.base = self.p.sha()
         a, b = self.two_branches()
         self.assertEqual(self.clash(a, b), (0, ""))
 
 
-class BitacoraCloseRow(Base):
+class HandoffCloseRow(Base):
     def test_close_row_writes_merged_text_only_in_that_row(self):
         code, out = self.p.script("handoff.py", "close-row", "feat-a")
         self.assertEqual(code, 0, out)
@@ -720,7 +720,7 @@ class BitacoraCloseRow(Base):
         self.assertIn("found 0 rows for nope", out)
 
 
-class PrepushRamas(Base):
+class PrepushBranches(Base):
     def run_hook(self, sha, remote_sha=ZERO, ref="feat-a", env=None):
         stdin = f"refs/heads/{ref} {sha} refs/heads/{ref} {remote_sha}\n"
         changed, pushed = self.tmp / "changed", self.tmp / "pushed"
@@ -794,7 +794,7 @@ class PrepushRamas(Base):
     def test_noop_without_logrows(self):
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
-        self.p = Utilidades(self.tmp, {"logRows": False})
+        self.p = Utils(self.tmp, {"logRows": False})
         self.p.branch("feat-a")
         sha = self.edit(b="A rewrote B", a="x" * 900)
         code, out, changed, pushed = self.run_hook(sha)
@@ -818,7 +818,7 @@ class PrepushRamas(Base):
     def test_forks_from_the_configured_protected_branch(self):
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
-        p = self.p = Utilidades(self.tmp, {"protectedBranch": "trunk"})
+        p = self.p = Utils(self.tmp, {"protectedBranch": "trunk"})
         p.git("push", "-q", "--no-verify", "origin", "main:trunk")
         p.git("update-ref", "-d", "refs/remotes/origin/main")  # only trunk is the protected branch here
         p.branch("feat-a")
@@ -832,7 +832,7 @@ class PrepushRamas(Base):
     def test_protected_branch_row_is_never_borrowed(self):
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
-        self.p = Utilidades(self.tmp, {"protectedBranch": "feat-b"})
+        self.p = Utils(self.tmp, {"protectedBranch": "feat-b"})
         self.p.branch("feat-b")
         self.edit(b="B moved on")
         self.p.branch("feat-a", "main")
@@ -896,7 +896,7 @@ class PrepushRamas(Base):
         self.assertEqual(code, 0, out)
 
 
-class Fusionar(Base):
+class MergeBranch(Base):
     def agent(self, name="worktree-agent-1", path="a.txt", text="from the agent\n"):
         """A subagent's branch with its worktree (under .claude/worktrees/) and one commit."""
         wt = self.p.work / ".claude" / "worktrees" / name
@@ -958,7 +958,7 @@ class Fusionar(Base):
     def test_failing_check_says_how_to_undo_and_keeps_the_branch(self):
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
-        self.p = Utilidades(self.tmp, check="exit 1")
+        self.p = Utils(self.tmp, check="exit 1")
         wt = self.agent()
         code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
         self.assertEqual(code, 1, out)
@@ -1053,7 +1053,7 @@ class Fusionar(Base):
         self.assertIn("nothing to merge", out)
 
 
-class RojoSinArreglo(Base):
+class RedWithoutFix(Base):
     def setUp(self):
         super().setUp()
         self.p.write("fix.txt", "bad\n")
@@ -1181,7 +1181,7 @@ class RojoSinArreglo(Base):
         self.assertEqual(self.stashes(), "")
 
 
-class TestsRelacionados(Base):
+class RelatedTests(Base):
     def run_with(self, related, changed=("src/a.py",), files=(), wrapper=None):
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         if related is not None:
@@ -1318,7 +1318,7 @@ class TestsRelacionados(Base):
         self.assertIn("committed-b", text)
 
 
-class EnlacesMd(Base):
+class MdLinks(Base):
     config = {"staleRefs": ["fase 3\\.5", "INS-\\d{2}"]}
 
     def run_it(self, *args):
@@ -1365,20 +1365,20 @@ class EnlacesMd(Base):
     def test_invalid_regex_fails_closed(self):
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
-        self.p = Utilidades(self.tmp, {"staleRefs": ["("]})
+        self.p = Utils(self.tmp, {"staleRefs": ["("]})
         code, out = self.run_it()
         self.assertEqual(code, 2, out)
         self.assertIn("not a valid regex", out)
 
 
-class EnlacesMdSkipAndRoots(Base):
+class MdLinksSkipAndRoots(Base):
     """`staleRefs.skip` (globs the stale-reference check does not read) and `linkRoots` (folders that link from the
     repo root)."""
 
     def project(self, config):
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
-        self.p = Utilidades(self.tmp, config)
+        self.p = Utils(self.tmp, config)
 
     def run_it(self, *args):
         self.p.git("add", "-A")

@@ -3,7 +3,7 @@ name: gw-opt-ai
 description: Optional retrospective for projects with local or self-hosted AI models (Ollama, LM Studio, llama.cpp, vLLM, an embeddings/RAG pipeline). Measures latency, quality (for example RAG recall) and configuration per machine profile from a per-call log, and proposes changes without applying them. Use after each testing round, before switching models or engines, and when latency bothers the user.
 disable-model-invocation: true
 license: MIT
-compatibility: Projects with local or self-hosted AI models; python3 (standard library) for scripts/medir.py
+compatibility: Projects with local or self-hosted AI models; python3 (standard library) for scripts/measure.py
 metadata:
   version: "0.4.3"
   source: "Galivelop workshop; generalised from the Tarkor and installer gw-opt-ai"
@@ -34,7 +34,7 @@ create it from the shape below with the user before measuring. Shape:
 - **Tasks**: the values of `app.task` the code emits, and the ones to exclude (warm-up calls).
 - **Machine profiles**: names (`app.machine_profile`), which is the **minimum** one (always measured), how the
   profile is set (variable or flag) and how the log is switched on.
-- **Settings block**: a fenced block labelled `gw-opt-ai` with `key: value` lines that `scripts/medir.py` reads:
+- **Settings block**: a fenced block labelled `gw-opt-ai` with `key: value` lines that `scripts/measure.py` reads:
   `log` (this round's log), `previous` (the earlier round's), `exclude_tasks` (comma list, default `warmup`),
   `cold_ms` (load time that counts as a cold start, default 100). Relative paths resolve against the repo root.
 - **Benchmark**: the command that replays a fixed scenario with the log on, and how long it takes.
@@ -50,7 +50,7 @@ create it from the shape below with the user before measuring. Shape:
    *Done when* the file exists and has lines from the round (`wc -l`). If not, say how to switch it on and **stop**:
    no measurement, no proposal. A round that did not run under the intended profile (profile variable unset, engine
    fell back to CPU, evaluation failed at start) is discarded: say so and ask for it to be repeated.
-1. **Measure.** `python3 <skill folder>/scripts/medir.py [<log>] [--previous <earlier log>] [--profile P]`; `--help`
+1. **Measure.** `python3 <skill folder>/scripts/measure.py [<log>] [--previous <earlier log>] [--profile P]`; `--help`
    lists the options. Read only its output, never the whole log. Per profile, task and model it gives p50/p95,
    time to first token, tok/s, cold loads, truncated prompts and errors (failed calls count in neither p50 nor
    tok/s), plus the retrieval table and, when calls carry `app.turn`, a per-turn table (p50/p95/max of the
@@ -83,7 +83,7 @@ create it from the shape below with the user before measuring. Shape:
 
    A setting that belongs to the loaded model (keep-alive, context length) goes on **every** call to that model.
    Each proposal carries **the experiment that measures it**: the project benchmark before and after, same seed,
-   same profile, log on in both runs, compared with `medir.py <after> --previous <before> --profile <profile>`.
+   same profile, log on in both runs, compared with `measure.py <after> --previous <before> --profile <profile>`.
    `llama-bench` and `promptfoo` are optional and only if installed (`command -v`). *Done when* every proposal has
    its before/after command and its profile.
 4. **Report** to the user, steps 1-3 joined. Each proposal, in order of impact, has five fields:
@@ -104,5 +104,5 @@ create it from the shape below with the user before measuring. Shape:
 ## Reference
 
 - [references/engines.md](references/engines.md): engine knobs and which engine field fills which log field.
-- [references/log-format.md](references/log-format.md): the per-call log `medir.py` reads, and the case-file shape.
+- [references/log-format.md](references/log-format.md): the per-call log `measure.py` reads, and the case-file shape.
 - Cite primary sources the way `research` does (the source that owns the claim, with the date consulted).

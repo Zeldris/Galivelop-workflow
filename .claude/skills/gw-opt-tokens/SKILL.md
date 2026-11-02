@@ -2,7 +2,7 @@
 name: gw-opt-tokens
 description: Token-spend retrospective: measures where a session's tokens went and proposes environment changes that cut it without worsening results. Use when the user asks to save tokens, after a long or expensive session, before each PR to the protected branch (after the code review, before the retro), or before a testing round.
 license: MIT
-compatibility: Claude Code or any Agent Skills agent; git; python3 for scripts/medir.py (standard library only)
+compatibility: Claude Code or any Agent Skills agent; git; python3 for scripts/measure.py (standard library only)
 metadata:
   version: "0.4.3"
   source: "Galivelop workshop; generalised from the Tarkor, installer, portal and VeriNews gw-opt-tokens"
@@ -22,7 +22,7 @@ retries and redone work.
 
 ## Steps
 
-1. **Measure, do not remember.** Run `python3 <skill folder>/scripts/medir.py` (newest session, last 24 h). Options:
+1. **Measure, do not remember.** Run `python3 <skill folder>/scripts/measure.py` (newest session, last 24 h). Options:
    `--hours N` (`0` = whole session), `--since <ISO|sha>` (from a date or a commit), `--session <path>`, `--top N`;
    `--help` lists them. The script finds the project root with `git rev-parse --show-toplevel` and the session log in
    the repo's folder or a parent folder, warning on stderr if the session was opened outside the repo. Read only its
@@ -36,9 +36,9 @@ retries and redone work.
 
    **The curve first** (`Average context`, `Stretches between compactions`): average context × calls is almost all
    of the spend, and a ceiling far above the floor says compaction comes late. That is the first proposal when it
-   holds, before any tool. If `medir.py` warns that the session mixes compaction windows, the averages blend two
+   holds, before any tool. If `measure.py` warns that the session mixes compaction windows, the averages blend two
    regimes: measure the current one with `--since`. When one figure does not match another (more calls than responses, usage that doubles),
-   fix `medir.py` before proposing anything from it.
+   fix `measure.py` before proposing anything from it.
 2. **Read project notes.** If `.claude/gw/gw-opt-tokens.md` exists in the project, read it: the tools that already
    save and the known costs, so you do not propose what is there. Read the project's skill list too: a cost a skill
    already solves (dealing out with `gw-orchestrate-dealer`, choosing a model with `gw-selector`) is proposed as

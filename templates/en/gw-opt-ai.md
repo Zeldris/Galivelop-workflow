@@ -19,7 +19,7 @@ workflow once; from then on it belongs to the project.
 
 ## Settings
 
-Read by `scripts/medir.py` of the skill; relative paths resolve against the repo root.
+Read by `scripts/measure.py` of the skill; relative paths resolve against the repo root.
 
 ```gw-opt-ai
 # log: <this round's per-call log>

@@ -20,7 +20,7 @@
 - Ollama durations are **nanoseconds**; the log uses milliseconds.
 - `app.truncated` is computed by the client: `input_tokens` >= `num_ctx`. It is only available when the call
   passes `num_ctx` or the client reads the loaded model's effective value (Ollama `/api/ps`, else `/api/show`);
-  otherwise `medir.py` shows "-" for truncation, and the engine's own log is the place to look.
+  otherwise `measure.py` shows "-" for truncation, and the engine's own log is the place to look.
 - A new engine is one more column here and a translation in the project's client.
 
 ## Knobs, in the order step 3 tries them

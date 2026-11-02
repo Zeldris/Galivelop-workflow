@@ -1296,7 +1296,7 @@ class CheckRunner(Base):
         self.assertFalse(self.cache.exists())
 
 
-class CheckVerde(Base):
+class CheckGreen(Base):
     """scripts/check-green.sh on its own: key, worktree-tree, has and add, with their edge cases."""
     HELPER = ".claude/gw/scripts/check-green.sh"
     TREE = "a" * 40
@@ -1348,17 +1348,17 @@ class CheckVerde(Base):
         self.assertEqual((code, out.strip()), (0, self.p.git("rev-parse", "HEAD^{tree}").stdout.strip()), out)
 
     def test_worktree_tree_with_no_index_yet_in_a_folder_with_spaces(self):
-        solo = self.tmp / "solo repo"
-        (solo / "scripts").mkdir(parents=True)
-        shutil.copy2(ROOT / "scripts" / "check-green.sh", solo / "scripts" / "check-green.sh")
-        self.p.git("init", "-q", cwd=solo)
-        (solo / "a b.txt").write_text("hello\n")
-        self.assertFalse((solo / ".git" / "index").exists())
-        code, out = self.helper("worktree-tree", cwd=solo, helper=str(solo / "scripts" / "check-green.sh"))
+        lone_repo = self.tmp / "solo repo"
+        (lone_repo / "scripts").mkdir(parents=True)
+        shutil.copy2(ROOT / "scripts" / "check-green.sh", lone_repo / "scripts" / "check-green.sh")
+        self.p.git("init", "-q", cwd=lone_repo)
+        (lone_repo / "a b.txt").write_text("hello\n")
+        self.assertFalse((lone_repo / ".git" / "index").exists())
+        code, out = self.helper("worktree-tree", cwd=lone_repo, helper=str(lone_repo / "scripts" / "check-green.sh"))
         self.assertEqual(code, 0, out)
-        self.assertFalse((solo / ".git" / "index").exists(), "the real index must stay absent")
-        self.p.git("add", "-A", cwd=solo)
-        self.assertEqual(out.strip(), self.p.git("write-tree", cwd=solo).stdout.strip())
+        self.assertFalse((lone_repo / ".git" / "index").exists(), "the real index must stay absent")
+        self.p.git("add", "-A", cwd=lone_repo)
+        self.assertEqual(out.strip(), self.p.git("write-tree", cwd=lone_repo).stdout.strip())
 
     def test_worktree_tree_sees_a_file_edited_in_the_same_second_it_was_staged(self):
         # Racy git: an entry as new as the index is re-read from disk. A copy of the index with a newer mtime would
@@ -1532,7 +1532,7 @@ class CheckVerde(Base):
         self.assertEqual(len(self.cache.read_text().splitlines()), 1)
 
 
-class Revisado(Base):
+class Reviewed(Base):
     def setUp(self):
         super().setUp()
         p = self.p
@@ -1587,7 +1587,7 @@ class Revisado(Base):
         self.assertEqual(code, 0, out)
 
 
-class RevisadoSpanishWithRetro(Base):
+class ReviewedSpanishWithRetro(Base):
     config = {"language": "es", "requireRetro": True}
 
     def setUp(self):
@@ -1665,7 +1665,7 @@ class RevisadoSpanishWithRetro(Base):
             self.assertIn(word, out)
         self.assertIn("bash ", out)
 
-    def test_no_estado_line_at_all_refused(self):
+    def test_no_state_line_at_all_refused(self):
         p = self.p
         p.write("docs/registros/retro-2026-10-22.md", "# Retro\n\nSin línea de estado, aplicada.\n")
         p.commit("no status line")
@@ -1680,7 +1680,7 @@ class RevisadoSpanishWithRetro(Base):
         self.assertTrue(self.p.git("log", "-1", "--format=%s").stdout.startswith("Revisado: "))
 
 
-class EsCodigo(Base):
+class IsCode(Base):
     def test_lists_only_code_and_never_the_mark(self):
         p = self.p
         p.write("src/a.py", "a\n"); p.write("docs/x.md", "x\n"); p.write("README.md", "r\n")
@@ -1699,7 +1699,7 @@ class EsCodigo(Base):
         self.assertIn("is-code: warning: --explicar is deprecated and will stop working in 1.0; use --explain", out)
         self.assertIn("src/a.py: code (matches no content regex)", out)
 
-    def test_explicar_says_code_or_content_and_why(self):
+    def test_explain_says_code_or_content_and_why(self):
         p = self.p
         script = str(p.work / ".claude" / "gw" / "scripts" / "is-code.sh")
         code, out = p.run("bash", script, "--explain", "src/a.py", "docs/x.md", ".githooks/pre-push",
@@ -1994,7 +1994,7 @@ class PreCommitDone(Base):
         self.assertIn("WARNING: skipping the \"Done\" check", r.stderr)
         self.assertIn("invalid JSON", r.stderr)
 
-    def test_missing_bitacora_fails_closed(self):
+    def test_missing_handoff_script_fails_closed(self):
         p = self.p
         (p.work / ".claude" / "gw" / "scripts" / "handoff.py").unlink()
         p.write("src/a.py", "a = 1\n")
@@ -2186,7 +2186,7 @@ class CommitMsg(Base):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("/gw-update", r.stderr)
 
-    def test_fails_closed_without_bitacora_py_when_the_log_is_staged(self):
+    def test_fails_closed_without_handoff_py_when_the_log_is_staged(self):
         p = self.p
         os.remove(p.work / ".claude" / "gw" / "scripts" / "handoff.py")
         p.write("docs/log.md", self.log_text())

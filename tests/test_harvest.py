@@ -18,7 +18,7 @@ def git(repo, *args):
     return run("git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *args)
 
 
-class Recoger(unittest.TestCase):
+class Harvest(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.repo = self.tmp / "proj"

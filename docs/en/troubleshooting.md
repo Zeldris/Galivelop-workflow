@@ -156,7 +156,7 @@ application. `apply.py` prints a note ("Claude Code's auto mode may ask for perm
 | Odd failures on Windows | CRLF line endings in scripts; symbolic links | `.gitattributes` with `*.sh text eol=lf` (and `*.py`, `.githooks/*`); use **Git Bash or WSL**, not `cmd` or PowerShell; no symbolic links |
 | `CLAUDE.md` exists and `AGENTS.md` is not read | Claude reads `AGENTS.md` only when there is no `CLAUDE.md` | `@AGENTS.md` in `CLAUDE.md` (the template does it) |
 | `install` commands fail at start | `session-start.sh` runs them only in the cloud and when the lockfile changed | The warning gives the log and the command to run them by hand |
-| `apply.py --check` exits 1 | The copy differs from the workflow, a `*.gw-nuevo` is pending, or a file the workflow no longer has | Read what it prints; `/gw-update`; resolve and delete the `*.gw-nuevo` |
+| `apply.py --check` exits 1 | The copy differs from the workflow, a `*.gw-new` is pending, or a file the workflow no longer has | Read what it prints; `/gw-update`; resolve and delete the `*.gw-new` |
 
 If a failure is not here, write it down: `/retro` collects it in its "For Galivelop-workflow" section and it reaches
 this file ([patterns](patterns.md#harvesting-improvements-back)).

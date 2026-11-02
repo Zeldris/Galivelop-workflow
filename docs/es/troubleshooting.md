@@ -156,7 +156,7 @@ aplicación. `apply.py` imprime un aviso («Claude Code's auto mode may ask for 
 | Fallos raros en Windows | Finales de línea CRLF en scripts; enlaces simbólicos | `.gitattributes` con `*.sh text eol=lf` (y `*.py`, `.githooks/*`); usa **Git Bash o WSL**, no `cmd` ni PowerShell; sin enlaces simbólicos |
 | `CLAUDE.md` existe y `AGENTS.md` no se lee | Claude solo lee `AGENTS.md` si no hay `CLAUDE.md` | `@AGENTS.md` en `CLAUDE.md` (lo hace la plantilla) |
 | Fallan las órdenes de `install` al empezar | `session-start.sh` las corre solo en la nube y si cambió el lockfile | El aviso da el log y la orden para correrlas a mano |
-| `apply.py --check` sale 1 | La copia difiere del flujo, hay un `*.gw-nuevo` o un archivo que el flujo ya no tiene | Mira lo impreso; `/gw-update`; resuelve y borra los `*.gw-nuevo` |
+| `apply.py --check` sale 1 | La copia difiere del flujo, hay un `*.gw-new` o un archivo que el flujo ya no tiene | Mira lo impreso; `/gw-update`; resuelve y borra los `*.gw-new` |
 
 Si un fallo no está aquí, anótalo: `/retro` lo recoge en su sección «Para Galivelop-workflow» y llega a este archivo
 ([patrones](patterns.md#recoger-mejoras-de-vuelta)).
