@@ -124,6 +124,23 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `test_utils.py`. El `.claude/gw.json` de este repo ya no fija `log`, `reviewMark`, `recordsDir`, `proposalsDir` ni
   `ciLocalLog` (valen los defectos en inglés) y declara `agentMap.path`. Los nombres viejos que aceptan los scripts
   para proyectos instalados no cambian. Los textos históricos (changelog, retros, propuestas) conservan sus nombres.
+- A8, trozo 6b: `gw-media-content` y `gw-media-content-now` con nombres en inglés. Archivos: `catalog.md`, `note.md`,
+  `rules.json`, `template/` (`sheet.md`, `media/source/{card,diagram,metrics,quote,code,before-after,carousel}.html`),
+  `scripts/figures.py` (antes `cifras.py`), `scripts/check.py` (antes `comprobar.py`) y sus `test_*.py`. Lo que se
+  guarda en el proyecto: la pieza usa `sheet.md` (`ficha.md`), `media/` y `media/source/` (`medios/`, `medios/fuente/`),
+  los títulos y etiquetas en inglés (`## Channels`, `## Images`, `## Published`, `## Internal use`, `Languages:`,
+  `Rules read:`, `Self-promotion:`, `### Rules of r/<x>`, `Image:`) y `web.md` con `status` (`draft`/`ready`), `date`,
+  `text`, `wall`, `title`, `body`, `images`, `file`; las propuestas, en `<dir>/proposals/`. Opciones: `figures.py
+  --since` (`--desde`); `check.py --task-prefixes`, `--limit`, `--own-format`, `--web-languages` (`--prefijos-tarea`,
+  `--limite`, `--formato-propio`, `--idiomas-web`). Claves de `rules.json` en inglés (`reddit.rules_days`,
+  `reddit.rules_min_chars`...). Variables CSS de la plantilla (`--background`, `--accent`...), formas del plan de
+  `render.mjs --plan` (`sources`, `kind`, `size`, `outputs`) y la clave `piece`. Compatibilidad `0.x`: `check.py`
+  acepta con aviso las opciones viejas y una pieza con `ficha.md` + `medios/` + claves españolas de `web.md`;
+  `figures.py` acepta `--desde`; `render.mjs` acepta `medios/fuente/` y el prefijo `carrusel` con aviso (y escribe
+  entonces en `medios/`). `/gw-update` borra los archivos viejos de la copia instalada de la skill (`OLD_SKILL_FILES`
+  en `apply.py`: solo si git los tiene limpios) y trae los nuevos. **Cambio que rompe a quien lea `web.md`:** la web
+  del proyecto que lee su bloque JSON debe pasar a las claves nuevas; las notas viejas (`límite:`, `formato: propio`,
+  `plantilla:`) siguen valiendo para el agente.
 
 ### EN
 
@@ -231,6 +248,23 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   This repo's `.claude/gw.json` no longer sets `log`, `reviewMark`, `recordsDir`, `proposalsDir` or `ciLocalLog` (the
   English defaults apply) and declares `agentMap.path`. The old names the scripts accept for installed projects do not
   change. Historical texts (changelog, retros, proposals) keep their names.
+- A8, chunk 6b: `gw-media-content` and `gw-media-content-now` with English names. Files: `catalog.md`, `note.md`,
+  `rules.json`, `template/` (`sheet.md`, `media/source/{card,diagram,metrics,quote,code,before-after,carousel}.html`),
+  `scripts/figures.py` (was `cifras.py`), `scripts/check.py` (was `comprobar.py`) and their `test_*.py`. What a project
+  stores: a piece uses `sheet.md` (`ficha.md`), `media/` and `media/source/` (`medios/`, `medios/fuente/`), English
+  headings and labels (`## Channels`, `## Images`, `## Published`, `## Internal use`, `Languages:`, `Rules read:`,
+  `Self-promotion:`, `### Rules of r/<x>`, `Image:`) and a `web.md` with `status` (`draft`/`ready`), `date`, `text`,
+  `wall`, `title`, `body`, `images`, `file`; proposals live in `<dir>/proposals/`. Options: `figures.py --since`
+  (`--desde`); `check.py --task-prefixes`, `--limit`, `--own-format`, `--web-languages` (`--prefijos-tarea`,
+  `--limite`, `--formato-propio`, `--idiomas-web`). English keys in `rules.json` (`reddit.rules_days`,
+  `reddit.rules_min_chars`...). CSS variables of the template (`--background`, `--accent`...), the shapes of the
+  `render.mjs --plan` output (`sources`, `kind`, `size`, `outputs`) and the key `piece`. `0.x` compatibility:
+  `check.py` accepts, with a warning, the old options and a piece with `ficha.md` + `medios/` + Spanish `web.md` keys;
+  `figures.py` accepts `--desde`; `render.mjs` accepts `medios/fuente/` and the `carrusel` prefix with a warning (and
+  then writes into `medios/`). `/gw-update` removes the old files of the installed skill copy (`OLD_SKILL_FILES` in
+  `apply.py`: only when git has them clean) and brings the new ones. **Breaking for whoever reads `web.md`:** a
+  project website that reads its JSON block must move to the new keys; old notes (`límite:`, `formato: propio`,
+  `plantilla:`) are still understood by the agent.
 
 ## [0.4.3] - 2026-10-27
 

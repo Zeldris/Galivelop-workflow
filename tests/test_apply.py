@@ -857,6 +857,46 @@ class Migrar(unittest.TestCase):
         self.assertIn("not in git or has uncommitted changes or untracked or ignored files, so it is kept", out)
         self.assertIn("git rm -r .claude/skills/selector", out)  # tracked: git rm
 
+    def old_media_skill(self):
+        p = self.p
+        p.write(".claude/skills/gw-media-content/SKILL.md", SKILL_MD.format(n="gw-media-content"))
+        for rel in ("catalogo.md", "nota.md", "reglas.json", "plantilla/ficha.md", "plantilla/medios/fuente/tarjeta.html",
+                    "scripts/cifras.py", "scripts/comprobar.py", "scripts/test_cifras.py", "scripts/test_comprobar.py"):
+            p.write(f".claude/skills/gw-media-content/{rel}", "old\n")
+
+    def test_old_named_files_of_an_installed_skill_are_removed_and_the_new_ones_installed(self):
+        self.old_media_skill()
+        self.commit()
+        out = self.applied()
+        base = ".claude/skills/gw-media-content/"
+        for old in ("catalogo.md", "nota.md", "reglas.json", "plantilla", "scripts/cifras.py", "scripts/comprobar.py",
+                    "scripts/test_cifras.py", "scripts/test_comprobar.py"):
+            self.assertFalse(self.exists(base + old), old)
+        for new in ("catalog.md", "note.md", "rules.json", "template/sheet.md", "template/media/source/card.html",
+                    "scripts/figures.py", "scripts/check.py", "scripts/render.mjs"):
+            self.assertTrue(self.exists(base + new), new)
+        self.assertIn("remove  .claude/skills/gw-media-content/plantilla", out)
+        self.assertNotIn("is no longer in the workflow", out)
+        self.assertIn("nothing to do", self.applied())  # rerun: no-op
+
+    def test_old_named_file_of_a_skill_with_local_edits_is_kept_with_the_reason(self):
+        self.old_media_skill()
+        self.commit()
+        self.p.write(".claude/skills/gw-media-content/catalogo.md", "my edit\n")
+        out = self.applied()
+        self.assertTrue(self.exists(".claude/skills/gw-media-content/catalogo.md"), out)
+        self.assertFalse(self.exists(".claude/skills/gw-media-content/nota.md"), out)
+        self.assertIn(".claude/skills/gw-media-content/catalogo.md is the old name of a workflow copy, but it is not in "
+                      "git or has uncommitted changes", out)
+        self.assertIn("git rm -r .claude/skills/gw-media-content/catalogo.md", out)
+
+    def test_old_named_files_of_a_foreign_skill_folder_are_left_alone(self):
+        self.p.write(".claude/skills/gw-media-content/SKILL.md", "---\nname: gw-media-content\ndescription: mine\n---\n")
+        self.p.write(".claude/skills/gw-media-content/catalogo.md", "mine\n")
+        self.commit()
+        self.applied()
+        self.assertTrue(self.exists(".claude/skills/gw-media-content/catalogo.md"))
+
     def test_old_skill_not_in_git_is_kept(self):
         self.p.write(".claude/skills/selector/SKILL.md", SKILL_MD.format(n="selector"))
         out = self.applied()

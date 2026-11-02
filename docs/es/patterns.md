@@ -90,21 +90,21 @@ de «PR listo») sale como bloqueo y no como código sin revisar.
 Dos skills preparan, **sin publicar**, publicaciones sobre el proyecto: `gw-media-content` propone hasta 10 (tipo de post,
 gancho, redes, hechos con su fuente) y `gw-media-content-now` produce una pieza en una carpeta con fecha: un archivo por
 canal y por idioma, más las imágenes. Redes de partida: X, Reddit, LinkedIn y Discord; el proyecto puede declarar otras
-(*canales extra*). Los límites por red están en `reglas.json`, marcados `P` (verificado), `S` (según la fuente) o `NV` (sin
+(*canales extra*). Los límites por red están en `rules.json`, marcados `P` (verificado), `S` (según la fuente) o `NV` (sin
 verificar: se avisa al apoyarse en uno). La persona publica; ninguna skill lo hace.
 
-Necesitan Python 3 y git para las cifras (`cifras.py`). El render de imágenes (`render.mjs`) necesita además Node con
-Playwright e ImageMagick con WebP; `comprobar.py` se puede correr sin ellos, y **el render real no lo cubre el CI**
+Necesitan Python 3 y git para las cifras (`figures.py`). El render de imágenes (`render.mjs`) necesita además Node con
+Playwright e ImageMagick con WebP; `check.py` se puede correr sin ellos, y **el render real no lo cubre el CI**
 (sus tests usan un doble salvo donde haya Chromium). Si el proyecto tiene la nota o la carpeta de la skill, `doctor.py`
 avisa de lo que falte (`media tools`).
 
 Sin nota del proyecto rigen los valores por defecto (y se dice una vez). Para cambiarlos, `.claude/gw/gw-media-content.md`,
-una línea `clave: valor` por dato (las claves, las de la tabla de `skills/gw-media-content/nota.md`, en inglés); el flujo no
-la crea ni la pisa. Un *canal extra* se declara con `límite: N` (comprobado con `--limite <canal>=N`) o con
-`formato: propio` y `plantilla: <ruta>` (su archivo lo consume otro sistema; comprobado con `--formato-propio <canal>`).
-El canal `web` es la web del propio proyecto: `web.md` lleva un bloque JSON con `estado` (`borrador` hasta que la
-persona escribe `listo`), `fecha`, el texto por idioma y una entrada de muro opcional con sus imágenes; los idiomas
-de la web pueden ser más que los de la pieza (`Web languages`, que se pasa con `--idiomas-web`). Ejemplo genérico:
+una línea `clave: valor` por dato (las claves, las de la tabla de `skills/gw-media-content/note.md`, en inglés); el flujo no
+la crea ni la pisa. Un *canal extra* se declara con `limit: N` (comprobado con `--limit <canal>=N`) o con
+`format: own` y `template: <ruta>` (su archivo lo consume otro sistema; comprobado con `--own-format <canal>`).
+El canal `web` es la web del propio proyecto: `web.md` lleva un bloque JSON con `status` (`draft` hasta que la
+persona escribe `ready`), `date`, el texto por idioma (`text`) y una entrada de muro opcional (`wall`) con sus imágenes; los idiomas
+de la web pueden ser más que los de la pieza (`Web languages`, que se pasa con `--web-languages`). Ejemplo genérico:
 
 ```
 Folder: docs/difusion
@@ -112,11 +112,11 @@ Languages: es, en
 Channels: x, reddit, linkedin, discord, web
 Web languages: es, gl, en
 Extra channels:
-- mastodon: límite: 500; tono: cercano
-- portal: formato: propio; plantilla: docs/difusion/portal.json
-Palette: --fondo #101418; --acento #4cc38a
+- mastodon: limit: 500; tone: cercano
+- portal: format: own; template: docs/difusion/portal.json
+Palette: --background #101418; --accent #4cc38a
 Screenshots: arrancar la app (npm run dev), abrir /panel, captura de la ventana a 1280x720
-Task prefixes: INS,FLU   (se pasa a comprobar.py --prefijos-tarea)
+Task prefixes: INS,FLU   (se pasa a check.py --task-prefixes)
 Reddit: r/ejemplo, reglas pegadas por la persona el 2026-10-25: «sin autopromoción más de una vez al mes; etiqueta [Proyecto]»
 ```
 
