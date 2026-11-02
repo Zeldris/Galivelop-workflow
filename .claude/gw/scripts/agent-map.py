@@ -260,10 +260,10 @@ def run(root, cfg):
     map_file = Path(root) / map_rel
     if not map_file.is_file():
         if declared:
-            print(f'mapa-agente: agentMap.path points to {map_rel}, which does not exist; create it, or fix '
+            print(f'agent-map: agentMap.path points to {map_rel}, which does not exist; create it, or fix '
                   f'agentMap.path in .claude/gw.json (or remove the key)')
             return 1
-        print(f'mapa-agente: no agent map at {map_rel}; nothing to check (declare agentMap.path in '
+        print(f'agent-map: no agent map at {map_rel}; nothing to check (declare agentMap.path in '
               f'.claude/gw.json if the map lives elsewhere)')
         return 0
     prefixes = {}
@@ -286,7 +286,7 @@ def main(argv=None):
     try:
         cfg = gwconfig.load(args.root)
     except gwconfig.ConfigError as exc:
-        print(f'mapa-agente: gw config: {exc}', file=sys.stderr)
+        print(f'agent-map: gw config: {exc}', file=sys.stderr)
         return 2
     return run(cfg['_root'], cfg)
 

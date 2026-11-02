@@ -54,8 +54,8 @@ You have access to several files in the repo:
 
 This section is the only change to the upstream skill.
 
-- The reviewer's standards file is `REVIEW.md`, not `CODING_STANDARDS.md`; the hand-off log path is `log` in `.claude/gw.json`.
-- Save the retro as a dated file next to the log (for example `docs/registros/retro-YYYY-MM-DD-<topic>.md`) with a `**Estado:**`/`**Status:**` line; `reviewed.sh` may require one when `requireRetro` is set.
+- The reviewer's standards file is `REVIEW.md`, not `CODING_STANDARDS.md`; the hand-off log path is `log` in `.claude/gw.json` (`python3 .claude/gw/scripts/config.py get log`).
+- Save the retro as a dated file in the records folder, `python3 .claude/gw/scripts/config.py get recordsDir` (`<recordsDir>/retro-YYYY-MM-DD-<topic>.md`) with a `**Estado:**`/`**Status:**` line; `reviewed.sh` may require one when `requireRetro` is set.
 - The exact form of that line, which `reviewed.sh` reads: it starts the line (`**Estado:** …` / `**Status:** …`) and its paragraph (up to the next blank line) holds a whole word among `aplicad*`, `rechazad*`, `aplazad*`, `decidid*`, `aprobad*` (`applied`, `rejected`, `deferred`, `decided`, `approved`), for example `**Estado:** aprobada y aplicada (P1, P2); P3 rechazada`. The words `pendiente`, `pending`, `undecided`, `sin decidir`, `aún no` and `not yet` anywhere in that paragraph cancel it, so write the decisions that are still open in another paragraph. The retro file must be new on the branch.
 - Sort each candidate into one of two outlets and say which:
   - **Project-specific** (paths, stack, domain rules): propose the patch in this repo.

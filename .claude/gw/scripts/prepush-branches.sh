@@ -31,7 +31,7 @@ root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --s
   echo "prepush-branches: $here is not inside a git repository; reinstall the workflow: /gw-update" >&2; exit 2; }
 cd "$root" || exit 2
 config="$here/config.py"
-bitacora="$here/handoff.py"
+handoff="$here/handoff.py"
 rows="$(python3 "$config" --root "$root" get logRows)" || {
   echo "prepush-branches: cannot read logRows; fix the config: python3 $config --root $root validate" >&2; exit 1; }
 [ "$rows" = "true" ] || exit 0
@@ -40,7 +40,7 @@ log="$(python3 "$config" --root "$root" get log)" || {
 protected="$(python3 "$config" --root "$root" get protectedBranch)" || {
   echo "prepush-branches: cannot read protectedBranch; fix the config: python3 $config --root $root validate" >&2; exit 1; }
 zero=0000000000000000000000000000000000000000
-bita() { python3 "$bitacora" --root "$root" "$@"; }
+handoff() { python3 "$handoff" --root "$root" "$@"; }
 
 shared=()
 { [ -n "${BITACORA_COMPARTIDA:-}" ] || [ -n "${GW_SHARED_LOG:-}" ]; } && shared=(--shared)
@@ -77,8 +77,8 @@ while read -r local_ref sha_local remote_ref sha_remote; do
 
   if [ -n "$base" ]; then
     # Only against the remote branch: from the protected branch it would ask for tasks that already left the Done section.
-    if [ -n "$against_remote" ]; then bita closed "$base" "$sha_local" || exit 1; fi
-    bita in-progress "$base" "$sha_local"
+    if [ -n "$against_remote" ]; then handoff closed "$base" "$sha_local" || exit 1; fi
+    handoff in-progress "$base" "$sha_local"
   fi
 
   branch="${remote_ref#refs/heads/}"
@@ -87,11 +87,11 @@ while read -r local_ref sha_local remote_ref sha_remote; do
   # A task id this branch opens that the protected branch (or a merge of it) also took for another task; other
   # remote branches, the 10 most recent, only warn (they may never be merged).
   if git rev-parse -q --verify "refs/remotes/origin/$protected^{commit}" >/dev/null 2>&1; then
-    bita clash "$sha_local" "refs/remotes/origin/$protected" || exit 1
+    handoff clash "$sha_local" "refs/remotes/origin/$protected" || exit 1
   fi
   while IFS= read -r commit; do
     [ -n "$commit" ] || continue
-    bita clash --merge "$commit" --tip "$sha_local" || { echo "handoff: in merge $(git log -1 --format='%h %s' "$commit")"; exit 1; }
+    handoff clash --merge "$commit" --tip "$sha_local" || { echo "handoff: in merge $(git log -1 --format='%h %s' "$commit")"; exit 1; }
   done <<<"$(git rev-list --merges "$sha_local" --not --remotes 2>/dev/null)"
   others=()
   while IFS= read -r ref; do
@@ -99,19 +99,19 @@ while read -r local_ref sha_local remote_ref sha_remote; do
     others+=("$ref")
     [ "${#others[@]}" -ge 10 ] && break
   done <<<"$(git for-each-ref --sort=-committerdate --format='%(refname)' refs/remotes/origin/ 2>/dev/null)"
-  if [ "${#others[@]}" -gt 0 ]; then bita clash --warn "$sha_local" "${others[@]}"; fi
+  if [ "${#others[@]}" -gt 0 ]; then handoff clash --warn "$sha_local" "${others[@]}"; fi
 
   # Own row: the log of each new commit that is not a merge (merges bring rows from the protected branch or others).
   while IFS= read -r commit; do
     [ -n "$commit" ] || continue
     git diff-tree --no-commit-id --name-only -r "$commit" | grep -qxF "$log" || continue
-    bita own-row "$commit" "$branch" ${shared[@]+"${shared[@]}"} >/dev/null 2>&1 && continue
+    handoff own-row "$commit" "$branch" ${shared[@]+"${shared[@]}"} >/dev/null 2>&1 && continue
     ok=""
     while IFS= read -r other; do
       case "$other" in ""|"$branch"|"$protected"|"("*) continue ;; esac
-      if bita own-row "$commit" "$other" ${shared[@]+"${shared[@]}"} >/dev/null 2>&1; then ok=1; break; fi
+      if handoff own-row "$commit" "$other" ${shared[@]+"${shared[@]}"} >/dev/null 2>&1; then ok=1; break; fi
     done <<<"$(git branch --contains "$commit" --format='%(refname:short)' 2>/dev/null)"
-    [ -n "$ok" ] || bita own-row "$commit" "$branch" ${shared[@]+"${shared[@]}"} \
+    [ -n "$ok" ] || handoff own-row "$commit" "$branch" ${shared[@]+"${shared[@]}"} \
       || { echo "handoff: in commit $(git log -1 --format='%h %s' "$commit")"; exit 1; }
   done <<<"$(git rev-list --no-merges "$sha_local" --not --remotes 2>/dev/null)"
 
@@ -127,7 +127,7 @@ while read -r local_ref sha_local remote_ref sha_remote; do
     git show "$sha_local:$log" > "$tmp"
     date=()
     [ -n "$last" ] && date=(--date "$(git log -1 --format=%as "$last")")
-    if ! bita check "$tmp" --at push ${date[@]+"${date[@]}"}; then
+    if ! handoff check "$tmp" --at push ${date[@]+"${date[@]}"}; then
       echo "handoff: in commit $(git log -1 --format='%h %s' "$sha_local")"; rm -f "$tmp"; exit 1
     fi
     rm -f "$tmp"

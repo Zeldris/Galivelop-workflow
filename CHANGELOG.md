@@ -103,6 +103,12 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   acepta los dos nombres (`orchestrate-dealer` en `AGENTS.md`, `.claude/skills/selector/` en la comprobación de git).
   `gw-update` aún no renombra ni quita las carpetas antiguas de los proyectos (trozo 4).
 - Scripts en inglés (A8, trozo 2; `scripts/` y `.claude/gw/scripts/`; subcomandos y opciones sin cambio): antes-de-parar.py→before-stop.py, bitacora.py→handoff.py, check-verde.sh→check-green.sh, enlaces-md.py→md-links.py, es-codigo.sh→is-code.sh, fusionar.sh→merge-branch.sh, guardia-config.py→config-guard.py, mapa-agente.py→agent-map.py, prepush-ramas.sh→prepush-branches.sh, recoger.py→harvest.py, recuperar.py→recover.py, registro_sesion.py→session_log.py, revisado.sh→reviewed.sh, revision-antes-de-main.sh→review-before-main.sh, rojo-sin-arreglo.sh→red-without-fix.sh, tests-relacionados.sh→related-tests.sh, tope-subagentes.py→subagent-cap.py, aplicar.py→apply.py. Los tests que llevaban el nombre del script se renombran igual (`test_aplicar.py` → `test_apply.py`, etc.). `gw-update` aún no migra los ganchos antiguos de los proyectos (trozo 4).
+- Rutas del flujo en un proyecto, en inglés y configurables (A8, trozo 3): bitácora `docs/handoff.md`, informes
+  `docs/records/` (clave nueva `recordsDir`), propuestas `docs/proposals/` (`proposalsDir`) y marca de revisión
+  `docs/records/reviewed.txt`. `log`, `reviewMark` y `ciLocalLog` pasan a ser opcionales. En la 0.x, una clave ausente
+  cuyo defecto no existe pero sí el nombre español antiguo usa el antiguo (`doctor.py` avisa: `/gw-update`); un valor
+  explícito manda. `retro` y `gw-harvest` leen la ruta con `config.py`. `templates/gw.json` y `--init` dan las rutas
+  en inglés. Restos del trozo 2: prefijos de mensaje `merge-branch:`, `reviewed:`, `agent-map:`, `apply:`.
 
 ### EN
 
@@ -189,6 +195,12 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   accepts both names (`orchestrate-dealer` in `AGENTS.md`, `.claude/skills/selector/` in the git check).
 - Scripts in English (A8, chunk 2; `scripts/` and `.claude/gw/scripts/`; subcommands and flags unchanged): antes-de-parar.py→before-stop.py, bitacora.py→handoff.py, check-verde.sh→check-green.sh, enlaces-md.py→md-links.py, es-codigo.sh→is-code.sh, fusionar.sh→merge-branch.sh, guardia-config.py→config-guard.py, mapa-agente.py→agent-map.py, prepush-ramas.sh→prepush-branches.sh, recoger.py→harvest.py, recuperar.py→recover.py, registro_sesion.py→session_log.py, revisado.sh→reviewed.sh, revision-antes-de-main.sh→review-before-main.sh, rojo-sin-arreglo.sh→red-without-fix.sh, tests-relacionados.sh→related-tests.sh, tope-subagentes.py→subagent-cap.py, aplicar.py→apply.py. Tests named after a script are renamed the same way (`test_aplicar.py` → `test_apply.py`, etc.). `gw-update` does not yet migrate projects' old hooks (chunk 4).
   `gw-update` does not yet rename or remove the old folders in projects (chunk 4).
+- Workflow paths in a project, in English and configurable (A8, chunk 3): log `docs/handoff.md`, reports
+  `docs/records/` (new key `recordsDir`), proposals `docs/proposals/` (`proposalsDir`) and review mark
+  `docs/records/reviewed.txt`. `log`, `reviewMark` and `ciLocalLog` become optional. In 0.x, an absent key whose
+  default does not exist while the old Spanish name does uses the old one (`doctor.py` warns: `/gw-update`); an
+  explicit value wins. `retro` and `gw-harvest` read the path through `config.py`. `templates/gw.json` and `--init`
+  give the English paths. Chunk 2 leftovers: message prefixes `merge-branch:`, `reviewed:`, `agent-map:`, `apply:`.
 
 ## [0.4.3] - 2026-10-27
 

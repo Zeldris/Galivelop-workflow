@@ -27,13 +27,15 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
    session's input in one measure).
    **Bring each clone up to date first** (`git -C <project> fetch && git -C <project> merge --ff-only @{upstream}`):
    `harvest.py` harvests the clone's `HEAD` and warns when it is behind or diverged from its upstream, or has none.
+`<proposalsDir>` is the config's `proposalsDir`: `python3 scripts/config.py get proposalsDir` (default `docs/proposals`).
+
 2. **Run the mechanical part** from this repo:
 
    ```bash
    python3 scripts/harvest.py <project-path> [<project-path> ...]
    ```
 
-   It lists, per project and since the last harvest (`docs/propuestas/estado.json`): workflow skills whose body
+   It lists, per project and since the last harvest (`<proposalsDir>/estado.json`): workflow skills whose body
    differs, skills born in the project, copied workflow scripts that differ, retro files, the
    `## For Galivelop-workflow` sections of every changed `.md` (pilot notes too, not only retros), the lines there that
    start with "Propuesta para el flujo" / "Proposal for the workflow" (how projects note requests in their hand-off
@@ -47,14 +49,14 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
    - **General**: would help any project (a fix, a clearer rule, a missing check, a reusable skill) → proposal.
    - **Project-specific**: domain wording, stack commands, local paths → note it as "stays in the project".
    - **Already here**: the workflow has it in a newer form → note it, no proposal.
-5. **Write the proposals** in `docs/propuestas/YYYY-MM-DD-<repo-name>.md` using the template below, in the
+5. **Write the proposals** in `<proposalsDir>/YYYY-MM-DD-<repo-name>.md` using the template below, in the
    workflow repo's language for human docs. One file per project and harvest; projects with nothing new go as one line
    each in another project's file, or in one file of their own when no project brings anything (every version needs
    a `# Harvest` file added since the last tag: `python3 scripts/version.py --release`).
 6. **Present them to the user**, most valuable first, and wait. What the user approves becomes a normal change in
    this repo: the piece updated, a CHANGELOG entry and a version bump (patch, minor or major per plan §7).
 7. **Record the harvest** once the proposals file is committed:
-   `python3 scripts/harvest.py --update-state <project-path> ...`, then commit `docs/propuestas/estado.json` in the
+   `python3 scripts/harvest.py --update-state <project-path> ...`, then commit `<proposalsDir>/estado.json` in the
    same commit as the proposals.
 
 ## Proposal template

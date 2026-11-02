@@ -222,6 +222,16 @@ def check_githooks(rep, root, version):
             rep.ok(check, f".githooks/{name} present and executable" + (f" (v{found})" if found else ""))
 
 
+def check_legacy_paths(rep, cfg):
+    """A key absent from gw.json that config.py filled with an old Spanish path (0.x compatibility, A8): warn."""
+    legacy = (cfg or {}).get("_legacy") or {}
+    for key in sorted(legacy):
+        rep.warn("legacy-paths", f"{key} is absent from .claude/gw.json and falls back to the old path {legacy[key]} "
+                 "(the English name is the default now)", "run /gw-update to move it to the English name")
+    if not legacy:
+        rep.ok("legacy-paths", "no key falls back to an old Spanish path")
+
+
 def check_log(rep, root, cfg):
     if cfg is None:
         return
@@ -573,7 +583,7 @@ def strip_invisible_command(name):
 
 def check_instructions(rep, root):
     """Invisible characters in the files agents obey (a hidden instruction is an injection) and the size of
-    AGENTS.md/CLAUDE.md (P7 of docs/propuestas/2026-10-25-repos-x.md)."""
+    AGENTS.md/CLAUDE.md (P7 of proposal 2026-10-25-repos-x.md)."""
     files = [root / n for n in ("AGENTS.md", "CLAUDE.md") if (root / n).is_file()]
     files += sorted((root / ".claude" / "skills").glob("*/SKILL.md"))
     bad = False
@@ -607,7 +617,7 @@ def skill_scripts_without_test(skills_dir):
 
 def check_skill_tests(rep, root):
     """WARN with every .claude/skills/*/scripts/*.py that has no test_<name>.py next to it: a skill born in the project
-    is code too (P2 of docs/propuestas/2026-10-25-world-maker-fantasy-2.md)."""
+    is code too (P2 of proposal 2026-10-25-world-maker-fantasy-2.md)."""
     missing = skill_scripts_without_test(root / ".claude" / "skills")
     for path in missing:
         rel = path.relative_to(root).as_posix()
@@ -707,7 +717,7 @@ def github_remote(root):
 
 def check_ci_access(rep, root):
     """AGENTS.md asks to look at the CI of the last push when a block closes: with `origin` on GitHub, that needs `gh`
-    (logged in) or a token in the environment (P5 of docs/registros/retro-2026-10-25-antes-de-main-0-4-0.md). Never
+    (logged in) or a token in the environment (P5 of record retro-2026-10-25-antes-de-main-0-4-0.md). Never
     prints a token. No remote, or a remote elsewhere: nothing to check."""
     if github_remote(root) is None:
         return
@@ -740,6 +750,7 @@ def run(root):
     check_hooks_path(rep, root)
     check_ignored(rep, root)
     check_githooks(rep, root, version)
+    check_legacy_paths(rep, cfg)
     check_log(rep, root, cfg)
     check_commands(rep, root, cfg)
     check_ci(rep, root, cfg)

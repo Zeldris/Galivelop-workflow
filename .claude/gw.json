@@ -13,6 +13,9 @@
     "[ \"${GW_PUSH_PROTECTED:-}\" != true ] || python3 scripts/version.py --release"
   ],
   "reviewMark": "docs/registros/revisado.txt",
+  "recordsDir": "docs/registros",
+  "proposalsDir": "docs/propuestas",
+  "ciLocalLog": "docs/registros/ci-local.md",
   "content": [
     "^docs/",
     "^README(\\.es)?\\.md$",

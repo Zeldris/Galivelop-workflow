@@ -201,12 +201,48 @@ def semantic_errors(config):
     return errors
 
 
-def with_defaults(config, schema):
+# Paths the workflow creates in a project. Until 1.0 a project that still has the old Spanish name and has not
+# moved yet keeps working: an ABSENT key whose English default does not exist but whose old path does gets the old path.
+LEGACY_PATHS = {
+    "log": "docs/traspaso.md",
+    "reviewMark": "docs/registros/revisado.txt",
+    "ciLocalLog": "docs/registros/ci-local.md",
+    "recordsDir": "docs/registros",
+    "proposalsDir": "docs/propuestas",
+}
+
+
+def with_defaults(config, schema, exists=None):
+    """`config` plus the schema defaults. `exists(path)` says whether a repo-relative path exists (None: no fallback
+    to the old Spanish names). The keys filled from an old path are listed in filled["_legacy"] ({key: old path})."""
     filled = dict(config)
+    legacy = {}
     for key, prop in schema.get("properties", {}).items():
         if key not in filled and "default" in prop:
-            filled[key] = prop["default"]
+            value = prop["default"]
+            old = LEGACY_PATHS.get(key)
+            if old and exists is not None and not exists(value) and exists(old):
+                value = legacy[key] = old
+            filled[key] = value
+    if legacy:
+        filled["_legacy"] = legacy
     return filled
+
+
+def path_exists_fn(root, rev=None):
+    """exists(path) for with_defaults: in the working tree, or in commit `rev` (a push checks the pushed commit)."""
+    root = Path(root)
+    if not rev:
+        return lambda rel: (root / rel).exists()
+    env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
+
+    def exists(rel):
+        try:
+            return subprocess.run(["git", "-C", str(root), "cat-file", "-e", f"{rev}:{rel}"],
+                                  capture_output=True, env=env).returncode == 0
+        except OSError:
+            return False
+    return exists
 
 
 def stale_refs(config):
@@ -221,7 +257,7 @@ def stale_refs(config):
 def glob_regex(glob):
     """Compile a repo-relative glob to a regex. Only `*`, `**` and `?` are special (no brackets, no gitignore rules):
     `*` and `?` stay inside one folder, `**` crosses folders (`**/` also matches no folder), a leading `./` or `/` is
-    dropped. An entry without metacharacters (`docs/registros`, with or without a trailing `/`) matches that file or
+    dropped. An entry without metacharacters (`docs/records`, with or without a trailing `/`) matches that file or
     that folder and everything under it; a trailing `/` after metacharacters, or `/**`, also matches the folder."""
     glob = glob[2:] if glob.startswith("./") else glob
     glob = glob.lstrip("/")
@@ -288,7 +324,7 @@ def load(root=None, rev=None):
     errors = validate(config, schema) or semantic_errors(config)
     if errors:
         raise ConfigError(f"{path} is invalid:\n  " + "\n  ".join(errors))
-    config = with_defaults(config, schema)
+    config = with_defaults(config, schema, path_exists_fn(root, rev))
     config["_root"] = root
     return config
 
@@ -355,7 +391,7 @@ def main(argv=None):
         return 0
     value = config
     for part in args.key.split("."):
-        if not isinstance(value, dict) or part not in value or part == "_root":
+        if not isinstance(value, dict) or part not in value or part.startswith("_"):
             print(f"gw config: key '{args.key}' is not set and has no default", file=sys.stderr)
             return 2
         value = value[part]

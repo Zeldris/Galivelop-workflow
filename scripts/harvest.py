@@ -35,12 +35,17 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent  # this workflow repo
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(ROOT / "scripts"))
+import config  # noqa: E402  (the only reader of .claude/gw.json)
 from apply import skill_version_span  # noqa: E402  (the one parser of skill versions)
-STATE = ROOT / "docs" / "propuestas" / "estado.json"
 IDEAS_HEADING = re.compile(r"^#{2,4}\s*(?:For|Para)\s+Galivelop-workflow\b.*$", re.I | re.M)
 IDEAS_LINE = re.compile(r"^([ \t]*)(?:[-*+]\s+|\d+\.\s+)?[*_]{0,2}(?:Propuestas?\s+para\s+el\s+flujo|Proposals?\s+for\s+the\s+workflow)\b",
                         re.I | re.M)
 RETRO_NAME = re.compile(r"(^|/)retro-[^/]*\.md$")
+
+
+def default_state():
+    """<proposalsDir>/estado.json of this workflow repo (the config's `proposalsDir`; fails closed without a config)."""
+    return ROOT / config.load(ROOT)["proposalsDir"] / "estado.json"
 
 
 def git(repo, *args):
@@ -281,10 +286,16 @@ def main():
     parser.add_argument("--json", action="store_true", help="print JSON instead of Markdown")
     parser.add_argument("--diff", metavar="SKILL", help="print the unified diff of one skill (ours → theirs)")
     parser.add_argument("--update-state", action="store_true",
-                        help=f"record each project's HEAD as harvested in {STATE.relative_to(ROOT)}")
-    parser.add_argument("--state", type=Path, default=STATE, help=argparse.SUPPRESS)
+                        help="record each project's HEAD as harvested in <proposalsDir>/estado.json")
+    parser.add_argument("--state", type=Path, default=None, help=argparse.SUPPRESS)
     args = parser.parse_args()
 
+    if args.state is None:
+        try:
+            args.state = default_state()
+        except config.ConfigError as exc:
+            print(f"harvest: {exc}", file=sys.stderr)
+            return 2
     state = json.loads(args.state.read_text(encoding="utf-8")) if args.state.is_file() else {}
 
     if args.diff:

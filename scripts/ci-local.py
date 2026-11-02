@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # galivelop-workflow v0.4.3
 """Runs the project's GitHub Actions CI on this machine, for when GitHub does not start it (no Actions quota, no
-runners), and with --apuntar records the result in the config's `ciLocalLog` (default docs/registros/ci-local.md).
+runners), and with --apuntar records the result in the config's `ciLocalLog` (default docs/records/ci-local.md).
 The PR hook (review-before-main.sh) takes a committed green record as the CI of a PR whose CI never started; a CI
 that started and failed is never replaced this way. Recording one is the person's call ("checked only locally").
 

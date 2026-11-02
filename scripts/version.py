@@ -20,7 +20,7 @@ check flags one that lacks it (exceptions, with the reason, in UNMARKED).
                                         # LICENSE-mattpocock-skills)
                                         # changed since the last vX.Y.Z tag reachable from HEAD need a
                                         # new version (the pre-push check of a push to main), and a new
-                                        # version needs a harvest since that tag: a docs/propuestas/*.md
+                                        # version needs a harvest since that tag: a <proposalsDir>/*.md
                                         # added after it whose first line is "# Harvest …" (skill gw-harvest)
                                         # and a dated, filled-in CHANGELOG entry (## [X.Y.Z] - YYYY-MM-DD)
 Then: python3 scripts/apply.py .  (refresh this repo's copy) and fill in the CHANGELOG entry.
@@ -37,6 +37,7 @@ sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
+import config  # noqa: E402  (the only reader of .claude/gw.json)
 from apply import HEADER, SKILL_LICENSE, header_version, skill_version_span  # noqa: E402
 
 PLUGIN = ROOT / ".claude-plugin" / "plugin.json"
@@ -44,7 +45,6 @@ TEMPLATE_GW = ROOT / "templates" / "gw.json"
 SEMVER = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$")
 TOP_VERSION = re.compile(r'^(  "version"\s*:\s*")([^"]*)(")', re.M)  # a top-level key: two-space indent
 SCOPES = ("scripts", "skills", "templates", "schema")
-PROPOSALS = "docs/propuestas"  # where gw-harvest writes its "# Harvest <repo> — <date>" files
 HEAD_LINES = 5  # same as header_version()
 UNMARKED = {  # workflow files that carry no header marker, and why
     "templates/gw.json": "JSON; its marker is the top-level \"version\", checked on its own",
@@ -189,9 +189,18 @@ def changelog_check(version):
     return problems
 
 
+def proposals_dir():
+    """The config's `proposalsDir`, where gw-harvest writes its "# Harvest <repo> — <date>" files."""
+    return config.load(ROOT)["proposalsDir"].rstrip("/")
+
+
 def harvest_check(version, tag):
     """Problems for releasing `version` after `tag`: every version starts with a harvest of the projects that use the
-    workflow (AGENTS.md), so some file added under docs/propuestas/ since the tag must be a gw-harvest one."""
+    workflow (AGENTS.md), so some file added under `proposalsDir` since the tag must be a gw-harvest one."""
+    try:
+        PROPOSALS = proposals_dir()
+    except config.ConfigError as exc:
+        return [f"cannot read proposalsDir: {exc}"]
     code, added = git("diff", "--name-only", "--no-renames", "--diff-filter=A", tag, "HEAD", "--", PROPOSALS)
     if code != 0:
         return [f"cannot diff against {tag}; fetch it and retry: git fetch --tags origin && "

@@ -223,6 +223,22 @@ class Doctor(unittest.TestCase):
         self.p.write("docs/log.md", "# Log\n\n**SIGUIENTE PASO:** seguir\n")
         self.assertEqual(self.doctor()[0], 0)
 
+    def test_absent_log_key_with_only_the_old_name_warns_and_names_the_fix(self):
+        # A8: log absent from gw.json, docs/handoff.md missing, docs/traspaso.md present -> old path, with a warning.
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        del cfg["log"]
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.write("docs/traspaso.md", "# Log\n\n**SIGUIENTE PASO:** seguir\n")
+        code, out = self.doctor()
+        self.assertLine(out, "WARN", "legacy-paths", "log is absent", "docs/traspaso.md", "/gw-update")
+        self.assertLine(out, "OK", "log", "docs/traspaso.md has a next step")
+        # with the new name present, no warning
+        p.write("docs/handoff.md", "# Log\n\n**SIGUIENTE PASO:** seguir\n")
+        out = self.doctor()[1]
+        self.assertLine(out, "OK", "legacy-paths", "no key falls back")
+        self.assertLine(out, "OK", "log", "docs/handoff.md has a next step")
+
     def test_unknown_check_command(self):
         p = self.p
         cfg = json.loads((p.work / ".claude" / "gw.json").read_text())

@@ -22,37 +22,37 @@
 # Bash 3.2 compatible. Root from this script's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
-usage() { echo "fusionar: usage: bash $0 <branch> \"<merge message>\" [--reviewed]" >&2; exit 2; }
+usage() { echo "merge-branch: usage: bash $0 <branch> \"<merge message>\" [--reviewed]" >&2; exit 2; }
 { [ $# -eq 2 ] || { [ $# -eq 3 ] && [ "$3" = "--reviewed" ]; }; } || usage
 branch="$1"; message="$2"; reviewed="${3:-}"
 # Git exports GIT_DIR (and friends) to hooks, also in a linked worktree; with GIT_DIR set `rev-parse --show-toplevel`
 # answers $here, not the repo root.
 root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
-  echo "fusionar: $here is not inside a git repository; reinstall the workflow: /gw-update" >&2; exit 2; }
+  echo "merge-branch: $here is not inside a git repository; reinstall the workflow: /gw-update" >&2; exit 2; }
 cd "$root" || exit 2
 config="$here/config.py"
 checks="$(python3 "$config" --root "$root" get check)" || {
-  echo "fusionar: cannot read check; fix the config: python3 $config --root $root validate" >&2; exit 2; }
+  echo "merge-branch: cannot read check; fix the config: python3 $config --root $root validate" >&2; exit 2; }
 wrapper="$(python3 "$config" --root "$root" get checkWrapper)" || {
-  echo "fusionar: cannot read checkWrapper; fix the config: python3 $config --root $root validate" >&2; exit 2; }
+  echo "merge-branch: cannot read checkWrapper; fix the config: python3 $config --root $root validate" >&2; exit 2; }
 protected="$(python3 "$config" --root "$root" get protectedBranch)" || {
-  echo "fusionar: cannot read protectedBranch; fix the config: python3 $config --root $root validate" >&2; exit 2; }
-logs="$(mktemp -d "${TMPDIR:-/tmp}/gw-fusionar.XXXXXX")" || { echo "fusionar: cannot create a temp dir; free space and retry" >&2; exit 2; }
+  echo "merge-branch: cannot read protectedBranch; fix the config: python3 $config --root $root validate" >&2; exit 2; }
+logs="$(mktemp -d "${TMPDIR:-/tmp}/gw-merge-branch.XXXXXX")" || { echo "merge-branch: cannot create a temp dir; free space and retry" >&2; exit 2; }
 trap 'rm -rf "$logs"' EXIT
 
-git rev-parse --verify --quiet "$branch^{commit}" >/dev/null || { echo "fusionar: no branch $branch; list them: git branch -a" >&2; exit 2; }
+git rev-parse --verify --quiet "$branch^{commit}" >/dev/null || { echo "merge-branch: no branch $branch; list them: git branch -a" >&2; exit 2; }
 before="$(git rev-parse HEAD)"
 if ! git merge --no-ff "$branch" -m "$message" > "$logs/merge.log" 2>&1; then
   conflicts="$(git diff --name-only --diff-filter=U)"
-  echo "fusionar: CONFLICT (the merge stays open; resolve it and commit, or abort with: git merge --abort):"
+  echo "merge-branch: CONFLICT (the merge stays open; resolve it and commit, or abort with: git merge --abort):"
   printf '%s\n' "${conflicts:-$(tail -n 5 "$logs/merge.log")}" | sed 's/^/  /'
   exit 1
 fi
 if [ "$(git rev-parse HEAD)" = "$before" ]; then
-  echo "fusionar: nothing to merge, $branch is already in the current branch."
+  echo "merge-branch: nothing to merge, $branch is already in the current branch."
   exit 0
 fi
-echo "fusionar: merged $branch into $(git branch --show-current) at $(git rev-parse --short HEAD)"
+echo "merge-branch: merged $branch into $(git branch --show-current) at $(git rev-parse --short HEAD)"
 
 n=0
 while IFS= read -r cmd; do
@@ -60,11 +60,11 @@ while IFS= read -r cmd; do
   n=$((n + 1))
   [ -z "$wrapper" ] || cmd="$wrapper bash -c '$(printf '%s' "$cmd" | sed "s/'/'\\\\''/g")'"
   if bash -c "$cmd" > "$logs/check-$n.log" 2>&1 < /dev/null; then
-    echo "fusionar: check OK: $cmd"
+    echo "merge-branch: check OK: $cmd"
   else
     tail -n 20 "$logs/check-$n.log" >&2
-    echo "fusionar: CHECK FAILED: $cmd. The merge is ALREADY done in the current branch; branch and worktree stay." >&2
-    echo "fusionar: fix it and commit, or undo the merge with: git reset --hard HEAD^1" >&2
+    echo "merge-branch: CHECK FAILED: $cmd. The merge is ALREADY done in the current branch; branch and worktree stay." >&2
+    echo "merge-branch: fix it and commit, or undo the merge with: git reset --hard HEAD^1" >&2
     exit 1
   fi
 done <<<"$checks"
@@ -78,23 +78,23 @@ for kind in fast slow; do
 done
 if [ ! -f "$here/related-tests.sh" ]; then
   if [ -n "$related_configured" ]; then
-    echo "fusionar: RELATED TESTS CANNOT RUN: relatedTests is configured but $here/related-tests.sh is not installed. The merge is ALREADY done in the current branch; branch and worktree stay." >&2
-    echo "fusionar: reinstall the workflow with: /gw-update (then run the related tests), or undo the merge with: git reset --hard HEAD^1" >&2
+    echo "merge-branch: RELATED TESTS CANNOT RUN: relatedTests is configured but $here/related-tests.sh is not installed. The merge is ALREADY done in the current branch; branch and worktree stay." >&2
+    echo "merge-branch: reinstall the workflow with: /gw-update (then run the related tests), or undo the merge with: git reset --hard HEAD^1" >&2
     exit 1
   fi
 else
   rerun="f=\$(mktemp) && git diff --name-only --no-renames ${before:0:7} HEAD > \"\$f\" && bash $here/related-tests.sh \"\$f\""
   git diff --name-only --no-renames "$before" HEAD > "$logs/changed" || {
-    echo "fusionar: cannot list the files the merge changed. The merge is ALREADY done in the current branch; branch and worktree stay." >&2
-    echo "fusionar: run the related tests by hand: $rerun" >&2
+    echo "merge-branch: cannot list the files the merge changed. The merge is ALREADY done in the current branch; branch and worktree stay." >&2
+    echo "merge-branch: run the related tests by hand: $rerun" >&2
     exit 1; }
   if bash "$here/related-tests.sh" "$logs/changed" > "$logs/related.log" 2>&1 < /dev/null; then
-    echo "fusionar: related tests OK"
+    echo "merge-branch: related tests OK"
   else
     tail -n 20 "$logs/related.log" >&2
-    echo "fusionar: RELATED TESTS FAILED. The merge is ALREADY done in the current branch; branch and worktree stay." >&2
-    echo "fusionar: fix it and commit, or undo the merge with: git reset --hard HEAD^1" >&2
-    echo "fusionar: rerun them with: $rerun" >&2
+    echo "merge-branch: RELATED TESTS FAILED. The merge is ALREADY done in the current branch; branch and worktree stay." >&2
+    echo "merge-branch: fix it and commit, or undo the merge with: git reset --hard HEAD^1" >&2
+    echo "merge-branch: rerun them with: $rerun" >&2
     exit 1
   fi
 fi
@@ -113,21 +113,21 @@ cleanup_branch() {
     case "$wt" in
       */.claude/worktrees/*)
         if git worktree remove "$wt" > "$logs/wt.log" 2>&1; then
-          echo "fusionar: worktree $wt removed."
+          echo "merge-branch: worktree $wt removed."
         else
-          echo "fusionar: WARNING: worktree $wt not removed ($(head -n 1 "$logs/wt.log")); $branch stays. Fix it: git worktree remove --force $wt"
+          echo "merge-branch: WARNING: worktree $wt not removed ($(head -n 1 "$logs/wt.log")); $branch stays. Fix it: git worktree remove --force $wt"
           return 0
         fi ;;
-      *) echo "fusionar: WARNING: $branch has a worktree outside .claude/worktrees/ ($wt); not removed."; return 0 ;;
+      *) echo "merge-branch: WARNING: $branch has a worktree outside .claude/worktrees/ ($wt); not removed."; return 0 ;;
     esac
   fi
   if git branch -d "$branch" > "$logs/br.log" 2>&1; then
-    echo "fusionar: branch $branch deleted."
+    echo "merge-branch: branch $branch deleted."
   else
-    echo "fusionar: WARNING: branch $branch not deleted ($(head -n 1 "$logs/br.log")); check it: git branch --no-merged"
+    echo "merge-branch: WARNING: branch $branch not deleted ($(head -n 1 "$logs/br.log")); check it: git branch --no-merged"
   fi
   return 0
 }
 cleanup_branch
-[ "$reviewed" = "--reviewed" ] || echo "fusionar: no --reviewed: confirm the /code-review of the diff (step 3 of gw-orchestrate-dealer)."
+[ "$reviewed" = "--reviewed" ] || echo "merge-branch: no --reviewed: confirm the /code-review of the diff (step 3 of gw-orchestrate-dealer)."
 exit 0

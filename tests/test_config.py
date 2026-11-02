@@ -169,11 +169,11 @@ class Config(unittest.TestCase):
 
     def test_invalid_config_names_every_problem(self):
         bad = dict(VALID, pushToProtected="sometimes", chek=["x"], check=[])
-        del bad["log"]
+        del bad["language"]
         self.write(bad)
         r = cli(self.tmp, "validate")
         self.assertEqual(r.returncode, 2)
-        for fragment in ("pushToProtected", "unknown key 'chek'", "missing required key 'log'", "at least 1"):
+        for fragment in ("pushToProtected", "unknown key 'chek'", "missing required key 'language'", "at least 1"):
             self.assertIn(fragment, r.stderr)
 
     def test_broken_json_reports_the_line(self):
@@ -212,6 +212,114 @@ class Config(unittest.TestCase):
             self.assertEqual(cli(plain, "validate").returncode, 2)
         finally:
             shutil.rmtree(plain)
+
+
+MIN = {"version": "0.1.0", "language": "en", "protectedBranch": "main", "pushToProtected": "pr",
+       "check": ["make check"], "content": ["^docs/"]}
+PATH_KEYS = {  # key: (new default, old Spanish path), A8
+    "log": ("docs/handoff.md", "docs/traspaso.md"),
+    "reviewMark": ("docs/records/reviewed.txt", "docs/registros/revisado.txt"),
+    "ciLocalLog": ("docs/records/ci-local.md", "docs/registros/ci-local.md"),
+    "recordsDir": ("docs/records", "docs/registros"),
+    "proposalsDir": ("docs/proposals", "docs/propuestas"),
+}
+
+
+class ProjectPaths(unittest.TestCase):
+    """A8: the paths the workflow creates in a project are English, configurable, with an old-name fallback."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        subprocess.run(["git", "init", "-q", str(self.tmp)], check=True)
+        (self.tmp / ".claude").mkdir()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def write(self, data):
+        (self.tmp / ".claude" / "gw.json").write_text(json.dumps(data))
+
+    def touch(self, rel):
+        if rel in ("docs/records", "docs/registros", "docs/proposals", "docs/propuestas"):
+            rel += "/a.md"  # a folder: put a file in it
+        path = self.tmp / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("x\n")
+
+    def get(self, key, *extra):
+        r = cli(self.tmp, *extra, "get", key)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout.strip()
+
+    def test_neither_exists_gives_the_english_default(self):
+        self.write(MIN)
+        for key, (new, _old) in PATH_KEYS.items():
+            self.assertEqual(self.get(key), new, key)
+
+    def test_new_default_exists_wins_even_if_the_old_one_does_too(self):
+        self.write(MIN)
+        for new, old in PATH_KEYS.values():
+            self.touch(new)
+            self.touch(old)
+        for key, (new, _old) in PATH_KEYS.items():
+            self.assertEqual(self.get(key), new, key)
+
+    def test_absent_key_falls_back_to_the_old_path_only_when_it_alone_exists(self):
+        self.write(MIN)
+        for _new, old in PATH_KEYS.values():
+            self.touch(old)
+        for key, (_new, old) in PATH_KEYS.items():
+            self.assertEqual(self.get(key), old, key)
+        
+    def test_fallback_is_per_key(self):
+        self.write(MIN)
+        self.touch("docs/traspaso.md")
+        self.assertEqual(self.get("log"), "docs/traspaso.md")
+        self.assertEqual(self.get("recordsDir"), "docs/records")
+        self.assertEqual(self.get("proposalsDir"), "docs/proposals")
+
+    def test_explicit_value_always_wins(self):
+        explicit = {key: "x/" + key for key in PATH_KEYS}
+        explicit["ciLocalLog"] = "x/ci.md"
+        self.write(dict(MIN, **explicit))
+        for _new, old in PATH_KEYS.values():
+            self.touch(old)
+        for key, value in explicit.items():
+            self.assertEqual(self.get(key), value, key)
+        # an explicit value naming the new default is kept even when only the old path exists
+        self.write(dict(MIN, log="docs/handoff.md"))
+        self.assertEqual(self.get("log"), "docs/handoff.md")
+
+    def test_fallback_reads_the_commit_with_rev(self):
+        self.write(MIN)
+        self.touch("docs/traspaso.md")
+        git = ["git", "-C", str(self.tmp), "-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run(git + ["add", "-A"], check=True)
+        subprocess.run(git + ["commit", "-qm", "x"], check=True)
+        (self.tmp / "docs" / "traspaso.md").unlink()
+        self.touch("docs/handoff.md")  # the working tree has the new name, the commit the old one
+        self.assertEqual(self.get("log"), "docs/handoff.md")
+        self.assertEqual(self.get("log", "--rev", "HEAD"), "docs/traspaso.md")
+
+    def test_legacy_marker_is_hidden_from_get_and_lists_the_fallbacks(self):
+        self.write(MIN)
+        self.touch("docs/propuestas")
+        r = cli(self.tmp, "get", "_legacy")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("key '_legacy' is not set and has no default", r.stderr)
+        sys_path = str(ROOT / "scripts")
+        code = ("import sys; sys.path.insert(0, %r); import config, pathlib; "
+                "print(config.load(pathlib.Path(%r))['_legacy'])" % (sys_path, str(self.tmp)))
+        out = subprocess.run(["python3", "-c", code], capture_output=True, text=True)
+        self.assertEqual(out.stdout.strip(), "{'proposalsDir': 'docs/propuestas'}", out.stderr)
+
+    def test_bad_values_are_rejected(self):
+        for key in ("recordsDir", "proposalsDir"):
+            for bad in ("/abs", "../x", "docs/x/", ""):
+                self.write(dict(MIN, **{key: bad}))
+                r = cli(self.tmp, "validate")
+                self.assertEqual(r.returncode, 2, (key, bad))
+                self.assertIn(f"$.{key}", r.stderr)
 
 
 class LinkedWorktree(unittest.TestCase):

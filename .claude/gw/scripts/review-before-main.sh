@@ -111,7 +111,7 @@ def looks_like_pr_action(command):
 
     The words must come in that order; the earliest `gh`, then the earliest `pr` after it, is enough. One scan per
     word: a single regex chaining `[\\s\\S]*` between them backtracks without end on a long command (P4 of
-    docs/propuestas/2026-10-25-repos-x.md; tests/test_review_before_main.py times it)."""
+    proposal 2026-10-25-repos-x.md; tests/test_review_before_main.py times it)."""
     gh = GH_WORD.search(command)
     if not gh:
         return False
@@ -771,7 +771,7 @@ any_pr="(^|$word)(pr|pulls)${end}"
 pr_word="(^|$word)pr$word"
 pr_action="(^|$word)(create|merge)${end}"
 # One regex per word, each on what follows the previous match: a single regex with `.*` between the words backtracks
-# quadratically on a long command (P4 of docs/propuestas/2026-10-25-repos-x.md; tests/test_review_before_main.py times it).
+# quadratically on a long command (P4 of proposal 2026-10-25-repos-x.md; tests/test_review_before_main.py times it).
 # after_first <text> <regex> sets `after` to the text following the first match of the regex, or fails.
 after=""
 after_first() {

@@ -12,7 +12,7 @@
 Runs FROM the workflow repo (this script's own repo is the source) ONTO a project: PROJECT, else the git top level
 of the current directory. The project must have a valid .claude/gw.json (fails closed, exit 2), except with --init:
 that writes .claude/gw.json from templates/gw.json plus the flags (only when it does not exist yet; --check-command
-is required, the log defaults to docs/traspaso.md in Spanish and docs/handoff.md in English), validates it and then
+is required, the log defaults to docs/handoff.md), validates it and then
 applies as usual.
 
 What it copies (workflow -> project):
@@ -89,7 +89,7 @@ DIFF_LINES = 80
 ROOT_TEMPLATES = (("AGENTS.md", "merged"), ("CLAUDE.md", "merged"), ("REVIEW.md", "seeded"),
                   ("GLOSSARY.md", "seeded"))
 NOTES = (("gw-opt-tokens.md", None), ("gw-opt-ai.md", "gw-opt-ai"), ("gw-scout-updates.md", "gw-scout-updates"))
-LOG_BY_LANGUAGE = {"es": "docs/traspaso.md", "en": "docs/handoff.md"}
+LOG_BY_LANGUAGE = {"es": "docs/handoff.md", "en": "docs/handoff.md"}  # A8: English paths in every language
 NOTES_ENV = "GW_NOTAS_PERSONALES"
 NOTE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 HEADER = re.compile(r"galivelop-workflow v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)")
@@ -284,10 +284,10 @@ class Plan:
             try:
                 current = json.loads(path.read_text(encoding="utf-8"))
             except json.JSONDecodeError as exc:
-                raise ApplyError(f"aplicar: {path}: invalid JSON at line {exc.lineno}: {exc.msg}; fix it and rerun: "
+                raise ApplyError(f"apply: {path}: invalid JSON at line {exc.lineno}: {exc.msg}; fix it and rerun: "
                                  f"python3 -m json.tool {path}")
             if not isinstance(current, dict):
-                raise ApplyError(f"aplicar: {path} is not a JSON object; fix it and rerun: python3 -m json.tool {path}")
+                raise ApplyError(f"apply: {path} is not a JSON object; fix it and rerun: python3 -m json.tool {path}")
         else:
             current = {}
         merged, added = merge_settings(current, tmpl)
@@ -313,7 +313,7 @@ def merge_settings(current, template):
     if tenv:
         env = merged.setdefault("env", {})
         if not isinstance(env, dict):
-            raise ApplyError("aplicar: .claude/settings.json: 'env' is not an object; fix it and rerun: "
+            raise ApplyError("apply: .claude/settings.json: 'env' is not an object; fix it and rerun: "
                              "python3 -m json.tool .claude/settings.json")
         for key, value in tenv.items():
             if key not in env:
@@ -323,12 +323,12 @@ def merge_settings(current, template):
     if thooks:
         hooks = merged.setdefault("hooks", {})
         if not isinstance(hooks, dict):
-            raise ApplyError("aplicar: .claude/settings.json: 'hooks' is not an object; fix it and rerun: "
+            raise ApplyError("apply: .claude/settings.json: 'hooks' is not an object; fix it and rerun: "
                              "python3 -m json.tool .claude/settings.json")
     for event, entries in thooks.items():
         have = hooks.setdefault(event, [])
         if not isinstance(have, list):
-            raise ApplyError(f"aplicar: .claude/settings.json: hooks.{event} is not a list; fix it and rerun: "
+            raise ApplyError(f"apply: .claude/settings.json: hooks.{event} is not a list; fix it and rerun: "
                              f"python3 -m json.tool .claude/settings.json")
         for entry in entries:
             matcher = entry.get("matcher")
@@ -389,7 +389,7 @@ def render(text, cfg, root, version, name):
             return version
         if key == "project":
             return root.name
-        raise ApplyError(f"aplicar: template {name} has an unknown placeholder {{{{{key}}}}}; fix the template in "
+        raise ApplyError(f"apply: template {name} has an unknown placeholder {{{{{key}}}}}; fix the template in "
                          f"{WORKFLOW / 'templates'}")
     return PLACEHOLDER.sub(value, text)
 
@@ -513,7 +513,7 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False):
     available = sorted(p.name for p in (WORKFLOW / "skills").iterdir() if (p / "SKILL.md").is_file())
     unknown = sorted(set(extra_skills) - set(available))
     if unknown:
-        raise ApplyError(f"aplicar: unknown skill(s) for --with: {', '.join(unknown)}; available: "
+        raise ApplyError(f"apply: unknown skill(s) for --with: {', '.join(unknown)}; available: "
                          f"{', '.join(available)}")
     installed = root / ".claude" / "skills"
     wanted_skills = set()
@@ -563,14 +563,14 @@ def describe(plan):
 
 def report(plan):
     for rel, why in plan.pending:
-        print(f"aplicar: pending proposal {rel}{PROPOSAL} ({rel} differs: {why}); merge it by hand and delete it: "
+        print(f"apply: pending proposal {rel}{PROPOSAL} ({rel} differs: {why}); merge it by hand and delete it: "
               f"rm {rel}{PROPOSAL}")
     for rel in plan.orphans:
-        print(f"aplicar: {rel} is no longer in the workflow (kept); delete it if nothing uses it: git rm {rel}")
+        print(f"apply: {rel} is no longer in the workflow (kept); delete it if nothing uses it: git rm {rel}")
     for note in plan.notes:
-        print(f"aplicar: template update: {note}")
+        print(f"apply: template update: {note}")
     for rel, current, data in plan.diffs:
-        print(f"aplicar: {rel} exists and is never written; what differs from the v{plan.version} template (bring the "
+        print(f"apply: {rel} exists and is never written; what differs from the v{plan.version} template (bring the "
               f"missing rules by hand, then set its first line to <!-- galivelop-workflow v{plan.version} -->):")
         diff = list(difflib.unified_diff(current.decode("utf-8", "replace").splitlines(),
                                          data.decode("utf-8", "replace").splitlines(),
@@ -580,16 +580,16 @@ def report(plan):
         if len(diff) > DIFF_LINES:
             print(f"  … {len(diff) - DIFF_LINES} more line(s)")
     for line in plan.personal:
-        print(f"aplicar: {line}")
+        print(f"apply: {line}")
     for warning in plan.warnings:
-        print(f"aplicar: WARNING: {warning}")
+        print(f"apply: WARNING: {warning}")
     if plan.hooks_path:
-        print(f"aplicar: {plan.hooks_path}")
+        print(f"apply: {plan.hooks_path}")
 
 
 def apply(plan):
     if any(sensitive(a[1]) for a in plan.actions):
-        print("aplicar: note: Claude Code's auto mode may ask for permission to edit .claude/settings.json, "
+        print("apply: note: Claude Code's auto mode may ask for permission to edit .claude/settings.json, "
               ".claude/gw/scripts/ and .githooks/; approve it, or run this script yourself: "
               f"python3 {Path(__file__).resolve()} {plan.root}")
     for kind, rel, data, want_exec, _detail in plan.actions:
@@ -602,13 +602,13 @@ def apply(plan):
     if plan.set_hooks_path:
         code, _ = git(plan.root, "config", "core.hooksPath", ".githooks")
         if code != 0:
-            print("aplicar: could not set core.hooksPath; set it by hand: git config core.hooksPath .githooks")
+            print("apply: could not set core.hooksPath; set it by hand: git config core.hooksPath .githooks")
 
 
 def init_config(args, version):
     """The new .claude/gw.json: templates/gw.json with the flags on top. Raises ApplyError when invalid."""
     if not args.check_commands:
-        raise ApplyError("aplicar: --init needs the project's check, at least one --check-command \"<command>\" "
+        raise ApplyError("apply: --init needs the project's check, at least one --check-command \"<command>\" "
                          "(e.g. --check-command \"npm test\"); rerun with it")
     new = json.loads((WORKFLOW / "templates" / "gw.json").read_text(encoding="utf-8"))
     new["version"] = version
@@ -630,8 +630,8 @@ def init_config(args, version):
     schema = json.loads((WORKFLOW / "schema" / "gw.schema.json").read_text(encoding="utf-8"))
     errors = config.validate(new, schema)
     if errors:
-        raise ApplyError("aplicar: the config --init would write is invalid:\n  " + "\n  ".join(errors)
-                         + "\naplicar: fix the flags and rerun")
+        raise ApplyError("apply: the config --init would write is invalid:\n  " + "\n  ".join(errors)
+                         + "\napply: fix the flags and rerun")
     return new, schema
 
 
@@ -681,14 +681,14 @@ def main(argv=None):
     start = args.project or os.getcwd()
     root = config.git_toplevel(start)
     if root is None:
-        print(f"aplicar: {start} is not inside a git repository; create it first: git init {start}", file=sys.stderr)
+        print(f"apply: {start} is not inside a git repository; create it first: git init {start}", file=sys.stderr)
         return 2
     root = root.resolve()
     version = workflow_version()
     cfg = None
     if args.init:
         if (root / config.CONFIG_REL).is_file():
-            print(f"aplicar: {root / config.CONFIG_REL} already exists; left as is (the --init flags are ignored)")
+            print(f"apply: {root / config.CONFIG_REL} already exists; left as is (the --init flags are ignored)")
         else:
             try:
                 new, schema = init_config(args, version)
@@ -697,15 +697,15 @@ def main(argv=None):
                 return 2
             text = json.dumps(new, indent=2, ensure_ascii=False) + "\n"
             if args.dry_run:
-                print(f"aplicar: --init would write {root / config.CONFIG_REL}:\n{text}", end="")
+                print(f"apply: --init would write {root / config.CONFIG_REL}:\n{text}", end="")
                 cfg = config.with_defaults(new, schema)
                 cfg["_root"] = root
             else:
                 (root / ".claude").mkdir(parents=True, exist_ok=True)
                 (root / config.CONFIG_REL).write_text(text, encoding="utf-8")
-                print(f"aplicar: wrote {root / config.CONFIG_REL}")
+                print(f"apply: wrote {root / config.CONFIG_REL}")
     if cfg is None and not (root / config.CONFIG_REL).is_file():
-        print(f"aplicar: {root / config.CONFIG_REL} not found, so the workflow cannot be applied; create it "
+        print(f"apply: {root / config.CONFIG_REL} not found, so the workflow cannot be applied; create it "
               f"with --init, or by hand from {WORKFLOW / 'templates' / 'gw.json'}: python3 {Path(__file__).resolve()} "
               f"{root} --init --check-command \"<the project's check>\" (by hand, validate it: python3 "
               f"{HERE / 'config.py'} --root {root} validate)", file=sys.stderr)
@@ -714,7 +714,7 @@ def main(argv=None):
         try:
             cfg = config.load(str(root))
         except config.ConfigError as exc:
-            print(f"aplicar: {exc}\naplicar: fix it and validate: python3 {HERE / 'config.py'} --root {root} validate",
+            print(f"apply: {exc}\napply: fix it and validate: python3 {HERE / 'config.py'} --root {root} validate",
                   file=sys.stderr)
             return 2
     try:
@@ -731,13 +731,13 @@ def main(argv=None):
                 print(line)
         report(plan)
         if drift:
-            print(f"aplicar: the workflow copy in {root} differs from the workflow v{version} (above); bring it up "
+            print(f"apply: the workflow copy in {root} differs from the workflow v{version} (above); bring it up "
                   f"to date: python3 {Path(__file__).resolve()} {root}")
             return 1
-        print(f"aplicar: workflow copy in sync with v{version}")
+        print(f"apply: workflow copy in sync with v{version}")
         return 0
     if args.dry_run:
-        print(f"aplicar: plan for {root} (workflow v{version}, dry run, nothing written):")
+        print(f"apply: plan for {root} (workflow v{version}, dry run, nothing written):")
         for line in lines:
             print(line)
         if not lines:
@@ -745,27 +745,27 @@ def main(argv=None):
         report(plan)
         return 0
     if not lines:
-        print(f"aplicar: nothing to do; {root} is at workflow v{version}")
+        print(f"apply: nothing to do; {root} is at workflow v{version}")
         report(plan)
         return 0
-    print(f"aplicar: applying workflow v{version} to {root}:")
+    print(f"apply: applying workflow v{version} to {root}:")
     for line in lines:
         print(line)
     apply(plan)
     report(plan)
     for rel, rule in ignored_paths(root):
-        print(f"aplicar: WARNING: git ignores {rel} ({rule}), so the commit would leave it out; add !{rel} to "
+        print(f"apply: WARNING: git ignores {rel} ({rule}), so the commit would leave it out; add !{rel} to "
               f".gitignore and check: git check-ignore -v {rel}")
     if cfg.get("version") != version:
-        print(f"aplicar: .claude/gw.json says version {cfg.get('version')}; set it to {version} once the "
+        print(f"apply: .claude/gw.json says version {cfg.get('version')}; set it to {version} once the "
               f"proposals are reviewed: edit \"version\" in {root / config.CONFIG_REL}")
     if any(a[0] == "propose" for a in plan.actions):
-        print(f"aplicar: review each *{PROPOSAL} (merge by hand, then delete it) before committing")
+        print(f"apply: review each *{PROPOSAL} (merge by hand, then delete it) before committing")
     if cfg.get("language") == "es":
         title, nxt = f"Flujo Galivelop-workflow v{version}", "Siguiente: <próximo paso concreto>"
     else:
         title, nxt = f"Galivelop-workflow v{version} workflow", "Next: <next concrete step>"
-    print("aplicar: nothing was committed; suggested commit (fill in the last line):")
+    print("apply: nothing was committed; suggested commit (fill in the last line):")
     print(f"  git add -A && git commit -m \"{title}\" -m \"{nxt}\"")
     return 0
 
