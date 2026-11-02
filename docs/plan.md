@@ -4,7 +4,8 @@
 > fase acaba con commit + push y su casilla marcada en `docs/traspaso.md` del repo nuevo.
 > Redactado el 2026-10-21 a partir del flujo en uso en **Portal-Galivelop** y **World-Maker-Fantasy (Tarkor)**.
 > **Revisado el 2026-10-21 al cerrar la Fase 0** con las decisiones del usuario (§0). Investigación en
-> `docs/investigacion/`.
+> `docs/investigacion/`. **Revisado el 2026-11-02 (A7):** el repo es público y cada versión se publica aquí (§1,
+> §2, §7, §9, §10; decisión en `docs/diseno/A-marco.md`, A1).
 
 ## 0. Cambios tras la Fase 0 (decisiones del usuario, 2026-10-21)
 
@@ -44,31 +45,33 @@ Lo que resuelve el flujo:
 4. **Gastar pocos tokens sin perder calidad.** `orchestrate-dealer`, compactación a 200k, recuperación tras
    `/clear`, y `opt-tokens` + `retro` que miden y proponen mejoras del entorno.
 
-**Fin del camino:** tras mucho rodaje en proyectos reales y con los criterios de la §10 cumplidos, se publica la
-**`1.0.0`, y solo esa**, en un repo público aparte; se publica en el portal Galivelop como proyecto (ficha en
-castellano, gallego e inglés) y se valora publicarla también en npm. Las versiones siguientes siguen privadas.
-La `1.0.0` se obtiene **solo como plugin**: tener el flujo en local (copiado en un repo) queda para el repo privado,
-los colaboradores invitados o una posible venta. Por eso el portal (público) quita su copia del flujo y pasa a
-depender del plugin (decidido por el usuario, 2026-10-22).
+**Fin del camino:** este repo es el producto y es **público**, con todas sus versiones: se busca difusión y uso, no
+venta (decidido por el usuario, 2026-10-30/31; A1). **Cada versión se publica aquí**, con su etiqueta y su release
+(§7), en el orden de [`roadmap.md`](roadmap.md); la `1.0` es el Management Center. El flujo se obtiene de dos
+formas, que valen las dos: como **plugin** o como **copia gestionada** en el repo del proyecto (`gw-init`,
+`gw-update`). El lanzamiento (Fase 10) lleva ficha en el portal Galivelop (castellano, gallego e inglés), npm si se
+hace (§11) y publicaciones con `gw-media-content`. *(Sustituye a lo decidido el 2026-10-22: solo la `1.0.0`, en un
+repo público aparte, solo como plugin y con las versiones siguientes privadas.)*
 
 ## 2. Decisiones ya tomadas (del usuario, 2026-10-21)
 
 | Decisión | Valor |
 |---|---|
-| Nombre del repo | `Galivelop-workflow`, siempre privado; la `1.0.0` se publica en un repo público aparte (§10) |
+| Nombre del repo | `Galivelop-workflow`, **público** (2026-10-30/31; antes, privado con la `1.0.0` en un repo aparte) |
 | Idiomas | **Español e inglés** (ver §4.4) |
 | Distribución | La más cómoda y limpia: **plugin de Claude Code servido desde el propio repo como marketplace**. npm se valora al final |
 | Versionado | El repo es el punto de versión de todas las skills y mejoras |
-| Publicación | Solo la `1.0.0` es pública (+ ficha en Galivelop), cuando el flujo esté probado como 100 % funcional y aplicable a cualquier sistema; de la siguiente en adelante, privadas (decidido por el usuario, 2026-10-22) |
+| Publicación | Cada versión se publica en este repo con su etiqueta `vX.Y.Z` y su release (§7); la ficha en Galivelop, en el lanzamiento (Fase 10). Sustituye a «solo la `1.0.0` es pública» (2026-10-22) |
+| Licencia | **MIT** para todo, como las skills de terceros (usuario, 2026-11-01; A-1) |
 
 > **Revisado en §0:** la distribución base es la copia gestionada; el plugin queda como opción de la etapa 2.
 >
 > **Revisado de nuevo (2026-10-22):** hasta la Fase 8, la copia gestionada sigue siendo la base de trabajo en los
-> pilotos privados; desde la Fase 9, el plugin pasa a ser **la única distribución hacia fuera**. Límites que hay que
-> resolver ahí: un plugin baja sus archivos a quien lo instala, así que lo que controla el uso es la **licencia**
-> (la MIT actual permite redistribuir; la de la `1.0.0` queda abierta para la Fase 10, y las skills de Matt Pocock
-> conservan su MIT); en la nube el plugin lo instala el script de entorno (Opción D); los ganchos de git
-> (`pre-push`, marca de revisado) tienen que llegar desde el plugin, y eso está sin probar.
+> pilotos privados; desde la Fase 9, el plugin pasa a ser **la única distribución hacia fuera**.
+>
+> **Revisado otra vez (2026-11-02, A7):** con el repo público, el plugin y la copia gestionada valen los dos (§1), y
+> la licencia queda fijada: MIT. Sigue pendiente para la Fase 9: en la nube el plugin lo instala el script de entorno
+> (Opción D), y los ganchos de git (`pre-push`, marca de revisado) tienen que llegar desde el plugin, sin probar aún.
 
 **Por qué plugin y no un script que copia archivos** (razonamiento original): el plugin trae versión, actualización (`/plugin update`) y
 desinstalación de serie; las skills no se duplican en cada repo; y en un proyecto basta una línea en
@@ -320,8 +323,12 @@ Ejemplos que los pilotos tienen que cubrir: el portal (Node, subida directa, tre
   `0.x`» del 2026-10-25). Cada recogida reparte lo que trae: las correcciones de lo que ya hay van al siguiente parche
   de esa menor (hoy `0.4.x`); un evolutivo o algo nuevo (skill, gancho, mejora) va a la siguiente menor (hoy la
   `0.5`, rama `version/0.5.0`), y los parches se fusionan también en ella. Se avanza por la `0.x` (`0.5` «Base»,
-  `0.6` «Medir»…): en `0.y.z` una menor puede romper. La `1.0` es el Management Center y llega cuando se cumple la
-  §10; el reparto por versiones está en [`roadmap.md`](roadmap.md) (diseño en `docs/diseno/H-roadmap.md`).
+  `0.6` «Medir»…): en `0.y.z` una menor puede romper. La `1.0` es el Management Center y sale cuando está hecho lo
+  que el roadmap le asigna (A-5); los criterios de la §10 miden la madurez de la línea `1.x` y no bloquean la
+  etiqueta. El reparto por versiones está en [`roadmap.md`](roadmap.md) (diseño en `docs/diseno/H-roadmap.md`).
+- **Cada versión se publica en este repo** (público, A1): subida a `main`, etiqueta y release. **A lo sumo una
+  publicación al día** (A-6): lo que llegue después espera en la rama y sale junto en la siguiente; solo un arreglo
+  grave (un gancho que bloquea subidas buenas, pérdida de datos) se la salta, con confirmación del usuario.
 
 ## 8. Instalación en un proyecto
 
@@ -379,8 +386,8 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
 | Fase | Qué | Hecho cuando |
 |---|---|---|
 | **8. Instalador** | Elegir Copier o script propio; una orden que **instala** (proyecto nuevo o existente sin el flujo, sin pisar, conflictos marcados) o **actualiza** (con `gw.json`, o una copia anterior sin él) según lo que encuentre (§8) | Instalar sin IA en un repo nuevo; actualizar sin IA los pilotos (de su versión a la nueva) y VeriNews_AI (copia anterior sin `gw.json`); `doctor.py` en verde |
-| **9. Plugin y npm** | El plugin pasa a ser la única distribución hacia fuera: marketplace en el repo privado con acceso por invitación, instalado en local y por el script de entorno de la nube (Opción D); que el plugin traiga también los ganchos de git (`pre-push`, marca de revisado); valorar npm (§11) | Un proyecto (el portal) funcionando solo con el plugin, en local y en la nube, ganchos incluidos |
-| **10. Público** | Elegir la licencia de la `1.0.0` (que no permita redistribuirla ni venderla; MIT solo en lo de terceros), `/security-review`, quitar rutas o nombres privados, `1.0.0` **solo como plugin** copiada en un repo público aparte **sin el historial** (un solo commit; este repo sigue privado y continúa en `1.0.x`/`1.1`), ficha en el portal (tres idiomas); el portal quita su copia del flujo (desde una sesión del portal) y depende del plugin. Si hay npm, solo la `1.0.0` | Repo público con la `1.0.0` como plugin y ficha publicada; el portal sin copia del flujo; nada posterior fuera del repo privado |
+| **9. Plugin y npm** | El plugin como segunda vía junto a la copia gestionada: marketplace en este repo (público), instalado en local y por el script de entorno de la nube (Opción D); que el plugin traiga también los ganchos de git (`pre-push`, marca de revisado); valorar npm (§11) | Un proyecto funcionando solo con el plugin, en local y en la nube, ganchos incluidos |
+| **10. Lanzamiento** | Ficha en el portal Galivelop (tres idiomas), npm si se hace (§11) y publicaciones (`gw-media-content`); antes, `/security-review` y repaso de la §10. *(Antes «Público»: copia de la `1.0.0` a un repo público aparte; ya no hace falta, este repo es el público)* | Ficha publicada y lanzamiento anunciado |
 
 **Apuntes para las Fases 9 y 10** (recogida de 2026-10-25, sin cambio ahora; se miran al abrir cada fase):
 
@@ -390,7 +397,10 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
 - **Fase 10:** tabla amenaza / contramedida / evidencia como documento de seguridad; acciones del CI fijadas por
   `sha` y `permissions: {}` por defecto (hoy `comprobar.yml` y `release.yml` usan `@v4` / `@v5`).
 
-## 10. Criterios para «100 % funcional y aplicable a cualquier sistema» (paso a 1.0)
+## 10. Criterios para «100 % funcional y aplicable a cualquier sistema» (madurez de la `1.x`)
+
+Miden la madurez de la línea `1.x`; no bloquean la etiqueta `1.0` (§7, A-5). «Nada privado» es la excepción: se
+exige ya, en cada subida.
 
 - Funciona en **tres proyectos** de stacks distintos (al menos uno sin Node: el instalador de Tarkor o VeriNews son los candidatos)
   durante **≥ 4 semanas** cada uno.
@@ -400,7 +410,9 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
   macOS en verde. Windows: documentado (Git Bash o WSL) y probado al menos una vez.
 - **Instalación limpia**: etapa 1, un agente con `aplicar.md` + `doctor.py` en un repo nuevo sin tocar nada a mano;
   etapa 2, lo mismo sin IA.
-- **Nada privado** en el repo: ni rutas de Tarkor o el portal, ni identificadores internos, ni datos personales.
+- **Nada privado** en el repo, **en cada subida** (el repo ya es público, A1): ni rutas de Tarkor o el portal, ni
+  identificadores internos, ni datos personales, ni nombres de los repos privados (lista local en
+  `.claude/gw.local.json`). Lo comprobará el check de E2 en el `pre-push` (`0.5`).
 - Documentación ES/EN completa y emparejada (lo comprueba el test).
 
 ## 11. npm (al final, opcional)

@@ -22,6 +22,10 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   reparte por versión cada tarea del diseño con su id (D13), y `docs/registros/pendiente.md` (antes
   `pendiente-1.0.0.md`) lleva la versión en cada línea (H12). En `AGENTS.md`, el plan §7, los README y la guía de
   contribuir.
+- Plan reescrito para el repo público (A7, A1): cada versión se publica aquí con su etiqueta y su release; plugin y
+  copia gestionada valen los dos; licencia MIT (A-1); a lo sumo una publicación al día (A-6); la `1.0` sale cuando está
+  hecho su alcance del roadmap y los criterios de la §10 miden la madurez de la `1.x` (A-5); la Fase 10 pasa a
+  «Lanzamiento» y «nada privado» se exige en cada subida.
 - El `pre-push` no repite un `check` que ya pasó en verde sobre el mismo árbol, las mismas órdenes y el mismo
   `checkWrapper` (P3 de la retro del parche `0.4.1`). `scripts/check.sh` (en los proyectos,
   `.claude/gw/scripts/check.sh`) corre el `check` sobre la copia de trabajo y, si pasa y el árbol no cambió durante la
@@ -98,6 +102,10 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   moves through `0.x` and `1.0` will be the Management Center. `docs/roadmap.en.md` (with `docs/roadmap.md`) splits
   every design task by version with its id (D13), and `docs/registros/pendiente.md` (formerly `pendiente-1.0.0.md`)
   has the version on each line (H12). In `AGENTS.md`, plan §7, the READMEs and the contributing guide.
+- Plan rewritten for the public repo (A7, A1): every version is released here with its tag and release; plugin and
+  managed copy are both valid; MIT license (A-1); at most one release per day (A-6); `1.0` ships when its roadmap
+  scope is done and the §10 criteria measure the maturity of `1.x` (A-5); Phase 10 becomes "Launch" and "nothing
+  private" is required on every push.
 - `pre-push` does not repeat a `check` that already passed on the same tree, commands and `checkWrapper` (P3 of the
   `0.4.1` patch retro). `scripts/check.sh` (in projects, `.claude/gw/scripts/check.sh`) runs the `check` on the working
   copy and, if it passes and the tree did not change during the run, records the green; `scripts/check-verde.sh` is
