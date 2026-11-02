@@ -1,4 +1,4 @@
-# Harvest verinews_ai — 2026-10-21
+# Harvest private-project-1 — 2026-10-21
 
 De `never` a `a9b5761e6445` (`scripts/recoger.py`). Sin skills nacidas ni scripts con diferencias (el flujo se portó de
 Tarkor); las 14 skills que difieren llevan notas de idioma, `GLOSSARY.md` y Maven/Vite. Lo de ganchos, antisecretos y
@@ -31,8 +31,8 @@ Tarkor); las 14 skills que difieren llevan notas de idioma, `GLOSSARY.md` y Mave
 ## Se queda en el proyecto
 
 - `.claude/skills/pr/SKILL.md` (+8): `mvn test`, lint, capturas y peligro de `ALTER` en producción.
-- `.claude/skills/grilling/SKILL.md`: referencias del IMI (marcos de verificación); la parte general es P1 del harvest de `world-maker-fantasy`.
-- `retro-2026-10-21-flujo.md` R2 en su forma exacta (`resolver_hallazgos.py`): su registro de hallazgos.
+- `.claude/skills/grilling/SKILL.md`: referencias propias de su dominio; la parte general es P1 del harvest de `world-maker-fantasy`.
+- `retro-2026-10-21-flujo.md` R2 en su forma exacta (un script propio): su registro de hallazgos.
 
 ## Ya está aquí
 

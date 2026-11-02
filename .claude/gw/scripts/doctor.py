@@ -11,7 +11,7 @@ hooks (present, executable, version); the log and its next step; the `check`, `i
 `bash -n`/`sh -n` `check` command that reads only one file: `check syntax-only`); a CI
 workflow; .claude/settings.json (WMF P4: SessionStart matchers, `compact` only runs recover.py --state, hook
 commands point to existing files, the PR guard on PreToolUse); AGENTS.md/CLAUDE.md authorise dealing work to
-subagents (VeriNews P1); copied skills at the config's version; a session opened outside the repo (VeriNews P3);
+subagents (private-project-1 P1); copied skills at the config's version; a session opened outside the repo (private-project-1 P3);
 in a cloud session (CLAUDE_CODE_REMOTE=true), the compaction window the project's settings.json sets is in the
 environment; a skill script under .claude/skills/*/scripts/ without a test_<name>.py next to it (WMF 2026-10-25 P2); and,
 only in a project that uses gw-media-content (its note .claude/gw/gw-media-content.md or its folder exists), node,

@@ -90,7 +90,7 @@ class AgentMapCheck(unittest.TestCase):
         self.assertIn("does not define resolverOtro", out)
 
     def test_java_methods_with_a_return_type_are_definitions(self):
-        """VeriNews P11: `public ResponseEntity<?> analizar(...) {` and `void run() {` were not recognised."""
+        """private-project-1 P11: `public ResponseEntity<?> analizar(...) {` and `void run() {` were not recognised."""
         for name, line in [
             ("analizar", "    public ResponseEntity<?> analizar(@RequestBody Req r) {"),
             ("lista", "    private static List<String>[] lista(int a) throws IOException {"),

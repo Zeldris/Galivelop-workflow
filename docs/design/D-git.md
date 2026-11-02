@@ -5,7 +5,7 @@ versiones (bloque H).
 
 ## Respuestas del usuario (2026-11-01)
 
-- **1:** sí, «toveriai» es VeriNews_AI.
+- **1:** sí, el alias es el mismo proyecto (`private-project-1`).
 - **2:** el correo de `AGENTS.md` se queda (es el del usuario).
 - **3:** las recogidas se revisan en la `1.0.0`, con el check de datos privados del bloque E.
 - **4:** el historial no se reescribe; la regla vale de aquí en adelante.
@@ -30,7 +30,7 @@ Cada punto lleva la recomendación del agente (**Rec.**).
 
 ### Lo que queda del bloque A (A-2)
 
-1. **«toveriai»:** ¿es VeriNews_AI? **Rec.:** sí, y se apunta así en el plan.
+1. **Alias de `private-project-1`:** ¿es el mismo proyecto? **Rec.:** sí, y se apunta así en el plan.
 2. **El correo de `AGENTS.md`** (el de `git config user.email`): (a) se queda, porque los commits ya lo muestran;
    (b) se cambia por el correo `noreply` de GitHub en el texto y en `git config`. **Rec.:** (b), en la `1.0.0`. El
    historial ya publicado sigue mostrando el correo de siempre.

@@ -1,10 +1,10 @@
-# Harvest galivelop-developer — 2026-10-27
+# Harvest private-project-2 — 2026-10-27
 
 De `never` a `70b0396a` (`scripts/recoger.py`, 24 commits desde `7822eec`; el proyecto usa la v0.3.0, sin cambios
 propios en skills ni scripts del flujo: todo son copias antiguas). Primera recogida de la `1.0.0`. Las ideas salen de
 `docs/registros/retro-2026-10-25-aplicar-flujo.md` @ `f92d90a` y `docs/registros/retro-2026-10-25-f0.md` @ `6e2e8e5`.
 
-`galivelop-image-generator` y `galivelop-voice-generator` no se recogieron: son privados y la sesión no pudo añadirlos
+`galivelop-image-generator` y `private-project-3` no se recogieron: son privados y la sesión no pudo añadirlos
 (permiso denegado). Quedan para una sesión que los tenga.
 
 Política de versiones (plan §7): lo que es corrección va a un parche `0.4.x`; lo nuevo, a la `1.0.0`.

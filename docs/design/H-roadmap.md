@@ -13,7 +13,7 @@ cada bloque (`B-3` = pregunta 3 del bloque B) hasta que la pregunta 1 fije los d
 
 ### `0.4.3` (listo, espera tu confirmación)
 
-P1-P4 de la recogida de `galivelop-developer`, R2 y R4 de su retro. Rama `ccr-6dfbc880-ddr41g`, marca `01274a9`.
+P1-P4 de la recogida de `private-project-2`, R2 y R4 de su retro. Rama `ccr-6dfbc880-ddr41g`, marca `01274a9`.
 
 ### `0.4.4` (arreglos, otro día por la cadencia A-6)
 
@@ -39,7 +39,7 @@ En este orden, porque cada paso usa el anterior:
    recogidas anonimizadas (`private-project-1`) y repaso de las ya publicadas.
 7. **Reglas deterministas (E-1, E-6):** auditoría de `AGENTS.md`/`CLAUDE.md` con check de tope de líneas; cada regla
    de `REVIEW.md` nombra su check o dice «criterio».
-8. **Lo que ya esperaba:** toda la lista de `pendiente-1.0.0.md` (DEV P5-P8, VeriNews P1-P11, INS P9-P13, Portal P4,
+8. **Lo que ya esperaba:** toda la lista de `pendiente-1.0.0.md` (private-project-2 P5-P8, private-project-1 P1-P11, INS P9-P13, Portal P4,
    R1, retro 0.4.2 P3-P4…), ver pregunta 3.
 9. **Documentación (E-8):** repaso completo al final, por subagentes.
 

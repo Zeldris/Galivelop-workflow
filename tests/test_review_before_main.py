@@ -3,7 +3,7 @@ branch through pull requests, against temporary repos: a bare "origin" plus a cl
 applied the workflow (test_hooks.Project). The PR head is read from origin with `git ls-remote`; GitHub API calls go
 to a fake `gh` (or a fake `curl`) on PATH that prints the canned JSON in GH_PR / GH_RUNS / GH_STATUS.
 
-Covers the Installer's P1 list (docs/proposals/2026-10-21-instalador-wmf-tarkor.md) plus VeriNews's `gh pr` in Bash
+Covers the Installer's P1 list (docs/proposals/2026-10-21-instalador-wmf-tarkor.md) plus private-project-1's `gh pr` in Bash
 and commit statuses, and the portal's mark rule (ancestor with no code after it).
 """
 import json
@@ -429,7 +429,7 @@ class Hook(unittest.TestCase):
         self.assertIn(f"Authorization: Bearer {token}", log.splitlines()[0])
         self.assertNotIn(token, "\n".join(log.splitlines()[1:]))
 
-    # Bash (VeriNews) ----------------------------------------------------------------------------------------------
+    # Bash (private-project-1) -------------------------------------------------------------------------------------
     def test_gh_pr_create_to_main_guarded(self):
         self.assertBlocked(self.bash('git push && gh pr create --base main --title "x" --body "y"'), "no review mark")
         self.assertBlocked(self.bash("gh pr create --fill"), "no review mark")  # no --base: the default branch

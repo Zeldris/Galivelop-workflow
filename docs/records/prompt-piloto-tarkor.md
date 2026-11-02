@@ -1,7 +1,7 @@
 # Prompts del piloto en Tarkor (Fase 6)
 
 Dos prompts, uno por repo. Cada uno se pega en una sesión abierta con **ese repo como carpeta de trabajo** (sin
-registrar Galivelop-workflow como raíz de la sesión). VeriNews_AI queda fuera: se aplicará en la Fase 8, sin agente.
+registrar Galivelop-workflow como raíz de la sesión). private-project-1 queda fuera: se aplicará en la Fase 8, sin agente.
 
 Lo común a los dos (leído el 2026-10-22): ya llevan una copia anterior del flujo (17 skills, `.claude/hooks/`,
 `.githooks/`, `tools/qa/`), la marca en `.claude/revision-main.sha`, bitácora `docs/registros/traspaso.md` con una

@@ -4,7 +4,7 @@
 
 Claude Code stores each session in ~/.claude/projects/<working folder with every non-alphanumeric as "-">/. A session
 opened in a folder that contains the repo (in the cloud, /home/user with several repos in it) stores it in that
-folder's directory, not the repo's, and did not load the repo's .claude/settings.json (VeriNews P3). So the search
+folder's directory, not the repo's, and did not load the repo's .claude/settings.json (private-project-1 P3). So the search
 covers the repo folder and its parent folders (never sibling repos), plus the cloud start folder (-home-user), and
 the newest transcript wins. When it is not the repo's own folder, a warning goes to stderr, except for a cloud session
 (CLAUDE_CODE_REMOTE=true) in the cloud start folder: there it cannot start anywhere else (Portal P1).

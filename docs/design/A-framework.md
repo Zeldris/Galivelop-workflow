@@ -23,7 +23,7 @@ la `1.0.0`. Encontrado al preparar este bloque:
 
 - `AGENTS.md` lleva el correo personal del usuario (la orden `git config user.email …`).
 - `docs/proposals/` tiene diez recogidas con el nombre y el contenido de proyectos del usuario (Tarkor, portal,
-  VeriNews…), y dos de ellos eran privados el 2026-10-27 (`galivelop-image-generator`, `galivelop-voice-generator`).
+  private-project-1…), y dos de ellos eran privados el 2026-10-27 (`galivelop-image-generator`, `private-project-3`).
 - La limpieza completa de la documentación (sin «basura», ajustada a lo que hay) es del bloque E; aquí solo se
   decide el criterio.
 
@@ -93,8 +93,8 @@ recogida al abrir versión, `metadata.version` en cada skill y cabecera de versi
 ## Respuestas del usuario (2026-11-01)
 
 - **A-1:** licencia MIT, se queda.
-- **A-2:** siguen privados `galivelop-voice-generator`, `galivelop-developer` y VeriNews_AI, siempre (por confirmar que
-  «toveriai» es VeriNews_AI). Falta decidir cuándo se quita el correo de `AGENTS.md` y se revisan las recogidas.
+- **A-2:** siguen privados `private-project-3`, `private-project-2` y `private-project-1`, siempre (por confirmar
+  un alias de este último). Falta decidir cuándo se quita el correo de `AGENTS.md` y se revisan las recogidas.
 - **A-3:** las skills de terceros conservan su nombre; `gw-` solo en lo que creamos nosotros.
 - **A-4:** rutas del proyecto en inglés, también en los proyectos en español.
 - **A8, nombres concretos (2026-11-02):** `orchestrate-dealer` → `gw-orchestrate-dealer` (y `gw-selector`,
