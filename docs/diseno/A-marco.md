@@ -108,6 +108,8 @@ recogida al abrir versión, `metadata.version` en cada skill y cabecera de versi
   `subagent-cap.py`, `aplicar.py` → `apply.py`; sin cambios `config`, `doctor`, `version`, `check`, `session-start` y
   `ci-local`); rutas `docs/handoff.md`, `docs/records/`, `docs/proposals/` y `docs/records/reviewed.txt`. Este repo
   renombra también sus internos en la `0.5` (`docs/design/`, `docs/research/`, `docs/records/`, `tests/check.sh`).
+- **Todo nombre en inglés (2026-11-02):** también opciones, subórdenes, variables, funciones, tests y los nombres de
+  archivo de `docs/es/`; regla en `AGENTS.md` y trozo 6 de A8 con check.
 - **A-5:** decidida (2026-11-01): la recomendación del agente (abajo).
 - **A-6:** decidida (2026-11-01): la recomendación del agente (abajo): como mucho una publicación al día.
 - **Abierto:** lo que queda de A-2 va en la lista de preguntas de [`D-git.md`](D-git.md) (puntos 1-4).
