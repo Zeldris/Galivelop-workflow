@@ -50,7 +50,7 @@ In this order, because each step uses the previous one.
 | D12 | `Refs: <id>` trailer required by `commit-msg` (except merges), checked against this roadmap | done |
 | D15 | Optional `Agent:` trailer, with no model name | done |
 | D16 | Subagent branches `agent/<id>-…`; `merge-branch.sh` copies `Refs:` | done |
-| E2 | Private-data check in `pre-push` (list in `.claude/gw.local.json`); CI, only keys and emails | pending |
+| E2 | Private-data check in `pre-push` (list in `.claude/gw.local.json`); CI, only keys and emails | done (`8ffc4f5`) |
 | E3 | Published harvests anonymised (`private-project-1`) | pending |
 | D3 | Review of the already published harvests with E2's check | pending |
 | E1 | Audit of `AGENTS.md` and `CLAUDE.md`, with a line-cap check | pending |
