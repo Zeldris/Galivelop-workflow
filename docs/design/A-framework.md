@@ -110,6 +110,9 @@ recogida al abrir versión, `metadata.version` en cada skill y cabecera de versi
   renombra también sus internos en la `0.5` (`docs/design/`, `docs/research/`, `docs/records/`, `tests/check.sh`).
 - **Todo nombre en inglés (2026-11-02):** también opciones, subórdenes, variables, funciones, tests y los nombres de
   archivo de `docs/es/`; regla en `AGENTS.md` y trozo 6 de A8 con check.
+- **A8, `gw-media-content` (2026-11-02):** la carpeta por defecto `docs/difusion` pasa a `docs/media` (la vieja se
+  acepta con aviso en la `0.x`); `web.md` escribe las claves en inglés y también las viejas en español durante la
+  `0.x`, para no romper la web que lo lea.
 - **A-5:** decidida (2026-11-01): la recomendación del agente (abajo).
 - **A-6:** decidida (2026-11-01): la recomendación del agente (abajo): como mucho una publicación al día.
 - **Abierto:** lo que queda de A-2 va en la lista de preguntas de [`D-git.md`](D-git.md) (puntos 1-4).
