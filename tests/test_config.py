@@ -99,6 +99,24 @@ class Config(unittest.TestCase):
             self.assertIn("$.subagentCap", r.stderr)
             self.assertIn(why, r.stderr)
 
+    def test_private_check_default_and_bad_values(self):
+        self.write(VALID)
+        r = cli(self.tmp, "get", "privateCheck")
+        self.assertEqual(json.loads(r.stdout), {"emails": True, "allowEmails": []})
+        for good in (False, True, {"emails": False}, {"allowEmails": ["me@example.com"]}):
+            self.write(dict(VALID, privateCheck=good))
+            self.assertEqual(cli(self.tmp, "validate").returncode, 0, good)
+        cases = {"x": "expected", json.dumps({"mails": True}): "mails",
+                 json.dumps({"allowEmails": ["not-an-address"]}): "does not match",
+                 json.dumps({"allowEmails": "me@example.com"}): "expected", json.dumps({"emails": "yes"}): "expected"}
+        for bad, why in cases.items():
+            value = json.loads(bad) if bad.startswith("{") else bad
+            self.write(dict(VALID, privateCheck=value))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn("$.privateCheck", r.stderr)
+            self.assertIn(why, r.stderr)
+
     def test_stale_refs_forms_and_globs(self):
         import sys
         sys.path.insert(0, str(ROOT / "scripts"))

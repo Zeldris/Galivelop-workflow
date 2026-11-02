@@ -938,6 +938,57 @@ class PrePushWorktree(Base):
             self.assertNoWorktreeLeft()
 
 
+class PrePushPrivate(Base):
+    """E2: the pre-push runs private-check.py on what each ref brings (names from the local, uncommitted list)."""
+
+    def setUp(self):
+        super().setUp()
+        p = self.p
+        shutil.copy2(ROOT / "scripts" / "private-check.py", p.work / ".claude" / "gw" / "scripts" / "private-check.py")
+        p.write(".gitignore", ".claude/gw.local.json\n")
+        p.commit("ignore the local list")
+        p.git("checkout", "-q", "-b", "feature")
+        self.mail = "jane" + "@" + "corp.io"
+
+    def test_private_name_refused_with_the_reason(self):
+        p = self.p
+        p.write(".claude/gw.local.json", json.dumps({"privateNames": ["Secret Client"]}))
+        p.write("docs/a.md", "work for secret-client\n")
+        p.commit("notes")
+        code, out = p.push("origin", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn(f"docs/a.md:1 (commit {p.sha()[:7]}): private name secret-client", out)
+        self.assertIn("the push carries private data or a key", out)
+        self.assertIn("git rebase -i origin/feature", out)
+
+    def test_without_the_local_file_names_are_skipped_with_a_notice(self):
+        p = self.p
+        p.write("docs/a.md", "work for secret-client\n")
+        p.commit("notes")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertIn("no .claude/gw.local.json, so private names are not checked", out)
+
+    def test_e_mail_refused_unless_allowed(self):
+        p = self.p
+        p.write("docs/a.md", f"ask {self.mail}\n")
+        p.commit("contact")
+        code, out = p.push("origin", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn(f"docs/a.md:1 (commit {p.sha()[:7]}): e-mail {self.mail}", out)
+        p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"allowEmails": [self.mail]}), indent=2))
+        p.commit("allow it")  # read from the pushed commit, like the rest of the config
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+
+    def test_marked_line_passes(self):
+        p = self.p
+        p.write("docs/a.md", f"ask {self.mail}  <!-- gw-allow-private -->\n")
+        p.commit("contact")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+
+
 class PortableShell(unittest.TestCase):
     """macOS ships bash 3.2 and a BSD mktemp: no mapfile / associative arrays, and mktemp templates end in XXXXXX."""
 
@@ -1834,6 +1885,14 @@ class PreCommit(Base):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn(".env", r.stderr)
 
+    def test_private_local_file_refused_by_name(self):
+        p = self.p
+        p.write("sub/.claude/gw.local.json", '{"privateNames": []}\n')
+        r = p.commit("local list", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("credentials or private data (.claude/gw.local.json)", r.stderr)
+        self.assertIn("sub/.claude/gw.local.json", r.stderr)
+
     def test_protected_paths_only_under_claude_code(self):
         p = self.p
         p.write("drafts/idea.md", "draft\n")
@@ -2309,7 +2368,7 @@ class CommitMsgSignatures(Base):
     def test_a_human_called_claude_passes(self):
         p = self.p
         p.write("docs/notes.md", "claude\n")
-        r = p.commit("work\n\nCo-Authored-By: Claude Dupont <claude@example.fr>", ok=False)
+        r = p.commit("work\n\nCo-Authored-By: Claude Dupont <claude@example.com>", ok=False)
         self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_a_body_that_quotes_the_signatures_passes(self):

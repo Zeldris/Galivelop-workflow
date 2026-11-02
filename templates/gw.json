@@ -38,5 +38,6 @@
   "plan": [],
   "taskId": "[A-Z]{2,5}-\\d+",
   "subagentCap": 30,
+  "privateCheck": {"emails": true, "allowEmails": []},
   "agentMap": {"prefixes": {}, "roots": []}
 }

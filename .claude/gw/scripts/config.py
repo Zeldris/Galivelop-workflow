@@ -13,6 +13,9 @@ defaults the schema declares. Shell scripts call the CLI; Python scripts import 
                                         # (reads the changed files that exist, one per line, on stdin)
   python3 config.py --rev REV get KEY   # the config as commit REV has it (git show REV:.claude/gw.json), e.g. the
                                         # commit a hook is about to push; absent or invalid at REV -> exit 2
+  python3 config.py local               # the validated local file .claude/gw.local.json as JSON (`null` when absent);
+                                        # malformed -> exit 2. Never committed: it holds what must not be public
+                                        # (privateNames, plus allowEmails for private-check.py)
 
 Project root: --root, else the git top level of this script's folder when that repo has .claude/gw.json (the copy
 in a project lives in .claude/gw/scripts/), else the git top level of the current directory when it is
@@ -35,6 +38,10 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 CONFIG_REL = Path(".claude") / "gw.json"
+# The person's own file, never committed (.gitignore, and the pre-commit hook refuses it): what must not be public.
+LOCAL_REL = Path(".claude") / "gw.local.json"
+LOCAL_KEYS = {"privateNames": "names that must never reach the repo (private repos, people, places)",
+              "allowEmails": "e-mail addresses private-check.py lets through, on top of privateCheck.allowEmails"}
 
 # The format of gw.json (its `schemaVersion`; absent = 0, written before 0.5). load() migrates an older config in
 # memory, so every reader sees the current shape; apply.py (/gw-update) writes the migration to disk. A newer one
@@ -429,6 +436,45 @@ def load(root=None, rev=None, paths_at=None):
     return config
 
 
+def load_local(root):
+    """The local file .claude/gw.local.json of `root` as {"privateNames": [...], "allowEmails": [...]}, or None when it
+    does not exist. Raises ConfigError (fail closed) when it is not a JSON object of lists of non-empty strings with
+    only the LOCAL_KEYS."""
+    path = Path(root) / LOCAL_REL
+    if not path.is_file():
+        return None
+    fix = (f"fix it (a JSON object with {', '.join(sorted(LOCAL_KEYS))}: lists of strings) and check: "
+           f"python3 {HERE / 'config.py'} --root {root} local")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ConfigError(f"{path}: invalid JSON at line {exc.lineno}: {exc.msg}; {fix}")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise ConfigError(f"{path}: cannot read it ({exc}); {fix}")
+    if not isinstance(data, dict):
+        raise ConfigError(f"{path}: expected a JSON object, got {type(data).__name__}; {fix}")
+    out = {}
+    for key, value in data.items():
+        if key not in LOCAL_KEYS:
+            raise ConfigError(f"{path}: unknown key '{key}' (allowed: {', '.join(sorted(LOCAL_KEYS))}); {fix}")
+        if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
+            raise ConfigError(f"{path}: '{key}' must be a list of non-empty strings; {fix}")
+        out[key] = list(value)
+    for key in LOCAL_KEYS:
+        out.setdefault(key, [])
+    return out
+
+
+def private_check(config):
+    """The `privateCheck` key as {"emails": bool, "allowEmails": [...]} with its defaults, or None when it is false
+    (private-check.py off)."""
+    value = config.get("privateCheck", True)
+    if value is False:
+        return None
+    value = value if isinstance(value, dict) else {}
+    return {"emails": value.get("emails", True), "allowEmails": list(value.get("allowEmails") or [])}
+
+
 def related_commands(config, kind, files):
     """The relatedTests commands of `kind` that apply to `files` (repo-relative paths that exist in the commit), each
     as one shell command line. An entry is a string or {"command", "paths"?, "cwd"?}. `paths` (a regex searched in the
@@ -468,6 +514,7 @@ def main(argv=None):
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("validate")
     sub.add_parser("root")
+    sub.add_parser("local", help="the validated local file .claude/gw.local.json as JSON (null when absent)")
     related = sub.add_parser("related", help="relatedTests commands that apply to the files on stdin")
     related.add_argument("--kind", choices=("fast", "slow"), required=True)
     get = sub.add_parser("get")
@@ -484,6 +531,13 @@ def main(argv=None):
         return 0
     if args.command == "root":
         print(config["_root"])
+        return 0
+    if args.command == "local":
+        try:
+            print(json.dumps(load_local(config["_root"]), ensure_ascii=False))
+        except ConfigError as exc:
+            print(f"gw config: {exc}", file=sys.stderr)
+            return 2
         return 0
     if args.command == "related":
         files = [line for line in sys.stdin.read().splitlines() if line]

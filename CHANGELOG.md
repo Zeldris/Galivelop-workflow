@@ -200,6 +200,14 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   escritura de `gw.json` junto con los cambios de rutas de A8, `--check` la cuenta como pendiente y `--init` la escribe;
   `doctor.py` avisa (`config schema`) mientras no se escriba. La migración a 1 solo añade la clave. En el esquema, la
   plantilla `templates/gw.json`, el `gw.json` de este repo, `gw-update`, `docs/es/config.md` y `docs/en/config.md`.
+- E2, nada privado en lo que se publica (plan §10): `scripts/private-check.py` busca formatos de clave (`KEY_FORMATS`
+  del `pre-commit`), direcciones de correo fuera de la lista permitida y los nombres privados de
+  `.claude/gw.local.json` (`privateNames`, nunca en el repo; `config.py local` lo lee y valida, y uno mal formado
+  falla cerrado). Con `--range A..B` o `--commits` mira lo que añade cada commit (también lo que se añadió y se borró
+  después, y los mensajes); con `--all`, los archivos del árbol. El `pre-push` lo pasa sobre lo que sube cada ref y
+  avisa si no hay lista local; `tests/check.sh` corre `--all --no-names`. Clave `privateCheck` (`emails`,
+  `allowEmails`; `false` lo apaga); una línea con `gw-allow-private` no se mira. El `pre-commit` rechaza
+  `.claude/gw.local.json` y `apply.py` lo añade al `.gitignore` del proyecto.
 
 ### EN
 
@@ -382,6 +390,14 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `git interpret-trailers` fails and also cleans up `agent/*` branches.
 - This repo now uses `commitFormat: "conventional"` and `commitRefs: true` (`taskId` `[A-H]\d+`, ids from
   `docs/roadmap.md` and the log); `AGENTS.md` and the templates explain it.
+- E2, nothing private in what is published (plan §10): `scripts/private-check.py` looks for key formats (the
+  `pre-commit`'s `KEY_FORMATS`), e-mail addresses outside the allowed list and the private names of
+  `.claude/gw.local.json` (`privateNames`, never in the repo; `config.py local` reads and validates it, and a malformed
+  one fails closed). With `--range A..B` or `--commits` it reads what each commit adds (also what was added and later
+  removed, and the messages); with `--all`, the files of the tree. `pre-push` runs it on what each ref pushes and
+  gives a notice when there is no local list; `tests/check.sh` runs `--all --no-names`. Key `privateCheck` (`emails`,
+  `allowEmails`; `false` turns it off); a line with `gw-allow-private` is not read. `pre-commit` refuses
+  `.claude/gw.local.json` and `apply.py` adds it to the project's `.gitignore`.
 
 ## [0.4.3] - 2026-10-27
 

@@ -27,6 +27,9 @@ python3 scripts/md-links.py || fail=1
 echo "== names in English (A8)"
 python3 scripts/names-check.py || fail=1
 
+echo "== private data: keys and e-mails (E2)"
+python3 scripts/private-check.py --all --no-names || fail=1
+
 echo "== agent map paths"
 python3 scripts/agent-map.py || fail=1
 
