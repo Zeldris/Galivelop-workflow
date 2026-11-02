@@ -46,7 +46,7 @@ Collect these facts **before** running anything. They all go into `.claude/gw.js
 | Fact | How it is decided |
 |---|---|
 | Language (`language`: `es` or `en`) | The person's and the project docs'; it drives the templates and the replies |
-| Log path (`log`) | Default `docs/traspaso.md` (es) or `docs/handoff.md` (en); the project's own if it already has one |
+| Log path (`log`) | Default `docs/handoff.md` (every language); the project's own if it already has one |
 | Install command(s) (`install`) | Inferred (below); empty if there are no dependencies |
 | Check command(s) (`check`) | Inferred (below); **at least one**, it is what `pre-push` and CI run |
 | Protected branch (`protectedBranch`) | The one that deploys or publishes: `git symbolic-ref --short refs/remotes/origin/HEAD`; if that fails (a fresh or local remote), `git remote show origin \| sed -n 's/.*HEAD branch: //p'`; otherwise ask the person |
@@ -101,7 +101,7 @@ python3 <workflow>/scripts/apply.py <project> --dry-run --init --language en \
 `--dry-run` prints the plan without writing. When it is the one you want, repeat the same command **without**
 `--dry-run`.
 
-Options: `--review-mark PATH` (default `docs/registros/revisado.txt`), `--with gw-opt-ai` and `--with gw-scout-updates`.
+Options: `--review-mark PATH` (default `docs/records/reviewed.txt`), `--with gw-opt-ai` and `--with gw-scout-updates`.
 `--init` writes `.claude/gw.json` only when it does not exist, validates it and applies as usual.
 
 What it does (full detail in `--help`): copies `scripts/` to `.claude/gw/scripts/`, the skills to `.claude/skills/`,

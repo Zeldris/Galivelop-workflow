@@ -45,7 +45,7 @@ Reúne estos datos **antes** de ejecutar nada. Todo va a `.claude/gw.json` (cada
 | Dato | Cómo se decide |
 |---|---|
 | Idioma (`language`: `es` o `en`) | El de la persona y el de la documentación del proyecto; manda sobre las plantillas y las respuestas |
-| Ruta de la bitácora (`log`) | Por defecto `docs/traspaso.md` (es) o `docs/handoff.md` (en); si el proyecto ya tiene una, esa |
+| Ruta de la bitácora (`log`) | Por defecto `docs/handoff.md` (en todos los idiomas); si el proyecto ya tiene una, esa |
 | Orden de instalación (`install`) | Se infiere (abajo); vacío si no hay dependencias |
 | Orden(es) de comprobación (`check`) | Se infiere (abajo); **al menos una**, es lo que corre el `pre-push` y el CI |
 | Rama protegida (`protectedBranch`) | La que despliega o publica: `git symbolic-ref --short refs/remotes/origin/HEAD`; si falla (remoto nuevo o local), `git remote show origin \| sed -n 's/.*HEAD branch: //p'`; si no, pregunta a la persona |
@@ -94,13 +94,13 @@ el de la plantilla (`^docs/`, los `.md` de la raíz que son documentación y los
 
 ```bash
 python3 <flujo>/scripts/apply.py <proyecto> --dry-run --init --language es \
-  --log docs/traspaso.md --install "npm ci" --check-command "npm run lint" --check-command "npm test" \
+  --log docs/handoff.md --install "npm ci" --check-command "npm run lint" --check-command "npm test" \
   --protected-branch main --push-to-protected direct
 ```
 
 `--dry-run` imprime el plan sin escribir. Cuando sea el que quieres, repite la misma orden **sin** `--dry-run`.
 
-Opciones: `--review-mark RUTA` (por defecto `docs/registros/revisado.txt`), `--with gw-opt-ai` y `--with gw-scout-updates`.
+Opciones: `--review-mark RUTA` (por defecto `docs/records/reviewed.txt`), `--with gw-opt-ai` y `--with gw-scout-updates`.
 `--init` solo escribe `.claude/gw.json` si no existe, lo valida y aplica como siempre.
 
 Qué hace (el detalle completo, en `--help`): copia `scripts/` a `.claude/gw/scripts/`, las skills a
