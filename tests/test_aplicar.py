@@ -304,7 +304,8 @@ class Aplicar(unittest.TestCase):
     def old_copy(self, rel):
         """A file as the workflow shipped it under its old name (0.4.x, before A8), from this repo's history."""
         code, out = self.p.run("git", "-C", str(ROOT), "show", f"{PRE_RENAME}:{rel}")
-        self.assertEqual(code, 0, out)
+        self.assertEqual(code, 0, f"{out}\nneeds this repo's full history (a shallow clone lacks {PRE_RENAME}): "
+                                  f"git -C {ROOT} fetch --unshallow")
         return self.p.write(rel, out)
 
     def test_renamed_script_and_skill_old_copies_are_deleted(self):

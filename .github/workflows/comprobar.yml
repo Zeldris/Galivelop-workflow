@@ -16,6 +16,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # tests/test_aplicar.py reads the pre-A8 copies from history (PRE_RENAME)
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
