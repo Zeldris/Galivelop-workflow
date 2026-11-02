@@ -97,6 +97,17 @@ recogida al abrir versión, `metadata.version` en cada skill y cabecera de versi
   «toveriai» es VeriNews_AI). Falta decidir cuándo se quita el correo de `AGENTS.md` y se revisan las recogidas.
 - **A-3:** las skills de terceros conservan su nombre; `gw-` solo en lo que creamos nosotros.
 - **A-4:** rutas del proyecto en inglés, también en los proyectos en español.
+- **A8, nombres concretos (2026-11-02):** `orchestrate-dealer` → `gw-orchestrate-dealer` (y `gw-selector`,
+  `gw-opt-tokens`, `gw-opt-ai`, `gw-scout-updates`); los scripts, con la tabla de la propuesta 3 ampliada
+  (`antes-de-parar.py` → `before-stop.py`, `bitacora.py` → `handoff.py`, `check-verde.sh` → `check-green.sh`,
+  `enlaces-md.py` → `md-links.py`, `es-codigo.sh` → `is-code.sh`, `fusionar.sh` → `merge-branch.sh`,
+  `guardia-config.py` → `config-guard.py`, `mapa-agente.py` → `agent-map.py`, `prepush-ramas.sh` →
+  `prepush-branches.sh`, `recoger.py` → `harvest.py`, `recuperar.py` → `recover.py`, `registro_sesion.py` →
+  `session_log.py`, `revisado.sh` → `reviewed.sh`, `revision-antes-de-main.sh` → `review-before-main.sh`,
+  `rojo-sin-arreglo.sh` → `red-without-fix.sh`, `tests-relacionados.sh` → `related-tests.sh`, `tope-subagentes.py` →
+  `subagent-cap.py`, `aplicar.py` → `apply.py`; sin cambios `config`, `doctor`, `version`, `check`, `session-start` y
+  `ci-local`); rutas `docs/handoff.md`, `docs/records/`, `docs/proposals/` y `docs/records/reviewed.txt`. Este repo
+  renombra también sus internos en la `0.5` (`docs/design/`, `docs/research/`, `docs/records/`, `tests/check.sh`).
 - **A-5:** decidida (2026-11-01): la recomendación del agente (abajo).
 - **A-6:** decidida (2026-11-01): la recomendación del agente (abajo): como mucho una publicación al día.
 - **Abierto:** lo que queda de A-2 va en la lista de preguntas de [`D-git.md`](D-git.md) (puntos 1-4).
