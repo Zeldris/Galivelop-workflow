@@ -1,11 +1,10 @@
 # H. Roadmap y mapa de versiones
 
 **Estado:** cerrado (2026-11-01): H-1..H-14 aprobadas por el usuario; manda el **mapa nuevo** por la `0.x` (abajo),
-que sustituye al primero. Pasa a `docs/roadmap.md` (con su par en inglés) como primera tarea de la `0.5`, en la rama
-`version/0.5.0`.
+que sustituye al primero. Pasado a [`docs/roadmap.md`](../roadmap.md) (con su par en inglés) el 2026-11-02, primera tarea de la `0.5`.
 
 Reparte todo lo decidido en los bloques A-G y lo que ya esperaba en
-[`pendiente-1.0.0.md`](../registros/pendiente-1.0.0.md). Criterio (A-5): la `1.0.0` lleva lo que rompe compatibilidad y
+[`pendiente-1.0.0.md`](../registros/pendiente.md) (hoy `pendiente.md`). Criterio (A-5): la `1.0.0` lleva lo que rompe compatibilidad y
 la base de la medición; lo demás va en menores `1.x`; la `0.4` solo recibe arreglos. Los identificadores son los de
 cada bloque (`B-3` = pregunta 3 del bloque B) hasta que la pregunta 1 fije los del roadmap.
 

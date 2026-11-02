@@ -319,12 +319,14 @@ milestone roadmap, several accounts, PR) and the Tarkor installer (Rust/Tauri: t
   confirmation (the workflow itself).
 - **Pinning a version in a project**: add the marketplace with `#vX.Y.Z` when a project doesn't want automatic
   updates. Normal case: follow `main` and `/plugin update`.
-- **`0.4` is the last `0.x` minor** (user, 2026-10-25): the stable release before `1.0`. Every harvest still runs and
-  sorts what it brings: fixes to what already exists go to the next patch (`0.4.x`); a new feature or improvement
-  (skill, hook, enhancement) is noted for **`1.0.0`** and does not go into `0.4`. `1.0.0` and later are the line that
-  grows and the long-term product. So there is no chain of new features between `0.4` and `1.0`. What belongs to `1.0.0` goes to its branch,
-  `version/1.0.0` (since 2026-10-26), and `0.4.x` patches are merged into it too. To be
-  decided: whether `1.0.0` reaches `main` before §10 is met (Phase 10's public copy still requires it).
+- **Only the latest published minor gets patches** (user, 2026-11-01; replaces "`0.4` is the last `0.x` minor", from
+  2026-10-25): every harvest sorts what it brings; fixes to what already exists go to the next patch of the latest
+  published minor (today `0.4.x`) and a new feature or improvement (skill, hook, enhancement) goes to the next minor.
+  The project moves through `0.x` (`0.5` "Base", `0.6`, …, `0.9` "Stable") and **`1.0`** is the Management Center; the
+  map is in [`roadmap.en.md`](roadmap.en.md) ([español](roadmap.md)). **Everything that breaks goes into `0.5`**, so
+  projects migrate once and later minors only add (SemVer allows breaking changes in a `0.y` minor). Each minor is
+  worked on its own branch, `version/X.Y.0` (`0.5` on `version/0.5.0`; `version/1.0.0` keeps the design in
+  `docs/diseno/`), and patches of the latest published minor are merged into it too.
 
 ## 8. Installing in a project
 

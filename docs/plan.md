@@ -316,13 +316,14 @@ Ejemplos que los pilotos tienen que cubrir: el portal (Node, subida directa, tre
   propio flujo).
 - **Fijar versión en un proyecto**: el marketplace se añade con `#vX.Y.Z` cuando un proyecto no quiera
   actualizaciones automáticas. Lo normal: seguir `main` y `/plugin update`.
-- **La `0.4` es la última menor `0.x`** (usuario, 2026-10-25): la versión estable antes de la `1.0`. Cada recogida
-  sigue haciéndose y reparte lo que trae: las correcciones de lo que ya hay van al siguiente parche (`0.4.x`); un
-  evolutivo o algo nuevo (skill, gancho, mejora) se apunta para la **`1.0.0`** y no entra en la `0.4`. La `1.0.0` y
-  siguientes son la línea que crece y el producto a largo plazo. Así no hay una cadena de evolutivos entre la `0.4` y
-  la `1.0`. Lo de la `1.0.0` se va llevando a su rama, `version/1.0.0` (desde 2026-10-26), y los parches de la
-  `0.4.x` se fusionan también en ella. Por decidir: si la `1.0.0` llega a `main` antes de cumplir la §10 (la copia
-  pública de la Fase 10 la sigue pidiendo).
+- **Solo la última menor publicada recibe parches** (usuario, 2026-11-01; sustituye a «la `0.4` es la última menor
+  `0.x`», de 2026-10-25): cada recogida reparte lo que trae; las correcciones de lo que ya hay van al siguiente parche
+  de la última menor publicada (hoy `0.4.x`) y un evolutivo o algo nuevo (skill, gancho, mejora), a la siguiente menor.
+  Se avanza por la `0.x` (`0.5` «Base», `0.6`, …, `0.9` «Estable») y la **`1.0`** es el Management Center; el mapa
+  está en [`roadmap.md`](roadmap.md) ([English](roadmap.en.md)). **Todo lo que rompe va en la `0.5`**, para que los
+  proyectos migren una sola vez y las siguientes menores solo añadan (SemVer permite romper en una menor `0.y`). Cada
+  menor se trabaja en su rama, `version/X.Y.0` (la `0.5`, en `version/0.5.0`; `version/1.0.0` se queda con el diseño de
+  `docs/diseno/`), y los parches de la última menor publicada se fusionan también en ella.
 
 ## 8. Instalación en un proyecto
 

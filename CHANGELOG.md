@@ -8,13 +8,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
-## [1.0.0] - Unreleased
+## [0.5.0] - Unreleased
 
-Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendiente-1.0.0.md`). La versión de
-`plugin.json` no sube hasta publicarla. / Features of `1.0.0` (branch `version/1.0.0`; list in
-`docs/registros/pendiente-1.0.0.md`). The `plugin.json` version does not move until it is released.
+Evolutivos de la `0.5` «Base» (rama `version/0.5.0`; mapa en `docs/roadmap.md`, lista en
+`docs/registros/pendiente.md`); hasta 2026-11-01 se preparaban para una `1.0.0`. La versión de `plugin.json` no sube
+hasta publicarla. / Features of `0.5` "Base" (branch `version/0.5.0`; map in `docs/roadmap.en.md`, list in
+`docs/registros/pendiente.md`); until 2026-11-01 they were being prepared for a `1.0.0`. The `plugin.json` version
+does not move until it is released.
 
 ### ES
+
+- **Versiones** (H14, D13, H12): solo la última menor publicada recibe parches y los evolutivos van a la siguiente
+  menor; se avanza por la `0.x` y la `1.0` será el Management Center (plan §7, `AGENTS.md`, `docs/es/contribuir.md`).
+  Mapa de versiones con identificadores en `docs/roadmap.md` (+ `docs/roadmap.en.md`); la lista de evolutivos pasa a
+  `docs/registros/pendiente.md`, con la versión en cada línea.
 
 - El `pre-push` no repite un `check` que ya pasó en verde sobre el mismo árbol, las mismas órdenes y el mismo
   `checkWrapper` (P3 de la retro del parche `0.4.1`). `scripts/check.sh` (en los proyectos,
@@ -87,6 +94,11 @@ Evolutivos de la `1.0.0` (rama `version/1.0.0`; lista en `docs/registros/pendien
   de uso), y un `web.md` anterior sin el bloque ni `estado` hay que rehacerlo con la plantilla.
 
 ### EN
+
+- **Versions** (H14, D13, H12): only the latest published minor gets patches and new features go to the next minor;
+  the project moves through `0.x` and `1.0` will be the Management Center (plan §7, `AGENTS.md`,
+  `docs/en/contributing.md`). Version map with ids in `docs/roadmap.en.md` (+ `docs/roadmap.md`); the feature list
+  becomes `docs/registros/pendiente.md`, with the version on each line.
 
 - `pre-push` does not repeat a `check` that already passed on the same tree, commands and `checkWrapper` (P3 of the
   `0.4.1` patch retro). `scripts/check.sh` (in projects, `.claude/gw/scripts/check.sh`) runs the `check` on the working

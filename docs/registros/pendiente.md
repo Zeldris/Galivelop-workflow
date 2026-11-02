@@ -1,20 +1,21 @@
-# Pendiente para la `1.0.0`
+# Pendiente
 
-Los evolutivos aprobados que no entran en la `0.4.x` (plan §7) y esperan en la rama `version/1.0.0`. Cada línea
-apunta a su propuesta, que lleva el detalle; al aplicarla, se tacha aquí con la fecha y el commit, y la entrada va al
-CHANGELOG de la `1.0.0`.
+Los evolutivos aprobados que traen las recogidas y las retros y esperan versión (plan §7). Cada línea abierta lleva
+la versión en la que entra (`→ 0.5`), según el tema ([`roadmap.md`](../roadmap.md), H12), y apunta a su propuesta,
+que lleva el detalle; al aplicarla, se tacha aquí con la fecha y el commit, y la entrada va al CHANGELOG de esa
+versión. Hasta 2026-11-02 se llamaba `pendiente-1.0.0.md` (todo iba a la `1.0.0`; el mapa nuevo lo reparte).
 
 ## De la recogida del 2026-10-27 (`galivelop-developer`)
 
 P1-P4 van al parche `0.4.3`.
 
-- [ ] **DEV P5**: `orchestrate-dealer`: si la revisión de toda la rama va justo después y ya está decidida, el último
+- [ ] **DEV P5** → 0.5: `orchestrate-dealer`: si la revisión de toda la rama va justo después y ya está decidida, el último
   bloque no se revisa aparte. [`2026-10-27-galivelop-developer.md`](../propuestas/2026-10-27-galivelop-developer.md)
-- [ ] **DEV P6**: `scripts/ci-estado.py`, que lee el estado de Actions de una rama o commit (token y `gh` de
+- [ ] **DEV P6** → 0.5: `scripts/ci-estado.py`, que lee el estado de Actions de una rama o commit (token y `gh` de
   `revision-antes-de-main.sh`). [`2026-10-27-galivelop-developer.md`](../propuestas/2026-10-27-galivelop-developer.md)
-- [ ] **DEV P7**: clave `ciPython` en `gw.json` con las versiones de Python que la plantilla del CI recorre en matriz.
+- [ ] **DEV P7** → 0.5: clave `ciPython` en `gw.json` con las versiones de Python que la plantilla del CI recorre en matriz.
   [`2026-10-27-galivelop-developer.md`](../propuestas/2026-10-27-galivelop-developer.md)
-- [ ] **DEV P8**: `aplicar.py --init` añade un `.gitignore` por stack en un bloque con marca, sin pisar el existente.
+- [ ] **DEV P8** → 0.5: `aplicar.py --init` añade un `.gitignore` por stack en un bloque con marca, sin pisar el existente.
   [`2026-10-27-galivelop-developer.md`](../propuestas/2026-10-27-galivelop-developer.md)
 
 ## De la recogida del 2026-10-26
@@ -43,43 +44,43 @@ P1-P4 van al parche `0.4.3`.
 
 Decididas el 2026-10-27; las correcciones (INS P8, VeriNews P3, P4 y la parte Java de P11) van en la `0.4.2`.
 
-- [ ] **VeriNews P1:** `ciIgnore`, estados de CI ajenos (p. ej. un despliegue) que no bloquean la fusión.
+- [ ] **VeriNews P1** → 0.5: `ciIgnore`, estados de CI ajenos (p. ej. un despliegue) que no bloquean la fusión.
   [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
-- [ ] **VeriNews P2:** firmas del agente también en el cuerpo de PR, issues y comentarios de GitHub, y aviso de un
+- [ ] **VeriNews P2** → 0.5: firmas del agente también en el cuerpo de PR, issues y comentarios de GitHub, y aviso de un
   `user.email` `noreply@anthropic.com`. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
-- [ ] **INS P12 + WMF P4:** el check en una orden con resumen y la salida recortada.
+- [ ] **INS P12 + WMF P4** → 0.5: el check en una orden con resumen y la salida recortada.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md),
   [`2026-10-26-world-maker-fantasy-2.md`](../propuestas/2026-10-26-world-maker-fantasy-2.md)
-- [ ] **INS P9:** `bitacora.py own-row --staged`, la propia fila comprobada al hacer el commit.
+- [ ] **INS P9** → 0.5: `bitacora.py own-row --staged`, la propia fila comprobada al hacer el commit.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md)
-- [ ] **VeriNews P6:** `revisado.sh` avisa del código sin revisar desde la última marca.
+- [ ] **VeriNews P6** → 0.5: `revisado.sh` avisa del código sin revisar desde la última marca.
   [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
-- [ ] **VeriNews P5:** `rojo-sin-arreglo.sh --fix-at <commit>` y distinguir un rojo de compilación de uno de la
+- [ ] **VeriNews P5** → 0.5: `rojo-sin-arreglo.sh --fix-at <commit>` y distinguir un rojo de compilación de uno de la
   aserción. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
-- [ ] **Portal P4:** `orchestrate-dealer`, los repos que solo se leen se clonan aparte y sin registrar.
+- [ ] **Portal P4** → 0.5: `orchestrate-dealer`, los repos que solo se leen se clonan aparte y sin registrar.
   [`2026-10-26-portal-galivelop-2.md`](../propuestas/2026-10-26-portal-galivelop-2.md)
-- [ ] **INS P10:** `doctor.py` avisa de worktrees ya fusionados.
+- [ ] **INS P10** → 0.5: `doctor.py` avisa de worktrees ya fusionados.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md)
-- [ ] **VeriNews P7:** `bitacora.py set-row`. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
-- [ ] **VeriNews P8:** `doctor.py` avisa de `cd <carpeta> && …` sin `worktreeLinks`.
+- [ ] **VeriNews P7** → 0.5: `bitacora.py set-row`. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+- [ ] **VeriNews P8** → 0.5: `doctor.py` avisa de `cd <carpeta> && …` sin `worktreeLinks`.
   [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
-- [ ] **INS P11:** `scout-updates` lee la versión de Rust del proyecto.
+- [ ] **INS P11** → 0.5: `scout-updates` lee la versión de Rust del proyecto.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md)
-- [ ] **VeriNews P9:** el encargo de revisión lleva `git diff --stat`.
+- [ ] **VeriNews P9** → 0.5: el encargo de revisión lleva `git diff --stat`.
   [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
-- [ ] **INS P13 + Portal P5:** en la plantilla de `REVIEW.md`, la regla de invariantes y el apartado «Navegadores».
+- [ ] **INS P13 + Portal P5** → 0.5: en la plantilla de `REVIEW.md`, la regla de invariantes y el apartado «Navegadores».
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md),
   [`2026-10-26-portal-galivelop-2.md`](../propuestas/2026-10-26-portal-galivelop-2.md)
-- [ ] **VeriNews P10:** textos menores (`/clear` tras un commit `WIP:`, `perPage: 1`, `git fetch -q && git status -sb`).
+- [ ] **VeriNews P10** → 0.5: textos menores (`/clear` tras un commit `WIP:`, `perPage: 1`, `git fetch -q && git status -sb`).
   [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
-- [ ] **VeriNews P11 (archivos borrados):** `tests-relacionados.sh` incluye los archivos borrados en `{files}` o corre
+- [ ] **VeriNews P11 (archivos borrados)** → 0.5: `tests-relacionados.sh` incluye los archivos borrados en `{files}` o corre
   todo si un push solo borra. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
 - [x] **Del arreglo de INS P8** (arreglado en la `0.4.2`, `4aecf5c`): `prepush-ramas.sh` comprueba la bitácora como
   queda en la punta que se sube, así que un log malo en un commit intermedio se arregla con un commit nuevo encima.
 
 ## De la retro del parche `0.4.3`
 
-- [ ] **R1 (`version.py`, CHANGELOG):** comprobar que existe cada ruta del repo citada entre comillas invertidas en la
+- [ ] **R1 (`version.py`, CHANGELOG)** → 0.5: comprobar que existe cada ruta del repo citada entre comillas invertidas en la
   entrada nueva del CHANGELOG (`docs/…`, `scripts/…`, `skills/…`), salvo las que llevan marcadores (`vX.Y.Z`). La
   entrada `0.4.3` citaba un archivo que solo estaba en `version/1.0.0` y lo cazó la revisión, no el check. Con su test.
   `retro-2026-10-27-parche-0-4-3.md` (rama `ccr-6dfbc880-ddr41g`).
@@ -88,13 +89,13 @@ Decididas el 2026-10-27; las correcciones (INS P8, VeriNews P3, P4 y la parte Ja
 
 [`retro-2026-10-27-parche-0-4-2.md`](retro-2026-10-27-parche-0-4-2.md), aprobadas por el usuario el 2026-10-27.
 
-- [ ] **P3 (`doctor.py`):** avisar de un `core.hooksPath` absoluto que apunta al `.githooks` del checkout principal
+- [ ] **P3 (`doctor.py`)** → 0.5: avisar de un `core.hooksPath` absoluto que apunta al `.githooks` del checkout principal
   (los worktrees correrían los ganchos de otra rama), con la orden que lo arregla
   (`git config core.hooksPath .githooks`). Test del aviso y de su motivo.
-- [ ] **P4 (`commit-msg`):** comprobar la línea `Siguiente:` en los mensajes, también los de fusión que escribe
+- [ ] **P4 (`commit-msg`)** → 0.5: comprobar la línea `Siguiente:` en los mensajes, también los de fusión que escribe
   `fusionar.sh` (o que `fusionar.sh` la exija en su mensaje). Escape `GW_NO_NEXT=1` para un mensaje legítimo sin
   ella, y el aviso lo dice. Misma familia que la comprobación de firmas del agente.
-- [ ] **P5 (regla QUOTED del `pre-commit`):** sin falsos positivos en `.md` (una etiqueta de traducción citada como
+- [ ] **P5 (regla QUOTED del `pre-commit`)** → 0.4.4: sin falsos positivos en `.md` (una etiqueta de traducción citada como
   ejemplo). Tests de los dos lados: un secreto real en un `.md` sigue bloqueado.
 
 ## De la retro del parche `0.4.1`
