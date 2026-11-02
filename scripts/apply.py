@@ -52,13 +52,15 @@ Migration from the names before A8 (0.x), in the same run and without duplicates
                                 installed under its new name; --with <old name> works, with a warning
   .claude/gw/<old>.md           -> .claude/gw/gw-<name>.md (git mv when tracked); both exist: the new one is kept,
                                 the old one reported, nothing overwritten
-  .claude/gw/scripts/<old>      removed (generated copies) unless a hook, the CI or the config still runs it; the
+  .claude/gw/scripts/<old>      removed only when git-clean (tracked, no edits, no untracked or ignored files) and no
+                                hook, the CI or the config still runs it; otherwise kept with a warning; the
                                 old script names in .claude/settings.json hook commands are renamed
   docs/traspaso.md, docs/registros/, docs/propuestas/, docs/registros/revisado.txt (what the config's log,
   recordsDir, proposalsDir and reviewMark hold, or lack, while only the old path exists) -> docs/handoff.md,
   docs/records/, docs/proposals/, docs/records/reviewed.txt, with git mv when tracked; keys that held the old
   path are dropped from .claude/gw.json. Fails closed (exit 2) when a target already exists. --keep-paths moves
-  nothing and writes the old paths explicitly into .claude/gw.json; pass it on every update to keep them.
+  nothing and writes the old paths explicitly into .claude/gw.json with "keepLegacyPaths": true (setting that key
+  by hand does the same), so later updates leave them alone.
 
 For each file: identical -> skip; missing -> create; different -> overwritten only when the project's file is
 workflow-owned (a `galivelop-workflow vX.Y.Z` header, or metadata.version in the skill's SKILL.md), not newer than
@@ -615,23 +617,34 @@ def plan_paths(plan, cfg, keep):
         raw = json.loads(cfg_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return
-    if raw.get("keepLegacyPaths") is True:
-        return  # the person chose to keep the old paths
+    keep = keep or raw.get("keepLegacyPaths") is True  # set by hand it means the same as --keep-paths
     schema = json.loads((WORKFLOW / "schema" / "gw.schema.json").read_text(encoding="utf-8"))
     exists = config.path_exists_fn(plan.root)
     note = "gw.json is rewritten with 2-space indent"
     found = {}  # key -> (old, new, explicit)
     repaired = []  # explicit old paths whose folder or file was already moved (by hand, or by an interrupted run)
+    manual_dirs = []  # (old, new) folders already moved by hand or by an interrupted run
+    for dkey in PATH_DIR_KEYS:
+        dold, dnew = config.LEGACY_PATHS[dkey], schema["properties"][dkey]["default"]
+        if not keep and not exists(dold) and exists(dnew):
+            manual_dirs.append((dold, dnew))
+    manual_files = []  # (key, where the file is now, new path): its folder moved, the file kept its old name
     for key, old in config.LEGACY_PATHS.items():
         new = schema["properties"][key]["default"]
         if key not in raw:
             if (cfg.get("_legacy") or {}).get(key) == old:
                 found[key] = (old, new, False)
         elif raw[key] == old:
+            now = old
+            for dold, dnew in manual_dirs:
+                if old.startswith(dold + "/"):
+                    now = dnew + old[len(dold):]
             if not exists(new) and exists(old):
                 found[key] = (old, new, True)
             elif exists(new) and not exists(old):
                 repaired.append(key)
+            elif now != old and now != new and exists(now) and not exists(new):
+                manual_files.append((key, now, new))
     if keep:
         if not found:
             return
@@ -640,19 +653,23 @@ def plan_paths(plan, cfg, keep):
             if key not in raw and key not in written and any(
                     old.startswith(d[0] + "/") for k, d in found.items() if k in PATH_DIR_KEYS):
                 written[key] = old
+        if not written and raw.get("keepLegacyPaths") is True:
+            return  # nothing implicit left to write
         raw.update(written)
         raw["keepLegacyPaths"] = True
         plan.actions.append(("merge", config.CONFIG_REL, dump(raw), False,
                              f"--keep-paths: {', '.join(f'{k}={v}' for k, v in written.items())} and "
                              f"keepLegacyPaths written, so the old paths stop depending on the fallback; {note}"))
         return
-    if not found and not repaired:
-        return
-    changed = bool(repaired)
+    changed = bool(repaired or manual_files)
     for key in repaired:
         raw.pop(key)
         cfg[key] = schema["properties"][key]["default"]
-    moved_dirs = []
+    for key, now, new in manual_files:
+        plan_move(plan, now, new, f"{key}: its folder was already moved; the file gets the English name")
+        raw.pop(key)
+        cfg[key] = new
+    moved_dirs = list(manual_dirs)
     for key in sorted(found, key=lambda k: (k not in PATH_DIR_KEYS, k)):
         old, new, explicit = found[key]
         source = old
@@ -700,13 +717,14 @@ def clean_in_git(root, rel):
     """True when git tracks something under rel and nothing there is modified or untracked."""
     if not is_tracked(root, rel):
         return False
-    code, out = git(root, "status", "--porcelain", "--untracked-files=all", "--", str(rel))
+    code, out = git(root, "status", "--porcelain", "--untracked-files=all", "--ignored", "--", str(rel))
     return code == 0 and not out
 
 
-def keep_message(rel):
+def keep_message(root, rel):
+    remove = f"git rm -r {rel}" if is_tracked(root, rel) else f"rm -r {rel}"
     return (f"{rel} is the old name of a workflow copy, but it is not in git or has uncommitted changes or untracked "
-            f"files, so it is kept; commit or discard them and rerun, or delete it yourself: git rm -r {rel}")
+            f"or ignored files, so it is kept; commit or discard them and rerun, or delete it yourself: {remove}")
 
 
 def plan_old_skills(plan, wanted_skills):
@@ -721,7 +739,7 @@ def plan_old_skills(plan, wanted_skills):
                                  f"beside {new}; remove it if it is an old copy: git rm -r {rel}")
             continue
         if not clean_in_git(plan.root, rel):
-            plan.warnings.append(keep_message(rel))
+            plan.warnings.append(keep_message(plan.root, rel))
             continue
         plan.actions.append(("remove", rel, None, False, f"replaced by .claude/skills/{new}"))
 
@@ -756,7 +774,8 @@ def plan_old_scripts(plan):
                                  f"{', '.join(users)}, so it is kept; update those files (rerun with --update, or merge "
                                  f"their .gw-nuevo) and rerun apply.py to remove it")
         elif not clean_in_git(plan.root, rel):
-            plan.warnings.append(keep_message(rel))
+            plan.orphans = [o for o in plan.orphans if o != rel]  # reported below, not as deletable
+            plan.warnings.append(keep_message(plan.root, rel))
         else:
             plan.orphans = [o for o in plan.orphans if o != rel]
             plan.actions.append(("remove", rel, None, False, f"old name of {OLD_SCRIPTS[old]}"))

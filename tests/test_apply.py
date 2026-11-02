@@ -854,13 +854,15 @@ class Migrar(unittest.TestCase):
         p.write(".claude/skills/selector/mine.md", "my file\n")  # untracked
         out = self.applied()
         self.assertTrue(self.exists(".claude/skills/selector/mine.md"), out)
-        self.assertIn("not in git or has uncommitted changes or untracked files, so it is kept", out)
+        self.assertIn("not in git or has uncommitted changes or untracked or ignored files, so it is kept", out)
+        self.assertIn("git rm -r .claude/skills/selector", out)  # tracked: git rm
 
     def test_old_skill_not_in_git_is_kept(self):
         self.p.write(".claude/skills/selector/SKILL.md", SKILL_MD.format(n="selector"))
         out = self.applied()
         self.assertTrue(self.exists(".claude/skills/selector/SKILL.md"), out)
-        self.assertIn("git rm -r .claude/skills/selector", out)
+        self.assertIn("delete it yourself: rm -r .claude/skills/selector", out)  # untracked: plain rm
+        self.assertNotIn("git rm -r", out)
 
     def test_old_script_with_uncommitted_edits_is_kept(self):
         p = self.p
@@ -869,7 +871,52 @@ class Migrar(unittest.TestCase):
         p.write(".claude/gw/scripts/bitacora.py", "# galivelop-workflow v0.4.3\nedited\n")
         out = self.applied()
         self.assertTrue(self.exists(".claude/gw/scripts/bitacora.py"), out)
-        self.assertIn("has uncommitted changes or untracked files, so it is kept", out)
+        self.assertIn("has uncommitted changes or untracked or ignored files, so it is kept", out)
+
+    def test_hand_set_keep_legacy_paths_also_writes_the_implicit_keys(self):
+        p = self.p
+        self.old_paths()
+        p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, keepLegacyPaths=True), indent=2) + "\n")
+        self.applied()
+        cfg = json.loads(p.read(".claude/gw.json"))
+        self.assertEqual(cfg["log"], "docs/traspaso.md")
+        self.assertEqual(cfg["reviewMark"], "docs/registros/revisado.txt")
+        self.assertTrue(self.exists("docs/traspaso.md"))
+        self.assertFalse(self.exists("docs/handoff.md"))
+        self.assertIn("nothing to do", self.applied())
+
+    def test_explicit_key_inside_a_folder_moved_by_hand_follows_the_file(self):
+        p = self.p
+        p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, reviewMark="docs/registros/revisado.txt",
+                                                   staleRefs={"patterns": ["x"], "skip": ["docs/registros/old"]}),
+                                              indent=2) + "\n")
+        p.write("docs/records/revisado.txt", "abc\n")  # the folder was moved by hand, the file kept its name
+        self.applied()
+        cfg = json.loads(p.read(".claude/gw.json"))
+        self.assertNotIn("reviewMark", cfg)
+        self.assertEqual(cfg["staleRefs"]["skip"], ["docs/records/old"])
+        self.assertEqual(p.read("docs/records/reviewed.txt"), "abc\n")
+        self.assertFalse(self.exists("docs/records/revisado.txt"))
+        self.assertIn("in sync", self.p.aplicar("--check")[1])
+
+    def test_old_script_kept_because_not_clean_is_not_reported_as_an_orphan(self):
+        p = self.p
+        p.write(".claude/gw/scripts/bitacora.py", "# galivelop-workflow v0.4.3\n")
+        self.commit()
+        p.write(".claude/gw/scripts/bitacora.py", "# galivelop-workflow v0.4.3\nedited\n")
+        out = self.applied()
+        self.assertIn("so it is kept", out)
+        self.assertNotIn("bitacora.py is no longer in the workflow", out)  # reported once, not also as an orphan
+
+    def test_ignored_files_make_an_old_skill_not_clean(self):
+        p = self.p
+        p.write(".gitignore", "*.cache\n")
+        p.write(".claude/skills/selector/SKILL.md", SKILL_MD.format(n="selector"))
+        self.commit()
+        p.write(".claude/skills/selector/x.cache", "ignored\n")
+        out = self.applied()
+        self.assertTrue(self.exists(".claude/skills/selector/x.cache"), out)
+        self.assertIn("untracked or ignored files, so it is kept", out)
 
     def test_values_pointing_inside_a_moved_folder_follow_it(self):
         p = self.p
