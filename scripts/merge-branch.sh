@@ -48,25 +48,43 @@ before="$(git rev-parse HEAD)"
 
 # The ids the merge message carries as ONE `Refs:` trailer: the message's own, then the branch name's, then the
 # `Refs:` of the commits the branch brings (oldest first). Values split on commas and whitespace; order kept, no repeats.
-refs_of() { git interpret-trailers --parse | awk -F: 'tolower($1)=="refs" {sub(/^[^:]*:/, ""); gsub(/[,[:space:]]+/, "\n"); print}' | grep -v '^$'; }
+refs_fail() {
+  echo "merge-branch: cannot read the Refs trailers ($1); update git (interpret-trailers needs 2.x) or fix the commit message, then retry: bash $0 $branch \"<merge message>\"" >&2
+  exit 2
+}
+# Reads a message on stdin and prints its Refs values, one per line (git's own trailer parse; fails if git does).
+refs_of() {
+  local parsed
+  parsed="$(git interpret-trailers --parse)" || return 1
+  printf '%s\n' "$parsed" | awk -F: 'tolower($1)=="refs" {sub(/^[^:]*:/, ""); gsub(/[,[:space:]]+/, "\n"); print}' | grep -v '^$' || true
+}
+# `get taskId` fails both when the key is not set and when the config is unreadable; the reads above already
+# validated the config, so a failure here means "not set": the default shape applies.
 id_pattern="$(python3 "$config" --root "$root" get taskId 2>/dev/null)" || id_pattern=""
 [ -n "$id_pattern" ] || id_pattern='[A-Za-z]+[0-9]+'
-name_id=""
+: > "$logs/ids"
+# m = ids the message already carries (kept as given); c = the branch name's and the commits' (must look like an id).
+printf '%s\n' "$message" | refs_of | sed 's/^/m /' >> "$logs/ids" ; [ "${PIPESTATUS[1]}" = 0 ] || refs_fail "the merge message"
 case "$branch" in
-  agent/*)
-    name_id="${branch#agent/}"; name_id="${name_id%%-*}"
-    python3 -c 'import re, sys; sys.exit(0 if re.fullmatch(sys.argv[1], sys.argv[2]) else 1)' "$id_pattern" "$name_id" 2>/dev/null || name_id="" ;;
+  agent/*) name_id="${branch#agent/}"; echo "c ${name_id%%-*}" >> "$logs/ids" ;;
 esac
-{
-  printf '%s\n' "$message" | refs_of
-  [ -z "$name_id" ] || printf '%s\n' "$name_id"
-  for c in $(git rev-list --reverse --no-merges "HEAD..$branch" 2>/dev/null); do
-    git show -s --format=%B "$c" | refs_of
-  done
-} | awk '!seen[$0]++' > "$logs/refs" || true
-if [ -s "$logs/refs" ]; then
-  joined="$(paste -sd, "$logs/refs" | sed 's/,/, /g')"
-  new_message="$(printf '%s\n' "$message" | git interpret-trailers --if-exists replace --if-missing add --trailer "Refs: $joined")" && message="$new_message"
+for c in $(git rev-list --reverse --no-merges "HEAD..$branch" 2>/dev/null); do
+  git show -s --format=%B "$c" | refs_of | sed 's/^/c /' >> "$logs/ids" ; [ "${PIPESTATUS[1]}" = 0 ] || refs_fail "commit $c"
+done
+joined="$(python3 -c '
+import re, sys
+pat, seen = sys.argv[1], []
+for line in sys.stdin:
+    kind, _, ident = line.rstrip("\n").partition(" ")
+    if ident and ident not in seen and (kind == "m" or re.fullmatch(pat, ident)):
+        seen.append(ident)
+print(", ".join(seen))' "$id_pattern" < "$logs/ids")" || { echo "merge-branch: cannot build the Refs list; check that python3 works, then retry: bash $0 $branch \"<merge message>\"" >&2; exit 2; }
+if [ -n "$joined" ]; then
+  # Drop every Refs line of the last paragraph, then add ONE at the start of the trailer block so a final
+  # `Siguiente:` line stays last.
+  stripped="$(printf '%s\n' "$message" | awk '{l[NR]=$0} END {s=1; for (i=NR;i>=1;i--) if (l[i] ~ /^[[:space:]]*$/) {s=i+1; break}; for (i=1;i<=NR;i++) if (!(i>=s && tolower(l[i]) ~ /^refs:/)) print l[i]}')"
+  message="$(printf '%s\n' "$stripped" | git interpret-trailers --where start --if-exists add --if-missing add --trailer "Refs: $joined")" \
+    || refs_fail "writing the trailer"
 fi
 
 if ! git merge --no-ff "$branch" -m "$message" > "$logs/merge.log" 2>&1; then

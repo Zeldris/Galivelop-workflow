@@ -251,12 +251,21 @@ class Version(unittest.TestCase):
         self.assertIn("warning: suggest: 1 commit(s) since", r.stdout)
         self.assertIn("minor bump", r.stdout)
 
-    def test_release_without_a_tag_does_not_repeat_the_missing_tag_as_a_suggestion(self):
+    def test_suggest_with_a_prerelease_tag_or_plugin_version_does_not_pretend(self):
+        r = self.suggest_after("v1.2.3-rc1", "fix: a")
+        self.assertIn("no vX.Y.Z tag reachable", r.stdout)
+        shutil.rmtree(self.tmp / ".git", True)
+        r = self.suggest_after("v0.4.3", "fix: a", plugin="0.4.3-rc1")
+        self.assertIn("is not X.Y.Z", r.stdout)
+        self.assertNotIn("is behind", r.stdout)
+        self.assertIn("python3 scripts/version.py 0.4.4", r.stdout)
+
+    def test_release_keeps_the_missing_tag_line_of_the_suggestion_when_an_odd_tag_exists(self):
         self.git("init", "-q")
         self.commit_all("one")
+        self.git("tag", "v1")
         r = run(self.tmp, "--release")
-        self.assertEqual(r.returncode, 1)
-        self.assertNotIn("suggest:", r.stdout)
+        self.assertIn("warning: suggest: no vX.Y.Z tag reachable", r.stdout)
 
     def test_release_on_the_tagged_commit_itself_passes(self):
         self.git("init", "-q")

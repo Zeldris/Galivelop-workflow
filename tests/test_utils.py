@@ -955,6 +955,44 @@ class MergeBranch(Base):
         self.p.script("merge-branch.sh", "agent/T7-y", "Merge two", "--reviewed")
         self.assertEqual(self.merge_trailers(), ["Refs: T7"])
 
+    def test_every_old_refs_line_goes_and_the_new_one_leads_so_siguiente_stays_last(self):
+        self.agent(name="agent/D16-x", message="work\n\nRefs: D12")
+        msg = "Merge agent\n\nRefs: D1\nRefs: D2\nSiguiente: lo que sea"
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", msg, "--reviewed")
+        self.assertEqual(code, 0, out)
+        body = self.p.git("log", "-1", "--format=%B").stdout.strip().splitlines()
+        self.assertEqual(body[-1], "Siguiente: lo que sea")
+        self.assertEqual([l for l in body if l.startswith("Refs:")], ["Refs: D1, D2, D16, D12"])
+
+    def test_values_that_do_not_look_like_an_id_are_not_copied_from_the_commits(self):
+        self.agent(name="agent/D16-x", message="work\n\nRefs: D11 (parcial)")
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.merge_trailers(), ["Refs: D16, D11"])
+
+    def test_a_failing_interpret_trailers_stops_before_the_merge(self):
+        fake = self.tmp / "fakebin"
+        fake.mkdir()
+        real = shutil.which("git")
+        (fake / "git").write_text(f'#!/bin/bash\n[ "$1" = interpret-trailers ] && exit 1\nexec {real} "$@"\n')
+        (fake / "git").chmod(0o755)
+        self.agent(name="agent/D16-x")
+        before = self.p.sha()
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed",
+                                  env={"PATH": f"{fake}:{self.p.env['PATH']}"})
+        self.assertEqual(code, 2, out)
+        self.assertIn("cannot read the Refs trailers", out)
+        self.assertIn("then retry: bash", out)
+        self.assertEqual(self.p.sha(), before, "no merge happened")
+        self.assertIn("agent/D16-x", self.branches())
+
+    def test_the_current_branch_is_never_cleaned_even_when_named_agent(self):
+        self.p.git("checkout", "-q", "-b", "agent/D3-cur")
+        self.p.git("branch", "agent/D4-other")
+        code, out = self.p.script("merge-branch.sh", "agent/D3-cur", "Merge agent", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertIn("agent/D3-cur", self.branches())
+
     def test_cleans_an_agent_branch_and_its_worktree(self):
         wt = self.agent(name="agent/D16-x")
         code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed")

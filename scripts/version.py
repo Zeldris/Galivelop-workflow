@@ -223,7 +223,7 @@ PATCH_TYPES = ("fix", "perf")
 
 
 def numbers(version):
-    m = re.match(r"^(\d+)\.(\d+)\.(\d+)", version)
+    m = re.match(r"^(\d+)\.(\d+)\.(\d+)$", version)
     return tuple(int(n) for n in m.groups()) if m else None
 
 
@@ -283,7 +283,10 @@ def suggest(current):
     suggested = ".".join(str(n) for n in new)
     lines = [f"suggest: {summary}: {level} bump, {tag[1:]} -> {suggested}"]
     now = numbers(current)
-    if now == new:
+    if now is None:
+        lines.append(f"warning: plugin.json version {current!r} is not X.Y.Z, so it cannot be compared with the "
+                     f"suggested {suggested}; set it: python3 scripts/version.py {suggested}")
+    elif now == new:
         lines.append(f"warning: plugin.json is already at the suggested {suggested}")
     elif now is not None and now > new:
         lines.append(f"warning: plugin.json {current} is ahead of the suggested {suggested}; check that it was intended")
@@ -369,8 +372,7 @@ def main(argv):
         if release:
             try:
                 for line in suggest(current):
-                    if not line.startswith("suggest: no vX.Y.Z tag"):  # that one is already a problem above
-                        print(f"warning: {line}" if line.startswith("suggest:") else line)
+                    print(f"warning: {line}" if line.startswith("suggest:") else line)
             except VersionError as e:
                 print(f"warning: {e}")
         if any(line.startswith("stale") for line in problems):

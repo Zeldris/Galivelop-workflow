@@ -128,7 +128,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   (merge, never rebase; `check` after each), writes the log and pushes. When the session folder is not the repo root
   (a cloud session starts in `/home/user`, next to other repos, and `isolation` lands the worktree in the wrong one),
   the main session creates each worktree itself with `git -C <repo> worktree add <folder> -b agent/<id>-<topic>` and
-  puts that folder in the brief, without `isolation`. Branches are `agent/<id>-<topic>`: `merge-branch.sh` adds their
+  puts that folder in the brief, without `isolation` (put it under `.claude/worktrees/`: a folder elsewhere is not
+  cleaned by `merge-branch.sh`, remove it by hand with `git worktree remove`). Branches are `agent/<id>-<topic>`: `merge-branch.sh` adds their
   ids (the name's and the commits' `Refs:`) to the merge message as one `Refs:` trailer and cleans `agent/*` branches.
 - **Shared records, main session only:** with parallel subagents none touches `log`, the findings register or any other
   shared record; they return their entries under `FOUND` and the main session writes them. Parallel writes conflict
