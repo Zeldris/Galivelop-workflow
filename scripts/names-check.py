@@ -31,21 +31,21 @@ import subprocess
 import sys
 from pathlib import Path
 
-# Spanish words of this repo's domain that are not English words. Plurals (-s, -es) are matched automatically.
+# Spanish words of this repo's domain that are not English words (nor common English abbreviations: no `con`,
+# `de`, `del`, `sin`, `solo`, `la`...). Plurals (-s, -es) are matched automatically.
 SPANISH_WORDS = frozenset("""
-abrir actualizar agente aguardar ahora alto ancho anadir antes anterior apuntar aplicar apunta archivo arreglo aviso
-bajar barra bitacora bloque borrar buscar busca cabecera cada cadena cambiar cambio campo carga cargar carpeta carrusel
-catalogo cerrar cierre cifra clave codigo comando comprobacion comprobado comprobar con contar contenido copia copiar
-correr crear cuando cuenta cuerpo dato datos de decir del desde despues devolver devuelve dia donde ejecutar ejemplo
-empezar enlace enlaces entrada escribir estado explicar falla fallo falta fase fecha ficha filtrar fuente fusionar guardia hasta
-hecho hoja hora idioma igual informe imprimir juntar lado la las lee leer limite linea lista llamar lleno los mapa
-marca marcado marcar medio medios medir mensaje mes migrar mismo mostrar nombre nota notas nuevo opcion opciones
-ordenar orden otro otra para parar pegar pendiente personales plantilla poner por prefijo propuesta prueba quitar
-rama rango recoger recogida recorte recortar recuperar reemplazar regla reglas registro relacionado relacionados
-reparto repartir resultado resumen revisado revision rojo ruta salida salir separar siguiente sin sesion solo
-sufijo sumar tamano tam tarea terminar texto tipo tope tras traspaso traer una unir ultimo ultima umbral
-novedad palanca parche piloto segundo segunda subida subir
-utilidades valor verde viejo visto volver ya
+abrir actualizar agente aguardar ahora ancho anadir antes anterior apuntar aplicar apunta archivo arreglo aviso
+bajar barra bitacora bloque borrar buscar busca cabecera cada cadena cambiar cambio campo carga cargar carpeta
+carrusel catalogo cerrar cierre cifra clave codigo comando comprobacion comprobado comprobar contar contenido copia
+copiar correr crear cuando cuenta cuerpo dato datos decir desde despues devolver devuelve donde ejecutar ejemplo
+empezar enlace enlaces entrada escribir estado explicar falla fallo falta fase fecha ficha filtrar fuente fusionar
+guardia hasta hecho hoja hora idioma igual informe imprimir juntar lado leer limite linea lista llamar lleno mapa
+marca marcado marcar medio medios medir mensaje migrar mismo mostrar nombre nota notas nuevo opcion opciones ordenar
+orden otro otra para parar pegar pendiente personales plantilla poner por prefijo propuesta prueba quitar rama rango
+recoger recogida recorte recortar recuperar reemplazar regla reglas registro relacionado relacionados reparto
+repartir resultado resumen revisado revision rojo ruta salida salir separar siguiente sesion sufijo sumar tamano
+tarea terminar texto tipo tope tras traspaso traer unir ultimo ultima umbral novedad palanca parche piloto segundo
+segunda subida subir utilidades valor verde viejo visto volver
 """.split())
 
 # Old names accepted on purpose or historic files, with the reason. {kind: {name or path: reason}}. kind "path" is
