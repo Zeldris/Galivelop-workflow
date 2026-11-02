@@ -141,6 +141,15 @@ class Names(Repo):
         code, out = self.check("--range", f"{self.base}..HEAD", "--no-names")
         self.assertEqual(code, 0, out)
 
+    def test_names_of_anonymize_are_checked_and_their_aliases_pass(self):
+        self.local({"anonymize": {"Secret App": "private-project-1"}})
+        self.write("docs/a.md", "from secret-app\n")
+        self.write("docs/b.md", "from private-project-1\n")
+        code, out = self.check("--all")
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/a.md:1: private name secret-app", out)
+        self.assertNotIn("docs/b.md", out)
+
     def test_no_local_file_skips_names_with_a_notice(self):
         self.write("docs/a.md", "Secret-Project\n")
         code, out = self.check("--all")
@@ -151,7 +160,12 @@ class Names(Repo):
         for bad, reason in (("{nope", "invalid JSON"), ('["x"]', "expected a JSON object"),
                             ('{"privateName": ["x"]}', "unknown key 'privateName'"),
                             ('{"privateNames": "x"}', "'privateNames' must be a list of non-empty strings"),
-                            ('{"privateNames": [""]}', "'privateNames' must be a list of non-empty strings")):
+                            ('{"privateNames": [""]}', "'privateNames' must be a list of non-empty strings"),
+                            ('{"anonymize": ["x"]}', "'anonymize' must map non-empty names to aliases"),
+                            ('{"anonymize": {"x": "project-1"}}', "'anonymize' must map non-empty names to aliases"),
+                            ('{"anonymize": {"x": "private-project-"}}', "aliases private-project-N"),
+                            ('{"anonymize": {"x": 1}}', "aliases private-project-N"),
+                            ('{"anonymize": {" ": "private-project-1"}}', "must map non-empty names")):
             self.local(bad)
             code, out = self.check("--all")
             self.assertEqual(code, 2, bad)
@@ -165,7 +179,11 @@ class Names(Repo):
         self.assertEqual((r.returncode, r.stdout.strip()), (0, "null"))
         self.local({"privateNames": ["A"]})
         r = subprocess.run(cli, capture_output=True, text=True, env=self.env)
-        self.assertEqual(json.loads(r.stdout), {"privateNames": ["A"], "allowEmails": []})
+        self.assertEqual(json.loads(r.stdout), {"privateNames": ["A"], "allowEmails": [], "anonymize": {}})
+        # The names of anonymize are private names too, listed once.
+        self.local({"privateNames": ["A"], "anonymize": {"A": "private-project-1", "b_c": "private-project-2"}})
+        r = subprocess.run(cli, capture_output=True, text=True, env=self.env)
+        self.assertEqual(json.loads(r.stdout)["privateNames"], ["A", "b_c"])
         self.local("[]")
         r = subprocess.run(cli, capture_output=True, text=True, env=self.env)
         self.assertEqual(r.returncode, 2)

@@ -315,5 +315,114 @@ class Harvest(unittest.TestCase):
         self.assertIn("harvest.py --diff grilling", out)
 
 
+class Anonymized(unittest.TestCase):
+    """E3: with `anonymize` in the workflow repo's .claude/gw.local.json, private projects come out as their alias.
+    Made-up names only (secret-app, Jane Roe)."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        # A workflow copy of its own: harvest.py reads the local file of the repo it lives in.
+        self.wf = self.tmp / "wf"
+        for rel in ("scripts", "skills"):
+            shutil.copytree(ROOT / rel, self.wf / rel, ignore=shutil.ignore_patterns("__pycache__"))
+        (self.wf / ".claude").mkdir()
+        self.script = str(self.wf / "scripts" / "harvest.py")
+        self.state = self.tmp / "state.json"
+        # The project: its folder, origin, a skill edit and a retro idea all carry the private name.
+        self.repo = self.tmp / "Secret_App"
+        (self.repo / ".claude/skills/grilling").mkdir(parents=True)
+        git(self.tmp, "init", "-q", str(self.repo))
+        git(self.repo, "remote", "add", "origin", "git@github.com:someone/secret-app.git")
+        ours = (ROOT / "skills" / "grilling" / "SKILL.md").read_text()
+        (self.repo / ".claude/skills/grilling/SKILL.md").write_text(ours + "\nTuned for SECRET APP.\n")
+        (self.repo / "docs").mkdir()
+        (self.repo / "docs/retro-x.md").write_text("# Retro\n\n## For Galivelop-workflow\n\nIn secret app, "
+                                                    "check shallow clones.\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "secret-app: first")
+        self.head = git(self.repo, "rev-parse", "HEAD").strip()
+
+    def local(self, data):
+        (self.wf / ".claude" / "gw.local.json").write_text(json.dumps(data))
+
+    def harvest(self, *args):
+        return subprocess.run(["python3", self.script, "--state", str(self.state), *args, str(self.repo)],
+                              capture_output=True, text=True)
+
+    def test_everything_printed_carries_the_alias(self):
+        self.local({"anonymize": {"Secret App": "private-project-1"}})
+        r = self.harvest("--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        report = json.loads(r.stdout)[0]
+        self.assertEqual(report["repo"], "someone/private-project-1")
+        self.assertTrue(report["path"].endswith("/private-project-1"), report["path"])
+        self.assertIn("In private-project-1, check shallow clones.", report["ideas"][0]["text"])
+        self.assertEqual(report["commits"], [])  # first harvest
+        self.assertNotRegex(r.stdout, r"(?i)secret")
+        r = self.harvest()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("## someone/private-project-1", r.stdout)
+        self.assertNotRegex(r.stdout, r"(?i)secret")
+        r = self.harvest("--diff", "grilling")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("+Tuned for private-project-1.", r.stdout)
+        self.assertNotRegex(r.stdout, r"(?i)secret")
+
+    def test_the_state_records_the_alias_and_finds_it(self):
+        self.local({"anonymize": {"secret-app": "private-project-1"}})
+        r = self.harvest("--update-state")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(self.state.read_text()), {"someone/private-project-1": self.head})
+        report = json.loads(self.harvest("--json").stdout)[0]
+        self.assertEqual(report["history"], "nothing new since the last harvest")
+        git(self.repo, "commit", "-q", "--allow-empty", "-m", "Secret_App: second")
+        report = json.loads(self.harvest("--json").stdout)[0]
+        self.assertRegex(report["commits"][0], r"^[0-9a-f]+ private-project-1: second$")
+
+    def test_an_old_real_id_in_the_state_is_found_and_migrated(self):
+        self.local({"anonymize": {"secret-app": "private-project-1"}})
+        self.state.write_text(json.dumps({"someone/secret-app": self.head, "other/x": "0" * 40}))
+        report = json.loads(self.harvest("--json").stdout)[0]
+        self.assertEqual(report["last"], self.head)
+        self.assertEqual(report["history"], "nothing new since the last harvest")
+        r = self.harvest("--update-state")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(self.state.read_text()),
+                         {"someone/private-project-1": self.head, "other/x": "0" * 40})
+
+    def test_a_private_name_with_no_alias_is_refused(self):
+        # Jane Roe has no alias: the report naming her is not printed, nor the state written.
+        (self.repo / "docs/retro-x.md").write_text("## For Galivelop-workflow\n\nAsk jane_roe.\n")
+        git(self.repo, "commit", "-qam", "two")
+        self.local({"privateNames": ["Jane Roe"], "anonymize": {"secret-app": "private-project-1"}})
+        r = self.harvest("--json")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertEqual(json.loads(r.stdout), [])
+        self.assertIn("mentions private names with no alias (jane_roe)", r.stderr)
+        self.assertIn("add each to anonymize in .claude/gw.local.json", r.stderr)
+        # The project id alone is clean, so the state can be recorded; a project id with no alias cannot.
+        self.assertEqual(self.harvest("--update-state").returncode, 0)
+        self.state.unlink()
+        self.local({"privateNames": ["secret app"]})
+        r = self.harvest("--update-state")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("mentions private names with no alias (secret-app)", r.stderr)
+        self.assertIn("state not updated", r.stderr)
+        self.assertFalse(self.state.exists())
+
+    def test_a_malformed_local_file_fails_closed(self):
+        self.local({"anonymize": {"secret-app": "project-one"}})
+        r = self.harvest("--json")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("'anonymize' must map non-empty names to aliases private-project-N", r.stderr)
+        self.assertEqual(r.stdout, "")
+
+    def test_without_a_local_file_nothing_changes(self):
+        r = self.harvest("--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout)[0]["repo"], "someone/secret-app")
+
+
 if __name__ == "__main__":
     unittest.main()

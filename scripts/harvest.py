@@ -23,9 +23,16 @@ Usage:
   python3 scripts/harvest.py --diff SKILL PROJECT            # unified diff of one skill
   python3 scripts/harvest.py --update-state PROJECT ...      # record HEAD as harvested
 Projects are read-only: this script only runs read-only git commands in them.
+
+Private projects (E3): with `anonymize` in this repo's .claude/gw.local.json ({"<name>": "private-project-N"}),
+everything printed, and the project id recorded in the state file, carries the alias instead of the name (any case,
+`-`, `_` and space alike: the matching of private-check.py). A name of privateNames still in a project's report (no
+alias for it) -> that project is not printed and the exit code is 1, saying to add the alias. The state is looked up
+under the alias and, during 0.x, under the old real id, which --update-state replaces with the alias.
 """
 import argparse
 import difflib
+import importlib.util
 import json
 import re
 import subprocess
@@ -41,6 +48,61 @@ IDEAS_HEADING = re.compile(r"^#{2,4}\s*(?:For|Para)\s+Galivelop-workflow\b.*$", 
 IDEAS_LINE = re.compile(r"^([ \t]*)(?:[-*+]\s+|\d+\.\s+)?[*_]{0,2}(?:Propuestas?\s+para\s+el\s+flujo|Proposals?\s+for\s+the\s+workflow)\b",
                         re.I | re.M)
 RETRO_NAME = re.compile(r"(^|/)retro-[^/]*\.md$")
+
+
+def load_private_check():
+    """scripts/private-check.py as a module (its file name has a dash): its name_regex is the one name matcher."""
+    spec = importlib.util.spec_from_file_location("private_check", str(Path(__file__).resolve().parent /
+                                                                       "private-check.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+class Anonymizer:
+    """The aliases of the local file: anonymize(obj) puts them in place of the names in every string of obj, and
+    leaks(obj) lists the private names still there (they have no alias). Without a local file it changes nothing."""
+
+    def __init__(self, local):
+        local = local or {"privateNames": [], "anonymize": {}}
+        name_regex = load_private_check().name_regex if local["privateNames"] else None
+        # Longest name first: "secret app" is replaced before a shorter "secret".
+        self.rules = [(name_regex([name]), alias) for name, alias in
+                      sorted(local["anonymize"].items(), key=lambda item: len(item[0]), reverse=True)]
+        self.private = name_regex(local["privateNames"]) if name_regex else None
+
+    def __call__(self, obj):
+        if isinstance(obj, str):
+            for regex, alias in self.rules:
+                obj = regex.sub(alias, obj)
+            return obj
+        if isinstance(obj, list):
+            return [self(item) for item in obj]
+        if isinstance(obj, dict):
+            return {self(k): self(v) for k, v in obj.items()}
+        return obj
+
+    def leaks(self, obj):
+        if self.private is None:
+            return []
+        found, todo = set(), [obj]
+        while todo:
+            item = todo.pop()
+            if isinstance(item, str):
+                found.update(m.group(0) for m in self.private.finditer(item))
+            elif isinstance(item, dict):
+                todo += list(item) + list(item.values())
+            elif isinstance(item, list):
+                todo += item
+        return sorted(found)
+
+
+def refuse(what, leaks):
+    """The message for output that still names a private name with no alias (to stderr: it is local)."""
+    names = ", ".join(leaks)
+    example = json.dumps({"anonymize": {leaks[0]: "private-project-N"}})
+    return (f"harvest: {what} mentions private names with no alias ({names}), so it is not printed; add each to "
+            f"anonymize in {config.LOCAL_REL.as_posix()} (e.g. {example}) and run it again")
 
 
 def default_state():
@@ -172,13 +234,21 @@ def ideas_in(text, rel, added):
     return ideas
 
 
-def harvest(repo, state):
+def state_key(state, rid, anonymize):
+    """The key of this project in the state: its public id (the alias in it), or during 0.x the old real id when only
+    that one was recorded."""
+    public = anonymize(rid)
+    return rid if public not in state and rid in state else public
+
+
+def harvest(repo, state, anonymize=lambda text: text):
+    """The report of one project, with its real names: the caller anonymizes it."""
     repo = Path(repo).resolve()
     head = git(repo, "rev-parse", "HEAD")
     if head is None:
         raise SystemExit(f"{repo}: not a git repository (clone it first)")
     rid = repo_id(repo)
-    last = state.get(rid)
+    last = state.get(state_key(state, rid, anonymize))
     report = {"repo": rid, "path": str(repo), "head": head, "last": last,
               "uses_gw_json": (repo / ".claude" / "gw.json").is_file(),
               "commits": [], "history": "full", "skills_changed": [], "skills_new": [],
@@ -318,22 +388,47 @@ def main():
               "written (renamed) on --update-state", file=sys.stderr)
     source = legacy or args.state
     state = json.loads(source.read_text(encoding="utf-8")) if source.is_file() else {}
+    try:
+        anonymize = Anonymizer(config.load_local(ROOT))
+    except config.ConfigError as exc:
+        print(f"harvest: {exc}", file=sys.stderr)
+        return 2
 
     if args.diff:
         mine = ROOT / "skills" / args.diff / "SKILL.md"
-        for project in args.projects:
+        for n, project in enumerate(args.projects, 1):
             theirs = Path(project) / ".claude" / "skills" / args.diff / "SKILL.md"
             if not mine.is_file() or not theirs.is_file():
                 print(f"{args.diff}: missing in {'this repo' if not mine.is_file() else project}", file=sys.stderr)
                 return 1
-            sys.stdout.writelines(difflib.unified_diff(
+            diff = anonymize("".join(difflib.unified_diff(
                 mine.read_text(encoding="utf-8").splitlines(True), theirs.read_text(encoding="utf-8").splitlines(True),
-                fromfile=f"galivelop-workflow/skills/{args.diff}/SKILL.md", tofile=str(theirs)))
+                fromfile=f"galivelop-workflow/skills/{args.diff}/SKILL.md", tofile=str(theirs))))
+            leaks = anonymize.leaks(diff)
+            if leaks:
+                print(refuse(f"the diff of project {n} ({project})", leaks), file=sys.stderr)
+                return 1
+            sys.stdout.write(diff)
         return 0
 
-    reports = [harvest(p, state) for p in args.projects]
+    reports, refused = [], False
+    for n, project in enumerate(args.projects, 1):
+        report = harvest(project, state, anonymize)
+        public = anonymize(report)
+        # --update-state publishes only the project id (in the state file); a report publishes all of it.
+        leaks = anonymize.leaks(public["repo"] if args.update_state else public)
+        if leaks:
+            print(refuse(f"project {n} ({project})", leaks), file=sys.stderr)
+            refused = True
+            continue
+        reports.append((report["repo"], public))
     if args.update_state:
-        for r in reports:
+        if refused:
+            print("harvest: state not updated", file=sys.stderr)
+            return 1
+        for rid, r in reports:
+            if rid != r["repo"]:
+                state.pop(rid, None)  # 0.x: the old real id becomes the alias
             state[r["repo"]] = r["head"]
         args.state.parent.mkdir(parents=True, exist_ok=True)
         if legacy:
@@ -345,11 +440,12 @@ def main():
             shown = args.state
         print(f"State updated: {shown}")
         return 0
+    public = [r for _, r in reports]
     if args.json:
-        print(json.dumps(reports, indent=2, ensure_ascii=False))
+        print(json.dumps(public, indent=2, ensure_ascii=False))
     else:
-        sys.stdout.write("\n".join(markdown(r) for r in reports))
-    return 0
+        sys.stdout.write("\n".join(markdown(r) for r in public))
+    return 1 if refused else 0
 
 
 if __name__ == "__main__":
