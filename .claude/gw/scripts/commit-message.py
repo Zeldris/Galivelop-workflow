@@ -9,15 +9,18 @@ and applies, from .claude/gw.json (read through config.py):
 
   commitFormat "conventional"  the first line is `type(scope)!: text` (scope and ! optional; types feat, fix, docs,
                                style, refactor, perf, test, build, ci, chore, revert). A leading `WIP: ` and the lines
-                               git writes itself (`fixup! `, `squash! `, `amend! `, `Revert "`, `Merge `) pass.
+                               git writes itself (`fixup! `, `squash! `, `amend! `, `Revert "`, `Reapply "`, `Merge `) pass.
   commitRefs true              the trailer block (git interpret-trailers --parse) has at least one `Refs:` line, with
                                one or several ids separated by commas (`Refs: D11, D12`; the line may repeat), and each
                                id opens an entry (table row or list item, the `entry` expression of handoff.py) with
                                the shape of `taskId` in one of `refsSources` (empty: `plan` plus `log`). The STAGED
                                version of each file is read, so a commit that adds the id can cite it.
   agentSignatures false        an `Agent:` trailer (the subagent's skill, e.g. `Agent: gw-orchestrate-dealer`) must
-                               not name a model or provider (claude, opus, gpt, gemini, o3, ...). Without that, any
-                               `Agent:` value passes.
+                               not name a model or provider: the value is split at anything that is not a letter or digit
+                               and a piece fails if it is claude, anthropic, opus, sonnet, haiku, fable, gpt,
+                               chatgpt, openai, gemini, llama, mistral, qwen or deepseek, or matches gpt<digit>..., o<digits>
+                               or <digits>o (Claudette passes, haiku-writer and 4o do not). Without that, any
+                               `Agent:` value passes. Trailers are read with --no-divider (a `---` line is body).
 
 Format and `Refs:` are not checked while a merge, revert or cherry-pick is being concluded (MERGE_HEAD, REVERT_HEAD,
 CHERRY_PICK_HEAD) nor during a rebase; `Agent:` is checked in merges too, not in a rebase (old messages are replayed).
@@ -34,13 +37,16 @@ sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import config as gwconfig  # noqa: E402
-import handoff  # noqa: E402
 
 TYPES = ("feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert")
 CONVENTIONAL = re.compile(rf"(?:{'|'.join(TYPES)})(?:\([^()\s][^()]*\))?!?: \S")
-GIT_LINES = ("fixup! ", "squash! ", "amend! ", 'Revert "', "Merge ")
-MODEL_NAMES = ("claude", "anthropic", "opus", "sonnet", "haiku", "fable", "gpt", "openai", "gemini", "llama",
-               "mistral", "qwen", "deepseek")
+GIT_LINES = ("fixup! ", "squash! ", "amend! ", 'Revert "', 'Reapply "', "Merge ")
+# As of 2026-11-02, from the D15 rule in docs/design/D-git.md (models and providers; the list goes stale: extend it).
+# An Agent value is split into pieces at anything that is not a letter or digit; a piece in this set, or one that
+# matches MODEL_SHAPES, names a model.
+MODEL_NAMES = frozenset(("claude", "anthropic", "opus", "sonnet", "haiku", "fable", "gpt", "chatgpt", "openai",
+                         "gemini", "llama", "mistral", "qwen", "deepseek"))
+MODEL_SHAPES = re.compile(r"gpt\d.*|o\d+|\d+o")
 MERGE_STATES = ("MERGE_HEAD", "REVERT_HEAD", "CHERRY_PICK_HEAD")
 
 
@@ -50,17 +56,21 @@ class Reject(Exception):
 
 def git(root, *args):
     try:
-        return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
+        return subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, encoding="utf-8", errors="replace")
     except OSError as exc:
         raise Reject(f"cannot run git ({exc}); check that git is installed: git --version")
 
 
-def git_path_exists(root, name):
-    r = git(root, "rev-parse", "--git-path", name)
-    if r.returncode != 0:
+def git_paths_exist(root, names):
+    """{name: whether that path inside .git exists}, with one git call."""
+    args = []
+    for name in names:
+        args += ["--git-path", name]
+    r = git(root, "rev-parse", *args)
+    lines = r.stdout.splitlines()
+    if r.returncode != 0 or len(lines) != len(names):
         raise Reject(f"git rev-parse failed ({r.stderr.strip()[:200]}); check the repository: git status")
-    path = Path(r.stdout.strip())
-    return (path if path.is_absolute() else Path(root) / path).exists()
+    return {n: (Path(l) if Path(l).is_absolute() else Path(root) / l).exists() for n, l in zip(names, lines)}
 
 
 def clean_message(root, text):
@@ -84,8 +94,8 @@ def clean_message(root, text):
 def trailers(root, message, msgfile):
     """[(key, value)] of the message's trailer block, as git reads it."""
     try:
-        r = subprocess.run(["git", "-C", str(root), "interpret-trailers", "--parse"], input=message + "\n",
-                           capture_output=True, text=True)
+        r = subprocess.run(["git", "-C", str(root), "interpret-trailers", "--parse", "--no-divider"], input=message + "\n",
+                           capture_output=True, text=True, encoding="utf-8", errors="replace")
     except OSError as exc:
         raise Reject(f"cannot run git ({exc}); check that git is installed: git --version")
     if r.returncode != 0:
@@ -99,10 +109,7 @@ def trailers(root, message, msgfile):
 
 
 def names_a_model(value):
-    for token in re.split(r"[^a-z0-9]+", value.lower()):
-        if re.fullmatch(r"o\d+", token) or any(token.startswith(n) for n in MODEL_NAMES):
-            return True
-    return False
+    return any(t in MODEL_NAMES or MODEL_SHAPES.fullmatch(t) for t in re.split(r"[^a-z0-9]+", value.lower()) if t)
 
 
 def check_agent(found, msgfile):
@@ -145,6 +152,7 @@ def source_files(root, sources):
 
 
 def valid_ids(root, config, id_pattern):
+    import handoff
     sources = list(config.get("refsSources") or [])
     if not sources:
         sources = list(config.get("plan") or []) + [config["log"]]
@@ -160,7 +168,11 @@ def valid_ids(root, config, id_pattern):
 
 
 def check_refs(root, config, found, msgfile):
-    pattern = config.get("taskId") or handoff.DEFAULT_ID
+    try:
+        import handoff
+    except ImportError as exc:
+        raise Reject(f"cannot import handoff.py ({exc}); reinstall the workflow scripts: /gw-update")
+    pattern = handoff.task_id_pattern(config)
     try:
         re.compile(pattern)
         pattern = gwconfig.non_capturing(pattern)
@@ -195,14 +207,16 @@ def run(root, msgfile):
     except OSError as exc:
         raise Reject(f"cannot read the commit message file '{msgfile}' ({exc}); commit again: git commit")
     root = config["_root"]
-    in_rebase = git_path_exists(root, "rebase-merge") or git_path_exists(root, "rebase-apply")
-    if in_rebase:
-        return
     fmt = config.get("commitFormat", "free") == "conventional"
     refs = bool(config.get("commitRefs", False))
     agent = config.get("agentSignatures", True) is False
-    merging = any(git_path_exists(root, name) for name in MERGE_STATES)
-    if not (agent or (not merging and (fmt or refs))):
+    if not (fmt or refs or agent):
+        return
+    state = git_paths_exist(root, ("rebase-merge", "rebase-apply") + MERGE_STATES)
+    if state["rebase-merge"] or state["rebase-apply"]:
+        return
+    merging = any(state[name] for name in MERGE_STATES)
+    if not (agent or not merging):
         return
     message = clean_message(root, text)
     if not merging and fmt:

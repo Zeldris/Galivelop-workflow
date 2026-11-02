@@ -92,6 +92,12 @@ class Usage(Exception):
     pass
 
 
+def task_id_pattern(config, explicit=None):
+    """The task id pattern: `explicit` (--id-regex), else $GW_TASK_ID, else the config's `taskId`, else DEFAULT_ID.
+    Shared with commit-message.py so both read the ids the same way."""
+    return explicit or os.environ.get("GW_TASK_ID") or config.get("taskId") or DEFAULT_ID
+
+
 def entry_regex(id_src):
     """The regex that tells a line opens a task entry (a table row `| D1 |` or a list item `- D1 …`, with or without a
     checkbox, bold, backticks or strike-through): group `id` is the task id, `box` the checkbox, `strike` the `~~`.
@@ -109,7 +115,7 @@ class Ctx:
         self.log = self.config["log"]
         plans = args.plan or [p for p in os.environ.get("GW_PLAN", "").split(":") if p] or list(self.config.get("plan") or [])
         self.plans = plans
-        pattern = args.id_regex or os.environ.get("GW_TASK_ID") or self.config.get("taskId") or DEFAULT_ID
+        pattern = task_id_pattern(self.config, args.id_regex)
         try:
             re.compile(pattern)
             pattern = gwconfig.non_capturing(pattern)  # `(INS|FLU)-\d+` must not make findall return groups

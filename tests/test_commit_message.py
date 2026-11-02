@@ -65,7 +65,7 @@ class Conventional(Msg):
     def test_accepted_forms(self):
         for subject in ("feat: add x", "fix(D11): y", "feat(D11)!: breaking", "refactor(a-b c): z", "WIP: feat(D11): x",
                         "WIP: fix: x", "fixup! feat: x", "squash! whatever", "amend! whatever", 'Revert "feat: x"',
-                        "Merge branch 'x'"):
+                        "Merge branch 'x'", 'Reapply "feat: x"'):
             with self.subTest(subject=subject):
                 self.accepted(subject + "\n\nbody")
 
@@ -261,6 +261,15 @@ class Refs(Msg):
         self.roadmap(ROADMAP + "- [ ] AB-7 default shape\n")
         self.accepted("work\n\nRefs: AB-7")
 
+    def test_gw_task_id_overrides_the_config_like_handoff(self):
+        self.roadmap(ROADMAP + "- [ ] ZZ.1 other shape\n")
+        self.p.write("docs/notes.md", "e\n")
+        r = self.p.commit("work\n\nRefs: ZZ.1", ok=False, env={"GW_TASK_ID": "ZZ\\.\\d"})
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_a_divider_line_in_the_body_keeps_the_refs_trailer(self):
+        self.accepted("work\n\nbody\n---\nmore\n\nRefs: D11")
+
     def test_a_merge_skips_refs(self):
         p = self.p
         p.git("checkout", "-q", "-b", "side")
@@ -292,7 +301,8 @@ class AgentTrailer(Msg):
             self.accepted("work\n\nAgent: gw-orchestrate-dealer")
 
     def test_a_model_name_is_refused_only_with_signatures_false(self):
-        values = ("claude-opus", "GPT-5", "o3", "Gemini 2", "anthropic", "gpt4o", "o3-mini", "sonnet")
+        values = ("claude-opus", "GPT-5", "o3", "Gemini 2", "anthropic", "gpt4o", "o3-mini", "sonnet", "ChatGPT", "4o",
+                  "haiku-writer", "chatgpt-helper")
         self.configure(agentSignatures=True)
         for value in values:
             with self.subTest(value=value, signatures=True):
@@ -305,13 +315,20 @@ class AgentTrailer(Msg):
 
     def test_names_that_only_look_like_models_pass(self):
         self.configure(agentSignatures=False)
-        for value in ("gw-orchestrate-dealer", "orchestrate-dealer", "ops", "reviewer", "o-ring", "optimizer"):
+        for value in ("gw-orchestrate-dealer", "orchestrate-dealer", "ops", "reviewer", "o-ring", "optimizer", "Claudette",
+                      "gptools", "fabled", "opusx"):
             with self.subTest(value=value):
                 self.accepted(f"work\n\nAgent: {value}")
 
     def test_an_agent_line_outside_the_trailer_block_is_not_checked(self):
         self.configure(agentSignatures=False)
         self.accepted("work\n\nAgent: claude-opus in a sentence, then\nmore text of the body")
+
+    def test_a_divider_line_in_the_body_is_not_a_patch_start(self):
+        self.configure(agentSignatures=False, commitRefs=True, plan=["docs/roadmap.md"], taskId="[A-Z]\\d+")
+        self.roadmap()
+        self.accepted("work\n\nbody\n---\nmore\n\nRefs: D11\nAgent: gw-orchestrate-dealer")
+        self.refused("work\n\nbody\n---\nmore\n\nRefs: D11\nAgent: claude", "Agent trailer names a model")
 
     def test_a_merge_checks_the_agent_trailer(self):
         self.configure(agentSignatures=False)
