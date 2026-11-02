@@ -1,4 +1,4 @@
-"""scripts/recoger.py against a temporary project repository."""
+"""scripts/harvest.py against a temporary project repository."""
 import json
 import shutil
 import subprocess
@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SCRIPT = ROOT / "scripts" / "recoger.py"
+SCRIPT = ROOT / "scripts" / "harvest.py"
 
 
 def run(*args, cwd=None):
@@ -79,14 +79,14 @@ class Recoger(unittest.TestCase):
         log = self.repo / "docs" / "traspaso.md"
         log.parent.mkdir(parents=True, exist_ok=True)
         log.write_text("# Traspaso\n\n## Pendiente\n\n- Arreglar el login.\n"
-                       "- **Propuesta para el flujo:** que aplicar.py respete\n  los pasos propios del CI.\n"
+                       "- **Propuesta para el flujo:** que apply.py respete\n  los pasos propios del CI.\n"
                        "- Otra cosa local.\n\nProposal for the workflow: wait longer for the transcript.\n")
         git(self.repo, "add", "-A")
         git(self.repo, "commit", "-qm", "hand-off")
         r = self.harvest()
         self.assertEqual(r["ideas"], [
             {"path": "docs/traspaso.md",
-             "text": "- **Propuesta para el flujo:** que aplicar.py respete\n  los pasos propios del CI."},
+             "text": "- **Propuesta para el flujo:** que apply.py respete\n  los pasos propios del CI."},
             {"path": "docs/traspaso.md", "text": "Proposal for the workflow: wait longer for the transcript."}])
 
     def commit_log(self, text, msg):
@@ -232,36 +232,36 @@ class Recoger(unittest.TestCase):
         self.assertTrue(r["skills_changed"])
 
     def test_an_older_workflow_copy_is_not_a_project_change(self):
-        # A workflow repo of its own (CI clones are shallow): grilling and revisado.sh with two commits each.
+        # A workflow repo of its own (CI clones are shallow): grilling and reviewed.sh with two commits each.
         wf = self.tmp / "wf"
         shutil.copytree(ROOT / "scripts", wf / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
         (wf / "skills" / "grilling").mkdir(parents=True)
         skill = (ROOT / "skills" / "grilling" / "SKILL.md").read_text()
         git(self.tmp, "init", "-q", str(wf))
         (wf / "skills/grilling/SKILL.md").write_text(skill + "\nOld line.\n")
-        (wf / "scripts/revisado.sh").write_text("echo old\n")
+        (wf / "scripts/reviewed.sh").write_text("echo old\n")
         git(wf, "add", "-A"); git(wf, "commit", "-qm", "old")
         (wf / "skills/grilling/SKILL.md").write_text(skill)
-        (wf / "scripts/revisado.sh").write_text("echo new\n")
+        (wf / "scripts/reviewed.sh").write_text("echo new\n")
         git(wf, "add", "-A"); git(wf, "commit", "-qm", "new")
         old_sha = git(wf, "rev-parse", "--short=7", "HEAD~1").strip()
-        # The project: grilling as the old commit had it (frontmatter aside), and the old revisado.sh.
+        # The project: grilling as the old commit had it (frontmatter aside), and the old reviewed.sh.
         (self.repo / ".claude/skills/grilling/SKILL.md").write_text(skill + "\nOld line.\n")
-        (self.repo / "revisado.sh").write_text("echo old\n")
+        (self.repo / "reviewed.sh").write_text("echo old\n")
         git(self.repo, "add", "-A"); git(self.repo, "commit", "-qm", "older copies")
-        out = run("python3", str(wf / "scripts" / "recoger.py"), "--json", "--state", str(self.state), str(self.repo))
+        out = run("python3", str(wf / "scripts" / "harvest.py"), "--json", "--state", str(self.state), str(self.repo))
         r = json.loads(out)[0]
         self.assertEqual(r["skills_changed"], [])
         self.assertEqual([(s["skill"], s["matches"]) for s in r["skills_older"]], [("grilling", old_sha)])
         self.assertEqual(r["scripts_changed"], [])
-        self.assertEqual([(s["script"], s["matches"]) for s in r["scripts_older"]], [("revisado.sh", old_sha)])
-        out = run("python3", str(wf / "scripts" / "recoger.py"), "--state", str(self.state), str(self.repo))
+        self.assertEqual([(s["script"], s["matches"]) for s in r["scripts_older"]], [("reviewed.sh", old_sha)])
+        out = run("python3", str(wf / "scripts" / "harvest.py"), "--state", str(self.state), str(self.repo))
         self.assertIn("Older workflow copies (not project changes)", out)
 
     def test_project_edits_say_how_to_see_them(self):
         out = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
         self.assertIn("matches no earlier workflow copy, so local edits", out)
-        self.assertIn("recoger.py --diff grilling", out)
+        self.assertIn("harvest.py --diff grilling", out)
 
 
 if __name__ == "__main__":

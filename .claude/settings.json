@@ -18,7 +18,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/recuperar.py --estado"
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/recover.py --estado"
           }
         ]
       }
@@ -29,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/revision-antes-de-main.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/review-before-main.sh"
           }
         ]
       },
@@ -38,7 +38,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/guardia-config.py"
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/config-guard.py"
           }
         ]
       },
@@ -47,7 +47,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/tope-subagentes.py"
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/subagent-cap.py"
           }
         ]
       }
@@ -57,7 +57,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/antes-de-parar.py"
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/before-stop.py"
           }
         ]
       }

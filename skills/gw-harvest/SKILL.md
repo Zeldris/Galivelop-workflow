@@ -26,11 +26,11 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
    project loads its `CLAUDE.md`, `AGENTS.md` and skill list into every call of the session (~17 % of a harvest
    session's input in one measure).
    **Bring each clone up to date first** (`git -C <project> fetch && git -C <project> merge --ff-only @{upstream}`):
-   `recoger.py` harvests the clone's `HEAD` and warns when it is behind or diverged from its upstream, or has none.
+   `harvest.py` harvests the clone's `HEAD` and warns when it is behind or diverged from its upstream, or has none.
 2. **Run the mechanical part** from this repo:
 
    ```bash
-   python3 scripts/recoger.py <project-path> [<project-path> ...]
+   python3 scripts/harvest.py <project-path> [<project-path> ...]
    ```
 
    It lists, per project and since the last harvest (`docs/propuestas/estado.json`): workflow skills whose body
@@ -42,7 +42,7 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
    it says and run it again.
 3. **Look at the findings with one subagent per project, all in parallel** (one message with several Agent calls),
    each returning a short summary with paths per finding, never whole files in the main session. For a changed
-   skill, `python3 scripts/recoger.py --diff <skill> <project-path>` gives the diff.
+   skill, `python3 scripts/harvest.py --diff <skill> <project-path>` gives the diff.
 4. **Classify each finding**:
    - **General**: would help any project (a fix, a clearer rule, a missing check, a reusable skill) → proposal.
    - **Project-specific**: domain wording, stack commands, local paths → note it as "stays in the project".
@@ -54,7 +54,7 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
 6. **Present them to the user**, most valuable first, and wait. What the user approves becomes a normal change in
    this repo: the piece updated, a CHANGELOG entry and a version bump (patch, minor or major per plan §7).
 7. **Record the harvest** once the proposals file is committed:
-   `python3 scripts/recoger.py --update-state <project-path> ...`, then commit `docs/propuestas/estado.json` in the
+   `python3 scripts/harvest.py --update-state <project-path> ...`, then commit `docs/propuestas/estado.json` in the
    same commit as the proposals.
 
 ## Proposal template
@@ -62,7 +62,7 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
 ```markdown
 # Harvest <repo> — YYYY-MM-DD
 
-From `<last>` to `<head>` (`scripts/recoger.py`).
+From `<last>` to `<head>` (`scripts/harvest.py`).
 
 ## P1. <short title>
 

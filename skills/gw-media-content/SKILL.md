@@ -39,7 +39,7 @@ channels and languages.
    - A note «found, but its version is not readable» on `version_proyecto`: pass `--version-file <path>` or leave the
      version out of the proposals.
    Then read what the figures point at: the CHANGELOG section, the log file, the commits, ADRs, plan or roadmap, test
-   and CI results, `/opt-tokens` and `/retro` reports, new screenshots. Done when each candidate has a fact you can
+   and CI results, `/gw-opt-tokens` and `/retro` reports, new screenshots. Done when each candidate has a fact you can
    cite. What is presented as done is merged work; the roadmap and behind-the-scenes types may use open plans,
    labelled as plans and never as shipped.
 3. **Choose.** Match the facts to rows of `catalogo.md`. Drop what step 1 found published, in a piece or `proposed`.

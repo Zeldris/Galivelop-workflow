@@ -1,4 +1,4 @@
-"""scripts/revision-antes-de-main.sh, the PreToolUse hook that keeps unreviewed code and red CI out of the protected
+"""scripts/review-before-main.sh, the PreToolUse hook that keeps unreviewed code and red CI out of the protected
 branch through pull requests, against temporary repos: a bare "origin" plus a clone laid out like a project that
 applied the workflow (test_ganchos.Project). The PR head is read from origin with `git ls-remote`; GitHub API calls go
 to a fake `gh` (or a fake `curl`) on PATH that prints the canned JSON in GH_PR / GH_RUNS / GH_STATUS.
@@ -64,8 +64,8 @@ class Hook(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="gw-revision-")).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, True)
         p = self.p = Project(self.tmp)
-        self.script = p.work / ".claude" / "gw" / "scripts" / "revision-antes-de-main.sh"
-        shutil.copy2(ROOT / "scripts" / "revision-antes-de-main.sh", self.script)
+        self.script = p.work / ".claude" / "gw" / "scripts" / "review-before-main.sh"
+        shutil.copy2(ROOT / "scripts" / "review-before-main.sh", self.script)
         p.commit("add the hook")
         p.git("push", "-q", "--no-verify", "origin", "main")
         p.base = p.sha()
@@ -129,7 +129,7 @@ class Hook(unittest.TestCase):
         self.assertEqual((code, out), (0, ""))
 
     def test_no_mark_blocked_with_the_fix(self):
-        self.assertBlocked(self.create(), "no review mark", "src/code.py", "revisado.sh && git push")
+        self.assertBlocked(self.create(), "no review mark", "src/code.py", "reviewed.sh && git push")
 
     def test_mark_on_the_branch_head_on_github_allowed(self):
         self.mark(); self.push()
@@ -671,7 +671,7 @@ class PreFilter(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tools, True)
         for name in ("cat", "dirname"):
             (self.tools / name).symlink_to(shutil.which(name))
-        self.hook = ROOT / "scripts" / "revision-antes-de-main.sh"
+        self.hook = ROOT / "scripts" / "review-before-main.sh"
 
     def run_hook(self, tool, data):
         return subprocess.run([shutil.which("bash"), str(self.hook)], env={"PATH": str(self.tools)},

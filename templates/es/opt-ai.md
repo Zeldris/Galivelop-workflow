@@ -1,7 +1,7 @@
 <!-- galivelop-workflow v0.4.3 -->
-# opt-ai — notas del proyecto
+# gw-opt-ai — notas del proyecto
 
-Las lee primero la skill `opt-ai`; aquí vive todo lo propio de los modelos de IA local de este proyecto. El flujo
+Las lee primero la skill `gw-opt-ai`; aquí vive todo lo propio de los modelos de IA local de este proyecto. El flujo
 las crea una vez; desde entonces son del proyecto.
 
 ## Motores y modelos
@@ -21,7 +21,7 @@ las crea una vez; desde entonces son del proyecto.
 
 Los lee `scripts/medir.py` de la skill; las rutas relativas se resuelven desde la raíz del repo.
 
-```opt-ai
+```gw-opt-ai
 # log: <registro por llamada de esta ronda>
 # previous: <el registro de la ronda anterior>
 exclude_tasks: warmup

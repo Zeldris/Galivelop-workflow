@@ -1,7 +1,7 @@
 <!-- galivelop-workflow v0.4.3 -->
-# opt-ai — project notes
+# gw-opt-ai — project notes
 
-Read by the `opt-ai` skill first; everything specific to this project's local AI models lives here. Created by the
+Read by the `gw-opt-ai` skill first; everything specific to this project's local AI models lives here. Created by the
 workflow once; from then on it belongs to the project.
 
 ## Engines and models
@@ -21,7 +21,7 @@ workflow once; from then on it belongs to the project.
 
 Read by `scripts/medir.py` of the skill; relative paths resolve against the repo root.
 
-```opt-ai
+```gw-opt-ai
 # log: <this round's per-call log>
 # previous: <the earlier round's log>
 exclude_tasks: warmup

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # galivelop-workflow v0.4.3
 # Git commit-msg hook (copied into projects as .githooks/commit-msg; enable with: git config core.hooksPath .githooks).
-#   - When the commit stages the config's `log` file, runs the workflow's `bitacora.py check --date <today>` on the
+#   - When the commit stages the config's `log` file, runs the workflow's `handoff.py check --date <today>` on the
 #     staged version of it, so a log error (the "Updated" date, a malformed or oversized row) stops the commit
 #     instead of surfacing at pre-push with several commits already stacked.
 #     Its WARNING: lines (a long state-table cell, a bad "Done" section) are printed to stderr but do not stop it.
 #   - Does nothing when the commit does not touch the log, deletes it, or the config has no `log`.
 #   - Skipped while finishing a merge, revert or cherry-pick (MERGE_HEAD, REVERT_HEAD, CHERRY_PICK_HEAD) and during
 #     a rebase.
-#   - Fails closed when the workflow's config.py or (with the log staged) bitacora.py is missing.
+#   - Fails closed when the workflow's config.py or (with the log staged) handoff.py is missing.
 #   - With `agentSignatures: false` in the config, rejects a message that carries an agent's signature: a
 #     Co-Authored-By trailer with noreply@anthropic.com or naming Claude Code/Opus/Sonnet/Haiku/Fable, a
 #     Claude-Session trailer, or a line that starts with "Generated with Claude Code" (after any emoji) or with a
@@ -64,7 +64,7 @@ fi
 
 log="$(python3 "$config" --root "$root" get log 2>/dev/null)" || log=""
 [ -n "$log" ] || exit 0
-# `git diff --name-only` prints normalised paths: compare with the log as antes-de-parar.py does (./docs/x.md, a//b).
+# `git diff --name-only` prints normalised paths: compare with the log as before-stop.py does (./docs/x.md, a//b).
 log_raw="$log"
 log="$(python3 -c 'import posixpath, sys; print(posixpath.normpath(sys.argv[1]))' "$log_raw")" || {
   echo "commit-msg: cannot normalise the log path '$log_raw'; check python3: python3 --version" >&2; exit 1; }
@@ -79,12 +79,12 @@ staged="$(git -c core.quotepath=false diff --cached --name-only --no-renames --d
   echo "commit-msg: git diff failed; check the repository: git status" >&2; exit 1; }
 printf '%s\n' "$staged" | grep -Fxq -- "$log" || exit 0
 
-[ -f "$scripts/bitacora.py" ] || { echo "commit-msg: $scripts/bitacora.py is missing; reinstall the workflow scripts: /gw-update" >&2; exit 1; }
+[ -f "$scripts/handoff.py" ] || { echo "commit-msg: $scripts/handoff.py is missing; reinstall the workflow scripts: /gw-update" >&2; exit 1; }
 tmp="$(mktemp "${TMPDIR:-/tmp}/gw-commit-msg.XXXXXX")" || {
   echo "commit-msg: cannot create a temp file; free space in ${TMPDIR:-/tmp} and retry: git commit" >&2; exit 1; }
 trap 'rm -f "$tmp"' EXIT
 git show ":$log" > "$tmp" || { echo "commit-msg: cannot read the staged $log; stage it again: git add $log" >&2; exit 1; }
-if ! out="$(python3 "$scripts/bitacora.py" --root "$root" check "$tmp" --date "$(date +%F)" 2>&1)"; then
+if ! out="$(python3 "$scripts/handoff.py" --root "$root" check "$tmp" --date "$(date +%F)" 2>&1)"; then
   printf '%s\n' "$out" >&2
   echo "commit-msg: the staged $log fails the log check; fix it, stage it and commit again: git add $log && git commit" >&2
   exit 1

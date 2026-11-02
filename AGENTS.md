@@ -67,11 +67,11 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 - Se trabaja en la rama que indique la bitácora.
 - **A `main` solo con confirmación del usuario**, y antes las tres fases del flujo:
   1. **Código:** `/code-review` del diff contra `origin/main` (con `git fetch` antes); arreglos subidos con sus tests.
-  2. **Entorno:** `/opt-tokens` y `/retro`; sus propuestas se presentan al usuario y lo que confirme se aplica en la
+  2. **Entorno:** `/gw-opt-tokens` y `/retro`; sus propuestas se presentan al usuario y lo que confirme se aplica en la
      rama (lo general para el flujo se aplica aquí mismo: este repo es el flujo). Si el usuario pidió ir a `main` y no
      está para decidir la retro: todo listo (retro con `**Estado:** pendiente`, check en verde sobre la fusión con
-     `main`, descripción del PR) y se para antes de `revisado.sh`; no se decide por él.
-  3. **Cierre:** si la fase 2 trajo código, `/code-review` de esos commits; luego `bash scripts/revisado.sh` y la
+     `main`, descripción del PR) y se para antes de `reviewed.sh`; no se decide por él.
+  3. **Cierre:** si la fase 2 trajo código, `/code-review` de esos commits; luego `bash scripts/reviewed.sh` y la
      subida (el `pre-push` exige la marca).
 - Este repo, una vez publicado, es lo que instalan otros proyectos: `main` = última versión publicada (plan §7).
 - **Tras la subida a `main`**, se escribe `docs/registros/release-vX.Y.Z.md` (como `release-v0.4.0.md`): el título y
@@ -103,6 +103,6 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 - **Mapa para agentes:** [`docs/mapa-agente.md`](docs/mapa-agente.md) dice dónde está cada contrato y qué lo
   implementa; los encargos a subagentes apuntan a él en vez de a varios documentos.
 - **Reparto a subagentes autorizado:** el trabajo de más de un paso se reparte a subagentes con la skill
-  `orchestrate-dealer` sin preguntar cada vez; la sesión principal planea, decide y revisa.
+  `gw-orchestrate-dealer` sin preguntar cada vez; la sesión principal planea, decide y revisa.
 - **Lo comprobable lo hace un script**, no un agente; las skills y guías solo deciden lo que exige criterio.
 - **Calidad primero:** un ahorro de tokens que empeora el resultado no es ahorro.

@@ -2,16 +2,16 @@
 # galivelop-workflow v0.4.3
 """The workflow's version markers: check them or bump them all at once (workflow repo only).
 
-The version lives in .claude-plugin/plugin.json; copies of it mark every workflow-owned file so aplicar.py and
+The version lives in .claude-plugin/plugin.json; copies of it mark every workflow-owned file so apply.py and
 gw-update can tell versions apart. A marker is only one of these, nothing else (prose and code examples are never
 read nor rewritten):
   - a `galivelop-workflow vX.Y.Z` header within the first 5 lines of a file (scripts, templates, the schema's
-    "$comment"): the rule of header_version() in aplicar.py, imported from there;
-  - `metadata.version` inside the frontmatter of a SKILL.md: skill_version_span() in aplicar.py, imported too;
+    "$comment"): the rule of header_version() in apply.py, imported from there;
+  - `metadata.version` inside the frontmatter of a SKILL.md: skill_version_span() in apply.py, imported too;
   - the top-level `"version"` of templates/gw.json (and of plugin.json, the source).
 Every file under scripts/, every SKILL.md and every file under templates/ and schema/ must carry its marker; the
 check flags one that lacks it (exceptions, with the reason, in UNMARKED).
-.claude/gw.json is this repo's installed copy: only aplicar.py writes it.
+.claude/gw.json is this repo's installed copy: only apply.py writes it.
 
   python3 scripts/version.py            # list files whose marker differs from plugin.json; exit 1 if any
   python3 scripts/version.py 0.2.0      # set plugin.json and every marker to 0.2.0; add a CHANGELOG entry
@@ -23,7 +23,7 @@ check flags one that lacks it (exceptions, with the reason, in UNMARKED).
                                         # version needs a harvest since that tag: a docs/propuestas/*.md
                                         # added after it whose first line is "# Harvest …" (skill gw-harvest)
                                         # and a dated, filled-in CHANGELOG entry (## [X.Y.Z] - YYYY-MM-DD)
-Then: python3 scripts/aplicar.py .  (refresh this repo's copy) and fill in the CHANGELOG entry.
+Then: python3 scripts/apply.py .  (refresh this repo's copy) and fill in the CHANGELOG entry.
 Files are read and written as strict UTF-8 keeping their line endings; a non-UTF-8 file with a marker is reported
 and left alone.
 """
@@ -37,7 +37,7 @@ sys.dont_write_bytecode = True
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
-from aplicar import HEADER, SKILL_LICENSE, header_version, skill_version_span  # noqa: E402
+from apply import HEADER, SKILL_LICENSE, header_version, skill_version_span  # noqa: E402
 
 PLUGIN = ROOT / ".claude-plugin" / "plugin.json"
 TEMPLATE_GW = ROOT / "templates" / "gw.json"
@@ -289,7 +289,7 @@ def main(argv):
     for path in skipped:
         print(f"skipped {path.relative_to(ROOT)}: not UTF-8; convert it and retry: python3 scripts/version.py {new}",
               file=sys.stderr)
-    print(f"version {current} -> {new}; now: python3 scripts/aplicar.py . && fill in the CHANGELOG entry")
+    print(f"version {current} -> {new}; now: python3 scripts/apply.py . && fill in the CHANGELOG entry")
     return 1 if skipped else 0
 
 

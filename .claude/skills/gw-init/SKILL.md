@@ -16,7 +16,7 @@ If `.claude/gw/gw-init.md` exists in the project, read it first: it holds what i
 A thin wrapper: the procedure lives in the workflow repo's guide, `docs/en/apply.md` (Spanish: `docs/es/aplicar.md`).
 Follow it step by step. This skill only fixes where to find things and what to confirm.
 
-**Read the workflow with a subagent** (`orchestrate-dealer`, light model): it reads the guide and the project's build
+**Read the workflow with a subagent** (`gw-orchestrate-dealer`, light model): it reads the guide and the project's build
 files and returns the step-1 decision table, each candidate value with its source path, and the conflicts with the
 project (existing `CLAUDE.md`, hook managers, a red check). The main session decides from that summary and never
 reads the workflow's guides or scripts whole.
@@ -24,7 +24,7 @@ Reply to the user in the language they use; the project's `language` is decided 
 
 ## 1. Find the workflow repo
 
-`<workflow>` is the clone of `Galivelop-workflow` that holds `scripts/aplicar.py`. Look in this order:
+`<workflow>` is the clone of `Galivelop-workflow` that holds `scripts/apply.py`. Look in this order:
 
 1. A sibling of the project: `../Galivelop-workflow`.
 2. A repo already attached to the session (check `ls` of the session's working folders).
@@ -36,7 +36,7 @@ version): `git ls-remote --tags --refs --sort=-v:refname <url>` shows the tags (
 added with `add_repo`), compare `git -C <workflow> describe --tags` with the latest tag and, if it is behind, run
 `git -C <workflow> fetch --tags` and `git -C <workflow> checkout vX.Y.Z`.
 
-Done when `python3 <workflow>/scripts/aplicar.py --help` runs.
+Done when `python3 <workflow>/scripts/apply.py --help` runs.
 
 ## 2. Check the preconditions
 
@@ -47,7 +47,7 @@ project: `cd <project> && claude`.
 ## 3. Decide what needs judgement
 
 Follow section 1 of the guide: `language`, `log`, `install`, `check`, protected branch, `direct` or `pr`, `content`
-regexes, and the optional skills `opt-ai` and `scout-updates` (only if the user asks).
+regexes, and the optional skills `gw-opt-ai` and `gw-scout-updates` (only if the user asks).
 
 - Infer `install` and `check` from `package.json`, `pyproject.toml`, `Cargo.toml`, `pom.xml`, `go.mod` or
   `Makefile`, and run the `check` command once.
@@ -60,13 +60,13 @@ Done when every fact has an answer the user confirmed.
 1. Dry run first, then the same command without `--dry-run`:
 
    ```bash
-   python3 <workflow>/scripts/aplicar.py <project> --dry-run --init --language <es|en> --log <path> \
+   python3 <workflow>/scripts/apply.py <project> --dry-run --init --language <es|en> --log <path> \
      --install "<cmd>" --check-command "<cmd>" --protected-branch <branch> \
      --push-to-protected <direct|pr> --content '<regex>'
    ```
 
-   Repeat `--install`, `--check-command` and `--content` once per value. Add `--with opt-ai` or
-   `--with scout-updates` when chosen. Existing projects: read "Existing projects" in the guide first (hook
+   Repeat `--install`, `--check-command` and `--content` once per value. Add `--with gw-opt-ai` or
+   `--with gw-scout-updates` when chosen. Existing projects: read "Existing projects" in the guide first (hook
    managers, existing `CLAUDE.md`, red check, existing log).
 2. Auto mode may ask permission to edit `.claude/settings.json`, `.claude/gw/scripts/` and `.githooks/`. Tell the user before running, and
    after a refused call run `git status` and `git diff` before repeating it.
@@ -84,11 +84,11 @@ Done when no `*.gw-nuevo` is left and the log has a next-step line.
 
 1. `python3 <project>/.claude/gw/scripts/doctor.py`; fix and rerun until no `FAIL` is left. Explain each `WARN` to
    the user (`docs/en/troubleshooting.md`).
-2. Commit with the message `aplicar.py` suggested, replacing its last line with the real `Next:` (`Siguiente:` in
+2. Commit with the message `apply.py` suggested, replacing its last line with the real `Next:` (`Siguiente:` in
    Spanish projects), then `git push -u origin <branch>`; the new pre-push runs the check on the pushed commit.
 3. Report: what was created, what the user must decide next, and that nothing went to the protected branch.
 4. Warn the user: a `.claude/settings.json` created mid-session is not loaded until the next session, so the
    `PreToolUse` hook (the PR guard) is not active in this one. Until they open a new session from the project, check
-   the review mark by hand before any PR: `bash .claude/gw/scripts/revisado.sh`.
+   the review mark by hand before any PR: `bash .claude/gw/scripts/reviewed.sh`.
 
 Done when the push went through and `doctor.py` exits 0.

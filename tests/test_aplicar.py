@@ -1,4 +1,4 @@
-"""scripts/aplicar.py on temporary projects: a fresh apply passes doctor.py, a second run does nothing, owned files
+"""scripts/apply.py on temporary projects: a fresh apply passes doctor.py, a second run does nothing, owned files
 are updated by version, foreign or locally edited ones get a .gw-nuevo proposal, settings.json is merged without
 losing anything, optional skills come only with --with, and core.hooksPath is respected. HOME is a temp folder and
 git runs isolated as in test_ganchos.
@@ -15,7 +15,8 @@ from pathlib import Path
 
 from test_ganchos import BASE_CONFIG, ROOT
 
-APLICAR = ROOT / "scripts" / "aplicar.py"
+APLICAR = ROOT / "scripts" / "apply.py"
+PRE_RENAME = "6ee280d"  # last commit with the old names (A8, 0.5)
 VERSION = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())["version"]
 
 
@@ -36,7 +37,7 @@ class Fixture:
         self.run("git", "init", "-q", str(self.work), cwd=tmp)
         self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, **(config or {})), indent=2) + "\n")
         self.write("check.sh", "exit 0\n")
-        # The project's own log (no marker): aplicar.py must leave it alone. AGENTS.md and the CI file come from the
+        # The project's own log (no marker): apply.py must leave it alone. AGENTS.md and the CI file come from the
         # workflow's templates (tests/test_plantillas.py).
         self.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| Next step | write tests |\n")
 
@@ -82,12 +83,12 @@ class Aplicar(unittest.TestCase):
         scripts = p.work / ".claude" / "gw" / "scripts"
         self.assertTrue((scripts / "doctor.py").is_file())
         self.assertTrue(os.access(str(scripts / "session-start.sh"), os.X_OK))
-        self.assertFalse((scripts / "aplicar.py").exists())
-        self.assertFalse((scripts / "recoger.py").exists())
-        self.assertFalse((scripts / "version.py").exists())  # workflow-only, like recoger.py and aplicar.py
+        self.assertFalse((scripts / "apply.py").exists())
+        self.assertFalse((scripts / "harvest.py").exists())
+        self.assertFalse((scripts / "version.py").exists())  # workflow-only, like harvest.py and apply.py
         self.assertTrue((p.work / ".claude" / "gw" / "schema" / "gw.schema.json").is_file())
         self.assertTrue(os.access(str(p.work / ".githooks" / "pre-push"), os.X_OK))
-        self.assertTrue((p.work / ".claude" / "skills" / "selector" / "SKILL.md").is_file())
+        self.assertTrue((p.work / ".claude" / "skills" / "gw-selector" / "SKILL.md").is_file())
         self.assertFalse((p.work / ".claude" / "skills" / "gw-harvest").exists())
         self.assertEqual(p.read(".claude/skills/LICENSE-mattpocock-skills"),
                          (ROOT / "LICENSE-mattpocock-skills").read_text())  # the license the adapted skills cite
@@ -120,7 +121,7 @@ class Aplicar(unittest.TestCase):
     def test_owned_script_older_header_is_updated(self):
         p = self.p
         self.applied()
-        rel = ".claude/gw/scripts/revisado.sh"
+        rel = ".claude/gw/scripts/reviewed.sh"
         original = p.read(rel)
         p.write(rel, original.replace(f"galivelop-workflow v{VERSION}", "galivelop-workflow v0.0.1") + "# local\n")
         out = self.applied()
@@ -131,7 +132,7 @@ class Aplicar(unittest.TestCase):
     def test_same_version_local_edits_give_a_proposal_unless_update(self):
         p = self.p
         self.applied()
-        rel = ".claude/gw/scripts/revisado.sh"
+        rel = ".claude/gw/scripts/reviewed.sh"
         original = p.read(rel)
         p.write(rel, original + "# local edit\n")
         out = self.applied()
@@ -171,19 +172,19 @@ class Aplicar(unittest.TestCase):
         self.applied()
         settings = json.loads(p.read(".claude/settings.json"))
         settings["hooks"]["Stop"].append(
-            {"hooks": [{"type": "command", "command": "python3 .claude/hooks/antes-de-parar.py"}]})
+            {"hooks": [{"type": "command", "command": "python3 .claude/hooks/before-stop.py"}]})
         p.write(".claude/settings.json", json.dumps(settings))
-        p.write(".claude/hooks/antes-de-parar.py", f"#!/usr/bin/env python3\n# galivelop-workflow v{VERSION}\n")
+        p.write(".claude/hooks/before-stop.py", f"#!/usr/bin/env python3\n# galivelop-workflow v{VERSION}\n")
         out = self.applied()
-        self.assertIn("WARNING: .claude/settings.json Stop also runs 'python3 .claude/hooks/antes-de-parar.py'", out)
+        self.assertIn("WARNING: .claude/settings.json Stop also runs 'python3 .claude/hooks/before-stop.py'", out)
 
     def test_config_guard_is_applied_once_with_its_own_matcher(self):
         p = self.p
         out = self.applied()
-        self.assertTrue((p.work / ".claude/gw/scripts/guardia-config.py").is_file(), out)
+        self.assertTrue((p.work / ".claude/gw/scripts/config-guard.py").is_file(), out)
         s = json.loads(p.read(".claude/settings.json"))
         guards = [e for e in s["hooks"]["PreToolUse"]
-                  if any("guardia-config.py" in h["command"] for h in e["hooks"])]
+                  if any("config-guard.py" in h["command"] for h in e["hooks"])]
         self.assertEqual(len(guards), 1, s["hooks"]["PreToolUse"])
         self.assertEqual(guards[0]["matcher"], "Edit|Write|MultiEdit|NotebookEdit|Bash")
         before = p.read(".claude/settings.json")
@@ -193,10 +194,10 @@ class Aplicar(unittest.TestCase):
     def test_subagent_cap_is_applied_once_with_its_own_matcher(self):
         p = self.p
         out = self.applied()
-        self.assertTrue((p.work / ".claude/gw/scripts/tope-subagentes.py").is_file(), out)
+        self.assertTrue((p.work / ".claude/gw/scripts/subagent-cap.py").is_file(), out)
         s = json.loads(p.read(".claude/settings.json"))
         caps = [e for e in s["hooks"]["PreToolUse"]
-                if any("tope-subagentes.py" in h["command"] for h in e["hooks"])]
+                if any("subagent-cap.py" in h["command"] for h in e["hooks"])]
         self.assertEqual(len(caps), 1, s["hooks"]["PreToolUse"])
         self.assertEqual(caps[0]["matcher"], "Agent|Task")
         before = p.read(".claude/settings.json")
@@ -216,7 +217,7 @@ class Aplicar(unittest.TestCase):
     def test_locally_newer_owned_file_is_never_overwritten(self):
         p = self.p
         self.applied()
-        rel = ".claude/gw/scripts/revisado.sh"
+        rel = ".claude/gw/scripts/reviewed.sh"
         newer = p.read(rel).replace(f"galivelop-workflow v{VERSION}", "galivelop-workflow v99.0.0")
         p.write(rel, newer)
         out = self.applied("--update")
@@ -252,14 +253,14 @@ class Aplicar(unittest.TestCase):
     def test_owned_skill_older_version_is_updated_and_orphans_reported(self):
         p = self.p
         self.applied()
-        skill = p.work / ".claude" / "skills" / "selector"
+        skill = p.work / ".claude" / "skills" / "gw-selector"
         original = (skill / "SKILL.md").read_text()
         (skill / "SKILL.md").write_text(original.replace(f'version: "{VERSION}"', 'version: "0.0.1"'))
         (skill / "OLD.md").write_text("gone upstream\n")
         out = self.applied()
-        self.assertIn("update  .claude/skills/selector/SKILL.md", out)
+        self.assertIn("update  .claude/skills/gw-selector/SKILL.md", out)
         self.assertEqual((skill / "SKILL.md").read_text(), original)
-        self.assertIn(".claude/skills/selector/OLD.md is no longer in the workflow", out)
+        self.assertIn(".claude/skills/gw-selector/OLD.md is no longer in the workflow", out)
         self.assertTrue((skill / "OLD.md").exists())
 
     def test_settings_merge_keeps_the_users_and_adds_ours_once(self):
@@ -277,8 +278,8 @@ class Aplicar(unittest.TestCase):
         self.assertEqual(s["hooks"]["SessionStart"][0], mine["hooks"]["SessionStart"][0])
         commands = [h["command"] for e in s["hooks"]["SessionStart"] + s["hooks"]["PreToolUse"] + s["hooks"]["Stop"]
                     for h in e["hooks"]]
-        for script in ("session-start.sh", "recuperar.py --estado", "revision-antes-de-main.sh", "antes-de-parar.py",
-                       "guardia-config.py", "tope-subagentes.py"):
+        for script in ("session-start.sh", "recover.py --estado", "review-before-main.sh", "before-stop.py",
+                       "config-guard.py", "subagent-cap.py"):
             self.assertEqual(sum(script in c for c in commands), 1, commands)
         self.assertTrue(p.read(".claude/settings.json").endswith("}\n"))
         before = p.read(".claude/settings.json")
@@ -290,21 +291,92 @@ class Aplicar(unittest.TestCase):
         p = self.p
         self.applied()
         skills = p.work / ".claude" / "skills"
-        self.assertFalse((skills / "opt-ai").exists())
-        self.assertFalse((skills / "scout-updates").exists())
-        out = self.applied("--with", "opt-ai")
-        self.assertIn("create  .claude/skills/opt-ai/SKILL.md", out)
-        self.assertFalse((skills / "scout-updates").exists())
+        self.assertFalse((skills / "gw-opt-ai").exists())
+        self.assertFalse((skills / "gw-scout-updates").exists())
+        out = self.applied("--with", "gw-opt-ai")
+        self.assertIn("create  .claude/skills/gw-opt-ai/SKILL.md", out)
+        self.assertFalse((skills / "gw-scout-updates").exists())
         self.assertIn("nothing to do", self.applied())  # an installed optional skill stays managed
         code, out = p.aplicar("--with", "nope")
         self.assertEqual(code, 2, out)
         self.assertIn("unknown skill", out)
 
+    def old_copy(self, rel):
+        """A file as the workflow shipped it under its old name (0.4.x, before A8), from this repo's history."""
+        code, out = self.p.run("git", "-C", str(ROOT), "show", f"{PRE_RENAME}:{rel}")
+        self.assertEqual(code, 0, out)
+        return self.p.write(rel, out)
+
+    def test_renamed_script_and_skill_old_copies_are_deleted(self):
+        p = self.p
+        self.applied("--with", "gw-opt-ai")
+        self.old_copy(".claude/gw/scripts/bitacora.py")
+        for name in ("SKILL.md", "references/engines.md", "references/log-format.md", "scripts/medir.py",
+                     "scripts/test_medir.py"):
+            self.old_copy(f".claude/skills/opt-ai/{name}")
+        (p.work / ".claude/skills/opt-ai/scripts/__pycache__").mkdir()
+        (p.work / ".claude/skills/opt-ai/scripts/__pycache__/medir.cpython-313.pyc").write_bytes(b"x")
+        code, out = p.aplicar("--check")
+        self.assertEqual(code, 1, out)
+        self.assertIn("delete  .claude/gw/scripts/bitacora.py  (renamed to .claude/gw/scripts/handoff.py)", out)
+        out = self.applied()
+        self.assertIn("delete  .claude/skills/opt-ai/SKILL.md  (renamed to .claude/skills/gw-opt-ai)", out)
+        self.assertNotIn("orphan", out.lower())
+        self.assertFalse((p.work / ".claude/gw/scripts/bitacora.py").exists())
+        self.assertFalse((p.work / ".claude/skills/opt-ai").exists())
+        self.assertTrue((p.work / ".claude/skills/gw-opt-ai/SKILL.md").is_file())
+        self.assertIn("nothing to do", self.applied())
+
+    def test_old_optional_skill_brings_its_new_name(self):
+        p = self.p
+        self.applied()
+        self.old_copy(".claude/skills/scout-updates/SKILL.md")
+        out = self.applied()
+        self.assertIn("create  .claude/skills/gw-scout-updates/SKILL.md", out)
+        self.assertFalse((p.work / ".claude/skills/scout-updates").exists())
+
+    def test_edited_old_copies_are_kept_with_a_warning(self):
+        p = self.p
+        self.applied("--with", "gw-opt-ai")
+        script = self.old_copy(".claude/gw/scripts/revisado.sh")
+        script.write_text(script.read_text() + "# mine\n")
+        self.old_copy(".claude/skills/opt-ai/SKILL.md")
+        p.write(".claude/skills/opt-ai/notes.md", "mine\n")
+        code, out = p.aplicar("--check")
+        self.assertEqual(code, 1, out)
+        self.assertIn(".claude/gw/scripts/revisado.sh is the old name of .claude/gw/scripts/reviewed.sh (renamed in "
+                      "0.5) and .claude/gw/scripts/revisado.sh differ from every copy the workflow shipped", out)
+        self.assertIn(".claude/skills/opt-ai is the old name of .claude/skills/gw-opt-ai (renamed in 0.5) and "
+                      ".claude/skills/opt-ai/notes.md differ", out)
+        out = self.applied()
+        self.assertIn("git rm -r .claude/skills/opt-ai", out)
+        self.assertTrue((p.work / ".claude/gw/scripts/revisado.sh").is_file())
+        self.assertTrue((p.work / ".claude/skills/opt-ai/SKILL.md").is_file())  # kept whole, unedited file included
+
+    def test_settings_hooks_follow_the_renamed_script_and_gw_json_is_warned_about(self):
+        p = self.p
+        self.applied()
+        settings = json.loads(p.read(".claude/settings.json"))
+        settings["hooks"]["Stop"] = [{"hooks": [
+            {"type": "command", "command": 'python3 "$CLAUDE_PROJECT_DIR"/.claude/gw/scripts/antes-de-parar.py'}]}]
+        p.write(".claude/settings.json", json.dumps(settings))
+        cfg = json.loads(p.read(".claude/gw.json"))
+        cfg["check"] = ["bash check.sh", "bash .claude/gw/scripts/check-verde.sh"]
+        p.write(".claude/gw.json", json.dumps(cfg))
+        out = self.applied()
+        self.assertIn("Stop hook renamed to python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/before-stop.py", out)
+        commands = [h["command"] for e in json.loads(p.read(".claude/settings.json"))["hooks"]["Stop"]
+                    for h in e["hooks"]]
+        self.assertNotIn("antes-de-parar", " ".join(commands))
+        self.assertEqual(sum("before-stop.py" in c for c in commands), 1, commands)  # renamed, not added twice
+        self.assertIn(".claude/gw.json runs .claude/gw/scripts/check-verde.sh, renamed to "
+                      "check-green.sh in 0.5; change it there to .claude/gw/scripts/check-green.sh", out)
+
     def test_installed_scout_updates_tests_pass_in_the_project(self):
         """The skill's own tests find config.py in .claude/gw (installed layout), not three folders up (INS P1)."""
         p = self.p
-        self.applied("--with", "scout-updates")
-        scripts = p.work / ".claude" / "skills" / "scout-updates" / "scripts"
+        self.applied("--with", "gw-scout-updates")
+        scripts = p.work / ".claude" / "skills" / "gw-scout-updates" / "scripts"
         code, out = p.run("python3", "-B", "-m", "unittest", "discover", "-s", str(scripts), "-p", "test_compare.py")
         self.assertEqual(code, 0, out)
         self.assertNotIn("config.py", out)

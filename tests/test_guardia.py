@@ -1,4 +1,4 @@
-"""PreToolUse hook: scripts/guardia-config.py (P2 of docs/propuestas/2026-10-25-repos-x.md), in a temporary project laid
+"""PreToolUse hook: scripts/config-guard.py (P2 of docs/propuestas/2026-10-25-repos-x.md), in a temporary project laid
 out like one that applied the workflow, run the way Claude Code runs a hook: the event JSON on stdin, the answer on
 stdout with exit 0. `ask` is the documented PreToolUse JSON; "allowed" is no output at all.
 
@@ -13,7 +13,7 @@ from pathlib import Path
 
 from test_ganchos import ROOT, Project
 
-SCRIPT = "guardia-config.py"
+SCRIPT = "config-guard.py"
 
 PROTECTED = [".claude/settings.json", ".claude/gw.json", ".githooks/pre-push", ".githooks/new-hook",
              ".claude/gw/scripts/config.py", ".claude/gw/scripts/sub/new.py"]
@@ -73,7 +73,7 @@ class EditTools(Base):
             for tool in ("Edit", "Write", "MultiEdit"):
                 with self.subTest(tool=tool, path=rel):
                     reason = self.assertAsks(self.p.tool(tool, file_path=str(self.p.work / rel)),
-                                             rel, "only with the user's OK", "scripts/aplicar.py")
+                                             rel, "only with the user's OK", "scripts/apply.py")
                     self.assertIn(tool, reason)
 
     def test_notebook_edit_uses_notebook_path(self):
@@ -183,7 +183,7 @@ class BashWrites(Base):
         'sed -n 1,5p .githooks/pre-push',
         'sed -n s/i/j/p .claude/gw.json',
         'head -3 .claude/gw/scripts/config.py | grep import',
-        'python3 scripts/aplicar.py . --check',
+        'python3 scripts/apply.py . --check',
         'bash tests/comprobar.sh',
         'echo hi > src/out.txt',
         'rm -rf src/build',
@@ -399,7 +399,7 @@ class BashWrites(Base):
         for command in self.WRITES:
             with self.subTest(command=command):
                 reason = self.assertAsks(self.p.tool("Bash", command=command), "this command writes to",
-                                         "only with the user's OK", "scripts/aplicar.py")
+                                         "only with the user's OK", "scripts/apply.py")
                 self.assertRegex(reason, r"\.claude|\.githooks")
 
     def test_the_reason_names_the_file_written(self):

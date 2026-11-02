@@ -39,12 +39,12 @@ What the workflow solves:
 
 1. **Hand-offs without loss.** A session can end (tokens, container, account switch) and the next one carries on
    without asking: an up-to-date log, commit + push at every stable point, "what isn't pushed doesn't exist".
-2. **Choosing well before starting.** A `selector` decides which skill and model each task needs, and a subagent
+2. **Choosing well before starting.** A `gw-selector` decides which skill and model each task needs, and a subagent
    ladder hands mechanical work to cheap models.
 3. **Nothing unreviewed reaches `main`.** `/code-review` of the diff, a review mark stored in the repo, and hooks
    that refuse to push code without it or with the check failing.
-4. **Spending few tokens without losing quality.** `orchestrate-dealer`, compaction at 200k, recovery after
-   `/clear`, and `opt-tokens` + `retro`, which measure and propose environment improvements.
+4. **Spending few tokens without losing quality.** `gw-orchestrate-dealer`, compaction at 200k, recovery after
+   `/clear`, and `gw-opt-tokens` + `retro`, which measure and propose environment improvements.
 
 **Public** (user, 2026-10-30/31; replaces `1.0.0` alone in a separate public repo, from 2026-10-22): this repo is the
 product and it is public, as are all its versions; each one is published here with its release. The aim is reach and
@@ -84,9 +84,9 @@ retro). Tarkor contributes what the portal dropped as "small-website-irrelevant"
 
 | Piece | Source (path in Portal-Galivelop) | Generalisation |
 |---|---|---|
-| `selector` | `.claude/skills/selector/SKILL.md` | Remove portal cases (routes, SEO, three languages). Generic table + extra rows the project declares in its config (§6) |
-| `orchestrate-dealer` | `.claude/skills/orchestrate-dealer/SKILL.md` | Brief template with `{check}`, `{log}` and the project's languages instead of fixed ones |
-| `opt-tokens` + `medir.py` | `.claude/skills/opt-tokens/` | `medir.py` as is (already generic) with `QA-*` references cleaned; `proyecto.md` becomes a target-repo file (`.claude/gw/opt-tokens.md`) |
+| `gw-selector` | `.claude/skills/gw-selector/SKILL.md` | Remove portal cases (routes, SEO, three languages). Generic table + extra rows the project declares in its config (§6) |
+| `gw-orchestrate-dealer` | `.claude/skills/gw-orchestrate-dealer/SKILL.md` | Brief template with `{check}`, `{log}` and the project's languages instead of fixed ones |
+| `gw-opt-tokens` + `medir.py` | `.claude/skills/gw-opt-tokens/` | `medir.py` as is (already generic) with `QA-*` references cleaned; `proyecto.md` becomes a target-repo file (`.claude/gw/opt-tokens.md`) |
 | `retro` | `.claude/skills/retro/SKILL.md` | Keep the MIT body; the "In this repository" note becomes generic (review the plugin's skills and propose changes **to the plugin** when an improvement is general) |
 | `grilling`, `grill-with-docs`, `domain-modeling`, `diagnosing-bugs`, `codebase-design`, `improve-codebase-architecture`, `writing-for-agents`, `pr`, `prototype`, `research` | `.claude/skills/*` | As is (MIT, mattpocock/skills). Only the portal notes are removed. Licence and credits kept |
 | Workflow runbook | `docs/runbooks/skills-y-modelos.md` | Becomes the plugin's generic `docs/<lang>/workflow.md` |
@@ -95,24 +95,24 @@ retro). Tarkor contributes what the portal dropped as "small-website-irrelevant"
 | `CLAUDE.md` | root of both repos | Template: "At the start of every session", hand-off and commit rules, with `{{…}}` slots |
 | Log | `docs/traspaso.md` (portal) and `docs/registros/traspaso.md` (Tarkor) | Template with the portal's sections: Current state · For the next release · Done (last 5) · Pending · Check the state |
 | `SessionStart` hook | `.claude/hooks/session-start.sh` | To the plugin. Sets `core.hooksPath`, installs dependencies in the cloud with the config's command |
-| Recovery after `/clear` | `tools/qa/recuperar.py` | To the plugin; reads the log path from the config |
-| PR-to-`main` hook | `.claude/hooks/revision-antes-de-main.sh` | To the plugin; protected branch and mark path from the config |
+| Recovery after `/clear` | `tools/qa/recover.py` | To the plugin; reads the log path from the config |
+| PR-to-`main` hook | `.claude/hooks/review-before-main.sh` | To the plugin; protected branch and mark path from the config |
 | `pre-push` | `.githooks/pre-push` | Template copied into the target repo by `/gw-init` (git cannot load it from the plugin): check of the pushed commit + review mark for `main` |
-| `es-codigo.sh`, `revisado.sh` | `tools/qa/` | To the plugin; "content" patterns come from the config |
+| `is-code.sh`, `reviewed.sh` | `tools/qa/` | To the plugin; "content" patterns come from the config |
 | Hook tests | `tools/qa/tests/test-ganchos.sh` | To the plugin, extended to run against a temporary test repo |
 | Roadmap and milestones (optional) | Tarkor: `tools/roadmap/cobertura.py`, `docs/producto/21-roadmap.md` | Optional module enabled in the config (`roadmap: true`) |
-| Per-branch log | Installer: `tools/qa/bitacora.py`, `tools/qa/prepush-ramas.sh` | One row per branch; character limit and plan path configurable |
-| QA utilities | Tarkor/installer: `fusionar.sh`, `rojo-sin-arreglo.sh`, `tests-relacionados.sh`, `enlaces-md.py` | Generic; the related-tests command comes from the config |
+| Per-branch log | Installer: `tools/qa/handoff.py`, `tools/qa/prepush-branches.sh` | One row per branch; character limit and plan path configurable |
+| QA utilities | Tarkor/installer: `merge-branch.sh`, `red-without-fix.sh`, `related-tests.sh`, `md-links.py` | Generic; the related-tests command comes from the config |
 | Closing tasks | Tarkor: `tools/roadmap/cerrar.py` | Part of the `roadmap` module |
-| Retro required before the mark | Tarkor/installer: `revisado.sh` | Config option (`requireRetro`) |
-| `scout-updates` | Tarkor: `.claude/skills/scout-updates/` | Optional skill (on request only) |
-| `opt-ai` + `medir.py` | Tarkor/installer: `.claude/skills/opt-ai/` | Optional skill for projects with local AI models; project specifics in `.claude/gw/opt-ai.md` |
+| Retro required before the mark | Tarkor/installer: `reviewed.sh` | Config option (`requireRetro`) |
+| `gw-scout-updates` | Tarkor: `.claude/skills/gw-scout-updates/` | Optional skill (on request only) |
+| `gw-opt-ai` + `medir.py` | Tarkor/installer: `.claude/skills/gw-opt-ai/` | Optional skill for projects with local AI models; project specifics in `.claude/gw/opt-ai.md` |
 
 > **Source per piece (Phase 0):** the "best version of each piece" table in `docs/investigacion/casos-reales.md`
 > overrides the "Source" column above.
 
 **Not brought over:** project-specific material (the portal's three languages, Tarkor's lore, the concrete weekly
-task, play-test rounds). `opt-ai` and `scout-updates` are brought over as optional skills (table above). The **weekly scheduled task** is documented as an optional
+task, play-test rounds). `gw-opt-ai` and `gw-scout-updates` are brought over as optional skills (table above). The **weekly scheduled task** is documented as an optional
 pattern in `docs/<lang>/patterns.md`, without a concrete prompt.
 
 ## 4. Repository layout
@@ -124,7 +124,7 @@ Galivelop-workflow/
 │   ├── marketplace.json          # the repo is its own marketplace (one plugin)
 │   └── plugin.json               # name, version (semver: the single source), description, author, licence
 ├── skills/                       # one folder per skill, SKILL.md in English (§4.4)
-│   ├── selector/  orchestrate-dealer/  opt-tokens/  retro/  pr/
+│   ├── gw-selector/  gw-orchestrate-dealer/  gw-opt-tokens/  retro/  pr/
 │   ├── grilling/  grill-with-docs/  domain-modeling/  diagnosing-bugs/
 │   ├── codebase-design/  improve-codebase-architecture/  writing-for-agents/
 │   ├── prototype/  research/
@@ -135,11 +135,11 @@ Galivelop-workflow/
 ├── hooks/
 │   └── hooks.json                # SessionStart (startup|resume|clear, clear|compact) and PreToolUse (PR to main)
 ├── scripts/                      # called by hooks and skills; root via ${CLAUDE_PLUGIN_ROOT}
-│   ├── session-start.sh  revision-antes-de-main.sh
-│   ├── recoger.py                # deterministic part of gw-harvest
-│   ├── recuperar.py  medir.py  es-codigo.sh  revisado.sh  bitacora.py  prepush-ramas.sh
+│   ├── session-start.sh  review-before-main.sh
+│   ├── harvest.py                # deterministic part of gw-harvest
+│   ├── recover.py  medir.py  is-code.sh  reviewed.sh  handoff.py  prepush-branches.sh
 │   ├── doctor.py                 # deterministic workflow check (used by gw-doctor and CI)
-│   ├── aplicar.py                # copies templates, skills and scripts without overwriting (stage 1, base of 2)
+│   ├── apply.py                # copies templates, skills and scripts without overwriting (stage 1, base of 2)
 │   └── config.py                 # reads and validates the project's .claude/gw.json (the only reader)
 ├── templates/                    # what /gw-init copies into the target repo, in es/ and en/
 │   ├── es/  AGENTS.md  CLAUDE.md  REVIEW.md  GLOSSARY.md  traspaso.md  opt-tokens.md
@@ -155,7 +155,7 @@ Galivelop-workflow/
 │   ├── es/  flujo.md  aplicar.md  instalar.md  config.md  patrones.md  problemas.md  contribuir.md
 │   └── en/  workflow.md  apply.md  install.md  config.md  patterns.md  troubleshooting.md  contributing.md
 ├── CLAUDE.md                     # @AGENTS.md + Claude-specific bits
-├── .claude/  .githooks/          # the workflow applied to this repo (copy generated by scripts/aplicar.py)
+├── .claude/  .githooks/          # the workflow applied to this repo (copy generated by scripts/apply.py)
 ├── docs/traspaso.md              # its log
 ├── REVIEW.md  GLOSSARY.md
 ├── README.md  (en)   README.es.md
@@ -171,14 +171,14 @@ Galivelop-workflow/
 
 From Phase 1 on, the repo is worked on with its own workflow, **applied exactly as in any project**: `AGENTS.md`,
 `CLAUDE.md`, the log and, as they are built, the copy of skills in `.claude/skills/`, scripts in `.claude/gw/` and
-hooks. That copy is generated by `scripts/aplicar.py` from `skills/` and `scripts/`, and a test checks it doesn't
+hooks. That copy is generated by `scripts/apply.py` from `skills/` and `scripts/`, and a test checks it doesn't
 drift. That is the first run-in test: if something in the workflow gets in the way here, it gets in the way
 everywhere.
 
 ### 4.2 Names
 
 - Project and plugin: `galivelop-workflow`. Copied into the target repo, skills are called by their name
-  (`selector`); via the plugin, `galivelop-workflow:selector`.
+  (`gw-selector`); via the plugin, `galivelop-workflow:gw-selector`.
 - Management skills carry the `gw-` prefix so they don't clash with project skills.
 - Project config: `.claude/gw.json`. Workflow-owned files in the target repo: `.claude/gw/` (scripts) and
   `.claude/skills/<skill>/` (skills). Everything copied carries its version (`metadata.version` in skills, a
@@ -209,15 +209,15 @@ the session may start in `/home/user` (portal lesson, `REVIEW.md` § "Hooks and 
 Every `SKILL.md` under 200 lines (`writing-for-agents`), with `name` and a `description` that says **when** to use
 it. mattpocock's keep their text; the own ones are rewritten generically:
 
-- **`selector`**: table of generic cases (design, bug, large change, scoped change, mechanical, bringing from
+- **`gw-selector`**: table of generic cases (design, bug, large change, scoped change, mechanical, bringing from
   another repo, review before `main`, closing a block, writing for agents) with skill, session model and subagent
   model. Rules: the user picks the session model and Claude states it in one line; subagent ladder
   `sonnet low → sonnet medium → opus medium → opus high`, two failures and it stops; when in doubt, the
   higher-risk row. Reads extra rows from `selector.cases` in the config.
-- **`orchestrate-dealer`**: the main session plans, decides and reviews; subagents read, implement chunks and
+- **`gw-orchestrate-dealer`**: the main session plans, decides and reviews; subagents read, implement chunks and
   push. Brief template with pointers, a done criterion and a ≤15-line reply
   (`DONE · COMMIT · MISSING · QUESTIONS`). One at a time on the same branch if they write.
-- **`opt-tokens`**: as in the portal ("quality first", average context × calls dominates). Project-specific
+- **`gw-opt-tokens`**: as in the portal ("quality first", average context × calls dominates). Project-specific
   material in `.claude/gw/opt-tokens.md`.
 - **`retro`**: gains a new outlet: if an improvement applies to any project, the proposal is an **issue or PR on
   the `Galivelop-workflow` repo**, not a local patch. That way the workflow learns from every project.
@@ -229,7 +229,7 @@ it. mattpocock's keep their text; the own ones are rewritten generically:
   - **general ideas and improvements** in its retros and its log.
 
   The mechanical part (which files differ, which skills are new, which commits since last time) is done by
-  `scripts/recoger.py`, without AI; the agent only judges whether each change is general or project-specific and
+  `scripts/harvest.py`, without AI; the agent only judges whether each change is general or project-specific and
   writes it up. Output: `docs/propuestas/YYYY-MM-DD-<repo>.md` (source with path and commit, what changes,
   general/specific, version bump it would need: patch, minor or major), and the last harvested commit per repo in
   `docs/propuestas/estado.json`. **It never applies anything without confirmation**: what is approved goes in as a
@@ -241,17 +241,17 @@ it. mattpocock's keep their text; the own ones are rewritten generically:
 | Event | What it does |
 |---|---|
 | `SessionStart` (`startup\|resume\|clear`) | `session-start.sh`: `core.hooksPath=.githooks` if none is set, cloud dependencies (config `install`, only if `CLAUDE_CODE_REMOTE=true` and the lockfile changed), warning if `gw.json` is missing or the copied version lags behind the workflow's |
-| `SessionStart` (`clear\|compact`) | `recuperar.py --estado`: the log's state row, `git status`, latest commits, how to search for a detail |
-| `PreToolUse` (`create_pull_request\|merge_pull_request` from the GitHub MCP and `gh pr create\|merge` via Bash) | `revision-antes-de-main.sh`: blocks without a review mark for the same code or with CI not green. Fails closed |
+| `SessionStart` (`clear\|compact`) | `recover.py --estado`: the log's state row, `git status`, latest commits, how to search for a detail |
+| `PreToolUse` (`create_pull_request\|merge_pull_request` from the GitHub MCP and `gh pr create\|merge` via Bash) | `review-before-main.sh`: blocks without a review mark for the same code or with CI not green. Fails closed |
 
 ### 5.3 Git hooks and CI (in the target repo)
 
 - `.githooks/pre-push` (copied by `/gw-init`, with a `# galivelop-workflow vX.Y.Z` header): runs the config's
   `check` **on the commit being pushed** (temporary worktree if it isn't the working copy); to the protected
   branch, requires the review mark if it brings code. `--no-verify` only for a red `WIP:`.
-- Review mark: `revisado.sh` writes the sha to the config's `reviewMark` (default `docs/registros/revisado.txt`) and
+- Review mark: `reviewed.sh` writes the sha to the config's `reviewMark` (default `docs/registros/revisado.txt`) and
   commits it. It travels with the repo, so scheduled tasks and other accounts see it.
-- `es-codigo.sh`: "code" is everything that doesn't match the config's `content`. Only code needs review.
+- `is-code.sh`: "code" is everything that doesn't match the config's `content`. Only code needs review.
 - `.github/workflows/comprobar.yml`: `install` + `check` on every push not to the protected branch and on every PR.
 
 ### 5.4 Apply, update and check
@@ -259,12 +259,12 @@ it. mattpocock's keep their text; the own ones are rewritten generically:
 - **`docs/<lang>/apply.md` (stage 1):** the guide an agent follows to apply the workflow. It separates what needs
   judgement (inferring `install`/`check` from `package.json`, `pyproject.toml`, `Cargo.toml`, `Makefile`…; merging an
   existing `CLAUDE.md`/`AGENTS.md`, showing the block first) from the mechanical part, which is always a script.
-- **`scripts/aplicar.py`:** writes `.claude/gw.json`, copies templates, skills and scripts **without overwriting
+- **`scripts/apply.py`:** writes `.claude/gw.json`, copies templates, skills and scripts **without overwriting
   anything** (what exists is left as a `*.gw-nuevo` proposal to review), adds the hooks to `.claude/settings.json` and
   `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`, and sets `core.hooksPath` if no other manager owns it. Idempotent. Commit
   `Galivelop-workflow vX.Y.Z workflow` with a `Next:` line.
 - **`/gw-init`, `/gw-update`** (skills with `disable-model-invocation: true`): thin wrappers over `apply.md` and
-  `aplicar.py`. `gw-update` compares versions and shows the diff of the template change (not of the file the project
+  `apply.py`. `gw-update` compares versions and shows the diff of the template change (not of the file the project
   filled in) before applying what the user confirms.
 - **`scripts/doctor.py`** (and `/gw-doctor`, which calls it): checks and lists, with the fixing command for each:
   config valid against the schema, `core.hooksPath` and coexistence with other hook managers, `pre-push` executable
@@ -282,20 +282,20 @@ Keys in English (Phase 0 decision).
   "language": "es",                         // es | en: templates and reply language
   "visibleLanguages": ["es", "gl", "en"],   // optional: what REVIEW.md requires of visible text
   "log": "docs/traspaso.md",
-  "logRows": false,                         // optional: one row per branch with a limit (bitacora.py)
+  "logRows": false,                         // optional: one row per branch with a limit (handoff.py)
   "protectedBranch": "main",
   "pushToProtected": "direct",              // direct | pr: direct push (pre-push asks for the mark in both) or PR (PreToolUse too)
   "install": ["npm ci"],
   "check": ["npm run check"],               // list of commands, run in order on the commit being pushed
   "reviewMark": "docs/registros/revisado.txt",
-  "requireRetro": true,                     // optional (on in the template): revisado.sh requires a retro on the branch
+  "requireRetro": true,                     // optional (on in the template): reviewed.sh requires a retro on the branch
   "content": ["^docs/", "^public/", "^src/data/", "\\.md$"],   // regex: what does NOT need /code-review
   "roadmap": false,                         // optional milestones module (Tarkor)
   "selector": { "cases": [] },              // extra project-specific rows
   "designReferences": [],                   // optional: what design is contrasted with (grilling, selector)
   "protectedPaths": [],                     // optional: paths an agent may not commit (pre-commit)
-  "staleRefs": [],                          // optional: patterns that must not appear in docs/ (enlaces-md.py)
-  "plan": [], "taskId": "[A-Z]{2,5}-\\d+",   // optional: plan with ticks and task ids (bitacora.py)
+  "staleRefs": [],                          // optional: patterns that must not appear in docs/ (md-links.py)
+  "plan": [], "taskId": "[A-Z]{2,5}-\\d+",   // optional: plan with ticks and task ids (handoff.py)
   "relatedTests": { "fast": [], "slow": [] } // optional: tests of what changed, in pre-push
 }
 ```
@@ -336,7 +336,7 @@ milestone roadmap, several accounts, PR) and the Tarkor installer (Rust/Tauri: t
 
 **Stage 1 (what `docs/<lang>/apply.md` will say):** from a session with the project and this repo at hand, ask the
 agent to "apply Galivelop-workflow following `docs/en/apply.md`". The agent decides what needs judgement, runs
-`scripts/aplicar.py` and finishes with `scripts/doctor.py` green. It works in the cloud with no setup, because the
+`scripts/apply.py` and finishes with `scripts/doctor.py` green. It works in the cloud with no setup, because the
 result lives in the repo.
 
 **Stage 2 (what `docs/<lang>/install.md` will say):** installation without AI, e.g. with Copier (three-way merge for
@@ -367,7 +367,7 @@ claude plugin install galivelop-workflow@galivelop-workflow
 ## 9. Build phases
 
 Each phase: working branch, steps with commit + push at every stable point, log in the same commit, tests green,
-and on closing `/code-review` before going to `main` (with confirmation). Model per the `selector`: design and hooks
+and on closing `/code-review` before going to `main` (with confirmation). Model per the `gw-selector`: design and hooks
 with the large model; porting skills and templates with the medium one. From Phase 1, all with the workflow itself
 (§4.1).
 
@@ -377,9 +377,9 @@ with the large model; porting skills and templates with the medium one. From Pha
 |---|---|---|
 | **0. Verify** ✅ | Official docs on plugins, marketplaces and hooks; cloud tests; three real cases; standards | §0 decided; notes in `docs/investigacion/` |
 | **1. Skeleton** | `LICENSE`, `AGENTS.md` + `CLAUDE.md`, README ES/EN, log, CHANGELOG `0.1.0`, valid `.claude-plugin/`, CI (shellcheck, JSON, ES/EN pairs, version == CHANGELOG) | CI green and the repo worked on with its own `AGENTS.md` |
-| **2. Skills** | Port the skills (§3) piece by piece, with Agent Skills fields and a test that validates them; `gw-harvest` + `scripts/recoger.py` | All validate; `writing-for-agents` applied to the own ones; licences and credits; `gw-harvest` collects real proposals from Tarkor, the installer, the portal and VeriNews |
-| **3. Hooks and scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recuperar.py`, `revision-antes-de-main.sh`, `es-codigo.sh`, `revisado.sh`, `bitacora.py`, `prepush-ramas.sh`, `medir.py`, `pre-push` template. Tests against a temporary repo: the 29 bugs' categories, shallow clone, conflict markers, another hook manager. Applied to this repo | Tests green on Linux and macOS; fail closed without config |
-| **4. Templates and apply** | `templates/es` and `templates/en`, `gw.schema.json`, `aplicar.py`, `apply.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `troubleshooting.md` | An agent applies the workflow to an empty repo and `doctor.py` accepts it; twice changes nothing |
+| **2. Skills** | Port the skills (§3) piece by piece, with Agent Skills fields and a test that validates them; `gw-harvest` + `scripts/harvest.py` | All validate; `writing-for-agents` applied to the own ones; licences and credits; `gw-harvest` collects real proposals from Tarkor, the installer, the portal and VeriNews |
+| **3. Hooks and scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recover.py`, `review-before-main.sh`, `is-code.sh`, `reviewed.sh`, `handoff.py`, `prepush-branches.sh`, `medir.py`, `pre-push` template. Tests against a temporary repo: the 29 bugs' categories, shallow clone, conflict markers, another hook manager. Applied to this repo | Tests green on Linux and macOS; fail closed without config |
+| **4. Templates and apply** | `templates/es` and `templates/en`, `gw.schema.json`, `apply.py`, `apply.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `troubleshooting.md` | An agent applies the workflow to an empty repo and `doctor.py` accepts it; twice changes nothing |
 | **5. Pilot: Portal-Galivelop** | In a portal session (with permission): an agent applies it following `apply.md` and replaces its copy | `npm run check` green, `pre-push` and mark working, weekly task unchanged |
 | **6. Pilot: Tarkor and installer** | Same in World-Maker-Fantasy (`roadmap: true`, PR) and Instalador-WMF-Tarkor (Rust). VeriNews_AI (Java + Vite) moves to Phase 8, with no AI agent | Hand-off between accounts with nothing lost; gaps come back as a new version |
 | **7. Stage-1 run-in** | Weeks of real use; every `retro` with a general improvement → issue/PR here | §10 criteria for stage 1 |

@@ -1,4 +1,4 @@
-"""PreToolUse hook: scripts/tope-subagentes.py (P3 of docs/propuestas/2026-10-25-repos-x.md), in a temporary project
+"""PreToolUse hook: scripts/subagent-cap.py (P3 of docs/propuestas/2026-10-25-repos-x.md), in a temporary project
 laid out like one that applied the workflow, run the way Claude Code runs a hook: the event JSON on stdin, the answer on
 stdout with exit 0. `ask` is the documented PreToolUse JSON; "no opinion" is no output at all.
 
@@ -15,7 +15,7 @@ from pathlib import Path
 
 from test_ganchos import ROOT, Project
 
-SCRIPT = "tope-subagentes.py"
+SCRIPT = "subagent-cap.py"
 
 
 class TopeProject(Project):
@@ -76,7 +76,7 @@ class Base(unittest.TestCase):
 
     def reason(self, n, cap):
         return (f"{n} subagents in this session (subagentCap {cap} in .claude/gw.json): "
-                f"check they are not looping (opt-tokens)")
+                f"check they are not looping (gw-opt-tokens)")
 
 
 class CustomCap(Base):

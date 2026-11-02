@@ -55,7 +55,7 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
   regla se sigue rompiendo, se convierte en una comprobación.
 - **Lo que depende de una máquina concreta no se da por probado con tests** (otro sistema operativo, un dispositivo,
   el equipo de la persona): se apunta como pendiente en el plan, con quién lo comprueba y dónde.
-- Un test nuevo tiene que fallar sin su arreglo: `bash .claude/gw/scripts/rojo-sin-arreglo.sh "<orden del test>"
+- Un test nuevo tiene que fallar sin su arreglo: `bash .claude/gw/scripts/red-without-fix.sh "<orden del test>"
   <archivo-del-arreglo>...`.
 - Un test que espera un fallo comprueba **el motivo** (el mensaje o la causa), no solo el código de salida: si no,
   pasa también cuando falla por otra razón.
@@ -86,7 +86,7 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
   «Relevos» con la confirmación de la persona: se sube directo (el `pre-push` corre el check) o, para un pull
   request, `python3 .claude/gw/scripts/ci-local.py --apuntar` corre el CI en local y lo apunta; con esa línea verde
   subida, el gancho deja fusionar.
-- La rama de un subagente vuelve con `bash .claude/gw/scripts/fusionar.sh <rama> "<mensaje>"`, que corre el check y los tests
+- La rama de un subagente vuelve con `bash .claude/gw/scripts/merge-branch.sh <rama> "<mensaje>"`, que corre el check y los tests
   relacionados, y limpia su worktree.
 
 ## Antes de ir a `{{protectedBranch}}`: tres fases
@@ -98,21 +98,21 @@ Nunca sobre trabajo ya fusionado.
    con commit y subidos: lo grave o medio y lo que el propio arreglo rompe; lo leve se apunta como pendiente en la
    bitácora y no vuelve a revisarse en ese PR. Solo el código necesita revisión: lo que casa con `content` de `.claude/gw.json` es
    contenido.
-2. **Entorno:** la skill `opt-tokens` y luego `retro` (más `opt-ai` si hubo medidas con un modelo de IA local). Sus
+2. **Entorno:** la skill `gw-opt-tokens` y luego `retro` (más `gw-opt-ai` si hubo medidas con un modelo de IA local). Sus
    propuestas se **presentan a la persona**; lo que confirme se aplica en la rama. Una retro escrita sin presentarla no
    vale. Si la persona pidió ir a `{{protectedBranch}}` y no está para decidir la retro, se deja todo listo (retro con
    `**Estado:** pendiente`, check en verde sobre la fusión con `{{protectedBranch}}`, descripción del pull request) y
-   se para antes de `revisado.sh`: su confirmación de la retro es el único paso que falta; la decisión no se escribe
+   se para antes de `reviewed.sh`: su confirmación de la retro es el único paso que falta; la decisión no se escribe
    por ella.
 3. **Cierre:** si la fase 2 trajo código, revisión solo de esos commits y sus arreglos; luego
-   `bash .claude/gw/scripts/revisado.sh` (escribe la marca de revisión, `{{reviewMark}}`, y hace su commit) y
+   `bash .claude/gw/scripts/reviewed.sh` (escribe la marca de revisión, `{{reviewMark}}`, y hace su commit) y
    `git push`; para un pull request, su descripción con la skill `pr`. Solo entonces se sube a `{{protectedBranch}}`
    o se crea el pull request. Sin la marca del mismo commit, los ganchos lo rechazan.
 
 ## Subagentes
 
 **Reparto a subagentes autorizado:** el trabajo de más de un paso se reparte a subagentes de contexto limpio con la
-skill `orchestrate-dealer` (y los modelos que elija la skill `selector`) sin preguntar cada vez; la sesión principal
+skill `gw-orchestrate-dealer` (y los modelos que elija la skill `gw-selector`) sin preguntar cada vez; la sesión principal
 planea, decide y revisa. Esta línea es la autorización que piden las instrucciones del propio agente.
 
 - Cada subagente recibe un encargo: objetivo, rutas, restricciones, el check que debe pasar y qué tiene que devolver.

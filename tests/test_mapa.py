@@ -1,4 +1,4 @@
-"""scripts/mapa-agente.py: every path (and `path#name`) the project's agent map cites must exist, in temporary projects
+"""scripts/agent-map.py: every path (and `path#name`) the project's agent map cites must exist, in temporary projects
 laid out like one that applied the workflow (.claude/gw/scripts, .claude/gw/schema, .claude/gw.json)."""
 import importlib.util
 import json
@@ -40,11 +40,11 @@ class Mapa(unittest.TestCase):
         scripts = self.work / ".claude" / "gw" / "scripts"
         scripts.mkdir(parents=True)
         (self.work / ".claude" / "gw" / "schema").mkdir()
-        self.script = scripts / "mapa-agente.py"
+        self.script = scripts / "agent-map.py"
         shutil.copy2(ROOT / "scripts" / "config.py", scripts / "config.py")
         shutil.copy2(ROOT / "schema" / "gw.schema.json", self.work / ".claude" / "gw" / "schema" / "gw.schema.json")
-        if (ROOT / "scripts" / "mapa-agente.py").is_file():
-            shutil.copy2(ROOT / "scripts" / "mapa-agente.py", self.script)
+        if (ROOT / "scripts" / "agent-map.py").is_file():
+            shutil.copy2(ROOT / "scripts" / "agent-map.py", self.script)
         self.config()
         self.write("backend/src/a.ts", CODE_TS)
         self.write("tools/util.py", CODE_PY)
@@ -292,7 +292,7 @@ class Mapa(unittest.TestCase):
         self.assertIn("prefixes", out)
 
     def test_this_repos_own_map_is_clean(self):
-        r = subprocess.run([sys.executable, str(ROOT / "scripts" / "mapa-agente.py")], cwd=ROOT, capture_output=True,
+        r = subprocess.run([sys.executable, str(ROOT / "scripts" / "agent-map.py")], cwd=ROOT, capture_output=True,
                            text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("0 broken references", r.stdout)

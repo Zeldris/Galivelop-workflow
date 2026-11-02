@@ -56,7 +56,7 @@ En este orden, porque cada paso usa el anterior:
    - [x] **H12** (2026-11-02): `pendiente-1.0.0.md` pasa a `pendiente.md`, con la versión en cada línea.
    - [x] **A7** (2026-11-02): el plan reescrito según la tabla del apartado A1 (§1, §2, §7, §9, §10).
 2. **Nombres**
-   - [ ] **A8:** `gw-` en las skills propias (las de terceros conservan su nombre, A3) y scripts en inglés (apartado A2); nombres exactos y migración en las respuestas de `A-marco.md` (2026-11-02).
+   - [x] **A8** (2026-11-02): `gw-` en las skills propias (las de terceros conservan su nombre, A3) y scripts en inglés (apartado A2); nombres exactos y migración en las respuestas de `A-marco.md` (2026-11-02).
    - [ ] **A4:** rutas del proyecto en inglés (`docs/handoff.md`, `docs/records/`…), configurables en `gw.json`, también
      en los proyectos en español. `gw-update` renombra y los ganchos aceptan los dos nombres durante la `0.x`.
 3. **Config versionado**
@@ -65,7 +65,7 @@ En este orden, porque cada paso usa el anterior:
    - [ ] **D11:** tipo de Conventional Commits en la primera línea (`fix(B1): …`) y `version.py` sugiere el salto.
    - [ ] **D12:** trailer `Refs: <id>` obligatorio en el `commit-msg` (salvo merges), validado contra este archivo.
    - [ ] **D15:** trailer `Agent: <skill>` opcional, sin modelo.
-   - [ ] **D16:** ramas de subagente `agent/<id>-<tema>` y `fusionar.sh` copia `Refs:` al commit de fusión.
+   - [ ] **D16:** ramas de subagente `agent/<id>-<tema>` y `merge-branch.sh` copia `Refs:` al commit de fusión.
 5. **Repo público**
    - [ ] **E2:** check de datos privados en el `pre-push` (correos, claves, repos privados; lista en
      `.claude/gw.local.json`).
@@ -81,7 +81,7 @@ En este orden, porque cada paso usa el anterior:
   y tipo, fecha, rama, `Refs`, subagente); precios en tabla con fecha.
 - [ ] **B4, B5, B6:** `metrics.py report --period …`, `compare` y la alerta de 1,5× en el `SessionStart`; skill
   `gw-metrics`.
-- [ ] **B7, B8, B10, B11:** `models.disabled` con su gancho, señales de calidad, el `selector` recomienda modelo y
+- [ ] **B7, B8, B10, B11:** `models.disabled` con su gancho, señales de calidad, el `gw-selector` recomienda modelo y
   esfuerzo de la sesión principal, modelo y esfuerzo por agente.
 
 ### `0.7` «Preguntar»
@@ -122,7 +122,7 @@ Sale cuando exista lo que necesita, y entonces se le pone versión:
 
 - **B13:** tabla determinista de modelos y publicación de la tendencia con un A/B, sobre las señales de B8; necesita
   cuatro semanas de ledger.
-- **G10:** MMC multiproyecto. **C9:** `modes.freeze`. **B12:** patrón de exploradores en `orchestrate-dealer`.
+- **G10:** MMC multiproyecto. **C9:** `modes.freeze`. **B12:** patrón de exploradores en `gw-orchestrate-dealer`.
   **B1** (opción): OpenTelemetry.
 - **R3:** recogida de los repos privados (`galivelop-image-generator`, `galivelop-voice-generator`), cuando haya acceso
   de lectura.

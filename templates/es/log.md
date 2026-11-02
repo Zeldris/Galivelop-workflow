@@ -35,4 +35,4 @@ _(lo que va a `{{protectedBranch}}` a continuación, y a qué espera)_
 - Últimos commits: `git fetch origin <rama> && git log --oneline -5 origin/<rama>`.
 - El check: {{check}}.
 - Flujo bien montado: `python3 .claude/gw/scripts/doctor.py`.
-- Estado de la bitácora tal como lo recibe una sesión nueva: `python3 .claude/gw/scripts/recuperar.py --estado`.
+- Estado de la bitácora tal como lo recibe una sesión nueva: `python3 .claude/gw/scripts/recover.py --estado`.

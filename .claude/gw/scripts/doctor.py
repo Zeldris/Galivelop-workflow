@@ -9,7 +9,7 @@
 Exit 1 if any check FAILs (WARNs do not fail). Checks: the config; core.hooksPath and other hook managers; the git
 hooks (present, executable, version); the log and its next step; the `check`, `install` and `setup` commands exist (and a
 `bash -n`/`sh -n` `check` command that reads only one file: `check syntax-only`); a CI
-workflow; .claude/settings.json (WMF P4: SessionStart matchers, `compact` only runs recuperar.py --estado, hook
+workflow; .claude/settings.json (WMF P4: SessionStart matchers, `compact` only runs recover.py --estado, hook
 commands point to existing files, the PR guard on PreToolUse); AGENTS.md/CLAUDE.md authorise dealing work to
 subagents (VeriNews P1); copied skills at the config's version; a session opened outside the repo (VeriNews P3);
 in a cloud session (CLAUDE_CODE_REMOTE=true), the compaction window the project's settings.json sets is in the
@@ -35,17 +35,17 @@ HERE = Path(__file__).resolve().parent
 sys.dont_write_bytecode = True  # no __pycache__ in the project's .claude/gw/scripts
 sys.path.insert(0, str(HERE))
 import config  # noqa: E402
-import registro_sesion  # noqa: E402
+import session_log  # noqa: E402
 
 HEADER = re.compile(r"^# galivelop-workflow v(\S+)\s*$", re.M)
 NEXT_STEP = re.compile(r"siguientes? pasos?|next steps?", re.I)
 PR_TOOLS = ("create_pull_request", "merge_pull_request")
-PR_GUARD = "revision-antes-de-main.sh"
+PR_GUARD = "review-before-main.sh"
 INTERPRETERS = {"bash", "sh", "zsh", "python", "python3", "node", "env", "exec"}
 SOURCES = re.compile(r"galivelop|workflow|mattpocock", re.I)
-PROPOSAL = ".gw-nuevo"  # aplicar.py's proposals for files with local edits
-FLOW_HOOK_SCRIPTS = ("session-start.sh", "recuperar.py", "revision-antes-de-main.sh", "antes-de-parar.py",
-                     "guardia-config.py", "tope-subagentes.py")  # the settings template's
+PROPOSAL = ".gw-nuevo"  # apply.py's proposals for files with local edits
+FLOW_HOOK_SCRIPTS = ("session-start.sh", "recover.py", "review-before-main.sh", "before-stop.py",
+                     "config-guard.py", "subagent-cap.py")  # the settings template's
 # Zero-width, bidi and BOM characters, written as escapes so the fix command can embed them. A zero width joiner (U+200D)
 # is fine only inside an emoji sequence (family, profession, flag, heart): after an emoji, a variation selector or a
 # skin tone, and before an emoji. Between letters, accents or punctuation (`и‍г`, `é‍ñ`), next to ASCII, a line edge
@@ -60,7 +60,7 @@ INVISIBLE = re.compile(INVISIBLE_PATTERN)
 WARN_LINES, FAIL_LINES = 150, 250  # AGENTS.md / CLAUDE.md: every session loads them whole
 MEDIA_NOTE = ".claude/gw/gw-media-content.md"  # the project's note of gw-media-content (skills/gw-media-content/nota.md)
 MEDIA_FOLDER = "docs/difusion"  # its default `Folder`
-SKILL_LICENSE = "LICENSE-mattpocock-skills"  # aplicar.py copies it next to the skills that cite it
+SKILL_LICENSE = "LICENSE-mattpocock-skills"  # apply.py copies it next to the skills that cite it
 
 
 class Report:
@@ -148,7 +148,7 @@ def check_config(rep, root):
 
 # What a commit must carry for the workflow to work; a `.gitignore` with `.claude/*` would leave it out.
 MUST_BE_TRACKED = (".claude/gw.json", ".claude/gw/scripts/config.py", ".claude/settings.json",
-                   ".claude/skills/selector/SKILL.md", ".githooks/pre-push")
+                   ".claude/skills/gw-selector/SKILL.md", ".githooks/pre-push")
 
 
 def must_be_tracked(root):
@@ -410,11 +410,11 @@ def check_settings(rep, root):
             continue
         if "compact" in matcher.split("|"):
             others = [h.get("command", "") for h in entry.get("hooks") or []
-                      if isinstance(h, dict) and not re.search(r"recuperar\.py[\"']?\s+--estado\b", h.get("command", ""))]
+                      if isinstance(h, dict) and not re.search(r"recover\.py[\"']?\s+--estado\b", h.get("command", ""))]
             if others:
                 problems += 1
                 rep.fail("settings SessionStart", f"entry {i} ({matcher}) runs '{others[0]}' on compact; after a "
-                         f"compaction only recuperar.py --estado should run (the rest re-runs setup mid-task)",
+                         f"compaction only recover.py --estado should run (the rest re-runs setup mid-task)",
                          "move that command to a \"startup|resume|clear\" entry in .claude/settings.json")
     for event, entries in hooks.items():
         for entry in entries if isinstance(entries, list) else []:
@@ -451,12 +451,12 @@ def check_subagents(rep, root):
             texts.append(p.read_text(encoding="utf-8", errors="replace"))
     if not texts:
         rep.fail("agents", "neither AGENTS.md nor CLAUDE.md exists, so agents get no workflow rules", "/gw-init")
-    elif any("orchestrate-dealer" in t for t in texts):
-        rep.ok("agents", "AGENTS.md/CLAUDE.md authorise dealing work to subagents (orchestrate-dealer)")
+    elif any("gw-orchestrate-dealer" in t for t in texts):
+        rep.ok("agents", "AGENTS.md/CLAUDE.md authorise dealing work to subagents (gw-orchestrate-dealer)")
     else:
-        rep.warn("agents", "neither AGENTS.md nor CLAUDE.md mentions orchestrate-dealer, so the session may not deal "
+        rep.warn("agents", "neither AGENTS.md nor CLAUDE.md mentions gw-orchestrate-dealer, so the session may not deal "
                  "work to subagents", "add to AGENTS.md: 'Multi-step work is dealt to subagents (skill "
-                 "orchestrate-dealer); the main session plans, decides and reviews.'")
+                 "gw-orchestrate-dealer); the main session plans, decides and reviews.'")
 
 
 def check_glossary(rep, root):
@@ -523,8 +523,8 @@ def check_skills(rep, root, version, proposals=()):
 
 
 def check_session(rep, root):
-    folder = registro_sesion.opened_outside(root)
-    if registro_sesion.cloud_start(folder):
+    folder = session_log.opened_outside(root)
+    if session_log.cloud_start(folder):
         rep.ok("session", "cloud session: it starts in /home/user, not in the repo; its compaction window is "
                "checked under compaction")
     elif folder:

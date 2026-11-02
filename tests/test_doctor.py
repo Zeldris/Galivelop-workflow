@@ -12,7 +12,7 @@ from test_ganchos import ROOT, VERSION
 from test_sesion import SessionProject
 
 SKILL = """---
-name: selector
+name: gw-selector
 description: Pick the skill.
 metadata:
   version: "{version}"
@@ -30,14 +30,14 @@ class Doctor(unittest.TestCase):
         p = self.p = SessionProject(self.tmp)
         for var in ("CI", "GITHUB_ACTIONS"):  # the CI's own variables must not change what these tests expect
             p.env.pop(var, None)
-        for name in ("revision-antes-de-main.sh", "antes-de-parar.py", "guardia-config.py", "tope-subagentes.py"):
+        for name in ("review-before-main.sh", "before-stop.py", "config-guard.py", "subagent-cap.py"):
             shutil.copy2(ROOT / "scripts" / name, p.scripts / name)
         shutil.copy2(ROOT / "templates" / "claude" / "settings.json", p.work / ".claude" / "settings.json")
         shutil.copy2(ROOT / "templates" / "githooks" / "commit-msg", p.work / ".githooks" / "commit-msg")
         p.write(".github/workflows/check.yml", "name: check\njobs:\n  c:\n    steps:\n      - run: bash check.sh\n")
-        p.write("AGENTS.md", "# Rules\n\nDeal multi-step work to subagents (skill orchestrate-dealer).\n")
+        p.write("AGENTS.md", "# Rules\n\nDeal multi-step work to subagents (skill gw-orchestrate-dealer).\n")
         p.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| Next step | write tests |\n")
-        p.write(".claude/skills/selector/SKILL.md", SKILL.format(version=VERSION))
+        p.write(".claude/skills/gw-selector/SKILL.md", SKILL.format(version=VERSION))
         p.commit("set up")
 
     def doctor(self, *args):
@@ -83,10 +83,10 @@ class Doctor(unittest.TestCase):
         self.assertLine(out, "FAIL", "on compact", "startup|resume|clear")
 
     def test_hook_command_to_a_missing_file(self):
-        (self.p.scripts / "recuperar.py").unlink()
+        (self.p.scripts / "recover.py").unlink()
         code, out = self.doctor()
         self.assertEqual(code, 1, out)
-        self.assertLine(out, "FAIL", ".claude/gw/scripts/recuperar.py", "does not exist", "/gw-update")
+        self.assertLine(out, "FAIL", ".claude/gw/scripts/recover.py", "does not exist", "/gw-update")
 
     def test_missing_pr_guard(self):
         s = self.settings()
@@ -94,14 +94,14 @@ class Doctor(unittest.TestCase):
         self.save_settings(s)
         code, out = self.doctor()
         self.assertEqual(code, 1, out)
-        self.assertLine(out, "FAIL", "PreToolUse", "revision-antes-de-main.sh")
+        self.assertLine(out, "FAIL", "PreToolUse", "review-before-main.sh")
 
     def test_older_stop_hook_runs_twice(self):
         s = self.settings()
-        s["hooks"]["Stop"].append({"hooks": [{"type": "command", "command": "python3 .claude/hooks/antes-de-parar.py"}]})
+        s["hooks"]["Stop"].append({"hooks": [{"type": "command", "command": "python3 .claude/hooks/before-stop.py"}]})
         self.save_settings(s)
         (self.p.work / ".claude" / "hooks").mkdir()
-        (self.p.work / ".claude" / "hooks" / "antes-de-parar.py").write_text(
+        (self.p.work / ".claude" / "hooks" / "before-stop.py").write_text(
             f"#!/usr/bin/env python3\n# galivelop-workflow v{VERSION}\n")
         code, out = self.doctor()
         self.assertEqual(code, 0, out)
@@ -110,38 +110,38 @@ class Doctor(unittest.TestCase):
     def test_older_config_guard_runs_twice(self):
         s = self.settings()
         s["hooks"]["PreToolUse"].append({"matcher": "Edit|Write", "hooks": [
-            {"type": "command", "command": "python3 .claude/hooks/guardia-config.py"}]})
+            {"type": "command", "command": "python3 .claude/hooks/config-guard.py"}]})
         self.save_settings(s)
         (self.p.work / ".claude" / "hooks").mkdir()
-        (self.p.work / ".claude" / "hooks" / "guardia-config.py").write_text(
+        (self.p.work / ".claude" / "hooks" / "config-guard.py").write_text(
             f"#!/usr/bin/env python3\n# galivelop-workflow v{VERSION}\n")
         code, out = self.doctor()
         self.assertEqual(code, 0, out)
         self.assertLine(out, "WARN", "settings PreToolUse", "outside .claude/gw/scripts/", "delete that entry")
 
     def test_missing_config_guard_script_fails(self):
-        (self.p.scripts / "guardia-config.py").unlink()
+        (self.p.scripts / "config-guard.py").unlink()
         code, out = self.doctor()
         self.assertEqual(code, 1, out)
-        self.assertLine(out, "FAIL", "settings PreToolUse", "guardia-config.py", "does not exist")
+        self.assertLine(out, "FAIL", "settings PreToolUse", "config-guard.py", "does not exist")
 
     def test_older_subagent_cap_runs_twice(self):
         s = self.settings()
         s["hooks"]["PreToolUse"].append({"matcher": "Agent", "hooks": [
-            {"type": "command", "command": "python3 .claude/hooks/tope-subagentes.py"}]})
+            {"type": "command", "command": "python3 .claude/hooks/subagent-cap.py"}]})
         self.save_settings(s)
         (self.p.work / ".claude" / "hooks").mkdir()
-        (self.p.work / ".claude" / "hooks" / "tope-subagentes.py").write_text(
+        (self.p.work / ".claude" / "hooks" / "subagent-cap.py").write_text(
             f"#!/usr/bin/env python3\n# galivelop-workflow v{VERSION}\n")
         code, out = self.doctor()
         self.assertEqual(code, 0, out)
         self.assertLine(out, "WARN", "settings PreToolUse", "outside .claude/gw/scripts/", "delete that entry")
 
     def test_missing_subagent_cap_script_fails(self):
-        (self.p.scripts / "tope-subagentes.py").unlink()
+        (self.p.scripts / "subagent-cap.py").unlink()
         code, out = self.doctor()
         self.assertEqual(code, 1, out)
-        self.assertLine(out, "FAIL", "settings PreToolUse", "tope-subagentes.py", "does not exist")
+        self.assertLine(out, "FAIL", "settings PreToolUse", "subagent-cap.py", "does not exist")
 
     def test_wrong_hook_version(self):
         hook = self.p.work / ".githooks" / "pre-push"
@@ -312,13 +312,13 @@ class Doctor(unittest.TestCase):
         self.p.write("AGENTS.md", "# Rules\n\nWork alone.\n")
         code, out = self.doctor()
         self.assertEqual(code, 0, out)
-        self.assertLine(out, "WARN", "orchestrate-dealer", "add to AGENTS.md")
+        self.assertLine(out, "WARN", "gw-orchestrate-dealer", "add to AGENTS.md")
 
     def test_stale_copied_skill(self):
-        self.p.write(".claude/skills/selector/SKILL.md", SKILL.format(version="0.0.5"))
+        self.p.write(".claude/skills/gw-selector/SKILL.md", SKILL.format(version="0.0.5"))
         self.p.write(".claude/skills/local/SKILL.md", "---\nname: local\nmetadata:\n  version: \"9\"\n  source: \"ours\"\n---\n")
         code, out = self.doctor()
-        line = self.assertLine(out, "WARN", "selector (0.0.5)", "/gw-update")
+        line = self.assertLine(out, "WARN", "gw-selector (0.0.5)", "/gw-update")
         self.assertNotIn("local", line)
 
     def test_skill_citing_a_missing_license(self):
@@ -346,10 +346,10 @@ class Doctor(unittest.TestCase):
         self.assertNotIn(".claude/settings.json by", out)
 
     def test_pending_proposals_warn_and_hold_back_skills_ok(self):
-        self.p.write(".claude/skills/selector/SKILL.md.gw-nuevo", "new\n")
+        self.p.write(".claude/skills/gw-selector/SKILL.md.gw-nuevo", "new\n")
         code, out = self.doctor()
         self.assertLine(out, "WARN", "1 pending .gw-nuevo proposal(s)",
-                        "git diff --no-index .claude/skills/selector/SKILL.md .claude/skills/selector/SKILL.md.gw-nuevo")
+                        "git diff --no-index .claude/skills/gw-selector/SKILL.md .claude/skills/gw-selector/SKILL.md.gw-nuevo")
         self.assertNotIn("OK   skills", out)
 
     def test_flow_script_run_from_another_folder_warns(self):
@@ -397,46 +397,46 @@ class Doctor(unittest.TestCase):
         self.assertLine(self.doctor()[1], "OK", "glossary")
 
     def test_invisible_characters_in_instructions_fail_with_the_fix(self):
-        self.p.write("AGENTS.md", "# Rules\n\nDeal work to subagents (skill orchestrate-dealer).\nhid\u200bden\n")
-        self.p.write(".claude/skills/selector/SKILL.md",
+        self.p.write("AGENTS.md", "# Rules\n\nDeal work to subagents (skill gw-orchestrate-dealer).\nhid\u200bden\n")
+        self.p.write(".claude/skills/gw-selector/SKILL.md",
                      SKILL.format(version=VERSION).replace("Pick", "Pi\u202eck"))
         code, out = self.doctor()
         self.assertEqual(code, 1, out)
         self.assertLine(out, "FAIL", "invisible", "AGENTS.md", "line 4 col 4 U+200B", "remove them: python3 -c")
-        self.assertLine(out, "FAIL", "invisible", ".claude/skills/selector/SKILL.md", "U+202E")
-        self.p.write("AGENTS.md", "\ufeff# Rules\n\nDeal work to subagents (skill orchestrate-dealer).\n")
-        self.p.write(".claude/skills/selector/SKILL.md", SKILL.format(version=VERSION))
+        self.assertLine(out, "FAIL", "invisible", ".claude/skills/gw-selector/SKILL.md", "U+202E")
+        self.p.write("AGENTS.md", "\ufeff# Rules\n\nDeal work to subagents (skill gw-orchestrate-dealer).\n")
+        self.p.write(".claude/skills/gw-selector/SKILL.md", SKILL.format(version=VERSION))
         code, out = self.doctor()  # a BOM as the first character is allowed
         self.assertEqual(code, 0, out)
         self.assertLine(out, "OK", "instructions")
 
     def test_the_fix_command_for_invisible_characters_works(self):
-        self.p.write("AGENTS.md", "# Rules\n\nDeal work (orchestrate-dealer).\nhid\u200bden\u2066\n")
+        self.p.write("AGENTS.md", "# Rules\n\nDeal work (gw-orchestrate-dealer).\nhid\u200bden\u2066\n")
         line = self.assertLine(self.doctor()[1], "FAIL", "invisible", "AGENTS.md")
         command = line.split("remove them: ", 1)[1]
         code, out = self.p.run("bash", "-c", command, cwd=self.p.work)
         self.assertEqual(code, 0, out)
         self.assertEqual((self.p.work / "AGENTS.md").read_text(encoding="utf-8"),
-                         "# Rules\n\nDeal work (orchestrate-dealer).\nhidden\n")
+                         "# Rules\n\nDeal work (gw-orchestrate-dealer).\nhidden\n")
 
     def test_zero_width_joiner_in_an_emoji_passes_and_a_lone_one_fails_with_a_fix_that_keeps_the_emoji(self):
         emoji = "\U0001F469\u200d\U0001F4BB"
-        self.p.write("AGENTS.md", f"# Rules {emoji}\n\nDeal work to subagents (skill orchestrate-dealer).\n")
+        self.p.write("AGENTS.md", f"# Rules {emoji}\n\nDeal work to subagents (skill gw-orchestrate-dealer).\n")
         code, out = self.doctor()
         self.assertEqual(code, 0, out)
         self.assertLine(out, "OK", "instructions")
-        self.p.write("AGENTS.md", f"# Rules {emoji}\n\nDeal work (orchestrate-dealer).\nhid\u200dden {emoji}\u200d\n")
+        self.p.write("AGENTS.md", f"# Rules {emoji}\n\nDeal work (gw-orchestrate-dealer).\nhid\u200dden {emoji}\u200d\n")
         code, out = self.doctor()
         self.assertEqual(code, 1, out)
         line = self.assertLine(out, "FAIL", "invisible", "AGENTS.md", "line 4 col 4 U+200D", "line 4 col 12 U+200D")
         code, out = self.p.run("bash", "-c", line.split("remove them: ", 1)[1], cwd=self.p.work)
         self.assertEqual(code, 0, out)
         self.assertEqual((self.p.work / "AGENTS.md").read_text(encoding="utf-8"),
-                         f"# Rules {emoji}\n\nDeal work (orchestrate-dealer).\nhidden {emoji}\n")
+                         f"# Rules {emoji}\n\nDeal work (gw-orchestrate-dealer).\nhidden {emoji}\n")
         self.assertLine(self.doctor()[1], "OK", "instructions")
 
     def test_long_instruction_files_warn_then_fail(self):
-        base = "# Rules\n\nDeal work to subagents (skill orchestrate-dealer).\n"
+        base = "# Rules\n\nDeal work to subagents (skill gw-orchestrate-dealer).\n"
         self.p.write("AGENTS.md", base + "line\n" * 148)  # 151 lines
         code, out = self.doctor()
         self.assertEqual(code, 0, out)

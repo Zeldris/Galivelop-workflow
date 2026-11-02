@@ -1,5 +1,5 @@
-"""Session hooks: scripts/session-start.sh (SessionStart startup|resume|clear), scripts/recuperar.py (clear|compact
-and --buscar) and scripts/registro_sesion.py, in temporary projects laid out like one that applied the workflow.
+"""Session hooks: scripts/session-start.sh (SessionStart startup|resume|clear), scripts/recover.py (clear|compact
+and --buscar) and scripts/session_log.py, in temporary projects laid out like one that applied the workflow.
 
 HOME points to a temp folder, so nothing reads or writes the real ~/.claude; git runs isolated as in test_ganchos.
 """
@@ -15,7 +15,7 @@ from pathlib import Path
 
 from test_ganchos import ROOT, Project
 
-SCRIPTS = ("session-start.sh", "recuperar.py", "registro_sesion.py", "doctor.py")
+SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py")
 
 
 def folder_of(path):
@@ -41,7 +41,7 @@ class SessionProject(Project):
         return self.run("bash", str(self.scripts / "session-start.sh"), env=env, stdin=stdin, cwd=cwd)
 
     def recuperar(self, *args, stdin=None, cwd=None):
-        return self.run("python3", str(self.scripts / "recuperar.py"), *args, stdin=stdin, cwd=cwd)
+        return self.run("python3", str(self.scripts / "recover.py"), *args, stdin=stdin, cwd=cwd)
 
     def transcript(self, folder_path, lines, name="s1.jsonl"):
         d = self.home / ".claude" / "projects" / folder_of(folder_path)
@@ -446,7 +446,7 @@ class Recuperar(Base):
         self.assertNotIn(str(loose), out)  # detached: left out
         self.assertNotIn(f"{p.work} (branch main)", out)  # the session's own checkout is not "another" one
         # the worktree's own copy (the root comes from the script's path): from there, the main checkout is another one
-        code, out = p.run("python3", str(sub / ".claude" / "gw" / "scripts" / "recuperar.py"), "--estado", cwd=sub)
+        code, out = p.run("python3", str(sub / ".claude" / "gw" / "scripts" / "recover.py"), "--estado", cwd=sub)
         self.assertIn(f"  {p.work} (branch main)", out)
         self.assertIn("    row: main work", out)
         self.assertIn("- Log (docs/log.md), row for `sub`: IMG-3 halfway", out)
@@ -478,7 +478,7 @@ class Recuperar(Base):
         p = self.p  # a loaded machine: the hook's JSON arrives after more than a second
         other = p.transcript(self.tmp / "elsewhere", [{"type": "system", "subtype": "compact_boundary"}])
         p.transcript(p.work, [{}])
-        proc = subprocess.Popen(["python3", str(p.scripts / "recuperar.py"), "--estado"], cwd=p.work, env=p.env,
+        proc = subprocess.Popen(["python3", str(p.scripts / "recover.py"), "--estado"], cwd=p.work, env=p.env,
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         time.sleep(1.5)
         out, _ = proc.communicate(json.dumps({"transcript_path": str(other)}), timeout=20)
@@ -501,8 +501,8 @@ class Recuperar(Base):
         self.assertIn("Log: unknown", out)
 
     def test_estado_does_not_wait_on_an_open_empty_stdin(self):
-        p = self.p  # an agent's Bash tool, or `sleep 3 | recuperar.py --estado`: stdin open, nothing on it
-        proc = subprocess.Popen(["python3", str(p.scripts / "recuperar.py"), "--estado"], cwd=p.work, env=p.env,
+        p = self.p  # an agent's Bash tool, or `sleep 3 | recover.py --estado`: stdin open, nothing on it
+        proc = subprocess.Popen(["python3", str(p.scripts / "recover.py"), "--estado"], cwd=p.work, env=p.env,
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         watchdog = threading.Timer(10, proc.kill)  # a hang is killed, and fails below with a negative exit code
         watchdog.start()
@@ -515,8 +515,8 @@ class Recuperar(Base):
         self.assertIn("Log:", out)
 
     def test_estado_into_a_closed_pipe_exits_zero_quietly(self):
-        p = self.p  # `recuperar.py --estado | head -n 1`: the reader leaves before the writer is done
-        proc = subprocess.Popen(["python3", str(p.scripts / "recuperar.py"), "--estado"], cwd=p.work, env=p.env,
+        p = self.p  # `recover.py --estado | head -n 1`: the reader leaves before the writer is done
+        proc = subprocess.Popen(["python3", str(p.scripts / "recover.py"), "--estado"], cwd=p.work, env=p.env,
                                 stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         proc.stdout.close()
         err = proc.stderr.read()
@@ -530,7 +530,7 @@ class Recuperar(Base):
             {"type": "user", "timestamp": "2026-10-21T10:00:00Z", "message": {"content": "use port 5433 for the db"}},
             {"type": "assistant", "message": {"content": [{"type": "text", "text": "noted"}]}},
             {"type": "assistant", "message": {"content": [{"type": "tool_use", "id": "t1", "name": "Bash",
-                                                           "input": {"command": "python3 recuperar.py --buscar 5433"}}]}},
+                                                           "input": {"command": "python3 recover.py --buscar 5433"}}]}},
             {"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "t1",
                                                       "content": "old search result 5433"}]}},
         ])
@@ -620,7 +620,7 @@ class Recuperar(Base):
         # Portal P1: in a cloud session the transcript is always in -home-user; that is not a session to restart
         p = self.p
         p.transcript("/home/user", [{"type": "user", "message": {"content": "hi"}}])
-        script = str(p.scripts / "recuperar.py")
+        script = str(p.scripts / "recover.py")
         code, out = p.run("python3", script, "--estado", env={"CLAUDE_CODE_REMOTE": "true"})
         self.assertEqual(code, 0, out)
         self.assertNotIn("the session was opened outside the repo", out)
@@ -633,7 +633,7 @@ class RegistroSesion(Base):
     def test_cloud_start_transcript_found_without_warning_in_the_cloud(self):
         p = self.p
         cloud = p.transcript("/home/user", [{}])
-        script = str(p.scripts / "registro_sesion.py")
+        script = str(p.scripts / "session_log.py")
         code, out = p.run("python3", script, "--path", env={"CLAUDE_CODE_REMOTE": "true"})
         self.assertEqual((code, out.strip()), (0, str(cloud)))
         code, out = p.run("python3", script, "--path")
@@ -642,7 +642,7 @@ class RegistroSesion(Base):
     def test_parent_folder_transcript_found_with_warning(self):
         p = self.p
         parent = p.transcript(self.tmp, [{"type": "user", "message": {"content": "x"}}])
-        code, out = p.run("python3", str(p.scripts / "registro_sesion.py"), "--path")
+        code, out = p.run("python3", str(p.scripts / "session_log.py"), "--path")
         self.assertEqual(code, 0, out)
         self.assertIn(str(parent), out)
         self.assertIn("outside the repo", out)
@@ -652,13 +652,13 @@ class RegistroSesion(Base):
         old = p.transcript(self.tmp, [{}])
         os.utime(old, (time.time() - 100, time.time() - 100))
         own = p.transcript(p.work, [{}])
-        code, out = p.run("python3", str(p.scripts / "registro_sesion.py"), "--path")
+        code, out = p.run("python3", str(p.scripts / "session_log.py"), "--path")
         self.assertEqual(out.strip(), str(own))
 
     def test_sibling_repo_is_never_used(self):
         p = self.p
         p.transcript(self.tmp / "other-repo", [{}])
-        code, out = p.run("python3", str(p.scripts / "registro_sesion.py"), "--path")
+        code, out = p.run("python3", str(p.scripts / "session_log.py"), "--path")
         self.assertEqual(code, 1, out)
         self.assertIn("cd ", out)
 

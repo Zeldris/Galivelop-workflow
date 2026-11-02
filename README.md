@@ -40,7 +40,7 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 - **What isn't pushed doesn't exist.** Commit + push at every stable point, and the log (`docs/traspaso.md`) is
   updated **in the same commit** as the work it describes, never at the end.
 - Every commit ends with `Siguiente: <concrete step>` (next step): the next session knows what to do without asking.
-- After a compaction or a `/clear`, `recuperar.py` returns the log's state and the latest commits, and finds a lost
+- After a compaction or a `/clear`, `recover.py` returns the log's state and the latest commits, and finds a lost
   detail in the session transcript without reading it all again.
 - **Several sessions at once** (two accounts, one local and one in the cloud): each session has its own branch, and
   with `"logRows": true` each branch writes only to its own row of the log; `pre-push` rejects touching another's.
@@ -49,8 +49,8 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 ### Nothing unreviewed reaches the protected branch
 
 - **Three phases** before pushing: code review (`/code-review` of the diff against the protected branch),
-  environment (`opt-tokens` and `retro`, presented to the person) and closing.
-- `revisado.sh` writes a **review mark tied to a specific commit**; without the mark for that same commit, the
+  environment (`gw-opt-tokens` and `retro`, presented to the person) and closing.
+- `reviewed.sh` writes a **review mark tied to a specific commit**; without the mark for that same commit, the
   hooks reject the push or the pull request.
 - **Code and content are told apart.** Each project declares with regular expressions what is content (docs, data,
   texts, images) and needs no code review; everything else is code and does.
@@ -60,18 +60,18 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 ### Tests that actually prove something
 
-- `rojo-sin-arreglo.sh` checks that a new test **fails without its fix**: a test that passes either way proves
+- `red-without-fix.sh` checks that a new test **fails without its fix**: a test that passes either way proves
   nothing.
 - A test that expects a failure checks **the reason**, not just the exit code.
 - `pre-push` can also run the tests related to what changed.
 
 ### Token spend is measured, not assumed
 
-- `selector` picks the skill and the model at the start of every task: the person chooses the session's model, and
+- `gw-selector` picks the skill and the model at the start of every task: the person chooses the session's model, and
   subagents get the cheapest one that does the job well.
-- `orchestrate-dealer` turns the main session into an orchestrator: it deals work out to clean-context subagents
+- `gw-orchestrate-dealer` turns the main session into an orchestrator: it deals work out to clean-context subagents
   and can keep going for hours without `/clear`.
-- `opt-tokens` measures in the session transcript where the spend went and proposes environment changes.
+- `gw-opt-tokens` measures in the session transcript where the spend went and proposes environment changes.
 - A hook asks the person when a session has launched many subagents, so a loop doesn't burn tokens unseen.
 - **Quality first:** a saving that worsens the result is no saving.
 
@@ -79,7 +79,7 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 - A `retro` that finds a general improvement doesn't patch the local copy, which the next version would overwrite:
   it leaves it in its file under `## For Galivelop-workflow`.
-- From this repo, `gw-harvest` (with `recoger.py`) goes through the connected projects and collects, as proposals,
+- From this repo, `gw-harvest` (with `harvest.py`) goes through the connected projects and collects, as proposals,
   their edited copies, their new skills and what their retros say. **Nothing is applied without confirmation**: what
   is approved comes in with its CHANGELOG entry and a new version.
 - `/gw-update` brings each project up to the new version and **shows the template changes** before applying what the
@@ -88,7 +88,7 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 ### It protects itself
 
 - A hook asks the person for permission before the agent edits the workflow's own configuration.
-- `enlaces-md.py` finds broken links and stale references in the Markdown, and `mapa-agente.py` checks that the agent
+- `md-links.py` finds broken links and stale references in the Markdown, and `agent-map.py` checks that the agent
   map doesn't point at anything that no longer exists.
 - The repo itself runs **more than a thousand automated tests**, on Linux and macOS, and is worked on with its own
   workflow: if a rule gets in the way here, it gets in the way in every project.
@@ -97,10 +97,10 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 1. **At the start:** the session reads the log, brings in the protected branch (merge, never rebase) and checks the
    check is green before touching anything.
-2. **Before working:** `selector` says in one line which skill and model the task needs.
+2. **Before working:** `gw-selector` says in one line which skill and model the task needs.
 3. **While working:** commit + push at every stable point, never more than 30-45 minutes without pushing, with the
-   log in the same commit. Multi-step work goes to subagents with `orchestrate-dealer`.
-4. **Before the protected branch:** the three phases, the mark with `revisado.sh`, and the push with the person's
+   log in the same commit. Multi-step work goes to subagents with `gw-orchestrate-dealer`.
+4. **Before the protected branch:** the three phases, the mark with `reviewed.sh`, and the push with the person's
    confirmation.
 5. **When a phase closes:** the CI of the last push is checked and, with the log up to date, a `/clear` is
    recommended.
@@ -115,11 +115,11 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 | Skill | What for |
 |---|---|
-| `selector` | Pick the skill and models at the start of every task |
-| `orchestrate-dealer` | Deal work out to clean-context subagents and work for hours without `/clear` |
-| `opt-tokens` | Measure where a session's spend went and propose how to cut it without worsening results |
-| `opt-ai` | Optional: measure latency, quality and configuration of local AI models (Ollama, llama.cpp, vLLM…) per machine |
-| `scout-updates` | Optional: look for updates to dependencies, images, CI actions and models in primary sources, as proposals only |
+| `gw-selector` | Pick the skill and models at the start of every task |
+| `gw-orchestrate-dealer` | Deal work out to clean-context subagents and work for hours without `/clear` |
+| `gw-opt-tokens` | Measure where a session's spend went and propose how to cut it without worsening results |
+| `gw-opt-ai` | Optional: measure latency, quality and configuration of local AI models (Ollama, llama.cpp, vLLM…) per machine |
+| `gw-scout-updates` | Optional: look for updates to dependencies, images, CI actions and models in primary sources, as proposals only |
 | `gw-init` | Apply the workflow to a new or existing project |
 | `gw-update` | Bring a project up to the new version, showing the changes first |
 | `gw-doctor` | Check it is set up correctly and explain every failure with its fix |
@@ -140,10 +140,10 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 ### Scripts
 
-Deterministic, in Python and in bash that runs on macOS's version: `aplicar.py` (set up the workflow), `doctor.py`
-(diagnosis with the command that fixes each problem), `revisado.sh` (review mark), `recuperar.py` (state after
-`/clear`), `fusionar.sh` (bring in a subagent's branch with a green check and clean up its working copy),
-`rojo-sin-arreglo.sh`, `recoger.py` and the checks for links and for the agent map.
+Deterministic, in Python and in bash that runs on macOS's version: `apply.py` (set up the workflow), `doctor.py`
+(diagnosis with the command that fixes each problem), `reviewed.sh` (review mark), `recover.py` (state after
+`/clear`), `merge-branch.sh` (bring in a subagent's branch with a green check and clean up its working copy),
+`red-without-fix.sh`, `harvest.py` and the checks for links and for the agent map.
 
 ### Optional patterns
 
@@ -155,7 +155,7 @@ the cloud one, **social media content**, and **harvesting improvements** back in
 
 - **Stage 1 (today):** an AI agent applies the workflow to your project, new (recommended) or existing, following
   the [apply guide](docs/en/apply.md). It decides with you whatever needs judgement (language, check, protected
-  branch, what counts as content…); `scripts/aplicar.py` copies and configures, and `scripts/doctor.py` confirms it
+  branch, what counts as content…); `scripts/apply.py` copies and configures, and `scripts/doctor.py` confirms it
   is set up correctly. In Claude Code, `/gw-init` applies it, `/gw-update` brings it up to date and `/gw-doctor`
   checks it.
 - Everything lives **in the project's repo** (`.claude/gw/`, `.claude/skills/`, `.githooks/` and `.claude/gw.json`),

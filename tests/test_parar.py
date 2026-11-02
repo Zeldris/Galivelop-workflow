@@ -1,4 +1,4 @@
-"""Stop hook: scripts/antes-de-parar.py (P1 of docs/propuestas/2026-10-25-repos-x.md), in temporary projects (a bare
+"""Stop hook: scripts/before-stop.py (P1 of docs/propuestas/2026-10-25-repos-x.md), in temporary projects (a bare
 origin plus a clone laid out like one that applied the workflow), run the way Claude Code runs a hook: the hook JSON
 on stdin, the answer on stdout with exit 0.
 
@@ -16,7 +16,7 @@ from pathlib import Path
 
 from test_ganchos import ROOT, Project
 
-SCRIPT = "antes-de-parar.py"
+SCRIPT = "before-stop.py"
 LOG = "docs/log.md"
 
 
@@ -501,13 +501,13 @@ class Wiring(unittest.TestCase):
     def test_plugin_hooks(self):
         cmds = self.commands("hooks/hooks.json")
         self.assertEqual(len(cmds), 1, cmds)
-        self.assertIn('"${CLAUDE_PLUGIN_ROOT}"/scripts/antes-de-parar.py', cmds[0])
+        self.assertIn('"${CLAUDE_PLUGIN_ROOT}"/scripts/before-stop.py', cmds[0])
         self.assertTrue(cmds[0].startswith("python3 "), cmds[0])
 
     def test_settings_template(self):
         cmds = self.commands("templates/claude/settings.json")
         self.assertEqual(len(cmds), 1, cmds)
-        self.assertIn('"$CLAUDE_PROJECT_DIR"/.claude/gw/scripts/antes-de-parar.py', cmds[0])
+        self.assertIn('"$CLAUDE_PROJECT_DIR"/.claude/gw/scripts/before-stop.py', cmds[0])
         self.assertTrue(cmds[0].startswith("python3 "), cmds[0])
 
 

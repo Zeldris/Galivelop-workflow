@@ -1,15 +1,15 @@
 <!-- galivelop-workflow v0.4.3 -->
-# opt-tokens — notas del proyecto
+# gw-opt-tokens — notas del proyecto
 
-Las lee la skill `opt-tokens` antes de proponer nada, y se actualizan cuando la persona aprueba un cambio. El flujo
+Las lee la skill `gw-opt-tokens` antes de proponer nada, y se actualizan cuando la persona aprueba un cambio. El flujo
 las crea una vez; desde entonces son del proyecto.
 
 ## Herramientas que ya ahorran
 
 <!-- Una línea cada una, con cómo se corre. -->
-- `python3 .claude/gw/scripts/recuperar.py --estado` y `--buscar "<texto>"`: recuperar lo que se llevó una
+- `python3 .claude/gw/scripts/recover.py --estado` y `--buscar "<texto>"`: recuperar lo que se llevó una
   compactación.
-- `orchestrate-dealer`: el trabajo de más de un paso, repartido a subagentes de contexto limpio.
+- `gw-orchestrate-dealer`: el trabajo de más de un paso, repartido a subagentes de contexto limpio.
 
 ## Costes conocidos
 

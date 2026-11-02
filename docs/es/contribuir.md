@@ -15,8 +15,8 @@ estorba en todos los proyectos. Lee primero [`AGENTS.md`](../../AGENTS.md) y la 
 3. **Refresca la copia de este repo**:
 
    ```bash
-   python3 scripts/aplicar.py .
-   python3 scripts/aplicar.py --check .      # debe salir con 0
+   python3 scripts/apply.py .
+   python3 scripts/apply.py --check .      # debe salir con 0
    ```
 
    Sin esto, `tests/comprobar.sh` falla («workflow copy in sync»): la copia tiene que ser idéntica a las fuentes.
@@ -36,7 +36,7 @@ estorba en todos los proyectos. Lee primero [`AGENTS.md`](../../AGENTS.md) y la 
 - **Una prueba nueva debe fallar sin su arreglo.** Compruébalo con el arreglo aún sin commitear:
 
   ```bash
-  bash scripts/rojo-sin-arreglo.sh "python3 -m unittest tests.test_doctor.Clase.test_caso" scripts/doctor.py
+  bash scripts/red-without-fix.sh "python3 -m unittest tests.test_doctor.Clase.test_caso" scripts/doctor.py
   ```
 
   Opciones: `--fails-with REGEX` (el fallo sin el arreglo debe imprimir REGEX, para que no falle por otro motivo) y

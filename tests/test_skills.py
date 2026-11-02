@@ -176,8 +176,8 @@ class Skills(unittest.TestCase):
                             "skills from mattpocock/skills need LICENSE-mattpocock-skills at the root")
 
     def test_skills_the_flow_calls_on_its_own_are_model_invoked(self):
-        # AGENTS.md (phase 2), selector and revisado.sh with requireRetro have the agent run these itself.
-        for name in ("retro", "opt-tokens", "selector", "orchestrate-dealer"):
+        # AGENTS.md (phase 2), selector and reviewed.sh with requireRetro have the agent run these itself.
+        for name in ("retro", "gw-opt-tokens", "gw-selector", "gw-orchestrate-dealer"):
             with self.subTest(skill=name):
                 text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
                 self.assertNotIn("disable-model-invocation", text.split("\n---", 1)[0],
@@ -185,8 +185,8 @@ class Skills(unittest.TestCase):
 
     def test_applying_the_workflow_points_to_a_reading_subagent(self):
         # The pilot read the workflow whole in the main session: the selector row existed and gw-init did not cite it.
-        self.assertIn("| Apply or update the workflow (`gw-init`", (SKILLS / "selector" / "SKILL.md").read_text())
-        self.assertIn("`orchestrate-dealer`", (SKILLS / "gw-init" / "SKILL.md").read_text())
+        self.assertIn("| Apply or update the workflow (`gw-init`", (SKILLS / "gw-selector" / "SKILL.md").read_text())
+        self.assertIn("`gw-orchestrate-dealer`", (SKILLS / "gw-init" / "SKILL.md").read_text())
 
 
 if __name__ == "__main__":

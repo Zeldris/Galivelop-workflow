@@ -2,7 +2,7 @@
 # galivelop-workflow v0.4.3
 # Runs the project's `check` (every command of .claude/gw.json, prefixed by `checkWrapper` exactly as the pre-push does)
 # at the repo root with GW_PUSH_PROTECTED=false, output streamed, stopping at the first failure. When it all passes and
-# the work tree did not change during the run, it records the tree it would commit (see check-verde.sh), so the next
+# the work tree did not change during the run, it records the tree it would commit (see check-green.sh), so the next
 # push of that same tree skips the check. GW_CHECK_CACHE=0 leaves the cache alone.
 #   bash scripts/check.sh
 # Bash 3.2 compatible. Root from this script's path, never from $CLAUDE_PROJECT_DIR or the current directory.
@@ -14,7 +14,7 @@ root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --s
 cd "$root" || exit 1
 if [ -d "$root/.claude/gw/scripts" ]; then scripts="$root/.claude/gw/scripts"; else scripts="$root/scripts"; fi
 config="$scripts/config.py"
-helper="$scripts/check-verde.sh"
+helper="$scripts/check-green.sh"
 fail() {  # fail <message>: the message ends with the command that fixes it
   echo "check: $1" >&2
   exit 1

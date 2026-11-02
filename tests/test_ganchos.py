@@ -1,5 +1,5 @@
-"""Git hooks and their scripts, end to end: templates/githooks/pre-push and pre-commit, scripts/es-codigo.sh and
-scripts/revisado.sh, in temporary repos (a bare "origin" plus a clone laid out like a project that applied the
+"""Git hooks and their scripts, end to end: templates/githooks/pre-push and pre-commit, scripts/is-code.sh and
+scripts/reviewed.sh, in temporary repos (a bare "origin" plus a clone laid out like a project that applied the
 workflow), with `git push` / `git commit` going through the real hooks (core.hooksPath).
 
 Git runs isolated from this machine's configuration (GIT_CONFIG_GLOBAL to a temp file, GIT_CONFIG_NOSYSTEM=1), so
@@ -48,7 +48,7 @@ class Project:
         gw = self.work / ".claude" / "gw"
         (gw / "scripts").mkdir(parents=True)
         (gw / "schema").mkdir()
-        for name in ("config.py", "es-codigo.sh", "revisado.sh", "bitacora.py", "check-verde.sh", "check.sh"):
+        for name in ("config.py", "is-code.sh", "reviewed.sh", "handoff.py", "check-green.sh", "check.sh"):
             shutil.copy2(ROOT / "scripts" / name, gw / "scripts" / name)
         shutil.copy2(ROOT / "schema" / "gw.schema.json", gw / "schema" / "gw.schema.json")
         (self.work / ".githooks").mkdir()
@@ -109,7 +109,7 @@ class Base(unittest.TestCase):
 
 
 class ProtectedBranchMark(Base):
-    """The portal's eight cases for a push to the protected branch, plus the real revisado.sh flow."""
+    """The portal's eight cases for a push to the protected branch, plus the real reviewed.sh flow."""
 
     def setUp(self):
         super().setUp()
@@ -133,7 +133,7 @@ class ProtectedBranchMark(Base):
         code, out = self.push_main(self.code)
         self.assertNotEqual(code, 0, out)
         self.assertIn("no review mark", out)
-        self.assertIn("revisado.sh", out)
+        self.assertIn("reviewed.sh", out)
 
     def test_mark_then_content_accepted(self):
         code, out = self.push_main(self.marked)
@@ -520,7 +520,7 @@ class PrePush(Base):
 
     def test_optional_scripts_are_called_with_the_ref_lines(self):
         p = self.p
-        hook = p.work / ".claude" / "gw" / "scripts" / "tests-relacionados.sh"
+        hook = p.work / ".claude" / "gw" / "scripts" / "related-tests.sh"
         hook.write_text("#!/usr/bin/env bash\nread -r ref _ ; echo \"related saw $ref\"; grep -q check.sh \"$1\" || "
                         "{ echo related-missing-file; exit 1; }\n")
         hook.chmod(0o755)
@@ -532,7 +532,7 @@ class PrePush(Base):
 
     def test_optional_script_without_exec_bit_still_runs(self):
         p = self.p
-        hook = p.work / ".claude" / "gw" / "scripts" / "tests-relacionados.sh"
+        hook = p.work / ".claude" / "gw" / "scripts" / "related-tests.sh"
         hook.write_text("#!/usr/bin/env bash\necho related-ran-and-failed; exit 1\n")
         hook.chmod(0o644)  # lost its exec bit: present still means it runs
         p.write("src/a.py", "a = 1\n"); p.commit("code")
@@ -941,8 +941,8 @@ class PrePushWorktree(Base):
 class PortableShell(unittest.TestCase):
     """macOS ships bash 3.2 and a BSD mktemp: no mapfile / associative arrays, and mktemp templates end in XXXXXX."""
 
-    FILES = ("templates/githooks/pre-push", "templates/githooks/pre-commit", "scripts/tests-relacionados.sh",
-             "scripts/fusionar.sh")
+    FILES = ("templates/githooks/pre-push", "templates/githooks/pre-commit", "scripts/related-tests.sh",
+             "scripts/merge-branch.sh")
 
     def test_no_bash_4_features_and_bsd_safe_mktemp_templates(self):
         for rel in self.FILES:
@@ -955,7 +955,7 @@ class PortableShell(unittest.TestCase):
 
 
 class CheckCache(Base):
-    """The pre-push skips a `check` that already passed on the same tree with the same commands (check-verde.sh)."""
+    """The pre-push skips a `check` that already passed on the same tree with the same commands (check-green.sh)."""
     SKIP = "check already green on this tree"
     ON = {"GW_CHECK_CACHE": ""}  # anything but 0 turns the cache on
 
@@ -1024,7 +1024,7 @@ class CheckCache(Base):
         # The config is part of the tree, so the key's own sensitivity to the commands is tested on its own here.
         self.doc_change()
         tree = self.p.git("rev-parse", "HEAD^{tree}").stdout.strip()
-        helper = ".claude/gw/scripts/check-verde.sh"
+        helper = ".claude/gw/scripts/check-green.sh"
         other = self.p.run("bash", helper, "key", tree, "", stdin="bash check.sh\ntrue\n")[1].strip()
         self.assertRegex(other, r"^[0-9a-f]{40}$")
         self.cache.write_text(f"{int(time.time())} {other}\n")
@@ -1085,7 +1085,7 @@ class CheckCache(Base):
 
     def test_a_missing_helper_runs_the_check_as_before(self):
         self.doc_change()
-        (self.p.work / ".claude" / "gw" / "scripts" / "check-verde.sh").unlink()
+        (self.p.work / ".claude" / "gw" / "scripts" / "check-green.sh").unlink()
         for ref in ("feature", "HEAD:refs/heads/other"):
             code, out = self.push("origin", ref)
             self.assertEqual(code, 0, out)
@@ -1104,10 +1104,10 @@ class CheckCache(Base):
         self.assertIn("is a directory, check not recorded", out)
 
     def test_the_hook_still_sets_up_the_worktree_for_the_related_tests_when_it_skips(self):
-        # tests-relacionados.sh gets the folder the pushed commit is checked out in, also when the check is skipped.
+        # related-tests.sh gets the folder the pushed commit is checked out in, also when the check is skipped.
         p = self.p
         where = self.tmp / "related-pwd.txt"
-        shutil.copy2(ROOT / "scripts" / "tests-relacionados.sh", p.work / ".claude" / "gw" / "scripts" / "tests-relacionados.sh")
+        shutil.copy2(ROOT / "scripts" / "related-tests.sh", p.work / ".claude" / "gw" / "scripts" / "related-tests.sh")
         cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
         cfg["relatedTests"] = {"fast": [f'pwd > "{where}"'], "slow": []}
         p.write(".claude/gw.json", json.dumps(cfg))
@@ -1297,8 +1297,8 @@ class CheckRunner(Base):
 
 
 class CheckVerde(Base):
-    """scripts/check-verde.sh on its own: key, worktree-tree, has and add, with their edge cases."""
-    HELPER = ".claude/gw/scripts/check-verde.sh"
+    """scripts/check-green.sh on its own: key, worktree-tree, has and add, with their edge cases."""
+    HELPER = ".claude/gw/scripts/check-green.sh"
     TREE = "a" * 40
 
     def setUp(self):
@@ -1350,11 +1350,11 @@ class CheckVerde(Base):
     def test_worktree_tree_with_no_index_yet_in_a_folder_with_spaces(self):
         solo = self.tmp / "solo repo"
         (solo / "scripts").mkdir(parents=True)
-        shutil.copy2(ROOT / "scripts" / "check-verde.sh", solo / "scripts" / "check-verde.sh")
+        shutil.copy2(ROOT / "scripts" / "check-green.sh", solo / "scripts" / "check-green.sh")
         self.p.git("init", "-q", cwd=solo)
         (solo / "a b.txt").write_text("hello\n")
         self.assertFalse((solo / ".git" / "index").exists())
-        code, out = self.helper("worktree-tree", cwd=solo, helper=str(solo / "scripts" / "check-verde.sh"))
+        code, out = self.helper("worktree-tree", cwd=solo, helper=str(solo / "scripts" / "check-green.sh"))
         self.assertEqual(code, 0, out)
         self.assertFalse((solo / ".git" / "index").exists(), "the real index must stay absent")
         self.p.git("add", "-A", cwd=solo)
@@ -1412,10 +1412,10 @@ class CheckVerde(Base):
         self.p.git("config", "core.hooksPath", ".githooks")
         broken = self.tmp / "broken"
         (broken / "scripts").mkdir(parents=True)
-        shutil.copy2(ROOT / "scripts" / "check-verde.sh", broken / "scripts" / "check-verde.sh")
+        shutil.copy2(ROOT / "scripts" / "check-green.sh", broken / "scripts" / "check-green.sh")
         self.p.git("init", "-q", cwd=broken)
         (broken / ".git" / "index").write_bytes(b"not an index")
-        code, out = self.helper("worktree-tree", cwd=broken, helper=str(broken / "scripts" / "check-verde.sh"))
+        code, out = self.helper("worktree-tree", cwd=broken, helper=str(broken / "scripts" / "check-green.sh"))
         self.assertNotEqual(code, 0, out)
         self.assertIn("git add -A --dry-run", out)
 
@@ -1499,8 +1499,8 @@ class CheckVerde(Base):
         self.assertEqual([e for e in os.listdir(self.cache.parent) if e.startswith("gw-check-verde.")], [], "temp left behind")
 
     def test_every_warning_of_add_ends_with_the_command_that_fixes_it(self):
-        text = (ROOT / "scripts" / "check-verde.sh").read_text()
-        warnings = re.findall(r'echo "(check-verde: warning: [^"]*)"', text)
+        text = (ROOT / "scripts" / "check-green.sh").read_text()
+        warnings = re.findall(r'echo "(check-green: warning: [^"]*)"', text)
         self.assertGreaterEqual(len(warnings), 5)
         for w in warnings:
             self.assertRegex(w, r"; [^;]*: \S.*$", w)
@@ -1539,7 +1539,7 @@ class Revisado(Base):
         p.git("checkout", "-q", "-b", "feature")
         p.write("src/a.py", "a = 1\n"); p.commit("code")
         self.assertEqual(p.push("-u", "origin", "feature")[0], 0)
-        self.script = str(p.work / ".claude" / "gw" / "scripts" / "revisado.sh")
+        self.script = str(p.work / ".claude" / "gw" / "scripts" / "reviewed.sh")
 
     def test_tracked_edit_refused_untracked_draft_ignored(self):
         p = self.p
@@ -1593,7 +1593,7 @@ class RevisadoSpanishWithRetro(Base):
     def setUp(self):
         super().setUp()
         self.p.git("checkout", "-q", "-b", "feature")
-        self.script = str(self.p.work / ".claude" / "gw" / "scripts" / "revisado.sh")
+        self.script = str(self.p.work / ".claude" / "gw" / "scripts" / "reviewed.sh")
 
     def retro(self, status):
         p = self.p
@@ -1685,7 +1685,7 @@ class EsCodigo(Base):
         p = self.p
         p.write("src/a.py", "a\n"); p.write("docs/x.md", "x\n"); p.write("README.md", "r\n")
         p.write("docs/revisado.txt", "abc\n"); p.commit("mixed")
-        script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
+        script = str(p.work / ".claude" / "gw" / "scripts" / "is-code.sh")
         code, out = p.run("bash", script, p.base, "HEAD", cwd=self.tmp)
         self.assertEqual((code, out.split()), (0, ["src/a.py"]))
         code, out = p.run("bash", script, "", "HEAD")
@@ -1693,7 +1693,7 @@ class EsCodigo(Base):
 
     def test_explicar_says_code_or_content_and_why(self):
         p = self.p
-        script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
+        script = str(p.work / ".claude" / "gw" / "scripts" / "is-code.sh")
         code, out = p.run("bash", script, "--explicar", "src/a.py", "docs/x.md", ".githooks/pre-push",
                           "docs/revisado.txt")
         self.assertEqual(code, 0, out)
@@ -1719,7 +1719,7 @@ class EsCodigo(Base):
 
     def test_invalid_content_regex_is_named_and_other_failures_are_not_blamed_on_it(self):
         p = self.p
-        script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
+        script = str(p.work / ".claude" / "gw" / "scripts" / "is-code.sh")
         p.write("src/a.py", "a\n"); p.commit("code")
         good = (p.work / ".claude" / "gw.json").read_text()
         cfg = json.loads(good)
@@ -1745,7 +1745,7 @@ class EsCodigo(Base):
 
     def test_reader_closing_the_pipe_early_is_not_an_error(self):
         p = self.p
-        script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
+        script = str(p.work / ".claude" / "gw" / "scripts" / "is-code.sh")
         for i in range(3000):  # ~300 KB of paths: more than a pipe buffer, so the writer is still writing
             p.write(f"src/{'d' * 90}/f{i}.py", "x\n")
         p.commit("many files")
@@ -1763,14 +1763,14 @@ class EsCodigo(Base):
         p.write(".githooks/pre-push", "exit 0\n"); p.write(".claude/settings.json", "{}\n")
         p.write(".claude/gw/scripts/extra.sh", "true\n"); p.write("src/a.py", "a\n")
         p.commit("guards", env=None)
-        script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
+        script = str(p.work / ".claude" / "gw" / "scripts" / "is-code.sh")
         code, out = p.run("bash", script, p.base, "HEAD")
         self.assertEqual((code, sorted(out.split())), (0, [".claude/gw.json", ".claude/gw/scripts/extra.sh",
                                                           ".claude/settings.json", ".githooks/pre-push"]))
 
     def test_missing_commit_or_config_exits_2(self):
         p = self.p
-        script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
+        script = str(p.work / ".claude" / "gw" / "scripts" / "is-code.sh")
         self.assertEqual(p.run("bash", script, "1" * 40, "HEAD")[0], 2)
         p.git("rm", "-q", ".claude/gw.json"); p.git("commit", "-q", "--no-verify", "-m", "drop config")
         code, out = p.run("bash", script, p.base, "HEAD")
@@ -1783,7 +1783,7 @@ class EsCodigo(Base):
         cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
         cfg["content"] = cfg["content"] + ["^src/"]
         p.write(".claude/gw.json", json.dumps(cfg))  # uncommitted
-        script = str(p.work / ".claude" / "gw" / "scripts" / "es-codigo.sh")
+        script = str(p.work / ".claude" / "gw" / "scripts" / "is-code.sh")
         code, out = p.run("bash", script, p.base, "HEAD")
         self.assertEqual((code, out.split()), (0, ["src/a.py"]))
 
@@ -1980,11 +1980,11 @@ class PreCommitDone(Base):
 
     def test_missing_bitacora_fails_closed(self):
         p = self.p
-        (p.work / ".claude" / "gw" / "scripts" / "bitacora.py").unlink()
+        (p.work / ".claude" / "gw" / "scripts" / "handoff.py").unlink()
         p.write("src/a.py", "a = 1\n")
         r = p.commit("code", ok=False)
         self.assertNotEqual(r.returncode, 0)
-        self.assertIn("bitacora.py is missing", r.stderr)
+        self.assertIn("handoff.py is missing", r.stderr)
 
     def test_missing_config_py_fails_closed(self):
         p = self.p
@@ -2017,7 +2017,7 @@ class PreCommitDone(Base):
 
 
 class CommitMsg(Base):
-    """templates/githooks/commit-msg: bitacora.py check on the staged log, at commit time."""
+    """templates/githooks/commit-msg: handoff.py check on the staged log, at commit time."""
     config = {"logRows": True}
     hooks = ("pre-push", "pre-commit", "commit-msg")
 
@@ -2037,7 +2037,7 @@ class CommitMsg(Base):
         self.assertIn("commit-msg:", r.stderr)
         self.assertIn("git add docs/log.md", r.stderr)
         # the commit does not exist yet: --amend would rewrite the previous one
-        self.assertIn("bitacora: fix: edit docs/log.md, stage it (git add docs/log.md) and run the commit again: git commit",
+        self.assertIn("handoff: fix: edit docs/log.md, stage it (git add docs/log.md) and run the commit again: git commit",
                       r.stderr)
         self.assertNotIn("--amend", r.stderr)
 
@@ -2047,8 +2047,8 @@ class CommitMsg(Base):
         self.p.write("docs/log.md", text)
         r = self.p.commit("log", ok=False)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("WARNING: bitacora: a cell of the state table (\"Notes\") has 801 characters (limit 800)", r.stderr)
-        self.assertIn("WARNING: bitacora: the Done section has 6 items (limit 5)", r.stderr)
+        self.assertIn("WARNING: handoff: a cell of the state table (\"Notes\") has 801 characters (limit 800)", r.stderr)
+        self.assertIn("WARNING: handoff: the Done section has 6 items (limit 5)", r.stderr)
 
     def test_valid_log_passes(self):
         self.p.write("docs/log.md", self.log_text())
@@ -2160,7 +2160,7 @@ class CommitMsg(Base):
 
     def test_fails_closed_without_bitacora_py_when_the_log_is_staged(self):
         p = self.p
-        os.remove(p.work / ".claude" / "gw" / "scripts" / "bitacora.py")
+        os.remove(p.work / ".claude" / "gw" / "scripts" / "handoff.py")
         p.write("docs/log.md", self.log_text())
         r = p.commit("no bitacora", ok=False)
         self.assertNotEqual(r.returncode, 0)

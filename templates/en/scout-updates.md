@@ -1,7 +1,7 @@
 <!-- galivelop-workflow v0.4.3 -->
-# scout-updates — project notes
+# gw-scout-updates — project notes
 
-Read first by the `scout-updates` skill: what to watch and what to skip. Created by the workflow once; from then on
+Read first by the `gw-scout-updates` skill: what to watch and what to skip. Created by the workflow once; from then on
 it belongs to the project.
 
 ## Worth tracking

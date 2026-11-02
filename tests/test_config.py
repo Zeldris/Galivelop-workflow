@@ -233,7 +233,7 @@ class LinkedWorktree(unittest.TestCase):
         git("config", "user.name", "t")
         scripts = self.main / ".claude" / "gw" / "scripts"
         scripts.mkdir(parents=True)
-        for name in ("config.py", "rojo-sin-arreglo.sh"):
+        for name in ("config.py", "red-without-fix.sh"):
             shutil.copy(ROOT / "scripts" / name, scripts / name)
         shutil.copytree(ROOT / "schema", self.main / ".claude" / "gw" / "schema")
         (self.main / ".claude" / "gw.json").write_text(json.dumps(dict(VALID, log="main-log.md")))
@@ -305,8 +305,8 @@ class LinkedWorktree(unittest.TestCase):
     def test_every_shell_script_root_line_finds_the_worktree_with_git_dir_exported(self):
         # The `root=` line of each script that finds its root from its own folder, run as is inside the worktree.
         here = self.wt / ".claude" / "gw" / "scripts"
-        names = ("es-codigo.sh", "fusionar.sh", "prepush-ramas.sh", "revisado.sh", "tests-relacionados.sh",
-                 "rojo-sin-arreglo.sh", "check-verde.sh", "check.sh")
+        names = ("is-code.sh", "merge-branch.sh", "prepush-branches.sh", "reviewed.sh", "related-tests.sh",
+                 "red-without-fix.sh", "check-green.sh", "check.sh")
         for name in names:
             with self.subTest(script=name):
                 lines = [ln for ln in (ROOT / "scripts" / name).read_text().splitlines() if ln.startswith('root="$(')]
@@ -316,9 +316,9 @@ class LinkedWorktree(unittest.TestCase):
                 self.assertEqual((r.returncode, r.stdout), (0, str(self.wt)), r.stderr)
 
     def test_shell_script_finds_the_worktree_root_with_git_dir_exported(self):
-        # rojo-sin-arreglo.sh stashes the fix file at the root it found: a wrong root says "no uncommitted changes".
+        # red-without-fix.sh stashes the fix file at the root it found: a wrong root says "no uncommitted changes".
         (self.wt / "fix.txt").write_text("good\n")
-        script = str(self.wt / ".claude" / "gw" / "scripts" / "rojo-sin-arreglo.sh")
+        script = str(self.wt / ".claude" / "gw" / "scripts" / "red-without-fix.sh")
         r = self.run_in_wt("bash", script, "grep -q good fix.txt", "fix.txt")
         self.assertNotIn("has no uncommitted changes", r.stderr)
         self.assertEqual(r.returncode, 0, r.stderr + r.stdout)

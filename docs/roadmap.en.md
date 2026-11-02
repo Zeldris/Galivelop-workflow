@@ -56,7 +56,7 @@ In this order, because each step uses the previous one:
    - [x] **H12** (2026-11-02): `pendiente-1.0.0.md` becomes `pendiente.md`, with the version on each line.
    - [x] **A7** (2026-11-02): the plan rewritten according to the table in section A1 (§1, §2, §7, §9, §10).
 2. **Names**
-   - [ ] **A8:** `gw-` on our own skills (third-party ones keep their name, A3) and scripts in English (section A2); exact names and migration in the answers of `A-marco.md` (2026-11-02).
+   - [x] **A8** (2026-11-02): `gw-` on our own skills (third-party ones keep their name, A3) and scripts in English (section A2); exact names and migration in the answers of `A-marco.md` (2026-11-02).
    - [ ] **A4:** project paths in English (`docs/handoff.md`, `docs/records/`…), configurable in `gw.json`, also in
      Spanish-language projects. `gw-update` renames them and the hooks accept both names during `0.x`.
 3. **Versioned config**
@@ -66,7 +66,7 @@ In this order, because each step uses the previous one:
    - [ ] **D12:** mandatory `Refs: <id>` trailer in the `commit-msg` hook (except merges), validated against this
      file.
    - [ ] **D15:** optional `Agent: <skill>` trailer, no model.
-   - [ ] **D16:** subagent branches `agent/<id>-<topic>` and `fusionar.sh` copies `Refs:` to the merge commit.
+   - [ ] **D16:** subagent branches `agent/<id>-<topic>` and `merge-branch.sh` copies `Refs:` to the merge commit.
 5. **Public repo**
    - [ ] **E2:** private-data check in the `pre-push` (emails, keys, private repos; list in
      `.claude/gw.local.json`).
@@ -82,7 +82,7 @@ In this order, because each step uses the previous one:
   and type, date, branch, `Refs`, subagent); prices in a dated table.
 - [ ] **B4, B5, B6:** `metrics.py report --period …`, `compare` and the 1.5× alert in `SessionStart`; skill
   `gw-metrics`.
-- [ ] **B7, B8, B10, B11:** `models.disabled` with its hook, quality signals, the `selector` recommends model and
+- [ ] **B7, B8, B10, B11:** `models.disabled` with its hook, quality signals, the `gw-selector` recommends model and
   effort for the main session, model and effort per agent.
 
 ### `0.7` "Ask"
@@ -123,7 +123,7 @@ It comes out when what it needs exists, and then it gets a version:
 
 - **B13:** deterministic model table and publication of the trend with an A/B test, over the B8 signals; needs
   four weeks of ledger.
-- **G10:** multi-project MMC. **C9:** `modes.freeze`. **B12:** explorer pattern in `orchestrate-dealer`.
+- **G10:** multi-project MMC. **C9:** `modes.freeze`. **B12:** explorer pattern in `gw-orchestrate-dealer`.
   **B1** (option): OpenTelemetry.
 - **R3:** harvest of the private repos (`galivelop-image-generator`, `galivelop-voice-generator`), once there is read
   access.

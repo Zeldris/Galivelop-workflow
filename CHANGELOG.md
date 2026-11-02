@@ -22,6 +22,15 @@ does not move until it is released.
   menor; se avanza por la `0.x` y la `1.0` será el Management Center (plan §7, `AGENTS.md`, `docs/es/contribuir.md`).
   Mapa de versiones con identificadores en `docs/roadmap.md` (+ `docs/roadmap.en.md`); la lista de evolutivos pasa a
   `docs/registros/pendiente.md`, con la versión en cada línea.
+- **Nombres** (A8): las skills propias llevan el prefijo `gw-` (`gw-selector`, `gw-orchestrate-dealer`,
+  `gw-opt-tokens`, `gw-opt-ai`, `gw-scout-updates`) y los scripts pasan al inglés (`bitacora.py` → `handoff.py`,
+  `revisado.sh` → `reviewed.sh`, `aplicar.py` → `apply.py`, `recuperar.py` → `recover.py`, `check-verde.sh` →
+  `check-green.sh`…; la lista entera en `schema/renamed.json` y en `docs/diseno/A-marco.md`). Los prefijos de los
+  mensajes cambian con ellos (`apply:`, `handoff:`). Migración: `apply.py` borra la copia con el nombre viejo si es
+  idéntica a una que el flujo publicó (lo comprueba con los blobs de git de `schema/renamed.json`), y si tiene cambios
+  locales la conserva entera con un aviso y cuenta como deriva en `--check`; las órdenes de `.claude/settings.json`
+  que llaman a un script viejo pasan al nombre nuevo y las de `.claude/gw.json` se avisan. Documentado en
+  `aplicar.md`, `gw-update` y el mapa para agentes.
 - **Repo público** (A7): el plan (§1, §2, §7, §9, §10) deja de hablar de repo privado y de la `1.0.0` sola en un repo
   público aparte: cada versión se publica aquí, valen el plugin y la copia gestionada, licencia MIT, la `1.0` sale
   cuando esté su alcance del roadmap (la §10 mide madurez), como mucho una publicación al día, la Fase 10 pasa a
@@ -103,6 +112,14 @@ does not move until it is released.
   the project moves through `0.x` and `1.0` will be the Management Center (plan §7, `AGENTS.md`,
   `docs/en/contributing.md`). Version map with ids in `docs/roadmap.en.md` (+ `docs/roadmap.md`); the feature list
   becomes `docs/registros/pendiente.md`, with the version on each line.
+- **Names** (A8): our own skills take the `gw-` prefix (`gw-selector`, `gw-orchestrate-dealer`, `gw-opt-tokens`,
+  `gw-opt-ai`, `gw-scout-updates`) and script names move to English (`bitacora.py` → `handoff.py`, `revisado.sh` →
+  `reviewed.sh`, `aplicar.py` → `apply.py`, `recuperar.py` → `recover.py`, `check-verde.sh` → `check-green.sh`…;
+  the full list is in `schema/renamed.json` and `docs/diseno/A-marco.md`). Message prefixes follow them (`apply:`,
+  `handoff:`). Migration: `apply.py` deletes the copy under the old name when it is identical to one the workflow
+  shipped (checked against the git blobs in `schema/renamed.json`); with local edits it keeps it whole with a warning
+  and counts it as drift in `--check`. `.claude/settings.json` commands that call an old script move to the new name,
+  and those in `.claude/gw.json` are warned about. Documented in `apply.md`, `gw-update` and the agent map.
 - **Public repo** (A7): the plan (§1, §2, §7, §9, §10) no longer talks about a private repo and `1.0.0` alone in a
   separate public repo: every version is published here, both the plugin and the managed copy are valid, MIT license,
   `1.0` ships when its roadmap scope is done (§10 measures maturity), at most one release a day, Phase 10 becomes
