@@ -36,6 +36,7 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
 |---|---|---|---|---|
 | `$schema` | Ruta o URL del esquema, para el editor | – | `"gw/schema/gw.schema.json"` | el editor |
 | `visibleLanguages` | Idiomas en los que debe existir todo texto que vea la usuaria | `[]` | `["es", "gl", "en"]` | `REVIEW.md` (lo aplican `/code-review` y los agentes) |
+| `keepLegacyPaths` | Con `true`, el proyecto conserva sus rutas españolas antiguas (`docs/traspaso.md`, `docs/registros/`, `docs/propuestas/`), escritas explícitas en este archivo, y `apply.py` no planea moverlas. Lo escribe `apply.py --keep-paths`; ponerlo a mano a `true` hace lo mismo | `false` | `true` | `scripts/apply.py` |
 | `logRows` | Bitácora con **una fila por rama**, de como mucho 600 caracteres: cada rama escribe solo en la suya | `false` | `true` | `handoff.py`, `prepush-branches.sh`, `recover.py` |
 | `install` | Órdenes que instalan dependencias (en la nube y en el CI) | `[]` | `["npm ci"]` | `session-start.sh` (solo en la nube y si cambió el lockfile), CI, `doctor.py` |
 | `ciInstall` | Órdenes de instalación solo para el CI: la plantilla de CI corre estas en lugar de `install`. Sin la clave, el CI corre `install`; con `[]`, no instala nada. No aparece en `templates/gw.json` a propósito (un `[]` copiado desactivaría la instalación del CI) | sin clave (el CI usa `install`) | `["npm ci --ignore-scripts"]` | CI (`comprobar.yml`) |

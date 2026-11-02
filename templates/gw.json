@@ -16,6 +16,7 @@
   "reviewMark": "docs/records/reviewed.txt",
   "requireRetro": false,
   "agentSignatures": true,
+  "keepLegacyPaths": false,
   "recordsDir": "docs/records",
   "proposalsDir": "docs/proposals",
   "ciLocalLog": "docs/records/ci-local.md",

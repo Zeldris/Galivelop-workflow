@@ -120,7 +120,7 @@ viejos en los comandos de `.claude/settings.json` se renombran); y las rutas `do
 `docs/records/reviewed.txt` (con `git mv` si están en git; las claves de `.claude/gw.json` que tenían la ruta vieja
 se quitan, porque el valor por defecto es la nueva). Si el destino ya existe, **falla cerrado** (salida 2) con la
 orden que lo arregla. Con `--keep-paths` no se mueve nada y las rutas viejas se escriben explícitas en
-`.claude/gw.json` (pásalo en cada actualización para conservarlas). `--dry-run` muestra los `move` y `remove` antes.
+`.claude/gw.json` y `keepLegacyPaths: true` (las siguientes ejecuciones y `--check` las respetan); solo borra carpetas y scripts viejos si git los tiene limpios (sin cambios ni archivos sin seguir), y reescribe en `gw.json` (sangrado de 2 espacios) los valores que apunten dentro de una carpeta movida. `--dry-run` muestra los `move` y `remove` antes.
 
 **Notas personales.** Si la persona tiene notas en `~/.claude/gw/notas/` (o en la carpeta de `GW_NOTAS_PERSONALES`),
 `apply.py` crea en `.claude/gw/` las que faltan y no toca las que el proyecto ya tiene distintas

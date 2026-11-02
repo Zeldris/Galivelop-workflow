@@ -121,7 +121,7 @@ says so; old names in the `.claude/settings.json` hook commands are renamed); an
 `docs/proposals/` and `docs/records/reviewed.txt` (`git mv` when tracked; the `.claude/gw.json` keys that held the old
 path are dropped, since the default is the new one). If a target already exists it **fails closed** (exit 2) with the
 command that fixes it. With `--keep-paths` nothing moves and the old paths are written explicitly into
-`.claude/gw.json` (pass it on every update to keep them). `--dry-run` shows the `move` and `remove` lines first.
+`.claude/gw.json` and `keepLegacyPaths: true` (later runs and `--check` respect it); it removes old folders and scripts only when git has them clean (no changes, no untracked files), and rewrites in `gw.json` (2-space indent) any value that points inside a moved folder. `--dry-run` shows the `move` and `remove` lines first.
 
 **Personal notes.** If the person keeps notes in `~/.claude/gw/notas/` (or in the folder of `GW_NOTAS_PERSONALES`),
 `apply.py` creates the missing ones in `.claude/gw/` and leaves alone those the project already has with other

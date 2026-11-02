@@ -630,6 +630,7 @@ class Migrar(unittest.TestCase):
         for old in ("selector", "opt-tokens", "opt-ai"):
             p.write(f".claude/skills/{old}/SKILL.md", SKILL_MD.format(n=old))
             p.write(f".claude/skills/{old}/extra.md", "x\n")
+        self.commit()
         out = self.applied()
         for old in ("selector", "opt-tokens", "opt-ai"):
             self.assertFalse(self.exists(f".claude/skills/{old}"), out)
@@ -698,6 +699,7 @@ class Migrar(unittest.TestCase):
         p.write(".claude/settings.json", json.dumps({"hooks": {"Stop": [{"hooks": [
             {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/antes-de-parar.py"}]}]}}))
         p.write(".claude/gw/scripts/antes-de-parar.py", "# galivelop-workflow v0.4.3\n")
+        self.commit()
         out = self.applied()
         self.assertFalse(self.exists(".claude/gw/scripts/bitacora.py"), out)
         self.assertFalse(self.exists(".claude/gw/scripts/antes-de-parar.py"), out)
@@ -714,8 +716,11 @@ class Migrar(unittest.TestCase):
         p = self.p
         p.write(".claude/gw/scripts/revisado.sh", "# galivelop-workflow v0.4.3\n")
         p.write(".githooks/pre-push", "#!/bin/sh\nbash .claude/gw/scripts/revisado.sh\n")  # not workflow-owned
+        self.commit()
         out = self.applied()
         self.assertTrue(self.exists(".claude/gw/scripts/revisado.sh"), out)
+        self.assertNotIn("no longer in the workflow (kept); delete it if nothing uses it: git rm "
+                         ".claude/gw/scripts/revisado.sh", out)  # reported once, as in use
         self.assertIn("is the old name of reviewed.sh and is still run by .githooks/pre-push", out)
 
     # ---- project paths
@@ -812,13 +817,84 @@ class Migrar(unittest.TestCase):
         again = self.applied("--keep-paths")  # keys already explicit: a no-op
         self.assertIn("nothing to do", again)
         self.assertEqual(json.loads(p.read(".claude/gw.json")), cfg)
-        # explicit old paths are indistinguishable from an old install's: a plain run plans the move again
-        self.assertIn("move    docs/handoff.md", self.p.aplicar("--dry-run")[1])
+        self.assertTrue(cfg["keepLegacyPaths"])
+        code, out = self.p.aplicar("--check")  # a later plain run or --check respects the choice
+        self.assertNotIn("move ", out)
+        self.assertTrue(self.exists("docs/traspaso.md"))
 
     def test_keep_paths_with_nothing_old_changes_nothing(self):
         before = self.p.read(".claude/gw.json")
         self.applied("--keep-paths")
         self.assertEqual(self.p.read(".claude/gw.json"), before)
+
+    # ---- review of the first version
+
+    def test_keep_paths_also_writes_keys_inside_a_kept_folder(self):
+        self.old_paths()
+        self.applied("--keep-paths")
+        cfg = json.loads(self.p.read(".claude/gw.json"))
+        self.assertEqual(cfg["ciLocalLog"], "docs/registros/ci-local.md")  # no ci-local.md yet, still inside it
+
+    def test_keep_paths_plan_line_mentions_the_reformat(self):
+        self.old_paths()
+        self.assertIn("gw.json is rewritten with 2-space indent", self.p.aplicar("--keep-paths", "--dry-run")[1])
+
+    def test_a_rerun_repairs_an_explicit_key_after_a_manual_move(self):
+        p = self.p
+        p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, log="docs/traspaso.md"), indent=2) + "\n")
+        p.write("docs/handoff.md", "# Log moved by hand\n")  # the old file is gone, the key still names it
+        self.applied()
+        self.assertNotIn("log", json.loads(p.read(".claude/gw.json")))
+        self.assertEqual(p.read("docs/handoff.md"), "# Log moved by hand\n")
+
+    def test_old_skill_with_local_changes_is_kept_with_the_reason(self):
+        p = self.p
+        p.write(".claude/skills/selector/SKILL.md", SKILL_MD.format(n="selector"))
+        self.commit()
+        p.write(".claude/skills/selector/mine.md", "my file\n")  # untracked
+        out = self.applied()
+        self.assertTrue(self.exists(".claude/skills/selector/mine.md"), out)
+        self.assertIn("not in git or has uncommitted changes or untracked files, so it is kept", out)
+
+    def test_old_skill_not_in_git_is_kept(self):
+        self.p.write(".claude/skills/selector/SKILL.md", SKILL_MD.format(n="selector"))
+        out = self.applied()
+        self.assertTrue(self.exists(".claude/skills/selector/SKILL.md"), out)
+        self.assertIn("git rm -r .claude/skills/selector", out)
+
+    def test_old_script_with_uncommitted_edits_is_kept(self):
+        p = self.p
+        p.write(".claude/gw/scripts/bitacora.py", "# galivelop-workflow v0.4.3\n")
+        self.commit()
+        p.write(".claude/gw/scripts/bitacora.py", "# galivelop-workflow v0.4.3\nedited\n")
+        out = self.applied()
+        self.assertTrue(self.exists(".claude/gw/scripts/bitacora.py"), out)
+        self.assertIn("has uncommitted changes or untracked files, so it is kept", out)
+
+    def test_values_pointing_inside_a_moved_folder_follow_it(self):
+        p = self.p
+        p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, ciLocalLog="docs/registros/mi-ci.md",
+                                                   staleRefs={"patterns": ["x"], "skip": ["docs/registros/old"]}),
+                                              indent=2) + "\n")
+        self.old_paths()
+        p.write("docs/registros/mi-ci.md", "ci\n")
+        self.applied()
+        cfg = json.loads(p.read(".claude/gw.json"))
+        self.assertEqual(cfg["ciLocalLog"], "docs/records/mi-ci.md")
+        self.assertEqual(cfg["staleRefs"]["skip"], ["docs/records/old"])
+        self.assertTrue(self.exists("docs/records/mi-ci.md"))
+
+    def test_settings_local_hooks_are_renamed_and_protect_the_old_script(self):
+        p = self.p
+        p.write(".claude/gw/scripts/bitacora.py", "# galivelop-workflow v0.4.3\n")
+        p.write(".claude/settings.local.json", json.dumps({"hooks": {"Stop": [{"hooks": [
+            {"type": "command", "command": "python3 .claude/gw/scripts/bitacora.py check"}]}]}}))
+        self.commit()
+        self.applied()
+        text = p.read(".claude/settings.local.json")
+        self.assertIn("handoff.py check", text)
+        self.assertNotIn("bitacora", text)
+        self.assertFalse(self.exists(".claude/gw/scripts/bitacora.py"))
 
     def test_help_mentions_keep_paths(self):
         code, out = self.p.run("python3", str(APLICAR), "--help")

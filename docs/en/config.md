@@ -36,6 +36,7 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
 |---|---|---|---|---|
 | `$schema` | Path or URL of the schema, for the editor | – | `"gw/schema/gw.schema.json"` | the editor |
 | `visibleLanguages` | Languages every user-visible text must exist in | `[]` | `["es", "gl", "en"]` | `REVIEW.md` (applied by `/code-review` and agents) |
+| `keepLegacyPaths` | With `true`, the project keeps its old Spanish paths (`docs/traspaso.md`, `docs/registros/`, `docs/propuestas/`), written explicitly in this file, and `apply.py` plans no move of them. `apply.py --keep-paths` writes it; setting it to `true` by hand does the same | `false` | `true` | `scripts/apply.py` |
 | `logRows` | Log with **one row per branch**, at most 600 characters: each branch writes only in its own | `false` | `true` | `handoff.py`, `prepush-branches.sh`, `recover.py` |
 | `install` | Commands that install dependencies (in the cloud and CI) | `[]` | `["npm ci"]` | `session-start.sh` (cloud only, when the lockfile changed), CI, `doctor.py` |
 | `ciInstall` | Install commands for CI only: the CI template runs these instead of `install`. Without the key, CI runs `install`; with `[]`, it installs nothing. It is left out of `templates/gw.json` on purpose (a copied `[]` would switch CI installs off) | no key (CI uses `install`) | `["npm ci --ignore-scripts"]` | CI (`comprobar.yml`) |

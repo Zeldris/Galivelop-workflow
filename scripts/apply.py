@@ -333,6 +333,16 @@ class Plan:
             self.actions.append(("create", rel, dump(merged), False, ""))
         elif added:
             self.actions.append(("merge", rel, dump(merged), False, ", ".join(added)))
+        local = Path(".claude") / "settings.local.json"  # the person's own hooks: only the old script names change
+        try:
+            mine = json.loads((self.root / local).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            mine = None
+        if isinstance(mine, dict):
+            renamed = rename_hook_scripts(mine)
+            if renamed:
+                self.actions.append(("merge", local, dump(mine), False,
+                                     f"hook commands renamed: {', '.join(sorted(renamed))}"))
 
 
 def dump(data):
@@ -571,35 +581,77 @@ def plan_move(plan, old, new, why):
     plan.moved_to.add(str(new))
 
 
+def rewrite_under(value, old, new):
+    """`value` (JSON) with every string equal to `old` or under `old/` moved under `new`. Returns (value, changed)."""
+    if isinstance(value, str):
+        if value == old or value.startswith(old + "/"):
+            return new + value[len(old):], True
+        return value, False
+    changed = False
+    if isinstance(value, list):
+        out = []
+        for item in value:
+            item, c = rewrite_under(item, old, new)
+            out.append(item)
+            changed = changed or c
+        return out, changed
+    if isinstance(value, dict):
+        out = {}
+        for key, item in value.items():
+            item, c = rewrite_under(item, old, new)
+            out[key] = item
+            changed = changed or c
+        return out, changed
+    return value, False
+
+
 def plan_paths(plan, cfg, keep):
     """The project paths still at their old Spanish names (a key absent and filled from the old path by config.py,
     or written explicitly as the old path) move to the English ones; with keep, the old paths are written
-    explicitly instead. Either way the config stops relying on the silent fallback. Changes cfg to match."""
+    explicitly instead, plus `keepLegacyPaths: true`, which later runs respect. Either way the config stops relying
+    on the silent fallback. Changes cfg to match."""
     cfg_path = plan.root / config.CONFIG_REL
     try:
         raw = json.loads(cfg_path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return
+    if raw.get("keepLegacyPaths") is True:
+        return  # the person chose to keep the old paths
     schema = json.loads((WORKFLOW / "schema" / "gw.schema.json").read_text(encoding="utf-8"))
     exists = config.path_exists_fn(plan.root)
+    note = "gw.json is rewritten with 2-space indent"
     found = {}  # key -> (old, new, explicit)
+    repaired = []  # explicit old paths whose folder or file was already moved (by hand, or by an interrupted run)
     for key, old in config.LEGACY_PATHS.items():
         new = schema["properties"][key]["default"]
         if key not in raw:
             if (cfg.get("_legacy") or {}).get(key) == old:
                 found[key] = (old, new, False)
-        elif raw[key] == old and not exists(new) and exists(old):
-            found[key] = (old, new, True)
-    if not found:
-        return
+        elif raw[key] == old:
+            if not exists(new) and exists(old):
+                found[key] = (old, new, True)
+            elif exists(new) and not exists(old):
+                repaired.append(key)
     if keep:
+        if not found:
+            return
         written = {key: old for key, (old, _new, explicit) in found.items() if not explicit}
-        if written:
-            raw.update(written)
-            plan.actions.append(("merge", config.CONFIG_REL, dump(raw), False,
-                                 f"--keep-paths: {', '.join(f'{k}={v}' for k, v in written.items())} written "
-                                 f"explicitly, so the old paths stop depending on the fallback"))
+        for key, old in config.LEGACY_PATHS.items():  # keys that live inside a kept folder
+            if key not in raw and key not in written and any(
+                    old.startswith(d[0] + "/") for k, d in found.items() if k in PATH_DIR_KEYS):
+                written[key] = old
+        raw.update(written)
+        raw["keepLegacyPaths"] = True
+        plan.actions.append(("merge", config.CONFIG_REL, dump(raw), False,
+                             f"--keep-paths: {', '.join(f'{k}={v}' for k, v in written.items())} and "
+                             f"keepLegacyPaths written, so the old paths stop depending on the fallback; {note}"))
         return
+    if not found and not repaired:
+        return
+    changed = bool(repaired)
+    for key in repaired:
+        raw.pop(key)
+        cfg[key] = schema["properties"][key]["default"]
     moved_dirs = []
     for key in sorted(found, key=lambda k: (k not in PATH_DIR_KEYS, k)):
         old, new, explicit = found[key]
@@ -614,10 +666,19 @@ def plan_paths(plan, cfg, keep):
         cfg[key] = new
         if explicit:
             raw.pop(key)  # the default is the new path
+            changed = True
+    for dold, dnew in moved_dirs:  # other values that point inside a moved folder follow it
+        raw, moved = rewrite_under(raw, dold, dnew)
+        if moved:
+            changed = True
+            for key in list(cfg):
+                if key != "_root" and key in raw:
+                    cfg[key] = raw[key]
     cfg.pop("_legacy", None)
-    if any(e for (_o, _n, e) in found.values()):
+    if changed:
         plan.actions.append(("merge", config.CONFIG_REL, dump(raw), False,
-                             "the keys that held the old paths are dropped: the defaults are the new paths"))
+                             f"keys with the old paths dropped (the defaults are the new paths) or moved with their "
+                             f"folder; {note}"))
 
 
 def plan_notes(plan):
@@ -635,6 +696,19 @@ def plan_notes(plan):
             plan_move(plan, src, dest, "skill note renamed with the gw- prefix")
 
 
+def clean_in_git(root, rel):
+    """True when git tracks something under rel and nothing there is modified or untracked."""
+    if not is_tracked(root, rel):
+        return False
+    code, out = git(root, "status", "--porcelain", "--untracked-files=all", "--", str(rel))
+    return code == 0 and not out
+
+
+def keep_message(rel):
+    return (f"{rel} is the old name of a workflow copy, but it is not in git or has uncommitted changes or untracked "
+            f"files, so it is kept; commit or discard them and rerun, or delete it yourself: git rm -r {rel}")
+
+
 def plan_old_skills(plan, wanted_skills):
     """Remove the old skill folders (generated copies) of the skills that now have their gw- name."""
     for old, new in OLD_SKILLS.items():
@@ -645,6 +719,9 @@ def plan_old_skills(plan, wanted_skills):
         if skill_version(folder / "SKILL.md") is None:
             plan.warnings.append(f"{rel} is not a workflow skill (no metadata.version in its SKILL.md), so it is kept "
                                  f"beside {new}; remove it if it is an old copy: git rm -r {rel}")
+            continue
+        if not clean_in_git(plan.root, rel):
+            plan.warnings.append(keep_message(rel))
             continue
         plan.actions.append(("remove", rel, None, False, f"replaced by .claude/skills/{new}"))
 
@@ -657,7 +734,8 @@ def plan_old_scripts(plan):
         return
     planned = {str(a[1]): a[2] for a in plan.actions if a[2] is not None and isinstance(a[2], bytes)}
     texts = []
-    for sub in (".githooks", ".github/workflows", ".claude/settings.json", ".claude/gw.json"):
+    for sub in (".githooks", ".github/workflows", ".claude/settings.json", ".claude/settings.local.json",
+                ".claude/gw.json"):
         base = plan.root / sub
         for path in ([base] if base.is_file() else [p for p in sorted(base.rglob("*")) if p.is_file()]
                      if base.is_dir() else []):
@@ -673,9 +751,12 @@ def plan_old_scripts(plan):
         pattern = re.compile(rf"(?<![\w.-]){re.escape(old)}(?![\w-])".encode())
         users = [name for name, data in texts if pattern.search(data)]
         if users:
+            plan.orphans = [o for o in plan.orphans if o != rel]  # reported below, not as deletable
             plan.warnings.append(f"{rel} is the old name of {OLD_SCRIPTS[old]} and is still run by "
                                  f"{', '.join(users)}, so it is kept; update those files (rerun with --update, or merge "
                                  f"their .gw-nuevo) and rerun apply.py to remove it")
+        elif not clean_in_git(plan.root, rel):
+            plan.warnings.append(keep_message(rel))
         else:
             plan.orphans = [o for o in plan.orphans if o != rel]
             plan.actions.append(("remove", rel, None, False, f"old name of {OLD_SCRIPTS[old]}"))

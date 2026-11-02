@@ -115,7 +115,7 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `.claude/gw/<vieja>.md` a `gw-<nombre>.md` (`git mv`; con las dos, gana la nueva y se avisa), borra las copias de
   scripts con nombre español (y renombra el nombre viejo en los ganchos de `settings.json`) y mueve `docs/traspaso.md`,
   `docs/registros/` y `docs/propuestas/` a los nombres en inglés, sin sobrescribir nada y fallando cerrado si el
-  destino existe. `--keep-paths` conserva las rutas viejas escribiéndolas en `.claude/gw.json`.
+  destino existe. `--keep-paths` conserva las rutas viejas escribiéndolas en `.claude/gw.json` con la clave nueva `keepLegacyPaths`; solo borra lo viejo si git lo tiene limpio.
 
 ### EN
 
@@ -214,7 +214,7 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `.claude/gw/<old>.md` to `gw-<name>.md` (`git mv`; with both, the new one wins and a warning is printed), removes the
   Spanish-named script copies (and renames the old name in the `settings.json` hooks) and moves `docs/traspaso.md`,
   `docs/registros/` and `docs/propuestas/` to the English names, overwriting nothing and failing closed when the
-  target exists. `--keep-paths` keeps the old paths by writing them into `.claude/gw.json`.
+  target exists. `--keep-paths` keeps the old paths by writing them into `.claude/gw.json` with the new key `keepLegacyPaths`; it removes old copies only when git has them clean.
 
 ## [0.4.3] - 2026-10-27
 

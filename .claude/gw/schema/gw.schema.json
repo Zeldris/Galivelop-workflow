@@ -44,6 +44,11 @@
       "default": "docs/handoff.md",
       "description": "Hand-off log path, relative to the repo root. Absent: docs/handoff.md, or the old docs/traspaso.md when only that exists (0.x; /gw-update moves it)."
     },
+    "keepLegacyPaths": {
+      "type": "boolean",
+      "default": false,
+      "description": "true: the project keeps its old Spanish paths (docs/traspaso.md, docs/registros/, docs/propuestas/), written explicitly in this file; apply.py then plans no move of them. `apply.py --keep-paths` sets it."
+    },
     "logRows": {
       "type": "boolean",
       "default": false,
