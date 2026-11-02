@@ -49,6 +49,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Pendiente
 
+- **Test intermitente en el CI (2026-11-02):** `test_hooks.PrePushWorktree.test_interrupting_the_hook_removes_its_worktree` dio `TimeoutExpired` (30 s) en Ubuntu sobre `f047f1c` (macOS cancelado); el mismo código pasó en los CI siguientes (`aae2a96`, `8937979`). Va a los arreglos del CI del parche `0.4.4` (subir el límite o esperar a la señal, no a reloj).
 - **Para la retro de A8 (2026-11-02):** el subagente del trozo 3 dejó ~49 bucles `until grep -q '^EXIT'` colgados y dos checks completos a la vez (los tests de interrupción fallaron por carga); se cortaron a mano. Propuesta: el encargo de `gw-orchestrate-dealer` limita a una espera en segundo plano por orden larga y prohíbe `pkill -f` amplio.
 - **Menores de la revisión de la caché del `check` (P3, 2026-10-26)**: el límite de los archivos ignorados (`check.sh`
   corre con `.env` y generados de la copia; antes, una subida con copia sucia comprobaba en un worktree limpio) está
