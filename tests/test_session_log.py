@@ -1,7 +1,7 @@
 """Session hooks: scripts/session-start.sh (SessionStart startup|resume|clear), scripts/recover.py (clear|compact
 and --buscar) and scripts/session_log.py, in temporary projects laid out like one that applied the workflow.
 
-HOME points to a temp folder, so nothing reads or writes the real ~/.claude; git runs isolated as in test_ganchos.
+HOME points to a temp folder, so nothing reads or writes the real ~/.claude; git runs isolated as in test_hooks.
 """
 import json
 import os
@@ -13,7 +13,7 @@ import time
 import unittest
 from pathlib import Path
 
-from test_ganchos import ROOT, Project
+from test_hooks import ROOT, Project
 
 SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py")
 
@@ -23,7 +23,7 @@ def folder_of(path):
 
 
 class SessionProject(Project):
-    """test_ganchos.Project plus the session scripts, a temp HOME and no inherited Claude Code variables."""
+    """test_hooks.Project plus the session scripts, a temp HOME and no inherited Claude Code variables."""
 
     def __init__(self, tmp, config=None):
         super().__init__(tmp, config)

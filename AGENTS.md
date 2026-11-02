@@ -2,17 +2,17 @@
 
 Este repo es la fuente del flujo de trabajo Galivelop-workflow y **se trabaja con su propio flujo**: si algo de
 estas reglas estorba aquí, estorba en todos los proyectos que lo usen (plan §4.1). El plan está en
-[`docs/plan.md`](docs/plan.md) ([English](docs/plan.en.md)); la investigación, en `docs/investigacion/`.
+[`docs/plan.md`](docs/plan.md) ([English](docs/plan.en.md)); la investigación, en `docs/research/`.
 
 Se trabaja por relevos: una sesión puede acabarse en cualquier momento (tokens, contenedor, cambio de cuenta) y la
 siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 
 ## Al empezar cualquier sesión
 
-1. Lee [`docs/traspaso.md`](docs/traspaso.md): rama, fase en curso, pendiente y siguiente paso. Si el gancho
+1. Lee [`docs/handoff.md`](docs/handoff.md): rama, fase en curso, pendiente y siguiente paso. Si el gancho
    `SessionStart` ya mostró su estado, lee solo lo que recortó (`… (trimmed …)`).
 2. `git fetch origin <rama>` y comprueba que el último commit coincide con lo que dice la bitácora.
-3. Comprueba que el check está en verde antes de tocar nada: `bash tests/comprobar.sh`.
+3. Comprueba que el check está en verde antes de tocar nada: `bash tests/check.sh`.
 4. Sigue por el **siguiente paso** de la bitácora, salvo que el usuario pida otra cosa.
 5. Al empezar cada tarea, trae `main` si existe (`git fetch origin main` y `git merge origin/main`; merge, nunca
    rebase: las ramas están subidas).
@@ -33,7 +33,7 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   nube, que arranca en `/home/user`, la compactación va en las variables del entorno (`doctor.py` avisa si falta).
 - **Al cerrar cada bloque o fase, mira el CI de la última subida.** Un CI que no arranca (por ejemplo, sin cuota de
   Actions) cuenta como rojo: se dice al usuario y no se da nada por comprobado en el CI. Entonces vale el check
-  pasado en local sobre el mismo commit (`bash tests/comprobar.sh`, o el del `pre-push`) **solo si el usuario lo
+  pasado en local sobre el mismo commit (`bash tests/check.sh`, o el del `pre-push`) **solo si el usuario lo
   confirma**, y se dice y se apunta en la bitácora como «comprobado solo en local». Un CI que arrancó y falló nunca
   se sustituye así. Para un PR, `python3 scripts/ci-local.py --apuntar` corre el CI en local y deja la línea que
   acepta el gancho.
@@ -41,11 +41,11 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 
 ## Comprobar
 
-- **Check del repo:** `bash tests/comprobar.sh` (sintaxis y shellcheck de scripts, Python, JSON, manifiestos,
+- **Check del repo:** `bash tests/check.sh` (sintaxis y shellcheck de scripts, Python, JSON, manifiestos,
   versión con entrada en el CHANGELOG, pares ES/EN). Lo corre el CI (`.github/workflows/comprobar.yml`, Linux y
   macOS) en cada push que no sea a `main` y en cada PR.
 - **Antes de subir, pásalo con `bash scripts/check.sh`**: corre el `check` y, si sale en verde, lo apunta; el
-  `pre-push` no lo repite sobre el mismo árbol (`bash tests/comprobar.sh` a secas no apunta nada). Detalle y límites
+  `pre-push` no lo repite sobre el mismo árbol (`bash tests/check.sh` a secas no apunta nada). Detalle y límites
   en [`docs/es/config.md`](docs/es/config.md); `GW_CHECK_CACHE=0` la desactiva.
 - **Un solo archivo de tests:** `python3 -B -m unittest discover -s tests -p 'test_X.py'` (`-m unittest tests.test_X`
   falla: `tests/` no es un paquete).
@@ -74,12 +74,12 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   3. **Cierre:** si la fase 2 trajo código, `/code-review` de esos commits; luego `bash scripts/reviewed.sh` y la
      subida (el `pre-push` exige la marca).
 - Este repo, una vez publicado, es lo que instalan otros proyectos: `main` = última versión publicada (plan §7).
-- **Tras la subida a `main`**, se escribe `docs/registros/release-vX.Y.Z.md` (como `release-v0.4.0.md`): el título y
+- **Tras la subida a `main`**, se escribe `docs/records/release-vX.Y.Z.md` (como `release-v0.4.0.md`): el título y
   el cuerpo de la release, cada uno en un bloque listo para pegar, y se dan al usuario sin que los pida (él crea la
   etiqueta y la release a mano).
 - **Cada versión empieza con una recogida** (usuario, 2026-10-23): al abrir una versión nueva, `gw-harvest` sobre los
   proyectos que usan el flujo, y sus propuestas se presentan al usuario. `python3 scripts/version.py --release` (lo
-  corre el `pre-push` de una subida a `main`) exige un `docs/propuestas/*.md` que empiece por `# Harvest` añadido
+  corre el `pre-push` de una subida a `main`) exige un `docs/proposals/*.md` que empiece por `# Harvest` añadido
   desde la última etiqueta `vX.Y.Z`; una recogida sin nada nuevo también deja su archivo.
 - **Solo la última menor publicada recibe parches** (usuario, 2026-11-01, plan §7; hoy la `0.4`): de una recogida,
   los arreglos van a su siguiente parche y los evolutivos, a la siguiente menor (hoy la `0.5`, rama `version/0.5.0`).
@@ -103,7 +103,7 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   desde `$CLAUDE_PROJECT_DIR` ni el directorio actual; un gancho de subida comprueba el commit que se sube; fallan
   cerrados si les falta un dato; cada cambio lleva su caso en los tests, y un caso que espera un fallo comprueba el
   motivo, no solo el código de salida.
-- **Mapa para agentes:** [`docs/mapa-agente.md`](docs/mapa-agente.md) dice dónde está cada contrato y qué lo
+- **Mapa para agentes:** [`docs/agent-map.md`](docs/agent-map.md) dice dónde está cada contrato y qué lo
   implementa; los encargos a subagentes apuntan a él en vez de a varios documentos.
 - **Reparto a subagentes autorizado:** el trabajo de más de un paso se reparte a subagentes con la skill
   `gw-orchestrate-dealer` sin preguntar cada vez; la sesión principal planea, decide y revisa.

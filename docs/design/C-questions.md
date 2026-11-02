@@ -2,8 +2,8 @@
 
 **Estado:** cerrado (2026-11-01): las 10 preguntas, aprobadas por el usuario según la recomendación del agente.
 
-Fuentes: [`README.md`](README.md) (bloque C), B-10 de [`B-medicion.md`](B-medicion.md) (un solo interruptor de
-modos) y `/careful` y `/freeze` de gstack en [`ref-thinkrail-gstack-ecc.md`](../investigacion/ref-thinkrail-gstack-ecc.md).
+Fuentes: [`README.md`](README.md) (bloque C), B-10 de [`B-measurement.md`](B-measurement.md) (un solo interruptor de
+modos) y `/careful` y `/freeze` de gstack en [`ref-thinkrail-gstack-ecc.md`](../research/ref-thinkrail-gstack-ecc.md).
 
 El problema: se lanza una pregunta, el agente sigue a lo suyo, la respuesta no llega y las preguntas se repiten en
 cada iteración. El concepto del flujo es resolver las dudas antes de desarrollar, guiando y nunca imponiendo.

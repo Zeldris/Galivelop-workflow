@@ -25,7 +25,7 @@ python3 .claude/gw/scripts/doctor.py
 
 | Comprobación | Qué dice | Arreglo |
 |---|---|---|
-| `config` (FAIL) | `.claude/gw.json` falta, no es JSON o no cumple el esquema (clave desconocida, vacía…) | `python3 .claude/gw/scripts/config.py validate` dice la línea; claves en [config](config.md); si falta, aplica el flujo ([aplicar](aplicar.md)) |
+| `config` (FAIL) | `.claude/gw.json` falta, no es JSON o no cumple el esquema (clave desconocida, vacía…) | `python3 .claude/gw/scripts/config.py validate` dice la línea; claves en [config](config.md); si falta, aplica el flujo ([aplicar](apply.md)) |
 | `hooks-path` (FAIL) | `core.hooksPath` sin poner: los ganchos de git del flujo no corren. Con `GITHUB_ACTIONS=true` (GitHub Actions) sale `WARN`: el CI no tiene los ganchos puestos | `git config core.hooksPath .githooks` |
 | `hooks-path` (WARN) | Lo usa otro gestor (husky, lefthook…): los ganchos del flujo solo corren si se encadenan | Añade a `pre-push`, `pre-commit` y `commit-msg` del gestor: `"$(git rev-parse --show-toplevel)/.githooks/<hook>" "$@" \|\| exit 1` |
 | `githook pre-push` / `pre-commit` / `commit-msg` (FAIL) | Falta el archivo o no es ejecutable | `/gw-update`; o `chmod +x .githooks/<hook>` (en Windows, `git update-index --chmod=+x .githooks/<hook>`) |
@@ -150,7 +150,7 @@ aplicación. `apply.py` imprime un aviso («Claude Code's auto mode may ask for 
 
 | Síntoma | Causa | Arreglo |
 |---|---|---|
-| Aviso «another hook manager installed hooks» al empezar | Hay ganchos propios en `.git/hooks` o `core.hooksPath` de otro gestor | El aviso trae la línea para encadenar; ver [aplicar](aplicar.md#proyectos-existentes) |
+| Aviso «another hook manager installed hooks» al empezar | Hay ganchos propios en `.git/hooks` o `core.hooksPath` de otro gestor | El aviso trae la línea para encadenar; ver [aplicar](apply.md#proyectos-existentes) |
 | «La marca no es antecesora» sin motivo | Clon superficial | `git fetch --deepen=200 origin <rama>` |
 | El script falla solo en macOS | La `bash` de macOS es la 3.2: sin `mapfile` ni arrays asociativos | Escribir para bash 3.2 (el CI corre también en macOS) |
 | Fallos raros en Windows | Finales de línea CRLF en scripts; enlaces simbólicos | `.gitattributes` con `*.sh text eol=lf` (y `*.py`, `.githooks/*`); usa **Git Bash o WSL**, no `cmd` ni PowerShell; sin enlaces simbólicos |
@@ -159,4 +159,4 @@ aplicación. `apply.py` imprime un aviso («Claude Code's auto mode may ask for 
 | `apply.py --check` sale 1 | La copia difiere del flujo, hay un `*.gw-nuevo` o un archivo que el flujo ya no tiene | Mira lo impreso; `/gw-update`; resuelve y borra los `*.gw-nuevo` |
 
 Si un fallo no está aquí, anótalo: `/retro` lo recoge en su sección «Para Galivelop-workflow» y llega a este archivo
-([patrones](patrones.md#recoger-mejoras-de-vuelta)).
+([patrones](patterns.md#recoger-mejoras-de-vuelta)).

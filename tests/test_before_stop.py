@@ -1,4 +1,4 @@
-"""Stop hook: scripts/before-stop.py (P1 of docs/propuestas/2026-10-25-repos-x.md), in temporary projects (a bare
+"""Stop hook: scripts/before-stop.py (P1 of docs/proposals/2026-10-25-repos-x.md), in temporary projects (a bare
 origin plus a clone laid out like one that applied the workflow), run the way Claude Code runs a hook: the hook JSON
 on stdin, the answer on stdout with exit 0.
 
@@ -14,7 +14,7 @@ import time
 import unittest
 from pathlib import Path
 
-from test_ganchos import ROOT, Project
+from test_hooks import ROOT, Project
 
 SCRIPT = "before-stop.py"
 LOG = "docs/log.md"

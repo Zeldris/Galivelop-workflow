@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | **`0.5` «Base»: `ccr-d1e2d496-0vzck8`** (2026-11-02; creada desde `version/1.0.0` en `a61cdc5`; hace de `version/0.5.0` (H-13) mientras la sesión solo pueda subir a esta rama; el usuario decide si se sube también a `version/0.5.0`). Parches `0.4.x`: `ccr-6dfbc880-ddr41g`, que se fusionan también aquí. `version/1.0.0` se queda con el diseño (`docs/diseno/`). `main` = `0e04504` = **`0.4.3`** (etiqueta y release `v0.4.3`, a mano por el usuario). `claude/galivelop-workflow-inicio`, obsoleta |
-| Check | `bash tests/comprobar.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público): estaba en rojo por dos tests de interrupción con Python 3.12, SC2015 en `reviewed.sh` (shellcheck 0.9/0.10 de apt) y, en macOS, `test_apply` (disco sin mayúsculas) y el límite de 1 s de `test_review_before_main` (ahora 5 s sobre un comando trivial). Arreglado en `ccr-6dfbc880-ddr41g` (`66a4ecd`, CI verde en Ubuntu y macOS) y traído aquí. `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.4.4` |
+| Rama | **`0.5` «Base»: `ccr-d1e2d496-0vzck8`** (2026-11-02; creada desde `version/1.0.0` en `a61cdc5`; hace de `version/0.5.0` (H-13) mientras la sesión solo pueda subir a esta rama; el usuario decide si se sube también a `version/0.5.0`). Parches `0.4.x`: `ccr-6dfbc880-ddr41g`, que se fusionan también aquí. `version/1.0.0` se queda con el diseño (`docs/design/`). `main` = `0e04504` = **`0.4.3`** (etiqueta y release `v0.4.3`, a mano por el usuario). `claude/galivelop-workflow-inicio`, obsoleta |
+| Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público): estaba en rojo por dos tests de interrupción con Python 3.12, SC2015 en `reviewed.sh` (shellcheck 0.9/0.10 de apt) y, en macOS, `test_apply` (disco sin mayúsculas) y el límite de 1 s de `test_review_before_main` (ahora 5 s sobre un comando trivial). Arreglado en `ccr-6dfbc880-ddr41g` (`66a4ecd`, CI verde en Ubuntu y macOS) y traído aquí. `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.4.4` |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | `0.5` «Base», en el orden de [`roadmap.md`](roadmap.md): hechos H14, D13, H12 y A7. **A8 en curso** (nombres decididos el 2026-11-02 en `docs/diseno/A-marco.md`, «Respuestas»; trozos 1 (skills `gw-`), 2 (scripts en inglés), 3 (rutas configurables) y 4 (`gw-update` migra) hechos; siguen: 5 internos de este repo (también `docs/es/`), 6 opciones y nombres internos en inglés con check; regla en `AGENTS.md`), A9 (`schemaVersion`), D11/D12/D15/D16, E2/E3/D3, E1/E6 y lo de `pendiente.md` marcado `0.5`. Aparte: parche `0.4.4` (arreglos del CI, D6 y P5), otro día (usuario, 2026-11-01). R3: cuando el usuario dé acceso de lectura |
+| Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
+| Siguiente paso | `0.5` «Base», en el orden de [`roadmap.md`](roadmap.md): hechos H14, D13, H12 y A7. **A8 en curso** (nombres decididos el 2026-11-02 en `docs/design/A-framework.md`, «Respuestas»; trozos 1 (skills `gw-`), 2 (scripts en inglés), 3 (rutas configurables), 4 (`gw-update` migra) y 5 (nombres internos de este repo, también `docs/es/`) hechos; sigue el 6: opciones y nombres internos en inglés con check, `estado.json`, `DEFAULT_MAP` de `agent-map.py`, nombre de `comprobar.yml` (plantilla y workflow) y tests de proyectos instalados si los hay; regla en `AGENTS.md`), A9 (`schemaVersion`), D11/D12/D15/D16, E2/E3/D3, E1/E6 y lo de `pending.md` marcado `0.5`. Aparte: parche `0.4.4` (arreglos del CI, D6 y P5), otro día (usuario, 2026-11-01). R3: cuando el usuario dé acceso de lectura |
 
 ### Fases
 
@@ -35,24 +35,24 @@ los evolutivos van a la siguiente menor (la `0.5`, en esta rama). La `1.0` es el
 hecho lo que le asigna el roadmap; la §10 mide la madurez de la `1.x`. Cada versión se publica en este repo
 (público), a lo sumo una al día.
 
-La release `v0.4.0` la creó el usuario a mano (2026-10-25), con los textos de `docs/registros/release-v0.4.0.md`. La
+La release `v0.4.0` la creó el usuario a mano (2026-10-25), con los textos de `docs/records/release-v0.4.0.md`. La
 sesión en la nube no puede subir etiquetas (403 del proxy) y sin cuota de Actions `release.yml` no corre. Para la siguiente: `release.yml` con
 lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-02 — A8 trozo 4, segunda ronda de arreglos de gw-update: M1 clave explícita dentro de carpeta ya movida a mano (sigue al archivo y reescribe valores), M2 keepLegacyPaths a mano escribe también las claves implícitas, m3 script no limpio fuera de huérfanos, m4 rm -r si no está en git, m5 docstring, m6 ignorados cuentan como no limpio; un test por punto.
-2. 2026-11-02 — 2026-11-02 — `0.5` A8 trozo 4, revisión: clave `keepLegacyPaths` (esquema, `templates/gw.json`, docs): `--keep-paths` la deja a `true` y `--check`/updates la respetan; claves explícitas reparadas tras un movimiento a mano; valores dentro de una carpeta movida se reescriben; carpetas y scripts viejos solo se borran con git limpio; `settings.local.json` renombrado; un script viejo en uso sale de huérfanos; 8 tests más.
-3. 2026-11-02 — 2026-11-02 — `0.5` A8 trozo 4: `apply.py` (`/gw-update`) migra un proyecto instalado con los nombres viejos, sin duplicados: borra las skills sin `gw-` (la opcional vieja instalada sigue con el nombre nuevo; `--with opt-ai` vale con aviso), renombra `.claude/gw/<vieja>.md` (`git mv`; con las dos, gana la nueva), borra copias de scripts en español salvo que un gancho aún las use (y renombra el nombre en `settings.json`) y mueve `docs/traspaso.md`, `registros/`, `propuestas/`, `revisado.txt` (claves de config con la ruta vieja se quitan; falla cerrado si el destino existe; `--keep-paths` las deja explícitas). 14 tests nuevos en `test_apply.py` y 1 de precedencia en `test_medir.py`; docs ES/EN y CHANGELOG.
-4. 2026-11-02 — A8 trozo 3, revisión de los arreglos (2026-11-02): sin graves ni medios; `config.py --paths-at` con un commit inexistente ahora falla cerrado (exit 2), con su test
-5. 2026-11-02 — `0.5` A8 trozo 3: rutas del proyecto en inglés y configurables (`config.py` único lector): `log` → `docs/handoff.md`, `reviewMark` → `docs/records/reviewed.txt`, `ciLocalLog` → `docs/records/ci-local.md`, claves nuevas `recordsDir` (`docs/records`) y `proposalsDir` (`docs/proposals`); `log` y `reviewMark` dejan de ser obligatorias. Compatibilidad 0.x: clave ausente, defecto inexistente y ruta española existente → la antigua (también con `--rev`); `doctor.py` avisa (`/gw-update`). `version.py`, `harvest.py`, `retro` y `gw-harvest` leen las claves; plantilla y `--init` en inglés; docs ES/EN, CHANGELOG. Este repo fija las rutas viejas explícitas en su `gw.json`. Restos del trozo 2 (prefijos `merge-branch:`, `reviewed:`, `agent-map:`, `apply:`; `handoff()` en `prepush-branches.sh`). Tests: `ProjectPaths` (7) y uno en `test_doctor`. Revisión del trozo corregida (la ruta de la marca, del registro de CI y de las propuestas se resuelve sobre el commit que se sube; `config.py --paths-at`); check completo en verde antes de subir. Pendiente para el trozo 4: `gw-update` escribe las claves de rutas explícitas al migrar. Queda: `gw-media-content` aún usa `<dir>/propuestas/` (su propia carpeta).
+1. 2026-11-02 — `0.5` A8 trozo 5: nombres internos de este repo en inglés con `git mv` y referencias al día (`docs/handoff.md`, `design/`, `research/`, `records/`, `proposals/`, `agent-map.md`, `docs/es/` como `docs/en/`, `tests/check.sh`, `test_hooks/templates/utils.py`); `gw.json` sin `log`/`reviewMark`/`recordsDir`/`proposalsDir`/`ciLocalLog` y con `agentMap.path`. Quedan los nombres viejos solo en compatibilidad (scripts, plantillas, esquema, tests de migración) y en prosa histórica. Desde aquí, las filas de abajo que citan rutas españolas son históricas.
+2. 2026-11-02 — A8 trozo 4, segunda ronda de arreglos de gw-update: M1 clave explícita dentro de carpeta ya movida a mano (sigue al archivo y reescribe valores), M2 keepLegacyPaths a mano escribe también las claves implícitas, m3 script no limpio fuera de huérfanos, m4 rm -r si no está en git, m5 docstring, m6 ignorados cuentan como no limpio; un test por punto.
+3. 2026-11-02 — 2026-11-02 — `0.5` A8 trozo 4, revisión: clave `keepLegacyPaths` (esquema, `templates/gw.json`, docs): `--keep-paths` la deja a `true` y `--check`/updates la respetan; claves explícitas reparadas tras un movimiento a mano; valores dentro de una carpeta movida se reescriben; carpetas y scripts viejos solo se borran con git limpio; `settings.local.json` renombrado; un script viejo en uso sale de huérfanos; 8 tests más.
+4. 2026-11-02 — 2026-11-02 — `0.5` A8 trozo 4: `apply.py` (`/gw-update`) migra un proyecto instalado con los nombres viejos, sin duplicados: borra las skills sin `gw-` (la opcional vieja instalada sigue con el nombre nuevo; `--with opt-ai` vale con aviso), renombra `.claude/gw/<vieja>.md` (`git mv`; con las dos, gana la nueva), borra copias de scripts en español salvo que un gancho aún las use (y renombra el nombre en `settings.json`) y mueve `docs/traspaso.md`, `registros/`, `propuestas/`, `revisado.txt` (claves de config con la ruta vieja se quitan; falla cerrado si el destino existe; `--keep-paths` las deja explícitas). 14 tests nuevos en `test_apply.py` y 1 de precedencia en `test_medir.py`; docs ES/EN y CHANGELOG.
+5. 2026-11-02 — A8 trozo 3, revisión de los arreglos (2026-11-02): sin graves ni medios; `config.py --paths-at` con un commit inexistente ahora falla cerrado (exit 2), con su test
 
 ## Pendiente
 
 - **Para la retro de A8 (2026-11-02):** el subagente del trozo 3 dejó ~49 bucles `until grep -q '^EXIT'` colgados y dos checks completos a la vez (los tests de interrupción fallaron por carga); se cortaron a mano. Propuesta: el encargo de `gw-orchestrate-dealer` limita a una espera en segundo plano por orden larga y prohíbe `pkill -f` amplio.
 - **Menores de la revisión de la caché del `check` (P3, 2026-10-26)**: el límite de los archivos ignorados (`check.sh`
   corre con `.env` y generados de la copia; antes, una subida con copia sucia comprobaba en un worktree limpio) está
-  documentado en `config.md`, `problemas.md` y el CHANGELOG. Posible mejora: que `merge-branch.sh` también apunte el verde
+  documentado en `config.md`, `troubleshooting.md` y el CHANGELOG. Posible mejora: que `merge-branch.sh` también apunte el verde
   (hoy solo lo apuntan `check.sh` y el propio `pre-push`).
 - **Sin firmas de Claude** (usuario, 2026-10-26): commits y PR a nombre de `Zeldris`, sin trailers ni pies de Claude;
   desde la `1.0.0` lo comprueba el `commit-msg` (`agentSignatures: false`). Desde `f2da5d5` (excluido) ya va así; el
@@ -110,18 +110,18 @@ lanzamiento manual desde Actions que cree la etiqueta.
   leyenda en §5 y título de Reddit fuera de §5.2; los límites NV/C fallan sin decir que no están verificados; render
   sin fuente y falta de medios/fuente/ pasan; el alt `es: Sí / no: nada` se parte mal.
 - [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) revisado (2026-10-25): 4 propuestas sin
-  propuestas en `docs/propuestas/2026-10-25-codegraph.md`: P2 (comprobador genérico del mapa, `scripts/agent-map.py`)
+  propuestas en `docs/proposals/2026-10-25-codegraph.md`: P2 (comprobador genérico del mapa, `scripts/agent-map.py`)
   y P3 (anti-patrones en `writing-for-agents`)
   aplicadas; P1 (gancho que inyecta la fila del mapa) y P4 (probar
   la herramienta en WMF) sin decidir, se recomienda aplazar. Al aplicar en WMF: declarar
   `agentMap.prefixes` `{"b/": "backend/src/", "f/": "frontend/src/"}` antes de cambiar su comprobador por este.
-- Diez repos de una lista de X revisados (2026-10-25): 10 propuestas en `docs/propuestas/2026-10-25-repos-x.md`. P4
+- Diez repos de una lista de X revisados (2026-10-25): 10 propuestas en `docs/proposals/2026-10-25-repos-x.md`. P4
   (regex), P5 (`recover.py`: tope de 9.500 caracteres y fragmentos como datos) y P7 (skills e instrucciones)
   aplicadas (P4 y P7 en eea8892) y el arreglo posterior (gancho de `main` con tabuladores y saltos escapados; ZWJ en
   emojis; gancho de PR en 8f4150b, 16f6cbd y efc72c9); P1 gancho `Stop`, P2 guarda de config, P3 tope de subagentes, P6 dealer, P8 disparo de skills
   y P9 `REVIEW.md` aplicadas (2026-10-25); P10 apuntada en el plan. Todas hechas.
 
-- Propuestas aprobadas para `v0.2.0`, en orden: `docs/propuestas/2026-10-22-reparto.md` (la de 2026-10-21, toda hecha).
+- Propuestas aprobadas para `v0.2.0`, en orden: `docs/proposals/2026-10-22-reparto.md` (la de 2026-10-21, toda hecha).
 
 - Menores de la revisión de la tanda A (no se revisan otra vez en este PR): `non_capturing` toca paréntesis en
   comentarios `(?x)`/`(?#…)`; `--ran-one` cuenta dos veces si el ejecutor repite el nombre del test en el resumen;
@@ -143,7 +143,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
   `cksum` de 32 bits puede juntar dos repos en una carpeta (el borrado sigue exigiendo 24 h y proceso muerto);
   `update_pull_request` con `state:open` y sin `base` no se juzga como reapertura; `compare.py default_root` da
   traceback sin git y, desde la caché del plugin, cae al cwd (exigir `--root`).
-- Menores de la revisión del flujo 0.3.0 que hizo el portal (P5 de `docs/propuestas/2026-10-23-portal-galivelop.md`):
+- Menores de la revisión del flujo 0.3.0 que hizo el portal (P5 de `docs/proposals/2026-10-23-portal-galivelop.md`):
   `config.py related` acepta un `cwd` con `..` o absoluto en `relatedTests` (que `validate` lo rechace);
   `session-start.sh`: `kill -- -$wd` no es un grupo y el `sleep` del vigilante queda vivo hasta el tope;
   `review-before-main.sh` sondea `gh api repos/<o>/<r>` en cada llamada y juzga cambios de título o base de un PR
@@ -151,7 +151,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
   mayúsculas, por comprobar); `validate` no avisa de un `worktreeDir` dentro del repo ni de un `checkWrapper` que
   limpia el entorno. Con la config de la punta de `main` rota, `pre-push` y el gancho fallan cerrados a propósito: se
   sale con un PR revisado que la arregle, o la persona sube a mano.
-- P2 de `docs/propuestas/2026-10-23-portal-galivelop.md` (`ci.setup`/`ci.after` y `apply.py --update` sin pisar un
+- P2 de `docs/proposals/2026-10-23-portal-galivelop.md` (`ci.setup`/`ci.after` y `apply.py --update` sin pisar un
   `comprobar.yml` con pasos propios): aplazada a la siguiente versión.
 - Que el usuario cambie la rama por defecto de GitHub a `main` (Settings → Branches); no hay herramienta para ello.
 - R2 de la retro: que `doctor.py` detecte skills homónimas en la sesión (sin forma fiable aún; queda en las guías).

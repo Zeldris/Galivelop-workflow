@@ -1,9 +1,9 @@
 """scripts/review-before-main.sh, the PreToolUse hook that keeps unreviewed code and red CI out of the protected
 branch through pull requests, against temporary repos: a bare "origin" plus a clone laid out like a project that
-applied the workflow (test_ganchos.Project). The PR head is read from origin with `git ls-remote`; GitHub API calls go
+applied the workflow (test_hooks.Project). The PR head is read from origin with `git ls-remote`; GitHub API calls go
 to a fake `gh` (or a fake `curl`) on PATH that prints the canned JSON in GH_PR / GH_RUNS / GH_STATUS.
 
-Covers the Installer's P1 list (docs/propuestas/2026-10-21-instalador-wmf-tarkor.md) plus VeriNews's `gh pr` in Bash
+Covers the Installer's P1 list (docs/proposals/2026-10-21-instalador-wmf-tarkor.md) plus VeriNews's `gh pr` in Bash
 and commit statuses, and the portal's mark rule (ancestor with no code after it).
 """
 import json
@@ -14,7 +14,7 @@ import time
 import unittest
 from pathlib import Path
 
-from test_ganchos import ROOT, Project
+from test_hooks import ROOT, Project
 
 FAKE_GH = """#!/bin/sh
 case "$1" in
@@ -561,7 +561,7 @@ class Hook(unittest.TestCase):
         self.assertAllowed(self.bash("gh api repos/o/r/pulls/7"))
 
     def test_long_unparseable_commands_are_judged_in_seconds_not_minutes(self):
-        # P4 of docs/propuestas/2026-10-25-repos-x.md: the old SUSPECT regex chained three `[\\s\\S]*` and backtracked
+        # P4 of docs/proposals/2026-10-25-repos-x.md: the old SUSPECT regex chained three `[\\s\\S]*` and backtracked
         # for minutes on ~50 KB of `gh pr gh pr ...`. A hook that slow would stall every Bash call of every session.
         cases = {
             "gh pr tokens": ('echo "unterminated ' + "gh pr " * 8000, " merge"),

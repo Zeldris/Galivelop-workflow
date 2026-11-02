@@ -2,7 +2,7 @@
 
 > [English](../en/patterns.md)
 
-Formas de trabajar que el flujo permite pero no impone. Ninguna es necesaria para aplicarlo ([aplicar](aplicar.md)); se
+Formas de trabajar que el flujo permite pero no impone. Ninguna es necesaria para aplicarlo ([aplicar](apply.md)); se
 adoptan cuando el proyecto las pide. Todas se apoyan en lo mismo: lo que no está subido no existe, la bitácora dice por
 dónde se iba y un script, no una opinión, decide si algo puede subir.
 
@@ -76,7 +76,7 @@ Hay entornos (un portátil sin `gh`, una consola) donde la sesión puede trabaja
 reparte así:
 
 1. La sesión local termina el trabajo y pasa la revisión (`/code-review`, y si hay `retro`, también). Después escribe
-   la descripción del PR con la skill `pr` en `docs/registros/pr/<rama>.md`.
+   la descripción del PR con la skill `pr` en `docs/records/pr/<rama>.md`.
 2. En su fila de la bitácora deja **«PR listo»** con el título, y lo sube **todo en el último commit** de la rama.
 3. Una **sesión en la nube** (con herramienta de GitHub) comprueba que nada va detrás de ese commit (`git log
    <commit>..origin/<rama>` vacío), corre `bash .claude/gw/scripts/reviewed.sh` para dejar la marca del mismo commit,
@@ -131,7 +131,7 @@ El flujo aprende de los proyectos que lo usan. Hay dos mitades:
 - **Tira el flujo.** Desde este repo, la skill `gw-harvest` recorre los proyectos conectados que tengan
   `.claude/gw.json`. La parte mecánica la hace `python3 scripts/harvest.py <proyecto>...` (copias del flujo editadas,
   skills nuevas, secciones de retros, commits desde la última recogida); el agente solo decide qué es general y escribe
-  `docs/propuestas/AAAA-MM-DD-<repo>.md`. **Nunca aplica nada sin confirmación**: lo aprobado entra como un cambio
-  normal con entrada en el CHANGELOG y nueva versión ([contribuir](contribuir.md)).
+  `docs/proposals/AAAA-MM-DD-<repo>.md`. **Nunca aplica nada sin confirmación**: lo aprobado entra como un cambio
+  normal con entrada en el CHANGELOG y nueva versión ([contribuir](contributing.md)).
 
 Los proyectos se leen, no se modifican, desde la sesión que recoge.

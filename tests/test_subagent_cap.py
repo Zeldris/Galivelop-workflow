@@ -1,4 +1,4 @@
-"""PreToolUse hook: scripts/subagent-cap.py (P3 of docs/propuestas/2026-10-25-repos-x.md), in a temporary project
+"""PreToolUse hook: scripts/subagent-cap.py (P3 of docs/proposals/2026-10-25-repos-x.md), in a temporary project
 laid out like one that applied the workflow, run the way Claude Code runs a hook: the event JSON on stdin, the answer on
 stdout with exit 0. `ask` is the documented PreToolUse JSON; "no opinion" is no output at all.
 
@@ -13,7 +13,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_ganchos import ROOT, Project
+from test_hooks import ROOT, Project
 
 SCRIPT = "subagent-cap.py"
 

@@ -1,5 +1,5 @@
 """scripts/doctor.py on temporary projects: a fully set-up one passes; each broken piece gives its FAIL or WARN with
-the command that fixes it. HOME points to a temp folder (no real ~/.claude); git runs isolated as in test_ganchos.
+the command that fixes it. HOME points to a temp folder (no real ~/.claude); git runs isolated as in test_hooks.
 """
 import json
 import re
@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_ganchos import ROOT, VERSION
+from test_hooks import ROOT, VERSION
 from test_session_log import SessionProject
 
 SKILL = """---

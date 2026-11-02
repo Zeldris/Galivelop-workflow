@@ -1,7 +1,7 @@
 """The workflow's utility scripts, end to end, in temporary projects: handoff.py, prepush-branches.sh, merge-branch.sh,
 red-without-fix.sh, related-tests.sh and md-links.py.
 
-Same conventions as test_ganchos.py (it provides the temporary project): git runs isolated from this machine's
+Same conventions as test_hooks.py (it provides the temporary project): git runs isolated from this machine's
 configuration and every commit that matters has a fixed date, so the suite does not depend on today's date.
 """
 import datetime
@@ -13,7 +13,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_ganchos import BASE_CONFIG, Project, ROOT, VERSION, ZERO
+from test_hooks import BASE_CONFIG, Project, ROOT, VERSION, ZERO
 
 sys.dont_write_bytecode = True
 SCRIPTS = ("handoff.py", "prepush-branches.sh", "merge-branch.sh", "red-without-fix.sh", "related-tests.sh",

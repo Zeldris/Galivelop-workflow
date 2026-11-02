@@ -1,6 +1,6 @@
 # The workflow on one page
 
-> [Español](../es/flujo.md)
+> [Español](../es/workflow.md)
 
 A summary for people. The detail will grow in this folder as the workflow is built (plan §9).
 
@@ -16,7 +16,7 @@ nothing unreviewed reaches the protected branch.
 |---|---|
 | `AGENTS.md` | Workflow rules for any agent: session start, hand-offs, commits, branches |
 | `CLAUDE.md` | `@AGENTS.md` + Claude Code-specific bits |
-| Log (`docs/traspaso.md`) | Current state, next step, done and pending; updated in the same commit as the work |
+| Log (`docs/handoff.md`) | Current state, next step, done and pending; updated in the same commit as the work |
 | Skills | How to pick model and skill, orchestrate subagents, review, run retros |
 | Hooks | Recover the state after `/clear`; don't push code without review or with the check failing |
 | `.claude/gw.json` | What varies between projects (language, log, check, protected branch…) |

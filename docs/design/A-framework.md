@@ -22,7 +22,7 @@ Este repo es el producto: público, y todas sus versiones también. Se busca dif
 la `1.0.0`. Encontrado al preparar este bloque:
 
 - `AGENTS.md` lleva el correo personal del usuario (la orden `git config user.email …`).
-- `docs/propuestas/` tiene diez recogidas con el nombre y el contenido de proyectos del usuario (Tarkor, portal,
+- `docs/proposals/` tiene diez recogidas con el nombre y el contenido de proyectos del usuario (Tarkor, portal,
   VeriNews…), y dos de ellos eran privados el 2026-10-27 (`galivelop-image-generator`, `galivelop-voice-generator`).
 - La limpieza completa de la documentación (sin «basura», ajustada a lo que hay) es del bloque E; aquí solo se
   decide el criterio.
@@ -41,7 +41,7 @@ Hoy:
   `wayfinder`, `writing-for-agents`… Se copian sin cambios y `scout-updates` sigue su origen por el nombre.
 - **Scripts** con nombre en español: `bitacora.py`, `revisado.sh`, `fusionar.sh`, `recuperar.py`, `antes-de-parar.py`,
   `rojo-sin-arreglo.sh`, `tope-subagentes.py`… Se copian a `.claude/gw/scripts/` de cada proyecto.
-- **Rutas que el flujo crea en un proyecto**, en español: `docs/traspaso.md`, `docs/registros/`, `docs/propuestas/`.
+- **Rutas que el flujo crea en un proyecto**, en español: `docs/handoff.md`, `docs/records/`, `docs/proposals/`.
   En inglés ya: `.claude/gw.json` y sus claves, los mensajes de los scripts, las `SKILL.md`.
 
 **Propuesta:**
@@ -55,7 +55,7 @@ Hoy:
 4. Rutas en el proyecto: en inglés y configurables en `gw.json` (como ya es `log`): `docs/handoff.md`,
    `docs/records/`, `docs/proposals/`. El contenido sigue en el idioma del proyecto (`language`).
 5. Este repo: lo mismo para lo que se instala; sus documentos para personas siguen emparejados en `docs/es/` y
-   `docs/en/`. Los internos (`docs/diseno/`, `docs/investigacion/`, `docs/registros/`) pasan a inglés de nombre.
+   `docs/en/`. Los internos (`docs/design/`, `docs/research/`, `docs/records/`) pasan a inglés de nombre.
 6. **Migración:** es un cambio que rompe (plan §7: mayor), así que va en la `1.0.0`. `gw-update` renombra en el
    proyecto lo que encuentre con el nombre viejo, y los ganchos aceptan los dos nombres durante la `1.x`.
 
@@ -83,7 +83,7 @@ recogida al abrir versión, `metadata.version` en cada skill y cabecera de versi
 
 - **A-1. Licencia:** ¿se queda la MIT? Es la que más ayuda a la difusión y la que ya tienen las skills de terceros.
 - **A-2. Lo privado que ya está publicado:** ¿qué repos siguen privados hoy? ¿Se quita tu correo de `AGENTS.md` y se
-  revisan las recogidas de `docs/propuestas/` (ahora, en un parche, o en el bloque E)?
+  revisan las recogidas de `docs/proposals/` (ahora, en un parche, o en el bloque E)?
 - **A-3. Prefijo de las skills de terceros:** ¿conservan su nombre (propuesta) o todas llevan `gw-`?
 - **A-4. Rutas del proyecto en inglés** (`docs/handoff.md`, `docs/records/`…): ¿sí, también en los proyectos en
   español?

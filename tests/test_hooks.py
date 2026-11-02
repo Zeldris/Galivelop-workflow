@@ -1888,7 +1888,7 @@ class PreCommit(Base):
         self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_this_test_file_passes_the_scan(self):
-        shutil.copy2(Path(__file__), self.p.work / "test_ganchos.py")
+        shutil.copy2(Path(__file__), self.p.work / "test_hooks.py")
         r = self.p.commit("tests", ok=False)
         self.assertEqual(r.returncode, 0, r.stderr)
 

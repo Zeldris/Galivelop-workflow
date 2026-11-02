@@ -1,4 +1,4 @@
-"""PreToolUse hook: scripts/config-guard.py (P2 of docs/propuestas/2026-10-25-repos-x.md), in a temporary project laid
+"""PreToolUse hook: scripts/config-guard.py (P2 of docs/proposals/2026-10-25-repos-x.md), in a temporary project laid
 out like one that applied the workflow, run the way Claude Code runs a hook: the event JSON on stdin, the answer on
 stdout with exit 0. `ask` is the documented PreToolUse JSON; "allowed" is no output at all.
 
@@ -11,7 +11,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_ganchos import ROOT, Project
+from test_hooks import ROOT, Project
 
 SCRIPT = "config-guard.py"
 
@@ -184,7 +184,7 @@ class BashWrites(Base):
         'sed -n s/i/j/p .claude/gw.json',
         'head -3 .claude/gw/scripts/config.py | grep import',
         'python3 scripts/apply.py . --check',
-        'bash tests/comprobar.sh',
+        'bash tests/check.sh',
         'echo hi > src/out.txt',
         'rm -rf src/build',
         'cp /tmp/x src/a.py',

@@ -80,7 +80,7 @@ los dos **[1ª]**).
    orden concreta** (`git fetch --deepen=200 origin <rama>`), y los tests deben cubrir un clon superficial.
 6. **Convivir con otros gestores de ganchos:** si `core.hooksPath` ya apunta a otro sitio (Husky `.husky/`), no
    pisarlo; `gw-doctor` lo detecta y explica cómo encadenar el `pre-push` del flujo.
-7. **Guía de problemas conocidos** (`docs/es/problemas.md` / `docs/en/troubleshooting.md`), con lo de §3.
+7. **Guía de problemas conocidos** (`docs/es/troubleshooting.md` / `docs/en/troubleshooting.md`), con lo de §3.
 
 ## 3. Problemas conocidos (para la guía)
 

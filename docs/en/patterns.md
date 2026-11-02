@@ -1,6 +1,6 @@
 # Optional patterns
 
-> [Español](../es/patrones.md)
+> [Español](../es/patterns.md)
 
 Ways of working the workflow allows but does not impose. None is needed to apply it ([apply](apply.md)); adopt them
 when the project asks. They all rest on the same ground: what is not pushed does not exist, the log says where things
@@ -77,7 +77,7 @@ Some environments (a laptop without `gh`, a console) let the session work and pu
 Split it like this:
 
 1. The local session finishes the work and passes review (`/code-review`, and a `retro` if configured). Then it
-   writes the PR description with the `pr` skill into `docs/registros/pr/<branch>.md`.
+   writes the PR description with the `pr` skill into `docs/records/pr/<branch>.md`.
 2. In its log row it leaves **"PR ready"** with the title, and pushes **everything in the last commit** of the
    branch.
 3. A **cloud session** (with a GitHub tool) checks that nothing comes after that commit (`git log
@@ -134,7 +134,7 @@ The workflow learns from the projects that use it. There are two halves:
 - **The workflow pulls.** From this repo, the `gw-harvest` skill walks the connected projects that have
   `.claude/gw.json`. The mechanical part is `python3 scripts/harvest.py <project>...` (edited workflow copies, new
   skills, retro sections, commits since the last harvest); the agent only decides what is general and writes
-  `docs/propuestas/YYYY-MM-DD-<repo>.md`. **It never applies anything without confirmation**: what is approved goes in
+  `docs/proposals/YYYY-MM-DD-<repo>.md`. **It never applies anything without confirmation**: what is approved goes in
   as a normal change with a CHANGELOG entry and a new version ([contributing](contributing.md)).
 
 Projects are read, never modified, from the session that harvests.

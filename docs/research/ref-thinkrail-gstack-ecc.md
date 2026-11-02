@@ -1,6 +1,6 @@
 # Referencias: JetBrains thinkrail, garrytan/gstack y affaan-m/ECC
 
-Fecha: 2026-11-01. Bloque F de `docs/diseno/README.md`. Solo se leyó la página principal de cada repo (WebFetch,
+Fecha: 2026-11-01. Bloque F de `docs/design/README.md`. Solo se leyó la página principal de cada repo (WebFetch,
 resumida por un modelo pequeño); no se abrieron sus subcarpetas ni docs enlazados. Lo no confirmado va marcado
 **[sin confirmar]**.
 

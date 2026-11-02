@@ -8,7 +8,7 @@ y plantillas: una mejora se hace una vez aquí y llega a todos los proyectos que
 
 > **Estado: `0.4.3`, etapa 1 en rodaje.** Ya se aplica a proyectos reales con un agente de IA. Solo la última menor
 > publicada recibe parches (hoy `0.4.x`); lo nuevo va a la siguiente menor, la `0.5`, y la `1.0` será el Management
-> Center. Ver el [roadmap](docs/roadmap.md), el [plan](docs/plan.md), la [bitácora](docs/traspaso.md) y el
+> Center. Ver el [roadmap](docs/roadmap.md), el [plan](docs/plan.md), la [bitácora](docs/handoff.md) y el
 > [changelog](CHANGELOG.md).
 
 ## Qué resuelve
@@ -40,7 +40,7 @@ comprobación.
 
 ### Relevos de verdad entre sesiones y entre cuentas
 
-- **Lo que no está subido no existe.** Commit + push en cada punto estable, y la bitácora (`docs/traspaso.md`) se
+- **Lo que no está subido no existe.** Commit + push en cada punto estable, y la bitácora (`docs/handoff.md`) se
   actualiza **en el mismo commit** que el trabajo que describe, nunca al final.
 - Cada commit acaba con `Siguiente: <paso concreto>`: la próxima sesión sabe qué hacer sin preguntar.
 - Tras una compactación o un `/clear`, `recover.py` devuelve el estado de la bitácora y los últimos commits, y
@@ -150,14 +150,14 @@ tras `/clear`), `merge-branch.sh` (traer la rama de un subagente con el check en
 
 ### Patrones opcionales
 
-Para casos que no todos los proyectos tienen ([patrones](docs/es/patrones.md)): una **tarea semanal programada** que
+Para casos que no todos los proyectos tienen ([patrones](docs/es/patterns.md)): una **tarea semanal programada** que
 actualiza y publica sola, **dos cuentas que se relevan**, una **sesión local que no puede crear PR** y se lo deja a
 la de la nube, **contenido para redes** y la **recogida de mejoras** de vuelta al flujo.
 
 ## Cómo se aplica
 
 - **Etapa 1 (hoy):** un agente de IA aplica el flujo a tu proyecto, nuevo (lo recomendado) o existente, siguiendo
-  la [guía de aplicación](docs/es/aplicar.md). Lo que exige criterio (idioma, check, rama protegida, qué es
+  la [guía de aplicación](docs/es/apply.md). Lo que exige criterio (idioma, check, rama protegida, qué es
   contenido…) lo decide contigo; `scripts/apply.py` copia y configura, y `scripts/doctor.py` confirma que queda
   bien montado. En Claude Code, `/gw-init` lo aplica, `/gw-update` lo pone al día y `/gw-doctor` lo revisa.
 - Todo queda **en el repo del proyecto** (`.claude/gw/`, `.claude/skills/`, `.githooks/` y `.claude/gw.json`), así
@@ -171,10 +171,10 @@ añade lo propio de Claude Code.
 
 ## Documentación
 
-- [Visión general del flujo](docs/es/flujo.md)
-- [Aplicarlo a un proyecto](docs/es/aplicar.md) · [Configuración](docs/es/config.md) · [Patrones](docs/es/patrones.md)
-- [Problemas conocidos](docs/es/problemas.md) · [Cambiar el flujo](docs/es/contribuir.md)
-- [Plan](docs/plan.md) · [Mapa para agentes](docs/mapa-agente.md) · [Changelog](CHANGELOG.md)
+- [Visión general del flujo](docs/es/workflow.md)
+- [Aplicarlo a un proyecto](docs/es/apply.md) · [Configuración](docs/es/config.md) · [Patrones](docs/es/patterns.md)
+- [Problemas conocidos](docs/es/troubleshooting.md) · [Cambiar el flujo](docs/es/contributing.md)
+- [Plan](docs/plan.md) · [Mapa para agentes](docs/agent-map.md) · [Changelog](CHANGELOG.md)
 
 ## Agradecimientos
 

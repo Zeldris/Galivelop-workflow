@@ -9,7 +9,7 @@
 | Pieza | Tarkor | Instalador | Más reciente |
 |---|---|---|---|
 | `CLAUDE.md` | 122 líneas; relevos entre dos cuentas, 3 fases antes del PR (`QA-183`), PR de la sesión local lo crea la nube (`QA-184`) | 99 líneas, misma estructura; añade «si la usuaria dice que se para, se para» y `## Pruebas` | Tarkor (reglas) |
-| Bitácora | `docs/registros/traspaso.md`, una fila «Tarea en curso · `<rama>`» por rama, ≤600 caracteres | Igual | — |
+| Bitácora | `docs/records/traspaso.md`, una fila «Tarea en curso · `<rama>`» por rama, ≤600 caracteres | Igual | — |
 | Skills | 18 en `.claude/skills/` + `README.md` de origen + `LICENSE-mattpocock-skills` | Las mismas 18, 15 con notas adaptadas | Divergen |
 | Ganchos Claude | `SessionStart` (`startup\|resume\|clear`, `clear`, `compact`) y `PreToolUse` create/merge PR | Igual; matcher ampliado a `enable_pr_auto_merge` y `update_pull_request` | Instalador |
 | `revision-antes-de-main.sh` | Marca == HEAD local; CI verde al fusionar | Cabeza del PR leída de `git ls-remote` (la rama en GitHub), auto-merge cuenta como fusión | Instalador |
@@ -25,8 +25,8 @@
 
 - **Sube a `main` directamente** (GitHub Pages), con confirmación; la tarea programada semanal sube la rama de
   trabajo a `main` **sin** confirmación, así que la rama tiene que estar siempre publicable.
-- **Bitácora** `docs/traspaso.md` sin filas por rama ni límite de caracteres (no tiene `bitacora.py`).
-- **Marca de revisado versionada** en `docs/registros/revisado.txt`; `revisado.sh` exige árbol limpio, HEAD ==
+- **Bitácora** `docs/handoff.md` sin filas por rama ni límite de caracteres (no tiene `bitacora.py`).
+- **Marca de revisado versionada** en `docs/records/reviewed.txt`; `revisado.sh` exige árbol limpio, HEAD ==
   `origin/<rama>` y `origin/main` como antecesor, y hace commit «Revisado: …». No exige retro.
 - **`pre-push`**: lee stdin primero, corre `npm run check` sobre **el commit que se sube** (worktree temporal si no es
   HEAD limpio), y a `main` exige la marca como antecesora sin código después (`es-codigo.sh`). Falla cerrado.
@@ -61,7 +61,7 @@
 ## VeriNews_AI (cuarto caso, añadido al cerrar la Fase 1)
 
 Leído en solo lectura con un subagente. Java 17 + Spring Boot (Maven) y frontend Vite/npm; docs en español; flujo
-portado de Tarkor (`CLAUDE.md`, `AGENTS.md`, bitácora `docs/registros/traspaso.md` con filas por rama, mismas
+portado de Tarkor (`CLAUDE.md`, `AGENTS.md`, bitácora `docs/records/traspaso.md` con filas por rama, mismas
 skills, PR a `main` con las tres fases, roadmap con `cobertura.py`/`cerrar.py`). **Ninguna skill nueva.** Es el
 candidato más claro a piloto sin Node, junto al instalador (Rust).
 
@@ -96,7 +96,7 @@ Piezas genéricas que existen en los dos repos y el plan no menciona:
 - `tools/qa/fusionar.sh` (fusionar la rama de un subagente), `rojo-sin-arreglo.sh` (el test nuevo falla sin el
   arreglo), `tests-relacionados.sh` (tests de lo que cambia), `enlaces-md.py` (enlaces rotos en `.md`).
 - `tools/roadmap/cerrar.py` (cierra una tarea en roadmap, mapa y bitácora), además de `cobertura.py`.
-- `revisado.sh` exige una retro (`docs/registros/retro-*.md` con `**Estado` distinto de «pendiente») añadida en la
+- `revisado.sh` exige una retro (`docs/records/retro-*.md` con `**Estado` distinto de «pendiente») añadida en la
   rama antes de escribir la marca.
 - Skills `scout-updates` (actualizaciones de dependencias y modelos) y `to-questionnaire` (mattpocock).
 - Reglas de `CLAUDE.md`: una rama por sesión (`claude/<tema>`), traer `main` por merge al empezar cada tarea,
@@ -121,7 +121,7 @@ Piezas genéricas que existen en los dos repos y el plan no menciona:
 6. **Tests de los 29 fallos.** La Fase 3 pide incluirlos, pero solo existen 8 casos de `pre-push`. Los demás hay que
    escribirlos a partir de las categorías.
 7. **Subida sin confirmación.** La tarea semanal del portal sube a `main` sola. El flujo tiene que admitir esa
-   excepción explícita (documentada en `patrones.md`) sin abrir un agujero en los ganchos: la marca de revisado sigue
+   excepción explícita (documentada en `patterns.md`) sin abrir un agujero en los ganchos: la marca de revisado sigue
    siendo obligatoria si hay código.
 
 ## Lo que no va al plugin

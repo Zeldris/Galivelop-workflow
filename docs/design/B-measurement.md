@@ -4,7 +4,7 @@
 (A-5); el resto, en menores `1.x` (bloque H).
 
 Fuentes: [`README.md`](README.md) (bloque B y el apéndice con el mapa de modelos),
-[`ref-agentic-openhands-palancas.md`](../investigacion/ref-agentic-openhands-palancas.md) §3 y `medir.py` de
+[`ref-agentic-openhands-palancas.md`](../research/ref-agentic-openhands-palancas.md) §3 y `medir.py` de
 `opt-tokens`, que ya lee los registros de sesión con su desglose por modelo y por subagente.
 
 ## Respuestas del usuario (2026-11-01)

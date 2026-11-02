@@ -193,11 +193,11 @@ Tamaños: P = oficial; S = secundaria; NV = no verificado.
 | Tipo de post | Formato | Redes | Datos del repo |
 |---|---|---|---|
 | Resumen de versión | Hilo o carrusel de 5-7 tarjetas | X, Bluesky, Mastodon, LinkedIn (PDF) | `CHANGELOG.md`, `plugin.json` (versión), `git log` desde la última etiqueta |
-| Entrada de devlog | Texto largo + 1 imagen/GIF | Reddit, blog, LinkedIn | Bitácora (`docs/traspaso.md`), `git log`, ADR |
+| Entrada de devlog | Texto largo + 1 imagen/GIF | Reddit, blog, LinkedIn | Bitácora (`docs/handoff.md`), `git log`, ADR |
 | Decisión de diseño | Texto + diagrama | LinkedIn, blog, X | ADR, `docs/plan.md` |
 | Métricas del flujo con IA | Tarjeta de métricas/gráfico | LinkedIn, X, r/ClaudeAI | Informes de `/opt-tokens`, `/retro`, tokens por sesión |
-| Fallos y lecciones | Texto personal + cita | LinkedIn, Reddit, X | `/retro`, propuestas de `docs/propuestas/`, commits `WIP:` |
-| Estado de tests/calidad | Tarjeta (verde/rojo) | X, Mastodon | `tests/comprobar.sh`, CI |
+| Fallos y lecciones | Texto personal + cita | LinkedIn, Reddit, X | `/retro`, propuestas de `docs/proposals/`, commits `WIP:` |
+| Estado de tests/calidad | Tarjeta (verde/rojo) | X, Mastodon | `tests/check.sh`, CI |
 | Hito | Tarjeta + texto breve | LinkedIn, X | Número de versión, cuenta de commits, fases cerradas |
 | Antes/después | Dos imágenes | Instagram, X, TikTok | Capturas de dos commits |
 | Roadmap | Tabla/infografía | Discord, blog, LinkedIn | `docs/plan.md`, issues |

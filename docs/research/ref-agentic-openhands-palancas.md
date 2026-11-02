@@ -1,7 +1,7 @@
 # Referencias: GitHub agentic workflows, OpenHands y palancas de Claude Code
 
 Fecha: 2026-11-01. Investigación de solo lectura para la sesión de diseño de la `1.0.0` (bloques B, D, G; ver
-`docs/diseno/README.md`, sección F). Lo no confirmado va marcado con **[NO CONFIRMADO]**.
+`docs/design/README.md`, sección F). Lo no confirmado va marcado con **[NO CONFIRMADO]**.
 
 Límites de esta pasada: `github.blog`, `github.github.io/gh-aw`, `docs.all-hands.dev` y `docs.openhands.dev` no
 resuelven desde el entorno en nube (fuera de los dominios permitidos). Para gh-aw se usó el README de

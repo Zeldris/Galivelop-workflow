@@ -4,7 +4,7 @@
 
 Cómo se modifica Galivelop-workflow. Este repo **se trabaja con su propio flujo**: si una regla estorba aquí,
 estorba en todos los proyectos. Lee primero [`AGENTS.md`](../../AGENTS.md) y la bitácora
-([`docs/traspaso.md`](../traspaso.md)); el plan está en [`docs/plan.md`](../plan.md).
+([`docs/handoff.md`](../handoff.md)); el plan está en [`docs/plan.md`](../plan.md).
 
 ## El ciclo de un cambio
 
@@ -19,11 +19,11 @@ estorba en todos los proyectos. Lee primero [`AGENTS.md`](../../AGENTS.md) y la 
    python3 scripts/apply.py --check .      # debe salir con 0
    ```
 
-   Sin esto, `tests/comprobar.sh` falla («workflow copy in sync»): la copia tiene que ser idéntica a las fuentes.
+   Sin esto, `tests/check.sh` falla («workflow copy in sync»): la copia tiene que ser idéntica a las fuentes.
 4. **Añade el caso de prueba** (abajo) y corre el check:
 
    ```bash
-   bash scripts/check.sh      # corre bash tests/comprobar.sh y apunta el verde: el pre-push no lo repite
+   bash scripts/check.sh      # corre bash tests/check.sh y apunta el verde: el pre-push no lo repite
    ```
 
 5. **Entrada en el CHANGELOG**, **bitácora**, commit y push, en el mismo commit (abajo).
@@ -31,7 +31,7 @@ estorba en todos los proyectos. Lee primero [`AGENTS.md`](../../AGENTS.md) y la 
 ## Pruebas por cada cambio
 
 - **Cada cambio de un gancho o script lleva su caso en los tests** (`tests/test_*.py`, que crean un repo git
-  temporal): `test_ganchos.py`, `test_review_before_main.py`, `test_doctor.py`, `test_apply.py`… Un cambio nuevo en
+  temporal): `test_hooks.py`, `test_review_before_main.py`, `test_doctor.py`, `test_apply.py`… Un cambio nuevo en
   `doctor.py` es un caso nuevo en `test_doctor.py`.
 - **Una prueba nueva debe fallar sin su arreglo.** Compruébalo con el arreglo aún sin commitear:
 
@@ -46,7 +46,7 @@ estorba en todos los proyectos. Lee primero [`AGENTS.md`](../../AGENTS.md) y la 
 - Una **skill** nueva o cambiada pasa `tests/test_skills.py` (nombre = carpeta, `description` de 1 a 1024 caracteres,
   `license`, `compatibility`, `metadata.version`, menos de 200 líneas). Se escribe en **inglés** y aplicando la skill
   `writing-for-agents`.
-- **Plantillas:** `tests/test_plantillas.py` aplica el flujo a un repo vacío y comprueba lo esperado y que repetirlo
+- **Plantillas:** `tests/test_templates.py` aplica el flujo a un repo vacío y comprueba lo esperado y que repetirlo
   no cambia nada.
 - **bash 3.2** (macOS): nada de `mapfile` ni arrays asociativos. El CI corre en Linux y macOS.
 
@@ -103,5 +103,5 @@ etiqueta, `plugin.json` y los marcadores coinciden y que la versión subió, pas
 
 ## Propuestas de los proyectos
 
-Las mejoras que llegan de los proyectos entran por `gw-harvest` ([patrones](patrones.md#recoger-mejoras-de-vuelta)):
-cada una es un archivo en `docs/propuestas/` que la persona aprueba; la aprobada se hace con este mismo ciclo.
+Las mejoras que llegan de los proyectos entran por `gw-harvest` ([patrones](patterns.md#recoger-mejoras-de-vuelta)):
+cada una es un archivo en `docs/proposals/` que la persona aprueba; la aprobada se hace con este mismo ciclo.

@@ -84,7 +84,7 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   working copy itself, only when it left it clean). The earlier way to record it is
   `bash .claude/gw/scripts/check.sh` (`scripts/check.sh` in this repo): it runs the `check` on the working copy and,
   if it passes and the tree (what `git add -A` would commit) did not change during the run, records the green, so the
-  push does not repeat it. A `check` run by hand (e.g. `bash tests/comprobar.sh`) records nothing. Limits: a push to
+  push does not repeat it. A `check` run by hand (e.g. `bash tests/check.sh`) records nothing. Limits: a push to
   the protected branch never reads nor writes the cache; nothing is recorded with `assume-unchanged` or
   `skip-worktree` entries (sparse checkout) or a submodule with changes; any failure of the cache only means the
   `check` runs; `check.sh` runs with the working copy's ignored files (`.env`, generated ones), whereas a push with a

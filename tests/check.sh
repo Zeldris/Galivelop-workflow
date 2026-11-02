@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The repo's check: what pre-push and CI run. Usage: bash tests/comprobar.sh
+# The repo's check: what pre-push and CI run. Usage: bash tests/check.sh
 # Compatible with bash 3.2 (macOS default): no mapfile, no associative arrays.
 set -uo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"

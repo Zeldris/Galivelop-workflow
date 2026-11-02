@@ -14,71 +14,71 @@ Reparto: scripts, checks, config y git a la `0.5`; `orchestrate-dealer` y los en
 P1-P4 salieron en el parche `0.4.3`.
 
 - [ ] `0.7` · **DEV P5**: `orchestrate-dealer`: si la revisión de toda la rama va justo después y ya está decidida, el último
-  bloque no se revisa aparte. [`2026-10-27-galivelop-developer.md`](../propuestas/2026-10-27-galivelop-developer.md)
+  bloque no se revisa aparte. [`2026-10-27-galivelop-developer.md`](../proposals/2026-10-27-galivelop-developer.md)
 - [ ] `0.5` · **DEV P6**: `scripts/ci-estado.py`, que lee el estado de Actions de una rama o commit (token y `gh` de
-  `revision-antes-de-main.sh`). [`2026-10-27-galivelop-developer.md`](../propuestas/2026-10-27-galivelop-developer.md)
+  `revision-antes-de-main.sh`). [`2026-10-27-galivelop-developer.md`](../proposals/2026-10-27-galivelop-developer.md)
 - [ ] `0.5` · **DEV P7**: clave `ciPython` en `gw.json` con las versiones de Python que la plantilla del CI recorre en matriz.
-  [`2026-10-27-galivelop-developer.md`](../propuestas/2026-10-27-galivelop-developer.md)
+  [`2026-10-27-galivelop-developer.md`](../proposals/2026-10-27-galivelop-developer.md)
 - [ ] `0.8` · **DEV P8**: `aplicar.py --init` añade un `.gitignore` por stack en un bloque con marca, sin pisar el existente.
-  [`2026-10-27-galivelop-developer.md`](../propuestas/2026-10-27-galivelop-developer.md)
+  [`2026-10-27-galivelop-developer.md`](../proposals/2026-10-27-galivelop-developer.md)
 
 ## De la recogida del 2026-10-26
 
 - [x] `0.5` · **WMF P2** (2026-10-26): `bitacora.py clash` detecta un id de tarea dado de alta a la vez en dos ramas para
   tareas distintas; lo corren el `pre-push` (contra `main` y los merges nuevos; aviso con otras ramas) y el
-  `pre-commit` de un merge con conflictos. [`2026-10-26-world-maker-fantasy.md`](../propuestas/2026-10-26-world-maker-fantasy.md)
+  `pre-commit` de un merge con conflictos. [`2026-10-26-world-maker-fantasy.md`](../proposals/2026-10-26-world-maker-fantasy.md)
 - [x] `0.5` · **WMF P3** (2026-10-26): `recuperar.py --estado` enseña los otros worktrees con su rama y su fila de la bitácora.
-  [`2026-10-26-world-maker-fantasy.md`](../propuestas/2026-10-26-world-maker-fantasy.md)
+  [`2026-10-26-world-maker-fantasy.md`](../proposals/2026-10-26-world-maker-fantasy.md)
 - [x] `0.5` · **INS P3 (segunda parte)** (2026-10-26): `ci-local.py` corre el CI de GitHub en local y, con `--apuntar`, lo
-  deja en `ciLocalLog`; el gancho de PR acepta esa línea verde si el CI no arrancó (la corrección mínima, en la `0.4.1`). [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
+  deja en `ciLocalLog`; el gancho de PR acepta esa línea verde si el CI no arrancó (la corrección mínima, en la `0.4.1`). [`2026-10-26-instalador-wmf-tarkor.md`](../proposals/2026-10-26-instalador-wmf-tarkor.md)
 - [x] `0.5` · **INS P5** (2026-10-26): `recuperar.py` cuenta las compactaciones desde el inicio de la tarea (`merge-base` con la rama
-  protegida), no de toda la sesión. [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
+  protegida), no de toda la sesión. [`2026-10-26-instalador-wmf-tarkor.md`](../proposals/2026-10-26-instalador-wmf-tarkor.md)
 - [x] `0.5` · **INS P6** (2026-10-26): el `pre-commit` comprueba las tareas cerradas frente a «Hecho» (`bitacora.py closed --staged`).
-  [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
+  [`2026-10-26-instalador-wmf-tarkor.md`](../proposals/2026-10-26-instalador-wmf-tarkor.md)
 - [x] `0.5` · **INS P7** (2026-10-26): cuatro frases en skills (`orchestrate-dealer`: buscar las otras apariciones de un fallo de patrón y
   repartir también los arreglos de la revisión; `pr`: `/clear` tras fusionar; revisión: hallazgos a un archivo).
-  [`2026-10-26-instalador-wmf-tarkor.md`](../propuestas/2026-10-26-instalador-wmf-tarkor.md)
+  [`2026-10-26-instalador-wmf-tarkor.md`](../proposals/2026-10-26-instalador-wmf-tarkor.md)
 - [x] `0.5` · **Portal P2** (2026-10-26): avisos y reglas (`pkill -f` se mata a sí mismo; runbooks de tareas programadas revisados como
-  código; marcar en `REVIEW.md` los datos que caducan). [`2026-10-26-portal-galivelop.md`](../propuestas/2026-10-26-portal-galivelop.md)
+  código; marcar en `REVIEW.md` los datos que caducan). [`2026-10-26-portal-galivelop.md`](../proposals/2026-10-26-portal-galivelop.md)
 - [x] `0.5` · **Portal P3** (2026-10-26): `gw-media-content` deja un `web.md` opcional con el bloque del muro, en forma
   genérica (canal `web`: `estado`, `fecha`, `texto` por idioma, `muro`; `--idiomas-web`).
-  [`2026-10-26-portal-galivelop.md`](../propuestas/2026-10-26-portal-galivelop.md)
+  [`2026-10-26-portal-galivelop.md`](../proposals/2026-10-26-portal-galivelop.md)
 
 ## De la recogida del 2026-10-26 (segunda)
 
 Decididas el 2026-10-27; las correcciones (INS P8, VeriNews P3, P4 y la parte Java de P11) salieron en la `0.4.2`.
 
 - [ ] `0.5` · **VeriNews P1:** `ciIgnore`, estados de CI ajenos (p. ej. un despliegue) que no bloquean la fusión.
-  [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+  [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
 - [ ] `0.5` · **VeriNews P2:** firmas del agente también en el cuerpo de PR, issues y comentarios de GitHub, y aviso de un
-  `user.email` `noreply@anthropic.com`. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+  `user.email` `noreply@anthropic.com`. [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
 - [ ] `0.5` · **INS P12 + WMF P4:** el check en una orden con resumen y la salida recortada.
-  [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md),
-  [`2026-10-26-world-maker-fantasy-2.md`](../propuestas/2026-10-26-world-maker-fantasy-2.md)
+  [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md),
+  [`2026-10-26-world-maker-fantasy-2.md`](../proposals/2026-10-26-world-maker-fantasy-2.md)
 - [ ] `0.5` · **INS P9:** `bitacora.py own-row --staged`, la propia fila comprobada al hacer el commit.
-  [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md)
+  [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
 - [ ] `0.5` · **VeriNews P6:** `revisado.sh` avisa del código sin revisar desde la última marca.
-  [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+  [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
 - [ ] `0.5` · **VeriNews P5:** `rojo-sin-arreglo.sh --fix-at <commit>` y distinguir un rojo de compilación de uno de la
-  aserción. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+  aserción. [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
 - [ ] `0.7` · **Portal P4:** `orchestrate-dealer`, los repos que solo se leen se clonan aparte y sin registrar.
-  [`2026-10-26-portal-galivelop-2.md`](../propuestas/2026-10-26-portal-galivelop-2.md)
+  [`2026-10-26-portal-galivelop-2.md`](../proposals/2026-10-26-portal-galivelop-2.md)
 - [ ] `0.5` · **INS P10:** `doctor.py` avisa de worktrees ya fusionados.
-  [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md)
-- [ ] `0.5` · **VeriNews P7:** `bitacora.py set-row`. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+  [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
+- [ ] `0.5` · **VeriNews P7:** `bitacora.py set-row`. [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
 - [ ] `0.5` · **VeriNews P8:** `doctor.py` avisa de `cd <carpeta> && …` sin `worktreeLinks`.
-  [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+  [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
 - [ ] `0.8` · **INS P11:** `scout-updates` lee la versión de Rust del proyecto.
-  [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md)
+  [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
 - [ ] `0.7` · **VeriNews P9:** el encargo de revisión lleva `git diff --stat`.
-  [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+  [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
 - [ ] `0.8` · **INS P13 + Portal P5:** en la plantilla de `REVIEW.md`, la regla de invariantes y el apartado «Navegadores».
-  [`2026-10-26-instalador-wmf-tarkor-2.md`](../propuestas/2026-10-26-instalador-wmf-tarkor-2.md),
-  [`2026-10-26-portal-galivelop-2.md`](../propuestas/2026-10-26-portal-galivelop-2.md)
+  [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md),
+  [`2026-10-26-portal-galivelop-2.md`](../proposals/2026-10-26-portal-galivelop-2.md)
 - [ ] `0.9` · **VeriNews P10:** textos menores (`/clear` tras un commit `WIP:`, `perPage: 1`, `git fetch -q && git status -sb`).
-  [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+  [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
 - [ ] `0.5` · **VeriNews P11 (archivos borrados):** `tests-relacionados.sh` incluye los archivos borrados en `{files}` o corre
-  todo si un push solo borra. [`2026-10-26-verinews_ai.md`](../propuestas/2026-10-26-verinews_ai.md)
+  todo si un push solo borra. [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
 - [x] `0.5` · **Del arreglo de INS P8** (arreglado en la `0.4.2`, `4aecf5c`): `prepush-ramas.sh` comprueba la bitácora como
   queda en la punta que se sube, así que un log malo en un commit intermedio se arregla con un commit nuevo encima.
 
@@ -106,7 +106,7 @@ Decididas el 2026-10-27; las correcciones (INS P8, VeriNews P3, P4 y la parte Ja
 
 - [x] `0.5` · **P3** (2026-10-26, `4e3af46`, `b50ccb6`, `f50072e`): el `pre-push` no repite un check ya en verde sobre el
   mismo árbol y las mismas órdenes (caché en el directorio común de git, con tests de árbol distinto, órdenes
-  distintas y rojo que no se guarda). Documentada en la `0.5.0` del CHANGELOG, `config.md`, `problemas.md` y
+  distintas y rojo que no se guarda). Documentada en la `0.5.0` del CHANGELOG, `config.md`, `troubleshooting.md` y
   `AGENTS.md`; falta, como mejora posible, que `fusionar.sh` también apunte el verde.
   [`retro-2026-10-26-parche-0-4-1.md`](retro-2026-10-26-parche-0-4-1.md)
 
@@ -122,4 +122,4 @@ Decididas el 2026-10-27; las correcciones (INS P8, VeriNews P3, P4 y la parte Ja
 
 - [x] `0.5` · **Labs P3:** las skills `to-spec` y `wayfinder`, con un destino Markdown local por defecto. ✅ 2026-10-26:
   `docs/specs/<fecha>-<tema>.md` y `docs/mapas/<tema>.md` (cada ticket, una casilla); cambiable desde
-  `.claude/gw/<skill>.md`; filas nuevas en el `selector`. [`2026-10-25-labs-log-detective.md`](../propuestas/2026-10-25-labs-log-detective.md)
+  `.claude/gw/<skill>.md`; filas nuevas en el `selector`. [`2026-10-25-labs-log-detective.md`](../proposals/2026-10-25-labs-log-detective.md)

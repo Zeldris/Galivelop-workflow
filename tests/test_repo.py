@@ -210,7 +210,7 @@ class ShellcheckStep(unittest.TestCase):
         tmp = Path(tempfile.mkdtemp(prefix="gw-shellcheck-"))  # empty PATH: the script only uses bash builtins
         self.addCleanup(shutil.rmtree, tmp, True)
         base = {k: v for k, v in os.environ.items() if k not in ("CI", "CLAUDE_CODE_REMOTE") and not k.startswith("GIT_")}
-        files = files or ("tests/comprobar.sh",)
+        files = files or ("tests/check.sh",)
         r = subprocess.run([shutil.which("bash"), str(ROOT / "tests" / "shellcheck.sh"), *files], cwd=ROOT,
                            capture_output=True, text=True, env=dict(base, PATH=str(tmp), **env))
         return r.returncode, r.stdout + r.stderr

@@ -1,5 +1,5 @@
 """scripts/ci-local.py, the local run of the project's GitHub CI (INS P3, second part): the YAML subset reader, the
-${{ }} evaluator and the matrix as units; then whole runs against temporary repos (test_ganchos.Project) with a
+${{ }} evaluator and the matrix as units; then whole runs against temporary repos (test_hooks.Project) with a
 workflow of plain `run:` steps, which say what ran, what not, what is not covered, the exit code and the record.
 """
 import importlib.util
@@ -10,7 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_ganchos import ROOT, Project
+from test_hooks import ROOT, Project
 
 spec = importlib.util.spec_from_file_location("ci_local", ROOT / "scripts" / "ci-local.py")
 ci = importlib.util.module_from_spec(spec)

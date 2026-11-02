@@ -1,6 +1,6 @@
 # Referencia: opencode y OpenAI Codex CLI (abrirles la puerta al flujo)
 
-Fecha: 2026-11-01. Bloque F de `docs/diseno/README.md` (apoya A y E). Solo lectura: no se ha cambiado nada del flujo.
+Fecha: 2026-11-01. Bloque F de `docs/design/README.md` (apoya A y E). Solo lectura: no se ha cambiado nada del flujo.
 
 **Cómo se ha leído.** Los dominios de documentación (`opencode.ai`, `developers.openai.com`) no resolvían desde la sesión
 (fuera de la lista de red permitida). Se ha leído el código y la documentación **que viven en los repos** (clon superficial
@@ -98,7 +98,7 @@ los crates `codex-rs/*` de Codex (los `docs/*.md` de Codex solo enlazan a la web
 ## 3. Qué encaja, qué necesita adaptación, qué no
 
 - **Encaja tal cual:** `AGENTS.md` como fuente de instrucciones (ambos); `SKILL.md` formato Agent Skills (opencode lo lee
-  incluso de `.claude/skills/`; Codex de `~/.agents/skills`); `docs/traspaso.md`, `gw.json`, los scripts de Python y los
+  incluso de `.claude/skills/`; Codex de `~/.agents/skills`); `docs/handoff.md`, `gw.json`, los scripts de Python y los
   ganchos de git (`.githooks/`, no dependen del agente).
 - **Capa de adaptación:** (a) ganchos: para Codex, generar `hooks.json`/`[hooks]` a partir de la plantilla de
   `settings.json` (el contrato casi coincide; revisar nombres de campos y la matriz de `matcher`); para opencode, un
@@ -140,7 +140,7 @@ los crates `codex-rs/*` de Codex (los `docs/*.md` de Codex solo enlazan a la web
 | Ganchos de git (`.githooks/`) | Igual (independientes del agente) | Igual |
 | `.claude/settings.json` (compactación, permisos) | `opencode.json` (`permission`, `agent`) | `config.toml` (`sandbox_mode`, `approval_policy`) |
 | `.claude/gw.json` + `config.py` | Igual (propio del flujo) | Igual |
-| Bitácora `docs/traspaso.md` | Igual | Igual |
+| Bitácora `docs/handoff.md` | Igual | Igual |
 | Subagentes (`orchestrate-dealer`, `selector`) | `.opencode/agents/*.md`, `model` por agente, `permission.task` | Roles `.toml` en `agents/`, `model` por rol |
 | Modelo por agente / proveedores | `provider/modelo`, `small_model`, `variants` | `model_provider`, `[model_providers]`, `[profiles]`, esfuerzo |
 | Registro de sesiones (`registro_sesion.py`, `recuperar.py`) | `opencode.db` (SQLite), `opencode export` | `~/.codex/sessions/**/rollout-*.jsonl` |

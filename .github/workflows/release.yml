@@ -31,7 +31,7 @@ jobs:
           fi
           python3 scripts/version.py
       - name: Check
-        run: bash tests/comprobar.sh
+        run: bash tests/check.sh
       - name: Release notes from the CHANGELOG entry
         run: |
           version="${GITHUB_REF_NAME#v}"

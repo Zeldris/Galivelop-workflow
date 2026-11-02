@@ -1,6 +1,6 @@
 # Applying the workflow to a project (guide for the agent)
 
-> [Español](../es/aplicar.md)
+> [Español](../es/apply.md)
 
 This is the guide an AI agent follows to apply Galivelop-workflow to a project, **new** (recommended) or **existing**
 (its own section, below). What needs judgement is decided by the agent with the person; the rest is done by a script
@@ -116,7 +116,7 @@ replace them; an optional skill already installed under the old name stays insta
 opt-ai` works, with a warning); the `.claude/gw/<old>.md` notes become `.claude/gw/gw-<name>.md` (`git mv` when
 tracked; if both exist, the new one is kept and a warning is printed, nothing is ever overwritten); the Spanish-named
 script copies in `.claude/gw/scripts/` are removed, unless a hook, the CI or the config still runs them (a warning
-says so; old names in the `.claude/settings.json` hook commands are renamed); and the paths `docs/traspaso.md`,
+says so; old names in the `.claude/settings.json` hook commands are renamed); and the paths `docs/handoff.md`,
 `docs/registros/`, `docs/propuestas/` and `docs/registros/revisado.txt` move to `docs/handoff.md`, `docs/records/`,
 `docs/proposals/` and `docs/records/reviewed.txt` (`git mv` when tracked; the `.claude/gw.json` keys that held the old
 path are dropped, since the default is the new one). If a target already exists it **fails closed** (exit 2) with the

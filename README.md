@@ -8,7 +8,7 @@ an improvement is made once here and reaches every project that uses it.
 
 > **Status: `0.4.3`, stage 1 being run in.** It is already applied to real projects by an AI agent. Only the latest
 > published minor gets patches (`0.4.x` today); new work goes into the next minor, `0.5`, and `1.0` will be the
-> Management Center. See the [roadmap](docs/roadmap.en.md), the [plan](docs/plan.en.md), the [log](docs/traspaso.md)
+> Management Center. See the [roadmap](docs/roadmap.en.md), the [plan](docs/plan.en.md), the [log](docs/handoff.md)
 > and the [changelog](CHANGELOG.md).
 
 ## What it solves
@@ -38,7 +38,7 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 ### Real hand-offs between sessions and accounts
 
-- **What isn't pushed doesn't exist.** Commit + push at every stable point, and the log (`docs/traspaso.md`) is
+- **What isn't pushed doesn't exist.** Commit + push at every stable point, and the log (`docs/handoff.md`) is
   updated **in the same commit** as the work it describes, never at the end.
 - Every commit ends with `Siguiente: <concrete step>` (next step): the next session knows what to do without asking.
 - After a compaction or a `/clear`, `recover.py` returns the log's state and the latest commits, and finds a lost
@@ -173,7 +173,7 @@ specific to Claude Code.
 - [Workflow overview](docs/en/workflow.md)
 - [Applying it to a project](docs/en/apply.md) · [Configuration](docs/en/config.md) · [Patterns](docs/en/patterns.md)
 - [Troubleshooting](docs/en/troubleshooting.md) · [Changing the workflow](docs/en/contributing.md)
-- [Plan](docs/plan.en.md) · [Agent map](docs/mapa-agente.md) · [Changelog](CHANGELOG.md)
+- [Plan](docs/plan.en.md) · [Agent map](docs/agent-map.md) · [Changelog](CHANGELOG.md)
 
 ## Acknowledgements
 

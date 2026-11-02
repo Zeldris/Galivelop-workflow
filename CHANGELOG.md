@@ -116,6 +116,14 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   scripts con nombre español (y renombra el nombre viejo en los ganchos de `settings.json`) y mueve `docs/traspaso.md`,
   `docs/registros/` y `docs/propuestas/` a los nombres en inglés, sin sobrescribir nada y fallando cerrado si el
   destino existe. `--keep-paths` conserva las rutas viejas escribiéndolas en `.claude/gw.json` con la clave nueva `keepLegacyPaths`; solo borra lo viejo si git lo tiene limpio.
+- A8, trozo 5: los archivos y carpetas de este repo pasan a inglés (`git mv`, enlaces y referencias al día):
+  `docs/handoff.md`, `docs/design/` (`A-framework`, `B-measurement`, `C-questions`, `E-quality`), `docs/research/`
+  (`real-cases`, `standards`, `social-media`, `ref-front-testing`), `docs/records/` (`pending.md`, `reviewed.txt`),
+  `docs/proposals/`, `docs/agent-map.md`, `docs/es/` con los nombres de `docs/en/` (`apply`, `contributing`,
+  `workflow`, `patterns`, `troubleshooting`), `tests/check.sh`, `test_hooks.py`, `test_templates.py`,
+  `test_utils.py`. El `.claude/gw.json` de este repo ya no fija `log`, `reviewMark`, `recordsDir`, `proposalsDir` ni
+  `ciLocalLog` (valen los defectos en inglés) y declara `agentMap.path`. Los nombres viejos que aceptan los scripts
+  para proyectos instalados no cambian. Los textos históricos (changelog, retros, propuestas) conservan sus nombres.
 
 ### EN
 
@@ -215,6 +223,14 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   Spanish-named script copies (and renames the old name in the `settings.json` hooks) and moves `docs/traspaso.md`,
   `docs/registros/` and `docs/propuestas/` to the English names, overwriting nothing and failing closed when the
   target exists. `--keep-paths` keeps the old paths by writing them into `.claude/gw.json` with the new key `keepLegacyPaths`; it removes old copies only when git has them clean.
+- A8, chunk 5: this repo's own files and folders move to English (`git mv`, links and references updated):
+  `docs/handoff.md`, `docs/design/` (`A-framework`, `B-measurement`, `C-questions`, `E-quality`), `docs/research/`
+  (`real-cases`, `standards`, `social-media`, `ref-front-testing`), `docs/records/` (`pending.md`, `reviewed.txt`),
+  `docs/proposals/`, `docs/agent-map.md`, `docs/es/` with the names of `docs/en/` (`apply`, `contributing`,
+  `workflow`, `patterns`, `troubleshooting`), `tests/check.sh`, `test_hooks.py`, `test_templates.py`, `test_utils.py`.
+  This repo's `.claude/gw.json` no longer sets `log`, `reviewMark`, `recordsDir`, `proposalsDir` or `ciLocalLog` (the
+  English defaults apply) and declares `agentMap.path`. The old names the scripts accept for installed projects do not
+  change. Historical texts (changelog, retros, proposals) keep their names.
 
 ## [0.4.3] - 2026-10-27
 

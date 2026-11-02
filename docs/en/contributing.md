@@ -1,10 +1,10 @@
 # Changing the workflow
 
-> [Español](../es/contribuir.md)
+> [Español](../es/contributing.md)
 
 How Galivelop-workflow itself is modified. This repo **is worked on with its own workflow**: if a rule gets in the way
 here, it gets in the way in every project. Read [`AGENTS.md`](../../AGENTS.md) and the log
-([`docs/traspaso.md`](../traspaso.md)) first; the plan is [`docs/plan.en.md`](../plan.en.md).
+([`docs/handoff.md`](../handoff.md)) first; the plan is [`docs/plan.en.md`](../plan.en.md).
 
 ## The cycle of a change
 
@@ -19,11 +19,11 @@ here, it gets in the way in every project. Read [`AGENTS.md`](../../AGENTS.md) a
    python3 scripts/apply.py --check .      # must exit 0
    ```
 
-   Without this, `tests/comprobar.sh` fails ("workflow copy in sync"): the copy has to be identical to the sources.
+   Without this, `tests/check.sh` fails ("workflow copy in sync"): the copy has to be identical to the sources.
 4. **Add the test case** (below) and run the check:
 
    ```bash
-   bash scripts/check.sh      # runs bash tests/comprobar.sh and records the green: pre-push does not repeat it
+   bash scripts/check.sh      # runs bash tests/check.sh and records the green: pre-push does not repeat it
    ```
 
 5. **CHANGELOG entry**, **log**, commit and push, in the same commit (below).
@@ -31,7 +31,7 @@ here, it gets in the way in every project. Read [`AGENTS.md`](../../AGENTS.md) a
 ## Tests for every change
 
 - **Every change to a hook or script comes with its case in the tests** (`tests/test_*.py`, which build a temporary
-  git repo): `test_ganchos.py`, `test_review_before_main.py`, `test_doctor.py`, `test_apply.py`… A new check in
+  git repo): `test_hooks.py`, `test_review_before_main.py`, `test_doctor.py`, `test_apply.py`… A new check in
   `doctor.py` is a new case in `test_doctor.py`.
 - **A new test must fail without its fix.** Check with the fix still uncommitted:
 
@@ -46,7 +46,7 @@ here, it gets in the way in every project. Read [`AGENTS.md`](../../AGENTS.md) a
 - A new or changed **skill** passes `tests/test_skills.py` (name = folder, `description` 1 to 1024 characters,
   `license`, `compatibility`, `metadata.version`, under 200 lines). It is written in **English**, applying the
   `writing-for-agents` skill.
-- **Templates:** `tests/test_plantillas.py` applies the workflow to an empty repo, checks the expected result and that
+- **Templates:** `tests/test_templates.py` applies the workflow to an empty repo, checks the expected result and that
   repeating it changes nothing.
 - **bash 3.2** (macOS): no `mapfile`, no associative arrays. CI runs on Linux and macOS.
 
@@ -104,4 +104,4 @@ tags: `git fetch --tags origin`), and this repo's `check` runs it on every push 
 ## Proposals from projects
 
 Improvements arriving from projects come in through `gw-harvest` ([patterns](patterns.md#harvesting-improvements-back)):
-each is a file in `docs/propuestas/` that the person approves; the approved one is done with this same cycle.
+each is a file in `docs/proposals/` that the person approves; the approved one is done with this same cycle.

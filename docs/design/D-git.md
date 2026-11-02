@@ -22,7 +22,7 @@ versiones (bloque H).
   y lo deducido. No escribe ningún índice, y las comprobaciones solo se fían de lo declarado.
 
 Fuentes: [`README.md`](README.md) (bloque D), las ideas para D de
-[`ref-aider-graphify-worktrees.md`](../investigacion/ref-aider-graphify-worktrees.md) y el repaso del bloque F.
+[`ref-aider-graphify-worktrees.md`](../research/ref-aider-graphify-worktrees.md) y el repaso del bloque F.
 
 ## Preguntas (se responden por número)
 
@@ -34,7 +34,7 @@ Cada punto lleva la recomendación del agente (**Rec.**).
 2. **El correo de `AGENTS.md`** (el de `git config user.email`): (a) se queda, porque los commits ya lo muestran;
    (b) se cambia por el correo `noreply` de GitHub en el texto y en `git config`. **Rec.:** (b), en la `1.0.0`. El
    historial ya publicado sigue mostrando el correo de siempre.
-3. **Las recogidas publicadas** (`docs/propuestas/`) que nombran proyectos privados: (a) se revisan ahora en un
+3. **Las recogidas publicadas** (`docs/proposals/`) que nombran proyectos privados: (a) se revisan ahora en un
    parche `0.4.x`; (b) se revisan en la `1.0.0`, con el check de datos privados del bloque E. **Rec.:** (b), salvo que
    lleven algo sensible (claves, datos de clientes). En ese caso, (a).
 4. **El historial con autor Claude:** 155 commits, del 21 al 26 de octubre, tienen el autor

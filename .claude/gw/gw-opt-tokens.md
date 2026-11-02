@@ -10,9 +10,9 @@ las crea una vez; desde entonces son del proyecto.
 - `python3 .claude/gw/scripts/recover.py --estado` y `--buscar "<texto>"`: recuperar lo que se llevó una
   compactación.
 - `gw-orchestrate-dealer`: el trabajo de más de un paso, repartido a subagentes de contexto limpio.
-- `docs/mapa-agente.md`: punto único para los encargos a subagentes.
+- `docs/agent-map.md`: punto único para los encargos a subagentes.
 - `python3 scripts/doctor.py`: en la nube avisa (`compaction`) si falta `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en el entorno.
-- `bash tests/comprobar.sh` tarda más de 2 min: se lanza en segundo plano y se espera su aviso (no un bucle con
+- `bash tests/check.sh` tarda más de 2 min: se lanza en segundo plano y se espera su aviso (no un bucle con
   `pgrep -f`, que se encuentra a sí mismo).
 - `gw-orchestrate-dealer`, regla «A batch of approved rows is dealt»: filas de una propuesta, una por subagente, o
   `/clear` cada 4-5 filas en la principal.
@@ -34,7 +34,7 @@ las crea una vez; desde entonces son del proyecto.
   0 compactaciones). Abrir desde el repo y `/clear` al cerrar cada fase.
 - En la nube, la sesión arranca en `/home/user` con varios repos y tampoco carga `.claude/settings.json`: la
   compactación va en las variables del entorno de la nube (retro de la Fase 5, R1).
-- Encargos a subagentes que mandan leer muchos documentos: arranque de 52-60k. Apuntar a `docs/mapa-agente.md`.
+- Encargos a subagentes que mandan leer muchos documentos: arranque de 52-60k. Apuntar a `docs/agent-map.md`.
 - Herramientas que devuelven JSON largo (`list_sessions`, `list_events`): pedir lo mínimo (`limit`, `kinds`).
 - Repos hermanos adjuntos a la sesión (recogida del 2026-10-26): sus `CLAUDE.md`, `AGENTS.md` y skills entraban en
   cada llamada, ~19M (17 %). Clonarlos aparte (`gw-harvest`, paso 1).

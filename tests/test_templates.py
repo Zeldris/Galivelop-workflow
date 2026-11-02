@@ -2,7 +2,7 @@
 them: `--init` on an empty repo yields a project doctor.py accepts, a second run changes nothing, an existing
 AGENTS.md/CLAUDE.md is never overwritten, the files the project fills in (log, REVIEW.md, GLOSSARY.md, notes) are
 never written again, and the Spanish and English templates stay paired. HOME is a temp folder and git runs isolated
-as in test_ganchos.
+as in test_hooks.
 """
 import json
 import os
@@ -14,7 +14,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_ganchos import ROOT
+from test_hooks import ROOT
 
 sys.path.insert(0, str(ROOT / "scripts"))
 import config  # noqa: E402

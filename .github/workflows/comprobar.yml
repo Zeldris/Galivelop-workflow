@@ -23,4 +23,4 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install shellcheck
       - name: Check
-        run: bash tests/comprobar.sh
+        run: bash tests/check.sh

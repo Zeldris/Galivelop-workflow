@@ -1,7 +1,7 @@
 """scripts/apply.py on temporary projects: a fresh apply passes doctor.py, a second run does nothing, owned files
 are updated by version, foreign or locally edited ones get a .gw-nuevo proposal, settings.json is merged without
 losing anything, optional skills come only with --with, and core.hooksPath is respected. HOME is a temp folder and
-git runs isolated as in test_ganchos.
+git runs isolated as in test_hooks.
 """
 import importlib.util
 import json
@@ -13,7 +13,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_ganchos import BASE_CONFIG, ROOT
+from test_hooks import BASE_CONFIG, ROOT
 
 APLICAR = ROOT / "scripts" / "apply.py"
 VERSION = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())["version"]
@@ -37,7 +37,7 @@ class Fixture:
         self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, **(config or {})), indent=2) + "\n")
         self.write("check.sh", "exit 0\n")
         # The project's own log (no marker): apply.py must leave it alone. AGENTS.md and the CI file come from the
-        # workflow's templates (tests/test_plantillas.py).
+        # workflow's templates (tests/test_templates.py).
         self.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| Next step | write tests |\n")
 
     def run(self, *cmd, cwd=None):

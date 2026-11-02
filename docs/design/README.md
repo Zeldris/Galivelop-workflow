@@ -11,12 +11,12 @@ Lo que esté aquí sin su archivo de bloque sigue en bruto, no decidido.
 
 | # | Bloque | Por qué en este orden | Estado |
 |---|---|---|---|
-| 1 | **A. Marco:** público, nombres, versionado | Fija el marco en el que se decide todo lo demás | cerrado (A-2 en `D-git.md` 1-4): [`A-marco.md`](A-marco.md) |
-| 2 | **F. Referencias a revisar** | Investigación que se lanza ya (subagentes) y alimenta B, D y G | cerrado: notas en `docs/investigacion/ref-*.md`, repasadas en `D-git.md` 5-8 |
+| 1 | **A. Marco:** público, nombres, versionado | Fija el marco en el que se decide todo lo demás | cerrado (A-2 en `D-git.md` 1-4): [`A-framework.md`](A-framework.md) |
+| 2 | **F. Referencias a revisar** | Investigación que se lanza ya (subagentes) y alimenta B, D y G | cerrado: notas en `docs/research/ref-*.md`, repasadas en `D-git.md` 5-8 |
 | 3 | **D. Git:** entornos, releases, tags, trazabilidad, roles | Estructura: decide dónde vive y cómo se enlaza lo que se apunta | cerrado: [`D-git.md`](D-git.md) |
-| 4 | **B. Medición de gasto y modelos** | El bloque funcional mayor; usa D (dónde se guarda, cómo se etiqueta) | cerrado: [`B-medicion.md`](B-medicion.md) |
-| 5 | **C. Preguntas y modo restrictivo** | Pequeño y cerrado; comparte «modos» con B6 | cerrado: [`C-preguntas.md`](C-preguntas.md) |
-| 6 | **E. Reglas deterministas, pruebas de front, documentación** | Limpieza y calidad; usa A (público) y D (dónde) | cerrado: [`E-calidad.md`](E-calidad.md) |
+| 4 | **B. Medición de gasto y modelos** | El bloque funcional mayor; usa D (dónde se guarda, cómo se etiqueta) | cerrado: [`B-measurement.md`](B-measurement.md) |
+| 5 | **C. Preguntas y modo restrictivo** | Pequeño y cerrado; comparte «modos» con B6 | cerrado: [`C-questions.md`](C-questions.md) |
+| 6 | **E. Reglas deterministas, pruebas de front, documentación** | Limpieza y calidad; usa A (público) y D (dónde) | cerrado: [`E-quality.md`](E-quality.md) |
 | 7 | **G. Management Center (MMC)** | Consume todo lo anterior; el final del roadmap | cerrado: [`G-mmc.md`](G-mmc.md) |
 | 8 | **H. Roadmap y mapa de versiones** | Reparte lo diseñado en versiones `1.0.0+` | cerrado: [`H-roadmap.md`](H-roadmap.md) |
 
@@ -103,7 +103,7 @@ Lo que esté aquí sin su archivo de bloque sigue en bruto, no decidido.
 ## F. Referencias a revisar
 
 Cada una se lee con un subagente que devuelve qué aporta al flujo (y a qué bloque); sus notas, en
-`docs/investigacion/`.
+`docs/research/`.
 
 | Qué | Para qué | Bloque |
 |---|---|---|
@@ -137,7 +137,7 @@ que pensarlo mucho y diseñarlo lo mejor posible.
 
 Con todo diseñado: el roadmap y el mapa de versiones de todas las implementaciones hasta la `1.0.0` y después, con
 qué va en cada versión; las mejoras de la `0.4` que no son evolutivos, también repartidas. Lo que ya espera:
-`docs/registros/pendiente-1.0.0.md`.
+`docs/records/pendiente-1.0.0.md`.
 
 ## Apéndice: mapa inicial de modelos por necesidad (del usuario, 2026-10-30; B5)
 

@@ -3,7 +3,7 @@
 **Estado:** cerrado (2026-11-01): las 10 preguntas, aprobadas por el usuario según la recomendación del agente («Del 1 al 10 todo ok»). Nada se implementa hasta cerrar el diseño (bloque H).
 
 Fuentes: [`README.md`](README.md) (bloque G); lo que el MMC tiene que mostrar o configurar sale de los bloques B, C y D
-(medición, modos, entornos, roles, `trace.py`); ideas de OpenHands, thinkrail y opencode en `docs/investigacion/ref-*.md`.
+(medición, modos, entornos, roles, `trace.py`); ideas de OpenHands, thinkrail y opencode en `docs/research/ref-*.md`.
 
 ## Preguntas (se responden por número)
 

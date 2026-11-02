@@ -16,7 +16,7 @@ llegue a la rama protegida.
 |---|---|
 | `AGENTS.md` | Reglas del flujo para cualquier agente: al empezar, relevos, commits, ramas |
 | `CLAUDE.md` | `@AGENTS.md` + lo propio de Claude Code |
-| Bitácora (`docs/traspaso.md`) | Estado actual, siguiente paso, hecho y pendiente; se actualiza en el mismo commit que el trabajo |
+| Bitácora (`docs/handoff.md`) | Estado actual, siguiente paso, hecho y pendiente; se actualiza en el mismo commit que el trabajo |
 | Skills | Cómo elegir modelo y skill, orquestar subagentes, revisar, hacer retros |
 | Ganchos | Recuperar el estado tras `/clear`, no subir código sin revisión ni con el check en rojo |
 | `.claude/gw.json` | Lo que cambia de un proyecto a otro (idioma, bitácora, check, rama protegida…) |
@@ -38,8 +38,8 @@ Sus skills incluidas aquí llevan su mención y su licencia ([créditos](../../C
 
 ## Guías
 
-- [Aplicar el flujo a un proyecto](aplicar.md) (la guía del agente, proyectos nuevos y existentes)
+- [Aplicar el flujo a un proyecto](apply.md) (la guía del agente, proyectos nuevos y existentes)
 - [Configuración: `gw.json`](config.md)
-- [Patrones opcionales](patrones.md)
-- [Problemas conocidos](problemas.md)
-- [Cambiar el flujo](contribuir.md)
+- [Patrones opcionales](patterns.md)
+- [Problemas conocidos](troubleshooting.md)
+- [Cambiar el flujo](contributing.md)

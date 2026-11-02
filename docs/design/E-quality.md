@@ -3,7 +3,7 @@
 **Estado:** cerrado (2026-11-01): las 8 preguntas, aprobadas por el usuario según la recomendación del agente. La
 investigación de la 5 ya está hecha; sus preguntas, de la 9 a la 16, siguen abiertas.
 
-Fuentes: [`README.md`](README.md) (bloque E), A-1 de [`A-marco.md`](A-marco.md) (todo público), D-3 y D-8 de
+Fuentes: [`README.md`](README.md) (bloque E), A-1 de [`A-framework.md`](A-framework.md) (todo público), D-3 y D-8 de
 [`D-git.md`](D-git.md) (recogidas publicadas, perfiles de instalación).
 
 El principio: lo que se puede controlar de forma determinista sale del razonamiento del modelo y vive en un check.
@@ -45,7 +45,7 @@ Cada punto lleva la recomendación del agente (**Rec.**).
 6. **De norma escrita a regla aplicada:** **Rec.:** el patrón vale para todo, no solo para el front. Cada regla de
    `REVIEW.md` o de las normas de front de un proyecto dice qué check la hace cumplir, o «criterio» si no lo hay. Un
    script lista las reglas mecánicas que aún no tienen check, y la `retro` las propone como checks.
-7. **Dónde viven las pruebas de front:** este repo no tiene front. **Rec.:** el flujo da una guía en `docs/es/patrones.md`
+7. **Dónde viven las pruebas de front:** este repo no tiene front. **Rec.:** el flujo da una guía en `docs/es/patterns.md`
    (y su par en inglés) y una plantilla de config que los proyectos con front (Portal-Galivelop, World-Maker-Fantasy)
    activan; no hay una skill nueva hasta que haga falta.
 8. **Revisión completa de la documentación:** **Rec.:** una pasada al final de la `1.0.0`, después de los cambios de
@@ -55,7 +55,7 @@ Cada punto lleva la recomendación del agente (**Rec.**).
 
 ## Preguntas de la investigación de front (E-5)
 
-Salen de [`ref-pruebas-front.md`](../investigacion/ref-pruebas-front.md). Algunos dominios no resolvían desde el
+Salen de [`ref-front-testing.md`](../research/ref-front-testing.md). Algunos dominios no resolvían desde el
 entorno; lo no confirmado va marcado `[NC]` en la nota, y se trata como en D-5. Cada punto lleva la recomendación del
 investigador (**Rec.**).
 

@@ -1,6 +1,6 @@
 # Known problems
 
-> [Español](../es/problemas.md)
+> [Español](../es/troubleshooting.md)
 
 What to do when something in the workflow does not work. Script messages are in English and end with the command that
 fixes the failure; here they are grouped by origin so you can find them by what you see. To start, almost always:

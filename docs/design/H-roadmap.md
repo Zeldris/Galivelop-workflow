@@ -5,7 +5,7 @@ que sustituye al primero. Pasado a [`docs/roadmap.md`](../roadmap.md) (2026-11-0
 entonces.
 
 Reparte todo lo decidido en los bloques A-G y lo que ya esperaba en
-[`pendiente-1.0.0.md`](../registros/pendiente.md) (hoy `pendiente.md`). Criterio (A-5): la `1.0.0` lleva lo que rompe compatibilidad y
+[`pendiente-1.0.0.md`](../records/pending.md) (hoy `pending.md`). Criterio (A-5): la `1.0.0` lleva lo que rompe compatibilidad y
 la base de la medición; lo demás va en menores `1.x`; la `0.4` solo recibe arreglos. Los identificadores son los de
 cada bloque (`B-3` = pregunta 3 del bloque B) hasta que la pregunta 1 fije los del roadmap.
 
@@ -55,7 +55,7 @@ En este orden, porque cada paso usa el anterior:
 
 ### `1.2` «Front y otros agentes»
 
-- **Pruebas de front (E-5, E-7, E-9..E-16):** guía en `patrones.md`, plantilla de config y los checks que decidan
+- **Pruebas de front (E-5, E-7, E-9..E-16):** guía en `patterns.md`, plantilla de config y los checks que decidan
   E-9..E-16.
 - **Perfiles de instalación (E-4):** minimal/core/full, `core` por defecto.
 - **Otros agentes (D-7, B-9):** `AGENTS.md` legible sin `@include`, skills también en `.agents/skills`; modelos no
@@ -102,14 +102,14 @@ Sale cuando exista lo que necesita, y entonces se le pone versión:
    los identificadores del español. **Rec.:** sí.
 8. **Rama de implementación:** se sigue en `version/1.0.0`; los subagentes, en `agent/<id>-…` (D-16) desde el paso 4;
    antes, con los nombres de hoy. **Rec.:** sí.
-9. **E-9..E-16** (pruebas de front, en `E-calidad.md`): solo afectan a la `1.2`. **Rec.:** responderlas ahora para
+9. **E-9..E-16** (pruebas de front, en `E-quality.md`): solo afectan a la `1.2`. **Rec.:** responderlas ahora para
    cerrar el diseño entero, como pediste; si prefieres, se dejan para cuando se abra la `1.2`.
 
 ## Respuestas del usuario (2026-11-01)
 
 - **1, 3, 4, 5, 6, 7 y 8:** según la recomendación.
 - **2:** de acuerdo con los pasos, pero antes se revisa el orden de las versiones (abajo).
-- **9:** E-9..E-16 se responden ahora (en `E-calidad.md`).
+- **9:** E-9..E-16 se responden ahora (en `E-quality.md`).
 - **Propuesta del usuario:** avanzar por la `0.x` (`0.5`, `0.6`…) en vez de saltar a la `1.0.0`, y que la `1.0+` sea
   la creación del Management Center.
 
@@ -148,7 +148,7 @@ que rompe va en la primera menor** (`0.5`), para migrar una sola vez y que las s
 11. **La medición en la `0.6`** y no en la `0.5`: la `0.5` ya es grande y la medición no rompe nada. **Rec.:** sí;
     a cambio, el ledger empieza a contar unas semanas más tarde.
 12. **`pendiente-1.0.0.md`:** cada punto a la menor de su tema (los de checks a la `0.5`, los de revisión y skills
-    donde encajen) y la lista pasa a `pendiente.md` con la versión en cada línea. **Rec.:** sí.
+    donde encajen) y la lista pasa a `pending.md` con la versión en cada línea. **Rec.:** sí.
 13. **Rama:** al empezar a implementar, `version/0.5.0` desde `version/1.0.0` (que se queda con el diseño ya subido).
     **Rec.:** sí; no se renombra una rama subida.
 14. **Regla de la `0.4`:** pasa a «solo la última menor publicada recibe parches; los evolutivos van a la siguiente

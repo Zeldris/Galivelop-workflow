@@ -29,7 +29,7 @@ sesiones en la nube, que no cargan plugins declarados en el repo.
    `node_modules/`, `target/`, salidas de compilación) están en `.gitignore`: correr el check no debe ensuciar el árbol.
 5. git tiene identidad para los commits (`git config user.name` y `user.email`); ponla si la máquina es nueva.
 6. `python3` 3.8 o superior, `git` y `bash` disponibles (en Windows, Git Bash o WSL: ver
-   [problemas](problemas.md)).
+   [problemas](troubleshooting.md)).
 7. **El `.gitignore` no ignora lo que se va a copiar.** Un `.gitignore` con `.claude/*` ignora también `.claude/gw*`
    (`.claude/gw/` y `.claude/gw.json`), y un commit dejaría fuera los scripts y el config. Antes de copiar, añade
    debajo de esa línea las excepciones (`!.claude/gw/`, `!.claude/gw.json`, `!.claude/settings.json`,
@@ -115,7 +115,7 @@ las `gw-`; una skill opcional ya instalada con el nombre viejo sigue instalada c
 aviso); las notas `.claude/gw/<vieja>.md` pasan a `.claude/gw/gw-<nombre>.md` (`git mv` si están en git; si existen
 las dos, se queda la nueva y se avisa, nunca se sobrescribe); las copias de scripts con nombre español de
 `.claude/gw/scripts/` se borran, salvo que un gancho, el CI o la config todavía las ejecuten (se avisa; los nombres
-viejos en los comandos de `.claude/settings.json` se renombran); y las rutas `docs/traspaso.md`, `docs/registros/`,
+viejos en los comandos de `.claude/settings.json` se renombran); y las rutas `docs/handoff.md`, `docs/records/`,
 `docs/propuestas/` y `docs/registros/revisado.txt` pasan a `docs/handoff.md`, `docs/records/`, `docs/proposals/` y
 `docs/records/reviewed.txt` (con `git mv` si están en git; las claves de `.claude/gw.json` que tenían la ruta vieja
 se quitan, porque el valor por defecto es la nueva). Si el destino ya existe, **falla cerrado** (salida 2) con la
@@ -177,7 +177,7 @@ python3 <proyecto>/.claude/gw/scripts/doctor.py
 
 Imprime `OK`, `WARN` o `FAIL` por comprobación, y con cada problema la orden que lo arregla. Repite (arreglar,
 volver a correr) hasta que **no quede ningún `FAIL`**; los `WARN` se explican a la persona (qué significa cada uno,
-en [problemas](problemas.md)). Con `--json` sale legible por máquina.
+en [problemas](troubleshooting.md)). Con `--json` sale legible por máquina.
 
 También da `FAIL` si `AGENTS.md`, `CLAUDE.md` o una `SKILL.md` llevan caracteres invisibles o bidi (una instrucción
 escondida es una inyección; la orden que los quita viene en la línea) y avisa si `AGENTS.md`/`CLAUDE.md` pasan de 150
@@ -294,7 +294,7 @@ entra el código ya hoy.
 ## Lo que el agente no hace
 
 - No registra como raíz de la sesión los repos que solo lee (el del flujo incluido): sus skills homónimas taparían
-  las del proyecto ([problemas](problemas.md)).
+  las del proyecto ([problemas](troubleshooting.md)).
 - No ejecuta `apply.py --update` ni sobrescribe archivos del proyecto sin que la persona lo pida.
 - No inventa `install` ni `check`: si no puede ejecutarlo, pregunta.
 - No hace commit ni push antes de pasar `doctor.py` sin `FAIL`.

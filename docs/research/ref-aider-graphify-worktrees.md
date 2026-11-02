@@ -1,6 +1,6 @@
 # Referencias para el bloque D: Aider, Graphify, worktrees de Claude Code y convenciones de commits
 
-Fecha: 2026-11-01. Investigación de solo lectura para `docs/diseno/README.md` (bloque D: git, entornos, releases,
+Fecha: 2026-11-01. Investigación de solo lectura para `docs/design/README.md` (bloque D: git, entornos, releases,
 tags en commits, trazabilidad). Lo marcado **[NC]** no se pudo confirmar. Nada se ha ejecutado ni instalado.
 
 **Límite de acceso:** en esta sesión `aider.chat`, `conventionalcommits.org`, `semver.org` y `git-scm.com` no
@@ -47,7 +47,7 @@ salen de un modelo pequeño que lee la página, así que las citas literales son
    relevos: un commit `WIP:` aparte antes de empezar un encargo.
 4. **`/undo` = un commit por edición.** Con un commit por cambio es trivial revertir; nuestro `fusionar.sh` hace
    `merge --no-ff` y deja `git reset --hard HEAD^1` como deshacer; coherente.
-5. **Repo map ≈ nuestro `mapa-agente.md`, pero calculado.** Ver sección 2.
+5. **Repo map ≈ nuestro `agent-map.md`, pero calculado.** Ver sección 2.
 
 ## 2. Graphify (Graphify-Labs/graphify)
 
@@ -64,7 +64,7 @@ salen de un modelo pequeño que lee la página, así que las citas literales son
 - Parte de la página promociona Graphify Cloud (de pago); las cifras de benchmark son suyas, sin verificar.
 
 ### Comparación con lo nuestro
-| | `scripts/mapa-agente.py` + `mapa-agente.md` | codegraph (`docs/propuestas/2026-10-25-codegraph.md`) | Graphify |
+| | `scripts/mapa-agente.py` + `agent-map.md` | codegraph (`docs/proposals/2026-10-25-codegraph.md`) | Graphify |
 |---|---|---|---|
 | Qué relaciona | contrato -> definición -> implementación, escrito a mano | símbolos y llamadas del código | código + docs + configs + medios |
 | Quién lo mantiene | persona/agente; el script solo comprueba que las rutas existen | índice automático (SQLite) | reconstrucción automática |
@@ -199,5 +199,5 @@ nunca la actual, la protegida ni `claude/*`. Si el check falla, la fusión ya es
 - Semver 2.0.0: https://github.com/semver/semver/blob/master/semver.md (web: https://semver.org/)
 - release-please: https://github.com/googleapis/release-please/blob/main/docs/manifest-releaser.md
 - Changesets: https://github.com/changesets/changesets/blob/main/docs/intro-to-using-changesets.md
-- Locales: `docs/mapa-agente.md`, `docs/diseno/README.md` (bloque D), `scripts/fusionar.sh`,
-  `skills/orchestrate-dealer/SKILL.md`, `scripts/mapa-agente.py`, `docs/propuestas/2026-10-25-codegraph.md`
+- Locales: `docs/agent-map.md`, `docs/design/README.md` (bloque D), `scripts/fusionar.sh`,
+  `skills/orchestrate-dealer/SKILL.md`, `scripts/mapa-agente.py`, `docs/proposals/2026-10-25-codegraph.md`

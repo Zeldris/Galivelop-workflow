@@ -1,11 +1,11 @@
 # Galivelop-workflow — plan de creación del repositorio
 
 > Documento para la sesión de Claude que cree el repo. Léelo entero antes de empezar y síguelo por fases: cada
-> fase acaba con commit + push y su casilla marcada en `docs/traspaso.md` del repo nuevo.
+> fase acaba con commit + push y su casilla marcada en `docs/handoff.md` del repo nuevo.
 > Redactado el 2026-10-21 a partir del flujo en uso en **Portal-Galivelop** y **World-Maker-Fantasy (Tarkor)**.
 > **Revisado el 2026-10-21 al cerrar la Fase 0** con las decisiones del usuario (§0). Investigación en
-> `docs/investigacion/`. **Revisado el 2026-11-02 (A7):** el repo es público y cada versión se publica aquí (§1,
-> §2, §7, §9, §10; decisión en `docs/diseno/A-marco.md`, A1).
+> `docs/research/`. **Revisado el 2026-11-02 (A7):** el repo es público y cada versión se publica aquí (§1,
+> §2, §7, §9, §10; decisión en `docs/design/A-framework.md`, A1).
 
 ## 0. Cambios tras la Fase 0 (decisiones del usuario, 2026-10-21)
 
@@ -20,7 +20,7 @@
 4. **Claves de `gw.json` en inglés**; **`check` es una lista de órdenes**; **marca de revisado versionada** en el
    repo para los dos modos de subida.
 5. **Se porta pieza a pieza** desde el repo que tiene la mejor versión de cada una (tabla en
-   `docs/investigacion/casos-reales.md`), no «del portal».
+   `docs/research/real-cases.md`), no «del portal».
 6. **Este repo usa su propio flujo** desde la Fase 1, aplicado como copia igual que en cualquier proyecto.
 7. **Skills según la especificación Agent Skills** (`name`, `description`, `license`, `compatibility`,
    `metadata.version`); las cosas comprobables las hacen scripts (p. ej. `doctor`), no skills.
@@ -92,11 +92,11 @@ su retro del 2026-10-21). Tarkor aporta lo que el portal quitó por ser «de web
 | `gw-opt-tokens` + `medir.py` | `.claude/skills/gw-opt-tokens/` | `medir.py` tal cual (ya es genérico) con referencias `QA-*` limpiadas; `proyecto.md` pasa a ser archivo del repo destino (`.claude/gw/gw-opt-tokens.md`) |
 | `retro` | `.claude/skills/retro/SKILL.md` | Mantener cuerpo MIT; la nota «En este repositorio» pasa a genérica (mirar skills del plugin y proponer cambios **al plugin** si la mejora es general) |
 | `grilling`, `grill-with-docs`, `domain-modeling`, `diagnosing-bugs`, `codebase-design`, `improve-codebase-architecture`, `writing-for-agents`, `pr`, `prototype`, `research` | `.claude/skills/*` | Tal cual (MIT, mattpocock/skills). Solo se quitan las notas del portal. Licencia y créditos se conservan |
-| Runbook del flujo | `docs/runbooks/skills-y-modelos.md` | Se convierte en `docs/<lang>/flujo.md` del plugin, genérico |
+| Runbook del flujo | `docs/runbooks/skills-y-modelos.md` | Se convierte en `docs/<lang>/workflow.md` del plugin, genérico |
 | `REVIEW.md` | `REVIEW.md` | Plantilla para el repo destino con las secciones genéricas («Un dato, un sitio», «Ganchos y scripts») y huecos para lo propio |
 | `GLOSSARY.md` | `GLOSSARY.md` | Plantilla vacía con los términos del flujo (bitácora, punto estable, marca de revisado…) |
 | `CLAUDE.md` | raíz de ambos repos | Plantilla: «Al empezar cualquier sesión», reglas de relevo y commits, con huecos `{{…}}` |
-| Bitácora | `docs/traspaso.md` (portal) y `docs/registros/traspaso.md` (Tarkor) | Plantilla con las secciones del portal: Estado actual · Para la próxima publicación · Hecho (5 últimas) · Pendiente · Comprobar el estado |
+| Bitácora | `docs/handoff.md` (portal) y `docs/records/traspaso.md` (Tarkor) | Plantilla con las secciones del portal: Estado actual · Para la próxima publicación · Hecho (5 últimas) · Pendiente · Comprobar el estado |
 | Gancho `SessionStart` | `.claude/hooks/session-start.sh` | Al plugin. Activa `core.hooksPath`, instala dependencias en la nube con la orden del config |
 | Recuperación tras `/clear` | `tools/qa/recover.py` | Al plugin; lee la ruta de la bitácora del config |
 | Gancho de PR a `main` | `.claude/hooks/review-before-main.sh` | Al plugin; rama protegida y ruta de la marca del config |
@@ -111,12 +111,12 @@ su retro del 2026-10-21). Tarkor aporta lo que el portal quitó por ser «de web
 | `gw-scout-updates` | Tarkor: `.claude/skills/gw-scout-updates/` | Skill opcional (solo a petición) |
 | `gw-opt-ai` + `medir.py` | Tarkor/instalador: `.claude/skills/gw-opt-ai/` | Skill opcional para proyectos con modelos de IA locales; lo propio en `.claude/gw/gw-opt-ai.md` |
 
-> **Fuente por pieza (Fase 0):** la tabla «La mejor versión de cada pieza» de `docs/investigacion/casos-reales.md`
+> **Fuente por pieza (Fase 0):** la tabla «La mejor versión de cada pieza» de `docs/research/real-cases.md`
 > manda sobre la columna «Origen» de arriba.
 
 **No se trae:** lo propio de cada proyecto (tres idiomas del portal, lore de Tarkor, tarea semanal concreta,
 rondas de pruebas jugando). `gw-opt-ai` y `gw-scout-updates` sí se traen, como skills opcionales (tabla de arriba). La **tarea programada semanal** se documenta como patrón
-opcional en `docs/<lang>/patrones.md`, sin prompt concreto.
+opcional en `docs/<lang>/patterns.md`, sin prompt concreto.
 
 ## 4. Estructura del repo
 
@@ -155,11 +155,11 @@ Galivelop-workflow/
 │   ├── test-ganchos.sh           # crea un repo git temporal y prueba cada gancho y script
 │   └── test-plantillas.sh        # /gw-init sobre un repo vacío produce lo esperado; idempotente
 ├── docs/
-│   ├── es/  flujo.md  aplicar.md  instalar.md  config.md  patrones.md  problemas.md  contribuir.md
+│   ├── es/  workflow.md  apply.md  instalar.md  config.md  patterns.md  troubleshooting.md  contributing.md
 │   └── en/  workflow.md  apply.md  install.md  config.md  patterns.md  troubleshooting.md  contributing.md
 ├── CLAUDE.md                     # @AGENTS.md + lo propio de Claude
 ├── .claude/  .githooks/          # el flujo aplicado a este repo (copia generada por scripts/apply.py)
-├── docs/traspaso.md              # su bitácora
+├── docs/handoff.md              # su bitácora
 ├── REVIEW.md  GLOSSARY.md
 ├── README.md  (en)   README.es.md
 ├── CHANGELOG.md                  # Keep a Changelog, bilingüe por entrada
@@ -232,8 +232,8 @@ Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con 
 
   Lo mecánico (qué archivos difieren, qué skills son nuevas, qué commits hay desde la última vez) lo hace
   `scripts/harvest.py`, sin IA; el agente solo juzga si cada cambio es general o propio del proyecto y lo redacta.
-  Escribe `docs/propuestas/AAAA-MM-DD-<repo>.md` (origen con ruta y commit, qué cambia, general/propio, versión que
-  pediría: parche, menor o mayor) y guarda en `docs/propuestas/estado.json` el último commit recogido de cada repo.
+  Escribe `docs/proposals/AAAA-MM-DD-<repo>.md` (origen con ruta y commit, qué cambia, general/propio, versión que
+  pediría: parche, menor o mayor) y guarda en `docs/proposals/estado.json` el último commit recogido de cada repo.
   **Nunca aplica nada sin confirmación**: lo aprobado entra como cambio normal, con CHANGELOG y versión nueva. Los
   repos se leen en solo lectura, con subagente.
 - **`gw-init`, `gw-update`, `gw-doctor`**: ver §5.4.
@@ -252,20 +252,20 @@ Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con 
   config **sobre el commit que se sube** (worktree temporal si no es la carpeta de trabajo); a la rama protegida,
   exige la marca de revisado si trae código. `--no-verify` solo para `WIP:` en rojo.
 - Marca de revisado: `reviewed.sh` escribe el sha en `reviewMark` del config (por defecto
-  `docs/registros/revisado.txt`) y hace commit. Viaja con el repo, así la ven tareas programadas y otras cuentas.
+  `docs/records/reviewed.txt`) y hace commit. Viaja con el repo, así la ven tareas programadas y otras cuentas.
 - `is-code.sh`: «código» es todo lo que no casa con `content` del config. Solo lo que es código pide revisión.
 - `.github/workflows/comprobar.yml`: `install` + `check` en cada push que no sea a la rama protegida y en cada PR.
 
 ### 5.4 Aplicar, actualizar y comprobar
 
-- **`docs/<lang>/aplicar.md` (etapa 1):** la guía que sigue un agente para aplicar el flujo. Separa lo que exige
+- **`docs/<lang>/apply.md` (etapa 1):** la guía que sigue un agente para aplicar el flujo. Separa lo que exige
   criterio (deducir `install`/`check` de `package.json`, `pyproject.toml`, `Cargo.toml`, `Makefile`…; fusionar un
   `CLAUDE.md`/`AGENTS.md` existente, enseñando el bloque antes) de lo mecánico, que siempre es un script.
 - **`scripts/apply.py`:** escribe `.claude/gw.json`, copia plantillas, skills y scripts **sin pisar nada** (lo que
   ya existe queda como propuesta `*.gw-nuevo` para revisar), añade los ganchos a `.claude/settings.json` y
   `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`, y pone `core.hooksPath` si no hay otro gestor. Idempotente. Commit
   `Flujo Galivelop-workflow vX.Y.Z` y `Siguiente:`.
-- **`/gw-init`, `/gw-update`** (skills con `disable-model-invocation: true`): envoltorios finos de `aplicar.md` y
+- **`/gw-init`, `/gw-update`** (skills con `disable-model-invocation: true`): envoltorios finos de `apply.md` y
   `apply.py`. `gw-update` compara versiones y enseña el diff del cambio de plantilla (no del archivo que el
   proyecto rellenó) antes de aplicar lo que el usuario confirme.
 - **`scripts/doctor.py`** (y `/gw-doctor`, que lo llama): comprueba y lista con la orden que arregla cada cosa:
@@ -283,13 +283,13 @@ inglés (decisión de la Fase 0).
   "version": "0.1.0",                       // versión del flujo con la que se aplicó
   "language": "es",                         // es | en: plantillas y lengua de las respuestas
   "visibleLanguages": ["es", "gl", "en"],   // opcional: lo que REVIEW.md exige al texto visible
-  "log": "docs/traspaso.md",                // bitácora
+  "log": "docs/handoff.md",                // bitácora
   "logRows": false,                         // opcional: una fila por rama con límite (handoff.py)
   "protectedBranch": "main",
   "pushToProtected": "direct",              // direct | pr: push directo (pre-push pide la marca en los dos) o PR (además, PreToolUse)
   "install": ["npm ci"],
   "check": ["npm run check"],               // lista de órdenes; se corren en orden sobre el commit que se sube
-  "reviewMark": "docs/registros/revisado.txt",
+  "reviewMark": "docs/records/reviewed.txt",
   "requireRetro": true,                     // opcional (por defecto en la plantilla): reviewed.sh exige una retro en la rama
   "content": ["^docs/", "^public/", "^src/data/", "\\.md$"],   // regex: lo que NO pide /code-review
   "roadmap": false,                         // módulo opcional de hitos (Tarkor)
@@ -314,7 +314,7 @@ Ejemplos que los pilotos tienen que cubrir: el portal (Node, subida directa, tre
 - **Etiquetas `vX.Y.Z`** y release de GitHub con la entrada del CHANGELOG (`release.yml`).
 - **Cada versión empieza con una recogida** (`gw-harvest`, §5.1; usuario, 2026-10-23): lo que traen los proyectos
   entra en la versión que se abre. `scripts/version.py --release` no deja publicar sin una recogida (`# Harvest …`
-  en `docs/propuestas/`) añadida desde la última etiqueta.
+  en `docs/proposals/`) añadida desde la última etiqueta.
 - **Rama `main` = última versión publicada**; se trabaja en ramas y se sube a `main` solo con confirmación (el
   propio flujo).
 - **Fijar versión en un proyecto**: el marketplace se añade con `#vX.Y.Z` cuando un proyecto no quiera
@@ -325,15 +325,15 @@ Ejemplos que los pilotos tienen que cubrir: el portal (Node, subida directa, tre
   `0.5`, rama `version/0.5.0`), y los parches se fusionan también en ella. Se avanza por la `0.x` (`0.5` «Base»,
   `0.6` «Medir»…): en `0.y.z` una menor puede romper. La `1.0` es el Management Center y sale cuando está hecho lo
   que el roadmap le asigna (A-5); los criterios de la §10 miden la madurez de la línea `1.x` y no bloquean la
-  etiqueta. El reparto por versiones está en [`roadmap.md`](roadmap.md) (diseño en `docs/diseno/H-roadmap.md`).
+  etiqueta. El reparto por versiones está en [`roadmap.md`](roadmap.md) (diseño en `docs/design/H-roadmap.md`).
 - **Cada versión se publica en este repo** (público, A1): subida a `main`, etiqueta y release. **A lo sumo una
   publicación al día** (A-6): lo que llegue después espera en la rama y sale junto en la siguiente; solo un arreglo
   grave (un gancho que bloquea subidas buenas, pérdida de datos) se la salta, con confirmación del usuario.
 
 ## 8. Instalación en un proyecto
 
-**Etapa 1 (lo que contará `docs/<lang>/aplicar.md`):** desde una sesión con el proyecto y este repo a mano, se
-pide al agente «aplica Galivelop-workflow siguiendo `docs/es/aplicar.md`». El agente decide lo que exige criterio,
+**Etapa 1 (lo que contará `docs/<lang>/apply.md`):** desde una sesión con el proyecto y este repo a mano, se
+pide al agente «aplica Galivelop-workflow siguiendo `docs/es/apply.md`». El agente decide lo que exige criterio,
 lanza `scripts/apply.py` y termina con `scripts/doctor.py` en verde. En la nube funciona sin configurar nada,
 porque el resultado vive en el repo.
 
@@ -358,7 +358,7 @@ claude plugin marketplace add zeldris/Galivelop-workflow
 claude plugin install galivelop-workflow@galivelop-workflow
 ```
 
-> Comprobado en la Fase 0 (`docs/investigacion/plugins.md`): un repo privado se añade como marketplace desde la
+> Comprobado en la Fase 0 (`docs/research/plugins.md`): un repo privado se añade como marketplace desde la
 > CLI, también en la nube; la nube **no** carga lo declarado en `.claude/settings.json` del repo; un plugin
 > instalado antes de que arranque Claude sí carga.
 
@@ -372,12 +372,12 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
 
 | Fase | Qué | Hecho cuando |
 |---|---|---|
-| **0. Verificar** ✅ | Doc oficial de plugins, marketplaces y hooks; pruebas en la nube; tres casos reales; estándares | §0 decidido; notas en `docs/investigacion/` |
+| **0. Verificar** ✅ | Doc oficial de plugins, marketplaces y hooks; pruebas en la nube; tres casos reales; estándares | §0 decidido; notas en `docs/research/` |
 | **1. Esqueleto** | `LICENSE`, `AGENTS.md` + `CLAUDE.md`, README ES/EN, bitácora, CHANGELOG `0.1.0`, `.claude-plugin/` válido, CI (shellcheck, JSON, pares ES/EN, versión == CHANGELOG) | CI en verde y el repo trabajándose con su propio `AGENTS.md` |
 | **2. Skills** | Portar las skills (§3) pieza a pieza, con campos de Agent Skills y test que los valida; `gw-harvest` + `scripts/harvest.py` | Todas validan; `writing-for-agents` pasado a las propias; licencias y créditos; `gw-harvest` recoge propuestas reales de Tarkor, el instalador, el portal y VeriNews |
 | **3. Ganchos y scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recover.py`, `review-before-main.sh`, `is-code.sh`, `reviewed.sh`, `handoff.py`, `prepush-branches.sh`, `medir.py`, plantilla `pre-push`. Tests contra repo temporal: categorías de los 29 fallos, clon superficial, marcas de conflicto, otro gestor de ganchos. Aplicados a este repo | Tests en verde en Linux y macOS; fallan cerrado sin config |
-| **4. Plantillas y aplicación** | `templates/es` y `templates/en`, `gw.schema.json`, `apply.py`, `aplicar.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `problemas.md` | Un agente aplica el flujo a un repo vacío y `doctor.py` lo da por bueno; dos veces no cambia nada |
-| **5. Piloto: Portal-Galivelop** | En una sesión del portal (con permiso): un agente lo aplica siguiendo `aplicar.md` y sustituye su copia | `npm run check` en verde, `pre-push` y marca funcionando, tarea semanal sin cambios |
+| **4. Plantillas y aplicación** | `templates/es` y `templates/en`, `gw.schema.json`, `apply.py`, `apply.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `troubleshooting.md` | Un agente aplica el flujo a un repo vacío y `doctor.py` lo da por bueno; dos veces no cambia nada |
+| **5. Piloto: Portal-Galivelop** | En una sesión del portal (con permiso): un agente lo aplica siguiendo `apply.md` y sustituye su copia | `npm run check` en verde, `pre-push` y marca funcionando, tarea semanal sin cambios |
 | **6. Piloto: Tarkor e instalador** | Igual en World-Maker-Fantasy (`roadmap: true`, PR) e Instalador-WMF-Tarkor (Rust). VeriNews_AI (Java + Vite) queda para la Fase 8, ya sin agente de IA | Relevo entre cuentas sin perder nada; lo que falte vuelve como versión nueva |
 | **7. Rodaje etapa 1** | Uso real semanas; cada `retro` con mejora general → issue/PR aquí | Criterios de la §10 para la etapa 1 |
 
@@ -408,7 +408,7 @@ exige ya, en cada subida.
   con la bitácora.
 - **Ganchos**: ningún falso positivo ni subida sin revisar a `main` en el rodaje; tests de ganchos en Linux y
   macOS en verde. Windows: documentado (Git Bash o WSL) y probado al menos una vez.
-- **Instalación limpia**: etapa 1, un agente con `aplicar.md` + `doctor.py` en un repo nuevo sin tocar nada a mano;
+- **Instalación limpia**: etapa 1, un agente con `apply.md` + `doctor.py` en un repo nuevo sin tocar nada a mano;
   etapa 2, lo mismo sin IA.
 - **Nada privado** en el repo, **en cada subida** (el repo ya es público, A1): ni rutas de Tarkor o el portal, ni
   identificadores internos, ni datos personales, ni nombres de los repos privados (lista local en
@@ -440,5 +440,5 @@ De la retro del portal (2026-10-21) y del trabajo en Tarkor:
 Vas a crear el repo Galivelop-workflow siguiendo el plan adjunto (galivelop-workflow-plan.es.md).
 Empieza por la Fase 0. Portal-Galivelop y World-Maker-Fantasy son solo lectura.
 Trabaja en la rama claude/galivelop-workflow-inicio, commit + push en cada punto estable,
-bitácora en docs/traspaso.md del repo nuevo. A main, solo con mi confirmación.
+bitácora en docs/handoff.md del repo nuevo. A main, solo con mi confirmación.
 ```

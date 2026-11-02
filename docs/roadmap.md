@@ -4,14 +4,14 @@
 
 Qué va en cada versión, con un identificador por tarea. Es la **única fuente de ids** (D13): los commits los citan en
 `Refs:` (D12, desde la `0.5`), el CHANGELOG los nombra y `trace.py <id>` (D14) junta todo lo de uno. El diseño de cada
-tarea está en [`docs/diseno/`](diseno/README.md); el reparto, en [`H-roadmap.md`](diseno/H-roadmap.md) (mapa nuevo,
-aprobado el 2026-11-01). Los evolutivos que trajeron las recogidas siguen en [`pendiente.md`](registros/pendiente.md),
+tarea está en [`docs/design/`](design/README.md); el reparto, en [`H-roadmap.md`](design/H-roadmap.md) (mapa nuevo,
+aprobado el 2026-11-01). Los evolutivos que trajeron las recogidas siguen en [`pending.md`](records/pending.md),
 con su versión en cada línea (H12).
 
 ## Identificadores
 
 - Cada tarea lleva la letra de su bloque de diseño y un número sin guion: `B3` es la pregunta 3 de
-  [`B-medicion.md`](diseno/B-medicion.md). Los bloques: A marco, B medición y modelos, C preguntas y modos, D git, E
+  [`B-measurement.md`](design/B-measurement.md). Los bloques: A marco, B medición y modelos, C preguntas y modos, D git, E
   calidad, G Management Center (MMC), H roadmap.
 - Una tarea nueva toma el siguiente número libre de su bloque; un número nunca se reutiliza, ni el de una tarea
   descartada. Las tareas del bloque A que salen de sus apartados y no de una pregunta empiezan en `A7` (sus preguntas
@@ -32,7 +32,7 @@ el MMC. A lo sumo una publicación al día (A-6).
 | Id | Tarea | Estado |
 |---|---|---|
 | D6 | `worktree.baseRef: "head"` en el `settings.json` que instala el flujo | pendiente |
-| — | Retro `0.4.2` P5: la regla QUOTED del `pre-commit` sin falsos positivos en `.md` ([`pendiente.md`](registros/pendiente.md)) | pendiente |
+| — | Retro `0.4.2` P5: la regla QUOTED del `pre-commit` sin falsos positivos en `.md` ([`pending.md`](records/pending.md)) | pendiente |
 | — | Arreglos del CI de Ubuntu y macOS (rama `ccr-6dfbc880-ddr41g`, `4b7bf8a`..`66a4ecd`) | hecho |
 
 ## `0.5` «Base» — lo que rompe
@@ -43,7 +43,7 @@ En este orden, porque cada paso usa el anterior.
 |---|---|---|
 | H14 | Regla de versiones nueva en `AGENTS.md` y el plan §7 | hecho (`a1ac1e3`) |
 | D13 | Este roadmap, con los ids, en español e inglés | hecho |
-| H12 | `pendiente-1.0.0.md` → `pendiente.md`, con la versión en cada línea | hecho |
+| H12 | `pendiente-1.0.0.md` → `pending.md`, con la versión en cada línea | hecho |
 | A7 | Plan reescrito según la tabla de A1 (§1, §2, §7, §9, §10): repo público, cada versión se publica aquí | hecho |
 | A8 | Nombres (A2, A-3, A-4): `gw-` en las skills propias, scripts en inglés, rutas del proyecto en inglés y configurables en `gw.json`; `gw-update` renombra y los ganchos aceptan los dos nombres durante la `0.x` | en curso |
 | A9 | `schemaVersion` en `gw.json` y su migración en `gw-update` (A3.2) | pendiente |
@@ -56,7 +56,7 @@ En este orden, porque cada paso usa el anterior.
 | D3 | Repaso de las recogidas ya publicadas con el check de E2 | pendiente |
 | E1 | Auditoría de `AGENTS.md` y `CLAUDE.md`, con check de tope de líneas | pendiente |
 | E6 | Cada regla de `REVIEW.md` nombra su check o dice «criterio» | pendiente |
-| — | Lo de [`pendiente.md`](registros/pendiente.md) marcado `0.5` | pendiente |
+| — | Lo de [`pending.md`](records/pending.md) marcado `0.5` | pendiente |
 
 ## `0.6` «Medir»
 
@@ -87,7 +87,7 @@ En este orden, porque cada paso usa el anterior.
 | C8 | `modes.careful` (antes de una orden destructiva), activo por defecto | pendiente |
 | C10 | Un subagente no pregunta al usuario: devuelve la pregunta | pendiente |
 | D14 | `trace.py <id>` | pendiente |
-| — | Lo de [`pendiente.md`](registros/pendiente.md) marcado `0.7` | pendiente |
+| — | Lo de [`pending.md`](records/pending.md) marcado `0.7` | pendiente |
 
 ## `0.8` «Front y otros agentes»
 
@@ -95,11 +95,11 @@ En este orden, porque cada paso usa el anterior.
 |---|---|---|
 | E4 | Perfiles de instalación (minimal/core/full, `core` por defecto) en `gw-init` y `gw-update` | pendiente |
 | E5 | Pruebas de front según la investigación | pendiente |
-| E7 | Guía de pruebas de front en `docs/es/patrones.md` y plantilla de config | pendiente |
-| E9-E16 | Los checks de front decididos en [`E-calidad.md`](diseno/E-calidad.md) (capturas, cuándo corren, tokens, preprocesadores, accesibilidad, referencias, sin servicios de pago, matriz) | pendiente |
+| E7 | Guía de pruebas de front en `docs/es/patterns.md` y plantilla de config | pendiente |
+| E9-E16 | Los checks de front decididos en [`E-quality.md`](design/E-quality.md) (capturas, cuándo corren, tokens, preprocesadores, accesibilidad, referencias, sin servicios de pago, matriz) | pendiente |
 | D7 | `AGENTS.md` legible sin `@include`; skills también en `.agents/skills` (opencode, Codex) | pendiente |
 | B9 | Modelos de fuera de Anthropic vía opencode | pendiente |
-| — | Lo de [`pendiente.md`](registros/pendiente.md) marcado `0.8` | pendiente |
+| — | Lo de [`pending.md`](records/pending.md) marcado `0.8` | pendiente |
 
 ## `0.9` «Estable»
 
@@ -107,7 +107,7 @@ En este orden, porque cada paso usa el anterior.
 |---|---|---|
 | E8 | Repaso completo de la documentación, por subagentes | pendiente |
 | G2 | Salidas JSON con versión en los scripts que use el MMC | pendiente |
-| — | Lo de [`pendiente.md`](registros/pendiente.md) marcado `0.9` | pendiente |
+| — | Lo de [`pending.md`](records/pending.md) marcado `0.9` | pendiente |
 
 ## `1.0` — MMC 1, solo lectura
 

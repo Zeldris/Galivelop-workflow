@@ -4,14 +4,14 @@
 
 What goes into each version, with one identifier per task. It is the **only source of ids** (D13): commits cite them
 in `Refs:` (D12, from `0.5`), the CHANGELOG names them and `trace.py <id>` (D14) gathers everything about one. Each
-task's design is in [`docs/diseno/`](diseno/README.md) (Spanish); the split, in [`H-roadmap.md`](diseno/H-roadmap.md)
+task's design is in [`docs/design/`](design/README.md) (Spanish); the split, in [`H-roadmap.md`](design/H-roadmap.md)
 (new map, approved on 2026-11-01). The new features the harvests brought stay in
-[`pendiente.md`](registros/pendiente.md), with their version on each line (H12).
+[`pending.md`](records/pending.md), with their version on each line (H12).
 
 ## Identifiers
 
 - Each task has its design block's letter and a number with no hyphen: `B3` is question 3 of
-  [`B-medicion.md`](diseno/B-medicion.md). The blocks: A framework, B measurement and models, C questions and modes, D
+  [`B-measurement.md`](design/B-measurement.md). The blocks: A framework, B measurement and models, C questions and modes, D
   git, E quality, G Management Center (MMC), H roadmap.
 - A new task takes the next free number of its block; a number is never reused, not even a dropped task's. Block A's
   tasks that come from its sections rather than a question start at `A7` (its questions go up to `A-6`).
@@ -31,7 +31,7 @@ MMC. At most one release a day (A-6).
 | Id | Task | State |
 |---|---|---|
 | D6 | `worktree.baseRef: "head"` in the `settings.json` the workflow installs | pending |
-| — | Retro `0.4.2` P5: the `pre-commit` QUOTED rule without false positives in `.md` ([`pendiente.md`](registros/pendiente.md)) | pending |
+| — | Retro `0.4.2` P5: the `pre-commit` QUOTED rule without false positives in `.md` ([`pending.md`](records/pending.md)) | pending |
 | — | Ubuntu and macOS CI fixes (branch `ccr-6dfbc880-ddr41g`, `4b7bf8a`..`66a4ecd`) | done |
 
 ## `0.5` "Base" — what breaks
@@ -42,7 +42,7 @@ In this order, because each step uses the previous one.
 |---|---|---|
 | H14 | New version rule in `AGENTS.md` and plan §7 | done (`a1ac1e3`) |
 | D13 | This roadmap, with the ids, in Spanish and English | done |
-| H12 | `pendiente-1.0.0.md` → `pendiente.md`, with the version on each line | done |
+| H12 | `pendiente-1.0.0.md` → `pending.md`, with the version on each line | done |
 | A7 | Plan rewritten after A1's table (§1, §2, §7, §9, §10): public repo, every version released here | done |
 | A8 | Names (A2, A-3, A-4): `gw-` on our own skills, scripts in English, project paths in English and configurable in `gw.json`; `gw-update` renames and the hooks accept both names during `0.x` | in progress |
 | A9 | `schemaVersion` in `gw.json` and its migration in `gw-update` (A3.2) | pending |
@@ -55,7 +55,7 @@ In this order, because each step uses the previous one.
 | D3 | Review of the already published harvests with E2's check | pending |
 | E1 | Audit of `AGENTS.md` and `CLAUDE.md`, with a line-cap check | pending |
 | E6 | Each `REVIEW.md` rule names its check or says "judgement" | pending |
-| — | What [`pendiente.md`](registros/pendiente.md) marks `0.5` | pending |
+| — | What [`pending.md`](records/pending.md) marks `0.5` | pending |
 
 ## `0.6` "Measure"
 
@@ -86,7 +86,7 @@ In this order, because each step uses the previous one.
 | C8 | `modes.careful` (before a destructive command), on by default | pending |
 | C10 | A subagent does not ask the user: it returns the question | pending |
 | D14 | `trace.py <id>` | pending |
-| — | What [`pendiente.md`](registros/pendiente.md) marks `0.7` | pending |
+| — | What [`pending.md`](records/pending.md) marks `0.7` | pending |
 
 ## `0.8` "Front end and other agents"
 
@@ -95,10 +95,10 @@ In this order, because each step uses the previous one.
 | E4 | Install profiles (minimal/core/full, `core` by default) in `gw-init` and `gw-update` | pending |
 | E5 | Front-end tests following the research | pending |
 | E7 | Front-end testing guide in `docs/en/patterns.md` and a config template | pending |
-| E9-E16 | The front-end checks decided in [`E-calidad.md`](diseno/E-calidad.md) (screenshots, when they run, tokens, preprocessors, accessibility, baselines, no paid services, matrix) | pending |
+| E9-E16 | The front-end checks decided in [`E-quality.md`](design/E-quality.md) (screenshots, when they run, tokens, preprocessors, accessibility, baselines, no paid services, matrix) | pending |
 | D7 | `AGENTS.md` readable without `@include`; skills also in `.agents/skills` (opencode, Codex) | pending |
 | B9 | Non-Anthropic models through opencode | pending |
-| — | What [`pendiente.md`](registros/pendiente.md) marks `0.8` | pending |
+| — | What [`pending.md`](records/pending.md) marks `0.8` | pending |
 
 ## `0.9` "Stable"
 
@@ -106,7 +106,7 @@ In this order, because each step uses the previous one.
 |---|---|---|
 | E8 | Full documentation review, by subagents | pending |
 | G2 | Versioned JSON output in the scripts the MMC uses | pending |
-| — | What [`pendiente.md`](registros/pendiente.md) marks `0.9` | pending |
+| — | What [`pending.md`](records/pending.md) marks `0.9` | pending |
 
 ## `1.0` — MMC 1, read-only
 
