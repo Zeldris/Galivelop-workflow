@@ -8,6 +8,10 @@
 #   - Does nothing when the commit does not touch the log, deletes it, or the config has no `log`.
 #   - Skipped while finishing a merge, revert or cherry-pick (MERGE_HEAD, REVERT_HEAD, CHERRY_PICK_HEAD) and during
 #     a rebase.
+#   - With `commitFormat: "conventional"`, requires `type(scope)!: text` as the first line; with `commitRefs: true`,
+#     a `Refs: <task id>` trailer whose ids open an entry in `refsSources` (default `plan` + `log`; staged versions);
+#     an `Agent:` trailer must not name a model with `agentSignatures: false`. All in scripts/commit-message.py (merges,
+#     reverts, cherry-picks and rebases skip format and Refs; see its header).
 #   - Fails closed when the workflow's config.py or (with the log staged) handoff.py is missing.
 #   - With `agentSignatures: false` in the config, rejects a message that carries an agent's signature: a
 #     Co-Authored-By trailer with noreply@anthropic.com or naming Claude Code/Opus/Sonnet/Haiku/Fable, a
@@ -61,6 +65,11 @@ if [ "$signatures" = false ] && [ "$in_rebase" = false ]; then
     exit 1
   fi
 fi
+
+# Format, Refs trailer and Agent trailer (commitFormat, commitRefs, agentSignatures): the rules in commit-message.py.
+[ -f "$scripts/commit-message.py" ] || { echo "commit-msg: $scripts/commit-message.py is missing; reinstall the workflow scripts: /gw-update" >&2; exit 1; }
+[ -n "$msg" ] && [ -r "$msg" ] || { echo "commit-msg: cannot read the commit message file '${1:-}'; commit again: git commit" >&2; exit 1; }
+python3 "$scripts/commit-message.py" --root "$root" "$msg" || exit 1
 
 log="$(python3 "$config" --root "$root" get log 2>/dev/null)" || log=""
 [ -n "$log" ] || exit 0

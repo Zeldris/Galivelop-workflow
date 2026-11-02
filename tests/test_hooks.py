@@ -48,7 +48,7 @@ class Project:
         gw = self.work / ".claude" / "gw"
         (gw / "scripts").mkdir(parents=True)
         (gw / "schema").mkdir()
-        for name in ("config.py", "is-code.sh", "reviewed.sh", "handoff.py", "check-green.sh", "check.sh"):
+        for name in ("config.py", "is-code.sh", "reviewed.sh", "handoff.py", "check-green.sh", "check.sh", "commit-message.py"):
             shutil.copy2(ROOT / "scripts" / name, gw / "scripts" / name)
         shutil.copy2(ROOT / "schema" / "gw.schema.json", gw / "schema" / "gw.schema.json")
         (self.work / ".githooks").mkdir()

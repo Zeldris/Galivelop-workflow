@@ -110,12 +110,14 @@ gancho llama; el texto se lee sin las líneas de comentario ni lo que va bajo la
 
 - Con `commitFormat: "conventional"`, la primera línea es `tipo(ámbito)!: texto`; tipos `feat`, `fix`, `docs`,
   `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`; ámbito y `!` opcionales. Se aceptan delante
-  `WIP: ` (regla de relevos) y las líneas que crea git: `fixup! `, `squash! `, `amend! `, `Revert "…"`, `Merge …`.
-- Con `commitRefs: true`, el bloque de trailers (`git interpret-trailers --parse`) lleva al menos un `Refs:`, con uno o
+  `WIP: ` (regla de relevos) y las líneas que crea git: `fixup! `, `squash! `, `amend! `, `Revert "…"`, `Reapply "…"`, `Merge …`.
+- Con `commitRefs: true`, el bloque de trailers (`git interpret-trailers --parse --no-divider`: una línea `---` del cuerpo no es divisor) lleva al menos un `Refs:`, con uno o
   varios ids separados por comas (`Refs: D11, D12`; también vale repetir la línea), y cada id es válido.
 - `Agent:` (D15) es opcional y siempre se acepta, salvo con `agentSignatures: false` si su valor nombra un modelo o
-  proveedor (`claude`, `anthropic`, `opus`, `sonnet`, `haiku`, `fable`, `gpt`, `openai`, `gemini`, `llama`, `mistral`,
-  `qwen`, `deepseek`, o un `o` seguido de cifra como `o3`), sin distinguir mayúsculas.
+  proveedor. El valor se parte en trozos por lo que no sea letra o cifra y se rechaza si un trozo es (sin distinguir
+  mayúsculas) `claude`, `anthropic`, `opus`, `sonnet`, `haiku`, `fable`, `gpt`, `chatgpt`, `openai`, `gemini`, `llama`,
+  `mistral`, `qwen` o `deepseek`, o casa con `gpt\d.*`, `o\d+` o `\d+o` (`Claudette` pasa; `haiku-writer`, `ChatGPT` y
+  `4o` no).
 - Formato y `Refs:` no se comprueban en merges, reverts ni cherry-picks en curso (`MERGE_HEAD`, `REVERT_HEAD`,
   `CHERRY_PICK_HEAD`) ni durante un rebase; `Agent:`, como las firmas, sí en merges.
 - Cada rechazo dice qué falla y la orden que lo arregla (`git commit -e -F <msg>`), y falla cerrado si le falta un
