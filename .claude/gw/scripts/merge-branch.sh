@@ -16,8 +16,11 @@
 #    empty `relatedTests` a missing script is skipped silently.
 #  - after a green check and green related tests: `git worktree remove` (without force: with uncommitted changes it warns and leaves it)
 #    and `git branch -d` (deletes only what is merged; if it refuses it warns and goes on). Only a branch named
-#    worktree-agent-* or whose worktree is under .claude/worktrees/ is cleaned; never the current branch, the
-#    protected branch or claude/* (session branches).
+#    worktree-agent-* or agent/* or whose worktree is under .claude/worktrees/ is cleaned; never the current branch,
+#    the protected branch or claude/* (session branches).
+#  - Refs (D16): the ids of the branch (the one in a name agent/<id>-<topic>, if it looks like a task id, and the
+#    `Refs:` trailers of the commits it brings, read with git interpret-trailers) are joined with the ones the
+#    message already has into ONE `Refs: A, B` trailer, without repeats; with no ids the message stays as it is.
 #  - --reviewed = the main session already had the diff reviewed; without it, it reminds you.
 # Bash 3.2 compatible. Root from this script's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
@@ -42,6 +45,30 @@ trap 'rm -rf "$logs"' EXIT
 
 git rev-parse --verify --quiet "$branch^{commit}" >/dev/null || { echo "merge-branch: no branch $branch; list them: git branch -a" >&2; exit 2; }
 before="$(git rev-parse HEAD)"
+
+# The ids the merge message carries as ONE `Refs:` trailer: the message's own, then the branch name's, then the
+# `Refs:` of the commits the branch brings (oldest first). Values split on commas and whitespace; order kept, no repeats.
+refs_of() { git interpret-trailers --parse | awk -F: 'tolower($1)=="refs" {sub(/^[^:]*:/, ""); gsub(/[,[:space:]]+/, "\n"); print}' | grep -v '^$'; }
+id_pattern="$(python3 "$config" --root "$root" get taskId 2>/dev/null)" || id_pattern=""
+[ -n "$id_pattern" ] || id_pattern='[A-Za-z]+[0-9]+'
+name_id=""
+case "$branch" in
+  agent/*)
+    name_id="${branch#agent/}"; name_id="${name_id%%-*}"
+    python3 -c 'import re, sys; sys.exit(0 if re.fullmatch(sys.argv[1], sys.argv[2]) else 1)' "$id_pattern" "$name_id" 2>/dev/null || name_id="" ;;
+esac
+{
+  printf '%s\n' "$message" | refs_of
+  [ -z "$name_id" ] || printf '%s\n' "$name_id"
+  for c in $(git rev-list --reverse --no-merges "HEAD..$branch" 2>/dev/null); do
+    git show -s --format=%B "$c" | refs_of
+  done
+} | awk '!seen[$0]++' > "$logs/refs" || true
+if [ -s "$logs/refs" ]; then
+  joined="$(paste -sd, "$logs/refs" | sed 's/,/, /g')"
+  new_message="$(printf '%s\n' "$message" | git interpret-trailers --if-exists replace --if-missing add --trailer "Refs: $joined")" && message="$new_message"
+fi
+
 if ! git merge --no-ff "$branch" -m "$message" > "$logs/merge.log" 2>&1; then
   conflicts="$(git diff --name-only --diff-filter=U)"
   echo "merge-branch: CONFLICT (the merge stays open; resolve it and commit, or abort with: git merge --abort):"
@@ -106,7 +133,7 @@ cleanup_branch() {
   [ "$branch" = "$current" ] && return 0
   wt="$(git worktree list --porcelain | awk -v r="refs/heads/$branch" '/^worktree /{w=substr($0,10)} $1=="branch" && $2==r {print w}')"
   case "$branch" in
-    worktree-agent-*) ;;
+    worktree-agent-*|agent/*) ;;
     *) case "$wt" in */.claude/worktrees/*) ;; *) return 0 ;; esac ;;
   esac
   if [ -n "$wt" ] && [ "$wt" != "$root" ]; then
