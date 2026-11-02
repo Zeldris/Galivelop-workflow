@@ -126,6 +126,11 @@ OLD_SCRIPTS = {"antes-de-parar.py": "before-stop.py", "bitacora.py": "handoff.py
                "revision-antes-de-main.sh": "review-before-main.sh", "rojo-sin-arreglo.sh": "red-without-fix.sh",
                "tests-relacionados.sh": "related-tests.sh", "tope-subagentes.py": "subagent-cap.py",
                "aplicar.py": "apply.py"}
+# Files and folders inside an installed skill that now have an English name (chunk 6b); a folder is removed whole.
+OLD_SKILL_FILES = {"gw-media-content": {
+    "catalogo.md": "catalog.md", "nota.md": "note.md", "reglas.json": "rules.json", "plantilla": "template",
+    "scripts/cifras.py": "scripts/figures.py", "scripts/comprobar.py": "scripts/check.py",
+    "scripts/test_cifras.py": "scripts/test_figures.py", "scripts/test_comprobar.py": "scripts/test_check.py"}}
 PATH_DIR_KEYS = ("recordsDir", "proposalsDir")  # moved before the file keys inside them
 LOG_BY_LANGUAGE = {"es": "docs/handoff.md", "en": "docs/handoff.md"}  # A8: English paths in every language
 NOTES_ENV = "GW_PERSONAL_NOTES"
@@ -788,6 +793,23 @@ def plan_old_skills(plan, wanted_skills):
         plan.actions.append(("remove", rel, None, False, f"replaced by .claude/skills/{new}"))
 
 
+def plan_old_skill_files(plan, wanted_skills):
+    """Remove the old-named files of an installed workflow skill (generated copies) once the new ones are planned."""
+    for skill, names in OLD_SKILL_FILES.items():
+        folder = Path(".claude/skills") / skill
+        if skill not in wanted_skills or skill_version(plan.root / folder / "SKILL.md") is None:
+            continue
+        for old, new in names.items():
+            rel = folder / old
+            if not os.path.lexists(plan.root / rel) or (plan.root / rel).is_symlink():
+                continue
+            plan.orphans = [o for o in plan.orphans if o != rel and rel not in o.parents]  # reported here, not as orphans
+            if clean_in_git(plan.root, rel):
+                plan.actions.append(("remove", rel, None, False, f"old name of {folder / new}"))
+            else:
+                plan.warnings.append(keep_message(plan.root, rel))
+
+
 def plan_old_scripts(plan):
     """Remove the Spanish-named script copies once nothing in the project runs them (hooks, CI, config)."""
     folder = plan.root / ".claude" / "gw" / "scripts"
@@ -863,6 +885,7 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
     # Skills adapted from Matt Pocock's say "license: MIT (see LICENSE-mattpocock-skills)": the file goes with them.
     if not self_apply:
         plan_old_skills(plan, wanted_skills)
+        plan_old_skill_files(plan, wanted_skills)
     if any(SKILL_LICENSE in (WORKFLOW / "skills" / n / "SKILL.md").read_text(encoding="utf-8") for n in wanted_skills):
         plan.file(WORKFLOW / SKILL_LICENSE, Path(".claude/skills") / SKILL_LICENSE)
 

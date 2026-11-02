@@ -92,22 +92,22 @@ ready") shows up as a block, not as unreviewed code.
 Two skills prepare, **without publishing**, posts about the project: `gw-media-content` proposes up to 10 (post type, hook,
 networks, facts with their source) and `gw-media-content-now` produces one piece in a dated folder: one file per channel
 and language, plus the images. Starting networks: X, Reddit, LinkedIn and Discord; the project may declare others
-(*extra channels*). Per-network limits live in `reglas.json`, marked `P` (verified), `S` (per the source) or `NV` (not
+(*extra channels*). Per-network limits live in `rules.json`, marked `P` (verified), `S` (per the source) or `NV` (not
 verified: the skill says so when a proposal leans on one). The person publishes; no skill does.
 
-They need Python 3 and git for the figures (`cifras.py`). Rendering images (`render.mjs`) also needs Node with Playwright
-and ImageMagick with WebP; `comprobar.py` runs without them, and **CI does not cover the real render** (its tests use a
+They need Python 3 and git for the figures (`figures.py`). Rendering images (`render.mjs`) also needs Node with Playwright
+and ImageMagick with WebP; `check.py` runs without them, and **CI does not cover the real render** (its tests use a
 stand-in except where Chromium is present). If the project has the skill's note or folder, `doctor.py` warns about
 whatever is missing (`media tools`).
 
 Without a project note the defaults apply (and it is said once). To change them, `.claude/gw/gw-media-content.md`, one
-`key: value` line per item (the keys are those of the table in `skills/gw-media-content/nota.md`, in English); the
-workflow neither creates nor overwrites it. An *extra channel* is declared with `límite: N` (checked with
-`--limite <channel>=N`) or with `formato: propio` and `plantilla: <path>` (its file is consumed by another system;
-checked with `--formato-propio <channel>`). The `web` channel is the project's own website: `web.md` holds a JSON
-block with `estado` (`borrador` until the person writes `listo`), `fecha`, the text per language and an optional
-wall entry with its images; the site may have more languages than the piece (`Web languages`, passed with
-`--idiomas-web`). A generic example:
+`key: value` line per item (the keys are those of the table in `skills/gw-media-content/note.md`, in English); the
+workflow neither creates nor overwrites it. An *extra channel* is declared with `limit: N` (checked with
+`--limit <channel>=N`) or with `format: own` and `template: <path>` (its file is consumed by another system;
+checked with `--own-format <channel>`). The `web` channel is the project's own website: `web.md` holds a JSON
+block with `status` (`draft` until the person writes `ready`), `date`, the text per language (`text`) and an optional
+wall entry (`wall`) with its images; the site may have more languages than the piece (`Web languages`, passed with
+`--web-languages`). A generic example:
 
 ```
 Folder: docs/difusion
@@ -115,11 +115,11 @@ Languages: es, en
 Channels: x, reddit, linkedin, discord, web
 Web languages: es, gl, en
 Extra channels:
-- mastodon: límite: 500; tono: cercano
-- portal: formato: propio; plantilla: docs/difusion/portal.json
-Palette: --fondo #101418; --acento #4cc38a
+- mastodon: limit: 500; tone: friendly
+- portal: format: own; template: docs/difusion/portal.json
+Palette: --background #101418; --accent #4cc38a
 Screenshots: start the app (npm run dev), open /panel, capture the window at 1280x720
-Task prefixes: INS,FLU   (passed to comprobar.py --prefijos-tarea)
+Task prefixes: INS,FLU   (passed to check.py --task-prefixes)
 Reddit: r/example, rules pasted by the person on 2026-10-25: "no self-promotion more than once a month; tag [Project]"
 ```
 
