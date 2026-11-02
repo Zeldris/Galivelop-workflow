@@ -7,7 +7,7 @@ apply and you say so once. The 0.x Spanish names of the extra-channel shape (`l√
 
 | Key | Default | Holds |
 |---|---|---|
-| Folder | `docs/difusion` | the `<dir>` of every path in the skills |
+| Folder | `docs/media` | the `<dir>` of every path in the skills (0.x: with no `Folder` in the note, no `docs/media` and a `docs/difusion`, use `docs/difusion` and tell the user to run `/gw-update`, which moves it) |
 | Languages | `es, en` | any ISO 639-1 codes (two lowercase letters); the first is the main language; one `## <lang>` section per language in every channel file |
 | Channels | `x, reddit, linkedin, discord` | the active channels; add `web` when the project's website reads the pieces (see below) |
 | Extra channels | none | a channel beyond those five: see below |
@@ -27,6 +27,12 @@ writes `"ready"`, which is the go to publish. The keys of `text` are the languag
 in the note, they must be exactly those. Each image of `wall` is a `.webp` render listed in `## Images` with `web`
 in its Channels cell. `web` is never an extra channel.
 
+**In 0.x, write every key twice**, with the same value: the English one and its old Spanish spelling (`status`/`estado`
+with `"draft"`/`"borrador"` and `"ready"`/`"listo"`, `date`/`fecha`, `text`/`texto`, `wall`/`muro`, `title`/`titulo`,
+`body`/`cuerpo`, `images`/`imagenes`, `file`/`archivo`), so a website written before the rename keeps reading the
+block. `check.py` fails when a pair differs, accepts a `web.md` with only the Spanish keys (with a warning that asks for
+the English ones too) and one with only the English keys (no warning). The Spanish keys are removed in 1.0.
+
 ## Extra channels
 
 Channel names are lowercase `[a-z0-9-]+`. Declare each one under `Extra channels:` with its shape, one line per
@@ -35,7 +41,7 @@ channel, in exactly one of two ways:
 ```
 Extra channels:
 - mastodon: limit: 500; tone: friendly
-- portal: format: own; template: docs/difusion/portal.json
+- portal: format: own; template: docs/media/portal.json
 ```
 
 - `limit: N` is a channel with the usual shape (`<channel>.md`, a `## <lang>` section per language, `Image:` lines) and

@@ -21,8 +21,9 @@ Shared material in `.claude/skills/gw-media-content/`: `catalog.md` (post types)
 
 ## Project note
 
-`.claude/gw/gw-media-content.md` (shape in [`note.md`](note.md)) sets `<dir>`, the folder below, and the active
-channels and languages.
+`.claude/gw/gw-media-content.md` (shape in [`note.md`](note.md)) sets `<dir>`, the folder below (`docs/media` by default),
+and the active channels and languages. 0.x: if the note names no folder, `docs/media` does not exist and `docs/difusion`
+does, `<dir>` is `docs/difusion`; tell the user once that `/gw-update` moves it to `docs/media`.
 
 ## Steps
 

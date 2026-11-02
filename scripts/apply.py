@@ -69,6 +69,10 @@ Migration from the names before A8 (0.x), in the same run and without duplicates
   path are dropped from .claude/gw.json. Fails closed (exit 2) when a target already exists. --keep-paths moves
   nothing and writes the old paths explicitly into .claude/gw.json with "keepLegacyPaths": true (setting that key
   by hand does the same), so later updates leave them alone.
+  docs/difusion (gw-media-content's old default folder) -> docs/media, with git mv when tracked, only when the
+                                project's .claude/gw/gw-media-content.md names no `Folder:` (one it names is never
+                                touched); fails closed (exit 2) when docs/media exists; --keep-paths or
+                                keepLegacyPaths moves nothing.
 
 For each file: identical -> skip; missing -> create; different -> overwritten only when the project's file is
 workflow-owned (a `galivelop-workflow vX.Y.Z` header, or metadata.version in the skill's SKILL.md), not newer than
@@ -101,7 +105,8 @@ HERE = Path(__file__).resolve().parent
 WORKFLOW = HERE.parent
 sys.path.insert(0, str(HERE))
 import config  # noqa: E402
-from doctor import ignored_paths, stale_flow_hooks  # noqa: E402  (one list each, shared with doctor.py)
+from doctor import (  # noqa: E402  (one list each, shared with doctor.py)
+    MEDIA_FOLDER, OLD_MEDIA_FOLDER, ignored_paths, old_media_folder, stale_flow_hooks)
 
 WORKFLOW_ONLY_SCRIPTS = {"harvest.py", "apply.py", "version.py", "names-check.py"}
 WORKFLOW_ONLY_SKILLS = {"gw-harvest"}
@@ -758,6 +763,23 @@ def plan_paths(plan, cfg, keep):
                              f"folder; {note}"))
 
 
+def plan_media_folder(plan, keep):
+    """A8 (0.x): docs/difusion, the old default folder of gw-media-content, moves to docs/media when the project's note
+    does not name a folder (a folder the note names is never touched). keep (--keep-paths, or keepLegacyPaths in the
+    config) moves nothing. Fails closed when docs/media exists."""
+    if old_media_folder(plan.root) is None:
+        return
+    try:
+        raw = json.loads((plan.root / config.CONFIG_REL).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raw = {}
+    if keep or (isinstance(raw, dict) and raw.get("keepLegacyPaths") is True):
+        plan.notes.append(f"{OLD_MEDIA_FOLDER} is kept (--keep-paths); write `Folder: {OLD_MEDIA_FOLDER}` in "
+                          f".claude/gw/gw-media-content.md so doctor.py stops warning about it")
+        return
+    plan_move(plan, OLD_MEDIA_FOLDER, MEDIA_FOLDER, "gw-media-content: old default folder, moved to the English one")
+
+
 def plan_notes(plan):
     """.claude/gw/<old skill>.md -> .claude/gw/gw-<name>.md; when both exist the new one is kept and the old reported."""
     gw = Path(".claude/gw")
@@ -863,6 +885,7 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
     plan = Plan(root, version, update or self_apply)
     if not self_apply:  # this repo renames its own files in a later chunk of A8
         plan_paths(plan, cfg, keep_paths)
+        plan_media_folder(plan, keep_paths)
         plan_notes(plan)
     renamed = [e for e in extra_skills if e in OLD_SKILLS]
     for old in renamed:

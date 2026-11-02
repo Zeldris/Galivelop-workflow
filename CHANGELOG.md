@@ -151,8 +151,8 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   acepta con aviso las opciones viejas y una pieza con `ficha.md` + `medios/` + claves españolas de `web.md`;
   `figures.py` acepta `--desde`; `render.mjs` acepta `medios/fuente/` y el prefijo `carrusel` con aviso (y escribe
   entonces en `medios/`). `/gw-update` borra los archivos viejos de la copia instalada de la skill (`OLD_SKILL_FILES`
-  en `apply.py`: solo si git los tiene limpios) y trae los nuevos. **Cambio que rompe a quien lea `web.md`:** la web
-  del proyecto que lee su bloque JSON debe pasar a las claves nuevas; las notas viejas (`límite:`, `formato: propio`,
+  en `apply.py`: solo si git los tiene limpios) y trae los nuevos. **`web.md` no rompe a quien lea sus claves viejas:** en la `0.x` se escriben las dos
+  (ver el trozo 6d); las notas viejas (`límite:`, `formato: propio`,
   `plantilla:`) siguen valiendo para el agente.
 
 - A8, trozo 6c: identificadores internos en inglés (funciones, clases, variables, argumentos y variables de shell en
@@ -165,6 +165,18 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   mira los textos para personas ni las cadenas de las tablas de migración) y lleva una lista única de excepciones
   (`EXCEPTIONS`) con su motivo; una excepción que ya no coincide con nada también falla. Solo de este repo (no se
   instala en los proyectos).
+
+- A8, trozo 6d (decisiones del usuario, 2026-11-02): la carpeta por defecto de `gw-media-content` pasa de `docs/difusion`
+  a `docs/media` (`Folder` de la nota, plantilla `note.md` y `MEDIA_FOLDER` de `doctor.py`). Compatibilidad `0.x`: si la
+  nota no declara carpeta, no existe `docs/media` y sí `docs/difusion`, `doctor.py` y las skills usan la vieja, y
+  `doctor.py` avisa (`media folder`, también si existen las dos); `/gw-update` (`apply.py`) la mueve a `docs/media` con
+  `git mv` cuando la nota no fija carpeta (una carpeta que la nota nombra no se toca), falla cerrado (exit 2) si
+  `docs/media` existe y respeta `--keep-paths` y `keepLegacyPaths`. Además, `web.md` escribe en la `0.x` las claves
+  nuevas **y** las viejas con los mismos valores (`status`/`estado` con `draft`/`borrador` y `ready`/`listo`,
+  `date`/`fecha`, `text`/`texto`, `wall`/`muro`, `title`/`titulo`, `body`/`cuerpo`, `images`/`imagenes`,
+  `file`/`archivo`): la plantilla y las SKILL.md lo mandan, y `check.py` falla (con la clave y los dos valores) si un
+  par no coincide, acepta un `web.md` solo con las viejas (con aviso en stderr que pide las nuevas) y uno solo con las
+  nuevas (sin aviso). Las claves viejas se quitan en la `1.0`.
 
 ### EN
 
@@ -299,8 +311,8 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `check.py` accepts, with a warning, the old options and a piece with `ficha.md` + `medios/` + Spanish `web.md` keys;
   `figures.py` accepts `--desde`; `render.mjs` accepts `medios/fuente/` and the `carrusel` prefix with a warning (and
   then writes into `medios/`). `/gw-update` removes the old files of the installed skill copy (`OLD_SKILL_FILES` in
-  `apply.py`: only when git has them clean) and brings the new ones. **Breaking for whoever reads `web.md`:** a
-  project website that reads its JSON block must move to the new keys; old notes (`límite:`, `formato: propio`,
+  `apply.py`: only when git has them clean) and brings the new ones. **`web.md` does not break whoever reads its old keys:**
+  in `0.x` both are written (see chunk 6d); old notes (`límite:`, `formato: propio`,
   `plantilla:`) are still understood by the agent.
 
 - A8, chunk 6c: internal identifiers in English (functions, classes, variables, arguments and shell variables in
@@ -313,6 +325,18 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   read documents for people or the strings of the migration tables) and keeps one list of exceptions (`EXCEPTIONS`)
   with their reasons; an exception that no longer matches anything fails too. This repo only (not installed in
   projects).
+
+- A8, chunk 6d (user decisions, 2026-11-02): the default folder of `gw-media-content` moves from `docs/difusion` to
+  `docs/media` (the note's `Folder`, the `note.md` template and `MEDIA_FOLDER` in `doctor.py`). `0.x` compatibility: when
+  the note declares no folder, `docs/media` does not exist and `docs/difusion` does, `doctor.py` and the skills use the
+  old one, and `doctor.py` warns (`media folder`, also when both exist); `/gw-update` (`apply.py`) moves it to
+  `docs/media` with `git mv` when the note fixes no folder (a folder the note names is never touched), fails closed
+  (exit 2) when `docs/media` exists and respects `--keep-paths` and `keepLegacyPaths`. Also, in `0.x` `web.md` writes the
+  new keys **and** the old ones with the same values (`status`/`estado` with `draft`/`borrador` and `ready`/`listo`,
+  `date`/`fecha`, `text`/`texto`, `wall`/`muro`, `title`/`titulo`, `body`/`cuerpo`, `images`/`imagenes`,
+  `file`/`archivo`): the template and the SKILL.md files say so, and `check.py` fails (naming the key and both values)
+  when a pair differs, accepts a `web.md` with only the old keys (with a stderr warning asking for the new ones) and one
+  with only the new ones (no warning). The old keys are removed in `1.0`.
 
 ## [0.4.3] - 2026-10-27
 

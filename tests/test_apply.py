@@ -848,6 +848,72 @@ class Migrate(unittest.TestCase):
         self.assertNotIn("move ", out)
         self.assertTrue(self.exists("docs/traspaso.md"))
 
+    def test_the_old_media_folder_moves_to_docs_media_with_git(self):
+        p = self.p
+        p.write("docs/difusion/proposals/2026-10-25.md", "# P\n")
+        p.write("docs/difusion/2026-10-25/01-x/sheet.md", "# S\n")
+        self.commit()
+        p.write("docs/difusion/untracked.md", "u\n")
+        out = self.applied()
+        self.assertIn("move    docs/media  (from docs/difusion; gw-media-content: old default folder", out)
+        self.assertFalse(self.exists("docs/difusion"))
+        self.assertEqual(p.read("docs/media/proposals/2026-10-25.md"), "# P\n")
+        self.assertEqual(p.read("docs/media/2026-10-25/01-x/sheet.md"), "# S\n")
+        self.assertEqual(p.read("docs/media/untracked.md"), "u\n")
+        status = p.run("git", "status", "--short")[1]
+        self.assertIn("docs/difusion/proposals/2026-10-25.md -> docs/media/proposals/2026-10-25.md", status)
+        self.assertIn("nothing to do", self.applied())  # twice: a no-op
+
+    def test_an_untracked_old_media_folder_moves_too(self):
+        self.p.write("docs/difusion/a.md", "a\n")
+        self.applied()
+        self.assertEqual(self.p.read("docs/media/a.md"), "a\n")
+        self.assertFalse(self.exists("docs/difusion"))
+
+    def test_a_folder_the_note_names_is_never_moved(self):
+        for folder in ("docs/difusion", "`docs/social`"):
+            with self.subTest(folder=folder):
+                p = self.p
+                p.write(".claude/gw/gw-media-content.md", f"Folder: {folder}\n")
+                p.write("docs/difusion/a.md", "a\n")
+                self.applied()
+                self.assertEqual(p.read("docs/difusion/a.md"), "a\n")
+                self.assertFalse(self.exists("docs/media"))
+
+    def test_the_old_media_folder_move_fails_closed_when_docs_media_exists(self):
+        p = self.p
+        p.write("docs/difusion/a.md", "a\n")
+        p.write("docs/media/b.md", "b\n")
+        code, out = p.run_apply()
+        self.assertEqual(code, 2, out)
+        self.assertIn("cannot move docs/difusion to docs/media: docs/media already exists", out)
+        self.assertEqual(p.read("docs/difusion/a.md"), "a\n")
+        self.assertEqual(p.read("docs/media/b.md"), "b\n")
+        self.assertFalse(self.exists(".claude/gw/scripts"))  # nothing else was written
+
+    def test_dry_run_and_check_leave_the_old_media_folder_alone(self):
+        p = self.p
+        p.write("docs/difusion/a.md", "a\n")
+        code, out = p.run_apply("--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertIn("move    docs/media  (from docs/difusion", out)
+        self.assertEqual(p.run_apply("--check")[0], 1)
+        self.assertTrue(self.exists("docs/difusion/a.md"))
+        self.assertFalse(self.exists("docs/media"))
+
+    def test_keep_paths_and_keep_legacy_paths_leave_the_old_media_folder_and_say_how_to_silence_doctor(self):
+        p = self.p
+        p.write("docs/difusion/a.md", "a\n")
+        out = self.applied("--keep-paths")
+        self.assertTrue(self.exists("docs/difusion/a.md"))
+        self.assertFalse(self.exists("docs/media"))
+        self.assertIn("docs/difusion is kept (--keep-paths); write `Folder: docs/difusion` in "
+                      ".claude/gw/gw-media-content.md so doctor.py stops warning about it", out)
+        p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, keepLegacyPaths=True), indent=2) + "\n")
+        self.applied()  # set by hand it means the same
+        self.assertTrue(self.exists("docs/difusion/a.md"))
+        self.assertFalse(self.exists("docs/media"))
+
     def test_keep_paths_with_nothing_old_changes_nothing(self):
         before = self.p.read(".claude/gw.json")
         self.applied("--keep-paths")

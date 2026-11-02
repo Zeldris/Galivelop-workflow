@@ -1267,6 +1267,99 @@ class Web(Base):
         self.write("web.md", filled)
         self.assertEqual(self.problems(), "")
 
+    # --- 0.x: web.md carries the English keys and the old Spanish ones, with the same values
+
+    def with_old_keys(self, data=None):
+        """self.data with every key also under its old Spanish spelling (the values, copied; status mapped)."""
+        data = json.loads(json.dumps(self.data if data is None else data))
+        wall = data["wall"]
+        both = {"status": data["status"], "estado": {"draft": "borrador", "ready": "listo"}[data["status"]],
+                "date": data["date"], "fecha": data["date"], "text": data["text"], "texto": data["text"],
+                "wall": wall, "muro": {"titulo": wall["title"], "cuerpo": wall["body"],
+                                       "imagenes": [{"archivo": i["file"], "alt": i["alt"]} for i in wall["images"]]}}
+        return both
+
+    def problems_and_warnings(self):
+        with contextlib.redirect_stderr(io.StringIO()) as err:
+            out = self.problems()
+        return out, err.getvalue()
+
+    def test_both_spellings_with_the_same_values_are_valid_without_a_warning(self):
+        self.web(self.with_old_keys())
+        self.assertEqual(self.problems_and_warnings(), ("", ""))
+        self.data["status"] = "ready"
+        self.web(self.with_old_keys())
+        self.assertEqual(self.problems_and_warnings(), ("", ""))
+
+    def test_only_the_english_keys_pass_without_a_warning(self):
+        self.assertEqual(self.problems_and_warnings(), ("", ""))
+
+    def test_only_the_old_keys_pass_with_a_warning_that_asks_for_the_english_ones(self):
+        both = self.with_old_keys()
+        self.web({k: v for k, v in both.items() if k in ("estado", "fecha", "texto", "muro")})
+        out, err = self.problems_and_warnings()
+        self.assertEqual(out, "")
+        self.assertIn("check.py: warning: ", err)
+        self.assertIn("web.md has Spanish keys (estado, fecha, texto, muro...) without the English ones (status, date, "
+                      "text, wall...); in 0.x write both with the same values (the old ones go away in 1.0)", err)
+
+    def test_an_old_key_that_stands_alone_inside_a_wall_warns_too(self):
+        both = self.with_old_keys()
+        both["wall"] = {"title": both["wall"]["title"], "cuerpo": both["wall"]["body"],
+                        "images": both["wall"]["images"]}
+        del both["muro"]
+        self.web(both)
+        out, err = self.problems_and_warnings()
+        self.assertEqual(out, "")
+        self.assertIn("has Spanish keys", err)
+
+    def test_a_status_that_differs_between_the_two_spellings_fails_naming_both_values(self):
+        both = self.with_old_keys()
+        both["estado"] = "listo"
+        self.web(both)
+        out, err = self.problems_and_warnings()
+        self.assertIn("web.md: «estado» and «status» differ (\"listo\" and \"draft\"); in 0.x both are written with the "
+                      "same value (the old keys go away in 1.0): fix «status» and «estado» to match", out)
+        self.assertEqual(err, "")
+
+    def test_a_date_and_a_text_that_differ_fail(self):
+        both = self.with_old_keys()
+        both["fecha"] = "2020-01-01"
+        both["texto"] = {"es": "Otro.", "en": "Other."}
+        self.web(both)
+        out = self.problems()
+        self.assertIn("«fecha» and «date» differ (\"2020-01-01\" and \"%s\")" % TODAY.isoformat(), out)
+        self.assertIn("«texto» and «text» differ", out)
+
+    def test_a_wall_that_differs_from_its_old_spelling_fails(self):
+        both = self.with_old_keys()
+        both["muro"]["titulo"] = {"es": "Otro", "en": "Other"}
+        self.web(both)
+        self.assertProblem("web.md: «muro» and «wall» differ")
+
+    def test_a_pair_inside_the_wall_that_differs_fails_with_its_place(self):
+        both = self.with_old_keys()
+        both["wall"]["titulo"] = {"es": "Otro", "en": "Other"}
+        self.web(both)
+        self.assertProblem("web.md: «titulo» and «title» of «wall» differ")
+
+    def test_the_old_spelling_does_not_hide_a_problem_of_the_values(self):
+        both = self.with_old_keys()
+        both["status"] = both["estado"] = "published"
+        self.web(both)
+        out, _ = self.problems_and_warnings()
+        self.assertIn("web.md: «status» is \"published\"", out)
+
+    def test_the_template_carries_both_spellings_and_checks_clean_once_filled(self):
+        template = (HERE.parent / "template" / "web.md").read_text(encoding="utf-8")
+        for key in ("status", "estado", "date", "fecha", "text", "texto", "wall", "muro", "title", "titulo", "body",
+                    "cuerpo", "images", "imagenes", "file", "archivo"):
+            self.assertIn(f'"{key}"', template)
+        filled = (template.replace("{{…}}", "Texto").replace("YYYY-MM-DD", TODAY.isoformat())
+                  .replace("<topic>", "release"))
+        self.write("web.md", filled)
+        self.assertEqual(self.problems_and_warnings(), ("", ""))
+
     def test_a_single_valid_json_block(self):
         self.write("web.md", "# Web\n\nSin bloque.\n")
         self.assertProblem("web.md: no ```json block; keep exactly one, as in the template (template/web.md)")

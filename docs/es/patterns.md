@@ -104,16 +104,18 @@ la crea ni la pisa. Un *canal extra* se declara con `limit: N` (comprobado con `
 `format: own` y `template: <ruta>` (su archivo lo consume otro sistema; comprobado con `--own-format <canal>`).
 El canal `web` es la web del propio proyecto: `web.md` lleva un bloque JSON con `status` (`draft` hasta que la
 persona escribe `ready`), `date`, el texto por idioma (`text`) y una entrada de muro opcional (`wall`) con sus imágenes; los idiomas
-de la web pueden ser más que los de la pieza (`Web languages`, que se pasa con `--web-languages`). Ejemplo genérico:
+de la web pueden ser más que los de la pieza (`Web languages`, que se pasa con `--web-languages`). En la `0.x`, `web.md` lleva cada clave
+dos veces, con el mismo valor: la inglesa y la española de antes (`estado`, `fecha`, `texto`, `muro`...), para no romper la web que lea las
+viejas; `check.py` falla si no coinciden y las españolas se quitan en la `1.0`. Ejemplo genérico:
 
 ```
-Folder: docs/difusion
+Folder: docs/media
 Languages: es, en
 Channels: x, reddit, linkedin, discord, web
 Web languages: es, gl, en
 Extra channels:
 - mastodon: limit: 500; tone: cercano
-- portal: format: own; template: docs/difusion/portal.json
+- portal: format: own; template: docs/media/portal.json
 Palette: --background #101418; --accent #4cc38a
 Screenshots: arrancar la app (npm run dev), abrir /panel, captura de la ventana a 1280x720
 Task prefixes: INS,FLU   (se pasa a check.py --task-prefixes)

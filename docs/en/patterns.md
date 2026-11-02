@@ -107,16 +107,18 @@ workflow neither creates nor overwrites it. An *extra channel* is declared with 
 checked with `--own-format <channel>`). The `web` channel is the project's own website: `web.md` holds a JSON
 block with `status` (`draft` until the person writes `ready`), `date`, the text per language (`text`) and an optional
 wall entry (`wall`) with its images; the site may have more languages than the piece (`Web languages`, passed with
-`--web-languages`). A generic example:
+`--web-languages`). In `0.x`, `web.md` carries every key twice, with the same value: the English one and the old Spanish one
+(`estado`, `fecha`, `texto`, `muro`...), so a website that reads the old ones does not break; `check.py` fails when they differ and
+the Spanish ones are removed in `1.0`. A generic example:
 
 ```
-Folder: docs/difusion
+Folder: docs/media
 Languages: es, en
 Channels: x, reddit, linkedin, discord, web
 Web languages: es, gl, en
 Extra channels:
 - mastodon: limit: 500; tone: friendly
-- portal: format: own; template: docs/difusion/portal.json
+- portal: format: own; template: docs/media/portal.json
 Palette: --background #101418; --accent #4cc38a
 Screenshots: start the app (npm run dev), open /panel, capture the window at 1280x720
 Task prefixes: INS,FLU   (passed to check.py --task-prefixes)

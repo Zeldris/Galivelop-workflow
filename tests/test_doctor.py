@@ -727,9 +727,34 @@ class Doctor(unittest.TestCase):
         self.assertEqual(len(self.media_lines(out)), 3, out)
 
     def test_the_media_folder_alone_marks_the_project_as_a_user(self):
-        (self.p.work / "docs" / "difusion").mkdir(parents=True)  # the default `Folder`
+        (self.p.work / "docs" / "media").mkdir(parents=True)  # the default `Folder`
         code, out = self.doctor_env(self.tools(node=False))
         self.assertLine(out, "WARN", "media tools", "node")
+        self.assertEqual(self.folder_lines(out), [], out)
+
+    def folder_lines(self, out):
+        return [l for l in out.splitlines() if re.match(r"(OK|WARN|FAIL) +media folder:", l)]
+
+    def test_the_old_default_folder_alone_still_marks_a_user_and_warns_with_the_fix(self):
+        (self.p.work / "docs" / "difusion").mkdir(parents=True)  # the default before A8 (0.x)
+        code, out = self.doctor_env(self.tools(node=False))
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "media tools", "node")
+        self.assertLine(out, "WARN", "media folder", "docs/difusion is the old default folder of gw-media-content; the "
+                        "default is now docs/media", "python3 .claude/gw/scripts/apply.py . --update moves it",
+                        "`Folder: docs/difusion` in .claude/gw/gw-media-content.md to keep it")
+
+    def test_both_default_folders_warn_to_merge_them(self):
+        (self.p.work / "docs" / "difusion").mkdir(parents=True)
+        (self.p.work / "docs" / "media").mkdir(parents=True)
+        out = self.doctor_env(self.tools(node=False))[1]
+        self.assertLine(out, "WARN", "media folder", "docs/difusion (the old default folder of gw-media-content) and "
+                        "docs/media both exist, and the note names no folder", "merge docs/difusion into docs/media")
+
+    def test_a_folder_the_note_names_silences_the_old_folder_warning(self):
+        (self.p.work / "docs" / "difusion").mkdir(parents=True)
+        self.p.write(".claude/gw/gw-media-content.md", "Folder: docs/difusion\n")
+        self.assertEqual(self.folder_lines(self.doctor_env(self.tools(node=False))[1]), [])
 
     def test_the_folder_the_note_names_marks_the_project_as_a_user(self):
         self.p.write(".claude/gw/other.md", "x")  # a note of another skill is no signal

@@ -4,7 +4,7 @@
     python3 check.py [--task-prefixes A,B,...] [--limit channel=N]... [--own-format channel]...
                      [--web-languages es,gl,en] <dir>/YYYY-MM-DD/NN-<topic> [more folders]
 
-A folder argument may also be a date folder or the whole <dir> (default docs/difusion): every piece below it is
+A folder argument may also be a date folder or the whole <dir> (default docs/media): every piece below it is
 checked. No config: the per-network limits are read from ../rules.json.
 
 Piece layout:
@@ -53,6 +53,11 @@ no checked piece lists under `## Channels` is a usage error (exit 2).
 Old layout (0.x compatibility): a piece with `ficha.md` and no `sheet.md` (Spanish headings, `medios/`, the Spanish
 keys of web.md) is checked on a translated copy, with a warning on stderr; the old option names --prefijos-tarea,
 --limite, --formato-propio and --idiomas-web are accepted with a warning too.
+
+web.md in 0.x carries the English keys and the old Spanish ones (estado with borrador/listo, fecha, texto, muro,
+titulo, cuerpo, imagenes, archivo) with the same values, so a website that reads the old ones keeps working; they
+are removed in 1.0. If both are there they must match (a mismatch is a problem); only the English ones pass silently;
+only the Spanish ones pass with a warning on stderr that asks for the English ones too.
 
 Prints OK, or one line per problem with the fix; exit 1 on any problem (2 on bad usage).
 """
@@ -483,6 +488,12 @@ def check_web(text, languages, prefixes=(), folder=Path("."), web_languages=None
         return f + [f"web.md: the ```json block is not valid JSON ({e}); fix it"], []
     if not isinstance(data, dict):
         return f + ["web.md: the ```json block must be an object with " + ", ".join(WEB_KEYS) + "; copy the template"], []
+    data, mismatches, alone = unify_web(data)
+    f += mismatches
+    if alone:
+        print(f"check.py: warning: {folder}/web.md has Spanish keys (estado, fecha, texto, muro...) without the English "
+              "ones (status, date, text, wall...); in 0.x write both with the same values (the old ones go away in 1.0)",
+              file=sys.stderr)
     f += [f"web.md: unknown key «{k}»; remove it (keys: {', '.join(WEB_KEYS)})" for k in data if k not in WEB_KEYS]
     f += [f"web.md: no «{k}»; add it as in the template (template/web.md)" for k in WEB_KEYS[:3] if k not in data]
     status = data.get("status")
@@ -868,6 +879,44 @@ def old_web(text: str) -> str:
     return re.sub(r"(?s)(```json[ \t]*\n)(.*?)(\n[ \t]*```)", block, text, count=1)
 
 
+def unify_web(data, where=""):
+    """(data with the English keys only, problems, whether an old key stood without its English one). A web.md of 0.x
+    carries both spellings with the same values; each old key is checked against its English one at any depth."""
+    if isinstance(data, list):
+        out, f, alone = [], [], False
+        for n, item in enumerate(data):
+            d, p, a = unify_web(item, f"{where}[{n}]")
+            out.append(d)
+            f += p
+            alone = alone or a
+        return out, f, alone
+    if not isinstance(data, dict):
+        return data, [], False
+    out, f, alone = {}, [], False
+    for k, v in data.items():
+        if k not in OLD_WEB_KEYS:
+            out[k], p, a = unify_web(v, f"{where}.{k}" if where else k)
+            f += p
+            alone = alone or a
+    for k, v in data.items():
+        if k not in OLD_WEB_KEYS:
+            continue
+        name = OLD_WEB_KEYS[k]
+        at = f"{where}.{name}" if where else name
+        d, p, a = unify_web(v, at)
+        if name == "status" and isinstance(d, str) and d in OLD_WEB_STATUS:
+            d = OLD_WEB_STATUS[d]
+        if name not in out:
+            out[name], alone = d, True
+            f += p
+        elif out[name] != d:
+            f.append(f"web.md: «{k}» and «{name}»{' of «' + where + '»' if where else ''} differ "
+                     f"({json.dumps(v, ensure_ascii=False)} and {json.dumps(data[name], ensure_ascii=False)}); in 0.x "
+                     f"both are written with the same value (the old keys go away in 1.0): fix «{name}» and "
+                     f"«{k}» to match")
+    return out, f, alone
+
+
 def old_piece(folder: Path, tmp: Path) -> Path:
     """A translated copy of a piece folder written with the old Spanish names (ficha.md, medios/), under tmp."""
     copy = tmp / folder.resolve().parent.name / folder.resolve().name
@@ -1029,7 +1078,7 @@ def looks_like_piece(p: Path, in_date=False) -> bool:
 
 
 USAGE = ("usage: check.py [--task-prefixes A,B,...] [--limit channel=N]... [--own-format channel]... "
-       "[--web-languages es,gl,en] <dir>/YYYY-MM-DD/NN-<topic> [...]  (e.g. docs/difusion/2026-10-25/01-release; "
+       "[--web-languages es,gl,en] <dir>/YYYY-MM-DD/NN-<topic> [...]  (e.g. docs/media/2026-10-25/01-release; "
        "--task-prefixes adds the task-id prefixes of the project, e.g. INS,FLU; --limit portal=500 caps each language "
        "section of an extra channel; --own-format portal marks an extra channel whose file has its own format; "
        "--web-languages es,gl,en sets the exact languages of web.md)")

@@ -12,7 +12,9 @@ metadata:
 
 If `.claude/gw/gw-media-content-now.md` exists in the project, read it first: it holds what is specific to the project.
 Then read `.claude/gw/gw-media-content.md` if it exists, and its shape in `.claude/skills/gw-media-content/note.md`
-(folder `<dir>`, languages, channels, extra channels, palette, screenshots, task prefixes, Reddit rules).
+(folder `<dir>`, languages, channels, extra channels, palette, screenshots, task prefixes, Reddit rules). Without a
+`Folder`, `<dir>` is `docs/media`; 0.x: when that does not exist and `docs/difusion` does, use `docs/difusion` and tell the
+user once that `/gw-update` moves it.
 
 You make **one piece**: `<dir>/YYYY-MM-DD/NN-<topic>/`, with texts for each channel and the images that go with
 them. Pieces accumulate in the day's folder. Nothing is ever published: the user posts and records where. Shared
@@ -61,7 +63,9 @@ material is in `.claude/skills/gw-media-content/`: `catalog.md`, `rules.json`, `
    - **Web** (`web.md`, see `note.md`): fill the ```json block of the template; leave `"status": "draft"` (only
      the user writes `"ready"`), `date` the planned publication day, one text per language in `text` and in every
      `wall` text (the languages of `Languages:` plus `Web languages` of the note). Each `wall` image is a `.webp`
-     render whose `## Images` row lists `web`; without a wall entry, delete `wall`.
+     render whose `## Images` row lists `web`; without a wall entry, delete `wall`. In 0.x the template writes every
+     key twice, in English and in the old Spanish spelling (`estado` `"borrador"`, `fecha`, `texto`, `muro`...); fill both
+     with the same values (`check.py` fails when a pair differs); the Spanish ones go away in 1.0.
    - **Extra channels** (declared in the note): one `<channel>.md` as the note says: a section per language within its
      `limit`, or the copied own-format template filled in. If the note gives neither, ask.
 6. **Check.** Build the command from the note as `note.md` says (`--task-prefixes`, `--web-languages` when the piece lists
@@ -73,5 +77,5 @@ material is in `.claude/skills/gw-media-content/`: `catalog.md`, `rules.json`, `
    they are unless the user asks to rename them.
 7. **Close.** Mark the proposal `**Status:** done → <piece folder>`. Commit with the project's commit format; the log
    row names the folder, its channels and that it is ready to publish. Show the user the texts and image paths; with `web.md`, tell them
-   the site publishes it only once they set `"status": "ready"`.
+   the site publishes it only once they set `"status": "ready"` (and `"estado": "listo"` in 0.x).
    After publishing, the user fills `## Published` in `sheet.md`.

@@ -15,7 +15,8 @@ subagents (VeriNews P1); copied skills at the config's version; a session opened
 in a cloud session (CLAUDE_CODE_REMOTE=true), the compaction window the project's settings.json sets is in the
 environment; a skill script under .claude/skills/*/scripts/ without a test_<name>.py next to it (WMF 2026-10-25 P2); and,
 only in a project that uses gw-media-content (its note .claude/gw/gw-media-content.md or its folder exists), node,
-Playwright and ImageMagick with WebP (WMF 2026-10-25 P1); and, when `origin` is on GitHub, a way to read the CI state
+Playwright and ImageMagick with WebP (WMF 2026-10-25 P1), and a leftover docs/difusion (the folder before A8; warns
+while the note names no other); and, when `origin` is on GitHub, a way to read the CI state
 (`gh` logged in, or GITHUB_TOKEN/GH_TOKEN set). The compaction check, the session one, the media tools one and the CI
 access one read the machine running doctor, not only the project, so their lines can differ between a person's machine,
 CI and a cloud session.
@@ -60,7 +61,8 @@ INVISIBLE_PATTERN = (rf"[{ALWAYS_INVISIBLE}]"
 INVISIBLE = re.compile(INVISIBLE_PATTERN)
 WARN_LINES, FAIL_LINES = 150, 250  # AGENTS.md / CLAUDE.md: every session loads them whole
 MEDIA_NOTE = ".claude/gw/gw-media-content.md"  # the project's note of gw-media-content (skills/gw-media-content/note.md)
-MEDIA_FOLDER = "docs/difusion"  # its default `Folder`
+MEDIA_FOLDER = "docs/media"  # its default `Folder`
+OLD_MEDIA_FOLDER = "docs/difusion"  # A8 (0.x): the default before the rename; used, with a warning, while it is the only one
 SKILL_LICENSE = "LICENSE-mattpocock-skills"  # apply.py copies it next to the skills that cite it
 
 
@@ -637,20 +639,36 @@ def check_skill_tests(rep, root):
         rep.ok("skill tests", "every skill script has its test_<name>.py")
 
 
-def media_folder(root):
-    """The `Folder:` line of the gw-media-content note, or its default; None when it points outside the project."""
+def media_note_folder(root):
+    """The `Folder:` the gw-media-content note declares, or None when the note or the line is missing."""
     try:
         text = (root / MEDIA_NOTE).read_text(encoding="utf-8", errors="replace")
     except OSError:
-        text = ""
+        return None
     m = re.search(r"^[\s>*-]*Folder\s*:\s*`?([^`\n]+?)`?\s*$", text, re.M)
-    folder = m.group(1) if m else MEDIA_FOLDER
+    return m.group(1) if m else None
+
+
+def old_media_folder(root):
+    """docs/difusion (A8, 0.x) when the note declares no folder and it exists: what /gw-update moves to docs/media."""
+    old = root / OLD_MEDIA_FOLDER
+    if media_note_folder(root) is None and old.is_dir() and not old.is_symlink():
+        return old
+    return None
+
+
+def media_folder(root):
+    """The `Folder:` line of the gw-media-content note, or its default (docs/media; the old docs/difusion while it is
+    the only one there, 0.x); None when it points outside the project."""
+    folder = media_note_folder(root)
+    if folder is None:
+        folder = OLD_MEDIA_FOLDER if old_media_folder(root) and not (root / MEDIA_FOLDER).exists() else MEDIA_FOLDER
     path = Path(folder)
     return None if path.is_absolute() or ".." in path.parts else root / path
 
 
 def uses_media_content(root):
-    """The project uses gw-media-content when its note exists or the folder the note names (default docs/difusion) does.
+    """The project uses gw-media-content when its note exists or the folder the note names (default docs/media) does.
     The skill itself is in every project that applied the workflow, so its presence says nothing."""
     folder = media_folder(root)
     return (root / MEDIA_NOTE).is_file() or (folder is not None and folder.is_dir())
@@ -684,6 +702,22 @@ def imagemagick_webp():
         if r.returncode == 0 and re.search(r"\bWEBP\b", r.stdout):
             return command
     return None
+
+
+def check_media_folder(rep, root):
+    """A8 (0.x): warns about docs/difusion, the old default folder, while the note does not name another one."""
+    if old_media_folder(root) is None:
+        return
+    if (root / MEDIA_FOLDER).exists():
+        rep.warn("media folder", f"{OLD_MEDIA_FOLDER} (the old default folder of gw-media-content) and {MEDIA_FOLDER} "
+                 "both exist, and the note names no folder",
+                 f"merge {OLD_MEDIA_FOLDER} into {MEDIA_FOLDER} by hand and remove it (git mv / git rm), or name the "
+                 f"one you keep in {MEDIA_NOTE} (`Folder: {OLD_MEDIA_FOLDER}`)")
+    else:
+        rep.warn("media folder", f"{OLD_MEDIA_FOLDER} is the old default folder of gw-media-content; the default is "
+                 f"now {MEDIA_FOLDER}",
+                 "python3 .claude/gw/scripts/apply.py . --update moves it, or write "
+                 f"`Folder: {OLD_MEDIA_FOLDER}` in {MEDIA_NOTE} to keep it")
 
 
 def check_media_tools(rep, root):
@@ -769,6 +803,7 @@ def run(root):
     check_glossary(rep, root)
     check_instructions(rep, root)
     check_skill_tests(rep, root)
+    check_media_folder(rep, root)
     check_media_tools(rep, root)
     proposals = check_proposals(rep, root)
     check_skills(rep, root, version, proposals)
