@@ -148,7 +148,7 @@ class Runs(unittest.TestCase):
         return self.p.run("python3", ".claude/gw/scripts/ci-local.py", *args)
 
     def log(self):
-        return (self.p.work / "docs" / "registros" / "ci-local.md").read_text()
+        return (self.p.work / "docs" / "records" / "ci-local.md").read_text()
 
     def test_green_run_records_what_it_did_not_cover(self):
         self.workflow(f"""on: [pull_request]

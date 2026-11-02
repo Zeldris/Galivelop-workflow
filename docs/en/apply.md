@@ -46,7 +46,7 @@ Collect these facts **before** running anything. They all go into `.claude/gw.js
 | Fact | How it is decided |
 |---|---|
 | Language (`language`: `es` or `en`) | The person's and the project docs'; it drives the templates and the replies |
-| Log path (`log`) | Default `docs/traspaso.md` (es) or `docs/handoff.md` (en); the project's own if it already has one |
+| Log path (`log`) | Default `docs/handoff.md` (every language); the project's own if it already has one |
 | Install command(s) (`install`) | Inferred (below); empty if there are no dependencies |
 | Check command(s) (`check`) | Inferred (below); **at least one**, it is what `pre-push` and CI run |
 | Protected branch (`protectedBranch`) | The one that deploys or publishes: `git symbolic-ref --short refs/remotes/origin/HEAD`; if that fails (a fresh or local remote), `git remote show origin \| sed -n 's/.*HEAD branch: //p'`; otherwise ask the person |
@@ -74,7 +74,7 @@ Rules:
   command that does not exist or does not pass is found late and gets in the way of every push.
 - **When unsure, ask the person**; do not invent a command. With several candidates, offer them numbered.
 - A project with no tests: `check` can be a linter or a `bash -n`; say so and note it as debt in the log. A `bash -n` checks only the first file (the rest are arguments): one command per file, or `for f in …; do bash -n "$f"; done` (`doctor.py` warns about it as `check syntax-only`, also for a glob or a `$(…)` substitution). If you put `doctor.py` in `check`, in GitHub Actions (`GITHUB_ACTIONS=true`) an unset `hooks-path` is a `WARN` and does not break the run: CI has no git hooks installed; locally it stays a `FAIL`.
-- If the project has an agent map (`docs/mapa-agente.md`, or the one `agentMap.path` declares), add `--check-command "python3 .claude/gw/scripts/agent-map.py"`: it checks that every path the map cites exists. With no map it exits 0 and does no harm; with short prefixes (`b/` for `backend/src/`), set `agentMap.prefixes` ([`config.md`](config.md)).
+- If the project has an agent map (`docs/agent-map.md`, or the one `agentMap.path` declares), add `--check-command "python3 .claude/gw/scripts/agent-map.py"`: it checks that every path the map cites exists. With no map it exits 0 and does no harm; with short prefixes (`b/` for `backend/src/`), set `agentMap.prefixes` ([`config.md`](config.md)).
 - The copied skills bring their tests next to their scripts: they are discovered with `python3 -m unittest discover -s <skill>/scripts` (the workflow repo's check does it for each one).
 - `content` is proposed by reading the tree: `^docs/`, `^public/`… (in JSON the backslash is doubled). **What is
   `content` goes up without a mark:** do not put scripts there, nor what an agent reads as instructions (an
@@ -101,7 +101,7 @@ python3 <workflow>/scripts/apply.py <project> --dry-run --init --language en \
 `--dry-run` prints the plan without writing. When it is the one you want, repeat the same command **without**
 `--dry-run`.
 
-Options: `--review-mark PATH` (default `docs/registros/revisado.txt`), `--with gw-opt-ai` and `--with gw-scout-updates`.
+Options: `--review-mark PATH` (default `docs/records/reviewed.txt`), `--with gw-opt-ai` and `--with gw-scout-updates`.
 `--init` writes `.claude/gw.json` only when it does not exist, validates it and applies as usual.
 
 What it does (full detail in `--help`): copies `scripts/` to `.claude/gw/scripts/`, the skills to `.claude/skills/`,
@@ -270,6 +270,17 @@ how code already reaches it today.
   With local edits it keeps it whole and warns ("is the old name of … kept"): carry those edits over to the new
   name and delete it with `git rm -r`. Commands in `.claude/gw.json` that name an old script are only warned
   about: change them there.
+- **Project paths renamed in 0.5** (A4, `"paths"` in `schema/renamed.json`): `docs/traspaso.md` →
+  `docs/handoff.md`, `docs/registros/` → `docs/records/` (with `revisado.txt` → `reviewed.txt`), `docs/propuestas/` →
+  `docs/proposals/`, `docs/difusion/` → `docs/outreach/` and `docs/mapa-agente.md` → `docs/agent-map.md`. When only
+  the old one exists, `apply.py --update` moves it (with `git mv` when tracked, so history follows it) and rewrites
+  the `.claude/gw.json` values that name it; `--check` counts it as pending. When both exist it touches nothing,
+  warns ("both exist") and `--check` fails until you merge the old one into the new one and delete it with
+  `git rm -r`. A path of the project's own (`log` or `agentMap.path` set to another name, any `Folder` in the
+  `gw-media-content` note) is left alone. Last, it lists the tracked files that still cite the old paths ("still cite
+  the old paths", with the `git grep` command to see them) without rewriting them: fix the live references
+  (`AGENTS.md`, `CLAUDE.md`, links in the docs, `content` or `staleRefs` regexes) and leave the history (CHANGELOG,
+  past retros). Until 1.0 the scripts accept the old name when the path is the default one and only that one exists.
 - **Old hooks in `.claude/settings.json`.** `apply.py` merges the new ones without removing anything, and warns
   ("also runs '…'") about a `SessionStart`, `PreToolUse` or `Stop` entry that runs a workflow script from outside
   `.claude/gw/scripts/`; so does `doctor.py`. Delete it by hand, or it runs twice.

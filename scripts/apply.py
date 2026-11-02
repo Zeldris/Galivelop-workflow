@@ -12,8 +12,7 @@
 Runs FROM the workflow repo (this script's own repo is the source) ONTO a project: PROJECT, else the git top level
 of the current directory. The project must have a valid .claude/gw.json (fails closed, exit 2), except with --init:
 that writes .claude/gw.json from templates/gw.json plus the flags (only when it does not exist yet; --check-command
-is required, the log defaults to docs/traspaso.md in Spanish and docs/handoff.md in English), validates it and then
-applies as usual.
+is required, the log defaults to docs/handoff.md in every language), validates it and then applies as usual.
 
 What it copies (workflow -> project):
   scripts/*                     -> .claude/gw/scripts/   (not harvest.py, apply.py nor version.py: workflow-only), exec bits kept
@@ -53,6 +52,12 @@ a proposal to review by hand. Files the workflow no longer has are reported, nev
 names of the scripts and skills renamed in 0.5 (schema/renamed.json): deleted when byte for byte a copy the workflow
 shipped, kept with a warning otherwise; hook commands in .claude/settings.json that run a renamed script are pointed
 to its new name. Never commits.
+The project paths renamed in 0.5 (schema/renamed.json "paths": docs/traspaso.md -> docs/handoff.md, docs/registros/
+-> docs/records/ with revisado.txt -> reviewed.txt, docs/propuestas/ -> docs/proposals/, docs/difusion/ ->
+docs/outreach/, docs/mapa-agente.md -> docs/agent-map.md) are moved when only the old one exists (git mv for tracked
+files) and the strings of .claude/gw.json that name them are rewritten; when both exist nothing is touched (a warning,
+and --check fails); a path the project chose itself (`log`, `agentMap.path`, the media note's Folder) is left alone.
+Files that still cite the old paths are listed, never rewritten. Not in the workflow repo itself.
 In the workflow repo itself the copy is generated from scripts/ and skills/, so --update is implied there.
 
   --check     no writes; exit 1 if the copy differs from the workflow (anything to create, update, merge or chmod,
@@ -79,7 +84,7 @@ HERE = Path(__file__).resolve().parent
 WORKFLOW = HERE.parent
 sys.path.insert(0, str(HERE))
 import config  # noqa: E402
-from doctor import ignored_paths, stale_flow_hooks  # noqa: E402  (one list each, shared with doctor.py)
+from doctor import ignored_paths, media_folder_setting, stale_flow_hooks  # noqa: E402  (shared with doctor.py)
 
 WORKFLOW_ONLY_SCRIPTS = {"harvest.py", "apply.py", "version.py"}
 WORKFLOW_ONLY_SKILLS = {"gw-harvest"}
@@ -94,13 +99,13 @@ DIFF_LINES = 80
 ROOT_TEMPLATES = (("AGENTS.md", "merged"), ("CLAUDE.md", "merged"), ("REVIEW.md", "seeded"),
                   ("GLOSSARY.md", "seeded"))
 NOTES = (("opt-tokens.md", None), ("opt-ai.md", "gw-opt-ai"), ("scout-updates.md", "gw-scout-updates"))
-LOG_BY_LANGUAGE = {"es": "docs/traspaso.md", "en": "docs/handoff.md"}
 NOTES_ENV = "GW_NOTAS_PERSONALES"
 NOTE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 HEADER = re.compile(r"galivelop-workflow v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)")
 SKILL_LICENSE = "LICENSE-mattpocock-skills"  # at the workflow's root; copied next to the skills that cite it
 SENSITIVE = (".claude/settings.json", ".claude/gw/scripts/", ".githooks/")
-RENAMED_FILE = WORKFLOW / "schema" / "renamed.json"  # old -> new names (0.5, A8) and the blobs the workflow shipped
+RENAMED_FILE = WORKFLOW / "schema" / "renamed.json"  # old -> new names (0.5, A8 and A4) and the blobs the workflow shipped
+JSON_STRING = re.compile(r'("(?:[^"\\]|\\.)*")(\s*:)?')  # a JSON string token, and the colon when it is a key
 
 
 class ApplyError(Exception):
@@ -196,6 +201,9 @@ class Plan:
         self.orphans = []   # files the workflow no longer has
         self.cleanup = []   # old skill folders whose files are all deleted: removed whole (caches included)
         self.kept = []      # old names of renamed scripts and skills kept for their local edits (drift)
+        self.moved = {}     # project paths renamed in 0.5: new path -> old path, moved by this plan
+        self.blocked = []   # renamed project paths whose old and new names both exist (drift)
+        self.emptied = []   # old folders the moves leave empty: removed
         self.hooks_path = None  # None, or the hint line about core.hooksPath
         self.set_hooks_path = False
 
@@ -249,7 +257,7 @@ class Plan:
         if kind == "owned":
             self.file(None, rel, data=data)
             return
-        dest = self.root / rel
+        dest = self.root / self.moved.get(Path(rel), rel)  # a file this plan moves is read where it is now
         if not dest.exists():
             self.actions.append(("create", rel, data, False, ""))
             return
@@ -312,10 +320,11 @@ class Plan:
 
 
 def renames():
-    """The rename map: {"scripts": {old: new}, "skills": {old: new}, "known": {old path: [git blob ids]}}."""
+    """The rename map: {"scripts": {old: new}, "skills": {old: new}, "paths": {old project path: new},
+    "known": {old path: [git blob ids]}}."""
     try:
         data = json.loads(RENAMED_FILE.read_text(encoding="utf-8"))
-        return {key: data[key] for key in ("scripts", "skills", "known")}
+        return {key: data[key] for key in ("scripts", "skills", "paths", "known")}
     except (OSError, ValueError, KeyError, TypeError) as exc:
         raise ApplyError(f"apply: {RENAMED_FILE} cannot be read ({exc}); restore it from the workflow: "
                          f"git -C {WORKFLOW} checkout -- schema/renamed.json")
@@ -382,6 +391,112 @@ def plan_renamed(plan, renamed):
         if re.search(r"\.claude/gw/scripts/" + re.escape(old) + r"(?![\w.-])", text):
             plan.warnings.append(f".claude/gw.json runs .claude/gw/scripts/{old}, renamed to {new} in 0.5; "
                                  f"change it there to .claude/gw/scripts/{new}")
+
+
+def renamed_path(value, pairs):
+    """`value` with the longest renamed old path it is or starts with (+ '/') swapped for the new one."""
+    best = max((old for old in pairs if value == old or value.startswith(old + "/")), key=len, default=None)
+    return value if best is None else pairs[best] + value[len(best):]
+
+
+def renamed_json(value, pairs):
+    """A copy of a parsed JSON value with every string renamed_path() changes swapped (keys are left alone)."""
+    if isinstance(value, dict):
+        return {k: (v if k == "_root" else renamed_json(v, pairs)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [renamed_json(v, pairs) for v in value]
+    return renamed_path(value, pairs) if isinstance(value, str) else value
+
+
+def renamed_json_text(text, pairs):
+    """JSON text with the string values renamed_path() changes swapped, everything else byte for byte."""
+    def sub(m):
+        if m.group(2) is not None:
+            return m.group(0)  # a key
+        value = json.loads(m.group(1))
+        new = renamed_path(value, pairs)
+        return m.group(0) if new == value else json.dumps(new, ensure_ascii=False)
+    return JSON_STRING.sub(sub, text)
+
+
+def all_files(folder):
+    """Every file (and symlink) under folder, relative and sorted: a move takes all of them, caches included."""
+    out = []
+    for dirpath, dirnames, filenames in os.walk(str(folder)):
+        dirnames.sort()
+        for name in sorted(filenames) + [d for d in dirnames if (Path(dirpath) / d).is_symlink()]:
+            out.append((Path(dirpath) / name).relative_to(folder).as_posix())
+    return sorted(out)
+
+
+def plan_paths(plan, cfg, pairs):
+    """Project paths renamed in 0.5 (A4, schema/renamed.json "paths"): move each old path that exists to its new name
+    (file by file, nested renames included) when the new one does not exist, and rewrite the config's strings that
+    name them. Both present: a warning and nothing touched. A path the project chose (`log` or `agentMap.path` other
+    than the old default, any Folder in the media note) is not the workflow's to move. Returns the config to plan the
+    rest with (the rewritten one). Never in the workflow repo: its own documents are renamed by hand."""
+    if is_workflow_repo(plan.root):
+        return cfg
+    root = plan.root
+    chosen = {"docs/traspaso.md": cfg.get("log"), "docs/mapa-agente.md": (cfg.get("agentMap") or {}).get("path"),
+              "docs/difusion": media_folder_setting(root)}
+    active = {}
+    for old in pairs:
+        if any(old.startswith(other + "/") for other in pairs):
+            continue  # nested (docs/registros/revisado.txt): moved with its folder
+        new = pairs[old]
+        own = chosen.get(old)
+        if own and (os.path.normpath(own) != old or old == "docs/difusion"):
+            continue  # the project's own path (the media note, which is never rewritten, names it): not ours to move
+        src, dest = root / old, root / new
+        if src.exists() or src.is_symlink():
+            if dest.exists() or dest.is_symlink():
+                plan.blocked.append(old)
+                plan.warnings.append(f"{old} and {new} both exist ({old} was renamed to {new} in 0.5); nothing "
+                                     f"moved nor rewritten for it: merge {old} into {new} by hand, then delete it: "
+                                     f"git rm -r {old}")
+                continue
+            folder = src.is_dir() and not src.is_symlink()
+            for rel in ([f"{old}/{name}" for name in all_files(src)] if folder else [old]):
+                target = renamed_path(rel, pairs)
+                plan.actions.append(("move", Path(rel), Path(target), False, f"to {target}, renamed in 0.5"))
+                plan.moved[Path(target)] = Path(rel)
+            if folder:
+                plan.emptied.append(Path(old))
+        active.update({o: n for o, n in pairs.items() if o == old or o.startswith(old + "/")})
+    if not active:
+        return cfg
+    gw_json = root / config.CONFIG_REL
+    text = gw_json.read_text(encoding="utf-8") if gw_json.is_file() else ""  # --init --dry-run: not written yet
+    new_text = renamed_json_text(text, active)
+    if new_text != text:
+        changed = sorted({o for o in active if re.search(r'"' + re.escape(o) + r'(?:/[^"]*)?"', text)})
+        plan.actions.append(("update", config.CONFIG_REL, new_text.encode("utf-8"), False,
+                             "paths renamed in 0.5: " + ", ".join(f"{o} -> {active[o]}" for o in changed)))
+    if plan.moved or new_text != text:
+        plan_old_references(plan, active, new_text)
+    return renamed_json(cfg, active)
+
+
+def plan_old_references(plan, active, new_config):
+    """Warn about the tracked files that still cite a renamed path (never rewritten: history such as a CHANGELOG or
+    past retros may keep them). The workflow's own copies are left out: this run replaces them."""
+    olds = sorted(active, key=len, reverse=True)
+    alternatives = "|".join(re.escape(o).replace("\\-", "-").replace("\\/", "/") for o in olds)
+    pattern = f"({alternatives})([^A-Za-z0-9_.-]|$)"
+    skills = {p.name for p in (WORKFLOW / "skills").iterdir() if p.is_dir()} | set(renames()["skills"])
+    exclude = [".claude/gw/scripts", ".claude/gw/schema", ".githooks", ".github/workflows/comprobar.yml"]
+    exclude += [f".claude/skills/{name}" for name in sorted(skills)]
+    code, out = git(plan.root, "grep", "-l", "-E", pattern, "--", ".", *(f":(exclude){e}" for e in exclude))
+    if code != 0 or not out:
+        return
+    files = [renamed_path(f, active) for f in out.splitlines()]
+    if not re.search(pattern, new_config):
+        files = [f for f in files if f != config.CONFIG_REL.as_posix()]
+    if files:
+        plan.warnings.append(f"{len(files)} tracked file(s) still cite the old paths renamed in 0.5: "
+                             f"{', '.join(files)}; fix the live references (AGENTS.md, CLAUDE.md, links in the docs) "
+                             f"and leave the history (CHANGELOG, past retros); see them: git grep -n -E '{pattern}'")
 
 
 def dump(data):
@@ -587,12 +702,13 @@ def plan_personal_notes(plan, check=False):
 def build(root, version, update, extra_skills, cfg, personal=True, check=False):
     self_apply = root.resolve() == WORKFLOW.resolve()
     plan = Plan(root, version, update or self_apply)
+    renamed = renames()
+    cfg = plan_paths(plan, cfg, renamed["paths"])  # first: the moves run before anything is written
     scripts = [Path(p.name) for p in sorted((WORKFLOW / "scripts").iterdir())
                if p.is_file() and p.name not in WORKFLOW_ONLY_SCRIPTS and p.name not in IGNORED
                and not p.name.endswith(".pyc")]
     plan.tree(WORKFLOW / "scripts", Path(".claude/gw/scripts"), only=scripts)
     plan.tree(WORKFLOW / "schema", Path(".claude/gw/schema"), only=[Path("gw.schema.json")])
-    renamed = renames()
     plan_renamed(plan, renamed)
     old_name = {new: old for old, new in renamed["skills"].items()}
 
@@ -684,6 +800,9 @@ def apply(plan):
         if kind == "delete":
             dest.unlink()
             continue
+        if kind == "move":
+            move(plan.root, rel, data)
+            continue
         if kind != "chmod":
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(data)
@@ -691,10 +810,29 @@ def apply(plan):
             dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     for rel in plan.cleanup:
         shutil.rmtree(str(plan.root / rel), ignore_errors=True)
+    for rel in plan.emptied:  # only empty folders: whatever is left was not moved and stays
+        for dirpath, _dirs, _files in sorted(os.walk(str(plan.root / rel)), key=lambda w: -len(w[0])):
+            try:
+                os.rmdir(dirpath)
+            except OSError:
+                pass
     if plan.set_hooks_path:
         code, _ = git(plan.root, "config", "core.hooksPath", ".githooks")
         if code != 0:
             print("apply: could not set core.hooksPath; set it by hand: git config core.hooksPath .githooks")
+
+
+def move(root, rel, target):
+    """Move one project file to its renamed path: git mv when git tracks it (the move is staged), else a rename."""
+    (root / target).parent.mkdir(parents=True, exist_ok=True)
+    tracked, _ = git(root, "ls-files", "--error-unmatch", "--", str(rel))
+    if tracked == 0:
+        code, out = git(root, "mv", "--", str(rel), str(target))
+        if code == 0:
+            return
+        print(f"apply: git mv {rel} {target} failed ({out[:200]}); moved without git, stage it: git add -A -- {rel} "
+              f"{target}")
+    os.rename(str(root / rel), str(root / target))
 
 
 def init_config(args, version):
@@ -706,7 +844,7 @@ def init_config(args, version):
     new["version"] = version
     if args.language:
         new["language"] = args.language
-    new["log"] = args.log or LOG_BY_LANGUAGE.get(new["language"], new["log"])
+    new["log"] = args.log or new["log"]
     new["check"] = args.check_commands
     new["install"] = args.install
     for key, flag in (("protectedBranch", args.protected_branch), ("pushToProtected", args.push_to_protected),
@@ -817,7 +955,7 @@ def main(argv=None):
 
     lines = describe(plan)
     if args.check:
-        drift = bool(plan.actions or plan.pending or plan.orphans or plan.kept)
+        drift = bool(plan.actions or plan.pending or plan.orphans or plan.kept or plan.blocked)
         for line in lines:
             if not line.startswith("  git"):
                 print(line)

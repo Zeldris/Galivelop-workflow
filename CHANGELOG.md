@@ -31,6 +31,17 @@ does not move until it is released.
   locales la conserva entera con un aviso y cuenta como deriva en `--check`; las órdenes de `.claude/settings.json`
   que llaman a un script viejo pasan al nombre nuevo y las de `.claude/gw.json` se avisan. Documentado en
   `aplicar.md`, `gw-update` y el mapa para agentes.
+- **Rutas en inglés** (A4, incompatible): las rutas que el flujo crea o lee en el proyecto pasan al inglés:
+  `docs/traspaso.md` → `docs/handoff.md` (la bitácora de `--init`, en todos los idiomas), `docs/registros/` →
+  `docs/records/` (la marca `revisado.txt` → `reviewed.txt`, `ci-local.md` y las retros), `docs/propuestas/` →
+  `docs/proposals/`, `docs/difusion/` → `docs/outreach/` y `docs/mapa-agente.md` → `docs/agent-map.md`. Sin claves
+  nuevas: cambian los valores por defecto de `templates/gw.json`, el schema, los scripts y las skills. Migración:
+  `apply.py --update` mueve cada ruta vieja si la nueva no existe (con `git mv` si está versionada), reescribe los
+  valores de `.claude/gw.json` que la nombran y lista, sin tocarlos, los archivos versionados que aún la citan; si
+  existen las dos no toca nada, avisa y `--check` falla; una ruta propia (`log` o `agentMap.path` con otro nombre, un
+  `Folder` en la nota de medios) no se toca. Hasta la 1.0 se acepta el nombre viejo cuando la ruta es la de por
+  defecto y solo existe ese (`config.default_path`), y `version.py --release` busca la recogida en las dos carpetas.
+  Pares en `"paths"` de `schema/renamed.json`; documentado en `aplicar.md`, `config.md` y `gw-update`.
 - **Repo público** (A7): el plan (§1, §2, §7, §9, §10) deja de hablar de repo privado y de la `1.0.0` sola en un repo
   público aparte: cada versión se publica aquí, valen el plugin y la copia gestionada, licencia MIT, la `1.0` sale
   cuando esté su alcance del roadmap (la §10 mide madurez), como mucho una publicación al día, la Fase 10 pasa a
@@ -120,6 +131,17 @@ does not move until it is released.
   shipped (checked against the git blobs in `schema/renamed.json`); with local edits it keeps it whole with a warning
   and counts it as drift in `--check`. `.claude/settings.json` commands that call an old script move to the new name,
   and those in `.claude/gw.json` are warned about. Documented in `apply.md`, `gw-update` and the agent map.
+- **English paths** (A4, breaking): the paths the workflow creates or reads in a project move to English:
+  `docs/traspaso.md` → `docs/handoff.md` (the `--init` log, in every language), `docs/registros/` → `docs/records/`
+  (the `revisado.txt` mark → `reviewed.txt`, `ci-local.md` and retros), `docs/propuestas/` → `docs/proposals/`,
+  `docs/difusion/` → `docs/outreach/` and `docs/mapa-agente.md` → `docs/agent-map.md`. No new keys: the defaults
+  change in `templates/gw.json`, the schema, scripts and skills. Migration: `apply.py --update` moves each old path
+  when the new one does not exist (`git mv` when tracked), rewrites the `.claude/gw.json` values that name it and
+  lists, without touching them, the tracked files that still cite it; when both exist it touches nothing, warns and
+  `--check` fails; a path of the project's own (`log` or `agentMap.path` set to another name, a `Folder` in the media
+  note) is left alone. Until 1.0 the old name is accepted when the path is the default one and only that one exists
+  (`config.default_path`), and `version.py --release` looks for the harvest in both folders. Pairs in `"paths"` of
+  `schema/renamed.json`; documented in `apply.md`, `config.md` and `gw-update`.
 - **Public repo** (A7): the plan (§1, §2, §7, §9, §10) no longer talks about a private repo and `1.0.0` alone in a
   separate public repo: every version is published here, both the plugin and the managed copy are valid, MIT license,
   `1.0` ships when its roadmap scope is done (§10 measures maturity), at most one release a day, Phase 10 becomes

@@ -43,7 +43,7 @@
     "log": {
       "type": "string",
       "minLength": 1,
-      "description": "Hand-off log path, relative to the repo root."
+      "description": "Hand-off log path, relative to the repo root (docs/handoff.md in new projects)."
     },
     "logRows": {
       "type": "boolean",
@@ -122,7 +122,7 @@
     "reviewMark": {
       "type": "string",
       "minLength": 1,
-      "description": "Committed file holding the reviewed commit sha."
+      "description": "Committed file holding the reviewed commit sha (docs/records/reviewed.txt in new projects)."
     },
     "requireRetro": {
       "type": "boolean",
@@ -136,9 +136,9 @@
     },
     "ciLocalLog": {
       "type": "string",
-      "default": "docs/registros/ci-local.md",
+      "default": "docs/records/ci-local.md",
       "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+\\.md$",
-      "description": "Repo-relative file where `ci-local.py --apuntar` records each local run of the GitHub CI (a Markdown file). The PR hook takes a green line of it, whose commit has only content after it, as the CI that GitHub did not start (no Actions quota, no runners); it is never code for is-code.sh."
+      "description": "Repo-relative file where `ci-local.py --apuntar` records each local run of the GitHub CI (a Markdown file); unset, a project not migrated yet keeps docs/registros/ci-local.md while only the old file or folder exists (0.x). The PR hook takes a green line of it, whose commit has only content after it, as the CI that GitHub did not start (no Actions quota, no runners); it is never code for is-code.sh."
     },
     "ciLocalWorkflows": {
       "type": "array",
@@ -372,7 +372,7 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$",
-          "description": "The agent map file (relative to the repo root, no '..'); agent-map.py checks the paths it cites. Absent: docs/mapa-agente.md, and a project without that file is not an error; a path set here that does not exist is."
+          "description": "The agent map file (relative to the repo root, no '..'); agent-map.py checks the paths it cites. Absent: docs/agent-map.md (in 0.x, docs/mapa-agente.md when only that one exists), and a project without that file is not an error; a path set here that does not exist is."
         },
         "prefixes": {
           "type": "object",
@@ -396,7 +396,7 @@
         }
       },
       "default": {},
-      "description": "The agent map (docs/mapa-agente.md): where each contract lives and what implements it. Read by agent-map.py."
+      "description": "The agent map (docs/agent-map.md): where each contract lives and what implements it. Read by agent-map.py."
     },
     "subagentCap": {
       "type": "integer",

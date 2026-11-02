@@ -36,7 +36,8 @@ ROOT = Path(__file__).resolve().parent.parent  # this workflow repo
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(ROOT / "scripts"))
 from apply import skill_version_span  # noqa: E402  (the one parser of skill versions)
-STATE = ROOT / "docs" / "propuestas" / "estado.json"
+import config  # noqa: E402
+STATE = ROOT / config.default_path(ROOT, "docs/proposals/estado.json")  # 0.x: docs/propuestas/ until 1.0 (A4)
 IDEAS_HEADING = re.compile(r"^#{2,4}\s*(?:For|Para)\s+Galivelop-workflow\b.*$", re.I | re.M)
 IDEAS_LINE = re.compile(r"^([ \t]*)(?:[-*+]\s+|\d+\.\s+)?[*_]{0,2}(?:Propuestas?\s+para\s+el\s+flujo|Proposals?\s+for\s+the\s+workflow)\b",
                         re.I | re.M)

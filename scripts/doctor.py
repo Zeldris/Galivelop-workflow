@@ -59,7 +59,7 @@ INVISIBLE_PATTERN = (rf"[{ALWAYS_INVISIBLE}]"
 INVISIBLE = re.compile(INVISIBLE_PATTERN)
 WARN_LINES, FAIL_LINES = 150, 250  # AGENTS.md / CLAUDE.md: every session loads them whole
 MEDIA_NOTE = ".claude/gw/gw-media-content.md"  # the project's note of gw-media-content (skills/gw-media-content/nota.md)
-MEDIA_FOLDER = "docs/difusion"  # its default `Folder`
+MEDIA_FOLDER = "docs/outreach"  # its default `Folder` (0.x: docs/difusion when only that one exists, until 1.0, A4)
 SKILL_LICENSE = "LICENSE-mattpocock-skills"  # apply.py copies it next to the skills that cite it
 
 
@@ -615,20 +615,25 @@ def check_skill_tests(rep, root):
         rep.ok("skill tests", "every skill script has its test_<name>.py")
 
 
-def media_folder(root):
-    """The `Folder:` line of the gw-media-content note, or its default; None when it points outside the project."""
+def media_folder_setting(root):
+    """The `Folder:` line of the gw-media-content note, or None when the note sets none (or there is no note)."""
     try:
         text = (root / MEDIA_NOTE).read_text(encoding="utf-8", errors="replace")
     except OSError:
         text = ""
     m = re.search(r"^[\s>*-]*Folder\s*:\s*`?([^`\n]+?)`?\s*$", text, re.M)
-    folder = m.group(1) if m else MEDIA_FOLDER
+    return m.group(1) if m else None
+
+
+def media_folder(root):
+    """The `Folder:` line of the gw-media-content note, or its default; None when it points outside the project."""
+    folder = media_folder_setting(root) or config.default_path(root, MEDIA_FOLDER)
     path = Path(folder)
     return None if path.is_absolute() or ".." in path.parts else root / path
 
 
 def uses_media_content(root):
-    """The project uses gw-media-content when its note exists or the folder the note names (default docs/difusion) does.
+    """The project uses gw-media-content when its note exists or the folder the note names (default docs/outreach) does.
     The skill itself is in every project that applied the workflow, so its presence says nothing."""
     folder = media_folder(root)
     return (root / MEDIA_NOTE).is_file() or (folder is not None and folder.is_dir())

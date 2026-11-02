@@ -6,7 +6,7 @@ apply and you say so once.
 
 | Key | Default | Holds |
 |---|---|---|
-| Folder | `docs/difusion` | the `<dir>` of every path in the skills |
+| Folder | `docs/outreach` (`docs/difusion`, its 0.x name, while only that one exists) | the `<dir>` of every path in the skills |
 | Languages | `es, en` | any ISO 639-1 codes (two lowercase letters); the first is the main language; one `## <lang>` section per language in every channel file |
 | Channels | `x, reddit, linkedin, discord` | the active channels; add `web` when the project's website reads the pieces (see below) |
 | Extra channels | none | a channel beyond those five: see below |
@@ -34,7 +34,7 @@ channel, in exactly one of two ways:
 ```
 Extra channels:
 - mastodon: límite: 500; tono: cercano
-- portal: formato: propio; plantilla: docs/difusion/portal.json
+- portal: formato: propio; plantilla: docs/outreach/portal.json
 ```
 
 - `límite: N` is a channel with the usual shape (`<canal>.md`, a `## <lang>` section per language, `Imagen:` lines) and

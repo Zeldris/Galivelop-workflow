@@ -2,7 +2,8 @@
 # galivelop-workflow v0.4.3
 """The agent map must not point at anything that no longer exists (a check for CI and `check`).
 
-The map (default docs/mapa-agente.md; config `agentMap.path`) says where each contract lives and what implements it.
+The map (default docs/agent-map.md, or docs/mapa-agente.md in 0.x when only that one exists; config `agentMap.path`)
+says where each contract lives and what implements it.
 An agent trusts it, so a stale row is worse than no map. This script reads every path the map cites:
 
   `path`          backtick token that is a path of the repo: the file or folder exists (a glob, `*` or `?`, must
@@ -40,7 +41,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import config as gwconfig  # noqa: E402
 
-DEFAULT_MAP = "docs/mapa-agente.md"
+DEFAULT_MAP = "docs/agent-map.md"
 LINK = re.compile(r'!?\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)')
 TICKS = re.compile(r'`([^`\n]+)`')
 TOKEN = re.compile(r'^([\w.@+%\-/*?]+?)(?::\d+(?:-\d+)?)?(?:#(\S+))?$')
@@ -256,7 +257,7 @@ class Checker:
 def run(root, cfg):
     agent_map = cfg.get('agentMap') or {}
     declared = agent_map.get('path')
-    map_rel = posixpath.normpath(declared or DEFAULT_MAP)
+    map_rel = posixpath.normpath(declared or gwconfig.default_path(root, DEFAULT_MAP))  # 0.x: old name until 1.0 (A4)
     map_file = Path(root) / map_rel
     if not map_file.is_file():
         if declared:

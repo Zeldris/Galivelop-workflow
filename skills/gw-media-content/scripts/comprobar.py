@@ -4,7 +4,7 @@
     python3 comprobar.py [--prefijos-tarea A,B,...] [--limite canal=N]... [--formato-propio canal]...
                          [--idiomas-web es,gl,en] <dir>/AAAA-MM-DD/NN-<tema> [more folders]
 
-A folder argument may also be a date folder or the whole <dir> (default docs/difusion): every piece below it is
+A folder argument may also be a date folder or the whole <dir> (default docs/outreach): every piece below it is
 checked. No config: the per-network limits are read from ../reglas.json.
 
 Piece layout:
@@ -932,7 +932,7 @@ def parece_pieza(p: Path, en_fecha=False) -> bool:
 
 
 USO = ("usage: comprobar.py [--prefijos-tarea A,B,...] [--limite canal=N]... [--formato-propio canal]... "
-       "[--idiomas-web es,gl,en] <dir>/AAAA-MM-DD/NN-<tema> [...]  (e.g. docs/difusion/2026-10-25/01-release; "
+       "[--idiomas-web es,gl,en] <dir>/AAAA-MM-DD/NN-<tema> [...]  (e.g. docs/outreach/2026-10-25/01-release; "
        "--prefijos-tarea adds the task-id prefixes of the project, e.g. INS,FLU; --limite portal=500 caps each language "
        "section of an extra channel; --formato-propio portal marks an extra channel whose file has its own format; "
        "--idiomas-web es,gl,en sets the exact languages of web.md)")

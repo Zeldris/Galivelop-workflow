@@ -70,10 +70,20 @@ hand.
    `.claude/settings.json` move to the new name. An old copy with local edits is kept with a warning: carry the
    edits over to the new name with the user, then `git rm -r` the old one. Commands in `.claude/gw.json` that
    name an old script are only warned about: change them there.
-4. Personal notes: the missing ones are created by the run above. For each `personal note … differs` line, show the
+4. Project paths renamed in 0.5 (`"paths"` in `schema/renamed.json`: `docs/traspaso.md` → `docs/handoff.md`,
+   `docs/registros/` → `docs/records/` with `revisado.txt` → `reviewed.txt`, `docs/propuestas/` → `docs/proposals/`,
+   `docs/difusion/` → `docs/outreach/`, `docs/mapa-agente.md` → `docs/agent-map.md`) move with the same run when only
+   the old one exists (`git mv` when tracked, so history follows), and the strings of `.claude/gw.json` that name
+   them are rewritten. A path the project chose (`log` or `agentMap.path` set to another name, any `Folder` in the
+   media note) is left alone. When old and new both exist nothing moves and `--check` fails: merge the old one into
+   the new one with the user, then `git rm -r` it. Then fix the references the run lists (`still cite the old
+   paths`, with its `git grep` command): rewrite the live ones (`AGENTS.md`, `CLAUDE.md`, links in the docs, regexes
+   in `.claude/gw.json` such as `content` or `staleRefs`) and leave the history as it is (CHANGELOG, past retros,
+   dated proposals).
+5. Personal notes: the missing ones are created by the run above. For each `personal note … differs` line, show the
    user `diff <source> <target>` (the project's copy is never overwritten and gets no `.gw-nuevo`) and merge by hand
    only what they accept. Nothing personal ever goes into the workflow repo; `--sin-notas-personales` skips them.
-5. Set `version` in `.claude/gw.json` to Y once the proposals are reviewed.
+6. Set `version` in `.claude/gw.json` to Y once the proposals are reviewed.
 
 ## 5. Check and commit
 

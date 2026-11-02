@@ -20,8 +20,8 @@ check flags one that lacks it (exceptions, with the reason, in UNMARKED).
                                         # LICENSE-mattpocock-skills)
                                         # changed since the last vX.Y.Z tag reachable from HEAD need a
                                         # new version (the pre-push check of a push to main), and a new
-                                        # version needs a harvest since that tag: a docs/propuestas/*.md
-                                        # added after it whose first line is "# Harvest …" (skill gw-harvest)
+                                        # version needs a harvest since that tag: a docs/proposals/*.md
+                                        # (or docs/propuestas/*.md, 0.x) added after it whose first line is "# Harvest …" (skill gw-harvest)
                                         # and a dated, filled-in CHANGELOG entry (## [X.Y.Z] - YYYY-MM-DD)
 Then: python3 scripts/apply.py .  (refresh this repo's copy) and fill in the CHANGELOG entry.
 Files are read and written as strict UTF-8 keeping their line endings; a non-UTF-8 file with a marker is reported
@@ -44,7 +44,8 @@ TEMPLATE_GW = ROOT / "templates" / "gw.json"
 SEMVER = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$")
 TOP_VERSION = re.compile(r'^(  "version"\s*:\s*")([^"]*)(")', re.M)  # a top-level key: two-space indent
 SCOPES = ("scripts", "skills", "templates", "schema")
-PROPOSALS = "docs/propuestas"  # where gw-harvest writes its "# Harvest <repo> — <date>" files
+PROPOSALS = "docs/proposals"  # where gw-harvest writes its "# Harvest <repo> — <date>" files
+OLD_PROPOSALS = "docs/propuestas"  # 0.x: old name accepted until 1.0 (A4)
 HEAD_LINES = 5  # same as header_version()
 UNMARKED = {  # workflow files that carry no header marker, and why
     "templates/gw.json": "JSON; its marker is the top-level \"version\", checked on its own",
@@ -191,13 +192,19 @@ def changelog_check(version):
 
 def harvest_check(version, tag):
     """Problems for releasing `version` after `tag`: every version starts with a harvest of the projects that use the
-    workflow (AGENTS.md), so some file added under docs/propuestas/ since the tag must be a gw-harvest one."""
-    code, added = git("diff", "--name-only", "--no-renames", "--diff-filter=A", tag, "HEAD", "--", PROPOSALS)
+    workflow (AGENTS.md), so some file added under docs/proposals/ (or the 0.x docs/propuestas/) since the tag must be
+    a gw-harvest one. A file the 0.5 rename moved from docs/propuestas/ to docs/proposals/ is not new."""
+    code, added = git("diff", "--name-only", "--no-renames", "--diff-filter=A", tag, "HEAD", "--",
+                      PROPOSALS, OLD_PROPOSALS)
     if code != 0:
         return [f"cannot diff against {tag}; fetch it and retry: git fetch --tags origin && "
                 "python3 scripts/version.py --release"]
     for path in added.splitlines():
         if path.endswith(".md"):
+            if path.startswith(PROPOSALS + "/"):  # 0.x: moved by the rename, not added (A4)
+                moved, _ = git("cat-file", "-e", f"{tag}:{OLD_PROPOSALS}{path[len(PROPOSALS):]}")
+                if moved == 0:
+                    continue
             code, text = git("show", f"HEAD:{path}")
             if code == 0 and text.startswith("# Harvest "):
                 return []

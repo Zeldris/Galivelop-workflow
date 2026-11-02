@@ -110,13 +110,13 @@ wall entry with its images; the site may have more languages than the piece (`We
 `--idiomas-web`). A generic example:
 
 ```
-Folder: docs/difusion
+Folder: docs/outreach
 Languages: es, en
 Channels: x, reddit, linkedin, discord, web
 Web languages: es, gl, en
 Extra channels:
 - mastodon: límite: 500; tono: cercano
-- portal: formato: propio; plantilla: docs/difusion/portal.json
+- portal: formato: propio; plantilla: docs/outreach/portal.json
 Palette: --fondo #101418; --acento #4cc38a
 Screenshots: start the app (npm run dev), open /panel, capture the window at 1280x720
 Task prefixes: INS,FLU   (passed to comprobar.py --prefijos-tarea)
@@ -134,7 +134,7 @@ The workflow learns from the projects that use it. There are two halves:
 - **The workflow pulls.** From this repo, the `gw-harvest` skill walks the connected projects that have
   `.claude/gw.json`. The mechanical part is `python3 scripts/harvest.py <project>...` (edited workflow copies, new
   skills, retro sections, commits since the last harvest); the agent only decides what is general and writes
-  `docs/propuestas/YYYY-MM-DD-<repo>.md`. **It never applies anything without confirmation**: what is approved goes in
+  `docs/proposals/YYYY-MM-DD-<repo>.md`. **It never applies anything without confirmation**: what is approved goes in
   as a normal change with a CHANGELOG entry and a new version ([contributing](contributing.md)).
 
 Projects are read, never modified, from the session that harvests.

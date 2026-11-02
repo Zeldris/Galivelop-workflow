@@ -23,7 +23,7 @@ APLICAR = ROOT / "scripts" / "apply.py"
 TEMPLATES = ROOT / "templates"
 VERSION = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())["version"]
 MARKER = f"<!-- galivelop-workflow v{VERSION} -->"
-LOGS = {"es": "docs/traspaso.md", "en": "docs/handoff.md"}
+LOGS = {"es": "docs/handoff.md", "en": "docs/handoff.md"}  # one name in every language (0.5, A4)
 RENDERED = ("AGENTS.md", "CLAUDE.md", "REVIEW.md", "GLOSSARY.md", ".github/workflows/comprobar.yml",
             ".claude/gw/opt-tokens.md", ".claude/gw.json")
 
@@ -359,7 +359,7 @@ class Init(unittest.TestCase):
     def test_filled_in_files_are_never_overwritten(self):
         p = self.project()
         self.assertEqual(p.init("es")[0], 0)
-        for rel in ("docs/traspaso.md", "REVIEW.md", "GLOSSARY.md", ".claude/gw/opt-tokens.md"):
+        for rel in ("docs/handoff.md", "REVIEW.md", "GLOSSARY.md", ".claude/gw/opt-tokens.md"):
             with self.subTest(rel=rel):
                 edited = p.read(rel).replace(MARKER, "<!-- galivelop-workflow v0.0.1 -->") + "\nfilled in\n"
                 p.write(rel, edited)
@@ -369,10 +369,10 @@ class Init(unittest.TestCase):
                 self.assertFalse((p.work / (rel + ".gw-nuevo")).exists())
                 self.assertIn(f"template update: {rel}", out)
                 self.assertEqual(p.aplicar("--check")[0], 0)  # a template note is not drift
-        p.write("docs/traspaso.md", "# Bitácora propia\n\nSiguiente paso: seguir.\n")
+        p.write("docs/handoff.md", "# Bitácora propia\n\nSiguiente paso: seguir.\n")
         code, out = p.aplicar("--update")
         self.assertEqual(code, 0, out)
-        self.assertEqual(p.read("docs/traspaso.md"), "# Bitácora propia\n\nSiguiente paso: seguir.\n")
+        self.assertEqual(p.read("docs/handoff.md"), "# Bitácora propia\n\nSiguiente paso: seguir.\n")
 
     def test_existing_review_md_gets_the_template_diff_printed_not_written(self):
         p = self.project()
@@ -392,8 +392,10 @@ class Init(unittest.TestCase):
     def test_workflow_repo_skips_its_root_templates(self):
         r = subprocess.run(["python3", str(APLICAR), str(ROOT), "--dry-run"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        for name in ("AGENTS.md", "CLAUDE.md", "REVIEW.md", "GLOSSARY.md", "comprobar.yml", "docs/traspaso.md"):
+        for name in ("AGENTS.md", "CLAUDE.md", "REVIEW.md", "GLOSSARY.md", "comprobar.yml", "docs/traspaso.md",
+                     "docs/handoff.md", "docs/registros", "docs/propuestas"):
             self.assertNotIn(name, r.stdout)
+        self.assertNotIn("move", r.stdout)  # its own documents keep their names: renamed by hand (A4)
 
 
 if __name__ == "__main__":

@@ -94,9 +94,9 @@ class Version(unittest.TestCase):
         self.commit_all("entry heading removed")
         self.assertIn("no CHANGELOG entry for 9.8.7", run(tmp, "--release").stdout)
 
-    def harvest(self, first_line="# Harvest portal — 2026-10-23"):
-        (self.tmp / "docs" / "propuestas").mkdir(parents=True, exist_ok=True)
-        (self.tmp / "docs" / "propuestas" / "2026-10-23-portal.md").write_text(first_line + "\n\nNada nuevo.\n")
+    def harvest(self, first_line="# Harvest portal — 2026-10-23", folder="proposals"):
+        (self.tmp / "docs" / folder).mkdir(parents=True, exist_ok=True)
+        (self.tmp / "docs" / folder / "2026-10-23-portal.md").write_text(first_line + "\n\nNada nuevo.\n")
 
     def test_a_new_version_needs_a_harvest_added_since_the_last_tag(self):
         tmp = self.tmp
@@ -111,17 +111,38 @@ class Version(unittest.TestCase):
         self.assertIn("no harvest for 9.8.7", r.stdout)
         self.assertIn(f"since v{VERSION}", r.stdout)
         self.assertIn("gw-harvest", r.stdout)
-        (tmp / "docs" / "propuestas" / "2026-10-24-reparto.md").write_text("# Reparto — 2026-10-24\n")
+        (tmp / "docs" / "proposals" / "2026-10-24-reparto.md").write_text("# Reparto — 2026-10-24\n")
         self.commit_all("a proposals file that is not a harvest")
         r = run(tmp, "--release")
         self.assertIn("no harvest for 9.8.7", r.stdout, "only a '# Harvest' file counts")
-        (tmp / "docs" / "propuestas" / "2026-10-23-portal.md").write_text("# Harvest portal — editada\n")
+        (tmp / "docs" / "proposals" / "2026-10-23-portal.md").write_text("# Harvest portal — editada\n")
         self.commit_all("an edit of the old harvest")
         r = run(tmp, "--release")
         self.assertIn("no harvest for 9.8.7", r.stdout, "editing an earlier harvest is not a new one")
-        (tmp / "docs" / "propuestas" / "2026-10-25-wmf.md").write_text("# Harvest wmf — 2026-10-25\n")
+        (tmp / "docs" / "proposals" / "2026-10-25-wmf.md").write_text("# Harvest wmf — 2026-10-25\n")
         self.fill_entry("9.8.7")
         self.commit_all("harvest")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_harvest_in_the_old_folder_counts_and_one_moved_by_the_rename_does_not(self):
+        # 0.x (A4): docs/propuestas/ is still read; a harvest that git mv took to docs/proposals/ is not a new one.
+        tmp = self.tmp
+        self.git("init", "-q")
+        self.harvest(folder="propuestas")
+        self.commit_all("released, with the harvest of that version in the old folder")
+        self.git("tag", f"v{VERSION}")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.fill_entry("9.8.7")
+        (tmp / "docs" / "proposals").mkdir()
+        self.git("mv", "docs/propuestas/2026-10-23-portal.md", "docs/proposals/2026-10-23-portal.md")
+        self.commit_all("bump, and the folder renamed")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("no harvest for 9.8.7: no docs/proposals/*.md starting with '# Harvest'", r.stdout)
+        (tmp / "docs" / "propuestas").mkdir(exist_ok=True)
+        (tmp / "docs" / "propuestas" / "2026-10-25-wmf.md").write_text("# Harvest wmf — 2026-10-25\n")
+        self.commit_all("a new harvest, still in the old folder")
         r = run(tmp, "--release")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 

@@ -372,6 +372,77 @@ class Aplicar(unittest.TestCase):
         self.assertIn(".claude/gw.json runs .claude/gw/scripts/check-verde.sh, renamed to "
                       "check-green.sh in 0.5; change it there to .claude/gw/scripts/check-green.sh", out)
 
+    def old_paths_project(self, **config):
+        """A project of 0.4: the log, the review mark, a retro and a proposal under their Spanish names, committed."""
+        p = self.p
+        cfg = dict(json.loads(p.read(".claude/gw.json")), log="docs/traspaso.md",
+                   reviewMark="docs/registros/revisado.txt", ciLocalLog="docs/registros/ci-local.md")
+        cfg.update(config)
+        p.write(".claude/gw.json", json.dumps(cfg, indent=2) + "\n")
+        p.write("docs/traspaso.md", "# Log\n\n| Next step | go on |\n")
+        p.write("docs/registros/revisado.txt", "mark\n")
+        p.write("docs/registros/retro-2026-01-01-x.md", "# Retro\n")
+        p.write("docs/propuestas/2026-01-01-x.md", "# Harvest\n")
+        p.write("README.md", "See docs/traspaso.md and docs/registros/.\n")
+        p.run("git", "add", "-A")
+        p.run("git", "commit", "-qm", "0.4")
+        return p
+
+    def test_old_paths_are_moved_the_config_rewritten_and_references_listed(self):
+        p = self.old_paths_project()
+        code, out = p.aplicar("--check")
+        self.assertEqual(code, 1, out)
+        self.assertIn("move    docs/traspaso.md  (to docs/handoff.md, renamed in 0.5)", out)
+        self.assertTrue((p.work / "docs/traspaso.md").is_file())  # --check writes nothing
+        out = self.applied()
+        self.assertIn("move    docs/registros/revisado.txt  (to docs/records/reviewed.txt, renamed in 0.5)", out)
+        self.assertIn("move    docs/propuestas/2026-01-01-x.md  (to docs/proposals/2026-01-01-x.md", out)
+        for old in ("docs/traspaso.md", "docs/registros", "docs/propuestas"):
+            self.assertFalse((p.work / old).exists(), old)
+        self.assertEqual(p.read("docs/handoff.md"), "# Log\n\n| Next step | go on |\n")
+        self.assertEqual(p.read("docs/records/reviewed.txt"), "mark\n")
+        self.assertTrue((p.work / "docs/records/retro-2026-01-01-x.md").is_file())
+        self.assertTrue((p.work / "docs/proposals/2026-01-01-x.md").is_file())
+        cfg = json.loads(p.read(".claude/gw.json"))
+        self.assertEqual((cfg["log"], cfg["reviewMark"], cfg["ciLocalLog"]),
+                         ("docs/handoff.md", "docs/records/reviewed.txt", "docs/records/ci-local.md"))
+        self.assertEqual(cfg["content"], ["^docs/", "\\.md$"])  # strings that only look like paths stay
+        staged = p.run("git", "status", "--short", "--", "docs")[1]
+        self.assertIn("R  docs/traspaso.md -> docs/handoff.md", staged)  # git mv: the history follows the file
+        self.assertIn("1 tracked file(s) still cite the old paths renamed in 0.5: README.md; fix the live "
+                      "references", out)
+        self.assertIn("git grep -n -E", out)
+        self.assertEqual(p.read("README.md"), "See docs/traspaso.md and docs/registros/.\n")  # listed, not rewritten
+        code, out = p.aplicar("--check")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("still cite", out)  # nothing moved this time: no repeated warning
+
+    def test_old_and_new_path_both_present_touch_nothing(self):
+        p = self.old_paths_project()
+        p.write("docs/records/other.md", "new\n")
+        code, out = p.aplicar("--check")
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/registros and docs/records both exist (docs/registros was renamed to docs/records in "
+                      "0.5); nothing moved nor rewritten for it: merge docs/registros into docs/records by hand, then "
+                      "delete it: git rm -r docs/registros", out)
+        self.applied()
+        self.assertTrue((p.work / "docs/registros/revisado.txt").is_file())
+        self.assertFalse((p.work / "docs/records/reviewed.txt").exists())
+        self.assertEqual(json.loads(p.read(".claude/gw.json"))["reviewMark"], "docs/registros/revisado.txt")
+        self.assertTrue((p.work / "docs/handoff.md").is_file())  # the other pairs still move
+        code, out = p.aplicar("--check")
+        self.assertEqual(code, 1, out)  # still drift until merged by hand
+        self.assertIn("both exist", out)
+
+    def test_a_log_of_its_own_is_never_moved(self):
+        p = self.old_paths_project(log="docs/bitacora.md")
+        p.write("docs/bitacora.md", "# Mine\n")
+        out = self.applied()
+        self.assertNotIn("move    docs/traspaso.md", out)
+        self.assertTrue((p.work / "docs/traspaso.md").is_file())
+        self.assertFalse((p.work / "docs/handoff.md").exists())
+        self.assertEqual(json.loads(p.read(".claude/gw.json"))["log"], "docs/bitacora.md")
+
     def test_installed_scout_updates_tests_pass_in_the_project(self):
         """The skill's own tests find config.py in .claude/gw (installed layout), not three folders up (INS P1)."""
         p = self.p

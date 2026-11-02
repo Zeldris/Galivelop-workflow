@@ -45,7 +45,7 @@ Reúne estos datos **antes** de ejecutar nada. Todo va a `.claude/gw.json` (cada
 | Dato | Cómo se decide |
 |---|---|
 | Idioma (`language`: `es` o `en`) | El de la persona y el de la documentación del proyecto; manda sobre las plantillas y las respuestas |
-| Ruta de la bitácora (`log`) | Por defecto `docs/traspaso.md` (es) o `docs/handoff.md` (en); si el proyecto ya tiene una, esa |
+| Ruta de la bitácora (`log`) | Por defecto `docs/handoff.md` (en todos los idiomas); si el proyecto ya tiene una, esa |
 | Orden de instalación (`install`) | Se infiere (abajo); vacío si no hay dependencias |
 | Orden(es) de comprobación (`check`) | Se infiere (abajo); **al menos una**, es lo que corre el `pre-push` y el CI |
 | Rama protegida (`protectedBranch`) | La que despliega o publica: `git symbolic-ref --short refs/remotes/origin/HEAD`; si falla (remoto nuevo o local), `git remote show origin \| sed -n 's/.*HEAD branch: //p'`; si no, pregunta a la persona |
@@ -73,7 +73,7 @@ Reglas:
   tarda. Una orden que no existe o no pasa se detecta tarde y estorba en cada push.
 - **Si hay duda, pregunta a la persona**; no inventes una orden. Con varios candidatos, ofrécelos numerados.
 - Un proyecto sin tests: `check` puede ser un linter o un `bash -n`; dilo y apúntalo como deuda en la bitácora. Un `bash -n` solo comprueba el primer archivo (los demás son argumentos): una orden por archivo, o `for f in …; do bash -n "$f"; done` (`doctor.py` lo avisa en `check syntax-only`, también con un glob o una sustitución `$(…)`). Si pones `doctor.py` en `check`, en GitHub Actions (`GITHUB_ACTIONS=true`) el `hooks-path` sin poner sale en `WARN` y no rompe: el CI no tiene los ganchos de git puestos; en local sigue siendo `FAIL`.
-- Si el proyecto tiene mapa para agentes (`docs/mapa-agente.md`, o el que declare `agentMap.path`), añade `--check-command "python3 .claude/gw/scripts/agent-map.py"`: comprueba que cada ruta que cita existe. Sin mapa sale en 0 y no estorba; con prefijos cortos (`b/` por `backend/src/`), configura `agentMap.prefixes` ([`config.md`](config.md)).
+- Si el proyecto tiene mapa para agentes (`docs/agent-map.md`, o el que declare `agentMap.path`), añade `--check-command "python3 .claude/gw/scripts/agent-map.py"`: comprueba que cada ruta que cita existe. Sin mapa sale en 0 y no estorba; con prefijos cortos (`b/` por `backend/src/`), configura `agentMap.prefixes` ([`config.md`](config.md)).
 - Las skills copiadas traen sus pruebas junto a sus scripts: se descubren con `python3 -m unittest discover -s <skill>/scripts` (el check del repo del flujo lo hace con cada una).
 - `content` se propone leyendo el árbol: `^docs/`, `^public/`… (en JSON, la barra se escribe doble). **Lo que sea
   `content` sube sin marca:** no pongas ahí scripts ni lo que un agente lee como instrucciones (un `AGENTS.md` en una
@@ -94,13 +94,13 @@ el de la plantilla (`^docs/`, los `.md` de la raíz que son documentación y los
 
 ```bash
 python3 <flujo>/scripts/apply.py <proyecto> --dry-run --init --language es \
-  --log docs/traspaso.md --install "npm ci" --check-command "npm run lint" --check-command "npm test" \
+  --log docs/handoff.md --install "npm ci" --check-command "npm run lint" --check-command "npm test" \
   --protected-branch main --push-to-protected direct
 ```
 
 `--dry-run` imprime el plan sin escribir. Cuando sea el que quieres, repite la misma orden **sin** `--dry-run`.
 
-Opciones: `--review-mark RUTA` (por defecto `docs/registros/revisado.txt`), `--with gw-opt-ai` y `--with gw-scout-updates`.
+Opciones: `--review-mark RUTA` (por defecto `docs/records/reviewed.txt`), `--with gw-opt-ai` y `--with gw-scout-updates`.
 `--init` solo escribe `.claude/gw.json` si no existe, lo valida y aplica como siempre.
 
 Qué hace (el detalle completo, en `--help`): copia `scripts/` a `.claude/gw/scripts/`, las skills a
@@ -271,6 +271,18 @@ entra el código ya hoy.
   llaman. Si tiene cambios locales, la conserva entera y avisa («is the old name of … kept»): pasa esos cambios al
   nombre nuevo y bórrala con `git rm -r`. Las órdenes de `.claude/gw.json` que nombran un script viejo solo se
   avisan: cámbialas allí.
+- **Rutas del proyecto renombradas en la 0.5** (A4, `"paths"` de `schema/renamed.json`): `docs/traspaso.md` →
+  `docs/handoff.md`, `docs/registros/` → `docs/records/` (con `revisado.txt` → `reviewed.txt`), `docs/propuestas/` →
+  `docs/proposals/`, `docs/difusion/` → `docs/outreach/` y `docs/mapa-agente.md` → `docs/agent-map.md`. Si solo
+  existe la vieja, `apply.py --update` la mueve (con `git mv` si está versionada, así la historia la sigue) y
+  reescribe los valores de `.claude/gw.json` que la nombran; `--check` lo cuenta como pendiente. Si existen las dos,
+  no toca nada, avisa («both exist») y `--check` falla hasta que fusiones la vieja en la nueva y la borres con
+  `git rm -r`. Una ruta propia (`log` o `agentMap.path` con otro nombre, cualquier `Folder` en la nota de
+  `gw-media-content`) no se toca. Al final lista los archivos versionados que aún citan las rutas viejas («still cite
+  the old paths», con la orden `git grep` para verlos) sin reescribirlos: corrige las referencias vivas (`AGENTS.md`,
+  `CLAUDE.md`, enlaces de la documentación, expresiones de `content` o `staleRefs`) y deja la historia (CHANGELOG,
+  retros pasadas). Hasta la 1.0, los scripts aceptan el nombre viejo cuando la ruta es la de por defecto y solo
+  existe ese.
 - **Ganchos viejos en `.claude/settings.json`.** `apply.py` fusiona los nuevos sin quitar nada, y avisa
   («also runs '…'») de una entrada de `SessionStart`, `PreToolUse` o `Stop` que ejecuta un script del flujo desde fuera de
   `.claude/gw/scripts/`; `doctor.py` también. Bórrala a mano, o correrá dos veces.

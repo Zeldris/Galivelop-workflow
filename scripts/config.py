@@ -209,6 +209,47 @@ def with_defaults(config, schema):
     return filled
 
 
+# 0.x: old names accepted until 1.0 (A4). The project paths renamed in 0.5, (new, old), a nested pair before its
+# folder: the same pairs as "paths" in schema/renamed.json, which apply.py migrates (tests/test_config.py keeps the
+# two equal). Remove this list, default_path() and its callers in 1.0.
+OLD_PATHS = (("docs/records/reviewed.txt", "docs/registros/revisado.txt"), ("docs/agent-map.md", "docs/mapa-agente.md"),
+             ("docs/handoff.md", "docs/traspaso.md"), ("docs/proposals", "docs/propuestas"),
+             ("docs/outreach", "docs/difusion"), ("docs/records", "docs/registros"))
+PATH_DEFAULTS = ("ciLocalLog",)  # schema defaults that are project paths: default_path() when the config omits them
+
+
+def _exists(root, rel, rev=None):
+    if rev is None:
+        return (Path(root) / rel).exists()
+    env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
+    try:
+        return subprocess.run(["git", "-C", str(root), "cat-file", "-e", f"{rev}:{rel}"], capture_output=True,
+                              env=env).returncode == 0
+    except OSError:
+        return False
+
+
+def default_path(root, rel, rev=None):
+    """`rel`, a repo-relative path the workflow uses by default (never one the config sets), or its old 0.x name in a
+    project not migrated yet: the old file when only it exists, else the old folder when only it exists (so a new file
+    lands next to its siblings). With `rev`, existence is checked in that commit. 0.x only (A4)."""
+    rel = posixpath.normpath(rel)
+    for new, old in OLD_PATHS:
+        if rel != new and not rel.startswith(new + "/"):
+            continue
+        old_rel = old + rel[len(new):]
+        if _exists(root, rel, rev):
+            return rel
+        if _exists(root, old_rel, rev):
+            return old_rel
+        folder_new, folder_old = posixpath.dirname(rel), posixpath.dirname(old_rel)
+        if folder_new != folder_old and folder_new and not _exists(root, folder_new, rev) \
+                and _exists(root, folder_old, rev):
+            return old_rel
+        return rel
+    return rel
+
+
 def stale_refs(config):
     """(patterns, skip) of the `staleRefs` key, whichever form it has: a list of regexes (skip empty) or
     {"patterns": [...], "skip": [globs]} (both optional)."""
@@ -221,7 +262,7 @@ def stale_refs(config):
 def glob_regex(glob):
     """Compile a repo-relative glob to a regex. Only `*`, `**` and `?` are special (no brackets, no gitignore rules):
     `*` and `?` stay inside one folder, `**` crosses folders (`**/` also matches no folder), a leading `./` or `/` is
-    dropped. An entry without metacharacters (`docs/registros`, with or without a trailing `/`) matches that file or
+    dropped. An entry without metacharacters (`docs/records`, with or without a trailing `/`) matches that file or
     that folder and everything under it; a trailing `/` after metacharacters, or `/**`, also matches the folder."""
     glob = glob[2:] if glob.startswith("./") else glob
     glob = glob.lstrip("/")
@@ -288,7 +329,11 @@ def load(root=None, rev=None):
     errors = validate(config, schema) or semantic_errors(config)
     if errors:
         raise ConfigError(f"{path} is invalid:\n  " + "\n  ".join(errors))
-    config = with_defaults(config, schema)
+    filled = with_defaults(config, schema)
+    for key in PATH_DEFAULTS:  # 0.x: old names accepted until 1.0 (A4)
+        if key not in config and isinstance(filled.get(key), str):
+            filled[key] = default_path(root, filled[key], rev)
+    config = filled
     config["_root"] = root
     return config
 

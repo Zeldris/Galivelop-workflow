@@ -107,13 +107,13 @@ persona escribe `listo`), `fecha`, el texto por idioma y una entrada de muro opc
 de la web pueden ser más que los de la pieza (`Web languages`, que se pasa con `--idiomas-web`). Ejemplo genérico:
 
 ```
-Folder: docs/difusion
+Folder: docs/outreach
 Languages: es, en
 Channels: x, reddit, linkedin, discord, web
 Web languages: es, gl, en
 Extra channels:
 - mastodon: límite: 500; tono: cercano
-- portal: formato: propio; plantilla: docs/difusion/portal.json
+- portal: formato: propio; plantilla: docs/outreach/portal.json
 Palette: --fondo #101418; --acento #4cc38a
 Screenshots: arrancar la app (npm run dev), abrir /panel, captura de la ventana a 1280x720
 Task prefixes: INS,FLU   (se pasa a comprobar.py --prefijos-tarea)
@@ -131,7 +131,7 @@ El flujo aprende de los proyectos que lo usan. Hay dos mitades:
 - **Tira el flujo.** Desde este repo, la skill `gw-harvest` recorre los proyectos conectados que tengan
   `.claude/gw.json`. La parte mecánica la hace `python3 scripts/harvest.py <proyecto>...` (copias del flujo editadas,
   skills nuevas, secciones de retros, commits desde la última recogida); el agente solo decide qué es general y escribe
-  `docs/propuestas/AAAA-MM-DD-<repo>.md`. **Nunca aplica nada sin confirmación**: lo aprobado entra como un cambio
+  `docs/proposals/AAAA-MM-DD-<repo>.md`. **Nunca aplica nada sin confirmación**: lo aprobado entra como un cambio
   normal con entrada en el CHANGELOG y nueva versión ([contribuir](contribuir.md)).
 
 Los proyectos se leen, no se modifican, desde la sesión que recoge.

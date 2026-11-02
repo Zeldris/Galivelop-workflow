@@ -1,6 +1,6 @@
 {
  "$comment": "galivelop-workflow v0.4.3",
- "_comment": "Renamed in 0.5 (A8). apply.py deletes a project's file under an old name only when its git blob id is one the workflow shipped (no local edits); generated from the repo history, do not edit by hand.",
+ "_comment": "Renamed in 0.5: scripts and skills (A8) and the project's paths (\"paths\", A4: moved by apply.py; the same pairs as OLD_PATHS in scripts/config.py, which accepts the old names during 0.x). apply.py deletes a project's file under an old script or skill name only when its git blob id is one the workflow shipped (no local edits); \"known\" is generated from the repo history, do not edit it by hand.",
  "scripts": {
   "bitacora.py": "handoff.py",
   "revisado.sh": "reviewed.sh",
@@ -27,6 +27,14 @@
   "opt-tokens": "gw-opt-tokens",
   "opt-ai": "gw-opt-ai",
   "scout-updates": "gw-scout-updates"
+ },
+ "paths": {
+  "docs/traspaso.md": "docs/handoff.md",
+  "docs/registros": "docs/records",
+  "docs/registros/revisado.txt": "docs/records/reviewed.txt",
+  "docs/propuestas": "docs/proposals",
+  "docs/difusion": "docs/outreach",
+  "docs/mapa-agente.md": "docs/agent-map.md"
  },
  "known": {
   ".claude/gw/scripts/antes-de-parar.py": [

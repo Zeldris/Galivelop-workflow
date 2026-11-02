@@ -1,4 +1,5 @@
 """scripts/config.py: validation, defaults, CLI and failing closed."""
+import importlib.util
 import json
 import os
 import shutil
@@ -12,6 +13,13 @@ SCRIPT = ROOT / "scripts" / "config.py"
 VALID = {"version": "0.1.0", "language": "en", "log": "docs/log.md", "protectedBranch": "main",
          "pushToProtected": "pr", "check": ["make check", "make lint"], "reviewMark": "docs/reviewed.txt",
          "content": ["^docs/"]}
+
+
+def load_module():
+    spec = importlib.util.spec_from_file_location("gw_config_under_test", SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def cli(root, *args):
@@ -205,6 +213,38 @@ class Config(unittest.TestCase):
         (self.tmp / ".claude" / "gw.json").write_text("{}")
         subprocess.run([*git, "commit", "-q", "-am", "broken"], check=True)
         self.assertEqual(cli(self.tmp, "--rev", "HEAD", "validate").returncode, 2)
+
+    def test_ci_local_log_defaults_to_records_and_falls_back_to_the_old_folder(self):
+        self.write(VALID)
+        self.assertEqual(cli(self.tmp, "get", "ciLocalLog").stdout.strip(), "docs/records/ci-local.md")
+        (self.tmp / "docs" / "registros").mkdir(parents=True)  # a 0.4 project: only the old folder
+        self.assertEqual(cli(self.tmp, "get", "ciLocalLog").stdout.strip(), "docs/registros/ci-local.md")
+        (self.tmp / "docs" / "records").mkdir()  # migrated: the new name wins
+        self.assertEqual(cli(self.tmp, "get", "ciLocalLog").stdout.strip(), "docs/records/ci-local.md")
+        self.write(dict(VALID, ciLocalLog="docs/registros/ci-local.md"))  # a value the config sets is never changed
+        self.assertEqual(cli(self.tmp, "get", "ciLocalLog").stdout.strip(), "docs/registros/ci-local.md")
+
+    def test_default_path_old_names_and_rev(self):
+        config = load_module()
+        (self.tmp / "docs" / "registros").mkdir(parents=True)
+        (self.tmp / "docs" / "mapa-agente.md").write_text("map\n")
+        self.assertEqual(config.default_path(self.tmp, "docs/agent-map.md"), "docs/mapa-agente.md")
+        self.assertEqual(config.default_path(self.tmp, "docs/records/reviewed.txt"), "docs/registros/revisado.txt")
+        self.assertEqual(config.default_path(self.tmp, "docs/proposals/x.md"), "docs/proposals/x.md")  # no old one
+        git = ["git", "-C", str(self.tmp), "-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run(git + ["add", "-A"], check=True)
+        subprocess.run(git + ["commit", "-qm", "old"], check=True)
+        (self.tmp / "docs" / "agent-map.md").write_text("map\n")  # new name in the tree, old one in HEAD
+        self.assertEqual(config.default_path(self.tmp, "docs/agent-map.md"), "docs/agent-map.md")
+        self.assertEqual(config.default_path(self.tmp, "docs/agent-map.md", "HEAD"), "docs/mapa-agente.md")
+
+    def test_old_paths_match_the_renamed_paths_of_apply(self):
+        renamed = json.loads((ROOT / "schema" / "renamed.json").read_text(encoding="utf-8"))["paths"]
+        config = load_module()
+        self.assertEqual(sorted(config.OLD_PATHS), sorted((new, old) for old, new in renamed.items()))
+        olds = [old for _new, old in config.OLD_PATHS]
+        for i, old in enumerate(olds):  # a nested pair before its folder's: the first match wins
+            self.assertFalse([o for o in olds[:i] if old.startswith(o + "/")], old)
 
     def test_not_a_git_repo_fails(self):
         plain = Path(tempfile.mkdtemp())

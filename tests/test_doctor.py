@@ -670,7 +670,12 @@ class Doctor(unittest.TestCase):
         self.assertEqual(len(self.media_lines(out)), 3, out)
 
     def test_the_media_folder_alone_marks_the_project_as_a_user(self):
-        (self.p.work / "docs" / "difusion").mkdir(parents=True)  # the default `Folder`
+        (self.p.work / "docs" / "outreach").mkdir(parents=True)  # the default `Folder`
+        code, out = self.doctor_env(self.tools(node=False))
+        self.assertLine(out, "WARN", "media tools", "node")
+
+    def test_the_old_media_folder_still_marks_the_project_as_a_user(self):
+        (self.p.work / "docs" / "difusion").mkdir(parents=True)  # its 0.4 name, accepted until 1.0 (A4)
         code, out = self.doctor_env(self.tools(node=False))
         self.assertLine(out, "WARN", "media tools", "node")
 

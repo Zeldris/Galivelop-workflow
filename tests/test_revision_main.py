@@ -269,7 +269,7 @@ class Hook(unittest.TestCase):
     # Installer P3: a green local run of the CI (ci-local.py --apuntar) stands in for a CI that did not start ----------
     NO_CI = {"total_count": 0, "check_runs": []}
 
-    def local_log(self, *lines, path="docs/registros/ci-local.md"):
+    def local_log(self, *lines, path="docs/records/ci-local.md"):
         """Commits the local CI log with these lines (each "green", "red" or "dirty" with its sha) and pushes."""
         text = "# Local CI\n\n"
         for state, sha in lines:
@@ -332,7 +332,7 @@ class Hook(unittest.TestCase):
         sha = self.mark()
         self.local_log(("green", sha), path="ci/local.md")
         # The PR cannot pick its own log: main's config (the default place) decides.
-        self.assertBlocked(self.merge(pr=self.pr(), runs=self.NO_CI), "docs/registros/ci-local.md on the PR head")
+        self.assertBlocked(self.merge(pr=self.pr(), runs=self.NO_CI), "docs/records/ci-local.md on the PR head")
         p.git("checkout", "-q", "main")
         gw.write_text(json.dumps(cfg)); p.commit("move the local CI log")
         p.git("push", "-q", "--no-verify", "origin", "main")
