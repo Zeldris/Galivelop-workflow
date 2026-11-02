@@ -68,7 +68,9 @@ fi
 
 # Format, Refs trailer and Agent trailer (commitFormat, commitRefs, agentSignatures): the rules in commit-message.py.
 [ -f "$scripts/commit-message.py" ] || { echo "commit-msg: $scripts/commit-message.py is missing; reinstall the workflow scripts: /gw-update" >&2; exit 1; }
-[ -n "$msg" ] && [ -r "$msg" ] || { echo "commit-msg: cannot read the commit message file '${1:-}'; commit again: git commit" >&2; exit 1; }
+if [ -z "$msg" ] || [ ! -r "$msg" ]; then
+  echo "commit-msg: cannot read the commit message file '${1:-}'; commit again: git commit" >&2; exit 1
+fi
 python3 "$scripts/commit-message.py" --root "$root" "$msg" || exit 1
 
 log="$(python3 "$config" --root "$root" get log 2>/dev/null)" || log=""
