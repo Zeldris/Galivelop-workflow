@@ -43,7 +43,9 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 
 - **Check del repo:** `bash tests/check.sh` (sintaxis y shellcheck de scripts, Python, JSON, manifiestos,
   versión con entrada en el CHANGELOG, pares ES/EN). Lo corre el CI (`.github/workflows/check.yml`, Linux y
-  macOS) en cada push que no sea a `main` y en cada PR.
+  macOS) en cada push que no sea a `main` y en cada PR. Incluye `scripts/names-check.py`: falla ante un nombre nuevo en
+  español (rutas, funciones, variables, opciones, claves); un nombre antiguo aceptado a propósito va en `EXCEPTIONS`,
+  con su motivo.
 - **Antes de subir, pásalo con `bash scripts/check.sh`**: corre el `check` y, si sale en verde, lo apunta; el
   `pre-push` no lo repite sobre el mismo árbol (`bash tests/check.sh` a secas no apunta nada). Detalle y límites
   en [`docs/es/config.md`](docs/es/config.md); `GW_CHECK_CACHE=0` la desactiva.

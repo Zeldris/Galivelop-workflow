@@ -19,7 +19,7 @@ from test_hooks import ROOT
 sys.path.insert(0, str(ROOT / "scripts"))
 import config  # noqa: E402
 
-APLICAR = ROOT / "scripts" / "apply.py"
+APPLY_SCRIPT = ROOT / "scripts" / "apply.py"
 TEMPLATES = ROOT / "templates"
 VERSION = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())["version"]
 MARKER = f"<!-- galivelop-workflow v{VERSION} -->"
@@ -63,11 +63,11 @@ class Project:
                            stdin=subprocess.DEVNULL)
         return r.returncode, r.stdout + r.stderr
 
-    def aplicar(self, *args):
-        return self.run("python3", str(APLICAR), str(self.work), *args)
+    def run_apply(self, *args):
+        return self.run("python3", str(APPLY_SCRIPT), str(self.work), *args)
 
     def init(self, lang="en", *extra):
-        return self.aplicar("--init", "--language", lang, "--check-command", "bash check.sh", *extra)
+        return self.run_apply("--init", "--language", lang, "--check-command", "bash check.sh", *extra)
 
     def write(self, rel, text):
         path = self.work / rel
@@ -221,7 +221,7 @@ class Templates(unittest.TestCase):
                      "README.es.md", "CHANGELOG.md", "CREDITS.md"):
             self.assertTrue(any(re.search(p, path) for p in content), f"{path} should be content")
         for path in (".claude/gw/scripts/is-code.sh", ".claude/gw/scripts/config.py", ".claude/gw/schema/gw.schema.json",
-                     ".claude/skills/gw-opt-tokens/scripts/medir.py", ".claude/skills/x/agents/openai.yaml",
+                     ".claude/skills/gw-opt-tokens/scripts/measure.py", ".claude/skills/x/agents/openai.yaml",
                      "src/AGENTS.md", "src/notes.md", "README.es.md.sh"):
             self.assertFalse(any(re.search(p, path) for p in content), f"{path} must stay code (reviewed)")
 
@@ -250,7 +250,7 @@ class Init(unittest.TestCase):
                 self.assertIn("gw-orchestrate-dealer", p.read("AGENTS.md"))
                 self.assertIn("branches-ignore: [main]", p.read(".github/workflows/check.yml"))
                 self.assertFalse((p.work / ".claude/gw/gw-opt-ai.md").exists())
-                self.assertFalse(list(p.work.glob("**/*.gw-nuevo")))
+                self.assertFalse(list(p.work.glob("**/*.gw-new")))
                 code, out = p.run("python3", str(p.work / ".claude/gw/scripts/doctor.py"))
                 self.assertEqual(code, 0, out)
                 self.assertNotIn("FAIL", out)
@@ -258,16 +258,16 @@ class Init(unittest.TestCase):
                 self.assertEqual(code, 0, out)
                 self.assertIn("already exists", out)
                 self.assertIn("nothing to do", out)
-                code, out = p.aplicar("--check")
+                code, out = p.run_apply("--check")
                 self.assertEqual(code, 0, out)
 
     def test_init_needs_a_check_and_flags_need_init(self):
         p = self.project()
-        code, out = p.aplicar("--init")
+        code, out = p.run_apply("--init")
         self.assertEqual(code, 2, out)
         self.assertIn("--check-command", out)
         self.assertFalse((p.work / ".claude/gw.json").exists())
-        code, out = p.aplicar("--language", "es")
+        code, out = p.run_apply("--language", "es")
         self.assertEqual(code, 2, out)
         self.assertIn("only go with --init", out)
 
@@ -279,7 +279,7 @@ class Init(unittest.TestCase):
         cfg = json.loads(p.read(".claude/gw.json"))
         self.assertEqual((cfg["requireRetro"], cfg["visibleLanguages"], cfg["designReferences"]),
                          (True, ["es", "en"], ["WCAG 2.2"]))
-        code, out = p.aplicar("--require-retro", "false")
+        code, out = p.run_apply("--require-retro", "false")
         self.assertEqual(code, 2, out)
         self.assertIn("only go with --init", out)
 
@@ -288,7 +288,7 @@ class Init(unittest.TestCase):
         code, out = p.init("en", "--agent-signatures", "false")
         self.assertEqual(code, 0, out)
         self.assertIs(json.loads(p.read(".claude/gw.json"))["agentSignatures"], False)
-        code, out = p.aplicar("--agent-signatures", "true")
+        code, out = p.run_apply("--agent-signatures", "true")
         self.assertEqual(code, 2, out)
         self.assertIn("only go with --init", out)
         self.assertIn("--agent-signatures", out)
@@ -333,28 +333,28 @@ class Init(unittest.TestCase):
         code, out = p.init()
         self.assertEqual(code, 0, out)
         self.assertEqual(p.read("CLAUDE.md"), mine)
-        self.assertTrue(p.read("CLAUDE.md.gw-nuevo").startswith(MARKER))
+        self.assertTrue(p.read("CLAUDE.md.gw-new").startswith(MARKER))
         self.assertIn("merge this block by hand or with the agent", out)
-        code, out = p.aplicar("--check")
+        code, out = p.run_apply("--check")
         self.assertEqual(code, 1, out)
-        self.assertIn("pending proposal CLAUDE.md.gw-nuevo", out)
+        self.assertIn("pending proposal CLAUDE.md.gw-new", out)
         # Merged by hand, keeping the marker: the project's own edits stay and nothing is proposed again.
-        p.write("CLAUDE.md", p.read("CLAUDE.md.gw-nuevo") + "\n- Be careful.\n")
-        (p.work / "CLAUDE.md.gw-nuevo").unlink()
-        code, out = p.aplicar("--update")
+        p.write("CLAUDE.md", p.read("CLAUDE.md.gw-new") + "\n- Be careful.\n")
+        (p.work / "CLAUDE.md.gw-new").unlink()
+        code, out = p.run_apply("--update")
         self.assertEqual(code, 0, out)
         self.assertIn("- Be careful.", p.read("CLAUDE.md"))
-        self.assertEqual(p.aplicar("--check")[0], 0)
+        self.assertEqual(p.run_apply("--check")[0], 0)
 
     def test_older_agents_md_gets_a_proposal_not_an_overwrite(self):
         p = self.project()
         self.assertEqual(p.init()[0], 0)
         older = p.read("AGENTS.md").replace(MARKER, "<!-- galivelop-workflow v0.0.1 -->") + "\n- Our rule.\n"
         p.write("AGENTS.md", older)
-        code, out = p.aplicar("--update")
+        code, out = p.run_apply("--update")
         self.assertEqual(code, 0, out)
         self.assertEqual(p.read("AGENTS.md"), older)
-        self.assertIn("propose AGENTS.md.gw-nuevo", out)
+        self.assertIn("propose AGENTS.md.gw-new", out)
 
     def test_filled_in_files_are_never_overwritten(self):
         p = self.project()
@@ -363,14 +363,14 @@ class Init(unittest.TestCase):
             with self.subTest(rel=rel):
                 edited = p.read(rel).replace(MARKER, "<!-- galivelop-workflow v0.0.1 -->") + "\nfilled in\n"
                 p.write(rel, edited)
-                code, out = p.aplicar("--update")
+                code, out = p.run_apply("--update")
                 self.assertEqual(code, 0, out)
                 self.assertEqual(p.read(rel), edited)
-                self.assertFalse((p.work / (rel + ".gw-nuevo")).exists())
+                self.assertFalse((p.work / (rel + ".gw-new")).exists())
                 self.assertIn(f"template update: {rel}", out)
-                self.assertEqual(p.aplicar("--check")[0], 0)  # a template note is not drift
+                self.assertEqual(p.run_apply("--check")[0], 0)  # a template note is not drift
         p.write("docs/handoff.md", "# Bitácora propia\n\nSiguiente paso: seguir.\n")
-        code, out = p.aplicar("--update")
+        code, out = p.run_apply("--update")
         self.assertEqual(code, 0, out)
         self.assertEqual(p.read("docs/handoff.md"), "# Bitácora propia\n\nSiguiente paso: seguir.\n")
 
@@ -380,17 +380,17 @@ class Init(unittest.TestCase):
         code, out = p.init("en")
         self.assertEqual(code, 0, out)
         self.assertEqual(p.read("REVIEW.md"), "# Our review rules\n\n- Keep it short.\n")
-        self.assertFalse((p.work / "REVIEW.md.gw-nuevo").exists())
+        self.assertFalse((p.work / "REVIEW.md.gw-new").exists())
         self.assertIn("REVIEW.md exists and is never written; what differs from the", out)
         self.assertIn("+++ REVIEW.md (template)", out)
         self.assertIn("-- Keep it short.", out)
-        self.assertEqual(p.aplicar("--check")[0], 0)  # a printed diff is not drift
+        self.assertEqual(p.run_apply("--check")[0], 0)  # a printed diff is not drift
         p.write("REVIEW.md", MARKER + "\n# Our review rules, merged\n")  # marked at this version: settled
-        code, out = p.aplicar()
+        code, out = p.run_apply()
         self.assertNotIn("REVIEW.md exists", out)
 
     def test_workflow_repo_skips_its_root_templates(self):
-        r = subprocess.run(["python3", str(APLICAR), str(ROOT), "--dry-run"], capture_output=True, text=True)
+        r = subprocess.run(["python3", str(APPLY_SCRIPT), str(ROOT), "--dry-run"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         for name in ("AGENTS.md", "CLAUDE.md", "REVIEW.md", "GLOSSARY.md", "check.yml", "docs/handoff.md"):
             self.assertNotIn(name, r.stdout)

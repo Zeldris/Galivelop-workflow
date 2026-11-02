@@ -139,25 +139,26 @@ own terminal with the same command) instead of retrying blindly; after a refusal
 before repeating.
 
 Done when: the command ends without error and you know what was created, what was updated and what was left as
-`*.gw-nuevo`.
+`*.gw-new`.
 
-## 3. Review every `*.gw-nuevo` with the person
+## 3. Review every `*.gw-new` with the person
 
 When a file already exists and is the project's (an `AGENTS.md`, a `CLAUDE.md` without the `galivelop-workflow`
-marker), `apply.py` **does not touch it**: it leaves `<file>.gw-nuevo` next to it with the proposal.
+marker), `apply.py` **does not touch it**: it leaves `<file>.gw-new` next to it with the proposal. A
+proposal left before the rename (`<file>.gw-nuevo`) is still recognized in `0.x`, with a warning; review it the same way.
 
 ```bash
-git -C <project> ls-files --others --exclude-standard | grep '\.gw-nuevo$'
+git -C <project> ls-files --others --exclude-standard | grep '\.gw-new$'
 ```
 
 For each one:
 
-1. Show the person what the proposal brings that the file lacks (`git diff --no-index <file> <file>.gw-nuevo`).
+1. Show the person what the proposal brings that the file lacks (`git diff --no-index <file> <file>.gw-new`).
 2. **`AGENTS.md` and `CLAUDE.md`: merge by hand**, block by block. The project's rules stay; the workflow's blocks
    are added (session start, hand-offs, checking, commits, branches). `CLAUDE.md` ends up with `@AGENTS.md` plus
    what is Claude's own. Keep the `<!-- galivelop-workflow vX.Y.Z -->` marker on the first line.
-3. Other files: accept the whole proposal (`mv <file>.gw-nuevo <file>`) only if the person confirms.
-4. Delete the `.gw-nuevo` when done. `apply.py --check` counts it as a difference while it exists.
+3. Other files: accept the whole proposal (`mv <file>.gw-new <file>`) only if the person confirms.
+4. Delete the `.gw-new` when done. `apply.py --check` counts it as a difference while it exists.
 
 Also fill in the log's placeholders (at least branch, phase and next step; the other sections can stay as they come
 until there is something to write) and add the project's own rules to the "Project rules" sections of `REVIEW.md`
@@ -168,7 +169,7 @@ the template while it lacks the current version's marker. Bring over by hand wha
 "bash 3.2", "brought from another repo: this repo's contracts" and "visible languages" rules of `REVIEW.md`) and put
 `<!-- galivelop-workflow vX.Y.Z -->` on its first line; from then on the diff is no longer printed.
 
-Done when: no `*.gw-nuevo` is left, no `REVIEW.md`/`GLOSSARY.md` diff is printed, and the log has a next-step line.
+Done when: no `*.gw-new` is left, no `REVIEW.md`/`GLOSSARY.md` diff is printed, and the log has a next-step line.
 
 ## 4. Check with `doctor.py`
 
@@ -271,7 +272,7 @@ how code already reaches it today.
 
 **Migrating from an earlier copy of the workflow.** On top of the above:
 
-- **Many `.gw-nuevo` proposals are normal** (a hand-made copy gave 17): every skill or script the project touched
+- **Many `.gw-new` proposals are normal** (a hand-made copy gave 17): every skill or script the project touched
   comes out as a proposal. Merge them one at a time: the workflow's version goes in whole and the project's own part
   (language, paths, local rules) goes to `.claude/gw/<skill>.md`, which the workflow never overwrites.
 - **Files of a skill the workflow replaces** (for instance the bench and `evals` of a project-made `gw-scout-updates`):

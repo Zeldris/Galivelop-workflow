@@ -19,7 +19,7 @@ las crea una vez; desde entonces son del proyecto.
 
 ## Ajustes
 
-Los lee `scripts/medir.py` de la skill; las rutas relativas se resuelven desde la raíz del repo.
+Los lee `scripts/measure.py` de la skill; las rutas relativas se resuelven desde la raíz del repo.
 
 ```gw-opt-ai
 # log: <registro por llamada de esta ronda>

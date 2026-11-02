@@ -306,11 +306,11 @@ class FailsClosed(Base):
 
     def test_playwright_is_also_looked_up_in_gw_playwright_dir(self):
         self.source("card.html")
-        otro = self.tmp / "otro"
-        (otro / "node_modules" / "playwright").mkdir(parents=True)
-        (otro / "node_modules" / "playwright" / "package.json").write_text('{"name": "playwright", "main": "index.js"}')
-        (otro / "node_modules" / "playwright" / "index.js").write_text(PLAYWRIGHT)
-        r = self.render(self.piece, path=self.fake_magick(), env={"GW_PLAYWRIGHT_DIR": str(otro)})
+        other_dir = self.tmp / "other_dir"
+        (other_dir / "node_modules" / "playwright").mkdir(parents=True)
+        (other_dir / "node_modules" / "playwright" / "package.json").write_text('{"name": "playwright", "main": "index.js"}')
+        (other_dir / "node_modules" / "playwright" / "index.js").write_text(PLAYWRIGHT)
+        r = self.render(self.piece, path=self.fake_magick(), env={"GW_PLAYWRIGHT_DIR": str(other_dir)})
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertTrue((self.piece / "media" / "card.webp").is_file())
 
@@ -379,9 +379,9 @@ class WithFakePlaywright(Base):
         self.source("a.html", '<meta name="gw-size" content="1000x500">')
         r = self.render(self.piece, path=self.bin)
         self.assertEqual(r.returncode, 0, r.stderr)
-        (visto,) = [json.loads(l) for l in (self.tmp / "stub.log").read_text().splitlines() if '"clip"' in l]
-        tam = {"width": 1000, "height": 500}
-        self.assertEqual((visto["viewport"], visto["clip"], visto["scale"]), (tam, {"x": 0, "y": 0, **tam}, 1))
+        (seen,) = [json.loads(l) for l in (self.tmp / "stub.log").read_text().splitlines() if '"clip"' in l]
+        size = {"width": 1000, "height": 500}
+        self.assertEqual((seen["viewport"], seen["clip"], seen["scale"]), (size, {"x": 0, "y": 0, **size}, 1))
 
     def test_the_carousel_gives_a_pdf_of_its_size(self):
         self.source("carousel.html", '<meta name="gw-size" content="1080x1350">')
@@ -395,9 +395,9 @@ class WithFakePlaywright(Base):
         self.source("carousel.html", '<meta name="gw-size" content="1080x1350"><style>@page { size: 500px 500px }</style>')
         r = self.render(self.piece, path=self.bin)
         self.assertEqual(r.returncode, 0, r.stderr)
-        (opciones,) = [json.loads(l)["pdf"] for l in (self.tmp / "stub.log").read_text().splitlines() if '"pdf"' in l]
-        self.assertEqual((opciones["width"], opciones["height"]), ("1080px", "1350px"))
-        self.assertNotIn("preferCSSPageSize", opciones)
+        (options,) = [json.loads(l)["pdf"] for l in (self.tmp / "stub.log").read_text().splitlines() if '"pdf"' in l]
+        self.assertEqual((options["width"], options["height"]), ("1080px", "1350px"))
+        self.assertNotIn("preferCSSPageSize", options)
 
     def test_a_pdf_with_more_pages_than_slides_fails_and_leaves_no_output(self):
         self.source("carousel.html")

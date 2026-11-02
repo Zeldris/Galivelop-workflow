@@ -2,7 +2,7 @@
 """Measure the per-call log of a local-AI run (format: references/log-format.md). Standard library only.
 
 Usage:
-  medir.py [<log.jsonl>] [--previous <log.jsonl>] [--profile X] [--exclude-task T ...] [--all-tasks]
+  measure.py [<log.jsonl>] [--previous <log.jsonl>] [--profile X] [--exclude-task T ...] [--all-tasks]
            [--cold-ms N] [--json]
 
 Paths: pass them as arguments, or leave them out and put them in the `gw-opt-ai` block of the project's

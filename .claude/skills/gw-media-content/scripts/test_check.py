@@ -115,10 +115,10 @@ class Base(unittest.TestCase):
     def write(self, name, text):
         (self.folder / name).write_text(text, encoding="utf-8")
 
-    def change(self, name, viejo, nuevo):
+    def change(self, name, old, new):
         t = (self.folder / name).read_text(encoding="utf-8")
-        self.assertIn(viejo, t)
-        self.write(name, t.replace(viejo, nuevo, 1))
+        self.assertIn(old, t)
+        self.write(name, t.replace(old, new, 1))
 
     def pdf_in_linkedin(self, pages):
         """LinkedIn posts a carousel PDF instead of the .png."""

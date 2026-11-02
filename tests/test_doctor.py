@@ -310,7 +310,7 @@ class Doctor(unittest.TestCase):
                 code, out = self.doctor()
                 self.assertLine(out, "OK", "ci", "check.yml run(s) the check")
 
-    def test_old_comprobar_yml_is_flagged_and_its_rango_step_still_counts_as_the_check(self):
+    def test_old_workflow_file_is_flagged_and_its_old_range_step_still_counts_as_the_check(self):
         (self.p.work / ".github" / "workflows" / "check.yml").unlink()
         self.p.write(".github/workflows/comprobar.yml",
                      "# galivelop-workflow v0.4.3\nname: Comprobar\njobs:\n  c:\n    steps:\n"
@@ -395,11 +395,19 @@ class Doctor(unittest.TestCase):
         self.assertNotIn(".claude/settings.json by", out)
 
     def test_pending_proposals_warn_and_hold_back_skills_ok(self):
+        self.p.write(".claude/skills/gw-selector/SKILL.md.gw-new", "new\n")
+        code, out = self.doctor()
+        self.assertLine(out, "WARN", "1 pending .gw-new proposal(s)",
+                        "git diff --no-index .claude/skills/gw-selector/SKILL.md .claude/skills/gw-selector/SKILL.md.gw-new")
+        self.assertNotIn("OK   skills", out)
+
+    def test_pending_proposal_with_the_old_suffix_is_still_found(self):
         self.p.write(".claude/skills/gw-selector/SKILL.md.gw-nuevo", "new\n")
         code, out = self.doctor()
-        self.assertLine(out, "WARN", "1 pending .gw-nuevo proposal(s)",
-                        "git diff --no-index .claude/skills/gw-selector/SKILL.md .claude/skills/gw-selector/SKILL.md.gw-nuevo")
-        self.assertNotIn("OK   skills", out)
+        self.assertLine(out, "WARN", "1 pending .gw-new proposal(s)",
+                        "git diff --no-index .claude/skills/gw-selector/SKILL.md "
+                        ".claude/skills/gw-selector/SKILL.md.gw-nuevo")
+        self.assertIn("1 with the old suffix .gw-nuevo, still recognized until 1.0", out)
 
     def test_flow_script_run_from_another_folder_warns(self):
         path = self.p.work / ".claude" / "settings.json"

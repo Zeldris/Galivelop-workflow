@@ -120,10 +120,10 @@ lleva a `<proyecto>/.claude/gw/<nombre>`:
 - Solo archivos normales directamente en esa carpeta, con nombre `[A-Za-z0-9][A-Za-z0-9._-]*`; no se miran
   subcarpetas, enlaces simbólicos ni archivos ocultos. Si la carpeta no existe, no pasa nada y no se dice nada.
 - Si la nota falta en el proyecto, se crea (y se avisa como «personal note»). Si es idéntica, nada. Si **difiere**,
-  nunca se sobrescribe ni se deja un `.gw-nuevo` (el proyecto puede haberla adaptado a propósito): se imprime una
+  nunca se sobrescribe ni se deja un `.gw-new` (el proyecto puede haberla adaptado a propósito): se imprime una
   línea con `diff <origen> <destino>` en cada ejecución. `--check` **no falla** ni por una nota que falta (solo dice
   «would create personal note …») ni por una que difiere.
-- Una nota se salta con un `WARNING` y la orden de renombrarla cuando su nombre acaba en `.gw-nuevo` (`doctor.py` lo
+- Una nota se salta con un `WARNING` y la orden de renombrarla cuando su nombre acaba en `.gw-new` (`doctor.py` lo
   toma por una propuesta pendiente), cuando es el de un archivo del flujo en `.claude/gw/` (se compara sin mirar
   mayúsculas y aunque ese archivo no esté instalado: `gw-opt-tokens.md`, `gw-opt-ai.md`, `gw-scout-updates.md`, `scripts`,
   `schema`…) o cuando su destino no es un archivo normal. Una carpeta de notas ilegible o que es un archivo, y una

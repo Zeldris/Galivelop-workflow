@@ -26,7 +26,7 @@ What it copies (workflow -> project):
                                    (matched by event + matcher + command); nothing is removed or rewritten
   templates/<language>/ (`language` of the config), with {{key}} placeholders rendered from the config:
     AGENTS.md, CLAUDE.md        -> the project root; created when missing; an existing one without the
-                                   galivelop-workflow marker, or with an older one, gets a .gw-nuevo proposal to merge
+                                   galivelop-workflow marker, or with an older one, gets a .gw-new proposal to merge
                                    by hand (the project fills in its own rules there, so they are never overwritten)
     REVIEW.md, GLOSSARY.md      -> the project root  } created when missing and NEVER written again (the project
     log.md                      -> the config's `log` } fills them in); an older marker is reported as a template
@@ -38,9 +38,9 @@ In the workflow repo itself the root templates and the CI file are skipped: it h
                                    with the env var GW_PERSONAL_NOTES; absent folder = nothing happens). Only regular
                                    files directly in it, named [A-Za-z0-9][A-Za-z0-9._-]* (no subfolders, symlinks or
                                    dotfiles). Missing in the project -> created (with --check only reported: it is
-                                   not drift); identical -> nothing; different -> NEVER overwritten and no .gw-nuevo
+                                   not drift); identical -> nothing; different -> NEVER overwritten and no .gw-new
                                    (the project may have adapted it): one line with `diff <source> <target>`, and
-                                   --check does not fail for it. A name ending in .gw-nuevo, one a workflow file may
+                                   --check does not fail for it. A name ending in .gw-new, one a workflow file may
                                    have there, or one whose target is not a regular file is skipped with a WARNING.
                                    Never applied to the workflow repo itself (nothing personal goes in it);
                                    --no-personal-notes skips them for one run.
@@ -50,8 +50,8 @@ Migration from the names before A8 (0.x), in the same run and without duplicates
   .github/workflows/comprobar.yml -> .github/workflows/check.yml (git mv when tracked), when it is the workflow's own
                                 (a `galivelop-workflow` header); then it is updated like any workflow-owned file, and
                                 one with local edits or newer than the workflow keeps them and gets the template as
-                                check.yml.gw-nuevo. Without the header it is the project's own CI: left alone, and
-                                the template goes next to it as check.yml.gw-nuevo. Both exist: nothing is touched
+                                check.yml.gw-new. Without the header it is the project's own CI: left alone, and
+                                the template goes next to it as check.yml.gw-new. Both exist: nothing is touched
                                 but a warning.
   --sin-notas-personales and GW_NOTAS_PERSONALES (now --no-personal-notes and GW_PERSONAL_NOTES) still work, with a
                                 warning on stderr.
@@ -72,12 +72,13 @@ Migration from the names before A8 (0.x), in the same run and without duplicates
 
 For each file: identical -> skip; missing -> create; different -> overwritten only when the project's file is
 workflow-owned (a `galivelop-workflow vX.Y.Z` header, or metadata.version in the skill's SKILL.md), not newer than
-the workflow, and either older or --update is given. Otherwise the new content goes next to it as <file>.gw-nuevo,
-a proposal to review by hand. Files the workflow no longer has are reported, never deleted. Never commits.
+the workflow, and either older or --update is given. Otherwise the new content goes next to it as <file>.gw-new,
+a proposal to review by hand (A8, 0.x: a loose <file>.gw-nuevo from before the rename is still recognized, with a
+warning). Files the workflow no longer has are reported, never deleted. Never commits.
 In the workflow repo itself the copy is generated from scripts/ and skills/, so --update is implied there.
 
   --check     no writes; exit 1 if the copy differs from the workflow (anything to create, update, merge or chmod,
-              a pending .gw-nuevo proposal, or a file the workflow no longer has); core.hooksPath is reported but
+              a pending .gw-new proposal, or a file the workflow no longer has); core.hooksPath is reported but
               does not fail it (a local git setting: a fresh clone in CI has it unset). The drift test.
   --dry-run   print the plan, no writes, exit 0.
   --keep-paths   keep the old Spanish project paths: write them explicitly in .claude/gw.json instead of moving them.
@@ -102,11 +103,12 @@ sys.path.insert(0, str(HERE))
 import config  # noqa: E402
 from doctor import ignored_paths, stale_flow_hooks  # noqa: E402  (one list each, shared with doctor.py)
 
-WORKFLOW_ONLY_SCRIPTS = {"harvest.py", "apply.py", "version.py"}
+WORKFLOW_ONLY_SCRIPTS = {"harvest.py", "apply.py", "version.py", "names-check.py"}
 WORKFLOW_ONLY_SKILLS = {"gw-harvest"}
 OPTIONAL_SKILLS = {"gw-opt-ai", "gw-scout-updates"}
 IGNORED = {"__pycache__", ".DS_Store"}
-PROPOSAL = ".gw-nuevo"
+PROPOSAL = ".gw-new"
+OLD_PROPOSAL = ".gw-nuevo"  # A8 (0.x): the suffix before the rename; still recognized, with a warning
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
 TEXT_KEYS = ("log", "protectedBranch", "reviewMark", "language")
 LIST_KEYS = ("check", "install")
@@ -126,11 +128,13 @@ OLD_SCRIPTS = {"antes-de-parar.py": "before-stop.py", "bitacora.py": "handoff.py
                "revision-antes-de-main.sh": "review-before-main.sh", "rojo-sin-arreglo.sh": "red-without-fix.sh",
                "tests-relacionados.sh": "related-tests.sh", "tope-subagentes.py": "subagent-cap.py",
                "aplicar.py": "apply.py"}
-# Files and folders inside an installed skill that now have an English name (chunk 6b); a folder is removed whole.
+# Files and folders inside an installed skill that now have an English name (chunks 6b and 6c); a folder is removed whole.
 OLD_SKILL_FILES = {"gw-media-content": {
     "catalogo.md": "catalog.md", "nota.md": "note.md", "reglas.json": "rules.json", "plantilla": "template",
     "scripts/cifras.py": "scripts/figures.py", "scripts/comprobar.py": "scripts/check.py",
-    "scripts/test_cifras.py": "scripts/test_figures.py", "scripts/test_comprobar.py": "scripts/test_check.py"}}
+    "scripts/test_cifras.py": "scripts/test_figures.py", "scripts/test_comprobar.py": "scripts/test_check.py"},
+    "gw-opt-tokens": {"scripts/medir.py": "scripts/measure.py", "scripts/test_medir.py": "scripts/test_measure.py"},
+    "gw-opt-ai": {"scripts/medir.py": "scripts/measure.py", "scripts/test_medir.py": "scripts/test_measure.py"}}
 PATH_DIR_KEYS = ("recordsDir", "proposalsDir")  # moved before the file keys inside them
 LOG_BY_LANGUAGE = {"es": "docs/handoff.md", "en": "docs/handoff.md"}  # A8: English paths in every language
 NOTES_ENV = "GW_PERSONAL_NOTES"
@@ -208,7 +212,7 @@ def files_under(folder):
     for dirpath, dirnames, filenames in os.walk(str(folder)):
         dirnames[:] = sorted(d for d in dirnames if d not in IGNORED)
         for name in sorted(filenames):
-            if name in IGNORED or name.endswith(".pyc") or name.endswith(PROPOSAL):
+            if name in IGNORED or name.endswith(".pyc") or name.endswith((PROPOSAL, OLD_PROPOSAL)):
                 continue
             p = Path(dirpath) / name
             if p.is_file() and not p.is_symlink():
@@ -281,8 +285,14 @@ class Plan:
     def propose(self, rel, data, want_exec, why):
         proposal = Path(str(rel) + PROPOSAL)
         pdest = self.root / proposal
+        old = self.root / (str(rel) + OLD_PROPOSAL)
+        if old.is_file() and not old.is_symlink():
+            self.warnings.append(f"{rel}{OLD_PROPOSAL} is a proposal with the old suffix (until 1.0 it is still "
+                                 f"recognized); merge it by hand and delete it: rm {rel}{OLD_PROPOSAL}")
         if pdest.is_file() and pdest.read_bytes() == data:
-            self.pending.append((rel, why))
+            self.pending.append((rel, why, PROPOSAL))
+        elif old.is_file() and old.read_bytes() == data:
+            self.pending.append((rel, why, OLD_PROPOSAL))
         else:
             self.actions.append(("propose", proposal, data, want_exec, f"{rel} differs: {why}"))
 
@@ -556,7 +566,7 @@ def workflow_gw_names(plan):
     """Lower-cased names the workflow may write directly in .claude/gw/, installed now or not: every note (optional
     ones too), its proposal, the config files, the folders, and whatever the plan already writes there."""
     names = {name for name, _skill in NOTES} | {"scripts", "schema", "gw.json", "gw.schema.json"}
-    names |= {name + PROPOSAL for name in names}
+    names |= {name + suffix for name in names for suffix in (PROPOSAL, OLD_PROPOSAL)}
     for action in plan.actions:
         parts = Path(action[1]).parts
         if parts[:2] == (".claude", "gw") and len(parts) > 2:
@@ -585,8 +595,9 @@ def plan_personal_notes(plan, check=False):
     for src in sources:
         rel = Path(".claude/gw") / src.name
         dest = plan.root / rel
-        if src.name.lower().endswith(PROPOSAL):
-            plan.warnings.append(f"personal note {src.name} ends in {PROPOSAL}, which doctor.py treats as a pending "
+        if src.name.lower().endswith((PROPOSAL, OLD_PROPOSAL)):
+            plan.warnings.append(f"personal note {src.name} ends in {PROPOSAL} (or the old {OLD_PROPOSAL}), which "
+                                 f"doctor.py treats as a pending "
                                  f"proposal; rename it in {folder} to carry it")
             continue
         if src.name.lower() in reserved:
@@ -838,7 +849,7 @@ def plan_old_scripts(plan):
             plan.orphans = [o for o in plan.orphans if o != rel]  # reported below, not as deletable
             plan.warnings.append(f"{rel} is the old name of {OLD_SCRIPTS[old]} and is still run by "
                                  f"{', '.join(users)}, so it is kept; update those files (rerun with --update, or merge "
-                                 f"their .gw-nuevo) and rerun apply.py to remove it")
+                                 f"their .gw-new) and rerun apply.py to remove it")
         elif not clean_in_git(plan.root, rel):
             plan.orphans = [o for o in plan.orphans if o != rel]  # reported below, not as deletable
             plan.warnings.append(keep_message(plan.root, rel))
@@ -923,9 +934,9 @@ def describe(plan):
 
 
 def report(plan):
-    for rel, why in plan.pending:
-        print(f"apply: pending proposal {rel}{PROPOSAL} ({rel} differs: {why}); merge it by hand and delete it: "
-              f"rm {rel}{PROPOSAL}")
+    for rel, why, suffix in plan.pending:
+        print(f"apply: pending proposal {rel}{suffix} ({rel} differs: {why}); merge it by hand and delete it: "
+              f"rm {rel}{suffix}")
     for rel in plan.orphans:
         print(f"apply: {rel} is no longer in the workflow (kept); delete it if nothing uses it: git rm {rel}")
     for note in plan.notes:

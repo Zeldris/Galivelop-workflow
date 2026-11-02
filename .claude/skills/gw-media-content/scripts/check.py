@@ -304,8 +304,8 @@ def dimensions(path: Path):
     return None
 
 
-def _with_area(wide: int, alto: int):
-    return (wide, alto) if wide > 0 and alto > 0 else None
+def _with_area(wide: int, height: int):
+    return (wide, height) if wide > 0 and height > 0 else None
 
 
 def pdf_pages(path: Path):
@@ -565,10 +565,10 @@ def reddit_header(sheet: str) -> str:
     return re.split(r"(?m)^###", section)[0] if section else sheet
 
 
-def subreddits(cabecera: str):
+def subreddits(header: str):
     """([names], [problems]) from the `Subreddit:` lines; a line with a template gap is skipped (the gap is reported)."""
     names, problems = [], []
-    for m in re.finditer(r"(?mi)^[ \t>*-]*\*{0,2}Subreddits?[ \t]*:[ \t]*\*{0,2}[ \t]*(.*)$", cabecera):
+    for m in re.finditer(r"(?mi)^[ \t>*-]*\*{0,2}Subreddits?[ \t]*:[ \t]*\*{0,2}[ \t]*(.*)$", header):
         value = m.group(1).strip()
         if "{{" in value or value in ("", "…"):
             continue

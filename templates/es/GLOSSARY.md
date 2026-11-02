@@ -22,7 +22,7 @@ mantiene al día (skill `domain-modeling`). El flujo nunca sobrescribe este arch
   qué tiene que devolver.
 - **Retro**: la retrospectiva de la sesión antes de ir a la rama protegida; sus propuestas se presentan a la persona y
   lo que confirme se aplica en la rama.
-- **Propuesta (`.gw-nuevo`)**: un archivo del flujo que la actualización no pudo aplicar sin perder cambios locales;
+- **Propuesta (`.gw-new`)**: un archivo del flujo que la actualización no pudo aplicar sin perder cambios locales;
   se fusiona a mano y luego se borra.
 
 ## Términos del proyecto

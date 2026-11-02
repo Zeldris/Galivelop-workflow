@@ -31,7 +31,7 @@ class Servicio:
 """
 
 
-class Mapa(unittest.TestCase):
+class AgentMapCheck(unittest.TestCase):
     def setUp(self):
         self._tmp = tempfile.TemporaryDirectory()
         self.addCleanup(self._tmp.cleanup)
@@ -60,9 +60,9 @@ class Mapa(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
 
-    def run_map(self, mapa=None, rel="docs/agent-map.md"):
-        if mapa is not None:
-            self.write(rel, mapa)
+    def run_map(self, map_text=None, rel="docs/agent-map.md"):
+        if map_text is not None:
+            self.write(rel, map_text)
         r = subprocess.run([sys.executable, str(self.script)], cwd=self.work, capture_output=True, text=True)
         return r.returncode, r.stdout + r.stderr
 
@@ -183,8 +183,8 @@ class Mapa(unittest.TestCase):
         self.assertEqual(self.run_map("- `anyThing` next to `backend/src/`\n")[0], 0)
 
     def test_prefixes_come_from_the_config(self):
-        mapa = "- `b/a.ts#calcular` and `b/gone.ts`\n"
-        code, out = self.run_map(mapa)
+        map_text = "- `b/a.ts#calcular` and `b/gone.ts`\n"
+        code, out = self.run_map(map_text)
         self.assertEqual(code, 1, out)
         self.assertIn("path not found: b/a.ts", out)  # no prefix declared: `b/` is just a folder that is not there
         self.config(agentMap={"prefixes": {"b/": "backend/src/"}})

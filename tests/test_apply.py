@@ -1,5 +1,5 @@
 """scripts/apply.py on temporary projects: a fresh apply passes doctor.py, a second run does nothing, owned files
-are updated by version, foreign or locally edited ones get a .gw-nuevo proposal, settings.json is merged without
+are updated by version, foreign or locally edited ones get a .gw-new proposal, settings.json is merged without
 losing anything, optional skills come only with --with, and core.hooksPath is respected. HOME is a temp folder and
 git runs isolated as in test_hooks.
 """
@@ -15,7 +15,7 @@ from pathlib import Path
 
 from test_hooks import BASE_CONFIG, ROOT
 
-APLICAR = ROOT / "scripts" / "apply.py"
+APPLY_SCRIPT = ROOT / "scripts" / "apply.py"
 VERSION = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())["version"]
 
 
@@ -45,8 +45,8 @@ class Fixture:
                            stdin=subprocess.DEVNULL)
         return r.returncode, r.stdout + r.stderr
 
-    def aplicar(self, *args):
-        return self.run("python3", str(APLICAR), str(self.work), *args)
+    def run_apply(self, *args):
+        return self.run("python3", str(APPLY_SCRIPT), str(self.work), *args)
 
     def write(self, rel, text):
         path = self.work / rel
@@ -61,14 +61,14 @@ class Fixture:
         return self.run("git", "config", "--get", "core.hooksPath")[1].strip()
 
 
-class Aplicar(unittest.TestCase):
+class Apply(unittest.TestCase):
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="gw-aplicar-")).resolve()
+        self.tmp = Path(tempfile.mkdtemp(prefix="gw-apply-")).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.p = Fixture(self.tmp)
 
     def applied(self, *args):
-        code, out = self.p.aplicar(*args)
+        code, out = self.p.run_apply(*args)
         self.assertEqual(code, 0, out)
         return out
 
@@ -101,21 +101,38 @@ class Aplicar(unittest.TestCase):
         out = self.applied()
         self.assertIn("nothing to do", out)
         self.assertNotIn("auto mode", out)
-        code, out = p.aplicar("--check")
+        code, out = p.run_apply("--check")
         self.assertEqual(code, 0, out)
         self.assertIn("in sync", out)
 
     def test_check_and_dry_run_do_not_write(self):
         p = self.p
-        code, out = p.aplicar("--check")
+        code, out = p.run_apply("--check")
         self.assertEqual(code, 1, out)
         self.assertIn("create  .githooks/pre-push", out)
-        code, out = p.aplicar("--dry-run")
+        code, out = p.run_apply("--dry-run")
         self.assertEqual(code, 0, out)
         self.assertIn("dry run", out)
         self.assertFalse((p.work / ".githooks").exists())
         self.assertFalse((p.work / ".claude" / "settings.json").exists())
         self.assertEqual(p.hooks_path(), "")
+
+    def test_loose_proposal_with_the_old_suffix_is_recognized_with_a_warning(self):
+        p = self.p
+        self.applied()
+        rel = ".claude/gw/scripts/reviewed.sh"
+        original = p.read(rel)
+        p.write(rel, original + "# local edit\n")
+        p.write(rel + ".gw-nuevo", original)  # a proposal left by a run before the rename, still current
+        out = self.applied()
+        self.assertIn(f"{rel}.gw-nuevo is a proposal with the old suffix", out)
+        self.assertIn(f"pending proposal {rel}.gw-nuevo", out)
+        self.assertFalse((p.work / (rel + ".gw-new")).exists(), "an identical old proposal is not written twice")
+        p.write(rel + ".gw-nuevo", "stale\n")  # an old proposal that is no longer current: the new one is written
+        out = self.applied()
+        self.assertIn(f"{rel}.gw-nuevo is a proposal with the old suffix", out)
+        self.assertEqual(p.read(rel + ".gw-new"), original)
+        self.assertEqual(p.read(rel + ".gw-nuevo"), "stale\n", "the person's file is never touched")
 
     def test_owned_script_older_header_is_updated(self):
         p = self.p
@@ -126,7 +143,7 @@ class Aplicar(unittest.TestCase):
         out = self.applied()
         self.assertIn(f"update  {rel}", out)
         self.assertEqual(p.read(rel), original)
-        self.assertFalse((p.work / (rel + ".gw-nuevo")).exists())
+        self.assertFalse((p.work / (rel + ".gw-new")).exists())
 
     def test_same_version_local_edits_give_a_proposal_unless_update(self):
         p = self.p
@@ -135,15 +152,15 @@ class Aplicar(unittest.TestCase):
         original = p.read(rel)
         p.write(rel, original + "# local edit\n")
         out = self.applied()
-        self.assertIn(f"propose {rel}.gw-nuevo", out)
+        self.assertIn(f"propose {rel}.gw-new", out)
         self.assertIn("local edits or an older copy of that version", out)
-        self.assertIn(f"diff {rel} {rel}.gw-nuevo", out)
+        self.assertIn(f"diff {rel} {rel}.gw-new", out)
         self.assertIn("# local edit", p.read(rel))
-        self.assertEqual(p.read(rel + ".gw-nuevo"), original)
+        self.assertEqual(p.read(rel + ".gw-new"), original)
         out = self.applied()
         self.assertIn("nothing to do", out)
         self.assertIn("pending proposal", out)
-        code, out = p.aplicar("--check")
+        code, out = p.run_apply("--check")
         self.assertEqual(code, 1, out)
         out = self.applied("--update")
         self.assertIn(f"update  {rel}", out)
@@ -228,19 +245,19 @@ class Aplicar(unittest.TestCase):
         foreign = "#!/bin/sh\necho mine\n"
         p.write(".githooks/pre-push", foreign)
         out = self.applied("--update")
-        self.assertIn("propose .githooks/pre-push.gw-nuevo", out)
+        self.assertIn("propose .githooks/pre-push.gw-new", out)
         self.assertIn("not workflow-owned", out)
         self.assertEqual(p.read(".githooks/pre-push"), foreign)
-        self.assertEqual(p.read(".githooks/pre-push.gw-nuevo"), (ROOT / "templates/githooks/pre-push").read_text())
+        self.assertEqual(p.read(".githooks/pre-push.gw-new"), (ROOT / "templates/githooks/pre-push").read_text())
 
     def test_foreign_commit_msg_gets_a_proposal_and_the_hook_is_installed(self):
         p = self.p
         foreign = "#!/bin/sh\necho mine\n"
         p.write(".githooks/commit-msg", foreign)
         out = self.applied("--update")
-        self.assertIn("propose .githooks/commit-msg.gw-nuevo", out)
+        self.assertIn("propose .githooks/commit-msg.gw-new", out)
         self.assertEqual(p.read(".githooks/commit-msg"), foreign)
-        self.assertEqual(p.read(".githooks/commit-msg.gw-nuevo"), (ROOT / "templates/githooks/commit-msg").read_text())
+        self.assertEqual(p.read(".githooks/commit-msg.gw-new"), (ROOT / "templates/githooks/commit-msg").read_text())
 
     def test_commit_msg_is_installed_and_named_in_the_chain_hint(self):
         p = self.p
@@ -296,7 +313,7 @@ class Aplicar(unittest.TestCase):
         self.assertIn("create  .claude/skills/gw-opt-ai/SKILL.md", out)
         self.assertFalse((skills / "gw-scout-updates").exists())
         self.assertIn("nothing to do", self.applied())  # an installed optional skill stays managed
-        code, out = p.aplicar("--with", "nope")
+        code, out = p.run_apply("--with", "nope")
         self.assertEqual(code, 2, out)
         self.assertIn("unknown skill", out)
 
@@ -313,13 +330,13 @@ class Aplicar(unittest.TestCase):
     def test_no_config_fails_closed(self):
         p = self.p
         (p.work / ".claude" / "gw.json").unlink()
-        code, out = p.aplicar()
+        code, out = p.run_apply()
         self.assertEqual(code, 2, out)
         self.assertIn("gw.json not found", out)
         self.assertIn("config.py", out)
         self.assertFalse((p.work / ".githooks").exists())
         p.write(".claude/gw.json", json.dumps({"version": "0.1.0"}))
-        code, out = p.aplicar()
+        code, out = p.run_apply()
         self.assertEqual(code, 2, out)
         self.assertIn("invalid", out)
 
@@ -330,19 +347,19 @@ class Aplicar(unittest.TestCase):
         self.assertEqual(p.hooks_path(), ".husky")
         self.assertIn("another hook manager", out)
         self.assertIn(".husky/pre-push", out)
-        code, out = p.aplicar("--check")
+        code, out = p.run_apply("--check")
         self.assertEqual(code, 0, out)  # a local git setting is not drift of the copy
 
     def test_spanish_project_commit_message(self):
         (self.tmp / "es").mkdir()
         p = Fixture(self.tmp / "es", {"language": "es"})
-        code, out = p.aplicar()
+        code, out = p.run_apply()
         self.assertEqual(code, 0, out)
         self.assertIn(f"Flujo Galivelop-workflow v{VERSION}", out)
         self.assertIn("Siguiente:", out)
 
 
-class NotasPersonales(unittest.TestCase):
+class PersonalNotes(unittest.TestCase):
     """Personal notes: regular files of GW_PERSONAL_NOTES (default ~/.claude/gw/notas) copied to
     <project>/.claude/gw/ when missing; a differing one is reported and never touched."""
 
@@ -350,25 +367,25 @@ class NotasPersonales(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp(prefix="gw-notas-")).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.p = Fixture(self.tmp)
-        self.notas = self.tmp / "notas"
-        self.p.env["GW_PERSONAL_NOTES"] = str(self.notas)
+        self.notes_dir = self.tmp / "notas"
+        self.p.env["GW_PERSONAL_NOTES"] = str(self.notes_dir)
 
     def note(self, name, text="my note\n"):
-        self.notas.mkdir(exist_ok=True)
-        (self.notas / name).write_text(text)
-        return self.notas / name
+        self.notes_dir.mkdir(exist_ok=True)
+        (self.notes_dir / name).write_text(text)
+        return self.notes_dir / name
 
     def target(self, name):
         return self.p.work / ".claude" / "gw" / name
 
     def applied(self, *args):
-        code, out = self.p.aplicar(*args)
+        code, out = self.p.run_apply(*args)
         self.assertEqual(code, 0, out)
         return out
 
     def test_absent_folder_does_nothing_and_says_nothing(self):
         self.assertNotIn("personal", self.applied())
-        self.assertEqual(self.p.aplicar("--check")[0], 0)
+        self.assertEqual(self.p.run_apply("--check")[0], 0)
 
     def test_folder_pointing_to_a_missing_path_does_nothing(self):
         self.p.env["GW_PERSONAL_NOTES"] = str(self.tmp / "nope" / "missing")
@@ -376,7 +393,7 @@ class NotasPersonales(unittest.TestCase):
         self.assertFalse((self.tmp / "nope").exists())
 
     def test_empty_folder_does_nothing(self):
-        self.notas.mkdir()
+        self.notes_dir.mkdir()
         self.assertNotIn("personal", self.applied())
 
     def test_default_folder_is_under_the_home_dir(self):
@@ -394,13 +411,13 @@ class NotasPersonales(unittest.TestCase):
         self.assertEqual(self.target("style.md").read_text(), "I like short answers\n")
         self.assertIn("personal note", out)
         self.assertIn("style.md", out)
-        self.assertFalse((self.p.work / ".claude" / "gw" / "style.md.gw-nuevo").exists())
+        self.assertFalse((self.p.work / ".claude" / "gw" / "style.md.gw-new").exists())
         self.assertNotIn("personal", self.applied())  # second run: identical, silent
 
     def test_identical_note_is_silent_and_check_passes(self):
         self.note("style.md")
         self.applied()
-        code, out = self.p.aplicar("--check")
+        code, out = self.p.run_apply("--check")
         self.assertEqual(code, 0, out)
         self.assertNotIn("personal", out)
 
@@ -411,10 +428,10 @@ class NotasPersonales(unittest.TestCase):
         want = f"diff {src} {self.target('style.md')}"
         out = self.applied()
         self.assertEqual(self.target("style.md").read_text(), "adapted for this project\n")
-        self.assertFalse((self.p.work / ".claude" / "gw" / "style.md.gw-nuevo").exists())
+        self.assertFalse((self.p.work / ".claude" / "gw" / "style.md.gw-new").exists())
         self.assertIn("personal note", out)
         self.assertIn(want, out)
-        code, out = self.p.aplicar("--check")
+        code, out = self.p.run_apply("--check")
         self.assertEqual(code, 0, out)
         self.assertIn(want, out)
 
@@ -428,7 +445,7 @@ class NotasPersonales(unittest.TestCase):
     def test_check_does_not_fail_for_a_missing_note_and_says_what_a_normal_run_does(self):
         self.applied("--no-personal-notes")  # the workflow copy itself is up to date
         self.note("style.md")
-        code, out = self.p.aplicar("--check")
+        code, out = self.p.run_apply("--check")
         self.assertEqual(code, 0, out)  # the note is not drift of the workflow copy
         self.assertIn("would create personal note style.md", out)
         self.assertIn("without --check", out)
@@ -441,25 +458,34 @@ class NotasPersonales(unittest.TestCase):
         self.applied()
         (self.p.work / ".claude" / "gw" / "scripts" / "config.py").write_text("# local edit\n")
         self.note("other.md")
-        code, out = self.p.aplicar("--check")
+        code, out = self.p.run_apply("--check")
         self.assertEqual(code, 1, out)
         self.assertIn("would create personal note other.md", out)
 
-    def test_name_ending_in_gw_nuevo_is_rejected_with_a_warning(self):
+    def test_name_ending_in_gw_new_is_rejected_with_a_warning(self):
+        self.note("style.md.gw-new")
+        self.note("Other.GW-NEW")
+        out = self.applied()
+        self.assertIn("WARNING", out)
+        self.assertIn("style.md.gw-new", out)
+        self.assertIn(".gw-new", out)
+        self.assertIn("pending proposal", out)
+        self.assertIn("rename", out)
+        self.assertFalse(self.target("style.md.gw-new").exists())
+        self.assertFalse(self.target("Other.GW-NEW").exists())
+
+    def test_name_ending_in_the_previous_proposal_suffix_is_still_rejected_with_a_warning(self):
         self.note("style.md.gw-nuevo")
         self.note("Other.GW-NUEVO")
         out = self.applied()
-        self.assertIn("WARNING", out)
-        self.assertIn("style.md.gw-nuevo", out)
-        self.assertIn(".gw-nuevo", out)
-        self.assertIn("pending proposal", out)
+        self.assertIn("WARNING: personal note style.md.gw-nuevo ends in .gw-new (or the old .gw-nuevo)", out)
         self.assertIn("rename", out)
         self.assertFalse(self.target("style.md.gw-nuevo").exists())
         self.assertFalse(self.target("Other.GW-NUEVO").exists())
 
     def test_names_of_workflow_files_are_rejected_even_when_not_installed_and_ignoring_case(self):
         names = ("GW-OPT-TOKENS.md", "gw-opt-ai.md", "GW-Scout-Updates.md", "scripts", "SCHEMA", "gw.json",
-                 "gw-opt-tokens.md.gw-nuevo")
+                 "gw-opt-tokens.md.gw-new")
         for name in names:
             self.note(name)
         (self.p.work / ".claude" / "skills").mkdir(parents=True, exist_ok=True)
@@ -500,19 +526,19 @@ class NotasPersonales(unittest.TestCase):
         self.assertIn("fix its permissions", out)
 
     def test_notes_folder_that_is_a_file_or_unreadable_warns_but_absent_is_silent(self):
-        self.notas.write_text("not a folder\n")
+        self.notes_dir.write_text("not a folder\n")
         out = self.applied()
-        self.assertIn(f"WARNING: personal notes path {self.notas} is not a folder", out)
+        self.assertIn(f"WARNING: personal notes path {self.notes_dir} is not a folder", out)
         self.assertIn("GW_PERSONAL_NOTES", out)
-        self.notas.unlink()
-        self.notas.mkdir()
-        os.chmod(self.notas, 0)
-        self.addCleanup(os.chmod, self.notas, 0o755)
-        if os.access(self.notas, os.R_OK):
+        self.notes_dir.unlink()
+        self.notes_dir.mkdir()
+        os.chmod(self.notes_dir, 0)
+        self.addCleanup(os.chmod, self.notes_dir, 0o755)
+        if os.access(self.notes_dir, os.R_OK):
             self.skipTest("running as a user that ignores directory permissions")
         out = self.applied()
         self.assertNotIn("Traceback", out)
-        self.assertIn(f"WARNING: personal notes folder {self.notas} cannot be read", out)
+        self.assertIn(f"WARNING: personal notes folder {self.notes_dir} cannot be read", out)
         self.assertIn("chmod", out)
 
     def test_relative_env_folder_is_resolved_to_an_absolute_path(self):
@@ -524,25 +550,25 @@ class NotasPersonales(unittest.TestCase):
         self.assertIn(f"diff {src} {self.target('style.md')}", out)
 
     def test_is_workflow_repo_fails_closed_when_its_own_plugin_json_is_unreadable(self):
-        spec = importlib.util.spec_from_file_location("aplicar_closed", APLICAR)
-        aplicar = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(aplicar)
-        aplicar.WORKFLOW = self.tmp / "no-such-workflow"
-        self.assertTrue(aplicar.is_workflow_repo(self.p.work))
+        spec = importlib.util.spec_from_file_location("apply_closed", APPLY_SCRIPT)
+        apply_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(apply_module)
+        apply_module.WORKFLOW = self.tmp / "no-such-workflow"
+        self.assertTrue(apply_module.is_workflow_repo(self.p.work))
         broken = self.tmp / "broken"
         (broken / ".claude-plugin").mkdir(parents=True)
         (broken / ".claude-plugin" / "plugin.json").write_text("{not json")
-        aplicar.WORKFLOW = broken
-        self.assertTrue(aplicar.is_workflow_repo(self.p.work))
+        apply_module.WORKFLOW = broken
+        self.assertTrue(apply_module.is_workflow_repo(self.p.work))
 
     def test_symlink_dotfile_subfolder_and_bad_names_are_skipped(self):
         real = self.note("real.md")
-        (self.notas / "link.md").symlink_to(real)
+        (self.notes_dir / "link.md").symlink_to(real)
         for bad in (".hidden.md", "-dash.md", "bad name.md", "a$b.md", "é.md"):
             self.note(bad)
-        (self.notas / "sub").mkdir()
-        (self.notas / "sub" / "inner.md").write_text("x\n")
-        (self.notas / "dir.md").mkdir()
+        (self.notes_dir / "sub").mkdir()
+        (self.notes_dir / "sub" / "inner.md").write_text("x\n")
+        (self.notes_dir / "dir.md").mkdir()
         self.note("1.v2-x.txt")
         self.note("a_b.md")
         self.applied()
@@ -553,7 +579,7 @@ class NotasPersonales(unittest.TestCase):
 
     def test_workflow_repo_itself_never_gets_personal_notes(self):
         self.note("style.md")
-        code, out = self.p.run("python3", str(APLICAR), str(ROOT), "--dry-run")
+        code, out = self.p.run("python3", str(APPLY_SCRIPT), str(ROOT), "--dry-run")
         self.assertEqual(code, 0, out)
         self.assertNotIn("style.md", out)
         self.assertNotIn("personal", out)
@@ -574,7 +600,7 @@ class NotasPersonales(unittest.TestCase):
         self.note("style.md")
         self.assertNotIn("personal", self.applied("--no-personal-notes"))
         self.assertFalse(self.target("style.md").exists())
-        self.assertEqual(self.p.aplicar("--check", "--no-personal-notes")[0], 0)
+        self.assertEqual(self.p.run_apply("--check", "--no-personal-notes")[0], 0)
 
     def test_target_that_is_not_a_regular_file_is_reported_not_replaced(self):
         self.note("style.md")
@@ -585,7 +611,7 @@ class NotasPersonales(unittest.TestCase):
         self.assertIn("not a regular file", out)
 
     def test_help_mentions_the_notes_and_the_flag(self):
-        code, out = self.p.run("python3", str(APLICAR), "--help")
+        code, out = self.p.run("python3", str(APPLY_SCRIPT), "--help")
         self.assertEqual(code, 0, out)
         self.assertIn("GW_PERSONAL_NOTES", out)
         self.assertIn("--no-personal-notes", out)
@@ -595,7 +621,7 @@ SKILL_MD = "---\nname: {n}\ndescription: old copy\nmetadata:\n  version: \"0.4.3
 MIGRATED_CONFIG = {k: v for k, v in BASE_CONFIG.items() if k not in ("log", "reviewMark")}
 
 
-class Migrar(unittest.TestCase):
+class Migrate(unittest.TestCase):
     """A8 chunk 4: apply.py moves a project installed with the old names to the new ones, with no duplicates."""
 
     def setUp(self):
@@ -605,7 +631,7 @@ class Migrar(unittest.TestCase):
         self.p.write(".claude/gw.json", json.dumps(MIGRATED_CONFIG, indent=2) + "\n")  # no `log`, no `reviewMark`
 
     def applied(self, *args):
-        code, out = self.p.aplicar(*args)
+        code, out = self.p.run_apply(*args)
         self.assertEqual(code, 0, out)
         return out
 
@@ -782,7 +808,7 @@ class Migrar(unittest.TestCase):
         p = self.p
         p.write("docs/traspaso.md", "# Log\n")
         (p.work / "docs" / "handoff.md").mkdir()  # an empty folder: the old path still counts as the log
-        code, out = p.aplicar()
+        code, out = p.run_apply()
         self.assertEqual(code, 2, out)
         self.assertIn("cannot move docs/traspaso.md to docs/handoff.md: docs/handoff.md already exists", out)
         self.assertIn("--keep-paths", out)
@@ -792,12 +818,12 @@ class Migrar(unittest.TestCase):
     def test_dry_run_and_check_move_nothing(self):
         p = self.p
         self.old_paths()
-        code, out = p.aplicar("--dry-run")
+        code, out = p.run_apply("--dry-run")
         self.assertEqual(code, 0, out)
         self.assertIn("move    docs/handoff.md  (from docs/traspaso.md", out)
         self.assertTrue(self.exists("docs/traspaso.md"))
         self.assertFalse(self.exists("docs/handoff.md"))
-        code, out = p.aplicar("--check")
+        code, out = p.run_apply("--check")
         self.assertEqual(code, 1, out)
         self.assertIn("move    docs/records/reviewed.txt", out)
         self.assertTrue(self.exists("docs/registros/revisado.txt"))
@@ -818,7 +844,7 @@ class Migrar(unittest.TestCase):
         self.assertIn("nothing to do", again)
         self.assertEqual(json.loads(p.read(".claude/gw.json")), cfg)
         self.assertTrue(cfg["keepLegacyPaths"])
-        code, out = self.p.aplicar("--check")  # a later plain run or --check respects the choice
+        code, out = self.p.run_apply("--check")  # a later plain run or --check respects the choice
         self.assertNotIn("move ", out)
         self.assertTrue(self.exists("docs/traspaso.md"))
 
@@ -837,7 +863,7 @@ class Migrar(unittest.TestCase):
 
     def test_keep_paths_plan_line_mentions_the_reformat(self):
         self.old_paths()
-        self.assertIn("gw.json is rewritten with 2-space indent", self.p.aplicar("--keep-paths", "--dry-run")[1])
+        self.assertIn("gw.json is rewritten with 2-space indent", self.p.run_apply("--keep-paths", "--dry-run")[1])
 
     def test_a_rerun_repairs_an_explicit_key_after_a_manual_move(self):
         p = self.p
@@ -878,6 +904,18 @@ class Migrar(unittest.TestCase):
         self.assertIn("remove  .claude/skills/gw-media-content/plantilla", out)
         self.assertNotIn("is no longer in the workflow", out)
         self.assertIn("nothing to do", self.applied())  # rerun: no-op
+
+    def test_old_spanish_script_of_an_installed_skill_is_replaced_by_the_english_one(self):
+        p = self.p
+        p.write(".claude/skills/gw-opt-tokens/SKILL.md", SKILL_MD.format(n="gw-opt-tokens"))
+        for rel in ("scripts/medir.py", "scripts/test_medir.py"):
+            p.write(f".claude/skills/gw-opt-tokens/{rel}", "old\n")
+        self.commit()
+        self.applied()
+        base = ".claude/skills/gw-opt-tokens/scripts/"
+        self.assertFalse(self.exists(base + "medir.py"))
+        self.assertFalse(self.exists(base + "test_medir.py"))
+        self.assertTrue(self.exists(base + "measure.py"))
 
     def test_old_named_file_of_a_skill_with_local_edits_is_kept_with_the_reason(self):
         self.old_media_skill()
@@ -937,7 +975,7 @@ class Migrar(unittest.TestCase):
         self.assertEqual(cfg["staleRefs"]["skip"], ["docs/records/old"])
         self.assertEqual(p.read("docs/records/reviewed.txt"), "abc\n")
         self.assertFalse(self.exists("docs/records/revisado.txt"))
-        self.assertIn("in sync", self.p.aplicar("--check")[1])
+        self.assertIn("in sync", self.p.run_apply("--check")[1])
 
     def test_old_script_kept_because_not_clean_is_not_reported_as_an_orphan(self):
         p = self.p
@@ -989,33 +1027,33 @@ class Migrar(unittest.TestCase):
         self.p.write(".github/workflows/comprobar.yml", text)
         self.commit()
 
-    def test_own_comprobar_yml_is_moved_to_check_yml_and_updated(self):
+    def test_own_old_workflow_file_is_moved_to_check_yml_and_updated(self):
         p = self.p
         self.tracked_workflow("# galivelop-workflow v0.4.0\nname: Comprobar\n")
         out = self.applied()
         self.assertFalse(self.exists(".github/workflows/comprobar.yml"), out)
         self.assertIn("name: Check", p.read(".github/workflows/check.yml"))
-        self.assertFalse(self.exists(".github/workflows/check.yml.gw-nuevo"), out)
+        self.assertFalse(self.exists(".github/workflows/check.yml.gw-new"), out)
         self.assertIn("nothing to do", self.applied())
 
-    def test_comprobar_yml_with_a_version_not_older_keeps_its_content_and_gets_a_proposal(self):
+    def test_old_workflow_file_with_a_version_not_older_keeps_its_content_and_gets_a_proposal(self):
         p = self.p
         self.tracked_workflow("# galivelop-workflow v99.0.0\nname: Mine\n")
         out = self.applied()
         self.assertFalse(self.exists(".github/workflows/comprobar.yml"), out)
         self.assertIn("name: Mine", p.read(".github/workflows/check.yml"))
-        self.assertTrue(self.exists(".github/workflows/check.yml.gw-nuevo"), out)
+        self.assertTrue(self.exists(".github/workflows/check.yml.gw-new"), out)
 
-    def test_comprobar_yml_without_header_is_the_projects_own_and_stays(self):
+    def test_old_workflow_file_without_header_is_the_projects_own_and_stays(self):
         p = self.p
         self.tracked_workflow("name: CI of mine\n")
         out = self.applied()
         self.assertEqual(p.read(".github/workflows/comprobar.yml"), "name: CI of mine\n")
         self.assertFalse(self.exists(".github/workflows/check.yml"), out)
-        self.assertTrue(self.exists(".github/workflows/check.yml.gw-nuevo"), out)
+        self.assertTrue(self.exists(".github/workflows/check.yml.gw-new"), out)
         self.assertIn("looks like the project's own CI", out)
 
-    def test_comprobar_yml_next_to_check_yml_is_only_warned(self):
+    def test_old_workflow_file_next_to_check_yml_is_only_warned(self):
         p = self.p
         self.tracked_workflow("# galivelop-workflow v0.4.3\nname: Comprobar\n")
         self.applied()
@@ -1039,7 +1077,7 @@ class Migrar(unittest.TestCase):
 
     def test_old_option_and_env_names_warn_with_the_new_name(self):
         p = self.p
-        code, out = p.aplicar("--sin-notas-personales")
+        code, out = p.run_apply("--sin-notas-personales")
         self.assertEqual(code, 0, out)
         self.assertIn("--sin-notas-personales", out)
         self.assertIn("--no-personal-notes", out)
@@ -1048,7 +1086,7 @@ class Migrar(unittest.TestCase):
         (notes / "x.md").write_text("n\n")
         del p.env["GW_PERSONAL_NOTES"]
         p.env["GW_NOTAS_PERSONALES"] = str(notes)
-        code, out = p.aplicar()
+        code, out = p.run_apply()
         self.assertEqual(code, 0, out)
         self.assertIn("GW_NOTAS_PERSONALES", out)
         self.assertIn("GW_PERSONAL_NOTES", out)
@@ -1056,7 +1094,7 @@ class Migrar(unittest.TestCase):
 
 
     def test_help_mentions_keep_paths(self):
-        code, out = self.p.run("python3", str(APLICAR), "--help")
+        code, out = self.p.run("python3", str(APPLY_SCRIPT), "--help")
         self.assertIn("--keep-paths", out)
 
 

@@ -18,7 +18,7 @@ from test_hooks import ROOT, Project
 SCRIPT = "subagent-cap.py"
 
 
-class TopeProject(Project):
+class SubagentCapProject(Project):
     def __init__(self, tmp, config=None):
         super().__init__(tmp, config=config, hooks=())
         self.scripts = self.work / ".claude" / "gw" / "scripts"
@@ -49,7 +49,7 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="gw-tope-")).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, True)
-        self.p = TopeProject(self.tmp, self.cfg)
+        self.p = SubagentCapProject(self.tmp, self.cfg)
 
     def answer(self, out):
         try:

@@ -246,7 +246,7 @@ class Version(unittest.TestCase):
         self.assertIn('metadata:\n  version: "9.8.7"\n---', text)
         self.assertTrue(text.endswith('version: "0.0.2"\n'))
 
-    def test_skill_version_is_read_the_same_by_aplicar_and_version_py(self):
+    def test_skill_version_is_read_the_same_by_apply_and_version_py(self):
         tmp = self.tmp
         crlf = tmp / "skills" / "crlf" / "SKILL.md"
         crlf.parent.mkdir()
@@ -254,11 +254,11 @@ class Version(unittest.TestCase):
         note = tmp / "skills" / "note" / "SKILL.md"
         note.parent.mkdir()
         note.write_text(f"---\nname: note\nmetadata:\n  version: {VERSION}  # note\n---\n\nBody\n")
-        spec = importlib.util.spec_from_file_location("aplicar_under_test", ROOT / "scripts" / "apply.py")
-        aplicar = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(aplicar)
-        self.assertEqual(aplicar.skill_version(crlf), VERSION)
-        self.assertEqual(aplicar.skill_version(note), VERSION)
+        spec = importlib.util.spec_from_file_location("apply_under_test", ROOT / "scripts" / "apply.py")
+        apply_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(apply_module)
+        self.assertEqual(apply_module.skill_version(crlf), VERSION)
+        self.assertEqual(apply_module.skill_version(note), VERSION)
         r = run(tmp)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(run(tmp, "9.8.7").returncode, 0)
