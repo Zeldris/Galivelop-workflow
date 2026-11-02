@@ -1,4 +1,5 @@
 {
+ "$comment": "galivelop-workflow v0.4.3",
  "_comment": "Renamed in 0.5 (A8). apply.py deletes a project's file under an old name only when its git blob id is one the workflow shipped (no local edits); generated from the repo history, do not edit by hand.",
  "scripts": {
   "bitacora.py": "handoff.py",
