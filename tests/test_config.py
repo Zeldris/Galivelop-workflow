@@ -314,6 +314,16 @@ class ProjectPaths(unittest.TestCase):
         self.assertEqual(self.get("reviewMark", "--rev", "HEAD~1", "--paths-at", "HEAD"), "docs/registros/revisado.txt")
         self.assertEqual(self.get("reviewMark", "--rev", "HEAD~1", "--paths-at", "HEAD~1"), "docs/records/reviewed.txt")
 
+    def test_paths_at_with_a_missing_commit_fails_closed(self):
+        self.write(MIN)
+        git = ["git", "-C", str(self.tmp), "-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run(git + ["add", "-A"], check=True)
+        subprocess.run(git + ["commit", "-qm", "tip"], check=True)
+        r = cli(self.tmp, "--rev", "HEAD", "--paths-at", "nonexistent_rev", "get", "reviewMark")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("--paths-at nonexistent_rev is not a commit", r.stderr)
+        self.assertEqual(r.stdout.strip(), "")
+
     def test_an_empty_folder_does_not_count_as_existing(self):
         self.write(MIN)
         (self.tmp / "docs" / "propuestas").mkdir(parents=True)  # git would not even version it

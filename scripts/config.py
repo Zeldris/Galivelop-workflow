@@ -327,6 +327,16 @@ def load(root=None, rev=None, paths_at=None):
     errors = validate(config, schema) or semantic_errors(config)
     if errors:
         raise ConfigError(f"{path} is invalid:\n  " + "\n  ".join(errors))
+    if paths_at:
+        env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
+        try:
+            ok = subprocess.run(["git", "-C", str(root), "rev-parse", "--verify", "-q", f"{paths_at}^{{commit}}"],
+                                capture_output=True, env=env).returncode == 0
+        except OSError:
+            ok = False
+        if not ok:  # fail closed: a missing commit would make every old path look absent
+            raise ConfigError(f"--paths-at {paths_at} is not a commit in {root}; pass an existing one: "
+                              f"git rev-parse --verify {paths_at}")
     config = with_defaults(config, schema, path_exists_fn(root, paths_at or rev))
     config["_root"] = root
     return config
