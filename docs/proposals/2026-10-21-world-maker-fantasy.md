@@ -7,7 +7,7 @@ Lo que ya trae `casos-reales.md` (ganchos, `revisado.sh`, `bitacora.py`, `prepus
 
 ## P1. Referencias de diseño configurables para `grilling`
 
-- **Source:** `CLAUDE.md` § «Diseño» y `.claude/skills/grilling/SKILL.md` (nota de verinews_ai, la versión genérica) @ 9cb05e50a063 (skill + regla)
+- **Source:** `CLAUDE.md` § «Diseño» y `.claude/skills/grilling/SKILL.md` (nota de private-project-1, la versión genérica) @ 9cb05e50a063 (skill + regla)
 - **What changes:** `gw.json` admite `designReferences` (lista de productos o marcos); `grilling` y `selector` las leen y cada recomendación cita de cuál sale. `/gw-init` las pregunta.
 - **Why it is general:** los cuatro proyectos tienen la misma regla con referencias distintas (juegos, instaladores, marcos de verificación); hoy vive en prosa de `CLAUDE.md` y se pierde.
 - **Version bump:** minor
@@ -17,7 +17,7 @@ Lo que ya trae `casos-reales.md` (ganchos, `revisado.sh`, `bitacora.py`, `prepus
 
 - **Source:** `.claude/skills/retro/SKILL.md` («Las skills propias, también») @ 9cb05e50a063 (skill)
 - **What changes:** en la sección de proyecto de `retro`: mirar cómo rindieron `opt-tokens`, `orchestrate-dealer`, `selector`, `pr`, el `/code-review` y la propia `retro`; leer la tabla de skills antes de proponer; si falló una skill, la propuesta cambia esa skill, no añade una regla suelta a `CLAUDE.md`.
-- **Why it is general:** portal, instalador y verinews la tienen igual; evita que las reglas se acumulen en `CLAUDE.md`.
+- **Why it is general:** portal, instalador y private-project-1 la tienen igual; evita que las reglas se acumulen en `CLAUDE.md`.
 - **Version bump:** minor
 - **Status:** aprobada (2026-10-21)
 
@@ -97,7 +97,7 @@ Lo que ya trae `casos-reales.md` (ganchos, `revisado.sh`, `bitacora.py`, `prepus
 
 - **Source:** `.claude/skills/opt-ai/` (`SKILL.md`, `medir.py`, `motores.md`, `proyecto.md`, `test_medir.py`) @ 9cb05e50a063 (new skill)
 - **What changes:** skill opcional, `disable-model-invocation`, con la separación que ya usa `opt-tokens` (cuerpo genérico + `proyecto.md` del repo + `motores.md`), activada con `ai.local: true` en el config. Solo propone; si no hay registro de la tanda, para.
-- **Why it is general:** cualquier proyecto con Ollama o motor local (instalador, verinews si añade IA local) necesita medir latencia y recuerdo por perfil; el instalador ya la copia. Costaría una skill más: no se incluye por defecto.
+- **Why it is general:** cualquier proyecto con Ollama o motor local (instalador, private-project-1 si añade IA local) necesita medir latencia y recuerdo por perfil; el instalador ya la copia. Costaría una skill más: no se incluye por defecto.
 - **Version bump:** minor
 - **Status:** aprobada (2026-10-21)
 

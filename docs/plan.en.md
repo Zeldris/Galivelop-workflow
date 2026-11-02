@@ -352,7 +352,7 @@ decides:
   everything without overwriting what already exists.
 - **Update:** the project already has `.claude/gw.json`: it moves the workflow from its `version` to the new one,
   keeps what is the project's own and marks the conflicts.
-- **Older copy without `gw.json`** (like VeriNews_AI, or the pilots before applying the workflow): treated as an
+- **Older copy without `gw.json`** (like private-project-1, or the pilots before applying the workflow): treated as an
   update that replaces that copy; never as a clean install that duplicates it.
 
 Both paths have their tests and are tried on the pilots.
@@ -379,18 +379,18 @@ with the large model; porting skills and templates with the medium one. From Pha
 |---|---|---|
 | **0. Verify** ✅ | Official docs on plugins, marketplaces and hooks; cloud tests; three real cases; standards | §0 decided; notes in `docs/research/` |
 | **1. Skeleton** | `LICENSE`, `AGENTS.md` + `CLAUDE.md`, README ES/EN, log, CHANGELOG `0.1.0`, valid `.claude-plugin/`, CI (shellcheck, JSON, ES/EN pairs, version == CHANGELOG) | CI green and the repo worked on with its own `AGENTS.md` |
-| **2. Skills** | Port the skills (§3) piece by piece, with Agent Skills fields and a test that validates them; `gw-harvest` + `scripts/harvest.py` | All validate; `writing-for-agents` applied to the own ones; licences and credits; `gw-harvest` collects real proposals from Tarkor, the installer, the portal and VeriNews |
+| **2. Skills** | Port the skills (§3) piece by piece, with Agent Skills fields and a test that validates them; `gw-harvest` + `scripts/harvest.py` | All validate; `writing-for-agents` applied to the own ones; licences and credits; `gw-harvest` collects real proposals from Tarkor, the installer, the portal and private-project-1 |
 | **3. Hooks and scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recover.py`, `review-before-main.sh`, `is-code.sh`, `reviewed.sh`, `handoff.py`, `prepush-branches.sh`, `measure.py`, `pre-push` template. Tests against a temporary repo: the 29 bugs' categories, shallow clone, conflict markers, another hook manager. Applied to this repo | Tests green on Linux and macOS; fail closed without config |
 | **4. Templates and apply** | `templates/es` and `templates/en`, `gw.schema.json`, `apply.py`, `apply.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `troubleshooting.md` | An agent applies the workflow to an empty repo and `doctor.py` accepts it; twice changes nothing |
 | **5. Pilot: Portal-Galivelop** | In a portal session (with permission): an agent applies it following `apply.md` and replaces its copy | `npm run check` green, `pre-push` and mark working, weekly task unchanged |
-| **6. Pilot: Tarkor and installer** | Same in World-Maker-Fantasy (`roadmap: true`, PR) and Instalador-WMF-Tarkor (Rust). VeriNews_AI (Java + Vite) moves to Phase 8, with no AI agent | Hand-off between accounts with nothing lost; gaps come back as a new version |
+| **6. Pilot: Tarkor and installer** | Same in World-Maker-Fantasy (`roadmap: true`, PR) and Instalador-WMF-Tarkor (Rust). private-project-1 (Java + Vite) moves to Phase 8, with no AI agent | Hand-off between accounts with nothing lost; gaps come back as a new version |
 | **7. Stage-1 run-in** | Weeks of real use; every `retro` with a general improvement → issue/PR here | §10 criteria for stage 1 |
 
 **Stage 2 — automatic installation without AI**
 
 | Phase | What | Done when |
 |---|---|---|
-| **8. Installer** | Choose Copier or an own script; one command that **installs** (new project, or existing one without the workflow: no overwrites, conflicts marked) or **updates** (with `gw.json`, or an older copy without it) depending on what it finds (§8) | Install without AI on a new repo; update without AI the pilots (from their version to the new one) and VeriNews_AI (older copy without `gw.json`); `doctor.py` green |
+| **8. Installer** | Choose Copier or an own script; one command that **installs** (new project, or existing one without the workflow: no overwrites, conflicts marked) or **updates** (with `gw.json`, or an older copy without it) depending on what it finds (§8) | Install without AI on a new repo; update without AI the pilots (from their version to the new one) and private-project-1 (older copy without `gw.json`); `doctor.py` green |
 | **9. Plugin and npm** | The plugin as a second route next to the managed copy: marketplace in this (public) repo, installed locally and by the cloud environment setup script (Option D); the plugin also brings the git hooks (`pre-push`, review mark); consider npm (§11) | A project working with the plugin only, locally and in the cloud, hooks included |
 | **10. Launch** | Page on the Galivelop portal (three languages), npm if it is done (§11) and posts (`gw-media-content`); before that, `/security-review` and a pass over §10. *(Formerly "Public": copy of `1.0.0` into a separate public repo; no longer needed, this repo is the public one)* | Page published and launch announced |
 
@@ -406,7 +406,7 @@ with the large model; porting skills and templates with the medium one. From Pha
 They measure the maturity of the `1.x` line; they do not block the `1.0` tag (§7, A-5). "Nothing private" is the
 exception: it is required now, on every push.
 
-- Works in **three projects** on different stacks (at least one without Node: the Tarkor installer or VeriNews
+- Works in **three projects** on different stacks (at least one without Node: the Tarkor installer or private-project-1
   are the candidates) for **≥ 4 weeks** each.
 - **Hand-offs proven**: at least 5 session cuts (tokens, `/clear`, account switch) with no loss, verified
   against the log.

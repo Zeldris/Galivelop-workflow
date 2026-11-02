@@ -401,24 +401,24 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
 
 ## [0.4.3] - 2026-10-27
 
-Parche de correcciones de la recogida de galivelop-developer del 2026-10-27, en `version/1.0.0` (P1-P4); lo nuevo va a
-la `1.0.0`. / Bug-fix patch from the galivelop-developer harvest of 2026-10-27, in `version/1.0.0` (P1-P4); new features
+Parche de correcciones de la recogida de private-project-2 del 2026-10-27, en `version/1.0.0` (P1-P4); lo nuevo va a
+la `1.0.0`. / Bug-fix patch from the private-project-2 harvest of 2026-10-27, in `version/1.0.0` (P1-P4); new features
 go to `1.0.0`.
 
 ### ES
 
 - `doctor.py`: con `GITHUB_ACTIONS=true` (GitHub Actions), `core.hooksPath` sin poner sale en `WARN` y no en `FAIL`: el
   CI no puede tener los ganchos de git puestos y rompía el CI de todo proyecto con `doctor.py` en `check`; en local
-  sigue siendo `FAIL` (galivelop-developer P1).
+  sigue siendo `FAIL` (private-project-2 P1).
 - `doctor.py` avisa (`WARN`) de una orden de `check` que sea `bash -n` o `sh -n` con más de un archivo, un glob o `$(…)`
   (check `check syntax-only`): solo se comprueba el primero, y da un verde falso; dice la orden que lo arregla (una por
-  archivo, o un `for`) (galivelop-developer P4).
+  archivo, o un `for`) (private-project-2 P4).
 - `/gw-init` y la guía de aplicar piden clonar la última etiqueta publicada (`git ls-remote --tags --refs
-  --sort=-v:refname`, `git clone --branch vX.Y.Z`), no la rama por defecto, que puede no ser `main` (galivelop-developer
+  --sort=-v:refname`, `git clone --branch vX.Y.Z`), no la rama por defecto, que puede no ser `main` (private-project-2
   P2).
 - La guía de aplicar y `/gw-init` avisan de que un `.claude/settings.json` creado a mitad de sesión no se carga hasta la
   siguiente: en la sesión que aplica el flujo la guarda del PR no está activa y la marca se comprueba a mano con `bash
-  .claude/gw/scripts/revisado.sh` (galivelop-developer P3).
+  .claude/gw/scripts/revisado.sh` (private-project-2 P3).
 - Plantilla de `AGENTS.md`: el push y el check largo se lanzan en segundo plano y se espera su aviso, sin bucles de
   espera (retro del parche, R2).
 
@@ -426,22 +426,22 @@ go to `1.0.0`.
 
 - `doctor.py`: with `GITHUB_ACTIONS=true` (GitHub Actions), an unset `core.hooksPath` is a `WARN`, not a `FAIL`: CI
   cannot have git hooks installed, and it broke the CI of every project with `doctor.py` in `check`; locally it stays a
-  `FAIL` (galivelop-developer P1).
+  `FAIL` (private-project-2 P1).
 - `doctor.py` warns (`WARN`) about a `check` command that is `bash -n` or `sh -n` with more than one file, a glob or
   `$(…)` (check `check syntax-only`): only the first is checked, a false green; it gives the fixing command (one per
-  file, or a `for` loop) (galivelop-developer P4).
+  file, or a `for` loop) (private-project-2 P4).
 - `/gw-init` and the apply guide ask to clone the latest published tag (`git ls-remote --tags --refs --sort=-v:refname`,
-  `git clone --branch vX.Y.Z`), not the default branch, which may not be `main` (galivelop-developer P2).
+  `git clone --branch vX.Y.Z`), not the default branch, which may not be `main` (private-project-2 P2).
 - The apply guide and `/gw-init` warn that a `.claude/settings.json` created mid-session is not loaded until the next
   one: in the session that applies the workflow the PR guard is not active and the mark is checked by hand with `bash
-  .claude/gw/scripts/revisado.sh` (galivelop-developer P3).
+  .claude/gw/scripts/revisado.sh` (private-project-2 P3).
 - `AGENTS.md` template: the push and the long check run in the background and the agent waits for their notice, with
   no polling loop (patch retro, R2).
 
 ## [0.4.2] - 2026-10-27
 
 Parche de correcciones de la segunda recogida del 2026-10-26 (`docs/propuestas/2026-10-26-*-2.md` y
-`2026-10-26-verinews_ai.md`); los evolutivos van a la `1.0.0`. / Bug-fix patch from the second 2026-10-26 harvest;
+`2026-10-26-private-project-1.md`); los evolutivos van a la `1.0.0`. / Bug-fix patch from the second 2026-10-26 harvest;
 the new features go to `1.0.0`.
 
 ### ES
@@ -452,14 +452,14 @@ the new features go to `1.0.0`.
   punta que se sube, no el de cada commit intermedio.
 - El `pre-commit` ve los secretos con el nombre `api.key` (con punto, como `openai.api.key` en un `.properties`) y
   la clave pegada a un proveedor de IA (`openaikey`, `OPENAI_KEY`, `anthropic-key`…); a propósito no casa un sufijo
-  `*key` genérico (`primary_key`, `sort_key`, `cache_key`) (VeriNews P3).
+  `*key` genérico (`primary_key`, `sort_key`, `cache_key`) (private-project-1 P3).
 - `fusionar.sh` corre, tras el check en verde, los tests relacionados (`relatedTests`, con `tests-relacionados.sh`)
   de los archivos que trae la fusión, como el `pre-push`; si fallan, la fusión ya está hecha y dice cómo repetirlos y
-  cómo deshacerla (VeriNews P4). Con `relatedTests` configurado y sin `tests-relacionados.sh` instalado, falla en vez
+  cómo deshacerla (private-project-1 P4). Con `relatedTests` configurado y sin `tests-relacionados.sh` instalado, falla en vez
   de saltárselos.
 - `mapa-agente.py` reconoce los métodos con tipo de retorno de Java y otros lenguajes tipados (`.java`, `.kt`, `.cs`,
   `.kts`, `.scala`, `.groovy`), con modificadores, genéricos, anotaciones y `throws`; las palabras de control
-  (`if`, `for`, `while`…) no cuentan como método (VeriNews P11).
+  (`if`, `for`, `while`…) no cuentan como método (private-project-1 P11).
 
 ### EN
 
@@ -469,14 +469,14 @@ the new features go to `1.0.0`.
   it, not each intermediate commit's.
 - The `pre-commit` sees secrets named `api.key` (with a dot, like `openai.api.key` in a `.properties` file) and a key
   glued to an LLM provider (`openaikey`, `OPENAI_KEY`, `anthropic-key`…); on purpose it does not match a bare `*key`
-  suffix (`primary_key`, `sort_key`, `cache_key`) (VeriNews P3).
+  suffix (`primary_key`, `sort_key`, `cache_key`) (private-project-1 P3).
 - `fusionar.sh` runs, after a green check, the related tests (`relatedTests`, via `tests-relacionados.sh`) of the
   files the merge brings, like the `pre-push`; if they fail, the merge is already done and it says how to rerun them
-  and how to undo it (VeriNews P4). With `relatedTests` set and `tests-relacionados.sh` not installed, it fails
+  and how to undo it (private-project-1 P4). With `relatedTests` set and `tests-relacionados.sh` not installed, it fails
   instead of skipping them.
 - `mapa-agente.py` recognises methods with a return type in Java and other typed languages (`.java`, `.kt`, `.cs`,
   `.kts`, `.scala`, `.groovy`), with modifiers, generics, annotations and `throws`; control keywords (`if`, `for`,
-  `while`…) do not count as methods (VeriNews P11).
+  `while`…) do not count as methods (private-project-1 P11).
 
 ## [0.4.1] - 2026-10-26
 

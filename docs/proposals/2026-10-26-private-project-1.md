@@ -1,4 +1,4 @@
-# Harvest verinews_ai — 2026-10-26
+# Harvest private-project-1 — 2026-10-26
 
 De `a9b5761e` a `693ec58d` (`scripts/recoger.py`, 5 commits; el proyecto usa la v0.4.0). Las ideas salen de las
 retros de `docs/registros/` y de `docs/registros/propuestas-al-flujo-2026-10-26.md` @ `2cbb149`. Lo marcado «por
@@ -47,7 +47,7 @@ confirmar» se reproduce antes de aplicarlo.
 ## P5. `rojo-sin-arreglo.sh`: arreglo ya commiteado y tipo de rojo
 
 - **Source:** `docs/registros/retro-2026-10-26-galivelop-v040.md` @ `2cbb149` (R6) y
-  `docs/registros/retro-2026-10-26-qa12-veriai.md` @ `693ec58` (R1) (script)
+  `docs/registros/retro-2026-10-26-qa12.md` @ `693ec58` (R1) (script)
 - **What changes:** `--fix-at <commit>` para un arreglo ya commiteado (hoy exige cambios sin commitear); y distinguir
   un rojo por compilación de uno por la aserción (hoy `--fails-with` solo lo mitiga).
 - **Why it is general:** el script es del flujo y los dos casos salen en cualquier proyecto.
@@ -83,7 +83,7 @@ confirmar» se reproduce antes de aplicarlo.
 
 ## P9. Encargo de revisión con `git diff --stat`
 
-- **Source:** `docs/registros/retro-2026-10-26-qa12-veriai.md` @ `693ec58` (R2) (skill)
+- **Source:** `docs/registros/retro-2026-10-26-qa12.md` @ `693ec58` (R2) (skill)
 - **What changes:** en `skills/orchestrate-dealer/SKILL.md`, el encargo de un subagente revisor empieza por
   `git diff --stat origin/main` y pide decir cada archivo leído o descartado.
 - **Why it is general:** evita revisiones que se saltan archivos sin decirlo.

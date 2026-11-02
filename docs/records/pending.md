@@ -9,18 +9,18 @@ commit, y la entrada va al CHANGELOG de esa versión. Lo marcado `[x]` se hizo e
 Reparto: scripts, checks, config y git a la `0.5`; `orchestrate-dealer` y los encargos de revisión a la `0.7`
 (junto a C10); instalación, plantillas y stacks a la `0.8` (junto a E4); textos de la documentación a la `0.9` (E8).
 
-## De la recogida del 2026-10-27 (`galivelop-developer`)
+## De la recogida del 2026-10-27 (`private-project-2`)
 
 P1-P4 salieron en el parche `0.4.3`.
 
-- [ ] `0.7` · **DEV P5**: `orchestrate-dealer`: si la revisión de toda la rama va justo después y ya está decidida, el último
-  bloque no se revisa aparte. [`2026-10-27-galivelop-developer.md`](../proposals/2026-10-27-galivelop-developer.md)
-- [ ] `0.5` · **DEV P6**: `scripts/ci-estado.py`, que lee el estado de Actions de una rama o commit (token y `gh` de
-  `revision-antes-de-main.sh`). [`2026-10-27-galivelop-developer.md`](../proposals/2026-10-27-galivelop-developer.md)
-- [ ] `0.5` · **DEV P7**: clave `ciPython` en `gw.json` con las versiones de Python que la plantilla del CI recorre en matriz.
-  [`2026-10-27-galivelop-developer.md`](../proposals/2026-10-27-galivelop-developer.md)
-- [ ] `0.8` · **DEV P8**: `aplicar.py --init` añade un `.gitignore` por stack en un bloque con marca, sin pisar el existente.
-  [`2026-10-27-galivelop-developer.md`](../proposals/2026-10-27-galivelop-developer.md)
+- [ ] `0.7` · **private-project-2 P5**: `orchestrate-dealer`: si la revisión de toda la rama va justo después y ya está decidida, el último
+  bloque no se revisa aparte. [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
+- [ ] `0.5` · **private-project-2 P6**: `scripts/ci-estado.py`, que lee el estado de Actions de una rama o commit (token y `gh` de
+  `revision-antes-de-main.sh`). [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
+- [ ] `0.5` · **private-project-2 P7**: clave `ciPython` en `gw.json` con las versiones de Python que la plantilla del CI recorre en matriz.
+  [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
+- [ ] `0.8` · **private-project-2 P8**: `aplicar.py --init` añade un `.gitignore` por stack en un bloque con marca, sin pisar el existente.
+  [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
 
 ## De la recogida del 2026-10-26
 
@@ -46,39 +46,39 @@ P1-P4 salieron en el parche `0.4.3`.
 
 ## De la recogida del 2026-10-26 (segunda)
 
-Decididas el 2026-10-27; las correcciones (INS P8, VeriNews P3, P4 y la parte Java de P11) salieron en la `0.4.2`.
+Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la parte Java de P11) salieron en la `0.4.2`.
 
-- [ ] `0.5` · **VeriNews P1:** `ciIgnore`, estados de CI ajenos (p. ej. un despliegue) que no bloquean la fusión.
-  [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
-- [ ] `0.5` · **VeriNews P2:** firmas del agente también en el cuerpo de PR, issues y comentarios de GitHub, y aviso de un
-  `user.email` `noreply@anthropic.com`. [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
+- [ ] `0.5` · **private-project-1 P1:** `ciIgnore`, estados de CI ajenos (p. ej. un despliegue) que no bloquean la fusión.
+  [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
+- [ ] `0.5` · **private-project-1 P2:** firmas del agente también en el cuerpo de PR, issues y comentarios de GitHub, y aviso de un
+  `user.email` `noreply@anthropic.com`. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [ ] `0.5` · **INS P12 + WMF P4:** el check en una orden con resumen y la salida recortada.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md),
   [`2026-10-26-world-maker-fantasy-2.md`](../proposals/2026-10-26-world-maker-fantasy-2.md)
 - [ ] `0.5` · **INS P9:** `bitacora.py own-row --staged`, la propia fila comprobada al hacer el commit.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
-- [ ] `0.5` · **VeriNews P6:** `revisado.sh` avisa del código sin revisar desde la última marca.
-  [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
-- [ ] `0.5` · **VeriNews P5:** `rojo-sin-arreglo.sh --fix-at <commit>` y distinguir un rojo de compilación de uno de la
-  aserción. [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
+- [ ] `0.5` · **private-project-1 P6:** `revisado.sh` avisa del código sin revisar desde la última marca.
+  [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
+- [ ] `0.5` · **private-project-1 P5:** `rojo-sin-arreglo.sh --fix-at <commit>` y distinguir un rojo de compilación de uno de la
+  aserción. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [ ] `0.7` · **Portal P4:** `orchestrate-dealer`, los repos que solo se leen se clonan aparte y sin registrar.
   [`2026-10-26-portal-galivelop-2.md`](../proposals/2026-10-26-portal-galivelop-2.md)
 - [ ] `0.5` · **INS P10:** `doctor.py` avisa de worktrees ya fusionados.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
-- [ ] `0.5` · **VeriNews P7:** `bitacora.py set-row`. [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
-- [ ] `0.5` · **VeriNews P8:** `doctor.py` avisa de `cd <carpeta> && …` sin `worktreeLinks`.
-  [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
+- [ ] `0.5` · **private-project-1 P7:** `bitacora.py set-row`. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
+- [ ] `0.5` · **private-project-1 P8:** `doctor.py` avisa de `cd <carpeta> && …` sin `worktreeLinks`.
+  [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [ ] `0.8` · **INS P11:** `scout-updates` lee la versión de Rust del proyecto.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
-- [ ] `0.7` · **VeriNews P9:** el encargo de revisión lleva `git diff --stat`.
-  [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
+- [ ] `0.7` · **private-project-1 P9:** el encargo de revisión lleva `git diff --stat`.
+  [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [ ] `0.8` · **INS P13 + Portal P5:** en la plantilla de `REVIEW.md`, la regla de invariantes y el apartado «Navegadores».
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md),
   [`2026-10-26-portal-galivelop-2.md`](../proposals/2026-10-26-portal-galivelop-2.md)
-- [ ] `0.9` · **VeriNews P10:** textos menores (`/clear` tras un commit `WIP:`, `perPage: 1`, `git fetch -q && git status -sb`).
-  [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
-- [ ] `0.5` · **VeriNews P11 (archivos borrados):** `tests-relacionados.sh` incluye los archivos borrados en `{files}` o corre
-  todo si un push solo borra. [`2026-10-26-verinews_ai.md`](../proposals/2026-10-26-verinews_ai.md)
+- [ ] `0.9` · **private-project-1 P10:** textos menores (`/clear` tras un commit `WIP:`, `perPage: 1`, `git fetch -q && git status -sb`).
+  [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
+- [ ] `0.5` · **private-project-1 P11 (archivos borrados):** `tests-relacionados.sh` incluye los archivos borrados en `{files}` o corre
+  todo si un push solo borra. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [x] `0.5` · **Del arreglo de INS P8** (arreglado en la `0.4.2`, `4aecf5c`): `prepush-ramas.sh` comprueba la bitácora como
   queda en la punta que se sube, así que un log malo en un commit intermedio se arregla con un commit nuevo encima.
 

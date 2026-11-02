@@ -100,7 +100,7 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   `gw-`), opciones y subórdenes, claves de config, variables, funciones y tests; también los de `docs/es/`. Solo el
   contenido para personas va en el idioma del documento. Durante la `0.x`, los nombres viejos se aceptan con aviso.
 - **Otros repos se leen, nunca se modifican** desde aquí (Portal-Galivelop, World-Maker-Fantasy,
-  Instalador-WMF-Tarkor, VeriNews_AI): nunca commit, push, edición de archivos ni reescritura del historial en ellos;
+  Instalador-WMF-Tarkor, private-project-1): nunca commit, push, edición de archivos ni reescritura del historial en ellos;
   actualizar un clon dedicado y limpio con fetch + fast-forward sí se puede (es como se ve su último estado). Se leen
   con un subagente que devuelve un resumen con rutas.
 - **Un dato, un sitio:** la versión solo en `.claude-plugin/plugin.json`; el config del proyecto solo lo lee

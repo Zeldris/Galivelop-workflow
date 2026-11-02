@@ -83,9 +83,9 @@ Hallazgos de la propia recogida:
 
 - **Source:** `docs/registros/piloto-galivelop-workflow.md` (F2) @ 673602b (retro); `scripts/aplicar.py` (propiedad por `galivelop-workflow vX` o `metadata.version`) y `docs/es/aplicar.md` «Proyectos existentes» (no lo cubre)
 - **What changes:** `--adopt` (o `--adopt <skill>...`): una skill del mismo nombre que una del flujo, sin versión, se sustituye tras imprimir el diff y lo que tuviera de más se lista para llevarlo a las notas del proyecto (P6). Sin `--adopt`, el plan los agrupa en una sola línea («14 skills sin versión que coinciden por nombre; `--adopt` para sustituirlas») en vez de 14 `.gw-nuevo`. Un párrafo en «Proyectos existentes» de `aplicar.md`.
-- **Why it is general:** los proyectos que tomaron el flujo de otro repo antes de existir `Galivelop-workflow` (Tarkor, VeriNews, el portal) son exactamente los primeros usuarios.
+- **Why it is general:** los proyectos que tomaron el flujo de otro repo antes de existir `Galivelop-workflow` (Tarkor, private-project-1, el portal) son exactamente los primeros usuarios.
 - **Version bump:** minor
-- **Status:** aplazada a la Fase 6 (piloto VeriNews) (2026-10-22)
+- **Status:** aplazada a la Fase 6 (piloto private-project-1) (2026-10-22)
 
 ## P9. `content` por defecto demasiado ancho (F19)
 

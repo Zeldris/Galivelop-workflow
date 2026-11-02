@@ -46,19 +46,19 @@
 | Pieza | De dónde portarla |
 |---|---|
 | `pre-push` (commit subido en worktree, marca para `main`, fallar cerrado) | Portal, + lo genérico del instalador (`prepush-ramas.sh`, lista de commits subidos) |
-| `revision-antes-de-main.sh` | Instalador (`git ls-remote` sin escribir refs, auto-merge y `update_pull_request` cuentan, matcher anclado) + VeriNews (`gh pr` por Bash, check-runs y statuses) + portal (raíz por `dirname`) |
-| `pre-commit` antisecretos | VeriNews (con modo `--rango` y gancho de la rama base en el CI) |
-| Localizar la sesión (`registro_sesion.py`) | VeriNews |
+| `revision-antes-de-main.sh` | Instalador (`git ls-remote` sin escribir refs, auto-merge y `update_pull_request` cuentan, matcher anclado) + private-project-1 (`gh pr` por Bash, check-runs y statuses) + portal (raíz por `dirname`) |
+| `pre-commit` antisecretos | private-project-1 (con modo `--rango` y gancho de la rama base en el CI) |
+| Localizar la sesión (`registro_sesion.py`) | private-project-1 |
 | Marca de revisado | Portal (versionada; vale para subida directa y para PR) |
 | `revisado.sh` | Portal + retro exigida de Tarkor/instalador como opción del config |
-| Bitácora con filas por rama + `bitacora.py` | Instalador (`ROADMAPS` configurable, `[x]`) + VeriNews (`re.S`, alternativa sin base remota en `prepush-ramas.sh`) |
+| Bitácora con filas por rama + `bitacora.py` | Instalador (`ROADMAPS` configurable, `[x]`) + private-project-1 (`re.S`, alternativa sin base remota en `prepush-ramas.sh`) |
 | `recuperar.py`, `medir.py` | Portal (respaldo de rutas en la nube) |
 | `selector`, `orchestrate-dealer`, `retro`, `opt-tokens` | Tarkor/instalador (más completos) + fila «traer de otro repo» del portal |
 | Tests de ganchos | Portal como base; faltan casos del resto de scripts |
 | `REVIEW.md` § «Un dato, un sitio» y § «Ganchos y scripts» | Portal |
 | Roadmap e hitos | Tarkor (`cobertura.py`, `cerrar.py`) |
 
-## VeriNews_AI (cuarto caso, añadido al cerrar la Fase 1)
+## private-project-1 (cuarto caso, añadido al cerrar la Fase 1)
 
 Leído en solo lectura con un subagente. Java 17 + Spring Boot (Maven) y frontend Vite/npm; docs en español; flujo
 portado de Tarkor (`CLAUDE.md`, `AGENTS.md`, bitácora `docs/records/traspaso.md` con filas por rama, mismas

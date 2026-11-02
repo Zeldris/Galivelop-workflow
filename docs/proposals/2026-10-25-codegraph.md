@@ -49,7 +49,7 @@ cuenta para `version.py --release`. Leído en un clon de solo lectura; nada se h
   declaradas en ella), imprime esa fila (entradas, tests, qué no leer). Falla en silencio y con 0 (es contexto
   añadido, no una barrera), con interruptor por variable de entorno; tests de acierto, de prompt sin sistema y de
   mapa ausente.
-- **Why it is general:** WMF y VeriNews ya piden «antes de buscar código de un sistema, abre el mapa»; es una regla
+- **Why it is general:** WMF y private-project-1 ya piden «antes de buscar código de un sistema, abre el mapa»; es una regla
   que el agente se salta, y «lo comprobable lo hace un script». Es la idea de codegraph sin su índice: el mapa ya lo
   escribe y lo comprueba cada proyecto.
 - **Riesgo:** inyectar en prompts que no lo necesitan gasta tokens. Se mide con `opt-tokens` en una ronda real de WMF

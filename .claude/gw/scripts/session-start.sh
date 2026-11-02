@@ -12,7 +12,7 @@
 #     process that detaches itself from the group (setsid, nohup in a new session, a daemon) can survive.
 #   - warns when .claude/gw.json is missing or invalid, when its `version` is older than this copy of the workflow
 #     (the `# galivelop-workflow vX.Y.Z` header of this script), and when the session was started outside the repo
-#     root (its .claude/settings.json may not have loaded; VeriNews P3).
+#     root (its .claude/settings.json may not have loaded; private-project-1 P3).
 # Fails open: always exits 0 (a SessionStart hook cannot block); warnings go to stdout, which enters the agent's
 # context, each ending with the command that fixes it.
 # Project root: the git top level of this script's folder when it holds .claude/gw.json (the copy in
@@ -43,7 +43,7 @@ cd "$root" || exit 0
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 config="$here/config.py"
 
-# --- Session opened outside the repo root (VeriNews P3) ---------------------------------------------------------
+# --- Session opened outside the repo root (private-project-1 P3) ------------------------------------------------
 cwd=""
 if [ -n "$input" ]; then
   cwd="$(printf '%s' "$input" | python3 -c 'import json,sys

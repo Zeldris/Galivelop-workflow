@@ -5,7 +5,7 @@ license: MIT
 compatibility: Claude Code or any Agent Skills agent; git; python3 for scripts/measure.py (standard library only)
 metadata:
   version: "0.4.3"
-  source: "Galivelop workshop; generalised from the Tarkor, installer, portal and VeriNews gw-opt-tokens"
+  source: "Galivelop workshop; generalised from the Tarkor, installer, portal and private-project-1 gw-opt-tokens"
 ---
 
 # gw-opt-tokens

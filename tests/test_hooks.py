@@ -1913,7 +1913,7 @@ class PreCommit(Base):
         self.assertIn("literal secret", r.stderr)
 
     def test_dotted_and_provider_glued_key_names_refused(self):
-        """api.key (dot), openaikey, OPENAI_KEY: names the first rule missed (VeriNews P3)."""
+        """api.key (dot), openaikey, OPENAI_KEY: names the first rule missed (private-project-1 P3)."""
         p = self.p
         cases = [
             ("src/a.py", 'api.' + 'key = "abcd1234efgh"'),

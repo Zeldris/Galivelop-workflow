@@ -10,7 +10,7 @@
 
 **ES** · [English below](#en)
 
-Parche de correcciones de la recogida de galivelop-developer del 2026-10-27. La `0.4` solo recibe correcciones; lo
+Parche de correcciones de la recogida de private-project-2 del 2026-10-27. La `0.4` solo recibe correcciones; lo
 nuevo de esa recogida va a la siguiente versión.
 
 ### `doctor.py`
@@ -42,7 +42,7 @@ Entrada completa: [CHANGELOG](https://github.com/zeldris/Galivelop-workflow/blob
 
 **EN**
 
-Bug-fix patch from the 2026-10-27 galivelop-developer harvest. `0.4` only gets fixes; the new features from that
+Bug-fix patch from the 2026-10-27 private-project-2 harvest. `0.4` only gets fixes; the new features from that
 harvest go to the next version.
 
 ### `doctor.py`

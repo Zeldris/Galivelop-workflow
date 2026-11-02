@@ -12,7 +12,7 @@ Las otras tres recogidas de esta versión no traen nada para el flujo:
 - **World-Maker-Fantasy** (`e433d1d` → `4d54eea`): solo la fila 21 del registro del piloto, ahora comprobada en la
   Deck.
 - **Instalador-WMF-Tarkor** (`89bb2ee`, sin commits nuevos en `main`; la rama del piloto ya está en `main`).
-- **VeriNews_AI** (`a9b5761`, sin commits nuevos en `main`; `ccr-1f38cee7-r36bua` es anterior y solo toca su
+- **private-project-1** (`a9b5761`, sin commits nuevos en `main`; `ccr-1f38cee7-r36bua` es anterior y solo toca su
   bitácora).
 
 ## P1. `recoger.py` no ve las «Propuesta para el flujo» de la bitácora

@@ -19,7 +19,7 @@ De `b8470762` a `aa76b34d` (`scripts/recoger.py`, 30 commits). Numeración segui
 - **Source:** `docs/registros/retro-2026-10-26-miembro.md` @ `051940a` (plantilla)
 - **What changes:** un apartado opcional en `templates/es|en/REVIEW.md` para proyectos web: lo que se mira en varios
   navegadores y en el móvil (APIs que no están en Safari, `100vh`, foco y teclado).
-- **Why it is general:** sirve a todo proyecto web que use el flujo (Portal, VeriNews).
+- **Why it is general:** sirve a todo proyecto web que use el flujo (Portal, private-project-1).
 - **Version bump:** minor → 1.0.0
 - **Status:** aprobada (2026-10-27)
 
