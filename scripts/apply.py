@@ -3,7 +3,7 @@
 """Apply or update the workflow in a project: the deterministic core of /gw-init and /gw-update (plan §5.4).
 
   python3 <workflow>/scripts/apply.py [PROJECT] [--update] [--check] [--dry-run] [--with SKILL ...]
-          [--sin-notas-personales]
+          [--sin-notas-personales] [--keep-paths]
   python3 <workflow>/scripts/apply.py [PROJECT] --init --check-command CMD [--language es|en] [--log PATH]
           [--install CMD ...] [--protected-branch B] [--push-to-protected direct|pr] [--content REGEX ...]
           [--review-mark PATH] [--require-retro true|false] [--agent-signatures true|false]
@@ -46,6 +46,20 @@ In the workflow repo itself the root templates and the CI file are skipped: it h
                                    --sin-notas-personales skips them for one run.
 and sets core.hooksPath to .githooks when it is unset and no other hook manager owns the hooks.
 
+Migration from the names before A8 (0.x), in the same run and without duplicates:
+  .claude/skills/<old>/         removed when workflow-owned (selector, orchestrate-dealer, opt-tokens, opt-ai,
+                                scout-updates): the gw- one replaces it; an installed old optional skill stays
+                                installed under its new name; --with <old name> works, with a warning
+  .claude/gw/<old>.md           -> .claude/gw/gw-<name>.md (git mv when tracked); both exist: the new one is kept,
+                                the old one reported, nothing overwritten
+  .claude/gw/scripts/<old>      removed (generated copies) unless a hook, the CI or the config still runs it; the
+                                old script names in .claude/settings.json hook commands are renamed
+  docs/traspaso.md, docs/registros/, docs/propuestas/, docs/registros/revisado.txt (what the config's log,
+  recordsDir, proposalsDir and reviewMark hold, or lack, while only the old path exists) -> docs/handoff.md,
+  docs/records/, docs/proposals/, docs/records/reviewed.txt, with git mv when tracked; keys that held the old
+  path are dropped from .claude/gw.json. Fails closed (exit 2) when a target already exists. --keep-paths moves
+  nothing and writes the old paths explicitly into .claude/gw.json; pass it on every update to keep them.
+
 For each file: identical -> skip; missing -> create; different -> overwritten only when the project's file is
 workflow-owned (a `galivelop-workflow vX.Y.Z` header, or metadata.version in the skill's SKILL.md), not newer than
 the workflow, and either older or --update is given. Otherwise the new content goes next to it as <file>.gw-nuevo,
@@ -56,6 +70,7 @@ In the workflow repo itself the copy is generated from scripts/ and skills/, so 
               a pending .gw-nuevo proposal, or a file the workflow no longer has); core.hooksPath is reported but
               does not fail it (a local git setting: a fresh clone in CI has it unset). The drift test.
   --dry-run   print the plan, no writes, exit 0.
+  --keep-paths   keep the old Spanish project paths: write them explicitly in .claude/gw.json instead of moving them.
   --sin-notas-personales   do not carry the personal notes (env GW_NOTAS_PERSONALES, default ~/.claude/gw/notas/).
 Exit 2 on a missing or invalid config or settings file. Python 3.8+ standard library only.
 """
@@ -64,6 +79,7 @@ import difflib
 import json
 import os
 import re
+import shutil
 import stat
 import subprocess
 import sys
@@ -89,6 +105,18 @@ DIFF_LINES = 80
 ROOT_TEMPLATES = (("AGENTS.md", "merged"), ("CLAUDE.md", "merged"), ("REVIEW.md", "seeded"),
                   ("GLOSSARY.md", "seeded"))
 NOTES = (("gw-opt-tokens.md", None), ("gw-opt-ai.md", "gw-opt-ai"), ("gw-scout-updates.md", "gw-scout-updates"))
+# A8 (0.x): names the workflow had before the rename; /gw-update migrates an installed project to the new ones.
+OLD_SKILLS = {"selector": "gw-selector", "orchestrate-dealer": "gw-orchestrate-dealer", "opt-tokens": "gw-opt-tokens",
+              "opt-ai": "gw-opt-ai", "scout-updates": "gw-scout-updates"}
+OLD_SCRIPTS = {"antes-de-parar.py": "before-stop.py", "bitacora.py": "handoff.py", "check-verde.sh": "check-green.sh",
+               "enlaces-md.py": "md-links.py", "es-codigo.sh": "is-code.sh", "fusionar.sh": "merge-branch.sh",
+               "guardia-config.py": "config-guard.py", "mapa-agente.py": "agent-map.py",
+               "prepush-ramas.sh": "prepush-branches.sh", "recoger.py": "harvest.py", "recuperar.py": "recover.py",
+               "registro_sesion.py": "session_log.py", "revisado.sh": "reviewed.sh",
+               "revision-antes-de-main.sh": "review-before-main.sh", "rojo-sin-arreglo.sh": "red-without-fix.sh",
+               "tests-relacionados.sh": "related-tests.sh", "tope-subagentes.py": "subagent-cap.py",
+               "aplicar.py": "apply.py"}
+PATH_DIR_KEYS = ("recordsDir", "proposalsDir")  # moved before the file keys inside them
 LOG_BY_LANGUAGE = {"es": "docs/handoff.md", "en": "docs/handoff.md"}  # A8: English paths in every language
 NOTES_ENV = "GW_NOTAS_PERSONALES"
 NOTE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
@@ -188,6 +216,7 @@ class Plan:
         self.personal = []  # info lines about personal notes the project has differently: never drift
         self.pending = []   # proposals already written and still current
         self.orphans = []   # files the workflow no longer has
+        self.moved_to = set()   # repo-relative targets of the planned moves: nothing is seeded there
         self.hooks_path = None  # None, or the hint line about core.hooksPath
         self.set_hooks_path = False
 
@@ -241,6 +270,8 @@ class Plan:
         if kind == "owned":
             self.file(None, rel, data=data)
             return
+        if str(rel) in self.moved_to:
+            return  # the project's own file is about to be moved there
         dest = self.root / rel
         if not dest.exists():
             self.actions.append(("create", rel, data, False, ""))
@@ -290,7 +321,10 @@ class Plan:
                 raise ApplyError(f"apply: {path} is not a JSON object; fix it and rerun: python3 -m json.tool {path}")
         else:
             current = {}
+        renamed = rename_hook_scripts(current)
         merged, added = merge_settings(current, tmpl)
+        if renamed:
+            added.insert(0, f"hook commands renamed: {', '.join(sorted(renamed))}")
         hooks = merged.get("hooks") if isinstance(merged.get("hooks"), dict) else {}
         for event, command in stale_flow_hooks(hooks, self.root):
             self.warnings.append(f".claude/settings.json {event} also runs '{command}', a workflow script from "
@@ -345,6 +379,26 @@ def merge_settings(current, template):
                 have.append(new)
             added.append(f"{event} hook{'s' if len(missing) > 1 else ''} ({matcher or 'no matcher'})")
     return merged, added
+
+
+def rename_hook_scripts(settings):
+    """Rewrite, in place, the old script names in the commands of settings['hooks'] that run a copy under
+    .claude/gw/scripts/. Returns the set of 'old -> new' renamed."""
+    done = set()
+    hooks = settings.get("hooks")
+    for entries in (hooks.values() if isinstance(hooks, dict) else []):
+        for entry in entries if isinstance(entries, list) else []:
+            for h in (entry.get("hooks") or []) if isinstance(entry, dict) and isinstance(entry.get("hooks"), list) else []:
+                command = h.get("command") if isinstance(h, dict) else None
+                if not isinstance(command, str) or ".claude/gw/scripts/" not in command:
+                    continue
+                for old, new in OLD_SCRIPTS.items():
+                    fixed = re.sub(rf"(?<![\w.-]){re.escape(old)}(?![\w-])", new, command)
+                    if fixed != command:
+                        done.add(f"{old} -> {new}")
+                        command = fixed
+                h["command"] = command
+    return done
 
 
 # ----------------------------------------------------------------- planning
@@ -501,9 +555,142 @@ def plan_personal_notes(plan, check=False):
                                  f"permissions and rerun: chmod u+r {dest}")
 
 
-def build(root, version, update, extra_skills, cfg, personal=True, check=False):
+def is_tracked(root, rel):
+    code, out = git(root, "ls-files", "--", str(rel))
+    return code == 0 and bool(out)
+
+
+def plan_move(plan, old, new, why):
+    """Plan moving old -> new (repo-relative; git mv when tracked). Fails closed when new exists."""
+    old, new = Path(old), Path(new)
+    if os.path.lexists(plan.root / new) or str(new) in plan.moved_to:
+        raise ApplyError(f"apply: cannot move {old} to {new}: {new} already exists; merge them by hand and remove "
+                         f"the old one (git mv/git rm), or keep the old paths: python3 {Path(__file__).resolve()} "
+                         f"{plan.root} --keep-paths")
+    plan.actions.append(("move", new, old, False, f"from {old}; {why}"))
+    plan.moved_to.add(str(new))
+
+
+def plan_paths(plan, cfg, keep):
+    """The project paths still at their old Spanish names (a key absent and filled from the old path by config.py,
+    or written explicitly as the old path) move to the English ones; with keep, the old paths are written
+    explicitly instead. Either way the config stops relying on the silent fallback. Changes cfg to match."""
+    cfg_path = plan.root / config.CONFIG_REL
+    try:
+        raw = json.loads(cfg_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    schema = json.loads((WORKFLOW / "schema" / "gw.schema.json").read_text(encoding="utf-8"))
+    exists = config.path_exists_fn(plan.root)
+    found = {}  # key -> (old, new, explicit)
+    for key, old in config.LEGACY_PATHS.items():
+        new = schema["properties"][key]["default"]
+        if key not in raw:
+            if (cfg.get("_legacy") or {}).get(key) == old:
+                found[key] = (old, new, False)
+        elif raw[key] == old and not exists(new) and exists(old):
+            found[key] = (old, new, True)
+    if not found:
+        return
+    if keep:
+        written = {key: old for key, (old, _new, explicit) in found.items() if not explicit}
+        if written:
+            raw.update(written)
+            plan.actions.append(("merge", config.CONFIG_REL, dump(raw), False,
+                                 f"--keep-paths: {', '.join(f'{k}={v}' for k, v in written.items())} written "
+                                 f"explicitly, so the old paths stop depending on the fallback"))
+        return
+    moved_dirs = []
+    for key in sorted(found, key=lambda k: (k not in PATH_DIR_KEYS, k)):
+        old, new, explicit = found[key]
+        source = old
+        for dold, dnew in moved_dirs:
+            if old.startswith(dold + "/"):
+                source = dnew + old[len(dold):]
+        if source != new:
+            plan_move(plan, source, new, f"{key}: old name, moved to the English one")
+        if key in PATH_DIR_KEYS:
+            moved_dirs.append((old, new))
+        cfg[key] = new
+        if explicit:
+            raw.pop(key)  # the default is the new path
+    cfg.pop("_legacy", None)
+    if any(e for (_o, _n, e) in found.values()):
+        plan.actions.append(("merge", config.CONFIG_REL, dump(raw), False,
+                             "the keys that held the old paths are dropped: the defaults are the new paths"))
+
+
+def plan_notes(plan):
+    """.claude/gw/<old skill>.md -> .claude/gw/gw-<name>.md; when both exist the new one is kept and the old reported."""
+    gw = Path(".claude/gw")
+    for old, new in OLD_SKILLS.items():
+        src, dest = gw / f"{old}.md", gw / f"{new}.md"
+        if not (plan.root / src).is_file() or (plan.root / src).is_symlink():
+            continue
+        if os.path.lexists(plan.root / dest):
+            plan.warnings.append(f"{src} and {dest} both exist; {dest} is kept untouched and nothing is overwritten: "
+                                 f"bring what you need from the old note by hand, then remove it: "
+                                 f"git rm {src} (or rm {src} when untracked)")
+        else:
+            plan_move(plan, src, dest, "skill note renamed with the gw- prefix")
+
+
+def plan_old_skills(plan, wanted_skills):
+    """Remove the old skill folders (generated copies) of the skills that now have their gw- name."""
+    for old, new in OLD_SKILLS.items():
+        folder = plan.root / ".claude" / "skills" / old
+        if new not in wanted_skills or not folder.is_dir() or folder.is_symlink():
+            continue
+        rel = Path(".claude/skills") / old
+        if skill_version(folder / "SKILL.md") is None:
+            plan.warnings.append(f"{rel} is not a workflow skill (no metadata.version in its SKILL.md), so it is kept "
+                                 f"beside {new}; remove it if it is an old copy: git rm -r {rel}")
+            continue
+        plan.actions.append(("remove", rel, None, False, f"replaced by .claude/skills/{new}"))
+
+
+def plan_old_scripts(plan):
+    """Remove the Spanish-named script copies once nothing in the project runs them (hooks, CI, config)."""
+    folder = plan.root / ".claude" / "gw" / "scripts"
+    old_copies = [(old, folder / old) for old in OLD_SCRIPTS if (folder / old).is_file()]
+    if not old_copies:
+        return
+    planned = {str(a[1]): a[2] for a in plan.actions if a[2] is not None and isinstance(a[2], bytes)}
+    texts = []
+    for sub in (".githooks", ".github/workflows", ".claude/settings.json", ".claude/gw.json"):
+        base = plan.root / sub
+        for path in ([base] if base.is_file() else [p for p in sorted(base.rglob("*")) if p.is_file()]
+                     if base.is_dir() else []):
+            rel = str(path.relative_to(plan.root))
+            texts.append((rel, planned[rel] if rel in planned else path.read_bytes()))
+    for rel in planned:  # created files the project did not have
+        if rel not in {t[0] for t in texts} and rel.startswith((".githooks/", ".github/workflows/")):
+            texts.append((rel, planned[rel]))
+    for old, path in old_copies:
+        rel = path.relative_to(plan.root)
+        if header_version(path.read_bytes()) is None:
+            continue  # not generated by the workflow: left to the orphan report
+        pattern = re.compile(rf"(?<![\w.-]){re.escape(old)}(?![\w-])".encode())
+        users = [name for name, data in texts if pattern.search(data)]
+        if users:
+            plan.warnings.append(f"{rel} is the old name of {OLD_SCRIPTS[old]} and is still run by "
+                                 f"{', '.join(users)}, so it is kept; update those files (rerun with --update, or merge "
+                                 f"their .gw-nuevo) and rerun apply.py to remove it")
+        else:
+            plan.orphans = [o for o in plan.orphans if o != rel]
+            plan.actions.append(("remove", rel, None, False, f"old name of {OLD_SCRIPTS[old]}"))
+
+
+def build(root, version, update, extra_skills, cfg, personal=True, check=False, keep_paths=False):
     self_apply = root.resolve() == WORKFLOW.resolve()
     plan = Plan(root, version, update or self_apply)
+    if not self_apply:  # this repo renames its own files in a later chunk of A8
+        plan_paths(plan, cfg, keep_paths)
+        plan_notes(plan)
+    renamed = [e for e in extra_skills if e in OLD_SKILLS]
+    for old in renamed:
+        plan.warnings.append(f"--with {old} is the old name; use --with {OLD_SKILLS[old]}")
+    extra_skills = [OLD_SKILLS.get(e, e) for e in extra_skills]
     scripts = [Path(p.name) for p in sorted((WORKFLOW / "scripts").iterdir())
                if p.is_file() and p.name not in WORKFLOW_ONLY_SCRIPTS and p.name not in IGNORED
                and not p.name.endswith(".pyc")]
@@ -516,9 +703,12 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False):
         raise ApplyError(f"apply: unknown skill(s) for --with: {', '.join(unknown)}; available: "
                          f"{', '.join(available)}")
     installed = root / ".claude" / "skills"
+    old_name = {new: old for old, new in OLD_SKILLS.items()}
     wanted_skills = set()
     for name in available:
+        was = old_name.get(name)  # installed under the name it had before the rename (workflow-owned copy)
         wanted = (self_apply or name in extra_skills or (installed / name / "SKILL.md").is_file()
+                  or (was is not None and skill_version(installed / was / "SKILL.md") is not None)
                   or name not in OPTIONAL_SKILLS | WORKFLOW_ONLY_SKILLS)
         if not wanted:
             continue
@@ -527,6 +717,8 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False):
         owner = skill_version(root / dest / "SKILL.md")
         plan.tree(WORKFLOW / "skills" / name, dest, owner_version=owner, owned=owner is not None)
     # Skills adapted from Matt Pocock's say "license: MIT (see LICENSE-mattpocock-skills)": the file goes with them.
+    if not self_apply:
+        plan_old_skills(plan, wanted_skills)
     if any(SKILL_LICENSE in (WORKFLOW / "skills" / n / "SKILL.md").read_text(encoding="utf-8") for n in wanted_skills):
         plan.file(WORKFLOW / SKILL_LICENSE, Path(".claude/skills") / SKILL_LICENSE)
 
@@ -540,6 +732,8 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False):
 
     plan.settings(WORKFLOW / "templates" / "claude" / "settings.json")
     plan_templates(plan, cfg, self_apply, wanted_skills)
+    if not self_apply:
+        plan_old_scripts(plan)
     if personal and not is_workflow_repo(root):
         plan_personal_notes(plan, check)
     plan_hooks_path(plan)
@@ -587,13 +781,36 @@ def report(plan):
         print(f"apply: {plan.hooks_path}")
 
 
+def move(root, old, new):
+    """old -> new under root: git mv when git tracks something there (a folder moves whole, tracked or not)."""
+    (root / new).parent.mkdir(parents=True, exist_ok=True)
+    if is_tracked(root, old):
+        code, out = git(root, "mv", str(old), str(new))
+        if code != 0:
+            raise ApplyError(f"apply: git mv {old} {new} failed ({out}); do it by hand and rerun: "
+                             f"git mv {old} {new}")
+    else:
+        os.rename(root / old, root / new)
+
+
 def apply(plan):
     if any(sensitive(a[1]) for a in plan.actions):
         print("apply: note: Claude Code's auto mode may ask for permission to edit .claude/settings.json, "
               ".claude/gw/scripts/ and .githooks/; approve it, or run this script yourself: "
               f"python3 {Path(__file__).resolve()} {plan.root}")
+    for kind, rel, old, _exec, _detail in plan.actions:
+        if kind == "move":
+            move(plan.root, old, rel)
     for kind, rel, data, want_exec, _detail in plan.actions:
         dest = plan.root / rel
+        if kind == "move":
+            continue
+        if kind == "remove":
+            if dest.is_dir() and not dest.is_symlink():
+                shutil.rmtree(dest)
+            else:
+                dest.unlink()
+            continue
         if kind != "chmod":
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(data)
@@ -645,6 +862,9 @@ def main(argv=None):
                         help=f"do not carry the personal notes (env {NOTES_ENV}, default ~/.claude/gw/notas/)")
     parser.add_argument("--with", dest="extra", action="append", default=[], metavar="SKILL",
                         help="also install an optional skill (repeatable)")
+    parser.add_argument("--keep-paths", action="store_true",
+                        help="a project still on the old Spanish paths (docs/traspaso.md, docs/registros/...) keeps "
+                             "them: they are written explicitly in .claude/gw.json instead of being moved")
     init = parser.add_argument_group("--init (write .claude/gw.json first, only when it does not exist)")
     init.add_argument("--init", action="store_true", help="write .claude/gw.json from templates/gw.json + flags")
     init.add_argument("--language", choices=["es", "en"])
@@ -718,7 +938,7 @@ def main(argv=None):
                   file=sys.stderr)
             return 2
     try:
-        plan = build(root, version, args.update, args.extra, cfg, not args.no_personal, args.check)
+        plan = build(root, version, args.update, args.extra, cfg, not args.no_personal, args.check, args.keep_paths)
     except ApplyError as exc:
         print(exc, file=sys.stderr)
         return 2
@@ -751,7 +971,11 @@ def main(argv=None):
     print(f"apply: applying workflow v{version} to {root}:")
     for line in lines:
         print(line)
-    apply(plan)
+    try:
+        apply(plan)
+    except ApplyError as exc:
+        print(exc, file=sys.stderr)
+        return 2
     report(plan)
     for rel, rule in ignored_paths(root):
         print(f"apply: WARNING: git ignores {rel} ({rule}), so the commit would leave it out; add !{rel} to "

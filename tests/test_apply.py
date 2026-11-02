@@ -591,5 +591,239 @@ class NotasPersonales(unittest.TestCase):
         self.assertIn("--sin-notas-personales", out)
 
 
+SKILL_MD = "---\nname: {n}\ndescription: old copy\nmetadata:\n  version: \"0.4.3\"\n---\n# {n}\n"
+MIGRATED_CONFIG = {k: v for k, v in BASE_CONFIG.items() if k not in ("log", "reviewMark")}
+
+
+class Migrar(unittest.TestCase):
+    """A8 chunk 4: apply.py moves a project installed with the old names to the new ones, with no duplicates."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="gw-migrar-")).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.p = Fixture(self.tmp)
+        self.p.write(".claude/gw.json", json.dumps(MIGRATED_CONFIG, indent=2) + "\n")  # no `log`, no `reviewMark`
+
+    def applied(self, *args):
+        code, out = self.p.aplicar(*args)
+        self.assertEqual(code, 0, out)
+        return out
+
+    def commit(self):
+        self.p.run("git", "add", "-A")
+        self.assertEqual(self.p.run("git", "commit", "-qm", "x")[0], 0)
+
+    def exists(self, rel):
+        return (self.p.work / rel).exists()
+
+    def old_paths(self):
+        p = self.p
+        p.write("docs/traspaso.md", "# Log\n")
+        p.write("docs/registros/revisado.txt", "abc\n")
+        p.write("docs/registros/release-v0.1.0.md", "r\n")
+        p.write("docs/propuestas/uno.md", "# Harvest\n")
+
+    # ---- skills
+
+    def test_old_skill_folders_are_replaced_not_duplicated(self):
+        p = self.p
+        for old in ("selector", "opt-tokens", "opt-ai"):
+            p.write(f".claude/skills/{old}/SKILL.md", SKILL_MD.format(n=old))
+            p.write(f".claude/skills/{old}/extra.md", "x\n")
+        out = self.applied()
+        for old in ("selector", "opt-tokens", "opt-ai"):
+            self.assertFalse(self.exists(f".claude/skills/{old}"), out)
+        self.assertIn("remove  .claude/skills/selector", out)
+        self.assertTrue(self.exists(".claude/skills/gw-selector/SKILL.md"))
+        self.assertTrue(self.exists(".claude/skills/gw-opt-ai/SKILL.md"))  # the old optional skill was installed: kept
+        self.assertFalse(self.exists(".claude/skills/gw-scout-updates"))
+        self.assertIn("nothing to do", self.applied())  # rerun: no-op
+
+    def test_old_optional_skill_not_installed_stays_out(self):
+        self.applied()
+        self.assertFalse(self.exists(".claude/skills/gw-opt-ai"))
+        self.assertFalse(self.exists(".claude/skills/gw-scout-updates"))
+
+    def test_with_old_name_warns_and_installs_the_new_one(self):
+        out = self.applied("--with", "opt-ai")
+        self.assertIn("--with opt-ai is the old name; use --with gw-opt-ai", out)
+        self.assertTrue(self.exists(".claude/skills/gw-opt-ai/SKILL.md"))
+        self.assertTrue(self.exists(".claude/gw/gw-opt-ai.md"))
+        self.assertFalse(self.exists(".claude/skills/opt-ai"))
+
+    def test_foreign_skill_with_an_old_name_is_kept_with_a_warning(self):
+        self.p.write(".claude/skills/selector/SKILL.md", "---\nname: selector\ndescription: mine\n---\n")
+        out = self.applied()
+        self.assertTrue(self.exists(".claude/skills/selector/SKILL.md"))
+        self.assertIn("is not a workflow skill", out)
+        self.assertIn("git rm -r .claude/skills/selector", out)
+
+    # ---- notes
+
+    def test_tracked_note_is_git_moved_and_history_kept(self):
+        p = self.p
+        p.write(".claude/gw/opt-tokens.md", "# my notes\n")
+        p.write(".claude/gw/orchestrate-dealer.md", "# dealer\n")
+        self.commit()
+        self.applied()
+        self.assertEqual(p.read(".claude/gw/gw-opt-tokens.md"), "# my notes\n")  # not the template
+        self.assertFalse(self.exists(".claude/gw/opt-tokens.md"))
+        self.assertEqual(p.read(".claude/gw/gw-orchestrate-dealer.md"), "# dealer\n")
+        status = p.run("git", "status", "--short")[1]
+        self.assertRegex(status, r"R  \.claude/gw/opt-tokens\.md -> \.claude/gw/gw-opt-tokens\.md")
+
+    def test_untracked_note_is_renamed(self):
+        self.p.write(".claude/gw/selector.md", "# sel\n")
+        self.applied()
+        self.assertEqual(self.p.read(".claude/gw/gw-selector.md"), "# sel\n")
+        self.assertFalse(self.exists(".claude/gw/selector.md"))
+
+    def test_both_notes_exist_keeps_the_new_one_and_warns(self):
+        p = self.p
+        p.write(".claude/gw/opt-tokens.md", "# old\n")
+        p.write(".claude/gw/gw-opt-tokens.md", "# new\n")
+        out = self.applied()
+        self.assertEqual(p.read(".claude/gw/gw-opt-tokens.md"), "# new\n")
+        self.assertEqual(p.read(".claude/gw/opt-tokens.md"), "# old\n")
+        self.assertIn(".claude/gw/opt-tokens.md and .claude/gw/gw-opt-tokens.md both exist", out)
+        self.assertIn("git rm .claude/gw/opt-tokens.md", out)
+
+    # ---- scripts
+
+    def test_old_script_copies_are_removed_and_hook_commands_renamed(self):
+        p = self.p
+        p.write(".claude/gw/scripts/bitacora.py", "# galivelop-workflow v0.4.3\n")
+        p.write(".claude/gw/scripts/mine.py", "print(1)\n")
+        p.write(".claude/gw/scripts/revisado.sh", "# my own script, no header\n")
+        p.write(".claude/settings.json", json.dumps({"hooks": {"Stop": [{"hooks": [
+            {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/antes-de-parar.py"}]}]}}))
+        p.write(".claude/gw/scripts/antes-de-parar.py", "# galivelop-workflow v0.4.3\n")
+        out = self.applied()
+        self.assertFalse(self.exists(".claude/gw/scripts/bitacora.py"), out)
+        self.assertFalse(self.exists(".claude/gw/scripts/antes-de-parar.py"), out)
+        self.assertTrue(self.exists(".claude/gw/scripts/handoff.py"))
+        self.assertTrue(self.exists(".claude/gw/scripts/mine.py"))
+        self.assertTrue(self.exists(".claude/gw/scripts/revisado.sh"))  # not generated by the workflow: kept
+        commands = [h["command"] for e in json.loads(p.read(".claude/settings.json"))["hooks"]["Stop"]
+                    for h in e["hooks"]]
+        self.assertEqual(sum("before-stop.py" in c for c in commands), 1, commands)  # renamed, not duplicated
+        self.assertFalse(any("antes-de-parar" in c for c in commands), commands)
+        self.assertIn("nothing to do", self.applied())
+
+    def test_old_script_kept_while_a_git_hook_still_runs_it(self):
+        p = self.p
+        p.write(".claude/gw/scripts/revisado.sh", "# galivelop-workflow v0.4.3\n")
+        p.write(".githooks/pre-push", "#!/bin/sh\nbash .claude/gw/scripts/revisado.sh\n")  # not workflow-owned
+        out = self.applied()
+        self.assertTrue(self.exists(".claude/gw/scripts/revisado.sh"), out)
+        self.assertIn("is the old name of reviewed.sh and is still run by .githooks/pre-push", out)
+
+    # ---- project paths
+
+    def test_old_paths_move_with_git_and_nothing_is_written_in_the_config(self):
+        p = self.p
+        self.old_paths()
+        self.commit()
+        p.write("docs/registros/revisado.txt", "abc edited\n")  # a dirty tree does not matter
+        p.write("docs/registros/untracked.md", "u\n")
+        before = p.read(".claude/gw.json")
+        out = self.applied()
+        self.assertFalse(self.exists("docs/traspaso.md"), out)
+        self.assertFalse(self.exists("docs/registros"))
+        self.assertFalse(self.exists("docs/propuestas"))
+        self.assertEqual(p.read("docs/handoff.md"), "# Log\n")  # the project's log, not the template
+        self.assertEqual(p.read("docs/records/reviewed.txt"), "abc edited\n")
+        self.assertTrue(self.exists("docs/records/release-v0.1.0.md"))
+        self.assertTrue(self.exists("docs/records/untracked.md"))
+        self.assertTrue(self.exists("docs/proposals/uno.md"))
+        self.assertEqual(p.read(".claude/gw.json"), before)
+        status = p.run("git", "status", "--short")[1]
+        self.assertIn("docs/traspaso.md -> docs/handoff.md", status)
+        code, cfg = p.run("python3", str(ROOT / "scripts" / "config.py"), "--root", str(p.work), "get", "log")
+        self.assertEqual(cfg.strip(), "docs/handoff.md", cfg)
+        out = self.applied()  # twice: a no-op
+        self.assertIn("nothing to do", out)
+        self.assertEqual(p.read("docs/handoff.md"), "# Log\n")
+
+    def test_untracked_old_paths_are_renamed_too(self):
+        self.old_paths()
+        self.applied()
+        self.assertEqual(self.p.read("docs/records/reviewed.txt"), "abc\n")
+        self.assertFalse(self.exists("docs/registros"))
+
+    def test_explicit_old_paths_in_the_config_move_and_the_keys_are_dropped(self):
+        p = self.p
+        p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, log="docs/traspaso.md",
+                                                   reviewMark="docs/registros/revisado.txt"), indent=2) + "\n")
+        self.old_paths()
+        self.applied()
+        cfg = json.loads(p.read(".claude/gw.json"))
+        self.assertNotIn("log", cfg)
+        self.assertNotIn("reviewMark", cfg)
+        self.assertEqual(p.read("docs/handoff.md"), "# Log\n")
+        self.assertEqual(p.read("docs/records/reviewed.txt"), "abc\n")
+        self.assertIn("nothing to do", self.applied())
+
+    def test_a_custom_log_path_is_never_touched(self):
+        p = self.p
+        p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, log="notes/log.md"), indent=2) + "\n")
+        p.write("notes/log.md", "# mine\n")
+        p.write("docs/traspaso.md", "# unrelated old file\n")  # the key is explicit and is not the old path
+        self.applied()
+        self.assertEqual(p.read("notes/log.md"), "# mine\n")
+        self.assertEqual(p.read("docs/traspaso.md"), "# unrelated old file\n")
+
+    def test_move_fails_closed_when_the_target_exists(self):
+        p = self.p
+        p.write("docs/traspaso.md", "# Log\n")
+        (p.work / "docs" / "handoff.md").mkdir()  # an empty folder: the old path still counts as the log
+        code, out = p.aplicar()
+        self.assertEqual(code, 2, out)
+        self.assertIn("cannot move docs/traspaso.md to docs/handoff.md: docs/handoff.md already exists", out)
+        self.assertIn("--keep-paths", out)
+        self.assertEqual(p.read("docs/traspaso.md"), "# Log\n")
+        self.assertFalse(self.exists(".claude/gw/scripts"))  # nothing else was written
+
+    def test_dry_run_and_check_move_nothing(self):
+        p = self.p
+        self.old_paths()
+        code, out = p.aplicar("--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertIn("move    docs/handoff.md  (from docs/traspaso.md", out)
+        self.assertTrue(self.exists("docs/traspaso.md"))
+        self.assertFalse(self.exists("docs/handoff.md"))
+        code, out = p.aplicar("--check")
+        self.assertEqual(code, 1, out)
+        self.assertIn("move    docs/records/reviewed.txt", out)
+        self.assertTrue(self.exists("docs/registros/revisado.txt"))
+
+    def test_keep_paths_writes_the_old_paths_explicitly_and_moves_nothing(self):
+        p = self.p
+        self.old_paths()
+        out = self.applied("--keep-paths")
+        self.assertIn("--keep-paths:", out)
+        cfg = json.loads(p.read(".claude/gw.json"))
+        self.assertEqual(cfg["log"], "docs/traspaso.md")
+        self.assertEqual(cfg["reviewMark"], "docs/registros/revisado.txt")
+        self.assertEqual(cfg["recordsDir"], "docs/registros")
+        self.assertEqual(cfg["proposalsDir"], "docs/propuestas")
+        self.assertTrue(self.exists("docs/traspaso.md"))
+        self.assertFalse(self.exists("docs/handoff.md"))
+        again = self.applied("--keep-paths")  # keys already explicit: a no-op
+        self.assertIn("nothing to do", again)
+        self.assertEqual(json.loads(p.read(".claude/gw.json")), cfg)
+        # explicit old paths are indistinguishable from an old install's: a plain run plans the move again
+        self.assertIn("move    docs/handoff.md", self.p.aplicar("--dry-run")[1])
+
+    def test_keep_paths_with_nothing_old_changes_nothing(self):
+        before = self.p.read(".claude/gw.json")
+        self.applied("--keep-paths")
+        self.assertEqual(self.p.read(".claude/gw.json"), before)
+
+    def test_help_mentions_keep_paths(self):
+        code, out = self.p.run("python3", str(APLICAR), "--help")
+        self.assertIn("--keep-paths", out)
+
+
 if __name__ == "__main__":
     unittest.main()

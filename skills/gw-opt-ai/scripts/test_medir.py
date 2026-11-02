@@ -223,6 +223,15 @@ class ConfigTest(unittest.TestCase):
         d = json.loads(self.run_main(['--json']))
         self.assertEqual(d['calls']['small/chat/-']['p50_ms'], 2000)
 
+    def test_gw_note_wins_when_both_notes_exist(self):
+        # A8: during 0.x both `.claude/gw/gw-opt-ai.md` and the pre-rename `opt-ai.md` may exist; the new one wins
+        self.write('new.jsonl', json.dumps(call(700)) + '\n')
+        self.write('old.jsonl', json.dumps(call(9000)) + '\n')
+        self.write('.claude/gw/gw-opt-ai.md', '```gw-opt-ai\nlog: new.jsonl\n```\n')
+        self.write('.claude/gw/opt-ai.md', '```opt-ai\nlog: old.jsonl\n```\n')
+        d = json.loads(self.run_main(['--json']))
+        self.assertEqual(d['calls']['small/chat/-']['p50_ms'], 700)
+
     def test_argument_wins_over_config(self):
         self.write('a.jsonl', json.dumps(call(100)) + '\n')
         self.write('b.jsonl', json.dumps(call(900)) + '\n')

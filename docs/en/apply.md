@@ -110,6 +110,19 @@ the git hooks to `.githooks/`, the CI to `.github/workflows/comprobar.yml`; **me
 `CLAUDE.md`, `REVIEW.md`, `GLOSSARY.md` and the log when missing; and sets `core.hooksPath=.githooks` when nothing
 else owns it. **It never commits.** It is idempotent: running it twice changes nothing.
 
+**Migration from the names before A8 (0.x).** In the same run and without duplicates: the workflow's
+`.claude/skills/{selector,orchestrate-dealer,opt-tokens,opt-ai,scout-updates}` folders are **removed** (the `gw-` ones
+replace them; an optional skill already installed under the old name stays installed under the new one; `--with
+opt-ai` works, with a warning); the `.claude/gw/<old>.md` notes become `.claude/gw/gw-<name>.md` (`git mv` when
+tracked; if both exist, the new one is kept and a warning is printed, nothing is ever overwritten); the Spanish-named
+script copies in `.claude/gw/scripts/` are removed, unless a hook, the CI or the config still runs them (a warning
+says so; old names in the `.claude/settings.json` hook commands are renamed); and the paths `docs/traspaso.md`,
+`docs/registros/`, `docs/propuestas/` and `docs/registros/revisado.txt` move to `docs/handoff.md`, `docs/records/`,
+`docs/proposals/` and `docs/records/reviewed.txt` (`git mv` when tracked; the `.claude/gw.json` keys that held the old
+path are dropped, since the default is the new one). If a target already exists it **fails closed** (exit 2) with the
+command that fixes it. With `--keep-paths` nothing moves and the old paths are written explicitly into
+`.claude/gw.json` (pass it on every update to keep them). `--dry-run` shows the `move` and `remove` lines first.
+
 **Personal notes.** If the person keeps notes in `~/.claude/gw/notas/` (or in the folder of `GW_NOTAS_PERSONALES`),
 `apply.py` creates the missing ones in `.claude/gw/` and leaves alone those the project already has with other
 content ([config](config.md#personal-notes)); `--sin-notas-personales` skips them for one run.

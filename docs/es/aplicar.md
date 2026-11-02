@@ -109,6 +109,19 @@ Qué hace (el detalle completo, en `--help`): copia `scripts/` a `.claude/gw/scr
 `AGENTS.md`, `CLAUDE.md`, `REVIEW.md`, `GLOSSARY.md` y la bitácora si faltan; y pone `core.hooksPath=.githooks` si
 nadie más lo usa. **Nunca hace commit.** Es idempotente: ejecutarlo dos veces no cambia nada.
 
+**Migración desde los nombres anteriores a A8 (0.x).** En la misma ejecución y sin duplicados: las carpetas
+`.claude/skills/{selector,orchestrate-dealer,opt-tokens,opt-ai,scout-updates}` del flujo se **borran** (las sustituyen
+las `gw-`; una skill opcional ya instalada con el nombre viejo sigue instalada con el nuevo; `--with opt-ai` vale, con
+aviso); las notas `.claude/gw/<vieja>.md` pasan a `.claude/gw/gw-<nombre>.md` (`git mv` si están en git; si existen
+las dos, se queda la nueva y se avisa, nunca se sobrescribe); las copias de scripts con nombre español de
+`.claude/gw/scripts/` se borran, salvo que un gancho, el CI o la config todavía las ejecuten (se avisa; los nombres
+viejos en los comandos de `.claude/settings.json` se renombran); y las rutas `docs/traspaso.md`, `docs/registros/`,
+`docs/propuestas/` y `docs/registros/revisado.txt` pasan a `docs/handoff.md`, `docs/records/`, `docs/proposals/` y
+`docs/records/reviewed.txt` (con `git mv` si están en git; las claves de `.claude/gw.json` que tenían la ruta vieja
+se quitan, porque el valor por defecto es la nueva). Si el destino ya existe, **falla cerrado** (salida 2) con la
+orden que lo arregla. Con `--keep-paths` no se mueve nada y las rutas viejas se escriben explícitas en
+`.claude/gw.json` (pásalo en cada actualización para conservarlas). `--dry-run` muestra los `move` y `remove` antes.
+
 **Notas personales.** Si la persona tiene notas en `~/.claude/gw/notas/` (o en la carpeta de `GW_NOTAS_PERSONALES`),
 `apply.py` crea en `.claude/gw/` las que faltan y no toca las que el proyecto ya tiene distintas
 ([config](config.md#notas-personales)); `--sin-notas-personales` las salta en esa ejecución.

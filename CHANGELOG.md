@@ -110,6 +110,12 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   explícito manda, y la ruta se resuelve sobre el commit que se sube o se fusiona (`config.py --paths-at`).
   Una carpeta vacía no cuenta como existente. `retro` y `gw-harvest` leen la ruta con `config.py`. `templates/gw.json` y `--init` dan las rutas
   en inglés. Restos del trozo 2: prefijos de mensaje `merge-branch:`, `reviewed:`, `agent-map:`, `apply:`.
+- A8, trozo 4: `apply.py` (`/gw-update`) migra un proyecto instalado con los nombres anteriores: borra las carpetas
+  de skills sin `gw-` (las instaladas opcionales siguen con el nombre nuevo; `--with opt-ai` vale con aviso), renombra
+  `.claude/gw/<vieja>.md` a `gw-<nombre>.md` (`git mv`; con las dos, gana la nueva y se avisa), borra las copias de
+  scripts con nombre español (y renombra el nombre viejo en los ganchos de `settings.json`) y mueve `docs/traspaso.md`,
+  `docs/registros/` y `docs/propuestas/` a los nombres en inglés, sin sobrescribir nada y fallando cerrado si el
+  destino existe. `--keep-paths` conserva las rutas viejas escribiéndolas en `.claude/gw.json`.
 
 ### EN
 
@@ -203,6 +209,12 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   explicit value wins, and the path is resolved on the commit being pushed or merged (`config.py --paths-at`).
   An empty folder does not count as existing. `retro` and `gw-harvest` read the path through `config.py`. `templates/gw.json` and `--init`
   give the English paths. Chunk 2 leftovers: message prefixes `merge-branch:`, `reviewed:`, `agent-map:`, `apply:`.
+- A8, chunk 4: `apply.py` (`/gw-update`) migrates a project installed with the old names: it removes the skill folders
+  without `gw-` (installed optional ones stay under the new name; `--with opt-ai` works with a warning), renames
+  `.claude/gw/<old>.md` to `gw-<name>.md` (`git mv`; with both, the new one wins and a warning is printed), removes the
+  Spanish-named script copies (and renames the old name in the `settings.json` hooks) and moves `docs/traspaso.md`,
+  `docs/registros/` and `docs/propuestas/` to the English names, overwriting nothing and failing closed when the
+  target exists. `--keep-paths` keeps the old paths by writing them into `.claude/gw.json`.
 
 ## [0.4.3] - 2026-10-27
 
