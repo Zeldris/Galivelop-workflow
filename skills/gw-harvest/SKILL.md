@@ -27,7 +27,7 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
    session's input in one measure).
    **Bring each clone up to date first** (`git -C <project> fetch && git -C <project> merge --ff-only @{upstream}`):
    `harvest.py` harvests the clone's `HEAD` and warns when it is behind or diverged from its upstream, or has none.
-`<proposalsDir>` is the config's `proposalsDir`: `python3 scripts/config.py get proposalsDir` (default `docs/proposals`).
+   `<proposalsDir>` is the config's `proposalsDir`: `python3 scripts/config.py get proposalsDir` (default `docs/proposals`).
 
 2. **Run the mechanical part** from this repo:
 

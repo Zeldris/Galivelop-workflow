@@ -70,11 +70,12 @@ if [ "${1:-}" = "--explicar" ]; then
   shift
   [ "$#" -gt 0 ] || { echo "is-code: usage: bash $0 [--rev <commit>] --explicar <path>..." >&2; exit 2; }
   [ -n "$rev" ] || rev="HEAD"
+  paths="$rev"
   content="$(python3 "$config" --root "$root" --rev "$rev" get content --json)" || {
     echo "is-code: cannot read the config of $rev; commit a valid .claude/gw.json: python3 $config --root $root --rev $rev validate" >&2; exit 2; }
-  mark="$(python3 "$config" --root "$root" --rev "$rev" get reviewMark)" || {
+  mark="$(python3 "$config" --root "$root" --rev "$rev" --paths-at "$paths" get reviewMark)" || {
     echo "is-code: cannot read reviewMark of $rev; fix it: python3 $config --root $root --rev $rev validate" >&2; exit 2; }
-  cilog="$(python3 "$config" --root "$root" --rev "$rev" get ciLocalLog)" || {
+  cilog="$(python3 "$config" --root "$root" --rev "$rev" --paths-at "$paths" get ciLocalLog)" || {
     echo "is-code: cannot read ciLocalLog of $rev; fix it: python3 $config --root $root --rev $rev validate" >&2; exit 2; }
   printf '%s\n' "$@" | python3 -c "$classify" "$content" "$mark" explain "$cilog"
   rc=$?; [ "$rc" -eq 0 ] || classify_failed "$rc"
@@ -85,6 +86,7 @@ if [ "$#" -ne 2 ] || [ -z "$2" ]; then
 fi
 from="$1"; to="$2"
 [ -n "$rev" ] || rev="$to"
+paths="$to"  # the old-name fallback of the path keys is judged on the commit being checked
 if [ -z "$from" ]; then
   from="$(git hash-object -t tree /dev/null)"
 elif ! git cat-file -e "$from^{commit}" 2>/dev/null; then
@@ -95,9 +97,9 @@ if ! git cat-file -e "$to^{commit}" 2>/dev/null; then
 fi
 content="$(python3 "$config" --root "$root" --rev "$rev" get content --json)" || {
   echo "is-code: cannot read the config of $rev; commit a valid .claude/gw.json: python3 $config --root $root --rev $rev validate" >&2; exit 2; }
-mark="$(python3 "$config" --root "$root" --rev "$rev" get reviewMark)" || {
+mark="$(python3 "$config" --root "$root" --rev "$rev" --paths-at "$paths" get reviewMark)" || {
   echo "is-code: cannot read reviewMark of $rev; fix it: python3 $config --root $root --rev $rev validate" >&2; exit 2; }
-cilog="$(python3 "$config" --root "$root" --rev "$rev" get ciLocalLog)" || {
+cilog="$(python3 "$config" --root "$root" --rev "$rev" --paths-at "$paths" get ciLocalLog)" || {
   echo "is-code: cannot read ciLocalLog of $rev; fix it: python3 $config --root $root --rev $rev validate" >&2; exit 2; }
 changed="$(git diff --no-renames --name-only "$from" "$to")" || {
   echo "is-code: git diff $from $to failed; check both commits exist: git log -1 $from $to" >&2; exit 2; }

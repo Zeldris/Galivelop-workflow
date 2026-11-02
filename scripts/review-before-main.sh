@@ -548,7 +548,7 @@ LOCAL_GREEN = re.compile(r"^- \S+ · `([0-9a-f]{7,40})` · green \(", re.M)
 def ci_local_green(root, scripts, head, policy):
     """The commit of the newest green local CI run recorded on `head` that is an ancestor of it with only content
     after it, or None."""
-    log = config_at(root, policy)["ciLocalLog"]
+    log = config_at(root, policy, paths_at=head)["ciLocalLog"]
     text = git(root, "show", f"{head}:{log}").stdout
     for short in reversed(LOCAL_GREEN.findall(text)):
         r = git(root, "rev-parse", "-q", "--verify", short + "^{commit}")
@@ -570,19 +570,21 @@ def es_codigo(root, scripts, a, b, rev):
 _configs = {}
 
 
-def config_at(root, rev, strict=True):
+def config_at(root, rev, strict=True, paths_at=None):
     """The config as commit `rev` has it, or None when that commit has no .claude/gw.json. An invalid one blocks, or
-    with strict=False is None too (it names no protected branch). Loaded once per commit."""
+    with strict=False is None too (it names no protected branch). Loaded once per commit. `paths_at`: the commit whose
+    files decide the old-Spanish-path fallback (the PR head), so the same commit gets the same paths everywhere."""
     import config  # on sys.path since project()
-    if rev not in _configs:
+    key = (rev, paths_at)
+    if key not in _configs:
         if git(root, "cat-file", "-e", f"{rev}:.claude/gw.json").returncode != 0:
-            _configs[rev] = (None, None)
+            _configs[key] = (None, None)
         else:
             try:
-                _configs[rev] = (config.load(root, rev=rev), None)
+                _configs[key] = (config.load(root, rev=rev, paths_at=paths_at), None)
             except config.ConfigError as exc:
-                _configs[rev] = (None, exc)
-    cfg, error = _configs[rev]
+                _configs[key] = (None, exc)
+    cfg, error = _configs[key]
     if error is not None and strict:
         block(f"cannot read the config of {rev[:12]}: {error}",
               f"fix it on that branch and retry: python3 {os.path.join(HERE, 'config.py')} --rev {rev[:12]} validate")
@@ -619,7 +621,7 @@ def check_mark(cfg, root, scripts, head, refs, what, protected, tip):
     if policy == head and config_at(root, head) is None:
         block(f"neither origin/{protected} nor the PR head {head[:12]} ({what}) has a .claude/gw.json.",
               "commit a valid one on the PR branch and retry: git add .claude/gw.json && git commit && git push")
-    mark_file = config_at(root, policy)["reviewMark"]
+    mark_file = config_at(root, policy, paths_at=head)["reviewMark"]
     fix = (f"run /code-review of the diff against origin/{protected}, push the fixes, then mark and push: "
            f"bash {os.path.join(scripts, 'reviewed.sh')} && git push")
     code = es_codigo(root, scripts, base, head, policy)
@@ -714,7 +716,7 @@ def handle(action, cfg, root, scripts):
         policy = tip if tip and config_at(root, tip) is not None else info["sha"]
         if ci_local_green(root, scripts, info["sha"], policy):
             return  # the CI run locally, green, on this code: the person confirmed it ("checked only locally")
-        log = config_at(root, policy)["ciLocalLog"]
+        log = config_at(root, policy, paths_at=info["sha"])["ciLocalLog"]
         what = f"no CI has reported on PR #{number} ({info['sha'][:12]})" if bad == [NO_CI] else \
             f"GitHub did not start the CI of PR #{number} ({info['sha'][:12]}): billing or spending limit; nothing ran"
         block(f"Blocked: {what}, and {log} on the PR head has no green local run of this code (a clean tree, an "

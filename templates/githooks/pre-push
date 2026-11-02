@@ -78,8 +78,9 @@ fail() {  # fail <message lines...>: the last line is the command that fixes it
   echo "pre-push: (only a WIP: commit may skip this hook: git push --no-verify)" >&2
   exit 1
 }
-cfg_at() {  # cfg_at <sha> <key>: the key as commit <sha>'s .claude/gw.json has it (the pushed one or the remote tip)
-  python3 "$config" --root "$root" --rev "$1" get "$2" \
+cfg_at() {  # cfg_at <sha> <key> [<paths-sha>]: the key as commit <sha>'s .claude/gw.json has it (the pushed one or the
+  # remote tip); an absent path key falls back to the old name if that exists in <paths-sha> (the commit pushed)
+  python3 "$config" --root "$root" --rev "$1" --paths-at "${3:-$1}" get "$2" \
     || fail "cannot read '$2' from .claude/gw.json in commit ${1:0:7}; commit a valid one and push again: python3 $config --root $root --rev ${1:0:7} validate"
 }
 [ -f "$config" ] || fail "the workflow scripts are missing ($config); reinstall them: /gw-update"
@@ -317,7 +318,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     else
       echo "pre-push: WARNING: $protected has no .claude/gw.json on the remote yet; judging this push by the pushed commit's config"
     fi
-    mark_file="$(cfg_at "$policy" reviewMark)" || exit 1
+    mark_file="$(cfg_at "$policy" reviewMark "$local_sha")" || exit 1
     code="$(bash "$scripts/is-code.sh" --rev "$policy" "$base" "$local_sha")" || fail "cannot tell code from content; fix the error above and push again: $(fetch_hint)"
     if [ -n "$code" ]; then
       mark="$(git show "$local_sha:$mark_file" 2>/dev/null | tr -d '[:space:]')"

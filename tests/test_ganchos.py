@@ -2140,13 +2140,25 @@ class CommitMsg(Base):
         p.write("docs/log.md", self.log_text("2000-01-01"))
         self.assertEqual(p.commit("pick", ok=False).returncode, 0)
 
-    def test_config_without_a_log_key_is_invalid_and_fails_closed(self):  # `log` is required by the schema
+    def test_config_without_a_log_key_uses_the_english_default(self):  # A2/A8: `log` is optional, default docs/handoff.md
         p = self.p
         cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
         del cfg["log"]
         p.write(".claude/gw.json", json.dumps(cfg))
+        p.write("docs/log.md", self.log_text("2000-01-01"))  # no longer the log: not checked
+        self.assertEqual(p.commit("no log key, other file", ok=False).returncode, 0)
+        p.write("docs/handoff.md", self.log_text("2000-01-01"))  # the default one: checked, stale date refused
+        r = p.commit("no log key, default log", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Updated", r.stderr)
+
+    def test_config_with_an_invalid_log_key_fails_closed(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["log"] = 5
+        p.write(".claude/gw.json", json.dumps(cfg))
         p.write("docs/log.md", self.log_text("2000-01-01"))
-        r = p.commit("no log key", ok=False)
+        r = p.commit("bad log key", ok=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("gw.json", r.stderr)
 

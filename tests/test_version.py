@@ -125,6 +125,51 @@ class Version(unittest.TestCase):
         r = run(tmp, "--release")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
+    def release_harvesting_into(self, folder, gw_keys, uncommitted=None):
+        """A release after a tag, with a harvest file added in `folder` and the project's gw.json keys `gw_keys`
+        (the path keys are dropped first). `uncommitted`: gw.json keys left only in the working tree."""
+        tmp = self.tmp
+        gw = tmp / ".claude" / "gw.json"
+        base = json.loads(gw.read_text())
+        for key in ("proposalsDir", "recordsDir"):
+            base.pop(key, None)
+        gw.write_text(json.dumps(base))
+        self.git("init", "-q")
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.fill_entry("9.8.7")
+        gw.write_text(json.dumps({**base, **gw_keys}))
+        (tmp / folder).mkdir(parents=True, exist_ok=True)
+        (tmp / folder / "2026-11-02-portal.md").write_text("# Harvest portal \u2014 2026-11-02\n")
+        self.commit_all("harvest")
+        if uncommitted:
+            gw.write_text(json.dumps({**base, **gw_keys, **uncommitted}))
+        return run(tmp, "--release")
+
+    def test_harvest_goes_to_the_english_default_folder(self):
+        r = self.release_harvesting_into("docs/proposals", {})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_harvest_in_the_old_folder_is_found_while_the_key_is_absent(self):
+        r = self.release_harvesting_into("docs/propuestas", {})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_harvest_in_the_default_folder_is_not_found_when_the_key_names_another(self):
+        r = self.release_harvesting_into("docs/proposals", {"proposalsDir": "docs/ideas"})
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("no docs/ideas/*.md starting with '# Harvest'", r.stdout)
+
+    def test_harvest_folder_is_decided_by_the_released_commit_not_the_working_tree(self):
+        r = self.release_harvesting_into("docs/ideas", {"proposalsDir": "docs/ideas"},
+                                         uncommitted={"proposalsDir": "docs/other"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_release_without_a_valid_config_names_proposals_dir(self):
+        r = self.release_harvesting_into("docs/proposals", {"proposalsDir": "/abs"})
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("cannot read proposalsDir", r.stdout)
+
     def test_release_on_the_tagged_commit_itself_passes(self):
         self.git("init", "-q")
         self.commit_all("first release")

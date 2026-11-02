@@ -49,6 +49,31 @@ class Recoger(unittest.TestCase):
         self.assertEqual([s["skill"] for s in r["skills_new"]], ["local-skill"])
         self.assertIn("retro", r["skills_missing"])
 
+    def test_default_state_file_follows_proposals_dir_and_its_old_fallback(self):
+        # --state is not given: the state file lives in the config's proposalsDir (here a project with its gw.json)
+        proj = self.tmp / "work"
+        (proj / ".claude").mkdir(parents=True)
+        for rel in ("scripts", "schema", "skills", "templates", ".claude-plugin"):
+            shutil.copytree(ROOT / rel, proj / rel, ignore=shutil.ignore_patterns("__pycache__"))
+        git(self.tmp, "init", "-q", str(proj))
+        gw = proj / ".claude" / "gw.json"
+        base = json.loads((ROOT / "templates" / "gw.json").read_text())
+        for key in ("recordsDir", "proposalsDir"):
+            base.pop(key, None)
+        for keys, folder, expect in (({}, None, "docs/proposals"), ({}, "docs/propuestas", "docs/propuestas"),
+                                     ({"proposalsDir": "x/ideas"}, "docs/propuestas", "x/ideas")):
+            gw.write_text(json.dumps({**base, **keys}))
+            if folder:
+                (proj / folder).mkdir(parents=True, exist_ok=True)
+                (proj / folder / "a.md").write_text("x\n")
+            git(proj, "add", "-A")
+            r = subprocess.run(["python3", str(proj / "scripts" / "harvest.py"), "--update-state", str(self.repo)],
+                               capture_output=True, text=True, cwd=proj)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertTrue((proj / expect / "estado.json").is_file(), (expect, r.stdout, r.stderr))
+            shutil.rmtree(proj / "docs", ignore_errors=True)
+            shutil.rmtree(proj / "x", ignore_errors=True)
+
     def test_after_update_state_only_new_work_is_reported(self):
         run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
         self.assertEqual(self.harvest()["history"], "nothing new since the last harvest")

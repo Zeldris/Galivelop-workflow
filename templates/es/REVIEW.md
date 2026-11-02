@@ -29,7 +29,8 @@ pide criterio. La rellena el proyecto; el flujo nunca la sobrescribe una vez cre
   `$CLAUDE_PROJECT_DIR` ni del directorio actual: una sesión puede arrancar fuera del repo.
 - Un gancho de subida comprueba **el commit que se sube**, no la carpeta de trabajo.
 - Los ganchos **fallan cerrados** cuando les falta un dato (un commit que el clon no tiene, una API que no responde),
-  con la orden que lo arregla.
+  con la orden que lo arregla. Excepción razonada: las claves de rutas (`log`, `reviewMark`, `recordsDir`,
+  `proposalsDir`, `ciLocalLog`) son opcionales con defecto en inglés, así que una ausente no es un dato que falte.
 - Los scripts de shell corren en bash 3.2 (macOS): nada de `mapfile` ni arrays asociativos.
 - Una carpeta con nombre fijo en un directorio compartido (`$TMPDIR`, `/tmp`) es por usuario, se crea con permisos 700
   y se rechaza si ya existe como symlink o de otro usuario; los archivos sueltos, con `mktemp`.

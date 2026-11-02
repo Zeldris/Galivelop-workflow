@@ -107,7 +107,8 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `docs/records/` (clave nueva `recordsDir`), propuestas `docs/proposals/` (`proposalsDir`) y marca de revisión
   `docs/records/reviewed.txt`. `log`, `reviewMark` y `ciLocalLog` pasan a ser opcionales. En la 0.x, una clave ausente
   cuyo defecto no existe pero sí el nombre español antiguo usa el antiguo (`doctor.py` avisa: `/gw-update`); un valor
-  explícito manda. `retro` y `gw-harvest` leen la ruta con `config.py`. `templates/gw.json` y `--init` dan las rutas
+  explícito manda, y la ruta se resuelve sobre el commit que se sube o se fusiona (`config.py --paths-at`).
+  Una carpeta vacía no cuenta como existente. `retro` y `gw-harvest` leen la ruta con `config.py`. `templates/gw.json` y `--init` dan las rutas
   en inglés. Restos del trozo 2: prefijos de mensaje `merge-branch:`, `reviewed:`, `agent-map:`, `apply:`.
 
 ### EN
@@ -199,7 +200,8 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `docs/records/` (new key `recordsDir`), proposals `docs/proposals/` (`proposalsDir`) and review mark
   `docs/records/reviewed.txt`. `log`, `reviewMark` and `ciLocalLog` become optional. In 0.x, an absent key whose
   default does not exist while the old Spanish name does uses the old one (`doctor.py` warns: `/gw-update`); an
-  explicit value wins. `retro` and `gw-harvest` read the path through `config.py`. `templates/gw.json` and `--init`
+  explicit value wins, and the path is resolved on the commit being pushed or merged (`config.py --paths-at`).
+  An empty folder does not count as existing. `retro` and `gw-harvest` read the path through `config.py`. `templates/gw.json` and `--init`
   give the English paths. Chunk 2 leftovers: message prefixes `merge-branch:`, `reviewed:`, `agent-map:`, `apply:`.
 
 ## [0.4.3] - 2026-10-27

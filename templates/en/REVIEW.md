@@ -29,7 +29,8 @@ judgement. The project fills it in; the workflow never overwrites it once it exi
   `$CLAUDE_PROJECT_DIR` or the current directory: a session may start outside the repo.
 - A push hook checks **the commit being pushed**, not the working copy.
 - Hooks **fail closed** when a fact is missing (a commit the clone lacks, an API that does not answer), with the
-  command that fixes it.
+  command that fixes it. Reasoned exception: the path keys (`log`, `reviewMark`, `recordsDir`, `proposalsDir`,
+  `ciLocalLog`) are optional with an English default, so an absent one is not a missing fact.
 - Shell scripts run on bash 3.2 (macOS): no `mapfile`, no associative arrays.
 - A fixed-name folder in a shared directory (`$TMPDIR`, `/tmp`) is per user, created with mode 700 and refused if it
   already exists as a symlink or owned by another user; single files use `mktemp`.

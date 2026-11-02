@@ -233,7 +233,8 @@ def path_exists_fn(root, rev=None):
     """exists(path) for with_defaults: in the working tree, or in commit `rev` (a push checks the pushed commit)."""
     root = Path(root)
     if not rev:
-        return lambda rel: (root / rel).exists()
+        # A folder counts only with some file in it: git does not version empty folders, so the tree and a commit agree.
+        return lambda rel: (root / rel).is_file() or ((root / rel).is_dir() and any((root / rel).iterdir()))
     env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
 
     def exists(rel):
@@ -303,9 +304,11 @@ def read_at(root, rev):
     return r.stdout
 
 
-def load(root=None, rev=None):
+def load(root=None, rev=None, paths_at=None):
     """Return the validated config with defaults, plus '_root' (Path). With `rev`, the config as that commit has it
-    instead of the working tree's. Raises ConfigError."""
+    instead of the working tree's. `paths_at` (a commit) is where the old-Spanish-path fallback looks for files: a
+    policy config read from the protected branch's tip still resolves the paths of the commit being pushed or
+    merged, so every reader gets the same path for the same commit. Raises ConfigError."""
     root = find_root(root)
     path = root / CONFIG_REL
     if rev:
@@ -324,7 +327,7 @@ def load(root=None, rev=None):
     errors = validate(config, schema) or semantic_errors(config)
     if errors:
         raise ConfigError(f"{path} is invalid:\n  " + "\n  ".join(errors))
-    config = with_defaults(config, schema, path_exists_fn(root, rev))
+    config = with_defaults(config, schema, path_exists_fn(root, paths_at or rev))
     config["_root"] = root
     return config
 
@@ -364,6 +367,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", help="project path (default: see above)")
     parser.add_argument("--rev", help="read the config from this commit instead of the working tree")
+    parser.add_argument("--paths-at", help="look for the old-name path fallback in this commit (default: --rev)")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("validate")
     sub.add_parser("root")
@@ -374,7 +378,7 @@ def main(argv=None):
     get.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
-        config = load(args.root, args.rev)
+        config = load(args.root, args.rev, args.paths_at)
     except ConfigError as exc:
         print(f"gw config: {exc}", file=sys.stderr)
         return 2

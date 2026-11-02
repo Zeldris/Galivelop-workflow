@@ -190,8 +190,8 @@ def changelog_check(version):
 
 
 def proposals_dir():
-    """The config's `proposalsDir`, where gw-harvest writes its "# Harvest <repo> — <date>" files."""
-    return config.load(ROOT)["proposalsDir"].rstrip("/")
+    """The config's `proposalsDir` as HEAD has it (the commit the diff goes to, not the working tree), where gw-harvest writes its "# Harvest <repo> — <date>" files."""
+    return config.load(ROOT, rev="HEAD")["proposalsDir"].rstrip("/")
 
 
 def harvest_check(version, tag):
