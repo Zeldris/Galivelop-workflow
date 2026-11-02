@@ -99,6 +99,15 @@ recogida al abrir versión, `metadata.version` en cada skill y cabecera de versi
 - **A-4:** rutas del proyecto en inglés, también en los proyectos en español.
 - **A-5:** decidida (2026-11-01): la recomendación del agente (abajo).
 - **A-6:** decidida (2026-11-01): la recomendación del agente (abajo): como mucho una publicación al día.
+- **A8, nombres exactos (2026-11-02):** skills propias `gw-selector`, `gw-orchestrate-dealer`, `gw-opt-tokens`,
+  `gw-opt-ai`, `gw-scout-updates`. Scripts: `bitacora`→`handoff`, `revisado`→`reviewed`, `fusionar`→`merge-branch`,
+  `recuperar`→`recover`, `antes-de-parar`→`before-stop`, `rojo-sin-arreglo`→`red-without-fix`,
+  `tope-subagentes`→`subagent-cap`, `aplicar`→`apply`, `recoger`→`harvest`, `guardia-config`→`config-guard`,
+  `enlaces-md`→`md-links`, `es-codigo`→`is-code`, `mapa-agente`→`agent-map`, `prepush-ramas`→`prepush-branches`,
+  `tests-relacionados`→`related-tests`, `revision-antes-de-main`→`review-before-main`, `check-verde`→`check-green`,
+  `registro_sesion`→`session_log` (cada uno con su extensión; los que ya están en inglés no cambian). Migración:
+  `gw-update` borra el nombre viejo solo si es del flujo y no tiene cambios locales; si los tiene, avisa y lo deja.
+  Los ganchos de `.claude/settings.json` que llaman a un script viejo pasan al nombre nuevo.
 - **Abierto:** lo que queda de A-2 va en la lista de preguntas de [`D-git.md`](D-git.md) (puntos 1-4).
 
 ### Recomendación del agente para A-5
