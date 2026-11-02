@@ -74,7 +74,7 @@ Rules:
   command that does not exist or does not pass is found late and gets in the way of every push.
 - **When unsure, ask the person**; do not invent a command. With several candidates, offer them numbered.
 - A project with no tests: `check` can be a linter or a `bash -n`; say so and note it as debt in the log. A `bash -n` checks only the first file (the rest are arguments): one command per file, or `for f in …; do bash -n "$f"; done` (`doctor.py` warns about it as `check syntax-only`, also for a glob or a `$(…)` substitution). If you put `doctor.py` in `check`, in GitHub Actions (`GITHUB_ACTIONS=true`) an unset `hooks-path` is a `WARN` and does not break the run: CI has no git hooks installed; locally it stays a `FAIL`.
-- If the project has an agent map (`docs/mapa-agente.md`, or the one `agentMap.path` declares), add `--check-command "python3 .claude/gw/scripts/agent-map.py"`: it checks that every path the map cites exists. With no map it exits 0 and does no harm; with short prefixes (`b/` for `backend/src/`), set `agentMap.prefixes` ([`config.md`](config.md)).
+- If the project has an agent map (`docs/agent-map.md`, or the one `agentMap.path` declares), add `--check-command "python3 .claude/gw/scripts/agent-map.py"`: it checks that every path the map cites exists. With no map it exits 0 and does no harm; with short prefixes (`b/` for `backend/src/`), set `agentMap.prefixes` ([`config.md`](config.md)).
 - The copied skills bring their tests next to their scripts: they are discovered with `python3 -m unittest discover -s <skill>/scripts` (the workflow repo's check does it for each one).
 - `content` is proposed by reading the tree: `^docs/`, `^public/`… (in JSON the backslash is doubled). **What is
   `content` goes up without a mark:** do not put scripts there, nor what an agent reads as instructions (an
@@ -105,7 +105,7 @@ Options: `--review-mark PATH` (default `docs/records/reviewed.txt`), `--with gw-
 `--init` writes `.claude/gw.json` only when it does not exist, validates it and applies as usual.
 
 What it does (full detail in `--help`): copies `scripts/` to `.claude/gw/scripts/`, the skills to `.claude/skills/`,
-the git hooks to `.githooks/`, the CI to `.github/workflows/comprobar.yml`; **merges** the Claude Code hooks and
+the git hooks to `.githooks/`, the CI to `.github/workflows/check.yml`; **merges** the Claude Code hooks and
 `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` into `.claude/settings.json`, removing nothing; creates `AGENTS.md`,
 `CLAUDE.md`, `REVIEW.md`, `GLOSSARY.md` and the log when missing; and sets `core.hooksPath=.githooks` when nothing
 else owns it. **It never commits.** It is idempotent: running it twice changes nothing.
@@ -123,9 +123,9 @@ path are dropped, since the default is the new one). If a target already exists 
 command that fixes it. With `--keep-paths` nothing moves and the old paths are written explicitly into
 `.claude/gw.json` and `keepLegacyPaths: true` (later runs and `--check` respect it); it removes old folders and scripts only when git has them clean (no changes, no untracked files), and rewrites in `gw.json` (2-space indent) any value that points inside a moved folder. `--dry-run` shows the `move` and `remove` lines first.
 
-**Personal notes.** If the person keeps notes in `~/.claude/gw/notas/` (or in the folder of `GW_NOTAS_PERSONALES`),
+**Personal notes.** If the person keeps notes in `~/.claude/gw/notas/` (or in the folder of `GW_PERSONAL_NOTES`),
 `apply.py` creates the missing ones in `.claude/gw/` and leaves alone those the project already has with other
-content ([config](config.md#personal-notes)); `--sin-notas-personales` skips them for one run.
+content ([config](config.md#personal-notes)); `--no-personal-notes` skips them for one run.
 
 **The scripts under `.claude/gw/scripts/` are not edited in the project.** They are tested in the workflow's repo
 (their tests live there) and `--update` overwrites them. If one fails or lacks something, the change goes to the
@@ -199,9 +199,9 @@ project asks for in the same final block (no agent signature with `agentSignatur
 and, for agents, the `protectedPaths`) and, with `logRows`, through `commit-msg` (it checks the staged log with `handoff.py check`); if it stops, read its message. Then `git push -u origin <branch>`: the new `pre-push` runs the `check` on
 the commit being pushed; if it fails, fix it and push again (never with `--no-verify`, except a red `WIP:`).
 
-If the project has CI, check that the `Comprobar` workflow passes. Node, Python and Java are set up on their own when
+If the project has CI, check that the `Check` workflow passes. Node, Python and Java are set up on their own when
 `package.json`, `pyproject.toml`/`requirements*.txt` or `pom.xml`/`build.gradle*` exist; another toolchain
-(rust-toolchain…) must be added, as the header of `comprobar.yml` says.
+(rust-toolchain…) must be added, as the header of `check.yml` says.
 
 Done when: the push went through, `doctor.py` is still green and the log says what comes next. Remember the warning in step 6: until a new session, the PR guard is not active.
 
@@ -258,12 +258,12 @@ something the workflow covers (branches, commit messages), **the project's wins*
 by hand what the template has and it lacks: current state with a next step, recent work, pending items and how to
 check the state. `doctor.py` requires a "Next step" (or "Siguiente paso") line.
 
-**Existing CI.** `comprobar.yml` is one more workflow; if the project already runs its check, keep one of the two to
+**Existing CI.** `check.yml` is one more workflow; if the project already runs its check, keep one of the two to
 avoid duplicating it, but keep the step that runs the base branch's `pre-commit` over the PR. That step works as a
 standalone piece in an existing CI: copy only the "Base branch's pre-commit over the pull request" step of
-`comprobar.yml` (it needs `fetch-depth: 0`); it runs `bash .githooks/pre-commit --rango <base>..HEAD` with the base
+`check.yml` (it needs `fetch-depth: 0`); it runs `bash .githooks/pre-commit --range <base>..HEAD` with the base
 branch's `pre-commit`, so a PR cannot weaken the review that checks it. If CI installs differently, set `ciInstall` in
-the config; `doctor.py` does not suggest `comprobar.yml` when another workflow already runs the `check`.
+the config; `doctor.py` does not suggest `check.yml` when another workflow already runs the `check`.
 
 **A protected branch with several people.** `pre-push` asks for the mark on every direct push with code; with
 `pushToProtected: pr`, the `PreToolUse` hook also asks for it when pull requests are created and merged. Choose by
@@ -281,11 +281,11 @@ how code already reaches it today.
   ("also runs '…'") about a `SessionStart`, `PreToolUse` or `Stop` entry that runs a workflow script from outside
   `.claude/gw/scripts/`; so does `doctor.py`. Delete it by hand, or it runs twice.
 - **`recover.py` on the command line**, to get back what a compaction or a `/clear` dropped:
-  `python3 .claude/gw/scripts/recover.py --estado` (the log, `git status`, the last commits, the other worktrees
+  `python3 .claude/gw/scripts/recover.py --state` (the log, `git status`, the last commits, the other worktrees
   with their branch and row, and the compactions in the session and since the task started, which is the merge base
   with `protectedBranch`) and
-  `--buscar TEXT` (matching session fragments, printed as data after a header line, with control characters
-  stripped; `--max N`, `--ancho N`, `--sesion PATH`). `--estado` stops at 9,500 characters, at a whole line, and says so.
+  `--search TEXT` (matching session fragments, printed as data after a header line, with control characters
+  stripped; `--max N`, `--width N`, `--session PATH`). `--state` stops at 9,500 characters, at a whole line, and says so.
 - **`install` by hand.** `session-start.sh` runs it only in the cloud and only when the `install`/`setup` commands or
   the lockfiles change. To force it, delete the stamp (`rm "$(git rev-parse --git-path gw-install.sha)"`) and open the
   session again, or run the config's `install` commands yourself.

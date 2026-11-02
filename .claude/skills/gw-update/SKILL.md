@@ -69,7 +69,7 @@ hand.
 3. Files the workflow no longer has are reported, never deleted: ask before `git rm`.
 4. Personal notes: the missing ones are created by the run above. For each `personal note … differs` line, show the
    user `diff <source> <target>` (the project's copy is never overwritten and gets no `.gw-nuevo`) and merge by hand
-   only what they accept. Nothing personal ever goes into the workflow repo; `--sin-notas-personales` skips them.
+   only what they accept. Nothing personal ever goes into the workflow repo; `--no-personal-notes` skips them.
 5. Set `version` in `.claude/gw.json` to Y once the proposals are reviewed.
 
 ## 5. Check and commit

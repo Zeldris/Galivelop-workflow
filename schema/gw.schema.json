@@ -139,7 +139,7 @@
       "type": "string",
       "default": "docs/proposals",
       "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+[^/]$",
-      "description": "Repo-relative folder where gw-harvest writes its `# Harvest` files (and estado.json), which `version.py --release` requires. Absent: docs/proposals, or the old docs/propuestas when only that exists (0.x; /gw-update moves it)."
+      "description": "Repo-relative folder where gw-harvest writes its `# Harvest` files (and state.json), which `version.py --release` requires. Absent: docs/proposals, or the old docs/propuestas when only that exists (0.x; /gw-update moves it)."
     },
     "requireRetro": {
       "type": "boolean",
@@ -155,7 +155,7 @@
       "type": "string",
       "default": "docs/records/ci-local.md",
       "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+\\.md$",
-      "description": "Repo-relative file where `ci-local.py --apuntar` records each local run of the GitHub CI (a Markdown file; absent: docs/records/ci-local.md, or the old docs/registros/ci-local.md when only that exists). The PR hook takes a green line of it, whose commit has only content after it, as the CI that GitHub did not start (no Actions quota, no runners); it is never code for is-code.sh."
+      "description": "Repo-relative file where `ci-local.py --record` records each local run of the GitHub CI (a Markdown file; absent: docs/records/ci-local.md, or the old docs/registros/ci-local.md when only that exists). The PR hook takes a green line of it, whose commit has only content after it, as the CI that GitHub did not start (no Actions quota, no runners); it is never code for is-code.sh."
     },
     "ciLocalWorkflows": {
       "type": "array",
@@ -216,7 +216,7 @@
         "minLength": 1
       },
       "default": [],
-      "description": "Headings of the log sections recover.py --estado shows after a compaction or /clear (without logRows). Empty: the first section and the one named Pendiente/Pending."
+      "description": "Headings of the log sections recover.py --state shows after a compaction or /clear (without logRows). Empty: the first section and the one named Pendiente/Pending."
     },
     "designReferences": {
       "type": "array",
@@ -389,7 +389,7 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$",
-          "description": "The agent map file (relative to the repo root, no '..'); agent-map.py checks the paths it cites. Absent: docs/mapa-agente.md, and a project without that file is not an error; a path set here that does not exist is."
+          "description": "The agent map file (relative to the repo root, no '..'); agent-map.py checks the paths it cites. Absent: docs/agent-map.md, and a project without that file is not an error; a path set here that does not exist is."
         },
         "prefixes": {
           "type": "object",
@@ -413,7 +413,7 @@
         }
       },
       "default": {},
-      "description": "The agent map (docs/mapa-agente.md): where each contract lives and what implements it. Read by agent-map.py."
+      "description": "The agent map (docs/agent-map.md): where each contract lives and what implements it. Read by agent-map.py."
     },
     "subagentCap": {
       "type": "integer",

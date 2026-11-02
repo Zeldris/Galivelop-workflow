@@ -73,7 +73,7 @@ Reglas:
   tarda. Una orden que no existe o no pasa se detecta tarde y estorba en cada push.
 - **Si hay duda, pregunta a la persona**; no inventes una orden. Con varios candidatos, ofrécelos numerados.
 - Un proyecto sin tests: `check` puede ser un linter o un `bash -n`; dilo y apúntalo como deuda en la bitácora. Un `bash -n` solo comprueba el primer archivo (los demás son argumentos): una orden por archivo, o `for f in …; do bash -n "$f"; done` (`doctor.py` lo avisa en `check syntax-only`, también con un glob o una sustitución `$(…)`). Si pones `doctor.py` en `check`, en GitHub Actions (`GITHUB_ACTIONS=true`) el `hooks-path` sin poner sale en `WARN` y no rompe: el CI no tiene los ganchos de git puestos; en local sigue siendo `FAIL`.
-- Si el proyecto tiene mapa para agentes (`docs/mapa-agente.md`, o el que declare `agentMap.path`), añade `--check-command "python3 .claude/gw/scripts/agent-map.py"`: comprueba que cada ruta que cita existe. Sin mapa sale en 0 y no estorba; con prefijos cortos (`b/` por `backend/src/`), configura `agentMap.prefixes` ([`config.md`](config.md)).
+- Si el proyecto tiene mapa para agentes (`docs/agent-map.md`, o el que declare `agentMap.path`), añade `--check-command "python3 .claude/gw/scripts/agent-map.py"`: comprueba que cada ruta que cita existe. Sin mapa sale en 0 y no estorba; con prefijos cortos (`b/` por `backend/src/`), configura `agentMap.prefixes` ([`config.md`](config.md)).
 - Las skills copiadas traen sus pruebas junto a sus scripts: se descubren con `python3 -m unittest discover -s <skill>/scripts` (el check del repo del flujo lo hace con cada una).
 - `content` se propone leyendo el árbol: `^docs/`, `^public/`… (en JSON, la barra se escribe doble). **Lo que sea
   `content` sube sin marca:** no pongas ahí scripts ni lo que un agente lee como instrucciones (un `AGENTS.md` en una
@@ -104,7 +104,7 @@ Opciones: `--review-mark RUTA` (por defecto `docs/records/reviewed.txt`), `--wit
 `--init` solo escribe `.claude/gw.json` si no existe, lo valida y aplica como siempre.
 
 Qué hace (el detalle completo, en `--help`): copia `scripts/` a `.claude/gw/scripts/`, las skills a
-`.claude/skills/`, los ganchos de git a `.githooks/`, el CI a `.github/workflows/comprobar.yml`; **fusiona** en
+`.claude/skills/`, los ganchos de git a `.githooks/`, el CI a `.github/workflows/check.yml`; **fusiona** en
 `.claude/settings.json` los ganchos de Claude Code y `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` sin quitar nada; crea
 `AGENTS.md`, `CLAUDE.md`, `REVIEW.md`, `GLOSSARY.md` y la bitácora si faltan; y pone `core.hooksPath=.githooks` si
 nadie más lo usa. **Nunca hace commit.** Es idempotente: ejecutarlo dos veces no cambia nada.
@@ -122,9 +122,9 @@ se quitan, porque el valor por defecto es la nueva). Si el destino ya existe, **
 orden que lo arregla. Con `--keep-paths` no se mueve nada y las rutas viejas se escriben explícitas en
 `.claude/gw.json` y `keepLegacyPaths: true` (las siguientes ejecuciones y `--check` las respetan); solo borra carpetas y scripts viejos si git los tiene limpios (sin cambios ni archivos sin seguir), y reescribe en `gw.json` (sangrado de 2 espacios) los valores que apunten dentro de una carpeta movida. `--dry-run` muestra los `move` y `remove` antes.
 
-**Notas personales.** Si la persona tiene notas en `~/.claude/gw/notas/` (o en la carpeta de `GW_NOTAS_PERSONALES`),
+**Notas personales.** Si la persona tiene notas en `~/.claude/gw/notas/` (o en la carpeta de `GW_PERSONAL_NOTES`),
 `apply.py` crea en `.claude/gw/` las que faltan y no toca las que el proyecto ya tiene distintas
-([config](config.md#notas-personales)); `--sin-notas-personales` las salta en esa ejecución.
+([config](config.md#notas-personales)); `--no-personal-notes` las salta en esa ejecución.
 
 **Los scripts de `.claude/gw/scripts/` no se editan en el proyecto.** Se prueban en el repo del flujo (allí están
 sus tests) y `--update` los sobrescribe. Si uno falla o falta algo, el cambio va al flujo como propuesta, con la
@@ -201,7 +201,7 @@ un `WIP:` en rojo).
 
 Si el proyecto tiene CI, comprueba que el workflow `Comprobar` pasa. Node, Python y Java se instalan solos si están
 `package.json`, `pyproject.toml`/`requirements*.txt` o `pom.xml`/`build.gradle*`; otra cadena de herramientas
-(rust-toolchain…) hay que añadirla, como dice la cabecera de `comprobar.yml`.
+(rust-toolchain…) hay que añadirla, como dice la cabecera de `check.yml`.
 
 Criterio de fin: el push ha subido, `doctor.py` sigue en verde y la bitácora dice lo que sigue. Recuerda el aviso del paso 6: hasta una sesión nueva, la guarda del PR no está activa.
 
@@ -259,12 +259,12 @@ algo que el flujo dice (ramas, mensajes de commit), **gana la del proyecto**: se
 a mano lo que falte de la plantilla: estado actual con siguiente paso, hecho reciente, pendiente y cómo comprobar el
 estado. `doctor.py` exige una línea de «Siguiente paso»/«Next step».
 
-**CI existente.** `comprobar.yml` es un workflow más; si el proyecto ya corre su check, deja uno de los dos para no
+**CI existente.** `check.yml` es un workflow más; si el proyecto ya corre su check, deja uno de los dos para no
 duplicarlo, pero conserva el paso del `pre-commit` de la rama base sobre el PR. Ese paso sirve suelto en una CI que ya
-exista: copia solo los pasos «Base branch's pre-commit over the pull request» de `comprobar.yml` (necesita
-`fetch-depth: 0`); corre `bash .githooks/pre-commit --rango <base>..HEAD` con el `pre-commit` de la rama base, para que
+exista: copia solo los pasos «Base branch's pre-commit over the pull request» de `check.yml` (necesita
+`fetch-depth: 0`); corre `bash .githooks/pre-commit --range <base>..HEAD` con el `pre-commit` de la rama base, para que
 un PR no debilite la revisión que lo revisa. Si instalas distinto en CI, usa `ciInstall` en el config; `doctor.py` no
-propone `comprobar.yml` cuando otro workflow ya corre el `check`.
+propone `check.yml` cuando otro workflow ya corre el `check`.
 
 **Rama protegida con varias personas.** El `pre-push` pide la marca a todo push directo con código; con
 `pushToProtected: pr`, además, el gancho de `PreToolUse` la pide al crear y fusionar pull requests. Elige según cómo
@@ -282,11 +282,11 @@ entra el código ya hoy.
   («also runs '…'») de una entrada de `SessionStart`, `PreToolUse` o `Stop` que ejecuta un script del flujo desde fuera de
   `.claude/gw/scripts/`; `doctor.py` también. Bórrala a mano, o correrá dos veces.
 - **`recover.py` por línea de órdenes**, para recuperar lo que una compactación o un `/clear` se llevó:
-  `python3 .claude/gw/scripts/recover.py --estado` (la bitácora, `git status`, los últimos commits, los otros
+  `python3 .claude/gw/scripts/recover.py --state` (la bitácora, `git status`, los últimos commits, los otros
   worktrees con su rama y su fila, y las compactaciones de la sesión y desde el inicio de la tarea, que es el commit
   base con `protectedBranch`) y
-  `--buscar TEXTO` (fragmentos de la sesión que casan, como datos tras una línea de cabecera y sin caracteres de
-  control; `--max N`, `--ancho N`, `--sesion RUTA`). `--estado` se corta en 9.500 caracteres, por línea entera, y lo dice.
+  `--search TEXTO` (fragmentos de la sesión que casan, como datos tras una línea de cabecera y sin caracteres de
+  control; `--max N`, `--width N`, `--session RUTA`). `--state` se corta en 9.500 caracteres, por línea entera, y lo dice.
 - **`install` a mano.** `session-start.sh` solo lo corre en la nube y cuando cambian las órdenes de `install`/`setup`
   o los lockfiles. Para forzarlo, borra el sello (`rm "$(git rev-parse --git-path gw-install.sha)"`) y abre la sesión
   de nuevo, o ejecuta tú las órdenes de `install` del config.

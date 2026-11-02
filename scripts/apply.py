@@ -3,7 +3,7 @@
 """Apply or update the workflow in a project: the deterministic core of /gw-init and /gw-update (plan §5.4).
 
   python3 <workflow>/scripts/apply.py [PROJECT] [--update] [--check] [--dry-run] [--with SKILL ...]
-          [--sin-notas-personales] [--keep-paths]
+          [--no-personal-notes] [--keep-paths]
   python3 <workflow>/scripts/apply.py [PROJECT] --init --check-command CMD [--language es|en] [--log PATH]
           [--install CMD ...] [--protected-branch B] [--push-to-protected direct|pr] [--content REGEX ...]
           [--review-mark PATH] [--require-retro true|false] [--agent-signatures true|false]
@@ -32,10 +32,10 @@ What it copies (workflow -> project):
     log.md                      -> the config's `log` } fills them in); an older marker is reported as a template
     gw-opt-tokens.md (+ gw-opt-ai.md,  -> .claude/gw/       } update to review with /gw-update
       gw-scout-updates.md when that optional skill is installed)
-  templates/github/comprobar.yml -> .github/workflows/comprobar.yml (workflow-owned, like the scripts)
+  templates/github/check.yml -> .github/workflows/check.yml (workflow-owned, like the scripts)
 In the workflow repo itself the root templates and the CI file are skipped: it has its own AGENTS.md, log and CI.
   ~/.claude/gw/notas/*          -> .claude/gw/           PERSONAL NOTES of the person running this (folder overridable
-                                   with the env var GW_NOTAS_PERSONALES; absent folder = nothing happens). Only regular
+                                   with the env var GW_PERSONAL_NOTES; absent folder = nothing happens). Only regular
                                    files directly in it, named [A-Za-z0-9][A-Za-z0-9._-]* (no subfolders, symlinks or
                                    dotfiles). Missing in the project -> created (with --check only reported: it is
                                    not drift); identical -> nothing; different -> NEVER overwritten and no .gw-nuevo
@@ -43,10 +43,18 @@ In the workflow repo itself the root templates and the CI file are skipped: it h
                                    --check does not fail for it. A name ending in .gw-nuevo, one a workflow file may
                                    have there, or one whose target is not a regular file is skipped with a WARNING.
                                    Never applied to the workflow repo itself (nothing personal goes in it);
-                                   --sin-notas-personales skips them for one run.
+                                   --no-personal-notes skips them for one run.
 and sets core.hooksPath to .githooks when it is unset and no other hook manager owns the hooks.
 
 Migration from the names before A8 (0.x), in the same run and without duplicates:
+  .github/workflows/comprobar.yml -> .github/workflows/check.yml (git mv when tracked), when it is the workflow's own
+                                (a `galivelop-workflow` header); then it is updated like any workflow-owned file, and
+                                one with local edits or newer than the workflow keeps them and gets the template as
+                                check.yml.gw-nuevo. Without the header it is the project's own CI: left alone, and
+                                the template goes next to it as check.yml.gw-nuevo. Both exist: nothing is touched
+                                but a warning.
+  --sin-notas-personales and GW_NOTAS_PERSONALES (now --no-personal-notes and GW_PERSONAL_NOTES) still work, with a
+                                warning on stderr.
   .claude/skills/<old>/         removed when workflow-owned (selector, orchestrate-dealer, opt-tokens, opt-ai,
                                 scout-updates): the gw- one replaces it; an installed old optional skill stays
                                 installed under its new name; --with <old name> works, with a warning
@@ -73,7 +81,7 @@ In the workflow repo itself the copy is generated from scripts/ and skills/, so 
               does not fail it (a local git setting: a fresh clone in CI has it unset). The drift test.
   --dry-run   print the plan, no writes, exit 0.
   --keep-paths   keep the old Spanish project paths: write them explicitly in .claude/gw.json instead of moving them.
-  --sin-notas-personales   do not carry the personal notes (env GW_NOTAS_PERSONALES, default ~/.claude/gw/notas/).
+  --no-personal-notes   do not carry the personal notes (env GW_PERSONAL_NOTES, default ~/.claude/gw/notas/).
 Exit 2 on a missing or invalid config or settings file. Python 3.8+ standard library only.
 """
 import argparse
@@ -120,7 +128,13 @@ OLD_SCRIPTS = {"antes-de-parar.py": "before-stop.py", "bitacora.py": "handoff.py
                "aplicar.py": "apply.py"}
 PATH_DIR_KEYS = ("recordsDir", "proposalsDir")  # moved before the file keys inside them
 LOG_BY_LANGUAGE = {"es": "docs/handoff.md", "en": "docs/handoff.md"}  # A8: English paths in every language
-NOTES_ENV = "GW_NOTAS_PERSONALES"
+NOTES_ENV = "GW_PERSONAL_NOTES"
+OLD_NOTES_ENV = "GW_NOTAS_PERSONALES"  # A8 (0.x): read, with a warning, when the new one is unset
+OLD_FLAGS = {"--sin-notas-personales": "--no-personal-notes"}
+OLD_WORKFLOW = Path(".github/workflows/comprobar.yml")
+NEW_WORKFLOW = Path(".github/workflows/check.yml")
+# Old option spellings in the hook commands of a project's settings (recover.py's flags), renamed like the scripts
+OLD_HOOK_FLAGS = {"--estado": "--state", "--buscar": "--search", "--sesion": "--session", "--ancho": "--width"}
 NOTE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 HEADER = re.compile(r"galivelop-workflow v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)")
 SKILL_LICENSE = "LICENSE-mattpocock-skills"  # at the workflow's root; copied next to the skills that cite it
@@ -224,18 +238,20 @@ class Plan:
 
     # ------------------------------------------------------------- files
 
-    def file(self, src, rel, owner_version=None, owned=None, data=None):
+    def file(self, src, rel, owner_version=None, owned=None, data=None, existing=None):
         """Plan one copy. owner_version/owned: for skill files, from the project's SKILL.md (read before writes).
-        data: rendered content instead of src's bytes (a template; never executable)."""
+        data: rendered content instead of src's bytes (a template; never executable). existing: the repo-relative
+        file whose content stands for the one at `rel` (it is being moved there in the same run)."""
         want_exec = is_exec(src) if data is None else False
         data = src.read_bytes() if data is None else data
         dest = self.root / rel
-        if not dest.exists():
+        here = self.root / existing if existing else dest
+        if not here.exists():
             self.actions.append(("create", rel, data, want_exec, ""))
             return
-        current = dest.read_bytes()
+        current = here.read_bytes()
         if current == data:
-            if want_exec and not is_exec(dest):
+            if want_exec and not is_exec(here):
                 self.actions.append(("chmod", rel, None, True, "make it executable"))
             return
         if owned is None:
@@ -394,7 +410,7 @@ def merge_settings(current, template):
 
 
 def rename_hook_scripts(settings):
-    """Rewrite, in place, the old script names in the commands of settings['hooks'] that run a copy under
+    """Rewrite, in place, the old script names (and recover.py's old option names) in the commands of settings['hooks'] that run a copy under
     .claude/gw/scripts/. Returns the set of 'old -> new' renamed."""
     done = set()
     hooks = settings.get("hooks")
@@ -409,6 +425,12 @@ def rename_hook_scripts(settings):
                     if fixed != command:
                         done.add(f"{old} -> {new}")
                         command = fixed
+                if re.search(r"recover\.py", command):
+                    for old, new in OLD_HOOK_FLAGS.items():
+                        fixed = re.sub(rf"(?<![\w-]){re.escape(old)}(?![\w-])", new, command)
+                        if fixed != command:
+                            done.add(f"recover.py {old} -> {new}")
+                            command = fixed
                 h["command"] = command
     return done
 
@@ -471,16 +493,38 @@ def plan_templates(plan, cfg, self_apply, wanted_skills):
         for name, kind in ROOT_TEMPLATES:
             plan.template(Path(name), rendered(lang_dir / name), kind)
         plan.template(Path(cfg["log"]), rendered(lang_dir / "log.md"), "seeded")
-        plan.template(Path(".github/workflows/comprobar.yml"),
-                      rendered(WORKFLOW / "templates" / "github" / "comprobar.yml"), "owned")
+        plan_workflow(plan, rendered(WORKFLOW / "templates" / "github" / "check.yml"))
     for name, skill in NOTES:
         if skill is None or skill in wanted_skills:
             plan.template(Path(".claude/gw") / name, rendered(lang_dir / name), "seeded")
 
 
+def plan_workflow(plan, data):
+    """The CI file: .github/workflows/check.yml, migrating the workflow's own comprobar.yml (A8) to it."""
+    old = plan.root / OLD_WORKFLOW
+    if not old.is_file() and not old.is_symlink():
+        plan.template(NEW_WORKFLOW, data, "owned")
+        return
+    if os.path.lexists(plan.root / NEW_WORKFLOW):
+        plan.template(NEW_WORKFLOW, data, "owned")
+        plan.warnings.append(f"{OLD_WORKFLOW} and {NEW_WORKFLOW} both exist; nothing is moved or deleted: keep the "
+                             f"one you want and remove the other ({NEW_WORKFLOW} is the workflow's CI), or two CI "
+                             f"runs start on every push")
+        return
+    if old.is_symlink() or header_version(old.read_bytes()) is None:
+        plan.propose(NEW_WORKFLOW, data, False,
+                     f"{OLD_WORKFLOW} is not workflow-owned (no galivelop-workflow header), so it is left as it is")
+        plan.warnings.append(f"{OLD_WORKFLOW} looks like the project's own CI and stays; the workflow's CI is "
+                             f"proposed as {NEW_WORKFLOW}{PROPOSAL}: merge it by hand, or if {OLD_WORKFLOW} is an "
+                             f"old copy of the workflow's, delete it and copy the proposal over {NEW_WORKFLOW}")
+        return
+    plan_move(plan, OLD_WORKFLOW, NEW_WORKFLOW, "the workflow's CI file has an English name")
+    plan.file(None, NEW_WORKFLOW, data=data, existing=OLD_WORKFLOW)
+
+
 def personal_notes_dir():
-    """The folder of the person's own notes: env GW_NOTAS_PERSONALES (made absolute), else ~/.claude/gw/notas."""
-    custom = os.environ.get(NOTES_ENV)
+    """The folder of the person's own notes: env GW_PERSONAL_NOTES (made absolute), else ~/.claude/gw/notas."""
+    custom = config.legacy_env(NOTES_ENV, OLD_NOTES_ENV, "apply")
     if custom:
         return Path(os.path.abspath(os.path.expanduser(custom)))
     return Path(os.path.expanduser("~")) / ".claude" / "gw" / "notas"
@@ -958,7 +1002,7 @@ def main(argv=None):
     parser.add_argument("--update", action="store_true", help="replace local edits in workflow-owned files")
     parser.add_argument("--check", action="store_true", help="no writes; exit 1 if the copy differs")
     parser.add_argument("--dry-run", action="store_true", help="print the plan, no writes")
-    parser.add_argument("--sin-notas-personales", dest="no_personal", action="store_true",
+    parser.add_argument("--no-personal-notes", dest="no_personal", action="store_true",
                         help=f"do not carry the personal notes (env {NOTES_ENV}, default ~/.claude/gw/notas/)")
     parser.add_argument("--with", dest="extra", action="append", default=[], metavar="SKILL",
                         help="also install an optional skill (repeatable)")
@@ -984,7 +1028,7 @@ def main(argv=None):
                       help="a product or standard design proposals are contrasted with (repeatable)")
     init.add_argument("--content", action="append", default=[], metavar="REGEX", help="a `content` regex (repeatable)")
     init.add_argument("--review-mark", metavar="PATH")
-    args = parser.parse_args(argv)
+    args = parser.parse_args(config.legacy_flags(sys.argv[1:] if argv is None else argv, OLD_FLAGS, "apply"))
     init_flags = [f for f, v in (("--language", args.language), ("--log", args.log),
                                  ("--check-command", args.check_commands), ("--install", args.install),
                                  ("--protected-branch", args.protected_branch),

@@ -266,7 +266,7 @@ class Hook(unittest.TestCase):
         self.assertBlocked(self.merge(pr=self.pr(), runs={"total_count": 0, "check_runs": []}), "no CI",
                            "checked only locally", "with their confirmation")
 
-    # Installer P3: a green local run of the CI (ci-local.py --apuntar) stands in for a CI that did not start ----------
+    # Installer P3: a green local run of the CI (ci-local.py --record) stands in for a CI that did not start ----------
     NO_CI = {"total_count": 0, "check_runs": []}
 
     def local_log(self, *lines, path="docs/records/ci-local.md"):
@@ -280,7 +280,7 @@ class Hook(unittest.TestCase):
         self.push()
 
     def assertNeedsLocalRun(self, result):
-        self.assertBlocked(result, "no green local run", "ci-local.py --apuntar", "checked only locally",
+        self.assertBlocked(result, "no green local run", "ci-local.py --record", "checked only locally",
                            "with their confirmation")
 
     def test_merge_no_ci_with_green_local_run_allowed(self):

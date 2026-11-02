@@ -229,6 +229,36 @@ def with_defaults(config, schema, exists=None):
     return filled
 
 
+def legacy_flags(argv, renames, prog):
+    """`argv` with the old Spanish option names turned into the English ones (A8, 0.x). `renames` maps old -> new
+    (`--old` and `--old=value` both count; nothing after a bare `--`). Each old name used is warned once on stderr
+    with the name that replaces it. The old names go away in 1.0."""
+    out, seen, literal = [], set(), False
+    for arg in argv:
+        if arg == "--":
+            literal = True
+        name = arg.split("=", 1)[0]
+        if not literal and name in renames:
+            if name not in seen:
+                seen.add(name)
+                print(f"{prog}: warning: {name} is deprecated and will stop working in 1.0; use {renames[name]}",
+                      file=sys.stderr)
+            arg = renames[name] + arg[len(name):]
+        out.append(arg)
+    return out
+
+
+def legacy_env(new, old, prog, default=None):
+    """The value of the environment variable `new`, else that of `old` (warned on stderr), else `default`."""
+    if os.environ.get(new) is not None:
+        return os.environ[new]
+    if os.environ.get(old) is not None:
+        print(f"{prog}: warning: the environment variable {old} is deprecated and will stop working in 1.0; "
+              f"use {new}", file=sys.stderr)
+        return os.environ[old]
+    return default
+
+
 def path_exists_fn(root, rev=None):
     """exists(path) for with_defaults: in the working tree, or in commit `rev` (a push checks the pushed commit)."""
     root = Path(root)

@@ -9,7 +9,7 @@
 Exit 1 if any check FAILs (WARNs do not fail). Checks: the config; core.hooksPath and other hook managers; the git
 hooks (present, executable, version); the log and its next step; the `check`, `install` and `setup` commands exist (and a
 `bash -n`/`sh -n` `check` command that reads only one file: `check syntax-only`); a CI
-workflow; .claude/settings.json (WMF P4: SessionStart matchers, `compact` only runs recover.py --estado, hook
+workflow; .claude/settings.json (WMF P4: SessionStart matchers, `compact` only runs recover.py --state, hook
 commands point to existing files, the PR guard on PreToolUse); AGENTS.md/CLAUDE.md authorise dealing work to
 subagents (VeriNews P1); copied skills at the config's version; a session opened outside the repo (VeriNews P3);
 in a cloud session (CLAUDE_CODE_REMOTE=true), the compaction window the project's settings.json sets is in the
@@ -315,8 +315,9 @@ def check_commands(rep, root, cfg):
 
 def runs_check(text, cfg):
     """True when a workflow's text runs the project's check: it reads `check` through config.py, is the workflow's
-    own comprobar.yml, or spells out one of the `check` commands."""
-    if "config.py get check" in text or ("galivelop-workflow v" in text and "pre-commit --rango" in text):
+    own check.yml, or spells out one of the `check` commands."""
+    pre_commit = re.search(r"pre-commit\s+--(range|rango)\b", text)  # --rango: the name before A8
+    if "config.py get check" in text or ("galivelop-workflow v" in text and pre_commit):
         return True
     code = "\n".join(l for l in text.splitlines() if not l.lstrip().startswith("#"))
     return any(c.strip() and re.search(r"(?<![\w./-])" + re.escape(c.strip()) + r"(?![\w./-])", code)
@@ -329,17 +330,20 @@ def check_ci(rep, root, cfg=None):
     if not found:
         rep.warn("ci", "no CI workflow under .github/workflows, so nothing checks pushes outside this machine",
                  "copy the workflow's CI template: mkdir -p .github/workflows && cp <workflow>/templates/github/"
-                 "comprobar.yml .github/workflows/")
+                 "check.yml .github/workflows/")
         return
     names = ", ".join(p.name for p in found)
+    if any(p.name == "comprobar.yml" for p in found):
+        rep.warn("ci", "comprobar.yml is the old name of check.yml (A8)",
+                 "run /gw-update: it renames the workflow's CI file to check.yml")
     running = [p.name for p in found if runs_check(p.read_text(encoding="utf-8", errors="replace"), cfg)]
     if running:
         rep.ok("ci", f"CI workflow(s): {names}; {', '.join(running)} run(s) the check")
     else:
         rep.warn("ci", f"CI workflow(s) {names}, but none seems to run the project's `check` commands",
                  "add the check to one of them, or copy the workflow's CI template (mkdir -p .github/workflows && cp "
-                 "<workflow>/templates/github/comprobar.yml .github/workflows/); to keep your own CI, add only its "
-                 "step that runs the base branch's .githooks/pre-commit --rango (docs/en/apply.md, Existing CI)")
+                 "<workflow>/templates/github/check.yml .github/workflows/); to keep your own CI, add only its "
+                 "step that runs the base branch's .githooks/pre-commit --range (docs/en/apply.md, Existing CI)")
 
 
 def hook_files(command, root):
@@ -423,11 +427,11 @@ def check_settings(rep, root):
             continue
         if "compact" in matcher.split("|"):
             others = [h.get("command", "") for h in entry.get("hooks") or []
-                      if isinstance(h, dict) and not re.search(r"recover\.py[\"']?\s+--estado\b", h.get("command", ""))]
+                      if isinstance(h, dict) and not re.search(r"recover\.py[\"']?\s+--(state|estado)\b", h.get("command", ""))]
             if others:
                 problems += 1
                 rep.fail("settings SessionStart", f"entry {i} ({matcher}) runs '{others[0]}' on compact; after a "
-                         f"compaction only recover.py --estado should run (the rest re-runs setup mid-task)",
+                         f"compaction only recover.py --state should run (the rest re-runs setup mid-task)",
                          "move that command to a \"startup|resume|clear\" entry in .claude/settings.json")
     for event, entries in hooks.items():
         for entry in entries if isinstance(entries, list) else []:

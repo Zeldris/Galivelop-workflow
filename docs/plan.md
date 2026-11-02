@@ -148,7 +148,7 @@ Galivelop-workflow/
 │   ├── es/  AGENTS.md  CLAUDE.md  REVIEW.md  GLOSSARY.md  traspaso.md  gw-opt-tokens.md
 │   ├── en/  (los mismos)
 │   ├── githooks/pre-push
-│   ├── github/comprobar.yml      # CI mínimo: el check del proyecto
+│   ├── github/check.yml      # CI mínimo: el check del proyecto
 │   └── gw.json                   # config de ejemplo comentada en el README
 ├── schema/gw.schema.json         # JSON Schema del config
 ├── tests/
@@ -166,7 +166,7 @@ Galivelop-workflow/
 ├── LICENSE                       # MIT (compatible con las skills de mattpocock)
 ├── LICENSE-mattpocock-skills  CREDITS.md
 └── .github/workflows/
-    ├── comprobar.yml             # shellcheck, tests, validar JSON contra schema, plugin.json == última entrada del CHANGELOG
+    ├── check.yml             # shellcheck, tests, validar JSON contra schema, plugin.json == última entrada del CHANGELOG
     └── release.yml               # al etiquetar vX.Y.Z: comprueba versión y crea la release con su entrada del CHANGELOG
 ```
 
@@ -233,7 +233,7 @@ Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con 
   Lo mecánico (qué archivos difieren, qué skills son nuevas, qué commits hay desde la última vez) lo hace
   `scripts/harvest.py`, sin IA; el agente solo juzga si cada cambio es general o propio del proyecto y lo redacta.
   Escribe `docs/proposals/AAAA-MM-DD-<repo>.md` (origen con ruta y commit, qué cambia, general/propio, versión que
-  pediría: parche, menor o mayor) y guarda en `docs/proposals/estado.json` el último commit recogido de cada repo.
+  pediría: parche, menor o mayor) y guarda en `docs/proposals/state.json` el último commit recogido de cada repo.
   **Nunca aplica nada sin confirmación**: lo aprobado entra como cambio normal, con CHANGELOG y versión nueva. Los
   repos se leen en solo lectura, con subagente.
 - **`gw-init`, `gw-update`, `gw-doctor`**: ver §5.4.
@@ -243,7 +243,7 @@ Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con 
 | Evento | Qué hace |
 |---|---|
 | `SessionStart` (`startup\|resume\|clear`) | `session-start.sh`: `core.hooksPath=.githooks` si no hay otro, dependencias en la nube (`install` del config, solo si `CLAUDE_CODE_REMOTE=true` y el lockfile cambió), aviso si `gw.json` falta o la versión copiada va por detrás de la del flujo |
-| `SessionStart` (`clear\|compact`) | `recover.py --estado`: fila de estado de la bitácora, `git status`, últimos commits, cómo buscar un detalle |
+| `SessionStart` (`clear\|compact`) | `recover.py --state`: fila de estado de la bitácora, `git status`, últimos commits, cómo buscar un detalle |
 | `PreToolUse` (`create_pull_request\|merge_pull_request` del MCP de GitHub y `gh pr create\|merge` por Bash) | `review-before-main.sh`: sin marca de revisado del mismo código o con CI sin verde, bloquea. Falla cerrado |
 
 ### 5.3 Ganchos de git y CI (en el repo destino)
@@ -254,7 +254,7 @@ Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con 
 - Marca de revisado: `reviewed.sh` escribe el sha en `reviewMark` del config (por defecto
   `docs/records/reviewed.txt`) y hace commit. Viaja con el repo, así la ven tareas programadas y otras cuentas.
 - `is-code.sh`: «código» es todo lo que no casa con `content` del config. Solo lo que es código pide revisión.
-- `.github/workflows/comprobar.yml`: `install` + `check` en cada push que no sea a la rama protegida y en cada PR.
+- `.github/workflows/check.yml`: `install` + `check` en cada push que no sea a la rama protegida y en cada PR.
 
 ### 5.4 Aplicar, actualizar y comprobar
 
@@ -395,7 +395,7 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
   tope de 8 KB por skill; `"strict": false` con lista de skills como forma de partir el plugin (comportamiento sin
   comprobar).
 - **Fase 10:** tabla amenaza / contramedida / evidencia como documento de seguridad; acciones del CI fijadas por
-  `sha` y `permissions: {}` por defecto (hoy `comprobar.yml` y `release.yml` usan `@v4` / `@v5`).
+  `sha` y `permissions: {}` por defecto (hoy `check.yml` y `release.yml` usan `@v4` / `@v5`).
 
 ## 10. Criterios para «100 % funcional y aplicable a cualquier sistema» (madurez de la `1.x`)
 

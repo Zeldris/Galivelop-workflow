@@ -52,7 +52,7 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    ```text
    You work in this repository on branch <branch>. In a fresh, clean worktree, first check that `git log -1` matches
    `origin/<branch>`; if not, `git fetch origin <branch> && git reset --hard origin/<branch>`. Read your state with
-   `python3 .claude/gw/scripts/recover.py --estado`; if it reports no row for your branch or the log has no
+   `python3 .claude/gw/scripts/recover.py --state`; if it reports no row for your branch or the log has no
    per-branch rows, read the next step and pending sections of {log}. If you touch code, read REVIEW.md and
    AGENTS.md. Follow the project's commit and push rules: commit and push each stable point, log update in the
    same commit. If the push is rejected, `git fetch` and `git merge` (never rebase), then push again.

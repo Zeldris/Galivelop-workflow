@@ -32,7 +32,7 @@ class Fixture:
         self.env = {k: v for k, v in os.environ.items()
                     if not k.startswith("GIT_") and k not in ("CLAUDECODE", "CLAUDE_PROJECT_DIR", "CLAUDE_CODE_REMOTE")}
         self.env.update(GIT_CONFIG_GLOBAL=str(gitconfig), GIT_CONFIG_NOSYSTEM="1", TMPDIR=str(tmp), HOME=str(home),
-                        GW_NOTAS_PERSONALES=str(tmp / "no-personal-notes"))  # never the real ~/.claude/gw/notas
+                        GW_PERSONAL_NOTES=str(tmp / "no-personal-notes"))  # never the real ~/.claude/gw/notas
         self.run("git", "init", "-q", str(self.work), cwd=tmp)
         self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, **(config or {})), indent=2) + "\n")
         self.write("check.sh", "exit 0\n")
@@ -277,7 +277,7 @@ class Aplicar(unittest.TestCase):
         self.assertEqual(s["hooks"]["SessionStart"][0], mine["hooks"]["SessionStart"][0])
         commands = [h["command"] for e in s["hooks"]["SessionStart"] + s["hooks"]["PreToolUse"] + s["hooks"]["Stop"]
                     for h in e["hooks"]]
-        for script in ("session-start.sh", "recover.py --estado", "review-before-main.sh", "before-stop.py",
+        for script in ("session-start.sh", "recover.py --state", "review-before-main.sh", "before-stop.py",
                        "config-guard.py", "subagent-cap.py"):
             self.assertEqual(sum(script in c for c in commands), 1, commands)
         self.assertTrue(p.read(".claude/settings.json").endswith("}\n"))
@@ -343,7 +343,7 @@ class Aplicar(unittest.TestCase):
 
 
 class NotasPersonales(unittest.TestCase):
-    """Personal notes: regular files of GW_NOTAS_PERSONALES (default ~/.claude/gw/notas) copied to
+    """Personal notes: regular files of GW_PERSONAL_NOTES (default ~/.claude/gw/notas) copied to
     <project>/.claude/gw/ when missing; a differing one is reported and never touched."""
 
     def setUp(self):
@@ -351,7 +351,7 @@ class NotasPersonales(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.p = Fixture(self.tmp)
         self.notas = self.tmp / "notas"
-        self.p.env["GW_NOTAS_PERSONALES"] = str(self.notas)
+        self.p.env["GW_PERSONAL_NOTES"] = str(self.notas)
 
     def note(self, name, text="my note\n"):
         self.notas.mkdir(exist_ok=True)
@@ -371,7 +371,7 @@ class NotasPersonales(unittest.TestCase):
         self.assertEqual(self.p.aplicar("--check")[0], 0)
 
     def test_folder_pointing_to_a_missing_path_does_nothing(self):
-        self.p.env["GW_NOTAS_PERSONALES"] = str(self.tmp / "nope" / "missing")
+        self.p.env["GW_PERSONAL_NOTES"] = str(self.tmp / "nope" / "missing")
         self.assertNotIn("personal", self.applied())
         self.assertFalse((self.tmp / "nope").exists())
 
@@ -383,7 +383,7 @@ class NotasPersonales(unittest.TestCase):
         folder = Path(self.p.env["HOME"]) / ".claude" / "gw" / "notas"  # the fixture's HOME, never the real one
         folder.mkdir(parents=True)
         (folder / "from-home.md").write_text("home note\n")
-        del self.p.env["GW_NOTAS_PERSONALES"]
+        del self.p.env["GW_PERSONAL_NOTES"]
         out = self.applied()
         self.assertIn("personal note", out)
         self.assertEqual(self.target("from-home.md").read_text(), "home note\n")
@@ -426,7 +426,7 @@ class NotasPersonales(unittest.TestCase):
         self.assertFalse(self.target("style.md").exists())
 
     def test_check_does_not_fail_for_a_missing_note_and_says_what_a_normal_run_does(self):
-        self.applied("--sin-notas-personales")  # the workflow copy itself is up to date
+        self.applied("--no-personal-notes")  # the workflow copy itself is up to date
         self.note("style.md")
         code, out = self.p.aplicar("--check")
         self.assertEqual(code, 0, out)  # the note is not drift of the workflow copy
@@ -503,7 +503,7 @@ class NotasPersonales(unittest.TestCase):
         self.notas.write_text("not a folder\n")
         out = self.applied()
         self.assertIn(f"WARNING: personal notes path {self.notas} is not a folder", out)
-        self.assertIn("GW_NOTAS_PERSONALES", out)
+        self.assertIn("GW_PERSONAL_NOTES", out)
         self.notas.unlink()
         self.notas.mkdir()
         os.chmod(self.notas, 0)
@@ -519,7 +519,7 @@ class NotasPersonales(unittest.TestCase):
         src = self.note("style.md", "mine\n")
         self.applied()
         self.target("style.md").write_text("adapted\n")
-        self.p.env["GW_NOTAS_PERSONALES"] = "../notas"  # relative to the project, where the script runs
+        self.p.env["GW_PERSONAL_NOTES"] = "../notas"  # relative to the project, where the script runs
         out = self.applied()
         self.assertIn(f"diff {src} {self.target('style.md')}", out)
 
@@ -572,9 +572,9 @@ class NotasPersonales(unittest.TestCase):
 
     def test_opt_out_flag(self):
         self.note("style.md")
-        self.assertNotIn("personal", self.applied("--sin-notas-personales"))
+        self.assertNotIn("personal", self.applied("--no-personal-notes"))
         self.assertFalse(self.target("style.md").exists())
-        self.assertEqual(self.p.aplicar("--check", "--sin-notas-personales")[0], 0)
+        self.assertEqual(self.p.aplicar("--check", "--no-personal-notes")[0], 0)
 
     def test_target_that_is_not_a_regular_file_is_reported_not_replaced(self):
         self.note("style.md")
@@ -587,8 +587,8 @@ class NotasPersonales(unittest.TestCase):
     def test_help_mentions_the_notes_and_the_flag(self):
         code, out = self.p.run("python3", str(APLICAR), "--help")
         self.assertEqual(code, 0, out)
-        self.assertIn("GW_NOTAS_PERSONALES", out)
-        self.assertIn("--sin-notas-personales", out)
+        self.assertIn("GW_PERSONAL_NOTES", out)
+        self.assertIn("--no-personal-notes", out)
 
 
 SKILL_MD = "---\nname: {n}\ndescription: old copy\nmetadata:\n  version: \"0.4.3\"\n---\n# {n}\n"
@@ -942,6 +942,78 @@ class Migrar(unittest.TestCase):
         self.assertIn("handoff.py check", text)
         self.assertNotIn("bitacora", text)
         self.assertFalse(self.exists(".claude/gw/scripts/bitacora.py"))
+
+    # ---- CI file and option names (A8 chunk 6a)
+
+    def tracked_workflow(self, text):
+        self.p.write(".github/workflows/comprobar.yml", text)
+        self.commit()
+
+    def test_own_comprobar_yml_is_moved_to_check_yml_and_updated(self):
+        p = self.p
+        self.tracked_workflow("# galivelop-workflow v0.4.0\nname: Comprobar\n")
+        out = self.applied()
+        self.assertFalse(self.exists(".github/workflows/comprobar.yml"), out)
+        self.assertIn("name: Check", p.read(".github/workflows/check.yml"))
+        self.assertFalse(self.exists(".github/workflows/check.yml.gw-nuevo"), out)
+        self.assertIn("nothing to do", self.applied())
+
+    def test_comprobar_yml_with_a_version_not_older_keeps_its_content_and_gets_a_proposal(self):
+        p = self.p
+        self.tracked_workflow("# galivelop-workflow v99.0.0\nname: Mine\n")
+        out = self.applied()
+        self.assertFalse(self.exists(".github/workflows/comprobar.yml"), out)
+        self.assertIn("name: Mine", p.read(".github/workflows/check.yml"))
+        self.assertTrue(self.exists(".github/workflows/check.yml.gw-nuevo"), out)
+
+    def test_comprobar_yml_without_header_is_the_projects_own_and_stays(self):
+        p = self.p
+        self.tracked_workflow("name: CI of mine\n")
+        out = self.applied()
+        self.assertEqual(p.read(".github/workflows/comprobar.yml"), "name: CI of mine\n")
+        self.assertFalse(self.exists(".github/workflows/check.yml"), out)
+        self.assertTrue(self.exists(".github/workflows/check.yml.gw-nuevo"), out)
+        self.assertIn("looks like the project's own CI", out)
+
+    def test_comprobar_yml_next_to_check_yml_is_only_warned(self):
+        p = self.p
+        self.tracked_workflow("# galivelop-workflow v0.4.3\nname: Comprobar\n")
+        self.applied()
+        p.write(".github/workflows/comprobar.yml", "# galivelop-workflow v0.4.3\nname: Comprobar\n")
+        out = self.applied()
+        self.assertTrue(self.exists(".github/workflows/comprobar.yml"), out)
+        self.assertIn("both exist", out)
+
+    def test_recover_hook_flags_are_renamed_without_a_duplicate_hook(self):
+        p = self.p
+        p.write(".claude/settings.json", json.dumps({"hooks": {"SessionStart": [{"matcher": "clear|compact", "hooks": [
+            {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/recover.py --estado"}]}]}}))
+        self.commit()
+        self.applied()
+        commands = [h["command"] for e in json.loads(p.read(".claude/settings.json"))["hooks"]["SessionStart"]
+                    for h in e["hooks"] if "recover.py" in h["command"]]
+        self.assertEqual(len(commands), 1, commands)
+        self.assertTrue(commands[0].endswith("recover.py --state"), commands)
+        self.assertNotIn("--estado", commands[0])
+        self.assertIn("nothing to do", self.applied())
+
+    def test_old_option_and_env_names_warn_with_the_new_name(self):
+        p = self.p
+        code, out = p.aplicar("--sin-notas-personales")
+        self.assertEqual(code, 0, out)
+        self.assertIn("--sin-notas-personales", out)
+        self.assertIn("--no-personal-notes", out)
+        notes = self.tmp / "notes-old"
+        notes.mkdir()
+        (notes / "x.md").write_text("n\n")
+        del p.env["GW_PERSONAL_NOTES"]
+        p.env["GW_NOTAS_PERSONALES"] = str(notes)
+        code, out = p.aplicar()
+        self.assertEqual(code, 0, out)
+        self.assertIn("GW_NOTAS_PERSONALES", out)
+        self.assertIn("GW_PERSONAL_NOTES", out)
+        self.assertIn("x.md", out)
+
 
     def test_help_mentions_keep_paths(self):
         code, out = self.p.run("python3", str(APLICAR), "--help")

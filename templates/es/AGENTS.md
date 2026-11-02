@@ -48,7 +48,7 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
 ## Comprobar
 
 - **El check del proyecto:** {{check}}. `.githooks/pre-push` lo corre sobre el commit que se sube, y el CI
-  (`.github/workflows/comprobar.yml`) en cada push fuera de `{{protectedBranch}}` y en cada pull request.
+  (`.github/workflows/check.yml`) en cada push fuera de `{{protectedBranch}}` y en cada pull request.
 - **Antes de subir, pásalo con `bash .claude/gw/scripts/check.sh`**: corre el check y, si sale en verde, lo apunta; el
   `pre-push` no lo repite sobre el mismo árbol (`GW_CHECK_CACHE=0` lo desactiva).
 - **Lo comprobable lo hace un script**, no un agente: las skills y guías solo deciden lo que exige criterio. Si una
@@ -84,7 +84,7 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
 - **Se fusiona solo con el CI en verde**, también cuando la persona dice «fusiona directamente»: eso quita esperar a
   más revisiones, nunca el CI ni la retro presentada a la persona. Si el CI no arranca, vale el check en local de
   «Relevos» con la confirmación de la persona: se sube directo (el `pre-push` corre el check) o, para un pull
-  request, `python3 .claude/gw/scripts/ci-local.py --apuntar` corre el CI en local y lo apunta; con esa línea verde
+  request, `python3 .claude/gw/scripts/ci-local.py --record` corre el CI en local y lo apunta; con esa línea verde
   subida, el gancho deja fusionar.
 - La rama de un subagente vuelve con `bash .claude/gw/scripts/merge-branch.sh <rama> "<mensaje>"`, que corre el check y los tests
   relacionados, y limpia su worktree.

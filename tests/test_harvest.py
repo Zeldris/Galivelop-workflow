@@ -22,7 +22,7 @@ class Recoger(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())
         self.repo = self.tmp / "proj"
-        self.state = self.tmp / "estado.json"
+        self.state = self.tmp / "state.json"
         (self.repo / ".claude" / "skills").mkdir(parents=True)
         git(self.tmp, "init", "-q", str(self.repo))
         # A copy of a workflow skill with an extra line, and a skill born in the project.
@@ -70,9 +70,35 @@ class Recoger(unittest.TestCase):
             r = subprocess.run(["python3", str(proj / "scripts" / "harvest.py"), "--update-state", str(self.repo)],
                                capture_output=True, text=True, cwd=proj)
             self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-            self.assertTrue((proj / expect / "estado.json").is_file(), (expect, r.stdout, r.stderr))
+            self.assertTrue((proj / expect / "state.json").is_file(), (expect, r.stdout, r.stderr))
             shutil.rmtree(proj / "docs", ignore_errors=True)
             shutil.rmtree(proj / "x", ignore_errors=True)
+
+    def test_the_old_estado_json_is_read_with_a_warning_and_renamed_on_update(self):
+        proj = self.tmp / "work-old"
+        (proj / ".claude").mkdir(parents=True)
+        for rel in ("scripts", "schema", "skills", "templates", ".claude-plugin"):
+            shutil.copytree(ROOT / rel, proj / rel, ignore=shutil.ignore_patterns("__pycache__"))
+        git(self.tmp, "init", "-q", str(proj))
+        (proj / ".claude" / "gw.json").write_text((ROOT / "templates" / "gw.json").read_text())
+        old = proj / "docs" / "proposals" / "estado.json"
+        old.parent.mkdir(parents=True)
+        old.write_text("{}\n")
+        git(proj, "add", "-A")
+        script = str(proj / "scripts" / "harvest.py")
+        r = subprocess.run(["python3", script, "--json", str(self.repo)], capture_output=True, text=True, cwd=proj)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("estado.json is the old name of the state file", r.stderr)
+        self.assertTrue(old.is_file())
+        r = subprocess.run(["python3", script, "--update-state", str(self.repo)], capture_output=True, text=True,
+                           cwd=proj)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("estado.json is the old name of the state file", r.stderr)
+        self.assertFalse(old.exists())
+        self.assertTrue((proj / "docs" / "proposals" / "state.json").is_file())
+        status = git(proj, "status", "--short")  # the old name left the index too
+        self.assertIn("docs/proposals/state.json", status)
+        self.assertNotIn("estado.json", status)
 
     def test_after_update_state_only_new_work_is_reported(self):
         run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))

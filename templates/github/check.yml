@@ -5,7 +5,7 @@
 # that reviews it. `checkWrapper` is not applied here (CI runners do not need it).
 # Node, Python and Java are set up when package.json, pyproject.toml / requirements*.txt or pom.xml / build.gradle*
 # exist (so this file stays the workflow's, untouched); another toolchain (rust-toolchain...) goes before "Install".
-name: Comprobar
+name: Check
 
 on:
   push:
@@ -71,4 +71,7 @@ jobs:
           fi
           mkdir -p .gw-ci
           git show "$base:.githooks/pre-commit" > .gw-ci/pre-commit
-          bash .gw-ci/pre-commit --rango "$(git merge-base "$base" HEAD)..HEAD"
+          # The base branch's hook may still be the one that only knows --rango (the old name of --range)
+          flag=--range
+          grep -q -- '--range' .gw-ci/pre-commit || flag=--rango
+          bash .gw-ci/pre-commit "$flag" "$(git merge-base "$base" HEAD)..HEAD"

@@ -2,13 +2,14 @@
 # galivelop-workflow v0.4.3
 # Lists the files that are code among those changed between two commits: everything that matches none of the
 # config's `content` regexes (Python syntax, on repo-relative paths). The review mark file and the local CI log
-# (`ciLocalLog`, written by ci-local.py --apuntar) are never code; the workflow's own policy and guards always are, whatever `content` says (.claude/gw.json, .claude/settings.json,
+# (`ciLocalLog`, written by ci-local.py --record) are never code; the workflow's own policy and guards always are, whatever `content` says (.claude/gw.json, .claude/settings.json,
 # .claude/gw/ and .githooks/): otherwise a commit could widen `content` and pass its own code as content.
 # Only code needs /code-review (plan §5.3). Used by .githooks/pre-push and the PR hook.
 #   bash is-code.sh [--rev REV] A B   # A empty = from the empty tree (a brand-new branch)
-#   bash is-code.sh [--rev REV] --explicar PATH...   # says, for each path, code or content and why (REV: HEAD)
+#   bash is-code.sh [--rev REV] --explain PATH...   # says, for each path, code or content and why (REV: HEAD)
 # The config (`content`, `reviewMark`, `ciLocalLog`) is read as commit REV has it (default B, the commit being checked), never
 # from the working tree: an uncommitted edit cannot turn the pushed code into content.
+# (--explicar, the old name of --explain, still works in 0.x, with a warning.)
 # Exit 0 with the list (possibly empty) on stdout; exit 2 if the config or a commit is missing (fail closed).
 # Bash 3.2 compatible.
 set -uo pipefail
@@ -67,8 +68,13 @@ classify_failed() {
   exit 2
 }
 if [ "${1:-}" = "--explicar" ]; then
+  echo "is-code: warning: --explicar is deprecated and will stop working in 1.0; use --explain" >&2
   shift
-  [ "$#" -gt 0 ] || { echo "is-code: usage: bash $0 [--rev <commit>] --explicar <path>..." >&2; exit 2; }
+  set -- --explain "$@"
+fi
+if [ "${1:-}" = "--explain" ]; then
+  shift
+  [ "$#" -gt 0 ] || { echo "is-code: usage: bash $0 [--rev <commit>] --explain <path>..." >&2; exit 2; }
   [ -n "$rev" ] || rev="HEAD"
   paths="$rev"
   content="$(python3 "$config" --root "$root" --rev "$rev" get content --json)" || {

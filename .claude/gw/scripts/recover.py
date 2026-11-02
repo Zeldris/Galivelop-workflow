@@ -2,7 +2,7 @@
 # galivelop-workflow v0.4.3
 """Get back what a compaction or a /clear dropped, without reading the whole session transcript.
 
-  recover.py --estado         what the SessionStart hook (clear|compact) puts back into the context: the log's
+  recover.py --state          what the SessionStart hook (clear|compact) puts back into the context: the log's
                                 state (with logRows, the current branch's row; else the log's first section, ~25
                                 lines), `git status --short` (15 lines at most), the last 5 commits, the repo's other
                                 worktrees (path, branch and, with logRows, their row; 10 at most), the compactions in
@@ -10,13 +10,14 @@
                                 task's start; WMF P10: compare them with the task's budget) and how to search the
                                 transcript for a detail. Over ~9,500 characters the log section gives way (its start
                                 stays, with a line saying it was cut); the lines after it always survive.
-  recover.py --buscar TEXT    the transcript fragments (main conversation: user, Claude, tool calls and results)
+  recover.py --search TEXT      the transcript fragments (main conversation: user, Claude, tool calls and results)
                                 matching TEXT (case-insensitive regex; plain text if it is not a valid regex), newest
-                                last. --max N (10), --ancho N (300 characters per fragment).
-  --sesion PATH                 the transcript to read (default: the hook's transcript_path on stdin, else the newest
+                                last. --max N (10), --width N (300 characters per fragment).
+  --session PATH                the transcript to read (default: the hook's transcript_path on stdin, else the newest
                                 one for the repo, see session_log.py).
 
-Fails open: --estado always exits 0 (a SessionStart hook cannot block; its stdout goes into the context). A new
+The old Spanish names (--estado, --buscar, --sesion, --ancho) still work in 0.x, with a warning on stderr.
+Fails open: --state always exits 0 (a SessionStart hook cannot block; its stdout goes into the context). A new
 session does not have the previous one's transcript: what must survive goes into the log.
 Project root: config.find_root (the script's own repo when it holds .claude/gw.json, never the current directory
 first). Python 3.8+ standard library only.
@@ -42,13 +43,13 @@ STATUS_LINES = 15
 WORKTREES = 10
 WORKTREE_ROW = 200  # characters of another worktree's log row
 # Claude Code replaces a hook's output over 10,000 characters with a file path and a 2,000-character preview
-# (https://code.claude.com/docs/en/hooks.md), and a log cut that way looks complete. So --estado measures its own
+# (https://code.claude.com/docs/en/hooks.md), and a log cut that way looks complete. So --state measures its own
 # output and, over this cap, cuts at a line boundary and says so in a last line that names the log.
 OUTPUT_CAP = 9500
 # Characters that are not text: C0 controls except \n and \t, DEL, C1 controls, and the bidi / invisible format ones.
 CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]")
 # A call to this script's search (not a mention: a diff or a message that names it is still searched).
-OWN_CALL = re.compile(r"recover\.py\s+(--sesion\s+\S+\s+)?--buscar")
+OWN_CALL = re.compile(r"recover\.py\s+((--session|--sesion)\s+\S+\s+)?(--search|--buscar)")
 
 
 def git(root, *args):
@@ -261,11 +262,11 @@ def log_state(root, branch, logs=None):
 
 def fit_log(log_lines, room, log):
     """The log section's lines cut (whole lines, from the start) to at most `room` characters, plus a line that says
-    it was cut and which file to read whole. The log is the variable part of --estado: it is what gives way, so the
-    fixed lines after it (uncommitted files, last commits, warnings, the --buscar pointer) always survive."""
+    it was cut and which file to read whole. The log is the variable part of --state: it is what gives way, so the
+    fixed lines after it (uncommitted files, last commits, warnings, the --search pointer) always survive."""
     if sum(len(l) + 1 for l in log_lines) <= room:
         return log_lines
-    note = f"  … log section cut here (--estado is capped at {OUTPUT_CAP} characters): read {log or 'the log'} whole."
+    note = f"  … log section cut here (--state is capped at {OUTPUT_CAP} characters): read {log or 'the log'} whole."
     kept, size = [], len(note) + 1
     for line in log_lines:
         if size + len(line) + 1 > room:
@@ -341,7 +342,7 @@ def task_start(root, branch):
 
 
 def state(root, transcript, out, logs):
-    """Append the --estado lines to `out` (and the log's relative path to `logs`); the caller measures and prints."""
+    """Append the --state lines to `out` (and the log's relative path to `logs`); the caller measures and prints."""
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD") or "?"
     head = [f"State after compaction or /clear (galivelop-workflow), branch {branch}:"]
     log_lines = log_state(root, branch, logs)
@@ -368,7 +369,7 @@ def state(root, transcript, out, logs):
     if path and not transcript:
         say("- Warning: no transcript_path arrived from the hook, so this is the newest transcript of the folder; with "
             "two sessions open in this repo it may be the other one's: check it with "
-            f"{script_command(root)} --sesion <path> --buscar '<text you know>'")
+            f"{script_command(root)} --session <path> --search '<text you know>'")
     if path:
         n = count_compactions(path)
         task = task_start(root, branch)
@@ -382,9 +383,9 @@ def state(root, transcript, out, logs):
             say(f"- Compactions in this session: {n} (compare with the task's compaction budget in the log)")
     else:
         say("- Compactions in this session: unknown (no session transcript found)")
-    session = f" --sesion {path}" if path else ""
+    session = f" --session {path}" if path else ""
     say(f"- A detail from before (an error, a piece of code, what the user said): "
-        f"{script_command(root)}{session} --buscar '<text>'; never read the transcript whole.")
+        f"{script_command(root)}{session} --search '<text>'; never read the transcript whole.")
     fixed = sum(len(l) + 1 for l in head + tail)
     out.extend(head + fit_log(log_lines, OUTPUT_CAP - fixed, logs[0] if logs else None) + tail)
 
@@ -407,7 +408,7 @@ def capped(lines, log):
 
 def hook_transcript(wait=3.0):
     """The transcript_path Claude Code passes to a hook on stdin. Read only when data arrives within `wait` seconds:
-    an agent's Bash tool or `cmd | recover.py` leaves stdin open with nothing on it, and --estado must not hang.
+    an agent's Bash tool or `cmd | recover.py` leaves stdin open with nothing on it, and --state must not hang.
     One second was too short on a loaded machine: the fallback (the folder's newest transcript) may be another
     session's, and state() says so when it falls back."""
     if sys.stdin is None or sys.stdin.isatty():
@@ -425,26 +426,30 @@ def hook_transcript(wait=3.0):
     return data.get("transcript_path") if isinstance(data, dict) else None
 
 
+LEGACY_FLAGS = {"--estado": "--state", "--buscar": "--search", "--sesion": "--session", "--ancho": "--width"}
+
+
 def main(argv=None):
+    argv = config.legacy_flags(sys.argv[1:] if argv is None else argv, LEGACY_FLAGS, "recover.py")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     mode = parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--estado", action="store_true", help="print the state (SessionStart clear|compact)")
-    mode.add_argument("--buscar", metavar="TEXT", help="search the session transcript")
-    parser.add_argument("--sesion", metavar="PATH", help="transcript to read")
+    mode.add_argument("--state", action="store_true", help="print the state (SessionStart clear|compact)")
+    mode.add_argument("--search", metavar="TEXT", help="search the session transcript")
+    parser.add_argument("--session", metavar="PATH", help="transcript to read")
     parser.add_argument("--max", type=int, default=10)
-    parser.add_argument("--ancho", type=int, default=300)
+    parser.add_argument("--width", type=int, default=300)
     parser.add_argument("--root", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
-    if args.estado:
+    if args.state:
         lines, logs = [], []
         try:
             root = config.find_root(args.root)
-            state(root, args.sesion or hook_transcript(), lines, logs)
+            state(root, args.session or hook_transcript(), lines, logs)
         except BrokenPipeError:
             raise
         except Exception as exc:  # fail open: the hook must never break the session
-            lines.append(f"recover.py --estado could not finish ({exc}); run it by hand to see why: "
-                         f"python3 {os.path.abspath(__file__)} --estado")
+            lines.append(f"recover.py --state could not finish ({exc}); run it by hand to see why: "
+                         f"python3 {os.path.abspath(__file__)} --state")
         sys.stdout.write(capped(lines, logs[0] if logs else None))
         return 0
     try:
@@ -452,12 +457,12 @@ def main(argv=None):
     except config.ConfigError as exc:
         print(f"recover.py: {exc}", file=sys.stderr)
         return 2
-    path, _ = session_log.find(root, args.sesion)
+    path, _ = session_log.find(root, args.session)
     if not path:
         print("recover.py: no session transcript found for this repo; pass it: "
-              f"python3 {os.path.abspath(__file__)} --sesion <path.jsonl> --buscar '<text>'", file=sys.stderr)
+              f"python3 {os.path.abspath(__file__)} --session <path.jsonl> --search '<text>'", file=sys.stderr)
         return 1
-    search(path, args.buscar, max(1, args.max), max(40, args.ancho))
+    search(path, args.search, max(1, args.max), max(40, args.width))
     return 0
 
 
@@ -465,7 +470,7 @@ if __name__ == "__main__":
     try:
         code = main()
         sys.stdout.flush()
-    except BrokenPipeError:  # `--estado | head`: the reader left; say nothing more and exit 0
+    except BrokenPipeError:  # `--state | head`: the reader left; say nothing more and exit 0
         os.dup2(os.open(os.devnull, os.O_WRONLY), sys.stdout.fileno())
         code = 0
     sys.exit(code)

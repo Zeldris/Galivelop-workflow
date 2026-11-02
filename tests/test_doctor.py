@@ -267,29 +267,29 @@ class Doctor(unittest.TestCase):
     def test_no_ci(self):
         shutil.rmtree(self.p.work / ".github")
         code, out = self.doctor()
-        self.assertLine(out, "WARN", "no CI workflow", "comprobar.yml")
+        self.assertLine(out, "WARN", "no CI workflow", "check.yml")
 
     def test_empty_workflows_folder_warns(self):
         for f in (self.p.work / ".github" / "workflows").iterdir():
             f.unlink()
         code, out = self.doctor()
         self.assertEqual(code, 0, out)
-        self.assertLine(out, "WARN", "no CI workflow", "comprobar.yml")
+        self.assertLine(out, "WARN", "no CI workflow", "check.yml")
 
-    def test_ci_that_already_runs_the_check_is_not_asked_for_comprobar_yml(self):
+    def test_ci_that_already_runs_the_check_is_not_asked_for_check_yml(self):
         code, out = self.doctor()
         self.assertEqual(code, 0, out)
         line = self.assertLine(out, "OK", "ci", "check.yml run(s) the check")
-        self.assertNotIn("comprobar.yml", line)
+        self.assertNotIn("templates/github", line)
         self.assertNotIn("WARN  ci", out)
 
-    def test_ci_that_does_not_run_the_check_proposes_comprobar_yml_or_the_pre_commit_step(self):
+    def test_ci_that_does_not_run_the_check_proposes_check_yml_or_the_pre_commit_step(self):
         self.p.write(".github/workflows/deploy.yml", "name: deploy\njobs:\n  d:\n    steps:\n      - run: ./deploy.sh\n")
         (self.p.work / ".github" / "workflows" / "check.yml").unlink()
         self.p.commit("only deploy")
         code, out = self.doctor()
         self.assertEqual(code, 0, out)
-        self.assertLine(out, "WARN", "deploy.yml", "none seems to run", "comprobar.yml", "pre-commit --rango")
+        self.assertLine(out, "WARN", "deploy.yml", "none seems to run", "check.yml", "pre-commit --range")
 
     def test_ci_check_command_in_a_comment_or_a_longer_command_does_not_count(self):
         for body in ("name: x\njobs:\n  c:\n    steps:\n      # - run: bash check.sh\n      - run: ./deploy.sh\n",
@@ -310,11 +310,29 @@ class Doctor(unittest.TestCase):
                 code, out = self.doctor()
                 self.assertLine(out, "OK", "ci", "check.yml run(s) the check")
 
+    def test_old_comprobar_yml_is_flagged_and_its_rango_step_still_counts_as_the_check(self):
+        (self.p.work / ".github" / "workflows" / "check.yml").unlink()
+        self.p.write(".github/workflows/comprobar.yml",
+                     "# galivelop-workflow v0.4.3\nname: Comprobar\njobs:\n  c:\n    steps:\n"
+                     "      - run: bash .gw-ci/pre-commit --rango HEAD~1..HEAD\n")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "ci", "comprobar.yml is the old name of check.yml", "/gw-update")
+        self.assertLine(out, "OK", "ci", "comprobar.yml run(s) the check")
+
+    def test_the_old_estado_flag_in_the_compact_hook_is_still_accepted(self):
+        s = self.settings()
+        s["hooks"]["SessionStart"][1]["hooks"] = [
+            {"type": "command", "command": 'python3 "$CLAUDE_PROJECT_DIR"/.claude/gw/scripts/recover.py --estado'}]
+        self.save_settings(s)
+        code, out = self.doctor()
+        self.assertNotIn("should run", out)
+
     def test_ci_from_the_workflow_template_counts_as_running_the_check(self):
         (self.p.work / ".github" / "workflows" / "check.yml").unlink()
-        self.p.write(".github/workflows/comprobar.yml", (ROOT / "templates" / "github" / "comprobar.yml").read_text())
+        self.p.write(".github/workflows/check.yml", (ROOT / "templates" / "github" / "check.yml").read_text())
         code, out = self.doctor()
-        self.assertLine(out, "OK", "ci", "comprobar.yml run(s) the check")
+        self.assertLine(out, "OK", "ci", "check.yml run(s) the check")
 
     def test_missing_setup_command_warns(self):
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())

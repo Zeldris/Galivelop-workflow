@@ -60,7 +60,7 @@ class Mapa(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(text, encoding="utf-8")
 
-    def run_map(self, mapa=None, rel="docs/mapa-agente.md"):
+    def run_map(self, mapa=None, rel="docs/agent-map.md"):
         if mapa is not None:
             self.write(rel, mapa)
         r = subprocess.run([sys.executable, str(self.script)], cwd=self.work, capture_output=True, text=True)
@@ -76,13 +76,13 @@ class Mapa(unittest.TestCase):
     def test_a_missing_path_fails_with_the_line_and_the_fix(self):
         code, out = self.run_map("# Map\n\n- `tools/gone.py` does things\n")
         self.assertEqual(code, 1, out)
-        self.assertIn("docs/mapa-agente.md:3: path not found: tools/gone.py", out)
+        self.assertIn("docs/agent-map.md:3: path not found: tools/gone.py", out)
         self.assertIn("1 broken references out of 1", out)
 
     def test_a_missing_name_fails(self):
         code, out = self.run_map("- `tools/util.py#nope`\n")
         self.assertEqual(code, 1, out)
-        self.assertIn("docs/mapa-agente.md:1: tools/util.py does not define nope", out)
+        self.assertIn("docs/agent-map.md:1: tools/util.py does not define nope", out)
 
     def test_a_call_is_not_a_definition(self):
         code, out = self.run_map("- `backend/src/a.ts#resolverOtro`\n")
@@ -179,7 +179,7 @@ class Mapa(unittest.TestCase):
     def test_a_loose_name_after_a_path_name_is_looked_up_in_that_file(self):
         code, out = self.run_map("# Map\n\n- `backend/src/a.ts#calcular` and\n  then `pasoDos`\n")
         self.assertEqual(code, 1, out)
-        self.assertIn("docs/mapa-agente.md:3: backend/src/a.ts does not define pasoDos", out)
+        self.assertIn("docs/agent-map.md:3: backend/src/a.ts does not define pasoDos", out)
         self.assertEqual(self.run_map("- `anyThing` next to `backend/src/`\n")[0], 0)
 
     def test_prefixes_come_from_the_config(self):
@@ -204,8 +204,8 @@ class Mapa(unittest.TestCase):
         self.assertEqual(code, 0, out)
         code, out = self.run_map("- [gone](es/gone.md)\n- [up](../../outside.md)\n")
         self.assertEqual(code, 1, out)
-        self.assertIn("docs/mapa-agente.md:1: path not found: es/gone.md", out)
-        self.assertIn("docs/mapa-agente.md:2: link leaves the repository: ../../outside.md", out)
+        self.assertIn("docs/agent-map.md:1: path not found: es/gone.md", out)
+        self.assertIn("docs/agent-map.md:2: link leaves the repository: ../../outside.md", out)
 
     def test_urls_anchors_and_mail_links_are_ignored(self):
         code, out = self.run_map("- [site](https://example.com/a/b.md) [top](#section) [m](mailto:a@b.c) "
@@ -221,12 +221,24 @@ class Mapa(unittest.TestCase):
         self.assertEqual(self.run_map("- `tools/*.py` and `backend/**/*.ts`\n")[0], 0)
         code, out = self.run_map("- `tools/*.sh`\n")
         self.assertEqual(code, 1, out)
-        self.assertIn("docs/mapa-agente.md:1: no file matches tools/*.sh", out)
+        self.assertIn("docs/agent-map.md:1: no file matches tools/*.sh", out)
 
     def test_a_missing_default_map_is_not_an_error(self):
         code, out = self.run_map()
         self.assertEqual(code, 0, out)
-        self.assertIn("no agent map at docs/mapa-agente.md", out)
+        self.assertIn("no agent map at docs/agent-map.md", out)
+
+    def test_the_old_default_name_is_read_with_a_warning(self):
+        code, out = self.run_map("# Map\n\n- `tools/gone.py` does things\n", rel="docs/mapa-agente.md")
+        self.assertEqual(code, 1, out)
+        self.assertIn("warning: docs/mapa-agente.md is the old name of the default agent map", out)
+        self.assertIn("docs/mapa-agente.md:3: path not found: tools/gone.py", out)
+
+    def test_the_new_default_name_wins_over_the_old_one_without_a_warning(self):
+        self.write("docs/mapa-agente.md", "- `tools/gone.py`\n")
+        code, out = self.run_map("# Map\n")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("old name", out)
 
     def test_a_missing_declared_map_fails_closed(self):
         self.config(agentMap={"path": "docs/gone-map.md"})
@@ -247,9 +259,9 @@ class Mapa(unittest.TestCase):
             "| Util | `tools/util.py#hacer` | [`AGENTS.md`](../AGENTS.md) |\n"
             "| Bad | `tools/gone.py` | `tools/util.py#nope` |\n")
         self.assertEqual(code, 1, out)
-        self.assertIn("docs/mapa-agente.md:6: path not found: tools/gone.py", out)
-        self.assertIn("docs/mapa-agente.md:6: tools/util.py does not define nope", out)
-        self.assertNotIn("docs/mapa-agente.md:5", out)
+        self.assertIn("docs/agent-map.md:6: path not found: tools/gone.py", out)
+        self.assertIn("docs/agent-map.md:6: tools/util.py does not define nope", out)
+        self.assertNotIn("docs/agent-map.md:5", out)
         self.assertIn("2 broken references out of 4", out)
 
     def test_words_placeholders_and_code_fences_are_not_paths(self):

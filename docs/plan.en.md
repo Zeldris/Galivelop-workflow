@@ -151,7 +151,7 @@ Galivelop-workflow/
 │   ├── es/  AGENTS.md  CLAUDE.md  REVIEW.md  GLOSSARY.md  traspaso.md  gw-opt-tokens.md
 │   ├── en/  (the same)
 │   ├── githooks/pre-push
-│   ├── github/comprobar.yml      # minimal CI: the project's check
+│   ├── github/check.yml      # minimal CI: the project's check
 │   └── gw.json                   # sample config, commented in the README
 ├── schema/gw.schema.json         # JSON Schema for the config
 ├── tests/
@@ -169,7 +169,7 @@ Galivelop-workflow/
 ├── LICENSE                       # MIT (compatible with mattpocock's skills)
 ├── LICENSE-mattpocock-skills  CREDITS.md
 └── .github/workflows/
-    ├── comprobar.yml             # shellcheck, tests, JSON validated against schema, plugin.json == latest CHANGELOG entry
+    ├── check.yml             # shellcheck, tests, JSON validated against schema, plugin.json == latest CHANGELOG entry
     └── release.yml               # on tag vX.Y.Z: checks the version and creates the release from its CHANGELOG entry
 ```
 
@@ -238,7 +238,7 @@ it. mattpocock's keep their text; the own ones are rewritten generically:
   `scripts/harvest.py`, without AI; the agent only judges whether each change is general or project-specific and
   writes it up. Output: `docs/proposals/YYYY-MM-DD-<repo>.md` (source with path and commit, what changes,
   general/specific, version bump it would need: patch, minor or major), and the last harvested commit per repo in
-  `docs/proposals/estado.json`. **It never applies anything without confirmation**: what is approved goes in as a
+  `docs/proposals/state.json`. **It never applies anything without confirmation**: what is approved goes in as a
   normal change, with a CHANGELOG entry and a new version. Repos are read-only, via a subagent.
 - **`gw-init`, `gw-update`, `gw-doctor`**: see §5.4.
 
@@ -247,7 +247,7 @@ it. mattpocock's keep their text; the own ones are rewritten generically:
 | Event | What it does |
 |---|---|
 | `SessionStart` (`startup\|resume\|clear`) | `session-start.sh`: `core.hooksPath=.githooks` if none is set, cloud dependencies (config `install`, only if `CLAUDE_CODE_REMOTE=true` and the lockfile changed), warning if `gw.json` is missing or the copied version lags behind the workflow's |
-| `SessionStart` (`clear\|compact`) | `recover.py --estado`: the log's state row, `git status`, latest commits, how to search for a detail |
+| `SessionStart` (`clear\|compact`) | `recover.py --state`: the log's state row, `git status`, latest commits, how to search for a detail |
 | `PreToolUse` (`create_pull_request\|merge_pull_request` from the GitHub MCP and `gh pr create\|merge` via Bash) | `review-before-main.sh`: blocks without a review mark for the same code or with CI not green. Fails closed |
 
 ### 5.3 Git hooks and CI (in the target repo)
@@ -258,7 +258,7 @@ it. mattpocock's keep their text; the own ones are rewritten generically:
 - Review mark: `reviewed.sh` writes the sha to the config's `reviewMark` (default `docs/records/reviewed.txt`) and
   commits it. It travels with the repo, so scheduled tasks and other accounts see it.
 - `is-code.sh`: "code" is everything that doesn't match the config's `content`. Only code needs review.
-- `.github/workflows/comprobar.yml`: `install` + `check` on every push not to the protected branch and on every PR.
+- `.github/workflows/check.yml`: `install` + `check` on every push not to the protected branch and on every PR.
 
 ### 5.4 Apply, update and check
 
@@ -399,7 +399,7 @@ with the large model; porting skills and templates with the medium one. From Pha
 - **Phase 9:** validate the marketplace in CI by pinning the `sha` of the `git-subdir` entries; if ported to Codex,
   an 8 KB cap per skill; `"strict": false` with a skills list as a way to split the plugin (behaviour unchecked).
 - **Phase 10:** a threat / countermeasure / evidence table as the security document; CI actions pinned by `sha` and
-  `permissions: {}` by default (today `comprobar.yml` and `release.yml` use `@v4` / `@v5`).
+  `permissions: {}` by default (today `check.yml` and `release.yml` use `@v4` / `@v5`).
 
 ## 10. Criteria for "100 % functional and applicable to any system" (maturity of `1.x`)
 

@@ -38,9 +38,9 @@ python3 .claude/gw/scripts/doctor.py
 | `check syntax-only` (WARN) | Una orden de `check` es `bash -n`/`sh -n` con varios archivos, un glob (`*`, `?`, `[`) o `$(…)`: solo se lee el primer archivo y el resto no se comprueba | Una orden por archivo en `check` de `.claude/gw.json`, o `for f in …; do bash -n "$f"; done` (el aviso da la orden) |
 | `check command` (FAIL) | La primera palabra de una orden de `check` no está en el `PATH` ni es un archivo del repo | Instala esa herramienta o corrige `check` en `.claude/gw.json` |
 | `install command` (WARN) | Lo mismo para `install` | Igual |
-| `ci` (WARN) | No hay ningún workflow en `.github/workflows` | `mkdir -p .github/workflows && cp <flujo>/templates/github/comprobar.yml .github/workflows/` |
+| `ci` (WARN) | No hay ningún workflow en `.github/workflows` | `mkdir -p .github/workflows && cp <flujo>/templates/github/check.yml .github/workflows/` |
 | `settings` (FAIL) | Falta `.claude/settings.json` o es JSON inválido | `/gw-update`; corrígelo y comprueba con `python3 -m json.tool` |
-| `settings SessionStart` (FAIL) | Una entrada sin `matcher` corre en cada arranque, reanudación, `clear` y `compact`; o una con `compact` ejecuta algo que no es `recover.py --estado` | Dale `"matcher": "startup\|resume\|clear"`; mueve esa orden a una entrada sin `compact` |
+| `settings SessionStart` (FAIL) | Una entrada sin `matcher` corre en cada arranque, reanudación, `clear` y `compact`; o una con `compact` ejecuta algo que no es `recover.py --state` | Dale `"matcher": "startup\|resume\|clear"`; mueve esa orden a una entrada sin `compact` |
 | `settings <evento>` (FAIL) | Una orden de gancho apunta a un archivo que no existe | `/gw-update` restaura los scripts; o corrige la orden |
 | `settings PreToolUse` (FAIL) | Falta el gancho que guarda crear y fusionar PR (`review-before-main.sh`) | Añádelo desde `templates/claude/settings.json` (`/gw-update`) |
 | `agents` (FAIL) | No hay `AGENTS.md` ni `CLAUDE.md` | `/gw-init` |
@@ -92,7 +92,7 @@ con la palabra `gh` seguida de `pr` o `pulls` («github» y «projects» no cuen
 |---|---|---|
 | `Blocked: … has no review mark` / `… not an ancestor` / `code changed after the review mark` | El PR trae código que no cubre la marca de revisión del **mismo commit** | `/code-review` del diff, sube arreglos, `bash .claude/gw/scripts/reviewed.sh`, `git push` |
 | `Blocked: CI of PR #N is not green` / `could not verify CI` | El CI no pasó o no se pudo leer | Espera o arregla el CI; autenticación: `gh auth login` o `export GITHUB_TOKEN=…` |
-| `Blocked: no CI was reported…` / `GitHub did not start the CI…`, `and <ciLocalLog> on the PR head has no green local run of this code` | El CI del PR no arrancó (sin cuota de Actions, sin runners) y el registro de CI local no tiene una línea verde válida: hecha con el árbol limpio, de un antecesor de la cabeza y solo con contenido detrás | Dilo a la persona; con su confirmación («comprobado solo en local»): `python3 .claude/gw/scripts/ci-local.py --apuntar`, commit y push del registro, y repite. Un CI que arrancó y falló no se sustituye así |
+| `Blocked: no CI was reported…` / `GitHub did not start the CI…`, `and <ciLocalLog> on the PR head has no green local run of this code` | El CI del PR no arrancó (sin cuota de Actions, sin runners) y el registro de CI local no tiene una línea verde válida: hecha con el árbol limpio, de un antecesor de la cabeza y solo con contenido detrás | Dilo a la persona; con su confirmación («comprobado solo en local»): `python3 .claude/gw/scripts/ci-local.py --record`, commit y push del registro, y repite. Un CI que arrancó y falló no se sustituye así |
 | `cannot read PR #N` / `cannot query origin` | Sin red o sin credencial | Autentícate y repite; se bloquea porque no pudo comprobar |
 | `the PR head … is not in this clone` | Clon superficial o rama sin traer | `git fetch --deepen=200 origin <rama>` |
 | `no open PR for <rama>` / `without a PR number` | Fusionar sin número ni PR abierto de la rama | Pasa el número: `gh pr merge <número>` |
@@ -122,7 +122,7 @@ gasto: al cerrar cada fase, bitácora al día y `/clear`.
 
 **En la nube** la sesión siempre arranca en `/home/user`, así que reabrir desde el repo no es posible: el tope de
 compactación va en las variables del entorno de la nube (`CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`; `doctor.py` avisa
-si falta), y tras una compactación se corre a mano `python3 .claude/gw/scripts/recover.py --estado`.
+si falta), y tras una compactación se corre a mano `python3 .claude/gw/scripts/recover.py --state`.
 
 ## Skills con el mismo nombre en varios repos de la sesión
 

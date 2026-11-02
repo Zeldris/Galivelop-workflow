@@ -177,7 +177,7 @@ jobs:
         run: exit 1
       - run: echo ${{{{ secrets.TOKEN }}}}
 """)
-        code, out = self.ci("--apuntar")
+        code, out = self.ci("--record")
         self.assertEqual(code, 0, out)
         self.assertIn("not run (uses: actions/checkout@v4", out)
         self.assertIn("not run (system packages", out)
@@ -206,7 +206,7 @@ jobs:
     steps:
       - run: touch ran-second
 """)
-        code, out = self.ci("--apuntar")
+        code, out = self.ci("--record")
         self.assertEqual(code, 1, out)
         self.assertTrue((self.p.work / "ran-always").exists())
         self.assertFalse((self.p.work / "ran-after-failure").exists())
@@ -232,22 +232,29 @@ jobs:
     def test_uncommitted_changes_are_marked(self):
         self.workflow(f"on: pull_request\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n      - run: 'true'\n")
         self.p.write("src/new.py", "x = 1\n")
-        code, out = self.ci("--apuntar")
+        code, out = self.ci("--record")
         self.assertEqual(code, 0, out)
         self.assertIn(f"`{self.p.sha()[:12]}` (uncommitted changes) · green", self.log())
         self.assertIn("the PR hook will not take this line", out)
 
+    def test_old_apuntar_option_warns_with_the_new_name_and_records(self):
+        self.workflow(f"on: pull_request\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n      - run: 'true'\n")
+        code, out = self.ci("--apuntar")
+        self.assertEqual(code, 0, out)
+        self.assertIn("ci-local: warning: --apuntar is deprecated and will stop working in 1.0; use --record", out)
+        self.assertIn("· green", self.log())
+
     def test_the_log_itself_does_not_make_the_tree_dirty(self):
         self.workflow(f"on: pull_request\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n      - run: 'true'\n")
-        self.ci("--apuntar")
-        code, out = self.ci("--apuntar")
+        self.ci("--record")
+        code, out = self.ci("--record")
         self.assertEqual(code, 0, out)
         self.assertNotIn("uncommitted", self.log())
         self.assertEqual(self.log().count("· green"), 2)
 
     def test_nothing_ran_is_not_green(self):
         self.workflow(f"on: pull_request\njobs:\n  j:\n    runs-on: {OTHER}\n    steps:\n      - run: 'true'\n")
-        code, out = self.ci("--apuntar")
+        code, out = self.ci("--record")
         self.assertEqual(code, 1, out)
         self.assertIn("· not green: no step ran; not covered: ci.yml / j (runs on", self.log())
 
@@ -298,7 +305,7 @@ jobs:
         self.assertEqual(code, 0, out)
         self.assertIn("would run in .", out)
         self.assertFalse((self.p.work / "made").exists())
-        code, out = self.ci("--plan", "--apuntar")
+        code, out = self.ci("--plan", "--record")
         self.assertEqual(code, 2, out)
         self.assertIn("--plan runs nothing", out)
 

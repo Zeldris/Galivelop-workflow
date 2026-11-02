@@ -124,6 +124,19 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `test_utils.py`. El `.claude/gw.json` de este repo ya no fija `log`, `reviewMark`, `recordsDir`, `proposalsDir` ni
   `ciLocalLog` (valen los defectos en inglés) y declara `agentMap.path`. Los nombres viejos que aceptan los scripts
   para proyectos instalados no cambian. Los textos históricos (changelog, retros, propuestas) conservan sus nombres.
+- A8, trozo 6a: opciones, variables y archivos de los scripts del flujo, en inglés. Los nombres viejos se aceptan en la
+  `0.x` con un aviso en stderr que dice el nombre nuevo (dejan de valer en la `1.0`): `recover.py --estado/--buscar/
+  --sesion/--ancho` pasan a `--state/--search/--session/--width`; `ci-local.py --apuntar` y `review-before-main.sh`
+  (su mensaje), a `--record`; `is-code.sh --explicar`, a `--explain`; `pre-commit --rango` (y el CI), a `--range`;
+  `apply.py --sin-notas-personales`, a `--no-personal-notes`; `GW_NOTAS_PERSONALES`, a `GW_PERSONAL_NOTES`;
+  `docs/proposals/estado.json` de `harvest.py`, a `state.json` (se renombra al actualizar el estado, con `git mv` si
+  está seguido); `docs/mapa-agente.md` de `agent-map.py`, a `docs/agent-map.md` (el viejo se lee si es el único);
+  `comprobar.yml` (plantilla y workflow), a `check.yml`. `apply.py` migra los proyectos instalados sin duplicados:
+  mueve su `comprobar.yml` (con la cabecera del flujo) a `check.yml` y lo actualiza o deja `check.yml.gw-nuevo`; si no
+  tiene la cabecera, es del proyecto y se queda con una propuesta al lado; si existen los dos, solo avisa. Los hooks
+  de `settings.json` y `settings.local.json` que llaman a `recover.py` con las opciones viejas se reescriben antes de
+  mezclar, así no queda un hook repetido. `doctor.py` avisa de un `comprobar.yml` que sigue ahí. El CI de la plantilla
+  elige `--range` o `--rango` según lo que entienda el `pre-commit` de la rama base.
 
 ### EN
 
@@ -231,6 +244,19 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   This repo's `.claude/gw.json` no longer sets `log`, `reviewMark`, `recordsDir`, `proposalsDir` or `ciLocalLog` (the
   English defaults apply) and declares `agentMap.path`. The old names the scripts accept for installed projects do not
   change. Historical texts (changelog, retros, proposals) keep their names.
+- A8, chunk 6a: options, variables and files of the workflow scripts, in English. The old names are accepted in `0.x`
+  with a warning on stderr that gives the new name (they stop working in `1.0`): `recover.py --estado/--buscar/
+  --sesion/--ancho` become `--state/--search/--session/--width`; `ci-local.py --apuntar` (and the message of
+  `review-before-main.sh`), `--record`; `is-code.sh --explicar`, `--explain`; `pre-commit --rango` (and the CI),
+  `--range`; `apply.py --sin-notas-personales`, `--no-personal-notes`; `GW_NOTAS_PERSONALES`, `GW_PERSONAL_NOTES`;
+  `harvest.py`'s `docs/proposals/estado.json`, `state.json` (renamed when the state is updated, with `git mv` when
+  tracked); `agent-map.py`'s `docs/mapa-agente.md`, `docs/agent-map.md` (the old one is read when it is the only
+  one); `comprobar.yml` (template and workflow), `check.yml`. `apply.py` migrates installed projects without
+  duplicates: it moves their `comprobar.yml` (with the workflow header) to `check.yml` and updates it or leaves
+  `check.yml.gw-nuevo`; without the header it is the project's own and stays, with a proposal next to it; if both
+  exist it only warns. Hooks in `settings.json` and `settings.local.json` that call `recover.py` with the old options
+  are rewritten before merging, so no hook is repeated. `doctor.py` warns about a `comprobar.yml` that is still
+  there. The template CI picks `--range` or `--rango` depending on what the base branch's `pre-commit` understands.
 
 ## [0.4.3] - 2026-10-27
 

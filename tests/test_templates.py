@@ -24,7 +24,7 @@ TEMPLATES = ROOT / "templates"
 VERSION = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())["version"]
 MARKER = f"<!-- galivelop-workflow v{VERSION} -->"
 LOGS = {"es": "docs/handoff.md", "en": "docs/handoff.md"}  # A8: English paths in both
-RENDERED = ("AGENTS.md", "CLAUDE.md", "REVIEW.md", "GLOSSARY.md", ".github/workflows/comprobar.yml",
+RENDERED = ("AGENTS.md", "CLAUDE.md", "REVIEW.md", "GLOSSARY.md", ".github/workflows/check.yml",
             ".claude/gw/gw-opt-tokens.md", ".claude/gw.json")
 
 
@@ -101,7 +101,7 @@ class Templates(unittest.TestCase):
                 with self.subTest(file=f"{lang}/{name}"):
                     first = (TEMPLATES / lang / name).read_text(encoding="utf-8").splitlines()[0]
                     self.assertEqual(first, MARKER)
-        first = (TEMPLATES / "github" / "comprobar.yml").read_text().splitlines()[0]
+        first = (TEMPLATES / "github" / "check.yml").read_text().splitlines()[0]
         self.assertEqual(first, f"# galivelop-workflow v{VERSION}")
 
     def test_placeholders_are_only_config_keys_project_and_version(self):
@@ -144,7 +144,7 @@ class Templates(unittest.TestCase):
         self.assertEqual(found, [], "paths the workflow no longer creates")
 
     def test_ci_sets_up_the_toolchain_from_the_project_files(self):
-        text = (TEMPLATES / "github" / "comprobar.yml").read_text()
+        text = (TEMPLATES / "github" / "check.yml").read_text()
         install = text.index("- name: Install")
         for action, files in (("setup-node", "'package.json'"), ("setup-python", "'pyproject.toml'"),
                               ("setup-java", "'pom.xml'")):
@@ -155,7 +155,7 @@ class Templates(unittest.TestCase):
 
     def ci_install(self, **keys):
         """Run the CI template's Install step in a temp project whose gw.json has `keys`; return the commands run."""
-        text = (TEMPLATES / "github" / "comprobar.yml").read_text()
+        text = (TEMPLATES / "github" / "check.yml").read_text()
         step = text.split("- name: Install\n        run: |\n", 1)[1].split("      - name:", 1)[0]
         script = "\n".join(l[10:] for l in step.splitlines())
         tmp = Path(tempfile.mkdtemp(prefix="gw-ci-")).resolve()
@@ -198,7 +198,7 @@ class Templates(unittest.TestCase):
         self.assertNotIn("== echo a", r.stdout)
 
     def test_ci_template_does_not_apply_check_wrapper_or_setup(self):
-        text = (TEMPLATES / "github" / "comprobar.yml").read_text()
+        text = (TEMPLATES / "github" / "check.yml").read_text()
         self.assertNotIn("get checkWrapper", text)
         self.assertNotIn("get setup", text)
 
@@ -248,7 +248,7 @@ class Init(unittest.TestCase):
                     self.assertNotIn("{{", p.read(rel), rel)
                 self.assertIn("`bash check.sh`", p.read("AGENTS.md"))
                 self.assertIn("gw-orchestrate-dealer", p.read("AGENTS.md"))
-                self.assertIn("branches-ignore: [main]", p.read(".github/workflows/comprobar.yml"))
+                self.assertIn("branches-ignore: [main]", p.read(".github/workflows/check.yml"))
                 self.assertFalse((p.work / ".claude/gw/gw-opt-ai.md").exists())
                 self.assertFalse(list(p.work.glob("**/*.gw-nuevo")))
                 code, out = p.run("python3", str(p.work / ".claude/gw/scripts/doctor.py"))
@@ -392,7 +392,7 @@ class Init(unittest.TestCase):
     def test_workflow_repo_skips_its_root_templates(self):
         r = subprocess.run(["python3", str(APLICAR), str(ROOT), "--dry-run"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        for name in ("AGENTS.md", "CLAUDE.md", "REVIEW.md", "GLOSSARY.md", "comprobar.yml", "docs/handoff.md"):
+        for name in ("AGENTS.md", "CLAUDE.md", "REVIEW.md", "GLOSSARY.md", "check.yml", "docs/handoff.md"):
             self.assertNotIn(name, r.stdout)
 
 

@@ -1,4 +1,4 @@
-name: Comprobar
+name: Check
 
 on:
   push:

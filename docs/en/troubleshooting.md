@@ -38,9 +38,9 @@ python3 .claude/gw/scripts/doctor.py
 | `check syntax-only` (WARN) | A `check` command is `bash -n`/`sh -n` with several files, a glob (`*`, `?`, `[`) or `$(…)`: only the first file is read, the rest go unchecked | One command per file in `check` in `.claude/gw.json`, or `for f in …; do bash -n "$f"; done` (the warning gives the command) |
 | `check command` (FAIL) | The first word of a `check` command is neither on `PATH` nor a file in the repo | Install that tool or fix `check` in `.claude/gw.json` |
 | `install command` (WARN) | The same for `install` | Same |
-| `ci` (WARN) | No workflow under `.github/workflows` | `mkdir -p .github/workflows && cp <workflow>/templates/github/comprobar.yml .github/workflows/` |
+| `ci` (WARN) | No workflow under `.github/workflows` | `mkdir -p .github/workflows && cp <workflow>/templates/github/check.yml .github/workflows/` |
 | `settings` (FAIL) | `.claude/settings.json` is missing or invalid JSON | `/gw-update`; fix it and check with `python3 -m json.tool` |
-| `settings SessionStart` (FAIL) | An entry with no `matcher` runs on every start, resume, `clear` and `compact`; or one with `compact` runs something other than `recover.py --estado` | Give it `"matcher": "startup\|resume\|clear"`; move that command to an entry without `compact` |
+| `settings SessionStart` (FAIL) | An entry with no `matcher` runs on every start, resume, `clear` and `compact`; or one with `compact` runs something other than `recover.py --state` | Give it `"matcher": "startup\|resume\|clear"`; move that command to an entry without `compact` |
 | `settings <event>` (FAIL) | A hook command points to a file that does not exist | `/gw-update` restores the scripts; or fix the command |
 | `settings PreToolUse` (FAIL) | The hook guarding PR creation and merging (`review-before-main.sh`) is missing | Add it from `templates/claude/settings.json` (`/gw-update`) |
 | `agents` (FAIL) | Neither `AGENTS.md` nor `CLAUDE.md` exists | `/gw-init` |
@@ -92,7 +92,7 @@ closed**: if it cannot check, it blocks and says why. It only looks at calls to 
 |---|---|---|
 | `Blocked: … has no review mark` / `… not an ancestor` / `code changed after the review mark` | The PR brings code the review mark of the **same commit** does not cover | `/code-review` of the diff, push the fixes, `bash .claude/gw/scripts/reviewed.sh`, `git push` |
 | `Blocked: CI of PR #N is not green` / `could not verify CI` | CI did not pass or could not be read | Wait for or fix CI; authentication: `gh auth login` or `export GITHUB_TOKEN=…` |
-| `Blocked: no CI was reported…` / `GitHub did not start the CI…`, `and <ciLocalLog> on the PR head has no green local run of this code` | The PR's CI did not start (no Actions quota, no runners) and the local CI log has no valid green line: made on a clean tree, of an ancestor of the head, with only content after it | Tell the person; with their confirmation ("checked only locally"): `python3 .claude/gw/scripts/ci-local.py --apuntar`, commit and push the log, and retry. A CI that started and failed is not replaced this way |
+| `Blocked: no CI was reported…` / `GitHub did not start the CI…`, `and <ciLocalLog> on the PR head has no green local run of this code` | The PR's CI did not start (no Actions quota, no runners) and the local CI log has no valid green line: made on a clean tree, of an ancestor of the head, with only content after it | Tell the person; with their confirmation ("checked only locally"): `python3 .claude/gw/scripts/ci-local.py --record`, commit and push the log, and retry. A CI that started and failed is not replaced this way |
 | `cannot read PR #N` / `cannot query origin` | No network or no credential | Authenticate and retry; it blocks because it could not check |
 | `the PR head … is not in this clone` | Shallow clone or branch not fetched | `git fetch --deepen=200 origin <branch>` |
 | `no open PR for <branch>` / `without a PR number` | Merging with no number and no open PR for the branch | Pass the number: `gh pr merge <number>` |
@@ -122,7 +122,7 @@ almost all the spend: when each phase closes, log up to date and `/clear`.
 
 **In the cloud** the session always starts in `/home/user`, so reopening from the repo is not possible: the
 compaction cap goes in the cloud environment's variables (`CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`; `doctor.py` warns
-when it is missing), and after a compaction run `python3 .claude/gw/scripts/recover.py --estado` by hand.
+when it is missing), and after a compaction run `python3 .claude/gw/scripts/recover.py --state` by hand.
 
 ## Skills with the same name in several repos of the session
 

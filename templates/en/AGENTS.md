@@ -48,7 +48,7 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 ## Checking
 
 - **The project's check:** {{check}}. `.githooks/pre-push` runs it on the commit being pushed, and CI
-  (`.github/workflows/comprobar.yml`) on every push outside `{{protectedBranch}}` and on every pull request.
+  (`.github/workflows/check.yml`) on every push outside `{{protectedBranch}}` and on every pull request.
 - **Before pushing, run it with `bash .claude/gw/scripts/check.sh`**: it runs the check and, when it passes, records
   it; `pre-push` does not repeat it on the same tree (`GW_CHECK_CACHE=0` turns that off).
 - **What can be checked is checked by a script**, not by an agent: skills and guides only decide what needs
@@ -84,7 +84,7 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - **Merged only with CI green**, also when the person says "merge directly": that skips waiting for more reviews, never
   the CI nor the retro presented to the person. If CI does not start, the local check under "Hand-offs" counts with
   the person's confirmation: push directly (`pre-push` runs the check) or, for a pull request,
-  `python3 .claude/gw/scripts/ci-local.py --apuntar` runs the CI locally and records it; with that green line pushed,
+  `python3 .claude/gw/scripts/ci-local.py --record` runs the CI locally and records it; with that green line pushed,
   the hook lets the merge through.
 - A subagent's branch comes back with `bash .claude/gw/scripts/merge-branch.sh <branch> "<message>"`, which runs the check and the
   related tests, and cleans up its worktree.

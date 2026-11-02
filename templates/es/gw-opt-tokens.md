@@ -7,7 +7,7 @@ las crea una vez; desde entonces son del proyecto.
 ## Herramientas que ya ahorran
 
 <!-- Una línea cada una, con cómo se corre. -->
-- `python3 .claude/gw/scripts/recover.py --estado` y `--buscar "<texto>"`: recuperar lo que se llevó una
+- `python3 .claude/gw/scripts/recover.py --state` y `--search "<texto>"`: recuperar lo que se llevó una
   compactación.
 - `gw-orchestrate-dealer`: el trabajo de más de un paso, repartido a subagentes de contexto limpio.
 

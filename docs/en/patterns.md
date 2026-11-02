@@ -63,7 +63,7 @@ same time.
   calls and, at `subagentCap` (30 by default) and every 10 after, asks the person to check they are not looping
   (`gw-opt-tokens`); it never blocks.
 - **On start**, the new session reads the log and checks that the last commit matches what it says; it does not ask
-  where things stood. After a `/clear` or compaction, `recover.py --estado` reminds it.
+  where things stood. After a `/clear` or compaction, `recover.py --state` reminds it.
 - When the branch closes, `handoff.py close-row <branch>` leaves its row as "merged, branch finished" so the
   protected branch does not inherit a stale "Next".
 - **A short log, with or without `logRows`:** `handoff.py check --strict` fails if a cell of the state table passes

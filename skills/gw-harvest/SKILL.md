@@ -35,7 +35,7 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
    python3 scripts/harvest.py <project-path> [<project-path> ...]
    ```
 
-   It lists, per project and since the last harvest (`<proposalsDir>/estado.json`): workflow skills whose body
+   It lists, per project and since the last harvest (`<proposalsDir>/state.json`): workflow skills whose body
    differs, skills born in the project, copied workflow scripts that differ, retro files, the
    `## For Galivelop-workflow` sections of every changed `.md` (pilot notes too, not only retros), the lines there that
    start with "Propuesta para el flujo" / "Proposal for the workflow" (how projects note requests in their hand-off
@@ -56,7 +56,7 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
 6. **Present them to the user**, most valuable first, and wait. What the user approves becomes a normal change in
    this repo: the piece updated, a CHANGELOG entry and a version bump (patch, minor or major per plan §7).
 7. **Record the harvest** once the proposals file is committed:
-   `python3 scripts/harvest.py --update-state <project-path> ...`, then commit `<proposalsDir>/estado.json` in the
+   `python3 scripts/harvest.py --update-state <project-path> ...`, then commit `<proposalsDir>/state.json` in the
    same commit as the proposals.
 
 ## Proposal template

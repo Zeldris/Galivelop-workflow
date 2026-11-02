@@ -15,7 +15,7 @@
 #     commit status success (a commit with no CI reported at all is not green; that block names the path the person
 #     can confirm instead: the local check, said as "checked only locally"). Check-runs that GitHub closed as failed
 #     without starting the job (billing, spending limit) and nothing else failing get that same block. In those two
-#     cases only, a green line of the config's `ciLocalLog` (written by ci-local.py --apuntar, committed on the PR
+#     cases only, a green line of the config's `ciLocalLog` (written by ci-local.py --record, committed on the PR
 #     head) lets the merge through when its commit is an ancestor of the head with only content after it; a CI that
 #     started and failed is never replaced by it.
 #   - Anything else (other tools, update_pull_request_branch, other bases, Bash that only mentions `gh pr`) exits 0
@@ -540,7 +540,7 @@ def ci_problems(repo, sha):
 
 
 # ---- the rules ---------------------------------------------------------------------------------------------------
-# A green line of ci-local.py --apuntar on a clean tree: `- <date> · `<sha>` · green (` (a dirty tree adds
+# A green line of ci-local.py --record on a clean tree: `- <date> · `<sha>` · green (` (a dirty tree adds
 # " (uncommitted changes)" after the sha, so it never matches).
 LOCAL_GREEN = re.compile(r"^- \S+ · `([0-9a-f]{7,40})` · green \(", re.M)
 
@@ -723,7 +723,7 @@ def handle(action, cfg, root, scripts):
               "ancestor of the head with only content after it).",
               f"if CI does not start (no Actions quota, no runners), tell the person: with their confirmation the CI "
               f"run locally counts, said as 'checked only locally'; then run it, commit and push the log, and retry: "
-              f"python3 {os.path.join(scripts, 'ci-local.py')} --apuntar && git add {log} && "
+              f"python3 {os.path.join(scripts, 'ci-local.py')} --record && git add {log} && "
               f"git commit -m 'CI run locally' && git push")
     if bad:
         block(f"Blocked: CI of PR #{number} ({info['sha'][:12]}) is not green: {'; '.join(bad)}",

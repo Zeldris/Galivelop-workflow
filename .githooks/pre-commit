@@ -12,8 +12,9 @@
 #     the pre-push checks it again over the pushed range). Skipped while closing a merge/cherry-pick/rebase.
 #   - With logRows on, while concluding a merge: it does not keep two different tasks under one task id, one from each
 #     side (handoff.py clash --merging; the pre-push checks every new merge and the protected branch).
-# CI mode: pre-commit --rango BASE..HEAD scans what the range adds instead of the staged changes (run the base
+# CI mode: pre-commit --range BASE..HEAD scans what the range adds instead of the staged changes (run the base
 # branch's copy of this hook, so a PR cannot weaken the check that reviews it).
+# --rango, its old name, still works in 0.x, with a warning.
 # Bash 3.2 compatible. Root from this hook's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
 hookdir="$(cd "$(dirname "$0")" && pwd)"
@@ -24,7 +25,12 @@ root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$hookdir" rev-parse 
 cd "$root" || exit 1
 
 if [ "${1:-}" = "--rango" ]; then
-  [ -n "${2:-}" ] || { echo "pre-commit: --rango needs a range; run: bash .githooks/pre-commit --rango <base>..HEAD" >&2; exit 1; }
+  echo "pre-commit: warning: --rango is deprecated and will stop working in 1.0; use --range" >&2
+  shift
+  set -- --range "$@"
+fi
+if [ "${1:-}" = "--range" ]; then
+  [ -n "${2:-}" ] || { echo "pre-commit: --range needs a range; run: bash .githooks/pre-commit --range <base>..HEAD" >&2; exit 1; }
   range="$2"; ci=1
   git rev-parse -q --verify "${range%%..*}^{commit}" >/dev/null 2>&1 \
     || { echo "pre-commit: the base of $range is not in this clone; fetch it: git fetch --deepen=200 origin" >&2; exit 1; }

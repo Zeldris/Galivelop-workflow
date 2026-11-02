@@ -1691,10 +1691,18 @@ class EsCodigo(Base):
         code, out = p.run("bash", script, "", "HEAD")
         self.assertIn("check.sh", out.split())
 
+    def test_old_explicar_option_warns_with_the_new_name(self):
+        p = self.p
+        script = str(p.work / ".claude" / "gw" / "scripts" / "is-code.sh")
+        code, out = p.run("bash", script, "--explicar", "src/a.py")
+        self.assertEqual(code, 0, out)
+        self.assertIn("is-code: warning: --explicar is deprecated and will stop working in 1.0; use --explain", out)
+        self.assertIn("src/a.py: code (matches no content regex)", out)
+
     def test_explicar_says_code_or_content_and_why(self):
         p = self.p
         script = str(p.work / ".claude" / "gw" / "scripts" / "is-code.sh")
-        code, out = p.run("bash", script, "--explicar", "src/a.py", "docs/x.md", ".githooks/pre-push",
+        code, out = p.run("bash", script, "--explain", "src/a.py", "docs/x.md", ".githooks/pre-push",
                           "docs/revisado.txt")
         self.assertEqual(code, 0, out)
         self.assertEqual(out.splitlines(), [
@@ -1702,7 +1710,7 @@ class EsCodigo(Base):
             'docs/x.md: content (matches content regex "^docs/")',
             ".githooks/pre-push: code (the workflow policy and guards are always code)",
             "docs/revisado.txt: content (it is the review mark file, reviewMark)"])
-        code, out = p.run("bash", script, "--explicar")
+        code, out = p.run("bash", script, "--explain")
         self.assertEqual(code, 2, out)
         self.assertIn("usage", out)
         # The local CI log is content wherever ciLocalLog puts it, as the commit has it; never a guarded path.
@@ -1710,7 +1718,7 @@ class EsCodigo(Base):
         cfg["ciLocalLog"] = "ci/local.md"
         p.write(".claude/gw.json", json.dumps(cfg)); p.commit("local CI log outside docs")
         p.write("ci/local.md", "- green\n"); p.write("src/b.py", "b\n"); p.commit("log and code")
-        code, out = p.run("bash", script, "--explicar", "ci/local.md", "docs/registros/ci-local.md")
+        code, out = p.run("bash", script, "--explain", "ci/local.md", "docs/registros/ci-local.md")
         self.assertEqual(out.splitlines(), [
             "ci/local.md: content (it is the local CI log, ciLocalLog)",
             'docs/registros/ci-local.md: content (matches content regex "^docs/")'], out)
@@ -1725,7 +1733,7 @@ class EsCodigo(Base):
         cfg = json.loads(good)
         cfg["content"] = ["^docs/", "(unclosed"]
         p.write(".claude/gw.json", json.dumps(cfg)); p.git("commit", "-q", "-am", "bad regex", "--no-verify")
-        for args in ((p.base, "HEAD"), ("--explicar", "src/a.py")):
+        for args in ((p.base, "HEAD"), ("--explain", "src/a.py")):
             code, out = p.run("bash", script, *args)
             self.assertEqual(code, 2, out)
             self.assertIn('content regex "(unclosed" is invalid', out)
@@ -1918,14 +1926,22 @@ class PreCommit(Base):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("under protectedPaths", r.stderr)
 
+    def test_old_rango_option_warns_with_the_new_name(self):
+        p = self.p
+        hook = str(p.work / ".githooks" / "pre-commit")
+        p.write("src/ok.py", "ok = 1\n"); p.commit("clean")
+        code, out = p.run("bash", hook, "--rango", f"{p.base}..HEAD")
+        self.assertEqual(code, 0, out)
+        self.assertIn("pre-commit: warning: --rango is deprecated and will stop working in 1.0; use --range", out)
+
     def test_range_mode_for_ci(self):
         p = self.p
         hook = str(p.work / ".githooks" / "pre-commit")
         p.write("src/ok.py", "ok = 1\n"); p.commit("clean")
-        self.assertEqual(p.run("bash", hook, "--rango", f"{p.base}..HEAD")[0], 0)
+        self.assertEqual(p.run("bash", hook, "--range", f"{p.base}..HEAD")[0], 0)
         p.write("src/leak.py", f'T = "{FAKE_TOKEN}"\n')
         p.git("add", "-A"); p.git("commit", "-q", "--no-verify", "-m", "leak")
-        code, out = p.run("bash", hook, "--rango", f"{p.base}..HEAD")
+        code, out = p.run("bash", hook, "--range", f"{p.base}..HEAD")
         self.assertNotEqual(code, 0, out)
         self.assertIn("rotate the credential", out)
 

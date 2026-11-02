@@ -62,7 +62,7 @@ la vez.
   al llegar a `subagentCap` (30 por defecto) y cada 10 después, pide a la persona que compruebe que no están en bucle
   (`gw-opt-tokens`); nunca bloquea.
 - **Al empezar**, la sesión nueva lee la bitácora y comprueba que el último commit coincide con lo que dice; no
-  pregunta por dónde iba. Tras un `/clear` o una compactación, `recover.py --estado` se lo recuerda.
+  pregunta por dónde iba. Tras un `/clear` o una compactación, `recover.py --state` se lo recuerda.
 - Al cerrar la rama, `handoff.py close-row <rama>` deja su fila como «fusionada, rama terminada» para que la rama
   protegida no herede un «Siguiente» viejo.
 - **Bitácora corta, con o sin `logRows`:** `handoff.py check --strict` falla si una celda de la tabla de estado pasa de

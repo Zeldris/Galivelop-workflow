@@ -44,8 +44,23 @@ RETRO_NAME = re.compile(r"(^|/)retro-[^/]*\.md$")
 
 
 def default_state():
-    """<proposalsDir>/estado.json of this workflow repo (the config's `proposalsDir`; fails closed without a config)."""
-    return ROOT / config.load(ROOT)["proposalsDir"] / "estado.json"
+    """<proposalsDir>/state.json of this workflow repo (the config's `proposalsDir`; fails closed without a config)."""
+    return ROOT / config.load(ROOT)["proposalsDir"] / "state.json"
+
+
+def old_state(path):
+    """The file the state had before A8 (estado.json next to `path`) when only that one exists, else None."""
+    old = path.with_name("estado.json")
+    return old if not path.is_file() and old.is_file() else None
+
+
+def move_old_state(old, new):
+    """Rename estado.json to state.json (git mv when tracked) before the new state is written over it."""
+    def run(*args):
+        return subprocess.run(["git", *args], cwd=str(ROOT), capture_output=True).returncode == 0
+    if run("ls-files", "--error-unmatch", str(old)) and run("mv", str(old), str(new)):
+        return
+    old.replace(new)
 
 
 def git(repo, *args):
@@ -286,17 +301,23 @@ def main():
     parser.add_argument("--json", action="store_true", help="print JSON instead of Markdown")
     parser.add_argument("--diff", metavar="SKILL", help="print the unified diff of one skill (ours → theirs)")
     parser.add_argument("--update-state", action="store_true",
-                        help="record each project's HEAD as harvested in <proposalsDir>/estado.json")
+                        help="record each project's HEAD as harvested in <proposalsDir>/state.json")
     parser.add_argument("--state", type=Path, default=None, help=argparse.SUPPRESS)
     args = parser.parse_args()
 
+    explicit = args.state is not None
     if args.state is None:
         try:
             args.state = default_state()
         except config.ConfigError as exc:
             print(f"harvest: {exc}", file=sys.stderr)
             return 2
-    state = json.loads(args.state.read_text(encoding="utf-8")) if args.state.is_file() else {}
+    legacy = None if explicit else old_state(args.state)
+    if legacy:
+        print(f"harvest: warning: {legacy} is the old name of the state file; reading it, and {args.state.name} is "
+              "written (renamed) on --update-state", file=sys.stderr)
+    source = legacy or args.state
+    state = json.loads(source.read_text(encoding="utf-8")) if source.is_file() else {}
 
     if args.diff:
         mine = ROOT / "skills" / args.diff / "SKILL.md"
@@ -315,6 +336,8 @@ def main():
         for r in reports:
             state[r["repo"]] = r["head"]
         args.state.parent.mkdir(parents=True, exist_ok=True)
+        if legacy:
+            move_old_state(legacy, args.state)
         args.state.write_text(json.dumps(state, indent=2, sort_keys=True) + "\n", encoding="utf-8")
         try:  # not Path.is_relative_to: that is Python 3.9+
             shown = args.state.relative_to(ROOT)

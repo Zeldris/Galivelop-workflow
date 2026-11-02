@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 # galivelop-workflow v0.4.3
 """Runs the project's GitHub Actions CI on this machine, for when GitHub does not start it (no Actions quota, no
-runners), and with --apuntar records the result in the config's `ciLocalLog` (default docs/records/ci-local.md).
+runners), and with --record records the result in the config's `ciLocalLog` (default docs/records/ci-local.md).
 The PR hook (review-before-main.sh) takes a committed green record as the CI of a PR whose CI never started; a CI
 that started and failed is never replaced this way. Recording one is the person's call ("checked only locally").
 
-  python3 ci-local.py [--event pull_request|push] [--plan] [--apuntar] [--root PATH]
+  python3 ci-local.py [--event pull_request|push] [--plan] [--record] [--root PATH]
 
 What runs: the workflows of `ciLocalWorkflows`, or else every .github/workflows/*.yml|yaml triggered by the event
 (default pull_request, the one a PR merge waits for; branch and path filters honoured), on the working tree as it is.
@@ -42,7 +42,7 @@ import config  # noqa: E402  the only reader of .claude/gw.json
 
 SYSTEM_PACKAGES = re.compile(r"(^|[\s;&|(])(sudo|apt-get|apt|yum|dnf|apk|brew|choco|winget|snap)\s")
 HEADER = ("# CI run locally\n\n"
-          "Written by `ci-local.py --apuntar`: one line per local run of the GitHub CI (green or red, with what it\n"
+          "Written by `ci-local.py --record`: one line per local run of the GitHub CI (green or red, with what it\n"
           "did not cover). The PR hook takes a green line whose commit has only content after it as the CI that\n"
           "GitHub did not start; the person confirms it first (\"checked only locally\").\n\n")
 
@@ -852,11 +852,12 @@ def summary(run):
 
 
 def main(argv=None):
+    argv = config.legacy_flags(sys.argv[1:] if argv is None else argv, {"--apuntar": "--record"}, "ci-local")
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--root")
     p.add_argument("--event", default="pull_request", choices=("pull_request", "push"))
     p.add_argument("--plan", action="store_true", help="say what would run, run nothing")
-    p.add_argument("--apuntar", action="store_true", help="append the result to ciLocalLog")
+    p.add_argument("--record", action="store_true", help="append the result to ciLocalLog")
     args = p.parse_args(argv)
     try:
         root = config.find_root(args.root)
@@ -864,9 +865,9 @@ def main(argv=None):
     except config.ConfigError as exc:
         print(f"ci-local: {exc}; fix the config: python3 {os.path.join(HERE, 'config.py')} validate", file=sys.stderr)
         return 2
-    if args.plan and args.apuntar:
+    if args.plan and args.record:
         print("ci-local: --plan runs nothing, so there is nothing to record; drop one: "
-              f"python3 {os.path.join(HERE, 'ci-local.py')} --apuntar", file=sys.stderr)
+              f"python3 {os.path.join(HERE, 'ci-local.py')} --record", file=sys.stderr)
         return 2
     log = cfg["ciLocalLog"]
     was_dirty = dirty(root, log)
@@ -915,7 +916,7 @@ def main(argv=None):
         run.say(f"plan: {run.ran} step(s) would run; {len(run.not_run)} not run; {len(run.not_covered)} not covered")
         return 0
     run.say(result)
-    if args.apuntar:
+    if args.record:
         date = datetime.date.today().isoformat()
         line = f"- {date} · `{run.sha[:12]}`{' (uncommitted changes)' if was_dirty else ''} · {result}"
         record(root, log, line)
@@ -923,7 +924,7 @@ def main(argv=None):
         if was_dirty:
             run.say("the tree had uncommitted changes, so the PR hook will not take this line; commit and rerun")
     elif green:
-        run.say(f"to record it: python3 {os.path.join(HERE, 'ci-local.py')} --apuntar")
+        run.say(f"to record it: python3 {os.path.join(HERE, 'ci-local.py')} --record")
     return 0 if green else 1
 
 

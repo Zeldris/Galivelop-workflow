@@ -35,14 +35,14 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   Actions) cuenta como rojo: se dice al usuario y no se da nada por comprobado en el CI. Entonces vale el check
   pasado en local sobre el mismo commit (`bash tests/check.sh`, o el del `pre-push`) **solo si el usuario lo
   confirma**, y se dice y se apunta en la bitácora como «comprobado solo en local». Un CI que arrancó y falló nunca
-  se sustituye así. Para un PR, `python3 scripts/ci-local.py --apuntar` corre el CI en local y deja la línea que
+  se sustituye así. Para un PR, `python3 scripts/ci-local.py --record` corre el CI en local y deja la línea que
   acepta el gancho.
 - Si el usuario dice que se para, se para: se sube lo que haya y se deja la bitácora al día.
 
 ## Comprobar
 
 - **Check del repo:** `bash tests/check.sh` (sintaxis y shellcheck de scripts, Python, JSON, manifiestos,
-  versión con entrada en el CHANGELOG, pares ES/EN). Lo corre el CI (`.github/workflows/comprobar.yml`, Linux y
+  versión con entrada en el CHANGELOG, pares ES/EN). Lo corre el CI (`.github/workflows/check.yml`, Linux y
   macOS) en cada push que no sea a `main` y en cada PR.
 - **Antes de subir, pásalo con `bash scripts/check.sh`**: corre el `check` y, si sale en verde, lo apunta; el
   `pre-push` no lo repite sobre el mismo árbol (`bash tests/check.sh` a secas no apunta nada). Detalle y límites

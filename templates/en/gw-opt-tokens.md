@@ -7,7 +7,7 @@ the workflow once; from then on it belongs to the project.
 ## Tools that already save
 
 <!-- One line each, with how to run it. -->
-- `python3 .claude/gw/scripts/recover.py --estado` and `--buscar "<text>"`: get back what a compaction dropped.
+- `python3 .claude/gw/scripts/recover.py --state` and `--search "<text>"`: get back what a compaction dropped.
 - `gw-orchestrate-dealer`: multi-step work dealt to clean-context subagents.
 
 ## Known costs

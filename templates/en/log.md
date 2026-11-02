@@ -35,4 +35,4 @@ _(what goes to `{{protectedBranch}}` next, and what it is waiting for)_
 - Last commits: `git fetch origin <branch> && git log --oneline -5 origin/<branch>`.
 - The check: {{check}}.
 - Workflow set up right: `python3 .claude/gw/scripts/doctor.py`.
-- Log state as a new session gets it: `python3 .claude/gw/scripts/recover.py --estado`.
+- Log state as a new session gets it: `python3 .claude/gw/scripts/recover.py --state`.
