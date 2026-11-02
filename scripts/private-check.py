@@ -19,8 +19,9 @@ Checks:
     *.example domain, *@users.noreply.github.com, local part noreply/no-reply/git (git@<host> is an SSH remote),
     privateCheck.allowEmails of
     .claude/gw.json (public) and allowEmails of .claude/gw.local.json (private).
-  - privateNames of the local file .claude/gw.local.json (never committed): case-insensitive, with `-`, `_` and space
-    taken as the same. No local file: skipped with a notice; a malformed one: exit 2.
+  - privateNames of the local file .claude/gw.local.json (never committed), plus the names of its `anonymize`
+    (config.py adds them): case-insensitive, with `-`, `_` and space taken as the same. No local file: skipped with a
+    notice; a malformed one: exit 2.
 A line with gw-allow-private is skipped (a checked false positive); one with gw-allow-secret skips the key check only,
 as in the pre-commit hook. privateCheck: false in .claude/gw.json turns everything off.
 Exit 0 clean, 1 something found (at most 10 hits, `path:line: <kind> <match>`), 2 cannot check (fails closed).

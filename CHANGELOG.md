@@ -208,6 +208,14 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   avisa si no hay lista local; `tests/check.sh` corre `--all --no-names`. Clave `privateCheck` (`emails`,
   `allowEmails`; `false` lo apaga); una línea con `gw-allow-private` no se mira. El `pre-commit` rechaza
   `.claude/gw.local.json` y `apply.py` lo añade al `.gitignore` del proyecto.
+- E3, recogidas anonimizadas: `.claude/gw.local.json` admite `anonymize` (`{"<nombre>": "private-project-N"}`;
+  `config.py` lo valida y falla cerrado ante otra forma, y sus nombres cuentan también como `privateNames`).
+  `scripts/harvest.py` pone el alias en lugar del nombre (mayúsculas, `-`, `_` y espacio da igual: el `name_regex` de
+  `private-check.py`) en todo lo que imprime (Markdown, JSON, `--diff`) y en el id que guarda en
+  `<proposalsDir>/state.json`; busca el estado por el alias y, durante la `0.x`, por el id real antiguo, que
+  `--update-state` cambia por el alias. Si a un proyecto le queda un nombre privado sin alias, no lo imprime (exit 1)
+  y dice que se añada a `anonymize`. `gw-harvest` pide usar el alias en el nombre y el texto de las propuestas y
+  pasar `private-check.py --all` antes de subirlas.
 
 ### EN
 
@@ -398,6 +406,13 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   gives a notice when there is no local list; `tests/check.sh` runs `--all --no-names`. Key `privateCheck` (`emails`,
   `allowEmails`; `false` turns it off); a line with `gw-allow-private` is not read. `pre-commit` refuses
   `.claude/gw.local.json` and `apply.py` adds it to the project's `.gitignore`.
+- E3, anonymized harvests: `.claude/gw.local.json` takes `anonymize` (`{"<name>": "private-project-N"}`; `config.py`
+  validates it and fails closed on any other shape, and its names count as `privateNames` too). `scripts/harvest.py`
+  puts the alias in place of the name (case, `-`, `_` and space alike: `private-check.py`'s `name_regex`) in all it
+  prints (Markdown, JSON, `--diff`) and in the id it records in `<proposalsDir>/state.json`; it looks the state up by
+  the alias and, during `0.x`, by the old real id, which `--update-state` replaces with the alias. A project still
+  holding a private name with no alias is not printed (exit 1), with a message to add it to `anonymize`. `gw-harvest`
+  asks to use the alias in the proposals' file name and text and to run `private-check.py --all` before committing.
 
 ## [0.4.3] - 2026-10-27
 

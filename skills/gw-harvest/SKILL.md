@@ -42,6 +42,11 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
    log), and the commits. A copy equal to an earlier workflow commit is listed apart
    as an older copy: the project's stale text, never a proposal. If it reports missing history, deepen the clone as
    it says and run it again.
+   **Private projects come out anonymized.** With `anonymize` in this repo's `.claude/gw.local.json`
+   (`{"<name>": "private-project-N"}`, never committed), the report, the diff and the state carry the alias instead
+   of the name, so paths in the report name the alias, not your clone: run the commands on the path you passed. If
+   it refuses a project ("private names with no alias", exit 1), ask the user for the alias, have it added to
+   `anonymize` and run it again; never work from the clone's raw files around it.
 3. **Look at the findings with one subagent per project, all in parallel** (one message with several Agent calls),
    each returning a short summary with paths per finding, never whole files in the main session. For a changed
    skill, `python3 scripts/harvest.py --diff <skill> <project-path>` gives the diff.
@@ -50,7 +55,9 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
    - **Project-specific**: domain wording, stack commands, local paths → note it as "stays in the project".
    - **Already here**: the workflow has it in a newer form → note it, no proposal.
 5. **Write the proposals** in `<proposalsDir>/YYYY-MM-DD-<repo-name>.md` using the template below, in the
-   workflow repo's language for human docs. One file per project and harvest; projects with nothing new go as one line
+   workflow repo's language for human docs. `<repo-name>` is the name part of the id the report prints (the alias for
+   a private project), and the text uses that alias too, including what subagents summarized from the clone. Before
+   committing the file, run `python3 scripts/private-check.py --all`; it must pass. One file per project and harvest; projects with nothing new go as one line
    each in another project's file, or in one file of their own when no project brings anything (every version needs
    a `# Harvest` file added since the last tag: `python3 scripts/version.py --release`).
 6. **Present them to the user**, most valuable first, and wait. What the user approves becomes a normal change in
@@ -84,4 +91,5 @@ From `<last>` to `<head>` (`scripts/harvest.py`).
 - A proposal cites the exact source path and commit; never paraphrase without a source.
 - A project's local edit to a copied workflow file is a signal, not a patch: propose the general version here so the
   next update reaches every project.
-- Don't harvest secrets, personal data or private names into this repo.
+- Don't harvest secrets, personal data or private names into this repo: a private project is its
+  `private-project-N` alias everywhere here (file names, text, commit messages).
