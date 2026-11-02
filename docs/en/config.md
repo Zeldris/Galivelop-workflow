@@ -35,6 +35,7 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
 | Key | What it is | Default | Example | Read by |
 |---|---|---|---|---|
 | `$schema` | Path or URL of the schema, for the editor | – | `"gw/schema/gw.schema.json"` | the editor |
+| `schemaVersion` | Version of this file's format (an integer). Absent means 0 (written before 0.5). Optional during `0.x`; `apply.py --init` and `/gw-update` write it | `0` | `1` | `config.py` (migrates in memory), `apply.py` (writes the migration), `doctor.py` (warns when old) |
 | `visibleLanguages` | Languages every user-visible text must exist in | `[]` | `["es", "gl", "en"]` | `REVIEW.md` (applied by `/code-review` and agents) |
 | `keepLegacyPaths` | With `true`, the project keeps its old Spanish paths (`docs/traspaso.md`, `docs/registros/`, `docs/propuestas/`), written explicitly in this file, and `apply.py` plans no move of them. `apply.py --keep-paths` writes it; setting it to `true` by hand does the same | `false` | `true` | `scripts/apply.py` |
 | `logRows` | Log with **one row per branch**, at most 600 characters: each branch writes only in its own | `false` | `true` | `handoff.py`, `prepush-branches.sh`, `recover.py` |
@@ -110,6 +111,13 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   checks it earlier.
 - After changing the workflow version, bump `version` by hand (`/gw-update` does it): `doctor.py` compares that number
   with the copied headers.
+- `schemaVersion` is not the workflow version but that of the `gw.json` format, and it only goes up when the format
+  changes. An old project is never silently broken: `config.py` migrates in memory a `schemaVersion` older than the
+  workflow's (or an absent one, which counts as 0), so every reader sees the current shape, also when reading another
+  commit's config (`--rev`); `doctor.py` warns and `/gw-update` (`apply.py`) writes the migration to the file, in one
+  write together with any path change, and `apply.py --check` counts it as pending. A **newer** one than the
+  workflow's fails closed (exit 2) in every reader: update the workflow (`/gw-update`, or
+  `git -C <workflow> pull --ff-only`). The migrations live in `MIGRATIONS` in `scripts/config.py`.
 
 ## Personal notes
 

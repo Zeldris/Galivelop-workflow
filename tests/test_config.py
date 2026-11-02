@@ -214,6 +214,110 @@ class Config(unittest.TestCase):
             shutil.rmtree(plain)
 
 
+def load_field(root, field, rev=None):
+    """config.load(root, rev)[field] printed by a fresh python3 (the CLI hides keys that start with `_`)."""
+    code = ("import sys; sys.path.insert(0, %r); import config, pathlib; "
+            "print(config.load(pathlib.Path(%r), %r)[%r])" % (str(ROOT / "scripts"), str(root), rev, field))
+    return subprocess.run(["python3", "-c", code], capture_output=True, text=True)
+
+
+class SchemaVersion(unittest.TestCase):
+    """A9: gw.json carries a schemaVersion; an older one is migrated in memory, a newer one fails closed."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        subprocess.run(["git", "init", "-q", str(self.tmp)], check=True)
+        (self.tmp / ".claude").mkdir()
+        self.git = ["git", "-C", str(self.tmp), "-c", "user.name=T", "-c", "user.email=t@example.com",
+                    "-c", "commit.gpgsign=false"]
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def write(self, data):
+        (self.tmp / ".claude" / "gw.json").write_text(json.dumps(data))
+
+    def current(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gw_config", SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_absent_is_version_0_and_loads_migrated(self):
+        self.write(VALID)
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        r = load_field(self.tmp, "_schemaFrom")
+        self.assertEqual(r.stdout.strip(), "0", r.stderr)
+        r = load_field(self.tmp, "schemaVersion")
+        self.assertEqual(r.stdout.strip(), str(self.current().SCHEMA_VERSION), r.stderr)
+        self.assertEqual(json.loads((self.tmp / ".claude" / "gw.json").read_text()), VALID)  # load() never writes
+        r = cli(self.tmp, "get", "_schemaFrom")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("key '_schemaFrom' is not set", r.stderr)
+
+    def test_current_version_loads_as_is(self):
+        version = self.current().SCHEMA_VERSION
+        self.write(dict(VALID, schemaVersion=version))
+        self.assertEqual(load_field(self.tmp, "_schemaFrom").stdout.strip(), str(version))
+        self.assertEqual(cli(self.tmp, "get", "schemaVersion").stdout.strip(), str(version))
+
+    def test_newer_version_fails_closed_naming_both_numbers_and_the_fix(self):
+        version = self.current().SCHEMA_VERSION
+        self.write(dict(VALID, schemaVersion=version + 1))
+        r = cli(self.tmp, "get", "check")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn(f"schemaVersion {version + 1} is newer than this copy of the workflow knows ({version})",
+                      r.stderr)
+        self.assertIn("/gw-update", r.stderr)
+        self.assertIn("pull --ff-only", r.stderr)
+
+    def test_non_integer_or_negative_fails_closed(self):
+        for bad in ("1", 1.5, True, None, -1):
+            self.write(dict(VALID, schemaVersion=bad))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn(f"schemaVersion must be a non-negative integer, got {bad!r}", r.stderr)
+
+    def test_rev_with_an_old_config_is_migrated(self):
+        version = self.current().SCHEMA_VERSION
+        self.write(VALID)  # as a protected branch written before 0.5 has it
+        subprocess.run([*self.git, "add", "-A"], check=True)
+        subprocess.run([*self.git, "commit", "-q", "-m", "old"], check=True)
+        self.write(dict(VALID, schemaVersion=version, protectedBranch="trunk"))
+        r = cli(self.tmp, "--rev", "HEAD", "get", "protectedBranch")
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "main"), r.stderr)
+        self.assertEqual(load_field(self.tmp, "_schemaFrom", "HEAD").stdout.strip(), "0")
+        self.assertEqual(load_field(self.tmp, "_schemaFrom").stdout.strip(), str(version))
+
+    def test_rev_with_a_newer_config_fails_closed(self):
+        version = self.current().SCHEMA_VERSION
+        self.write(dict(VALID, schemaVersion=version + 1))
+        subprocess.run([*self.git, "add", "-A"], check=True)
+        subprocess.run([*self.git, "commit", "-q", "-m", "newer"], check=True)
+        r = cli(self.tmp, "--rev", "HEAD", "get", "protectedBranch")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn(f"HEAD:.claude/gw.json: schemaVersion {version + 1} is newer", r.stderr)
+
+    def test_migrate_returns_a_copy_and_the_descriptions(self):
+        config = self.current()
+        raw = {"$schema": "x", "version": "0.4.3", "language": "en"}
+        out, done = config.migrate(raw)
+        self.assertEqual(raw, {"$schema": "x", "version": "0.4.3", "language": "en"})  # untouched
+        self.assertEqual(list(out), ["$schema", "version", "schemaVersion", "language"])  # right after version
+        self.assertEqual(out["schemaVersion"], config.SCHEMA_VERSION)
+        self.assertEqual(len(done), config.SCHEMA_VERSION)
+        self.assertEqual(config.migrate(out), (out, []))
+        self.assertEqual([t for t, _d, _f in config.MIGRATIONS], list(range(1, config.SCHEMA_VERSION + 1)))
+
+    def test_the_schema_knows_the_key(self):
+        schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())
+        self.assertEqual(schema["properties"]["schemaVersion"]["type"], "integer")
+        self.assertNotIn("schemaVersion", schema["required"])  # optional during 0.x
+        template = json.loads((ROOT / "templates" / "gw.json").read_text())
+        self.assertEqual(template["schemaVersion"], self.current().SCHEMA_VERSION)
+
+
 MIN = {"version": "0.1.0", "language": "en", "protectedBranch": "main", "pushToProtected": "pr",
        "check": ["make check"], "content": ["^docs/"]}
 PATH_KEYS = {  # key: (new default, old Spanish path), A8

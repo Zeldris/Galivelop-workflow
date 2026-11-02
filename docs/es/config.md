@@ -35,6 +35,7 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
 | Clave | Qué es | Defecto | Ejemplo | La leen |
 |---|---|---|---|---|
 | `$schema` | Ruta o URL del esquema, para el editor | – | `"gw/schema/gw.schema.json"` | el editor |
+| `schemaVersion` | Versión del formato de este archivo (entero). Sin ella vale 0 (escrito antes de la 0.5). Opcional durante la `0.x`; `apply.py --init` y `/gw-update` la escriben | `0` | `1` | `config.py` (migra en memoria), `apply.py` (escribe la migración), `doctor.py` (avisa si es vieja) |
 | `visibleLanguages` | Idiomas en los que debe existir todo texto que vea la usuaria | `[]` | `["es", "gl", "en"]` | `REVIEW.md` (lo aplican `/code-review` y los agentes) |
 | `keepLegacyPaths` | Con `true`, el proyecto conserva sus rutas españolas antiguas (`docs/traspaso.md`, `docs/registros/`, `docs/propuestas/`), escritas explícitas en este archivo, y `apply.py` no planea moverlas. Lo escribe `apply.py --keep-paths`; ponerlo a mano a `true` hace lo mismo | `false` | `true` | `scripts/apply.py` |
 | `logRows` | Bitácora con **una fila por rama**, de como mucho 600 caracteres: cada rama escribe solo en la suya | `false` | `true` | `handoff.py`, `prepush-branches.sh`, `recover.py` |
@@ -110,6 +111,13 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   si choca con otra rama remota (`handoff.py clash`); el `pre-commit` de un merge con conflictos lo mira antes.
 - Tras actualizar el flujo, sube `version` a mano (`/gw-update` lo hace): ese número es lo que `doctor.py`
   compara con las cabeceras copiadas.
+- `schemaVersion` no es la versión del flujo, sino la del formato de `gw.json`, y solo sube cuando cambia su forma.
+  Un proyecto viejo nunca se rompe en silencio: `config.py` migra en memoria un `schemaVersion` más antiguo que el
+  del flujo (o ausente, que vale 0), de modo que todo lector ve la forma actual, también al leer el config de otro
+  commit (`--rev`); `doctor.py` avisa y `/gw-update` (`apply.py`) escribe la migración en el archivo, en una sola
+  escritura junto con los cambios de rutas, y `apply.py --check` la cuenta como pendiente. Uno **más nuevo** que el
+  del flujo falla cerrado (salida 2) en todos los lectores: hay que actualizar el flujo (`/gw-update`, o
+  `git -C <flujo> pull --ff-only`). Las migraciones están en `MIGRATIONS` de `scripts/config.py`.
 
 ## Notas personales
 

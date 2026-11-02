@@ -73,6 +73,9 @@ Migration from the names before A8 (0.x), in the same run and without duplicates
                                 project's .claude/gw/gw-media-content.md names no `Folder:` (one it names is never
                                 touched); fails closed (exit 2) when docs/media exists; --keep-paths or
                                 keepLegacyPaths moves nothing.
+  .claude/gw.json with an older "schemaVersion" (absent = 0) -> rewritten migrated to the workflow's format (config.py
+                                MIGRATIONS), in the same write as the path changes above; --check reports it as
+                                pending. A newer schemaVersion fails closed (exit 2): update the workflow first.
 
 For each file: identical -> skip; missing -> create; different -> overwritten only when the project's file is
 workflow-owned (a `galivelop-workflow vX.Y.Z` header, or metadata.version in the skill's SKILL.md), not newer than
@@ -763,6 +766,30 @@ def plan_paths(plan, cfg, keep):
                              f"folder; {note}"))
 
 
+def plan_schema(plan):
+    """gw.json with an older `schemaVersion` (absent = 0) is written migrated to config.SCHEMA_VERSION. A `merge` of
+    gw.json already planned (plan_paths) gets the migration on top, so the file has one write. A newer or invalid
+    schemaVersion never gets here: config.load() fails closed first."""
+    try:
+        raw = json.loads((plan.root / config.CONFIG_REL).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if not isinstance(raw, dict):
+        return
+    found = config.schema_version(raw)
+    if found >= config.SCHEMA_VERSION:
+        return
+    mine = [i for i, a in enumerate(plan.actions) if a[0] == "merge" and Path(a[1]) == config.CONFIG_REL]
+    base, details = raw, []
+    if mine:
+        base = json.loads(plan.actions[mine[-1]][2].decode("utf-8"))
+        details = [plan.actions[i][4] for i in mine]
+        plan.actions = [a for i, a in enumerate(plan.actions) if i not in mine]
+    migrated, done = config.migrate(base)
+    details.append(f"schemaVersion {found} → {config.SCHEMA_VERSION}: {'; '.join(done)}")
+    plan.actions.append(("merge", config.CONFIG_REL, dump(migrated), False, "; ".join(details)))
+
+
 def plan_media_folder(plan, keep):
     """A8 (0.x): docs/difusion, the old default folder of gw-media-content, moves to docs/media when the project's note
     does not name a folder (a folder the note names is never touched). keep (--keep-paths, or keepLegacyPaths in the
@@ -887,6 +914,7 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
         plan_paths(plan, cfg, keep_paths)
         plan_media_folder(plan, keep_paths)
         plan_notes(plan)
+    plan_schema(plan)
     renamed = [e for e in extra_skills if e in OLD_SKILLS]
     for old in renamed:
         plan.warnings.append(f"--with {old} is the old name; use --with {OLD_SKILLS[old]}")
@@ -1030,6 +1058,7 @@ def init_config(args, version):
                          "(e.g. --check-command \"npm test\"); rerun with it")
     new = json.loads((WORKFLOW / "templates" / "gw.json").read_text(encoding="utf-8"))
     new["version"] = version
+    new["schemaVersion"] = config.SCHEMA_VERSION
     if args.language:
         new["language"] = args.language
     new["log"] = args.log or LOG_BY_LANGUAGE.get(new["language"], new["log"])
@@ -1121,6 +1150,7 @@ def main(argv=None):
                 print(f"apply: --init would write {root / config.CONFIG_REL}:\n{text}", end="")
                 cfg = config.with_defaults(new, schema)
                 cfg["_root"] = root
+                cfg["_schemaFrom"] = config.SCHEMA_VERSION
             else:
                 (root / ".claude").mkdir(parents=True, exist_ok=True)
                 (root / config.CONFIG_REL).write_text(text, encoding="utf-8")

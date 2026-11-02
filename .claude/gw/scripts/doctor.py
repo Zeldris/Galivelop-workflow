@@ -147,6 +147,13 @@ def check_config(rep, root):
         rep.fail("config", str(exc).splitlines()[0], f"python3 {HERE / 'config.py'} --root {root} validate")
         return None
     rep.ok("config", f".claude/gw.json valid (version {cfg['version']})")
+    found = cfg.get("_schemaFrom", config.SCHEMA_VERSION)
+    if found < config.SCHEMA_VERSION:  # a newer one already failed in config.load
+        rep.warn("config schema", f".claude/gw.json has schemaVersion {found} (absent = 0) and the workflow's format is "
+                 f"{config.SCHEMA_VERSION}; it is migrated in memory on every read until it is written",
+                 "run /gw-update (apply.py writes the migrated config)")
+    else:
+        rep.ok("config schema", f".claude/gw.json schemaVersion {found} is the workflow's format")
     return cfg
 
 # What a commit must carry for the workflow to work; a `.gitignore` with `.claude/*` would leave it out.

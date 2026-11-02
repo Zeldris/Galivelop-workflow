@@ -65,6 +65,19 @@ class Doctor(unittest.TestCase):
         items = json.loads(out)
         self.assertTrue(items and all(i["status"] == "OK" for i in items), out)
 
+    def test_config_schema_version(self):
+        self.assertLine(self.doctor()[1], "OK", "config schema", "schemaVersion 1 is the workflow's format")
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        old = {k: v for k, v in cfg.items() if k != "schemaVersion"}
+        self.p.write(".claude/gw.json", json.dumps(old, indent=2))
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)  # a warning: every reader migrates it in memory
+        self.assertLine(out, "WARN", "config schema", "schemaVersion 0 (absent = 0)", "format is 1", "/gw-update")
+        self.p.write(".claude/gw.json", json.dumps(dict(cfg, schemaVersion=2), indent=2))
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", "config", "schemaVersion 2 is newer than this copy of the workflow knows (1)")
+
     def test_missing_session_start_matcher(self):
         s = self.settings()
         del s["hooks"]["SessionStart"][0]["matcher"]

@@ -1,6 +1,7 @@
 {
   "$schema": "../schema/gw.schema.json",
   "version": "0.4.3",
+  "schemaVersion": 1,
   "language": "es",
   "protectedBranch": "main",
   "pushToProtected": "direct",

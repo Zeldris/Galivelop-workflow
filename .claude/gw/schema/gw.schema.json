@@ -23,6 +23,11 @@
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(-[0-9A-Za-z.-]+)?$",
       "description": "Workflow version the project was applied with."
     },
+    "schemaVersion": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Version of the gw.json format; absent = 0 (written before 0.5). An older one is migrated in memory by config.py and written by /gw-update; a newer one than the workflow knows fails closed."
+    },
     "language": {
       "enum": [
         "es",

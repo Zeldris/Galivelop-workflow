@@ -46,7 +46,7 @@ En este orden, porque cada paso usa el anterior.
 | H12 | `pendiente-1.0.0.md` → `pending.md`, con la versión en cada línea | hecho |
 | A7 | Plan reescrito según la tabla de A1 (§1, §2, §7, §9, §10): repo público, cada versión se publica aquí | hecho |
 | A8 | Nombres (A2, A-3, A-4): `gw-` en las skills propias, scripts en inglés, rutas del proyecto en inglés y configurables en `gw.json`; `gw-update` renombra y los ganchos aceptan los dos nombres durante la `0.x` | hecho |
-| A9 | `schemaVersion` en `gw.json` y su migración en `gw-update` (A3.2) | pendiente |
+| A9 | `schemaVersion` en `gw.json` y su migración en `gw-update` (A3.2) | hecho |
 | D11 | Conventional Commits en la primera línea (`fix(B1): …`); `version.py` sugiere el salto | pendiente |
 | D12 | Trailer `Refs: <id>` obligatorio en `commit-msg` (salvo merges), validado contra este archivo | pendiente |
 | D15 | Trailer `Agent:` opcional, sin nombre de modelo | pendiente |

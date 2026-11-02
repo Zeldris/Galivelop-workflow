@@ -36,9 +36,60 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 CONFIG_REL = Path(".claude") / "gw.json"
 
+# The format of gw.json (its `schemaVersion`; absent = 0, written before 0.5). load() migrates an older config in
+# memory, so every reader sees the current shape; apply.py (/gw-update) writes the migration to disk. A newer one
+# fails closed: this copy of the workflow cannot know what changed.
+SCHEMA_VERSION = 1
+
 
 class ConfigError(Exception):
     pass
+
+
+def _migrate_to_1(raw):
+    """0 -> 1: only the `schemaVersion` key, written right after `version` (the old Spanish paths of A8 have their
+    own mechanism: LEGACY_PATHS here and plan_paths in apply.py)."""
+    out = {}
+    for key, value in raw.items():
+        if key != "schemaVersion":
+            out[key] = value
+        if key == "version":
+            out["schemaVersion"] = 1
+    out["schemaVersion"] = 1
+    return out
+
+
+# (target schemaVersion, what it changes in one line, function(raw dict) -> raw dict), in order.
+MIGRATIONS = [
+    (1, "schemaVersion written (the format is versioned from now on)", _migrate_to_1),
+]
+
+
+def schema_version(raw, where=CONFIG_REL):
+    """The `schemaVersion` of the raw config `raw` (0 when absent). Raises ConfigError, failing closed, when it is not
+    a non-negative integer or is newer than this copy of the workflow knows (SCHEMA_VERSION)."""
+    found = raw.get("schemaVersion", 0) if isinstance(raw, dict) else 0
+    if isinstance(found, bool) or not isinstance(found, int) or found < 0:
+        raise ConfigError(f"{where}: schemaVersion must be a non-negative integer, got {found!r}; fix it (the "
+                          f"current format is {SCHEMA_VERSION}) and validate: python3 {HERE / 'config.py'} validate")
+    if found > SCHEMA_VERSION:
+        raise ConfigError(f"{where}: schemaVersion {found} is newer than this copy of the workflow knows "
+                          f"({SCHEMA_VERSION}); update the workflow (in the project: /gw-update; the workflow's clone: "
+                          f"git -C <workflow> pull --ff-only) and apply it again")
+    return found
+
+
+def migrate(raw):
+    """(a migrated copy of the raw config `raw`, [the one-line description of each migration applied]). `raw` is not
+    changed. Raises ConfigError like schema_version()."""
+    found = schema_version(raw)
+    out = json.loads(json.dumps(raw))
+    done = []
+    for target, description, step in MIGRATIONS:
+        if target > found:
+            out = step(out)
+            done.append(description)
+    return out, done
 
 
 def git_toplevel(path):
@@ -335,8 +386,9 @@ def read_at(root, rev):
 
 
 def load(root=None, rev=None, paths_at=None):
-    """Return the validated config with defaults, plus '_root' (Path). With `rev`, the config as that commit has it
-    instead of the working tree's. `paths_at` (a commit) is where the old-Spanish-path fallback looks for files: a
+    """Return the validated config with defaults, plus '_root' (Path) and '_schemaFrom' (the schemaVersion it had
+    before load() migrated it in memory to SCHEMA_VERSION; an absent one is 0, a newer one fails closed). With `rev`,
+    the config as that commit has it instead of the working tree's. `paths_at` (a commit) is where the old-Spanish-path fallback looks for files: a
     policy config read from the protected branch's tip still resolves the paths of the commit being pushed or
     merged, so every reader gets the same path for the same commit. Raises ConfigError."""
     root = find_root(root)
@@ -353,6 +405,10 @@ def load(root=None, rev=None, paths_at=None):
         config = json.loads(text)
     except json.JSONDecodeError as exc:
         raise ConfigError(f"{path}: invalid JSON at line {exc.lineno}: {exc.msg}")
+    schema_from = 0
+    if isinstance(config, dict):  # not an object: validate() says so below
+        schema_from = schema_version(config, path)
+        config, _done = migrate(config)
     schema = json.loads(schema_path().read_text(encoding="utf-8"))
     errors = validate(config, schema) or semantic_errors(config)
     if errors:
@@ -369,6 +425,7 @@ def load(root=None, rev=None, paths_at=None):
                               f"git rev-parse --verify {paths_at}")
     config = with_defaults(config, schema, path_exists_fn(root, paths_at or rev))
     config["_root"] = root
+    config["_schemaFrom"] = schema_from  # the schemaVersion on disk (or at `rev`) before the in-memory migration
     return config
 
 

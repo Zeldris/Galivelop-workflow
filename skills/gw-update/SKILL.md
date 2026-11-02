@@ -25,6 +25,9 @@ else ask the user). Read it, never edit it. Fetch it first: `git -C <workflow> p
 - Project version: `version` in `.claude/gw.json`.
 - Copied headers: `# galivelop-workflow vX.Y.Z` in `.claude/gw/scripts/*` and `.githooks/*`.
 - Workflow version: `version` in `<workflow>/.claude-plugin/plugin.json`, and its entries in `CHANGELOG.md`.
+- Config format: `schemaVersion` in the project's `.claude/gw.json` (absent = 0) against `SCHEMA_VERSION` in
+  `<workflow>/scripts/config.py`. Older: `apply.py` migrates it (step 2). Newer: the workflow clone is behind; stop
+  and pull it.
 
 Done when you can say "project at X, workflow at Y". Equal and no `.gw-new` pending: say so and stop. Project
 newer than the workflow: stop and tell the user to update the workflow clone.
@@ -38,7 +41,9 @@ python3 <workflow>/scripts/apply.py <project> --dry-run
 
 It lists what it would create, update or propose, what it would `move` or `remove` to migrate a project installed with
 the old names (skills without `gw-`, Spanish script names, `.claude/gw/<old>.md` notes, `docs/traspaso.md`,
-`docs/registros/`, `docs/propuestas/`; ask the user; `--keep-paths` keeps the old project paths and writes `keepLegacyPaths: true`, so later runs and `--check` leave them alone), files the workflow no longer has, and template updates, plus the
+`docs/registros/`, `docs/propuestas/`; ask the user; `--keep-paths` keeps the old project paths and writes `keepLegacyPaths: true`, so later runs and `--check` leave them alone), the `merge` of `.claude/gw.json` that migrates
+an older `schemaVersion` (its reason lists each migration, `schemaVersion N → M`), files the workflow no longer has,
+and template updates, plus the
 user's personal notes (`~/.claude/gw/notas/`, see `docs/en/config.md`) it would create (`personal note`) or that differ
 from the project's copy. Summarise it for the user with the CHANGELOG entries between X and Y (`### ES` or `### EN` per the user's language).
 
@@ -63,7 +68,8 @@ hand.
 1. Workflow-owned files with no local edits update in place:
    `python3 <workflow>/scripts/apply.py <project> --update`. Use `--update` only after the user confirms, because
    it also replaces local edits in workflow-owned files. Auto mode may ask permission to edit `.claude/settings.json`
-   and `.githooks/`; tell the user first.
+   and `.githooks/`; tell the user first. The run also writes the migrated `.claude/gw.json` (one write, together with
+   any path change); its other keys keep their values.
 2. A `<file>.gw-new` (or the old `<file>.gw-nuevo`, still recognized in `0.x`) is a proposal: merge it by hand with the
    user, then delete it. `AGENTS.md` and `CLAUDE.md`
    merge block by block, keeping the project's rules and the `galivelop-workflow` marker line.

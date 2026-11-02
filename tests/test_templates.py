@@ -243,6 +243,7 @@ class Init(unittest.TestCase):
                 self.assertEqual(code, 0, out)
                 cfg = json.loads(p.read(".claude/gw.json"))
                 self.assertEqual((cfg["language"], cfg["log"], cfg["check"]), (lang, LOGS[lang], ["bash check.sh"]))
+                self.assertEqual(cfg["schemaVersion"], 1)  # A9: a new config is written in the current format
                 for rel in RENDERED + (LOGS[lang],):
                     self.assertTrue((p.work / rel).is_file(), rel)
                     self.assertNotIn("{{", p.read(rel), rel)

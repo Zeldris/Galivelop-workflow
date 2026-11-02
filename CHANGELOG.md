@@ -177,6 +177,14 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `file`/`archivo`): la plantilla y las SKILL.md lo mandan, y `check.py` falla (con la clave y los dos valores) si un
   par no coincide, acepta un `web.md` solo con las viejas (con aviso en stderr que pide las nuevas) y uno solo con las
   nuevas (sin aviso). Las claves viejas se quitan en la `1.0`.
+- A9: `.claude/gw.json` lleva `schemaVersion` (entero, versión del formato; sin ella vale 0, lo escrito antes de la
+  `0.5`; opcional durante la `0.x`), para que un proyecto viejo nunca se rompa en silencio. `config.py` (el único
+  lector) tiene `SCHEMA_VERSION = 1` y la lista ordenada `MIGRATIONS`: migra en memoria un config más antiguo antes de
+  validarlo, también al leer otro commit (`--rev`), y falla cerrado (exit 2, con los dos números y cómo actualizar el
+  flujo) ante uno más nuevo o que no sea un entero. `/gw-update` (`apply.py`) escribe la migración en una sola
+  escritura de `gw.json` junto con los cambios de rutas de A8, `--check` la cuenta como pendiente y `--init` la escribe;
+  `doctor.py` avisa (`config schema`) mientras no se escriba. La migración a 1 solo añade la clave. En el esquema, la
+  plantilla `templates/gw.json`, el `gw.json` de este repo, `gw-update`, `docs/es/config.md` y `docs/en/config.md`.
 
 ### EN
 
@@ -337,6 +345,14 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `file`/`archivo`): the template and the SKILL.md files say so, and `check.py` fails (naming the key and both values)
   when a pair differs, accepts a `web.md` with only the old keys (with a stderr warning asking for the new ones) and one
   with only the new ones (no warning). The old keys are removed in `1.0`.
+- A9: `.claude/gw.json` carries `schemaVersion` (an integer, the version of its format; absent means 0, written before
+  `0.5`; optional during `0.x`), so an old project is never silently broken. `config.py` (the only reader) has
+  `SCHEMA_VERSION = 1` and the ordered `MIGRATIONS` list: it migrates an older config in memory before validating it,
+  also when reading another commit (`--rev`), and fails closed (exit 2, naming both numbers and how to update the
+  workflow) on a newer one or one that is not an integer. `/gw-update` (`apply.py`) writes the migration in one write
+  of `gw.json` together with A8's path changes, `--check` counts it as pending and `--init` writes it; `doctor.py`
+  warns (`config schema`) until it is written. The migration to 1 only adds the key. In the schema, the
+  `templates/gw.json` template, this repo's `gw.json`, `gw-update`, `docs/es/config.md` and `docs/en/config.md`.
 
 ## [0.4.3] - 2026-10-27
 

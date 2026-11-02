@@ -1166,3 +1166,90 @@ class Migrate(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+OLD_SCHEMA_CONFIG = {k: v for k, v in BASE_CONFIG.items() if k != "schemaVersion"}  # written before 0.5
+
+
+class SchemaMigration(unittest.TestCase):
+    """A9: a gw.json with an older schemaVersion (absent = 0) is written migrated, in one write of the file."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="gw-schema-")).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.p = Fixture(self.tmp)
+        self.p.write(".claude/gw.json", json.dumps(OLD_SCHEMA_CONFIG, indent=2) + "\n")
+
+    def config_lines(self, out):
+        return [line for line in out.splitlines() if line.lstrip().startswith("merge") and ".claude/gw.json" in line]
+
+    def test_dry_run_and_check_list_the_migration_and_write_nothing(self):
+        p = self.p
+        before = p.read(".claude/gw.json")
+        code, out = p.run_apply("--dry-run")
+        self.assertEqual(code, 0, out)
+        lines = self.config_lines(out)
+        self.assertEqual(len(lines), 1, out)
+        self.assertIn("schemaVersion 0 → 1: schemaVersion written", lines[0])
+        code, out = p.run_apply("--check")
+        self.assertEqual(code, 1, out)
+        self.assertEqual(len(self.config_lines(out)), 1, out)
+        self.assertIn("schemaVersion 0 → 1", out)
+        self.assertEqual(p.read(".claude/gw.json"), before)
+
+    def test_update_writes_it_after_version_and_keeps_the_rest(self):
+        p = self.p
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        cfg = json.loads(p.read(".claude/gw.json"))
+        self.assertEqual(cfg["schemaVersion"], 1)
+        self.assertEqual(list(cfg)[:2], ["version", "schemaVersion"])
+        self.assertEqual({k: v for k, v in cfg.items() if k != "schemaVersion"}, OLD_SCHEMA_CONFIG)
+        code, out = p.run_apply("--check")
+        self.assertNotIn(".claude/gw.json", "\n".join(self.config_lines(out)), out)
+        self.assertEqual(code, 0, out)
+
+    def test_one_write_when_the_old_paths_change_the_config_too(self):
+        p = self.p
+        old = {k: v for k, v in MIGRATED_CONFIG.items() if k != "schemaVersion"}
+        p.write(".claude/gw.json", json.dumps(dict(old, log="docs/traspaso.md",
+                                                   reviewMark="docs/registros/revisado.txt"), indent=2) + "\n")
+        p.write("docs/traspaso.md", "# Log\n")
+        p.write("docs/registros/revisado.txt", "abc\n")
+        code, out = p.run_apply("--dry-run")
+        self.assertEqual(code, 0, out)
+        lines = self.config_lines(out)
+        self.assertEqual(len(lines), 1, out)
+        self.assertIn("keys with the old paths dropped", lines[0])
+        self.assertIn("schemaVersion 0 → 1", lines[0])
+        code, out = p.run_apply()
+        self.assertEqual(code, 0, out)
+        cfg = json.loads(p.read(".claude/gw.json"))
+        self.assertEqual(cfg["schemaVersion"], 1)
+        self.assertNotIn("log", cfg)
+        self.assertNotIn("reviewMark", cfg)
+        self.assertEqual(p.read("docs/handoff.md"), "# Log\n")
+        code, out = p.run_apply()
+        self.assertIn("nothing to do", out)
+
+    def test_one_write_with_keep_paths_too(self):
+        p = self.p
+        p.write("docs/traspaso.md", "# Log\n")
+        p.write(".claude/gw.json", json.dumps({k: v for k, v in MIGRATED_CONFIG.items() if k != "schemaVersion"},
+                                              indent=2) + "\n")
+        code, out = p.run_apply("--keep-paths")
+        self.assertEqual(code, 0, out)
+        lines = self.config_lines(out)
+        self.assertEqual(len(lines), 1, out)
+        self.assertIn("--keep-paths:", lines[0])
+        cfg = json.loads(p.read(".claude/gw.json"))
+        self.assertEqual((cfg["schemaVersion"], cfg["log"], cfg["keepLegacyPaths"]), (1, "docs/traspaso.md", True))
+
+    def test_a_newer_schema_version_fails_closed_and_writes_nothing(self):
+        p = self.p
+        p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, schemaVersion=99), indent=2) + "\n")
+        code, out = p.run_apply()
+        self.assertEqual(code, 2, out)
+        self.assertIn("schemaVersion 99 is newer than this copy of the workflow knows (1)", out)
+        self.assertIn("/gw-update", out)
+        self.assertFalse((p.work / ".claude" / "gw" / "scripts").exists())

@@ -20,7 +20,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 ZERO = "0" * 40
 VERSION = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())["version"]  # one fact, one place
-BASE_CONFIG = {"version": VERSION, "language": "en", "log": "docs/log.md", "protectedBranch": "main",
+BASE_CONFIG = {"version": VERSION, "schemaVersion": 1, "language": "en", "log": "docs/log.md", "protectedBranch": "main",
                "pushToProtected": "direct", "check": ["bash check.sh"], "reviewMark": "docs/revisado.txt",
                "content": ["^docs/", "\\.md$"]}
 # Built by concatenation so this file itself never looks like a secret or a conflict to the hooks.
