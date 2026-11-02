@@ -58,7 +58,7 @@ INVISIBLE_PATTERN = (rf"[{ALWAYS_INVISIBLE}]"
                      rf"|\u200d(?![{EMOJI}])")
 INVISIBLE = re.compile(INVISIBLE_PATTERN)
 WARN_LINES, FAIL_LINES = 150, 250  # AGENTS.md / CLAUDE.md: every session loads them whole
-MEDIA_NOTE = ".claude/gw/gw-media-content.md"  # the project's note of gw-media-content (skills/gw-media-content/nota.md)
+MEDIA_NOTE = ".claude/gw/gw-media-content.md"  # the project's note of gw-media-content (skills/gw-media-content/note.md)
 MEDIA_FOLDER = "docs/difusion"  # its default `Folder`
 SKILL_LICENSE = "LICENSE-mattpocock-skills"  # apply.py copies it next to the skills that cite it
 
