@@ -63,7 +63,9 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 
 ## Commit messages
 
-- First line: what changes, in the project's language, with the ids of the tasks touched.
+- First line: what changes, in the project's language, with the ids of the tasks touched. With
+  `commitFormat: "conventional"` in `.claude/gw.json`, in the form `type(id): …` (`feat`, `fix`, `docs`…), and with
+  `commitRefs: true`, a `Refs: <id>` trailer in the last paragraph, before `Next:`; `commit-msg` checks it.
 - Body: what was done, what is left of that task if it is not closed, and the state of the check.
 - **Last line: `Next: <next concrete step>`**, in the same final block as any attribution lines.
 - With `agentSignatures: false` in `.claude/gw.json`, the commit carries **no agent signatures** (no Claude

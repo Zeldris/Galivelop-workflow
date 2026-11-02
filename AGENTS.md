@@ -55,9 +55,13 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
 
 ## Mensajes de commit
 
-- En español. Primera línea: qué cambia (con la fase, p. ej. `Fase 1: …`).
+- En español. Primera línea con Conventional Commits y el id del roadmap como ámbito: `feat(D12): …`, `fix(A9): …`
+  (`docs`, `test`, `refactor`, `chore`…; `!` tras el ámbito si rompe; `WIP: ` delante si va en rojo).
 - Cuerpo: qué se hizo, qué queda y estado de los tests.
-- **Última línea: `Siguiente: <próximo paso concreto>`**.
+- **Último párrafo, solo trailers de una línea:** `Refs: <id>[, <id>]` (ids de `docs/roadmap.md` o de la bitácora) y,
+  al final, **`Siguiente: <próximo paso concreto>`**. Lo comprueba el gancho `commit-msg` (`commitFormat` y
+  `commitRefs` en `.claude/gw.json`), salvo en las fusiones. Una tarea sin id toma el siguiente libre de su bloque.
+- Un subagente puede firmar su trabajo con `Agent: <skill>` (nunca un nombre de modelo); sus ramas, `agent/<id>-<tema>`.
 - **Sin firmas del agente** (usuario, 2026-10-26): commits y PR van a nombre del usuario de git (`Zeldris`), nunca
   como Claude; ni `Co-Authored-By`, ni `Claude-Session`, ni «Generated with Claude Code» ni enlaces de sesión, en
   ningún sitio (mensajes, PR, comentarios, archivos). En un contenedor nuevo, antes del primer commit:

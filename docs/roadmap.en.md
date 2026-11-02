@@ -46,10 +46,10 @@ In this order, because each step uses the previous one.
 | A7 | Plan rewritten after A1's table (§1, §2, §7, §9, §10): public repo, every version released here | done |
 | A8 | Names (A2, A-3, A-4): `gw-` on our own skills, scripts in English, project paths in English and configurable in `gw.json`; `gw-update` renames and the hooks accept both names during `0.x` | done |
 | A9 | `schemaVersion` in `gw.json` and its migration in `gw-update` (A3.2) | done |
-| D11 | Conventional Commits on the first line (`fix(B1): …`); `version.py` suggests the bump | pending |
-| D12 | `Refs: <id>` trailer required by `commit-msg` (except merges), checked against this roadmap | pending |
-| D15 | Optional `Agent:` trailer, with no model name | pending |
-| D16 | Subagent branches `agent/<id>-…`; `merge-branch.sh` copies `Refs:` | pending |
+| D11 | Conventional Commits on the first line (`fix(B1): …`); `version.py` suggests the bump | done |
+| D12 | `Refs: <id>` trailer required by `commit-msg` (except merges), checked against this roadmap | done |
+| D15 | Optional `Agent:` trailer, with no model name | done |
+| D16 | Subagent branches `agent/<id>-…`; `merge-branch.sh` copies `Refs:` | done |
 | E2 | Private-data check in `pre-push` (list in `.claude/gw.local.json`); CI, only keys and emails | pending |
 | E3 | Published harvests anonymised (`private-project-1`) | pending |
 | D3 | Review of the already published harvests with E2's check | pending |

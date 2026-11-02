@@ -24,5 +24,12 @@
   "agentSignatures": false,
   "agentMap": {
     "path": "docs/agent-map.md"
-  }
+  },
+  "taskId": "[A-H]\\d+",
+  "commitFormat": "conventional",
+  "commitRefs": true,
+  "refsSources": [
+    "docs/roadmap.md",
+    "docs/handoff.md"
+  ]
 }

@@ -63,7 +63,9 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
 
 ## Mensajes de commit
 
-- Primera línea: qué cambia, en el idioma del proyecto, con los identificadores de las tareas tocadas.
+- Primera línea: qué cambia, en el idioma del proyecto, con los identificadores de las tareas tocadas. Con
+  `commitFormat: "conventional"` en `.claude/gw.json`, en la forma `tipo(id): …` (`feat`, `fix`, `docs`…), y con
+  `commitRefs: true`, un trailer `Refs: <id>` en el último párrafo, antes de `Siguiente:`; lo comprueba `commit-msg`.
 - Cuerpo: qué se hizo, qué queda de esa tarea si no está cerrada, y estado del check.
 - **Última línea: `Siguiente: <próximo paso concreto>`**, en el mismo bloque final que las líneas de atribución, si las hay.
 - Con `agentSignatures: false` en `.claude/gw.json`, el commit **no lleva firmas del agente** (ni `Co-Authored-By` de

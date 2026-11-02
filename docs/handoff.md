@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público): estaba en rojo por dos tests de interrupción con Python 3.12, SC2015 en `reviewed.sh` (shellcheck 0.9/0.10 de apt) y, en macOS, `test_apply` (disco sin mayúsculas) y el límite de 1 s de `test_review_before_main` (ahora 5 s sobre un comando trivial). Arreglado en `ccr-6dfbc880-ddr41g` (`66a4ecd`, CI verde en Ubuntu y macOS) y traído aquí. `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.4.4` |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | `0.5` «Base», en el orden de [`roadmap.md`](roadmap.md): hechos H14, D13, H12 y A7. A8 hecho (2026-11-02, trozos 1-6). A9 hecho (2026-11-02: `schemaVersion` 1, migración en memoria en `config.py` y escrita por `apply.py`/`gw-update`). Sigue D11/D12/D15/D16, E2/E3/D3, E1/E6 y lo de `pending.md` marcado `0.5`. Aparte: parche `0.4.4` (arreglos del CI, D6 y P5), otro día (usuario, 2026-11-01). R3: cuando el usuario dé acceso de lectura |
+| Siguiente paso | `0.5` «Base», en el orden de [`roadmap.md`](roadmap.md): hechos H14, D13, H12 y A7. A8 hecho (2026-11-02, trozos 1-6). A9 hecho (2026-11-02: `schemaVersion` 1, migración en memoria en `config.py` y escrita por `apply.py`/`gw-update`). D11/D12/D15/D16 hechos (2026-11-02; desde ahí, commits `tipo(id): …` con `Refs:`). Sigue E2/E3/D3, E1/E6 y lo de `pending.md` marcado `0.5`. Aparte: parche `0.4.4` (arreglos del CI, D6 y P5), otro día (usuario, 2026-11-01). R3: cuando el usuario dé acceso de lectura |
 
 ### Fases
 
@@ -49,6 +49,12 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Pendiente
 
+- **Leves de D11/D12/D15/D16 (2026-11-02, no bloquean):** `commit-message.py`: con `core.commentChar=auto` los
+  comentarios quedan como último párrafo y dan «no Refs trailer» (le pasaba ya al de firmas); `refsSources` no se
+  valida (`..`, rutas absolutas). `merge-branch.sh`: si git no ve el último párrafo como trailers, sus `Refs:` se
+  pierden sin aviso; `get taskId` no distingue «sin definir» de «ilegible». `version.py`: `BREAKING CHANGE:` en prosa
+  del último párrafo cuenta. Líneas de más de 120 caracteres en README y `contributing.md`. Revisiones en el
+  scratchpad de la sesión (no subidas).
 - **Leves de A9 (2026-11-02):** si la punta de la rama protegida trae un `schemaVersion` más nuevo, el `pre-push` avisa con el texto genérico «… is invalid; this push can fix it» (la política sigue fallando cerrada); el mensaje de `schemaVersion` no entero sugiere `config.py validate` sin `--root`.
 - **Test intermitente en el CI (2026-11-02):** `test_hooks.PrePushWorktree.test_interrupting_the_hook_removes_its_worktree` dio `TimeoutExpired` (30 s) en Ubuntu sobre `f047f1c` (macOS cancelado); el mismo código pasó en los CI siguientes (`aae2a96`, `8937979`). Va a los arreglos del CI del parche `0.4.4` (subir el límite o esperar a la señal, no a reloj).
 - **Para la retro de A8 (2026-11-02):** el subagente del trozo 3 dejó ~49 bucles `until grep -q '^EXIT'` colgados y dos checks completos a la vez (los tests de interrupción fallaron por carga); se cortaron a mano. Propuesta: el encargo de `gw-orchestrate-dealer` limita a una espera en segundo plano por orden larga y prohíbe `pkill -f` amplio.

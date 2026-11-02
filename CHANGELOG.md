@@ -1,7 +1,22 @@
 # Changelog
 
 Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) · Versiones: [SemVer](https://semver.org/).
-Cada entrada lleva `### ES` y `### EN`. La versión vive solo en `.claude-plugin/plugin.json`; el CI comprueba que
+Cada entrada lleva `### ES` y `- D11, D12, D15 (gancho `commit-msg`): claves nuevas `commitFormat` (`"free"` por defecto o `"conventional"`:
+  primera línea `tipo(ámbito)!: texto`, con `WIP: ` y las líneas que crea git aceptadas), `commitRefs` (trailer `Refs:`
+  obligatorio, con ids que abren una entrada en `refsSources`, leídos del índice) y `refsSources` (por defecto, `plan`
+  más `log`). Con `agentSignatures: false`, un trailer `Agent:` que nombre un modelo o proveedor se rechaza. Formato y
+  `Refs:` no se comprueban en fusiones, reverts, cherry-picks ni rebases. Las comprobaciones viven en
+  `scripts/commit-message.py`; `handoff.py` comparte con él la expresión de las entradas y el patrón de ids.
+- D11: `version.py --suggest` sugiere el salto desde la última etiqueta `vX.Y.Z` (`!` o `BREAKING CHANGE:` → mayor, o
+  menor en la `0.x`; `feat` → menor; `fix` y `perf` → parche) y avisa si `plugin.json` no casa; `--release` lo muestra
+  como aviso sin cambiar su salida.
+- D16: ramas de subagente `agent/<id>-<tema>` (en `gw-orchestrate-dealer`); `merge-branch.sh` reúne en un único
+  `Refs:` del mensaje de la fusión, antes de `Siguiente:`, los ids del nombre de la rama y de sus commits, falla
+  cerrado si `git interpret-trailers` falla y limpia también las ramas `agent/*`.
+- Este repo usa ya `commitFormat: "conventional"` y `commitRefs: true` (`taskId` `[A-H]\d+`, ids de
+  `docs/roadmap.md` y de la bitácora); `AGENTS.md` y las plantillas lo explican.
+
+### EN`. La versión vive solo en `.claude-plugin/plugin.json`; el CI comprueba que
 tiene entrada aquí.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [SemVer](https://semver.org/). Each
@@ -353,6 +368,20 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   of `gw.json` together with A8's path changes, `--check` counts it as pending and `--init` writes it; `doctor.py`
   warns (`config schema`) until it is written. The migration to 1 only adds the key. In the schema, the
   `templates/gw.json` template, this repo's `gw.json`, `gw-update`, `docs/es/config.md` and `docs/en/config.md`.
+- D11, D12, D15 (`commit-msg` hook): new keys `commitFormat` (`"free"` by default, or `"conventional"`: first line
+  `type(scope)!: text`, accepting `WIP: ` and the lines git writes), `commitRefs` (a required `Refs:` trailer whose ids
+  open an entry in `refsSources`, read from the index) and `refsSources` (default: `plan` plus `log`). With
+  `agentSignatures: false`, an `Agent:` trailer naming a model or vendor is rejected. Format and `Refs:` are not checked
+  on merges, reverts, cherry-picks or rebases. The checks live in `scripts/commit-message.py`; `handoff.py` shares the
+  entry expression and the id pattern with it.
+- D11: `version.py --suggest` suggests the bump since the last `vX.Y.Z` tag (`!` or `BREAKING CHANGE:` → major, or
+  minor in `0.x`; `feat` → minor; `fix` and `perf` → patch) and warns when `plugin.json` does not match; `--release`
+  shows it as a warning without changing its exit code.
+- D16: subagent branches `agent/<id>-<topic>` (in `gw-orchestrate-dealer`); `merge-branch.sh` gathers the ids of the
+  branch name and of its commits into a single `Refs:` of the merge message, before `Siguiente:`, fails closed when
+  `git interpret-trailers` fails and also cleans up `agent/*` branches.
+- This repo now uses `commitFormat: "conventional"` and `commitRefs: true` (`taskId` `[A-H]\d+`, ids from
+  `docs/roadmap.md` and the log); `AGENTS.md` and the templates explain it.
 
 ## [0.4.3] - 2026-10-27
 
