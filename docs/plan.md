@@ -316,13 +316,12 @@ Ejemplos que los pilotos tienen que cubrir: el portal (Node, subida directa, tre
   propio flujo).
 - **Fijar versión en un proyecto**: el marketplace se añade con `#vX.Y.Z` cuando un proyecto no quiera
   actualizaciones automáticas. Lo normal: seguir `main` y `/plugin update`.
-- **La `0.4` es la última menor `0.x`** (usuario, 2026-10-25): la versión estable antes de la `1.0`. Cada recogida
-  sigue haciéndose y reparte lo que trae: las correcciones de lo que ya hay van al siguiente parche (`0.4.x`); un
-  evolutivo o algo nuevo (skill, gancho, mejora) se apunta para la **`1.0.0`** y no entra en la `0.4`. La `1.0.0` y
-  siguientes son la línea que crece y el producto a largo plazo. Así no hay una cadena de evolutivos entre la `0.4` y
-  la `1.0`. Lo de la `1.0.0` se va llevando a su rama, `version/1.0.0` (desde 2026-10-26), y los parches de la
-  `0.4.x` se fusionan también en ella. Por decidir: si la `1.0.0` llega a `main` antes de cumplir la §10 (la copia
-  pública de la Fase 10 la sigue pidiendo).
+- **Solo la última menor publicada recibe parches** (usuario, 2026-11-01; sustituye a «la `0.4` es la última menor
+  `0.x`» del 2026-10-25). Cada recogida reparte lo que trae: las correcciones de lo que ya hay van al siguiente parche
+  de esa menor (hoy `0.4.x`); un evolutivo o algo nuevo (skill, gancho, mejora) va a la siguiente menor (hoy la
+  `0.5`, rama `version/0.5.0`), y los parches se fusionan también en ella. Se avanza por la `0.x` (`0.5` «Base»,
+  `0.6` «Medir»…): en `0.y.z` una menor puede romper. La `1.0` es el Management Center y llega cuando se cumple la
+  §10; el reparto por versiones está en [`roadmap.md`](roadmap.md) (diseño en `docs/diseno/H-roadmap.md`).
 
 ## 8. Instalación en un proyecto
 

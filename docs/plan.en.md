@@ -319,12 +319,12 @@ milestone roadmap, several accounts, PR) and the Tarkor installer (Rust/Tauri: t
   confirmation (the workflow itself).
 - **Pinning a version in a project**: add the marketplace with `#vX.Y.Z` when a project doesn't want automatic
   updates. Normal case: follow `main` and `/plugin update`.
-- **`0.4` is the last `0.x` minor** (user, 2026-10-25): the stable release before `1.0`. Every harvest still runs and
-  sorts what it brings: fixes to what already exists go to the next patch (`0.4.x`); a new feature or improvement
-  (skill, hook, enhancement) is noted for **`1.0.0`** and does not go into `0.4`. `1.0.0` and later are the line that
-  grows and the long-term product. So there is no chain of new features between `0.4` and `1.0`. What belongs to `1.0.0` goes to its branch,
-  `version/1.0.0` (since 2026-10-26), and `0.4.x` patches are merged into it too. To be
-  decided: whether `1.0.0` reaches `main` before §10 is met (Phase 10's public copy still requires it).
+- **Only the latest published minor gets patches** (user, 2026-11-01; replaces "`0.4` is the last `0.x` minor" of
+  2026-10-25). Every harvest sorts what it brings: fixes to what already exists go to that minor's next patch (today
+  `0.4.x`); a new feature or improvement (skill, hook, enhancement) goes to the next minor (today `0.5`, branch
+  `version/0.5.0`), and the patches are merged into it too. Work moves through `0.x` (`0.5` "Base", `0.6`
+  "Measure"…): in `0.y.z` a minor may break. `1.0` is the Management Center and comes when §10 is met; the split by
+  version is in [`roadmap.en.md`](roadmap.en.md) (design in `docs/diseno/H-roadmap.md`).
 
 ## 8. Installing in a project
 

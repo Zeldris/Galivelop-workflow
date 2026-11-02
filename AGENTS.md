@@ -81,8 +81,9 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   proyectos que usan el flujo, y sus propuestas se presentan al usuario. `python3 scripts/version.py --release` (lo
   corre el `pre-push` de una subida a `main`) exige un `docs/propuestas/*.md` que empiece por `# Harvest` añadido
   desde la última etiqueta `vX.Y.Z`; una recogida sin nada nuevo también deja su archivo.
-- **La `0.4` solo recibe correcciones** (usuario, 2026-10-25, plan §7): de una recogida, los arreglos van a un parche
-  `0.4.x` y los evolutivos se apuntan para la `1.0.0` (nunca una `0.5`).
+- **Solo la última menor publicada recibe parches** (usuario, 2026-11-01, plan §7; hoy la `0.4`): de una recogida,
+  los arreglos van a su siguiente parche y los evolutivos, a la siguiente menor (hoy la `0.5`, rama `version/0.5.0`).
+  El reparto por versiones está en `docs/roadmap.md`; la `1.0` es el Management Center.
 
 ## Reglas del proyecto
 
