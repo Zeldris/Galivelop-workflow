@@ -955,7 +955,7 @@ class MergeBranch(Base):
         self.p.script("merge-branch.sh", "agent/T7-y", "Merge two", "--reviewed")
         self.assertEqual(self.merge_trailers(), ["Refs: T7"])
 
-    def test_every_old_refs_line_goes_and_the_new_one_leads_so_siguiente_stays_last(self):
+    def test_every_old_refs_line_goes_and_the_new_one_leads_so_the_next_step_line_stays_last(self):
         self.agent(name="agent/D16-x", message="work\n\nRefs: D12")
         msg = "Merge agent\n\nRefs: D1\nRefs: D2\nSiguiente: lo que sea"
         code, out = self.p.script("merge-branch.sh", "agent/D16-x", msg, "--reviewed")
