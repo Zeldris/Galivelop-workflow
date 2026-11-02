@@ -17,7 +17,7 @@ python3 .claude/gw/scripts/doctor.py
 | «No pasa nada» con salida 0 | Un gancho que sale con 0 y sin texto no se ve ni aprueba ni bloquea | Para bloquear, salida 2 con el motivo en `stderr` (como hacen los del flujo); para depurar, escribe a un log |
 | Un gancho no bloquea | Está en `PostToolUse` o `SessionStart`, que no pueden bloquear | Ponlo en `PreToolUse` |
 | En la nube no corren los ganchos del proyecto | La sesión tiene **varios repos**: no carga los ganchos de `.claude/settings.json` de ninguno | Una sesión, un repo; si hay que mezclar, ejecuta a mano lo que haría el gancho (ver más abajo) |
-| En la nube no aparece el plugin | La nube ignora `extraKnownMarketplaces` y `enabledPlugins` del repo | Por eso el flujo se **copia** en el repo (`aplicar.py`), sin depender del plugin |
+| En la nube no aparece el plugin | La nube ignora `extraKnownMarketplaces` y `enabledPlugins` del repo | Por eso el flujo se **copia** en el repo (`apply.py`), sin depender del plugin |
 | Marketplace privado falla en local | Sin credencial de git no interactiva | `gh auth login && gh auth setup-git`, o SSH con agente |
 | El script no encuentra el repo | La nube arranca en `/home/user`; ni `$CLAUDE_PROJECT_DIR` ni el directorio actual son la raíz | Los scripts del flujo ya sacan la raíz de su ruta o de `git rev-parse --show-toplevel`; los tuyos, también |
 
@@ -40,9 +40,9 @@ python3 .claude/gw/scripts/doctor.py
 | `install command` (WARN) | Lo mismo para `install` | Igual |
 | `ci` (WARN) | No hay ningún workflow en `.github/workflows` | `mkdir -p .github/workflows && cp <flujo>/templates/github/comprobar.yml .github/workflows/` |
 | `settings` (FAIL) | Falta `.claude/settings.json` o es JSON inválido | `/gw-update`; corrígelo y comprueba con `python3 -m json.tool` |
-| `settings SessionStart` (FAIL) | Una entrada sin `matcher` corre en cada arranque, reanudación, `clear` y `compact`; o una con `compact` ejecuta algo que no es `recuperar.py --estado` | Dale `"matcher": "startup\|resume\|clear"`; mueve esa orden a una entrada sin `compact` |
+| `settings SessionStart` (FAIL) | Una entrada sin `matcher` corre en cada arranque, reanudación, `clear` y `compact`; o una con `compact` ejecuta algo que no es `recover.py --estado` | Dale `"matcher": "startup\|resume\|clear"`; mueve esa orden a una entrada sin `compact` |
 | `settings <evento>` (FAIL) | Una orden de gancho apunta a un archivo que no existe | `/gw-update` restaura los scripts; o corrige la orden |
-| `settings PreToolUse` (FAIL) | Falta el gancho que guarda crear y fusionar PR (`revision-antes-de-main.sh`) | Añádelo desde `templates/claude/settings.json` (`/gw-update`) |
+| `settings PreToolUse` (FAIL) | Falta el gancho que guarda crear y fusionar PR (`review-before-main.sh`) | Añádelo desde `templates/claude/settings.json` (`/gw-update`) |
 | `agents` (FAIL) | No hay `AGENTS.md` ni `CLAUDE.md` | `/gw-init` |
 | `agents` (WARN) | Ninguno menciona `gw-orchestrate-dealer`: la sesión podría no repartir a subagentes | Añade a `AGENTS.md`: «El trabajo de más de un paso se reparte a subagentes (skill `gw-orchestrate-dealer`); la sesión principal planea, decide y revisa.» |
 | `skills` (WARN) | Skills copiadas con versión distinta de la de `gw.json` | `/gw-update` |
@@ -67,22 +67,22 @@ una hora o con su pid muerto; se puede borrar a mano.
 |---|---|---|
 | `check failed on <sha>: '<orden>'` | Falla una orden de `check` **en el commit que se sube** (no en tu copia de trabajo); el log completo está en la ruta que imprime | Reprodúcelo con la misma orden, arregla, commit y push; `--no-verify` solo para un commit `WIP:` en rojo |
 | `check already green on this tree (<árbol>) with the same commands <n> min ago; skipping it` | No es un fallo: el mismo árbol, las mismas órdenes y el mismo `checkWrapper` pasaron el `check` hace menos de 24 h (lo apuntó `check.sh` o una subida anterior) | Para correrlo igualmente: `GW_CHECK_CACHE=0 git push` |
-| `check: all green (not recorded…)` / `…the work tree changed during the run…` / `check-verde: …` | `check.sh` pasó el `check` pero no lo apuntó (caché apagada o no disponible, árbol cambiado durante la ejecución, `skip-worktree`/`assume-unchanged`, submódulo con cambios, sin permiso de escritura en el directorio de git): la subida correrá el `check` | Lo que imprime; con el árbol quieto, `bash .claude/gw/scripts/check.sh` otra vez |
+| `check: all green (not recorded…)` / `…the work tree changed during the run…` / `check-green: …` | `check.sh` pasó el `check` pero no lo apuntó (caché apagada o no disponible, árbol cambiado durante la ejecución, `skip-worktree`/`assume-unchanged`, submódulo con cambios, sin permiso de escritura en el directorio de git): la subida correrá el `check` | Lo que imprime; con el árbol quieto, `bash .claude/gw/scripts/check.sh` otra vez |
 | `the check left changes in the work tree, so it is not recorded` | El `check` escribió archivos en la copia de trabajo: lo que vio no es el árbol que se sube | `git status`; haz que el `check` no escriba en el árbol o ignora esos archivos |
 | `the push adds *.rej / *.orig leftovers` | Restos de un parche o una fusión | `git rm -- <archivo> && git commit` |
 | `the push has conflict markers` | Quedaron `<<<<<<<` o `>>>>>>>` en lo que se sube | Resuelve y `git commit -a` |
-| `the pushed commit has no review mark` / `the review mark … is not an ancestor` / `code changed after the review mark` | Subida directa a la rama protegida con código sin revisar | `/code-review` del diff contra `origin/<rama protegida>`, sube los arreglos, luego `bash .claude/gw/scripts/revisado.sh && git push` |
+| `the pushed commit has no review mark` / `the review mark … is not an ancestor` / `code changed after the review mark` | Subida directa a la rama protegida con código sin revisar | `/code-review` del diff contra `origin/<rama protegida>`, sube los arreglos, luego `bash .claude/gw/scripts/reviewed.sh && git push` |
 | `…this clone is shallow…` / `is not a commit in this clone` | Clon superficial (típico en la nube): la marca o la rama remota quedan fuera de la historia | `git fetch --deepen=200 origin <rama>` y repite |
 | `the remote <rama> is at <sha>, which this clone does not have` | Falta el último commit de la rama protegida | La orden de `git fetch` que imprime |
 | `cannot read '<clave>' from .claude/gw.json` | Config inválida | `python3 .claude/gw/scripts/config.py validate` |
 | `the workflow scripts are missing` | Falta `.claude/gw/scripts/` | `/gw-update` |
-| `prepush-ramas.sh refused the push` | Con `logRows`: una fila de la bitácora ajena, demasiado larga, o tareas cerradas sin pasar a «Hecho» | Lo que imprime; una fila compartida: `BITACORA_COMPARTIDA=1 git push` |
-| `bitacora: <ID> is a new task on this branch` / `the merge keeps two different tasks with the id <ID>` | Con `logRows` y `plan`: tu rama y otra (o `main`) dieron de alta el mismo id para tareas distintas | Renumera la tuya con el id libre que propone, en el plan y donde se nombre, y haz commit; si es la misma tarea, pon el mismo título en las dos |
-| `bitacora: <ID> is closed in the plan` (en el `pre-commit`) | Con `logRows` y `plan`: el commit cierra una tarea que no consta en «Hecho» | Táchala en «Hecho» de la bitácora, `git add` de la bitácora y vuelve a hacer el commit |
+| `prepush-branches.sh refused the push` | Con `logRows`: una fila de la bitácora ajena, demasiado larga, o tareas cerradas sin pasar a «Hecho» | Lo que imprime; una fila compartida: `BITACORA_COMPARTIDA=1 git push` |
+| `handoff: <ID> is a new task on this branch` / `the merge keeps two different tasks with the id <ID>` | Con `logRows` y `plan`: tu rama y otra (o `main`) dieron de alta el mismo id para tareas distintas | Renumera la tuya con el id libre que propone, en el plan y donde se nombre, y haz commit; si es la misma tarea, pon el mismo título en las dos |
+| `handoff: <ID> is closed in the plan` (en el `pre-commit`) | Con `logRows` y `plan`: el commit cierra una tarea que no consta en «Hecho» | Táchala en «Hecho» de la bitácora, `git add` de la bitácora y vuelve a hacer el commit |
 | `the related tests failed` | Fallan los `relatedTests` | Arréglalos o ajusta la clave |
 | El `pre-push` no se ejecuta | `core.hooksPath` sin poner o de otro gestor; sin bit de ejecución (Windows) | `git config core.hooksPath .githooks`; `git update-index --chmod=+x .githooks/pre-push` |
 
-## Crear o fusionar un PR (`revision-antes-de-main.sh`)
+## Crear o fusionar un PR (`review-before-main.sh`)
 
 Es el gancho `PreToolUse` que guarda `create_pull_request`, `merge_pull_request` y `gh pr create|merge`. Falla
 **cerrado**: si no puede comprobar, bloquea y dice por qué. Solo mira las llamadas a las herramientas de PR y las órdenes
@@ -90,21 +90,21 @@ con la palabra `gh` seguida de `pr` o `pulls` («github» y «projects» no cuen
 
 | Bloqueo | Causa | Arreglo |
 |---|---|---|
-| `Blocked: … has no review mark` / `… not an ancestor` / `code changed after the review mark` | El PR trae código que no cubre la marca de revisión del **mismo commit** | `/code-review` del diff, sube arreglos, `bash .claude/gw/scripts/revisado.sh`, `git push` |
+| `Blocked: … has no review mark` / `… not an ancestor` / `code changed after the review mark` | El PR trae código que no cubre la marca de revisión del **mismo commit** | `/code-review` del diff, sube arreglos, `bash .claude/gw/scripts/reviewed.sh`, `git push` |
 | `Blocked: CI of PR #N is not green` / `could not verify CI` | El CI no pasó o no se pudo leer | Espera o arregla el CI; autenticación: `gh auth login` o `export GITHUB_TOKEN=…` |
 | `Blocked: no CI was reported…` / `GitHub did not start the CI…`, `and <ciLocalLog> on the PR head has no green local run of this code` | El CI del PR no arrancó (sin cuota de Actions, sin runners) y el registro de CI local no tiene una línea verde válida: hecha con el árbol limpio, de un antecesor de la cabeza y solo con contenido detrás | Dilo a la persona; con su confirmación («comprobado solo en local»): `python3 .claude/gw/scripts/ci-local.py --apuntar`, commit y push del registro, y repite. Un CI que arrancó y falló no se sustituye así |
 | `cannot read PR #N` / `cannot query origin` | Sin red o sin credencial | Autentícate y repite; se bloquea porque no pudo comprobar |
 | `the PR head … is not in this clone` | Clon superficial o rama sin traer | `git fetch --deepen=200 origin <rama>` |
 | `no open PR for <rama>` / `without a PR number` | Fusionar sin número ni PR abierto de la rama | Pasa el número: `gh pr merge <número>` |
 | `PR #N of <repo> is closed` / `already merged` | El PR ya no está abierto: no hay nada que guardar | `gh pr view <número> -R <repo>`; si debe seguir, reábrelo |
-| `requireRetro is on and the branch adds no retro-*.md…` (de `revisado.sh`) | Con `requireRetro`, falta una retro nueva en la rama cuyo párrafo `**Estado:**` (hasta la primera línea en blanco) tenga una palabra entera de `aplicad*`, `rechazad*`, `aplazad*`, `decidid*`, `aprobad*` (o `applied`, `rejected`, `deferred`, `decided`, `approved`) y ningún `pendiente`/`pending`/`sin decidir`/`aún no`/`not yet` | `/retro`, presenta, aplica lo aprobado, anota el estado con esa forma y repite `revisado.sh` |
+| `requireRetro is on and the branch adds no retro-*.md…` (de `reviewed.sh`) | Con `requireRetro`, falta una retro nueva en la rama cuyo párrafo `**Estado:**` (hasta la primera línea en blanco) tenga una palabra entera de `aplicad*`, `rechazad*`, `aplazad*`, `decidid*`, `aprobad*` (o `applied`, `rejected`, `deferred`, `decided`, `approved`) y ningún `pendiente`/`pending`/`sin decidir`/`aún no`/`not yet` | `/retro`, presenta, aplica lo aprobado, anota el estado con esa forma y repite `reviewed.sh` |
 | `the message carries an agent signature, which this project forbids…` (de `commit-msg`) | Con `agentSignatures: false`, el mensaje del commit (o de un merge) trae un `Co-Authored-By:` de un modelo Claude o con `noreply@anthropic.com`, `Claude-Session:`, o una línea que empieza por «Generated with Claude Code» o por un enlace `claude.ai/code/session`; sale la línea culpable. El commit no se crea | Quita esa línea y repite: `git commit -e -F <archivo del mensaje>` (la orden sale en el mensaje). Si el proyecto sí admite firmas: `"agentSignatures": true` en `.claude/gw.json` |
-| `revisado: the tree has uncommitted changes to tracked files…` / `HEAD is not what origin/<rama> has` / `the branch does not include the latest origin/<protegida>` | La marca solo se escribe sobre lo ya subido y al día; los archivos sin seguimiento no cuentan, los modificados sí | Commit y push; `git merge origin/<protegida>`; revisa de nuevo y marca. Si un gancho `commit-msg` exige la línea `Siguiente:`: `bash .claude/gw/scripts/revisado.sh --footer "Siguiente: …"` |
-| `es-codigo: content regex "…" is invalid` / `the classification failed (exit N), not because of a content regex` | Una regex de `content` no compila (sale el motivo), o falló otra cosa (python3, tubería cerrada) | Corrige la regex: `python3 .claude/gw/scripts/config.py validate`; en el otro caso, `python3 --version` y repite |
+| `revisado: the tree has uncommitted changes to tracked files…` / `HEAD is not what origin/<rama> has` / `the branch does not include the latest origin/<protegida>` | La marca solo se escribe sobre lo ya subido y al día; los archivos sin seguimiento no cuentan, los modificados sí | Commit y push; `git merge origin/<protegida>`; revisa de nuevo y marca. Si un gancho `commit-msg` exige la línea `Siguiente:`: `bash .claude/gw/scripts/reviewed.sh --footer "Siguiente: …"` |
+| `is-code: content regex "…" is invalid` / `the classification failed (exit N), not because of a content regex` | Una regex de `content` no compila (sale el motivo), o falló otra cosa (python3, tubería cerrada) | Corrige la regex: `python3 .claude/gw/scripts/config.py validate`; en el otro caso, `python3 --version` y repite |
 | `python3 is missing, so this PR call cannot be checked` / `the check could not run… Check python3 3.8+` | Falta `python3` (o falló) y la orden es crear o fusionar un PR; las demás órdenes, `gh pr view` incluida, pasan | Instala Python 3.8 o superior: `python3 --version` |
 
 **Sesión de varios repos (nube).** No carga los ganchos del proyecto. Antes de crear o fusionar un PR a la rama
-protegida, comprueba a mano lo que ese gancho comprobaría: la marca de `revisado.sh` del mismo commit y el CI en
+protegida, comprueba a mano lo que ese gancho comprobaría: la marca de `reviewed.sh` del mismo commit y el CI en
 verde, y `git config core.hooksPath .githooks` antes del primer commit.
 
 ## Sesión abierta fuera del repo
@@ -122,7 +122,7 @@ gasto: al cerrar cada fase, bitácora al día y `/clear`.
 
 **En la nube** la sesión siempre arranca en `/home/user`, así que reabrir desde el repo no es posible: el tope de
 compactación va en las variables del entorno de la nube (`CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`; `doctor.py` avisa
-si falta), y tras una compactación se corre a mano `python3 .claude/gw/scripts/recuperar.py --estado`.
+si falta), y tras una compactación se corre a mano `python3 .claude/gw/scripts/recover.py --estado`.
 
 ## Skills con el mismo nombre en varios repos de la sesión
 
@@ -139,10 +139,10 @@ y no existir).
 
 El clasificador del modo automático puede pedir permiso, o rechazar, al editar `.claude/settings.json`,
 `.claude/gw/scripts/` y `.githooks/`: justo lo que escriben `/gw-init` y `/gw-update`, así que el fallo sale a mitad de la
-aplicación. `aplicar.py` imprime un aviso («Claude Code's auto mode may ask for permission…»).
+aplicación. `apply.py` imprime un aviso («Claude Code's auto mode may ask for permission…»).
 
-- **Pide permiso a la persona antes** de ejecutar `aplicar.py`, o que la persona lo ejecute en su terminal:
-  `python3 <flujo>/scripts/aplicar.py <proyecto>`.
+- **Pide permiso a la persona antes** de ejecutar `apply.py`, o que la persona lo ejecute en su terminal:
+  `python3 <flujo>/scripts/apply.py <proyecto>`.
 - Tras una llamada rechazada o interrumpida, `git status` y `git diff` antes de repetirla: puede haber escrito la mitad.
 - Es idempotente: repetirlo completa lo que falte.
 
@@ -156,7 +156,7 @@ aplicación. `aplicar.py` imprime un aviso («Claude Code's auto mode may ask fo
 | Fallos raros en Windows | Finales de línea CRLF en scripts; enlaces simbólicos | `.gitattributes` con `*.sh text eol=lf` (y `*.py`, `.githooks/*`); usa **Git Bash o WSL**, no `cmd` ni PowerShell; sin enlaces simbólicos |
 | `CLAUDE.md` existe y `AGENTS.md` no se lee | Claude solo lee `AGENTS.md` si no hay `CLAUDE.md` | `@AGENTS.md` en `CLAUDE.md` (lo hace la plantilla) |
 | Fallan las órdenes de `install` al empezar | `session-start.sh` las corre solo en la nube y si cambió el lockfile | El aviso da el log y la orden para correrlas a mano |
-| `aplicar.py --check` sale 1 | La copia difiere del flujo, hay un `*.gw-nuevo` o un archivo que el flujo ya no tiene | Mira lo impreso; `/gw-update`; resuelve y borra los `*.gw-nuevo` |
+| `apply.py --check` sale 1 | La copia difiere del flujo, hay un `*.gw-nuevo` o un archivo que el flujo ya no tiene | Mira lo impreso; `/gw-update`; resuelve y borra los `*.gw-nuevo` |
 
 Si un fallo no está aquí, anótalo: `/retro` lo recoge en su sección «Para Galivelop-workflow» y llega a este archivo
 ([patrones](patrones.md#recoger-mejoras-de-vuelta)).

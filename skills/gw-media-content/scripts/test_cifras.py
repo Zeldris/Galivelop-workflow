@@ -388,7 +388,7 @@ class Cifras(unittest.TestCase):
 
     def test_log_path_through_the_config_reader_when_the_project_has_one(self):
         self.assertNotIn("bitacora", self.cifras()["cifras"])
-        flujo = AQUI.parent.parent.parent  # this repo; the project gets the installed layout of aplicar.py
+        flujo = AQUI.parent.parent.parent  # this repo; the project gets the installed layout of apply.py
         (self.repo / ".claude/gw/scripts").mkdir(parents=True)
         (self.repo / ".claude/gw/schema").mkdir()
         (self.repo / ".claude/gw/scripts/config.py").write_text((flujo / "scripts/config.py").read_text(encoding="utf-8"))

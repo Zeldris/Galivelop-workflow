@@ -9,7 +9,7 @@
   "pushToProtected": "direct",
   "install": [],
   "setup": [],
-  "check": ["make check", "python3 .claude/gw/scripts/mapa-agente.py"],
+  "check": ["make check", "python3 .claude/gw/scripts/agent-map.py"],
   "checkWrapper": "",
   "worktreeLinks": ["node_modules", ".venv"],
   "worktreeDir": "",

@@ -50,7 +50,7 @@ En este orden, porque cada paso usa el anterior.
 | D11 | Conventional Commits en la primera línea (`fix(B1): …`); `version.py` sugiere el salto | pendiente |
 | D12 | Trailer `Refs: <id>` obligatorio en `commit-msg` (salvo merges), validado contra este archivo | pendiente |
 | D15 | Trailer `Agent:` opcional, sin nombre de modelo | pendiente |
-| D16 | Ramas de subagente `agent/<id>-…`; `fusionar.sh` copia `Refs:` | pendiente |
+| D16 | Ramas de subagente `agent/<id>-…`; `merge-branch.sh` copia `Refs:` | pendiente |
 | E2 | Check de datos privados en el `pre-push` (lista en `.claude/gw.local.json`); el CI, solo claves y correos | pendiente |
 | E3 | Recogidas publicadas anonimizadas (`private-project-1`) | pendiente |
 | D3 | Repaso de las recogidas ya publicadas con el check de E2 | pendiente |

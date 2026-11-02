@@ -50,7 +50,7 @@ do the case without it and say so.
 - **Closing a task or PR:** with everything pushed and the log up to date, ask the user for a `/clear` in one line,
   saying why (a long context is almost all the spend; the log is enough to resume).
 - **Compaction budget:** at the start of a task, estimate how many compactions it should need (0–5) and write it in
-  the log next to the count the session already has (`recuperar.py --estado` prints it). Going over the budget is the
+  the log next to the count the session already has (`recover.py --estado` prints it). Going over the budget is the
   signal to deal more work out with `gw-orchestrate-dealer`, not to keep going.
 - **Design references:** if `.claude/gw.json` lists `designReferences`, design rows contrast each proposal with them
   and name the source (see `grilling`).

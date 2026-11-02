@@ -102,6 +102,7 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `0.x`: `medir.py` de `gw-opt-ai` sigue leyendo `.claude/gw/opt-ai.md` y el bloque ```` ```opt-ai ````, y `doctor.py`
   acepta los dos nombres (`orchestrate-dealer` en `AGENTS.md`, `.claude/skills/selector/` en la comprobación de git).
   `gw-update` aún no renombra ni quita las carpetas antiguas de los proyectos (trozo 4).
+- Scripts en inglés (A8, trozo 2; `scripts/` y `.claude/gw/scripts/`; subcomandos y opciones sin cambio): antes-de-parar.py→before-stop.py, bitacora.py→handoff.py, check-verde.sh→check-green.sh, enlaces-md.py→md-links.py, es-codigo.sh→is-code.sh, fusionar.sh→merge-branch.sh, guardia-config.py→config-guard.py, mapa-agente.py→agent-map.py, prepush-ramas.sh→prepush-branches.sh, recoger.py→harvest.py, recuperar.py→recover.py, registro_sesion.py→session_log.py, revisado.sh→reviewed.sh, revision-antes-de-main.sh→review-before-main.sh, rojo-sin-arreglo.sh→red-without-fix.sh, tests-relacionados.sh→related-tests.sh, tope-subagentes.py→subagent-cap.py, aplicar.py→apply.py. Los tests que llevaban el nombre del script se renombran igual (`test_aplicar.py` → `test_apply.py`, etc.). `gw-update` aún no migra los ganchos antiguos de los proyectos (trozo 4).
 
 ### EN
 
@@ -186,6 +187,7 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `gw-scout-updates.md`) and templates. Third-party skills (mattpocock) keep their names. Compatibility in `0.x`:
   the `gw-opt-ai` `medir.py` still reads `.claude/gw/opt-ai.md` and the ```` ```opt-ai ```` block, and `doctor.py`
   accepts both names (`orchestrate-dealer` in `AGENTS.md`, `.claude/skills/selector/` in the git check).
+- Scripts in English (A8, chunk 2; `scripts/` and `.claude/gw/scripts/`; subcommands and flags unchanged): antes-de-parar.py→before-stop.py, bitacora.py→handoff.py, check-verde.sh→check-green.sh, enlaces-md.py→md-links.py, es-codigo.sh→is-code.sh, fusionar.sh→merge-branch.sh, guardia-config.py→config-guard.py, mapa-agente.py→agent-map.py, prepush-ramas.sh→prepush-branches.sh, recoger.py→harvest.py, recuperar.py→recover.py, registro_sesion.py→session_log.py, revisado.sh→reviewed.sh, revision-antes-de-main.sh→review-before-main.sh, rojo-sin-arreglo.sh→red-without-fix.sh, tests-relacionados.sh→related-tests.sh, tope-subagentes.py→subagent-cap.py, aplicar.py→apply.py. Tests named after a script are renamed the same way (`test_aplicar.py` → `test_apply.py`, etc.). `gw-update` does not yet migrate projects' old hooks (chunk 4).
   `gw-update` does not yet rename or remove the old folders in projects (chunk 4).
 
 ## [0.4.3] - 2026-10-27

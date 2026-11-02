@@ -47,27 +47,27 @@ la vez.
   (p. ej. añadir tu rama a «Ramas de trabajo»), `BITACORA_COMPARTIDA=1 git push`.
 - **Merge, nunca rebase**, al empezar cada tarea (`git fetch origin <protegida>` y `git merge origin/<protegida>`):
   las ramas están subidas. Lo suyo vuelve a la rama principal por `git merge` antes del PR.
-- **Al parar**, el gancho `Stop` (`antes-de-parar.py`) no deja acabar con commits sin subir ni con cambios sin la
+- **Al parar**, el gancho `Stop` (`before-stop.py`) no deja acabar con commits sin subir ni con cambios sin la
   bitácora; si no puede comprobarlo (sin git, sin config), avisa en vez de bloquear. Mientras un `pre-push` corre
   (su marca `gw-push-en-curso`, en el directorio común de git, con su pid vivo, de menos de una hora y el sha del
   `HEAD` actual entre los shas locales que lista) tampoco bloquea: avisa de que se está subiendo este commit y de que
   no se suba otra vez (dos pushes a la vez se pisan); espera y mira `git status -sb`. Una marca de otra rama o de un
   `HEAD` anterior (commits hechos después de empezar el push), con pid muerto, vieja o ilegible bloquea como siempre.
   No cuenta como cambio sin commitear lo no versionado bajo `.claude/worktrees/` (los worktrees aislados de Claude Code).
-- **Al tocar la configuración del flujo**, el gancho `PreToolUse` `guardia-config.py` pide permiso a la persona antes de
+- **Al tocar la configuración del flujo**, el gancho `PreToolUse` `config-guard.py` pide permiso a la persona antes de
   editar `.claude/settings.json`, `.claude/gw.json`, `.githooks/` o `.claude/gw/scripts/` (con `Edit`, `Write` o una
   orden de `Bash` que escriba ahí); si no entiende la entrada, también pregunta. Para regenerar la copia aplicada:
-  `python3 scripts/aplicar.py .`.
-- **Al repartir a subagentes**, el gancho `PreToolUse` `tope-subagentes.py` cuenta los `Agent`/`Task` de la sesión y,
+  `python3 scripts/apply.py .`.
+- **Al repartir a subagentes**, el gancho `PreToolUse` `subagent-cap.py` cuenta los `Agent`/`Task` de la sesión y,
   al llegar a `subagentCap` (30 por defecto) y cada 10 después, pide a la persona que compruebe que no están en bucle
   (`gw-opt-tokens`); nunca bloquea.
 - **Al empezar**, la sesión nueva lee la bitácora y comprueba que el último commit coincide con lo que dice; no
-  pregunta por dónde iba. Tras un `/clear` o una compactación, `recuperar.py --estado` se lo recuerda.
-- Al cerrar la rama, `bitacora.py close-row <rama>` deja su fila como «fusionada, rama terminada» para que la rama
+  pregunta por dónde iba. Tras un `/clear` o una compactación, `recover.py --estado` se lo recuerda.
+- Al cerrar la rama, `handoff.py close-row <rama>` deja su fila como «fusionada, rama terminada» para que la rama
   protegida no herede un «Siguiente» viejo.
-- **Bitácora corta, con o sin `logRows`:** `bitacora.py check --strict` falla si una celda de la tabla de estado pasa de
+- **Bitácora corta, con o sin `logRows`:** `handoff.py check --strict` falla si una celda de la tabla de estado pasa de
   800 caracteres o si «Hecho (5 últimas)» tiene más de 5 elementos, mal numerados o pegados en una línea (sin
-  `--strict` solo avisa con `WARNING:`). `bitacora.py done "texto"` añade el elemento `1.` con la fecha, renumera y
+  `--strict` solo avisa con `WARNING:`). `handoff.py done "texto"` añade el elemento `1.` con la fecha, renumera y
   quita los que sobran, sin tocar el resto del archivo.
 
 ## Sesión local que no puede crear PRs
@@ -79,7 +79,7 @@ reparte así:
    la descripción del PR con la skill `pr` en `docs/registros/pr/<rama>.md`.
 2. En su fila de la bitácora deja **«PR listo»** con el título, y lo sube **todo en el último commit** de la rama.
 3. Una **sesión en la nube** (con herramienta de GitHub) comprueba que nada va detrás de ese commit (`git log
-   <commit>..origin/<rama>` vacío), corre `bash .claude/gw/scripts/revisado.sh` para dejar la marca del mismo commit,
+   <commit>..origin/<rama>` vacío), corre `bash .claude/gw/scripts/reviewed.sh` para dejar la marca del mismo commit,
    crea el PR con esa descripción y sigue con el CI y, cuando la persona lo confirme, la fusión.
 
 El gancho de PR bloquea crear o fusionar sin la marca del mismo commit, de modo que un descuido (algo subido después
@@ -129,7 +129,7 @@ El flujo aprende de los proyectos que lo usan. Hay dos mitades:
   incidencia o PR en este repo, o la deja en el archivo de la retro bajo un encabezado
   `## Para Galivelop-workflow` (o `## For Galivelop-workflow`).
 - **Tira el flujo.** Desde este repo, la skill `gw-harvest` recorre los proyectos conectados que tengan
-  `.claude/gw.json`. La parte mecánica la hace `python3 scripts/recoger.py <proyecto>...` (copias del flujo editadas,
+  `.claude/gw.json`. La parte mecánica la hace `python3 scripts/harvest.py <proyecto>...` (copias del flujo editadas,
   skills nuevas, secciones de retros, commits desde la última recogida); el agente solo decide qué es general y escribe
   `docs/propuestas/AAAA-MM-DD-<repo>.md`. **Nunca aplica nada sin confirmación**: lo aprobado entra como un cambio
   normal con entrada en el CHANGELOG y nueva versión ([contribuir](contribuir.md)).

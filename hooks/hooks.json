@@ -15,7 +15,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/recuperar.py --estado"
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/recover.py --estado"
           }
         ]
       }
@@ -26,7 +26,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/revision-antes-de-main.sh"
+            "command": "\"${CLAUDE_PLUGIN_ROOT}\"/scripts/review-before-main.sh"
           }
         ]
       },
@@ -35,7 +35,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/guardia-config.py"
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/config-guard.py"
           }
         ]
       },
@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/tope-subagentes.py"
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/subagent-cap.py"
           }
         ]
       }
@@ -54,7 +54,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/antes-de-parar.py"
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/before-stop.py"
           }
         ]
       }

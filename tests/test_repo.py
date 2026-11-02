@@ -73,7 +73,7 @@ class Manifests(unittest.TestCase):
 
 class SchemaVersion(unittest.TestCase):
     def test_schema_carries_the_workflow_version(self):
-        # aplicar.py treats the copied schema as workflow-owned through this marker (header_version).
+        # apply.py treats the copied schema as workflow-owned through this marker (header_version).
         version = load(".claude-plugin/plugin.json")["version"]
         self.assertEqual(load("schema/gw.schema.json").get("$comment"), f"galivelop-workflow v{version}",
                          "set $comment in schema/gw.schema.json to 'galivelop-workflow v<version>'")

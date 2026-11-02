@@ -47,7 +47,7 @@ same time.
   branch to "Working branches"), `BITACORA_COMPARTIDA=1 git push`.
 - **Merge, never rebase**, at the start of every task (`git fetch origin <protected>` and `git merge
   origin/<protected>`): branches are pushed. Their work returns to the main branch by `git merge` before the PR.
-- **On stop**, the `Stop` hook (`antes-de-parar.py`) does not let a session finish with unpushed commits or with
+- **On stop**, the `Stop` hook (`before-stop.py`) does not let a session finish with unpushed commits or with
   changes the log does not mention; if it cannot check (no git, no config), it warns instead of blocking. While a
   `pre-push` is running (its `gw-push-en-curso` marker in git's common dir, with a live pid, under an hour old and
   the current `HEAD` sha among the local shas it lists) it does not block either: it warns that this commit is being
@@ -55,20 +55,20 @@ same time.
   branch or of an older `HEAD` (commits made after the push started), with a dead pid, too old or unreadable blocks
   as usual. Untracked files
   under `.claude/worktrees/` (Claude Code's isolated worktrees) do not count as uncommitted changes.
-- **On touching the workflow's configuration**, the `PreToolUse` hook `guardia-config.py` asks the person before
+- **On touching the workflow's configuration**, the `PreToolUse` hook `config-guard.py` asks the person before
   `.claude/settings.json`, `.claude/gw.json`, `.githooks/` or `.claude/gw/scripts/` are edited (with `Edit`, `Write` or
   a `Bash` command that writes there); if it cannot read the event it asks too. To regenerate the applied copy:
-  `python3 scripts/aplicar.py .`.
-- **When dealing work to subagents**, the `PreToolUse` hook `tope-subagentes.py` counts the session's `Agent`/`Task`
+  `python3 scripts/apply.py .`.
+- **When dealing work to subagents**, the `PreToolUse` hook `subagent-cap.py` counts the session's `Agent`/`Task`
   calls and, at `subagentCap` (30 by default) and every 10 after, asks the person to check they are not looping
   (`gw-opt-tokens`); it never blocks.
 - **On start**, the new session reads the log and checks that the last commit matches what it says; it does not ask
-  where things stood. After a `/clear` or compaction, `recuperar.py --estado` reminds it.
-- When the branch closes, `bitacora.py close-row <branch>` leaves its row as "merged, branch finished" so the
+  where things stood. After a `/clear` or compaction, `recover.py --estado` reminds it.
+- When the branch closes, `handoff.py close-row <branch>` leaves its row as "merged, branch finished" so the
   protected branch does not inherit a stale "Next".
-- **A short log, with or without `logRows`:** `bitacora.py check --strict` fails if a cell of the state table passes
+- **A short log, with or without `logRows`:** `handoff.py check --strict` fails if a cell of the state table passes
   800 characters or if "Done (last 5)" has more than 5 items, badly numbered or glued on one line (without
-  `--strict` it only prints `WARNING:`). `bitacora.py done "text"` adds the `1.` item with the date, renumbers and
+  `--strict` it only prints `WARNING:`). `handoff.py done "text"` adds the `1.` item with the date, renumbers and
   drops the extra ones, leaving the rest of the file alone.
 
 ## A local session that cannot create PRs
@@ -81,7 +81,7 @@ Split it like this:
 2. In its log row it leaves **"PR ready"** with the title, and pushes **everything in the last commit** of the
    branch.
 3. A **cloud session** (with a GitHub tool) checks that nothing comes after that commit (`git log
-   <commit>..origin/<branch>` is empty), runs `bash .claude/gw/scripts/revisado.sh` to leave the mark of the same
+   <commit>..origin/<branch>` is empty), runs `bash .claude/gw/scripts/reviewed.sh` to leave the mark of the same
    commit, creates the PR with that description, and follows CI and, when the person confirms, the merge.
 
 The PR hook blocks creating or merging without the mark of the same commit, so a slip (something pushed after "PR
@@ -132,7 +132,7 @@ The workflow learns from the projects that use it. There are two halves:
   issue or PR on this repo, or leaves it in the retro file under a `## For Galivelop-workflow` heading (or
   `## Para Galivelop-workflow`).
 - **The workflow pulls.** From this repo, the `gw-harvest` skill walks the connected projects that have
-  `.claude/gw.json`. The mechanical part is `python3 scripts/recoger.py <project>...` (edited workflow copies, new
+  `.claude/gw.json`. The mechanical part is `python3 scripts/harvest.py <project>...` (edited workflow copies, new
   skills, retro sections, commits since the last harvest); the agent only decides what is general and writes
   `docs/propuestas/YYYY-MM-DD-<repo>.md`. **It never applies anything without confirmation**: what is approved goes in
   as a normal change with a CHANGELOG entry and a new version ([contributing](contributing.md)).

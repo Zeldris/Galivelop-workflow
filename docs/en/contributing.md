@@ -15,8 +15,8 @@ here, it gets in the way in every project. Read [`AGENTS.md`](../../AGENTS.md) a
 3. **Refresh this repo's copy**:
 
    ```bash
-   python3 scripts/aplicar.py .
-   python3 scripts/aplicar.py --check .      # must exit 0
+   python3 scripts/apply.py .
+   python3 scripts/apply.py --check .      # must exit 0
    ```
 
    Without this, `tests/comprobar.sh` fails ("workflow copy in sync"): the copy has to be identical to the sources.
@@ -31,12 +31,12 @@ here, it gets in the way in every project. Read [`AGENTS.md`](../../AGENTS.md) a
 ## Tests for every change
 
 - **Every change to a hook or script comes with its case in the tests** (`tests/test_*.py`, which build a temporary
-  git repo): `test_ganchos.py`, `test_revision_main.py`, `test_doctor.py`, `test_aplicar.py`… A new check in
+  git repo): `test_ganchos.py`, `test_review_before_main.py`, `test_doctor.py`, `test_apply.py`… A new check in
   `doctor.py` is a new case in `test_doctor.py`.
 - **A new test must fail without its fix.** Check with the fix still uncommitted:
 
   ```bash
-  bash scripts/rojo-sin-arreglo.sh "python3 -m unittest tests.test_doctor.Class.test_case" scripts/doctor.py
+  bash scripts/red-without-fix.sh "python3 -m unittest tests.test_doctor.Class.test_case" scripts/doctor.py
   ```
 
   Options: `--fails-with REGEX` (the failure without the fix must print REGEX, so it does not fail for another

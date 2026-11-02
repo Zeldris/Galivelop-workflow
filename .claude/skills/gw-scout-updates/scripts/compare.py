@@ -90,7 +90,7 @@ def scout_dir(root):
     config = os.path.join(root, '.claude', 'gw', 'scripts', 'config.py')
     if not os.path.isfile(config):
         sys.exit('scoutDir: %s not found; pass <architecture.md> explicitly, or apply the workflow: '
-                 'python3 <workflow>/scripts/aplicar.py --update %s' % (config, root))
+                 'python3 <workflow>/scripts/apply.py --update %s' % (config, root))
     r = subprocess.run([sys.executable, config, '--root', root, 'get', 'scoutDir'], capture_output=True, text=True)
     if r.returncode:
         sys.exit('scoutDir: could not read it (%s); fix the config: python3 %s validate' % (r.stderr.strip(), config))

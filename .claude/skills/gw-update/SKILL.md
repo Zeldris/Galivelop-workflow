@@ -14,7 +14,7 @@ metadata:
 If `.claude/gw/gw-update.md` exists in the project, read it first: it holds what is specific to the project.
 
 Updates what the workflow owns (scripts, skills, git hooks, settings entries, CI) and reports changes in what the
-project fills in (log, `REVIEW.md`, `GLOSSARY.md`, notes). The mechanical part is `aplicar.py`; this skill adds the
+project fills in (log, `REVIEW.md`, `GLOSSARY.md`, notes). The mechanical part is `apply.py`; this skill adds the
 judgement: what changed, what the user wants, what to merge by hand. Reply in the project's `language`.
 
 ## 1. Compare versions
@@ -33,7 +33,7 @@ newer than the workflow: stop and tell the user to update the workflow clone.
 
 ```bash
 git -C <project> status --short            # a clean tree makes the update easy to review and undo
-python3 <workflow>/scripts/aplicar.py <project> --dry-run
+python3 <workflow>/scripts/apply.py <project> --dry-run
 ```
 
 It lists what it would create, update or propose, files the workflow no longer has, and template updates, plus the
@@ -59,7 +59,7 @@ hand.
 ## 4. Apply what the user confirms
 
 1. Workflow-owned files with no local edits update in place:
-   `python3 <workflow>/scripts/aplicar.py <project> --update`. Use `--update` only after the user confirms, because
+   `python3 <workflow>/scripts/apply.py <project> --update`. Use `--update` only after the user confirms, because
    it also replaces local edits in workflow-owned files. Auto mode may ask permission to edit `.claude/settings.json`
    and `.githooks/`; tell the user first.
 2. A `<file>.gw-nuevo` is a proposal: merge it by hand with the user, then delete it. `AGENTS.md` and `CLAUDE.md`
@@ -72,9 +72,9 @@ hand.
 
 ## 5. Check and commit
 
-1. `python3 <project>/.claude/gw/scripts/doctor.py` until no `FAIL`; `python3 <workflow>/scripts/aplicar.py --check
+1. `python3 <project>/.claude/gw/scripts/doctor.py` until no `FAIL`; `python3 <workflow>/scripts/apply.py --check
    <project>` exits 0 when nothing is left to merge.
-2. Commit with the message `aplicar.py` suggested and a real `Next:` line (`Siguiente:` in Spanish projects), update
+2. Commit with the message `apply.py` suggested and a real `Next:` line (`Siguiente:` in Spanish projects), update
    the log in the same commit, and `git push`; the pre-push runs the check.
 
 Done when doctor is green, no `*.gw-nuevo` is left and `version` equals Y.

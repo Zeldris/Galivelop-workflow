@@ -1,0 +1,268 @@
+"""scripts/harvest.py against a temporary project repository."""
+import json
+import shutil
+import subprocess
+import tempfile
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+SCRIPT = ROOT / "scripts" / "harvest.py"
+
+
+def run(*args, cwd=None):
+    return subprocess.run(args, cwd=cwd, capture_output=True, text=True, check=True).stdout
+
+
+def git(repo, *args):
+    return run("git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t", "-c", "commit.gpgsign=false", *args)
+
+
+class Recoger(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.repo = self.tmp / "proj"
+        self.state = self.tmp / "estado.json"
+        (self.repo / ".claude" / "skills").mkdir(parents=True)
+        git(self.tmp, "init", "-q", str(self.repo))
+        # A copy of a workflow skill with an extra line, and a skill born in the project.
+        ours = (ROOT / "skills" / "grilling" / "SKILL.md").read_text()
+        (self.repo / ".claude/skills/grilling").mkdir()
+        (self.repo / ".claude/skills/grilling/SKILL.md").write_text(ours + "\nA local improvement.\n")
+        (self.repo / ".claude/skills/local-skill").mkdir()
+        (self.repo / ".claude/skills/local-skill/SKILL.md").write_text(
+            "---\nname: local-skill\ndescription: Born here.\n---\nBody\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "one")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def harvest(self):
+        out = run("python3", str(SCRIPT), "--json", "--state", str(self.state), str(self.repo))
+        return json.loads(out)[0]
+
+    def test_first_harvest_reports_changed_and_new_skills(self):
+        r = self.harvest()
+        self.assertEqual([s["skill"] for s in r["skills_changed"]], ["grilling"])
+        self.assertEqual(r["skills_changed"][0]["added"], 2)
+        self.assertEqual([s["skill"] for s in r["skills_new"]], ["local-skill"])
+        self.assertIn("retro", r["skills_missing"])
+
+    def test_after_update_state_only_new_work_is_reported(self):
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        self.assertEqual(self.harvest()["history"], "nothing new since the last harvest")
+        retro = self.repo / "docs" / "retro-2026-01-01-x.md"
+        retro.parent.mkdir()
+        retro.write_text("# Retro\n\n## For Galivelop-workflow\n\nCheck shallow clones.\n\n## Other\n\nlocal\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "two")
+        r = self.harvest()
+        self.assertEqual(len(r["commits"]), 1)
+        self.assertEqual(r["skills_changed"], [], "unchanged files since the last harvest are not reported")
+        self.assertEqual(r["retros"], ["docs/retro-2026-01-01-x.md"])
+        self.assertEqual(r["ideas"][0]["text"], "Check shallow clones.")
+
+    def test_ideas_come_from_any_changed_md_not_only_retros(self):
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        note = self.repo / "docs" / "registros" / "piloto.md"
+        note.parent.mkdir(parents=True)
+        note.write_text("# Piloto\n\n## For Galivelop-workflow\n\nF21: markers in base..local.\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "pilot notes")
+        r = self.harvest()
+        self.assertEqual(r["retros"], [])
+        self.assertEqual(r["ideas"], [{"path": "docs/registros/piloto.md", "text": "F21: markers in base..local."}])
+
+    def test_ideas_come_from_workflow_proposal_lines_in_a_hand_off_log(self):
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        log = self.repo / "docs" / "traspaso.md"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.write_text("# Traspaso\n\n## Pendiente\n\n- Arreglar el login.\n"
+                       "- **Propuesta para el flujo:** que apply.py respete\n  los pasos propios del CI.\n"
+                       "- Otra cosa local.\n\nProposal for the workflow: wait longer for the transcript.\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "hand-off")
+        r = self.harvest()
+        self.assertEqual(r["ideas"], [
+            {"path": "docs/traspaso.md",
+             "text": "- **Propuesta para el flujo:** que apply.py respete\n  los pasos propios del CI."},
+            {"path": "docs/traspaso.md", "text": "Proposal for the workflow: wait longer for the transcript."}])
+
+    def commit_log(self, text, msg):
+        log = self.repo / "docs" / "traspaso.md"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        log.write_text(text)
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", msg)
+
+    def harvest_after(self, first_text, second_text):
+        """Commit first_text, record it as harvested, commit second_text and harvest again."""
+        self.commit_log(first_text, "log one")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        self.commit_log(second_text, "log two")
+        return self.harvest()
+
+    def test_ideas_already_harvested_are_not_reported_again(self):
+        old = ("# Traspaso\n\nEstado: uno\n\n- **Propuesta para el flujo:** vieja idea\n  con su continuacion.\n\n"
+               "## Para Galivelop-workflow\n\nIdea de seccion antigua.\n")
+        r = self.harvest_after(old, old.replace("Estado: uno", "Estado: dos"))
+        self.assertEqual(r["ideas"], [], "the log changed, but neither idea did")
+
+    def test_only_the_idea_lines_added_since_the_last_harvest_are_reported(self):
+        old = "# Traspaso\n\n- **Propuesta para el flujo:** vieja idea\n\nEstado: uno\n"
+        new = old + "\nProposal for the workflow: a new one.\n"
+        r = self.harvest_after(old, new)
+        self.assertEqual(r["ideas"], [{"path": "docs/traspaso.md", "text": "Proposal for the workflow: a new one."}])
+
+    def test_an_edited_continuation_line_reports_its_whole_proposal(self):
+        old = "# T\n\n- Propuesta para el flujo: que haga X\n  y luego Y.\n\nOtra cosa.\n"
+        r = self.harvest_after(old, old.replace("y luego Y.", "y luego Z."))
+        self.assertEqual(r["ideas"], [{"path": "docs/traspaso.md",
+                                       "text": "- Propuesta para el flujo: que haga X\n  y luego Z."}])
+
+    def test_an_edited_section_is_reported_once_and_its_proposal_line_is_not_repeated(self):
+        old = ("# T\n\n## Para Galivelop-workflow\n\n- Propuesta para el flujo: A\n\nTexto.\n\n## Otra\n\nlocal\n")
+        r = self.harvest_after(old, old.replace("Texto.", "Texto cambiado."))
+        self.assertEqual(len(r["ideas"]), 1, r["ideas"])
+        self.assertIn("Propuesta para el flujo: A", r["ideas"][0]["text"])
+        self.assertIn("Texto cambiado.", r["ideas"][0]["text"])
+        self.assertNotIn("local", r["ideas"][0]["text"])
+
+    def test_a_proposal_line_inside_a_section_is_reported_once_on_the_first_harvest(self):
+        self.commit_log("# T\n\n## For Galivelop-workflow\n\nProposal for the workflow: only once.\n", "log")
+        r = self.harvest()
+        self.assertEqual(r["ideas"], [{"path": "docs/traspaso.md",
+                                       "text": "Proposal for the workflow: only once."}])
+
+    def test_a_new_file_reports_all_its_ideas(self):
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        self.commit_log("# T\n\n- Propuesta para el flujo: nueva\n", "log")
+        self.assertEqual(len(self.harvest()["ideas"]), 1)
+
+    def test_tab_indented_continuation_lines_are_kept(self):
+        self.commit_log("# T\n\n\t- Propuesta para el flujo: que haga X\n\t\ty luego Y.\n\t\totra linea.\n\n\tFuera.\n", "log")
+        self.assertEqual(self.harvest()["ideas"], [{
+            "path": "docs/traspaso.md",
+            "text": "- Propuesta para el flujo: que haga X\n\t\ty luego Y.\n\t\totra linea."}])
+
+    def test_a_log_that_is_not_utf8_does_not_break_the_harvest(self):
+        log = self.repo / "docs" / "traspaso.md"
+        log.parent.mkdir(parents=True)
+        log.write_bytes("# Traspaso\n\nEstado: café\n".encode("latin-1"))
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "log one")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        log.write_bytes("# Traspaso\n\nEstado: café dos\n\n- Propuesta para el flujo: nueva\n".encode("latin-1"))
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "log two")
+        self.assertEqual(self.harvest()["ideas"], [{"path": "docs/traspaso.md",
+                                                    "text": "- Propuesta para el flujo: nueva"}])
+
+    def test_a_colored_diff_config_does_not_hide_new_ideas(self):
+        git(self.repo, "config", "color.diff", "always")
+        r = self.harvest_after("# T\n\nEstado: uno\n", "# T\n\nEstado: uno\n\n- Propuesta para el flujo: nueva\n")
+        self.assertEqual(r["ideas"], [{"path": "docs/traspaso.md", "text": "- Propuesta para el flujo: nueva"}])
+
+    def test_a_diff_without_hunks_counts_the_whole_file(self):
+        (self.repo / ".gitattributes").write_text("*.md binary\n")
+        r = self.harvest_after("# T\n\nEstado: uno\n", "# T\n\nEstado: dos\n\n- Propuesta para el flujo: nueva\n")
+        self.assertEqual(r["ideas"], [{"path": "docs/traspaso.md", "text": "- Propuesta para el flujo: nueva"}])
+
+    def track_origin(self):
+        """Give the project a remote with main as its upstream; return a second clone that can push to it."""
+        origin = self.tmp / "origin.git"
+        git(self.tmp, "init", "-q", "--bare", str(origin))
+        git(self.repo, "remote", "add", "origin", str(origin))
+        git(self.repo, "push", "-q", "-u", "origin", "HEAD:refs/heads/main")
+        git(self.repo, "branch", "-q", "--set-upstream-to=origin/main")
+        other = self.tmp / "other"
+        git(self.tmp, "clone", "-q", "-b", "main", str(origin), str(other))
+        return other
+
+    def push_newer(self, other):
+        (other / "new.txt").write_text("x\n")
+        git(other, "add", "-A")
+        git(other, "commit", "-qm", "newer")
+        git(other, "push", "-q", "origin", "HEAD:main")
+        git(self.repo, "fetch", "-q", "origin")
+
+    def test_a_clone_behind_its_upstream_is_flagged(self):
+        self.push_newer(self.track_origin())
+        r = self.harvest()
+        self.assertEqual(r["behind"], {"ref": "origin/main", "commits": 1, "diverged": False})
+        out = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
+        self.assertIn("behind `origin/main`: 1 commit(s) behind it", out)
+        self.assertIn("merge --ff-only @{upstream}`, only if it has no local work) or harvest a fresh clone", out)
+
+    def test_a_diverged_clone_is_flagged(self):
+        self.push_newer(self.track_origin())
+        (self.repo / "local.txt").write_text("y\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "local")
+        r = self.harvest()
+        self.assertEqual(r["behind"], {"ref": "origin/main", "commits": 1, "diverged": True})
+        out = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
+        self.assertIn("diverged from `origin/main`", out)
+
+    def test_no_upstream_is_reported(self):
+        origin = self.tmp / "origin.git"
+        git(self.tmp, "init", "-q", "--bare", str(origin))
+        git(self.repo, "remote", "add", "origin", str(origin))
+        git(self.repo, "push", "-q", "origin", "HEAD:refs/heads/main")
+        git(self.repo, "remote", "set-head", "origin", "main")
+        r = self.harvest()
+        self.assertIsNone(r["upstream"])
+        self.assertIsNone(r["behind"])
+        out = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
+        self.assertIn("no upstream: cannot tell whether the clone is up to date", out)
+
+    def test_up_to_date_clone_is_not_flagged(self):
+        self.track_origin()
+        r = self.harvest()
+        self.assertEqual(r["upstream"], "origin/main")
+        self.assertIsNone(r["behind"])
+        out = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
+        self.assertNotIn("WARNING", out)
+
+    def test_unknown_last_commit_falls_back_to_full_scan(self):
+        self.state.write_text(json.dumps({"proj": "0" * 40}))
+        r = self.harvest()
+        self.assertIn("not in this clone", r["history"])
+        self.assertTrue(r["skills_changed"])
+
+    def test_an_older_workflow_copy_is_not_a_project_change(self):
+        # A workflow repo of its own (CI clones are shallow): grilling and reviewed.sh with two commits each.
+        wf = self.tmp / "wf"
+        shutil.copytree(ROOT / "scripts", wf / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        (wf / "skills" / "grilling").mkdir(parents=True)
+        skill = (ROOT / "skills" / "grilling" / "SKILL.md").read_text()
+        git(self.tmp, "init", "-q", str(wf))
+        (wf / "skills/grilling/SKILL.md").write_text(skill + "\nOld line.\n")
+        (wf / "scripts/reviewed.sh").write_text("echo old\n")
+        git(wf, "add", "-A"); git(wf, "commit", "-qm", "old")
+        (wf / "skills/grilling/SKILL.md").write_text(skill)
+        (wf / "scripts/reviewed.sh").write_text("echo new\n")
+        git(wf, "add", "-A"); git(wf, "commit", "-qm", "new")
+        old_sha = git(wf, "rev-parse", "--short=7", "HEAD~1").strip()
+        # The project: grilling as the old commit had it (frontmatter aside), and the old reviewed.sh.
+        (self.repo / ".claude/skills/grilling/SKILL.md").write_text(skill + "\nOld line.\n")
+        (self.repo / "reviewed.sh").write_text("echo old\n")
+        git(self.repo, "add", "-A"); git(self.repo, "commit", "-qm", "older copies")
+        out = run("python3", str(wf / "scripts" / "harvest.py"), "--json", "--state", str(self.state), str(self.repo))
+        r = json.loads(out)[0]
+        self.assertEqual(r["skills_changed"], [])
+        self.assertEqual([(s["skill"], s["matches"]) for s in r["skills_older"]], [("grilling", old_sha)])
+        self.assertEqual(r["scripts_changed"], [])
+        self.assertEqual([(s["script"], s["matches"]) for s in r["scripts_older"]], [("reviewed.sh", old_sha)])
+        out = run("python3", str(wf / "scripts" / "harvest.py"), "--state", str(self.state), str(self.repo))
+        self.assertIn("Older workflow copies (not project changes)", out)
+
+    def test_project_edits_say_how_to_see_them(self):
+        out = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
+        self.assertIn("matches no earlier workflow copy, so local edits", out)
+        self.assertIn("harvest.py --diff grilling", out)
+
+
+if __name__ == "__main__":
+    unittest.main()

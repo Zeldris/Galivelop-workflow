@@ -48,7 +48,7 @@
     "logRows": {
       "type": "boolean",
       "default": false,
-      "description": "One row per branch with a size limit (bitacora.py)."
+      "description": "One row per branch with a size limit (handoff.py)."
     },
     "protectedBranch": {
       "type": "string",
@@ -127,7 +127,7 @@
     "requireRetro": {
       "type": "boolean",
       "default": false,
-      "description": "revisado.sh requires a retro with a decided status on the branch."
+      "description": "reviewed.sh requires a retro with a decided status on the branch."
     },
     "agentSignatures": {
       "type": "boolean",
@@ -138,7 +138,7 @@
       "type": "string",
       "default": "docs/registros/ci-local.md",
       "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+\\.md$",
-      "description": "Repo-relative file where `ci-local.py --apuntar` records each local run of the GitHub CI (a Markdown file). The PR hook takes a green line of it, whose commit has only content after it, as the CI that GitHub did not start (no Actions quota, no runners); it is never code for es-codigo.sh."
+      "description": "Repo-relative file where `ci-local.py --apuntar` records each local run of the GitHub CI (a Markdown file). The PR hook takes a green line of it, whose commit has only content after it, as the CI that GitHub did not start (no Actions quota, no runners); it is never code for is-code.sh."
     },
     "ciLocalWorkflows": {
       "type": "array",
@@ -199,7 +199,7 @@
         "minLength": 1
       },
       "default": [],
-      "description": "Headings of the log sections recuperar.py --estado shows after a compaction or /clear (without logRows). Empty: the first section and the one named Pendiente/Pending."
+      "description": "Headings of the log sections recover.py --estado shows after a compaction or /clear (without logRows). Empty: the first section and the one named Pendiente/Pending."
     },
     "designReferences": {
       "type": "array",
@@ -252,7 +252,7 @@
         }
       ],
       "default": [],
-      "description": "Case-insensitive regexes that must not appear in docs (enlaces-md.py): a list, or {\"patterns\": [...], \"skip\": [globs]} where skip lists repo-relative files or folders the check does not read (`*` stays inside a folder, `**` crosses; a trailing / means the whole folder)."
+      "description": "Case-insensitive regexes that must not appear in docs (md-links.py): a list, or {\"patterns\": [...], \"skip\": [globs]} where skip lists repo-relative files or folders the check does not read (`*` stays inside a folder, `**` crosses; a trailing / means the whole folder)."
     },
     "linkRoots": {
       "type": "array",
@@ -262,7 +262,7 @@
         "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$"
       },
       "default": [],
-      "description": "Folders (relative to the repo root, no '..') whose Markdown files write relative links from the repo root instead of from their own folder (enlaces-md.py)."
+      "description": "Folders (relative to the repo root, no '..') whose Markdown files write relative links from the repo root instead of from their own folder (md-links.py)."
     },
     "scoutDir": {
       "type": "string",
@@ -357,12 +357,12 @@
         "minLength": 1
       },
       "default": [],
-      "description": "Plan or roadmap files/folders where tasks are ticked or struck through (bitacora.py)."
+      "description": "Plan or roadmap files/folders where tasks are ticked or struck through (handoff.py)."
     },
     "taskId": {
       "type": "string",
       "minLength": 1,
-      "description": "Regex of the project's task ids (bitacora.py); default [A-Z]{2,5}-\\d+."
+      "description": "Regex of the project's task ids (handoff.py); default [A-Z]{2,5}-\\d+."
     },
     "agentMap": {
       "type": "object",
@@ -372,7 +372,7 @@
           "type": "string",
           "minLength": 1,
           "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$",
-          "description": "The agent map file (relative to the repo root, no '..'); mapa-agente.py checks the paths it cites. Absent: docs/mapa-agente.md, and a project without that file is not an error; a path set here that does not exist is."
+          "description": "The agent map file (relative to the repo root, no '..'); agent-map.py checks the paths it cites. Absent: docs/mapa-agente.md, and a project without that file is not an error; a path set here that does not exist is."
         },
         "prefixes": {
           "type": "object",
@@ -396,13 +396,13 @@
         }
       },
       "default": {},
-      "description": "The agent map (docs/mapa-agente.md): where each contract lives and what implements it. Read by mapa-agente.py."
+      "description": "The agent map (docs/mapa-agente.md): where each contract lives and what implements it. Read by agent-map.py."
     },
     "subagentCap": {
       "type": "integer",
       "minimum": 1,
       "default": 30,
-      "description": "Subagents (Agent/Task calls) one session may launch before tope-subagentes.py asks the user to check they are not looping, and again every 10 after."
+      "description": "Subagents (Agent/Task calls) one session may launch before subagent-cap.py asks the user to check they are not looping, and again every 10 after."
     }
   }
 }

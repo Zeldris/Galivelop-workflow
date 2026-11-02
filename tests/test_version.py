@@ -209,7 +209,7 @@ class Version(unittest.TestCase):
         note = tmp / "skills" / "note" / "SKILL.md"
         note.parent.mkdir()
         note.write_text(f"---\nname: note\nmetadata:\n  version: {VERSION}  # note\n---\n\nBody\n")
-        spec = importlib.util.spec_from_file_location("aplicar_under_test", ROOT / "scripts" / "aplicar.py")
+        spec = importlib.util.spec_from_file_location("aplicar_under_test", ROOT / "scripts" / "apply.py")
         aplicar = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(aplicar)
         self.assertEqual(aplicar.skill_version(crlf), VERSION)

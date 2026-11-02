@@ -9,10 +9,10 @@
 | Campo | Valor |
 |---|---|
 | Rama | **`0.5` «Base»: `ccr-d1e2d496-0vzck8`** (2026-11-02; creada desde `version/1.0.0` en `a61cdc5`; hace de `version/0.5.0` (H-13) mientras la sesión solo pueda subir a esta rama; el usuario decide si se sube también a `version/0.5.0`). Parches `0.4.x`: `ccr-6dfbc880-ddr41g`, que se fusionan también aquí. `version/1.0.0` se queda con el diseño (`docs/diseno/`). `main` = `0e04504` = **`0.4.3`** (etiqueta y release `v0.4.3`, a mano por el usuario). `claude/galivelop-workflow-inicio`, obsoleta |
-| Check | `bash tests/comprobar.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público): estaba en rojo por dos tests de interrupción con Python 3.12, SC2015 en `revisado.sh` (shellcheck 0.9/0.10 de apt) y, en macOS, `test_aplicar` (disco sin mayúsculas) y el límite de 1 s de `test_revision_main` (ahora 5 s sobre un comando trivial). Arreglado en `ccr-6dfbc880-ddr41g` (`66a4ecd`, CI verde en Ubuntu y macOS) y traído aquí. `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.4.4` |
+| Check | `bash tests/comprobar.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público): estaba en rojo por dos tests de interrupción con Python 3.12, SC2015 en `reviewed.sh` (shellcheck 0.9/0.10 de apt) y, en macOS, `test_apply` (disco sin mayúsculas) y el límite de 1 s de `test_review_before_main` (ahora 5 s sobre un comando trivial). Arreglado en `ccr-6dfbc880-ddr41g` (`66a4ecd`, CI verde en Ubuntu y macOS) y traído aquí. `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.4.4` |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | `0.5` «Base», en el orden de [`roadmap.md`](roadmap.md): hechos H14, D13, H12 y A7. **A8 en curso** (nombres decididos el 2026-11-02 en `docs/diseno/A-marco.md`, «Respuestas»; trozo 1, skills `gw-`, hecho; siguen: 2 scripts en inglés, 3 rutas del proyecto configurables con los dos nombres, 4 `gw-update` renombra, 5 internos de este repo), A9 (`schemaVersion`), D11/D12/D15/D16, E2/E3/D3, E1/E6 y lo de `pendiente.md` marcado `0.5`. Aparte: parche `0.4.4` (arreglos del CI, D6 y P5), otro día (usuario, 2026-11-01). R3: cuando el usuario dé acceso de lectura |
+| Siguiente paso | `0.5` «Base», en el orden de [`roadmap.md`](roadmap.md): hechos H14, D13, H12 y A7. **A8 en curso** (nombres decididos el 2026-11-02 en `docs/diseno/A-marco.md`, «Respuestas»; trozos 1 (skills `gw-`) y 2 (scripts en inglés) hechos; siguen: 3 rutas del proyecto configurables con los dos nombres, 4 `gw-update` renombra, 5 internos de este repo), A9 (`schemaVersion`), D11/D12/D15/D16, E2/E3/D3, E1/E6 y lo de `pendiente.md` marcado `0.5`. Aparte: parche `0.4.4` (arreglos del CI, D6 y P5), otro día (usuario, 2026-11-01). R3: cuando el usuario dé acceso de lectura |
 
 ### Fases
 
@@ -41,17 +41,17 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-02 — `0.5` A8 trozo 1: las skills propias sin prefijo pasan a `gw-selector`, `gw-orchestrate-dealer`, `gw-opt-tokens`, `gw-opt-ai` y `gw-scout-updates` (en `skills/` y `.claude/skills/`, con `git mv`), con sus notas `.claude/gw/gw-*.md`, plantillas, textos, README, docs y tests; las de terceros conservan nombre. Compatibilidad `0.x`: `medir.py` de `gw-opt-ai` lee también `opt-ai.md` y el bloque `opt-ai`; `doctor.py` acepta ambos nombres (con tests). La clave de config `selector.cases` no se toca. Check en verde. Queda: `gw-update`/`aplicar.py` no limpia las carpetas antiguas ni acepta `--with opt-ai` (trozo 4).
-2. 2026-11-02 — `0.5` A7: plan reescrito según la tabla de A1 (ES/EN): repo público con todas sus versiones, cada una publicada aquí (§1, §2, §7); plugin y copia gestionada valen los dos; licencia MIT (A-1); a lo sumo una publicación al día (A-6, §7); la `1.0` sale con su alcance del roadmap y la §10 mide la madurez de la `1.x` (A-5); Fase 10 pasa a «Lanzamiento»; «Nada privado», requisito en cada subida (§10, check E2).
-3. 2026-11-02 — `0.5`: `docs/roadmap.md` (+ `roadmap.en.md`) con los ids por versión (D13: letra del bloque y número; las tareas de los apartados de A empiezan en A7) y `pendiente-1.0.0.md` → `pendiente.md` con la versión en cada línea (H12). CHANGELOG `[0.5.0]`, README, contribuir y la nota de H-roadmap al día.
-4. 2026-11-02 — Abierta la `0.5` «Base» en `ccr-d1e2d496-0vzck8` (desde `version/1.0.0`). Primer commit (H-14): «solo la última menor publicada recibe parches; los evolutivos van a la siguiente menor», en `AGENTS.md` y el plan §7 (ES/EN), que enlaza `roadmap.md`.
-5. 2026-11-01 — CI en verde en Ubuntu y macOS para el parche (`66a4ecd` en `ccr-6dfbc880-ddr41g`): stdin cerrado con Python 3.12, SC2015 en `revisado.sh`, `test_aplicar` en disco sin mayúsculas y margen de 5 s en `test_revision_main`. Fusionado en `version/1.0.0`.
+1. 2026-11-02 — `0.5` A8 trozo 2: los 18 scripts pasan a inglés (`before-stop.py`, `handoff.py`, `check-green.sh`, `md-links.py`, `is-code.sh`, `merge-branch.sh`, `config-guard.py`, `agent-map.py`, `prepush-branches.sh`, `harvest.py`, `recover.py`, `session_log.py`, `reviewed.sh`, `review-before-main.sh`, `red-without-fix.sh`, `related-tests.sh`, `subagent-cap.py`, `apply.py`) en `scripts/` y `.claude/gw/scripts/`, con `git mv`; referencias vivas (ganchos, `settings.json`, plantillas, skills, docs, tests) y 8 tests renombrados (`test_apply`, `test_harvest`, `test_agent_map`, `test_before_stop`, `test_subagent_cap`, `test_session_log`, `test_config_guard`, `test_review_before_main`). Subcomandos y opciones en español (`--estado`, `--buscar`…) sin tocar. Arreglado `gw-selector` en `config.md`. CHANGELOG ES/EN. Queda: trozos 3-5.
+2. 2026-11-02 — `0.5` A8 trozo 1: las skills propias sin prefijo pasan a `gw-selector`, `gw-orchestrate-dealer`, `gw-opt-tokens`, `gw-opt-ai` y `gw-scout-updates` (en `skills/` y `.claude/skills/`, con `git mv`), con sus notas `.claude/gw/gw-*.md`, plantillas, textos, README, docs y tests; las de terceros conservan nombre. Compatibilidad `0.x`: `medir.py` de `gw-opt-ai` lee también `opt-ai.md` y el bloque `opt-ai`; `doctor.py` acepta ambos nombres (con tests). La clave de config `selector.cases` no se toca. Check en verde. Queda: `gw-update`/`aplicar.py` no limpia las carpetas antiguas ni acepta `--with opt-ai` (trozo 4).
+3. 2026-11-02 — `0.5` A7: plan reescrito según la tabla de A1 (ES/EN): repo público con todas sus versiones, cada una publicada aquí (§1, §2, §7); plugin y copia gestionada valen los dos; licencia MIT (A-1); a lo sumo una publicación al día (A-6, §7); la `1.0` sale con su alcance del roadmap y la §10 mide la madurez de la `1.x` (A-5); Fase 10 pasa a «Lanzamiento»; «Nada privado», requisito en cada subida (§10, check E2).
+4. 2026-11-02 — `0.5`: `docs/roadmap.md` (+ `roadmap.en.md`) con los ids por versión (D13: letra del bloque y número; las tareas de los apartados de A empiezan en A7) y `pendiente-1.0.0.md` → `pendiente.md` con la versión en cada línea (H12). CHANGELOG `[0.5.0]`, README, contribuir y la nota de H-roadmap al día.
+5. 2026-11-02 — Abierta la `0.5` «Base» en `ccr-d1e2d496-0vzck8` (desde `version/1.0.0`). Primer commit (H-14): «solo la última menor publicada recibe parches; los evolutivos van a la siguiente menor», en `AGENTS.md` y el plan §7 (ES/EN), que enlaza `roadmap.md`.
 
 ## Pendiente
 
 - **Menores de la revisión de la caché del `check` (P3, 2026-10-26)**: el límite de los archivos ignorados (`check.sh`
   corre con `.env` y generados de la copia; antes, una subida con copia sucia comprobaba en un worktree limpio) está
-  documentado en `config.md`, `problemas.md` y el CHANGELOG. Posible mejora: que `fusionar.sh` también apunte el verde
+  documentado en `config.md`, `problemas.md` y el CHANGELOG. Posible mejora: que `merge-branch.sh` también apunte el verde
   (hoy solo lo apuntan `check.sh` y el propio `pre-push`).
 - **Sin firmas de Claude** (usuario, 2026-10-26): commits y PR a nombre de `Zeldris`, sin trailers ni pies de Claude;
   desde la `1.0.0` lo comprueba el `commit-msg` (`agentSignatures: false`). Desde `f2da5d5` (excluido) ya va así; el
@@ -60,34 +60,34 @@ lanzamiento manual desde Actions que cree la etiqueta.
   aunque git use `#` (las tijeras no se reconocerían); `--amend` de un commit antiguo con firma se rechaza hasta
   quitarla (coherente); el autor del commit no se comprueba, solo el mensaje.
 - **Leves del `/code-review` de `0.4.2`** (2026-10-27, no bloquean): (1) los commits de fusión `d714267`, `9112a44`,
-  `b4ec2eb` y `8b0260c` no llevan `Siguiente:` (ya subidos; el mensaje que propone `fusionar.sh`, a la retro);
-  (2) `bitacora.py check` sin `--at` da la pista de commit y la ayuda del principio no menciona `--at`; (3) la regla
+  `b4ec2eb` y `8b0260c` no llevan `Siguiente:` (ya subidos; el mensaje que propone `merge-branch.sh`, a la retro);
+  (2) `handoff.py check` sin `--at` da la pista de commit y la ayuda del principio no menciona `--at`; (3) la regla
   QUOTED del `pre-commit` bloquea etiquetas de i18n (una clave `openaiKey` cuyo valor es el texto «Clave de OpenAI»;
   lo sufrió esta misma bitácora); (4)
-  `tests-relacionados.sh` se presenta como «pre-push: related tests» también cuando lo llama `fusionar.sh`.
-- Menores de la revisión de la `0.4.1` (2026-10-26): `rojo-sin-arreglo` (`test_re`) da falsos positivos («it (»,
+  `related-tests.sh` se presenta como «pre-push: related tests» también cuando lo llama `merge-branch.sh`.
+- Menores de la revisión de la `0.4.1` (2026-10-26): `red-without-fix` (`test_re`) da falsos positivos («it (»,
   «test(», `def testable`, comentarios que se describen a sí mismos, como los del propio script); `NOT_STARTED` del
   gancho de fusión solo reconoce dos frases exactas de GitHub (falta «billing», «account is locked»); `cloud_start`
   silencia también la pista «pass it explicitly» (decisión aprobada, Portal P1) y conviene centralizarlo en `find()`
   y `opened_outside()`.
-- Menores de la retro antes de la `0.4.0` (2026-10-25): `bitacora.py` no entiende bloques de código dentro de
+- Menores de la retro antes de la `0.4.0` (2026-10-25): `handoff.py` no entiende bloques de código dentro de
   «Hecho», iguala los huecos en blanco entre entradas y mide cada celda por separado (dos de 790 en una fila pasan);
   `doctor.py` (`ci access`) da por bueno un token sin comprobarlo y no reconoce `ssh.github.com:443` ni GHE; el
   marcador de `pre-push` no cubre un pid reutilizado tras `kill -9`, ni las ventanas antes y después del gancho, ni
   `git push origin HEAD:otra` (mismo sha, otra rama).
-- Menores de la revisión de la fase 3 antes de la `0.4.0`: `bitacora.py done` con viñetas (`- `) añade la entrada
+- Menores de la revisión de la fase 3 antes de la `0.4.0`: `handoff.py done` con viñetas (`- `) añade la entrada
   debajo y no recorta; el aviso «glued» propone `check` sobre el temporal de los ganchos (`gw-commit-msg.*`,
-  `gw-log.*`), ya borrado; `prepush-ramas.sh` repite los avisos de `check` en cada commit de la subida; `antes-de-parar.py`
+  `gw-log.*`), ya borrado; `prepush-branches.sh` repite los avisos de `check` en cada commit de la subida; `before-stop.py`
   lee solo 4096 bytes de la marca (`git push --all` de unas 55 ramas); la marca es una por directorio común de git (dos
   worktrees que suben a la vez se pisan).
-- `recuperar.py` (`fit_log`): recorta por el principio del conjunto de secciones, así que una primera sección larga se come antes la «Pendiente»; si la cabecera y la cola ya pasan del tope, la nota de recorte se emite igual y `capped()` corta el puntero a `--buscar`.
-- `recoger.py`: un `\r` suelto desalinea los números de línea con los del diff; un archivo renombrado desde la última recogida vuelve a dar todas sus ideas; una línea borrada de una propuesta no la marca como cambiada (no dicho en la docstring).
-- `--name-only` sin `core.quotepath=false` en `prepush-ramas.sh`, `es-codigo.sh`, `revisado.sh`, `version.py` y `recoger.py`: una ruta de `log` con acentos no coincide.
-- `tope-subagentes.py` cuenta doble (y `guardia-config.py` y `antes-de-parar.py` preguntan dos veces) si el gancho está a la vez en el plugin (`hooks/hooks.json`) y en el `.claude/settings.json` del proyecto.
+- `recover.py` (`fit_log`): recorta por el principio del conjunto de secciones, así que una primera sección larga se come antes la «Pendiente»; si la cabecera y la cola ya pasan del tope, la nota de recorte se emite igual y `capped()` corta el puntero a `--buscar`.
+- `harvest.py`: un `\r` suelto desalinea los números de línea con los del diff; un archivo renombrado desde la última recogida vuelve a dar todas sus ideas; una línea borrada de una propuesta no la marca como cambiada (no dicho en la docstring).
+- `--name-only` sin `core.quotepath=false` en `prepush-branches.sh`, `is-code.sh`, `reviewed.sh`, `version.py` y `harvest.py`: una ruta de `log` con acentos no coincide.
+- `subagent-cap.py` cuenta doble (y `config-guard.py` y `before-stop.py` preguntan dos veces) si el gancho está a la vez en el plugin (`hooks/hooks.json`) y en el `.claude/settings.json` del proyecto.
 - `doctor.py` (~línea 512): la orden que arregla los caracteres invisibles convierte CRLF en LF y no entrecomilla la ruta.
-- `guardia-config.py`: `git -C <dir> checkout .` resuelve `.` contra la raíz del proyecto (falso positivo) y volcar un árbol sobre la raíz (`cp -r x/. .`, `rsync -a x/ ./`) no se ve.
-- `read_event()`/`ask()` están copiados en los tres ganchos nuevos (`guardia-config.py`, `antes-de-parar.py`, `tope-subagentes.py`): llevarlos a un módulo junto a `config.py`.
-- `aplicar.py` notas personales (revisión de 2522f37): una nota que cada proyecto adapta imprime su línea `diff` en cada ejecución; un fork renombrado o un clon sin `.claude-plugin/plugin.json` recibiría notas.
+- `config-guard.py`: `git -C <dir> checkout .` resuelve `.` contra la raíz del proyecto (falso positivo) y volcar un árbol sobre la raíz (`cp -r x/. .`, `rsync -a x/ ./`) no se ve.
+- `read_event()`/`ask()` están copiados en los tres ganchos nuevos (`config-guard.py`, `before-stop.py`, `subagent-cap.py`): llevarlos a un módulo junto a `config.py`.
+- `apply.py` notas personales (revisión de 2522f37): una nota que cada proyecto adapta imprime su línea `diff` en cada ejecución; un fork renombrado o un clon sin `.claude-plugin/plugin.json` recibiría notas.
 - `doctor.py` (revisión de cf57265): `media_folder()` no tiene efecto (con nota cuenta su existencia; `Folder:` nunca se consulta) y su regex `\s*` cruza el salto de línea; `playwright_found()` mira el cwd (con `--root` desde otra carpeta, WARN falso; cwd borrado = traceback); `skill tests` solo mira `*.py` de primer nivel (no `.mjs`; `_util.py` exige test); un `docs/difusion/` ajeno a la skill dispara los avisos de herramientas.
 - `doctor.py` (`media tools`) no comprueba la versión de Node ni que Chromium esté instalado para Playwright (solo que `playwright` resuelva); `playwright_found` no mira las carpetas globales de Node.
 - El render real (`RenderReal` en `test_render.py`) no lo cubre el CI: el CI no tiene Playwright, Chromium ni
@@ -109,13 +109,13 @@ lanzamiento manual desde Actions que cree la etiqueta.
   leyenda en §5 y título de Reddit fuera de §5.2; los límites NV/C fallan sin decir que no están verificados; render
   sin fuente y falta de medios/fuente/ pasan; el alt `es: Sí / no: nada` se parte mal.
 - [colbymchenry/codegraph](https://github.com/colbymchenry/codegraph) revisado (2026-10-25): 4 propuestas sin
-  propuestas en `docs/propuestas/2026-10-25-codegraph.md`: P2 (comprobador genérico del mapa, `scripts/mapa-agente.py`)
+  propuestas en `docs/propuestas/2026-10-25-codegraph.md`: P2 (comprobador genérico del mapa, `scripts/agent-map.py`)
   y P3 (anti-patrones en `writing-for-agents`)
   aplicadas; P1 (gancho que inyecta la fila del mapa) y P4 (probar
   la herramienta en WMF) sin decidir, se recomienda aplazar. Al aplicar en WMF: declarar
   `agentMap.prefixes` `{"b/": "backend/src/", "f/": "frontend/src/"}` antes de cambiar su comprobador por este.
 - Diez repos de una lista de X revisados (2026-10-25): 10 propuestas en `docs/propuestas/2026-10-25-repos-x.md`. P4
-  (regex), P5 (`recuperar.py`: tope de 9.500 caracteres y fragmentos como datos) y P7 (skills e instrucciones)
+  (regex), P5 (`recover.py`: tope de 9.500 caracteres y fragmentos como datos) y P7 (skills e instrucciones)
   aplicadas (P4 y P7 en eea8892) y el arreglo posterior (gancho de `main` con tabuladores y saltos escapados; ZWJ en
   emojis; gancho de PR en 8f4150b, 16f6cbd y efc72c9); P1 gancho `Stop`, P2 guarda de config, P3 tope de subagentes, P6 dealer, P8 disparo de skills
   y P9 `REVIEW.md` aplicadas (2026-10-25); P10 apuntada en el plan. Todas hechas.
@@ -125,7 +125,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
 - Menores de la revisión de la tanda A (no se revisan otra vez en este PR): `non_capturing` toca paréntesis en
   comentarios `(?x)`/`(?#…)`; `--ran-one` cuenta dos veces si el ejecutor repite el nombre del test en el resumen;
   `header_version` solo mira las 5 primeras líneas.
-- Menores de la revisión de la tanda B: sin python3, `revision-antes-de-main.sh` deja pasar
+- Menores de la revisión de la tanda B: sin python3, `review-before-main.sh` deja pasar
   `gh api …/pulls -f title=` (crear el PR por la API; el hueco ya existía) y bloquea `gh pr view 3 && echo create`
   (exceso de celo).
 - Menores de la revisión del vigilante (89fdf09): el KILL de los 5 s podría dar con un pgid reutilizado (se acepta:
@@ -135,7 +135,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
   choca con una tarea llamada «turn»; `instant` descarta sin avisar un `ts` que `fromisoformat` no lee (Python <3.11);
   `quality_bench.py` envía un `format` de texto como `json_schema` con la API openai y `pairs` pisa en silencio un
   modelo repetido en dos `outputs.jsonl`.
-- Menor de la revisión antes de `main`: `checkWrapper` se aplica en tres sitios (`pre-push` y `fusionar.sh` con
+- Menor de la revisión antes de `main`: `checkWrapper` se aplica en tres sitios (`pre-push` y `merge-branch.sh` con
   `sed`, `config.py` con `shlex`) y la plantilla de CI no lo aplica: que lo construya solo `config.py`.
 - Menores de la revisión de los arreglos antes de `main` (3b47af1): un push muerto en el mismo namespace deja su
   worktree 24 h (guardar `hostname:pid` en el marcador); `worktreeDir` con `~` o `..` no se valida en `config.py`;
@@ -145,12 +145,12 @@ lanzamiento manual desde Actions que cree la etiqueta.
 - Menores de la revisión del flujo 0.3.0 que hizo el portal (P5 de `docs/propuestas/2026-10-23-portal-galivelop.md`):
   `config.py related` acepta un `cwd` con `..` o absoluto en `relatedTests` (que `validate` lo rechace);
   `session-start.sh`: `kill -- -$wd` no es un grupo y el `sleep` del vigilante queda vivo hasta el tope;
-  `revision-antes-de-main.sh` sondea `gh api repos/<o>/<r>` en cada llamada y juzga cambios de título o base de un PR
+  `review-before-main.sh` sondea `gh api repos/<o>/<r>` en cada llamada y juzga cambios de título o base de un PR
   cerrado; `doctor.py` da por bueno un `npm run check` citado en un comentario (y avisos del glosario repetidos por
   mayúsculas, por comprobar); `validate` no avisa de un `worktreeDir` dentro del repo ni de un `checkWrapper` que
   limpia el entorno. Con la config de la punta de `main` rota, `pre-push` y el gancho fallan cerrados a propósito: se
   sale con un PR revisado que la arregle, o la persona sube a mano.
-- P2 de `docs/propuestas/2026-10-23-portal-galivelop.md` (`ci.setup`/`ci.after` y `aplicar.py --update` sin pisar un
+- P2 de `docs/propuestas/2026-10-23-portal-galivelop.md` (`ci.setup`/`ci.after` y `apply.py --update` sin pisar un
   `comprobar.yml` con pasos propios): aplazada a la siguiente versión.
 - Que el usuario cambie la rama por defecto de GitHub a `main` (Settings → Branches); no hay herramienta para ello.
 - R2 de la retro: que `doctor.py` detecte skills homónimas en la sesión (sin forma fiable aún; queda en las guías).

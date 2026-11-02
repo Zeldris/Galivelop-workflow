@@ -176,7 +176,7 @@ class Skills(unittest.TestCase):
                             "skills from mattpocock/skills need LICENSE-mattpocock-skills at the root")
 
     def test_skills_the_flow_calls_on_its_own_are_model_invoked(self):
-        # AGENTS.md (phase 2), gw-selector and revisado.sh with requireRetro have the agent run these itself.
+        # AGENTS.md (phase 2), gw-selector and reviewed.sh with requireRetro have the agent run these itself.
         for name in ("retro", "gw-opt-tokens", "gw-selector", "gw-orchestrate-dealer"):
             with self.subTest(skill=name):
                 text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")

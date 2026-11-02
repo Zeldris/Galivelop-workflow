@@ -11,7 +11,7 @@ fail=0
 copies=(':!.claude/' ':!.githooks/')
 
 echo "== workflow copy in sync (.claude/gw, .claude/skills, .githooks, .claude/settings.json)"
-python3 scripts/aplicar.py --check . || fail=1
+python3 scripts/apply.py --check . || fail=1
 
 echo "== shell scripts"
 scripts="$(git ls-files -- '*.sh' 'templates/githooks/*' "${copies[@]}")"
@@ -22,13 +22,13 @@ if [[ -n "$scripts" ]]; then
 fi
 
 echo "== markdown links and stale references"
-python3 scripts/enlaces-md.py || fail=1
+python3 scripts/md-links.py || fail=1
 
 echo "== agent map paths"
-python3 scripts/mapa-agente.py || fail=1
+python3 scripts/agent-map.py || fail=1
 
 echo "== hand-off log (state-table cells, Done section)"
-python3 scripts/bitacora.py check --strict || fail=1
+python3 scripts/handoff.py check --strict || fail=1
 
 echo "== python"
 if [[ -n "$(git ls-files -- '*.py' "${copies[@]}")" ]]; then

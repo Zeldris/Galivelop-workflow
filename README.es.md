@@ -43,7 +43,7 @@ comprobación.
 - **Lo que no está subido no existe.** Commit + push en cada punto estable, y la bitácora (`docs/traspaso.md`) se
   actualiza **en el mismo commit** que el trabajo que describe, nunca al final.
 - Cada commit acaba con `Siguiente: <paso concreto>`: la próxima sesión sabe qué hacer sin preguntar.
-- Tras una compactación o un `/clear`, `recuperar.py` devuelve el estado de la bitácora y los últimos commits, y
+- Tras una compactación o un `/clear`, `recover.py` devuelve el estado de la bitácora y los últimos commits, y
   busca un detalle perdido en el registro de la sesión sin tener que releerlo entero.
 - **Varias sesiones a la vez** (dos cuentas, una local y otra en la nube): cada sesión tiene su propia rama, y con
   `"logRows": true` cada rama escribe solo en su fila de la bitácora; el `pre-push` rechaza tocar la de otra.
@@ -53,7 +53,7 @@ comprobación.
 
 - **Tres fases** antes de subir: revisión del código (`/code-review` del diff contra la rama protegida), entorno
   (`gw-opt-tokens` y `retro`, presentadas a la persona) y cierre.
-- `revisado.sh` escribe una **marca de revisión atada a un commit concreto**; sin la marca del mismo commit, los
+- `reviewed.sh` escribe una **marca de revisión atada a un commit concreto**; sin la marca del mismo commit, los
   ganchos rechazan la subida o el pull request.
 - **Código y contenido se distinguen.** Cada proyecto declara con expresiones regulares qué es contenido (docs,
   datos, textos, imágenes) y no necesita revisión de código; lo demás es código y la necesita.
@@ -63,7 +63,7 @@ comprobación.
 
 ### Tests que de verdad prueban algo
 
-- `rojo-sin-arreglo.sh` comprueba que un test nuevo **falla sin su arreglo**: un test que pasa en los dos casos no
+- `red-without-fix.sh` comprueba que un test nuevo **falla sin su arreglo**: un test que pasa en los dos casos no
   prueba nada.
 - Un test que espera un fallo comprueba **el motivo**, no solo el código de salida.
 - El `pre-push` puede correr también los tests relacionados con lo que cambia.
@@ -83,7 +83,7 @@ comprobación.
 
 - Una `retro` que descubre una mejora general no parchea la copia local, que la próxima versión pisaría: la deja en
   su archivo bajo `## Para Galivelop-workflow`.
-- Desde este repo, `gw-harvest` (con `recoger.py`) recorre los proyectos conectados y recoge, como propuestas, sus
+- Desde este repo, `gw-harvest` (con `harvest.py`) recorre los proyectos conectados y recoge, como propuestas, sus
   copias editadas, sus skills nuevas y lo que dicen sus retros. **Nada se aplica sin confirmación**: lo aprobado
   entra con su entrada en el CHANGELOG y una versión nueva.
 - `/gw-update` lleva cada proyecto a la versión nueva y **enseña los cambios de las plantillas** antes de aplicar lo
@@ -92,7 +92,7 @@ comprobación.
 ### Se protege a sí mismo
 
 - Un gancho pide permiso a la persona antes de que el agente edite la configuración del propio flujo.
-- `enlaces-md.py` encuentra enlaces rotos y referencias desfasadas en el Markdown, y `mapa-agente.py` comprueba que
+- `md-links.py` encuentra enlaces rotos y referencias desfasadas en el Markdown, y `agent-map.py` comprueba que
   el mapa para agentes no apunta a nada que ya no exista.
 - El propio repo pasa **más de mil pruebas automáticas**, en Linux y macOS, y se trabaja con su propio flujo: si una
   regla estorba aquí, estorba en todos los proyectos.
@@ -104,7 +104,7 @@ comprobación.
 2. **Antes de trabajar:** `gw-selector` dice en una línea qué skill y qué modelo pide el caso.
 3. **Mientras trabaja:** commit + push en cada punto estable, nunca más de 30-45 minutos sin subir, con la bitácora
    en el mismo commit. Lo de varios pasos va a subagentes con `gw-orchestrate-dealer`.
-4. **Antes de la rama protegida:** las tres fases, la marca con `revisado.sh` y la subida con la confirmación de la
+4. **Antes de la rama protegida:** las tres fases, la marca con `reviewed.sh` y la subida con la confirmación de la
    persona.
 5. **Al cerrar una fase:** se mira el CI de la última subida y, con la bitácora al día, se recomienda `/clear`.
 
@@ -143,10 +143,10 @@ comprobación.
 
 ### Scripts
 
-Deterministas, en Python y en bash compatible con la versión de macOS: `aplicar.py` (montar el flujo), `doctor.py`
-(diagnóstico con la orden que arregla cada problema), `revisado.sh` (marca de revisión), `recuperar.py` (estado
-tras `/clear`), `fusionar.sh` (traer la rama de un subagente con el check en verde y limpiar su copia de trabajo),
-`rojo-sin-arreglo.sh`, `recoger.py` y las comprobaciones de enlaces y del mapa para agentes.
+Deterministas, en Python y en bash compatible con la versión de macOS: `apply.py` (montar el flujo), `doctor.py`
+(diagnóstico con la orden que arregla cada problema), `reviewed.sh` (marca de revisión), `recover.py` (estado
+tras `/clear`), `merge-branch.sh` (traer la rama de un subagente con el check en verde y limpiar su copia de trabajo),
+`red-without-fix.sh`, `harvest.py` y las comprobaciones de enlaces y del mapa para agentes.
 
 ### Patrones opcionales
 
@@ -158,7 +158,7 @@ la de la nube, **contenido para redes** y la **recogida de mejoras** de vuelta a
 
 - **Etapa 1 (hoy):** un agente de IA aplica el flujo a tu proyecto, nuevo (lo recomendado) o existente, siguiendo
   la [guía de aplicación](docs/es/aplicar.md). Lo que exige criterio (idioma, check, rama protegida, qué es
-  contenido…) lo decide contigo; `scripts/aplicar.py` copia y configura, y `scripts/doctor.py` confirma que queda
+  contenido…) lo decide contigo; `scripts/apply.py` copia y configura, y `scripts/doctor.py` confirma que queda
   bien montado. En Claude Code, `/gw-init` lo aplica, `/gw-update` lo pone al día y `/gw-doctor` lo revisa.
 - Todo queda **en el repo del proyecto** (`.claude/gw/`, `.claude/skills/`, `.githooks/` y `.claude/gw.json`), así
   que funciona también en sesiones en la nube, que no cargan plugins.

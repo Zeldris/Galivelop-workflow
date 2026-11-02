@@ -70,8 +70,8 @@ siguiente tiene que seguir **sin perder nada y sin preguntar por dónde iba**.
   2. **Entorno:** `/gw-opt-tokens` y `/retro`; sus propuestas se presentan al usuario y lo que confirme se aplica en la
      rama (lo general para el flujo se aplica aquí mismo: este repo es el flujo). Si el usuario pidió ir a `main` y no
      está para decidir la retro: todo listo (retro con `**Estado:** pendiente`, check en verde sobre la fusión con
-     `main`, descripción del PR) y se para antes de `revisado.sh`; no se decide por él.
-  3. **Cierre:** si la fase 2 trajo código, `/code-review` de esos commits; luego `bash scripts/revisado.sh` y la
+     `main`, descripción del PR) y se para antes de `reviewed.sh`; no se decide por él.
+  3. **Cierre:** si la fase 2 trajo código, `/code-review` de esos commits; luego `bash scripts/reviewed.sh` y la
      subida (el `pre-push` exige la marca).
 - Este repo, una vez publicado, es lo que instalan otros proyectos: `main` = última versión publicada (plan §7).
 - **Tras la subida a `main`**, se escribe `docs/registros/release-vX.Y.Z.md` (como `release-v0.4.0.md`): el título y

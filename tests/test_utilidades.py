@@ -1,5 +1,5 @@
-"""The workflow's utility scripts, end to end, in temporary projects: bitacora.py, prepush-ramas.sh, fusionar.sh,
-rojo-sin-arreglo.sh, tests-relacionados.sh and enlaces-md.py.
+"""The workflow's utility scripts, end to end, in temporary projects: handoff.py, prepush-branches.sh, merge-branch.sh,
+red-without-fix.sh, related-tests.sh and md-links.py.
 
 Same conventions as test_ganchos.py (it provides the temporary project): git runs isolated from this machine's
 configuration and every commit that matters has a fixed date, so the suite does not depend on today's date.
@@ -16,8 +16,8 @@ from pathlib import Path
 from test_ganchos import BASE_CONFIG, Project, ROOT, VERSION, ZERO
 
 sys.dont_write_bytecode = True
-SCRIPTS = ("bitacora.py", "prepush-ramas.sh", "fusionar.sh", "rojo-sin-arreglo.sh", "tests-relacionados.sh",
-           "enlaces-md.py")
+SCRIPTS = ("handoff.py", "prepush-branches.sh", "merge-branch.sh", "red-without-fix.sh", "related-tests.sh",
+           "md-links.py")
 DAY = {"GIT_AUTHOR_DATE": "2026-10-21T12:00:00+0000", "GIT_COMMITTER_DATE": "2026-10-21T12:00:00+0000"}
 LOG = "docs/log.md"
 
@@ -74,53 +74,53 @@ class Base(unittest.TestCase):
 
 class BitacoraRows(Base):
     def test_check_accepts_a_well_formed_log(self):
-        code, out = self.p.script("bitacora.py", "check")
+        code, out = self.p.script("handoff.py", "check")
         self.assertEqual(code, 0, out)
 
     def test_row_over_600_characters_refused(self):
         self.p.write(LOG, log_text(a="x" * 601))
-        code, out = self.p.script("bitacora.py", "check")
+        code, out = self.p.script("handoff.py", "check")
         self.assertEqual(code, 1, out)
         self.assertIn("601 characters (limit 600)", out)
         self.p.write(LOG, log_text(a="x" * 600))
-        self.assertEqual(self.p.script("bitacora.py", "check")[0], 0)
+        self.assertEqual(self.p.script("handoff.py", "check")[0], 0)
 
     def test_check_fix_hint_never_suggests_amend(self):
         # at commit time (commit-msg) the commit does not exist yet: --amend would rewrite the PREVIOUS commit
         self.p.write(LOG, log_text(a="x" * 601))
-        code, out = self.p.script("bitacora.py", "check")
+        code, out = self.p.script("handoff.py", "check")
         self.assertEqual(code, 1, out)
-        self.assertIn(f"bitacora: fix: edit {LOG}, stage it (git add {LOG}) and run the commit again: git commit", out)
+        self.assertIn(f"handoff: fix: edit {LOG}, stage it (git add {LOG}) and run the commit again: git commit", out)
         self.assertNotIn("--amend", out)
 
     def test_check_at_push_hints_a_new_commit_not_amend(self):
         # at push time the commit exists (and may not be the tip): the fix is a new commit
         self.p.write(LOG, log_text(a="x" * 601))
-        code, out = self.p.script("bitacora.py", "check", "--at", "push")
+        code, out = self.p.script("handoff.py", "check", "--at", "push")
         self.assertEqual(code, 1, out)
-        self.assertIn(f"bitacora: fix: edit {LOG} and make a new commit with the fix: git add {LOG} && git commit", out)
+        self.assertIn(f"handoff: fix: edit {LOG} and make a new commit with the fix: git add {LOG} && git commit", out)
         self.assertNotIn("--amend", out)
 
     def test_two_rows_for_one_branch_refused(self):
         self.p.write(LOG, log_text() + "\n| **Task in progress · `feat-a`** | again |\n")
-        code, out = self.p.script("bitacora.py", "check")
+        code, out = self.p.script("handoff.py", "check")
         self.assertEqual(code, 1, out)
         self.assertIn("two rows for feat-a", out)
 
     def test_updated_older_than_the_commit_day_refused(self):
         self.p.write(LOG, log_text(updated="2026-10-01"))
-        code, out = self.p.script("bitacora.py", "check", "--date", "2026-10-21")
+        code, out = self.p.script("handoff.py", "check", "--date", "2026-10-21")
         self.assertEqual(code, 1, out)
         self.assertIn("2026-10-01", out)
-        self.assertEqual(self.p.script("bitacora.py", "check", "--date", "2026-10-01")[0], 0)
+        self.assertEqual(self.p.script("handoff.py", "check", "--date", "2026-10-01")[0], 0)
 
     def test_off_without_logrows(self):
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
         p = Utilidades(self.tmp, {"logRows": False})
         p.write(LOG, log_text(a="x" * 900))
-        self.assertEqual(p.script("bitacora.py", "check")[0], 0)
-        self.assertEqual(p.script("bitacora.py", "close-row", "feat-a")[0], 0)
+        self.assertEqual(p.script("handoff.py", "check")[0], 0)
+        self.assertEqual(p.script("handoff.py", "close-row", "feat-a")[0], 0)
         self.assertNotIn("Merged", (p.work / LOG).read_text())
 
 
@@ -135,7 +135,7 @@ class BitacoraSizeAndDone(Base):
         return path
 
     def check(self, text, *flags, **kw):
-        return self.p.script("bitacora.py", "check", str(self.log(text, **kw)), *flags)
+        return self.p.script("handoff.py", "check", str(self.log(text, **kw)), *flags)
 
     @staticmethod
     def doc(cell="short", done=None):
@@ -152,8 +152,8 @@ class BitacoraSizeAndDone(Base):
         text = self.doc(cell="x" * 801)
         code, out = self.check(text)
         self.assertEqual(code, 0, out)
-        self.assertIn("WARNING: bitacora: a cell of the state table (\"Siguiente paso\") has 801 characters (limit 800)", out)
-        self.assertIn("bitacora.py done", out)  # the message ends with the command that helps
+        self.assertIn("WARNING: handoff: a cell of the state table (\"Siguiente paso\") has 801 characters (limit 800)", out)
+        self.assertIn("handoff.py done", out)  # the message ends with the command that helps
         code, out = self.check(text, "--strict")
         self.assertEqual(code, 1, out)
         self.assertIn("has 801 characters (limit 800)", out)
@@ -185,7 +185,7 @@ class BitacoraSizeAndDone(Base):
         text = self.doc(done=self.items(6))
         code, out = self.check(text)
         self.assertEqual(code, 0, out)
-        self.assertIn("WARNING: bitacora: the Done section has 6 items (limit 5)", out)
+        self.assertIn("WARNING: handoff: the Done section has 6 items (limit 5)", out)
         code, out = self.check(text, "--strict")
         self.assertEqual(code, 1, out)
         self.assertIn("has 6 items (limit 5)", out)
@@ -213,20 +213,20 @@ class BitacoraSizeAndDone(Base):
     def test_done_messages_end_with_the_command_that_fixes_them(self):
         for done in (self.items(6), ["1. a", "3. b"], ["1. 2026-10-25 — a.2. 2026-10-24 — b"]):
             out = self.check(self.doc(done=done), "--strict")[1]
-            self.assertRegex(out, r"(bitacora\.py done \"<text>\"\)|rerun: python3 \S+bitacora\.py check \S+ --strict)", done)
+            self.assertRegex(out, r"(handoff\.py done \"<text>\"\)|rerun: python3 \S+handoff\.py check \S+ --strict)", done)
 
     def test_unreadable_log_without_logrows_warns_and_does_not_block(self):
         path = self.tmp / "latin.md"
         path.write_bytes("## Estado actual\n\n| a | caf\xe9 |\n".encode("latin-1"))
-        code, out = self.p.script("bitacora.py", "check", str(path))
+        code, out = self.p.script("handoff.py", "check", str(path))
         self.assertEqual(code, 0, out)
-        self.assertIn("WARNING: bitacora: cannot read", out)
+        self.assertIn("WARNING: handoff: cannot read", out)
         self.assertIn("save it as UTF-8", out)
-        code, out = self.p.script("bitacora.py", "check", str(path), "--strict")
+        code, out = self.p.script("handoff.py", "check", str(path), "--strict")
         self.assertEqual(code, 2, out)
         self.assertIn("cannot read", out)
-        code, out = self.p.script("bitacora.py", "check", str(self.tmp / "missing.md"))
-        self.assertEqual((code, "WARNING: bitacora: cannot read" in out), (0, True), out)
+        code, out = self.p.script("handoff.py", "check", str(self.tmp / "missing.md"))
+        self.assertEqual((code, "WARNING: handoff: cannot read" in out), (0, True), out)
 
     def test_unreadable_log_with_logrows_still_fails(self):
         shutil.rmtree(self.tmp)
@@ -234,7 +234,7 @@ class BitacoraSizeAndDone(Base):
         self.p = Utilidades(self.tmp, {"logRows": True})
         path = self.tmp / "latin.md"
         path.write_bytes("caf\xe9\n".encode("latin-1"))
-        code, out = self.p.script("bitacora.py", "check", str(path))
+        code, out = self.p.script("handoff.py", "check", str(path))
         self.assertEqual(code, 2, out)
         self.assertIn("cannot read", out)
 
@@ -242,7 +242,7 @@ class BitacoraSizeAndDone(Base):
         path = self.log(self.doc())
         for bad in ("2026-13-45", "2026-02-30", "26-10-25", "tomorrow"):
             for args in (("check", str(path), "--date", bad), ("done", "t", str(path), "--date", bad)):
-                code, out = self.p.script("bitacora.py", *args)
+                code, out = self.p.script("handoff.py", *args)
                 self.assertEqual(code, 2, (args, out))
                 self.assertIn("--date must be YYYY-MM-DD and a real date", out)
         self.assertEqual(path.read_bytes().decode("utf-8"), self.doc())
@@ -267,18 +267,18 @@ class BitacoraSizeAndDone(Base):
         code, out = self.check(text)
         self.assertEqual(code, 1, out)  # the row rule still fails on its own
         self.assertIn("601 characters (limit 600)", out)
-        self.assertIn("WARNING: bitacora: the Done section has 6 items", out)
+        self.assertIn("WARNING: handoff: the Done section has 6 items", out)
 
     def test_repo_templates_follow_the_rules(self):
         for template in ("es", "en"):
-            code, out = self.p.script("bitacora.py", "check", str(ROOT / "templates" / template / "log.md"), "--strict")
+            code, out = self.p.script("handoff.py", "check", str(ROOT / "templates" / template / "log.md"), "--strict")
             self.assertEqual(code, 0, out)
 
     # done
 
     def run_done(self, text, entry="new one", **kw):
         path = self.log(text, **kw)
-        code, out = self.p.script("bitacora.py", "done", entry, str(path), "--date", "2026-10-26")
+        code, out = self.p.script("handoff.py", "done", entry, str(path), "--date", "2026-10-26")
         return code, out, path.read_bytes().decode("utf-8")
 
     def test_done_inserts_on_top_and_renumbers_leaving_the_rest_identical(self):
@@ -362,7 +362,7 @@ class BitacoraSizeAndDone(Base):
 
     def test_done_defaults_to_today_and_to_the_logs_file(self):
         before = (self.p.work / LOG).read_text()
-        code, out = self.p.script("bitacora.py", "done", "from the default file")
+        code, out = self.p.script("handoff.py", "done", "from the default file")
         self.assertEqual(code, 0, out)
         today = datetime.date.today().isoformat()
         self.assertEqual((self.p.work / LOG).read_text(),
@@ -374,10 +374,10 @@ class BitacoraSizeAndDone(Base):
         for args, message in ((("done", "text", str(path), "--date", "tomorrow"), "--date must be YYYY-MM-DD"),
                               (("done", "   ", str(path)), "TEXT is empty"),
                               (("done", "text", missing), "cannot read")):
-            code, out = self.p.script("bitacora.py", *args)
+            code, out = self.p.script("handoff.py", *args)
             self.assertEqual(code, 2, args)
             self.assertIn(message, out)
-        self.assertEqual(self.p.script("bitacora.py", "done")[0], 2)
+        self.assertEqual(self.p.script("handoff.py", "done")[0], 2)
         self.assertEqual(path.read_bytes().decode("utf-8"), self.doc())
 
 
@@ -390,12 +390,12 @@ class BitacoraOwnRow(Base):
     def test_own_row_and_free_rows_accepted(self):
         self.p.branch("feat-a")
         sha = self.commit_log(a="A moved on", updated="2026-10-22")
-        self.assertEqual(self.p.script("bitacora.py", "own-row", sha, "feat-a")[0], 0)
+        self.assertEqual(self.p.script("handoff.py", "own-row", sha, "feat-a")[0], 0)
 
     def test_other_branch_row_refused(self):
         self.p.branch("feat-a")
         sha = self.commit_log(b="A rewrote B")
-        code, out = self.p.script("bitacora.py", "own-row", sha, "feat-a")
+        code, out = self.p.script("handoff.py", "own-row", sha, "feat-a")
         self.assertEqual(code, 1, out)
         self.assertIn("Task in progress · feat-b", out)
         self.assertIn("BITACORA_COMPARTIDA=1 git push", out)
@@ -405,12 +405,12 @@ class BitacoraOwnRow(Base):
         self.p.write(LOG, log_text().replace("`feat-a`, `feat-b`", "`feat-a`, `feat-b`, `feat-c`"))
         self.p.commit("edit a shared row", env=DAY)
         sha = self.p.sha()
-        code, out = self.p.script("bitacora.py", "own-row", sha, "feat-a")
+        code, out = self.p.script("handoff.py", "own-row", sha, "feat-a")
         self.assertEqual(code, 1, out)
         self.assertIn("Branches", out)
         for env in ({"BITACORA_COMPARTIDA": "1"}, {"GW_SHARED_LOG": "1"}):
-            self.assertEqual(self.p.script("bitacora.py", "own-row", sha, "feat-a", env=env)[0], 0, env)
-        self.assertEqual(self.p.script("bitacora.py", "own-row", sha, "feat-a", "--shared")[0], 0)
+            self.assertEqual(self.p.script("handoff.py", "own-row", sha, "feat-a", env=env)[0], 0, env)
+        self.assertEqual(self.p.script("handoff.py", "own-row", sha, "feat-a", "--shared")[0], 0)
 
 
 class BitacoraTasks(Base):
@@ -426,13 +426,13 @@ class BitacoraTasks(Base):
         base = self.plan("- [ ] **INS-7** 🚧 half done, missing the form\n- [ ] **INS-8** later\n")
         self.p.write("src/x.py", "x = 1\n")
         self.p.commit("Work on INS-7 and INS-8", env=DAY)
-        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "in-progress", base, self.p.sha())
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "in-progress", base, self.p.sha())
         self.assertEqual(code, 0, out)
         self.assertIn("warning", out)
         self.assertIn("INS-7", out)
         self.assertNotIn("INS-8", out)  # not marked 🚧
         self.plan("- [ ] **INS-7** 🚧 half done, the form is missing now\n- [ ] **INS-8** later\n", "update INS-7")
-        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "in-progress", base, self.p.sha())
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "in-progress", base, self.p.sha())
         self.assertEqual(code, 0, out)
         self.assertNotIn("warning", out)
 
@@ -440,28 +440,28 @@ class BitacoraTasks(Base):
         self.p.branch("feat-a")
         base = self.plan("- [ ] **INS-3** the thing\n- [ ] **TASK-1** other\n")
         self.plan("- [x] **INS-3** the thing\n- [ ] **TASK-1** other\n", "close INS-3")
-        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "closed", base, self.p.sha())
         self.assertEqual(code, 1, out)
         self.assertIn("INS-3", out)
-        self.assertIn(f"bitacora: fix: edit {LOG} and make a new commit with the fix: git add {LOG} && git commit", out)
+        self.assertIn(f"handoff: fix: edit {LOG} and make a new commit with the fix: git add {LOG} && git commit", out)
         self.assertNotIn("--amend", out)
         self.p.write(LOG, log_text().replace("1. nothing yet", "1. ~~INS-3~~ done"))
         self.p.commit("log", env=DAY)
-        self.assertEqual(self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())[0], 0)
+        self.assertEqual(self.p.script("handoff.py", "--plan", self.PLAN, "closed", base, self.p.sha())[0], 0)
 
     def test_staged_closure_must_be_in_done(self):
         self.p.branch("feat-a")
         self.plan("- [ ] **INS-3** the thing\n")
         self.p.write(self.PLAN, "- [x] **INS-3** the thing\n")
         self.p.git("add", self.PLAN)
-        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", "--staged")
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "closed", "--staged")
         self.assertEqual(code, 1, out)
         self.assertIn("INS-3 is closed in the plan", out)
         self.assertIn(f"git add {LOG}", out)  # the commit does not exist yet: no --amend
         self.assertNotIn("--amend", out)
         self.p.write(LOG, log_text().replace("1. nothing yet", "1. ~~INS-3~~ done"))
         self.p.git("add", LOG)
-        self.assertEqual(self.p.script("bitacora.py", "--plan", self.PLAN, "closed", "--staged")[0], 0)
+        self.assertEqual(self.p.script("handoff.py", "--plan", self.PLAN, "closed", "--staged")[0], 0)
 
     def test_staged_reads_the_index_not_the_work_tree(self):
         self.p.branch("feat-a")
@@ -470,16 +470,16 @@ class BitacoraTasks(Base):
         self.p.git("add", self.PLAN)
         self.p.write(self.PLAN, "- [x] **INS-3** the thing\n- [x] **INS-4** other\n")  # not staged
         self.p.write(LOG, log_text().replace("1. nothing yet", "1. ~~INS-3~~ done"))  # not staged either
-        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", "--staged")
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "closed", "--staged")
         self.assertEqual(code, 1, out)
         self.assertIn("INS-3", out)
         self.assertNotIn("INS-4", out)
 
     def test_staged_takes_no_range(self):
-        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", "--staged", "HEAD", "HEAD")
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "closed", "--staged", "HEAD", "HEAD")
         self.assertEqual(code, 2, out)
         self.assertIn("--staged alone", out)
-        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", "HEAD")
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "closed", "HEAD")
         self.assertEqual(code, 2, out)
         self.assertIn("takes BASE SHA", out)
 
@@ -491,7 +491,7 @@ class BitacoraTasks(Base):
         base = self.plan("- [ ] **INS-3** the thing\n")
         sha = self.plan("- [x] **INS-3** the thing\n", "close INS-3 (from trunk)")
         self.p.git("push", "-q", "--no-verify", "origin", "HEAD:trunk")
-        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, sha)
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "closed", base, sha)
         self.assertEqual(code, 0, out)
 
     def test_struck_multiline_task_and_custom_id_regex(self):
@@ -499,7 +499,7 @@ class BitacoraTasks(Base):
         base = self.plan("- TASK-1 one\n- TASK-2 two\n")
         self.plan("- ~~TASK-1 one\n  continued~~\n- TASK-2 two\n", "close TASK-1")
         args = ("--plan", self.PLAN, "--id-regex", r"TASK-\d+", "closed", base, self.p.sha())
-        code, out = self.p.script("bitacora.py", *args)
+        code, out = self.p.script("handoff.py", *args)
         self.assertEqual(code, 1, out)
         self.assertIn("TASK-1", out)
         self.assertNotIn("TASK-2", out)
@@ -509,7 +509,7 @@ class BitacoraTasks(Base):
         base = self.plan("- INS-1 one\n- FLU-2 two\n- INS-3 three\n- INS-1 to INS-3 range\n")
         self.plan("- ~~INS-1 to INS-3 range~~\n- INS-1 one\n- FLU-2 two\n", "close")
         args = ("--plan", self.PLAN, "--id-regex", r"(INS|FLU)-\d+", "closed", base, self.p.sha())
-        code, out = self.p.script("bitacora.py", *args)
+        code, out = self.p.script("handoff.py", *args)
         self.assertEqual(code, 1, out)
         self.assertNotIn("Traceback", out)
         self.assertIn("INS-1 is closed in the plan", out)
@@ -518,7 +518,7 @@ class BitacoraTasks(Base):
         self.p.write(LOG, log_text().replace("1. nothing yet", "1. ~~INS-1 to INS-3~~ done"))
         self.p.commit("log", env=DAY)
         args = args[:-1] + (self.p.sha(),)
-        self.assertEqual(self.p.script("bitacora.py", *args)[0], 0)
+        self.assertEqual(self.p.script("handoff.py", *args)[0], 0)
 
     def test_task_id_from_the_config_with_groups(self):
         shutil.rmtree(self.tmp)
@@ -527,12 +527,12 @@ class BitacoraTasks(Base):
         self.p.branch("feat-a")
         base = self.plan("- FLU-9 nine\n")
         self.plan("- ~~FLU-9 nine~~\n", "close FLU-9")
-        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "closed", base, self.p.sha())
         self.assertEqual(code, 1, out)
         self.assertIn("FLU-9 is closed in the plan", out)
 
     def test_backreference_in_the_id_regex_is_a_usage_error(self):
-        code, out = self.p.script("bitacora.py", "--id-regex", r"(a)\1", "closed", "HEAD", "HEAD")
+        code, out = self.p.script("handoff.py", "--id-regex", r"(a)\1", "closed", "HEAD", "HEAD")
         self.assertEqual(code, 2, out)
         self.assertIn("back-reference", out)
 
@@ -543,32 +543,32 @@ class BitacoraTasks(Base):
         for text in ("1. INS-3 done, not struck", "- [x] **INS-3** ticked", "1. mentioned later: INS-3 pending"):
             self.p.write(LOG, log_text().replace("1. nothing yet", text))
             self.p.commit("log", env=DAY)
-            code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())
+            code, out = self.p.script("handoff.py", "--plan", self.PLAN, "closed", base, self.p.sha())
             self.assertEqual(code, 1, f"{text}: {out}")
             self.assertIn("INS-3 is closed in the plan", out)
         self.p.write(LOG, log_text().replace("1. nothing yet", "1. 2026-10-21 — closed INS-3 with the fix"))
         self.p.commit("log", env=DAY)
-        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "closed", base, self.p.sha())
         self.assertEqual(code, 0, out)
         # the id on an indented continuation line of a dated entry counts; a new unstruck item after it does not
         self.p.write(LOG, log_text().replace("1. nothing yet", "1. 2026-10-21 — the fix\n   that closes INS-3"))
         self.p.commit("log", env=DAY)
-        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "closed", base, self.p.sha())
         self.assertEqual(code, 0, out)
         self.p.write(LOG, log_text().replace("1. nothing yet", "1. 2026-10-21 — the fix\n   - INS-3 pending"))
         self.p.commit("log", env=DAY)
-        code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "closed", base, self.p.sha())
         self.assertEqual(code, 1, out)
         self.assertIn("INS-3 is closed in the plan", out)
 
     def test_check_fails_on_a_task_row_without_a_branch_even_with_good_rows(self):
         self.p.write(LOG, log_text().replace("| **Branches**", "| **Tarea en curso** | no branch here |\n| **Branches**"))
-        code, out = self.p.script("bitacora.py", "check")
+        code, out = self.p.script("handoff.py", "check")
         self.assertEqual(code, 1, out)
         self.assertIn("task row without a branch", out)
         self.assertIn("Tarea en curso", out)
         self.p.write(LOG, log_text())
-        self.assertEqual(self.p.script("bitacora.py", "check")[0], 0)
+        self.assertEqual(self.p.script("handoff.py", "check")[0], 0)
 
 
 class BitacoraClash(Base):
@@ -588,7 +588,7 @@ class BitacoraClash(Base):
         return self.p.sha()
 
     def clash(self, *args):
-        return self.p.script("bitacora.py", "--plan", self.PLAN, "clash", *args)
+        return self.p.script("handoff.py", "--plan", self.PLAN, "clash", *args)
 
     def two_branches(self, a="the form", b="the export"):
         self.p.branch("feat-b", self.base)
@@ -631,7 +631,7 @@ class BitacoraClash(Base):
         a, b = self.two_branches()
         code, out = self.clash("--warn", a, "origin/gone", b)
         self.assertEqual(code, 0, out)
-        self.assertIn("WARNING: bitacora: INS-3 is a new task", out)
+        self.assertIn("WARNING: handoff: INS-3 is a new task", out)
         self.assertNotIn("fix:", out)
         code, out = self.clash(a, "origin/gone")
         self.assertEqual(code, 2, out)
@@ -692,7 +692,7 @@ class BitacoraClash(Base):
 
     def test_off_without_a_plan_or_without_logrows(self):
         a, b = self.two_branches()
-        code, out = self.p.script("bitacora.py", "clash", a, b)  # no plan in the config
+        code, out = self.p.script("handoff.py", "clash", a, b)  # no plan in the config
         self.assertEqual((code, out), (0, ""))
         shutil.rmtree(self.tmp)
         self.tmp.mkdir()
@@ -705,17 +705,17 @@ class BitacoraClash(Base):
 
 class BitacoraCloseRow(Base):
     def test_close_row_writes_merged_text_only_in_that_row(self):
-        code, out = self.p.script("bitacora.py", "close-row", "feat-a")
+        code, out = self.p.script("handoff.py", "close-row", "feat-a")
         self.assertEqual(code, 0, out)
         text = (self.p.work / LOG).read_text()
         self.assertIn("| **Task in progress · `feat-a`** | Merged, branch finished: nothing is pending on it. |", text)
         self.assertIn("| **Task in progress · `feat-b`** | doing B |", text)
-        self.assertEqual(self.p.script("bitacora.py", "check")[0], 0)
+        self.assertEqual(self.p.script("handoff.py", "check")[0], 0)
 
     def test_close_row_with_text_and_unknown_branch(self):
-        self.assertEqual(self.p.script("bitacora.py", "close-row", "feat-b", "--text", "done, merged")[0], 0)
+        self.assertEqual(self.p.script("handoff.py", "close-row", "feat-b", "--text", "done, merged")[0], 0)
         self.assertIn("| **Task in progress · `feat-b`** | done, merged |", (self.p.work / LOG).read_text())
-        code, out = self.p.script("bitacora.py", "close-row", "nope")
+        code, out = self.p.script("handoff.py", "close-row", "nope")
         self.assertEqual(code, 1, out)
         self.assertIn("found 0 rows for nope", out)
 
@@ -726,7 +726,7 @@ class PrepushRamas(Base):
         changed, pushed = self.tmp / "changed", self.tmp / "pushed"
         changed.write_text("")
         pushed.write_text("")
-        code, out = self.p.script("prepush-ramas.sh", str(changed), str(pushed), stdin=stdin, env=env)
+        code, out = self.p.script("prepush-branches.sh", str(changed), str(pushed), stdin=stdin, env=env)
         return code, out, changed.read_text().split(), pushed.read_text().split()
 
     def edit(self, **kw):
@@ -763,7 +763,7 @@ class PrepushRamas(Base):
         sha = self.edit(a="x" * 700)
         code, out, _, _ = self.run_hook(sha)
         self.assertEqual(code, 1, out)
-        self.assertIn(f"bitacora: fix: edit {LOG} and make a new commit with the fix: git add {LOG} && git commit", out)
+        self.assertIn(f"handoff: fix: edit {LOG} and make a new commit with the fix: git add {LOG} && git commit", out)
         self.assertNotIn("--amend", out)
 
     def test_following_the_hint_lets_the_push_through(self):
@@ -846,7 +846,7 @@ class PrepushRamas(Base):
         code, out = self.p.push("origin", "feat-a")
         self.assertNotEqual(code, 0, out)
         self.assertIn("Task in progress · feat-b", out)
-        self.assertIn("prepush-ramas.sh refused the push", out)
+        self.assertIn("prepush-branches.sh refused the push", out)
         code, out = self.p.push("origin", "feat-a", env={"BITACORA_COMPARTIDA": "1"})
         self.assertEqual(code, 0, out)
 
@@ -866,7 +866,7 @@ class PrepushRamas(Base):
         self.p.write(plan, start + "- [ ] **INS-3** the form\n"); self.p.commit("A opens INS-3", env=DAY)
         code, out, _, _ = self.run_hook(self.p.sha(), env=env)
         self.assertEqual(code, 0, out)
-        self.assertIn('WARNING: bitacora: INS-3 is a new task on this branch ("the form") and on refs/remotes/origin/feat-b', out)
+        self.assertIn('WARNING: handoff: INS-3 is a new task on this branch ("the form") and on refs/remotes/origin/feat-b', out)
         self.p.write(plan, start + "- [ ] **INS-2** the form\n"); self.p.commit("A opens INS-2", env=DAY)
         code, out, _, _ = self.run_hook(self.p.sha(), env=env)
         self.assertEqual(code, 1, out)
@@ -890,7 +890,7 @@ class PrepushRamas(Base):
         code, out, _, _ = self.run_hook(self.p.sha(), env=env)
         self.assertEqual(code, 1, out)
         self.assertIn("the merge keeps two different tasks with the id INS-2", out)
-        self.assertIn("bitacora: in merge", out)
+        self.assertIn("handoff: in merge", out)
         self.p.write(plan, start + "- [ ] **INS-3** the form\n- [ ] **INS-2** the export\n"); self.p.commit("renumber", env=DAY)
         code, out, _, _ = self.run_hook(self.p.sha(), env=env)
         self.assertEqual(code, 0, out)
@@ -913,7 +913,7 @@ class Fusionar(Base):
         self.p.write("check.sh", "echo ran >> check.log\n")
         self.p.commit("check writes a log", env=DAY)
         wt = self.agent()
-        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
         self.assertEqual(code, 0, out)
         self.assertTrue((self.p.work / "a.txt").is_file())
         self.assertEqual((self.p.work / "check.log").read_text(), "ran\n")
@@ -931,14 +931,14 @@ class Fusionar(Base):
         self.p.write(".claude/gw.json", json.dumps(cfg))
         self.p.commit("wrapper", env=DAY)
         self.agent()
-        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
         self.assertEqual(code, 0, out)
         self.assertIn("check OK: bash wrap.sh bash -c 'bash check.sh'", out)
         self.assertEqual((self.p.work / "wrap.log").read_text(), "wrapped: bash -c bash check.sh\n")
 
     def test_reminds_about_review_without_the_flag(self):
         self.agent()
-        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
         self.assertEqual(code, 0, out)
         self.assertIn("no --reviewed", out)
 
@@ -946,7 +946,7 @@ class Fusionar(Base):
         wt = self.agent(path="docs/notes.md", text="agent notes\n")
         self.p.write("docs/notes.md", "main notes\n")
         self.p.commit("main edits the same file", env=DAY)
-        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
         self.assertEqual(code, 1, out)
         self.assertIn("CONFLICT", out)
         self.assertIn("docs/notes.md", out)
@@ -960,7 +960,7 @@ class Fusionar(Base):
         self.tmp.mkdir()
         self.p = Utilidades(self.tmp, check="exit 1")
         wt = self.agent()
-        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
         self.assertEqual(code, 1, out)
         self.assertIn("CHECK FAILED", out)
         self.assertIn("git reset --hard HEAD^1", out)
@@ -978,7 +978,7 @@ class Fusionar(Base):
     def test_runs_the_related_tests_on_the_files_the_merge_brought(self):
         self.related()
         wt = self.agent(text="good\n")
-        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
         self.assertEqual(code, 0, out)
         self.assertEqual((self.p.work / "related.log").read_text(), "a.txt\n", "ran once, on the merged file only")
         self.assertIn("related tests OK", out)
@@ -989,12 +989,12 @@ class Fusionar(Base):
         self.related()
         before = self.p.sha()
         wt = self.agent(text="bad\n")
-        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
         self.assertEqual(code, 1, out)
         self.assertIn("RELATED TESTS FAILED", out)
-        self.assertIn("tests-relacionados: failed (fast): bash related.sh a.txt", out)
+        self.assertIn("related-tests: failed (fast): bash related.sh a.txt", out)
         self.assertIn('f=$(mktemp) && git diff --name-only --no-renames', out)
-        self.assertIn('tests-relacionados.sh "$f"', out)
+        self.assertIn('related-tests.sh "$f"', out)
         self.assertNotIn("changed.txt", out, "the rerun command must not write into the project root")
         self.assertIn("git reset --hard HEAD^1", out)
         self.assertNotIn("CHECK FAILED", out, "the check itself passed")
@@ -1004,7 +1004,7 @@ class Fusionar(Base):
         self.assertIn("worktree-agent-1", self.branches())
 
     def test_related_tests_are_skipped_when_the_script_is_not_installed_and_nothing_is_configured(self):
-        (self.p.scripts / "tests-relacionados.sh").unlink()
+        (self.p.scripts / "related-tests.sh").unlink()
         for i, empty in enumerate((None, {}, {"fast": [], "slow": []})):
             with self.subTest(relatedTests=empty):
                 if empty is not None:
@@ -1013,7 +1013,7 @@ class Fusionar(Base):
                     self.p.write(".claude/gw.json", json.dumps(cfg))
                     self.p.commit("empty related tests", env=DAY)
                 wt = self.agent(name=f"worktree-agent-{i}", path=f"a{i}.txt", text="bad\n")
-                code, out = self.p.script("fusionar.sh", f"worktree-agent-{i}", "Merge agent", "--reviewed")
+                code, out = self.p.script("merge-branch.sh", f"worktree-agent-{i}", "Merge agent", "--reviewed")
                 self.assertEqual(code, 0, out)
                 self.assertNotIn("related tests", out)
                 self.assertNotIn("RELATED TESTS", out)
@@ -1021,13 +1021,13 @@ class Fusionar(Base):
 
     def test_configured_related_tests_with_the_script_missing_fail_closed_and_keep_the_branch(self):
         self.related()
-        (self.p.scripts / "tests-relacionados.sh").unlink()
+        (self.p.scripts / "related-tests.sh").unlink()
         before = self.p.sha()
         wt = self.agent(text="good\n")
-        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
         self.assertEqual(code, 1, out)
         self.assertIn("RELATED TESTS CANNOT RUN: relatedTests is configured but", out)
-        self.assertIn("tests-relacionados.sh is not installed", out)
+        self.assertIn("related-tests.sh is not installed", out)
         self.assertIn("/gw-update", out)
         self.assertIn("git reset --hard HEAD^1", out)
         self.assertNotIn("CHECK FAILED", out, "the check itself passed")
@@ -1041,14 +1041,14 @@ class Fusionar(Base):
         self.p.write("t.txt", "t\n")
         self.p.commit("topic", env=DAY)
         self.p.git("checkout", "-q", "main")
-        code, out = self.p.script("fusionar.sh", "claude/topic", "Merge topic")
+        code, out = self.p.script("merge-branch.sh", "claude/topic", "Merge topic")
         self.assertEqual(code, 0, out)
         self.assertTrue((self.p.work / "t.txt").is_file())
         self.assertIn("claude/topic", self.branches())
 
     def test_unknown_branch_and_already_merged(self):
-        self.assertEqual(self.p.script("fusionar.sh", "nope", "m")[0], 2)
-        code, out = self.p.script("fusionar.sh", "main", "m")
+        self.assertEqual(self.p.script("merge-branch.sh", "nope", "m")[0], 2)
+        code, out = self.p.script("merge-branch.sh", "main", "m")
         self.assertEqual(code, 0, out)
         self.assertIn("nothing to merge", out)
 
@@ -1064,53 +1064,53 @@ class RojoSinArreglo(Base):
         return self.p.git("stash", "list").stdout.strip()
 
     def test_test_that_fails_without_the_fix_passes_the_check_and_restores_it(self):
-        code, out = self.p.script("rojo-sin-arreglo.sh", "grep -q good fix.txt", "fix.txt")
+        code, out = self.p.script("red-without-fix.sh", "grep -q good fix.txt", "fix.txt")
         self.assertEqual(code, 0, out)
         self.assertIn("OK", out)
         self.assertEqual((self.p.work / "fix.txt").read_text(), "good\n")
         self.assertEqual(self.stashes(), "")
 
     def test_test_that_passes_without_the_fix_is_detected(self):
-        code, out = self.p.script("rojo-sin-arreglo.sh", "test -f fix.txt", "fix.txt")
+        code, out = self.p.script("red-without-fix.sh", "test -f fix.txt", "fix.txt")
         self.assertEqual(code, 1, out)
         self.assertIn("also passes WITHOUT the fix", out)
         self.assertEqual((self.p.work / "fix.txt").read_text(), "good\n")
         self.assertEqual(self.stashes(), "")
 
     def test_test_that_fails_with_the_fix_too(self):
-        code, out = self.p.script("rojo-sin-arreglo.sh", "grep -q never fix.txt", "fix.txt")
+        code, out = self.p.script("red-without-fix.sh", "grep -q never fix.txt", "fix.txt")
         self.assertEqual(code, 1, out)
         self.assertIn("does not pass with the fix", out)
         self.assertEqual((self.p.work / "fix.txt").read_text(), "good\n")
 
     def test_fix_file_without_changes_refused(self):
-        code, out = self.p.script("rojo-sin-arreglo.sh", "true", "docs/notes.md")
+        code, out = self.p.script("red-without-fix.sh", "true", "docs/notes.md")
         self.assertEqual(code, 2, out)
         self.assertIn("no uncommitted changes", out)
 
     def test_untracked_new_fix_file(self):
         self.p.write("new.txt", "x\n")
-        code, out = self.p.script("rojo-sin-arreglo.sh", "test -f new.txt", "new.txt")
+        code, out = self.p.script("red-without-fix.sh", "test -f new.txt", "new.txt")
         self.assertEqual(code, 0, out)
         self.assertTrue((self.p.work / "new.txt").is_file())
         self.assertEqual(self.stashes(), "")
 
     def test_fails_with_checks_the_reason(self):
         cmd = "echo boom; grep -q good fix.txt"
-        self.assertEqual(self.p.script("rojo-sin-arreglo.sh", "--fails-with", "boom", cmd, "fix.txt")[0], 0)
-        code, out = self.p.script("rojo-sin-arreglo.sh", "--fails-with", "other reason", cmd, "fix.txt")
+        self.assertEqual(self.p.script("red-without-fix.sh", "--fails-with", "boom", cmd, "fix.txt")[0], 0)
+        code, out = self.p.script("red-without-fix.sh", "--fails-with", "other reason", cmd, "fix.txt")
         self.assertEqual(code, 1, out)
         self.assertIn("another reason", out)
         self.assertEqual((self.p.work / "fix.txt").read_text(), "good\n")
 
     def test_ran_one_requires_exactly_one_matching_line(self):
         one = "echo 'ok 1 - a'; grep -q good fix.txt"
-        self.assertEqual(self.p.script("rojo-sin-arreglo.sh", "--ran-one", "^ok ", one, "fix.txt")[0], 0)
+        self.assertEqual(self.p.script("red-without-fix.sh", "--ran-one", "^ok ", one, "fix.txt")[0], 0)
         two = "echo 'ok 1 - a'; echo 'ok 2 - b'; grep -q good fix.txt"
-        code, out = self.p.script("rojo-sin-arreglo.sh", "--ran-one", "^ok ", two, "fix.txt")
+        code, out = self.p.script("red-without-fix.sh", "--ran-one", "^ok ", two, "fix.txt")
         self.assertEqual(code, 1, out)
         self.assertIn("2 lines match /^ok /", out)
-        code, out = self.p.script("rojo-sin-arreglo.sh", "--ran-one", "^ok ", "grep -q good fix.txt", "fix.txt")
+        code, out = self.p.script("red-without-fix.sh", "--ran-one", "^ok ", "grep -q good fix.txt", "fix.txt")
         self.assertEqual(code, 1, out)
         self.assertIn("0 lines match /^ok /", out)
         self.assertEqual((self.p.work / "fix.txt").read_text(), "good\n")
@@ -1118,9 +1118,9 @@ class RojoSinArreglo(Base):
 
     def test_options_combine_and_need_a_value(self):
         cmd = "echo boom; echo 'ok 1'; grep -q good fix.txt"
-        code, out = self.p.script("rojo-sin-arreglo.sh", "--fails-with", "boom", "--ran-one", "^ok ", cmd, "fix.txt")
+        code, out = self.p.script("red-without-fix.sh", "--fails-with", "boom", "--ran-one", "^ok ", cmd, "fix.txt")
         self.assertEqual(code, 0, out)
-        code, out = self.p.script("rojo-sin-arreglo.sh", "--ran-one")
+        code, out = self.p.script("red-without-fix.sh", "--ran-one")
         self.assertEqual(code, 2, out)
         self.assertIn("--ran-one needs a regex", out)
 
@@ -1131,7 +1131,7 @@ class RojoSinArreglo(Base):
         self.p.commit("old test", env=DAY)
         self.p.write("m.py", "def f(x):\n    return x + 1\n\n\ndef test_f():\n    assert f(1) == 2\n")
         cmd = "python3 -c 'import m; m.test_f()'"
-        code, out = self.p.script("rojo-sin-arreglo.sh", cmd, "m.py")
+        code, out = self.p.script("red-without-fix.sh", cmd, "m.py")
         self.assertEqual(code, 2, out)
         self.assertIn("m.py has uncommitted changes that touch test code", out)
         self.assertIn("def test_f", out)  # the line that gave it away
@@ -1148,14 +1148,14 @@ class RojoSinArreglo(Base):
                      + "        self.assertEqual(1, 1)\n")
         self.p.commit("old test", env=DAY)
         self.p.write("t.py", (self.p.work / "t.py").read_text().replace("assertEqual(1, 1)", "assertEqual(2, 2)"))
-        code, out = self.p.script("rojo-sin-arreglo.sh", "true", "t.py")
+        code, out = self.p.script("red-without-fix.sh", "true", "t.py")
         self.assertEqual(code, 2, out)
         self.assertIn("t.py has uncommitted changes that touch test code", out)
         self.assertEqual(self.stashes(), "")
 
     def test_new_fix_file_with_a_test_is_refused_too(self):
         self.p.write("added.js", "it('works', () => {})\n")
-        code, out = self.p.script("rojo-sin-arreglo.sh", "true", "added.js")
+        code, out = self.p.script("red-without-fix.sh", "true", "added.js")
         self.assertEqual(code, 2, out)
         self.assertIn("added.js has uncommitted changes that touch test code", out)
         self.assertEqual(self.stashes(), "")
@@ -1165,7 +1165,7 @@ class RojoSinArreglo(Base):
         self.p.write("m.py", "def f(x):\n    return x\n\n\ndef test_f():\n    assert f(1) == 2\n")
         self.p.commit("test first", env=DAY)
         self.p.write("m.py", "def f(x):\n    return x + 1\n\n\ndef test_f():\n    assert f(1) == 2\n")
-        code, out = self.p.script("rojo-sin-arreglo.sh", "python3 -c 'import m; m.test_f()'", "m.py")
+        code, out = self.p.script("red-without-fix.sh", "python3 -c 'import m; m.test_f()'", "m.py")
         self.assertEqual(code, 0, out)
         self.assertIn("OK", out)
         self.assertIn("return x + 1", (self.p.work / "m.py").read_text())
@@ -1173,7 +1173,7 @@ class RojoSinArreglo(Base):
     def test_an_invalid_regex_fails_closed_before_touching_the_fix(self):
         cmd = "echo 'ok 1'; grep -q good fix.txt"
         for option in ("--ran-one", "--fails-with"):
-            code, out = self.p.script("rojo-sin-arreglo.sh", option, "ok[", cmd, "fix.txt")
+            code, out = self.p.script("red-without-fix.sh", option, "ok[", cmd, "fix.txt")
             self.assertEqual(code, 2, out)
             self.assertIn("/ok[/ is not a valid extended regex", out)
             self.assertNotIn("OK, the test fails", out)
@@ -1195,7 +1195,7 @@ class TestsRelacionados(Base):
         listing.write_text("".join(f + "\n" for f in changed))
         (self.p.work / "out.log").write_text("")
         self.p.git("add", "-A"); self.p.git("commit", "-q", "--no-verify", "--allow-empty", "-m", "related setup")
-        code, out = self.p.script("tests-relacionados.sh", str(listing), stdin="refs/heads/x 1 refs/heads/x 2\n")
+        code, out = self.p.script("related-tests.sh", str(listing), stdin="refs/heads/x 1 refs/heads/x 2\n")
         return code, out, (self.p.work / "out.log").read_text().splitlines()
 
     def test_paths_limits_an_entry_to_the_files_that_match(self):
@@ -1323,7 +1323,7 @@ class EnlacesMd(Base):
 
     def run_it(self, *args):
         self.p.git("add", "-A")
-        return self.p.script("enlaces-md.py", *args)
+        return self.p.script("md-links.py", *args)
 
     def test_clean_docs_pass(self):
         self.p.write("README.md", "[notes](docs/notes.md) [web](https://example.com/x) [mail](mailto:a@b.c)\n")
@@ -1382,7 +1382,7 @@ class EnlacesMdSkipAndRoots(Base):
 
     def run_it(self, *args):
         self.p.git("add", "-A")
-        return self.p.script("enlaces-md.py", *args)
+        return self.p.script("md-links.py", *args)
 
     def stale(self, **skip):
         return {"staleRefs": dict({"patterns": ["fase 3\\.5"]}, **skip)}

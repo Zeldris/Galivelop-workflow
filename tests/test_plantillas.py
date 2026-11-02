@@ -1,4 +1,4 @@
-"""The templates (templates/es, templates/en, templates/gw.json, templates/github) and how scripts/aplicar.py writes
+"""The templates (templates/es, templates/en, templates/gw.json, templates/github) and how scripts/apply.py writes
 them: `--init` on an empty repo yields a project doctor.py accepts, a second run changes nothing, an existing
 AGENTS.md/CLAUDE.md is never overwritten, the files the project fills in (log, REVIEW.md, GLOSSARY.md, notes) are
 never written again, and the Spanish and English templates stay paired. HOME is a temp folder and git runs isolated
@@ -19,7 +19,7 @@ from test_ganchos import ROOT
 sys.path.insert(0, str(ROOT / "scripts"))
 import config  # noqa: E402
 
-APLICAR = ROOT / "scripts" / "aplicar.py"
+APLICAR = ROOT / "scripts" / "apply.py"
 TEMPLATES = ROOT / "templates"
 VERSION = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())["version"]
 MARKER = f"<!-- galivelop-workflow v{VERSION} -->"
@@ -213,14 +213,14 @@ class Templates(unittest.TestCase):
 
     def test_sample_check_runs_the_agent_map_script(self):
         sample = json.loads((TEMPLATES / "gw.json").read_text())
-        self.assertIn("python3 .claude/gw/scripts/mapa-agente.py", sample["check"])
+        self.assertIn("python3 .claude/gw/scripts/agent-map.py", sample["check"])
 
     def test_default_content_keeps_the_guard_scripts_as_code(self):
         content = json.loads((TEMPLATES / "gw.json").read_text())["content"]
         for path in (".claude/skills/retro/SKILL.md", "docs/plan.md", "README.md", "AGENTS.md",
                      "README.es.md", "CHANGELOG.md", "CREDITS.md"):
             self.assertTrue(any(re.search(p, path) for p in content), f"{path} should be content")
-        for path in (".claude/gw/scripts/es-codigo.sh", ".claude/gw/scripts/config.py", ".claude/gw/schema/gw.schema.json",
+        for path in (".claude/gw/scripts/is-code.sh", ".claude/gw/scripts/config.py", ".claude/gw/schema/gw.schema.json",
                      ".claude/skills/gw-opt-tokens/scripts/medir.py", ".claude/skills/x/agents/openai.yaml",
                      "src/AGENTS.md", "src/notes.md", "README.es.md.sh"):
             self.assertFalse(any(re.search(p, path) for p in content), f"{path} must stay code (reviewed)")

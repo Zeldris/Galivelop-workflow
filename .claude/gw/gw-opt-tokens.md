@@ -7,7 +7,7 @@ las crea una vez; desde entonces son del proyecto.
 ## Herramientas que ya ahorran
 
 <!-- Una línea cada una, con cómo se corre. -->
-- `python3 .claude/gw/scripts/recuperar.py --estado` y `--buscar "<texto>"`: recuperar lo que se llevó una
+- `python3 .claude/gw/scripts/recover.py --estado` y `--buscar "<texto>"`: recuperar lo que se llevó una
   compactación.
 - `gw-orchestrate-dealer`: el trabajo de más de un paso, repartido a subagentes de contexto limpio.
 - `docs/mapa-agente.md`: punto único para los encargos a subagentes.
@@ -16,8 +16,8 @@ las crea una vez; desde entonces son del proyecto.
   `pgrep -f`, que se encuentra a sí mismo).
 - `gw-orchestrate-dealer`, regla «A batch of approved rows is dealt»: filas de una propuesta, una por subagente, o
   `/clear` cada 4-5 filas en la principal.
-- Bitácora corta (retro 2026-10-25, P1/P2): `bitacora.py check --strict` en el check (celdas de estado de 800
-  caracteres como mucho, «Hecho» con 5 entradas) y `python3 scripts/bitacora.py done "<texto>"` para añadir a «Hecho».
+- Bitácora corta (retro 2026-10-25, P1/P2): `handoff.py check --strict` en el check (celdas de estado de 800
+  caracteres como mucho, «Hecho» con 5 entradas) y `python3 scripts/handoff.py done "<texto>"` para añadir a «Hecho».
 - Encargo de `gw-orchestrate-dealer` con el tope (~30 llamadas, commit y MISSING) y fetch + merge si se rechaza el push
   (P3). Medida de la sesión e9650d36: 4 subagentes por encima de 35 llamadas, ~4,2M de entrada de más. Desde la
   `0.4.1`, el encargo corta a las ~25 llamadas y el tope es ~30 (9 de los 10 subagentes más caros pasaron de 33).

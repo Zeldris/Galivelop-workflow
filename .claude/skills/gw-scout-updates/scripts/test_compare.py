@@ -107,7 +107,7 @@ class CompareTest(unittest.TestCase):
             compare.main(['--root', self.d])
         self.assertIn('scoutDir: ', str(e.exception.code))
         self.assertIn('config.py not found', str(e.exception.code))
-        self.assertIn('aplicar.py --update', str(e.exception.code))
+        self.assertIn('apply.py --update', str(e.exception.code))
         repo = GW_SOURCE
         gw = os.path.join(self.d, '.claude', 'gw')
         os.makedirs(os.path.join(gw, 'scripts'))

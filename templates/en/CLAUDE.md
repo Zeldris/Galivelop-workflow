@@ -11,8 +11,8 @@
 - Mechanical work goes to subagents with cheap models (`gw-orchestrate-dealer`); the main session plans, decides and
   reviews.
 - **Compaction:** `.claude/settings.json` sets the auto-compaction window. After a compaction or a `/clear`, the
-  start hook runs `python3 .claude/gw/scripts/recuperar.py --estado`, which puts back the log's state and the last
-  commits; a detail that was lost is searched with `python3 .claude/gw/scripts/recuperar.py --buscar "<text>"`.
+  start hook runs `python3 .claude/gw/scripts/recover.py --estado`, which puts back the log's state and the last
+  commits; a detail that was lost is searched with `python3 .claude/gw/scripts/recover.py --buscar "<text>"`.
   What must survive goes into `{{log}}`.
 - **Auto mode** may ask for permission to edit `.claude/settings.json`, `.claude/gw/scripts/` and `.githooks/`: ask the
   person before touching them, or let them run the change themselves.

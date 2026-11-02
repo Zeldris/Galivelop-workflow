@@ -98,16 +98,16 @@ su retro del 2026-10-21). Tarkor aporta lo que el portal quitó por ser «de web
 | `CLAUDE.md` | raíz de ambos repos | Plantilla: «Al empezar cualquier sesión», reglas de relevo y commits, con huecos `{{…}}` |
 | Bitácora | `docs/traspaso.md` (portal) y `docs/registros/traspaso.md` (Tarkor) | Plantilla con las secciones del portal: Estado actual · Para la próxima publicación · Hecho (5 últimas) · Pendiente · Comprobar el estado |
 | Gancho `SessionStart` | `.claude/hooks/session-start.sh` | Al plugin. Activa `core.hooksPath`, instala dependencias en la nube con la orden del config |
-| Recuperación tras `/clear` | `tools/qa/recuperar.py` | Al plugin; lee la ruta de la bitácora del config |
-| Gancho de PR a `main` | `.claude/hooks/revision-antes-de-main.sh` | Al plugin; rama protegida y ruta de la marca del config |
+| Recuperación tras `/clear` | `tools/qa/recover.py` | Al plugin; lee la ruta de la bitácora del config |
+| Gancho de PR a `main` | `.claude/hooks/review-before-main.sh` | Al plugin; rama protegida y ruta de la marca del config |
 | `pre-push` | `.githooks/pre-push` | Plantilla copiada al repo destino por `/gw-init` (git no puede cargarlo desde el plugin): check del commit que se sube + marca de revisado para `main` |
-| `es-codigo.sh`, `revisado.sh` | `tools/qa/` | Al plugin; los patrones de «contenido» salen del config |
+| `is-code.sh`, `reviewed.sh` | `tools/qa/` | Al plugin; los patrones de «contenido» salen del config |
 | Tests de ganchos | `tools/qa/tests/test-ganchos.sh` | Al plugin, ampliados para que corran contra un repo de prueba temporal |
 | Roadmap e hitos (opcional) | Tarkor: `tools/roadmap/cobertura.py`, `docs/producto/21-roadmap.md` | Módulo opcional activable en el config (`roadmap: true`) |
-| Bitácora por ramas | Instalador: `tools/qa/bitacora.py`, `tools/qa/prepush-ramas.sh` | Una fila por rama, límite de caracteres y ruta del plan configurables |
-| Utilidades de QA | Tarkor/instalador: `fusionar.sh`, `rojo-sin-arreglo.sh`, `tests-relacionados.sh`, `enlaces-md.py` | Genéricas; la orden de tests relacionados sale del config |
+| Bitácora por ramas | Instalador: `tools/qa/handoff.py`, `tools/qa/prepush-branches.sh` | Una fila por rama, límite de caracteres y ruta del plan configurables |
+| Utilidades de QA | Tarkor/instalador: `merge-branch.sh`, `red-without-fix.sh`, `related-tests.sh`, `md-links.py` | Genéricas; la orden de tests relacionados sale del config |
 | Cierre de tareas | Tarkor: `tools/roadmap/cerrar.py` | Parte del módulo `roadmap` |
-| Retro exigida antes de la marca | Tarkor/instalador: `revisado.sh` | Opción del config (`requireRetro`) |
+| Retro exigida antes de la marca | Tarkor/instalador: `reviewed.sh` | Opción del config (`requireRetro`) |
 | `gw-scout-updates` | Tarkor: `.claude/skills/gw-scout-updates/` | Skill opcional (solo a petición) |
 | `gw-opt-ai` + `medir.py` | Tarkor/instalador: `.claude/skills/gw-opt-ai/` | Skill opcional para proyectos con modelos de IA locales; lo propio en `.claude/gw/gw-opt-ai.md` |
 
@@ -138,11 +138,11 @@ Galivelop-workflow/
 ├── hooks/
 │   └── hooks.json                # SessionStart (startup|resume|clear, clear|compact) y PreToolUse (PR a main)
 ├── scripts/                      # lo que llaman ganchos y skills; raíz por ${CLAUDE_PLUGIN_ROOT}
-│   ├── session-start.sh  revision-antes-de-main.sh
-│   ├── recoger.py                # parte determinista de gw-harvest
-│   ├── recuperar.py  medir.py  es-codigo.sh  revisado.sh  bitacora.py  prepush-ramas.sh
+│   ├── session-start.sh  review-before-main.sh
+│   ├── harvest.py                # parte determinista de gw-harvest
+│   ├── recover.py  medir.py  is-code.sh  reviewed.sh  handoff.py  prepush-branches.sh
 │   ├── doctor.py                 # comprobación determinista del flujo (la usa gw-doctor y el CI)
-│   ├── aplicar.py                # copia plantillas, skills y scripts sin pisar nada (etapa 1 y base de la 2)
+│   ├── apply.py                # copia plantillas, skills y scripts sin pisar nada (etapa 1 y base de la 2)
 │   └── config.py                 # lee y valida .claude/gw.json del proyecto (único lector)
 ├── templates/                    # lo que /gw-init copia al repo destino, en es/ y en/
 │   ├── es/  AGENTS.md  CLAUDE.md  REVIEW.md  GLOSSARY.md  traspaso.md  gw-opt-tokens.md
@@ -158,7 +158,7 @@ Galivelop-workflow/
 │   ├── es/  flujo.md  aplicar.md  instalar.md  config.md  patrones.md  problemas.md  contribuir.md
 │   └── en/  workflow.md  apply.md  install.md  config.md  patterns.md  troubleshooting.md  contributing.md
 ├── CLAUDE.md                     # @AGENTS.md + lo propio de Claude
-├── .claude/  .githooks/          # el flujo aplicado a este repo (copia generada por scripts/aplicar.py)
+├── .claude/  .githooks/          # el flujo aplicado a este repo (copia generada por scripts/apply.py)
 ├── docs/traspaso.md              # su bitácora
 ├── REVIEW.md  GLOSSARY.md
 ├── README.md  (en)   README.es.md
@@ -174,7 +174,7 @@ Galivelop-workflow/
 
 Desde la Fase 1, el repo se trabaja con su propio flujo, **aplicado igual que en cualquier proyecto**: `AGENTS.md`,
 `CLAUDE.md`, bitácora y, según se construyan, la copia de skills en `.claude/skills/`, scripts en `.claude/gw/` y
-ganchos. Esa copia la genera `scripts/aplicar.py` desde `skills/` y `scripts/`, y un test comprueba que no diverge.
+ganchos. Esa copia la genera `scripts/apply.py` desde `skills/` y `scripts/`, y un test comprueba que no diverge.
 Es la primera prueba de rodaje: si algo del flujo estorba aquí, estorba en todas partes.
 
 ### 4.2 Nombres
@@ -231,7 +231,7 @@ Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con 
   - **ideas y mejoras generales** en sus retros y su bitácora.
 
   Lo mecánico (qué archivos difieren, qué skills son nuevas, qué commits hay desde la última vez) lo hace
-  `scripts/recoger.py`, sin IA; el agente solo juzga si cada cambio es general o propio del proyecto y lo redacta.
+  `scripts/harvest.py`, sin IA; el agente solo juzga si cada cambio es general o propio del proyecto y lo redacta.
   Escribe `docs/propuestas/AAAA-MM-DD-<repo>.md` (origen con ruta y commit, qué cambia, general/propio, versión que
   pediría: parche, menor o mayor) y guarda en `docs/propuestas/estado.json` el último commit recogido de cada repo.
   **Nunca aplica nada sin confirmación**: lo aprobado entra como cambio normal, con CHANGELOG y versión nueva. Los
@@ -243,17 +243,17 @@ Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con 
 | Evento | Qué hace |
 |---|---|
 | `SessionStart` (`startup\|resume\|clear`) | `session-start.sh`: `core.hooksPath=.githooks` si no hay otro, dependencias en la nube (`install` del config, solo si `CLAUDE_CODE_REMOTE=true` y el lockfile cambió), aviso si `gw.json` falta o la versión copiada va por detrás de la del flujo |
-| `SessionStart` (`clear\|compact`) | `recuperar.py --estado`: fila de estado de la bitácora, `git status`, últimos commits, cómo buscar un detalle |
-| `PreToolUse` (`create_pull_request\|merge_pull_request` del MCP de GitHub y `gh pr create\|merge` por Bash) | `revision-antes-de-main.sh`: sin marca de revisado del mismo código o con CI sin verde, bloquea. Falla cerrado |
+| `SessionStart` (`clear\|compact`) | `recover.py --estado`: fila de estado de la bitácora, `git status`, últimos commits, cómo buscar un detalle |
+| `PreToolUse` (`create_pull_request\|merge_pull_request` del MCP de GitHub y `gh pr create\|merge` por Bash) | `review-before-main.sh`: sin marca de revisado del mismo código o con CI sin verde, bloquea. Falla cerrado |
 
 ### 5.3 Ganchos de git y CI (en el repo destino)
 
 - `.githooks/pre-push` (copiado por `/gw-init`, con cabecera `# galivelop-workflow vX.Y.Z`): corre `check` del
   config **sobre el commit que se sube** (worktree temporal si no es la carpeta de trabajo); a la rama protegida,
   exige la marca de revisado si trae código. `--no-verify` solo para `WIP:` en rojo.
-- Marca de revisado: `revisado.sh` escribe el sha en `reviewMark` del config (por defecto
+- Marca de revisado: `reviewed.sh` escribe el sha en `reviewMark` del config (por defecto
   `docs/registros/revisado.txt`) y hace commit. Viaja con el repo, así la ven tareas programadas y otras cuentas.
-- `es-codigo.sh`: «código» es todo lo que no casa con `content` del config. Solo lo que es código pide revisión.
+- `is-code.sh`: «código» es todo lo que no casa con `content` del config. Solo lo que es código pide revisión.
 - `.github/workflows/comprobar.yml`: `install` + `check` en cada push que no sea a la rama protegida y en cada PR.
 
 ### 5.4 Aplicar, actualizar y comprobar
@@ -261,12 +261,12 @@ Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con 
 - **`docs/<lang>/aplicar.md` (etapa 1):** la guía que sigue un agente para aplicar el flujo. Separa lo que exige
   criterio (deducir `install`/`check` de `package.json`, `pyproject.toml`, `Cargo.toml`, `Makefile`…; fusionar un
   `CLAUDE.md`/`AGENTS.md` existente, enseñando el bloque antes) de lo mecánico, que siempre es un script.
-- **`scripts/aplicar.py`:** escribe `.claude/gw.json`, copia plantillas, skills y scripts **sin pisar nada** (lo que
+- **`scripts/apply.py`:** escribe `.claude/gw.json`, copia plantillas, skills y scripts **sin pisar nada** (lo que
   ya existe queda como propuesta `*.gw-nuevo` para revisar), añade los ganchos a `.claude/settings.json` y
   `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000`, y pone `core.hooksPath` si no hay otro gestor. Idempotente. Commit
   `Flujo Galivelop-workflow vX.Y.Z` y `Siguiente:`.
 - **`/gw-init`, `/gw-update`** (skills con `disable-model-invocation: true`): envoltorios finos de `aplicar.md` y
-  `aplicar.py`. `gw-update` compara versiones y enseña el diff del cambio de plantilla (no del archivo que el
+  `apply.py`. `gw-update` compara versiones y enseña el diff del cambio de plantilla (no del archivo que el
   proyecto rellenó) antes de aplicar lo que el usuario confirme.
 - **`scripts/doctor.py`** (y `/gw-doctor`, que lo llama): comprueba y lista con la orden que arregla cada cosa:
   config válido contra el schema, `core.hooksPath` y convivencia con otros gestores, `pre-push` ejecutable y de la
@@ -284,20 +284,20 @@ inglés (decisión de la Fase 0).
   "language": "es",                         // es | en: plantillas y lengua de las respuestas
   "visibleLanguages": ["es", "gl", "en"],   // opcional: lo que REVIEW.md exige al texto visible
   "log": "docs/traspaso.md",                // bitácora
-  "logRows": false,                         // opcional: una fila por rama con límite (bitacora.py)
+  "logRows": false,                         // opcional: una fila por rama con límite (handoff.py)
   "protectedBranch": "main",
   "pushToProtected": "direct",              // direct | pr: push directo (pre-push pide la marca en los dos) o PR (además, PreToolUse)
   "install": ["npm ci"],
   "check": ["npm run check"],               // lista de órdenes; se corren en orden sobre el commit que se sube
   "reviewMark": "docs/registros/revisado.txt",
-  "requireRetro": true,                     // opcional (por defecto en la plantilla): revisado.sh exige una retro en la rama
+  "requireRetro": true,                     // opcional (por defecto en la plantilla): reviewed.sh exige una retro en la rama
   "content": ["^docs/", "^public/", "^src/data/", "\\.md$"],   // regex: lo que NO pide /code-review
   "roadmap": false,                         // módulo opcional de hitos (Tarkor)
   "selector": { "cases": [] },              // filas extra propias del proyecto
   "designReferences": [],                   // opcional: con qué se contrasta el diseño (grilling, gw-selector)
   "protectedPaths": [],                     // opcional: rutas que un agente no puede commitear (pre-commit)
-  "staleRefs": [],                          // opcional: patrones que no deben aparecer en docs/ (enlaces-md.py)
-  "plan": [], "taskId": "[A-Z]{2,5}-\\d+",   // opcional: plan con casillas e ids de tarea (bitacora.py)
+  "staleRefs": [],                          // opcional: patrones que no deben aparecer en docs/ (md-links.py)
+  "plan": [], "taskId": "[A-Z]{2,5}-\\d+",   // opcional: plan con casillas e ids de tarea (handoff.py)
   "relatedTests": { "fast": [], "slow": [] } // opcional: tests de lo que cambia, en pre-push
 }
 ```
@@ -334,7 +334,7 @@ Ejemplos que los pilotos tienen que cubrir: el portal (Node, subida directa, tre
 
 **Etapa 1 (lo que contará `docs/<lang>/aplicar.md`):** desde una sesión con el proyecto y este repo a mano, se
 pide al agente «aplica Galivelop-workflow siguiendo `docs/es/aplicar.md`». El agente decide lo que exige criterio,
-lanza `scripts/aplicar.py` y termina con `scripts/doctor.py` en verde. En la nube funciona sin configurar nada,
+lanza `scripts/apply.py` y termina con `scripts/doctor.py` en verde. En la nube funciona sin configurar nada,
 porque el resultado vive en el repo.
 
 **Etapa 2 (lo que contará `docs/<lang>/instalar.md`):** instalación sin IA, p. ej. con Copier (merge a tres bandas
@@ -374,9 +374,9 @@ ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1,
 |---|---|---|
 | **0. Verificar** ✅ | Doc oficial de plugins, marketplaces y hooks; pruebas en la nube; tres casos reales; estándares | §0 decidido; notas en `docs/investigacion/` |
 | **1. Esqueleto** | `LICENSE`, `AGENTS.md` + `CLAUDE.md`, README ES/EN, bitácora, CHANGELOG `0.1.0`, `.claude-plugin/` válido, CI (shellcheck, JSON, pares ES/EN, versión == CHANGELOG) | CI en verde y el repo trabajándose con su propio `AGENTS.md` |
-| **2. Skills** | Portar las skills (§3) pieza a pieza, con campos de Agent Skills y test que los valida; `gw-harvest` + `scripts/recoger.py` | Todas validan; `writing-for-agents` pasado a las propias; licencias y créditos; `gw-harvest` recoge propuestas reales de Tarkor, el instalador, el portal y VeriNews |
-| **3. Ganchos y scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recuperar.py`, `revision-antes-de-main.sh`, `es-codigo.sh`, `revisado.sh`, `bitacora.py`, `prepush-ramas.sh`, `medir.py`, plantilla `pre-push`. Tests contra repo temporal: categorías de los 29 fallos, clon superficial, marcas de conflicto, otro gestor de ganchos. Aplicados a este repo | Tests en verde en Linux y macOS; fallan cerrado sin config |
-| **4. Plantillas y aplicación** | `templates/es` y `templates/en`, `gw.schema.json`, `aplicar.py`, `aplicar.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `problemas.md` | Un agente aplica el flujo a un repo vacío y `doctor.py` lo da por bueno; dos veces no cambia nada |
+| **2. Skills** | Portar las skills (§3) pieza a pieza, con campos de Agent Skills y test que los valida; `gw-harvest` + `scripts/harvest.py` | Todas validan; `writing-for-agents` pasado a las propias; licencias y créditos; `gw-harvest` recoge propuestas reales de Tarkor, el instalador, el portal y VeriNews |
+| **3. Ganchos y scripts** | `config.py`, `doctor.py`, `session-start.sh`, `recover.py`, `review-before-main.sh`, `is-code.sh`, `reviewed.sh`, `handoff.py`, `prepush-branches.sh`, `medir.py`, plantilla `pre-push`. Tests contra repo temporal: categorías de los 29 fallos, clon superficial, marcas de conflicto, otro gestor de ganchos. Aplicados a este repo | Tests en verde en Linux y macOS; fallan cerrado sin config |
+| **4. Plantillas y aplicación** | `templates/es` y `templates/en`, `gw.schema.json`, `apply.py`, `aplicar.md`, `gw-init`, `gw-update`, `test-plantillas.sh`, `problemas.md` | Un agente aplica el flujo a un repo vacío y `doctor.py` lo da por bueno; dos veces no cambia nada |
 | **5. Piloto: Portal-Galivelop** | En una sesión del portal (con permiso): un agente lo aplica siguiendo `aplicar.md` y sustituye su copia | `npm run check` en verde, `pre-push` y marca funcionando, tarea semanal sin cambios |
 | **6. Piloto: Tarkor e instalador** | Igual en World-Maker-Fantasy (`roadmap: true`, PR) e Instalador-WMF-Tarkor (Rust). VeriNews_AI (Java + Vite) queda para la Fase 8, ya sin agente de IA | Relevo entre cuentas sin perder nada; lo que falte vuelve como versión nueva |
 | **7. Rodaje etapa 1** | Uso real semanas; cada `retro` con mejora general → issue/PR aquí | Criterios de la §10 para la etapa 1 |

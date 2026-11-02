@@ -4,7 +4,7 @@
 
 Esta es la guía que sigue un agente de IA para aplicar Galivelop-workflow a un proyecto, **nuevo** (lo recomendado) o
 **existente** (sección propia, más abajo). Lo que exige criterio lo decide el agente con la persona; lo demás lo hace
-un script (`scripts/aplicar.py`) y lo comprueba otro (`scripts/doctor.py`). Si la sesión usa Claude Code, la skill
+un script (`scripts/apply.py`) y lo comprueba otro (`scripts/doctor.py`). Si la sesión usa Claude Code, la skill
 `/gw-init` es un envoltorio fino de esta guía.
 
 El resultado vive **en el repo del proyecto** (scripts, skills, ganchos, plantillas), así que funciona también en
@@ -36,7 +36,7 @@ sesiones en la nube, que no cargan plugins declarados en el repo.
    `!.claude/skills/`) y comprueba con `git check-ignore -v <ruta>` que ninguna sale ignorada. `doctor.py` lo da por
    `FAIL` (`ignored`) con las líneas exactas si se olvida.
 
-Criterio de fin: puedes ejecutar `python3 <flujo>/scripts/aplicar.py --help` y `git -C <proyecto> status` sin error.
+Criterio de fin: puedes ejecutar `python3 <flujo>/scripts/apply.py --help` y `git -C <proyecto> status` sin error.
 
 ## 1. Decidir lo que exige criterio
 
@@ -51,7 +51,7 @@ Reúne estos datos **antes** de ejecutar nada. Todo va a `.claude/gw.json` (cada
 | Rama protegida (`protectedBranch`) | La que despliega o publica: `git symbolic-ref --short refs/remotes/origin/HEAD`; si falla (remoto nuevo o local), `git remote show origin \| sed -n 's/.*HEAD branch: //p'`; si no, pregunta a la persona |
 | Subir a ella (`pushToProtected`) | `direct` si se hace push directo; `pr` si solo entra por pull request |
 | Contenido (`content`) | Expresiones regulares de lo que **no** es código y no necesita `/code-review`: docs, datos, textos |
-| Retro obligatoria (`requireRetro`) | Pregunta: «¿`/retro` en cada subida a la rama protegida, o solo en cambios grandes?». En cada subida: `--require-retro true` (`revisado.sh` no marca sin una retro decidida en la rama); si no, `false` |
+| Retro obligatoria (`requireRetro`) | Pregunta: «¿`/retro` en cada subida a la rama protegida, o solo en cambios grandes?». En cada subida: `--require-retro true` (`reviewed.sh` no marca sin una retro decidida en la rama); si no, `false` |
 | Firmas del agente (`agentSignatures`) | Pregunta: «¿El proyecto admite firmas del agente en los commits (`Co-Authored-By` de Claude, enlaces de sesión)?». Si no: `--agent-signatures false` (el `commit-msg` rechaza el mensaje que las lleve); si sí, déjalo en `true` |
 | Idiomas visibles y referencias de diseño (`visibleLanguages`, `designReferences`) | Solo si el proyecto los tiene: `--visible-language` y `--design-reference`, una bandera por valor |
 | Skills opcionales | `gw-opt-ai` (modelos de IA locales) y `gw-scout-updates` (revisar actualizaciones); solo si la persona las pide |
@@ -73,7 +73,7 @@ Reglas:
   tarda. Una orden que no existe o no pasa se detecta tarde y estorba en cada push.
 - **Si hay duda, pregunta a la persona**; no inventes una orden. Con varios candidatos, ofrécelos numerados.
 - Un proyecto sin tests: `check` puede ser un linter o un `bash -n`; dilo y apúntalo como deuda en la bitácora. Un `bash -n` solo comprueba el primer archivo (los demás son argumentos): una orden por archivo, o `for f in …; do bash -n "$f"; done` (`doctor.py` lo avisa en `check syntax-only`, también con un glob o una sustitución `$(…)`). Si pones `doctor.py` en `check`, en GitHub Actions (`GITHUB_ACTIONS=true`) el `hooks-path` sin poner sale en `WARN` y no rompe: el CI no tiene los ganchos de git puestos; en local sigue siendo `FAIL`.
-- Si el proyecto tiene mapa para agentes (`docs/mapa-agente.md`, o el que declare `agentMap.path`), añade `--check-command "python3 .claude/gw/scripts/mapa-agente.py"`: comprueba que cada ruta que cita existe. Sin mapa sale en 0 y no estorba; con prefijos cortos (`b/` por `backend/src/`), configura `agentMap.prefixes` ([`config.md`](config.md)).
+- Si el proyecto tiene mapa para agentes (`docs/mapa-agente.md`, o el que declare `agentMap.path`), añade `--check-command "python3 .claude/gw/scripts/agent-map.py"`: comprueba que cada ruta que cita existe. Sin mapa sale en 0 y no estorba; con prefijos cortos (`b/` por `backend/src/`), configura `agentMap.prefixes` ([`config.md`](config.md)).
 - Las skills copiadas traen sus pruebas junto a sus scripts: se descubren con `python3 -m unittest discover -s <skill>/scripts` (el check del repo del flujo lo hace con cada una).
 - `content` se propone leyendo el árbol: `^docs/`, `^public/`… (en JSON, la barra se escribe doble). **Lo que sea
   `content` sube sin marca:** no pongas ahí scripts ni lo que un agente lee como instrucciones (un `AGENTS.md` en una
@@ -93,7 +93,7 @@ Desde la raíz del proyecto o indicándola; las banderas salen de `--help`. `--c
 el de la plantilla (`^docs/`, los `.md` de la raíz que son documentación y los `.md` de las skills copiadas):
 
 ```bash
-python3 <flujo>/scripts/aplicar.py <proyecto> --dry-run --init --language es \
+python3 <flujo>/scripts/apply.py <proyecto> --dry-run --init --language es \
   --log docs/traspaso.md --install "npm ci" --check-command "npm run lint" --check-command "npm test" \
   --protected-branch main --push-to-protected direct
 ```
@@ -110,16 +110,16 @@ Qué hace (el detalle completo, en `--help`): copia `scripts/` a `.claude/gw/scr
 nadie más lo usa. **Nunca hace commit.** Es idempotente: ejecutarlo dos veces no cambia nada.
 
 **Notas personales.** Si la persona tiene notas en `~/.claude/gw/notas/` (o en la carpeta de `GW_NOTAS_PERSONALES`),
-`aplicar.py` crea en `.claude/gw/` las que faltan y no toca las que el proyecto ya tiene distintas
+`apply.py` crea en `.claude/gw/` las que faltan y no toca las que el proyecto ya tiene distintas
 ([config](config.md#notas-personales)); `--sin-notas-personales` las salta en esa ejecución.
 
 **Los scripts de `.claude/gw/scripts/` no se editan en el proyecto.** Se prueban en el repo del flujo (allí están
 sus tests) y `--update` los sobrescribe. Si uno falla o falta algo, el cambio va al flujo como propuesta, con la
-skill `gw-harvest` (`scripts/recoger.py`). La regla de `REVIEW.md` «cada cambio en un script lleva su caso en los
+skill `gw-harvest` (`scripts/harvest.py`). La regla de `REVIEW.md` «cada cambio en un script lleva su caso en los
 tests» vale para los scripts **propios** del proyecto.
 
 **Modo automático de Claude Code.** El clasificador del modo automático puede pedir permiso al editar
-`.claude/settings.json`, `.claude/gw/scripts/` y `.githooks/`, y el fallo aparece a mitad de la aplicación. `aplicar.py`
+`.claude/settings.json`, `.claude/gw/scripts/` y `.githooks/`, y el fallo aparece a mitad de la aplicación. `apply.py`
 lo avisa justo antes de escribirlos. **Pide permiso a la persona antes** de lanzarlo (o que lo lance ella en su
 terminal con la misma orden) en vez de reintentar a ciegas; tras un rechazo, `git status` y `git diff` antes de
 repetir.
@@ -129,7 +129,7 @@ Criterio de fin: la orden termina sin error y sabes qué se creó, qué se actua
 ## 3. Revisar cada `*.gw-nuevo` con la persona
 
 Cuando un archivo ya existe y es del proyecto (un `AGENTS.md`, un `CLAUDE.md` sin la marca
-`galivelop-workflow`), `aplicar.py` **no lo toca**: deja al lado `<archivo>.gw-nuevo` con la propuesta.
+`galivelop-workflow`), `apply.py` **no lo toca**: deja al lado `<archivo>.gw-nuevo` con la propuesta.
 
 ```bash
 git -C <proyecto> ls-files --others --exclude-standard | grep '\.gw-nuevo$'
@@ -142,14 +142,14 @@ Para cada uno:
    bloques del flujo (inicio de sesión, relevos, comprobar, commits, ramas). `CLAUDE.md` acaba con `@AGENTS.md` más
    lo propio de Claude. Mantén la marca `<!-- galivelop-workflow vX.Y.Z -->` de la primera línea.
 3. Otros archivos: acepta la propuesta entera (`mv <archivo>.gw-nuevo <archivo>`) solo si la persona lo confirma.
-4. Borra el `.gw-nuevo` al terminar. `aplicar.py --check` lo cuenta como diferencia mientras exista.
+4. Borra el `.gw-nuevo` al terminar. `apply.py --check` lo cuenta como diferencia mientras exista.
 
 Rellena también los huecos de la bitácora (como mínimo rama, fase y siguiente paso; el resto de secciones puede
 quedarse como viene hasta que haya algo que escribir) y añade las reglas propias del proyecto en las secciones
 «Reglas del proyecto» de `REVIEW.md` y `AGENTS.md` y sus términos en `GLOSSARY.md`: el flujo nunca vuelve a escribir
 esos archivos.
 
-**`REVIEW.md` y `GLOSSARY.md` que ya existían:** `aplicar.py` no los toca, pero imprime su diferencia con la plantilla
+**`REVIEW.md` y `GLOSSARY.md` que ya existían:** `apply.py` no los toca, pero imprime su diferencia con la plantilla
 mientras no lleven la marca de la versión actual. Pasa a mano lo que les falte (por ejemplo, las reglas «bash 3.2»,
 «traído de otro repo: contratos de este» e «idiomas visibles» de `REVIEW.md`) y pon en su primera línea
 `<!-- galivelop-workflow vX.Y.Z -->`; desde entonces el diff ya no sale.
@@ -174,7 +174,7 @@ Criterio de fin: `doctor.py` sale con código 0.
 
 ## 5. Commit y subida
 
-`aplicar.py` terminó imprimiendo un commit sugerido:
+`apply.py` terminó imprimiendo un commit sugerido:
 
 ```bash
 git add -A && git commit -m "Flujo Galivelop-workflow v0.1.0" -m "Siguiente: <próximo paso concreto>"
@@ -182,7 +182,7 @@ git add -A && git commit -m "Flujo Galivelop-workflow v0.1.0" -m "Siguiente: <pr
 
 Sustituye la última línea por el paso concreto de verdad (el que la bitácora declara) y añade las líneas de
 atribución que pida el proyecto en el mismo bloque final (ninguna firma del agente con `agentSignatures: false`). El commit ya pasa por el nuevo `pre-commit` (rechaza
-secretos y, para agentes, las `protectedPaths`) y, con `logRows`, por `commit-msg` (revisa la bitácora preparada con `bitacora.py check`); si se para, lee su mensaje. Después, `git push -u origin <rama>`: el nuevo `pre-push`
+secretos y, para agentes, las `protectedPaths`) y, con `logRows`, por `commit-msg` (revisa la bitácora preparada con `handoff.py check`); si se para, lee su mensaje. Después, `git push -u origin <rama>`: el nuevo `pre-push`
 corre el `check` sobre el commit que se sube; si falla, se arregla y se vuelve a subir (nunca con `--no-verify`, salvo
 un `WIP:` en rojo).
 
@@ -196,7 +196,7 @@ Criterio de fin: el push ha subido, `doctor.py` sigue en verde y la bitácora di
 
 **Aviso:** un `.claude/settings.json` creado a mitad de sesión no se carga hasta la siguiente. En la sesión que aplica
 el flujo el gancho `PreToolUse` (la guarda del PR) **no está activo**: hasta abrir una sesión nueva desde el proyecto,
-comprueba a mano la marca antes de crear o fusionar un PR (`bash .claude/gw/scripts/revisado.sh`).
+comprueba a mano la marca antes de crear o fusionar un PR (`bash .claude/gw/scripts/reviewed.sh`).
 
 En la rama de trabajo, haz commit de un cambio pequeño de código e intenta subirlo directamente a la rama protegida,
 en simulacro (el `pre-push` corre igual, no se sube nada aunque pasara, y el modo automático de Claude Code no lo
@@ -210,7 +210,7 @@ Con cualquier `pushToProtected` **tiene que rechazarse**, con uno de estos dos m
 review mark» (no hay marca) o «code changed after the review mark» (hay marca y código detrás). Con `pr`, la misma
 comprobación ocurre además al crear o fusionar el pull request. Después quita el commit de prueba
 (`git reset --hard HEAD~1`, solo si no se ha subido a ningún sitio). La entrada normal es `/code-review`, arreglos,
-`bash .claude/gw/scripts/revisado.sh` y la subida.
+`bash .claude/gw/scripts/reviewed.sh` y la subida.
 
 Criterio de fin: el simulacro se rechazó por uno de esos dos motivos y el commit de prueba ya no está.
 
@@ -218,7 +218,7 @@ Criterio de fin: el simulacro se rechazó por uno de esos dos motivos y el commi
 
 Lo anterior vale igual; estos son los puntos que cambian.
 
-**Gestor de ganchos ya instalado (husky, lefthook, pre-commit…).** `aplicar.py` no pisa `core.hooksPath` si lo
+**Gestor de ganchos ya instalado (husky, lefthook, pre-commit…).** `apply.py` no pisa `core.hooksPath` si lo
 usa otro, y `doctor.py` y el aviso de inicio de sesión lo dicen. **Se encadena, no se sobrescribe.** Añade como
 última línea de `pre-push`, `pre-commit` y `commit-msg` del gestor (con `<hook>` el nombre del archivo):
 
@@ -263,13 +263,13 @@ entra el código ya hoy.
   retocó sale como propuesta. Fusiónalas de una en una: la versión del flujo entra entera y lo propio del proyecto
   (idioma, rutas, reglas locales) va a `.claude/gw/<skill>.md`, que el flujo no sobrescribe.
 - **Archivos de una skill que el flujo sustituye** (por ejemplo, el banco y los `evals` de un `gw-scout-updates`
-  propio): `aplicar.py` no los borra, los lista como «no longer in the workflow (kept)». Muévelos a una carpeta del
+  propio): `apply.py` no los borra, los lista como «no longer in the workflow (kept)». Muévelos a una carpeta del
   proyecto (p. ej. `tools/scout/`) o bórralos con `git rm` si nada los usa; no los dejes dentro de `.claude/skills/`.
-- **Ganchos viejos en `.claude/settings.json`.** `aplicar.py` fusiona los nuevos sin quitar nada, y avisa
+- **Ganchos viejos en `.claude/settings.json`.** `apply.py` fusiona los nuevos sin quitar nada, y avisa
   («also runs '…'») de una entrada de `SessionStart`, `PreToolUse` o `Stop` que ejecuta un script del flujo desde fuera de
   `.claude/gw/scripts/`; `doctor.py` también. Bórrala a mano, o correrá dos veces.
-- **`recuperar.py` por línea de órdenes**, para recuperar lo que una compactación o un `/clear` se llevó:
-  `python3 .claude/gw/scripts/recuperar.py --estado` (la bitácora, `git status`, los últimos commits, los otros
+- **`recover.py` por línea de órdenes**, para recuperar lo que una compactación o un `/clear` se llevó:
+  `python3 .claude/gw/scripts/recover.py --estado` (la bitácora, `git status`, los últimos commits, los otros
   worktrees con su rama y su fila, y las compactaciones de la sesión y desde el inicio de la tarea, que es el commit
   base con `protectedBranch`) y
   `--buscar TEXTO` (fragmentos de la sesión que casan, como datos tras una línea de cabecera y sin caracteres de
@@ -282,11 +282,11 @@ entra el código ya hoy.
 
 - No registra como raíz de la sesión los repos que solo lee (el del flujo incluido): sus skills homónimas taparían
   las del proyecto ([problemas](problemas.md)).
-- No ejecuta `aplicar.py --update` ni sobrescribe archivos del proyecto sin que la persona lo pida.
+- No ejecuta `apply.py --update` ni sobrescribe archivos del proyecto sin que la persona lo pida.
 - No inventa `install` ni `check`: si no puede ejecutarlo, pregunta.
 - No hace commit ni push antes de pasar `doctor.py` sin `FAIL`.
 - No sube a la rama protegida sin confirmación de la persona.
 - No usa `git push --no-verify` ni `git config core.hooksPath` apuntando a otro sitio para saltarse un gancho.
 - No borra archivos que el flujo avisa que ya no tiene: los informa a la persona.
 - No modifica otros repos: el del flujo se lee, nunca se edita desde la sesión del proyecto.
-- No copia el `.claude/settings.json` de otro proyecto: lo fusiona `aplicar.py`.
+- No copia el `.claude/settings.json` de otro proyecto: lo fusiona `apply.py`.

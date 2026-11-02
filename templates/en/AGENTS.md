@@ -55,7 +55,7 @@ Each session may run in a throwaway container: **what is not pushed does not exi
   judgement. If a rule keeps being broken, it becomes a check.
 - **What depends on a particular machine is not declared tested by tests** (another operating system, a device, the
   person's own computer): it is written down as pending in the plan, with who checks it and where.
-- A new test must fail without its fix: `bash .claude/gw/scripts/rojo-sin-arreglo.sh "<test command>" <fix-file>...`.
+- A new test must fail without its fix: `bash .claude/gw/scripts/red-without-fix.sh "<test command>" <fix-file>...`.
 - A test that expects a failure checks **the reason** (the message or the cause), not only the exit code: otherwise
   it also passes when it fails for another reason.
 - `python3 .claude/gw/scripts/doctor.py` says whether the workflow is set up right, with the command that fixes each
@@ -86,7 +86,7 @@ Each session may run in a throwaway container: **what is not pushed does not exi
   the person's confirmation: push directly (`pre-push` runs the check) or, for a pull request,
   `python3 .claude/gw/scripts/ci-local.py --apuntar` runs the CI locally and records it; with that green line pushed,
   the hook lets the merge through.
-- A subagent's branch comes back with `bash .claude/gw/scripts/fusionar.sh <branch> "<message>"`, which runs the check and the
+- A subagent's branch comes back with `bash .claude/gw/scripts/merge-branch.sh <branch> "<message>"`, which runs the check and the
   related tests, and cleans up its worktree.
 
 ## Before going to `{{protectedBranch}}`: three phases
@@ -101,10 +101,10 @@ Never on work that is already merged.
    model). Their proposals are **presented to the person**; what they confirm is applied on the branch. A retro written
    without presenting it does not count. If the person asked to go to `{{protectedBranch}}` and is not there to decide
    the retro, leave everything ready (retro with `**Status:** pending`, check green on the merge with
-   `{{protectedBranch}}`, pull request description) and stop before `revisado.sh`: their confirmation of the retro is
+   `{{protectedBranch}}`, pull request description) and stop before `reviewed.sh`: their confirmation of the retro is
    the only missing step; do not write the decision for them.
 3. **Close:** if phase 2 brought code, review only those commits and their fixes; then
-   `bash .claude/gw/scripts/revisado.sh` (writes the review mark, `{{reviewMark}}`, and commits it) and `git push`;
+   `bash .claude/gw/scripts/reviewed.sh` (writes the review mark, `{{reviewMark}}`, and commits it) and `git push`;
    for a pull request, its description with the `pr` skill. Only then push to `{{protectedBranch}}` or create the
    pull request. Without the mark of the same commit, the hooks refuse it.
 

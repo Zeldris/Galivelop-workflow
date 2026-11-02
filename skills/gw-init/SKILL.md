@@ -24,7 +24,7 @@ Reply to the user in the language they use; the project's `language` is decided 
 
 ## 1. Find the workflow repo
 
-`<workflow>` is the clone of `Galivelop-workflow` that holds `scripts/aplicar.py`. Look in this order:
+`<workflow>` is the clone of `Galivelop-workflow` that holds `scripts/apply.py`. Look in this order:
 
 1. A sibling of the project: `../Galivelop-workflow`.
 2. A repo already attached to the session (check `ls` of the session's working folders).
@@ -36,7 +36,7 @@ version): `git ls-remote --tags --refs --sort=-v:refname <url>` shows the tags (
 added with `add_repo`), compare `git -C <workflow> describe --tags` with the latest tag and, if it is behind, run
 `git -C <workflow> fetch --tags` and `git -C <workflow> checkout vX.Y.Z`.
 
-Done when `python3 <workflow>/scripts/aplicar.py --help` runs.
+Done when `python3 <workflow>/scripts/apply.py --help` runs.
 
 ## 2. Check the preconditions
 
@@ -60,7 +60,7 @@ Done when every fact has an answer the user confirmed.
 1. Dry run first, then the same command without `--dry-run`:
 
    ```bash
-   python3 <workflow>/scripts/aplicar.py <project> --dry-run --init --language <es|en> --log <path> \
+   python3 <workflow>/scripts/apply.py <project> --dry-run --init --language <es|en> --log <path> \
      --install "<cmd>" --check-command "<cmd>" --protected-branch <branch> \
      --push-to-protected <direct|pr> --content '<regex>'
    ```
@@ -84,11 +84,11 @@ Done when no `*.gw-nuevo` is left and the log has a next-step line.
 
 1. `python3 <project>/.claude/gw/scripts/doctor.py`; fix and rerun until no `FAIL` is left. Explain each `WARN` to
    the user (`docs/en/troubleshooting.md`).
-2. Commit with the message `aplicar.py` suggested, replacing its last line with the real `Next:` (`Siguiente:` in
+2. Commit with the message `apply.py` suggested, replacing its last line with the real `Next:` (`Siguiente:` in
    Spanish projects), then `git push -u origin <branch>`; the new pre-push runs the check on the pushed commit.
 3. Report: what was created, what the user must decide next, and that nothing went to the protected branch.
 4. Warn the user: a `.claude/settings.json` created mid-session is not loaded until the next session, so the
    `PreToolUse` hook (the PR guard) is not active in this one. Until they open a new session from the project, check
-   the review mark by hand before any PR: `bash .claude/gw/scripts/revisado.sh`.
+   the review mark by hand before any PR: `bash .claude/gw/scripts/reviewed.sh`.
 
 Done when the push went through and `doctor.py` exits 0.
