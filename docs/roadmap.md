@@ -54,7 +54,7 @@ En este orden, porque cada paso usa el anterior:
    - [x] **H14** (2026-11-02): regla de versiones nueva en `AGENTS.md` y plan §7.
    - [x] **D13** (2026-11-02): este roadmap, con su par en inglés.
    - [x] **H12** (2026-11-02): `pendiente-1.0.0.md` pasa a `pendiente.md`, con la versión en cada línea.
-   - [ ] **A7:** el plan reescrito según la tabla del apartado A1 (§1, §2, §7, §9, §10).
+   - [x] **A7** (2026-11-02): el plan reescrito según la tabla del apartado A1 (§1, §2, §7, §9, §10).
 2. **Nombres**
    - [ ] **A8:** `gw-` en las skills propias (las de terceros conservan su nombre, A3) y scripts en inglés (apartado A2).
    - [ ] **A4:** rutas del proyecto en inglés (`docs/handoff.md`, `docs/records/`…), configurables en `gw.json`, también

@@ -22,6 +22,10 @@ does not move until it is released.
   menor; se avanza por la `0.x` y la `1.0` será el Management Center (plan §7, `AGENTS.md`, `docs/es/contribuir.md`).
   Mapa de versiones con identificadores en `docs/roadmap.md` (+ `docs/roadmap.en.md`); la lista de evolutivos pasa a
   `docs/registros/pendiente.md`, con la versión en cada línea.
+- **Repo público** (A7): el plan (§1, §2, §7, §9, §10) deja de hablar de repo privado y de la `1.0.0` sola en un repo
+  público aparte: cada versión se publica aquí, valen el plugin y la copia gestionada, licencia MIT, la `1.0` sale
+  cuando esté su alcance del roadmap (la §10 mide madurez), como mucho una publicación al día, la Fase 10 pasa a
+  «Lanzamiento» y «nada privado» es requisito de cada subida.
 
 - El `pre-push` no repite un `check` que ya pasó en verde sobre el mismo árbol, las mismas órdenes y el mismo
   `checkWrapper` (P3 de la retro del parche `0.4.1`). `scripts/check.sh` (en los proyectos,
@@ -99,6 +103,10 @@ does not move until it is released.
   the project moves through `0.x` and `1.0` will be the Management Center (plan §7, `AGENTS.md`,
   `docs/en/contributing.md`). Version map with ids in `docs/roadmap.en.md` (+ `docs/roadmap.md`); the feature list
   becomes `docs/registros/pendiente.md`, with the version on each line.
+- **Public repo** (A7): the plan (§1, §2, §7, §9, §10) no longer talks about a private repo and `1.0.0` alone in a
+  separate public repo: every version is published here, both the plugin and the managed copy are valid, MIT license,
+  `1.0` ships when its roadmap scope is done (§10 measures maturity), at most one release a day, Phase 10 becomes
+  "Launch" and "nothing private" is a requirement of every push.
 
 - `pre-push` does not repeat a `check` that already passed on the same tree, commands and `checkWrapper` (P3 of the
   `0.4.1` patch retro). `scripts/check.sh` (in projects, `.claude/gw/scripts/check.sh`) runs the `check` on the working

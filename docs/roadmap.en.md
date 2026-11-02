@@ -54,7 +54,7 @@ In this order, because each step uses the previous one:
    - [x] **H14** (2026-11-02): new versioning rule in `AGENTS.md` and plan §7.
    - [x] **D13** (2026-11-02): this roadmap, with its English pair.
    - [x] **H12** (2026-11-02): `pendiente-1.0.0.md` becomes `pendiente.md`, with the version on each line.
-   - [ ] **A7:** the plan rewritten according to the table in section A1 (§1, §2, §7, §9, §10).
+   - [x] **A7** (2026-11-02): the plan rewritten according to the table in section A1 (§1, §2, §7, §9, §10).
 2. **Names**
    - [ ] **A8:** `gw-` on our own skills (third-party ones keep their name, A3) and scripts in English (section A2).
    - [ ] **A4:** project paths in English (`docs/handoff.md`, `docs/records/`…), configurable in `gw.json`, also in

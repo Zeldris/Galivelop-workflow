@@ -46,31 +46,29 @@ What the workflow solves:
 4. **Spending few tokens without losing quality.** `orchestrate-dealer`, compaction at 200k, recovery after
    `/clear`, and `opt-tokens` + `retro`, which measure and propose environment improvements.
 
-**End of the road:** after a long run-in on real projects and with the criteria in §10 met, **`1.0.0`, and only
-that one**, is published in a separate public repo; it is published on the Galivelop portal as a project (page in
-Spanish, Galician and English), and publishing it on npm is considered. Later versions stay private.
-`1.0.0` is available **only as a plugin**: having the workflow locally (copied into a repo) is for the private repo,
-invited collaborators or a possible sale. So the (public) portal removes its copy of the workflow and depends on the
-plugin instead (decided by the user, 2026-10-22).
+**Public** (user, 2026-10-30/31; replaces `1.0.0` alone in a separate public repo, from 2026-10-22): this repo is the
+product and it is public, as are all its versions; each one is published here with its release. The aim is reach and
+use, not sales. Both install paths are valid, the plugin and the managed copy in the project's repo (§8). The launch
+(Phase 10) adds the page on the Galivelop portal (Spanish, Galician and English), npm if it is done, and the social
+posts (`gw-media-content`).
 
 ## 2. Decisions already made (by the user, 2026-10-21)
 
 | Decision | Value |
 |---|---|
-| Repo name | `Galivelop-workflow`, always private; `1.0.0` is published in a separate public repo (§10) |
+| Repo name | `Galivelop-workflow`, **public** (user, 2026-10-30/31) |
 | Languages | **Spanish and English** (see §4.4) |
 | Distribution | The most convenient and clean: **a Claude Code plugin served from the repo itself as a marketplace**. npm considered at the end |
 | Versioning | The repo is the version point for all skills and improvements |
-| Publishing | Only `1.0.0` is public (+ Galivelop page), once the workflow is proven 100 % functional and applicable to any system; from the next one on, private (decided by the user, 2026-10-22) |
+| Publishing | Every version, in this repo with its release (§7); the Galivelop page, at the launch (Phase 10). Replaces "only `1.0.0` is public", from 2026-10-22 |
+| License | MIT, for the whole repo (user, 2026-11-01) |
 
 > **Revised in §0:** the base distribution is the managed copy; the plugin stays as a stage-2 option.
 >
-> **Revised again (2026-10-22):** up to Phase 8, the managed copy stays the working base in the private pilots;
-> from Phase 9 on, the plugin becomes **the only outward distribution**. Limits to solve there: a plugin downloads
-> its files to whoever installs it, so what controls use is the **license** (the current MIT allows
-> redistribution; the one for `1.0.0` stays open until Phase 10, and Matt Pocock's skills keep their MIT); in the
-> cloud the environment setup script installs the plugin (Option D); git hooks (`pre-push`, review mark) have to
-> come from the plugin, and that is untested.
+> **Revised again (2026-10-31, all public):** the plugin and the managed copy are both valid, outward too (before,
+> from Phase 9 on the plugin was going to be the only distribution). What is left for Phase 9: in the cloud the
+> environment setup script installs the plugin (Option D), and git hooks (`pre-push`, review mark) have to come from
+> the plugin, and that is untested. The license is MIT, Matt Pocock's skills included.
 
 **Why a plugin and not a file-copying script** (original reasoning): the plugin comes with versioning, updates (`/plugin update`) and
 uninstall out of the box; skills are not duplicated in every repo; and in a project a single entry in
@@ -327,6 +325,12 @@ milestone roadmap, several accounts, PR) and the Tarkor installer (Rust/Tauri: t
   projects migrate once and later minors only add (SemVer allows breaking changes in a `0.y` minor). Each minor is
   worked on its own branch, `version/X.Y.0` (`0.5` on `version/0.5.0`; `version/1.0.0` keeps the design in
   `docs/diseno/`), and patches of the latest published minor are merged into it too.
+- **When `1.0` ships** (user, 2026-11-01, A-5): when what the roadmap assigns to it is done. The §10 criteria measure
+  the workflow's maturity and do not hold the tag back.
+- **Cadence** (user, 2026-11-01, A-6): at most one release a day; fixes that arrive later wait on the branch and ship
+  together in the next one. Only a serious fix (a hook that blocks good pushes, data loss) ships earlier, with the
+  user's confirmation.
+- **Public:** every version is published in this repo with its tag and release (§1).
 
 ## 8. Installing in a project
 
@@ -385,8 +389,8 @@ with the large model; porting skills and templates with the medium one. From Pha
 | Phase | What | Done when |
 |---|---|---|
 | **8. Installer** | Choose Copier or an own script; one command that **installs** (new project, or existing one without the workflow: no overwrites, conflicts marked) or **updates** (with `gw.json`, or an older copy without it) depending on what it finds (§8) | Install without AI on a new repo; update without AI the pilots (from their version to the new one) and VeriNews_AI (older copy without `gw.json`); `doctor.py` green |
-| **9. Plugin and npm** | The plugin becomes the only outward distribution: marketplace in the private repo with invite-only access, installed locally and by the cloud environment setup script (Option D); the plugin also brings the git hooks (`pre-push`, review mark); consider npm (§11) | A project (the portal) working with the plugin only, locally and in the cloud, hooks included |
-| **10. Public** | Choose the `1.0.0` license (no redistribution or resale; MIT only for third-party parts), `/security-review`, remove private paths or names, `1.0.0` **as a plugin only** copied into a separate public repo **without the history** (a single commit; this repo stays private and goes on with `1.0.x`/`1.1`), portal page (three languages); the portal removes its copy of the workflow (from a portal session) and depends on the plugin. If there is npm, only `1.0.0` | Public repo with `1.0.0` as a plugin and page published; the portal without a copy of the workflow; nothing later outside the private repo |
+| **9. Plugin and npm** | The plugin as a full path alongside the managed copy: marketplace in this (public) repo, installed locally and by the cloud environment setup script (Option D); the plugin also brings the git hooks (`pre-push`, review mark); consider npm (§11) | A project (the portal) working with the plugin only, locally and in the cloud, hooks included |
+| **10. Launch** | `/security-review`; portal page (three languages); npm if it is done (§11); social posts with `gw-media-content`. The private-data review no longer waits for this phase: it is a requirement of every push (§10) | Page published and announcement made |
 
 **Notes for Phases 9 and 10** (2026-10-25 harvest, no change now; looked at when each phase opens):
 
@@ -395,7 +399,9 @@ with the large model; porting skills and templates with the medium one. From Pha
 - **Phase 10:** a threat / countermeasure / evidence table as the security document; CI actions pinned by `sha` and
   `permissions: {}` by default (today `comprobar.yml` and `release.yml` use `@v4` / `@v5`).
 
-## 10. Criteria for "100 % functional and applicable to any system" (move to 1.0)
+## 10. Criteria for "100 % functional and applicable to any system"
+
+They measure the workflow's maturity; they do not hold back `1.0`, which ships when what the roadmap assigns to it is done (§7).
 
 - Works in **three projects** on different stacks (at least one without Node: the Tarkor installer or VeriNews
   are the candidates) for **≥ 4 weeks** each.
@@ -406,6 +412,8 @@ with the large model; porting skills and templates with the medium one. From Pha
 - **Clean install**: stage 1, an agent with `apply.md` + `doctor.py` on a new repo without manual edits; stage 2, the
   same without AI.
 - **Nothing private** in the repo: no Tarkor or portal paths, no internal identifiers, no personal data.
+  **A requirement now, on every push** (the repo is public), not just a maturity criterion; a `pre-push` check will
+  enforce it (E2 in `0.5`).
 - ES/EN documentation complete and paired (the test checks it).
 
 ## 11. npm (at the end, optional)

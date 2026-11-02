@@ -12,7 +12,7 @@
 | Check | `bash tests/comprobar.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público): estaba en rojo por dos tests de interrupción con Python 3.12, SC2015 en `revisado.sh` (shellcheck 0.9/0.10 de apt) y, en macOS, `test_aplicar` (disco sin mayúsculas) y el límite de 1 s de `test_revision_main` (ahora 5 s sobre un comando trivial). Arreglado en `ccr-6dfbc880-ddr41g` (`66a4ecd`, CI verde en Ubuntu y macOS) y traído aquí. `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.4.4` |
 | Fase en curso | **6 cerrada**; próxima: **7. Rodaje etapa 1**. Versiones (usuario, 2026-11-01, plan §7): solo la última menor publicada recibe parches (hoy `0.4.x`) y los evolutivos van a la siguiente menor; mapa en `docs/roadmap.md`. En curso: la `0.5` «Base» |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | `0.5`, paso 1 de `docs/roadmap.md`: H14, D13 y H12 hechos (2026-11-02); falta **A7**, el plan reescrito según la tabla del apartado A1 de `docs/diseno/A-marco.md` (§1, §2, §7, §9, §10, con `plan.en.md`). Luego el paso 2 (A8, A4: nombres). Aparte: el parche `0.4.4` (D6 y retro P5) va a `main` otro día (usuario, 2026-11-01). R3: el usuario da acceso de lectura |
+| Siguiente paso | `0.5`, paso 1 de `docs/roadmap.md` cerrado (A7 hecho, 2026-11-02). Sigue el **paso 2, nombres**: **A8** (`gw-` en las skills propias, scripts en inglés; apartado A2 de `docs/diseno/A-marco.md`) y luego **A4** (rutas del proyecto en inglés). Aparte: el parche `0.4.4` (D6 y retro P5) va a `main` otro día (usuario, 2026-11-01). R3: el usuario da acceso de lectura |
 
 ### Fases
 
@@ -26,14 +26,13 @@
 - [ ] 7. Rodaje etapa 1
 - [ ] 8. Instalador sin IA (etapa 2)
 - [ ] 9. Plugin y npm
-- [ ] 10. Público
+- [ ] 10. Lanzamiento
 
 ## Para la próxima publicación
 
 **Política de versiones** (usuario, 2026-11-01, plan §7; sustituye a la de abajo, de 2026-10-25): solo la última menor publicada recibe parches y los evolutivos van a la siguiente menor (`docs/roadmap.md`). Antes: la `0.4` era la última menor `0.x`, la estable antes de la `1.0`.
-Cada recogida reparte lo que trae: las correcciones van a un parche `0.4.x` (que se fusiona también en la rama de la
-`1.0.0`, `version/1.0.0`) y los evolutivos se apuntan para la `1.0.0`, nunca una `0.5`. La `1.0.0`+ es la línea que crece. Por
-decidir: si la `1.0.0` llega a `main` antes de cumplir la §10.
+La `1.0` sale cuando esté hecho lo que el roadmap le asigna; la §10 mide madurez (A-5, plan §7). Como mucho una
+publicación al día (A-6).
 
 La release `v0.4.0` la creó el usuario a mano (2026-10-25), con los textos de `docs/registros/release-v0.4.0.md`. La
 sesión en la nube no puede subir etiquetas (403 del proxy) y sin cuota de Actions `release.yml` no corre. Para la siguiente: `release.yml` con
@@ -41,11 +40,11 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-02 — 2026-11-02 — `0.5` abierta en `ccr-05edcf12-0gntze` (desde `version/1.0.0`): regla de versiones nueva (H14) en `AGENTS.md`, plan §7 y contribuir; `docs/roadmap.md` (+ `.en`) con los ids (D13); `pendiente-1.0.0.md` → `pendiente.md` con la versión en cada línea (H12); CHANGELOG `[0.5.0] - Unreleased`.
-2. 2026-11-01 — CI en verde en Ubuntu y macOS para el parche (`66a4ecd` en `ccr-6dfbc880-ddr41g`): stdin cerrado con Python 3.12, SC2015 en `revisado.sh`, `test_aplicar` en disco sin mayúsculas y margen de 5 s en `test_revision_main`. Fusionado en `version/1.0.0`.
-3. 2026-11-01 — Sesión de diseño de la `1.0.0` abierta (2026-10-30 → 11-01, en `version/1.0.0`): todo lo dictado por el usuario apuntado en `docs/diseno/README.md` en ocho bloques (A marco: público, `gw-`, versionado; B gasto y modelos; C preguntas y modo restrictivo; D git: entornos, releases, tags, roles; E reglas deterministas, pruebas de front, documentación; F referencias; G Management Center; H roadmap y mapa de versiones), con el mapa inicial de modelos. Regla: se cierra el diseño antes de desarrollar nada. Traído `origin/main` (README del usuario, `9bee6ca`).
-4. 2026-10-27 — Recogida de la `1.0.0` (1.ª parte): `galivelop-developer` usa el flujo (v0.3.0, nunca recogido): 8 propuestas en `docs/propuestas/2026-10-27-galivelop-developer.md` (P1-P4 corrección → `0.4.3`; P5-P8 → `1.0.0`) y `estado.json` al día. `galivelop-image-generator` y `galivelop-voice-generator` son privados y la sesión no pudo añadirlos (permiso denegado): pendientes. Por decidir con el usuario.
-5. 2026-10-27 — Parche `0.4.2` en la rama (de la segunda recogida, decidida con «tu recomendación»): `bitacora.py` sin `--amend` (INS P8), el `pre-commit` ve `api.key` y nombres pegados a un proveedor (VeriNews P3), `fusionar.sh` corre los `relatedTests` (P4) y `mapa-agente.py` reconoce métodos de Java y lenguajes tipados (P11); cada arreglo con su test, rojo sin él. Versión y CHANGELOG `0.4.2`.
+1. 2026-11-02 — `0.5`, A7: el plan (§1, §2, §7, §9, §10, + `plan.en.md`) pasa a repo público: cada versión con su release aquí, plugin y copia gestionada, MIT, la `1.0` sale con su alcance del roadmap (§10 mide madurez), una publicación al día como mucho, Fase 10 «Lanzamiento», «nada privado» en cada subida. Paso 1 del roadmap cerrado.
+2. 2026-11-02 — `0.5` abierta en `ccr-05edcf12-0gntze` (desde `version/1.0.0`): regla de versiones nueva (H14) en `AGENTS.md`, plan §7 y contribuir; `docs/roadmap.md` (+ `.en`) con los ids (D13); `pendiente-1.0.0.md` → `pendiente.md` con la versión en cada línea (H12); CHANGELOG `[0.5.0] - Unreleased`.
+3. 2026-11-01 — CI en verde en Ubuntu y macOS para el parche (`66a4ecd` en `ccr-6dfbc880-ddr41g`): stdin cerrado con Python 3.12, SC2015 en `revisado.sh`, `test_aplicar` en disco sin mayúsculas y margen de 5 s en `test_revision_main`. Fusionado en `version/1.0.0`.
+4. 2026-11-01 — Sesión de diseño de la `1.0.0` abierta (2026-10-30 → 11-01, en `version/1.0.0`): todo lo dictado por el usuario apuntado en `docs/diseno/README.md` en ocho bloques (A marco: público, `gw-`, versionado; B gasto y modelos; C preguntas y modo restrictivo; D git: entornos, releases, tags, roles; E reglas deterministas, pruebas de front, documentación; F referencias; G Management Center; H roadmap y mapa de versiones), con el mapa inicial de modelos. Regla: se cierra el diseño antes de desarrollar nada. Traído `origin/main` (README del usuario, `9bee6ca`).
+5. 2026-10-27 — Recogida de la `1.0.0` (1.ª parte): `galivelop-developer` usa el flujo (v0.3.0, nunca recogido): 8 propuestas en `docs/propuestas/2026-10-27-galivelop-developer.md` (P1-P4 corrección → `0.4.3`; P5-P8 → `1.0.0`) y `estado.json` al día. `galivelop-image-generator` y `galivelop-voice-generator` son privados y la sesión no pudo añadirlos (permiso denegado): pendientes. Por decidir con el usuario.
 
 ## Pendiente
 
@@ -155,9 +154,8 @@ lanzamiento manual desde Actions que cree la etiqueta.
 - Que el usuario cambie la rama por defecto de GitHub a `main` (Settings → Branches); no hay herramienta para ello.
 - R2 de la retro: que `doctor.py` detecte skills homónimas en la sesión (sin forma fiable aún; queda en las guías).
 - Opción D (plugin desde el script de entorno de la nube): queda para la Fase 9.
-- La `1.0.0` solo como plugin (decidido 2026-10-22): en la Fase 9, plugin como única distribución hacia fuera y
-  ganchos de git desde el plugin (sin probar); en la Fase 10, licencia de la `1.0.0` (abierta) y el portal quita su
-  copia del flujo desde una sesión suya. Su historial seguirá teniendo la copia `0.2.0` (MIT).
+- Fase 9: ganchos de git desde el plugin (sin probar). Lo de «la `1.0.0` solo como plugin» (2026-10-22) quedó
+  sustituido por el repo público (A7, plan §1 y §2): valen el plugin y la copia gestionada, licencia MIT.
 
 ## Comprobar el estado
 
