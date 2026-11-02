@@ -34,6 +34,9 @@ What it copies (workflow -> project):
       gw-scout-updates.md when that optional skill is installed)
   templates/github/check.yml -> .github/workflows/check.yml (workflow-owned, like the scripts)
 In the workflow repo itself the root templates and the CI file are skipped: it has its own AGENTS.md, log and CI.
+  .gitignore                    gets the line .claude/gw.local.json (the local, private list private-check.py reads)
+                                appended when none of its lines names that file yet; nothing else in it is touched
+
   ~/.claude/gw/notas/*          -> .claude/gw/           PERSONAL NOTES of the person running this (folder overridable
                                    with the env var GW_PERSONAL_NOTES; absent folder = nothing happens). Only regular
                                    files directly in it, named [A-Za-z0-9][A-Za-z0-9._-]* (no subfolders, symlinks or
@@ -482,6 +485,25 @@ def plan_hooks_path(plan):
                            f"left unset so they keep running; {chain_hint(hooks_dir)}")
         return
     plan.set_hooks_path = True
+
+
+LOCAL_IGNORE = config.LOCAL_REL.as_posix()  # .claude/gw.local.json: private, never committed
+LOCAL_IGNORE_LINES = {LOCAL_IGNORE, "/" + LOCAL_IGNORE, "gw.local.json", "/**/gw.local.json", "**/gw.local.json"}
+
+
+def plan_gitignore(plan):
+    """The project's .gitignore ignores .claude/gw.local.json (private names and addresses, read by
+    private-check.py): the line is appended when no line of .gitignore already names it. Only the file is read, not
+    git's global excludes, so --check says the same on every machine."""
+    path = plan.root / ".gitignore"
+    current = path.read_bytes() if path.is_file() else b""
+    lines = {line.strip() for line in current.decode("utf-8", "replace").splitlines()}
+    if lines & LOCAL_IGNORE_LINES:
+        return
+    sep = b"" if not current or current.endswith(b"\n") else b"\n"
+    data = current + sep + f"# galivelop-workflow: private, never committed\n{LOCAL_IGNORE}\n".encode()
+    plan.actions.append(("update" if current else "create", Path(".gitignore"), data, False,
+                         f"ignore {LOCAL_IGNORE}, the local list of private names"))
 
 
 def inline_list(items):
@@ -961,6 +983,7 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
 
     plan.settings(WORKFLOW / "templates" / "claude" / "settings.json")
     plan_templates(plan, cfg, self_apply, wanted_skills)
+    plan_gitignore(plan)
     if not self_apply:
         plan_old_scripts(plan)
     if personal and not is_workflow_repo(root):

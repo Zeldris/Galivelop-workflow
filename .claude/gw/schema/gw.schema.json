@@ -442,6 +442,21 @@
       "minimum": 1,
       "default": 30,
       "description": "Subagents (Agent/Task calls) one session may launch before subagent-cap.py asks the user to check they are not looping, and again every 10 after."
+    },
+    "privateCheck": {
+      "anyOf": [
+        {"type": "boolean"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "emails": {"type": "boolean", "default": true},
+            "allowEmails": {"type": "array", "items": {"type": "string", "minLength": 1, "pattern": "^[^@\\s]+@[^@\\s]+$"}, "default": []}
+          }
+        }
+      ],
+      "default": {"emails": true, "allowEmails": []},
+      "description": "private-check.py (pre-push, on what each push adds): key formats, e-mail addresses (emails, default true) other than the built-in example/noreply ones and allowEmails (public; private ones go in the local .claude/gw.local.json), and the privateNames of .claude/gw.local.json. false turns it all off; true is the defaults."
     }
   }
 }

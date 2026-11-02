@@ -31,5 +31,10 @@
   "refsSources": [
     "docs/roadmap.md",
     "docs/handoff.md"
-  ]
+  ],
+  "privateCheck": {
+    "allowEmails": [
+      "cordproinf@gmail.com"
+    ]
+  }
 }

@@ -8,6 +8,9 @@
 #   - Says which commits each ref pushes, or that it pushes nothing new.
 #   - Refuses conflict markers and added *.rej / *.orig files in what is pushed (to the protected branch, in all it
 #     gains from the remote tip, commits other branches already have included).
+#   - Runs scripts/private-check.py (when the project has it) on the commits each ref pushes: key formats, e-mail
+#     addresses not allowed and the private names of the local .claude/gw.local.json, in their added lines, added
+#     paths and messages; privateCheck: false in the pushed commit's config turns it off. Fails closed.
 #   - Reads .claude/gw.json as each pushed commit has it (never the working tree's); a pushed commit without a valid
 #     one is refused.
 #   - Runs every `check` command of that config on the commit being pushed (a temporary worktree when it is not
@@ -267,6 +270,10 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     printf '%s\n' "$files" | grep . >> "$work/changed"
 
     scan_leftovers "$local_sha" "$files" "the push"
+    if [ -f "$scripts/private-check.py" ]; then  # an older project without it: skipped, like the optional scripts
+      printf '%s\n' "$new" | python3 "$scripts/private-check.py" --root "$root" --rev "$local_sha" --commits - \
+        || fail "the push carries private data or a key (above); remove it from those commits and push again: git rebase -i $remote/${remote_ref#refs/heads/}"
+    fi
   fi
 
   # Protected if any config names this branch: the pushed commit's, the remote tip's or the working tree's (a commit

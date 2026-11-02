@@ -172,6 +172,24 @@ class Apply(unittest.TestCase):
         self.assertIn("WARNING: git ignores .githooks/pre-push (.gitignore:1:.githooks/)", out)
         self.assertIn("git check-ignore -v .githooks/pre-push", out)
 
+    def test_gitignore_gets_the_private_local_file(self):
+        p = self.p
+        code, out = p.run_apply("--check")
+        self.assertEqual(code, 1, out)
+        self.assertIn(".gitignore", out)
+        self.applied()
+        self.assertTrue(p.read(".gitignore").endswith(".claude/gw.local.json\n"))
+        self.assertEqual(p.run("git", "check-ignore", "-q", ".claude/gw.local.json")[0], 0)
+        p.write(".gitignore", "node_modules/")  # no final newline: the line goes below, not glued to it
+        self.applied()
+        self.assertEqual(p.read(".gitignore"),
+                         "node_modules/\n# galivelop-workflow: private, never committed\n.claude/gw.local.json\n")
+        p.write(".gitignore", "/**/gw.local.json\n")  # already listed in another form: left alone
+        self.assertNotIn(".gitignore", self.applied())
+        self.assertEqual(p.read(".gitignore"), "/**/gw.local.json\n")
+        code, out = p.run_apply("--check")
+        self.assertEqual(code, 0, out)
+
     def test_older_flow_hook_in_settings_is_listed(self):
         p = self.p
         self.applied()
