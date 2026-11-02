@@ -70,7 +70,7 @@ En este orden, porque cada paso usa el anterior.
 | B6 | Aviso en el `SessionStart` cuando un modelo gasta 1,5× su media | pendiente |
 | B7 | `models.disabled` en `gw.json`, con su gancho | pendiente |
 | B8 | Señales de calidad junto al gasto (la tabla determinista, en «Después») | pendiente |
-| B10 | El `selector` recomienda modelo y esfuerzo de la sesión principal | pendiente |
+| B10 | El `gw-selector` recomienda modelo y esfuerzo de la sesión principal | pendiente |
 | B11 | Modelo y esfuerzo por agente (palancas de Claude Code) | pendiente |
 
 ## `0.7` «Preguntar»
@@ -142,7 +142,7 @@ Se le pone versión al abrir la menor en que quepa, cuando exista lo que necesit
 |---|---|---|
 | B8 | Tabla determinista de modelos por necesidad (segunda parte) | Cuatro semanas de ledger |
 | B13 | Tendencia publicada y una prueba A/B con el flujo y sin él | Ledger |
-| B12 | Patrón «scouts» en `orchestrate-dealer`, medido antes y después | Ledger |
+| B12 | Patrón «scouts» en `gw-orchestrate-dealer`, medido antes y después | Ledger |
 | C9 | `modes.freeze <carpeta>` | C7 |
 | G10 | MMC multiproyecto | `1.0` |
 | — | OpenTelemetry como opción de B1 | B1 |

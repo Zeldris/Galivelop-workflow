@@ -44,7 +44,7 @@ python3 .claude/gw/scripts/doctor.py
 | `settings <event>` (FAIL) | A hook command points to a file that does not exist | `/gw-update` restores the scripts; or fix the command |
 | `settings PreToolUse` (FAIL) | The hook guarding PR creation and merging (`revision-antes-de-main.sh`) is missing | Add it from `templates/claude/settings.json` (`/gw-update`) |
 | `agents` (FAIL) | Neither `AGENTS.md` nor `CLAUDE.md` exists | `/gw-init` |
-| `agents` (WARN) | Neither mentions `orchestrate-dealer`: the session may not deal work to subagents | Add to `AGENTS.md`: "Multi-step work is dealt to subagents (skill `orchestrate-dealer`); the main session plans, decides and reviews." |
+| `agents` (WARN) | Neither mentions `gw-orchestrate-dealer`: the session may not deal work to subagents | Add to `AGENTS.md`: "Multi-step work is dealt to subagents (skill `gw-orchestrate-dealer`); the main session plans, decides and reviews." |
 | `skills` (WARN) | Copied skills at a version different from `gw.json`'s | `/gw-update` |
 | `session` (WARN) | The newest session was opened outside the repo and may not have loaded `.claude/settings.json` | Reopen Claude Code from the repo: `cd <repo> && claude` |
 | `compaction` (WARN) | Cloud session without `CLAUDE_CODE_AUTO_COMPACT_WINDOW` in its environment: it starts in `/home/user` (often with several repos), does not load `.claude/settings.json` and the context grows with no cap | Add `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` to the cloud environment's variables (environment menu → Edit); new sessions get it |
@@ -127,7 +127,7 @@ when it is missing), and after a compaction run `python3 .claude/gw/scripts/recu
 ## Skills with the same name in several repos of the session
 
 If other repos are added to the session and registered as roots (in the cloud, `register_repo_root`), their
-`.claude/skills/` come in too, and a same-name skill from another repo (`retro`, `selector`…) may shadow the
+`.claude/skills/` come in too, and a same-name skill from another repo (`retro`, `gw-selector`…) may shadow the
 project's. Fix: repos that are only read are **not registered**; cloning them and reading them with a subagent is
 enough. If they already are, invoke the project's skill and check the path it shows when it loads (`Base directory`).
 

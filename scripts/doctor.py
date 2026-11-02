@@ -148,12 +148,15 @@ def check_config(rep, root):
 
 # What a commit must carry for the workflow to work; a `.gitignore` with `.claude/*` would leave it out.
 MUST_BE_TRACKED = (".claude/gw.json", ".claude/gw/scripts/config.py", ".claude/settings.json",
-                   ".claude/skills/selector/SKILL.md", ".githooks/pre-push")
+                   ".claude/skills/gw-selector/SKILL.md", ".githooks/pre-push")
 
 
 def must_be_tracked(root):
     """MUST_BE_TRACKED plus the config's `reviewMark` file: git ignoring it breaks the pre-push without saying why."""
     paths = list(MUST_BE_TRACKED)
+    new, old = ".claude/skills/gw-selector/SKILL.md", ".claude/skills/selector/SKILL.md"  # A8: both names in 0.x
+    if not (root / new).is_file() and (root / old).is_file():
+        paths[paths.index(new)] = old
     try:
         mark = config.load(root).get("reviewMark")
     except config.ConfigError:
@@ -451,12 +454,12 @@ def check_subagents(rep, root):
             texts.append(p.read_text(encoding="utf-8", errors="replace"))
     if not texts:
         rep.fail("agents", "neither AGENTS.md nor CLAUDE.md exists, so agents get no workflow rules", "/gw-init")
-    elif any("orchestrate-dealer" in t for t in texts):
-        rep.ok("agents", "AGENTS.md/CLAUDE.md authorise dealing work to subagents (orchestrate-dealer)")
+    elif any("orchestrate-dealer" in t for t in texts):  # also matches gw-orchestrate-dealer: both names in 0.x
+        rep.ok("agents", "AGENTS.md/CLAUDE.md authorise dealing work to subagents (gw-orchestrate-dealer)")
     else:
-        rep.warn("agents", "neither AGENTS.md nor CLAUDE.md mentions orchestrate-dealer, so the session may not deal "
+        rep.warn("agents", "neither AGENTS.md nor CLAUDE.md mentions gw-orchestrate-dealer, so the session may not deal "
                  "work to subagents", "add to AGENTS.md: 'Multi-step work is dealt to subagents (skill "
-                 "orchestrate-dealer); the main session plans, decides and reviews.'")
+                 "gw-orchestrate-dealer); the main session plans, decides and reviews.'")
 
 
 def check_glossary(rep, root):

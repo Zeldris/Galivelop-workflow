@@ -69,7 +69,7 @@ In this order, because each step uses the previous one.
 | B6 | Warning at `SessionStart` when a model spends 1.5× its average | pending |
 | B7 | `models.disabled` in `gw.json`, with its hook | pending |
 | B8 | Quality signals next to spend (the deterministic table, under "Later") | pending |
-| B10 | The `selector` recommends the main session's model and effort | pending |
+| B10 | The `gw-selector` recommends the main session's model and effort | pending |
 | B11 | Model and effort per agent (Claude Code levers) | pending |
 
 ## `0.7` "Ask"
@@ -141,7 +141,7 @@ It gets a version when the minor it fits in opens and what it needs exists.
 |---|---|---|
 | B8 | Deterministic table of models by need (second part) | Four weeks of ledger |
 | B13 | Published trend and an A/B test with and without the workflow | Ledger |
-| B12 | "Scouts" pattern in `orchestrate-dealer`, measured before and after | Ledger |
+| B12 | "Scouts" pattern in `gw-orchestrate-dealer`, measured before and after | Ledger |
 | C9 | `modes.freeze <folder>` | C7 |
 | G10 | Multi-project MMC | `1.0` |
 | — | OpenTelemetry as an option for B1 | B1 |

@@ -38,12 +38,12 @@ Lo que resuelve el flujo:
 
 1. **Relevos sin pérdidas.** Una sesión puede acabarse (tokens, contenedor, cambio de cuenta) y la siguiente sigue
    sin preguntar: bitácora al día, commit + push en cada punto estable, «lo que no está subido no existe».
-2. **Elegir bien antes de empezar.** Un `selector` decide qué skill y qué modelo pide cada tarea, y una escalera
+2. **Elegir bien antes de empezar.** Un `gw-selector` decide qué skill y qué modelo pide cada tarea, y una escalera
    de subagentes reparte lo mecánico a modelos baratos.
 3. **Nada sin revisar llega a `main`.** `/code-review` del diff, marca de revisado en el repo y ganchos que no
    dejan subir código sin ella ni con el check en rojo.
-4. **Gastar pocos tokens sin perder calidad.** `orchestrate-dealer`, compactación a 200k, recuperación tras
-   `/clear`, y `opt-tokens` + `retro` que miden y proponen mejoras del entorno.
+4. **Gastar pocos tokens sin perder calidad.** `gw-orchestrate-dealer`, compactación a 200k, recuperación tras
+   `/clear`, y `gw-opt-tokens` + `retro` que miden y proponen mejoras del entorno.
 
 **Fin del camino:** este repo es el producto y es **público**, con todas sus versiones: se busca difusión y uso, no
 venta (decidido por el usuario, 2026-10-30/31; A1). **Cada versión se publica aquí**, con su etiqueta y su release
@@ -87,9 +87,9 @@ su retro del 2026-10-21). Tarkor aporta lo que el portal quitó por ser «de web
 
 | Pieza | Origen (ruta en Portal-Galivelop) | Qué se hace al generalizar |
 |---|---|---|
-| `selector` | `.claude/skills/selector/SKILL.md` | Quitar casos del portal (rutas, SEO, tres idiomas). Tabla genérica + filas extra que el proyecto declara en su config (§6) |
-| `orchestrate-dealer` | `.claude/skills/orchestrate-dealer/SKILL.md` | Plantilla de encargo con `{check}`, `{bitacora}` e idiomas del proyecto en vez de los fijos |
-| `opt-tokens` + `medir.py` | `.claude/skills/opt-tokens/` | `medir.py` tal cual (ya es genérico) con referencias `QA-*` limpiadas; `proyecto.md` pasa a ser archivo del repo destino (`.claude/gw/opt-tokens.md`) |
+| `gw-selector` | `.claude/skills/gw-selector/SKILL.md` | Quitar casos del portal (rutas, SEO, tres idiomas). Tabla genérica + filas extra que el proyecto declara en su config (§6) |
+| `gw-orchestrate-dealer` | `.claude/skills/gw-orchestrate-dealer/SKILL.md` | Plantilla de encargo con `{check}`, `{bitacora}` e idiomas del proyecto en vez de los fijos |
+| `gw-opt-tokens` + `medir.py` | `.claude/skills/gw-opt-tokens/` | `medir.py` tal cual (ya es genérico) con referencias `QA-*` limpiadas; `proyecto.md` pasa a ser archivo del repo destino (`.claude/gw/gw-opt-tokens.md`) |
 | `retro` | `.claude/skills/retro/SKILL.md` | Mantener cuerpo MIT; la nota «En este repositorio» pasa a genérica (mirar skills del plugin y proponer cambios **al plugin** si la mejora es general) |
 | `grilling`, `grill-with-docs`, `domain-modeling`, `diagnosing-bugs`, `codebase-design`, `improve-codebase-architecture`, `writing-for-agents`, `pr`, `prototype`, `research` | `.claude/skills/*` | Tal cual (MIT, mattpocock/skills). Solo se quitan las notas del portal. Licencia y créditos se conservan |
 | Runbook del flujo | `docs/runbooks/skills-y-modelos.md` | Se convierte en `docs/<lang>/flujo.md` del plugin, genérico |
@@ -108,14 +108,14 @@ su retro del 2026-10-21). Tarkor aporta lo que el portal quitó por ser «de web
 | Utilidades de QA | Tarkor/instalador: `fusionar.sh`, `rojo-sin-arreglo.sh`, `tests-relacionados.sh`, `enlaces-md.py` | Genéricas; la orden de tests relacionados sale del config |
 | Cierre de tareas | Tarkor: `tools/roadmap/cerrar.py` | Parte del módulo `roadmap` |
 | Retro exigida antes de la marca | Tarkor/instalador: `revisado.sh` | Opción del config (`requireRetro`) |
-| `scout-updates` | Tarkor: `.claude/skills/scout-updates/` | Skill opcional (solo a petición) |
-| `opt-ai` + `medir.py` | Tarkor/instalador: `.claude/skills/opt-ai/` | Skill opcional para proyectos con modelos de IA locales; lo propio en `.claude/gw/opt-ai.md` |
+| `gw-scout-updates` | Tarkor: `.claude/skills/gw-scout-updates/` | Skill opcional (solo a petición) |
+| `gw-opt-ai` + `medir.py` | Tarkor/instalador: `.claude/skills/gw-opt-ai/` | Skill opcional para proyectos con modelos de IA locales; lo propio en `.claude/gw/gw-opt-ai.md` |
 
 > **Fuente por pieza (Fase 0):** la tabla «La mejor versión de cada pieza» de `docs/investigacion/casos-reales.md`
 > manda sobre la columna «Origen» de arriba.
 
 **No se trae:** lo propio de cada proyecto (tres idiomas del portal, lore de Tarkor, tarea semanal concreta,
-rondas de pruebas jugando). `opt-ai` y `scout-updates` sí se traen, como skills opcionales (tabla de arriba). La **tarea programada semanal** se documenta como patrón
+rondas de pruebas jugando). `gw-opt-ai` y `gw-scout-updates` sí se traen, como skills opcionales (tabla de arriba). La **tarea programada semanal** se documenta como patrón
 opcional en `docs/<lang>/patrones.md`, sin prompt concreto.
 
 ## 4. Estructura del repo
@@ -127,7 +127,7 @@ Galivelop-workflow/
 │   ├── marketplace.json          # el repo es su propio marketplace (un plugin)
 │   └── plugin.json               # nombre, versión (semver: la única fuente), descripción, autor, licencia
 ├── skills/                       # una carpeta por skill, SKILL.md en inglés (§4.4)
-│   ├── selector/  orchestrate-dealer/  opt-tokens/  retro/  pr/
+│   ├── gw-selector/  gw-orchestrate-dealer/  gw-opt-tokens/  retro/  pr/
 │   ├── grilling/  grill-with-docs/  domain-modeling/  diagnosing-bugs/
 │   ├── codebase-design/  improve-codebase-architecture/  writing-for-agents/
 │   ├── prototype/  research/
@@ -145,7 +145,7 @@ Galivelop-workflow/
 │   ├── aplicar.py                # copia plantillas, skills y scripts sin pisar nada (etapa 1 y base de la 2)
 │   └── config.py                 # lee y valida .claude/gw.json del proyecto (único lector)
 ├── templates/                    # lo que /gw-init copia al repo destino, en es/ y en/
-│   ├── es/  AGENTS.md  CLAUDE.md  REVIEW.md  GLOSSARY.md  traspaso.md  opt-tokens.md
+│   ├── es/  AGENTS.md  CLAUDE.md  REVIEW.md  GLOSSARY.md  traspaso.md  gw-opt-tokens.md
 │   ├── en/  (los mismos)
 │   ├── githooks/pre-push
 │   ├── github/comprobar.yml      # CI mínimo: el check del proyecto
@@ -179,8 +179,8 @@ Es la primera prueba de rodaje: si algo del flujo estorba aquí, estorba en toda
 
 ### 4.2 Nombres
 
-- Proyecto y plugin: `galivelop-workflow`. Copiadas al repo destino, las skills se llaman por su nombre (`selector`);
-  vía plugin, `galivelop-workflow:selector`.
+- Proyecto y plugin: `galivelop-workflow`. Copiadas al repo destino, las skills se llaman por su nombre (`gw-selector`);
+  vía plugin, `galivelop-workflow:gw-selector`.
 - Las skills propias de gestión llevan prefijo `gw-` para no chocar con skills del proyecto.
 - Config del proyecto: `.claude/gw.json`. Archivos propios del flujo en el repo destino: `.claude/gw/` (scripts) y
   `.claude/skills/<skill>/` (skills). Todo lo copiado lleva su versión (`metadata.version` en las skills, cabecera
@@ -211,16 +211,16 @@ puede arrancar en `/home/user` (lección del portal, `REVIEW.md` §«Ganchos y s
 Cada `SKILL.md` de menos de 200 líneas (`writing-for-agents`), frontmatter con `name` y `description` que diga
 **cuándo** usarla. Las de mattpocock conservan su texto; las propias se reescriben genéricas:
 
-- **`selector`**: tabla de casos genéricos (diseño, fallo, cambio grande, cambio acotado, mecánico, traer de
+- **`gw-selector`**: tabla de casos genéricos (diseño, fallo, cambio grande, cambio acotado, mecánico, traer de
   otro repo, revisar antes de `main`, cierre de bloque, escribir para agentes) con skill, modelo de sesión y modelo
   de subagentes. Reglas: el modelo de sesión lo elige el usuario y Claude lo dice en una línea; escalera de
   subagentes `sonnet low → sonnet medium → opus medium → opus high`, dos fallos y se para; en la duda, la fila de
   más riesgo. Lee filas extra de `selector.cases` del config.
-- **`orchestrate-dealer`**: la principal planea, decide y revisa; los subagentes leen, implementan trozos y
+- **`gw-orchestrate-dealer`**: la principal planea, decide y revisa; los subagentes leen, implementan trozos y
   suben. Plantilla de encargo con punteros, criterio de hecho y respuesta de ≤15 líneas
   (`HECHO · COMMIT · FALTA · PREGUNTAS`). Uno a la vez en la misma rama si escriben.
-- **`opt-tokens`**: igual que en el portal («calidad primero», contexto medio × llamadas manda). Lo propio del
-  proyecto, en `.claude/gw/opt-tokens.md`.
+- **`gw-opt-tokens`**: igual que en el portal («calidad primero», contexto medio × llamadas manda). Lo propio del
+  proyecto, en `.claude/gw/gw-opt-tokens.md`.
 - **`retro`**: añade una salida nueva: si una mejora vale para cualquier proyecto, la propuesta es un **issue o
   PR al repo `Galivelop-workflow`**, no un parche local. Así el flujo aprende de todos los proyectos.
 - **`gw-harvest`** (se usa desde este repo; el «tirar» que complementa el «empujar» de `retro`): para cada repo
@@ -294,7 +294,7 @@ inglés (decisión de la Fase 0).
   "content": ["^docs/", "^public/", "^src/data/", "\\.md$"],   // regex: lo que NO pide /code-review
   "roadmap": false,                         // módulo opcional de hitos (Tarkor)
   "selector": { "cases": [] },              // filas extra propias del proyecto
-  "designReferences": [],                   // opcional: con qué se contrasta el diseño (grilling, selector)
+  "designReferences": [],                   // opcional: con qué se contrasta el diseño (grilling, gw-selector)
   "protectedPaths": [],                     // opcional: rutas que un agente no puede commitear (pre-commit)
   "staleRefs": [],                          // opcional: patrones que no deben aparecer en docs/ (enlaces-md.py)
   "plan": [], "taskId": "[A-Z]{2,5}-\\d+",   // opcional: plan con casillas e ids de tarea (bitacora.py)
@@ -365,7 +365,7 @@ claude plugin install galivelop-workflow@galivelop-workflow
 ## 9. Fases de construcción
 
 Cada fase: rama de trabajo, pasos con commit + push en cada punto estable, bitácora en el mismo commit, tests en
-verde, y al cerrar `/code-review` antes de subir a `main` (con confirmación). Modelo según el `selector`: diseño y
+verde, y al cerrar `/code-review` antes de subir a `main` (con confirmación). Modelo según el `gw-selector`: diseño y
 ganchos con el grande; portar skills y plantillas con el medio. Desde la Fase 1, todo con el propio flujo (§4.1).
 
 **Etapa 1 — aplicable por un agente**

@@ -9,7 +9,7 @@ stood, and a script, not an opinion, decides whether something may be pushed.
 ## Weekly scheduled task
 
 A session that starts by itself every week (a Claude Code "scheduled task") for repeatable work: updating
-dependencies, checking broken links, running `scout-updates`, tidying the log. The workflow **does not ship** the
+dependencies, checking broken links, running `gw-scout-updates`, tidying the log. The workflow **does not ship** the
 concrete prompt: each project writes its own.
 
 How it is set up, generically:
@@ -61,7 +61,7 @@ same time.
   `python3 scripts/aplicar.py .`.
 - **When dealing work to subagents**, the `PreToolUse` hook `tope-subagentes.py` counts the session's `Agent`/`Task`
   calls and, at `subagentCap` (30 by default) and every 10 after, asks the person to check they are not looping
-  (`opt-tokens`); it never blocks.
+  (`gw-opt-tokens`); it never blocks.
 - **On start**, the new session reads the log and checks that the last commit matches what it says; it does not ask
   where things stood. After a `/clear` or compaction, `recuperar.py --estado` reminds it.
 - When the branch closes, `bitacora.py close-row <branch>` leaves its row as "merged, branch finished" so the

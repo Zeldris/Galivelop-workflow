@@ -97,7 +97,7 @@ Never on work that is already merged.
    with every finding (in Claude Code, `/code-review --max-findings all`), with the criteria of `REVIEW.md`. Fixes
    committed and pushed: what is serious or medium, and what the fix itself breaks; minor findings are logged as
    pending and not reviewed again in that PR. Only code needs review: what matches `content` in `.claude/gw.json` is content.
-2. **Environment:** the `opt-tokens` skill, then `retro` (plus `opt-ai` if there were measurements with a local AI
+2. **Environment:** the `gw-opt-tokens` skill, then `retro` (plus `gw-opt-ai` if there were measurements with a local AI
    model). Their proposals are **presented to the person**; what they confirm is applied on the branch. A retro written
    without presenting it does not count. If the person asked to go to `{{protectedBranch}}` and is not there to decide
    the retro, leave everything ready (retro with `**Status:** pending`, check green on the merge with
@@ -111,7 +111,7 @@ Never on work that is already merged.
 ## Subagents
 
 **Dealing work to subagents is authorised:** multi-step work is dealt to clean-context subagents with the
-`orchestrate-dealer` skill (and the models the `selector` skill picks) without asking each time; the main session
+`gw-orchestrate-dealer` skill (and the models the `gw-selector` skill picks) without asking each time; the main session
 plans, decides and reviews. This line is the authorisation the agent's own instructions ask for.
 
 - Each subagent gets a brief: goal, paths, constraints, the check to run and what to report back.

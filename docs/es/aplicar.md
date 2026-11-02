@@ -14,7 +14,7 @@ sesiones en la nube, que no cargan plugins declarados en el repo.
 
 1. El proyecto está clonado y es un repo git (`git init` si es nuevo).
 2. Este repo, el del flujo, está clonado junto al proyecto, o la persona lo ha añadido a la sesión. Desde aquí se
-   llama `<flujo>`. **Se lee con un subagente** (`orchestrate-dealer`), que devuelve la tabla del paso 1 y los
+   llama `<flujo>`. **Se lee con un subagente** (`gw-orchestrate-dealer`), que devuelve la tabla del paso 1 y los
    conflictos con el proyecto, con rutas; la sesión principal solo decide. **Se clona la última etiqueta publicada, no
    la rama por defecto** (que puede no ser `main` y ser una versión vieja): `git ls-remote --tags --refs --sort=-v:refname <url>` para verla (la primera línea es la última) y
    `git clone --branch vX.Y.Z <url>`. Sea cual sea el origen (clon nuevo, clon hermano ya existente o repo añadido con
@@ -54,7 +54,7 @@ Reúne estos datos **antes** de ejecutar nada. Todo va a `.claude/gw.json` (cada
 | Retro obligatoria (`requireRetro`) | Pregunta: «¿`/retro` en cada subida a la rama protegida, o solo en cambios grandes?». En cada subida: `--require-retro true` (`revisado.sh` no marca sin una retro decidida en la rama); si no, `false` |
 | Firmas del agente (`agentSignatures`) | Pregunta: «¿El proyecto admite firmas del agente en los commits (`Co-Authored-By` de Claude, enlaces de sesión)?». Si no: `--agent-signatures false` (el `commit-msg` rechaza el mensaje que las lleve); si sí, déjalo en `true` |
 | Idiomas visibles y referencias de diseño (`visibleLanguages`, `designReferences`) | Solo si el proyecto los tiene: `--visible-language` y `--design-reference`, una bandera por valor |
-| Skills opcionales | `opt-ai` (modelos de IA locales) y `scout-updates` (revisar actualizaciones); solo si la persona las pide |
+| Skills opcionales | `gw-opt-ai` (modelos de IA locales) y `gw-scout-updates` (revisar actualizaciones); solo si la persona las pide |
 
 **Inferir `install` y `check`.** Mira el archivo de construcción y propón órdenes que existan de verdad:
 
@@ -100,7 +100,7 @@ python3 <flujo>/scripts/aplicar.py <proyecto> --dry-run --init --language es \
 
 `--dry-run` imprime el plan sin escribir. Cuando sea el que quieres, repite la misma orden **sin** `--dry-run`.
 
-Opciones: `--review-mark RUTA` (por defecto `docs/registros/revisado.txt`), `--with opt-ai` y `--with scout-updates`.
+Opciones: `--review-mark RUTA` (por defecto `docs/registros/revisado.txt`), `--with gw-opt-ai` y `--with gw-scout-updates`.
 `--init` solo escribe `.claude/gw.json` si no existe, lo valida y aplica como siempre.
 
 Qué hace (el detalle completo, en `--help`): copia `scripts/` a `.claude/gw/scripts/`, las skills a
@@ -262,7 +262,7 @@ entra el código ya hoy.
 - **Muchas propuestas `.gw-nuevo` son lo normal** (una copia a mano dio 17): cada skill o script que el proyecto
   retocó sale como propuesta. Fusiónalas de una en una: la versión del flujo entra entera y lo propio del proyecto
   (idioma, rutas, reglas locales) va a `.claude/gw/<skill>.md`, que el flujo no sobrescribe.
-- **Archivos de una skill que el flujo sustituye** (por ejemplo, el banco y los `evals` de un `scout-updates`
+- **Archivos de una skill que el flujo sustituye** (por ejemplo, el banco y los `evals` de un `gw-scout-updates`
   propio): `aplicar.py` no los borra, los lista como «no longer in the workflow (kept)». Muévelos a una carpeta del
   proyecto (p. ej. `tools/scout/`) o bórralos con `git rm` si nada los usa; no los dejes dentro de `.claude/skills/`.
 - **Ganchos viejos en `.claude/settings.json`.** `aplicar.py` fusiona los nuevos sin quitar nada, y avisa

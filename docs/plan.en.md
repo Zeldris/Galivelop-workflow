@@ -41,12 +41,12 @@ What the workflow solves:
 
 1. **Hand-offs without loss.** A session can end (tokens, container, account switch) and the next one carries on
    without asking: an up-to-date log, commit + push at every stable point, "what isn't pushed doesn't exist".
-2. **Choosing well before starting.** A `selector` decides which skill and model each task needs, and a subagent
+2. **Choosing well before starting.** A `gw-selector` decides which skill and model each task needs, and a subagent
    ladder hands mechanical work to cheap models.
 3. **Nothing unreviewed reaches `main`.** `/code-review` of the diff, a review mark stored in the repo, and hooks
    that refuse to push code without it or with the check failing.
-4. **Spending few tokens without losing quality.** `orchestrate-dealer`, compaction at 200k, recovery after
-   `/clear`, and `opt-tokens` + `retro`, which measure and propose environment improvements.
+4. **Spending few tokens without losing quality.** `gw-orchestrate-dealer`, compaction at 200k, recovery after
+   `/clear`, and `gw-opt-tokens` + `retro`, which measure and propose environment improvements.
 
 **End of the road:** this repo is the product and it is **public**, with all its versions: the goal is reach and
 use, not sales (decided by the user, 2026-10-30/31; A1). **Every version is published here**, with its tag and its
@@ -90,9 +90,9 @@ retro). Tarkor contributes what the portal dropped as "small-website-irrelevant"
 
 | Piece | Source (path in Portal-Galivelop) | Generalisation |
 |---|---|---|
-| `selector` | `.claude/skills/selector/SKILL.md` | Remove portal cases (routes, SEO, three languages). Generic table + extra rows the project declares in its config (§6) |
-| `orchestrate-dealer` | `.claude/skills/orchestrate-dealer/SKILL.md` | Brief template with `{check}`, `{log}` and the project's languages instead of fixed ones |
-| `opt-tokens` + `medir.py` | `.claude/skills/opt-tokens/` | `medir.py` as is (already generic) with `QA-*` references cleaned; `proyecto.md` becomes a target-repo file (`.claude/gw/opt-tokens.md`) |
+| `gw-selector` | `.claude/skills/gw-selector/SKILL.md` | Remove portal cases (routes, SEO, three languages). Generic table + extra rows the project declares in its config (§6) |
+| `gw-orchestrate-dealer` | `.claude/skills/gw-orchestrate-dealer/SKILL.md` | Brief template with `{check}`, `{log}` and the project's languages instead of fixed ones |
+| `gw-opt-tokens` + `medir.py` | `.claude/skills/gw-opt-tokens/` | `medir.py` as is (already generic) with `QA-*` references cleaned; `proyecto.md` becomes a target-repo file (`.claude/gw/gw-opt-tokens.md`) |
 | `retro` | `.claude/skills/retro/SKILL.md` | Keep the MIT body; the "In this repository" note becomes generic (review the plugin's skills and propose changes **to the plugin** when an improvement is general) |
 | `grilling`, `grill-with-docs`, `domain-modeling`, `diagnosing-bugs`, `codebase-design`, `improve-codebase-architecture`, `writing-for-agents`, `pr`, `prototype`, `research` | `.claude/skills/*` | As is (MIT, mattpocock/skills). Only the portal notes are removed. Licence and credits kept |
 | Workflow runbook | `docs/runbooks/skills-y-modelos.md` | Becomes the plugin's generic `docs/<lang>/workflow.md` |
@@ -111,14 +111,14 @@ retro). Tarkor contributes what the portal dropped as "small-website-irrelevant"
 | QA utilities | Tarkor/installer: `fusionar.sh`, `rojo-sin-arreglo.sh`, `tests-relacionados.sh`, `enlaces-md.py` | Generic; the related-tests command comes from the config |
 | Closing tasks | Tarkor: `tools/roadmap/cerrar.py` | Part of the `roadmap` module |
 | Retro required before the mark | Tarkor/installer: `revisado.sh` | Config option (`requireRetro`) |
-| `scout-updates` | Tarkor: `.claude/skills/scout-updates/` | Optional skill (on request only) |
-| `opt-ai` + `medir.py` | Tarkor/installer: `.claude/skills/opt-ai/` | Optional skill for projects with local AI models; project specifics in `.claude/gw/opt-ai.md` |
+| `gw-scout-updates` | Tarkor: `.claude/skills/gw-scout-updates/` | Optional skill (on request only) |
+| `gw-opt-ai` + `medir.py` | Tarkor/installer: `.claude/skills/gw-opt-ai/` | Optional skill for projects with local AI models; project specifics in `.claude/gw/gw-opt-ai.md` |
 
 > **Source per piece (Phase 0):** the "best version of each piece" table in `docs/investigacion/casos-reales.md`
 > overrides the "Source" column above.
 
 **Not brought over:** project-specific material (the portal's three languages, Tarkor's lore, the concrete weekly
-task, play-test rounds). `opt-ai` and `scout-updates` are brought over as optional skills (table above). The **weekly scheduled task** is documented as an optional
+task, play-test rounds). `gw-opt-ai` and `gw-scout-updates` are brought over as optional skills (table above). The **weekly scheduled task** is documented as an optional
 pattern in `docs/<lang>/patterns.md`, without a concrete prompt.
 
 ## 4. Repository layout
@@ -130,7 +130,7 @@ Galivelop-workflow/
 │   ├── marketplace.json          # the repo is its own marketplace (one plugin)
 │   └── plugin.json               # name, version (semver: the single source), description, author, licence
 ├── skills/                       # one folder per skill, SKILL.md in English (§4.4)
-│   ├── selector/  orchestrate-dealer/  opt-tokens/  retro/  pr/
+│   ├── gw-selector/  gw-orchestrate-dealer/  gw-opt-tokens/  retro/  pr/
 │   ├── grilling/  grill-with-docs/  domain-modeling/  diagnosing-bugs/
 │   ├── codebase-design/  improve-codebase-architecture/  writing-for-agents/
 │   ├── prototype/  research/
@@ -148,7 +148,7 @@ Galivelop-workflow/
 │   ├── aplicar.py                # copies templates, skills and scripts without overwriting (stage 1, base of 2)
 │   └── config.py                 # reads and validates the project's .claude/gw.json (the only reader)
 ├── templates/                    # what /gw-init copies into the target repo, in es/ and en/
-│   ├── es/  AGENTS.md  CLAUDE.md  REVIEW.md  GLOSSARY.md  traspaso.md  opt-tokens.md
+│   ├── es/  AGENTS.md  CLAUDE.md  REVIEW.md  GLOSSARY.md  traspaso.md  gw-opt-tokens.md
 │   ├── en/  (the same)
 │   ├── githooks/pre-push
 │   ├── github/comprobar.yml      # minimal CI: the project's check
@@ -184,7 +184,7 @@ everywhere.
 ### 4.2 Names
 
 - Project and plugin: `galivelop-workflow`. Copied into the target repo, skills are called by their name
-  (`selector`); via the plugin, `galivelop-workflow:selector`.
+  (`gw-selector`); via the plugin, `galivelop-workflow:gw-selector`.
 - Management skills carry the `gw-` prefix so they don't clash with project skills.
 - Project config: `.claude/gw.json`. Workflow-owned files in the target repo: `.claude/gw/` (scripts) and
   `.claude/skills/<skill>/` (skills). Everything copied carries its version (`metadata.version` in skills, a
@@ -215,16 +215,16 @@ the session may start in `/home/user` (portal lesson, `REVIEW.md` § "Hooks and 
 Every `SKILL.md` under 200 lines (`writing-for-agents`), with `name` and a `description` that says **when** to use
 it. mattpocock's keep their text; the own ones are rewritten generically:
 
-- **`selector`**: table of generic cases (design, bug, large change, scoped change, mechanical, bringing from
+- **`gw-selector`**: table of generic cases (design, bug, large change, scoped change, mechanical, bringing from
   another repo, review before `main`, closing a block, writing for agents) with skill, session model and subagent
   model. Rules: the user picks the session model and Claude states it in one line; subagent ladder
   `sonnet low → sonnet medium → opus medium → opus high`, two failures and it stops; when in doubt, the
   higher-risk row. Reads extra rows from `selector.cases` in the config.
-- **`orchestrate-dealer`**: the main session plans, decides and reviews; subagents read, implement chunks and
+- **`gw-orchestrate-dealer`**: the main session plans, decides and reviews; subagents read, implement chunks and
   push. Brief template with pointers, a done criterion and a ≤15-line reply
   (`DONE · COMMIT · MISSING · QUESTIONS`). One at a time on the same branch if they write.
-- **`opt-tokens`**: as in the portal ("quality first", average context × calls dominates). Project-specific
-  material in `.claude/gw/opt-tokens.md`.
+- **`gw-opt-tokens`**: as in the portal ("quality first", average context × calls dominates). Project-specific
+  material in `.claude/gw/gw-opt-tokens.md`.
 - **`retro`**: gains a new outlet: if an improvement applies to any project, the proposal is an **issue or PR on
   the `Galivelop-workflow` repo**, not a local patch. That way the workflow learns from every project.
 - **`gw-harvest`** (used from this repo; the "pull" that complements `retro`'s "push"): for each repo connected to
@@ -298,7 +298,7 @@ Keys in English (Phase 0 decision).
   "content": ["^docs/", "^public/", "^src/data/", "\\.md$"],   // regex: what does NOT need /code-review
   "roadmap": false,                         // optional milestones module (Tarkor)
   "selector": { "cases": [] },              // extra project-specific rows
-  "designReferences": [],                   // optional: what design is contrasted with (grilling, selector)
+  "designReferences": [],                   // optional: what design is contrasted with (grilling, gw-selector)
   "protectedPaths": [],                     // optional: paths an agent may not commit (pre-commit)
   "staleRefs": [],                          // optional: patterns that must not appear in docs/ (enlaces-md.py)
   "plan": [], "taskId": "[A-Z]{2,5}-\\d+",   // optional: plan with ticks and task ids (bitacora.py)
@@ -369,7 +369,7 @@ claude plugin install galivelop-workflow@galivelop-workflow
 ## 9. Build phases
 
 Each phase: working branch, steps with commit + push at every stable point, log in the same commit, tests green,
-and on closing `/code-review` before going to `main` (with confirmation). Model per the `selector`: design and hooks
+and on closing `/code-review` before going to `main` (with confirmation). Model per the `gw-selector`: design and hooks
 with the large model; porting skills and templates with the medium one. From Phase 1, all with the workflow itself
 (§4.1).
 

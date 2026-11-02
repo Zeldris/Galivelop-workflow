@@ -129,5 +129,5 @@ cleanup_branch() {
   return 0
 }
 cleanup_branch
-[ "$reviewed" = "--reviewed" ] || echo "fusionar: no --reviewed: confirm the /code-review of the diff (step 3 of orchestrate-dealer)."
+[ "$reviewed" = "--reviewed" ] || echo "fusionar: no --reviewed: confirm the /code-review of the diff (step 3 of gw-orchestrate-dealer)."
 exit 0

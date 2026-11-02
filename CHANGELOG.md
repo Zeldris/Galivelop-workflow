@@ -95,6 +95,13 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   su `ficha.md` lista `web` (se borra si no se usa, como los demás canales). Documentado en `nota.md`, las dos
   `SKILL.md` y `patrones.md`. Compatibilidad: `web` ya no es un canal extra (`--limite web=N` y `--formato-propio web` son error
   de uso), y un `web.md` anterior sin el bloque ni `estado` hay que rehacerlo con la plantilla.
+- Las skills propias del flujo sin prefijo pasan a llevar `gw-` (A8, trozo 1): `selector` → `gw-selector`,
+  `orchestrate-dealer` → `gw-orchestrate-dealer`, `opt-tokens` → `gw-opt-tokens`, `opt-ai` → `gw-opt-ai` y
+  `scout-updates` → `gw-scout-updates`, con sus notas del proyecto (`.claude/gw/gw-opt-tokens.md`, `gw-opt-ai.md`,
+  `gw-scout-updates.md`) y plantillas. Las skills de terceros (mattpocock) conservan su nombre. Compatibilidad en la
+  `0.x`: `medir.py` de `gw-opt-ai` sigue leyendo `.claude/gw/opt-ai.md` y el bloque ```` ```opt-ai ````, y `doctor.py`
+  acepta los dos nombres (`orchestrate-dealer` en `AGENTS.md`, `.claude/skills/selector/` en la comprobación de git).
+  `gw-update` aún no renombra ni quita las carpetas antiguas de los proyectos (trozo 4).
 
 ### EN
 
@@ -173,6 +180,13 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `ficha.md` lists `web` (deleted when unused, like the other channels). Documented in `nota.md`, both `SKILL.md`
   files and `patterns.md`. Compatibility: `web` is no longer an extra channel (`--limite web=N` and `--formato-propio web`
   are usage errors), and an older `web.md` without the block or `estado` must be redone from the template.
+- The workflow's own skills without the prefix now carry `gw-` (A8, chunk 1): `selector` → `gw-selector`,
+  `orchestrate-dealer` → `gw-orchestrate-dealer`, `opt-tokens` → `gw-opt-tokens`, `opt-ai` → `gw-opt-ai` and
+  `scout-updates` → `gw-scout-updates`, with their project notes (`.claude/gw/gw-opt-tokens.md`, `gw-opt-ai.md`,
+  `gw-scout-updates.md`) and templates. Third-party skills (mattpocock) keep their names. Compatibility in `0.x`:
+  the `gw-opt-ai` `medir.py` still reads `.claude/gw/opt-ai.md` and the ```` ```opt-ai ```` block, and `doctor.py`
+  accepts both names (`orchestrate-dealer` in `AGENTS.md`, `.claude/skills/selector/` in the git check).
+  `gw-update` does not yet rename or remove the old folders in projects (chunk 4).
 
 ## [0.4.3] - 2026-10-27
 

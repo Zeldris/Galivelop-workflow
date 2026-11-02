@@ -11,7 +11,7 @@ Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse "ask" decisi
 
   {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask",
                           "permissionDecisionReason": "<n> subagents in this session (subagentCap <cap> in
-                          .claude/gw.json): check they are not looping (opt-tokens)"}}
+                          .claude/gw.json): check they are not looping (gw-opt-tokens)"}}
 
 The cap is `subagentCap` in .claude/gw.json (integer >= 1, default 30). If the config cannot be read or is invalid, the
 default is used and the count goes on.
@@ -122,23 +122,23 @@ def main():
     event, problem = read_event()
     if event is None:
         ask(f"tope-subagentes.py could not use the hook event ({problem}), so it cannot count the subagents of this "
-            f"session; check they are not looping (opt-tokens)")
+            f"session; check they are not looping (gw-opt-tokens)")
         return 0
     session_id = event.get("session_id")
     if not isinstance(session_id, str) or not session_id.strip():
         ask("tope-subagentes.py got an event with no session_id, so it cannot count the subagents of this session; "
-            "check they are not looping (opt-tokens)")
+            "check they are not looping (gw-opt-tokens)")
         return 0
     cap = cap_from_config()
     try:
         count = bump(counter_path(session_id))
     except CannotCount as exc:
         ask(f"tope-subagentes.py cannot count the subagents of this session: {exc}; check they are not looping "
-            f"(opt-tokens)")
+            f"(gw-opt-tokens)")
         return 0
     if count >= cap and (count - cap) % STEP == 0:
         ask(f"{count} subagents in this session (subagentCap {cap} in .claude/gw.json): check they are not looping "
-            f"(opt-tokens)")
+            f"(gw-opt-tokens)")
     return 0
 
 
@@ -147,5 +147,5 @@ if __name__ == "__main__":
         sys.exit(main())
     except Exception as exc:  # fail closed: a counter that crashed must not look like a green light
         ask(f"tope-subagentes.py failed ({type(exc).__name__}: {exc}), so it cannot count the subagents of this "
-            f"session; check they are not looping (opt-tokens)")
+            f"session; check they are not looping (gw-opt-tokens)")
         sys.exit(0)

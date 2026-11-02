@@ -12,7 +12,7 @@
 | Check | `bash tests/comprobar.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público): estaba en rojo por dos tests de interrupción con Python 3.12, SC2015 en `revisado.sh` (shellcheck 0.9/0.10 de apt) y, en macOS, `test_aplicar` (disco sin mayúsculas) y el límite de 1 s de `test_revision_main` (ahora 5 s sobre un comando trivial). Arreglado en `ccr-6dfbc880-ddr41g` (`66a4ecd`, CI verde en Ubuntu y macOS) y traído aquí. `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.4.4` |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | `0.5` «Base», en el orden de [`roadmap.md`](roadmap.md): hechos H14, D13, H12 y A7. **A8 en curso** (nombres decididos el 2026-11-02 en `docs/diseno/A-marco.md`, «Respuestas»; trozos en orden: 1 skills `gw-`, 2 scripts en inglés, 3 rutas del proyecto configurables con los dos nombres, 4 `gw-update` renombra, 5 internos de este repo), A9 (`schemaVersion`), D11/D12/D15/D16, E2/E3/D3, E1/E6 y lo de `pendiente.md` marcado `0.5`. Aparte: parche `0.4.4` (arreglos del CI, D6 y P5), otro día (usuario, 2026-11-01). R3: cuando el usuario dé acceso de lectura |
+| Siguiente paso | `0.5` «Base», en el orden de [`roadmap.md`](roadmap.md): hechos H14, D13, H12 y A7. **A8 en curso** (nombres decididos el 2026-11-02 en `docs/diseno/A-marco.md`, «Respuestas»; trozo 1, skills `gw-`, hecho; siguen: 2 scripts en inglés, 3 rutas del proyecto configurables con los dos nombres, 4 `gw-update` renombra, 5 internos de este repo), A9 (`schemaVersion`), D11/D12/D15/D16, E2/E3/D3, E1/E6 y lo de `pendiente.md` marcado `0.5`. Aparte: parche `0.4.4` (arreglos del CI, D6 y P5), otro día (usuario, 2026-11-01). R3: cuando el usuario dé acceso de lectura |
 
 ### Fases
 
@@ -41,11 +41,11 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-02 — `0.5` A7: plan reescrito según la tabla de A1 (ES/EN): repo público con todas sus versiones, cada una publicada aquí (§1, §2, §7); plugin y copia gestionada valen los dos; licencia MIT (A-1); a lo sumo una publicación al día (A-6, §7); la `1.0` sale con su alcance del roadmap y la §10 mide la madurez de la `1.x` (A-5); Fase 10 pasa a «Lanzamiento»; «Nada privado», requisito en cada subida (§10, check E2).
-2. 2026-11-02 — `0.5`: `docs/roadmap.md` (+ `roadmap.en.md`) con los ids por versión (D13: letra del bloque y número; las tareas de los apartados de A empiezan en A7) y `pendiente-1.0.0.md` → `pendiente.md` con la versión en cada línea (H12). CHANGELOG `[0.5.0]`, README, contribuir y la nota de H-roadmap al día.
-3. 2026-11-02 — Abierta la `0.5` «Base» en `ccr-d1e2d496-0vzck8` (desde `version/1.0.0`). Primer commit (H-14): «solo la última menor publicada recibe parches; los evolutivos van a la siguiente menor», en `AGENTS.md` y el plan §7 (ES/EN), que enlaza `roadmap.md`.
-4. 2026-11-01 — CI en verde en Ubuntu y macOS para el parche (`66a4ecd` en `ccr-6dfbc880-ddr41g`): stdin cerrado con Python 3.12, SC2015 en `revisado.sh`, `test_aplicar` en disco sin mayúsculas y margen de 5 s en `test_revision_main`. Fusionado en `version/1.0.0`.
-5. 2026-11-01 — Sesión de diseño de la `1.0.0` abierta (2026-10-30 → 11-01, en `version/1.0.0`): todo lo dictado por el usuario apuntado en `docs/diseno/README.md` en ocho bloques (A marco: público, `gw-`, versionado; B gasto y modelos; C preguntas y modo restrictivo; D git: entornos, releases, tags, roles; E reglas deterministas, pruebas de front, documentación; F referencias; G Management Center; H roadmap y mapa de versiones), con el mapa inicial de modelos. Regla: se cierra el diseño antes de desarrollar nada. Traído `origin/main` (README del usuario, `9bee6ca`).
+1. 2026-11-02 — `0.5` A8 trozo 1: las skills propias sin prefijo pasan a `gw-selector`, `gw-orchestrate-dealer`, `gw-opt-tokens`, `gw-opt-ai` y `gw-scout-updates` (en `skills/` y `.claude/skills/`, con `git mv`), con sus notas `.claude/gw/gw-*.md`, plantillas, textos, README, docs y tests; las de terceros conservan nombre. Compatibilidad `0.x`: `medir.py` de `gw-opt-ai` lee también `opt-ai.md` y el bloque `opt-ai`; `doctor.py` acepta ambos nombres (con tests). La clave de config `selector.cases` no se toca. Check en verde. Queda: `gw-update`/`aplicar.py` no limpia las carpetas antiguas ni acepta `--with opt-ai` (trozo 4).
+2. 2026-11-02 — `0.5` A7: plan reescrito según la tabla de A1 (ES/EN): repo público con todas sus versiones, cada una publicada aquí (§1, §2, §7); plugin y copia gestionada valen los dos; licencia MIT (A-1); a lo sumo una publicación al día (A-6, §7); la `1.0` sale con su alcance del roadmap y la §10 mide la madurez de la `1.x` (A-5); Fase 10 pasa a «Lanzamiento»; «Nada privado», requisito en cada subida (§10, check E2).
+3. 2026-11-02 — `0.5`: `docs/roadmap.md` (+ `roadmap.en.md`) con los ids por versión (D13: letra del bloque y número; las tareas de los apartados de A empiezan en A7) y `pendiente-1.0.0.md` → `pendiente.md` con la versión en cada línea (H12). CHANGELOG `[0.5.0]`, README, contribuir y la nota de H-roadmap al día.
+4. 2026-11-02 — Abierta la `0.5` «Base» en `ccr-d1e2d496-0vzck8` (desde `version/1.0.0`). Primer commit (H-14): «solo la última menor publicada recibe parches; los evolutivos van a la siguiente menor», en `AGENTS.md` y el plan §7 (ES/EN), que enlaza `roadmap.md`.
+5. 2026-11-01 — CI en verde en Ubuntu y macOS para el parche (`66a4ecd` en `ccr-6dfbc880-ddr41g`): stdin cerrado con Python 3.12, SC2015 en `revisado.sh`, `test_aplicar` en disco sin mayúsculas y margen de 5 s en `test_revision_main`. Fusionado en `version/1.0.0`.
 
 ## Pendiente
 
@@ -130,8 +130,8 @@ lanzamiento manual desde Actions que cree la etiqueta.
   (exceso de celo).
 - Menores de la revisión del vigilante (89fdf09): el KILL de los 5 s podría dar con un pgid reutilizado (se acepta:
   el vigilante se detiene si la orden acaba antes).
-- Menores de la revisión de la tanda E: el aviso de ventanas mezcladas de `opt-tokens/medir.py` salta con un
-  `/compact` manual o una etapa muy corta; `opt-ai/medir.py` ignora un `app.turn` 0 o vacío y su clave sintética
+- Menores de la revisión de la tanda E: el aviso de ventanas mezcladas de `gw-opt-tokens/medir.py` salta con un
+  `/compact` manual o una etapa muy corta; `gw-opt-ai/medir.py` ignora un `app.turn` 0 o vacío y su clave sintética
   choca con una tarea llamada «turn»; `instant` descarta sin avisar un `ts` que `fromisoformat` no lee (Python <3.11);
   `quality_bench.py` envía un `format` de texto como `json_schema` con la API openai y `pairs` pisa en silencio un
   modelo repetido en dos `outputs.jsonl`.

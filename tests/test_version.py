@@ -148,7 +148,7 @@ class Version(unittest.TestCase):
         self.assertIn('"version": "9.8.7"', (tmp / ".claude-plugin" / "plugin.json").read_text())
         self.assertIn('"version": "9.8.7"', (tmp / "templates" / "gw.json").read_text())
         self.assertIn("## [9.8.7] - Unreleased", (tmp / "CHANGELOG.md").read_text())
-        self.assertIn('version: "9.8.7"', (tmp / "skills" / "selector" / "SKILL.md").read_text())
+        self.assertIn('version: "9.8.7"', (tmp / "skills" / "gw-selector" / "SKILL.md").read_text())
         self.assertIn("galivelop-workflow v9.8.7", (tmp / "scripts" / "config.py").read_text())
 
     def test_bump_leaves_the_installed_config_alone(self):
@@ -163,7 +163,7 @@ class Version(unittest.TestCase):
         for rel, old in (("scripts/config.py", "0.0.1"), ("scripts/doctor.py", "0.0.2"), ("schema/gw.schema.json", "0.0.3")):
             path = tmp / rel
             path.write_text(path.read_text().replace(f"galivelop-workflow v{VERSION}", f"galivelop-workflow v{old}", 1))
-        skill = tmp / "skills" / "selector" / "SKILL.md"
+        skill = tmp / "skills" / "gw-selector" / "SKILL.md"
         skill.write_text(skill.read_text().replace(f'version: "{VERSION}"', 'version: "0.0.4"', 1))
         r = run(tmp)
         self.assertEqual(r.returncode, 1)

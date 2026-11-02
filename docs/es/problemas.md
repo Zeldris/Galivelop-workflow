@@ -44,7 +44,7 @@ python3 .claude/gw/scripts/doctor.py
 | `settings <evento>` (FAIL) | Una orden de gancho apunta a un archivo que no existe | `/gw-update` restaura los scripts; o corrige la orden |
 | `settings PreToolUse` (FAIL) | Falta el gancho que guarda crear y fusionar PR (`revision-antes-de-main.sh`) | Añádelo desde `templates/claude/settings.json` (`/gw-update`) |
 | `agents` (FAIL) | No hay `AGENTS.md` ni `CLAUDE.md` | `/gw-init` |
-| `agents` (WARN) | Ninguno menciona `orchestrate-dealer`: la sesión podría no repartir a subagentes | Añade a `AGENTS.md`: «El trabajo de más de un paso se reparte a subagentes (skill `orchestrate-dealer`); la sesión principal planea, decide y revisa.» |
+| `agents` (WARN) | Ninguno menciona `gw-orchestrate-dealer`: la sesión podría no repartir a subagentes | Añade a `AGENTS.md`: «El trabajo de más de un paso se reparte a subagentes (skill `gw-orchestrate-dealer`); la sesión principal planea, decide y revisa.» |
 | `skills` (WARN) | Skills copiadas con versión distinta de la de `gw.json` | `/gw-update` |
 | `session` (WARN) | La última sesión se abrió fuera del repo y puede no haber cargado `.claude/settings.json` | Reabre Claude Code desde el repo: `cd <repo> && claude` |
 | `compaction` (WARN) | Sesión en la nube sin `CLAUDE_CODE_AUTO_COMPACT_WINDOW` en su entorno: arranca en `/home/user` (y a menudo con varios repos), no carga `.claude/settings.json` y el contexto crece sin tope | Añade `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` a las variables del entorno de la nube (menú del entorno → Edit); las sesiones nuevas lo cogen |
@@ -127,7 +127,7 @@ si falta), y tras una compactación se corre a mano `python3 .claude/gw/scripts/
 ## Skills con el mismo nombre en varios repos de la sesión
 
 Si se añaden a la sesión otros repos y se registran como raíz (en la nube, `register_repo_root`), sus
-`.claude/skills/` entran también, y una skill homónima de otro repo (`retro`, `selector`…) puede tapar la del
+`.claude/skills/` entran también, y una skill homónima de otro repo (`retro`, `gw-selector`…) puede tapar la del
 proyecto. Arreglo: los repos que solo se leen **no se registran**; basta clonarlos y leerlos con un subagente. Si ya
 están registrados, invoca la skill del proyecto comprobando la ruta que muestra al cargarse (`Base directory`).
 

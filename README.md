@@ -50,7 +50,7 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 ### Nothing unreviewed reaches the protected branch
 
 - **Three phases** before pushing: code review (`/code-review` of the diff against the protected branch),
-  environment (`opt-tokens` and `retro`, presented to the person) and closing.
+  environment (`gw-opt-tokens` and `retro`, presented to the person) and closing.
 - `revisado.sh` writes a **review mark tied to a specific commit**; without the mark for that same commit, the
   hooks reject the push or the pull request.
 - **Code and content are told apart.** Each project declares with regular expressions what is content (docs, data,
@@ -68,11 +68,11 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 ### Token spend is measured, not assumed
 
-- `selector` picks the skill and the model at the start of every task: the person chooses the session's model, and
+- `gw-selector` picks the skill and the model at the start of every task: the person chooses the session's model, and
   subagents get the cheapest one that does the job well.
-- `orchestrate-dealer` turns the main session into an orchestrator: it deals work out to clean-context subagents
+- `gw-orchestrate-dealer` turns the main session into an orchestrator: it deals work out to clean-context subagents
   and can keep going for hours without `/clear`.
-- `opt-tokens` measures in the session transcript where the spend went and proposes environment changes.
+- `gw-opt-tokens` measures in the session transcript where the spend went and proposes environment changes.
 - A hook asks the person when a session has launched many subagents, so a loop doesn't burn tokens unseen.
 - **Quality first:** a saving that worsens the result is no saving.
 
@@ -98,9 +98,9 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 1. **At the start:** the session reads the log, brings in the protected branch (merge, never rebase) and checks the
    check is green before touching anything.
-2. **Before working:** `selector` says in one line which skill and model the task needs.
+2. **Before working:** `gw-selector` says in one line which skill and model the task needs.
 3. **While working:** commit + push at every stable point, never more than 30-45 minutes without pushing, with the
-   log in the same commit. Multi-step work goes to subagents with `orchestrate-dealer`.
+   log in the same commit. Multi-step work goes to subagents with `gw-orchestrate-dealer`.
 4. **Before the protected branch:** the three phases, the mark with `revisado.sh`, and the push with the person's
    confirmation.
 5. **When a phase closes:** the CI of the last push is checked and, with the log up to date, a `/clear` is
@@ -116,11 +116,11 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 | Skill | What for |
 |---|---|
-| `selector` | Pick the skill and models at the start of every task |
-| `orchestrate-dealer` | Deal work out to clean-context subagents and work for hours without `/clear` |
-| `opt-tokens` | Measure where a session's spend went and propose how to cut it without worsening results |
-| `opt-ai` | Optional: measure latency, quality and configuration of local AI models (Ollama, llama.cpp, vLLM…) per machine |
-| `scout-updates` | Optional: look for updates to dependencies, images, CI actions and models in primary sources, as proposals only |
+| `gw-selector` | Pick the skill and models at the start of every task |
+| `gw-orchestrate-dealer` | Deal work out to clean-context subagents and work for hours without `/clear` |
+| `gw-opt-tokens` | Measure where a session's spend went and propose how to cut it without worsening results |
+| `gw-opt-ai` | Optional: measure latency, quality and configuration of local AI models (Ollama, llama.cpp, vLLM…) per machine |
+| `gw-scout-updates` | Optional: look for updates to dependencies, images, CI actions and models in primary sources, as proposals only |
 | `gw-init` | Apply the workflow to a new or existing project |
 | `gw-update` | Bring a project up to the new version, showing the changes first |
 | `gw-doctor` | Check it is set up correctly and explain every failure with its fix |

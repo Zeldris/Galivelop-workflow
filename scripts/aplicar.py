@@ -18,7 +18,7 @@ applies as usual.
 What it copies (workflow -> project):
   scripts/*                     -> .claude/gw/scripts/   (not recoger.py, aplicar.py nor version.py: workflow-only), exec bits kept
   schema/gw.schema.json         -> .claude/gw/schema/
-  skills/<name>/                -> .claude/skills/<name>/ (not the optional opt-ai and scout-updates unless --with
+  skills/<name>/                -> .claude/skills/<name>/ (not the optional gw-opt-ai and gw-scout-updates unless --with
                                    or already installed; not the workflow-only gw-harvest; all of them when PROJECT
                                    is the workflow repo itself)
   templates/githooks/*          -> .githooks/
@@ -30,8 +30,8 @@ What it copies (workflow -> project):
                                    by hand (the project fills in its own rules there, so they are never overwritten)
     REVIEW.md, GLOSSARY.md      -> the project root  } created when missing and NEVER written again (the project
     log.md                      -> the config's `log` } fills them in); an older marker is reported as a template
-    opt-tokens.md (+ opt-ai.md,  -> .claude/gw/       } update to review with /gw-update
-      scout-updates.md when that optional skill is installed)
+    gw-opt-tokens.md (+ gw-opt-ai.md,  -> .claude/gw/       } update to review with /gw-update
+      gw-scout-updates.md when that optional skill is installed)
   templates/github/comprobar.yml -> .github/workflows/comprobar.yml (workflow-owned, like the scripts)
 In the workflow repo itself the root templates and the CI file are skipped: it has its own AGENTS.md, log and CI.
   ~/.claude/gw/notas/*          -> .claude/gw/           PERSONAL NOTES of the person running this (folder overridable
@@ -78,7 +78,7 @@ from doctor import ignored_paths, stale_flow_hooks  # noqa: E402  (one list each
 
 WORKFLOW_ONLY_SCRIPTS = {"recoger.py", "aplicar.py", "version.py"}
 WORKFLOW_ONLY_SKILLS = {"gw-harvest"}
-OPTIONAL_SKILLS = {"opt-ai", "scout-updates"}
+OPTIONAL_SKILLS = {"gw-opt-ai", "gw-scout-updates"}
 IGNORED = {"__pycache__", ".DS_Store"}
 PROPOSAL = ".gw-nuevo"
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
@@ -88,7 +88,7 @@ DIFFED = ("REVIEW.md", "GLOSSARY.md")  # seeded files whose template diff is pri
 DIFF_LINES = 80
 ROOT_TEMPLATES = (("AGENTS.md", "merged"), ("CLAUDE.md", "merged"), ("REVIEW.md", "seeded"),
                   ("GLOSSARY.md", "seeded"))
-NOTES = (("opt-tokens.md", None), ("opt-ai.md", "opt-ai"), ("scout-updates.md", "scout-updates"))
+NOTES = (("gw-opt-tokens.md", None), ("gw-opt-ai.md", "gw-opt-ai"), ("gw-scout-updates.md", "gw-scout-updates"))
 LOG_BY_LANGUAGE = {"es": "docs/traspaso.md", "en": "docs/handoff.md"}
 NOTES_ENV = "GW_NOTAS_PERSONALES"
 NOTE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")

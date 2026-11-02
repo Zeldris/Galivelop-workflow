@@ -9,7 +9,7 @@ dónde se iba y un script, no una opinión, decide si algo puede subir.
 ## Tarea semanal programada
 
 Una sesión que arranca sola cada semana (una «tarea programada» de Claude Code) para un trabajo repetible: poner al
-día dependencias, revisar enlaces rotos, pasar `scout-updates`, limpiar la bitácora. El flujo **no incluye** el
+día dependencias, revisar enlaces rotos, pasar `gw-scout-updates`, limpiar la bitácora. El flujo **no incluye** el
 encargo concreto: cada proyecto escribe el suyo.
 
 Cómo se plantea, en genérico:
@@ -60,7 +60,7 @@ la vez.
   `python3 scripts/aplicar.py .`.
 - **Al repartir a subagentes**, el gancho `PreToolUse` `tope-subagentes.py` cuenta los `Agent`/`Task` de la sesión y,
   al llegar a `subagentCap` (30 por defecto) y cada 10 después, pide a la persona que compruebe que no están en bucle
-  (`opt-tokens`); nunca bloquea.
+  (`gw-opt-tokens`); nunca bloquea.
 - **Al empezar**, la sesión nueva lee la bitácora y comprueba que el último commit coincide con lo que dice; no
   pregunta por dónde iba. Tras un `/clear` o una compactación, `recuperar.py --estado` se lo recuerda.
 - Al cerrar la rama, `bitacora.py close-row <rama>` deja su fila como «fusionada, rama terminada» para que la rama

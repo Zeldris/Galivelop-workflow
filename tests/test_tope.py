@@ -76,7 +76,7 @@ class Base(unittest.TestCase):
 
     def reason(self, n, cap):
         return (f"{n} subagents in this session (subagentCap {cap} in .claude/gw.json): "
-                f"check they are not looping (opt-tokens)")
+                f"check they are not looping (gw-opt-tokens)")
 
 
 class CustomCap(Base):

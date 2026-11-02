@@ -14,7 +14,7 @@ which do not load plugins declared in the repo.
 
 1. The project is cloned and is a git repo (`git init` if it is new).
 2. This repo, the workflow's, is cloned next to the project, or the person has added it to the session. From here on
-   it is `<workflow>`. **It is read by a subagent** (`orchestrate-dealer`), which returns the step-1 table and the
+   it is `<workflow>`. **It is read by a subagent** (`gw-orchestrate-dealer`), which returns the step-1 table and the
    conflicts with the project, with paths; the main session only decides. **Clone the latest published tag, not the
    default branch** (which may not be `main` and may be an old version): `git ls-remote --tags --refs --sort=-v:refname <url>` to see it (the first line is the latest) and
    `git clone --branch vX.Y.Z <url>`. Whatever the origin (a new clone, an existing sibling clone or a repo added with
@@ -55,7 +55,7 @@ Collect these facts **before** running anything. They all go into `.claude/gw.js
 | Required retro (`requireRetro`) | Ask: "`/retro` on every push to the protected branch, or only on big changes?". Every push: `--require-retro true` (`revisado.sh` will not mark without a decided retro on the branch); otherwise `false` |
 | Agent signatures (`agentSignatures`) | Ask: "Does the project allow agent signatures in commits (a Claude `Co-Authored-By`, session links)?". If not: `--agent-signatures false` (the `commit-msg` hook rejects a message that carries them); if yes, leave it `true` |
 | Visible languages and design references (`visibleLanguages`, `designReferences`) | Only if the project has them: `--visible-language` and `--design-reference`, one flag per value |
-| Optional skills | `opt-ai` (local AI models) and `scout-updates` (update scouting); only if the person asks |
+| Optional skills | `gw-opt-ai` (local AI models) and `gw-scout-updates` (update scouting); only if the person asks |
 
 **Inferring `install` and `check`.** Read the build file and propose commands that really exist:
 
@@ -101,7 +101,7 @@ python3 <workflow>/scripts/aplicar.py <project> --dry-run --init --language en \
 `--dry-run` prints the plan without writing. When it is the one you want, repeat the same command **without**
 `--dry-run`.
 
-Options: `--review-mark PATH` (default `docs/registros/revisado.txt`), `--with opt-ai` and `--with scout-updates`.
+Options: `--review-mark PATH` (default `docs/registros/revisado.txt`), `--with gw-opt-ai` and `--with gw-scout-updates`.
 `--init` writes `.claude/gw.json` only when it does not exist, validates it and applies as usual.
 
 What it does (full detail in `--help`): copies `scripts/` to `.claude/gw/scripts/`, the skills to `.claude/skills/`,
@@ -261,7 +261,7 @@ how code already reaches it today.
 - **Many `.gw-nuevo` proposals are normal** (a hand-made copy gave 17): every skill or script the project touched
   comes out as a proposal. Merge them one at a time: the workflow's version goes in whole and the project's own part
   (language, paths, local rules) goes to `.claude/gw/<skill>.md`, which the workflow never overwrites.
-- **Files of a skill the workflow replaces** (for instance the bench and `evals` of a project-made `scout-updates`):
+- **Files of a skill the workflow replaces** (for instance the bench and `evals` of a project-made `gw-scout-updates`):
   `aplicar.py` does not delete them, it lists them as "no longer in the workflow (kept)". Move them to a folder of the
   project (e.g. `tools/scout/`) or `git rm` them if nothing uses them; do not leave them inside `.claude/skills/`.
 - **Old hooks in `.claude/settings.json`.** `aplicar.py` merges the new ones without removing anything, and warns

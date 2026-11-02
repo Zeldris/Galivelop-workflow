@@ -25,7 +25,7 @@ VERSION = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())["ver
 MARKER = f"<!-- galivelop-workflow v{VERSION} -->"
 LOGS = {"es": "docs/traspaso.md", "en": "docs/handoff.md"}
 RENDERED = ("AGENTS.md", "CLAUDE.md", "REVIEW.md", "GLOSSARY.md", ".github/workflows/comprobar.yml",
-            ".claude/gw/opt-tokens.md", ".claude/gw.json")
+            ".claude/gw/gw-opt-tokens.md", ".claude/gw.json")
 
 
 def lang_files(lang):
@@ -115,7 +115,7 @@ class Templates(unittest.TestCase):
     def test_agents_authorises_subagents_and_size_limits(self):
         for lang in ("es", "en"):
             agents = (TEMPLATES / lang / "AGENTS.md").read_text(encoding="utf-8")
-            self.assertIn("orchestrate-dealer", agents)
+            self.assertIn("gw-orchestrate-dealer", agents)
             self.assertIn("Siguiente:" if lang == "es" else "Next:", agents)
             self.assertIn("core.hooksPath", agents)
             self.assertIn("@AGENTS.md", (TEMPLATES / lang / "CLAUDE.md").read_text(encoding="utf-8"))
@@ -221,7 +221,7 @@ class Templates(unittest.TestCase):
                      "README.es.md", "CHANGELOG.md", "CREDITS.md"):
             self.assertTrue(any(re.search(p, path) for p in content), f"{path} should be content")
         for path in (".claude/gw/scripts/es-codigo.sh", ".claude/gw/scripts/config.py", ".claude/gw/schema/gw.schema.json",
-                     ".claude/skills/opt-tokens/scripts/medir.py", ".claude/skills/x/agents/openai.yaml",
+                     ".claude/skills/gw-opt-tokens/scripts/medir.py", ".claude/skills/x/agents/openai.yaml",
                      "src/AGENTS.md", "src/notes.md", "README.es.md.sh"):
             self.assertFalse(any(re.search(p, path) for p in content), f"{path} must stay code (reviewed)")
 
@@ -247,9 +247,9 @@ class Init(unittest.TestCase):
                     self.assertTrue((p.work / rel).is_file(), rel)
                     self.assertNotIn("{{", p.read(rel), rel)
                 self.assertIn("`bash check.sh`", p.read("AGENTS.md"))
-                self.assertIn("orchestrate-dealer", p.read("AGENTS.md"))
+                self.assertIn("gw-orchestrate-dealer", p.read("AGENTS.md"))
                 self.assertIn("branches-ignore: [main]", p.read(".github/workflows/comprobar.yml"))
-                self.assertFalse((p.work / ".claude/gw/opt-ai.md").exists())
+                self.assertFalse((p.work / ".claude/gw/gw-opt-ai.md").exists())
                 self.assertFalse(list(p.work.glob("**/*.gw-nuevo")))
                 code, out = p.run("python3", str(p.work / ".claude/gw/scripts/doctor.py"))
                 self.assertEqual(code, 0, out)
@@ -321,10 +321,10 @@ class Init(unittest.TestCase):
 
     def test_optional_skill_brings_its_notes(self):
         p = self.project()
-        code, out = p.init("es", "--with", "opt-ai")
+        code, out = p.init("es", "--with", "gw-opt-ai")
         self.assertEqual(code, 0, out)
-        self.assertIn("# opt-ai — notas del proyecto", p.read(".claude/gw/opt-ai.md"))
-        self.assertFalse((p.work / ".claude/gw/scout-updates.md").exists())
+        self.assertIn("# gw-opt-ai — notas del proyecto", p.read(".claude/gw/gw-opt-ai.md"))
+        self.assertFalse((p.work / ".claude/gw/gw-scout-updates.md").exists())
 
     def test_existing_claude_md_without_marker_gets_a_proposal(self):
         p = self.project()
@@ -359,7 +359,7 @@ class Init(unittest.TestCase):
     def test_filled_in_files_are_never_overwritten(self):
         p = self.project()
         self.assertEqual(p.init("es")[0], 0)
-        for rel in ("docs/traspaso.md", "REVIEW.md", "GLOSSARY.md", ".claude/gw/opt-tokens.md"):
+        for rel in ("docs/traspaso.md", "REVIEW.md", "GLOSSARY.md", ".claude/gw/gw-opt-tokens.md"):
             with self.subTest(rel=rel):
                 edited = p.read(rel).replace(MARKER, "<!-- galivelop-workflow v0.0.1 -->") + "\nfilled in\n"
                 p.write(rel, edited)

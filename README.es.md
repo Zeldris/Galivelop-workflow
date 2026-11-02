@@ -52,7 +52,7 @@ comprobación.
 ### Nada sin revisar llega a la rama protegida
 
 - **Tres fases** antes de subir: revisión del código (`/code-review` del diff contra la rama protegida), entorno
-  (`opt-tokens` y `retro`, presentadas a la persona) y cierre.
+  (`gw-opt-tokens` y `retro`, presentadas a la persona) y cierre.
 - `revisado.sh` escribe una **marca de revisión atada a un commit concreto**; sin la marca del mismo commit, los
   ganchos rechazan la subida o el pull request.
 - **Código y contenido se distinguen.** Cada proyecto declara con expresiones regulares qué es contenido (docs,
@@ -70,11 +70,11 @@ comprobación.
 
 ### El gasto de tokens se mide, no se supone
 
-- `selector` elige al empezar cada tarea la skill y el modelo: el de la sesión lo decide la persona, y el de los
+- `gw-selector` elige al empezar cada tarea la skill y el modelo: el de la sesión lo decide la persona, y el de los
   subagentes es el más barato que haga bien el trabajo.
-- `orchestrate-dealer` convierte la sesión principal en orquestadora: reparte el trabajo a subagentes de contexto
+- `gw-orchestrate-dealer` convierte la sesión principal en orquestadora: reparte el trabajo a subagentes de contexto
   limpio y puede seguir horas sin `/clear`.
-- `opt-tokens` mide en el registro de la sesión dónde se fue el gasto y propone cambios del entorno.
+- `gw-opt-tokens` mide en el registro de la sesión dónde se fue el gasto y propone cambios del entorno.
 - Un gancho pregunta a la persona cuando una sesión ha lanzado muchos subagentes, para que un bucle no gaste sin
   que nadie lo vea.
 - **Calidad primero:** un ahorro que empeora el resultado no es ahorro.
@@ -101,9 +101,9 @@ comprobación.
 
 1. **Al empezar:** la sesión lee la bitácora, trae la rama protegida (merge, nunca rebase) y comprueba que el check
    está en verde antes de tocar nada.
-2. **Antes de trabajar:** `selector` dice en una línea qué skill y qué modelo pide el caso.
+2. **Antes de trabajar:** `gw-selector` dice en una línea qué skill y qué modelo pide el caso.
 3. **Mientras trabaja:** commit + push en cada punto estable, nunca más de 30-45 minutos sin subir, con la bitácora
-   en el mismo commit. Lo de varios pasos va a subagentes con `orchestrate-dealer`.
+   en el mismo commit. Lo de varios pasos va a subagentes con `gw-orchestrate-dealer`.
 4. **Antes de la rama protegida:** las tres fases, la marca con `revisado.sh` y la subida con la confirmación de la
    persona.
 5. **Al cerrar una fase:** se mira el CI de la última subida y, con la bitácora al día, se recomienda `/clear`.
@@ -118,11 +118,11 @@ comprobación.
 
 | Skill | Para qué |
 |---|---|
-| `selector` | Elegir skill y modelos al empezar cada tarea |
-| `orchestrate-dealer` | Repartir el trabajo a subagentes de contexto limpio y trabajar horas sin `/clear` |
-| `opt-tokens` | Medir dónde se fue el gasto de una sesión y proponer cómo bajarlo sin empeorar el resultado |
-| `opt-ai` | Opcional: medir latencia, calidad y configuración de modelos de IA locales (Ollama, llama.cpp, vLLM…) por máquina |
-| `scout-updates` | Opcional: buscar actualizaciones de dependencias, imágenes, acciones de CI y modelos en fuentes primarias, solo como propuesta |
+| `gw-selector` | Elegir skill y modelos al empezar cada tarea |
+| `gw-orchestrate-dealer` | Repartir el trabajo a subagentes de contexto limpio y trabajar horas sin `/clear` |
+| `gw-opt-tokens` | Medir dónde se fue el gasto de una sesión y proponer cómo bajarlo sin empeorar el resultado |
+| `gw-opt-ai` | Opcional: medir latencia, calidad y configuración de modelos de IA locales (Ollama, llama.cpp, vLLM…) por máquina |
+| `gw-scout-updates` | Opcional: buscar actualizaciones de dependencias, imágenes, acciones de CI y modelos en fuentes primarias, solo como propuesta |
 | `gw-init` | Aplicar el flujo a un proyecto nuevo o existente |
 | `gw-update` | Llevar un proyecto a la versión nueva, enseñando antes los cambios |
 | `gw-doctor` | Comprobar que está bien montado y explicar cada fallo con su arreglo |

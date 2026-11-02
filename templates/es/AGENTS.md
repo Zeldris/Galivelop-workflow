@@ -98,7 +98,7 @@ Nunca sobre trabajo ya fusionado.
    con commit y subidos: lo grave o medio y lo que el propio arreglo rompe; lo leve se apunta como pendiente en la
    bitácora y no vuelve a revisarse en ese PR. Solo el código necesita revisión: lo que casa con `content` de `.claude/gw.json` es
    contenido.
-2. **Entorno:** la skill `opt-tokens` y luego `retro` (más `opt-ai` si hubo medidas con un modelo de IA local). Sus
+2. **Entorno:** la skill `gw-opt-tokens` y luego `retro` (más `gw-opt-ai` si hubo medidas con un modelo de IA local). Sus
    propuestas se **presentan a la persona**; lo que confirme se aplica en la rama. Una retro escrita sin presentarla no
    vale. Si la persona pidió ir a `{{protectedBranch}}` y no está para decidir la retro, se deja todo listo (retro con
    `**Estado:** pendiente`, check en verde sobre la fusión con `{{protectedBranch}}`, descripción del pull request) y
@@ -112,7 +112,7 @@ Nunca sobre trabajo ya fusionado.
 ## Subagentes
 
 **Reparto a subagentes autorizado:** el trabajo de más de un paso se reparte a subagentes de contexto limpio con la
-skill `orchestrate-dealer` (y los modelos que elija la skill `selector`) sin preguntar cada vez; la sesión principal
+skill `gw-orchestrate-dealer` (y los modelos que elija la skill `gw-selector`) sin preguntar cada vez; la sesión principal
 planea, decide y revisa. Esta línea es la autorización que piden las instrucciones del propio agente.
 
 - Cada subagente recibe un encargo: objetivo, rutas, restricciones, el check que debe pasar y qué tiene que devolver.

@@ -16,7 +16,7 @@ If `.claude/gw/gw-init.md` exists in the project, read it first: it holds what i
 A thin wrapper: the procedure lives in the workflow repo's guide, `docs/en/apply.md` (Spanish: `docs/es/aplicar.md`).
 Follow it step by step. This skill only fixes where to find things and what to confirm.
 
-**Read the workflow with a subagent** (`orchestrate-dealer`, light model): it reads the guide and the project's build
+**Read the workflow with a subagent** (`gw-orchestrate-dealer`, light model): it reads the guide and the project's build
 files and returns the step-1 decision table, each candidate value with its source path, and the conflicts with the
 project (existing `CLAUDE.md`, hook managers, a red check). The main session decides from that summary and never
 reads the workflow's guides or scripts whole.
@@ -47,7 +47,7 @@ project: `cd <project> && claude`.
 ## 3. Decide what needs judgement
 
 Follow section 1 of the guide: `language`, `log`, `install`, `check`, protected branch, `direct` or `pr`, `content`
-regexes, and the optional skills `opt-ai` and `scout-updates` (only if the user asks).
+regexes, and the optional skills `gw-opt-ai` and `gw-scout-updates` (only if the user asks).
 
 - Infer `install` and `check` from `package.json`, `pyproject.toml`, `Cargo.toml`, `pom.xml`, `go.mod` or
   `Makefile`, and run the `check` command once.
@@ -65,8 +65,8 @@ Done when every fact has an answer the user confirmed.
      --push-to-protected <direct|pr> --content '<regex>'
    ```
 
-   Repeat `--install`, `--check-command` and `--content` once per value. Add `--with opt-ai` or
-   `--with scout-updates` when chosen. Existing projects: read "Existing projects" in the guide first (hook
+   Repeat `--install`, `--check-command` and `--content` once per value. Add `--with gw-opt-ai` or
+   `--with gw-scout-updates` when chosen. Existing projects: read "Existing projects" in the guide first (hook
    managers, existing `CLAUDE.md`, red check, existing log).
 2. Auto mode may ask permission to edit `.claude/settings.json`, `.claude/gw/scripts/` and `.githooks/`. Tell the user before running, and
    after a refused call run `git status` and `git diff` before repeating it.

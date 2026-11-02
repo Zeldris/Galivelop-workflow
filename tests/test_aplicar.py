@@ -87,7 +87,7 @@ class Aplicar(unittest.TestCase):
         self.assertFalse((scripts / "version.py").exists())  # workflow-only, like recoger.py and aplicar.py
         self.assertTrue((p.work / ".claude" / "gw" / "schema" / "gw.schema.json").is_file())
         self.assertTrue(os.access(str(p.work / ".githooks" / "pre-push"), os.X_OK))
-        self.assertTrue((p.work / ".claude" / "skills" / "selector" / "SKILL.md").is_file())
+        self.assertTrue((p.work / ".claude" / "skills" / "gw-selector" / "SKILL.md").is_file())
         self.assertFalse((p.work / ".claude" / "skills" / "gw-harvest").exists())
         self.assertEqual(p.read(".claude/skills/LICENSE-mattpocock-skills"),
                          (ROOT / "LICENSE-mattpocock-skills").read_text())  # the license the adapted skills cite
@@ -252,14 +252,14 @@ class Aplicar(unittest.TestCase):
     def test_owned_skill_older_version_is_updated_and_orphans_reported(self):
         p = self.p
         self.applied()
-        skill = p.work / ".claude" / "skills" / "selector"
+        skill = p.work / ".claude" / "skills" / "gw-selector"
         original = (skill / "SKILL.md").read_text()
         (skill / "SKILL.md").write_text(original.replace(f'version: "{VERSION}"', 'version: "0.0.1"'))
         (skill / "OLD.md").write_text("gone upstream\n")
         out = self.applied()
-        self.assertIn("update  .claude/skills/selector/SKILL.md", out)
+        self.assertIn("update  .claude/skills/gw-selector/SKILL.md", out)
         self.assertEqual((skill / "SKILL.md").read_text(), original)
-        self.assertIn(".claude/skills/selector/OLD.md is no longer in the workflow", out)
+        self.assertIn(".claude/skills/gw-selector/OLD.md is no longer in the workflow", out)
         self.assertTrue((skill / "OLD.md").exists())
 
     def test_settings_merge_keeps_the_users_and_adds_ours_once(self):
@@ -290,11 +290,11 @@ class Aplicar(unittest.TestCase):
         p = self.p
         self.applied()
         skills = p.work / ".claude" / "skills"
-        self.assertFalse((skills / "opt-ai").exists())
-        self.assertFalse((skills / "scout-updates").exists())
-        out = self.applied("--with", "opt-ai")
-        self.assertIn("create  .claude/skills/opt-ai/SKILL.md", out)
-        self.assertFalse((skills / "scout-updates").exists())
+        self.assertFalse((skills / "gw-opt-ai").exists())
+        self.assertFalse((skills / "gw-scout-updates").exists())
+        out = self.applied("--with", "gw-opt-ai")
+        self.assertIn("create  .claude/skills/gw-opt-ai/SKILL.md", out)
+        self.assertFalse((skills / "gw-scout-updates").exists())
         self.assertIn("nothing to do", self.applied())  # an installed optional skill stays managed
         code, out = p.aplicar("--with", "nope")
         self.assertEqual(code, 2, out)
@@ -303,8 +303,8 @@ class Aplicar(unittest.TestCase):
     def test_installed_scout_updates_tests_pass_in_the_project(self):
         """The skill's own tests find config.py in .claude/gw (installed layout), not three folders up (INS P1)."""
         p = self.p
-        self.applied("--with", "scout-updates")
-        scripts = p.work / ".claude" / "skills" / "scout-updates" / "scripts"
+        self.applied("--with", "gw-scout-updates")
+        scripts = p.work / ".claude" / "skills" / "gw-scout-updates" / "scripts"
         code, out = p.run("python3", "-B", "-m", "unittest", "discover", "-s", str(scripts), "-p", "test_compare.py")
         self.assertEqual(code, 0, out)
         self.assertNotIn("config.py", out)
@@ -458,21 +458,21 @@ class NotasPersonales(unittest.TestCase):
         self.assertFalse(self.target("Other.GW-NUEVO").exists())
 
     def test_names_of_workflow_files_are_rejected_even_when_not_installed_and_ignoring_case(self):
-        names = ("OPT-TOKENS.md", "opt-ai.md", "Scout-Updates.md", "scripts", "SCHEMA", "gw.json",
-                 "opt-tokens.md.gw-nuevo")
+        names = ("GW-OPT-TOKENS.md", "gw-opt-ai.md", "GW-Scout-Updates.md", "scripts", "SCHEMA", "gw.json",
+                 "gw-opt-tokens.md.gw-nuevo")
         for name in names:
             self.note(name)
         (self.p.work / ".claude" / "skills").mkdir(parents=True, exist_ok=True)
         out = self.applied()
-        for name in ("OPT-TOKENS.md", "opt-ai.md", "Scout-Updates.md", "scripts", "SCHEMA", "gw.json"):
+        for name in ("GW-OPT-TOKENS.md", "gw-opt-ai.md", "GW-Scout-Updates.md", "scripts", "SCHEMA", "gw.json"):
             self.assertRegex(out, rf"WARNING: personal note {re.escape(name)} has the name of a workflow file")
         self.assertIn("rename", out)
-        for name in ("OPT-TOKENS.md", "opt-ai.md", "Scout-Updates.md", "SCHEMA", "gw.json"):
-            # by exact name: on a case-insensitive disk (macOS) OPT-TOKENS.md "exists" as the workflow's opt-tokens.md
+        for name in ("GW-OPT-TOKENS.md", "gw-opt-ai.md", "GW-Scout-Updates.md", "SCHEMA", "gw.json"):
+            # by exact name: on a case-insensitive disk (macOS) GW-OPT-TOKENS.md "exists" as the workflow's gw-opt-tokens.md
             parent = self.target(name).parent
             self.assertNotIn(name, os.listdir(parent) if parent.is_dir() else [], name)
         self.assertFalse(self.target("scripts").is_file())
-        self.assertFalse((self.p.work / ".claude" / "gw" / "opt-ai.md").exists())
+        self.assertFalse((self.p.work / ".claude" / "gw" / "gw-opt-ai.md").exists())
 
     def test_unreadable_source_note_is_a_clean_line_not_a_traceback(self):
         src = self.note("style.md")
