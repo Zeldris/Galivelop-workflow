@@ -113,7 +113,7 @@ elif ! errors="$(python3 "$config" --root "$root" validate 2>&1 >/dev/null)"; th
 else
   config_ok=1
   if [ "$(python3 "$config" --root "$root" get agentSignatures 2>/dev/null)" = false ] \
-     && [ "$(git config --get user.email 2>/dev/null | tr 'A-Z' 'a-z')" = "noreply@anthropic.com" ]; then
+     && [ "$(git -C "$root" config --get user.email 2>/dev/null | tr 'A-Z' 'a-z')" = "noreply@anthropic.com" ]; then
     warn "agentSignatures is false but git user.email is noreply@anthropic.com, so commits would go out under the agent; set the project's author before the first commit: git config user.name <name> && git config user.email <email>"
   fi
   project_version="$(python3 "$config" --root "$root" get version 2>/dev/null)"

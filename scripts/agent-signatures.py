@@ -4,17 +4,21 @@
 
 The commit-msg hook only covers commit messages; this covers the title and body of what goes to GitHub:
 
-  - the GitHub MCP tools that publish text: create_pull_request, update_pull_request, add_issue_comment,
-    update_issue_comment, issue_write, add_reply_to_pull_request_comment, add_comment_to_pending_review and
-    pull_request_review_write (their `title` and `body`; create_or_update_file and push_files write files, not text,
-    and are not touched);
-  - Bash commands `gh pr create|edit|comment` and `gh issue create|comment` (also `gh pr review`): the values of
-    --title/-t and --body/-b (in `--opt value` and `--opt=value` form, quotes and heredocs included) and the content of
-    the file given with --body-file/-F. A command that cannot be split into words is scanned whole.
+  - the GitHub MCP tools of any server whose name has `github` in it (matcher in the settings and github_tool() agree):
+    create_pull_request, update_pull_request, merge_pull_request, enable_pr_auto_merge, add_issue_comment,
+    update_issue_comment, issue_write, add_reply_to_pull_request_comment, add_comment_to_pending_review,
+    pull_request_review_write, push_files and create_or_update_file. Scanned fields: title, body, message (a commit
+    message, which commit-msg never sees), commit_title, commit_message, commitHeadline, commitBody; file contents are not;
+  - Bash commands `gh pr create|edit|comment|review|merge`, `gh issue create|comment|edit`, `gh release create|edit` and
+    `gh api`: the values of --title/-t, --subject, --body/-b, --notes/-n (`--opt value`, `--opt=value` and `-bTEXT`),
+    the file of --body-file/-F/--notes-file, and for `gh api` the value of -f/-F/--field/--raw-field key=value (`@file`
+    is read). A file `-` is stdin: the whole command (heredoc included) is scanned instead. A command that cannot be
+    split into words is scanned whole.
 
-Signatures (the same set as the commit-msg hook, case-insensitive, plus the footers of a PR): a `Co-Authored-By:` with
-noreply@anthropic.com or naming Claude Code/Opus/Sonnet/Haiku/Fable, a `Claude-Session:` line, a line that starts
-(after any emoji) with "Generated with/by [Claude Code", and a claude.ai/code/session_ link anywhere.
+Signatures, as in the commit-msg hook (case-insensitive) and only at the start of a line, column 0: a `Co-Authored-By:`
+with noreply@anthropic.com or naming Claude Code/Opus/Sonnet/Haiku/Fable, a `Claude-Session:` line, a line that starts
+(after any emoji) with "Generated with/by [Claude Code", and a line that starts with a claude.ai/code/session link.
+Lines inside fenced code blocks (``` or ~~~) and indented lines are quotes, not signatures, and pass.
 
 Without `agentSignatures: false` in .claude/gw.json (absent or true) it does nothing. Output: nothing and exit 0 to
 let the tool run; exit 2 with the reason on stderr (in English, ending with the fix) to block it. A tool that is not
@@ -33,21 +37,26 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, HERE)
 import config  # noqa: E402
 
-GITHUB_TOOLS = frozenset(("create_pull_request", "update_pull_request", "add_issue_comment", "update_issue_comment",
-                          "issue_write", "add_reply_to_pull_request_comment", "add_comment_to_pending_review",
-                          "pull_request_review_write"))
-TEXT_FIELDS = ("title", "body")
-GH_COMMAND = re.compile(r"(?:^|[\s;&|(`{])gh\s+(?:pr\s+(?:create|edit|comment|review)|issue\s+(?:create|comment))\b")
-TITLE_BODY = {"--title": "text", "-t": "text", "--body": "text", "-b": "text", "--body-file": "file", "-F": "file"}
-# Mirrors templates/githooks/commit-msg (grep -iE there, re.I | re.M here); the last two are the footers of a PR.
+GITHUB_TOOLS = frozenset(("create_pull_request", "update_pull_request", "merge_pull_request", "enable_pr_auto_merge",
+                          "add_issue_comment", "update_issue_comment", "issue_write",
+                          "add_reply_to_pull_request_comment", "add_comment_to_pending_review",
+                          "pull_request_review_write", "push_files", "create_or_update_file"))
+TEXT_FIELDS = ("title", "body", "message", "commit_title", "commit_message", "commitHeadline", "commitBody")
+GH_COMMAND = re.compile(r"(?:^|[\s;&|(`{])gh\s+(?:pr\s+(?:create|edit|comment|review|merge)"
+                        r"|issue\s+(?:create|comment|edit)|release\s+(?:create|edit)|api)\b")
+TEXT_OPTIONS = frozenset(("--title", "-t", "--subject", "--body", "-b", "--notes", "-n"))
+FILE_OPTIONS = frozenset(("--body-file", "--notes-file", "-F"))  # -F is also gh api's field: see gh_texts
+FIELD_OPTIONS = frozenset(("-f", "-F", "--field", "--raw-field"))
+SHORT_OPTIONS = ("-t", "-b", "-n", "-F", "-f")  # may carry the value pasted: -bTEXT
+# Mirrors templates/githooks/commit-msg (grep -iE there, re.I | re.M here), column 0 only.
 SIGNATURES = tuple(re.compile(p, re.I | re.M) for p in (
-    r"^[ \t]*co-authored-by:.*noreply@anthropic\.com",
-    r"^[ \t]*co-authored-by:[ \t]*claude (code|opus|sonnet|haiku|fable)",
-    r"^[ \t]*claude-session:",
-    r"^[\W_]*generated (with|by) \[?claude code",
-    r"^[ \t]*<?https?://claude\.ai/code/session",
-    r"claude\.ai/code/session_",
+    r"^co-authored-by:.*noreply@anthropic\.com",
+    r"^co-authored-by:[ \t]*claude (code|opus|sonnet|haiku|fable)",
+    r"^claude-session:",
+    r"^(?:[^\w\s]+[ \t]*)?generated (with|by) \[?claude code",
+    r"^<?https?://claude\.ai/code/session",
 ))
+FENCE = re.compile(r"^[ \t]*(```|~~~)")
 STDIN_LIMIT = 8 * 1024 * 1024
 
 
@@ -55,8 +64,20 @@ class Block(Exception):
     pass
 
 
+def without_fences(text):
+    """`text` without the lines of fenced code blocks (the fence lines included)."""
+    out, inside = [], False
+    for line in text.split("\n"):
+        if FENCE.match(line):
+            inside = not inside
+        elif not inside:
+            out.append(line)
+    return "\n".join(out)
+
+
 def find_signature(text):
-    """The first line of `text` that carries a signature, or None."""
+    """The first line of `text` that carries a signature at column 0 outside code blocks, or None."""
+    text = without_fences(text)
     for pattern in SIGNATURES:
         m = pattern.search(text)
         if m:
@@ -66,7 +87,7 @@ def find_signature(text):
 
 def github_tool(name):
     """The bare tool name when `name` is one of the GitHub MCP tools that publish text, else None."""
-    if not (name.startswith("mcp__") and "github" in name.split("__")[1].lower()):
+    if not (name.startswith("mcp__") and "github" in name.split("__")[1]):
         return None
     bare = name.rsplit("__", 1)[-1]
     return bare if bare in GITHUB_TOOLS else None
@@ -83,7 +104,8 @@ def read_file(path, cwd):
 
 
 def gh_texts(command, cwd):
-    """[(where, text)] to scan in a Bash command that publishes with gh; the whole command when it cannot be split."""
+    """[(where, text)] to scan in a Bash command that publishes with gh; the whole command when it cannot be split
+    or when a body comes from stdin (`--body-file -`, heredoc included)."""
     if not GH_COMMAND.search(command):
         return []
     try:
@@ -92,15 +114,29 @@ def gh_texts(command, cwd):
         return [("the command", command)]
     texts = []
     for i, word in enumerate(words):
-        option, eq, value = word.partition("=")
-        if not eq or not option.startswith("--"):
-            option, value = word, None
-        kind = TITLE_BODY.get(option) if option.startswith("-") else None
-        if kind is None:
+        if not word.startswith("-") or word == "-":
+            continue
+        option, value = word, None
+        if word.startswith("--") and "=" in word:
+            option, value = word.split("=", 1)
+        elif not word.startswith("--") and len(word) > 2 and word[:2] in SHORT_OPTIONS:
+            option, value = word[:2], word[2:]
+        if option not in TEXT_OPTIONS | FILE_OPTIONS | FIELD_OPTIONS:
             continue
         if value is None:
             value = words[i + 1] if i + 1 < len(words) else ""
-        texts.append((option, value if kind == "text" else read_file(value, cwd)))
+        if option in FIELD_OPTIONS and "=" in value:  # gh api key=value; -F/--field read @file
+            key, _, value = value.partition("=")
+            if value.startswith("@") and option in ("-F", "--field"):
+                texts.append((f"{option} {key}", None if value == "@-" else read_file(value[1:], cwd)))
+            else:
+                texts.append((f"{option} {key}", value))
+        elif option in FILE_OPTIONS:
+            texts.append((option, None if value == "-" else read_file(value, cwd)))
+        elif option in TEXT_OPTIONS:
+            texts.append((option, value))
+    if any(t is None for _, t in texts):  # stdin: the body is in the command (heredoc) or in a pipe we cannot see
+        texts = [(w, t) for w, t in texts if t is not None] + [("command (its body comes from stdin)", command)]
     return texts
 
 
