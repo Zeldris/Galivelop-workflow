@@ -359,6 +359,21 @@ class Apply(unittest.TestCase):
         self.assertNotIn("config.py", out)
         self.assertIn("OK", out)
 
+    def test_installed_figures_and_opt_ai_tests_pass_in_the_project(self):
+        """gw-media-content's figures tests use .claude/gw (not the repo root) and gw-opt-ai's measure tests ignore the
+        project's own .claude/gw/gw-opt-ai.md: same result installed as here (WMF P3)."""
+        p = self.p
+        self.applied("--with", "gw-opt-ai")
+        p.write(".claude/gw/gw-opt-ai.md", "# Local AI\n\n```gw-opt-ai\nlog: no-such-log.jsonl\ncold_ms: 1\n```\n")
+        skills = p.work / ".claude" / "skills"
+        for skill, test in (("gw-media-content", "test_figures.py"), ("gw-opt-ai", "test_measure.py")):
+            code, out = p.run("python3", "-B", "-m", "unittest", "discover", "-s", str(skills / skill / "scripts"),
+                              "-p", test)
+            self.assertEqual(code, 0, out)
+            self.assertNotIn("FileNotFoundError", out)
+            self.assertNotIn("skipped", out)  # the config.py test ran, it was not skipped
+            self.assertIn("OK", out)
+
     def test_no_config_fails_closed(self):
         p = self.p
         (p.work / ".claude" / "gw.json").unlink()

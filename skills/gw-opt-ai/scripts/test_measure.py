@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import measure
@@ -33,7 +34,7 @@ class MeasureTest(unittest.TestCase):
 
     def run_main(self, argv):
         buf = io.StringIO()
-        with redirect_stdout(buf):
+        with redirect_stdout(buf), mock.patch.object(measure, 'repo_root', return_value=None):  # not the real project's settings
             measure.main(argv)
         return buf.getvalue()
 

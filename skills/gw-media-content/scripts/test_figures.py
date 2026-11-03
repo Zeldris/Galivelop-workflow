@@ -402,12 +402,17 @@ class Figures(unittest.TestCase):
 
     def test_log_path_through_the_config_reader_when_the_project_has_one(self):
         self.assertNotIn("log", self.figures()["figures"])
-        workflow = HERE.parent.parent.parent  # this repo; the project gets the installed layout of apply.py
+        # config.py and the schema: <root>/.claude/gw/ when installed (apply.py), the repo root in the workflow's own repo
+        gw = HERE.parents[2] / "gw" if HERE.parents[2].name == ".claude" else None
+        sources = [(gw / "scripts" / "config.py", gw / "schema" / "gw.schema.json")] if gw else []
+        sources.append((HERE.parents[2] / "scripts" / "config.py", HERE.parents[2] / "schema" / "gw.schema.json"))
+        found = next(((c, s) for c, s in sources if c.is_file() and s.is_file()), None)
+        if not found:
+            self.skipTest("config.py and gw.schema.json not found in .claude/gw/ (installed) nor at the workflow root")
         (self.repo / ".claude/gw/scripts").mkdir(parents=True)
         (self.repo / ".claude/gw/schema").mkdir()
-        (self.repo / ".claude/gw/scripts/config.py").write_text((workflow / "scripts/config.py").read_text(encoding="utf-8"))
-        (self.repo / ".claude/gw/schema/gw.schema.json").write_text(
-            (workflow / "schema/gw.schema.json").read_text(encoding="utf-8"))
+        (self.repo / ".claude/gw/scripts/config.py").write_text(found[0].read_text(encoding="utf-8"))
+        (self.repo / ".claude/gw/schema/gw.schema.json").write_text(found[1].read_text(encoding="utf-8"))
         self.commit(".claude/gw.json", json.dumps(CONFIG), "cfg")
         b = self.figures()["figures"]["log"]
         self.assertEqual(b["value"], "docs/handoff.md")
