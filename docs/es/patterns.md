@@ -49,7 +49,7 @@ la vez.
   las ramas están subidas. Lo suyo vuelve a la rama principal por `git merge` antes del PR.
 - **Al parar**, el gancho `Stop` (`before-stop.py`) no deja acabar con commits sin subir ni con cambios sin la
   bitácora; si no puede comprobarlo (sin git, sin config), avisa en vez de bloquear. Mientras un `pre-push` corre
-  (su marca `gw-push-en-curso`, en el directorio común de git, con su pid vivo, de menos de una hora y el sha del
+  (su marca `gw-push-en-curso.<pid>`, en el directorio git de ese worktree, con su pid vivo, de menos de una hora y el sha del
   `HEAD` actual entre los shas locales que lista) tampoco bloquea: avisa de que se está subiendo este commit y de que
   no se suba otra vez (dos pushes a la vez se pisan); espera y mira `git status -sb`. Una marca de otra rama o de un
   `HEAD` anterior (commits hechos después de empezar el push), con pid muerto, vieja o ilegible bloquea como siempre.
