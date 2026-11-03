@@ -262,7 +262,7 @@ class ClaudeWorktrees(Base):
 
 
 class PushInProgress(Base):
-    """P7: while pre-push pushes this very HEAD (marker gw-push-en-curso in the git common dir: a pid, then one
+    """P7: while pre-push pushes this very HEAD (markers gw-push-en-curso.<pid> in the worktree's git dir: a pid, then one
     "<local sha> <branch>" line per ref) a second push would race it. A push of another sha does not carry this HEAD."""
 
     def setUp(self):
@@ -270,7 +270,7 @@ class PushInProgress(Base):
         self.p.work_branch()
         self.p.write("src/a.py", "x = 1\n")
         self.p.commit("local only")
-        self.marker = self.p.work / ".git" / "gw-push-en-curso"
+        self.marker = self.p.work / ".git" / "gw-push-en-curso.1"  # <pid> only has to be a suffix
 
     def put(self, text, age=0):
         self.marker.write_text(text)
@@ -399,16 +399,36 @@ class PushInProgress(Base):
         self.mark(sha=sha, branch="claude/otra")
         self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
         # ...one in the linked worktree's own git dir does...
-        (gitdir / "gw-push-en-curso").write_text(f"{os.getpid()}\n{sha} claude/otra\n")
+        own = gitdir / f"gw-push-en-curso.{os.getpid()}"
+        main_sha = p.sha()
+        own.write_text(f"{os.getpid()}\n{sha} claude/otra\n{main_sha} claude/trabajo\n")
         self.assertWarnsWithoutBlocking(p.stop(cwd=linked, script=script)[1], "claude/otra")
-        # ...and does not silence the main checkout
+        # ...and does not silence the main checkout, even though it lists the main HEAD's sha too
         self.marker.unlink()
+        self.assertStillBlocks(p.stop()[1])
+
+    def test_two_markers_in_one_worktree_do_not_hide_each_other(self):
+        p = self.p
+        first, second = self.p.work / ".git" / "gw-push-en-curso.11", self.p.work / ".git" / "gw-push-en-curso.22"
+        self.marker.unlink() if self.marker.exists() else None
+        first.write_text(f"{os.getpid()}\n{'a' * 40} claude/otra\n")  # a live push of another sha
+        second.write_text(f"{os.getpid()}\n{p.sha()} claude/trabajo\n")  # the push of this HEAD, written later
+        self.assertWarnsWithoutBlocking(p.stop()[1], "claude/trabajo")
+        first.unlink()
+        self.assertWarnsWithoutBlocking(p.stop()[1], "claude/trabajo")
+        # a dead and an old marker beside the live one are skipped, not fatal
+        first.write_text(f"{self.dead_pid()}\n{p.sha()} claude/x\n")
+        self.assertWarnsWithoutBlocking(p.stop()[1], "claude/trabajo")
+        old = time.time() - 3601
+        os.utime(second, (old, old))
         self.assertStillBlocks(p.stop()[1])
 
     def test_orphan_or_old_marker_of_a_linked_worktree_blocks(self):
         p = self.p
         linked, script, gitdir, sha = self.linked_worktree()
-        marker = gitdir / "gw-push-en-curso"
+        marker = gitdir / "gw-push-en-curso.4242"
+        marker.write_text(f"{os.getpid()}\n{sha} claude/otra\n")
+        self.assertWarnsWithoutBlocking(p.stop(cwd=linked, script=script)[1], "claude/otra")  # it is read at all
         marker.write_text(f"{self.dead_pid()}\n{sha} claude/otra\n")  # the hook died without cleaning up
         self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
         marker.write_text(f"{os.getpid()}\n{sha} claude/otra\n")

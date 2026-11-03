@@ -58,7 +58,7 @@ python3 .claude/gw/scripts/doctor.py
 El `pre-push` dice qué commits sube, o que no hay nada nuevo (¿se te olvidó `git commit`?). Si rechaza el push,
 el último renglón es la orden que lo arregla.
 
-Mientras corre, deja la marca `gw-push-en-curso` (su pid y, por cada ref que sube, el sha local y la rama) en el
+Mientras corre, deja la marca `gw-push-en-curso.<pid>` (su pid y, por cada ref que sube, el sha local y la rama) en el
 directorio git del worktree (`git rev-parse --git-dir`; cada worktree tiene la suya) y la borra al acabar, también si falla o se interrumpe; el
 gancho `Stop` la usa solo para no mandar a subir otra vez el `HEAD` que ya se está subiendo (una marca de otra rama o
 de un commit anterior no lo calla). Una marca que quedó tras un `kill -9` se ignora pasada

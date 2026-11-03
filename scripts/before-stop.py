@@ -11,7 +11,7 @@ agent remembered it. It blocks the stop when:
      the three phases, so Claude cannot fix it alone and a block would only make it push without asking. There it is a
      warning to the user (`systemMessage`: the commits are not pushed, and pushing needs their confirmation), never
      a block;
-     While the workflow's pre-push hook is pushing this very HEAD (marker `gw-push-en-curso` in this worktree's git dir:
+     While the workflow's pre-push hook is pushing this very HEAD (markers `gw-push-en-curso.<pid>` in this worktree's git dir:
      a live pid, under an hour old, the current HEAD sha among the local shas it lists) it does not block either: a
      second push would race the first, so it is a warning that says to wait and check `git status -sb`. A marker of
      another branch or of an older HEAD (commits made after the push started), dead, old, empty or unreadable
@@ -36,6 +36,7 @@ The same for a repository with no remote (there is nothing to push to).
 Project root: config.find_root (the script's own repo when it holds .claude/gw.json, else the project the hook runs
 in), so it works from the plugin's scripts/ and from a project's .claude/gw/scripts/. Python 3.8+ standard library only.
 """
+import glob
 import json
 import os
 import posixpath
@@ -114,15 +115,27 @@ def unpushed(root):
 def push_in_progress(root):
     """The branch name of the push of the current HEAD that the workflow's pre-push hook is running right now, else None.
 
-    The hook keeps `gw-push-en-curso` in this worktree's git dir (not shared with other worktrees): line 1 its pid, then one
-    "<local sha> <branch>" line per ref it pushes. It counts only with a live pid (PermissionError: another user's
-    process is alive too), an mtime under PUSH_MARKER_MAX_AGE seconds old, and the current HEAD sha among its shas: a
-    push of another branch, or of an older HEAD, does not carry what is unpushed here. Anything else (absent,
-    unreadable, garbage, dead pid, old, other sha) is None."""
+    Each push keeps `gw-push-en-curso.<pid>` in this worktree's git dir (not shared with other worktrees): line 1 its
+    pid, then one "<local sha> <local branch>" line per ref it pushes. A marker counts only with a live pid
+    (PermissionError: another user's process is alive too), an mtime under PUSH_MARKER_MAX_AGE seconds old, and the
+    current HEAD sha among its shas: a push of another branch, or of an older HEAD, does not carry what is unpushed
+    here. Anything else (unreadable, garbage, dead pid, old, other sha) is skipped; with no marker left, None."""
     try:
-        common = git(root, "rev-parse", "--git-dir")[1].strip()  # per worktree; relative to root in the main checkout
-        path = os.path.join(str(root), common)
-        marker = os.path.join(path, PUSH_MARKER)
+        gitdir = git(root, "rev-parse", "--git-dir")[1].strip()  # per worktree; relative to root in the main checkout
+        head = git(root, "rev-parse", "-q", "--verify", "HEAD^{commit}")[1].strip()
+        markers = sorted(glob.glob(os.path.join(glob.escape(os.path.join(str(root), gitdir)), PUSH_MARKER + ".*")))
+    except (GitError, OSError, ValueError):
+        return None
+    for marker in markers:
+        found = _marker_branch(marker, head)
+        if found is not None:
+            return found
+    return None
+
+
+def _marker_branch(marker, head):
+    """The branch a live, recent marker file lists for `head`, else None."""
+    try:
         age = time.time() - os.stat(marker).st_mtime
         with open(marker, encoding="utf-8") as f:
             lines = f.read(4096).splitlines()
@@ -138,13 +151,12 @@ def push_in_progress(root):
             return None
         except PermissionError:
             pass
-        head = git(root, "rev-parse", "-q", "--verify", "HEAD^{commit}")[1].strip()
         for line in lines[1:]:
             fields = line.split()
             if fields and fields[0] == head:
                 return " ".join(fields[1:])
         return None
-    except (GitError, OSError, ValueError, IndexError):
+    except (OSError, ValueError, IndexError):
         return None
 
 
