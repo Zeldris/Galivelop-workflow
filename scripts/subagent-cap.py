@@ -23,8 +23,9 @@ default is used and the count goes on.
 
 Symbolic links: the counter is opened with O_NOFOLLOW and must be a regular file owned by the user running the hook, so
 a link planted in a shared temp folder is never written through; it is refused with a reason (`ask`, cannot count).
-Old counters: when a session's counter is created, the other gw-subagents-* regular files in the folder that nobody
-has written for STALE_DAYS (7) days are deleted (never a link, never a file of another user, never the one in use).
+A hard link is refused too (the counter must have a single link). Old counters: when a session's counter is created, the other gw-subagents-* regular files in the folder that nobody
+has written for STALE_DAYS (7) days are deleted (never a link, never a file of another user, never the one in use). The delete takes no lock: a session resumed after more than STALE_DAYS days may start from
+zero if another session cleans its counter just then (the cap is then late, never skipped silently for other files).
 
 The counter is one small file per session in tempfile.gettempdir() (named gw-subagents-<session_id>, with every
 character that is not a letter, digit, dot, dash or underscore replaced by `_`). It is updated under an exclusive
@@ -149,8 +150,9 @@ def bump(path):
         raise CannotCount(f"the subagent counter {path} cannot be opened ({exc.strerror or exc})")
     try:
         info = os.fstat(fd)
-        if not stat.S_ISREG(info.st_mode) or (hasattr(os, "geteuid") and info.st_uid != os.geteuid()):
-            raise CannotCount(f"the subagent counter {path} is not a regular file of this user "
+        if not stat.S_ISREG(info.st_mode) or (hasattr(os, "geteuid") and info.st_uid != os.geteuid()) \
+                or info.st_nlink != 1:
+            raise CannotCount(f"the subagent counter {path} is not a regular file of this user with a single link "
                               f"(delete it: rm {path})")
         if fcntl is not None:
             fcntl.flock(fd, fcntl.LOCK_EX)

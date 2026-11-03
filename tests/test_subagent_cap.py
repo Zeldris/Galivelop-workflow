@@ -161,10 +161,45 @@ class OldCountersAndLinks(Base):
         self.assertQuiet(self.p.call("fresh"))
         self.assertAsks(self.p.call("fresh"), "3 subagents")
 
-    def test_the_stale_counter_of_the_same_session_is_not_deleted_while_it_counts(self):
-        old = self.stale("gw-subagents-same")
-        self.assertQuiet(self.p.call("same"))
-        self.assertEqual(old.read_text(), "6")
+    def test_clean_old_never_deletes_the_counter_in_use_even_when_it_is_stale(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("subagent_cap_under_test", ROOT / "scripts" / SCRIPT)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        keep = self.stale("gw-subagents-same")
+        other = self.stale("gw-subagents-other")
+        module.clean_old(str(keep))
+        self.assertTrue(keep.exists(), "the guard path == keep must protect the counter in use")
+        self.assertFalse(other.exists())
+
+    @unittest.skipUnless(hasattr(os, "geteuid") and os.geteuid() == 0, "needs root to chown")
+    def test_cleaning_leaves_the_stale_counters_of_other_users(self):
+        theirs = self.stale("gw-subagents-theirs")
+        os.chown(theirs, 12345, 12345)
+        mine = self.stale("gw-subagents-mine")
+        self.assertQuiet(self.p.call("fresh"))
+        self.assertTrue(theirs.exists(), "a counter of another uid is not ours to delete")
+        self.assertFalse(mine.exists())
+
+    @unittest.skipUnless(hasattr(os, "geteuid") and os.geteuid() == 0, "needs root to chown")
+    def test_a_counter_of_another_user_is_refused(self):
+        path = self.p.counters / "gw-subagents-s1"
+        path.write_text("1")
+        os.chown(path, 12345, 12345)
+        self.assertAsks(self.p.call("s1"), "cannot count", "not a regular file of this user")
+        self.assertEqual(path.read_text(), "1")
+
+    def test_a_counter_that_is_not_a_regular_file_is_refused(self):
+        fifo = self.p.counters / "gw-subagents-s1"
+        os.mkfifo(fifo)
+        self.assertAsks(self.p.call("s1"), "cannot count", "not a regular file of this user")
+
+    def test_a_hard_link_as_the_counter_is_refused_and_never_overwritten(self):
+        victim = self.tmp / "victim"
+        victim.write_text("important data")
+        os.link(victim, self.p.counters / "gw-subagents-s1")
+        self.assertAsks(self.p.call("s1"), "cannot count", "single link")
+        self.assertEqual(victim.read_text(), "important data")
 
     def test_no_cleaning_when_the_counter_already_exists(self):
         self.assertQuiet(self.p.call("a"))
