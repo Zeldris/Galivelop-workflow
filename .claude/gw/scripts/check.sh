@@ -51,7 +51,11 @@ if [ -n "$quiet" ]; then  # only --quiet writes the log; the default mode leaves
   log="${GW_CHECK_LOG:-}"
   if [ -z "$log" ]; then
     gitdir="$(git rev-parse --git-dir 2>/dev/null)" && gitdir="$(cd "$gitdir" 2>/dev/null && pwd)" || gitdir=""
-    [ -n "$gitdir" ] && log="$gitdir/gw-check.log" || fail "cannot find the git dir for the log; set GW_CHECK_LOG to a writable file outside the work tree"
+    if [ -n "$gitdir" ]; then
+      log="$gitdir/gw-check.log"
+    else
+      fail "cannot find the git dir for the log; set GW_CHECK_LOG to a writable file outside the work tree"
+    fi
   fi
   case "$log" in /*) ;; *) log="$orig_pwd/$log" ;; esac
   case "$log" in
