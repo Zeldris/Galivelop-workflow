@@ -96,6 +96,17 @@ class Emails(Repo):
         code, out = self.check("--all", "--no-names")
         self.assertEqual(code, 0, out)
 
+    def test_keys_glued_to_a_letter_or_an_escape_are_found(self):
+        # D37: the hook's regex also finds a key after an escaped newline or a percent-encoded character.
+        self.write("docs/a.md", "x=\\n" + "sk-" + "ant-" + "A1b2C3d4" * 3 + "\n")
+        self.write("docs/b.md", "a%3D" + "AKIA" + "ABCDEFGH12345678" + "\n")
+        self.write("docs/c.md", "x=\\n" + "sk-" + "or-v1-" + "0123456789abcdef" * 2 + "\n")
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/a.md:1: key sk-ant-A\u2026", out)
+        self.assertIn("docs/b.md:1: key AKIAABCD\u2026", out)
+        self.assertIn("docs/c.md:1: key sk-or-v1\u2026", out)
+
     def test_emails_false_and_private_check_false(self):
         self.write("docs/team.md", PRIVATE_MAIL + "\n")
         self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"emails": False})))
