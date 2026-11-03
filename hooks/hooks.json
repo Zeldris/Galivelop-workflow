@@ -40,6 +40,15 @@
         ]
       },
       {
+        "matcher": "^mcp__github__(create_pull_request|update_pull_request|add_issue_comment|update_issue_comment|issue_write|add_reply_to_pull_request_comment|add_comment_to_pending_review|pull_request_review_write)$|^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/agent-signatures.py"
+          }
+        ]
+      },
+      {
         "matcher": "Agent|Task",
         "hooks": [
           {

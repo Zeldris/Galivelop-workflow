@@ -677,5 +677,22 @@ class SessionLog(Base):
         self.assertIn("cd ", out)
 
 
+    def test_noreply_author_warns_only_with_agent_signatures_false(self):
+        p = self.p
+        p.git("config", "user.email", "NoReply@Anthropic.com")
+        code, out = p.session_start()
+        self.assertNotIn("noreply@anthropic.com", out, "agentSignatures is true here: no warning")
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["agentSignatures"] = False
+        p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertIn("agentSignatures is false but git user.email is noreply@anthropic.com", out)
+        self.assertIn("git config user.email <email>", out)
+        p.git("config", "user.email", "me@example.com")
+        code, out = p.session_start()
+        self.assertNotIn("noreply@anthropic.com", out)
+
+
 if __name__ == "__main__":
     unittest.main()
