@@ -189,6 +189,61 @@ jobs:
         self.assertIn(f"ci.yml / build ({OTHER}) (runs on {OTHER})", line)
         self.assertIn("› echo ${{ secrets.TOKEN }} (the context secrets is not available locally)", line)
 
+    def template(self):
+        text = (ROOT / "templates" / "github" / "check.yml").read_text().replace("{{protectedBranch}}", "main")
+        self.workflow(text, name="check.yml")
+
+    def test_the_ci_template_with_a_matrix_from_an_expression_runs_its_check_job_once(self):
+        self.template()
+        code, out = self.ci()
+        self.assertIn("matrix from expression: run once locally", out)
+        self.assertIn("== job check.yml / check", out)
+        self.assertIn("== job check.yml / versions", out)
+        self.assertIn("Check", out)
+        self.assertEqual(code, 0, out)
+
+    def test_the_ci_template_check_job_failing_is_red_not_skipped(self):
+        self.template()
+        self.p.write("check.sh", "exit 7\n")
+        self.p.commit("failing check")
+        code, out = self.ci()
+        self.assertEqual(code, 1, out)
+        self.assertIn("red:", out)
+
+    def test_a_job_it_cannot_evaluate_forbids_the_green(self):
+        self.workflow("""on: [pull_request]
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+  b:
+    needs: a
+    if: ${{ needs.a.outputs.x == 'y' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo never
+""")
+        code, out = self.ci()
+        self.assertEqual(code, 1, out)
+        self.assertIn("not green: a job could not be evaluated, so it did not run: ci.yml / b", out)
+
+    def test_other_os_jobs_stay_listed_and_do_not_forbid_the_green(self):
+        self.workflow(f"""on: [pull_request]
+jobs:
+  a:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ok
+  b:
+    runs-on: {OTHER}
+    steps:
+      - run: echo elsewhere
+""")
+        code, out = self.ci()
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"runs on {OTHER}", out)
+
     def test_a_failing_step_stops_the_job_but_always_runs(self):
         self.workflow(f"""on: pull_request
 jobs:

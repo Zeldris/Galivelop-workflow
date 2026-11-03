@@ -218,7 +218,7 @@ class Templates(unittest.TestCase):
         self.assertIn("invalid JSON", r.stderr)
         self.assertNotIn("== echo a", r.stdout)
 
-    def ci_python(self, **keys):
+    def ci_python(self, pyfiles=("pyproject.toml",), **keys):
         """Run the CI template's `versions` step in a temp project; return (result, matrix JSON or None)."""
         text = (TEMPLATES / "github" / "check.yml").read_text()
         step = text.split("      - id: python\n        run: |\n", 1)[1].split("  check:", 1)[0]
@@ -232,6 +232,8 @@ class Templates(unittest.TestCase):
                "pushToProtected": "direct", "check": ["true"], "reviewMark": "r.txt", "content": ["^docs/"]}
         (tmp / ".claude" / "gw.json").write_text(json.dumps(dict(cfg, **keys)))
         subprocess.run(["git", "init", "-q", str(tmp)], check=True)
+        for f in pyfiles:
+            (tmp / f).write_text("")
         out = tmp / "out.txt"
         r = subprocess.run(["bash", "-e", "-c", script], cwd=tmp, capture_output=True, text=True,
                            env=dict(os.environ, GITHUB_OUTPUT=str(out)))
@@ -246,13 +248,36 @@ class Templates(unittest.TestCase):
                 r, out = self.ci_python(**keys)
                 self.assertEqual((r.returncode, out), (0, expected), r.stderr)
 
+    def test_ci_python_is_one_job_without_python_project_files(self):
+        for pyfiles, expected in (((), 'python=["3.x"]'), (("requirements-dev.txt",), 'python=["3.10", "3.13"]'),
+                                  (("package.json",), 'python=["3.x"]')):
+            with self.subTest(pyfiles=pyfiles):
+                r, out = self.ci_python(pyfiles=pyfiles, ciPython=["3.10", "3.13"])
+                self.assertEqual((r.returncode, out), (0, expected), r.stderr)
+
+    def test_ci_job_is_named_check_without_ciPython_and_check_version_with_it(self):
+        text = (TEMPLATES / "github" / "check.yml").read_text()
+        name = re.search(r"^    name: (.*)$", text.split("\n  check:\n", 1)[1], re.M).group(1)
+        self.assertIn("matrix.python == '3.x' && 'check'", name)
+        self.assertIn("format('check ({0})', matrix.python)", name)
+
+    def test_ci_python_accepts_the_versions_setup_python_accepts(self):
+        schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]["ciPython"]
+        for ok in ("3", "3.13", "3.x", "pypy3.10", "3.13-dev", "3.12.0-rc.1"):
+            with self.subTest(ok=ok):
+                self.assertEqual(config.validate([ok], schema, "$.ciPython"), [])
+        for bad in ("", "3 .13", " 3.13"):
+            with self.subTest(bad=bad):
+                errors = config.validate([bad], schema, "$.ciPython")
+                self.assertTrue(errors and "does not match" in errors[0], errors)
+
     def test_ci_python_fails_closed_on_a_bad_value(self):
         cases = ((dict(ciPython=[]), "$.ciPython: needs at least 1 item(s)"),
                  (dict(ciPython="3.13"), "$.ciPython: expected array"),
                  (dict(ciPython=[3.1]), "$.ciPython[0]: expected string"),
                  (dict(ciPython=["3.10", "3.10"]), "$.ciPython[1]: duplicate"),
                  (dict(ciPython=[""]), "$.ciPython[0]: '' does not match"),
-                 (dict(ciPython=["latest"]), "$.ciPython[0]: 'latest' does not match"))
+                 (dict(ciPython=["3 .13"]), "$.ciPython[0]: '3 .13' does not match"))
         for keys, needle in cases:
             with self.subTest(keys=keys):
                 r, out = self.ci_python(**keys)

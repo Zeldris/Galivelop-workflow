@@ -4,7 +4,8 @@
 # runs the BASE branch's copy of .githooks/pre-commit over the PR's commits, so a pull request cannot weaken the check
 # that reviews it. `checkWrapper` is not applied here (CI runners do not need it).
 # Node, Python and Java are set up when package.json, pyproject.toml / requirements*.txt or pom.xml / build.gradle*
-# exist (so this file stays the workflow's, untouched; `ciPython` makes Python a matrix); another toolchain (rust-toolchain...) goes before "Install".
+# exist (so this file stays the workflow's, untouched; `ciPython` makes Python a matrix); another toolchain
+# (rust-toolchain...) goes before "Install".
 name: Check
 
 on:
@@ -27,12 +28,17 @@ jobs:
       - id: python
         run: |
           python3 .claude/gw/scripts/config.py validate >/dev/null
-          if versions="$(python3 .claude/gw/scripts/config.py get ciPython --json 2>/dev/null)"; then
+          # Without Python project files setup-python is skipped: N equal jobs would only spend quota.
+          if ! compgen -G 'pyproject.toml' >/dev/null && ! compgen -G 'requirements*.txt' >/dev/null; then
+            echo 'python=["3.x"]' >> "$GITHUB_OUTPUT"
+          elif versions="$(python3 .claude/gw/scripts/config.py get ciPython --json 2>/dev/null)"; then
             echo "python=$versions" >> "$GITHUB_OUTPUT"
           else
             echo 'python=["3.x"]' >> "$GITHUB_OUTPUT"
           fi
   check:
+    # `check` as ever without `ciPython`; `check (<version>)` with it (required checks and `ciIgnore` match the name).
+    name: "${{ matrix.python == '3.x' && 'check' || format('check ({0})', matrix.python) }}"
     needs: versions
     runs-on: ubuntu-latest
     strategy:
