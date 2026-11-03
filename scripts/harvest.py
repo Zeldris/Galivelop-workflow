@@ -43,7 +43,7 @@ ROOT = Path(__file__).resolve().parent.parent  # this workflow repo
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(ROOT / "scripts"))
 import config  # noqa: E402  (the only reader of .claude/gw.json)
-from apply import skill_version_span  # noqa: E402  (the one parser of skill versions)
+from apply import OLD_SCRIPTS, OLD_SKILLS, skill_version_span  # noqa: E402  (the one parser of skill versions, and the A8 old names)
 IDEAS_HEADING = re.compile(r"^#{2,4}\s*(?:For|Para)\s+Galivelop-workflow\b.*$", re.I | re.M)
 IDEAS_LINE = re.compile(r"^([ \t]*)(?:[-*+]\s+|\d+\.\s+)?[*_]{0,2}(?:Propuestas?\s+para\s+el\s+flujo|Proposals?\s+for\s+the\s+workflow)\b",
                         re.I | re.M)
@@ -165,7 +165,9 @@ def body_diff(ours, theirs):
 def earlier_match(rel, text, body_only=False):
     """The short sha of the latest commit of this repo whose rel (followed through renames) has the same text (only the
     body for a SKILL.md), or None: the project then holds an older copy of the workflow, not edits of its own."""
-    log = git(ROOT, "log", "--follow", "--format=%H", "--name-only", "--", rel) or ""
+    # --all --full-history: a project may hold a copy from a commit that is on no first-parent line of HEAD (a branch
+    # never merged, one the merge did not take, a tag): without them it would look like it edited the skill.
+    log = git(ROOT, "log", "--all", "--follow", "--full-history", "--format=%H", "--name-only", "--", rel) or ""
     def comparable(t):
         return (split_frontmatter(t)[1] if body_only else t).strip()
     want, sha = comparable(text), None
@@ -286,11 +288,16 @@ def harvest(repo, state, anonymize=lambda text: text):
         if changed_files is not None and rel not in changed_files:
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
-        if name in ours:
-            mine = ours[name].read_text(encoding="utf-8")
+        # A project installed before A8 holds the skill under its old name: the same skill, not one born there.
+        current = OLD_SKILLS[name] if name not in ours and OLD_SKILLS.get(name) in ours else name
+        if current in theirs and current != name:
+            continue  # both copies installed: the one with the current name is compared, the old one is leftover
+        if current in ours:
+            mine = ours[current].read_text(encoding="utf-8")
             added, removed = body_diff(mine, text)
             if added or removed:
-                older = earlier_match(f"skills/{name}/SKILL.md", text, body_only=True)
+                older = (earlier_match(f"skills/{current}/SKILL.md", text, body_only=True) or
+                         (earlier_match(f"skills/{name}/SKILL.md", text, body_only=True) if current != name else None))
                 item = {"skill": name, "path": rel, "added": added, "removed": removed,
                         "their_version": meta_version(text)}
                 if older:
@@ -299,12 +306,12 @@ def harvest(repo, state, anonymize=lambda text: text):
                     report["skills_changed"].append(item)
         else:
             report["skills_new"].append({"skill": name, "path": rel, "description": description(text)})
-    report["skills_missing"] = sorted(set(ours) - set(theirs))
+    report["skills_missing"] = sorted(set(ours) - set(theirs) - {OLD_SKILLS[n] for n in theirs if n in OLD_SKILLS})
 
     our_scripts = {p.name: p for p in (ROOT / "scripts").glob("*") if p.is_file()}
     tracked = (git(repo, "ls-files") or "").splitlines()
     for rel in tracked:
-        name = Path(rel).name
+        name = OLD_SCRIPTS.get(Path(rel).name, Path(rel).name)  # a pre-A8 project has the Spanish file names
         if name in our_scripts and name != "harvest.py":
             if changed_files is not None and rel not in changed_files:
                 continue
@@ -395,7 +402,7 @@ def main():
         return 2
 
     if args.diff:
-        mine = ROOT / "skills" / args.diff / "SKILL.md"
+        mine = ROOT / "skills" / OLD_SKILLS.get(args.diff, args.diff) / "SKILL.md"  # an old name: its current skill
         for n, project in enumerate(args.projects, 1):
             theirs = Path(project) / ".claude" / "skills" / args.diff / "SKILL.md"
             if not mine.is_file() or not theirs.is_file():
@@ -403,7 +410,7 @@ def main():
                 return 1
             diff = anonymize("".join(difflib.unified_diff(
                 mine.read_text(encoding="utf-8").splitlines(True), theirs.read_text(encoding="utf-8").splitlines(True),
-                fromfile=f"galivelop-workflow/skills/{args.diff}/SKILL.md", tofile=str(theirs))))
+                fromfile=f"galivelop-workflow/{mine.relative_to(ROOT)}", tofile=str(theirs))))
             leaks = anonymize.leaks(diff)
             if leaks:
                 print(refuse(f"the diff of project {n} ({project})", leaks), file=sys.stderr)

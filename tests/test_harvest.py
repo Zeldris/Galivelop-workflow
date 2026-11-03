@@ -309,6 +309,68 @@ class Harvest(unittest.TestCase):
         out = run("python3", str(wf / "scripts" / "harvest.py"), "--state", str(self.state), str(self.repo))
         self.assertIn("Older workflow copies (not project changes)", out)
 
+    def install_skill(self, name, body_suffix="", source=None):
+        """A project copy of workflow skill `source` (default: the same name) under .claude/skills/<name>."""
+        text = (ROOT / "skills" / (source or name) / "SKILL.md").read_text()
+        (self.repo / ".claude/skills" / name).mkdir(parents=True, exist_ok=True)
+        (self.repo / ".claude/skills" / name / "SKILL.md").write_text(text + body_suffix)
+
+    def test_every_pre_a8_skill_name_is_the_current_skill_not_a_new_one(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        from apply import OLD_SKILLS
+        self.assertTrue(OLD_SKILLS)
+        for old, new in OLD_SKILLS.items():
+            with self.subTest(old=old):
+                self.install_skill(old, source=new)  # same body: nothing to report
+                git(self.repo, "add", "-A"); git(self.repo, "commit", "-qm", f"old {old}")
+                r = self.harvest()
+                self.assertNotIn(old, [s["skill"] for s in r["skills_new"]])
+                self.assertNotIn(old, [s["skill"] for s in r["skills_changed"]])
+                self.assertNotIn(new, r["skills_missing"])
+                self.install_skill(old, "\nA local line.\n", source=new)  # a real edit still shows, as a change
+                git(self.repo, "add", "-A"); git(self.repo, "commit", "-qm", f"edit {old}")
+                r = self.harvest()
+                self.assertIn(old, [s["skill"] for s in r["skills_changed"]])
+                self.assertNotIn(old, [s["skill"] for s in r["skills_new"]])
+
+    def test_an_unknown_skill_name_is_still_born_in_the_project(self):
+        self.install_skill("selectorx", source="gw-selector")
+        git(self.repo, "add", "-A"); git(self.repo, "commit", "-qm", "unknown")
+        r = self.harvest()
+        self.assertIn("selectorx", [s["skill"] for s in r["skills_new"]])
+        self.assertIn("local-skill", [s["skill"] for s in r["skills_new"]])
+
+    def test_a_pre_a8_script_name_is_compared_with_the_current_script(self):
+        (self.repo / "recuperar.py").write_text("print('mine')\n")
+        (self.repo / "harvest.py").write_text("x\n")
+        git(self.repo, "add", "-A"); git(self.repo, "commit", "-qm", "scripts")
+        r = self.harvest()
+        self.assertIn("recover.py", [s["script"] for s in r["scripts_changed"]])
+
+    def test_a_copy_from_a_commit_outside_the_current_line_is_an_older_copy(self):
+        # A side branch (never merged, as a tag or a branch of a release in the making): HEAD's `git log` misses it.
+        wf = self.tmp / "wf"
+        shutil.copytree(ROOT / "scripts", wf / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        (wf / "skills" / "grilling").mkdir(parents=True)
+        skill = (ROOT / "skills" / "grilling" / "SKILL.md").read_text()
+        git(self.tmp, "init", "-q", "-b", "main", str(wf))
+        (wf / "skills/grilling/SKILL.md").write_text(skill + "\nBase.\n")
+        git(wf, "add", "-A"); git(wf, "commit", "-qm", "base")
+        git(wf, "checkout", "-qb", "side")
+        (wf / "skills/grilling/SKILL.md").write_text(skill + "\nSide.\n")
+        git(wf, "commit", "-qam", "side")
+        side_sha = git(wf, "rev-parse", "--short=7", "HEAD").strip()
+        git(wf, "checkout", "-q", "main")
+        (wf / "skills/grilling/SKILL.md").write_text(skill)
+        git(wf, "commit", "-qam", "main")
+        (self.repo / ".claude/skills/grilling/SKILL.md").write_text(skill + "\nSide.\n")
+        git(self.repo, "add", "-A"); git(self.repo, "commit", "-qm", "side copy")
+        r = json.loads(run("python3", str(wf / "scripts" / "harvest.py"), "--json", "--state", str(self.state),
+                           str(self.repo)))[0]
+        self.assertEqual(r["skills_changed"], [])
+        self.assertEqual([(s["skill"], s["matches"]) for s in r["skills_older"]], [("grilling", side_sha)])
+
     def test_project_edits_say_how_to_see_them(self):
         out = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
         self.assertIn("matches no earlier workflow copy, so local edits", out)
