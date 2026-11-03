@@ -66,6 +66,12 @@ same time.
   where things stood. After a `/clear` or compaction, `recover.py --state` reminds it.
 - When the branch closes, `handoff.py close-row <branch>` leaves its row as "merged, branch finished" so the
   protected branch does not inherit a stale "Next".
+- **With `logRows`, your own row mid-task:** `handoff.py set-row "text"` rewrites the current branch's row (`--branch
+  <branch>` for another) without closing it, with the 600-character limit checked and nothing written if the row is
+  missing, the text is empty or spans more than one line. And the `pre-commit` runs `handoff.py own-row --staged`: if
+  the staged log changes another branch's row or a shared row, the commit stops (before, only the `pre-push` saw it,
+  with the commit already made); on a detached HEAD it warns and passes, and for a shared row on purpose,
+  `GW_SHARED_LOG=1 git commit` and, when pushing, `GW_SHARED_LOG=1 git push` (the `pre-push` checks the commit again).
 - **A short log, with or without `logRows`:** `handoff.py check --strict` fails if a cell of the state table passes
   800 characters or if "Done (last 5)" has more than 5 items, badly numbered or glued on one line (without
   `--strict` it only prints `WARNING:`). `handoff.py done "text"` adds the `1.` item with the date, renumbers and

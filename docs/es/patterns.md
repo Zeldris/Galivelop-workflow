@@ -65,6 +65,12 @@ la vez.
   pregunta por dónde iba. Tras un `/clear` o una compactación, `recover.py --state` se lo recuerda.
 - Al cerrar la rama, `handoff.py close-row <rama>` deja su fila como «fusionada, rama terminada» para que la rama
   protegida no herede un «Siguiente» viejo.
+- **Con `logRows`, la fila propia a mitad de tarea:** `handoff.py set-row "texto"` reescribe la fila de la rama actual
+  (`--branch <rama>` para otra) sin cerrarla, con el límite de 600 caracteres comprobado y sin escribir nada si la fila
+  falta, el texto está vacío o ocupa más de una línea. Y el `pre-commit` corre `handoff.py own-row --staged`: si la
+  bitácora preparada cambia la fila de otra rama o una fila compartida, el commit se para (antes solo lo veía el
+  `pre-push`, con el commit ya hecho); en HEAD desacoplado avisa y pasa, y para una fila compartida a propósito,
+  `GW_SHARED_LOG=1 git commit` y, al subir, `GW_SHARED_LOG=1 git push` (el `pre-push` vuelve a comprobar el commit).
 - **Bitácora corta, con o sin `logRows`:** `handoff.py check --strict` falla si una celda de la tabla de estado pasa de
   800 caracteres o si «Hecho (5 últimas)» tiene más de 5 elementos, mal numerados o pegados en una línea (sin
   `--strict` solo avisa con `WARNING:`). `handoff.py done "texto"` añade el elemento `1.` con la fecha, renumera y

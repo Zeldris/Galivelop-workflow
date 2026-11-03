@@ -385,7 +385,7 @@ class HandoffSizeAndDone(Base):
 class HandoffOwnRow(Base):
     def commit_log(self, **kw):
         self.p.write(LOG, log_text(**kw))
-        self.p.commit("edit the log", env=DAY)
+        self.p.commit("edit the log", env=dict(DAY, GW_SHARED_LOG="1"))  # the pre-commit would refuse a foreign row
         return self.p.sha()
 
     def test_own_row_and_free_rows_accepted(self):
@@ -404,7 +404,7 @@ class HandoffOwnRow(Base):
     def test_shared_row_refused_and_allowed_with_env_or_flag(self):
         self.p.branch("feat-a")
         self.p.write(LOG, log_text().replace("`feat-a`, `feat-b`", "`feat-a`, `feat-b`, `feat-c`"))
-        self.p.commit("edit a shared row", env=DAY)
+        self.p.commit("edit a shared row", env=dict(DAY, GW_SHARED_LOG="1"))
         sha = self.p.sha()
         code, out = self.p.script("handoff.py", "own-row", sha, "feat-a")
         self.assertEqual(code, 1, out)
@@ -412,6 +412,125 @@ class HandoffOwnRow(Base):
         for env in ({"BITACORA_COMPARTIDA": "1"}, {"GW_SHARED_LOG": "1"}):
             self.assertEqual(self.p.script("handoff.py", "own-row", sha, "feat-a", env=env)[0], 0, env)
         self.assertEqual(self.p.script("handoff.py", "own-row", sha, "feat-a", "--shared")[0], 0)
+
+    def stage_log(self, **kw):
+        self.p.write(LOG, log_text(**kw))
+        self.p.git("add", LOG)
+
+    def staged(self):
+        return self.p.script("handoff.py", "own-row", "--staged")
+
+    def test_staged_own_row_and_free_rows_accepted(self):
+        self.p.branch("feat-a")
+        self.stage_log(a="A moved on", updated="2026-10-22")
+        self.assertEqual(self.staged(), (0, ""))
+
+    def test_staged_other_branch_row_refused_naming_the_fix(self):
+        self.p.branch("feat-a")
+        self.stage_log(b="A rewrote B")
+        code, out = self.staged()
+        self.assertEqual(code, 1, out)
+        self.assertIn("Task in progress · feat-b", out)
+        self.assertIn("not feat-a's", out)
+        self.assertIn(f"git restore --staged {LOG}", out)
+        self.assertIn("GW_SHARED_LOG=1 git commit", out)
+        self.assertIn("GW_SHARED_LOG=1 git push", out)
+
+    def test_staged_shared_row_refused_and_allowed_with_env_or_flag(self):
+        self.p.branch("feat-a")
+        self.p.write(LOG, log_text().replace("`feat-a`, `feat-b`", "`feat-a`, `feat-b`, `feat-c`"))
+        self.p.git("add", LOG)
+        code, out = self.staged()
+        self.assertEqual(code, 1, out)
+        self.assertIn("Branches", out)
+        self.assertEqual(self.p.script("handoff.py", "own-row", "--staged", env={"GW_SHARED_LOG": "1"})[0], 0)
+        self.assertEqual(self.p.script("handoff.py", "own-row", "--staged", "--shared")[0], 0)
+
+    def test_staged_passes_when_the_log_is_not_staged(self):
+        self.p.branch("feat-a")
+        self.p.write(LOG, log_text(b="unstaged edit of B"))  # in the work tree only
+        self.assertEqual(self.staged(), (0, ""))
+
+    def test_staged_judges_the_index_not_the_work_tree(self):
+        self.p.branch("feat-a")
+        self.stage_log(a="A moved on")
+        self.p.write(LOG, log_text(b="unstaged edit of B"))
+        self.assertEqual(self.staged(), (0, ""))
+
+    def test_staged_detached_head_warns_and_passes(self):
+        self.p.git("checkout", "-q", "--detach")
+        self.stage_log(b="A rewrote B")
+        code, out = self.staged()
+        self.assertEqual(code, 0, out)
+        self.assertIn("WARNING", out)
+        self.assertIn("detached HEAD", out)
+
+    def test_staged_branch_without_a_row_changes_nothing_foreign(self):
+        self.p.branch("feat-new")  # no row for it in the log
+        self.stage_log(updated="2026-10-22")
+        self.assertEqual(self.staged(), (0, ""))
+        self.stage_log(b="touched B")
+        self.assertEqual(self.staged()[0], 1)
+
+    def test_staged_malformed_row_is_left_to_check_and_does_not_crash(self):
+        self.p.branch("feat-a")
+        self.p.write(LOG, log_text().replace("| **Task in progress · `feat-a`** |", "| **Task in progress · feat-a** |"))
+        self.p.git("add", LOG)
+        code, out = self.staged()
+        self.assertNotIn("Traceback", out)
+        self.assertEqual(code, 0, out)  # not a foreign row; `check` (commit-msg) reports the malformed one
+
+    def test_staged_skipped_while_closing_a_merge(self):
+        self.p.branch("feat-a")
+        self.stage_log(b="came from the other side")
+        merge_head = self.p.git("rev-parse", "--git-path", "MERGE_HEAD").stdout.strip()
+        (self.p.work / merge_head).write_text(self.p.sha() + "\n")
+        self.assertEqual(self.staged(), (0, ""))
+
+    def test_staged_without_logrows_is_a_no_op(self):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        self.p = Utils(self.tmp, {"logRows": False})
+        self.p.branch("feat-a")
+        self.stage_log(b="A rewrote B")
+        self.assertEqual(self.staged(), (0, ""))
+
+    def test_staged_skipped_after_a_squash_merge(self):
+        self.p.branch("feat-a")
+        self.stage_log(b="came from the squashed branch")
+        squash = self.p.git("rev-parse", "--git-path", "SQUASH_MSG").stdout.strip()
+        (self.p.work / squash).write_text("Squashed commit\n")
+        self.assertEqual(self.staged(), (0, ""))
+
+    def test_staged_new_log_passes_and_deleted_log_is_not_a_crash(self):
+        self.p.branch("feat-a")
+        self.p.git("rm", "-q", LOG)
+        self.p.git("commit", "-q", "--no-verify", "-m", "drop the log", env=DAY)
+        self.stage_log(b="a new log with B's row")  # absent at HEAD: created, every row is new
+        self.assertEqual(self.staged(), (0, ""))
+
+    def test_staged_fails_closed_when_git_cannot_read_the_index(self):
+        self.p.branch("feat-a")
+        self.stage_log(b="A rewrote B")
+        index = self.p.git("rev-parse", "--git-path", "index").stdout.strip()
+        (self.p.work / index).write_bytes(b"corrupt")
+        code, out = self.staged()
+        self.assertEqual(code, 1, out)
+        self.assertIn("cannot read the staged changes", out)
+        self.assertIn("git status", out)
+
+    def test_staged_with_a_broken_config_warns_and_passes(self):
+        self.p.branch("feat-a")
+        self.p.write(".claude/gw.json", "{ not json")
+        code, out = self.staged()
+        self.assertEqual(code, 0, out)
+        self.assertIn("skipping the own-row check", out)
+
+    def test_own_row_usage(self):
+        for args in (("own-row",), ("own-row", "HEAD"), ("own-row", "--staged", "HEAD", "feat-a")):
+            code, out = self.p.script("handoff.py", *args)
+            self.assertEqual(code, 2, f"{args}: {out}")
+            self.assertIn("own-row takes COMMIT BRANCH, or --staged alone", out)
 
 
 class HandoffTasks(Base):
@@ -721,6 +840,81 @@ class HandoffCloseRow(Base):
         self.assertIn("found 0 rows for nope", out)
 
 
+class HandoffSetRow(Base):
+    def row(self, branch="feat-a"):
+        return next(l for l in (self.p.work / LOG).read_text().splitlines() if f"`{branch}`**" in l)
+
+    def test_set_row_rewrites_only_the_current_branchs_row(self):
+        self.p.branch("feat-a")
+        code, out = self.p.script("handoff.py", "set-row", "now doing A2")
+        self.assertEqual(code, 0, out)
+        self.assertIn("(12 characters)", out)
+        self.assertEqual(self.row(), "| **Task in progress · `feat-a`** | now doing A2 |")
+        self.assertEqual(self.row("feat-b"), "| **Task in progress · `feat-b`** | doing B |")
+        self.assertEqual(self.p.script("handoff.py", "check")[0], 0)
+        self.assertEqual(self.p.script("handoff.py", "set-row", "again", "--branch", "feat-b")[0], 0)
+        self.assertEqual(self.row("feat-b"), "| **Task in progress · `feat-b`** | again |")
+
+    def test_set_row_keeps_the_rest_of_the_file_byte_for_byte_and_crlf(self):
+        self.p.branch("feat-a")
+        path = self.p.work / LOG
+        path.write_bytes(log_text().replace("\n", "\r\n").encode())
+        self.assertEqual(self.p.script("handoff.py", "set-row", "A | with a pipe")[0], 0)
+        want = log_text().replace("| doing A |", "| A \\| with a pipe |").replace("\n", "\r\n")
+        self.assertEqual(path.read_bytes().decode(), want)
+
+    def test_set_row_limit_is_600_and_writes_nothing_over_it(self):
+        self.p.branch("feat-a")
+        before = (self.p.work / LOG).read_bytes()
+        code, out = self.p.script("handoff.py", "set-row", "x" * 601)
+        self.assertEqual(code, 1, out)
+        self.assertIn("601 characters (limit 600)", out)
+        self.assertEqual((self.p.work / LOG).read_bytes(), before)
+        self.assertEqual(self.p.script("handoff.py", "set-row", "x" * 600)[0], 0)
+
+    def test_set_row_without_a_row_for_the_branch_fails_and_writes_nothing(self):
+        self.p.branch("feat-new")
+        before = (self.p.work / LOG).read_bytes()
+        code, out = self.p.script("handoff.py", "set-row", "text")
+        self.assertEqual(code, 1, out)
+        self.assertIn("found 0 rows for feat-new", out)
+        self.assertEqual((self.p.work / LOG).read_bytes(), before)
+
+    def test_set_row_two_rows_for_the_branch_fails(self):
+        self.p.branch("feat-a")
+        self.p.write(LOG, log_text() + "\n| **Task in progress · `feat-a`** | again |\n")
+        code, out = self.p.script("handoff.py", "set-row", "text")
+        self.assertEqual(code, 1, out)
+        self.assertIn("found 2 rows for feat-a", out)
+
+    def test_set_row_detached_head_needs_a_branch_name(self):
+        self.p.git("checkout", "-q", "--detach")
+        code, out = self.p.script("handoff.py", "set-row", "text")
+        self.assertEqual(code, 2, out)
+        self.assertIn("detached HEAD", out)
+        self.assertIn("--branch", out)
+        self.assertEqual(self.p.script("handoff.py", "set-row", "text", "--branch", "feat-b")[0], 0)
+
+    def test_set_row_bad_text_is_exit_2(self):
+        self.p.branch("feat-a")
+        for text in ("", "   ", "two\nlines"):
+            code, out = self.p.script("handoff.py", "set-row", text)
+            self.assertEqual(code, 2, repr(text))
+            self.assertIn("one non-empty line", out)
+
+    def test_set_row_without_logrows_writes_nothing(self):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        self.p = Utils(self.tmp, {"logRows": False})
+        self.p.branch("feat-a")
+        before = (self.p.work / LOG).read_bytes()
+        code, out = self.p.script("handoff.py", "set-row", "text")
+        self.assertEqual(code, 1, out)
+        self.assertIn("logRows is off", out)
+        self.assertIn('set "logRows": true in .claude/gw.json', out)
+        self.assertEqual((self.p.work / LOG).read_bytes(), before)
+
+
 class PrepushBranches(Base):
     def run_hook(self, sha, remote_sha=ZERO, ref="feat-a", env=None):
         stdin = f"refs/heads/{ref} {sha} refs/heads/{ref} {remote_sha}\n"
@@ -732,7 +926,7 @@ class PrepushBranches(Base):
 
     def edit(self, **kw):
         self.p.write(LOG, log_text(**kw))
-        self.p.commit("edit the log", env=DAY)
+        self.p.commit("edit the log", env=dict(DAY, GW_SHARED_LOG="1"))
         return self.p.sha()
 
     def test_own_row_passes_and_lists_files_and_commits(self):

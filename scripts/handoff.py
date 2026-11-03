@@ -24,6 +24,13 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
   handoff.py own-row COMMIT BRANCH [--shared]   fail if COMMIT changes another branch's row or a shared row of the
                                                  state table ("Updated" and "Tests" are free); --shared, or
                                                  BITACORA_COMPARTIDA=1 / GW_SHARED_LOG=1, allows it
+  handoff.py own-row --staged                   the same between HEAD and the index, for the branch being committed on
+                                                 (the pre-commit hook, so the failure comes before the commit, not at
+                                                 the push); passes at once if the log is not staged or is new, on a
+                                                 detached HEAD (WARNING) and while a merge, cherry-pick or rebase is closing
+  handoff.py set-row TEXT [--branch BRANCH]     rewrite the text of BRANCH's row (default: the current branch) without
+                                                 closing it; fails, and writes nothing, if the row is missing, TEXT is
+                                                 empty or has a newline, or it passes 600 characters
   handoff.py closed BASE SHA                    every task closed in the plan between BASE and SHA ("- [x] **ID**"
                                                  or struck through) is also recorded in the "Done" section of SHA's
                                                  log: struck through there, or named on a line that starts with a date
@@ -347,15 +354,54 @@ def report(problems, fix):
     return 1 if problems else 0
 
 
+def current_branch(ctx):
+    """The checked-out branch, or "" on a detached HEAD."""
+    return ctx.git("symbolic-ref", "--short", "-q", "HEAD").stdout.strip()
+
+
 def cmd_own_row(ctx, args):
     if args.shared or os.environ.get("BITACORA_COMPARTIDA") or os.environ.get("GW_SHARED_LOG"):
         return 0
-    parent = ctx.git("rev-parse", "--verify", "-q", f"{args.commit}^").stdout.strip()
-    bad = foreign_rows(log_at(ctx, parent) if parent else "", log_at(ctx, args.commit), args.branch)
+    if args.staged:
+        staged = ctx.git("diff", "--cached", "--name-only", "--", ctx.log)
+        if staged.returncode != 0:
+            print(f"handoff: cannot read the staged changes ({staged.stderr.strip() or 'git diff failed'}); fix the repo and "
+                  "commit again: git status")
+            return 1
+        if not staged.stdout.strip() or closing_other_side(ctx) or squash_in_progress(ctx):
+            return 0
+        branch = current_branch(ctx)
+        if not branch:
+            print("handoff: WARNING: detached HEAD, so there is no own row to check at commit time; the pre-push checks it "
+                  "(check out a branch: git switch <branch>)", file=sys.stderr)
+            return 0
+        if ctx.git("cat-file", "-e", f"HEAD:{ctx.log}").returncode != 0:
+            return 0  # the log is being created (a fresh project, or a repo's first commit): every row is new
+        head = ctx.git("show", f"HEAD:{ctx.log}")
+        if head.returncode != 0:
+            print(f"handoff: cannot read {ctx.log} at HEAD ({head.stderr.strip() or 'git show failed'}); fix the repo and "
+                  "commit again: git status")
+            return 1
+        before, after = head.stdout, log_at(ctx, INDEX)
+        fix = (f"unstage the log (git restore --staged {ctx.log}) or undo that edit; if it is on purpose, commit AND push "
+               "with the variable: GW_SHARED_LOG=1 git commit, then GW_SHARED_LOG=1 git push (the pre-push checks the "
+               "commit again)")
+    else:
+        branch = args.branch
+        parent = ctx.git("rev-parse", "--verify", "-q", f"{args.commit}^").stdout.strip()
+        before, after = (log_at(ctx, parent) if parent else ""), log_at(ctx, args.commit)
+        fix = "If it is on purpose (closing a PR, a shared row), push with: BITACORA_COMPARTIDA=1 git push"
+    bad = foreign_rows(before, after, branch)
     for key in bad:
-        print(f"handoff: the commit changes the row \"{key}\", which is not {args.branch}'s; each branch writes only in "
-              "its own row. If it is on purpose (closing a PR, a shared row), push with: BITACORA_COMPARTIDA=1 git push")
+        print(f"handoff: the commit changes the row \"{key}\", which is not {branch}'s; each branch writes only in its own "
+              f"row. {fix}")
     return 1 if bad else 0
+
+
+def squash_in_progress(ctx):
+    """True after `git merge --squash`, which leaves SQUASH_MSG instead of MERGE_HEAD: the rows come from the other side."""
+    path = Path(ctx.git("rev-parse", "--git-path", "SQUASH_MSG").stdout.strip())
+    return (path if path.is_absolute() else ctx.root / path).exists()
 
 
 def closing_other_side(ctx):
@@ -579,24 +625,53 @@ def cmd_done(ctx, args):
     return 0
 
 
-def cmd_close_row(ctx, args):
+def rewrite_row(ctx, branch, text):
+    """Replace the text of `branch`'s row in the log file. Returns the number of rows found; writes only if exactly 1."""
     path = ctx.root / ctx.log
     try:
-        lines = path.read_text(encoding="utf-8").split("\n")
+        raw = path.read_text(encoding="utf-8", newline="")
     except OSError as exc:
         raise Usage(f"cannot read {path} ({exc}); fix `log` in .claude/gw.json")
-    text = args.text or CLOSED_TEXT.get(ctx.config["language"], CLOSED_TEXT["en"])
+    eol = "\r\n" if "\r\n" in raw else "\n"
+    lines = raw.split(eol)
     hit = 0
     for i, line in enumerate(lines):
         m = ROW.match(line)
-        if m and m.group("branch") == args.branch:
-            lines[i] = f"| **{m.group('label')} · `{args.branch}`** | {text} |"
+        if m and m.group("branch") == branch:
+            lines[i] = f"| **{m.group('label')} · `{branch}`** | {text} |"
             hit += 1
+    if hit == 1:
+        path.write_text(eol.join(lines), encoding="utf-8", newline="")
+    return hit
+
+
+def cmd_close_row(ctx, args):
+    text = args.text or CLOSED_TEXT.get(ctx.config["language"], CLOSED_TEXT["en"])
+    hit = rewrite_row(ctx, args.branch, text)
     if hit != 1:
         print(f"handoff: found {hit} rows for {args.branch}, expected 1; add the row first: edit {ctx.log}")
         return 1
-    path.write_text("\n".join(lines), encoding="utf-8")
     print(f"handoff: row of {args.branch} closed in {ctx.log}; commit it: git commit -am 'Close the log row of {args.branch}'")
+    return 0
+
+
+def cmd_set_row(ctx, args):
+    branch = args.branch or current_branch(ctx)
+    if not branch:
+        raise Usage("detached HEAD, so there is no branch whose row to write; name it: handoff.py set-row TEXT --branch <branch>")
+    text = args.text.strip()
+    if not text or "\n" in text or "\r" in text:
+        raise Usage("TEXT must be one non-empty line (a table cell); write the row text on a single line")
+    text = re.sub(r"(?<!\\)\|", r"\\|", text)
+    if len(text) > LIMIT:
+        print(f"handoff: the text has {len(text)} characters (limit {LIMIT}); shorten it, or move what is done to the Done "
+              f"section: python3 {HERE / 'handoff.py'} done \"<text>\"")
+        return 1
+    hit = rewrite_row(ctx, branch, text)
+    if hit != 1:
+        print(f"handoff: found {hit} rows for {branch}, expected 1; add the row first: edit {ctx.log}")
+        return 1
+    print(f"handoff: row of {branch} updated in {ctx.log} ({len(text)} characters); commit it together with the work")
     return 0
 
 
@@ -617,9 +692,10 @@ def main(argv=None):
     d.add_argument("file", nargs="?")
     d.add_argument("--date")
     o = sub.add_parser("own-row")
-    o.add_argument("commit")
-    o.add_argument("branch")
+    o.add_argument("commit", nargs="?")
+    o.add_argument("branch", nargs="?")
     o.add_argument("--shared", action="store_true")
+    o.add_argument("--staged", action="store_true")
     s = sub.add_parser("closed")
     s.add_argument("base", nargs="?")
     s.add_argument("sha", nargs="?")
@@ -636,7 +712,13 @@ def main(argv=None):
     r = sub.add_parser("close-row")
     r.add_argument("branch")
     r.add_argument("--text")
+    w = sub.add_parser("set-row")
+    w.add_argument("text")
+    w.add_argument("--branch")
     args = p.parse_args(argv)
+    if args.cmd == "own-row" and (args.staged == (args.commit is not None) or (args.commit is None) != (args.branch is None)):
+        print("handoff: own-row takes COMMIT BRANCH, or --staged alone; run: handoff.py own-row --staged", file=sys.stderr)
+        return 2
     if args.cmd == "closed" and (bool(args.staged) == (args.sha is not None) or (args.base is None) != (args.sha is None)):
         print("handoff: closed takes BASE SHA, or --staged alone; run: handoff.py closed --staged", file=sys.stderr)
         return 2
@@ -658,18 +740,22 @@ def main(argv=None):
         try:
             ctx = Ctx(args)
         except Usage as exc:
-            if not ((args.cmd == "closed" and args.staged) or (args.cmd == "clash" and args.merging)):
+            if not ((args.cmd in ("closed", "own-row") and args.staged) or (args.cmd == "clash" and args.merging)):
                 raise
             # A commit may be the one that fixes (or breaks) the config: the pre-push fails closed on it instead.
-            what = "\"Done\"" if args.cmd == "closed" else "task-id clash"
+            what = {"closed": "\"Done\"", "own-row": "own-row"}.get(args.cmd, "task-id clash")
             print(f"handoff: WARNING: skipping the {what} check of this commit: {exc}", file=sys.stderr)
             return 0
         if args.cmd == "done":
             args.date = args.date or datetime.date.today().isoformat()
         elif not ctx.config.get("logRows") and args.cmd != "check":
+            if args.cmd == "set-row":
+                print("handoff: logRows is off in .claude/gw.json, so there are no branch rows and nothing was written; "
+                      "enable it: set \"logRows\": true in .claude/gw.json, then rerun set-row")
+                return 1
             return 0  # the branch-row module is off: nothing to check (`check` still reads the size and Done rules)
         return {"check": cmd_check, "done": cmd_done, "own-row": cmd_own_row, "closed": cmd_closed,
-                "in-progress": cmd_in_progress, "close-row": cmd_close_row, "clash": cmd_clash}[args.cmd](ctx, args)
+                "in-progress": cmd_in_progress, "close-row": cmd_close_row, "set-row": cmd_set_row, "clash": cmd_clash}[args.cmd](ctx, args)
     except Usage as exc:
         print(f"handoff: {exc}", file=sys.stderr)
         return 2
