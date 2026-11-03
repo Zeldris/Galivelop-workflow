@@ -89,8 +89,11 @@ la versión**, aunque sea un parche: un proyecto que copió entre las dos vería
 etiqueta (`feat` → menor, `fix` y `perf` → parche, `!` o `BREAKING CHANGE:` → mayor, en la `0.x` menor) y avisa si
 `plugin.json` no casa; solo sugiere (sale con 0) y `--release` muestra lo mismo como aviso.
 `--release` también exige que cada ruta del repo citada entre comillas invertidas en la entrada nueva del CHANGELOG
-(`docs/…`, `scripts/…`, `skills/…`…) exista en el árbol que se publica; se saltan las que llevan marcadores
-(`vX.Y.Z`, `<…>`, `*`).
+(`docs/…`, `scripts/…`, `CHANGELOG.md`…; la lee de `HEAD`, no de la copia de trabajo) exista en el árbol que se publica, haya existido en el
+historial (un nombre viejo, «antes X») o esté ignorada por git (`.claude/gw.local.json`); cuenta como ruta lo que empieza por un
+directorio de primer nivel (de `HEAD` o del historial), acaba en extensión de archivo o en `/`, o es un documento de la raíz por nombre. Se
+saltan las que llevan marcadores (`vX.Y.Z`, `<…>`, `*`, `YYYY-MM-DD`, `NNN`, `…`). Las rutas del proyecto que instala el flujo van sin
+comillas invertidas o con la ruta completa de este repo (`skills/gw-media-content/scripts/figures.py`).
 
 **Publicar una versión:** en `main` (con las tres fases hechas), la entrada del CHANGELOG con fecha en vez de
 «Unreleased», y la etiqueta: `git tag vX.Y.Z && git push origin vX.Y.Z`. El workflow `release.yml` comprueba que la

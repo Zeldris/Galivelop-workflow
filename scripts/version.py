@@ -149,6 +149,12 @@ def git(*args):
     return r.returncode, r.stdout.strip()
 
 
+def git_raw(*args):
+    """Like git() but keeps the output as is (no strip), for file contents."""
+    r = subprocess.run(["git", "-C", str(ROOT), *args], capture_output=True, text=True, encoding="utf-8")
+    return r.returncode, r.stdout
+
+
 def release_check(version):
     """Problems for a push to main: copyable files changed since the last vX.Y.Z tag reachable from HEAD while
     plugin.json still has that tag's version (a project that copied between the two would see "local edits" it never
@@ -175,7 +181,10 @@ def release_check(version):
 def changelog_check(version):
     """Problems for releasing `version`: its CHANGELOG entry, the release notes, must be dated (`## [X.Y.Z] -
     YYYY-MM-DD`, not "Unreleased") and filled in (no "(por completar)" / "(to be filled in)" left by the bump)."""
-    text = read(ROOT / "CHANGELOG.md")
+    code, text = git_raw("show", "HEAD:CHANGELOG.md")
+    if code != 0:
+        return ["cannot read CHANGELOG.md from HEAD, the tree being released; commit it and retry: "
+                "python3 scripts/version.py --release"]
     head = re.search(rf"^## \[{re.escape(version)}\][^\n]*", text, re.M)
     if not head:
         return [f"no CHANGELOG entry for {version}; add it (## [{version}] - YYYY-MM-DD, with ### ES and ### EN) and "
@@ -192,30 +201,67 @@ def changelog_check(version):
     return problems + changelog_paths(version, entry)
 
 
-REPO_PATH = re.compile(r"^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+/?$")
-PLACEHOLDER = re.compile(r"[<>*{}]|\bv?X\.Y\.Z\b|\bx\.y\.z\b")
+REPO_PATH = re.compile(r"^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*/?$")
+PLACEHOLDER = re.compile(r"[<>*{}…]|\bv?X\.Y\.Z\b|\bx\.y\.z\b|\bYYYY\b|\bMM-DD\b|\bNNN\b")
+FILE_EXT = re.compile(r"\.(?:md|py|sh|json|ya?ml|toml|txt|cfg|ini)$")
+ROOT_DOC = re.compile(r"^[A-Z][A-Za-z0-9_.-]*\.(?:md|txt|json|ya?ml|toml)$")
+
+
+def looks_like_repo_path(path, tops):
+    """True for a quoted token that is meant as a path of this repo: its first segment is a top-level name (of HEAD
+    or its history), or it ends in a file extension or a slash (a typo'd directory such as `script/x.py`), or it is a
+    root document by name (`CHANGELOG.md`). Prose with a slash (`ES/EN`, `feat/fix`) is not."""
+    if not REPO_PATH.match(path):
+        return False
+    if "/" not in path:
+        return path in tops or bool(ROOT_DOC.match(path))
+    return path.split("/")[0] in tops or bool(FILE_EXT.search(path)) or path.rstrip("/").count("/") > 0 and path.endswith("/")
 
 
 def changelog_paths(version, entry):
     """Problems for the repo paths the CHANGELOG entry of `version` quotes in backticks (`docs/...`, `scripts/...`,
-    any top-level directory of the tree): each must exist in HEAD, the tree being released. Paths with a placeholder
-    (`vX.Y.Z`, `<...>`, `*`) are skipped. Fails closed when the tree cannot be listed."""
-    code, out = git("ls-tree", "-d", "--name-only", "HEAD")
+    `CHANGELOG.md`): each must exist in HEAD, the tree being released, or have existed in the repo history (an old
+    name cited as "antes X"), or be ignored by git (`.claude/gw.local.json`). Paths with a placeholder (`vX.Y.Z`,
+    `<...>`, `*`, `YYYY-MM-DD`, `NNN`, `…`) are skipped. Fails closed when the tree cannot be listed."""
+    code, out = git("ls-tree", "--name-only", "HEAD")
     if code != 0:
         return [f"cannot list the tree of HEAD to check the paths quoted in the CHANGELOG entry of {version}; commit "
                 "first and retry: python3 scripts/version.py --release"]
+    history = None  # every path ever in the repo (and its directories), read once and only if a path needs it
     tops = set(out.splitlines())
     problems, seen = [], set()
     for quoted in re.findall(r"`([^`\n]+)`", entry):
         path = quoted.strip()
-        if path in seen or PLACEHOLDER.search(path) or not REPO_PATH.match(path) or path.split("/")[0] not in tops:
+        if path in seen or PLACEHOLDER.search(path):
             continue
         seen.add(path)
-        if git("cat-file", "-e", f"HEAD:{path.rstrip('/')}")[0] != 0:
-            problems.append(f"CHANGELOG entry for {version} quotes `{path}`, which does not exist in the tree being "
-                            "released; fix the path in CHANGELOG.md (or drop the backticks if it is not a repo path) "
-                            "and retry: python3 scripts/version.py --release")
+        if history is None:
+            history = history_paths()
+            tops |= {p.split("/")[0] for p in history}
+        if not looks_like_repo_path(path, tops):
+            continue
+        bare = path.rstrip("/")
+        if "/" not in bare and bare not in tops and any(h.rsplit("/", 1)[-1] == bare for h in history):
+            continue  # a bare document name (`SKILL.md`) that exists somewhere in the tree or its history
+        if git("cat-file", "-e", f"HEAD:{bare}")[0] == 0 or bare in history or \
+                git("check-ignore", "--no-index", "-q", "--", path)[0] == 0:
+            continue
+        problems.append(f"CHANGELOG entry for {version} quotes `{path}`, which does not exist in the tree being "
+                        "released, nor ever did, nor is ignored by git; fix the path in CHANGELOG.md (full path from "
+                        "the repo root; drop the backticks if it is not a path of this repo) and retry: "
+                        "python3 scripts/version.py --release")
     return problems
+
+
+def history_paths():
+    """Every file path that ever existed in any ref, plus all their parent directories (one `git log` pass)."""
+    code, out = git("-c", "core.quotepath=off", "log", "--all", "--name-only", "--format=")
+    found = set()
+    for line in out.splitlines() if code == 0 else []:
+        parts = line.split("/")
+        for i in range(1, len(parts) + 1):
+            found.add("/".join(parts[:i]))
+    return found
 
 
 def proposals_dir():
