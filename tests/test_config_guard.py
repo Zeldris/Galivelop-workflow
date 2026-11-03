@@ -602,9 +602,74 @@ class GitTreeWrites(Base):
         other = self.tmp / "other"
         self.p.git("init", "-q", str(other), cwd=self.tmp)
         self.unknown([f'git -C {other} merge docs', f'git -C {other} checkout docs'], "another repository")
-        self.unknown(['git -C /nonexistent-dir merge docs', 'git -C "$SOMEWHERE" merge docs'], "")
-        self.unknown(['git --git-dir=/tmp/x merge docs', 'git --work-tree=/tmp/x checkout docs',
-                      'git -c core.worktree=/tmp/x merge docs'], "")
+        self.unknown(['git -C /nonexistent-dir merge docs'], "could not run")
+        self.unknown(['git -C "$SOMEWHERE" merge docs'], "path built at run time")
+        self.unknown(['git --git-dir=/tmp/x merge docs', 'git --git-dir /tmp/x merge docs',
+                      'git --work-tree=/tmp/x checkout docs', 'git --work-tree /tmp/x checkout docs'],
+                     "points git somewhere else")
+        self.unknown(['git -c core.worktree=/tmp/x merge docs', 'git -c core.worktree=/tmp/x -C . merge docs'],
+                     "moves the working tree")
+        self.unknown(['GIT_DIR=/tmp/x git merge docs', 'GIT_WORK_TREE=/tmp/x git checkout docs'],
+                     "points git somewhere else")
+
+    def test_global_options_with_a_separate_value_do_not_hide_the_subcommand(self):
+        self.asks(['git --namespace x merge hooks', 'git --exec-path=/usr/bin merge hooks',
+                   'git --super-prefix x/ merge hooks', 'git -C . -c user.name=x merge hooks',
+                   'git -c user.name=x -C . checkout hooks', 'git --no-pager -C . merge hooks'], self.HOOK)
+        self.allowed(['git --namespace x merge docs', 'git -C . --no-pager status'])
+
+    def test_an_alias_is_followed_one_level(self):
+        self.asks(['git -c alias.m=merge m hooks', 'git -c alias.m="merge --no-ff" m hooks',
+                   'git -c alias.co=checkout co hooks'], self.HOOK)
+        self.allowed(['git -c alias.m=merge m docs'])
+        self.unknown(['git -c alias.x="!rm -rf .claude" x', 'git -c alias.x="!true" x'], "runs a shell command")
+        self.unknown(['git -c alias.a=b -c alias.b=merge a hooks', 'git -c alias.a=nosuchthing a hooks'],
+                     "expands to another alias")
+
+    def test_an_alias_in_the_git_config_is_followed(self):
+        self.p.git("config", "alias.m", "merge")
+        self.p.git("config", "alias.sh", "!rm -rf .claude")
+        self.asks(['git m hooks'], self.HOOK)
+        self.allowed(['git m docs'])
+        self.unknown(['git sh'], "runs a shell command")
+        self.allowed(['git no-such-external-command'])
+
+    def test_a_builtin_name_is_never_an_alias(self):
+        self.p.git("config", "alias.status", "!rm -rf .claude")
+        self.allowed(['git status', 'git merge docs'])
+
+    def test_git_apply_never_runs_git_on_the_users_options(self):
+        tmp = self.tmp
+        (tmp / "docs.patch").write_text(self.p.git("diff", "main", "docs", "--").stdout)
+        target = tmp / "fake-ancestor"
+        self.p.tool("Bash", command=f'git apply --build-fake-ancestor={target} {tmp}/docs.patch')
+        self.assertFalse(target.exists())
+        (tmp / "rename.patch").write_text(
+            "diff --git a/docs/x.md b/.githooks/pre-push\nsimilarity index 100%\n"
+            "rename from docs/x.md\nrename to .githooks/pre-push\n")
+        self.asks([f'git apply {tmp}/rename.patch', f'git apply --build-fake-ancestor={target} {tmp}/rename.patch'],
+                  self.HOOK)
+        self.assertFalse(target.exists())
+        (tmp / "new.patch").write_text("--- /dev/null\n+++ b/.githooks/new\n@@ -0,0 +1 @@\n+x\n")
+        self.asks([f'git apply {tmp}/new.patch'], ".githooks/new")
+        self.allowed([f'git apply --directory=docs {tmp}/docs.patch'])
+        (tmp / "quoted.patch").write_text('diff --git "a/a b" "b/a b"\n')
+        self.unknown([f'git apply {tmp}/quoted.patch'], "cannot read")
+
+    def test_rebase_compares_the_tree_of_head_with_the_target(self):
+        self.p.git("checkout", "-q", "hooks")
+        self.asks(['git rebase main', 'git rebase -i main', 'git rebase --onto main hooks~1'], self.HOOK)
+        self.allowed(['git rebase hooks'])
+
+    def test_stash_push_and_clean_ask_when_they_would_touch_a_protected_path(self):
+        self.allowed(['git stash', 'git stash push', 'git clean -fd', 'git clean -n', 'git clean -nd .githooks'])
+        self.p.write(".claude/gw.json", self.p.work.joinpath(".claude/gw.json").read_text() + " ")
+        self.asks(['git stash', 'git stash push', 'git stash save x', 'git stash -u'], ".claude/gw.json")
+        self.allowed(['git clean -fd'])  # a tracked file is not cleaned
+        self.p.write(".githooks/new-hook", "#!/bin/sh\n")
+        self.asks(['git clean -fd', 'git clean -f'], ".githooks/new-hook")
+        self.allowed(['git stash list'])
+        self.allowed(['git clean -n', 'git clean --dry-run -d'])
 
     def test_merge_abort_looks_at_the_tree_and_continue_and_quit_write_nothing(self):
         self.allowed(['git merge --abort', 'git merge --continue', 'git merge --quit'])
