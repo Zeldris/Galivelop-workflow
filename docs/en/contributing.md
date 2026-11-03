@@ -92,6 +92,11 @@ version**, a patch at least: a project that copied in between would see "local e
 tags: `git fetch --tags origin`), and this repo's `check` runs it on every push to `main` (`GW_PUSH_PROTECTED`). `python3 scripts/version.py --suggest` suggests the bump from the non-merge commits since that
 tag (`feat` → minor, `fix` and `perf` → patch, `!` or `BREAKING CHANGE:` → major, minor in `0.x`) and warns when
 `plugin.json` does not match; it only suggests (exit 0) and `--release` prints the same as a warning.
+`--release` also requires every repo path quoted in backticks in the new CHANGELOG entry (`docs/…`, `scripts/…`, `CHANGELOG.md`…; read from
+`HEAD`, not the working tree) to exist in the tree being released, to have existed in the history (an old name, "antes X") or to be ignored by
+git (`.claude/gw.local.json`); a token counts as a path when it starts with a top-level directory (of `HEAD` or the history), ends in a file
+extension or in `/`, or is a root document by name. Paths with placeholders (`vX.Y.Z`, `<…>`, `*`, `YYYY-MM-DD`, `NNN`, `…`) are skipped. Paths of
+the project that installs the flow go without backticks, or with the full path in this repo (`skills/gw-media-content/scripts/figures.py`).
 
 **Releasing a version:** on `main` (with the three phases done), the CHANGELOG entry dated instead of
 "Unreleased", and the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`. The `release.yml` workflow checks that the tag,

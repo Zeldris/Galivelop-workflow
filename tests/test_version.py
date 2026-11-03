@@ -95,6 +95,111 @@ class Version(unittest.TestCase):
         self.commit_all("entry heading removed")
         self.assertIn("no CHANGELOG entry for 9.8.7", run(tmp, "--release").stdout)
 
+    def test_the_new_changelog_entry_must_quote_only_paths_that_exist(self):
+        tmp = self.tmp
+        self.git("init", "-q")
+        (tmp / "docs").mkdir()
+        (tmp / "docs" / "real.md").write_text("x\n")
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.harvest()
+        self.fill_entry("9.8.7")
+        log = tmp / "CHANGELOG.md"
+        quoted = ("- Cita `docs/real.md`, `scripts/version.py`, `skills/`, `docs/records/release-vX.Y.Z.md`, "
+                  "`docs/<tema>.md`, `scripts/*.sh`, `no/such`, `a/b` y `a/b c` sin ruta.")
+        log.write_text(log.read_text().replace("- Hecho.", quoted, 1))
+        self.commit_all("entry with only existing paths or placeholders")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        log.write_text(log.read_text().replace(quoted, quoted + " `docs/gone.md` y `scripts/gone.py/`.", 1))
+        self.commit_all("entry quoting missing paths")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("CHANGELOG entry for 9.8.7 quotes `docs/gone.md`, which does not exist in the tree being released",
+                      r.stdout)
+        self.assertIn("scripts/gone.py/", r.stdout)
+        self.assertIn("fix the path in CHANGELOG.md", r.stdout)
+        self.assertNotIn("`docs/real.md`, which", r.stdout)
+        self.assertNotIn("release-vX.Y.Z", r.stdout)
+        self.assertNotIn("`docs/<tema>.md`, which", r.stdout)
+        self.assertNotIn("no/such", r.stdout, "a first segment that is no top-level directory is not a repo path")
+        self.assertNotIn("`a/b`", r.stdout)
+
+    def test_a_path_only_in_the_working_tree_does_not_count(self):
+        tmp = self.tmp
+        self.git("init", "-q")
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.harvest()
+        self.fill_entry("9.8.7")
+        log = tmp / "CHANGELOG.md"
+        log.write_text(log.read_text().replace("- Hecho.", "- Cita `scripts/untracked.py`.", 1))
+        self.commit_all("entry quotes a file")
+        (tmp / "scripts" / "untracked.py").write_text("x\n")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("quotes `scripts/untracked.py`", r.stdout)
+
+    def test_changelog_paths_accept_history_ignored_files_and_flag_typos_and_root_files(self):
+        tmp = self.tmp
+        self.git("init", "-q")
+        (tmp / "docs").mkdir()
+        (tmp / "docs" / "old-name.md").write_text("x\n")
+        (tmp / "old-top").mkdir()
+        (tmp / "old-top" / "f.md").write_text("x\n")
+        self.commit_all("old names")
+        self.git("rm", "-rq", "docs/old-name.md", "old-top")
+        (tmp / ".gitignore").write_text(".claude/gw.local.json\n.claude/worktrees/\n")
+        self.commit_all("old names gone")
+        self.git("tag", f"v{VERSION}")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.harvest()
+        self.fill_entry("9.8.7")
+        log = tmp / "CHANGELOG.md"
+        ok = ("- Antes `docs/old-name.md` y `old-top/f.md`, local `.claude/gw.local.json` y `.claude/worktrees/`, "
+              "raiz `CHANGELOG.md`, `docs/records/retro-YYYY-MM-DD.md`, `docs/NNN.md`, `docs/…`, prosa ES/EN y "
+              "`feat/fix`, `SKILL.md` suelto.")
+        log.write_text(log.read_text().replace("- Hecho.", ok, 1))
+        self.commit_all("entry with history, ignored and placeholder paths")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        bad = " `script/x.py`, `skill/gw-harvest/`, `GONE.md`, `docs/never.md`."
+        log.write_text(log.read_text().replace(ok, ok + bad, 1))
+        self.commit_all("entry with typos")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        for path in ("script/x.py", "skill/gw-harvest/", "GONE.md", "docs/never.md"):
+            self.assertIn(f"quotes `{path}`, which does not exist in the tree being released, nor ever did", r.stdout)
+        self.assertEqual(r.stdout.count("quotes `"), 4, r.stdout)
+
+    def test_the_changelog_is_read_from_head_not_from_the_working_tree(self):
+        tmp = self.tmp
+        self.git("init", "-q")
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.harvest()
+        self.fill_entry("9.8.7")
+        self.commit_all("entry filled in")
+        log = tmp / "CHANGELOG.md"
+        log.write_text(log.read_text().replace("- Hecho.", "- Cita `docs/gone.md`.", 1))
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 0, "an uncommitted edit is not what is published: " + r.stdout + r.stderr)
+
+    def test_the_unreleased_entry_of_this_repo_quotes_only_valid_paths(self):
+        spec = importlib.util.spec_from_file_location("version_under_test", ROOT / "scripts" / "version.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        text = (ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+        head = re.search(r"^## \[[^\]]+\] - Unreleased[^\n]*", text, re.M)
+        if not head:
+            self.skipTest("no unreleased entry in CHANGELOG.md")
+        nxt = re.search(r"^## \[", text[head.end():], re.M)
+        entry = text[head.end():head.end() + nxt.start()] if nxt else text[head.end():]
+        self.assertEqual(mod.changelog_paths("unreleased", entry), [])
+
     def harvest(self, first_line="# Harvest portal — 2026-10-23"):
         (self.tmp / "docs" / "propuestas").mkdir(parents=True, exist_ok=True)
         (self.tmp / "docs" / "propuestas" / "2026-10-23-portal.md").write_text(first_line + "\n\nNada nuevo.\n")

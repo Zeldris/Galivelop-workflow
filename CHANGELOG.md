@@ -78,7 +78,7 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   jobs del sistema de la máquina, una vez por combinación de la matriz y en el orden de `needs`, con su `env`, los
   `${{ }}` sustituidos y `GITHUB_ENV`/`GITHUB_PATH`. No corre los pasos `uses:` ni las instalaciones de paquetes del
   sistema, y lista lo que no cubre (otro sistema, `services`, `container`, expresiones que no sabe evaluar). Con
-  `--apuntar` deja una línea en `ciLocalLog` (por defecto `docs/registros/ci-local.md`; nunca es código para
+  `--apuntar` deja una línea en `ciLocalLog` (por defecto docs/registros/ci-local.md; nunca es código para
   `es-codigo.sh`) con el commit, el resultado y lo no cubierto; `--plan` solo dice qué correría. Si el CI de un PR no
   arrancó (sin CI o sin arrancar por facturación), `revision-antes-de-main.sh` acepta la línea verde más reciente del
   registro en la cabeza del PR cuyo commit es antecesor y solo tiene contenido detrás, hecha con el árbol limpio; el
@@ -86,7 +86,7 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   decisión de la persona («comprobado solo en local»). Claves nuevas `ciLocalLog` y `ciLocalWorkflows`; documentado
   en `config.md`, `problemas.md`, la plantilla de `AGENTS.md` y el mapa para agentes.
 - Canal `web` en `gw-media-content` (Portal P3): `web.md`, opcional en cada pieza, lleva un bloque ```json que lee la
-  web del proyecto (`plantilla/web.md`) con `estado` (`"borrador"`, que deja la skill; `"listo"` lo escribe la
+  web del proyecto (`skills/gw-media-content/template/web.md`) con `estado` (`"borrador"`, que deja la skill; `"listo"` lo escribe la
   persona para que se publique), `fecha` (`AAAA-MM-DD`), `texto` (uno por idioma) y un `muro` opcional (`titulo`,
   `cuerpo` y `imagenes` con `archivo` y `alt` por idioma). Los idiomas son las claves de `texto`: todos los de
   `Idiomas:` y los que pida la web (p. ej. `gl`), y todos los textos del bloque llevan esos mismos;
@@ -139,8 +139,8 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   elige `--range` o `--rango` según lo que entienda el `pre-commit` de la rama base.
 - A8, trozo 6b: `gw-media-content` y `gw-media-content-now` con nombres en inglés. Archivos: `catalog.md`, `note.md`,
   `rules.json`, `template/` (`sheet.md`, `media/source/{card,diagram,metrics,quote,code,before-after,carousel}.html`),
-  `scripts/figures.py` (antes `cifras.py`), `scripts/check.py` (antes `comprobar.py`) y sus `test_*.py`. Lo que se
-  guarda en el proyecto: la pieza usa `sheet.md` (`ficha.md`), `media/` y `media/source/` (`medios/`, `medios/fuente/`),
+  `skills/gw-media-content/scripts/figures.py` (antes `cifras.py`), `skills/gw-media-content/scripts/check.py` (antes `comprobar.py`) y sus `test_*.py`. Lo que se
+  guarda en el proyecto: la pieza usa `sheet.md` (`ficha.md`), media/ y media/source/ (medios/, medios/fuente/),
   los títulos y etiquetas en inglés (`## Channels`, `## Images`, `## Published`, `## Internal use`, `Languages:`,
   `Rules read:`, `Self-promotion:`, `### Rules of r/<x>`, `Image:`) y `web.md` con `status` (`draft`/`ready`), `date`,
   `text`, `wall`, `title`, `body`, `images`, `file`; las propuestas, en `<dir>/proposals/`. Opciones: `figures.py
@@ -148,9 +148,9 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `--limite`, `--formato-propio`, `--idiomas-web`). Claves de `rules.json` en inglés (`reddit.rules_days`,
   `reddit.rules_min_chars`...). Variables CSS de la plantilla (`--background`, `--accent`...), formas del plan de
   `render.mjs --plan` (`sources`, `kind`, `size`, `outputs`) y la clave `piece`. Compatibilidad `0.x`: `check.py`
-  acepta con aviso las opciones viejas y una pieza con `ficha.md` + `medios/` + claves españolas de `web.md`;
-  `figures.py` acepta `--desde`; `render.mjs` acepta `medios/fuente/` y el prefijo `carrusel` con aviso (y escribe
-  entonces en `medios/`). `/gw-update` borra los archivos viejos de la copia instalada de la skill (`OLD_SKILL_FILES`
+  acepta con aviso las opciones viejas y una pieza con `ficha.md` + medios/ + claves españolas de `web.md`;
+  `figures.py` acepta `--desde`; `render.mjs` acepta medios/fuente/ y el prefijo `carrusel` con aviso (y escribe
+  entonces en medios/). `/gw-update` borra los archivos viejos de la copia instalada de la skill (`OLD_SKILL_FILES`
   en `apply.py`: solo si git los tiene limpios) y trae los nuevos. **`web.md` no rompe a quien lea sus claves viejas:** en la `0.x` se escriben las dos
   (ver el trozo 6d); las notas viejas (`límite:`, `formato: propio`,
   `plantilla:`) siguen valiendo para el agente.
@@ -166,12 +166,12 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   (`EXCEPTIONS`) con su motivo; una excepción que ya no coincide con nada también falla. Solo de este repo (no se
   instala en los proyectos).
 
-- A8, trozo 6d (decisiones del usuario, 2026-11-02): la carpeta por defecto de `gw-media-content` pasa de `docs/difusion`
-  a `docs/media` (`Folder` de la nota, plantilla `note.md` y `MEDIA_FOLDER` de `doctor.py`). Compatibilidad `0.x`: si la
-  nota no declara carpeta, no existe `docs/media` y sí `docs/difusion`, `doctor.py` y las skills usan la vieja, y
-  `doctor.py` avisa (`media folder`, también si existen las dos); `/gw-update` (`apply.py`) la mueve a `docs/media` con
+- A8, trozo 6d (decisiones del usuario, 2026-11-02): la carpeta por defecto de `gw-media-content` pasa de docs/difusion
+  a docs/media (`Folder` de la nota, plantilla `note.md` y `MEDIA_FOLDER` de `doctor.py`). Compatibilidad `0.x`: si la
+  nota no declara carpeta, no existe docs/media y sí docs/difusion, `doctor.py` y las skills usan la vieja, y
+  `doctor.py` avisa (`media folder`, también si existen las dos); `/gw-update` (`apply.py`) la mueve a docs/media con
   `git mv` cuando la nota no fija carpeta (una carpeta que la nota nombra no se toca), falla cerrado (exit 2) si
-  `docs/media` existe y respeta `--keep-paths` y `keepLegacyPaths`. Además, `web.md` escribe en la `0.x` las claves
+  docs/media existe y respeta `--keep-paths` y `keepLegacyPaths`. Además, `web.md` escribe en la `0.x` las claves
   nuevas **y** las viejas con los mismos valores (`status`/`estado` con `draft`/`borrador` y `ready`/`listo`,
   `date`/`fecha`, `text`/`texto`, `wall`/`muro`, `title`/`titulo`, `body`/`cuerpo`, `images`/`imagenes`,
   `file`/`archivo`): la plantilla y las SKILL.md lo mandan, y `check.py` falla (con la clave y los dos valores) si un
@@ -296,7 +296,7 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   jobs for the machine's OS, once per matrix combination and in `needs` order, with their `env`, `${{ }}` replaced and
   `GITHUB_ENV`/`GITHUB_PATH`. It skips `uses:` steps and system-package installs, and lists what it does not cover
   (another OS, `services`, `container`, expressions it cannot evaluate). With `--apuntar` it writes a line to
-  `ciLocalLog` (default `docs/registros/ci-local.md`; never code for `es-codigo.sh`) with the commit, the result and
+  `ciLocalLog` (default docs/registros/ci-local.md; never code for `es-codigo.sh`) with the commit, the result and
   what was not covered; `--plan` only says what would run. When a PR's CI did not start (no CI, or not started for
   billing), `revision-antes-de-main.sh` accepts the newest green line of the log on the PR head whose commit is an
   ancestor with only content after it, made on a clean tree; the log is the one in the protected branch's config. A
@@ -304,7 +304,7 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   locally"). New keys `ciLocalLog` and `ciLocalWorkflows`; documented in `config.md`, `troubleshooting.md`, the
   `AGENTS.md` template and the agent map.
 - `web` channel in `gw-media-content` (Portal P3): `web.md`, optional in each piece, holds one ```json block the
-  project's website reads (`plantilla/web.md`) with `estado` (`"borrador"`, which the skill leaves; the person writes
+  project's website reads (`skills/gw-media-content/template/web.md`) with `estado` (`"borrador"`, which the skill leaves; the person writes
   `"listo"` to publish it), `fecha` (`YYYY-MM-DD`), `texto` (one per language) and an optional `muro` (`titulo`,
   `cuerpo` and `imagenes` with `archivo` and `alt` per language). The languages are the keys of `texto`: every one of
   `Idiomas:` plus those the site needs (e.g. `gl`), and every text in the block carries those same ones;
@@ -357,8 +357,8 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   there. The template CI picks `--range` or `--rango` depending on what the base branch's `pre-commit` understands.
 - A8, chunk 6b: `gw-media-content` and `gw-media-content-now` with English names. Files: `catalog.md`, `note.md`,
   `rules.json`, `template/` (`sheet.md`, `media/source/{card,diagram,metrics,quote,code,before-after,carousel}.html`),
-  `scripts/figures.py` (was `cifras.py`), `scripts/check.py` (was `comprobar.py`) and their `test_*.py`. What a project
-  stores: a piece uses `sheet.md` (`ficha.md`), `media/` and `media/source/` (`medios/`, `medios/fuente/`), English
+  `skills/gw-media-content/scripts/figures.py` (was `cifras.py`), `skills/gw-media-content/scripts/check.py` (was `comprobar.py`) and their `test_*.py`. What a project
+  stores: a piece uses `sheet.md` (`ficha.md`), media/ and media/source/ (medios/, medios/fuente/), English
   headings and labels (`## Channels`, `## Images`, `## Published`, `## Internal use`, `Languages:`, `Rules read:`,
   `Self-promotion:`, `### Rules of r/<x>`, `Image:`) and a `web.md` with `status` (`draft`/`ready`), `date`, `text`,
   `wall`, `title`, `body`, `images`, `file`; proposals live in `<dir>/proposals/`. Options: `figures.py --since`
@@ -366,9 +366,9 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `--limite`, `--formato-propio`, `--idiomas-web`). English keys in `rules.json` (`reddit.rules_days`,
   `reddit.rules_min_chars`...). CSS variables of the template (`--background`, `--accent`...), the shapes of the
   `render.mjs --plan` output (`sources`, `kind`, `size`, `outputs`) and the key `piece`. `0.x` compatibility:
-  `check.py` accepts, with a warning, the old options and a piece with `ficha.md` + `medios/` + Spanish `web.md` keys;
-  `figures.py` accepts `--desde`; `render.mjs` accepts `medios/fuente/` and the `carrusel` prefix with a warning (and
-  then writes into `medios/`). `/gw-update` removes the old files of the installed skill copy (`OLD_SKILL_FILES` in
+  `check.py` accepts, with a warning, the old options and a piece with `ficha.md` + medios/ + Spanish `web.md` keys;
+  `figures.py` accepts `--desde`; `render.mjs` accepts medios/fuente/ and the `carrusel` prefix with a warning (and
+  then writes into medios/). `/gw-update` removes the old files of the installed skill copy (`OLD_SKILL_FILES` in
   `apply.py`: only when git has them clean) and brings the new ones. **`web.md` does not break whoever reads its old keys:**
   in `0.x` both are written (see chunk 6d); old notes (`límite:`, `formato: propio`,
   `plantilla:`) are still understood by the agent.
@@ -384,12 +384,12 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   with their reasons; an exception that no longer matches anything fails too. This repo only (not installed in
   projects).
 
-- A8, chunk 6d (user decisions, 2026-11-02): the default folder of `gw-media-content` moves from `docs/difusion` to
-  `docs/media` (the note's `Folder`, the `note.md` template and `MEDIA_FOLDER` in `doctor.py`). `0.x` compatibility: when
-  the note declares no folder, `docs/media` does not exist and `docs/difusion` does, `doctor.py` and the skills use the
+- A8, chunk 6d (user decisions, 2026-11-02): the default folder of `gw-media-content` moves from docs/difusion to
+  docs/media (the note's `Folder`, the `note.md` template and `MEDIA_FOLDER` in `doctor.py`). `0.x` compatibility: when
+  the note declares no folder, docs/media does not exist and docs/difusion does, `doctor.py` and the skills use the
   old one, and `doctor.py` warns (`media folder`, also when both exist); `/gw-update` (`apply.py`) moves it to
-  `docs/media` with `git mv` when the note fixes no folder (a folder the note names is never touched), fails closed
-  (exit 2) when `docs/media` exists and respects `--keep-paths` and `keepLegacyPaths`. Also, in `0.x` `web.md` writes the
+  docs/media with `git mv` when the note fixes no folder (a folder the note names is never touched), fails closed
+  (exit 2) when docs/media exists and respects `--keep-paths` and `keepLegacyPaths`. Also, in `0.x` `web.md` writes the
   new keys **and** the old ones with the same values (`status`/`estado` with `draft`/`borrador` and `ready`/`listo`,
   `date`/`fecha`, `text`/`texto`, `wall`/`muro`, `title`/`titulo`, `body`/`cuerpo`, `images`/`imagenes`,
   `file`/`archivo`): the template and the SKILL.md files say so, and `check.py` fails (naming the key and both values)
