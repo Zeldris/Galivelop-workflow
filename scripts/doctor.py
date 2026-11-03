@@ -217,6 +217,37 @@ def check_hooks_path(rep, root):
                  f"only if chained", chain_hint(current))
 
 
+def check_worktrees(rep, root, cfg):
+    """WARN with every worktree whose branch is already merged into the protected branch (it only takes disk and clutters
+    `git worktree list`), with the command that removes it. A branch at the same commit as the protected one is skipped:
+    a branch just created looks merged."""
+    protected = (cfg or {}).get("protectedBranch") or "main"
+    target = next((r for r in (f"refs/heads/{protected}", f"refs/remotes/origin/{protected}")
+                   if git(root, "rev-parse", "--verify", "-q", r + "^{commit}")), None)
+    listing = git(root, "worktree", "list", "--porcelain")
+    if target is None or listing is None:
+        return
+    tip = git(root, "rev-parse", target + "^{commit}")
+    top = os.path.realpath(str(root))
+    merged = []
+    for block in listing.split("\n\n")[1:]:  # the first one is the main checkout
+        fields = dict(l.split(" ", 1) for l in block.splitlines() if " " in l)
+        path, branch = fields.get("worktree"), fields.get("branch", "")
+        if not path or not branch.startswith("refs/heads/") or os.path.realpath(path) == top:
+            continue
+        name = branch[len("refs/heads/"):]
+        if name == protected or git(root, "rev-parse", branch + "^{commit}") == tip:
+            continue
+        if subprocess.run(["git", "-C", str(root), "merge-base", "--is-ancestor", branch, target],
+                          capture_output=True).returncode == 0:
+            merged.append((path, name))
+    for path, name in merged:
+        rep.warn("worktree", f"worktree {path} has branch '{name}', already merged into {protected}",
+                 f"git worktree remove {shlex.quote(path)} && git branch -d {shlex.quote(name)}")
+    if not merged:
+        rep.ok("worktree", f"no worktree with a branch already merged into {protected}")
+
+
 def check_githooks(rep, root, version):
     for name in ("pre-push", "pre-commit", "commit-msg"):
         path = root / ".githooks" / name
@@ -806,6 +837,7 @@ def run(root):
     check_ignored(rep, root)
     check_githooks(rep, root, version)
     check_legacy_paths(rep, cfg)
+    check_worktrees(rep, root, cfg)
     check_log(rep, root, cfg)
     check_commands(rep, root, cfg)
     check_ci(rep, root, cfg)

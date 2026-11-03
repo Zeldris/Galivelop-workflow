@@ -203,6 +203,32 @@ class Doctor(unittest.TestCase):
         code, out = self.doctor()
         self.assertNotIn("WARN", out)
 
+    def add_worktree(self, branch, merge):
+        wt = self.tmp / ("wt-" + branch)
+        self.p.git("worktree", "add", "-q", "-b", branch, str(wt))
+        self.p.write("../wt-%s/%s.txt" % (branch, branch), branch)
+        self.p.git("add", "-A", cwd=wt)
+        self.p.git("commit", "-q", "--no-verify", "-m", branch, cwd=wt)
+        if merge:
+            self.p.git("merge", "-q", "--no-verify", "--no-ff", "-m", "merge " + branch, branch)
+        return wt
+
+    def test_worktree_with_merged_branch_warns_with_the_removal_command(self):
+        done, open_ = self.add_worktree("agent-done", True), self.add_worktree("agent-open", False)
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        line = self.assertLine(out, "WARN", "worktree", str(done), "agent-done", "already merged into main")
+        self.assertIn(f"fix: git worktree remove {done} && git branch -d agent-done", line)
+        self.assertNotIn(str(open_), out)
+        self.p.git("worktree", "remove", str(done))
+        code, out = self.doctor()
+        self.assertNotIn("WARN", out)
+
+    def test_worktree_of_a_branch_still_at_main_is_not_flagged(self):
+        self.p.git("worktree", "add", "-q", "-b", "fresh", str(self.tmp / "wt-fresh"))
+        code, out = self.doctor()
+        self.assertNotIn("WARN", out)
+
     def set_check(self, *commands):
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         cfg["check"] = list(commands)
