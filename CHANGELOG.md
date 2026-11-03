@@ -1,22 +1,7 @@
 # Changelog
 
 Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) · Versiones: [SemVer](https://semver.org/).
-Cada entrada lleva `### ES` y `- D11, D12, D15 (gancho `commit-msg`): claves nuevas `commitFormat` (`"free"` por defecto o `"conventional"`:
-  primera línea `tipo(ámbito)!: texto`, con `WIP: ` y las líneas que crea git aceptadas), `commitRefs` (trailer `Refs:`
-  obligatorio, con ids que abren una entrada en `refsSources`, leídos del índice) y `refsSources` (por defecto, `plan`
-  más `log`). Con `agentSignatures: false`, un trailer `Agent:` que nombre un modelo o proveedor se rechaza. Formato y
-  `Refs:` no se comprueban en fusiones, reverts, cherry-picks ni rebases. Las comprobaciones viven en
-  `scripts/commit-message.py`; `handoff.py` comparte con él la expresión de las entradas y el patrón de ids.
-- D11: `version.py --suggest` sugiere el salto desde la última etiqueta `vX.Y.Z` (`!` o `BREAKING CHANGE:` → mayor, o
-  menor en la `0.x`; `feat` → menor; `fix` y `perf` → parche) y avisa si `plugin.json` no casa; `--release` lo muestra
-  como aviso sin cambiar su salida.
-- D16: ramas de subagente `agent/<id>-<tema>` (en `gw-orchestrate-dealer`); `merge-branch.sh` reúne en un único
-  `Refs:` del mensaje de la fusión, antes de `Siguiente:`, los ids del nombre de la rama y de sus commits, falla
-  cerrado si `git interpret-trailers` falla y limpia también las ramas `agent/*`.
-- Este repo usa ya `commitFormat: "conventional"` y `commitRefs: true` (`taskId` `[A-H]\d+`, ids de
-  `docs/roadmap.md` y de la bitácora); `AGENTS.md` y las plantillas lo explican.
-
-### EN`. La versión vive solo en `.claude-plugin/plugin.json`; el CI comprueba que
+Cada entrada lleva `### ES` y `### EN`. La versión vive solo en `.claude-plugin/plugin.json`; el CI comprueba que
 tiene entrada aquí.
 
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [SemVer](https://semver.org/). Each
@@ -26,8 +11,8 @@ here.
 ## [0.5.0] - Unreleased
 
 Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `docs/roadmap.md`, lista en
-`docs/registros/pendiente.md`). La versión de `plugin.json` no sube hasta publicarla. / Features of `0.5` "Base"
-(formerly planned for `1.0.0`; split in `docs/roadmap.en.md`, list in `docs/registros/pendiente.md`). The
+`docs/records/pending.md`). La versión de `plugin.json` no sube hasta publicarla. / Features of `0.5` "Base"
+(formerly planned for `1.0.0`; split in `docs/roadmap.en.md`, list in `docs/records/pending.md`). The
 `plugin.json` version does not move until it is released.
 
 ### ES
@@ -216,6 +201,25 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `--update-state` cambia por el alias. Si a un proyecto le queda un nombre privado sin alias, no lo imprime (exit 1)
   y dice que se añada a `anonymize`. `gw-harvest` pide usar el alias en el nombre y el texto de las propuestas y
   pasar `private-check.py --all` antes de subirlas.
+- D11, D12, D15 (gancho `commit-msg`): claves nuevas `commitFormat` (`"free"` por defecto o `"conventional"`:
+  primera línea `tipo(ámbito)!: texto`, con `WIP: ` y las líneas que crea git aceptadas), `commitRefs` (trailer `Refs:`
+  obligatorio, con ids que abren una entrada en `refsSources`, leídos del índice) y `refsSources` (por defecto, `plan`
+  más `log`). Con `agentSignatures: false`, un trailer `Agent:` que nombre un modelo o proveedor se rechaza. Formato y
+  `Refs:` no se comprueban en fusiones, reverts, cherry-picks ni rebases. Las comprobaciones viven en
+  `scripts/commit-message.py`; `handoff.py` comparte con él la expresión de las entradas y el patrón de ids.
+- D11: `version.py --suggest` sugiere el salto desde la última etiqueta `vX.Y.Z` (`!` o `BREAKING CHANGE:` → mayor, o
+  menor en la `0.x`; `feat` → menor; `fix` y `perf` → parche) y avisa si `plugin.json` no casa; `--release` lo muestra
+  como aviso sin cambiar su salida.
+- D16: ramas de subagente `agent/<id>-<tema>` (en `gw-orchestrate-dealer`); `merge-branch.sh` reúne en un único
+  `Refs:` del mensaje de la fusión, antes de `Siguiente:`, los ids del nombre de la rama y de sus commits, falla
+  cerrado si `git interpret-trailers` falla y limpia también las ramas `agent/*`.
+- Este repo usa ya `commitFormat: "conventional"` y `commitRefs: true` (`taskId` `[A-H]\d+`, ids de
+  `docs/roadmap.md` y de la bitácora); `AGENTS.md` y las plantillas lo explican.
+- E1, auditoría de `AGENTS.md` y `CLAUDE.md`: cada regla que tiene un check lo nombra en una línea, la de criterio
+  se queda y lo repetido o caducado sale (`AGENTS.md` de 117 a 107 líneas; `CLAUDE.md` sin las reglas que ya da
+  `AGENTS.md`). Las plantillas de `CLAUDE.md` dejan de repetir la revisión antes de la rama protegida y el reparto a
+  subagentes, que están en su `AGENTS.md`. La entrada de D11/D12/D15/D16 que había caído en la cabecera de este
+  archivo vuelve a su sitio.
 
 ### EN
 
@@ -413,6 +417,11 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   the alias and, during `0.x`, by the old real id, which `--update-state` replaces with the alias. A project still
   holding a private name with no alias is not printed (exit 1), with a message to add it to `anonymize`. `gw-harvest`
   asks to use the alias in the proposals' file name and text and to run `private-check.py --all` before committing.
+- E1, `AGENTS.md` and `CLAUDE.md` audit: every rule that has a check names it in one line, judgement rules stay,
+  and what was repeated or stale goes (`AGENTS.md` from 117 to 107 lines; `CLAUDE.md` without the rules `AGENTS.md`
+  already gives). The `CLAUDE.md` templates no longer repeat the review before the protected branch and the
+  subagent dealing, which their `AGENTS.md` holds. The D11/D12/D15/D16 entry that had landed in this file's header
+  goes back to its place.
 
 ## [0.4.3] - 2026-10-27
 
