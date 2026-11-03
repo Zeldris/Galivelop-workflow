@@ -86,16 +86,18 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   is gone; two pushes at once do not step on each other. After changing `worktreeDir`, the old folder is no longer cleaned: delete it by hand. What is linked from the main checkout is set by `worktreeLinks`. A failing command's log
   is kept (`full log: <path>`); when it passes, it is deleted.
 - **`pre-push` does not repeat a `check` that already passed.** The key is the pushed commit's tree, the `check`
-  commands and `checkWrapper`; it is recorded in `<git common dir>/gw-check-green` (linked worktrees share it), expires
-  after 24 h and keeps the last 50. If the key is there, `pre-push` says `check already green on this tree…` and skips
-  the `check` (`relatedTests` still run); otherwise it runs the `check` and, when green, records it (if it ran in the
-  working copy itself, only when it left it clean). The earlier way to record it is
-  `bash .claude/gw/scripts/check.sh` (`scripts/check.sh` in this repo): it runs the `check` on the working copy and,
-  if it passes and the tree (what `git add -A` would commit) did not change during the run, records the green, so the
-  push does not repeat it. At the end it prints a summary (each command, `ok`/`FAILED` and seconds) and keeps the whole
-  output in `<git dir>/gw-check.log` (`GW_CHECK_LOG` changes the path). With `--quiet` (or `GW_CHECK_QUIET=1`) it shows
-  no command output, only, for the one that fails, the last `GW_CHECK_TAIL` lines (40) and the log path. A `check` run by hand (e.g. `bash tests/check.sh`) records nothing. Limits: a push to
-  the protected branch never reads nor writes the cache; nothing is recorded with `assume-unchanged` or
+  commands and `checkWrapper`; it is recorded in `<git common dir>/gw-check-green` (linked worktrees share it),
+  expires after 24 h and keeps the last 50. If the key is there, `pre-push` says `check already green on this tree…`
+  and skips the `check` (`relatedTests` still run); otherwise it runs the `check` and, when green, records it (if it
+  ran in the working copy itself, only when it left it clean). The earlier way to record it is `bash
+  .claude/gw/scripts/check.sh` (`scripts/check.sh` in this repo): it runs the `check` on the working copy and, if it
+  passes and the tree (what `git add -A` would commit) did not change during the run, records the green, so the push
+  does not repeat it. At the end it prints a summary (each command, `ok`/`FAILED` and seconds); the commands' output
+  stays live, as always. With `--quiet` (`-q`, or `GW_CHECK_QUIET=1`/`true`/`yes`) the whole output goes to `<git
+  dir>/gw-check.log` (`GW_CHECK_LOG` changes the path; a relative one counts from the current directory and cannot
+  fall inside the working copy unless git ignores it) and only the last `GW_CHECK_TAIL` lines (40) of the command that
+  fails and the log path are shown. A `check` run by hand (e.g. `bash tests/check.sh`) records nothing. Limits: a push
+  to the protected branch never reads nor writes the cache; nothing is recorded with `assume-unchanged` or
   `skip-worktree` entries (sparse checkout) or a submodule with changes; any failure of the cache only means the
   `check` runs; `check.sh` runs with the working copy's ignored files (`.env`, generated ones), whereas a push with a
   dirty working copy used to check in a clean worktree. `GW_CHECK_CACHE=0` turns it off (`GW_CHECK_CACHE=0 git push`

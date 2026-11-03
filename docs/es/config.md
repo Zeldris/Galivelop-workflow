@@ -87,19 +87,21 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   se conserva (`full log: <ruta>`); si pasa, se borra.
 - **El `pre-push` no repite un `check` que ya pasó en verde.** La clave es el árbol del commit que se sube, las
   órdenes de `check` y `checkWrapper`; se apunta en `<directorio común de git>/gw-check-green` (los worktrees
-  enlazados la comparten), caduca a las 24 h y guarda las últimas 50. Si la clave está, el `pre-push` dice
-  `check already green on this tree…` y se salta el `check` (los `relatedTests` corren igual); si no, corre el
-  `check` y, en verde, lo apunta (si corrió en la propia copia, solo si la dejó limpia). Quien lo apunta antes es
-  `bash .claude/gw/scripts/check.sh` (`scripts/check.sh` en este repo): corre el `check` sobre la copia de trabajo y,
-  si pasa y el árbol (lo que commitearía `git add -A`) no cambió durante la ejecución, apunta el verde; así la subida
-  no lo repite. Al final imprime un resumen (cada orden, `ok`/`FAILED` y segundos) y guarda la salida entera en
-  `<git dir>/gw-check.log` (`GW_CHECK_LOG` cambia la ruta). Con `--quiet` (o `GW_CHECK_QUIET=1`) no muestra la salida de
-  las órdenes, solo, de la que falla, las últimas `GW_CHECK_TAIL` líneas (40) y la ruta del registro. Un `check` pasado a mano (p. ej. `bash tests/check.sh`) no apunta nada. Límites: una subida a la
-  rama protegida nunca lee ni escribe la caché; no se apunta nada con entradas `assume-unchanged` o `skip-worktree`
-  (sparse checkout) ni con un submódulo con cambios; cualquier fallo de la caché solo significa que el `check` corre;
-  `check.sh` corre con los archivos ignorados de la copia de trabajo (`.env`, generados), mientras que antes una
-  subida con la copia sucia comprobaba en un worktree limpio. `GW_CHECK_CACHE=0` la desactiva (`GW_CHECK_CACHE=0 git
-  push` corre el `check` aunque esté apuntado).
+  enlazados la comparten), caduca a las 24 h y guarda las últimas 50. Si la clave está, el `pre-push` dice `check
+  already green on this tree…` y se salta el `check` (los `relatedTests` corren igual); si no, corre el `check` y, en
+  verde, lo apunta (si corrió en la propia copia, solo si la dejó limpia). Quien lo apunta antes es `bash
+  .claude/gw/scripts/check.sh` (`scripts/check.sh` en este repo): corre el `check` sobre la copia de trabajo y, si
+  pasa y el árbol (lo que commitearía `git add -A`) no cambió durante la ejecución, apunta el verde; así la subida no
+  lo repite. Al final imprime un resumen (cada orden, `ok`/`FAILED` y segundos); la salida de las órdenes sale en
+  vivo, como siempre. Con `--quiet` (`-q`, o `GW_CHECK_QUIET=1`/`true`/`yes`) la salida va entera a `<git
+  dir>/gw-check.log` (`GW_CHECK_LOG` cambia la ruta; una relativa cuenta desde el directorio actual y no puede caer
+  dentro de la copia de trabajo, salvo ignorada por git) y solo se muestran, de la orden que falla, las últimas
+  `GW_CHECK_TAIL` líneas (40) y la ruta del registro. Un `check` pasado a mano (p. ej. `bash tests/check.sh`) no
+  apunta nada. Límites: una subida a la rama protegida nunca lee ni escribe la caché; no se apunta nada con entradas
+  `assume-unchanged` o `skip-worktree` (sparse checkout) ni con un submódulo con cambios; cualquier fallo de la caché
+  solo significa que el `check` corre; `check.sh` corre con los archivos ignorados de la copia de trabajo (`.env`,
+  generados), mientras que antes una subida con la copia sucia comprobaba en un worktree limpio. `GW_CHECK_CACHE=0` la
+  desactiva (`GW_CHECK_CACHE=0 git push` corre el `check` aunque esté apuntado).
 - **`pushToProtected`** dice cómo entra hoy el código en la rama protegida. Un push directo que trae código pide
   siempre la marca en el `pre-push`, con `direct` y con `pr`; con `pr`, además, el gancho de PR la pide al crear o
   fusionar el pull request. El config se lee del commit que se sube, no de la copia de trabajo; para la rama
