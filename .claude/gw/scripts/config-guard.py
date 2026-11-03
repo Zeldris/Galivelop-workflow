@@ -41,10 +41,16 @@ What it looks at, in the event on stdin (`tool_name`, `tool_input`, `cwd`):
                               file inside `python3 -c`. A `cd` to a literal folder is followed; `rm -r .claude` counts.
 
 Also covered (D33): the same paths inside an agent worktree (`.claude/worktrees/<name>/...`); `find ... -exec|-execdir|
--ok rm|mv|...` on them; `tar -x -C DIR` and `unzip -d DIR` into a protected folder (or from inside one); and the git calls
-that rewrite the working tree without naming a path (`merge`, `reset --hard|--merge|--keep`, `apply` unless `--check`/
-`--stat`/`--numstat`/`--summary`/`--cached`, `stash pop|apply`, `checkout <branch>` or `-f`), reported as "the working
-tree (git ...)". The file read by `touch -r`, `touch|chmod|chown|chgrp --reference` is not written.
+-ok rm|mv|...` on them; `tar -x -C DIR` and `unzip -d DIR` into a protected folder (or from inside one). The file read by
+`touch -r`, `touch|chmod|chown|chgrp --reference` is not written.
+
+The git calls that rewrite the working tree without naming a path (`merge`, `pull`, `checkout|switch <branch>`,
+`reset --hard|--merge|--keep`, `stash pop|apply`, `rebase`, `cherry-pick`, `revert`, `apply`) ask only when they would
+change a protected path: the guard runs `git diff --name-only` (or `git log`/`git apply --numstat`) from the repository
+the call targets (`-C` followed), with a timeout, and names the path. `pull` looks at the upstream as last fetched
+(`HEAD...@{u}`; the guard does not fetch). If it cannot tell (a reference that does not exist, `--continue`/`--abort`,
+a patch from stdin, `-C` into another repository, `--git-dir`/`--work-tree`/`-c core.worktree`, a git error or timeout)
+it asks, with that as the reason: "the working tree (git ...; cannot tell which files it changes: ...)".
 
 Project root: config.find_root (the script's own repo when it holds .claude/gw.json, else the project the hook runs
 in); it does not read or validate the config. Fails closed: stdin it cannot read, an event without the tool name or
@@ -55,6 +61,7 @@ import os
 import re
 import select
 import shlex
+import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -86,8 +93,6 @@ COPIER_VALUE = {
 }
 IN_PLACE = {"sed", "gsed", "perl", "ruby"}
 GIT_WRITES = {"checkout", "restore", "rm", "mv", "clean"}
-# `git` calls that rewrite the working tree without naming a path, so they can overwrite any protected file.
-TREE_SUBCOMMANDS = {"merge", "reset", "apply", "stash", "checkout"}
 GIT_NOT_WRITES = {  # (git subcommand, long flag, short letter): with this flag the call writes no file of the worktree
     ("rm", "--cached", None), ("clean", "--dry-run", "n"),
 }
@@ -141,7 +146,13 @@ def classify(token, base, root):
     is the folder relative paths are read from; `root` the real project root."""
     if not token or token.startswith("~"):
         return None, None
-    token = re.sub(r"^(\$\{[A-Za-z_][A-Za-z0-9_]*\}|\$[A-Za-z_][A-Za-z0-9_]*)(?=/|$)", root, token)
+    token = re.sub(r"^(\$\{CLAUDE_PROJECT_DIR\}|\$CLAUDE_PROJECT_DIR)(?=/|$)", root, token)
+    other = re.match(r"^(\$\{[A-Za-z_][A-Za-z0-9_]*\}|\$[A-Za-z_][A-Za-z0-9_]*)/(.+)$", token)
+    if other:  # any other variable may or may not be the project: ask only when what follows it is protected
+        rel, kind = classify(other.group(2), root, root)
+        if kind in ("protected", "ancestor"):
+            return f"{token} (a path built from {other.group(1)}, which may be the project)", kind
+        return None, None
     try:
         path = os.path.realpath(token if os.path.isabs(token) else os.path.join(base, token))
         rel = os.path.relpath(path, root)
@@ -292,49 +303,194 @@ def git_write_call(args, k):
     return not any(sub == s and has(flag, letter) for s, flag, letter in GIT_NOT_WRITES)
 
 
-CHECKOUT_VALUE = {"-b", "-B", "--orphan", "--conflict", "--pathspec-from-file", "--inter-hunk-context", "-U", "--unified"}
-READ_ONLY_APPLY = ("--check", "--stat", "--numstat", "--summary")
+GIT_TIMEOUT = 10.0
+# Options of each subcommand that take a value in the next word (their value is not a commit).
+TREE_VALUE = {
+    "merge": {"-m", "-F", "-s", "-X", "--file", "--strategy", "--strategy-option", "--into-name", "--message"},
+    "pull": {"-s", "-X", "--strategy", "--strategy-option", "--upload-pack", "--depth", "--deepen", "--shallow-since",
+             "-j", "--jobs", "-o", "--server-option", "--shallow-exclude", "--negotiation-tip"},
+    "checkout": {"-b", "-B", "--orphan", "--conflict", "--pathspec-from-file", "-U", "--unified", "--inter-hunk-context"},
+    "switch": {"-c", "-C", "--create", "--force-create", "--conflict"},
+    "reset": {"--pathspec-from-file"},
+    "stash": {"-m", "--message"},
+    "rebase": {"-s", "-X", "-x", "-C", "--exec", "--strategy", "--strategy-option", "--onto", "--whitespace"},
+    "cherry-pick": {"-m", "--mainline", "-X", "-s", "--strategy", "--strategy-option"},
+    "revert": {"-m", "--mainline", "-X", "-s", "--strategy", "--strategy-option"},
+    "apply": {"-p", "-C", "--directory", "--include", "--exclude", "--whitespace"},
+}
+TREE_SUBCOMMANDS = set(TREE_VALUE)  # `git` calls that rewrite the working tree without naming a path
+APPLY_DROP = {"--index", "--cached", "--check", "--stat", "--summary", "--numstat", "--apply", "-3", "--3way"}
+DIFF = ("diff", "--name-only", "--no-renames", "--no-ext-diff", "-z")
+LOG = ("log", "-m", "--name-only", "--no-renames", "--format=", "-z")
 
 
-def git_tree_write(args, k, base):
-    """The `git ...` text when the call rewrites the working tree without naming a path (it may overwrite a protected
-    file), else None. `args[k]` is the subcommand. Covers `merge`, `reset --hard|--merge|--keep`, `apply` (not
-    `--check`/`--stat`/`--numstat`/`--summary`/`--cached`), `stash pop|apply`, and `checkout <branch>` (or `-f`)."""
+class Unknown(Exception):
+    """The files a `git` call would change cannot be worked out: the guard asks (it fails closed)."""
+
+
+def git_run(cwd, *argv):
+    env = dict(os.environ, GIT_OPTIONAL_LOCKS="0")
+    try:
+        r = subprocess.run(["git", "--no-optional-locks", *argv], cwd=cwd, capture_output=True, text=True, timeout=GIT_TIMEOUT,
+                           stdin=subprocess.DEVNULL, env=env)
+    except subprocess.TimeoutExpired:
+        raise Unknown(f"`git {argv[0]}` took more than {GIT_TIMEOUT:.0f}s")
+    except OSError as exc:
+        raise Unknown(f"git could not run ({exc})")
+    if r.returncode != 0:
+        why = (r.stderr.strip().splitlines() or ["failed"])[-1]
+        raise Unknown(f"`git {' '.join(argv[:2])}` failed: {why}")
+    return r.stdout
+
+
+def git_cwd(pre, base):
+    """The folder a `git` call runs in: `base` moved by each `-C DIR` among the words before the subcommand."""
+    cwd, n = base, 0
+    while n < len(pre):
+        w = pre[n]
+        if w == "-C" and n + 1 < len(pre):
+            if re.search(r"[$~`*?\[]", pre[n + 1]):
+                raise Unknown(f"`-C {pre[n + 1]}` is a path built at run time")
+            cwd = os.path.realpath(pre[n + 1] if os.path.isabs(pre[n + 1]) else os.path.join(cwd, pre[n + 1]))
+            n += 2
+            continue
+        if w == "-c" and n + 1 < len(pre):
+            if pre[n + 1].lower().startswith(("core.worktree", "core.gitdir")):
+                raise Unknown(f"`-c {pre[n + 1]}` moves the working tree")
+            n += 2
+            continue
+        if re.match(r"--(git-dir|work-tree|namespace|super-prefix)\b", w):
+            raise Unknown(f"`{w}` points git somewhere else")
+        n += 1
+    return cwd
+
+
+def git_top(cwd, root):
+    top = os.path.realpath(git_run(cwd, "rev-parse", "--show-toplevel").strip())
+    if os.path.commonpath([top, root]) not in (top, root):
+        raise Unknown(f"{top} is another repository than the project")
+    return top
+
+
+def split_words(rest, valued):
+    """(positional words before `--`, whether `--` is there, the options): `valued` options also consume the next word."""
+    pos, opts, dd, n = [], [], False, 0
+    while n < len(rest):
+        w = rest[n]
+        if w == "--":
+            dd = True
+            break
+        if w.startswith("-") and w != "-":
+            opts.append(w)
+            n += 2 if w in valued else 1
+            continue
+        pos.append(w)
+        n += 1
+    return pos, dd, opts
+
+
+def is_commit(cwd, name):
+    try:
+        git_run(cwd, "rev-parse", "--verify", "-q", name + "^{commit}")
+        return True
+    except Unknown:
+        return False
+
+
+def tree_specs(sub, rest, cwd):
+    """[argv, ...] of the `git` queries that list the files `git <sub> <rest>` would change ([] when it changes none).
+    Raises Unknown when the call names nothing to compute from (`merge --abort`, `rebase --continue`)."""
+    pos, dd, opts = split_words(rest, TREE_VALUE[sub])
+    flags = "".join(w[1:] for w in opts if re.fullmatch(r"-[A-Za-z]+", w))
+    force = "--force" in opts or "--discard-changes" in opts or "f" in flags
+    if sub == "merge":
+        if not pos:
+            if "--abort" in opts:
+                return [DIFF + ("HEAD", "--")]  # puts the tree back to HEAD
+            if "--continue" in opts or "--quit" in opts:
+                return []
+            raise Unknown("`git merge` names no commit (--abort, --continue, --quit)")
+        return [DIFF + (f"HEAD...{x}", "--") for x in pos]
+    if sub == "pull":
+        upstream = f"{pos[0]}/{re.sub('^refs/heads/', '', pos[1])}" if len(pos) > 1 else "@{u}"
+        return [DIFF + (f"HEAD...{upstream}", "--")]  # what was last fetched: pull fetches first
+    if sub in ("checkout", "switch"):
+        if sub == "checkout" and dd:
+            return []  # `git checkout <tree-ish> -- <paths>` writes the paths, which the path rules look at
+        target = None
+        for w in pos:
+            if sub == "switch" or w == "-" or not os.path.exists(os.path.join(cwd, w)) or is_commit(cwd, w):
+                target = w  # a name that is both a folder here and a branch is the branch
+                break
+        if target is None:
+            return [DIFF + ("HEAD", "--")] if force else []
+        return [DIFF + ("@{-1}" if target == "-" else target, "--")]
+    if sub == "reset":
+        if not any(w in ("--hard", "--merge", "--keep") for w in opts):
+            return []
+        return [DIFF + (pos[0] if pos else "HEAD", "--")]
+    if sub == "stash":
+        if not pos or pos[0] not in ("pop", "apply"):
+            return []
+        ref = pos[1] if len(pos) > 1 else "0"
+        ref = f"stash@{{{ref}}}" if ref.isdigit() else ref
+        return [("stash", "show", "--name-only", "--include-untracked", "-z", ref)]  # git 2.32+; older: it asks
+    if sub == "rebase":
+        onto = [rest[n + 1] for n, w in enumerate(rest[:-1]) if w == "--onto"] + \
+               [w.split("=", 1)[1] for w in rest if w.startswith("--onto=")]
+        if not pos and not onto:
+            raise Unknown("`git rebase` names no commit (--continue, --abort, --skip)")
+        specs = [DIFF + (f"HEAD...{x}", "--") for x in onto + pos[:1]]
+        if len(pos) > 1:
+            specs.append(DIFF + (pos[1], "--"))  # `git rebase <upstream> <branch>` checks the branch out
+        return specs
+    if sub in ("cherry-pick", "revert"):
+        if not pos:
+            raise Unknown(f"`git {sub}` names no commit (--continue, --abort, --skip, --quit)")
+        return [LOG + (() if ".." in x else ("-1",)) + (x, "--") for x in pos]
+    if any(w in ("--check", "--stat", "--numstat", "--summary") for w in opts) or (
+            "--cached" in opts and "--index" not in opts):
+        return []  # a dry run, or the index only
+    if not pos or "-" in pos:  # apply
+        raise Unknown("`git apply` reads its patch from stdin")
+    return [("apply", "--numstat") + tuple(w for w in rest if w not in APPLY_DROP)]
+
+
+def git_tree_write(args, k, base, root):
+    """The protected paths (or the reason it cannot tell) of a `git` call that rewrites the working tree without naming
+    a path: `merge`, `pull`, `checkout|switch <branch>`, `reset --hard|--merge|--keep`, `stash pop|apply`, `rebase`,
+    `cherry-pick`, `revert`, `apply`. It asks `git diff`/`git log` which files the call would change and keeps the
+    protected ones; if it cannot tell, it keeps the doubt."""
     sub = args[k]
     if sub not in TREE_SUBCOMMANDS:
-        return None
-    before, i = [], k + 1
-    while i < len(args) and args[i] != "--":
-        before.append(args[i])
-        i += 1
-    shorts = "".join(w[1:] for w in before if re.fullmatch(r"-[A-Za-z]+", w))
-    text = "git " + " ".join(args[k:k + 3])
-    if sub == "merge":
-        return text
-    if sub == "reset":
-        return text if any(w in ("--hard", "--merge", "--keep") for w in before) else None
-    if sub == "apply":
-        if any(w in READ_ONLY_APPLY for w in before) or ("--cached" in before and "--index" not in before):
-            return None
-        return text
-    if sub == "stash":
-        return text if before[:1] in (["pop"], ["apply"]) else None
-    positional, j = [], 0
-    while j < len(before):  # checkout
-        w = before[j]
-        if w.startswith("-") and w != "-":
-            j += 2 if w in CHECKOUT_VALUE else 1
-            continue
-        positional.append(w)
-        j += 1
-    if "--force" in before or "f" in shorts:
-        return text
-    if "--" in args[k + 1:]:
-        return text if positional else None  # `git checkout main -- x`: a tree-ish, then paths
-    for w in positional:  # no `--`: a word that is not a file here is a branch or commit
-        if w == "-" or not os.path.exists(os.path.join(base, w)):
-            return text
-    return None
+        return []
+    try:
+        cwd = git_cwd(args[:k], base)
+        specs = tree_specs(sub, args[k + 1:], cwd)
+        if not specs:
+            return []
+        top = git_top(cwd, root)
+        found = []
+        for argv in specs:
+            if argv[0] == "apply" and cwd != top:
+                raise Unknown("`git apply` runs below the repository top")
+            out = git_run(cwd if argv[0] == "apply" else top, *argv)
+            if argv[0] == "apply":
+                names = []
+                for line in out.splitlines():
+                    path = line.split("\t", 2)[-1]
+                    if path.startswith('"') or " => " in path or "{" in path:
+                        raise Unknown("`git apply --numstat` printed a path it cannot read")
+                    names.append(path)
+            else:
+                names = [x for x in out.split("\0") if x]
+            for name in names:
+                rel, kind = classify(os.path.join(top, name), top, root)
+                if kind == "protected" and rel not in found:
+                    found.append(rel)
+        return found
+    except (Unknown, ValueError, OSError) as exc:
+        return [f"the working tree (git {' '.join(args[k:k + 3])}; cannot tell which files it changes: {exc})"]
 
 
 def extract_hits(cmd, args, base, root):
@@ -377,7 +533,10 @@ def bash_hits(command, base, root, depth=0):
     hits = []
     for seg in segments(tokenize(command)):
         i, cmd = command_word(seg)
-        args = [w for j, w in enumerate(seg) if j != i and not is_redirect(w)]
+        arg_at = [j for j, w in enumerate(seg) if j != i and not is_redirect(w) and not fd_before_redirect(seg, j)
+                  and not (j > 0 and is_redirect_operator(seg[j - 1]))]  # `2>/dev/null` is no argument
+        args = [seg[j] for j in arg_at]
+        git_sub = None  # index in `seg` of the `git` subcommand
         if cmd in ("cd", "pushd"):  # later commands read their relative paths from there
             target = next((w for w in args if not w.startswith("-")), None)
             if target and not re.search(r"[$~`*?\[]", target):
@@ -393,7 +552,8 @@ def bash_hits(command, base, root, depth=0):
             dest = None
             if kind in ("protected", "ancestor"):
                 hits.append(rel)
-        writes = git_write = False
+        writes = git_write = find_write = False
+        seg_base = base  # a `git -C DIR` reads its paths from DIR
         if cmd in WRITERS:
             writes = True
         elif cmd in IN_PLACE and in_place_flag(args):
@@ -401,17 +561,24 @@ def bash_hits(command, base, root, depth=0):
         elif cmd == "git":
             k = next((k for k, w in enumerate(args) if not w.startswith("-") and (k == 0 or args[k - 1] not in ("-C", "-c"))), None)
             writes = git_write = k is not None and args[k] in GIT_WRITES and git_write_call(args, k)
+            if k is not None:
+                git_sub = arg_at[k]
+                try:
+                    seg_base = git_cwd(args[:k], base)
+                except Unknown:
+                    pass
         elif cmd == "find":
             writes = "-delete" in args or any(
                 w in ("-exec", "-execdir", "-ok", "-okdir") and n + 1 < len(args)
                 and (os.path.basename(args[n + 1]) in WRITERS or os.path.basename(args[n + 1]) in IN_PLACE | {"git"})
                 for n, w in enumerate(args))
+            find_write = writes  # its start folder counts even when it only holds protected files (`find .claude -delete`)
         elif cmd in ("tar", "unzip"):
             hits += extract_hits(cmd, args, base, root)
-        seg_start, tree = len(hits), None
+        tree = []
         if cmd == "git":
             k = next((k for k, w in enumerate(args) if not w.startswith("-") and (k == 0 or args[k - 1] not in ("-C", "-c"))), None)
-            tree = git_tree_write(args, k, base) if k is not None else None
+            tree = git_tree_write(args, k, base, root) if k is not None else []
         reference = set()  # the file `touch -r`, `chmod --reference` and `chown --reference` read is not written
         for j, w in enumerate(seg):
             if cmd == "touch" and takes_next(w, {"-r", "--reference", "-d", "--date", "-t"}) and j + 1 < len(seg):
@@ -420,23 +587,24 @@ def bash_hits(command, base, root, depth=0):
                 reference.add(j + 1)
         removes_sources = cmd == "rsync" and any(w.startswith("--remove-source") for w in args)
         for j, w in enumerate(seg):
-            if is_redirect(w) or j == i or j in reference:
+            if is_redirect(w) or j == i or j in reference or fd_before_redirect(seg, j):
                 continue
+            if cmd == "git" and (j == git_sub or w.startswith("-") or j > 0 and seg[j - 1] in ("-C", "-c")):
+                continue  # the subcommand and the value of `-C`/`-c` are not paths the call writes
             if cmd == "dd" and w.startswith("of="):
                 w = w[3:]  # `dd of=FILE` writes FILE; `if=FILE` only reads it
-            rel, kind = classify(w, base, root)
+            rel, kind = classify(w, seg_base if cmd == "git" else base, root)
             if kind is None:
                 continue
             redirected = j > 0 and ">" in seg[j - 1]  # `>`, `>>`, `>|`, `&>`: the word after it is written
             written = writes and (cmd not in READ_SOURCES or j == dest or removes_sources)  # a copy only reads its sources
             if kind == "protected" and (redirected or written):
                 hits.append(rel)
-            elif kind == "ancestor" and (redirected or cmd in DESTRUCTIVE or j == dest or git_write):
+            elif kind == "ancestor" and (redirected or cmd in DESTRUCTIVE or j == dest or git_write or find_write):
                 hits.append(rel)
-            elif kind == "root" and git_write and seg[j - 1] not in ("-C", "-c"):  # `git checkout -- .`, `git restore .`: the pathspec covers it all
+            elif kind == "root" and (git_write or find_write):  # `git checkout -- .`, `git restore .`: the pathspec covers it all
                 hits.append(rel)
-        if tree and len(hits) == seg_start:  # a protected path the call names is the better reason
-            hits.append(f"the working tree ({tree})")
+        hits += tree
     return hits
 
 

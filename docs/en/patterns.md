@@ -57,7 +57,9 @@ same time.
   under `.claude/worktrees/` (Claude Code's isolated worktrees) do not count as uncommitted changes.
 - **On touching the workflow's configuration**, the `PreToolUse` hook `config-guard.py` asks the person before
   `.claude/settings.json`, `.claude/gw.json`, `.githooks/` or `.claude/gw/scripts/` are edited (with `Edit`, `Write` or
-  a `Bash` command that writes there); if it cannot read the event it asks too. To regenerate the applied copy:
+  a `Bash` command that writes there; also `.claude/settings.local.json` and the same paths under `.claude/worktrees/`;
+  git commands that rewrite the tree —`merge`, `pull`, `checkout`, `switch`, `reset --hard`, `stash pop`, `rebase`,
+  `cherry-pick`, `revert`, `apply`— ask only if they would change one of those paths, or if it cannot work that out); if it cannot read the event it asks too. To regenerate the applied copy:
   `python3 scripts/apply.py .`.
 - **When dealing work to subagents**, the `PreToolUse` hook `subagent-cap.py` counts the session's `Agent`/`Task`
   calls and, at `subagentCap` (30 by default) and every 10 after, asks the person to check they are not looping

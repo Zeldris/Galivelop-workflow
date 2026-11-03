@@ -56,7 +56,9 @@ la vez.
   No cuenta como cambio sin commitear lo no versionado bajo `.claude/worktrees/` (los worktrees aislados de Claude Code).
 - **Al tocar la configuración del flujo**, el gancho `PreToolUse` `config-guard.py` pide permiso a la persona antes de
   editar `.claude/settings.json`, `.claude/gw.json`, `.githooks/` o `.claude/gw/scripts/` (con `Edit`, `Write` o una
-  orden de `Bash` que escriba ahí); si no entiende la entrada, también pregunta. Para regenerar la copia aplicada:
+  orden de `Bash` que escriba ahí, también `.claude/settings.local.json` y las mismas rutas en `.claude/worktrees/`;
+  las órdenes de git que reescriben el árbol —`merge`, `pull`, `checkout`, `switch`, `reset --hard`, `stash pop`,
+  `rebase`, `cherry-pick`, `revert`, `apply`— preguntan solo si cambiarían una de esas rutas, o si no puede calcularlo); si no entiende la entrada, también pregunta. Para regenerar la copia aplicada:
   `python3 scripts/apply.py .`.
 - **Al repartir a subagentes**, el gancho `PreToolUse` `subagent-cap.py` cuenta los `Agent`/`Task` de la sesión y,
   al llegar a `subagentCap` (30 por defecto) y cada 10 después, pide a la persona que compruebe que no están en bucle

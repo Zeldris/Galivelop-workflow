@@ -7,6 +7,7 @@ Every case that expects an `ask` checks the reason (the file it names and the wo
 import json
 import os
 import shutil
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -330,8 +331,8 @@ class BashWrites(Base):
 
     def test_git_commands_that_do_not_cover_a_protected_file_are_allowed(self):
         self.assertEachAllowed([
+            'git checkout main',
             'git checkout -b feature',
-            'git switch feature',
             'git restore src/a.py',
             'git checkout -- src',
             'git -C . restore src/a.py',
@@ -372,29 +373,23 @@ class BashWrites(Base):
                                 'tar -xf /tmp/a.tar', 'tar -czf /tmp/a.tgz .claude', 'unzip /tmp/a.zip -d src',
                                 'unzip -l /tmp/a.zip', 'cd .githooks && unzip -l /tmp/a.zip', 'unzip /tmp/a.zip'])
 
-    def test_git_commands_that_rewrite_the_working_tree_ask_naming_the_command(self):
-        for command, shown in [('git checkout main', 'git checkout main'), ('git checkout origin/main', 'git checkout origin/main'),
-                               ('git checkout -', 'git checkout -'), ('git checkout -b feature main', 'git checkout -b feature'),
-                               ('git checkout -f', 'git checkout -f'), ('git checkout main -- src', 'git checkout main --'),
-                               ('git reset --hard', 'git reset --hard'), ('git reset --hard HEAD~1', 'git reset --hard HEAD~1'),
-                               ('git reset --merge', 'git reset --merge'), ('git stash pop', 'git stash pop'),
-                               ('git stash apply', 'git stash apply'), ('git merge origin/main', 'git merge origin/main'),
-                               ('git apply fix.patch', 'git apply fix.patch'), ('git apply --index fix.patch', 'git apply --index'),
-                               ('git -C . merge feature', 'git merge feature'), ('git merge --abort', 'git merge --abort'),
-                               ('echo a && git reset --hard', 'git reset --hard')]:
-            with self.subTest(command=command):
-                reason = self.assertAsks(self.p.tool("Bash", command=command), "this command writes to the working tree",
-                                         "only with the user's OK")
-                self.assertIn(shown, reason)
+    def test_find_starting_at_a_folder_that_holds_protected_files_asks(self):
+        self.assertEachAsks(['find .claude -name gw.json -exec rm {} +', 'find . -name gw.json -delete',
+                             'find .claude -delete', 'find . -name settings.local.json -exec rm -f {} \\;',
+                             'find .claude/gw -exec rm -rf {} +', 'find .claude -type f -exec rm {} \\;'])
+        self.assertEachAllowed(['find .claude -name gw.json', 'find . -name "*.py"', 'find src -delete',
+                                'find .claude -exec cat {} +', 'find . -exec grep -l x {} \\;'])
 
-    def test_git_commands_that_leave_the_working_tree_alone_are_allowed(self):
-        (self.p.work / "src" / "a.py").write_text("x\n")
-        self.assertEachAllowed(['git checkout -b feature', 'git checkout -B feature', 'git checkout src/a.py',
-                                'git checkout -- src/a.py', 'git checkout -- src', 'git reset', 'git reset --soft HEAD~1',
-                                'git reset --mixed HEAD~1', 'git reset HEAD src/a.py', 'git stash list', 'git stash show',
-                                'git apply --check fix.patch', 'git apply --stat fix.patch', 'git apply --cached fix.patch',
-                                'git apply --numstat fix.patch', 'git merge-base main HEAD', 'git fetch origin main',
-                                'git branch -f x', 'git log', 'git'])
+    def test_only_the_project_dir_variable_stands_for_the_root(self):
+        self.assertEachAsks(['echo x > $CLAUDE_PROJECT_DIR/.claude/gw.json', 'rm ${CLAUDE_PROJECT_DIR}/.githooks/pre-push'],
+                            named=None)
+        self.assertEachAsks(['echo x > $CLAUDE_PROJECT_DIR/.claude/gw.json'], named=".claude/gw.json")
+        for command in ('echo x > $HOME/.claude/gw.json', 'rm $TMP/.githooks/pre-push', 'rm -rf ${ROOT}/.claude'):
+            with self.subTest(command=command):
+                reason = self.assertAsks(self.p.tool("Bash", command=command), "a path built from")
+                self.assertIn("which may be the project", reason)
+        self.assertEachAllowed(['echo x > $HOME/notes.txt', 'rm $TMP/build', 'cat $HOME/.claude/gw.json', 'echo $HOME'])
+
 
     def test_a_reference_file_is_read_not_written(self):
         self.assertEachAllowed(['touch -r .claude/gw.json src/a.py', 'touch --reference=.claude/gw.json src/a.py',
@@ -489,6 +484,184 @@ class BashWrites(Base):
 
     def test_an_unclosed_quote_is_still_looked_at(self):
         self.assertAsks(self.p.tool("Bash", command="echo 'x > .claude/gw.json"), ".claude/gw.json")
+
+
+class GitTreeWrites(Base):
+    """`git` calls that rewrite the working tree ask only when they would change a protected path."""
+    HOOK = ".githooks/pre-push"
+
+    def setUp(self):
+        super().setUp()
+        p = self.p
+        p.commit("guard files")  # the branches below must not carry the untracked guard away
+        p.git("push", "-q", "--no-verify", "origin", "main")
+        p.git("checkout", "-q", "-b", "hooks")
+        p.write(self.HOOK, "#!/bin/sh\n")
+        p.commit("hook")
+        p.git("checkout", "-q", "main")
+        p.git("checkout", "-q", "-b", "docs")
+        p.write("docs/notes.md", "changed\n")
+        p.commit("notes")
+        p.git("checkout", "-q", "main")
+        p.git("checkout", "-q", "-b", "wt")
+        p.write(".claude/worktrees/agent-x/.claude/gw.json", "{}\n")
+        p.commit("worktree copy")
+        p.git("checkout", "-q", "main")
+        p.git("branch", "-q", "--set-upstream-to=origin/main", "main")
+
+    def asks(self, commands, named):
+        for command in commands:
+            with self.subTest(command=command):
+                reason = self.assertAsks(self.p.tool("Bash", command=command), "this command writes to",
+                                         "only with the user's OK")
+                self.assertIn(f"writes to {named}:", reason)
+
+    def allowed(self, commands):
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertAllowed(self.p.tool("Bash", command=command))
+
+    def unknown(self, commands, why):
+        for command in commands:
+            with self.subTest(command=command):
+                reason = self.assertAsks(self.p.tool("Bash", command=command), "writes to the working tree",
+                                         "cannot tell which files it changes")
+                self.assertIn(why, reason)
+
+    def test_each_command_that_would_change_a_protected_file_asks_naming_it(self):
+        self.asks(['git merge hooks', 'git merge docs hooks', 'git checkout hooks', 'git checkout -b new hooks',
+                   'git switch hooks', 'git switch --detach hooks', 'git reset --hard hooks', 'git reset --keep hooks',
+                   'git reset --merge hooks', 'git rebase hooks', 'git rebase --onto hooks main docs',
+                   'git rebase main hooks', 'git cherry-pick hooks', 'git cherry-pick main..hooks',
+                   'git cherry-pick docs hooks', 'git revert hooks', 'git revert --no-edit hooks',
+                   'git -c x=y merge hooks', 'git -C . merge hooks', 'git -c x=y -C . merge hooks',
+                   'echo a && git merge hooks', 'cd src && git merge hooks'], self.HOOK)
+
+    def test_a_worktree_copy_of_a_protected_file_counts(self):
+        self.asks(['git merge wt', 'git checkout wt', 'git cherry-pick wt'], ".claude/worktrees/agent-x/.claude/gw.json")
+
+    def test_uncommitted_changes_to_a_protected_file_count(self):
+        self.p.write(".claude/gw.json", self.p.work.joinpath(".claude/gw.json").read_text() + " ")
+        self.asks(['git reset --hard', 'git checkout -f', 'git checkout main', 'git switch main', 'git switch -f main',
+                   'git reset --hard HEAD'], ".claude/gw.json")
+        self.allowed(['git reset --soft HEAD', 'git checkout -b feature'])
+
+    def test_each_command_that_changes_no_protected_file_is_allowed(self):
+        self.allowed(['git merge docs', 'git merge origin/main', 'git pull', 'git checkout docs', 'git checkout main',
+                      'git switch docs', 'git switch -c feature', 'git switch main', 'git checkout -b feature docs',
+                      'git reset --hard', 'git reset --hard docs', 'git reset --hard HEAD', 'git reset --soft hooks',
+                      'git reset --mixed hooks', 'git reset', 'git rebase docs', 'git rebase main docs',
+                      'git cherry-pick docs', 'git cherry-pick main..docs', 'git revert docs', 'git revert main..docs',
+                      'git -c x=y merge docs', 'git -C . merge origin/main', 'git -C . checkout docs',
+                      'git checkout docs -- docs', 'git stash list', 'git stash show', 'git stash',
+                      'git merge-base main hooks', 'git fetch origin', 'git log hooks'])
+
+    def stash(self, rel, text):
+        self.p.git("checkout", "-q", "docs" if rel.startswith("docs") else "hooks")
+        self.p.write(rel, text)
+        self.p.git("stash", "-q")
+        self.p.git("checkout", "-q", "main")
+
+    def test_stash_pop_and_apply_ask_for_a_stash_that_holds_a_protected_file(self):
+        self.stash(self.HOOK, "#!/bin/sh\necho changed\n")
+        self.asks(['git stash pop', 'git stash apply', 'git stash apply stash@{0}', 'git stash pop 0',
+                   'git stash apply --index'], self.HOOK)
+
+    def test_stash_pop_and_apply_pass_for_a_stash_without_protected_files(self):
+        self.stash("docs/notes.md", "stashed\n")
+        self.allowed(['git stash pop', 'git stash apply', 'git stash apply stash@{0}', 'git stash apply 0'])
+        self.unknown(['git stash pop stash@{7}', 'git stash apply 3'], "failed")
+
+    def test_git_apply_reads_the_patch_for_its_files(self):
+        tmp = self.tmp
+        (tmp / "hook.patch").write_text(self.p.git("diff", "main", "hooks", "--").stdout)
+        (tmp / "docs.patch").write_text(self.p.git("diff", "main", "docs", "--").stdout)
+        self.asks([f'git apply {tmp}/hook.patch', f'git apply --index {tmp}/hook.patch',
+                   f'git apply --3way {tmp}/hook.patch', f'git apply -p1 {tmp}/hook.patch'], self.HOOK)
+        self.allowed([f'git apply {tmp}/docs.patch', f'git apply --check {tmp}/hook.patch',
+                      f'git apply --stat {tmp}/hook.patch', f'git apply --cached {tmp}/docs.patch'])
+        self.unknown(['git apply', 'git apply -', f'git apply {tmp}/missing.patch'], "git apply")
+
+    def test_git_pull_looks_at_the_upstream(self):
+        self.p.git("push", "-q", "origin", "hooks:main")
+        self.p.git("fetch", "-q", "origin")
+        self.asks(['git pull', 'git pull --rebase', 'git pull origin main', 'git pull --ff-only origin main'], self.HOOK)
+        self.p.git("checkout", "-q", "docs")  # no upstream: it cannot tell
+        self.unknown(['git pull'], "failed")
+
+    def test_a_reference_that_does_not_exist_asks(self):
+        self.unknown(['git merge nosuchref', 'git checkout nosuchref', 'git switch nosuchref',
+                      'git reset --hard nosuchref', 'git rebase nosuchref', 'git cherry-pick nosuchref',
+                      'git revert nosuchref', 'git cherry-pick main..nosuchref', 'git merge docs nosuchref'], "failed")
+
+    def test_a_call_that_names_nothing_to_compute_from_asks(self):
+        self.unknown(['git merge', 'git rebase --continue', 'git rebase --abort',
+                      'git cherry-pick --continue', 'git revert --abort'], "names no commit")
+
+    def test_another_repository_or_a_redirected_git_asks(self):
+        other = self.tmp / "other"
+        self.p.git("init", "-q", str(other), cwd=self.tmp)
+        self.unknown([f'git -C {other} merge docs', f'git -C {other} checkout docs'], "another repository")
+        self.unknown(['git -C /nonexistent-dir merge docs', 'git -C "$SOMEWHERE" merge docs'], "")
+        self.unknown(['git --git-dir=/tmp/x merge docs', 'git --work-tree=/tmp/x checkout docs',
+                      'git -c core.worktree=/tmp/x merge docs'], "")
+
+    def test_merge_abort_looks_at_the_tree_and_continue_and_quit_write_nothing(self):
+        self.allowed(['git merge --abort', 'git merge --continue', 'git merge --quit'])
+        self.p.write(".claude/gw.json", self.p.work.joinpath(".claude/gw.json").read_text() + " ")
+        self.asks(['git merge --abort'], ".claude/gw.json")
+        self.allowed(['git merge --quit'])
+
+    def test_the_commands_of_the_workflow_itself_pass(self):
+        self.p.git("checkout", "-q", "docs")
+        self.p.git("checkout", "-q", "main")
+        self.allowed(['git checkout -', 'git checkout -q main', 'git merge --ff-only origin/main',
+                      'git merge --no-ff origin/main', 'git fetch origin && git merge origin/main',
+                      'git reset --hard origin/main', 'git checkout --track -b feature origin/main',
+                      'git checkout main 2>/dev/null', 'git checkout -- docs/notes.md 2>/dev/null'])
+        self.p.git("checkout", "-q", "hooks")
+        self.p.git("checkout", "-q", "main")
+        self.asks(['git checkout -'], self.HOOK)  # `-` is the previous branch
+
+    def test_checkout_of_a_tree_ish_with_paths_looks_only_at_the_paths(self):
+        self.allowed(['git checkout hooks -- docs/notes.md', 'git checkout hooks -- src'])
+        self.assertAsks(self.p.tool("Bash", command='git checkout hooks -- .githooks/pre-push'), ".githooks/pre-push")
+
+    def test_a_stash_with_an_untracked_protected_file_asks(self):
+        self.p.write(".githooks/new-hook", "#!/bin/sh\n")
+        self.p.git("stash", "-q", "-u")
+        self.asks(['git stash pop', 'git stash apply'], ".githooks/new-hook")
+
+    def test_git_c_reads_its_paths_from_that_folder(self):
+        (self.p.work / ".claude" / "worktrees" / "a").mkdir(parents=True)
+        self.p.git("worktree", "add", "-q", "-b", "agent", str(self.p.work / ".claude" / "worktrees" / "a"), "main")
+        self.assertAsks(self.p.tool("Bash", command='git -C .claude/worktrees/a checkout -- .claude/gw.json'),
+                        ".claude/worktrees/a/.claude/gw.json")
+        self.assertAsks(self.p.tool("Bash", command='git -C .claude/gw/scripts checkout -- config.py'),
+                        ".claude/gw/scripts/config.py")
+        self.assertAsks(self.p.tool("Bash", command='git -C .claude -C gw checkout -- scripts/config.py'),
+                        ".claude/gw/scripts/config.py")
+        self.allowed(['git -C .claude/worktrees/a checkout -- docs/notes.md', 'git -C /tmp checkout -- gw.json',
+                      'git -C .claude/gw status', 'git -C .claude/gw/scripts log'])
+        self.assertAsks(self.p.tool("Bash", command='git -C .claude/worktrees/a merge hooks'),
+                        ".claude/worktrees/a/.githooks/pre-push")
+
+    def test_the_other_repo_check_follows_cd(self):
+        other = self.tmp / "other"
+        self.p.git("init", "-q", str(other), cwd=self.tmp)
+        self.unknown([f'cd {other} && git merge docs'], "another repository")
+
+    def test_a_git_that_fails_or_hangs_asks(self):
+        real = shutil.which("git")
+        fake = self.tmp / "fakebin"
+        fake.mkdir()
+        (fake / "git").write_text(f'#!/bin/sh\ncase "$*" in *diff*) echo "fatal: boom" >&2; exit 128;; esac\nexec {real} "$@"\n')
+        (fake / "git").chmod(0o755)
+        code, out = self.p.run(sys.executable, str(self.p.scripts / SCRIPT),
+                               stdin=json.dumps({"tool_name": "Bash", "cwd": str(self.p.work),
+                                                 "tool_input": {"command": "git merge docs"}}),
+                               env={"PATH": f"{fake}:{os.environ['PATH']}"})
+        self.assertAsks((code, out), "cannot tell which files it changes", "boom")
 
 
 class FailClosed(Base):
