@@ -2314,6 +2314,8 @@ class CommitMsgUnreadableConfig(Base):
                     r, before = self.attempt(how, ["-m", "WIP: relevo de emergencia"], env)
                     self.assertEqual(r.returncode, 0, r.stderr)
                     self.assertIn("cannot read .claude/gw.json, so this WIP commit was not checked", r.stderr)
+                    if env:
+                        self.assertIn("pre-commit: WARNING: cannot read protectedPaths", r.stderr)
                     self.assertNotEqual(self.p.sha(), before)
 
     def test_the_reason_of_the_failure_is_shown(self):
@@ -2340,12 +2342,13 @@ class CommitMsgUnreadableConfig(Base):
         self.assertEqual(self.p.sha(), before)
 
     def test_a_wip_with_an_agent_signature_is_rejected_even_without_the_config(self):
-        for how in ("garbage", "missing"):
-            with self.subTest(how=how):
-                r, before = self.attempt(how, ["-m", "WIP: x", "-m", self.SIGNATURE])
-                self.assertNotEqual(r.returncode, 0)
-                self.assertIn("agent signature", r.stderr)
-                self.assertEqual(self.p.sha(), before)
+        for env in (None, {"CLAUDECODE": "1"}):
+            for how in ("garbage", "missing"):
+                with self.subTest(how=how, claudecode=bool(env)):
+                    r, before = self.attempt(how, ["-m", "WIP: x", "-m", self.SIGNATURE], env)
+                    self.assertNotEqual(r.returncode, 0)
+                    self.assertIn("agent signature", r.stderr)
+                    self.assertEqual(self.p.sha(), before)
 
     def test_a_wip_with_a_staged_log_passes_without_the_log_check(self):
         self.setUp()
@@ -2360,15 +2363,26 @@ class CommitMsgUnreadableConfig(Base):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("cannot read or validate .claude/gw.json", r.stderr)
 
-    def test_blank_and_comment_lines_before_the_subject_are_ignored(self):
+    def test_blank_lines_before_the_subject_are_ignored(self):
         self.setUp()
         self.break_config("garbage")
         self.p.write("docs/notes.md", "x\n")
         self.p.git("add", "-A")
         msg = self.tmp / "m.txt"
-        msg.write_text("\n   \n# a comment\nWIP: relevo\n")
-        r = self.p.git("commit", "-q", "-F", str(msg), "--cleanup=strip", ok=False)
+        msg.write_text("\n   \nWIP: relevo\n")
+        r = self.p.git("commit", "-q", "-F", str(msg), ok=False)
         self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_a_comment_line_before_wip_is_the_real_subject_and_is_not_a_wip(self):
+        r, before = self.attempt("garbage", ["-m", "# x\nWIP: y"])
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("cannot read or validate .claude/gw.json", r.stderr)
+        self.assertEqual(self.p.sha(), before)
+
+    def test_an_indented_wip_is_not_a_wip(self):
+        r, _ = self.attempt("garbage", ["-m", "  WIP: y"])
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("cannot read or validate .claude/gw.json", r.stderr)
 
     def test_pre_commit_without_claudecode_does_not_read_the_config(self):
         r, _ = self.attempt("garbage", ["--no-verify", "-m", "x"])

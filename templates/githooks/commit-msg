@@ -56,12 +56,12 @@ comment_prefix() {
   case "$cc" in ""|auto) cc="#" ;; esac
   printf '%s' "$cc"
 }
-# A WIP commit: its first line git keeps (comment and blank lines are cleaned away) starts with "WIP: ".
+# A WIP commit: its first non-blank line starts with "WIP: " (no leading spaces). Comment lines are not skipped: only
+# cleanup=strip removes them, and -m/-F keep them, so a "# x" first line is the real subject there.
 is_wip() {
   [ -n "$msg" ] && [ -r "$msg" ] || return 1
   local subject
-  subject="$(awk -v cc="$(comment_prefix)" 'substr($0, 1, length(cc)) == cc { next } /^[[:space:]]*$/ { next } { print; exit }' "$msg")"
-  subject="${subject#"${subject%%[![:space:]]*}"}"
+  subject="$(awk '/^[[:space:]]*$/ { next } { print; exit }' "$msg")"
   case "$subject" in "WIP: "*) return 0 ;; esac
   return 1
 }
@@ -85,6 +85,7 @@ reject_signature() {
 config_err="$(python3 "$config" --root "$root" validate 2>&1 >/dev/null)" || {
   [ -z "$config_err" ] || printf '%s\n' "$config_err" >&2
   # A gw.json that is JSON but breaks the schema is a mistake to fix, WIP or not; only a missing or non-JSON one passes.
+  # ' is invalid:' is the text of the schema error in scripts/config.py (load); keep both in step (a test pins it).
   if is_wip && ! printf '%s\n' "$config_err" | grep -q ' is invalid:'; then
     found="$(find_signature)"
     [ -z "$found" ] || reject_signature "$found"  # the setting is unknown: treat it as the strict one
