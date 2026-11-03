@@ -7,6 +7,11 @@ It counts every Agent/Task call of a session (the matcher in hooks/hooks.json an
 user decides in the permission prompt whether the fan-out is on purpose. It never denies, and below the cap it prints
 nothing (no opinion: the normal permission flow goes on).
 
+It also warns, without blocking, when the call has no `model` (missing, empty or not a string in `tool_input`): the
+subagent would inherit the session's model, usually the expensive one. The warning is `additionalContext` (the
+reminder reaches the agent, no prompt for the user): "launching a subagent without `model` ... pick it with
+gw-selector". If the same call also reaches the cap, one answer carries both the `ask` and the warning.
+
 Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse "ask" decision): a JSON object on stdout, exit 0,
 
   {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask",
@@ -84,6 +89,16 @@ def read_event():
 def ask(reason):
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask",
                                              "permissionDecisionReason": reason}}))
+
+
+NO_MODEL = ("this subagent call has no `model`, so it inherits the session's model (usually the most expensive one); "
+            "pick the model for the task with the gw-selector skill and pass it as `model` in the Agent/Task call")
+
+
+def has_model(event):
+    tool_input = event.get("tool_input")
+    model = tool_input.get("model") if isinstance(tool_input, dict) else None
+    return isinstance(model, str) and bool(model.strip())
 
 
 def cap_from_config():
@@ -175,9 +190,15 @@ def main():
         ask(f"subagent-cap.py cannot count the subagents of this session: {exc}; check they are not looping "
             f"(gw-opt-tokens)")
         return 0
+    out = {"hookEventName": "PreToolUse"}
     if count >= cap and (count - cap) % STEP == 0:
-        ask(f"{count} subagents in this session (subagentCap {cap} in .claude/gw.json): check they are not looping "
-            f"(gw-opt-tokens)")
+        out["permissionDecision"] = "ask"
+        out["permissionDecisionReason"] = (f"{count} subagents in this session (subagentCap {cap} in "
+                                           f".claude/gw.json): check they are not looping (gw-opt-tokens)")
+    if not has_model(event):
+        out["additionalContext"] = NO_MODEL
+    if len(out) > 1:
+        print(json.dumps({"hookSpecificOutput": out}))
     return 0
 
 

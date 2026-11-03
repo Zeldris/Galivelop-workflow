@@ -29,7 +29,7 @@ class SubagentCapProject(Project):
 
     def event(self, session="s1", tool="Agent", **extra):
         data = {"hook_event_name": "PreToolUse", "cwd": str(self.work), "tool_name": tool,
-                "tool_input": {"prompt": "do it"}}
+                "tool_input": {"prompt": "do it", "model": "haiku"}}
         if session is not None:
             data["session_id"] = session
         data.update(extra)
@@ -194,6 +194,54 @@ class OldCountersAndLinks(Base):
         (self.p.counters / "gw-subagents-s1").symlink_to(target)
         self.assertAsks(self.p.call("s1"), "symbolic link")
         self.assertFalse(target.exists())
+
+
+class ModelWarning(Base):
+    cfg = {"subagentCap": 3}
+
+    def context(self, result):
+        code, out = result
+        self.assertEqual(code, 0, out)
+        spec = self.answer(out)
+        self.assertNotIn("permissionDecision", spec, "a missing model warns, it never asks or denies")
+        return spec["additionalContext"]
+
+    def no_model(self, tool_input):
+        return self.p.call(tool_input=tool_input)
+
+    def test_a_call_without_model_gets_a_warning_and_is_not_blocked(self):
+        for tool_input in ({"prompt": "x"}, {"prompt": "x", "model": ""}, {"prompt": "x", "model": "  "},
+                           {"prompt": "x", "model": None}, {"prompt": "x", "model": 3}, "text", None):
+            with self.subTest(tool_input=tool_input):
+                shutil.rmtree(self.p.counters)
+                self.p.counters.mkdir()
+                note = self.context(self.no_model(tool_input))
+                self.assertIn("no `model`", note)
+                self.assertIn("gw-selector", note)
+
+    def test_a_call_with_model_has_no_warning(self):
+        for model in ("haiku", "sonnet", "claude-sonnet-5-5", "inherit"):
+            with self.subTest(model=model):
+                shutil.rmtree(self.p.counters)
+                self.p.counters.mkdir()
+                self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": model}))
+
+    def test_the_task_tool_is_warned_too(self):
+        self.assertIn("gw-selector", self.context(self.p.call(tool="Task", tool_input={"prompt": "x"})))
+
+    def test_at_the_cap_without_model_one_answer_has_the_ask_and_the_warning(self):
+        self.assertQuiet(self.p.call())
+        self.assertQuiet(self.p.call())
+        code, out = self.p.call(tool_input={"prompt": "x"})
+        spec = self.answer(out)
+        self.assertEqual(spec["permissionDecision"], "ask", out)
+        self.assertIn("3 subagents", spec["permissionDecisionReason"])
+        self.assertIn("gw-selector", spec["additionalContext"])
+
+    def test_the_call_without_model_is_still_counted(self):
+        self.context(self.p.call(tool_input={"prompt": "x"}))
+        self.context(self.p.call(tool_input={"prompt": "x"}))
+        self.assertAsks(self.p.call(), "3 subagents")
 
 
 class CapOfOne(Base):
