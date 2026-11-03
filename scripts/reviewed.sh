@@ -6,6 +6,9 @@
 # With `requireRetro`, the branch must add a retro-*.md whose **Estado:**/**Status:** paragraph (from that line to the
 # next blank line) records a decision: a whole word among aplicad*, rechazad*, aplazad*, decidid*, aprobad* (applied,
 # rejected, deferred, decided, approved) and none of pendiente/pending/undecided/sin decidir/aún no/not yet.
+# Before marking, it warns (never blocks) which code files (is-code.sh) changed between the previous mark and HEAD, or
+# since the fork from the protected branch if there is no usable previous mark, so fixes made after the review do not
+# reach the protected branch unreviewed.
 # Files not tracked by git do not count as changes (drafts stay where they are); tracked edits do.
 #   bash reviewed.sh                      # then: git push
 #   bash reviewed.sh --footer "Siguiente: <next step>"   # last line of the mark commit, for a commit-msg hook that wants it
@@ -81,6 +84,24 @@ if [ "$retro" = "true" ]; then
     echo "not yet as whole words anywhere in that paragraph (up to the next blank line) cancels it." >&2
     echo "Run /retro, present it, apply what the user approves, record it in the Status line, push and mark again: bash $0" >&2
     exit 1
+  fi
+fi
+
+# Warn about code changed since the previous mark (the sha the mark file holds at HEAD); informational only.
+prev="$(git show "HEAD:$mark" 2>/dev/null | head -n 1 | tr -d '[:space:]')"
+if [ -n "$prev" ] && git cat-file -e "$prev^{commit}" 2>/dev/null && git merge-base --is-ancestor "$prev" HEAD 2>/dev/null; then
+  since="$prev"; since_what="the previous review mark $prev"
+else
+  since="$(git merge-base HEAD "refs/remotes/origin/$protected" 2>/dev/null || true)"; since_what="the fork from origin/$protected (no usable previous mark)"
+fi
+if [ -n "$since" ]; then
+  if unreviewed="$(bash "$here/is-code.sh" "$since" HEAD 2>/dev/null)"; then
+    if [ -n "$unreviewed" ]; then
+      echo "reviewed: warning: code changed since $since_what; make sure /code-review covered these files:" >&2
+      while IFS= read -r file; do printf '  %s\n' "$file" >&2; done <<<"$unreviewed"
+    fi
+  else
+    echo "reviewed: warning: could not list the code changed since $since_what; check by hand: bash $here/is-code.sh $since HEAD" >&2
   fi
 fi
 
