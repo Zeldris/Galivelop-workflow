@@ -131,7 +131,8 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   commit's config (`--rev`); `doctor.py` warns and `/gw-update` (`apply.py`) writes the migration to the file, in one
   write together with any path change, and `apply.py --check` counts it as pending. A **newer** one than the
   workflow's fails closed (exit 2) in every reader: update the workflow (`/gw-update`, or
-  `git -C <workflow> pull --ff-only`). The migrations live in `MIGRATIONS` in `scripts/config.py`.
+  fetch the latest `vX.Y.Z` tag of the workflow clone and check it out, as step 1 of `/gw-update` does). The
+  migrations live in `MIGRATIONS` in `scripts/config.py`.
 
 ## Personal notes
 

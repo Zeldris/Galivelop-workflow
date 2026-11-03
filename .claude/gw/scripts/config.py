@@ -86,7 +86,7 @@ def schema_version(raw, where=CONFIG_REL):
     if found > SCHEMA_VERSION:
         raise ConfigError(f"{where}: schemaVersion {found} is newer than this copy of the workflow knows "
                           f"({SCHEMA_VERSION}); update the workflow (in the project: /gw-update; the workflow's clone: "
-                          f"git -C <workflow> pull --ff-only) and apply it again")
+                          f"git -C <workflow> fetch origin tag vX.Y.Z, then checkout vX.Y.Z) and apply it again")
     return found
 
 
