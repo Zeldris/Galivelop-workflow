@@ -42,6 +42,11 @@ estorba en todos los proyectos. Lee primero [`AGENTS.md`](../../AGENTS.md) y la 
   Opciones: `--fails-with REGEX` (el fallo sin el arreglo debe imprimir REGEX, para que no falle por otro motivo) y
   `--ran-one REGEX` (la ejecución con el arreglo debe imprimir exactamente una línea que case con REGEX, la que tu
   ejecutor saca por cada test, p. ej. `'^ok '`: si el filtro no casa con nada o ejecuta más de un test, falla).
+  Si el arreglo ya está commiteado, `--fix-at COMMIT` hace la ejecución «sin el arreglo» con los archivos del arreglo
+  como estaban en `COMMIT^`. El rojo debe ser de aserción: si el test falla sin el arreglo solo porque no llega a
+  cargar (error de sintaxis, de importación, de compilación o de recolección), el script lo informa (con la línea
+  que casó) sin cambiar la salida; `--reject-compile-red` lo rechaza con salida 1, salvo con `--fails-with REGEX`
+  (`--compile-re REGEX` cambia la lista de errores de carga).
 
 - Una **skill** nueva o cambiada pasa `tests/test_skills.py` (nombre = carpeta, `description` de 1 a 1024 caracteres,
   `license`, `compatibility`, `metadata.version`, menos de 200 líneas). Se escribe en **inglés** y aplicando la skill
