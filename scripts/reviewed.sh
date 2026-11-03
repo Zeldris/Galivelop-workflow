@@ -12,6 +12,8 @@
 # Files not tracked by git do not count as changes (drafts stay where they are); tracked edits do.
 #   bash reviewed.sh                      # then: git push
 #   bash reviewed.sh --footer "Siguiente: <next step>"   # last line of the mark commit, for a commit-msg hook that wants it
+# With `commitNext: true` and no --footer, the mark commit ends in "Siguiente: crear el PR" ("Next: open the PR" for
+# language en), so the commit-msg hook accepts it; an explicit --footer always wins.
 # Bash 3.2 compatible. Root from this script's path, never from the current directory.
 set -uo pipefail
 footer=""
@@ -40,6 +42,7 @@ protected="$(cfg protectedBranch)" || exit 1
 mark="$(cfg reviewMark)" || exit 1
 language="$(cfg language)" || exit 1
 retro="$(cfg requireRetro)" || exit 1
+commit_next="$(cfg commitNext)" || exit 1
 
 branch="$(git rev-parse --abbrev-ref HEAD)"
 if [ "$branch" = "HEAD" ]; then
@@ -121,7 +124,10 @@ fi
 mkdir -p "$(dirname "$mark")"
 printf '%s\n' "$head" > "$mark"
 if [ "$language" = "es" ]; then subject="Revisado: $head"; else subject="Reviewed: $head"; fi
+if [ -z "$footer" ] && [ "$commit_next" = "true" ]; then
+  if [ "$language" = "es" ]; then footer="Siguiente: crear el PR"; else footer="Next: open the PR"; fi
+fi
 if [ -n "$footer" ]; then message="$subject"$'\n\n'"$footer"; else message="$subject"; fi
 { git add -- "$mark" && git commit -q -m "$message" -- "$mark"; } || {
-  echo "reviewed: could not commit $mark; see the error above, then retry: bash $0" >&2; exit 1; }
+  echo "reviewed: could not commit $mark; see the error above. If the commit-msg hook wants a next-step line, retry: bash $0 --footer \"Siguiente: <next step>\"; otherwise fix the cause and retry: bash $0" >&2; exit 1; }
 echo "$subject. Push it: git push"
