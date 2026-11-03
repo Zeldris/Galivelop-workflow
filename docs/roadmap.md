@@ -44,6 +44,7 @@ En este orden, porque cada paso usa el anterior.
 | H14 | Regla de versiones nueva en `AGENTS.md` y el plan §7 | hecho (`a1ac1e3`) |
 | D13 | Este roadmap, con los ids, en español e inglés | hecho |
 | H12 | `pendiente-1.0.0.md` → `pending.md`, con la versión en cada línea | hecho |
+| H15 | Recogida de la `0.5` (`gw-harvest`) y sus propuestas, al usuario | en curso |
 | A7 | Plan reescrito según la tabla de A1 (§1, §2, §7, §9, §10): repo público, cada versión se publica aquí | hecho |
 | A8 | Nombres (A2, A-3, A-4): `gw-` en las skills propias, scripts en inglés, rutas del proyecto en inglés y configurables en `gw.json`; `gw-update` renombra y los ganchos aceptan los dos nombres durante la `0.x` | hecho |
 | A9 | `schemaVersion` en `gw.json` y su migración en `gw-update` (A3.2) | hecho |
