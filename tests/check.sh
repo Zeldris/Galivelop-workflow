@@ -40,6 +40,7 @@ echo "== python"
 if [[ -n "$(git ls-files -- '*.py' "${copies[@]}")" ]]; then
   git ls-files -z -- '*.py' "${copies[@]}" | xargs -0 python3 -m py_compile || fail=1
 fi
+python3 scripts/tests-after-main.py || fail=1  # a TestCase after unittest.main() never runs
 python3 -m unittest discover -s tests -p 'test_*.py' || fail=1
 # Tests bundled with skills (skills/<name>/scripts/test_*.py), each folder on its own.
 for d in skills/*/scripts; do

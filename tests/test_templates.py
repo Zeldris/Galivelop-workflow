@@ -307,6 +307,7 @@ class Templates(unittest.TestCase):
     def test_sample_check_runs_the_agent_map_script(self):
         sample = json.loads((TEMPLATES / "gw.json").read_text())
         self.assertIn("python3 .claude/gw/scripts/agent-map.py", sample["check"])
+        self.assertIn("python3 .claude/gw/scripts/tests-after-main.py", sample["check"])
 
     def test_default_content_keeps_the_guard_scripts_as_code(self):
         content = json.loads((TEMPLATES / "gw.json").read_text())["content"]

@@ -93,7 +93,8 @@ comprobación.
 
 - Un gancho pide permiso a la persona antes de que el agente edite la configuración del propio flujo.
 - `md-links.py` encuentra enlaces rotos y referencias desfasadas en el Markdown, y `agent-map.py` comprueba que
-  el mapa para agentes no apunta a nada que ya no exista.
+  el mapa para agentes no apunta a nada que ya no exista. `tests-after-main.py` falla si una clase de test de
+  `unittest` queda después de `unittest.main()`, donde nunca correría.
 - El propio repo pasa **más de mil pruebas automáticas**, en Linux y macOS, y se trabaja con su propio flujo: si una
   regla estorba aquí, estorba en todos los proyectos.
 
