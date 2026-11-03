@@ -165,9 +165,10 @@ def body_diff(ours, theirs):
 def earlier_match(rel, text, body_only=False):
     """The short sha of the latest commit of this repo whose rel (followed through renames) has the same text (only the
     body for a SKILL.md), or None: the project then holds an older copy of the workflow, not edits of its own."""
-    # --all --full-history: a project may hold a copy from a commit that is on no first-parent line of HEAD (a branch
-    # never merged, one the merge did not take, a tag): without them it would look like it edited the skill.
-    log = git(ROOT, "log", "--all", "--follow", "--full-history", "--format=%H", "--name-only", "--", rel) or ""
+    # Published history only (what a project could have installed, plan section 7): HEAD, main, origin/main and the tags,
+    # never other branches (an unpublished branch must not hide a project's real edit as an "older copy").
+    log = git(ROOT, "log", "--follow", "--full-history", "--branches=main", "--remotes=origin/main", "--tags", "HEAD",
+              "--format=%H", "--name-only", "--", rel) or ""
     def comparable(t):
         return (split_frontmatter(t)[1] if body_only else t).strip()
     want, sha = comparable(text), None
@@ -290,8 +291,7 @@ def harvest(repo, state, anonymize=lambda text: text):
         text = path.read_text(encoding="utf-8", errors="replace")
         # A project installed before A8 holds the skill under its old name: the same skill, not one born there.
         current = OLD_SKILLS[name] if name not in ours and OLD_SKILLS.get(name) in ours else name
-        if current in theirs and current != name:
-            continue  # both copies installed: the one with the current name is compared, the old one is leftover
+        beside = current != name and current in theirs  # apply.py keeps an old folder beside the new one when it has edits
         if current in ours:
             mine = ours[current].read_text(encoding="utf-8")
             added, removed = body_diff(mine, text)
@@ -300,6 +300,8 @@ def harvest(repo, state, anonymize=lambda text: text):
                          (earlier_match(f"skills/{name}/SKILL.md", text, body_only=True) if current != name else None))
                 item = {"skill": name, "path": rel, "added": added, "removed": removed,
                         "their_version": meta_version(text)}
+                if beside:
+                    item["note"] = f"old name kept beside `{current}`"
                 if older:
                     report["skills_older"].append(dict(item, matches=older))
                 else:
@@ -311,7 +313,9 @@ def harvest(repo, state, anonymize=lambda text: text):
     our_scripts = {p.name: p for p in (ROOT / "scripts").glob("*") if p.is_file()}
     tracked = (git(repo, "ls-files") or "").splitlines()
     for rel in tracked:
-        name = OLD_SCRIPTS.get(Path(rel).name, Path(rel).name)  # a pre-A8 project has the Spanish file names
+        name = Path(rel).name
+        if rel.startswith(".claude/gw/scripts/"):
+            name = OLD_SCRIPTS.get(name, name)  # a pre-A8 install has the Spanish file names (only where the flow puts them)
         if name in our_scripts and name != "harvest.py":
             if changed_files is not None and rel not in changed_files:
                 continue
@@ -351,7 +355,7 @@ def markdown(report):
         out += [f"  - {c}" for c in report["commits"][:30]]
     sections = [
         ("Workflow skills changed in the project", "skills_changed",
-         lambda s: f"`{s['skill']}` (`{s['path']}`): +{s['added']} −{s['removed']} lines in the body; "
+         lambda s: f"`{s['skill']}` (`{s['path']}`){' (' + s['note'] + ')' if s.get('note') else ''}: +{s['added']} −{s['removed']} lines in the body; "
                    f"their version {s['their_version'] or 'none'}; it matches no earlier workflow copy, so local edits "
                    f"(see them: `python3 scripts/harvest.py --diff {s['skill']} {report['path']}`)"),
         ("Older workflow copies (not project changes)", "skills_older",
@@ -399,6 +403,11 @@ def main():
         anonymize = Anonymizer(config.load_local(ROOT))
     except config.ConfigError as exc:
         print(f"harvest: {exc}", file=sys.stderr)
+        return 2
+
+    if not args.diff and git(ROOT, "rev-parse", "--is-shallow-repository") == "true":
+        print(f"harvest: {ROOT} is a shallow clone, so an older workflow copy in a project would be reported as the "
+              f"project's own edit; run: git -C {ROOT} fetch --unshallow origin", file=sys.stderr)
         return 2
 
     if args.diff:

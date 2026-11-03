@@ -341,15 +341,22 @@ class Harvest(unittest.TestCase):
         self.assertIn("selectorx", [s["skill"] for s in r["skills_new"]])
         self.assertIn("local-skill", [s["skill"] for s in r["skills_new"]])
 
-    def test_a_pre_a8_script_name_is_compared_with_the_current_script(self):
-        (self.repo / "recuperar.py").write_text("print('mine')\n")
-        (self.repo / "harvest.py").write_text("x\n")
+    def test_a_pre_a8_script_name_is_compared_only_under_the_flow_scripts_folder(self):
+        gw = self.repo / ".claude/gw/scripts"
+        gw.mkdir(parents=True)
+        (gw / "recuperar.py").write_text("print('mine')\n")
+        (gw / "recoger.py").write_text("x\n")  # old name of harvest.py: harvest never compares itself
+        (self.repo / "docs").mkdir()
+        (self.repo / "docs" / "bitacora.py").write_text("own script\n")  # the project's own file, same Spanish name
         git(self.repo, "add", "-A"); git(self.repo, "commit", "-qm", "scripts")
         r = self.harvest()
-        self.assertIn("recover.py", [s["script"] for s in r["scripts_changed"]])
+        names = [(s["script"], s["path"]) for s in r["scripts_changed"]]
+        self.assertIn(("recover.py", ".claude/gw/scripts/recuperar.py"), names)
+        self.assertNotIn("harvest.py", [n for n, _ in names])
+        self.assertNotIn("handoff.py", [n for n, _ in names])
 
-    def test_a_copy_from_a_commit_outside_the_current_line_is_an_older_copy(self):
-        # A side branch (never merged, as a tag or a branch of a release in the making): HEAD's `git log` misses it.
+    def side_workflow(self, ref_cmd):
+        """A workflow repo whose main lacks the project's "Side." text; it lives on a side branch given by ref_cmd."""
         wf = self.tmp / "wf"
         shutil.copytree(ROOT / "scripts", wf / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
         (wf / "skills" / "grilling").mkdir(parents=True)
@@ -357,10 +364,11 @@ class Harvest(unittest.TestCase):
         git(self.tmp, "init", "-q", "-b", "main", str(wf))
         (wf / "skills/grilling/SKILL.md").write_text(skill + "\nBase.\n")
         git(wf, "add", "-A"); git(wf, "commit", "-qm", "base")
-        git(wf, "checkout", "-qb", "side")
+        git(wf, "checkout", "-qb", "agent/side")
         (wf / "skills/grilling/SKILL.md").write_text(skill + "\nSide.\n")
         git(wf, "commit", "-qam", "side")
-        side_sha = git(wf, "rev-parse", "--short=7", "HEAD").strip()
+        sha = git(wf, "rev-parse", "--short=7", "HEAD").strip()
+        ref_cmd(wf)
         git(wf, "checkout", "-q", "main")
         (wf / "skills/grilling/SKILL.md").write_text(skill)
         git(wf, "commit", "-qam", "main")
@@ -368,8 +376,70 @@ class Harvest(unittest.TestCase):
         git(self.repo, "add", "-A"); git(self.repo, "commit", "-qm", "side copy")
         r = json.loads(run("python3", str(wf / "scripts" / "harvest.py"), "--json", "--state", str(self.state),
                            str(self.repo)))[0]
+        return r, sha
+
+    def test_a_copy_from_a_tagged_commit_outside_the_current_line_is_an_older_copy(self):
+        r, sha = self.side_workflow(lambda wf: git(wf, "tag", "v9.9.9"))
         self.assertEqual(r["skills_changed"], [])
-        self.assertEqual([(s["skill"], s["matches"]) for s in r["skills_older"]], [("grilling", side_sha)])
+        self.assertEqual([(s["skill"], s["matches"]) for s in r["skills_older"]], [("grilling", sha)])
+
+    def test_a_commit_only_on_an_unpublished_agent_branch_does_not_hide_a_project_edit(self):
+        r, _ = self.side_workflow(lambda wf: None)
+        self.assertEqual([s["skill"] for s in r["skills_changed"]], ["grilling"])
+        self.assertEqual(r["skills_older"], [])
+
+    def test_a_shallow_workflow_clone_stops_with_the_command_that_fixes_it(self):
+        wf = self.tmp / "wf"
+        shutil.copytree(ROOT / "scripts", wf / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        git(self.tmp, "init", "-q", "-b", "main", str(wf))
+        git(wf, "add", "-A"); git(wf, "commit", "-qm", "one")
+        (wf / "extra.txt").write_text("x\n")
+        git(wf, "add", "-A"); git(wf, "commit", "-qm", "two")
+        shallow = self.tmp / "shallow"
+        git(self.tmp, "clone", "-q", "--depth", "1", f"file://{wf}", str(shallow))
+        p = subprocess.run(["python3", str(shallow / "scripts" / "harvest.py"), "--state", str(self.state),
+                            str(self.repo)], capture_output=True, text=True)
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("is a shallow clone", p.stderr)
+        self.assertIn("git -C", p.stderr)
+        self.assertIn("fetch --unshallow origin", p.stderr)
+
+    def test_an_old_name_copy_beside_the_new_one_is_still_compared(self):
+        self.install_skill("gw-selector")
+        self.install_skill("selector", "\nMy own edit.\n", source="gw-selector")
+        git(self.repo, "add", "-A"); git(self.repo, "commit", "-qm", "both")
+        r = self.harvest()
+        item = [s for s in r["skills_changed"] if s["skill"] == "selector"]
+        self.assertEqual(len(item), 1)
+        self.assertIn("beside", item[0]["note"])
+        self.assertNotIn("selector", [s["skill"] for s in r["skills_new"]])
+
+    def test_an_old_name_copy_is_matched_against_the_history_under_the_old_name(self):
+        wf = self.tmp / "wf"
+        shutil.copytree(ROOT / "scripts", wf / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        skill = (ROOT / "skills" / "gw-selector" / "SKILL.md").read_text()
+        git(self.tmp, "init", "-q", "-b", "main", str(wf))
+        (wf / "skills/selector").mkdir(parents=True)
+        (wf / "skills/selector/SKILL.md").write_text(skill + "\nOld wording.\n")
+        git(wf, "add", "-A"); git(wf, "commit", "-qm", "old")
+        sha = git(wf, "rev-parse", "--short=7", "HEAD").strip()
+        git(wf, "rm", "-rq", "skills/selector")
+        (wf / "skills/gw-selector").mkdir(parents=True)
+        (wf / "skills/gw-selector/SKILL.md").write_text(skill)
+        git(wf, "add", "-A"); git(wf, "commit", "-qm", "renamed")
+        self.install_skill("selector", "\nOld wording.\n", source="gw-selector")
+        git(self.repo, "add", "-A"); git(self.repo, "commit", "-qm", "old copy")
+        r = json.loads(run("python3", str(wf / "scripts" / "harvest.py"), "--json", "--state", str(self.state),
+                           str(self.repo)))[0]
+        self.assertEqual([s for s in r["skills_changed"] if s["skill"] == "selector"], [])
+        self.assertEqual([(s["skill"], s["matches"]) for s in r["skills_older"] if s["skill"] == "selector"],
+                         [("selector", sha)])
+
+    def test_diff_accepts_the_pre_a8_skill_name(self):
+        self.install_skill("selector", "\nMy own edit.\n", source="gw-selector")
+        out = run("python3", str(SCRIPT), "--diff", "selector", str(self.repo))
+        self.assertIn("skills/gw-selector/SKILL.md", out)
+        self.assertIn("+My own edit.", out)
 
     def test_project_edits_say_how_to_see_them(self):
         out = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
