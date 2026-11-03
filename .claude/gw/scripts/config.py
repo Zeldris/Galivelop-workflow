@@ -9,7 +9,7 @@ defaults the schema declares. Shell scripts call the CLI; Python scripts import 
   python3 config.py get KEY             # scalar: one line; list: one item per line; object: JSON
   python3 config.py get KEY --json      # always JSON
   python3 config.py root                # the project root it resolved
-  python3 config.py related --kind fast|slow   # relatedTests commands to run, NUL-terminated, ready for `bash -c`
+  python3 config.py related --kind fast|slow [--deleted-file F]   # relatedTests commands to run, NUL-terminated, ready for `bash -c`
                                         # (reads the changed files that exist, one per line, on stdin)
   python3 config.py --rev REV get KEY   # the config as commit REV has it (git show REV:.claude/gw.json), e.g. the
                                         # commit a hook is about to push; absent or invalid at REV -> exit 2
@@ -504,30 +504,44 @@ def private_check(config):
     return {"emails": value.get("emails", True), "allowEmails": list(value.get("allowEmails") or [])}
 
 
-def related_commands(config, kind, files):
+def related_commands(config, kind, files, deleted=(), skipped=None):
     """The relatedTests commands of `kind` that apply to `files` (repo-relative paths that exist in the commit), each
     as one shell command line. An entry is a string or {"command", "paths"?, "cwd"?}. `paths` (a regex searched in the
     repo-relative path) narrows {files} and makes the entry run only when some file matches; `cwd` (a folder of the
     repo) is where it runs and {files} arrive relative to it, files outside it being left out. Without either, the
-    old rules: a fast command runs always unless it uses {files}; a slow one only when some file changed. Every
-    command is run as `<checkWrapper> bash -c '<command>'` (with `cd CWD &&` inside when `cwd` is set), so the wrapper
-    covers a compound command whole."""
+    old rules: a fast command runs always unless it uses {files}; a slow one only when some file changed. `deleted`
+    (paths of the push that no longer exist) is decided per entry: when an entry's scope matches no existing file but
+    matches a deleted one, it runs if its command has no {files} (nonexistent paths are never passed) and is skipped
+    otherwise (its command is appended to `skipped`, a list, when given). Every command is run as
+    `<checkWrapper> bash -c '<command>'` (with `cd CWD &&` inside when `cwd` is set), so the wrapper covers a compound
+    command whole."""
     wrapper = (config.get("checkWrapper") or "").strip()
     out = []
+
+    def scoped(paths, cwd, names):
+        names = list(names)
+        if paths:
+            names = [f for f in names if re.search(paths, f)]
+        if cwd and cwd != ".":
+            names = [f[len(cwd) + 1:] for f in names if f.startswith(cwd + "/")]
+        return names
+
     for entry in (config.get("relatedTests") or {}).get(kind) or []:
         spec = {"command": entry} if isinstance(entry, str) else entry
         command, paths, cwd = spec["command"], spec.get("paths"), spec.get("cwd")
-        scope = list(files)
-        if paths:
-            scope = [f for f in scope if re.search(paths, f)]
         if cwd:
             cwd = posixpath.normpath(cwd)
-            if cwd != ".":
-                scope = [f[len(cwd) + 1:] for f in scope if f.startswith(cwd + "/")]
+        scope = scoped(paths, cwd, files)
         uses_files = "{files}" in command
         if kind == "slow" or paths or uses_files:
             if not scope:
-                continue
+                if scoped(paths, cwd, deleted):
+                    if uses_files:
+                        if skipped is not None:
+                            skipped.append(command)
+                        continue
+                else:
+                    continue
         inner = command.replace("{files}", " ".join(shlex.quote(f) for f in scope))
         if cwd:
             inner = f"cd {shlex.quote(cwd)} && {inner}"
@@ -546,6 +560,7 @@ def main(argv=None):
     sub.add_parser("local", help="the validated local file .claude/gw.local.json as JSON (null when absent)")
     related = sub.add_parser("related", help="relatedTests commands that apply to the files on stdin")
     related.add_argument("--kind", choices=("fast", "slow"), required=True)
+    related.add_argument("--deleted-file", help="file listing, one per line, the pushed paths that no longer exist")
     get = sub.add_parser("get")
     get.add_argument("key", help="top-level key, or dotted (relatedTests.fast)")
     get.add_argument("--json", action="store_true")
@@ -570,8 +585,15 @@ def main(argv=None):
         return 0
     if args.command == "related":
         files = [line for line in sys.stdin.read().splitlines() if line]
-        for full in related_commands(config, args.kind, files):
+        deleted = []
+        if args.deleted_file:
+            with open(args.deleted_file, encoding="utf-8") as fh:
+                deleted = [line for line in fh.read().splitlines() if line]
+        skipped = []
+        for full in related_commands(config, args.kind, files, deleted, skipped):
             sys.stdout.write(full + "\0")
+        for command in skipped:
+            print(f"related-tests: skipped ({args.kind}): {command} (its changed files were only deleted)", file=sys.stderr)
         return 0
     value = config
     for part in args.key.split("."):
