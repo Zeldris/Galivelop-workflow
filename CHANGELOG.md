@@ -220,6 +220,8 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `AGENTS.md`). Las plantillas de `CLAUDE.md` dejan de repetir la revisión antes de la rama protegida y el reparto a
   subagentes, que están en su `AGENTS.md`. La entrada de D11/D12/D15/D16 que había caído en la cabecera de este
   archivo vuelve a su sitio.
+- `instructionLines` (E1): clave nueva del config `{warn, fail}` (enteros >= 1, `warn` <= `fail`; defecto 150/250)
+  con el tope de líneas de `AGENTS.md`/`CLAUDE.md` que usa `doctor.py` (antes, fijo en el código).
 
 ### EN
 
@@ -422,6 +424,8 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   already gives). The `CLAUDE.md` templates no longer repeat the review before the protected branch and the
   subagent dealing, which their `AGENTS.md` holds. The D11/D12/D15/D16 entry that had landed in this file's header
   goes back to its place.
+- `instructionLines` (E1): new config key `{warn, fail}` (integers >= 1, `warn` <= `fail`; default 150/250) with
+  the line limit of `AGENTS.md`/`CLAUDE.md` that `doctor.py` uses (hard-coded before).
 
 ## [0.4.3] - 2026-10-27
 
