@@ -225,6 +225,20 @@ class Apply(unittest.TestCase):
         self.applied()
         self.assertEqual(p.read(".claude/settings.json"), before, "a second run adds nothing")
 
+    def test_agent_signatures_hook_is_applied_once_for_github_text_and_bash(self):
+        p = self.p
+        out = self.applied()
+        self.assertTrue((p.work / ".claude/gw/scripts/agent-signatures.py").is_file(), out)
+        s = json.loads(p.read(".claude/settings.json"))
+        found = [e for e in s["hooks"]["PreToolUse"]
+                 if any("agent-signatures.py" in h["command"] for h in e["hooks"])]
+        self.assertEqual(len(found), 1, s["hooks"]["PreToolUse"])
+        self.assertIn("add_issue_comment", found[0]["matcher"])
+        self.assertTrue(found[0]["matcher"].endswith("|^Bash$"), found[0]["matcher"])
+        before = p.read(".claude/settings.json")
+        self.applied()
+        self.assertEqual(p.read(".claude/settings.json"), before, "a second run adds nothing")
+
     def test_subagent_cap_is_applied_once_with_its_own_matcher(self):
         p = self.p
         out = self.applied()
