@@ -61,8 +61,9 @@ same time.
   `python3 scripts/apply.py .`.
 - **When dealing work to subagents**, the `PreToolUse` hook `subagent-cap.py` counts the session's `Agent`/`Task`
   calls and, at `subagentCap` (30 by default) and every 10 after, asks the person to check they are not looping
-  (`gw-opt-tokens`); it never blocks. If the call has no `model`, the same hook warns the agent that the subagent
-  will inherit the session's model and to pick one with `gw-selector` (a warning, not a block).
+  (`gw-opt-tokens`); it never blocks. If the call has no `model` (`inherit` does not count) and the `subagent_type` does not set its own in
+  `.claude/agents/`, the same hook warns that the subagent may run on the session's model and to pick one with
+  `gw-selector`; the warning arrives with the tool result, so it serves the next calls (a warning, not a block).
 - **On start**, the new session reads the log and checks that the last commit matches what it says; it does not ask
   where things stood. After a `/clear` or compaction, `recover.py --state` reminds it.
 - When the branch closes, `handoff.py close-row <branch>` leaves its row as "merged, branch finished" so the

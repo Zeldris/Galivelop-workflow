@@ -60,8 +60,9 @@ la vez.
   `python3 scripts/apply.py .`.
 - **Al repartir a subagentes**, el gancho `PreToolUse` `subagent-cap.py` cuenta los `Agent`/`Task` de la sesión y,
   al llegar a `subagentCap` (30 por defecto) y cada 10 después, pide a la persona que compruebe que no están en bucle
-  (`gw-opt-tokens`); nunca bloquea. Si la llamada no lleva `model`, el mismo gancho avisa al agente de que el
-  subagente heredará el modelo de la sesión y de que lo elija con `gw-selector` (aviso, no bloqueo).
+  (`gw-opt-tokens`); nunca bloquea. Si la llamada no lleva `model` (`inherit` no cuenta) y el `subagent_type` no fija el suyo en
+  `.claude/agents/`, el mismo gancho avisa de que el subagente puede correr en el modelo de la sesión y de que lo
+  elija con `gw-selector`; el aviso llega con el resultado, así que vale para las próximas llamadas (aviso, no bloqueo).
 - **Al empezar**, la sesión nueva lee la bitácora y comprueba que el último commit coincide con lo que dice; no
   pregunta por dónde iba. Tras un `/clear` o una compactación, `recover.py --state` se lo recuerda.
 - Al cerrar la rama, `handoff.py close-row <rama>` deja su fila como «fusionada, rama terminada» para que la rama

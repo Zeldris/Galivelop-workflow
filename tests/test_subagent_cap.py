@@ -26,6 +26,14 @@ class SubagentCapProject(Project):
         self.counters = tmp / "counters"
         self.counters.mkdir()
         self.env["GW_SUBAGENT_COUNTER_DIR"] = str(self.counters)
+        self.home = tmp / "home"
+        self.home.mkdir()
+        self.env["HOME"] = str(self.home)
+
+    def agent(self, name, text, user=False):
+        folder = (self.home if user else self.work) / ".claude" / "agents"
+        folder.mkdir(parents=True, exist_ok=True)
+        (folder / (name + ".md")).write_text(text)
 
     def event(self, session="s1", tool="Agent", **extra):
         data = {"hook_event_name": "PreToolUse", "cwd": str(self.work), "tool_name": tool,
@@ -255,11 +263,56 @@ class ModelWarning(Base):
                 self.assertIn("gw-selector", note)
 
     def test_a_call_with_model_has_no_warning(self):
-        for model in ("haiku", "sonnet", "claude-sonnet-5-5", "inherit"):
+        for model in ("haiku", "sonnet", "claude-sonnet-5-5"):
             with self.subTest(model=model):
                 shutil.rmtree(self.p.counters)
                 self.p.counters.mkdir()
                 self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": model}))
+
+    def test_inherit_in_the_call_is_not_a_model(self):
+        for model in ("inherit", " Inherit "):
+            with self.subTest(model=model):
+                shutil.rmtree(self.p.counters)
+                self.p.counters.mkdir()
+                self.assertIn("gw-selector", self.context(self.p.call(tool_input={"prompt": "x", "model": model})))
+
+    def test_the_warning_says_it_is_for_the_next_calls(self):
+        self.assertIn("next calls", self.context(self.p.call(tool_input={"prompt": "x"})))
+
+    def test_a_subagent_type_that_sets_its_model_is_not_warned(self):
+        self.p.agent("cheap", "---\nname: cheap\nmodel: haiku\n---\nbody\n")
+        self.p.agent("quoted", "---\nmodel: 'sonnet'\n---\n", user=True)
+        for name in ("cheap", "quoted"):
+            with self.subTest(name=name):
+                self.assertQuiet(self.p.call(name, tool_input={"prompt": "x", "subagent_type": name}))
+
+    def test_a_subagent_type_that_inherits_or_has_no_definition_is_warned(self):
+        self.p.agent("inh", "---\nmodel: inherit\n---\n")
+        self.p.agent("nomodel", "---\nname: nomodel\n---\nmodel: haiku\n")  # outside the frontmatter
+        self.p.agent("nofront", "model: haiku\n")
+        for name in ("inh", "nomodel", "nofront", "missing", "../x", ""):
+            with self.subTest(name=name):
+                shutil.rmtree(self.p.counters)
+                self.p.counters.mkdir()
+                self.assertIn("gw-selector",
+                              self.context(self.p.call(tool_input={"prompt": "x", "subagent_type": name})))
+
+    def test_the_warning_is_also_added_when_the_hook_asks(self):
+        (self.p.counters / "gw-subagents-s1").symlink_to(self.tmp / "nowhere")
+        code, out = self.p.call("s1", tool_input={"prompt": "x"})
+        spec = self.answer(out)
+        self.assertEqual(spec["permissionDecision"], "ask", out)
+        self.assertIn("symbolic link", spec["permissionDecisionReason"])
+        self.assertIn("gw-selector", spec["additionalContext"])
+        code, out = self.p.raw(json.dumps({"tool_input": {"prompt": "x"}}))
+        spec = self.answer(out)
+        self.assertIn("no session_id", spec["permissionDecisionReason"])
+        self.assertIn("gw-selector", spec["additionalContext"])
+
+    def test_an_ask_with_a_model_has_no_warning(self):
+        (self.p.counters / "gw-subagents-s1").symlink_to(self.tmp / "nowhere")
+        spec = self.answer(self.p.call("s1")[1])
+        self.assertNotIn("additionalContext", spec)
 
     def test_the_task_tool_is_warned_too(self):
         self.assertIn("gw-selector", self.context(self.p.call(tool="Task", tool_input={"prompt": "x"})))

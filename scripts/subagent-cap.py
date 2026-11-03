@@ -7,10 +7,11 @@ It counts every Agent/Task call of a session (the matcher in hooks/hooks.json an
 user decides in the permission prompt whether the fan-out is on purpose. It never denies, and below the cap it prints
 nothing (no opinion: the normal permission flow goes on).
 
-It also warns, without blocking, when the call has no `model` (missing, empty or not a string in `tool_input`): the
-subagent would inherit the session's model, usually the expensive one. The warning is `additionalContext` (the
-reminder reaches the agent, no prompt for the user): "launching a subagent without `model` ... pick it with
-gw-selector". If the same call also reaches the cap, one answer carries both the `ask` and the warning.
+It also warns, without blocking, when the call has no `model` of its own (missing, empty, not a string or `inherit`
+in `tool_input`) and its `subagent_type` does not set one (a `model:` other than inherit in the frontmatter of
+.claude/agents/<type>.md of the project or ~/.claude/agents/; a type with no definition found is warned). The
+warning is `additionalContext`: Claude Code delivers it with the tool result, so it serves the next calls, not the
+current one. It is also added to every `ask` this hook gives (cap reached, or cannot count).
 
 Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse "ask" decision): a JSON object on stdout, exit 0,
 
@@ -87,19 +88,58 @@ def read_event():
     return data, None
 
 
-def ask(reason):
-    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "ask",
-                                             "permissionDecisionReason": reason}}))
+def ask(reason, event=None):
+    out = {"hookEventName": "PreToolUse", "permissionDecision": "ask", "permissionDecisionReason": reason}
+    if isinstance(event, dict) and lacks_model(event):
+        out["additionalContext"] = NO_MODEL
+    print(json.dumps({"hookSpecificOutput": out}))
 
 
-NO_MODEL = ("this subagent call has no `model`, so it inherits the session's model (usually the most expensive one); "
-            "pick the model for the task with the gw-selector skill and pass it as `model` in the Agent/Task call")
+NO_MODEL = ("this subagent call has no `model` and its subagent type does not set one, so it may run on the "
+            "session's model (usually the most expensive one). This reminder arrives with the tool result, so it is "
+            "for the next calls: pick the model for the task with the gw-selector skill and pass it as `model` in "
+            "the Agent/Task call")
+AGENT_NAME = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]*\Z")
 
 
-def has_model(event):
+def agent_sets_model(name, root):
+    """True when .claude/agents/<name>.md (project, then user) has a `model:` in its frontmatter other than inherit."""
+    if not isinstance(name, str) or not AGENT_NAME.match(name):
+        return False
+    folders = [os.path.join(os.path.expanduser("~"), ".claude", "agents")]
+    if root is not None:
+        folders.insert(0, os.path.join(str(root), ".claude", "agents"))
+    for folder in folders:
+        try:
+            with open(os.path.join(folder, name + ".md"), encoding="utf-8", errors="replace") as fh:
+                lines = fh.read(20000).splitlines()
+        except OSError:
+            continue
+        if not lines or lines[0].strip() != "---":
+            continue
+        for line in lines[1:]:
+            if line.strip() == "---":
+                break
+            key, _, value = line.partition(":")
+            if key.strip() == "model":
+                value = value.strip().strip("\"'").strip()
+                return bool(value) and value.lower() != "inherit"
+    return False
+
+
+def lacks_model(event):
+    """True when the call names no model of its own (`inherit` is not one) and its agent definition sets none."""
     tool_input = event.get("tool_input")
-    model = tool_input.get("model") if isinstance(tool_input, dict) else None
-    return isinstance(model, str) and bool(model.strip())
+    if not isinstance(tool_input, dict):
+        tool_input = {}
+    model = tool_input.get("model")
+    if isinstance(model, str) and model.strip() and model.strip().lower() != "inherit":
+        return False
+    try:
+        root = config.find_root()
+    except config.ConfigError:
+        root = None
+    return not agent_sets_model(tool_input.get("subagent_type"), root)
 
 
 def cap_from_config():
@@ -183,21 +223,21 @@ def main():
     session_id = event.get("session_id")
     if not isinstance(session_id, str) or not session_id.strip():
         ask("subagent-cap.py got an event with no session_id, so it cannot count the subagents of this session; "
-            "check they are not looping (gw-opt-tokens)")
+            "check they are not looping (gw-opt-tokens)", event)
         return 0
     cap = cap_from_config()
     try:
         count = bump(counter_path(session_id))
     except CannotCount as exc:
         ask(f"subagent-cap.py cannot count the subagents of this session: {exc}; check they are not looping "
-            f"(gw-opt-tokens)")
+            f"(gw-opt-tokens)", event)
         return 0
     out = {"hookEventName": "PreToolUse"}
     if count >= cap and (count - cap) % STEP == 0:
         out["permissionDecision"] = "ask"
         out["permissionDecisionReason"] = (f"{count} subagents in this session (subagentCap {cap} in "
                                            f".claude/gw.json): check they are not looping (gw-opt-tokens)")
-    if not has_model(event):
+    if lacks_model(event):
         out["additionalContext"] = NO_MODEL
     if len(out) > 1:
         print(json.dumps({"hookSpecificOutput": out}))
