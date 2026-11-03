@@ -167,6 +167,11 @@
       "default": false,
       "description": "true: the commit-msg hook requires a `Refs: <task id>` trailer (ids separated by commas) whose ids open an entry in refsSources; merges, reverts, cherry-picks and rebases are exempt."
     },
+    "commitNext": {
+      "type": "boolean",
+      "default": false,
+      "description": "true: the commit-msg hook requires a non-empty next-step trailer in the last paragraph (`Siguiente:` with language es, `Next:` with en); GW_NO_NEXT=1 skips it for one commit; merges, reverts, cherry-picks, rebases and fixup!/squash!/amend!/Revert lines are exempt, and merge-branch.sh requires it in its message."
+    },
     "refsSources": {
       "type": "array",
       "items": {"type": "string", "minLength": 1},

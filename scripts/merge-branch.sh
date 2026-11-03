@@ -21,6 +21,8 @@
 #  - Refs (D16): the ids of the branch (the one in a name agent/<id>-<topic>, if it looks like a task id, and the
 #    `Refs:` trailers of the commits it brings, read with git interpret-trailers) are joined with the ones the
 #    message already has into ONE `Refs: A, B` trailer, without repeats; with no ids the message stays as it is.
+#  - With `commitNext: true` the message must end in the next-step trailer (`Siguiente:` for language es, `Next:`
+#    otherwise); without it the script stops before merging (exit 2). GW_NO_NEXT=1 skips that requirement.
 #  - --reviewed = the main session already had the diff reviewed; without it, it reminds you.
 # Bash 3.2 compatible. Root from this script's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
@@ -42,6 +44,20 @@ protected="$(python3 "$config" --root "$root" get protectedBranch)" || {
   echo "merge-branch: cannot read protectedBranch; fix the config: python3 $config --root $root validate" >&2; exit 2; }
 logs="$(mktemp -d "${TMPDIR:-/tmp}/gw-merge-branch.XXXXXX")" || { echo "merge-branch: cannot create a temp dir; free space and retry" >&2; exit 2; }
 trap 'rm -rf "$logs"' EXIT
+
+commit_next="$(python3 "$config" --root "$root" get commitNext 2>/dev/null)" || {
+  echo "merge-branch: cannot read commitNext; fix the config: python3 $config --root $root validate" >&2; exit 2; }
+if [ "$commit_next" = "true" ] && [ "${GW_NO_NEXT:-}" != "1" ]; then
+  lang="$(python3 "$config" --root "$root" get language 2>/dev/null)" || {
+    echo "merge-branch: cannot read language; fix the config: python3 $config --root $root validate" >&2; exit 2; }
+  case "$lang" in es) next_word="Siguiente" ;; *) next_word="Next" ;; esac
+  parsed="$(printf '%s\n' "$message" | git interpret-trailers --parse --no-divider)" || {
+    echo "merge-branch: cannot read the trailers of the merge message (git interpret-trailers failed); update git or fix the message, then retry: bash $0 $branch \"<merge message>\"" >&2; exit 2; }
+  if ! printf '%s\n' "$parsed" | grep -iq "^$next_word:[[:space:]]*[^[:space:]]"; then
+    echo "merge-branch: the merge message has no \`$next_word:\` trailer (commitNext: true in .claude/gw.json); add a \`$next_word: <next step>\` line to its last paragraph and retry: bash $0 $branch \"<merge message>\"; for a message that legitimately has none: GW_NO_NEXT=1 bash $0 $branch \"<merge message>\"" >&2
+    exit 2
+  fi
+fi
 
 git rev-parse --verify --quiet "$branch^{commit}" >/dev/null || { echo "merge-branch: no branch $branch; list them: git branch -a" >&2; exit 2; }
 before="$(git rev-parse HEAD)"

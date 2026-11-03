@@ -369,6 +369,90 @@ class AgentTrailer(Msg):
         self.assertEqual(r.returncode, 0, r.stderr)
 
 
+class NextTrailer(Msg):
+    """commitNext (D31): the Siguiente:/Next: trailer, by language, with GW_NO_NEXT=1 as the escape."""
+
+    def setUp(self):
+        super().setUp()
+        self.configure(commitNext=True)
+
+    def test_off_by_default_and_without_the_key(self):
+        self.configure(commitNext=False)
+        self.accepted("no trailer at all")
+
+    def test_present_in_english_is_next(self):
+        self.accepted("work\n\nbody\n\nNext: do the rest")
+
+    def test_missing_is_refused_with_the_escape_in_the_message(self):
+        self.refused("work\n\nbody", "no `Next:` trailer", "GW_NO_NEXT=1")
+
+    def test_the_word_follows_the_language(self):
+        self.refused("work\n\nSiguiente: lo que sea", "no `Next:` trailer")
+        self.configure(language="es")
+        self.refused("work\n\nNext: do it", "no `Siguiente:` trailer")
+        self.accepted("work\n\nSiguiente: lo que sea")
+
+    def test_an_empty_value_or_a_line_in_the_body_is_missing(self):
+        self.refused("work\n\nNext:", "no `Next:` trailer")
+        self.refused("work\nNext: in the body\nmore body\n\nRefs: D11", "no `Next:` trailer")
+
+    def test_it_may_precede_other_trailers_such_as_attribution_lines(self):
+        self.accepted("work\n\nNext: step\nCo-Authored-By: A Human <h@example.com>")
+
+    def test_the_escape_skips_it_for_one_commit(self):
+        self.p.write("docs/notes.md", "escape\n")
+        r = self.p.commit("work without it", env={"GW_NO_NEXT": "1"}, ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.refused("work without it")  # the next commit is checked again
+
+    def test_other_values_of_the_escape_do_not_skip_it(self):
+        self.p.write("docs/notes.md", "escape\n")
+        r = self.p.commit("work", env={"GW_NO_NEXT": "0"}, ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("no `Next:` trailer", r.stderr)
+
+    def test_wip_still_needs_it(self):
+        self.refused("WIP: work", "no `Next:` trailer")
+        self.accepted("WIP: work\n\nNext: fix the red test")
+
+    def test_git_written_lines_are_exempt(self):
+        for subject in ("fixup! work", "squash! work", "amend! work", 'Revert "work"', 'Reapply "work"'):
+            self.accepted(subject)
+
+    def test_a_plain_commit_titled_merge_is_not_exempt(self):
+        self.refused("Merge things by hand", "no `Next:` trailer")
+
+    def test_the_error_does_not_demand_the_trailer_to_be_the_last_line(self):
+        code, err = self.attempt("work")
+        self.assertNotEqual(code, 0)
+        self.assertNotIn("last line", err)
+        self.assertIn("with a `Next: <next step>` line", err)
+
+    def test_a_merge_in_progress_is_exempt(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "side")
+        p.write("side.txt", "s\n")
+        p.git("add", "-A")
+        p.git("commit", "-q", "--no-verify", "-m", "side")
+        p.git("checkout", "-q", "-")
+        p.write("main.txt", "m\n")
+        p.git("add", "-A")
+        p.git("commit", "-q", "--no-verify", "-m", "main")
+        r = p.git("merge", "--no-ff", "side", "-m", "merged without trailer", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_core_comment_char_auto_does_not_hide_or_invent_the_trailer(self):
+        self.p.git("config", "core.commentChar", "auto")
+        self.accepted("work\n\nNext: step\n\n# Please enter the commit message")
+        self.refused("work\n\n# Next: only in a comment", "no `Next:` trailer")
+
+    def test_it_works_with_the_other_checks(self):
+        self.configure(commitFormat="conventional", commitRefs=True, plan=["docs/roadmap.md"], taskId="[A-Z]\\d+")
+        self.roadmap()
+        self.accepted("feat(D11): x\n\nRefs: D11\nNext: y")
+        self.refused("feat(D11): x\n\nRefs: D11", "no `Next:` trailer")
+
+
 class FailClosed(Msg):
     def test_an_unreadable_config_stops_the_commit(self):
         self.p.write(".claude/gw.json", "{ not json")

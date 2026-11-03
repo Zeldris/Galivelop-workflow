@@ -15,6 +15,11 @@ and applies, from .claude/gw.json (read through config.py):
                                id opens an entry (table row or list item, the `entry` expression of handoff.py) with
                                the shape of `taskId` in one of `refsSources` (empty: `plan` plus `log`). The STAGED
                                version of each file is read, so a commit that adds the id can cite it.
+  commitNext true              the trailer block has a non-empty next-step trailer, named after `language`: `Siguiente:` (es)
+                               or `Next:` (en; NEXT_TRAILERS). WIP: commits need it too; `fixup! `, `squash! `,
+                               `amend! `, `Revert "` and `Reapply "` lines are exempt, and so is a
+                               merge/revert/cherry-pick/rebase in progress (merge-branch.sh requires it itself).
+                               Escape for a legitimate message without it: GW_NO_NEXT=1 git commit ...
   agentSignatures false        an `Agent:` trailer (the subagent's skill, e.g. `Agent: gw-orchestrate-dealer`) must
                                not name a model or provider: the value is split at anything that is not a letter or digit
                                and a piece fails if it is claude, anthropic, opus, sonnet, haiku, fable, gpt,
@@ -28,6 +33,7 @@ Exit 0 ok, 1 rejected or failed closed (config unreadable, git failing): each me
 the command that fixes it. Python 3.8+, stdlib only.
 """
 import argparse
+import os
 import re
 import subprocess
 import sys
@@ -47,6 +53,8 @@ GIT_LINES = ("fixup! ", "squash! ", "amend! ", 'Revert "', 'Reapply "', "Merge "
 MODEL_NAMES = frozenset(("claude", "anthropic", "opus", "sonnet", "haiku", "fable", "gpt", "chatgpt", "openai",
                          "gemini", "llama", "mistral", "qwen", "deepseek"))
 MODEL_SHAPES = re.compile(r"gpt\d.*|o\d+|\d+o")
+# The next-step trailer per config `language` (the word the templates/<lang>/AGENTS.md use); other languages: English.
+NEXT_TRAILERS = {"es": "Siguiente", "en": "Next"}
 MERGE_STATES = ("MERGE_HEAD", "REVERT_HEAD", "CHERRY_PICK_HEAD")
 
 
@@ -119,6 +127,21 @@ def check_agent(found, msgfile):
                          f"(agentSignatures: false in .claude/gw.json): {key}: {value}\n"
                          f"commit-msg: name the skill or role instead (Agent: gw-orchestrate-dealer) and commit "
                          f"again: git commit -e -F {msgfile}")
+
+
+def check_next(config, message, found, msgfile):
+    word = NEXT_TRAILERS.get(config.get("language"), NEXT_TRAILERS["en"])
+    subject = next((line for line in message.splitlines() if line.strip()), "")
+    rest = subject[5:] if subject.startswith("WIP: ") else subject
+    # "Merge " is not exempt here: a real merge is skipped by its MERGE_HEAD, and a plain commit titled "Merge ..." is not one.
+    if not subject or rest.startswith(tuple(l for l in GIT_LINES if l != "Merge ")):
+        return
+    if any(key.lower() == word.lower() and value for key, value in found):
+        return
+    raise Reject(f"the message has no `{word}:` trailer with the next concrete step (commitNext: true in .claude/gw.json)\n"
+                 f"commit-msg: end the message with a paragraph of trailers with a `{word}: <next step>` line "
+                 f"and commit again: git commit -e -F {msgfile}; for a message that legitimately has none: "
+                 f"GW_NO_NEXT=1 git commit -e -F {msgfile}")
 
 
 def check_format(message, msgfile):
@@ -210,7 +233,8 @@ def run(root, msgfile):
     fmt = config.get("commitFormat", "free") == "conventional"
     refs = bool(config.get("commitRefs", False))
     agent = config.get("agentSignatures", True) is False
-    if not (fmt or refs or agent):
+    nxt = bool(config.get("commitNext", False)) and os.environ.get("GW_NO_NEXT") != "1"
+    if not (fmt or refs or agent or nxt):
         return
     state = git_paths_exist(root, ("rebase-merge", "rebase-apply") + MERGE_STATES)
     if state["rebase-merge"] or state["rebase-apply"]:
@@ -222,12 +246,14 @@ def run(root, msgfile):
     if not merging and fmt:
         check_format(message, msgfile)
     found = []
-    if agent or (not merging and refs):
+    if agent or (not merging and (refs or nxt)):
         found = trailers(root, message, msgfile)
     if agent:
         check_agent(found, msgfile)
     if not merging and refs:
         check_refs(root, config, found, msgfile)
+    if not merging and nxt:
+        check_next(config, message, found, msgfile)
 
 
 def main(argv=None):
