@@ -200,7 +200,11 @@ def check_ignored(rep, root):
 
 def check_hooks_path(rep, root):
     current = git(root, "config", "--get", "core.hooksPath")
-    if current in (".githooks", str(root / ".githooks")):
+    if current and os.path.isabs(current) and Path(current).name == ".githooks":
+        # config is shared by every worktree: an absolute path makes each one run the hooks of the checkout it names
+        rep.warn("hooks-path", f"core.hooksPath is the absolute path '{current}', so every worktree runs the hooks "
+                 f"of that checkout (another branch's hooks) instead of its own", "git config core.hooksPath .githooks")
+    elif current == ".githooks":
         rep.ok("hooks-path", "core.hooksPath is .githooks")
     elif not current and os.environ.get("GITHUB_ACTIONS") == "true":
         rep.warn("hooks-path", "core.hooksPath is unset (GitHub Actions run: git hooks are not installed there, so "

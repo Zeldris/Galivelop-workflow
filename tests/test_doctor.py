@@ -191,6 +191,18 @@ class Doctor(unittest.TestCase):
             self.assertEqual(code, 1, f"{env}: {out}")
             self.assertLine(out, "FAIL", "hooks-path")
 
+    def test_absolute_hooks_path_warns_with_its_reason_and_the_fix(self):
+        for path in (str(self.p.work / ".githooks"), str(self.tmp / "other" / ".githooks")):
+            self.p.git("config", "core.hooksPath", path)
+            code, out = self.doctor()
+            self.assertEqual(code, 0, out)
+            line = self.assertLine(out, "WARN", "hooks-path", path, "every worktree runs the hooks",
+                                   "another branch's hooks")
+            self.assertIn("fix: git config core.hooksPath .githooks", line)
+        self.p.git("config", "core.hooksPath", ".githooks")
+        code, out = self.doctor()
+        self.assertNotIn("WARN", out)
+
     def set_check(self, *commands):
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         cfg["check"] = list(commands)
