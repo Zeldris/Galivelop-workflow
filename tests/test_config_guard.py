@@ -15,7 +15,9 @@ from test_hooks import ROOT, Project
 
 SCRIPT = "config-guard.py"
 
-PROTECTED = [".claude/settings.json", ".claude/gw.json", ".githooks/pre-push", ".githooks/new-hook",
+PROTECTED = [".claude/settings.json", ".claude/settings.local.json", ".claude/gw.json",
+             ".claude/worktrees/agent-x/.claude/settings.json", ".claude/worktrees/agent-x/.githooks/pre-push",
+             ".claude/worktrees/agent-x/.claude/gw/scripts/config.py", ".claude/worktrees/agent-x/.claude/gw.json", ".githooks/pre-push", ".githooks/new-hook",
              ".claude/gw/scripts/config.py", ".claude/gw/scripts/sub/new.py"]
 
 
@@ -103,7 +105,7 @@ class EditTools(Base):
         self.assertAsks(self.p.tool("Edit", file_path=".Claude/Settings.JSON"), "Settings.JSON")
 
     def test_unrelated_files_are_allowed(self):
-        for rel in ("src/a.py", ".claude/settings.local.json", ".claude/skills/x/SKILL.md", "docs/.githooks-notes.md",
+        for rel in ("src/a.py", ".claude/other.json", ".claude/skills/x/SKILL.md", "docs/.githooks-notes.md",
                     ".claude/gw/schema/gw.schema.json", ".githooks-old/x", "settings.json", "gw.json",
                     "src/.claude/settings.json"):
             with self.subTest(path=rel):
@@ -328,7 +330,6 @@ class BashWrites(Base):
 
     def test_git_commands_that_do_not_cover_a_protected_file_are_allowed(self):
         self.assertEachAllowed([
-            'git checkout main',
             'git checkout -b feature',
             'git switch feature',
             'git restore src/a.py',
@@ -341,6 +342,69 @@ class BashWrites(Base):
             'git diff .',
             'git log -- .',
         ])
+
+    def test_settings_local_and_the_same_paths_inside_an_agent_worktree_ask(self):
+        self.assertEachAsks([
+            'echo x > .claude/settings.local.json',
+            'sed -i s/a/b/ .claude/settings.local.json',
+            'echo x > .claude/worktrees/agent-x/.claude/settings.json',
+            'cp /tmp/x .claude/worktrees/agent-x/.githooks/pre-push',
+            'rm .claude/worktrees/agent-x/.claude/gw/scripts/config.py',
+            'rm -rf .claude/worktrees/agent-x/.claude',
+            'cd .claude/worktrees/agent-x && echo x > .claude/gw.json',
+        ])
+        self.assertEachAllowed(['echo x > .claude/worktrees/agent-x/src/a.py', 'cat .claude/worktrees/agent-x/.claude/gw.json',
+                                'echo x > .claude/worktrees/notes.txt', 'git worktree list'])
+
+    def test_find_exec_of_a_writer_on_a_protected_tree_asks(self):
+        self.assertEachAsks(['find .githooks -type f -exec rm {} \\;', 'find .claude/gw/scripts -name "*.py" -exec rm -f {} +',
+                             'find .githooks -execdir chmod -x {} \\;', 'find .githooks -exec sed -i s/a/b/ {} +'],
+                            named=None)
+        self.assertEachAllowed(['find .githooks -type f -exec cat {} \\;', 'find .githooks -exec grep -l x {} +',
+                                'find src -exec rm {} \\;', 'find .githooks -name x'])
+
+    def test_tar_and_unzip_extracting_into_a_protected_folder_ask(self):
+        self.assertEachAsks(['tar -xf /tmp/a.tar -C .githooks', 'tar xzf /tmp/a.tgz -C .claude/gw/scripts',
+                             'tar -C .claude -xf /tmp/a.tar', 'tar --extract --directory=.githooks -f /tmp/a.tar',
+                             'tar -xf /tmp/a.tar -C.githooks', 'unzip /tmp/a.zip -d .githooks', 'unzip -o /tmp/a.zip -d .claude',
+                             'cd .githooks && tar -xf /tmp/a.tar', 'cd .githooks && unzip /tmp/a.zip'])
+        self.assertEachAllowed(['tar -xf /tmp/a.tar -C src', 'tar -cf /tmp/a.tar -C .githooks .', 'tar -tf /tmp/a.tar',
+                                'tar -xf /tmp/a.tar', 'tar -czf /tmp/a.tgz .claude', 'unzip /tmp/a.zip -d src',
+                                'unzip -l /tmp/a.zip', 'cd .githooks && unzip -l /tmp/a.zip', 'unzip /tmp/a.zip'])
+
+    def test_git_commands_that_rewrite_the_working_tree_ask_naming_the_command(self):
+        for command, shown in [('git checkout main', 'git checkout main'), ('git checkout origin/main', 'git checkout origin/main'),
+                               ('git checkout -', 'git checkout -'), ('git checkout -b feature main', 'git checkout -b feature'),
+                               ('git checkout -f', 'git checkout -f'), ('git checkout main -- src', 'git checkout main --'),
+                               ('git reset --hard', 'git reset --hard'), ('git reset --hard HEAD~1', 'git reset --hard HEAD~1'),
+                               ('git reset --merge', 'git reset --merge'), ('git stash pop', 'git stash pop'),
+                               ('git stash apply', 'git stash apply'), ('git merge origin/main', 'git merge origin/main'),
+                               ('git apply fix.patch', 'git apply fix.patch'), ('git apply --index fix.patch', 'git apply --index'),
+                               ('git -C . merge feature', 'git merge feature'), ('git merge --abort', 'git merge --abort'),
+                               ('echo a && git reset --hard', 'git reset --hard')]:
+            with self.subTest(command=command):
+                reason = self.assertAsks(self.p.tool("Bash", command=command), "this command writes to the working tree",
+                                         "only with the user's OK")
+                self.assertIn(shown, reason)
+
+    def test_git_commands_that_leave_the_working_tree_alone_are_allowed(self):
+        (self.p.work / "src" / "a.py").write_text("x\n")
+        self.assertEachAllowed(['git checkout -b feature', 'git checkout -B feature', 'git checkout src/a.py',
+                                'git checkout -- src/a.py', 'git checkout -- src', 'git reset', 'git reset --soft HEAD~1',
+                                'git reset --mixed HEAD~1', 'git reset HEAD src/a.py', 'git stash list', 'git stash show',
+                                'git apply --check fix.patch', 'git apply --stat fix.patch', 'git apply --cached fix.patch',
+                                'git apply --numstat fix.patch', 'git merge-base main HEAD', 'git fetch origin main',
+                                'git branch -f x', 'git log', 'git'])
+
+    def test_a_reference_file_is_read_not_written(self):
+        self.assertEachAllowed(['touch -r .claude/gw.json src/a.py', 'touch --reference=.claude/gw.json src/a.py',
+                                'touch --reference .githooks/pre-push src/a.py', 'touch -ar .githooks/pre-push src/a.py',
+                                'chmod --reference=.githooks/pre-push src/a.sh', 'chmod --reference .githooks/pre-push src/a.sh',
+                                'chown --reference=.claude/gw.json src/a.py', 'chown --reference .claude/gw.json src/a.py',
+                                'chgrp --reference .claude/gw.json src/a.py'])
+        self.assertEachAsks(['touch -r src/a.py .claude/gw.json', 'chmod --reference=src/a.py .githooks/pre-push',
+                             'chmod --reference src/a.py .githooks/pre-push', 'touch -r .claude/gw.json .claude/gw.json',
+                             'chown --reference=src/a.py .claude/gw.json'], named=None)
 
     def test_option_values_of_wrappers_are_skipped(self):
         self.assertEachAsks([

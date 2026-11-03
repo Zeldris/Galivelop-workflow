@@ -2,7 +2,7 @@
 # galivelop-workflow v0.4.3
 """PreToolUse hook: ask the user before Claude edits the workflow's own configuration.
 
-The files that wire the workflow (.claude/settings.json, .claude/gw.json, everything under .githooks/ and under
+The files that wire the workflow (.claude/settings.json, .claude/settings.local.json, .claude/gw.json, everything under .githooks/ and under
 .claude/gw/scripts/) change only with the user's OK; AGENTS.md says so, and this hook makes the rule checkable. It
 never denies: it returns `ask`, so the user decides in the permission prompt.
 
@@ -40,6 +40,12 @@ What it looks at, in the event on stdin (`tool_name`, `tool_input`, `cwd`):
                               purpose (a hook cannot parse a shell): a path built at run time, and code that opens the
                               file inside `python3 -c`. A `cd` to a literal folder is followed; `rm -r .claude` counts.
 
+Also covered (D33): the same paths inside an agent worktree (`.claude/worktrees/<name>/...`); `find ... -exec|-execdir|
+-ok rm|mv|...` on them; `tar -x -C DIR` and `unzip -d DIR` into a protected folder (or from inside one); and the git calls
+that rewrite the working tree without naming a path (`merge`, `reset --hard|--merge|--keep`, `apply` unless `--check`/
+`--stat`/`--numstat`/`--summary`/`--cached`, `stash pop|apply`, `checkout <branch>` or `-f`), reported as "the working
+tree (git ...)". The file read by `touch -r`, `touch|chmod|chown|chgrp --reference` is not written.
+
 Project root: config.find_root (the script's own repo when it holds .claude/gw.json, else the project the hook runs
 in); it does not read or validate the config. Fails closed: stdin it cannot read, an event without the tool name or
 the target, or a root it cannot find -> `ask`, with that as the reason. Python 3.8+ standard library only.
@@ -59,8 +65,9 @@ import config  # noqa: E402
 STDIN_WAIT = 3.0
 EDIT_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
 TARGET_KEYS = ("file_path", "notebook_path", "path")
-EXACT = (".claude/settings.json", ".claude/gw.json")
+EXACT = (".claude/settings.json", ".claude/settings.local.json", ".claude/gw.json")
 TREES = (".githooks", ".claude/gw/scripts")
+WORKTREE = re.compile(r"\.claude/worktrees/[^/]+/(.+)$")  # an agent's worktree holds its own copy of every protected path
 ANCESTORS = (".claude", ".claude/gw")  # removing or moving one takes protected files with it
 WRITERS = {"tee", "cp", "mv", "rm", "install", "ln", "chmod", "chown", "chgrp", "truncate", "touch", "dd", "rsync",
            "unlink", "shred", "rmdir", "patch"}
@@ -79,6 +86,8 @@ COPIER_VALUE = {
 }
 IN_PLACE = {"sed", "gsed", "perl", "ruby"}
 GIT_WRITES = {"checkout", "restore", "rm", "mv", "clean"}
+# `git` calls that rewrite the working tree without naming a path, so they can overwrite any protected file.
+TREE_SUBCOMMANDS = {"merge", "reset", "apply", "stash", "checkout"}
 GIT_NOT_WRITES = {  # (git subcommand, long flag, short letter): with this flag the call writes no file of the worktree
     ("rm", "--cached", None), ("clean", "--dry-run", "n"),
 }
@@ -142,6 +151,9 @@ def classify(token, base, root):
         return None, None  # outside the project
     rel = rel.replace(os.sep, "/")
     low = rel.lower()  # a case-insensitive disk (macOS, Windows) must not be a way round
+    inner = WORKTREE.match(low)
+    if inner:
+        low = inner.group(1)
     if low in EXACT or any(low == t or low.startswith(t + "/") for t in TREES):
         return rel, "protected"
     if low in ANCESTORS:
@@ -280,6 +292,81 @@ def git_write_call(args, k):
     return not any(sub == s and has(flag, letter) for s, flag, letter in GIT_NOT_WRITES)
 
 
+CHECKOUT_VALUE = {"-b", "-B", "--orphan", "--conflict", "--pathspec-from-file", "--inter-hunk-context", "-U", "--unified"}
+READ_ONLY_APPLY = ("--check", "--stat", "--numstat", "--summary")
+
+
+def git_tree_write(args, k, base):
+    """The `git ...` text when the call rewrites the working tree without naming a path (it may overwrite a protected
+    file), else None. `args[k]` is the subcommand. Covers `merge`, `reset --hard|--merge|--keep`, `apply` (not
+    `--check`/`--stat`/`--numstat`/`--summary`/`--cached`), `stash pop|apply`, and `checkout <branch>` (or `-f`)."""
+    sub = args[k]
+    if sub not in TREE_SUBCOMMANDS:
+        return None
+    before, i = [], k + 1
+    while i < len(args) and args[i] != "--":
+        before.append(args[i])
+        i += 1
+    shorts = "".join(w[1:] for w in before if re.fullmatch(r"-[A-Za-z]+", w))
+    text = "git " + " ".join(args[k:k + 3])
+    if sub == "merge":
+        return text
+    if sub == "reset":
+        return text if any(w in ("--hard", "--merge", "--keep") for w in before) else None
+    if sub == "apply":
+        if any(w in READ_ONLY_APPLY for w in before) or ("--cached" in before and "--index" not in before):
+            return None
+        return text
+    if sub == "stash":
+        return text if before[:1] in (["pop"], ["apply"]) else None
+    positional, j = [], 0
+    while j < len(before):  # checkout
+        w = before[j]
+        if w.startswith("-") and w != "-":
+            j += 2 if w in CHECKOUT_VALUE else 1
+            continue
+        positional.append(w)
+        j += 1
+    if "--force" in before or "f" in shorts:
+        return text
+    if "--" in args[k + 1:]:
+        return text if positional else None  # `git checkout main -- x`: a tree-ish, then paths
+    for w in positional:  # no `--`: a word that is not a file here is a branch or commit
+        if w == "-" or not os.path.exists(os.path.join(base, w)):
+            return text
+    return None
+
+
+def extract_hits(cmd, args, base, root):
+    """Protected folders a `tar` extraction (`-C DIR`) or `unzip -d DIR` writes into (the cwd when neither is given)."""
+    if cmd == "tar":
+        old = next((w for w in args if not w.startswith("-")), "")
+        long_ok = any(w in ("--extract", "--get") for w in args)
+        short_ok = any(re.fullmatch(r"-[A-Za-z]*x[A-Za-z]*", w) for w in args) or (
+            args and args[0] == old and "x" in old and not old.startswith("-"))
+        if not (long_ok or short_ok):
+            return []
+        targets = []
+        for n, w in enumerate(args):
+            if w in ("-C", "--directory") and n + 1 < len(args):
+                targets.append(args[n + 1])
+            elif w.startswith("--directory="):
+                targets.append(w.split("=", 1)[1])
+            elif w.startswith("-C") and not w.startswith("--") and len(w) > 2:
+                targets.append(w[2:])
+    else:  # unzip
+        if any(re.fullmatch(r"-[A-Za-z]*[lptvZ][A-Za-z]*", w) and "d" not in w[1:] for w in args):
+            return []  # list, pipe, test: nothing is written
+        targets = [args[n + 1] for n, w in enumerate(args) if w == "-d" and n + 1 < len(args)]
+        targets += [w[2:] for w in args if w.startswith("-d") and len(w) > 2]
+    hits = []
+    for t in targets or ["."]:
+        rel, kind = classify(t, base, root)
+        if kind in ("protected", "ancestor"):
+            hits.append(rel)
+    return hits
+
+
 def in_place_flag(words):
     return any(w == "--in-place" or w.startswith("--in-place=") or re.match(r"-[A-Za-z]*i", w) and not w.startswith("--")
                for w in words)
@@ -315,10 +402,25 @@ def bash_hits(command, base, root, depth=0):
             k = next((k for k, w in enumerate(args) if not w.startswith("-") and (k == 0 or args[k - 1] not in ("-C", "-c"))), None)
             writes = git_write = k is not None and args[k] in GIT_WRITES and git_write_call(args, k)
         elif cmd == "find":
-            writes = "-delete" in args
+            writes = "-delete" in args or any(
+                w in ("-exec", "-execdir", "-ok", "-okdir") and n + 1 < len(args)
+                and (os.path.basename(args[n + 1]) in WRITERS or os.path.basename(args[n + 1]) in IN_PLACE | {"git"})
+                for n, w in enumerate(args))
+        elif cmd in ("tar", "unzip"):
+            hits += extract_hits(cmd, args, base, root)
+        seg_start, tree = len(hits), None
+        if cmd == "git":
+            k = next((k for k, w in enumerate(args) if not w.startswith("-") and (k == 0 or args[k - 1] not in ("-C", "-c"))), None)
+            tree = git_tree_write(args, k, base) if k is not None else None
+        reference = set()  # the file `touch -r`, `chmod --reference` and `chown --reference` read is not written
+        for j, w in enumerate(seg):
+            if cmd == "touch" and takes_next(w, {"-r", "--reference", "-d", "--date", "-t"}) and j + 1 < len(seg):
+                reference.add(j + 1)
+            elif cmd in ("chmod", "chown", "chgrp") and w == "--reference" and j + 1 < len(seg):
+                reference.add(j + 1)
         removes_sources = cmd == "rsync" and any(w.startswith("--remove-source") for w in args)
         for j, w in enumerate(seg):
-            if is_redirect(w) or j == i:
+            if is_redirect(w) or j == i or j in reference:
                 continue
             if cmd == "dd" and w.startswith("of="):
                 w = w[3:]  # `dd of=FILE` writes FILE; `if=FILE` only reads it
@@ -333,6 +435,8 @@ def bash_hits(command, base, root, depth=0):
                 hits.append(rel)
             elif kind == "root" and git_write and seg[j - 1] not in ("-C", "-c"):  # `git checkout -- .`, `git restore .`: the pathspec covers it all
                 hits.append(rel)
+        if tree and len(hits) == seg_start:  # a protected path the call names is the better reason
+            hits.append(f"the working tree ({tree})")
     return hits
 
 
