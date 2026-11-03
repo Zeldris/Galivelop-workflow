@@ -1273,9 +1273,13 @@ class MergeBranch(Base):
         self.assertNotIn("agent/D1-x", self.branches(), "an agent/* branch with no worktree is deleted once merged")
 
     def test_merge_message_with_refs_passes_the_commit_msg_hook(self):
-        hook = ROOT / "templates" / "githooks" / "commit-msg"
         self.agent(name="agent/D16-x", message="work\n\nRefs: D12")
-        self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed")
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed")
+        self.assertEqual(code, 0, out)
+        # A copy inside the project, after the merge: the hook reads the config of the repo it lives in (the
+        # template's would read this repo's `.claude/gw.json`, with its own commitNext).
+        hook = self.p.work / ".githooks" / "commit-msg"
+        shutil.copy2(ROOT / "templates" / "githooks" / "commit-msg", hook)
         msg = self.p.work / "msg.txt"
         msg.write_text(self.p.git("log", "-1", "--format=%B").stdout)
         r = subprocess.run(["bash", str(hook), str(msg)], cwd=self.p.work, capture_output=True, text=True)
