@@ -15,7 +15,7 @@ from pathlib import Path
 
 from test_hooks import ROOT, Project
 
-SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py")
+SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py")
 
 
 def folder_of(path):
@@ -419,6 +419,41 @@ class Recover(Base):
         code, out = p.run_recover("--state")
         self.assertEqual(code, 0, out)
         self.assertIn("Compactions in this session: 1 (compare with", out)
+
+    # ---- B14: the compaction budget the log fixes
+
+    def budget_project(self, text, compactions):
+        p = self.p
+        p.git("checkout", "-q", "-b", "feature")
+        p.write("docs/log.md", f"# Log\n\n## State\n\n| Field | Value |\n|---|---|\n| Next step | go. {text} |\n")
+        p.commit("task work")
+        p.transcript(p.work, [{"type": "system", "subtype": "compact_boundary", "timestamp": "2999-01-01T00:00:00Z"}
+                              for _ in range(compactions)])
+        return p.run_recover("--state")
+
+    def test_without_a_budget_the_state_asks_to_compare(self):
+        code, out = self.budget_project("", 4)
+        self.assertEqual(code, 0, out)
+        self.assertIn("(compare these with the task's compaction budget in the log)", out)
+        self.assertNotIn("budget exceeded", out)
+        self.assertNotIn("Compaction budget in the log", out)
+
+    def test_a_budget_not_exceeded_is_shown_without_a_warning(self):
+        for text in ("Compaction budget: 4", "Presupuesto de compactaciones: 4 (superado: 6)"):
+            with self.subTest(text=text):
+                code, out = self.budget_project(text, 4)
+                self.assertEqual(code, 0, out)
+                self.assertIn("- Compaction budget in the log: 4", out)
+                self.assertNotIn("budget exceeded", out)
+                self.assertNotIn("(compare these", out)
+                self.p.git("checkout", "-q", "main")
+                self.p.git("branch", "-q", "-D", "feature")
+
+    def test_an_exceeded_budget_warns(self):
+        code, out = self.budget_project("Presupuesto de compactaciones: 2", 3)
+        self.assertEqual(code, 0, out)
+        self.assertIn("- Warning: compaction budget exceeded (3 > 2): push and ask for /clear, or deal the work out "
+                      "with gw-orchestrate-dealer", out)
 
     def test_other_worktrees_show_their_branch_and_row(self):
         p = self.p  # WMF P3: after a compaction the session sees the subagents working in worktrees

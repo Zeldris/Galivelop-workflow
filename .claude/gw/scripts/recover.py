@@ -341,6 +341,35 @@ def task_start(root, branch):
     return (base[:7], ref, start) if start else None
 
 
+def log_text(root, branch):
+    """The part of the log that fixes the task's budget: the branch's row with logRows, else the whole log; "" if
+    it cannot be read."""
+    try:
+        cfg = config.load(root)
+        text = (root / cfg["log"]).read_text(encoding="utf-8", errors="replace")
+    except (config.ConfigError, OSError):
+        return ""
+    if cfg.get("logRows"):
+        return row_for_branch(text, branch) or ""
+    return text
+
+
+def compaction_budget(root, branch):
+    """The compaction budget the log fixes for the task (handoff.BUDGET), or None: no budget, no check."""
+    try:
+        import handoff
+    except Exception:  # handoff.py missing or broken: behave as without a budget
+        return None
+    return handoff.compaction_budget(log_text(root, branch))
+
+
+def protected_branch(root):
+    try:
+        return config.load(root).get("protectedBranch") or "main"
+    except config.ConfigError:
+        return "main"
+
+
 def state(root, transcript, out, logs):
     """Append the --state lines to `out` (and the log's relative path to `logs`); the caller measures and prints."""
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD") or "?"
@@ -373,14 +402,22 @@ def state(root, transcript, out, logs):
     if path:
         n = count_compactions(path)
         task = task_start(root, branch)
+        budget = compaction_budget(root, branch)
+        counted = count_compactions(path, task[2]) if task else n
         if task:
             sha, ref, start = task
             since = start.astimezone(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M")
             say(f"- Compactions in this session: {n}; since this task started (merge base with {ref}, {sha}, "
-                f"{since} UTC): {count_compactions(path, start)} (compare these with the task's compaction budget in "
-                f"the log)")
+                f"{since} UTC): {counted}" + ("" if budget is not None else
+                " (compare these with the task's compaction budget in the log)"))
         else:
-            say(f"- Compactions in this session: {n} (compare with the task's compaction budget in the log)")
+            say(f"- Compactions in this session: {n}" + ("" if budget is not None else
+                " (compare with the task's compaction budget in the log)"))
+        if budget is not None:
+            say(f"- Compaction budget in the log: {budget}")
+            if counted > budget:
+                say(f"- Warning: compaction budget exceeded ({counted} > {budget}): push and ask for /clear, or deal "
+                    f"the work out with gw-orchestrate-dealer")
     else:
         say("- Compactions in this session: unknown (no session transcript found)")
     session = f" --session {path}" if path else ""

@@ -284,7 +284,7 @@ how code already reaches it today.
 - **`recover.py` on the command line**, to get back what a compaction or a `/clear` dropped:
   `python3 .claude/gw/scripts/recover.py --state` (the log, `git status`, the last commits, the other worktrees
   with their branch and row, and the compactions in the session and since the task started, which is the merge base
-  with `protectedBranch`) and
+  with `protectedBranch`; the budget from `Compaction budget: N` in the log, with a warning when exceeded) and
   `--search TEXT` (matching session fragments, printed as data after a header line, with control characters
   stripped; `--max N`, `--width N`, `--session PATH`). `--state` stops at 9,500 characters, at a whole line, and says so.
 - **`install` by hand.** `session-start.sh` runs it only in the cloud and only when the `install`/`setup` commands or
