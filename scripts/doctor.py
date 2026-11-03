@@ -200,7 +200,14 @@ def check_ignored(rep, root):
 
 def check_hooks_path(rep, root):
     current = git(root, "config", "--get", "core.hooksPath")
-    if current in (".githooks", str(root / ".githooks")):
+    if current and os.path.isabs(current) and Path(current).name == ".githooks":
+        # config is shared by every worktree: an absolute path makes each one run the hooks of the checkout it names
+        linked = (git(root, "worktree", "list", "--porcelain") or "").count("\n\n")
+        why = ("every worktree runs the hooks of that checkout (another branch's hooks) instead of its own" if linked
+               else "any worktree you add will run the hooks of that checkout instead of its own")
+        rep.warn("hooks-path", f"core.hooksPath is the absolute path '{current}', so {why}",
+                 "git config core.hooksPath .githooks")
+    elif current == ".githooks":
         rep.ok("hooks-path", "core.hooksPath is .githooks")
     elif not current and os.environ.get("GITHUB_ACTIONS") == "true":
         rep.warn("hooks-path", "core.hooksPath is unset (GitHub Actions run: git hooks are not installed there, so "
@@ -211,6 +218,85 @@ def check_hooks_path(rep, root):
     else:
         rep.warn("hooks-path", f"core.hooksPath is '{current}' (another hook manager); the workflow's hooks run "
                  f"only if chained", chain_hint(current))
+
+
+def had_own_commits(root, branch):
+    """True when the branch ever moved past the commit it was created at (its oldest reflog entry is not its tip);
+    False when it never did, and also when there is no reflog to tell: a branch just created from the protected branch
+    looks merged once that branch moves on."""
+    entries = (git(root, "reflog", "show", "--format=%H", branch) or "").split()
+    return bool(entries) and entries[-1] != entries[0]
+
+
+def check_worktrees(rep, root, cfg):
+    """WARN with every worktree whose branch is already merged into the protected branch, local or origin/ (it only
+    takes disk and clutters `git worktree list`), with the command that removes it. Branches that never had a commit of
+    their own are skipped (just created). Squash and rebase merges are not detected (the check is `merge-base
+    --is-ancestor`)."""
+    protected = (cfg or {}).get("protectedBranch") or "main"
+    targets = [r for r in (f"refs/heads/{protected}", f"refs/remotes/origin/{protected}")
+               if git(root, "rev-parse", "--verify", "-q", r + "^{commit}")]
+    listing = git(root, "worktree", "list", "--porcelain")
+    if listing is None:
+        rep.warn("worktree", "cannot check worktrees: `git worktree list` failed", f"git -C {shlex.quote(str(root))} worktree list")
+        return
+    if not targets:
+        rep.warn("worktree", f"cannot check worktrees: neither {protected} nor origin/{protected} exists here",
+                 f"git fetch origin {protected}")
+        return
+    top = os.path.realpath(str(root))
+    merged = []
+    for block in listing.split("\n\n")[1:]:  # the first one is the main checkout
+        lines = block.splitlines()
+        fields = dict(l.split(" ", 1) for l in lines if " " in l)
+        path, branch = fields.get("worktree"), fields.get("branch", "")
+        if not path or not branch.startswith("refs/heads/") or os.path.realpath(path) == top:
+            continue
+        name = branch[len("refs/heads/"):]
+        if name == protected or not had_own_commits(root, branch):
+            continue
+        into = next((t for t in targets if subprocess.run(["git", "-C", str(root), "merge-base", "--is-ancestor", branch, t],
+                                                          capture_output=True).returncode == 0), None)
+        if into:
+            merged.append((path, name, into.replace("refs/heads/", "").replace("refs/remotes/", ""),
+                           any(l == "locked" or l.startswith("locked ") for l in lines)))
+    for path, name, into, locked in merged:
+        force = "-f -f " if locked else ""  # a locked worktree is removed only with the flag twice
+        rep.warn("worktree", f"worktree {path} has branch '{name}', already merged into {into}" +
+                 (" (it is locked)" if locked else ""),
+                 f"git worktree remove {force}{shlex.quote(path)} && git branch -d {shlex.quote(name)}")
+    if not merged:
+        rep.ok("worktree", f"no worktree with a branch already merged into {protected}")
+
+
+CD_ENTER = re.compile(r"""(?:^|[;&|(])\s*cd\s+("[^"]+"|'[^']+'|[^\s;&|)"']+)\s*&&""")
+LINKABLE = ("node_modules", ".venv")  # what the pre-push worktree lacks: untracked dependency folders
+
+
+def check_worktree_links(rep, root, cfg):
+    """WARN when a `check` command does `cd <folder> && …` into a folder with node_modules or .venv that
+    `worktreeLinks` does not link: the pre-push runs the check in a temporary worktree where that folder is missing."""
+    if cfg is None:
+        rep.warn("worktree links", "cannot check worktreeLinks: .claude/gw.json is not valid",
+                 f"python3 {HERE / 'config.py'} --root {root} validate")
+        return
+    links = [Path(os.path.normpath(l)).as_posix() for l in cfg.get("worktreeLinks") or []]
+    found = False
+    for command in cfg.get("check") or []:
+        for m in CD_ENTER.finditer(command):
+            folder = Path(os.path.normpath(m.group(1).strip("\"'"))).as_posix()
+            if os.path.isabs(folder) or folder.startswith("..") or folder == ".":
+                continue
+            for name in LINKABLE:
+                rel = f"{folder}/{name}"
+                covered = any(rel == l or rel.startswith(l + "/") for l in links)
+                if (root / rel).exists() and not covered:
+                    found = True
+                    rep.warn("worktree links", f"'{command}' enters {folder}, which has {name}, but worktreeLinks "
+                             f"does not link {rel}: the pre-push worktree will not have it",
+                             f'add "{rel}" to worktreeLinks in .claude/gw.json')
+    if not found:
+        rep.ok("worktree links", "every `cd <folder> &&` in check has its dependency folders in worktreeLinks")
 
 
 def check_githooks(rep, root, version):
@@ -802,6 +888,8 @@ def run(root):
     check_ignored(rep, root)
     check_githooks(rep, root, version)
     check_legacy_paths(rep, cfg)
+    check_worktrees(rep, root, cfg)
+    check_worktree_links(rep, root, cfg)
     check_log(rep, root, cfg)
     check_commands(rep, root, cfg)
     check_ci(rep, root, cfg)

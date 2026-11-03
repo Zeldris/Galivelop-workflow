@@ -191,6 +191,116 @@ class Doctor(unittest.TestCase):
             self.assertEqual(code, 1, f"{env}: {out}")
             self.assertLine(out, "FAIL", "hooks-path")
 
+    def test_absolute_hooks_path_warns_with_its_reason_and_the_fix(self):
+        for path in (str(self.p.work / ".githooks"), str(self.tmp / "other" / ".githooks")):
+            self.p.git("config", "core.hooksPath", path)
+            code, out = self.doctor()
+            self.assertEqual(code, 0, out)
+            line = self.assertLine(out, "WARN", "hooks-path", path, "any worktree you add will run the hooks of that "
+                                   "checkout")
+            self.assertNotIn("another branch", line)  # no worktree yet: nothing runs another branch's hooks
+            self.assertIn("fix: git config core.hooksPath .githooks", line)
+        self.p.git("worktree", "add", "-q", "-b", "other", str(self.tmp / "wt-other"))
+        code, out = self.doctor()
+        self.assertLine(out, "WARN", "hooks-path", "every worktree runs the hooks of that checkout",
+                        "another branch's hooks", "fix: git config core.hooksPath .githooks")
+        self.p.git("worktree", "remove", str(self.tmp / "wt-other"))
+        self.p.git("config", "core.hooksPath", ".githooks")
+        code, out = self.doctor()
+        self.assertNotIn("WARN", out)
+
+    def add_worktree(self, branch, merge):
+        wt = self.tmp / ("wt-" + branch)
+        self.p.git("worktree", "add", "-q", "-b", branch, str(wt))
+        self.p.write("../wt-%s/%s.txt" % (branch, branch), branch)
+        self.p.git("add", "-A", cwd=wt)
+        self.p.git("commit", "-q", "--no-verify", "-m", branch, cwd=wt)
+        if merge:
+            self.p.git("merge", "-q", "--no-verify", "--no-ff", "-m", "merge " + branch, branch)
+        return wt
+
+    def test_worktree_with_merged_branch_warns_with_the_removal_command(self):
+        done, open_ = self.add_worktree("agent-done", True), self.add_worktree("agent-open", False)
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        line = self.assertLine(out, "WARN", "worktree", str(done), "agent-done", "already merged into main")
+        self.assertIn(f"fix: git worktree remove {done} && git branch -d agent-done", line)
+        self.assertNotIn(str(open_), out)
+        self.p.git("worktree", "remove", str(done))
+        code, out = self.doctor()
+        self.assertNotIn("WARN", out)
+
+    def test_worktree_of_a_branch_still_at_main_is_not_flagged(self):
+        self.p.git("worktree", "add", "-q", "-b", "fresh", str(self.tmp / "wt-fresh"))
+        code, out = self.doctor()
+        self.assertNotIn("WARN", out)
+
+    def test_branch_created_from_main_that_then_moved_on_is_not_flagged(self):
+        self.p.git("worktree", "add", "-q", "-b", "fresh", str(self.tmp / "wt-fresh"))
+        self.p.write("later.txt", "main moved on")
+        self.p.commit("main moves on")  # fresh is now an ancestor of main without ever having a commit of its own
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("WARN", out)
+        self.assertLine(out, "OK", "worktree", "no worktree with a branch already merged into main")
+
+    def test_branch_merged_only_in_origin_main_is_flagged_with_that_ref(self):
+        before = self.p.sha()
+        done = self.add_worktree("agent-pr", True)
+        self.p.git("push", "-q", "--no-verify", "origin", "main")
+        self.p.git("reset", "-q", "--hard", before)  # the local main stays behind, as after a PR merged on GitHub
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "worktree", str(done), "agent-pr", "already merged into origin/main")
+
+    def test_worktree_check_says_when_it_cannot_run(self):
+        self.add_worktree("agent-x", False)
+        self.p.git("update-ref", "-d", "refs/heads/main")
+        self.p.git("update-ref", "-d", "refs/remotes/origin/main")
+        code, out = self.doctor()
+        line = self.assertLine(out, "WARN", "worktree", "cannot check worktrees",
+                               "neither main nor origin/main exists here")
+        self.assertIn("fix: git fetch origin main", line)
+
+    def test_locked_worktree_gets_the_double_force_in_its_fix(self):
+        done = self.add_worktree("agent-lock", True)
+        self.p.git("worktree", "lock", str(done))
+        code, out = self.doctor()
+        line = self.assertLine(out, "WARN", "worktree", str(done), "it is locked")
+        self.assertIn(f"fix: git worktree remove -f -f {done} && git branch -d agent-lock", line)
+
+    def test_cd_check_says_when_the_config_is_invalid(self):
+        self.p.write(".claude/gw.json", "{ not json")
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        line = self.assertLine(out, "WARN", "worktree links", "cannot check worktreeLinks",
+                               ".claude/gw.json is not valid")
+        self.assertIn("config.py", line)
+        self.assertIn("validate", line)
+
+    def test_cd_into_folder_with_unlinked_dependencies_warns(self):
+        (self.p.work / "web" / "node_modules").mkdir(parents=True)
+        (self.p.work / "api" / ".venv").mkdir(parents=True)
+        (self.p.work / "docs-site").mkdir()  # no dependency folder: nothing to link
+        self.set_check("bash check.sh", "cd web && npm test", "make lint; cd ./api/ && pytest", "cd docs-site && make",
+                       "cd /abs/web && x", "cd .. && y")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        line = self.assertLine(out, "WARN", "worktree links", "web", "node_modules")
+        self.assertIn('fix: add "web/node_modules" to worktreeLinks in .claude/gw.json', line)
+        self.assertLine(out, "WARN", "worktree links", "api/.venv", "pre-push worktree will not have it")
+        self.assertEqual(len([l for l in out.splitlines() if l.startswith("WARN") and "worktree links" in l]), 2, out)
+
+    def test_cd_into_folder_with_linked_dependencies_is_quiet(self):
+        (self.p.work / "web" / "node_modules").mkdir(parents=True)
+        (self.p.work / "api" / ".venv").mkdir(parents=True)
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["check"] = ["bash check.sh", "cd ./web/ && npm test", "cd api && pytest"]
+        cfg["worktreeLinks"] = ["./web//node_modules", "api/"]  # exact path, and a parent folder, unnormalised
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = self.doctor()
+        self.assertNotIn("WARN", out)
+
     def set_check(self, *commands):
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         cfg["check"] = list(commands)
