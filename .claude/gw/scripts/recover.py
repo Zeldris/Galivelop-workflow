@@ -41,6 +41,8 @@ import session_log  # noqa: E402
 LOG_LINES = 25
 STATUS_LINES = 15
 WORKTREES = 10
+OTHER_BRANCHES = 10  # remote branches listed by --state
+BRANCH_ROW = 120  # characters of another branch's log row
 WORKTREE_ROW = 200  # characters of another worktree's log row
 # Claude Code replaces a hook's output over 10,000 characters with a file path and a 2,000-character preview
 # (https://code.claude.com/docs/en/hooks.md), and a log cut that way looks complete. So --state measures its own
@@ -370,6 +372,47 @@ def protected_branch(root):
         return "main"
 
 
+def other_branch_lines(root, branch):
+    """One line per remote branch (refs/remotes/origin/*, local refs only, no fetch) with commits the protected
+    branch lacks, newest first, at most OTHER_BRANCHES (as prepush-branches.sh); with logRows, the branch's row in
+    the log it holds. Only a warning: any failure gives no lines."""
+    protected = protected_branch(root)
+    base = next((r for r in (f"refs/remotes/origin/{protected}", f"refs/heads/{protected}")
+                 if git(root, "rev-parse", "-q", "--verify", r + "^{commit}")), None)
+    if not base:
+        return []
+    shallow = git(root, "rev-parse", "--is-shallow-repository") == "true"
+    try:
+        cfg = config.load(root)
+    except config.ConfigError:
+        cfg = {}
+    found = []
+    refs = git(root, "for-each-ref", "--sort=-committerdate", "--format=%(refname)", "refs/remotes/origin/")
+    for ref in refs.splitlines():
+        name = ref[len("refs/remotes/origin/"):]
+        if name in ("HEAD", protected, branch):
+            continue
+        count = git(root, "rev-list", "--count", f"{base}..{ref}")
+        if count.isdigit() and int(count) > 0:
+            found.append((name, int(count), ref))
+    lines = []
+    for name, count, ref in found[:OTHER_BRANCHES]:
+        line = f"  {name}: {count} commit(s) not in {protected}"
+        if cfg.get("logRows") and cfg.get("log"):
+            row = row_for_branch(git(root, "show", f"{ref}:{cfg['log']}"), name)
+            if row:
+                row = CONTROL.sub("", row)
+                line += " | " + (row if len(row) <= BRANCH_ROW else row[:BRANCH_ROW] + "…")
+        lines.append(line)
+    if not lines:
+        return []
+    head = f"- Other remote branches with work not in {protected} (local refs, no fetch)"
+    head += "; shallow clone: counts may be too high:" if shallow else ":"
+    if len(found) > OTHER_BRANCHES:
+        lines.append(f"  … and {len(found) - OTHER_BRANCHES} more (git branch -r)")
+    return [head] + lines
+
+
 def state(root, transcript, out, logs):
     """Append the --state lines to `out` (and the log's relative path to `logs`); the caller measures and prints."""
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD") or "?"
@@ -391,6 +434,10 @@ def state(root, transcript, out, logs):
     for line in commits:
         say(f"  {line}")
     tail.extend(worktree_lines(root))
+    try:
+        tail.extend(other_branch_lines(root, branch))
+    except Exception:  # only a warning: --state never fails
+        pass
     path, own = session_log.find(root, transcript, warn=False)
     if path and not own and not session_log.cloud_start(os.path.basename(os.path.dirname(path))):
         say(f"- Warning: this transcript is in {os.path.basename(os.path.dirname(path))}, not the repo's folder: "
