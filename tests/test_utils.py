@@ -970,6 +970,45 @@ class MergeBranch(Base):
         self.assertEqual(code, 0, out)
         self.assertEqual(self.merge_trailers(), ["Refs: D16, D11"])
 
+    def next_config(self, **keys):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.update(commitNext=True, **keys)
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.commit("next config", env=DAY)
+
+    def test_commit_next_stops_a_merge_message_without_the_trailer(self):
+        self.agent(name="agent/D16-x")
+        self.next_config()
+        before = self.p.sha()
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed")
+        self.assertEqual(code, 2, out)
+        self.assertIn("no `Next:` trailer", out)
+        self.assertIn("GW_NO_NEXT=1", out)
+        self.assertEqual(self.p.sha(), before, "nothing was merged")
+
+    def test_commit_next_accepts_the_trailer_in_the_language_of_the_project(self):
+        self.agent(name="agent/D16-x")
+        self.next_config(language="es")
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent\n\nNext: wrong word", "--reviewed")
+        self.assertEqual(code, 2, out)
+        self.assertIn("no `Siguiente:` trailer", out)
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent\n\nSiguiente: probar", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.p.git("log", "-1", "--format=%B").stdout.strip().splitlines()[-1], "Siguiente: probar")
+
+    def test_commit_next_escape_and_refs_join_keep_the_trailer_last(self):
+        self.agent(name="agent/D16-x")
+        self.next_config()
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed", env={"GW_NO_NEXT": "1"})
+        self.assertEqual(code, 0, out)
+
+    def test_commit_next_with_refs_keeps_next_last(self):
+        self.agent(name="agent/D16-x")
+        self.next_config()
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent\n\nNext: continue", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.p.git("log", "-1", "--format=%B").stdout.strip().splitlines()[-2:], ["Refs: D16", "Next: continue"])
+
     def test_a_failing_interpret_trailers_stops_before_the_merge(self):
         fake = self.tmp / "fakebin"
         fake.mkdir()

@@ -10,6 +10,7 @@
 #     a rebase.
 #   - With `commitFormat: "conventional"`, requires `type(scope)!: text` as the first line; with `commitRefs: true`,
 #     a `Refs: <task id>` trailer whose ids open an entry in `refsSources` (default `plan` + `log`; staged versions);
+#     with `commitNext: true`, a `Siguiente:`/`Next:` trailer (GW_NO_NEXT=1 skips it);
 #     an `Agent:` trailer must not name a model with `agentSignatures: false`. All in scripts/commit-message.py (merges,
 #     reverts, cherry-picks and rebases skip format and Refs; see its header).
 #   - Fails closed when the workflow's config.py or (with the log staged) handoff.py is missing.
