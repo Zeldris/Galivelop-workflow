@@ -57,9 +57,9 @@ En este orden, porque cada paso usa el anterior.
 | E1 | Auditoría de `AGENTS.md` y `CLAUDE.md`, con check de tope de líneas | hecho (`d0dfed3`, `e02859e`) |
 | E6 | Cada regla de `REVIEW.md` nombra su check o dice «criterio» | hecho |
 | D18 | `scripts/ci-status.py`: estado de Actions de una rama o commit (private-project-2 P6) | hecho (`32e7f8f`) |
-| D19 | Clave `ciPython`: versiones de Python de la matriz de la plantilla del CI (private-project-2 P7) | hecho (`af1877a`) |
+| D19 | Clave `ciPython`: versiones de Python de la matriz de la plantilla del CI (private-project-2 P7) | hecho (`364966d`) |
 | D20 | Clave `ciIgnore`: estados de CI ajenos que no bloquean la fusión (private-project-1 P1) | hecho (`b2dd04c`) |
-| D21 | Sin firmas del agente en PR, issues y comentarios; aviso de un `user.email` `noreply@anthropic.com` (private-project-1 P2) | hecho (`001583a`) |
+| D21 | Sin firmas del agente en PR, issues y comentarios; aviso de un `user.email` `noreply@anthropic.com` (private-project-1 P2) | hecho (`84580cc`) |
 | E17 | El check en una orden con resumen y la salida recortada (INS P12, WMF P4) | hecho (`bb1f47a`) |
 | D22 | `handoff.py own-row --staged`: la propia fila comprobada al hacer el commit (INS P9) | hecho (`08bc6b6`) |
 | D23 | `handoff.py set-row` (private-project-1 P7) | hecho (`0403f2b`) |
