@@ -612,6 +612,13 @@ class GitTreeWrites(Base):
         self.unknown(['GIT_DIR=/tmp/x git merge docs', 'GIT_WORK_TREE=/tmp/x git checkout docs'],
                      "points git somewhere else")
 
+    def test_git_env_set_anywhere_in_the_command_asks_for_a_tree_rewrite(self):
+        self.unknown(['export GIT_DIR=/tmp/evil.git GIT_WORK_TREE=.; git checkout -f docs',
+                      "sh -c 'export GIT_DIR=/tmp/evil.git; git merge docs'",
+                      'GIT_INDEX_FILE=/tmp/i; git reset --hard docs', 'export GIT_CONFIG_COUNT=1; git merge docs',
+                      'export GIT_COMMON_DIR=/tmp/c && git rebase docs'], "is set in this command")
+        self.allowed(['export GIT_DIR=/tmp/evil.git; git status', 'export FOO=1; git merge docs'])
+
     def test_global_options_with_a_separate_value_do_not_hide_the_subcommand(self):
         self.asks(['git --namespace x merge hooks', 'git --exec-path=/usr/bin merge hooks',
                    'git --super-prefix x/ merge hooks', 'git -C . -c user.name=x merge hooks',

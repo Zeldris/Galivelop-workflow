@@ -678,15 +678,23 @@ def in_place_flag(words):
                for w in words)
 
 
-def bash_hits(command, base, root, depth=0):
+GIT_ENV = r"\bGIT_(DIR|WORK_TREE|INDEX_FILE|COMMON_DIR|CONFIG\w*)="
+
+
+def bash_hits(command, base, root, depth=0, redirected=False):
     """[rel, ...]: the protected paths `command` writes to."""
     hits = []
+    redirected = redirected or bool(re.search(GIT_ENV, command))  # set anywhere before: it reaches every git below
     for seg in segments(tokenize(command)):
         i, cmd = command_word(seg)
         problem = None
         if cmd == "git":
             seg, problem = expand_git_alias(seg, i, base)
-            if re.search(r"GIT_(DIR|WORK_TREE|COMMON_DIR|CONFIG)", " ".join(seg[:i])):
+            sub = next((w for w in seg[i + 1:] if w in TREE_SUBCOMMANDS), None)
+            if redirected and sub:
+                problem = problem or (f"the working tree (git {sub}; cannot tell which files it changes: GIT_DIR, "
+                                      "GIT_WORK_TREE, GIT_INDEX_FILE, GIT_CONFIG* or GIT_COMMON_DIR is set in this command)")
+            if re.search(GIT_ENV, " ".join(seg[:i])):
                 problem = "the working tree (git; cannot tell which files it changes: GIT_DIR, GIT_WORK_TREE or GIT_CONFIG_* points git somewhere else)"
         if problem:
             hits.append(problem)
@@ -701,7 +709,7 @@ def bash_hits(command, base, root, depth=0):
         if cmd in SHELLS | {"eval"} and depth < 3:
             for j, w in enumerate(seg):
                 if j > (i or 0) and (cmd == "eval" or seg[j - 1] == "-c" or re.match(r"-[a-z]*c$", seg[j - 1])):
-                    hits += bash_hits(w, base, root, depth + 1)
+                    hits += bash_hits(w, base, root, depth + 1, redirected)
         dest = destination(seg, i, cmd) if cmd in COPIERS and i is not None else None
         if dest is not None and dest < 0:  # `--target-directory=X`
             rel, kind = classify(seg[-dest - 1].split("=", 1)[1], base, root)
