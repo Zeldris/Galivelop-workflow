@@ -66,6 +66,7 @@ class Hook(unittest.TestCase):
         p = self.p = Project(self.tmp)
         self.script = p.work / ".claude" / "gw" / "scripts" / "review-before-main.sh"
         shutil.copy2(ROOT / "scripts" / "review-before-main.sh", self.script)
+        shutil.copy2(ROOT / "scripts" / "ci-status.py", self.script.parent / "ci-status.py")  # the API reader it loads
         p.commit("add the hook")
         p.git("push", "-q", "--no-verify", "origin", "main")
         p.base = p.sha()
@@ -255,6 +256,64 @@ class Hook(unittest.TestCase):
                                                  {"name": "macos", "status": "completed", "conclusion": "failure"}]}
         self.assertBlocked(self.merge(pr=self.pr(), runs=runs), "not green", "macos: failure",
                            "https://github.com/o/r/pull/7")
+
+    # D20: ciIgnore, foreign checks that do not block --------------------------------------------------------------
+    def set_ignore(self, ignore, on="main"):
+        """ciIgnore in the config of the protected branch tip (what the hook reads)."""
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["ciIgnore"] = ignore
+        p.git("checkout", "-q", on)
+        p.write(".claude/gw.json", json.dumps(cfg, indent=2)); p.commit("ciIgnore")
+        p.git("push", "-q", "--no-verify", "origin", on)
+        p.git("checkout", "-q", "feature"); p.git("merge", "-q", on)
+        self.mark(); self.push()
+
+    def test_merge_ignores_a_red_foreign_status_named_in_ciignore(self):
+        self.set_ignore(["vercel"])
+        statuses = {"statuses": [{"context": "vercel", "state": "failure"}]}
+        self.assertAllowed(self.merge(pr=self.pr(), statuses=statuses))
+
+    def test_merge_ciignore_pattern_and_pending_foreign_check_run(self):
+        self.set_ignore(["deploy-*"])
+        runs = {"total_count": 2, "check_runs": [GREEN_RUNS["check_runs"][0],
+                                                 {"name": "deploy-prod", "status": "in_progress", "conclusion": None}]}
+        self.assertAllowed(self.merge(pr=self.pr(), runs=runs))
+
+    def test_merge_ciignore_never_hides_the_projects_own_red_check(self):
+        self.set_ignore(["vercel"])
+        runs = {"total_count": 1, "check_runs": [{"name": "comprobar", "status": "completed", "conclusion": "failure"}]}
+        statuses = {"statuses": [{"context": "vercel", "state": "failure"}]}
+        self.assertBlocked(self.merge(pr=self.pr(), runs=runs, statuses=statuses), "not green", "comprobar: failure")
+
+    def test_merge_ciignore_is_exact_not_a_prefix(self):
+        self.set_ignore(["vercel"])
+        statuses = {"statuses": [{"context": "vercel-preview", "state": "failure"}]}
+        self.assertBlocked(self.merge(pr=self.pr(), statuses=statuses), "vercel-preview: failure")
+
+    def test_merge_with_only_ignored_checks_counts_as_no_ci(self):
+        self.set_ignore(["vercel"])
+        statuses = {"statuses": [{"context": "vercel", "state": "success"}]}
+        self.assertBlocked(self.merge(pr=self.pr(), runs={"total_count": 0, "check_runs": []}, statuses=statuses),
+                           "no CI has reported")
+
+    def test_merge_ciignore_of_the_pr_branch_does_not_count_when_main_has_none(self):
+        self.mark(); self.push()
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["ciIgnore"] = ["vercel"]
+        p.write(".claude/gw.json", json.dumps(cfg, indent=2)); p.commit("ignore it myself")
+        self.mark(); self.push()
+        statuses = {"statuses": [{"context": "vercel", "state": "failure"}]}
+        self.assertBlocked(self.merge(pr=self.pr(), statuses=statuses), "vercel: failure")
+
+    def test_missing_or_broken_ci_status_blocks_with_the_fix(self):
+        self.mark(); self.push()
+        reader = self.script.parent / "ci-status.py"
+        reader.unlink()
+        self.assertBlocked(self.merge(pr=self.pr()), "cannot load ci-status.py", "/gw-update")
+        reader.write_text("def broken(:\n")
+        self.assertBlocked(self.merge(pr=self.pr()), "cannot load ci-status.py", "/gw-update")
 
     def test_merge_failed_commit_status_blocked(self):
         self.mark(); self.push()

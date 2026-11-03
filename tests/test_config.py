@@ -62,6 +62,18 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn(needle, r.stderr)
 
+    def test_ci_ignore_defaults_to_empty_and_rejects_bad_values(self):
+        self.write(VALID)
+        self.assertEqual(cli(self.tmp, "get", "ciIgnore", "--json").stdout.strip(), "[]")
+        self.write(dict(VALID, ciIgnore=["Vercel", "deploy-*"]))
+        self.assertEqual(cli(self.tmp, "get", "ciIgnore").stdout.splitlines(), ["Vercel", "deploy-*"])
+        for bad, needle in ((dict(VALID, ciIgnore="Vercel"), "$.ciIgnore: expected array"),
+                            (dict(VALID, ciIgnore=[""]), "$.ciIgnore[0]: must not be empty")):
+            self.write(bad)
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn(needle, r.stderr)
+
     def test_agent_map_defaults_and_bad_values(self):
         self.write(VALID)
         self.assertEqual(cli(self.tmp, "get", "agentMap", "--json").stdout.strip(), "{}")

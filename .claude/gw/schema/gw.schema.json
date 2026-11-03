@@ -185,6 +185,12 @@
       "default": [],
       "description": "Repo-relative workflow files that `ci-local.py` runs, whatever their triggers; empty: every .github/workflows/*.yml|yaml triggered by the event."
     },
+    "ciIgnore": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "default": [],
+      "description": "Names of foreign CI checks (a check-run name or a commit status context, e.g. a deploy) that do not block the merge nor count as the project's CI. An exact name, or a name with `*` for any text (`vercel*`); case matters; no regex. An ignored check never turns a red or pending check of the project into green, and a commit where only ignored checks reported counts as no CI."
+    },
     "content": {
       "type": "array",
       "items": {
