@@ -92,7 +92,9 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   `check` y, en verde, lo apunta (si corrió en la propia copia, solo si la dejó limpia). Quien lo apunta antes es
   `bash .claude/gw/scripts/check.sh` (`scripts/check.sh` en este repo): corre el `check` sobre la copia de trabajo y,
   si pasa y el árbol (lo que commitearía `git add -A`) no cambió durante la ejecución, apunta el verde; así la subida
-  no lo repite. Un `check` pasado a mano (p. ej. `bash tests/check.sh`) no apunta nada. Límites: una subida a la
+  no lo repite. Al final imprime un resumen (cada orden, `ok`/`FAILED` y segundos) y guarda la salida entera en
+  `<git dir>/gw-check.log` (`GW_CHECK_LOG` cambia la ruta). Con `--quiet` (o `GW_CHECK_QUIET=1`) no muestra la salida de
+  las órdenes, solo, de la que falla, las últimas `GW_CHECK_TAIL` líneas (40) y la ruta del registro. Un `check` pasado a mano (p. ej. `bash tests/check.sh`) no apunta nada. Límites: una subida a la
   rama protegida nunca lee ni escribe la caché; no se apunta nada con entradas `assume-unchanged` o `skip-worktree`
   (sparse checkout) ni con un submódulo con cambios; cualquier fallo de la caché solo significa que el `check` corre;
   `check.sh` corre con los archivos ignorados de la copia de trabajo (`.env`, generados), mientras que antes una
