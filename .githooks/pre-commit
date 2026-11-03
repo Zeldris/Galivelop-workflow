@@ -59,8 +59,10 @@ if [ -n "$bad_files" ]; then
 fi
 
 added="$(diff_of -U0 --no-renames --diff-filter=ACMR | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -v 'gw-allow-secret' || true)"
-# The left edge stops a word that merely ends in a prefix (musk-tells-…, task-…) from matching.
-KEY_FORMATS='(^|[^A-Za-z0-9])(-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,}|xox[abposr]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|sk-(ant-)?[A-Za-z0-9_-]{20,}|gsk_[A-Za-z0-9]{20,}|[rs]k_live_[0-9A-Za-z]{20,}|glpat-[0-9A-Za-z_-]{20,})'
+# Prefixes that identify a key by themselves match anywhere, even glued to a letter or digit ("\nsk-ant-…", "a%3DAKIA…",
+# "1AKIA…"). Only the generic sk-… and [rs]k_live_… need a left edge, so a word that merely ends in them (musk-tells-…,
+# task-…) is not taken for a key; sk-ant-/sk-proj-… and a hyphenless sk-<20+ letters or digits> match glued as well.
+KEY_FORMATS='-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,}|xox[abposr]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|sk-(ant|proj|svcacct)-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}|gsk_[A-Za-z0-9]{20,}|glpat-[0-9A-Za-z_-]{20,}|(^|[^A-Za-z0-9])(sk-[A-Za-z0-9_-]{20,}|[rs]k_live_[0-9A-Za-z]{20,})'
 found="$(printf '%s\n' "$added" | grep -oE -e "$KEY_FORMATS" | head -n 5 || true)"
 if [ -n "$found" ]; then
   echo "pre-commit: the commit adds something shaped like a key or token:" >&2
@@ -82,7 +84,9 @@ UNQUOTED="^\\+[[:space:]]*(export[[:space:]]+)?${NAME}[[:space:]]*[=:][[:space:]
 HARMLESS="^\\+[[:space:]]*(export[[:space:]]+)?${NAME}[[:space:]]*[=:][[:space:]]*([Rr][Ee][Aa][Dd]|[Ww][Rr][Ii][Tt][Ee]|[Nn][Oo][Nn][Ee]|[Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee]|[^[:space:]#]{1,7})[[:space:]]*(#.*)?$"
 added_lines() { grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -v 'gw-allow-secret' || true; }
 examples=(':!*.env.example' ':!*.env.sample' ':!*.env.template')
-literal="$(diff_of -U0 --no-renames --diff-filter=ACMR -- . "${examples[@]}" | added_lines | grep -E "$QUOTED" | head -n 5 || true)"
+# A dict of absolute path -> error code ("/srv/app/token": "E123") is not an assignment: that pair is dropped first.
+PATHCODE='"\/[^"]*"[[:space:]]*:[[:space:]]*"[A-Za-z]{1,4}[-_]?[0-9]{1,6}"'
+literal="$(diff_of -U0 --no-renames --diff-filter=ACMR -- . "${examples[@]}" | added_lines | sed -E "s/$PATHCODE//g" | grep -E "$QUOTED" | head -n 5 || true)"
 config_added="$(diff_of -U0 --no-renames --diff-filter=ACMR -- '*.env' '.env*' '*.properties' '*.yml' '*.yaml' \
   '*.toml' '*.ini' '*.cfg' '*.conf' "${examples[@]}" | added_lines)"
 literal="$literal$(printf '\n%s' "$(printf '%s\n' "$config_added" | grep -E "$UNQUOTED" | grep -vE "$HARMLESS" | head -n 5 || true)")"

@@ -1866,6 +1866,39 @@ class PreCommit(Base):
         self.assertIn("shaped like a key", r.stderr)
         self.assertIn("  sk-ant-A", r.stderr)
 
+    def test_key_glued_to_letter_or_digit_refused(self):
+        # D37/P2: prefixes that identify a key by themselves match even with a letter or digit before them.
+        ant = "sk-" + "ant-" + "A1b2C3d4" * 3
+        cases = {
+            "escaped newline": "x=\\n" + ant,
+            "percent-encoded": "a%3D" + ant,
+            "digit before AKIA": "1" + "AKIA" + "ABCDEFGH12345678",
+            "letter before ghp": "tok" + FAKE_TOKEN,
+            "glued hyphenless sk-": "n" + "sk-" + "A1b2C3d4" * 3,
+        }
+        for label, text in cases.items():
+            with self.subTest(label):
+                self.p.write("src/k.txt", text + "\n")
+                r = self.p.commit("leak", ok=False)
+                self.assertNotEqual(r.returncode, 0, label)
+                self.assertIn("shaped like a key", r.stderr, label)
+                self.p.run("git", "reset", "-q")
+
+    def test_path_to_error_code_dict_passes_but_real_secret_in_test_refused(self):
+        p = self.p
+        # D37/P3: an absolute path as key and an error code as value is not an assignment.
+        p.write("tests/test_x.py", 'EXPECTED = {"/srv/app/secrets/token": "E123", "/etc/api_key": "ERR-42"}\n')
+        self.assertEqual(p.commit("dict", ok=False).returncode, 0)
+        # A real secret in a test still stops, also next to such a pair: only the path -> code pair is exempt.
+        p.write("tests/test_y.py", 'D = {"/srv/token": "E123", "pass' + 'word": "hunter2-real"}\n')
+        r = p.commit("real", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("literal secret", r.stderr)
+        p.write("tests/test_z.py", "pass" + 'word = "hunter2-real"\n')
+        r = p.commit("real2", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("literal secret", r.stderr)
+
     def test_literal_assignment_refused_env_reference_allowed(self):
         p = self.p
         p.write("src/db.py", "db_pass" + 'word = "hunter2-real"\n')
