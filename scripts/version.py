@@ -25,6 +25,7 @@ check flags one that lacks it (exceptions, with the reason, in UNMARKED).
                                         # version needs a harvest since that tag: a <proposalsDir>/*.md
                                         # added after it whose first line is "# Harvest …" (skill gw-harvest)
                                         # and a dated, filled-in CHANGELOG entry (## [X.Y.Z] - YYYY-MM-DD)
+                                        # whose backticked repo paths all exist in HEAD (placeholders skipped)
 Then: python3 scripts/apply.py .  (refresh this repo's copy) and fill in the CHANGELOG entry.
 Files are read and written as strict UTF-8 keeping their line endings; a non-UTF-8 file with a marker is reported
 and left alone.
@@ -188,6 +189,32 @@ def changelog_check(version):
     if "(por completar)" in entry or "(to be filled in)" in entry:
         problems.append(f"unfinished CHANGELOG entry for {version}: it still has the bump's placeholder; fill in "
                         "### ES and ### EN and retry: python3 scripts/version.py --release")
+    return problems + changelog_paths(version, entry)
+
+
+REPO_PATH = re.compile(r"^[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)+/?$")
+PLACEHOLDER = re.compile(r"[<>*{}]|\bv?X\.Y\.Z\b|\bx\.y\.z\b")
+
+
+def changelog_paths(version, entry):
+    """Problems for the repo paths the CHANGELOG entry of `version` quotes in backticks (`docs/...`, `scripts/...`,
+    any top-level directory of the tree): each must exist in HEAD, the tree being released. Paths with a placeholder
+    (`vX.Y.Z`, `<...>`, `*`) are skipped. Fails closed when the tree cannot be listed."""
+    code, out = git("ls-tree", "-d", "--name-only", "HEAD")
+    if code != 0:
+        return [f"cannot list the tree of HEAD to check the paths quoted in the CHANGELOG entry of {version}; commit "
+                "first and retry: python3 scripts/version.py --release"]
+    tops = set(out.splitlines())
+    problems, seen = [], set()
+    for quoted in re.findall(r"`([^`\n]+)`", entry):
+        path = quoted.strip()
+        if path in seen or PLACEHOLDER.search(path) or not REPO_PATH.match(path) or path.split("/")[0] not in tops:
+            continue
+        seen.add(path)
+        if git("cat-file", "-e", f"HEAD:{path.rstrip('/')}")[0] != 0:
+            problems.append(f"CHANGELOG entry for {version} quotes `{path}`, which does not exist in the tree being "
+                            "released; fix the path in CHANGELOG.md (or drop the backticks if it is not a repo path) "
+                            "and retry: python3 scripts/version.py --release")
     return problems
 
 

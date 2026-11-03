@@ -88,6 +88,9 @@ la versión**, aunque sea un parche: un proyecto que copió entre las dos vería
 (`GW_PUSH_PROTECTED`). `python3 scripts/version.py --suggest` sugiere el salto según los commits sin merge desde esa
 etiqueta (`feat` → menor, `fix` y `perf` → parche, `!` o `BREAKING CHANGE:` → mayor, en la `0.x` menor) y avisa si
 `plugin.json` no casa; solo sugiere (sale con 0) y `--release` muestra lo mismo como aviso.
+`--release` también exige que cada ruta del repo citada entre comillas invertidas en la entrada nueva del CHANGELOG
+(`docs/…`, `scripts/…`, `skills/…`…) exista en el árbol que se publica; se saltan las que llevan marcadores
+(`vX.Y.Z`, `<…>`, `*`).
 
 **Publicar una versión:** en `main` (con las tres fases hechas), la entrada del CHANGELOG con fecha en vez de
 «Unreleased», y la etiqueta: `git tag vX.Y.Z && git push origin vX.Y.Z`. El workflow `release.yml` comprueba que la

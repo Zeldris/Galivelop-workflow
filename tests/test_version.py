@@ -95,6 +95,53 @@ class Version(unittest.TestCase):
         self.commit_all("entry heading removed")
         self.assertIn("no CHANGELOG entry for 9.8.7", run(tmp, "--release").stdout)
 
+    def test_the_new_changelog_entry_must_quote_only_paths_that_exist(self):
+        tmp = self.tmp
+        self.git("init", "-q")
+        (tmp / "docs").mkdir()
+        (tmp / "docs" / "real.md").write_text("x\n")
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.harvest()
+        self.fill_entry("9.8.7")
+        log = tmp / "CHANGELOG.md"
+        quoted = ("- Cita `docs/real.md`, `scripts/version.py`, `skills/`, `docs/records/release-vX.Y.Z.md`, "
+                  "`docs/<tema>.md`, `scripts/*.sh`, `no/such`, `a/b` y `a/b c` sin ruta.")
+        log.write_text(log.read_text().replace("- Hecho.", quoted, 1))
+        self.commit_all("entry with only existing paths or placeholders")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        log.write_text(log.read_text().replace(quoted, quoted + " `docs/gone.md` y `scripts/gone.py/`.", 1))
+        self.commit_all("entry quoting missing paths")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("CHANGELOG entry for 9.8.7 quotes `docs/gone.md`, which does not exist in the tree being released",
+                      r.stdout)
+        self.assertIn("scripts/gone.py/", r.stdout)
+        self.assertIn("fix the path in CHANGELOG.md", r.stdout)
+        self.assertNotIn("`docs/real.md`, which", r.stdout)
+        self.assertNotIn("release-vX.Y.Z", r.stdout)
+        self.assertNotIn("`docs/<tema>.md`, which", r.stdout)
+        self.assertNotIn("no/such", r.stdout, "a first segment that is no top-level directory is not a repo path")
+        self.assertNotIn("`a/b`", r.stdout)
+
+    def test_a_path_only_in_the_working_tree_does_not_count(self):
+        tmp = self.tmp
+        self.git("init", "-q")
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.harvest()
+        self.fill_entry("9.8.7")
+        log = tmp / "CHANGELOG.md"
+        log.write_text(log.read_text().replace("- Hecho.", "- Cita `scripts/untracked.py`.", 1))
+        self.commit_all("entry quotes a file")
+        (tmp / "scripts" / "untracked.py").write_text("x\n")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("quotes `scripts/untracked.py`", r.stdout)
+
     def harvest(self, first_line="# Harvest portal — 2026-10-23"):
         (self.tmp / "docs" / "propuestas").mkdir(parents=True, exist_ok=True)
         (self.tmp / "docs" / "propuestas" / "2026-10-23-portal.md").write_text(first_line + "\n\nNada nuevo.\n")
