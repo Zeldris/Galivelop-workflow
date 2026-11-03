@@ -218,6 +218,53 @@ class Templates(unittest.TestCase):
         self.assertIn("invalid JSON", r.stderr)
         self.assertNotIn("== echo a", r.stdout)
 
+    def ci_python(self, **keys):
+        """Run the CI template's `versions` step in a temp project; return (result, matrix JSON or None)."""
+        text = (TEMPLATES / "github" / "check.yml").read_text()
+        step = text.split("      - id: python\n        run: |\n", 1)[1].split("  check:", 1)[0]
+        script = "\n".join(l[10:] for l in step.splitlines())
+        tmp = Path(tempfile.mkdtemp(prefix="gw-ci-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / ".claude" / "gw").mkdir(parents=True)
+        shutil.copytree(ROOT / "scripts", tmp / ".claude" / "gw" / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(ROOT / "schema", tmp / ".claude" / "gw" / "schema")
+        cfg = {"version": VERSION, "language": "en", "log": "docs/log.md", "protectedBranch": "main",
+               "pushToProtected": "direct", "check": ["true"], "reviewMark": "r.txt", "content": ["^docs/"]}
+        (tmp / ".claude" / "gw.json").write_text(json.dumps(dict(cfg, **keys)))
+        subprocess.run(["git", "init", "-q", str(tmp)], check=True)
+        out = tmp / "out.txt"
+        r = subprocess.run(["bash", "-e", "-c", script], cwd=tmp, capture_output=True, text=True,
+                           env=dict(os.environ, GITHUB_OUTPUT=str(out)))
+        return r, (out.read_text().strip() if out.exists() else None)
+
+    def test_ci_python_matrix_from_the_config(self):
+        cases = ((dict(), 'python=["3.x"]'),
+                 (dict(ciPython=["3.13"]), 'python=["3.13"]'),
+                 (dict(ciPython=["3.10", "3.13"]), 'python=["3.10", "3.13"]'))
+        for keys, expected in cases:
+            with self.subTest(keys=keys):
+                r, out = self.ci_python(**keys)
+                self.assertEqual((r.returncode, out), (0, expected), r.stderr)
+
+    def test_ci_python_fails_closed_on_a_bad_value(self):
+        cases = ((dict(ciPython=[]), "$.ciPython: needs at least 1 item(s)"),
+                 (dict(ciPython="3.13"), "$.ciPython: expected array"),
+                 (dict(ciPython=[3.1]), "$.ciPython[0]: expected string"),
+                 (dict(ciPython=["3.10", "3.10"]), "$.ciPython[1]: duplicate"),
+                 (dict(ciPython=[""]), "$.ciPython[0]: '' does not match"),
+                 (dict(ciPython=["latest"]), "$.ciPython[0]: 'latest' does not match"))
+        for keys, needle in cases:
+            with self.subTest(keys=keys):
+                r, out = self.ci_python(**keys)
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn(needle, r.stderr)
+                self.assertIsNone(out)
+
+    def test_ci_python_matrix_feeds_setup_python(self):
+        text = (TEMPLATES / "github" / "check.yml").read_text()
+        self.assertIn("fromJSON(needs.versions.outputs.python)", text)
+        self.assertIn("python-version: ${{ matrix.python }}", text)
+
     def test_ci_template_does_not_apply_check_wrapper_or_setup(self):
         text = (TEMPLATES / "github" / "check.yml").read_text()
         self.assertNotIn("get checkWrapper", text)
@@ -228,8 +275,8 @@ class Templates(unittest.TestCase):
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())
         self.assertEqual(config.validate(sample, schema), [])
         # ciInstall is left out on purpose: absent means "CI runs `install`", while [] would mean "CI installs nothing"
-        self.assertEqual(set(sample), set(schema["properties"]) - {"ciInstall"},
-                         "templates/gw.json must show every key but ciInstall")
+        self.assertEqual(set(sample), set(schema["properties"]) - {"ciInstall", "ciPython"},
+                         "templates/gw.json must show every key but ciInstall and ciPython")
         self.assertEqual(sample["version"], VERSION)
 
     def test_sample_check_runs_the_agent_map_script(self):
@@ -267,7 +314,7 @@ class Init(unittest.TestCase):
                 self.assertEqual(cfg["schemaVersion"], 1)  # A9: a new config is written in the current format
                 for rel in RENDERED + (LOGS[lang],):
                     self.assertTrue((p.work / rel).is_file(), rel)
-                    self.assertNotIn("{{", p.read(rel), rel)
+                    self.assertIsNone(re.search(r"(?<!\$)\{\{", p.read(rel)), rel)  # `${{ }}` is GitHub's own
                 self.assertIn("`bash check.sh`", p.read("AGENTS.md"))
                 self.assertIn("gw-orchestrate-dealer", p.read("AGENTS.md"))
                 self.assertIn("branches-ignore: [main]", p.read(".github/workflows/check.yml"))

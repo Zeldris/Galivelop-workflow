@@ -4,7 +4,7 @@
 # runs the BASE branch's copy of .githooks/pre-commit over the PR's commits, so a pull request cannot weaken the check
 # that reviews it. `checkWrapper` is not applied here (CI runners do not need it).
 # Node, Python and Java are set up when package.json, pyproject.toml / requirements*.txt or pom.xml / build.gradle*
-# exist (so this file stays the workflow's, untouched); another toolchain (rust-toolchain...) goes before "Install".
+# exist (so this file stays the workflow's, untouched; `ciPython` makes Python a matrix); another toolchain (rust-toolchain...) goes before "Install".
 name: Check
 
 on:
@@ -16,8 +16,29 @@ permissions:
   contents: read
 
 jobs:
-  check:
+  versions:
+    # The Python matrix comes from `ciPython` of .claude/gw.json at run time (absent: one job, "3.x"), so this file
+    # stays the workflow's, untouched.
     runs-on: ubuntu-latest
+    outputs:
+      python: ${{ steps.python.outputs.python }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: python
+        run: |
+          python3 .claude/gw/scripts/config.py validate >/dev/null
+          if versions="$(python3 .claude/gw/scripts/config.py get ciPython --json 2>/dev/null)"; then
+            echo "python=$versions" >> "$GITHUB_OUTPUT"
+          else
+            echo 'python=["3.x"]' >> "$GITHUB_OUTPUT"
+          fi
+  check:
+    needs: versions
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ${{ fromJSON(needs.versions.outputs.python) }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,7 +50,7 @@ jobs:
       - uses: actions/setup-python@v5
         if: hashFiles('pyproject.toml', 'requirements*.txt') != ''
         with:
-          python-version: "3.x"
+          python-version: ${{ matrix.python }}
       - uses: actions/setup-java@v4
         if: hashFiles('pom.xml', 'build.gradle', 'build.gradle.kts') != ''
         with:

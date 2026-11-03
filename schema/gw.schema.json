@@ -190,6 +190,13 @@
       "default": [],
       "description": "Repo-relative workflow files that `ci-local.py` runs, whatever their triggers; empty: every .github/workflows/*.yml|yaml triggered by the event."
     },
+    "ciPython": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[0-9]+\\.([0-9]+|x)(\\.([0-9]+|x))?$"},
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "Python versions the CI template runs as a matrix (strings, e.g. [\"3.10\", \"3.13\"]; quote them so 3.10 is not read as 3.1). Absent: one job with \"3.x\". Not [] (use no key)."
+    },
     "ciIgnore": {
       "type": "array",
       "items": {"type": "string", "minLength": 1},
