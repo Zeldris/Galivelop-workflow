@@ -15,7 +15,7 @@ P1-P4 salieron en el parche `0.4.3`.
 
 - [ ] `0.7` · **private-project-2 P5**: `orchestrate-dealer`: si la revisión de toda la rama va justo después y ya está decidida, el último
   bloque no se revisa aparte. [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
-- [ ] `0.5` · **private-project-2 P6**: `scripts/ci-estado.py`, que lee el estado de Actions de una rama o commit (token y `gh` de
+- [x] `0.5` · **private-project-2 P6** (D18, 2026-11-03): `scripts/ci-estado.py`, que lee el estado de Actions de una rama o commit (token y `gh` de
   `revision-antes-de-main.sh`). [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
 - [ ] `0.5` · **private-project-2 P7**: clave `ciPython` en `gw.json` con las versiones de Python que la plantilla del CI recorre en matriz.
   [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
@@ -48,14 +48,14 @@ P1-P4 salieron en el parche `0.4.3`.
 
 Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la parte Java de P11) salieron en la `0.4.2`.
 
-- [ ] `0.5` · **private-project-1 P1:** `ciIgnore`, estados de CI ajenos (p. ej. un despliegue) que no bloquean la fusión.
+- [x] `0.5` · **private-project-1 P1:** (D20, 2026-11-03) `ciIgnore`, estados de CI ajenos (p. ej. un despliegue) que no bloquean la fusión.
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [ ] `0.5` · **private-project-1 P2:** firmas del agente también en el cuerpo de PR, issues y comentarios de GitHub, y aviso de un
   `user.email` `noreply@anthropic.com`. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [ ] `0.5` · **INS P12 + WMF P4:** el check en una orden con resumen y la salida recortada.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md),
   [`2026-10-26-world-maker-fantasy-2.md`](../proposals/2026-10-26-world-maker-fantasy-2.md)
-- [ ] `0.5` · **INS P9:** `bitacora.py own-row --staged`, la propia fila comprobada al hacer el commit.
+- [x] `0.5` · **INS P9:** (D22, 2026-11-03) `bitacora.py own-row --staged`, la propia fila comprobada al hacer el commit.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
 - [ ] `0.5` · **private-project-1 P6:** `revisado.sh` avisa del código sin revisar desde la última marca.
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
@@ -63,10 +63,10 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   aserción. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [ ] `0.7` · **Portal P4:** `orchestrate-dealer`, los repos que solo se leen se clonan aparte y sin registrar.
   [`2026-10-26-portal-galivelop-2.md`](../proposals/2026-10-26-portal-galivelop-2.md)
-- [ ] `0.5` · **INS P10:** `doctor.py` avisa de worktrees ya fusionados.
+- [x] `0.5` · **INS P10:** (D26, 2026-11-03) `doctor.py` avisa de worktrees ya fusionados.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
-- [ ] `0.5` · **private-project-1 P7:** `bitacora.py set-row`. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
-- [ ] `0.5` · **private-project-1 P8:** `doctor.py` avisa de `cd <carpeta> && …` sin `worktreeLinks`.
+- [x] `0.5` · **private-project-1 P7:** (D23, 2026-11-03) `bitacora.py set-row`. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
+- [x] `0.5` · **private-project-1 P8:** (D27, 2026-11-03) `doctor.py` avisa de `cd <carpeta> && …` sin `worktreeLinks`.
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [ ] `0.8` · **INS P11:** `scout-updates` lee la versión de Rust del proyecto.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
@@ -93,10 +93,10 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 
 [`retro-2026-10-27-parche-0-4-2.md`](retro-2026-10-27-parche-0-4-2.md), aprobadas por el usuario el 2026-10-27.
 
-- [ ] `0.5` · **P3 (`doctor.py`):** avisar de un `core.hooksPath` absoluto que apunta al `.githooks` del checkout principal
+- [x] `0.5` · **P3 (`doctor.py`):** (D28, 2026-11-03) avisar de un `core.hooksPath` absoluto que apunta al `.githooks` del checkout principal
   (los worktrees correrían los ganchos de otra rama), con la orden que lo arregla
   (`git config core.hooksPath .githooks`). Test del aviso y de su motivo.
-- [ ] `0.5` · **P4 (`commit-msg`):** comprobar la línea `Siguiente:` en los mensajes, también los de fusión que escribe
+- [x] `0.5` · **P4 (`commit-msg`):** (D31, 2026-11-03) comprobar la línea `Siguiente:` en los mensajes, también los de fusión que escribe
   `fusionar.sh` (o que `fusionar.sh` la exija en su mensaje). Escape `GW_NO_NEXT=1` para un mensaje legítimo sin
   ella, y el aviso lo dice. Misma familia que la comprobación de firmas del agente.
 - [ ] `0.4.4` · **P5 (regla QUOTED del `pre-commit`):** sin falsos positivos en `.md` (una etiqueta de traducción citada como

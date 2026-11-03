@@ -56,21 +56,21 @@ En este orden, porque cada paso usa el anterior.
 | D3 | Repaso de las recogidas ya publicadas con el check de E2 | hecho (`0cb929b`) |
 | E1 | Auditoría de `AGENTS.md` y `CLAUDE.md`, con check de tope de líneas | hecho (`d0dfed3`, `e02859e`) |
 | E6 | Cada regla de `REVIEW.md` nombra su check o dice «criterio» | hecho |
-| D18 | `scripts/ci-status.py`: estado de Actions de una rama o commit (private-project-2 P6) | pendiente |
+| D18 | `scripts/ci-status.py`: estado de Actions de una rama o commit (private-project-2 P6) | hecho (`32e7f8f`) |
 | D19 | Clave `ciPython`: versiones de Python de la matriz de la plantilla del CI (private-project-2 P7) | pendiente |
-| D20 | Clave `ciIgnore`: estados de CI ajenos que no bloquean la fusión (private-project-1 P1) | pendiente |
+| D20 | Clave `ciIgnore`: estados de CI ajenos que no bloquean la fusión (private-project-1 P1) | hecho (`b2dd04c`) |
 | D21 | Sin firmas del agente en PR, issues y comentarios; aviso de un `user.email` `noreply@anthropic.com` (private-project-1 P2) | pendiente |
 | E17 | El check en una orden con resumen y la salida recortada (INS P12, WMF P4) | pendiente |
-| D22 | `handoff.py own-row --staged`: la propia fila comprobada al hacer el commit (INS P9) | pendiente |
-| D23 | `handoff.py set-row` (private-project-1 P7) | pendiente |
+| D22 | `handoff.py own-row --staged`: la propia fila comprobada al hacer el commit (INS P9) | hecho (`08bc6b6`) |
+| D23 | `handoff.py set-row` (private-project-1 P7) | hecho (`0403f2b`) |
 | D24 | `reviewed.sh` avisa del código sin revisar desde la última marca (private-project-1 P6) | pendiente |
 | D25 | `red-without-fix.sh --fix-at <commit>`; rojo de compilación frente a rojo de aserción (private-project-1 P5) | pendiente |
-| D26 | `doctor.py` avisa de worktrees ya fusionados (INS P10) | pendiente |
-| D27 | `doctor.py` avisa de `cd <carpeta> && …` sin `worktreeLinks` (private-project-1 P8) | pendiente |
-| D28 | `doctor.py` avisa de un `core.hooksPath` absoluto al `.githooks` del checkout principal (retro `0.4.2` P3) | pendiente |
+| D26 | `doctor.py` avisa de worktrees ya fusionados (INS P10) | hecho (`e3a7789`) |
+| D27 | `doctor.py` avisa de `cd <carpeta> && …` sin `worktreeLinks` (private-project-1 P8) | hecho (`b8926e7`) |
+| D28 | `doctor.py` avisa de un `core.hooksPath` absoluto al `.githooks` del checkout principal (retro `0.4.2` P3) | hecho (`204c735`) |
 | D29 | `related-tests.sh` con archivos borrados (private-project-1 P11) | pendiente |
 | D30 | `version.py`: existe cada ruta citada en la entrada nueva del CHANGELOG (retro `0.4.3` R1) | pendiente |
-| D31 | `commit-msg` exige `Siguiente:`, también en las fusiones de `merge-branch.sh`; escape `GW_NO_NEXT=1` (retro `0.4.2` P4) | pendiente |
+| D31 | `commit-msg` exige `Siguiente:`, también en las fusiones de `merge-branch.sh`; escape `GW_NO_NEXT=1` (retro `0.4.2` P4) | hecho (`7561ebf`) |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.5` | repartido en D18-D31 y E17 |
 
 ## `0.6` «Medir»

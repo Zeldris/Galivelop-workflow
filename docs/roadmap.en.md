@@ -55,21 +55,21 @@ In this order, because each step uses the previous one.
 | D3 | Review of the already published harvests with E2's check | done (`0cb929b`) |
 | E1 | Audit of `AGENTS.md` and `CLAUDE.md`, with a line-cap check | done (`d0dfed3`, `e02859e`) |
 | E6 | Each `REVIEW.md` rule names its check or says "judgement" | done |
-| D18 | `scripts/ci-status.py`: Actions status of a branch or commit (private-project-2 P6) | pending |
+| D18 | `scripts/ci-status.py`: Actions status of a branch or commit (private-project-2 P6) | done (`32e7f8f`) |
 | D19 | `ciPython` key: Python versions of the CI template matrix (private-project-2 P7) | pending |
-| D20 | `ciIgnore` key: foreign CI statuses that do not block the merge (private-project-1 P1) | pending |
+| D20 | `ciIgnore` key: foreign CI statuses that do not block the merge (private-project-1 P1) | done (`b2dd04c`) |
 | D21 | No agent signatures in PRs, issues and comments; warning on a `noreply@anthropic.com` `user.email` (private-project-1 P2) | pending |
 | E17 | The check in one command with a summary and trimmed output (INS P12, WMF P4) | pending |
-| D22 | `handoff.py own-row --staged`: the own row checked at commit time (INS P9) | pending |
-| D23 | `handoff.py set-row` (private-project-1 P7) | pending |
+| D22 | `handoff.py own-row --staged`: the own row checked at commit time (INS P9) | done (`08bc6b6`) |
+| D23 | `handoff.py set-row` (private-project-1 P7) | done (`0403f2b`) |
 | D24 | `reviewed.sh` warns of code not reviewed since the last mark (private-project-1 P6) | pending |
 | D25 | `red-without-fix.sh --fix-at <commit>`; build red versus assertion red (private-project-1 P5) | pending |
-| D26 | `doctor.py` warns of worktrees already merged (INS P10) | pending |
-| D27 | `doctor.py` warns of `cd <folder> && …` without `worktreeLinks` (private-project-1 P8) | pending |
-| D28 | `doctor.py` warns of an absolute `core.hooksPath` to the main checkout's `.githooks` (retro `0.4.2` P3) | pending |
+| D26 | `doctor.py` warns of worktrees already merged (INS P10) | done (`e3a7789`) |
+| D27 | `doctor.py` warns of `cd <folder> && …` without `worktreeLinks` (private-project-1 P8) | done (`b8926e7`) |
+| D28 | `doctor.py` warns of an absolute `core.hooksPath` to the main checkout's `.githooks` (retro `0.4.2` P3) | done (`204c735`) |
 | D29 | `related-tests.sh` with deleted files (private-project-1 P11) | pending |
 | D30 | `version.py`: every path quoted in the new CHANGELOG entry exists (retro `0.4.3` R1) | pending |
-| D31 | `commit-msg` requires `Siguiente:`, also in `merge-branch.sh` merges; `GW_NO_NEXT=1` escape (retro `0.4.2` P4) | pending |
+| D31 | `commit-msg` requires `Siguiente:`, also in `merge-branch.sh` merges; `GW_NO_NEXT=1` escape (retro `0.4.2` P4) | done (`7561ebf`) |
 | — | What [`pending.md`](records/pending.md) marks `0.5` | split into D18-D31 and E17 |
 
 ## `0.6` "Measure"

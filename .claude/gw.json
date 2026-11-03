@@ -28,6 +28,7 @@
   "taskId": "[A-H]\\d+",
   "commitFormat": "conventional",
   "commitRefs": true,
+  "commitNext": true,
   "refsSources": [
     "docs/roadmap.md",
     "docs/handoff.md"

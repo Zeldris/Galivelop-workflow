@@ -225,6 +225,16 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
 - E6, plantillas de `REVIEW.md`: cada regla acaba en `(check: …)` o en `(criterio)`, y una regla mecánica marcada
   `(criterio)` pide su check; la de los scripts de `.claude/gw/scripts/` va aparte y nombra `config-guard.py`. Un
   test de `test_templates` lo exige. `/gw-update` enseña el cambio a los proyectos que ya tienen su `REVIEW.md`.
+- D18 y D20: `scripts/ci-status.py` lee el estado de Actions de una rama o un commit (0 verde; 1 en rojo, pendiente
+  o sin CI; 2 ilegible) y `review-before-main.sh` lo reutiliza; la clave nueva `ciIgnore` lista los checks de CI
+  ajenos (un despliegue) que no bloquean.
+- D31: con la clave nueva `commitNext`, el `commit-msg` y `merge-branch.sh` exigen el trailer `Siguiente:`/`Next:`
+  al final del mensaje, también en las fusiones; `GW_NO_NEXT=1` lo salta en un commit. Este repo lo activa.
+- D22 y D23: el `pre-commit` comprueba la fila propia de la bitácora (`handoff.py own-row --staged`;
+  `GW_SHARED_LOG=1` para tocar filas ajenas a propósito) y `handoff.py set-row` la reescribe a mitad de tarea.
+- D26-D28: `doctor.py` avisa de worktrees cuya rama ya está fusionada en la rama protegida (local u `origin/`), de
+  un `cd <carpeta> &&` en el `check` sin `worktreeLinks` para su `node_modules` o `.venv`, y de un `core.hooksPath`
+  absoluto al `.githooks` (que `apply.py` ya no acepta en silencio).
 
 ### EN
 
@@ -433,6 +443,16 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   `(judgement)` asks for its check; the one about the scripts under `.claude/gw/scripts/` stands apart and names
   `config-guard.py`. A `test_templates` case requires it. `/gw-update` shows the change to projects that already
   have their `REVIEW.md`.
+- D18 and D20: `scripts/ci-status.py` reads the Actions status of a branch or commit (0 green; 1 red, pending or no
+  CI; 2 unreadable) and `review-before-main.sh` reuses it; the new `ciIgnore` key lists foreign CI checks (a
+  deployment) that do not block.
+- D31: with the new `commitNext` key, `commit-msg` and `merge-branch.sh` require the `Siguiente:`/`Next:` trailer at
+  the end of the message, merges included; `GW_NO_NEXT=1` skips it for one commit. This repo turns it on.
+- D22 and D23: `pre-commit` checks the branch's own log row (`handoff.py own-row --staged`; `GW_SHARED_LOG=1` to
+  touch other rows on purpose) and `handoff.py set-row` rewrites it mid-task.
+- D26-D28: `doctor.py` warns of worktrees whose branch is already merged into the protected branch (local or
+  `origin/`), of a `cd <folder> &&` in `check` without `worktreeLinks` for its `node_modules` or `.venv`, and of an
+  absolute `core.hooksPath` to `.githooks` (which `apply.py` no longer accepts silently).
 
 ## [0.4.3] - 2026-10-27
 

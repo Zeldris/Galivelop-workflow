@@ -32,10 +32,11 @@ Cada regla de abajo que tiene un check lo nombra entre paréntesis; las demás s
 - **Al cerrar cada fase, tarea o PR**, se para y se informa al usuario de qué queda hecho y qué sigue; con la
   bitácora al día, se recomienda `/clear` (la bitácora basta para retomar).
 - **La sesión se abre desde la carpeta del repo**; si no, no carga `.claude/settings.json` (`doctor.py` lo detecta).
-- **Al cerrar cada bloque o fase, mira el CI de la última subida.** Un CI que no arranca (sin cuota de Actions)
-  cuenta como rojo y se dice al usuario. Solo si él lo confirma vale el check pasado en local sobre el mismo commit,
-  apuntado en la bitácora como «comprobado solo en local»; un CI que arrancó y falló nunca se sustituye así. Para un
-  PR, `python3 scripts/ci-local.py --record` corre el CI en local y deja la línea que acepta el gancho.
+- **Al cerrar cada bloque o fase, mira el CI de la última subida** (`python3 scripts/ci-status.py`; `ciIgnore`). Un CI
+  que no arranca (sin cuota de Actions) cuenta como rojo y se dice al usuario. Solo si él lo confirma vale el check
+  pasado en local sobre el mismo commit, apuntado en la bitácora como «comprobado solo en local»; un CI que arrancó y
+  falló nunca se sustituye así. Para un PR, `python3 scripts/ci-local.py --record` corre el CI en local y deja la
+  línea que acepta el gancho.
 - Si el usuario dice que se para, se para: se sube lo que haya y se deja la bitácora al día.
 
 ## Comprobar
@@ -50,7 +51,7 @@ Cada regla de abajo que tiene un check lo nombra entre paréntesis; las demás s
 
 ## Mensajes de commit
 
-Los comprueba el `commit-msg` (`commitFormat`, `commitRefs` y `agentSignatures` de `.claude/gw.json`).
+Los comprueba el `commit-msg` (`commitFormat`, `commitRefs`, `commitNext` y `agentSignatures` de `.claude/gw.json`).
 
 - En español. Primera línea con Conventional Commits y el id del roadmap como ámbito: `feat(D12): …`; `WIP: `
   delante si va en rojo. Una tarea sin id toma el siguiente libre de su bloque.

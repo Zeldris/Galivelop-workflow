@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público): estaba en rojo por dos tests de interrupción con Python 3.12, SC2015 en `reviewed.sh` (shellcheck 0.9/0.10 de apt) y, en macOS, `test_apply` (disco sin mayúsculas) y el límite de 1 s de `test_review_before_main` (ahora 5 s sobre un comando trivial). Arreglado en `ccr-6dfbc880-ddr41g` (`66a4ecd`, CI verde en Ubuntu y macOS) y traído aquí. `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.4.4` |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | `0.5` «Base» ([`roadmap.md`](roadmap.md)): hechos H14 a E6 (CI verde en Ubuntu y macOS en `70707f0`). Los 15 de `pending.md` marcados `0.5` son ahora **D18-D31 y E17** en el roadmap (2026-11-03), repartidos con `gw-orchestrate-dealer` en worktrees: oleada 1 = doctor (D26-D28), handoff (D22-D23), CI (D18, D20), `commit-msg` (D31); oleada 2 = E17, D24-D25, D29, D30; oleada 3 = D19, D21. Presupuesto de compactaciones de la tarea: 2. Antes de cerrar la `0.5`, recogida (`gw-harvest`, con los alias). Aparte: parche `0.4.4`, otro día |
+| Siguiente paso | `0.5` «Base» ([`roadmap.md`](roadmap.md)): hechos H14 a E6 (CI verde en Ubuntu y macOS en `70707f0`). Los 15 de `pending.md` marcados `0.5` son ahora **D18-D31 y E17** en el roadmap (2026-11-03), repartidos con `gw-orchestrate-dealer` en worktrees: oleada 1 **hecha** (2026-11-03: D18, D20, D22, D23, D26-D28, D31 fusionadas y revisadas; `commitNext` activo en este repo); oleada 2 = E17, D24-D25, D29, D30; oleada 3 = D19, D21. Presupuesto de compactaciones de la tarea: 2. Antes de cerrar la `0.5`, recogida (`gw-harvest`, con los alias). Aparte: parche `0.4.4`, otro día |
 
 ### Fases
 
@@ -49,6 +49,19 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Pendiente
 
+- **Leves de la oleada 1 de la `0.5` (2026-11-03, no bloquean):** `ci-status.py`: comodines en `ciIgnore`, argparse
+  sale 2 con un uso malo sin decirlo, `doctor` sin su propia prueba de acceso al CI. D31: `merge --squash` y casos de
+  cherry-pick, CRLF y espacios sin test. D26-D28: las fusiones squash no se detectan (sin documentar); un `cd a && cd
+  b` encadenado no se sigue; rutas `\` de Windows en `worktreeLinks`; faltan tests de worktree detached y prunable.
+  D22-D23: `rewrite_row` busca filas en todo el archivo y no solo en la tabla; bitácora no UTF-8 da traceback; escape
+  de `\|` incompleto; ninguna skill ni plantilla llama a `set-row`. Revisiones en el scratchpad de la sesión.
+- **Para la retro de la `0.5` (2026-11-03):** (1) los worktrees de `isolation: worktree` nacen en `origin/main`, no
+  en HEAD (los agentes se movieron a mano; D6, `worktree.baseRef`); (2) la regla del encargo «una espera por orden
+  larga» no bastó: ~32 esperas duplicadas en segundo plano; hace falta un gancho o un tope real; (3) varios checks
+  completos a la vez saturan la máquina de 4 núcleos: los arreglos se piden sin check completo y lo corre
+  `merge-branch.sh`; (4) el scratchpad compartido: un agente pisó los archivos de otro; nombres únicos por agente;
+  (5) `pkill` denegado a los agentes, usaron TaskStop; (6) el `pre-push` repitió el check tras `merge-branch.sh`
+  (ya apuntado: que `merge-branch.sh` apunte el verde).
 - **Leves de D11/D12/D15/D16 (2026-11-02, no bloquean):** `commit-message.py`: con `core.commentChar=auto` los
   comentarios quedan como último párrafo y dan «no Refs trailer» (le pasaba ya al de firmas); `refsSources` no se
   valida (`..`, rutas absolutas). `merge-branch.sh`: si git no ve el último párrafo como trailers, sus `Refs:` se
