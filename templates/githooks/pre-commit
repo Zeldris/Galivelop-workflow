@@ -61,12 +61,13 @@ fi
 added="$(diff_of -U0 --no-renames --diff-filter=ACMR | grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -v 'gw-allow-secret' || true)"
 # Prefixes that identify a key by themselves match anywhere, even glued to a letter or digit ("\nsk-ant-…", "a%3DAKIA…",
 # "1AKIA…"). Only the generic sk-… and [rs]k_live_… need a left edge, so a word that merely ends in them (musk-tells-…,
-# task-…) is not taken for a key; sk-ant-/sk-proj-… and a hyphenless sk-<20+ letters or digits> match glued as well.
-KEY_FORMATS='-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,}|xox[abposr]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|sk-(ant|proj|svcacct)-[A-Za-z0-9_-]{20,}|sk-[A-Za-z0-9]{20,}|gsk_[A-Za-z0-9]{20,}|glpat-[0-9A-Za-z_-]{20,}|(^|[^A-Za-z0-9])(sk-[A-Za-z0-9_-]{20,}|[rs]k_live_[0-9A-Za-z]{20,})'
+# task-…, disk-…) is not taken for a key. For them a digit, an escaped \n/\r/\t or a %XX before the key counts as an
+# edge too ("\nsk-or-v1-…", "a%3Dsk_live_…", "1sk-…"); sk-ant-/sk-proj-/sk-svcacct- match glued to anything.
+KEY_FORMATS='-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{36,}|github_pat_[A-Za-z0-9_]{22,}|xox[abposr]-[A-Za-z0-9-]{10,}|AIza[0-9A-Za-z_-]{35}|sk-(ant|proj|svcacct)-[A-Za-z0-9_-]{20,}|gsk_[A-Za-z0-9]{20,}|glpat-[0-9A-Za-z_-]{20,}|(^|[^A-Za-z]|\\[nrt]|%[0-9A-Fa-f]{2})(sk-[A-Za-z0-9_-]{20,}|[rs]k_live_[0-9A-Za-z]{20,})'
 found="$(printf '%s\n' "$added" | grep -oE -e "$KEY_FORMATS" | head -n 5 || true)"
 if [ -n "$found" ]; then
   echo "pre-commit: the commit adds something shaped like a key or token:" >&2
-  printf '%s\n' "$found" | sed -E 's/^[^A-Za-z0-9-]//; s/^(.{8}).*/  \1…/' >&2
+  printf '%s\n' "$found" | sed -E 's/^(\\[nrt]|%[0-9A-Fa-f]{2}|[^A-Za-z0-9-])//; s/^(.{8}).*/  \1…/' >&2
   echo "pre-commit: keys belong in environment variables or a secrets manager, never in the repo; $fix_line" >&2
   exit 1
 fi
@@ -85,7 +86,7 @@ HARMLESS="^\\+[[:space:]]*(export[[:space:]]+)?${NAME}[[:space:]]*[=:][[:space:]
 added_lines() { grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -v 'gw-allow-secret' || true; }
 examples=(':!*.env.example' ':!*.env.sample' ':!*.env.template')
 # A dict of absolute path -> error code ("/srv/app/token": "E123") is not an assignment: that pair is dropped first.
-PATHCODE='"\/[^"]*"[[:space:]]*:[[:space:]]*"[A-Za-z]{1,4}[-_]?[0-9]{1,6}"'
+PATHCODE='"\/[^"]*"[[:space:]]*:[[:space:]]*"[A-Z]{1,4}[-_]?[0-9]{1,6}"'
 literal="$(diff_of -U0 --no-renames --diff-filter=ACMR -- . "${examples[@]}" | added_lines | sed -E "s/$PATHCODE//g" | grep -E "$QUOTED" | head -n 5 || true)"
 config_added="$(diff_of -U0 --no-renames --diff-filter=ACMR -- '*.env' '.env*' '*.properties' '*.yml' '*.yaml' \
   '*.toml' '*.ini' '*.cfg' '*.conf' "${examples[@]}" | added_lines)"

@@ -1860,6 +1860,8 @@ class PreCommit(Base):
         p = self.p
         p.write("docs/fuentes.md", "- https://ppc.land/x-drops-link-penalty-musk-tells-zuckerberg-on-platform/\n")
         p.commit("url")
+        p.write("infra/ids.txt", "disk-" + "0123456789abcdef01234567 task-" + "3f9a2b1c4d5e6f7a8b9c0d1e\n")
+        p.commit("ids")
         p.write("src/llm.py", "KEY=" + "sk-" + "ant-" + "A1b2C3d4" * 3 + "\n")
         r = p.commit("leak", ok=False)
         self.assertNotEqual(r.returncode, 0)
@@ -1874,7 +1876,10 @@ class PreCommit(Base):
             "percent-encoded": "a%3D" + ant,
             "digit before AKIA": "1" + "AKIA" + "ABCDEFGH12345678",
             "letter before ghp": "tok" + FAKE_TOKEN,
-            "glued hyphenless sk-": "n" + "sk-" + "A1b2C3d4" * 3,
+            "escaped newline, openrouter": "x=\\n" + "sk-" + "or-v1-" + "0123456789abcdef" * 2,
+            "percent-encoded, openrouter": "a%3D" + "sk-" + "or-v1-" + "0123456789abcdef" * 2,
+            "escaped newline, stripe": "x=\\n" + "sk_" + "live_" + "ABCDEFGHIJ" * 3,
+            "digit before sk-": "1" + "sk-" + "abc_def_ghi_jkl_mno_pqr_stu",
         }
         for label, text in cases.items():
             with self.subTest(label):
@@ -1889,6 +1894,12 @@ class PreCommit(Base):
         # D37/P3: an absolute path as key and an error code as value is not an assignment.
         p.write("tests/test_x.py", 'EXPECTED = {"/srv/app/secrets/token": "E123", "/etc/api_key": "ERR-42"}\n')
         self.assertEqual(p.commit("dict", ok=False).returncode, 0)
+        # A weak real password under a vault-like path is not an error code (lowercase value): it stops.
+        p.write("tests/test_v.py", 'V = {"/vault/db/pass' + 'word": "pass1234"}\n')
+        r = p.commit("vault", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("literal secret", r.stderr)
+        p.run("git", "reset", "-q"); (p.work / "tests/test_v.py").unlink()
         # A real secret in a test still stops, also next to such a pair: only the path -> code pair is exempt.
         p.write("tests/test_y.py", 'D = {"/srv/token": "E123", "pass' + 'word": "hunter2-real"}\n')
         r = p.commit("real", ok=False)

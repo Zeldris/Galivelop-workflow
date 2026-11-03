@@ -112,7 +112,7 @@ class Scanner:
         found = []
         if SECRET_MARK not in text:
             for m in self.keys.finditer(text):
-                value = re.sub(r"^[^A-Za-z0-9-]", "", m.group(0))
+                value = re.sub(r"^(\\[nrt]|%[0-9A-Fa-f]{2}|[^A-Za-z0-9-])", "", m.group(0))
                 found.append(("key", value[:8] + "…"))
         if self.emails:
             found += [("e-mail", m.group(0)) for m in EMAIL.finditer(text) if not email_allowed(m.group(0), self.allowed)]
