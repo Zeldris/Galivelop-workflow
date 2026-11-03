@@ -53,8 +53,8 @@ In this order, because each step uses the previous one.
 | E2 | Private-data check in `pre-push` (list in `.claude/gw.local.json`); CI, only keys and emails | done (`8ffc4f5`) |
 | E3 | Published harvests anonymised (`private-project-1`) | done (`d11153f`) |
 | D3 | Review of the already published harvests with E2's check | done (`0cb929b`) |
-| E1 | Audit of `AGENTS.md` and `CLAUDE.md`, with a line-cap check | pending |
-| E6 | Each `REVIEW.md` rule names its check or says "judgement" | pending |
+| E1 | Audit of `AGENTS.md` and `CLAUDE.md`, with a line-cap check | done (`d0dfed3`, `e02859e`) |
+| E6 | Each `REVIEW.md` rule names its check or says "judgement" | done |
 | — | What [`pending.md`](records/pending.md) marks `0.5` | pending |
 
 ## `0.6` "Measure"

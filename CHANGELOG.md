@@ -222,6 +222,9 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   archivo vuelve a su sitio.
 - `instructionLines` (E1): clave nueva del config `{warn, fail}` (enteros >= 1, `warn` <= `fail`; defecto 150/250)
   con el tope de líneas de `AGENTS.md`/`CLAUDE.md` que usa `doctor.py` (antes, fijo en el código).
+- E6, plantillas de `REVIEW.md`: cada regla acaba en `(check: …)` o en `(criterio)`, y una regla mecánica marcada
+  `(criterio)` pide su check; la de los scripts de `.claude/gw/scripts/` va aparte y nombra `config-guard.py`. Un
+  test de `test_templates` lo exige. `/gw-update` enseña el cambio a los proyectos que ya tienen su `REVIEW.md`.
 
 ### EN
 
@@ -426,6 +429,10 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   goes back to its place.
 - `instructionLines` (E1): new config key `{warn, fail}` (integers >= 1, `warn` <= `fail`; default 150/250) with
   the line limit of `AGENTS.md`/`CLAUDE.md` that `doctor.py` uses (hard-coded before).
+- E6, `REVIEW.md` templates: every rule ends in `(check: …)` or in `(judgement)`, and a mechanical rule marked
+  `(judgement)` asks for its check; the one about the scripts under `.claude/gw/scripts/` stands apart and names
+  `config-guard.py`. A `test_templates` case requires it. `/gw-update` shows the change to projects that already
+  have their `REVIEW.md`.
 
 ## [0.4.3] - 2026-10-27
 

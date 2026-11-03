@@ -54,8 +54,8 @@ En este orden, porque cada paso usa el anterior.
 | E2 | Check de datos privados en el `pre-push` (lista en `.claude/gw.local.json`); el CI, solo claves y correos | hecho (`8ffc4f5`) |
 | E3 | Recogidas publicadas anonimizadas (`private-project-1`) | hecho (`d11153f`) |
 | D3 | Repaso de las recogidas ya publicadas con el check de E2 | hecho (`0cb929b`) |
-| E1 | Auditoría de `AGENTS.md` y `CLAUDE.md`, con check de tope de líneas | pendiente |
-| E6 | Cada regla de `REVIEW.md` nombra su check o dice «criterio» | pendiente |
+| E1 | Auditoría de `AGENTS.md` y `CLAUDE.md`, con check de tope de líneas | hecho (`d0dfed3`, `e02859e`) |
+| E6 | Cada regla de `REVIEW.md` nombra su check o dice «criterio» | hecho |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.5` | pendiente |
 
 ## `0.6` «Medir»

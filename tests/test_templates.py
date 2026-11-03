@@ -95,6 +95,27 @@ class Templates(unittest.TestCase):
                     self.assertIn(verdict, text, f"{lang}/REVIEW.md: the three verdicts are missing")
                 self.assertRegex(text, r"refut", f"{lang}/REVIEW.md: it must ask to refute each finding")
 
+    def test_every_review_rule_names_its_check_or_says_judgement(self):
+        """E6: each top-level bullet ends in `(check: …)` or in the judgement word of its language."""
+        for lang, judgement in (("es", "criterio"), ("en", "judgement")):
+            text = (TEMPLATES / lang / "REVIEW.md").read_text(encoding="utf-8")
+            bullets, current = [], None
+            for line in text.splitlines():
+                if line.startswith("- "):
+                    current = [line]
+                    bullets.append(current)
+                elif line.startswith("  ") and current is not None:
+                    current.append(line)
+                else:
+                    current = None
+            with self.subTest(lang=lang):
+                self.assertGreater(len(bullets), 10, f"{lang}/REVIEW.md: the rules were not found")
+                marker = re.compile(r"\((check: [^()]+|%s)\)$" % judgement)
+                for bullet in bullets:
+                    self.assertRegex(bullet[-1].strip(), marker,
+                                     f"{lang}/REVIEW.md: this rule names no check nor says ({judgement}): {bullet[0]}")
+                self.assertTrue(any("(check: " in b[-1] for b in bullets), f"{lang}/REVIEW.md: no rule names a check")
+
     def test_every_template_starts_with_the_version_marker(self):
         for lang in ("es", "en"):
             for name in lang_files(lang):
