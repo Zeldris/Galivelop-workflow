@@ -518,6 +518,34 @@ class Doctor(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertLine(out, "FAIL", "size", "CLAUDE.md has 251 lines", "fail above 250")
 
+    def test_instruction_limits_come_from_the_config(self):
+        base = "# Rules\n\nDeal work to subagents (skill gw-orchestrate-dealer).\n"
+        self.p.write("AGENTS.md", base + "line\n" * 157)  # 160 lines
+        cfg_path = self.p.work / ".claude" / "gw.json"
+        cfg = json.loads(cfg_path.read_text())
+        cfg["instructionLines"] = {"warn": 200, "fail": 300}
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("size:", out)
+        self.assertLine(out, "OK", "instructions")
+        cfg["instructionLines"] = {"warn": 100, "fail": 150}
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", "size", "AGENTS.md has 160 lines", "warn above 100, fail above 150",
+                        "raise instructionLines")
+        cfg["instructionLines"] = {"warn": 100, "fail": 200}
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "size", "AGENTS.md has 160 lines", "warn above 100, fail above 200")
+        cfg["instructionLines"] = {"warn": 200, "fail": 100}
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", "config", "is invalid", "config.py", "validate")  # the reason: test_config.py
+
     def test_invalid_config_fails_with_validate_command(self):
         (self.p.work / ".claude" / "gw.json").write_text("{}")
         code, out = self.doctor()

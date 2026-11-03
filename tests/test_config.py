@@ -3,11 +3,15 @@ import json
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+import config  # noqa: E402
+
 SCRIPT = ROOT / "scripts" / "config.py"
 VALID = {"version": "0.1.0", "language": "en", "log": "docs/log.md", "protectedBranch": "main",
          "pushToProtected": "pr", "check": ["make check", "make lint"], "reviewMark": "docs/reviewed.txt",
@@ -84,6 +88,34 @@ class Config(unittest.TestCase):
             r = cli(self.tmp, "validate")
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn("$.scoutDir", r.stderr)
+
+    def test_instruction_lines_default_and_own_values(self):
+        self.write(VALID)
+        self.assertEqual(json.loads(cli(self.tmp, "get", "instructionLines").stdout), {"warn": 150, "fail": 250})
+        self.assertEqual(config.instruction_lines({}), (150, 250))
+        self.write(dict(VALID, instructionLines={"warn": 100, "fail": 150}))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        self.assertEqual(config.instruction_lines(config.load(self.tmp)), (100, 150))
+        self.assertEqual(config.instruction_lines({"instructionLines": {"warn": 200}}), (200, 250))  # the rest by default
+        self.write(dict(VALID, instructionLines={"warn": 250, "fail": 250}))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+
+    def test_instruction_lines_bad_values_fail_with_their_reason(self):
+        cases = [({"warn": 200, "fail": 100}, "$.instructionLines: warn (200) must not be above fail (100)"),
+                 ({"warn": 300}, "warn (300) must not be above fail (250)"),
+                 ({"fail": 100}, "warn (150) must not be above fail (100)"),
+                 ({"warn": "x"}, "$.instructionLines.warn: expected integer, got str"),
+                 ({"warn": 1.5}, "$.instructionLines.warn: expected integer, got float"),
+                 ({"fail": True}, "$.instructionLines.fail: expected integer, got bool"),
+                 ({"warn": -1}, "$.instructionLines.warn: must be at least 1, got -1"),
+                 ({"fail": 0}, "$.instructionLines.fail: must be at least 1, got 0"),
+                 ({"warning": 10}, "$.instructionLines: unknown key 'warning'"),
+                 (5, "$.instructionLines: expected object, got int")]
+        for bad, why in cases:
+            self.write(dict(VALID, instructionLines=bad))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn(why, r.stderr)
 
     def test_subagent_cap_default_and_bad_values(self):
         self.write(VALID)
