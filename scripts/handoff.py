@@ -28,6 +28,9 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  (the pre-commit hook, so the failure comes before the commit, not at
                                                  the push); passes at once if the log is not staged or is new, on a
                                                  detached HEAD (WARNING) and while a merge, cherry-pick or rebase is closing
+  handoff.py set-row TEXT [--branch BRANCH]     rewrite the text of BRANCH's row (default: the current branch) without
+                                                 closing it; fails, and writes nothing, if the row is missing, TEXT is
+                                                 empty or has a newline, or it passes 600 characters
   handoff.py closed BASE SHA                    every task closed in the plan between BASE and SHA ("- [x] **ID**"
                                                  or struck through) is also recorded in the "Done" section of SHA's
                                                  log: struck through there, or named on a line that starts with a date
@@ -605,24 +608,53 @@ def cmd_done(ctx, args):
     return 0
 
 
-def cmd_close_row(ctx, args):
+def rewrite_row(ctx, branch, text):
+    """Replace the text of `branch`'s row in the log file. Returns the number of rows found; writes only if exactly 1."""
     path = ctx.root / ctx.log
     try:
-        lines = path.read_text(encoding="utf-8").split("\n")
+        raw = path.read_text(encoding="utf-8", newline="")
     except OSError as exc:
         raise Usage(f"cannot read {path} ({exc}); fix `log` in .claude/gw.json")
-    text = args.text or CLOSED_TEXT.get(ctx.config["language"], CLOSED_TEXT["en"])
+    eol = "\r\n" if "\r\n" in raw else "\n"
+    lines = raw.split(eol)
     hit = 0
     for i, line in enumerate(lines):
         m = ROW.match(line)
-        if m and m.group("branch") == args.branch:
-            lines[i] = f"| **{m.group('label')} · `{args.branch}`** | {text} |"
+        if m and m.group("branch") == branch:
+            lines[i] = f"| **{m.group('label')} · `{branch}`** | {text} |"
             hit += 1
+    if hit == 1:
+        path.write_text(eol.join(lines), encoding="utf-8", newline="")
+    return hit
+
+
+def cmd_close_row(ctx, args):
+    text = args.text or CLOSED_TEXT.get(ctx.config["language"], CLOSED_TEXT["en"])
+    hit = rewrite_row(ctx, args.branch, text)
     if hit != 1:
         print(f"handoff: found {hit} rows for {args.branch}, expected 1; add the row first: edit {ctx.log}")
         return 1
-    path.write_text("\n".join(lines), encoding="utf-8")
     print(f"handoff: row of {args.branch} closed in {ctx.log}; commit it: git commit -am 'Close the log row of {args.branch}'")
+    return 0
+
+
+def cmd_set_row(ctx, args):
+    branch = args.branch or current_branch(ctx)
+    if not branch:
+        raise Usage("detached HEAD, so there is no branch whose row to write; name it: handoff.py set-row TEXT --branch <branch>")
+    text = args.text.strip()
+    if not text or "\n" in text or "\r" in text:
+        raise Usage("TEXT must be one non-empty line (a table cell); write the row text on a single line")
+    text = re.sub(r"(?<!\\)\|", r"\\|", text)
+    if len(text) > LIMIT:
+        print(f"handoff: the text has {len(text)} characters (limit {LIMIT}); shorten it, or move what is done to the Done "
+              f"section: python3 {HERE / 'handoff.py'} done \"<text>\"")
+        return 1
+    hit = rewrite_row(ctx, branch, text)
+    if hit != 1:
+        print(f"handoff: found {hit} rows for {branch}, expected 1; add the row first: edit {ctx.log}")
+        return 1
+    print(f"handoff: row of {branch} updated in {ctx.log} ({len(text)} characters); commit it together with the work")
     return 0
 
 
@@ -663,6 +695,9 @@ def main(argv=None):
     r = sub.add_parser("close-row")
     r.add_argument("branch")
     r.add_argument("--text")
+    w = sub.add_parser("set-row")
+    w.add_argument("text")
+    w.add_argument("--branch")
     args = p.parse_args(argv)
     if args.cmd == "own-row" and (args.staged == (args.commit is not None) or (args.commit is None) != (args.branch is None)):
         print("handoff: own-row takes COMMIT BRANCH, or --staged alone; run: handoff.py own-row --staged", file=sys.stderr)
@@ -697,9 +732,11 @@ def main(argv=None):
         if args.cmd == "done":
             args.date = args.date or datetime.date.today().isoformat()
         elif not ctx.config.get("logRows") and args.cmd != "check":
+            if args.cmd == "set-row":
+                print("handoff: logRows is off in .claude/gw.json, so there are no branch rows; nothing written")
             return 0  # the branch-row module is off: nothing to check (`check` still reads the size and Done rules)
         return {"check": cmd_check, "done": cmd_done, "own-row": cmd_own_row, "closed": cmd_closed,
-                "in-progress": cmd_in_progress, "close-row": cmd_close_row, "clash": cmd_clash}[args.cmd](ctx, args)
+                "in-progress": cmd_in_progress, "close-row": cmd_close_row, "set-row": cmd_set_row, "clash": cmd_clash}[args.cmd](ctx, args)
     except Usage as exc:
         print(f"handoff: {exc}", file=sys.stderr)
         return 2

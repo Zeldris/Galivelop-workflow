@@ -815,6 +815,80 @@ class HandoffCloseRow(Base):
         self.assertIn("found 0 rows for nope", out)
 
 
+class HandoffSetRow(Base):
+    def row(self, branch="feat-a"):
+        return next(l for l in (self.p.work / LOG).read_text().splitlines() if f"`{branch}`**" in l)
+
+    def test_set_row_rewrites_only_the_current_branchs_row(self):
+        self.p.branch("feat-a")
+        code, out = self.p.script("handoff.py", "set-row", "now doing A2")
+        self.assertEqual(code, 0, out)
+        self.assertIn("(12 characters)", out)
+        self.assertEqual(self.row(), "| **Task in progress · `feat-a`** | now doing A2 |")
+        self.assertEqual(self.row("feat-b"), "| **Task in progress · `feat-b`** | doing B |")
+        self.assertEqual(self.p.script("handoff.py", "check")[0], 0)
+        self.assertEqual(self.p.script("handoff.py", "set-row", "again", "--branch", "feat-b")[0], 0)
+        self.assertEqual(self.row("feat-b"), "| **Task in progress · `feat-b`** | again |")
+
+    def test_set_row_keeps_the_rest_of_the_file_byte_for_byte_and_crlf(self):
+        self.p.branch("feat-a")
+        path = self.p.work / LOG
+        path.write_bytes(log_text().replace("\n", "\r\n").encode())
+        self.assertEqual(self.p.script("handoff.py", "set-row", "A | with a pipe")[0], 0)
+        want = log_text().replace("| doing A |", "| A \\| with a pipe |").replace("\n", "\r\n")
+        self.assertEqual(path.read_bytes().decode(), want)
+
+    def test_set_row_limit_is_600_and_writes_nothing_over_it(self):
+        self.p.branch("feat-a")
+        before = (self.p.work / LOG).read_bytes()
+        code, out = self.p.script("handoff.py", "set-row", "x" * 601)
+        self.assertEqual(code, 1, out)
+        self.assertIn("601 characters (limit 600)", out)
+        self.assertEqual((self.p.work / LOG).read_bytes(), before)
+        self.assertEqual(self.p.script("handoff.py", "set-row", "x" * 600)[0], 0)
+
+    def test_set_row_without_a_row_for_the_branch_fails_and_writes_nothing(self):
+        self.p.branch("feat-new")
+        before = (self.p.work / LOG).read_bytes()
+        code, out = self.p.script("handoff.py", "set-row", "text")
+        self.assertEqual(code, 1, out)
+        self.assertIn("found 0 rows for feat-new", out)
+        self.assertEqual((self.p.work / LOG).read_bytes(), before)
+
+    def test_set_row_two_rows_for_the_branch_fails(self):
+        self.p.branch("feat-a")
+        self.p.write(LOG, log_text() + "\n| **Task in progress · `feat-a`** | again |\n")
+        code, out = self.p.script("handoff.py", "set-row", "text")
+        self.assertEqual(code, 1, out)
+        self.assertIn("found 2 rows for feat-a", out)
+
+    def test_set_row_detached_head_needs_a_branch_name(self):
+        self.p.git("checkout", "-q", "--detach")
+        code, out = self.p.script("handoff.py", "set-row", "text")
+        self.assertEqual(code, 2, out)
+        self.assertIn("detached HEAD", out)
+        self.assertIn("--branch", out)
+        self.assertEqual(self.p.script("handoff.py", "set-row", "text", "--branch", "feat-b")[0], 0)
+
+    def test_set_row_bad_text_is_exit_2(self):
+        self.p.branch("feat-a")
+        for text in ("", "   ", "two\nlines"):
+            code, out = self.p.script("handoff.py", "set-row", text)
+            self.assertEqual(code, 2, repr(text))
+            self.assertIn("one non-empty line", out)
+
+    def test_set_row_without_logrows_writes_nothing(self):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        self.p = Utils(self.tmp, {"logRows": False})
+        self.p.branch("feat-a")
+        before = (self.p.work / LOG).read_bytes()
+        code, out = self.p.script("handoff.py", "set-row", "text")
+        self.assertEqual(code, 0, out)
+        self.assertIn("logRows is off", out)
+        self.assertEqual((self.p.work / LOG).read_bytes(), before)
+
+
 class PrepushBranches(Base):
     def run_hook(self, sha, remote_sha=ZERO, ref="feat-a", env=None):
         stdin = f"refs/heads/{ref} {sha} refs/heads/{ref} {remote_sha}\n"
