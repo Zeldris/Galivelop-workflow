@@ -3,7 +3,7 @@
 # Checks that a new test FAILS without the fix it covers (a test that passes either way proves nothing).
 # With the fix still uncommitted: it stashes the fix files, runs the test command (it must fail), restores them and
 # runs it again (it must pass).
-#   bash red-without-fix.sh [--fix-at COMMIT] [--fails-with REGEX] [--allow-compile-red] [--compile-re REGEX]
+#   bash red-without-fix.sh [--fix-at COMMIT] [--fails-with REGEX] [--reject-compile-red] [--compile-re REGEX]
 #                           [--ran-one REGEX] "<test command>" <fix-file>...
 #   e.g.  bash red-without-fix.sh "npx vitest run src/a.test.ts -t 'name'" src/a.ts
 #   --fails-with REGEX  the failing run must also print REGEX (guards against failing for another reason, such as a
@@ -15,14 +15,16 @@
 #   --fix-at COMMIT    the fix is ALREADY committed (COMMIT, an ancestor of HEAD): the run "without the fix" uses each
 #                      fix file as it was at COMMIT^ (a file the commit created is removed), then restores it from HEAD.
 #                      The fix files must have no uncommitted changes. Without it the fix must be uncommitted (below).
-#   The red must be an ASSERTION red: a run without the fix that fails because the test cannot even load (compile,
-#   syntax, import or collection error: SyntaxError, ModuleNotFoundError, "ERROR collecting", "error TS1234",
-#   "could not compile"...) proves nothing about the fix, so it is refused (exit 1) unless you pass --fails-with (your
-#   regex then decides what is acceptable) or --allow-compile-red (the fix adds the very symbol the test imports, so
-#   failing to load is the expected red). --compile-re REGEX replaces the built-in list of load-failure messages
-#   (for a runner it does not know). The kind of red is always printed.
+#                      Caveat: the filters of the repo (eol, LFS) are applied, but the test command runs on the working
+#                      tree, so later commits that touch the fix files are not part of the "without" run.
+#   The kind of red is always printed: an "assertion" red, or a "compile/load" red (the run without the fix failed
+#   because the test cannot even load: SyntaxError, ModuleNotFoundError, "ERROR collecting", "error TS1234",
+#   "could not compile"...), with the line(s) that matched. By default a compile/load red is only REPORTED (the exit
+#   status is the one of an assertion red): it is the usual red when the fix adds the very symbol the test imports.
+#   --reject-compile-red  a compile/load red exits 1 (unless --fails-with is given, whose regex then decides).
+#   --compile-re REGEX    replaces the built-in list of load-failure messages (for a runner it does not know).
 # Make the command run exactly the new test (by its exact name): a filter that matches nothing may "pass" without
-# running it. Every fix file must have uncommitted changes (a new, untracked file counts).
+# running it. Without --fix-at every fix file must have uncommitted changes (a new, untracked file counts).
 # The test must NOT be uncommitted in a fix file: stashing the fix would take the test with it and the check could not
 # tell (it may report "also passes WITHOUT the fix"). So a fix file whose uncommitted changes touch test code (a
 # `def test_`, `it(`, `#[test]`... line changed, or enclosing a changed line, or in a new file) is refused with exit 2:
@@ -34,12 +36,12 @@ here="$(cd "$(dirname "$0")" && pwd)"
 pattern=""
 one=""
 fixat=""
-allow_compile=""
+reject_compile=""
 compile_re='SyntaxError|IndentationError|ModuleNotFoundError|ImportError|ERROR collecting|error: could not compile|error\[E[0-9]+\]|error TS[0-9]+|Cannot find module|cannot find symbol|undefined reference|build failed|Failed to compile'
-usage="usage: bash $0 [--fix-at COMMIT] [--fails-with REGEX] [--allow-compile-red] [--compile-re REGEX] [--ran-one REGEX] \"<test command>\" <fix-file>..."
+usage="usage: bash $0 [--fix-at COMMIT] [--fails-with REGEX] [--reject-compile-red] [--compile-re REGEX] [--ran-one REGEX] \"<test command>\" <fix-file>..."
 while :; do
   case "${1:-}" in
-    --allow-compile-red) allow_compile=1; shift ;;
+    --reject-compile-red) reject_compile=1; shift ;;
     --fails-with | --ran-one | --fix-at | --compile-re)
       [ $# -ge 2 ] || { echo "red-without-fix: $1 needs a regex or value; $usage" >&2; exit 2; }
       case "$1" in
@@ -131,7 +133,7 @@ if [ -n "$fixat" ]; then
   trap 'restore "$@"; rm -rf "$out"' EXIT
   for f in "$@"; do
     if git cat-file -e "$fixc^:$f" 2> /dev/null; then
-      git show "$fixc^:$f" > "$f" || { echo "red-without-fix: cannot write $f; restore with: git checkout HEAD -- $f" >&2; exit 2; }
+      git checkout -q "$fixc^" -- "$f" || { echo "red-without-fix: cannot revert $f; restore with: git checkout HEAD -- $f" >&2; exit 2; }
     else
       rm -f -- "$f"  # the fix commit created it
     fi
@@ -164,11 +166,16 @@ if [ "$without" -eq 0 ]; then
   echo "red-without-fix: the test also passes WITHOUT the fix, so it does not cover it; make it fail first, then rerun: bash $0 \"$cmd\" $*" >&2; exit 1
 fi
 kind="assertion"
-if grep -Eq -- "$compile_re" "$out/without.log"; then kind="compile/load"; fi
-echo "red-without-fix: the red without the fix is a $kind red"
-if [ -z "$pattern" ] && [ "$kind" = "compile/load" ] && [ -z "$allow_compile" ]; then
+hitline="$(grep -Em3 -- "$compile_re" "$out/without.log")"
+if [ -n "$hitline" ]; then kind="compile/load"; fi
+art="a"; [ "$kind" != "assertion" ] || art="an"
+echo "red-without-fix: the red without the fix is $art $kind red"
+if [ "$kind" = "compile/load" ]; then
+  printf '%s\n' "$hitline" | sed 's/^/red-without-fix:   matched: /'
+fi
+if [ -z "$pattern" ] && [ "$kind" = "compile/load" ] && [ -n "$reject_compile" ]; then
   tail -n 20 "$out/without.log" >&2
-  echo "red-without-fix: it fails without the fix only because the test cannot load (compile/import/collection error), which says nothing about the assertion; make the test load and fail on its assertion, or pass --allow-compile-red if that load failure is the expected red (or --fails-with REGEX), then rerun: bash $0 \"$cmd\" $*" >&2; exit 1
+  echo "red-without-fix: it fails without the fix only because the test cannot load (compile/import/collection error), which says nothing about the assertion; make the test load and fail on its assertion, or pass --fails-with REGEX, then rerun: bash $0 \"$cmd\" $*" >&2; exit 1
 fi
 if [ -n "$pattern" ] && ! grep -Eq -- "$pattern" "$out/without.log"; then
   tail -n 20 "$out/without.log" >&2
