@@ -168,7 +168,7 @@ class Conventional(Msg):
         p.git("checkout", "-q", "topic")
         r = p.git("rebase", "main", "-x", "true", ok=False)  # reword-like replays go through commit-msg only for edits
         self.assertEqual(r.returncode, 0, r.stderr)
-        r = p.git("rebase", "-i", "--root", "--exec", "true", ok=False, env={"GIT_SEQUENCE_EDITOR": "sed -i s/^pick/reword/",
+        r = p.git("rebase", "-i", "--root", "--exec", "true", ok=False, env={"GIT_SEQUENCE_EDITOR": "sed -i.bak s/^pick/reword/",
                                                                          "GIT_EDITOR": "true"})
         self.assertEqual(r.returncode, 0, r.stderr)
 
@@ -289,7 +289,7 @@ class Refs(Msg):
         p.write("docs/t.md", "t\n")
         p.git("add", "-A")
         p.git("commit", "-q", "--no-verify", "-m", "no refs")
-        r = p.git("rebase", "-i", "--root", env={"GIT_SEQUENCE_EDITOR": "sed -i s/^pick/reword/", "GIT_EDITOR": "true"},
+        r = p.git("rebase", "-i", "--root", env={"GIT_SEQUENCE_EDITOR": "sed -i.bak s/^pick/reword/", "GIT_EDITOR": "true"},
                   ok=False)
         self.assertEqual(r.returncode, 0, r.stderr)
 
@@ -352,7 +352,7 @@ class AgentTrailer(Msg):
         p.write("docs/t.md", "t\n")
         p.git("add", "-A")
         p.git("commit", "-q", "--no-verify", "-m", "old\n\nAgent: claude-opus")
-        r = p.git("rebase", "-i", "--root", env={"GIT_SEQUENCE_EDITOR": "sed -i s/^pick/reword/", "GIT_EDITOR": "true"},
+        r = p.git("rebase", "-i", "--root", env={"GIT_SEQUENCE_EDITOR": "sed -i.bak s/^pick/reword/", "GIT_EDITOR": "true"},
                   ok=False)
         self.assertEqual(r.returncode, 0, r.stderr)
 

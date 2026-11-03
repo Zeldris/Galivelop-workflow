@@ -50,7 +50,8 @@ lanzamiento manual desde Actions que cree la etiqueta.
 ## Pendiente
 
 - **CI rojo en `bf446cf` y `f518fe0` (2026-11-02):** SC2015 en `templates/githooks/commit-msg` (línea del D11) que el
-  shellcheck del CI (apt) marca y el local (0.11) no. Arreglado con `if`; falta ver el CI de la subida del arreglo.
+  shellcheck del CI (apt) marca y el local (0.11) no. Arreglado con `if` (`12577ce`, Ubuntu en verde). En macOS,
+  tres tests de `test_commit_message` usaban `sed -i` sin sufijo (BSD lo rechaza): pasan a `sed -i.bak`; falta su CI.
 - **Leves de D11/D12/D15/D16 (2026-11-02, no bloquean):** `commit-message.py`: con `core.commentChar=auto` los
   comentarios quedan como último párrafo y dan «no Refs trailer» (le pasaba ya al de firmas); `refsSources` no se
   valida (`..`, rutas absolutas). `merge-branch.sh`: si git no ve el último párrafo como trailers, sus `Refs:` se
