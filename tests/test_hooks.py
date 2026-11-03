@@ -2254,6 +2254,32 @@ class CommitMsg(Base):
         self.assertIn("/gw-update", r.stderr)
 
 
+class PreCommitOwnRow(Base):
+    """templates/githooks/pre-commit with logRows: handoff.py own-row --staged, before the commit exists."""
+    config = {"logRows": True}
+    hooks = ("pre-push", "pre-commit", "commit-msg")
+
+    def log_text(self, a="doing A", b="doing B"):
+        today = time.strftime("%Y-%m-%d")
+        return (f"# Log\n\n## Current state\n\n| **Updated** | {today} |\n"
+                f"| **Task in progress · `feat-a`** | {a} |\n| **Task in progress · `feat-b`** | {b} |\n")
+
+    def test_another_branchs_row_is_refused_at_commit_time_and_the_own_one_passes(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "feat-a")
+        p.write("docs/log.md", self.log_text())
+        self.assertEqual(p.commit("rows", ok=False).returncode, 0)
+        before = p.sha()
+        p.write("docs/log.md", self.log_text(b="A rewrote B"))
+        r = p.commit("foreign row", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("Task in progress · feat-b", r.stderr)
+        self.assertIn("BITACORA_COMPARTIDA=1 git commit", r.stderr)
+        self.assertEqual(p.sha(), before)
+        p.write("docs/log.md", self.log_text(a="A moved on"))
+        self.assertEqual(p.commit("own row", ok=False).returncode, 0)
+
+
 class CommitMsgSignatures(Base):
     """templates/githooks/commit-msg with agentSignatures: false rejects an agent's signature in the message."""
     config = {"agentSignatures": False}

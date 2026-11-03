@@ -24,6 +24,10 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
   handoff.py own-row COMMIT BRANCH [--shared]   fail if COMMIT changes another branch's row or a shared row of the
                                                  state table ("Updated" and "Tests" are free); --shared, or
                                                  BITACORA_COMPARTIDA=1 / GW_SHARED_LOG=1, allows it
+  handoff.py own-row --staged                   the same between HEAD and the index, for the branch being committed on
+                                                 (the pre-commit hook, so the failure comes before the commit, not at
+                                                 the push); passes at once if the log is not staged or is new, on a
+                                                 detached HEAD (WARNING) and while a merge, cherry-pick or rebase is closing
   handoff.py closed BASE SHA                    every task closed in the plan between BASE and SHA ("- [x] **ID**"
                                                  or struck through) is also recorded in the "Done" section of SHA's
                                                  log: struck through there, or named on a line that starts with a date
@@ -347,14 +351,36 @@ def report(problems, fix):
     return 1 if problems else 0
 
 
+def current_branch(ctx):
+    """The checked-out branch, or "" on a detached HEAD."""
+    return ctx.git("symbolic-ref", "--short", "-q", "HEAD").stdout.strip()
+
+
 def cmd_own_row(ctx, args):
     if args.shared or os.environ.get("BITACORA_COMPARTIDA") or os.environ.get("GW_SHARED_LOG"):
         return 0
-    parent = ctx.git("rev-parse", "--verify", "-q", f"{args.commit}^").stdout.strip()
-    bad = foreign_rows(log_at(ctx, parent) if parent else "", log_at(ctx, args.commit), args.branch)
+    if args.staged:
+        if not ctx.git("diff", "--cached", "--name-only", "--", ctx.log).stdout.strip() or closing_other_side(ctx):
+            return 0
+        branch = current_branch(ctx)
+        if not branch:
+            print("handoff: WARNING: detached HEAD, so there is no own row to check at commit time; the pre-push checks it "
+                  "(check out a branch: git switch <branch>)", file=sys.stderr)
+            return 0
+        before, after = log_at(ctx, "HEAD"), log_at(ctx, INDEX)
+        if not before:  # the log is being created (a fresh project, or a repo's first commit): every row is new
+            return 0
+        fix = (f"unstage the log (git restore --staged {ctx.log}) or undo that edit; if it is on purpose, commit with: "
+               "BITACORA_COMPARTIDA=1 git commit")
+    else:
+        branch = args.branch
+        parent = ctx.git("rev-parse", "--verify", "-q", f"{args.commit}^").stdout.strip()
+        before, after = (log_at(ctx, parent) if parent else ""), log_at(ctx, args.commit)
+        fix = "If it is on purpose (closing a PR, a shared row), push with: BITACORA_COMPARTIDA=1 git push"
+    bad = foreign_rows(before, after, branch)
     for key in bad:
-        print(f"handoff: the commit changes the row \"{key}\", which is not {args.branch}'s; each branch writes only in "
-              "its own row. If it is on purpose (closing a PR, a shared row), push with: BITACORA_COMPARTIDA=1 git push")
+        print(f"handoff: the commit changes the row \"{key}\", which is not {branch}'s; each branch writes only in its own "
+              f"row. {fix}")
     return 1 if bad else 0
 
 
@@ -617,9 +643,10 @@ def main(argv=None):
     d.add_argument("file", nargs="?")
     d.add_argument("--date")
     o = sub.add_parser("own-row")
-    o.add_argument("commit")
-    o.add_argument("branch")
+    o.add_argument("commit", nargs="?")
+    o.add_argument("branch", nargs="?")
     o.add_argument("--shared", action="store_true")
+    o.add_argument("--staged", action="store_true")
     s = sub.add_parser("closed")
     s.add_argument("base", nargs="?")
     s.add_argument("sha", nargs="?")
@@ -637,6 +664,9 @@ def main(argv=None):
     r.add_argument("branch")
     r.add_argument("--text")
     args = p.parse_args(argv)
+    if args.cmd == "own-row" and (args.staged == (args.commit is not None) or (args.commit is None) != (args.branch is None)):
+        print("handoff: own-row takes COMMIT BRANCH, or --staged alone; run: handoff.py own-row --staged", file=sys.stderr)
+        return 2
     if args.cmd == "closed" and (bool(args.staged) == (args.sha is not None) or (args.base is None) != (args.sha is None)):
         print("handoff: closed takes BASE SHA, or --staged alone; run: handoff.py closed --staged", file=sys.stderr)
         return 2
@@ -658,10 +688,10 @@ def main(argv=None):
         try:
             ctx = Ctx(args)
         except Usage as exc:
-            if not ((args.cmd == "closed" and args.staged) or (args.cmd == "clash" and args.merging)):
+            if not ((args.cmd in ("closed", "own-row") and args.staged) or (args.cmd == "clash" and args.merging)):
                 raise
             # A commit may be the one that fixes (or breaks) the config: the pre-push fails closed on it instead.
-            what = "\"Done\"" if args.cmd == "closed" else "task-id clash"
+            what = {"closed": "\"Done\"", "own-row": "own-row"}.get(args.cmd, "task-id clash")
             print(f"handoff: WARNING: skipping the {what} check of this commit: {exc}", file=sys.stderr)
             return 0
         if args.cmd == "done":

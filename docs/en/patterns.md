@@ -66,6 +66,10 @@ same time.
   where things stood. After a `/clear` or compaction, `recover.py --state` reminds it.
 - When the branch closes, `handoff.py close-row <branch>` leaves its row as "merged, branch finished" so the
   protected branch does not inherit a stale "Next".
+- **With `logRows`, your own row at commit time:** the `pre-commit` runs `handoff.py own-row --staged`: if the
+  staged log changes another branch's row or a shared row, the commit stops (before, only the `pre-push` saw it,
+  with the commit already made); on a detached HEAD it warns and passes, and for a shared row on purpose,
+  `BITACORA_COMPARTIDA=1 git commit`.
 - **A short log, with or without `logRows`:** `handoff.py check --strict` fails if a cell of the state table passes
   800 characters or if "Done (last 5)" has more than 5 items, badly numbered or glued on one line (without
   `--strict` it only prints `WARNING:`). `handoff.py done "text"` adds the `1.` item with the date, renumbers and

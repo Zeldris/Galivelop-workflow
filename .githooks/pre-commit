@@ -11,6 +11,9 @@
 #     unchanged from the other side.
 #   - With logRows on: a task the commit closes in the plan is also in the log's "Done" (handoff.py closed --staged;
 #     the pre-push checks it again over the pushed range). Skipped while closing a merge/cherry-pick/rebase.
+#   - With logRows on: the staged log changes only the committing branch's own row (and the free ones), not
+#     another branch's (handoff.py own-row --staged; the pre-push checks it again). Skipped on a detached HEAD
+#     (WARNING) and while closing a merge/cherry-pick/rebase.
 #   - With logRows on, while concluding a merge: it does not keep two different tasks under one task id, one from each
 #     side (handoff.py clash --merging; the pre-push checks every new merge and the protected branch).
 # CI mode: pre-commit --range BASE..HEAD scans what the range adds instead of the staged changes (run the base
@@ -138,6 +141,7 @@ if [ "$ci" = "0" ]; then
     [ -f "$scripts/$f" ] || { echo "pre-commit: $scripts/$f is missing; reinstall the workflow scripts: /gw-update" >&2; exit 1; }
   done
   python3 "$scripts/handoff.py" --root "$root" closed --staged >&2 || exit 1
+  python3 "$scripts/handoff.py" --root "$root" own-row --staged >&2 || exit 1
   python3 "$scripts/handoff.py" --root "$root" clash --merging >&2 || exit 1
 fi
 exit 0
