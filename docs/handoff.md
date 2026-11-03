@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público): estaba en rojo por dos tests de interrupción con Python 3.12, SC2015 en `reviewed.sh` (shellcheck 0.9/0.10 de apt) y, en macOS, `test_apply` (disco sin mayúsculas) y el límite de 1 s de `test_review_before_main` (ahora 5 s sobre un comando trivial). Arreglado en `ccr-6dfbc880-ddr41g` (`66a4ecd`, CI verde en Ubuntu y macOS) y traído aquí. `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.4.4` |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | `0.5` «Base» ([`roadmap.md`](roadmap.md)): hechos H14 a E6 (CI verde en Ubuntu y macOS en `70707f0`). Los 15 de `pending.md` marcados `0.5` son ahora **D18-D31 y E17** en el roadmap (2026-11-03), repartidos con `gw-orchestrate-dealer` en worktrees: oleada 1 **hecha** (2026-11-03: D18, D20, D22, D23, D26-D28, D31 fusionadas y revisadas; `commitNext` activo en este repo); oleada 2 = E17, D24-D25, D29, D30; oleada 3 = D19, D21. Presupuesto de compactaciones de la tarea: 2. Antes de cerrar la `0.5`, recogida (`gw-harvest`, con los alias). Aparte: parche `0.4.4`, otro día |
+| Siguiente paso | `0.5` «Base» ([`roadmap.md`](roadmap.md)): hechos H14 a E6 y las oleadas 1 y 2 de D18-D31 y E17 (2026-11-03, fusionadas en worktrees con `gw-orchestrate-dealer`). **Sigue la oleada 3: D19 (`ciPython`) y D21 (sin firmas del agente en PR y comentarios)**; el usuario pide fusionarlas seguidas y subir una vez. Luego la recogida (`gw-harvest`, con los alias) y las fases hacia `main`. Presupuesto de compactaciones: 2 (superado: 6). Aparte: parche `0.4.4`, otro día |
 
 ### Fases
 
@@ -49,6 +49,17 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Pendiente
 
+- **Leves de la oleada 2 de la `0.5` (2026-11-03, no bloquean):** E17: dos `check.sh --quiet` a la vez mezclan el
+  registro; falta `check.sh <rev>` (comprobar una revisión concreta, INS P12). D24: el aviso no lista las
+  resoluciones de conflictos de las fusiones. D25: `enclosing` mira las líneas de HEAD y no las del commit del
+  arreglo; en un clon superficial `--fix-at` necesita `git fetch --deepen`. D29: una entrada `cwd` sin `paths`
+  corre siempre. D30: `ruta:línea` no se reconoce; un clon superficial puede no tener los nombres viejos. Revisiones
+  en el scratchpad de la sesión.
+- **Para la retro de la `0.5`, oleada 2 (2026-11-03):** (7) el check completo tarda 25-30 min (1233 tests): las
+  esperas en segundo plano necesitan 2 h de tope, no 20 min; (8) un `pkill -f` amplio mató el check del `pre-push`;
+  (9) un monitor que buscaba `^EXIT` dio un falso atasco; (10) `merge-branch.sh` borra su registro y solo enseña 20
+  líneas: el SC2015 de E17 obligó a repetir el check entero para verlo (que deje el registro o use `--quiet`); (11)
+  cada fusión más su subida son dos checks completos (~55 min).
 - **Leves de la oleada 1 de la `0.5` (2026-11-03, no bloquean):** `ci-status.py`: comodines en `ciIgnore`, argparse
   sale 2 con un uso malo sin decirlo, `doctor` sin su propia prueba de acceso al CI. D31: `merge --squash` y casos de
   cherry-pick, CRLF y espacios sin test. D26-D28: las fusiones squash no se detectan (sin documentar); un `cd a && cd

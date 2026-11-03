@@ -235,6 +235,17 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
 - D26-D28: `doctor.py` avisa de worktrees cuya rama ya está fusionada en la rama protegida (local u `origin/`), de
   un `cd <carpeta> &&` en el `check` sin `worktreeLinks` para su `node_modules` o `.venv`, y de un `core.hooksPath`
   absoluto al `.githooks` (que `apply.py` ya no acepta en silencio).
+- E17: `scripts/check.sh` termina con un resumen de lo que pasó y falló; con `--quiet` (o `GW_CHECK_QUIET=1`)
+  guarda la salida de cada orden en `<git dir>/gw-check.log` (`GW_CHECK_LOG` la cambia) y solo enseña las últimas
+  `GW_CHECK_TAIL` líneas (40) de lo que falla.
+- D24: `reviewed.sh` avisa, sin bloquear, del código que cambió la rama desde la marca anterior sin revisión.
+- D25: `red-without-fix.sh --fix-at <commit>` toma la versión sin arreglo de ese commit; distingue un rojo de
+  carga o compilación de uno de aserción y lo informa (`--reject-compile-red` lo rechaza, `--compile-re` y
+  `--fails-with` lo afinan). Sale `--allow-compile-red`.
+- D29: `related-tests.sh` también decide con los archivos borrados: una entrada con `{files}` no recibe rutas que
+  ya no existen (avisa y se salta) y las demás corren.
+- D30: `version.py --release` comprueba que cada ruta del repo citada en la entrada nueva del CHANGELOG está en
+  HEAD, existió en el historial o la ignora git.
 
 ### EN
 
@@ -453,6 +464,17 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
 - D26-D28: `doctor.py` warns of worktrees whose branch is already merged into the protected branch (local or
   `origin/`), of a `cd <folder> &&` in `check` without `worktreeLinks` for its `node_modules` or `.venv`, and of an
   absolute `core.hooksPath` to `.githooks` (which `apply.py` no longer accepts silently).
+- E17: `scripts/check.sh` ends with a summary of what passed and failed; with `--quiet` (or `GW_CHECK_QUIET=1`) it
+  saves each command's output to `<git dir>/gw-check.log` (`GW_CHECK_LOG` changes it) and shows only the last
+  `GW_CHECK_TAIL` lines (40) of what fails.
+- D24: `reviewed.sh` warns, without blocking, of code the branch changed since the previous mark without a review.
+- D25: `red-without-fix.sh --fix-at <commit>` takes the unfixed version from that commit; it tells a load or build
+  red from an assertion red and reports it (`--reject-compile-red` rejects it, `--compile-re` and `--fails-with`
+  tune it). `--allow-compile-red` is gone.
+- D29: `related-tests.sh` also decides with deleted files: an entry with `{files}` gets no paths that no longer
+  exist (it warns and is skipped) and the others run.
+- D30: `version.py --release` checks that every repo path quoted in the new CHANGELOG entry is in HEAD, existed in
+  the history or is ignored by git.
 
 ## [0.4.3] - 2026-10-27
 

@@ -52,14 +52,14 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [ ] `0.5` · **private-project-1 P2:** firmas del agente también en el cuerpo de PR, issues y comentarios de GitHub, y aviso de un
   `user.email` `noreply@anthropic.com`. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
-- [ ] `0.5` · **INS P12 + WMF P4:** el check en una orden con resumen y la salida recortada.
+- [x] `0.5` · **INS P12 + WMF P4:** (E17, 2026-11-03) el check en una orden con resumen y la salida recortada.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md),
   [`2026-10-26-world-maker-fantasy-2.md`](../proposals/2026-10-26-world-maker-fantasy-2.md)
 - [x] `0.5` · **INS P9:** (D22, 2026-11-03) `bitacora.py own-row --staged`, la propia fila comprobada al hacer el commit.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
-- [ ] `0.5` · **private-project-1 P6:** `revisado.sh` avisa del código sin revisar desde la última marca.
+- [x] `0.5` · **private-project-1 P6:** (D24, 2026-11-03) `reviewed.sh` avisa del código sin revisar desde la última marca.
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
-- [ ] `0.5` · **private-project-1 P5:** `rojo-sin-arreglo.sh --fix-at <commit>` y distinguir un rojo de compilación de uno de la
+- [x] `0.5` · **private-project-1 P5:** (D25, 2026-11-03) `red-without-fix.sh --fix-at <commit>` y distinguir un rojo de compilación de uno de la
   aserción. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [ ] `0.7` · **Portal P4:** `orchestrate-dealer`, los repos que solo se leen se clonan aparte y sin registrar.
   [`2026-10-26-portal-galivelop-2.md`](../proposals/2026-10-26-portal-galivelop-2.md)
@@ -77,14 +77,14 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   [`2026-10-26-portal-galivelop-2.md`](../proposals/2026-10-26-portal-galivelop-2.md)
 - [ ] `0.9` · **private-project-1 P10:** textos menores (`/clear` tras un commit `WIP:`, `perPage: 1`, `git fetch -q && git status -sb`).
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
-- [ ] `0.5` · **private-project-1 P11 (archivos borrados):** `tests-relacionados.sh` incluye los archivos borrados en `{files}` o corre
+- [x] `0.5` · **private-project-1 P11 (archivos borrados):** (D29, 2026-11-03) `related-tests.sh` incluye los archivos borrados en `{files}` o corre
   todo si un push solo borra. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [x] `0.5` · **Del arreglo de INS P8** (arreglado en la `0.4.2`, `4aecf5c`): `prepush-ramas.sh` comprueba la bitácora como
   queda en la punta que se sube, así que un log malo en un commit intermedio se arregla con un commit nuevo encima.
 
 ## De la retro del parche `0.4.3`
 
-- [ ] `0.5` · **R1 (`version.py`, CHANGELOG):** comprobar que existe cada ruta del repo citada entre comillas invertidas en la
+- [x] `0.5` · **R1 (`version.py`, CHANGELOG):** (D30, 2026-11-03) comprobar que existe cada ruta del repo citada entre comillas invertidas en la
   entrada nueva del CHANGELOG (`docs/…`, `scripts/…`, `skills/…`), salvo las que llevan marcadores (`vX.Y.Z`). La
   entrada `0.4.3` citaba un archivo que solo estaba en `version/1.0.0` y lo cazó la revisión, no el check. Con su test.
   `retro-2026-10-27-parche-0-4-3.md` (rama `ccr-6dfbc880-ddr41g`).
