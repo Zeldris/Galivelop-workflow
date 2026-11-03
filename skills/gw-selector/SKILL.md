@@ -52,8 +52,8 @@ do the case without it and say so.
 - **Compaction budget:** at the start of a task, estimate how many compactions it should need (0–5) and write it in
   the log next to the count the session already has (`recover.py --state` prints it). Write it as
   `Compaction budget: N` (or `Presupuesto de compactaciones: N` in a Spanish log), in the task's row with `logRows`,
-  else anywhere in the log; text after the number is free. `recover.py --state` and `handoff.py` read that format and,
-  over the budget, `--state` warns. Going over the budget is the signal to deal more work out with
+  else in the state section; text after the number is free. `handoff.py` defines the format and `recover.py --state`
+  reads it and, over the budget, warns. Going over the budget is the signal to deal more work out with
   `gw-orchestrate-dealer`, not to keep going.
 - **Design references:** if `.claude/gw.json` lists `designReferences`, design rows contrast each proposal with them
   and name the source (see `grilling`).

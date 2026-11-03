@@ -7,7 +7,9 @@
                                 lines), `git status --short` (15 lines at most), the last 5 commits, the repo's other
                                 worktrees (path, branch and, with logRows, their row; 10 at most), the compactions in
                                 this session and since the branch last took the protected branch (its merge base: the
-                                task's start; WMF P10: compare them with the task's budget) and how to search the
+                                task's start; WMF P10) with a warning when they pass the task's compaction budget
+                                (gw-selector: "Compaction budget: N" in the log), the remote branches (local refs, no
+                                fetch, 10 at most) with commits the protected branch lacks, and how to search the
                                 transcript for a detail. Over ~9,500 characters the log section gives way (its start
                                 stays, with a line saying it was cut); the lines after it always survive.
   recover.py --search TEXT      the transcript fragments (main conversation: user, Claude, tool calls and results)
@@ -41,6 +43,7 @@ import session_log  # noqa: E402
 LOG_LINES = 25
 STATUS_LINES = 15
 WORKTREES = 10
+GIT_WAIT = 5  # seconds for each git call of the remote-branch lines (a timeout is "no data")
 OTHER_BRANCHES = 10  # remote branches listed by --state
 BRANCH_ROW = 120  # characters of another branch's log row
 WORKTREE_ROW = 200  # characters of another worktree's log row
@@ -54,10 +57,11 @@ CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u20
 OWN_CALL = re.compile(r"recover\.py\s+((--session|--sesion)\s+\S+\s+)?(--search|--buscar)")
 
 
-def git(root, *args):
+def git(root, *args, timeout=None):
+    """Output of a git command, "" on any failure (a timeout included: no data)."""
     try:
-        r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True)
-    except OSError:
+        r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired):
         return ""
     return r.stdout.rstrip("\n") if r.returncode == 0 else ""
 
@@ -381,35 +385,40 @@ def other_branch_lines(root, branch):
                  if git(root, "rev-parse", "-q", "--verify", r + "^{commit}")), None)
     if not base:
         return []
-    shallow = git(root, "rev-parse", "--is-shallow-repository") == "true"
+    shallow = git(root, "rev-parse", "--is-shallow-repository", timeout=GIT_WAIT) == "true"
+    # A partial clone (blob:none, a blob limit) fetches a missing blob from its remote on `git show`: no rows then.
+    partial = (git(root, "config", "--bool", "remote.origin.promisor", timeout=GIT_WAIT) == "true"
+               or bool(git(root, "config", "extensions.partialclone", timeout=GIT_WAIT)))
     try:
         cfg = config.load(root)
     except config.ConfigError:
         cfg = {}
-    found = []
-    refs = git(root, "for-each-ref", "--sort=-committerdate", "--format=%(refname)", "refs/remotes/origin/")
+    skip = {"HEAD", protected, branch} | {b for _, b in other_worktrees(root)}  # worktrees already have their lines
+    names = []
+    refs = git(root, "for-each-ref", f"--no-merged={base}", "--sort=-committerdate", "--format=%(refname)",
+               "refs/remotes/origin/", timeout=GIT_WAIT)
     for ref in refs.splitlines():
         name = ref[len("refs/remotes/origin/"):]
-        if name in ("HEAD", protected, branch):
-            continue
-        count = git(root, "rev-list", "--count", f"{base}..{ref}")
-        if count.isdigit() and int(count) > 0:
-            found.append((name, int(count), ref))
+        if name not in skip:
+            names.append((name, ref))
     lines = []
-    for name, count, ref in found[:OTHER_BRANCHES]:
-        line = f"  {name}: {count} commit(s) not in {protected}"
-        if cfg.get("logRows") and cfg.get("log"):
-            row = row_for_branch(git(root, "show", f"{ref}:{cfg['log']}"), name)
+    for name, ref in names[:OTHER_BRANCHES]:
+        count = git(root, "rev-list", "--count", f"{base}..{ref}", timeout=GIT_WAIT)
+        if not count.isdigit() or int(count) == 0:
+            continue
+        line = f"  {CONTROL.sub('', name)}: {count} commit(s) not in {protected}"
+        if cfg.get("logRows") and cfg.get("log") and not partial:
+            row = row_for_branch(git(root, "show", f"{ref}:{cfg['log']}", timeout=GIT_WAIT), name)
             if row:
                 row = CONTROL.sub("", row)
-                line += " | " + (row if len(row) <= BRANCH_ROW else row[:BRANCH_ROW] + "…")
+                line += " | " + (row if len(row) <= BRANCH_ROW else row[:BRANCH_ROW - 1] + "…")
         lines.append(line)
     if not lines:
         return []
     head = f"- Other remote branches with work not in {protected} (local refs, no fetch)"
     head += "; shallow clone: counts may be too high:" if shallow else ":"
-    if len(found) > OTHER_BRANCHES:
-        lines.append(f"  … and {len(found) - OTHER_BRANCHES} more (git branch -r)")
+    if len(names) > OTHER_BRANCHES:
+        lines.append(f"  … and {len(names) - OTHER_BRANCHES} more (git branch -r)")
     return [head] + lines
 
 
@@ -449,7 +458,10 @@ def state(root, transcript, out, logs):
     if path:
         n = count_compactions(path)
         task = task_start(root, branch)
-        budget = compaction_budget(root, branch)
+        try:
+            budget = compaction_budget(root, branch)
+        except Exception:  # a warning must not cost the whole state
+            budget = None
         counted = count_compactions(path, task[2]) if task else n
         if task:
             sha, ref, start = task

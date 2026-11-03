@@ -471,6 +471,7 @@ class Recover(Base):
         code, out = self.p.run_recover("--state")
         self.assertEqual(code, 0, out)
         self.assertNotIn("Other remote branches", out)
+        self.assertIn("Last commits:", out)  # the rest of the state still comes out
 
     def test_a_remote_branch_with_new_commits_is_listed_with_its_row(self):
         p = self.p
@@ -488,6 +489,7 @@ class Recover(Base):
         code, out = p.run_recover("--state")
         self.assertEqual(code, 0, out)
         self.assertIn("- Other remote branches with work not in main (local refs, no fetch):", out)
+        # 3, not 1: the base is origin/main, which lacks the local-only `session scripts` and `log` commits
         self.assertIn("  other: 3 commit(s) not in main | IMG-3 halfway", out)
         self.assertNotIn("  mine:", out)  # the current branch is left out
         self.assertNotIn("  main:", out)  # and the protected one
@@ -522,6 +524,63 @@ class Recover(Base):
         code, out = p.run_recover("--state")
         self.assertEqual(code, 0, out)
         self.assertNotIn("Other remote branches", out)
+        self.assertIn("Last commits:", out)
+
+    def test_a_partial_clone_lists_the_branch_without_reading_its_row(self):
+        p = self.p  # `git show origin/<b>:<log>` would fetch the blob from the promisor remote
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["logRows"] = True
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| **Task · `main`** | main work |\n"
+                "| **Task · `other`** | IMG-3 halfway |\n")
+        p.commit("log")
+        p.git("checkout", "-q", "-b", "other", "main")
+        p.write("x.txt", "x\n")
+        p.commit("other work")
+        p.git("push", "-q", "--no-verify", "origin", "other")
+        p.git("checkout", "-q", "main")
+        p.git("config", "remote.origin.promisor", "true")
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertIn("  other: 3 commit(s) not in main", out)
+        self.assertNotIn("IMG-3 halfway", out)
+
+    def test_a_branch_with_a_worktree_is_not_listed_twice(self):
+        self.remote_branch("wt", 1)
+        self.p.git("worktree", "add", "-q", str(self.tmp / "wt-dir"), "-b", "wt", "origin/wt")
+        code, out = self.p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertIn("(branch wt)", out)
+        self.assertNotIn("Other remote branches", out)
+
+    def test_a_budget_in_the_branch_row_with_logrows(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["logRows"] = True
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.git("checkout", "-q", "-b", "feature")
+        p.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n"
+                "| **Task · `feature`** | go. Compaction budget: 1 |\n| **Task · `old`** | Compaction budget: 9 |\n")
+        p.commit("task work")
+        p.transcript(p.work, [{"type": "system", "subtype": "compact_boundary", "timestamp": "2999-01-01T00:00:00Z"}
+                              for _ in range(2)])
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertIn("- Compaction budget in the log: 1", out)  # its own row's, not the other branch's
+        self.assertIn("budget exceeded (2 > 1)", out)
+
+    def test_a_budget_outside_the_state_section_is_ignored(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "feature")
+        p.write("docs/log.md", "# Log\n\n## Current state\n\n| Field | Value |\n|---|---|\n| Next step | go |\n\n"
+                "## Done\n\n- old: Presupuesto de compactaciones: 2 (superado: 6)\n")
+        p.commit("task work")
+        p.transcript(p.work, [{"type": "system", "subtype": "compact_boundary", "timestamp": "2999-01-01T00:00:00Z"}
+                              for _ in range(5)])
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("budget exceeded", out)
+        self.assertIn("(compare these", out)
 
     def test_other_worktrees_show_their_branch_and_row(self):
         p = self.p  # WMF P3: after a compaction the session sees the subagents working in worktrees

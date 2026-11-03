@@ -84,7 +84,7 @@ STATE_HEADING = re.compile(r"^##\s+(Estado actual|Current state|Status)\b.*$", r
 DONE_HEADING = re.compile(r"^##\s+(Hecho|Done)\b.*$", re.M | re.I)
 # The task's compaction budget, as the gw-selector skill has the log carry it (read by recover.py --state):
 # "Compaction budget: 2" (English) or "Presupuesto de compactaciones: 2" (Spanish), anywhere in the branch's row
-# (logRows) or in the log. Text after the number ("(superado: 6)") is free.
+# (logRows) or in the log's state section. Text after the number ("(superado: 6)") is free.
 BUDGET = re.compile(r"(?:Compaction budget|Presupuesto de compactaciones)\s*:\s*(\d+)", re.I)
 TASK_ROW = re.compile(r"^\|\s*\*\*(Tarea en curso|Task in progress)\b.*?\*\*\s*\|", re.I)
 ITEM_START = re.compile(r"^(\d+)\.(?:\s|$)")
@@ -228,7 +228,9 @@ class Ctx:
 
 def compaction_budget(text):
     """The compaction budget a log text fixes for the task (int), or None when it has none."""
-    m = BUDGET.search(text or "")
+    text = text or ""
+    st = STATE_HEADING.search(text)  # the state section only (the whole text without one, or a branch's row)
+    m = BUDGET.search(text[st.end():].split("\n## ", 1)[0] if st else text)
     return int(m.group(1)) if m else None
 
 
