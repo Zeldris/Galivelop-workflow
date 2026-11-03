@@ -368,6 +368,17 @@ class Apply(unittest.TestCase):
         code, out = p.run_apply("--check")
         self.assertEqual(code, 0, out)  # a local git setting is not drift of the copy
 
+    def test_absolute_hooks_path_is_reported_with_the_fix_like_doctor_does(self):
+        p = self.p
+        absolute = str(p.work / ".githooks")
+        p.run("git", "config", "core.hooksPath", absolute)
+        out = self.applied()
+        self.assertEqual(p.hooks_path(), absolute)  # not rewritten: it is the user's setting
+        self.assertIn(f"core.hooksPath is the absolute path '{absolute}'", out)
+        self.assertIn("another branch's hooks", out)
+        self.assertIn("git config core.hooksPath .githooks", out)
+        self.assertNotIn("another hook manager", out)
+
     def test_spanish_project_commit_message(self):
         (self.tmp / "es").mkdir()
         p = Fixture(self.tmp / "es", {"language": "es"})

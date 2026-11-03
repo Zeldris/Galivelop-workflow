@@ -202,8 +202,11 @@ def check_hooks_path(rep, root):
     current = git(root, "config", "--get", "core.hooksPath")
     if current and os.path.isabs(current) and Path(current).name == ".githooks":
         # config is shared by every worktree: an absolute path makes each one run the hooks of the checkout it names
-        rep.warn("hooks-path", f"core.hooksPath is the absolute path '{current}', so every worktree runs the hooks "
-                 f"of that checkout (another branch's hooks) instead of its own", "git config core.hooksPath .githooks")
+        linked = (git(root, "worktree", "list", "--porcelain") or "").count("\n\n")
+        why = ("every worktree runs the hooks of that checkout (another branch's hooks) instead of its own" if linked
+               else "any worktree you add will run the hooks of that checkout instead of its own")
+        rep.warn("hooks-path", f"core.hooksPath is the absolute path '{current}', so {why}",
+                 "git config core.hooksPath .githooks")
     elif current == ".githooks":
         rep.ok("hooks-path", "core.hooksPath is .githooks")
     elif not current and os.environ.get("GITHUB_ACTIONS") == "true":
@@ -217,33 +220,51 @@ def check_hooks_path(rep, root):
                  f"only if chained", chain_hint(current))
 
 
+def had_own_commits(root, branch):
+    """True when the branch ever moved past the commit it was created at (its oldest reflog entry is not its tip);
+    False when it never did, and also when there is no reflog to tell: a branch just created from the protected branch
+    looks merged once that branch moves on."""
+    entries = (git(root, "reflog", "show", "--format=%H", branch) or "").split()
+    return bool(entries) and entries[-1] != entries[0]
+
+
 def check_worktrees(rep, root, cfg):
-    """WARN with every worktree whose branch is already merged into the protected branch (it only takes disk and clutters
-    `git worktree list`), with the command that removes it. A branch at the same commit as the protected one is skipped:
-    a branch just created looks merged."""
+    """WARN with every worktree whose branch is already merged into the protected branch, local or origin/ (it only
+    takes disk and clutters `git worktree list`), with the command that removes it. Branches that never had a commit of
+    their own are skipped (just created). Squash and rebase merges are not detected (the check is `merge-base
+    --is-ancestor`)."""
     protected = (cfg or {}).get("protectedBranch") or "main"
-    target = next((r for r in (f"refs/heads/{protected}", f"refs/remotes/origin/{protected}")
-                   if git(root, "rev-parse", "--verify", "-q", r + "^{commit}")), None)
+    targets = [r for r in (f"refs/heads/{protected}", f"refs/remotes/origin/{protected}")
+               if git(root, "rev-parse", "--verify", "-q", r + "^{commit}")]
     listing = git(root, "worktree", "list", "--porcelain")
-    if target is None or listing is None:
+    if listing is None:
+        rep.warn("worktree", "cannot check worktrees: `git worktree list` failed", f"git -C {shlex.quote(str(root))} worktree list")
         return
-    tip = git(root, "rev-parse", target + "^{commit}")
+    if not targets:
+        rep.warn("worktree", f"cannot check worktrees: neither {protected} nor origin/{protected} exists here",
+                 f"git fetch origin {protected}")
+        return
     top = os.path.realpath(str(root))
     merged = []
     for block in listing.split("\n\n")[1:]:  # the first one is the main checkout
-        fields = dict(l.split(" ", 1) for l in block.splitlines() if " " in l)
+        lines = block.splitlines()
+        fields = dict(l.split(" ", 1) for l in lines if " " in l)
         path, branch = fields.get("worktree"), fields.get("branch", "")
         if not path or not branch.startswith("refs/heads/") or os.path.realpath(path) == top:
             continue
         name = branch[len("refs/heads/"):]
-        if name == protected or git(root, "rev-parse", branch + "^{commit}") == tip:
+        if name == protected or not had_own_commits(root, branch):
             continue
-        if subprocess.run(["git", "-C", str(root), "merge-base", "--is-ancestor", branch, target],
-                          capture_output=True).returncode == 0:
-            merged.append((path, name))
-    for path, name in merged:
-        rep.warn("worktree", f"worktree {path} has branch '{name}', already merged into {protected}",
-                 f"git worktree remove {shlex.quote(path)} && git branch -d {shlex.quote(name)}")
+        into = next((t for t in targets if subprocess.run(["git", "-C", str(root), "merge-base", "--is-ancestor", branch, t],
+                                                          capture_output=True).returncode == 0), None)
+        if into:
+            merged.append((path, name, into.replace("refs/heads/", "").replace("refs/remotes/", ""),
+                           any(l == "locked" or l.startswith("locked ") for l in lines)))
+    for path, name, into, locked in merged:
+        force = "-f -f " if locked else ""  # a locked worktree is removed only with the flag twice
+        rep.warn("worktree", f"worktree {path} has branch '{name}', already merged into {into}" +
+                 (" (it is locked)" if locked else ""),
+                 f"git worktree remove {force}{shlex.quote(path)} && git branch -d {shlex.quote(name)}")
     if not merged:
         rep.ok("worktree", f"no worktree with a branch already merged into {protected}")
 
@@ -256,12 +277,14 @@ def check_worktree_links(rep, root, cfg):
     """WARN when a `check` command does `cd <folder> && …` into a folder with node_modules or .venv that
     `worktreeLinks` does not link: the pre-push runs the check in a temporary worktree where that folder is missing."""
     if cfg is None:
+        rep.warn("worktree links", "cannot check worktreeLinks: .claude/gw.json is not valid",
+                 f"python3 {HERE / 'config.py'} --root {root} validate")
         return
-    links = [l.strip("/") for l in cfg.get("worktreeLinks") or []]
+    links = [Path(os.path.normpath(l)).as_posix() for l in cfg.get("worktreeLinks") or []]
     found = False
     for command in cfg.get("check") or []:
         for m in CD_ENTER.finditer(command):
-            folder = os.path.normpath(m.group(1).strip("\"'"))
+            folder = Path(os.path.normpath(m.group(1).strip("\"'"))).as_posix()
             if os.path.isabs(folder) or folder.startswith("..") or folder == ".":
                 continue
             for name in LINKABLE:

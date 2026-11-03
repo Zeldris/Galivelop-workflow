@@ -472,7 +472,11 @@ def plan_hooks_path(plan):
     root = plan.root
     code, current = git(root, "config", "--get", "core.hooksPath")
     if code == 0 and current:
-        if current not in (".githooks", str(root / ".githooks")):
+        if os.path.isabs(current) and Path(current).name == ".githooks":
+            plan.hooks_path = (f"core.hooksPath is the absolute path '{current}', so every worktree runs the hooks of "
+                               f"that checkout (another branch's hooks) instead of its own; fix: "
+                               f"git config core.hooksPath .githooks")
+        elif current != ".githooks":
             plan.hooks_path = (f"core.hooksPath is '{current}' (another hook manager), left as is; the workflow's "
                                f"hooks run only if chained: {chain_hint(current)}")
         return
