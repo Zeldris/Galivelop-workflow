@@ -38,6 +38,7 @@
   "plan": [],
   "taskId": "[A-Z]{2,5}-\\d+",
   "subagentCap": 30,
+  "instructionLines": {"warn": 150, "fail": 250},
   "privateCheck": {"emails": true, "allowEmails": []},
   "agentMap": {"prefixes": {}, "roots": []}
 }

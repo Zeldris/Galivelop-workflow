@@ -59,7 +59,6 @@ INVISIBLE_PATTERN = (rf"[{ALWAYS_INVISIBLE}]"
                      rf"|(?<![{BEFORE_JOINER}])\u200d"
                      rf"|\u200d(?![{EMOJI}])")
 INVISIBLE = re.compile(INVISIBLE_PATTERN)
-WARN_LINES, FAIL_LINES = 150, 250  # AGENTS.md / CLAUDE.md: every session loads them whole
 MEDIA_NOTE = ".claude/gw/gw-media-content.md"  # the project's note of gw-media-content (skills/gw-media-content/note.md)
 MEDIA_FOLDER = "docs/media"  # its default `Folder`
 OLD_MEDIA_FOLDER = "docs/difusion"  # A8 (0.x): the default before the rename; used, with a warning, while it is the only one
@@ -599,9 +598,10 @@ def strip_invisible_command(name):
             f"open(p,\"w\",encoding=\"utf-8\").write(re.sub(\"{INVISIBLE_PATTERN}\",\"\",t))' {name}")
 
 
-def check_instructions(rep, root):
+def check_instructions(rep, root, cfg=None):
     """Invisible characters in the files agents obey (a hidden instruction is an injection) and the size of
     AGENTS.md/CLAUDE.md (P7 of proposal 2026-10-25-repos-x.md)."""
+    warn_lines, fail_lines = config.instruction_lines(cfg or {})  # every session loads AGENTS.md/CLAUDE.md whole
     files = [root / n for n in ("AGENTS.md", "CLAUDE.md") if (root / n).is_file()]
     files += sorted((root / ".claude" / "skills").glob("*/SKILL.md"))
     bad = False
@@ -616,11 +616,12 @@ def check_instructions(rep, root):
                      f"{', ...' if len(found) > 5 else ''}); an agent obeys what a person cannot see",
                      f"remove them: {strip_invisible_command(rel)}")
         lines = len(text.splitlines())
-        if path.name in ("AGENTS.md", "CLAUDE.md") and lines > WARN_LINES:
+        if path.name in ("AGENTS.md", "CLAUDE.md") and lines > warn_lines:
             bad = True
-            report = rep.fail if lines > FAIL_LINES else rep.warn
-            report("size", f"{rel} has {lines} lines (warn above {WARN_LINES}, fail above {FAIL_LINES}); every "
-                   "session loads it whole", f"move detail out of {rel} into docs/ and link it from there")
+            report = rep.fail if lines > fail_lines else rep.warn
+            report("size", f"{rel} has {lines} lines (warn above {warn_lines}, fail above {fail_lines}); every "
+                   "session loads it whole", f"move detail out of {rel} into docs/ and link it from there, or raise "
+                   "instructionLines in .claude/gw.json")
     if not bad:
         rep.ok("instructions", "AGENTS.md/CLAUDE.md and skills: no invisible characters, size within limits")
 
@@ -808,7 +809,7 @@ def run(root):
     check_settings(rep, root)
     check_subagents(rep, root)
     check_glossary(rep, root)
-    check_instructions(rep, root)
+    check_instructions(rep, root, cfg)
     check_skill_tests(rep, root)
     check_media_folder(rep, root)
     check_media_tools(rep, root)

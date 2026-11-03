@@ -241,10 +241,24 @@ def validate(value, schema, path="$"):
     return errors
 
 
+def instruction_lines(config):
+    """The `instructionLines` key as (warn, fail): the line limits of AGENTS.md/CLAUDE.md, each missing part filled
+    from the schema default (the only place the defaults live)."""
+    schema = json.loads(schema_path().read_text(encoding="utf-8"))
+    prop = schema["properties"]["instructionLines"]
+    given = config.get("instructionLines")
+    given = given if isinstance(given, dict) else {}
+    return tuple(given.get(k, prop["properties"][k]["default"]) for k in ("warn", "fail"))
+
+
 def semantic_errors(config):
     """Problems the schema subset cannot express: a relatedTests `paths` that is not a valid regex, an agentMap
-    prefix that is not one folder name."""
+    prefix that is not one folder name, an instructionLines `warn` above its `fail`."""
     errors = []
+    warn, fail = instruction_lines(config)
+    if warn > fail:
+        errors.append(f"$.instructionLines: warn ({warn}) must not be above fail ({fail}); lower warn or raise fail "
+                      "in .claude/gw.json")
     agent_map = config.get("agentMap")
     if isinstance(agent_map, dict) and isinstance(agent_map.get("prefixes"), dict):
         for short in agent_map["prefixes"]:

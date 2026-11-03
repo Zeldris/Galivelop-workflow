@@ -443,6 +443,16 @@
       "default": 30,
       "description": "Subagents (Agent/Task calls) one session may launch before subagent-cap.py asks the user to check they are not looping, and again every 10 after."
     },
+    "instructionLines": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "warn": {"type": "integer", "minimum": 1, "default": 150},
+        "fail": {"type": "integer", "minimum": 1, "default": 250}
+      },
+      "default": {"warn": 150, "fail": 250},
+      "description": "Line limits of AGENTS.md and CLAUDE.md, which every session loads whole: doctor.py warns above warn and fails above fail (warn must not be above fail)."
+    },
     "privateCheck": {
       "anyOf": [
         {"type": "boolean"},

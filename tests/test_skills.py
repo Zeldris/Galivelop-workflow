@@ -11,6 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.dont_write_bytecode = True
+import config  # noqa: E402
 import doctor  # noqa: E402  (the invisible-character and size checks live there, for projects too)
 SKILLS = ROOT / "skills"
 NAME = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
@@ -117,11 +118,12 @@ class Skills(unittest.TestCase):
         for kind in ("AGENTS.md", "CLAUDE.md"):
             files += sorted((ROOT / "templates").glob(f"*/{kind}"))
         self.assertGreaterEqual(len(files), 6)
+        warn_lines = config.instruction_lines(config.load(ROOT))[0]  # this repo's own limit, not a fixed one
         for path in files:
             with self.subTest(file=path.relative_to(ROOT).as_posix()):
                 text = path.read_text(encoding="utf-8")
                 self.assertEqual(doctor.invisible_chars(text), [], "invisible or bidi characters")
-                self.assertLessEqual(len(text.splitlines()), doctor.WARN_LINES, "over doctor's warning size")
+                self.assertLessEqual(len(text.splitlines()), warn_lines, "over doctor's warning size")
 
     def test_invisible_char_detection(self):
         self.assertEqual(doctor.invisible_chars("\ufeffok\nfine\n"), [])
