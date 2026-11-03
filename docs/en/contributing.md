@@ -42,6 +42,10 @@ here, it gets in the way in every project. Read [`AGENTS.md`](../../AGENTS.md) a
   Options: `--fails-with REGEX` (the failure without the fix must print REGEX, so it does not fail for another
   reason) and `--ran-one REGEX` (the run with the fix must print exactly one line matching REGEX, the one your
   runner prints per test, e.g. `'^ok '`: it fails if the filter matches nothing or runs more than one test).
+  If the fix is already committed, `--fix-at COMMIT` runs the "without the fix" step with the fix files as they were
+  at `COMMIT^`. The red must be an assertion red: if the test fails without the fix only because it cannot load
+  (syntax, import, compile or collection error) the script refuses it, unless you pass `--fails-with REGEX` or
+  `--allow-compile-red` (`--compile-re REGEX` replaces the list of load errors).
 
 - A new or changed **skill** passes `tests/test_skills.py` (name = folder, `description` 1 to 1024 characters,
   `license`, `compatibility`, `metadata.version`, under 200 lines). It is written in **English**, applying the
