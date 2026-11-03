@@ -2283,6 +2283,71 @@ class PreCommitOwnRow(Base):
         self.assertEqual(p.commit("shared on purpose", ok=False, env={"GW_SHARED_LOG": "1"}).returncode, 0)
 
 
+class CommitMsgUnreadableConfig(Base):
+    """templates/githooks/commit-msg: a WIP commit is never blocked by an unreadable gw.json; elsewhere it fails closed."""
+    hooks = ("pre-push", "pre-commit", "commit-msg")
+
+    def break_config(self, how):
+        cfg = self.p.work / ".claude" / "gw.json"
+        if how == "missing":
+            cfg.unlink()
+        else:
+            cfg.write_text("{ not json")
+
+    def test_wip_passes_with_a_warning_when_gw_json_is_unreadable(self):
+        for how in ("garbage", "missing"):
+            with self.subTest(how=how):
+                self.setUp()
+                self.break_config(how)
+                self.p.write("docs/notes.md", f"{how}\n")
+                r = self.p.commit("WIP: relevo de emergencia", ok=False)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertIn("cannot read .claude/gw.json, so this WIP commit was not checked", r.stderr)
+
+    def test_a_non_wip_commit_fails_closed_with_the_reason_when_gw_json_is_unreadable(self):
+        for how in ("garbage", "missing"):
+            with self.subTest(how=how):
+                self.setUp()
+                self.break_config(how)
+                self.p.write("docs/notes.md", f"{how}\n")
+                before = self.p.sha()
+                r = self.p.commit("fix(D1): algo", ok=False)
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn("commit-msg: cannot read .claude/gw.json; fix it", r.stderr)
+                self.assertEqual(self.p.sha(), before)
+
+    def test_a_wip_word_not_at_the_start_is_not_a_wip_commit(self):
+        self.break_config("garbage")
+        self.p.write("docs/notes.md", "x\n")
+        r = self.p.commit("fix(D1): WIP: algo", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("cannot read .claude/gw.json", r.stderr)
+
+
+class CommitMsgOutsideWorkTree(Base):
+    """templates/githooks/commit-msg: with no work tree there is nothing staged to check, so it does not fail."""
+    hooks = ("pre-push", "pre-commit", "commit-msg")
+
+    def message(self):
+        msg = self.tmp / "msg.txt"
+        msg.write_text("feat(D1): algo\n")
+        return str(msg)
+
+    def test_hook_installed_in_a_bare_repository_skips(self):
+        hooks = self.p.bare / "hooks"
+        hooks.mkdir(exist_ok=True)
+        shutil.copy2(ROOT / "templates" / "githooks" / "commit-msg", hooks / "commit-msg")
+        code, out = self.p.run("bash", str(hooks / "commit-msg"), self.message(), cwd=self.tmp)
+        self.assertEqual(code, 0, out)
+        self.assertIn("bare repository, which has no work tree to check", out)
+
+    def test_git_dir_pointing_at_a_bare_repository_skips(self):
+        hook = self.p.work / ".githooks" / "commit-msg"
+        code, out = self.p.run("bash", str(hook), self.message(), cwd=self.tmp, env={"GIT_DIR": str(self.p.bare)})
+        self.assertEqual(code, 0, out)
+        self.assertIn("not inside a git work tree", out)
+
+
 class CommitMsgSignatures(Base):
     """templates/githooks/commit-msg with agentSignatures: false rejects an agent's signature in the message."""
     config = {"agentSignatures": False}

@@ -14,6 +14,9 @@
 #     an `Agent:` trailer must not name a model with `agentSignatures: false`. All in scripts/commit-message.py (merges,
 #     reverts, cherry-picks and rebases skip format, Refs and Next; see its header).
 #   - Fails closed when the workflow's config.py or (with the log staged) handoff.py is missing.
+#   - A `WIP: ` commit passes, with a warning, when .claude/gw.json is missing or unreadable (an emergency handoff is
+#     never blocked); any other commit still fails closed with the reason.
+#   - Outside a work tree (a bare repository, or GIT_DIR pointing at one) there is nothing to check: it exits 0.
 #   - With `agentSignatures: false` in the config, rejects a message that carries an agent's signature: a
 #     Co-Authored-By trailer with noreply@anthropic.com or naming Claude Code/Opus/Sonnet/Haiku/Fable, a
 #     Claude-Session trailer, or a line that starts with "Generated with Claude Code" (after any emoji) or with a
@@ -26,16 +29,37 @@ hookdir="$(cd "$(dirname "$0")" && pwd)"
 # Git exports GIT_DIR/GIT_INDEX_FILE to the hook (in a linked worktree too), and with GIT_DIR set `rev-parse
 # --show-toplevel` answers the hook's own folder. Unset them for this one call (a subshell); the checks below keep them.
 root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$hookdir" rev-parse --show-toplevel 2>/dev/null)" || {
+  if [ "$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$hookdir" rev-parse --is-bare-repository 2>/dev/null)" = true ]; then
+    echo "commit-msg: $hookdir belongs to a bare repository, which has no work tree to check; skipped" >&2; exit 0
+  fi
   echo "commit-msg: $hookdir is not inside a git work tree; point git at the project's hooks: git config core.hooksPath .githooks" >&2; exit 1; }
 msg="${1:-}"
 case "$msg" in ""|/*) ;; *) msg="$PWD/$msg" ;; esac
 cd "$root" || exit 1
+if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]; then
+  echo "commit-msg: not inside a git work tree, so there is no staged content to check; skipped" >&2; exit 0
+fi
 if [ -d "$root/.claude/gw/scripts" ]; then scripts="$root/.claude/gw/scripts"; else scripts="$root/scripts"; fi
 config="$scripts/config.py"
 [ -f "$config" ] || { echo "commit-msg: the workflow scripts are missing ($config); reinstall them: /gw-update" >&2; exit 1; }
 
-python3 "$config" --root "$root" validate >/dev/null || {
-  echo "commit-msg: cannot read .claude/gw.json; fix it: python3 $config --root $root validate" >&2; exit 1; }
+# A WIP commit is the emergency handoff: it passes (warned) when gw.json cannot be read; any other commit fails closed.
+is_wip() {
+  [ -n "$msg" ] && [ -r "$msg" ] || return 1
+  local cc subject
+  cc="$(git config core.commentString 2>/dev/null)" || cc="$(git config core.commentChar 2>/dev/null)" || cc=""
+  case "$cc" in ""|auto) cc="#" ;; esac
+  subject="$(awk -v cc="$cc" 'substr($0, 1, length(cc)) == cc { next } { print; exit }' "$msg")"
+  case "$subject" in "WIP: "*) return 0 ;; esac
+  return 1
+}
+if ! python3 "$config" --root "$root" validate >/dev/null 2>&1; then
+  if is_wip; then
+    echo "commit-msg: WARNING: cannot read .claude/gw.json, so this WIP commit was not checked; fix it: python3 $config --root $root validate" >&2
+    exit 0
+  fi
+  echo "commit-msg: cannot read .claude/gw.json; fix it (or commit with a WIP: first line to hand off): python3 $config --root $root validate" >&2; exit 1
+fi
 
 in_rebase=false
 for dir in rebase-merge rebase-apply; do
