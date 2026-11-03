@@ -248,6 +248,34 @@ def check_worktrees(rep, root, cfg):
         rep.ok("worktree", f"no worktree with a branch already merged into {protected}")
 
 
+CD_ENTER = re.compile(r"""(?:^|[;&|(])\s*cd\s+("[^"]+"|'[^']+'|[^\s;&|)"']+)\s*&&""")
+LINKABLE = ("node_modules", ".venv")  # what the pre-push worktree lacks: untracked dependency folders
+
+
+def check_worktree_links(rep, root, cfg):
+    """WARN when a `check` command does `cd <folder> && …` into a folder with node_modules or .venv that
+    `worktreeLinks` does not link: the pre-push runs the check in a temporary worktree where that folder is missing."""
+    if cfg is None:
+        return
+    links = [l.strip("/") for l in cfg.get("worktreeLinks") or []]
+    found = False
+    for command in cfg.get("check") or []:
+        for m in CD_ENTER.finditer(command):
+            folder = os.path.normpath(m.group(1).strip("\"'"))
+            if os.path.isabs(folder) or folder.startswith("..") or folder == ".":
+                continue
+            for name in LINKABLE:
+                rel = f"{folder}/{name}"
+                covered = any(rel == l or rel.startswith(l + "/") for l in links)
+                if (root / rel).exists() and not covered:
+                    found = True
+                    rep.warn("worktree links", f"'{command}' enters {folder}, which has {name}, but worktreeLinks "
+                             f"does not link {rel}: the pre-push worktree will not have it",
+                             f'add "{rel}" to worktreeLinks in .claude/gw.json')
+    if not found:
+        rep.ok("worktree links", "every `cd <folder> &&` in check has its dependency folders in worktreeLinks")
+
+
 def check_githooks(rep, root, version):
     for name in ("pre-push", "pre-commit", "commit-msg"):
         path = root / ".githooks" / name
@@ -838,6 +866,7 @@ def run(root):
     check_githooks(rep, root, version)
     check_legacy_paths(rep, cfg)
     check_worktrees(rep, root, cfg)
+    check_worktree_links(rep, root, cfg)
     check_log(rep, root, cfg)
     check_commands(rep, root, cfg)
     check_ci(rep, root, cfg)

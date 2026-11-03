@@ -229,6 +229,29 @@ class Doctor(unittest.TestCase):
         code, out = self.doctor()
         self.assertNotIn("WARN", out)
 
+    def test_cd_into_folder_with_unlinked_dependencies_warns(self):
+        (self.p.work / "web" / "node_modules").mkdir(parents=True)
+        (self.p.work / "api" / ".venv").mkdir(parents=True)
+        (self.p.work / "docs-site").mkdir()  # no dependency folder: nothing to link
+        self.set_check("bash check.sh", "cd web && npm test", "make lint; cd ./api/ && pytest", "cd docs-site && make",
+                       "cd /abs/web && x", "cd .. && y")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        line = self.assertLine(out, "WARN", "worktree links", "web", "node_modules")
+        self.assertIn('fix: add "web/node_modules" to worktreeLinks in .claude/gw.json', line)
+        self.assertLine(out, "WARN", "worktree links", "api/.venv", "pre-push worktree will not have it")
+        self.assertEqual(len([l for l in out.splitlines() if l.startswith("WARN") and "worktree links" in l]), 2, out)
+
+    def test_cd_into_folder_with_linked_dependencies_is_quiet(self):
+        (self.p.work / "web" / "node_modules").mkdir(parents=True)
+        (self.p.work / "api" / ".venv").mkdir(parents=True)
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["check"] = ["bash check.sh", "cd web && npm test", "cd api && pytest"]
+        cfg["worktreeLinks"] = ["web/node_modules", "api"]  # exact path, and a parent folder
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = self.doctor()
+        self.assertNotIn("WARN", out)
+
     def set_check(self, *commands):
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         cfg["check"] = list(commands)
