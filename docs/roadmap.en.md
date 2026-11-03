@@ -33,6 +33,15 @@ MMC. At most one release a day (A-6).
 | D6 | `worktree.baseRef: "head"` in the `settings.json` the workflow installs | pending |
 | — | Retro `0.4.2` P5: the `pre-commit` QUOTED rule without false positives in `.md` ([`pending.md`](records/pending.md)) | pending |
 | — | Ubuntu and macOS CI fixes (branch `ccr-6dfbc880-ddr41g`, `4b7bf8a`..`66a4ecd`) | done |
+| D32 | `harvest.py` recognises skills with their pre-A8 name and an old copy of `writing-for-agents` (image-generator P1, P12) | pending (done in `0.5`, then taken to the patch branch) |
+| D33 | `config-guard.py`: `settings.local.json`, worktrees and more writing commands; no false positive on `touch -r` (portal P2, WMF P8) | pending (done in `0.5`, then taken to the patch branch) |
+| D34 | `commit-msg` lets a `WIP:` through when `gw.json` cannot be read and does not fail outside a work tree (portal P4, WMF P11) | pending (done in `0.5`, then taken to the patch branch) |
+| D35 | `/gw-update` on a single-branch clone uses the tags (portal P3) | pending (done in `0.5`, then taken to the patch branch) |
+| D36 | `reviewed.sh` suggests `--footer` on failure and adds a default `Siguiente:` with `commitNext` (WMF P2) | pending (done in `0.5`, then taken to the patch branch) |
+| E18 | Tests of installed skills isolated from the project they run in (WMF P3) | pending (done in `0.5`, then taken to the patch branch) |
+| D37 | `pre-commit`: `KEY_FORMATS` with keys glued to a letter or digit; no false positive on test dictionaries (image-generator P2, P3) | pending (done in `0.5`, then taken to the patch branch) |
+| D38 | The `pre-push` push-in-progress mark, one per worktree (portal P5) | pending (done in `0.5`, then taken to the patch branch) |
+| D39 | `subagent-cap.py`: counter that is cleaned and safe from symlinks (portal P7, WMF P9) | pending (done in `0.5`, then taken to the patch branch) |
 
 ## `0.5` "Base" — what breaks
 
@@ -43,7 +52,7 @@ In this order, because each step uses the previous one.
 | H14 | New version rule in `AGENTS.md` and plan §7 | done (`a1ac1e3`) |
 | D13 | This roadmap, with the ids, in Spanish and English | done |
 | H12 | `pendiente-1.0.0.md` → `pending.md`, with the version on each line | done |
-| H15 | `0.5` harvest (`gw-harvest`) and its proposals, to the user | in progress |
+| H15 | `0.5` harvest (`gw-harvest`) and its proposals, to the user | done (D32-D40, E18, E19, B14, B15) |
 | A7 | Plan rewritten after A1's table (§1, §2, §7, §9, §10): public repo, every version released here | done |
 | A8 | Names (A2, A-3, A-4): `gw-` on our own skills, scripts in English, project paths in English and configurable in `gw.json`; `gw-update` renames and the hooks accept both names during `0.x` | done |
 | A9 | `schemaVersion` in `gw.json` and its migration in `gw-update` (A3.2) | done |
@@ -71,6 +80,10 @@ In this order, because each step uses the previous one.
 | D29 | `related-tests.sh` with deleted files (private-project-1 P11) | done (`a4798a0`) |
 | D30 | `version.py`: every path quoted in the new CHANGELOG entry exists (retro `0.4.3` R1) | done (`785062f`) |
 | D31 | `commit-msg` requires `Siguiente:`, also in `merge-branch.sh` merges; `GW_NO_NEXT=1` escape (retro `0.4.2` P4) | done (`7561ebf`) |
+| B14 | `recover.py --state` warns when the compaction budget is exceeded (private-project-1 P1) | pending |
+| D40 | Warning about remote branches with work outside the protected one (WMF P1, private-project-1 P4) | pending |
+| B15 | Warning about a subagent launched without `model` (portal P1) | pending |
+| E19 | The check fails on a `TestCase` after `unittest.main()` (private-project-1 P2) | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.5` | split into D18-D31 and E17 |
 
 ## `0.6` "Measure"

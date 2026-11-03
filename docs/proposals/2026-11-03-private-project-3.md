@@ -8,7 +8,7 @@ De `never` a `195bb867` (`scripts/harvest.py`). Primera recogida; el proyecto us
 - **What changes:** En `skills/gw-selector/SKILL.md`, fila «traer algo de otro repo», matizar «la sesión principal nunca lee los archivos enteros»: el documento único del que nace un diseño se lee entero una vez en la sesión principal; el resto, con `Explore`.
 - **Why it is general:** la fila actual del flujo (línea 26) sigue con la regla absoluta y cualquier proyecto que parta de un único documento de diseño choca con ella.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** no elegida (2026-11-03)
 
 ## P2. `doctor.py`: avisar de sesión dentro de un Flatpak
 
@@ -16,7 +16,7 @@ De `never` a `195bb867` (`scripts/harvest.py`). Primera recogida; el proyecto us
 - **What changes:** `doctor.py` detecta `/.flatpak-info` y avisa (WARN informativo) de que compilador y herramientas son del SDK y de que el anfitrión se alcanza con `flatpak-spawn --host`.
 - **Why it is general:** cualquier proyecto abierto desde un IDE en Flatpak lo sufre; el flujo solo lo toca de pasada (`worktreeDir` en `docs/en/config.md`, sin detección en `scripts/doctor.py`).
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** no elegida (2026-11-03)
 
 ## Stays in the project
 - Ninguna skill ni script propio relevante: las skills "nacidas" (`opt-ai`, `opt-tokens`, `orchestrate-dealer`, `scout-updates`, `selector`) son copias antiguas sin prefijo `gw-` de las del flujo (mismas descripciones), no propuestas.

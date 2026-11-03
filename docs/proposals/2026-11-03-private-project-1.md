@@ -10,7 +10,7 @@ Sin skills ni scripts del flujo cambiados en el proyecto; las skills `opt-ai`, `
 - **What changes:** `recover.py --state` (tras compactar) lee el presupuesto de compactaciones que el log fija para la tarea (formato fijo, p. ej. `Compaction budget: N`, que la skill `gw-selector` ya manda escribir) y, si el contador de la tarea lo supera, dice «presupuesto superado: sube y pide `/clear` o reparte con `gw-orchestrate-dealer`». Hoy solo imprime «compare with the budget» (`scripts/recover.py` ~l. 380) y nada lo comprueba; `gw-selector` y `handoff.py` fijarían el formato.
 - **Why it is general:** tres retros distintas lo piden; en una sola tarea hubo 11 compactaciones sin aviso. Cualquier proyecto con el presupuesto del `gw-selector` tiene el mismo hueco.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-03) → B14
 
 ## P2. Test del check: `class …(TestCase)` después de `unittest.main()`
 
@@ -18,7 +18,7 @@ Sin skills ni scripts del flujo cambiados en el proyecto; las skills `opt-ai`, `
 - **What changes:** una comprobación de `ast` (pocas líneas) en el check de tests de Python del flujo que falle si un archivo de tests define una `TestCase` después de la llamada a `unittest.main()`: esa clase nunca corre y el check sigue en verde. Con su caso en `tests/`.
 - **Why it is general:** el fallo es silencioso (tests que parecen existir y no corren) y cualquier proyecto con tests `unittest` puede caer; el flujo lo usa también aquí.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-03) → E19
 
 ## P3. `handoff.py close-row --text` comprueba el límite de 600
 
@@ -26,7 +26,7 @@ Sin skills ni scripts del flujo cambiados en el proyecto; las skills `opt-ai`, `
 - **What changes:** `cmd_close_row` aplica el mismo tope (`LIMIT`) y el mismo escape de `|` que `cmd_set_row`: si `--text` pasa de 600, no toca el archivo y dice la orden que arregla. Hoy `scripts/handoff.py` (~l. 648) no comprueba nada y lo rechaza después el `commit-msg`/pre-push.
 - **Why it is general:** `set-row` ya lo hace (propuesta P7 anterior); `close-row` quedó sin ello. Es el mismo contrato en dos órdenes.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** no elegida (2026-11-03)
 
 ## P4. Aviso de ramas remotas con commits fuera de `main` al empezar
 
@@ -34,7 +34,7 @@ Sin skills ni scripts del flujo cambiados en el proyecto; las skills `opt-ai`, `
 - **What changes:** `session-start.sh` (o `recover.py --state`) lista en una línea cada rama remota con commits no integrados en la rama protegida y cuántos (tope ~10, como ya hace `prepush-branches.sh` para los choques de ids), para que la sesión no dé por hecho que todo está en `main`.
 - **Why it is general:** el flujo trabaja por relevos con varias ramas subidas; el síntoma (suponer que todo está fusionado) no depende del proyecto. Coste: una llamada a `git for-each-ref` + `rev-list --count` por rama; solo aviso.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-03) → D40
 
 ## P5. Antes de subir, correr los tests relacionados sobre lo tocado
 
@@ -42,7 +42,7 @@ Sin skills ni scripts del flujo cambiados en el proyecto; las skills `opt-ai`, `
 - **What changes:** el paso «commit en cada punto estable» de `AGENTS.md`/plantilla del flujo (y `docs/es|en/config.md`, `relatedTests`) nombra correr los `relatedTests` sobre los archivos tocados antes del commit, no solo en el `pre-push`. Texto; sin código nuevo (`related-tests.sh` ya existe).
 - **Why it is general:** el `pre-push` rechazó tres subidas por tests que esa orden habría visto antes; vale para todo proyecto con `relatedTests`.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** no elegida (2026-11-03)
 
 ## Stays in the project
 
