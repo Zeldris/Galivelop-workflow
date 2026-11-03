@@ -363,18 +363,29 @@ def cmd_own_row(ctx, args):
     if args.shared or os.environ.get("BITACORA_COMPARTIDA") or os.environ.get("GW_SHARED_LOG"):
         return 0
     if args.staged:
-        if not ctx.git("diff", "--cached", "--name-only", "--", ctx.log).stdout.strip() or closing_other_side(ctx):
+        staged = ctx.git("diff", "--cached", "--name-only", "--", ctx.log)
+        if staged.returncode != 0:
+            print(f"handoff: cannot read the staged changes ({staged.stderr.strip() or 'git diff failed'}); fix the repo and "
+                  "commit again: git status")
+            return 1
+        if not staged.stdout.strip() or closing_other_side(ctx) or squash_in_progress(ctx):
             return 0
         branch = current_branch(ctx)
         if not branch:
             print("handoff: WARNING: detached HEAD, so there is no own row to check at commit time; the pre-push checks it "
                   "(check out a branch: git switch <branch>)", file=sys.stderr)
             return 0
-        before, after = log_at(ctx, "HEAD"), log_at(ctx, INDEX)
-        if not before:  # the log is being created (a fresh project, or a repo's first commit): every row is new
-            return 0
-        fix = (f"unstage the log (git restore --staged {ctx.log}) or undo that edit; if it is on purpose, commit with: "
-               "BITACORA_COMPARTIDA=1 git commit")
+        if ctx.git("cat-file", "-e", f"HEAD:{ctx.log}").returncode != 0:
+            return 0  # the log is being created (a fresh project, or a repo's first commit): every row is new
+        head = ctx.git("show", f"HEAD:{ctx.log}")
+        if head.returncode != 0:
+            print(f"handoff: cannot read {ctx.log} at HEAD ({head.stderr.strip() or 'git show failed'}); fix the repo and "
+                  "commit again: git status")
+            return 1
+        before, after = head.stdout, log_at(ctx, INDEX)
+        fix = (f"unstage the log (git restore --staged {ctx.log}) or undo that edit; if it is on purpose, commit AND push "
+               "with the variable: GW_SHARED_LOG=1 git commit, then GW_SHARED_LOG=1 git push (the pre-push checks the "
+               "commit again)")
     else:
         branch = args.branch
         parent = ctx.git("rev-parse", "--verify", "-q", f"{args.commit}^").stdout.strip()
@@ -385,6 +396,12 @@ def cmd_own_row(ctx, args):
         print(f"handoff: the commit changes the row \"{key}\", which is not {branch}'s; each branch writes only in its own "
               f"row. {fix}")
     return 1 if bad else 0
+
+
+def squash_in_progress(ctx):
+    """True after `git merge --squash`, which leaves SQUASH_MSG instead of MERGE_HEAD: the rows come from the other side."""
+    path = Path(ctx.git("rev-parse", "--git-path", "SQUASH_MSG").stdout.strip())
+    return (path if path.is_absolute() else ctx.root / path).exists()
 
 
 def closing_other_side(ctx):
@@ -733,7 +750,9 @@ def main(argv=None):
             args.date = args.date or datetime.date.today().isoformat()
         elif not ctx.config.get("logRows") and args.cmd != "check":
             if args.cmd == "set-row":
-                print("handoff: logRows is off in .claude/gw.json, so there are no branch rows; nothing written")
+                print("handoff: logRows is off in .claude/gw.json, so there are no branch rows and nothing was written; "
+                      "enable it: set \"logRows\": true in .claude/gw.json, then rerun set-row")
+                return 1
             return 0  # the branch-row module is off: nothing to check (`check` still reads the size and Done rules)
         return {"check": cmd_check, "done": cmd_done, "own-row": cmd_own_row, "closed": cmd_closed,
                 "in-progress": cmd_in_progress, "close-row": cmd_close_row, "set-row": cmd_set_row, "clash": cmd_clash}[args.cmd](ctx, args)

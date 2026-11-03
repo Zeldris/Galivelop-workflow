@@ -70,7 +70,7 @@ la vez.
   falta, el texto está vacío o ocupa más de una línea. Y el `pre-commit` corre `handoff.py own-row --staged`: si la
   bitácora preparada cambia la fila de otra rama o una fila compartida, el commit se para (antes solo lo veía el
   `pre-push`, con el commit ya hecho); en HEAD desacoplado avisa y pasa, y para una fila compartida a propósito,
-  `BITACORA_COMPARTIDA=1 git commit`.
+  `GW_SHARED_LOG=1 git commit` y, al subir, `GW_SHARED_LOG=1 git push` (el `pre-push` vuelve a comprobar el commit).
 - **Bitácora corta, con o sin `logRows`:** `handoff.py check --strict` falla si una celda de la tabla de estado pasa de
   800 caracteres o si «Hecho (5 últimas)» tiene más de 5 elementos, mal numerados o pegados en una línea (sin
   `--strict` solo avisa con `WARNING:`). `handoff.py done "texto"` añade el elemento `1.` con la fecha, renumera y

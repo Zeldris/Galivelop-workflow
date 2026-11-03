@@ -2274,10 +2274,13 @@ class PreCommitOwnRow(Base):
         r = p.commit("foreign row", ok=False)
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("Task in progress · feat-b", r.stderr)
-        self.assertIn("BITACORA_COMPARTIDA=1 git commit", r.stderr)
+        self.assertIn("GW_SHARED_LOG=1 git commit", r.stderr)
+        self.assertIn("GW_SHARED_LOG=1 git push", r.stderr)
         self.assertEqual(p.sha(), before)
         p.write("docs/log.md", self.log_text(a="A moved on"))
         self.assertEqual(p.commit("own row", ok=False).returncode, 0)
+        p.write("docs/log.md", self.log_text(b="B on purpose"))  # the advice: the variable lets the commit through
+        self.assertEqual(p.commit("shared on purpose", ok=False, env={"GW_SHARED_LOG": "1"}).returncode, 0)
 
 
 class CommitMsgSignatures(Base):

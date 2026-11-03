@@ -412,7 +412,6 @@ class HandoffOwnRow(Base):
             self.assertEqual(self.p.script("handoff.py", "own-row", sha, "feat-a", env=env)[0], 0, env)
         self.assertEqual(self.p.script("handoff.py", "own-row", sha, "feat-a", "--shared")[0], 0)
 
-
     def stage_log(self, **kw):
         self.p.write(LOG, log_text(**kw))
         self.p.git("add", LOG)
@@ -433,7 +432,8 @@ class HandoffOwnRow(Base):
         self.assertIn("Task in progress · feat-b", out)
         self.assertIn("not feat-a's", out)
         self.assertIn(f"git restore --staged {LOG}", out)
-        self.assertIn("BITACORA_COMPARTIDA=1 git commit", out)
+        self.assertIn("GW_SHARED_LOG=1 git commit", out)
+        self.assertIn("GW_SHARED_LOG=1 git push", out)
 
     def test_staged_shared_row_refused_and_allowed_with_env_or_flag(self):
         self.p.branch("feat-a")
@@ -493,6 +493,30 @@ class HandoffOwnRow(Base):
         self.p.branch("feat-a")
         self.stage_log(b="A rewrote B")
         self.assertEqual(self.staged(), (0, ""))
+
+    def test_staged_skipped_after_a_squash_merge(self):
+        self.p.branch("feat-a")
+        self.stage_log(b="came from the squashed branch")
+        squash = self.p.git("rev-parse", "--git-path", "SQUASH_MSG").stdout.strip()
+        (self.p.work / squash).write_text("Squashed commit\n")
+        self.assertEqual(self.staged(), (0, ""))
+
+    def test_staged_new_log_passes_and_deleted_log_is_not_a_crash(self):
+        self.p.branch("feat-a")
+        self.p.git("rm", "-q", LOG)
+        self.p.git("commit", "-q", "--no-verify", "-m", "drop the log", env=DAY)
+        self.stage_log(b="a new log with B's row")  # absent at HEAD: created, every row is new
+        self.assertEqual(self.staged(), (0, ""))
+
+    def test_staged_fails_closed_when_git_cannot_read_the_index(self):
+        self.p.branch("feat-a")
+        self.stage_log(b="A rewrote B")
+        index = self.p.git("rev-parse", "--git-path", "index").stdout.strip()
+        (self.p.work / index).write_bytes(b"corrupt")
+        code, out = self.staged()
+        self.assertEqual(code, 1, out)
+        self.assertIn("cannot read the staged changes", out)
+        self.assertIn("git status", out)
 
     def test_staged_with_a_broken_config_warns_and_passes(self):
         self.p.branch("feat-a")
@@ -884,8 +908,9 @@ class HandoffSetRow(Base):
         self.p.branch("feat-a")
         before = (self.p.work / LOG).read_bytes()
         code, out = self.p.script("handoff.py", "set-row", "text")
-        self.assertEqual(code, 0, out)
+        self.assertEqual(code, 1, out)
         self.assertIn("logRows is off", out)
+        self.assertIn('set "logRows": true in .claude/gw.json', out)
         self.assertEqual((self.p.work / LOG).read_bytes(), before)
 
 
