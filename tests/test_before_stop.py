@@ -376,7 +376,8 @@ class PushInProgress(Base):
         code, out = self.p.stop()
         self.assertStillBlocks(out)
 
-    def test_marker_in_a_linked_worktree_is_shared(self):
+    def linked_worktree(self):
+        """A linked worktree on its own pushed branch with one unpushed commit: (path, hook script, git dir, sha)."""
         p = self.p
         linked = p.tmp / "linked"
         p.git("worktree", "add", "-q", "-b", "claude/otra", str(linked))
@@ -386,13 +387,34 @@ class PushInProgress(Base):
         p.git("add", "-A", cwd=linked)
         p.git("commit", "-q", "-m", "in the linked worktree", cwd=linked)
         script = linked / ".claude" / "gw" / "scripts" / SCRIPT
+        gitdir = Path(p.git("rev-parse", "--absolute-git-dir", cwd=linked).stdout.strip())
+        return linked, script, gitdir, p.git("rev-parse", "HEAD", cwd=linked).stdout.strip()
+
+    def test_marker_is_per_worktree(self):
+        p = self.p
+        linked, script, gitdir, sha = self.linked_worktree()
+        self.assertNotEqual(gitdir, p.work / ".git")
         self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
-        # the marker of the main worktree's push (another sha) does not silence the linked one...
-        self.mark()
+        # the marker of the main checkout's push does not silence the linked one, even if it lists its sha...
+        self.mark(sha=sha, branch="claude/otra")
         self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
-        # ...and one written in the common dir for the linked worktree's HEAD does
-        self.mark(sha=p.git("rev-parse", "HEAD", cwd=linked).stdout.strip(), branch="claude/otra")
+        # ...one in the linked worktree's own git dir does...
+        (gitdir / "gw-push-en-curso").write_text(f"{os.getpid()}\n{sha} claude/otra\n")
         self.assertWarnsWithoutBlocking(p.stop(cwd=linked, script=script)[1], "claude/otra")
+        # ...and does not silence the main checkout
+        self.marker.unlink()
+        self.assertStillBlocks(p.stop()[1])
+
+    def test_orphan_or_old_marker_of_a_linked_worktree_blocks(self):
+        p = self.p
+        linked, script, gitdir, sha = self.linked_worktree()
+        marker = gitdir / "gw-push-en-curso"
+        marker.write_text(f"{self.dead_pid()}\n{sha} claude/otra\n")  # the hook died without cleaning up
+        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
+        marker.write_text(f"{os.getpid()}\n{sha} claude/otra\n")
+        old = time.time() - 3601
+        os.utime(marker, (old, old))
+        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
 
     def test_uncommitted_changes_still_block_while_a_push_runs(self):
         self.mark()

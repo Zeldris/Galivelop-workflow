@@ -348,7 +348,7 @@ class PrePush(Base):
         p = self.p
         self.snap = self.tmp / "snap.txt"
         self.marker = p.work / ".git" / "gw-push-en-curso"
-        p.write("check.sh", f'cp "$(git rev-parse --git-common-dir)/gw-push-en-curso" "{self.snap}"; {body}\n')
+        p.write("check.sh", f'cp "$(git rev-parse --git-dir)/gw-push-en-curso" "{self.snap}"; {body}\n')
         p.commit("check records the push marker")
 
     def test_push_marker_exists_while_checking_and_is_removed_after_success(self):
@@ -410,6 +410,34 @@ class PrePush(Base):
         self.assertEqual(self.snap.read_text().splitlines()[1:], [f"{third} feature", f"{second} other"])
         self.assertFalse(self.marker.exists())
 
+    def test_push_marker_is_per_worktree(self):
+        p = self.p
+        other = self.tmp / "other-wt"
+        p.git("worktree", "add", "-q", "-b", "second", str(other))
+        other_dir = Path(p.git("rev-parse", "--absolute-git-dir", cwd=other).stdout.strip())
+        self.assertNotEqual(other_dir, p.work / ".git")
+        self.marker_check()
+        p.write("check.sh", f'cp "$(git rev-parse --git-dir)/gw-push-en-curso" "{self.snap}"; '
+                            f'ls "{other_dir}" > "{self.tmp}/other-ls.txt"; ls "{p.work}/.git" > "{self.tmp}/main-ls.txt"\n')
+        p.commit("check lists both git dirs")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.snap.read_text().splitlines()[1:], [f"{p.sha()} feature"])
+        self.assertIn("gw-push-en-curso", (self.tmp / "main-ls.txt").read_text())
+        self.assertNotIn("gw-push-en-curso", (self.tmp / "other-ls.txt").read_text(), "the other worktree must not see it")
+        self.assertFalse((other_dir / "gw-push-en-curso").exists())
+        # a push from the linked worktree writes its own marker and leaves the main checkout's alone
+        mine = p.work / ".git" / "gw-push-en-curso"
+        mine.write_text("999999\nmain\n")
+        p.git("merge", "-q", "feature", cwd=other)
+        (other / "check.sh").write_text(f'cp "$(git rev-parse --git-dir)/gw-push-en-curso" "{self.tmp}/linked-snap.txt"\n')
+        p.git("add", "-A", cwd=other); p.git("commit", "-q", "-m", "check in linked", cwd=other)
+        code, out = p.run("git", "push", "-q", "origin", "second", cwd=other)
+        self.assertEqual(code, 0, out)
+        self.assertTrue((self.tmp / "linked-snap.txt").read_text().splitlines()[0].isdigit())
+        self.assertEqual(mine.read_text(), "999999\nmain\n", "the main checkout's marker is untouched")
+        self.assertFalse((other_dir / "gw-push-en-curso").exists(), "removed at the end of its own push")
+
     def test_push_marker_that_cannot_be_written_does_not_fail_the_push(self):
         p = self.p
         (p.work / ".git" / "gw-push-en-curso").mkdir()  # a directory in the way: mv cannot replace it
@@ -421,7 +449,7 @@ class PrePush(Base):
     def test_push_marker_of_another_push_is_not_removed_by_this_one(self):
         p = self.p
         marker = p.work / ".git" / "gw-push-en-curso"
-        self.marker_check("printf '999999\\nother\\n' > \"$(git rev-parse --git-common-dir)/gw-push-en-curso\"")
+        self.marker_check("printf '999999\\nother\\n' > \"$(git rev-parse --git-dir)/gw-push-en-curso\"")
         code, out = p.push("origin", "feature")
         self.assertEqual(code, 0, out)
         self.assertEqual(marker.read_text(), "999999\nother\n")
@@ -553,7 +581,7 @@ class PrePushWorktree(Base):
     def gw_folder(self, base, project=None):
         """<base>/gw-pre-push-wt-<uid>-<cksum of the common git dir>: the hook's per-user, per-repo folder."""
         project = project or self.p
-        r = subprocess.run(["bash", "-c", 'cd "$(git rev-parse --git-common-dir)" && pwd | tr -d "\\n" | cksum'],
+        r = subprocess.run(["bash", "-c", 'cd "$(git rev-parse --git-dir)" && pwd | tr -d "\\n" | cksum'],
                            cwd=project.work, env=project.env, capture_output=True, text=True, check=True)
         return Path(base) / f"gw-pre-push-wt-{os.getuid()}-{r.stdout.split()[0]}"
 
