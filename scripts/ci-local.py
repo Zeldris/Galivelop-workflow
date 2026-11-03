@@ -17,7 +17,8 @@ failing step stops its job (later steps run only with always() or failure()); `c
 Not run, on purpose: `uses:` steps and system-package installs (sudo, apt-get, brew, choco...): this machine is
 expected to have the toolchain already. Not covered, and listed as such: jobs for another OS, with `services` or a
 `container`, and anything whose `if:` or `${{ }}` this script cannot evaluate (secrets, steps.*, needs.*, fromJSON...).
-Green = every step that ran passed and at least one ran. Exit 0 green, 1 not green, 2 no workflow or a bad config.
+Green = every step that ran passed, at least one ran and no job was left out for lack of evaluation (a matrix from
+an expression runs once, with this machine's toolchain; other-OS, `services` and `container` jobs stay only listed). Exit 0 green, 1 not green, 2 no workflow or a bad config.
 The YAML reader covers what workflows use (block maps and lists, flow [..] {..}, quotes, | and > scalars, comments);
 no anchors or tags. Python 3.8+, stdlib only. Root from this script's path (config.find_root).
 """
@@ -578,6 +579,7 @@ class Run:
         self.branch = git(root, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip() or "HEAD"
         self.sha = git(root, "rev-parse", "HEAD").stdout.strip()
         self.ran, self.failed, self.not_run, self.not_covered = 0, [], [], []
+        self.unrun = []  # jobs this script could not evaluate (not other-OS or services): they forbid a green
         self.tmp = tempfile.mkdtemp(prefix="gw-ci-local-")
         base = cfg["protectedBranch"]
         self.github = {
@@ -649,19 +651,27 @@ class Run:
         return [n] if isinstance(n, str) else [str(x) for x in n]
 
     def job(self, path, job_id, spec, env0, defaults0, done):
-        label = f"{os.path.basename(path)} / {spec.get('name') or job_id}"
+        name = str(spec.get("name") or job_id)
+        label = f"{os.path.basename(path)} / {job_id if '${{' in name else name}"  # an expression name is not a label
         needs = self.needs(spec)
         missing = [n for n in needs if n not in done]
         if missing:
             self.not_covered.append(f"{label} (needs unknown job {', '.join(missing)})")
+            self.unrun.append(label)
             return "not covered"
         status = {"success": all(done[n] in ("success", "not covered") for n in needs),
                   "failure": any(done[n] == "failure" for n in needs)}
         try:
             combos = matrix_combos(spec.get("strategy"), None)
         except Unknown as exc:
-            self.not_covered.append(f"{label} ({exc})")
-            return "not covered"
+            if "expression" not in str(exc):
+                self.not_covered.append(f"{label} ({exc})")
+                self.unrun.append(label)
+                return "not covered"
+            # A matrix built by an expression (fromJSON(needs...)) cannot be expanded here: run the job once, with the
+            # toolchain this machine has, instead of leaving it out of a green.
+            self.say(f"{label}: matrix from expression: run once locally")
+            combos = [{}]
         results = []
         for matrix in combos:
             name = label + (f" ({', '.join(text_of(v) for v in matrix.values())})" if matrix else "")
@@ -689,6 +699,7 @@ class Run:
             defaults = dict(defaults0, **((spec.get("defaults") or {}).get("run") or {}))
         except Unknown as exc:
             self.not_covered.append(f"{name} ({exc})")
+            self.unrun.append(name)
             return "not covered"
         tolerate_job = text_of(spec.get("continue-on-error")) == "true"
         self.say(f"== job {name}")
@@ -843,6 +854,8 @@ def summary(run):
         parts.append("red: " + "; ".join(run.failed))
     elif not run.ran:
         parts.append("not green: no step ran")
+    elif run.unrun:
+        parts.append("not green: did not run: " + "; ".join(run.unrun))
     else:
         parts.append(f"green ({run.ran} step{'s' if run.ran != 1 else ''} run, event {run.event})")
     if run.not_run:
@@ -911,7 +924,9 @@ def main(argv=None):
     result = summary(run)
     for item in run.not_covered:
         run.say(f"not covered: {item}")
-    green = not run.failed and run.ran > 0
+    green = not run.failed and run.ran > 0 and not run.unrun
+    if run.unrun and not run.failed:
+        run.say("not green: a job could not be evaluated, so it did not run: " + "; ".join(run.unrun))
     if args.plan:
         run.say(f"plan: {run.ran} step(s) would run; {len(run.not_run)} not run; {len(run.not_covered)} not covered")
         return 0

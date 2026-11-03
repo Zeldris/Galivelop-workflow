@@ -224,6 +224,13 @@ def validate(value, schema, path="$"):
     if isinstance(value, list):
         if len(value) < schema.get("minItems", 0):
             errors.append(f"{path}: needs at least {schema['minItems']} item(s)")
+        if schema.get("uniqueItems"):
+            seen = set()
+            for i, item in enumerate(value):
+                key = json.dumps(item, sort_keys=True)
+                if key in seen:
+                    errors.append(f"{path}[{i}]: duplicate of an earlier item ({item!r})")
+                seen.add(key)
         for i, item in enumerate(value):
             errors += validate(item, schema.get("items", {}), f"{path}[{i}]")
     if isinstance(value, dict):
