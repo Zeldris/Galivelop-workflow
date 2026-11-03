@@ -56,9 +56,9 @@ In this order, because each step uses the previous one.
 | E1 | Audit of `AGENTS.md` and `CLAUDE.md`, with a line-cap check | done (`d0dfed3`, `e02859e`) |
 | E6 | Each `REVIEW.md` rule names its check or says "judgement" | done |
 | D18 | `scripts/ci-status.py`: Actions status of a branch or commit (private-project-2 P6) | done (`32e7f8f`) |
-| D19 | `ciPython` key: Python versions of the CI template matrix (private-project-2 P7) | pending |
+| D19 | `ciPython` key: Python versions of the CI template matrix (private-project-2 P7) | done (`af1877a`) |
 | D20 | `ciIgnore` key: foreign CI statuses that do not block the merge (private-project-1 P1) | done (`b2dd04c`) |
-| D21 | No agent signatures in PRs, issues and comments; warning on a `noreply@anthropic.com` `user.email` (private-project-1 P2) | pending |
+| D21 | No agent signatures in PRs, issues and comments; warning on a `noreply@anthropic.com` `user.email` (private-project-1 P2) | done (`001583a`) |
 | E17 | The check in one command with a summary and trimmed output (INS P12, WMF P4) | done (`bb1f47a`) |
 | D22 | `handoff.py own-row --staged`: the own row checked at commit time (INS P9) | done (`08bc6b6`) |
 | D23 | `handoff.py set-row` (private-project-1 P7) | done (`0403f2b`) |

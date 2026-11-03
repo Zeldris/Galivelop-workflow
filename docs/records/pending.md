@@ -17,7 +17,7 @@ P1-P4 salieron en el parche `0.4.3`.
   bloque no se revisa aparte. [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
 - [x] `0.5` · **private-project-2 P6** (D18, 2026-11-03): `scripts/ci-estado.py`, que lee el estado de Actions de una rama o commit (token y `gh` de
   `revision-antes-de-main.sh`). [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
-- [ ] `0.5` · **private-project-2 P7**: clave `ciPython` en `gw.json` con las versiones de Python que la plantilla del CI recorre en matriz.
+- [x] `0.5` · **private-project-2 P7** (D19, 2026-11-03): clave `ciPython` en `gw.json` con las versiones de Python que la plantilla del CI recorre en matriz.
   [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
 - [ ] `0.8` · **private-project-2 P8**: `aplicar.py --init` añade un `.gitignore` por stack en un bloque con marca, sin pisar el existente.
   [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
@@ -50,7 +50,7 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 
 - [x] `0.5` · **private-project-1 P1:** (D20, 2026-11-03) `ciIgnore`, estados de CI ajenos (p. ej. un despliegue) que no bloquean la fusión.
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
-- [ ] `0.5` · **private-project-1 P2:** firmas del agente también en el cuerpo de PR, issues y comentarios de GitHub, y aviso de un
+- [x] `0.5` · **private-project-1 P2:** (D21, 2026-11-03) firmas del agente también en el cuerpo de PR, issues y comentarios de GitHub, y aviso de un
   `user.email` `noreply@anthropic.com`. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [x] `0.5` · **INS P12 + WMF P4:** (E17, 2026-11-03) el check en una orden con resumen y la salida recortada.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md),

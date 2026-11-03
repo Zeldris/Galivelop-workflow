@@ -246,6 +246,15 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   ya no existen (avisa y se salta) y las demás corren.
 - D30: `version.py --release` comprueba que cada ruta del repo citada en la entrada nueva del CHANGELOG está en
   HEAD, existió en el historial o la ignora git.
+- D19: clave opcional `ciPython` en `.claude/gw.json`: la plantilla del CI (`templates/github/check.yml`) recorre
+  esas versiones de Python en matriz (un job previo las lee de la config); sin la clave, o en un proyecto sin
+  `pyproject.toml` ni `requirements*.txt`, un solo job `check` con "3.x". Con la clave el job se llama
+  `check (<versión>)`. `ci-local.py` corre una vez los jobs con matriz por expresión y no da verde si no puede
+  evaluar un job.
+- D21: con `agentSignatures: false`, el gancho `scripts/agent-signatures.py` (PreToolUse) bloquea firmas del agente
+  (en columna 0 y fuera de bloques de código) en el título y el cuerpo de lo que se publica en GitHub: herramientas
+  `mcp__*github*__` y `gh pr|issue|release|api` en Bash. `session-start.sh` avisa si `user.email` es
+  `noreply@anthropic.com`.
 
 ### EN
 
@@ -475,6 +484,14 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   exist (it warns and is skipped) and the others run.
 - D30: `version.py --release` checks that every repo path quoted in the new CHANGELOG entry is in HEAD, existed in
   the history or is ignored by git.
+- D19: optional `ciPython` key in `.claude/gw.json`: the CI template (`templates/github/check.yml`) runs those
+  Python versions as a matrix (a first job reads them from the config); without the key, or in a project with no
+  `pyproject.toml` nor `requirements*.txt`, a single `check` job with "3.x". With the key the job is named
+  `check (<version>)`. `ci-local.py` runs jobs with an expression matrix once and does not report green when it
+  cannot evaluate a job.
+- D21: with `agentSignatures: false`, the `scripts/agent-signatures.py` hook (PreToolUse) blocks agent signatures
+  (at column 0 and outside code blocks) in the title and body of what is posted to GitHub: `mcp__*github*__` tools
+  and `gh pr|issue|release|api` in Bash. `session-start.sh` warns when `user.email` is `noreply@anthropic.com`.
 
 ## [0.4.3] - 2026-10-27
 
