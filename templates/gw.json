@@ -25,6 +25,7 @@
   "proposalsDir": "docs/proposals",
   "ciLocalLog": "docs/records/ci-local.md",
   "ciLocalWorkflows": [],
+  "ciIgnore": [],
   "content": ["^docs/", "^(README|GLOSSARY|REVIEW|CLAUDE|AGENTS|CHANGELOG|CREDITS)(\\.[a-z]{2})?\\.md$", "^\\.claude/skills/.*\\.md$"],
   "roadmap": false,
   "selector": {"cases": []},
