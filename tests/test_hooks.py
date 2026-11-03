@@ -2284,44 +2284,95 @@ class PreCommitOwnRow(Base):
 
 
 class CommitMsgUnreadableConfig(Base):
-    """templates/githooks/commit-msg: a WIP commit is never blocked by an unreadable gw.json; elsewhere it fails closed."""
+    """commit-msg and pre-commit: a WIP commit is never blocked by a missing or non-JSON gw.json; elsewhere they fail closed."""
+    config = {"agentSignatures": False}
     hooks = ("pre-push", "pre-commit", "commit-msg")
+    SIGNATURE = "Claude-Session: https://claude.ai/code/session_x"
 
     def break_config(self, how):
         cfg = self.p.work / ".claude" / "gw.json"
         if how == "missing":
             cfg.unlink()
+        elif how == "invalid-value":  # JSON, but not the schema
+            cfg.write_text(json.dumps({"commitFormat": 3}))
         else:
-            cfg.write_text("{ not json")
+            cfg.write_text('{"commitFormat": "conventional",}')
+
+    def attempt(self, how, message, env=None):
+        self.setUp()
+        self.break_config(how)
+        self.p.write("docs/notes.md", f"{how}\n")
+        before = self.p.sha()
+        self.p.git("add", "-A")
+        r = self.p.git("commit", "-q", *message, env=env, ok=False)
+        return r, before
 
     def test_wip_passes_with_a_warning_when_gw_json_is_unreadable(self):
-        for how in ("garbage", "missing"):
-            with self.subTest(how=how):
-                self.setUp()
-                self.break_config(how)
-                self.p.write("docs/notes.md", f"{how}\n")
-                r = self.p.commit("WIP: relevo de emergencia", ok=False)
-                self.assertEqual(r.returncode, 0, r.stderr)
-                self.assertIn("cannot read .claude/gw.json, so this WIP commit was not checked", r.stderr)
+        for env in (None, {"CLAUDECODE": "1"}):
+            for how in ("garbage", "missing"):
+                with self.subTest(how=how, claudecode=bool(env)):
+                    r, before = self.attempt(how, ["-m", "WIP: relevo de emergencia"], env)
+                    self.assertEqual(r.returncode, 0, r.stderr)
+                    self.assertIn("cannot read .claude/gw.json, so this WIP commit was not checked", r.stderr)
+                    self.assertNotEqual(self.p.sha(), before)
+
+    def test_the_reason_of_the_failure_is_shown(self):
+        r, _ = self.attempt("garbage", ["-m", "WIP: x"])
+        self.assertIn("invalid JSON", r.stderr)
+        r, _ = self.attempt("missing", ["-m", "WIP: x"])
+        self.assertIn("not found", r.stderr)
 
     def test_a_non_wip_commit_fails_closed_with_the_reason_when_gw_json_is_unreadable(self):
+        for env in (None, {"CLAUDECODE": "1"}):
+            for how, reason in (("garbage", "invalid JSON"), ("missing", "not found"), ("invalid-value", "is invalid:")):
+                with self.subTest(how=how, claudecode=bool(env)):
+                    r, before = self.attempt(how, ["-m", "fix(D1): algo"], env)
+                    self.assertNotEqual(r.returncode, 0)
+                    self.assertIn("commit-msg: cannot read or validate .claude/gw.json", r.stderr)
+                    self.assertIn(reason, r.stderr)
+                    self.assertEqual(self.p.sha(), before)
+
+    def test_a_wip_with_a_json_that_breaks_the_schema_still_fails_closed(self):
+        r, before = self.attempt("invalid-value", ["-m", "WIP: x"])
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("is invalid:", r.stderr)
+        self.assertIn("cannot read or validate .claude/gw.json", r.stderr)
+        self.assertEqual(self.p.sha(), before)
+
+    def test_a_wip_with_an_agent_signature_is_rejected_even_without_the_config(self):
         for how in ("garbage", "missing"):
             with self.subTest(how=how):
-                self.setUp()
-                self.break_config(how)
-                self.p.write("docs/notes.md", f"{how}\n")
-                before = self.p.sha()
-                r = self.p.commit("fix(D1): algo", ok=False)
+                r, before = self.attempt(how, ["-m", "WIP: x", "-m", self.SIGNATURE])
                 self.assertNotEqual(r.returncode, 0)
-                self.assertIn("commit-msg: cannot read .claude/gw.json; fix it", r.stderr)
+                self.assertIn("agent signature", r.stderr)
                 self.assertEqual(self.p.sha(), before)
 
+    def test_a_wip_with_a_staged_log_passes_without_the_log_check(self):
+        self.setUp()
+        self.break_config("garbage")
+        self.p.write("docs/log.md", "# Log\n\n## Current state\n\n| **Updated** | 2000-01-01 |\n")
+        self.p.git("add", "-A")
+        r = self.p.git("commit", "-q", "-m", "WIP: relevo", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
     def test_a_wip_word_not_at_the_start_is_not_a_wip_commit(self):
+        r, _ = self.attempt("garbage", ["-m", "fix(D1): WIP: algo"])
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("cannot read or validate .claude/gw.json", r.stderr)
+
+    def test_blank_and_comment_lines_before_the_subject_are_ignored(self):
+        self.setUp()
         self.break_config("garbage")
         self.p.write("docs/notes.md", "x\n")
-        r = self.p.commit("fix(D1): WIP: algo", ok=False)
-        self.assertNotEqual(r.returncode, 0)
-        self.assertIn("cannot read .claude/gw.json", r.stderr)
+        self.p.git("add", "-A")
+        msg = self.tmp / "m.txt"
+        msg.write_text("\n   \n# a comment\nWIP: relevo\n")
+        r = self.p.git("commit", "-q", "-F", str(msg), "--cleanup=strip", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_pre_commit_without_claudecode_does_not_read_the_config(self):
+        r, _ = self.attempt("garbage", ["--no-verify", "-m", "x"])
+        self.assertEqual(r.returncode, 0, r.stderr)
 
 
 class CommitMsgOutsideWorkTree(Base):
@@ -2340,6 +2391,18 @@ class CommitMsgOutsideWorkTree(Base):
         code, out = self.p.run("bash", str(hooks / "commit-msg"), self.message(), cwd=self.tmp)
         self.assertEqual(code, 0, out)
         self.assertIn("bare repository, which has no work tree to check", out)
+
+    def test_a_bare_repository_with_a_separate_work_tree_is_checked_like_a_normal_one(self):
+        (self.p.work / ".claude" / "gw.json").write_text(json.dumps(dict(BASE_CONFIG, agentSignatures=False)))
+        msg = self.tmp / "sig.txt"
+        msg.write_text("feat(D1): algo\n\nClaude-Session: https://claude.ai/code/session_x\n")
+        hooks = self.p.bare / "hooks"
+        hooks.mkdir(exist_ok=True)
+        shutil.copy2(ROOT / "templates" / "githooks" / "commit-msg", hooks / "commit-msg")
+        env = {"GIT_DIR": str(self.p.bare), "GIT_WORK_TREE": str(self.p.work)}
+        code, out = self.p.run("bash", str(hooks / "commit-msg"), str(msg), cwd=self.p.work, env=env)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("agent signature", out)
 
     def test_git_dir_pointing_at_a_bare_repository_skips(self):
         hook = self.p.work / ".githooks" / "commit-msg"

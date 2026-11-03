@@ -14,9 +14,11 @@
 #     an `Agent:` trailer must not name a model with `agentSignatures: false`. All in scripts/commit-message.py (merges,
 #     reverts, cherry-picks and rebases skip format, Refs and Next; see its header).
 #   - Fails closed when the workflow's config.py or (with the log staged) handoff.py is missing.
-#   - A `WIP: ` commit passes, with a warning, when .claude/gw.json is missing or unreadable (an emergency handoff is
-#     never blocked); any other commit still fails closed with the reason.
-#   - Outside a work tree (a bare repository, or GIT_DIR pointing at one) there is nothing to check: it exits 0.
+#   - A `WIP: ` commit passes, with a warning and the reason, when .claude/gw.json is missing or is not JSON (this hook
+#     does not block an emergency handoff; pre-commit then skips protectedPaths, which it cannot read either). It still
+#     rejects an agent signature (as if agentSignatures were false) and skips the log check. Any other commit fails
+#     closed with the reason, and so does a gw.json that is JSON but breaks the schema, WIP or not.
+#   - Outside a work tree (a bare repository with no GIT_WORK_TREE) there is nothing to check: it exits 0.
 #   - With `agentSignatures: false` in the config, rejects a message that carries an agent's signature: a
 #     Co-Authored-By trailer with noreply@anthropic.com or naming Claude Code/Opus/Sonnet/Haiku/Fable, a
 #     Claude-Session trailer, or a line that starts with "Generated with Claude Code" (after any emoji) or with a
@@ -29,10 +31,14 @@ hookdir="$(cd "$(dirname "$0")" && pwd)"
 # Git exports GIT_DIR/GIT_INDEX_FILE to the hook (in a linked worktree too), and with GIT_DIR set `rev-parse
 # --show-toplevel` answers the hook's own folder. Unset them for this one call (a subshell); the checks below keep them.
 root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$hookdir" rev-parse --show-toplevel 2>/dev/null)" || {
-  if [ "$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$hookdir" rev-parse --is-bare-repository 2>/dev/null)" = true ]; then
+  if [ -n "${GIT_WORK_TREE:-}" ]; then  # a bare repository used with a separate work tree (dotfiles): git's own answer
+    root="$(git rev-parse --show-toplevel 2>/dev/null)" || root=""
+  elif [ "$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$hookdir" rev-parse --is-bare-repository 2>/dev/null)" = true ]; then
     echo "commit-msg: $hookdir belongs to a bare repository, which has no work tree to check; skipped" >&2; exit 0
   fi
-  echo "commit-msg: $hookdir is not inside a git work tree; point git at the project's hooks: git config core.hooksPath .githooks" >&2; exit 1; }
+  [ -n "${root:-}" ] || {
+    echo "commit-msg: $hookdir is not inside a git work tree; point git at the project's hooks: git config core.hooksPath .githooks" >&2; exit 1; }
+}
 msg="${1:-}"
 case "$msg" in ""|/*) ;; *) msg="$PWD/$msg" ;; esac
 cd "$root" || exit 1
@@ -43,23 +49,49 @@ if [ -d "$root/.claude/gw/scripts" ]; then scripts="$root/.claude/gw/scripts"; e
 config="$scripts/config.py"
 [ -f "$config" ] || { echo "commit-msg: the workflow scripts are missing ($config); reinstall them: /gw-update" >&2; exit 1; }
 
-# A WIP commit is the emergency handoff: it passes (warned) when gw.json cannot be read; any other commit fails closed.
-is_wip() {
-  [ -n "$msg" ] && [ -r "$msg" ] || return 1
-  local cc subject
+# git >= 2.45 reads core.commentString first; "auto" picks a free character, and its comments carry no signature.
+comment_prefix() {
+  local cc
   cc="$(git config core.commentString 2>/dev/null)" || cc="$(git config core.commentChar 2>/dev/null)" || cc=""
   case "$cc" in ""|auto) cc="#" ;; esac
-  subject="$(awk -v cc="$cc" 'substr($0, 1, length(cc)) == cc { next } { print; exit }' "$msg")"
+  printf '%s' "$cc"
+}
+# A WIP commit: its first line git keeps (comment and blank lines are cleaned away) starts with "WIP: ".
+is_wip() {
+  [ -n "$msg" ] && [ -r "$msg" ] || return 1
+  local subject
+  subject="$(awk -v cc="$(comment_prefix)" 'substr($0, 1, length(cc)) == cc { next } /^[[:space:]]*$/ { next } { print; exit }' "$msg")"
+  subject="${subject#"${subject%%[![:space:]]*}"}"
   case "$subject" in "WIP: "*) return 0 ;; esac
   return 1
 }
-if ! python3 "$config" --root "$root" validate >/dev/null 2>&1; then
-  if is_wip; then
-    echo "commit-msg: WARNING: cannot read .claude/gw.json, so this WIP commit was not checked; fix it: python3 $config --root $root validate" >&2
+# The first agent-signature line of the message, if any (the header says what counts and what is ignored).
+find_signature() {
+  awk -v cc="$(comment_prefix)" '
+    substr($0, 1, length(cc)) == cc && $0 ~ / -+ >8 -+$/ { exit }
+    substr($0, 1, length(cc)) == cc { next }
+    { print }' "$msg" | grep -iE \
+      -e '^[[:space:]]*co-authored-by:.*noreply@anthropic\.com' \
+      -e '^[[:space:]]*co-authored-by:[[:space:]]*claude (code|opus|sonnet|haiku|fable)' \
+      -e '^[[:space:]]*claude-session:' \
+      -e '^[^[:alnum:]]*generated (with|by) \[?claude code' \
+      -e '^[[:space:]]*<?https?://claude\.ai/code/session' | head -n 1
+}
+reject_signature() {
+  echo "commit-msg: the message carries an agent signature, which this project forbids (agentSignatures: false in .claude/gw.json): $1" >&2
+  echo "commit-msg: remove that line and commit again: git commit -e -F $msg" >&2
+  exit 1
+}
+config_err="$(python3 "$config" --root "$root" validate 2>&1 >/dev/null)" || {
+  [ -z "$config_err" ] || printf '%s\n' "$config_err" >&2
+  # A gw.json that is JSON but breaks the schema is a mistake to fix, WIP or not; only a missing or non-JSON one passes.
+  if is_wip && ! printf '%s\n' "$config_err" | grep -q ' is invalid:'; then
+    found="$(find_signature)"
+    [ -z "$found" ] || reject_signature "$found"  # the setting is unknown: treat it as the strict one
+    echo "commit-msg: WARNING: cannot read .claude/gw.json, so this WIP commit was not checked (agent signatures apart); fix it: python3 $config --root $root validate" >&2
     exit 0
   fi
-  echo "commit-msg: cannot read .claude/gw.json; fix it (or commit with a WIP: first line to hand off): python3 $config --root $root validate" >&2; exit 1
-fi
+  echo "commit-msg: cannot read or validate .claude/gw.json; fix it (a missing or non-JSON file does not stop a commit whose first line is WIP:): python3 $config --root $root validate" >&2; exit 1; }
 
 in_rebase=false
 for dir in rebase-merge rebase-apply; do
@@ -72,23 +104,8 @@ if [ "$signatures" = false ] && [ "$in_rebase" = false ]; then
   if [ -z "$msg" ] || [ ! -r "$msg" ]; then
     echo "commit-msg: cannot read the commit message file '${1:-}'; commit again: git commit" >&2; exit 1
   fi
-  # git >= 2.45 reads core.commentString first; "auto" picks a free character, and its comments carry no signature.
-  cc="$(git config core.commentString 2>/dev/null)" || cc="$(git config core.commentChar 2>/dev/null)" || cc=""
-  case "$cc" in ""|auto) cc="#" ;; esac
-  found="$(awk -v cc="$cc" '
-    substr($0, 1, length(cc)) == cc && $0 ~ / -+ >8 -+$/ { exit }
-    substr($0, 1, length(cc)) == cc { next }
-    { print }' "$msg" | grep -iE \
-      -e '^[[:space:]]*co-authored-by:.*noreply@anthropic\.com' \
-      -e '^[[:space:]]*co-authored-by:[[:space:]]*claude (code|opus|sonnet|haiku|fable)' \
-      -e '^[[:space:]]*claude-session:' \
-      -e '^[^[:alnum:]]*generated (with|by) \[?claude code' \
-      -e '^[[:space:]]*<?https?://claude\.ai/code/session' | head -n 1)"
-  if [ -n "$found" ]; then
-    echo "commit-msg: the message carries an agent signature, which this project forbids (agentSignatures: false in .claude/gw.json): $found" >&2
-    echo "commit-msg: remove that line and commit again: git commit -e -F $msg" >&2
-    exit 1
-  fi
+  found="$(find_signature)"
+  [ -z "$found" ] || reject_signature "$found"
 fi
 
 # Format, Refs trailer and Agent trailer (commitFormat, commitRefs, agentSignatures): the rules in commit-message.py.

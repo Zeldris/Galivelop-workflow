@@ -6,7 +6,7 @@
 #     key formats, and secret/password/token/api_key assignments with a literal value instead of an environment
 #     reference). A line containing gw-allow-secret is ignored (for a checked false positive). KEY_FORMATS below is
 #     also read by scripts/private-check.py: keep it on one line, in single quotes.
-#   - With CLAUDECODE=1 (an agent committing): no staged file under the config's protectedPaths (people's drafts).
+#   - With CLAUDECODE=1 (an agent committing): no staged file under the config's protectedPaths (people's drafts); with an unreadable gw.json it warns and skips that check (the commit-msg hook refuses a non-WIP).
 #     Outside Claude Code that check does not run. Closing a merge/cherry-pick/rebase lets through files that come
 #     unchanged from the other side.
 #   - With logRows on: a task the commit closes in the plan is also in the log's "Done" (handoff.py closed --staged;
@@ -97,8 +97,11 @@ fi
 # Paths an agent may not commit (people's work in progress). Only under Claude Code, only for staged changes.
 if [ "${CLAUDECODE:-}" = "1" ] && [ "$ci" = "0" ]; then
   if [ -d "$root/.claude/gw/scripts" ]; then scripts="$root/.claude/gw/scripts"; else scripts="$root/scripts"; fi
+  # The message does not exist yet, so a WIP handoff cannot be told apart here: with an unreadable gw.json, warn and skip
+  # protectedPaths; commit-msg then refuses every commit that is not WIP (fail closed there, where the message is known).
   prefixes="$(python3 "$scripts/config.py" --root "$root" get protectedPaths)" || {
-    echo "pre-commit: cannot read protectedPaths from .claude/gw.json; fix it: python3 $scripts/config.py --root $root validate" >&2; exit 1; }
+    prefixes=""
+    echo "pre-commit: WARNING: cannot read protectedPaths from .claude/gw.json, so none are checked; commit-msg refuses a commit that is not WIP:. Fix it: python3 $scripts/config.py --root $root validate" >&2; }
   if [ -n "$prefixes" ]; then
     others=""
     for head in MERGE_HEAD CHERRY_PICK_HEAD REBASE_HEAD; do
