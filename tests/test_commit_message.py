@@ -416,8 +416,17 @@ class NextTrailer(Msg):
         self.accepted("WIP: work\n\nNext: fix the red test")
 
     def test_git_written_lines_are_exempt(self):
-        for subject in ("fixup! work", "squash! work", "amend! work", 'Revert "work"', 'Reapply "work"', "Merge branch x"):
+        for subject in ("fixup! work", "squash! work", "amend! work", 'Revert "work"', 'Reapply "work"'):
             self.accepted(subject)
+
+    def test_a_plain_commit_titled_merge_is_not_exempt(self):
+        self.refused("Merge things by hand", "no `Next:` trailer")
+
+    def test_the_error_does_not_demand_the_trailer_to_be_the_last_line(self):
+        code, err = self.attempt("work")
+        self.assertNotEqual(code, 0)
+        self.assertNotIn("last line", err)
+        self.assertIn("with a `Next: <next step>` line", err)
 
     def test_a_merge_in_progress_is_exempt(self):
         p = self.p

@@ -45,12 +45,16 @@ protected="$(python3 "$config" --root "$root" get protectedBranch)" || {
 logs="$(mktemp -d "${TMPDIR:-/tmp}/gw-merge-branch.XXXXXX")" || { echo "merge-branch: cannot create a temp dir; free space and retry" >&2; exit 2; }
 trap 'rm -rf "$logs"' EXIT
 
-commit_next="$(python3 "$config" --root "$root" get commitNext 2>/dev/null)" || commit_next=false
+commit_next="$(python3 "$config" --root "$root" get commitNext 2>/dev/null)" || {
+  echo "merge-branch: cannot read commitNext; fix the config: python3 $config --root $root validate" >&2; exit 2; }
 if [ "$commit_next" = "true" ] && [ "${GW_NO_NEXT:-}" != "1" ]; then
-  lang="$(python3 "$config" --root "$root" get language 2>/dev/null)" || lang=en
+  lang="$(python3 "$config" --root "$root" get language 2>/dev/null)" || {
+    echo "merge-branch: cannot read language; fix the config: python3 $config --root $root validate" >&2; exit 2; }
   case "$lang" in es) next_word="Siguiente" ;; *) next_word="Next" ;; esac
-  if ! printf '%s\n' "$message" | git interpret-trailers --parse | grep -iq "^$next_word:[[:space:]]*[^[:space:]]"; then
-    echo "merge-branch: the merge message has no \`$next_word:\` trailer (commitNext: true in .claude/gw.json); end it with a trailer paragraph whose last line is \`$next_word: <next step>\` and retry: bash $0 $branch \"<merge message>\"; for a message that legitimately has none: GW_NO_NEXT=1 bash $0 $branch \"<merge message>\"" >&2
+  parsed="$(printf '%s\n' "$message" | git interpret-trailers --parse --no-divider)" || {
+    echo "merge-branch: cannot read the trailers of the merge message (git interpret-trailers failed); update git or fix the message, then retry: bash $0 $branch \"<merge message>\"" >&2; exit 2; }
+  if ! printf '%s\n' "$parsed" | grep -iq "^$next_word:[[:space:]]*[^[:space:]]"; then
+    echo "merge-branch: the merge message has no \`$next_word:\` trailer (commitNext: true in .claude/gw.json); add a \`$next_word: <next step>\` line to its last paragraph and retry: bash $0 $branch \"<merge message>\"; for a message that legitimately has none: GW_NO_NEXT=1 bash $0 $branch \"<merge message>\"" >&2
     exit 2
   fi
 fi

@@ -17,7 +17,7 @@ and applies, from .claude/gw.json (read through config.py):
                                version of each file is read, so a commit that adds the id can cite it.
   commitNext true              the trailer block has a non-empty next-step trailer, named after `language`: `Siguiente:` (es)
                                or `Next:` (en; NEXT_TRAILERS). WIP: commits need it too; `fixup! `, `squash! `,
-                               `amend! `, `Revert "`, `Reapply "` and `Merge ` lines are exempt, and so is a
+                               `amend! `, `Revert "` and `Reapply "` lines are exempt, and so is a
                                merge/revert/cherry-pick/rebase in progress (merge-branch.sh requires it itself).
                                Escape for a legitimate message without it: GW_NO_NEXT=1 git commit ...
   agentSignatures false        an `Agent:` trailer (the subagent's skill, e.g. `Agent: gw-orchestrate-dealer`) must
@@ -133,12 +133,13 @@ def check_next(config, message, found, msgfile):
     word = NEXT_TRAILERS.get(config.get("language"), NEXT_TRAILERS["en"])
     subject = next((line for line in message.splitlines() if line.strip()), "")
     rest = subject[5:] if subject.startswith("WIP: ") else subject
-    if not subject or rest.startswith(GIT_LINES):
+    # "Merge " is not exempt here: a real merge is skipped by its MERGE_HEAD, and a plain commit titled "Merge ..." is not one.
+    if not subject or rest.startswith(tuple(l for l in GIT_LINES if l != "Merge ")):
         return
     if any(key.lower() == word.lower() and value for key, value in found):
         return
     raise Reject(f"the message has no `{word}:` trailer with the next concrete step (commitNext: true in .claude/gw.json)\n"
-                 f"commit-msg: end the message with a paragraph of trailers whose last line is `{word}: <next step>` "
+                 f"commit-msg: end the message with a paragraph of trailers with a `{word}: <next step>` line "
                  f"and commit again: git commit -e -F {msgfile}; for a message that legitimately has none: "
                  f"GW_NO_NEXT=1 git commit -e -F {msgfile}")
 
