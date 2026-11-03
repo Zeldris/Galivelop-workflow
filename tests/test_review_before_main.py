@@ -307,6 +307,14 @@ class Hook(unittest.TestCase):
         statuses = {"statuses": [{"context": "vercel", "state": "failure"}]}
         self.assertBlocked(self.merge(pr=self.pr(), statuses=statuses), "vercel: failure")
 
+    def test_missing_or_broken_ci_status_blocks_with_the_fix(self):
+        self.mark(); self.push()
+        reader = self.script.parent / "ci-status.py"
+        reader.unlink()
+        self.assertBlocked(self.merge(pr=self.pr()), "cannot load ci-status.py", "/gw-update")
+        reader.write_text("def broken(:\n")
+        self.assertBlocked(self.merge(pr=self.pr()), "cannot load ci-status.py", "/gw-update")
+
     def test_merge_failed_commit_status_blocked(self):
         self.mark(); self.push()
         statuses = {"statuses": [{"context": "vercel", "state": "failure"}]}

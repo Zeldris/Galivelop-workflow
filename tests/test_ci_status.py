@@ -24,7 +24,8 @@ case "$2" in
   */annotations) printf '%s' "${GH_NOTES:-[]}" ;;
   */commits/*/check-runs*) printf '%s' "$GH_RUNS" ;;
   */commits/*/status*) printf '%s' "$GH_STATUS" ;;
-  */commits/*) printf '%s' "$GH_COMMIT" ;;
+  */commits/*) [ -z "${GH_NO_COMMIT:-}" ] || { echo "gh: HTTP 422: No commit found for SHA (fake)" >&2; exit 1; }
+    printf '%s' "$GH_COMMIT" ;;
   *) echo "fake gh: unknown path $2" >&2; exit 1 ;;
 esac
 """
@@ -34,6 +35,7 @@ for a in "$@"; do url="$a"; done
 case "$url" in
   *check-runs*) printf '%s' "$GH_RUNS" ;;
   */status*) printf '%s' "$GH_STATUS" ;;
+  */commits/*) printf '%s' "$GH_COMMIT" ;;
   *) exit 22 ;;
 esac
 """
@@ -122,6 +124,16 @@ class CiStatus(unittest.TestCase):
 
     def test_sha_and_repo_flags(self):
         self.assertCi(self.ci("--sha", "c" * 40, "--repo", "x/y"), 0, "x/y", "c" * 12)
+
+    def test_head_not_pushed_says_push_first_not_authenticate(self):
+        code, out = self.ci(env={"GH_NO_COMMIT": "1"})
+        self.assertEqual(code, 2, out)
+        self.assertIn("is not on GitHub", out)
+        self.assertIn("git push", out)
+        self.assertNotIn("authenticate", out)
+
+    def test_git_dir_from_a_hook_does_not_redirect_the_root(self):
+        self.assertCi(self.ci(env={"GIT_DIR": str(self.tmp / "nowhere")}), 0, "green", self.sha[:12])
 
     # fail closed ---------------------------------------------------------------------------------------------------
     def test_no_gh_and_no_token_fails_closed_with_the_fix(self):

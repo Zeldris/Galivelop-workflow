@@ -35,9 +35,14 @@ class ApiError(Exception):
     pass
 
 
+# git exports GIT_DIR and friends to hooks: they would point git at the hook's repo, not at --root.
+RUN_ENV = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
+RUN_ENV["GIT_TERMINAL_PROMPT"] = "0"
+
+
 def run(cmd, stdin=None):
     try:
-        return subprocess.run(cmd, env=os.environ.copy(), capture_output=True, text=True, input=stdin,
+        return subprocess.run(cmd, env=RUN_ENV, capture_output=True, text=True, input=stdin,
                               stdin=None if stdin is not None else subprocess.DEVNULL)
     except OSError as exc:
         return subprocess.CompletedProcess(cmd, 127, "", str(exc))
@@ -197,6 +202,13 @@ def main(argv=None):
             sha = r.stdout.strip()
             if r.returncode != 0 or not sha:
                 raise ApiError("the working tree has no commit (git rev-parse HEAD failed)")
+            try:
+                api(f"repos/{repo}/commits/{sha}")
+            except ApiError as exc:
+                if "422" in str(exc) or "No commit found" in str(exc):
+                    out["error"] = f"HEAD {sha[:12]} is not on GitHub"
+                    return finish(2, f"ci-status: {out['error']}\npush first and retry: git push && python3 {me}")
+                raise
         out["sha"] = sha
         report = ci_report(repo, sha, ignore)
     except (ApiError, KeyError, TypeError, ValueError) as exc:

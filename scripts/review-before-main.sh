@@ -47,11 +47,9 @@ GIT_ENV["GIT_TERMINAL_PROMPT"] = "0"
 sys.dont_write_bytecode = True
 sys.path.insert(0, HERE)
 import importlib.util
-# The API reader (token / gh discovery, CI state, ciIgnore) lives in ci-status.py: one place for it.
-_spec = importlib.util.spec_from_file_location("ci_status", os.path.join(HERE, "ci-status.py"))
-ci_status = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(ci_status)
-ApiError, api, NO_CI = ci_status.ApiError, ci_status.api, ci_status.NO_CI
+# The API reader (token / gh discovery, CI state, ciIgnore) lives in ci-status.py: one place for it. Loaded by
+# project() (a missing or broken copy blocks with the command that fixes it), so these names exist from then on.
+ci_status = ApiError = api = NO_CI = None
 
 
 class Blocked(Exception):
@@ -394,6 +392,14 @@ def project():
         import config  # the only reader of .claude/gw.json
     except ImportError as exc:
         block(f"cannot load config.py next to {HERE} ({exc}).", "reinstall the workflow: /gw-update")
+    global ci_status, ApiError, api, NO_CI
+    try:
+        spec = importlib.util.spec_from_file_location("ci_status", os.path.join(HERE, "ci-status.py"))
+        ci_status = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(ci_status)
+    except Exception as exc:  # missing file, syntax error...
+        block(f"cannot load ci-status.py next to {HERE} ({exc}).", "reinstall the workflow: /gw-update")
+    ApiError, api, NO_CI = ci_status.ApiError, ci_status.api, ci_status.NO_CI
     try:
         cfg = config.load()
     except config.ConfigError as exc:
