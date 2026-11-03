@@ -900,7 +900,7 @@ class PrepushBranches(Base):
 
     def edit(self, **kw):
         self.p.write(LOG, log_text(**kw))
-        self.p.commit("edit the log", env=DAY)
+        self.p.commit("edit the log", env=dict(DAY, GW_SHARED_LOG="1"))
         return self.p.sha()
 
     def test_own_row_passes_and_lists_files_and_commits(self):
