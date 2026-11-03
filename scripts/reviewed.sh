@@ -87,15 +87,28 @@ if [ "$retro" = "true" ]; then
   fi
 fi
 
-# Warn about code changed since the previous mark (the sha the mark file holds at HEAD); informational only.
+# Warn about code the branch changed since the previous mark (the sha the mark file holds at HEAD); informational only.
+# Only what the branch itself changed counts: what came in by merging origin/<protected> was reviewed on its own branch.
 prev="$(git show "HEAD:$mark" 2>/dev/null | head -n 1 | tr -d '[:space:]')"
 if [ -n "$prev" ] && git cat-file -e "$prev^{commit}" 2>/dev/null && git merge-base --is-ancestor "$prev" HEAD 2>/dev/null; then
-  since="$prev"; since_what="the previous review mark $prev"
+  since="$prev"
+  if git merge-base --is-ancestor "$prev" "refs/remotes/origin/$protected" 2>/dev/null; then
+    since_what="the review mark $prev inherited from origin/$protected (this branch has no mark of its own)"
+  else
+    since_what="the previous review mark $prev"
+  fi
 else
   since="$(git merge-base HEAD "refs/remotes/origin/$protected" 2>/dev/null || true)"; since_what="the fork from origin/$protected (no usable previous mark)"
 fi
 if [ -n "$since" ]; then
-  if unreviewed="$(bash "$here/is-code.sh" "$since" HEAD 2>/dev/null)"; then
+  if unreviewed="$(bash "$here/is-code.sh" "$since" HEAD 2>/dev/null)" \
+    && own="$(git -c core.quotePath=false log --format= --name-only "$since..HEAD" "^refs/remotes/origin/$protected" 2>/dev/null)"; then
+    # The code files (tree diff) that the branch's own commits touched; whole lines, so paths with spaces stay whole.
+    if [ -n "$unreviewed" ] && [ -n "$own" ]; then
+      unreviewed="$(printf '%s\n' "$unreviewed" | grep -Fxf <(printf '%s\n' "$own") || true)"
+    else
+      unreviewed=""
+    fi
     if [ -n "$unreviewed" ]; then
       echo "reviewed: warning: code changed since $since_what; make sure /code-review covered these files:" >&2
       while IFS= read -r file; do printf '  %s\n' "$file" >&2; done <<<"$unreviewed"
