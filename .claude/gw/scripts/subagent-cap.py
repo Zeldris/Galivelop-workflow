@@ -16,6 +16,11 @@ Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse "ask" decisi
 The cap is `subagentCap` in .claude/gw.json (integer >= 1, default 30). If the config cannot be read or is invalid, the
 default is used and the count goes on.
 
+Symbolic links: the counter is opened with O_NOFOLLOW and must be a regular file owned by the user running the hook, so
+a link planted in a shared temp folder is never written through; it is refused with a reason (`ask`, cannot count).
+Old counters: when a session's counter is created, the other gw-subagents-* regular files in the folder that nobody
+has written for STALE_DAYS (7) days are deleted (never a link, never a file of another user, never the one in use).
+
 The counter is one small file per session in tempfile.gettempdir() (named gw-subagents-<session_id>, with every
 character that is not a letter, digit, dot, dash or underscore replaced by `_`). It is updated under an exclusive
 lock, so subagents launched in parallel are all counted. A file that is not a non-negative integer is read as 0. The
@@ -29,8 +34,10 @@ import json
 import os
 import re
 import select
+import stat
 import sys
 import tempfile
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.dont_write_bytecode = True  # no __pycache__ in the project's .claude/gw/scripts
@@ -46,6 +53,8 @@ DEFAULT_CAP = 30
 STEP = 10
 STDIN_WAIT = 3.0
 COUNTER_DIR_ENV = "GW_SUBAGENT_COUNTER_DIR"
+COUNTER_PREFIX = "gw-subagents-"
+STALE_DAYS = 7
 
 
 class CannotCount(Exception):
@@ -88,16 +97,46 @@ def cap_from_config():
 
 def counter_path(session_id):
     folder = os.environ.get(COUNTER_DIR_ENV) or tempfile.gettempdir()
-    return os.path.join(folder, "gw-subagents-" + re.sub(r"[^A-Za-z0-9_.-]", "_", session_id)[:120])
+    return os.path.join(folder, COUNTER_PREFIX + re.sub(r"[^A-Za-z0-9_.-]", "_", session_id)[:120])
+
+
+def clean_old(keep):
+    """Delete the stale counters next to `keep`: own regular files named gw-subagents-* not written for STALE_DAYS."""
+    folder = os.path.dirname(keep)
+    limit = time.time() - STALE_DAYS * 86400
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return
+    uid = os.geteuid() if hasattr(os, "geteuid") else None
+    for name in names:
+        path = os.path.join(folder, name)
+        if not name.startswith(COUNTER_PREFIX) or path == keep:
+            continue
+        try:
+            info = os.lstat(path)  # lstat: a link is never followed, and never deleted here
+            if stat.S_ISREG(info.st_mode) and info.st_mtime < limit and (uid is None or info.st_uid == uid):
+                os.unlink(path)
+        except OSError:
+            pass  # cleaning is best effort: it must never stop the count
 
 
 def bump(path):
     """Add one to the session's counter under an exclusive lock and return the new count."""
+    if not os.path.lexists(path):
+        clean_old(path)
     try:
-        fd = os.open(path, os.O_RDWR | os.O_CREAT, 0o600)
+        fd = os.open(path, os.O_RDWR | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0), 0o600)
     except OSError as exc:
+        if os.path.islink(path):
+            raise CannotCount(f"the subagent counter {path} is a symbolic link, which is not followed "
+                              f"(delete it: rm {path})")
         raise CannotCount(f"the subagent counter {path} cannot be opened ({exc.strerror or exc})")
     try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or (hasattr(os, "geteuid") and info.st_uid != os.geteuid()):
+            raise CannotCount(f"the subagent counter {path} is not a regular file of this user "
+                              f"(delete it: rm {path})")
         if fcntl is not None:
             fcntl.flock(fd, fcntl.LOCK_EX)
         raw = os.read(fd, 64)

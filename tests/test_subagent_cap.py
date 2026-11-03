@@ -134,6 +134,68 @@ class CustomCap(Base):
         self.assertIn("3 subagents", asked[0])
 
 
+class OldCountersAndLinks(Base):
+    cfg = {"subagentCap": 3}
+
+    def stale(self, name, days=8):
+        path = self.p.counters / name
+        path.write_text("5")
+        old = path.stat().st_mtime - days * 86400
+        os.utime(path, (old, old))
+        return path
+
+    def test_an_old_counter_is_cleaned_when_a_new_one_is_created(self):
+        old = self.stale("gw-subagents-gone")
+        other = self.p.counters / "unrelated-file"
+        other.write_text("x")
+        os.utime(other, (1, 1))
+        self.assertQuiet(self.p.call("fresh"))
+        self.assertFalse(old.exists(), "the stale counter must be deleted")
+        self.assertTrue(other.exists(), "only gw-subagents-* files are touched")
+        self.assertTrue((self.p.counters / "gw-subagents-fresh").exists())
+
+    def test_a_counter_in_use_is_kept_and_keeps_counting(self):
+        recent = self.stale("gw-subagents-live", days=1)
+        self.assertQuiet(self.p.call("fresh"))
+        self.assertEqual(recent.read_text(), "5")
+        self.assertQuiet(self.p.call("fresh"))
+        self.assertAsks(self.p.call("fresh"), "3 subagents")
+
+    def test_the_stale_counter_of_the_same_session_is_not_deleted_while_it_counts(self):
+        old = self.stale("gw-subagents-same")
+        self.assertQuiet(self.p.call("same"))
+        self.assertEqual(old.read_text(), "6")
+
+    def test_no_cleaning_when_the_counter_already_exists(self):
+        self.assertQuiet(self.p.call("a"))
+        old = self.stale("gw-subagents-gone")
+        self.assertQuiet(self.p.call("a"))
+        self.assertTrue(old.exists())
+
+    def test_a_link_named_like_a_counter_is_not_deleted_nor_followed_by_the_cleaning(self):
+        target = self.tmp / "target"
+        target.write_text("keep")
+        link = self.p.counters / "gw-subagents-link"
+        link.symlink_to(target)
+        os.utime(link, (1, 1), follow_symlinks=False)
+        self.assertQuiet(self.p.call("fresh"))
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(target.read_text(), "keep")
+
+    def test_a_symlink_as_the_counter_is_refused_and_never_written_through(self):
+        target = self.tmp / "victim"
+        target.write_text("precious")
+        (self.p.counters / "gw-subagents-s1").symlink_to(target)
+        self.assertAsks(self.p.call("s1"), "cannot count", "symbolic link", "not followed")
+        self.assertEqual(target.read_text(), "precious")
+
+    def test_a_dangling_symlink_is_refused_and_creates_nothing(self):
+        target = self.tmp / "nowhere"
+        (self.p.counters / "gw-subagents-s1").symlink_to(target)
+        self.assertAsks(self.p.call("s1"), "symbolic link")
+        self.assertFalse(target.exists())
+
+
 class CapOfOne(Base):
     cfg = {"subagentCap": 1}
 
