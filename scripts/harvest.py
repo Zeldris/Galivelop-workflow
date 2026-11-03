@@ -43,7 +43,7 @@ ROOT = Path(__file__).resolve().parent.parent  # this workflow repo
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(ROOT / "scripts"))
 import config  # noqa: E402  (the only reader of .claude/gw.json)
-from apply import skill_version_span  # noqa: E402  (the one parser of skill versions)
+from apply import OLD_SCRIPTS, OLD_SKILLS, skill_version_span  # noqa: E402  (the one parser of skill versions, and the A8 old names)
 IDEAS_HEADING = re.compile(r"^#{2,4}\s*(?:For|Para)\s+Galivelop-workflow\b.*$", re.I | re.M)
 IDEAS_LINE = re.compile(r"^([ \t]*)(?:[-*+]\s+|\d+\.\s+)?[*_]{0,2}(?:Propuestas?\s+para\s+el\s+flujo|Proposals?\s+for\s+the\s+workflow)\b",
                         re.I | re.M)
@@ -165,7 +165,10 @@ def body_diff(ours, theirs):
 def earlier_match(rel, text, body_only=False):
     """The short sha of the latest commit of this repo whose rel (followed through renames) has the same text (only the
     body for a SKILL.md), or None: the project then holds an older copy of the workflow, not edits of its own."""
-    log = git(ROOT, "log", "--follow", "--format=%H", "--name-only", "--", rel) or ""
+    # Published history only (what a project could have installed, plan section 7): HEAD, main, origin/main and the tags,
+    # never other branches (an unpublished branch must not hide a project's real edit as an "older copy").
+    log = git(ROOT, "log", "--follow", "--full-history", "--branches=main", "--remotes=origin/main", "--tags", "HEAD",
+              "--format=%H", "--name-only", "--", rel) or ""
     def comparable(t):
         return (split_frontmatter(t)[1] if body_only else t).strip()
     want, sha = comparable(text), None
@@ -286,25 +289,33 @@ def harvest(repo, state, anonymize=lambda text: text):
         if changed_files is not None and rel not in changed_files:
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
-        if name in ours:
-            mine = ours[name].read_text(encoding="utf-8")
+        # A project installed before A8 holds the skill under its old name: the same skill, not one born there.
+        current = OLD_SKILLS[name] if name not in ours and OLD_SKILLS.get(name) in ours else name
+        beside = current != name and current in theirs  # apply.py keeps an old folder beside the new one when it has edits
+        if current in ours:
+            mine = ours[current].read_text(encoding="utf-8")
             added, removed = body_diff(mine, text)
             if added or removed:
-                older = earlier_match(f"skills/{name}/SKILL.md", text, body_only=True)
+                older = (earlier_match(f"skills/{current}/SKILL.md", text, body_only=True) or
+                         (earlier_match(f"skills/{name}/SKILL.md", text, body_only=True) if current != name else None))
                 item = {"skill": name, "path": rel, "added": added, "removed": removed,
                         "their_version": meta_version(text)}
+                if beside:
+                    item["note"] = f"old name kept beside `{current}`"
                 if older:
                     report["skills_older"].append(dict(item, matches=older))
                 else:
                     report["skills_changed"].append(item)
         else:
             report["skills_new"].append({"skill": name, "path": rel, "description": description(text)})
-    report["skills_missing"] = sorted(set(ours) - set(theirs))
+    report["skills_missing"] = sorted(set(ours) - set(theirs) - {OLD_SKILLS[n] for n in theirs if n in OLD_SKILLS})
 
     our_scripts = {p.name: p for p in (ROOT / "scripts").glob("*") if p.is_file()}
     tracked = (git(repo, "ls-files") or "").splitlines()
     for rel in tracked:
         name = Path(rel).name
+        if rel.startswith(".claude/gw/scripts/"):
+            name = OLD_SCRIPTS.get(name, name)  # a pre-A8 install has the Spanish file names (only where the flow puts them)
         if name in our_scripts and name != "harvest.py":
             if changed_files is not None and rel not in changed_files:
                 continue
@@ -344,7 +355,7 @@ def markdown(report):
         out += [f"  - {c}" for c in report["commits"][:30]]
     sections = [
         ("Workflow skills changed in the project", "skills_changed",
-         lambda s: f"`{s['skill']}` (`{s['path']}`): +{s['added']} −{s['removed']} lines in the body; "
+         lambda s: f"`{s['skill']}` (`{s['path']}`){' (' + s['note'] + ')' if s.get('note') else ''}: +{s['added']} −{s['removed']} lines in the body; "
                    f"their version {s['their_version'] or 'none'}; it matches no earlier workflow copy, so local edits "
                    f"(see them: `python3 scripts/harvest.py --diff {s['skill']} {report['path']}`)"),
         ("Older workflow copies (not project changes)", "skills_older",
@@ -394,8 +405,13 @@ def main():
         print(f"harvest: {exc}", file=sys.stderr)
         return 2
 
+    if not args.diff and git(ROOT, "rev-parse", "--is-shallow-repository") == "true":
+        print(f"harvest: {ROOT} is a shallow clone, so an older workflow copy in a project would be reported as the "
+              f"project's own edit; run: git -C {ROOT} fetch --unshallow origin", file=sys.stderr)
+        return 2
+
     if args.diff:
-        mine = ROOT / "skills" / args.diff / "SKILL.md"
+        mine = ROOT / "skills" / OLD_SKILLS.get(args.diff, args.diff) / "SKILL.md"  # an old name: its current skill
         for n, project in enumerate(args.projects, 1):
             theirs = Path(project) / ".claude" / "skills" / args.diff / "SKILL.md"
             if not mine.is_file() or not theirs.is_file():
@@ -403,7 +419,7 @@ def main():
                 return 1
             diff = anonymize("".join(difflib.unified_diff(
                 mine.read_text(encoding="utf-8").splitlines(True), theirs.read_text(encoding="utf-8").splitlines(True),
-                fromfile=f"galivelop-workflow/skills/{args.diff}/SKILL.md", tofile=str(theirs))))
+                fromfile=f"galivelop-workflow/{mine.relative_to(ROOT)}", tofile=str(theirs))))
             leaks = anonymize.leaks(diff)
             if leaks:
                 print(refuse(f"the diff of project {n} ({project})", leaks), file=sys.stderr)
