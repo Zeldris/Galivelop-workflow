@@ -106,7 +106,10 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   relajar la regla que lo juzga.
 - **`content` y la marca.** Un cambio que solo toca archivos de `content` no necesita revisión; cualquier otro, sí.
   `reviewed.sh` escribe en `reviewMark` el commit revisado y la marca debe ser antecesora de lo que se sube y no tener
-  código después. `.claude/gw.json`, `.claude/settings.json`, `.claude/gw/` y `.githooks/` son siempre código, diga
+  código después. Antes de marcar avisa (sin bloquear) de los archivos de código cambiados desde la marca anterior (o
+  desde la bifurcación de la rama protegida, si no hay marca válida), para que los arreglos posteriores a la revisión no
+  lleguen sin revisar; solo cuenta lo que cambió la propia rama, no lo que entró al fusionar la rama protegida.
+  `.claude/gw.json`, `.claude/settings.json`, `.claude/gw/` y `.githooks/` son siempre código, diga
   lo que diga `content`. Para ver cómo se clasifica una ruta y por qué:
   `bash .claude/gw/scripts/is-code.sh --explain <ruta>...`.
 - **`logRows`** va con la plantilla de bitácora de filas (`| **Tarea en curso · \`rama\`** | … |`); el push comprueba

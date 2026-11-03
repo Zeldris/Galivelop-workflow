@@ -106,6 +106,8 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   rule that judges it.
 - **`content` and the mark.** A change touching only `content` files needs no review; any other does. `reviewed.sh`
   writes the reviewed commit to `reviewMark`, and the mark must be an ancestor of what is pushed with no code after it.
+  Before marking it warns (without blocking) which code files changed since the previous mark (or since the fork from
+  the protected branch when there is no valid mark), so fixes made after the review do not arrive unreviewed; only what the branch itself changed counts, not what came in by merging the protected branch.
   `.claude/gw.json`, `.claude/settings.json`, `.claude/gw/` and `.githooks/` are always code, whatever `content` says.
   To see how a path is classified and why: `bash .claude/gw/scripts/is-code.sh --explain <path>...`.
 - **`logRows`** goes with the row-based log template (``| **Current task · `branch`** | … |``); the push checks that
