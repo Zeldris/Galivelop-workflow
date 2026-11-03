@@ -44,17 +44,17 @@ HERE = sys.argv[1]
 NAME = "review-before-main"
 GIT_ENV = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
 GIT_ENV["GIT_TERMINAL_PROMPT"] = "0"
-GREEN_RUNS = ("success", "neutral", "skipped")
-NO_CI = "no CI has reported on this commit yet"
-# What GitHub writes on a check-run whose job it refused to start for lack of quota.
-NOT_STARTED = ("job was not started because recent account payments have failed", "spending limit needs to be increased")
+sys.dont_write_bytecode = True
+sys.path.insert(0, HERE)
+import importlib.util
+# The API reader (token / gh discovery, CI state, ciIgnore) lives in ci-status.py: one place for it.
+_spec = importlib.util.spec_from_file_location("ci_status", os.path.join(HERE, "ci-status.py"))
+ci_status = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(ci_status)
+ApiError, api, NO_CI = ci_status.ApiError, ci_status.api, ci_status.NO_CI
 
 
 class Blocked(Exception):
-    pass
-
-
-class ApiError(Exception):
     pass
 
 
@@ -450,46 +450,6 @@ def origin_repo(root):
     return f"{m.group(1)}/{m.group(2)}" if m else None
 
 
-_BACKEND = []  # decided once per run: ("gh", None) or ("curl", token); never mixed within a run
-
-
-def backend(path):
-    if not _BACKEND:
-        # Reading the repo itself proves the token works for it: `gh api user` answers 403 to a GitHub App
-        # installation token that can still read the repo, and `gh auth status` also fails over an unrelated stale
-        # account or host.
-        m = re.match(r"repos/([^/?]+)/([^/?]+)", path)
-        probe = f"repos/{m.group(1)}/{m.group(2)}" if m else path
-        if shutil.which("gh") and run(["gh", "api", probe]).returncode == 0:
-            _BACKEND.append(("gh", None))
-        else:
-            token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
-            if not token:
-                raise ApiError(f"gh is not installed or cannot read {probe}, and neither GITHUB_TOKEN nor GH_TOKEN is set")
-            if not shutil.which("curl"):
-                raise ApiError("gh is not authenticated and curl is not installed")
-            _BACKEND.append(("curl", token))
-    return _BACKEND[0]
-
-
-def api(path):
-    kind, token = backend(path)
-    if kind == "gh":
-        r, how = run(["gh", "api", path]), "gh api " + path
-    else:
-        # The token goes on stdin (-H @-), never on the command line where other processes could read it.
-        r = run(["curl", "-sS", "-f", "-L", "-H", "Accept: application/vnd.github+json",
-                 "-H", "X-GitHub-Api-Version: 2022-11-28", "-H", "@-", "https://api.github.com/" + path],
-                stdin=f"Authorization: Bearer {token}\n")
-        how = "GET https://api.github.com/" + path
-    if r.returncode != 0:
-        raise ApiError(f"{how} failed: {(r.stderr or r.stdout).strip()[:300]}")
-    try:
-        return json.loads(r.stdout)
-    except ValueError:
-        raise ApiError(f"{how} did not return JSON: {r.stdout.strip()[:200]}")
-
-
 def pr_info(repo, number):
     try:
         info = api(f"repos/{repo}/pulls/{number}")
@@ -502,41 +462,6 @@ def pr_info(repo, number):
     except (KeyError, TypeError) as exc:
         block(f"PR #{number} of {repo}: unexpected API answer (missing {exc}).",
               f"check the PR at https://github.com/{repo}/pull/{number} and retry")
-
-
-def not_started(repo, run_):
-    """GitHub closed this check-run as failed without running the job (billing, spending limit)."""
-    if run_.get("conclusion") != "failure":
-        return False
-    out = run_.get("output") or {}
-    text = f"{out.get('title')} {out.get('summary')}"
-    if not any(m in text for m in NOT_STARTED) and "id" in run_:
-        try:
-            notes = api(f"repos/{repo}/check-runs/{run_['id']}/annotations")
-            text = " ".join(str(n.get("message", "")) for n in notes)
-        except (ApiError, AttributeError, TypeError):
-            return False  # cannot tell: it stays an ordinary failure
-    return any(m in text for m in NOT_STARTED)
-
-
-def ci_problems(repo, sha):
-    """(problems, True when every problem is a check-run GitHub never started)."""
-    runs, page = [], 1
-    while True:
-        data = api(f"repos/{repo}/commits/{sha}/check-runs?per_page=100&page={page}")
-        batch = data["check_runs"]
-        runs += batch
-        if not batch or len(runs) >= int(data.get("total_count", len(runs))) or page >= 10:
-            break
-        page += 1
-    statuses = api(f"repos/{repo}/commits/{sha}/status?per_page=100")["statuses"]
-    if not runs and not statuses:
-        return [NO_CI], False
-    bad_runs = [c for c in runs if c.get("status") != "completed" or c.get("conclusion") not in GREEN_RUNS]
-    bad_statuses = [s for s in statuses if s.get("state") != "success"]
-    bad = [f"{c.get('name', '?')}: {c.get('conclusion') or c.get('status')}" for c in bad_runs]
-    bad += [f"{s.get('context', '?')}: {s.get('state')}" for s in bad_statuses]
-    return bad, bool(bad_runs) and not bad_statuses and all(not_started(repo, c) for c in bad_runs)
 
 
 # ---- the rules ---------------------------------------------------------------------------------------------------
@@ -707,13 +632,14 @@ def handle(action, cfg, root, scripts):
     if action["kind"] != "merge":
         return
     try:
-        bad, unstarted = ci_problems(repo, info["sha"])
+        policy = tip if tip and config_at(root, tip) is not None else info["sha"]
+        ignore = config_at(root, policy, paths_at=info["sha"])["ciIgnore"]  # the protected branch decides
+        bad, unstarted = ci_status.ci_problems(repo, info["sha"], ignore)
     except (ApiError, KeyError, TypeError, ValueError) as exc:
         block(f"Blocked: could not verify CI of PR #{number} ({info['sha'][:12]}): {exc}",
               f"check CI in the PR ({info['url']}); once it is all green, authenticate (gh auth login, or export "
               "GITHUB_TOKEN) and retry the merge")
     if bad == [NO_CI] or (bad and unstarted):
-        policy = tip if tip and config_at(root, tip) is not None else info["sha"]
         if ci_local_green(root, scripts, info["sha"], policy):
             return  # the CI run locally, green, on this code: the person confirmed it ("checked only locally")
         log = config_at(root, policy, paths_at=info["sha"])["ciLocalLog"]
