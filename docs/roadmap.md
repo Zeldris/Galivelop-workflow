@@ -97,6 +97,7 @@ En este orden, porque cada paso usa el anterior.
 | D6 | `worktree.baseRef: "head"` en el `settings.json` que instala el flujo (de la `0.4.4`) | pendiente |
 | — | Retro `0.4.2` P5: la regla QUOTED del `pre-commit` sin falsos positivos en `.md` (de la `0.4.4`) | pendiente |
 | E20 | `check.sh`: registro fijo `.git/gw/check-<sha>.log`, cerrojo con pid y línea final con las secciones que fallaron; `merge-branch.sh` lo usa y apunta el verde (retro `0.5.0` R1) | pendiente |
+| D44 | Marcar como revisado no cuesta otro check: el `pre-push` da por verde un commit que solo añade la marca de revisión a uno ya en verde, o rama y `main` se suben en un solo `git push` (usuario, 2026-11-04: la subida de la `0.5.0` corrió tres checks casi iguales) | pendiente |
 | D41 | El gancho `Stop` avisa en una línea, sin pedir subir, mientras corre un check o un push (retro `0.5.0` R5; depende de E20) | pendiente |
 
 ## `0.6` «Medir»

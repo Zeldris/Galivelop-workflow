@@ -1,6 +1,6 @@
 # Release de GitHub `v0.5.0` (textos)
 
-- **Etiqueta:** `v0.5.0`, sobre `<pendiente: commit de main tras la subida>` (la publica a mano el usuario).
+- **Etiqueta:** `v0.5.0`, sobre `7d61089` (la publica a mano el usuario).
 - **Título:** `Galivelop-workflow v0.5.0`
 - **Cuerpo:** lo que va entre las dos rayas de abajo. La entrada completa está en el CHANGELOG.
 

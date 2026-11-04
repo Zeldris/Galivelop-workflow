@@ -96,6 +96,7 @@ In this order, because each step uses the previous one.
 | D6 | `worktree.baseRef: "head"` in the `settings.json` the workflow installs (from `0.4.4`) | pending |
 | — | Retro `0.4.2` P5: the `pre-commit` QUOTED rule without false positives in `.md` (from `0.4.4`) | pending |
 | E20 | `check.sh`: fixed log `.git/gw/check-<sha>.log`, lock with its pid and a final line with the sections that failed; `merge-branch.sh` uses it and records the green (retro `0.5.0` R1) | pending |
+| D44 | Marking as reviewed costs no extra check: the `pre-push` takes as green a commit that only adds the review mark to an already green one, or branch and `main` go up in a single `git push` (user, 2026-11-04: pushing `0.5.0` ran three nearly identical checks) | pending |
 | D41 | The `Stop` hook says in one line, without asking to push, that a check or a push is running (retro `0.5.0` R5; depends on E20) | pending |
 
 ## `0.6` "Measure"
