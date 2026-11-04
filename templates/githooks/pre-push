@@ -10,7 +10,9 @@
 #     gains from the remote tip, commits other branches already have included).
 #   - Runs scripts/private-check.py (when the project has it) on the commits each ref pushes: key formats, e-mail
 #     addresses not allowed and the private names of the local .claude/gw.local.json, in their added lines, added
-#     paths and messages; privateCheck: false in the pushed commit's config turns it off. Fails closed.
+#     paths and messages; privateCheck: false in the pushed commit's config turns it off. Fails closed. A refusal says
+#     those commits are not pushed yet and gives the command that fixes only them (git commit --amend, or
+#     git rebase -i <base>).
 #   - Reads .claude/gw.json as each pushed commit has it (never the working tree's); a pushed commit without a valid
 #     one is refused.
 #   - Runs every `check` command of that config on the commit being pushed (a temporary worktree when it is not
@@ -274,8 +276,13 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 
     scan_leftovers "$local_sha" "$files" "the push"
     if [ -f "$scripts/private-check.py" ]; then  # an older project without it: skipped, like the optional scripts
-      printf '%s\n' "$new" | python3 "$scripts/private-check.py" --root "$root" --rev "$local_sha" --commits - \
-        || fail "the push carries private data or a key (above); remove it from those commits and push again: git rebase -i $remote/${remote_ref#refs/heads/}"
+      pc_rc=0
+      printf '%s\n' "$new" | python3 "$scripts/private-check.py" --root "$root" --rev "$local_sha" --base "$known" --remote "$remote" --ref "${local_ref#refs/heads/}" --commits - || pc_rc=$?
+      if [ "$pc_rc" = 1 ]; then
+        fail "the push carries private data or a key (above); those commits are not pushed yet: fix only them with the command above, then push again"
+      elif [ "$pc_rc" != 0 ]; then
+        fail "private-check could not run (above); fix that and push again"
+      fi
     fi
   fi
 
