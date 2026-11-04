@@ -86,6 +86,17 @@ apuntando «para la retro» e incluye la medida de `/gw-opt-tokens`.
   el push) y avisa en una línea de que el check está en marcha.
 - **Riesgo:** ninguno. Depende de R1.
 
+### R6. El check local no ve lo que falla en un Python más viejo (general)
+
+- **Qué pasó:**
+  - El CI de Ubuntu (Python 3.12) dio rojo en `cdb37d1` con 8 tests de `handoff.py set-row`, que usaba
+    `Path.read_text(newline=)` (3.13+), desde D23. El check local corre con 3.13 y salió verde.
+  - Se arregló con `open()` y un test estático (`test_utils.OldestPython`) que prohíbe ese argumento.
+- **Qué cambia:** `check.sh` corre además los tests con el Python más viejo que haya en la máquina, si es distinto, o
+  avisa de que no lo prueba. La matriz `ciPython` (D19) ya cubre a los proyectos en el CI.
+- **Riesgo:** el check tarda el doble si se corre todo dos veces. Contrapeso: con el Python viejo, solo los tests de
+  los scripts que cambiaron (R2).
+
 ## Lo que funcionó
 
 - La recogida con aprobación por filas: 13 de 44 propuestas, el reparto en dos oleadas de worktrees y la fusión en

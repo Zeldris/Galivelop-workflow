@@ -641,7 +641,8 @@ def rewrite_row(ctx, branch, text):
     """Replace the text of `branch`'s row in the log file. Returns the number of rows found; writes only if exactly 1."""
     path = ctx.root / ctx.log
     try:
-        raw = path.read_text(encoding="utf-8", newline="")
+        with open(path, encoding="utf-8", newline="") as f:  # Path.read_text(newline=) is Python 3.13+
+            raw = f.read()
     except OSError as exc:
         raise Usage(f"cannot read {path} ({exc}); fix `log` in .claude/gw.json")
     eol = "\r\n" if "\r\n" in raw else "\n"
@@ -653,7 +654,8 @@ def rewrite_row(ctx, branch, text):
             lines[i] = f"| **{m.group('label')} · `{branch}`** | {text} |"
             hit += 1
     if hit == 1:
-        path.write_text(eol.join(lines), encoding="utf-8", newline="")
+        with open(path, "w", encoding="utf-8", newline="") as f:  # Path.write_text(newline=) is Python 3.10+
+            f.write(eol.join(lines))
     return hit
 
 

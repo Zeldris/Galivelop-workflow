@@ -840,6 +840,22 @@ class HandoffCloseRow(Base):
         self.assertIn("found 0 rows for nope", out)
 
 
+class OldestPython(unittest.TestCase):
+    """The scripts run on Python 3.8+, and the local check may run on a newer one: no argument that 3.8 lacks."""
+
+    def test_no_newline_argument_to_path_read_or_write_text(self):
+        import ast
+        found = []
+        for d in ("scripts", "skills", "templates"):
+            for path in sorted((ROOT / d).rglob("*.py")):
+                for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+                    if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+                            and node.func.attr in ("read_text", "write_text")
+                            and any(k.arg == "newline" for k in node.keywords)):
+                        found.append(f"{path.relative_to(ROOT)}:{node.lineno}")
+        self.assertEqual(found, [], "Path.read_text(newline=) is 3.13+ and write_text(newline=) 3.10+; use open()")
+
+
 class HandoffSetRow(Base):
     def row(self, branch="feat-a"):
         return next(l for l in (self.p.work / LOG).read_text().splitlines() if f"`{branch}`**" in l)
