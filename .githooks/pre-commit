@@ -81,13 +81,17 @@ fi
 PROVIDER='[Oo][Pp][Ee][Nn][Aa][Ii]|[Aa][Nn][Tt][Hh][Rr][Oo][Pp][Ii][Cc]|[Cc][Ll][Aa][Uu][Dd][Ee]|[Gg][Ee][Mm][Ii][Nn][Ii]|[Gg][Rr][Oo][Qq]|[Mm][Ii][Ss][Tt][Rr][Aa][Ll]|[Cc][Oo][Hh][Ee][Rr][Ee]|[Dd][Ee][Ee][Pp][Ss][Ee][Ee][Kk]|[Hh][Uu][Gg][Gg][Ii][Nn][Gg][Ff][Aa][Cc][Ee]|[Oo][Pp][Ee][Nn][Rr][Oo][Uu][Tt][Ee][Rr]|[Pp][Ee][Rr][Pp][Ll][Ee][Xx][Ii][Tt][Yy]'
 NAME="[A-Za-z0-9_.-]*([Ss][Ee][Cc][Rr][Ee][Tt]|[Pp][Aa][Ss][Ss][Ww]([Oo][Rr])?[Dd]|[Tt][Oo][Kk][Ee][Nn]|[Aa][Pp][Ii][._-]?[Kk][Ee][Yy]|(${PROVIDER})[._-]?[Kk][Ee][Yy])"
 QUOTED="^\\+.*${NAME}[\"']?[[:space:]]*(:=|=|:)[[:space:]]*(\"[^\"\$<{][^\"]{3,}\"|'[^'\$<{][^']{3,}')"
+# In Markdown a quoted key is usually an example or a translation label: there the value must also
+# have no whitespace (a token or key has none; prose does), so only the QUOTED_MD shape is looked for in *.md.
+QUOTED_MD="^\\+.*${NAME}[\"']?[[:space:]]*(:=|=|:)[[:space:]]*(\"[^\"\$<{[:space:]][^\"[:space:]]{3,}\"|'[^'\$<{[:space:]][^'[:space:]]{3,}')"
 UNQUOTED="^\\+[[:space:]]*(export[[:space:]]+)?${NAME}[[:space:]]*[=:][[:space:]]*[^[:space:]\$<{\"'#]"
 HARMLESS="^\\+[[:space:]]*(export[[:space:]]+)?${NAME}[[:space:]]*[=:][[:space:]]*([Rr][Ee][Aa][Dd]|[Ww][Rr][Ii][Tt][Ee]|[Nn][Oo][Nn][Ee]|[Tt][Rr][Uu][Ee]|[Ff][Aa][Ll][Ss][Ee]|[^[:space:]#]{1,7})[[:space:]]*(#.*)?$"
 added_lines() { grep -E '^\+' | grep -vE '^\+\+\+ ' | grep -v 'gw-allow-secret' || true; }
 examples=(':!*.env.example' ':!*.env.sample' ':!*.env.template')
 # A dict of absolute path -> error code ("/srv/app/token": "E123") is not an assignment: that pair is dropped first.
 PATHCODE='"\/[^"]*"[[:space:]]*:[[:space:]]*"[A-Z]{1,4}[-_]?[0-9]{1,6}"'
-literal="$(diff_of -U0 --no-renames --diff-filter=ACMR -- . "${examples[@]}" | added_lines | sed -E "s/$PATHCODE//g" | grep -E "$QUOTED" | head -n 5 || true)"
+literal="$(diff_of -U0 --no-renames --diff-filter=ACMR -- . "${examples[@]}" ':!*.md' | added_lines | sed -E "s/$PATHCODE//g" | grep -E "$QUOTED" | head -n 5 || true)"
+literal="$literal$(printf '\n%s' "$(diff_of -U0 --no-renames --diff-filter=ACMR -- '*.md' "${examples[@]}" | added_lines | sed -E "s/$PATHCODE//g" | grep -E "$QUOTED_MD" | head -n 5 || true)")"
 config_added="$(diff_of -U0 --no-renames --diff-filter=ACMR -- '*.env' '.env*' '*.properties' '*.yml' '*.yaml' \
   '*.toml' '*.ini' '*.cfg' '*.conf' "${examples[@]}" | added_lines)"
 literal="$literal$(printf '\n%s' "$(printf '%s\n' "$config_added" | grep -E "$UNQUOTED" | grep -vE "$HARMLESS" | head -n 5 || true)")"

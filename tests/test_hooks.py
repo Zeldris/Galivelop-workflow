@@ -2069,6 +2069,28 @@ class PreCommit(Base):
                 p.git("reset", "-q")
                 (p.work / path).unlink()
 
+    def test_quoted_label_in_markdown_is_not_a_secret_but_a_token_is(self):
+        """P5 (retro 0.4.2): a quoted key with prose as value in a .md is an example; a token-shaped value still stops."""
+        p = self.p
+        p.write("docs/i18n.md", '| `"openai' + 'Key": "Clave de OpenAI"` | label |\napi_' + "key: 'Your API key here'\n")
+        r = p.commit("label", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for path, line in [("docs/a.md", 'openai' + 'Key = "abcd1234efgh"'),
+                           ("docs/b.md", 'db_pass' + 'word: \'hunter2-real\'')]:
+            with self.subTest(line=line):
+                p.write(path, line + "\n")
+                r = p.commit("leak", ok=False)
+                self.assertNotEqual(r.returncode, 0, line)
+                self.assertIn("these lines assign a literal secret", r.stderr)
+                self.assertIn("  " + line, r.stderr)
+                p.git("reset", "-q")
+                (p.work / path).unlink()
+        # The same prose value outside Markdown is still refused.
+        p.write("src/l.py", 'openai' + 'Key = "Clave de OpenAI"\n')
+        r = p.commit("py", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("literal secret", r.stderr)
+
     def test_everyday_key_names_are_not_secrets(self):
         """A bare *key suffix must stay unmatched: primary_key, sort_key, monkey and friends are ordinary code."""
         p = self.p
