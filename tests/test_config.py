@@ -503,6 +503,21 @@ class ProjectPaths(unittest.TestCase):
                 self.assertEqual(self.get(key, "--rev", "HEAD~1", "--paths-at", "HEAD~1"), old, key)
                 self.assertEqual(self.get(key, "--rev", "HEAD~1"), old, key)
 
+    def test_a_commit_judged_by_its_own_config_keeps_its_explicit_old_path(self):
+        # --paths-at equal to --rev (is-code.sh, a remote with no config yet): the config is that commit's own, so its
+        # explicit value wins even when the old file is gone and the English one exists; another spelling of the old
+        # path in a protected tip is followed like the canonical one
+        git = ["git", "-C", str(self.tmp), "-c", "user.name=t", "-c", "user.email=t@t"]
+        self.write(dict(MIN, reviewMark="./docs/registros/revisado.txt"))
+        self.touch("docs/records/reviewed.txt")
+        subprocess.run(git + ["add", "-A"], check=True)
+        subprocess.run(git + ["commit", "-qm", "own"], check=True)
+        self.assertEqual(self.get("reviewMark", "--rev", "HEAD", "--paths-at", "HEAD"), "./docs/registros/revisado.txt")
+        self.touch("docs/notes.md")
+        subprocess.run(git + ["add", "-A"], check=True)
+        subprocess.run(git + ["commit", "-qm", "pushed"], check=True)
+        self.assertEqual(self.get("reviewMark", "--rev", "HEAD~1", "--paths-at", "HEAD"), "docs/records/reviewed.txt")
+
     def test_paths_at_with_a_missing_commit_fails_closed(self):
         self.write(MIN)
         git = ["git", "-C", str(self.tmp), "-c", "user.name=t", "-c", "user.email=t@t"]

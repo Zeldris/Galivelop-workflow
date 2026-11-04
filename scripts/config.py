@@ -295,6 +295,11 @@ LEGACY_PATHS = {
 }
 
 
+def _same_path(a, b):
+    """Whether two repo-relative paths name the same place (`./x`, `x/` and `x` do)."""
+    return posixpath.normpath(a.strip()) == posixpath.normpath(b.strip())
+
+
 def with_defaults(config, schema, exists=None, follow_moves=False):
     """`config` plus the schema defaults. `exists(path)` says whether a repo-relative path exists (None: no fallback
     to the old Spanish names). The keys filled from an old path are listed in filled["_legacy"] ({key: old path}).
@@ -306,13 +311,13 @@ def with_defaults(config, schema, exists=None, follow_moves=False):
     legacy = {}
     for key, prop in schema.get("properties", {}).items():
         old = LEGACY_PATHS.get(key)
-        if (follow_moves and old and exists is not None and filled.get(key) == old and "default" in prop
-                and not filled.get("keepLegacyPaths") and not exists(old) and exists(prop["default"])):
+        if (follow_moves and old and exists is not None and isinstance(filled.get(key), str)
+                and _same_path(filled[key], old) and "default" in prop and not filled.get("keepLegacyPaths")
+                and not exists(filled[key]) and exists(prop["default"])):
             filled[key] = prop["default"]
             continue
         if key not in filled and "default" in prop:
             value = prop["default"]
-            old = LEGACY_PATHS.get(key)
             if old and exists is not None and not exists(value) and exists(old):
                 value = legacy[key] = old
             filled[key] = value
@@ -426,6 +431,17 @@ def read_at(root, rev):
     return r.stdout
 
 
+def _commit(root, rev):
+    """The full sha `rev` names in `root` ("" when it names none)."""
+    env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
+    try:
+        r = subprocess.run(["git", "-C", str(root), "rev-parse", "--verify", "-q", f"{rev}^{{commit}}"],
+                           capture_output=True, text=True, env=env)
+    except OSError:
+        return ""
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
 def load(root=None, rev=None, paths_at=None):
     """Return the validated config with defaults, plus '_root' (Path) and '_schemaFrom' (the schemaVersion it had
     before load() migrated it in memory to SCHEMA_VERSION; an absent one is 0, a newer one fails closed). With `rev`,
@@ -465,7 +481,9 @@ def load(root=None, rev=None, paths_at=None):
         if not ok:  # fail closed: a missing commit would make every old path look absent
             raise ConfigError(f"--paths-at {paths_at} is not a commit in {root}; pass an existing one: "
                               f"git rev-parse --verify {paths_at}")
-    config = with_defaults(config, schema, path_exists_fn(root, paths_at or rev), follow_moves=bool(paths_at))
+    # following a move only makes sense for a config read for ANOTHER commit (the protected tip judging a push)
+    follow = bool(paths_at) and rev is not None and _commit(root, paths_at) != _commit(root, rev)
+    config = with_defaults(config, schema, path_exists_fn(root, paths_at or rev), follow_moves=follow)
     config["_root"] = root
     config["_schemaFrom"] = schema_from  # the schemaVersion on disk (or at `rev`) before the in-memory migration
     return config
