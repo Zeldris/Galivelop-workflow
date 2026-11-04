@@ -2,6 +2,7 @@
 
 Reuses the temporary-repo helpers of test_hooks.py (imported, not modified). The warning never blocks the mark.
 """
+import json
 import unittest
 from pathlib import Path
 
@@ -106,6 +107,71 @@ class UnreviewedWarning(Base):
         self.assertNotIn("previous review mark", out)
         self.assertIn("  src/a.py", out)
         self.assertNotIn("released.py", out)
+
+
+class MarkFooter(Base):
+    """commitNext default footer, explicit --footer, hint on commit-msg failure, unreadable config (D36, WMF P2)."""
+
+    def setUp(self):
+        super().setUp()
+        self.p.git("checkout", "-q", "-b", "feature")
+        self.script = str(self.p.work / ".claude" / "gw" / "scripts" / "reviewed.sh")
+        self.p.write("docs/a.md", "a\n"); self.p.commit("change")
+        self.assertEqual(self.p.push("-u", "origin", "feature")[0], 0)
+
+    def configure(self, **keys):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.update(keys)
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.commit("config")
+        self.assertEqual(self.p.push("origin", "feature")[0], 0)
+
+    def body(self, *args):
+        code, out = self.p.run("bash", self.script, *args)
+        self.assertEqual(code, 0, out)
+        return self.p.git("log", "-1", "--format=%B").stdout.strip()
+
+    def test_commit_next_default_footer_english(self):
+        self.configure(commitNext=True)
+        msg = self.body()
+        self.assertTrue(msg.startswith("Reviewed: "), msg)
+        self.assertTrue(msg.endswith("\n\nNext: open the PR"), msg)
+
+    def test_commit_next_default_footer_spanish(self):
+        self.configure(commitNext=True, language="es")
+        msg = self.body()
+        self.assertTrue(msg.startswith("Revisado: "), msg)
+        self.assertTrue(msg.endswith("\n\nSiguiente: crear el PR"), msg)
+
+    def test_no_footer_without_commit_next(self):
+        self.configure(commitNext=False)
+        msg = self.body()
+        self.assertNotIn("\n", msg)
+
+    def test_explicit_footer_wins_over_the_default(self):
+        self.configure(commitNext=True)
+        msg = self.body("--footer", "Siguiente: pasar a main")
+        self.assertTrue(msg.endswith("\n\nSiguiente: pasar a main"), msg)
+        self.assertNotIn("open the PR", msg)
+
+    def test_commit_msg_failure_suggests_footer(self):
+        hook = self.p.work / ".githooks" / "commit-msg"
+        hook.write_text("#!/bin/sh\necho 'stub: missing next step' >&2\nexit 1\n")
+        hook.chmod(0o755)
+        code, out = self.p.run("bash", self.script)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("stub: missing next step", out)
+        self.assertIn("could not commit", out)
+        self.assertIn('--footer "Siguiente: <next step>"', out)
+
+    def test_unreadable_config_fails_closed_with_its_reason(self):
+        self.p.write(".claude/gw.json", "{not json")
+        code, out = self.p.run("bash", self.script)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("cannot read", out)
+        self.assertIn("config.py", out)
+        self.assertIn("validate", out)
+        self.assertNotIn("Reviewed:", self.p.git("log", "-1", "--format=%s").stdout)
 
 
 class InstalledCopies(unittest.TestCase):
