@@ -332,7 +332,8 @@ class SchemaVersion(unittest.TestCase):
         self.assertIn(f"schemaVersion {version + 1} is newer than this copy of the workflow knows ({version})",
                       r.stderr)
         self.assertIn("/gw-update", r.stderr)
-        self.assertIn("pull --ff-only", r.stderr)
+        self.assertIn("fetch origin tag vX.Y.Z", r.stderr)
+        self.assertNotIn("pull --ff-only", r.stderr)
 
     def test_non_integer_or_negative_fails_closed(self):
         for bad in ("1", 1.5, True, None, -1):

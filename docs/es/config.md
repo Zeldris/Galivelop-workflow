@@ -132,7 +132,8 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   commit (`--rev`); `doctor.py` avisa y `/gw-update` (`apply.py`) escribe la migración en el archivo, en una sola
   escritura junto con los cambios de rutas, y `apply.py --check` la cuenta como pendiente. Uno **más nuevo** que el
   del flujo falla cerrado (salida 2) en todos los lectores: hay que actualizar el flujo (`/gw-update`, o
-  `git -C <flujo> pull --ff-only`). Las migraciones están en `MIGRATIONS` de `scripts/config.py`.
+  traer la última etiqueta `vX.Y.Z` del clon del flujo y cambiar a ella, como hace el paso 1 de `/gw-update`).
+  Las migraciones están en `MIGRATIONS` de `scripts/config.py`.
 
 ## Notas personales
 

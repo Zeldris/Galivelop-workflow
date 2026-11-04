@@ -20,14 +20,19 @@ judgement: what changed, what the user wants, what to merge by hand. Reply in th
 ## 1. Compare versions
 
 `<workflow>` is the clone of `Galivelop-workflow` (a sibling `../Galivelop-workflow`, or attached to the session;
-else ask the user). Read it, never edit it. Fetch it first: `git -C <workflow> pull --ff-only`.
+else ask the user). Read it, never edit it. Bring it to the latest
+published tag, not to the tip of whatever branch the clone follows (a single-branch clone of an old branch has neither
+`main` nor the tags): `git -C <workflow> ls-remote --tags --refs --sort=-v:refname origin` (the first line is the
+latest `vX.Y.Z`), then `git -C <workflow> fetch origin tag vX.Y.Z` and `git -C <workflow> checkout vX.Y.Z`. No tags
+listed (or `origin` unreachable): stop and tell the user the workflow has no published version to update to; do not
+fall back to `pull`.
 
 - Project version: `version` in `.claude/gw.json`.
 - Copied headers: `# galivelop-workflow vX.Y.Z` in `.claude/gw/scripts/*` and `.githooks/*`.
 - Workflow version: `version` in `<workflow>/.claude-plugin/plugin.json`, and its entries in `CHANGELOG.md`.
 - Config format: `schemaVersion` in the project's `.claude/gw.json` (absent = 0) against `SCHEMA_VERSION` in
   `<workflow>/scripts/config.py`. Older: `apply.py` migrates it (step 2). Newer: the workflow clone is behind; stop
-  and pull it.
+  and bring it to the latest tag (above).
 
 Done when you can say "project at X, workflow at Y". Equal and no `.gw-new` pending: say so and stop. Project
 newer than the workflow: stop and tell the user to update the workflow clone.

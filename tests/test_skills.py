@@ -190,6 +190,14 @@ class Skills(unittest.TestCase):
         self.assertIn("| Apply or update the workflow (`gw-init`", (SKILLS / "gw-selector" / "SKILL.md").read_text())
         self.assertIn("`gw-orchestrate-dealer`", (SKILLS / "gw-init" / "SKILL.md").read_text())
 
+    def test_gw_update_fetches_the_latest_tag_not_pull(self):
+        # A single-branch clone of an old branch has neither main nor the tags: pull never reaches the new version.
+        text = (SKILLS / "gw-update" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertNotIn("pull --ff-only", text)
+        self.assertIn("ls-remote --tags --refs --sort=-v:refname", text)
+        self.assertIn("fetch origin tag vX.Y.Z", text)
+        self.assertIn("No tags", text, "say what to do when the clone lists no tags")
+
 
 if __name__ == "__main__":
     unittest.main()
