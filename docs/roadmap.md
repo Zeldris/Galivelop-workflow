@@ -90,6 +90,15 @@ En este orden, porque cada paso usa el anterior.
 | E19 | El check falla con una `TestCase` después de `unittest.main()` (private-project-1 P2) | hecho (`0.5.0`, `a4ab81c`) |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.5` | repartido en D18-D31 y E17 |
 
+## `0.5.1` — parche
+
+| Id | Tarea | Estado |
+|---|---|---|
+| D6 | `worktree.baseRef: "head"` en el `settings.json` que instala el flujo (de la `0.4.4`) | pendiente |
+| — | Retro `0.4.2` P5: la regla QUOTED del `pre-commit` sin falsos positivos en `.md` (de la `0.4.4`) | pendiente |
+| E20 | `check.sh`: registro fijo `.git/gw/check-<sha>.log`, cerrojo con pid y línea final con las secciones que fallaron; `merge-branch.sh` lo usa y apunta el verde (retro `0.5.0` R1) | pendiente |
+| D41 | El gancho `Stop` avisa en una línea, sin pedir subir, mientras corre un check o un push (retro `0.5.0` R5; depende de E20) | pendiente |
+
 ## `0.6` «Medir»
 
 | Id | Tarea | Estado |
@@ -104,6 +113,10 @@ En este orden, porque cada paso usa el anterior.
 | B8 | Señales de calidad junto al gasto (la tabla determinista, en «Después») | pendiente |
 | B10 | El `gw-selector` recomienda modelo y esfuerzo de la sesión principal | pendiente |
 | B11 | Modelo y esfuerzo por agente (palancas de Claude Code) | pendiente |
+| E21 | `scripts/related-tests.py <archivos>`: los tests de un cambio, citado en el encargo de `gw-orchestrate-dealer`; en `REVIEW.md`, un script que hace commits se prueba con los ganchos instalados (retro `0.5.0` R2) | pendiente |
+| B16 | `gw-orchestrate-dealer`: los hallazgos aprobados de un `/code-review` se reparten a subagentes por grupo de archivos (retro `0.5.0` R3) | pendiente |
+| D42 | `gw-orchestrate-dealer`: carpeta `scratchpad/<id>/` por agente, comprobar la base del worktree y cortar con `TaskStop` (retro `0.5.0` R4) | pendiente |
+| E22 | `check.sh` corre también los tests con el Python más viejo disponible, o avisa si no hay (retro `0.5.0` R6) | pendiente |
 
 ## `0.7` «Preguntar»
 

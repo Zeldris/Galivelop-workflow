@@ -89,6 +89,15 @@ In this order, because each step uses the previous one.
 | E19 | The check fails on a `TestCase` after `unittest.main()` (private-project-1 P2) | done (`0.5.0`, `a4ab81c`) |
 | — | What [`pending.md`](records/pending.md) marks `0.5` | split into D18-D31 and E17 |
 
+## `0.5.1` — patch
+
+| Id | Task | Status |
+|---|---|---|
+| D6 | `worktree.baseRef: "head"` in the `settings.json` the workflow installs (from `0.4.4`) | pending |
+| — | Retro `0.4.2` P5: the `pre-commit` QUOTED rule without false positives in `.md` (from `0.4.4`) | pending |
+| E20 | `check.sh`: fixed log `.git/gw/check-<sha>.log`, lock with its pid and a final line with the sections that failed; `merge-branch.sh` uses it and records the green (retro `0.5.0` R1) | pending |
+| D41 | The `Stop` hook says in one line, without asking to push, that a check or a push is running (retro `0.5.0` R5; depends on E20) | pending |
+
 ## `0.6` "Measure"
 
 | Id | Task | State |
@@ -103,6 +112,10 @@ In this order, because each step uses the previous one.
 | B8 | Quality signals next to spend (the deterministic table, under "Later") | pending |
 | B10 | The `gw-selector` recommends the main session's model and effort | pending |
 | B11 | Model and effort per agent (Claude Code levers) | pending |
+| E21 | `scripts/related-tests.py <files>`: the tests of a change, cited in the `gw-orchestrate-dealer` brief; in `REVIEW.md`, a script that commits is tested with the hooks installed (retro `0.5.0` R2) | pending |
+| B16 | `gw-orchestrate-dealer`: the approved findings of a `/code-review` are dealt out to subagents by group of files (retro `0.5.0` R3) | pending |
+| D42 | `gw-orchestrate-dealer`: a `scratchpad/<id>/` folder per agent, check the worktree base and stop with `TaskStop` (retro `0.5.0` R4) | pending |
+| E22 | `check.sh` also runs the tests with the oldest Python available, or warns if there is none (retro `0.5.0` R6) | pending |
 
 ## `0.7` "Ask"
 

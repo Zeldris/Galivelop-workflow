@@ -4,7 +4,8 @@ Sesiones de la `0.5`: oleadas 1-3 de evolutivos (2026-11-03), recogida H15 con s
 B14, B15) y el `/code-review` contra `origin/main` con sus 10 arreglos. Recoge los puntos (1)-(19) que la bitácora fue
 apuntando «para la retro» e incluye la medida de `/gw-opt-tokens`.
 
-**Estado:** pendiente de decisión del usuario (la sesión lo dejó listo de noche; el usuario decide por la mañana).
+**Estado:** aprobada por el usuario (2026-11-04) con el reparto propuesto: R1 y R5 aplazadas a la `0.5.1` (E20, D41);
+R2, R3, R4 y R6 aplazadas a la `0.6` (E21, B16, D42, E22). Ninguna trae código a la `0.5.0`.
 
 ## Medida (`gw-opt-tokens`)
 
@@ -106,5 +107,5 @@ apuntando «para la retro» e incluye la medida de `/gw-opt-tokens`.
 
 ## For Galivelop-workflow
 
-Este repo es el flujo: R1-R5 se aplican aquí mismo. Por la política de versiones, a la `0.5.1` (arreglos: R1, R5) o a
-la `0.6` (evolutivos: R2, R3, R4), según decida el usuario.
+Este repo es el flujo: R1-R6 se aplican aquí mismo. Por la política de versiones, el usuario decidió: a la `0.5.1`
+(arreglos) R1 y R5; a la `0.6` (evolutivos) R2, R3, R4 y R6. Sus filas están en el [roadmap](../roadmap.md).
