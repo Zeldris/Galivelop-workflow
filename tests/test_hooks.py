@@ -540,6 +540,35 @@ class PrePush(Base):
         self.assertIn("check failed", out)
         self.assertEqual(p.git("worktree", "list").stdout.count("\n"), 1, "temporary worktree left behind")
 
+    def test_a_push_waits_for_no_one_but_refuses_while_another_check_holds_the_lock(self):
+        p = self.p
+        holder = subprocess.Popen(["sleep", "60"])
+        self.addCleanup(holder.kill)
+        start = " ".join(subprocess.run(["ps", "-o", "lstart=", "-p", str(holder.pid)], capture_output=True, text=True,
+                                        env=dict(os.environ, LC_ALL="C")).stdout.split())
+        lock = p.work / ".git" / "gw" / "check.lock"
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        os.symlink(f"{holder.pid}|{start}|abc123abc123|/some/log", lock)
+        ran = p.work / "ran-marker"
+        p.write("check.sh", f"touch {ran}\n")
+        p.commit("a check that leaves a marker")
+        code, out = p.push("origin", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn(f"another check is running (pid {holder.pid}, sha abc123abc123)", out)
+        self.assertIn("another check holds the lock", out)
+        self.assertFalse(ran.exists(), "the check must not run while the lock is held")
+        self.assertEqual(os.readlink(lock).split("|")[0], str(holder.pid), "the holder's lock is untouched")
+
+    def test_a_push_takes_the_lock_while_it_checks_and_releases_it(self):
+        p = self.p
+        seen = p.work / "lock-seen"
+        p.write("check.sh", f'readlink "$(git rev-parse --git-common-dir)/gw/check.lock" > {seen}\n')
+        p.commit("a check that reads the lock")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertRegex(seen.read_text(), r"^\d+\|.*\|pre-push\|-\n$")
+        self.assertFalse(os.path.lexists(p.work / ".git" / "gw" / "check.lock"), "released when the hook ends")
+
     def test_checks_know_whether_the_push_goes_to_the_protected_branch(self):
         p = self.p
         p.write("check.sh", 'echo "protected=$GW_PUSH_PROTECTED"; [ "$GW_PUSH_PROTECTED" = false ]\n')
@@ -952,6 +981,9 @@ class PrePushWorktree(Base):
     def test_two_pushes_at_once_do_not_touch_each_others_worktree(self):
         p = self.p
         pwds = self.tmp / "pwds.txt"
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["checkLockWait"] = 60  # the second push waits for the lock instead of being refused
+        p.write(".claude/gw.json", json.dumps(cfg))
         p.write("check.sh", f'pwd -P >> "{pwds}"; sleep 3; test -f check.sh\n')
         p.commit("slow check")
         p.git("branch", "other")

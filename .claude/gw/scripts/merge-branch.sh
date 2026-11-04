@@ -39,10 +39,6 @@ root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --s
   echo "merge-branch: $here is not inside a git repository; reinstall the workflow: /gw-update" >&2; exit 2; }
 cd "$root" || exit 2
 config="$here/config.py"
-checks="$(python3 "$config" --root "$root" get check)" || {
-  echo "merge-branch: cannot read check; fix the config: python3 $config --root $root validate" >&2; exit 2; }
-wrapper="$(python3 "$config" --root "$root" get checkWrapper)" || {
-  echo "merge-branch: cannot read checkWrapper; fix the config: python3 $config --root $root validate" >&2; exit 2; }
 protected="$(python3 "$config" --root "$root" get protectedBranch)" || {
   echo "merge-branch: cannot read protectedBranch; fix the config: python3 $config --root $root validate" >&2; exit 2; }
 logs="$(mktemp -d "${TMPDIR:-/tmp}/gw-merge-branch.XXXXXX")" || { echo "merge-branch: cannot create a temp dir; free space and retry" >&2; exit 2; }
@@ -136,8 +132,12 @@ if [ "$check_rc" -eq 0 ]; then
 else
   # The summary block (each command, ok/FAILED, seconds) and the closing CHECK line; the log has the rest.
   awk '/^check: summary/ {on=1; next} /^check: last / {on=0} on' "$logs/check.out" >&2
-  [ -z "$check_line" ] || echo "merge-branch: $check_line" >&2
-  [ "$check_rc" -ne 3 ] || cat "$logs/check.err" >&2
+  if [ -n "$check_line" ]; then
+    echo "merge-branch: $check_line" >&2
+  else  # check.sh stopped before running anything (no CHECK line): its own message says why
+    cat "$logs/check.err" >&2
+    tail -n 5 "$logs/check.out" >&2
+  fi
   echo "merge-branch: the check did not pass. The merge is ALREADY done in the current branch; branch and worktree stay." >&2
   [ -z "$check_log" ] || echo "merge-branch: full log: $check_log" >&2
   if [ "$check_rc" -eq 3 ]; then

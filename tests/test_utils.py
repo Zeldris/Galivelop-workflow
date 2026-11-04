@@ -1362,14 +1362,39 @@ class MergeBranch(Base):
         self.assertIn("full log: " + str(log), out)
         self.assertIn("noisy-line-xyz", log.read_text(), "the registry is not deleted")
 
+    def test_a_check_that_stops_before_running_shows_its_reason(self):
+        gw = self.p.work / ".git" / "gw"
+        gw.parent.mkdir(exist_ok=True)
+        gw.write_text("a file where the folder should be\n")  # check.sh cannot create <git dir>/gw
+        self.agent()
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        self.assertEqual(code, 1, out)
+        self.assertIn("cannot create", out)
+        self.assertIn("The merge is ALREADY done", out)
+
+    def test_a_busy_lock_shows_the_check_line_once(self):
+        holder = subprocess.Popen(["sleep", "30"])
+        self.addCleanup(holder.kill)
+        self.addCleanup(holder.wait)
+        start = " ".join(subprocess.run(["ps", "-o", "lstart=", "-p", str(holder.pid)], capture_output=True, text=True,
+                                        env=dict(os.environ, LC_ALL="C")).stdout.split())
+        lock = self.p.work / ".git" / "gw" / "check.lock"
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        os.symlink(f"{holder.pid}|{start}|abc123abc123|/some/log", lock)
+        self.agent()
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        self.assertEqual(code, 1, out)
+        self.assertEqual(out.count("another check is running"), 1, out)
+
     def test_a_check_already_running_stops_the_merge_check_naming_its_pid(self):
         holder = subprocess.Popen(["sleep", "30"])
         self.addCleanup(holder.kill)
         self.addCleanup(holder.wait)
+        start = " ".join(subprocess.run(["ps", "-o", "lstart=", "-p", str(holder.pid)], capture_output=True, text=True,
+                                        env=dict(os.environ, LC_ALL="C")).stdout.split())
         lock = self.p.work / ".git" / "gw" / "check.lock"
-        lock.mkdir(parents=True)
-        (lock / "pid").write_text(f"{holder.pid}\n")
-        (lock / "sha").write_text("abc123abc123\n")
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        os.symlink(f"{holder.pid}|{start}|abc123abc123|/some/log", lock)
         wt = self.agent()
         code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
         self.assertEqual(code, 1, out)

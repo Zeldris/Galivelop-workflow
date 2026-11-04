@@ -215,11 +215,22 @@ class CheckSummary(unittest.TestCase):
     def lock_dir(self, repo=None):
         return (repo or self.repo) / ".git" / "gw" / "check.lock"
 
-    def make_lock(self, pid):
-        lock = self.lock_dir()
-        lock.mkdir(parents=True)
-        (lock / "pid").write_text(f"{pid}\n")
-        (lock / "sha").write_text("abc123abc123\n")
+    def lock_exists(self):
+        return os.path.lexists(self.lock_dir())
+
+    def lock_target(self):
+        return os.readlink(self.lock_dir())
+
+    @staticmethod
+    def start_of(pid):
+        r = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True, text=True,
+                           env=dict(os.environ, LC_ALL="C"))
+        return " ".join(r.stdout.split())
+
+    def make_lock(self, pid, start=None):
+        self.lock_dir().parent.mkdir(parents=True, exist_ok=True)
+        start = self.start_of(pid) if start is None else start
+        os.symlink(f"{pid}|{start}|abc123abc123|/some/log", self.lock_dir())
 
     def start_check(self, *args, env=None):
         full = dict(os.environ, GW_CHECK_CACHE="0", **(env or {}))
@@ -242,11 +253,19 @@ class CheckSummary(unittest.TestCase):
         self.assertEqual(code, 0, out + err)
         self.assertEqual(out.splitlines()[-1], "CHECK ok: nothing failed")
         self.assertEqual(self.log().splitlines()[-1], "CHECK ok: nothing failed")
-        self.repo.joinpath("scripts", "x").write_text("x")  # keeps the same repo, another config below
-        self.configure(["echo fine", "echo '== names-check'; echo boom; exit 1"])
+        cmd = ("echo '== first'; echo 'FAILED: first-section'; echo '== second'; echo '== third'; "
+               "echo 'FAILED: third-section'; echo '== last'; exit 1")
+        self.configure(["echo fine", cmd])
         code, out, err = self.run_check()
         self.assertEqual(code, 1, out + err)
-        self.assertEqual(out.splitlines()[-1], "CHECK FAILED: echo '== names-check'; echo boom; exit 1 [== names-check]")
+        # every section that printed FAILED is named, not just the last `==` seen
+        self.assertEqual(out.splitlines()[-1], f"CHECK FAILED: {cmd} (failed: first-section, third-section)")
+
+    def test_a_failure_without_failed_lines_names_no_section(self):
+        self.configure(["echo '== looks-like-a-section'; exit 1"])
+        code, out, err = self.run_check()
+        self.assertEqual(code, 1, out + err)
+        self.assertEqual(out.splitlines()[-1], "CHECK FAILED: echo '== looks-like-a-section'; exit 1")
 
     def test_a_dirty_tree_puts_dirty_in_the_log_name(self):
         self.configure(["echo ok"])
@@ -273,7 +292,7 @@ class CheckSummary(unittest.TestCase):
         shutil.rmtree(self.repo / ".git" / "gw", ignore_errors=True)
         self.assertEqual(self.run_check()[0], 0)
         self.assertTrue((self.repo / ".git" / "gw").is_dir())
-        self.assertFalse(self.lock_dir().exists())
+        self.assertFalse(self.lock_exists())
 
     def test_an_orphan_lock_is_discarded(self):
         self.configure(["echo ran-anyway"])
@@ -285,33 +304,89 @@ class CheckSummary(unittest.TestCase):
         self.assertIn("discarding a stale lock", err)
         self.assertIn(f"pid {dead.pid} is not running", err)
         self.assertIn("ran-anyway", out)
-        self.assertFalse(self.lock_dir().exists())
+        self.assertFalse(self.lock_exists())
 
     def test_a_running_check_makes_the_second_exit_naming_its_pid_and_sha(self):
         self.configure(["echo started; sleep 30"])
         first = self.start_check()
-        self.wait_for(lambda: self.lock_dir().exists() and (self.lock_dir() / "sha").exists())
+        self.wait_for(lambda: self.lock_exists())
         code, out, err = self.run_check()
         self.assertEqual(code, 3, out + err)
         self.assertIn(f"another check is running (pid {first.pid}", err)
-        self.assertIn((self.lock_dir() / "sha").read_text().strip(), err)
+        self.assertIn(self.lock_target().split("|")[2], err)
         self.assertIn("checkLockWait", err)
         self.assertNotIn("check: running", out)  # the second one ran nothing
-        self.assertTrue(self.lock_dir().exists(), "the first one keeps its lock")
+        self.assertTrue(self.lock_exists(), "the first one keeps its lock")
 
     def test_with_check_lock_wait_the_second_check_waits_for_the_lock(self):
-        self.configure(["echo ran-after-wait"], lock_wait=30)
-        holder = subprocess.Popen(["sleep", "30"])
+        self.configure(["echo ran-after-wait"], lock_wait=60)
+        holder = subprocess.Popen(["sleep", "60"])
         self.addCleanup(holder.kill)
         self.make_lock(holder.pid)
         waiter = self.start_check()
-        time.sleep(3)
-        self.assertIsNone(waiter.poll(), "it must still be waiting")
+        line = waiter.stderr.readline()  # the signal that it is waiting, not a fixed sleep
+        self.assertIn(f"waiting for the check of pid {holder.pid}", line)
+        self.assertIsNone(waiter.poll())
         holder.kill()  # the holder dies without cleaning: its lock is now an orphan
-        holder.wait()  # reaped, or it would stay a zombie that `kill -0` still sees
+        holder.wait()  # reaped, or it would stay a zombie
         out, err = waiter.communicate(timeout=30)
         self.assertEqual(waiter.returncode, 0, out + err)
         self.assertIn("ran-after-wait", out)
+
+    def test_a_reused_pid_is_not_the_holder(self):
+        self.configure(["echo ran-anyway"])
+        other = subprocess.Popen(["sleep", "60"])  # alive, but not the process that took the lock
+        self.addCleanup(other.kill)
+        self.make_lock(other.pid, start="Mon Jan  1 00:00:00 2001")
+        code, out, err = self.run_check()
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("discarding a stale lock", err)
+        self.assertIn("ran-anyway", out)
+        self.assertIsNone(other.poll(), "the unrelated process is left alone")
+
+    def test_a_lock_that_is_no_longer_ours_is_not_removed_on_exit(self):
+        other = subprocess.Popen(["sleep", "60"])
+        self.addCleanup(other.kill)
+        theirs = f"{other.pid}|{self.start_of(other.pid)}|feedfeedfeed|/their/log"
+        lock = ".git/gw/check.lock"
+        self.configure([f"rm -f {lock}; ln -s '{theirs}' {lock}"])  # someone else holds it by the time we finish
+        code, out, err = self.run_check()
+        self.assertEqual(code, 0, out + err)
+        self.assertEqual(self.lock_target(), theirs)
+
+    def test_two_checks_started_together_run_one_at_a_time(self):
+        marker = self.tmp / "ran.log"
+        self.configure([f"echo x >> {marker}; sleep 3"])
+        procs = [self.start_check(), self.start_check()]
+        results = [(p.communicate(timeout=30), p.returncode) for p in procs]
+        codes = sorted(rc for _, rc in results)
+        self.assertEqual(codes, [0, 3], results)
+        self.assertEqual(marker.read_text(), "x\n", "the command ran once")
+        loser = next(res for res, rc in results if rc == 3)
+        self.assertIn("another check is running (pid ", loser[1])
+
+    def test_a_background_child_holding_the_output_does_not_hang_the_check(self):
+        pidfile = self.tmp / "bg.pid"
+        self.configure([f"sleep 60 & echo $! > {pidfile}; echo started"])
+        cfg = json.loads((self.repo / ".claude" / "gw.json").read_text())
+        cfg["checkOutputGrace"] = 1
+        (self.repo / ".claude" / "gw.json").write_text(json.dumps(cfg))
+        self.git("commit", "-qam", "grace")
+        p = self.start_check()
+        out, err = p.communicate(timeout=30)  # without the grace it would wait the 60 s of the child
+        self.addCleanup(lambda: os.kill(int(pidfile.read_text()), signal.SIGKILL))
+        self.assertEqual(p.returncode, 0, out + err)
+        self.assertFalse(self.lock_exists(), "the lock is released")
+
+    def test_no_fifo_is_left_in_tmpdir_after_an_interrupt(self):
+        tmpdir = self.tmp / "tmpd"
+        tmpdir.mkdir()
+        self.configure(["echo partial; sleep 30"])
+        p = self.start_check(env={"TMPDIR": str(tmpdir)})
+        self.wait_for(lambda: any(tmpdir.glob("gw-check-fifo.*")))
+        os.killpg(p.pid, signal.SIGINT)
+        p.communicate(timeout=20)
+        self.assertEqual(list(tmpdir.glob("gw-check-fifo.*")), [])
 
     def test_check_lock_wait_gives_up_after_its_seconds(self):
         self.configure(["echo never"], lock_wait=2)
@@ -323,26 +398,27 @@ class CheckSummary(unittest.TestCase):
         self.assertEqual(code, 3, out + err)
         self.assertGreaterEqual(time.time() - started, 2)
         self.assertIn(f"pid {holder.pid}", err)
+        self.assertIn("rm ", err)  # the safe remedy, not kill
 
     def test_ctrl_c_releases_the_lock_and_keeps_the_log(self):
         self.configure(["echo partial; sleep 30"])
         p = self.start_check()
         self.wait_for(lambda: any("partial" in f.read_text() for f in (self.repo / ".git" / "gw").glob("check-*.log")))
-        self.assertTrue(self.lock_dir().exists())
+        self.assertTrue(self.lock_exists())
         os.killpg(p.pid, signal.SIGINT)
         out, err = p.communicate(timeout=20)
         self.assertEqual(p.returncode, 130, out + err)
-        self.assertFalse(self.lock_dir().exists(), "the lock must be released on Ctrl-C")
+        self.assertFalse(self.lock_exists(), "the lock must be released on Ctrl-C")
         self.assertTrue(list((self.repo / ".git" / "gw").glob("check-*.log")))
 
     def test_a_kill_releases_the_lock(self):
         self.configure(["echo partial; sleep 30"])
         p = self.start_check()
-        self.wait_for(lambda: self.lock_dir().exists() and (self.lock_dir() / "pid").exists())
+        self.wait_for(lambda: self.lock_exists())
         os.killpg(p.pid, signal.SIGTERM)
         out, err = p.communicate(timeout=20)
         self.assertEqual(p.returncode, 143, out + err)
-        self.assertFalse(self.lock_dir().exists())
+        self.assertFalse(self.lock_exists())
 
 
 if __name__ == "__main__":

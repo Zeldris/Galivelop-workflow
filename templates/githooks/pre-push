@@ -42,10 +42,12 @@ remote="${1:-origin}"
 # Git's ref lines come on stdin: save them before anything else can read it.
 work="$(mktemp -d "${TMPDIR:-/tmp}/gw-pre-push.XXXXXX")" || { echo "pre-push: cannot create a temp dir; free space in ${TMPDIR:-/tmp} and retry: git push" >&2; exit 1; }
 worktree=""
+checklock=""  # 1 while this hook holds the check lock (<git common dir>/gw/check.lock, shared with scripts/check.sh)
 pushmark=""  # <this worktree's git dir>/gw-push-in-progress.<pid of this hook>: line 1 the pid of this hook, then one "<local sha> <branch>" line per ref pushed
 cleanup() {
   # The marker name holds this hook's pid, so no other push ever rewrites it.
   if [ -n "$pushmark" ]; then rm -f "$pushmark" 2>/dev/null; fi
+  if [ -n "$checklock" ]; then bash "$scripts/check-green.sh" lock-release "$$" < /dev/null 2>/dev/null; fi
   if [ -n "$worktree" ]; then git -C "$root" worktree remove --force "$worktree" >/dev/null 2>&1; rm -rf "$worktree" "${worktree%.d}"; fi
   rm -rf "$work"
 }
@@ -186,6 +188,13 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
       echo "pre-push: check already green on this tree (${tree:0:7}) with the same commands $age min ago; skipping it (to run it anyway: GW_CHECK_CACHE=0 git push)"
       return 0
     fi
+  fi
+  if [ -f "$scripts/check-green.sh" ]; then  # one check at a time per repository: check.sh and merge-branch.sh take the same lock
+    lock_wait="$(cfg_at "$sha" checkLockWait 2>/dev/null)" || lock_wait=0
+    case "$lock_wait" in ''|*[!0-9]*) lock_wait=0 ;; esac
+    bash "$scripts/check-green.sh" lock-acquire "$$" "pre-push" "$lock_wait" "-" < /dev/null \
+      || fail "another check holds the lock (above); wait for it and push again: git push, or wait inside the hook: set checkLockWait in .claude/gw.json"
+    checklock=1
   fi
   while IFS= read -r cmd; do
     [ -n "$cmd" ] || continue

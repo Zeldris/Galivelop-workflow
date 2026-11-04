@@ -9,6 +9,13 @@
 #                                       # skip-worktree entries, sparse checkout, a modified submodule)
 #   bash check-green.sh has <key>       # exit 0 and the age in minutes if recorded < 24 h ago; any problem is a miss (1)
 #   bash check-green.sh add <key>       # records the key now; best effort (a write failure warns and exits 0)
+#   bash check-green.sh lock-acquire <owner-pid> <sha> <wait-seconds> <log>
+#                                       # takes <git common dir>/gw/check.lock for <owner-pid> (E20), a symlink whose target
+#                                       # is "pid|process start|sha|log" (so the take is atomic and the owner verifiable);
+#                                       # exit 0 taken, 3 another live check holds it (names pid/sha/log) after waiting
+#                                       # <wait-seconds>, 1 cannot. A lock whose process is gone, or whose pid now belongs
+#                                       # to another process (different start time), is discarded.
+#   bash check-green.sh lock-release <owner-pid>   # removes the lock only if <owner-pid> owns it
 # GW_CHECK_CACHE=0 makes `has` always miss. Bash 3.2 compatible. Root from this script's path, never from the cwd.
 set -uo pipefail
 TTL_SECONDS=86400  # a recorded success older than this is a miss
@@ -23,7 +30,7 @@ root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --s
 cd "$root" || exit 1
 
 usage() {
-  echo "check-green: $1; usage: bash $0 key <tree-sha> <wrapper> | worktree-tree | has <key> | add <key>" >&2
+  echo "check-green: $1; usage: bash $0 key <tree-sha> <wrapper> | worktree-tree | has <key> | add <key> | lock-acquire <pid> <sha> <wait> <log> | lock-release <pid>" >&2
   exit 2
 }
 valid_key() {  # a git object name: 40 (sha-1) or 64 (sha-256) lowercase hex digits
@@ -148,6 +155,79 @@ cmd_add() {
   return 0
 }
 
+lock_file() {  # absolute path of the lock, creating <git common dir>/gw, or fail
+  local common
+  common="$(git rev-parse --git-common-dir 2>/dev/null)" && common="$(cd "$common" 2>/dev/null && pwd)" && [ -n "$common" ] || return 1
+  mkdir -p "$common/gw" 2>/dev/null || return 1
+  printf '%s/gw/check.lock\n' "$common"
+}
+proc_start() {  # the start time of a process as ps prints it ("?" if ps cannot tell but the process exists); empty if gone
+  local out
+  out="$(LC_ALL=C ps -o lstart= -p "$1" 2>/dev/null | sed 's/^ *//; s/ *$//; s/  */ /g')"
+  if [ -z "$out" ] && kill -0 "$1" 2>/dev/null; then out="?"; fi
+  printf '%s\n' "$out"
+}
+proc_is() {  # proc_is <pid> <start>: that very process is still running (not gone, not a zombie, not a reused pid)
+  local st
+  st="$(LC_ALL=C ps -o stat= -p "$1" 2>/dev/null | tr -d ' ')"
+  case "$st" in Z*) return 1 ;; esac
+  [ -n "$2" ] && [ "$(proc_start "$1")" = "$2" ]
+}
+
+cmd_lock_acquire() {
+  [ "$#" -eq 4 ] || usage "lock-acquire needs <owner-pid> <sha> <wait-seconds> <log>"
+  local owner="$1" sha="$2" wait="$3" log="$4" lock mine cur pid rest start osha olog tmp moved deadline announced="" vanished=0
+  case "$owner$wait" in ''|*[!0-9]*) usage "lock-acquire: pid and wait must be numbers" ;; esac
+  lock="$(lock_file)" || { echo "check-green: cannot create <git common dir>/gw for the lock; make the git dir writable, e.g. chmod u+w \"\$(git rev-parse --git-common-dir)\"" >&2; return 1; }
+  mine="$owner|$(proc_start "$owner")|$sha|$log"
+  deadline=$((SECONDS + wait))
+  while :; do
+    ln -s "$mine" "$lock" 2>/dev/null && return 0
+    cur="$(readlink "$lock" 2>/dev/null)"
+    if [ -z "$cur" ]; then
+      if [ -e "$lock" ] || [ -L "$lock" ]; then  # an old-format lock (a directory) or an empty one
+        echo "check-green: removing a lock in an old format: $lock" >&2
+        rm -rf "$lock"
+        continue
+      fi
+      vanished=$((vanished + 1))  # it went away between ln and readlink: try again, but not forever if ln cannot work
+      [ "$vanished" -lt 5 ] || { echo "check-green: cannot create the lock $lock; make its folder writable: chmod u+w $(dirname "$lock")" >&2; return 1; }
+      continue
+    fi
+    [ "${cur%%|*}" != "$owner" ] || return 0  # already ours (a hook that checks several refs)
+    pid="${cur%%|*}"; rest="${cur#*|}"; start="${rest%%|*}"; rest="${rest#*|}"; osha="${rest%%|*}"; olog="${rest#*|}"
+    if ! proc_is "$pid" "$start"; then  # orphan: take it aside first, and only drop it if it is still the one we judged
+      tmp="$lock.stale.$owner"
+      if mv "$lock" "$tmp" 2>/dev/null; then
+        moved="$(readlink "$tmp" 2>/dev/null)"
+        if [ "$moved" = "$cur" ]; then
+          echo "check: discarding a stale lock (pid $pid is not running as the same process)" >&2
+          rm -f "$tmp"
+        else  # somebody took it between our read and the move: give it back
+          ln -s "$moved" "$lock" 2>/dev/null
+          rm -f "$tmp"
+        fi
+      fi
+      continue
+    fi
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      echo "CHECK FAILED: not run, another check is running (pid $pid, sha ${osha:-unknown}); wait for it and read its log ${olog:--}, or raise checkLockWait in .claude/gw.json to wait for it. If pid $pid is not a check (check: ps -p $pid -o command=), remove the lock: rm $lock" >&2
+      return 3
+    fi
+    [ -n "$announced" ] || echo "check: waiting for the check of pid $pid (sha ${osha:-unknown}) to end (up to ${wait}s)" >&2
+    announced=1
+    sleep 1
+  done
+}
+cmd_lock_release() {
+  [ "$#" -eq 1 ] || usage "lock-release needs <owner-pid>"
+  local lock cur
+  lock="$(lock_file)" || return 0
+  cur="$(readlink "$lock" 2>/dev/null)"
+  case "$cur" in "$1|"*) rm -f "$lock" ;; esac
+  return 0
+}
+
 sub="${1:-}"
 [ "$#" -eq 0 ] || shift
 case "$sub" in
@@ -155,5 +235,7 @@ case "$sub" in
   worktree-tree) cmd_worktree_tree ;;
   has) cmd_has "$@" ;;
   add) cmd_add "$@" ;;
+  lock-acquire) cmd_lock_acquire "$@" ;;
+  lock-release) cmd_lock_release "$@" ;;
   *) usage "unknown subcommand '$sub'" ;;
 esac
