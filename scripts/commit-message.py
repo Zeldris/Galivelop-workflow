@@ -27,8 +27,10 @@ and applies, from .claude/gw.json (read through config.py):
                                or <digits>o (Claudette passes, haiku-writer and 4o do not). Without that, any
                                `Agent:` value passes. Trailers are read with --no-divider (a `---` line is body).
 
-Format and `Refs:` are not checked while a merge, revert or cherry-pick is being concluded (MERGE_HEAD, REVERT_HEAD,
-CHERRY_PICK_HEAD) nor during a rebase; `Agent:` is checked in merges too, not in a rebase (old messages are replayed).
+The review-mark commit of reviewed.sh (subject exactly `Revisado: <sha>` or `Reviewed: <sha>`) is exempt from
+format and `Refs:`. Format and `Refs:` are not checked while a merge, revert or cherry-pick is being concluded
+(MERGE_HEAD, REVERT_HEAD, CHERRY_PICK_HEAD) nor during a rebase; `Agent:` is checked in merges too, not in a rebase
+(old messages are replayed).
 Exit 0 ok, 1 rejected or failed closed (config unreadable, git failing): each message names what failed and ends with
 the command that fixes it. Python 3.8+, stdlib only.
 """
@@ -56,6 +58,9 @@ MODEL_SHAPES = re.compile(r"gpt\d.*|o\d+|\d+o")
 # The next-step trailer per config `language` (the word the templates/<lang>/AGENTS.md use); other languages: English.
 NEXT_TRAILERS = {"es": "Siguiente", "en": "Next"}
 MERGE_STATES = ("MERGE_HEAD", "REVERT_HEAD", "CHERRY_PICK_HEAD")
+# The subject reviewed.sh writes for the review-mark commit (by `language`; SHA-1 or SHA-256 object names): it has no
+# task of its own, so format and Refs are not asked of it (the next-step trailer is, and reviewed.sh writes it).
+REVIEW_MARK = re.compile(r"(?:Revisado|Reviewed): [0-9a-f]{40}(?:[0-9a-f]{24})?")
 
 
 class Reject(Exception):
@@ -243,6 +248,9 @@ def run(root, msgfile):
     if not (agent or not merging):
         return
     message = clean_message(root, text)
+    subject = next((line for line in message.splitlines() if line.strip()), "")
+    if REVIEW_MARK.fullmatch(subject):
+        fmt = refs = False
     if not merging and fmt:
         check_format(message, msgfile)
     found = []

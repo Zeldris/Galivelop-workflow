@@ -183,5 +183,29 @@ class InstalledCopies(unittest.TestCase):
         self.assertEqual(drift, [], "installed copy differs from scripts/; refresh it: cp scripts/<name> .claude/gw/scripts/<name>")
 
 
+
+class MarkUnderStrictCommitMsg(Base):
+    """The mark commit passes a commit-msg with conventional format, Refs and next step on (code review of 0.5.0)."""
+    hooks = ("pre-push", "pre-commit", "commit-msg")
+
+    def test_the_mark_commit_is_accepted_in_both_languages(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "feature")
+        script = str(p.work / ".claude" / "gw" / "scripts" / "reviewed.sh")
+        for language, subject in (("en", "Reviewed: "), ("es", "Revisado: ")):
+            with self.subTest(language=language):
+                cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+                cfg.update(commitFormat="conventional", commitRefs=True, commitNext=True, language=language)
+                p.write(".claude/gw.json", json.dumps(cfg))
+                p.git("add", ".claude/gw.json")
+                p.git("commit", "-q", "--no-verify", "-m", "config " + language)
+                self.assertEqual(p.push("--no-verify", "-u", "origin", "feature")[0], 0)
+                code, out = p.run("bash", script)
+                self.assertEqual(code, 0, out)
+                msg = p.git("log", "-1", "--format=%B").stdout.strip()
+                self.assertTrue(msg.startswith(subject + p.sha("HEAD~1")), msg)
+                self.assertEqual(p.push("--no-verify", "origin", "feature")[0], 0)
+
+
 if __name__ == "__main__":
     unittest.main()

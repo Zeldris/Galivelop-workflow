@@ -69,6 +69,15 @@ class Conventional(Msg):
             with self.subTest(subject=subject):
                 self.accepted(subject + "\n\nbody")
 
+    def test_the_review_mark_subject_is_exempt_only_when_exact(self):
+        sha = "0123456789abcdef0123456789abcdef01234567"
+        self.accepted(f"Reviewed: {sha}")
+        self.accepted(f"Revisado: {sha}")
+        self.accepted(f"Reviewed: {sha}{'89abcdef' * 3}")  # SHA-256 repository
+        for subject in ("Reviewed: abc123", f"Reviewed: {sha} and more", f"reviewed: {sha}", f"WIP: Reviewed: {sha}"):
+            with self.subTest(subject=subject):
+                self.refused(subject, "not in the conventional form")
+
     def test_refused_forms(self):
         for subject in ("added x", "feature: x", "feat x", "feat:x", "feat(): x", "feat(a)(b): x", "Feat: x",
                         "WIP:feat: x", "wip: feat: x"):
@@ -182,6 +191,9 @@ class Refs(Msg):
 
     def test_missing_refs(self):
         self.refused("work", "no Refs trailer", "commitRefs: true")
+
+    def test_the_review_mark_needs_no_refs(self):
+        self.accepted("Revisado: 0123456789abcdef0123456789abcdef01234567")
 
     def test_valid_refs_in_every_entry_shape(self):
         for ids in ("D11", "D12", "D15", "D16", "D11, D12", "D11,D12 D15"):
