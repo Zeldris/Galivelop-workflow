@@ -18,8 +18,9 @@ agent remembered it. It blocks the stop when:
      blocks as before;
      While a check of the workflow holds the lock `<git common dir>/gw/check.lock` (a symlink to "pid|start|sha|log",
      written by check-green.sh lock-acquire; the pid alive with that same start time) it does not block either: the
-     check ends by itself and a push now would race it, so it is a one-line notice with the check's log. A lock that is
-     dead, reused by another process, malformed or missing counts as absent and blocks as before;
+     check ends by itself and a push now would race it, so it is a one-line notice with the check's log. Only a lock whose sha is this
+     worktree's HEAD (12 hex, with or without -dirty) silences it; one of another commit or worktree adds a note and blocks.
+     A lock that is dead, reused by another process, malformed or missing counts as absent and blocks as before;
   b. the working tree has changes (`git status`, untracked files included, but not untracked paths under
      `.claude/worktrees/`, where Claude Code keeps its isolated worktrees) and the log (`log` in .claude/gw.json) is
      not among them. The reason says to commit the log, updated, in the same commit as the work.
@@ -149,28 +150,41 @@ def _ps(field, pid):
 
 
 def check_in_progress(root):
-    """(pid, log) of the live check that holds the E20 lock `<git common dir>/gw/check.lock`, else None.
+    """(pid, log, sha) of the live check that holds the E20 lock `<git common dir>/gw/check.lock`, else None.
 
-    The lock is a symlink whose target is "pid|process start|sha|log" (check-green.sh lock-acquire). It counts only
-    when the pid is alive, not a zombie, and still has that start time (a reused pid has another one); a start of "?"
-    (the owner could not read it) only needs the pid alive. A missing, dead, reused or malformed lock is None."""
+    The lock is a symlink whose target is "pid|process start|sha|log" (check-green.sh lock-acquire). Liveness is
+    judged as check-green.sh `proc_is` does: the pid is not a zombie and its current start time (`ps -o lstart=`, or
+    "?" when ps cannot tell but the process exists) equals the lock's non-empty start. Anything else (missing, dead,
+    reused pid, malformed, any error reading it) is None, so the hook falls back to blocking."""
     try:
         common = git(root, "rev-parse", "--git-common-dir")[1].strip()
         target = os.readlink(os.path.join(str(root), common, CHECK_LOCK))
-        pid_text, start, _sha, log = (target.split("|", 3) + ["", "", "", ""])[:4]
-        if not pid_text.isdigit() or int(pid_text) < 1:
-            return None
-        pid = int(pid_text)
+    except (GitError, OSError, ValueError):
+        return None
+    pid_text, start, sha, log = (target.split("|", 3) + ["", "", "", ""])[:4]
+    if not pid_text.isdigit() or not 0 < int(pid_text) < 2 ** 31:
+        return None
+    pid = int(pid_text)
+    try:
         os.kill(pid, 0)
     except PermissionError:
         pass  # another user's process is alive too
-    except (GitError, OSError, ValueError):
+    except (OSError, OverflowError, ValueError):
         return None
-    if _ps("stat", pid).startswith("Z"):
+    if _ps("stat", pid).startswith("Z") or not start:
         return None
-    if start and start != "?" and _ps("lstart", pid) != start:
+    if (_ps("lstart", pid) or "?") != start:
         return None
-    return pid, log
+    return pid, log, sha
+
+
+def _same_tree_head(root, lock_sha):
+    """True when the lock's sha (`<12 hex>` or `<12 hex>-dirty`, check.sh's name for a run) is this worktree's HEAD."""
+    try:
+        head = git(root, "rev-parse", "--short=12", "HEAD")[1].strip()
+    except GitError:
+        return False
+    return bool(head) and (lock_sha[:-6] if lock_sha.endswith("-dirty") else lock_sha) == head
 
 
 def _marker_branch(marker, head):
@@ -253,15 +267,19 @@ def main():
                 else:
                     pushing = push_in_progress(root)
                     checking = check_in_progress(root) if pushing is None else None
-                    if checking is not None:
-                        notes.append(f"A check is running (pid {checking[0]}, log {checking[1] or '-'}); branch "
-                                     f"'{branch}' has {plural(count, 'commit')} not pushed ({where}) until it ends. "
-                                     f"Do not push meanwhile: wait for CHECK ok, then push: git push -u origin "
+                    if checking is not None and _same_tree_head(root, checking[2]):
+                        notes.append(f"A check of this commit is running (pid {checking[0]}, log {checking[1] or '-'}); "
+                                     f"branch '{branch}' has {plural(count, 'commit')} not pushed ({where}) until it "
+                                     f"ends. Do not push meanwhile: wait for CHECK ok, then push: git push -u origin "
                                      f"{branch}")
                     elif pushing is None:
                         blocks.append(f"Branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). What is "
                                       f"not pushed does not exist for the next session; push it now: git push -u "
                                       f"origin {branch}")
+                        if checking is not None:  # a check of another commit or worktree: it does not push this one
+                            notes.append(f"A check of another commit or worktree is running (pid {checking[0]}, log "
+                                         f"{checking[1] or '-'}, sha {checking[2] or '-'}); it does not cover this "
+                                         f"HEAD.")
                     else:
                         notes.append(f"A push of this commit is in progress (the pre-push hook is running"
                                      f"{' for ' + pushing if pushing else ''}); branch '{branch}' has "
