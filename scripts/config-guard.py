@@ -59,6 +59,7 @@ in); it does not read or validate the config. Fails closed: stdin it cannot read
 the target, or a root it cannot find -> `ask`, with that as the reason. Python 3.8+ standard library only.
 """
 import json
+import fnmatch
 import os
 import re
 import select
@@ -328,6 +329,14 @@ TREE_VALUE = {
     "apply": {"-p", "-C", "--directory", "--include", "--exclude", "--whitespace"},
     "clean": {"-e", "--exclude"},
 }
+# `git` calls that rewrite the working tree and whose files are not worked out here: the guard asks, with the reason.
+TREE_UNKNOWN = {
+    "am": "`git am` applies patches from a mailbox, which is not read here",
+    "bisect": "`git bisect` checks out the commits it tests",
+    "checkout-index": "`git checkout-index` writes files from the index",
+}
+TREE_VALUE.update({sub: set() for sub in TREE_UNKNOWN})
+TREE_VALUE["read-tree"] = {"--prefix", "--index-output", "--exclude-per-directory"}
 TREE_SUBCOMMANDS = set(TREE_VALUE)  # `git` calls that rewrite the working tree without naming a path
 DIFF = ("diff", "--name-only", "--no-renames", "--no-ext-diff", "-z")
 LOG = ("log", "-m", "--name-only", "--no-renames", "--format=", "-z")
@@ -490,9 +499,15 @@ def tree_specs(sub, rest, cwd):
                 return []
             raise Unknown("`git merge` names no commit (--abort, --continue, --quit)")
         return [DIFF + (f"HEAD...{safe_ref(x)}", "--") for x in pos]
-    if sub == "pull":
-        upstream = f"{safe_ref(pos[0])}/{re.sub('^refs/heads/', '', pos[1])}" if len(pos) > 1 else "@{u}"
-        return [DIFF + (f"HEAD...{upstream}", "--")]  # what was last fetched: pull fetches first
+    if sub == "pull":  # it fetches first: what it merges is not known until then (the remote ref here may be stale)
+        raise Unknown("`git pull` merges what it fetches, which is not known beforehand; "
+                      "run `git fetch` and then `git merge <upstream>`")
+    if sub in TREE_UNKNOWN:
+        raise Unknown(TREE_UNKNOWN[sub])
+    if sub == "read-tree" and not any(w == "-u" or re.fullmatch(r"-[A-Za-z]*u[A-Za-z]*", w) for w in opts):
+        return []  # without -u it changes the index only
+    if sub == "read-tree":
+        raise Unknown("`git read-tree -u` writes the files of the trees it reads")
     if sub in ("checkout", "switch"):
         if sub == "checkout" and dd:
             return []  # `git checkout <tree-ish> -- <paths>` writes the paths, which the path rules look at
@@ -514,6 +529,8 @@ def tree_specs(sub, rest, cwd):
             untracked = everything or "--include-untracked" in opts or "u" in flags
             return [("status", "--porcelain", "-z", "--untracked-files=" + ("all" if untracked else "no"))
                     + (("--ignored",) if everything else ())]
+        if pos[0] == "branch":
+            raise Unknown("`git stash branch` checks out the commit the stash was made on and applies it")
         if pos[0] not in ("pop", "apply"):
             return []
         ref = safe_ref(pos[1]) if len(pos) > 1 else "0"
@@ -681,6 +698,42 @@ def in_place_flag(words):
 GIT_ENV = r"\bGIT_(DIR|WORK_TREE|INDEX_FILE|COMMON_DIR|CONFIG\w*)="
 
 
+FIND_TESTS = {"-name", "-iname"}  # the only tests a filtered `find` may use to be read here
+FIND_HARMLESS = {"-type", "-maxdepth", "-mindepth", "-print", "-print0", "-delete", "-depth", "-xdev", "-mount"}
+
+
+def find_may_reach(args, root):
+    """Whether a writing `find` started at the project folder can touch a protected file: True unless its only tests
+    are -name/-iname patterns (and harmless options) that match no protected file name now on disk."""
+    patterns, n = [], 0
+    while n < len(args):
+        w = args[n]
+        if w in FIND_TESTS and n + 1 < len(args):
+            patterns.append((args[n + 1], w == "-iname"))
+            n += 2
+            continue
+        if w in ("-type", "-maxdepth", "-mindepth") and n + 1 < len(args):
+            n += 2
+            continue
+        if w.startswith("-") and w not in FIND_HARMLESS:
+            return True  # -o, -not, -path, -regex, -exec...: not read here
+        if w in ("!", "(", ")", ","):
+            return True
+        n += 1  # a start folder
+    if not patterns:
+        return True
+    names = {os.path.basename(t) for t in EXACT}
+    for tree in TREES:
+        for _, dirs, files in os.walk(os.path.join(root, tree)):
+            names.update(files)
+            names.update(dirs)
+    for pattern, fold in patterns:
+        for name in names:
+            if fnmatch.fnmatchcase(name.lower(), pattern.lower()) if fold else fnmatch.fnmatchcase(name, pattern):
+                return True
+    return False
+
+
 def bash_hits(command, base, root, depth=0, redirected=False):
     """[rel, ...]: the protected paths `command` writes to."""
     hits = []
@@ -761,13 +814,13 @@ def bash_hits(command, base, root, depth=0, redirected=False):
             rel, kind = classify(w, seg_base if cmd == "git" else base, root)
             if kind is None:
                 continue
-            redirected = j > 0 and ">" in seg[j - 1]  # `>`, `>>`, `>|`, `&>`: the word after it is written
+            to_file = j > 0 and ">" in seg[j - 1]  # `>`, `>>`, `>|`, `&>`: the word after it is written
             written = writes and (cmd not in READ_SOURCES or j == dest or removes_sources)  # a copy only reads its sources
-            if kind == "protected" and (redirected or written):
+            if kind == "protected" and (to_file or written):
                 hits.append(rel)
-            elif kind == "ancestor" and (redirected or cmd in DESTRUCTIVE or j == dest or git_write or find_write):
+            elif kind == "ancestor" and (to_file or cmd in DESTRUCTIVE or j == dest or git_write or find_write):
                 hits.append(rel)
-            elif kind == "root" and (git_write or find_write):  # `git checkout -- .`, `git restore .`: the pathspec covers it all
+            elif kind == "root" and (git_write or (find_write and find_may_reach(args, root))):  # `git checkout -- .`, `git restore .`: the pathspec covers it all
                 hits.append(rel)
         hits += tree
     return hits

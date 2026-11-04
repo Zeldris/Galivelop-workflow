@@ -380,6 +380,14 @@ class BashWrites(Base):
         self.assertEachAllowed(['find .claude -name gw.json', 'find . -name "*.py"', 'find src -delete',
                                 'find .claude -exec cat {} +', 'find . -exec grep -l x {} \\;'])
 
+    def test_find_from_the_project_folder_asks_only_if_it_can_reach_a_protected_file(self):
+        # a -name filter that matches no protected file name passes (code review of 0.5.0)
+        self.assertEachAllowed(["find . -name '*.pyc' -delete", "find . -type f -iname '*.TMP' -delete",
+                                "find . -maxdepth 3 -name '*.orig' -print -delete"])
+        self.assertEachAsks(['find . -delete', "find . -name '*.json' -delete", "find . -iname 'GW.JSON' -delete",
+                             "find . -name 'settings*' -delete", "find . -path './.claude/*' -delete",
+                             "find . -name '*.pyc' -o -name x -delete", "find . ! -name '*.pyc' -delete"])
+
     def test_only_the_project_dir_variable_stands_for_the_root(self):
         self.assertEachAsks(['echo x > $CLAUDE_PROJECT_DIR/.claude/gw.json', 'rm ${CLAUDE_PROJECT_DIR}/.githooks/pre-push'],
                             named=None)
@@ -547,7 +555,7 @@ class GitTreeWrites(Base):
         self.allowed(['git reset --soft HEAD', 'git checkout -b feature'])
 
     def test_each_command_that_changes_no_protected_file_is_allowed(self):
-        self.allowed(['git merge docs', 'git merge origin/main', 'git pull', 'git checkout docs', 'git checkout main',
+        self.allowed(['git merge docs', 'git merge origin/main', 'git checkout docs', 'git checkout main',
                       'git switch docs', 'git switch -c feature', 'git switch main', 'git checkout -b feature docs',
                       'git reset --hard', 'git reset --hard docs', 'git reset --hard HEAD', 'git reset --soft hooks',
                       'git reset --mixed hooks', 'git reset', 'git rebase docs', 'git rebase main docs',
@@ -582,12 +590,20 @@ class GitTreeWrites(Base):
                       f'git apply --stat {tmp}/hook.patch', f'git apply --cached {tmp}/docs.patch'])
         self.unknown(['git apply', 'git apply -', f'git apply {tmp}/missing.patch'], "git apply")
 
-    def test_git_pull_looks_at_the_upstream(self):
-        self.p.git("push", "-q", "origin", "hooks:main")
-        self.p.git("fetch", "-q", "origin")
-        self.asks(['git pull', 'git pull --rebase', 'git pull origin main', 'git pull --ff-only origin main'], self.HOOK)
-        self.p.git("checkout", "-q", "docs")  # no upstream: it cannot tell
-        self.unknown(['git pull'], "failed")
+    def test_git_pull_always_asks(self):
+        # the remote ref here may be stale: what pull merges is only known after its fetch (code review of 0.5.0)
+        self.unknown(['git pull', 'git pull --rebase', 'git pull origin main', 'git pull --ff-only origin main'],
+                     "`git pull` merges what it fetches")
+        self.allowed(['git fetch origin main', 'git merge origin/main'])
+
+    def test_tree_rewrites_not_worked_out_here_ask(self):
+        self.unknown(['git am /tmp/x.mbox', 'git am --continue'], "`git am` applies patches")
+        self.unknown(['git bisect start', 'git bisect good', 'git bisect reset'], "`git bisect` checks out")
+        self.unknown(['git checkout-index -a -f', 'git checkout-index -- .githooks/pre-push'], "`git checkout-index`")
+        self.unknown(['git read-tree -u -m hooks', 'git read-tree -mu hooks', 'git read-tree --reset -u hooks'],
+                     "`git read-tree -u`")
+        self.unknown(['git stash branch new', 'git stash branch new stash@{0}'], "`git stash branch`")
+        self.allowed(['git read-tree hooks', 'git read-tree -m hooks'])
 
     def test_a_reference_that_does_not_exist_asks(self):
         self.unknown(['git merge nosuchref', 'git checkout nosuchref', 'git switch nosuchref',
@@ -616,7 +632,10 @@ class GitTreeWrites(Base):
         self.unknown(['export GIT_DIR=/tmp/evil.git GIT_WORK_TREE=.; git checkout -f docs',
                       "sh -c 'export GIT_DIR=/tmp/evil.git; git merge docs'",
                       'GIT_INDEX_FILE=/tmp/i; git reset --hard docs', 'export GIT_CONFIG_COUNT=1; git merge docs',
-                      'export GIT_COMMON_DIR=/tmp/c && git rebase docs'], "is set in this command")
+                      'export GIT_COMMON_DIR=/tmp/c && git rebase docs',
+                      # a path word in a command between must not reset what the export set (code review of 0.5.0)
+                      'export GIT_WORK_TREE=/tmp/w; ls .claude; git merge origin/main',
+                      'export GIT_DIR=/tmp/d; cat .claude/gw.json; git checkout docs'], "is set in this command")
         self.allowed(['export GIT_DIR=/tmp/evil.git; git status', 'export FOO=1; git merge docs'])
 
     def test_global_options_with_a_separate_value_do_not_hide_the_subcommand(self):
