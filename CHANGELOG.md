@@ -17,6 +17,10 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
 
 ### ES
 
+- Primera subida a la rama protegida tras actualizar (A8): si la punta remota pone explícita la marca antigua
+  (`"reviewMark": "docs/registros/revisado.txt"`) y lo que se sube ya la movió a `docs/records/reviewed.txt`, el
+  `pre-push` y `review-before-main.sh` la leen en la ruta nueva en vez de bloquear con «no review mark». Lo resuelve
+  `config.py --paths-at`, para cada ruta de A8; `keepLegacyPaths` lo apaga. Visto al subir esta misma versión.
 - Regla de versiones nueva (H14): solo la última menor publicada recibe parches y los evolutivos van a la siguiente
   menor; se avanza por la `0.x` y la `1.0` será el Management Center. `docs/roadmap.md` (con `docs/roadmap.en.md`)
   reparte por versión cada tarea del diseño con su id (D13), y `docs/registros/pendiente.md` (antes
@@ -290,6 +294,11 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
 
 ### EN
 
+- First push to the protected branch after updating (A8): when the remote tip sets the old mark explicitly
+  (`"reviewMark": "docs/registros/revisado.txt"`) and the pushed commit already moved it to `docs/records/reviewed.txt`,
+  the `pre-push` and `review-before-main.sh` read it at the new path instead of blocking with "no review mark".
+  `config.py --paths-at` resolves it, for every A8 path; `keepLegacyPaths` turns it off. Found while pushing this
+  very version.
 - New version rule (H14): only the latest published minor gets patches and new features go to the next minor; work
   moves through `0.x` and `1.0` will be the Management Center. `docs/roadmap.en.md` (with `docs/roadmap.md`) splits
   every design task by version with its id (D13), and `docs/registros/pendiente.md` (formerly `pendiente-1.0.0.md`)

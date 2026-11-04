@@ -481,6 +481,28 @@ class ProjectPaths(unittest.TestCase):
         self.assertEqual(self.get("reviewMark", "--rev", "HEAD~1", "--paths-at", "HEAD"), "docs/registros/revisado.txt")
         self.assertEqual(self.get("reviewMark", "--rev", "HEAD~1", "--paths-at", "HEAD~1"), "docs/records/reviewed.txt")
 
+    def test_paths_at_follows_the_move_of_an_old_path_the_tip_names_explicitly(self):
+        # The protected tip of a 0.4 project names the old paths; the pushed commit applied the A8 move (old file gone,
+        # English default present). Without paths_at, or with keepLegacyPaths, the explicit value stays.
+        git = ["git", "-C", str(self.tmp), "-c", "user.name=t", "-c", "user.email=t@t"]
+        for keep in (False, True):
+            explicit = {key: old for key, (_new, old) in PATH_KEYS.items()}
+            self.write(dict(MIN, keepLegacyPaths=True, **explicit) if keep else dict(MIN, **explicit))
+            shutil.rmtree(self.tmp / "docs", ignore_errors=True)
+            for _new, old in PATH_KEYS.values():
+                self.touch(old)
+            subprocess.run(git + ["add", "-A"], check=True)
+            subprocess.run(git + ["commit", "-qm", "tip"], check=True)
+            shutil.rmtree(self.tmp / "docs")
+            for new, _old in PATH_KEYS.values():
+                self.touch(new)
+            subprocess.run(git + ["add", "-A"], check=True)
+            subprocess.run(git + ["commit", "-qm", "moved"], check=True)
+            for key, (new, old) in PATH_KEYS.items():
+                self.assertEqual(self.get(key, "--rev", "HEAD~1", "--paths-at", "HEAD"), old if keep else new, key)
+                self.assertEqual(self.get(key, "--rev", "HEAD~1", "--paths-at", "HEAD~1"), old, key)
+                self.assertEqual(self.get(key, "--rev", "HEAD~1"), old, key)
+
     def test_paths_at_with_a_missing_commit_fails_closed(self):
         self.write(MIN)
         git = ["git", "-C", str(self.tmp), "-c", "user.name=t", "-c", "user.email=t@t"]

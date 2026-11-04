@@ -72,6 +72,7 @@ con la recogida H15 (`gw-harvest`), cuyas 13 propuestas aprobadas están dentro.
   español.
 - **Compatibilidad en la `0.x`:** los nombres viejos se aceptan con un aviso en stderr y dejan de valer en la `1.0`.
 - **`apply.py` (`/gw-update`):** migra un proyecto instalado sin duplicados; `--keep-paths` conserva las rutas viejas.
+  La primera subida a `main` tras migrar lee la marca de revisión en su ruta nueva aunque `main` aún nombre la vieja.
 - **`schemaVersion` (A9):** `.claude/gw.json` lleva la versión del formato; `config.py` migra uno antiguo en memoria
   y falla cerrado ante uno más nuevo.
 
@@ -160,6 +161,7 @@ H15 harvest (`gw-harvest`), whose 13 approved proposals are included.
   new Spanish names.
 - **`0.x` compatibility:** old names are accepted with a stderr warning and stop working in `1.0`.
 - **`apply.py` (`/gw-update`):** migrates an installed project without duplicates; `--keep-paths` keeps the old paths.
+  The first push to `main` after migrating reads the review mark at its new path even if `main` still names the old one.
 - **`schemaVersion` (A9):** `.claude/gw.json` carries the format version; `config.py` migrates an older one in memory
   and fails closed on a newer one.
 

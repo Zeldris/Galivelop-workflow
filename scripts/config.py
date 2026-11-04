@@ -295,12 +295,21 @@ LEGACY_PATHS = {
 }
 
 
-def with_defaults(config, schema, exists=None):
+def with_defaults(config, schema, exists=None, follow_moves=False):
     """`config` plus the schema defaults. `exists(path)` says whether a repo-relative path exists (None: no fallback
-    to the old Spanish names). The keys filled from an old path are listed in filled["_legacy"] ({key: old path})."""
+    to the old Spanish names). The keys filled from an old path are listed in filled["_legacy"] ({key: old path}).
+    `follow_moves` (a policy config read for another commit, load's paths_at): a key set explicitly to its old Spanish
+    path that this commit no longer has, while it has the English default, gets the default. That is the push that
+    applies the A8 move (apply.py moves the file and drops the key), judged by a protected branch that still names the
+    old path; keepLegacyPaths turns it off."""
     filled = dict(config)
     legacy = {}
     for key, prop in schema.get("properties", {}).items():
+        old = LEGACY_PATHS.get(key)
+        if (follow_moves and old and exists is not None and filled.get(key) == old and "default" in prop
+                and not filled.get("keepLegacyPaths") and not exists(old) and exists(prop["default"])):
+            filled[key] = prop["default"]
+            continue
         if key not in filled and "default" in prop:
             value = prop["default"]
             old = LEGACY_PATHS.get(key)
@@ -422,7 +431,8 @@ def load(root=None, rev=None, paths_at=None):
     before load() migrated it in memory to SCHEMA_VERSION; an absent one is 0, a newer one fails closed). With `rev`,
     the config as that commit has it instead of the working tree's. `paths_at` (a commit) is where the old-Spanish-path fallback looks for files: a
     policy config read from the protected branch's tip still resolves the paths of the commit being pushed or
-    merged, so every reader gets the same path for the same commit. Raises ConfigError."""
+    merged, so every reader gets the same path for the same commit; an old path the tip names explicitly follows
+    that commit's move to the English default (with_defaults, follow_moves). Raises ConfigError."""
     root = find_root(root)
     path = root / CONFIG_REL
     if rev:
@@ -455,7 +465,7 @@ def load(root=None, rev=None, paths_at=None):
         if not ok:  # fail closed: a missing commit would make every old path look absent
             raise ConfigError(f"--paths-at {paths_at} is not a commit in {root}; pass an existing one: "
                               f"git rev-parse --verify {paths_at}")
-    config = with_defaults(config, schema, path_exists_fn(root, paths_at or rev))
+    config = with_defaults(config, schema, path_exists_fn(root, paths_at or rev), follow_moves=bool(paths_at))
     config["_root"] = root
     config["_schemaFrom"] = schema_from  # the schemaVersion on disk (or at `rev`) before the in-memory migration
     return config

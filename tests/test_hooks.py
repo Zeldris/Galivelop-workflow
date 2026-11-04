@@ -201,6 +201,55 @@ class ProtectedBranchMark(Base):
         self.assertNotEqual(code, 0, out)
         self.assertIn("no review mark (docs/revisado.txt)", out)
 
+    def legacy_tip(self):
+        """A protected tip whose config names the old Spanish mark path explicitly, as a 0.4 project's does."""
+        p = self.p
+        p.git("checkout", "-q", "-B", "tip", p.base)
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["reviewMark"] = "docs/registros/revisado.txt"
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.write("docs/registros/revisado.txt", p.base + "\n"); p.commit("0.4 layout")
+        p.git("push", "-q", "--no-verify", "-f", "origin", "HEAD:refs/heads/tip")  # the bare repo must have it
+        return p.sha(), cfg
+
+    def test_the_a8_move_of_the_mark_is_followed_from_an_old_explicit_path(self):
+        # apply.py moves docs/registros/revisado.txt to docs/records/reviewed.txt and drops the key; the protected
+        # branch still names the old path, so the push that brings the move reads the mark where the move put it.
+        p = self.p
+        tip, cfg = self.legacy_tip()
+        del cfg["reviewMark"]
+        p.write(".claude/gw.json", json.dumps(cfg))
+        (p.work / "docs" / "registros" / "revisado.txt").unlink()
+        p.write("src/code.py", "x = 1\n"); p.commit("move and code"); code_sha = p.sha()
+        p.write("docs/records/reviewed.txt", code_sha + "\n"); p.commit("mark")
+        code, out = self.push_main(p.sha(), remote_main=tip)
+        self.assertEqual(code, 0, out)
+        p.write("src/code.py", "x = 2\n"); p.commit("code after the mark")
+        code, out = self.push_main(p.sha(), remote_main=tip)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("code changed after the review mark", out)
+
+    def test_an_old_explicit_path_still_present_is_not_followed(self):
+        # the move happened only when the old file is gone: a commit that keeps it and writes the new one is judged
+        # by the old one, and keepLegacyPaths keeps the old path even when it is gone
+        p = self.p
+        tip, cfg = self.legacy_tip()
+        p.write("src/code.py", "x = 1\n"); p.commit("code"); code_sha = p.sha()
+        p.write("docs/records/reviewed.txt", code_sha + "\n"); p.commit("mark in the new place only")
+        code, out = self.push_main(p.sha(), remote_main=tip)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn(f"code changed after the review mark ({p.base[:7]})", out)  # the old file's mark
+        cfg["keepLegacyPaths"] = True
+        p.write(".claude/gw.json", json.dumps(cfg)); p.commit("keep old paths")
+        p.git("push", "-q", "--no-verify", "-f", "origin", "HEAD:refs/heads/tip")
+        tip = p.sha()
+        (p.work / "docs" / "registros" / "revisado.txt").unlink()
+        p.write("docs/records/reviewed.txt", tip + "\n"); p.write("src/code.py", "x = 3\n"); p.commit("gone")
+        p.write("docs/records/reviewed.txt", p.sha() + "\n"); p.commit("mark")
+        code, out = self.push_main(p.sha(), remote_main=tip)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("no review mark (docs/registros/revisado.txt)", out)
+
     def test_a_reviewed_config_change_is_accepted(self):
         p = self.p
         relaxed = self.relax(p.base, content=[".*"])
