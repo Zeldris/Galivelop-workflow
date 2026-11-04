@@ -198,21 +198,15 @@ def scan_tree(root, scanner):
 
 
 def amend_advice(root, cfg, args, shas, bad):
-    """The lines that say the offending commits are NOT pushed yet and how to fix only them (D47): `git commit
-    --amend` when only the checked-out last commit is at fault, else `git rebase -i <base>` where base is the commit
-    the remote already has (--base, the range start, or the merge-base with the remote's protected branch)."""
+    """The lines that say the offending commits are NOT pushed yet and how to fix only them (D47). Only for the
+    pre-push (--commits with --remote); a manual --range cannot tell what is published. `git commit --amend` when only
+    the checked-out last commit is at fault; else `git rebase -i <parent of the first offending commit>` (a commit the
+    remote has, or the first one of the push), with --rebase-merges when the push has merges, so a merge of main
+    after the fault is kept and main's commits are not copied."""
+    if args.range or args.remote is None:
+        return []
     tip = shas[-1]
-    base = args.base or (args.range.split("..", 1)[0] if args.range else None)
-    if not base and args.remote:
-        protected = cfg.get("protectedBranch") or "main"
-        try:
-            base = git(root, "merge-base", tip, f"{args.remote}/{protected}").strip()
-        except CheckError:
-            base = None
-    try:
-        head = git(root, "rev-parse", "HEAD").strip()
-    except CheckError:
-        head = None
+    head = git(root, "rev-parse", "HEAD").strip()
     where = f" ({args.ref})" if args.ref else ""
     listed = ", ".join(s[:7] for s in bad)
     out = [f"{PROG}: the commit(s) with the finding ({listed}) are NOT pushed yet, so they can be fixed safely; "
@@ -220,18 +214,25 @@ def amend_advice(root, cfg, args, shas, bad):
     if bad == [tip] and tip == head:
         out.append(f"{PROG}: it is only the last commit; fix the files and run: git add -A && git commit --amend")
         return out
+    merges = any(len(git(root, "rev-list", "--parents", "-n", "1", sha).split()) > 2 for sha in shas)
+    opts = " --rebase-merges" if merges else ""
     branch = f" {args.ref}" if args.ref and tip != head else ""
-    if base:
-        out.append(f"{PROG}: rewrite only the unpushed commits (those after {base[:12]}): "
-                   f"git rebase -i {base[:12]}{branch}  (mark {listed} as `edit`, fix each, amend it, "
-                   f"git rebase --continue)")
+
+    def parent(sha):
+        parents = git(root, "rev-list", "--parents", "-n", "1", sha).split()[1:]
+        return git(root, "rev-parse", parents[0]).strip() if parents else None
+
+    first_parent = parent(shas[0])
+    remote_has = bool(args.base) or (first_parent is not None and git(root, "branch", "-r", "--contains", first_parent).strip())
+    if remote_has:
+        base = parent(bad[0])
+        cmd = f"git rebase -i{opts} {base[:12]}{branch}" if base else f"git rebase -i{opts} --root{branch}"
+        out.append(f"{PROG}: rewrite only the unpushed commits, from the one before the first with the finding: "
+                   f"{cmd}  (mark {listed} as `edit`, fix each, amend it, git rebase --continue)")
     else:
-        first = shas[0]
-        has_parent = bool(git(root, "rev-list", "--parents", "-n", "1", first).split()[1:])
-        alt = f"git rebase -i {first[:12]}^{branch}" if has_parent else f"git rebase -i --root{branch}"
-        out.append(f"{PROG}: no remote base found for{where or ' this push'} (nothing of it is on the remote, or "
-                   f"{args.remote or 'the remote'}/{cfg.get('protectedBranch') or 'main'} is not fetched); fix every "
-                   f"commit of the push with: {alt}  (mark {listed} as `edit`)")
+        cmd = f"git rebase -i{opts} {first_parent[:12]}{branch}" if first_parent else f"git rebase -i{opts} --root{branch}"
+        out.append(f"{PROG}: no remote base found for{where or ' this push'} (nothing of it is on the remote); fix "
+                   f"the commits of the push with: {cmd}  (mark {listed} as `edit`)")
     return out
 
 

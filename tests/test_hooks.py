@@ -1055,6 +1055,16 @@ class PrePushPrivate(Base):
         self.assertIn("git commit --amend", out)
         self.assertIn("fix only them with the command above", out)
 
+    def test_a_check_that_cannot_run_does_not_promise_a_command(self):
+        p = self.p
+        p.write(".claude/gw.local.json", "{not json")
+        p.write("docs/a.md", "fine\n")
+        p.commit("notes")
+        code, out = p.push("origin", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("private-check could not run (above)", out)
+        self.assertNotIn("fix only them with the command above", out)
+
     def test_two_branches_at_once_name_the_one_with_the_private_data(self):
         p = self.p
         p.write(".claude/gw.local.json", json.dumps({"privateNames": ["Secret Client"]}))
@@ -1067,8 +1077,12 @@ class PrePushPrivate(Base):
         p.commit("more")
         code, out = p.push("origin", "feature", "leaky")
         self.assertNotEqual(code, 0, out)
-        self.assertIn("git rebase -i", out)
+        self.assertIn("refs/heads/leaky", out)
         self.assertIn("are NOT pushed yet", out)
+        self.assertIn(f"git rebase -i {p.sha('leaky~2')[:12]}", out)
+        self.assertNotIn("git commit --amend", out)
+        self.assertIn("git rebase -i", out)
+        self.assertIn("fix only them with the command above", out)
 
     def test_without_the_local_file_names_are_skipped_with_a_notice(self):
         p = self.p
