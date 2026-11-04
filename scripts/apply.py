@@ -97,6 +97,7 @@ In the workflow repo itself the copy is generated from scripts/ and skills/, so 
 Exit 2 on a missing or invalid config or settings file. Python 3.8+ standard library only.
 """
 import argparse
+import copy
 import difflib
 import json
 import os
@@ -159,6 +160,9 @@ OLD_HOOK_FLAGS = {"--estado": "--state", "--buscar": "--search", "--sesion": "--
 NOTE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 HEADER = re.compile(r"galivelop-workflow v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)")
 SKILL_LICENSE = "LICENSE-mattpocock-skills"  # at the workflow's root; copied next to the skills that cite it
+# Top-level settings.json keys that merge_settings adds when missing (and whose missing subkeys it fills in); any other
+# template key is ignored. worktree.baseRef: docs/research/ref-aider-graphify-worktrees.md, checked 2026-11.
+MERGED_SETTINGS_KEYS = ("worktree",)
 SENSITIVE = (".claude/settings.json", ".claude/gw/scripts/", ".githooks/")
 
 
@@ -395,7 +399,8 @@ def dump(data):
 
 
 def merge_settings(current, template):
-    """Add the template's missing env keys and hook commands to a copy of current. Returns (merged, [what added])."""
+    """Add the template's missing env keys, hook commands and the keys of MERGED_SETTINGS_KEYS (only those: other
+    top-level template keys are not merged) to a copy of current; project values are kept. Returns (merged, [what added])."""
     merged = json.loads(json.dumps(current))
     added = []
     tenv = template.get("env") or {}
@@ -408,16 +413,20 @@ def merge_settings(current, template):
             if key not in env:
                 env[key] = value
                 added.append(f"env {key}")
-    for key, value in template.items():  # other settings (worktree.baseRef): only what the project has not set
-        if key in ("env", "hooks"):
+    for key in MERGED_SETTINGS_KEYS:
+        value = template.get(key)
+        if value is None:
             continue
         if key not in merged:
-            merged[key] = value
+            merged[key] = copy.deepcopy(value)
             added.append(key)
-        elif isinstance(value, dict) and isinstance(merged[key], dict):
+        elif not isinstance(merged[key], dict):
+            raise ApplyError(f"apply: .claude/settings.json: '{key}' is not an object; fix it and rerun: "
+                             "python3 -m json.tool .claude/settings.json")
+        else:
             for sub, subvalue in value.items():
                 if sub not in merged[key]:
-                    merged[key][sub] = subvalue
+                    merged[key][sub] = copy.deepcopy(subvalue)
                     added.append(f"{key}.{sub}")
     thooks = template.get("hooks") or {}
     if thooks:

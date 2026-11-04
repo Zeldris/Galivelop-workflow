@@ -340,15 +340,35 @@ class Apply(unittest.TestCase):
         self.applied()  # install
         s = json.loads(p.read(".claude/settings.json"))
         self.assertEqual(s["worktree"], {"baseRef": "head"})
+        self.assertIn("nothing to do", self.applied())  # second pass: idempotent
         del s["worktree"]  # update on a project without the key
         p.write(".claude/settings.json", json.dumps(s))
         out = self.applied()
+        self.assertIn("merge   .claude/settings.json", out)
         self.assertIn("worktree", out)
         self.assertEqual(json.loads(p.read(".claude/settings.json"))["worktree"], {"baseRef": "head"})
         s["worktree"] = {"baseRef": "fresh", "mine": 1}  # update keeps the project's own value
         p.write(".claude/settings.json", json.dumps(s))
-        self.applied()
+        self.assertIn("nothing to do", self.applied())
         self.assertEqual(json.loads(p.read(".claude/settings.json"))["worktree"], {"baseRef": "fresh", "mine": 1})
+        s["worktree"] = {"mine": 1}  # object without baseRef: the missing subkey is added
+        p.write(".claude/settings.json", json.dumps(s))
+        out = self.applied()
+        self.assertIn("worktree.baseRef", out)
+        self.assertEqual(json.loads(p.read(".claude/settings.json"))["worktree"], {"mine": 1, "baseRef": "head"})
+        self.assertIn("nothing to do", self.applied())
+
+    def test_settings_worktree_not_an_object_is_refused_with_the_fix(self):
+        p = self.p
+        self.applied()
+        s = json.loads(p.read(".claude/settings.json"))
+        s["worktree"] = "head"
+        p.write(".claude/settings.json", json.dumps(s))
+        before = p.read(".claude/settings.json")
+        code, out = p.run_apply()
+        self.assertEqual(code, 2, out)
+        self.assertIn("'worktree' is not an object; fix it and rerun: python3 -m json.tool .claude/settings.json", out)
+        self.assertEqual(p.read(".claude/settings.json"), before)
 
     def test_optional_skills_only_with_with(self):
         p = self.p
