@@ -54,9 +54,45 @@ class Version(unittest.TestCase):
         self.assertEqual(run(tmp).returncode, 0, "without --release only the markers are checked")
         self.assertEqual(run(tmp, "9.8.7").returncode, 0)
         self.harvest()
+        self.fill_entry("9.8.7")
         self.commit_all("bump")
         r = run(tmp, "--release")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def fill_entry(self, version, date="2026-10-25"):
+        log = self.tmp / "CHANGELOG.md"
+        log.write_text(log.read_text().replace(f"## [{version}] - Unreleased", f"## [{version}] - {date}", 1)
+                       .replace("- (por completar)", "- Hecho.", 1).replace("- (to be filled in)", "- Done.", 1))
+
+    def test_a_new_version_needs_a_dated_and_filled_in_changelog_entry(self):
+        tmp = self.tmp
+        self.git("init", "-q")
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.harvest()
+        self.commit_all("bump, entry left as the bump wrote it")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("undated release: the CHANGELOG heading of 9.8.7 is '## [9.8.7] - Unreleased'", r.stdout)
+        self.assertIn("unfinished CHANGELOG entry for 9.8.7", r.stdout)
+        self.assertNotIn("no harvest", r.stdout)
+        log = tmp / "CHANGELOG.md"
+        log.write_text(log.read_text().replace("## [9.8.7] - Unreleased", "## [9.8.7] - 2026-10-25", 1))
+        self.commit_all("dated, placeholder still there")
+        r = run(tmp, "--release")
+        self.assertNotIn("undated release", r.stdout)
+        self.assertIn("unfinished CHANGELOG entry for 9.8.7", r.stdout, "the placeholder alone also blocks")
+        self.fill_entry("9.8.7")
+        self.commit_all("filled in")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        log.write_text(log.read_text().replace("## [9.8.7] - 2026-10-25", "## [9.8.7] - 2026-10-25 (beta)", 1))
+        self.commit_all("anything after the date")
+        self.assertIn("undated release", run(tmp, "--release").stdout)
+        log.write_text(log.read_text().replace("## [9.8.7] - 2026-10-25 (beta)\n", "", 1))
+        self.commit_all("entry heading removed")
+        self.assertIn("no CHANGELOG entry for 9.8.7", run(tmp, "--release").stdout)
 
     def harvest(self, first_line="# Harvest portal — 2026-10-23"):
         (self.tmp / "docs" / "propuestas").mkdir(parents=True, exist_ok=True)
@@ -84,6 +120,7 @@ class Version(unittest.TestCase):
         r = run(tmp, "--release")
         self.assertIn("no harvest for 9.8.7", r.stdout, "editing an earlier harvest is not a new one")
         (tmp / "docs" / "propuestas" / "2026-10-25-wmf.md").write_text("# Harvest wmf — 2026-10-25\n")
+        self.fill_entry("9.8.7")
         self.commit_all("harvest")
         r = run(tmp, "--release")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)

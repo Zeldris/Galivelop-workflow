@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.4.0
+# galivelop-workflow v0.4.3
 """Get back what a compaction or a /clear dropped, without reading the whole session transcript.
 
   recuperar.py --estado         what the SessionStart hook (clear|compact) puts back into the context: the log's
@@ -279,7 +279,7 @@ def state(root, transcript, out, logs):
     for line in commits:
         say(f"  {line}")
     path, own = registro_sesion.find(root, transcript, warn=False)
-    if path and not own:
+    if path and not own and not registro_sesion.cloud_start(os.path.basename(os.path.dirname(path))):
         say(f"- Warning: this transcript is in {os.path.basename(os.path.dirname(path))}, not the repo's folder: "
             f"the session was opened outside the repo; restart it from the repo: cd {root} && claude")
     if path and not transcript:

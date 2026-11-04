@@ -1,5 +1,6 @@
 """scripts/config.py: validation, defaults, CLI and failing closed."""
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -211,6 +212,117 @@ class Config(unittest.TestCase):
             self.assertEqual(cli(plain, "validate").returncode, 2)
         finally:
             shutil.rmtree(plain)
+
+
+class LinkedWorktree(unittest.TestCase):
+    """Inside a `git worktree add` checkout the scripts must find that worktree, not the main checkout (WMF P1).
+    Git exports GIT_DIR (the worktree's git dir, no GIT_WORK_TREE) to hooks; with it set, `rev-parse --show-toplevel`
+    answers the folder it is given, so the script's own repo looked like it had no .claude/gw.json."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp()).resolve()
+        self.main = self.tmp / "main"
+        self.wt = self.tmp / "wt"
+
+        def git(*a, cwd=self.main):
+            subprocess.run(["git", *a], cwd=str(cwd), check=True, capture_output=True)
+
+        self.main.mkdir()
+        git("init", "-q", "-b", "main")
+        git("config", "user.email", "t@t")
+        git("config", "user.name", "t")
+        scripts = self.main / ".claude" / "gw" / "scripts"
+        scripts.mkdir(parents=True)
+        for name in ("config.py", "rojo-sin-arreglo.sh"):
+            shutil.copy(ROOT / "scripts" / name, scripts / name)
+        shutil.copytree(ROOT / "schema", self.main / ".claude" / "gw" / "schema")
+        (self.main / ".claude" / "gw.json").write_text(json.dumps(dict(VALID, log="main-log.md")))
+        git("add", "-A")
+        git("commit", "-q", "-m", "init")
+        git("worktree", "add", "-q", "-b", "side", str(self.wt))
+        (self.wt / ".claude" / "gw.json").write_text(json.dumps(dict(VALID, log="wt-log.md")))
+        (self.wt / "fix.txt").write_text("bad\n")
+        git("add", "-A", cwd=self.wt)
+        git("commit", "-q", "-m", "side config", cwd=self.wt)
+        self.gitdir = subprocess.run(["git", "rev-parse", "--absolute-git-dir"], cwd=str(self.wt), check=True,
+                                     capture_output=True, text=True).stdout.strip()
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def run_in_wt(self, *cmd, env=None):
+        full = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        full.update({"CLAUDE_PROJECT_DIR": str(self.main), "GIT_DIR": self.gitdir})
+        full.update(env or {})
+        return subprocess.run(cmd, cwd=str(self.wt), capture_output=True, text=True, env=full)
+
+    def test_config_py_resolves_the_worktree_with_git_dir_exported_by_a_hook(self):
+        script = str(self.wt / ".claude" / "gw" / "scripts" / "config.py")
+        r = self.run_in_wt("python3", script, "root")
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, str(self.wt)), r.stderr)
+        r = self.run_in_wt("python3", script, "get", "log")
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "wt-log.md"), r.stderr)
+
+    def plugin_config(self):
+        """A copy like the plugin's scripts/ (no .claude/gw.json beside it): its root comes from the cwd and
+        $CLAUDE_PROJECT_DIR, not from its own folder."""
+        plugin = self.tmp / "plugin" / "scripts"
+        plugin.mkdir(parents=True)
+        shutil.copy(SCRIPT, plugin / "config.py")
+        shutil.copytree(ROOT / "schema", plugin.parent / "schema")
+        return str(plugin / "config.py")
+
+    def run_at(self, cwd, *cmd, project=None):
+        full = {k: v for k, v in os.environ.items() if not k.startswith("GIT_") and k != "CLAUDE_PROJECT_DIR"}
+        full["GIT_CEILING_DIRECTORIES"] = str(self.tmp)
+        if project:
+            full["CLAUDE_PROJECT_DIR"] = str(project)
+        return subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, env=full)
+
+    def test_plugin_config_in_a_linked_worktree_prefers_it_over_claude_project_dir(self):
+        # $CLAUDE_PROJECT_DIR names the main checkout (where Claude Code was opened); the worktree is the same repo.
+        r = self.run_in_wt("python3", self.plugin_config(), "root")
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, str(self.wt)), r.stderr)
+
+    def test_plugin_config_from_a_sibling_repo_keeps_claude_project_dir(self):
+        # A hook whose cwd is another repo (a sibling, a clone being read) must not take that repo's config.
+        sibling = self.tmp / "sibling"
+        sibling.mkdir()
+        subprocess.run(["git", "init", "-q"], cwd=str(sibling), check=True)
+        r = self.run_at(sibling, "python3", self.plugin_config(), "root", project=self.main)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, str(self.main)), r.stderr)
+
+    def test_plugin_config_outside_any_repo_uses_claude_project_dir_or_fails_closed(self):
+        outside = self.tmp / "outside"
+        outside.mkdir()
+        script = self.plugin_config()
+        r = self.run_at(outside, "python3", script, "root", project=self.main)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, str(self.main)), r.stderr)
+        r = self.run_at(outside, "python3", script, "root")
+        self.assertEqual(r.returncode, 2, r.stdout)
+        self.assertIn("not inside a git repository", r.stderr)
+
+    def test_every_shell_script_root_line_finds_the_worktree_with_git_dir_exported(self):
+        # The `root=` line of each script that finds its root from its own folder, run as is inside the worktree.
+        here = self.wt / ".claude" / "gw" / "scripts"
+        names = ("es-codigo.sh", "fusionar.sh", "prepush-ramas.sh", "revisado.sh", "tests-relacionados.sh",
+                 "rojo-sin-arreglo.sh")
+        for name in names:
+            with self.subTest(script=name):
+                lines = [ln for ln in (ROOT / "scripts" / name).read_text().splitlines() if ln.startswith('root="$(')]
+                self.assertEqual(len(lines), 1, lines)
+                line = lines[0].split(" || ")[0]
+                r = self.run_in_wt("bash", "-c", f'here="{here}"; {line} && printf "%s" "$root"')
+                self.assertEqual((r.returncode, r.stdout), (0, str(self.wt)), r.stderr)
+
+    def test_shell_script_finds_the_worktree_root_with_git_dir_exported(self):
+        # rojo-sin-arreglo.sh stashes the fix file at the root it found: a wrong root says "no uncommitted changes".
+        (self.wt / "fix.txt").write_text("good\n")
+        script = str(self.wt / ".claude" / "gw" / "scripts" / "rojo-sin-arreglo.sh")
+        r = self.run_in_wt("bash", script, "grep -q good fix.txt", "fix.txt")
+        self.assertNotIn("has no uncommitted changes", r.stderr)
+        self.assertEqual(r.returncode, 0, r.stderr + r.stdout)
+        self.assertIn("without the fix: exit 1; with the fix: exit 0", r.stdout)
 
 
 class NonCapturing(unittest.TestCase):

@@ -300,6 +300,16 @@ class Aplicar(unittest.TestCase):
         self.assertEqual(code, 2, out)
         self.assertIn("unknown skill", out)
 
+    def test_installed_scout_updates_tests_pass_in_the_project(self):
+        """The skill's own tests find config.py in .claude/gw (installed layout), not three folders up (INS P1)."""
+        p = self.p
+        self.applied("--with", "scout-updates")
+        scripts = p.work / ".claude" / "skills" / "scout-updates" / "scripts"
+        code, out = p.run("python3", "-B", "-m", "unittest", "discover", "-s", str(scripts), "-p", "test_compare.py")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("config.py", out)
+        self.assertIn("OK", out)
+
     def test_no_config_fails_closed(self):
         p = self.p
         (p.work / ".claude" / "gw.json").unlink()
@@ -458,7 +468,9 @@ class NotasPersonales(unittest.TestCase):
             self.assertRegex(out, rf"WARNING: personal note {re.escape(name)} has the name of a workflow file")
         self.assertIn("rename", out)
         for name in ("OPT-TOKENS.md", "opt-ai.md", "Scout-Updates.md", "SCHEMA", "gw.json"):
-            self.assertFalse(self.target(name).exists(), name)
+            # by exact name: on a case-insensitive disk (macOS) OPT-TOKENS.md "exists" as the workflow's opt-tokens.md
+            parent = self.target(name).parent
+            self.assertNotIn(name, os.listdir(parent) if parent.is_dir() else [], name)
         self.assertFalse(self.target("scripts").is_file())
         self.assertFalse((self.p.work / ".claude" / "gw" / "opt-ai.md").exists())
 

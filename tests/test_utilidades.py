@@ -85,6 +85,22 @@ class BitacoraRows(Base):
         self.p.write(LOG, log_text(a="x" * 600))
         self.assertEqual(self.p.script("bitacora.py", "check")[0], 0)
 
+    def test_check_fix_hint_never_suggests_amend(self):
+        # at commit time (commit-msg) the commit does not exist yet: --amend would rewrite the PREVIOUS commit
+        self.p.write(LOG, log_text(a="x" * 601))
+        code, out = self.p.script("bitacora.py", "check")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"bitacora: fix: edit {LOG}, stage it (git add {LOG}) and run the commit again: git commit", out)
+        self.assertNotIn("--amend", out)
+
+    def test_check_at_push_hints_a_new_commit_not_amend(self):
+        # at push time the commit exists (and may not be the tip): the fix is a new commit
+        self.p.write(LOG, log_text(a="x" * 601))
+        code, out = self.p.script("bitacora.py", "check", "--at", "push")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"bitacora: fix: edit {LOG} and make a new commit with the fix: git add {LOG} && git commit", out)
+        self.assertNotIn("--amend", out)
+
     def test_two_rows_for_one_branch_refused(self):
         self.p.write(LOG, log_text() + "\n| **Task in progress · `feat-a`** | again |\n")
         code, out = self.p.script("bitacora.py", "check")
@@ -427,6 +443,8 @@ class BitacoraTasks(Base):
         code, out = self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())
         self.assertEqual(code, 1, out)
         self.assertIn("INS-3", out)
+        self.assertIn(f"bitacora: fix: edit {LOG} and make a new commit with the fix: git add {LOG} && git commit", out)
+        self.assertNotIn("--amend", out)
         self.p.write(LOG, log_text().replace("1. nothing yet", "1. ~~INS-3~~ done"))
         self.p.commit("log", env=DAY)
         self.assertEqual(self.p.script("bitacora.py", "--plan", self.PLAN, "closed", base, self.p.sha())[0], 0)
@@ -574,6 +592,31 @@ class PrepushRamas(Base):
         self.assertEqual(code, 1, out)
         self.assertIn("700 characters", out)
 
+    def test_bad_log_in_a_new_commit_hints_a_new_commit_not_amend(self):
+        self.p.branch("feat-a")
+        sha = self.edit(a="x" * 700)
+        code, out, _, _ = self.run_hook(sha)
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"bitacora: fix: edit {LOG} and make a new commit with the fix: git add {LOG} && git commit", out)
+        self.assertNotIn("--amend", out)
+
+    def test_following_the_hint_lets_the_push_through(self):
+        # the bad log stays in an intermediate commit; the hint's new commit fixes the pushed state
+        self.p.branch("feat-a")
+        self.edit(a="x" * 700)
+        sha = self.edit(a="A fixed it")
+        code, out, _, _ = self.run_hook(sha)
+        self.assertEqual(code, 0, out)
+
+    def test_a_good_intermediate_log_does_not_hide_a_bad_tip(self):
+        self.p.branch("feat-a")
+        self.edit(a="A moved on")
+        sha = self.edit(a="x" * 700)
+        code, out, _, _ = self.run_hook(sha)
+        self.assertEqual(code, 1, out)
+        self.assertIn("700 characters", out)
+        self.assertIn(f"in commit {sha[:7]}", out)
+
     def test_commit_from_another_local_branch_may_use_its_row(self):
         self.p.branch("feat-b")
         self.edit(b="B moved on")
@@ -713,6 +756,75 @@ class Fusionar(Base):
         self.assertTrue(wt.exists())
         self.assertIn("worktree-agent-1", self.branches())
 
+    def related(self, command="bash related.sh {files}"):
+        """Commit a relatedTests config whose command logs its arguments and passes only for files holding `good`."""
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["relatedTests"] = {"fast": [command]}
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.write("related.sh", 'echo "$@" >> related.log\ngrep -q good "$@"\n')
+        self.p.commit("related tests", env=DAY)
+
+    def test_runs_the_related_tests_on_the_files_the_merge_brought(self):
+        self.related()
+        wt = self.agent(text="good\n")
+        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.p.work / "related.log").read_text(), "a.txt\n", "ran once, on the merged file only")
+        self.assertIn("related tests OK", out)
+        self.assertFalse(wt.exists(), out)
+        self.assertNotIn("worktree-agent-1", self.branches())
+
+    def test_failing_related_tests_say_so_how_to_rerun_and_keep_the_branch(self):
+        self.related()
+        before = self.p.sha()
+        wt = self.agent(text="bad\n")
+        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        self.assertEqual(code, 1, out)
+        self.assertIn("RELATED TESTS FAILED", out)
+        self.assertIn("tests-relacionados: failed (fast): bash related.sh a.txt", out)
+        self.assertIn('f=$(mktemp) && git diff --name-only --no-renames', out)
+        self.assertIn('tests-relacionados.sh "$f"', out)
+        self.assertNotIn("changed.txt", out, "the rerun command must not write into the project root")
+        self.assertIn("git reset --hard HEAD^1", out)
+        self.assertNotIn("CHECK FAILED", out, "the check itself passed")
+        self.assertEqual(self.p.git("rev-parse", "HEAD^1").stdout.strip(), before, "the merge is done")
+        self.assertEqual((self.p.work / "related.log").read_text(), "a.txt\n")
+        self.assertTrue(wt.exists())
+        self.assertIn("worktree-agent-1", self.branches())
+
+    def test_related_tests_are_skipped_when_the_script_is_not_installed_and_nothing_is_configured(self):
+        (self.p.scripts / "tests-relacionados.sh").unlink()
+        for i, empty in enumerate((None, {}, {"fast": [], "slow": []})):
+            with self.subTest(relatedTests=empty):
+                if empty is not None:
+                    cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+                    cfg["relatedTests"] = empty
+                    self.p.write(".claude/gw.json", json.dumps(cfg))
+                    self.p.commit("empty related tests", env=DAY)
+                wt = self.agent(name=f"worktree-agent-{i}", path=f"a{i}.txt", text="bad\n")
+                code, out = self.p.script("fusionar.sh", f"worktree-agent-{i}", "Merge agent", "--reviewed")
+                self.assertEqual(code, 0, out)
+                self.assertNotIn("related tests", out)
+                self.assertNotIn("RELATED TESTS", out)
+                self.assertFalse(wt.exists(), out)
+
+    def test_configured_related_tests_with_the_script_missing_fail_closed_and_keep_the_branch(self):
+        self.related()
+        (self.p.scripts / "tests-relacionados.sh").unlink()
+        before = self.p.sha()
+        wt = self.agent(text="good\n")
+        code, out = self.p.script("fusionar.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        self.assertEqual(code, 1, out)
+        self.assertIn("RELATED TESTS CANNOT RUN: relatedTests is configured but", out)
+        self.assertIn("tests-relacionados.sh is not installed", out)
+        self.assertIn("/gw-update", out)
+        self.assertIn("git reset --hard HEAD^1", out)
+        self.assertNotIn("CHECK FAILED", out, "the check itself passed")
+        self.assertEqual(self.p.git("rev-parse", "HEAD^1").stdout.strip(), before, "the merge is done")
+        self.assertFalse((self.p.work / "related.log").exists())
+        self.assertTrue(wt.exists())
+        self.assertIn("worktree-agent-1", self.branches())
+
     def test_session_branches_are_merged_but_not_deleted(self):
         self.p.git("checkout", "-q", "-b", "claude/topic")
         self.p.write("t.txt", "t\n")
@@ -801,6 +913,51 @@ class RojoSinArreglo(Base):
         self.assertEqual(code, 2, out)
         self.assertIn("--ran-one needs a regex", out)
 
+
+    def test_test_in_the_same_file_as_the_fix_is_refused(self):
+        """INS P2: stashing the fix would take an uncommitted test with it, and the check would lie about the cause."""
+        self.p.write("m.py", "def f(x):\n    return x\n\n\ndef test_f():\n    assert f(1) == 1\n")
+        self.p.commit("old test", env=DAY)
+        self.p.write("m.py", "def f(x):\n    return x + 1\n\n\ndef test_f():\n    assert f(1) == 2\n")
+        cmd = "python3 -c 'import m; m.test_f()'"
+        code, out = self.p.script("rojo-sin-arreglo.sh", cmd, "m.py")
+        self.assertEqual(code, 2, out)
+        self.assertIn("m.py has uncommitted changes that touch test code", out)
+        self.assertIn("def test_f", out)  # the line that gave it away
+        self.assertIn("Put the test in its own file or commit it first", out)
+        self.assertNotIn("also passes WITHOUT the fix", out)
+        self.assertNotIn("OK, the test fails", out)
+        self.assertEqual(self.stashes(), "")  # refused before stashing anything
+        self.assertIn("return x + 1", (self.p.work / "m.py").read_text())
+
+    def test_edit_deep_inside_an_indented_test_method_is_refused(self):
+        """The changed line is far from `def test_`, inside a class: the hunk header names only the class."""
+        body = "".join(f"        x{i} = {i}\n" for i in range(8))
+        self.p.write("t.py", "from base import Base\n\n\nclass T(Base):\n    def test_f(self):\n" + body
+                     + "        self.assertEqual(1, 1)\n")
+        self.p.commit("old test", env=DAY)
+        self.p.write("t.py", (self.p.work / "t.py").read_text().replace("assertEqual(1, 1)", "assertEqual(2, 2)"))
+        code, out = self.p.script("rojo-sin-arreglo.sh", "true", "t.py")
+        self.assertEqual(code, 2, out)
+        self.assertIn("t.py has uncommitted changes that touch test code", out)
+        self.assertEqual(self.stashes(), "")
+
+    def test_new_fix_file_with_a_test_is_refused_too(self):
+        self.p.write("added.js", "it('works', () => {})\n")
+        code, out = self.p.script("rojo-sin-arreglo.sh", "true", "added.js")
+        self.assertEqual(code, 2, out)
+        self.assertIn("added.js has uncommitted changes that touch test code", out)
+        self.assertEqual(self.stashes(), "")
+
+    def test_test_committed_apart_from_the_fix_is_accepted(self):
+        """The same file holds an old committed test, but the uncommitted change only touches the code: no refusal."""
+        self.p.write("m.py", "def f(x):\n    return x\n\n\ndef test_f():\n    assert f(1) == 2\n")
+        self.p.commit("test first", env=DAY)
+        self.p.write("m.py", "def f(x):\n    return x + 1\n\n\ndef test_f():\n    assert f(1) == 2\n")
+        code, out = self.p.script("rojo-sin-arreglo.sh", "python3 -c 'import m; m.test_f()'", "m.py")
+        self.assertEqual(code, 0, out)
+        self.assertIn("OK", out)
+        self.assertIn("return x + 1", (self.p.work / "m.py").read_text())
 
     def test_an_invalid_regex_fails_closed_before_touching_the_fix(self):
         cmd = "echo 'ok 1'; grep -q good fix.txt"

@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | `ccr-6dfbc880-ddr41g`; `main` = `d7dd18f` = **`0.4.0`** (2026-10-26; la release `v0.4.0` de GitHub la hace el usuario desde Claude cloud). `claude/galivelop-workflow-inicio` está **obsoleta** (se quedó en `0f36412`): no se trabaja en ella |
-| Check | `bash tests/comprobar.sh` en verde; la `0.4.0` **comprobada solo en local** (`pre-push` sobre `d7dd18f`, confirmado por el usuario): el CI espera a que se renueve el cupo de Actions |
-| Fase en curso | **6 cerrada**; `0.4.0` publicada en `main` (2026-10-26: P7 del instalador, recogida de la `0.4.0`, `gw-media-content`, notas personales y retro antes de `main`). Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | `d7dd18f` (2026-10-26): `0.4.0` en `main` tras las tres fases (revisión, retro P1-P7 aplicada, revisión de la fase 2 con sus arreglos); el detalle, en el CHANGELOG, «Hecho» y `git log` |
-| Siguiente paso | Abrir la `0.5.0` con su recogida (`gw-harvest` sobre los proyectos que usan el flujo) y empezar la **Fase 7. Rodaje etapa 1** (plan §9), salvo que el usuario pida otra cosa. Al abrir la sesión, mirar si el CI ya tiene cupo y pasarlo sobre `d7dd18f`. Aplazada a la Fase 7: P3 de Labs (`to-spec`, `wayfinder`) |
+| Rama | Correcciones `0.4.x`: `ccr-6dfbc880-ddr41g`. **Evolutivos y novedades: `version/1.0.0`** (usuario, 2026-10-26; creada desde `ccr-6dfbc880-ddr41g`; los parches `0.4.x` se fusionan también en ella; sus evolutivos, en `docs/registros/pendiente-1.0.0.md` de esa rama). `main` = `56212e8` = **`0.4.1`** (2026-10-26); la `0.4.0` tiene etiqueta y release `v0.4.0` sobre `d7dd18f` (a mano por el usuario). `claude/galivelop-workflow-inicio` está **obsoleta** (se quedó en `0f36412`): no se trabaja en ella |
+| Check | `bash tests/comprobar.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público) y estaba en rojo en Ubuntu por dos cosas que en local no salen: dos tests de interrupción del `pre-push` con Python 3.12 (`4b7bf8a`) y SC2015 en `scripts/revisado.sh` con el `shellcheck` 0.9/0.10 de apt (aquí, 0.11). Las dos arregladas en la rama (Ubuntu en verde con `ddc0f2a`). En macOS fallaban además dos tests: `test_aplicar` (el disco no distingue mayúsculas) y un límite de 1 s en `test_revision_main` (en el runner de macOS juzgar 50 KB tarda ~1,4 s; aquí 0,4 s): ahora 5 s sobre un comando trivial. `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.4.4` |
+| Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
+| Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/registros/release-v0.4.2.md` |
+| Siguiente paso | Ver el CI de `4b7bf8a` en verde. El arreglo de los tests va a `main` con el parche `0.4.4`, junto con D-6 y P5 (usuario, 2026-11-01), otro día. Antes, traer el parche a `version/1.0.0` con `fusionar.sh ccr-6dfbc880-ddr41g`. |
 
 ### Fases
 
@@ -30,28 +30,45 @@
 
 ## Para la próxima publicación
 
-`0.4.0`: abierta hasta el 2026-10-30 (usuario, 2026-10-23); antes de publicarla, otra pasada de `gw-harvest` sobre lo de
-esa semana.
+**Política de versiones** (usuario, 2026-10-25, plan §7): la `0.4` es la última menor `0.x`, la estable antes de la `1.0`.
+Cada recogida reparte lo que trae: las correcciones van a un parche `0.4.x` (que se fusiona también en la rama de la
+`1.0.0`, `version/1.0.0`) y los evolutivos se apuntan para la `1.0.0`, nunca una `0.5`. La `1.0.0`+ es la línea que crece. Por
+decidir: si la `1.0.0` llega a `main` antes de cumplir la §10.
 
-Subida a `main` en espera (usuario, 2026-10-25): las tres fases y la publicación se deciden cuando esté subido lo de
-la sesión local y cerrada la parte 2b de `gw-media-content`. Mientras el CI no arranque (sin cuota de Actions), vale el
-check en local sobre el mismo commit (`bash tests/comprobar.sh`), y se apunta como «comprobado solo en local».
-Parte 2b cerrada (b5c1e31). La sesión local está acabando sus ajustes y subirá la `0.4.0` a `main`; cuando llegue,
-se preparan los textos de la release de GitHub (el usuario avisa).
-
-`0.2.0` publicada (etiqueta y release a mano en GitHub, título `Galivelop-workflow vX.Y.Z`, notas de la entrada del CHANGELOG). Para la siguiente: `release.yml` con lanzamiento manual desde Actions que cree la etiqueta (la
-sesión en la nube no puede subir etiquetas: 403 del proxy).
+La release `v0.4.0` la creó el usuario a mano (2026-10-25), con los textos de `docs/registros/release-v0.4.0.md`. La
+sesión en la nube no puede subir etiquetas (403 del proxy) y sin cuota de Actions `release.yml` no corre. Para la siguiente: `release.yml` con
+lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-10-26 — La `0.4.0` publicada en `main` (`d7dd18f`) tras las tres fases; check local en verde (CI sin cuota, confirmado por el usuario). La release de GitHub la hace el usuario desde Claude cloud.
-2. 2026-10-25 — Fase 3 antes de la `0.4.0`: revisión de los commits de la fase 2 (un medio y cinco menores). Arreglados `bitacora.py done`, que ya conserva un párrafo libre al final de «Hecho», y `es-codigo.sh`, que con `| head -1` y una salida mayor que el búfer de la tubería fallaba con 141 (intermitente en el `pre-push`); los menores, en «Pendiente».
-3. 2026-10-25 — Retro antes de la `0.4.0` aplicada: P3, P4 y P6 (`8c980ad`); P1+P2 (`bitacora.py check` con tope de celda y forma de «Hecho», `bitacora.py done`), P5 (`doctor.py`, `ci access`) y P7 (marca `gw-push-en-curso` y `.claude/worktrees/` fuera del gancho de parada), con su revisión y sus arreglos.
-4. 2026-10-25 — Arreglos de la revisión de `recoger.py` (`c80b184`): `git()` decodifica con `errors="replace"` (un `.md` del proyecto que no es UTF-8 tumbaba la recogida entera); `git diff` con `--no-color --no-ext-diff --no-textconv` (con `color.diff=always` las ideas nuevas se perdían sin avisar) y un diff sin `@@` (binario) cuenta el archivo entero; `--update-state` sin `Path.is_relative_to` (Python 3.9+). Tests primero (3 casos).
-5. 2026-10-25 — Arreglos de la revisión de `guardia-config.py` y `commit-msg`: `sudo -uroot` (valor pegado) ya no se come la orden y solo la última letra de un grupo consume la palabra siguiente; el valor de una opción de `rsync`/`cp`/`install` (`--exclude .claude`, `-m`, `-o`, `-S`…) no cuenta como destino; `dd of=` se clasifica; `git restore --staged` (sin `--worktree`), `git rm --cached` y `git clean -n` no son escritura; en `cp`/`install`/`ln`/`rsync` solo el destino se escribe (leer o copiar desde `.claude`/`.githooks` se permite; `mv` y `rsync --remove-source-files` sí escriben el origen); `commit-msg` nombra la ruta original en su error de normalización y usa `core.quotepath=false` (un `log` con acentos se saltaba en silencio). Tests primero, un caso por borde.
+1. 2026-10-27 — Retro del parche 0.4.3: el párrafo de Estado ya no nombra `pendiente-1.0.0.md` (la palabra anulaba la decisión en `revisado.sh`).
+2. 2026-10-27 — Parche 0.4.3, fase 2: medida de /opt-tokens (58 llamadas, 111k de media, 10M en total) y retro decidida por el usuario. R2: push y check largo en segundo plano, en AGENTS.md y las plantillas. R4: al empezar, de traspaso.md solo lo que recortó el gancho. R1, aplazada a la 1.0.0
+3. 2026-10-27 — Parche 0.4.3: los 10 arreglos del /code-review high de P1-P4. hooks-path en WARN solo con GITHUB_ACTIONS=true, y la plantilla del CI pone core.hooksPath antes del check. El aviso de bash -n pasa a llamarse check syntax-only: ignora operadores y redirecciones, avisa de globs y $(…), pone comillas a los archivos y usa el mismo intérprete. gw-init compara cualquier clon con la última etiqueta (ls-remote --refs --sort=-v:refname). Docs de problemas y gw-doctor al día; el CHANGELOG ya no enlaza un archivo de otra rama. 72 tests de doctor y comprobar.sh en verde
+4. 2026-10-27 — Parche `0.4.3` en la rama (de la recogida de `galivelop-developer`, aprobada con «tu recomendación»): `doctor.py` da WARN en `hooks-path` con `CI=true` (P1) y avisa de `bash -n` con varios archivos (P4); `gw-init` y `aplicar.md` clonan la última etiqueta (P2) y avisan de que el gancho `PreToolUse` no está activo en la sesión que aplica el flujo (P3). 3 tests nuevos en `test_doctor.py`; versión y CHANGELOG `0.4.3`; check en verde en local.
+5. 2026-10-27 — Parche `0.4.2` en la rama (de la segunda recogida, decidida con «tu recomendación»): `bitacora.py` sin `--amend` (INS P8), el `pre-commit` ve `api.key` y nombres pegados a un proveedor (VeriNews P3), `fusionar.sh` corre los `relatedTests` (P4) y `mapa-agente.py` reconoce métodos de Java y lenguajes tipados (P11); cada arreglo con su test, rojo sin él. Versión y CHANGELOG `0.4.2`.
 
 ## Pendiente
 
+- **Leves del `/code-review` de `0.4.2`** (2026-10-27, no bloquean): (1) los commits de fusión `d714267`, `9112a44`,
+  `b4ec2eb` y `8b0260c` no llevan `Siguiente:` (ya subidos; el mensaje que propone `fusionar.sh`, a la retro);
+  (2) `bitacora.py check` sin `--at` da la pista de commit y la ayuda del principio no menciona `--at`; (3) la regla
+  QUOTED del `pre-commit` bloquea etiquetas de i18n (una clave `openaiKey` cuyo valor es el texto «Clave de OpenAI»;
+  lo sufrió esta misma bitácora); (4)
+  `tests-relacionados.sh` se presenta como «pre-push: related tests» también cuando lo llama `fusionar.sh`.
+- **P3 de la retro del parche `0.4.1`, para la `1.0.0`** (evolutivo, aprobado 2026-10-26): el `pre-push` no repite
+  un check ya en verde sobre el mismo árbol. Guarda en el directorio común de git un hash del árbol del commit y de las
+  órdenes de `check` solo si sale en verde, y `tests/comprobar.sh` también apunta su verde; tests: árbol distinto,
+  órdenes distintas y check en rojo (no se guarda). Ahorra 12-15 min por subida tras un check en verde.
+- **Sin firmas de Claude** (usuario, 2026-10-26): commits y PR a nombre de `Zeldris`, sin trailers ni pies de Claude
+  (`AGENTS.md`, «Mensajes de commit»). Desde `f2da5d5` (excluido) ya va así; el historial anterior de la rama y de `main`
+  lleva autor Claude y trailers: reescribirlo exige force-push, solo si el usuario lo pide. Para la `1.0.0`
+  (evolutivo): opción del flujo para los proyectos (`gw.json`) con comprobación en `commit-msg`/`pre-push` que
+  rechace autor o trailers del agente, y quitar la mención a «líneas de atribución» de plantillas y `aplicar`/`apply`.
+- Menores de la revisión de la `0.4.1` (2026-10-26): `rojo-sin-arreglo` (`test_re`) da falsos positivos («it (»,
+  «test(», `def testable`, comentarios que se describen a sí mismos, como los del propio script); `NOT_STARTED` del
+  gancho de fusión solo reconoce dos frases exactas de GitHub (falta «billing», «account is locked»); `cloud_start`
+  silencia también la pista «pass it explicitly» (decisión aprobada, Portal P1) y conviene centralizarlo en `find()`
+  y `opened_outside()`.
 - Menores de la retro antes de la `0.4.0` (2026-10-25): `bitacora.py` no entiende bloques de código dentro de
   «Hecho», iguala los huecos en blanco entre entradas y mide cada celda por separado (dos de 790 en una fila pasan);
   `doctor.py` (`ci access`) da por bueno un token sin comprobarlo y no reconoce `ssh.github.com:443` ni GHE; el

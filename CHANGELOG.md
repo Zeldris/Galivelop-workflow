@@ -8,7 +8,147 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
-## [0.4.0] - Unreleased
+## [0.4.3] - 2026-10-27
+
+Parche de correcciones de la recogida de galivelop-developer del 2026-10-27, en `version/1.0.0` (P1-P4); lo nuevo va a
+la `1.0.0`. / Bug-fix patch from the galivelop-developer harvest of 2026-10-27, in `version/1.0.0` (P1-P4); new features
+go to `1.0.0`.
+
+### ES
+
+- `doctor.py`: con `GITHUB_ACTIONS=true` (GitHub Actions), `core.hooksPath` sin poner sale en `WARN` y no en `FAIL`: el
+  CI no puede tener los ganchos de git puestos y rompía el CI de todo proyecto con `doctor.py` en `check`; en local
+  sigue siendo `FAIL` (galivelop-developer P1).
+- `doctor.py` avisa (`WARN`) de una orden de `check` que sea `bash -n` o `sh -n` con más de un archivo, un glob o `$(…)`
+  (check `check syntax-only`): solo se comprueba el primero, y da un verde falso; dice la orden que lo arregla (una por
+  archivo, o un `for`) (galivelop-developer P4).
+- `/gw-init` y la guía de aplicar piden clonar la última etiqueta publicada (`git ls-remote --tags --refs
+  --sort=-v:refname`, `git clone --branch vX.Y.Z`), no la rama por defecto, que puede no ser `main` (galivelop-developer
+  P2).
+- La guía de aplicar y `/gw-init` avisan de que un `.claude/settings.json` creado a mitad de sesión no se carga hasta la
+  siguiente: en la sesión que aplica el flujo la guarda del PR no está activa y la marca se comprueba a mano con `bash
+  .claude/gw/scripts/revisado.sh` (galivelop-developer P3).
+- Plantilla de `AGENTS.md`: el push y el check largo se lanzan en segundo plano y se espera su aviso, sin bucles de
+  espera (retro del parche, R2).
+
+### EN
+
+- `doctor.py`: with `GITHUB_ACTIONS=true` (GitHub Actions), an unset `core.hooksPath` is a `WARN`, not a `FAIL`: CI
+  cannot have git hooks installed, and it broke the CI of every project with `doctor.py` in `check`; locally it stays a
+  `FAIL` (galivelop-developer P1).
+- `doctor.py` warns (`WARN`) about a `check` command that is `bash -n` or `sh -n` with more than one file, a glob or
+  `$(…)` (check `check syntax-only`): only the first is checked, a false green; it gives the fixing command (one per
+  file, or a `for` loop) (galivelop-developer P4).
+- `/gw-init` and the apply guide ask to clone the latest published tag (`git ls-remote --tags --refs --sort=-v:refname`,
+  `git clone --branch vX.Y.Z`), not the default branch, which may not be `main` (galivelop-developer P2).
+- The apply guide and `/gw-init` warn that a `.claude/settings.json` created mid-session is not loaded until the next
+  one: in the session that applies the workflow the PR guard is not active and the mark is checked by hand with `bash
+  .claude/gw/scripts/revisado.sh` (galivelop-developer P3).
+- `AGENTS.md` template: the push and the long check run in the background and the agent waits for their notice, with
+  no polling loop (patch retro, R2).
+
+## [0.4.2] - 2026-10-27
+
+Parche de correcciones de la segunda recogida del 2026-10-26 (`docs/propuestas/2026-10-26-*-2.md` y
+`2026-10-26-verinews_ai.md`); los evolutivos van a la `1.0.0`. / Bug-fix patch from the second 2026-10-26 harvest;
+the new features go to `1.0.0`.
+
+### ES
+
+- `bitacora.py` ya no sugiere `git commit --amend`: al hacer commit dice que se añada el log y se repita el commit; al
+  subir (`check --at push`, que pasa `prepush-ramas.sh`, y `closed`), que se haga un commit nuevo con el arreglo
+  (instalador P8). Para que ese commit desbloquee la subida, `prepush-ramas.sh` comprueba el log como queda en la
+  punta que se sube, no el de cada commit intermedio.
+- El `pre-commit` ve los secretos con el nombre `api.key` (con punto, como `openai.api.key` en un `.properties`) y
+  la clave pegada a un proveedor de IA (`openaikey`, `OPENAI_KEY`, `anthropic-key`…); a propósito no casa un sufijo
+  `*key` genérico (`primary_key`, `sort_key`, `cache_key`) (VeriNews P3).
+- `fusionar.sh` corre, tras el check en verde, los tests relacionados (`relatedTests`, con `tests-relacionados.sh`)
+  de los archivos que trae la fusión, como el `pre-push`; si fallan, la fusión ya está hecha y dice cómo repetirlos y
+  cómo deshacerla (VeriNews P4). Con `relatedTests` configurado y sin `tests-relacionados.sh` instalado, falla en vez
+  de saltárselos.
+- `mapa-agente.py` reconoce los métodos con tipo de retorno de Java y otros lenguajes tipados (`.java`, `.kt`, `.cs`,
+  `.kts`, `.scala`, `.groovy`), con modificadores, genéricos, anotaciones y `throws`; las palabras de control
+  (`if`, `for`, `while`…) no cuentan como método (VeriNews P11).
+
+### EN
+
+- `bitacora.py` no longer suggests `git commit --amend`: at commit time it says to stage the log and run the commit
+  again; at push time (`check --at push`, passed by `prepush-ramas.sh`, and `closed`), to make a new commit with the
+  fix (installer P8). So that this commit unblocks the push, `prepush-ramas.sh` checks the log as the pushed tip has
+  it, not each intermediate commit's.
+- The `pre-commit` sees secrets named `api.key` (with a dot, like `openai.api.key` in a `.properties` file) and a key
+  glued to an LLM provider (`openaikey`, `OPENAI_KEY`, `anthropic-key`…); on purpose it does not match a bare `*key`
+  suffix (`primary_key`, `sort_key`, `cache_key`) (VeriNews P3).
+- `fusionar.sh` runs, after a green check, the related tests (`relatedTests`, via `tests-relacionados.sh`) of the
+  files the merge brings, like the `pre-push`; if they fail, the merge is already done and it says how to rerun them
+  and how to undo it (VeriNews P4). With `relatedTests` set and `tests-relacionados.sh` not installed, it fails
+  instead of skipping them.
+- `mapa-agente.py` recognises methods with a return type in Java and other typed languages (`.java`, `.kt`, `.cs`,
+  `.kts`, `.scala`, `.groovy`), with modifiers, generics, annotations and `throws`; control keywords (`if`, `for`,
+  `while`…) do not count as methods (VeriNews P11).
+
+## [0.4.1] - 2026-10-26
+
+Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-26-*.md`); los evolutivos van a la
+`1.0.0`. / Bug-fix patch from the 2026-10-26 harvest; the new features go to `1.0.0`.
+
+### ES
+
+- `opt-tokens`: un cambio a un archivo copiado del flujo (`.claude/gw/scripts/`, `.claude/skills/`, los ganchos) no se
+  parchea en el proyecto: va al flujo, como dice `retro` (instalador P4).
+- Los scripts hallan la raíz del repo dentro de un worktree enlazado: `config.py` y los `.sh` piden la raíz a git sin
+  `GIT_DIR`, `GIT_WORK_TREE` ni `GIT_INDEX_FILE` heredados; `find_root` prefiere el directorio actual cuando es del
+  mismo repo que `$CLAUDE_PROJECT_DIR` (un worktree enlazado), si no `$CLAUDE_PROJECT_DIR` (un gancho del plugin desde
+  un repo hermano o fuera de un repo), y sin ninguno de los dos falla cerrado y pide `--root` (WMF P1).
+- `rojo-sin-arreglo` rechaza también una edición dentro de un método de test indentado (mira las líneas que encierran
+  cada cambio, no solo la cabecera del hunk).
+- Los tests de `scout-updates` pasan también en la copia instalada (`.claude/skills/scout-updates/scripts`), que
+  busca el flujo en `.claude/gw` (instalador P1).
+- `rojo-sin-arreglo.sh` se niega, con un mensaje que dice cómo seguir, cuando el archivo del arreglo tiene sin
+  commitear cambios que tocan código de test: el stash quitaba el test junto con el arreglo (instalador P2).
+- `revision-antes-de-main.sh` reconoce el CI que GitHub no arrancó por facturación o límite de gasto (en el resumen
+  o las anotaciones del check-run): bloquea igual, pero dice que no se ejecutó nada y nombra el camino de
+  «comprobado solo en local» (instalador P3).
+- Sin aviso falso de «sesión abierta fuera del repo» en la nube (`CLAUDE_CODE_REMOTE=true`, que siempre arranca en
+  `/home/user`): ni en `doctor.py`, ni en `opt-tokens/medir.py`, ni en `recuperar.py --estado`, ni en
+  `registro_sesion.py`, ni en `session-start.sh`. Fuera de la nube el aviso sigue (portal P1).
+- Gasto (`/opt-tokens` del parche): `gw-harvest` clona los proyectos solo para lectura en una carpeta temporal, sin
+  registrarlos (`register_repo_root`; sus `CLAUDE.md`, `AGENTS.md` y skills entraban en cada llamada, ~17 %), y
+  los verifica con un subagente por proyecto en paralelo; el encargo de `orchestrate-dealer` corta a las ~25 llamadas (tope ~30).
+- `orchestrate-dealer` (retro del parche): si la sesión no se abre en la raíz del repo (la nube arranca en
+  `/home/user`), los worktrees se crean a mano con `git -C <repo> worktree add` en vez de `isolation`; el encargo dice
+  cómo esperar (`run_in_background` y su aviso, nunca `sleep` en primer plano ni sondeos; `Monitor` tras cargarlo) y
+  cómo subir (salida a un archivo y el motivo del `pre-push` leído antes de reintentar).
+
+### EN
+
+- `opt-tokens`: a change to a file copied from the workflow (`.claude/gw/scripts/`, `.claude/skills/`, the hooks) is
+  not patched in the project: it goes to the workflow, as `retro` says (installer P4).
+- Scripts find the repo root inside a linked worktree: `config.py` and the `.sh` scripts ask git for the root without
+  inherited `GIT_DIR`, `GIT_WORK_TREE` or `GIT_INDEX_FILE`; `find_root` prefers the current directory when it is
+  in the same repo as `$CLAUDE_PROJECT_DIR` (a linked worktree), else `$CLAUDE_PROJECT_DIR` (a plugin hook run from a
+  sibling repo or outside any repo), and with neither it fails closed and asks for `--root` (WMF P1).
+- `rojo-sin-arreglo` also refuses an edit inside an indented test method (it reads the lines enclosing each change,
+  not only the hunk header).
+- The `scout-updates` tests also pass in the installed copy (`.claude/skills/scout-updates/scripts`), which looks for
+  the workflow in `.claude/gw` (installer P1).
+- `rojo-sin-arreglo.sh` refuses, with a message saying how to proceed, when the fix file has uncommitted changes
+  touching test code: the stash removed the test along with the fix (installer P2).
+- `revision-antes-de-main.sh` recognises CI that GitHub did not start because of billing or a spending limit (in the
+  check run's summary or annotations): it still blocks, but says nothing ran and names the "checked locally only"
+  path (installer P3).
+- No false "session opened outside the repo" warning in the cloud (`CLAUDE_CODE_REMOTE=true`, which always starts in
+  `/home/user`): not in `doctor.py`, `opt-tokens/medir.py`, `recuperar.py --estado`, `registro_sesion.py` or
+  `session-start.sh`. Outside the cloud the warning stays (portal P1).
+- Spend (the patch's `/opt-tokens`): `gw-harvest` clones the projects read-only into a scratch folder without
+  registering them (`register_repo_root`; their `CLAUDE.md`, `AGENTS.md` and skills entered every call, ~17 %),
+  and checks them with one subagent per project in parallel; the `orchestrate-dealer` brief stops at ~25 calls (cap ~30).
+- `orchestrate-dealer` (the patch's retro): when the session is not opened at the repo root (the cloud starts in
+  `/home/user`), worktrees are created by hand with `git -C <repo> worktree add` instead of `isolation`; the brief says
+  how to wait (`run_in_background` and its notification, never a foreground `sleep` or polling; `Monitor` after
+  loading it) and how to push (output to a file, and the `pre-push` reason read before retrying).
+
+## [0.4.0] - 2026-10-25
 
 ### ES
 
@@ -135,6 +275,12 @@ here.
   cuenta como cambio sin confirmar lo no versionado bajo `.claude/worktrees/`.
 - `es-codigo.sh`: con un lector que corta la salida (`| head -1`) y una lista de archivos mayor que el búfer de la
   tubería, ya no falla con 141 (el clasificador lee el resto de su entrada).
+- `version.py --release` (el `pre-push` de una subida a `main`) exige que la entrada de la versión nueva tenga fecha
+  (`## [X.Y.Z] - AAAA-MM-DD`, no «Unreleased») y no conserve el «(por completar)» del salto: la `0.4.0` llegó a `main`
+  sin fecha y `release.yml` la habría rechazado al etiquetar.
+- **Política de versiones** (usuario, 2026-10-25): la `0.4` es la última menor `0.x`, la estable antes de la `1.0`:
+  de una recogida, las correcciones van a un parche `0.4.x` y los evolutivos se apuntan para la `1.0.0` y siguientes (plan §7, `AGENTS.md`, `docs/es/contribuir.md` ↔
+  `docs/en/contributing.md`).
 
 ### EN
 
@@ -260,6 +406,12 @@ here.
   blocking. And untracked paths under `.claude/worktrees/` no longer count as uncommitted changes.
 - `es-codigo.sh`: with a reader that cuts the output short (`| head -1`) and a file list larger than the pipe buffer,
   it no longer fails with 141 (the classifier drains the rest of its input).
+- `version.py --release` (the `pre-push` of a push to `main`) requires the new version's entry to be dated
+  (`## [X.Y.Z] - YYYY-MM-DD`, not "Unreleased") and free of the bump's "(to be filled in)": `0.4.0` reached `main`
+  undated and `release.yml` would have rejected it at tag time.
+- **Version policy** (user, 2026-10-25): `0.4` is the last `0.x` minor, the stable one before `1.0`: from a
+  harvest, fixes go to a `0.4.x` patch and new features are noted for `1.0.0` and later (plan §7, `AGENTS.md`, `docs/es/contribuir.md` ↔
+  `docs/en/contributing.md`).
 
 ## [0.3.0] - 2026-10-23
 

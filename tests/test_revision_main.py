@@ -35,6 +35,8 @@ esac
 [ -z "${GH_CALL_LOG:-}" ] || echo "$2" >> "$GH_CALL_LOG"
 if [ -n "${GH_FAIL:-}" ]; then echo "gh: HTTP 502: Bad Gateway (fake)" >&2; exit 1; fi
 case "$2" in
+  */annotations) id="${2%/annotations}"; id="${id##*/}"
+    eval "printf '%s' \\"\\${GH_NOTES_$id:-[]}\\"" ;;
   *check-runs*) printf '%s' "$GH_RUNS" ;;
   */status*) printf '%s' "$GH_STATUS" ;;
   *pulls*) printf '%s' "$GH_PR" ;;
@@ -264,6 +266,61 @@ class Hook(unittest.TestCase):
         self.assertBlocked(self.merge(pr=self.pr(), runs={"total_count": 0, "check_runs": []}), "no CI",
                            "checked only locally", "with their confirmation")
 
+    BILLING = "The job was not started because recent account payments have failed or your spending limit needs to be increased."
+
+    def test_merge_check_runs_not_started_for_billing_say_so(self):
+        self.mark(); self.push()
+        runs = {"total_count": 2, "check_runs": [
+            {"id": 11, "name": "linux", "status": "completed", "conclusion": "failure"},
+            {"id": 12, "name": "macos", "status": "completed", "conclusion": "failure"}]}
+        notes = json.dumps([{"message": self.BILLING}])
+        code, out = self.merge(pr=self.pr(), runs=runs, env={"GH_NOTES_11": notes, "GH_NOTES_12": notes})
+        self.assertBlocked((code, out), "GitHub did not start the CI of PR #", "): billing or spending limit",
+                           "checked only locally", "with their confirmation")
+        self.assertNotIn("is not green", out)
+
+    def test_merge_billing_in_output_summary_without_extra_call(self):
+        self.mark(); self.push()
+        runs = {"total_count": 1, "check_runs": [{"id": 11, "name": "linux", "status": "completed",
+                                                  "conclusion": "failure", "output": {"summary": self.BILLING}}]}
+        self.assertBlocked(self.merge(pr=self.pr(), runs=runs, env={"GH_NOTES_11": "not json"}),
+                           "GitHub did not start the CI", "checked only locally")
+
+    def test_merge_billing_plus_real_failure_keeps_not_green(self):
+        self.mark(); self.push()
+        runs = {"total_count": 2, "check_runs": [
+            {"id": 11, "name": "linux", "status": "completed", "conclusion": "failure"},
+            {"id": 12, "name": "macos", "status": "completed", "conclusion": "failure"}]}
+        env = {"GH_NOTES_11": json.dumps([{"message": self.BILLING}]),  # linux: not started; macos: a real failure
+               "GH_NOTES_12": json.dumps([{"message": "Process completed with exit code 1."}])}
+        code, out = self.merge(pr=self.pr(), runs=runs, env=env)
+        self.assertBlocked((code, out), "is not green", "linux: failure", "macos: failure")
+        self.assertNotIn("did not start", out)
+
+    def test_merge_billing_plus_failed_status_keeps_not_green(self):
+        self.mark(); self.push()
+        runs = {"total_count": 1, "check_runs": [{"id": 11, "name": "linux", "status": "completed",
+                                                  "conclusion": "failure"}]}
+        code, out = self.merge(pr=self.pr(), runs=runs, env={"GH_NOTES_11": json.dumps([{"message": self.BILLING}])},
+                               statuses={"statuses": [{"context": "vercel", "state": "failure"}]})
+        self.assertBlocked((code, out), "is not green", "vercel: failure")
+        self.assertNotIn("did not start", out)
+
+    def test_merge_failure_without_billing_note_keeps_not_green(self):
+        self.mark(); self.push()
+        runs = {"total_count": 1, "check_runs": [{"id": 11, "name": "linux", "status": "completed",
+                                                  "conclusion": "failure"}]}
+        code, out = self.merge(pr=self.pr(), runs=runs, env={"GH_NOTES_11": json.dumps([{"message": "Process exited 1"}])})
+        self.assertBlocked((code, out), "is not green", "linux: failure")
+        self.assertNotIn("did not start", out)
+
+    def test_merge_annotations_call_failing_keeps_not_green(self):
+        self.mark(); self.push()
+        runs = {"total_count": 1, "check_runs": [{"id": 11, "name": "linux", "status": "completed",
+                                                  "conclusion": "failure"}]}
+        self.assertBlocked(self.merge(pr=self.pr(), runs=runs, env={"GH_NOTES_11": "not json"}), "is not green",
+                           "linux: failure")
+
     def test_merge_to_other_base_allowed(self):
         self.assertAllowed(self.merge(pr=self.pr(base="develop")))
 
@@ -414,7 +471,7 @@ class Hook(unittest.TestCase):
         self.assertAllowed(self.bash("gh api repos/o/r/pulls/7/merge"))  # GET: is it merged?
         self.assertAllowed(self.bash("gh api repos/o/r/pulls/7"))
 
-    def test_long_unparseable_commands_are_judged_in_under_a_second(self):
+    def test_long_unparseable_commands_are_judged_in_seconds_not_minutes(self):
         # P4 of docs/propuestas/2026-10-25-repos-x.md: the old SUSPECT regex chained three `[\\s\\S]*` and backtracked
         # for minutes on ~50 KB of `gh pr gh pr ...`. A hook that slow would stall every Bash call of every session.
         cases = {
@@ -423,16 +480,23 @@ class Hook(unittest.TestCase):
             "pulls/ in one token": ('echo "unterminated gh ' + "pulls/" * 8000, "merge"),
             "tabs and continuations": ('echo "unterminated gh\t' + "pr\t\\\n" * 10000, " merge"),
         }
+        start = time.monotonic()
+        self.assertAllowed(self.bash("echo ok"))
+        # the hook's own start-up plus 5 s of judging: ~0.4 s on Linux, ~1.4 s on the macOS runner, minutes with the
+        # old regex
+        limit = time.monotonic() - start + 5.0
         for name, (head, tail) in cases.items():
             with self.subTest(name=name):
                 self.assertGreater(len(head), 45000)
                 start = time.monotonic()
                 allowed = self.bash(head)
-                self.assertLess(time.monotonic() - start, 1.0, f"{name}: allowed case took 1 s or more")
+                self.assertLess(time.monotonic() - start, limit,
+                                f"{name}: allowed case took 5 s more than a trivial command")
                 self.assertAllowed(allowed)
                 start = time.monotonic()
                 blocked = self.bash(head + tail)
-                self.assertLess(time.monotonic() - start, 1.0, f"{name}: blocked case took 1 s or more")
+                self.assertLess(time.monotonic() - start, limit,
+                                f"{name}: blocked case took 5 s more than a trivial command")
                 self.assertBlocked(blocked, "cannot parse")
 
     def test_many_continuations_are_judged_in_under_a_second(self):

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# galivelop-workflow v0.4.0
+# galivelop-workflow v0.4.3
 # After /code-review of the diff against the protected branch, with its fixes pushed: records HEAD's sha in the
 # config's `reviewMark` and commits it ("Revisado: <sha>" / "Reviewed: <sha>" by `language`). The mark travels with
 # the repo, so other accounts and scheduled tasks see it; .githooks/pre-push and the PR hook accept code up to it.
@@ -14,13 +14,18 @@ set -uo pipefail
 footer=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --footer) [ "$#" -ge 2 ] && [ -n "$2" ] || { echo "revisado: --footer needs a line; run: bash $0 --footer \"Siguiente: <next step>\"" >&2; exit 1; }
+    --footer)
+      if [ "$#" -lt 2 ] || [ -z "$2" ]; then
+        echo "revisado: --footer needs a line; run: bash $0 --footer \"Siguiente: <next step>\"" >&2; exit 1
+      fi
       footer="$2"; shift 2 ;;
     *) echo "revisado: unknown argument '$1'; usage: bash $0 [--footer \"<last line of the mark commit>\"]" >&2; exit 1 ;;
   esac
 done
 here="$(cd "$(dirname "$0")" && pwd)"
-root="$(git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
+# Git exports GIT_DIR (and friends) to hooks, also in a linked worktree; with GIT_DIR set `rev-parse --show-toplevel`
+# answers $here, not the repo root.
+root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
   echo "revisado: $here is not inside a git repository; reinstall the workflow: /gw-update" >&2; exit 1; }
 cd "$root" || exit 1
 config="$here/config.py"

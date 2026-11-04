@@ -73,7 +73,7 @@ La versión sigue [SemVer](https://semver.org/lang/es/) y vive **solo** en `.cla
 | Skill o gancho nuevos, o una mejora compatible | **menor** |
 | Arreglos | **parche** |
 
-Mientras dure el rodaje la versión es `0.x`; `1.0.0` solo al cumplir los criterios del plan (§10).
+La `0.4` es la última menor `0.x` (plan §7): una recogida manda las correcciones a un parche `0.4.x` y apunta los evolutivos para la `1.0.0` y siguientes.
 
 Cada versión tiene una entrada en [`CHANGELOG.md`](../../CHANGELOG.md) con `### ES` y `### EN`, ambas con el mismo
 contenido; el check falla si la versión de `plugin.json` no tiene entrada. Al subir la versión, el `metadata.version` de

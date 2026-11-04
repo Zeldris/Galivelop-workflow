@@ -26,7 +26,7 @@ python3 .claude/gw/scripts/doctor.py
 | Check | What it says | Fix |
 |---|---|---|
 | `config` (FAIL) | `.claude/gw.json` is missing, not JSON, or breaks the schema (unknown key, empty value…) | `python3 .claude/gw/scripts/config.py validate` names the line; keys in [config](config.md); if missing, apply the workflow ([apply](apply.md)) |
-| `hooks-path` (FAIL) | `core.hooksPath` is unset: the workflow's git hooks do not run | `git config core.hooksPath .githooks` |
+| `hooks-path` (FAIL) | `core.hooksPath` is unset: the workflow's git hooks do not run. With `GITHUB_ACTIONS=true` (GitHub Actions) it is a `WARN`: CI has no hooks installed | `git config core.hooksPath .githooks` |
 | `hooks-path` (WARN) | Another manager owns it (husky, lefthook…): the workflow's hooks run only if chained | Add to the manager's `pre-push`, `pre-commit` and `commit-msg`: `"$(git rev-parse --show-toplevel)/.githooks/<hook>" "$@" \|\| exit 1` |
 | `githook pre-push` / `pre-commit` / `commit-msg` (FAIL) | The file is missing or not executable | `/gw-update`; or `chmod +x .githooks/<hook>` (on Windows, `git update-index --chmod=+x .githooks/<hook>`) |
 | `githook …` (WARN) | A version different from `.claude/gw.json`'s | `/gw-update` |
@@ -35,6 +35,7 @@ python3 .claude/gw/scripts/doctor.py
 | `glossary` (WARN) | The same `**Term**:` appears twice in `GLOSSARY.md` | Merge the entries into one |
 | `ignored` (FAIL) | Git ignores a workflow file, or the `reviewMark` file: a commit would leave it out | Add `!<path>` to `.gitignore` and check `git check-ignore -v <path>` |
 | `settings <event>` (WARN) | A hook command runs a workflow script (recognised by its `# galivelop-workflow v…` header) from outside `.claude/gw/scripts/`; a project's own script with the same name does not warn | Delete that entry from `.claude/settings.json` |
+| `check syntax-only` (WARN) | A `check` command is `bash -n`/`sh -n` with several files, a glob (`*`, `?`, `[`) or `$(…)`: only the first file is read, the rest go unchecked | One command per file in `check` in `.claude/gw.json`, or `for f in …; do bash -n "$f"; done` (the warning gives the command) |
 | `check command` (FAIL) | The first word of a `check` command is neither on `PATH` nor a file in the repo | Install that tool or fix `check` in `.claude/gw.json` |
 | `install command` (WARN) | The same for `install` | Same |
 | `ci` (WARN) | No workflow under `.github/workflows` | `mkdir -p .github/workflows && cp <workflow>/templates/github/comprobar.yml .github/workflows/` |

@@ -4,7 +4,7 @@ description: Run the main session as an orchestrator that deals work out to clea
 license: MIT
 compatibility: Claude Code or any Agent Skills agent with subagents; git; reads .claude/gw.json
 metadata:
-  version: "0.4.0"
+  version: "0.4.3"
   source: "Galivelop workshop; generalised from the Tarkor, installer and portal orchestrate-dealer"
 ---
 
@@ -38,8 +38,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    CI job, a pushed commit), a list of what blocks it and the files it touches. The **frontier** (one wave) is the chunks
    nothing pending blocks: they go out together (see Rules), but two chunks of one wave never share a file: the second
    waits for the first. With more than ~5 chunks, a cheap-model subagent may review the split before launch (missing
-   blockers, shared files, criteria that cannot be checked). Cap a subagent at ~35 tool calls (one or two proposal rows); at the cap it saves its state in `log` and the
-   next one resumes from it. A subagent's context grows with every call: chunks of 44-55 calls averaged 100-116k,
+   blockers, shared files, criteria that cannot be checked). Cap a subagent at ~30 tool calls (one or two proposal rows); at the cap it saves its state in `log` and the
+   next one resumes from it. A subagent's context grows with every call: chunks of 44-55 calls averaged 100-116k (and 9 of the 10
+   costliest subagents of one session went past 33 calls),
    and splitting them costs one more ~50k startup but far less than the drag. A one-file fix whose place the reviewer already gave is not a chunk: the main session
    makes it, with its tests (a subagent pays ~50k just to start and rediscovers what the session knows).
 2. **Deal.** One subagent per chunk with the Agent tool, in the foreground when the next chunk depends on it. Model and
@@ -55,7 +56,11 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    per-branch rows, read the next step and pending sections of {log}. If you touch code, read REVIEW.md and
    AGENTS.md. Follow the project's commit and push rules: commit and push each stable point, log update in the
    same commit. If the push is rejected, `git fetch` and `git merge` (never rebase), then push again.
-   At ~30 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
+   At ~25 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
+   To wait for something long (a push with its check), run it with `run_in_background` and watch it with `Monitor`
+   (load it with ToolSearch first) until it exits; keep your turn open while it runs, and never a foreground `sleep`.
+   Push with its output to a file outside the tree (`git push … > "$(git rev-parse --git-dir)/push.log" 2>&1`); if it
+   fails, read the pre-push reason in that file before retrying.
    Task: <what, in one or two sentences>.
    Files: <paths you touch>. Create: <exact names of what is new>. A path not listed here: stop and return it
    under QUESTIONS.
@@ -87,7 +92,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    go to the user as they are, with the answer you recommend.
 4. **Close the wave.** After merging the whole wave, one reviewer subagent compares the merged result with the task
    and returns `MISSING_ITEMS`: what the task asks for and no chunk covers. Each item becomes a chunk or a question.
-5. **Continue.** Next chunk. One line to the user per chunk closed; the detail lives in `log`.
+5. **Continue.** Next chunk. One line to the user per chunk closed; the detail lives in `log`. When something long
+   starts (a push with its check, a background subagent), one line to the user with what runs and roughly how long it
+   takes; then wait for its notification.
 
 ## Rules
 
@@ -104,7 +111,10 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
 - **Code fixes of the frontier, in parallel, in isolated worktrees:** each subagent runs with `isolation: "worktree"` in
   the background, commits at every stable point (`WIP:` if still red, so a restart loses nothing), does not touch the
   log or push, and returns its branch. The main session has each one reviewed (step 3), merges them one by one
-  (merge, never rebase; `check` after each), writes the log and pushes.
+  (merge, never rebase; `check` after each), writes the log and pushes. When the session folder is not the repo root
+  (a cloud session starts in `/home/user`, next to other repos, and `isolation` lands the worktree in the wrong one),
+  the main session creates each worktree itself with `git -C <repo> worktree add <folder> -b <branch>` and puts that
+  folder in the brief, without `isolation`.
 - **Shared records, main session only:** with parallel subagents none touches `log`, the findings register or any other
   shared record; they return their entries under `FOUND` and the main session writes them. Parallel writes conflict
   on merge.
