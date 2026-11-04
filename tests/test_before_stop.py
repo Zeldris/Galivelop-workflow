@@ -455,6 +455,88 @@ class PushInProgress(Base):
         self.assertNotIn("push of this commit is in progress", data["systemMessage"])
 
 
+class CheckInProgress(PushInProgress):
+    """D41: while a check holds the E20 lock <git common dir>/gw/check.lock (symlink to "pid|start|sha|log") the hook
+    says the check is running instead of telling to push; a dead, reused or malformed lock counts as absent."""
+
+    def lock(self, target, common=None):
+        path = (common or self.p.work / ".git") / "gw" / "check.lock"
+        path.parent.mkdir(exist_ok=True)
+        if path.is_symlink() or path.exists():
+            path.unlink()
+        os.symlink(target, path)
+        return path
+
+    def start(self, pid):
+        out = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True, text=True,
+                             env={**os.environ, "LC_ALL": "C"}).stdout
+        return " ".join(out.split())
+
+    def live(self, log="/tmp/gw/check-abc.log", start=None):
+        return self.lock(f"{os.getpid()}|{self.start(os.getpid()) if start is None else start}|abc|{log}")
+
+    def assertCheckNotice(self, out, log="/tmp/gw/check-abc.log"):
+        self.assertNotIn('"block"', out)
+        msg = decision(self, out).get("systemMessage", "")
+        for needle in ("A check is running", f"pid {os.getpid()}", log, "wait for CHECK ok"):
+            self.assertIn(needle, msg, out)
+        self.assertNotIn("push of this commit is in progress", msg)
+
+    def test_live_lock_replaces_the_push_reminder(self):
+        self.live()
+        self.assertCheckNotice(self.p.stop()[1])
+
+    def test_lock_with_unreadable_start_still_counts_if_the_pid_lives(self):
+        self.live(start="?")
+        self.assertCheckNotice(self.p.stop()[1])
+
+    def test_dead_pid_is_absent(self):
+        self.lock(f"{self.dead_pid()}|Mon Jan  1 00:00:00 2024|abc|/tmp/x.log")
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_reused_pid_with_another_start_is_absent(self):
+        self.live(start="Mon Jan  1 00:00:00 2001")
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_malformed_locks_are_absent(self):
+        for bad in ("garbage", "", "12x|a|b|c", "0|a|b|c", "-5|a|b|c", "|||"):
+            with self.subTest(target=bad):
+                self.lock(bad or "x") if bad else None
+                if not bad:
+                    path = self.p.work / ".git" / "gw" / "check.lock"
+                    path.parent.mkdir(exist_ok=True)
+                    path.write_text("")  # a regular file, not a symlink
+                self.assertStillBlocks(self.p.stop()[1])
+
+    def test_no_gw_dir_blocks_as_before(self):
+        self.assertFalse((self.p.work / ".git" / "gw").exists())
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_lock_and_push_marker_together_report_the_push(self):
+        self.live()
+        self.mark()
+        data = decision(self, self.p.stop()[1])
+        self.assertNotIn("decision", data)
+        self.assertIn("push of this commit is in progress", data["systemMessage"])
+
+    def test_live_lock_does_not_hide_uncommitted_changes(self):
+        self.live()
+        self.p.write("src/b.py", "y = 1\n")
+        data = self.assertBlocks(self.p.stop()[1], LOG, "1 uncommitted change")
+        self.assertIn("A check is running", data["systemMessage"])
+
+    def test_lock_is_read_from_the_common_dir_in_a_linked_worktree(self):
+        p = self.p
+        linked, script, gitdir, sha = self.linked_worktree()
+        self.assertNotEqual(gitdir, p.work / ".git")
+        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
+        self.live()  # in the main checkout's .git, shared by every worktree
+        out = p.stop(cwd=linked, script=script)[1]
+        self.assertCheckNotice(out)
+        self.assertIn("claude/otra", out)
+        self.assertFalse((gitdir / "gw").exists())  # not looked for in the per-worktree git dir
+
+
 class ReminderNotGate(Base):
     """Without what it needs, the hook warns (systemMessage) and lets Claude stop."""
 

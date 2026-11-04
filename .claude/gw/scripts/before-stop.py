@@ -16,6 +16,10 @@ agent remembered it. It blocks the stop when:
      second push would race the first, so it is a warning that says to wait and check `git status -sb`. A marker of
      another branch or of an older HEAD (commits made after the push started), dead, old, empty or unreadable
      blocks as before;
+     While a check of the workflow holds the lock `<git common dir>/gw/check.lock` (a symlink to "pid|start|sha|log",
+     written by check-green.sh lock-acquire; the pid alive with that same start time) it does not block either: the
+     check ends by itself and a push now would race it, so it is a one-line notice with the check's log. A lock that is
+     dead, reused by another process, malformed or missing counts as absent and blocks as before;
   b. the working tree has changes (`git status`, untracked files included, but not untracked paths under
      `.claude/worktrees/`, where Claude Code keeps its isolated worktrees) and the log (`log` in .claude/gw.json) is
      not among them. The reason says to commit the log, updated, in the same commit as the work.
@@ -53,6 +57,7 @@ import config  # noqa: E402
 STDIN_WAIT = 3.0
 GIT_TIMEOUT = 30
 PUSH_MARKER = "gw-push-in-progress"  # written by templates/githooks/pre-push while it runs
+CHECK_LOCK = os.path.join("gw", "check.lock")  # under the git common dir; written by check-green.sh lock-acquire
 PUSH_MARKER_MAX_AGE = 3600  # seconds: an older marker is a push that died without cleaning up
 WORKTREES_PREFIX = ".claude/worktrees/"
 
@@ -131,6 +136,41 @@ def push_in_progress(root):
         if found is not None:
             return found
     return None
+
+
+def _ps(field, pid):
+    """`ps -o <field>= -p pid` with the spaces squeezed, or "" (gone, or no ps)."""
+    try:
+        r = subprocess.run(["ps", "-o", field + "=", "-p", str(pid)], capture_output=True, text=True, timeout=10,
+                           env={**os.environ, "LC_ALL": "C"})
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return " ".join(r.stdout.split())
+
+
+def check_in_progress(root):
+    """(pid, log) of the live check that holds the E20 lock `<git common dir>/gw/check.lock`, else None.
+
+    The lock is a symlink whose target is "pid|process start|sha|log" (check-green.sh lock-acquire). It counts only
+    when the pid is alive, not a zombie, and still has that start time (a reused pid has another one); a start of "?"
+    (the owner could not read it) only needs the pid alive. A missing, dead, reused or malformed lock is None."""
+    try:
+        common = git(root, "rev-parse", "--git-common-dir")[1].strip()
+        target = os.readlink(os.path.join(str(root), common, CHECK_LOCK))
+        pid_text, start, _sha, log = (target.split("|", 3) + ["", "", "", ""])[:4]
+        if not pid_text.isdigit() or int(pid_text) < 1:
+            return None
+        pid = int(pid_text)
+        os.kill(pid, 0)
+    except PermissionError:
+        pass  # another user's process is alive too
+    except (GitError, OSError, ValueError):
+        return None
+    if _ps("stat", pid).startswith("Z"):
+        return None
+    if start and start != "?" and _ps("lstart", pid) != start:
+        return None
+    return pid, log
 
 
 def _marker_branch(marker, head):
@@ -212,7 +252,13 @@ def main():
                                  f"close), so Claude has not pushed them.")
                 else:
                     pushing = push_in_progress(root)
-                    if pushing is None:
+                    checking = check_in_progress(root) if pushing is None else None
+                    if checking is not None:
+                        notes.append(f"A check is running (pid {checking[0]}, log {checking[1] or '-'}); branch "
+                                     f"'{branch}' has {plural(count, 'commit')} not pushed ({where}) until it ends. "
+                                     f"Do not push meanwhile: wait for CHECK ok, then push: git push -u origin "
+                                     f"{branch}")
+                    elif pushing is None:
                         blocks.append(f"Branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). What is "
                                       f"not pushed does not exist for the next session; push it now: git push -u "
                                       f"origin {branch}")
