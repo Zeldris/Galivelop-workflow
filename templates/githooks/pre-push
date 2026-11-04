@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # galivelop-workflow v0.5.0
 # Git pre-push hook (copied into projects as .githooks/pre-push; enable with: git config core.hooksPath .githooks).
-#   - While it runs, keeps a marker `gw-push-en-curso.<pid>` in this worktree's own git dir (one per linked worktree, one per push) with its pid
+#   - While it runs, keeps a marker `gw-push-in-progress.<pid>` in this worktree's own git dir (one per linked worktree, one per push) with its pid
 #     and, per pushed ref, the LOCAL sha and local branch, so the Stop hook (before-stop.py) does not tell an agent to
 #     push again while this one is still checking that very commit. Best effort and silent: it never makes the push fail; removed on every exit (only while
 #     it still holds this hook's pid).
@@ -42,7 +42,7 @@ remote="${1:-origin}"
 # Git's ref lines come on stdin: save them before anything else can read it.
 work="$(mktemp -d "${TMPDIR:-/tmp}/gw-pre-push.XXXXXX")" || { echo "pre-push: cannot create a temp dir; free space in ${TMPDIR:-/tmp} and retry: git push" >&2; exit 1; }
 worktree=""
-pushmark=""  # <this worktree's git dir>/gw-push-en-curso.<pid of this hook>: line 1 the pid of this hook, then one "<local sha> <branch>" line per ref pushed
+pushmark=""  # <this worktree's git dir>/gw-push-in-progress.<pid of this hook>: line 1 the pid of this hook, then one "<local sha> <branch>" line per ref pushed
 cleanup() {
   # The marker name holds this hook's pid, so no other push ever rewrites it.
   if [ -n "$pushmark" ]; then rm -f "$pushmark" 2>/dev/null; fi
@@ -70,8 +70,8 @@ cd "$root" || exit 1
   if [ -n "$gitcommon" ]; then
     pushed_to="$(awk '$2 !~ /^0+$/ { sub(/^refs\/heads\//, "", $1); print $2, $1 }' "$work/input" 2>/dev/null)"
     if printf '%s\n%s\n' "$$" "$pushed_to" > "$gitcommon/gw-push-tmp.$$" \
-        && mv -f "$gitcommon/gw-push-tmp.$$" "$gitcommon/gw-push-en-curso.$$"; then
-      pushmark="$gitcommon/gw-push-en-curso.$$"
+        && mv -f "$gitcommon/gw-push-tmp.$$" "$gitcommon/gw-push-in-progress.$$"; then
+      pushmark="$gitcommon/gw-push-in-progress.$$"
     else
       rm -f "$gitcommon/gw-push-tmp.$$"
     fi

@@ -344,14 +344,14 @@ class PrePush(Base):
                       "already on the remote in other branches", out)
 
     def markers(self, gitdir=None):
-        return sorted((gitdir or self.p.work / ".git").glob("gw-push-en-curso.*"))
+        return sorted((gitdir or self.p.work / ".git").glob("gw-push-in-progress.*"))
 
     def marker_check(self, body="exit 0"):
         """A check that copies the push marker (while the hook still runs) to snap.txt, then runs `body`."""
         p = self.p
         self.snap = self.tmp / "snap.txt"
-        self.marker = p.work / ".git" / "gw-push-en-curso"  # the prefix: the files are gw-push-en-curso.<pid>
-        p.write("check.sh", f'cp "$(git rev-parse --git-dir)"/gw-push-en-curso.* "{self.snap}"; {body}\n')
+        self.marker = p.work / ".git" / "gw-push-in-progress"  # the prefix: the files are gw-push-in-progress.<pid>
+        p.write("check.sh", f'cp "$(git rev-parse --git-dir)"/gw-push-in-progress.* "{self.snap}"; {body}\n')
         p.commit("check records the push marker")
 
     def test_push_marker_exists_while_checking_and_is_removed_after_success(self):
@@ -363,7 +363,7 @@ class PrePush(Base):
         self.assertTrue(lines[0].isdigit(), lines)  # the hook's pid
         self.assertEqual(lines[1:], [f"{p.sha()} feature"], "the local sha being pushed, then the branch")
         self.assertEqual(self.markers(), [], "the marker must go when the push ends")
-        self.assertEqual([f.name for f in (p.work / ".git").glob("gw-push-en-curso*")], [])
+        self.assertEqual([f.name for f in (p.work / ".git").glob("gw-push-in-progress*")], [])
 
     def test_push_marker_is_removed_after_a_failing_check(self):
         p = self.p
@@ -389,7 +389,7 @@ class PrePush(Base):
                     break
                 time.sleep(0.1)
             self.assertTrue(started.exists(), "the check never started")
-            marker = p.work / ".git" / f"gw-push-en-curso.{proc.pid}"
+            marker = p.work / ".git" / f"gw-push-in-progress.{proc.pid}"
             self.assertEqual(marker.read_text().splitlines()[0], str(proc.pid), "the marker holds the hook's pid")
             os.killpg(proc.pid, sig)
             proc.stdin = None  # already closed: communicate() in Python 3.12 would flush it and raise
@@ -432,22 +432,22 @@ class PrePush(Base):
         p.commit("check lists both git dirs")
         code, out = p.push("origin", "feature")
         self.assertEqual(code, 0, out)
-        self.assertIn("gw-push-en-curso.", (self.tmp / "ls-0.txt").read_text())
-        self.assertNotIn("gw-push-en-curso", (self.tmp / "ls-1.txt").read_text(), "the other worktree must not see it")
+        self.assertIn("gw-push-in-progress.", (self.tmp / "ls-0.txt").read_text())
+        self.assertNotIn("gw-push-in-progress", (self.tmp / "ls-1.txt").read_text(), "the other worktree must not see it")
         self.assertEqual(self.markers(), [])
 
     def test_push_from_a_linked_worktree_marks_its_own_git_dir_with_an_absolute_hooks_path(self):
         p = self.p
         other, other_dir = self.linked()
         p.git("config", "core.hooksPath", str(p.work / ".githooks"))  # absolute: the hook file is the main checkout's
-        stale = p.work / ".git" / "gw-push-en-curso.999999"
+        stale = p.work / ".git" / "gw-push-in-progress.999999"
         stale.write_text("999999\nmain\n")
         (other / "check.sh").write_text(self.lists(p.work / ".git", other_dir) + "\n")
         p.git("add", "-A", cwd=other); p.git("commit", "-q", "-m", "check in linked", cwd=other)
         code, out = p.run("git", "push", "-q", "origin", "second", cwd=other)
         self.assertEqual(code, 0, out)
-        self.assertRegex((self.tmp / "ls-1.txt").read_text(), r"gw-push-en-curso\.\d+")
-        self.assertNotRegex((self.tmp / "ls-0.txt").read_text().replace("999999", ""), r"gw-push-en-curso\.\d+",
+        self.assertRegex((self.tmp / "ls-1.txt").read_text(), r"gw-push-in-progress\.\d+")
+        self.assertNotRegex((self.tmp / "ls-0.txt").read_text().replace("999999", ""), r"gw-push-in-progress\.\d+",
                             "the main checkout's git dir must not get the linked push's marker")
         self.assertEqual(stale.read_text(), "999999\nmain\n", "the main checkout's marker is untouched")
         self.assertEqual(self.markers(other_dir), [], "removed at the end of its own push")
@@ -462,8 +462,8 @@ class PrePush(Base):
 
     def test_push_marker_of_another_push_is_not_removed_by_this_one(self):
         p = self.p
-        marker = p.work / ".git" / "gw-push-en-curso.999999"
-        self.marker_check("printf '999999\\nother\\n' > \"$(git rev-parse --git-dir)/gw-push-en-curso.999999\"")
+        marker = p.work / ".git" / "gw-push-in-progress.999999"
+        self.marker_check("printf '999999\\nother\\n' > \"$(git rev-parse --git-dir)/gw-push-in-progress.999999\"")
         code, out = p.push("origin", "feature")
         self.assertEqual(code, 0, out)
         self.assertEqual(marker.read_text(), "999999\nother\n")

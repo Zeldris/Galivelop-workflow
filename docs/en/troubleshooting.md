@@ -58,7 +58,7 @@ python3 .claude/gw/scripts/doctor.py
 `pre-push` says which commits it pushes, or that there is nothing new (did you forget `git commit`?). When it rejects
 the push, the last line is the command that fixes it.
 
-While it runs it keeps the marker `gw-push-en-curso.<pid>` (its pid and, per ref it pushes, the local sha and the
+While it runs it keeps the marker `gw-push-in-progress.<pid>` (its pid and, per ref it pushes, the local sha and the
 branch) in the worktree's git dir (`git rev-parse --git-dir`; each worktree has its own) and removes it when it ends, also if it fails or is
 interrupted; the `Stop` hook uses it only not to tell an agent to push again the `HEAD` that is already being pushed
 (a marker of another branch or of an older commit does not silence it). A marker left by a `kill -9` is ignored after

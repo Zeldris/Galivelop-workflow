@@ -49,7 +49,7 @@ same time.
   origin/<protected>`): branches are pushed. Their work returns to the main branch by `git merge` before the PR.
 - **On stop**, the `Stop` hook (`before-stop.py`) does not let a session finish with unpushed commits or with
   changes the log does not mention; if it cannot check (no git, no config), it warns instead of blocking. While a
-  `pre-push` is running (its `gw-push-en-curso.<pid>` marker in that worktree's git dir, with a live pid, under an hour old and
+  `pre-push` is running (its `gw-push-in-progress.<pid>` marker in that worktree's git dir, with a live pid, under an hour old and
   the current `HEAD` sha among the local shas it lists) it does not block either: it warns that this commit is being
   pushed and not to push again (two concurrent pushes race); wait and check `git status -sb`. A marker of another
   branch or of an older `HEAD` (commits made after the push started), with a dead pid, too old or unreadable blocks

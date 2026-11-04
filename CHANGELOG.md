@@ -272,7 +272,8 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
     sugiere `--footer`.
   - D37: el `pre-commit` detecta claves pegadas a una letra o un dígito y ya no salta con diccionarios de rutas a
     códigos en los tests.
-  - D38: la marca de subida en curso del `pre-push` es una por proceso, en el directorio git del worktree que sube.
+  - D38: la marca de subida en curso del `pre-push` es una por proceso, en el directorio git del worktree que sube,
+    y pasa a llamarse `gw-push-in-progress.<pid>` (antes `gw-push-en-curso`; nombres en inglés, A8).
   - D39: `subagent-cap.py` limpia los contadores viejos y no sigue enlaces simbólicos ni duros.
   - E18: los tests de las skills instaladas (`gw-opt-ai`) corren aislados del proyecto donde se instalan.
 - Recogida de la `0.5`, evolutivos.
@@ -541,7 +542,8 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
     failure, suggests `--footer`.
   - D37: `pre-commit` catches keys glued to a letter or a digit and no longer fires on path-to-code dictionaries in
     tests.
-  - D38: the `pre-push` push-in-progress mark is one per process, in the git dir of the worktree that pushes.
+  - D38: the `pre-push` push-in-progress mark is one per process, in the git dir of the worktree that pushes,
+    and is now named `gw-push-in-progress.<pid>` (was `gw-push-en-curso`; names in English, A8).
   - D39: `subagent-cap.py` cleans old counters and follows neither symbolic nor hard links.
   - E18: the tests of installed skills (`gw-opt-ai`) run isolated from the project they are installed in.
 - `0.5` harvest, features.

@@ -11,7 +11,7 @@ agent remembered it. It blocks the stop when:
      the three phases, so Claude cannot fix it alone and a block would only make it push without asking. There it is a
      warning to the user (`systemMessage`: the commits are not pushed, and pushing needs their confirmation), never
      a block;
-     While the workflow's pre-push hook is pushing this very HEAD (markers `gw-push-en-curso.<pid>` in this worktree's git dir:
+     While the workflow's pre-push hook is pushing this very HEAD (markers `gw-push-in-progress.<pid>` in this worktree's git dir:
      a live pid, under an hour old, the current HEAD sha among the local shas it lists) it does not block either: a
      second push would race the first, so it is a warning that says to wait and check `git status -sb`. A marker of
      another branch or of an older HEAD (commits made after the push started), dead, old, empty or unreadable
@@ -52,7 +52,7 @@ import config  # noqa: E402
 
 STDIN_WAIT = 3.0
 GIT_TIMEOUT = 30
-PUSH_MARKER = "gw-push-en-curso"  # written by templates/githooks/pre-push while it runs
+PUSH_MARKER = "gw-push-in-progress"  # written by templates/githooks/pre-push while it runs
 PUSH_MARKER_MAX_AGE = 3600  # seconds: an older marker is a push that died without cleaning up
 WORKTREES_PREFIX = ".claude/worktrees/"
 
@@ -115,7 +115,7 @@ def unpushed(root):
 def push_in_progress(root):
     """The branch name of the push of the current HEAD that the workflow's pre-push hook is running right now, else None.
 
-    Each push keeps `gw-push-en-curso.<pid>` in this worktree's git dir (not shared with other worktrees): line 1 its
+    Each push keeps `gw-push-in-progress.<pid>` in this worktree's git dir (not shared with other worktrees): line 1 its
     pid, then one "<local sha> <local branch>" line per ref it pushes. A marker counts only with a live pid
     (PermissionError: another user's process is alive too), an mtime under PUSH_MARKER_MAX_AGE seconds old, and the
     current HEAD sha among its shas: a push of another branch, or of an older HEAD, does not carry what is unpushed
