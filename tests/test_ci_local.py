@@ -191,7 +191,7 @@ jobs:
 
     def template(self):
         text = (ROOT / "templates" / "github" / "check.yml").read_text().replace("{{protectedBranch}}", "main")
-        self.workflow(text, name="check.yml")
+        self.workflow(text.replace("runs-on: ubuntu-latest", f"runs-on: {HOST}"), name="check.yml")  # also on macOS
 
     def test_the_ci_template_with_a_matrix_from_an_expression_runs_its_check_job_once(self):
         self.template()
@@ -223,7 +223,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: echo never
-""")
+""".replace("ubuntu-latest", HOST))
         code, out = self.ci()
         self.assertEqual(code, 1, out)
         self.assertIn("not green: a job could not be evaluated, so it did not run: ci.yml / b", out)
@@ -232,7 +232,7 @@ jobs:
         self.workflow(f"""on: [pull_request]
 jobs:
   a:
-    runs-on: ubuntu-latest
+    runs-on: {HOST}
     steps:
       - run: echo ok
   b:

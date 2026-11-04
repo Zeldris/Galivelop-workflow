@@ -2,7 +2,7 @@
 
 ## Summary
 
-`ccr-d1e2d496-0vzck8` (hace de `version/0.5.0`) → `main` (`0e04504`, `v0.4.3`). Son 210 commits y `main` ya está
+`ccr-d1e2d496-0vzck8` (hace de `version/0.5.0`) → `main` (`0e04504`, `v0.4.3`). Son 211 commits y `main` ya está
 fusionada en la rama. La entrada completa está en el `CHANGELOG.md` (`[0.5.0] - 2026-11-04`).
 
 ```diff
@@ -13,6 +13,7 @@ fusionada en la rama. La entrada completa está en el `CHANGELOG.md` (`[0.5.0] -
 +    evolutivos                 B14, D40, B15, E19
 +  /code-review vs origin/main  10 hallazgos arreglados (7caaae9..73b2a23)
 +  arreglo del CI (Python 3.12) handoff.py set-row sin Path.read_text(newline=) (8ea7436)
++  arreglo del CI (macOS)       test_ci_local con el sistema de la máquina, no ubuntu fijo
 +  retro aprobada               R1, R5 a la 0.5.1; R2, R3, R4, R6 a la 0.6 (roadmap)
 ```
 
@@ -40,7 +41,9 @@ Arreglos de la revisión:
   - El arreglo está en `8ea7436`, con el test estático `test_utils.OldestPython`, que falla sin el arreglo y pasa con
     él.
   - La suite completa está en verde con Python 3.12 (1394 tests).
-  - El CI de `8ea7436` está en curso.
+  - En `8ea7436`, Ubuntu en verde; macOS en rojo: 3 tests de `test_ci_local` daban por hecho que la máquina es Linux
+    (jobs con `runs-on: ubuntu-latest` fijo). Ahora usan el sistema de la máquina; reproducido y arreglado simulando
+    macOS.
 
 ## Merge Danger
 
