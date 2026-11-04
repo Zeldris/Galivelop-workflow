@@ -2085,6 +2085,23 @@ class PreCommit(Base):
                 self.assertIn("  " + line, r.stderr)
                 p.git("reset", "-q")
                 (p.work / path).unlink()
+        # Not prose: Bearer token, token plus a comment, passphrase; and the label rule holds for other Markdown names.
+        for path, line in [("docs/c.md", 'access_tok' + 'en: "Bearer eyJhbGciOiJIUzI1NiJ9.abc"'),
+                           ("docs/d.md", 'api_' + 'key: "zzAbCdEf1234XyZ (rotate)"'),
+                           ("docs/e.md", 'pass' + 'word: "correct horse battery staple"'),
+                           ("docs/f.md", 'db_pass' + 'word: "Clave de OpenAI", api_' + 'key: "abcd1234efgh"')]:
+            with self.subTest(line=line):
+                p.write(path, line + "\n")
+                r = p.commit("leak", ok=False)
+                self.assertNotEqual(r.returncode, 0, line)
+                self.assertIn("these lines assign a literal secret", r.stderr)
+                self.assertIn("  " + (line if len(line) <= 40 else line[:40] + "…"), r.stderr)
+                p.git("reset", "-q")
+                (p.work / path).unlink()
+        for path in ("docs/G.MD", "docs/h.markdown", "docs/i.mdx"):
+            with self.subTest(path=path):
+                p.write(path, '"openai' + 'Key": "Clave de OpenAI"\n')
+                self.assertEqual(p.commit("label", ok=False).returncode, 0, path)
         # The same prose value outside Markdown is still refused.
         p.write("src/l.py", 'openai' + 'Key = "Clave de OpenAI"\n')
         r = p.commit("py", ok=False)
