@@ -95,6 +95,9 @@ Los comprueba el `commit-msg` (`commitFormat`, `commitRefs`, `commitNext` y `age
   devuelve un resumen con rutas.
 - **Un dato, un sitio:** la versión solo en `.claude-plugin/plugin.json`; el config del proyecto solo lo lee
   `scripts/config.py`.
+- **Todo configurable** (usuario, 2026-11-04): cada umbral, ruta o comportamiento nuevo es una clave de
+  `.claude/gw.json` con su valor por defecto, leída por `config.py` y explicada en `docs/es/config.md`, para que el
+  MMC de la `1.0` (G4) la edite sin tocar código.
 - **Ganchos y scripts** (plan §4.3 y §12): raíz desde la ruta del script o `git rev-parse --show-toplevel`, nunca
   desde `$CLAUDE_PROJECT_DIR` ni el directorio actual; un gancho de subida comprueba el commit que se sube; fallan
   cerrados si les falta un dato; cada cambio lleva su caso en los tests, y un caso que espera un fallo comprueba el

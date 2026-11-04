@@ -24,7 +24,8 @@ task's design is in [`docs/design/`](design/README.md) (Spanish); the split, in 
 
 Only the latest published minor gets patches; new features go to the next minor (H14, plan §7). Work moves through
 `0.x`, where a minor may break: **everything that breaks goes into `0.5`**, so projects migrate once. `1.0` is the
-MMC. At most one release a day (A-6).
+MMC: each patch leaves what it touches configurable (thresholds, paths, behaviours) so the MMC can edit it (G4;
+user, 2026-11-04). At most one release a day (A-6).
 
 ## `0.4.4` — patch (not released)
 
@@ -125,7 +126,9 @@ In this order, because each step uses the previous one.
 | E22 | `check.sh` also runs the tests with the oldest Python available, or warns if there is none (retro `0.5.0` R6) | pending |
 | B18 | Review by blocks on a long branch: `/code-review` of the new diff at each closed block, in `gw-selector` and the `AGENTS.md` template (`0.5.1` harvest, world-maker-fantasy P1) | pending |
 | D48 | `handoff.py next-id <prefix>`: the next free id looking at the remote branches before numbering, with `free_id` (`0.5.1` harvest, world-maker-fantasy P2) | pending |
-| D43 | PR and commit size: measure the changed lines (LOC) of past PRs and commits, set a limit from that data (initial idea, 600-1000 per PR) and warn when it is passed, with a way to split the work (user, 2026-11-04: PRs come out unmanageable) | pending |
+| D43 | Commit and review size: warn, without blocking, about a commit of more than ~400 changed lines (LOC); the review unit is the block or task of ~1000 lines, reviewed when it closes (B18), and the PR to `main` adds up already-reviewed blocks. Paired docs, the installed copies under `.claude/gw/` and generated files do not count; the thresholds, in `.claude/gw.json` (user, 2026-11-04) | pending |
+| D49 | The `pre-push` of a branch other than `main` requires only the related tests (`related-tests.sh`); the full check moves to the push to `main` and to environment changes. The GitHub CI keeps running in full on every push, without blocking, and is checked at each block close with `ci-status.py`; absorbs part of D44 (user, 2026-11-04) | pending |
+| D50 | Traceable commits: `feat`/`fix` commits (and a large `refactor`) carry `Técnica:` (the decision and what was discarded) and `Problemas:` (what failed and how it was solved, or «ninguno») in the body. The `commit-msg` checks they are there, with the types in `.claude/gw.json`; `REVIEW.md` asks for their quality as a judgement rule and the retro goes over it. `docs`, `WIP` and the review mark are exempt (user, 2026-11-04) | pending |
 
 ## `0.7` "Ask"
 

@@ -25,7 +25,8 @@ con su versión en cada línea (H12).
 
 Solo la última menor publicada recibe parches; los evolutivos van a la siguiente menor (H14, plan §7). Se avanza por
 la `0.x`, donde una menor puede romper: **todo lo que rompe va en la `0.5`**, para migrar una sola vez. La `1.0` es
-el MMC. A lo sumo una publicación al día (A-6).
+el MMC: cada parche deja configurable lo que toca (umbrales, rutas, comportamientos) para que el MMC lo edite (G4;
+usuario, 2026-11-04). A lo sumo una publicación al día (A-6).
 
 ## `0.4.4` — parche (no se publica)
 
@@ -126,7 +127,9 @@ En este orden, porque cada paso usa el anterior.
 | E22 | `check.sh` corre también los tests con el Python más viejo disponible, o avisa si no hay (retro `0.5.0` R6) | pendiente |
 | B18 | Revisión por bloques en una rama larga: `/code-review` del diff nuevo en cada bloque cerrado, en `gw-selector` y la plantilla de `AGENTS.md` (recogida `0.5.1`, world-maker-fantasy P1) | pendiente |
 | D48 | `handoff.py next-id <prefijo>`: el siguiente id libre mirando las ramas remotas antes de numerar, con `free_id` (recogida `0.5.1`, world-maker-fantasy P2) | pendiente |
-| D43 | Tamaño de PR y commit: medir las líneas cambiadas (LOC) de los PR y commits ya hechos, fijar un límite con esos datos (idea inicial, 600-1000 por PR) y avisar al pasarlo, con un modo de partir el trabajo (usuario, 2026-11-04: los PR salen inmanejables) | pendiente |
+| D43 | Tamaño de commit y de revisión: avisar, sin bloquear, de un commit de más de ~400 líneas cambiadas (LOC); la unidad de revisión es el bloque o tarea de ~1000 líneas, revisado al cerrarse (B18), y el PR a `main` suma bloques ya revisados. No cuentan los documentos emparejados, las copias instaladas de `.claude/gw/` ni lo generado; los umbrales, en `.claude/gw.json` (usuario, 2026-11-04) | pendiente |
+| D49 | El `pre-push` de una rama que no es `main` exige solo los tests relacionados (`related-tests.sh`); el check completo pasa a la subida a `main` y a los cambios de entorno. El CI de GitHub sigue completo en cada push, sin bloquear, y se mira al cerrar cada bloque con `ci-status.py`; absorbe parte de D44 (usuario, 2026-11-04) | pendiente |
+| D50 | Commits con traza: los `feat`/`fix` (y un `refactor` grande) llevan en el cuerpo `Técnica:` (la decisión y lo descartado) y `Problemas:` (qué falló y cómo se resolvió, o «ninguno»). El `commit-msg` comprueba que estén, con los tipos en `.claude/gw.json`; `REVIEW.md` pide su calidad como regla de criterio y la retro la repasa. Quedan fuera `docs`, `WIP` y la marca de revisión (usuario, 2026-11-04) | pendiente |
 
 ## `0.7` «Preguntar»
 
