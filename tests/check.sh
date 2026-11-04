@@ -5,49 +5,67 @@ set -uo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root" || exit 1
 fail=0
+# Each section that fails is named once, at the end, as `FAILED: <section>`: scripts/check.sh reads those lines
+# for its last line `CHECK FAILED: … (failed: <sections>)`.
+current=""
+failed=""
+section() { current="$1"; echo "== $1"; }
+bad() {
+  fail=1
+  case "
+$failed
+" in *"
+$current
+"*) ;; *) failed="${failed:+$failed
+}$current" ;; esac
+}
 
 # The applied copy (.claude/, .githooks/) is checked byte for byte against its source by the sync step below, so
 # the linters and compilers only look at the sources.
 copies=(':!.claude/' ':!.githooks/')
 
-echo "== workflow copy in sync (.claude/gw, .claude/skills, .githooks, .claude/settings.json)"
-python3 scripts/apply.py --check . || fail=1
+section "workflow copy in sync (.claude/gw, .claude/skills, .githooks, .claude/settings.json)"
+python3 scripts/apply.py --check . || bad
 
-echo "== shell scripts"
+section "shell scripts"
 scripts="$(git ls-files -- '*.sh' 'templates/githooks/*' "${copies[@]}")"
 if [[ -n "$scripts" ]]; then
   files=()
-  while IFS= read -r f; do bash -n "$f" || fail=1; files+=("$f"); done <<<"$scripts"
-  bash tests/shellcheck.sh "${files[@]}" || fail=1
+  while IFS= read -r f; do bash -n "$f" || bad; files+=("$f"); done <<<"$scripts"
+  bash tests/shellcheck.sh "${files[@]}" || bad
 fi
 
-echo "== markdown links and stale references"
-python3 scripts/md-links.py || fail=1
+section "markdown links and stale references"
+python3 scripts/md-links.py || bad
 
-echo "== names in English (A8)"
-python3 scripts/names-check.py || fail=1
+section "names in English (A8)"
+python3 scripts/names-check.py || bad
 
-echo "== private data: keys and e-mails (E2)"
-python3 scripts/private-check.py --all --no-names || fail=1
+section "private data: keys and e-mails (E2)"
+python3 scripts/private-check.py --all --no-names || bad
 
-echo "== agent map paths"
-python3 scripts/agent-map.py || fail=1
+section "agent map paths"
+python3 scripts/agent-map.py || bad
 
-echo "== hand-off log (state-table cells, Done section)"
-python3 scripts/handoff.py check --strict || fail=1
+section "hand-off log (state-table cells, Done section)"
+python3 scripts/handoff.py check --strict || bad
 
-echo "== python"
+section "python"
 if [[ -n "$(git ls-files -- '*.py' "${copies[@]}")" ]]; then
-  git ls-files -z -- '*.py' "${copies[@]}" | xargs -0 python3 -m py_compile || fail=1
+  git ls-files -z -- '*.py' "${copies[@]}" | xargs -0 python3 -m py_compile || bad
 fi
-python3 scripts/tests-after-main.py || fail=1  # a TestCase after unittest.main() never runs
-python3 -m unittest discover -s tests -p 'test_*.py' || fail=1
+python3 scripts/tests-after-main.py || bad  # a TestCase after unittest.main() never runs
+python3 -m unittest discover -s tests -p 'test_*.py' || bad
 # Tests bundled with skills (skills/<name>/scripts/test_*.py), each folder on its own.
 for d in skills/*/scripts; do
   if [[ -n "$(git ls-files "$d/test_*.py")" ]]; then
-    python3 -m unittest discover -s "$d" -p 'test_*.py' || fail=1
+    python3 -m unittest discover -s "$d" -p 'test_*.py' || bad
   fi
 done
 
-if ((fail)); then echo "CHECK FAILED"; exit 1; fi
+if ((fail)); then
+  while IFS= read -r f; do echo "FAILED: $f"; done <<<"$failed"
+  echo "CHECK FAILED"
+  exit 1
+fi
 echo "CHECK OK"
