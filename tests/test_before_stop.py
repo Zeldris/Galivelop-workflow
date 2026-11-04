@@ -261,9 +261,9 @@ class ClaudeWorktrees(Base):
         self.assertBlocks(out, "1 uncommitted change", LOG)
 
 
-class PushInProgress(Base):
-    """P7: while pre-push pushes this very HEAD (markers gw-push-in-progress.<pid> in the worktree's git dir: a pid, then one
-    "<local sha> <branch>" line per ref) a second push would race it. A push of another sha does not carry this HEAD."""
+class PushHelpers(Base):
+    """P7 helpers shared by the push-marker and check-lock cases: a working branch with one unpushed commit and the
+    marker file gw-push-in-progress.<pid> in the worktree's git dir."""
 
     def setUp(self):
         super().setUp()
@@ -297,6 +297,25 @@ class PushInProgress(Base):
     def assertStillBlocks(self, out):
         self.assertBlocks(out, "1 commit", "claude/trabajo", "git push -u origin claude/trabajo")
         self.assertNotIn("push of this commit is in progress", out)
+
+    def linked_worktree(self):
+        """A linked worktree on its own pushed branch with one unpushed commit: (path, hook script, git dir, sha)."""
+        p = self.p
+        linked = p.tmp / "linked"
+        p.git("worktree", "add", "-q", "-b", "claude/otra", str(linked))
+        p.git("push", "-q", "-u", "origin", "claude/otra", cwd=linked)
+        (linked / "src").mkdir(exist_ok=True)
+        (linked / "src" / "b.py").write_text("y = 1\n")
+        p.git("add", "-A", cwd=linked)
+        p.git("commit", "-q", "-m", "in the linked worktree", cwd=linked)
+        script = linked / ".claude" / "gw" / "scripts" / SCRIPT
+        gitdir = Path(p.git("rev-parse", "--absolute-git-dir", cwd=linked).stdout.strip())
+        return linked, script, gitdir, p.git("rev-parse", "HEAD", cwd=linked).stdout.strip()
+
+
+class PushInProgress(PushHelpers):
+    """P7: while pre-push pushes this very HEAD (markers gw-push-in-progress.<pid> in the worktree's git dir: a pid, then one
+    "<local sha> <branch>" line per ref) a second push would race it. A push of another sha does not carry this HEAD."""
 
     def test_marker_with_the_head_sha_warns_instead_of_blocking(self):
         self.mark()
@@ -376,20 +395,6 @@ class PushInProgress(Base):
         code, out = self.p.stop()
         self.assertStillBlocks(out)
 
-    def linked_worktree(self):
-        """A linked worktree on its own pushed branch with one unpushed commit: (path, hook script, git dir, sha)."""
-        p = self.p
-        linked = p.tmp / "linked"
-        p.git("worktree", "add", "-q", "-b", "claude/otra", str(linked))
-        p.git("push", "-q", "-u", "origin", "claude/otra", cwd=linked)
-        (linked / "src").mkdir(exist_ok=True)
-        (linked / "src" / "b.py").write_text("y = 1\n")
-        p.git("add", "-A", cwd=linked)
-        p.git("commit", "-q", "-m", "in the linked worktree", cwd=linked)
-        script = linked / ".claude" / "gw" / "scripts" / SCRIPT
-        gitdir = Path(p.git("rev-parse", "--absolute-git-dir", cwd=linked).stdout.strip())
-        return linked, script, gitdir, p.git("rev-parse", "HEAD", cwd=linked).stdout.strip()
-
     def test_marker_is_per_worktree(self):
         p = self.p
         linked, script, gitdir, sha = self.linked_worktree()
@@ -453,6 +458,126 @@ class PushInProgress(Base):
         data = decision(self, out)
         self.assertIn("protected branch", data["systemMessage"])
         self.assertNotIn("push of this commit is in progress", data["systemMessage"])
+
+
+class CheckInProgress(PushHelpers):
+    """D41: while a check of this HEAD holds the E20 lock <git common dir>/gw/check.lock (symlink to
+    "pid|start|sha|log") the hook says the check is running instead of telling to push; a dead, reused or malformed
+    lock counts as absent, and a check of another commit only adds a note."""
+
+    def lock(self, target, common=None):
+        path = (common or self.p.work / ".git") / "gw" / "check.lock"
+        path.parent.mkdir(exist_ok=True)
+        if path.is_symlink() or path.exists():
+            path.unlink()
+        os.symlink(target, path)
+        return path
+
+    def start(self, pid):
+        out = subprocess.run(["ps", "-o", "lstart=", "-p", str(pid)], capture_output=True, text=True,
+                             env={**os.environ, "LC_ALL": "C"}).stdout
+        return " ".join(out.split())
+
+    def live(self, log="/tmp/gw/check-abc.log", start=None, sha=None, pid=None):
+        pid = os.getpid() if pid is None else pid
+        sha = self.p.sha()[:12] if sha is None else sha
+        return self.lock(f"{pid}|{self.start(pid) if start is None else start}|{sha}|{log}")
+
+    def assertCheckNotice(self, out, log="/tmp/gw/check-abc.log"):
+        self.assertNotIn('"block"', out)
+        msg = decision(self, out).get("systemMessage", "")
+        for needle in ("A check of this commit is running", f"pid {os.getpid()}", log, "wait for CHECK ok"):
+            self.assertIn(needle, msg, out)
+        self.assertNotIn("push of this commit is in progress", msg)
+
+    def test_live_lock_of_this_head_replaces_the_push_reminder(self):
+        self.live()
+        self.assertCheckNotice(self.p.stop()[1])
+
+    def test_dirty_run_of_this_head_counts(self):
+        self.live(sha=self.p.sha()[:12] + "-dirty")
+        self.assertCheckNotice(self.p.stop()[1])
+
+    def test_lock_of_another_sha_blocks_and_notes_it(self):
+        self.live(sha="0123456789ab")
+        data = self.assertBlocks(self.p.stop()[1], "1 commit", "git push -u origin claude/trabajo")
+        for needle in ("check of another commit or worktree is running", f"pid {os.getpid()}", "0123456789ab"):
+            self.assertIn(needle, data["systemMessage"])
+
+    def test_dead_pid_is_absent(self):
+        self.lock(f"{self.dead_pid()}|Mon Jan  1 00:00:00 2024|abc|/tmp/x.log")
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_reused_pid_with_another_start_is_absent(self):
+        self.live(start="Mon Jan  1 00:00:00 2001")
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_unknown_start_is_not_proven_live(self):
+        # check-green.sh proc_is: "?" only matches when ps itself cannot tell; with a working ps it is another process
+        self.live(start="?")
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_malformed_locks_are_absent(self):
+        for bad in ("garbage", "12x|a|b|c", "0|a|b|c", "-5|a|b|c", "|||", f"{os.getpid()}||abc|log"):
+            with self.subTest(target=bad):
+                self.lock(bad)
+                self.assertStillBlocks(self.p.stop()[1])
+
+    def test_regular_file_instead_of_a_symlink_is_absent(self):
+        gw = self.p.work / ".git" / "gw"
+        gw.mkdir(exist_ok=True)
+        (gw / "check.lock").write_text("")
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_huge_pid_fails_closed_with_the_push_block(self):
+        self.live(pid=99999999999999999999)
+        code, out = self.p.stop()
+        self.assertEqual(code, 0)
+        self.assertStillBlocks(out)
+        self.assertNotIn("failed (", out)
+
+    def test_unreadable_lock_fails_closed_with_the_push_block(self):
+        if os.geteuid() == 0:
+            self.skipTest("root reads any folder")
+        self.live()
+        gw = self.p.work / ".git" / "gw"
+        gw.chmod(0o000)
+        self.addCleanup(gw.chmod, 0o755)
+        code, out = self.p.stop()
+        self.assertEqual(code, 0)
+        self.assertStillBlocks(out)
+        self.assertNotIn("failed (", out)
+
+    def test_no_gw_dir_blocks_as_before(self):
+        self.assertFalse((self.p.work / ".git" / "gw").exists())
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_lock_and_push_marker_together_report_the_push(self):
+        self.live()
+        self.mark()
+        data = decision(self, self.p.stop()[1])
+        self.assertNotIn("decision", data)
+        self.assertIn("push of this commit is in progress", data["systemMessage"])
+
+    def test_live_lock_does_not_hide_uncommitted_changes(self):
+        self.live()
+        self.p.write("src/b.py", "y = 1\n")
+        data = self.assertBlocks(self.p.stop()[1], LOG, "1 uncommitted change")
+        self.assertIn("A check of this commit is running", data["systemMessage"])
+
+    def test_linked_worktree_reads_the_common_dir_and_needs_its_own_sha(self):
+        p = self.p
+        linked, script, gitdir, sha = self.linked_worktree()
+        self.assertNotEqual(gitdir, p.work / ".git")
+        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
+        self.live()  # a check of the main checkout's HEAD, in the .git shared by every worktree
+        data = self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
+        self.assertIn("check of another commit or worktree is running", data["systemMessage"])
+        self.live(sha=sha[:12])  # a check of the linked worktree's own HEAD
+        out = p.stop(cwd=linked, script=script)[1]
+        self.assertCheckNotice(out)
+        self.assertIn("claude/otra", out)
+        self.assertFalse((gitdir / "gw").exists())  # not looked for in the per-worktree git dir
 
 
 class ReminderNotGate(Base):

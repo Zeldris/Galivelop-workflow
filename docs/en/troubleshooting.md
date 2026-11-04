@@ -65,6 +65,12 @@ branch) in the worktree's git dir (`git rev-parse --git-dir`; each worktree has 
 interrupted; the `Stop` hook uses it only not to tell an agent to push again the `HEAD` that is already being pushed
 (a marker of another branch or of an older commit does not silence it). A marker left by a `kill -9` is ignored after
 an hour or with a dead pid; it can be deleted by hand.
+The `Stop` hook does not tell an agent to push either while a check holds the lock `<git common dir>/gw/check.lock`
+(a live pid with the same start time): it says in one line that the check is running, with its log, and to wait for
+`CHECK ok`. A lock with a dead, reused or malformed pid counts as absent.
+It stays quiet only when the lock's sha is that worktree's `HEAD`; a check of another commit or worktree only adds a
+note and the push reminder stays. A hung check with a live pid does not expire: kill it (`kill <pid>`; the lock is
+released by itself) or remove the lock (`rm "$(git rev-parse --git-common-dir)/gw/check.lock"`).
 
 | Message | Cause | Fix |
 |---|---|---|

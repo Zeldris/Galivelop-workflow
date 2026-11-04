@@ -65,6 +65,12 @@ directorio git del worktree (`git rev-parse --git-dir`; cada worktree tiene la s
 gancho `Stop` la usa solo para no mandar a subir otra vez el `HEAD` que ya se está subiendo (una marca de otra rama o
 de un commit anterior no lo calla). Una marca que quedó tras un `kill -9` se ignora pasada
 una hora o con su pid muerto; se puede borrar a mano.
+El gancho `Stop` tampoco manda a subir mientras un check tiene el cerrojo `<directorio común de git>/gw/check.lock`
+(pid vivo con la misma hora de inicio): avisa en una línea de que el check corre, con su registro, y espera a
+`CHECK ok`. Un cerrojo con pid muerto, reutilizado o mal formado cuenta como ausente.
+Solo calla si el sha del cerrojo es el `HEAD` de ese worktree; el de otro commit o worktree solo añade una nota y el
+aviso de subir sigue. Un check colgado con el pid vivo no caduca: córtalo (`kill <pid>`; el cerrojo se suelta solo) o
+borra el cerrojo (`rm "$(git rev-parse --git-common-dir)/gw/check.lock"`).
 
 | Mensaje | Causa | Arreglo |
 |---|---|---|
