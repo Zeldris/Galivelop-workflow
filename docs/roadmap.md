@@ -117,6 +117,7 @@ En este orden, porque cada paso usa el anterior.
 | B16 | `gw-orchestrate-dealer`: los hallazgos aprobados de un `/code-review` se reparten a subagentes por grupo de archivos (retro `0.5.0` R3) | pendiente |
 | D42 | `gw-orchestrate-dealer`: carpeta `scratchpad/<id>/` por agente, comprobar la base del worktree y cortar con `TaskStop` (retro `0.5.0` R4) | pendiente |
 | E22 | `check.sh` corre también los tests con el Python más viejo disponible, o avisa si no hay (retro `0.5.0` R6) | pendiente |
+| D43 | Tamaño de PR y commit: medir las líneas cambiadas (LOC) de los PR y commits ya hechos, fijar un límite con esos datos (idea inicial, 600-1000 por PR) y avisar al pasarlo, con un modo de partir el trabajo (usuario, 2026-11-04: los PR salen inmanejables) | pendiente |
 
 ## `0.7` «Preguntar»
 

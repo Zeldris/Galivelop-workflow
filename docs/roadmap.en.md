@@ -116,6 +116,7 @@ In this order, because each step uses the previous one.
 | B16 | `gw-orchestrate-dealer`: the approved findings of a `/code-review` are dealt out to subagents by group of files (retro `0.5.0` R3) | pending |
 | D42 | `gw-orchestrate-dealer`: a `scratchpad/<id>/` folder per agent, check the worktree base and stop with `TaskStop` (retro `0.5.0` R4) | pending |
 | E22 | `check.sh` also runs the tests with the oldest Python available, or warns if there is none (retro `0.5.0` R6) | pending |
+| D43 | PR and commit size: measure the changed lines (LOC) of past PRs and commits, set a limit from that data (initial idea, 600-1000 per PR) and warn when it is passed, with a way to split the work (user, 2026-11-04: PRs come out unmanageable) | pending |
 
 ## `0.7` "Ask"
 
