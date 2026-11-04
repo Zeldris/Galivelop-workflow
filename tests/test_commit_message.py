@@ -461,7 +461,8 @@ class FailClosed(Msg):
         self.p.git("add", "docs/notes.md")
         r = self.p.git("commit", "-q", "-m", "work", ok=False)
         self.assertNotEqual(r.returncode, 0)
-        self.assertIn("cannot read .claude/gw.json", r.stderr)
+        # D34: the pre-commit only warns with an unreadable config; the commit-msg is what stops a non-WIP commit.
+        self.assertIn("commit-msg: cannot read or validate .claude/gw.json", r.stderr)
         self.assertEqual(self.p.sha(), before)
 
     def test_the_script_alone_fails_closed_on_a_bad_config(self):
