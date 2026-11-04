@@ -176,11 +176,11 @@ proc_is() {  # proc_is <pid> <start>: that very process is still running (not go
 
 cmd_lock_acquire() {
   [ "$#" -eq 4 ] || usage "lock-acquire needs <owner-pid> <sha> <wait-seconds> <log>"
-  local owner="$1" sha="$2" wait="$3" log="$4" lock mine cur pid rest start osha olog tmp moved deadline announced="" vanished=0
+  local owner="$1" sha="$2" wait="$3" log="$4" lock mine cur pid rest start osha olog tmp moved waited announced="" vanished=0
   case "$owner$wait" in ''|*[!0-9]*) usage "lock-acquire: pid and wait must be numbers" ;; esac
   lock="$(lock_file)" || { echo "check-green: cannot create <git common dir>/gw for the lock; make the git dir writable, e.g. chmod u+w \"\$(git rev-parse --git-common-dir)\"" >&2; return 1; }
   mine="$owner|$(proc_start "$owner")|$sha|$log"
-  deadline=$((SECONDS + wait))
+  waited=0  # whole seconds slept: $SECONDS ticks on the second, so SECONDS+wait could give up after wait-1 s
   while :; do
     ln -s "$mine" "$lock" 2>/dev/null && return 0
     cur="$(readlink "$lock" 2>/dev/null)"
@@ -210,13 +210,14 @@ cmd_lock_acquire() {
       fi
       continue
     fi
-    if [ "$SECONDS" -ge "$deadline" ]; then
+    if [ "$waited" -ge "$wait" ]; then
       echo "CHECK FAILED: not run, another check is running (pid $pid, sha ${osha:-unknown}); wait for it and read its log ${olog:--}, or raise checkLockWait in .claude/gw.json to wait for it. If pid $pid is not a check (check: ps -p $pid -o command=), remove the lock: rm $lock" >&2
       return 3
     fi
     [ -n "$announced" ] || echo "check: waiting for the check of pid $pid (sha ${osha:-unknown}) to end (up to ${wait}s)" >&2
     announced=1
     sleep 1
+    waited=$((waited + 1))
   done
 }
 cmd_lock_release() {

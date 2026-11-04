@@ -82,6 +82,7 @@ cleanup_output() {  # stops the output tees and removes their fifos
   [ -z "$fifos" ] || rm -rf "$fifos"
   fifos=""; tee_out=""; tee_err=""
 }
+# shellcheck disable=SC2329  # called from the traps below
 release() {  # drops the lock only if it is still ours (check-green.sh checks the owner)
   cleanup_output
   [ -z "$have_lock" ] || bash "$helper" lock-release "$$" < /dev/null
@@ -112,7 +113,7 @@ while IFS= read -r cmd; do
     rc=$?
   else
     # live output, also into the log; stdout and stderr stay on their own streams (two fifos, two tees)
-    fifos="$(mktemp -d "${TMPDIR:-/tmp}/gw-check-fifo.XXXXXX")" && mkfifo "$fifos/out" "$fifos/err" || fail "cannot create a fifo in ${TMPDIR:-/tmp}; free space or set TMPDIR to a writable folder"
+    { fifos="$(mktemp -d "${TMPDIR:-/tmp}/gw-check-fifo.XXXXXX")" && mkfifo "$fifos/out" "$fifos/err"; } || fail "cannot create a fifo in ${TMPDIR:-/tmp}; free space or set TMPDIR to a writable folder"
     tee -a "$log" < "$fifos/out" &
     tee_out=$!
     tee -a "$log" >&2 < "$fifos/err" &
