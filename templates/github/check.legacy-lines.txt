@@ -1,3 +1,4 @@
+# galivelop-workflow v0.5.0
 # Lines that earlier versions of check.yml had and the current one no longer has (one per line, stripped).
 # apply.py does not count them as the project's own when it compares a project's check.yml with the template (D45).
 # When you change templates/github/check.yml, append here every line you remove or change, or an update would

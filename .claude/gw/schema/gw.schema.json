@@ -202,6 +202,11 @@
       "default": [],
       "description": "Repo-relative workflow files that `ci-local.py` runs, whatever their triggers; empty: every .github/workflows/*.yml|yaml triggered by the event."
     },
+    "ciKeepSteps": {
+      "type": "boolean",
+      "default": true,
+      "description": "true: apply.py never replaces .github/workflows/check.yml when it has lines of the project's own (steps, Node version, cache...) that neither the template nor an earlier one has, not even with --update; it writes check.yml.gw-new and says how to merge. false: the old behaviour (an older copy is replaced)."
+    },
     "ciPython": {
       "type": "array",
       "items": {"type": "string", "pattern": "^\\S+$"},
