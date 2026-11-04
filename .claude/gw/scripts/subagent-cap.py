@@ -103,7 +103,8 @@ AGENT_NAME = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]*\Z")
 
 
 def agent_sets_model(name, root):
-    """True when .claude/agents/<name>.md (project, then user) has a `model:` in its frontmatter other than inherit."""
+    """True when .claude/agents/<name>.md has a `model:` in its frontmatter other than inherit. The project file, when
+    it exists, is the definition (the user one is not read then); otherwise the user one."""
     if not isinstance(name, str) or not AGENT_NAME.match(name):
         return False
     folders = [os.path.join(os.path.expanduser("~"), ".claude", "agents")]
@@ -115,8 +116,9 @@ def agent_sets_model(name, root):
                 lines = fh.read(20000).splitlines()
         except OSError:
             continue
+        # the first file found is the definition Claude Code uses (project over user): the search stops there
         if not lines or lines[0].strip() != "---":
-            continue
+            return False
         for line in lines[1:]:
             if line.strip() == "---":
                 break
@@ -124,6 +126,7 @@ def agent_sets_model(name, root):
             if key.strip() == "model":
                 value = value.strip().strip("\"'").strip()
                 return bool(value) and value.lower() != "inherit"
+        return False
     return False
 
 

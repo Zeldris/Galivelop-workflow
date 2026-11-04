@@ -297,6 +297,20 @@ class ModelWarning(Base):
                 self.assertIn("gw-selector",
                               self.context(self.p.call(tool_input={"prompt": "x", "subagent_type": name})))
 
+    def test_the_project_definition_hides_the_user_one(self):
+        # code review of 0.5.0: Claude Code uses the project file, so a model only in the user file does not count
+        for project in ("---\nname: dup\n---\nbody\n", "---\nmodel: inherit\n---\n", "no frontmatter\n"):
+            with self.subTest(project=project):
+                self.p.agent("dup", project)
+                self.p.agent("dup", "---\nmodel: haiku\n---\n", user=True)
+                shutil.rmtree(self.p.counters)
+                self.p.counters.mkdir()
+                self.assertIn("gw-selector",
+                              self.context(self.p.call(tool_input={"prompt": "x", "subagent_type": "dup"})))
+        self.p.agent("dup2", "---\nmodel: sonnet\n---\n")
+        self.p.agent("dup2", "---\nmodel: inherit\n---\n", user=True)
+        self.assertQuiet(self.p.call("dup2", tool_input={"prompt": "x", "subagent_type": "dup2"}))
+
     def test_the_warning_is_also_added_when_the_hook_asks(self):
         (self.p.counters / "gw-subagents-s1").symlink_to(self.tmp / "nowhere")
         code, out = self.p.call("s1", tool_input={"prompt": "x"})
