@@ -148,7 +148,7 @@ class Names(Repo):
         self.assertIn(f"docs/SECRET PROJECT.md (commit {short}) (path): private name SECRET PROJECT", out)
         self.assertIn(f"commit {short} (message): private name Secret Project", out)
         self.assertNotIn("secretproject", out)  # no separator is another word
-        self.assertIn("git rebase -i", out)
+        self.assertIn("git commit --amend", out)
         code, out = self.check("--range", f"{self.base}..HEAD", "--no-names")
         self.assertEqual(code, 0, out)
 
@@ -199,6 +199,83 @@ class Names(Repo):
         r = subprocess.run(cli, capture_output=True, text=True, env=self.env)
         self.assertEqual(r.returncode, 2)
         self.assertIn("expected a JSON object", r.stderr)
+
+
+class Advice(Repo):
+    """D47: a refusal says the commits are not pushed yet and the exact command that fixes only them."""
+
+    def bad(self, name="a"):
+        self.write(f"docs/{name}.md", PRIVATE_MAIL + "\n")
+        self.commit(f"add {name}")
+        return self.sha()
+
+    def good(self, name="g"):
+        self.write(f"docs/{name}.md", "fine\n")
+        self.commit(f"add {name}")
+        return self.sha()
+
+    def push_check(self, shas, *flags):
+        return self.check("--no-names", "--commits", "-", *flags, stdin="\n".join(shas) + "\n")
+
+    def test_one_new_commit_is_amended(self):
+        sha = self.bad()
+        code, out = self.push_check([sha], "--base", self.base)
+        self.assertEqual(code, 1, out)
+        self.assertIn("are NOT pushed yet", out)
+        self.assertIn("it is only the last commit", out)
+        self.assertIn("git commit --amend", out)
+        self.assertNotIn("rebase -i", out)
+
+    def test_several_commits_name_the_remote_base(self):
+        first = self.bad("a")
+        second = self.bad("b")
+        code, out = self.push_check([first, second], "--base", self.base)
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"git rebase -i {self.base[:12]}", out)
+        self.assertIn(f"{first[:7]}, {second[:7]}", out)
+        self.assertIn("never rewrite what is already on the remote", out)
+
+    def test_private_commit_that_is_not_the_last_needs_a_rebase(self):
+        first = self.bad("a")
+        last = self.good()
+        code, out = self.push_check([first, last], "--base", self.base)
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"git rebase -i {self.base[:12]}", out)
+        self.assertNotIn("git commit --amend", out)
+
+    def test_only_the_last_of_several_is_amended(self):
+        self.good()
+        sha = self.bad()
+        code, out = self.push_check([self.sha("HEAD~1"), sha], "--base", self.base)
+        self.assertIn("it is only the last commit", out)
+
+    def test_new_branch_uses_the_merge_base_with_the_protected_branch(self):
+        remote = self.tmp / "remote.git"
+        self.git("init", "-q", "--bare", str(remote), cwd=self.tmp)
+        self.git("remote", "add", "origin", str(remote))
+        self.git("push", "-q", "origin", "HEAD:refs/heads/main")
+        self.git("fetch", "-q", "origin")
+        first = self.bad("a")
+        second = self.good()
+        code, out = self.push_check([first, second], "--remote", "origin", "--ref", "feature")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"git rebase -i {self.base[:12]}", out)
+
+    def test_no_remote_base_gives_the_alternative_command(self):
+        first = self.bad("a")
+        second = self.good()
+        code, out = self.push_check([first, second], "--remote", "origin", "--ref", "feature")
+        self.assertEqual(code, 1, out)
+        self.assertIn("no remote base found for (feature)", out)
+        self.assertIn(f"git rebase -i {first[:12]}^", out)
+
+    def test_a_pushed_branch_that_is_not_checked_out_is_named(self):
+        sha = self.bad("a")
+        self.git("checkout", "-q", "-b", "other", self.base)
+        code, out = self.push_check([sha], "--base", self.base, "--ref", "feature")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"git rebase -i {self.base[:12]} feature", out)
+        self.assertNotIn("git commit --amend", out)
 
 
 class Commits(Repo):

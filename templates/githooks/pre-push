@@ -274,8 +274,8 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 
     scan_leftovers "$local_sha" "$files" "the push"
     if [ -f "$scripts/private-check.py" ]; then  # an older project without it: skipped, like the optional scripts
-      printf '%s\n' "$new" | python3 "$scripts/private-check.py" --root "$root" --rev "$local_sha" --commits - \
-        || fail "the push carries private data or a key (above); remove it from those commits and push again: git rebase -i $remote/${remote_ref#refs/heads/}"
+      printf '%s\n' "$new" | python3 "$scripts/private-check.py" --root "$root" --rev "$local_sha" --base "$known" --remote "$remote" --ref "${local_ref#refs/heads/}" --commits - \
+        || fail "the push carries private data or a key (above); those commits are not pushed yet: fix only them with the command above, then push again"
     fi
   fi
 

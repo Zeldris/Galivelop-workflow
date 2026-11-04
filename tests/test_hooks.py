@@ -1050,7 +1050,25 @@ class PrePushPrivate(Base):
         self.assertNotEqual(code, 0, out)
         self.assertIn(f"docs/a.md:1 (commit {p.sha()[:7]}): private name secret-client", out)
         self.assertIn("the push carries private data or a key", out)
-        self.assertIn("git rebase -i origin/feature", out)
+        self.assertIn("are NOT pushed yet", out)
+        self.assertIn("it is only the last commit", out)
+        self.assertIn("git commit --amend", out)
+        self.assertIn("fix only them with the command above", out)
+
+    def test_two_branches_at_once_name_the_one_with_the_private_data(self):
+        p = self.p
+        p.write(".claude/gw.local.json", json.dumps({"privateNames": ["Secret Client"]}))
+        p.write("docs/ok.md", "fine\n")
+        p.commit("fine")
+        p.git("checkout", "-q", "-b", "leaky")
+        p.write("docs/a.md", "work for secret-client\n")
+        p.commit("notes")
+        p.write("docs/b.md", "more\n")
+        p.commit("more")
+        code, out = p.push("origin", "feature", "leaky")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("git rebase -i", out)
+        self.assertIn("are NOT pushed yet", out)
 
     def test_without_the_local_file_names_are_skipped_with_a_notice(self):
         p = self.p
