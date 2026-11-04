@@ -12,6 +12,8 @@
   "setup": [],
   "check": ["make check", "python3 .claude/gw/scripts/agent-map.py", "python3 .claude/gw/scripts/tests-after-main.py"],
   "checkWrapper": "",
+  "checkLockWait": 0,
+  "checkOutputGrace": 5,
   "worktreeLinks": ["node_modules", ".venv"],
   "worktreeDir": "",
   "reviewMark": "docs/records/reviewed.txt",

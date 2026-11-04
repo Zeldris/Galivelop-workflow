@@ -110,6 +110,18 @@
       "default": "",
       "description": "Prefix put before every `check` and `relatedTests` command (e.g. tools/qa/host.sh); empty for none."
     },
+    "checkLockWait": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "Seconds scripts/check.sh waits for another check that holds the lock (<git common dir>/gw/check.lock) before exiting 3 and naming its pid and sha; 0 = do not wait."
+    },
+    "checkOutputGrace": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 5,
+      "description": "Seconds scripts/check.sh waits, after a command ends, for the output it was copying to the log; a command that leaves a background process holding the output cannot hang the check longer than this."
+    },
     "worktreeLinks": {
       "type": "array",
       "items": {
