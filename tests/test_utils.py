@@ -17,7 +17,7 @@ from pathlib import Path
 from test_hooks import BASE_CONFIG, Project, ROOT, VERSION, ZERO
 
 sys.dont_write_bytecode = True
-SCRIPTS = ("handoff.py", "prepush-branches.sh", "merge-branch.sh", "red-without-fix.sh", "related-tests.sh",
+SCRIPTS = ("handoff.py", "prepush-branches.sh", "merge-branch.sh", "check.sh", "check-green.sh", "red-without-fix.sh", "related-tests.sh",
            "md-links.py")
 DAY = {"GIT_AUTHOR_DATE": "2026-10-21T12:00:00+0000", "GIT_COMMITTER_DATE": "2026-10-21T12:00:00+0000"}
 LOG = "docs/log.md"
@@ -1328,8 +1328,55 @@ class MergeBranch(Base):
         self.agent()
         code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
         self.assertEqual(code, 0, out)
-        self.assertIn("check OK: bash wrap.sh bash -c 'bash check.sh'", out)
+        self.assertIn("check OK: CHECK ok: nothing failed", out)
+        log = next((self.p.work / ".git" / "gw").glob("check-*.log"))
+        self.assertIn("== bash wrap.sh bash -c 'bash check.sh'", log.read_text())
         self.assertEqual((self.p.work / "wrap.log").read_text(), "wrapped: bash -c bash check.sh\n")
+
+    def test_the_check_registry_stays_and_the_green_is_recorded_for_the_pre_push(self):
+        with open(self.p.work / ".git" / "info" / "exclude", "a") as f:
+            f.write(".claude/worktrees/\n")  # as in a real project: the agents' worktrees are ignored
+        self.agent()
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed",
+                                  env={"GW_CHECK_CACHE": ""})  # the test project turns the cache off by default
+        self.assertEqual(code, 0, out)
+        logs = list((self.p.work / ".git" / "gw").glob("check-*.log"))
+        self.assertEqual(len(logs), 1, logs)
+        self.assertIn(str(logs[0]), out, "the log path is shown")
+        self.assertEqual(logs[0].read_text().splitlines()[-1], "CHECK ok: nothing failed")
+        self.assertFalse((self.p.work / ".git" / "gw" / "check.lock").exists())
+        self.assertEqual(len((self.p.work / ".git" / "gw-check-green").read_text().splitlines()), 1,
+                         "the green is recorded so the pre-push does not repeat the check")
+
+    def test_a_failing_check_shows_its_summary_and_log_path_not_the_last_lines(self):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        self.p = Utils(self.tmp, check="echo noisy-line-xyz; exit 1")
+        self.agent()
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
+        self.assertEqual(code, 1, out)
+        self.assertRegex(out, r"FAILED +\d+s +bash check.sh \(exit 1\)")
+        self.assertIn("CHECK FAILED: bash check.sh", out)
+        self.assertNotIn("noisy-line-xyz", out, "no tail of the output")
+        log = next((self.p.work / ".git" / "gw").glob("check-*.log"))
+        self.assertIn("full log: " + str(log), out)
+        self.assertIn("noisy-line-xyz", log.read_text(), "the registry is not deleted")
+
+    def test_a_check_already_running_stops_the_merge_check_naming_its_pid(self):
+        holder = subprocess.Popen(["sleep", "30"])
+        self.addCleanup(holder.kill)
+        self.addCleanup(holder.wait)
+        lock = self.p.work / ".git" / "gw" / "check.lock"
+        lock.mkdir(parents=True)
+        (lock / "pid").write_text(f"{holder.pid}\n")
+        (lock / "sha").write_text("abc123abc123\n")
+        wt = self.agent()
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"another check is running (pid {holder.pid}, sha abc123abc123)", out)
+        self.assertIn("The merge is ALREADY done", out)
+        self.assertIn("git reset --hard HEAD^1", out)
+        self.assertTrue(wt.exists())
 
     def test_reminds_about_review_without_the_flag(self):
         self.agent()
