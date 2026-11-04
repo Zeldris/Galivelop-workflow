@@ -1222,9 +1222,6 @@ class Migrate(unittest.TestCase):
         self.assertIn("--keep-paths", out)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 OLD_SCHEMA_CONFIG = {k: v for k, v in BASE_CONFIG.items() if k != "schemaVersion"}  # written before 0.5
 
@@ -1311,3 +1308,7 @@ class SchemaMigration(unittest.TestCase):
         self.assertIn("schemaVersion 99 is newer than this copy of the workflow knows (1)", out)
         self.assertIn("/gw-update", out)
         self.assertFalse((p.work / ".claude" / "gw" / "scripts").exists())
+
+
+if __name__ == "__main__":
+    unittest.main()

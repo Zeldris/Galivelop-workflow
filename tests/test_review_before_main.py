@@ -723,9 +723,6 @@ class Hook(unittest.TestCase):
         self.assertBlocked(self.create(), "config")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class PreFilter(unittest.TestCase):
     """The matcher includes every Bash call: unrelated commands must pass even without python3, and without starting it."""
@@ -823,3 +820,7 @@ class PreFilter(unittest.TestCase):
             r = subprocess.run([shutil.which("bash"), str(self.hook)], env={"PATH": str(self.tools)}, input=text,
                                capture_output=True, text=True)
             self.assertEqual((r.returncode, r.stderr), (0, ""), repr(text))
+
+
+if __name__ == "__main__":
+    unittest.main()
