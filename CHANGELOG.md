@@ -8,12 +8,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
-## [0.5.0] - Unreleased
+## [0.5.0] - 2026-11-04
 
 Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `docs/roadmap.md`, lista en
-`docs/records/pending.md`). La versión de `plugin.json` no sube hasta publicarla. / Features of `0.5` "Base"
-(formerly planned for `1.0.0`; split in `docs/roadmap.en.md`, list in `docs/records/pending.md`). The
-`plugin.json` version does not move until it is released.
+`docs/records/pending.md`) y los arreglos de la recogida de la `0.5`, que no salen en una `0.4.4` (usuario,
+2026-11-03). / Features of `0.5` "Base" (formerly planned for `1.0.0`; split in `docs/roadmap.en.md`, list in
+`docs/records/pending.md`) and the fixes of the `0.5` harvest, which do not ship in a `0.4.4` (user, 2026-11-03).
 
 ### ES
 
@@ -255,6 +255,36 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   (en columna 0 y fuera de bloques de código) en el título y el cuerpo de lo que se publica en GitHub: herramientas
   `mcp__*github*__` y `gh pr|issue|release|api` en Bash. `session-start.sh` avisa si `user.email` es
   `noreply@anthropic.com`.
+- Recogida de la `0.5` (H15, 2026-11-03), arreglos. El usuario decidió no publicar la `0.4.4`: van aquí.
+  - D32: `harvest.py` reconoce las skills y scripts con su nombre anterior a A8 y una copia vieja fuera de la línea de
+    `HEAD`; se limita a la historia publicada y falla cerrado en un clon superficial.
+  - D33: `config-guard.py` protege también `settings.local.json`, los worktrees y más órdenes que escriben, sin falso
+    positivo en `touch -r`. Una orden de git que reescribe el árbol (`checkout`, `restore`, `reset`, `rebase`, `stash`,
+    `clean`, `apply`…) pregunta solo si cambiaría una ruta protegida: lo calcula con un diff, sin pasar a git opciones
+    del usuario, y sigue alias y opciones globales. Poner `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_CONFIG*`
+    o `GIT_COMMON_DIR` en la orden hace preguntar. Los límites, en `docs/es/patterns.md`.
+  - D34: el `commit-msg` deja pasar un commit `WIP:` con `.claude/gw.json` ilegible y no falla fuera de un árbol de
+    trabajo; un commit que no es WIP sigue fallando cerrado. El `pre-commit` avisa y se salta las rutas protegidas si
+    el config no se lee. El relevo WIP no se corta con `CLAUDECODE=1`.
+  - D35: `/gw-update` lleva el clon del flujo a la última etiqueta `vX.Y.Z` (`ls-remote --tags`) en vez de hacer
+    `pull`, también en un clon de una sola rama; sin etiquetas, para y lo dice.
+  - D36: `reviewed.sh` pone `Siguiente: crear el PR` (o `Next: open the PR`) por defecto con `commitNext` y, si falla,
+    sugiere `--footer`.
+  - D37: el `pre-commit` detecta claves pegadas a una letra o un dígito y ya no salta con diccionarios de rutas a
+    códigos en los tests.
+  - D38: la marca de subida en curso del `pre-push` es una por proceso, en el directorio git del worktree que sube.
+  - D39: `subagent-cap.py` limpia los contadores viejos y no sigue enlaces simbólicos ni duros.
+  - E18: los tests de las skills instaladas (`gw-opt-ai`) corren aislados del proyecto donde se instalan.
+- Recogida de la `0.5`, evolutivos.
+  - B14: `recover.py --state` lee el presupuesto de compactaciones de la bitácora (`Presupuesto de compactaciones: N`
+    o `Compaction budget: N`, de la fila de la rama con `logRows`) y avisa si la cuenta desde el inicio de la tarea lo
+    supera.
+  - D40: `recover.py --state` lista las ramas remotas con commits fuera de la rama protegida (10 como mucho, sin
+    `fetch`, con su fila de la bitácora salvo en un clon parcial).
+  - B15: `subagent-cap.py` avisa al lanzar un subagente sin `model` (ni en su `subagent_type`), también dentro de
+    las preguntas del tope.
+  - E19: `scripts/tests-after-main.py`, en el `check` de este repo y en el de la plantilla, falla si una `TestCase`
+    va después de `unittest.main()` (nunca correría). Encontró dos en este repo, ya movidas.
 
 ### EN
 
@@ -492,6 +522,37 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
 - D21: with `agentSignatures: false`, the `scripts/agent-signatures.py` hook (PreToolUse) blocks agent signatures
   (at column 0 and outside code blocks) in the title and body of what is posted to GitHub: `mcp__*github*__` tools
   and `gh pr|issue|release|api` in Bash. `session-start.sh` warns when `user.email` is `noreply@anthropic.com`.
+- `0.5` harvest (H15, 2026-11-03), fixes. The user decided not to release `0.4.4`: they ship here.
+  - D32: `harvest.py` recognises skills and scripts by their pre-A8 name and an old copy outside `HEAD`'s line; it
+    keeps to the published history and fails closed on a shallow clone.
+  - D33: `config-guard.py` also protects `settings.local.json`, worktrees and more writing commands, with no false
+    positive on `touch -r`. A git command that rewrites the tree (`checkout`, `restore`, `reset`, `rebase`, `stash`,
+    `clean`, `apply`…) asks only if it would change a protected path: it works this out with a diff, without passing
+    user options to git, and follows aliases and global options. Setting `GIT_DIR`, `GIT_WORK_TREE`,
+    `GIT_INDEX_FILE`, `GIT_CONFIG*` or `GIT_COMMON_DIR` in the command makes it ask. Limits in
+    `docs/en/patterns.md`.
+  - D34: `commit-msg` lets a `WIP:` commit through when `.claude/gw.json` cannot be read and does not fail outside a
+    work tree; a non-WIP commit still fails closed. `pre-commit` warns and skips the protected paths when the config
+    cannot be read. The WIP hand-off is not cut by `CLAUDECODE=1`.
+  - D35: `/gw-update` moves the workflow clone to the latest `vX.Y.Z` tag (`ls-remote --tags`) instead of pulling,
+    also on a single-branch clone; with no tags it stops and says so.
+  - D36: `reviewed.sh` adds `Siguiente: crear el PR` (or `Next: open the PR`) by default with `commitNext` and, on
+    failure, suggests `--footer`.
+  - D37: `pre-commit` catches keys glued to a letter or a digit and no longer fires on path-to-code dictionaries in
+    tests.
+  - D38: the `pre-push` push-in-progress mark is one per process, in the git dir of the worktree that pushes.
+  - D39: `subagent-cap.py` cleans old counters and follows neither symbolic nor hard links.
+  - E18: the tests of installed skills (`gw-opt-ai`) run isolated from the project they are installed in.
+- `0.5` harvest, features.
+  - B14: `recover.py --state` reads the compaction budget from the log (`Compaction budget: N` or `Presupuesto de
+    compactaciones: N`, from the branch's row with `logRows`) and warns when the count since the task started exceeds
+    it.
+  - D40: `recover.py --state` lists the remote branches with commits outside the protected branch (10 at most, no
+    `fetch`, with their log row except on a partial clone).
+  - B15: `subagent-cap.py` warns when a subagent is launched without `model` (nor one in its `subagent_type`), also
+    inside the cap's questions.
+  - E19: `scripts/tests-after-main.py`, in this repo's `check` and the template's, fails when a `TestCase` comes after
+    `unittest.main()` (it would never run). It found two in this repo, now moved.
 
 ## [0.4.3] - 2026-10-27
 

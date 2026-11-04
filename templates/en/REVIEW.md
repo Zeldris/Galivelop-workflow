@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.4.3 -->
+<!-- galivelop-workflow v0.5.0 -->
 # Review guide
 
 What the reviewer (`/code-review`, or any agent reviewing a diff) checks in every diff of {{project}}, besides the

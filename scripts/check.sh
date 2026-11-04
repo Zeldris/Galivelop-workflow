@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# galivelop-workflow v0.4.3
+# galivelop-workflow v0.5.0
 # Runs the project's `check` (every command of .claude/gw.json, prefixed by `checkWrapper` exactly as the pre-push
 # does) at the repo root with GW_PUSH_PROTECTED=false, stopping at the first failure, then prints a summary (each
 # command, ok/FAILED, seconds). By default the commands run as always, with live output. With --quiet (-q, or

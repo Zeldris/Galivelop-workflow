@@ -27,22 +27,25 @@ Solo la última menor publicada recibe parches; los evolutivos van a la siguient
 la `0.x`, donde una menor puede romper: **todo lo que rompe va en la `0.5`**, para migrar una sola vez. La `1.0` es
 el MMC. A lo sumo una publicación al día (A-6).
 
-## `0.4.4` — parche
+## `0.4.4` — parche (no se publica)
+
+El usuario decidió el 2026-11-03 publicar directamente la `0.5.0`: sus arreglos salen en ella y lo pendiente
+pasa a la `0.5.1`.
 
 | Id | Tarea | Estado |
 |---|---|---|
-| D6 | `worktree.baseRef: "head"` en el `settings.json` que instala el flujo | pendiente |
-| — | Retro `0.4.2` P5: la regla QUOTED del `pre-commit` sin falsos positivos en `.md` ([`pending.md`](records/pending.md)) | pendiente |
+| D6 | `worktree.baseRef: "head"` en el `settings.json` que instala el flujo | pendiente (pasa a la `0.5.1`) |
+| — | Retro `0.4.2` P5: la regla QUOTED del `pre-commit` sin falsos positivos en `.md` ([`pending.md`](records/pending.md)) | pendiente (pasa a la `0.5.1`) |
 | — | Arreglos del CI de Ubuntu y macOS (rama `ccr-6dfbc880-ddr41g`, `4b7bf8a`..`66a4ecd`) | hecho |
-| D32 | `harvest.py` reconoce las skills con el nombre anterior a A8 y una copia vieja de `writing-for-agents` (image-generator P1, P12) | pendiente (se hace en la `0.5` y se lleva a la rama del parche) |
-| D33 | `config-guard.py`: `settings.local.json`, worktrees y más órdenes que escriben; sin falso positivo en `touch -r` (portal P2, WMF P8) | pendiente (se hace en la `0.5` y se lleva a la rama del parche) |
-| D34 | `commit-msg` deja pasar un `WIP:` sin `gw.json` legible y no falla fuera de un árbol de trabajo (portal P4, WMF P11) | pendiente (se hace en la `0.5` y se lleva a la rama del parche) |
-| D35 | `/gw-update` en un clon de una sola rama usa las etiquetas (portal P3) | pendiente (se hace en la `0.5` y se lleva a la rama del parche) |
-| D36 | `reviewed.sh` sugiere `--footer` al fallar y pone `Siguiente:` por defecto con `commitNext` (WMF P2) | pendiente (se hace en la `0.5` y se lleva a la rama del parche) |
-| E18 | Tests de las skills instaladas aislados del proyecto donde corren (WMF P3) | pendiente (se hace en la `0.5` y se lleva a la rama del parche) |
-| D37 | `pre-commit`: `KEY_FORMATS` con claves pegadas a una letra o dígito; sin falso positivo en diccionarios de tests (image-generator P2, P3) | pendiente (se hace en la `0.5` y se lleva a la rama del parche) |
-| D38 | La marca de subida en curso del `pre-push`, una por worktree (portal P5) | pendiente (se hace en la `0.5` y se lleva a la rama del parche) |
-| D39 | `subagent-cap.py`: contador que se limpia y sin enlaces simbólicos (portal P7, WMF P9) | pendiente (se hace en la `0.5` y se lleva a la rama del parche) |
+| D32 | `harvest.py` reconoce las skills con el nombre anterior a A8 y una copia vieja de `writing-for-agents` (image-generator P1, P12) | hecho (`0.5.0`, `c8681f4`) |
+| D33 | `config-guard.py`: `settings.local.json`, worktrees y más órdenes que escriben; sin falso positivo en `touch -r` (portal P2, WMF P8) | hecho (`0.5.0`, `cfd8f55`) |
+| D34 | `commit-msg` deja pasar un `WIP:` sin `gw.json` legible y no falla fuera de un árbol de trabajo (portal P4, WMF P11) | hecho (`0.5.0`, `df55355`) |
+| D35 | `/gw-update` en un clon de una sola rama usa las etiquetas (portal P3) | hecho (`0.5.0`, `ea6195a`) |
+| D36 | `reviewed.sh` sugiere `--footer` al fallar y pone `Siguiente:` por defecto con `commitNext` (WMF P2) | hecho (`0.5.0`, `b0b7fbf`) |
+| E18 | Tests de las skills instaladas aislados del proyecto donde corren (WMF P3) | hecho (`0.5.0`, `fd6b6cc`) |
+| D37 | `pre-commit`: `KEY_FORMATS` con claves pegadas a una letra o dígito; sin falso positivo en diccionarios de tests (image-generator P2, P3) | hecho (`0.5.0`, `c57d5b4`) |
+| D38 | La marca de subida en curso del `pre-push`, una por worktree (portal P5) | hecho (`0.5.0`, `eccbad8`) |
+| D39 | `subagent-cap.py`: contador que se limpia y sin enlaces simbólicos (portal P7, WMF P9) | hecho (`0.5.0`, `bdaef9d`) |
 
 ## `0.5` «Base» — lo que rompe
 
@@ -81,10 +84,10 @@ En este orden, porque cada paso usa el anterior.
 | D29 | `related-tests.sh` con archivos borrados (private-project-1 P11) | hecho (`a4798a0`) |
 | D30 | `version.py`: existe cada ruta citada en la entrada nueva del CHANGELOG (retro `0.4.3` R1) | hecho (`785062f`) |
 | D31 | `commit-msg` exige `Siguiente:`, también en las fusiones de `merge-branch.sh`; escape `GW_NO_NEXT=1` (retro `0.4.2` P4) | hecho (`7561ebf`) |
-| B14 | `recover.py --state` avisa del presupuesto de compactaciones superado (private-project-1 P1) | pendiente |
-| D40 | Aviso de ramas remotas con trabajo fuera de la protegida (WMF P1, private-project-1 P4) | pendiente |
-| B15 | Aviso de un subagente lanzado sin `model` (portal P1) | pendiente |
-| E19 | El check falla con una `TestCase` después de `unittest.main()` (private-project-1 P2) | pendiente |
+| B14 | `recover.py --state` avisa del presupuesto de compactaciones superado (private-project-1 P1) | hecho (`0.5.0`, `e1f312f`) |
+| D40 | Aviso de ramas remotas con trabajo fuera de la protegida (WMF P1, private-project-1 P4) | hecho (`0.5.0`, `e1f312f`) |
+| B15 | Aviso de un subagente lanzado sin `model` (portal P1) | hecho (`0.5.0`, `bdaef9d`) |
+| E19 | El check falla con una `TestCase` después de `unittest.main()` (private-project-1 P2) | hecho (`0.5.0`, `a4ab81c`) |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.5` | repartido en D18-D31 y E17 |
 
 ## `0.6` «Medir»

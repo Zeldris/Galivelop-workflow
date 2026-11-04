@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.4.3 -->
+<!-- galivelop-workflow v0.5.0 -->
 # gw-opt-ai — notas del proyecto
 
 Las lee primero la skill `gw-opt-ai`; aquí vive todo lo propio de los modelos de IA local de este proyecto. El flujo
@@ -19,7 +19,7 @@ las crea una vez; desde entonces son del proyecto.
 
 ## Ajustes
 
-Los lee `scripts/medir.py` de la skill; las rutas relativas se resuelven desde la raíz del repo.
+Los lee `scripts/measure.py` de la skill; las rutas relativas se resuelven desde la raíz del repo.
 
 ```gw-opt-ai
 # log: <registro por llamada de esta ronda>

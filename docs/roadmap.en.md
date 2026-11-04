@@ -26,22 +26,25 @@ Only the latest published minor gets patches; new features go to the next minor 
 `0.x`, where a minor may break: **everything that breaks goes into `0.5`**, so projects migrate once. `1.0` is the
 MMC. At most one release a day (A-6).
 
-## `0.4.4` — patch
+## `0.4.4` — patch (not released)
+
+The user decided on 2026-11-03 to release `0.5.0` directly: its fixes ship in it and what is pending moves to
+`0.5.1`.
 
 | Id | Task | State |
 |---|---|---|
-| D6 | `worktree.baseRef: "head"` in the `settings.json` the workflow installs | pending |
-| — | Retro `0.4.2` P5: the `pre-commit` QUOTED rule without false positives in `.md` ([`pending.md`](records/pending.md)) | pending |
+| D6 | `worktree.baseRef: "head"` in the `settings.json` the workflow installs | pending (moves to `0.5.1`) |
+| — | Retro `0.4.2` P5: the `pre-commit` QUOTED rule without false positives in `.md` ([`pending.md`](records/pending.md)) | pending (moves to `0.5.1`) |
 | — | Ubuntu and macOS CI fixes (branch `ccr-6dfbc880-ddr41g`, `4b7bf8a`..`66a4ecd`) | done |
-| D32 | `harvest.py` recognises skills with their pre-A8 name and an old copy of `writing-for-agents` (image-generator P1, P12) | pending (done in `0.5`, then taken to the patch branch) |
-| D33 | `config-guard.py`: `settings.local.json`, worktrees and more writing commands; no false positive on `touch -r` (portal P2, WMF P8) | pending (done in `0.5`, then taken to the patch branch) |
-| D34 | `commit-msg` lets a `WIP:` through when `gw.json` cannot be read and does not fail outside a work tree (portal P4, WMF P11) | pending (done in `0.5`, then taken to the patch branch) |
-| D35 | `/gw-update` on a single-branch clone uses the tags (portal P3) | pending (done in `0.5`, then taken to the patch branch) |
-| D36 | `reviewed.sh` suggests `--footer` on failure and adds a default `Siguiente:` with `commitNext` (WMF P2) | pending (done in `0.5`, then taken to the patch branch) |
-| E18 | Tests of installed skills isolated from the project they run in (WMF P3) | pending (done in `0.5`, then taken to the patch branch) |
-| D37 | `pre-commit`: `KEY_FORMATS` with keys glued to a letter or digit; no false positive on test dictionaries (image-generator P2, P3) | pending (done in `0.5`, then taken to the patch branch) |
-| D38 | The `pre-push` push-in-progress mark, one per worktree (portal P5) | pending (done in `0.5`, then taken to the patch branch) |
-| D39 | `subagent-cap.py`: counter that is cleaned and safe from symlinks (portal P7, WMF P9) | pending (done in `0.5`, then taken to the patch branch) |
+| D32 | `harvest.py` recognises skills with their pre-A8 name and an old copy of `writing-for-agents` (image-generator P1, P12) | done (`0.5.0`, `c8681f4`) |
+| D33 | `config-guard.py`: `settings.local.json`, worktrees and more writing commands; no false positive on `touch -r` (portal P2, WMF P8) | done (`0.5.0`, `cfd8f55`) |
+| D34 | `commit-msg` lets a `WIP:` through when `gw.json` cannot be read and does not fail outside a work tree (portal P4, WMF P11) | done (`0.5.0`, `df55355`) |
+| D35 | `/gw-update` on a single-branch clone uses the tags (portal P3) | done (`0.5.0`, `ea6195a`) |
+| D36 | `reviewed.sh` suggests `--footer` on failure and adds a default `Siguiente:` with `commitNext` (WMF P2) | done (`0.5.0`, `b0b7fbf`) |
+| E18 | Tests of installed skills isolated from the project they run in (WMF P3) | done (`0.5.0`, `fd6b6cc`) |
+| D37 | `pre-commit`: `KEY_FORMATS` with keys glued to a letter or digit; no false positive on test dictionaries (image-generator P2, P3) | done (`0.5.0`, `c57d5b4`) |
+| D38 | The `pre-push` push-in-progress mark, one per worktree (portal P5) | done (`0.5.0`, `eccbad8`) |
+| D39 | `subagent-cap.py`: counter that is cleaned and safe from symlinks (portal P7, WMF P9) | done (`0.5.0`, `bdaef9d`) |
 
 ## `0.5` "Base" — what breaks
 
@@ -80,10 +83,10 @@ In this order, because each step uses the previous one.
 | D29 | `related-tests.sh` with deleted files (private-project-1 P11) | done (`a4798a0`) |
 | D30 | `version.py`: every path quoted in the new CHANGELOG entry exists (retro `0.4.3` R1) | done (`785062f`) |
 | D31 | `commit-msg` requires `Siguiente:`, also in `merge-branch.sh` merges; `GW_NO_NEXT=1` escape (retro `0.4.2` P4) | done (`7561ebf`) |
-| B14 | `recover.py --state` warns when the compaction budget is exceeded (private-project-1 P1) | pending |
-| D40 | Warning about remote branches with work outside the protected one (WMF P1, private-project-1 P4) | pending |
-| B15 | Warning about a subagent launched without `model` (portal P1) | pending |
-| E19 | The check fails on a `TestCase` after `unittest.main()` (private-project-1 P2) | pending |
+| B14 | `recover.py --state` warns when the compaction budget is exceeded (private-project-1 P1) | done (`0.5.0`, `e1f312f`) |
+| D40 | Warning about remote branches with work outside the protected one (WMF P1, private-project-1 P4) | done (`0.5.0`, `e1f312f`) |
+| B15 | Warning about a subagent launched without `model` (portal P1) | done (`0.5.0`, `bdaef9d`) |
+| E19 | The check fails on a `TestCase` after `unittest.main()` (private-project-1 P2) | done (`0.5.0`, `a4ab81c`) |
 | — | What [`pending.md`](records/pending.md) marks `0.5` | split into D18-D31 and E17 |
 
 ## `0.6` "Measure"
