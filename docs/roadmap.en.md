@@ -34,7 +34,7 @@ The user decided on 2026-11-03 to release `0.5.0` directly: its fixes ship in it
 
 | Id | Task | State |
 |---|---|---|
-| D6 | `worktree.baseRef: "head"` in the `settings.json` the workflow installs | pending (moves to `0.5.1`) |
+| D6 | `worktree.baseRef: "head"` in the `settings.json` the workflow installs | done in `0.5.1` |
 | — | Retro `0.4.2` P5: the `pre-commit` QUOTED rule without false positives in `.md` ([`pending.md`](records/pending.md)) | pending (moves to `0.5.1`) |
 | — | Ubuntu and macOS CI fixes (branch `ccr-6dfbc880-ddr41g`, `4b7bf8a`..`66a4ecd`) | done |
 | D32 | `harvest.py` recognises skills with their pre-A8 name and an old copy of `writing-for-agents` (image-generator P1, P12) | done (`0.5.0`, `c8681f4`) |
@@ -94,11 +94,11 @@ In this order, because each step uses the previous one.
 
 | Id | Task | Status |
 |---|---|---|
-| D6 | `worktree.baseRef: "head"` in the `settings.json` the workflow installs (from `0.4.4`) | pending |
+| D6 | `worktree.baseRef: "head"` in the `settings.json` the workflow installs (from `0.4.4`) | done |
 | E25 | Retro `0.4.2` P5: the `pre-commit` QUOTED rule without false positives in `.md` (from `0.4.4`) | done |
 | E20 | `check.sh`: fixed log `.git/gw/check-<sha>.log`, lock with its pid and a final line with the sections that failed; `merge-branch.sh` uses it and records the green (retro `0.5.0` R1) | done |
 | D44 | Marking as reviewed costs no extra check: the `pre-push` takes as green a commit that only adds the review mark to an already green one, or branch and `main` go up in a single `git push` (user, 2026-11-04: pushing `0.5.0` ran three nearly identical checks) | pending |
-| D41 | The `Stop` hook says in one line, without asking to push, that a check or a push is running (retro `0.5.0` R5; depends on E20) | pending |
+| D41 | The `Stop` hook says in one line, without asking to push, that a check or a push is running (retro `0.5.0` R5; depends on E20) | done |
 | D45 | `apply.py --update` does not remove the project's own CI steps: why the `.gw-new` did not save the portal's `check.yml` in the move to `0.5.0`, with its test (`0.5.1` harvest, portal P2) | pending |
 | B17 | `gw-orchestrate-dealer`: a subagent that writes in the background always works in a worktree, even a single one (`0.5.1` harvest, image-generator P1) | pending |
 | E23 | The check cache is invalidated when an ignored file the check reads changes (`.claude/gw.local.json`), or the reused green says so (`0.5.1` harvest, portal P3) | pending |

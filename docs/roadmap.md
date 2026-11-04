@@ -35,7 +35,7 @@ pasa a la `0.5.1`.
 
 | Id | Tarea | Estado |
 |---|---|---|
-| D6 | `worktree.baseRef: "head"` en el `settings.json` que instala el flujo | pendiente (pasa a la `0.5.1`) |
+| D6 | `worktree.baseRef: "head"` en el `settings.json` que instala el flujo | hecho en la `0.5.1` |
 | — | Retro `0.4.2` P5: la regla QUOTED del `pre-commit` sin falsos positivos en `.md` ([`pending.md`](records/pending.md)) | pendiente (pasa a la `0.5.1`) |
 | — | Arreglos del CI de Ubuntu y macOS (rama `ccr-6dfbc880-ddr41g`, `4b7bf8a`..`66a4ecd`) | hecho |
 | D32 | `harvest.py` reconoce las skills con el nombre anterior a A8 y una copia vieja de `writing-for-agents` (image-generator P1, P12) | hecho (`0.5.0`, `c8681f4`) |
@@ -95,11 +95,11 @@ En este orden, porque cada paso usa el anterior.
 
 | Id | Tarea | Estado |
 |---|---|---|
-| D6 | `worktree.baseRef: "head"` en el `settings.json` que instala el flujo (de la `0.4.4`) | pendiente |
+| D6 | `worktree.baseRef: "head"` en el `settings.json` que instala el flujo (de la `0.4.4`) | hecho |
 | E25 | Retro `0.4.2` P5: la regla QUOTED del `pre-commit` sin falsos positivos en `.md` (de la `0.4.4`) | hecho |
 | E20 | `check.sh`: registro fijo `.git/gw/check-<sha>.log`, cerrojo con pid y línea final con las secciones que fallaron; `merge-branch.sh` lo usa y apunta el verde (retro `0.5.0` R1) | hecho |
 | D44 | Marcar como revisado no cuesta otro check: el `pre-push` da por verde un commit que solo añade la marca de revisión a uno ya en verde, o rama y `main` se suben en un solo `git push` (usuario, 2026-11-04: la subida de la `0.5.0` corrió tres checks casi iguales) | pendiente |
-| D41 | El gancho `Stop` avisa en una línea, sin pedir subir, mientras corre un check o un push (retro `0.5.0` R5; depende de E20) | pendiente |
+| D41 | El gancho `Stop` avisa en una línea, sin pedir subir, mientras corre un check o un push (retro `0.5.0` R5; depende de E20) | hecho |
 | D45 | `apply.py --update` no borra los pasos propios del CI del proyecto: por qué el `.gw-new` no salvó el `check.yml` del portal al pasar a la `0.5.0`, con su test (recogida `0.5.1`, portal P2) | pendiente |
 | B17 | `gw-orchestrate-dealer`: un subagente que escribe en segundo plano trabaja siempre en un worktree, aunque sea uno solo (recogida `0.5.1`, image-generator P1) | pendiente |
 | E23 | La caché del check se invalida al cambiar un archivo ignorado que el check lee (`.claude/gw.local.json`), o el verde reutilizado lo avisa (recogida `0.5.1`, portal P3) | pendiente |
