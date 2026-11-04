@@ -2,7 +2,7 @@
 
 ## Summary
 
-`ccr-d1e2d496-0vzck8` (hace de `version/0.5.0`) → `main` (`0e04504`, `v0.4.3`). Son 206 commits; `main` ya está
+`ccr-d1e2d496-0vzck8` (hace de `version/0.5.0`) → `main` (`0e04504`, `v0.4.3`). Son 210 commits y `main` ya está
 fusionada en la rama. La entrada completa está en el `CHANGELOG.md` (`[0.5.0] - 2026-11-04`).
 
 ```diff
@@ -12,13 +12,17 @@ fusionada en la rama. La entrada completa está en el `CHANGELOG.md` (`[0.5.0] -
 +    arreglos                   D32-D39, E18 (no hay 0.4.4: salen aquí)
 +    evolutivos                 B14, D40, B15, E19
 +  /code-review vs origin/main  10 hallazgos arreglados (7caaae9..73b2a23)
++  arreglo del CI (Python 3.12) handoff.py set-row sin Path.read_text(newline=) (8ea7436)
++  retro aprobada               R1, R5 a la 0.5.1; R2, R3, R4, R6 a la 0.6 (roadmap)
 ```
 
-Los arreglos de la revisión:
+Arreglos de la revisión:
 
 - **D36:** la marca de `reviewed.sh` pasa el `commit-msg` estricto.
-- **D33:** `config-guard.py` vigila `pull`, `am`, `bisect`, `checkout-index`, `read-tree -u`, `stash branch` y los
-  `find` que escriben desde la raíz.
+- **D33:** `config-guard.py` vigila:
+  - `pull`, `am`, `bisect`, `checkout-index` y `read-tree -u`;
+  - `stash branch`;
+  - los `find` que escriben desde la raíz.
 - **D34:** un `WIP:` solo pasa si `gw.json` falta o no es JSON.
 - **E19:** `tests-after-main.py` solo avisa de un archivo descubierto que no se analiza, y reconoce más bases
   `*TestCase`.
@@ -28,11 +32,15 @@ Los arreglos de la revisión:
 ## Evidence
 
 - **Antes:** con el `commit-msg` estricto instalado, `reviewed.sh` fallaba con «no Refs trailer» (test
-  `MarkUnderStrictCommitMsg`). `git pull` y `find . -name 'settings*' -delete` pasaban sin preguntar en
-  `config-guard.py`.
-  **Después:** esos casos, y uno por cada hallazgo, están en verde. `bash tests/check.sh` en verde sobre `cdb37d1` (y sobre la fusión con `main`, que ya está dentro)
-  (1393 + 317 + 27 + 11 + 23 tests). `version.py --release` OK.
-- **CI:** `<pendiente: python3 scripts/ci-status.py tras la subida>`.
+  `MarkUnderStrictCommitMsg`). `git pull` pasaba sin preguntar en `config-guard.py`.
+  **Después:** esos casos, y uno por cada hallazgo, están en verde. `bash tests/check.sh` está en verde en local
+  (1394 + 317 + 27 + 11 + 23 tests). `version.py --release` da OK.
+- **CI:** en `cdb37d1` dio rojo en Ubuntu (Python 3.12): 8 tests de `handoff.py set-row` fallaban porque
+  `Path.read_text(newline=)` es de 3.13.
+  - El arreglo está en `8ea7436`, con el test estático `test_utils.OldestPython`, que falla sin el arreglo y pasa con
+    él.
+  - La suite completa está en verde con Python 3.12 (1394 tests).
+  - El CI de `8ea7436` está en curso.
 
 ## Merge Danger
 
