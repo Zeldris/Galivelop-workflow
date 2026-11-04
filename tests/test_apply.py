@@ -335,6 +335,21 @@ class Apply(unittest.TestCase):
         self.assertIn("nothing to do", out)
         self.assertEqual(p.read(".claude/settings.json"), before)
 
+    def test_settings_worktree_base_ref_install_update_and_project_value(self):
+        p = self.p
+        self.applied()  # install
+        s = json.loads(p.read(".claude/settings.json"))
+        self.assertEqual(s["worktree"], {"baseRef": "head"})
+        del s["worktree"]  # update on a project without the key
+        p.write(".claude/settings.json", json.dumps(s))
+        out = self.applied()
+        self.assertIn("worktree", out)
+        self.assertEqual(json.loads(p.read(".claude/settings.json"))["worktree"], {"baseRef": "head"})
+        s["worktree"] = {"baseRef": "fresh", "mine": 1}  # update keeps the project's own value
+        p.write(".claude/settings.json", json.dumps(s))
+        self.applied()
+        self.assertEqual(json.loads(p.read(".claude/settings.json"))["worktree"], {"baseRef": "fresh", "mine": 1})
+
     def test_optional_skills_only_with_with(self):
         p = self.p
         self.applied()

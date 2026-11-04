@@ -22,7 +22,8 @@ What it copies (workflow -> project):
                                    or already installed; not the workflow-only gw-harvest; all of them when PROJECT
                                    is the workflow repo itself)
   templates/githooks/*          -> .githooks/
-  templates/claude/settings.json   merged into .claude/settings.json: missing env keys and hook entries are added
+  templates/claude/settings.json   merged into .claude/settings.json: missing env keys, other missing keys (worktree.baseRef)
+                                   and hook entries are added; a value the project already set is kept
                                    (matched by event + matcher + command); nothing is removed or rewritten
   templates/<language>/ (`language` of the config), with {{key}} placeholders rendered from the config:
     AGENTS.md, CLAUDE.md        -> the project root; created when missing; an existing one without the
@@ -407,6 +408,17 @@ def merge_settings(current, template):
             if key not in env:
                 env[key] = value
                 added.append(f"env {key}")
+    for key, value in template.items():  # other settings (worktree.baseRef): only what the project has not set
+        if key in ("env", "hooks"):
+            continue
+        if key not in merged:
+            merged[key] = value
+            added.append(key)
+        elif isinstance(value, dict) and isinstance(merged[key], dict):
+            for sub, subvalue in value.items():
+                if sub not in merged[key]:
+                    merged[key][sub] = subvalue
+                    added.append(f"{key}.{sub}")
     thooks = template.get("hooks") or {}
     if thooks:
         hooks = merged.setdefault("hooks", {})
