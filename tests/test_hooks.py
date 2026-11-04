@@ -2381,6 +2381,10 @@ class CommitMsgUnreadableConfig(Base):
             cfg.unlink()
         elif how == "invalid-value":  # JSON, but not the schema
             cfg.write_text(json.dumps({"commitFormat": 3}))
+        elif how == "newer-schema":
+            cfg.write_text(json.dumps({"schemaVersion": 99}))
+        elif how == "no-schema":  # the installed scripts are broken: config.py cannot validate anything
+            (self.p.work / ".claude" / "gw" / "schema" / "gw.schema.json").unlink()
         else:
             cfg.write_text('{"commitFormat": "conventional",}')
 
@@ -2426,6 +2430,16 @@ class CommitMsgUnreadableConfig(Base):
         self.assertIn("is invalid:", r.stderr)
         self.assertIn("cannot read or validate .claude/gw.json", r.stderr)
         self.assertEqual(self.p.sha(), before)
+
+    def test_a_wip_passes_only_for_a_missing_or_non_json_config(self):
+        # code review of 0.5.0: any other validate failure used to let a WIP through
+        for how, reason in (("newer-schema", "schemaVersion 99"), ("no-schema", "gw.schema.json not found")):
+            with self.subTest(how=how):
+                r, before = self.attempt(how, ["-m", "WIP: x"])
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn(reason, r.stderr)
+                self.assertIn("cannot read or validate .claude/gw.json", r.stderr)
+                self.assertEqual(self.p.sha(), before)
 
     def test_a_wip_with_an_agent_signature_is_rejected_even_without_the_config(self):
         for env in (None, {"CLAUDECODE": "1"}):

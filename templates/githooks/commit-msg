@@ -84,9 +84,10 @@ reject_signature() {
 }
 config_err="$(python3 "$config" --root "$root" validate 2>&1 >/dev/null)" || {
   [ -z "$config_err" ] || printf '%s\n' "$config_err" >&2
-  # A gw.json that is JSON but breaks the schema is a mistake to fix, WIP or not; only a missing or non-JSON one passes.
-  # ' is invalid:' is the text of the schema error in scripts/config.py (load); keep both in step (a test pins it).
-  if is_wip && ! printf '%s\n' "$config_err" | grep -q ' is invalid:'; then
+  # Only a missing or non-JSON gw.json lets a WIP through; anything else (schema, schemaVersion, a crash) is a mistake
+  # to fix, WIP or not. The two texts are those of scripts/config.py (load); keep both in step (a test pins them).
+  if is_wip && [ "$(printf '%s\n' "$config_err" | wc -l)" -eq 1 ] &&
+     printf '%s\n' "$config_err" | grep -Eq '^gw config: .*gw\.json( not found; |: invalid JSON at line )'; then
     found="$(find_signature)"
     [ -z "$found" ] || reject_signature "$found"  # the setting is unknown: treat it as the strict one
     echo "commit-msg: WARNING: cannot read .claude/gw.json, so this WIP commit was not checked (agent signatures apart); fix it: python3 $config --root $root validate" >&2
