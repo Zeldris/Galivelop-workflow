@@ -44,6 +44,7 @@ Arreglos de la revisión:
   - En `8ea7436`, Ubuntu en verde; macOS en rojo: 3 tests de `test_ci_local` daban por hecho que la máquina es Linux
     (jobs con `runs-on: ubuntu-latest` fijo). Ahora usan el sistema de la máquina; reproducido y arreglado simulando
     macOS.
+  - En `6076083`, CI en verde en Ubuntu y macOS (push y pull_request).
 
 ## Merge Danger
 
