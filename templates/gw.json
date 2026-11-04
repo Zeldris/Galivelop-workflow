@@ -29,6 +29,7 @@
   "ciLocalLog": "docs/records/ci-local.md",
   "ciLocalWorkflows": [],
   "ciIgnore": [],
+  "ciKeepSteps": true,
   "content": ["^docs/", "^(README|GLOSSARY|REVIEW|CLAUDE|AGENTS|CHANGELOG|CREDITS)(\\.[a-z]{2})?\\.md$", "^\\.claude/skills/.*\\.md$"],
   "roadmap": false,
   "selector": {"cases": []},

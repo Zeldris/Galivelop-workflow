@@ -267,7 +267,7 @@ avoid duplicating it, but keep the step that runs the base branch's `pre-commit`
 standalone piece in an existing CI: copy only the "Base branch's pre-commit over the pull request" step of
 `check.yml` (it needs `fetch-depth: 0`); it runs `bash .githooks/pre-commit --range <base>..HEAD` with the base
 branch's `pre-commit`, so a PR cannot weaken the review that checks it. If CI installs differently, set `ciInstall` in
-the config; `doctor.py` does not suggest `check.yml` when another workflow already runs the `check`.
+the config; `doctor.py` does not suggest `check.yml` when another workflow already runs the `check`. If your `check.yml` has steps of its own (Node 22, an npm cache, a build), `apply.py` leaves it as it is, with `--update` too, and writes `check.yml.gw-new` (key `ciKeepSteps`); merge with `diff .github/workflows/check.yml .github/workflows/check.yml.gw-new`.
 
 **A protected branch with several people.** `pre-push` asks for the mark on every direct push with code; with
 `pushToProtected: pr`, the `PreToolUse` hook also asks for it when pull requests are created and merged. Choose by

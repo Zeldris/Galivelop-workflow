@@ -250,6 +250,7 @@ class Plan:
         self.root = root
         self.version = version
         self.update = update
+        self.ci_legacy = None  # None: ciKeepSteps is off; else the stripped lines the CI template had before (D45)
         self.actions = []   # (kind, rel, data, exec, detail); kind: create | update | propose | chmod | merge
         self.notes = []     # reported, never acted on
         self.warnings = []  # the same, about the project's own files
@@ -282,6 +283,15 @@ class Plan:
         if owned is None:
             found = header_version(current)
             owned, owner_version = found is not None, found
+        if owned and rel == NEW_WORKFLOW and self.ci_legacy is not None:
+            own = own_ci_lines(current, data, self.ci_legacy)
+            if own:
+                shown = "; ".join(own[:3]) + ("; ..." if len(own) > 3 else "")
+                self.propose(rel, data, want_exec, (
+                    f"it has the project's own lines ({shown}), which an update would delete; kept as it is. Merge "
+                    f"the template by hand: diff {rel} {rel}{PROPOSAL}. To replace the file anyway (--update), set "
+                    f"\"ciKeepSteps\": false in .claude/gw.json"))
+                return
         newer = owned and owner_version and version_key(owner_version) > version_key(self.version)
         older = owned and owner_version and version_key(owner_version) < version_key(self.version)
         if owned and owner_version and not newer and (self.update or older):
@@ -563,14 +573,33 @@ def plan_templates(plan, cfg, self_apply, wanted_skills):
         for name, kind in ROOT_TEMPLATES:
             plan.template(Path(name), rendered(lang_dir / name), kind)
         plan.template(Path(cfg["log"]), rendered(lang_dir / "log.md"), "seeded")
-        plan_workflow(plan, rendered(WORKFLOW / "templates" / "github" / "check.yml"))
+        legacy = WORKFLOW / "templates" / "github" / "check.legacy-lines.txt"
+        plan_workflow(plan, rendered(WORKFLOW / "templates" / "github" / "check.yml"),
+                      rendered(legacy) if cfg.get("ciKeepSteps", True) else None)
     for name, skill in NOTES:
         if skill is None or skill in wanted_skills:
             plan.template(Path(".claude/gw") / name, rendered(lang_dir / name), "seeded")
 
 
-def plan_workflow(plan, data):
-    """The CI file: .github/workflows/check.yml, migrating the workflow's own comprobar.yml (A8) to it."""
+def own_ci_lines(current, data, legacy):
+    """Stripped lines of the project's CI file that neither the template nor an earlier template has (D45): its own
+    steps and values (Node 22, an npm cache, a build step). Blank lines and the version header do not count."""
+    known = {line.strip() for line in data.decode("utf-8").splitlines()} | legacy
+    own = []
+    for line in current.decode("utf-8", "replace").splitlines():
+        line = line.strip()
+        if line and line not in known and not HEADER.search(line) and line not in own:
+            own.append(line)
+    return own
+
+
+def plan_workflow(plan, data, legacy_data=None):
+    """The CI file: .github/workflows/check.yml, migrating the workflow's own comprobar.yml (A8) to it. With
+    `ciKeepSteps` (default) a copy with the project's own lines is never replaced, only proposed (D45)."""
+    plan.ci_legacy = None
+    if legacy_data is not None:
+        plan.ci_legacy = {line.strip() for line in legacy_data.decode("utf-8").splitlines()
+                          if line.strip() and not line.startswith("#")}
     old = plan.root / OLD_WORKFLOW
     if not old.is_file() and not old.is_symlink():
         plan.template(NEW_WORKFLOW, data, "owned")

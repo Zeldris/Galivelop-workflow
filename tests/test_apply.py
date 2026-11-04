@@ -1345,5 +1345,92 @@ class SchemaMigration(unittest.TestCase):
         self.assertFalse((p.work / ".claude" / "gw" / "scripts").exists())
 
 
+class CiSteps(unittest.TestCase):
+    """D45: an update never deletes the project's own steps of .github/workflows/check.yml (portal P2, 0.5.0)."""
+
+    CI = ".github/workflows/check.yml"
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="gw-ci-")).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.p = Fixture(self.tmp)
+        self.p.run_apply()
+        self.template = self.p.read(self.CI)
+        self.p.write(self.CI, self.template.replace(re.search(r"galivelop-workflow v\S+", self.template).group(0),
+                                                    "galivelop-workflow v0.4.0", 1))
+
+    def applied(self, *args):
+        code, out = self.p.run_apply(*args)
+        self.assertEqual(code, 0, out)
+        return out
+
+    def proposal(self):
+        return self.p.work / (self.CI + ".gw-new")
+
+    def project_edits(self):
+        """The old copy with the project's node 22, a cache and a build step, as in the portal."""
+        text = self.p.read(self.CI)
+        text = text.replace("node-version: lts/*", "node-version: 22\n          cache: npm")
+        text = text.replace("      - name: Check\n", "      - name: Build\n        run: npm run build\n      - name: Check\n")
+        self.p.write(self.CI, text)
+        return text
+
+    def test_untouched_old_copy_is_updated_without_a_proposal(self):
+        out = self.applied()
+        self.assertEqual(self.p.read(self.CI), self.template, out)
+        self.assertFalse(self.proposal().exists(), out)
+
+    def test_project_added_steps_and_changed_values_are_kept_with_a_proposal(self):
+        mine = self.project_edits()
+        out = self.applied("--update")
+        self.assertEqual(self.p.read(self.CI), mine, out)
+        self.assertEqual(self.proposal().read_text(), self.template, out)
+        self.assertIn("project's own lines", out)
+        self.assertIn(f"diff {self.CI} {self.CI}.gw-new", out)
+        self.assertIn("ciKeepSteps", out)
+
+    def test_template_changed_and_project_changed(self):
+        text = self.p.read(self.CI).replace("      - name: Git hooks path\n", "      - name: Mine\n")
+        self.p.write(self.CI, text)
+        out = self.applied()
+        self.assertEqual(self.p.read(self.CI), text, out)
+        self.assertTrue(self.proposal().exists(), out)
+
+    def test_old_template_lines_are_not_the_projects_own(self):
+        old = self.p.read(self.CI).replace("python-version: ${{ matrix.python }}", "python-version: \"3.x\"")  # an older template's value
+        self.p.write(self.CI, old)
+        self.applied()
+        self.assertFalse(self.proposal().exists())
+
+    def test_missing_file_is_created(self):
+        (self.p.work / self.CI).unlink()
+        out = self.applied()
+        self.assertEqual(self.p.read(self.CI), self.template, out)
+
+    def test_existing_proposal_is_reported_and_not_rewritten(self):
+        mine = self.project_edits()
+        self.applied()
+        mtime = self.proposal().stat().st_mtime_ns
+        out = self.applied()
+        self.assertEqual(self.proposal().stat().st_mtime_ns, mtime)
+        self.assertEqual(self.p.read(self.CI), mine)
+        self.assertIn("check.yml.gw-new", out)
+        self.assertEqual(self.p.run_apply("--check")[0], 1)
+
+    def test_stale_proposal_is_refreshed(self):
+        mine = self.project_edits()
+        self.proposal().write_text("old proposal\n")
+        self.applied()
+        self.assertEqual(self.proposal().read_text(), self.template)
+        self.assertEqual(self.p.read(self.CI), mine)
+
+    def test_ci_keep_steps_false_restores_the_replacement(self):
+        self.project_edits()
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, ciKeepSteps=False), indent=2) + "\n")
+        out = self.applied("--update")
+        self.assertEqual(self.p.read(self.CI), self.template, out)
+        self.assertFalse(self.proposal().exists(), out)
+
+
 if __name__ == "__main__":
     unittest.main()
