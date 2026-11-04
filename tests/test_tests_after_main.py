@@ -162,7 +162,7 @@ class TestsAfterMain(unittest.TestCase):
         code, out, name = self.run_on(SYNTAX)
         self.assertEqual(code, 1, out)
         self.assertIn(f"{name}:3: cannot parse the test file", out)
-        self.assertIn("fix the syntax error", out)
+        self.assertIn("if it is a real test, fix it: python3 -m py_compile", out)
 
     def test_undecodable_file_fails_with_reason(self):
         code, out, name = self.run_on(b"\xff\xfe\x00 not python \x80\n")
@@ -186,6 +186,34 @@ class TestsAfterMain(unittest.TestCase):
             r = subprocess.run([sys.executable, "-B", str(SCRIPT), "--root", tmp], capture_output=True, text=True)
             self.assertEqual(r.returncode, 1)
             self.assertIn("test_late.py:12: class Late", r.stderr)
+
+    def test_a_discovered_file_that_does_not_parse_only_warns(self):
+        # code review of 0.5.0: a fixture or newer syntax in some test file must not turn the default check red
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run(["git", "init", "-q", tmp], check=True)
+            (Path(tmp) / "test_fixture.py").write_text(SYNTAX)
+            (Path(tmp) / "test_ok.py").write_text(CLEAN)
+            subprocess.run(["git", "-C", tmp, "add", "."], check=True)
+            r = subprocess.run([sys.executable, "-B", str(SCRIPT), "--root", tmp], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("test_fixture.py:3: WARNING: cannot parse the test file", r.stderr)
+            (Path(tmp) / "test_late.py").write_text(OUTSIDE_IF)
+            subprocess.run(["git", "-C", tmp, "add", "test_late.py"], check=True)
+            r = subprocess.run([sys.executable, "-B", str(SCRIPT), "--root", tmp], capture_output=True, text=True)
+            self.assertEqual(r.returncode, 1)
+            self.assertIn("WARNING: cannot parse", r.stderr)
+            self.assertIn("test_late.py:12: class Late", r.stderr)
+
+    def test_other_test_case_bases_count(self):
+        for base, imports in (("unittest.IsolatedAsyncioTestCase", "import unittest"),
+                              ("IsolatedAsyncioTestCase", "import unittest\nfrom unittest import IsolatedAsyncioTestCase"),
+                              ("TestCase", "import unittest\nfrom django.test import TestCase"),
+                              ("test.SimpleTestCase", "import unittest\nfrom django import test")):
+            with self.subTest(base=base):
+                source = f"{imports}\n\nif __name__ == '__main__':\n    unittest.main()\n\n\nclass Late({base}):\n    pass\n"
+                code, out, name = self.run_on(source)
+                self.assertEqual(code, 1, out)
+                self.assertIn("class Late is defined after the unittest.main() call", out)
 
     def test_this_repo_is_clean(self):
         r = subprocess.run([sys.executable, "-B", str(SCRIPT), "--root", str(ROOT)], capture_output=True, text=True)

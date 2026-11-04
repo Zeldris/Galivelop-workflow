@@ -6,14 +6,14 @@
 below it (usually inside `if __name__ == "__main__":`, or after it by a bad merge) is never collected, so the tests look
 present and do not run. This script parses every test file with `ast` and fails when a TestCase subclass is defined
 after a statement that calls `unittest.main(...)` (also `from unittest import main [as m]` and `import unittest as u`).
-A class that inherits from a TestCase subclass of the same file counts too. A syntax error in a test file also fails,
-with its line.
+A class that inherits from a TestCase subclass of the same file counts too, and so does any base whose name ends in
+`TestCase` (IsolatedAsyncioTestCase, a framework's TestCase). A file that does not parse (a fixture, newer syntax) is
+only warned about, with its line: running the tests is what catches a real syntax error.
 
   python3 tests-after-main.py [--root PATH] [FILE ...]
 
 Without FILE it checks the tracked `test_*.py` and `*_test.py` files of the repo (the untracked ones outside a git repo).
-Exit 0 if every file is clean (or there are no test files); 1 if some class comes after `main` or a file does not parse
-or read. Python 3.8+, stdlib only.
+Exit 0 if every file is clean (or there are no test files, or some only warned); 1 if some class comes after `main`. Python 3.8+, stdlib only.
 """
 import argparse
 import ast
@@ -46,16 +46,15 @@ class Scan:
                 for a in node.names:
                     if a.name == "main":
                         self.main_names.add(a.asname or "main")
-                    elif a.name == "TestCase":
-                        self.case_names.add(a.asname or "TestCase")
+                    elif a.name.endswith("TestCase"):
+                        self.case_names.add(a.asname or a.name)
         if not self.modules and not self.main_names:
             self.modules.add("unittest")
 
     def is_case(self, base):
         if isinstance(base, ast.Name):
-            return base.id in self.case_names
-        return (isinstance(base, ast.Attribute) and base.attr == "TestCase" and isinstance(base.value, ast.Name)
-                and base.value.id in self.modules)
+            return base.id in self.case_names or base.id.endswith("TestCase")
+        return isinstance(base, ast.Attribute) and base.attr.endswith("TestCase")
 
     def main_call(self, node):
         """Line of the first `main(...)` call in a simple statement (not inside a def, class or lambda), or None."""
@@ -102,16 +101,24 @@ class Scan:
         return seen or line is not None
 
 
-def check_file(path):
-    """Messages (a list of strings) for one file; empty if it is clean."""
+def check_file(path, warnings=None):
+    """Messages (a list of strings) for one file; empty if it is clean. A file that cannot be read or parsed adds a
+    message to `warnings` (when given) instead: it does not fail the check."""
     try:
         source = Path(path).read_bytes()
         tree = ast.parse(source, filename=str(path))
     except SyntaxError as e:
-        return [f"{path}:{e.lineno or 1}: cannot parse the test file ({e.msg}); fix the syntax error, "
-                f"or no test in it can run"]
+        note = (f"{path}:{e.lineno or 1}: WARNING: cannot parse the test file ({e.msg}), so it was not checked; "
+                f"if it is a real test, fix it: python3 -m py_compile {path}")
     except (OSError, ValueError) as e:
-        return [f"{path}:1: cannot read the test file ({e}); check the path and that it is UTF-8 Python"]
+        note = f"{path}:1: WARNING: cannot read the test file ({e}), so it was not checked; check the path: ls -l {path}"
+    else:
+        note = None
+    if note is not None:
+        if warnings is None:
+            return [note.replace(": WARNING: ", ": ", 1)]
+        warnings.append(note)
+        return []
     scan = Scan()
     scan.imports(tree)
     scan.block(tree.body, False)
@@ -152,9 +159,11 @@ def main(argv=None):
             root = os.getcwd()
     files = args.files or discover(root)
     base = Path(root)
-    problems = []
+    problems, warnings = [], []
     for f in files:
-        problems += check_file(f if args.files else base / f)
+        problems += check_file(f, None) if args.files else check_file(base / f, warnings)  # a named file must parse
+    if warnings:
+        print("\n".join(warnings), file=sys.stderr)
     if problems:
         print("\n".join(problems), file=sys.stderr)
         return 1

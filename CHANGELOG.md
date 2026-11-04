@@ -284,7 +284,8 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   - B15: `subagent-cap.py` avisa al lanzar un subagente sin `model` (ni en su `subagent_type`), también dentro de
     las preguntas del tope.
   - E19: `scripts/tests-after-main.py`, en el `check` de este repo y en el de la plantilla, falla si una `TestCase`
-    va después de `unittest.main()` (nunca correría). Encontró dos en este repo, ya movidas.
+    va después de `unittest.main()` (nunca correría; cuenta toda base acabada en `TestCase`); un archivo que no se
+    puede analizar solo avisa. Encontró dos en este repo, ya movidas.
 
 ### EN
 
@@ -552,7 +553,8 @@ Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `do
   - B15: `subagent-cap.py` warns when a subagent is launched without `model` (nor one in its `subagent_type`), also
     inside the cap's questions.
   - E19: `scripts/tests-after-main.py`, in this repo's `check` and the template's, fails when a `TestCase` comes after
-    `unittest.main()` (it would never run). It found two in this repo, now moved.
+    `unittest.main()` (it would never run; any base ending in `TestCase` counts); a file that cannot be parsed only
+    warns. It found two in this repo, now moved.
 
 ## [0.4.3] - 2026-10-27
 
