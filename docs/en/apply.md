@@ -107,7 +107,9 @@ Options: `--review-mark PATH` (default `docs/records/reviewed.txt`), `--with gw-
 
 What it does (full detail in `--help`): copies `scripts/` to `.claude/gw/scripts/`, the skills to `.claude/skills/`,
 the git hooks to `.githooks/`, the CI to `.github/workflows/check.yml`; **merges** the Claude Code hooks and
-`CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` into `.claude/settings.json`, removing nothing; creates `AGENTS.md`,
+`CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` and `worktree.baseRef: "head"` (subagent worktrees branch from the current
+HEAD, not the default branch; a project value is kept: to get another base set `"baseRef": "fresh"`, since removing
+the key gets it re-added) into `.claude/settings.json`, removing nothing; creates `AGENTS.md`,
 `CLAUDE.md`, `REVIEW.md`, `GLOSSARY.md` and the log when missing; and sets `core.hooksPath=.githooks` when nothing
 else owns it. **It never commits.** It is idempotent: running it twice changes nothing.
 
