@@ -1642,6 +1642,15 @@ class LegacyNames(unittest.TestCase):
         self.p.write("docs/notes.md", "see docs/traspaso.md\n")
         self.assertEqual(self.warnings(self.applied("--keep-paths", "--dry-run")), [])
 
+    def test_user_git_config_does_not_hide_the_warnings(self):
+        self.p.write("docs/n.md", "run check-verde.sh\n")
+        for key, value in (("color.ui", "always"), ("color.grep", "always"), ("grep.column", "true"),
+                           ("grep.lineNumber", "false"), ("grep.fullName", "true")):
+            self.p.run("git", "config", key, value)
+        found = self.warnings(self.applied())
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("docs/n.md:1 uses the old name check-verde.sh", found[0])
+
     def test_git_grep_failure_is_a_warning_not_a_failure(self):
         from unittest import mock
         spec = importlib.util.spec_from_file_location("apply_grep", APPLY_SCRIPT)

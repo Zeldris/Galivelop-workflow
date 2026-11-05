@@ -1058,7 +1058,10 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
     if not cfg.get("legacyNames", True):
         return
     pairs = legacy_names(plan.root, keep or cfg.get("keepLegacyPaths") is True)
-    cmd = ["git", "-C", str(plan.root), "grep", "-n", "-I", "-z", "--untracked", "-F"]
+    # the user's git config (colors, columns) must not change the output we parse
+    cmd = ["git", "-c", "color.grep=never", "-c", "color.ui=never", "-c", "grep.column=false",
+           "-c", "grep.lineNumber=false", "-c", "grep.fullName=false", "-C", str(plan.root),
+           "grep", "-n", "-I", "-z", "--untracked", "-F"]
     for old in pairs:
         cmd += ["-e", old]
     r = subprocess.run(cmd, capture_output=True)
