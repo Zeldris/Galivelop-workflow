@@ -41,11 +41,11 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-05 — D58: apply.py resuelve bloques <!-- if clave --> (la bitácora solo explica logRows si está encendido) y close-row sale con 1 con logRows apagado
-2. 2026-11-05 — D57, D59 y D60 fusionados (harvest sigue renombrados; commitNext true en la plantilla; AGENTS.md nombra set-row y close-row); D58: close-row sale con 1 con logRows apagado
-3. 2026-11-05 — B20: measure.py mide el registro de un subagente (todas sus líneas con isSidechain) como uno principal; D64 apuntada en la 0.5.2 (gw-selector: línea del modelo de sesión y del orquestador)
-4. 2026-11-05 — H16: recogida de la 0.6 (gw-harvest), 8 propuestas aprobadas: B20, D57-D60 a la 0.5.2 y D61-D63 a la 0.7; rama version/0.6.0 creada
-5. 2026-11-05 — release v0.5.1 publicada (etiqueta sobre eeec886, desde una sesión local)
+1. 2026-11-05 — B21 y D65 apuntadas en la 0.6: guarda del contexto de arranque (aviso al 25 %, alarma al 50 %, con el culpable) e historizar la bitácora; medido ~82k de 200k tras /clear
+2. 2026-11-05 — D58: apply.py resuelve bloques <!-- if clave --> (la bitácora solo explica logRows si está encendido) y close-row sale con 1 con logRows apagado
+3. 2026-11-05 — D57, D59 y D60 fusionados (harvest sigue renombrados; commitNext true en la plantilla; AGENTS.md nombra set-row y close-row); D58: close-row sale con 1 con logRows apagado
+4. 2026-11-05 — B20: measure.py mide el registro de un subagente (todas sus líneas con isSidechain) como uno principal; D64 apuntada en la 0.5.2 (gw-selector: línea del modelo de sesión y del orquestador)
+5. 2026-11-05 — H16: recogida de la 0.6 (gw-harvest), 8 propuestas aprobadas: B20, D57-D60 a la 0.5.2 y D61-D63 a la 0.7; rama version/0.6.0 creada
 
 ## Pendiente
 

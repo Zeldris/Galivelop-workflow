@@ -151,6 +151,8 @@ In this order, because each step uses the previous one.
 | E27 | `shellcheckVersion` in `.claude/gw.json`: CI installs that version and `tests/shellcheck.sh` warns, with the command that installs it, if the local one differs (`0.5.1` retro R1) | pending |
 | D55 | `roadmap.py show <id>` and `roadmap.py done <id>`: see or mark a roadmap row in both languages without reading it whole (`0.5.1` retro R4) | pending |
 | D56 | `ci-status.py --failed`: for each red job, only the failed step and its error lines, capped by a key, with the URL of the whole log (`0.5.1` retro R5) | pending |
+| B21 | Start-up context guard: after a `/clear` or at session start, `measure.py` reads the first turn's usage from the log (`input` + `cache_read` + `cache_creation`) and compares it with the model's window; `SessionStart` warns above 25 % and alarms above 50 %, with keys in `.claude/gw.json`. The warning names the culprit with a deterministic breakdown (log, `AGENTS.md`/`CLAUDE.md`, hook output, skills and tools, rest of the system) and the command that fixes it. Measured 2026-11-05: ~82k of 200k (41 %) after `/clear`, with the log at ~9k (user, 2026-11-05) | pending |
+| D65 | Archive the log: a total size cap for `docs/handoff.md` (key in `.claude/gw.json`) that `handoff.py check` warns about and B21 uses as a culprit; `handoff.py archive` moves the "Pending" items and minor findings of already published versions to `docs/records/handoff-archive.md` (not read at start), leaving one line with the link (user, 2026-11-05) | pending |
 
 ## `0.7` "Ask"
 

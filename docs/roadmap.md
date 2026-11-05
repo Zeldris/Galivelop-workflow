@@ -152,6 +152,8 @@ En este orden, porque cada paso usa el anterior.
 | E27 | `shellcheckVersion` en `.claude/gw.json`: el CI instala esa versión y `tests/shellcheck.sh` avisa, con la orden para instalarla, si la local es otra (retro `0.5.1` R1) | pendiente |
 | D55 | `roadmap.py show <id>` y `roadmap.py done <id>`: ver o marcar una fila del roadmap en los dos idiomas sin leerlo entero (retro `0.5.1` R4) | pendiente |
 | D56 | `ci-status.py --failed`: de cada job en rojo, solo el paso que falló y sus líneas de error, con tope en una clave y la URL del registro entero (retro `0.5.1` R5) | pendiente |
+| B21 | Guarda del contexto de arranque: tras un `/clear` o al abrir sesión, `measure.py` lee del registro el uso del primer turno (`input` + `cache_read` + `cache_creation`) y lo compara con la ventana del modelo; avisa en el `SessionStart` por encima del 25 % y alarma por encima del 50 %, con claves en `.claude/gw.json`. El aviso nombra al culpable con un desglose determinista (bitácora, `AGENTS.md`/`CLAUDE.md`, salida de los ganchos, skills y herramientas, resto del sistema) y la orden que lo arregla. Medido el 2026-11-05: ~82k de 200k (41 %) tras `/clear`, con la bitácora en ~9k (usuario, 2026-11-05) | pendiente |
+| D65 | Historizar la bitácora: tope de tamaño total de `docs/handoff.md` (clave en `.claude/gw.json`) que `handoff.py check` avisa y que B21 usa como culpable; `handoff.py archive` mueve los «Pendiente» y leves de versiones ya publicadas a `docs/records/handoff-archive.md` (que no se lee al empezar), dejando una línea con el enlace (usuario, 2026-11-05) | pendiente |
 
 ## `0.7` «Preguntar»
 
