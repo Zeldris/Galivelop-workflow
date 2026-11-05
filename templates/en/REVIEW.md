@@ -51,6 +51,12 @@ once it exists.
 - A runbook or brief that a scheduled task follows (a session with nobody watching) is reviewed as code, even if it
   matches `content`: what it says runs as it is. (judgement)
 
+## Tests
+
+- A component that the tests replace with a double (fake, mock, stub) also has a smoke test against the real thing:
+  start it and make one end-to-end call. It is skipped locally when the real one is missing and fails in CI.
+  (judgement)
+
 ## Brought from another repo: adapt to this repo's contracts
 
 - Code, scripts or rules brought from another repository are checked against **this** repo, not the original:
