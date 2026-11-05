@@ -41,11 +41,11 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-05 — E26: red-without-fix.sh salta textos y datos (nonTestExtensions), falla cerrada si no lee la clave
-2. 2026-11-05 — D52: apply.py conserva un script viejo solo si se llama por .claude/gw/scripts/<viejo> o $var/<viejo>
-3. 2026-11-05 — D51: apply.py no siembra el destino de una carpeta que mueve (Plan.arrives_by_folder_move)
-4. 2026-11-05 — E23: la clave de la caché del check incluye el hash de checkCacheInputs (por defecto .claude/gw.local.json), leído donde corre el check; falla cerrada
-5. 2026-11-05 — E24: lo probado con un doble lleva una prueba de humo con lo real (patterns.md y REVIEW.md, es/en)
+1. 2026-11-05 — E23: SC2015 de check-green.sh y pre-push arreglado (el shellcheck 0.11 local no lo da y el del CI sí; para la retro: igualar versiones)
+2. 2026-11-05 — E26: red-without-fix.sh salta textos y datos (nonTestExtensions), falla cerrada si no lee la clave
+3. 2026-11-05 — D52: apply.py conserva un script viejo solo si se llama por .claude/gw/scripts/<viejo> o $var/<viejo>
+4. 2026-11-05 — D51: apply.py no siembra el destino de una carpeta que mueve (Plan.arrives_by_folder_move)
+5. 2026-11-05 — E23: la clave de la caché del check incluye el hash de checkCacheInputs (por defecto .claude/gw.local.json), leído donde corre el check; falla cerrada
 
 ## Pendiente
 

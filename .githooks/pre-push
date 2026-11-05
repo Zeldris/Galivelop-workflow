@@ -290,7 +290,7 @@ checked=""
 protected_trees=""
 protected_name=""
 while read -r _pre_ref pre_sha pre_remote_ref _pre_rest; do
-  [ -n "${pre_sha:-}" ] && [ "$pre_sha" != "$zero" ] || continue
+  { [ -n "${pre_sha:-}" ] && [ "$pre_sha" != "$zero" ]; } || continue
   case "$pre_remote_ref" in refs/tags/*) continue ;; esac
   pre_sha="$(git rev-parse -q --verify "$pre_sha^{commit}" 2>/dev/null)" || continue  # a tag pushed to a branch: its commit
   pre_prot="$(python3 "$config" --root "$root" --rev "$pre_sha" get protectedBranch 2>/dev/null)" || continue

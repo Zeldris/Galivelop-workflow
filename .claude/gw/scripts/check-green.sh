@@ -66,8 +66,8 @@ cmd_key() {
 cmd_inputs() {  # [<dir>]; paths on stdin, one per line; prints one hash of their content, or nothing when there are none
   local base="${1:-$root}" path full lines="" h c1 c2
   # <dir> is where the check really runs: the checkout or a temporary worktree of this repository (it may lack the ignored files).
-  c1="$(git -C "$base" rev-parse --git-common-dir 2>/dev/null)" && c1="$(cd "$base" && cd "$c1" && pwd -P)" \
-    && c2="$(git rev-parse --git-common-dir 2>/dev/null)" && c2="$(cd "$c2" && pwd -P)" && [ "$c1" = "$c2" ] \
+  { c1="$(git -C "$base" rev-parse --git-common-dir 2>/dev/null)" && c1="$(cd "$base" && cd "$c1" && pwd -P)" \
+    && c2="$(git rev-parse --git-common-dir 2>/dev/null)" && c2="$(cd "$c2" && pwd -P)" && [ "$c1" = "$c2" ]; } \
     || { echo "check-green: '$base' is not a work tree of this repository, so its inputs cannot be hashed; pass the checkout or a worktree of it" >&2; return 1; }
   base="$(cd "$base" && pwd)" || return 1
   while IFS= read -r path || [ -n "$path" ]; do
@@ -177,7 +177,7 @@ cmd_epoch() {
 }
 
 cmd_add() {
-  [ "$#" -ge 1 ] && [ "$#" -le 2 ] || usage "add needs a key and optionally an epoch"
+  { [ "$#" -ge 1 ] && [ "$#" -le 2 ]; } || usage "add needs a key and optionally an epoch"
   valid_key "$1" || usage "'$1' is not a git object name"
   local file now tmp
   file="$(cache_file)" || { echo "check-green: warning: cannot locate the git dir, check not recorded; check the repository: git rev-parse --git-common-dir" >&2; return 0; }
