@@ -190,6 +190,26 @@ class TextFiles(Base):
         self.assertIn("touch test code", out)
 
 
+    def test_unreadable_list_blocks_with_exit_2(self):
+        path = self.p.work / ".claude" / "gw.json"
+        cfg = json.loads(path.read_text())
+        cfg["nonTestExtensions"] = ["MD"]
+        path.write_text(json.dumps(cfg))
+        self.fix_prose("notes.md")
+        code, out = self.run_script("true", "notes.md")
+        self.assertEqual(code, 2, out)
+        self.assertIn("cannot read nonTestExtensions", out)
+        self.assertIn("nonTestExtensions", out.split("cannot read")[0])  # config.py names the key and the problem
+
+    def test_extension_with_a_newline_is_never_skipped(self):
+        name = "t.md\ndef test_x"
+        self.p.write(name, "improve it (see URL)\n")
+        code, out = self.run_script("true", name)
+        self.assertEqual(code, 2, out)
+        self.assertIn("touch test code", out)
+        self.assertNotIn("text/data file", out)
+
+
 class RedKind(Base):
     def cmd(self, message, word="good"):
         return f"if grep -q {word} fix.txt; then exit 0; fi; echo \"{message}\"; exit 1"

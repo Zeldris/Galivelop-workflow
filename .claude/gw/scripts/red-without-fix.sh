@@ -113,6 +113,7 @@ skipexts="$(python3 "$here/config.py" --root "$root" get nonTestExtensions)" || 
 for f in "$@"; do
   base="${f##*/}"; ext=""
   case "${base#.}" in *.*) ext="$(printf '%s' "${base##*.}" | tr '[:upper:]' '[:lower:]')" ;; esac
+  case "$ext" in *[!a-z0-9]*) ext="" ;; esac  # the schema allows only [a-z0-9]: anything else (a newline would split the grep patterns) is never skipped
   if [ -n "$ext" ] && printf '%s\n' "$skipexts" | grep -Fxq -- "$ext"; then
     echo "red-without-fix: $f is a .$ext text/data file (nonTestExtensions), so it is not searched for test code"
     continue

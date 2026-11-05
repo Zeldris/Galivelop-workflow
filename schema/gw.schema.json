@@ -258,7 +258,7 @@
       "type": "array",
       "items": {"type": "string", "pattern": "^[a-z0-9]+$"},
       "default": ["md", "json", "yml", "yaml", "properties", "txt", "csv"],
-      "description": "File extensions (lower case, no dot; the file's own extension is compared in lower case) of text and data files that red-without-fix.sh does not search for test code, so prose such as `improve it (URL)` is not mistaken for an `it(` test. A file with no extension is always searched. [] searches every file."
+      "description": "File extensions (lower case, no dot; the file's own extension is compared in lower case) of text and data files that red-without-fix.sh does not search for test code, so prose such as `improve it (URL)` is not mistaken for an `it(` test. A file with no extension is always searched. [] searches every file. Some stacks keep tests in .md/.txt (doctest) or .yml/.yaml (specs): remove those extensions from the list, otherwise an uncommitted test there is skipped and stashed with the fix."
     },
     "content": {
       "type": "array",
