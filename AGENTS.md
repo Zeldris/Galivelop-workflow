@@ -75,8 +75,9 @@ Los comprueba el `commit-msg` (`commitFormat`, `commitRefs`, `commitNext` y `age
      subida (el `pre-push` exige la marca).
 - `main` = última versión publicada: es lo que instalan otros proyectos (plan §7).
 - **Tras la subida a `main`**, se escribe `docs/records/release-vX.Y.Z.md` (como `release-v0.4.0.md`) con el título
-  y el cuerpo de la release, cada uno en un bloque listo para pegar, y se dan al usuario sin que los pida (él crea
-  la etiqueta y la release a mano).
+  y el cuerpo de la release, cada uno en un bloque listo para pegar, y se dan al usuario sin que los pida. **Se le
+  pregunta siempre** si la crea él a mano o se lanza sola subiendo la etiqueta (`release.yml`); si el proxy de la nube
+  la rechaza (403), queda pendiente en la bitácora para una sesión local o a mano (usuario, 2026-11-05).
 - **Cada versión empieza con una recogida** (usuario, 2026-10-23): `gw-harvest` sobre los proyectos que usan el
   flujo, y sus propuestas, al usuario (`version.py --release`, en el `pre-push` a `main`, exige su archivo). Al
   cerrarla, otra recogida es opcional (usuario, 2026-11-05).

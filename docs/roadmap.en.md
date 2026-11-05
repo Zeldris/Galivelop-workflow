@@ -172,6 +172,10 @@ In this order, because each step uses the previous one.
 | Id | Task | State |
 |---|---|---|
 | E8 | Full documentation review, by subagents | pending |
+| E28 | Security review: hooks and scripts (inputs, paths, `eval`), `settings.json` permissions, CI and secrets; ideas from [`cloudflare/security-audit-skill`](https://github.com/cloudflare/security-audit-skill), read by a subagent, its licence checked before copying anything (user, 2026-11-05) | pending |
+| E29 | Anonymisation review: private data in the history and the docs, and whether `private-check` and its `EXCEPTIONS` are still enough (user, 2026-11-05) | pending |
+| E30 | Configurable-values review: thresholds, paths and behaviours still fixed in code move to `.claude/gw.json` and `docs/en/config.md` ("Everything configurable" rule, G4; user, 2026-11-05) | pending |
+| E31 | Refactoring and upkeep of the `.md` files: duplicates, one fact in one place, sizes and stale text, with `writing-for-agents` (user, 2026-11-05) | pending |
 | G2 | Versioned JSON output in the scripts the MMC uses | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.9` | pending |
 
