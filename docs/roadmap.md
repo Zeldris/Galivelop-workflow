@@ -100,7 +100,7 @@ En este orden, porque cada paso usa el anterior.
 | E20 | `check.sh`: registro fijo `.git/gw/check-<sha>.log`, cerrojo con pid y línea final con las secciones que fallaron; `merge-branch.sh` lo usa y apunta el verde (retro `0.5.0` R1) | hecho |
 | D44 | Marcar como revisado no cuesta otro check: el `pre-push` da por verde un commit que solo añade la marca de revisión a uno ya en verde, o rama y `main` se suben en un solo `git push` (usuario, 2026-11-04: la subida de la `0.5.0` corrió tres checks casi iguales) | pendiente |
 | D41 | El gancho `Stop` avisa en una línea, sin pedir subir, mientras corre un check o un push (retro `0.5.0` R5; depende de E20) | hecho |
-| D45 | `apply.py --update` no borra los pasos propios del CI del proyecto: por qué el `.gw-new` no salvó el `check.yml` del portal al pasar a la `0.5.0`, con su test (recogida `0.5.1`, portal P2) | pendiente |
+| D45 | `apply.py --update` no borra los pasos propios del CI del proyecto: por qué el `.gw-new` no salvó el `check.yml` del portal al pasar a la `0.5.0`, con su test (recogida `0.5.1`, portal P2) | hecho |
 | B17 | `gw-orchestrate-dealer`: un subagente que escribe en segundo plano trabaja siempre en un worktree, aunque sea uno solo (recogida `0.5.1`, image-generator P1) | pendiente |
 | E23 | La caché del check se invalida al cambiar un archivo ignorado que el check lee (`.claude/gw.local.json`), o el verde reutilizado lo avisa (recogida `0.5.1`, portal P3) | pendiente |
 | D46 | Tras migrar nombres (A8), `apply.py --update` o `doctor.py` listan los usos de rutas viejas en los archivos propios del proyecto (recogida `0.5.1`, portal P1) | pendiente |
