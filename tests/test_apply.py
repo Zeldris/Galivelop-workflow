@@ -1733,10 +1733,6 @@ class LegacyNames(unittest.TestCase):
         self.assertIn("is not inside a git repository", out)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class ConditionalBlocks(unittest.TestCase):
     """D58: `<!-- if key -->` ... `<!-- /if -->` in a template, resolved by apply.py from a boolean config key."""
 
@@ -1814,3 +1810,7 @@ class ConditionalBlocks(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertEqual(p.read("notes/log.md"), log)
         self.assertFalse((p.work / "notes" / "log.md.gw-new").exists())
+
+
+if __name__ == "__main__":
+    unittest.main()
