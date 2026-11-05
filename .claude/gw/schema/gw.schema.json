@@ -121,6 +121,18 @@
       "default": true,
       "description": "The pre-push skips its check on a commit that only adds or edits the reviewMark file on top of a parent whose tree is recorded green (the commit scripts/reviewed.sh makes); false runs the check on it."
     },
+    "checkCacheInputs": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$"
+      },
+      "default": [
+        ".claude/gw.local.json"
+      ],
+      "description": "Files (relative to the repo root, no '..') whose content is part of the check-cache key, for ignored files the check reads and the git tree does not see; a missing file counts as absent; [] = the key is the tree alone."
+    },
     "checkOutputGrace": {
       "type": "integer",
       "minimum": 0,

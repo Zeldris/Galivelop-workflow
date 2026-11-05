@@ -14,6 +14,7 @@
   "checkWrapper": "",
   "checkLockWait": 0,
   "checkReuseMark": true,
+  "checkCacheInputs": [".claude/gw.local.json"],
   "checkOutputGrace": 5,
   "worktreeLinks": ["node_modules", ".venv"],
   "worktreeDir": "",

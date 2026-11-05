@@ -1265,6 +1265,132 @@ class CheckCache(Base):
         self.p.write("docs/revisado.txt", self.p.sha() + "\n")
         self.p.commit("mark")
 
+    # --- E23: ignored files the check reads (checkCacheInputs) are part of the key
+    LOCAL = ".claude/gw.local.json"
+
+    def local(self, text):
+        (self.p.work / ".claude" / "gw.local.json").write_text(text)
+
+    def configure(self, **keys):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.update(keys)
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+
+    def ignore_local(self):
+        self.p.write(".gitignore", ".claude/gw.local.json\n")
+        self.p.commit("ignore the local list")
+
+    def test_a_changed_ignored_input_is_a_miss_and_an_unchanged_one_a_hit(self):
+        self.ignore_local()
+        self.local('{"a": 1}')
+        self.doc_change()
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.p.git("push", "-q", "--no-verify", "origin", "feature:other")
+        code, out = self.push("origin", "feature:other2")  # same tree, same local file
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.assertIn(self.SKIP, out)
+        self.local('{"a": 2}')  # same tree, another ignored input: the old green is not reused
+        code, out = self.push("origin", "feature:other3")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        self.assertNotIn(self.SKIP, out)
+
+    def test_an_absent_input_and_an_empty_one_are_different_keys(self):
+        self.ignore_local()
+        self.doc_change()
+        self.assertEqual(self.push("origin", "feature")[0], 0)  # file absent
+        self.local("")
+        code, out = self.push("origin", "feature:other")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        self.assertNotIn(self.SKIP, out)
+
+    def test_an_empty_list_keeps_the_tree_alone_as_the_key(self):
+        self.ignore_local()
+        self.configure(checkCacheInputs=[])
+        self.p.commit("no inputs")
+        self.local("one")
+        self.doc_change()
+        self.assertEqual(self.push("origin", "feature")[0], 0)
+        self.local("two")
+        code, out = self.push("origin", "feature:other")
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.assertIn(self.SKIP, out)
+
+    def test_an_old_record_without_inputs_is_not_green_for_a_tree_with_inputs_and_does_not_crash(self):
+        self.ignore_local()
+        self.doc_change()
+        tree = self.p.git("rev-parse", "HEAD^{tree}").stdout.strip()
+        checks = self.p.run("python3", ".claude/gw/scripts/config.py", "--root", ".", "get", "check")[1]
+        code, old_key = self.p.run("bash", ".claude/gw/scripts/check-green.sh", "key", tree, "", stdin=checks, env=self.ON)
+        self.assertEqual(code, 0, old_key)
+        # a record as written before E23 (the key has no inputs line), plus a line that is not a record at all
+        self.cache.write_text(f"{int(time.time())} {old_key.strip()}\nnot a record\n")
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.assertNotIn(self.SKIP, out)
+
+    def test_a_mark_only_commit_is_derived_from_a_parent_green_with_the_same_inputs(self):
+        self.ignore_local()
+        self.local("x")
+        parent = self.green_parent()
+        self.mark_commit()
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.assertIn(f"{self.p.sha()[:7]} {self.MARK_SKIP} {parent[:7]}", out)
+
+    def test_a_mark_only_commit_after_the_input_changed_runs_the_check(self):
+        self.ignore_local()
+        self.local("x")
+        self.green_parent()
+        self.local("y")
+        self.mark_commit()
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        self.assertNotIn(self.MARK_SKIP, out)
+
+    def test_a_green_recorded_in_the_temporary_worktree_is_not_reused_by_the_checkout_that_has_the_local_file(self):
+        self.ignore_local()
+        self.doc_change()
+        self.doc_change("y\n")
+        self.local('{"privateNames": ["x"]}')
+        code, out = self.push("origin", "HEAD~1:refs/heads/older")  # not HEAD: the check runs in a temporary worktree
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.assertNotIn(self.SKIP, out)
+        self.p.git("checkout", "-q", "--detach", "HEAD~1")  # the same tree, now in the checkout that has the local file
+        code, out = self.p.run("bash", ".claude/gw/scripts/check.sh", env=self.ON)
+        self.assertEqual(code, 0, out)
+        # two different keys for the same tree: the one the temporary worktree recorded is not the checkout's
+        self.assertEqual(len(set(l.split()[1] for l in self.lines())), 2, self.lines())
+        self.assertEqual(self.push("origin", "HEAD:refs/heads/again")[0], 0)
+        self.assertIn(self.SKIP, self.push("origin", "HEAD:refs/heads/again2")[1])
+
+    def test_an_input_that_is_not_a_file_leaves_no_key_and_the_check_runs_unrecorded(self):
+        self.ignore_local()
+        (self.p.work / ".claude" / "gw.local.json").mkdir()
+        self.doc_change()
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count(), len(self.lines())), (0, 1, 0), out)
+        code, out = self.push("origin", "feature:other")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        code, out = self.p.run("bash", ".claude/gw/scripts/check.sh", env=self.ON)
+        self.assertIn("is not a readable file", out)
+        self.assertIn("not recorded", out)
+        self.assertEqual(len(self.lines()), 0)
+
+    def test_each_worktree_has_its_own_local_file(self):
+        self.ignore_local()
+        self.local("main copy")
+        self.doc_change()
+        self.assertEqual(self.push("origin", "feature")[0], 0)
+        wt = self.tmp / "wt"
+        self.p.git("worktree", "add", "-q", "--detach", str(wt), "feature")
+        (wt / ".claude").mkdir(exist_ok=True)
+        (wt / ".claude" / "gw.local.json").write_text("other copy")
+        code, out = self.p.run("bash", ".claude/gw/scripts/check-green.sh", "inputs", stdin=self.LOCAL + "\n", cwd=wt, env=self.ON)
+        code2, out2 = self.p.run("bash", ".claude/gw/scripts/check-green.sh", "inputs", stdin=self.LOCAL + "\n", env=self.ON)
+        self.assertEqual((code, code2), (0, 0), out + out2)
+        self.assertNotEqual(out.strip(), out2.strip())
+
     def test_a_mark_only_commit_on_a_green_parent_skips_the_check_and_says_why(self):
         parent = self.green_parent()
         self.mark_commit()
@@ -1747,6 +1873,71 @@ class CheckGreen(Base):
                 self.key(commands="bash  check.sh\n"), self.key(commands="\n")}
         self.assertEqual(len(keys), 5)
         self.assertNotIn(base, keys)
+
+    def inputs(self, paths, cwd=None):
+        code, out = self.helper("inputs", stdin=paths, cwd=cwd)
+        self.assertEqual(code, 0, out)
+        return out.strip()
+
+    def test_inputs_hash_the_content_and_tell_absent_empty_and_invalid_apart(self):
+        p = self.p
+        self.assertEqual(self.inputs("\n"), "")  # no paths: nothing, so the key keeps its old text
+        absent = self.inputs("no/such.json\n")
+        p.write("in.json", "")
+        empty = self.inputs("in.json\n")
+        p.write("in.json", "x")
+        full = self.inputs("in.json\n")
+        self.assertEqual(len({absent, empty, full}), 3)
+        self.assertEqual(self.inputs("in.json\n"), full)
+        for bad in ("../x\n", "/etc/passwd\n", "a/../b\n"):  # outside the repo: never read, but it counts
+            self.assertRegex(self.inputs(bad), r"^[0-9a-f]{40}$")
+        self.assertNotEqual(self.inputs("/etc/passwd\n"), self.inputs("/etc/hostname\n"))
+
+    def test_inputs_follow_symlinks_and_fail_closed_on_what_is_not_a_file(self):
+        p = self.p
+        p.write("real1.json", "one")
+        (p.work / "link.json").symlink_to("real1.json")
+        h1 = self.inputs("link.json\n")
+        p.write("real1.json", "two")
+        self.assertNotEqual(self.inputs("link.json\n"), h1)  # the target changed: another key
+        outside = self.tmp / "outside"
+        outside.mkdir()
+        (outside / "f.json").write_text("a")
+        (p.work / "dirlink").symlink_to(outside)
+        d1 = self.inputs("dirlink/f.json\n")
+        (outside / "f.json").write_text("b")
+        self.assertNotEqual(self.inputs("dirlink/f.json\n"), d1)  # a linked folder along the path is followed too
+        (p.work / "broken.json").symlink_to("nowhere")
+        (p.work / "adir").mkdir()
+        for bad in ("broken.json\n", "adir\n"):
+            code, out = self.helper("inputs", stdin=bad)
+            self.assertEqual(code, 1, out)
+            self.assertIn("is not a readable file", out)
+            self.assertEqual(out.count("\n"), 1)
+
+    def test_inputs_are_read_in_the_given_worktree(self):
+        p = self.p
+        p.write("in.json", "x")
+        wt = self.tmp / "wt"
+        p.git("worktree", "add", "-q", "--detach", str(wt), "HEAD")
+        p.write("local.json", "mine")
+        here = self.inputs("in.json\nlocal.json\n")
+        (wt / "local.json").write_text("y")
+        code, out = self.helper("inputs", str(wt), stdin="in.json\nlocal.json\n")
+        self.assertEqual(code, 0, out)
+        self.assertNotEqual(out.strip(), here)
+        other = self.tmp / "norepo"
+        other.mkdir()
+        code, out = self.helper("inputs", str(other), stdin="in.json\n")
+        self.assertEqual(code, 1, out)
+        self.assertIn("is not a work tree of this repository", out)
+
+    def test_the_key_with_inputs_adds_a_labelled_line_and_without_them_is_the_old_text(self):
+        code, out = self.helper("key", self.TREE, "w", "i" * 40, stdin="c1\n")
+        expected = self.p.git("hash-object", "--stdin",
+                              stdin=f"gw-check-cache 1\ntree {self.TREE}\nwrapper w\ninputs {'i' * 40}\ncommands\nc1\n").stdout.strip()
+        self.assertEqual(out.strip(), expected)
+        self.assertNotEqual(out.strip(), self.key(wrapper="w", commands="c1\n"))
 
     def test_the_key_is_the_hash_of_the_documented_text(self):
         text = f"gw-check-cache 1\ntree {self.TREE}\nwrapper w\ncommands\nc1\nc2\n"

@@ -3,7 +3,13 @@
 # Cache of "the project's `check` already passed": lets the pre-push (and scripts/check.sh) skip a check that already
 # ran green on the same tree with the same commands and wrapper, less than 24 h ago. One line per success,
 # "<epoch> <key>", in <git common dir>/gw-check-green (shared by linked worktrees), the last 50 kept.
-#   printf '%s\n' "$checks" | bash check-green.sh key <tree-sha> <wrapper>   # prints the key
+#   printf '%s\n' "$checks" | bash check-green.sh key <tree-sha> <wrapper> [<inputs-hash>]   # prints the key
+#   printf '%s\n' "$paths" | bash check-green.sh inputs [<dir>]   # E23: hash of the content of the files listed (checkCacheInputs,
+#                                       # relative to <dir>, the checkout or the worktree where the check runs; ignored files the check reads, e.g. .claude/gw.local.json)
+#                                       # to pass as <inputs-hash>: a changed file is another key. A missing file hashes as
+#                                       # absent, a path outside the repo (leading / or ..) as invalid (never opened); symlinks are followed (content hashed);
+#                                       # a folder, broken link or unreadable file fails (exit 1: no key). No paths:
+#                                       # prints nothing, and `key` is then the key records had before E23.
 #   bash check-green.sh worktree-tree   # the tree the working copy would commit after `git add -A` (real index untouched);
 #                                       # fails when that tree may not be what a check sees (assume-unchanged or
 #                                       # skip-worktree entries, sparse checkout, a modified submodule)
@@ -32,7 +38,7 @@ root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --s
 cd "$root" || exit 1
 
 usage() {
-  echo "check-green: $1; usage: bash $0 key <tree-sha> <wrapper> | worktree-tree | has <key> | epoch <key> | add <key> [<epoch>] | lock-acquire <pid> <sha> <wait> <log> | lock-release <pid>" >&2
+  echo "check-green: $1; usage: bash $0 key <tree-sha> <wrapper> [<inputs-hash>] | inputs [<dir>] | worktree-tree | has <key> | epoch <key> | add <key> [<epoch>] | lock-acquire <pid> <sha> <wait> <log> | lock-release <pid>" >&2
   exit 2
 }
 valid_key() {  # a git object name: 40 (sha-1) or 64 (sha-256) lowercase hex digits
@@ -47,12 +53,42 @@ cache_file() {  # absolute path of the cache file, or fail
 
 cmd_key() {
   [ "$#" -ge 1 ] || usage "key needs a tree sha"
-  local tree="$1" wrapper="${2:-}" commands
+  local tree="$1" wrapper="${2:-}" inputs="${3:-}" commands
   commands="$(cat)"
-  # Every part is on its own labelled line, so a change in any of them changes the key.
-  printf '%s\ntree %s\nwrapper %s\ncommands\n%s\n' "$FORMAT" "$tree" "$wrapper" "$commands" | git hash-object --stdin
+  # Every part is on its own labelled line, so a change in any of them changes the key. The inputs line exists only when
+  # there are inputs: an old record (no such line) never equals the key of a tree that has them, so it is a miss (fail closed).
+  if [ -n "$inputs" ]; then
+    printf '%s\ntree %s\nwrapper %s\ninputs %s\ncommands\n%s\n' "$FORMAT" "$tree" "$wrapper" "$inputs" "$commands" | git hash-object --stdin
+  else
+    printf '%s\ntree %s\nwrapper %s\ncommands\n%s\n' "$FORMAT" "$tree" "$wrapper" "$commands" | git hash-object --stdin
+  fi
 }
-
+cmd_inputs() {  # [<dir>]; paths on stdin, one per line; prints one hash of their content, or nothing when there are none
+  local base="${1:-$root}" path full lines="" h c1 c2
+  # <dir> is where the check really runs: the checkout or a temporary worktree of this repository (it may lack the ignored files).
+  c1="$(git -C "$base" rev-parse --git-common-dir 2>/dev/null)" && c1="$(cd "$base" && cd "$c1" && pwd -P)" \
+    && c2="$(git rev-parse --git-common-dir 2>/dev/null)" && c2="$(cd "$c2" && pwd -P)" && [ "$c1" = "$c2" ] \
+    || { echo "check-green: '$base' is not a work tree of this repository, so its inputs cannot be hashed; pass the checkout or a worktree of it" >&2; return 1; }
+  base="$(cd "$base" && pwd)" || return 1
+  while IFS= read -r path || [ -n "$path" ]; do
+    [ -n "$path" ] || continue
+    case "$path" in
+      /* | .. | ../* | */../* | */..) lines="$lines"$'\n'"invalid $path" ; continue ;;  # outside the repo: never opened, but it changes the key
+    esac
+    full="$base/$path"
+    if [ -f "$full" ]; then  # follows symlinks (also in folders of the path): the content the check reads
+      h="$(git hash-object --no-filters --stdin < "$full" 2>/dev/null)" || h=""
+      [ -n "$h" ] || { echo "check-green: cannot read input '$path' in $base, so the green cannot be keyed; fix its permissions or remove it from checkCacheInputs in .claude/gw.json" >&2; return 1; }
+      lines="$lines"$'\n'"file $path $h"
+    elif [ -e "$full" ] || [ -L "$full" ]; then  # a folder, a broken link, a device: not content we can key
+      echo "check-green: input '$path' in $base is not a readable file (a folder, a broken link?), so the green cannot be keyed; fix it or remove it from checkCacheInputs in .claude/gw.json" >&2
+      return 1
+    else
+      lines="$lines"$'\n'"absent $path"
+    fi
+  done
+  [ -z "$lines" ] || printf '%s\n' "$lines" | git hash-object --stdin
+}
 hidden_entry() {  # the first index entry git does not compare with the disk (assume-unchanged, skip-worktree), or fail
   local listing
   listing="$(git ls-files -v 2>/dev/null)" || return 1
@@ -249,6 +285,7 @@ sub="${1:-}"
 [ "$#" -eq 0 ] || shift
 case "$sub" in
   key) cmd_key "$@" ;;
+  inputs) cmd_inputs "$@" ;;
   worktree-tree) cmd_worktree_tree ;;
   has) cmd_has "$@" ;;
   epoch) cmd_epoch "$@" ;;
