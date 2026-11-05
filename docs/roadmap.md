@@ -103,7 +103,7 @@ En este orden, porque cada paso usa el anterior.
 | D45 | `apply.py --update` no borra los pasos propios del CI del proyecto: por qué el `.gw-new` no salvó el `check.yml` del portal al pasar a la `0.5.0`, con su test (recogida `0.5.1`, portal P2) | hecho |
 | B17 | `gw-orchestrate-dealer`: un subagente que escribe en segundo plano trabaja siempre en un worktree, aunque sea uno solo (recogida `0.5.1`, image-generator P1) | pendiente |
 | E23 | La caché del check se invalida al cambiar un archivo ignorado que el check lee (`.claude/gw.local.json`), o el verde reutilizado lo avisa (recogida `0.5.1`, portal P3) | pendiente |
-| D46 | Tras migrar nombres (A8), `apply.py --update` o `doctor.py` listan los usos de rutas viejas en los archivos propios del proyecto (recogida `0.5.1`, portal P1) | pendiente |
+| D46 | Tras migrar nombres (A8), `apply.py --update` o `doctor.py` listan los usos de rutas viejas en los archivos propios del proyecto (recogida `0.5.1`, portal P1) | hecho |
 | D47 | El `pre-push` que para datos privados dice que los commits aún no están subidos y propone `--amend` o `rebase -i` solo sobre ellos (recogida `0.5.1`, portal P4) | hecho |
 | E24 | Lo probado con un doble lleva una prueba de humo con lo real: nota en `patterns.md` y regla `(criterio)` en `REVIEW.md` (recogida `0.5.1`, world-maker-fantasy P3) | pendiente |
 

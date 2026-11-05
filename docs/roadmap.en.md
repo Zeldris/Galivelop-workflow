@@ -102,7 +102,7 @@ In this order, because each step uses the previous one.
 | D45 | `apply.py --update` does not remove the project's own CI steps: why the `.gw-new` did not save the portal's `check.yml` in the move to `0.5.0`, with its test (`0.5.1` harvest, portal P2) | done |
 | B17 | `gw-orchestrate-dealer`: a subagent that writes in the background always works in a worktree, even a single one (`0.5.1` harvest, image-generator P1) | pending |
 | E23 | The check cache is invalidated when an ignored file the check reads changes (`.claude/gw.local.json`), or the reused green says so (`0.5.1` harvest, portal P3) | pending |
-| D46 | After the name migration (A8), `apply.py --update` or `doctor.py` list uses of old paths in the project's own files (`0.5.1` harvest, portal P1) | pending |
+| D46 | After the name migration (A8), `apply.py --update` or `doctor.py` list uses of old paths in the project's own files (`0.5.1` harvest, portal P1) | done |
 | D47 | The `pre-push` that stops private data says the commits are not pushed yet and offers `--amend` or `rebase -i` only over them (`0.5.1` harvest, portal P4) | done |
 | E24 | What is tested with a double also gets a smoke test with the real thing: a note in `patterns.md` and a `(judgement)` rule in `REVIEW.md` (`0.5.1` harvest, world-maker-fantasy P3) | pending |
 
