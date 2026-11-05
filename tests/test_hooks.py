@@ -1348,6 +1348,35 @@ class CheckCache(Base):
         self.assertEqual((code, self.count()), (0, 2), out)
         self.assertNotIn(self.MARK_SKIP, out)
 
+    def test_a_green_recorded_in_the_temporary_worktree_is_not_reused_by_the_checkout_that_has_the_local_file(self):
+        self.ignore_local()
+        self.doc_change()
+        self.doc_change("y\n")
+        self.local('{"privateNames": ["x"]}')
+        code, out = self.push("origin", "HEAD~1:refs/heads/older")  # not HEAD: the check runs in a temporary worktree
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.assertNotIn(self.SKIP, out)
+        self.p.git("checkout", "-q", "--detach", "HEAD~1")  # the same tree, now in the checkout that has the local file
+        code, out = self.p.run("bash", ".claude/gw/scripts/check.sh", env=self.ON)
+        self.assertEqual(code, 0, out)
+        # two different keys for the same tree: the one the temporary worktree recorded is not the checkout's
+        self.assertEqual(len(set(l.split()[1] for l in self.lines())), 2, self.lines())
+        self.assertEqual(self.push("origin", "HEAD:refs/heads/again")[0], 0)
+        self.assertIn(self.SKIP, self.push("origin", "HEAD:refs/heads/again2")[1])
+
+    def test_an_input_that_is_not_a_file_leaves_no_key_and_the_check_runs_unrecorded(self):
+        self.ignore_local()
+        (self.p.work / ".claude" / "gw.local.json").mkdir()
+        self.doc_change()
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count(), len(self.lines())), (0, 1, 0), out)
+        code, out = self.push("origin", "feature:other")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        code, out = self.p.run("bash", ".claude/gw/scripts/check.sh", env=self.ON)
+        self.assertIn("is not a readable file", out)
+        self.assertIn("not recorded", out)
+        self.assertEqual(len(self.lines()), 0)
+
     def test_each_worktree_has_its_own_local_file(self):
         self.ignore_local()
         self.local("main copy")
@@ -1863,6 +1892,45 @@ class CheckGreen(Base):
         for bad in ("../x\n", "/etc/passwd\n", "a/../b\n"):  # outside the repo: never read, but it counts
             self.assertRegex(self.inputs(bad), r"^[0-9a-f]{40}$")
         self.assertNotEqual(self.inputs("/etc/passwd\n"), self.inputs("/etc/hostname\n"))
+
+    def test_inputs_follow_symlinks_and_fail_closed_on_what_is_not_a_file(self):
+        p = self.p
+        p.write("real1.json", "one")
+        (p.work / "link.json").symlink_to("real1.json")
+        h1 = self.inputs("link.json\n")
+        p.write("real1.json", "two")
+        self.assertNotEqual(self.inputs("link.json\n"), h1)  # the target changed: another key
+        outside = self.tmp / "outside"
+        outside.mkdir()
+        (outside / "f.json").write_text("a")
+        (p.work / "dirlink").symlink_to(outside)
+        d1 = self.inputs("dirlink/f.json\n")
+        (outside / "f.json").write_text("b")
+        self.assertNotEqual(self.inputs("dirlink/f.json\n"), d1)  # a linked folder along the path is followed too
+        (p.work / "broken.json").symlink_to("nowhere")
+        (p.work / "adir").mkdir()
+        for bad in ("broken.json\n", "adir\n"):
+            code, out = self.helper("inputs", stdin=bad)
+            self.assertEqual(code, 1, out)
+            self.assertIn("is not a readable file", out)
+            self.assertEqual(out.count("\n"), 1)
+
+    def test_inputs_are_read_in_the_given_worktree(self):
+        p = self.p
+        p.write("in.json", "x")
+        wt = self.tmp / "wt"
+        p.git("worktree", "add", "-q", "--detach", str(wt), "HEAD")
+        p.write("local.json", "mine")
+        here = self.inputs("in.json\nlocal.json\n")
+        (wt / "local.json").write_text("y")
+        code, out = self.helper("inputs", str(wt), stdin="in.json\nlocal.json\n")
+        self.assertEqual(code, 0, out)
+        self.assertNotEqual(out.strip(), here)
+        other = self.tmp / "norepo"
+        other.mkdir()
+        code, out = self.helper("inputs", str(other), stdin="in.json\n")
+        self.assertEqual(code, 1, out)
+        self.assertIn("is not a work tree of this repository", out)
 
     def test_the_key_with_inputs_adds_a_labelled_line_and_without_them_is_the_old_text(self):
         code, out = self.helper("key", self.TREE, "w", "i" * 40, stdin="c1\n")

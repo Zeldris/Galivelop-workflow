@@ -221,7 +221,7 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     tree="$(git rev-parse "$sha^{tree}" 2>/dev/null)" || tree=""
     # E23: the ignored files the check reads (checkCacheInputs, from the config of the pushed commit) are part of both keys.
     # A list that cannot be read means no key (the check runs), never a key without the inputs.
-    if input_paths="$(cfg_at "$sha" checkCacheInputs 2>/dev/null)" && inputs="$(printf '%s\n' "$input_paths" | (cd "$root" && bash "$scripts/check-green.sh" inputs))" && [ -n "$tree" ]; then
+    if input_paths="$(cfg_at "$sha" checkCacheInputs 2>/dev/null)" && inputs="$(printf '%s\n' "$input_paths" | bash "$scripts/check-green.sh" inputs "$dir" 2>/dev/null)" && [ -n "$tree" ]; then
       key="$(printf '%s\n' "$checks" | bash "$scripts/check-green.sh" key "$tree" "$wrapper" "$inputs" 2>/dev/null)" || key=""
     fi
     if [ -n "$key" ] && age="$(bash "$scripts/check-green.sh" has "$key" 2>/dev/null < /dev/null)"; then

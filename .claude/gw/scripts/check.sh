@@ -52,10 +52,10 @@ if [ "${GW_CHECK_CACHE:-}" != "0" ] && [ -f "$helper" ]; then  # any failure of 
   if [ -n "$tree_before" ]; then
     # E23: the ignored files the check reads (checkCacheInputs) are part of the key, as the tree does not see them.
     # A list that cannot be read means no recording (fail closed), not a key without the inputs.
-    if input_paths="$(python3 "$config" --root "$root" get checkCacheInputs)" && inputs="$(printf '%s\n' "$input_paths" | bash "$helper" inputs)"; then
+    if input_paths="$(python3 "$config" --root "$root" get checkCacheInputs)" && inputs="$(printf '%s\n' "$input_paths" | bash "$helper" inputs "$root")"; then
       key="$(printf '%s\n' "$checks" | bash "$helper" key "$tree_before" "$wrapper" "$inputs" 2>/dev/null)" || key=""
     else
-      echo "check: cannot read 'checkCacheInputs' from .claude/gw.json, so this green is not recorded; fix the config: python3 $config --root $root validate" >&2
+      echo "check: cannot key the files of 'checkCacheInputs' (see above if it says why), so this green is not recorded; fix the config: python3 $config --root $root validate" >&2
     fi
   fi
 fi
