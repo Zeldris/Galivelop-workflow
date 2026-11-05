@@ -1,4 +1,5 @@
 """red-without-fix.sh: --fix-at (fix already committed) and compile/load red vs assertion red."""
+import json
 import shutil
 import sys
 import tempfile
@@ -144,6 +145,69 @@ class FixAt(Base):
         self.p.write("fix.txt", "better\n")
         code, out = self.run_script("grep -q better fix.txt", "fix.txt")
         self.assertEqual(code, 0, out)
+
+
+class TextFiles(Base):
+    """Prose in a text/data file must not read as test code (`it(` in "improve it (URL)")."""
+
+    def fix_prose(self, name, text="improve it (see URL)\n"):
+        self.p.write(name, "old\n")
+        self.p.commit("base " + name, env=DAY)
+        self.p.write(name, text)
+
+    def test_prose_with_it_paren_in_a_tracked_text_file_is_not_test_code(self):
+        self.fix_prose("notes.md")
+        code, out = self.run_script("grep -q improve notes.md", "notes.md")
+        self.assertEqual(code, 0, out)
+        self.assertIn("notes.md is a .md text/data file (nonTestExtensions)", out)
+
+    def test_untracked_text_file_and_upper_case_extension_and_spaces(self):
+        self.p.write("my notes.MD", "improve it (see URL)\n")
+        code, out = self.run_script("grep -q improve 'my notes.MD'", "my notes.MD")
+        self.assertEqual(code, 0, out)
+        self.assertIn("my notes.MD is a .md text/data file", out)
+
+    def test_real_test_file_still_refused(self):
+        self.fix_prose("m.py", "def test_it():\n    pass\n")
+        code, out = self.run_script("true", "m.py")
+        self.assertEqual(code, 2, out)
+        self.assertIn("touch test code", out)
+
+    def test_file_without_extension_is_still_searched(self):
+        self.p.write("Makefile", "improve it (see URL)\n")
+        code, out = self.run_script("true", "Makefile")
+        self.assertEqual(code, 2, out)
+        self.assertIn("touch test code", out)
+
+    def test_list_comes_from_the_config(self):
+        path = self.p.work / ".claude" / "gw.json"
+        cfg = json.loads(path.read_text())
+        cfg["nonTestExtensions"] = []
+        path.write_text(json.dumps(cfg))
+        self.fix_prose("notes.md")
+        code, out = self.run_script("true", "notes.md")
+        self.assertEqual(code, 2, out)
+        self.assertIn("touch test code", out)
+
+
+    def test_unreadable_list_blocks_with_exit_2(self):
+        path = self.p.work / ".claude" / "gw.json"
+        cfg = json.loads(path.read_text())
+        cfg["nonTestExtensions"] = ["MD"]
+        path.write_text(json.dumps(cfg))
+        self.fix_prose("notes.md")
+        code, out = self.run_script("true", "notes.md")
+        self.assertEqual(code, 2, out)
+        self.assertIn("cannot read nonTestExtensions", out)
+        self.assertIn("nonTestExtensions", out.split("cannot read")[0])  # config.py names the key and the problem
+
+    def test_extension_with_a_newline_is_never_skipped(self):
+        name = "t.md\ndef test_x"
+        self.p.write(name, "improve it (see URL)\n")
+        code, out = self.run_script("true", name)
+        self.assertEqual(code, 2, out)
+        self.assertIn("touch test code", out)
+        self.assertNotIn("text/data file", out)
 
 
 class RedKind(Base):

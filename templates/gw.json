@@ -31,6 +31,7 @@
   "ciLocalLog": "docs/records/ci-local.md",
   "ciLocalWorkflows": [],
   "ciIgnore": [],
+  "nonTestExtensions": ["md", "json", "yml", "yaml", "properties", "txt", "csv"],
   "ciKeepSteps": true,
   "legacyNames": true,
   "legacyNamesSkip": ["CHANGELOG*"],
