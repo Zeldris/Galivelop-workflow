@@ -157,6 +157,14 @@ class CiStatus(unittest.TestCase):
     def test_api_error_fails_closed(self):
         self.assertCi(self.ci(env={"GH_FAIL": "1"}), 2, "could not read the CI status", "502")
 
+    def test_422_in_the_request_path_is_not_a_missing_commit(self):
+        # A 502 on a path holding "422" (a sha or, here, the repo name) is an API error, not "HEAD is not on GitHub".
+        subprocess.run(["git", "-C", str(self.work), "remote", "set-url", "origin", "https://github.com/o/r422.git"],
+                       check=True, env=self.env)
+        code, out = self.ci(env={"GH_FAIL": "1"})
+        self.assertCi((code, out), 2, "could not read the CI status", "502")
+        self.assertNotIn("is not on GitHub", out)
+
     def test_unexpected_answer_fails_closed(self):
         self.assertCi(self.ci(run={"oops": 1}), 2, "could not read the CI status")
 
