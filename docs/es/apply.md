@@ -267,6 +267,8 @@ algo que el flujo dice (ramas, mensajes de commit), **gana la del proyecto**: se
 a mano lo que falte de la plantilla: estado actual con siguiente paso, hecho reciente, pendiente y cómo comprobar el
 estado. `doctor.py` exige una línea de «Siguiente paso»/«Next step».
 
+**Bloques condicionales en las plantillas:** `<!-- if clave -->` … `<!-- /if -->`, cada marcador en su propia línea y `clave` una clave booleana de `.claude/gw.json`. Con la clave en `true` se quitan solo las líneas de marcador; con `false` o ausente, el bloque entero (así la bitácora solo explica `logRows` si está encendido). No se anidan; un bloque sin cerrar o anidado hace fallar a `apply.py` con el mensaje y la plantilla a arreglar.
+
 **CI existente.** `check.yml` es un workflow más; si el proyecto ya corre su check, deja uno de los dos para no
 duplicarlo, pero conserva el paso del `pre-commit` de la rama base sobre el PR. Ese paso sirve suelto en una CI que ya
 exista: copia solo los pasos «Base branch's pre-commit over the pull request» de `check.yml` (necesita
