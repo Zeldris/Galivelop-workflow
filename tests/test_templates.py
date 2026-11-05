@@ -303,6 +303,8 @@ class Templates(unittest.TestCase):
         self.assertEqual(set(sample), set(schema["properties"]) - {"ciInstall", "ciPython"},
                          "templates/gw.json must show every key but ciInstall and ciPython")
         self.assertEqual(sample["version"], VERSION)
+        # D59: the AGENTS.md template asks for the next-step trailer, so a new project must have it enforced
+        self.assertIs(sample["commitNext"], True)
 
     def test_sample_check_runs_the_agent_map_script(self):
         sample = json.loads((TEMPLATES / "gw.json").read_text())
