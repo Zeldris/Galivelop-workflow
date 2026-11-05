@@ -215,12 +215,14 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     dir="$worktree"
   fi
   checkdir="$dir"
-  local cmd n=0 log key="" tree age parent ptree pkey pepoch
+  local cmd n=0 log key="" tree age parent ptree pkey pepoch inputs="" input_paths=""
   if [ "$is_protected" != "true" ] && [ "${GW_CHECK_CACHE:-}" != "0" ] && [ -f "$scripts/check-green.sh" ]; then
     # Any failure of the helper just means the check runs, as it always did.
     tree="$(git rev-parse "$sha^{tree}" 2>/dev/null)" || tree=""
-    if [ -n "$tree" ]; then
-      key="$(printf '%s\n' "$checks" | bash "$scripts/check-green.sh" key "$tree" "$wrapper" 2>/dev/null)" || key=""
+    # E23: the ignored files the check reads (checkCacheInputs, from the config of the pushed commit) are part of both keys.
+    # A list that cannot be read means no key (the check runs), never a key without the inputs.
+    if input_paths="$(cfg_at "$sha" checkCacheInputs 2>/dev/null)" && inputs="$(printf '%s\n' "$input_paths" | (cd "$root" && bash "$scripts/check-green.sh" inputs))" && [ -n "$tree" ]; then
+      key="$(printf '%s\n' "$checks" | bash "$scripts/check-green.sh" key "$tree" "$wrapper" "$inputs" 2>/dev/null)" || key=""
     fi
     if [ -n "$key" ] && age="$(bash "$scripts/check-green.sh" has "$key" 2>/dev/null < /dev/null)"; then
       echo "pre-push: check already green on this tree (${tree:0:7}) with the same commands $age min ago; skipping it (to run it anyway: GW_CHECK_CACHE=0 git push)"
@@ -229,7 +231,7 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     # The review-mark commit adds nothing a check sees: the tree it sits on being recorded green is enough.
     if [ -n "$key" ] \
       && parent="$(mark_only_parent "$sha")" && ptree="$(git rev-parse "$parent^{tree}" 2>/dev/null)" \
-      && pkey="$(printf '%s\n' "$checks" | bash "$scripts/check-green.sh" key "$ptree" "$wrapper" 2>/dev/null)" \
+      && pkey="$(printf '%s\n' "$checks" | bash "$scripts/check-green.sh" key "$ptree" "$wrapper" "$inputs" 2>/dev/null)" \
       && pepoch="$(bash "$scripts/check-green.sh" epoch "$pkey" 2>/dev/null < /dev/null)" \
       && age="$(bash "$scripts/check-green.sh" has "$pkey" 2>/dev/null < /dev/null)"; then
       echo "pre-push: ${sha:0:7} only adds the review mark on ${parent:0:7}, whose tree (${ptree:0:7}) passed this check with the same commands $age min ago; skipping it (to run it anyway: GW_CHECK_CACHE=0 git push)"

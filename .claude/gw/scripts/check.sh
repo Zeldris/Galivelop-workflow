@@ -43,12 +43,20 @@ checks="$(python3 "$config" --root "$root" get check)" || fail "cannot read 'che
 wrapper="$(python3 "$config" --root "$root" get checkWrapper)" || fail "cannot read 'checkWrapper' from .claude/gw.json; fix the config: python3 $config --root $root validate"
 
 key=""
+inputs=""
+input_paths=""
 tree_before=""
 if [ "${GW_CHECK_CACHE:-}" != "0" ] && [ -f "$helper" ]; then  # any failure of the cache only means no recording
   # Its reason for not giving a tree (a skip-worktree entry, a modified submodule) goes to stderr: the check still runs.
   tree_before="$(bash "$helper" worktree-tree)" || tree_before=""
   if [ -n "$tree_before" ]; then
-    key="$(printf '%s\n' "$checks" | bash "$helper" key "$tree_before" "$wrapper" 2>/dev/null)" || key=""
+    # E23: the ignored files the check reads (checkCacheInputs) are part of the key, as the tree does not see them.
+    # A list that cannot be read means no recording (fail closed), not a key without the inputs.
+    if input_paths="$(python3 "$config" --root "$root" get checkCacheInputs)" && inputs="$(printf '%s\n' "$input_paths" | bash "$helper" inputs)"; then
+      key="$(printf '%s\n' "$checks" | bash "$helper" key "$tree_before" "$wrapper" "$inputs" 2>/dev/null)" || key=""
+    else
+      echo "check: cannot read 'checkCacheInputs' from .claude/gw.json, so this green is not recorded; fix the config: python3 $config --root $root validate" >&2
+    fi
   fi
 fi
 

@@ -207,6 +207,17 @@ class Config(unittest.TestCase):
         self.write(dict(VALID, worktreeLinks=["..hidden", "a..b/c"]))
         self.assertEqual(cli(self.tmp, "validate").returncode, 0)
 
+    def test_check_cache_inputs_default_and_must_stay_inside_the_repo(self):
+        self.write(dict(VALID))
+        self.assertEqual(cli(self.tmp, "get", "checkCacheInputs").stdout.splitlines(), [".claude/gw.local.json"])
+        self.write(dict(VALID, checkCacheInputs=[]))
+        self.assertEqual(cli(self.tmp, "get", "checkCacheInputs", "--json").stdout.strip(), "[]")
+        for bad in ("/etc", "../x", "a/../b", ".."):
+            self.write(dict(VALID, checkCacheInputs=[bad]))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn("checkCacheInputs[0]", r.stderr)
+
     def test_related_tests_entries_are_strings_or_objects(self):
         ok = {"fast": ["npx vitest", {"command": "npm test {files}", "paths": "^app/", "cwd": "app"}], "slow": []}
         self.write(dict(VALID, relatedTests=ok))
