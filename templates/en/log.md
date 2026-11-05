@@ -14,8 +14,10 @@
 | **Next step** | _(the next concrete step, so the next session needs to ask nothing)_ |
 | **Check** | {{check}}: _(green / red, and what fails)_ |
 
+<!-- if logRows -->
 With `logRows` in `.claude/gw.json`, each branch writes only in its own row of this table, at most 600 characters,
 shaped as ``| **Current task · `<branch>`** | task, phases before `{{protectedBranch}}`, what is missing and the next step |``; the push checks it.
+<!-- /if -->
 
 ## For the next release
 

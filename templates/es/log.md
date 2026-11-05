@@ -14,8 +14,10 @@
 | **Siguiente paso** | _(el próximo paso concreto, para que la siguiente sesión no tenga que preguntar nada)_ |
 | **Check** | {{check}}: _(verde / rojo, y qué falla)_ |
 
+<!-- if logRows -->
 Con `logRows` en `.claude/gw.json`, cada rama escribe solo en su fila de esta tabla, como mucho 600 caracteres, con
 la forma ``| **Tarea en curso · `<rama>`** | tarea, fases antes de `{{protectedBranch}}`, qué falta y siguiente paso |``; el push lo comprueba.
+<!-- /if -->
 
 ## Para la próxima publicación
 

@@ -127,6 +127,7 @@ IGNORED = {"__pycache__", ".DS_Store"}
 PROPOSAL = ".gw-new"
 OLD_PROPOSAL = ".gw-nuevo"  # A8 (0.x): the suffix before the rename; still recognized, with a warning
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
+BLOCK_MARK = re.compile(r"^\s*<!--\s*(/?)if(?:\s+(\w+))?\s*-->\s*$")  # a line of its own: <!-- if key --> ... <!-- /if -->
 TEXT_KEYS = ("log", "protectedBranch", "reviewMark", "language")
 LIST_KEYS = ("check", "install")
 DIFFED = ("REVIEW.md", "GLOSSARY.md")  # seeded files whose template diff is printed while unmarked or older
@@ -566,8 +567,39 @@ def inline_list(items):
     return ", ".join(f"`{i}`" for i in items) if items else "—"
 
 
+def conditional_blocks(text, cfg, name):
+    """Resolve `<!-- if key -->` ... `<!-- /if -->` (marker lines of their own, boolean config key, no nesting): a true
+    key drops only the marker lines, a false or absent one the whole block."""
+    out, key, keep = [], None, True
+    for n, line in enumerate(text.splitlines(keepends=True), 1):
+        m = BLOCK_MARK.match(line)
+        if not m:
+            if keep:
+                out.append(line)
+            continue
+        where = f"template {name}, line {n}"
+        fix = f"fix the template in {WORKFLOW / 'templates'}"
+        if m.group(1):
+            if key is None:
+                raise ApplyError(f"apply: {where}: <!-- /if --> without an open <!-- if KEY -->; {fix}")
+            key, keep = None, True
+        else:
+            if not m.group(2):
+                raise ApplyError(f"apply: {where}: <!-- if --> needs a config key (<!-- if KEY -->); {fix}")
+            if key is not None:
+                raise ApplyError(f"apply: {where}: <!-- if {m.group(2)} --> inside <!-- if {key} -->, blocks do not "
+                                 f"nest; {fix}")
+            key, keep = m.group(2), cfg.get(m.group(2)) is True
+    if key is not None:
+        raise ApplyError(f"apply: template {name}: <!-- if {key} --> is never closed with <!-- /if -->; "
+                         f"{'fix the template in ' + str(WORKFLOW / 'templates')}")
+    return "".join(out)
+
+
 def render(text, cfg, root, version, name):
-    """Replace {{key}}: config keys (lists as an inline code list), {{version}} (the workflow's), {{project}}."""
+    """Replace {{key}}: config keys (lists as an inline code list), {{version}} (the workflow's), {{project}}.
+    First the `<!-- if key -->` blocks (conditional_blocks)."""
+    text = conditional_blocks(text, cfg, name)
     def value(m):
         key = m.group(1)
         if key in TEXT_KEYS:

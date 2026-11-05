@@ -1735,3 +1735,76 @@ class LegacyNames(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ConditionalBlocks(unittest.TestCase):
+    """D58: `<!-- if key -->` ... `<!-- /if -->` in a template, resolved by apply.py from a boolean config key."""
+
+    NOTE = "Con logRows cada rama escribe en su fila."
+    TEXT = "before\n<!-- if logRows -->\n" + NOTE + "\n<!-- /if -->\nafter\n"
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("apply_blocks", APPLY_SCRIPT)
+        self.mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.mod)
+
+    def blocks(self, text, cfg):
+        return self.mod.conditional_blocks(text, cfg, "x.md")
+
+    def test_true_key_drops_only_the_marker_lines(self):
+        self.assertEqual(self.blocks(self.TEXT, {"logRows": True}), "before\n" + self.NOTE + "\nafter\n")
+
+    def test_false_and_absent_keys_drop_the_whole_block(self):
+        for cfg in ({"logRows": False}, {}):
+            self.assertEqual(self.blocks(self.TEXT, cfg), "before\nafter\n", cfg)
+
+    def test_any_boolean_key_and_odd_spacing(self):
+        text = "a\n  <!--   if   otherKey-->  \nb\n<!--/if-->\nc\n"
+        self.assertEqual(self.blocks(text, {"otherKey": True}), "a\nb\nc\n")
+        self.assertEqual(self.blocks(text, {"otherKey": False}), "a\nc\n")
+
+    def test_text_without_blocks_is_unchanged(self):
+        self.assertEqual(self.blocks("a\n\nb", {}), "a\n\nb")
+
+    def expect_error(self, text, *fragments):
+        with self.assertRaises(self.mod.ApplyError) as cm:
+            self.blocks(text, {"logRows": True})
+        for fragment in fragments:
+            self.assertIn(fragment, str(cm.exception))
+        self.assertIn("fix the template in", str(cm.exception))
+
+    def test_unclosed_block_is_an_error(self):
+        self.expect_error("a\n<!-- if logRows -->\nb\n", "never closed", "logRows")
+
+    def test_nested_block_is_an_error(self):
+        self.expect_error("<!-- if logRows -->\n<!-- if other -->\nx\n<!-- /if -->\n<!-- /if -->\n", "do not nest")
+
+    def test_close_without_open_and_open_without_key_are_errors(self):
+        self.expect_error("a\n<!-- /if -->\n", "without an open")
+        self.expect_error("<!-- if -->\nx\n<!-- /if -->\n", "needs a config key")
+
+    def test_marker_inside_a_line_is_plain_text(self):
+        text = "see <!-- if logRows --> here\n"
+        self.assertEqual(self.blocks(text, {}), text)
+
+    def apply_log(self, log_rows, update=False):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-apply-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        p = Fixture(tmp, {"log": "notes/log.md", "language": "es", "logRows": log_rows})
+        code, out = p.run_apply()
+        self.assertEqual(code, 0, out)
+        return p, p.read("notes/log.md")
+
+    def test_the_seeded_log_explains_logrows_only_when_it_is_on(self):
+        for log_rows, shown in ((True, True), (False, False)):
+            _, log = self.apply_log(log_rows)
+            self.assertEqual("Con `logRows` en" in log, shown, log_rows)
+            self.assertNotIn("<!-- if", log)
+            self.assertNotIn("<!-- /if", log)
+
+    def test_update_of_an_installed_project_keeps_the_log(self):
+        p, log = self.apply_log(False)
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(p.read("notes/log.md"), log)
+        self.assertFalse((p.work / "notes" / "log.md.gw-new").exists())
