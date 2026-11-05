@@ -115,11 +115,12 @@ En este orden, porque cada paso usa el anterior.
 
 | Id | Tarea | Estado |
 |---|---|---|
-| B20 | `measure.py` mide el registro de un subagente (`subagents/agent-*.jsonl`, todas sus líneas con `isSidechain`), con su test (recogida `0.6`, image-generator P1) | pendiente |
+| B20 | `measure.py` mide el registro de un subagente (`subagents/agent-*.jsonl`, todas sus líneas con `isSidechain`), con su test (recogida `0.6`, image-generator P1) | hecho |
 | D57 | `harvest.py` sigue los renombrados (`-M`) y no repite las ideas de un archivo movido; una idea recortada dice «… (truncated)» (recogida `0.6`, image-generator P2) | pendiente |
 | D58 | La plantilla de la bitácora solo explica `logRows` si está encendido; `handoff.py close-row` avisa y sale con 1 si está apagado, como `set-row` (recogida `0.6`, image-generator P3) | pendiente |
 | D59 | `commitNext: true` por defecto en `templates/gw.json`, como pide la plantilla de `AGENTS.md` (recogida `0.6`, image-generator P4) | pendiente |
 | D60 | Las plantillas de `AGENTS.md` nombran `handoff.py set-row` y `close-row` para la fila propia de la bitácora (recogida `0.6`, private-project-1 P2) | pendiente |
+| D64 | `gw-selector`: la línea del modelo separa sesión y subagentes y da el actual (`Sesión: <recomendado> (actual: <X>; /model para cambiarlo) · Subagentes: <peldaño> · Skill: <y>`); si la sesión orquesta con `gw-orchestrate-dealer`, su modelo es el de la fila de más riesgo que reparte, como mínimo medio (usuario, 2026-11-05) | pendiente |
 
 ## `0.6` «Medir»
 
