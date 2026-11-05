@@ -191,11 +191,44 @@ def description(text):
     return match.group(1).strip().strip('"')[:200] if match else ""
 
 
-def added_lines(repo, base, rel):
+IDEA_MAX = 2000
+TRUNCATED = "\u2026 (truncated)"
+
+
+def clip(text):
+    """An idea's text cut to IDEA_MAX characters; a cut one ends in TRUNCATED so nobody takes it for the whole."""
+    text = text.strip()
+    return text if len(text) <= IDEA_MAX else text[:IDEA_MAX - len(TRUNCATED) - 1].rstrip() + " " + TRUNCATED
+
+
+def changed_since(repo, last, head):
+    """(new paths changed between two commits, {new path: old path} for the files git sees as renamed with -M)."""
+    out = git(repo, "diff", "-M", "--name-status", "-z", last, head) or ""
+    parts, files, renames, i = out.split("\0"), set(), {}, 0
+    while i < len(parts) and parts[i]:
+        if parts[i][0] in "RC":
+            files.add(parts[i + 2])
+            if parts[i][0] == "R":
+                renames[parts[i + 2]] = parts[i + 1]
+            i += 3
+        else:
+            files.add(parts[i + 1])
+            i += 2
+    return files, renames
+
+
+def added_lines(repo, base, rel, old=None):
     """Numbers (1-based) of the lines of rel's working-tree text that were added or changed since commit `base`, or
-    None when everything counts: no base (first harvest), the file is new since it, or git could not say."""
-    if base is None or git(repo, "cat-file", "-e", f"{base}:{rel}") is None:
+    None when everything counts: no base (first harvest), the file is new since it, or git could not say. `old` is
+    the path the file had at `base` when it was moved since: only what changed besides the move counts."""
+    if base is None or git(repo, "cat-file", "-e", f"{base}:{old or rel}") is None:
         return None
+    if old and old != rel:
+        diff = git(repo, "diff", "-U0", "-M", "--no-color", "--no-ext-diff", "--no-textconv", base, "--", old, rel)
+        if diff is None or f"rename to {rel}" not in diff.replace('"', ""):
+            return None  # git does not see it as a move: count it all
+        return {n for m in re.finditer(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@", diff, re.M)
+                for n in range(int(m.group(1)), int(m.group(1)) + int(m.group(2) if m.group(2) is not None else 1))}
     # Plain diff whatever the person's git config says (color.diff=always, diff.external, textconv).
     diff = git(repo, "diff", "-U0", "--no-renames", "--no-color", "--no-ext-diff", "--no-textconv", base, "--", rel)
     if diff is None or (diff and "\n@@ " not in "\n" + diff):  # e.g. "Binary files differ": count it all
@@ -222,7 +255,7 @@ def ideas_in(text, rel, added):
         last = text.count("\n", 0, end) + (1 if end == len(text) else 0)  # up to the line before the next heading
         sections.append((first, last))
         if touched(first, last):
-            ideas.append({"path": rel, "text": text[match.end():end].strip()[:2000]})
+            ideas.append({"path": rel, "text": clip(text[match.end():end])})
     for match in IDEAS_LINE.finditer(text):
         first = text.count("\n", 0, match.start()) + 1
         if any(a <= first <= b for a, b in sections):
@@ -233,7 +266,7 @@ def ideas_in(text, rel, added):
                 break
             kept.append(line)
         if touched(first, first + len(kept) - 1):
-            ideas.append({"path": rel, "text": "\n".join(kept).strip()[:2000]})
+            ideas.append({"path": rel, "text": clip("\n".join(kept))})
     return ideas
 
 
@@ -252,6 +285,7 @@ def harvest(repo, state, anonymize=lambda text: text):
         raise SystemExit(f"{repo}: not a git repository (clone it first)")
     rid = repo_id(repo)
     last = state.get(state_key(state, rid, anonymize))
+    renames = {}
     report = {"repo": rid, "path": str(repo), "head": head, "last": last,
               "uses_gw_json": (repo / ".claude" / "gw.json").is_file(),
               "commits": [], "history": "full", "skills_changed": [], "skills_new": [],
@@ -276,8 +310,7 @@ def harvest(repo, state, anonymize=lambda text: text):
         else:
             log = git(repo, "log", "--format=%h %s", f"{last}..{head}") or ""
             report["commits"] = log.splitlines()
-            names = git(repo, "diff", "--name-only", last, head) or ""
-            changed_files = set(names.splitlines())
+            changed_files, renames = changed_since(repo, last, head)
             base = last
     elif last == head:
         report["history"] = "nothing new since the last harvest"
@@ -332,7 +365,7 @@ def harvest(repo, state, anonymize=lambda text: text):
             if not (repo / rel).is_file():
                 continue
             text = (repo / rel).read_text(encoding="utf-8", errors="replace")
-            report["ideas"] += ideas_in(text, rel, added_lines(repo, base, rel))
+            report["ideas"] += ideas_in(text, rel, added_lines(repo, base, rel, renames.get(rel)))
     return report
 
 
