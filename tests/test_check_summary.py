@@ -400,6 +400,44 @@ class CheckSummary(unittest.TestCase):
         self.assertIn(f"pid {holder.pid}", err)
         self.assertIn("rm ", err)  # the safe remedy, not kill
 
+    def stale_lock_with_steal(self, steal_owner):
+        """A stale lock (dead pid) and the steal mutex held by steal_owner ("pid|start", or None for none)."""
+        dead = subprocess.Popen(["true"])
+        dead.wait()
+        lock = self.lock_dir()
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        os.symlink(f"{dead.pid}|Thu Jan  1 00:00:00 2000|oldsha|/old/log", lock)
+        if steal_owner is not None:
+            steal = Path(str(lock) + ".steal")
+            steal.mkdir()
+            (steal / "pid").write_text(steal_owner + "\n")
+        return lock
+
+    def acquire(self):
+        return subprocess.run(["bash", str(self.repo / "scripts" / "check-green.sh"), "lock-acquire", "999999", "mysha",
+                               "0", "-"], cwd=self.repo, capture_output=True, text=True)
+
+    def test_a_stale_lock_is_not_replaced_while_another_check_is_replacing_it(self):
+        """Two checks must not both judge the same stale lock: with the steal mutex held by a live check, we are busy."""
+        live = subprocess.Popen(["sleep", "30"])
+        self.addCleanup(live.kill)
+        lock = self.stale_lock_with_steal(f"{live.pid}|{self.start_of(live.pid)}")
+        old = os.readlink(lock)
+        r = self.acquire()
+        self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
+        self.assertIn("another check is replacing a stale lock", r.stderr)
+        self.assertEqual(os.readlink(lock), old, "the lock is left alone")
+        self.assertTrue(os.path.isdir(str(lock) + ".steal"), "the other check's mutex is untouched")
+
+    def test_a_steal_mutex_left_by_a_dead_check_is_cleaned_and_the_lock_taken(self):
+        dead = subprocess.Popen(["true"])
+        dead.wait()
+        lock = self.stale_lock_with_steal(f"{dead.pid}|Thu Jan  1 00:00:00 2000")
+        r = self.acquire()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue(os.readlink(lock).startswith("999999|"))
+        self.assertFalse(os.path.exists(str(lock) + ".steal"), "the mutex is always released")
+
     def test_ctrl_c_releases_the_lock_and_keeps_the_log(self):
         self.configure(["echo partial; sleep 30"])
         p = self.start_check()

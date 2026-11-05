@@ -556,8 +556,20 @@ class PrePush(Base):
         self.assertNotEqual(code, 0, out)
         self.assertIn(f"another check is running (pid {holder.pid}, sha abc123abc123)", out)
         self.assertIn("another check holds the lock", out)
+        self.assertNotIn("cannot take the check lock", out)
         self.assertFalse(ran.exists(), "the check must not run while the lock is held")
         self.assertEqual(os.readlink(lock).split("|")[0], str(holder.pid), "the holder's lock is untouched")
+
+    def test_a_lock_that_cannot_be_created_says_so_instead_of_busy(self):
+        p = self.p
+        (p.work / ".git" / "gw").write_text("a file where the lock folder should be\n")
+        p.write("check.sh", "true\n")
+        p.commit("a check")
+        code, out = p.push("origin", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("cannot create <git common dir>/gw for the lock", out)
+        self.assertIn("cannot take the check lock (above, exit 1)", out)
+        self.assertNotIn("another check holds the lock", out)
 
     def test_a_push_takes_the_lock_while_it_checks_and_releases_it(self):
         p = self.p
@@ -566,7 +578,7 @@ class PrePush(Base):
         p.commit("a check that reads the lock")
         code, out = p.push("origin", "feature")
         self.assertEqual(code, 0, out)
-        self.assertRegex(seen.read_text(), r"^\d+\|.*\|pre-push\|-\n$")
+        self.assertRegex(seen.read_text(), r"^\d+\|.*\|" + p.sha() + r"\|.*gw-pre-push-check\.[^|]+\n$")
         self.assertFalse(os.path.lexists(p.work / ".git" / "gw" / "check.lock"), "released when the hook ends")
 
     def test_checks_know_whether_the_push_goes_to_the_protected_branch(self):
@@ -1094,8 +1106,23 @@ class PrePushPrivate(Base):
         p.commit("notes")
         code, out = p.push("origin", "feature")
         self.assertNotEqual(code, 0, out)
-        self.assertIn("private-check could not run (above)", out)
+        self.assertIn("private-check could not run, exit 2 (above)", out)
         self.assertNotIn("fix only them with the command above", out)
+
+    def test_a_crash_of_the_check_is_not_taken_for_a_finding(self):
+        p = self.p
+        (p.work / ".claude" / "gw" / "scripts" / "private-check.py").write_text(
+            (ROOT / "scripts" / "private-check.py").read_text().replace(
+                "def scan_commit(", "def scan_commit(*a):\n    raise RuntimeError('boom')\n\n\ndef _old_scan_commit(", 1))
+        p.write("docs/a.md", "fine\n")
+        p.commit("notes")
+        code, out = p.push("origin", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("RuntimeError: boom", out)
+        self.assertIn("private-check could not run, exit 2", out)
+        self.assertIn("reproduce with: python3", out)
+        self.assertNotIn("the push carries private data", out)
+        self.assertNotIn("git commit --amend", out)
 
     def test_two_branches_at_once_name_the_one_with_the_private_data(self):
         p = self.p

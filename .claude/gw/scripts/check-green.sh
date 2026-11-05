@@ -228,7 +228,7 @@ proc_is() {  # proc_is <pid> <start>: that very process is still running (not go
 
 cmd_lock_acquire() {
   [ "$#" -eq 4 ] || usage "lock-acquire needs <owner-pid> <sha> <wait-seconds> <log>"
-  local owner="$1" sha="$2" wait="$3" log="$4" lock mine cur pid rest start osha olog tmp moved waited announced="" vanished=0
+  local owner="$1" sha="$2" wait="$3" log="$4" lock mine cur pid rest start osha olog steal sp waited announced="" vanished=0
   case "$owner$wait" in ''|*[!0-9]*) usage "lock-acquire: pid and wait must be numbers" ;; esac
   lock="$(lock_file)" || { echo "check-green: cannot create <git common dir>/gw for the lock; make the git dir writable, e.g. chmod u+w \"\$(git rev-parse --git-common-dir)\"" >&2; return 1; }
   mine="$owner|$(proc_start "$owner")|$sha|$log"
@@ -248,18 +248,25 @@ cmd_lock_acquire() {
     fi
     [ "${cur%%|*}" != "$owner" ] || return 0  # already ours (a hook that checks several refs)
     pid="${cur%%|*}"; rest="${cur#*|}"; start="${rest%%|*}"; rest="${rest#*|}"; osha="${rest%%|*}"; olog="${rest#*|}"
-    if ! proc_is "$pid" "$start"; then  # orphan: take it aside first, and only drop it if it is still the one we judged
-      tmp="$lock.stale.$owner"
-      if mv "$lock" "$tmp" 2>/dev/null; then
-        moved="$(readlink "$tmp" 2>/dev/null)"
-        if [ "$moved" = "$cur" ]; then
-          echo "check: discarding a stale lock (pid $pid is not running as the same process)" >&2
-          rm -f "$tmp"
-        else  # somebody took it between our read and the move: give it back
-          ln -s "$moved" "$lock" 2>/dev/null
-          rm -f "$tmp"
+    if ! proc_is "$pid" "$start"; then  # orphan: dropped under a mutex, so two stealers never judge and drop in turn
+      steal="$lock.steal"
+      if ! mkdir "$steal" 2>/dev/null; then
+        sp="$(cat "$steal/pid" 2>/dev/null)"
+        if [ -n "$sp" ] && ! proc_is "${sp%%|*}" "${sp#*|}"; then  # its owner died holding it
+          rm -rf "$steal"
+          continue
         fi
+        echo "CHECK FAILED: not run, another check is replacing a stale lock (${sp:-owner unknown}); run this again in a moment. If none is running, remove the mutex: rm -rf $steal" >&2
+        return 3
       fi
+      printf '%s|%s\n' "$owner" "$(proc_start "$owner")" > "$steal/pid" 2>/dev/null
+      # Only stealers replace a lock that exists, so while we hold the mutex it is still the one we judged unless it
+      # was released: compare, then drop it.
+      if [ "$(readlink "$lock" 2>/dev/null)" = "$cur" ]; then
+        echo "check: discarding a stale lock (pid $pid is not running as the same process)" >&2
+        rm -f "$lock"
+      fi
+      rm -rf "$steal"
       continue
     fi
     if [ "$waited" -ge "$wait" ]; then
