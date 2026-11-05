@@ -80,8 +80,8 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
   usa otra sesión, crea `claude/<tema>` desde ella y escribe solo en tu parte de la bitácora. Lo tuyo vuelve por
   `git merge` antes de ir a `{{protectedBranch}}`.
 - **Con `logRows: true`**, tu fila de la bitácora se reescribe con `python3 .claude/gw/scripts/handoff.py set-row
-  "texto"` a mitad de tarea y se cierra con `python3 .claude/gw/scripts/handoff.py close-row <rama>` al fusionar la
-  rama; no edites a mano la de otra rama.
+  "texto"` a mitad de tarea y se cierra con `python3 .claude/gw/scripts/handoff.py close-row <rama>` en el último
+  commit antes de su PR; no edites a mano la de otra rama.
 - Merge, nunca rebase: las ramas están subidas.
 - **A `{{protectedBranch}}` solo con confirmación de la persona**, y se apunta en la bitácora. Según `pushToProtected`
   de `.claude/gw.json`, se sube directo (`direct`: `.githooks/pre-push` pide la marca de revisión) o por pull request
