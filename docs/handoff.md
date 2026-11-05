@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | **`0.5` «Base»: `ccr-d1e2d496-0vzck8`** (2026-11-02; creada desde `version/1.0.0` en `a61cdc5`; hace de `version/0.5.0` (H-13) mientras la sesión solo pueda subir a esta rama). **No hay `0.4.4`** (usuario, 2026-11-03: «publicamos la 0.5, ya directamente»): sus arreglos salen en la `0.5.0` y `ccr-6dfbc880-ddr41g` queda sin uso. `version/1.0.0` se queda con el diseño (`docs/design/`). `main` = `eeec886` = **`0.5.1`** (2026-11-05; etiqueta `v0.5.1` pendiente, ver «Siguiente paso») |
+| Rama | **`0.5` «Base»: `ccr-d1e2d496-0vzck8`** (2026-11-02; creada desde `version/1.0.0` en `a61cdc5`; hace de `version/0.5.0` (H-13) mientras la sesión solo pueda subir a esta rama). **No hay `0.4.4`** (usuario, 2026-11-03: «publicamos la 0.5, ya directamente»): sus arreglos salen en la `0.5.0` y `ccr-6dfbc880-ddr41g` queda sin uso. `version/1.0.0` se queda con el diseño (`docs/design/`). `main` = `eeec886` = **`0.5.1`** (2026-11-05; etiqueta y release `v0.5.1` publicadas desde una sesión local) |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). Los arreglos del CI de Ubuntu y macOS (`66a4ecd`) están en esta rama; `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.5.0` |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **`0.5.1` en `main`** (`eeec886`, 2026-11-05). **Pendiente: la etiqueta `v0.5.1`**: desde la nube dio 403; se lanza desde una sesión local (`git fetch origin && git tag v0.5.1 eeec886 && git push origin v0.5.1`, que dispara `release.yml`) o la crea el usuario a mano con `docs/records/release-v0.5.1.md`. Después, la `0.6` en una sesión nueva (retro R7), empezando por su recogida (`gw-harvest`). Presupuesto de compactaciones: 2 |
+| Siguiente paso | **`0.5.1` publicada** (`main` = `eeec886`, etiqueta y release `v0.5.1` desde una sesión local, 2026-11-05). Sigue la **`0.6`** en una sesión nueva (retro R7), empezando por su recogida (`gw-harvest`, obligatoria); después sus filas del roadmap con `gw-orchestrate-dealer`. Presupuesto de compactaciones: 2 |
 
 ### Fases
 
@@ -41,11 +41,11 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-05 — 0.5.1 en main (eeec886); etiqueta v0.5.1 pendiente desde local (403 en la nube); filas E28-E31 en la 0.9; AGENTS.md: preguntar siempre cómo crear la release
-2. 2026-11-05 — E20: revisión contra main: el robo del cerrojo va bajo un mutex y nunca borra uno vivo; private-check sale 2 si falla; el pre-push distingue hallazgo, cerrojo ocupado y fallo; D52 cuenta toda forma real de llamar a un script viejo (mentions_script)
-3. 2026-11-05 — E23: SC2015 de check-green.sh y pre-push arreglado (el shellcheck 0.11 local no lo da y el del CI sí; para la retro: igualar versiones)
-4. 2026-11-05 — E26: red-without-fix.sh salta textos y datos (nonTestExtensions), falla cerrada si no lee la clave
-5. 2026-11-05 — D52: apply.py conserva un script viejo solo si se llama por .claude/gw/scripts/<viejo> o $var/<viejo>
+1. 2026-11-05 — release v0.5.1 publicada (etiqueta sobre eeec886, desde una sesión local)
+2. 2026-11-05 — 0.5.1 en main (eeec886); etiqueta v0.5.1 pendiente desde local (403 en la nube); filas E28-E31 en la 0.9; AGENTS.md: preguntar siempre cómo crear la release
+3. 2026-11-05 — E20: revisión contra main: el robo del cerrojo va bajo un mutex y nunca borra uno vivo; private-check sale 2 si falla; el pre-push distingue hallazgo, cerrojo ocupado y fallo; D52 cuenta toda forma real de llamar a un script viejo (mentions_script)
+4. 2026-11-05 — E23: SC2015 de check-green.sh y pre-push arreglado (el shellcheck 0.11 local no lo da y el del CI sí; para la retro: igualar versiones)
+5. 2026-11-05 — E26: red-without-fix.sh salta textos y datos (nonTestExtensions), falla cerrada si no lee la clave
 
 ## Pendiente
 
