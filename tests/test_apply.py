@@ -1345,6 +1345,13 @@ class SchemaMigration(unittest.TestCase):
         self.assertFalse((p.work / ".claude" / "gw" / "scripts").exists())
 
 
+def load_apply():
+    spec = importlib.util.spec_from_file_location("apply_ci", APPLY_SCRIPT)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 class CiSteps(unittest.TestCase):
     """D45: an update never deletes the project's own steps of .github/workflows/check.yml (portal P2, 0.5.0)."""
 
@@ -1388,6 +1395,7 @@ class CiSteps(unittest.TestCase):
         self.assertIn("project's own lines", out)
         self.assertIn(f"diff {self.CI} {self.CI}.gw-new", out)
         self.assertIn("ciKeepSteps", out)
+        self.assertIn("DELETE those lines", out)
 
     def test_template_changed_and_project_changed(self):
         text = self.p.read(self.CI).replace("      - name: Git hooks path\n", "      - name: Mine\n")
@@ -1423,6 +1431,69 @@ class CiSteps(unittest.TestCase):
         self.applied()
         self.assertEqual(self.proposal().read_text(), self.template)
         self.assertEqual(self.p.read(self.CI), mine)
+
+    def test_merged_copy_at_the_current_version_is_up_to_date(self):
+        self.project_edits()
+        self.applied()
+        merged = self.proposal().read_text().replace(
+            "      - name: Check\n", "      - name: Build\n        run: npm run build\n      - name: Check\n")
+        self.p.write(self.CI, merged)
+        self.proposal().unlink()
+        out = self.applied()
+        self.assertEqual(self.p.read(self.CI), merged, out)
+        self.assertFalse(self.proposal().exists(), out)
+        code, out = self.p.run_apply("--check")
+        self.assertEqual(code, 0, out)
+
+    def test_merged_copy_missing_a_template_line_still_gets_a_proposal(self):
+        self.p.write(self.CI, self.template.replace("      - name: Check\n", "      - name: Build\n      - name: Chk\n"))
+        out = self.applied()
+        self.assertTrue(self.proposal().exists(), out)
+        self.assertIn("project's own lines (- name: Build; - name: Chk)", out)
+
+    def test_newer_copy_with_own_lines_keeps_the_newer_message(self):
+        text = self.project_edits().replace("galivelop-workflow v0.4.0", "galivelop-workflow v99.0.0", 1)
+        self.p.write(self.CI, text)
+        out = self.applied("--update")
+        self.assertEqual(self.p.read(self.CI), text, out)
+        self.assertIn("newer than the workflow's", out)
+        self.assertNotIn("project's own lines", out)
+
+    def test_changed_protected_branch_is_not_an_own_line(self):
+        text = self.p.read(self.CI)
+        self.assertIn("branches-ignore: [main]", text)
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, protectedBranch="release"), indent=2) + "\n")
+        out = self.applied()
+        self.assertFalse(self.proposal().exists(), out)
+        self.assertIn("branches-ignore: [release]", self.p.read(self.CI))
+
+    def test_every_released_ci_template_has_no_own_lines(self):
+        """The guard of templates/github/check.legacy-lines.txt: an untouched copy of any released version is updated."""
+        code, tags = self.p.run("git", "-C", str(ROOT), "tag", "-l", "v*")
+        tags = tags.split()
+        if code or not tags:
+            self.skipTest("no release tags in this clone (git fetch --tags)")
+        apply_module = load_apply()
+        lines = apply_module.CiLines((ROOT / "templates/github/check.yml").read_text(),
+                                     (ROOT / apply_module.CI_LEGACY).read_text())
+        cfg = dict(BASE_CONFIG, protectedBranch="trunk")
+        for tag in tags:
+            names = self.p.run("git", "-C", str(ROOT), "ls-tree", "-r", "--name-only", tag, "--",
+                               "templates/github/")[1].split()
+            path = next(n for n in names if n.endswith((".yml", ".yaml")))
+            raw = self.p.run("git", "-C", str(ROOT), "show", f"{tag}:{path}")[1]
+            copy = apply_module.render(raw, cfg, self.p.work, tag[1:], path).encode()
+            with self.subTest(tag=tag):
+                self.assertEqual(lines.own(copy), [], f"add these lines of {tag} to {apply_module.CI_LEGACY}")
+
+    def test_real_released_copy_is_updated_without_a_proposal(self):
+        code, raw = self.p.run("git", "-C", str(ROOT), "show", "v0.4.3:templates/github/comprobar.yml")
+        if code:
+            self.skipTest("no tag v0.4.3 in this clone (git fetch --tags)")
+        self.p.write(self.CI, raw.replace("{{protectedBranch}}", "main"))
+        out = self.applied()
+        self.assertEqual(self.p.read(self.CI), self.template, out)
+        self.assertFalse(self.proposal().exists(), out)
 
     def test_ci_keep_steps_false_restores_the_replacement(self):
         self.project_edits()
