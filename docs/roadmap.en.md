@@ -113,6 +113,7 @@ In this order, because each step uses the previous one.
 
 | Id | Task | State |
 |---|---|---|
+| H16 | `0.6` harvest (`gw-harvest`) and its proposals, to the user | in progress (`2026-11-05-galivelop-image-generator.md`, `2026-11-05-private-project-1-0.6.md`) |
 | B1 | `Stop` hook that reads the session logs | pending |
 | B2 | `docs/metrics/ledger.jsonl` in the repo | pending |
 | B3 | What is stored: tokens by model and type, date, branch, `Refs`, subagent; prices in a dated table | pending |

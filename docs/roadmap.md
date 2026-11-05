@@ -114,6 +114,7 @@ En este orden, porque cada paso usa el anterior.
 
 | Id | Tarea | Estado |
 |---|---|---|
+| H16 | Recogida de la `0.6` (`gw-harvest`) y sus propuestas, al usuario | en curso (`2026-11-05-galivelop-image-generator.md`, `2026-11-05-private-project-1-0.6.md`) |
 | B1 | Gancho `Stop` que lee los logs de sesión | pendiente |
 | B2 | `docs/metrics/ledger.jsonl` en el repo | pendiente |
 | B3 | Qué se guarda: tokens por modelo y tipo, fecha, rama, `Refs`, subagente; precios en tabla con fecha | pendiente |
