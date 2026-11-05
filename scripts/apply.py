@@ -155,6 +155,9 @@ OLD_NOTES_ENV = "GW_NOTAS_PERSONALES"  # A8 (0.x): read, with a warning, when th
 OLD_FLAGS = {"--sin-notas-personales": "--no-personal-notes"}
 OLD_WORKFLOW = Path(".github/workflows/comprobar.yml")
 NEW_WORKFLOW = Path(".github/workflows/check.yml")
+CI_LEGACY = Path("templates/github/check.legacy-lines.txt")  # lines earlier CI templates had (D45), by version
+LEGACY_DATA = "--- lines ---"   # in CI_LEGACY: what follows is data (`#` lines included)
+LEGACY_GROUP = "--- "           # in the data: a group marker (the version that last had those lines)
 # Old option spellings in the hook commands of a project's settings (recover.py's flags), renamed like the scripts
 OLD_HOOK_FLAGS = {"--estado": "--state", "--buscar": "--search", "--sesion": "--session", "--ancho": "--width"}
 NOTE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
@@ -250,6 +253,7 @@ class Plan:
         self.root = root
         self.version = version
         self.update = update
+        self.ci_lines = None  # None: ciKeepSteps is off; else a CiLines of the CI template, current and earlier (D45)
         self.actions = []   # (kind, rel, data, exec, detail); kind: create | update | propose | chmod | merge
         self.notes = []     # reported, never acted on
         self.warnings = []  # the same, about the project's own files
@@ -284,6 +288,18 @@ class Plan:
             owned, owner_version = found is not None, found
         newer = owned and owner_version and version_key(owner_version) > version_key(self.version)
         older = owned and owner_version and version_key(owner_version) < version_key(self.version)
+        if owned and owner_version and not newer and rel == NEW_WORKFLOW and self.ci_lines is not None:
+            own = self.ci_lines.own(current)
+            if own and owner_version == self.version and self.ci_lines.complete(current):
+                return  # merged by hand: the whole template plus the project's own lines
+            if own:
+                shown = "; ".join(own[:3]) + ("; ..." if len(own) > 3 else "")
+                self.propose(rel, data, want_exec, (
+                    f"it has the project's own lines ({shown}), which an update would delete; kept as it is. Merge "
+                    f"the template into it by hand, keeping its header line from the proposal: diff {rel} "
+                    f"{rel}{PROPOSAL}, then rm {rel}{PROPOSAL}. Only to replace the file and DELETE those lines: "
+                    f"set \"ciKeepSteps\": false in .claude/gw.json and rerun apply.py --update"))
+                return
         if owned and owner_version and not newer and (self.update or older):
             why = (f"v{owner_version} -> v{self.version}" if older
                    else f"v{owner_version}, local edits or an older copy of that version replaced (--update)")
@@ -563,14 +579,59 @@ def plan_templates(plan, cfg, self_apply, wanted_skills):
         for name, kind in ROOT_TEMPLATES:
             plan.template(Path(name), rendered(lang_dir / name), kind)
         plan.template(Path(cfg["log"]), rendered(lang_dir / "log.md"), "seeded")
-        plan_workflow(plan, rendered(WORKFLOW / "templates" / "github" / "check.yml"))
+        ci_template = WORKFLOW / "templates" / "github" / "check.yml"
+        if cfg["ciKeepSteps"]:
+            plan.ci_lines = CiLines(ci_template.read_text(encoding="utf-8"),
+                                    (WORKFLOW / CI_LEGACY).read_text(encoding="utf-8"))
+        plan_workflow(plan, rendered(ci_template))
     for name, skill in NOTES:
         if skill is None or skill in wanted_skills:
             plan.template(Path(".claude/gw") / name, rendered(lang_dir / name), "seeded")
 
 
+def line_matcher(raw):
+    """A stripped template line as a regex: each {{placeholder}} matches any text, so a value rendered from an older
+    config (protectedBranch...) is still the template's line."""
+    parts, pos = [], 0
+    for m in PLACEHOLDER.finditer(raw):
+        parts += [re.escape(raw[pos:m.start()]), ".*"]
+        pos = m.end()
+    return re.compile("".join(parts) + re.escape(raw[pos:]))
+
+
+class CiLines:
+    """The lines of the CI template, current and earlier (CI_LEGACY), to tell the project's own lines in its
+    check.yml (D45). Line sets: a project line equal to a known template line, or a template line it deleted, is not
+    seen (docs/es/apply.md, «CI existente»)."""
+
+    def __init__(self, template, legacy):
+        self.template = [line_matcher(line) for line in self.lines(template.splitlines())]
+        rows = legacy.splitlines()
+        data = rows[rows.index(LEGACY_DATA) + 1:] if LEGACY_DATA in rows else []
+        self.known = self.template + [line_matcher(line) for line in self.lines(data)
+                                      if not line.startswith(LEGACY_GROUP)]
+
+    @staticmethod
+    def lines(rows):
+        return [line.strip() for line in rows if line.strip() and not HEADER.search(line)]
+
+    def own(self, current):
+        """Stripped lines of the project's copy that no template line has: its own steps and values."""
+        own = []
+        for line in self.lines(current.decode("utf-8", "replace").splitlines()):
+            if line not in own and not any(m.fullmatch(line) for m in self.known):
+                own.append(line)
+        return own
+
+    def complete(self, current):
+        """True when every line of the current template is in the project's copy (it only adds lines)."""
+        mine = self.lines(current.decode("utf-8", "replace").splitlines())
+        return all(any(m.fullmatch(line) for line in mine) for m in self.template)
+
+
 def plan_workflow(plan, data):
-    """The CI file: .github/workflows/check.yml, migrating the workflow's own comprobar.yml (A8) to it."""
+    """The CI file: .github/workflows/check.yml, migrating the workflow's own comprobar.yml (A8) to it. With
+    `ciKeepSteps` (default) a copy with the project's own lines is never replaced, only proposed (D45)."""
     old = plan.root / OLD_WORKFLOW
     if not old.is_file() and not old.is_symlink():
         plan.template(NEW_WORKFLOW, data, "owned")

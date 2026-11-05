@@ -1,0 +1,19 @@
+# galivelop-workflow v0.5.0
+# Lines that released versions of the CI template (templates/github/check.yml, comprobar.yml before v0.5.0) had and
+# the current one no longer has, stripped, as in the template ({{placeholders}} kept). apply.py does not count them
+# as the project's own when it compares a project's check.yml with the template (D45, CiLines in scripts/apply.py).
+# Upkeep: when you change templates/github/check.yml, add every line you remove or change under a new group
+# marker `--- vX.Y.Z (last version with them) ---` (tests/test_apply.py checks every released tag against it).
+# Everything after the next line is data, `#` lines included.
+--- lines ---
+--- v0.1.0 (9b97d7b) ---
+# Add the toolchain setup your commands need (setup-node, setup-java, rust-toolchain...) before "Install".
+--- v0.2.0 (01d1a75) ---
+# The project's check in CI: each `install` command, then each `check` command of .claude/gw.json, on every push
+# outside the protected branch and on every pull request. On a pull request it also runs the BASE branch's copy of
+# .githooks/pre-commit over the PR's commits, so a pull request cannot weaken the check that reviews it.
+--- v0.4.3 (0e04504) ---
+name: Comprobar
+bash .gw-ci/pre-commit --rango "$(git merge-base "$base" HEAD)..HEAD"
+# exist (so this file stays the workflow's, untouched); another toolchain (rust-toolchain...) goes before "Install".
+python-version: "3.x"
