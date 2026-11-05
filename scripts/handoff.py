@@ -763,9 +763,9 @@ def main(argv=None):
         if args.cmd == "done":
             args.date = args.date or datetime.date.today().isoformat()
         elif not ctx.config.get("logRows") and args.cmd != "check":
-            if args.cmd == "set-row":
+            if args.cmd in ("set-row", "close-row"):
                 print("handoff: logRows is off in .claude/gw.json, so there are no branch rows and nothing was written; "
-                      "enable it: set \"logRows\": true in .claude/gw.json, then rerun set-row")
+                      f"enable it: set \"logRows\": true in .claude/gw.json, then rerun {args.cmd}")
                 return 1
             return 0  # the branch-row module is off: nothing to check (`check` still reads the size and Done rules)
         return {"check": cmd_check, "done": cmd_done, "own-row": cmd_own_row, "closed": cmd_closed,

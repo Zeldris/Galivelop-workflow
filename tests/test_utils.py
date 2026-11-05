@@ -930,6 +930,41 @@ class HandoffSetRow(Base):
         self.assertIn('set "logRows": true in .claude/gw.json', out)
         self.assertEqual((self.p.work / LOG).read_bytes(), before)
 
+    def _off_project(self, config):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        self.p = Utils(self.tmp, config)
+        self.p.branch("feat-a")
+
+    def test_close_row_without_logrows_writes_nothing(self):
+        # logRows false, absent: warns, exit 1, log untouched (same as set-row)
+        for absent in (False, True):
+            self._off_project({"logRows": False})
+            if absent:  # the key missing altogether: the same as off
+                cfg = self.p.work / ".claude" / "gw.json"
+                data = json.loads(cfg.read_text(encoding="utf-8"))
+                del data["logRows"]
+                cfg.write_text(json.dumps(data), encoding="utf-8")
+            before = (self.p.work / LOG).read_bytes()
+            code, out = self.p.script("handoff.py", "close-row", "feat-b")
+            self.assertEqual(code, 1, out)
+            self.assertIn("logRows is off", out)
+            self.assertIn('set "logRows": true in .claude/gw.json, then rerun close-row', out)
+            self.assertEqual((self.p.work / LOG).read_bytes(), before)
+
+    def test_close_row_with_logrows_on_still_works(self):
+        self.p.branch("feat-a")
+        code, out = self.p.script("handoff.py", "close-row", "feat-b")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("logRows is off", out)
+
+    def test_close_row_with_a_broken_config_is_exit_2(self):
+        self.p.branch("feat-a")
+        (self.p.work / ".claude" / "gw.json").write_text("{not json", encoding="utf-8")
+        code, out = self.p.script("handoff.py", "close-row", "feat-b")
+        self.assertEqual(code, 2, out)
+        self.assertNotIn("logRows is off", out)
+
 
 class PrepushBranches(Base):
     def run_hook(self, sha, remote_sha=ZERO, ref="feat-a", env=None):
