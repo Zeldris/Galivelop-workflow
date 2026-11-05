@@ -888,6 +888,29 @@ class Migrate(unittest.TestCase):
         self.assertEqual(p.read("docs/records/reviewed.txt"), "abc\n")
         self.assertIn("nothing to do", self.applied())
 
+    def test_log_inside_a_moved_folder_is_moved_not_seeded(self):
+        """D51: the log arrives at docs/records/traspaso.md through the folder move, so no template is seeded there."""
+        p = self.p
+        p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, log="docs/registros/traspaso.md"), indent=2) + "\n")
+        p.write("docs/registros/traspaso.md", "# my log\n")
+        p.write("docs/registros/revisado.txt", "abc\n")
+        self.commit()
+        code, out = p.run_apply("--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertNotRegex(out, r"create\s+docs/records/traspaso\.md")
+        self.applied()
+        self.assertEqual(p.read("docs/records/traspaso.md"), "# my log\n")
+        self.assertFalse(self.exists("docs/registros"))
+        self.assertIn("nothing to do", self.applied())
+
+    def test_a_log_missing_from_the_moved_folder_is_still_seeded(self):
+        p = self.p
+        p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, log="docs/registros/traspaso.md"), indent=2) + "\n")
+        p.write("docs/registros/revisado.txt", "abc\n")
+        self.commit()
+        self.applied()
+        self.assertTrue(self.exists("docs/records/traspaso.md"))
+
     def test_a_custom_log_path_is_never_touched(self):
         p = self.p
         p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, log="notes/log.md"), indent=2) + "\n")

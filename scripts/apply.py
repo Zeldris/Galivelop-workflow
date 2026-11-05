@@ -332,6 +332,16 @@ class Plan:
         else:
             self.actions.append(("propose", proposal, data, want_exec, f"{rel} differs: {why}"))
 
+    def arrives_by_folder_move(self, rel):
+        """True when `rel` is inside a folder that a planned move brings in and the file exists at the source."""
+        for action in self.actions:
+            if action[0] != "move":
+                continue
+            new, old = str(action[1]), str(action[2])
+            if str(rel).startswith(new + "/") and os.path.lexists(self.root / (old + str(rel)[len(new):])):
+                return True
+        return False
+
     def template(self, rel, data, kind):
         """Plan one rendered template. kind: owned (like a script), merged (AGENTS.md/CLAUDE.md: the project adds its
         rules, so never overwritten; a proposal when unmarked or older) or seeded (created once, never written
@@ -339,7 +349,7 @@ class Plan:
         if kind == "owned":
             self.file(None, rel, data=data)
             return
-        if str(rel) in self.moved_to:
+        if str(rel) in self.moved_to or self.arrives_by_folder_move(rel):
             return  # the project's own file is about to be moved there
         dest = self.root / rel
         if not dest.exists():
