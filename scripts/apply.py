@@ -570,19 +570,22 @@ def inline_list(items):
 def conditional_blocks(text, cfg, name):
     """Resolve `<!-- if key -->` ... `<!-- /if -->` (marker lines of their own, boolean config key, no nesting): a true
     key drops only the marker lines, a false or absent one the whole block."""
-    out, key, keep = [], None, True
+    out, key, keep, dropped = [], None, True, False
     for n, line in enumerate(text.splitlines(keepends=True), 1):
         m = BLOCK_MARK.match(line)
         if not m:
             if keep:
-                out.append(line)
+                # the line after a removed block: not a second blank line in a row
+                if not (dropped and not line.strip() and out and not out[-1].strip()):
+                    out.append(line)
+                dropped = False
             continue
         where = f"template {name}, line {n}"
         fix = f"fix the template in {WORKFLOW / 'templates'}"
         if m.group(1):
             if key is None:
                 raise ApplyError(f"apply: {where}: <!-- /if --> without an open <!-- if KEY -->; {fix}")
-            key, keep = None, True
+            dropped, key, keep = not keep, None, True
         else:
             if not m.group(2):
                 raise ApplyError(f"apply: {where}: <!-- if --> needs a config key (<!-- if KEY -->); {fix}")

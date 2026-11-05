@@ -1758,6 +1758,11 @@ class ConditionalBlocks(unittest.TestCase):
         for cfg in ({"logRows": False}, {}):
             self.assertEqual(self.blocks(self.TEXT, cfg), "before\nafter\n", cfg)
 
+    def test_a_removed_block_leaves_no_repeated_blank_line(self):
+        text = "a\n\n<!-- if logRows -->\nx\n<!-- /if -->\n\nb\n\n\nc\n"
+        self.assertEqual(self.blocks(text, {"logRows": False}), "a\n\nb\n\n\nc\n")  # existing doubles stay
+        self.assertEqual(self.blocks(text, {"logRows": True}), "a\n\nx\n\nb\n\n\nc\n")
+
     def test_any_boolean_key_and_odd_spacing(self):
         text = "a\n  <!--   if   otherKey-->  \nb\n<!--/if-->\nc\n"
         self.assertEqual(self.blocks(text, {"otherKey": True}), "a\nb\nc\n")
@@ -1799,6 +1804,7 @@ class ConditionalBlocks(unittest.TestCase):
         for log_rows, shown in ((True, True), (False, False)):
             _, log = self.apply_log(log_rows)
             self.assertEqual("Con `logRows` en" in log, shown, log_rows)
+            self.assertNotIn("\n\n\n", log)
             self.assertNotIn("<!-- if", log)
             self.assertNotIn("<!-- /if", log)
 
