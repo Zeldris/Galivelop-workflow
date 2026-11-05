@@ -1582,6 +1582,78 @@ class LegacyNames(unittest.TestCase):
         self.assertEqual(len(found), 1, found)
         self.assertIn("check-verde.sh", found[0])
 
+    # ---- review fixes
+
+    def test_plan_is_applied_to_the_scan(self):
+        p = self.p
+        p.write("docs/traspaso.md", "# Log\nrun check-verde.sh\n")
+        p.write("docs/registros/release-v0.1.0.md", "check-verde.sh\n")
+        p.write(".claude/gw/selector.md", "check-verde.sh\n")
+        p.write(".claude/skills/selector/SKILL.md", SKILL_MD.format(n="selector"))
+        p.write(".claude/skills/selector/extra.md", "check-verde.sh\n")
+        p.write("docs/difusion/post.md", "check-verde.sh\n")
+        self.p.run("git", "add", "-A")
+        self.p.run("git", "commit", "-qm", "x")
+        out = self.applied("--update")
+        found = self.warnings(out)
+        self.assertEqual(len(found), 2, out)  # the moved note and the media post, at their destinations
+        self.assertIn(".claude/gw/selector.md:1 (moved to .claude/gw/gw-selector.md) uses the old name", found[0])
+        self.assertIn("docs/difusion/post.md:1 (moved to docs/media/post.md) uses the old name check-verde.sh",
+                      found[1])
+        self.assertNotIn("docs/traspaso.md:", out.replace("old name docs/traspaso.md", ""))
+        self.assertNotIn("extra.md:1", out)  # under a removed folder
+        self.assertNotIn("release-v0.1.0.md:1", out)  # recordsDir: history
+
+    def test_merged_agents_and_claude_are_scanned(self):
+        self.applied()
+        for name in ("AGENTS.md", "CLAUDE.md"):
+            with (self.p.work / name).open("a") as f:
+                f.write("\nRun scripts/check-verde.sh\n")
+        found = self.warnings(self.applied())
+        self.assertEqual(sorted(l.split(" uses")[0].split("apply: WARNING: ")[1].split(":")[0] for l in found),
+                         ["AGENTS.md", "CLAUDE.md"], found)
+
+    def test_bare_old_ci_file_and_media_folder_are_names(self):
+        self.p.write("README.md", "![ci](https://x/actions/workflows/comprobar.yml/badge.svg) docs/difusion/a.md\n")
+        found = self.warnings(self.applied())
+        self.assertEqual(len(found), 2, found)
+        self.assertIn("old name comprobar.yml; replace it with check.yml", found[0])
+        self.assertIn("old name docs/difusion; replace it with docs/media", found[1])
+
+    def test_project_notes_are_scanned(self):
+        self.p.write(".claude/gw/gw-opt-tokens.md", "mine: run check-verde.sh\n")
+        found = self.warnings(self.applied())
+        self.assertEqual(len(found), 1, found)
+        self.assertIn(".claude/gw/gw-opt-tokens.md:1", found[0])
+
+    def test_history_is_skipped_and_the_skip_is_configurable(self):
+        p = self.p
+        p.write("CHANGELOG.md", "check-verde.sh\n")
+        p.write("docs/handoff.md", "check-verde.sh\n" * 5)
+        p.write("docs/proposals/a.md", "check-verde.sh\n")
+        p.write("docs/old/a.md", "check-verde.sh\n")
+        self.assertEqual(len(self.warnings(self.applied())), 1)  # only docs/old/a.md
+        p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, legacyNamesSkip=["docs/old/*"]), indent=2) + "\n")
+        out = self.applied()
+        self.assertEqual([l.split(" uses")[0].split(": ")[-1] for l in self.warnings(out)], ["CHANGELOG.md:1"], out)
+
+    def test_keep_paths_flag_of_this_run_is_respected(self):
+        self.p.write("docs/traspaso.md", "# Log\n")
+        self.p.write("docs/notes.md", "see docs/traspaso.md\n")
+        self.assertEqual(self.warnings(self.applied("--keep-paths", "--dry-run")), [])
+
+    def test_git_grep_failure_is_a_warning_not_a_failure(self):
+        from unittest import mock
+        spec = importlib.util.spec_from_file_location("apply_grep", APPLY_SCRIPT)
+        apply_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(apply_module)
+        plan = apply_module.Plan(self.p.work, VERSION, False)
+        failed = subprocess.CompletedProcess([], 128, b"", b"fatal")
+        with mock.patch.object(apply_module.subprocess, "run", return_value=failed):
+            apply_module.plan_legacy_names(plan, dict(MIGRATED_CONFIG), set(), False)
+        self.assertEqual(len(plan.warnings), 1)
+        self.assertIn("could not run (git grep exit 128); check it by hand: git -C", plan.warnings[0])
+
     def test_not_a_git_repo_is_refused_as_before(self):
         plain = self.tmp / "plain"
         plain.mkdir()

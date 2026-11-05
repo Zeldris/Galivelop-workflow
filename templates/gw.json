@@ -31,6 +31,7 @@
   "ciIgnore": [],
   "ciKeepSteps": true,
   "legacyNames": true,
+  "legacyNamesSkip": ["CHANGELOG*"],
   "legacyNamesMax": 50,
   "content": ["^docs/", "^(README|GLOSSARY|REVIEW|CLAUDE|AGENTS|CHANGELOG|CREDITS)(\\.[a-z]{2})?\\.md$", "^\\.claude/skills/.*\\.md$"],
   "roadmap": false,

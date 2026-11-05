@@ -102,6 +102,7 @@ Exit 2 on a missing or invalid config or settings file. Python 3.8+ standard lib
 import argparse
 import copy
 import difflib
+import fnmatch
 import json
 import os
 import re
@@ -151,7 +152,6 @@ OLD_SKILL_FILES = {"gw-media-content": {
     "scripts/test_cifras.py": "scripts/test_figures.py", "scripts/test_comprobar.py": "scripts/test_check.py"},
     "gw-opt-tokens": {"scripts/medir.py": "scripts/measure.py", "scripts/test_medir.py": "scripts/test_measure.py"},
     "gw-opt-ai": {"scripts/medir.py": "scripts/measure.py", "scripts/test_medir.py": "scripts/test_measure.py"}}
-LEGACY_SCAN_BYTES = 1_000_000  # D46: a bigger file is not scanned for old names
 PATH_DIR_KEYS = ("recordsDir", "proposalsDir")  # moved before the file keys inside them
 LOG_BY_LANGUAGE = {"es": "docs/handoff.md", "en": "docs/handoff.md"}  # A8: English paths in every language
 NOTES_ENV = "GW_PERSONAL_NOTES"
@@ -1019,59 +1019,88 @@ def plan_old_scripts(plan):
             plan.actions.append(("remove", rel, None, False, f"old name of {OLD_SCRIPTS[old]}"))
 
 
-def legacy_names(keep):
+def legacy_names(root, keep):
     """old name -> new name for the uses worth listing in a project's own files (D46): the A8 maps above plus
-    config.LEGACY_PATHS (their new value is the schema default). With keep, the old docs paths are the project's choice."""
-    pairs = {}
-    for old, new in OLD_SCRIPTS.items():
-        pairs[old] = new
+    config.LEGACY_PATHS (their new value is the schema default) and the media folder. With keep, the old paths are the
+    project's choice. `estado`/`listo` (web.md keys) are not names of a path, so they are not listed."""
+    pairs = dict(OLD_SCRIPTS)
     for old, new in OLD_SKILLS.items():
         pairs[f".claude/skills/{old}"] = f".claude/skills/{new}"
         pairs[f".claude/gw/{old}.md"] = f".claude/gw/{new}.md"
-    pairs[str(OLD_WORKFLOW)] = str(NEW_WORKFLOW)
+    pairs[OLD_WORKFLOW.name] = NEW_WORKFLOW.name
     if not keep:
         schema = json.loads((WORKFLOW / "schema" / "gw.schema.json").read_text(encoding="utf-8"))
         for key, old in config.LEGACY_PATHS.items():
             pairs[old] = schema["properties"][key]["default"]
+        if old_media_folder(root) is not None or not (root / OLD_MEDIA_FOLDER).exists():
+            pairs[OLD_MEDIA_FOLDER] = MEDIA_FOLDER
     return pairs
 
 
-def plan_legacy_names(plan, cfg, wanted_skills):
+def after_plan(plan, rel):
+    """Where the file `rel` is once the plan runs: None when it is removed, the target when it (or a folder above it)
+    is moved."""
+    for kind, target, old, _exec, _detail in plan.actions:
+        if kind == "remove" and (rel == str(target) or rel.startswith(f"{target}/")):
+            return None
+        if kind == "move" and (rel == str(old) or rel.startswith(f"{old}/")):
+            rel = str(target) + rel[len(str(old)):]
+    return rel
+
+
+def plan_legacy_names(plan, cfg, wanted_skills, keep):
     """D46: warn, with file:line, about uses of the pre-A8 names in the project's own text files. Never fails the run.
-    Skipped: the files the workflow installs or owns, settings.json and gw.json (migrated above), binaries, big files,
-    and what git ignores (git ls-files). An old name inside a longer word or path is not a use."""
+    git grep finds them (so ignored files, .git and binaries are out); then skipped: what the plan removes, the files
+    the workflow installs (`.claude/gw/scripts/`, its skills, hooks, files with its header except the merged
+    AGENTS.md and CLAUDE.md), gw.json and settings.json (migrated above), the log, recordsDir, proposalsDir and
+    what `legacyNamesSkip` matches. A file the plan moves is judged at its destination. An old name inside a longer
+    word or path is not a use."""
     if not cfg.get("legacyNames", True):
         return
-    r = subprocess.run(["git", "-C", str(plan.root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
-                       capture_output=True)
-    if r.returncode:
+    pairs = legacy_names(plan.root, keep or cfg.get("keepLegacyPaths") is True)
+    cmd = ["git", "-C", str(plan.root), "grep", "-n", "-I", "-z", "--untracked", "-F"]
+    for old in pairs:
+        cmd += ["-e", old]
+    r = subprocess.run(cmd, capture_output=True)
+    if r.returncode > 1:
+        plan.warnings.append(f"the old-name listing could not run (git grep exit {r.returncode}); check it by hand: "
+                             f"git -C {plan.root} grep -n -I --untracked -F -e <old name>")
         return
-    pairs = legacy_names(cfg.get("keepLegacyPaths") is True)
     regex = re.compile(r"(?<![\w.-])(" + "|".join(re.escape(o) for o in sorted(pairs, key=len, reverse=True))
                        + r")(?![\w-])")
     own = (".claude/gw/scripts/", ".claude/gw/schema/", ".githooks/") + tuple(
         f".claude/skills/{n}/" for n in sorted(wanted_skills))
+    merged = {name for name, mode in ROOT_TEMPLATES if mode == "merged"}
     skip = {str(config.CONFIG_REL), ".claude/settings.json"}
+    skip_dirs = tuple(f"{cfg[k].rstrip('/')}/" for k in ("recordsDir", "proposalsDir") if cfg.get(k))
+    skip_globs = list(cfg.get("legacyNamesSkip", ["CHANGELOG*"]))
     limit = int(cfg.get("legacyNamesMax", 50))
-    hits, total = [], 0
-    for rel in sorted(x for x in r.stdout.decode("utf-8", "replace").split("\0") if x):
-        path = plan.root / rel
-        if (rel in skip or rel.startswith(own) or rel.endswith((PROPOSAL, OLD_PROPOSAL)) or path.is_symlink()
-                or not path.is_file() or path.stat().st_size > LEGACY_SCAN_BYTES
-                or (rel.startswith(".claude/gw/gw-") and rel.endswith(".md"))):
+    hits, total, owned = [], 0, {}
+    fields = r.stdout.split(b"\0")  # git grep -n -z: path NUL line NUL text NL path NUL line NUL text NL...
+    found, rel = [], fields[0].decode("utf-8", "replace") if fields else ""
+    for i in range(1, len(fields) - 1, 2):
+        text, _nl, nxt = fields[i + 1].decode("utf-8", "replace").partition("\n")
+        found.append((rel, fields[i].decode(), text))
+        rel = nxt
+    for rel, number, text in found:
+        shown = after_plan(plan, rel)
+        if (shown is None or rel in skip or shown in skip or rel.startswith(own) or shown == cfg.get("log")
+                or shown.startswith(skip_dirs) or rel.endswith((PROPOSAL, OLD_PROPOSAL))
+                or any(fnmatch.fnmatch(shown, g) for g in skip_globs)):
             continue
-        try:
-            data = path.read_bytes()
-        except OSError:
+        if rel not in owned:
+            try:
+                owned[rel] = header_version((plan.root / rel).read_bytes()) is not None and rel not in merged
+            except OSError:
+                owned[rel] = True
+        if owned[rel]:
             continue
-        if b"\0" in data[:8000] or header_version(data):
-            continue
-        for number, line in enumerate(data.decode("utf-8", "replace").splitlines(), 1):
-            for m in regex.finditer(line):
-                total += 1
-                if len(hits) < limit:
-                    hits.append(f"{rel}:{number} uses the old name {m.group(1)}; replace it with {pairs[m.group(1)]} "
-                                f"(find them all: git grep -n -F '{m.group(1)}')")
+        for m in regex.finditer(text):
+            total += 1
+            if len(hits) < limit:
+                where = f"{rel}:{number}" + (f" (moved to {shown})" if shown != rel else "")
+                hits.append(f"{where} uses the old name {m.group(1)}; replace it with {pairs[m.group(1)]} "
+                            f"(find them all: git grep -n -F '{m.group(1)}')")
     plan.warnings.extend(hits)
     if total > len(hits):
         plan.warnings.append(f"{total - len(hits)} more use(s) of old names not listed; raise legacyNamesMax in "
@@ -1135,7 +1164,7 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
     plan_gitignore(plan)
     if not self_apply:
         plan_old_scripts(plan)
-        plan_legacy_names(plan, cfg, wanted_skills)
+        plan_legacy_names(plan, cfg, wanted_skills, keep_paths)
     if personal and not is_workflow_repo(root):
         plan_personal_notes(plan, check)
     plan_hooks_path(plan)
