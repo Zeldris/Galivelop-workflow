@@ -106,6 +106,9 @@ En este orden, porque cada paso usa el anterior.
 | D46 | Tras migrar nombres (A8), `apply.py --update` o `doctor.py` listan los usos de rutas viejas en los archivos propios del proyecto (recogida `0.5.1`, portal P1) | hecho |
 | D47 | El `pre-push` que para datos privados dice que los commits aún no están subidos y propone `--amend` o `rebase -i` solo sobre ellos (recogida `0.5.1`, portal P4) | hecho |
 | E24 | Lo probado con un doble lleva una prueba de humo con lo real: nota en `patterns.md` y regla `(criterio)` en `REVIEW.md` (recogida `0.5.1`, world-maker-fantasy P3) | hecho |
+| D51 | `apply.py --update` no siembra la plantilla de la bitácora en el destino de una carpeta que mueve (con `log` dentro de ella, se perdía la bitácora al pasar a la `0.5`), con su test (recogida de cierre `0.5.1`, world-maker-fantasy P1) | pendiente |
+| D52 | `apply.py` decide si conserva un script viejo por su ruta entera (`.claude/gw/scripts/<nombre>`), no por un nombre igual en otra ruta, con su test (recogida de cierre `0.5.1`, world-maker-fantasy P2) | pendiente |
+| E26 | `red-without-fix.sh` no busca código de test en textos y datos (`.md`, `.json`, `.yml`, `.properties`, `.txt`, `.csv`): la prosa casaba con `it(`, con su test (recogida de cierre `0.5.1`, private-project-1 P1) | pendiente |
 
 ## `0.6` «Medir»
 
@@ -130,6 +133,9 @@ En este orden, porque cada paso usa el anterior.
 | D43 | Tamaño de commit y de revisión: avisar, sin bloquear, de un commit de más de ~400 líneas cambiadas (LOC); la unidad de revisión es el bloque o tarea de ~1000 líneas, revisado al cerrarse (B18), y el PR a `main` suma bloques ya revisados. No cuentan los documentos emparejados, las copias instaladas de `.claude/gw/` ni lo generado; los umbrales, en `.claude/gw.json` (usuario, 2026-11-04) | pendiente |
 | D49 | El `pre-push` de una rama que no es `main` exige solo los tests relacionados (`related-tests.sh`); el check completo pasa a la subida a `main` y a los cambios de entorno. El CI de GitHub sigue completo en cada push, sin bloquear, y se mira al cerrar cada bloque con `ci-status.py`; absorbe parte de D44 (usuario, 2026-11-04) | pendiente |
 | D50 | Commits con traza: los `feat`/`fix` (y un `refactor` grande) llevan en el cuerpo `Técnica:` (la decisión y lo descartado) y `Problemas:` (qué falló y cómo se resolvió, o «ninguno»). El `commit-msg` comprueba que estén, con los tipos en `.claude/gw.json`; `REVIEW.md` pide su calidad como regla de criterio y la retro la repasa. Quedan fuera `docs`, `WIP` y la marca de revisión (usuario, 2026-11-04) | pendiente |
+| D53 | `ownedFiles` en `.claude/gw.json`: archivos del flujo que el proyecto hizo suyos; `apply.py --check` no los da por desviados y `doctor.py` no recomienda `/gw-update` por ellos (recogida de cierre `0.5.1`, world-maker-fantasy P3) | pendiente |
+| D54 | `ciOnPush` en `.claude/gw.json`: `check.yml` corre en cada push o solo en los PR, sin editarlo (recogida de cierre `0.5.1`, world-maker-fantasy P4) | pendiente |
+| B19 | `gw-update` reparte la reconciliación de cada `.gw-new` a un subagente que devuelve la tabla de desvíos; el `/code-review` de la rama de actualización deja fuera las copias idénticas del flujo (recogida de cierre `0.5.1`, world-maker-fantasy P5) | pendiente |
 
 ## `0.7` «Preguntar»
 

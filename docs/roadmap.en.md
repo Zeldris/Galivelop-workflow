@@ -105,6 +105,9 @@ In this order, because each step uses the previous one.
 | D46 | After the name migration (A8), `apply.py --update` or `doctor.py` list uses of old paths in the project's own files (`0.5.1` harvest, portal P1) | done |
 | D47 | The `pre-push` that stops private data says the commits are not pushed yet and offers `--amend` or `rebase -i` only over them (`0.5.1` harvest, portal P4) | done |
 | E24 | What is tested with a double also gets a smoke test with the real thing: a note in `patterns.md` and a `(judgement)` rule in `REVIEW.md` (`0.5.1` harvest, world-maker-fantasy P3) | done |
+| D51 | `apply.py --update` does not seed the log template at the destination of a folder it moves (with `log` inside it, the log was lost when moving to `0.5`), with its test (`0.5.1` closing harvest, world-maker-fantasy P1) | pending |
+| D52 | `apply.py` decides whether to keep an old script by its whole path (`.claude/gw/scripts/<name>`), not by the same name in another path, with its test (`0.5.1` closing harvest, world-maker-fantasy P2) | pending |
+| E26 | `red-without-fix.sh` does not look for test code in text and data files (`.md`, `.json`, `.yml`, `.properties`, `.txt`, `.csv`): prose matched `it(`, with its test (`0.5.1` closing harvest, private-project-1 P1) | pending |
 
 ## `0.6` "Measure"
 
@@ -129,6 +132,9 @@ In this order, because each step uses the previous one.
 | D43 | Commit and review size: warn, without blocking, about a commit of more than ~400 changed lines (LOC); the review unit is the block or task of ~1000 lines, reviewed when it closes (B18), and the PR to `main` adds up already-reviewed blocks. Paired docs, the installed copies under `.claude/gw/` and generated files do not count; the thresholds, in `.claude/gw.json` (user, 2026-11-04) | pending |
 | D49 | The `pre-push` of a branch other than `main` requires only the related tests (`related-tests.sh`); the full check moves to the push to `main` and to environment changes. The GitHub CI keeps running in full on every push, without blocking, and is checked at each block close with `ci-status.py`; absorbs part of D44 (user, 2026-11-04) | pending |
 | D50 | Traceable commits: `feat`/`fix` commits (and a large `refactor`) carry `Técnica:` (the decision and what was discarded) and `Problemas:` (what failed and how it was solved, or «ninguno») in the body. The `commit-msg` checks they are there, with the types in `.claude/gw.json`; `REVIEW.md` asks for their quality as a judgement rule and the retro goes over it. `docs`, `WIP` and the review mark are exempt (user, 2026-11-04) | pending |
+| D53 | `ownedFiles` in `.claude/gw.json`: workflow files the project made its own; `apply.py --check` does not report them as drifted and `doctor.py` does not recommend `/gw-update` for them (`0.5.1` closing harvest, world-maker-fantasy P3) | pending |
+| D54 | `ciOnPush` in `.claude/gw.json`: `check.yml` runs on every push or only on PRs, without editing it (`0.5.1` closing harvest, world-maker-fantasy P4) | pending |
+| B19 | `gw-update` deals the reconciliation of each `.gw-new` to a subagent that returns the drift table; the `/code-review` of the update branch leaves out identical workflow copies (`0.5.1` closing harvest, world-maker-fantasy P5) | pending |
 
 ## `0.7` "Ask"
 
