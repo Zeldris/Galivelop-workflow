@@ -82,7 +82,7 @@ cleanup_output() {  # stops the output tees and removes their fifos
   [ -z "$fifos" ] || rm -rf "$fifos"
   fifos=""; tee_out=""; tee_err=""
 }
-# shellcheck disable=SC2329  # called from the traps below
+# shellcheck disable=SC2317,SC2329  # called from the traps below
 release() {  # drops the lock only if it is still ours (check-green.sh checks the owner)
   cleanup_output
   [ -z "$have_lock" ] || bash "$helper" lock-release "$$" < /dev/null
