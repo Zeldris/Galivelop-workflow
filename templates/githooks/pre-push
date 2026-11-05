@@ -154,15 +154,18 @@ link_shared() {  # link_shared <sha> <worktree>: worktreeLinks from the main che
 }
 checkdir=""
 mark_only_parent() {  # mark_only_parent <sha>: prints the parent's sha when <sha> only adds/edits the reviewMark file on it
-  local sha="$1" mark_file parents parent raw
+  local sha="$1" mark_file parents parent raw expect
   parents="$(git rev-list --parents -n 1 "$sha" 2>/dev/null)" || return 1
   # shellcheck disable=SC2086  # two shas or one or three: split on purpose
   set -- $parents
   [ "$#" -eq 2 ] || return 1  # a root commit or a merge: not a mark commit
   parent="$2"
-  mark_file="$(cfg_at "$sha" reviewMark)" || return 1
+  # The rule is the parent's, never the pushed commit's own (a commit cannot relax what judges it).
+  [ "$(cfg_at "$parent" checkReuseMark 2>/dev/null)" = "true" ] || return 1
+  mark_file="$(cfg_at "$parent" reviewMark 2>/dev/null)" || return 1
   [ -n "$mark_file" ] || return 1
-  raw="$(git diff-tree -r --no-renames --raw "$parent" "$sha" 2>/dev/null)" || return 1
+  [ "$(git rev-parse "$parent:.claude/gw.json" 2>/dev/null)" = "$(git rev-parse "$sha:.claude/gw.json" 2>/dev/null)" ] || return 1
+  raw="$(git -c core.quotePath=false diff-tree -r --no-renames --raw "$parent" "$sha" 2>/dev/null)" || return 1
   [ "$(printf '%s\n' "$raw" | grep -c .)" -eq 1 ] || return 1  # exactly one path changed
   # ":<old mode> <new mode> <old sha> <new sha> <status>\t<path>": the mark file, modified without a mode change, or
   # added as a regular file; anything else (delete, type change, other path) is not exempt.
@@ -172,6 +175,14 @@ mark_only_parent() {  # mark_only_parent <sha>: prints the parent's sha when <sh
       if (st == "M" && old == new && new ~ /^100(644|755)$/) exit 0
       if (st == "A" && new ~ /^100(644|755)$/) exit 0
       exit 1 }' || return 1
+  case "$mark_file" in
+    .claude/* | .githooks/* | scripts/* | templates/* | *.sh | *.py | *.json)
+      echo "pre-push: reviewMark '$mark_file' is a config, hook or script path, so a commit that edits it is not treated as a review mark; running the check (move the mark to a data file: set reviewMark in .claude/gw.json)" >&2
+      return 1 ;;
+  esac
+  # reviewed.sh writes exactly "<the sha it marks>\n", and that is the parent: any other content is not a review mark.
+  expect="$(printf '%s\n' "$parent" | git hash-object --stdin 2>/dev/null)" || return 1
+  [ "$(git rev-parse "$sha:$mark_file" 2>/dev/null)" = "$expect" ] || return 1
   printf '%s\n' "$parent"
 }
 run_checks() {  # run_checks <sha>: every check command on that commit, in $checkdir (kept for related-tests.sh)
@@ -204,7 +215,7 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     dir="$worktree"
   fi
   checkdir="$dir"
-  local cmd n=0 log key="" tree age parent ptree pkey
+  local cmd n=0 log key="" tree age parent ptree pkey pepoch
   if [ "$is_protected" != "true" ] && [ "${GW_CHECK_CACHE:-}" != "0" ] && [ -f "$scripts/check-green.sh" ]; then
     # Any failure of the helper just means the check runs, as it always did.
     tree="$(git rev-parse "$sha^{tree}" 2>/dev/null)" || tree=""
@@ -216,12 +227,13 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
       return 0
     fi
     # The review-mark commit adds nothing a check sees: the tree it sits on being recorded green is enough.
-    if [ -n "$key" ] && [ "$(cfg_at "$sha" checkReuseMark 2>/dev/null)" = "true" ] \
+    if [ -n "$key" ] \
       && parent="$(mark_only_parent "$sha")" && ptree="$(git rev-parse "$parent^{tree}" 2>/dev/null)" \
       && pkey="$(printf '%s\n' "$checks" | bash "$scripts/check-green.sh" key "$ptree" "$wrapper" 2>/dev/null)" \
+      && pepoch="$(bash "$scripts/check-green.sh" epoch "$pkey" 2>/dev/null < /dev/null)" \
       && age="$(bash "$scripts/check-green.sh" has "$pkey" 2>/dev/null < /dev/null)"; then
       echo "pre-push: ${sha:0:7} only adds the review mark on ${parent:0:7}, whose tree (${ptree:0:7}) passed this check with the same commands $age min ago; skipping it (to run it anyway: GW_CHECK_CACHE=0 git push)"
-      bash "$scripts/check-green.sh" add "$key" < /dev/null  # green by derivation: a later mark commit builds on it
+      bash "$scripts/check-green.sh" add "$key" "$pepoch" < /dev/null  # green by derivation, as old as its parent's
       return 0
     fi
   fi
@@ -275,10 +287,10 @@ checked=""
 # needs no run of its own, the protected one is stricter (GW_PUSH_PROTECTED=true) and runs in this same hook.
 protected_trees=""
 protected_name=""
-while read -r pre_ref pre_sha pre_remote_ref _pre_rest; do
+while read -r _pre_ref pre_sha pre_remote_ref _pre_rest; do
   [ -n "${pre_sha:-}" ] && [ "$pre_sha" != "$zero" ] || continue
-  case "$pre_ref$pre_remote_ref" in *refs/tags/*) continue ;; esac
-  git cat-file -e "$pre_sha^{commit}" 2>/dev/null || continue
+  case "$pre_remote_ref" in refs/tags/*) continue ;; esac
+  pre_sha="$(git rev-parse -q --verify "$pre_sha^{commit}" 2>/dev/null)" || continue  # a tag pushed to a branch: its commit
   pre_prot="$(python3 "$config" --root "$root" --rev "$pre_sha" get protectedBranch 2>/dev/null)" || continue
   if [ "$pre_remote_ref" = "refs/heads/$pre_prot" ]; then
     pre_tree="$(git rev-parse "$pre_sha^{tree}" 2>/dev/null)" || continue
@@ -289,9 +301,8 @@ done < "$work/input"
 while read -r local_ref local_sha remote_ref remote_sha; do
   [ -n "${local_sha:-}" ] || continue
   [ "$local_sha" = "$zero" ] && continue                  # deleting a ref
-  case "$local_ref" in refs/tags/*) continue ;; esac
-  case "$remote_ref" in refs/tags/*) continue ;; esac
-  git cat-file -e "$local_sha^{commit}" 2>/dev/null || fail "commit ${local_sha:0:7} is not in this clone; fetch it and retry: git fetch $remote"
+  case "$remote_ref" in refs/tags/*) continue ;; esac  # a tag sent to a branch is checked like any commit
+  local_sha="$(git rev-parse -q --verify "$local_sha^{commit}" 2>/dev/null)" || fail "commit ${local_sha:0:7} is not in this clone; fetch it and retry: git fetch $remote"
   checks="$(cfg_at "$local_sha" check)" || exit 1
   protected="$(cfg_at "$local_sha" protectedBranch)" || exit 1
 

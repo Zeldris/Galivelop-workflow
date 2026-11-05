@@ -8,7 +8,9 @@
 #                                       # fails when that tree may not be what a check sees (assume-unchanged or
 #                                       # skip-worktree entries, sparse checkout, a modified submodule)
 #   bash check-green.sh has <key>       # exit 0 and the age in minutes if recorded < 24 h ago; any problem is a miss (1)
-#   bash check-green.sh add <key>       # records the key now; best effort (a write failure warns and exits 0)
+#   bash check-green.sh epoch <key>     # exit 0 and the epoch (seconds) of the newest line for the key if recorded < 24 h ago
+#   bash check-green.sh add <key> [<epoch>]  # records the key now (or at <epoch>, to inherit the age of the green it derives
+#                                       # from); best effort (a write failure warns and exits 0)
 #   bash check-green.sh lock-acquire <owner-pid> <sha> <wait-seconds> <log>
 #                                       # takes <git common dir>/gw/check.lock for <owner-pid> (E20), a symlink whose target
 #                                       # is "pid|process start|sha|log" (so the take is atomic and the owner verifiable);
@@ -30,7 +32,7 @@ root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --s
 cd "$root" || exit 1
 
 usage() {
-  echo "check-green: $1; usage: bash $0 key <tree-sha> <wrapper> | worktree-tree | has <key> | add <key> | lock-acquire <pid> <sha> <wait> <log> | lock-release <pid>" >&2
+  echo "check-green: $1; usage: bash $0 key <tree-sha> <wrapper> | worktree-tree | has <key> | epoch <key> | add <key> [<epoch>] | lock-acquire <pid> <sha> <wait> <log> | lock-release <pid>" >&2
   exit 2
 }
 valid_key() {  # a git object name: 40 (sha-1) or 64 (sha-256) lowercase hex digits
@@ -108,8 +110,7 @@ cmd_worktree_tree() {
     echo "check-green: cannot write the tree of the work tree; reproduce it with: git add -A --dry-run && git write-tree" >&2; return 1; }
 }
 
-cmd_has() {
-  [ "$#" -eq 1 ] || usage "has needs a key"
+lookup_epoch() {  # lookup_epoch <key>: prints the epoch of the newest line for the key if it is < 24 h old, else fails
   [ "${GW_CHECK_CACHE:-}" != "0" ] || return 1
   valid_key "$1" || return 1
   local file now epoch k age found=""
@@ -125,15 +126,30 @@ cmd_has() {
   [ -n "$found" ] || return 1
   age=$((now - found))
   [ "$age" -ge 0 ] && [ "$age" -lt "$TTL_SECONDS" ] || return 1  # in the future (clock change) or too old
-  echo $((age / 60))
+  echo "$found"
+}
+cmd_has() {
+  [ "$#" -eq 1 ] || usage "has needs a key"
+  local found now
+  found="$(lookup_epoch "$1")" || return 1
+  now="$(date +%s)" || return 1
+  echo $(((now - found) / 60))
+}
+cmd_epoch() {
+  [ "$#" -eq 1 ] || usage "epoch needs a key"
+  lookup_epoch "$1"
 }
 
 cmd_add() {
-  [ "$#" -eq 1 ] || usage "add needs a key"
+  [ "$#" -ge 1 ] && [ "$#" -le 2 ] || usage "add needs a key and optionally an epoch"
   valid_key "$1" || usage "'$1' is not a git object name"
   local file now tmp
   file="$(cache_file)" || { echo "check-green: warning: cannot locate the git dir, check not recorded; check the repository: git rev-parse --git-common-dir" >&2; return 0; }
   now="$(date +%s)" || { echo "check-green: warning: cannot read the clock, check not recorded; check it: date +%s" >&2; return 0; }
+  if [ -n "${2:-}" ]; then
+    case "$2" in *[!0-9]*) usage "'$2' is not an epoch" ;; esac
+    now="$2"
+  fi
   [ ! -d "$file" ] || { echo "check-green: warning: $file is a directory, check not recorded; remove it: rm -r $file" >&2; return 0; }
   tmp="$(mktemp "$file.XXXXXX" 2>/dev/null)" || { echo "check-green: warning: cannot write next to $file, check not recorded; make its folder writable: ls -ld ${file%/*}" >&2; return 0; }
   tmp_add="$tmp"
@@ -235,6 +251,7 @@ case "$sub" in
   key) cmd_key "$@" ;;
   worktree-tree) cmd_worktree_tree ;;
   has) cmd_has "$@" ;;
+  epoch) cmd_epoch "$@" ;;
   add) cmd_add "$@" ;;
   lock-acquire) cmd_lock_acquire "$@" ;;
   lock-release) cmd_lock_release "$@" ;;
