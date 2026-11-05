@@ -73,6 +73,9 @@ Migration from the names before A8 (0.x), in the same run and without duplicates
   path are dropped from .claude/gw.json. Fails closed (exit 2) when a target already exists. --keep-paths moves
   nothing and writes the old paths explicitly into .claude/gw.json with "keepLegacyPaths": true (setting that key
   by hand does the same), so later updates leave them alone.
+  Uses of those old names (scripts, skill folders, notes, the old CI file and the old docs paths) in the project's own
+  text files (git ls-files; not the files the workflow installs, not binaries) are listed as WARNINGS with file:line
+  and the new name, never failing the run; "legacyNames": false turns it off, "legacyNamesMax" caps the lines.
   docs/difusion (gw-media-content's old default folder) -> docs/media, with git mv when tracked, only when the
                                 project's .claude/gw/gw-media-content.md names no `Folder:` (one it names is never
                                 touched); fails closed (exit 2) when docs/media exists; --keep-paths or
@@ -148,6 +151,7 @@ OLD_SKILL_FILES = {"gw-media-content": {
     "scripts/test_cifras.py": "scripts/test_figures.py", "scripts/test_comprobar.py": "scripts/test_check.py"},
     "gw-opt-tokens": {"scripts/medir.py": "scripts/measure.py", "scripts/test_medir.py": "scripts/test_measure.py"},
     "gw-opt-ai": {"scripts/medir.py": "scripts/measure.py", "scripts/test_medir.py": "scripts/test_measure.py"}}
+LEGACY_SCAN_BYTES = 1_000_000  # D46: a bigger file is not scanned for old names
 PATH_DIR_KEYS = ("recordsDir", "proposalsDir")  # moved before the file keys inside them
 LOG_BY_LANGUAGE = {"es": "docs/handoff.md", "en": "docs/handoff.md"}  # A8: English paths in every language
 NOTES_ENV = "GW_PERSONAL_NOTES"
@@ -1015,6 +1019,65 @@ def plan_old_scripts(plan):
             plan.actions.append(("remove", rel, None, False, f"old name of {OLD_SCRIPTS[old]}"))
 
 
+def legacy_names(keep):
+    """old name -> new name for the uses worth listing in a project's own files (D46): the A8 maps above plus
+    config.LEGACY_PATHS (their new value is the schema default). With keep, the old docs paths are the project's choice."""
+    pairs = {}
+    for old, new in OLD_SCRIPTS.items():
+        pairs[old] = new
+    for old, new in OLD_SKILLS.items():
+        pairs[f".claude/skills/{old}"] = f".claude/skills/{new}"
+        pairs[f".claude/gw/{old}.md"] = f".claude/gw/{new}.md"
+    pairs[str(OLD_WORKFLOW)] = str(NEW_WORKFLOW)
+    if not keep:
+        schema = json.loads((WORKFLOW / "schema" / "gw.schema.json").read_text(encoding="utf-8"))
+        for key, old in config.LEGACY_PATHS.items():
+            pairs[old] = schema["properties"][key]["default"]
+    return pairs
+
+
+def plan_legacy_names(plan, cfg, wanted_skills):
+    """D46: warn, with file:line, about uses of the pre-A8 names in the project's own text files. Never fails the run.
+    Skipped: the files the workflow installs or owns, settings.json and gw.json (migrated above), binaries, big files,
+    and what git ignores (git ls-files). An old name inside a longer word or path is not a use."""
+    if not cfg.get("legacyNames", True):
+        return
+    r = subprocess.run(["git", "-C", str(plan.root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                       capture_output=True)
+    if r.returncode:
+        return
+    pairs = legacy_names(cfg.get("keepLegacyPaths") is True)
+    regex = re.compile(r"(?<![\w.-])(" + "|".join(re.escape(o) for o in sorted(pairs, key=len, reverse=True))
+                       + r")(?![\w-])")
+    own = (".claude/gw/scripts/", ".claude/gw/schema/", ".githooks/") + tuple(
+        f".claude/skills/{n}/" for n in sorted(wanted_skills))
+    skip = {str(config.CONFIG_REL), ".claude/settings.json"}
+    limit = int(cfg.get("legacyNamesMax", 50))
+    hits, total = [], 0
+    for rel in sorted(x for x in r.stdout.decode("utf-8", "replace").split("\0") if x):
+        path = plan.root / rel
+        if (rel in skip or rel.startswith(own) or rel.endswith((PROPOSAL, OLD_PROPOSAL)) or path.is_symlink()
+                or not path.is_file() or path.stat().st_size > LEGACY_SCAN_BYTES
+                or (rel.startswith(".claude/gw/gw-") and rel.endswith(".md"))):
+            continue
+        try:
+            data = path.read_bytes()
+        except OSError:
+            continue
+        if b"\0" in data[:8000] or header_version(data):
+            continue
+        for number, line in enumerate(data.decode("utf-8", "replace").splitlines(), 1):
+            for m in regex.finditer(line):
+                total += 1
+                if len(hits) < limit:
+                    hits.append(f"{rel}:{number} uses the old name {m.group(1)}; replace it with {pairs[m.group(1)]} "
+                                f"(find them all: git grep -n -F '{m.group(1)}')")
+    plan.warnings.extend(hits)
+    if total > len(hits):
+        plan.warnings.append(f"{total - len(hits)} more use(s) of old names not listed; raise legacyNamesMax in "
+                             f"{config.CONFIG_REL} or list them with git grep -n -F '<old name>'")
+
+
 def build(root, version, update, extra_skills, cfg, personal=True, check=False, keep_paths=False):
     self_apply = root.resolve() == WORKFLOW.resolve()
     plan = Plan(root, version, update or self_apply)
@@ -1072,6 +1135,7 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
     plan_gitignore(plan)
     if not self_apply:
         plan_old_scripts(plan)
+        plan_legacy_names(plan, cfg, wanted_skills)
     if personal and not is_workflow_repo(root):
         plan_personal_notes(plan, check)
     plan_hooks_path(plan)

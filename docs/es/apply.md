@@ -126,6 +126,9 @@ se quitan, porque el valor por defecto es la nueva). Si el destino ya existe, **
 orden que lo arregla. Con `--keep-paths` no se mueve nada y las rutas viejas se escriben explícitas en
 `.claude/gw.json` y `keepLegacyPaths: true` (las siguientes ejecuciones y `--check` las respetan); solo borra carpetas y scripts viejos si git los tiene limpios (sin cambios ni archivos sin seguir), y reescribe en `gw.json` (sangrado de 2 espacios) los valores que apunten dentro de una carpeta movida. `--dry-run` muestra los `move` y `remove` antes.
 
+
+**Usos de nombres viejos (D46).** Tras migrar, `apply.py` avisa de los usos de los nombres anteriores a la A8 (scripts como `check-verde.sh`, `.claude/skills/selector`, `comprobar.yml`, `docs/traspaso.md`, `docs/registros/`…) en los archivos de texto propios del proyecto: `ruta:línea usa el nombre viejo X; cámbialo por Y`. Mira `git ls-files` (no los ignorados ni `.git`), salta binarios, archivos de más de 1 MB, `gw.json` y `settings.json` (los migra él) y lo que instala el flujo (`.claude/gw/scripts/`, sus skills, `.githooks/`, archivos con la cabecera del flujo); un nombre dentro de otro más largo no cuenta. Es solo un aviso: no cambia el código de salida ni escribe nada. Claves `legacyNames` y `legacyNamesMax` ([config](config.md)); con `keepLegacyPaths` no avisa de las rutas de `docs/` que el proyecto conserva a propósito. Las tablas de nombres son las de la migración de arriba, no una copia.
+
 **Notas personales.** Si la persona tiene notas en `~/.claude/gw/notas/` (o en la carpeta de `GW_PERSONAL_NOTES`),
 `apply.py` crea en `.claude/gw/` las que faltan y no toca las que el proyecto ya tiene distintas
 ([config](config.md#notas-personales)); `--no-personal-notes` las salta en esa ejecución.

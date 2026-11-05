@@ -1503,5 +1503,92 @@ class CiSteps(unittest.TestCase):
         self.assertFalse(self.proposal().exists(), out)
 
 
+class LegacyNames(unittest.TestCase):
+    """D46: uses of the pre-A8 names in the project's own files are listed as warnings (file:line), never failing."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="gw-legacy-")).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.p = Fixture(self.tmp)
+        self.p.write(".claude/gw.json", json.dumps(MIGRATED_CONFIG, indent=2) + "\n")
+
+    def applied(self, *args):
+        code, out = self.p.run_apply(*args)
+        self.assertEqual(code, 0, out)
+        return out
+
+    def warnings(self, out):
+        return [l for l in out.splitlines() if "uses the old name" in l]
+
+    def test_silent_without_old_names(self):
+        self.p.write("docs/notes.md", "run scripts/check-green.sh and see docs/handoff.md\n")
+        self.assertEqual(self.warnings(self.applied()), [])
+
+    def test_text_file_lists_line_and_new_name(self):
+        self.p.write("docs/notes.md", "ok\nrun scripts/check-verde.sh and read docs/traspaso.md\n")
+        out = self.applied()
+        found = self.warnings(out)
+        self.assertEqual(len(found), 2, out)
+        self.assertIn("docs/notes.md:2 uses the old name check-verde.sh; replace it with check-green.sh", found[0])
+        self.assertIn("docs/notes.md:2 uses the old name docs/traspaso.md; replace it with docs/handoff.md", found[1])
+        self.assertIn("git grep -n -F", found[0])
+
+    def test_check_mode_warns_and_dry_run_too_without_failing(self):
+        self.p.write("README.md", "see .claude/skills/selector/SKILL.md\n")
+        self.applied("--dry-run")
+        out = self.p.run_apply("--check")[1]
+        self.assertIn("README.md:1 uses the old name .claude/skills/selector; replace it with "
+                      ".claude/skills/gw-selector", out)
+
+    def test_binary_file_is_skipped(self):
+        path = self.p.work / "data.bin"
+        path.write_bytes(b"\x00\x01check-verde.sh\n")
+        self.assertEqual(self.warnings(self.applied()), [])
+
+    def test_files_the_workflow_installs_are_skipped(self):
+        self.applied()  # installs the scripts, skills and hooks
+        self.p.write(".claude/gw/scripts/mine.py", "# old: check-verde.sh\n")
+        self.p.write(".claude/skills/gw-selector/extra.md", "docs/traspaso.md\n")
+        self.p.write("docs/owned.md", "<!-- galivelop-workflow v0.1.0 -->\ndocs/traspaso.md\n")
+        self.p.write(".claude/settings.json", json.dumps({"x": "check-verde.sh"}))
+        self.assertEqual(self.warnings(self.applied("--update")), [])
+
+    def test_ignored_files_and_dirs_are_skipped(self):
+        self.p.write(".gitignore", "node_modules/\nsecret.md\n")
+        self.p.write("node_modules/pkg/readme.md", "docs/traspaso.md\n")
+        self.p.write("secret.md", "docs/traspaso.md\n")
+        self.assertEqual(self.warnings(self.applied()), [])
+
+    def test_name_inside_a_longer_name_is_not_a_use(self):
+        self.p.write("docs/notes.md", "docs/registros-extra.md mydocs/traspaso.md "
+                                      "scripts/xcheck-verde.sh .claude/skills/selector-x docs/traspaso.mdx\n")
+        self.assertEqual(self.warnings(self.applied()), [])
+
+    def test_switch_off_and_cap(self):
+        self.p.write("docs/notes.md", "docs/traspaso.md\ndocs/traspaso.md\ndocs/traspaso.md\n")
+        self.p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, legacyNamesMax=1), indent=2) + "\n")
+        out = self.applied()
+        self.assertEqual(len(self.warnings(out)), 1, out)
+        self.assertIn("2 more use(s) of old names not listed; raise legacyNamesMax", out)
+        self.p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, legacyNames=False), indent=2) + "\n")
+        self.assertEqual(self.warnings(self.applied()), [])
+
+    def test_keep_legacy_paths_does_not_warn_about_docs_paths(self):
+        self.p.write("docs/notes.md", "docs/traspaso.md and check-verde.sh\n")
+        self.p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, keepLegacyPaths=True,
+                                                         log="docs/traspaso.md"), indent=2) + "\n")
+        self.p.write("docs/traspaso.md", "# Log\n")
+        found = self.warnings(self.applied())
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("check-verde.sh", found[0])
+
+    def test_not_a_git_repo_is_refused_as_before(self):
+        plain = self.tmp / "plain"
+        plain.mkdir()
+        code, out = self.p.run("python3", str(APPLY_SCRIPT), str(plain))
+        self.assertEqual(code, 2, out)
+        self.assertIn("is not inside a git repository", out)
+
+
 if __name__ == "__main__":
     unittest.main()

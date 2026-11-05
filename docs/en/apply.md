@@ -126,6 +126,9 @@ path are dropped, since the default is the new one). If a target already exists 
 command that fixes it. With `--keep-paths` nothing moves and the old paths are written explicitly into
 `.claude/gw.json` and `keepLegacyPaths: true` (later runs and `--check` respect it); it removes old folders and scripts only when git has them clean (no changes, no untracked files), and rewrites in `gw.json` (2-space indent) any value that points inside a moved folder. `--dry-run` shows the `move` and `remove` lines first.
 
+
+**Uses of old names (D46).** After migrating, `apply.py` warns about the uses of the pre-A8 names (scripts such as `check-verde.sh`, `.claude/skills/selector`, `comprobar.yml`, `docs/traspaso.md`, `docs/registros/`...) in the project's own text files: `path:line uses the old name X; replace it with Y`. It reads `git ls-files` (so ignored files and `.git` are out), skips binaries, files over 1 MB, `gw.json` and `settings.json` (it migrates those) and what the workflow installs (`.claude/gw/scripts/`, its skills, `.githooks/`, files with the workflow header); a name inside a longer one is not a use. It is only a warning: the exit code does not change and nothing is written. Keys `legacyNames` and `legacyNamesMax` ([config](config.md)); with `keepLegacyPaths` it does not warn about the `docs/` paths the project keeps on purpose. The name tables are the migration's above, not a copy.
+
 **Personal notes.** If the person keeps notes in `~/.claude/gw/notas/` (or in the folder of `GW_PERSONAL_NOTES`),
 `apply.py` creates the missing ones in `.claude/gw/` and leaves alone those the project already has with other
 content ([config](config.md#personal-notes)); `--no-personal-notes` skips them for one run.

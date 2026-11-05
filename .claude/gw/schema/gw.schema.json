@@ -207,6 +207,17 @@
       "default": true,
       "description": "true: apply.py never replaces .github/workflows/check.yml when it has lines of the project's own (steps, Node version, cache...) that neither the template nor an earlier one has, not even with --update; it writes check.yml.gw-new and says how to merge. false: the old behaviour (an older copy is replaced)."
     },
+    "legacyNames": {
+      "type": "boolean",
+      "default": true,
+      "description": "true: apply.py lists, as warnings with file:line, the uses of the pre-A8 Spanish names (scripts, skill folders, notes, comprobar.yml, docs/traspaso.md...) in the project's own text files. false: no listing."
+    },
+    "legacyNamesMax": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 50,
+      "description": "Most old-name uses apply.py lists per run (the rest is counted)."
+    },
     "ciPython": {
       "type": "array",
       "items": {"type": "string", "pattern": "^\\S+$"},
