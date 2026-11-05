@@ -8,6 +8,49 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.5.1] - 2026-11-05
+
+Parche de la `0.5`: arreglos de las recogidas de inicio y de cierre de la `0.5.1` y de la retro de la `0.5.0` (reparto
+en `docs/roadmap.md`). / Patch of `0.5`: fixes from the `0.5.1` opening and closing harvests and from the `0.5.0`
+retro (split in `docs/roadmap.en.md`).
+
+### ES
+
+- `check.sh` (E20, E23): registro fijo `.git/gw/check-<sha>.log`, cerrojo con dueño y línea final `CHECK ok|FAILED`
+  con las secciones que fallaron; `merge-branch.sh` lo usa y apunta el verde. La clave de la caché del verde incluye
+  los archivos ignorados que lee el check (`checkCacheInputs`, por defecto `.claude/gw.local.json`), leídos donde
+  corre; si no se pueden leer, el check corre sin apuntar.
+- `pre-push` (D44, D47): no repite el check de un commit que solo añade la marca de revisión a uno ya en verde; si para
+  por datos privados, dice que esos commits no están subidos y da el `--amend` o el `rebase` solo sobre ellos.
+- El gancho `Stop` avisa en una línea, sin pedir subir, mientras corre un check o un push (D41).
+- `apply.py --update` (D45, D46, D51, D52): no borra los pasos propios del CI del proyecto; lista los usos de nombres
+  viejos (A8) en los archivos del proyecto; no siembra la plantilla de la bitácora en el destino de una carpeta que
+  mueve; conserva un script viejo solo si algo lo llama por su ruta instalada (`.claude/gw/scripts/<nombre>` o
+  `$var/<nombre>`).
+- `worktree.baseRef: "head"` en el `settings.json` instalado (D6).
+- `pre-commit` (E25): la regla QUOTED ya no toma por secreto una etiqueta citada en un `.md`.
+- `red-without-fix.sh` (E26): no busca código de test en textos y datos (`nonTestExtensions`, configurable).
+- Guías (B17, E24): en `gw-orchestrate-dealer`, un subagente que escribe en segundo plano va siempre en un worktree;
+  `docs/es/patterns.md` y la plantilla de `REVIEW.md` piden una prueba con lo real de lo probado con un doble.
+
+### EN
+
+- `check.sh` (E20, E23): fixed log `.git/gw/check-<sha>.log`, an owned lock and a final `CHECK ok|FAILED` line naming
+  the failed sections; `merge-branch.sh` uses it and records the green. The green cache key includes the ignored files
+  the check reads (`checkCacheInputs`, default `.claude/gw.local.json`), read where it runs; if they cannot be read,
+  the check runs unrecorded.
+- `pre-push` (D44, D47): does not rerun the check for a commit that only adds the review mark to a green one; when it
+  stops on private data, it says those commits are not pushed and gives the `--amend` or `rebase` over them only.
+- The `Stop` hook warns in one line, without asking to push, while a check or a push runs (D41).
+- `apply.py --update` (D45, D46, D51, D52): keeps the project's own CI steps; lists uses of old names (A8) in the
+  project's files; does not seed the log template at the destination of a folder it moves; keeps an old script only
+  if something runs it by its installed path (`.claude/gw/scripts/<name>` or `$var/<name>`).
+- `worktree.baseRef: "head"` in the installed `settings.json` (D6).
+- `pre-commit` (E25): the QUOTED rule no longer takes a label quoted in a `.md` for a secret.
+- `red-without-fix.sh` (E26): does not look for test code in text and data files (`nonTestExtensions`, configurable).
+- Guides (B17, E24): in `gw-orchestrate-dealer`, a subagent that writes in the background always works in a worktree;
+  `docs/en/patterns.md` and the `REVIEW.md` template ask for a real-thing test of what a double tests.
+
 ## [0.5.0] - 2026-11-04
 
 Evolutivos de la `0.5` «Base» (antes apuntados para la `1.0.0`; reparto en `docs/roadmap.md`, lista en
