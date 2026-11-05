@@ -135,6 +135,14 @@ Task prefixes: INS,FLU   (passed to check.py --task-prefixes)
 Reddit: r/example, rules pasted by the person on 2026-10-25: "no self-promotion more than once a month; tag [Project]"
 ```
 
+## What a double tests, the real thing also tests
+
+A component that the tests replace with a double (fake, mock, stub) also gets a **smoke test against the real
+thing**: the double only repeats what its author believed about the real one, so it misses a contract that changes, an
+argument the real one rejects or a format it returns differently. The smoke test starts the real component and makes
+one end-to-end call. If the real one is missing (tool, service, credential), it is skipped locally with the reason; in
+CI, it fails.
+
 ## Harvesting improvements back
 
 The workflow learns from the projects that use it. There are two halves:

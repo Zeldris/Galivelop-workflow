@@ -132,6 +132,13 @@ Task prefixes: INS,FLU   (se pasa a check.py --task-prefixes)
 Reddit: r/ejemplo, reglas pegadas por la persona el 2026-10-25: «sin autopromoción más de una vez al mes; etiqueta [Proyecto]»
 ```
 
+## Lo probado con un doble, también con lo real
+
+Un componente que los tests sustituyen por un doble (fake, mock, stub) tiene además una **prueba de humo contra el
+real**: el doble solo repite lo que su autor creía del real, así que no ve el contrato que cambia, el argumento que el
+real rechaza ni el formato que devuelve distinto. La prueba de humo arranca el componente real y hace una llamada de
+punta a punta. Si falta el real (herramienta, servicio, credencial), se omite en local con el motivo; en el CI, falla.
+
 ## Recoger mejoras de vuelta
 
 El flujo aprende de los proyectos que lo usan. Hay dos mitades:

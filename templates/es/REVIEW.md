@@ -53,6 +53,12 @@ creada.
 - Un runbook o encargo que sigue una tarea programada (una sesión sin persona delante) se revisa como código, aunque
   case con `content`: lo que dice se ejecuta tal cual. (criterio)
 
+## Tests
+
+- Un componente que los tests sustituyen por un doble (fake, mock, stub) tiene también una prueba de humo contra el
+  real: arrancarlo y hacer una llamada de punta a punta. Se omite en local si falta el real y falla en el CI.
+  (criterio)
+
 ## Traído de otro repo: se adapta a los contratos de este
 
 - El código, los scripts o las reglas traídos de otro repositorio se comprueban contra **este** repo, no contra el
