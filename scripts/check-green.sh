@@ -255,8 +255,11 @@ cmd_lock_acquire() {
         if [ "$moved" = "$cur" ]; then
           echo "check: discarding a stale lock (pid $pid is not running as the same process)" >&2
           rm -f "$tmp"
-        else  # somebody took it between our read and the move: give it back
-          ln -s "$moved" "$lock" 2>/dev/null
+        else  # somebody took it between our read and the move: give it back, and never delete a lock we did not judge
+          if ! ln -s "$moved" "$lock" 2>/dev/null; then  # a third check created another meanwhile: keep the taken one aside
+            echo "CHECK FAILED: not run, two checks raced for the lock $lock; the lock of the check that was running is kept in $tmp. Wait for the other check and run this again; if no check is running, remove both: rm $lock $tmp" >&2
+            return 3
+          fi
           rm -f "$tmp"
         fi
       fi

@@ -321,5 +321,16 @@ def main(argv=None):
     return 1
 
 
+def run(argv=None):
+    """main(), but a crash exits 2 with its trace: Python's own exit 1 for an exception means "found something"."""
+    try:
+        return main(argv)
+    except Exception:  # noqa: BLE001 - any bug must not read as a finding
+        import traceback
+        traceback.print_exc()
+        print(f"{PROG}: internal error (above), not a finding; reproduce with: python3 scripts/private-check.py --all", file=sys.stderr)
+        return 2
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(run())

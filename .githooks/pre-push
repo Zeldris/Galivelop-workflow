@@ -215,7 +215,7 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     dir="$worktree"
   fi
   checkdir="$dir"
-  local cmd n=0 log key="" tree age parent ptree pkey pepoch inputs="" input_paths=""
+  local cmd n=0 log="" lrc key="" tree age parent ptree pkey pepoch inputs="" input_paths=""
   if [ "$is_protected" != "true" ] && [ "${GW_CHECK_CACHE:-}" != "0" ] && [ -f "$scripts/check-green.sh" ]; then
     # Any failure of the helper just means the check runs, as it always did.
     tree="$(git rev-parse "$sha^{tree}" 2>/dev/null)" || tree=""
@@ -242,22 +242,31 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
   if [ -f "$scripts/check-green.sh" ]; then  # one check at a time per repository: check.sh and merge-branch.sh take the same lock
     lock_wait="$(cfg_at "$sha" checkLockWait 2>/dev/null)" || lock_wait=0
     case "$lock_wait" in ''|*[!0-9]*) lock_wait=0 ;; esac
-    bash "$scripts/check-green.sh" lock-acquire "$$" "pre-push" "$lock_wait" "-" < /dev/null \
-      || fail "another check holds the lock (above); wait for it and push again: git push, or wait inside the hook: set checkLockWait in .claude/gw.json"
+    log="$(mktemp "${TMPDIR:-/tmp}/gw-pre-push-check.XXXXXX")" || fail "cannot create a log file in ${TMPDIR:-/tmp}; free space and retry: git push"
+    lrc=0
+    bash "$scripts/check-green.sh" lock-acquire "$$" "$sha" "$lock_wait" "$log" < /dev/null || lrc=$?
+    if [ "$lrc" -eq 3 ]; then
+      rm -f "$log"
+      fail "another check holds the lock (above); wait for it and push again: git push, or wait inside the hook: set checkLockWait in .claude/gw.json"
+    elif [ "$lrc" -ne 0 ]; then
+      rm -f "$log"
+      fail "cannot take the check lock (above, exit $lrc); fix that and push again: git push"
+    fi
     checklock=1
   fi
   while IFS= read -r cmd; do
     [ -n "$cmd" ] || continue
     n=$((n + 1))
     [ -z "$wrapper" ] || cmd="$wrapper bash -c '$(printf '%s' "$cmd" | sed "s/'/'\\\\''/g")'"
-    log="$(mktemp "${TMPDIR:-/tmp}/gw-pre-push-check.XXXXXX")" || fail "cannot create a log file in ${TMPDIR:-/tmp}; free space and retry: git push"
+    [ -n "$log" ] || log="$(mktemp "${TMPDIR:-/tmp}/gw-pre-push-check.XXXXXX")" || fail "cannot create a log file in ${TMPDIR:-/tmp}; free space and retry: git push"
     echo "pre-push: check '$cmd' on ${sha:0:7}…"
     if ! (cd "$dir" && GW_PUSH_PROTECTED="$is_protected" bash -c "$cmd") > "$log" 2>&1 < /dev/null; then
       tail -n 30 "$log" >&2
       fail "check failed on ${sha:0:7}: '$cmd' (full log: $log)" "fix it, commit and push again; reproduce with: $cmd"
     fi
-    rm -f "$log"
+    : > "$log"  # the lock names this log: it stays until the last command has passed
   done <<<"$checks"
+  [ -z "$log" ] || rm -f "$log"
   # Run in the project itself (HEAD clean), the check must leave it clean: if it wrote a tracked or untracked file,
   # what it saw is not the pushed tree, so it is not recorded.
   if [ -n "$key" ] && [ "$dir" = "$root" ] && [ -n "$(git status --porcelain)" ]; then
@@ -352,7 +361,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       if [ "$pc_rc" = 1 ]; then
         fail "the push carries private data or a key (above); those commits are not pushed yet: fix only them with the command above, then push again"
       elif [ "$pc_rc" != 0 ]; then
-        fail "private-check could not run (above); fix that and push again"
+        fail "private-check could not run, exit $pc_rc (above); fix that and push again, reproduce with: python3 $scripts/private-check.py --root $root --commits - --rev ${local_sha:0:7}"
       fi
     fi
   fi
