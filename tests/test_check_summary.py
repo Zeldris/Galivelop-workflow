@@ -414,7 +414,11 @@ class CheckSummary(unittest.TestCase):
     def test_a_kill_releases_the_lock(self):
         self.configure(["echo partial; sleep 30"])
         p = self.start_check()
-        self.wait_for(lambda: self.lock_exists())
+        # Wait for the command's output, not just the lock: a TERM sent before `sleep` starts is held by bash until the
+        # current command ends (30 s), longer than the timeout below.
+        self.wait_for(lambda: any("partial" in f.read_text() for f in (self.repo / ".git" / "gw").glob("check-*.log")))
+        self.assertTrue(self.lock_exists())
+        time.sleep(0.3)
         os.killpg(p.pid, signal.SIGTERM)
         out, err = p.communicate(timeout=20)
         self.assertEqual(p.returncode, 143, out + err)
