@@ -136,6 +136,9 @@ En este orden, porque cada paso usa el anterior.
 | D53 | `ownedFiles` en `.claude/gw.json`: archivos del flujo que el proyecto hizo suyos; `apply.py --check` no los da por desviados y `doctor.py` no recomienda `/gw-update` por ellos (recogida de cierre `0.5.1`, world-maker-fantasy P3) | pendiente |
 | D54 | `ciOnPush` en `.claude/gw.json`: `check.yml` corre en cada push o solo en los PR, sin editarlo (recogida de cierre `0.5.1`, world-maker-fantasy P4) | pendiente |
 | B19 | `gw-update` reparte la reconciliación de cada `.gw-new` a un subagente que devuelve la tabla de desvíos; el `/code-review` de la rama de actualización deja fuera las copias idénticas del flujo (recogida de cierre `0.5.1`, world-maker-fantasy P5) | pendiente |
+| E27 | `shellcheckVersion` en `.claude/gw.json`: el CI instala esa versión y `tests/shellcheck.sh` avisa, con la orden para instalarla, si la local es otra (retro `0.5.1` R1) | pendiente |
+| D55 | `roadmap.py show <id>` y `roadmap.py done <id>`: ver o marcar una fila del roadmap en los dos idiomas sin leerlo entero (retro `0.5.1` R4) | pendiente |
+| D56 | `ci-status.py --failed`: de cada job en rojo, solo el paso que falló y sus líneas de error, con tope en una clave y la URL del registro entero (retro `0.5.1` R5) | pendiente |
 
 ## `0.7` «Preguntar»
 

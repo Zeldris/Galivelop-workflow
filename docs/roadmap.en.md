@@ -135,6 +135,9 @@ In this order, because each step uses the previous one.
 | D53 | `ownedFiles` in `.claude/gw.json`: workflow files the project made its own; `apply.py --check` does not report them as drifted and `doctor.py` does not recommend `/gw-update` for them (`0.5.1` closing harvest, world-maker-fantasy P3) | pending |
 | D54 | `ciOnPush` in `.claude/gw.json`: `check.yml` runs on every push or only on PRs, without editing it (`0.5.1` closing harvest, world-maker-fantasy P4) | pending |
 | B19 | `gw-update` deals the reconciliation of each `.gw-new` to a subagent that returns the drift table; the `/code-review` of the update branch leaves out identical workflow copies (`0.5.1` closing harvest, world-maker-fantasy P5) | pending |
+| E27 | `shellcheckVersion` in `.claude/gw.json`: CI installs that version and `tests/shellcheck.sh` warns, with the command that installs it, if the local one differs (`0.5.1` retro R1) | pending |
+| D55 | `roadmap.py show <id>` and `roadmap.py done <id>`: see or mark a roadmap row in both languages without reading it whole (`0.5.1` retro R4) | pending |
+| D56 | `ci-status.py --failed`: for each red job, only the failed step and its error lines, capped by a key, with the URL of the whole log (`0.5.1` retro R5) | pending |
 
 ## `0.7` "Ask"
 

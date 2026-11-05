@@ -32,6 +32,8 @@ retro (split in `docs/roadmap.en.md`).
 - `red-without-fix.sh` (E26): no busca código de test en textos y datos (`nonTestExtensions`, configurable).
 - Guías (B17, E24): en `gw-orchestrate-dealer`, un subagente que escribe en segundo plano va siempre en un worktree;
   `docs/es/patterns.md` y la plantilla de `REVIEW.md` piden una prueba con lo real de lo probado con un doble.
+- `gw-orchestrate-dealer` (retro `0.5.1`): los ids del roadmap se commitean antes de repartir; un subagente en un
+  worktree corre los tests de lo que toca, y la sesión principal, un solo check completo tras fusionar la oleada.
 
 ### EN
 
@@ -50,6 +52,8 @@ retro (split in `docs/roadmap.en.md`).
 - `red-without-fix.sh` (E26): does not look for test code in text and data files (`nonTestExtensions`, configurable).
 - Guides (B17, E24): in `gw-orchestrate-dealer`, a subagent that writes in the background always works in a worktree;
   `docs/en/patterns.md` and the `REVIEW.md` template ask for a real-thing test of what a double tests.
+- `gw-orchestrate-dealer` (`0.5.1` retro): roadmap ids are committed before dealing; a subagent in a worktree runs the
+  tests of what it touches, and the main session runs one full check after merging the wave.
 
 ## [0.5.0] - 2026-11-04
 

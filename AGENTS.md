@@ -78,7 +78,8 @@ Los comprueba el `commit-msg` (`commitFormat`, `commitRefs`, `commitNext` y `age
   y el cuerpo de la release, cada uno en un bloque listo para pegar, y se dan al usuario sin que los pida (él crea
   la etiqueta y la release a mano).
 - **Cada versión empieza con una recogida** (usuario, 2026-10-23): `gw-harvest` sobre los proyectos que usan el
-  flujo, y sus propuestas, al usuario (`version.py --release`, en el `pre-push` a `main`, exige su archivo).
+  flujo, y sus propuestas, al usuario (`version.py --release`, en el `pre-push` a `main`, exige su archivo). Al
+  cerrarla, otra recogida es opcional (usuario, 2026-11-05).
 - **Solo la última menor publicada recibe parches** (usuario, 2026-11-01, plan §7): de una recogida, los arreglos van
   a su siguiente parche y los evolutivos, a la siguiente menor; el reparto, en [`docs/roadmap.md`](docs/roadmap.md).
 

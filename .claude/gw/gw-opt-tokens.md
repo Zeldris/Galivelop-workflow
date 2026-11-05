@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.5.0 -->
+<!-- galivelop-workflow v0.5.1 -->
 # gw-opt-tokens — notas del proyecto
 
 Las lee la skill `gw-opt-tokens` antes de proponer nada, y se actualizan cuando la persona aprueba un cambio. El flujo
@@ -24,6 +24,8 @@ las crea una vez; desde entonces son del proyecto.
 - `gw-harvest` (`0.4.1`): los proyectos se clonan solo para lectura en una carpeta temporal, sin registrarlos
   (`register_repo_root`), y su verificación va con un subagente por proyecto en paralelo.
 
+- `gw-orchestrate-dealer` (retro `0.5.1` R3 y R6): los ids del roadmap se commitean antes de repartir; en un
+  worktree, solo los tests de lo tocado, y un solo check completo tras fusionar la oleada, sin tocar el árbol.
 - `AGENTS.md` (retro del parche 0.4.3): push y check largo en segundo plano, esperando el aviso (R2); al empezar,
   de `traspaso.md` solo lo que el gancho `SessionStart` recortó (R4).
 
@@ -66,3 +68,7 @@ las crea una vez; desde entonces son del proyecto.
 - 2026-10-27, parche `0.4.2` (la misma sesión, últimas 24 h): principal 938 llamadas, 123k de media, suelo 108k y
   techo 141k, 39 compactaciones, 115M; subagentes 16 (332 llamadas, 35M). Cambio: la `1.0.0`, en sesión nueva (P1 de
   la retro del 2026-10-27).
+- 2026-11-05, parche `0.5.1` (una sesión en la nube, entera): principal 796 llamadas, 125k de media, suelo 93k y
+  techo 161k, 12 compactaciones (presupuesto 2), 100M; subagentes 25 (492 llamadas, 45M, arranque 54k; tres por
+  encima de 35 llamadas). Arrastre mayor: `docs/handoff.md` 45 lecturas y `docs/roadmap.md` 57 (~1,3M) y
+  `get_job_logs` 8 (624k). Cambios: retro `0.5.1` R3 y R6; R4 y R5 (D55, D56) a la `0.6`.
