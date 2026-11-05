@@ -842,6 +842,42 @@ class Migrate(unittest.TestCase):
                          ".claude/gw/scripts/revisado.sh", out)  # reported once, as in use
         self.assertIn("is the old name of reviewed.sh and is still run by .githooks/pre-push", out)
 
+    def old_script_with_reference(self, hook, line):
+        p = self.p
+        p.write(".claude/gw/scripts/revisado.sh", "# galivelop-workflow v0.4.3\n")
+        p.write(hook, "#!/bin/sh\n" + line + "\n")
+        self.commit()
+        return self.applied()
+
+    def test_old_script_kept_by_a_reference_with_dot_slash_or_a_variable_prefix(self):
+        """D52: the installed path keeps it however it is written."""
+        for line in ("bash ./.claude/gw/scripts/revisado.sh", 'bash "$ROOT"/.claude/gw/scripts/revisado.sh'):
+            with self.subTest(line=line):
+                self.setUp()
+                out = self.old_script_with_reference(".githooks/pre-push", line)
+                self.assertTrue(self.exists(".claude/gw/scripts/revisado.sh"), out)
+                self.assertIn("is still run by .githooks/pre-push", out)
+
+    def test_old_script_kept_by_the_old_hook_variable_forms(self):
+        """D52: the real old hooks call `"$scripts/<old>"` or `${scripts}/<old>`; a Windows path counts too."""
+        for line in ('python3 "$scripts/bitacora.py"', 'python3 "${scripts}/bitacora.py"',
+                     "python3 .claude\\gw\\scripts\\bitacora.py"):
+            with self.subTest(line=line):
+                self.setUp()
+                p = self.p
+                p.write(".claude/gw/scripts/bitacora.py", "# galivelop-workflow v0.4.3\n")
+                p.write(".githooks/pre-push", "#!/bin/sh\n" + line + "\n")
+                self.commit()
+                out = self.applied()
+                self.assertTrue(self.exists(".claude/gw/scripts/bitacora.py"), out)
+                self.assertIn("is still run by .githooks/pre-push", out)
+
+    def test_old_script_not_kept_by_a_same_named_file_elsewhere(self):
+        """D52: tools/qa/revisado.sh is another script, not the installed copy."""
+        out = self.old_script_with_reference(".githooks/pre-push", "bash tools/qa/revisado.sh")
+        self.assertFalse(self.exists(".claude/gw/scripts/revisado.sh"), out)
+        self.assertNotIn("is still run by", out)
+
     # ---- project paths
 
     def test_old_paths_move_with_git_and_nothing_is_written_in_the_config(self):
@@ -887,6 +923,29 @@ class Migrate(unittest.TestCase):
         self.assertEqual(p.read("docs/handoff.md"), "# Log\n")
         self.assertEqual(p.read("docs/records/reviewed.txt"), "abc\n")
         self.assertIn("nothing to do", self.applied())
+
+    def test_log_inside_a_moved_folder_is_moved_not_seeded(self):
+        """D51: the log arrives at docs/records/traspaso.md through the folder move, so no template is seeded there."""
+        p = self.p
+        p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, log="docs/registros/traspaso.md"), indent=2) + "\n")
+        p.write("docs/registros/traspaso.md", "# my log\n")
+        p.write("docs/registros/revisado.txt", "abc\n")
+        self.commit()
+        code, out = p.run_apply("--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertNotRegex(out, r"create\s+docs/records/traspaso\.md")
+        self.applied()
+        self.assertEqual(p.read("docs/records/traspaso.md"), "# my log\n")
+        self.assertFalse(self.exists("docs/registros"))
+        self.assertIn("nothing to do", self.applied())
+
+    def test_a_log_missing_from_the_moved_folder_is_still_seeded(self):
+        p = self.p
+        p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, log="docs/registros/traspaso.md"), indent=2) + "\n")
+        p.write("docs/registros/revisado.txt", "abc\n")
+        self.commit()
+        self.applied()
+        self.assertTrue(self.exists("docs/records/traspaso.md"))
 
     def test_a_custom_log_path_is_never_touched(self):
         p = self.p
