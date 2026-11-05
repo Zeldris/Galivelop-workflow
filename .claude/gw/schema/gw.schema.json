@@ -254,6 +254,12 @@
       "default": [],
       "description": "Names of foreign CI checks (a check-run name or a commit status context, e.g. a deploy) that do not block the merge nor count as the project's CI. An exact name, or a name with `*` for any text (`vercel*`); case matters; no regex. An ignored check never turns a red or pending check of the project into green, and a commit where only ignored checks reported counts as no CI."
     },
+    "nonTestExtensions": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[a-z0-9]+$"},
+      "default": ["md", "json", "yml", "yaml", "properties", "txt", "csv"],
+      "description": "File extensions (lower case, no dot; the file's own extension is compared in lower case) of text and data files that red-without-fix.sh does not search for test code, so prose such as `improve it (URL)` is not mistaken for an `it(` test. A file with no extension is always searched. [] searches every file."
+    },
     "content": {
       "type": "array",
       "items": {
