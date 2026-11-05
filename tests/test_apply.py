@@ -858,6 +858,20 @@ class Migrate(unittest.TestCase):
                 self.assertTrue(self.exists(".claude/gw/scripts/revisado.sh"), out)
                 self.assertIn("is still run by .githooks/pre-push", out)
 
+    def test_old_script_kept_by_the_old_hook_variable_forms(self):
+        """D52: the real old hooks call `"$scripts/<old>"` or `${scripts}/<old>`; a Windows path counts too."""
+        for line in ('python3 "$scripts/bitacora.py"', 'python3 "${scripts}/bitacora.py"',
+                     "python3 .claude\\gw\\scripts\\bitacora.py"):
+            with self.subTest(line=line):
+                self.setUp()
+                p = self.p
+                p.write(".claude/gw/scripts/bitacora.py", "# galivelop-workflow v0.4.3\n")
+                p.write(".githooks/pre-push", "#!/bin/sh\n" + line + "\n")
+                self.commit()
+                out = self.applied()
+                self.assertTrue(self.exists(".claude/gw/scripts/bitacora.py"), out)
+                self.assertIn("is still run by .githooks/pre-push", out)
+
     def test_old_script_not_kept_by_a_same_named_file_elsewhere(self):
         """D52: tools/qa/revisado.sh is another script, not the installed copy."""
         out = self.old_script_with_reference(".githooks/pre-push", "bash tools/qa/revisado.sh")
