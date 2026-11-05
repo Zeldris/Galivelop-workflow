@@ -122,6 +122,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   one-file fix whose place the reviewer gave stays in the main session.
 - **One writing subagent at a time on the same branch.** Two that commit to the same branch collide in the log and in
   shared files. In parallel, only what does not write (searching, reading, measuring).
+- **A subagent that writes in the background always works in a worktree, even alone:** the main session keeps
+  committing on the working branch, and a lone writer there collides with it (the `Stop` hook halts the session over
+  the writer's uncommitted changes). Same setup as the next rule; it never edits the main tree.
 - **Code fixes of the frontier, in parallel, in isolated worktrees:** each subagent runs with `isolation: "worktree"` in
   the background, commits at every stable point (`WIP:` if still red, so a restart loses nothing), does not touch the
   log or push, and returns its branch. The main session has each one reviewed (step 3), merges them one by one
