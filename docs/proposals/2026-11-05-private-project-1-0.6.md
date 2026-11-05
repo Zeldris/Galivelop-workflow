@@ -13,7 +13,7 @@ flujo (`.claude/gw/` sigue en la `0.5.0`).
 - **Why it is general:** en todo proyecto con `logRows: true`, un check en verde no basta para subir: cuesta un viaje
   de push de más.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-05) → D61 (`0.7`)
 
 ## P2. Las plantillas de `AGENTS.md` nombran `handoff.py set-row`
 
@@ -23,7 +23,7 @@ flujo (`.claude/gw/` sigue en la `0.5.0`).
 - **Why it is general:** el agente reescribió la fila tres veces con heredocs de Python (~33k tokens) porque no
   encontró la orden.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-05) → D60 (`0.5.2`)
 
 ## Stays in the project
 

@@ -82,7 +82,8 @@ Los comprueba el `commit-msg` (`commitFormat`, `commitRefs`, `commitNext` y `age
   flujo, y sus propuestas, al usuario (`version.py --release`, en el `pre-push` a `main`, exige su archivo). Al
   cerrarla, otra recogida es opcional (usuario, 2026-11-05).
 - **Solo la última menor publicada recibe parches** (usuario, 2026-11-01, plan §7): de una recogida, los arreglos van
-  a su siguiente parche y los evolutivos, a la siguiente menor; el reparto, en [`docs/roadmap.md`](docs/roadmap.md).
+  a su siguiente parche y los evolutivos, a la siguiente menor que no esté en obra (usuario, 2026-11-05); el
+  reparto, en [`docs/roadmap.md`](docs/roadmap.md).
 
 ## Reglas del proyecto
 

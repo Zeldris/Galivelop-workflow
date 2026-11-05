@@ -16,7 +16,7 @@ Sin nada nuevo desde la última recogida: `instalador-wmf-tarkor` (`a73f8812`), 
   (reproducido). No descartarlas cuando el archivo es de un subagente (o no tiene líneas principales), con su test.
 - **Why it is general:** sin esa medida no se sabe en qué gastan los implementadores (en F4, el 66 % de la tarea).
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-05) → B20 (`0.5.2`)
 
 ## P2. `harvest.py` no repite las ideas de un archivo renombrado
 
@@ -27,7 +27,7 @@ Sin nada nuevo desde la última recogida: `instalador-wmf-tarkor` (`a73f8812`), 
 - **Why it is general:** cada proyecto que aplique A8 (nombres en inglés) mueve sus retros y la siguiente recogida las
   da otra vez por nuevas (ya era un leve conocido en «Pendiente»).
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-05) → D57 (`0.5.2`)
 
 ## P3. La plantilla de la bitácora y `close-row` con `logRows` apagado
 
@@ -38,7 +38,7 @@ Sin nada nuevo desde la última recogida: `instalador-wmf-tarkor` (`a73f8812`), 
 - **Why it is general:** un proyecto con `logRows: false` gastó 4 llamadas (~26k de contexto) en descubrir que no
   aplicaba.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-05) → D58 (`0.5.2`)
 
 ## P4. `Siguiente:` obligatorio en la plantilla pero `commitNext` apagado
 
@@ -48,7 +48,7 @@ Sin nada nuevo desde la última recogida: `instalador-wmf-tarkor` (`a73f8812`), 
   `doctor.py` avise del desajuste.
 - **Why it is general:** la regla escrita y el gancho dicen cosas distintas en todo proyecto nuevo.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-05) → D59 (`0.5.2`, `commitNext: true` por defecto)
 
 ## P5. Aviso de CI en rojo al subir
 
@@ -58,7 +58,7 @@ Sin nada nuevo desde la última recogida: `instalador-wmf-tarkor` (`a73f8812`), 
 - **Why it is general:** se acumularon dos subidas sobre un CI roto; con D49 (el `pre-push` solo con los tests
   relacionados) el CI pesa más. Complementa D49 y D56.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-05) → D62 (`0.7`)
 
 ## P6. `check.yml` invocable con `workflow_call`
 
@@ -69,7 +69,7 @@ Sin nada nuevo desde la última recogida: `instalador-wmf-tarkor` (`a73f8812`), 
 - **Why it is general:** quien imita el proceso de versiones copia a mano los pasos de `check.yml` y se desvían
   (`ciInstall`, versión de Python: dos fallos en una release).
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-05) → D63 (`0.7`)
 
 ## Stays in the project
 

@@ -22,7 +22,8 @@ task's design is in [`docs/design/`](design/README.md) (Spanish); the split, in 
 
 ## Version rule
 
-Only the latest published minor gets patches; new features go to the next minor (H14, plan §7). Work moves through
+Only the latest published minor gets patches; new features go to the next minor (H14, plan §7) not yet under way: with `0.6` already being built, a
+harvest's go to `0.7` (user, 2026-11-05). Work moves through
 `0.x`, where a minor may break: **everything that breaks goes into `0.5`**, so projects migrate once. `1.0` is the
 MMC: each patch leaves what it touches configurable (thresholds, paths, behaviours) so the MMC can edit it (G4;
 user, 2026-11-04). At most one release a day (A-6).
@@ -109,11 +110,21 @@ In this order, because each step uses the previous one.
 | D52 | `apply.py` decides whether to keep an old script by its whole path (`.claude/gw/scripts/<name>`), not by the same name in another path, with its test (`0.5.1` closing harvest, world-maker-fantasy P2) | done |
 | E26 | `red-without-fix.sh` does not look for test code in text and data files (`.md`, `.json`, `.yml`, `.properties`, `.txt`, `.csv`): prose matched `it(`, with its test (`0.5.1` closing harvest, private-project-1 P1) | done |
 
+## `0.5.2` — patch
+
+| Id | Task | Status |
+|---|---|---|
+| B20 | `measure.py` measures a subagent's log (`subagents/agent-*.jsonl`, every line with `isSidechain`), with its test (`0.6` harvest, image-generator P1) | pending |
+| D57 | `harvest.py` follows renames (`-M`) and does not repeat the ideas of a moved file; a cut idea says "… (truncated)" (`0.6` harvest, image-generator P2) | pending |
+| D58 | The log template only explains `logRows` when it is on; `handoff.py close-row` warns and exits 1 when it is off, like `set-row` (`0.6` harvest, image-generator P3) | pending |
+| D59 | `commitNext: true` by default in `templates/gw.json`, as the `AGENTS.md` template asks (`0.6` harvest, image-generator P4) | pending |
+| D60 | The `AGENTS.md` templates name `handoff.py set-row` and `close-row` for the branch's own log row (`0.6` harvest, private-project-1 P2) | pending |
+
 ## `0.6` "Measure"
 
 | Id | Task | State |
 |---|---|---|
-| H16 | `0.6` harvest (`gw-harvest`) and its proposals, to the user | in progress (`2026-11-05-galivelop-image-generator.md`, `2026-11-05-private-project-1-0.6.md`) |
+| H16 | `0.6` harvest (`gw-harvest`) and its proposals, to the user | done (B20, D57-D60 to `0.5.2`; D61-D63 to `0.7`) |
 | B1 | `Stop` hook that reads the session logs | pending |
 | B2 | `docs/metrics/ledger.jsonl` in the repo | pending |
 | B3 | What is stored: tokens by model and type, date, branch, `Refs`, subagent; prices in a dated table | pending |
@@ -154,6 +165,9 @@ In this order, because each step uses the previous one.
 | C8 | `modes.careful` (before a destructive command), on by default | pending |
 | C10 | A subagent does not ask the user: it returns the question | pending |
 | D14 | `trace.py <id>` | pending |
+| D61 | `handoff.py preflight`: what the `pre-push` checks in the log (the "Updated" date, ids clashing with `main`), without pushing; in the template's `check` (`0.6` harvest, private-project-1 P1) | pending |
+| D62 | The `pre-push` warns, without blocking, when the branch's last CI is red (`ci-status.py`, when `gh` is there) (`0.6` harvest, image-generator P5) | pending |
+| D63 | `templates/github/check.yml` with `workflow_call`: a `release.yml` calls it with `uses:` and `needs:` instead of copying its steps; the workflow's own too (`0.6` harvest, image-generator P6) | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.7` | pending |
 
 ## `0.8` "Front end and other agents"

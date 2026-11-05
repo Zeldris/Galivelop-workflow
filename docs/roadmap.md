@@ -23,7 +23,8 @@ con su versión en cada línea (H12).
 
 ## Regla de versiones
 
-Solo la última menor publicada recibe parches; los evolutivos van a la siguiente menor (H14, plan §7). Se avanza por
+Solo la última menor publicada recibe parches; los evolutivos van a la siguiente menor (H14, plan §7) que aún no esté en obra: con la `0.6` ya montándose, los de una
+recogida van a la `0.7` (usuario, 2026-11-05). Se avanza por
 la `0.x`, donde una menor puede romper: **todo lo que rompe va en la `0.5`**, para migrar una sola vez. La `1.0` es
 el MMC: cada parche deja configurable lo que toca (umbrales, rutas, comportamientos) para que el MMC lo edite (G4;
 usuario, 2026-11-04). A lo sumo una publicación al día (A-6).
@@ -110,11 +111,21 @@ En este orden, porque cada paso usa el anterior.
 | D52 | `apply.py` decide si conserva un script viejo por su ruta entera (`.claude/gw/scripts/<nombre>`), no por un nombre igual en otra ruta, con su test (recogida de cierre `0.5.1`, world-maker-fantasy P2) | hecho |
 | E26 | `red-without-fix.sh` no busca código de test en textos y datos (`.md`, `.json`, `.yml`, `.properties`, `.txt`, `.csv`): la prosa casaba con `it(`, con su test (recogida de cierre `0.5.1`, private-project-1 P1) | hecho |
 
+## `0.5.2` — parche
+
+| Id | Tarea | Estado |
+|---|---|---|
+| B20 | `measure.py` mide el registro de un subagente (`subagents/agent-*.jsonl`, todas sus líneas con `isSidechain`), con su test (recogida `0.6`, image-generator P1) | pendiente |
+| D57 | `harvest.py` sigue los renombrados (`-M`) y no repite las ideas de un archivo movido; una idea recortada dice «… (truncated)» (recogida `0.6`, image-generator P2) | pendiente |
+| D58 | La plantilla de la bitácora solo explica `logRows` si está encendido; `handoff.py close-row` avisa y sale con 1 si está apagado, como `set-row` (recogida `0.6`, image-generator P3) | pendiente |
+| D59 | `commitNext: true` por defecto en `templates/gw.json`, como pide la plantilla de `AGENTS.md` (recogida `0.6`, image-generator P4) | pendiente |
+| D60 | Las plantillas de `AGENTS.md` nombran `handoff.py set-row` y `close-row` para la fila propia de la bitácora (recogida `0.6`, private-project-1 P2) | pendiente |
+
 ## `0.6` «Medir»
 
 | Id | Tarea | Estado |
 |---|---|---|
-| H16 | Recogida de la `0.6` (`gw-harvest`) y sus propuestas, al usuario | en curso (`2026-11-05-galivelop-image-generator.md`, `2026-11-05-private-project-1-0.6.md`) |
+| H16 | Recogida de la `0.6` (`gw-harvest`) y sus propuestas, al usuario | hecho (B20, D57-D60 a la `0.5.2`; D61-D63 a la `0.7`) |
 | B1 | Gancho `Stop` que lee los logs de sesión | pendiente |
 | B2 | `docs/metrics/ledger.jsonl` en el repo | pendiente |
 | B3 | Qué se guarda: tokens por modelo y tipo, fecha, rama, `Refs`, subagente; precios en tabla con fecha | pendiente |
@@ -155,6 +166,9 @@ En este orden, porque cada paso usa el anterior.
 | C8 | `modes.careful` (antes de una orden destructiva), activo por defecto | pendiente |
 | C10 | Un subagente no pregunta al usuario: devuelve la pregunta | pendiente |
 | D14 | `trace.py <id>` | pendiente |
+| D61 | `handoff.py preflight`: lo que el `pre-push` comprueba en la bitácora (fecha de «Actualizado», ids que chocan con `main`), sin subir; en el `check` de la plantilla (recogida `0.6`, private-project-1 P1) | pendiente |
+| D62 | El `pre-push` avisa, sin bloquear, si el último CI de la rama está en rojo (`ci-status.py`, si hay `gh`) (recogida `0.6`, image-generator P5) | pendiente |
+| D63 | `templates/github/check.yml` con `workflow_call`: un `release.yml` lo llama con `uses:` y `needs:` en vez de copiar sus pasos; el del flujo también (recogida `0.6`, image-generator P6) | pendiente |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.7` | pendiente |
 
 ## `0.8` «Front y otros agentes»
