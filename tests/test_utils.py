@@ -121,7 +121,9 @@ class HandoffRows(Base):
         p = Utils(self.tmp, {"logRows": False})
         p.write(LOG, log_text(a="x" * 900))
         self.assertEqual(p.script("handoff.py", "check")[0], 0)
-        self.assertEqual(p.script("handoff.py", "close-row", "feat-a")[0], 0)
+        code, out = p.script("handoff.py", "close-row", "feat-a")[:2]
+        self.assertEqual(code, 1)  # D58: close-row warns, like set-row
+        self.assertIn("logRows is off", out)
         self.assertNotIn("Merged", (p.work / LOG).read_text())
 
 
