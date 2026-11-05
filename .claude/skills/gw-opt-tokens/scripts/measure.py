@@ -180,6 +180,24 @@ def responses_of(path, since):
     return list(by_id.values())
 
 
+def is_subagent_log(path):
+    """True if every line of the log that carries `isSidechain` has it set: a subagent's own log
+    (`<session>/subagents/agent-*.jsonl`). A main session log has lines without it, so it stays False."""
+    seen = False
+    with open(path, encoding='utf-8') as log:
+        for line in log:
+            try:
+                d = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(d, dict) or 'isSidechain' not in d:
+                continue
+            if not d['isSidechain']:
+                return False
+            seen = True
+    return seen
+
+
 def add_model_usage(path, since, per_model, who):
     """Add a subagent log's calls, input and output to `per_model[(who, model)]`; return its responses."""
     responses = responses_of(path, since)
@@ -222,6 +240,7 @@ def main():
     call_models = []  # model of each call (or None)
     per_model = collections.defaultdict(lambda: [0, 0, 0])  # (who, model) -> calls, input, output
     clipped = False  # with --hours/--since: the session started before the period
+    own_log = is_subagent_log(path)  # a subagent's log is measured like a main one: its lines are all sidechain
     with open(path, encoding='utf-8') as log:
         for line in log:
             try:
@@ -232,7 +251,7 @@ def main():
             if since and stamp and parse_time(stamp) < since:
                 clipped = True
                 continue
-            if d.get('isSidechain'):
+            if d.get('isSidechain') and not own_log:
                 continue
             if d.get('type') == 'system' and d.get('subtype') == 'compact_boundary':
                 cuts.append(api_calls)

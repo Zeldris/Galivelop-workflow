@@ -194,6 +194,47 @@ class Measure(unittest.TestCase):
         self.assertNotIn('Only synthetic', out)
         self.assertNotIn('synthetic', out)
 
+    def run_on(self, *parts) -> str:
+        d = folder()
+        path = log(os.path.join(d, 's', 'subagents', 'agent-x.jsonl'), *parts)
+        r = subprocess.run(['python3', MEASURE, '--session', path, '--hours', '0'], capture_output=True, text=True, cwd=d)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout
+
+    def test_subagent_log_all_sidechain_is_measured_like_a_main_one(self):
+        out = self.run_on(*noise(), response('a1', 100, isSidechain=True), response('a2', 300, isSidechain=True))
+        self.assertIn('API calls: 2', out)
+        self.assertIn('Input 400 tokens', out)
+
+    def test_subagent_log_counts_each_response_once_and_keeps_tool_results(self):
+        out = self.run_on(response('a1', 100, text('t'), call('t1', '', name='Read', file_path='/a'), isSidechain=True),
+                          result('t1', 'x' * 350, isSidechain=True), response('a2', 300, isSidechain=True))
+        self.assertIn('API calls: 2', out)
+        self.assertRegex(out, r'Read\s+1 calls\s+100 tok')
+
+    def test_mixed_log_still_drops_the_sidechain_lines(self):
+        out = self.run_on(response('m1', 100), response('a1', 9999, isSidechain=True))
+        self.assertIn('API calls: 1', out)
+        self.assertIn('Input 100 tokens', out)
+
+    def test_empty_subagent_log_reports_no_calls(self):
+        d = folder()
+        path = log(os.path.join(d, 's', 'subagents', 'agent-x.jsonl'))
+        r = subprocess.run(['python3', MEASURE, '--session', path, '--hours', '0'], capture_output=True, text=True, cwd=d)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn('No calls in that period', r.stderr)
+
+    def test_subagent_log_with_lines_without_usage(self):
+        out = self.run_on(_line('user', 'hi', isSidechain=True), response('a1', 50, isSidechain=True),
+                          _line('assistant', [text('no usage')], isSidechain=True))
+        self.assertIn('API calls: 1', out)
+        self.assertIn('Input 50 tokens', out)
+
+    def test_main_session_still_ignores_its_subagents_sidechain_lines(self):
+        out = self.measure([response('m1', 100)], {'agent-a': ('Explore', [response('s1', 500, isSidechain=True)])})
+        self.assertIn('API calls: 1', out)
+        self.assertIn('Input 100 tokens', out)
+
     def test_no_subagents_no_section(self):
         self.assertNotIn('BY SUBAGENT', self.measure([response('m1', 100)]))
 

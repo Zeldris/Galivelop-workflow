@@ -32,7 +32,8 @@ retries and redone work.
      on every call until the next compaction);
    - per file reads, repeats, per-model split, and `BY SUBAGENT`: one row per subagent with calls, average context,
      startup (the context of its first call, what launching it costs), input and output. The top totals are the main
-     session only.
+     session only. To measure one subagent on its own, pass its log (`<session>/subagents/agent-*.jsonl`) to
+     `--session`: it is read like a main log.
 
    **The curve first** (`Average context`, `Stretches between compactions`): average context × calls is almost all
    of the spend, and a ceiling far above the floor says compaction comes late. That is the first proposal when it
