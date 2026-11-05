@@ -39,7 +39,14 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 sys.dont_write_bytecode = True
-import config  # noqa: E402
+try:
+    import config  # noqa: E402
+except Exception:  # noqa: BLE001 - a broken or missing config.py must exit 2 (see run()), never Python's own 1 = "found something"
+    import traceback
+    IMPORT_ERROR = traceback.format_exc()
+    config = None
+else:
+    IMPORT_ERROR = ""
 
 PROG = "private-check"
 ALLOW_MARK = "gw-allow-private"
@@ -323,6 +330,10 @@ def main(argv=None):
 
 def run(argv=None):
     """main(), but a crash exits 2 with its trace: Python's own exit 1 for an exception means "found something"."""
+    if config is None:
+        print(IMPORT_ERROR, file=sys.stderr)
+        print(f"{PROG}: cannot load config.py (above), not a finding; reinstall the scripts: python3 scripts/apply.py .", file=sys.stderr)
+        return 2
     try:
         return main(argv)
     except Exception:  # noqa: BLE001 - any bug must not read as a finding

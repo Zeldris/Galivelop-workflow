@@ -411,5 +411,17 @@ class ThisRepo(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
 
+class Crashes(unittest.TestCase):
+    def test_a_missing_config_py_exits_2_not_1(self):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-private-imp-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        shutil.copy2(SCRIPT, tmp / "private-check.py")
+        r = subprocess.run(["python3", "-B", str(tmp / "private-check.py"), "--all"], capture_output=True, text=True,
+                           cwd=tmp)
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertIn("cannot load config.py", r.stderr)
+        self.assertIn("ModuleNotFoundError", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()

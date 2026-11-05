@@ -400,33 +400,43 @@ class CheckSummary(unittest.TestCase):
         self.assertIn(f"pid {holder.pid}", err)
         self.assertIn("rm ", err)  # the safe remedy, not kill
 
-    def test_a_lost_race_for_a_stale_lock_never_deletes_a_live_lock(self):
-        """Stale lock read; before the move a live check takes the lock; after it a third creates another: the live
-        one is kept aside (not deleted), the third untouched, and the loser is told the lock is busy (exit 3)."""
-        live = subprocess.Popen(["sleep", "30"])
-        self.addCleanup(live.kill)
-        third = subprocess.Popen(["sleep", "30"])
-        self.addCleanup(third.kill)
+    def stale_lock_with_steal(self, steal_owner):
+        """A stale lock (dead pid) and the steal mutex held by steal_owner ("pid|start", or None for none)."""
         dead = subprocess.Popen(["true"])
         dead.wait()
         lock = self.lock_dir()
         lock.parent.mkdir(parents=True, exist_ok=True)
-        os.symlink(f"{dead.pid}|{self.start_of(live.pid)}|oldsha|/old/log", lock)
-        live_target = f"{live.pid}|{self.start_of(live.pid)}|livesha|/live/log"
-        third_target = f"{third.pid}|{self.start_of(third.pid)}|thirdsha|/third/log"
-        shim = Path(tempfile.mkdtemp(prefix="gw-shim-"))
-        self.addCleanup(shutil.rmtree, shim, True)
-        real_mv = shutil.which("mv")
-        (shim / "mv").write_text(
-            f'#!/bin/sh\nrm -f "$1"; ln -s "{live_target}" "$1"\n{real_mv} "$@"; ln -s "{third_target}" "$1"\n')
-        (shim / "mv").chmod(0o755)
-        r = subprocess.run(["bash", str(self.repo / "scripts" / "check-green.sh"),
-                            "lock-acquire", "999999", "mysha", "0", "-"], cwd=self.repo, capture_output=True, text=True,
-                           env=dict(os.environ, PATH=f"{shim}:{os.environ['PATH']}"))
+        os.symlink(f"{dead.pid}|Thu Jan  1 00:00:00 2000|oldsha|/old/log", lock)
+        if steal_owner is not None:
+            steal = Path(str(lock) + ".steal")
+            steal.mkdir()
+            (steal / "pid").write_text(steal_owner + "\n")
+        return lock
+
+    def acquire(self):
+        return subprocess.run(["bash", str(self.repo / "scripts" / "check-green.sh"), "lock-acquire", "999999", "mysha",
+                               "0", "-"], cwd=self.repo, capture_output=True, text=True)
+
+    def test_a_stale_lock_is_not_replaced_while_another_check_is_replacing_it(self):
+        """Two checks must not both judge the same stale lock: with the steal mutex held by a live check, we are busy."""
+        live = subprocess.Popen(["sleep", "30"])
+        self.addCleanup(live.kill)
+        lock = self.stale_lock_with_steal(f"{live.pid}|{self.start_of(live.pid)}")
+        old = os.readlink(lock)
+        r = self.acquire()
         self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
-        self.assertIn("two checks raced for the lock", r.stderr)
-        self.assertEqual(os.readlink(lock), third_target, "the third check's lock is untouched")
-        self.assertEqual(os.readlink(str(lock) + ".stale.999999"), live_target, "the live check's lock is kept, not deleted")
+        self.assertIn("another check is replacing a stale lock", r.stderr)
+        self.assertEqual(os.readlink(lock), old, "the lock is left alone")
+        self.assertTrue(os.path.isdir(str(lock) + ".steal"), "the other check's mutex is untouched")
+
+    def test_a_steal_mutex_left_by_a_dead_check_is_cleaned_and_the_lock_taken(self):
+        dead = subprocess.Popen(["true"])
+        dead.wait()
+        lock = self.stale_lock_with_steal(f"{dead.pid}|Thu Jan  1 00:00:00 2000")
+        r = self.acquire()
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertTrue(os.readlink(lock).startswith("999999|"))
+        self.assertFalse(os.path.exists(str(lock) + ".steal"), "the mutex is always released")
 
     def test_ctrl_c_releases_the_lock_and_keeps_the_log(self):
         self.configure(["echo partial; sleep 30"])
