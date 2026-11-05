@@ -160,6 +160,68 @@ class Harvest(unittest.TestCase):
         r = self.harvest_after(old, old.replace("Estado: uno", "Estado: dos"))
         self.assertEqual(r["ideas"], [], "the log changed, but neither idea did")
 
+    OLD = "# T\n\nEstado: uno\n\n- Propuesta para el flujo: vieja idea\n  con continuacion.\n\nFin.\n"
+
+    def harvest_moved(self, src, dst, new_text=None):
+        """Commit OLD at src, record it, move it to dst (git mv, new_text if given) and harvest again."""
+        f = self.repo / src
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(self.OLD)
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "log one")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        (self.repo / dst).parent.mkdir(parents=True, exist_ok=True)
+        git(self.repo, "mv", src, dst)
+        if new_text is not None:
+            (self.repo / dst).write_text(new_text)
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "move")
+        return self.harvest()
+
+    def test_a_pure_rename_does_not_repeat_its_ideas(self):
+        r = self.harvest_moved("docs/traspaso.md", "docs/handoff.md")
+        self.assertEqual(r["ideas"], [], "the idea was harvested under the old name")
+
+    def test_a_rename_with_changes_reports_only_the_new_idea(self):
+        new = self.OLD.replace("Estado: uno", "Estado: dos") + "\nProposal for the workflow: a new one.\n"
+        r = self.harvest_moved("docs/traspaso.md", "docs/handoff.md", new)
+        self.assertEqual(r["ideas"], [{"path": "docs/handoff.md", "text": "Proposal for the workflow: a new one."}])
+
+    def test_a_move_to_another_folder_does_not_repeat_its_ideas(self):
+        r = self.harvest_moved("docs/traspaso.md", "docs/archive/2026/traspaso.md")
+        self.assertEqual(r["ideas"], [])
+
+    def test_paths_with_spaces_are_followed_through_a_rename(self):
+        r = self.harvest_moved("docs/mi traspaso.md", "docs/otro sitio/su traspaso.md")
+        self.assertEqual(r["ideas"], [])
+        new = self.OLD + "\nProposal for the workflow: spaced.\n"
+        (self.repo / "docs/otro sitio/su traspaso.md").write_text(new)
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "more")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        self.assertEqual(self.harvest()["ideas"], [], "recorded, nothing new")
+
+    def test_a_rewritten_file_that_git_does_not_see_as_moved_counts_all_its_ideas(self):
+        new = "# Otro\n\nProposal for the workflow: entirely different.\n"
+        r = self.harvest_moved("docs/traspaso.md", "docs/handoff.md", new)
+        self.assertEqual(r["ideas"], [{"path": "docs/handoff.md", "text": "Proposal for the workflow: entirely different."}])
+
+    def test_an_idea_cut_by_the_length_limit_says_so(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("harvest_mod", SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        exact = "x" * mod.IDEA_MAX
+        self.assertEqual(mod.clip(exact), exact, "exactly at the limit is not cut")
+        cut = mod.clip(exact + "y")
+        self.assertEqual(len(cut), mod.IDEA_MAX)
+        self.assertTrue(cut.endswith("\u2026 (truncated)"), cut[-30:])
+
+    def test_a_long_idea_in_a_report_ends_in_truncated(self):
+        r = self.harvest_after("# T\n", "# T\n\nProposal for the workflow: " + "z" * 2500 + "\n")
+        self.assertEqual(len(r["ideas"][0]["text"]), 2000)
+        self.assertTrue(r["ideas"][0]["text"].endswith("\u2026 (truncated)"))
+
     def test_only_the_idea_lines_added_since_the_last_harvest_are_reported(self):
         old = "# Traspaso\n\n- **Propuesta para el flujo:** vieja idea\n\nEstado: uno\n"
         new = old + "\nProposal for the workflow: a new one.\n"
