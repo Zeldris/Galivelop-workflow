@@ -23,7 +23,7 @@
   "agentSignatures": true,
   "commitFormat": "free",
   "commitRefs": false,
-  "commitNext": false,
+  "commitNext": true,
   "refsSources": [],
   "keepLegacyPaths": false,
   "recordsDir": "docs/records",

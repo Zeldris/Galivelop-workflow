@@ -78,6 +78,9 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - **One branch per session**: two sessions at the same time never push to the same branch. If the log's branch is in
   use by another session, create `claude/<topic>` from it and write only in your own part of the log. Your work goes
   back by `git merge` before going to `{{protectedBranch}}`.
+- **With `logRows: true`**, your log row is rewritten with `python3 .claude/gw/scripts/handoff.py set-row "text"`
+  mid-task and closed with `python3 .claude/gw/scripts/handoff.py close-row <branch>` when the branch merges; do not
+  hand-edit another branch's row.
 - Merge, never rebase: branches are pushed.
 - **To `{{protectedBranch}}` only when the person confirms**, and it is written into the log. Depending on
   `pushToProtected` in `.claude/gw.json`, the work goes straight to it (`direct`: `.githooks/pre-push` asks for the
