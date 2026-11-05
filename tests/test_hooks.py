@@ -1250,6 +1250,141 @@ class CheckCache(Base):
         self.assertEqual((code, self.count(), len(self.lines())), (0, 2, 1), out)
         self.assertNotIn(self.SKIP, out)
 
+    # -- D44: a commit that only adds the review mark on a green tree, and one push of the same tree to two refs --
+    MARK_SKIP = "only adds the review mark on"
+
+    def green_parent(self):
+        self.doc_change()
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 1), out)
+        return self.p.sha()
+
+    def mark_commit(self, extra=None):
+        for rel, text in (extra or {}).items():
+            self.p.write(rel, text)
+        self.p.write("docs/revisado.txt", self.p.sha() + "\n")
+        self.p.commit("mark")
+
+    def test_a_mark_only_commit_on_a_green_parent_skips_the_check_and_says_why(self):
+        parent = self.green_parent()
+        self.mark_commit()
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.assertIn(f"{self.p.sha()[:7]} {self.MARK_SKIP} {parent[:7]}", out)
+        self.assertIn("GW_CHECK_CACHE=0 git push", out)
+        self.assertNotIn("check 'bash check.sh'", out)
+
+    def test_editing_an_existing_mark_also_skips_the_check(self):
+        self.green_parent()
+        self.mark_commit()
+        self.assertEqual(self.push("origin", "feature")[0], 0)
+        self.mark_commit()  # the mark now names the previous mark commit: a plain edit of the file
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.assertIn(self.MARK_SKIP, out)
+
+    def test_a_mark_commit_that_also_touches_another_file_runs_the_check(self):
+        self.green_parent()
+        self.mark_commit({"docs/other.md": "sneaked in\n"})
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        self.assertNotIn(self.MARK_SKIP, out)
+        self.assertIn("check 'bash check.sh'", out)
+
+    def test_a_mark_commit_on_a_parent_that_is_not_green_runs_the_check(self):
+        self.doc_change()  # never pushed, so never recorded
+        self.mark_commit()
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.assertNotIn(self.MARK_SKIP, out)
+
+    def test_a_record_of_another_tree_is_not_the_parents_green(self):
+        # What a dirty work tree records: a key for a tree no commit has.
+        self.green_parent()
+        self.cache.write_text("")
+        self.mark_commit()
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        self.assertNotIn(self.MARK_SKIP, out)
+
+    def test_a_missing_record_fails_closed_and_runs_the_check(self):
+        self.green_parent()
+        self.cache.unlink()
+        self.mark_commit()
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        self.assertNotIn(self.MARK_SKIP, out)
+
+    def test_a_commit_that_deletes_the_mark_runs_the_check(self):
+        self.p.write("docs/revisado.txt", self.p.sha() + "\n")  # the green parent already carries a mark
+        self.green_parent()
+        self.p.git("rm", "-q", "docs/revisado.txt")
+        self.p.commit("drop the mark")
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        self.assertNotIn(self.MARK_SKIP, out)
+
+    def test_a_commit_that_renames_the_mark_runs_the_check(self):
+        self.p.write("docs/revisado.txt", self.p.sha() + "\n")
+        self.green_parent()
+        self.p.git("mv", "docs/revisado.txt", "docs/renamed.txt")
+        self.p.commit("rename the mark")
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        self.assertNotIn(self.MARK_SKIP, out)
+
+    def test_a_mode_change_of_the_mark_runs_the_check(self):
+        self.p.write("docs/revisado.txt", self.p.sha() + "\n")
+        self.green_parent()
+        self.p.git("update-index", "--chmod=+x", "docs/revisado.txt")
+        self.p.git("commit", "-q", "-m", "mark gets +x")
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        self.assertNotIn(self.MARK_SKIP, out)
+
+    def test_a_merge_commit_runs_the_check(self):
+        self.green_parent()
+        p = self.p
+        p.git("checkout", "-q", "-b", "side", p.base)
+        p.write("docs/side.md", "side\n"); p.commit("side")
+        p.git("checkout", "-q", "feature")
+        self.mark_commit()
+        p.git("merge", "-q", "--no-ff", "-m", "merge side", "side")
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        self.assertNotIn(self.MARK_SKIP, out)
+
+    def test_the_switch_off_runs_the_check_on_a_mark_only_commit(self):
+        self.green_parent()
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["checkReuseMark"] = False
+        self.p.write(".claude/gw.json", json.dumps(cfg)); self.p.commit("switch off")
+        self.assertEqual(self.push("origin", "feature")[0], 0)
+        self.mark_commit()
+        code, out = self.push("origin", "feature")
+        self.assertEqual((code, self.count()), (0, 3), out)
+        self.assertNotIn(self.MARK_SKIP, out)
+
+    def test_branch_and_main_in_one_push_with_the_same_tree_run_the_check_once(self):
+        self.doc_change()
+        code, out = self.push("origin", "HEAD:refs/heads/feature", "HEAD:refs/heads/main")
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.assertIn("this push also sends to main; its check runs once, there", out)
+
+    def test_main_first_in_the_push_still_runs_the_check_once(self):
+        self.doc_change()
+        code, out = self.push("origin", "HEAD:refs/heads/main", "HEAD:refs/heads/feature")
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.assertIn("its check runs once, there", out)
+
+    def test_branch_and_main_in_one_push_with_different_trees_are_each_checked(self):
+        self.doc_change("one\n")
+        first = self.p.sha()
+        self.doc_change("two\n")
+        code, out = self.push("origin", f"{first}:refs/heads/feature", "HEAD:refs/heads/main")
+        self.assertEqual((code, self.count()), (0, 2), out)
+        self.assertNotIn("its check runs once, there", out)
+
     def test_a_push_to_the_protected_branch_neither_reads_nor_records_the_cache(self):
         self.doc_change()
         self.assertEqual(self.push("origin", "feature")[0], 0)

@@ -26,6 +26,10 @@
 #     (a push that is not to the protected branch only; scripts/check-green.sh keeps the record in the git common dir,
 #     scripts/check.sh writes it, and a green push records it). Protected pushes never read nor write it; if the helper
 #     is missing or fails the check just runs. GW_CHECK_CACHE=0 git push runs it anyway.
+#   - Also skips it (same conditions, `checkReuseMark` on) for a commit whose single parent's tree is recorded green and
+#     whose diff from that parent is only the `reviewMark` file added or edited (no other path, no mode change, no
+#     delete or rename): the mark commit of scripts/reviewed.sh. And one `git push` of the same tree to the protected
+#     branch and to another branch runs the check once, with the protected branch's (stricter) run.
 #   - To the protected branch, in both pushToProtected modes (with `pr` the PR hook also guards PRs): code needs the
 #     review mark (scripts/reviewed.sh) to name an ancestor with no code after it. The branch is protected when the
 #     pushed commit, the remote tip or the working tree names it so; what is content and where the mark lives come
@@ -149,6 +153,27 @@ link_shared() {  # link_shared <sha> <worktree>: worktreeLinks from the main che
   done <<<"$links"
 }
 checkdir=""
+mark_only_parent() {  # mark_only_parent <sha>: prints the parent's sha when <sha> only adds/edits the reviewMark file on it
+  local sha="$1" mark_file parents parent raw
+  parents="$(git rev-list --parents -n 1 "$sha" 2>/dev/null)" || return 1
+  # shellcheck disable=SC2086  # two shas or one or three: split on purpose
+  set -- $parents
+  [ "$#" -eq 2 ] || return 1  # a root commit or a merge: not a mark commit
+  parent="$2"
+  mark_file="$(cfg_at "$sha" reviewMark)" || return 1
+  [ -n "$mark_file" ] || return 1
+  raw="$(git diff-tree -r --no-renames --raw "$parent" "$sha" 2>/dev/null)" || return 1
+  [ "$(printf '%s\n' "$raw" | grep -c .)" -eq 1 ] || return 1  # exactly one path changed
+  # ":<old mode> <new mode> <old sha> <new sha> <status>\t<path>": the mark file, modified without a mode change, or
+  # added as a regular file; anything else (delete, type change, other path) is not exempt.
+  printf '%s\n' "$raw" | awk -F'\t' -v want="$mark_file" '
+    { split($1, f, " "); old = substr(f[1], 2); new = f[2]; st = f[5]
+      if ($2 != want) exit 1
+      if (st == "M" && old == new && new ~ /^100(644|755)$/) exit 0
+      if (st == "A" && new ~ /^100(644|755)$/) exit 0
+      exit 1 }' || return 1
+  printf '%s\n' "$parent"
+}
 run_checks() {  # run_checks <sha>: every check command on that commit, in $checkdir (kept for related-tests.sh)
   local sha="$1" dir wrapper marker
   if [ -n "$worktree" ]; then
@@ -179,7 +204,7 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     dir="$worktree"
   fi
   checkdir="$dir"
-  local cmd n=0 log key="" tree age
+  local cmd n=0 log key="" tree age parent ptree pkey
   if [ "$is_protected" != "true" ] && [ "${GW_CHECK_CACHE:-}" != "0" ] && [ -f "$scripts/check-green.sh" ]; then
     # Any failure of the helper just means the check runs, as it always did.
     tree="$(git rev-parse "$sha^{tree}" 2>/dev/null)" || tree=""
@@ -188,6 +213,15 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     fi
     if [ -n "$key" ] && age="$(bash "$scripts/check-green.sh" has "$key" 2>/dev/null < /dev/null)"; then
       echo "pre-push: check already green on this tree (${tree:0:7}) with the same commands $age min ago; skipping it (to run it anyway: GW_CHECK_CACHE=0 git push)"
+      return 0
+    fi
+    # The review-mark commit adds nothing a check sees: the tree it sits on being recorded green is enough.
+    if [ -n "$key" ] && [ "$(cfg_at "$sha" checkReuseMark 2>/dev/null)" = "true" ] \
+      && parent="$(mark_only_parent "$sha")" && ptree="$(git rev-parse "$parent^{tree}" 2>/dev/null)" \
+      && pkey="$(printf '%s\n' "$checks" | bash "$scripts/check-green.sh" key "$ptree" "$wrapper" 2>/dev/null)" \
+      && age="$(bash "$scripts/check-green.sh" has "$pkey" 2>/dev/null < /dev/null)"; then
+      echo "pre-push: ${sha:0:7} only adds the review mark on ${parent:0:7}, whose tree (${ptree:0:7}) passed this check with the same commands $age min ago; skipping it (to run it anyway: GW_CHECK_CACHE=0 git push)"
+      bash "$scripts/check-green.sh" add "$key" < /dev/null  # green by derivation: a later mark commit builds on it
       return 0
     fi
   fi
@@ -237,6 +271,21 @@ scan_leftovers() {  # scan_leftovers <sha> <files> <what>: conflict markers and 
 }
 
 checked=""
+# Trees this push sends to the protected branch (by the pushed commit's own config): a branch pushed with the same tree
+# needs no run of its own, the protected one is stricter (GW_PUSH_PROTECTED=true) and runs in this same hook.
+protected_trees=""
+protected_name=""
+while read -r pre_ref pre_sha pre_remote_ref _pre_rest; do
+  [ -n "${pre_sha:-}" ] && [ "$pre_sha" != "$zero" ] || continue
+  case "$pre_ref$pre_remote_ref" in *refs/tags/*) continue ;; esac
+  git cat-file -e "$pre_sha^{commit}" 2>/dev/null || continue
+  pre_prot="$(python3 "$config" --root "$root" --rev "$pre_sha" get protectedBranch 2>/dev/null)" || continue
+  if [ "$pre_remote_ref" = "refs/heads/$pre_prot" ]; then
+    pre_tree="$(git rev-parse "$pre_sha^{tree}" 2>/dev/null)" || continue
+    protected_trees="$protected_trees $pre_tree"
+    protected_name="$pre_prot"
+  fi
+done < "$work/input"
 while read -r local_ref local_sha remote_ref remote_sha; do
   [ -n "${local_sha:-}" ] || continue
   [ "$local_sha" = "$zero" ] && continue                  # deleting a ref
@@ -314,7 +363,11 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   fi
   wt_protected="$(python3 "$config" --root "$root" get protectedBranch 2>/dev/null)" || wt_protected=""
   [ -n "$wt_protected" ] && [ "$remote_ref" = "refs/heads/$wt_protected" ] && is_protected=true
-  if [ "$checked" != "$local_sha:$is_protected" ]; then
+  this_tree="$(git rev-parse "$local_sha^{tree}" 2>/dev/null)" || this_tree=""
+  if [ "$is_protected" != "true" ] && [ -n "$this_tree" ] && case " $protected_trees " in *" $this_tree "*) true ;; *) false ;; esac; then
+    # The run for the protected branch (same tree, same commands) is stricter and comes in this same push.
+    echo "pre-push: ${local_sha:0:7} has the tree (${this_tree:0:7}) this push also sends to $protected_name; its check runs once, there"
+  elif [ "$checked" != "$local_sha:$is_protected" ]; then
     run_checks "$local_sha"
     checked="$local_sha:$is_protected"
   fi
