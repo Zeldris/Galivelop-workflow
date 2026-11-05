@@ -106,9 +106,9 @@ En este orden, porque cada paso usa el anterior.
 | D46 | Tras migrar nombres (A8), `apply.py --update` o `doctor.py` listan los usos de rutas viejas en los archivos propios del proyecto (recogida `0.5.1`, portal P1) | hecho |
 | D47 | El `pre-push` que para datos privados dice que los commits aún no están subidos y propone `--amend` o `rebase -i` solo sobre ellos (recogida `0.5.1`, portal P4) | hecho |
 | E24 | Lo probado con un doble lleva una prueba de humo con lo real: nota en `patterns.md` y regla `(criterio)` en `REVIEW.md` (recogida `0.5.1`, world-maker-fantasy P3) | hecho |
-| D51 | `apply.py --update` no siembra la plantilla de la bitácora en el destino de una carpeta que mueve (con `log` dentro de ella, se perdía la bitácora al pasar a la `0.5`), con su test (recogida de cierre `0.5.1`, world-maker-fantasy P1) | pendiente |
-| D52 | `apply.py` decide si conserva un script viejo por su ruta entera (`.claude/gw/scripts/<nombre>`), no por un nombre igual en otra ruta, con su test (recogida de cierre `0.5.1`, world-maker-fantasy P2) | pendiente |
-| E26 | `red-without-fix.sh` no busca código de test en textos y datos (`.md`, `.json`, `.yml`, `.properties`, `.txt`, `.csv`): la prosa casaba con `it(`, con su test (recogida de cierre `0.5.1`, private-project-1 P1) | pendiente |
+| D51 | `apply.py --update` no siembra la plantilla de la bitácora en el destino de una carpeta que mueve (con `log` dentro de ella, se perdía la bitácora al pasar a la `0.5`), con su test (recogida de cierre `0.5.1`, world-maker-fantasy P1) | hecho |
+| D52 | `apply.py` decide si conserva un script viejo por su ruta entera (`.claude/gw/scripts/<nombre>`), no por un nombre igual en otra ruta, con su test (recogida de cierre `0.5.1`, world-maker-fantasy P2) | hecho |
+| E26 | `red-without-fix.sh` no busca código de test en textos y datos (`.md`, `.json`, `.yml`, `.properties`, `.txt`, `.csv`): la prosa casaba con `it(`, con su test (recogida de cierre `0.5.1`, private-project-1 P1) | hecho |
 
 ## `0.6` «Medir»
 

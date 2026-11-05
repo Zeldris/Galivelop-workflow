@@ -105,9 +105,9 @@ In this order, because each step uses the previous one.
 | D46 | After the name migration (A8), `apply.py --update` or `doctor.py` list uses of old paths in the project's own files (`0.5.1` harvest, portal P1) | done |
 | D47 | The `pre-push` that stops private data says the commits are not pushed yet and offers `--amend` or `rebase -i` only over them (`0.5.1` harvest, portal P4) | done |
 | E24 | What is tested with a double also gets a smoke test with the real thing: a note in `patterns.md` and a `(judgement)` rule in `REVIEW.md` (`0.5.1` harvest, world-maker-fantasy P3) | done |
-| D51 | `apply.py --update` does not seed the log template at the destination of a folder it moves (with `log` inside it, the log was lost when moving to `0.5`), with its test (`0.5.1` closing harvest, world-maker-fantasy P1) | pending |
-| D52 | `apply.py` decides whether to keep an old script by its whole path (`.claude/gw/scripts/<name>`), not by the same name in another path, with its test (`0.5.1` closing harvest, world-maker-fantasy P2) | pending |
-| E26 | `red-without-fix.sh` does not look for test code in text and data files (`.md`, `.json`, `.yml`, `.properties`, `.txt`, `.csv`): prose matched `it(`, with its test (`0.5.1` closing harvest, private-project-1 P1) | pending |
+| D51 | `apply.py --update` does not seed the log template at the destination of a folder it moves (with `log` inside it, the log was lost when moving to `0.5`), with its test (`0.5.1` closing harvest, world-maker-fantasy P1) | done |
+| D52 | `apply.py` decides whether to keep an old script by its whole path (`.claude/gw/scripts/<name>`), not by the same name in another path, with its test (`0.5.1` closing harvest, world-maker-fantasy P2) | done |
+| E26 | `red-without-fix.sh` does not look for test code in text and data files (`.md`, `.json`, `.yml`, `.properties`, `.txt`, `.csv`): prose matched `it(`, with its test (`0.5.1` closing harvest, private-project-1 P1) | done |
 
 ## `0.6` "Measure"
 
