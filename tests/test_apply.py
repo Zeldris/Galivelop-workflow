@@ -858,9 +858,12 @@ class Migrate(unittest.TestCase):
                 self.assertTrue(self.exists(".claude/gw/scripts/revisado.sh"), out)
                 self.assertIn("is still run by .githooks/pre-push", out)
 
-    def test_old_script_kept_by_the_old_hook_variable_forms(self):
-        """D52: the real old hooks call `"$scripts/<old>"` or `${scripts}/<old>`; a Windows path counts too."""
+    def test_old_script_kept_by_every_real_way_of_running_it(self):
+        """D52: variables, command substitutions, ./ and cd into the folder all keep the script (safe side)."""
         for line in ('python3 "$scripts/bitacora.py"', 'python3 "${scripts}/bitacora.py"',
+                     'python3 "$here"/bitacora.py', 'python3 "${here}"/bitacora.py',
+                     'python3 $(dirname "$0")/bitacora.py', 'python3 `dirname $0`/bitacora.py',
+                     "cd .claude/gw/scripts && ./bitacora.py", "./bitacora.py",
                      "python3 .claude\\gw\\scripts\\bitacora.py"):
             with self.subTest(line=line):
                 self.setUp()
