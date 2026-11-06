@@ -34,6 +34,9 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 - `pre-push` runs the project's check **on the exact commit being pushed**, not on whatever is in the folder.
 - Hooks **fail closed**: if data is missing (no config, no git), they don't let things through.
+- `commit-msg` checks the format (Conventional Commits with the roadmap id, `Refs:` and `Siguiente:`) and blocks
+  agent signatures; `pre-push` also stops private data (keys, e-mails, private names) and ids that clash with `main`.
+- A check that already passed on the same tree is not repeated: `scripts/check.sh` records the green.
 - The `Stop` hook won't let the agent finish with unpushed commits or with changes the log doesn't mention.
 
 ### Real hand-offs between sessions and accounts
@@ -111,7 +114,7 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 ### Skills
 
-24 skills in the open [Agent Skills](https://github.com/agentskills/agentskills) format.
+26 skills in the open [Agent Skills](https://github.com/agentskills/agentskills) format.
 
 **The workflow's own (11):**
 
@@ -129,22 +132,25 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 | `gw-media-content` | Propose posts for the project's social channels |
 | `gw-media-content-now` | Produce one specific post, with texts per channel and images |
 
-**By [Matt Pocock](https://github.com/mattpocock) (13):** `codebase-design`, `diagnosing-bugs`, `domain-modeling`,
+**By [Matt Pocock](https://github.com/mattpocock) (15):** `codebase-design`, `diagnosing-bugs`, `domain-modeling`,
 `grill-with-docs`, `grilling`, `improve-codebase-architecture`, `pr`, `prototype`, `research`, `retro`,
-`to-questionnaire`, `wait-what` and `writing-for-agents` (see [Acknowledgements](#acknowledgements)).
+`to-questionnaire`, `to-spec`, `wait-what`, `wayfinder` and `writing-for-agents` (see [Acknowledgements](#acknowledgements)).
 
 ### Hooks
 
-- **Git:** `pre-commit` (scans for secrets: `.env` or `.pem` files and known key patterns), `commit-msg` (checks the
-  message) and `pre-push` (check on the commit being pushed, review mark and log rules).
+- **Git:** `pre-commit` (scans for secrets: `.env` or `.pem` files and known key patterns), `commit-msg` (format,
+  `Refs:`, `Siguiente:` and agent signatures) and `pre-push` (check on the commit being pushed, private data, review
+  mark and log rules).
 - **Claude Code:** recover state at start-up, don't finish without pushing, review before a pull request, warning on
-  too many subagents, and a guard on the configuration.
+  too many subagents, a guard on the configuration, and no agent signatures in what is posted to GitHub.
 
 ### Scripts
 
 Deterministic, in Python and in bash that runs on macOS's version: `apply.py` (set up the workflow), `doctor.py`
 (diagnosis with the command that fixes each problem), `reviewed.sh` (review mark), `recover.py` (state after
 `/clear`), `merge-branch.sh` (bring in a subagent's branch, `agent/<id>-<topic>`, with a green check, its `Refs:` in the merge message, and clean up its working copy),
+`check.sh` (the check, with its green recorded, a lock and a log), `handoff.py` (the log), `version.py` (version
+and release checks), `private-check.py`, `ci-status.py` and `ci-local.py` (the CI, remote and local),
 `red-without-fix.sh`, `harvest.py` and the checks for links and for the agent map.
 
 ### Optional patterns
