@@ -62,6 +62,19 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn(needle, r.stderr)
 
+    def test_release_docs_defaults_to_empty_and_rejects_bad_values(self):
+        self.write(VALID)
+        self.assertEqual(cli(self.tmp, "get", "releaseDocs", "--json").stdout.strip(), "[]")
+        self.write(dict(VALID, releaseDocs=["README.md", "docs/x.md"]))
+        self.assertEqual(cli(self.tmp, "get", "releaseDocs").stdout.splitlines(), ["README.md", "docs/x.md"])
+        for bad, needle in ((dict(VALID, releaseDocs="README.md"), "$.releaseDocs: expected array"),
+                            (dict(VALID, releaseDocs=["/abs.md"]), "$.releaseDocs[0]"),
+                            (dict(VALID, releaseDocs=["../x.md"]), "$.releaseDocs[0]")):
+            self.write(bad)
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn(needle, r.stderr)
+
     def test_ci_ignore_defaults_to_empty_and_rejects_bad_values(self):
         self.write(VALID)
         self.assertEqual(cli(self.tmp, "get", "ciIgnore", "--json").stdout.strip(), "[]")

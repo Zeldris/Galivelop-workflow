@@ -21,6 +21,7 @@
   ],
   "staleRefs": [],
   "requireRetro": true,
+  "releaseDocs": ["README.md", "README.es.md"],
   "agentSignatures": false,
   "agentMap": {
     "path": "docs/agent-map.md"
