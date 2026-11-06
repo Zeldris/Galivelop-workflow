@@ -165,7 +165,7 @@ def release_check(version):
         return ["no earlier vX.Y.Z tag in this clone, so the version cannot be compared with the last release; "
                 "fetch the tags and retry: git fetch --tags origin && python3 scripts/version.py --release"]
     if tag[1:] != version:
-        return changelog_check(version) + harvest_check(version, tag)
+        return changelog_check(version) + harvest_check(version, tag) + release_docs_check(version)
     code, changed = git("diff", "--name-only", tag, "HEAD", "--", *SCOPES, SKILL_LICENSE)
     if code != 0:
         return [f"cannot diff against {tag}; fetch it and retry: git fetch --tags origin && "
@@ -176,6 +176,26 @@ def release_check(version):
     shown = ", ".join(files[:5]) + (f" and {len(files) - 5} more" if len(files) > 5 else "")
     return [f"unbumped release: {len(files)} copyable file(s) changed since {tag} ({shown}) but the version is still "
             f"{version}; bump it (patch at least) and fill in the CHANGELOG: python3 scripts/version.py X.Y.Z"]
+
+
+def release_docs_check(version):
+    """Problems for releasing `version`: each file of the config's `releaseDocs` (as HEAD has it) must exist in HEAD, the
+    tree being released, and name the version as a backticked token (`X.Y.Z`), so a status or what's-new section
+    that still shows the previous release is caught before the push."""
+    try:
+        docs = config.load(ROOT, rev="HEAD")["releaseDocs"]
+    except Exception as exc:
+        return [f"cannot read releaseDocs: {exc}"]
+    problems = []
+    for doc in docs:
+        code, text = git_raw("show", f"HEAD:{doc}")
+        if code != 0:
+            problems.append(f"missing release doc: {doc} (releaseDocs) is not in HEAD, the tree being released; "
+                            "commit it or remove it from releaseDocs and retry: python3 scripts/version.py --release")
+        elif f"`{version}`" not in text:
+            problems.append(f"stale release doc: {doc} does not name `{version}`; update its status/what's new "
+                            "against the CHANGELOG entry and retry: python3 scripts/version.py --release")
+    return problems
 
 
 def changelog_check(version):

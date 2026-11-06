@@ -24,7 +24,19 @@ class Version(unittest.TestCase):
             shutil.copytree(ROOT / rel, self.tmp / rel, ignore=shutil.ignore_patterns("__pycache__"))
         (self.tmp / ".claude").mkdir()
         shutil.copy(ROOT / ".claude" / "gw.json", self.tmp / ".claude" / "gw.json")
+        self.set_gw(releaseDocs=None)  # this repo's own releaseDocs would need its READMEs in every temp repo
         shutil.copy(ROOT / "CHANGELOG.md", self.tmp / "CHANGELOG.md")
+
+    def set_gw(self, **keys):
+        """Set (or, with None, drop) top-level keys of the temp repo's .claude/gw.json."""
+        gw = self.tmp / ".claude" / "gw.json"
+        data = json.loads(gw.read_text())
+        for key, value in keys.items():
+            if value is None:
+                data.pop(key, None)
+            else:
+                data[key] = value
+        gw.write_text(json.dumps(data))
 
     def test_this_repo_markers_match_plugin_json(self):
         r = run(ROOT)
@@ -229,6 +241,58 @@ class Version(unittest.TestCase):
         self.fill_entry("9.8.7")
         self.commit_all("harvest")
         r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def release_with_docs(self, docs, readmes, key=True):
+        """A bumped, filled-in, harvested release (9.8.7) whose releaseDocs are `docs` (the key is left out with
+        key=False) and whose files are `readmes` ({path: text}), all committed in HEAD."""
+        tmp = self.tmp
+        self.git("init", "-q")
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.fill_entry("9.8.7")
+        self.harvest()
+        if key:
+            self.set_gw(releaseDocs=docs)
+        for path, text in readmes.items():
+            (tmp / path).write_text(text)
+        self.commit_all("release")
+        return run(tmp, "--release")
+
+    def test_release_docs_must_name_the_version_being_released(self):
+        r = self.release_with_docs(["README.md", "README.es.md"],
+                                   {"README.md": "Status: `9.8.7`\n", "README.es.md": "Estado: `9.8.7`\n"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_a_release_doc_naming_an_old_version_fails_with_the_fix(self):
+        r = self.release_with_docs(["README.md", "README.es.md"],
+                                   {"README.md": "Status: `9.8.7`\n", "README.es.md": f"Estado: `{VERSION}`\n"})
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("stale release doc: README.es.md does not name `9.8.7`", r.stdout)
+        self.assertNotIn("README.md does not", r.stdout)
+        self.assertIn("retry: python3 scripts/version.py --release", r.stdout)
+
+    def test_a_version_without_backticks_does_not_count_as_named(self):
+        r = self.release_with_docs(["README.md"], {"README.md": "Status: 9.8.7 and `19.8.7`\n"})
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("stale release doc: README.md does not name `9.8.7`", r.stdout)
+
+    def test_a_release_doc_missing_in_head_fails(self):
+        r = self.release_with_docs(["README.md", "NOPE.md"], {"README.md": "`9.8.7`\n"})
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("missing release doc: NOPE.md (releaseDocs) is not in HEAD", r.stdout)
+        self.set_gw(releaseDocs=["LATE.md"])
+        self.commit_all("config only")
+        (self.tmp / "LATE.md").write_text("`9.8.7`\n")  # only in the working tree
+        self.assertIn("missing release doc: LATE.md", run(self.tmp, "--release").stdout)
+
+    def test_no_release_docs_means_no_check(self):
+        r = self.release_with_docs([], {"README.md": f"`{VERSION}`\n"})
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_an_absent_release_docs_key_means_no_check(self):
+        r = self.release_with_docs(None, {"README.md": f"`{VERSION}`\n"}, key=False)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
     def release_harvesting_into(self, folder, gw_keys, uncommitted=None):
