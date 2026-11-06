@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). Los arreglos del CI de Ubuntu y macOS (`66a4ecd`) están en esta rama; `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.5.0` |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **Recogida H16 decidida (2026-11-05)**: el usuario aprobó las 8; arreglos B20, D57-D60 a la `0.5.2` (esta rama) y evolutivos D61-D63 a la `0.7` (por encima de la menor en obra). La **`0.6.0` se monta en `version/0.6.0`** (creada desde esta rama; se deja hecha **sin publicar**, para que la `0.5` ruede más en los proyectos); los parches `0.5.x` siguen aquí y se fusionan en ella. Oleada de la `0.5.2` en curso (2026-11-05): B20 y D57-D60 fusionados (D58: bloques `<!-- if clave -->` en `apply.py`, opción del usuario). Siguiente: check de la oleada en verde, subir y limpiar los worktrees `agent/*`; luego D64, B21 y D65 (bucle de compactaciones en un proyecto con corte a 140k: va antes que lo demás de la `0.6`). Presupuesto de compactaciones: 2 |
+| Siguiente paso | **Recogida H16 decidida (2026-11-05)**: el usuario aprobó las 8; arreglos B20, D57-D60 a la `0.5.2` (esta rama) y evolutivos D61-D63 a la `0.7` (por encima de la menor en obra). La **`0.6.0` se monta en `version/0.6.0`** (creada desde esta rama; se deja hecha **sin publicar**, para que la `0.5` ruede más en los proyectos); los parches `0.5.x` siguen aquí y se fusionan en ella. Oleada de la `0.5.2` en curso (2026-11-05): B20 y D57-D60 fusionados (D58: bloques `<!-- if clave -->` en `apply.py`, opción del usuario). Siguiente: check de la oleada en verde, subir y limpiar los worktrees `agent/*`; luego D66 (en curso: `releaseDocs` en `version.py --release`), D64, B21 y D65 (bucle de compactaciones en un proyecto con corte a 140k: va antes que lo demás de la `0.6`). Presupuesto de compactaciones: 2 |
 
 ### Fases
 
@@ -41,11 +41,11 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-05 — B21 y D65 apuntadas en la 0.6: guarda del contexto de arranque (aviso al 25 %, alarma al 50 %, con el culpable) e historizar la bitácora; medido ~82k de 200k tras /clear
-2. 2026-11-05 — D58: apply.py resuelve bloques <!-- if clave --> (la bitácora solo explica logRows si está encendido) y close-row sale con 1 con logRows apagado
-3. 2026-11-05 — D57, D59 y D60 fusionados (harvest sigue renombrados; commitNext true en la plantilla; AGENTS.md nombra set-row y close-row); D58: close-row sale con 1 con logRows apagado
-4. 2026-11-05 — B20: measure.py mide el registro de un subagente (todas sus líneas con isSidechain) como uno principal; D64 apuntada en la 0.5.2 (gw-selector: línea del modelo de sesión y del orquestador)
-5. 2026-11-05 — H16: recogida de la 0.6 (gw-harvest), 8 propuestas aprobadas: B20, D57-D60 a la 0.5.2 y D61-D63 a la 0.7; rama version/0.6.0 creada
+1. 2026-11-06 — D66 y A10 apuntadas (repaso de docs en cada versión, con releaseDocs en version.py --release; hoja mkt-workflow para clientes en la 0.6); README y contributing al día con la 0.5.1 (seguían en 0.4.3)
+2. 2026-11-05 — B21 y D65 apuntadas en la 0.6: guarda del contexto de arranque (aviso al 25 %, alarma al 50 %, con el culpable) e historizar la bitácora; medido ~82k de 200k tras /clear
+3. 2026-11-05 — D58: apply.py resuelve bloques <!-- if clave --> (la bitácora solo explica logRows si está encendido) y close-row sale con 1 con logRows apagado
+4. 2026-11-05 — D57, D59 y D60 fusionados (harvest sigue renombrados; commitNext true en la plantilla; AGENTS.md nombra set-row y close-row); D58: close-row sale con 1 con logRows apagado
+5. 2026-11-05 — B20: measure.py mide el registro de un subagente (todas sus líneas con isSidechain) como uno principal; D64 apuntada en la 0.5.2 (gw-selector: línea del modelo de sesión y del orquestador)
 
 ## Pendiente
 

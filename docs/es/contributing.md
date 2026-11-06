@@ -78,7 +78,7 @@ La versión sigue [SemVer](https://semver.org/lang/es/) y vive **solo** en `.cla
 | Skill o gancho nuevos, o una mejora compatible | **menor** |
 | Arreglos | **parche** |
 
-Solo la última menor publicada recibe parches (plan §7): una recogida manda las correcciones a su siguiente parche (hoy `0.4.x`) y los evolutivos a la siguiente menor (hoy la `0.5`), según el [roadmap](../roadmap.md).
+Solo la última menor publicada recibe parches (plan §7): una recogida manda las correcciones a su siguiente parche (hoy `0.5.x`) y los evolutivos a la siguiente menor que no esté en obra (hoy la `0.7`, con la `0.6` en obra), según el [roadmap](../roadmap.md).
 
 Cada versión tiene una entrada en [`CHANGELOG.md`](../../CHANGELOG.md) con `### ES` y `### EN`, ambas con el mismo
 contenido; el check falla si la versión de `plugin.json` no tiene entrada. Al subir la versión, el `metadata.version` de

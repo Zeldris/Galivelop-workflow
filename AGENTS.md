@@ -74,6 +74,9 @@ Los comprueba el `commit-msg` (`commitFormat`, `commitRefs`, `commitNext` y `age
   3. **Cierre:** si la fase 2 trajo código, `/code-review` de esos commits; luego `bash scripts/reviewed.sh` y la
      subida (el `pre-push` exige la marca).
 - `main` = última versión publicada: es lo que instalan otros proyectos (plan §7).
+- **Cada versión repasa la documentación** (usuario, 2026-11-06): antes de la fase 1, los README, `docs/es/` ↔
+  `docs/en/` y el roadmap se contrastan con su entrada del CHANGELOG y se dejan al día; `version.py --release` exige
+  que los archivos de `releaseDocs` nombren la versión (D66).
 - **Tras la subida a `main`**, se escribe `docs/records/release-vX.Y.Z.md` (como `release-v0.4.0.md`) con el título
   y el cuerpo de la release, cada uno en un bloque listo para pegar, y se dan al usuario sin que los pida. **Se le
   pregunta siempre** si la crea él a mano o se lanza sola subiendo la etiqueta (`release.yml`); si el proxy de la nube

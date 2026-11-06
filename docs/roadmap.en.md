@@ -122,12 +122,14 @@ In this order, because each step uses the previous one.
 | D64 | `gw-selector`: the model line keeps the session and the subagents apart and gives the current one (`Session: <recommended> (current: <X>; /model to change it) · Subagents: <rung> · Skill: <y>`); when the session orchestrates with `gw-orchestrate-dealer`, its model is that of the riskiest row it deals out, medium at least (user, 2026-11-05) | pending |
 | B21 | Start-up context and compaction-loop guard: after a `/clear` or a compaction, `measure.py` reads the first turn's usage from the log (`input` + `cache_read` + `cache_creation`) and compares it with the **auto-compaction cut-off** (key in `.claude/gw.json`; the model's by default), not with the window. `SessionStart` warns above 25 % and alarms above 50 % (keys); if start-up passes the threshold again after a compaction, it is a loop: alarm and stop, with the "Compaction budget". The warning names the culprit with a deterministic breakdown (log, `AGENTS.md`/`CLAUDE.md`, hook output, skills and tools, rest of the system) and the command that fixes it. Real case: a project with a 140k cut-off looped because re-reading the context took 70 %; here, ~82k of 200k after `/clear` with the log at ~9k (user, 2026-11-05) | pending |
 | D65 | Archive the log: a total size cap for `docs/handoff.md` (key in `.claude/gw.json`) that `handoff.py check` warns about and B21 uses as a culprit; `handoff.py archive` moves the "Pending" items and minor findings of already published versions to `docs/records/handoff-archive.md` (not read at start), leaving one line with the link; after a compaction, `recover.py` and `SessionStart` re-read only the state and the next step (user, 2026-11-05) | pending |
+| D66 | Each version reviews the documentation for people (`README.md` ↔ `README.es.md`, `docs/es/` ↔ `docs/en/`, roadmap) against its CHANGELOG before the push to `main` (`AGENTS.md`); `version.py --release` fails if a file in `releaseDocs` (a `.claude/gw.json` key; default `[]`, here both READMEs) does not name the version being released. Real case: `0.5.1` shipped with the README at "Status: `0.4.3`" (user, 2026-11-06) | pending |
 
 ## `0.6` "Measure"
 
 | Id | Task | State |
 |---|---|---|
 | H16 | `0.6` harvest (`gw-harvest`) and its proposals, to the user | done (B20, D57-D60 to `0.5.2`; D61-D63 to `0.7`) |
+| A10 | Workflow presentation sheet for clients: `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (what it solves, how work runs, what it guarantees), with its HTML and final PDF generated from the `.md` by a script so they do not drift; reviewed on each version (D66) (user, 2026-11-06) | pending |
 | B1 | `Stop` hook that reads the session logs | pending |
 | B2 | `docs/metrics/ledger.jsonl` in the repo | pending |
 | B3 | What is stored: tokens by model and type, date, branch, `Refs`, subagent; prices in a dated table | pending |

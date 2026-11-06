@@ -78,7 +78,7 @@ The version follows [SemVer](https://semver.org/) and lives **only** in `.claude
 | A new skill or hook, or a compatible improvement | **minor** |
 | Fixes | **patch** |
 
-Only the latest published minor gets patches (plan §7): a harvest sends fixes to its next patch (`0.4.x` today) and new features to the next minor (`0.5` today), following the [roadmap](../roadmap.en.md).
+Only the latest published minor gets patches (plan §7): a harvest sends fixes to its next patch (`0.5.x` today) and new features to the next minor not yet under way (`0.7` today, with `0.6` being built), following the [roadmap](../roadmap.en.md).
 
 Each version has an entry in [`CHANGELOG.md`](../../CHANGELOG.md) with `### ES` and `### EN`, both with the same
 content; the check fails when `plugin.json`'s version has no entry. When the version goes up, **every** skill's
