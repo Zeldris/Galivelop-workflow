@@ -19,6 +19,7 @@ Lo que esté aquí sin su archivo de bloque sigue en bruto, no decidido.
 | 6 | **E. Reglas deterministas, pruebas de front, documentación** | Limpieza y calidad; usa A (público) y D (dónde) | cerrado: [`E-quality.md`](E-quality.md) |
 | 7 | **G. Management Center (MMC)** | Consume todo lo anterior; el final del roadmap | cerrado: [`G-mmc.md`](G-mmc.md) |
 | 8 | **H. Roadmap y mapa de versiones** | Reparte lo diseñado en versiones `1.0.0+` | cerrado: [`H-roadmap.md`](H-roadmap.md) |
+| 9 | **I. Ciclo de vida y autoridad:** ficha de tarea, hecho por entorno, aprobaciones | Une C, D y G con lo nuevo de H17; reabre D9, D17 y G8 | abierto (2026-11-08): [`I-lifecycle.md`](I-lifecycle.md), pendiente de `grilling` |
 
 ## A. Marco (decisiones ya tomadas por el usuario; se apuntan, no se discuten)
 

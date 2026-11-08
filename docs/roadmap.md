@@ -12,7 +12,7 @@ con su versión en cada línea (H12).
 
 - Cada tarea lleva la letra de su bloque de diseño y un número sin guion: `B3` es la pregunta 3 de
   [`B-measurement.md`](design/B-measurement.md). Los bloques: A marco, B medición y modelos, C preguntas y modos, D git, E
-  calidad, G Management Center (MMC), H roadmap.
+  calidad, G Management Center (MMC), H roadmap, I ciclo de vida y autoridad ([`I-lifecycle.md`](design/I-lifecycle.md)).
 - Una tarea nueva toma el siguiente número libre de su bloque; un número nunca se reutiliza, ni el de una tarea
   descartada. Las tareas del bloque A que salen de sus apartados y no de una pregunta empiezan en `A7` (sus preguntas
   llegan a `A-6`).
@@ -130,7 +130,7 @@ En este orden, porque cada paso usa el anterior.
 | Id | Tarea | Estado |
 |---|---|---|
 | H16 | Recogida de la `0.6` (`gw-harvest`) y sus propuestas, al usuario | hecho (B20, D57-D60 a la `0.5.2`; D61-D63 a la `0.7`) |
-| H17 | Notas del usuario (SDD, DDD, TDD, exploración, ficha de tarea, hecho por entorno) y cuatro repos (mayoral-harness, gstack, moyu, index), repartidas en propuestas: [`2026-11-08-notes-and-references.md`](proposals/2026-11-08-notes-and-references.md) (usuario, 2026-11-08) | en curso |
+| H17 | Notas del usuario (SDD, DDD, TDD, exploración, ficha de tarea, hecho por entorno) y cuatro referencias externas, repartidas en propuestas: [`2026-11-08-notes-and-references.md`](proposals/2026-11-08-notes-and-references.md); aprobadas las 13 y las 5 preguntas (usuario, 2026-11-08); el diseño que las une, [`I-lifecycle.md`](design/I-lifecycle.md), abierto hasta su `grilling` | en curso |
 | A10 | Hoja de presentación del flujo para clientes: `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (qué resuelve, cómo se trabaja, qué garantiza), con su HTML y su PDF final generados desde el `.md` por un script, para que no se desfasen; se repasa en cada versión (D66) (usuario, 2026-11-06) | pendiente |
 | B1 | Gancho `Stop` que lee los logs de sesión | pendiente |
 | B2 | `docs/metrics/ledger.jsonl` en el repo | pendiente |
@@ -150,7 +150,7 @@ En este orden, porque cada paso usa el anterior.
 | D48 | `handoff.py next-id <prefijo>`: el siguiente id libre mirando las ramas remotas antes de numerar, con `free_id` (recogida `0.5.1`, world-maker-fantasy P2) | pendiente |
 | D43 | Tamaño de commit y de revisión: avisar, sin bloquear, de un commit de más de ~400 líneas cambiadas (LOC); la unidad de revisión es el bloque o tarea de ~1000 líneas, revisado al cerrarse (B18), y el PR a `main` suma bloques ya revisados. No cuentan los documentos emparejados, las copias instaladas de `.claude/gw/` ni lo generado; los umbrales, en `.claude/gw.json` (usuario, 2026-11-04) | pendiente |
 | D49 | El `pre-push` de una rama que no es `main` exige solo los tests relacionados (`related-tests.sh`); el check completo pasa a la subida a `main` y a los cambios de entorno. El CI de GitHub sigue completo en cada push, sin bloquear, y se mira al cerrar cada bloque con `ci-status.py`; absorbe parte de D44 (usuario, 2026-11-04) | pendiente |
-| D50 | Commits con traza: los `feat`/`fix` (y un `refactor` grande) llevan en el cuerpo `Técnica:` (la decisión y lo descartado) y `Problemas:` (qué falló y cómo se resolvió, o «ninguno»). El `commit-msg` comprueba que estén, con los tipos en `.claude/gw.json`; `REVIEW.md` pide su calidad como regla de criterio y la retro la repasa. Quedan fuera `docs`, `WIP` y la marca de revisión (usuario, 2026-11-04) | pendiente |
+| D50 | Commits con traza: los `feat`/`fix` (y un `refactor` grande) llevan en el cuerpo `Técnica:` (la decisión y lo descartado) y `Problemas:` (qué falló y cómo se resolvió, o «ninguno»). El `commit-msg` comprueba que estén, con los tipos en `.claude/gw.json`; `REVIEW.md` pide su calidad como regla de criterio y la retro la repasa. Quedan fuera `docs`, `WIP` y la marca de revisión (usuario, 2026-11-04). **Absorbida por C11** (usuario, 2026-11-08): el razonamiento va a la ficha y el commit solo resume | absorbida por C11 |
 | D53 | `ownedFiles` en `.claude/gw.json`: archivos del flujo que el proyecto hizo suyos; `apply.py --check` no los da por desviados y `doctor.py` no recomienda `/gw-update` por ellos (recogida de cierre `0.5.1`, world-maker-fantasy P3) | pendiente |
 | D54 | `ciOnPush` en `.claude/gw.json`: `check.yml` corre en cada push o solo en los PR, sin editarlo (recogida de cierre `0.5.1`, world-maker-fantasy P4) | pendiente |
 | B19 | `gw-update` reparte la reconciliación de cada `.gw-new` a un subagente que devuelve la tabla de desvíos; el `/code-review` de la rama de actualización deja fuera las copias idénticas del flujo (recogida de cierre `0.5.1`, world-maker-fantasy P5) | pendiente |
@@ -175,6 +175,14 @@ En este orden, porque cada paso usa el anterior.
 | D61 | `handoff.py preflight`: lo que el `pre-push` comprueba en la bitácora (fecha de «Actualizado», ids que chocan con `main`), sin subir; en el `check` de la plantilla (recogida `0.6`, private-project-1 P1) | pendiente |
 | D62 | El `pre-push` avisa, sin bloquear, si el último CI de la rama está en rojo (`ci-status.py`, si hay `gh`) (recogida `0.6`, image-generator P5) | pendiente |
 | D63 | `templates/github/check.yml` con `workflow_call`: un `release.yml` lo llama con `uses:` y `needs:` en vez de copiar sus pasos; el del flujo también (recogida `0.6`, image-generator P6) | pendiente |
+| A11 | Los cuatro modos de trabajo en el plan, `AGENTS.md` y `gw-selector`: SDD siempre (ficha), DDD con dominio, TDD con comportamiento testeable, exploración acotada (H17 P2; usuario, 2026-11-08) | pendiente |
+| C11 | Ficha de tarea (`docs/tasks/<id>.md`, `taskRecord`): SDD, criterios de aceptación, archivos previstos y decision log por agente; obligatoria en `feat`/`fix`/`hotfix` con código, comprobada por el `commit-msg`; `close-row` exige las casillas; absorbe D50 (H17 P1; usuario, 2026-11-08) | pendiente |
+| C12 | Rama de exploración `spike/<tema>` sin ficha ni `Refs:`, que el `pre-push` y `merge-branch.sh` no dejan fusionar en una rama de trabajo (H17 P2) | pendiente |
+| C13 | Alcance congelado (`scopeGuard`): aviso o bloqueo al tocar un archivo fuera de `Files` de la ficha, `pre-commit` como respaldo, requisito nuevo = tarea nueva, registro de desviaciones para la retro (H17 P3) | pendiente |
+| D68 | Fragmentos de CHANGELOG por rama (`changelog.d/`), plegados por `merge-branch.sh` o `version.py --release` (H17 P10) | pendiente |
+| E32 | `permissions.deny` de lectura para secretos y gancho `PreToolUse` sobre `cat`/`grep` de esos archivos, con test; en `docs/es/`, qué sale hacia el proveedor (H17 P6) | pendiente |
+| E33 | Contrato de revisión con anclas en `REVIEW.md`: `ruta:línea | severidad | ancla | problema. arreglo.`; sin ancla, observación (H17 P7) | pendiente |
+| E35 | Registro de pruebas inestables (`flaky`): el check apunta lo que falla y pasa al reintentar y propone arreglarlo tras N veces (H17 P12) | pendiente |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.7` | pendiente |
 
 ## `0.8` «Front y otros agentes»
@@ -199,6 +207,8 @@ En este orden, porque cada paso usa el anterior.
 | E30 | Revisión de valores configurables: umbrales, rutas y comportamientos fijos en el código pasan a `.claude/gw.json` y `docs/es/config.md` (regla «Todo configurable», G4; usuario, 2026-11-05) | pendiente |
 | E31 | Refactorización y mantenimiento de los `.md`: duplicados, un dato en un solo sitio, tamaños y texto obsoleto, con `writing-for-agents` (usuario, 2026-11-05) | pendiente |
 | G2 | Salidas JSON con versión en los scripts que use el MMC | pendiente |
+| E34 | `scripts/audit.py`: solapes y duplicados entre `AGENTS.md`, skills y `docs/`, con el dueño del dato y los tokens que ahorra; lo usan `gw-opt-tokens`, E31 y el MMC (H17 P9) | pendiente |
+| E36 | Pruebas de comportamiento de las skills (un par de casos por skill, a mano antes de cada versión) (H17 P13) | pendiente |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.9` | pendiente |
 
 ## `1.0` — MMC 1, solo lectura
@@ -224,7 +234,10 @@ En este orden, porque cada paso usa el anterior.
 | G8 | Entornos y roles en el MMC | pendiente |
 | D9 | Entornos configurables (`environments` en `gw.json`) y nuevos | pendiente |
 | D10 | Etiquetas `rc` en `uat` | pendiente |
-| D17 | Roles, con la comprobación del usuario de git por entorno | pendiente |
+| D17 | Roles, con la comprobación del usuario de git por entorno (capa de aviso; la autoridad la da la protección de ramas; reabierta en [`I-lifecycle.md`](design/I-lifecycle.md)) | pendiente |
+| D67 | Hecho por entorno y aprobaciones: `environments[].done/approvers/requires`, `promote.py` (mismo sha, trailer `Approved-by: <rol> <usuario>`, etiqueta), `pre-push` del destino que lo exige; fusionar fuera del entorno de desarrollo lo hace una persona con rol (H17 P4; usuario, 2026-11-08) | pendiente |
+| I1 | `riskPaths`: rutas de riesgo que exigen plan de vuelta atrás en la ficha y aprobador humano en cualquier entorno | pendiente |
+| I2 | Declaraciones del proyecto para `prod` (`environments[].requires`: vuelta atrás, observabilidad, humo) en `docs/records/declarations/`, con fecha y caducidad | pendiente |
 
 ## Después, sin versión
 

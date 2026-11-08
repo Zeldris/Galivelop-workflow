@@ -1,7 +1,8 @@
 # D. Git: entornos, releases, tags, trazabilidad, roles
 
 **Estado:** cerrado (2026-11-01): las 17 preguntas, decididas por el usuario. Se implementa según el mapa de
-versiones (bloque H).
+versiones (bloque H). **D9, D10 y D17 se reabren desde [`I-lifecycle.md`](I-lifecycle.md)** (2026-11-08): un entorno
+pasa a ser rama + hecho + aprobadores + requisitos, y la comprobación del usuario de git es capa de aviso.
 
 ## Respuestas del usuario (2026-11-01)
 

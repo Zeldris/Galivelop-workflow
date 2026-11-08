@@ -12,7 +12,7 @@ task's design is in [`docs/design/`](design/README.md) (Spanish); the split, in 
 
 - Each task has its design block's letter and a number with no hyphen: `B3` is question 3 of
   [`B-measurement.md`](design/B-measurement.md). The blocks: A framework, B measurement and models, C questions and modes, D
-  git, E quality, G Management Center (MMC), H roadmap.
+  git, E quality, G Management Center (MMC), H roadmap, I lifecycle and authority ([`I-lifecycle.md`](design/I-lifecycle.md)).
 - A new task takes the next free number of its block; a number is never reused, not even a dropped task's. Block A's
   tasks that come from its sections rather than a question start at `A7` (its questions go up to `A-6`).
 - Questions that only decided something (for example D1, D2 or D4) are not tasks and are not listed.
@@ -129,7 +129,7 @@ In this order, because each step uses the previous one.
 | Id | Task | State |
 |---|---|---|
 | H16 | `0.6` harvest (`gw-harvest`) and its proposals, to the user | done (B20, D57-D60 to `0.5.2`; D61-D63 to `0.7`) |
-| H17 | User notes (SDD, DDD, TDD, exploration, task record, done per environment) and four repos (mayoral-harness, gstack, moyu, index), split into proposals: [`2026-11-08-notes-and-references.md`](proposals/2026-11-08-notes-and-references.md) (user, 2026-11-08) | in progress |
+| H17 | User notes (SDD, DDD, TDD, exploration, task record, done per environment) and four external references, split into proposals: [`2026-11-08-notes-and-references.md`](proposals/2026-11-08-notes-and-references.md); all 13 and the 5 questions approved (user, 2026-11-08); the design that joins them, [`I-lifecycle.md`](design/I-lifecycle.md), open until its `grilling` | in progress |
 | A10 | Workflow presentation sheet for clients: `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (what it solves, how work runs, what it guarantees), with its HTML and final PDF generated from the `.md` by a script so they do not drift; reviewed on each version (D66) (user, 2026-11-06) | pending |
 | B1 | `Stop` hook that reads the session logs | pending |
 | B2 | `docs/metrics/ledger.jsonl` in the repo | pending |
@@ -149,7 +149,7 @@ In this order, because each step uses the previous one.
 | D48 | `handoff.py next-id <prefix>`: the next free id looking at the remote branches before numbering, with `free_id` (`0.5.1` harvest, world-maker-fantasy P2) | pending |
 | D43 | Commit and review size: warn, without blocking, about a commit of more than ~400 changed lines (LOC); the review unit is the block or task of ~1000 lines, reviewed when it closes (B18), and the PR to `main` adds up already-reviewed blocks. Paired docs, the installed copies under `.claude/gw/` and generated files do not count; the thresholds, in `.claude/gw.json` (user, 2026-11-04) | pending |
 | D49 | The `pre-push` of a branch other than `main` requires only the related tests (`related-tests.sh`); the full check moves to the push to `main` and to environment changes. The GitHub CI keeps running in full on every push, without blocking, and is checked at each block close with `ci-status.py`; absorbs part of D44 (user, 2026-11-04) | pending |
-| D50 | Traceable commits: `feat`/`fix` commits (and a large `refactor`) carry `Técnica:` (the decision and what was discarded) and `Problemas:` (what failed and how it was solved, or «ninguno») in the body. The `commit-msg` checks they are there, with the types in `.claude/gw.json`; `REVIEW.md` asks for their quality as a judgement rule and the retro goes over it. `docs`, `WIP` and the review mark are exempt (user, 2026-11-04) | pending |
+| D50 | Traceable commits: `feat`/`fix` commits (and a large `refactor`) carry `Técnica:` (the decision and what was discarded) and `Problemas:` (what failed and how it was solved, or «ninguno») in the body. The `commit-msg` checks they are there, with the types in `.claude/gw.json`; `REVIEW.md` asks for their quality as a judgement rule and the retro goes over it. `docs`, `WIP` and the review mark are exempt (user, 2026-11-04). **Absorbed by C11** (user, 2026-11-08): the reasoning goes to the task record and the commit only summarises | absorbed by C11 |
 | D53 | `ownedFiles` in `.claude/gw.json`: workflow files the project made its own; `apply.py --check` does not report them as drifted and `doctor.py` does not recommend `/gw-update` for them (`0.5.1` closing harvest, world-maker-fantasy P3) | pending |
 | D54 | `ciOnPush` in `.claude/gw.json`: `check.yml` runs on every push or only on PRs, without editing it (`0.5.1` closing harvest, world-maker-fantasy P4) | pending |
 | B19 | `gw-update` deals the reconciliation of each `.gw-new` to a subagent that returns the drift table; the `/code-review` of the update branch leaves out identical workflow copies (`0.5.1` closing harvest, world-maker-fantasy P5) | pending |
@@ -174,6 +174,14 @@ In this order, because each step uses the previous one.
 | D61 | `handoff.py preflight`: what the `pre-push` checks in the log (the "Updated" date, ids clashing with `main`), without pushing; in the template's `check` (`0.6` harvest, private-project-1 P1) | pending |
 | D62 | The `pre-push` warns, without blocking, when the branch's last CI is red (`ci-status.py`, when `gh` is there) (`0.6` harvest, image-generator P5) | pending |
 | D63 | `templates/github/check.yml` with `workflow_call`: a `release.yml` calls it with `uses:` and `needs:` instead of copying its steps; the workflow's own too (`0.6` harvest, image-generator P6) | pending |
+| A11 | The four working modes in the plan, `AGENTS.md` and `gw-selector`: SDD always (task record), DDD with a domain, TDD with testable behaviour, bounded exploration (H17 P2; user, 2026-11-08) | pending |
+| C11 | Task record (`docs/tasks/<id>.md`, `taskRecord`): SDD, acceptance criteria, planned files and a decision log per agent; required for `feat`/`fix`/`hotfix` with code, checked by the `commit-msg`; `close-row` requires the boxes; absorbs D50 (H17 P1; user, 2026-11-08) | pending |
+| C12 | Exploration branch `spike/<topic>` with no record and no `Refs:`, which the `pre-push` and `merge-branch.sh` refuse to merge into a working branch (H17 P2) | pending |
+| C13 | Frozen scope (`scopeGuard`): warning or block when touching a file outside the record's `Files`, `pre-commit` as fallback, new requirement = new task, deviation log for the retro (H17 P3) | pending |
+| D68 | CHANGELOG fragments per branch (`changelog.d/`), folded by `merge-branch.sh` or `version.py --release` (H17 P10) | pending |
+| E32 | Read `permissions.deny` for secrets and a `PreToolUse` hook on `cat`/`grep` of those files, with a test; in `docs/en/`, what goes out to the provider (H17 P6) | pending |
+| E33 | Review contract with anchors in `REVIEW.md`: `path:line | severity | anchor | problem. fix.`; no anchor, an observation (H17 P7) | pending |
+| E35 | Flaky test ledger (`flaky`): the check records what fails and passes on retry and proposes a fix after N times (H17 P12) | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.7` | pending |
 
 ## `0.8` "Front end and other agents"
@@ -198,6 +206,8 @@ In this order, because each step uses the previous one.
 | E30 | Configurable-values review: thresholds, paths and behaviours still fixed in code move to `.claude/gw.json` and `docs/en/config.md` ("Everything configurable" rule, G4; user, 2026-11-05) | pending |
 | E31 | Refactoring and upkeep of the `.md` files: duplicates, one fact in one place, sizes and stale text, with `writing-for-agents` (user, 2026-11-05) | pending |
 | G2 | Versioned JSON output in the scripts the MMC uses | pending |
+| E34 | `scripts/audit.py`: overlaps and duplicates across `AGENTS.md`, skills and `docs/`, with each datum's owner and the tokens it saves; used by `gw-opt-tokens`, E31 and the MMC (H17 P9) | pending |
+| E36 | Behaviour tests for the skills (a couple of cases per skill, run by hand before each version) (H17 P13) | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.9` | pending |
 
 ## `1.0` — MMC 1, read-only
@@ -223,7 +233,10 @@ In this order, because each step uses the previous one.
 | G8 | Environments and roles in the MMC | pending |
 | D9 | Configurable (`environments` in `gw.json`) and new environments | pending |
 | D10 | `rc` tags on `uat` | pending |
-| D17 | Roles, with the git user check per environment | pending |
+| D17 | Roles, with the git user check per environment (a warning layer; authority comes from branch protection; reopened in [`I-lifecycle.md`](design/I-lifecycle.md)) | pending |
+| D67 | Done per environment and approvals: `environments[].done/approvers/requires`, `promote.py` (same sha, `Approved-by: <role> <user>` trailer, tag), destination `pre-push` that requires it; merging outside the development environment is done by a person with a role (H17 P4; user, 2026-11-08) | pending |
+| I1 | `riskPaths`: risky paths that require a rollback plan in the record and a human approver in any environment | pending |
+| I2 | Project declarations for `prod` (`environments[].requires`: rollback, observability, smoke) in `docs/records/declarations/`, dated and expiring | pending |
 
 ## Later, no version yet
 

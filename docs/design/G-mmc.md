@@ -1,6 +1,7 @@
 # G. Management Center (MMC)
 
-**Estado:** cerrado (2026-11-01): las 10 preguntas, aprobadas por el usuario según la recomendación del agente («Del 1 al 10 todo ok»). Nada se implementa hasta cerrar el diseño (bloque H).
+**Estado:** cerrado (2026-11-01): las 10 preguntas, aprobadas por el usuario según la recomendación del agente («Del 1 al 10 todo ok»). Nada se implementa hasta cerrar el diseño (bloque H). **La 8 se reabre desde [`I-lifecycle.md`](I-lifecycle.md)** (2026-11-08): el MMC muestra el estado de cada
+entorno (sha, aprobación que falta, declaración que caduca) y edita su configuración; nunca aprueba ni fusiona.
 
 Fuentes: [`README.md`](README.md) (bloque G); lo que el MMC tiene que mostrar o configurar sale de los bloques B, C y D
 (medición, modos, entornos, roles, `trace.py`); ideas de OpenHands, thinkrail y opencode en `docs/research/ref-*.md`.
