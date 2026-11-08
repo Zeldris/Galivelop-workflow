@@ -184,6 +184,7 @@ En este orden, porque cada paso usa el anterior.
 | E32 | `permissions.deny` de lectura para secretos y gancho `PreToolUse` sobre `cat`/`grep` de esos archivos, con test; en `docs/es/`, qué sale hacia el proveedor (H17 P6) | pendiente |
 | E33 | Contrato de revisión con anclas en `REVIEW.md`: `ruta:línea | severidad | ancla | problema. arreglo.`; sin ancla, observación (H17 P7) | pendiente |
 | E35 | Registro de pruebas inestables (`flaky`): el check apunta lo que falla y pasa al reintentar y propone arreglarlo tras N veces (H17 P12) | pendiente |
+| A12 | Idiomas configurables en un bloque `languages` de `.claude/gw.json`: `code` (código, nombres y comentarios; sustituye la regla fija de A8), `docs.primary` y `docs.others` (doc interna, bitácora, roadmap y commits; el emparejado `docs/es` ↔ `docs/en` los lee), `public.primary` y `public.others` (README, release, publicaciones) y `ui` (hoy `visibleLanguages`); el idioma del agente (en el que hablan usuario y agente) va por usuario en `~/.claude/gw.json`, identificado por `git config user.email`, con el principal de la doc como respaldo; `language` y `visibleLanguages` migran con `apply.py --update`; el MMC lo edita en la `1.1` (usuario, 2026-11-08) | pendiente |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.7` | pendiente |
 
 ## `0.8` «Front y otros agentes»
