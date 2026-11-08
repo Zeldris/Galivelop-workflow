@@ -64,7 +64,7 @@ class Conventional(Msg):
 
     def test_accepted_forms(self):
         for subject in ("feat: add x", "fix(D11): y", "feat(D11)!: breaking", "refactor(a-b c): z", "WIP: feat(D11): x",
-                        "WIP: fix: x", "fixup! feat: x", "squash! whatever", "amend! whatever", 'Revert "feat: x"',
+                        "WIP: fix: x", "hotfix(D69): urgent", "fixup! feat: x", "squash! whatever", "amend! whatever", 'Revert "feat: x"',
                         "Merge branch 'x'", 'Reapply "feat: x"'):
             with self.subTest(subject=subject):
                 self.accepted(subject + "\n\nbody")
