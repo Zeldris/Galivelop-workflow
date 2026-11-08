@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). Los arreglos del CI de Ubuntu y macOS (`66a4ecd`) están en esta rama; `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.5.0` |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **Bloque I cerrado (2026-11-08):** `grilling` hecho (12 respuestas en `docs/design/I-lifecycle.md`), H17 `hecho`, D69 (`hotfix`) en la `0.5.2` y E37 (citas de repos) en la `0.9`. **Siguiente:** D69 en esta rama (una línea en `commitFormat`, `version.py` y su test); después, limpiar los worktrees `agent/*` y D64, B21 y D65 (van antes que lo demás de la `0.6`). Marco (H16, 2026-11-05): los parches `0.5.x` van aquí y se fusionan en `version/0.6.0`, que se deja hecha **sin publicar**; los evolutivos D61-D63, a la `0.7`. Presupuesto de compactaciones: 1 |
+| Siguiente paso | **D69 hecha (2026-11-08):** tipo `hotfix` en `commitFormat` (`commit-message.py` y su copia en `.claude/gw/scripts/`) y en `version.py` (cuenta como parche), con tests y `config.md` es/en; D69 y E37 añadidas al roadmap inglés. **Siguiente:** limpiar los worktrees `agent/*`; después D64, B21 y D65 (van antes que lo demás de la `0.6`). Marco (H16, 2026-11-05): los parches `0.5.x` van aquí y se fusionan en `version/0.6.0`, que se deja hecha **sin publicar**; los evolutivos D61-D63, a la `0.7`. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -41,11 +41,11 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-08 — Bloque I cerrado con el `grilling` (3 rondas, todo aprobado): contrato en `docs/tasks/<id>.md` (6 secciones) y decision log en la carpeta `docs/tasks/<id>/` con un archivo por entrada (sin `merge=union`); `close-row <id>` solo acepta casillas con test o check; `promote.py` orden única; `riskPaths` con rollback, aprobador y test; declaraciones de `prod` por archivo con caducidad; regla de citas (repos públicos sí, privados y empresas no) con E37 en la `0.9`; D69 (`hotfix`) en la `0.5.2`; H17 `hecho`
-2. 2026-11-08 — H17 aprobada (13 propuestas y 5 preguntas) y bloque I abierto: `docs/design/I-lifecycle.md` (ficha de tarea con decision log, hecho por entorno, aprobaciones, 11 fricciones, 10 preguntas para el grilling); ids A11, C11-C13, D67, D68, E32-E36, I1, I2 en el roadmap; D50 absorbida por C11
-3. 2026-11-08 — H17: notas del usuario y cuatro referencias externas en 13 propuestas y 5 preguntas, en `docs/proposals/2026-11-08-notes-and-references.md`
-4. 2026-11-06 — D66: releaseDocs en version.py --release (los README deben nombrar la versión que se publica); README al día con la 0.5
-5. 2026-11-06 — D66 y A10 apuntadas (repaso de docs en cada versión, con releaseDocs en version.py --release; hoja mkt-workflow para clientes en la 0.6); README y contributing al día con la 0.5.1 (seguían en 0.4.3)
+1. 2026-11-08 — D69: tipo `hotfix` en `commitFormat` (`TYPES` de `commit-message.py` y su copia instalada) y en `version.py` (`COMMIT_TYPES` y `PATCH_TYPES`: sugiere parche), con un caso en `test_commit_message.py` y otro en `test_version.py`; `config.md` es/en nombran el tipo; D69 y E37 en el roadmap inglés
+2. 2026-11-08 — Bloque I cerrado con el `grilling` (3 rondas, todo aprobado): contrato en `docs/tasks/<id>.md` (6 secciones) y decision log en la carpeta `docs/tasks/<id>/` con un archivo por entrada (sin `merge=union`); `close-row <id>` solo acepta casillas con test o check; `promote.py` orden única; `riskPaths` con rollback, aprobador y test; declaraciones de `prod` por archivo con caducidad; regla de citas (repos públicos sí, privados y empresas no) con E37 en la `0.9`; D69 (`hotfix`) en la `0.5.2`; H17 `hecho`
+3. 2026-11-08 — H17 aprobada (13 propuestas y 5 preguntas) y bloque I abierto: `docs/design/I-lifecycle.md` (ficha de tarea con decision log, hecho por entorno, aprobaciones, 11 fricciones, 10 preguntas para el grilling); ids A11, C11-C13, D67, D68, E32-E36, I1, I2 en el roadmap; D50 absorbida por C11
+4. 2026-11-08 — H17: notas del usuario y cuatro referencias externas en 13 propuestas y 5 preguntas, en `docs/proposals/2026-11-08-notes-and-references.md`
+5. 2026-11-06 — D66: releaseDocs en version.py --release (los README deben nombrar la versión que se publica); README al día con la 0.5
 
 ## Pendiente
 

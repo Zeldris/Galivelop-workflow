@@ -310,9 +310,9 @@ def harvest_check(version, tag):
             "when nothing is new) and retry: python3 scripts/version.py --release"]
 
 
-COMMIT_TYPES = ("feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert")
+COMMIT_TYPES = ("feat", "fix", "hotfix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert")
 COMMIT_HEAD = re.compile(r"^(?:WIP: )?(" + "|".join(COMMIT_TYPES) + r")(?:\([^()\r\n]*\))?(!)?: \S")
-PATCH_TYPES = ("fix", "perf")
+PATCH_TYPES = ("fix", "hotfix", "perf")
 
 
 def numbers(version):
@@ -338,8 +338,8 @@ def is_breaking(message):
 
 def suggest(current):
     """Lines (all starting `suggest:` or `warning:`) with the bump the non-merge commits since the last vX.Y.Z tag
-    ask for: breaking -> major (minor in 0.x, where a minor may break), feat -> minor, fix/perf -> patch, the rest
-    nothing; commits that do not follow the format are counted. Compares with plugin.json's `current` version."""
+    ask for: breaking -> major (minor in 0.x, where a minor may break), feat -> minor, fix/hotfix/perf -> patch,
+    the rest nothing; commits that do not follow the format are counted. Compares with plugin.json's `current` version."""
     code, tag = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*.[0-9]*.[0-9]*", "HEAD")
     base = numbers(tag[1:]) if code == 0 and tag else None
     if base is None:

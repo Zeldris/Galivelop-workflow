@@ -380,6 +380,11 @@ class Version(unittest.TestCase):
         self.git("commit", "-q", "--allow-empty", "-m", "feat: d")
         self.assertIn("minor bump, 1.2.3 -> 1.3.0", run(self.tmp, "--suggest").stdout)
 
+    def test_suggest_hotfix_is_a_patch(self):
+        r = self.suggest_after("v0.5.1", "hotfix(D69): urgent fix", "docs: words", plugin="0.5.1")
+        self.assertIn("2 commit(s) since v0.5.1: patch bump, 0.5.1 -> 0.5.2", r.stdout)
+        self.assertNotIn("not in the type(scope): text format", r.stdout)
+
     def test_suggest_breaking_is_a_minor_in_0x_and_a_major_from_1_0(self):
         for tag, expected in (("v0.4.3", "minor bump, 0.4.3 -> 0.5.0"), ("v1.2.3", "major bump, 1.2.3 -> 2.0.0")):
             for message in ("feat!: x", "fix(core)!: x", "fix: x\n\nBREAKING CHANGE: the format changes"):

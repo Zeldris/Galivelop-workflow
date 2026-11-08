@@ -7,8 +7,8 @@
 Reads the message the way git will keep it (comment lines and what follows the --verbose scissors line are dropped)
 and applies, from .claude/gw.json (read through config.py):
 
-  commitFormat "conventional"  the first line is `type(scope)!: text` (scope and ! optional; types feat, fix, docs,
-                               style, refactor, perf, test, build, ci, chore, revert). A leading `WIP: ` and the lines
+  commitFormat "conventional"  the first line is `type(scope)!: text` (scope and ! optional; types feat, fix, hotfix,
+                               docs, style, refactor, perf, test, build, ci, chore, revert). A leading `WIP: ` and the lines
                                git writes itself (`fixup! `, `squash! `, `amend! `, `Revert "`, `Reapply "`, `Merge `) pass.
   commitRefs true              the trailer block (git interpret-trailers --parse) has at least one `Refs:` line, with
                                one or several ids separated by commas (`Refs: D11, D12`; the line may repeat), and each
@@ -46,7 +46,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import config as gwconfig  # noqa: E402
 
-TYPES = ("feat", "fix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert")
+TYPES = ("feat", "fix", "hotfix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert")
 CONVENTIONAL = re.compile(rf"(?:{'|'.join(TYPES)})(?:\([^()\s][^()]*\))?!?: \S")
 GIT_LINES = ("fixup! ", "squash! ", "amend! ", 'Revert "', 'Reapply "', "Merge ")
 # As of 2026-11-02, from the D15 rule in docs/design/D-git.md (models and providers; the list goes stale: extend it).
