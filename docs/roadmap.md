@@ -130,6 +130,7 @@ En este orden, porque cada paso usa el anterior.
 | Id | Tarea | Estado |
 |---|---|---|
 | H16 | Recogida de la `0.6` (`gw-harvest`) y sus propuestas, al usuario | hecho (B20, D57-D60 a la `0.5.2`; D61-D63 a la `0.7`) |
+| H17 | Notas del usuario (SDD, DDD, TDD, exploración, ficha de tarea, hecho por entorno) y cuatro repos (mayoral-harness, gstack, moyu, index), repartidas en propuestas: [`2026-11-08-notes-and-references.md`](proposals/2026-11-08-notes-and-references.md) (usuario, 2026-11-08) | en curso |
 | A10 | Hoja de presentación del flujo para clientes: `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (qué resuelve, cómo se trabaja, qué garantiza), con su HTML y su PDF final generados desde el `.md` por un script, para que no se desfasen; se repasa en cada versión (D66) (usuario, 2026-11-06) | pendiente |
 | B1 | Gancho `Stop` que lee los logs de sesión | pendiente |
 | B2 | `docs/metrics/ledger.jsonl` en el repo | pendiente |

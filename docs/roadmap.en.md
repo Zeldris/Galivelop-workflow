@@ -129,6 +129,7 @@ In this order, because each step uses the previous one.
 | Id | Task | State |
 |---|---|---|
 | H16 | `0.6` harvest (`gw-harvest`) and its proposals, to the user | done (B20, D57-D60 to `0.5.2`; D61-D63 to `0.7`) |
+| H17 | User notes (SDD, DDD, TDD, exploration, task record, done per environment) and four repos (mayoral-harness, gstack, moyu, index), split into proposals: [`2026-11-08-notes-and-references.md`](proposals/2026-11-08-notes-and-references.md) (user, 2026-11-08) | in progress |
 | A10 | Workflow presentation sheet for clients: `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (what it solves, how work runs, what it guarantees), with its HTML and final PDF generated from the `.md` by a script so they do not drift; reviewed on each version (D66) (user, 2026-11-06) | pending |
 | B1 | `Stop` hook that reads the session logs | pending |
 | B2 | `docs/metrics/ledger.jsonl` in the repo | pending |
