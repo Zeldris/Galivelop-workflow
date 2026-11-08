@@ -1,9 +1,11 @@
 # I. Ciclo de vida y autoridad: ficha de tarea, hecho por entorno y aprobaciones
 
-**Estado:** abierto (2026-11-08). Las decisiones de base las aprobó el usuario este día («Apruebo todo lo que
-comentas»); las preguntas del final se responden en una sesión de `grilling` antes de implementar nada del bloque
-(regla de la sesión de diseño: el diseño se cierra antes del desarrollo). Las referencias externas que inspiraron
-partes de esto se leyeron como ideas, sin copiar código, y no se nombran aquí (usuario, 2026-11-08).
+**Estado:** cerrado (2026-11-08). Las decisiones de base las aprobó el usuario este día («Apruebo todo lo que
+comentas») y las diez preguntas del final se respondieron en la sesión de `grilling` del mismo día (sección
+«Respuestas del `grilling`»): nada del bloque se implementa sin pasar por ellas. Las referencias externas que
+inspiraron partes de esto se leyeron como ideas, sin copiar código. **Regla de citas** (usuario, 2026-11-08, Q8):
+se citan, con enlace, los repos **públicos** que ayudaron; nunca nombres de empresa ni datos de repos privados (E37
+limpia los documentos anteriores y `names-check.py` lo vigila con `privateNames`).
 
 Fuentes: las notas del usuario repartidas en [`2026-11-08-notes-and-references.md`](../proposals/2026-11-08-notes-and-references.md)
 (H17) y el análisis de tres partes de esa sesión: prácticas clásicas de «hecho» y control de calidad, principios de
@@ -38,7 +40,8 @@ producto. Lo de arriba controla además al autor. El flujo hace las dos cosas.
    (qué se quiere y qué no, criterios de aceptación comprobables, archivos previstos) y el **decision log** por agente
    (lo que el usuario llamó «CDD»): cada agente que toca la tarea añade su entrada con por qué ese código para esos
    criterios, qué camino tomó, qué cambió y por qué. Absorbe **D50**: `Técnica:` y `Problemas:` salen del cuerpo del
-   commit a la ficha; el commit solo resume.
+   commit a la ficha; el commit solo resume. (Q4 bis: el decision log es una carpeta `docs/tasks/<id>/` con un archivo
+   por entrada, no una sección del archivo del contrato.)
 2. **Obligatoria** en `feat`, `fix` y `hotfix` con código (tipos configurables); no en `docs`, `WIP:` ni la marca de
    revisión. El `commit-msg` comprueba que el commit toque la ficha con una entrada nueva.
 3. **Cuatro modos de trabajo:** SDD siempre (toda tarea con código tiene ficha); DDD cuando hay dominio que modelar
@@ -77,15 +80,26 @@ Ninguna existe aún en `config.py` ni en `docs/es/config.md` (comprobado el 2026
 ```json
 {
   "taskRecord": { "path": "docs/tasks", "requiredFor": ["feat", "fix", "hotfix"], "refactorMinLines": 400,
-                  "sections": ["Goal", "Scope", "Acceptance", "Files", "Decision log", "Change log", "Verification"] },
+                  "sections": ["Goal", "Scope", "Acceptance", "Files", "Change log", "Verification"],
+                  "logSections": ["Por qué", "Alternativas", "Cambió porque"] },
   "scopeGuard": { "mode": "warn" },
   "riskPaths": [],
   "environments": [],
   "roles": [],
-  "approvals": { "trailer": "Approved-by", "requireFrom": "uat" },
+  "approvals": { "trailer": "Approved-by", "requireFrom": "uat", "maxAgeDays": 90 },
   "flaky": { "path": ".git/gw/flaky.jsonl", "proposeFixAfter": 3 },
-  "changelogFragments": { "dir": "changelog.d" }
+  "changelogFragments": { "dir": "changelog.d" },
+  "privateNames": []
 }
+```
+
+Tras el `grilling`: el decision log no es una sección de `sections` sino la carpeta `docs/tasks/<id>/` (un archivo
+por entrada, con los apartados de `logSections`); `approvals.maxAgeDays` caduca las declaraciones de `prod` (Q7);
+`privateNames` lista los nombres de proyectos privados que `names-check.py` no deja aparecer en `docs/design`,
+`docs/research` ni en lo que entra en la release (Q12). Fragmento del ejemplo anterior con la clave vieja:
+
+```json
+{ "taskRecord": { "sections": ["…", "Decision log", "…"] } }
 ```
 
 Forma de un entorno (ejemplo con tres; con la lista vacía el flujo se comporta como hoy):
@@ -108,9 +122,11 @@ Forma de un entorno (ejemplo con tres; con la lista vacía el flujo se comporta 
    D17 y en `docs/es/`.
 3. **La sesión en la nube no puede subir etiquetas (403 del proxy)** ni, por lo anterior, promover: las promociones
    y los `rc` (D10) son siempre de una sesión local o de una persona.
-4. **Una ficha, varios agentes en paralelo:** los worktrees `agent/<id>-<tema>` de la misma tarea chocan en
-   `docs/tasks/<id>.md`. El decision log es de solo añadir, con una sección por agente y commit; `merge-branch.sh`
-   resuelve ese archivo por unión de secciones (o `merge=union` solo para esa ruta). A decidir en el `grilling`.
+4. **Una ficha, varios agentes en paralelo:** los worktrees `agent/<id>-<tema>` de la misma tarea chocarían en
+   `docs/tasks/<id>.md` si el decision log viviera ahí. Trabajar cada agente en su rama aísla el trabajo pero no evita
+   el choque (aparece al fusionar); lo evita que no haya archivo compartido: el decision log es una carpeta con un
+   archivo por entrada que cada agente crea y nunca edita (Q4 bis). Un conflicto en el archivo del contrato es real y
+   para la fusión, como cualquier otro.
 5. **La ficha y la bitácora no pueden repetir el dato** («un dato, un sitio»): la fila de la bitácora (`logRows`)
    guarda estado y siguiente paso; la ficha, contenido (criterios, decisiones, verificación); `trace.py` (D14) los
    junta. D43 (tamaño de commit) compara con `Files` cuando la ficha exista.
@@ -124,12 +140,48 @@ Forma de un entorno (ejemplo con tres; con la lista vacía el flujo se comporta 
    marca debería apuntar quién la puso (D17), sin cambiar su uso.
 10. **`AGENTS.md` tiene tope de líneas** (`instructionLines`: aviso 150, fallo 250; hoy 117): el principio nuevo
     entra, pero lo que sea comprobable va a un gancho, no a prosa.
-11. **Los documentos de diseño y la investigación anteriores nombran repos externos** (`design/README.md`,
-    `A-framework.md`, `C-questions.md`, `D-git.md`, `docs/research/ref-*.md`, uno en el propio nombre de archivo). La
-    regla de no nombrarlos (usuario, 2026-11-08) se aplica desde ahora a lo nuevo; limpiar lo anterior es una tarea
-    aparte (pregunta 8).
+11. **Los documentos de diseño y la investigación anteriores nombran repos externos.** Contrastado el 2026-11-08:
+    `docs/design`, `docs/research` y `docs/proposals` citan 33 repos de GitHub, todos públicos (se quedan, con su
+    enlace); lo que no puede salir son los nombres de los proyectos privados del usuario en `A-framework.md`,
+    `D-git.md`, `E-quality.md`, `H-roadmap.md`, `real-cases.md` y `social-media.md`. Limpiarlos es E37 (pregunta 8).
 
-## Preguntas para el `grilling` (se responden por número)
+## Respuestas del `grilling` (usuario, 2026-11-08: «todo aprobado» en las tres rondas)
+
+1. **Plantilla:** seis secciones obligatorias y en orden en `docs/tasks/<id>.md`: `Goal`, `Scope`, `Acceptance`,
+   `Files`, `Change log`, `Verification` (`taskRecord.sections`); una sección vacía lleva «—»; sin sección de preguntas
+   abiertas propia (una línea con enlace a `docs/questions.md`, C1). El decision log va aparte (4 bis).
+2. **Entrada del decision log:** un archivo `docs/tasks/<id>/<fecha>-<agente>-<sha7>.md` con cabecera
+   `# <fecha> · <skill o "session"> · <commit>` y tres apartados fijos (`taskRecord.logSections`): «Por qué»,
+   «Alternativas», «Cambió porque» (o «—»). El `commit-msg` comprueba solo forma (archivo nuevo, id en la cabecera,
+   los tres apartados); el sha lo rellena un gancho `post-commit`; la calidad la pide `REVIEW.md` al revisor.
+3. **Cierre de tarea:** `handoff.py close-row <id>` (hoy toma una rama; pasa a aceptar el id) exige todas las casillas
+   de `Acceptance` marcadas y `Verification` con el commit y la orden; se niega a marcar una casilla que no nombre un
+   test (`tests/test_X.py::Caso`) o una sección `== …` de `check.sh`. Lo corre el agente; lo declara el script.
+4. **Conflictos:** sin `merge=union` ni resolución propia en `merge-branch.sh`. **4 bis:** contrato en
+   `docs/tasks/<id>.md`, decision log en la carpeta `docs/tasks/<id>/`, un archivo por entrada que nadie edita;
+   `trace.py` concatena la carpeta por fecha; el `commit-msg` solo comprueba que el commit **añada** un archivo ahí.
+5. **Promoción:** `promote.py <env>` como orden única (hecho del destino, mismo sha desde `promoteFrom`, aprobadores
+   con rol, merge con `Approved-by:`, etiqueta `rc`/final, subida) con `--dry-run`; el botón de GitHub solo para el
+   entorno de desarrollo; toda promoción es local o de una persona.
+6. **Rutas de riesgo** (`riskPaths`): tocar una exige en la ficha una sección `Rollback` rellena, un aprobador humano
+   (`Approved-by:`) aunque el entorno sea el de desarrollo y un test nombrado en `Verification` por ruta tocada; lo
+   comprueba el `pre-push`. La lista empieza vacía.
+7. **Declaraciones de `prod`:** un archivo por declaración en `docs/records/declarations/<nombre>.md` con fecha,
+   responsable y texto libre; `promote.py` exige que exista y no haya caducado (`approvals.maxAgeDays`, 90).
+8. **Repos externos:** se citan los públicos que ayudaron, con enlace; nunca nombres de empresa ni datos de repos
+   privados. **8 bis (E37, `0.9`):** quitar de `docs/design` y `docs/research` los nombres de los proyectos privados
+   del usuario (→ «proyecto piloto A/B») y dejar las citas públicas; bitácora y propuestas se quedan como están (trabajo
+   interno); en esa tarea se decide si `AGENTS.md` los nombra por la clave `privateNames` en vez de en texto. La regla,
+   en una línea de `AGENTS.md`; lo comprobable, en `names-check.py` con `privateNames`.
+9. **D50:** «absorbida por C11», `hecho` cuando C11 lo esté; el id no se reutiliza.
+10. **Versiones:** `0.7`: C11 (primero: toca `commit-msg`, D43 y `trace.py`), luego C13 y C12 (dependen de la ficha),
+    A11, D68, E32, E33, E35; `1.2`: D67, I1, I2 con D9, D10, D17 y G8 (I1 necesita el `Approved-by:` y el `pre-push`
+    por entorno de D67); `0.9`: E34, E36, E37.
+11. **Tipo `hotfix`** (fricción 7): D69, en la `0.5.2`: entra en `commitFormat` y `version.py` (parche) para que los
+    proyectos en `0.5` acepten el tipo antes de C11.
+12. **E37** apuntada en la `0.9` (8 bis).
+
+## Preguntas para el `grilling` (respondidas arriba; se conservan como registro)
 
 1. **Plantilla de la ficha:** ¿las siete secciones de arriba, o menos? **Rec.:** las siete; `Open questions` enlaza
    con `docs/questions.md` (C1) en vez de duplicarlo.
