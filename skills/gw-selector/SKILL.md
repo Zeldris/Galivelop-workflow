@@ -35,9 +35,13 @@ do the case without it and say so.
 
 ## Rules
 
-- **The user picks the session model** (`/model`); an agent cannot switch it. State in **one line** which model and
-  skill the case calls for ("large model and `diagnosing-bugs`") and carry on. Wait for an answer only when the risk is
-  high: data migration, deleting, rewriting published content.
+- **The user picks the session model** (`/model`); an agent cannot switch it. State the case in **one line** that
+  keeps the session and the subagents apart and names the current model:
+  `Session: <recommended> (current: <X>; /model to change it) · Subagents: <rung or none> · Skill: <y>`. `<X>` is the
+  model the session reports (its system prompt, or the session tool in the cloud); write `unknown` when nothing says
+  it. If the session deals work out with `gw-orchestrate-dealer`, its recommended model is the one of the riskiest row
+  it deals, medium at least. Then carry on. Wait for an answer only when the risk is high: data migration, deleting,
+  rewriting published content.
 - **Subagent model:** pass the table's subagent column as the `model` parameter. Delegate searches, long reads and
   mechanical work; design and decisions stay in the main session.
 - **Closed plan, scoped implementation:** goes to a `sonnet` subagent and the main session reviews its diff before
