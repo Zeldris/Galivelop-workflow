@@ -52,5 +52,54 @@
     "outDir": "docs/mkt",
     "maxPages": 1,
     "css": "docs/mkt/style.css"
+  },
+  "testMap": {
+    "rules": [
+      {
+        "paths": "^scripts/(?P<name>[^/]+)\\.(py|sh)$",
+        "tests": [
+          "tests/test_{name:id}.py"
+        ]
+      },
+      {
+        "paths": "^(scripts|templates/githooks)/",
+        "tests": [
+          "tests/test_reviewed.py",
+          "tests/test_hooks.py"
+        ]
+      },
+      {
+        "paths": "^tests/test_[^/]+\\.py$",
+        "tests": [
+          "{path}"
+        ]
+      },
+      {
+        "paths": "^tests/[^/]+\\.py$",
+        "contains": "[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\\.[A-Za-z0-9.-]+",
+        "tests": [
+          "tests/test_private_check.py"
+        ]
+      },
+      {
+        "paths": "^schema/",
+        "tests": [
+          "tests/test_config.py"
+        ]
+      },
+      {
+        "paths": "^\\.claude/skills/",
+        "tests": [
+          "tests/test_skills.py"
+        ]
+      },
+      {
+        "paths": "^templates/",
+        "tests": [
+          "tests/test_templates.py"
+        ]
+      }
+    ],
+    "command": "PYTHONPATH=tests python3 -B -m unittest {files}"
   }
 }

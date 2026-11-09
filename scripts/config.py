@@ -295,6 +295,14 @@ def models(config):
     return {k: given.get(k, props[k]["default"]) for k in props}
 
 
+def test_map(config):
+    """The `testMap` key as a dict (rules, command), each missing part filled from the schema default (E21)."""
+    props = json.loads(schema_path().read_text(encoding="utf-8"))["properties"]["testMap"]["properties"]
+    given = config.get("testMap")
+    given = given if isinstance(given, dict) else {}
+    return {k: given.get(k, props[k]["default"]) for k in props}
+
+
 def marketing_sheets(config):
     """The `marketingSheets` settings with every inner key filled from the schema defaults (the loader only fills
     top-level keys, so `{"sources": [...]}` alone is a valid way to turn the feature on)."""
@@ -319,7 +327,8 @@ def log_archive(config):
 
 
 def semantic_errors(config):
-    """Problems the schema subset cannot express: a relatedTests `paths` that is not a valid regex, an agentMap
+    """Problems the schema subset cannot express: a relatedTests `paths` or testMap `paths`/`contains` that is not a
+    valid regex, an agentMap
     prefix that is not one folder name, an instructionLines `warn` above its `fail`."""
     errors = []
     warn, fail = instruction_lines(config)
@@ -341,6 +350,14 @@ def semantic_errors(config):
                         re.compile(entry["paths"])
                     except re.error as exc:
                         errors.append(f"$.relatedTests.{kind}[{i}].paths: {entry['paths']!r} is not a valid regex ({exc})")
+    test_rules = config.get("testMap", {}).get("rules") if isinstance(config.get("testMap"), dict) else None
+    for i, rule in enumerate(test_rules if isinstance(test_rules, list) else []):
+        for key in ("paths", "contains"):
+            if isinstance(rule, dict) and isinstance(rule.get(key), str):
+                try:
+                    re.compile(rule[key])
+                except re.error as exc:
+                    errors.append(f"$.testMap.rules[{i}].{key}: {rule[key]!r} is not a valid regex ({exc})")
     return errors
 
 

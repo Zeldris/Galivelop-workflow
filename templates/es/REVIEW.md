@@ -38,6 +38,8 @@ creada.
 - Los scripts de shell corren en bash 3.2 (macOS): nada de `mapfile` ni arrays asociativos. (criterio)
 - Una carpeta con nombre fijo en un directorio compartido (`$TMPDIR`, `/tmp`) es por usuario, se crea con permisos 700
   y se rechaza si ya existe como symlink o de otro usuario; los archivos sueltos, con `mktemp`. (criterio)
+- Un script que hace commits se prueba con los ganchos del proyecto instalados (`commit-msg` estricto incluido): un
+  commit con `--no-verify` en el test esconde el rechazo que tendrá de verdad. (criterio)
 - Cada cambio en un gancho o un script lleva su caso en los tests; un caso que espera un fallo comprueba el motivo,
   no solo el código de salida. Vale para los scripts propios del proyecto. (criterio)
 - Los scripts de `.claude/gw/scripts/` se prueban en el repo del flujo y no se editan aquí: un cambio va al flujo

@@ -50,6 +50,7 @@
   "linkRoots": [],
   "scoutDir": ".claude/gw/scout",
   "relatedTests": {"fast": [], "slow": []},
+  "testMap": {"rules": [], "command": ""},
   "plan": [],
   "taskId": "[A-Z]{2,5}-\\d+",
   "subagentCap": 30,

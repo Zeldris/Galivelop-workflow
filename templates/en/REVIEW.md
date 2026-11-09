@@ -36,6 +36,8 @@ once it exists.
 - Shell scripts run on bash 3.2 (macOS): no `mapfile`, no associative arrays. (judgement)
 - A fixed-name folder in a shared directory (`$TMPDIR`, `/tmp`) is per user, created with mode 700 and refused if it
   already exists as a symlink or owned by another user; single files use `mktemp`. (judgement)
+- A script that makes commits is tested with the project's git hooks installed (the strict `commit-msg` included): a
+  commit with `--no-verify` in the test hides the rejection it will really get. (judgement)
 - Every change to a hook or script comes with its test case; a case that expects a failure checks the reason, not
   only the exit code. It applies to the project's own scripts. (judgement)
 - The scripts under `.claude/gw/scripts/` are tested in the workflow's repo and are not edited here: a change goes

@@ -592,6 +592,34 @@
       },
       "description": "Which models the workflow may use (B7) and how each agent gets its model and effort (B11)."
     },
+    "testMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["paths", "tests"],
+            "properties": {
+              "paths": {"type": "string", "minLength": 1, "description": "Regex searched in each changed repo-relative path; its named groups feed the {name} placeholders of tests."},
+              "contains": {"type": "string", "minLength": 1, "description": "Optional regex searched in the file's text on disk: the rule applies only when it is found (a deleted file never matches)."},
+              "tests": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}, "description": "Test files (repo-relative) the change calls for. {name} is the named group as matched, {name:id} the same with every character that is not a letter, digit or _ turned into _ (scripts/config-guard.py -> test_config_guard.py), {path} the whole changed path. A test file that does not exist is left out."}
+            }
+          },
+          "default": [],
+          "description": "E21: which test files each changed file calls for; every rule that matches adds its tests. tests-for.py reads it."
+        },
+        "command": {
+          "type": "string",
+          "default": "",
+          "description": "E21: the command tests-for.py --run runs from the project root, with {files} replaced by the test files, each shell-quoted (e.g. PYTHONPATH=tests python3 -B -m unittest {files}). Empty: --run fails and says to set it."
+        }
+      },
+      "default": {"rules": [], "command": ""},
+      "description": "E21: the tests of a change, for a subagent or a person to run before committing (tests-for.py); not a hook."
+    },
     "instructionLines": {
       "type": "object",
       "additionalProperties": false,

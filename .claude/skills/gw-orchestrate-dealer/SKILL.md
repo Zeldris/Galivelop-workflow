@@ -69,7 +69,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    Files: <paths you touch>. Create: <exact names of what is new>. A path not listed here: stop and return it
    under QUESTIONS.
    Done when: <checkable criterion>. Run before pushing: `bash .claude/gw/scripts/check.sh` (runs {check} and records
-   the green so the push does not repeat it).
+   the green so the push does not repeat it). Before each commit, the tests of what you touched:
+   `python3 .claude/gw/scripts/tests-for.py --diff <base> --run` (from `testMap`; if it says the map is empty, pick
+   them yourself).
    For guard code or scripts: first list the edge cases (git states, platforms, empty or odd input) and write a
    test for each before calling the chunk done; the review afterwards is the safety net, not the first pass.
    Do not: <what belongs to another chunk or needs a user decision>.
@@ -132,8 +134,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   the writer's uncommitted changes). Same setup as the next rule; it never edits the main tree.
 - **Code fixes of the frontier, in parallel, in isolated worktrees:** each subagent runs with `isolation: "worktree"` in
   the background, commits at every stable point (`WIP:` if still red, so a restart loses nothing), does not touch the
-  log or push, and returns its branch. In its worktree it runs the tests of what it touches, the linters and the copy
-  check, not the full `check`: the check's lock is one per repo, so parallel full checks run in series. The main
+  log or push, and returns its branch. In its worktree it runs the tests of what it touches (`tests-for.py --diff
+  <base> --run`), the linters and the copy check, not the full `check`: the check's lock is one per repo, so parallel full checks run in series. The main
   session has each one reviewed (step 3), merges them one by one (merge, never rebase), runs one full `check` on the
   merged wave without editing the tree while it runs (drafts go to the scratchpad), writes the log and pushes. When the session folder is not the repo root
   (a cloud session starts in `/home/user`, next to other repos, and `isolation` lands the worktree in the wrong one),
