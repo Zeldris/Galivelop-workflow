@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -260,6 +261,222 @@ class Pdf(Project):
         self.assertEqual(code, 1)
         self.assertRegex(err, r"docs/mkt/es/a\.pdf would have \d+ pages, over maxPages 1")
         self.assertFalse((self.tmp / "docs/mkt/es/a.pdf").exists())
+
+
+def fake_node(fake):
+    """Patch the print step only: `fake(cmd, **kwargs)` answers the node call, every other command runs for real."""
+    real = subprocess.run
+
+    def dispatch(cmd, **kwargs):
+        return fake(cmd, **kwargs) if cmd and cmd[0] == "node" else real(cmd, **kwargs)
+    stack = contextlib.ExitStack()
+    stack.enter_context(mock.patch.object(mkt.subprocess, "run", dispatch))
+    stack.enter_context(mock.patch.object(mkt.shutil, "which", lambda name: "node"))
+    return stack
+
+
+class Review(Project):
+    """Findings of the A10 review: each one with the reason it must fail."""
+
+    def test_partial_marketing_sheets_object_takes_defaults(self):
+        (self.tmp / ".claude" / "gw.json").write_text(json.dumps(dict(GW, marketingSheets={"sources": ["docs/es/a.md"]})))
+        code, out, err = run(self.tmp, "build")
+        self.assertEqual((code, err), (0, ""), err)
+        self.assertTrue((self.tmp / "docs/mkt/es/a.html").is_file())
+
+    def test_config_helper_fills_inner_defaults(self):
+        conf = mkt.config.marketing_sheets({"marketingSheets": {"maxPages": 2}})
+        self.assertEqual(conf, {"sources": [], "outDir": "docs/mkt", "maxPages": 2, "css": "", "timeout": 120})
+        self.assertEqual(mkt.config.marketing_sheets({})["outDir"], "docs/mkt")
+
+    def test_zero_counted_pages_is_an_error_not_a_pass(self):
+        run(self.tmp, "build")
+
+        def fake_run(cmd, **kwargs):
+            for _html, out in json.loads(cmd[-1]):
+                Path(out).write_bytes(b"%PDF-1.7\n1 0 obj\n<</Type /ObjStm>>\nendobj\n")
+            return subprocess.CompletedProcess(cmd, 0, "", "")
+        with fake_node(fake_run):
+            code, _, err = run(self.tmp, "pdf")
+        self.assertEqual(code, 1)
+        self.assertIn("could not count pages in the printed docs/mkt/es/a.pdf", err)
+        self.assertFalse((self.tmp / "docs/mkt/es/a.pdf").exists())
+
+    def test_print_uses_a_file_url_and_waits_for_fonts(self):
+        self.assertIn("pathToFileURL(htmlFile).href", mkt.NODE_PRINT)
+        self.assertIn("document.fonts.ready", mkt.NODE_PRINT)
+
+    @unittest.skipUnless(playwright_resolves(), "Playwright does not resolve here")
+    def test_real_print_in_a_folder_with_space_and_hash(self):
+        odd = self.tmp / "a b#c%d"
+        odd.mkdir()
+        shutil.move(str(self.tmp / "docs"), str(odd / "docs"))
+        shutil.move(str(self.tmp / ".claude"), str(odd / ".claude"))
+        subprocess.run(["git", "init", "-q", str(odd)], check=True)
+        run(odd, "build")
+        code, out, err = run(odd, "pdf")
+        self.assertEqual((code, err), (0, ""), err)
+        self.assertIn("(1 page(s))", out)
+
+    def test_timeout_is_reported_with_the_key_that_raises_it(self):
+        run(self.tmp, "build")
+        self.config(timeout=7)
+
+        def hang(cmd, **kwargs):
+            self.assertEqual(kwargs["timeout"], 7)
+            raise subprocess.TimeoutExpired(cmd, 7)
+        with fake_node(hang):
+            code, _, err = run(self.tmp, "pdf")
+        self.assertEqual(code, 1)
+        self.assertIn("printing took over 7 s", err)
+        self.assertIn("marketingSheets.timeout", err)
+
+    def test_node_that_cannot_start_is_reported(self):
+        run(self.tmp, "build")
+
+        def broken(cmd, **kwargs):
+            raise PermissionError("denied")
+        with fake_node(broken):
+            code, _, err = run(self.tmp, "pdf")
+        self.assertEqual(code, 1)
+        self.assertIn("cannot run node (denied); install Node.js", err)
+
+    def test_crlf_checkout_does_not_make_the_sheet_stale(self):
+        run(self.tmp, "build")
+        self.fake_pdf()
+        src = self.tmp / "docs/es/a.md"
+        src.write_bytes(src.read_bytes().replace(b"\n", b"\r\n"))
+        html = self.tmp / "docs/mkt/es/a.html"
+        html.write_bytes(html.read_bytes().replace(b"\n", b"\r\n"))
+        self.assertEqual(mkt.sha256(b"a\r\nb"), mkt.sha256(b"a\nb"))
+        code, _, err = run(self.tmp, "check")
+        self.assertEqual((code, err), (0, ""), err)
+
+    def test_repo_root_ignores_git_environment_of_a_hook(self):
+        saved = {k: os.environ.get(k) for k in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
+        os.environ["GIT_DIR"] = str(self.tmp / "nowhere")
+        os.environ["GIT_WORK_TREE"] = str(self.tmp)
+        try:
+            root = mkt.repo_root()
+        finally:
+            for k, v in saved.items():
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+        self.assertEqual(root.resolve(), ROOT.resolve())
+
+    def test_missing_git_is_an_error_with_a_fix(self):
+        def nogit(cmd, **kwargs):
+            raise FileNotFoundError("git")
+        with mock.patch.object(mkt.subprocess, "run", nogit):
+            with self.assertRaises(mkt.SheetError) as ctx:
+                mkt.repo_root()
+        self.assertIn("cannot run git to find the repo root", str(ctx.exception))
+        self.assertIn("install git", str(ctx.exception))
+
+    def test_bom_keeps_the_title_a_heading(self):
+        page = mkt.render_page(b"\xef\xbb\xbf# Title\n\nText\n", "en")
+        self.assertIn("<h1>Title</h1>", page)
+        self.assertIn("<title>Title</title>", page)
+
+    def test_invalid_utf8_source_names_the_file(self):
+        (self.tmp / "docs/es/a.md").write_bytes(b"# T\n\n\xff\xfe bad\n")
+        code, _, err = run(self.tmp, "build")
+        self.assertEqual(code, 1)
+        self.assertIn("docs/es/a.md is not UTF-8", err)
+        self.assertNotIn("Traceback", err)
+
+    def test_link_with_balanced_parentheses(self):
+        page = mkt.render_page(b"# T\n\nSee [x](https://a.org/f_(1)) now.\n", "en")
+        self.assertIn('<a href="https://a.org/f_(1)">x</a> now.', page)
+
+    def test_link_scheme_hidden_behind_a_control_character_is_not_a_link(self):
+        for target in ("\x01javascript:alert(1)", "java\tscript:alert(1)", "data:text/html,x", "vbscript:x"):
+            page = mkt.render_page(f"# T\n\n[x]({target})\n".encode(), "en")
+            self.assertNotIn("<a ", page, target)
+            self.assertNotIn("href=", page.split("</style>")[1])
+        page = mkt.render_page(b"# T\n\n[a](https://x.org) [b](mailto:a@b.c) [c](other.html) [d](#top)\n", "en")
+        self.assertEqual(page.count("<a href="), 4)
+
+
+class Style(Project):
+    """marketingSheets.css: embedded stylesheet, rewritten url(...), and the check that notices it changed."""
+
+    def style(self, text=None):
+        (self.tmp / "docs" / "mkt" / "fonts").mkdir(parents=True, exist_ok=True)
+        (self.tmp / "docs/mkt/style.css").write_text(
+            text or '@font-face{font-family:X;src:url("fonts/x.woff2") format("woff2")}\nbody{color:#123456}\n'
+            "i{background:url(https://a.org/i.png)}\n", encoding="utf-8")
+        self.config(css="docs/mkt/style.css")
+
+    def test_css_is_embedded_and_relative_urls_follow_the_html(self):
+        self.style()
+        self.config(css="docs/mkt/style.css", outDir="out")
+        code, _, err = run(self.tmp, "build")
+        self.assertEqual((code, err), (0, ""), err)
+        page = (self.tmp / "out/es/a.html").read_text(encoding="utf-8")
+        self.assertIn("color:#123456", page)
+        self.assertIn('url("../../docs/mkt/fonts/x.woff2")', page)
+        self.assertIn("url(https://a.org/i.png)", page)
+        self.assertNotIn(mkt.CSS.strip()[:40], page)
+
+    def test_check_detects_a_changed_stylesheet(self):
+        self.style()
+        run(self.tmp, "build")
+        self.fake_pdf()
+        self.assertEqual(run(self.tmp, "check")[0], 0)
+        (self.tmp / "docs/mkt/style.css").write_text("body{color:#654321}\n", encoding="utf-8")
+        code, _, err = run(self.tmp, "check")
+        self.assertEqual(code, 1)
+        self.assertIn("stale docs/mkt/es/a.html: the stylesheet (marketingSheets.css) or the converter changed", err)
+        self.assertIn("run: python3 scripts/mkt-sheet.py build", err)
+
+    def test_check_detects_a_changed_template(self):
+        run(self.tmp, "build")
+        self.fake_pdf()
+        html = self.tmp / "docs/mkt/es/a.html"
+        html.write_text(html.read_text(encoding="utf-8").replace("<style>", "<style>/* old template */"),
+                        encoding="utf-8")
+        code, _, err = run(self.tmp, "check")
+        self.assertEqual(code, 1)
+        self.assertIn("the stylesheet (marketingSheets.css) or the converter changed", err)
+
+    def test_missing_stylesheet_names_the_key(self):
+        run(self.tmp, "build")
+        self.fake_pdf()
+        self.config(css="docs/mkt/nope.css")
+        for cmd in ("build", "check"):
+            code, _, err = run(self.tmp, cmd)
+            self.assertEqual(code, 1, cmd)
+            self.assertIn("missing stylesheet: docs/mkt/nope.css (marketingSheets.css) does not exist", err)
+            self.assertIn('set marketingSheets.css to ""', err)
+
+    def test_stylesheet_that_is_not_utf8(self):
+        self.style()
+        (self.tmp / "docs/mkt/style.css").write_bytes(b"body{content:'\xff'}")
+        code, _, err = run(self.tmp, "build")
+        self.assertEqual(code, 1)
+        self.assertIn("docs/mkt/style.css is not UTF-8", err)
+
+    def test_schema_rejects_bad_css_and_timeout(self):
+        schema = json.loads(mkt.config.schema_path().read_text(encoding="utf-8"))
+        prop = schema["properties"]["marketingSheets"]
+        for good in ({"css": ""}, {"css": "docs/mkt/style.css"}, {"timeout": 5}):
+            self.assertEqual(mkt.config.validate(good, prop), [], good)
+        for bad in ({"css": "../x.css"}, {"css": "/abs/x.css"}, {"css": "docs/x.txt"}, {"timeout": 0},
+                    {"timeout": "9"}, {"unknown": 1}):
+            self.assertNotEqual(mkt.config.validate(bad, prop), [], bad)
+
+    def test_shipped_stylesheet_is_valid_and_its_fonts_exist(self):
+        conf = json.loads((ROOT / ".claude" / "gw.json").read_text(encoding="utf-8"))["marketingSheets"]
+        self.assertEqual(conf["css"], "docs/mkt/style.css")
+        css = (ROOT / conf["css"]).read_text(encoding="utf-8")
+        urls = mkt.CSS_URL.findall(css)
+        self.assertTrue(urls)
+        for _quote, url in urls:
+            self.assertTrue((ROOT / "docs/mkt" / url).is_file(), url)
+        self.assertNotRegex(css, r"border-radius|box-shadow|text-shadow|radial-gradient|blur\(")
 
 
 if __name__ == "__main__":

@@ -285,10 +285,12 @@
           "default": []
         },
         "outDir": {"type": "string", "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+[^/]$", "default": "docs/mkt"},
-        "maxPages": {"type": "integer", "minimum": 1, "default": 1}
+        "maxPages": {"type": "integer", "minimum": 1, "default": 1},
+        "css": {"type": "string", "pattern": "^$|^(?!/)(?!(.*/)?\\.\\.(/|$)).+\\.css$", "default": ""},
+        "timeout": {"type": "integer", "minimum": 1, "default": 120}
       },
-      "default": {"sources": [], "outDir": "docs/mkt", "maxPages": 1},
-      "description": "One-page presentation sheets written in Markdown: mkt-sheet.py turns each source (repo-relative .md) into <outDir>/<parent folder>/<stem>.html and .pdf and checks they match the source. No sources: the feature is off."
+      "default": {"sources": [], "outDir": "docs/mkt", "maxPages": 1, "css": "", "timeout": 120},
+      "description": "One-page presentation sheets written in Markdown: mkt-sheet.py turns each source (repo-relative .md) into <outDir>/<parent folder>/<stem>.html and .pdf and checks they match the source. css: repo-relative stylesheet embedded instead of the built-in one (its relative url(...) are rewritten per HTML); timeout: seconds Chromium may take to print all sheets. A missing inner key takes its default. No sources: the feature is off."
     },
     "nonTestExtensions": {
       "type": "array",

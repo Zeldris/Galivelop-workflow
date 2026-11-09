@@ -50,6 +50,7 @@
       "docs/en/mkt-adoption.md"
     ],
     "outDir": "docs/mkt",
-    "maxPages": 1
+    "maxPages": 1,
+    "css": "docs/mkt/style.css"
   }
 }

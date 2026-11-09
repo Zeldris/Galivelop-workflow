@@ -273,6 +273,15 @@ def context_guard(config):
     return {k: given.get(k, props[k]["default"]) for k in props}
 
 
+def marketing_sheets(config):
+    """The `marketingSheets` settings with every inner key filled from the schema defaults (the loader only fills
+    top-level keys, so `{"sources": [...]}` alone is a valid way to turn the feature on)."""
+    props = json.loads(schema_path().read_text(encoding="utf-8"))["properties"]["marketingSheets"]["properties"]
+    given = config.get("marketingSheets")
+    given = given if isinstance(given, dict) else {}
+    return {key: given.get(key, prop["default"]) for key, prop in props.items()}
+
+
 def log_size(config):
     """The `logSize` key: the cap on the hand-off log in characters (0 = no cap), the schema default when absent."""
     schema = json.loads(schema_path().read_text(encoding="utf-8"))

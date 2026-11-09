@@ -7,11 +7,15 @@ three never drift. Configured by `marketingSheets` in .claude/gw.json (read thro
   sources   repo-relative .md paths; the parent folder name is the language (docs/es/x.md -> <outDir>/es/x.html)
   outDir    where the HTML and PDF go (default docs/mkt)
   maxPages  most pages a PDF may have (default 1)
+  css       repo-relative stylesheet embedded instead of the built-in one; its relative url(...) are rewritten
+            relative to each HTML (default "" = built-in)
+  timeout   seconds Chromium may take to print all the sheets (default 120)
 No sources means the feature is off: every command says so and exits 0.
 
   python3 scripts/mkt-sheet.py build   # Markdown -> <outDir>/<lang>/<stem>.html (self-contained, A4 print CSS)
   python3 scripts/mkt-sheet.py pdf     # HTML -> <outDir>/<lang>/<stem>.pdf with Chromium (Playwright, via node)
-  python3 scripts/mkt-sheet.py check   # fail when an HTML or PDF is missing or older than its source
+  python3 scripts/mkt-sheet.py check   # fail when an HTML or PDF is missing or older than its source, the CSS
+                                       # or this converter (the HTML is rebuilt in memory and compared)
 
 The HTML starts its body with a comment holding the sha256 of the source; the PDF's sidecar <stem>.pdf.sha holds the
 sha256 of the HTML it was printed from. Playwright is resolved from the repo folder, then from GW_PLAYWRIGHT_DIR
@@ -22,6 +26,7 @@ Standard library only; the root comes from this script's path, never from the cu
 import hashlib
 import html
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -79,7 +84,7 @@ def inline(text):
             out.append(f"<code>{html.escape(part, quote=False)}</code>")
             continue
         part = html.escape(part, quote=False)
-        part = re.sub(r"\[([^\]]+)\]\(([^)\s]+)\)", _link, part)
+        part = re.sub(r"\[([^\]]+)\]\(([^()\s]*(?:\([^()\s]*\)[^()\s]*)*)\)", _link, part)
         part = re.sub(r"\*\*(?=\S)(.+?)(?<=\S)\*\*", r"<strong>\1</strong>", part)
         part = re.sub(r"(?<![\w*])\*(?=[^\s*])(.+?)(?<=[^\s*])\*(?![\w*])", r"<em>\1</em>", part)
         out.append(part)
@@ -87,8 +92,9 @@ def inline(text):
 
 
 def _link(m):
-    url = m.group(2)
-    if re.match(r"(?i)(javascript|data|vbscript):", html.unescape(url)):
+    url = re.sub(r"[\x00-\x20]", "", m.group(2))  # browsers ignore control characters inside a scheme
+    scheme = re.match(r"([A-Za-z][A-Za-z0-9+.-]*):", html.unescape(url))
+    if scheme and scheme.group(1).lower() not in ("http", "https", "mailto"):
         return m.group(0)  # not a link we emit: stays as escaped text
     return f'<a href="{url.replace(chr(34), "&quot;")}">{m.group(1)}</a>'
 
@@ -177,22 +183,31 @@ def convert(md):
 
 
 def sha256(data):
-    return hashlib.sha256(data).hexdigest()
+    """sha256 of text bytes with CRLF read as LF, so a checkout with core.autocrlf hashes like the committed file."""
+    return hashlib.sha256(data.replace(b"\r\n", b"\n")).hexdigest()
 
 
-def render_page(md_bytes, lang):
-    """The whole self-contained HTML document for the Markdown bytes of one sheet."""
-    body, title = convert(md_bytes.decode("utf-8"))
+def render_page(md_bytes, lang, css=None):
+    """The whole self-contained HTML document for the Markdown bytes of one sheet. `css` replaces the built-in
+    style. Raises UnicodeDecodeError on a source that is not UTF-8."""
+    body, title = convert(md_bytes.decode("utf-8-sig"))
     return (f'<!DOCTYPE html>\n<html lang="{html.escape(lang)}">\n<head>\n<meta charset="utf-8">\n'
             f'<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-            f"<title>{html.escape(title or 'Sheet', quote=False)}</title>\n<style>{CSS}</style>\n</head>\n"
-            f"<body>\n<!-- mkt-sheet source-sha256: {sha256(md_bytes)} -->\n{body}\n</body>\n</html>\n")
+            f"<title>{html.escape(title or 'Sheet', quote=False)}</title>\n<style>{CSS if css is None else css}</style>\n"
+            f"</head>\n<body>\n<!-- mkt-sheet source-sha256: {sha256(md_bytes)} -->\n{body}\n</body>\n</html>\n")
 
 
 # --- Config, paths -----------------------------------------------------------------------------------------------
 
 def repo_root():
-    r = subprocess.run(["git", "-C", str(HERE), "rev-parse", "--show-toplevel"], capture_output=True, text=True)
+    # A hook sets GIT_DIR and friends: they would answer the hooked repo, not the one this script lives in.
+    env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
+    try:
+        r = subprocess.run(["git", "-C", str(HERE), "rev-parse", "--show-toplevel"], capture_output=True, text=True,
+                           env=env)
+    except OSError as exc:
+        raise SheetError(f"cannot run git to find the repo root ({exc}); install git and run it inside a checkout "
+                         "of the project")
     if r.returncode != 0 or not r.stdout.strip():
         raise SheetError(f"cannot find the repo root from {HERE}: {r.stderr.strip() or 'not a git repo'}; run it "
                          "inside a git checkout of the project")
@@ -202,10 +217,9 @@ def repo_root():
 def sheets(root):
     """(settings dict, list of (source Path, html Path, pdf Path, sha Path, lang)). Raises SheetError."""
     try:
-        cfg = config.load(root)
+        conf = config.marketing_sheets(config.load(root))
     except config.ConfigError as exc:
         raise SheetError(f"cannot read the config (marketingSheets): {exc}")
-    conf = cfg["marketingSheets"]
     items = []
     for rel in conf["sources"]:
         src = root / rel
@@ -229,36 +243,79 @@ def _rel(path, root):
     return path.relative_to(root).as_posix()
 
 
+CSS_URL = re.compile(r"""url\(\s*(['"]?)([^'")]+)\1\s*\)""")
+
+
+def stylesheet(root, conf, html_path):
+    """The CSS to embed in `html_path`: the configured file with its relative url(...) rewritten to be relative to
+    the HTML, or None for the built-in style."""
+    if not conf["css"]:
+        return None
+    css_file = root / conf["css"]
+    if not css_file.is_file():
+        raise SheetError(f"missing stylesheet: {conf['css']} (marketingSheets.css) does not exist; create it or set "
+                         'marketingSheets.css to "" in .claude/gw.json')
+    try:
+        text = css_file.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise SheetError(f"{conf['css']} is not UTF-8 ({exc.reason} at byte {exc.start}); save it as UTF-8")
+
+    def fix(m):
+        url = m.group(2).strip()
+        if re.match(r"(?i)([a-z][a-z0-9+.-]*:|/|#)", url):
+            return m.group(0)
+        target = os.path.normpath(os.path.join(os.path.dirname(str(css_file)), url))
+        rel = os.path.relpath(target, str(html_path.parent)).replace(os.sep, "/")
+        return f'url("{rel}")'
+    return CSS_URL.sub(fix, text)
+
+
+def expected_html(root, conf, src, html_path, lang):
+    """The HTML that `build` would write for `src`."""
+    try:
+        return render_page(src.read_bytes(), lang, stylesheet(root, conf, html_path))
+    except UnicodeDecodeError as exc:
+        raise SheetError(f"{_rel(src, root)} is not UTF-8 ({exc.reason} at byte {exc.start}); save it as UTF-8")
+
+
 # --- Commands ----------------------------------------------------------------------------------------------------
 
 def cmd_build(root, conf, items):
     for src, html_path, _pdf, _sha, lang in items:
         _need_source(src, root)
+        page = expected_html(root, conf, src, html_path, lang)
         html_path.parent.mkdir(parents=True, exist_ok=True)
-        html_path.write_bytes(render_page(src.read_bytes(), lang).encode("utf-8"))
+        html_path.write_bytes(page.encode("utf-8"))
         print(f"built {_rel(html_path, root)}")
     return []
 
 
-def html_problem(src, html_path, root):
-    """Why the HTML of `src` is not usable (None when it matches the source)."""
+def html_problem(root, conf, src, html_path, lang):
+    """Why the HTML of `src` is not usable (None when it is exactly what `build` would write now)."""
     if not html_path.is_file():
         return f"missing {_rel(html_path, root)}; run: {BUILD_CMD}"
-    m = SHA_COMMENT.search(html_path.read_text(encoding="utf-8", errors="replace"))
+    text = html_path.read_text(encoding="utf-8", errors="replace").replace("\r\n", "\n")
+    m = SHA_COMMENT.search(text)
     if not m or m.group(1) != sha256(src.read_bytes()):
         return (f"stale {_rel(html_path, root)}: it was not built from the current "
                 f"{_rel(src, root)}; run: {BUILD_CMD}")
+    if text != expected_html(root, conf, src, html_path, lang):
+        return (f"stale {_rel(html_path, root)}: the stylesheet (marketingSheets.css) or the converter changed since "
+                f"it was built; run: {BUILD_CMD}")
     return None
 
 
 def cmd_check(root, conf, items):
     problems = []
-    for src, html_path, pdf, sidecar, _lang in items:
+    for src, html_path, pdf, sidecar, lang in items:
         if not src.is_file():
             problems.append(f"missing source {_rel(src, root)} (marketingSheets.sources); create it or remove it "
                             "from .claude/gw.json")
             continue
-        bad = html_problem(src, html_path, root)
+        try:
+            bad = html_problem(root, conf, src, html_path, lang)
+        except SheetError as exc:
+            bad = str(exc)
         if bad:
             problems.append(bad)
             continue
@@ -300,7 +357,8 @@ function resolvePlaywright() {
   try {
     for (const [htmlFile, pdfFile] of jobs) {
       const page = await browser.newPage();
-      await page.goto('file://' + htmlFile);
+      await page.goto(require('url').pathToFileURL(htmlFile).href);
+      await page.evaluate(() => document.fonts.ready);
       await page.pdf({ path: pdfFile, preferCSSPageSize: true, printBackground: true });
       await page.close();
     }
@@ -311,9 +369,9 @@ function resolvePlaywright() {
 
 def cmd_pdf(root, conf, items):
     problems = []
-    for src, html_path, _pdf, _sha, _lang in items:
+    for src, html_path, _pdf, _sha, lang in items:
         _need_source(src, root)
-        bad = html_problem(src, html_path, root)
+        bad = html_problem(root, conf, src, html_path, lang)
         if bad:
             raise SheetError(bad)
     if not items:
@@ -324,7 +382,15 @@ def cmd_pdf(root, conf, items):
     tmp = Path(tempfile.mkdtemp(prefix="mkt-sheet-"))
     try:
         jobs = [[str(h), str(tmp / f"{n}.pdf")] for n, (_s, h, _p, _q, _l) in enumerate(items)]
-        r = subprocess.run([node, "-e", NODE_PRINT, json.dumps(jobs)], cwd=str(root), capture_output=True, text=True)
+        try:
+            r = subprocess.run([node, "-e", NODE_PRINT, json.dumps(jobs)], cwd=str(root), capture_output=True,
+                               text=True, timeout=conf["timeout"])
+        except subprocess.TimeoutExpired:
+            raise SheetError(f"printing took over {conf['timeout']} s and was stopped; raise marketingSheets.timeout "
+                             "in .claude/gw.json or check that Chromium starts (npx playwright install chromium)")
+        except OSError as exc:
+            raise SheetError(f"cannot run node ({exc}); install Node.js, then: npm i -D playwright && "
+                             "npx playwright install chromium")
         if r.returncode == 3 and "PLAYWRIGHT_NOT_FOUND" in r.stderr:
             raise SheetError(MISSING_PLAYWRIGHT)
         if r.returncode != 0:
@@ -333,6 +399,9 @@ def cmd_pdf(root, conf, items):
         for n, (_s, html_path, pdf, sidecar, _l) in enumerate(items):
             data = (tmp / f"{n}.pdf").read_bytes()
             pages = count_pages(data)
+            if pages < 1:
+                raise SheetError(f"could not count pages in the printed {_rel(pdf, root)}; run: {PDF_CMD} again, "
+                                 "and if it repeats update Playwright (npm i -D playwright@latest)")
             if pages > conf["maxPages"]:
                 problems.append(f"{_rel(pdf, root)} would have {pages} pages, over maxPages {conf['maxPages']}; "
                                 f"shorten {_rel(_s, root)} (or raise marketingSheets.maxPages) and run: "

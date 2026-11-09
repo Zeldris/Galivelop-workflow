@@ -4,27 +4,210 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Galivelop-workflow para tu equipo</title>
-<style>
-@page { size: A4; margin: 16mm 16mm 14mm; }
-* { box-sizing: border-box; }
-html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 10pt; line-height: 1.45; color: #1f2933;
-  margin: 0 auto; max-width: 178mm; padding: 8mm 0; }
-h1 { font-size: 22pt; line-height: 1.15; margin: 0 0 4mm; color: #102a43; letter-spacing: -0.01em; }
-h2 { font-size: 13pt; margin: 6mm 0 2mm; color: #243b53; border-bottom: 0.4mm solid #bcccdc; padding-bottom: 1mm; }
-h3 { font-size: 10.5pt; margin: 4mm 0 1mm; color: #334e68; }
-p { margin: 0 0 2.5mm; }
-ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
-li { margin: 0 0 1mm; }
-code { font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace; font-size: 9pt; background: #f0f4f8;
-  padding: 0 1mm; border-radius: 1mm; }
-a { color: #0b69a3; text-decoration: none; }
-hr { border: 0; border-top: 0.4mm solid #bcccdc; margin: 5mm 0; }
-table { border-collapse: collapse; width: 100%; margin: 0 0 3mm; font-size: 9pt; }
-th, td { border: 0.3mm solid #bcccdc; padding: 1mm 2mm; vertical-align: top; text-align: left; }
-th { background: #f0f4f8; color: #243b53; }
-h1, h2, h3, table, li { break-inside: avoid; }
-@media print { body { padding: 0; } }
+<style>/* Galivelop presentation sheets: the portal style (Portal-Galivelop docs/marca.md and src/estilos/global.css) adapted
+   to printed A4. Grid paper, flat celeste blocks, 28 px chamfers instead of rounded corners, hairline rules instead
+   of shadows, data in monospace. The scale keeps the portal proportions at paper size (body 14 px = 10.5 pt).
+   Fonts are self-hosted in fonts/ (SIL OFL, see CREDITS.md); relative font paths are rewritten per HTML by mkt-sheet.py. */
+
+@font-face {
+  font-family: 'Big Shoulders Display Variable';
+  font-style: normal;
+  font-weight: 100 900;
+  src: url("../fonts/big-shoulders-display-latin-wght-normal.woff2") format('woff2-variations');
+}
+
+@font-face {
+  font-family: 'Literata Variable';
+  font-style: normal;
+  font-weight: 200 900;
+  src: url("../fonts/literata-latin-wght-normal.woff2") format('woff2-variations');
+}
+
+@font-face {
+  font-family: 'Literata Variable';
+  font-style: italic;
+  font-weight: 200 900;
+  src: url("../fonts/literata-latin-wght-italic.woff2") format('woff2-variations');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono Variable';
+  font-style: normal;
+  font-weight: 100 800;
+  src: url("../fonts/jetbrains-mono-latin-wght-normal.woff2") format('woff2-variations');
+}
+
+:root {
+  --sky: #1aa6df;
+  --deep-sky: #0072a8;
+  --white: #ffffff;
+  --paper: #fbfcfd;
+  --grid: #e3edf3;
+  --ink: #13212b;
+  --ink-2: #4a5c69;
+  --rule: #b9cbd6;
+  --alt-bg: #f1f6f9;
+  --link: var(--deep-sky);
+  --font-titles: 'Big Shoulders Display Variable', 'Big Shoulders Display', 'Arial Narrow', sans-serif;
+  --font-text: 'Literata Variable', 'Literata', Georgia, 'Times New Roman', serif;
+  --font-data: 'JetBrains Mono Variable', 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --chamfer-large: 28px;
+  --grid-step: 24px;
+}
+
+@page {
+  size: A4;
+  margin: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+/* Grid paper: the 24 px graph of the portal, one hairline per cell, very faint. */
+body {
+  margin: 0;
+  min-height: 297mm;
+  padding: 20px 44px 16px;
+  background-color: var(--paper);
+  background-image: linear-gradient(var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: var(--grid-step) var(--grid-step);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 14px;
+  line-height: 1.42;
+}
+
+/* Titles: condensed, uppercase, tight, like the lettering of a chart. */
+h1,
+h2,
+h3 {
+  margin: 0;
+  font-family: var(--font-titles);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+/* The cover block: flat deep celeste, white text, 28 px chamfer on the top right corner (the portal .hero). */
+h1 {
+  margin: 0 0 12px;
+  padding: 18px 28px 15px;
+  background: var(--deep-sky);
+  color: var(--white);
+  font-size: 40px;
+  clip-path: polygon(0 0, calc(100% - var(--chamfer-large)) 0, 100% var(--chamfer-large), 100% 100%, 0 100%);
+}
+
+h2 {
+  margin: 13px 0 7px;
+  padding-bottom: 3px;
+  border-bottom: 2px solid var(--ink);
+  font-size: 20px;
+}
+
+h3 {
+  margin: 14px 0 6px;
+  font-size: 18px;
+}
+
+p {
+  margin: 0 0 6px;
+  text-wrap: pretty;
+}
+
+ul,
+ol {
+  margin: 0 0 10px;
+  padding-left: 22px;
+}
+
+li {
+  margin: 0 0 2px;
+}
+
+li::marker {
+  color: var(--deep-sky);
+  font-family: var(--font-data);
+  font-weight: 500;
+}
+
+a {
+  color: var(--link);
+}
+
+hr {
+  height: 0;
+  margin: 16px 0;
+  border: 0;
+  border-top: 1px dashed var(--rule);
+}
+
+/* Data and code: monospace, medium weight, small and tracked. */
+code {
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  padding: 0 4px;
+  background: var(--alt-bg);
+  border: 1px solid var(--rule);
+}
+
+table {
+  width: 100%;
+  margin: 0 0 12px;
+  border-collapse: collapse;
+  background: var(--white);
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+th,
+td {
+  padding: 3px 9px;
+  border-bottom: 1px solid var(--rule);
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: var(--alt-bg);
+  border-bottom: 2px solid var(--ink);
+  color: var(--ink-2);
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-wrap: balance;
+}
+
+td:first-child {
+  width: 26%;
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+}
+
+h1,
+h2,
+h3,
+table,
+li {
+  break-inside: avoid;
+}
 </style>
 </head>
 <body>

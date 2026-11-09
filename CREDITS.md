@@ -16,3 +16,6 @@
 - ES: estas skills se copian sin cambios salvo el frontmatter (`license`, `metadata.version`, `metadata.source`) y, en `grilling`, `prototype`, `retro`, `to-spec`, `wait-what` y `wayfinder`, una sección final «In a Galivelop-workflow project»; en `to-spec` y `wayfinder` la `description` además deja el tracker de issues y gana una cláusula «Use when».
 
 The workflow's own skills (`gw-selector`, `gw-orchestrate-dealer`, `gw-opt-tokens`, `gw-opt-ai`, `gw-scout-updates`, `gw-*`) come from the Galivelop workshop's projects · Las skills propias del flujo salen de los proyectos del taller Galivelop.
+
+- EN: the fonts in `docs/mkt/fonts/` (Big Shoulders Display, Literata, JetBrains Mono; latin subset of the `@fontsource-variable` 5.x packages, SIL Open Font License 1.1, licences beside them) print the presentation sheets in the Galivelop portal style.
+- ES: las fuentes de `docs/mkt/fonts/` (Big Shoulders Display, Literata, JetBrains Mono; subconjunto latino de los paquetes `@fontsource-variable` 5.x, licencia SIL OFL 1.1, con sus licencias al lado) imprimen las hojas de presentación con el estilo del portal de Galivelop.
