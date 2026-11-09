@@ -163,6 +163,15 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, value)
             self.assertIn(where, r.stderr)
 
+    def test_selector_case_session_effort_is_validated(self):
+        case = {"case": "Data migration", "skill": "none", "sessionModel": "large", "sessionEffort": "xhigh"}
+        self.write(dict(VALID, selector={"cases": [case]}))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        self.write(dict(VALID, selector={"cases": [dict(case, sessionEffort="huge")]}))
+        r = cli(self.tmp, "validate")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("$.selector.cases[0].sessionEffort", r.stderr)
+
     def test_metrics_quality_defaults_fill_key_by_key(self):
         default = {"findingsTrailer": "Findings", "retriesTrailer": "Retries", "reworkTypes": ["fix", "revert"]}
         self.assertEqual(config.metrics({})["quality"], default)

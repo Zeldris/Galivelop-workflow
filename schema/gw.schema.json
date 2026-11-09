@@ -336,6 +336,9 @@
               "sessionModel": {
                 "type": "string"
               },
+              "sessionEffort": {
+                "enum": ["low", "medium", "high", "xhigh", "max"]
+              },
               "subagentModel": {
                 "type": "string"
               }
