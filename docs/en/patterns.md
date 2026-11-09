@@ -79,7 +79,9 @@ same time.
 - **A short log, with or without `logRows`:** `handoff.py check --strict` fails if a cell of the state table passes
   800 characters or if "Done (last 5)" has more than 5 items, badly numbered or glued on one line (without
   `--strict` it only prints `WARNING:`). `handoff.py done "text"` adds the `1.` item with the date, renumbers and
-  drops the extra ones, leaving the rest of the file alone.
+  drops the extra ones, leaving the rest of the file alone. If the log passes `logSize` characters, `check` warns and
+  `handoff.py archive` moves the "Pending" items of versions already published to `logArchive` (`--dry-run` only
+  shows what it would move); after a compaction, `recover.py` returns only the first section.
 
 ## A local session that cannot create PRs
 

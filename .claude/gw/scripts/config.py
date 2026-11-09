@@ -273,6 +273,20 @@ def context_guard(config):
     return {k: given.get(k, props[k]["default"]) for k in props}
 
 
+def log_size(config):
+    """The `logSize` key: the cap on the hand-off log in characters (0 = no cap), the schema default when absent."""
+    schema = json.loads(schema_path().read_text(encoding="utf-8"))
+    given = config.get("logSize")
+    return given if isinstance(given, int) and not isinstance(given, bool) else schema["properties"]["logSize"]["default"]
+
+
+def log_archive(config):
+    """The `logArchive` key: repo-relative path of the hand-off archive, the schema default when absent."""
+    schema = json.loads(schema_path().read_text(encoding="utf-8"))
+    given = config.get("logArchive")
+    return given if isinstance(given, str) and given else schema["properties"]["logArchive"]["default"]
+
+
 def semantic_errors(config):
     """Problems the schema subset cannot express: a relatedTests `paths` that is not a valid regex, an agentMap
     prefix that is not one folder name, an instructionLines `warn` above its `fail`."""

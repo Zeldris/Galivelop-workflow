@@ -143,9 +143,15 @@ def skills_text(root):
 def breakdown(root, cfg, hook_chars=0):
     """Deterministic estimate of what the startup holds: [(label, tokens, fix)] in a fixed order."""
     log = (cfg or {}).get("log") or "docs/handoff.md"
+    log_text = read_text(os.path.join(str(root), log))
+    archive = f"python3 {os.path.join(HERE, 'handoff.py')} archive"
+    cap = config.log_size(cfg or {})
+    if cap > 0 and len(log_text) > cap:
+        log_fix = f"over logSize ({len(log_text)} > {cap} chars): {archive}"
+    else:
+        log_fix = f"shorten it: archive the items of published versions ({archive}) and keep cells ≤ 800 chars"
     return [
-        ("log", estimate_tokens(read_text(os.path.join(str(root), log))),
-         "shorten it: archive closed entries (handoff.py archive, D65) and keep cells ≤ 800 chars"),
+        ("log", estimate_tokens(log_text), log_fix),
         ("AGENTS.md/CLAUDE.md", estimate_tokens(instruction_text(root)),
          f"python3 {os.path.join(HERE, 'doctor.py')}: instructionLines"),
         ("hook output", int(hook_chars / CHARS_PER_TOKEN), "OUTPUT_CAP in recover.py / trim the log state"),

@@ -78,7 +78,9 @@ la vez.
 - **Bitácora corta, con o sin `logRows`:** `handoff.py check --strict` falla si una celda de la tabla de estado pasa de
   800 caracteres o si «Hecho (5 últimas)» tiene más de 5 elementos, mal numerados o pegados en una línea (sin
   `--strict` solo avisa con `WARNING:`). `handoff.py done "texto"` añade el elemento `1.` con la fecha, renumera y
-  quita los que sobran, sin tocar el resto del archivo.
+  quita los que sobran, sin tocar el resto del archivo. Si la bitácora pasa de `logSize` caracteres, `check` avisa y
+  `handoff.py archive` mueve a `logArchive` los elementos de «Pendiente» de versiones ya publicadas (`--dry-run` solo
+  muestra qué movería); tras compactar, `recover.py` solo devuelve la primera sección.
 
 ## Sesión local que no puede crear PRs
 

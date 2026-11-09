@@ -125,6 +125,20 @@ class Config(unittest.TestCase):
         self.write(dict(VALID, instructionLines={"warn": 250, "fail": 250}))
         self.assertEqual(cli(self.tmp, "validate").returncode, 0)
 
+    def test_log_size_and_log_archive_defaults_and_own_values(self):
+        self.write(VALID)
+        self.assertEqual(json.loads(cli(self.tmp, "get", "logSize").stdout), 20000)
+        self.assertEqual(cli(self.tmp, "get", "logArchive").stdout.strip(), "docs/records/handoff-archive.md")
+        self.assertEqual((config.log_size({}), config.log_archive({})), (20000, "docs/records/handoff-archive.md"))
+        self.write(dict(VALID, logSize=0, logArchive="notes/old.md"))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        self.assertEqual((config.log_size(config.load(self.tmp)), config.log_archive(config.load(self.tmp))), (0, "notes/old.md"))
+        for bad in ({"logSize": -1}, {"logArchive": "../x.md"}, {"logArchive": "/abs.md"}):
+            self.write(dict(VALID, **bad))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn("$." + next(iter(bad)), r.stderr)
+
     def test_context_guard_default_and_own_values(self):
         self.write(VALID)
         default = {"cutoff": 0, "window": 200000, "autocompactShare": 0.8, "warn": 25, "alarm": 50}

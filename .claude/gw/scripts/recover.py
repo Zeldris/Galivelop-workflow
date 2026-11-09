@@ -4,7 +4,9 @@
 
   recover.py --state          what the SessionStart hook (clear|compact) puts back into the context: the log's
                                 state (with logRows, the current branch's row; else the log's first section, ~25
-                                lines), `git status --short` (15 lines at most), the last 5 commits, the repo's other
+                                lines, and on /clear also its Pendiente/Pending section; after a compaction, source
+                                "compact", only the first section, which holds the state and the next step),
+                                `git status --short` (15 lines at most), the last 5 commits, the repo's other
                                 worktrees (path, branch and, with logRows, their row; 10 at most), the compactions in
                                 this session and since the branch last took the protected branch (its merge base: the
                                 task's start; WMF P10) with a warning when they pass the task's compaction budget
@@ -229,8 +231,9 @@ def first_section(text):
     return out
 
 
-def log_state(root, branch, logs=None):
-    """Lines about the log; its repo-relative path is appended to `logs` (when given) once known."""
+def log_state(root, branch, logs=None, source="startup"):
+    """Lines about the log; its repo-relative path is appended to `logs` (when given) once known. After a compaction
+    (`source` "compact") only the state is shown: the first section (the first of `logSections`), not Pending."""
     try:
         cfg = config.load(root)
     except config.ConfigError as exc:
@@ -249,7 +252,11 @@ def log_state(root, branch, logs=None):
     def indented(lines):
         return ["  " + l if l else "" for l in lines]
     wanted = cfg.get("logSections") or []
+    compact = source == "compact"
+    only = (f"- Log: only the first section is shown after a compaction; the rest is in {cfg['log']} (read it "
+            f"whole with: sed -n '1,200p' {cfg['log']}, or after /clear: python3 {HERE}/recover.py --state)")
     if wanted:
+        wanted = wanted[:1] if compact else wanted
         out = []
         for heading in wanted:
             section = named_section(text, heading)
@@ -258,9 +265,11 @@ def log_state(root, branch, logs=None):
                            f"heading or the key")
             else:
                 out += [f"- Log ({cfg['log']}), section '{heading}':"] + indented(section)
-        return out
+        return out + ([only] if compact else [])
     first = first_section(text)
     out = [f"- Log ({cfg['log']}), first section:"] + indented(first)
+    if compact:
+        return out + [only]
     for heading in ("Pendiente", "Pending"):
         section = named_section(text, heading)
         if section is not None and section[0] not in first:
@@ -429,7 +438,7 @@ def state(root, transcript, out, logs, source="startup"):
     """Append the --state lines to `out` (and the log's relative path to `logs`); the caller measures and prints."""
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD") or "?"
     head = [f"State after compaction or /clear (galivelop-workflow), branch {branch}:"]
-    log_lines = log_state(root, branch, logs)
+    log_lines = log_state(root, branch, logs, source)
     tail = []
     say = tail.append
     status = git(root, "status", "--short").splitlines()
