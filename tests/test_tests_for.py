@@ -93,7 +93,7 @@ class TestsFor(unittest.TestCase):
         code, out, _ = self.run_cli("--diff", "HEAD")
         self.assertIn("tests/test_new.py", out.splitlines())
 
-    def test_diff_against_an_unknown_revision(self):
+    def test_diff_against_an_unknown_ref(self):
         code, out, err = self.run_cli("--diff", "nope")
         self.assertEqual(code, 2)
         self.assertIn("cannot diff against 'nope'", err)
