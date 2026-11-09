@@ -135,7 +135,7 @@ In this order, because each step uses the previous one.
 | B1 | `Stop` hook that reads the session logs | done (`scripts/metrics.py record`, key `metrics`) |
 | B2 | `docs/metrics/ledger.jsonl` in the repo | done (`merge=union` in `.gitattributes`; `apply.py` does not set it in projects yet) |
 | B3 | What is stored: tokens by model and type, date, branch, `Refs`, subagent; prices in a dated table | done (2026-11-09; fields with B1, `metrics.prices` and `metrics.py price`) |
-| B4 | Reports by period: `metrics.py report --period …` and the `gw-metrics` skill | pending |
+| B4 | Reports by period: `metrics.py report --period …` and the `gw-metrics` skill | done (2026-11-09; `metrics.reports`, `--write`) |
 | B5 | Comparisons: `metrics.py compare` | pending |
 | B6 | Warning at `SessionStart` when a model spends 1.5× its average | pending |
 | B7 | `models.disabled` in `gw.json`, with its hook | pending |

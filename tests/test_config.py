@@ -143,8 +143,8 @@ class Config(unittest.TestCase):
         self.write(VALID)
         default = config.metrics({})
         self.assertEqual(json.loads(cli(self.tmp, "get", "metrics").stdout), default)
-        self.assertEqual({k: default[k] for k in ("ledger", "record")},
-                         {"ledger": "docs/metrics/ledger.jsonl", "record": True})
+        self.assertEqual({k: default[k] for k in ("ledger", "record", "reports")},
+                         {"ledger": "docs/metrics/ledger.jsonl", "record": True, "reports": "docs/metrics"})
         self.assertEqual(default["prices"][0]["models"]["claude-opus-5-5"],
                          {"input": 4, "cacheWrite": 5, "cacheRead": 0.2, "output": 20})
         self.assertEqual(config.metrics({"metrics": {"record": False}}), dict(default, record=False))
@@ -152,7 +152,7 @@ class Config(unittest.TestCase):
         self.assertEqual(config.metrics({"metrics": {"prices": own}})["prices"], own)
         self.write(dict(VALID, metrics={"prices": own}))
         self.assertEqual(cli(self.tmp, "validate").returncode, 0)
-        bad = [({"record": "yes"}, "$.metrics.record"),
+        bad = [({"record": "yes"}, "$.metrics.record"), ({"reports": ""}, "$.metrics.reports"),
                ({"prices": [{"since": "2027-1-1", "models": {}}]}, "$.metrics.prices[0].since"),
                ({"prices": [{"since": "2027-01-01", "models": {"m": {"input": 1}}}]}, "$.metrics.prices[0].models.m"),
                ({"prices": [{"since": "2027-01-01", "models": {"m": dict(own[0]["models"]["m"], output=-1)}}]},

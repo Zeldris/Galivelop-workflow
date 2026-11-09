@@ -1,4 +1,4 @@
-"""scripts/metrics.py (B1/B2/B3): the Stop hook that appends the token usage of the session transcripts to a ledger.
+"""scripts/metrics.py (B1/B2/B3/B4): the Stop hook that appends the token usage of the session transcripts to a ledger.
 
 Synthetic transcripts in temporary repos; every case runs the script the way the hook does (JSON on stdin).
 """
@@ -260,6 +260,87 @@ class Prices(Base):
         r = self.price("claude-x", "--date", "2026-1-1")
         self.assertEqual(r.returncode, 2)
         self.assertIn("is not a date YYYY-MM-DD", r.stderr)
+
+
+class Report(Base):
+    """B4: metrics.py report --period sums the ledger rows of a period by model, agent, branch and task id."""
+    PRICES = [{"since": "2026-01-01", "models": {"claude-x": {"input": 1, "cacheWrite": 2, "cacheRead": 0.5,
+                                                              "output": 10}}}]
+
+    def rows(self, *rows):
+        path = self.root / LEDGER
+        path.parent.mkdir(parents=True, exist_ok=True)
+        base = {"agent": "main", "branch": "work", "cacheRead": 0, "cacheWrite": 0, "input": 0, "output": 0,
+                "model": "claude-x", "recorded": "2026-11-09T00:00:00Z", "refs": ["B4"], "session": "s1"}
+        path.write_text("".join(json.dumps(dict(base, **r)) + "\n" for r in rows) + "not json\n")
+
+    def report(self, *args):
+        return subprocess.run([sys.executable, "-B", str(SCRIPT), "report", *args, "--root", str(self.root)],
+                              capture_output=True, text=True, env=self.env)
+
+    def test_period_bounds(self):
+        import datetime
+        d = datetime.date(2026, 11, 9)  # a Monday
+        self.assertEqual(metrics.period_of("day", d), ("2026-11-09", "2026-11-09", "2026-11-09"))
+        self.assertEqual(metrics.period_of("week", datetime.date(2026, 11, 15)), ("2026-W46", "2026-11-09", "2026-11-15"))
+        self.assertEqual(metrics.period_of("week", datetime.date(2027, 1, 1)), ("2026-W53", "2026-12-28", "2027-01-03"))
+        self.assertEqual(metrics.period_of("month", datetime.date(2028, 2, 10)), ("2028-02", "2028-02-01", "2028-02-29"))
+        self.assertEqual(metrics.period_of("quarter", d), ("2026-Q4", "2026-10-01", "2026-12-31"))
+        self.assertEqual(metrics.period_of("quarter", datetime.date(2026, 3, 31)), ("2026-Q1", "2026-01-01", "2026-03-31"))
+
+    def test_sums_by_dimension_with_money_and_only_the_period(self):
+        self.write_config({"metrics": {"prices": self.PRICES}})
+        self.rows({"date": "2026-11-09", "input": 1_000_000, "output": 100_000},
+                  {"date": "2026-11-10", "agent": "Explore", "branch": "other", "refs": ["B4", "B5"],
+                   "session": "s2", "cacheRead": 2_000_000},
+                  {"date": "2026-11-10", "model": "gpt-z", "refs": [], "output": 500},
+                  {"date": "2026-11-16", "input": 7})  # next week: left out
+        r = self.report("--period", "week", "--date", "2026-11-11")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = r.stdout
+        self.assertIn("# Token report: 2026-W46", out)
+        self.assertIn("2026-11-09 to 2026-11-15", out)
+        # totals: 2 sessions; 1M input + 2M cache read + 100,500 output; $1 + $1 + $1 priced, gpt-z unpriced
+        self.assertIn("| 2 | 1,000,000 | 0 | 2,000,000 | 100,500 | 3,100,500 | $3.00 + unpriced |", out)
+        self.assertIn("| `claude-x` | 1,000,000 | 0 | 2,000,000 | 100,000 | 3,100,000 | 100.0% | $3.00 |", out)
+        self.assertIn("| `Explore` | 0 | 0 | 2,000,000 | 0 | 2,000,000 | 64.5% | $1.00 |", out)
+        self.assertIn("| `other` |", out)
+        self.assertIn("| `B5` | 0 | 0 | 2,000,000 |", out)
+        self.assertIn("| `B4` | 1,000,000 | 0 | 2,000,000 | 100,000 | 3,100,000 |", out)  # both ids get the row
+        self.assertIn("| `(none)` | 0 | 0 | 0 | 500 | 500 | 0.0% | $0.00 + unpriced |", out)
+        self.assertIn("## Without a price", out)
+        self.assertIn("- `gpt-z`: 500 tokens", out)
+        self.assertNotIn("7 |", out.split("## Totals")[1].split("##")[0])
+        self.assertFalse((self.root / "docs" / "metrics" / "weekly").exists())  # printed only
+
+    def test_write_saves_the_same_text_under_the_period_folder(self):
+        self.rows({"date": "2026-11-09", "model": "claude-opus-5-5", "output": 1_000_000})
+        r = self.report("--period", "day", "--date", "2026-11-09", "--write")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        path = self.root / "docs" / "metrics" / "daily" / "2026-11-09.md"
+        self.assertEqual(path.read_text(), r.stdout)
+        self.assertIn("$20.00", r.stdout)  # default price table: opus 5.5 output at 20 USD per million
+        self.assertIn("wrote docs/metrics/daily/2026-11-09.md", r.stderr)
+        self.write_config({"metrics": {"reports": "out/m"}})
+        self.assertEqual(self.report("--period", "quarter", "--date", "2026-11-09", "--write").returncode, 0)
+        self.assertTrue((self.root / "out" / "m" / "quarterly" / "2026-Q4.md").is_file())
+
+    def test_a_period_without_rows_writes_nothing(self):
+        self.rows({"date": "2026-11-09", "output": 5})
+        r = self.report("--period", "month", "--date", "2026-10-31", "--write")
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout, "")
+        self.assertIn("no ledger rows in month 2026-10", r.stderr)
+        self.assertFalse((self.root / "docs" / "metrics" / "monthly").exists())
+        (self.root / LEDGER).unlink()
+        r = self.report("--period", "day")
+        self.assertEqual(r.returncode, 0)
+        self.assertIn("nothing to report", r.stderr)
+
+    def test_rejects_an_unknown_period(self):
+        r = self.report("--period", "year")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("invalid choice: 'year'", r.stderr)
 
 
 if __name__ == "__main__":

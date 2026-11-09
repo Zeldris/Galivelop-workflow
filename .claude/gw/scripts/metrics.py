@@ -22,13 +22,20 @@ whose transcript total exceeds that sum (per field, the difference). Rerunning w
 whose ledger sum is above the transcript (a rotated transcript) is left alone. The write is one append of all new lines.
 
 Configuration (`metrics` in .claude/gw.json): `ledger` (repo-relative path, its folder is created), `record` (false
-writes nothing) and `prices` (B3): dated tables of USD per million tokens per model. Money is computed when reading
+writes nothing), `reports` (B4, the folder of the written reports) and `prices` (B3): dated tables of USD per million tokens per model. Money is computed when reading
 (`price_of`, `cost_of`; `metrics.py price MODEL [--date D]` prints the price a row of that model and date takes): the
 newest table whose `since` is on or before the row's date, then the model key equal to the row's model or, failing
 that, the longest key the model starts with followed by `-` (a date suffix). No table or no key = no price (None),
 never a guess.
 
-It never blocks a stop and never fails silently: on any error it exits 0 and prints a `systemMessage` JSON object on
+`metrics.py report --period day|week|month|quarter [--date D] [--write]` (B4) sums the ledger rows of the period that
+holds D (default today, UTC; weeks are ISO, Monday to Sunday) into a Markdown report: totals, then tokens and USD by
+model, agent, branch and task id (`refs`; a row with two ids counts in both, so that table can add up to more than the
+total; `(none)` without ids). Rows without a price are counted in tokens and listed apart, never priced. It prints the
+report; `--write` also saves it as `<reports>/<daily|weekly|monthly|quarterly>/<name>.md` (`2026-11-09`, `2026-W45`,
+`2026-11`, `2026-Q4`), the same bytes for the same ledger. A period without rows writes nothing and says so (exit 0).
+
+The record hook never blocks a stop and never fails silently: on any error it exits 0 and prints a `systemMessage` JSON object on
 stdout that names `python3 <here>/doctor.py`. A successful record prints nothing; with `stop_hook_active` it records
 the same and prints nothing at all. Project root: config.find_root (never the current directory alone).
 Python 3.8+ standard library only.
@@ -188,6 +195,143 @@ def cost_of(row, prices):
     return sum(num(row.get(k)) * price[k] for k in TOKEN_KEYS) / 1_000_000
 
 
+PERIODS = {"day": "daily", "week": "weekly", "month": "monthly", "quarter": "quarterly"}
+
+
+def period_of(kind, day):
+    """(name, first day, last day) of the period of `kind` that holds `day` (a datetime.date); days as ISO text."""
+    if kind == "day":
+        first = last = day
+        name = day.isoformat()
+    elif kind == "week":
+        first = day - datetime.timedelta(days=day.weekday())
+        last = first + datetime.timedelta(days=6)
+        year, week, _ = day.isocalendar()
+        name = f"{year}-W{week:02d}"
+    elif kind == "month":
+        first = day.replace(day=1)
+        last = (first + datetime.timedelta(days=32)).replace(day=1) - datetime.timedelta(days=1)
+        name = f"{day.year}-{day.month:02d}"
+    elif kind == "quarter":
+        q = (day.month - 1) // 3
+        first = datetime.date(day.year, 3 * q + 1, 1)
+        last = (first + datetime.timedelta(days=95)).replace(day=1) - datetime.timedelta(days=1)
+        name = f"{day.year}-Q{q + 1}"
+    else:
+        raise ValueError(f"unknown period {kind!r}")
+    return name, first.isoformat(), last.isoformat()
+
+
+def ledger_rows(path):
+    """The ledger's rows (dicts with session, agent, model and date), skipping lines that do not parse."""
+    rows = []
+    if not os.path.isfile(path):
+        return rows
+    with open(path, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(d, dict) and all(isinstance(d.get(k), str) for k in ("session", "agent", "model", "date")):
+                rows.append(d)
+    return rows
+
+
+def summarize(rows, prices):
+    """Totals and breakdowns of ledger rows: {"total", "sessions", "unpriced": {model: tokens}, "by": {dimension:
+    {value: acc}}}; acc = {field: tokens, "tokens": sum, "usd": priced cost, "unpriced": tokens without price}."""
+    def new():
+        return dict(dict.fromkeys(TOKEN_KEYS, 0), tokens=0, usd=0.0, unpriced=0)
+
+    def add(acc, row, tokens, usd):
+        for k in TOKEN_KEYS:
+            acc[k] += num(row.get(k))
+        acc["tokens"] += tokens
+        if usd is None:
+            acc["unpriced"] += tokens
+        else:
+            acc["usd"] += usd
+
+    out = {"total": new(), "sessions": set(), "unpriced": {}, "by": {d: {} for d in ("model", "agent", "branch", "refs")}}
+    for row in rows:
+        tokens = sum(num(row.get(k)) for k in TOKEN_KEYS)
+        usd = cost_of(row, prices)
+        add(out["total"], row, tokens, usd)
+        out["sessions"].add(row["session"])
+        if usd is None:
+            out["unpriced"][row["model"]] = out["unpriced"].get(row["model"], 0) + tokens
+        refs = row.get("refs") if isinstance(row.get("refs"), list) else []
+        values = {"model": [row["model"]], "agent": [row["agent"]],
+                  "branch": [row.get("branch") if isinstance(row.get("branch"), str) else "?"],
+                  "refs": sorted({r for r in refs if isinstance(r, str)}) or ["(none)"]}
+        for dim, keys in values.items():
+            for key in keys:
+                add(out["by"][dim].setdefault(key, new()), row, tokens, usd)
+    return out
+
+
+def fmt_tokens(n):
+    return f"{n:,}"
+
+
+def fmt_usd(acc):
+    text = f"${acc['usd']:,.2f}"
+    return text + " + unpriced" if acc["unpriced"] else text
+
+
+def render_report(kind, name, first, last, summary):
+    """The Markdown report of a period summary (deterministic: same rows, same text)."""
+    t = summary["total"]
+    span = first if first == last else f"{first} to {last}"
+    lines = [f"# Token report: {name}", "",
+             f"Period: {kind}, {span} (UTC). Source: the token ledger (`metrics.py report`). Money is computed from "
+             "`metrics.prices` when the report is made; with a subscription it is a reference, not a bill.", "",
+             "## Totals", "",
+             "| Sessions | Input | Cache write | Cache read | Output | Tokens | USD |",
+             "|---:|---:|---:|---:|---:|---:|---:|",
+             f"| {len(summary['sessions'])} | {fmt_tokens(t['input'])} | {fmt_tokens(t['cacheWrite'])} | "
+             f"{fmt_tokens(t['cacheRead'])} | {fmt_tokens(t['output'])} | {fmt_tokens(t['tokens'])} | {fmt_usd(t)} |"]
+    titles = (("model", "By model", "Model"), ("agent", "By agent", "Agent"), ("branch", "By branch", "Branch"),
+              ("refs", "By task id (`Refs`)", "Id"))
+    for dim, title, head in titles:
+        lines += ["", f"## {title}", ""]
+        if dim == "refs":
+            lines += ["A row with several ids counts once in each, so this table can add up to more than the total.", ""]
+        lines += [f"| {head} | Input | Cache write | Cache read | Output | Tokens | Share | USD |",
+                  "|---|---:|---:|---:|---:|---:|---:|---:|"]
+        ordered = sorted(summary["by"][dim].items(), key=lambda kv: (-kv[1]["tokens"], kv[0]))
+        for key, acc in ordered:
+            share = 100.0 * acc["tokens"] / t["tokens"] if t["tokens"] else 0.0
+            lines.append(f"| `{key}` | {fmt_tokens(acc['input'])} | {fmt_tokens(acc['cacheWrite'])} | "
+                         f"{fmt_tokens(acc['cacheRead'])} | {fmt_tokens(acc['output'])} | {fmt_tokens(acc['tokens'])} | "
+                         f"{share:.1f}% | {fmt_usd(acc)} |")
+    if summary["unpriced"]:
+        lines += ["", "## Without a price", "",
+                  "These models have no entry in `metrics.prices` for their date; their tokens are in the tables "
+                  "above but not in the USD figures (`metrics.py price MODEL --date D` checks one).", ""]
+        lines += [f"- `{m}`: {fmt_tokens(n)} tokens" for m, n in sorted(summary["unpriced"].items())]
+    return "\n".join(lines) + "\n"
+
+
+def report(root, cfg, kind, day, write=False):
+    """(text, path written or None) of the report of the `kind` period that holds `day`; text is None without rows."""
+    settings = config.metrics(cfg)
+    ledger = os.path.join(str(root), *posixpath.normpath(settings["ledger"]).split("/"))
+    name, first, last = period_of(kind, day)
+    rows = [r for r in ledger_rows(ledger) if first <= r["date"] <= last]
+    if not rows:
+        return None, None
+    text = render_report(kind, name, first, last, summarize(rows, settings["prices"]))
+    path = None
+    if write:
+        path = os.path.join(str(root), *posixpath.normpath(settings["reports"]).split("/"), PERIODS[kind], name + ".md")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+    return text, path
+
+
 def git(root, *args):
     try:
         r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, timeout=GIT_TIMEOUT)
@@ -295,6 +439,30 @@ def run_price(args):
     return 0
 
 
+def run_report(args):
+    """Print the period report (and write it with --write); exit 0 also when the period has no rows."""
+    try:
+        cfg = config.load(config.find_root(args.root))
+    except config.ConfigError as exc:
+        print(f"metrics: {exc}", file=sys.stderr)
+        return 2
+    day = datetime.date.fromisoformat(args.date) if args.date else datetime.datetime.now(datetime.timezone.utc).date()
+    try:
+        text, path = report(cfg["_root"], cfg, args.period, day, write=args.write)
+    except OSError as exc:
+        print(f"metrics: cannot write the report ({exc}); check the metrics.reports folder in .claude/gw.json", file=sys.stderr)
+        return 1
+    if text is None:
+        name = period_of(args.period, day)[0]
+        print(f"metrics: no ledger rows in {args.period} {name}; nothing to report (python3 "
+              f"{os.path.join(HERE, 'config.py')} get metrics shows the ledger path)", file=sys.stderr)
+        return 0
+    sys.stdout.write(text)
+    if path:
+        print(f"metrics: wrote {os.path.relpath(path, str(cfg['_root']))}", file=sys.stderr)
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="metrics.py", description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="command", required=True)
@@ -307,8 +475,14 @@ def main(argv=None):
     pr.add_argument("--date", type=day_arg, help="UTC date YYYY-MM-DD (default: today)")
     pr.add_argument("--root", help="project root (default: see config.find_root)")
     pr.set_defaults(func=run_price)
+    rp = sub.add_parser("report", help="sum the ledger rows of a period by model, agent, branch and task id")
+    rp.add_argument("--period", required=True, choices=sorted(PERIODS))
+    rp.add_argument("--date", type=day_arg, help="any UTC date YYYY-MM-DD in the period (default: today)")
+    rp.add_argument("--write", action="store_true", help="also save it under metrics.reports/<daily|weekly|...>/")
+    rp.add_argument("--root", help="project root (default: see config.find_root)")
+    rp.set_defaults(func=run_report)
     args = ap.parse_args(argv)
-    if args.command == "price":
+    if args.command in ("price", "report"):
         return args.func(args)
     try:
         return args.func(args)

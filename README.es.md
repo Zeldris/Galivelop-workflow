@@ -117,9 +117,9 @@ comprobación.
 
 ### Skills
 
-26 skills en formato abierto [Agent Skills](https://github.com/agentskills/agentskills).
+27 skills en formato abierto [Agent Skills](https://github.com/agentskills/agentskills).
 
-**Propias del flujo (11):**
+**Propias del flujo (12):**
 
 | Skill | Para qué |
 |---|---|
@@ -132,6 +132,7 @@ comprobación.
 | `gw-update` | Llevar un proyecto a la versión nueva, enseñando antes los cambios |
 | `gw-doctor` | Comprobar que está bien montado y explicar cada fallo con su arreglo |
 | `gw-harvest` | Recoger como propuestas lo que los proyectos cambiaron o inventaron |
+| `gw-metrics` | Leer los informes de tokens por periodo (por modelo, agente, rama y tarea) y explicar adónde fue el gasto |
 | `gw-media-content` | Proponer publicaciones para las redes del proyecto |
 | `gw-media-content-now` | Preparar una publicación concreta, con textos por canal e imágenes |
 

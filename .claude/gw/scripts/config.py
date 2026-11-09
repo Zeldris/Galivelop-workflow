@@ -274,7 +274,7 @@ def context_guard(config):
 
 
 def metrics(config):
-    """The `metrics` key as a dict (ledger, record), each missing part filled from the schema default (the only
+    """The `metrics` key as a dict (ledger, record, reports, prices), each missing part filled from the schema default (the only
     place the defaults live)."""
     props = json.loads(schema_path().read_text(encoding="utf-8"))["properties"]["metrics"]["properties"]
     given = config.get("metrics")

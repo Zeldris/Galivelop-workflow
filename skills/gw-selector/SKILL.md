@@ -28,6 +28,7 @@ Classify the task with the table, then act on its row. Reply in the project's `l
 | Review before the protected branch | `/code-review`, then `pr` for the description | large | none |
 | Closing a block or phase | `retro` (Claude runs it, the user confirms its proposals); now and then `improve-codebase-architecture` | large | none |
 | Social posts about the project (what to post, a post, an announcement or an image about something that just happened) | `gw-media-content` to propose, `gw-media-content-now` to produce one piece | medium | none |
+| Token spend or cost of a period (how much, which model, agent or task cost the most) | `gw-metrics` (the script makes the figures) | medium | none |
 | Writing for agents (`AGENTS.md`, `CLAUDE.md`, skills, docs agents read) | `writing-for-agents` | medium | none |
 
 Use a skill only if it exists in this repo's `skills/` (or `.claude/skills/`) or the project declares it; otherwise
