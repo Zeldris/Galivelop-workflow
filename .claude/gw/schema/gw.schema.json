@@ -274,6 +274,22 @@
       "default": [],
       "description": "Repo-relative files that must name the version being released as a backticked token (`X.Y.Z`), read from HEAD: `version.py --release` fails when one is missing or still shows another version (a README status or what's-new section). [] checks nothing."
     },
+    "marketingSheets": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "type": "array",
+          "items": {"type": "string", "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+\\.md$"},
+          "uniqueItems": true,
+          "default": []
+        },
+        "outDir": {"type": "string", "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+[^/]$", "default": "docs/mkt"},
+        "maxPages": {"type": "integer", "minimum": 1, "default": 1}
+      },
+      "default": {"sources": [], "outDir": "docs/mkt", "maxPages": 1},
+      "description": "One-page presentation sheets written in Markdown: mkt-sheet.py turns each source (repo-relative .md) into <outDir>/<parent folder>/<stem>.html and .pdf and checks they match the source. No sources: the feature is off."
+    },
     "nonTestExtensions": {
       "type": "array",
       "items": {"type": "string", "pattern": "^[a-z0-9]+$"},

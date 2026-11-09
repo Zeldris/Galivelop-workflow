@@ -47,6 +47,9 @@ python3 scripts/private-check.py --all --no-names || bad
 section "agent map paths"
 python3 scripts/agent-map.py || bad
 
+section "presentation sheets (A10)"
+python3 scripts/mkt-sheet.py check || bad
+
 section "hand-off log (state-table cells, Done section)"
 python3 scripts/handoff.py check --strict || bad
 
