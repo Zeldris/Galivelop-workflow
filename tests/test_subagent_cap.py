@@ -23,6 +23,7 @@ class SubagentCapProject(Project):
         super().__init__(tmp, config=config, hooks=())
         self.scripts = self.work / ".claude" / "gw" / "scripts"
         shutil.copy2(ROOT / "scripts" / SCRIPT, self.scripts / SCRIPT)
+        shutil.copy2(ROOT / "scripts" / "models.py", self.scripts / "models.py")
         self.counters = tmp / "counters"
         self.counters.mkdir()
         self.env["GW_SUBAGENT_COUNTER_DIR"] = str(self.counters)
@@ -420,6 +421,81 @@ class FailClosed(Base):
         blocker.write_text("x")
         result = self.p.call(env={"GW_SUBAGENT_COUNTER_DIR": str(blocker)})
         self.assertAsks(result, "cannot count", "subagent counter")
+
+
+class DisabledModels(Base):
+    """B7: a subagent whose model is in models.disabled is denied, with the command that re-enables it."""
+    cfg = {"subagentCap": 3, "models": {"disabled": ["opus", "claude-haiku-4-5"]}}
+
+    def decision(self, result, decision, *needles):
+        code, out = result
+        self.assertEqual(code, 0, out)
+        spec = self.answer(out)
+        self.assertEqual(spec["permissionDecision"], decision, out)
+        for needle in needles:
+            self.assertIn(needle, spec["permissionDecisionReason"], out)
+        return spec
+
+    def transcript(self, *models_used):
+        path = self.tmp / "transcript.jsonl"
+        rows = [{"type": "user", "message": {"content": "hi"}}]
+        rows += [{"type": "assistant", "message": {"model": m, "content": []}} for m in models_used]
+        path.write_text("\n".join(json.dumps(r) for r in rows) + "\n")
+        return str(path)
+
+    def test_the_call_model_is_denied_with_the_way_back(self):
+        self.decision(self.p.call(tool_input={"prompt": "x", "model": "opus"}), "deny",
+                      "model opus (the call's `model`) is disabled (`opus` in models.disabled",
+                      "python3 .claude/gw/scripts/models.py enable opus")
+        self.decision(self.p.call(tool="Task", tool_input={"prompt": "x", "model": "claude-haiku-4-5-20251001"}),
+                      "deny", "`claude-haiku-4-5`")
+
+    def test_a_denied_call_is_not_counted(self):
+        for _ in range(3):
+            self.decision(self.p.call(tool_input={"prompt": "x", "model": "opus"}), "deny", "disabled")
+        self.assertEqual(list(self.p.counters.iterdir()), [])
+        self.assertQuiet(self.p.call())  # haiku is enabled: the first counted call
+
+    def test_an_enabled_model_goes_on_as_before(self):
+        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "sonnet"}))
+        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "claude-haiku-5-5"}))
+
+    def test_the_agent_definition_model_counts(self):
+        self.p.agent("scout", "---\nname: scout\nmodel: claude-opus-5-5\n---\nbody\n")
+        self.decision(self.p.call(tool_input={"prompt": "x", "subagent_type": "scout"}), "deny",
+                      "the definition of the `scout` agent")
+
+    def test_an_inherited_session_model_is_read_from_the_transcript(self):
+        path = self.transcript("claude-sonnet-5-5", "<synthetic>", "claude-opus-5-5[1m]", "<synthetic>")
+        spec = self.decision(self.p.call(tool_input={"prompt": "x"}, transcript_path=path), "deny",
+                             "model claude-opus-5-5[1m] (the session's model, which the subagent inherits)")
+        self.assertIn("no `model`", spec["additionalContext"])
+        path = self.transcript("claude-opus-5-5", "claude-sonnet-5-5")
+        result = self.p.call(tool_input={"prompt": "x", "model": "inherit"}, transcript_path=path)
+        self.assertNotIn("permissionDecision", self.answer(result[1]), "sonnet is enabled: only the warning")
+
+    def test_a_model_it_cannot_tell_asks(self):
+        for extra in ({}, {"transcript_path": str(self.tmp / "missing.jsonl")}, {"transcript_path": 3}):
+            with self.subTest(extra=extra):
+                self.decision(self.p.call(tool_input={"prompt": "x"}, **extra), "ask",
+                              "models.disabled is set in .claude/gw.json (opus, claude-haiku-4-5)",
+                              "cannot be told")
+
+    def test_without_models_py_next_to_it_asks(self):
+        (self.p.scripts / "models.py").unlink()
+        self.decision(self.p.call(), "ask", "models.py is missing next to subagent-cap.py", "/gw-update")
+
+    def test_no_session_id_still_denies_a_disabled_model(self):
+        self.decision(self.p.call(session=None, tool_input={"prompt": "x", "model": "opus"}), "deny", "disabled")
+
+
+class NothingDisabled(Base):
+    cfg = {"subagentCap": 3, "models": {"disabled": []}}
+
+    def test_an_empty_list_checks_nothing(self):
+        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "opus"}))
+        (self.p.scripts / "models.py").unlink()
+        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "opus"}))
 
 
 if __name__ == "__main__":

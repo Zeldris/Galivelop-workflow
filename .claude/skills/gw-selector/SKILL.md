@@ -43,6 +43,9 @@ do the case without it and say so.
   it. If the session deals work out with `gw-orchestrate-dealer`, its recommended model is the one of the riskiest row
   it deals, medium at least. Then carry on. Wait for an answer only when the risk is high: data migration, deleting,
   rewriting published content.
+- **Disabled models:** `python3 .claude/gw/scripts/models.py list` prints `models.disabled`; never recommend or pass
+  one of them (an alias such as `opus` covers its whole family). If a row's model is disabled, take the next rung
+  that is not and say so in the line; only the user re-enables one (`models.py enable`).
 - **Subagent model:** pass the table's subagent column as the `model` parameter. Delegate searches, long reads and
   mechanical work; design and decisions stay in the main session.
 - **Closed plan, scoped implementation:** goes to a `sonnet` subagent and the main session reviews its diff before

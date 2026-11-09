@@ -138,7 +138,7 @@ In this order, because each step uses the previous one.
 | B4 | Reports by period: `metrics.py report --period …` and the `gw-metrics` skill | done (2026-11-09; `metrics.reports`, `--write`) |
 | B5 | Comparisons: `metrics.py compare` | done (2026-11-09; previous period or `--against`) |
 | B6 | Warning at `SessionStart` when a model spends 1.5× its average | done (2026-11-09; `metrics.alert`, today and yesterday) |
-| B7 | `models.disabled` in `gw.json`, with its hook | pending |
+| B7 | `models.disabled` in `gw.json`, with its hook | done (2026-11-09; `subagent-cap.py` denies, `models.py`) |
 | B8 | Quality signals next to spend (the deterministic table, under "Later") | pending |
 | B10 | The `gw-selector` recommends the main session's model and effort | pending |
 | B11 | Model and effort per agent (Claude Code levers) | pending |

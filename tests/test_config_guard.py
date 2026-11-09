@@ -169,11 +169,16 @@ class BashWrites(Base):
         'cd .claude && echo x > settings.json',
         'cd .githooks; rm pre-push',
         'cp /tmp/x .githooks/*',
+        'python3 .claude/gw/scripts/models.py disable opus',
+        'python3 .claude/gw/scripts/models.py --root . enable claude-haiku-5-5',
+        'cd .claude/gw/scripts && python3 models.py enable opus',
     ]
     READS = [
         'cat .claude/settings.json',
         'grep -n hooks .claude/settings.json .githooks/pre-push',
         'python3 .claude/gw/scripts/config.py validate',
+        'python3 .claude/gw/scripts/models.py list',
+        'python3 .claude/gw/scripts/models.py check opus',
         'python3 .claude/gw/scripts/doctor.py > /tmp/out.txt',
         'bash .githooks/pre-push',
         'cat .claude/settings.json > /tmp/copy.json',
@@ -472,6 +477,8 @@ class BashWrites(Base):
     def test_the_reason_names_the_file_written(self):
         self.assertAsks(self.p.tool("Bash", command="echo x > .claude/gw.json"), "writes to .claude/gw.json:")
         self.assertAsks(self.p.tool("Bash", command="cp a .githooks/pre-push"), "writes to .githooks/pre-push:")
+        self.assertAsks(self.p.tool("Bash", command="python3 .claude/gw/scripts/models.py enable opus"),
+                        "writes to .claude/gw.json:")  # B7: only the user re-enables a model
 
     def test_reads_are_allowed(self):
         for command in self.READS:

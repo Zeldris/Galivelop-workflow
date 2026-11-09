@@ -285,6 +285,14 @@ def metrics(config):
     return out
 
 
+def models(config):
+    """The `models` key as a dict (disabled), each missing part filled from the schema default (B7)."""
+    props = json.loads(schema_path().read_text(encoding="utf-8"))["properties"]["models"]["properties"]
+    given = config.get("models")
+    given = given if isinstance(given, dict) else {}
+    return {k: given.get(k, props[k]["default"]) for k in props}
+
+
 def marketing_sheets(config):
     """The `marketingSheets` settings with every inner key filled from the schema defaults (the loader only fills
     top-level keys, so `{"sources": [...]}` alone is a valid way to turn the feature on)."""
@@ -680,7 +688,7 @@ def main(argv=None):
         for command in skipped:
             print(f"related-tests: skipped ({args.kind}): {command} (its changed files were only deleted)", file=sys.stderr)
         return 0
-    value = dict(config, metrics=metrics(config))  # its inner keys fill from the schema too (B3: prices)
+    value = dict(config, metrics=metrics(config), models=models(config))  # inner keys fill from the schema too
     for part in args.key.split("."):
         if not isinstance(value, dict) or part not in value or part.startswith("_"):
             print(f"gw config: key '{args.key}' is not set and has no default", file=sys.stderr)

@@ -556,6 +556,25 @@
       "default": 30,
       "description": "Subagents (Agent/Task calls) one session may launch before subagent-cap.py asks the user to check they are not looping, and again every 10 after."
     },
+    "models": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "disabled": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "default": [],
+          "description": "Models no subagent may run on: a full id (claude-opus-5-5), an id prefix (claude-opus), or a family alias (opus, sonnet, haiku, fable) that covers every id of the family. subagent-cap.py denies the call; gw-selector and gw-orchestrate-dealer never pick them. Changed with models.py disable|enable."
+        }
+      },
+      "default": {
+        "disabled": []
+      },
+      "description": "Which models the workflow may use (B7)."
+    },
     "instructionLines": {
       "type": "object",
       "additionalProperties": false,
