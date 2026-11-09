@@ -141,14 +141,27 @@ class Config(unittest.TestCase):
 
     def test_metrics_default_own_values_and_validation(self):
         self.write(VALID)
-        default = {"ledger": "docs/metrics/ledger.jsonl", "record": True}
+        default = config.metrics({})
         self.assertEqual(json.loads(cli(self.tmp, "get", "metrics").stdout), default)
-        self.assertEqual(config.metrics({}), default)
+        self.assertEqual({k: default[k] for k in ("ledger", "record")},
+                         {"ledger": "docs/metrics/ledger.jsonl", "record": True})
+        self.assertEqual(default["prices"][0]["models"]["claude-opus-5-5"],
+                         {"input": 4, "cacheWrite": 5, "cacheRead": 0.2, "output": 20})
         self.assertEqual(config.metrics({"metrics": {"record": False}}), dict(default, record=False))
-        self.write(dict(VALID, metrics={"record": "yes"}))
-        r = cli(self.tmp, "validate")
-        self.assertNotEqual(r.returncode, 0)
-        self.assertIn("$.metrics.record", r.stderr)
+        own = [{"since": "2027-01-01", "models": {"m": {"input": 1, "cacheWrite": 1, "cacheRead": 1, "output": 1}}}]
+        self.assertEqual(config.metrics({"metrics": {"prices": own}})["prices"], own)
+        self.write(dict(VALID, metrics={"prices": own}))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        bad = [({"record": "yes"}, "$.metrics.record"),
+               ({"prices": [{"since": "2027-1-1", "models": {}}]}, "$.metrics.prices[0].since"),
+               ({"prices": [{"since": "2027-01-01", "models": {"m": {"input": 1}}}]}, "$.metrics.prices[0].models.m"),
+               ({"prices": [{"since": "2027-01-01", "models": {"m": dict(own[0]["models"]["m"], output=-1)}}]},
+                "$.metrics.prices[0].models.m.output")]
+        for value, where in bad:
+            self.write(dict(VALID, metrics=value))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, value)
+            self.assertIn(where, r.stderr)
 
     def test_context_guard_default_and_own_values(self):
         self.write(VALID)

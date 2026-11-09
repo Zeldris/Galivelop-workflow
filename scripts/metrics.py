@@ -21,8 +21,12 @@ Idempotent without a cursor file: the tokens already in the ledger are summed pe
 whose transcript total exceeds that sum (per field, the difference). Rerunning without new usage writes nothing; a key
 whose ledger sum is above the transcript (a rotated transcript) is left alone. The write is one append of all new lines.
 
-Configuration (`metrics` in .claude/gw.json): `ledger` (repo-relative path, its folder is created) and `record`
-(false writes nothing).
+Configuration (`metrics` in .claude/gw.json): `ledger` (repo-relative path, its folder is created), `record` (false
+writes nothing) and `prices` (B3): dated tables of USD per million tokens per model. Money is computed when reading
+(`price_of`, `cost_of`; `metrics.py price MODEL [--date D]` prints the price a row of that model and date takes): the
+newest table whose `since` is on or before the row's date, then the model key equal to the row's model or, failing
+that, the longest key the model starts with followed by `-` (a date suffix). No table or no key = no price (None),
+never a guess.
 
 It never blocks a stop and never fails silently: on any error it exits 0 and prints a `systemMessage` JSON object on
 stdout that names `python3 <here>/doctor.py`. A successful record prints nothing; with `stop_hook_active` it records
@@ -162,6 +166,28 @@ def ledger_sums(path):
     return sums
 
 
+def price_of(prices, model, day):
+    """The price entry ({input, cacheWrite, cacheRead, output} in USD per million tokens, plus `since` and `key`) a
+    ledger row of this model and UTC date (YYYY-MM-DD) takes, or None when no table or no model key applies."""
+    tables = [t for t in prices if isinstance(t, dict) and isinstance(t.get("since"), str) and t["since"] <= day]
+    if not tables or not isinstance(model, str):
+        return None
+    table = max(tables, key=lambda t: t["since"])  # ISO dates sort as text; a later duplicate `since` loses
+    models = table.get("models") if isinstance(table.get("models"), dict) else {}
+    key = model if model in models else max((k for k in models if model.startswith(k + "-")), key=len, default=None)
+    if key is None:
+        return None
+    return dict(models[key], since=table["since"], key=key)
+
+
+def cost_of(row, prices):
+    """USD cost of one ledger row with the dated price table, or None when the row has no price."""
+    price = price_of(prices, row.get("model"), str(row.get("date", "")))
+    if price is None:
+        return None
+    return sum(num(row.get(k)) * price[k] for k in TOKEN_KEYS) / 1_000_000
+
+
 def git(root, *args):
     try:
         r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, timeout=GIT_TIMEOUT)
@@ -221,6 +247,16 @@ def record(root, transcript, cfg):
     return len(new)
 
 
+def day_arg(text):
+    try:
+        datetime.date.fromisoformat(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{text!r} is not a date YYYY-MM-DD") from None
+    if len(text) != 10:
+        raise argparse.ArgumentTypeError(f"{text!r} is not a date YYYY-MM-DD")
+    return text
+
+
 def run_record(args):
     event = read_event()
     active = event.get("stop_hook_active") is True
@@ -242,6 +278,23 @@ def run_record(args):
     return 0
 
 
+def run_price(args):
+    """Print the price entry a ledger row of MODEL and DATE takes, as JSON; exit 1 when there is none."""
+    try:
+        cfg = config.load(config.find_root(args.root))
+    except config.ConfigError as exc:
+        print(f"metrics: {exc}", file=sys.stderr)
+        return 2
+    day = args.date or datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+    price = price_of(config.metrics(cfg)["prices"], args.model, day)
+    if price is None:
+        print(f"metrics: no price for {args.model} on {day}; add it to metrics.prices in .claude/gw.json "
+              f"(python3 {os.path.join(HERE, 'config.py')} get metrics shows the key)", file=sys.stderr)
+        return 1
+    print(json.dumps(price, sort_keys=True))
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="metrics.py", description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="command", required=True)
@@ -249,7 +302,14 @@ def main(argv=None):
     rec.add_argument("--transcript", help="main transcript (default: transcript_path of the hook JSON, else the newest)")
     rec.add_argument("--root", help="project root (default: see config.find_root)")
     rec.set_defaults(func=run_record)
+    pr = sub.add_parser("price", help="print the price (USD per million tokens) a ledger row of MODEL on DATE takes")
+    pr.add_argument("model")
+    pr.add_argument("--date", type=day_arg, help="UTC date YYYY-MM-DD (default: today)")
+    pr.add_argument("--root", help="project root (default: see config.find_root)")
+    pr.set_defaults(func=run_price)
     args = ap.parse_args(argv)
+    if args.command == "price":
+        return args.func(args)
     try:
         return args.func(args)
     except Exception as exc:  # a hook must never crash the stop

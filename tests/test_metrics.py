@@ -1,4 +1,4 @@
-"""scripts/metrics.py (B1/B2): the Stop hook that appends the token usage of the session transcripts to a ledger.
+"""scripts/metrics.py (B1/B2/B3): the Stop hook that appends the token usage of the session transcripts to a ledger.
 
 Synthetic transcripts in temporary repos; every case runs the script the way the hook does (JSON on stdin).
 """
@@ -13,6 +13,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "metrics.py"
+sys.path.insert(0, str(ROOT / "scripts"))
+import metrics  # noqa: E402
 MODEL = "claude-sonnet-5-5"
 BASE_CONFIG = {"version": "0.5.1", "schemaVersion": 1, "language": "en", "log": "docs/log.md",
                "protectedBranch": "main", "pushToProtected": "direct", "check": ["true"],
@@ -212,3 +214,53 @@ class Record(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def table(since, **models):
+    return {"since": since, "models": {k.replace("_", "-"): {"input": v, "cacheWrite": v * 1.25, "cacheRead": v / 10,
+                                                             "output": v * 5} for k, v in models.items()}}
+
+
+class Prices(Base):
+    PRICES = [table("2026-01-01", claude_x=1, claude_x_5=2), table("2026-06-01", claude_x=3)]
+
+    def test_exact_key_then_longest_date_suffix_prefix(self):
+        self.assertEqual(metrics.price_of(self.PRICES, "claude-x-5", "2026-02-01")["key"], "claude-x-5")
+        self.assertEqual(metrics.price_of(self.PRICES, "claude-x-5-20260101", "2026-02-01")["key"], "claude-x-5")
+        self.assertEqual(metrics.price_of(self.PRICES, "claude-x-9", "2026-02-01")["key"], "claude-x")
+        self.assertIsNone(metrics.price_of(self.PRICES, "claude-xy", "2026-02-01"))
+
+    def test_newest_table_on_or_before_the_row_date(self):
+        self.assertEqual(metrics.price_of(self.PRICES, "claude-x", "2026-05-31")["input"], 1)
+        self.assertEqual(metrics.price_of(self.PRICES, "claude-x", "2026-06-01")["input"], 3)
+        self.assertEqual(metrics.price_of(self.PRICES, "claude-x", "2026-06-01")["since"], "2026-06-01")
+        self.assertEqual(metrics.price_of(self.PRICES, "claude-x-5", "2026-07-01")["key"], "claude-x")  # dropped key
+        self.assertIsNone(metrics.price_of(self.PRICES, "claude-x", "2025-12-31"))
+
+    def test_cost_of_a_row(self):
+        row = {"model": "claude-x", "date": "2026-02-01", "input": 1_000_000, "cacheWrite": 2_000_000,
+               "cacheRead": 10_000_000, "output": 100_000}
+        self.assertAlmostEqual(metrics.cost_of(row, self.PRICES), 1 + 2.5 + 1 + 0.5)
+        self.assertIsNone(metrics.cost_of(dict(row, model="other"), self.PRICES))
+        self.assertIsNone(metrics.cost_of(dict(row, date="2025-01-01"), self.PRICES))
+
+    def price(self, *args):
+        return subprocess.run([sys.executable, "-B", str(SCRIPT), "price", *args, "--root", str(self.root)],
+                              capture_output=True, text=True, env=self.env)
+
+    def test_cli_uses_the_default_table_and_the_project_one(self):
+        r = self.price("claude-opus-5-5", "--date", "2026-11-09")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout), {"input": 4, "cacheWrite": 5, "cacheRead": 0.2, "output": 20,
+                                                "since": "2026-10-06", "key": "claude-opus-5-5"})
+        self.write_config({"metrics": {"prices": self.PRICES}})
+        self.assertEqual(json.loads(self.price("claude-x", "--date", "2026-07-01").stdout)["input"], 3)
+        r = self.price("claude-opus-5-5", "--date", "2026-11-09")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("no price for claude-opus-5-5 on 2026-11-09", r.stderr)
+        self.assertIn("metrics.prices", r.stderr)
+
+    def test_cli_rejects_a_bad_date(self):
+        r = self.price("claude-x", "--date", "2026-1-1")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("is not a date YYYY-MM-DD", r.stderr)

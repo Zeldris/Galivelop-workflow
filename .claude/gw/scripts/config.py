@@ -677,7 +677,7 @@ def main(argv=None):
         for command in skipped:
             print(f"related-tests: skipped ({args.kind}): {command} (its changed files were only deleted)", file=sys.stderr)
         return 0
-    value = config
+    value = dict(config, metrics=metrics(config))  # its inner keys fill from the schema too (B3: prices)
     for part in args.key.split("."):
         if not isinstance(value, dict) or part not in value or part.startswith("_"):
             print(f"gw config: key '{args.key}' is not set and has no default", file=sys.stderr)

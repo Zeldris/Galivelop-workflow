@@ -134,7 +134,7 @@ In this order, because each step uses the previous one.
 | A10 | One-page A4 workflow presentation sheets: for whoever contracts development, `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (what it solves, how work runs, what it guarantees), and for teams that install it, `docs/es/mkt-adoption.md` ↔ `docs/en/mkt-adoption.md` (user, 2026-11-09), with its HTML and final PDF generated from the `.md` by a script so they do not drift; reviewed on each version (D66) (user, 2026-11-06) | done (`scripts/mkt-sheet.py`, portal style) |
 | B1 | `Stop` hook that reads the session logs | done (`scripts/metrics.py record`, key `metrics`) |
 | B2 | `docs/metrics/ledger.jsonl` in the repo | done (`merge=union` in `.gitattributes`; `apply.py` does not set it in projects yet) |
-| B3 | What is stored: tokens by model and type, date, branch, `Refs`, subagent; prices in a dated table | in progress (fields done with B1; the price table is missing) |
+| B3 | What is stored: tokens by model and type, date, branch, `Refs`, subagent; prices in a dated table | done (2026-11-09; fields with B1, `metrics.prices` and `metrics.py price`) |
 | B4 | Reports by period: `metrics.py report --period …` and the `gw-metrics` skill | pending |
 | B5 | Comparisons: `metrics.py compare` | pending |
 | B6 | Warning at `SessionStart` when a model spends 1.5× its average | pending |
