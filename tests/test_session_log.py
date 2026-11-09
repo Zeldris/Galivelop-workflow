@@ -879,6 +879,21 @@ class SessionLog(Base):
         code, out = p.session_start()
         self.assertNotIn("noreply@anthropic.com", out)
 
+    def test_spend_alert_from_the_ledger(self):
+        p = self.p
+        shutil.copy2(ROOT / "scripts" / "metrics.py", p.scripts / "metrics.py")
+        code, out = p.session_start()
+        self.assertNotIn("metrics:", out, "no ledger: nothing to say")
+        import datetime
+        today = datetime.datetime.now(datetime.timezone.utc).date()
+        rows = [{"date": (today - datetime.timedelta(days=d)).isoformat(), "input": 100} for d in range(2, 9)]
+        rows.append({"date": today.isoformat(), "input": 1000})
+        p.write("docs/metrics/ledger.jsonl", "".join(json.dumps(dict(r, agent="main", model="m-x", session="s"))
+                                                      + "\n" for r in rows))
+        code, out = p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"gw session-start: metrics: m-x spent 1,000 tokens on {today.isoformat()}, 10.0x", out)
+
 
 if __name__ == "__main__":
     unittest.main()

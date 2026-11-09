@@ -43,6 +43,9 @@ the report's numbers, and when a question needs a number the report does not sho
 
 ## Limits
 
+- The `SessionStart` hook already warns (`metrics.py alert`, B6) when a model's spend today or yesterday passes
+  `metrics.alert.factor` times its daily mean; when the user asks about such a warning, run the day report it names.
+
 - `compare` only prints; to keep a comparison, save the two reports with `--write`.
 - The ledger only holds what the `Stop` hook recorded and was pushed: a cloud session whose container died before its
   last commit is missing, and the report cannot tell.

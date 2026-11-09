@@ -137,7 +137,7 @@ In this order, because each step uses the previous one.
 | B3 | What is stored: tokens by model and type, date, branch, `Refs`, subagent; prices in a dated table | done (2026-11-09; fields with B1, `metrics.prices` and `metrics.py price`) |
 | B4 | Reports by period: `metrics.py report --period …` and the `gw-metrics` skill | done (2026-11-09; `metrics.reports`, `--write`) |
 | B5 | Comparisons: `metrics.py compare` | done (2026-11-09; previous period or `--against`) |
-| B6 | Warning at `SessionStart` when a model spends 1.5× its average | pending |
+| B6 | Warning at `SessionStart` when a model spends 1.5× its average | done (2026-11-09; `metrics.alert`, today and yesterday) |
 | B7 | `models.disabled` in `gw.json`, with its hook | pending |
 | B8 | Quality signals next to spend (the deterministic table, under "Later") | pending |
 | B10 | The `gw-selector` recommends the main session's model and effort | pending |

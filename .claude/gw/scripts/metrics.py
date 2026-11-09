@@ -41,6 +41,13 @@ task id, the tokens and USD of each and the change (`+n (+x%)`; `new` when the e
 is left out (`n/a`) when either side has unpriced tokens. It only prints; both periods empty says so (exit 0); the same
 period twice is an error (exit 2).
 
+`metrics.py alert [--date D]` (B6, run by the SessionStart hook) checks D (default today, UTC) and the day before: for
+each model, that day's spend against its mean daily spend over the `metrics.alert.days` days before it, counting only
+the days with rows of that model, and only when there are at least `minDays` of them. Spend is USD when every row of
+the model in that span has a price, else tokens. Above `factor` x the mean it prints one line per model and day, with
+the command that shows where it went; nothing to say prints nothing. `factor` 0 turns it off. Always exits 0 except on
+a bad config (exit 2).
+
 The record hook never blocks a stop and never fails silently: on any error it exits 0 and prints a `systemMessage` JSON object on
 stdout that names `python3 <here>/doctor.py`. A successful record prints nothing; with `stop_hook_active` it records
 the same and prints nothing at all. Project root: config.find_root (never the current directory alone).
@@ -422,6 +429,44 @@ def compare(root, cfg, kind, day, against=None):
     return render_compare(kind, *[(n, f, l, summarize(rows, prices)) for n, f, l, rows in sides])
 
 
+def alerts(root, cfg, today):
+    """Lines warning about each model whose spend on `today` or the day before (datetime.date) passes
+    metrics.alert.factor times its mean over the metrics.alert.days days before that day (days with data only, at
+    least metrics.alert.minDays of them)."""
+    settings = config.metrics(cfg)
+    alert = settings["alert"]
+    if not alert["factor"]:
+        return []
+    days = alert["days"]
+    first = (today - datetime.timedelta(days=days + 1)).isoformat()
+    rows = period_rows(root, settings, first, today.isoformat())
+    prices = settings["prices"]
+    out = []
+    for day in (today - datetime.timedelta(days=1), today):
+        start = (day - datetime.timedelta(days=days)).isoformat()
+        span = [r for r in rows if start <= r["date"] <= day.isoformat()]
+        for model in sorted({r["model"] for r in span if r["date"] == day.isoformat()}):
+            own = [r for r in span if r["model"] == model]
+            costs = [cost_of(r, prices) for r in own]
+            money = all(c is not None for c in costs)
+            per_day = {}
+            for r, c in zip(own, costs):
+                value = c if money else sum(num(r.get(k)) for k in TOKEN_KEYS)
+                per_day[r["date"]] = per_day.get(r["date"], 0) + value
+            spent = per_day.pop(day.isoformat())
+            if len(per_day) < alert["minDays"]:
+                continue
+            mean = sum(per_day.values()) / len(per_day)
+            if mean <= 0 or spent <= alert["factor"] * mean:
+                continue
+            fmt = (lambda v: f"${v:,.2f}") if money else (lambda v: f"{int(round(v)):,} tokens")
+            out.append(f"{model} spent {fmt(spent)} on {day.isoformat()}, {spent / mean:.1f}x its daily mean of "
+                       f"{fmt(mean)} over the {days} days before ({len(per_day)} with data; alert at "
+                       f"{alert['factor']:g}x, metrics.alert in .claude/gw.json); see where it went: python3 "
+                       f"{os.path.join(HERE, 'metrics.py')} report --period day --date {day.isoformat()}")
+    return out
+
+
 def git(root, *args):
     try:
         r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, timeout=GIT_TIMEOUT)
@@ -576,6 +621,19 @@ def run_compare(args):
     return 0
 
 
+def run_alert(args):
+    """Print one line per model over its alert threshold; exit 0, also with nothing to say; 2 on a bad config."""
+    try:
+        cfg = config.load(config.find_root(args.root))
+    except config.ConfigError as exc:
+        print(f"metrics: {exc}", file=sys.stderr)
+        return 2
+    day = datetime.date.fromisoformat(args.date) if args.date else datetime.datetime.now(datetime.timezone.utc).date()
+    for text in alerts(cfg["_root"], cfg, day):
+        print(f"metrics: {text}")
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="metrics.py", description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="command", required=True)
@@ -600,8 +658,12 @@ def main(argv=None):
     cp.add_argument("--against", type=day_arg, help="any UTC date in the period to compare with (default: the one before)")
     cp.add_argument("--root", help="project root (default: see config.find_root)")
     cp.set_defaults(func=run_compare)
+    al = sub.add_parser("alert", help="warn about each model whose daily spend passes metrics.alert.factor x its mean")
+    al.add_argument("--date", type=day_arg, help="UTC date YYYY-MM-DD to check with the day before (default: today)")
+    al.add_argument("--root", help="project root (default: see config.find_root)")
+    al.set_defaults(func=run_alert)
     args = ap.parse_args(argv)
-    if args.command in ("price", "report", "compare"):
+    if args.command in ("price", "report", "compare", "alert"):
         return args.func(args)
     try:
         return args.func(args)

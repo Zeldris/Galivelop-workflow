@@ -274,12 +274,15 @@ def context_guard(config):
 
 
 def metrics(config):
-    """The `metrics` key as a dict (ledger, record, reports, prices), each missing part filled from the schema default (the only
-    place the defaults live)."""
+    """The `metrics` key as a dict (ledger, record, reports, prices, alert), each missing part filled from the schema
+    default (the only place the defaults live); `alert` is filled key by key."""
     props = json.loads(schema_path().read_text(encoding="utf-8"))["properties"]["metrics"]["properties"]
     given = config.get("metrics")
     given = given if isinstance(given, dict) else {}
-    return {k: given.get(k, props[k]["default"]) for k in props}
+    out = {k: given.get(k, props[k]["default"]) for k in props}
+    alert = out["alert"] if isinstance(out["alert"], dict) else {}
+    out["alert"] = {k: alert.get(k, p["default"]) for k, p in props["alert"]["properties"].items()}
+    return out
 
 
 def marketing_sheets(config):

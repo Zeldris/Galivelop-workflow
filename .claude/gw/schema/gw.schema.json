@@ -586,6 +586,16 @@
         "ledger": {"type": "string", "minLength": 1, "default": "docs/metrics/ledger.jsonl"},
         "record": {"type": "boolean", "default": true},
         "reports": {"type": "string", "minLength": 1, "default": "docs/metrics"},
+        "alert": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "factor": {"type": "number", "minimum": 0, "default": 1.5},
+            "days": {"type": "integer", "minimum": 1, "default": 28},
+            "minDays": {"type": "integer", "minimum": 1, "default": 7}
+          },
+          "default": {"factor": 1.5, "days": 28, "minDays": 7}
+        },
         "prices": {
           "type": "array",
           "items": {
@@ -628,8 +638,8 @@
         ]
         }
       },
-      "default": {"ledger": "docs/metrics/ledger.jsonl", "record": true, "reports": "docs/metrics"},
-      "description": "Token ledger (B1/B2/B3/B4): the Stop hook metrics.py record appends, per session, agent, model and UTC date, the tokens the Claude Code transcripts show to the repo-relative ledger path (JSON lines, tokens only, never money); record false turns the recording off. reports: repo-relative folder where metrics.py report --write saves the period reports (daily/, weekly/, monthly/, quarterly/). prices: dated tables of USD per million tokens per model (input, cacheWrite, cacheRead, output); a ledger row takes the newest table whose since is on or before its date, and the model key equal to its model or, failing that, the longest key that its model starts with followed by '-' (date suffixes); no table or no key = no price. A given prices replaces the whole default list."
+      "default": {"ledger": "docs/metrics/ledger.jsonl", "record": true, "reports": "docs/metrics", "alert": {"factor": 1.5, "days": 28, "minDays": 7}},
+      "description": "Token ledger (B1-B6): the Stop hook metrics.py record appends, per session, agent, model and UTC date, the tokens the Claude Code transcripts show to the repo-relative ledger path (JSON lines, tokens only, never money); record false turns the recording off. reports: repo-relative folder where metrics.py report --write saves the period reports (daily/, weekly/, monthly/, quarterly/). alert (B6): the SessionStart hook (metrics.py alert) warns when a model's spend on today or yesterday (UTC) passes factor x its mean daily spend over the days before, counting only days with data and only with at least minDays of them; USD when all its rows are priced, else tokens; factor 0 turns it off. prices: dated tables of USD per million tokens per model (input, cacheWrite, cacheRead, output); a ledger row takes the newest table whose since is on or before its date, and the model key equal to its model or, failing that, the longest key that its model starts with followed by '-' (date suffixes); no table or no key = no price. A given prices replaces the whole default list."
     },
     "privateCheck": {
       "anyOf": [

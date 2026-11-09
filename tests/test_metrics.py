@@ -1,4 +1,4 @@
-"""scripts/metrics.py (B1/B2/B3/B4): the Stop hook that appends the token usage of the session transcripts to a ledger.
+"""scripts/metrics.py (B1-B6): the Stop hook that appends the token usage of the session transcripts to a ledger.
 
 Synthetic transcripts in temporary repos; every case runs the script the way the hook does (JSON on stdin).
 """
@@ -410,6 +410,63 @@ class Compare(Base):
         r = self.compare("--period", "day", "--date", "2026-11-09", "--against", "26-11-09")
         self.assertEqual(r.returncode, 2)
         self.assertIn("is not a date YYYY-MM-DD", r.stderr)
+
+
+class Alert(Base):
+    """B6: metrics.py alert (run by the SessionStart hook) warns when a model's daily spend passes factor x its mean."""
+    PRICES = Report.PRICES
+    rows = Report.rows
+
+    def alert(self, *args):
+        return subprocess.run([sys.executable, "-B", str(SCRIPT), "alert", *args, "--root", str(self.root)],
+                              capture_output=True, text=True, env=self.env)
+
+    def week(self, model="claude-x", first=1, count=7, tokens=1_000_000):
+        return [{"date": f"2026-11-{d:02d}", "model": model, "input": tokens} for d in range(first, first + count)]
+
+    def test_priced_model_over_the_factor_warns_in_usd(self):
+        self.write_config({"metrics": {"prices": self.PRICES}})
+        self.rows(*self.week(), {"date": "2026-11-09", "input": 1_500_000}, {"date": "2026-11-09", "input": 500_000,
+                                                                             "agent": "Explore"})
+        r = self.alert("--date", "2026-11-09")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(len(r.stdout.splitlines()), 1, r.stdout)
+        self.assertIn("metrics: claude-x spent $2.00 on 2026-11-09, 2.0x its daily mean of $1.00 over the 28 days "
+                      "before (7 with data; alert at 1.5x", r.stdout)
+        self.assertIn("report --period day --date 2026-11-09", r.stdout)
+
+    def test_yesterday_counts_and_unpriced_models_go_in_tokens(self):
+        self.rows(*self.week(model="gpt-z", tokens=100), {"date": "2026-11-08", "model": "gpt-z", "output": 400})
+        r = self.alert("--date", "2026-11-09")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("gpt-z spent 400 tokens on 2026-11-08, 4.0x its daily mean of 100 tokens", r.stdout)
+
+    def test_no_alert_at_the_factor_with_too_few_days_or_when_off(self):
+        self.write_config({"metrics": {"prices": self.PRICES}})
+        self.rows(*self.week(), {"date": "2026-11-09", "input": 1_500_000})
+        r = self.alert("--date", "2026-11-09")
+        self.assertEqual((r.returncode, r.stdout), (0, ""), "exactly 1.5x is not above it")
+        self.write_config({"metrics": {"prices": self.PRICES, "alert": {"factor": 1.2}}})
+        self.assertIn("1.5x its daily mean", self.alert("--date", "2026-11-09").stdout, "minDays/days keep defaults")
+        self.write_config({"metrics": {"prices": self.PRICES, "alert": {"factor": 0}}})
+        self.assertEqual(self.alert("--date", "2026-11-09").stdout, "")
+        self.write_config({"metrics": {"prices": self.PRICES, "alert": {"factor": 1.2, "minDays": 8}}})
+        self.assertEqual(self.alert("--date", "2026-11-09").stdout, "", "7 days of data, 8 asked")
+
+    def test_days_outside_the_window_do_not_count(self):
+        self.write_config({"metrics": {"prices": self.PRICES, "alert": {"days": 8}}})
+        self.rows(*self.week(), {"date": "2026-11-10", "input": 3_000_000})
+        self.assertEqual(self.alert("--date", "2026-11-10").stdout, "", "11-01 is 9 days before: only 6 with data")
+        self.write_config({"metrics": {"prices": self.PRICES, "alert": {"days": 9}}})
+        self.assertIn("3.0x", self.alert("--date", "2026-11-10").stdout)
+
+    def test_bad_config_exits_2_and_no_ledger_says_nothing(self):
+        r = self.alert("--date", "2026-11-09")
+        self.assertEqual((r.returncode, r.stdout), (0, ""), r.stderr)
+        self.write_config({"metrics": {"alert": {"factor": -1}}})
+        r = self.alert()
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("metrics.alert.factor", r.stderr)
 
 
 if __name__ == "__main__":

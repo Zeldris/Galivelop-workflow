@@ -138,7 +138,7 @@ En este orden, porque cada paso usa el anterior.
 | B3 | Qué se guarda: tokens por modelo y tipo, fecha, rama, `Refs`, subagente; precios en tabla con fecha | hecha (2026-11-09; campos con B1, `metrics.prices` y `metrics.py price`) |
 | B4 | Informes por periodo: `metrics.py report --period …` y skill `gw-metrics` | hecho (2026-11-09; `metrics.reports`, `--write`) |
 | B5 | Comparaciones: `metrics.py compare` | hecho (2026-11-09; anterior o `--against`) |
-| B6 | Aviso en el `SessionStart` cuando un modelo gasta 1,5× su media | pendiente |
+| B6 | Aviso en el `SessionStart` cuando un modelo gasta 1,5× su media | hecho (2026-11-09; `metrics.alert`, hoy y ayer) |
 | B7 | `models.disabled` en `gw.json`, con su gancho | pendiente |
 | B8 | Señales de calidad junto al gasto (la tabla determinista, en «Después») | pendiente |
 | B10 | El `gw-selector` recomienda modelo y esfuerzo de la sesión principal | pendiente |

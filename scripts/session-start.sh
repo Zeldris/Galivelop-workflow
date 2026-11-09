@@ -14,6 +14,8 @@
 #     (the `# galivelop-workflow vX.Y.Z` header of this script), and when the session was started outside the repo
 #     root (its .claude/settings.json may not have loaded; private-project-1 P3), and when agentSignatures is false
 #     while git user.email is noreply@anthropic.com (D21).
+#   - spend alert (B6): with a valid config, prints the lines of `metrics.py alert` (a model whose spend today or
+#     yesterday passes metrics.alert.factor x its daily mean); its errors are dropped.
 # Fails open: always exits 0 (a SessionStart hook cannot block); warnings go to stdout, which enters the agent's
 # context, each ending with the command that fixes it.
 # Project root: the git top level of this script's folder when it holds .claude/gw.json (the copy in
@@ -119,6 +121,9 @@ else
   project_version="$(python3 "$config" --root "$root" get version 2>/dev/null)"
   if [ -n "$own_version" ] && [ -n "$project_version" ] && version_lt "$project_version" "$own_version"; then
     warn ".claude/gw.json says version $project_version but the workflow copy is $own_version; bring the project up to date: /gw-update"
+  fi
+  if [ -f "$here/metrics.py" ]; then
+    python3 "$here/metrics.py" alert --root "$root" 2>/dev/null | while IFS= read -r line; do warn "$line"; done
   fi
 fi
 
