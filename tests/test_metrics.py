@@ -212,10 +212,6 @@ class Record(Base):
         self.assertEqual(len(self.rows()), 1)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 def table(since, **models):
     return {"since": since, "models": {k.replace("_", "-"): {"input": v, "cacheWrite": v * 1.25, "cacheRead": v / 10,
                                                              "output": v * 5} for k, v in models.items()}}
@@ -264,3 +260,7 @@ class Prices(Base):
         r = self.price("claude-x", "--date", "2026-1-1")
         self.assertEqual(r.returncode, 2)
         self.assertIn("is not a date YYYY-MM-DD", r.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()
