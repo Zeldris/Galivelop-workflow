@@ -2031,5 +2031,158 @@ class RepoItself(unittest.TestCase):
         self.assertEqual(json.loads((ROOT / ".claude" / "gw.json").read_text())["version"], VERSION)
 
 
+class HandoffArchive(Base):
+    """`archive` (D65) moves the Pending items of published versions, and `check` warns above `logSize`."""
+    config = {"logRows": False}
+    ARCHIVE = "docs/records/handoff-archive.md"
+
+    def setUp(self):
+        super().setUp()
+        self.p.write(".claude-plugin/plugin.json", json.dumps({"version": "0.5.1"}))
+
+    def log(self, pending, heading="Pendiente", name="docs/h.md", newline=None):
+        text = f"# Log\n\n## Estado actual\n\n| Campo | Valor |\n|---|---|\n| **Siguiente paso** | x |\n\n## {heading}\n\n"
+        text += pending + "\n\n## Otra\n\nfin\n"
+        self.p.write(name, text)
+        return self.p.work / name
+
+    def archive(self, path, *flags):
+        return self.p.script("handoff.py", "archive", str(path), "--date", "2026-11-09", *flags)
+
+    def section(self, path, heading="Pendiente"):
+        return path.read_text().split(f"## {heading}\n", 1)[1].split("\n## ", 1)[0]
+
+    def test_moves_only_items_whose_versions_are_all_published(self):
+        path = self.log("- old `0.5.1` thing\n- the 0.4 note\n- bare 0.4.2 and `0.3`\n- mixed `0.5` and `0.6.0`\n"
+                        "- future `0.5.2`\n- no version here\n- `0.2.0` no archivar this one\n- `0.1` Do Not Archive\n")
+        code, out = self.archive(path)
+        self.assertEqual(code, 0, out)
+        kept = self.section(path)
+        for text in ("mixed `0.5` and `0.6.0`", "future `0.5.2`", "no version here", "no archivar this one", "Do Not Archive"):
+            self.assertIn(text, kept)
+        for text in ("old `0.5.1` thing", "the 0.4 note", "bare 0.4.2"):
+            self.assertNotIn(text, kept)
+            self.assertIn(text, (self.p.work / self.ARCHIVE).read_text())
+        self.assertIn("archived 3 item(s)", out)
+        self.assertIn("(cap 20000)", out)
+
+    def test_two_part_version_counts_as_x_y_0(self):
+        path = self.log("- `0.5` is published\n- `0.6` is not\n")
+        self.assertEqual(self.archive(path)[0], 0)
+        self.assertIn("`0.6` is not", self.section(path))
+        self.assertNotIn("`0.5` is published", self.section(path))
+
+    def test_continuation_lines_travel_with_the_item(self):
+        path = self.log("- first `0.4.0` item\n  indented detail\nlazy line\n- kept item `0.9`\n  its detail\n")
+        self.assertEqual(self.archive(path)[0], 0)
+        self.assertNotIn("indented detail", self.section(path))
+        self.assertNotIn("lazy line", self.section(path))
+        self.assertIn("its detail", self.section(path))
+        self.assertIn("- first `0.4.0` item\n  indented detail\nlazy line\n", (self.p.work / self.ARCHIVE).read_text())
+
+    def test_archive_file_is_created_with_a_title_and_appended_on_a_second_run(self):
+        path = self.log("- one `0.4.0`\n")
+        self.archive(path)
+        archive = self.p.work / self.ARCHIVE
+        text = archive.read_text()
+        self.assertTrue(text.startswith("# Hand-off archive\n"))
+        self.assertIn("not read at session start", text)
+        self.assertIn("## 2026-11-09 — from ", text)
+        self.assertIn("- one `0.4.0`", text)
+        self.log("- one `0.4.0`\n- two `0.3.0`\n")
+        self.p.script("handoff.py", "archive", str(path), "--date", "2026-11-10")
+        text = archive.read_text()
+        self.assertEqual(text.count("# Hand-off archive"), 1)
+        self.assertIn("## 2026-11-10 — from ", text)
+        self.assertLess(text.index("- one `0.4.0`"), text.index("- two `0.3.0`"))
+
+    def test_one_summary_line_is_inserted_in_place_and_updated_on_a_second_run(self):
+        path = self.log("- keep `0.9`\n- a `0.4.0`\n- keep too\n- b `0.4.1`\n")
+        self.archive(path)
+        want = ("- **Archivado (2026-11-09):** 2 elemento(s) de versiones ya publicadas (≤ 0.5.1) en "
+                "[handoff-archive.md](records/handoff-archive.md)")
+        self.assertEqual(self.section(path).strip().split("\n"), ["- keep `0.9`", want, "- keep too"])
+        self.log(self.section(path).strip() + "\n- c `0.2.0`\n")
+        code, out = self.p.script("handoff.py", "archive", str(path), "--date", "2026-11-12")
+        self.assertEqual(code, 0, out)
+        lines = self.section(path).strip().split("\n")
+        self.assertEqual(len(lines), 3, lines)
+        self.assertEqual(lines[1], want.replace("2026-11-09", "2026-11-12").replace(" 2 elemento", " 3 elemento"))
+
+    def test_english_pending_uses_english_wording(self):
+        path = self.log("- a `0.4.0`\n", heading="Pending")
+        self.assertEqual(self.archive(path)[0], 0)
+        self.assertIn("- **Archived (2026-11-09):** 1 item(s) of versions already published (≤ 0.5.1) in "
+                      "[handoff-archive.md](records/handoff-archive.md)", self.section(path, "Pending"))
+
+    def test_dry_run_changes_nothing_and_truncates(self):
+        path = self.log("- `0.4.0` " + "long " * 40 + "\n- keep\n")
+        before = path.read_bytes()
+        code, out = self.archive(path, "--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertIn("would archive 1 item(s)", out)
+        self.assertIn("nothing was written", out)
+        self.assertIn("…", out)
+        self.assertEqual(path.read_bytes(), before)
+        self.assertFalse((self.p.work / self.ARCHIVE).exists())
+
+    def test_nothing_to_archive_exits_0_and_writes_nothing(self):
+        path = self.log("- no version\n- `0.9` future\n")
+        before = path.read_bytes()
+        code, out = self.archive(path)
+        self.assertEqual(code, 0, out)
+        self.assertIn("nothing to archive", out)
+        self.assertEqual(path.read_bytes(), before)
+        self.assertFalse((self.p.work / self.ARCHIVE).exists())
+
+    def test_missing_plugin_json_missing_section_and_bad_date_say_the_fix(self):
+        path = self.log("- a `0.4.0`\n")
+        (self.p.work / ".claude-plugin" / "plugin.json").unlink()
+        code, out = self.archive(path)
+        self.assertEqual(code, 2)
+        self.assertIn("archive needs the published version", out)
+        self.assertIn("handoff.py archive", out)
+        self.p.write(".claude-plugin/plugin.json", json.dumps({"version": "0.5.1"}))
+        self.p.write("docs/none.md", "# Log\n\n## Hecho\n\n1. x\n")
+        code, out = self.archive(self.p.work / "docs" / "none.md")
+        self.assertEqual(code, 1)
+        self.assertIn("has no \"## Pendiente\" / \"## Pending\" section", out)
+        code, out = self.p.script("handoff.py", "archive", str(path), "--date", "soon")
+        self.assertEqual(code, 2)
+        self.assertIn("--date must be YYYY-MM-DD", out)
+        code, out = self.archive(self.tmp / "missing.md")
+        self.assertEqual(code, 2)
+        self.assertIn("cannot read", out)
+
+    def test_check_warns_above_log_size_with_the_command_and_still_exits_0(self):
+        path = self.log("- filler " + "x" * 300 + "\n")
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, logSize=200)))
+        for flags in ((), ("--strict",)):
+            code, out = self.p.script("handoff.py", "check", str(path), *flags)
+            self.assertEqual(code, 0, out)
+            self.assertRegex(out, r"WARNING: handoff: the log has \d+ characters \(cap logSize = 200\); archive the items of "
+                                  r"published versions: python3 \S+handoff\.py archive")
+
+    def test_check_still_fails_for_its_real_failures_next_to_the_size_warning(self):
+        path = self.log("- filler " + "x" * 300 + "\n")
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, logSize=200)))
+        text = path.read_text().replace("| x |", "| " + "y" * 801 + " |")
+        path.write_text(text)
+        code, out = self.p.script("handoff.py", "check", str(path), "--strict")
+        self.assertEqual(code, 1, out)
+        self.assertIn("cap logSize = 200", out)
+        self.assertIn("a cell of the state table", out)
+
+    def test_log_size_zero_never_warns_and_the_default_is_20000(self):
+        path = self.log("- filler " + "x" * 300 + "\n")
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, logSize=0)))
+        code, out = self.p.script("handoff.py", "check", str(path))
+        self.assertEqual((code, out.strip()), (0, ""))
+        self.p.write(".claude/gw.json", json.dumps(BASE_CONFIG))
+        self.assertNotIn("logSize", self.p.script("handoff.py", "check", str(path))[1])  # 20000 by default
+        self.p.write("docs/big.md", path.read_text() + "z" * 20000)
+        self.assertIn("cap logSize = 20000", self.p.script("handoff.py", "check", str(self.p.work / "docs" / "big.md"))[1])
+
+
 if __name__ == "__main__":
     unittest.main()

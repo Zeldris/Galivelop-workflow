@@ -128,6 +128,17 @@ class Breakdown(Base):
         self.assertIn("handoff.py archive", by["log"][2])
         self.assertIn("doctor.py", by["AGENTS.md/CLAUDE.md"][2])
 
+    def test_log_fix_names_the_archive_command_and_the_cap_when_over_it(self):
+        (self.root / "docs" / "log.md").write_text("l" * 500)
+        self.write_config({"logSize": 400})
+        fix = {p[0]: p[2] for p in cg.breakdown(self.root, self.cfg())}["log"]
+        self.assertRegex(fix, r"over logSize \(500 > 400 chars\): python3 \S+handoff\.py archive$")
+        self.write_config({"logSize": 0})  # no cap: the general advice, with the real command
+        fix = {p[0]: p[2] for p in cg.breakdown(self.root, self.cfg())}["log"]
+        self.assertNotIn("over logSize", fix)
+        self.assertRegex(fix, r"python3 \S+handoff\.py archive\)")
+        self.assertNotIn("D65", fix)
+
     def test_missing_files_estimate_zero(self):
         parts = cg.breakdown(self.root, self.cfg())
         self.assertEqual([p[1] for p in parts], [0, 0, 0, 0])
@@ -155,7 +166,7 @@ class Report(Base):
         self.assertFalse(any("ALARM" in l for l in out), out)
         rows = [l for l in out if l.startswith("  ")]
         self.assertTrue(rows[0].startswith("  rest of the system"), rows)  # 60,000 - 21,000 is the largest
-        self.assertTrue(any(l.startswith("  log: ~20,000 tokens (33 %) — fix: shorten it") for l in rows), rows)
+        self.assertTrue(any(l.startswith("  log: ~20,000 tokens (33 %) — fix: over logSize (70000 > 20000 chars): python3 ") for l in rows), rows)
         sizes = [int(l.split("~")[1].split(" ")[0].replace(",", "")) for l in rows]
         self.assertEqual(sizes, sorted(sizes, reverse=True))
 

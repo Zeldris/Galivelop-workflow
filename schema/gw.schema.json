@@ -49,6 +49,19 @@
       "default": "docs/handoff.md",
       "description": "Hand-off log path, relative to the repo root. Absent: docs/handoff.md, or the old docs/traspaso.md when only that exists (0.x; /gw-update moves it)."
     },
+    "logSize": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 20000,
+      "description": "Cap on the size of the whole hand-off log, in characters (0 = no cap). handoff.py check warns above it and context_guard.py names the log as the culprit; handoff.py archive moves the Pending items of published versions out."
+    },
+    "logArchive": {
+      "type": "string",
+      "minLength": 1,
+      "default": "docs/records/handoff-archive.md",
+      "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+[^/]$",
+      "description": "Repo-relative path of the file handoff.py archive moves the Pending items of published versions to. It is not read at session start."
+    },
     "keepLegacyPaths": {
       "type": "boolean",
       "default": false,
@@ -320,7 +333,7 @@
         "minLength": 1
       },
       "default": [],
-      "description": "Headings of the log sections recover.py --state shows after a compaction or /clear (without logRows). Empty: the first section and the one named Pendiente/Pending."
+      "description": "Headings of the log sections recover.py --state shows after a compaction or /clear (without logRows). Empty: the first section and the one named Pendiente/Pending. After a compaction only the first section is shown."
     },
     "designReferences": {
       "type": "array",

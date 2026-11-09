@@ -336,6 +336,30 @@ class Recover(Base):
         self.assertIn("the left-over task", out)
         self.assertNotIn("old stuff", out)
 
+    def test_after_a_compaction_only_the_first_section_comes_back(self):
+        self.p.write("docs/log.md", "# Log\n\n## State\n\nnow | next step\n\n## Pending\n\n- the left-over task\n")
+        code, out = self.p.run_recover("--state", "--source", "compact")
+        self.assertEqual(code, 0, out)
+        self.assertIn("next step", out)
+        self.assertNotIn("the left-over task", out)
+        self.assertNotIn("section 'Pending'", out)
+        self.assertIn("only the first section is shown after a compaction", out)
+        code, out = self.p.run_recover("--state", "--source", "clear")
+        self.assertIn("the left-over task", out)
+        self.assertNotIn("only the first section is shown", out)
+
+    def test_after_a_compaction_log_sections_keeps_only_the_first_listed(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["logSections"] = ["State", "Pending"]
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.write("docs/log.md", "# Log\n\n## State\n\nstate-text\n\n## Pending\n\n- the left-over task\n")
+        code, out = p.run_recover("--state", "--source", "compact")
+        self.assertIn("state-text", out)
+        self.assertNotIn("the left-over task", out)
+        self.assertIn("only the first section is shown after a compaction", out)
+        self.assertIn("the left-over task", p.run_recover("--state", "--source", "clear")[1])
+
     def test_log_sections_from_the_config(self):
         p = self.p
         cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
