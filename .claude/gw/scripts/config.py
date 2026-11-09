@@ -273,6 +273,15 @@ def context_guard(config):
     return {k: given.get(k, props[k]["default"]) for k in props}
 
 
+def metrics(config):
+    """The `metrics` key as a dict (ledger, record), each missing part filled from the schema default (the only
+    place the defaults live)."""
+    props = json.loads(schema_path().read_text(encoding="utf-8"))["properties"]["metrics"]["properties"]
+    given = config.get("metrics")
+    given = given if isinstance(given, dict) else {}
+    return {k: given.get(k, props[k]["default"]) for k in props}
+
+
 def marketing_sheets(config):
     """The `marketingSheets` settings with every inner key filled from the schema defaults (the loader only fills
     top-level keys, so `{"sources": [...]}` alone is a valid way to turn the feature on)."""

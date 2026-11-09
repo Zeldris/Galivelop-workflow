@@ -2,3 +2,6 @@
 *.sh text eol=lf
 *.py text eol=lf
 .githooks/* text eol=lf
+
+# The token ledger (metrics.py, B2) only grows at the end: two branches that append to it merge by keeping both.
+docs/metrics/ledger.jsonl merge=union

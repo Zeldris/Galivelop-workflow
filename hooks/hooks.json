@@ -66,6 +66,14 @@
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/before-stop.py"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/metrics.py record"
+          }
+        ]
       }
     ]
   }

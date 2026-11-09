@@ -579,6 +579,16 @@
       "default": {"cutoff": 0, "window": 200000, "autocompactShare": 0.8, "warn": 25, "alarm": 50},
       "description": "Startup-context guard (B21): recover.py --state compares the first turn after a /clear or a compaction with the compaction cutoff (cutoff tokens, or 0 = window x autocompactShare) and warns above warn percent and alarms above alarm percent; a second startup over alarm after a compaction is a loop."
     },
+    "metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ledger": {"type": "string", "minLength": 1, "default": "docs/metrics/ledger.jsonl"},
+        "record": {"type": "boolean", "default": true}
+      },
+      "default": {"ledger": "docs/metrics/ledger.jsonl", "record": true},
+      "description": "Token ledger (B1/B2): the Stop hook metrics.py record appends, per session, agent, model and UTC date, the tokens the Claude Code transcripts show to the repo-relative ledger path (JSON lines, tokens only, never money); record false turns the recording off."
+    },
     "privateCheck": {
       "anyOf": [
         {"type": "boolean"},

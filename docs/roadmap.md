@@ -133,9 +133,9 @@ En este orden, porque cada paso usa el anterior.
 | H16 | Recogida de la `0.6` (`gw-harvest`) y sus propuestas, al usuario | hecho (B20, D57-D60 a la `0.5.2`; D61-D63 a la `0.7`) |
 | H17 | Notas del usuario (SDD, DDD, TDD, exploración, ficha de tarea, hecho por entorno) y cuatro referencias externas, repartidas en propuestas: [`2026-11-08-notes-and-references.md`](proposals/2026-11-08-notes-and-references.md); aprobadas las 13 y las 5 preguntas (usuario, 2026-11-08); el diseño que las une, [`I-lifecycle.md`](design/I-lifecycle.md), cerrado con su `grilling` (12 respuestas, 2026-11-08) | hecho |
 | A10 | Hojas de presentación del flujo, de una página A4: para quien contrata desarrollo, `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (qué resuelve, cómo se trabaja, qué garantiza), y para equipos que lo instalan, `docs/es/mkt-adoption.md` ↔ `docs/en/mkt-adoption.md` (usuario, 2026-11-09), con su HTML y su PDF final generados desde el `.md` por un script, para que no se desfasen; se repasa en cada versión (D66) (usuario, 2026-11-06) | hecho (`scripts/mkt-sheet.py`, estilo del portal) |
-| B1 | Gancho `Stop` que lee los logs de sesión | pendiente |
-| B2 | `docs/metrics/ledger.jsonl` en el repo | pendiente |
-| B3 | Qué se guarda: tokens por modelo y tipo, fecha, rama, `Refs`, subagente; precios en tabla con fecha | pendiente |
+| B1 | Gancho `Stop` que lee los logs de sesión | hecho (`scripts/metrics.py record`, clave `metrics`) |
+| B2 | `docs/metrics/ledger.jsonl` en el repo | hecho (`merge=union` en `.gitattributes`; falta que `apply.py` lo ponga en los proyectos) |
+| B3 | Qué se guarda: tokens por modelo y tipo, fecha, rama, `Refs`, subagente; precios en tabla con fecha | en curso (los campos, hechos con B1; falta la tabla de precios) |
 | B4 | Informes por periodo: `metrics.py report --period …` y skill `gw-metrics` | pendiente |
 | B5 | Comparaciones: `metrics.py compare` | pendiente |
 | B6 | Aviso en el `SessionStart` cuando un modelo gasta 1,5× su media | pendiente |

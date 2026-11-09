@@ -1,0 +1,262 @@
+#!/usr/bin/env python3
+# galivelop-workflow v0.5.1
+"""Token ledger (B1/B2): `metrics.py record` appends the tokens the Claude Code transcripts show to a ledger in the repo.
+
+Run as a `Stop` hook (hook JSON on stdin: `session_id`, `transcript_path`, `stop_hook_active`) or by hand
+(`--transcript PATH`, `--root R`). Sources: the session transcript `<dir>/<session>.jsonl` and its subagents'
+`<dir>/<session>/subagents/agent-*.jsonl` with their `agent-*.meta.json` (only `agentType` is kept: a description can hold
+private text). Assistant entries carry `message.usage`; one API response is split over several lines that share
+`message.id` (else `requestId`, else `uuid`), so each response counts once, with the maximum of each usage field among
+its lines. Synthetic models (`<synthetic>`) are skipped.
+
+Totals are keyed by (session, agent, model, date): date is the UTC date of the entry's `timestamp`; agent is `main` for
+the session transcript, else the subagent's `agentType` (`?` without one). The ledger is JSON lines, sorted keys:
+
+  {"agent", "branch", "cacheRead", "cacheWrite", "date", "input", "model", "output", "recorded", "refs", "session"}
+
+`session` is the first 8 characters of the session id; `branch` is the current git branch; `refs` the task ids of the
+`Refs:` trailer of HEAD's commit message; `recorded` the UTC time of the write. Tokens only, never money.
+
+Idempotent without a cursor file: the tokens already in the ledger are summed per key and one line is appended per key
+whose transcript total exceeds that sum (per field, the difference). Rerunning without new usage writes nothing; a key
+whose ledger sum is above the transcript (a rotated transcript) is left alone. The write is one append of all new lines.
+
+Configuration (`metrics` in .claude/gw.json): `ledger` (repo-relative path, its folder is created) and `record`
+(false writes nothing).
+
+It never blocks a stop and never fails silently: on any error it exits 0 and prints a `systemMessage` JSON object on
+stdout that names `python3 <here>/doctor.py`. A successful record prints nothing; with `stop_hook_active` it records
+the same and prints nothing at all. Project root: config.find_root (never the current directory alone).
+Python 3.8+ standard library only.
+"""
+import argparse
+import datetime
+import glob
+import json
+import os
+import posixpath
+import select
+import subprocess
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.dont_write_bytecode = True  # no __pycache__ in the project's .claude/gw/scripts
+sys.path.insert(0, HERE)
+import config  # noqa: E402
+import session_log  # noqa: E402
+
+STDIN_WAIT = 3.0
+GIT_TIMEOUT = 30
+FIELDS = (("input", "input_tokens"), ("cacheWrite", "cache_creation_input_tokens"),
+          ("cacheRead", "cache_read_input_tokens"), ("output", "output_tokens"))
+TOKEN_KEYS = tuple(k for k, _ in FIELDS)
+
+
+class MetricsError(Exception):
+    pass
+
+
+def read_event():
+    """The hook's JSON object from stdin, or {} when there is none (a terminal, nothing arriving, not an object)."""
+    if sys.stdin is None or sys.stdin.isatty():
+        return {}
+    try:
+        ready, _, _ = select.select([sys.stdin], [], [], STDIN_WAIT)
+        if not ready:
+            return {}
+        data = json.loads(sys.stdin.read())
+    except (OSError, ValueError, TypeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def num(value):
+    return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else 0
+
+
+def day_of(stamp):
+    """UTC date (YYYY-MM-DD) of an ISO timestamp, or None when it cannot be read."""
+    if not isinstance(stamp, str):
+        return None
+    try:
+        when = datetime.datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if when.tzinfo is not None:
+        when = when.astimezone(datetime.timezone.utc)
+    return when.date().isoformat()
+
+
+def responses_of(path):
+    """{response id: (model, date, {field: tokens})} of a transcript, each response once (max per field over its lines).
+    Raises OSError when the file cannot be read."""
+    by_id = {}
+    with open(path, encoding="utf-8", errors="replace") as log:
+        for line in log:
+            try:
+                d = json.loads(line)
+            except ValueError:
+                continue
+            m = d.get("message") if isinstance(d, dict) else None
+            if not isinstance(m, dict) or d.get("type") != "assistant" or not isinstance(m.get("usage"), dict):
+                continue
+            model = m.get("model") or "?"
+            if model.startswith("<"):
+                continue
+            key = m.get("id") or d.get("requestId") or d.get("uuid") or f"line{len(by_id)}"
+            usage = {k: num(m["usage"].get(src)) for k, src in FIELDS}
+            day = day_of(d.get("timestamp"))
+            before = by_id.get(key)
+            if before:
+                usage = {k: max(v, before[2][k]) for k, v in usage.items()}
+                day = before[1] or day  # a response belongs to the day of its first line
+            by_id[key] = (model, day, usage)
+    return by_id
+
+
+def totals(transcript):
+    """{(session, agent, model, date): {field: tokens}} of the main transcript and its subagents'.
+    Raises OSError when the main transcript cannot be read; an unreadable subagent log is skipped."""
+    session = os.path.basename(transcript)[:-len(".jsonl")]
+    out = {}
+    sources = [("main", transcript)]
+    for sub in sorted(glob.glob(os.path.join(glob.escape(os.path.splitext(transcript)[0]), "subagents", "agent-*.jsonl"))):
+        try:
+            with open(sub[:-len(".jsonl")] + ".meta.json", encoding="utf-8") as f:
+                meta = json.load(f)
+        except (OSError, ValueError):
+            meta = {}
+        kind = meta.get("agentType") if isinstance(meta, dict) else None
+        sources.append((kind if isinstance(kind, str) and kind else "?", sub))
+    for agent, path in sources:
+        try:
+            responses = responses_of(path)
+        except OSError:
+            if agent == "main":
+                raise
+            continue
+        for model, day, usage in responses.values():
+            if not day:
+                continue
+            acc = out.setdefault((session[:8], agent, model, day), dict.fromkeys(TOKEN_KEYS, 0))
+            for k in TOKEN_KEYS:
+                acc[k] += usage[k]
+    return out
+
+
+def ledger_sums(path):
+    """{(session, agent, model, date): {field: tokens}} already in the ledger (lines that do not parse are skipped)."""
+    sums = {}
+    if not os.path.isfile(path):
+        return sums
+    with open(path, encoding="utf-8", errors="replace") as f:
+        for line in f:
+            try:
+                d = json.loads(line)
+                key = (d["session"], d["agent"], d["model"], d["date"])
+            except (ValueError, KeyError, TypeError):
+                continue
+            acc = sums.setdefault(key, dict.fromkeys(TOKEN_KEYS, 0))
+            for k in TOKEN_KEYS:
+                acc[k] += num(d.get(k))
+    return sums
+
+
+def git(root, *args):
+    try:
+        r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, timeout=GIT_TIMEOUT)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise MetricsError(f"git {args[0]} could not run ({exc})")
+    if r.returncode != 0:
+        raise MetricsError(f"git {' '.join(args)} failed: {(r.stderr or r.stdout).strip() or 'exit ' + str(r.returncode)}")
+    return r.stdout
+
+
+def head_refs(root):
+    """The ids of the `Refs:` trailers of HEAD's commit message (a list, empty when there is none or no commit)."""
+    try:
+        message = git(root, "log", "-1", "--format=%B")
+    except MetricsError:
+        return []  # no commit yet
+    try:
+        r = subprocess.run(["git", "-C", str(root), "interpret-trailers", "--parse", "--no-divider"], input=message,
+                           capture_output=True, text=True, timeout=GIT_TIMEOUT)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise MetricsError(f"git interpret-trailers could not run ({exc})")
+    refs = []
+    for line in r.stdout.splitlines():
+        key, sep, value = line.partition(":")
+        if sep and key.strip().lower() == "refs":
+            refs.extend(t.strip() for t in value.split(",") if t.strip())
+    return refs
+
+
+def record(root, transcript, cfg):
+    """Append the new tokens of `transcript` to the ledger; returns the number of lines written."""
+    settings = config.metrics(cfg)
+    if not settings["record"]:
+        return 0
+    ledger = os.path.join(str(root), *posixpath.normpath(settings["ledger"]).split("/"))
+    seen = ledger_sums(ledger)
+    new = []
+    for key, now in sorted(totals(transcript).items()):
+        done = seen.get(key, dict.fromkeys(TOKEN_KEYS, 0))
+        if any(done[k] > now[k] for k in TOKEN_KEYS):
+            continue  # the ledger holds more than the transcript (rotated): leave the key alone
+        diff = {k: now[k] - done[k] for k in TOKEN_KEYS}
+        if any(diff.values()):
+            new.append((key, diff))
+    if not new:
+        return 0
+    branch = git(root, "rev-parse", "--abbrev-ref", "HEAD").strip()
+    refs = head_refs(root)
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    text = ""
+    for (session, agent, model, day), diff in new:
+        row = dict(diff, session=session, agent=agent, model=model, date=day, branch=branch, refs=refs, recorded=stamp)
+        text += json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n"
+    os.makedirs(os.path.dirname(ledger), exist_ok=True)
+    with open(ledger, "a", encoding="utf-8") as f:
+        f.write(text)  # one write: the lines of this run go in together
+    return len(new)
+
+
+def run_record(args):
+    event = read_event()
+    active = event.get("stop_hook_active") is True
+    doctor = f"python3 {os.path.join(HERE, 'doctor.py')}"
+    try:
+        root = config.find_root(args.root)
+        cfg = config.load(root)
+        if not config.metrics(cfg)["record"]:
+            return 0
+        transcript = args.transcript or event.get("transcript_path")
+        transcript, _ = session_log.find(root, transcript, warn=False)
+        if not transcript:
+            raise MetricsError("no session transcript found")
+        record(cfg["_root"], transcript, cfg)
+    except (config.ConfigError, MetricsError, OSError) as exc:
+        text = " ".join(str(exc).split()) or type(exc).__name__
+        if not active:
+            print(json.dumps({"systemMessage": f"metrics: {text}; run {doctor}"}))
+    return 0
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(prog="metrics.py", description=__doc__.splitlines()[0])
+    sub = ap.add_subparsers(dest="command", required=True)
+    rec = sub.add_parser("record", help="append the new token usage of the session to the ledger")
+    rec.add_argument("--transcript", help="main transcript (default: transcript_path of the hook JSON, else the newest)")
+    rec.add_argument("--root", help="project root (default: see config.find_root)")
+    rec.set_defaults(func=run_record)
+    args = ap.parse_args(argv)
+    try:
+        return args.func(args)
+    except Exception as exc:  # a hook must never crash the stop
+        print(json.dumps({"systemMessage": f"metrics: unexpected {type(exc).__name__}: {exc}; run python3 "
+                                           f"{os.path.join(HERE, 'doctor.py')}"}))
+        return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

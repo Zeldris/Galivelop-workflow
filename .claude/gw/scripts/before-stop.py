@@ -22,7 +22,8 @@ agent remembered it. It blocks the stop when:
      worktree's HEAD (12 hex, with or without -dirty) silences it; one of another commit or worktree adds a note and blocks.
      A lock that is dead, reused by another process, malformed or missing counts as absent and blocks as before;
   b. the working tree has changes (`git status`, untracked files included, but not untracked paths under
-     `.claude/worktrees/`, where Claude Code keeps its isolated worktrees) and the log (`log` in .claude/gw.json) is
+     `.claude/worktrees/`, where Claude Code keeps its isolated worktrees, nor the token ledger `metrics.ledger`,
+     which the metrics.py Stop hook rewrites on every stop) and the log (`log` in .claude/gw.json) is
      not among them. The reason says to commit the log, updated, in the same commit as the work.
 
 Output format (https://code.claude.com/docs/en/hooks.md, "Stop decision control"): a block is a JSON object on stdout
@@ -214,9 +215,11 @@ def _marker_branch(marker, head):
         return None
 
 
-def changed_paths(root):
+def changed_paths(root, ignore=()):
     """The set of paths `git status` lists (untracked files included; both sides of a rename). Raises GitError.
-    Untracked paths under `.claude/worktrees/` (Claude Code's isolated worktrees live there) do not count."""
+    Untracked paths under `.claude/worktrees/` (Claude Code's isolated worktrees live there) do not count, nor
+    does any path in `ignore` (normalized repo-relative paths: the token ledger, which metrics.py rewrites on every
+    stop)."""
     out = git(root, "status", "--porcelain=v1", "-z", "--untracked-files=all")[1]
     entries = out.split("\0")
     paths, i = set(), 0
@@ -227,7 +230,8 @@ def changed_paths(root):
             continue
         if entry.startswith("?? ") and posixpath.normpath(entry[3:]).startswith(WORKTREES_PREFIX):
             continue
-        paths.add(posixpath.normpath(entry[3:]))
+        if posixpath.normpath(entry[3:]) not in ignore:
+            paths.add(posixpath.normpath(entry[3:]))
         if entry[0] in "RC" or entry[1] in "RC":  # `-z` puts the origin of a rename in the next entry
             if i < len(entries) and entries[i]:
                 paths.add(posixpath.normpath(entries[i]))
@@ -288,7 +292,7 @@ def main():
         except GitError as exc:
             warns.append(str(exc))
         try:
-            paths = changed_paths(root)
+            paths = changed_paths(root, {posixpath.normpath(config.metrics(cfg)["ledger"])})
             if paths and log not in paths:
                 blocks.append(f"The working tree has {plural(len(paths), 'uncommitted change')} and the log ({log}) "
                               f"is not among them. Update the log (what is done, what is left, the next step) and "

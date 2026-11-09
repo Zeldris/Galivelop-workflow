@@ -72,6 +72,14 @@
             "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/before-stop.py"
           }
         ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/metrics.py record"
+          }
+        ]
       }
     ]
   }

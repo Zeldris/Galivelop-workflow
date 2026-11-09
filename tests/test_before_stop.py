@@ -261,6 +261,36 @@ class ClaudeWorktrees(Base):
         self.assertBlocks(out, "1 uncommitted change", LOG)
 
 
+class Ledger(Base):
+    """The token ledger metrics.py rewrites on every stop is not work the log has to mention."""
+
+    def test_only_the_ledger_changed_does_not_block(self):
+        p = self.p
+        p.write("docs/metrics/ledger.jsonl", "{}\n")
+        code, out = p.stop()
+        self.assertLetsStop(code, out)
+        self.assertEqual(out.strip(), "")
+
+    def test_the_ledger_plus_a_real_change_blocks_counting_only_the_real_one(self):
+        p = self.p
+        p.write("docs/metrics/ledger.jsonl", "{}\n")
+        p.write("src/real.py", "z = 1\n")
+        code, out = p.stop()
+        data = self.assertBlocks(out, LOG, "1 uncommitted change")
+        self.assertNotIn("2 uncommitted", data["reason"])
+
+    def test_a_configured_ledger_path_is_the_one_ignored(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["metrics"] = {"ledger": "data/tokens.jsonl"}
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.git("add", "-A"); p.git("commit", "-q", "-m", "config"); p.git("push", "-q")
+        p.write("data/tokens.jsonl", "{}\n")
+        p.write("docs/metrics/ledger.jsonl", "{}\n")
+        code, out = p.stop()
+        self.assertBlocks(out, LOG, "1 uncommitted change")
+
+
 class PushHelpers(Base):
     """P7 helpers shared by the push-marker and check-lock cases: a working branch with one unpushed commit and the
     marker file gw-push-in-progress.<pid> in the worktree's git dir."""
@@ -663,13 +693,21 @@ class Wiring(unittest.TestCase):
 
     def commands(self, path):
         data = json.loads((ROOT / path).read_text())
-        return [h["command"] for e in data["hooks"].get("Stop", []) for h in e["hooks"]]
+        return [h["command"] for e in data["hooks"].get("Stop", []) for h in e["hooks"]
+                if "before-stop.py" in h["command"]]
 
     def test_plugin_hooks(self):
         cmds = self.commands("hooks/hooks.json")
         self.assertEqual(len(cmds), 1, cmds)
         self.assertIn('"${CLAUDE_PLUGIN_ROOT}"/scripts/before-stop.py', cmds[0])
         self.assertTrue(cmds[0].startswith("python3 "), cmds[0])
+
+    def test_metrics_is_a_second_stop_hook(self):
+        for path, base in (("hooks/hooks.json", '"${CLAUDE_PLUGIN_ROOT}"/scripts'),
+                           ("templates/claude/settings.json", '"$CLAUDE_PROJECT_DIR"/.claude/gw/scripts')):
+            data = json.loads((ROOT / path).read_text())
+            cmds = [h["command"] for e in data["hooks"]["Stop"] for h in e["hooks"]]
+            self.assertEqual(cmds[-1], f"python3 {base}/metrics.py record", cmds)
 
     def test_settings_template(self):
         cmds = self.commands("templates/claude/settings.json")

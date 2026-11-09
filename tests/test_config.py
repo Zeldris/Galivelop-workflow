@@ -139,6 +139,17 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn("$." + next(iter(bad)), r.stderr)
 
+    def test_metrics_default_own_values_and_validation(self):
+        self.write(VALID)
+        default = {"ledger": "docs/metrics/ledger.jsonl", "record": True}
+        self.assertEqual(json.loads(cli(self.tmp, "get", "metrics").stdout), default)
+        self.assertEqual(config.metrics({}), default)
+        self.assertEqual(config.metrics({"metrics": {"record": False}}), dict(default, record=False))
+        self.write(dict(VALID, metrics={"record": "yes"}))
+        r = cli(self.tmp, "validate")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("$.metrics.record", r.stderr)
+
     def test_context_guard_default_and_own_values(self):
         self.write(VALID)
         default = {"cutoff": 0, "window": 200000, "autocompactShare": 0.8, "warn": 25, "alarm": 50}

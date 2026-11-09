@@ -55,6 +55,7 @@
   "subagentCap": 30,
   "instructionLines": {"warn": 150, "fail": 250},
   "contextGuard": {"cutoff": 0, "window": 200000, "autocompactShare": 0.8, "warn": 25, "alarm": 50},
+  "metrics": {"ledger": "docs/metrics/ledger.jsonl", "record": true},
   "privateCheck": {"emails": true, "allowEmails": []},
   "agentMap": {"prefixes": {}, "roots": []}
 }

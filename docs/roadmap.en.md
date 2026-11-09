@@ -132,9 +132,9 @@ In this order, because each step uses the previous one.
 | H16 | `0.6` harvest (`gw-harvest`) and its proposals, to the user | done (B20, D57-D60 to `0.5.2`; D61-D63 to `0.7`) |
 | H17 | User notes (SDD, DDD, TDD, exploration, task record, done per environment) and four external references, split into proposals: [`2026-11-08-notes-and-references.md`](proposals/2026-11-08-notes-and-references.md); all 13 and the 5 questions approved (user, 2026-11-08); the design that joins them, [`I-lifecycle.md`](design/I-lifecycle.md), open until its `grilling` | in progress |
 | A10 | One-page A4 workflow presentation sheets: for whoever contracts development, `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (what it solves, how work runs, what it guarantees), and for teams that install it, `docs/es/mkt-adoption.md` ↔ `docs/en/mkt-adoption.md` (user, 2026-11-09), with its HTML and final PDF generated from the `.md` by a script so they do not drift; reviewed on each version (D66) (user, 2026-11-06) | done (`scripts/mkt-sheet.py`, portal style) |
-| B1 | `Stop` hook that reads the session logs | pending |
-| B2 | `docs/metrics/ledger.jsonl` in the repo | pending |
-| B3 | What is stored: tokens by model and type, date, branch, `Refs`, subagent; prices in a dated table | pending |
+| B1 | `Stop` hook that reads the session logs | done (`scripts/metrics.py record`, key `metrics`) |
+| B2 | `docs/metrics/ledger.jsonl` in the repo | done (`merge=union` in `.gitattributes`; `apply.py` does not set it in projects yet) |
+| B3 | What is stored: tokens by model and type, date, branch, `Refs`, subagent; prices in a dated table | in progress (fields done with B1; the price table is missing) |
 | B4 | Reports by period: `metrics.py report --period …` and the `gw-metrics` skill | pending |
 | B5 | Comparisons: `metrics.py compare` | pending |
 | B6 | Warning at `SessionStart` when a model spends 1.5× its average | pending |
