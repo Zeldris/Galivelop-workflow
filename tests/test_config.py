@@ -125,6 +125,29 @@ class Config(unittest.TestCase):
         self.write(dict(VALID, instructionLines={"warn": 250, "fail": 250}))
         self.assertEqual(cli(self.tmp, "validate").returncode, 0)
 
+    def test_context_guard_default_and_own_values(self):
+        self.write(VALID)
+        default = {"cutoff": 0, "window": 200000, "autocompactShare": 0.8, "warn": 25, "alarm": 50}
+        self.assertEqual(json.loads(cli(self.tmp, "get", "contextGuard").stdout), default)
+        self.assertEqual(config.context_guard({}), default)
+        self.assertEqual(config.context_guard({"contextGuard": {"cutoff": 140000}}), dict(default, cutoff=140000))
+        self.write(dict(VALID, contextGuard={"cutoff": 140000, "autocompactShare": 1, "warn": 10}))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+
+    def test_context_guard_bad_values_fail_with_their_reason(self):
+        cases = [({"warn": 0}, "$.contextGuard.warn: must be at least 1, got 0"),
+                 ({"alarm": 101}, "$.contextGuard.alarm: must be at most 100, got 101"),
+                 ({"window": 999}, "$.contextGuard.window: must be at least 1000, got 999"),
+                 ({"autocompactShare": 0}, "$.contextGuard.autocompactShare: must be above 0, got 0"),
+                 ({"autocompactShare": 1.5}, "$.contextGuard.autocompactShare: must be at most 1, got 1.5"),
+                 ({"cutoff": -1}, "$.contextGuard.cutoff: must be at least 0, got -1"),
+                 ({"limit": 1}, "$.contextGuard: unknown key 'limit'")]
+        for bad, message in cases:
+            self.write(dict(VALID, contextGuard=bad))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn(message, r.stderr)
+
     def test_instruction_lines_bad_values_fail_with_their_reason(self):
         cases = [({"warn": 200, "fail": 100}, "$.instructionLines: warn (200) must not be above fail (100)"),
                  ({"warn": 300}, "warn (300) must not be above fail (250)"),
