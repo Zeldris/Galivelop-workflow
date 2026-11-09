@@ -21,7 +21,10 @@
   ],
   "staleRefs": [],
   "requireRetro": true,
-  "releaseDocs": ["README.md", "README.es.md"],
+  "releaseDocs": [
+    "README.md",
+    "README.es.md"
+  ],
   "agentSignatures": false,
   "agentMap": {
     "path": "docs/agent-map.md"
@@ -38,5 +41,15 @@
     "allowEmails": [
       "cordproinf@gmail.com"
     ]
+  },
+  "marketingSheets": {
+    "sources": [
+      "docs/es/mkt-workflow.md",
+      "docs/en/mkt-workflow.md",
+      "docs/es/mkt-adoption.md",
+      "docs/en/mkt-adoption.md"
+    ],
+    "outDir": "docs/mkt",
+    "maxPages": 1
   }
 }

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How Galivelop works with AI agents</title>
+<style>
+@page { size: A4; margin: 16mm 16mm 14mm; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 10pt; line-height: 1.45; color: #1f2933;
+  margin: 0 auto; max-width: 178mm; padding: 8mm 0; }
+h1 { font-size: 22pt; line-height: 1.15; margin: 0 0 4mm; color: #102a43; letter-spacing: -0.01em; }
+h2 { font-size: 13pt; margin: 6mm 0 2mm; color: #243b53; border-bottom: 0.4mm solid #bcccdc; padding-bottom: 1mm; }
+h3 { font-size: 10.5pt; margin: 4mm 0 1mm; color: #334e68; }
+p { margin: 0 0 2.5mm; }
+ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+li { margin: 0 0 1mm; }
+code { font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace; font-size: 9pt; background: #f0f4f8;
+  padding: 0 1mm; border-radius: 1mm; }
+a { color: #0b69a3; text-decoration: none; }
+hr { border: 0; border-top: 0.4mm solid #bcccdc; margin: 5mm 0; }
+table { border-collapse: collapse; width: 100%; margin: 0 0 3mm; font-size: 9pt; }
+th, td { border: 0.3mm solid #bcccdc; padding: 1mm 2mm; vertical-align: top; text-align: left; }
+th { background: #f0f4f8; color: #243b53; }
+h1, h2, h3, table, li { break-inside: avoid; }
+@media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+<!-- mkt-sheet source-sha256: 1881b0f30169bb6c795ce99c8520efe3445efbe01848b6cd7b35821fbf110220 -->
+<h1>How Galivelop works with AI agents</h1>
+<p><a href="../es/mkt-workflow.md">Español</a></p>
+<p>Galivelop builds software with coding agents (Claude Code) following <strong>Galivelop-workflow</strong>: its own public, versioned method, where the rules do not rely on the agent's good will but on <strong>automatic checks that enforce them</strong>.</p>
+<h2>What it solves for your project</h2>
+<ul><li><strong>Continuity.</strong> An AI session can stop at any time; the work is not lost. Everything is pushed to the repository at every stable point, with a log that says where it stands and what comes next.</li><li><strong>Quality.</strong> Nothing reaches the published version without a code review, green tests and your confirmation.</li><li><strong>Controlled cost.</strong> Each task uses the AI model it calls for, and the spend is measured instead of guessed.</li><li><strong>Traceability.</strong> Every change can be followed from the plan's task to the commit that made it.</li></ul>
+<h2>How the work runs</h2>
+<ol><li><strong>Plan and tasks.</strong> The work is split into tasks with an id, in a plan you can read.</li><li><strong>Work on a branch.</strong> The agent works away from the published version and pushes often, with the log updated in the same commit.</li><li><strong>Continuous checking.</strong> Every push runs the project's check (tests, format, private data) on the exact code being pushed.</li><li><strong>Review before release.</strong> Code review, a process retrospective and a review mark tied to that code.</li><li><strong>Release with your approval.</strong> The published version only changes when you confirm it.</li></ol>
+<h2>What it guarantees, and how</h2>
+<table><thead><tr><th>Guarantee</th><th>What enforces it</th></tr></thead><tbody><tr><td>Nothing is lost between sessions</td><td>Constant pushes; a hook does not let a session end with unpushed work</td></tr><tr><td>Nothing unreviewed is released</td><td>A review mark tied to the commit; without it, the push is rejected</td></tr><tr><td>Tests really prove something</td><td>A new test has to fail without its fix</td></tr><tr><td>No keys or private data leak</td><td>A secrets check on every commit and every push</td></tr><tr><td>A CI that does not start is not green</td><td>It counts as red and you are told</td></tr><tr><td>Every change is traceable</td><td>Commit format with the task id and the next step</td></tr></tbody></table>
+<h2>What you get</h2>
+<p>Your repository, with its full history and the log; the plan with the state of each task; and every version with its list of changes. The method is public: you can review it at <a href="https://github.com/Zeldris/Galivelop-workflow">github.com/Zeldris/Galivelop-workflow</a>.</p>
+</body>
+</html>

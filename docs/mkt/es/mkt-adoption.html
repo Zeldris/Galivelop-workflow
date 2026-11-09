@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galivelop-workflow para tu equipo</title>
+<style>
+@page { size: A4; margin: 16mm 16mm 14mm; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 10pt; line-height: 1.45; color: #1f2933;
+  margin: 0 auto; max-width: 178mm; padding: 8mm 0; }
+h1 { font-size: 22pt; line-height: 1.15; margin: 0 0 4mm; color: #102a43; letter-spacing: -0.01em; }
+h2 { font-size: 13pt; margin: 6mm 0 2mm; color: #243b53; border-bottom: 0.4mm solid #bcccdc; padding-bottom: 1mm; }
+h3 { font-size: 10.5pt; margin: 4mm 0 1mm; color: #334e68; }
+p { margin: 0 0 2.5mm; }
+ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+li { margin: 0 0 1mm; }
+code { font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace; font-size: 9pt; background: #f0f4f8;
+  padding: 0 1mm; border-radius: 1mm; }
+a { color: #0b69a3; text-decoration: none; }
+hr { border: 0; border-top: 0.4mm solid #bcccdc; margin: 5mm 0; }
+table { border-collapse: collapse; width: 100%; margin: 0 0 3mm; font-size: 9pt; }
+th, td { border: 0.3mm solid #bcccdc; padding: 1mm 2mm; vertical-align: top; text-align: left; }
+th { background: #f0f4f8; color: #243b53; }
+h1, h2, h3, table, li { break-inside: avoid; }
+@media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+<!-- mkt-sheet source-sha256: 1f72bef6c330ac1c5132f3c3bc74120861813f301f1c6a03f48b372dcc7afdc6 -->
+<h1>Galivelop-workflow para tu equipo</h1>
+<p><a href="../en/mkt-adoption.md">English</a></p>
+<p>Un flujo de trabajo para programar con agentes de IA (primero Claude Code), sacado de proyectos reales: <strong>skills, ganchos, scripts y plantillas</strong> que se instalan en tu repositorio y hacen cumplir las reglas en vez de confiar en que el agente las recuerde.</p>
+<h2>Qué resuelve</h2>
+<ul><li><strong>Las sesiones se acaban:</strong> la bitácora <code>docs/handoff.md</code> y el trailer <code>Siguiente:</code> de cada commit dejan a la siguiente sesión seguir sin preguntar.</li><li><strong>Lo que el agente da por bueno no siempre lo está:</strong> el <code>pre-push</code> corre tu check sobre el commit exacto que se sube, y la rama protegida exige una marca de revisión atada a ese commit (<code>reviewed.sh</code>).</li><li><strong>El gasto de tokens crece sin medirse:</strong> <code>gw-selector</code> elige skill y modelo por tarea, <code>gw-orchestrate-dealer</code> reparte el trabajo a subagentes de contexto limpio y <code>gw-opt-tokens</code> mide dónde se fue el gasto.</li></ul>
+<h2>Qué se instala</h2>
+<table><thead><tr><th>Pieza</th><th>Qué hace</th></tr></thead><tbody><tr><td>Ganchos de git</td><td><code>pre-commit</code> (secretos), <code>commit-msg</code> (formato y trazas), <code>pre-push</code> (check, datos privados, revisión)</td></tr><tr><td>Ganchos de Claude Code</td><td>Estado al empezar, no acabar sin subir, revisión antes de un PR, tope de subagentes</td></tr><tr><td>Skills</td><td>26, en formato abierto Agent Skills: 11 propias (<code>gw-*</code>) y 15 de Matt Pocock</td></tr><tr><td>Scripts</td><td>Deterministas, en Python 3.8+ y bash 3.2: <code>apply.py</code>, <code>doctor.py</code>, <code>check.sh</code>, <code>handoff.py</code>, <code>version.py</code>…</td></tr><tr><td>Configuración</td><td>Un solo archivo, <code>.claude/gw.json</code>: idioma, check, rama protegida, qué es contenido y qué es código</td></tr></tbody></table>
+<p>Todo queda <strong>dentro de tu repositorio</strong> (<code>.claude/gw/</code>, <code>.claude/skills/</code>, <code>.githooks/</code>), así que funciona también en sesiones en la nube que no cargan plugins.</p>
+<h2>Cómo se aplica</h2>
+<ol><li>Requisitos: <code>git</code>, <code>bash</code> y <code>python3</code> 3.8 o superior (en Windows, Git Bash o WSL).</li><li>En Claude Code, <code>/gw-init</code>: el agente decide contigo lo que exige criterio y <code>apply.py</code> copia y configura.</li><li><code>/gw-doctor</code> comprueba que queda bien montado y da la orden que arregla cada fallo.</li><li><code>/gw-update</code> lleva el proyecto a cada versión nueva y enseña los cambios antes de aplicarlos.</li></ol>
+<p>Los ganchos <strong>fallan cerrados</strong> si les falta un dato, y el propio repo pasa más de mil pruebas en Linux y macOS.</p>
+<p>Código, documentación y versiones: <a href="https://github.com/Zeldris/Galivelop-workflow">github.com/Zeldris/Galivelop-workflow</a>.</p>
+</body>
+</html>

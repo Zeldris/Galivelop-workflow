@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cómo trabaja Galivelop con agentes de IA</title>
+<style>
+@page { size: A4; margin: 16mm 16mm 14mm; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 10pt; line-height: 1.45; color: #1f2933;
+  margin: 0 auto; max-width: 178mm; padding: 8mm 0; }
+h1 { font-size: 22pt; line-height: 1.15; margin: 0 0 4mm; color: #102a43; letter-spacing: -0.01em; }
+h2 { font-size: 13pt; margin: 6mm 0 2mm; color: #243b53; border-bottom: 0.4mm solid #bcccdc; padding-bottom: 1mm; }
+h3 { font-size: 10.5pt; margin: 4mm 0 1mm; color: #334e68; }
+p { margin: 0 0 2.5mm; }
+ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+li { margin: 0 0 1mm; }
+code { font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace; font-size: 9pt; background: #f0f4f8;
+  padding: 0 1mm; border-radius: 1mm; }
+a { color: #0b69a3; text-decoration: none; }
+hr { border: 0; border-top: 0.4mm solid #bcccdc; margin: 5mm 0; }
+table { border-collapse: collapse; width: 100%; margin: 0 0 3mm; font-size: 9pt; }
+th, td { border: 0.3mm solid #bcccdc; padding: 1mm 2mm; vertical-align: top; text-align: left; }
+th { background: #f0f4f8; color: #243b53; }
+h1, h2, h3, table, li { break-inside: avoid; }
+@media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+<!-- mkt-sheet source-sha256: 8b6e1bbe5f44e33f4d8190ee8ffa6fc38ea267f96fddb9aca29f915f6167ecca -->
+<h1>Cómo trabaja Galivelop con agentes de IA</h1>
+<p><a href="../en/mkt-workflow.md">English</a></p>
+<p>Galivelop desarrolla software con agentes de programación (Claude Code) siguiendo <strong>Galivelop-workflow</strong>: un método propio, público y versionado, en el que las reglas no dependen de la buena voluntad del agente, sino de <strong>comprobaciones automáticas que las hacen cumplir</strong>.</p>
+<h2>Qué resuelve para tu proyecto</h2>
+<ul><li><strong>Continuidad.</strong> Una sesión de IA puede cortarse en cualquier momento; el trabajo no se pierde. Todo se sube al repositorio en cada punto estable, con una bitácora que dice dónde va y qué sigue.</li><li><strong>Calidad.</strong> Nada llega a la versión publicada sin revisión del código, tests en verde y tu confirmación.</li><li><strong>Coste controlado.</strong> Cada tarea usa el modelo de IA que pide, y el gasto se mide en lugar de suponerse.</li><li><strong>Trazabilidad.</strong> Cada cambio se puede seguir desde la tarea del plan hasta el commit que la hizo.</li></ul>
+<h2>Cómo se trabaja</h2>
+<ol><li><strong>Plan y tareas.</strong> El trabajo se reparte en tareas con un identificador, en un plan que tú puedes leer.</li><li><strong>Desarrollo en una rama.</strong> El agente trabaja fuera de la versión publicada y sube su trabajo a menudo, con la bitácora al día en el mismo commit.</li><li><strong>Comprobación continua.</strong> Cada subida pasa el check del proyecto (tests, formato, datos privados) sobre el código exacto que se sube.</li><li><strong>Revisión antes de publicar.</strong> Revisión del código, repaso del proceso y marca de revisión atada a ese código.</li><li><strong>Publicación con tu visto bueno.</strong> La versión publicada solo cambia cuando tú lo confirmas.</li></ol>
+<h2>Qué garantiza, y cómo</h2>
+<table><thead><tr><th>Garantía</th><th>Qué la hace cumplir</th></tr></thead><tbody><tr><td>Nada se pierde entre sesiones</td><td>Subida constante; un gancho no deja cerrar la sesión con trabajo sin subir</td></tr><tr><td>Nada sin revisar se publica</td><td>Marca de revisión atada al commit; sin ella, la subida se rechaza</td></tr><tr><td>Los tests prueban algo de verdad</td><td>Un test nuevo tiene que fallar sin su arreglo</td></tr><tr><td>No se filtran claves ni datos privados</td><td>Comprobación de secretos en cada commit y en cada subida</td></tr><tr><td>Un CI que no arranca no cuenta como verde</td><td>Se trata como rojo y se te avisa</td></tr><tr><td>Cada cambio es trazable</td><td>Formato de commit con el id de la tarea y el siguiente paso</td></tr></tbody></table>
+<h2>Lo que recibes</h2>
+<p>Tu repositorio, con todo el historial y la bitácora; el plan con el estado de cada tarea; y cada versión con su lista de cambios. El método es público: puedes revisarlo en <a href="https://github.com/Zeldris/Galivelop-workflow">github.com/Zeldris/Galivelop-workflow</a>.</p>
+</body>
+</html>

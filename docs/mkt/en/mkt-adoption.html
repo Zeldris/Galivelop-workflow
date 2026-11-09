@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Galivelop-workflow for your team</title>
+<style>
+@page { size: A4; margin: 16mm 16mm 14mm; }
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: "Helvetica Neue", Helvetica, Arial, sans-serif; font-size: 10pt; line-height: 1.45; color: #1f2933;
+  margin: 0 auto; max-width: 178mm; padding: 8mm 0; }
+h1 { font-size: 22pt; line-height: 1.15; margin: 0 0 4mm; color: #102a43; letter-spacing: -0.01em; }
+h2 { font-size: 13pt; margin: 6mm 0 2mm; color: #243b53; border-bottom: 0.4mm solid #bcccdc; padding-bottom: 1mm; }
+h3 { font-size: 10.5pt; margin: 4mm 0 1mm; color: #334e68; }
+p { margin: 0 0 2.5mm; }
+ul, ol { margin: 0 0 3mm; padding-left: 6mm; }
+li { margin: 0 0 1mm; }
+code { font-family: Menlo, Consolas, "DejaVu Sans Mono", monospace; font-size: 9pt; background: #f0f4f8;
+  padding: 0 1mm; border-radius: 1mm; }
+a { color: #0b69a3; text-decoration: none; }
+hr { border: 0; border-top: 0.4mm solid #bcccdc; margin: 5mm 0; }
+table { border-collapse: collapse; width: 100%; margin: 0 0 3mm; font-size: 9pt; }
+th, td { border: 0.3mm solid #bcccdc; padding: 1mm 2mm; vertical-align: top; text-align: left; }
+th { background: #f0f4f8; color: #243b53; }
+h1, h2, h3, table, li { break-inside: avoid; }
+@media print { body { padding: 0; } }
+</style>
+</head>
+<body>
+<!-- mkt-sheet source-sha256: 8d4252b8df7e963be1ff4c71f090682cb7d3fbb68c680a345b8524eb5339c59a -->
+<h1>Galivelop-workflow for your team</h1>
+<p><a href="../es/mkt-adoption.md">Español</a></p>
+<p>A workflow for coding with AI agents (Claude Code first), drawn from real projects: <strong>skills, hooks, scripts and templates</strong> installed in your repository that enforce the rules instead of trusting the agent to remember them.</p>
+<h2>What it solves</h2>
+<ul><li><strong>Sessions end:</strong> the log <code>docs/handoff.md</code> and the <code>Siguiente:</code> (next step) trailer of every commit let the next session carry on without asking.</li><li><strong>What the agent calls done is not always done:</strong> the <code>pre-push</code> runs your check on the exact commit being pushed, and the protected branch requires a review mark tied to that commit (<code>reviewed.sh</code>).</li><li><strong>Token spend grows unmeasured:</strong> <code>gw-selector</code> picks the skill and model per task, <code>gw-orchestrate-dealer</code> deals work out to clean-context subagents and <code>gw-opt-tokens</code> measures where the spend went.</li></ul>
+<h2>What gets installed</h2>
+<table><thead><tr><th>Piece</th><th>What it does</th></tr></thead><tbody><tr><td>Git hooks</td><td><code>pre-commit</code> (secrets), <code>commit-msg</code> (format and traces), <code>pre-push</code> (check, private data, review)</td></tr><tr><td>Claude Code hooks</td><td>State at start, no ending without pushing, review before a PR, subagent cap</td></tr><tr><td>Skills</td><td>26, in the open Agent Skills format: 11 of its own (<code>gw-*</code>) and 15 by Matt Pocock</td></tr><tr><td>Scripts</td><td>Deterministic, in Python 3.8+ and bash 3.2: <code>apply.py</code>, <code>doctor.py</code>, <code>check.sh</code>, <code>handoff.py</code>, <code>version.py</code>…</td></tr><tr><td>Configuration</td><td>A single file, <code>.claude/gw.json</code>: language, check, protected branch, what is content and what is code</td></tr></tbody></table>
+<p>Everything lives <strong>inside your repository</strong> (<code>.claude/gw/</code>, <code>.claude/skills/</code>, <code>.githooks/</code>), so it also works in cloud sessions that do not load plugins.</p>
+<h2>How to apply it</h2>
+<ol><li>Requirements: <code>git</code>, <code>bash</code> and <code>python3</code> 3.8 or later (on Windows, Git Bash or WSL).</li><li>In Claude Code, <code>/gw-init</code>: the agent decides with you what needs judgement and <code>apply.py</code> copies and configures.</li><li><code>/gw-doctor</code> checks it is set up right and gives the command that fixes each failure.</li><li><code>/gw-update</code> brings the project to each new version and shows the changes before applying them.</li></ol>
+<p>The hooks <strong>fail closed</strong> when a piece of data is missing, and the repo itself passes more than a thousand tests on Linux and macOS.</p>
+<p>Code, docs and releases: <a href="https://github.com/Zeldris/Galivelop-workflow">github.com/Zeldris/Galivelop-workflow</a>.</p>
+</body>
+</html>

@@ -8,9 +8,8 @@ el agente las recuerde.
 
 ## Qué resuelve
 
-- **Las sesiones se acaban** (tokens, contenedor, cambio de cuenta): la bitácora `docs/handoff.md` y el trailer
-  `Siguiente:` de cada commit dejan a la siguiente sesión seguir sin preguntar; `recover.py` recupera el estado tras
-  un `/clear` o una compactación.
+- **Las sesiones se acaban:** la bitácora `docs/handoff.md` y el trailer `Siguiente:` de cada commit dejan a la
+  siguiente sesión seguir sin preguntar.
 - **Lo que el agente da por bueno no siempre lo está:** el `pre-push` corre tu check sobre el commit exacto que se
   sube, y la rama protegida exige una marca de revisión atada a ese commit (`reviewed.sh`).
 - **El gasto de tokens crece sin medirse:** `gw-selector` elige skill y modelo por tarea, `gw-orchestrate-dealer`
@@ -20,8 +19,8 @@ el agente las recuerde.
 
 | Pieza | Qué hace |
 |---|---|
-| Ganchos de git | `pre-commit` (secretos), `commit-msg` (formato, `Refs:`, `Siguiente:`, sin firmas del agente), `pre-push` (check, datos privados, marca de revisión, bitácora) |
-| Ganchos de Claude Code | Estado al empezar, no acabar sin subir, revisión antes de un PR, tope de subagentes, guardia de la configuración |
+| Ganchos de git | `pre-commit` (secretos), `commit-msg` (formato y trazas), `pre-push` (check, datos privados, revisión) |
+| Ganchos de Claude Code | Estado al empezar, no acabar sin subir, revisión antes de un PR, tope de subagentes |
 | Skills | 26, en formato abierto Agent Skills: 11 propias (`gw-*`) y 15 de Matt Pocock |
 | Scripts | Deterministas, en Python 3.8+ y bash 3.2: `apply.py`, `doctor.py`, `check.sh`, `handoff.py`, `version.py`… |
 | Configuración | Un solo archivo, `.claude/gw.json`: idioma, check, rama protegida, qué es contenido y qué es código |
@@ -36,10 +35,6 @@ sesiones en la nube que no cargan plugins.
 3. `/gw-doctor` comprueba que queda bien montado y da la orden que arregla cada fallo.
 4. `/gw-update` lleva el proyecto a cada versión nueva y enseña los cambios antes de aplicarlos.
 
-## Por qué fiarse
-
-- Las reglas comprobables las comprueba un script; los ganchos **fallan cerrados** si les falta un dato.
-- El propio repo pasa más de mil pruebas automáticas en Linux y macOS y se trabaja con su propio flujo.
-- Las mejoras de tu proyecto vuelven al flujo con `gw-harvest`, siempre como propuesta y con tu confirmación.
+Los ganchos **fallan cerrados** si les falta un dato, y el propio repo pasa más de mil pruebas en Linux y macOS.
 
 Código, documentación y versiones: [github.com/Zeldris/Galivelop-workflow](https://github.com/Zeldris/Galivelop-workflow).
