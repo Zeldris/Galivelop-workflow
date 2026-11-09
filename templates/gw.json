@@ -34,6 +34,7 @@
   "ciLocalWorkflows": [],
   "ciIgnore": [],
   "releaseDocs": [],
+  "marketingSheets": {"sources": [], "outDir": "docs/mkt", "maxPages": 1},
   "nonTestExtensions": ["md", "json", "yml", "yaml", "properties", "txt", "csv"],
   "ciKeepSteps": true,
   "legacyNames": true,

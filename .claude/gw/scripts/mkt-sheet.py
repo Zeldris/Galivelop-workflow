@@ -110,12 +110,12 @@ def _is_sep(line):
 def convert(md):
     """The HTML body fragment for the Markdown text `md`, plus the title (first `#` heading, '' if none)."""
     lines = md.replace("\r\n", "\n").replace("\r", "\n").split("\n")
-    out, title, para, i = [], "", [], 0
+    out, title, pending_lines, i = [], "", [], 0
 
     def flush():
-        if para:
-            out.append("<p>" + inline(" ".join(s.strip() for s in para)) + "</p>")
-            para.clear()
+        if pending_lines:
+            out.append("<p>" + inline(" ".join(s.strip() for s in pending_lines)) + "</p>")
+            pending_lines.clear()
 
     while i < len(lines):
         line = lines[i]
@@ -170,7 +170,7 @@ def convert(md):
             out.append(f"<{tag}>" + "".join(f"<li>{inline(' '.join(s.strip() for s in it))}</li>" for it in items)
                        + f"</{tag}>")
         else:
-            para.append(line)
+            pending_lines.append(line)
         i += 1
     flush()
     return "\n".join(out), title
