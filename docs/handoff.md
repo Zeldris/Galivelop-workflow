@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). Los arreglos del CI de Ubuntu y macOS (`66a4ecd`) están en esta rama; `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.5.0` |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **A10 en curso (2026-11-09):** dos hojas de una página A4 (es/en): `mkt-workflow.md` para quien contrata desarrollo y `mkt-adoption.md` para equipos que instalan el flujo; solo nombre y enlace al repo. `scripts/mkt-sheet.py` (`build`/`pdf`/`check`, clave `marketingSheets`, sección en `tests/check.sh`) fusionado desde `agent/A10-mkt-sheet`; HTML y PDF generados en `docs/mkt/`, una página cada uno. **Siguiente:** aplicar los arreglos de la revisión de `mkt-sheet.py` (el revisor deja sus hallazgos en el scratchpad), marcar A10 hecha en el roadmap y subir. Presupuesto de compactaciones: 1 |
+| Siguiente paso | **A10 hecha (2026-11-09)**, a falta de la revisión corta del commit de estilo (`4f0c202`); si trae hallazgos graves o medios, se arreglan antes de seguir. **Siguiente:** B1, gancho `Stop` que lee los logs de sesión (primera tarea pendiente del bloque `0.6`). Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -41,7 +41,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-09 — A10 (contenido): hojas `docs/es|en/mkt-workflow.md` (clientes) y `docs/es|en/mkt-adoption.md` (equipos), una página A4 cada una
+1. 2026-11-09 — A10: hojas `docs/es|en/mkt-workflow.md` (clientes) y `docs/es|en/mkt-adoption.md` (equipos), una página A4 cada una; `scripts/mkt-sheet.py` (`build`/`pdf`/`check`, clave `marketingSheets` con `css`) genera HTML y PDF en `docs/mkt/` con el estilo del portal (retícula, Big Shoulders/Literata/JetBrains Mono autoalojadas, sin sombras ni redondeos)
 2. 2026-11-09 — D65: historizar la bitácora (`logSize`, `logArchive`, `handoff.py archive`, `check` avisa; `recover.py --state` tras compactar solo la primera sección; primer archivado real de 17 elementos)
 3. 2026-11-09 — B21: guarda del contexto de arranque: `scripts/context_guard.py` (y su copia instalada) lee del transcript el primer turno tras cada `/clear` o compactación y lo compara con el corte (`contextGuard` en `.claude/gw.json`: `cutoff`, `window`, `autocompactShare`, `warn` 25, `alarm` 50); `recover.py --state` añade sus líneas (aviso con desglose de culpables, alarma y bucle con `--source compact`); `config.py` valida `maximum`/`exclusiveMinimum`; `config.md` es/en, mapa, 25 tests en `test_context_guard.py`
 4. 2026-11-09 — D64: la línea de `gw-selector` pasa a `Session: <recomendado> (current: <X>; /model para cambiarlo) · Subagents: <peldaño> · Skill: <y>`, con el modelo de la sesión que orquesta igual al de la fila de más riesgo que reparte (mínimo medio); worktree suelto `wt-check` quitado, sin ramas `agent/*`
@@ -49,6 +49,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Pendiente
 
+- **A10, leves de la revisión (no bloquean):** el conversor Markdown pierde el `#` de `# Learn C#`, anida mal `***x***`, parte una tabla con `|` dentro de código, toma `2024.` al principio de línea por lista, aplana las listas anidadas y deja el markup del título; dos fuentes con el mismo idioma y nombre chocan; Playwright se resuelve global.
 - **A10, leve:** el enlace de idioma de la cabecera de cada hoja (`[English](../en/…md)`) sale en el HTML y el PDF apuntando a un `.md` que no está junto al HTML; quitarlo o reescribirlo a `.html` en `mkt-sheet.py`.
 - **Bloque I (cerrado 2026-11-08):** las respuestas del `grilling` están en `docs/design/I-lifecycle.md`; la `0.7` empieza por C11 (toca `commit-msg`, D43 y `trace.py`), luego C13 y C12. Las claves nuevas (`taskRecord`, `approvals.maxAgeDays`, `privateNames`…) no existen aún en `config.py` ni en `docs/es/config.md`: se crean con la tarea que las use.
 - **Archivado (2026-11-09):** 17 elemento(s) de versiones ya publicadas (≤ 0.5.1) en [handoff-archive.md](records/handoff-archive.md)
