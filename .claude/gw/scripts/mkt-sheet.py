@@ -264,9 +264,16 @@ def stylesheet(root, conf, html_path):
         url = m.group(2).strip()
         if re.match(r"(?i)([a-z][a-z0-9+.-]*:|/|#)", url):
             return m.group(0)
-        target = os.path.normpath(os.path.join(os.path.dirname(str(css_file)), url))
+        target = os.path.normpath(os.path.join(os.path.dirname(str(css_file)), url.split("?")[0].split("#")[0]))
+        if not os.path.isfile(target):
+            raise SheetError(f"missing file in {conf['css']} (marketingSheets.css): url({url}) points to "
+                             f"{os.path.relpath(target, str(root))}, which does not exist; restore it or fix the url")
+        # The asset's hash goes in the url so that changing a font or an image changes the HTML, and `check`
+        # reports both the HTML and the PDF printed from it as stale.
+        with open(target, "rb") as fh:
+            version = hashlib.sha256(fh.read()).hexdigest()[:12]
         rel = os.path.relpath(target, str(html_path.parent)).replace(os.sep, "/")
-        return f'url("{rel}")'
+        return f'url("{rel}?v={version}")'
     return CSS_URL.sub(fix, text)
 
 
@@ -323,7 +330,7 @@ def cmd_check(root, conf, items):
             problems.append(f"missing {_rel(pdf, root)}; run: {PDF_CMD}")
         elif not sidecar.is_file():
             problems.append(f"missing {_rel(sidecar, root)} (which HTML the PDF was printed from); run: {PDF_CMD}")
-        elif sidecar.read_text(encoding="utf-8").strip() != sha256(html_path.read_bytes()):
+        elif sidecar.read_bytes().strip() != sha256(html_path.read_bytes()).encode():
             problems.append(f"stale {_rel(pdf, root)}: it was not printed from the current {_rel(html_path, root)}; "
                             f"run: {PDF_CMD}")
     if not problems:

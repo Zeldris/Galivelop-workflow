@@ -405,6 +405,7 @@ class Style(Project):
 
     def style(self, text=None):
         (self.tmp / "docs" / "mkt" / "fonts").mkdir(parents=True, exist_ok=True)
+        (self.tmp / "docs/mkt/fonts/x.woff2").write_bytes(b"font-1")
         (self.tmp / "docs/mkt/style.css").write_text(
             text or '@font-face{font-family:X;src:url("fonts/x.woff2") format("woff2")}\nbody{color:#123456}\n'
             "i{background:url(https://a.org/i.png)}\n", encoding="utf-8")
@@ -417,7 +418,8 @@ class Style(Project):
         self.assertEqual((code, err), (0, ""), err)
         page = (self.tmp / "out/es/a.html").read_text(encoding="utf-8")
         self.assertIn("color:#123456", page)
-        self.assertIn('url("../../docs/mkt/fonts/x.woff2")', page)
+        self.assertIn('url("../../docs/mkt/fonts/x.woff2?v=%s")' % mkt.hashlib.sha256(b"font-1").hexdigest()[:12],
+                      page)
         self.assertIn("url(https://a.org/i.png)", page)
         self.assertNotIn(mkt.CSS.strip()[:40], page)
 
@@ -431,6 +433,35 @@ class Style(Project):
         self.assertEqual(code, 1)
         self.assertIn("stale docs/mkt/es/a.html: the stylesheet (marketingSheets.css) or the converter changed", err)
         self.assertIn("run: python3 scripts/mkt-sheet.py build", err)
+
+    def test_check_detects_a_changed_font(self):
+        self.style()
+        run(self.tmp, "build")
+        self.fake_pdf()
+        self.assertEqual(run(self.tmp, "check")[0], 0)
+        (self.tmp / "docs/mkt/fonts/x.woff2").write_bytes(b"font-2")
+        code, _, err = run(self.tmp, "check")
+        self.assertEqual(code, 1)
+        self.assertIn("stale docs/mkt/es/a.html", err)
+
+    def test_missing_font_fails_closed(self):
+        self.style()
+        run(self.tmp, "build")
+        self.fake_pdf()
+        (self.tmp / "docs/mkt/fonts/x.woff2").unlink()
+        for cmd in ("check", "build"):
+            code, _, err = run(self.tmp, cmd)
+            self.assertEqual(code, 1, cmd)
+            self.assertIn("url(fonts/x.woff2) points to docs/mkt/fonts/x.woff2, which does not exist", err)
+
+    def test_sidecar_not_utf8_is_stale_not_a_traceback(self):
+        run(self.tmp, "build")
+        self.fake_pdf()
+        (self.tmp / "docs/mkt/es/a.pdf.sha").write_bytes(b"\xff\xfe")
+        code, _, err = run(self.tmp, "check")
+        self.assertEqual(code, 1)
+        self.assertIn("stale docs/mkt/es/a.pdf", err)
+        self.assertNotIn("Traceback", err)
 
     def test_check_detects_a_changed_template(self):
         run(self.tmp, "build")
