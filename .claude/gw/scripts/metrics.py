@@ -35,6 +35,12 @@ total; `(none)` without ids). Rows without a price are counted in tokens and lis
 report; `--write` also saves it as `<reports>/<daily|weekly|monthly|quarterly>/<name>.md` (`2026-11-09`, `2026-W45`,
 `2026-11`, `2026-Q4`), the same bytes for the same ledger. A period without rows writes nothing and says so (exit 0).
 
+`metrics.py compare --period day|week|month|quarter [--date D] [--against D2]` (B5) sets the period that holds D
+beside the one before it, or beside the period of the same kind that holds D2: totals and, by model, agent, branch and
+task id, the tokens and USD of each and the change (`+n (+x%)`; `new` when the earlier side had none). The USD change
+is left out (`n/a`) when either side has unpriced tokens. It only prints; both periods empty says so (exit 0); the same
+period twice is an error (exit 2).
+
 The record hook never blocks a stop and never fails silently: on any error it exits 0 and prints a `systemMessage` JSON object on
 stdout that names `python3 <here>/doctor.py`. A successful record prints nothing; with `stop_hook_active` it records
 the same and prints nothing at all. Project root: config.find_root (never the current directory alone).
@@ -314,12 +320,16 @@ def render_report(kind, name, first, last, summary):
     return "\n".join(lines) + "\n"
 
 
+def period_rows(root, settings, first, last):
+    ledger = os.path.join(str(root), *posixpath.normpath(settings["ledger"]).split("/"))
+    return [r for r in ledger_rows(ledger) if first <= r["date"] <= last]
+
+
 def report(root, cfg, kind, day, write=False):
     """(text, path written or None) of the report of the `kind` period that holds `day`; text is None without rows."""
     settings = config.metrics(cfg)
-    ledger = os.path.join(str(root), *posixpath.normpath(settings["ledger"]).split("/"))
     name, first, last = period_of(kind, day)
-    rows = [r for r in ledger_rows(ledger) if first <= r["date"] <= last]
+    rows = period_rows(root, settings, first, last)
     if not rows:
         return None, None
     text = render_report(kind, name, first, last, summarize(rows, settings["prices"]))
@@ -330,6 +340,86 @@ def report(root, cfg, kind, day, write=False):
         with open(path, "w", encoding="utf-8", newline="\n") as f:
             f.write(text)
     return text, path
+
+
+def fmt_change(old, new, money=False):
+    """`+n (+x%)` from old to new; `new` when old is 0 and new is not, `=` when both are equal."""
+    diff = new - old
+    if (abs(diff) < 0.005) if money else diff == 0:
+        return "="
+    if not old:
+        return "new"
+    text = f"{'+' if diff > 0 else '-'}${abs(diff):,.2f}" if money else f"{diff:+,}"
+    return f"{text} ({100.0 * diff / old:+.1f}%)"
+
+
+def usd_change(a, b):
+    return "n/a" if a["unpriced"] or b["unpriced"] else fmt_change(a["usd"], b["usd"], money=True)
+
+
+def render_compare(kind, base, current):
+    """Markdown of two period summaries side by side; base and current are (name, first, last, summary)."""
+    (bn, bf, bl, bs), (cn, cf, cl, cs) = base, current
+
+    def span(first, last):
+        return first if first == last else f"{first} to {last}"
+
+    bt, ct = bs["total"], cs["total"]
+    lines = [f"# Token comparison: {cn} against {bn}", "",
+             f"Period: {kind}. `{bn}` is {span(bf, bl)}, `{cn}` is {span(cf, cl)} (UTC). Source: the token ledger "
+             "(`metrics.py compare`). Changes go from the first column to the second; money is computed from "
+             "`metrics.prices` when the comparison is made.", "",
+             "## Totals", "",
+             f"| | `{bn}` | `{cn}` | Change |", "|---|---:|---:|---:|",
+             f"| Sessions | {len(bs['sessions'])} | {len(cs['sessions'])} | "
+             f"{fmt_change(len(bs['sessions']), len(cs['sessions']))} |"]
+    for key, label in (("input", "Input"), ("cacheWrite", "Cache write"), ("cacheRead", "Cache read"),
+                       ("output", "Output"), ("tokens", "Tokens")):
+        lines.append(f"| {label} | {fmt_tokens(bt[key])} | {fmt_tokens(ct[key])} | {fmt_change(bt[key], ct[key])} |")
+    lines.append(f"| USD | {fmt_usd(bt)} | {fmt_usd(ct)} | {usd_change(bt, ct)} |")
+    zero = dict(dict.fromkeys(TOKEN_KEYS, 0), tokens=0, usd=0.0, unpriced=0)
+    titles = (("model", "By model", "Model"), ("agent", "By agent", "Agent"), ("branch", "By branch", "Branch"),
+              ("refs", "By task id (`Refs`)", "Id"))
+    for dim, title, head in titles:
+        lines += ["", f"## {title}", ""]
+        if dim == "refs":
+            lines += ["A row with several ids counts once in each, so this table can add up to more than the total.", ""]
+        lines += [f"| {head} | Tokens `{bn}` | Tokens `{cn}` | Change | USD `{bn}` | USD `{cn}` | USD change |",
+                  "|---|---:|---:|---:|---:|---:|---:|"]
+        keys = set(bs["by"][dim]) | set(cs["by"][dim])
+        accs = {k: (bs["by"][dim].get(k, zero), cs["by"][dim].get(k, zero)) for k in keys}
+        for key in sorted(keys, key=lambda k: (-accs[k][1]["tokens"], -accs[k][0]["tokens"], k)):
+            a, b = accs[key]
+            lines.append(f"| `{key}` | {fmt_tokens(a['tokens'])} | {fmt_tokens(b['tokens'])} | "
+                         f"{fmt_change(a['tokens'], b['tokens'])} | {fmt_usd(a)} | {fmt_usd(b)} | {usd_change(a, b)} |")
+    unpriced = sorted(set(bs["unpriced"]) | set(cs["unpriced"]))
+    if unpriced:
+        lines += ["", "## Without a price", "",
+                  "These models have no entry in `metrics.prices` for their date; their tokens are in the tables "
+                  "above but not in the USD figures, and the USD change is `n/a` where they appear.", ""]
+        lines += [f"- `{m}`: {fmt_tokens(bs['unpriced'].get(m, 0))} tokens in `{bn}`, "
+                  f"{fmt_tokens(cs['unpriced'].get(m, 0))} in `{cn}`" for m in unpriced]
+    return "\n".join(lines) + "\n"
+
+
+def compare(root, cfg, kind, day, against=None):
+    """Markdown comparing the `kind` period that holds `day` with the one before it, or with the one holding
+    `against` (a datetime.date); None when both are empty. Raises ValueError when both dates fall in the same period."""
+    settings = config.metrics(cfg)
+    current = period_of(kind, day)
+    if against is None:
+        base = period_of(kind, datetime.date.fromisoformat(current[1]) - datetime.timedelta(days=1))
+    else:
+        base = period_of(kind, against)
+        if base == current:
+            raise ValueError(f"{day.isoformat()} and {against.isoformat()} are in the same {kind} ({current[0]})")
+    sides = []
+    for name, first, last in (base, current):
+        sides.append((name, first, last, period_rows(root, settings, first, last)))
+    if not sides[0][3] and not sides[1][3]:
+        return None
+    prices = settings["prices"]
+    return render_compare(kind, *[(n, f, l, summarize(rows, prices)) for n, f, l, rows in sides])
 
 
 def git(root, *args):
@@ -463,6 +553,29 @@ def run_report(args):
     return 0
 
 
+def run_compare(args):
+    """Print the comparison; exit 0 also when both periods are empty, 2 when both dates are in the same period."""
+    try:
+        cfg = config.load(config.find_root(args.root))
+    except config.ConfigError as exc:
+        print(f"metrics: {exc}", file=sys.stderr)
+        return 2
+    day = datetime.date.fromisoformat(args.date) if args.date else datetime.datetime.now(datetime.timezone.utc).date()
+    against = datetime.date.fromisoformat(args.against) if args.against else None
+    try:
+        text = compare(cfg["_root"], cfg, args.period, day, against)
+    except ValueError as exc:
+        print(f"metrics: {exc}; give --against a date in another {args.period}, or leave it out to use the one before",
+              file=sys.stderr)
+        return 2
+    if text is None:
+        print(f"metrics: no ledger rows in either {args.period}; nothing to compare (python3 "
+              f"{os.path.join(HERE, 'config.py')} get metrics shows the ledger path)", file=sys.stderr)
+        return 0
+    sys.stdout.write(text)
+    return 0
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog="metrics.py", description=__doc__.splitlines()[0])
     sub = ap.add_subparsers(dest="command", required=True)
@@ -481,8 +594,14 @@ def main(argv=None):
     rp.add_argument("--write", action="store_true", help="also save it under metrics.reports/<daily|weekly|...>/")
     rp.add_argument("--root", help="project root (default: see config.find_root)")
     rp.set_defaults(func=run_report)
+    cp = sub.add_parser("compare", help="set a period beside the one before it, or beside another of the same kind")
+    cp.add_argument("--period", required=True, choices=sorted(PERIODS))
+    cp.add_argument("--date", type=day_arg, help="any UTC date YYYY-MM-DD in the period (default: today)")
+    cp.add_argument("--against", type=day_arg, help="any UTC date in the period to compare with (default: the one before)")
+    cp.add_argument("--root", help="project root (default: see config.find_root)")
+    cp.set_defaults(func=run_compare)
     args = ap.parse_args(argv)
-    if args.command in ("price", "report"):
+    if args.command in ("price", "report", "compare"):
         return args.func(args)
     try:
         return args.func(args)

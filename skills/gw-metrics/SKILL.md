@@ -1,6 +1,6 @@
 ---
 name: gw-metrics
-description: Read the token reports of a day, week, month or quarter (by model, agent, branch and task id, with money from the dated price table) and explain where the spend went. Use when the user asks how much was spent, which model, agent or task cost the most, for a token or cost report of a period, or to save one in the repo.
+description: Read the token reports of a day, week, month or quarter (by model, agent, branch and task id, with money from the dated price table) and explain where the spend went. Use when the user asks how much was spent, which model, agent or task cost the most, how a period compares with another, for a token or cost report of a period, or to save one in the repo.
 license: MIT
 compatibility: "Claude Code or any Agent Skills agent; python3 for .claude/gw/scripts/metrics.py (standard library only); needs the token ledger (metrics in .claude/gw.json)."
 metadata:
@@ -32,14 +32,18 @@ the report's numbers, and when a question needs a number the report does not sho
      often (`/clear`, compaction, many short subagents) and `gw-opt-tokens` measures why;
    - the task-id table can add up to more than the total (a row with two ids counts in both): never sum it;
    - a `Without a price` section: those tokens are not in the USD figures; adding the model to `metrics.prices` fixes it.
-4. **Save it only when asked.** `--write` saves it under `metrics.reports` (`docs/metrics/` by default) as
+4. **Compare when asked** ("than last week", "September against October"): `python3 .claude/gw/scripts/metrics.py
+   compare --period <period> [--date YYYY-MM-DD] [--against YYYY-MM-DD]` sets the period of `--date` beside the one
+   before it, or beside the one of the same kind that holds `--against`. Quote its `Change` column (`new` = nothing in
+   the first period; `n/a` = unpriced tokens on one side) and name the rows that moved most; never work out a change it
+   does not print.
+5. **Save it only when asked.** `--write` saves it under `metrics.reports` (`docs/metrics/` by default) as
    `daily/`, `weekly/`, `monthly/` or `quarterly/<name>.md`; the same ledger gives the same file, so rerunning it is safe.
    It goes in the next commit, with the log, like any other change.
 
 ## Limits
 
-- Comparing two periods is `metrics.py compare` (B5), not built yet: run two reports and quote both; do not compute
-  the difference.
+- `compare` only prints; to keep a comparison, save the two reports with `--write`.
 - The ledger only holds what the `Stop` hook recorded and was pushed: a cloud session whose container died before its
   last commit is missing, and the report cannot tell.
 - `cacheWrite` is priced as the 5-minute write (1.25 × input); 1-hour writes cost more and the ledger does not split

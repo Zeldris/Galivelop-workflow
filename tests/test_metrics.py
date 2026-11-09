@@ -343,5 +343,74 @@ class Report(Base):
         self.assertIn("invalid choice: 'year'", r.stderr)
 
 
+class Compare(Base):
+    """B5: metrics.py compare sets a period beside the one before it or beside one the user picks."""
+    PRICES = Report.PRICES
+    rows = Report.rows
+
+    def compare(self, *args):
+        return subprocess.run([sys.executable, "-B", str(SCRIPT), "compare", *args, "--root", str(self.root)],
+                              capture_output=True, text=True, env=self.env)
+
+    def test_against_the_previous_period(self):
+        self.write_config({"metrics": {"prices": self.PRICES}})
+        self.rows({"date": "2026-11-08", "input": 1_000_000},  # W45, Sunday
+                  {"date": "2026-11-09", "input": 1_500_000, "agent": "Explore"},  # W46, Monday
+                  {"date": "2026-11-15", "output": 100_000, "refs": ["B5"]},
+                  {"date": "2026-11-16", "input": 9})  # W47: left out
+        r = self.compare("--period", "week", "--date", "2026-11-12")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = r.stdout
+        self.assertIn("# Token comparison: 2026-W46 against 2026-W45", out)
+        self.assertIn("`2026-W45` is 2026-11-02 to 2026-11-08, `2026-W46` is 2026-11-09 to 2026-11-15", out)
+        self.assertIn("| Input | 1,000,000 | 1,500,000 | +500,000 (+50.0%) |", out)
+        self.assertIn("| Output | 0 | 100,000 | new |", out)
+        self.assertIn("| Sessions | 1 | 1 | = |", out)
+        self.assertIn("| USD | $1.00 | $2.50 | +$1.50 (+150.0%) |", out)
+        self.assertIn("| `main` | 1,000,000 | 100,000 | -900,000 (-90.0%) | $1.00 | $1.00 | = |", out)
+        self.assertIn("| `Explore` | 0 | 1,500,000 | new | $0.00 | $1.50 | new |", out)
+        self.assertIn("| `B5` | 0 | 100,000 | new |", out)
+        self.assertNotIn("1,500,009", out)
+        # rows ordered by the later period first
+        self.assertLess(out.index("| `Explore` |"), out.index("| `main` |"))
+
+    def test_against_a_chosen_period_with_unpriced_tokens(self):
+        self.write_config({"metrics": {"prices": self.PRICES}})
+        self.rows({"date": "2026-09-03", "input": 2_000_000},
+                  {"date": "2026-11-01", "model": "gpt-z", "output": 40})
+        r = self.compare("--period", "month", "--date", "2026-11-20", "--against", "2026-09-30")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        out = r.stdout
+        self.assertIn("# Token comparison: 2026-11 against 2026-09", out)
+        self.assertIn("| Tokens | 2,000,000 | 40 | -1,999,960 (-100.0%) |", out)
+        self.assertIn("| USD | $2.00 | $0.00 + unpriced | n/a |", out)
+        self.assertIn("| `claude-x` | 2,000,000 | 0 | -2,000,000 (-100.0%) | $2.00 | $0.00 | -$2.00 (-100.0%) |", out)
+        self.assertIn("- `gpt-z`: 0 tokens in `2026-09`, 40 in `2026-11`", out)
+
+    def test_previous_day_and_quarter_cross_the_year(self):
+        import datetime
+        self.rows({"date": "2025-12-31", "output": 3}, {"date": "2026-01-01", "output": 6})
+        r = self.compare("--period", "day", "--date", "2026-01-01")
+        self.assertIn("# Token comparison: 2026-01-01 against 2025-12-31", r.stdout)
+        self.assertIn("| Output | 3 | 6 | +3 (+100.0%) |", r.stdout)
+        r = self.compare("--period", "quarter", "--date", "2026-02-01")
+        self.assertIn("# Token comparison: 2026-Q1 against 2025-Q4", r.stdout)
+        self.assertIsNone(metrics.compare(self.root, {"_root": str(self.root)}, "day", datetime.date(2030, 1, 1)))
+
+    def test_the_same_period_twice_and_empty_periods(self):
+        self.rows({"date": "2026-11-09", "output": 5})
+        r = self.compare("--period", "week", "--date", "2026-11-09", "--against", "2026-11-15")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("2026-11-09 and 2026-11-15 are in the same week (2026-W46)", r.stderr)
+        self.assertEqual(r.stdout, "")
+        r = self.compare("--period", "day", "--date", "2026-01-05")
+        self.assertEqual(r.returncode, 0)
+        self.assertEqual(r.stdout, "")
+        self.assertIn("no ledger rows in either day; nothing to compare", r.stderr)
+        r = self.compare("--period", "day", "--date", "2026-11-09", "--against", "26-11-09")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("is not a date YYYY-MM-DD", r.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
