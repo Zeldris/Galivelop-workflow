@@ -15,7 +15,7 @@ from pathlib import Path
 
 from test_hooks import ROOT, Project
 
-SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py")
+SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py", "context_guard.py")
 
 
 def folder_of(path):

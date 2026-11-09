@@ -15,6 +15,9 @@
   recover.py --search TEXT      the transcript fragments (main conversation: user, Claude, tool calls and results)
                                 matching TEXT (case-insensitive regex; plain text if it is not a valid regex), newest
                                 last. --max N (10), --width N (300 characters per fragment).
+  --source S                    the SessionStart source (startup|resume|clear|compact; default: the hook's, else
+                                startup); with compact, a startup over the alarm threshold is a compaction loop
+                                (context_guard.py, B21).
   --session PATH                the transcript to read (default: the hook's transcript_path on stdin, else the newest
                                 one for the repo, see session_log.py).
 
@@ -422,7 +425,7 @@ def other_branch_lines(root, branch):
     return [head] + lines
 
 
-def state(root, transcript, out, logs):
+def state(root, transcript, out, logs, source="startup"):
     """Append the --state lines to `out` (and the log's relative path to `logs`); the caller measures and prints."""
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD") or "?"
     head = [f"State after compaction or /clear (galivelop-workflow), branch {branch}:"]
@@ -479,6 +482,12 @@ def state(root, transcript, out, logs):
                     f"the work out with gw-orchestrate-dealer")
     else:
         say("- Compactions in this session: unknown (no session transcript found)")
+    try:
+        import context_guard
+        tail.extend(context_guard.report(root, config.load(root), path, source,
+                                         hook_chars=sum(len(l) + 1 for l in head + log_lines + tail)))
+    except Exception as exc:  # only a warning: --state never fails
+        tail.append(f"- Startup context: could not be measured ({exc})")
     session = f" --session {path}" if path else ""
     say(f"- A detail from before (an error, a piece of code, what the user said): "
         f"{script_command(root)}{session} --search '<text>'; never read the transcript whole.")
@@ -503,7 +512,7 @@ def capped(lines, log):
 
 
 def hook_transcript(wait=3.0):
-    """The transcript_path Claude Code passes to a hook on stdin. Read only when data arrives within `wait` seconds:
+    """The JSON (transcript_path, source) Claude Code passes to a hook on stdin. Read only when data arrives within `wait` seconds:
     an agent's Bash tool or `cmd | recover.py` leaves stdin open with nothing on it, and --state must not hang.
     One second was too short on a loaded machine: the fallback (the folder's newest transcript) may be another
     session's, and state() says so when it falls back."""
@@ -519,7 +528,7 @@ def hook_transcript(wait=3.0):
         data = json.loads(sys.stdin.read() or "{}")
     except (json.JSONDecodeError, ValueError, OSError):
         return None
-    return data.get("transcript_path") if isinstance(data, dict) else None
+    return data if isinstance(data, dict) else None
 
 
 LEGACY_FLAGS = {"--estado": "--state", "--buscar": "--search", "--sesion": "--session", "--ancho": "--width"}
@@ -534,13 +543,17 @@ def main(argv=None):
     parser.add_argument("--session", metavar="PATH", help="transcript to read")
     parser.add_argument("--max", type=int, default=10)
     parser.add_argument("--width", type=int, default=300)
+    parser.add_argument("--source", choices=("startup", "resume", "clear", "compact"),
+                        help="SessionStart source (default: the hook's, else startup)")
     parser.add_argument("--root", help=argparse.SUPPRESS)
     args = parser.parse_args(argv)
     if args.state:
         lines, logs = [], []
         try:
             root = config.find_root(args.root)
-            state(root, args.session or hook_transcript(), lines, logs)
+            data = {} if args.session and args.source else (hook_transcript() or {})
+            state(root, args.session or data.get("transcript_path"), lines, logs,
+                  args.source or data.get("source") or "startup")
         except BrokenPipeError:
             raise
         except Exception as exc:  # fail open: the hook must never break the session

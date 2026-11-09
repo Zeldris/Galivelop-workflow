@@ -216,6 +216,11 @@ def validate(value, schema, path="$"):
         errors.append(f"{path}: must be one of {schema['enum']}, got {value!r}")
     if isinstance(value, (int, float)) and not isinstance(value, bool) and value < schema.get("minimum", value):
         errors.append(f"{path}: must be at least {schema['minimum']}, got {value!r}")
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if value > schema.get("maximum", value):
+            errors.append(f"{path}: must be at most {schema['maximum']}, got {value!r}")
+        if value <= schema.get("exclusiveMinimum", value - 1):
+            errors.append(f"{path}: must be above {schema['exclusiveMinimum']}, got {value!r}")
     if isinstance(value, str):
         if len(value) < schema.get("minLength", 0):
             errors.append(f"{path}: must not be empty")
@@ -256,6 +261,16 @@ def instruction_lines(config):
     given = config.get("instructionLines")
     given = given if isinstance(given, dict) else {}
     return tuple(given.get(k, prop["properties"][k]["default"]) for k in ("warn", "fail"))
+
+
+def context_guard(config):
+    """The `contextGuard` key as a dict (cutoff, window, autocompactShare, warn, alarm), each missing part filled
+    from the schema default (the only place the defaults live)."""
+    schema = json.loads(schema_path().read_text(encoding="utf-8"))
+    props = schema["properties"]["contextGuard"]["properties"]
+    given = config.get("contextGuard")
+    given = given if isinstance(given, dict) else {}
+    return {k: given.get(k, props[k]["default"]) for k in props}
 
 
 def semantic_errors(config):
