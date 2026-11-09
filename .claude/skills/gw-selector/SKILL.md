@@ -48,8 +48,13 @@ do the case without it and say so.
 - **Disabled models:** `python3 .claude/gw/scripts/models.py list` prints `models.disabled`; never recommend or pass
   one of them (an alias such as `opus` covers its whole family). If a row's model is disabled, take the next rung
   that is not and say so in the line; only the user re-enables one (`models.py enable`).
-- **Subagent model:** pass the table's subagent column as the `model` parameter. Delegate searches, long reads and
-  mechanical work; design and decisions stay in the main session.
+- **Subagent model and effort, per agent:** every Agent call passes both `model` and `effort` (a rung such as
+  `sonnet low` is `model: sonnet`, `effort: low`; the table's "light" is `haiku low`), or names a `subagent_type`
+  whose definition (`.claude/agents/<type>.md`) sets them in its frontmatter; a `fork` inherits the session. Never
+  rely on global variables: `CLAUDE_CODE_EFFORT_LEVEL` beats every per-agent effort, and
+  `CLAUDE_CODE_SUBAGENT_MODEL` with `_FORCE=1` forces one model on all subagents (`doctor.py` warns of both;
+  `subagent-cap.py` reminds of a call that sets neither). Delegate searches, long reads and mechanical work; design
+  and decisions stay in the main session.
 - **Closed plan, scoped implementation:** goes to a `sonnet` subagent and the main session reviews its diff before
   the commit. The fixes from a review are a closed plan too (`sonnet`); `opus` only to debug something non-obvious. Anything of more than one step runs through `gw-orchestrate-dealer`.
 - **Subagent ladder:** `sonnet low` → `sonnet medium` → `opus medium` → `opus high`. Start at the lowest rung that

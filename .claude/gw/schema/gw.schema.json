@@ -571,12 +571,26 @@
           },
           "default": [],
           "description": "Models no subagent may run on: a full id (claude-opus-5-5), an id prefix (claude-opus), or a family alias (opus, sonnet, haiku, fable) that covers every id of the family. subagent-cap.py denies the call; gw-selector and gw-orchestrate-dealer never pick them. Changed with models.py disable|enable."
+        },
+        "agentFields": {
+          "type": "array",
+          "items": {"enum": ["model", "effort"]},
+          "uniqueItems": true,
+          "default": ["model", "effort"],
+          "description": "B11: the fields every subagent call must set, in the call or in its agent definition's frontmatter; subagent-cap.py reminds the agent (without blocking) of each one missing, so model and effort are picked per agent and not left to the session or to global variables. [] turns the reminder off."
+        },
+        "checkLevers": {
+          "type": "boolean",
+          "default": true,
+          "description": "B11: doctor.py warns when a global Claude Code variable overrides the model or effort picked per agent (CLAUDE_CODE_EFFORT_LEVEL, CLAUDE_CODE_SUBAGENT_MODEL with CLAUDE_CODE_SUBAGENT_MODEL_FORCE, the undocumented CLAUDE_CODE_SUBAGENT_EFFORT) in the environment or an env block of the project or user settings. false turns the check off."
         }
       },
       "default": {
-        "disabled": []
+        "disabled": [],
+        "agentFields": ["model", "effort"],
+        "checkLevers": true
       },
-      "description": "Which models the workflow may use (B7)."
+      "description": "Which models the workflow may use (B7) and how each agent gets its model and effort (B11)."
     },
     "instructionLines": {
       "type": "object",

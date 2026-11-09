@@ -141,7 +141,7 @@ In this order, because each step uses the previous one.
 | B7 | `models.disabled` in `gw.json`, with its hook | done (2026-11-09; `subagent-cap.py` denies, `models.py`) |
 | B8 | Quality signals next to spend (the deterministic table, under "Later") | done (2026-11-09; `metrics.py quality`, `Findings`/`Retries` trailers, `metrics.quality`) |
 | B10 | The `gw-selector` recommends the main session's model and effort | done (2026-11-09; effort column, line `Session: <model> <effort> (current: …)` and `sessionEffort` in `selector.cases`) |
-| B11 | Model and effort per agent (Claude Code levers) | pending |
+| B11 | Model and effort per agent (Claude Code levers) | done (2026-11-09; `models.agentFields` in `subagent-cap.py`, `models.checkLevers` in `doctor.py`, rule in `gw-selector` and `gw-orchestrate-dealer`) |
 | E21 | `scripts/related-tests.py <files>`: the tests of a change, cited in the `gw-orchestrate-dealer` brief; in `REVIEW.md`, a script that commits is tested with the hooks installed (retro `0.5.0` R2) | pending |
 | B16 | `gw-orchestrate-dealer`: the approved findings of a `/code-review` are dealt out to subagents by group of files (retro `0.5.0` R3) | pending |
 | D42 | `gw-orchestrate-dealer`: a `scratchpad/<id>/` folder per agent, check the worktree base and stop with `TaskStop` (retro `0.5.0` R4) | pending |

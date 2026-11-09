@@ -142,7 +142,7 @@ En este orden, porque cada paso usa el anterior.
 | B7 | `models.disabled` en `gw.json`, con su gancho | hecho (2026-11-09; `subagent-cap.py` deniega, `models.py`) |
 | B8 | Señales de calidad junto al gasto (la tabla determinista, en «Después») | hecho (2026-11-09; `metrics.py quality`, trailers `Findings`/`Retries`, `metrics.quality`) |
 | B10 | El `gw-selector` recomienda modelo y esfuerzo de la sesión principal | hecho (2026-11-09; columna de esfuerzo, línea `Session: <modelo> <esfuerzo> (current: …)` y `sessionEffort` en `selector.cases`) |
-| B11 | Modelo y esfuerzo por agente (palancas de Claude Code) | pendiente |
+| B11 | Modelo y esfuerzo por agente (palancas de Claude Code) | hecho (2026-11-09; `models.agentFields` en `subagent-cap.py`, `models.checkLevers` en `doctor.py`, regla en `gw-selector` y `gw-orchestrate-dealer`) |
 | E21 | `scripts/related-tests.py <archivos>`: los tests de un cambio, citado en el encargo de `gw-orchestrate-dealer`; en `REVIEW.md`, un script que hace commits se prueba con los ganchos instalados (retro `0.5.0` R2) | pendiente |
 | B16 | `gw-orchestrate-dealer`: los hallazgos aprobados de un `/code-review` se reparten a subagentes por grupo de archivos (retro `0.5.0` R3) | pendiente |
 | D42 | `gw-orchestrate-dealer`: carpeta `scratchpad/<id>/` por agente, comprobar la base del worktree y cortar con `TaskStop` (retro `0.5.0` R4) | pendiente |

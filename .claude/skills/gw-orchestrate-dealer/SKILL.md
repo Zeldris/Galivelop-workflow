@@ -46,7 +46,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    makes it, with its tests (a subagent pays ~50k just to start and rediscovers what the session knows).
 2. **Deal.** One subagent per chunk with the Agent tool, in the foreground when the next chunk depends on it. Model and
    effort follow the `gw-selector` ladder: `sonnet` to implement, `opus` to debug something non-obvious, skipping
-   any model in `models.disabled` (`subagent-cap.py` denies it). Fixes from a
+   any model in `models.disabled` (`subagent-cap.py` denies it). Every call passes the rung as both `model` and
+   `effort` (`sonnet low` → `model: sonnet`, `effort: low`), retries and reviewers included; never leave them to the
+   session or to global variables. Fixes from a
    review go to `sonnet` too: the reviewer already closed the plan (where and what to change). The brief carries
    **pointers, not copies**: where the material is (the log row, the plan task, a doc, a commit, a file and
    function), never the pasted text. Template:

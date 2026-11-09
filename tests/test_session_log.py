@@ -31,7 +31,8 @@ class SessionProject(Project):
             shutil.copy2(ROOT / "scripts" / name, self.work / ".claude" / "gw" / "scripts" / name)
         self.home = tmp / "home"
         self.home.mkdir()
-        for k in ("CLAUDE_CODE_REMOTE", "CLAUDE_ENV_FILE", "CLAUDE_CODE_AUTO_COMPACT_WINDOW"):
+        for k in ("CLAUDE_CODE_REMOTE", "CLAUDE_ENV_FILE", "CLAUDE_CODE_AUTO_COMPACT_WINDOW", "CLAUDE_CODE_EFFORT_LEVEL",
+                  "CLAUDE_CODE_SUBAGENT_MODEL", "CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "CLAUDE_CODE_SUBAGENT_EFFORT"):
             self.env.pop(k, None)
         self.env["HOME"] = str(self.home)
         self.scripts = self.work / ".claude" / "gw" / "scripts"

@@ -13,7 +13,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_hooks import ROOT, Project
+from test_hooks import BASE_CONFIG, ROOT, Project
 
 SCRIPT = "subagent-cap.py"
 
@@ -38,7 +38,7 @@ class SubagentCapProject(Project):
 
     def event(self, session="s1", tool="Agent", **extra):
         data = {"hook_event_name": "PreToolUse", "cwd": str(self.work), "tool_name": tool,
-                "tool_input": {"prompt": "do it", "model": "haiku"}}
+                "tool_input": {"prompt": "do it", "model": "haiku", "effort": "low"}}
         if session is not None:
             data["session_id"] = session
         data.update(extra)
@@ -241,7 +241,7 @@ class OldCountersAndLinks(Base):
 
 
 class ModelWarning(Base):
-    cfg = {"subagentCap": 3}
+    cfg = {"subagentCap": 3, "models": {"agentFields": ["model"]}}  # the effort, in EffortWarning
 
     def context(self, result):
         code, out = result
@@ -345,6 +345,73 @@ class ModelWarning(Base):
         self.context(self.p.call(tool_input={"prompt": "x"}))
         self.context(self.p.call(tool_input={"prompt": "x"}))
         self.assertAsks(self.p.call(), "3 subagents")
+
+
+class EffortWarning(Base):
+    """B11: model and effort are set per agent; with the default models.agentFields both are checked."""
+    cfg = {"subagentCap": 50}
+
+    def note(self, tool_input, **extra):
+        code, out = self.p.call(tool_input=tool_input, **extra)
+        self.assertEqual(code, 0, out)
+        spec = self.answer(out)
+        self.assertNotIn("permissionDecision", spec, "a missing effort warns, it never asks or denies")
+        return spec["additionalContext"]
+
+    def set_config(self, cfg):
+        (self.p.work / ".claude" / "gw.json").write_text(json.dumps(dict(BASE_CONFIG, **cfg), indent=2))
+
+    def test_a_call_with_model_and_effort_is_quiet(self):
+        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "sonnet", "effort": "medium"}))
+
+    def test_a_call_without_effort_is_warned_about_the_effort_only(self):
+        for effort in (None, "", "  ", 3, "inherit"):
+            with self.subTest(effort=effort):
+                tool_input = {"prompt": "x", "model": "sonnet"}
+                if effort is not None:
+                    tool_input["effort"] = effort
+                note = self.note(tool_input)
+                self.assertIn("no `effort`", note)
+                self.assertNotIn("`model`", note)
+                self.assertIn("the session's effort", note)
+                self.assertIn("pass it as `effort`", note)
+                self.assertIn("gw-selector", note)
+
+    def test_a_call_without_both_names_both_in_one_reminder(self):
+        note = self.note({"prompt": "x"})
+        self.assertIn("no `model` and no `effort`", note)
+        self.assertIn("does not set them", note)
+        self.assertIn("pass it as `model` and `effort`", note)
+        self.assertIn("next calls", note)
+
+    def test_the_agent_definition_effort_counts(self):
+        self.p.agent("scout", "---\nname: scout\nmodel: haiku\neffort: low\n---\nbody\n")
+        self.p.agent("half", "---\nmodel: haiku\n---\neffort: low\n")  # effort outside the frontmatter
+        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "subagent_type": "scout"}))
+        note = self.note({"prompt": "x", "subagent_type": "half"})
+        self.assertIn("no `effort`", note)
+        self.assertNotIn("`model`", note)
+        # the call's effort fills what the definition lacks
+        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "subagent_type": "half", "effort": "low"}))
+
+    def test_a_fork_is_never_warned(self):
+        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "subagent_type": "fork"}))
+
+    def test_agent_fields_picks_what_is_checked(self):
+        for fields, needle, absent in ((["effort"], "no `effort`", "`model`"), (["model"], "no `model`", "`effort`")):
+            with self.subTest(fields=fields):
+                self.set_config(dict(self.cfg, models={"agentFields": fields}))
+                note = self.note({"prompt": "x"})
+                self.assertIn(needle, note)
+                self.assertNotIn(absent, note)
+        self.set_config(dict(self.cfg, models={"agentFields": []}))
+        self.assertQuiet(self.p.call(tool_input={"prompt": "x"}))
+
+    def test_an_unreadable_config_checks_both(self):
+        (self.p.work / ".claude" / "gw.json").write_text("{not json")
+        code, out = self.p.call(tool_input={"prompt": "x"})
+        spec = self.answer(out)
+        self.assertIn("no `model` and no `effort`", spec["additionalContext"])
 
 
 class CapOfOne(Base):
@@ -457,8 +524,8 @@ class DisabledModels(Base):
         self.assertQuiet(self.p.call())  # haiku is enabled: the first counted call
 
     def test_an_enabled_model_goes_on_as_before(self):
-        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "sonnet"}))
-        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "claude-haiku-5-5"}))
+        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "sonnet", "effort": "low"}))
+        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "claude-haiku-5-5", "effort": "low"}))
 
     def test_the_agent_definition_model_counts(self):
         self.p.agent("scout", "---\nname: scout\nmodel: claude-opus-5-5\n---\nbody\n")
@@ -471,7 +538,7 @@ class DisabledModels(Base):
                              "model claude-opus-5-5[1m] (the session's model, which the subagent inherits)")
         self.assertIn("no `model`", spec["additionalContext"])
         path = self.transcript("claude-opus-5-5", "claude-sonnet-5-5")
-        result = self.p.call(tool_input={"prompt": "x", "model": "inherit"}, transcript_path=path)
+        result = self.p.call(tool_input={"prompt": "x", "model": "inherit", "effort": "low"}, transcript_path=path)
         self.assertNotIn("permissionDecision", self.answer(result[1]), "sonnet is enabled: only the warning")
 
     def test_a_model_it_cannot_tell_asks(self):
@@ -486,16 +553,16 @@ class DisabledModels(Base):
         self.decision(self.p.call(), "ask", "models.py is missing next to subagent-cap.py", "/gw-update")
 
     def test_no_session_id_still_denies_a_disabled_model(self):
-        self.decision(self.p.call(session=None, tool_input={"prompt": "x", "model": "opus"}), "deny", "disabled")
+        self.decision(self.p.call(session=None, tool_input={"prompt": "x", "model": "opus", "effort": "low"}), "deny", "disabled")
 
 
 class NothingDisabled(Base):
     cfg = {"subagentCap": 3, "models": {"disabled": []}}
 
     def test_an_empty_list_checks_nothing(self):
-        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "opus"}))
+        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "opus", "effort": "low"}))
         (self.p.scripts / "models.py").unlink()
-        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "opus"}))
+        self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "opus", "effort": "low"}))
 
 
 if __name__ == "__main__":

@@ -716,6 +716,68 @@ class Doctor(unittest.TestCase):
         code, out = self.doctor()
         self.assertEqual(self.compaction_lines(out), [], out)
 
+    # --- B11: global variables that override the model or effort picked per agent
+
+    def lever_lines(self, out):
+        return [l for l in out.splitlines() if re.match(r"(OK|WARN|FAIL) +levers:", l)]
+
+    def test_no_global_lever_passes(self):
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "OK", "levers", "no global variable overrides")
+
+    def test_a_global_effort_warns_from_the_environment_and_from_each_settings_file(self):
+        code, out = self.doctor_env({"CLAUDE_CODE_EFFORT_LEVEL": "low"})
+        self.assertEqual(code, 0, out)  # a warning, never a failure
+        self.assertLine(out, "WARN", "levers", "CLAUDE_CODE_EFFORT_LEVEL=low in the environment", "beats every other effort",
+                        "remove CLAUDE_CODE_EFFORT_LEVEL from the environment", "models.checkLevers false")
+        settings = self.settings()
+        settings["env"]["CLAUDE_CODE_EFFORT_LEVEL"] = "high"
+        self.save_settings(settings)
+        self.p.write(".claude/settings.local.json", json.dumps({"env": {"CLAUDE_CODE_EFFORT_LEVEL": "max"}}))
+        user = self.p.home / ".claude"
+        user.mkdir(exist_ok=True)
+        (user / "settings.json").write_text(json.dumps({"env": {"CLAUDE_CODE_EFFORT_LEVEL": "xhigh"}}))
+        out = self.doctor()[1]
+        self.assertLine(out, "WARN", "levers", "=high in .claude/settings.json")
+        self.assertLine(out, "WARN", "levers", "=max in .claude/settings.local.json")
+        self.assertLine(out, "WARN", "levers", "=xhigh in ~/.claude/settings.json")
+        self.assertNotIn("OK    levers", out)
+
+    def test_auto_or_unset_effort_is_not_a_lever(self):
+        for value in ("auto", "Unset", "", "  "):
+            with self.subTest(value=value):
+                out = self.doctor_env({"CLAUDE_CODE_EFFORT_LEVEL": value})[1]
+                self.assertLine(out, "OK", "levers")
+
+    def test_a_forced_subagent_model_warns_only_with_force(self):
+        out = self.doctor_env({"CLAUDE_CODE_SUBAGENT_MODEL": "haiku"})[1]
+        self.assertLine(out, "OK", "levers")  # without _FORCE the call's model wins: nothing overridden
+        out = self.doctor_env({"CLAUDE_CODE_SUBAGENT_MODEL": "haiku", "CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1"})[1]
+        self.assertLine(out, "WARN", "levers", "CLAUDE_CODE_SUBAGENT_MODEL=haiku with CLAUDE_CODE_SUBAGENT_MODEL_FORCE",
+                        "over the `model` each call passes", "remove CLAUDE_CODE_SUBAGENT_MODEL_FORCE")
+        out = self.doctor_env({"CLAUDE_CODE_SUBAGENT_MODEL_FORCE": "1"})[1]
+        self.assertLine(out, "OK", "levers")  # _FORCE alone forces nothing
+
+    def test_the_undocumented_subagent_effort_warns(self):
+        out = self.doctor_env({"CLAUDE_CODE_SUBAGENT_EFFORT": "low"})[1]
+        self.assertLine(out, "WARN", "levers", "CLAUDE_CODE_SUBAGENT_EFFORT", "not a documented", "pass `effort`")
+
+    def test_check_levers_false_turns_the_check_off(self):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["models"] = {"checkLevers": False}
+        self.p.write(".claude/gw.json", json.dumps(cfg, indent=2))
+        out = self.doctor_env({"CLAUDE_CODE_EFFORT_LEVEL": "low"})[1]
+        self.assertEqual(self.lever_lines(out), [], out)
+
+    def test_unreadable_settings_files_are_skipped(self):
+        self.p.write(".claude/settings.local.json", "{not json")
+        user = self.p.home / ".claude"
+        user.mkdir(exist_ok=True)
+        (user / "settings.json").write_text(json.dumps({"env": ["x"]}))
+        out = self.doctor()[1]
+        self.assertLine(out, "OK", "levers")
+
     def compaction_lines(self, out):
         return [l for l in out.splitlines() if re.match(r"(OK|WARN|FAIL) +compaction:", l)]
 

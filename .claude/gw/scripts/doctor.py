@@ -17,7 +17,10 @@ environment; a skill script under .claude/skills/*/scripts/ without a test_<name
 only in a project that uses gw-media-content (its note .claude/gw/gw-media-content.md or its folder exists), node,
 Playwright and ImageMagick with WebP (WMF 2026-10-25 P1), and a leftover docs/difusion (the folder before A8; warns
 while the note names no other); and, when `origin` is on GitHub, a way to read the CI state
-(`gh` logged in, or GITHUB_TOKEN/GH_TOKEN set). The compaction check, the session one, the media tools one and the CI
+(`gh` logged in, or GITHUB_TOKEN/GH_TOKEN set); and (B11, `models.checkLevers`) no global variable that overrides the model
+or effort picked per agent (CLAUDE_CODE_EFFORT_LEVEL, CLAUDE_CODE_SUBAGENT_MODEL with _FORCE, CLAUDE_CODE_SUBAGENT_EFFORT)
+in the environment or the env block of .claude/settings.json, .claude/settings.local.json or ~/.claude/settings.json.
+The compaction check, the session one, the levers one, the media tools one and the CI
 access one read the machine running doctor, not only the project, so their lines can differ between a person's machine,
 CI and a cloud session.
 Python 3.8+ standard library only.
@@ -668,6 +671,55 @@ def check_compaction(rep, root):
              f"add {key}={value} to the cloud environment's variables (environment menu > Edit); new sessions get it")
 
 
+EFFORT_VAR = "CLAUDE_CODE_EFFORT_LEVEL"
+SUBAGENT_MODEL_VAR = "CLAUDE_CODE_SUBAGENT_MODEL"
+FORCE_VAR = "CLAUDE_CODE_SUBAGENT_MODEL_FORCE"
+SUBAGENT_EFFORT_VAR = "CLAUDE_CODE_SUBAGENT_EFFORT"
+
+
+def lever_sources(root):
+    """[(where, env)]: the session's environment and the env blocks of the project and user settings files."""
+    sources = [("the environment", dict(os.environ))]
+    for where, path in ((".claude/settings.json", root / ".claude" / "settings.json"),
+                        (".claude/settings.local.json", root / ".claude" / "settings.local.json"),
+                        ("~/.claude/settings.json", Path.home() / ".claude" / "settings.json")):
+        try:
+            env = json.loads(path.read_text(encoding="utf-8")).get("env")
+        except (OSError, ValueError, AttributeError):
+            continue
+        if isinstance(env, dict):
+            sources.append((where, {k: str(v) for k, v in env.items()}))
+    return sources
+
+
+def check_levers(rep, root, cfg):
+    """B11: model and effort are picked per agent (gw-selector); a global variable that overrides them is warned."""
+    try:
+        if cfg is not None and not config.models(cfg)["checkLevers"]:
+            return
+    except (config.ConfigError, KeyError, OSError, ValueError):
+        pass  # the check stays on: it only warns
+    found = 0
+    for where, env in lever_sources(root):
+        effort = env.get(EFFORT_VAR, "").strip()
+        if effort and effort.lower() not in ("auto", "unset"):
+            found += 1
+            rep.warn("levers", f"{EFFORT_VAR}={effort} in {where} beats every other effort: the effort gw-selector "
+                     f"passes to each agent and the session's /effort", f"remove {EFFORT_VAR} from {where} "
+                     f"(or set models.checkLevers false in .claude/gw.json if it is on purpose)")
+        if env.get(FORCE_VAR, "").strip().lower() in ("1", "true") and env.get(SUBAGENT_MODEL_VAR, "").strip():
+            found += 1
+            rep.warn("levers", f"{SUBAGENT_MODEL_VAR}={env[SUBAGENT_MODEL_VAR].strip()} with {FORCE_VAR} in {where} "
+                     f"forces one model on every subagent, over the `model` each call passes (only for a "
+                     f"restricted-tokens mode)", f"remove {FORCE_VAR} from {where}")
+        if env.get(SUBAGENT_EFFORT_VAR, "").strip():
+            found += 1
+            rep.warn("levers", f"{SUBAGENT_EFFORT_VAR} in {where} is not a documented Claude Code variable, so it "
+                     f"may do nothing", f"remove it from {where}; pass `effort` in each Agent call (gw-selector)")
+    if not found:
+        rep.ok("levers", "no global variable overrides the model or effort picked per agent")
+
+
 def invisible_chars(text):
     """[(line, column, 'U+XXXX')] of invisible characters in text; a BOM as the very first character is fine."""
     found = []
@@ -905,6 +957,7 @@ def run(root):
     check_skills(rep, root, version, proposals)
     check_session(rep, root)
     check_compaction(rep, root)
+    check_levers(rep, root, cfg)
     return rep
 
 

@@ -10,9 +10,12 @@ nothing (no opinion: the normal permission flow goes on).
 
 It also warns, without blocking, when the call has no `model` of its own (missing, empty, not a string or `inherit`
 in `tool_input`) and its `subagent_type` does not set one (a `model:` other than inherit in the frontmatter of
-.claude/agents/<type>.md of the project or ~/.claude/agents/; a type with no definition found is warned). The
-warning is `additionalContext`: Claude Code delivers it with the tool result, so it serves the next calls, not the
-current one. It is also added to every `ask` this hook gives (cap reached, or cannot count).
+.claude/agents/<type>.md of the project or ~/.claude/agents/; a type with no definition found is warned), and the
+same for `effort` (B11: the call's `effort`, else an `effort:` in that frontmatter). Which of the two it checks is
+`models.agentFields` in .claude/gw.json (default ["model", "effort"]; [] turns the warning off; a config it cannot
+read uses the default). A `fork` subagent is never warned: it inherits the session by design. The warning is
+`additionalContext`: Claude Code delivers it with the tool result, so it serves the next calls, not the current one.
+It is also added to every `ask` this hook gives (cap reached, or cannot count).
 
 Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse "ask" decision): a JSON object on stdout, exit 0,
 
@@ -111,21 +114,36 @@ def read_event():
 
 def ask(reason, event=None):
     out = {"hookEventName": "PreToolUse", "permissionDecision": "ask", "permissionDecisionReason": reason}
-    if isinstance(event, dict) and lacks_model(event):
-        out["additionalContext"] = NO_MODEL
+    note = fields_note(event) if isinstance(event, dict) else None
+    if note:
+        out["additionalContext"] = note
     print(json.dumps({"hookSpecificOutput": out}))
 
 
-NO_MODEL = ("this subagent call has no `model` and its subagent type does not set one, so it may run on the "
-            "session's model (usually the most expensive one). This reminder arrives with the tool result, so it is "
-            "for the next calls: pick the model for the task with the gw-selector skill and pass it as `model` in "
-            "the Agent/Task call")
+DEFAULT_FIELDS = ("model", "effort")
+FORK = "fork"  # inherits the session's model and effort by design: never warned
+UNSET_EFFECT = {"model": "the session's model (usually the most expensive one)",
+                "effort": "the session's effort (or the agent type's default)"}
+
+
+def missing_note(missing):
+    """The reminder for a call that lacks the fields in `missing` (in DEFAULT_FIELDS order)."""
+    names = " and no ".join(f"`{f}`" for f in missing)
+    runs = " and ".join(UNSET_EFFECT[f] for f in missing)
+    passed = " and ".join(f"`{f}`" for f in missing)
+    return (f"this subagent call has no {names} and its subagent type does not set {'it' if len(missing) == 1 else 'them'}"
+            f", so it runs on {runs}. This reminder arrives with the tool result, so it is for the next calls: pick "
+            f"the rung for the task with the gw-selector skill (e.g. `sonnet low`) and pass it as {passed} in the "
+            f"Agent/Task call")
+
+
 AGENT_NAME = re.compile(r"[A-Za-z0-9_][A-Za-z0-9_.-]*\Z")
 
 
-def agent_model(name, root):
-    """The `model:` in the frontmatter of .claude/agents/<name>.md (None when absent, empty or `inherit`). The project
-    file, when it exists, is the definition (the user one is not read then); otherwise the user one."""
+def agent_model(name, root, key="model"):
+    """The `model:` (or another `key:`) in the frontmatter of .claude/agents/<name>.md (None when absent, empty or
+    `inherit`). The project file, when it exists, is the definition (the user one is not read then); otherwise the
+    user one."""
     if not isinstance(name, str) or not AGENT_NAME.match(name):
         return None
     folders = [os.path.join(os.path.expanduser("~"), ".claude", "agents")]
@@ -143,22 +161,17 @@ def agent_model(name, root):
         for line in lines[1:]:
             if line.strip() == "---":
                 break
-            key, _, value = line.partition(":")
-            if key.strip() == "model":
+            name_, _, value = line.partition(":")
+            if name_.strip() == key:
                 value = value.strip().strip("\"'").strip()
                 return value if value and value.lower() != "inherit" else None
         return None
     return None
 
 
-def agent_sets_model(name, root):
-    """True when .claude/agents/<name>.md has a `model:` in its frontmatter other than inherit."""
-    return agent_model(name, root) is not None
-
-
-def own_model(tool_input):
-    """The call's own `model`, or None when it is missing, empty, not a string or `inherit`."""
-    model = tool_input.get("model")
+def own_model(tool_input, key="model"):
+    """The call's own `model` (or `key`), or None when it is missing, empty, not a string or `inherit`."""
+    model = tool_input.get(key)
     if isinstance(model, str) and model.strip() and model.strip().lower() != "inherit":
         return model.strip()
     return None
@@ -251,14 +264,41 @@ def disabled_decision(event):
                     f"re-enable: {models_command(root)} enable {entry}")
 
 
-def lacks_model(event):
-    """True when the call names no model of its own (`inherit` is not one) and its agent definition sets none."""
+def fields_from_config():
+    """The project's models.agentFields (the default when the config cannot be read or the value is not a list)."""
+    try:
+        fields = config.models(config.load(config.find_root()))["agentFields"]
+    except (config.ConfigError, KeyError, OSError, ValueError):
+        return DEFAULT_FIELDS
+    if not isinstance(fields, list):
+        return DEFAULT_FIELDS
+    return tuple(f for f in DEFAULT_FIELDS if f in fields)
+
+
+def missing_fields(event):
+    """The fields of models.agentFields the call does not set and its agent definition does not set either."""
     tool_input = event.get("tool_input")
     if not isinstance(tool_input, dict):
         tool_input = {}
-    if own_model(tool_input):
-        return False
-    return not agent_sets_model(tool_input.get("subagent_type"), project_root())
+    kind = tool_input.get("subagent_type")
+    if kind == FORK:
+        return ()
+    root = None
+    missing = []
+    for field in fields_from_config():
+        if own_model(tool_input, field):
+            continue
+        if root is None:
+            root = project_root()
+        if agent_model(kind, root, field) is None:
+            missing.append(field)
+    return tuple(missing)
+
+
+def fields_note(event):
+    """The reminder for the fields the call lacks (see missing_fields), or None when it lacks none."""
+    missing = missing_fields(event)
+    return missing_note(missing) if missing else None
 
 
 def cap_from_config():
@@ -342,8 +382,9 @@ def main():
     decision, reason = disabled_decision(event)
     if decision is not None:
         out = {"hookEventName": "PreToolUse", "permissionDecision": decision, "permissionDecisionReason": reason}
-        if lacks_model(event):
-            out["additionalContext"] = NO_MODEL
+        note = fields_note(event)
+        if note:
+            out["additionalContext"] = note
         print(json.dumps({"hookSpecificOutput": out}))
         return 0  # not counted: a denied call launches nothing (an approved ask goes uncounted, so the cap may come late)
     session_id = event.get("session_id")
@@ -363,8 +404,9 @@ def main():
         out["permissionDecision"] = "ask"
         out["permissionDecisionReason"] = (f"{count} subagents in this session (subagentCap {cap} in "
                                            f".claude/gw.json): check they are not looping (gw-opt-tokens)")
-    if lacks_model(event):
-        out["additionalContext"] = NO_MODEL
+    note = fields_note(event)
+    if note:
+        out["additionalContext"] = note
     if len(out) > 1:
         print(json.dumps({"hookSpecificOutput": out}))
     return 0

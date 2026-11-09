@@ -163,6 +163,19 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, value)
             self.assertIn(where, r.stderr)
 
+    def test_models_agent_fields_and_check_levers(self):
+        self.assertEqual(config.models({}), {"disabled": [], "agentFields": ["model", "effort"], "checkLevers": True})
+        self.assertEqual(config.models({"models": {"agentFields": []}})["agentFields"], [])
+        self.write(dict(VALID, models={"agentFields": ["effort"], "checkLevers": False}))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        for value, where in (({"agentFields": ["speed"]}, "$.models.agentFields[0]"),
+                             ({"agentFields": ["model", "model"]}, "$.models.agentFields"),
+                             ({"checkLevers": "no"}, "$.models.checkLevers")):
+            self.write(dict(VALID, models=value))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, value)
+            self.assertIn(where, r.stderr)
+
     def test_selector_case_session_effort_is_validated(self):
         case = {"case": "Data migration", "skill": "none", "sessionModel": "large", "sessionEffort": "xhigh"}
         self.write(dict(VALID, selector={"cases": [case]}))
