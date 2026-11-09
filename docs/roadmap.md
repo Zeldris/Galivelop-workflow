@@ -140,7 +140,7 @@ En este orden, porque cada paso usa el anterior.
 | B5 | Comparaciones: `metrics.py compare` | hecho (2026-11-09; anterior o `--against`) |
 | B6 | Aviso en el `SessionStart` cuando un modelo gasta 1,5× su media | hecho (2026-11-09; `metrics.alert`, hoy y ayer) |
 | B7 | `models.disabled` en `gw.json`, con su gancho | hecho (2026-11-09; `subagent-cap.py` deniega, `models.py`) |
-| B8 | Señales de calidad junto al gasto (la tabla determinista, en «Después») | pendiente |
+| B8 | Señales de calidad junto al gasto (la tabla determinista, en «Después») | hecho (2026-11-09; `metrics.py quality`, trailers `Findings`/`Retries`, `metrics.quality`) |
 | B10 | El `gw-selector` recomienda modelo y esfuerzo de la sesión principal | pendiente |
 | B11 | Modelo y esfuerzo por agente (palancas de Claude Code) | pendiente |
 | E21 | `scripts/related-tests.py <archivos>`: los tests de un cambio, citado en el encargo de `gw-orchestrate-dealer`; en `REVIEW.md`, un script que hace commits se prueba con los ganchos instalados (retro `0.5.0` R2) | pendiente |

@@ -68,6 +68,8 @@ Each session may run in a throwaway container: **what is not pushed does not exi
   `commitRefs: true`, a `Refs: <id>` trailer in the last paragraph, before `Next:`; `commit-msg` checks it.
 - Body: what was done, what is left of that task if it is not closed, and the state of the check.
 - **Last line: `Next: <next concrete step>`**, in the same final block as any attribution lines.
+- The commit with the fixes of a review carries `Findings: <n accepted findings>`, and that of work that had to
+  climb a rung, `Retries: <n>` (`metrics.py quality` reads them).
 - With `agentSignatures: false` in `.claude/gw.json`, the commit carries **no agent signatures** (no Claude
   `Co-Authored-By`, no `Claude-Session`, no "Generated with Claude Code", no session links) and the `commit-msg` hook
   rejects a message that has them.

@@ -58,6 +58,8 @@ Los comprueba el `commit-msg` (`commitFormat`, `commitRefs`, `commitNext` y `age
 - Cuerpo: qué se hizo, qué queda y estado de los tests.
 - **Último párrafo, solo trailers:** `Refs: <id>[, <id>]` y, al final, **`Siguiente: <próximo paso concreto>`**.
 - Un subagente puede firmar con `Agent: <skill>` (nunca un modelo); sus ramas, `agent/<id>-<tema>`.
+- El commit con los arreglos de un `/code-review` lleva `Findings: <n hallazgos aceptados>`, y el de un trabajo que
+  tuvo que subir de peldaño, `Retries: <n>` (los lee `metrics.py quality`).
 - **Sin firmas del agente** (usuario, 2026-10-26): commits, PR y comentarios van a nombre de `Zeldris`, sin
   trailers, pies ni enlaces de sesión de Claude. El autor no lo comprueba ningún gancho: en un contenedor nuevo,
   antes del primer commit, `git config user.name Zeldris` y `git config user.email cordproinf@gmail.com`.

@@ -615,6 +615,16 @@
           },
           "default": {"factor": 1.5, "days": 28, "minDays": 7}
         },
+        "quality": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "findingsTrailer": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*$", "default": "Findings"},
+            "retriesTrailer": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*$", "default": "Retries"},
+            "reworkTypes": {"type": "array", "items": {"type": "string", "minLength": 1}, "default": ["fix", "revert"]}
+          },
+          "default": {"findingsTrailer": "Findings", "retriesTrailer": "Retries", "reworkTypes": ["fix", "revert"]}
+        },
         "prices": {
           "type": "array",
           "items": {
@@ -657,8 +667,8 @@
         ]
         }
       },
-      "default": {"ledger": "docs/metrics/ledger.jsonl", "record": true, "reports": "docs/metrics", "alert": {"factor": 1.5, "days": 28, "minDays": 7}},
-      "description": "Token ledger (B1-B6): the Stop hook metrics.py record appends, per session, agent, model and UTC date, the tokens the Claude Code transcripts show to the repo-relative ledger path (JSON lines, tokens only, never money); record false turns the recording off. reports: repo-relative folder where metrics.py report --write saves the period reports (daily/, weekly/, monthly/, quarterly/). alert (B6): the SessionStart hook (metrics.py alert) warns when a model's spend on today or yesterday (UTC) passes factor x its mean daily spend over the days before, counting only days with data and only with at least minDays of them; USD when all its rows are priced, else tokens; factor 0 turns it off. prices: dated tables of USD per million tokens per model (input, cacheWrite, cacheRead, output); a ledger row takes the newest table whose since is on or before its date, and the model key equal to its model or, failing that, the longest key that its model starts with followed by '-' (date suffixes); no table or no key = no price. A given prices replaces the whole default list."
+      "default": {"ledger": "docs/metrics/ledger.jsonl", "record": true, "reports": "docs/metrics", "alert": {"factor": 1.5, "days": 28, "minDays": 7}, "quality": {"findingsTrailer": "Findings", "retriesTrailer": "Retries", "reworkTypes": ["fix", "revert"]}},
+      "description": "Token ledger (B1-B6): the Stop hook metrics.py record appends, per session, agent, model and UTC date, the tokens the Claude Code transcripts show to the repo-relative ledger path (JSON lines, tokens only, never money); record false turns the recording off. reports: repo-relative folder where metrics.py report --write saves the period reports (daily/, weekly/, monthly/, quarterly/). alert (B6): the SessionStart hook (metrics.py alert) warns when a model's spend on today or yesterday (UTC) passes factor x its mean daily spend over the days before, counting only days with data and only with at least minDays of them; USD when all its rows are priced, else tokens; factor 0 turns it off. prices: dated tables of USD per million tokens per model (input, cacheWrite, cacheRead, output); a ledger row takes the newest table whose since is on or before its date, and the model key equal to its model or, failing that, the longest key that its model starts with followed by '-' (date suffixes); no table or no key = no price. A given prices replaces the whole default list. quality (B8): metrics.py quality reads the commit messages; findingsTrailer and retriesTrailer name the trailers whose integer values are summed per task id (Findings: accepted code-review findings; Retries: attempts that had to climb a rung); reworkTypes: the Conventional Commits types (after an optional WIP: prefix) that count as rework when they are not the first commit of the id, git reverts included."
     },
     "privateCheck": {
       "anyOf": [

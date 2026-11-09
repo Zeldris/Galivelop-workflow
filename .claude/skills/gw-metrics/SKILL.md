@@ -37,7 +37,12 @@ the report's numbers, and when a question needs a number the report does not sho
    before it, or beside the one of the same kind that holds `--against`. Quote its `Change` column (`new` = nothing in
    the first period; `n/a` = unpriced tokens on one side) and name the rows that moved most; never work out a change it
    does not print.
-5. **Save it only when asked.** `--write` saves it under `metrics.reports` (`docs/metrics/` by default) as
+5. **Quality beside spend, when asked** ("was it worth it", "which tasks needed rework"):
+   `python3 .claude/gw/scripts/metrics.py quality --period <period> [--date YYYY-MM-DD]` sets, per task id, the spend
+   beside signals read only from commit messages: commits, red (`WIP:`), rework (`fix`/revert commits after the id's
+   first one), and the `Findings:` and `Retries:` trailers. Quote its figures, never your own count. A task with few
+   commits is a weak signal; ignored trailers (non-integer values) are listed at the end and are worth fixing.
+6. **Save it only when asked.** `--write` (report or quality, which adds `-quality` to the name) saves it under `metrics.reports` (`docs/metrics/` by default) as
    `daily/`, `weekly/`, `monthly/` or `quarterly/<name>.md`; the same ledger gives the same file, so rerunning it is safe.
    It goes in the next commit, with the log, like any other change.
 

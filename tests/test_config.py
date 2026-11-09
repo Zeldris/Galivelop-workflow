@@ -163,6 +163,23 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, value)
             self.assertIn(where, r.stderr)
 
+    def test_metrics_quality_defaults_fill_key_by_key(self):
+        default = {"findingsTrailer": "Findings", "retriesTrailer": "Retries", "reworkTypes": ["fix", "revert"]}
+        self.assertEqual(config.metrics({})["quality"], default)
+        self.assertEqual(config.metrics({"metrics": {"quality": {"retriesTrailer": "Tries"}}})["quality"],
+                         dict(default, retriesTrailer="Tries"))
+        self.assertEqual(config.metrics({"metrics": {"quality": "x"}})["quality"], default)
+        self.write(dict(VALID, metrics={"quality": {"reworkTypes": ["fix"]}}))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        for value, where in (({"findingsTrailer": "1x"}, "$.metrics.quality.findingsTrailer"),
+                             ({"retriesTrailer": "a b"}, "$.metrics.quality.retriesTrailer"),
+                             ({"reworkTypes": [""]}, "$.metrics.quality.reworkTypes[0]"),
+                             ({"other": 1}, "$.metrics.quality")):
+            self.write(dict(VALID, metrics={"quality": value}))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, value)
+            self.assertIn(where, r.stderr)
+
     def test_context_guard_default_and_own_values(self):
         self.write(VALID)
         default = {"cutoff": 0, "window": 200000, "autocompactShare": 0.8, "warn": 25, "alarm": 50}

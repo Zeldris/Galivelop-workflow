@@ -412,6 +412,163 @@ class Compare(Base):
         self.assertIn("is not a date YYYY-MM-DD", r.stderr)
 
 
+class Quality(Base):
+    """B8: metrics.py quality sets signals read from the commit messages beside the ledger spend per task id."""
+    PRICES = [{"since": "2019-01-01", "models": Report.PRICES[0]["models"]}]
+
+    def commit(self, subject, trailers="", date="2020-03-10T12:00:00Z", body=""):
+        message = subject + "\n\n" + (body + "\n\n" if body else "") + trailers
+        env = dict(self.env, GIT_COMMITTER_DATE=date, GIT_AUTHOR_DATE=date)
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q",
+                        "--allow-empty", "-m", message], env=env, check=True, capture_output=True, text=True)
+
+    def ledger(self, *rows):
+        path = self.root / LEDGER
+        path.parent.mkdir(parents=True, exist_ok=True)
+        base = {"agent": "main", "branch": "work", "cacheRead": 0, "cacheWrite": 0, "input": 0, "output": 0,
+                "model": "claude-x", "recorded": "2020-03-10T00:00:00Z", "refs": ["Q1"], "session": "s1"}
+        path.write_text("".join(json.dumps(dict(base, **r)) + "\n" for r in rows))
+
+    def quality(self, *args):
+        return subprocess.run([sys.executable, "-B", str(SCRIPT), "quality", *args, "--root", str(self.root)],
+                              capture_output=True, text=True, env=self.env)
+
+    def month(self, *extra):
+        return self.quality("--period", "month", "--date", "2020-03-15", *extra)
+
+    def cells(self, out, table_id):
+        for text in out.splitlines():
+            if text.startswith(f"| `{table_id}` |"):
+                return [c.strip() for c in text.strip("|").split("|")]
+        self.fail(f"no row for {table_id} in:\n{out}")
+
+    def test_signals_per_id(self):
+        self.write_config({"metrics": {"prices": self.PRICES}})
+        self.ledger({"date": "2020-03-10", "input": 1_000_000, "refs": ["Q1"]})
+        self.commit("fix(Q1): first commit is a fix, not rework", "Refs: Q1\nSiguiente: x")
+        self.commit("WIP: feat(Q1): red", "Refs: Q1\nSiguiente: x")
+        self.commit("fix(Q1): after the first", "Refs: Q1\nfindings: 2\nSiguiente: x")
+        self.commit("fix!: also breaking", "Refs: Q1\nFINDINGS: 3\nRetries: 1\nSiguiente: x")
+        self.commit("WIP: fix(Q1): red and rework", "Refs: Q1\nSiguiente: x")
+        self.commit('Revert "feat(Q1): something"', "Refs: Q1\nSiguiente: x")
+        self.commit("docs(Q1): not rework", "Refs: Q1\nSiguiente: x")
+        self.commit("fix(Q2): shared fix", "Refs: Q1, Q2\nRefs: Q3\nSiguiente: x")
+        self.commit("fix: no refs at all is ignored")
+        r = self.month()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # Id, tokens, USD, commits, red, rework, findings, retries
+        self.assertEqual(self.cells(r.stdout, "Q1"), ["`Q1`", "1,000,000", "$1.00", "8", "2", "5", "5", "1"])
+        # Q2 and Q3: their first commit is the shared one, so it is not rework for them
+        self.assertEqual(self.cells(r.stdout, "Q2"), ["`Q2`", "0", "$0.00", "1", "0", "0", "0", "0"])
+        self.assertEqual(self.cells(r.stdout, "Q3")[3:], ["1", "0", "0", "0", "0"])
+        self.assertNotIn("Ignored trailers", r.stdout)
+        self.assertIn("# Quality report: 2020-03", r.stdout)
+        self.assertIn("The deterministic model table (B8, later) waits for four weeks of ledger.", r.stdout)
+
+    def test_period_is_the_committer_date_utc(self):
+        self.commit("feat(Q1): early", "Refs: Q1\nSiguiente: x", date="2020-02-29T23:59:59Z")
+        self.commit("fix(Q1): in march", "Refs: Q1\nRetries: 4\nSiguiente: x", date="2020-03-01T00:00:00Z")
+        self.commit("fix(Q1): late", "Refs: Q1\nRetries: 8\nSiguiente: x", date="2020-03-31T23:59:59Z")
+        self.commit("fix(Q1): april", "Refs: Q1\nRetries: 16\nSiguiente: x", date="2020-04-01T00:00:00Z")
+        r = self.month()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.cells(r.stdout, "Q1")[3:], ["2", "0", "2", "0", "12"])  # first commit is in February
+        day = self.quality("--period", "day", "--date", "2020-02-29")
+        self.assertEqual(self.cells(day.stdout, "Q1")[3:], ["1", "0", "0", "0", "0"])
+
+    def test_by_model_counts_an_id_for_every_model_that_spent_on_it(self):
+        self.write_config({"metrics": {"prices": self.PRICES}})
+        self.ledger({"date": "2020-03-10", "model": "claude-x", "input": 1_000_000, "refs": ["Q1", "Q2"]},
+                    {"date": "2020-03-10", "model": "gpt-z", "output": 500, "refs": ["Q1"]},
+                    {"date": "2020-03-10", "model": "gpt-z", "output": 7, "refs": [], "session": "s2"})
+        self.commit("feat(Q1): a", "Refs: Q1\nSiguiente: x")
+        self.commit("fix(Q1): b", "Refs: Q1\nFindings: 2\nSiguiente: x")
+        self.commit("feat(Q2): c", "Refs: Q2\nRetries: 1\nSiguiente: x")
+        r = self.month()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        section = r.stdout.split("## By model")[1]
+        self.assertIn("counts for every model that spent on it", section)
+        # Model, tokens, USD, ids, commits, red, rework, findings, retries
+        self.assertEqual(self.cells(section, "claude-x"), ["`claude-x`", "1,000,000", "$1.00", "2", "3", "0", "1", "2", "1"])
+        self.assertEqual(self.cells(section, "gpt-z")[3:], ["1", "2", "0", "1", "2", "0"])
+        self.assertIn("`gpt-z` | 507 | $0.00 + unpriced", section)
+        ids = r.stdout.split("## By task id")[1].split("## By model")[0]
+        self.assertLess(ids.index("`Q1`"), ids.index("`Q2`"))  # more tokens first
+
+    def test_bad_trailer_values_are_listed_not_counted(self):
+        self.commit("feat(Q1): a", "Refs: Q1\nSiguiente: x")
+        self.commit("fix(Q1): b", "Refs: Q1\nFindings: -2\nRetries: three\nFindings: 1\nSiguiente: x")
+        r = self.month()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.cells(r.stdout, "Q1")[3:], ["2", "0", "1", "1", "0"])
+        section = r.stdout.split("## Ignored trailers")[1]
+        self.assertIn("Findings: -2", section)
+        self.assertIn("Retries: three", section)
+        sha7 = self.git("rev-parse", "--short=7", "HEAD").strip()
+        self.assertIn(f"`{sha7}`", section)
+
+    def test_custom_quality_config(self):
+        self.write_config({"metrics": {"quality": {"findingsTrailer": "Issues", "reworkTypes": ["refactor"]}}})
+        self.commit("feat(Q1): a", "Refs: Q1\nSiguiente: x")
+        self.commit("fix(Q1): not rework now", "Refs: Q1\nFindings: 9\nRetries: 2\nSiguiente: x")
+        self.commit("refactor(Q1): rework now", "Refs: Q1\nIssues: 3\nSiguiente: x")
+        r = self.month()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # Findings is not the findings trailer any more and Retries keeps its default name
+        self.assertEqual(self.cells(r.stdout, "Q1")[3:], ["3", "0", "1", "3", "2"])
+
+    def test_empty_period_exits_0_and_writes_nothing(self):
+        self.commit("feat(Q1): elsewhere", "Refs: Q1\nSiguiente: x", date="2020-03-10T12:00:00Z")
+        r = self.quality("--period", "month", "--date", "2019-01-05", "--write")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout, "")
+        self.assertIn("no commits with Refs and no ledger rows in month 2019-01", r.stderr)
+        self.assertFalse((self.root / "docs" / "metrics").exists())
+
+    def test_write_saves_under_the_period_folder(self):
+        self.commit("feat(Q1): a", "Refs: Q1\nSiguiente: x")
+        r = self.month("--write")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        path = self.root / "docs" / "metrics" / "monthly" / "2020-03-quality.md"
+        self.assertEqual(path.read_text(), r.stdout)
+        self.assertIn("wrote docs/metrics/monthly/2020-03-quality.md", r.stderr)
+        again = self.month("--write")
+        self.assertEqual(path.read_text(), again.stdout)  # deterministic
+        w = self.quality("--period", "week", "--date", "2020-03-10", "--write")
+        self.assertTrue((self.root / "docs" / "metrics" / "weekly" / "2020-W11-quality.md").is_file(), w.stderr)
+
+    def test_ledger_only_period_still_reports(self):
+        self.ledger({"date": "2020-03-10", "output": 5, "refs": ["Z9"]})
+        r = self.month()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.cells(r.stdout, "Z9")[3:], ["0", "0", "0", "0", "0"])
+
+    def test_history_outside_a_repo_raises_with_git_message(self):
+        plain = self.tmp / "plain2"
+        plain.mkdir()
+        old = os.environ.get("GIT_CEILING_DIRECTORIES")
+        os.environ["GIT_CEILING_DIRECTORIES"] = str(self.tmp)
+        self.addCleanup(lambda: os.environ.pop("GIT_CEILING_DIRECTORIES") if old is None
+                        else os.environ.__setitem__("GIT_CEILING_DIRECTORIES", old))
+        with self.assertRaises(metrics.MetricsError) as ctx:
+            metrics.history_commits(plain)
+        self.assertIn("git rev-parse --git-dir failed", str(ctx.exception))
+
+    def test_not_a_git_repo_and_bad_config_exit_2_with_the_reason(self):
+        other = self.tmp / "plain"
+        (other / ".claude").mkdir(parents=True)
+        (other / ".claude" / "gw.json").write_text(json.dumps(BASE_CONFIG))
+        env = dict(self.env, GIT_CEILING_DIRECTORIES=str(self.tmp))
+        r = subprocess.run([sys.executable, "-B", str(SCRIPT), "quality", "--period", "day", "--root", str(other)],
+                           capture_output=True, text=True, env=env)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("is not inside a git repository", r.stderr)
+        self.write_config({"metrics": {"quality": {"findingsTrailer": "bad name"}}})
+        r = self.month()
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("metrics.quality.findingsTrailer", r.stderr)
+
+
 class Alert(Base):
     """B6: metrics.py alert (run by the SessionStart hook) warns when a model's daily spend passes factor x its mean."""
     PRICES = Report.PRICES

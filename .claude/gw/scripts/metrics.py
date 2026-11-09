@@ -41,6 +41,18 @@ task id, the tokens and USD of each and the change (`+n (+x%)`; `new` when the e
 is left out (`n/a`) when either side has unpriced tokens. It only prints; both periods empty says so (exit 0); the same
 period twice is an error (exit 2).
 
+`metrics.py quality --period day|week|month|quarter [--date D] [--write]` (B8) sets quality signals beside the spend of
+each task id. Spend comes from the period's ledger rows; the signals only from the messages of the commits in the
+history from HEAD (no merges) whose committer date (UTC) falls in the period and that have a `Refs:` trailer (the others
+are ignored). Per id: `commits`; `red` (subject starts with `WIP:`, the check was red); `rework` (commits whose
+Conventional Commits type, after a `WIP: ` prefix, is in `metrics.quality.reworkTypes`, and git reverts `Revert "..."`,
+not counting the first commit of the id in the whole history); `findings` and `retries` (the sums of the integer values
+of the trailers `metrics.quality.findingsTrailer` and `retriesTrailer`, matched case-insensitively; a value that is not a
+non-negative integer is ignored and listed under "Ignored trailers"). A second table gives the same by model: the signals
+of the ids each model spent on (an id counts for every model that spent on it). It prints the report; `--write` saves it
+as `<reports>/<daily|weekly|monthly|quarterly>/<name>-quality.md`. Nothing in the period (no commits with `Refs:` and no
+ledger rows) says so on stderr and writes nothing (exit 0); no git repository or a git failure, or a bad config, exit 2.
+
 `metrics.py alert [--date D]` (B6, run by the SessionStart hook) checks D (default today, UTC) and the day before: for
 each model, that day's spend against its mean daily spend over the `metrics.alert.days` days before it, counting only
 the days with rows of that model, and only when there are at least `minDays` of them. Spend is USD when every row of
@@ -59,6 +71,7 @@ import glob
 import json
 import os
 import posixpath
+import re
 import select
 import subprocess
 import sys
@@ -477,23 +490,183 @@ def git(root, *args):
     return r.stdout
 
 
+def trailers_of(root, message):
+    """The trailers of a commit message as a list of (key, value) pairs, in order (`git interpret-trailers --parse`)."""
+    try:
+        r = subprocess.run(["git", "-C", str(root), "interpret-trailers", "--parse", "--no-divider"], input=message,
+                           capture_output=True, text=True, timeout=GIT_TIMEOUT)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise MetricsError(f"git interpret-trailers could not run ({exc})")
+    out = []
+    for line in r.stdout.splitlines():
+        key, sep, value = line.partition(":")
+        if sep:
+            out.append((key.strip(), value.strip()))
+    return out
+
+
+def refs_of(trailers):
+    """The task ids of the `Refs:` trailers (comma-separated, may repeat), in order."""
+    refs = []
+    for key, value in trailers:
+        if key.lower() == "refs":
+            refs.extend(t.strip() for t in value.split(",") if t.strip())
+    return refs
+
+
 def head_refs(root):
     """The ids of the `Refs:` trailers of HEAD's commit message (a list, empty when there is none or no commit)."""
     try:
         message = git(root, "log", "-1", "--format=%B")
     except MetricsError:
         return []  # no commit yet
+    return refs_of(trailers_of(root, message))
+
+
+TYPE_RE = re.compile(r"^([A-Za-z][A-Za-z0-9-]*)(\([^)]*\))?!?:")
+COUNT_RE = re.compile(r"^[0-9]+$")
+
+
+def history_commits(root):
+    """The commits of the history from HEAD, newest first, without merges: [{"sha", "day" (UTC date text), "subject",
+    "trailers"}] for those with a `Refs:` trailer ("refs" holds their ids). No commits yet gives []."""
+    git(root, "rev-parse", "--git-dir")  # raises MetricsError outside a repository
     try:
-        r = subprocess.run(["git", "-C", str(root), "interpret-trailers", "--parse", "--no-divider"], input=message,
-                           capture_output=True, text=True, timeout=GIT_TIMEOUT)
-    except (OSError, subprocess.SubprocessError) as exc:
-        raise MetricsError(f"git interpret-trailers could not run ({exc})")
-    refs = []
-    for line in r.stdout.splitlines():
-        key, sep, value = line.partition(":")
-        if sep and key.strip().lower() == "refs":
-            refs.extend(t.strip() for t in value.split(",") if t.strip())
-    return refs
+        git(root, "rev-parse", "--verify", "-q", "HEAD")
+    except MetricsError:
+        return []
+    out = git(root, "log", "--no-merges", "--format=%H%x1f%ct%x1f%B%x00")
+    commits = []
+    for record_text in out.split("\x00"):
+        record_text = record_text.strip("\n")
+        if not record_text:
+            continue
+        sha, _, rest = record_text.partition("\x1f")
+        stamp, _, message = rest.partition("\x1f")
+        if "refs" not in message.lower():
+            continue  # cheap filter before running git interpret-trailers
+        try:
+            day = datetime.datetime.fromtimestamp(int(stamp), datetime.timezone.utc).date().isoformat()
+        except (ValueError, OverflowError, OSError):
+            continue
+        trailers = trailers_of(root, message)
+        refs = refs_of(trailers)
+        if refs:
+            commits.append({"sha": sha, "day": day, "subject": message.strip().split("\n", 1)[0].strip(),
+                            "trailers": trailers, "refs": refs})
+    return commits
+
+
+def commit_type(subject):
+    """The Conventional Commits type of a subject (lower case, after a `WIP: ` prefix), or None."""
+    if subject.startswith("WIP:"):
+        subject = subject[4:].lstrip()
+    m = TYPE_RE.match(subject)
+    return m.group(1).lower() if m else None
+
+
+def commit_signals(commits, first, last, quality):
+    """({id: {"commits", "red", "rework", "findings", "retries"}}, [(sha7, "Key: value") of ignored trailers]) of the
+    commits (newest first, all the history) whose day is in first..last. The first commit of an id is the oldest of
+    the whole list that names it; it is never rework."""
+    oldest = {}
+    for c in commits:  # newest first: the last write is the oldest commit
+        for ref in c["refs"]:
+            oldest[ref] = c["sha"]
+    rework_types = {t.lower() for t in quality["reworkTypes"]}
+    names = {"findings": quality["findingsTrailer"].lower(), "retries": quality["retriesTrailer"].lower()}
+    signals, ignored = {}, []
+    for c in commits:
+        if not first <= c["day"] <= last:
+            continue
+        subject = c["subject"]
+        red = subject.startswith("WIP:")
+        is_rework = commit_type(subject) in rework_types or subject.startswith('Revert "')
+        sums = dict.fromkeys(names, 0)
+        for key, value in c["trailers"]:
+            for field, name in names.items():
+                if key.lower() != name:
+                    continue
+                if COUNT_RE.match(value):
+                    sums[field] += int(value)
+                else:
+                    ignored.append((c["sha"][:7], f"{key}: {value}"))
+        for ref in sorted(set(c["refs"])):
+            acc = signals.setdefault(ref, dict.fromkeys(("commits", "red", "rework", "findings", "retries"), 0))
+            acc["commits"] += 1
+            acc["red"] += 1 if red else 0
+            acc["rework"] += 1 if is_rework and oldest[ref] != c["sha"] else 0
+            acc["findings"] += sums["findings"]
+            acc["retries"] += sums["retries"]
+    return signals, sorted(set(ignored))
+
+
+SIGNAL_KEYS = ("commits", "red", "rework", "findings", "retries")
+
+
+def render_quality(kind, name, first, last, spend, signals, model_rows, ignored):
+    """The Markdown quality report. `spend` is summarize()'s output, `signals` commit_signals()'s, `model_rows` the
+    ledger rows (for the ids each model spent on)."""
+    span = first if first == last else f"{first} to {last}"
+    zero = dict.fromkeys(SIGNAL_KEYS, 0)
+    ids = sorted(set(signals) | set(spend["by"]["refs"]) - {"(none)"})
+    empty = dict(tokens=0, usd=0.0, unpriced=0)
+    lines = [f"# Quality report: {name}", "",
+             f"Period: {kind}, {span} (UTC). Sources: the git history from HEAD (commits with a `Refs:` trailer, by "
+             "committer date) and the token ledger (`metrics.py quality`). The signals come only from commit messages: "
+             "red = subject starts with `WIP:`; rework = commits of a type in `metrics.quality.reworkTypes` and git "
+             "reverts, not counting the first commit of the id; findings and retries = the sums of the trailers "
+             "`metrics.quality.findingsTrailer` and `retriesTrailer`. Few commits are a weak signal.", "",
+             "The deterministic model table (B8, later) waits for four weeks of ledger.", "",
+             "## By task id", "",
+             "| Id | Tokens | USD | Commits | Red (WIP) | Rework | Findings | Retries |",
+             "|---|---:|---:|---:|---:|---:|---:|---:|"]
+    by_id = spend["by"]["refs"]
+    for ref in sorted(ids, key=lambda r: (-by_id.get(r, empty)["tokens"], r)):
+        acc, sig = by_id.get(ref, empty), signals.get(ref, zero)
+        lines.append(f"| `{ref}` | {fmt_tokens(acc['tokens'])} | {fmt_usd(acc)} | " +
+                     " | ".join(str(sig[k]) for k in SIGNAL_KEYS) + " |")
+    model_ids = {}
+    for row in model_rows:
+        refs = row.get("refs") if isinstance(row.get("refs"), list) else []
+        model_ids.setdefault(row["model"], set()).update(r for r in refs if isinstance(r, str))
+    lines += ["", "## By model", "",
+              "The signals are those of the ids each model spent on; an id counts for every model that spent on it, so "
+              "this table does not add up to the one above.", "",
+              "| Model | Tokens | USD | Ids | Commits | Red (WIP) | Rework | Findings | Retries |",
+              "|---|---:|---:|---:|---:|---:|---:|---:|---:|"]
+    for model, acc in sorted(spend["by"]["model"].items(), key=lambda kv: (-kv[1]["tokens"], kv[0])):
+        mids = model_ids.get(model, set())
+        sums = [sum(signals.get(r, zero)[k] for r in mids) for k in SIGNAL_KEYS]
+        lines.append(f"| `{model}` | {fmt_tokens(acc['tokens'])} | {fmt_usd(acc)} | {len(mids)} | " +
+                     " | ".join(str(n) for n in sums) + " |")
+    if ignored:
+        lines += ["", "## Ignored trailers", "",
+                  "These trailers are not a non-negative integer, so they were not counted; amend the commit message "
+                  "or leave them.", ""]
+        lines += [f"- `{sha}`: {text}" for sha, text in ignored]
+    return "\n".join(lines) + "\n"
+
+
+def quality_report(root, cfg, kind, day, write=False):
+    """(text, path written or None) of the quality report of the `kind` period that holds `day`; text is None when
+    the period has no commits with `Refs:` and no ledger rows."""
+    settings = config.metrics(cfg)
+    name, first, last = period_of(kind, day)
+    rows = period_rows(root, settings, first, last)
+    signals, ignored = commit_signals(history_commits(root), first, last, settings["quality"])
+    spend = summarize(rows, settings["prices"])
+    if not signals and not rows:
+        return None, None
+    text = render_quality(kind, name, first, last, spend, signals, rows, ignored)
+    path = None
+    if write:
+        path = os.path.join(str(root), *posixpath.normpath(settings["reports"]).split("/"), PERIODS[kind],
+                            name + "-quality.md")
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
+    return text, path
 
 
 def record(root, transcript, cfg):
@@ -621,6 +794,36 @@ def run_compare(args):
     return 0
 
 
+def run_quality(args):
+    """Print the quality report (and write it with --write); exit 0 also when the period is empty, 2 on a git failure
+    or a bad config."""
+    try:
+        cfg = config.load(config.find_root(args.root))
+    except config.ConfigError as exc:
+        print(f"metrics: {exc}", file=sys.stderr)
+        return 2
+    day = datetime.date.fromisoformat(args.date) if args.date else datetime.datetime.now(datetime.timezone.utc).date()
+    try:
+        text, path = quality_report(cfg["_root"], cfg, args.period, day, write=args.write)
+    except MetricsError as exc:
+        print(f"metrics: {exc}; quality reads the commit history, so run it inside the git repository "
+              f"(git -C {cfg['_root']} log -1 shows the problem)", file=sys.stderr)
+        return 2
+    except OSError as exc:
+        print(f"metrics: cannot write the report ({exc}); check the metrics.reports folder in .claude/gw.json", file=sys.stderr)
+        return 1
+    if text is None:
+        name = period_of(args.period, day)[0]
+        print(f"metrics: no commits with Refs and no ledger rows in {args.period} {name}; nothing to report (python3 "
+              f"{os.path.join(HERE, 'metrics.py')} quality --period {args.period} --date D tries another one)",
+              file=sys.stderr)
+        return 0
+    sys.stdout.write(text)
+    if path:
+        print(f"metrics: wrote {os.path.relpath(path, str(cfg['_root']))}", file=sys.stderr)
+    return 0
+
+
 def run_alert(args):
     """Print one line per model over its alert threshold; exit 0, also with nothing to say; 2 on a bad config."""
     try:
@@ -662,8 +865,14 @@ def main(argv=None):
     al.add_argument("--date", type=day_arg, help="UTC date YYYY-MM-DD to check with the day before (default: today)")
     al.add_argument("--root", help="project root (default: see config.find_root)")
     al.set_defaults(func=run_alert)
+    qp = sub.add_parser("quality", help="set quality signals from the commit messages beside the spend per task id")
+    qp.add_argument("--period", required=True, choices=sorted(PERIODS))
+    qp.add_argument("--date", type=day_arg, help="any UTC date YYYY-MM-DD in the period (default: today)")
+    qp.add_argument("--write", action="store_true", help="also save it as <name>-quality.md under metrics.reports/...")
+    qp.add_argument("--root", help="project root (default: see config.find_root)")
+    qp.set_defaults(func=run_quality)
     args = ap.parse_args(argv)
-    if args.command in ("price", "report", "compare", "alert"):
+    if args.command in ("price", "report", "compare", "alert", "quality"):
         return args.func(args)
     try:
         return args.func(args)

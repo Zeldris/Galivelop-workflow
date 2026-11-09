@@ -88,7 +88,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    `{check}`, `{log}`, `{protectedBranch}` and `{language}` are filled from the config before sending. Add a line
    for each project rule a fresh agent could miss.
 3. **Review what returns.** Fetch and check the commit (`git fetch`, `git log -1 --stat`) and that the done
-   criterion holds. If it does not close, the retry climbs one ladder rung; two failures, stop and tell the user.
+   criterion holds. If it does not close, the retry climbs one ladder rung (the commit of that work carries
+   `Retries: <n>`, which `metrics.py quality` reads); two failures, stop and tell the user.
    Chunks that depended on the failed one are marked "cancelled: blocked by X" and listed to the user, never left waiting.
    For every subagent branch built in a worktree, **before merging it**, a subagent reviewer runs a short
    `/code-review` of its diff and returns only the findings; nothing merges until they are fixed. The reviewer's
