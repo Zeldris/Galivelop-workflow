@@ -28,7 +28,7 @@ old_minor=""
 for c in $candidates; do
   command -v "$c" >/dev/null 2>&1 || continue
   read -r m n <<<"$(version "$c")" || continue
-  [ "$m" = 3 ] && [ "$n" -ge "$floor" ] && [ "$n" -lt "$current" ] || continue
+  if [ "$m" != 3 ] || [ "$n" -lt "$floor" ] || [ "$n" -ge "$current" ]; then continue; fi
   if [ -z "$old_minor" ] || [ "$n" -lt "$old_minor" ]; then old="$c"; old_minor="$n"; fi
 done
 if [ -z "$old" ]; then
