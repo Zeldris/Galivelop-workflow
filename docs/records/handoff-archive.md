@@ -90,3 +90,7 @@ Items moved out of the hand-off log by `handoff.py archive`; this file is not re
   mayúsculas, por comprobar); `validate` no avisa de un `worktreeDir` dentro del repo ni de un `checkWrapper` que
   limpia el entorno. Con la config de la punta de `main` rota, `pre-push` y el gancho fallan cerrados a propósito: se
   sale con un PR revisado que la arregle, o la persona sube a mano.
+
+## 2026-11-10 — from docs/handoff.md
+
+- **Revisión de bloque (2026-11-10), no aplicados:** el ledger por rama cuenta dos veces una sesión que pasa por dos ramas (B2); `archive` toma cualquier `X.Y` por versión (`0.5 MB`); `change-size.py` en un `--amend` mide solo lo preparado.
