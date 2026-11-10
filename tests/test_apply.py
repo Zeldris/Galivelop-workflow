@@ -1588,6 +1588,19 @@ class CiSteps(unittest.TestCase):
         self.assertFalse(self.proposal().exists(), out)
         self.assertIn("branches-ignore: [release]", self.p.read(self.CI))
 
+    def test_ci_on_push_false_runs_check_yml_only_on_pull_requests_and_back(self):
+        """D54: `ciOnPush: false` renders the push filter as every branch; the copy stays the workflow's."""
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, ciOnPush=False), indent=2) + "\n")
+        out = self.applied()
+        text = self.p.read(self.CI)
+        self.assertIn("    branches-ignore: ['**']\n  pull_request:\n", text, out)
+        self.assertNotIn("branches-ignore: [main]", text)
+        self.assertFalse(self.proposal().exists(), out)
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, ciOnPush=True), indent=2) + "\n")
+        out = self.applied("--update")  # same version: changing the key needs --update, as the docs say
+        self.assertIn("branches-ignore: [main]", self.p.read(self.CI), out)
+        self.assertFalse(self.proposal().exists(), out)
+
     def test_every_released_ci_template_has_no_own_lines(self):
         """The guard of templates/github/check.legacy-lines.txt: an untouched copy of any released version is updated."""
         code, tags = self.p.run("git", "-C", str(ROOT), "tag", "-l", "v*")

@@ -112,6 +112,15 @@ class CiStatus(unittest.TestCase):
     def test_no_ci_reported(self):
         self.assertCi(self.ci(run=runs()), 1, "none", "no CI has reported")
 
+    def test_no_ci_with_ci_on_push_off_says_check_yml_runs_only_on_pull_requests(self):
+        self.config({"ciOnPush": False})
+        code, out = self.ci(run=runs())
+        self.assertCi((code, out), 1, "none", "ciOnPush is false", "ci-local.py --record")
+        self.assertNotIn("ciOnPush", self.ci(run=runs(("build", "failure")))[1])  # only when nothing reported
+
+    def test_no_ci_with_ci_on_push_on_has_no_pull_request_hint(self):
+        self.assertNotIn("ciOnPush", self.ci(run=runs())[1])
+
     def test_json_output(self):
         code, out = self.ci("--json", run=runs(("build", "failure")))
         self.assertEqual(code, 1)

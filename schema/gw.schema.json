@@ -269,6 +269,11 @@
       "default": true,
       "description": "true: apply.py never replaces .github/workflows/check.yml when it has lines of the project's own (steps, Node version, cache...) that neither the template nor an earlier one has, not even with --update; it writes check.yml.gw-new and says how to merge. false: the old behaviour (an older copy is replaced)."
     },
+    "ciOnPush": {
+      "type": "boolean",
+      "default": true,
+      "description": "true: .github/workflows/check.yml runs on every push outside the protected branch and on every pull request. false: only on pull requests (apply.py renders its push filter as branches-ignore: ['**']; rerun apply.py --update after changing it). ciIgnore and required checks still go by name."
+    },
     "legacyNames": {
       "type": "boolean",
       "default": true,

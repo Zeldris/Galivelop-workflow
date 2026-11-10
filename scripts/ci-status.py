@@ -186,7 +186,8 @@ def main(argv=None):
     me = os.path.join(HERE, "ci-status.py")
     try:
         root = str(config.find_root(args.root))
-        ignore = list(config.load(root).get("ciIgnore") or []) + args.ignore
+        cfg = config.load(root)
+        ignore = list(cfg.get("ciIgnore") or []) + args.ignore
     except config.ConfigError as exc:
         out["error"] = str(exc)
         return finish(2, f"ci-status: {exc}\nfix the config and retry: python3 {os.path.join(HERE, 'config.py')} validate")
@@ -225,7 +226,11 @@ def main(argv=None):
     note = f" (ignored: {', '.join(report['ignored'])})" if report["ignored"] else ""
     if out["state"] == "green":
         return finish(0, f"ci-status: {repo} {sha[:12]}: green{note}")
-    return finish(1, f"ci-status: {repo} {sha[:12]}: {out['state']}: {'; '.join(problems)}{note}")
+    hint = ""
+    if out["state"] == "none" and cfg.get("ciOnPush") is False:  # D54: check.yml only runs on pull requests
+        hint = (f"\nciOnPush is false: check.yml runs only on pull requests; open one, or run the CI locally: "
+                f"python3 {os.path.join(HERE, 'ci-local.py')} --record")
+    return finish(1, f"ci-status: {repo} {sha[:12]}: {out['state']}: {'; '.join(problems)}{note}{hint}")
 
 
 if __name__ == "__main__":

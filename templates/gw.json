@@ -40,6 +40,7 @@
   "marketingSheets": {"sources": [], "outDir": "docs/mkt", "maxPages": 1, "css": "", "timeout": 120},
   "nonTestExtensions": ["md", "json", "yml", "yaml", "properties", "txt", "csv"],
   "ciKeepSteps": true,
+  "ciOnPush": true,
   "legacyNames": true,
   "legacyNamesSkip": ["CHANGELOG*"],
   "legacyNamesMax": 50,

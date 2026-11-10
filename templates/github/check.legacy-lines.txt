@@ -17,3 +17,6 @@ name: Comprobar
 bash .gw-ci/pre-commit --rango "$(git merge-base "$base" HEAD)..HEAD"
 # exist (so this file stays the workflow's, untouched); another toolchain (rust-toolchain...) goes before "Install".
 python-version: "3.x"
+--- v0.5.1 (eeec886) ---
+# .claude/gw.json, on every push outside the protected branch and on every pull request. On a pull request it also
+branches-ignore: [{{protectedBranch}}]

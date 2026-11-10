@@ -639,6 +639,8 @@ def render(text, cfg, root, version, name):
             return str(cfg[key])
         if key in LIST_KEYS:
             return inline_list(cfg.get(key) or [])
+        if key == "ciPushIgnore":  # D54: the branches a push does not run CI on; '**' is every branch
+            return str(cfg["protectedBranch"]) if cfg.get("ciOnPush", True) else "'**'"
         if key == "version":
             return version
         if key == "project":
