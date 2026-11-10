@@ -630,7 +630,8 @@ def conditional_blocks(text, cfg, name):
 
 
 def render(text, cfg, root, version, name):
-    """Replace {{key}}: config keys (lists as an inline code list), {{version}} (the workflow's), {{project}}.
+    """Replace {{key}}: config keys (lists as an inline code list), {{version}} (the workflow's), {{project}},
+    {{ciPushIgnore}} (protectedBranch, or '**' with `ciOnPush: false`).
     First the `<!-- if key -->` blocks (conditional_blocks)."""
     text = conditional_blocks(text, cfg, name)
     def value(m):

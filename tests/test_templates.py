@@ -125,8 +125,9 @@ class Templates(unittest.TestCase):
         first = (TEMPLATES / "github" / "check.yml").read_text().splitlines()[0]
         self.assertEqual(first, f"# galivelop-workflow v{VERSION}")
 
-    def test_placeholders_are_only_config_keys_project_and_version(self):
-        allowed = {"log", "protectedBranch", "check", "install", "reviewMark", "language", "version", "project"}
+    def test_placeholders_are_only_config_keys_project_version_and_computed(self):
+        allowed = {"log", "protectedBranch", "check", "install", "reviewMark", "language", "version", "project",
+                   "ciPushIgnore"}  # ciPushIgnore: computed from ciOnPush and protectedBranch (D54)
         for path in sorted(TEMPLATES.rglob("*")):
             if path.is_file() and path.suffix in (".md", ".yml"):
                 with self.subTest(file=str(path.relative_to(ROOT))):
