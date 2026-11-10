@@ -36,7 +36,8 @@ comprobación.
 - El `pre-push` corre el check del proyecto **sobre el commit exacto que se sube**, no sobre lo que haya en la
   carpeta.
 - El `commit-msg` comprueba el formato (Conventional Commits con el id del roadmap, `Refs:` y `Siguiente:`) y frena
-  las firmas del agente; el `pre-push` frena además los datos privados (claves, correos, nombres privados) y los ids
+  las firmas del agente, y avisa (sin frenar) de un commit o un bloque de revisión que crece demasiado; el `pre-push`
+  frena además los datos privados (claves, correos, nombres privados) y los ids
   que chocan con `main`.
 - Un check que ya pasó sobre el mismo árbol no se repite: `scripts/check.sh` apunta el verde.
 - Los ganchos **fallan cerrados**: si les falta un dato (sin configuración, sin git), no dejan pasar.
@@ -144,7 +145,7 @@ comprobación.
 ### Ganchos
 
 - **De git:** `pre-commit` (busca secretos: archivos `.env` o `.pem` y patrones de claves conocidas), `commit-msg`
-  (formato, `Refs:`, `Siguiente:` y firmas del agente) y `pre-push` (check sobre el commit que se sube, datos
+  (formato, `Refs:`, `Siguiente:`, firmas del agente y aviso de tamaño) y `pre-push` (check sobre el commit que se sube, datos
   privados, marca de revisión y reglas de la bitácora).
 - **De Claude Code:** recuperar el estado al empezar, no acabar sin subir, revisión antes de un pull request, aviso
   por exceso de subagentes, guardia de la configuración y sin firmas del agente en lo que se publica en GitHub.

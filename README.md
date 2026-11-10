@@ -35,7 +35,8 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 - `pre-push` runs the project's check **on the exact commit being pushed**, not on whatever is in the folder.
 - Hooks **fail closed**: if data is missing (no config, no git), they don't let things through.
 - `commit-msg` checks the format (Conventional Commits with the roadmap id, `Refs:` and `Siguiente:`) and blocks
-  agent signatures; `pre-push` also stops private data (keys, e-mails, private names) and ids that clash with `main`.
+  agent signatures, and warns (without stopping) about a commit or a review block that grows too big; `pre-push`
+  also stops private data (keys, e-mails, private names) and ids that clash with `main`.
 - A check that already passed on the same tree is not repeated: `scripts/check.sh` records the green.
 - The `Stop` hook won't let the agent finish with unpushed commits or with changes the log doesn't mention.
 
@@ -140,7 +141,7 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 ### Hooks
 
 - **Git:** `pre-commit` (scans for secrets: `.env` or `.pem` files and known key patterns), `commit-msg` (format,
-  `Refs:`, `Siguiente:` and agent signatures) and `pre-push` (check on the commit being pushed, private data, review
+  `Refs:`, `Siguiente:`, agent signatures and a size warning) and `pre-push` (check on the commit being pushed, private data, review
   mark and log rules).
 - **Claude Code:** recover state at start-up, don't finish without pushing, review before a pull request, warning on
   too many subagents, a guard on the configuration, and no agent signatures in what is posted to GitHub.

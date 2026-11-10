@@ -592,6 +592,18 @@
       },
       "description": "Which models the workflow may use (B7) and how each agent gets its model and effort (B11)."
     },
+    "changeSize": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "commit": {"type": "integer", "minimum": 0, "default": 400, "description": "D43: changed lines (added + deleted) of a commit above which the commit-msg hook warns; 0 = no warning."},
+        "block": {"type": "integer", "minimum": 0, "default": 1000, "description": "D43: changed lines of the open review block (B18: the branch's commits after the last one with the metrics.quality.findingsTrailer trailer, plus the staged change) above which the commit-msg hook warns; 0 = no warning."},
+        "exclude": {"type": "array", "items": {"type": "string", "minLength": 1}, "default": ["^\\.claude/gw/", "(^|/)(package-lock\\.json|npm-shrinkwrap\\.json|yarn\\.lock|pnpm-lock\\.yaml|poetry\\.lock|Pipfile\\.lock|uv\\.lock|Cargo\\.lock|Gemfile\\.lock|composer\\.lock|go\\.sum)$"], "description": "D43: regexes searched in each changed repo-relative path; a path that matches does not count (the workflow's installed copies, lock files). Paths with linguist-generated in .gitattributes and binary files never count."},
+        "pairs": {"type": "object", "additionalProperties": {"type": "string"}, "default": {"^docs/en/": "docs/es/", "^(.*)\\.en\\.md$": "\\1.md", "^README\\.md$": "README.es.md"}, "description": "D43: paired documents: regex on a changed path -> its pair (re.sub replacement). When both change in one commit, only the larger side counts."}
+      },
+      "default": {"commit": 400, "block": 1000},
+      "description": "D43: size warnings, never a block: change-size.py, called by the commit-msg hook, warns about a big commit and about a review block that should be closed."
+    },
     "testMap": {
       "type": "object",
       "additionalProperties": false,

@@ -56,6 +56,19 @@
     "maxPages": 1,
     "css": "docs/mkt/style.css"
   },
+  "changeSize": {
+    "exclude": [
+      "^\\.claude/gw/",
+      "(^|/)(package-lock\\.json|npm-shrinkwrap\\.json|yarn\\.lock|pnpm-lock\\.yaml|poetry\\.lock|Pipfile\\.lock|uv\\.lock|Cargo\\.lock|Gemfile\\.lock|composer\\.lock|go\\.sum)$",
+      "^\\.claude/skills/"
+    ],
+    "pairs": {
+      "^docs/en/": "docs/es/",
+      "^(.*)\\.en\\.md$": "\\1.md",
+      "^README\\.md$": "README.es.md",
+      "^templates/en/": "templates/es/"
+    }
+  },
   "testMap": {
     "rules": [
       {

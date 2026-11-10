@@ -105,8 +105,8 @@ Nunca sobre trabajo ya fusionado.
    con commit y subidos: lo grave o medio y lo que el propio arreglo rompe; lo leve se apunta como pendiente en la
    bitácora y no vuelve a revisarse en ese PR. Solo el código necesita revisión: lo que casa con `content` de `.claude/gw.json` es
    contenido. **En una rama larga, esta fase se adelanta a cada bloque cerrado:** revisión solo del diff desde la
-   última revisión de bloque (su commit base, apuntado en la bitácora), para que una sola revisión de muchos commits no
-   deje módulos sin mirar; antes de `{{protectedBranch}}`, solo lo que quede desde entonces.
+   última revisión de bloque (el último commit con el trailer `Findings:`; el `commit-msg` avisa cuando el bloque pasa
+   de `changeSize.block` líneas), para que una sola revisión de muchos commits no deje módulos sin mirar; antes de `{{protectedBranch}}`, solo lo que quede desde entonces.
 2. **Entorno:** la skill `gw-opt-tokens` y luego `retro` (más `gw-opt-ai` si hubo medidas con un modelo de IA local). Sus
    propuestas se **presentan a la persona**; lo que confirme se aplica en la rama. Una retro escrita sin presentarla no
    vale. Si la persona pidió ir a `{{protectedBranch}}` y no está para decidir la retro, se deja todo listo (retro con

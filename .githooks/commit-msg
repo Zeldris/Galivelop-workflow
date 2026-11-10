@@ -13,7 +13,9 @@
 #     with `commitNext: true`, a `Siguiente:`/`Next:` trailer (GW_NO_NEXT=1 skips it);
 #     an `Agent:` trailer must not name a model with `agentSignatures: false`. All in scripts/commit-message.py (merges,
 #     reverts, cherry-picks and rebases skip format, Refs and Next; see its header).
-#   - Fails closed when the workflow's config.py or (with the log staged) handoff.py is missing.
+#   - Warns, never stops, about a commit above `changeSize.commit` changed lines and an open review block above
+#     `changeSize.block` (scripts/change-size.py, D43); skipped like the log check below.
+#   - Fails closed when the workflow's config.py, change-size.py or (with the log staged) handoff.py is missing.
 #   - A `WIP: ` commit passes, with a warning and the reason, when .claude/gw.json is missing or is not JSON (this hook
 #     does not block an emergency handoff; pre-commit then skips protectedPaths, which it cannot read either). It still
 #     rejects an agent signature (as if agentSignatures were false) and skips the log check. Any other commit fails
@@ -117,17 +119,23 @@ if [ -z "$msg" ] || [ ! -r "$msg" ]; then
 fi
 python3 "$scripts/commit-message.py" --root "$root" "$msg" || exit 1
 
+for head in MERGE_HEAD REVERT_HEAD CHERRY_PICK_HEAD; do
+  [ -e "$(git rev-parse --git-path "$head")" ] && exit 0
+done
+[ "$in_rebase" = false ] || exit 0
+
+# Commit and block size (D43): warnings only. A missing script is a broken install (fails closed); a script that fails
+# says why and the commit goes on, because a size warning never stops a commit.
+[ -f "$scripts/change-size.py" ] || { echo "commit-msg: $scripts/change-size.py is missing; reinstall the workflow scripts: /gw-update" >&2; exit 1; }
+python3 "$scripts/change-size.py" --root "$root" ||
+  echo "commit-msg: WARNING: the size check failed (above); the commit goes on; see why: python3 $scripts/change-size.py --root $root --show" >&2
+
 log="$(python3 "$config" --root "$root" get log 2>/dev/null)" || log=""
 [ -n "$log" ] || exit 0
 # `git diff --name-only` prints normalised paths: compare with the log as before-stop.py does (./docs/x.md, a//b).
 log_raw="$log"
 log="$(python3 -c 'import posixpath, sys; print(posixpath.normpath(sys.argv[1]))' "$log_raw")" || {
   echo "commit-msg: cannot normalise the log path '$log_raw'; check python3: python3 --version" >&2; exit 1; }
-
-for head in MERGE_HEAD REVERT_HEAD CHERRY_PICK_HEAD; do
-  [ -e "$(git rev-parse --git-path "$head")" ] && exit 0
-done
-[ "$in_rebase" = false ] || exit 0
 
 # core.quotepath=false: otherwise git prints a path with accents quoted ("docs/bit\303\241cora.md") and it never matches.
 staged="$(git -c core.quotepath=false diff --cached --name-only --no-renames --diff-filter=d)" || {

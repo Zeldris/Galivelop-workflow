@@ -303,6 +303,15 @@ def test_map(config):
     return {k: given.get(k, props[k]["default"]) for k in props}
 
 
+def change_size(config):
+    """The `changeSize` key as a dict (commit, block, exclude, pairs), each missing part filled from the schema default
+    (D43)."""
+    props = json.loads(schema_path().read_text(encoding="utf-8"))["properties"]["changeSize"]["properties"]
+    given = config.get("changeSize")
+    given = given if isinstance(given, dict) else {}
+    return {k: given.get(k, props[k]["default"]) for k in props}
+
+
 def marketing_sheets(config):
     """The `marketingSheets` settings with every inner key filled from the schema defaults (the loader only fills
     top-level keys, so `{"sources": [...]}` alone is a valid way to turn the feature on)."""
@@ -327,8 +336,8 @@ def log_archive(config):
 
 
 def semantic_errors(config):
-    """Problems the schema subset cannot express: a relatedTests `paths` or testMap `paths`/`contains` that is not a
-    valid regex, an agentMap
+    """Problems the schema subset cannot express: a relatedTests `paths`, testMap `paths`/`contains` or changeSize
+    `exclude`/`pairs` that is not a valid regex (or a pair replacement that does not fit its regex), an agentMap
     prefix that is not one folder name, an instructionLines `warn` above its `fail`."""
     errors = []
     warn, fail = instruction_lines(config)
@@ -358,6 +367,19 @@ def semantic_errors(config):
                     re.compile(rule[key])
                 except re.error as exc:
                     errors.append(f"$.testMap.rules[{i}].{key}: {rule[key]!r} is not a valid regex ({exc})")
+    size = config.get("changeSize") if isinstance(config.get("changeSize"), dict) else {}
+    regexes = [("exclude", i, rx) for i, rx in enumerate(size.get("exclude") or []) if isinstance(rx, str)]
+    regexes += [("pairs", rx, rx) for rx in (size.get("pairs") or {})]
+    for key, where, rx in regexes:
+        try:
+            re.compile(rx)
+        except re.error as exc:
+            errors.append(f"$.changeSize.{key}[{where!r}]: {rx!r} is not a valid regex ({exc})")
+    for rx, repl in (size.get("pairs") or {}).items():
+        try:
+            re.compile(rx).sub(repl, "")
+        except (re.error, IndexError) as exc:
+            errors.append(f"$.changeSize.pairs[{rx!r}]: replacement {repl!r} does not fit its regex ({exc})")
     return errors
 
 

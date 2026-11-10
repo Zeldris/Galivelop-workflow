@@ -5,3 +5,8 @@
 
 # The token ledger (metrics.py, B2) only grows at the end: two branches that append to it merge by keeping both.
 docs/metrics/ledger.jsonl merge=union
+
+# Generated files do not count in the commit and block sizes (change-size.py, D43).
+docs/mkt/**/*.html linguist-generated
+docs/mkt/**/*.sha linguist-generated
+docs/metrics/ledger.jsonl linguist-generated

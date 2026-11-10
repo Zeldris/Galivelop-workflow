@@ -105,7 +105,8 @@ Never on work that is already merged.
    committed and pushed: what is serious or medium, and what the fix itself breaks; minor findings are logged as
    pending and not reviewed again in that PR. Only code needs review: what matches `content` in `.claude/gw.json` is content.
    **On a long branch, this phase moves forward to each closed block:** a review of the diff since the last block
-   review only (its base commit, written in the log), so one review of many commits does not leave modules unread;
+   review only (the last commit with a `Findings:` trailer; the commit-msg hook warns when the block passes
+   `changeSize.block` lines), so one review of many commits does not leave modules unread;
    before `{{protectedBranch}}`, only what is left since then.
 2. **Environment:** the `gw-opt-tokens` skill, then `retro` (plus `gw-opt-ai` if there were measurements with a local AI
    model). Their proposals are **presented to the person**; what they confirm is applied on the branch. A retro written
