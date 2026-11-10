@@ -198,6 +198,15 @@ class Skills(unittest.TestCase):
         self.assertIn("fetch origin tag vX.Y.Z", text)
         self.assertIn("No tags", text, "say what to do when the clone lists no tags")
 
+    def test_gw_update_deals_the_diffs_out_and_skips_identical_copies(self):
+        # B19: in WMF the main session read every .gw-new diff itself and compacted twice in 12 minutes; the
+        # identical workflow copies were 89% of the paths its /code-review read.
+        text = (SKILLS / "gw-update" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("**Deal the reading out** (`gw-orchestrate-dealer`)", text)
+        self.assertIn("| Drift (what the project changed locally) | Upstream (what the workflow changed) |", text)
+        self.assertIn("from its subagent's table (step 3)", text)
+        self.assertIn("A `/code-review` of the update branch leaves out the files that are identical copies", text)
+
 
 if __name__ == "__main__":
     unittest.main()

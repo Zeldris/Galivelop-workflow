@@ -68,6 +68,17 @@ If there is no tag `v<X>`, take the commit where `plugin.json` said X: `git -C <
 shows only the template's own change. Offer each hunk to the user; apply the ones accepted to the project's file by
 hand.
 
+**Deal the reading out** (`gw-orchestrate-dealer`): each template diff, each `.gw-new` against the project's file
+(step 4), and any diff or `--dry-run` output of more than ~200 lines go to a read-only subagent (the selector's
+"light" rung), one per file or per group of small files; the main session never reads them whole. The brief gives
+the paths to compare and the versions X and Y. The subagent returns only a table, one row per hunk, with line refs:
+
+| Drift (what the project changed locally) | Upstream (what the workflow changed) | Decision (proposed) |
+|---|---|---|
+
+The decision is `take upstream`, `keep project` or `merge: <how>`. The main session decides each merge with the
+user from the tables and opens a file only for a row in doubt.
+
 ## 4. Apply what the user confirms
 
 1. Workflow-owned files with no local edits update in place:
@@ -76,7 +87,7 @@ hand.
    and `.githooks/`; tell the user first. The run also writes the migrated `.claude/gw.json` (one write, together with
    any path change); its other keys keep their values.
 2. A `<file>.gw-new` (or the old `<file>.gw-nuevo`, still recognized in `0.x`) is a proposal: merge it by hand with the
-   user, then delete it. `AGENTS.md` and `CLAUDE.md`
+   user from its subagent's table (step 3), then delete it. `AGENTS.md` and `CLAUDE.md`
    merge block by block, keeping the project's rules and the `galivelop-workflow` marker line.
 3. Files the workflow no longer has are reported, never deleted: ask before `git rm`.
 4. Personal notes: the missing ones are created by the run above. For each `personal note … differs` line, show the
@@ -92,7 +103,10 @@ hand.
 
 1. `python3 <project>/.claude/gw/scripts/doctor.py` until no `FAIL`; `python3 <workflow>/scripts/apply.py --check
    <project>` exits 0 when nothing is left to merge.
-2. Commit with the message `apply.py` suggested and a real `Next:` line (`Siguiente:` in Spanish projects), update
+2. A `/code-review` of the update branch leaves out the files that are identical copies of the workflow at Y
+   (`.claude/gw/`, `.claude/skills/gw-*`, `.githooks/`; `apply.py --check` reports no drift for them): reviewed upstream, they
+   were 89% of the paths of one update. Review the files the project merged by hand and its own files.
+3. Commit with the message `apply.py` suggested and a real `Next:` line (`Siguiente:` in Spanish projects), update
    the log in the same commit, and `git push`; the pre-push runs the check.
 
 Done when doctor is green, no `*.gw-new` is left and `version` equals Y.
