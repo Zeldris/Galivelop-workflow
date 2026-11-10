@@ -50,6 +50,7 @@
   "linkRoots": [],
   "scoutDir": ".claude/gw/scout",
   "relatedTests": {"fast": [], "slow": []},
+  "changeSize": {"commit": 400, "block": 1000},
   "testMap": {"rules": [], "command": ""},
   "plan": [],
   "taskId": "[A-Z]{2,5}-\\d+",
