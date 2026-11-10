@@ -11,7 +11,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "tests" / "old-python.sh"
-CURRENT = sys.version_info[1]
+# The minor of `python3`, which the script compares with: not sys.version_info, as check.sh also runs these tests on
+# the older Python.
+CURRENT = int(subprocess.run(["python3", "-c", "import sys; print(sys.version_info[1])"],
+                             capture_output=True, text=True, check=True).stdout)
 
 STUB = """#!/usr/bin/env bash
 for a in "$@"; do
