@@ -134,6 +134,29 @@
       "default": true,
       "description": "The pre-push skips its check on a commit that only adds or edits the reviewMark file on top of a parent whose tree is recorded green (the commit scripts/reviewed.sh makes); false runs the check on it."
     },
+    "branchCheck": {
+      "type": "string",
+      "enum": [
+        "related",
+        "full"
+      ],
+      "default": "related",
+      "description": "What the pre-push runs on a push to a branch other than the protected one (D49): related = only relatedTests, unless the push changes the environment (.claude/gw.json or a fullCheckPaths match) or relatedTests has no command, then the full check; full = the check commands and relatedTests, as on the protected branch. The push to the protected branch always runs the full check."
+    },
+    "fullCheckPaths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": [
+        "^\\.githooks/",
+        "^\\.claude/gw/",
+        "^\\.claude/settings(\\.local)?\\.json$",
+        "^\\.github/workflows/"
+      ],
+      "description": "Regexes (Python syntax) searched in each repo-relative path a push changes: one match makes a branch push with branchCheck related run the full check (an environment change). .claude/gw.json always counts."
+    },
     "checkCacheInputs": {
       "type": "array",
       "items": {

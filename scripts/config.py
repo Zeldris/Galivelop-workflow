@@ -331,7 +331,7 @@ def log_archive(config):
 
 def semantic_errors(config):
     """Problems the schema subset cannot express: a relatedTests `paths`, testMap `paths`/`contains` or changeSize
-    `exclude`/`pairs` that is not a valid regex (or a pair replacement that does not fit its regex), an agentMap
+    `exclude`/`pairs` or fullCheckPaths entry that is not a valid regex (or a pair replacement that does not fit its regex), an agentMap
     prefix that is not one folder name, an instructionLines `warn` above its `fail`."""
     errors = []
     warn, fail = instruction_lines(config)
@@ -369,6 +369,12 @@ def semantic_errors(config):
             re.compile(rx)
         except re.error as exc:
             errors.append(f"$.changeSize.{key}[{where!r}]: {rx!r} is not a valid regex ({exc})")
+    for i, rx in enumerate(config.get("fullCheckPaths") or []):
+        if isinstance(rx, str):
+            try:
+                re.compile(rx)
+            except re.error as exc:
+                errors.append(f"$.fullCheckPaths[{i}]: {rx!r} is not a valid regex ({exc})")
     for rx, repl in (size.get("pairs") or {}).items():
         try:
             re.compile(rx).sub(repl, "")
@@ -677,6 +683,23 @@ def related_commands(config, kind, files, deleted=(), skipped=None):
     return out
 
 
+def push_scope(config, files):
+    """What the pre-push runs for a branch push that changes `files` (repo-relative), as (scope, reason): ("full",
+    why) or ("related", None) (D49). Full when branchCheck is "full", when relatedTests has no command (there would
+    be nothing to run), or when a file is .claude/gw.json or matches a fullCheckPaths regex (an environment change).
+    The protected branch never asks: it always runs the full check."""
+    if config.get("branchCheck", "related") == "full":
+        return "full", "branchCheck is full"
+    related = config.get("relatedTests") or {}
+    if not any(related.get(kind) for kind in ("fast", "slow")):
+        return "full", "relatedTests has no command"
+    regexes = [re.compile(rx) for rx in config.get("fullCheckPaths") or []]
+    for name in files:
+        if name == CONFIG_REL.as_posix() or any(rx.search(name) for rx in regexes):
+            return "full", f"environment change: {name}"
+    return "related", None
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", help="project path (default: see above)")
@@ -689,6 +712,7 @@ def main(argv=None):
     related = sub.add_parser("related", help="relatedTests commands that apply to the files on stdin")
     related.add_argument("--kind", choices=("fast", "slow"), required=True)
     related.add_argument("--deleted-file", help="file listing, one per line, the pushed paths that no longer exist")
+    sub.add_parser("push-scope", help="'full <reason>' or 'related' for a branch push changing the files on stdin")
     get = sub.add_parser("get")
     get.add_argument("key", help="top-level key, or dotted (relatedTests.fast)")
     get.add_argument("--json", action="store_true")
@@ -722,6 +746,10 @@ def main(argv=None):
             sys.stdout.write(full + "\0")
         for command in skipped:
             print(f"related-tests: skipped ({args.kind}): {command} (its changed files were only deleted)", file=sys.stderr)
+        return 0
+    if args.command == "push-scope":
+        scope, reason = push_scope(config, [line for line in sys.stdin.read().splitlines() if line])
+        print(f"{scope} {reason}" if reason else scope)
         return 0
     value = dict(config, metrics=metrics(config), models=models(config))  # inner keys fill from the schema too
     for part in args.key.split("."):

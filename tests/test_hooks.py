@@ -1074,6 +1074,88 @@ class PrePushWorktree(Base):
             self.assertNoWorktreeLeft()
 
 
+class PrePushBranchCheck(Base):
+    """D49: a branch push runs only relatedTests unless it changes the environment; the protected branch, the full check."""
+
+    def setUp(self):
+        super().setUp()
+        p = self.p
+        self.checks = self.tmp / "checks.txt"
+        self.related = self.tmp / "related.txt"
+        shutil.copy2(ROOT / "scripts" / "related-tests.sh", p.work / ".claude" / "gw" / "scripts" / "related-tests.sh")
+        p.write("check.sh", f'echo check >> "{self.checks}"\n')
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["relatedTests"] = {"fast": [f'echo {{files}} >> "{self.related}"'], "slow": []}
+        cfg["fullCheckPaths"] = ["^tools/"]
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.commit("related tests and a check that leave a trace")
+        p.git("push", "-q", "--no-verify", "origin", "main")
+        p.git("checkout", "-q", "-b", "feature")
+
+    def runs(self, path):
+        return path.read_text().splitlines() if path.exists() else []
+
+    def test_a_branch_push_runs_only_the_related_tests(self):
+        p = self.p
+        p.write("src/a.py", "a = 1\n"); p.commit("code")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.runs(self.checks), [], out)
+        self.assertEqual(self.runs(self.related), ["src/a.py"], out)
+        self.assertIn("only its related tests run (branchCheck); the full check runs on the push to main", out)
+        self.assertIn("all green", out)
+
+    def test_a_failing_related_test_still_blocks_the_branch_push(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        p.write("src/a.py", "a = 1\n"); p.commit("code")
+        cfg["relatedTests"] = {"fast": ["exit 1"], "slow": []}
+        p.write(".claude/gw.json", json.dumps(cfg)); p.commit("red related test")
+        p.write("src/a.py", "a = 2\n"); p.commit("more code")
+        self.assertEqual(p.push("--no-verify", "origin", "feature~1:refs/heads/feature")[0], 0)  # config change: full
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 1, out)
+        self.assertIn("the related tests failed", out)
+
+    def test_an_environment_change_runs_the_full_check(self):
+        p = self.p
+        for path, reason in (("tools/env.sh", "tools/env.sh"), (".claude/gw.json", ".claude/gw.json")):
+            if path.endswith(".json"):
+                cfg = json.loads((p.work / path).read_text()); cfg["checkLockWait"] = 1
+                p.write(path, json.dumps(cfg))
+            else:
+                p.write(path, "true\n")
+            p.write("src/a.py", f"a = '{path}'\n"); p.commit(f"touches {path}")
+            before = len(self.runs(self.checks))
+            code, out = p.push("origin", "feature")
+            self.assertEqual(code, 0, out)
+            self.assertEqual(len(self.runs(self.checks)), before + 1, out)
+            self.assertIn(f"full check on {p.sha()[:7]}: environment change: {reason}", out)
+            self.assertNotIn("only its related tests run", out)
+
+    def test_branch_check_full_runs_the_check_on_every_branch_push(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text()); cfg["branchCheck"] = "full"
+        p.write(".claude/gw.json", json.dumps(cfg)); p.commit("full check on branches")
+        self.assertEqual(p.push("origin", "feature")[0], 0)
+        p.write("src/a.py", "a = 1\n"); p.commit("code")
+        before = len(self.runs(self.checks))
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(len(self.runs(self.checks)), before + 1, out)
+        self.assertIn("full check on", out)
+        self.assertIn("branchCheck is full", out)
+
+    def test_the_push_to_the_protected_branch_runs_the_full_check(self):
+        p = self.p
+        p.git("checkout", "-q", "main")
+        p.write("docs/notes.md", "more notes\n"); p.commit("docs only: no review mark needed")
+        code, out = p.push("origin", "main")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.runs(self.checks), ["check"], out)
+        self.assertNotIn("only its related tests run", out)
+
+
 class PrePushPrivate(Base):
     """E2: the pre-push runs private-check.py on what each ref brings (names from the local, uncommitted list)."""
 
@@ -1689,6 +1771,7 @@ class CheckCache(Base):
         shutil.copy2(ROOT / "scripts" / "related-tests.sh", p.work / ".claude" / "gw" / "scripts" / "related-tests.sh")
         cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
         cfg["relatedTests"] = {"fast": [f'pwd > "{where}"'], "slow": []}
+        cfg["branchCheck"] = "full"  # this case is about the cache of the full check (D49 covers related)
         p.write(".claude/gw.json", json.dumps(cfg))
         p.commit("related tests runner that says where it runs")
         self.assertEqual(self.push("origin", "feature")[0], 0)

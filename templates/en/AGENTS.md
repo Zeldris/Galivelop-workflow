@@ -47,10 +47,11 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 
 ## Checking
 
-- **The project's check:** {{check}}. `.githooks/pre-push` runs it on the commit being pushed, and CI
-  (`.github/workflows/check.yml`) on every push outside `{{protectedBranch}}` and on every pull request.
-- **Before pushing, run it with `bash .claude/gw/scripts/check.sh`**: it runs the check and, when it passes, records
-  it; `pre-push` does not repeat it on the same tree (`GW_CHECK_CACHE=0` turns that off).
+- **The project's check:** {{check}}. `.githooks/pre-push` runs it on the commit pushed to `{{protectedBranch}}` or
+  that changes the environment; to another branch, only the related tests (`branchCheck`). CI
+  (`.github/workflows/check.yml`) runs it in full on every push outside `{{protectedBranch}}` and on every pull request.
+- **Before pushing to `{{protectedBranch}}`, run it with `bash .claude/gw/scripts/check.sh`**: it runs the check and,
+  when it passes, records it; `pre-push` does not repeat it on the same tree (`GW_CHECK_CACHE=0` turns that off).
 - **What can be checked is checked by a script**, not by an agent: skills and guides only decide what needs
   judgement. If a rule keeps being broken, it becomes a check.
 - **What depends on a particular machine is not declared tested by tests** (another operating system, a device, the

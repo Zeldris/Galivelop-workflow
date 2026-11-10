@@ -17,6 +17,8 @@
 #     one is refused.
 #   - Runs every `check` command of that config on the commit being pushed (a temporary worktree when it is not
 #     the clean working copy), with GW_PUSH_PROTECTED=true when it goes to the protected branch (false otherwise).
+#     D49: to another branch, with branchCheck `related` (the default), only relatedTests run, unless the ref's new
+#     commits change .claude/gw.json or a fullCheckPaths path, or relatedTests has no command (config.py push-scope).
 #     `checkWrapper` prefixes each command (`<wrapper> bash -c '<command>'`). The worktree lives in a per-repo folder
 #     under ${TMPDIR:-/tmp} (or under `worktreeDir`), never inside .git/ (jest and others ignore any /.git/ path),
 #     gets the `worktreeLinks` paths symlinked from the main checkout, and is removed on every exit (also on
@@ -187,12 +189,11 @@ mark_only_parent() {  # mark_only_parent <sha>: prints the parent's sha when <sh
   [ "$(git rev-parse "$sha:$mark_file" 2>/dev/null)" = "$expect" ] || return 1
   printf '%s\n' "$parent"
 }
-run_checks() {  # run_checks <sha>: every check command on that commit, in $checkdir (kept for related-tests.sh)
-  local sha="$1" dir wrapper marker
+checkout_at() {  # checkout_at <sha>: $checkdir = the project (HEAD clean) or a temporary worktree of that commit
+  local sha="$1" dir marker
   if [ -n "$worktree" ]; then
     git worktree remove --force "$worktree" >/dev/null 2>&1; rm -rf "$worktree" "${worktree%.d}"; worktree=""
   fi
-  wrapper="$(cfg_at "$sha" checkWrapper)" || exit 1
   if [ "$sha" = "$(git rev-parse HEAD)" ] && [ -z "$(git status --porcelain)" ]; then
     dir="$root"
   else
@@ -217,6 +218,12 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     dir="$worktree"
   fi
   checkdir="$dir"
+}
+run_checks() {  # run_checks <sha>: every check command on that commit, in $checkdir (kept for related-tests.sh)
+  local sha="$1" dir wrapper
+  wrapper="$(cfg_at "$sha" checkWrapper)" || exit 1
+  checkout_at "$sha"
+  dir="$checkdir"
   local cmd n=0 lrc kept key="" tree age parent ptree pkey pepoch inputs="" input_paths=""
   if [ "$is_protected" != "true" ] && [ "${GW_CHECK_CACHE:-}" != "0" ] && [ -f "$scripts/check-green.sh" ]; then
     # Any failure of the helper just means the check runs, as it always did.
@@ -319,6 +326,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   local_sha="$(git rev-parse -q --verify "$local_sha^{commit}" 2>/dev/null)" || fail "commit ${local_sha:0:7} is not in this clone; fetch it and retry: git fetch $remote"
   checks="$(cfg_at "$local_sha" check)" || exit 1
   protected="$(cfg_at "$local_sha" protectedBranch)" || exit 1
+  files=""  # what this ref's new commits change (set below when it brings any)
 
   # What this push adds: commits no remote-tracking ref (nor the remote's current tip) already has.
   known=""
@@ -393,7 +401,20 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     # The run for the protected branch (same tree, same commands) is stricter and comes in this same push.
     echo "pre-push: ${local_sha:0:7} has the tree (${this_tree:0:7}) this push also sends to $protected_name; its check runs once, there"
   elif [ "$checked" != "$local_sha:$is_protected" ]; then
-    run_checks "$local_sha"
+    scope="full"
+    if [ "$is_protected" != "true" ]; then  # D49: a branch push runs only relatedTests unless the environment changes
+      scope="$(printf '%s\n' "$files" | python3 "$config" --root "$root" --rev "$local_sha" push-scope)" \
+        || fail "cannot tell which check this push needs; fix the config and push again: python3 $config --root $root --rev ${local_sha:0:7} validate"
+    fi
+    case "$scope" in
+      related)
+        echo "pre-push: ${local_sha:0:7} goes to a branch: only its related tests run (branchCheck); the full check runs on the push to $protected and when the environment changes (to run it now: bash $scripts/check.sh)"
+        checkout_at "$local_sha" ;;
+      full*)
+        [ "$is_protected" = "true" ] || [ "$scope" = "full" ] || echo "pre-push: full check on ${local_sha:0:7}: ${scope#full }"
+        run_checks "$local_sha" ;;
+      *) fail "unexpected answer from config.py push-scope: '$scope'; reinstall the workflow scripts: /gw-update" ;;
+    esac
     checked="$local_sha:$is_protected"
   fi
 

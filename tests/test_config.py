@@ -340,6 +340,34 @@ class Config(unittest.TestCase):
         self.assertEqual(r.returncode, 2)
         self.assertIn("relatedTests.fast[0]: matches none of the allowed forms", r.stderr)
 
+    def test_push_scope_is_related_unless_the_environment_changes(self):  # D49
+        def scope(data, files):
+            self.write(data)
+            r = subprocess.run(["python3", str(SCRIPT), "--root", str(self.tmp), "push-scope"], input="\n".join(files),
+                               capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            return r.stdout.strip()
+        rel = dict(VALID, relatedTests={"fast": ["make test"]})
+        self.assertEqual(scope(rel, ["src/a.py"]), "related")
+        self.assertEqual(scope(rel, []), "related")
+        self.assertEqual(scope(rel, ["src/a.py", ".claude/gw.json"]), "full environment change: .claude/gw.json")
+        self.assertEqual(scope(rel, [".githooks/pre-push"]), "full environment change: .githooks/pre-push")
+        self.assertEqual(scope(rel, [".claude/settings.json"]), "full environment change: .claude/settings.json")
+        self.assertEqual(scope(dict(rel, fullCheckPaths=["^tools/"]), [".githooks/pre-push"]), "related")
+        self.assertEqual(scope(dict(rel, fullCheckPaths=["^tools/"]), ["tools/x"]), "full environment change: tools/x")
+        self.assertEqual(scope(dict(rel, fullCheckPaths=[]), [".claude/gw.json"]),
+                         "full environment change: .claude/gw.json")  # the config always counts
+        self.assertEqual(scope(dict(rel, branchCheck="full"), ["src/a.py"]), "full branchCheck is full")
+        self.assertEqual(scope(VALID, ["src/a.py"]), "full relatedTests has no command")
+        self.assertEqual(scope(dict(VALID, relatedTests={"fast": [], "slow": []}), ["src/a.py"]),
+                         "full relatedTests has no command")
+        for bad, needle in ((dict(rel, branchCheck="none"), "$.branchCheck"),
+                            (dict(rel, fullCheckPaths=["("]), "$.fullCheckPaths[0]: '(' is not a valid regex")):
+            self.write(bad)
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn(needle, r.stderr)
+
     def test_related_picks_the_commands_that_apply(self):
         entries = ["echo always", {"command": "run {files}", "paths": "\\.ts$", "cwd": "app"}]
         self.write(dict(VALID, relatedTests={"fast": entries}, checkWrapper="w.sh"))

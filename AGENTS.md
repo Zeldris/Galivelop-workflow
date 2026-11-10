@@ -42,8 +42,8 @@ Cada regla de abajo que tiene un check lo nombra entre paréntesis; las demás s
 ## Comprobar
 
 - **Check del repo:** `bash tests/check.sh` (qué comprueba, en sus `== …`); lo corre el CI en Linux y macOS en
-  cada push que no sea a `main` y en cada PR. **Antes de subir, `bash scripts/check.sh`**: lo corre y apunta el
-  verde para que el `pre-push` no lo repita (límites en [`docs/es/config.md`](docs/es/config.md)).
+  cada push que no sea a `main` y en cada PR. El `pre-push` de una rama solo corre los tests del cambio (`branchCheck`,
+  D49): **antes de subir a `main` o de cerrar un bloque, `bash scripts/check.sh`**, que apunta el verde (`config.md`).
 - **Un solo archivo de tests:** `python3 -B -m unittest discover -s tests -p 'test_X.py'` (`tests/` no es un
   paquete).
 - Los scripts de shell, compatibles con **bash 3.2** (macOS): nada de `mapfile` ni arrays asociativos (el CI en
