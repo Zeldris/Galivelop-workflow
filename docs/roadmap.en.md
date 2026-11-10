@@ -13,7 +13,8 @@ task's design is in [`docs/design/`](design/README.md) (Spanish); the split, in 
 - Each task has its design block's letter and a number with no hyphen: `B3` is question 3 of
   [`B-measurement.md`](design/B-measurement.md). The blocks: A framework, B measurement and models, C questions and modes, D
   git, E quality, G Management Center (MMC), H roadmap, I lifecycle and authority ([`I-lifecycle.md`](design/I-lifecycle.md)).
-- A new task takes the next free number of its block; a number is never reused, not even a dropped task's. Block A's
+- A new task takes the next free number of its block (`handoff.py next-id <letter>`, which also looks at the other
+  branches); a number is never reused, not even a dropped task's. Block A's
   tasks that come from its sections rather than a question start at `A7` (its questions go up to `A-6`).
 - Questions that only decided something (for example D1, D2 or D4) are not tasks and are not listed.
 - States: `hecho` (done), `en curso` (in progress), `pendiente` (pending). When a task closes, its row names the
@@ -147,7 +148,7 @@ In this order, because each step uses the previous one.
 | D42 | `gw-orchestrate-dealer`: a `scratchpad/<id>/` folder per agent, check the worktree base and stop with `TaskStop` (retro `0.5.0` R4) | done (2026-11-10; `{scratch}/<id>-<topic>/` folder, like the branch; `{head}` in the brief) |
 | E22 | `tests/check.sh` also compiles everything and runs the tests of the change on the oldest Python available (3.8+, older than `python3`) (`tests/old-python.sh` with `tests-for.py`; the hook suites only when they changed), or warns if there is none (retro `0.5.0` R6) | done (2026-11-10) |
 | B18 | Review by blocks on a long branch: `/code-review` of the new diff at each closed block, in `gw-selector` and the `AGENTS.md` template (`0.5.1` harvest, world-maker-fantasy P1) | done (2026-11-10; row «Closing a block or phase» and phase 1 of the templates and of `AGENTS.md`) |
-| D48 | `handoff.py next-id <prefix>`: the next free id looking at the remote branches before numbering, with `free_id` (`0.5.1` harvest, world-maker-fantasy P2) | pending |
+| D48 | `handoff.py next-id <prefix>`: the next free id looking at the remote branches before numbering, with `free_id` (`0.5.1` harvest, world-maker-fantasy P2) | done (2026-11-10; reads the work tree, the index and every local and remote branch; `--fetch`; `clash` now suggests ids without a dash right) |
 | D43 | Commit and review size: warn, without blocking, about a commit of more than ~400 changed lines (LOC); the review unit is the block or task of ~1000 lines, reviewed when it closes (B18), and the PR to `main` adds up already-reviewed blocks. Paired docs, the installed copies under `.claude/gw/` and generated files do not count; the thresholds, in `.claude/gw.json` (user, 2026-11-04) | pending |
 | D49 | The `pre-push` of a branch other than `main` requires only the related tests (`related-tests.sh`); the full check moves to the push to `main` and to environment changes. The GitHub CI keeps running in full on every push, without blocking, and is checked at each block close with `ci-status.py`; absorbs part of D44 (user, 2026-11-04) | pending |
 | D50 | Traceable commits: `feat`/`fix` commits (and a large `refactor`) carry `Técnica:` (the decision and what was discarded) and `Problemas:` (what failed and how it was solved, or «ninguno») in the body. The `commit-msg` checks they are there, with the types in `.claude/gw.json`; `REVIEW.md` asks for their quality as a judgement rule and the retro goes over it. `docs`, `WIP` and the review mark are exempt (user, 2026-11-04). **Absorbed by C11** (user, 2026-11-08): the reasoning goes to the task record and the commit only summarises | absorbed by C11 |

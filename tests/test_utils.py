@@ -693,8 +693,8 @@ class HandoffTasks(Base):
         self.assertEqual(self.p.script("handoff.py", "check")[0], 0)
 
 
-class HandoffClash(Base):
-    """WMF P2: two branches that open the same task id for different tasks."""
+class PlanRepo(Base):
+    """A project with a plan, pushed to origin/main; no tests of its own."""
     PLAN = "docs/plan.md"
     START = "- [ ] **INS-1** first\n- [ ] **INS-2** second\n"
 
@@ -708,6 +708,10 @@ class HandoffClash(Base):
         self.p.write(self.PLAN, text)
         self.p.commit(message, env=DAY)
         return self.p.sha()
+
+
+class HandoffClash(PlanRepo):
+    """WMF P2: two branches that open the same task id for different tasks."""
 
     def clash(self, *args):
         return self.p.script("handoff.py", "--plan", self.PLAN, "clash", *args)
@@ -823,6 +827,69 @@ class HandoffClash(Base):
         self.base = self.p.sha()
         a, b = self.two_branches()
         self.assertEqual(self.clash(a, b), (0, ""))
+
+
+class HandoffNextId(PlanRepo):
+    """D48 (WMF P2): the next free id before opening a task, looking past this branch."""
+
+    def handoff(self, *args):
+        code, out = self.p.script("handoff.py", *args)
+        return code, out.strip()
+
+    def next_id(self, *args):
+        return self.handoff("--plan", self.PLAN, "next-id", *args)
+
+    def test_one_past_the_highest_on_any_branch_remote_or_work_tree(self):
+        self.assertEqual(self.next_id("INS"), (0, "INS-3"))
+        self.assertEqual(self.next_id("INS-"), (0, "INS-3"))
+        self.assertEqual(self.next_id("INS-1"), (0, "INS-3"))  # a whole id gives its prefix's next one
+        self.p.branch("feat-b", self.base)
+        self.plan(self.START + "- [ ] **INS-5** the export\n")
+        self.p.git("push", "-q", "--no-verify", "origin", "feat-b")
+        self.p.git("checkout", "-q", "main")
+        self.p.git("branch", "-q", "-D", "feat-b")  # only origin/feat-b has it now
+        self.assertEqual(self.next_id("INS"), (0, "INS-6"))
+        self.p.write(self.PLAN, self.START + "| INS-9 | saved, not committed |\n")
+        self.assertEqual(self.next_id("INS"), (0, "INS-10"))
+        self.p.git("add", self.PLAN)
+        self.p.git("checkout", "--", self.PLAN)
+        self.assertEqual(self.next_id("INS"), (0, "INS-10"))  # the index too
+
+    def test_a_prefix_is_whole_and_ids_without_a_dash_keep_none(self):
+        self.p.write(self.PLAN, self.START + "- [ ] **INSX-40** other prefix\n")
+        self.assertEqual(self.next_id("INS"), (0, "INS-3"))
+        self.assertEqual(self.next_id("INSX"), (0, "INSX-41"))
+        self.assertEqual(self.handoff("--plan", self.PLAN, "--id-regex", r"[A-H]\d+", "next-id", "Q"),
+                         (2, "handoff: Q1 does not match the task id pattern ([A-H]\\d+); pass the prefix the plan "
+                             "uses, for example: handoff.py next-id D"))
+        self.p.write(self.PLAN, "- [ ] **D7** one\n| D12 | two |\n- [ ] **DE3** other\n")
+        self.assertEqual(self.handoff("--plan", self.PLAN, "--id-regex", r"[A-H]{1,2}\d+", "next-id", "D"),
+                         (0, "D13"))
+        self.assertEqual(self.handoff("--plan", self.PLAN, "--id-regex", r"[A-H]{1,2}\d+", "next-id", "F"),
+                         (0, "F1"))
+
+    def test_clash_suggests_a_free_id_without_a_dash(self):
+        self.p.branch("feat-b", self.base)
+        b = self.plan("- [ ] **D1** first\n- [ ] **D2** the export\n")
+        self.p.branch("feat-a", self.base)
+        a = self.plan("- [ ] **D1** first\n- [ ] **D2** the form\n")
+        code, out = self.handoff("--plan", self.PLAN, "--id-regex", r"D\d+", "clash", a, b)
+        self.assertEqual(code, 1, out)
+        self.assertIn("give yours a free id (D3)", out)
+
+    def test_works_without_logrows_and_fails_closed_without_a_plan_or_a_fetch(self):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        self.p = Utils(self.tmp, {"logRows": False})
+        self.plan(self.START)
+        self.assertEqual(self.next_id("INS"), (0, "INS-3"))
+        self.assertEqual(self.handoff("next-id", "INS"),
+                         (2, "handoff: no plan to read task ids from; set `plan` in .claude/gw.json or pass --plan PATH"))
+        self.p.git("remote", "set-url", "origin", str(self.tmp / "gone.git"))
+        code, out = self.next_id("INS", "--fetch")
+        self.assertEqual(code, 1, out)
+        self.assertIn("handoff: git fetch failed, so the remote branches may be stale", out)
+        self.assertNotIn("INS-3", out)
 
 
 class HandoffCloseRow(Base):

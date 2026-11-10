@@ -30,6 +30,9 @@
     "path": "docs/agent-map.md"
   },
   "taskId": "[A-H]\\d+",
+  "plan": [
+    "docs/roadmap.md"
+  ],
   "commitFormat": "conventional",
   "commitRefs": true,
   "commitNext": true,

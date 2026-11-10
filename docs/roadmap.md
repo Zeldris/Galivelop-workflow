@@ -13,7 +13,8 @@ con su versión en cada línea (H12).
 - Cada tarea lleva la letra de su bloque de diseño y un número sin guion: `B3` es la pregunta 3 de
   [`B-measurement.md`](design/B-measurement.md). Los bloques: A marco, B medición y modelos, C preguntas y modos, D git, E
   calidad, G Management Center (MMC), H roadmap, I ciclo de vida y autoridad ([`I-lifecycle.md`](design/I-lifecycle.md)).
-- Una tarea nueva toma el siguiente número libre de su bloque; un número nunca se reutiliza, ni el de una tarea
+- Una tarea nueva toma el siguiente número libre de su bloque (`handoff.py next-id <letra>`, que mira también las
+  demás ramas); un número nunca se reutiliza, ni el de una tarea
   descartada. Las tareas del bloque A que salen de sus apartados y no de una pregunta empiezan en `A7` (sus preguntas
   llegan a `A-6`).
 - Las preguntas que solo decidían algo (por ejemplo, D1, D2 o D4) no son tareas y no salen aquí.
@@ -148,7 +149,7 @@ En este orden, porque cada paso usa el anterior.
 | D42 | `gw-orchestrate-dealer`: carpeta `scratchpad/<id>/` por agente, comprobar la base del worktree y cortar con `TaskStop` (retro `0.5.0` R4) | hecha (2026-11-10; carpeta `{scratch}/<id>-<topic>/`, como la rama; `{head}` en el encargo) |
 | E22 | `tests/check.sh` corre también, con el Python más viejo disponible (3.8+, más viejo que `python3`), la compilación de todo y los tests del cambio (`tests/old-python.sh` con `tests-for.py`; las suites de ganchos, solo si cambiaron), o avisa si no hay (retro `0.5.0` R6) | hecha (2026-11-10) |
 | B18 | Revisión por bloques en una rama larga: `/code-review` del diff nuevo en cada bloque cerrado, en `gw-selector` y la plantilla de `AGENTS.md` (recogida `0.5.1`, world-maker-fantasy P1) | hecha (2026-11-10; fila «Closing a block or phase» y fase 1 de las plantillas y de `AGENTS.md`) |
-| D48 | `handoff.py next-id <prefijo>`: el siguiente id libre mirando las ramas remotas antes de numerar, con `free_id` (recogida `0.5.1`, world-maker-fantasy P2) | pendiente |
+| D48 | `handoff.py next-id <prefijo>`: el siguiente id libre mirando las ramas remotas antes de numerar, con `free_id` (recogida `0.5.1`, world-maker-fantasy P2) | hecha (2026-11-10; mira copia, índice y todas las ramas locales y remotas; `--fetch`; `clash` ya sugiere bien los ids sin guion) |
 | D43 | Tamaño de commit y de revisión: avisar, sin bloquear, de un commit de más de ~400 líneas cambiadas (LOC); la unidad de revisión es el bloque o tarea de ~1000 líneas, revisado al cerrarse (B18), y el PR a `main` suma bloques ya revisados. No cuentan los documentos emparejados, las copias instaladas de `.claude/gw/` ni lo generado; los umbrales, en `.claude/gw.json` (usuario, 2026-11-04) | pendiente |
 | D49 | El `pre-push` de una rama que no es `main` exige solo los tests relacionados (`related-tests.sh`); el check completo pasa a la subida a `main` y a los cambios de entorno. El CI de GitHub sigue completo en cada push, sin bloquear, y se mira al cerrar cada bloque con `ci-status.py`; absorbe parte de D44 (usuario, 2026-11-04) | pendiente |
 | D50 | Commits con traza: los `feat`/`fix` (y un `refactor` grande) llevan en el cuerpo `Técnica:` (la decisión y lo descartado) y `Problemas:` (qué falló y cómo se resolvió, o «ninguno»). El `commit-msg` comprueba que estén, con los tipos en `.claude/gw.json`; `REVIEW.md` pide su calidad como regla de criterio y la retro la repasa. Quedan fuera `docs`, `WIP` y la marca de revisión (usuario, 2026-11-04). **Absorbida por C11** (usuario, 2026-11-08): el razonamiento va a la ficha y el commit solo resume | absorbida por C11 |

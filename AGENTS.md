@@ -54,7 +54,8 @@ Cada regla de abajo que tiene un check lo nombra entre paréntesis; las demás s
 Los comprueba el `commit-msg` (`commitFormat`, `commitRefs`, `commitNext` y `agentSignatures` de `.claude/gw.json`).
 
 - En español. Primera línea con Conventional Commits y el id del roadmap como ámbito: `feat(D12): …`; `WIP: `
-  delante si va en rojo. Una tarea sin id toma el siguiente libre de su bloque.
+  delante si va en rojo. Una tarea sin id toma el siguiente libre de su bloque
+  (`python3 scripts/handoff.py next-id <letra>`).
 - Cuerpo: qué se hizo, qué queda y estado de los tests.
 - **Último párrafo, solo trailers:** `Refs: <id>[, <id>]` y, al final, **`Siguiente: <próximo paso concreto>`**.
 - Un subagente puede firmar con `Agent: <skill>` (nunca un modelo); sus ramas, `agent/<id>-<tema>`.

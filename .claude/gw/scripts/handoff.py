@@ -64,6 +64,12 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  parents and T (default M) still has both titles under that id
   handoff.py clash --merging                    the same for the merge being concluded (HEAD, MERGE_HEAD and the
                                                  index; the pre-commit hook); passes when no merge is in progress
+  handoff.py next-id PREFIX [--fetch]           print the next free task id with PREFIX ("D" -> "D49", "QA-" or
+                                                 "QA" -> "QA-8"): one past the highest that the plan opens in the work
+                                                 tree, the index or any local or remote-tracking branch, so a new task
+                                                 does not take an id another branch already took (`clash` finds that
+                                                 only at the push). --fetch runs `git fetch --all` first and fails if
+                                                 it fails. Works without logRows; needs a plan
 
 Common options: --root PATH (default: from this script's folder, via config.py), --plan PATH (repeatable; a file or a
 folder with the plan/roadmap; env GW_PLAN, ':'-separated; config `plan`), --id-regex REGEX (task ids; env GW_TASK_ID;
@@ -507,17 +513,27 @@ def clashes(ctx, a, b):
     return {i: (ta[i], tb[i]) for i in sorted(ta.keys() & tb.keys()) if i not in t0 and ta[i] != tb[i]}
 
 
-def free_id(ctx, revs, taken):
-    """The next id after the highest one with `taken`'s prefix that any of `revs` opens."""
-    prefix = taken.rsplit("-", 1)[0]
+ID_NUMBER = re.compile(r"(?P<sep>-?)(?P<num>\d+)[a-z]?")
+
+
+def id_prefix(taken):
+    """The prefix of a task id, without its separator: "INS-3" -> "INS", "D12" -> "D", "QA-7b" -> "QA"."""
+    m = re.match(r"(.*?)-?\d+[a-z]?$", taken)
+    return m.group(1) if m else taken
+
+
+def free_id(ctx, revs, taken, ids=(), sep=None):
+    """The next id after the highest one with `taken`'s prefix that any of `revs` (or `ids`) opens, with the separator
+    those ids use ("INS-4", "D49"); with none of them, `sep` (default: the one `taken` has)."""
+    prefix = taken[:-1] if taken.endswith("-") else id_prefix(taken)
     top = 0
-    for rev in revs:
-        for i in ctx.titles(rev):
-            head, _, num = i.rpartition("-")
-            m = re.match(r"\d+", num)
-            if head == prefix and m:
-                top = max(top, int(m.group(0)))
-    return f"{prefix}-{top + 1}"
+    if sep is None:
+        sep = "-" if taken[len(prefix):].startswith("-") else ""
+    for i in [i for rev in revs for i in ctx.titles(rev)] + list(ids):
+        m = ID_NUMBER.fullmatch(i[len(prefix):]) if i.startswith(prefix) else None
+        if m and int(m.group("num")) >= top:
+            top, sep = int(m.group("num")), m.group("sep")
+    return f"{prefix}{sep}{top + 1}"
 
 
 def quote(titles):
@@ -569,6 +585,42 @@ def cmd_clash(ctx, args):
     if bad and not args.warn:
         print("handoff: fix: renumber the task in the plan (and wherever it is named), then: git commit -a")
     return 1 if bad and not args.warn else 0
+
+
+def worktree_ids(ctx):
+    """Ids the plan files in the work tree open (saved, not yet staged or committed)."""
+    found = set()
+    for p in ctx.plans:
+        path = ctx.root / p
+        files = sorted(path.rglob("*.md")) if path.is_dir() else [path] if path.is_file() else []
+        for f in files:
+            for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
+                m = ctx.entry.match(line)
+                if m:
+                    found.add(m.group("id"))
+    return found
+
+
+def cmd_next_id(ctx, args):
+    if not ctx.plans:
+        raise Usage("no plan to read task ids from; set `plan` in .claude/gw.json or pass --plan PATH")
+    if args.fetch:
+        r = ctx.git("fetch", "-q", "--all", "--prune")
+        if r.returncode:
+            print(f"handoff: git fetch failed, so the remote branches may be stale ({r.stderr.strip()}); fix the "
+                  "network or the remote and rerun, or run without --fetch to use the branches already fetched")
+            return 1
+    refs = [r for r in ctx.git("for-each-ref", "--format=%(refname)", "refs/heads", "refs/remotes").stdout.split()
+            if not r.endswith("/HEAD")]
+    revs = refs + ([INDEX] if ctx.git("rev-parse", "-q", "--verify", "HEAD").stdout.strip() else [])
+    prefix = args.prefix
+    sep = "-" if prefix.endswith("-") or (ctx.id.fullmatch(f"{prefix}-1") and not ctx.id.fullmatch(f"{prefix}1")) else ""
+    nxt = free_id(ctx, revs, prefix, worktree_ids(ctx), sep)
+    if not ctx.id.fullmatch(nxt):
+        raise Usage(f"{nxt} does not match the task id pattern ({ctx.id.pattern}); pass the prefix the plan uses, "
+                    "for example: handoff.py next-id D")
+    print(nxt)
+    return 0
 
 
 def cmd_in_progress(ctx, args):
@@ -862,6 +914,9 @@ def main(argv=None):
     r = sub.add_parser("close-row")
     r.add_argument("branch")
     r.add_argument("--text")
+    n = sub.add_parser("next-id")
+    n.add_argument("prefix")
+    n.add_argument("--fetch", action="store_true")
     w = sub.add_parser("set-row")
     w.add_argument("text")
     w.add_argument("--branch")
@@ -900,7 +955,7 @@ def main(argv=None):
             args.date = args.date or datetime.datetime.now(datetime.timezone.utc).date().isoformat()
         elif args.cmd == "done":
             args.date = args.date or datetime.date.today().isoformat()
-        elif not ctx.config.get("logRows") and args.cmd not in ("check", "archive"):
+        elif not ctx.config.get("logRows") and args.cmd not in ("check", "archive", "next-id"):
             if args.cmd in ("set-row", "close-row"):
                 print("handoff: logRows is off in .claude/gw.json, so there are no branch rows and nothing was written; "
                       f"enable it: set \"logRows\": true in .claude/gw.json, then rerun {args.cmd}")
@@ -908,7 +963,7 @@ def main(argv=None):
             return 0  # the branch-row module is off: nothing to check (`check` still reads the size and Done rules)
         return {"check": cmd_check, "done": cmd_done, "own-row": cmd_own_row, "closed": cmd_closed,
                 "in-progress": cmd_in_progress, "close-row": cmd_close_row, "set-row": cmd_set_row, "clash": cmd_clash,
-                "archive": cmd_archive}[args.cmd](ctx, args)
+                "archive": cmd_archive, "next-id": cmd_next_id}[args.cmd](ctx, args)
     except Usage as exc:
         print(f"handoff: {exc}", file=sys.stderr)
         return 2
