@@ -27,7 +27,7 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  move the "Pendiente" / "Pending" items (top-level "- " bullets with
                                                  their continuation lines) whose first line names versions X.Y or
                                                  X.Y.Z, all <= the published one (`version` in .claude-plugin/
-                                                 plugin.json), to the archive file (config `logArchive`, not read at
+                                                 plugin.json; without it, the highest vX.Y.Z tag), to the archive file (config `logArchive`, not read at
                                                  session start) under a dated section, and leave one summary line
                                                  with the link where the first one was; an item with no version, or
                                                  "no archivar" / "do not archive" in its first line, stays. --dry-run
@@ -711,10 +711,20 @@ def cmd_done(ctx, args):
 
 
 def published_version(ctx):
-    """The published version (`version` of .claude-plugin/plugin.json at the root) as (text, (major, minor, patch))."""
+    """The published version as (text, (major, minor, patch)): `version` of .claude-plugin/plugin.json at the root (the
+    workflow repo) or, without that file (a project), the highest `vX.Y.Z` tag of the repo."""
     path = ctx.root / ".claude-plugin" / "plugin.json"
-    fix = (f"archive needs the published version; run it in the workflow repo, or create {path} with a \"version\" "
-           f"key and rerun: python3 {HERE / 'handoff.py'} archive")
+    fix = (f"archive needs the published version: create {path} with a \"version\" key or tag the last release "
+           f"(git tag vX.Y.Z), then rerun: python3 {HERE / 'handoff.py'} archive")
+    if not path.exists():
+        tags = ctx.git("tag", "--list", "v[0-9]*")
+        found = [(tuple(int(g or 0) for g in m.groups()), m.group(0)) for m in
+                 (VERSION_IN_TEXT.fullmatch(t.strip()[1:]) for t in (tags.stdout if tags.returncode == 0 else "")
+                  .splitlines()) if m]
+        if not found:
+            raise Usage(f"no {path} and no vX.Y.Z tag in the repo; {fix}")
+        best = max(found)
+        return best[1], best[0]
     try:
         version = json.loads(path.read_text(encoding="utf-8")).get("version")
     except (OSError, ValueError, AttributeError) as exc:

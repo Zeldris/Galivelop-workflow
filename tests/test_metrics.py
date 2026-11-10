@@ -442,6 +442,12 @@ class Quality(Base):
                 return [c.strip() for c in text.strip("|").split("|")]
         self.fail(f"no row for {table_id} in:\n{out}")
 
+    def test_a_failing_interpret_trailers_is_an_error_not_a_commit_without_trailers(self):
+        with self.assertRaises(metrics.MetricsError) as ctx:
+            metrics.trailers_of(self.root / "missing", "fix(Q1): x\n\nFindings: 2\n")
+        self.assertIn("git interpret-trailers failed", str(ctx.exception))
+        self.assertEqual(metrics.trailers_of(self.root, "fix(Q1): x\n\nFindings: 2\n"), [("Findings", "2")])
+
     def test_signals_per_id(self):
         self.write_config({"metrics": {"prices": self.PRICES}})
         self.ledger({"date": "2020-03-10", "input": 1_000_000, "refs": ["Q1"]})

@@ -88,10 +88,12 @@ def tests_for(root, rules, files):
 def relative(root, name):
     """`name` (absolute or relative to the current directory) as a repo-relative path with `/`."""
     full = Path(os.path.abspath(name))
-    try:
-        return full.relative_to(root).as_posix()
-    except ValueError:
-        raise MapError(f"{name} is outside the project {root}; pass files of this project") from None
+    for candidate in (full, Path(os.path.realpath(full.parent)) / full.name):  # a symlinked path to the root
+        try:
+            return candidate.relative_to(root).as_posix()
+        except ValueError:
+            pass
+    raise MapError(f"{name} is outside the project {root}; pass files of this project")
 
 
 def diff_files(root, rev):

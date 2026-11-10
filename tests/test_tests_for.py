@@ -55,6 +55,17 @@ class TestsFor(unittest.TestCase):
         # {name:id} turns '-' into '_'; test_related_tests.py and test_missing.py do not exist, so they are left out.
         self.assertEqual(out.splitlines(), ["tests/test_config_guard.py", "tests/test_hooks.py"])
 
+    def test_a_path_through_a_symlink_to_the_root_counts_as_inside(self):
+        link = Path(tempfile.mkdtemp(prefix="gw-tests-for-link-")) / "repo"
+        self.addCleanup(shutil.rmtree, link.parent, True)
+        link.symlink_to(self.tmp, target_is_directory=True)
+        code, out, err = self.run_cli(str(link / "scripts" / "config-guard.py"))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(out.splitlines(), ["tests/test_config_guard.py", "tests/test_hooks.py"])
+        code, out, err = self.run_cli(str(link.parent / "elsewhere.py"))
+        self.assertEqual(code, 2)
+        self.assertIn("is outside the project", err)
+
     def test_path_placeholder_and_contains(self):
         self.write("tests/test_a.py", "MAIL = 'someone@example.org'\n")
         code, out, err = self.run_cli("tests/test_a.py", "tests/test_b c.py")

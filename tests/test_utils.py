@@ -2207,6 +2207,7 @@ class HandoffArchive(Base):
         (self.p.work / ".claude-plugin" / "plugin.json").unlink()
         code, out = self.archive(path)
         self.assertEqual(code, 2)
+        self.assertIn("no vX.Y.Z tag in the repo", out)
         self.assertIn("archive needs the published version", out)
         self.assertIn("handoff.py archive", out)
         self.p.write(".claude-plugin/plugin.json", json.dumps({"version": "0.5.1"}))
@@ -2220,6 +2221,18 @@ class HandoffArchive(Base):
         code, out = self.archive(self.tmp / "missing.md")
         self.assertEqual(code, 2)
         self.assertIn("cannot read", out)
+
+    def test_without_plugin_json_the_highest_version_tag_is_the_published_one(self):
+        (self.p.work / ".claude-plugin" / "plugin.json").unlink()
+        for tag in ("v0.4.2", "v0.10.0", "v0.9.9", "vnext"):
+            subprocess.run(["git", "-C", str(self.p.work), "tag", tag], check=True, capture_output=True)
+        path = self.log("- old `0.9.1`\n- future `0.10.1`\n")
+        code, out = self.archive(path)
+        self.assertEqual(code, 0, out)
+        section = self.section(path)
+        self.assertIn("(≤ 0.10.0)", section)
+        self.assertIn("future `0.10.1`", section)
+        self.assertNotIn("old `0.9.1`", section)
 
     def test_check_warns_above_log_size_with_the_command_and_still_exits_0(self):
         path = self.log("- filler " + "x" * 300 + "\n")

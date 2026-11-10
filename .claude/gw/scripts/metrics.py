@@ -497,6 +497,8 @@ def trailers_of(root, message):
                            capture_output=True, text=True, timeout=GIT_TIMEOUT)
     except (OSError, subprocess.SubprocessError) as exc:
         raise MetricsError(f"git interpret-trailers could not run ({exc})")
+    if r.returncode != 0:
+        raise MetricsError(f"git interpret-trailers failed ({r.stderr.strip()}); check git with: git --version")
     out = []
     for line in r.stdout.splitlines():
         key, sep, value = line.partition(":")

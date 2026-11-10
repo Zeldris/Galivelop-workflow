@@ -28,6 +28,7 @@ given, not the repo's. Fails closed: no config, invalid config or unknown key ->
 Python 3.8+ (macOS ships 3.9).
 """
 import argparse
+import functools
 import json
 import os
 import posixpath
@@ -253,86 +254,79 @@ def validate(value, schema, path="$"):
     return errors
 
 
-def instruction_lines(config):
-    """The `instructionLines` key as (warn, fail): the line limits of AGENTS.md/CLAUDE.md, each missing part filled
-    from the schema default (the only place the defaults live)."""
-    schema = json.loads(schema_path().read_text(encoding="utf-8"))
-    prop = schema["properties"]["instructionLines"]
-    given = config.get("instructionLines")
+@functools.lru_cache(maxsize=None)
+def _schema_text():
+    return schema_path().read_text(encoding="utf-8")
+
+
+def _schema():
+    """The parsed schema: read once per process, a fresh copy per call (callers may change what they get)."""
+    return json.loads(_schema_text())
+
+
+def _section(config, key):
+    """The object key `key` of the config with every missing inner key filled from the schema default (the only place
+    the defaults live): the loader fills only top-level keys."""
+    props = _schema()["properties"][key]["properties"]
+    given = config.get(key)
     given = given if isinstance(given, dict) else {}
-    return tuple(given.get(k, prop["properties"][k]["default"]) for k in ("warn", "fail"))
+    return {k: given.get(k, prop["default"]) for k, prop in props.items()}
+
+
+def instruction_lines(config):
+    """The `instructionLines` key as (warn, fail): the line limits of AGENTS.md/CLAUDE.md."""
+    limits = _section(config, "instructionLines")
+    return limits["warn"], limits["fail"]
 
 
 def context_guard(config):
-    """The `contextGuard` key as a dict (cutoff, window, autocompactShare, warn, alarm), each missing part filled
-    from the schema default (the only place the defaults live)."""
-    schema = json.loads(schema_path().read_text(encoding="utf-8"))
-    props = schema["properties"]["contextGuard"]["properties"]
-    given = config.get("contextGuard")
-    given = given if isinstance(given, dict) else {}
-    return {k: given.get(k, props[k]["default"]) for k in props}
+    """The `contextGuard` key as a dict (cutoff, window, autocompactShare, warn, alarm)."""
+    return _section(config, "contextGuard")
 
 
 def metrics(config):
-    """The `metrics` key as a dict (ledger, record, reports, prices, alert, quality), each missing part filled from the schema
-    default (the only place the defaults live); `alert` and `quality` are filled key by key."""
-    props = json.loads(schema_path().read_text(encoding="utf-8"))["properties"]["metrics"]["properties"]
-    given = config.get("metrics")
-    given = given if isinstance(given, dict) else {}
-    out = {k: given.get(k, props[k]["default"]) for k in props}
-    alert = out["alert"] if isinstance(out["alert"], dict) else {}
-    out["alert"] = {k: alert.get(k, p["default"]) for k, p in props["alert"]["properties"].items()}
-    quality = out["quality"] if isinstance(out["quality"], dict) else {}
-    out["quality"] = {k: quality.get(k, p["default"]) for k, p in props["quality"]["properties"].items()}
+    """The `metrics` key as a dict (ledger, record, reports, prices, alert, quality); `alert` and `quality` are filled
+    key by key."""
+    out = _section(config, "metrics")
+    props = _schema()["properties"]["metrics"]["properties"]
+    for key in ("alert", "quality"):
+        given = out[key] if isinstance(out[key], dict) else {}
+        out[key] = {k: given.get(k, p["default"]) for k, p in props[key]["properties"].items()}
     return out
 
 
 def models(config):
-    """The `models` key as a dict (disabled), each missing part filled from the schema default (B7)."""
-    props = json.loads(schema_path().read_text(encoding="utf-8"))["properties"]["models"]["properties"]
-    given = config.get("models")
-    given = given if isinstance(given, dict) else {}
-    return {k: given.get(k, props[k]["default"]) for k in props}
+    """The `models` key as a dict (disabled) (B7)."""
+    return _section(config, "models")
 
 
 def test_map(config):
-    """The `testMap` key as a dict (rules, command), each missing part filled from the schema default (E21)."""
-    props = json.loads(schema_path().read_text(encoding="utf-8"))["properties"]["testMap"]["properties"]
-    given = config.get("testMap")
-    given = given if isinstance(given, dict) else {}
-    return {k: given.get(k, props[k]["default"]) for k in props}
+    """The `testMap` key as a dict (rules, command) (E21)."""
+    return _section(config, "testMap")
 
 
 def change_size(config):
-    """The `changeSize` key as a dict (commit, block, exclude, pairs), each missing part filled from the schema default
-    (D43)."""
-    props = json.loads(schema_path().read_text(encoding="utf-8"))["properties"]["changeSize"]["properties"]
-    given = config.get("changeSize")
-    given = given if isinstance(given, dict) else {}
-    return {k: given.get(k, props[k]["default"]) for k in props}
+    """The `changeSize` key as a dict (commit, block, exclude, pairs) (D43)."""
+    return _section(config, "changeSize")
 
 
 def marketing_sheets(config):
-    """The `marketingSheets` settings with every inner key filled from the schema defaults (the loader only fills
-    top-level keys, so `{"sources": [...]}` alone is a valid way to turn the feature on)."""
-    props = json.loads(schema_path().read_text(encoding="utf-8"))["properties"]["marketingSheets"]["properties"]
-    given = config.get("marketingSheets")
-    given = given if isinstance(given, dict) else {}
-    return {key: given.get(key, prop["default"]) for key, prop in props.items()}
+    """The `marketingSheets` settings (`{"sources": [...]}` alone is a valid way to turn the feature on)."""
+    return _section(config, "marketingSheets")
 
 
 def log_size(config):
     """The `logSize` key: the cap on the hand-off log in characters (0 = no cap), the schema default when absent."""
-    schema = json.loads(schema_path().read_text(encoding="utf-8"))
     given = config.get("logSize")
-    return given if isinstance(given, int) and not isinstance(given, bool) else schema["properties"]["logSize"]["default"]
+    if isinstance(given, int) and not isinstance(given, bool):
+        return given
+    return _schema()["properties"]["logSize"]["default"]
 
 
 def log_archive(config):
     """The `logArchive` key: repo-relative path of the hand-off archive, the schema default when absent."""
-    schema = json.loads(schema_path().read_text(encoding="utf-8"))
     given = config.get("logArchive")
-    return given if isinstance(given, str) and given else schema["properties"]["logArchive"]["default"]
+    return given if isinstance(given, str) and given else _schema()["properties"]["logArchive"]["default"]
 
 
 def semantic_errors(config):
