@@ -125,8 +125,16 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
 - **Before the PR, only what matters:** fix what is serious or medium, and what the fix itself breaks; log the minor
   findings as pending in `log` and do not review them again in this PR (`/code-review --max-findings all` still
   serves to list them). Otherwise every fix is reviewed again, brings new findings and the PR grows without end.
-  The fixes of that review are dealt too, as the rows of the next rule (the findings file as the pointer); only a
-  one-file fix whose place the reviewer gave stays in the main session.
+  The fixes of that review are dealt too, as in the next rule; only a one-file fix whose place the reviewer gave
+  stays in the main session.
+- **Approved review findings are dealt by group of files:** after the user approves the findings of a `/code-review`,
+  group them by the files they touch (findings that share a file go together; a group stays within the ~30-call cap)
+  and deal one subagent per group, in series on the working branch or in parallel worktrees as in the rules above.
+  The rung follows the files: `sonnet` for mechanical fixes (a rename, a doc, the installed copies), `opus` for hooks,
+  push/merge guards, security and the scripts they call (a cheaper model there costs quality). A fix brief is the one
+  case where the brief copies text: each finding verbatim with its failure scenario (from the findings file), plus
+  that file's path, so the subagent fixes the cause, not the symptom. The main session reviews each returned diff
+  against those scenarios before the next group. Ten review fixes worked inline took ~100 calls at ~120k context.
 - **One writing subagent at a time on the same branch.** Two that commit to the same branch collide in the log and in
   shared files. In parallel, only what does not write (searching, reading, measuring).
 - **A subagent that writes in the background always works in a worktree, even alone:** the main session keeps

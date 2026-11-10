@@ -144,7 +144,7 @@ En este orden, porque cada paso usa el anterior.
 | B10 | El `gw-selector` recomienda modelo y esfuerzo de la sesión principal | hecho (2026-11-09; columna de esfuerzo, línea `Session: <modelo> <esfuerzo> (current: …)` y `sessionEffort` en `selector.cases`) |
 | B11 | Modelo y esfuerzo por agente (palancas de Claude Code) | hecho (2026-11-09; `models.agentFields` en `subagent-cap.py`, `models.checkLevers` en `doctor.py`, regla en `gw-selector` y `gw-orchestrate-dealer`) |
 | E21 | `scripts/tests-for.py <archivos>` (clave `testMap`; no `related-tests.py`: chocaba con `related-tests.sh` y su test): los tests de un cambio, citado en el encargo de `gw-orchestrate-dealer`; en `REVIEW.md`, un script que hace commits se prueba con los ganchos instalados (retro `0.5.0` R2) | hecha (2026-11-09) |
-| B16 | `gw-orchestrate-dealer`: los hallazgos aprobados de un `/code-review` se reparten a subagentes por grupo de archivos (retro `0.5.0` R3) | pendiente |
+| B16 | `gw-orchestrate-dealer`: los hallazgos aprobados de un `/code-review` se reparten a subagentes por grupo de archivos (retro `0.5.0` R3) | hecha (2026-11-10; regla «Approved review findings are dealt by group of files») |
 | D42 | `gw-orchestrate-dealer`: carpeta `scratchpad/<id>/` por agente, comprobar la base del worktree y cortar con `TaskStop` (retro `0.5.0` R4) | pendiente |
 | E22 | `check.sh` corre también los tests con el Python más viejo disponible, o avisa si no hay (retro `0.5.0` R6) | pendiente |
 | B18 | Revisión por bloques en una rama larga: `/code-review` del diff nuevo en cada bloque cerrado, en `gw-selector` y la plantilla de `AGENTS.md` (recogida `0.5.1`, world-maker-fantasy P1) | pendiente |

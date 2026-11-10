@@ -143,7 +143,7 @@ In this order, because each step uses the previous one.
 | B10 | The `gw-selector` recommends the main session's model and effort | done (2026-11-09; effort column, line `Session: <model> <effort> (current: …)` and `sessionEffort` in `selector.cases`) |
 | B11 | Model and effort per agent (Claude Code levers) | done (2026-11-09; `models.agentFields` in `subagent-cap.py`, `models.checkLevers` in `doctor.py`, rule in `gw-selector` and `gw-orchestrate-dealer`) |
 | E21 | `scripts/tests-for.py <files>` (key `testMap`; not `related-tests.py`: it clashed with `related-tests.sh` and its test): the tests of a change, cited in the `gw-orchestrate-dealer` brief; in `REVIEW.md`, a script that commits is tested with the hooks installed (retro `0.5.0` R2) | done (2026-11-09) |
-| B16 | `gw-orchestrate-dealer`: the approved findings of a `/code-review` are dealt out to subagents by group of files (retro `0.5.0` R3) | pending |
+| B16 | `gw-orchestrate-dealer`: the approved findings of a `/code-review` are dealt out to subagents by group of files (retro `0.5.0` R3) | done (2026-11-10; rule «Approved review findings are dealt by group of files») |
 | D42 | `gw-orchestrate-dealer`: a `scratchpad/<id>/` folder per agent, check the worktree base and stop with `TaskStop` (retro `0.5.0` R4) | pending |
 | E22 | `check.sh` also runs the tests with the oldest Python available, or warns if there is none (retro `0.5.0` R6) | pending |
 | B18 | Review by blocks on a long branch: `/code-review` of the new diff at each closed block, in `gw-selector` and the `AGENTS.md` template (`0.5.1` harvest, world-maker-fantasy P1) | pending |
