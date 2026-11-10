@@ -157,6 +157,15 @@
       ],
       "description": "Regexes (Python syntax) searched in each repo-relative path a push changes: one match makes a branch push with branchCheck related run the full check (an environment change). .claude/gw.json always counts."
     },
+    "ownedFiles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": [],
+      "description": "Repo-relative path patterns (fnmatch; an exact path is one) of workflow files the project made its own on purpose, e.g. .githooks/commit-msg. apply.py never overwrites one that exists and differs, writes no .gw-new for it and does not count it as drift; doctor.py does not recommend /gw-update for it. Absolute paths and '..' are rejected."
+    },
     "checkCacheInputs": {
       "type": "array",
       "items": {

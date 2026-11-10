@@ -452,6 +452,65 @@ class Apply(unittest.TestCase):
         self.assertIn("Siguiente:", out)
 
 
+class OwnedFiles(unittest.TestCase):  # D53
+    HOOK = ".githooks/commit-msg"
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="gw-owned-")).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.p = Fixture(self.tmp, {"ownedFiles": [self.HOOK]})
+        code, out = self.p.run_apply()
+        self.assertEqual(code, 0, out)
+
+    def test_differing_owned_file_is_kept_without_proposal_and_check_passes(self):
+        p = self.p
+        p.write(self.HOOK, "#!/bin/sh\n# the project's own hook\n")
+        for args in ((), ("--update",), ("--check",)):
+            code, out = p.run_apply(*args)
+            self.assertEqual(code, 0, out)
+            self.assertIn(f"owned by the project (ownedFiles): {self.HOOK}", out)
+        self.assertEqual(p.read(self.HOOK), "#!/bin/sh\n# the project's own hook\n")
+        self.assertFalse((p.work / (self.HOOK + ".gw-new")).exists())
+        self.assertNotIn("pending proposal", p.run_apply("--check")[1])
+
+    def test_not_owned_differing_file_still_gets_a_proposal(self):
+        p = self.p
+        p.write(".githooks/pre-commit", "#!/bin/sh\n# local\n")
+        code, out = p.run_apply("--check")
+        self.assertEqual(code, 1, out)
+        self.assertIn(".githooks/pre-commit.gw-new", out)
+
+    def test_leftover_proposal_is_a_warning_not_drift(self):
+        p = self.p
+        p.write(self.HOOK, "#!/bin/sh\n# own\n")
+        p.write(self.HOOK + ".gw-new", "old proposal\n")
+        code, out = p.run_apply("--check")
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"WARNING: {self.HOOK}.gw-new is a leftover proposal", out)
+        self.assertIn(f"rm {self.HOOK}.gw-new", out)
+        self.assertNotIn("pending proposal", out)
+
+    def test_missing_owned_file_is_created(self):
+        p = self.p
+        (p.work / self.HOOK).unlink()
+        code, out = p.run_apply("--check")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"create  {self.HOOK}", out)
+        self.assertEqual(p.run_apply()[0], 0)
+        self.assertTrue((p.work / self.HOOK).is_file())
+
+    def test_owned_file_the_workflow_no_longer_has_is_not_an_orphan(self):
+        p = self.p
+        p.write(".githooks/old-hook", "#!/bin/sh\n# galivelop-workflow v0.0.1\n")
+        code, out = p.run_apply("--check")
+        self.assertEqual(code, 1, out)
+        self.assertIn("is no longer in the workflow", out)
+        p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, ownedFiles=[".githooks/old-*"])) + "\n")
+        code, out = p.run_apply("--check")
+        self.assertEqual(code, 0, out)
+        self.assertIn("owned by the project (ownedFiles): .githooks/old-hook (no longer in the workflow)", out)
+
+
 class PersonalNotes(unittest.TestCase):
     """Personal notes: regular files of GW_PERSONAL_NOTES (default ~/.claude/gw/notas) copied to
     <project>/.claude/gw/ when missing; a differing one is reported and never touched."""

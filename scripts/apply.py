@@ -89,6 +89,10 @@ workflow-owned (a `galivelop-workflow vX.Y.Z` header, or metadata.version in the
 the workflow, and either older or --update is given. Otherwise the new content goes next to it as <file>.gw-new,
 a proposal to review by hand (A8, 0.x: a loose <file>.gw-nuevo from before the rename is still recognized, with a
 warning). Files the workflow no longer has are reported, never deleted. Never commits.
+`ownedFiles` (config): a path matching one of its patterns that exists and differs is never overwritten and gets no
+.gw-new; it is printed as `owned by the project (ownedFiles): <path>` and is not drift (--check exits 0). Missing ->
+created; identical -> as usual; a leftover .gw-new for it is warned about, not pending; a file the workflow no longer
+has is not an orphan.
 In the workflow repo itself the copy is generated from scripts/ and skills/, so --update is implied there.
 
   --check     no writes; exit 1 if the copy differs from the workflow (anything to create, update, merge or chmod,
@@ -266,11 +270,32 @@ class Plan:
         self.personal = []  # info lines about personal notes the project has differently: never drift
         self.pending = []   # proposals already written and still current
         self.orphans = []   # files the workflow no longer has
+        self.cfg = {}       # the project's config, for ownedFiles
+        self.owned = []     # info lines about files the project made its own (ownedFiles): never drift
         self.moved_to = set()   # repo-relative targets of the planned moves: nothing is seeded there
         self.hooks_path = None  # None, or the hint line about core.hooksPath
         self.set_hooks_path = False
 
     # ------------------------------------------------------------- files
+
+    def is_owned(self, rel):
+        return config.owned(self.cfg, rel)
+
+    def keep_owned(self, rel, current, data):
+        """ownedFiles: True when `rel` is the project's own and differs from the workflow's: never written, no
+        .gw-new, only an info line. A leftover .gw-new for it is warned about, not counted as pending."""
+        if not self.is_owned(rel):
+            return False
+        for suffix in (PROPOSAL, OLD_PROPOSAL):
+            if (self.root / (str(rel) + suffix)).is_file():
+                self.warnings.append(f"{rel}{suffix} is a leftover proposal for a file the project owns "
+                                     f"(ownedFiles); it is not used: delete it: rm {rel}{suffix}")
+        if current == data:
+            return False
+        line = f"owned by the project (ownedFiles): {rel}"
+        if line not in self.owned:
+            self.owned.append(line)
+        return True
 
     def file(self, src, rel, owner_version=None, owned=None, data=None, existing=None):
         """Plan one copy. owner_version/owned: for skill files, from the project's SKILL.md (read before writes).
@@ -287,6 +312,9 @@ class Plan:
         if current == data:
             if want_exec and not is_exec(here):
                 self.actions.append(("chmod", rel, None, True, "make it executable"))
+            self.keep_owned(rel, current, data)  # only the leftover .gw-new warning
+            return
+        if self.keep_owned(rel, current, data):
             return
         if owned is None:
             found = header_version(current)
@@ -359,6 +387,8 @@ class Plan:
             return
         current = dest.read_bytes()
         if current == data:
+            return
+        if self.keep_owned(rel, current, data):
             return
         found = header_version(current)
         older = found is not None and version_key(found) < version_key(self.version)
@@ -1175,6 +1205,7 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
 def build(root, version, update, extra_skills, cfg, personal=True, check=False, keep_paths=False):
     self_apply = root.resolve() == WORKFLOW.resolve()
     plan = Plan(root, version, update or self_apply)
+    plan.cfg = cfg
     if not self_apply:  # this repo renames its own files in a later chunk of A8
         plan_paths(plan, cfg, keep_paths)
         plan_media_folder(plan, keep_paths)
@@ -1233,6 +1264,9 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
     if personal and not is_workflow_repo(root):
         plan_personal_notes(plan, check)
     plan_hooks_path(plan)
+    for o in [o for o in plan.orphans if plan.is_owned(o)]:  # a file the workflow dropped but the project owns
+        plan.orphans.remove(o)
+        plan.owned.append(f"owned by the project (ownedFiles): {o} (no longer in the workflow)")
     return plan
 
 
@@ -1269,7 +1303,7 @@ def report(plan):
             print(f"  {line}")
         if len(diff) > DIFF_LINES:
             print(f"  … {len(diff) - DIFF_LINES} more line(s)")
-    for line in plan.personal:
+    for line in plan.personal + plan.owned:
         print(f"apply: {line}")
     for warning in plan.warnings:
         print(f"apply: WARNING: {warning}")

@@ -302,7 +302,7 @@ def check_worktree_links(rep, root, cfg):
         rep.ok("worktree links", "every `cd <folder> &&` in check has its dependency folders in worktreeLinks")
 
 
-def check_githooks(rep, root, version):
+def check_githooks(rep, root, version, cfg=None):
     for name in ("pre-push", "pre-commit", "commit-msg"):
         path = root / ".githooks" / name
         check = f"githook {name}"
@@ -313,7 +313,9 @@ def check_githooks(rep, root, version):
             rep.fail(check, f".githooks/{name} is not executable", f"chmod +x .githooks/{name}")
             continue
         found = header_version(path)
-        if version and found != version:
+        if version and found != version and cfg and config.owned(cfg, f".githooks/{name}"):
+            rep.ok(check, f".githooks/{name} present and executable; owned by the project (ownedFiles)")
+        elif version and found != version:
             rep.warn(check, f".githooks/{name} is version {found or '(no header)'}, the config says {version}",
                      "/gw-update")
         else:
@@ -619,13 +621,15 @@ def skill_metadata(path):
     return meta
 
 
-def check_skills(rep, root, version, proposals=()):
+def check_skills(rep, root, version, proposals=(), cfg=None):
     base = root / ".claude" / "skills"
     if not version or not base.is_dir():
         return
     stale = []
     for skill in sorted(base.glob("*/SKILL.md")):
         meta = skill_metadata(skill)
+        if cfg and config.owned(cfg, skill.relative_to(root).as_posix()):
+            continue
         if SOURCES.search(meta.get("source", "")) and meta.get("version") != version:
             stale.append(f"{skill.parent.name} ({meta.get('version') or 'no version'})")
     cites = [s.parent.name for s in sorted(base.glob("*/SKILL.md"))
@@ -938,7 +942,7 @@ def run(root):
     version = cfg["version"] if cfg else None
     check_hooks_path(rep, root)
     check_ignored(rep, root)
-    check_githooks(rep, root, version)
+    check_githooks(rep, root, version, cfg)
     check_legacy_paths(rep, cfg)
     check_worktrees(rep, root, cfg)
     check_worktree_links(rep, root, cfg)
@@ -954,7 +958,7 @@ def run(root):
     check_media_folder(rep, root)
     check_media_tools(rep, root)
     proposals = check_proposals(rep, root)
-    check_skills(rep, root, version, proposals)
+    check_skills(rep, root, version, proposals, cfg)
     check_session(rep, root)
     check_compaction(rep, root)
     check_levers(rep, root, cfg)

@@ -368,6 +368,23 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn(needle, r.stderr)
 
+    def test_owned_files_validation_and_helper(self):  # D53
+        self.write(dict(VALID, ownedFiles=[".githooks/commit-msg", ".claude/skills/x/*"]))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        cfg = config.load(str(self.tmp))
+        self.assertTrue(config.owned(cfg, ".githooks/commit-msg"))
+        self.assertTrue(config.owned(cfg, ".claude/skills/x/SKILL.md"))
+        self.assertFalse(config.owned(cfg, ".githooks/pre-push"))
+        self.write(VALID)
+        self.assertEqual(config.load(str(self.tmp))["ownedFiles"], [])
+        for bad, needle in ((["/etc/hosts"], "$.ownedFiles[0]: '/etc/hosts' is an absolute path"),
+                            ([".githooks/x", "a/../b"], "$.ownedFiles[1]: 'a/../b' has a '..' component"),
+                            ([""], "$.ownedFiles[0]")):
+            self.write(dict(VALID, ownedFiles=bad))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn(needle, r.stderr)
+
     def test_related_picks_the_commands_that_apply(self):
         entries = ["echo always", {"command": "run {files}", "paths": "\\.ts$", "cwd": "app"}]
         self.write(dict(VALID, relatedTests={"fast": entries}, checkWrapper="w.sh"))

@@ -163,7 +163,7 @@ Para cada uno:
    bloques del flujo (inicio de sesión, relevos, comprobar, commits, ramas). `CLAUDE.md` acaba con `@AGENTS.md` más
    lo propio de Claude. Mantén la marca `<!-- galivelop-workflow vX.Y.Z -->` de la primera línea.
 3. Otros archivos: acepta la propuesta entera (`mv <archivo>.gw-new <archivo>`) solo si la persona lo confirma.
-4. Borra el `.gw-new` al terminar. `apply.py --check` lo cuenta como diferencia mientras exista.
+4. Borra el `.gw-new` al terminar. `apply.py --check` lo cuenta como diferencia mientras exista. Si el proyecto quiere conservar un archivo propio para siempre, lo lista en `ownedFiles` (`config.md`) y deja de proponerse.
 
 Rellena también los huecos de la bitácora (como mínimo rama, fase y siguiente paso; el resto de secciones puede
 quedarse como viene hasta que haya algo que escribir) y añade las reglas propias del proyecto en las secciones

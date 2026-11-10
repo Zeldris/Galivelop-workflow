@@ -28,6 +28,7 @@ given, not the repo's. Fails closed: no config, invalid config or unknown key ->
 Python 3.8+ (macOS ships 3.9).
 """
 import argparse
+import fnmatch
 import functools
 import json
 import os
@@ -329,10 +330,17 @@ def log_archive(config):
     return given if isinstance(given, str) and given else _schema()["properties"]["logArchive"]["default"]
 
 
+def owned(config, rel):
+    """Whether the repo-relative path `rel` matches an `ownedFiles` pattern (fnmatch.fnmatchcase; an exact path is a
+    pattern): a workflow file the project made its own on purpose, so apply.py and doctor.py leave it alone."""
+    rel = str(rel).replace(os.sep, "/")
+    return any(isinstance(p, str) and fnmatch.fnmatchcase(rel, p) for p in config.get("ownedFiles") or [])
+
+
 def semantic_errors(config):
     """Problems the schema subset cannot express: a relatedTests `paths`, testMap `paths`/`contains` or changeSize
     `exclude`/`pairs` or fullCheckPaths entry that is not a valid regex (or a pair replacement that does not fit its regex), an agentMap
-    prefix that is not one folder name, an instructionLines `warn` above its `fail`."""
+    prefix that is not one folder name, an instructionLines `warn` above its `fail`, an ownedFiles pattern that is absolute or has a `..`."""
     errors = []
     warn, fail = instruction_lines(config)
     if warn > fail:
@@ -375,6 +383,13 @@ def semantic_errors(config):
                 re.compile(rx)
             except re.error as exc:
                 errors.append(f"$.fullCheckPaths[{i}]: {rx!r} is not a valid regex ({exc})")
+    for i, pat in enumerate(config.get("ownedFiles") or []):
+        if isinstance(pat, str) and pat:
+            parts = pat.replace("\\", "/").split("/")
+            if pat.startswith("/") or re.match(r"^[A-Za-z]:", pat):
+                errors.append(f"$.ownedFiles[{i}]: {pat!r} is an absolute path; use a path relative to the repo root")
+            elif ".." in parts:
+                errors.append(f"$.ownedFiles[{i}]: {pat!r} has a '..' component; use a path inside the repo")
     for rx, repl in (size.get("pairs") or {}).items():
         try:
             re.compile(rx).sub(repl, "")

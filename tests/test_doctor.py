@@ -164,6 +164,18 @@ class Doctor(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertLine(out, "WARN", "pre-push", "0.0.1", "/gw-update")
 
+    def test_owned_hook_with_another_header_is_ok_not_a_warning(self):  # D53
+        hook = self.p.work / ".githooks" / "pre-push"
+        hook.write_text("#!/bin/sh\n# the project's own hook\n")
+        self.p.write(".claude/gw.json", json.dumps(dict(
+            json.loads((self.p.work / ".claude" / "gw.json").read_text()), ownedFiles=[".githooks/pre-push"])))
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "OK", "pre-push", "owned by the project (ownedFiles)")
+        self.assertNotIn("WARN  githook pre-push", out)
+        hook.chmod(0o644)
+        self.assertLine(self.doctor()[1], "FAIL", "chmod +x .githooks/pre-push")
+
     def test_hook_not_executable(self):
         (self.p.work / ".githooks" / "pre-commit").chmod(0o644)
         code, out = self.doctor()

@@ -18,6 +18,7 @@
   "checkReuseMark": true,
   "branchCheck": "related",
   "fullCheckPaths": ["^\\.githooks/", "^\\.claude/gw/", "^\\.claude/settings(\\.local)?\\.json$", "^\\.github/workflows/"],
+  "ownedFiles": [],
   "checkCacheInputs": [".claude/gw.local.json"],
   "checkOutputGrace": 5,
   "worktreeLinks": ["node_modules", ".venv"],

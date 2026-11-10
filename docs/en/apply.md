@@ -163,7 +163,7 @@ For each one:
    are added (session start, hand-offs, checking, commits, branches). `CLAUDE.md` ends up with `@AGENTS.md` plus
    what is Claude's own. Keep the `<!-- galivelop-workflow vX.Y.Z -->` marker on the first line.
 3. Other files: accept the whole proposal (`mv <file>.gw-new <file>`) only if the person confirms.
-4. Delete the `.gw-new` when done. `apply.py --check` counts it as a difference while it exists.
+4. Delete the `.gw-new` when done. `apply.py --check` counts it as a difference while it exists. A file the project keeps as its own for good goes in `ownedFiles` (`config.md`) and is no longer proposed.
 
 Also fill in the log's placeholders (at least branch, phase and next step; the other sections can stay as they come
 until there is something to write) and add the project's own rules to the "Project rules" sections of `REVIEW.md`
