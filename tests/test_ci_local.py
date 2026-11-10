@@ -190,7 +190,7 @@ jobs:
         self.assertIn("› echo ${{ secrets.TOKEN }} (the context secrets is not available locally)", line)
 
     def template(self):
-        text = (ROOT / "templates" / "github" / "check.yml").read_text().replace("{{protectedBranch}}", "main")
+        text = (ROOT / "templates" / "github" / "check.yml").read_text().replace("{{ciPushIgnore}}", "main")
         self.workflow(text.replace("runs-on: ubuntu-latest", f"runs-on: {HOST}"), name="check.yml")  # also on macOS
 
     def test_the_ci_template_with_a_matrix_from_an_expression_runs_its_check_job_once(self):
