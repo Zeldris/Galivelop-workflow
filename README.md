@@ -95,8 +95,8 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 - `md-links.py` finds broken links and stale references in the Markdown, and `agent-map.py` checks that the agent
   map doesn't point at anything that no longer exists. `tests-after-main.py` fails when a `unittest` test class sits
   after the `unittest.main()` call, where it would never run.
-- The repo itself runs **more than a thousand automated tests**, on Linux and macOS, and is worked on with its own
-  workflow: if a rule gets in the way here, it gets in the way in every project.
+- The repo itself runs **more than a thousand automated tests**, on Linux and macOS (and, locally, the tests of each
+  change again on the oldest Python 3.8+ the machine has), and is worked on with its own workflow: if a rule gets in the way here, it gets in the way in every project.
 
 ## What a task looks like
 

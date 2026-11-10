@@ -66,6 +66,9 @@ for d in skills/*/scripts; do
   fi
 done
 
+section "python (oldest available, E22)"
+bash tests/old-python.sh || bad
+
 if ((fail)); then
   while IFS= read -r f; do echo "FAILED: $f"; done <<<"$failed"
   echo "CHECK FAILED"

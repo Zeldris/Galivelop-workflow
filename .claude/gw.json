@@ -69,6 +69,12 @@
         ]
       },
       {
+        "paths": "^tests/(?P<name>[^/]+)\\.sh$",
+        "tests": [
+          "tests/test_{name:id}.py"
+        ]
+      },
+      {
         "paths": "^tests/test_[^/]+\\.py$",
         "tests": [
           "{path}"

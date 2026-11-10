@@ -41,6 +41,7 @@ documentos. Si mueves una pieza, actualiza su fila en el mismo commit.
 | Recogida de mejoras (una por versión) | `skills/gw-harvest/SKILL.md`, `AGENTS.md`; anonimizada (E3): `anonymize` de `gw.local.json` (`LOCAL_KEYS` en `scripts/config.py`), [`design/E-quality.md`](design/E-quality.md) punto 3 | `scripts/harvest.py` (`Anonymizer`, con el `name_regex` de `private-check.py`), `docs/proposals/`; `scripts/version.py --release` la exige; tests en `tests/test_harvest.py` (`Anonymized`) y `tests/test_private_check.py` |
 | Hojas de presentación (A10) | `marketingSheets` en [`es/config.md`](es/config.md); las fuentes, `docs/es/mkt-*.md` ↔ `docs/en/mkt-*.md` | `scripts/mkt-sheet.py` (`build`, `pdf` con Playwright, `check` en `tests/check.sh`), salida en `docs/mkt/`; tests en `tests/test_mkt_sheet.py` |
 | Tests | `tests/test_*.py`, `skills/*/scripts/test_*.py` | `tests/check.sh` |
+| El Python más viejo disponible (E22) | cabecera de `tests/old-python.sh` | `tests/old-python.sh` (sección de `tests/check.sh`; tests en `tests/test_old_python.py`) |
 | Ninguna `TestCase` después de `unittest.main()` (nunca correría) | cabecera de `scripts/tests-after-main.py`; en `check` de `templates/gw.json` | `scripts/tests-after-main.py` (en `tests/check.sh` y en el `check` de las plantillas; tests en `tests/test_tests_after_main.py`) |
 | Problemas conocidos | [`es/troubleshooting.md`](es/troubleshooting.md), [`en/troubleshooting.md`](en/troubleshooting.md) | — |
 

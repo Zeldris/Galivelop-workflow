@@ -99,7 +99,8 @@ comprobación.
 - `md-links.py` encuentra enlaces rotos y referencias desfasadas en el Markdown, y `agent-map.py` comprueba que
   el mapa para agentes no apunta a nada que ya no exista. `tests-after-main.py` falla si una clase de test de
   `unittest` queda después de `unittest.main()`, donde nunca correría.
-- El propio repo pasa **más de mil pruebas automáticas**, en Linux y macOS, y se trabaja con su propio flujo: si una
+- El propio repo pasa **más de mil pruebas automáticas**, en Linux y macOS (y, en local, otra vez los tests de cada
+  cambio con el Python 3.8+ más viejo de la máquina), y se trabaja con su propio flujo: si una
   regla estorba aquí, estorba en todos los proyectos.
 
 ## Cómo es una tarea
