@@ -54,8 +54,10 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    function), never the pasted text. Template:
 
    ```text
-   You work in this repository on branch <branch>. In a fresh, clean worktree, first check that `git log -1` matches
-   `origin/<branch>`; if not, `git fetch origin <branch> && git reset --hard origin/<branch>`. Read your state with
+   You work in this repository on branch <branch>. In a fresh, clean worktree, first check its base:
+   `git merge-base --is-ancestor {head} HEAD`; if it fails (the worktree was born elsewhere, e.g. on `origin/main`),
+   `git reset --hard {head}` before anything else. Your scratch files (dumps, logs, drafts, findings) go in
+   `{scratch}/<id>-<topic>/`: create it, and never read or write another agent's folder. Read your state with
    `python3 .claude/gw/scripts/recover.py --state`; if it reports no row for your branch or the log has no
    per-branch rows, read the next step and pending sections of {log}. If you touch code, read REVIEW.md and
    AGENTS.md. Follow the project's commit and push rules: commit and push each stable point, log update in the
@@ -63,6 +65,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    At ~25 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
    To wait for something long (a push with its check), run it with `run_in_background` and watch it with `Monitor`
    (load it with ToolSearch first) until it exits; keep your turn open while it runs, and never a foreground `sleep`.
+   One background wait per long command. To stop a process you started, `TaskStop` with its id (load it with
+   ToolSearch); `kill` and `pkill` are denied to subagents, and a broad `pkill -f` kills other agents' work.
    Push with its output to a file outside the tree (`git push … > "$(git rev-parse --git-dir)/push.log" 2>&1`); if it
    fails, read the pre-push reason in that file before retrying.
    Task: <what, in one or two sentences>.
@@ -89,7 +93,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    Add FOUND: (one line per finding) and TOOLS: (failures of the project's scripts, hooks or CI) only if you have any.
    ```
 
-   `{check}`, `{log}`, `{protectedBranch}` and `{language}` are filled from the config before sending. Add a line
+   `{check}`, `{log}`, `{protectedBranch}` and `{language}` are filled from the config before sending; `{head}` is
+   the main session's `git rev-parse HEAD` when dealing (an `isolation` worktree starts from `worktree.baseRef`, often
+   `origin/main`, not from it), and `{scratch}` the session's scratchpad folder (outside the tree). Add a line
    for each project rule a fresh agent could miss.
 3. **Review what returns.** Fetch and check the commit (`git fetch`, `git log -1 --stat`) and that the done
    criterion holds. If it does not close, the retry climbs one ladder rung (the commit of that work carries
@@ -168,7 +174,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   once the limit resets; it continues from its transcript. A new subagent would redo the work. Commit its partial
   work as `WIP:` meanwhile.
 - **Intermediate state stays out of git:** dumps, screenshots, scratch logs and bench outputs go to a scratch folder
-  (or a path in `.gitignore`); only results, tests and the log are committed.
+  (or a path in `.gitignore`); only results, tests and the log are committed. Each subagent gets its own
+  `{scratch}/<id>-<topic>/` (named like its branch): in one shared folder an agent overwrote another's files.
 - **Measure:** `/gw-opt-tokens` before each PR compares the average context per call, the compactions and the per-model
   split with the previous session; if they do not fall, the dealing is staying in the main session.
 - **A batch of approved rows is dealt, not worked inline:** the rows of an approved proposal or a findings list go
