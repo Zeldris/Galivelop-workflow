@@ -12,7 +12,7 @@ retros. Recogida de cierre de la `0.6` (H18).
 - **Why it is general:** en el proyecto, 19 lecturas enteras de la bitácora costaron ~371k tokens; pasa en cualquier
   proyecto con bitácora larga.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → B26
 
 ## P2. `measure.py --since` elige la sesión que cubre el periodo
 
@@ -21,7 +21,7 @@ retros. Recogida de cierre de la `0.6` (H18).
   respuestas; con `--since`, debe escoger (o sumar) las sesiones cuyo rango cubre el periodo. Caso en `test_measure.py`.
 - **Why it is general:** es un fallo de medida en cualquier proyecto que mida un periodo pasado.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → D70
 
 ## P3. `handoff.py close-row` y `set-row` aceptan la rama igual
 
@@ -30,7 +30,7 @@ retros. Recogida de cierre de la `0.6` (H18).
   los dos acepten ambas formas y el uso lo diga claro; tests en `tests/test_utils.py`.
 - **Why it is general:** mezclarlas dio un error en uso real; la orden es la misma en todos los proyectos.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → D71
 
 ## P4. `gw-scout-updates` con 2 subagentes en vez de 4
 
@@ -40,7 +40,7 @@ retros. Recogida de cierre de la `0.6` (H18).
 - **Why it is general:** el coste de arranque por subagente se paga en cualquier proyecto; la cobertura la vigila
   `compare.py --report`.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → B25
 
 ## P5. Aviso automático de sello caducado de `gw-scout-updates`
 
@@ -49,7 +49,7 @@ retros. Recogida de cierre de la `0.6` (H18).
   avisaría «re-sella con gw-scout-updates».
 - **Why it is general:** un informe sellado sobre archivos que cambiaron después engaña en cualquier proyecto.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → D80
 
 ## P6. El `pre-commit` rechaza un autor Claude con `agentSignatures: false`
 
@@ -59,7 +59,7 @@ retros. Recogida de cierre de la `0.6` (H18).
   Ya pedida en `docs/proposals/2026-10-26-private-project-1.md` (P2): segunda vez que sale.
 - **Why it is general:** la regla «sin firmas» es del flujo y hoy no la comprueba ningún gancho.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → E41
 
 ## P7. Revisión de diffs triviales sin subagente; arreglos de la fase 1 a uno barato
 
@@ -69,7 +69,7 @@ retros. Recogida de cierre de la `0.6` (H18).
   subagente `sonnet`.
 - **Why it is general:** evita ~68k de arranque de subagente para un diff trivial en cualquier proyecto.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → B27
 
 ## Stays in the project
 

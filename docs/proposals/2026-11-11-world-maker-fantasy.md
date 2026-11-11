@@ -11,7 +11,7 @@ local; sin skills ni scripts del flujo cambiados. Lo nuevo sale de 5 retros. Rec
 - **Why it is general:** un subagente commiteó sin la bitácora, el `Stop` la pidió y el `--amend` lo bloquea el modo
   automático: un segundo commit de más.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → D72
 
 ## P2. `related-tests.sh` imprime el número de archivos, no la lista
 
@@ -20,7 +20,7 @@ local; sin skills ni scripts del flujo cambiados. Lo nuevo sale de 5 retros. Rec
   un temporal con la orden completa, en vez de ~150 rutas.
 - **Why it is general:** ahorra tokens en cualquier proyecto grande.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → D74
 
 ## P3. `recover.py --state` avisa de revisión atrasada
 
@@ -29,7 +29,7 @@ local; sin skills ni scripts del flujo cambiados. Lo nuevo sale de 5 retros. Rec
   (clave nueva o `changeSize.block`). Hoy solo avisa el `commit-msg`, al commitear.
 - **Why it is general:** caso real: 18 tandas y 48 commits sin revisar.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → D85
 
 ## P4. El `Stop` no pide subir con subagentes en segundo plano
 
@@ -38,7 +38,7 @@ local; sin skills ni scripts del flujo cambiados. Lo nuevo sale de 5 retros. Rec
   sube después» en vez de pedir commit. Falta comprobar si el gancho puede saber que hay subagentes en marcha.
 - **Why it is general:** provoca un `WIP:` a medias en cualquier proyecto que reparta.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → D88
 
 ## P5. `measure.py` mide la sesión anterior tras un `/clear`
 
@@ -47,7 +47,7 @@ local; sin skills ni scripts del flujo cambiados. Lo nuevo sale de 5 retros. Rec
   anterior de la misma rama; hoy hay que pasar `--session`.
 - **Why it is general:** tras `/clear` (que el flujo recomienda) la medida sale vacía en cualquier proyecto.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → B29
 
 ## P6. Plantilla de licencia doble en `gw-init`
 
@@ -56,7 +56,7 @@ local; sin skills ni scripts del flujo cambiados. Lo nuevo sale de 5 retros. Rec
   la nota de terceros.
 - **Why it is general:** útil en cualquier proyecto con contenido creativo; opción nueva.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → D87
 
 ## P7. Cierre de una ronda de pruebas: parar lo levantado
 
@@ -65,7 +65,7 @@ local; sin skills ni scripts del flujo cambiados. Lo nuevo sale de 5 retros. Rec
   del proyecto para parar servidores, modelos e inhibidores de suspensión.
 - **Why it is general:** cualquier ronda deja procesos vivos; el script es de cada proyecto.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → D75
 
 ## Stays in the project
 

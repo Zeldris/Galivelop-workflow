@@ -14,4 +14,4 @@ proyecto; sin cambios en `.claude/` ni en scripts del flujo. Lo nuevo sale de 1 
 - **Why it is general:** con `general-purpose`, cada subagente arranca con ~68k (herramientas MCP y skills); medido
   en 5 subagentes y 88 llamadas. Pasa en cualquier proyecto con muchas herramientas MCP.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → B28

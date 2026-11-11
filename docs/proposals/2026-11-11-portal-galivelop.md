@@ -12,7 +12,7 @@ Recogida de cierre de la `0.6` (H18).
   la LICENSE MIT de la fuente que adapta (AgriciDaniel/claude-seo). Revisar antes que no dependa de rutas del portal.
 - **Why it is general:** cualquier proyecto con web pública estática lo necesita.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → E42
 
 ## P2. La revisión de la fase 1, en contexto limpio
 
@@ -21,7 +21,7 @@ Recogida de cierre de la `0.6` (H18).
   subagente limpio.
 - **Why it is general:** medido: 3,7M de entrada a 127k por llamada para una revisión que solo necesita el diff.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → B24
 
 ## P3. `prototype` publica el Artifact desde un subagente
 
@@ -30,7 +30,7 @@ Recogida de cierre de la `0.6` (H18).
   solo la URL.
 - **Why it is general:** el `quickstart` (~10k) se arrastra en el resto de la sesión: 308k en 120 llamadas.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → B23
 
 ## P4. `measure.py` muestra el `action` de las llamadas a Artifact
 
@@ -38,7 +38,7 @@ Recogida de cierre de la `0.6` (H18).
 - **What changes:** en HEAVIEST RESULTS, la fila de `Artifact` incluye `action` para separar `quickstart` de `publish`.
 - **Why it is general:** sin eso no se ve qué llamada pesa.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → B22
 
 ## P5. Encargos en paralelo devuelven el texto de la bitácora; `merge-branch.sh` avisa del conflicto en el `log`
 
@@ -49,7 +49,7 @@ Recogida de cierre de la `0.6` (H18).
   para resolverlo; caso en los tests.
 - **Why it is general:** la bitácora es el conflicto de casi todo merge en paralelo.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada en parte (2026-11-11) → D86 (el aviso de `merge-branch.sh`; la variante del encargo, no)
 
 ## P6. Corte «datos y textos al barato, lógica al grande» en el dealer
 
@@ -58,7 +58,7 @@ Recogida de cierre de la `0.6` (H18).
   aprobado. Una sola observación: opcional.
 - **Why it is general:** heurística de reparto válida en cualquier proyecto.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** no elegida (2026-11-11)
 
 ## Stays in the project
 

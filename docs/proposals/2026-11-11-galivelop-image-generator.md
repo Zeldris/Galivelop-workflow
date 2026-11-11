@@ -12,7 +12,7 @@ scripts ni `.claude/` del flujo. Lo nuevo sale de 3 retros. Recogida de cierre d
 - **Why it is general:** «solo la última menor recibe parches» (plan §7) obliga a todo proyecto a sacar arreglos así;
   el bucle a mano falló por el orden.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → D81
 
 ## P2. El encargo de `gw-orchestrate-dealer` dice quién sube
 
@@ -23,7 +23,7 @@ scripts ni `.claude/` del flujo. Lo nuevo sale de 3 retros. Recogida de cierre d
 - **Why it is general:** la contradicción está en la skill; en el proyecto dejó un commit sin subir con la principal
   parada.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-11) → D72
 
 ## Stays in the project
 

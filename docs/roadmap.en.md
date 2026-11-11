@@ -125,6 +125,24 @@ In this order, because each step uses the previous one.
 | D65 | Archive the log: a total size cap for `docs/handoff.md` (key in `.claude/gw.json`) that `handoff.py check` warns about and B21 uses as a culprit; `handoff.py archive` moves the "Pending" items and minor findings of already published versions to `docs/records/handoff-archive.md` (not read at start), leaving one line with the link; after a compaction, `recover.py` and `SessionStart` re-read only the state and the next step (user, 2026-11-05) | done |
 | D69 | `hotfix` type in `commitFormat` and in `version.py` (counts as a patch), with its test, so projects on `0.5` accept the type before the task record (C11) ([`I-lifecycle.md`](design/I-lifecycle.md) Q11; user, 2026-11-08) | done |
 | D66 | Each version reviews the documentation for people (`README.md` ↔ `README.es.md`, `docs/es/` ↔ `docs/en/`, roadmap) against its CHANGELOG before the push to `main` (`AGENTS.md`); `version.py --release` fails if a file in `releaseDocs` (a `.claude/gw.json` key; default `[]`, here both READMEs) does not name the version being released. Real case: `0.5.1` shipped with the README at "Status: `0.4.3`" (user, 2026-11-06) | done |
+| D70 | `measure.py --since` picks the right session, not the newest log (`0.6` closing harvest, private-project-1 P2) | pending |
+| D71 | `handoff.py close-row` and `set-row` take the branch the same way (`0.6` closing harvest, private-project-1 P3) | pending |
+| D72 | The `gw-orchestrate-dealer` brief says who pushes (on the work branch, the subagent; in a worktree, nobody) and what to do with the commit (leave it uncommitted, or commit it with its log row); the main session checks `git status -sb` on return (`0.6` closing harvest, image-generator P2, world-maker P1) | pending |
+| D73 | `gw-update` ends by opening the PR from the update branch to the protected one (`0.6` closing harvest, instalador P1) | pending |
+| D74 | `related-tests.sh` prints the file count and a temp file with the full command, not the whole list (`0.6` closing harvest, world-maker P2) | pending |
+| D75 | Closing step of a test round: call the project's script that stops what it started (servers, models, sleep inhibitors) (`0.6` closing harvest, world-maker P7) | pending |
+| D88 | The `Stop` hook does not ask to push while background subagents run (extends D41); first check here how world-maker detects them (`0.6` closing harvest, world-maker P4) | pending |
+| B22 | `measure.py` shows the `action` of Artifact calls in HEAVIEST RESULTS (`0.6` closing harvest, portal P4) | pending |
+| B23 | `prototype` publishes the Artifact (with its `quickstart`) from a subagent that returns only the URL (`0.6` closing harvest, portal P3) | pending |
+| B24 | The phase 1 review starts after `/clear` or in a clean subagent (`AGENTS.md`, `gw-selector`) (`0.6` closing harvest, portal P2) | pending |
+| B25 | `gw-scout-updates` with 2 subagents (`0.6` closing harvest, private-project-1 P4) | pending |
+| D76 | `check-green.sh` lock: the same pid updates sha and log, a `check.lock.steal` without pid does not block, another user's process is treated as in `before-stop.py`; `before-stop.py` compares `check.sh`'s full sha with HEAD (`0.6` closing harvest, instalador `0.5.1` review, findings 1-4) | pending |
+| D77 | `merge-branch.sh` validates `check` and `checkWrapper` before merging (`0.6` closing harvest, instalador `0.5.1` review, finding 5) | pending |
+| D78 | `pre-push`: rechecks the green cache after waiting for the lock; with the same tree on a protected ref and a branch, the branch is checked too; `lock_wait` local (`0.6` closing harvest, instalador `0.5.1` review, findings 6-8) | pending |
+| D79 | `private-check.py amend_advice`: no `rebase -i` onto a tag or `HEAD`, no `git add -A`, no unused `cfg` (`0.6` closing harvest, instalador `0.5.1` review, findings 11 and 14) | pending |
+| E38 | `pre-commit`: `PROSE_ASSIGN` catches a one-word capitalised quoted secret in a `.md`; `md_prose_dropped` without one process per line (`0.6` closing harvest, instalador `0.5.1` review, findings 12-13) | pending |
+| E39 | `check.sh` without `--quiet` keeps TTY and colours (E17 regression; reproduced with a test first) (`0.6` closing harvest, instalador `0.5.1` review, finding 10) | pending |
+| E40 | Pruning of `.git/gw` `check-<sha>.log` files: the last `checkLogKeep` (20) are kept (`0.6` closing harvest, instalador `0.5.1` review, finding 9) | pending |
 
 ## `0.6` "Measure"
 
@@ -132,7 +150,7 @@ In this order, because each step uses the previous one.
 |---|---|---|
 | H16 | `0.6` harvest (`gw-harvest`) and its proposals, to the user | done (B20, D57-D60 to `0.5.2`; D61-D63 to `0.7`) |
 | H17 | User notes (SDD, DDD, TDD, exploration, task record, done per environment) and four external references, split into proposals: [`2026-11-08-notes-and-references.md`](proposals/2026-11-08-notes-and-references.md); all 13 and the 5 questions approved (user, 2026-11-08); the design that joins them, [`I-lifecycle.md`](design/I-lifecycle.md), open until its `grilling` | in progress |
-| H18 | `0.6` closing harvest (`gw-harvest`) before releasing it: fixes to the next `0.5` patch; evolutions, split across the versions (user, 2026-11-11) | pending |
+| H18 | `0.6` closing harvest (`gw-harvest`) before releasing it: fixes to the next `0.5` patch; evolutions, split across the versions (user, 2026-11-11) | done (2026-11-11; 28 proposals and 14 findings of the instalador `0.5.1` review: D70-D79, D88, B22-B25 and E38-E40 to `0.5.2`; B26-B29, D82, D84-D86 and E43 to `0.6`; D80, D81, D83, D87 and E41 to `0.7`; E42 to `0.8`; portal P6 discarded) |
 | A10 | One-page A4 workflow presentation sheets: for whoever contracts development, `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (what it solves, how work runs, what it guarantees), and for teams that install it, `docs/es/mkt-adoption.md` ↔ `docs/en/mkt-adoption.md` (user, 2026-11-09), with its HTML and final PDF generated from the `.md` by a script so they do not drift; reviewed on each version (D66) (user, 2026-11-06) | done (`scripts/mkt-sheet.py`, portal style) |
 | B1 | `Stop` hook that reads the session logs | done (`scripts/metrics.py record`, key `metrics`) |
 | B2 | `docs/metrics/ledger.jsonl` in the repo | done (`merge=union` in `.gitattributes`; `apply.py` does not set it in projects yet) |
@@ -159,6 +177,15 @@ In this order, because each step uses the previous one.
 | E27 | `shellcheckVersion` in `.claude/gw.json`: CI installs that version and `tests/shellcheck.sh` warns, with the command that installs it, if the local one differs (`0.5.1` retro R1) | done (2026-11-11; CI installs it with `pip install shellcheck-py==X.Y.Z.*`; in CI another version fails) |
 | D55 | `roadmap.py show <id>` and `roadmap.py done <id>`: see or mark a roadmap row in both languages without reading it whole (`0.5.1` retro R4) | done (2026-11-11; `scripts/roadmap.py`, key `roadmapFiles` (the reserved `roadmap` stays boolean); marks both languages or neither) |
 | D56 | `ci-status.py --failed`: for each red job, only the failed step and its error lines, capped by a key, with the URL of the whole log (`0.5.1` retro R5) | done (2026-11-11; `--failed`: the step from the jobs API and, from the log, its `Run …` header to its last `##[error]` line, without the folded command; cap `ciFailedLines` (40) or `--lines`) |
+| B26 | Warning when the log or a record over `wholeReadWarnBytes` (20000) is read whole (`0.6` closing harvest, private-project-1 P1) | pending |
+| B27 | Trivial diffs reviewed without a subagent; phase 1 fixes go to `sonnet` (`0.6` closing harvest, private-project-1 P7) | pending |
+| B28 | Light subagent type (`gw-worker`, in `.claude/agents/`) with only the brief's tools; `gw-init` creates it and the dealer brief names it (`0.6` closing harvest, private-project-3 P1) | pending |
+| B29 | `measure.py` measures the previous session of the same branch when the current one has fewer than `measure.minCalls` (5) calls (after `/clear`) (`0.6` closing harvest, world-maker P5) | pending |
+| D82 | Files copied unchanged from the workflow (`vendored`) stay out of the phase 1 `/code-review` (next to D53 and B19) (`0.6` closing harvest, instalador P2) | pending |
+| D84 | `templates/github/check.yml` reads the Node and Rust directories from `.claude/gw.json` and uses `Swatinem/rust-cache` (`0.6` closing harvest, instalador P5) | pending |
+| D85 | `recover.py --state` warns of an overdue review (`changeSize.block` threshold) (`0.6` closing harvest, world-maker P3) | pending |
+| D86 | `merge-branch.sh` recognises a conflict in the log and gives the command to solve it, with its test (`0.6` closing harvest, portal P5) | pending |
+| E43 | `doctor.py` warns of folders with `test_*.py` that no check command runs; excluded folders configurable (`0.6` closing harvest, instalador P3) | pending |
 
 ## `0.7` "Ask"
 
@@ -187,6 +214,11 @@ In this order, because each step uses the previous one.
 | E35 | Flaky test ledger (`flaky`): the check records what fails and passes on retry and proposes a fix after N times (H17 P12) | pending |
 | A12 | Configurable languages in a `languages` block of `.claude/gw.json`: `code` (code, names and comments; replaces A8's fixed rule), `docs.primary` and `docs.others` (internal docs, log, roadmap and commits; the `docs/es` ↔ `docs/en` pairing reads them), `public.primary` and `public.others` (README, release, posts) and `ui` (today `visibleLanguages`); the agent language (the one user and agent speak) goes per user in `~/.claude/gw.json`, identified by `git config user.email`, with the docs primary as fallback; `language` and `visibleLanguages` migrate with `apply.py --update`; the MMC edits it in `1.1` (user, 2026-11-08) | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.7` | pending |
+| D80 | Automatic warning of a stale `gw-scout-updates` seal (`0.6` closing harvest, private-project-1 P5) | pending |
+| D81 | `scripts/backport.sh <sha>...`: cherry-pick in topological order, stops on a conflict and checks with `git cherry`; in the patch guide and `docs/agent-map.md` (`0.6` closing harvest, image-generator P1) | pending |
+| D83 | `apply.py --update` adds the names its migration renames to the project's `staleRefs` (extends D46) (`0.6` closing harvest, instalador P4) | pending |
+| D87 | `gw-init` offers a dual licence: MIT for code and CC BY-NC-SA 4.0 for content, with the third-party note (`0.6` closing harvest, world-maker P6) | pending |
+| E41 | The `pre-commit` rejects an author in `authorDeny` (empty by default in projects; Claude in this repo); changes the `AGENTS.md` line saying no hook checks the author (`0.6` closing harvest, private-project-1 P6) | pending |
 
 ## `0.8` "Front end and other agents"
 
@@ -199,6 +231,7 @@ In this order, because each step uses the previous one.
 | D7 | `AGENTS.md` readable without `@include`; skills also in `.agents/skills` (opencode, Codex) | pending |
 | B9 | Non-Anthropic models through opencode | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.8` | pending |
+| E42 | `gw-seo` skill (SEO and link previews for static sites) brought from the portal: no portal paths, English names, tests in the check, es/en docs and its source's MIT LICENSE (`0.6` closing harvest, portal P1) | pending |
 
 ## `0.9` "Stable"
 

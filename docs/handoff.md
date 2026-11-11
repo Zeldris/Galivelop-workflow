@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **B1-B8, B10, B11 y E21 hechas (2026-11-09)**; **B16, D42, E22, B18, D48 y D43 hechas (2026-11-10)**. **Revisión de bloque hecha (2026-11-10)** sobre `origin/main...cb071d6`; el siguiente bloque se mide desde su commit (`Findings: 4`). **D49, D53, D54 y B19 hechas (2026-11-10); E27, D55 y D56 hechas (2026-11-11).** **H18: recogida hecha (2026-11-11)**: 28 propuestas en `docs/proposals/2026-11-11-*.md`. **Siguiente:** el usuario aprueba o descarta; los arreglos aprobados, al parche de la `0.5` y los evolutivos, al roadmap; luego la subida de la `0.6` a `main` con el usuario; la tabla determinista espera a 4 semanas de libro. Presupuesto de compactaciones: 1 |
+| Siguiente paso | **Revisión de bloque hecha (2026-11-10)** sobre `origin/main...cb071d6`; el siguiente bloque se mide desde su commit (`Findings: 4`). **H18 hecha (2026-11-11)**: decisiones del usuario en el roadmap (D70-D79, D88, B22-B25, E38-E40 a la `0.5.2`, todas antes de publicar la `0.6`; B26-B29, D82, D84-D86, E43 a la `0.6`; resto a `0.7`/`0.8`). **Siguiente:** `/code-review` del bloque (debido); luego los arreglos de la `0.5.2` con el dealer (D88: ver primero cómo lo detecta world-maker), después los evolutivos de la `0.6` y la subida a `main` con el usuario. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -43,7 +43,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-11 — H18 (recogida): 8 proyectos, 6 con novedades → 28 propuestas en `docs/proposals/2026-11-11-*.md`; `state.json` al día; falta la decisión del usuario.
+1. 2026-11-11 — H18: 28 propuestas (8 proyectos) y 14 hallazgos de la revisión `0.5.1` del instalador, decididos por el usuario y repartidos en el roadmap (es/en) con ids; P6 del portal descartada.
 2. 2026-11-11 — D56: `ci-status.py --failed`: de cada job en rojo, el paso que falló y el final de su registro (tope `ciFailedLines`) y la URL del registro; 11 tests.
 3. 2026-11-11 — D55: `scripts/roadmap.py show <id>` imprime la fila de una tarea en cada idioma (con su sección) y `done <id> [--date D] [--note ES --note EN] [--force]` la marca en los dos a la vez o en ninguno; clave nueva `roadmapFiles` (la `roadmap` reservada sigue booleana: no rompe los `gw.json`); nota en `gw-opt-tokens`; 13 tests.
 4. 2026-11-11 — E27: clave `shellcheckVersion` (`"0.11.0"` aquí); el CI de este repo la instala con `pip install "shellcheck-py==X.Y.Z.*"` en Linux y macOS (no el de apt o brew) y `tests/shellcheck.sh` avisa con esa orden si la local es otra (en el CI falla; `gw.json` ilegible, cerrado); la usa el `install` de la nube; 3 tests.

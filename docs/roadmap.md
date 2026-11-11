@@ -126,6 +126,24 @@ En este orden, porque cada paso usa el anterior.
 | D65 | Historizar la bitácora: tope de tamaño total de `docs/handoff.md` (clave en `.claude/gw.json`) que `handoff.py check` avisa y que B21 usa como culpable; `handoff.py archive` mueve los «Pendiente» y leves de versiones ya publicadas a `docs/records/handoff-archive.md` (que no se lee al empezar), dejando una línea con el enlace; tras compactar, `recover.py` y el `SessionStart` releen solo el estado y el siguiente paso (usuario, 2026-11-05) | hecho |
 | D69 | Tipo `hotfix` en `commitFormat` y en `version.py` (cuenta como parche), con su test, para que los proyectos en `0.5` acepten el tipo antes de la ficha de tarea (C11) ([`I-lifecycle.md`](design/I-lifecycle.md) Q11; usuario, 2026-11-08) | hecho |
 | D66 | Cada versión repasa la documentación para personas (`README.md` ↔ `README.es.md`, `docs/es/` ↔ `docs/en/`, roadmap) contra su CHANGELOG antes de la subida a `main` (`AGENTS.md`); `version.py --release` falla si un archivo de `releaseDocs` (clave en `.claude/gw.json`; por defecto `[]`, aquí los dos README) no nombra la versión que se publica. Caso real: la `0.5.1` salió con el README en «Estado: `0.4.3`» (usuario, 2026-11-06) | hecho |
+| D70 | `measure.py --since` elige la sesión correcta, no la del registro más nuevo (recogida de cierre `0.6`, private-project-1 P2) | pendiente |
+| D71 | `handoff.py close-row` y `set-row` toman la rama del mismo modo (recogida de cierre `0.6`, private-project-1 P3) | pendiente |
+| D72 | El encargo de `gw-orchestrate-dealer` dice quién sube (en la rama de trabajo, el subagente; en un worktree, no) y qué hace con su commit (sin commitear, o con su fila de la bitácora en el mismo commit); la principal mira `git status -sb` al volver (recogida de cierre `0.6`, image-generator P2, world-maker P1) | pendiente |
+| D73 | `gw-update` termina abriendo el PR de la rama de actualización a la protegida (recogida de cierre `0.6`, instalador P1) | pendiente |
+| D74 | `related-tests.sh` dice cuántos archivos y la ruta de un temporal con la orden, no la lista entera (recogida de cierre `0.6`, world-maker P2) | pendiente |
+| D75 | Paso de cierre de una ronda de pruebas: llamar al script del proyecto que para lo levantado (servidores, modelos, inhibidores de suspensión) (recogida de cierre `0.6`, world-maker P7) | pendiente |
+| D88 | El gancho `Stop` no pide subir mientras hay subagentes en segundo plano (amplía D41); primero se comprueba aquí cómo lo detecta world-maker (recogida de cierre `0.6`, world-maker P4) | pendiente |
+| B22 | `measure.py` muestra el `action` de las llamadas a Artifact en HEAVIEST RESULTS (recogida de cierre `0.6`, portal P4) | pendiente |
+| B23 | `prototype` publica el Artifact (con su `quickstart`) desde un subagente que devuelve solo la URL (recogida de cierre `0.6`, portal P3) | pendiente |
+| B24 | La revisión de la fase 1 empieza tras `/clear` o en un subagente limpio (`AGENTS.md`, `gw-selector`) (recogida de cierre `0.6`, portal P2) | pendiente |
+| B25 | `gw-scout-updates` con 2 subagentes (recogida de cierre `0.6`, private-project-1 P4) | pendiente |
+| D76 | Candado de `check-green.sh`: el mismo pid actualiza sha y registro, un `check.lock.steal` sin pid no bloquea, un proceso de otro usuario se trata igual que en `before-stop.py`; `before-stop.py` compara el sha completo de `check.sh` con HEAD (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 1-4) | pendiente |
+| D77 | `merge-branch.sh` valida `check` y `checkWrapper` antes de fusionar (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgo 5) | pendiente |
+| D78 | `pre-push`: vuelve a mirar la caché de verdes tras esperar el candado; con el mismo árbol en una ref protegida y en una rama, la rama también se comprueba; `lock_wait` local (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 6-8) | pendiente |
+| D79 | `private-check.py amend_advice`: sin `rebase -i` sobre una etiqueta o `HEAD`, sin `git add -A` y sin el `cfg` que no usa (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 11 y 14) | pendiente |
+| E38 | `pre-commit`: `PROSE_ASSIGN` no deja pasar un secreto de una palabra en mayúscula entre comillas en un `.md`; `md_prose_dropped` sin un proceso por línea (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 12-13) | pendiente |
+| E39 | `check.sh` sin `--quiet` conserva TTY y colores (regresión de E17; se reproduce con un test antes) (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgo 10) | pendiente |
+| E40 | Poda de los `check-<sha>.log` de `.git/gw`: se guardan los últimos `checkLogKeep` (20) (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgo 9) | pendiente |
 
 ## `0.6` «Medir»
 
@@ -133,7 +151,7 @@ En este orden, porque cada paso usa el anterior.
 |---|---|---|
 | H16 | Recogida de la `0.6` (`gw-harvest`) y sus propuestas, al usuario | hecho (B20, D57-D60 a la `0.5.2`; D61-D63 a la `0.7`) |
 | H17 | Notas del usuario (SDD, DDD, TDD, exploración, ficha de tarea, hecho por entorno) y cuatro referencias externas, repartidas en propuestas: [`2026-11-08-notes-and-references.md`](proposals/2026-11-08-notes-and-references.md); aprobadas las 13 y las 5 preguntas (usuario, 2026-11-08); el diseño que las une, [`I-lifecycle.md`](design/I-lifecycle.md), cerrado con su `grilling` (12 respuestas, 2026-11-08) | hecho |
-| H18 | Recogida de cierre de la `0.6` (`gw-harvest`) antes de publicarla: los arreglos, al siguiente parche de la `0.5`; los evolutivos, repartidos entre las versiones (usuario, 2026-11-11) | pendiente |
+| H18 | Recogida de cierre de la `0.6` (`gw-harvest`) antes de publicarla: los arreglos, al siguiente parche de la `0.5`; los evolutivos, repartidos entre las versiones (usuario, 2026-11-11) | hecho (2026-11-11; 28 propuestas y 14 hallazgos de la revisión `0.5.1` del instalador: D70-D79, D88, B22-B25 y E38-E40 a la `0.5.2`; B26-B29, D82, D84-D86 y E43 a la `0.6`; D80, D81, D83, D87 y E41 a la `0.7`; E42 a la `0.8`; portal P6 descartada) |
 | A10 | Hojas de presentación del flujo, de una página A4: para quien contrata desarrollo, `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (qué resuelve, cómo se trabaja, qué garantiza), y para equipos que lo instalan, `docs/es/mkt-adoption.md` ↔ `docs/en/mkt-adoption.md` (usuario, 2026-11-09), con su HTML y su PDF final generados desde el `.md` por un script, para que no se desfasen; se repasa en cada versión (D66) (usuario, 2026-11-06) | hecho (`scripts/mkt-sheet.py`, estilo del portal) |
 | B1 | Gancho `Stop` que lee los logs de sesión | hecho (`scripts/metrics.py record`, clave `metrics`) |
 | B2 | `docs/metrics/ledger.jsonl` en el repo | hecho (`merge=union` en `.gitattributes`; falta que `apply.py` lo ponga en los proyectos) |
@@ -160,6 +178,15 @@ En este orden, porque cada paso usa el anterior.
 | E27 | `shellcheckVersion` en `.claude/gw.json`: el CI instala esa versión y `tests/shellcheck.sh` avisa, con la orden para instalarla, si la local es otra (retro `0.5.1` R1) | hecha (2026-11-11; el CI la instala con `pip install shellcheck-py==X.Y.Z.*`; en el CI una versión distinta falla) |
 | D55 | `roadmap.py show <id>` y `roadmap.py done <id>`: ver o marcar una fila del roadmap en los dos idiomas sin leerlo entero (retro `0.5.1` R4) | hecho (2026-11-11; `scripts/roadmap.py`, clave `roadmapFiles` (la `roadmap` reservada sigue siendo booleana); marca los dos idiomas o ninguno) |
 | D56 | `ci-status.py --failed`: de cada job en rojo, solo el paso que falló y sus líneas de error, con tope en una clave y la URL del registro entero (retro `0.5.1` R5) | hecho (2026-11-11; `--failed`: el paso de la API de jobs y, del registro, de su cabecera `Run …` a su última línea `##[error]`, sin la orden plegada; tope `ciFailedLines` (40) o `--lines`) |
+| B26 | Aviso al leer entera la bitácora o un registro de más de `wholeReadWarnBytes` (20000) (recogida de cierre `0.6`, private-project-1 P1) | pendiente |
+| B27 | Diffs triviales revisados sin subagente; los arreglos de la fase 1, a `sonnet` (recogida de cierre `0.6`, private-project-1 P7) | pendiente |
+| B28 | Tipo de subagente ligero (`gw-worker`, en `.claude/agents/`) con solo las herramientas del encargo; lo crea `gw-init` y lo nombra el encargo del dealer (recogida de cierre `0.6`, private-project-3 P1) | pendiente |
+| B29 | `measure.py` mide la sesión anterior de la misma rama si la actual tiene menos de `measure.minCalls` (5) llamadas (tras un `/clear`) (recogida de cierre `0.6`, world-maker P5) | pendiente |
+| D82 | Lo copiado tal cual del flujo (`vendored`) queda fuera del `/code-review` de la fase 1 (vecino de D53 y B19) (recogida de cierre `0.6`, instalador P2) | pendiente |
+| D84 | `templates/github/check.yml` lee de `.claude/gw.json` los directorios de Node y Rust y usa `Swatinem/rust-cache` (recogida de cierre `0.6`, instalador P5) | pendiente |
+| D85 | `recover.py --state` avisa de una revisión atrasada (umbral `changeSize.block`) (recogida de cierre `0.6`, world-maker P3) | pendiente |
+| D86 | `merge-branch.sh` reconoce el conflicto en la bitácora y da la orden para resolverlo, con su test (recogida de cierre `0.6`, portal P5) | pendiente |
+| E43 | `doctor.py` avisa de carpetas con `test_*.py` que ningún comando del check corre; carpetas excluidas configurables (recogida de cierre `0.6`, instalador P3) | pendiente |
 
 ## `0.7` «Preguntar»
 
@@ -188,6 +215,11 @@ En este orden, porque cada paso usa el anterior.
 | E35 | Registro de pruebas inestables (`flaky`): el check apunta lo que falla y pasa al reintentar y propone arreglarlo tras N veces (H17 P12) | pendiente |
 | A12 | Idiomas configurables en un bloque `languages` de `.claude/gw.json`: `code` (código, nombres y comentarios; sustituye la regla fija de A8), `docs.primary` y `docs.others` (doc interna, bitácora, roadmap y commits; el emparejado `docs/es` ↔ `docs/en` los lee), `public.primary` y `public.others` (README, release, publicaciones) y `ui` (hoy `visibleLanguages`); el idioma del agente (en el que hablan usuario y agente) va por usuario en `~/.claude/gw.json`, identificado por `git config user.email`, con el principal de la doc como respaldo; `language` y `visibleLanguages` migran con `apply.py --update`; el MMC lo edita en la `1.1` (usuario, 2026-11-08) | pendiente |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.7` | pendiente |
+| D80 | Aviso automático de un sello de `gw-scout-updates` caducado (recogida de cierre `0.6`, private-project-1 P5) | pendiente |
+| D81 | `scripts/backport.sh <sha>...`: cherry-pick en orden topológico, para en un conflicto y comprueba con `git cherry`; en la guía de parches y `docs/agent-map.md` (recogida de cierre `0.6`, image-generator P1) | pendiente |
+| D83 | `apply.py --update` añade al `staleRefs` del proyecto los nombres que renombra su migración (amplía D46) (recogida de cierre `0.6`, instalador P4) | pendiente |
+| D87 | `gw-init` ofrece licencia doble: MIT para el código y CC BY-NC-SA 4.0 para el contenido, con la nota de terceros (recogida de cierre `0.6`, world-maker P6) | pendiente |
+| E41 | El `pre-commit` rechaza un autor de la lista `authorDeny` (vacía por defecto en los proyectos; con Claude en este repo); cambia la línea de `AGENTS.md` que dice que ningún gancho comprueba el autor (recogida de cierre `0.6`, private-project-1 P6) | pendiente |
 
 ## `0.8` «Front y otros agentes»
 
@@ -200,6 +232,7 @@ En este orden, porque cada paso usa el anterior.
 | D7 | `AGENTS.md` legible sin `@include`; skills también en `.agents/skills` (opencode, Codex) | pendiente |
 | B9 | Modelos de fuera de Anthropic vía opencode | pendiente |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.8` | pendiente |
+| E42 | Skill `gw-seo` (SEO y vistas previas de webs estáticas) traída del portal: sin rutas del portal, nombres en inglés, tests en el check, docs es/en y la LICENSE MIT de su fuente (recogida de cierre `0.6`, portal P1) | pendiente |
 
 ## `0.9` «Estable»
 
