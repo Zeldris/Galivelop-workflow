@@ -1592,9 +1592,12 @@ class MergeBranch(Base):
         code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
         self.assertEqual(code, 1, out)
         self.assertIn(f"CONFLICT only in the hand-off log ({LOG})", out)
-        self.assertIn(f"git checkout --ours -- {LOG} && git add {LOG} && git commit --no-edit", out)
-        self.assertIn(f"git checkout --theirs -- {LOG}", out)
+        self.assertIn("git merge-file --union", out)
+        self.assertIn(f"WARNING: git checkout --ours -- {LOG}", out)
+        self.assertIn("DROPS the other's entries", out)
         self.assertIn("git merge --abort", out)
+        self.assertIn("check.sh --quiet", out)
+        self.assertIn("git branch -d worktree-agent-1", out)
         self.assertTrue((self.p.work / ".git" / "MERGE_HEAD").is_file())
 
     def test_conflict_in_the_log_and_another_file_does_not_claim_it_is_only_the_log(self):
@@ -1604,6 +1607,7 @@ class MergeBranch(Base):
         self.assertNotIn("only in the hand-off log", out)
         self.assertIn("docs/notes.md", out)
         self.assertIn(f"the hand-off log ({LOG}) is one of them, but NOT the only one", out)
+        self.assertIn("<the other files>", out)
 
     def test_conflict_elsewhere_keeps_the_old_message(self):
         self.conflict("docs/notes.md")
@@ -1622,7 +1626,44 @@ class MergeBranch(Base):
         code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
         self.assertEqual(code, 1, out)
         self.assertIn("CONFLICT only in the hand-off log (notes/relay.md)", out)
-        self.assertIn("git checkout --ours -- notes/relay.md", out)
+        self.assertIn("git show :2:notes/relay.md", out)
+
+    def test_a_non_ascii_log_name_is_recognised(self):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["log"] = "docs/bitácora.md"
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.write("docs/bitácora.md", "relay\n")
+        self.p.commit("log moves", env=DAY)
+        self.conflict("docs/bitácora.md")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
+        self.assertEqual(code, 1, out)
+        self.assertIn("CONFLICT only in the hand-off log (docs/bitácora.md)", out)
+
+    def test_the_printed_join_command_keeps_both_sides_entries(self):
+        base = self.p.work / LOG
+        self.p.write(LOG, "head\nshared\n"); self.p.commit("log base", env=dict(DAY, GW_SHARED_LOG="1"))
+        wt = self.agent(path=LOG, text="head\nagent entry\nshared\n", env=dict(DAY, GW_SHARED_LOG="1"))
+        self.p.write(LOG, "head\nmain entry\nshared\n"); self.p.commit("main entry", env=dict(DAY, GW_SHARED_LOG="1"))
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
+        self.assertEqual(code, 1, out)
+        cmd = [l.split(":  ", 1)[1] for l in out.splitlines() if l.startswith("  join both sides:")][0]
+        r = subprocess.run(["bash", "-c", cmd], cwd=self.p.work, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        text = base.read_text()
+        self.assertIn("agent entry", text)
+        self.assertIn("main entry", text)
+        self.assertIn("shared", text)
+        self.assertTrue(wt.exists())
+
+    def test_an_unreadable_log_key_falls_back_to_the_generic_message(self):
+        self.conflict(LOG)
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        del cfg["log"]  # no `log` in the config: `get log` still answers with its default, which is not this file
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
+        self.assertEqual(code, 1, out)
+        self.assertIn("CONFLICT (the merge stays open", out)
+        self.assertNotIn("only in the hand-off log", out)
 
     def test_no_conflict_prints_no_log_advice(self):
         self.agent()
