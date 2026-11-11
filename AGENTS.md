@@ -66,7 +66,8 @@ Los comprueba el `commit-msg` (`commitFormat`, `commitRefs`, `commitNext` y `age
 
 - Se trabaja en la rama que indique la bitácora.
 - **A `main` solo con confirmación del usuario**, y antes las tres fases del flujo:
-  1. **Código:** `/code-review` del diff contra `origin/main` (con `git fetch` antes); arreglos subidos con sus tests.
+  1. **Código:** tras `/clear` o en un subagente limpio, `/code-review` del diff contra `origin/main` (con `git fetch`
+     antes); arreglos subidos con sus tests.
   2. **Entorno:** `/gw-opt-tokens` y `/retro`; sus propuestas se presentan al usuario y lo que confirme se aplica en la
      rama (lo general para el flujo se aplica aquí mismo: este repo es el flujo). Si el usuario pidió ir a `main` y no
      está para decidir la retro: todo listo (retro con `**Estado:** pendiente`, check en verde sobre la fusión con

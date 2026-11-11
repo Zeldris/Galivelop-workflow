@@ -25,7 +25,7 @@ Classify the task with the table, then act on its row. Reply in the project's `l
 | Mechanical: docs, log, renames, adapting tests to a new signature, converting files | none | medium or light | light |
 | Bring something from another repo (a workflow, skills, documents) | `gw-orchestrate-dealer` | large, to decide what to adapt | light `Explore` that reads the other repo and returns a summary with paths; the main session never reads the files whole |
 | Apply or update the workflow (`gw-init`, `gw-update`, `gw-doctor`) | `gw-orchestrate-dealer` | large, to decide | light, to read the workflow's guide and scripts and return the decisions with paths |
-| Review before the protected branch | `/code-review`, then `pr` for the description | large | none |
+| Review before the protected branch (phase 1) | after `/clear` or in a clean subagent, never in the session that wrote the code: `/code-review`, then `pr` for the description | large | none |
 | Closing a block or phase | `retro` (Claude runs it, the user confirms its proposals); now and then `improve-codebase-architecture` | large | none |
 | Social posts about the project (what to post, a post, an announcement or an image about something that just happened) | `gw-media-content` to propose, `gw-media-content-now` to produce one piece | medium | none |
 | Writing for agents (`AGENTS.md`, `CLAUDE.md`, skills, docs agents read) | `writing-for-agents` | medium | none |
