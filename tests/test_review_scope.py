@@ -117,6 +117,23 @@ class Vendored(unittest.TestCase):
         self.assertNotIn("AGENTS.md", lines)
         self.assertEqual(self.p.read(SCRIPT).splitlines()[-1], "# local", "it writes nothing")
 
+    def test_init_and_vendored_together_write_nothing(self):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-vendored-init-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        q = Fixture(tmp)
+        (q.work / ".claude/gw.json").unlink()
+        code, out = q.run_apply("--init", "--vendored", "--check-command", "true")
+        self.assertEqual(code, 2, out)
+        self.assertIn("--init writes files", out)
+        self.assertFalse((q.work / ".claude/gw.json").exists())
+
+    def test_an_owned_file_is_not_vendored(self):
+        self.p.write(".claude/gw.json", (self.p.work / ".claude/gw.json").read_text().replace(
+            "{", '{"ownedFiles": [".githooks/pre-push"],', 1))
+        code, out = self.p.run_apply("--vendored")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn(HOOK, out.splitlines())
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -99,7 +99,7 @@ python3 <workflow>/scripts/apply.py <project> --dry-run --init --language en \
   --protected-branch main --push-to-protected direct
 ```
 
-`--dry-run` prints the plan without writing. When it is the one you want, repeat the same command **without**
+`--vendored` writes nothing: it lists the copies the project holds unchanged from the workflow (`scripts/review-scope.py` leaves them out of the phase 1 review; `ownedFiles` ones and edited files are not listed). `--dry-run` prints the plan without writing. When it is the one you want, repeat the same command **without**
 `--dry-run`.
 
 Options: `--review-mark PATH` (default `docs/records/reviewed.txt`), `--with gw-opt-ai` and `--with gw-scout-updates`.

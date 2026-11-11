@@ -99,7 +99,7 @@ python3 <flujo>/scripts/apply.py <proyecto> --dry-run --init --language es \
   --protected-branch main --push-to-protected direct
 ```
 
-`--dry-run` imprime el plan sin escribir. Cuando sea el que quieres, repite la misma orden **sin** `--dry-run`.
+`--vendored` no escribe: lista las copias que el proyecto tiene tal cual del flujo (`scripts/review-scope.py` las deja fuera de la revisión de la fase 1; las de `ownedFiles` y los archivos editados no salen). `--dry-run` imprime el plan sin escribir. Cuando sea el que quieres, repite la misma orden **sin** `--dry-run`.
 
 Opciones: `--review-mark RUTA` (por defecto `docs/records/reviewed.txt`), `--with gw-opt-ai` y `--with gw-scout-updates`.
 `--init` solo escribe `.claude/gw.json` si no existe, lo valida y aplica como siempre.

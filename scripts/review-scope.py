@@ -8,9 +8,9 @@ Prints, one repo-relative path per line, the files changed between BASE (default
 local protected branch) and HEAD. A file is `vendored` when the project holds it as an unchanged copy of the workflow
 (`apply.py --vendored`: `.claude/gw/`, `.claude/skills/gw-*`, `.githooks/`, `.claude/agents/`, the CI file): the workflow
 repo reviewed it already, so it stays out. A vendored file the project edited no longer matches the workflow's copy and
-stays in; so does a file the project made its own (`ownedFiles`) and anything not copied from the workflow. A renamed
+stays in; so do the files of `ownedFiles` and anything not copied from the workflow. A renamed
 file is listed by its new path (a rename is read as the old path deleted and the new one added). Content is compared on
-the working tree: review a clean checkout of the commit. Deleted files are listed (there is nothing left to compare).
+the working tree: review a clean checkout of the commit. Known limits: the workflow repo is trusted to be at a published version, and the tree must be clean. Deleted files are listed (there is nothing left to compare).
 
 The workflow copy that says what is vendored is `--workflow DIR`, else the env var GW_WORKFLOW, else this script's own
 repo when that is the workflow. Without one the whole diff is printed, with a note on stderr saying so (reviewing too
@@ -103,8 +103,8 @@ def main(argv=None):
         for p in paths:
             if p not in skip:
                 print(p)
-        if skip:
-            left = sum(1 for p in paths if p in skip)
+        left = sum(1 for p in paths if p in skip)
+        if left:
             print(f"{PROG}: {left} vendored file(s) left out of {len(paths)}", file=sys.stderr)
     except (ScopeError, config.ConfigError) as exc:
         print(f"{PROG}: {exc}", file=sys.stderr)

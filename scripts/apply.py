@@ -314,7 +314,7 @@ class Plan:
             return
         current = here.read_bytes()
         if current == data:
-            if existing is None and not rendered:
+            if existing is None and not rendered and not self.is_owned(rel):
                 self.identical.append(str(rel))
             if want_exec and not is_exec(here):
                 self.actions.append(("chmod", rel, None, True, "make it executable"))
@@ -1443,6 +1443,8 @@ def main(argv=None):
         parser.error(f"{', '.join(init_flags)} only go with --init")
     if args.init and args.check:
         parser.error("--init writes files; run --check after it")
+    if args.init and args.vendored:
+        parser.error("--init writes files; run --vendored after it")
 
     start = args.project or os.getcwd()
     root = config.git_toplevel(start)
