@@ -100,3 +100,13 @@ Items moved out of the hand-off log by `handoff.py archive`; this file is not re
 - **A10, leves de la revisión (no bloquean):** el conversor Markdown pierde el `#` de `# Learn C#`, anida mal `***x***`, parte una tabla con `|` dentro de código, toma `2024.` al principio de línea por lista, aplana las listas anidadas y deja el markup del título; dos fuentes con el mismo idioma y nombre chocan; Playwright se resuelve global. De la segunda revisión: la reescritura de rutas de la CSS solo cubre `url(...)` en minúsculas con comillas iguales (no `@import "x.css"`, `URL(…)`, `url("it's.png")` ni `image-set("x.png" 1x)`), y el énfasis entra en el `href` de un enlace (`[a](https://x.com/*a*b*)`).
 - **A10, leve:** el enlace de idioma de la cabecera de cada hoja (`[English](../en/…md)`) sale en el HTML y el PDF apuntando a un `.md` que no está junto al HTML; quitarlo o reescribirlo a `.html` en `mkt-sheet.py`.
 - **Leves de A9 (2026-11-02):** si la punta de la rama protegida trae un `schemaVersion` más nuevo, el `pre-push` avisa con el texto genérico «… is invalid; this push can fix it» (la política sigue fallando cerrada); el mensaje de `schemaVersion` no entero sugiere `config.py validate` sin `--root`.
+- Menores de la revisión de la tanda E: el aviso de ventanas mezcladas de `gw-opt-tokens/medir.py` salta con un
+  `/compact` manual o una etapa muy corta; `gw-opt-ai/medir.py` ignora un `app.turn` 0 o vacío y su clave sintética
+  choca con una tarea llamada «turn»; `instant` descarta sin avisar un `ts` que `fromisoformat` no lee (Python <3.11);
+  `quality_bench.py` envía un `format` de texto como `json_schema` con la API openai y `pairs` pisa en silencio un
+  modelo repetido en dos `outputs.jsonl`.
+- Menores de la revisión de los arreglos antes de `main` (3b47af1): un push muerto en el mismo namespace deja su
+  worktree 24 h (guardar `hostname:pid` en el marcador); `worktreeDir` con `~` o `..` no se valida en `config.py`;
+  `cksum` de 32 bits puede juntar dos repos en una carpeta (el borrado sigue exigiendo 24 h y proceso muerto);
+  `update_pull_request` con `state:open` y sin `base` no se juzga como reapertura; `compare.py default_root` da
+  traceback sin git y, desde la caché del plugin, cae al cwd (exigir `--root`).

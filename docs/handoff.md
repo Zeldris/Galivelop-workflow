@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **Evolutivos de la `0.6` fusionados enteros (2026-11-11):** B26-B29, D82, D84-D86 y E43, con revisión por rama y de cierre de la ola. **Siguiente:** check completo sobre la ola (`bash scripts/check.sh`, ~30-40 min), subir, limpiar worktrees y ramas `agent/*`, `ci-status.py`; luego preparar la `0.6.0` (repaso de documentación y CHANGELOG, que aún no tiene su entrada) y fases 1-3 hacia `main` con el usuario. Presupuesto de compactaciones: 2 (usadas 2) |
+| Siguiente paso | **Separar la `0.5.2`** (usuario, 2026-11-11: primero la `0.5.2` a `main`, luego la `0.6.0`). Plan y lista de commits P/M en [`docs/records/split-0.5.2.md`](records/split-0.5.2.md): rama `version/0.5.2` desde `main`, cherry-pick de sus filas, versión, CHANGELOG, check y fases 1-3. La ola de la `0.6` ya está subida (`0219d42`, check verde en local; CI en curso al cerrar). Presupuesto de compactaciones: 2 (usadas 2; tras `/clear`, nuevo presupuesto) |
 
 ### Fases
 
@@ -48,6 +48,8 @@ lanzamiento manual desde Actions que cree la etiqueta.
 3. 2026-11-11 — H18: 28 propuestas (8 proyectos) y 14 hallazgos de la revisión `0.5.1` del instalador, decididos por el usuario y repartidos en el roadmap (es/en) con ids; P6 del portal descartada.
 
 ## Pendiente
+
+- **Error de proceso (2026-11-11):** los arreglos de la `0.5.2` se hicieron en la rama de la `0.6`. Para la retro: crear la rama del parche desde `main` antes de los arreglos (o pedirla al usuario), y un aviso en `commit-msg` o `merge-branch.sh` cuando una fila de parche cae en una rama con evolutivos de la menor siguiente.
 
 - **FOUND (dealer):** un subagente sacó el HEAD del árbol principal (checkout de su commit) y una fusión cayó en HEAD suelto; rehecha. Los encargos ya prohíben git en el árbol principal; el check del `pre-push` sobre `27bb9cf` corrió con archivos cambiando y no vale.
 - **D82:** con el clon del flujo o el árbol sucios, `review-scope.py` puede contar mal lo vendored; en `--trivial` un binario de código cuenta 0 líneas.
@@ -145,18 +147,8 @@ lanzamiento manual desde Actions que cree la etiqueta.
   (exceso de celo).
 - Menores de la revisión del vigilante (89fdf09): el KILL de los 5 s podría dar con un pgid reutilizado (se acepta:
   el vigilante se detiene si la orden acaba antes).
-- Menores de la revisión de la tanda E: el aviso de ventanas mezcladas de `gw-opt-tokens/medir.py` salta con un
-  `/compact` manual o una etapa muy corta; `gw-opt-ai/medir.py` ignora un `app.turn` 0 o vacío y su clave sintética
-  choca con una tarea llamada «turn»; `instant` descarta sin avisar un `ts` que `fromisoformat` no lee (Python <3.11);
-  `quality_bench.py` envía un `format` de texto como `json_schema` con la API openai y `pairs` pisa en silencio un
-  modelo repetido en dos `outputs.jsonl`.
 - Menor de la revisión antes de `main`: `checkWrapper` se aplica en tres sitios (`pre-push` y `merge-branch.sh` con
   `sed`, `config.py` con `shlex`) y la plantilla de CI no lo aplica: que lo construya solo `config.py`.
-- Menores de la revisión de los arreglos antes de `main` (3b47af1): un push muerto en el mismo namespace deja su
-  worktree 24 h (guardar `hostname:pid` en el marcador); `worktreeDir` con `~` o `..` no se valida en `config.py`;
-  `cksum` de 32 bits puede juntar dos repos en una carpeta (el borrado sigue exigiendo 24 h y proceso muerto);
-  `update_pull_request` con `state:open` y sin `base` no se juzga como reapertura; `compare.py default_root` da
-  traceback sin git y, desde la caché del plugin, cae al cwd (exigir `--root`).
 - P2 de `docs/proposals/2026-10-23-portal-galivelop.md` (`ci.setup`/`ci.after` y `apply.py --update` sin pisar un
   `comprobar.yml` con pasos propios): aplazada a la siguiente versión.
 - Que el usuario cambie la rama por defecto de GitHub a `main` (Settings → Branches); no hay herramienta para ello.
