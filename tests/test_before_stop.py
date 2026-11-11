@@ -626,6 +626,128 @@ class CheckInProgress(PushHelpers):
         self.assertFalse((gitdir / "gw").exists())  # not looked for in the per-worktree git dir
 
 
+class BackgroundSubagents(PushHelpers):
+    """D88: while background subagents of this session still run (read from the transcript named by the hook's
+    `transcript_path`) the hook says to wait and push after, instead of blocking on unpushed commits."""
+
+    def line(self, role, *items):
+        return json.dumps({"type": role, "message": {"role": role, "content": list(items)}}) + "\n"
+
+    def launch(self, ident):
+        return self.line("user", {"type": "tool_result", "tool_use_id": "t-" + ident, "content": [
+            {"type": "text", "text": f"Async agent launched successfully.\nagentId: {ident}\nworking in background"}]})
+
+    def done(self, ident, status="completed"):
+        return self.line("user", {"type": "text", "text": f"<task-notification>\n<task-id>{ident}</task-id>\n"
+                                                         f"<status>{status}</status>\n</task-notification>"})
+
+    def resume(self, ident):
+        return self.line("assistant", {"type": "tool_use", "id": "u-" + ident, "name": "SendMessage",
+                                       "input": {"to": ident, "message": "go on"}})
+
+    def transcript(self, *lines, raw=None):
+        path = self.p.tmp / "transcript.jsonl"
+        path.write_bytes(raw if raw is not None else "".join(lines).encode())
+        return str(path)
+
+    def stop(self, path):
+        return self.p.stop({"transcript_path": path})[1]
+
+    def assertWaits(self, out, *ids):
+        self.assertNotIn('"block"', out)
+        msg = decision(self, out).get("systemMessage", "")
+        for needle in ("still running", "Wait for", "push after", "git push -u origin claude/trabajo", *ids):
+            self.assertIn(needle, msg, out)
+
+    def test_launched_agent_replaces_the_push_block(self):
+        self.assertWaits(self.stop(self.transcript(self.launch("a1"))), "a1")
+
+    def test_notified_agent_is_not_running(self):
+        self.assertStillBlocks(self.stop(self.transcript(self.launch("a1"), self.done("a1"))))
+
+    def test_failed_and_killed_also_end_it(self):
+        for status in ("failed", "killed"):
+            self.assertStillBlocks(self.stop(self.transcript(self.launch("a1"), self.done("a1", status))))
+
+    def test_resumed_after_notification_runs_again(self):
+        self.assertWaits(self.stop(self.transcript(self.launch("a1"), self.done("a1"), self.resume("a1"))), "a1")
+
+    def test_notified_again_after_resume_is_finished(self):
+        self.assertStillBlocks(self.stop(self.transcript(self.launch("a1"), self.done("a1"), self.resume("a1"),
+                                                         self.done("a1"))))
+
+    def test_message_to_an_unknown_id_starts_nothing(self):
+        self.assertStillBlocks(self.stop(self.transcript(self.resume("zz"))))
+
+    def test_several_agents_wait_until_the_last_one_ends(self):
+        path = self.transcript(self.launch("a1"), self.launch("b2"), self.done("a1"))
+        out = self.stop(path)
+        self.assertWaits(out, "b2")
+        self.assertIn("1 background subagent of this session is", out)
+        self.assertNotIn("a1", decision(self, out)["systemMessage"])
+        out = self.stop(self.transcript(self.launch("a1"), self.launch("b2")))
+        self.assertIn("2 background subagents of this session are", out)
+        self.assertStillBlocks(self.stop(self.transcript(self.launch("a1"), self.launch("b2"), self.done("a1"),
+                                                         self.done("b2"))))
+
+    def test_background_bash_does_not_count(self):
+        bash = self.line("user", {"type": "tool_result", "tool_use_id": "t", "content":
+                                  "Command running in background with ID: bx1."})
+        self.assertStillBlocks(self.stop(self.transcript(bash)))
+
+    def test_a_notification_quoted_in_a_tool_result_does_not_end_it(self):
+        quoted = self.line("user", {"type": "tool_result", "tool_use_id": "t", "content": [
+            {"type": "text", "text": "<task-notification><task-id>a1</task-id><status>completed</status>"}]})
+        self.assertWaits(self.stop(self.transcript(self.launch("a1"), quoted)), "a1")
+
+    def test_no_transcript_path_blocks_as_before(self):
+        self.assertStillBlocks(self.p.stop()[1])
+
+    def test_unreadable_or_odd_transcripts_block_as_before(self):
+        for path in (str(self.p.tmp / "missing.jsonl"), str(self.p.tmp), "", 5, None):
+            self.assertStillBlocks(self.p.stop({"transcript_path": path})[1])
+        junk = self.transcript(raw=b"agentId not json\n\xff\xfe{\n" + b'{"message": 3}\n[1]\n"agentId"\n')
+        self.assertStillBlocks(self.stop(junk))
+
+    def test_only_the_tail_of_a_huge_transcript_is_read(self):
+        filler = self.line("user", {"type": "text", "text": "x" * 1000}) * 5000  # about 5 MB
+        # the launch is far before the tail (and its notification never comes): not seen, so it blocks
+        self.assertStillBlocks(self.stop(self.transcript(self.launch("old"), filler)))
+        # a launch inside the tail is seen even after the cut of its first, partial line
+        self.assertWaits(self.stop(self.transcript(filler, self.launch("new"))), "new")
+
+    def test_a_cut_first_line_is_dropped(self):
+        launch = self.launch("a1")
+        cut = launch[len(launch) // 2:]  # as if the tail began in the middle of it
+        self.assertStillBlocks(self.stop(self.transcript(raw=cut.encode())))
+
+    def test_zero_bytes_turns_the_look_off(self):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["stopTranscriptBytes"] = 0
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.assertStillBlocks(self.stop(self.transcript(self.launch("a1"))))
+
+    def test_protected_branch_is_unchanged(self):
+        self.p.git("checkout", "-q", "main")
+        self.p.git("merge", "-q", "--ff-only", "claude/trabajo")
+        out = self.stop(self.transcript(self.launch("a1")))
+        self.assertNotIn('"block"', out)
+        msg = decision(self, out)["systemMessage"]
+        self.assertIn("protected branch", msg)
+        self.assertNotIn("background subagent", msg)
+
+    def test_uncommitted_changes_still_block(self):
+        self.p.git("push", "-q")
+        self.p.write("src/b.py", "y = 1\n")
+        self.assertBlocks(self.stop(self.transcript(self.launch("a1"))), "uncommitted change", LOG)
+
+    def test_a_push_in_progress_message_wins(self):
+        self.mark()
+        out = self.stop(self.transcript(self.launch("a1")))
+        self.assertIn("push of this commit is in progress", out)
+        self.assertNotIn("background subagent", out)
+
+
 class ReminderNotGate(Base):
     """Without what it needs, the hook warns (systemMessage) and lets Claude stop."""
 

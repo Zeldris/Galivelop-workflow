@@ -129,6 +129,12 @@
       "default": 0,
       "description": "Seconds scripts/check.sh waits for another check that holds the lock (<git common dir>/gw/check.lock) before exiting 3 and naming its pid and sha; 0 = do not wait."
     },
+    "stopTranscriptBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 4194304,
+      "description": "Bytes read from the end of the session transcript by the Stop hook (before-stop.py) to find background subagents still running; while any runs it does not block on unpushed commits but says to wait for them and push after. 0 = do not look."
+    },
     "checkReuseMark": {
       "type": "boolean",
       "default": true,

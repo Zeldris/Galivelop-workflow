@@ -21,6 +21,10 @@ agent remembered it. It blocks the stop when:
      check ends by itself and a push now would race it, so it is a one-line notice with the check's log. Only a lock whose sha is this
      worktree's HEAD (12 hex, with or without -dirty) silences it; one of another commit or worktree adds a note and blocks.
      A lock that is dead, reused by another process, malformed or missing counts as absent and blocks as before;
+     D88: while background subagents of this session still run (read from the transcript the hook's stdin names in
+     `transcript_path`, see running_subagents) it does not block either: it is a one-line notice to wait for them and
+     push after. Background Bash commands are not counted (a dev server could silence the reminder for good). Any
+     trouble reading the transcript means "none running", so the block stays;
   b. the working tree has changes (`git status`, untracked files included, but not untracked paths under
      `.claude/worktrees/`, where Claude Code keeps its isolated worktrees, nor the token ledger `metrics.ledger`,
      which the metrics.py Stop hook rewrites on every stop) and the log (`log` in .claude/gw.json) is
@@ -46,6 +50,7 @@ import glob
 import json
 import os
 import posixpath
+import re
 import select
 import subprocess
 import sys
@@ -179,6 +184,74 @@ def check_in_progress(root):
     return pid, log, sha
 
 
+def running_subagents(path, tail_bytes):
+    """The ids of the background subagents of this session that have not reported back yet (D88), as a sorted list.
+
+    `path` is the hook's `transcript_path` (JSONL). Only its last `tail_bytes` bytes are read (a long session's
+    transcript is huge; the first, possibly cut, line is dropped; 0 turns the look off). In file order: a tool_result
+    "Async agent launched successfully." with `agentId: <id>` starts the id; a user text with `<task-notification>`,
+    `<task-id><id></task-id>` and a final `<status>` (completed, failed or killed) ends it; a SendMessage tool_use
+    whose `to` is an id already seen restarts it (the same agent resumed after its notification). An agent whose
+    launch fell before the tail and that never notified inside it is not seen. Fail open: no path, unreadable, odd
+    lines or a bad size give [], never an error, so the caller keeps blocking on unpushed commits."""
+    if not path or not isinstance(path, str) or not isinstance(tail_bytes, int) or tail_bytes <= 0:
+        return []
+    try:
+        with open(path, "rb") as f:
+            size = f.seek(0, os.SEEK_END)
+            start = max(0, size - tail_bytes)
+            f.seek(start)
+            data = f.read(tail_bytes)
+    except (OSError, ValueError, OverflowError):
+        return []
+    lines = data.split(b"\n")
+    if start > 0:
+        lines = lines[1:]  # the first line is cut in the middle
+    running = {}
+    for raw in lines:
+        if b"agentId" not in raw and b"task-notification" not in raw and b"SendMessage" not in raw:
+            continue  # cheap filter: most lines are neither
+        try:
+            entry = json.loads(raw)
+            content = entry["message"]["content"]
+        except (ValueError, KeyError, TypeError):
+            continue
+        if isinstance(content, str):
+            content = [{"type": "text", "text": content}]
+        if not isinstance(content, list):
+            continue
+        for item in content:
+            if not isinstance(item, dict):
+                continue
+            kind = item.get("type")
+            if kind == "tool_use" and item.get("name") == "SendMessage":
+                target = (item.get("input") or {}).get("to") if isinstance(item.get("input"), dict) else None
+                if isinstance(target, str) and target in running:
+                    running[target] = True
+            elif kind == "tool_result":
+                text = _text_of(item.get("content"))
+                if "Async agent launched successfully" in text:
+                    for found in re.findall(r"agentId:\s*([A-Za-z0-9_-]+)", text):
+                        running[found] = True
+            elif kind == "text" and entry.get("type") == "user":
+                text = item.get("text")
+                if isinstance(text, str) and text.lstrip().startswith("<task-notification>"):
+                    ident = re.search(r"<task-id>\s*([A-Za-z0-9_-]+)\s*</task-id>", text)
+                    status = re.search(r"<status>\s*(\w+)\s*</status>", text)
+                    if ident and status and status.group(1) in ("completed", "failed", "killed"):
+                        running[ident.group(1)] = False
+    return sorted(k for k, v in running.items() if v)
+
+
+def _text_of(content):
+    """The text of a tool_result's content (a string, or a list of {"type": "text", "text": ...})."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return "\n".join(c.get("text", "") for c in content if isinstance(c, dict) and isinstance(c.get("text"), str))
+    return ""
+
+
 def _same_tree_head(root, lock_sha):
     """True when the lock's sha (`<hex>` or `<hex>-dirty`, check.sh's name for a run: HEAD abbreviated, which may be
     longer than 12 in a big repository) names this worktree's HEAD. D76: the full shas are compared, so an
@@ -282,6 +355,17 @@ def main():
                                      f"branch '{branch}' has {plural(count, 'commit')} not pushed ({where}) until it "
                                      f"ends. Do not push meanwhile: wait for CHECK ok, then push: git push -u origin "
                                      f"{branch}")
+                    elif pushing is None and (agents := running_subagents(
+                            event.get("transcript_path"), cfg["stopTranscriptBytes"])):
+                        notes.append(f"{plural(len(agents), 'background subagent')} of this session "
+                                     f"{'is' if len(agents) == 1 else 'are'} still running ({', '.join(agents)}); "
+                                     f"branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). Wait for "
+                                     f"the subagent{'' if len(agents) == 1 else 's'} to report and push after: git "
+                                     f"push -u origin {branch}")
+                        if checking is not None:
+                            notes.append(f"A check of another commit or worktree is running (pid {checking[0]}, log "
+                                         f"{checking[1] or '-'}, sha {checking[2] or '-'}); it does not cover this "
+                                         f"HEAD.")
                     elif pushing is None:
                         blocks.append(f"Branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). What is "
                                       f"not pushed does not exist for the next session; push it now: git push -u "

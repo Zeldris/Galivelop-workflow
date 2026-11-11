@@ -68,6 +68,9 @@ una hora o con su pid muerto; se puede borrar a mano.
 El gancho `Stop` tampoco manda a subir mientras un check tiene el cerrojo `<directorio común de git>/gw/check.lock`
 (pid vivo con la misma hora de inicio): avisa en una línea de que el check corre, con su registro, y espera a
 `CHECK ok`. Un cerrojo con pid muerto, reutilizado o mal formado cuenta como ausente.
+El gancho `Stop` tampoco manda a subir mientras haya subagentes en segundo plano de la sesión sin terminar (D88; los
+lee del `transcript_path` que recibe: lanzamiento sin su `<task-notification>` posterior, o reanudado con `SendMessage`;
+`stopTranscriptBytes`): avisa en una línea de que se espere y se suba después. Si no puede leer el transcript, bloquea como antes.
 Solo calla si el sha del cerrojo es el `HEAD` de ese worktree; el de otro commit o worktree solo añade una nota y el
 aviso de subir sigue. Un check colgado con el pid vivo no caduca: córtalo (`kill <pid>`; el cerrojo se suelta solo) o
 borra el cerrojo (`rm "$(git rev-parse --git-common-dir)/gw/check.lock"`).
