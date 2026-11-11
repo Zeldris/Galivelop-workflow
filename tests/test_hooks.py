@@ -2650,6 +2650,24 @@ class PreCommit(Base):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn("literal secret", r.stderr)
 
+    def test_one_word_capitalised_secret_in_markdown_stops_but_prose_lines_around_it_pass(self):
+        """E38: a one-word capitalised quoted value is a password, not prose; each line is judged on its own."""
+        p = self.p
+        for line in ('db_pass' + 'word: "Hunter"', "api_" + "key = 'Swordfish'", 'pass' + 'word: "Hunter two"'):
+            with self.subTest(line=line):
+                p.write("docs/m.md", '"openai' + 'Key": "Clave de OpenAI"\n' + line + '\n"api_' + 'key": "Your API key here"\n')
+                r = p.commit("leak", ok=False)
+                if line.endswith('two"'):  # two words with a digit-free capital start is prose: it passes
+                    self.assertEqual(r.returncode, 0, r.stderr)
+                    continue
+                self.assertNotEqual(r.returncode, 0, line)
+                self.assertIn("these lines assign a literal secret", r.stderr)
+                self.assertIn("  " + line, r.stderr)
+                self.assertNotIn("Clave de OpenAI", r.stderr)
+                self.assertNotIn("Your API key", r.stderr)
+                p.git("reset", "-q")
+                (p.work / "docs" / "m.md").unlink()
+
     def test_everyday_key_names_are_not_secrets(self):
         """A bare *key suffix must stay unmatched: primary_key, sort_key, monkey and friends are ordinary code."""
         p = self.p

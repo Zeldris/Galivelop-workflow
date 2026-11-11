@@ -5,7 +5,8 @@
 # command, ok/FAILED, seconds) and ends with one line `CHECK <ok|FAILED>: <what failed>`.
 # The output of every command always goes to a log: <git common dir>/gw/check-<sha>.log (<sha> = HEAD, plus -dirty
 # when the work tree has changes; GW_CHECK_LOG overrides the path, a relative one is taken from the current
-# directory), also shown live unless --quiet (-q, or GW_CHECK_QUIET=1/true/yes): then only the last GW_CHECK_TAIL
+# directory), also shown live (with a terminal, the command keeps it: it runs in a pty through script(1) when there is
+# one, E39) unless --quiet (-q, or GW_CHECK_QUIET=1/true/yes): then only the last GW_CHECK_TAIL
 # lines (default 40) of the command that fails are shown, with the log path. The log of a run is never deleted by
 # the scripts. A lock <git common dir>/gw/check.lock (the pid and sha of the run) keeps two checks from running at
 # once (check-green.sh lock-acquire; the pre-push takes the same one): a second one waits up to `checkLockWait`
@@ -81,6 +82,10 @@ case "$lock_wait" in ''|*[!0-9]*) lock_wait=0 ;; esac
 grace="$(python3 "$config" --root "$root" get checkOutputGrace 2>/dev/null)" || grace=5
 case "$grace" in ''|*[!0-9]*) grace=5 ;; esac
 [ -f "$helper" ] || fail "$helper is missing, so the check cannot take its lock; reinstall the workflow: /gw-update"
+script_flavor() {  # prints linux (util-linux script -qefc) or bsd (script -q file cmd), nothing when there is no script(1)
+  command -v script > /dev/null 2>&1 || return 0
+  if script --version 2>&1 | grep -qi util-linux; then echo linux; else echo bsd; fi
+}
 have_lock=""
 fifos=""
 tee_out=""
@@ -119,6 +124,18 @@ while IFS= read -r cmd; do
   if [ -n "$quiet" ]; then
     GW_PUSH_PROTECTED=false bash -c "$cmd" < /dev/null >> "$log" 2>&1
     rc=$?
+  elif [ -t 1 ] && pty_flavor="$(script_flavor)" && [ -n "$pty_flavor" ]; then
+    # E39: on a terminal the command keeps one (isatty, colours, progress bars): it runs inside a pty made by script(1),
+    # which also copies the output into a temporary file that goes to the log without the carriage returns.
+    ptylog="$(mktemp "${TMPDIR:-/tmp}/gw-check-pty.XXXXXX")" || fail "cannot create a file in ${TMPDIR:-/tmp}; free space or set TMPDIR to a writable folder"
+    if [ "$pty_flavor" = linux ]; then
+      GW_PUSH_PROTECTED=false script -qefc "$cmd" "$ptylog" < /dev/null
+    else
+      GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" < /dev/null
+    fi
+    rc=$?
+    tr -d '\r' < "$ptylog" >> "$log"
+    rm -f "$ptylog"
   else
     # live output, also into the log; stdout and stderr stay on their own streams (two fifos, two tees)
     { fifos="$(mktemp -d "${TMPDIR:-/tmp}/gw-check-fifo.XXXXXX")" && mkfifo "$fifos/out" "$fifos/err"; } || fail "cannot create a fifo in ${TMPDIR:-/tmp}; free space or set TMPDIR to a writable folder"
