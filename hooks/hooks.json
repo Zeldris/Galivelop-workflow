@@ -56,6 +56,15 @@
             "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/subagent-cap.py"
           }
         ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/whole-read.py"
+          }
+        ]
       }
     ],
     "Stop": [

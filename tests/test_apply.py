@@ -252,6 +252,18 @@ class Apply(unittest.TestCase):
         self.applied()
         self.assertEqual(p.read(".claude/settings.json"), before, "a second run adds nothing")
 
+    def test_whole_read_is_applied_once_on_read(self):
+        p = self.p
+        out = self.applied()
+        self.assertTrue((p.work / ".claude/gw/scripts/whole-read.py").is_file(), out)
+        s = json.loads(p.read(".claude/settings.json"))
+        reads = [e for e in s["hooks"]["PreToolUse"] if any("whole-read.py" in h["command"] for h in e["hooks"])]
+        self.assertEqual(len(reads), 1, s["hooks"]["PreToolUse"])
+        self.assertEqual(reads[0]["matcher"], "Read")
+        before = p.read(".claude/settings.json")
+        self.applied()
+        self.assertEqual(p.read(".claude/settings.json"), before, "a second run adds nothing")
+
     def test_project_own_script_with_a_flow_name_is_not_listed(self):
         p = self.p
         self.applied()

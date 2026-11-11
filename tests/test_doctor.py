@@ -31,7 +31,7 @@ class Doctor(unittest.TestCase):
         for var in ("CI", "GITHUB_ACTIONS"):  # the CI's own variables must not change what these tests expect
             p.env.pop(var, None)
         for name in ("review-before-main.sh", "before-stop.py", "config-guard.py", "subagent-cap.py", "agent-signatures.py",
-                     "metrics.py"):
+                     "metrics.py", "whole-read.py"):
             shutil.copy2(ROOT / "scripts" / name, p.scripts / name)
         shutil.copy2(ROOT / "templates" / "claude" / "settings.json", p.work / ".claude" / "settings.json")
         shutil.copy2(ROOT / "templates" / "githooks" / "commit-msg", p.work / ".githooks" / "commit-msg")
@@ -150,6 +150,24 @@ class Doctor(unittest.TestCase):
         code, out = self.doctor()
         self.assertEqual(code, 0, out)
         self.assertLine(out, "WARN", "settings PreToolUse", "outside .claude/gw/scripts/", "delete that entry")
+
+    def test_older_whole_read_runs_twice(self):
+        s = self.settings()
+        s["hooks"]["PreToolUse"].append({"matcher": "Read", "hooks": [
+            {"type": "command", "command": "python3 .claude/hooks/whole-read.py"}]})
+        self.save_settings(s)
+        (self.p.work / ".claude" / "hooks").mkdir()
+        (self.p.work / ".claude" / "hooks" / "whole-read.py").write_text(
+            f"#!/usr/bin/env python3\n# galivelop-workflow v{VERSION}\n")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "settings PreToolUse", "outside .claude/gw/scripts/", "delete that entry")
+
+    def test_missing_whole_read_script_fails(self):
+        (self.p.scripts / "whole-read.py").unlink()
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", "settings PreToolUse", "whole-read.py", "does not exist")
 
     def test_missing_subagent_cap_script_fails(self):
         (self.p.scripts / "subagent-cap.py").unlink()

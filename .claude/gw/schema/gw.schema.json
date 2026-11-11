@@ -55,6 +55,12 @@
       "default": 20000,
       "description": "Cap on the size of the whole hand-off log, in characters (0 = no cap). handoff.py check warns above it and context_guard.py names the log as the culprit; handoff.py archive moves the Pending items of published versions out."
     },
+    "wholeReadWarnBytes": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 20000,
+      "description": "Bytes above which whole-read.py (PreToolUse hook on Read) warns when a Read takes whole, with no offset or limit, the hand-off log, its archive or a file under recordsDir; it never blocks. 0 = do not warn."
+    },
     "logArchive": {
       "type": "string",
       "minLength": 1,
