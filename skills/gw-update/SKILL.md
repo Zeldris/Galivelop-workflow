@@ -104,7 +104,7 @@ user from the tables and opens a file only for a row in doubt.
 1. `python3 <project>/.claude/gw/scripts/doctor.py` until no `FAIL`; `python3 <workflow>/scripts/apply.py --check
    <project>` exits 0 when nothing is left to merge.
 2. A `/code-review` of the update branch leaves out the files that are identical copies of the workflow at Y
-   (`.claude/gw/`, `.claude/skills/gw-*`, `.githooks/`; `apply.py --check` reports no drift for them): reviewed upstream, they
+   (`.claude/gw/`, `.claude/skills/gw-*`, `.githooks/`; `python3 <project>/.claude/gw/scripts/review-scope.py --workflow <workflow>` lists the rest): reviewed upstream, they
    were 89% of the paths of one update. Review the files the project merged by hand and its own files.
 3. Commit with the message `apply.py` suggested and a real `Next:` line (`Siguiente:` in Spanish projects), update
    the log in the same commit, and `git push`; the pre-push runs the check.

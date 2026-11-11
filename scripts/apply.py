@@ -4,6 +4,7 @@
 
   python3 <workflow>/scripts/apply.py [PROJECT] [--update] [--check] [--dry-run] [--with SKILL ...]
           [--no-personal-notes] [--keep-paths]
+  python3 <workflow>/scripts/apply.py [PROJECT] --vendored   # D82: list the unchanged copies, no writes
   python3 <workflow>/scripts/apply.py [PROJECT] --init --check-command CMD [--language es|en] [--log PATH]
           [--install CMD ...] [--protected-branch B] [--push-to-protected direct|pr] [--content REGEX ...]
           [--review-mark PATH] [--require-retro true|false] [--agent-signatures true|false]
@@ -273,6 +274,7 @@ class Plan:
         self.orphans = []   # files the workflow no longer has
         self.cfg = {}       # the project's config, for ownedFiles
         self.owned = []     # info lines about files the project made its own (ownedFiles): never drift
+        self.identical = []  # repo-relative paths of workflow copies the project holds unchanged (D82, --vendored)
         self.moved_to = set()   # repo-relative targets of the planned moves: nothing is seeded there
         self.hooks_path = None  # None, or the hint line about core.hooksPath
         self.set_hooks_path = False
@@ -303,6 +305,7 @@ class Plan:
         data: rendered content instead of src's bytes (a template; never executable). existing: the repo-relative
         file whose content stands for the one at `rel` (it is being moved there in the same run)."""
         want_exec = is_exec(src) if data is None else False
+        rendered = data is not None  # a template: the project fills it in, so it is never a vendored copy
         data = src.read_bytes() if data is None else data
         dest = self.root / rel
         here = self.root / existing if existing else dest
@@ -311,6 +314,8 @@ class Plan:
             return
         current = here.read_bytes()
         if current == data:
+            if existing is None and not rendered:
+                self.identical.append(str(rel))
             if want_exec and not is_exec(here):
                 self.actions.append(("chmod", rel, None, True, "make it executable"))
             self.keep_owned(rel, current, data)  # only the leftover .gw-new warning
@@ -1396,6 +1401,9 @@ def main(argv=None):
     parser.add_argument("--update", action="store_true", help="replace local edits in workflow-owned files")
     parser.add_argument("--check", action="store_true", help="no writes; exit 1 if the copy differs")
     parser.add_argument("--dry-run", action="store_true", help="print the plan, no writes")
+    parser.add_argument("--vendored", action="store_true",
+                        help="no writes; print, one per line, the files the project holds as unchanged copies of "
+                             "the workflow (the ones review-scope.py leaves out of the phase 1 review, D82)")
     parser.add_argument("--no-personal-notes", dest="no_personal", action="store_true",
                         help=f"do not carry the personal notes (env {NOTES_ENV}, default ~/.claude/gw/notas/)")
     parser.add_argument("--with", dest="extra", action="append", default=[], metavar="SKILL",
@@ -1477,11 +1485,16 @@ def main(argv=None):
                   file=sys.stderr)
             return 2
     try:
-        plan = build(root, version, args.update, args.extra, cfg, not args.no_personal, args.check, args.keep_paths)
+        plan = build(root, version, args.update, args.extra, cfg, not (args.no_personal or args.vendored),
+                     args.check or args.vendored, args.keep_paths)
     except ApplyError as exc:
         print(exc, file=sys.stderr)
         return 2
 
+    if args.vendored:
+        for rel in sorted(set(plan.identical)):
+            print(rel)
+        return 0
     lines = describe(plan)
     if args.check:
         drift = bool(plan.actions or plan.pending or plan.orphans)

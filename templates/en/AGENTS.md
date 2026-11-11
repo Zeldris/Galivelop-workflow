@@ -106,6 +106,10 @@ Never on work that is already merged.
    with every finding (in Claude Code, `/code-review --max-findings all`), with the criteria of `REVIEW.md`. Fixes
    committed and pushed: what is serious or medium, and what the fix itself breaks; minor findings are logged as
    pending and not reviewed again in that PR. Only code needs review: what matches `content` in `.claude/gw.json` is content.
+   Files copied unchanged from the workflow (`vendored`) are not reviewed either (`python3
+   .claude/gw/scripts/review-scope.py --workflow <workflow repo>` lists what is: one edited in the project is). A diff
+   with no code is reviewed in the session, without a subagent; the review's fixes go to a `sonnet` subagent (`opus`
+   if they touch hooks or guards).
    **On a long branch, this phase moves forward to each closed block:** a review of the diff since the last block
    review only (the last commit with a `Findings:` trailer; the commit-msg hook warns when the block passes
    `changeSize.block` lines), so one review of many commits does not leave modules unread;

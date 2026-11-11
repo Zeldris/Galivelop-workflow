@@ -106,7 +106,9 @@ Nunca sobre trabajo ya fusionado.
    todos los hallazgos (en Claude Code, `/code-review --max-findings all`), con el criterio de `REVIEW.md`. Arreglos
    con commit y subidos: lo grave o medio y lo que el propio arreglo rompe; lo leve se apunta como pendiente en la
    bitácora y no vuelve a revisarse en ese PR. Solo el código necesita revisión: lo que casa con `content` de `.claude/gw.json` es
-   contenido. **En una rama larga, esta fase se adelanta a cada bloque cerrado:** revisión solo del diff desde la
+   contenido. Tampoco se revisa lo copiado tal cual del flujo (`vendored`; `python3 .claude/gw/scripts/review-scope.py
+   --workflow <repo del flujo>` lista lo que sí: uno editado en el proyecto entra). Un diff sin código se revisa en la
+   sesión, sin subagente; los arreglos de la revisión van a un subagente `sonnet` (`opus` si tocan ganchos o guardas). **En una rama larga, esta fase se adelanta a cada bloque cerrado:** revisión solo del diff desde la
    última revisión de bloque (el último commit con el trailer `Findings:`; el `commit-msg` avisa cuando el bloque pasa
    de `changeSize.block` líneas), para que una sola revisión de muchos commits no deje módulos sin mirar; antes de `{{protectedBranch}}`, solo lo que quede desde entonces.
 2. **Entorno:** la skill `gw-opt-tokens` y luego `retro` (más `gw-opt-ai` si hubo medidas con un modelo de IA local). Sus
