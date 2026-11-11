@@ -307,9 +307,10 @@ class Templates(unittest.TestCase):
         sample = json.loads((TEMPLATES / "gw.json").read_text())
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())
         self.assertEqual(config.validate(sample, schema), [])
-        # ciInstall is left out on purpose: absent means "CI runs `install`", while [] would mean "CI installs nothing"
-        self.assertEqual(set(sample), set(schema["properties"]) - {"ciInstall", "ciPython"},
-                         "templates/gw.json must show every key but ciInstall and ciPython")
+        # ciInstall is left out on purpose: absent means "CI runs `install`", while [] would mean "CI installs nothing";
+        # shellcheckVersion is the workflow repo's own pin (E27): a project's CI template does not read it
+        self.assertEqual(set(sample), set(schema["properties"]) - {"ciInstall", "ciPython", "shellcheckVersion"},
+                         "templates/gw.json must show every key but ciInstall, ciPython and shellcheckVersion")
         self.assertEqual(sample["version"], VERSION)
         # D59: the AGENTS.md template asks for the next-step trailer, so a new project must have it enforced
         self.assertIs(sample["commitNext"], True)

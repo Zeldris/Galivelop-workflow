@@ -9,7 +9,7 @@
 | Campo | Valor |
 |---|---|
 | Rama | **`0.5` «Base»: `ccr-d1e2d496-0vzck8`** (2026-11-02; creada desde `version/1.0.0` en `a61cdc5`; hace de `version/0.5.0` (H-13) mientras la sesión solo pueda subir a esta rama). **No hay `0.4.4`** (usuario, 2026-11-03: «publicamos la 0.5, ya directamente»): sus arreglos salen en la `0.5.0` y `ccr-6dfbc880-ddr41g` queda sin uso. `version/1.0.0` se queda con el diseño (`docs/design/`). `main` = `eeec886` = **`0.5.1`** (2026-11-05; etiqueta y release `v0.5.1` publicadas desde una sesión local) |
-| Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). Los arreglos del CI de Ubuntu y macOS (`66a4ecd`) están en esta rama; `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.5.0` |
+| Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
 | Siguiente paso | **B1-B8, B10, B11 y E21 hechas (2026-11-09)**; **B16, D42, E22, B18, D48 y D43 hechas (2026-11-10)**. **Revisión de bloque hecha (2026-11-10)** sobre `origin/main...cb071d6`; el siguiente bloque se mide desde su commit (`Findings: 4`). **D49, D53, D54 y B19 hechas (2026-11-10); E27 hecha (2026-11-11).** **Siguiente:** el resto de pendientes de la `0.6` (`docs/roadmap.md`), empezando por D55; la tabla determinista espera a 4 semanas de libro. Presupuesto de compactaciones: 1 |
@@ -30,6 +30,8 @@
 
 ## Para la próxima publicación
 
+**Antes de cerrar la `0.6.0`** (usuario, 2026-11-11): recogida (`gw-harvest`) sobre los proyectos que usan el flujo (H18); los arreglos, a un parche de la `0.5`, y los evolutivos, repartidos entre las versiones en `docs/roadmap.md`.
+
 **Política de versiones** (usuario, 2026-11-01, plan §7): solo la última menor publicada recibe parches (hoy la `0.4`);
 los evolutivos van a la siguiente menor (la `0.5`, en esta rama). La `1.0` es el Management Center y sale cuando está
 hecho lo que le asigna el roadmap; la §10 mide la madurez de la `1.x`. Cada versión se publica en este repo
@@ -41,7 +43,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-11 — E27: clave `shellcheckVersion` (`"0.11.0"` aquí); el CI de este repo la instala con `pip install "shellcheck-py==X.Y.Z.*"` en Linux y macOS (antes, el de apt o brew) y `tests/shellcheck.sh` avisa con esa orden si la local es otra (en el CI falla; con `gw.json` ilegible falla cerrado); el `install` de la nube la usa; esquema, config.md es/en y 3 tests.
+1. 2026-11-11 — E27: clave `shellcheckVersion` (`"0.11.0"` aquí); el CI de este repo la instala con `pip install "shellcheck-py==X.Y.Z.*"` en Linux y macOS (no el de apt o brew) y `tests/shellcheck.sh` avisa con esa orden si la local es otra (en el CI falla; `gw.json` ilegible, cerrado); la usa el `install` de la nube; 3 tests.
 2. 2026-11-10 — B19: `gw-update` reparte a un subagente ligero la lectura de cada diff de plantilla, cada `.gw-new` y cada salida de más de ~200 líneas, que devuelve la tabla «desvío · arriba · decisión»; el `/code-review` de la rama de actualización deja fuera las copias idénticas del flujo; 1 test.
 3. 2026-11-10 — D54: clave `ciOnPush` (defecto `true`); con `false`, `apply.py` escribe `branches-ignore: ['**']` en `check.yml` (`{{ciPushIgnore}}`) y `ci-status.py` sin CI propone `ci-local.py --record`; docs y 3 tests. CI rojo por SC2015 en `tests/old-python.sh` (shellcheck del runner; el local no lo marca): pasado a `if`.
 4. 2026-11-10 — D53: clave `ownedFiles` (`fnmatch`); `apply.py` no pisa ni cuenta como desvío un archivo propio y `doctor.py` no avisa de él; 7 tests.
@@ -49,7 +51,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Pendiente
 
-- **E27:** solo para el repo del flujo (la plantilla de CI de un proyecto no la lee); el sello de `install` en la nube guarda la orden, no la versión: al cambiar la clave no se reinstala solo (avisa `tests/shellcheck.sh`).
+- **E27:** solo para el repo del flujo (la plantilla de CI de un proyecto no la lee); al cambiar la clave, la nube no reinstala sola (el sello guarda la orden; avisa `tests/shellcheck.sh`).
 - **B19:** es una regla de criterio de la skill (ningún script la comprueba); «idénticas» lo dice `apply.py --check`, que el agente corre antes del `/code-review`.
 - **D54:** cambiar la clave no reescribe `check.yml` hasta `apply.py --update`; sin PR no hay CI («none», exit 1).
 - **D53:** `fnmatch` deja que `*` cruce `/`; la plantilla `merged` (`AGENTS.md`, `CLAUDE.md`) también respeta `ownedFiles`; `doctor.py` solo lo mira en los ganchos y las skills (no en el CI ni en otros avisos de `/gw-update`).
