@@ -256,6 +256,18 @@ class Config(unittest.TestCase):
             self.assertIn("$.subagentCap", r.stderr)
             self.assertIn(why, r.stderr)
 
+    def test_whole_read_warn_bytes_default_and_bad_values(self):
+        self.write(VALID)
+        self.assertEqual(cli(self.tmp, "get", "wholeReadWarnBytes").stdout.strip(), "20000")
+        self.write(dict(VALID, wholeReadWarnBytes=0))
+        self.assertEqual(cli(self.tmp, "get", "wholeReadWarnBytes").stdout.strip(), "0")
+        for bad, why in {-1: "must be at least 0, got -1", "x": "expected integer, got str"}.items():
+            self.write(dict(VALID, wholeReadWarnBytes=bad))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn("$.wholeReadWarnBytes", r.stderr)
+            self.assertIn(why, r.stderr)
+
     def test_private_check_default_and_bad_values(self):
         self.write(VALID)
         r = cli(self.tmp, "get", "privateCheck")

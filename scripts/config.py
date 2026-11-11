@@ -329,6 +329,15 @@ def log_size(config):
     return _schema()["properties"]["logSize"]["default"]
 
 
+def whole_read_warn_bytes(config):
+    """The `wholeReadWarnBytes` key (B26): the size above which a whole Read of the log or a record is warned about
+    (0 = never), the schema default when absent or invalid."""
+    given = config.get("wholeReadWarnBytes")
+    if isinstance(given, int) and not isinstance(given, bool) and given >= 0:
+        return given
+    return _schema()["properties"]["wholeReadWarnBytes"]["default"]
+
+
 def log_archive(config):
     """The `logArchive` key: repo-relative path of the hand-off archive, the schema default when absent."""
     given = config.get("logArchive")

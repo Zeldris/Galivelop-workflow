@@ -6,6 +6,7 @@
   "visibleLanguages": [],
   "log": "docs/handoff.md",
   "logSize": 20000,
+  "wholeReadWarnBytes": 20000,
   "logArchive": "docs/records/handoff-archive.md",
   "logRows": false,
   "protectedBranch": "main",
