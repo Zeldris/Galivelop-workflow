@@ -815,10 +815,11 @@ def test_dirs(root, ignore):
 
 def check_run_text(root, cfg):
     """What the `check` commands run, as text: the commands, the testMap test paths, and the content of each script or
-    Makefile a command names (one level: `bash tests/check.sh`, `make check`)."""
+    Makefile a command names (one level: `bash tests/check.sh`, `make check`); only files inside the repo are read."""
     parts = list(cfg.get("check") or [])
     for rule in (cfg.get("testMap") or {}).get("rules") or []:
         parts.extend(t for t in rule.get("tests") or [] if isinstance(t, str))
+    top = root.resolve()
     for command in list(parts):
         try:
             words = shlex.split(command)
@@ -828,40 +829,100 @@ def check_run_text(root, cfg):
         if "make" in words[:2]:
             files.append("Makefile")
         for name in files:
-            path = root / name
-            if path.is_file() and path.stat().st_size < 500_000:
-                parts.append(path.read_text(encoding="utf-8", errors="replace"))
+            try:
+                path = (top / name).resolve()
+                path.relative_to(top)  # a path outside the repo (/etc/passwd, ../x) is never read
+                if path.is_file() and path.stat().st_size < 500_000:
+                    parts.append(path.read_text(encoding="utf-8", errors="replace"))
+            except (ValueError, OSError):
+                continue
     return "\n".join(parts)
 
 
-def folder_is_run(folder, text):
-    """Whether `text` runs the test folder `folder`. Rule (documented in config.md): some word in the text is the folder (`-s tests`),
-    a glob that matches it (`skills/*/scripts`), or a file inside it; or `unittest discover` has no `-s` (it starts at
-    "."), or a `pytest` has no path argument (it starts at the root and finds everything)."""
-    for token in re.findall(r"[\w./*?{}\[\]-]+", text):
-        token = token[2:] if token.startswith("./") else token
-        token = token.rstrip("/") or "."
-        if token == "." and folder != ".":
-            continue
-        if fnmatch.fnmatchcase(folder, token) or (folder != "." and token.startswith(folder + "/")):
-            return True
+def _norm(path):
+    path = path.strip("\"'")
+    path = path[2:] if path.startswith("./") else path
+    return path.rstrip("/") or "."
+
+
+def run_targets(root, text):
+    """(everything, patterns): what the commands in `text` run. Only these count (never a word in a comment, an `echo`
+    or `pip install pytest`): the argument of `-s`/`--start-directory` of a `python -m unittest discover` (`$var` is
+    resolved from a `for var in <paths>` line; no `-s` means "."), the paths given to `python -m unittest` or to
+    pytest (a folder is that folder, a test_*.py is its own folder), any test_*.py named in a command, and a pytest
+    command with no path (everything). A folder is run if it equals a pattern or a glob matches it."""
+    patterns, everything, loops = [], False, {}
     for line in text.splitlines():
-        words = line.split()
-        if "pytest" in words and not any("/" in w or w.endswith(".py") for w in words):
-            return True
-        if "discover" in words and "-s" not in words and "--start-directory" not in words and folder == ".":
-            return True
-    return False
+        line = re.sub(r"\s#.*$", "", line.strip())
+        if not line or line.startswith("#"):
+            continue
+        m = re.match(r"for\s+(\w+)\s+in\s+([^;]+);", line)
+        if m:
+            loops[m.group(1)] = [_norm(w) for w in m.group(2).split()]
+        for cmd in re.split(r"\s*(?:;|&&|\|\||\||&)\s*", line):
+            words = cmd.split()
+            while words and (words[0] in ("do", "then", "else", "if", "while", "!", "time")
+                             or re.match(r"^[A-Za-z_]\w*=", words[0])):
+                words = words[1:]
+            if not words:
+                continue
+            py = re.match(r"python[\d.]*$", Path(words[0]).name) is not None
+            tool = None
+            if py and "-m" in words[:6] and words.index("-m") + 1 < len(words):
+                tool = words[words.index("-m") + 1]
+                rest = words[words.index("-m") + 2:]
+            elif Path(words[0]).name in ("pytest", "py.test"):
+                tool, rest = "pytest", words[1:]
+            for word in words:
+                base = word.strip("\"'").rsplit("/", 1)
+                if (base[-1].startswith("test_") and base[-1].endswith(".py")
+                        and not re.search(r"[*?]", base[-1])):
+                    patterns.append(_norm(base[0]) if len(base) == 2 else ".")
+            if tool not in ("unittest", "pytest"):
+                continue
+            paths, start, it = [], None, iter(rest)
+            for w in it:
+                if tool == "unittest" and w in ("-s", "--start-directory"):
+                    start = next(it, None)
+                elif w.startswith("-"):
+                    continue
+                else:
+                    w = w.split("::")[0]
+                    if w.strip("\"'") == "discover" or not ("/" in w or w.endswith(".py") or (root / _norm(w)).is_dir()):
+                        continue
+                    paths.append(w)
+            if start is not None:
+                paths = [start]
+            elif tool == "unittest" and "discover" in rest and not paths:
+                paths = ["."]
+            if tool == "pytest" and not paths:
+                everything = True
+            for w in paths:
+                w = _norm(w)
+                if w.startswith("$") and w.lstrip("${").rstrip("}") in loops:
+                    patterns.extend(loops[w.lstrip("${").rstrip("}")])
+                elif w.endswith(".py"):
+                    patterns.append(w.rsplit("/", 1)[0] if "/" in w else ".")
+                else:
+                    patterns.append(w)
+    return everything, patterns
+
+
+def folder_is_run(folder, targets):
+    """Whether `folder` is run by the `run_targets` result: equal to a pattern or matched by it as a glob (a parent of
+    a run folder, `tests` for `-s tests/unit`, is not run)."""
+    everything, patterns = targets
+    return everything or any(fnmatch.fnmatchcase(folder, pat) for pat in patterns)
 
 
 def check_test_dirs(rep, root, cfg):
     """WARN with every folder holding test_*.py that no `check` command runs (E43): a test nobody runs is no test. See
-    folder_is_run for what counts as running a folder; nothing is said without `check` commands."""
+    run_targets for what counts as running a folder; nothing is said without `check` commands."""
     if cfg is None or not cfg.get("check"):
         return
     import config
-    text = check_run_text(root, cfg)
-    missing = [f for f in test_dirs(root, config.doctor_test_dirs_ignore(cfg)) if not folder_is_run(f, text)]
+    targets = run_targets(root, check_run_text(root, cfg))
+    missing = [f for f in test_dirs(root, config.doctor_test_dirs_ignore(cfg)) if not folder_is_run(f, targets)]
     for folder in missing:
         rep.warn("test dirs", f"{folder}/ holds test_*.py that no command of 'check' runs",
                  f"add to 'check' in .claude/gw.json: python3 -m unittest discover -s {folder} -p 'test_*.py' "

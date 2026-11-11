@@ -12,6 +12,7 @@
     "bash tests/check.sh",
     "[ \"${GW_PUSH_PROTECTED:-}\" != true ] || python3 scripts/version.py --release"
   ],
+  "doctorTestDirsIgnore": [".git", "node_modules", ".claude/worktrees", ".claude/gw", ".claude/skills", "venv", ".venv", "env", ".tox", "site-packages", "__pycache__"],
   "shellcheckVersion": "0.11.0",
   "branchCheck": "related",
   "fullCheckPaths": [
