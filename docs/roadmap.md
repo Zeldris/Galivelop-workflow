@@ -230,6 +230,7 @@ En este orden, porque cada paso usa el anterior.
 | Id | Tarea | Estado |
 |---|---|---|
 | G4 | Config desde el MMC a través de `config.py`, con el diff y sin commit | pendiente |
+| G11 | Instrucciones renderizadas desde el config: las fuentes (`templates/`, `skills/`) llevan las dos ramas de cada interruptor (`<!-- gw:if clave -->…<!-- gw:else -->…<!-- gw:end -->`) y `apply.py` deja en la copia instalada solo la que toca; cambiar una clave (un botón del MMC) re-renderiza lo afectado y `doctor.py` avisa si una copia no coincide con el config. Solo interruptores de comportamiento (booleanos y enums); los documentos para personas siguen con las dos ramas. Antes: prueba con un interruptor (el modo restringido de B11) y medida del ahorro; decidir qué hacen las skills del plugin (Fase 9), que no se renderizan por proyecto (usuario, 2026-11-11) | pendiente |
 
 ## `1.2` — MMC 3: perfiles, entornos y roles
 

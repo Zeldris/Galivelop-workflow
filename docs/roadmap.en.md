@@ -229,6 +229,7 @@ In this order, because each step uses the previous one.
 | Id | Task | State |
 |---|---|---|
 | G4 | Config from the MMC through `config.py`, with the diff and no commit | pending |
+| G11 | Instructions rendered from the config: the sources (`templates/`, `skills/`) carry both branches of each switch (`<!-- gw:if key -->…<!-- gw:else -->…<!-- gw:end -->`) and `apply.py` leaves only the one that applies in the installed copy; changing a key (an MMC button) re-renders what it affects and `doctor.py` warns when a copy does not match the config. Only behaviour switches (booleans and enums); documents for people keep both branches. First: a trial on one switch (B11's restricted mode) and a measure of the saving; decide what the plugin's skills do (Phase 9), since they are not rendered per project (user, 2026-11-11) | pending |
 
 ## `1.2` — MMC 3: profiles, environments and roles
 
