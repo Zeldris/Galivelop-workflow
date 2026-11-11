@@ -887,6 +887,99 @@ class Doctor(unittest.TestCase):
         code, out = self.doctor_env(self.ci_env())
         self.assertEqual(self.ci_lines(out), [], out)
 
+    # --- folders with test_*.py that no check command runs (E43)
+
+    def set_cfg(self, **changes):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.update(changes)
+        self.p.write(".claude/gw.json", json.dumps(cfg, indent=2))
+
+    def test_test_dirs_uncovered_folder_warns_with_the_fix(self):
+        self.set_cfg(check=["python3 -m unittest discover -s tests -p 'test_*.py'"])
+        self.p.write("tests/test_a.py", "")
+        self.p.write("skills/x/scripts/test_b.py", "")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)  # a warning, never a failure
+        line = self.assertLine(out, "WARN", "test dirs", "skills/x/scripts/ holds test_*.py")
+        self.assertIn("discover -s skills/x/scripts -p 'test_*.py'", line)
+        self.assertIn("doctorTestDirsIgnore", line)
+        self.assertEqual(out.count("WARN test dirs"), 1, out)  # tests/ is run
+
+    def test_test_dirs_covered_by_path_glob_file_script_or_testmap(self):
+        self.p.write("tests/test_a.py", "")
+        self.p.write("skills/x/scripts/test_b.py", "")
+        self.p.write("lib/test_c.py", "")
+        self.p.write("run.sh", "python3 -m unittest discover -s tests\nfor d in skills/*/scripts; do python3 -m unittest discover -s \"$d\"; done\n")
+        self.set_cfg(check=["bash run.sh", "python3 -m unittest lib/test_c.py"])
+        self.assertLine(self.doctor()[1], "OK", "test dirs", "every folder with test_*.py is run")
+        self.p.write("run.sh", "python3 -m unittest discover -s tests\n")
+        self.set_cfg(check=["bash run.sh", "python3 -m unittest lib/test_c.py"],
+                     testMap={"rules": [{"paths": "^skills/", "tests": ["skills/x/scripts/test_b.py"]}], "command": ""})
+        self.assertLine(self.doctor()[1], "OK", "test dirs")
+        self.set_cfg(check=["pytest"], testMap={"rules": [], "command": ""})
+        self.assertLine(self.doctor()[1], "OK", "test dirs")
+
+    def test_test_dirs_ignored_folders_stay_silent(self):
+        self.set_cfg(check=["true"])
+        for folder in (".claude/worktrees/w1/tests", "node_modules/p/tests", "a/node_modules/tests", ".claude/gw/scripts"):
+            self.p.write(f"{folder}/test_x.py", "")
+        self.p.write("myenv/pyvenv.cfg", "")
+        self.p.write("myenv/lib/test_y.py", "")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("WARN test dirs", out)
+        self.p.write("vendor/test_z.py", "")
+        self.assertLine(self.doctor()[1], "WARN", "test dirs", "vendor/")
+        self.set_cfg(check=["true"], doctorTestDirsIgnore=[".git", ".claude", "node_modules", "vendor"])
+        self.assertNotIn("WARN test dirs", self.doctor()[1])  # an own list replaces the default one
+
+    def test_test_dirs_only_real_run_commands_count(self):
+        self.p.write("tests/test_a.py", "")
+        self.p.write("tests2/test_b.py", "")
+        self.p.write("old_tests/test_c.py", "")
+        self.p.write("tests/unit/test_d.py", "")
+        # pip install pytest is no pytest run; a comment and an echo name folders without running them
+        self.p.write("run.sh", "# python3 -m unittest discover -s tests\necho python3 -m unittest discover -s tests2\n")
+        self.set_cfg(check=["pip install pytest", "bash run.sh"])
+        out = self.doctor()[1]
+        for folder in ("tests", "tests2", "old_tests", "tests/unit"):
+            self.assertLine(out, "WARN", "test dirs", f"{folder}/ holds test_*.py")
+        # -s tests/unit runs that folder, not its parent; the names tests2 and old_tests do not match tests
+        self.set_cfg(check=["python3 -m unittest discover -s tests/unit"])
+        out = self.doctor()[1]
+        self.assertNotIn("WARN test dirs: tests/unit/", out)
+        self.assertLine(out, "WARN", "test dirs", "tests/ holds test_*.py")
+        self.assertLine(out, "WARN", "test dirs", "tests2/ holds test_*.py")
+        # a script named by a command does not mark its own folder, a real pytest command with no path does
+        self.set_cfg(check=["bash tests/run.sh"])
+        self.p.write("tests/run.sh", "true\n")
+        self.assertLine(self.doctor()[1], "WARN", "test dirs", "tests/ holds test_*.py")
+        self.set_cfg(check=["python3 -m pytest -q"])
+        self.assertLine(self.doctor()[1], "OK", "test dirs")
+
+    def test_test_dirs_does_not_read_scripts_outside_the_repo(self):
+        outside = self.tmp / "outside.sh"
+        outside.write_text("python3 -m unittest discover -s tests\n")
+        self.p.write("tests/test_a.py", "")
+        self.set_cfg(check=["bash ../outside.sh"])
+        self.assertLine(self.doctor()[1], "WARN", "test dirs", "tests/ holds test_*.py")
+        self.set_cfg(check=[f"bash {outside}"])
+        self.assertLine(self.doctor()[1], "WARN", "test dirs", "tests/ holds test_*.py")
+
+    def test_test_dirs_says_nothing_without_check_commands(self):
+        self.set_cfg(check=[])
+        self.p.write("tests/test_a.py", "")
+        out = self.doctor()[1]
+        self.assertNotIn("test dirs", out)
+
+    def test_test_dirs_invalid_key_is_a_config_failure(self):
+        self.set_cfg(check=["true"], doctorTestDirsIgnore="vendor")
+        self.p.write("node_modules/t/test_x.py", "")
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)  # the config is invalid: it says why, no crash
+        self.assertLine(out, "FAIL", "config", "is invalid")
+        self.assertNotIn("test dirs", out)
+
     # --- skill scripts without a test (WMF 2026-10-25 P2)
 
     def test_skill_script_without_a_test_warns_with_the_file_and_the_fix(self):

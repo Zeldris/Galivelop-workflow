@@ -404,6 +404,16 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn(needle, r.stderr)
 
+    def test_doctor_test_dirs_ignore_default_and_own_value(self):  # E43
+        self.assertIn(".claude/worktrees", config.doctor_test_dirs_ignore({}))
+        self.assertEqual(config.doctor_test_dirs_ignore({"doctorTestDirsIgnore": ["vendor"]}), ["vendor"])
+        self.write(VALID)
+        self.assertIn("node_modules", config.doctor_test_dirs_ignore(config.load(str(self.tmp))))
+        self.write(dict(VALID, doctorTestDirsIgnore="vendor"))
+        r = cli(self.tmp, "validate")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("$.doctorTestDirsIgnore: expected array, got str", r.stderr)
+
     def test_owned_files_validation_and_helper(self):  # D53
         self.write(dict(VALID, ownedFiles=[".githooks/commit-msg", ".claude/skills/x/*"]))
         self.assertEqual(cli(self.tmp, "validate").returncode, 0)

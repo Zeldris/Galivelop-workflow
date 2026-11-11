@@ -280,6 +280,11 @@ def instruction_lines(config):
     return limits["warn"], limits["fail"]
 
 
+def doctor_test_dirs_ignore(config):
+    """The `doctorTestDirsIgnore` key: folder patterns doctor.py skips when it looks for test_*.py nobody runs (E43)."""
+    return list(config.get("doctorTestDirsIgnore", _schema()["properties"]["doctorTestDirsIgnore"]["default"]))
+
+
 def context_guard(config):
     """The `contextGuard` key as a dict (cutoff, window, autocompactShare, warn, alarm)."""
     return _section(config, "contextGuard")
