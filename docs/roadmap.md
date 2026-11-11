@@ -186,7 +186,7 @@ En este orden, porque cada paso usa el anterior.
 | D84 | `templates/github/check.yml` lee de `.claude/gw.json` los directorios de Node y Rust y usa `Swatinem/rust-cache` (recogida de cierre `0.6`, instalador P5) | hecho (2026-11-11) |
 | D85 | `recover.py --state` avisa de una revisión atrasada (umbral `changeSize.block`) (recogida de cierre `0.6`, world-maker P3) | hecho (2026-11-11) |
 | D86 | `merge-branch.sh` reconoce el conflicto en la bitácora y da la orden para resolverlo, con su test (recogida de cierre `0.6`, portal P5) | hecho (2026-11-11) |
-| E43 | `doctor.py` avisa de carpetas con `test_*.py` que ningún comando del check corre; carpetas excluidas configurables (recogida de cierre `0.6`, instalador P3) | pendiente |
+| E43 | `doctor.py` avisa de carpetas con `test_*.py` que ningún comando del check corre; carpetas excluidas configurables (recogida de cierre `0.6`, instalador P3) | hecho (2026-11-11) |
 
 ## `0.7` «Preguntar»
 

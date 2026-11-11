@@ -185,7 +185,7 @@ In this order, because each step uses the previous one.
 | D84 | `templates/github/check.yml` reads the Node and Rust directories from `.claude/gw.json` and uses `Swatinem/rust-cache` (`0.6` closing harvest, instalador P5) | done (2026-11-11) |
 | D85 | `recover.py --state` warns of an overdue review (`changeSize.block` threshold) (`0.6` closing harvest, world-maker P3) | done (2026-11-11) |
 | D86 | `merge-branch.sh` recognises a conflict in the log and gives the command to solve it, with its test (`0.6` closing harvest, portal P5) | done (2026-11-11) |
-| E43 | `doctor.py` warns of folders with `test_*.py` that no check command runs; excluded folders configurable (`0.6` closing harvest, instalador P3) | pending |
+| E43 | `doctor.py` warns of folders with `test_*.py` that no check command runs; excluded folders configurable (`0.6` closing harvest, instalador P3) | done (2026-11-11) |
 
 ## `0.7` "Ask"
 
