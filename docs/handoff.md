@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **Evolutivos de la `0.6` (2026-11-11), con el dealer:** fusionados D85, D86, B28 y B26; en obra B29 y D82+B27 (ramas `agent/*`). **Siguiente:** fusionarlas; D84 y E43 en serie (comparten el config); un check sobre la ola, limpiar worktrees, y `main` con el usuario. Presupuesto de compactaciones: 2 (usadas 2) |
+| Siguiente paso | **Evolutivos de la `0.6` fusionados enteros (2026-11-11):** B26-B29, D82, D84-D86 y E43, con revisión por rama y de cierre de la ola. **Siguiente:** check completo sobre la ola (`bash scripts/check.sh`, ~30-40 min), subir, limpiar worktrees y ramas `agent/*`, `ci-status.py`; luego preparar la `0.6.0` (repaso de documentación y CHANGELOG, que aún no tiene su entrada) y fases 1-3 hacia `main` con el usuario. Presupuesto de compactaciones: 2 (usadas 2) |
 
 ### Fases
 
@@ -43,12 +43,16 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-11 — Evolutivos `0.6` con el dealer: D85 (`recover.py` avisa de revisión de bloque atrasada), D86 (`merge-branch.sh` guía el conflicto de la bitácora), B28 (agente `gw-worker`), B26 (`whole-read.py`, clave `wholeReadWarnBytes`); revisados y arreglados.
+1. 2026-11-11 — Evolutivos `0.6` con el dealer, 9 ramas revisadas y fusionadas: D85, D86, B28, B26 (`whole-read.py`), D82 (`review-scope.py`), B27 (`--trivial`), B29 (`measure.py` y la sesión anterior), D84 (CI por carpetas), E43 (doctor y carpetas de tests sin correr). Claves nuevas: `wholeReadWarnBytes`, `reviewTrivialLines`, `measure.minCalls`, `ciNodeDirs`, `ciRustDirs`, `doctorTestDirsIgnore`.
 2. 2026-11-11 — Arreglos de la `0.5.2` (D70-D79, D88, B22-B25, E38-E40) con el dealer: 8 ramas `agent/*` revisadas y fusionadas; el detalle, en sus commits y en el roadmap. Claves nuevas: `checkLogKeep`, `stopTranscriptBytes`, `stopSubagentMaxAge`.
 3. 2026-11-11 — H18: 28 propuestas (8 proyectos) y 14 hallazgos de la revisión `0.5.1` del instalador, decididos por el usuario y repartidos en el roadmap (es/en) con ids; P6 del portal descartada.
 
 ## Pendiente
 
+- **FOUND (dealer):** un subagente sacó el HEAD del árbol principal (checkout de su commit) y una fusión cayó en HEAD suelto; rehecha. Los encargos ya prohíben git en el árbol principal; el check del `pre-push` sobre `27bb9cf` corrió con archivos cambiando y no vale.
+- **D82:** con el clon del flujo o el árbol sucios, `review-scope.py` puede contar mal lo vendored; en `--trivial` un binario de código cuenta 0 líneas.
+- **D84:** `Swatinem/rust-cache@v2` sin fecha ni fuente comprobada; el job `versions` corre solo en ubuntu.
+- **E43:** `testMap` cuenta como corrido aunque solo corre en el `pre-push` de rama; rutas de Windows o absolutas no casan; un solo nivel de script; no poda `build`/`dist`/`target`, y el defecto `env` salta un `src/env` real.
 - **D85:** las llamadas a git de `change-size.py` desde `recover.py` no tienen timeout; el patrón de importlib está duplicado (`harvest.py:55`).
 - **B28:** `apply.py` no detecta agentes huérfanos en `.claude/agents/`.
 - **B26:** en un worktree bajo `.claude/worktrees/`, las rutas se comparan con la raíz principal, no con la del worktree.
@@ -73,8 +77,6 @@ lanzamiento manual desde Actions que cree la etiqueta.
 - **B4/B5:** los informes no se escriben solos (ni gancho ni CI): se piden con `--write`; `compare` solo imprime (no tiene `--write`).
 - **B3:** el ledger no separa la escritura de caché de 5 minutos (1,25 × `input`) de la de 1 hora (2 ×): `cost_of` las cobra todas como de 5 minutos. `claude-haiku-5-5` tiene precio escalonado (más de 100K tokens de entrada cuesta más) y su `cacheRead` (0,1 × `input`) es una suposición: revisar la tabla cuando salga la siguiente.
 - **B2:** `apply.py` no pone `merge=union` del ledger en el `.gitattributes` de los proyectos (aquí, a mano); el ledger de la última parada de una sesión en la nube se pierde si el contenedor muere antes del siguiente commit (lo apuntado queda; lo no apuntado no se recupera: el transcript ya no está).
-- **A10, leves de la revisión (no bloquean):** el conversor Markdown pierde el `#` de `# Learn C#`, anida mal `***x***`, parte una tabla con `|` dentro de código, toma `2024.` al principio de línea por lista, aplana las listas anidadas y deja el markup del título; dos fuentes con el mismo idioma y nombre chocan; Playwright se resuelve global. De la segunda revisión: la reescritura de rutas de la CSS solo cubre `url(...)` en minúsculas con comillas iguales (no `@import "x.css"`, `URL(…)`, `url("it's.png")` ni `image-set("x.png" 1x)`), y el énfasis entra en el `href` de un enlace (`[a](https://x.com/*a*b*)`).
-- **A10, leve:** el enlace de idioma de la cabecera de cada hoja (`[English](../en/…md)`) sale en el HTML y el PDF apuntando a un `.md` que no está junto al HTML; quitarlo o reescribirlo a `.html` en `mkt-sheet.py`.
 - **Bloque I (cerrado 2026-11-08):** las respuestas del `grilling` están en `docs/design/I-lifecycle.md`; la `0.7` empieza por C11 (toca `commit-msg`, D43 y `trace.py`), luego C13 y C12. Las claves nuevas (`taskRecord`, `approvals.maxAgeDays`, `privateNames`…) no existen aún en `config.py` ni en `docs/es/config.md`: se crean con la tarea que las use.
 - **Archivado (2026-11-10):** 19 elemento(s) de versiones ya publicadas (≤ 0.5.1) en [handoff-archive.md](records/handoff-archive.md)
 - **Leves de D11/D12/D15/D16 (2026-11-02, no bloquean):** `commit-message.py`: con `core.commentChar=auto` los
@@ -83,7 +85,6 @@ lanzamiento manual desde Actions que cree la etiqueta.
   pierden sin aviso; `get taskId` no distingue «sin definir» de «ilegible». `version.py`: `BREAKING CHANGE:` en prosa
   del último párrafo cuenta. Líneas de más de 120 caracteres en README y `contributing.md`. Revisiones en el
   scratchpad de la sesión (no subidas).
-- **Leves de A9 (2026-11-02):** si la punta de la rama protegida trae un `schemaVersion` más nuevo, el `pre-push` avisa con el texto genérico «… is invalid; this push can fix it» (la política sigue fallando cerrada); el mensaje de `schemaVersion` no entero sugiere `config.py validate` sin `--root`.
 - **Menores de la revisión de la caché del `check` (P3, 2026-10-26)**: el límite de los archivos ignorados (`check.sh`
   corre con `.env` y generados de la copia; antes, una subida con copia sucia comprobaba en un worktree limpio) está
   documentado en `config.md`, `troubleshooting.md` y el CHANGELOG. Posible mejora: que `merge-branch.sh` también apunte el verde
