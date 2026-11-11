@@ -125,6 +125,16 @@ class Config(unittest.TestCase):
         self.write(dict(VALID, instructionLines={"warn": 250, "fail": 250}))
         self.assertEqual(cli(self.tmp, "validate").returncode, 0)
 
+    def test_review_trivial_lines_default_own_value_and_invalid(self):
+        self.write(VALID)
+        self.assertEqual(json.loads(cli(self.tmp, "get", "reviewTrivialLines").stdout), 30)
+        self.assertEqual(config.review_trivial_lines({}), 30)
+        self.assertEqual(config.review_trivial_lines({"reviewTrivialLines": 0}), 0)
+        for bad in ("x", -1, True, None):  # an accessor never trusts a value: the default
+            self.assertEqual(config.review_trivial_lines({"reviewTrivialLines": bad}), 30)
+        self.write(dict(VALID, reviewTrivialLines=-1))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 2)
+
     def test_log_size_and_log_archive_defaults_and_own_values(self):
         self.write(VALID)
         self.assertEqual(json.loads(cli(self.tmp, "get", "logSize").stdout), 20000)

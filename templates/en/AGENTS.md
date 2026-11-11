@@ -108,7 +108,7 @@ Never on work that is already merged.
    pending and not reviewed again in that PR. Only code needs review: what matches `content` in `.claude/gw.json` is content.
    Files copied unchanged from the workflow (`vendored`) are not reviewed either (`python3
    .claude/gw/scripts/review-scope.py --workflow <workflow repo>` lists what is: one edited in the project is). A
-   trivial diff (no code, or `reviewTrivialLines` changed lines or fewer) is reviewed in the session, without a
+   trivial diff (`review-scope.py --trivial` exits 0: no code, or `reviewTrivialLines` changed lines or fewer) is reviewed in the session, without a
    subagent; the review's fixes go to a `sonnet` subagent, except hooks, guards, security and the scripts they call
    (`opus`, as in `gw-orchestrate-dealer`).
    **On a long branch, this phase moves forward to each closed block:** a review of the diff since the last block

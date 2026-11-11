@@ -3,6 +3,7 @@
 """The files the phase 1 `/code-review` reads before the protected branch: the branch's diff without `vendored` files (D82).
 
   python3 review-scope.py [--base REV] [--workflow DIR] [--all]
+  python3 review-scope.py --trivial [--base REV] [--workflow DIR]   # B27: exit 0 if the scoped diff is trivial
 
 Prints, one repo-relative path per line, the files changed between BASE (default `origin/<protectedBranch>`, else the
 local protected branch) and HEAD. A file is `vendored` when the project holds it as an unchanged copy of the workflow
@@ -79,10 +80,42 @@ def vendored(root, workflow):
     return set(r.stdout.split("\n")) - {""}
 
 
+def trivial(root, cfg, base, kept):
+    """B27: exit 0 with the reason when the scoped diff has no code (is-code.sh) or at most reviewTrivialLines changed
+    lines; 1 with the figures otherwise."""
+    code = []
+    if kept:
+        merge_base = git(root, "merge-base", base, "HEAD").strip()
+        r = subprocess.run(["bash", str(HERE / "is-code.sh"), merge_base, "HEAD"], cwd=str(root),
+                           capture_output=True, text=True)
+        if r.returncode != 0:
+            raise ScopeError(f"is-code.sh failed: {r.stderr.strip()}; run it by hand: bash {HERE / 'is-code.sh'} "
+                             f"{merge_base} HEAD")
+        code = [p for p in r.stdout.split("\n") if p in set(kept)]
+    if not code:
+        print(f"{PROG}: trivial: no code in the review scope ({len(kept)} file(s))")
+        return 0
+    lines = 0
+    out = git(root, "diff", "--numstat", "-z", "--no-renames", f"{base}...HEAD", "--", *code)
+    for tok in out.split("\0"):
+        parts = tok.lstrip("\n").split("\t", 2)
+        if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
+            lines += int(parts[0]) + int(parts[1])
+    limit = config.review_trivial_lines(cfg)
+    if limit and lines <= limit:
+        print(f"{PROG}: trivial: {lines} changed code line(s), at most reviewTrivialLines={limit}")
+        return 0
+    print(f"{PROG}: not trivial: {len(code)} code file(s), {lines} changed line(s), reviewTrivialLines={limit}")
+    return 1
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--base", help="the diff starts at the merge base with this commit (default origin/<protectedBranch>)")
     ap.add_argument("--workflow", help="the workflow repo whose copies are vendored (default $GW_WORKFLOW, else this repo)")
+    ap.add_argument("--trivial", action="store_true",
+                    help="exit 0 and say why when the scoped diff is trivial (no code, or reviewTrivialLines changed "
+                         "lines or fewer), 1 otherwise; prints no paths")
     ap.add_argument("--all", action="store_true", help="the whole diff, nothing left out")
     args = ap.parse_args(argv)
     try:
@@ -100,9 +133,11 @@ def main(argv=None):
                       f"python3 {Path(__file__).name} --workflow <workflow repo>", file=sys.stderr)
             else:
                 skip = vendored(root, workflow)
-        for p in paths:
-            if p not in skip:
-                print(p)
+        kept = [p for p in paths if p not in skip]
+        if args.trivial:
+            return trivial(root, cfg, base, kept)
+        for p in kept:
+            print(p)
         left = sum(1 for p in paths if p in skip)
         if left:
             print(f"{PROG}: {left} vendored file(s) left out of {len(paths)}", file=sys.stderr)

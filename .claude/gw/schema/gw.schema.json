@@ -55,6 +55,12 @@
       "default": 20000,
       "description": "Cap on the size of the whole hand-off log, in characters (0 = no cap). handoff.py check warns above it and context_guard.py names the log as the culprit; handoff.py archive moves the Pending items of published versions out."
     },
+    "reviewTrivialLines": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 30,
+      "description": "A phase 1 review diff of this many changed lines or fewer (vendored files left out) is trivial: review-scope.py --trivial exits 0 and the session reviews it without a subagent (B27). 0 = only a diff with no code is trivial."
+    },
     "wholeReadWarnBytes": {
       "type": "integer",
       "minimum": 0,

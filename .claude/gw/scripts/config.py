@@ -306,6 +306,15 @@ def measure(config):
     return _section(config, "measure")
 
 
+def review_trivial_lines(config):
+    """The `reviewTrivialLines` key (B27): the changed lines at or under which a phase 1 diff is trivial; the schema
+    default when absent or not a non-negative integer."""
+    given = config.get("reviewTrivialLines")
+    if isinstance(given, int) and not isinstance(given, bool) and given >= 0:
+        return given
+    return _schema()["properties"]["reviewTrivialLines"]["default"]
+
+
 def test_map(config):
     """The `testMap` key as a dict (rules, command) (E21)."""
     return _section(config, "testMap")
