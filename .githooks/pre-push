@@ -29,7 +29,8 @@
 #   - Also skips it (same conditions, `checkReuseMark` on) for a commit whose single parent's tree is recorded green and
 #     whose diff from that parent is only the `reviewMark` file added or edited (no other path, no mode change, no
 #     delete or rename): the mark commit of scripts/reviewed.sh. And one `git push` of the same tree to the protected
-#     branch and to another branch runs the check once, with the protected branch's (stricter) run.
+#     branch and to another branch runs the check once, with the protected branch's (stricter) run. The cache is read
+#     again after waiting for the check lock.
 #   - To the protected branch, in both pushToProtected modes (with `pr` the PR hook also guards PRs): code needs the
 #     review mark (scripts/reviewed.sh) to name an ancestor with no code after it. The branch is protected when the
 #     pushed commit, the remote tip or the working tree names it so; what is content and where the mark lives come
@@ -187,6 +188,24 @@ mark_only_parent() {  # mark_only_parent <sha>: prints the parent's sha when <sh
   [ "$(git rev-parse "$sha:$mark_file" 2>/dev/null)" = "$expect" ] || return 1
   printf '%s\n' "$parent"
 }
+cache_hit() {  # cache_hit <sha>: 0 (and says why) when $key, or the mark-only parent's key, is recorded green; uses run_checks' variables
+  local sha="$1"
+  if [ -n "$key" ] && age="$(bash "$scripts/check-green.sh" has "$key" 2>/dev/null < /dev/null)"; then
+    echo "pre-push: check already green on this tree (${tree:0:7}) with the same commands $age min ago; skipping it (to run it anyway: GW_CHECK_CACHE=0 git push)"
+    return 0
+  fi
+  # The review-mark commit adds nothing a check sees: the tree it sits on being recorded green is enough.
+  if [ -n "$key" ] \
+    && parent="$(mark_only_parent "$sha")" && ptree="$(git rev-parse "$parent^{tree}" 2>/dev/null)" \
+    && pkey="$(printf '%s\n' "$checks" | bash "$scripts/check-green.sh" key "$ptree" "$wrapper" "$inputs" 2>/dev/null)" \
+    && pepoch="$(bash "$scripts/check-green.sh" epoch "$pkey" 2>/dev/null < /dev/null)" \
+    && age="$(bash "$scripts/check-green.sh" has "$pkey" 2>/dev/null < /dev/null)"; then
+    echo "pre-push: ${sha:0:7} only adds the review mark on ${parent:0:7}, whose tree (${ptree:0:7}) passed this check with the same commands $age min ago; skipping it (to run it anyway: GW_CHECK_CACHE=0 git push)"
+    bash "$scripts/check-green.sh" add "$key" "$pepoch" < /dev/null  # green by derivation, as old as its parent's
+    return 0
+  fi
+  return 1
+}
 run_checks() {  # run_checks <sha>: every check command on that commit, in $checkdir (kept for related-tests.sh)
   local sha="$1" dir wrapper marker
   if [ -n "$worktree" ]; then
@@ -217,7 +236,7 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     dir="$worktree"
   fi
   checkdir="$dir"
-  local cmd n=0 lrc kept key="" tree age parent ptree pkey pepoch inputs="" input_paths=""
+  local cmd n=0 lrc kept key="" tree age parent ptree pkey pepoch inputs="" input_paths="" usecache="" lock_wait
   if [ "$is_protected" != "true" ] && [ "${GW_CHECK_CACHE:-}" != "0" ] && [ -f "$scripts/check-green.sh" ]; then
     # Any failure of the helper just means the check runs, as it always did.
     tree="$(git rev-parse "$sha^{tree}" 2>/dev/null)" || tree=""
@@ -226,20 +245,8 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     if input_paths="$(cfg_at "$sha" checkCacheInputs 2>/dev/null)" && inputs="$(printf '%s\n' "$input_paths" | bash "$scripts/check-green.sh" inputs "$dir" 2>/dev/null)" && [ -n "$tree" ]; then
       key="$(printf '%s\n' "$checks" | bash "$scripts/check-green.sh" key "$tree" "$wrapper" "$inputs" 2>/dev/null)" || key=""
     fi
-    if [ -n "$key" ] && age="$(bash "$scripts/check-green.sh" has "$key" 2>/dev/null < /dev/null)"; then
-      echo "pre-push: check already green on this tree (${tree:0:7}) with the same commands $age min ago; skipping it (to run it anyway: GW_CHECK_CACHE=0 git push)"
-      return 0
-    fi
-    # The review-mark commit adds nothing a check sees: the tree it sits on being recorded green is enough.
-    if [ -n "$key" ] \
-      && parent="$(mark_only_parent "$sha")" && ptree="$(git rev-parse "$parent^{tree}" 2>/dev/null)" \
-      && pkey="$(printf '%s\n' "$checks" | bash "$scripts/check-green.sh" key "$ptree" "$wrapper" "$inputs" 2>/dev/null)" \
-      && pepoch="$(bash "$scripts/check-green.sh" epoch "$pkey" 2>/dev/null < /dev/null)" \
-      && age="$(bash "$scripts/check-green.sh" has "$pkey" 2>/dev/null < /dev/null)"; then
-      echo "pre-push: ${sha:0:7} only adds the review mark on ${parent:0:7}, whose tree (${ptree:0:7}) passed this check with the same commands $age min ago; skipping it (to run it anyway: GW_CHECK_CACHE=0 git push)"
-      bash "$scripts/check-green.sh" add "$key" "$pepoch" < /dev/null  # green by derivation, as old as its parent's
-      return 0
-    fi
+    usecache=1
+    cache_hit "$sha" && return 0
   fi
   if [ -f "$scripts/check-green.sh" ]; then  # one check at a time per repository: check.sh and merge-branch.sh take the same lock
     lock_wait="$(cfg_at "$sha" checkLockWait 2>/dev/null)" || lock_wait=0
@@ -255,6 +262,12 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
       fail "cannot take the check lock (above, exit $lrc); fix that and push again: git push"
     fi
     checklock=1
+    # Another check may have recorded this tree green while this push waited for the lock: look again before running.
+    if [ -n "$usecache" ] && cache_hit "$sha"; then
+      bash "$scripts/check-green.sh" lock-release "$$" < /dev/null 2>/dev/null; checklock=""
+      rm -f "$log"; log=""
+      return 0
+    fi
   fi
   while IFS= read -r cmd; do
     [ -n "$cmd" ] || continue
