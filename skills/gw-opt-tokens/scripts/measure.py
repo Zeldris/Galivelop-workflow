@@ -15,7 +15,7 @@ Reads the session log (`~/.claude/projects/<folder>/<session>.jsonl`) and report
 
 Session lookup: the project root comes from `git rev-parse --show-toplevel`. The log is searched in the folder of
 the root and in the folders of its parent directories (a session opened in a folder that contains the repo stores
-its log there), never in sibling repos; the newest log wins. If it is not the root's own folder, a warning goes to
+its log there), never in sibling repos; the newest log wins (with a period, the one with most calls in it). If it is not the root's own folder, a warning goes to
 stderr: that session may belong to another project, and it did not load the repo's `.claude/settings.json`; in a
 cloud session (`CLAUDE_CODE_REMOTE=true`) the start folder `-home-user` is the normal one and gives no warning. Last
 resort: the log folder of the home directory's cloud start (`-home-user`). Pass `--session` to skip the search.
@@ -70,8 +70,10 @@ def folder_of(path):
     return re.sub(r'[^A-Za-z0-9]', '-', path)
 
 
-def default_session(root):
-    """Newest `.jsonl` of the root's log folder or of a parent folder's; exits if there is none."""
+def default_session(root, since=None):
+    """Newest `.jsonl` of the root's log folder or of a parent folder's; exits if there is none.
+    With `since`, the one with most responses from that moment on (the newest file may be a later session that
+    does not cover the period); the newest if none has any."""
     root = os.path.abspath(root)
     folders, current = [], root
     while True:
@@ -86,6 +88,10 @@ def default_session(root):
     if not candidates:
         sys.exit(f'No sessions in ~/.claude/projects/{folder_of(root)}/ or its parent folders (use --session)')
     path = max(candidates, key=os.path.getmtime)
+    if since:
+        covered = {p: len(responses_of(p, since)) for p in candidates}
+        if max(covered.values()) > 0:
+            path = max(candidates, key=lambda p: (covered[p], os.path.getmtime(p)))
     folder = os.path.basename(os.path.dirname(path))
     cloud_start = os.environ.get('CLAUDE_CODE_REMOTE') == 'true' and folder == '-home-user'  # where the cloud starts
     if folder != folder_of(root) and not cloud_start:
@@ -108,7 +114,10 @@ def tokens_of(content):
     return total, images
 
 
-def input_summary(entry):
+def input_summary(entry, name=None):
+    if name == 'Artifact':  # `quickstart`, `publish`, `read`...: the action says which call weighs
+        action = entry.get('action') or 'publish'  # no action = publish
+        return f'action={action} ' + input_summary({k: v for k, v in entry.items() if k != 'action'})
     for key in ('command', 'file_path', 'pattern', 'url', 'query', 'skill', 'description'):
         if key in entry:
             return f'{key}={str(entry[key])[:110]}'
@@ -221,12 +230,12 @@ def main():
     ap.add_argument('--top', type=int, default=12, help='rows per list (default 12)')
     a = ap.parse_args()
     root = project_root()
-    path = a.session or default_session(root)
     since = None
     if a.since:
         since = since_moment(a.since)
     elif a.hours > 0:
         since = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=a.hours)
+    path = a.session or default_session(root, since)
 
     usage = collections.Counter()
     api_calls = 0
@@ -276,7 +285,7 @@ def main():
                 for b in m.get('content') or []:
                     if isinstance(b, dict) and b.get('type') == 'tool_use':
                         entry = b.get('input') or {}
-                        tool_uses[b['id']] = (b.get('name', '?'), input_summary(entry), json.dumps(entry, sort_keys=True))
+                        tool_uses[b['id']] = (b.get('name', '?'), input_summary(entry, b.get('name')), json.dumps(entry, sort_keys=True))
                         tool_files[b['id']] = files_read(b.get('name'), entry, root)
             elif d.get('type') == 'user':
                 for b in m.get('content') or [] if isinstance(m.get('content'), list) else []:
