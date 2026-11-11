@@ -179,7 +179,7 @@ In this order, because each step uses the previous one.
 | D56 | `ci-status.py --failed`: for each red job, only the failed step and its error lines, capped by a key, with the URL of the whole log (`0.5.1` retro R5) | done (2026-11-11; `--failed`: the step from the jobs API and, from the log, its `Run …` header to its last `##[error]` line, without the folded command; cap `ciFailedLines` (40) or `--lines`) |
 | B26 | Warning when the log or a record over `wholeReadWarnBytes` (20000) is read whole (`0.6` closing harvest, private-project-1 P1) | pending |
 | B27 | Trivial diffs reviewed without a subagent; phase 1 fixes go to `sonnet` (`0.6` closing harvest, private-project-1 P7) | pending |
-| B28 | Light subagent type (`gw-worker`, in `.claude/agents/`) with only the brief's tools; `gw-init` creates it and the dealer brief names it (`0.6` closing harvest, private-project-3 P1) | pending |
+| B28 | Light subagent type (`gw-worker`, in `.claude/agents/`) with only the brief's tools; `gw-init` creates it and the dealer brief names it (`0.6` closing harvest, private-project-3 P1) | done (2026-11-11) |
 | B29 | `measure.py` measures the previous session of the same branch when the current one has fewer than `measure.minCalls` (5) calls (after `/clear`) (`0.6` closing harvest, world-maker P5) | pending |
 | D82 | Files copied unchanged from the workflow (`vendored`) stay out of the phase 1 `/code-review` (next to D53 and B19) (`0.6` closing harvest, instalador P2) | pending |
 | D84 | `templates/github/check.yml` reads the Node and Rust directories from `.claude/gw.json` and uses `Swatinem/rust-cache` (`0.6` closing harvest, instalador P5) | pending |

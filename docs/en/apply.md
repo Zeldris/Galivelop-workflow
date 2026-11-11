@@ -106,7 +106,7 @@ Options: `--review-mark PATH` (default `docs/records/reviewed.txt`), `--with gw-
 `--init` writes `.claude/gw.json` only when it does not exist, validates it and applies as usual.
 
 What it does (full detail in `--help`): copies `scripts/` to `.claude/gw/scripts/`, the skills to `.claude/skills/`,
-the git hooks to `.githooks/`, the CI to `.github/workflows/check.yml`; **merges** the Claude Code hooks and
+the git hooks to `.githooks/`, the light subagent type `gw-worker` to `.claude/agents/` (the `gw-orchestrate-dealer` brief names it; a project's own file of that name is kept and the workflow's becomes a `.gw-new` proposal), the CI to `.github/workflows/check.yml`; **merges** the Claude Code hooks and
 `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` and `worktree.baseRef: "head"` (subagent worktrees branch from the current
 HEAD, not the default branch; a project value is kept: to get another base set `"baseRef": "fresh"`, since removing
 the key gets it re-added) into `.claude/settings.json`, removing nothing; creates `AGENTS.md`,
