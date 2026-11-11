@@ -274,6 +274,11 @@
       "default": true,
       "description": "true: .github/workflows/check.yml runs on every push outside the protected branch and on every pull request. false: only on pull requests (apply.py renders its push filter as branches-ignore: ['**']; rerun apply.py --update after changing it). ciIgnore and required checks still go by name."
     },
+    "shellcheckVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "The shellcheck version (X.Y.Z) the workflow repo's CI installs (pip install shellcheck-py==X.Y.Z.*) and tests/shellcheck.sh expects: another local version is a warning with that command (a failure in CI). Absent: not pinned."
+    },
     "legacyNames": {
       "type": "boolean",
       "default": true,

@@ -21,8 +21,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install shellcheck (macOS)
-        if: runner.os == 'macOS'
-        run: brew install shellcheck
+      - name: Install shellcheck (shellcheckVersion of .claude/gw.json)
+        # The runner's own shellcheck (apt, brew) can be another version, whose warnings differ from the session's.
+        run: |
+          version="$(python3 scripts/config.py get shellcheckVersion)"
+          python3 -m pip install "shellcheck-py==$version.*"
+          shellcheck --version
       - name: Check
         run: bash tests/check.sh

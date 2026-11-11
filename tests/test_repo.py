@@ -7,6 +7,7 @@ import os
 import re
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -236,6 +237,43 @@ class ShellcheckStep(unittest.TestCase):
                            capture_output=True, text=True, env=dict(os.environ, CI="true"))
         self.assertEqual((r.returncode, r.stdout + r.stderr), (0, ""))
 
+
+class ShellcheckVersion(unittest.TestCase):
+    """E27: with shellcheckVersion set, tests/shellcheck.sh warns (fails in CI) when the local version differs."""
+
+    def run_with_version(self, version, **env):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-shellcheck-"))
+        self.addCleanup(shutil.rmtree, tmp, True)
+        fake = tmp / "shellcheck"
+        fake.write_text(f"#!/bin/sh\n[ \"$1\" = --version ] && echo 'version: {version}'\nexit 0\n")
+        fake.chmod(0o755)
+        (tmp / "python3").symlink_to(sys.executable)
+        for tool in ("sed", "dirname", "git"):
+            (tmp / tool).symlink_to(shutil.which(tool))
+        base = {k: v for k, v in os.environ.items() if k not in ("CI", "CLAUDE_CODE_REMOTE") and not k.startswith("GIT_")}
+        r = subprocess.run([shutil.which("bash"), str(ROOT / "tests" / "shellcheck.sh"), "tests/check.sh"], cwd=ROOT,
+                           capture_output=True, text=True, env=dict(base, PATH=str(tmp), **env))
+        return r.returncode, r.stdout + r.stderr
+
+    def pinned(self):
+        r = subprocess.run([sys.executable, str(ROOT / "scripts" / "config.py"), "--root", str(ROOT), "get",
+                            "shellcheckVersion"], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout.strip()
+
+    def test_same_version_is_silent(self):
+        self.assertEqual(self.run_with_version(self.pinned()), (0, ""))
+
+    def test_other_version_warns_with_the_install_command(self):
+        code, out = self.run_with_version("0.0.1")
+        self.assertEqual(code, 0, out)
+        self.assertIn("warning: shellcheck 0.0.1 here, but CI runs " + self.pinned(), out)
+        self.assertIn(f'pip install "shellcheck-py=={self.pinned()}.*"', out)
+
+    def test_other_version_fails_in_ci(self):
+        code, out = self.run_with_version("0.0.1", CI="true")
+        self.assertEqual(code, 1, out)
+        self.assertIn("the workflow must install it", out)
 
 if __name__ == "__main__":
     unittest.main()
