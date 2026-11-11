@@ -238,8 +238,9 @@ prune_logs() {  # prune_logs <lock> <keep-log>: E40 keeps the newest `checkLogKe
   keep="$(python3 "$here/config.py" --root "$root" get checkLogKeep 2>/dev/null)" || return 0
   case "$keep" in '' | *[!0-9]*) return 0 ;; esac
   [ "$keep" -gt 0 ] || return 0
-  # ls -t lists the newest first; the names are check-<sha>.log, with no spaces or newlines.
-  for f in $(ls -1t "$dir"/check-*.log 2>/dev/null); do
+  # ls -t lists the newest first, one per line (the folder may hold spaces; the names, check-<sha>.log, never do)
+  # shellcheck disable=SC2012
+  ls -1t "$dir"/check-*.log 2>/dev/null | while IFS= read -r f; do
     [ "$f" != "$2" ] || continue  # the log of the run that is starting is never pruned
     n=$((n + 1))
     [ "$n" -le "$keep" ] || rm -f "$f" 2>/dev/null
