@@ -7,7 +7,9 @@
 #  - Before merging it reads `check` (at least one command) and `checkWrapper` from the config; if it cannot, it
 #    merges nothing and exits 2 (D77).
 #  - `git merge --no-ff`. On conflict it stops, lists the files and leaves the merge open (resolve it, or abort
-#    with: git merge --abort), exit 1.
+#    with: git merge --abort), exit 1. If the hand-off log (`log` of the config) is among them it says so (D86):
+#    when it is the only one, the commands to join both sides (git merge-file --union) and close the merge, and the check and cleanup to run by hand afterwards; when there are others, that
+#    the log is not the only conflict.
 #  - then `check.sh --quiet` runs every `check` command of .claude/gw.json in the project root (E20): its registry
 #    stays in <git common dir>/gw/check-<sha>.log (never deleted here), it shows that run's summary and the closing
 #    `CHECK <ok|FAILED>: ...` line (not the last output lines), and a green is recorded for the pre-push. If it
@@ -114,9 +116,46 @@ if [ -n "$joined" ]; then
 fi
 
 if ! git merge --no-ff "$branch" -m "$message" > "$logs/merge.log" 2>&1; then
-  conflicts="$(git diff --name-only --diff-filter=U)"
-  echo "merge-branch: CONFLICT (the merge stays open; resolve it and commit, or abort with: git merge --abort):"
-  printf '%s\n' "${conflicts:-$(tail -n 5 "$logs/merge.log")}" | sed 's/^/  /'
+  # core.quotePath=false: git quotes non-ASCII paths ("bit\303\241cora.md") and they would never match `log`.
+  conflicts="$(git -c core.quotePath=false diff --name-only --diff-filter=U)"
+  # D86: the hand-off log (`log` of the config) is the conflict of almost every parallel merge: say so and give the
+  # commands. Only when it is NOT the only conflicted file do the others come first. The config was already
+  # validated above, so if `log` still cannot be read the generic message below is all that is lost.
+  log_file="$(python3 "$config" --root "$root" get log 2>/dev/null)" || log_file=""
+  log_file="${log_file#./}"
+  log_hit=""; others=""
+  if [ -n "$log_file" ]; then
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      if [ "$f" = "$log_file" ]; then log_hit=1; else others="${others:+$others
+}$f"; fi
+    done <<EOF_CONFLICTS
+$conflicts
+EOF_CONFLICTS
+  fi
+  if [ -n "$log_hit" ]; then
+    qlog="$(printf '%q' "$log_file")"
+    wt="$(git worktree list --porcelain | awk -v r="refs/heads/$branch" '/^worktree /{w=substr($0,10)} $1=="branch" && $2==r {print w}')"
+    if [ -z "$others" ]; then
+      echo "merge-branch: CONFLICT only in the hand-off log ($log_file); the merge stays open. Both sides add entries to it, so join them (nothing is lost), review the result, then close the merge:"
+    else
+      echo "merge-branch: CONFLICT (the merge stays open; resolve it and commit, or abort with: git merge --abort):"
+      printf '%s\n' "$conflicts" | sed 's/^/  /'
+      echo "merge-branch: the hand-off log ($log_file) is one of them, but NOT the only one: resolve the other files by hand and git add them; for the log:"
+    fi
+    echo "  join both sides:  cd \"\$(git rev-parse --show-toplevel)\" && t=\$(mktemp -d) && git show :2:$qlog > \$t/ours && { git show :1:$qlog > \$t/base || : > \$t/base; } && git show :3:$qlog > \$t/theirs && git merge-file --union \$t/ours \$t/base \$t/theirs && cp \$t/ours $qlog && rm -rf \$t"
+    echo "  then edit $qlog (duplicated rows, Siguiente/Next), and: python3 $here/handoff.py check && git add $qlog${others:+ <the other files>} && git commit --no-edit"
+    echo "  WARNING: git checkout --ours -- $qlog (or --theirs) keeps one side and DROPS the other's entries; see what $branch brings with: git diff :1:$qlog :3:$qlog"
+    echo "  to give up instead: git merge --abort"
+    # What this script would do after the merge (see cleanup_branch below): worktree only if there is one, branch only if it is not protected, claude/* or the current one.
+    after="bash $here/check.sh --quiet"
+    [ -z "$wt" ] || [ "$wt" = "$root" ] || after="$after && git worktree remove $(printf '%q' "$wt")"
+    case "$branch" in "$protected"|claude/*) ;; *) [ "$branch" = "$(git branch --show-current)" ] || after="$after && git branch -d $(printf '%q' "$branch")" ;; esac
+    echo "  Closing it by hand skips what this script does after a merge (re-running it says \"nothing to merge\"); then run: $after"
+  else
+    echo "merge-branch: CONFLICT (the merge stays open; resolve it and commit, or abort with: git merge --abort):"
+    printf '%s\n' "${conflicts:-$(tail -n 5 "$logs/merge.log")}" | sed 's/^/  /'
+  fi
   exit 1
 fi
 if [ "$(git rev-parse HEAD)" = "$before" ]; then
