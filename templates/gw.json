@@ -20,6 +20,7 @@
   "fullCheckPaths": ["^\\.githooks/", "^\\.claude/gw/", "^\\.claude/settings(\\.local)?\\.json$", "^\\.github/workflows/"],
   "ownedFiles": [],
   "checkCacheInputs": [".claude/gw.local.json"],
+  "checkLogKeep": 20,
   "checkOutputGrace": 5,
   "worktreeLinks": ["node_modules", ".venv"],
   "worktreeDir": "",
