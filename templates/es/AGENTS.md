@@ -108,8 +108,8 @@ Nunca sobre trabajo ya fusionado.
    bitácora y no vuelve a revisarse en ese PR. Solo el código necesita revisión: lo que casa con `content` de `.claude/gw.json` es
    contenido. Tampoco se revisa lo copiado tal cual del flujo (`vendored`;
    `python3 .claude/gw/scripts/review-scope.py --workflow <repo del flujo>` lista lo que sí: uno editado en el
-   proyecto entra). Un diff trivial (sin código o de `reviewTrivialLines` líneas o menos) se revisa en la sesión, sin
-   subagente; los arreglos de la revisión van a un subagente `sonnet`, salvo ganchos, guardas, seguridad y los
+   proyecto entra). Un diff trivial (`review-scope.py --trivial` sale en 0: sin código o de `reviewTrivialLines` líneas o menos) se
+   revisa en la sesión, sin subagente; los arreglos de la revisión van a un subagente `sonnet`, salvo ganchos, guardas, seguridad y los
    scripts que llaman (`opus`, como en `gw-orchestrate-dealer`).
    **En una rama larga, esta fase se adelanta a cada bloque cerrado:** revisión solo del diff desde la
    última revisión de bloque (el último commit con el trailer `Findings:`; el `commit-msg` avisa cuando el bloque pasa

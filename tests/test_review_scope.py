@@ -13,7 +13,7 @@ HOOK = ".githooks/pre-push"
 SCRIPT = ".claude/gw/scripts/change-size.py"
 
 
-class ReviewScope(unittest.TestCase):
+class ScopeBase(unittest.TestCase):
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="gw-review-scope-")).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, True)
@@ -36,6 +36,9 @@ class ReviewScope(unittest.TestCase):
         self.assertEqual(code, 0, out)
         return [l for l in out.splitlines() if not l.startswith("review-scope:")]
 
+
+
+class ReviewScope(ScopeBase):
     def test_no_vendored_files_lists_the_whole_diff(self):
         self.p.write("src/a.py", "a\n")
         self.p.write("docs/b.md", "b\n")
@@ -98,6 +101,64 @@ class ReviewScope(unittest.TestCase):
         code, out = self.scope("--base", "nope")
         self.assertEqual(code, 2)
         self.assertIn("is not a commit", out)
+
+
+class Trivial(ScopeBase):
+    """B27: --trivial."""
+
+    def setUp(self):
+        super().setUp()
+        self.p.write(".claude/gw.json", (self.p.work / ".claude/gw.json").read_text())
+        self.p.run("git", "add", "-A")
+        self.p.run("git", "commit", "-qm", "gw")
+        self.p.run("git", "branch", "-f", "main", "HEAD")
+
+    def limit(self, n):
+        import json
+        cfg = json.loads((self.p.work / ".claude/gw.json").read_text())
+        cfg["reviewTrivialLines"] = n
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.run("git", "add", "-A")
+        self.p.run("git", "commit", "-qm", "limit")
+        self.p.run("git", "branch", "-f", "main", "HEAD")
+
+    def code(self, n):
+        self.p.write("src/a.py", "".join(f"x{i} = {i}\n" for i in range(n)))
+        self.commit()
+
+    def test_no_code_is_trivial_whatever_its_size(self):
+        self.limit(0)
+        self.p.write("docs/b.md", "".join(f"l{i}\n" for i in range(500)))
+        self.commit()
+        code, out = self.scope("--trivial")
+        self.assertEqual(code, 0, out)
+        self.assertIn("no code in the review scope", out)
+
+    def test_small_code_diff_is_trivial(self):
+        self.code(5)
+        code, out = self.scope("--trivial")
+        self.assertEqual(code, 0, out)
+        self.assertIn("5 changed code line(s), at most reviewTrivialLines=30", out)
+
+    def test_at_the_threshold_is_trivial_and_one_over_is_not(self):
+        self.limit(10)
+        self.code(10)
+        self.assertEqual(self.scope("--trivial")[0], 0)
+        self.code(11)
+        code, out = self.scope("--trivial")
+        self.assertEqual(code, 1, out)
+        self.assertIn("not trivial: 1 code file(s), 11 changed line(s), reviewTrivialLines=10", out)
+
+    def test_zero_turns_the_line_limit_off(self):
+        self.limit(0)
+        self.code(1)
+        code, out = self.scope("--trivial")
+        self.assertEqual(code, 1, out)
+        self.assertIn("reviewTrivialLines=0", out)
+
+    def test_an_empty_scope_is_trivial(self):
+        code, out = self.scope("--trivial")
+        self.assertEqual(code, 0, out)
 
 
 class Vendored(unittest.TestCase):
