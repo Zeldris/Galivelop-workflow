@@ -71,6 +71,7 @@ cat > "$work/input"
 : > "$work/changed"
 : > "$work/pushed"
 : > "$work/changed_full"
+full_ref=false  # some ref took the full scope: the related tests after the loop run (fast ones even with no files)
 
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE  # git sets GIT_DIR in linked worktrees: toplevel would be the cwd
 # The git dir of the worktree that pushes, taken where git runs the hook (its top level), not from the hook's path:
@@ -426,6 +427,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       full*)
         [ "$is_protected" = "true" ] || [ "$scope" = "full" ] || echo "pre-push: full check on ${local_sha:0:7}: ${scope#full }"
         printf '%s\n' "$files" | grep . >> "$work/changed_full"
+        full_ref=true
         run_checks "$local_sha" ;;
       *) fail "unexpected answer from config.py push-scope: '$scope'; reinstall the workflow scripts: /gw-update" ;;
     esac
@@ -491,7 +493,7 @@ sort -u -o "$work/changed" "$work/changed"
 if [ -f "$scripts/prepush-branches.sh" ]; then
   bash "$scripts/prepush-branches.sh" "$work/changed" "$work/pushed" < "$work/input" || fail "prepush-branches.sh refused the push; fix what it reports and push again: git push"
 fi
-if [ -f "$scripts/related-tests.sh" ] && [ -n "$checkdir" ] && [ -s "$work/changed_full" ]; then
+if [ -f "$scripts/related-tests.sh" ] && [ -n "$checkdir" ] && [ "$full_ref" = "true" ]; then
   sort -u -o "$work/changed_full" "$work/changed_full"
   bash "$scripts/related-tests.sh" "$work/changed_full" "$checkdir" < "$work/input" || fail "the related tests failed; fix them, commit and push again: git push"
 fi
