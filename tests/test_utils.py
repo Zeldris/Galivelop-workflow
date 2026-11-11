@@ -1224,6 +1224,19 @@ class MergeBranch(Base):
         self.p.write(".claude/gw.json", json.dumps(cfg))
         self.p.commit("next config", env=DAY)
 
+    def test_a_blank_check_stops_the_merge_before_it_is_done(self):
+        # D77: a `check` with no real command would leave a merge done and nothing to judge it.
+        self.agent(name="agent/D16-x")
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["check"] = [" "]
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.commit("blank check", env=DAY)
+        before = self.p.sha()
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed")
+        self.assertEqual(code, 2, out)
+        self.assertIn("'check' in .claude/gw.json has no command, so nothing was merged", out)
+        self.assertEqual(self.p.sha(), before, "nothing was merged")
+
     def test_commit_next_stops_a_merge_message_without_the_trailer(self):
         self.agent(name="agent/D16-x")
         self.next_config()

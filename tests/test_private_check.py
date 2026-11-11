@@ -338,6 +338,23 @@ class Advice(Repo):
         self.assertIn(f"git rebase -i {self.base[:12]} feature", out)
         self.assertNotIn("git commit --amend", out)
 
+    def test_a_tag_or_head_is_not_named_in_the_rebase(self):
+        # D79: `git rebase -i <base> <tag>` detaches HEAD and leaves the tag behind; HEAD is no branch either.
+        sha = self.bad("a")
+        self.git("checkout", "-q", "-b", "other", self.base)
+        for ref in ("refs/tags/v-pushed", "HEAD"):
+            code, out = self.push_check([sha], "--base", self.base, "--ref", ref)
+            self.assertEqual(code, 1, out)
+            self.assertIn(f"git rebase -i {self.base[:12]}", out)
+            self.assertNotIn(f"{self.base[:12]} {ref}", out)
+
+    def test_the_amend_advice_never_stages_everything(self):
+        sha = self.bad()
+        code, out = self.push_check([sha], "--base", self.base)
+        self.assertEqual(code, 1, out)
+        self.assertNotIn("git add -A", out)
+        self.assertIn("git add <the fixed files>", out)
+
 
 class Commits(Repo):
     def test_a_value_removed_later_is_still_in_the_history(self):
