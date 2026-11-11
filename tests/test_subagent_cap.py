@@ -414,6 +414,29 @@ class EffortWarning(Base):
         self.assertIn("no `model` and no `effort`", spec["additionalContext"])
 
 
+class WorkerAgent(Base):  # B28: the gw-worker definition satisfies the model and effort rule
+    cfg = {"subagentCap": 50}
+    DEFINITION = (ROOT / "templates" / "claude" / "agents" / "gw-worker.md").read_text()
+
+    def worker_call(self):
+        return self.p.call(tool_input={"prompt": "x", "subagent_type": "gw-worker"})
+
+    def test_a_call_naming_gw_worker_is_quiet(self):
+        self.p.agent("gw-worker", self.DEFINITION)
+        self.assertQuiet(self.worker_call())
+
+    def test_a_call_naming_gw_worker_is_denied_when_sonnet_is_disabled(self):
+        self.p.agent("gw-worker", self.DEFINITION)
+        (self.p.work / ".claude" / "gw.json").write_text(
+            json.dumps(dict(BASE_CONFIG, subagentCap=50, models={"disabled": ["sonnet"]}), indent=2))
+        code, out = self.worker_call()
+        self.assertEqual(code, 0, out)
+        spec = self.answer(out)
+        self.assertEqual(spec["permissionDecision"], "deny", out)
+        self.assertIn("gw-worker", spec["permissionDecisionReason"], out)
+        self.assertIn("`sonnet` in models.disabled", spec["permissionDecisionReason"], out)
+
+
 class CapOfOne(Base):
     cfg = {"subagentCap": 1}
 

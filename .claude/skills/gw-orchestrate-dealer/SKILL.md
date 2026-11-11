@@ -49,8 +49,10 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    any model in `models.disabled` (`subagent-cap.py` denies it). Every call passes the rung as both `model` and
    `effort` (`sonnet low` → `model: sonnet`, `effort: low`), retries and reviewers included; never leave them to the
    session or to global variables. Where `.claude/agents/gw-worker.md` exists, a `sonnet low` chunk may use
-   `subagent_type: gw-worker` instead: that definition sets `model` and `effort`, limits the tools to the brief's,
-   and starts without the MCP tools that cost ~68k per `general-purpose` subagent; any other rung keeps passing both. Fixes from a
+   `subagent_type: gw-worker` instead: that definition sets `model: sonnet` and `effort: low` and lists only file, shell and wait tools, so it
+   starts without the MCP tools and skills that made `general-purpose` subagents start at ~68k (retro 2026-11-11,
+   measured on 5 subagents and 88 calls). Do not use it when `sonnet` is in `models.disabled` (`subagent-cap.py`
+   denies it): pass `model` and `effort` of the next rung instead. Any other rung keeps passing both. Fixes from a
    review go to `sonnet` too: the reviewer already closed the plan (where and what to change). The brief carries
    **pointers, not copies**: where the material is (the log row, the plan task, a doc, a commit, a file and
    function), never the pasted text. Template:
