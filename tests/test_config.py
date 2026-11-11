@@ -268,6 +268,20 @@ class Config(unittest.TestCase):
             self.assertIn("$.wholeReadWarnBytes", r.stderr)
             self.assertIn(why, r.stderr)
 
+    def test_measure_min_calls_default_and_bad_values(self):
+        self.write(VALID)
+        self.assertEqual(cli(self.tmp, "get", "measure.minCalls").stdout.strip(), "5")
+        self.write(dict(VALID, measure={}))
+        self.assertEqual(cli(self.tmp, "get", "measure.minCalls").stdout.strip(), "5")
+        self.write(dict(VALID, measure={"minCalls": 0}))
+        self.assertEqual(cli(self.tmp, "get", "measure.minCalls").stdout.strip(), "0")
+        for bad, why in {-1: "must be at least 0, got -1", "x": "expected integer, got str"}.items():
+            self.write(dict(VALID, measure={"minCalls": bad}))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn("$.measure.minCalls", r.stderr)
+            self.assertIn(why, r.stderr)
+
     def test_private_check_default_and_bad_values(self):
         self.write(VALID)
         r = cli(self.tmp, "get", "privateCheck")

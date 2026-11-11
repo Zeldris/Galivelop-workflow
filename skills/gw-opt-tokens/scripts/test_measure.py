@@ -352,6 +352,91 @@ class Measure(unittest.TestCase):
             self.assertIn('API calls: 1', local.stdout)
             self.assertIn('warning: log from a session opened outside the repo, in folder -home-user', local.stderr)
 
+    def short_session(self, current: int, config=None, previous: tuple = (('prev', 'feat'),), branch: str = 'feat',
+                      args: tuple = ('--hours', '0')) -> subprocess.CompletedProcess:
+        """B29: no --session; the current log (`cur.jsonl`, newest, `current` calls on `branch`) and older logs given
+        as (name, branch) with 3 calls each; `config` is the text of the repo's .claude/gw.json (None = no file)."""
+        home, repo = folder(), folder()
+        subprocess.run(['git', 'init', '-q', repo], check=True)
+        proj = os.path.join(home, '.claude', 'projects', '-home-user')
+        for i, (name, b) in enumerate(previous):
+            path = log(os.path.join(proj, f'{name}.jsonl'), *[response(f'{name}{n}', 50, gitBranch=b) for n in range(3)])
+            os.utime(path, (100 + i, 100 + i))
+        log(os.path.join(proj, 'cur.jsonl'), *[response(f'c{n}', 10, gitBranch=branch, timestamp=ago(0.1)) for n in range(current)])
+        if config is not None:
+            write(os.path.join(repo, '.claude', 'gw.json'), config)
+            for rel in ('scripts/config.py', 'schema/gw.schema.json'):
+                os.makedirs(os.path.dirname(os.path.join(repo, rel)), exist_ok=True)
+                shutil.copy(os.path.join(HERE, '..', '..', '..', rel), os.path.join(repo, rel))
+        env = {**os.environ, 'HOME': home, 'CLAUDE_CODE_REMOTE': 'true'}
+        return subprocess.run(['python3', MEASURE, *args], capture_output=True, text=True, cwd=repo, env=env)
+
+    CONFIG = '{"version": "0.1.0", "language": "en", "log": "docs/log.md", "protectedBranch": "main", ' \
+             '"pushToProtected": "pr", "check": ["make check"], "reviewMark": "docs/reviewed.txt", ' \
+             '"content": ["^docs/"]%s}'
+
+    def test_short_session_measures_the_previous_one_of_the_same_branch(self):
+        r = self.short_session(2)  # no config file: minCalls 5
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('Session: prev.jsonl', r.stdout)
+        self.assertIn('API calls: 3', r.stdout)
+        self.assertIn('Note: the current session has 2 calls (under measure.minCalls = 5); '
+                      'measuring the previous session of branch feat: prev.jsonl', r.stdout)
+
+    def test_enough_calls_measures_the_current_one(self):
+        for n in (5, 6):  # the threshold itself is enough
+            r = self.short_session(n)
+            self.assertIn('Session: cur.jsonl', r.stdout)
+            self.assertNotIn('Note:', r.stdout)
+
+    def test_previous_session_of_another_branch_or_without_branch_is_not_used(self):
+        r = self.short_session(2, previous=(('other', 'main'),))
+        self.assertIn('Session: cur.jsonl', r.stdout)
+        self.assertIn('there is no previous session of branch feat: measuring the current one', r.stdout)
+        self.assertIn('API calls: 2', r.stdout)
+        # the previous one is the newest of the same branch, skipping other branches in between
+        r = self.short_session(2, previous=(('old', 'feat'), ('mid', 'main')))
+        self.assertIn('Session: old.jsonl', r.stdout)
+
+    def test_no_previous_session_measures_the_current_one_with_a_note(self):
+        r = self.short_session(2, previous=())
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('Session: cur.jsonl', r.stdout)
+        self.assertIn('Note: the current session has 2 calls (under measure.minCalls = 5) and there is no '
+                      'previous session of branch feat: measuring the current one', r.stdout)
+
+    def test_previous_session_without_calls_in_the_period_is_skipped(self):
+        r = self.short_session(2, args=('--since', ago(1)))  # prev.jsonl calls are stamped HOUR (2026-10-19)
+        self.assertIn('Session: cur.jsonl', r.stdout)
+        self.assertIn('there is no previous session', r.stdout)
+
+    def test_min_calls_zero_turns_it_off(self):
+        r = self.short_session(1, config=self.CONFIG % ', "measure": {"minCalls": 0}')
+        self.assertIn('Session: cur.jsonl', r.stdout)
+        self.assertNotIn('Note:', r.stdout)
+
+    def test_min_calls_comes_from_the_config(self):
+        low = self.short_session(2, config=self.CONFIG % ', "measure": {"minCalls": 2}')
+        self.assertIn('Session: cur.jsonl', low.stdout)
+        high = self.short_session(5, config=self.CONFIG % ', "measure": {"minCalls": 6}')
+        self.assertIn('Session: prev.jsonl', high.stdout)
+        self.assertIn('measure.minCalls = 6', high.stdout)
+        absent = self.short_session(2, config=self.CONFIG % '')  # valid config without the key: the default
+        self.assertIn('Session: prev.jsonl', absent.stdout)
+
+    def test_malformed_or_invalid_config_falls_back_to_the_default(self):
+        for config in ('{not json', self.CONFIG % ', "measure": {"minCalls": -1}',
+                       self.CONFIG % ', "measure": {"minCalls": "x"}'):
+            r = self.short_session(2, config=config)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn('Session: prev.jsonl', r.stdout, config)
+            self.assertIn('measure.minCalls = 5', r.stdout)
+
+    def test_explicit_session_is_never_replaced(self):
+        out = self.measure([response('a', 10, gitBranch='feat')])  # --session with 1 call
+        self.assertIn('Session: s.jsonl', out)
+        self.assertNotIn('Note:', out)
+
 
 if __name__ == '__main__':
     unittest.main()
