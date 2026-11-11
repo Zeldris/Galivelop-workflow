@@ -110,6 +110,39 @@ En este orden, porque cada paso usa el anterior.
 | D52 | `apply.py` decide si conserva un script viejo por su ruta entera (`.claude/gw/scripts/<nombre>`), no por un nombre igual en otra ruta, con su test (recogida de cierre `0.5.1`, world-maker-fantasy P2) | hecho |
 | E26 | `red-without-fix.sh` no busca código de test en textos y datos (`.md`, `.json`, `.yml`, `.properties`, `.txt`, `.csv`): la prosa casaba con `it(`, con su test (recogida de cierre `0.5.1`, private-project-1 P1) | hecho |
 
+## `0.5.2` — parche
+
+| Id | Tarea | Estado |
+|---|---|---|
+| B20 | `measure.py` mide el registro de un subagente (`subagents/agent-*.jsonl`, todas sus líneas con `isSidechain`), con su test (recogida `0.6`, image-generator P1) | hecho |
+| D57 | `harvest.py` sigue los renombrados (`-M`) y no repite las ideas de un archivo movido; una idea recortada dice «… (truncated)» (recogida `0.6`, image-generator P2) | hecho |
+| D58 | La plantilla de la bitácora solo explica `logRows` si está encendido; `handoff.py close-row` avisa y sale con 1 si está apagado, como `set-row` (recogida `0.6`, image-generator P3) | hecho |
+| D59 | `commitNext: true` por defecto en `templates/gw.json`, como pide la plantilla de `AGENTS.md` (recogida `0.6`, image-generator P4) | hecho |
+| D60 | Las plantillas de `AGENTS.md` nombran `handoff.py set-row` y `close-row` para la fila propia de la bitácora (recogida `0.6`, private-project-1 P2) | hecho |
+| D64 | `gw-selector`: la línea del modelo separa sesión y subagentes y da el actual (`Sesión: <recomendado> (actual: <X>; /model para cambiarlo) · Subagentes: <peldaño> · Skill: <y>`); si la sesión orquesta con `gw-orchestrate-dealer`, su modelo es el de la fila de más riesgo que reparte, como mínimo medio (usuario, 2026-11-05) | hecho |
+| B21 | Guarda del contexto de arranque y del bucle de compactaciones: tras un `/clear` o una compactación, `measure.py` lee del registro el uso del primer turno (`input` + `cache_read` + `cache_creation`) y lo compara con el **punto de corte de la compactación** (clave en `.claude/gw.json`; por defecto, el del modelo), no con la ventana. El `SessionStart` avisa por encima del 25 % y da la alarma por encima del 50 % (claves); si tras una compactación el arranque vuelve a pasar el umbral, es un bucle: alarma y para, con el «Presupuesto de compactaciones». El aviso nombra al culpable con un desglose determinista (bitácora, `AGENTS.md`/`CLAUDE.md`, salida de los ganchos, skills y herramientas, resto del sistema) y la orden que lo arregla. Caso real: un proyecto con corte a 140k entró en bucle porque releer el contexto ocupaba el 70 %; aquí, ~82k de 200k tras `/clear` con la bitácora en ~9k (usuario, 2026-11-05) | hecho |
+| D65 | Historizar la bitácora: tope de tamaño total de `docs/handoff.md` (clave en `.claude/gw.json`) que `handoff.py check` avisa y que B21 usa como culpable; `handoff.py archive` mueve los «Pendiente» y leves de versiones ya publicadas a `docs/records/handoff-archive.md` (que no se lee al empezar), dejando una línea con el enlace; tras compactar, `recover.py` y el `SessionStart` releen solo el estado y el siguiente paso (usuario, 2026-11-05) | hecho |
+| D69 | Tipo `hotfix` en `commitFormat` y en `version.py` (cuenta como parche), con su test, para que los proyectos en `0.5` acepten el tipo antes de la ficha de tarea (C11) ([`I-lifecycle.md`](design/I-lifecycle.md) Q11; usuario, 2026-11-08) | hecho |
+| D66 | Cada versión repasa la documentación para personas (`README.md` ↔ `README.es.md`, `docs/es/` ↔ `docs/en/`, roadmap) contra su CHANGELOG antes de la subida a `main` (`AGENTS.md`); `version.py --release` falla si un archivo de `releaseDocs` (clave en `.claude/gw.json`; por defecto `[]`, aquí los dos README) no nombra la versión que se publica. Caso real: la `0.5.1` salió con el README en «Estado: `0.4.3`» (usuario, 2026-11-06) | hecho |
+| D70 | `measure.py --since` elige la sesión correcta, no la del registro más nuevo (recogida de cierre `0.6`, private-project-1 P2) | hecho (2026-11-11) |
+| D71 | `handoff.py close-row` y `set-row` toman la rama del mismo modo (recogida de cierre `0.6`, private-project-1 P3) | hecho (2026-11-11) |
+| D72 | El encargo de `gw-orchestrate-dealer` dice quién sube (en la rama de trabajo, el subagente; en un worktree, no) y qué hace con su commit (sin commitear, o con su fila de la bitácora en el mismo commit); la principal mira `git status -sb` al volver (recogida de cierre `0.6`, image-generator P2, world-maker P1) | hecho (2026-11-11) |
+| D73 | `gw-update` termina abriendo el PR de la rama de actualización a la protegida (recogida de cierre `0.6`, instalador P1) | hecho (2026-11-11) |
+| D74 | `related-tests.sh` dice cuántos archivos y la ruta de un temporal con la orden, no la lista entera (recogida de cierre `0.6`, world-maker P2) | hecho (2026-11-11) |
+| D75 | Paso de cierre de una ronda de pruebas: llamar al script del proyecto que para lo levantado (servidores, modelos, inhibidores de suspensión) (recogida de cierre `0.6`, world-maker P7) | hecho (2026-11-11) |
+| D88 | El gancho `Stop` no pide subir mientras hay subagentes en segundo plano (amplía D41); primero se comprueba aquí cómo lo detecta world-maker (recogida de cierre `0.6`, world-maker P4) | hecho (2026-11-11) |
+| B22 | `measure.py` muestra el `action` de las llamadas a Artifact en HEAVIEST RESULTS (recogida de cierre `0.6`, portal P4) | hecho (2026-11-11) |
+| B23 | `prototype` publica el Artifact (con su `quickstart`) desde un subagente que devuelve solo la URL (recogida de cierre `0.6`, portal P3) | hecho (2026-11-11) |
+| B24 | La revisión de la fase 1 empieza tras `/clear` o en un subagente limpio (`AGENTS.md`, `gw-selector`) (recogida de cierre `0.6`, portal P2) | hecho (2026-11-11) |
+| B25 | `gw-scout-updates` con 2 subagentes (recogida de cierre `0.6`, private-project-1 P4) | hecho (2026-11-11) |
+| D76 | Candado de `check-green.sh`: el mismo pid actualiza sha y registro, un `check.lock.steal` sin pid no bloquea, un proceso de otro usuario se trata igual que en `before-stop.py`; `before-stop.py` compara el sha completo de `check.sh` con HEAD (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 1-4) | hecho (2026-11-11) |
+| D77 | `merge-branch.sh` valida `check` y `checkWrapper` antes de fusionar (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgo 5) | hecho (2026-11-11) |
+| D78 | `pre-push`: vuelve a mirar la caché de verdes tras esperar el candado; con el mismo árbol en una ref protegida y en una rama, la rama también se comprueba; `lock_wait` local (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 6-8) | hecho (2026-11-11; la comprobación de la rama con el mismo árbol, que usa `branchCheck`, sale en la `0.6`) |
+| D79 | `private-check.py amend_advice`: sin `rebase -i` sobre una etiqueta o `HEAD`, sin `git add -A` y sin el `cfg` que no usa (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 11 y 14) | hecho (2026-11-11) |
+| E38 | `pre-commit`: `PROSE_ASSIGN` no deja pasar un secreto de una palabra en mayúscula entre comillas en un `.md`; `md_prose_dropped` sin un proceso por línea (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 12-13) | hecho (2026-11-11) |
+| E39 | `check.sh` sin `--quiet` conserva TTY y colores (regresión de E17; se reproduce con un test antes) (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgo 10) | hecho (2026-11-11) |
+| E40 | Poda de los `check-<sha>.log` de `.git/gw`: se guardan los últimos `checkLogKeep` (20) (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgo 9) | hecho (2026-11-11) |
+
 ## `0.6` «Medir»
 
 | Id | Tarea | Estado |

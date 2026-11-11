@@ -6,7 +6,7 @@ La forma de trabajar del taller Galivelop con agentes de programación (primero 
 reales y generalizada para cualquier repositorio. Es la **fuente única y versionada** de sus skills, ganchos, scripts
 y plantillas: una mejora se hace una vez aquí y llega a todos los proyectos que lo usan.
 
-> **Estado: `0.5.1`, etapa 1 en rodaje.** Ya se aplica a proyectos reales con un agente de IA. Solo la última menor
+> **Estado: `0.5.2`, etapa 1 en rodaje.** Ya se aplica a proyectos reales con un agente de IA. Solo la última menor
 > publicada recibe parches (hoy `0.5.x`); lo nuevo va a las siguientes menores (la `0.6` está en obra), y la `1.0` será
 > el Management Center. Ver el [roadmap](docs/roadmap.md), el [plan](docs/plan.md), la [bitácora](docs/handoff.md) y el
 > [changelog](CHANGELOG.md).
