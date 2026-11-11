@@ -69,7 +69,7 @@ El gancho `Stop` tampoco manda a subir mientras un check tiene el cerrojo `<dire
 (pid vivo con la misma hora de inicio): avisa en una línea de que el check corre, con su registro, y espera a
 `CHECK ok`. Un cerrojo con pid muerto, reutilizado o mal formado cuenta como ausente.
 El gancho `Stop` tampoco manda a subir mientras haya subagentes en segundo plano de la sesión sin terminar (D88; los
-lee del `transcript_path` que recibe: lanzamiento sin su `<task-notification>` posterior, o reanudado con `SendMessage`;
+lee del `transcript_path` que recibe: lanzamiento sin su `<task-notification>` posterior, o reanudado con `SendMessage`, en el formato del transcript observado el 2026-11-11 con Claude Code 2.1.322, interno y sin documentar;
 `stopTranscriptBytes`): avisa en una línea de que se espere y se suba después. Si no puede leer el transcript, bloquea como antes.
 Solo calla si el sha del cerrojo es el `HEAD` de ese worktree; el de otro commit o worktree solo añade una nota y el
 aviso de subir sigue. Un check colgado con el pid vivo no caduca: córtalo (`kill <pid>`; el cerrojo se suelta solo) o

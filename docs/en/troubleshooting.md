@@ -69,7 +69,7 @@ The `Stop` hook does not tell an agent to push either while a check holds the lo
 (a live pid with the same start time): it says in one line that the check is running, with its log, and to wait for
 `CHECK ok`. A lock with a dead, reused or malformed pid counts as absent.
 The `Stop` hook does not tell an agent to push either while background subagents of the session have not finished (D88;
-read from the `transcript_path` it receives: a launch with no later `<task-notification>`, or resumed with `SendMessage`;
+read from the `transcript_path` it receives: a launch with no later `<task-notification>`, or resumed with `SendMessage`, in the transcript format observed 2026-11-11 with Claude Code 2.1.322, internal and undocumented;
 `stopTranscriptBytes`): it says in one line to wait and push after. If it cannot read the transcript it blocks as before.
 It stays quiet only when the lock's sha is that worktree's `HEAD`; a check of another commit or worktree only adds a
 note and the push reminder stays. A hung check with a live pid does not expire: kill it (`kill <pid>`; the lock is
