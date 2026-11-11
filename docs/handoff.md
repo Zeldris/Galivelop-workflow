@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **B1-B8, B10, B11 y E21 hechas (2026-11-09)**; **B16, D42, E22, B18, D48 y D43 hechas (2026-11-10)**. **Revisión de bloque hecha (2026-11-10)** sobre `origin/main...cb071d6`; el siguiente bloque se mide desde su commit (`Findings: 4`). **D49, D53, D54 y B19 hechas (2026-11-10); E27, D55 y D56 hechas (2026-11-11).** **Siguiente:** de la `0.6` solo queda H18 (recogida de cierre) y la subida a `main` con el usuario; la tabla determinista espera a 4 semanas de libro. Presupuesto de compactaciones: 1 |
+| Siguiente paso | **B1-B8, B10, B11 y E21 hechas (2026-11-09)**; **B16, D42, E22, B18, D48 y D43 hechas (2026-11-10)**. **Revisión de bloque hecha (2026-11-10)** sobre `origin/main...cb071d6`; el siguiente bloque se mide desde su commit (`Findings: 4`). **D49, D53, D54 y B19 hechas (2026-11-10); E27, D55 y D56 hechas (2026-11-11).** **H18: recogida hecha (2026-11-11)**: 28 propuestas en `docs/proposals/2026-11-11-*.md`. **Siguiente:** el usuario aprueba o descarta; los arreglos aprobados, al parche de la `0.5` y los evolutivos, al roadmap; luego la subida de la `0.6` a `main` con el usuario; la tabla determinista espera a 4 semanas de libro. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -43,11 +43,11 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-11 — D56: `ci-status.py --failed`: de cada job en rojo, el paso que falló y el final de su registro (tope `ciFailedLines`) y la URL del registro; 11 tests.
-2. 2026-11-11 — D55: `scripts/roadmap.py show <id>` imprime la fila de una tarea en cada idioma (con su sección) y `done <id> [--date D] [--note ES --note EN] [--force]` la marca en los dos a la vez o en ninguno; clave nueva `roadmapFiles` (la `roadmap` reservada sigue booleana: no rompe los `gw.json`); nota en `gw-opt-tokens`; 13 tests.
-3. 2026-11-11 — E27: clave `shellcheckVersion` (`"0.11.0"` aquí); el CI de este repo la instala con `pip install "shellcheck-py==X.Y.Z.*"` en Linux y macOS (no el de apt o brew) y `tests/shellcheck.sh` avisa con esa orden si la local es otra (en el CI falla; `gw.json` ilegible, cerrado); la usa el `install` de la nube; 3 tests.
-4. 2026-11-10 — B19: `gw-update` reparte a un subagente ligero la lectura de cada diff de plantilla, cada `.gw-new` y cada salida de más de ~200 líneas, que devuelve la tabla «desvío · arriba · decisión»; el `/code-review` de la rama de actualización deja fuera las copias idénticas del flujo; 1 test.
-5. 2026-11-10 — D54: clave `ciOnPush` (defecto `true`); con `false`, `apply.py` escribe `branches-ignore: ['**']` en `check.yml` (`{{ciPushIgnore}}`) y `ci-status.py` sin CI propone `ci-local.py --record`; docs y 3 tests. CI rojo por SC2015 en `tests/old-python.sh` (shellcheck del runner; el local no lo marca): pasado a `if`.
+1. 2026-11-11 — H18 (recogida): 8 proyectos, 6 con novedades → 28 propuestas en `docs/proposals/2026-11-11-*.md`; `state.json` al día; falta la decisión del usuario.
+2. 2026-11-11 — D56: `ci-status.py --failed`: de cada job en rojo, el paso que falló y el final de su registro (tope `ciFailedLines`) y la URL del registro; 11 tests.
+3. 2026-11-11 — D55: `scripts/roadmap.py show <id>` imprime la fila de una tarea en cada idioma (con su sección) y `done <id> [--date D] [--note ES --note EN] [--force]` la marca en los dos a la vez o en ninguno; clave nueva `roadmapFiles` (la `roadmap` reservada sigue booleana: no rompe los `gw.json`); nota en `gw-opt-tokens`; 13 tests.
+4. 2026-11-11 — E27: clave `shellcheckVersion` (`"0.11.0"` aquí); el CI de este repo la instala con `pip install "shellcheck-py==X.Y.Z.*"` en Linux y macOS (no el de apt o brew) y `tests/shellcheck.sh` avisa con esa orden si la local es otra (en el CI falla; `gw.json` ilegible, cerrado); la usa el `install` de la nube; 3 tests.
+5. 2026-11-10 — B19: `gw-update` reparte a un subagente ligero la lectura de cada diff de plantilla, cada `.gw-new` y cada salida de más de ~200 líneas, que devuelve la tabla «desvío · arriba · decisión»; el `/code-review` de la rama de actualización deja fuera las copias idénticas del flujo; 1 test.
 
 ## Pendiente
 
