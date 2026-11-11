@@ -184,7 +184,7 @@ En este orden, porque cada paso usa el anterior.
 | B29 | `measure.py` mide la sesión anterior de la misma rama si la actual tiene menos de `measure.minCalls` (5) llamadas (tras un `/clear`) (recogida de cierre `0.6`, world-maker P5) | pendiente |
 | D82 | Lo copiado tal cual del flujo (`vendored`) queda fuera del `/code-review` de la fase 1 (vecino de D53 y B19) (recogida de cierre `0.6`, instalador P2) | pendiente |
 | D84 | `templates/github/check.yml` lee de `.claude/gw.json` los directorios de Node y Rust y usa `Swatinem/rust-cache` (recogida de cierre `0.6`, instalador P5) | pendiente |
-| D85 | `recover.py --state` avisa de una revisión atrasada (umbral `changeSize.block`) (recogida de cierre `0.6`, world-maker P3) | pendiente |
+| D85 | `recover.py --state` avisa de una revisión atrasada (umbral `changeSize.block`) (recogida de cierre `0.6`, world-maker P3) | hecho (2026-11-11) |
 | D86 | `merge-branch.sh` reconoce el conflicto en la bitácora y da la orden para resolverlo, con su test (recogida de cierre `0.6`, portal P5) | pendiente |
 | E43 | `doctor.py` avisa de carpetas con `test_*.py` que ningún comando del check corre; carpetas excluidas configurables (recogida de cierre `0.6`, instalador P3) | pendiente |
 

@@ -15,7 +15,8 @@ from pathlib import Path
 
 from test_hooks import ROOT, Project
 
-SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py", "context_guard.py")
+SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py", "context_guard.py",
+           "change-size.py")
 
 
 def folder_of(path):
@@ -479,6 +480,97 @@ class Recover(Base):
         self.assertEqual(code, 0, out)
         self.assertIn("- Warning: compaction budget exceeded (3 > 2): push and ask for /clear, or deal the work out "
                       "with gw-orchestrate-dealer", out)
+
+    # ---- D85: overdue block review
+
+    def overdue(self, p, lines, message="big work"):
+        p.git("checkout", "-q", "-b", "feat", "main")
+        p.write("big.txt", "x\n" * lines)
+        p.commit(message)
+
+    def test_overdue_review_warns_above_the_block_limit(self):
+        p = self.p
+        self.overdue(p, 1200)
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertIn("- Warning: review overdue: the block since the branch left origin/main changes 1200 lines", out)
+        self.assertIn("/code-review of the diff since the last Findings: commit", out)
+
+    def test_no_overdue_warning_under_the_limit(self):
+        self.overdue(self.p, 100)
+        code, out = self.p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("review overdue", out)
+
+    def test_findings_commit_resets_the_block(self):
+        p = self.p
+        self.overdue(p, 1200)
+        p.write("fix.txt", "y\n")
+        p.commit("fix(X1): review\n\nFindings: 2")
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("review overdue", out)
+
+    def test_limit_zero_turns_it_off(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["changeSize"] = {"block": 0}
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.commit("cfg")
+        self.overdue(p, 1200)
+        self.assertNotIn("review overdue", p.run_recover("--state")[1])
+
+    def test_missing_change_size_uses_the_default(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg.pop("changeSize", None)
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.commit("cfg")
+        self.overdue(p, 1200)
+        self.assertIn("review overdue", p.run_recover("--state")[1])
+
+    def test_no_origin_protected_branch_uses_the_local_one(self):
+        p = self.p
+        self.overdue(p, 1200)
+        p.git("update-ref", "-d", "refs/remotes/origin/main")
+        self.assertIn("review overdue", p.run_recover("--state")[1])
+
+    def test_no_protected_branch_at_all_is_silent(self):
+        p = self.p
+        self.overdue(p, 1200)
+        p.git("update-ref", "-d", "refs/remotes/origin/main")
+        p.git("branch", "-q", "-m", "main", "other")
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("review overdue", out)
+        self.assertNotIn("no origin/main", out)
+
+    def test_protected_branch_and_detached_head_are_silent(self):
+        p = self.p
+        p.write("big.txt", "x\n" * 1200)
+        p.commit("big on main")
+        self.assertNotIn("review overdue", p.run_recover("--state")[1])
+        self.overdue(p, 5, "small")
+        p.git("checkout", "-q", "--detach")
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("review overdue", out)
+
+    def test_unreadable_config_says_why(self):
+        p = self.p
+        self.overdue(p, 1200)
+        (p.work / ".claude" / "gw.json").write_text("{not json")
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertIn("- Warning: review check could not run (", out)
+        self.assertNotIn("review overdue", out)
+
+    def test_not_a_git_repo_is_silent(self):
+        d = self.tmp / "plain"
+        d.mkdir()
+        code, out = self.p.run_recover("--state", cwd=d)
+        self.assertNotIn("review overdue", out)
+        self.assertNotIn("Traceback", out)
 
     # ---- D40: remote branches with work the protected branch lacks
 
