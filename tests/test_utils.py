@@ -834,6 +834,21 @@ class HandoffCloseRow(Base):
         self.assertIn("| **Task in progress · `feat-b`** | doing B |", text)
         self.assertEqual(self.p.script("handoff.py", "check")[0], 0)
 
+    def test_close_row_takes_branch_option_or_current_branch_like_set_row(self):  # D71
+        self.assertEqual(self.p.script("handoff.py", "close-row", "--branch", "feat-b", "--text", "x1")[0], 0)
+        self.assertIn("| **Task in progress · `feat-b`** | x1 |", (self.p.work / LOG).read_text())
+        self.p.branch("feat-a")
+        self.assertEqual(self.p.script("handoff.py", "close-row", "--text", "x2")[0], 0)  # current branch
+        self.assertIn("| **Task in progress · `feat-a`** | x2 |", (self.p.work / LOG).read_text())
+        code, out = self.p.script("handoff.py", "close-row", "feat-a", "--branch", "feat-b")
+        self.assertEqual(code, 2, out)
+        self.assertIn("two different branches", out)
+        self.p.git("checkout", "-q", "--detach")
+        code, out = self.p.script("handoff.py", "close-row")
+        self.assertEqual(code, 2, out)
+        self.assertIn("detached HEAD", out)
+        self.assertIn("close-row --branch <branch>", out)
+
     def test_close_row_with_text_and_unknown_branch(self):
         self.assertEqual(self.p.script("handoff.py", "close-row", "feat-b", "--text", "done, merged")[0], 0)
         self.assertIn("| **Task in progress · `feat-b`** | done, merged |", (self.p.work / LOG).read_text())
