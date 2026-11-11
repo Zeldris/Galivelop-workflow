@@ -4,6 +4,8 @@
 # `check` commands and the related tests (`relatedTests`) on the result and, if they pass, cleans up the subagent's
 # worktree and branch.
 #   bash merge-branch.sh <branch> "<merge message>" [--reviewed]
+#  - Before merging it reads `check` (at least one command) and `checkWrapper` from the config; if it cannot, it
+#    merges nothing and exits 2 (D77).
 #  - `git merge --no-ff`. On conflict it stops, lists the files and leaves the merge open (resolve it, or abort
 #    with: git merge --abort), exit 1.
 #  - then `check.sh --quiet` runs every `check` command of .claude/gw.json in the project root (E20): its registry
@@ -57,6 +59,15 @@ if [ "$commit_next" = "true" ] && [ "${GW_NO_NEXT:-}" != "1" ]; then
     exit 2
   fi
 fi
+
+# Fail closed BEFORE merging (D77): the check that runs after the merge reads `check` and `checkWrapper`; if either
+# cannot be read, or `check` has no command, the merge would be left done with no check to judge it.
+checks="$(python3 "$config" --root "$root" get check 2>/dev/null)" || {
+  echo "merge-branch: cannot read 'check' from .claude/gw.json, so nothing was merged; fix the config: python3 $config --root $root validate" >&2; exit 2; }
+printf '%s\n' "$checks" | grep -q '[^[:space:]]' || {
+  echo "merge-branch: 'check' in .claude/gw.json has no command, so nothing was merged; set at least one, e.g. \"check\": [\"bash tests/check.sh\"], then retry" >&2; exit 2; }
+python3 "$config" --root "$root" get checkWrapper >/dev/null 2>&1 || {
+  echo "merge-branch: cannot read 'checkWrapper' from .claude/gw.json, so nothing was merged; fix the config: python3 $config --root $root validate" >&2; exit 2; }
 
 git rev-parse --verify --quiet "$branch^{commit}" >/dev/null || { echo "merge-branch: no branch $branch; list them: git branch -a" >&2; exit 2; }
 before="$(git rev-parse HEAD)"

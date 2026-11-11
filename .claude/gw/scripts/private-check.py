@@ -204,7 +204,13 @@ def scan_tree(root, scanner):
             scanner.line(f"{path}:{n}", text)
 
 
-def amend_advice(root, cfg, args, shas, bad):
+def is_branch(ref):
+    """False for HEAD and for a full ref (the pre-push passes a pushed branch without its `refs/heads/`, so what still
+    starts with `refs/`, e.g. `refs/tags/v1`, is a tag or another ref); true for a branch name."""
+    return ref != "HEAD" and not ref.startswith("refs/")
+
+
+def amend_advice(root, args, shas, bad):
     """The lines that say the offending commits are NOT pushed yet and how to fix only them (D47). Only for the
     pre-push (--commits with --remote); a manual --range cannot tell what is published. `git commit --amend` when only
     the checked-out last commit is at fault; else `git rebase -i <parent of the first offending commit>` (a commit the
@@ -219,11 +225,12 @@ def amend_advice(root, cfg, args, shas, bad):
     out = [f"{PROG}: the commit(s) with the finding ({listed}) are NOT pushed yet, so they can be fixed safely; "
            f"never rewrite what is already on the remote"]
     if bad == [tip] and tip == head:
-        out.append(f"{PROG}: it is only the last commit; fix the files and run: git add -A && git commit --amend")
+        out.append(f"{PROG}: it is only the last commit; fix the files, stage them (git add <the fixed files>) and run: git commit --amend")
         return out
     merges = any(len(git(root, "rev-list", "--parents", "-n", "1", sha).split()) > 2 for sha in shas)
     opts = " --rebase-merges" if merges else ""
-    branch = f" {args.ref}" if args.ref and tip != head else ""
+    # A tag or HEAD is not a branch: `git rebase -i <base> <tag>` would detach HEAD and leave the tag where it was.
+    branch = f" {args.ref}" if args.ref and tip != head and is_branch(args.ref) else ""
 
     def parent(sha):
         parents = git(root, "rev-list", "--parents", "-n", "1", sha).split()[1:]
@@ -318,7 +325,7 @@ def main(argv=None):
     else:
         print(f"{PROG}: remove it from the commits that add it, not in a new one ({allow})", file=sys.stderr)
         try:
-            lines = amend_advice(root, cfg, args, shas, scanner.bad) if shas and scanner.bad else []
+            lines = amend_advice(root, args, shas, scanner.bad) if shas and scanner.bad else []
         except CheckError:
             lines = []
         if not lines:
