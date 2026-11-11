@@ -306,6 +306,11 @@ def test_map(config):
     return _section(config, "testMap")
 
 
+def roadmap_files(config):
+    """The `roadmapFiles` key: [{"path", "done", "open"}] (D55), [] when absent."""
+    return config.get("roadmapFiles") or []
+
+
 def change_size(config):
     """The `changeSize` key as a dict (commit, block, exclude, pairs) (D43)."""
     return _section(config, "changeSize")

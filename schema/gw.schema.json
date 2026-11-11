@@ -601,6 +601,21 @@
       "default": 30,
       "description": "Subagents (Agent/Task calls) one session may launch before subagent-cap.py asks the user to check they are not looping, and again every 10 after."
     },
+    "roadmapFiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "done", "open"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+[^/]$", "description": "Repo-relative path of one language version of the roadmap."},
+          "done": {"type": "string", "minLength": 1, "description": "Word roadmap.py done writes at the start of the status cell (hecho, done)."},
+          "open": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "description": "Words a status cell starts with while the task is open (pendiente, en curso); roadmap.py done refuses any other status without --force."}
+        }
+      },
+      "default": [],
+      "description": "D55: the roadmap in each language, the source first; roadmap.py show <id> prints the task's row from each one and roadmap.py done <id> marks it done in all of them at once. [] turns the script off (it says so). Not the reserved `roadmap` key."
+    },
     "models": {
       "type": "object",
       "additionalProperties": false,

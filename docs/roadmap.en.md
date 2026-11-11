@@ -157,7 +157,7 @@ In this order, because each step uses the previous one.
 | D54 | `ciOnPush` in `.claude/gw.json`: `check.yml` runs on every push or only on PRs, without editing it (`0.5.1` closing harvest, world-maker-fantasy P4) | done (2026-11-10; `branches-ignore: ['**']` when applied; hint in `ci-status.py`) |
 | B19 | `gw-update` deals the reconciliation of each `.gw-new` to a subagent that returns the drift table; the `/code-review` of the update branch leaves out identical workflow copies (`0.5.1` closing harvest, world-maker-fantasy P5) | done (2026-11-10; skill steps 3-5: "drift · upstream · decision" table from a light subagent, `/code-review` without identical copies) |
 | E27 | `shellcheckVersion` in `.claude/gw.json`: CI installs that version and `tests/shellcheck.sh` warns, with the command that installs it, if the local one differs (`0.5.1` retro R1) | done (2026-11-11; CI installs it with `pip install shellcheck-py==X.Y.Z.*`; in CI another version fails) |
-| D55 | `roadmap.py show <id>` and `roadmap.py done <id>`: see or mark a roadmap row in both languages without reading it whole (`0.5.1` retro R4) | pending |
+| D55 | `roadmap.py show <id>` and `roadmap.py done <id>`: see or mark a roadmap row in both languages without reading it whole (`0.5.1` retro R4) | done (2026-11-11; `scripts/roadmap.py`, key `roadmapFiles` (the reserved `roadmap` stays boolean); marks both languages or neither) |
 | D56 | `ci-status.py --failed`: for each red job, only the failed step and its error lines, capped by a key, with the URL of the whole log (`0.5.1` retro R5) | pending |
 
 ## `0.7` "Ask"

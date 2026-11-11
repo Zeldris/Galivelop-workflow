@@ -51,6 +51,10 @@
   "plan": [
     "docs/roadmap.md"
   ],
+  "roadmapFiles": [
+    {"path": "docs/roadmap.md", "done": "hecho", "open": ["pendiente", "en curso"]},
+    {"path": "docs/roadmap.en.md", "done": "done", "open": ["pending", "in progress"]}
+  ],
   "commitFormat": "conventional",
   "commitRefs": true,
   "commitNext": true,
