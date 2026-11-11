@@ -15,7 +15,8 @@ from pathlib import Path
 
 from test_hooks import ROOT, Project
 
-SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py", "context_guard.py", "change-size.py")
+SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py", "context_guard.py",
+           "change-size.py")
 
 
 def folder_of(path):
@@ -482,7 +483,7 @@ class Recover(Base):
 
     # ---- D85: overdue block review
 
-    def overdue(self, p, lines, message="big work", config=None):
+    def overdue(self, p, lines, message="big work"):
         p.git("checkout", "-q", "-b", "feat", "main")
         p.write("big.txt", "x\n" * lines)
         p.commit(message)
@@ -553,6 +554,15 @@ class Recover(Base):
         p.git("checkout", "-q", "--detach")
         code, out = p.run_recover("--state")
         self.assertEqual(code, 0, out)
+        self.assertNotIn("review overdue", out)
+
+    def test_unreadable_config_says_why(self):
+        p = self.p
+        self.overdue(p, 1200)
+        (p.work / ".claude" / "gw.json").write_text("{not json")
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertIn("- Warning: review check could not run (", out)
         self.assertNotIn("review overdue", out)
 
     def test_not_a_git_repo_is_silent(self):

@@ -18,7 +18,7 @@ when the review found nothing), plus the staged change. It is the sum of each co
 twice: an upper bound of the review's diff. On the protected branch, or without it, there is no block (a note says so
 for the latter).
 
-Who calls it: the commit-msg hook, before every commit that is not a merge, revert, cherry-pick or rebase step; it
+Who calls it: `recover.py --state` (D85: `block`, for its overdue-review warning) and the commit-msg hook, before every commit that is not a merge, revert, cherry-pick or rebase step; it
 only warns (exit 0) and never stops a commit. A limit of 0 turns its warning off. Fails closed on what it cannot know:
 an invalid config, a git error or a --base that is not a commit -> exit 2 with what fixes it. Project root and config:
 config.find_root and config.load. Python 3.8+ standard library only.

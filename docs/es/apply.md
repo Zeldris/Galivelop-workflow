@@ -295,7 +295,10 @@ entra el código ya hoy.
   `python3 .claude/gw/scripts/recover.py --state` (la bitácora, `git status`, los últimos commits, los otros
   worktrees con su rama y su fila, y las compactaciones de la sesión y desde el inicio de la tarea, que es el commit
   base con `protectedBranch`; el presupuesto de `Presupuesto de compactaciones: N` en la bitácora, con aviso si se
-  supera; y las ramas remotas con commits que la protegida no tiene, 10 como mucho, solo con refs locales; y un aviso de revisión atrasada si las líneas cambiadas desde el último commit con `Findings:` superan `changeSize.block`, con la orden que lo arregla: `/code-review` de ese diff) y
+  supera; y las ramas remotas con commits que la protegida no tiene, 10 como mucho, solo con refs locales),
+  un aviso de revisión atrasada (líneas cambiadas desde el último commit con `Findings:` por encima de
+  `changeSize.block`, contadas contra `origin/<protegida>` o la rama local; sin ninguna de las dos, calla; nombra el
+  arreglo: `/code-review` de ese diff) y
   `--search TEXTO` (fragmentos de la sesión que casan, como datos tras una línea de cabecera y sin caracteres de
   control; `--max N`, `--width N`, `--session RUTA`). `--state` se corta en 9.500 caracteres, por línea entera, y lo dice.
 - **`install` a mano.** `session-start.sh` solo lo corre en la nube y cuando cambian las órdenes de `install`/`setup`

@@ -437,30 +437,35 @@ def other_branch_lines(root, branch):
 def review_lines(root, branch):
     """The warning line of an overdue block review (D85): the lines changed since the last commit with a `Findings:`
     trailer (the commit-msg hook's count, change-size.block) above `changeSize.block`. Silent when under the limit, on
-    the protected branch, detached, without a protected ref, with the limit at 0, or on any failure."""
+    the protected branch, detached, not in a repo, without a protected ref or with the limit at 0; any other failure
+    (an unreadable config, git failing) is one warning line that says why. The cheap cases come before the git log."""
     if branch in ("?", "HEAD"):
         return []
     try:
+        cfg = config.load(root)
+        settings = config.change_size(cfg)
+        limit = settings["block"]
+        if not limit or branch == protected_branch(root):
+            return []
         import contextlib
         import importlib.util
         import io
         spec = importlib.util.spec_from_file_location("change_size", os.path.join(HERE, "change-size.py"))
         size = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(size)
-        cfg = config.load(root)
-        settings = config.change_size(cfg)
-        limit = settings["block"]
-        with contextlib.redirect_stderr(io.StringIO()):  # the no-protected-ref note is for the commit-msg hook
+        if size.protected_ref(root, cfg)[1] is None:
+            return []
+        with contextlib.redirect_stderr(io.StringIO()):  # change-size's notes are for the commit-msg hook
             blk = size.block(root, cfg, settings, None)
-        if not limit or blk is None or blk[0] <= limit:
+        if blk is None or blk[0] <= limit:
             return []
         lines, where, n = blk
         trailer = config.metrics(cfg)["quality"]["findingsTrailer"]
         return [f"- Warning: review overdue: the block {where} changes {lines} lines in {n} commit(s) (more than "
                 f"{limit}, changeSize.block); close it: /code-review of the diff since the last {trailer}: commit, and "
                 f"its fix commit carries `{trailer}: <n>` (0 if the review found nothing)"]
-    except Exception:  # only a warning: --state never fails
-        return []
+    except Exception as exc:  # --state never fails, but a check that cannot run says so
+        return [f"- Warning: review check could not run ({CONTROL.sub('', str(exc))[:200]})"]
 
 
 def state(root, transcript, out, logs, source="startup"):
