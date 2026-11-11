@@ -1252,6 +1252,27 @@ class MergeBranch(Base):
         self.assertIn("'check' in .claude/gw.json has no command, so nothing was merged", out)
         self.assertEqual(self.p.sha(), before, "nothing was merged")
 
+    def test_an_unreadable_check_or_wrapper_stops_the_merge_before_it_is_done(self):
+        # D77: if `config.py get check` or `get checkWrapper` fails, the merge never starts (a shim fails that key).
+        self.agent(name="agent/D16-x")
+        scripts = self.p.work / ".claude" / "gw" / "scripts"
+        real = (scripts / "config.py").read_text()
+        (scripts / "config_real.py").write_text(real)
+        self.addCleanup((scripts / "config.py").write_text, real)
+        for key, reason in (("check", "cannot read 'check'"), ("checkWrapper", "cannot read 'checkWrapper'")):
+            with self.subTest(key=key):
+                (scripts / "config.py").write_text(
+                    "import runpy, sys\n"
+                    "if sys.argv[-2:] == ['get', %r]:\n"
+                    "    sys.exit(1)\n"
+                    "runpy.run_path(__file__.replace('config.py', 'config_real.py'), run_name='__main__')\n" % key)
+                before = self.p.sha()
+                code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed")
+                self.assertEqual(code, 2, out)
+                self.assertIn(reason, out)
+                self.assertIn("nothing was merged", out)
+                self.assertEqual(self.p.sha(), before, "nothing was merged")
+
     def test_commit_next_stops_a_merge_message_without_the_trailer(self):
         self.agent(name="agent/D16-x")
         self.next_config()
