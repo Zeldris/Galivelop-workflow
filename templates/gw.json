@@ -46,6 +46,7 @@
   "legacyNamesMax": 50,
   "content": ["^docs/", "^(README|GLOSSARY|REVIEW|CLAUDE|AGENTS|CHANGELOG|CREDITS)(\\.[a-z]{2})?\\.md$", "^\\.claude/skills/.*\\.md$"],
   "roadmap": false,
+  "roadmapFiles": [],
   "selector": {"cases": []},
   "logSections": [],
   "designReferences": [],
