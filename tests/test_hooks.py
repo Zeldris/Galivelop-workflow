@@ -1105,6 +1105,15 @@ class PrePushBranchCheck(Base):
         self.assertIn("only its related tests run (branchCheck); the full check runs on the push to main", out)
         self.assertIn("all green", out)
 
+    def test_branch_and_main_in_one_push_with_the_same_tree_still_run_the_branchs_related_tests(self):  # D78 finding 7
+        p = self.p
+        p.write("docs/n.md", "n\n"); p.commit("code")
+        code, out = p.push("origin", "HEAD:refs/heads/feature", "HEAD:refs/heads/main")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.runs(self.checks), ["check"], out)  # the full check, once, for main
+        self.assertIn("docs/n.md", self.runs(self.related), out)  # the branch is checked with its own scope
+        self.assertIn("only its related tests run (branchCheck)", out)
+
     def test_a_failing_related_test_still_blocks_the_branch_push(self):
         p = self.p
         cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
@@ -1613,6 +1622,35 @@ class CheckCache(Base):
         self.assertEqual((code, self.count()), (0, 2), out)
         self.assertNotIn(self.MARK_SKIP, out)
 
+    def test_the_cache_is_read_again_after_waiting_for_the_lock(self):  # D78 finding 6
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["checkLockWait"] = 60
+        p.write(".claude/gw.json", json.dumps(cfg))
+        self.script(f'echo run >> "{self.runs}"; sleep 3')
+        p.commit("slow check that waits for the lock")
+        env = dict(p.env, **self.ON)
+
+        def start(ref):
+            return subprocess.Popen(["git", "push", "origin", f"HEAD:refs/heads/{ref}"], cwd=p.work, env=env,
+                                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        first = start("feature")
+        for _ in range(100):
+            if self.runs.exists():
+                break
+            time.sleep(0.1)
+        second = start("other")
+        out1, out2 = first.communicate(timeout=60)[0], second.communicate(timeout=60)[0]
+        self.assertEqual((first.returncode, second.returncode), (0, 0), out1 + out2)
+        self.assertEqual(self.count(), 1, out1 + out2)
+        self.assertIn(self.SKIP, out2)
+        self.assertEqual(list(self.tmp.glob("gw-pre-push-check.*")), [])
+        self.assertFalse((p.work / ".git" / "gw" / "check.lock").exists(), "the lock must be released")
+
+    def test_lock_wait_is_local_to_run_checks(self):  # D78 finding 8
+        src = (ROOT / "templates" / "githooks" / "pre-push").read_text()
+        self.assertRegex(src, r"(?m)^\s*local [^\n]*\block_wait\b")
+
     def test_a_merge_commit_runs_the_check(self):
         self.green_parent()
         p = self.p
@@ -1640,13 +1678,13 @@ class CheckCache(Base):
         self.doc_change()
         code, out = self.push("origin", "HEAD:refs/heads/feature", "HEAD:refs/heads/main")
         self.assertEqual((code, self.count()), (0, 1), out)
-        self.assertIn("this push also sends to main; its check runs once, there", out)
+        self.assertIn("this push also sends to main; its full check runs once, there", out)
 
     def test_main_first_in_the_push_still_runs_the_check_once(self):
         self.doc_change()
         code, out = self.push("origin", "HEAD:refs/heads/main", "HEAD:refs/heads/feature")
         self.assertEqual((code, self.count()), (0, 1), out)
-        self.assertIn("its check runs once, there", out)
+        self.assertIn("its full check runs once, there", out)
 
     def test_branch_and_main_in_one_push_with_different_trees_are_each_checked(self):
         self.doc_change("one\n")
@@ -1654,7 +1692,7 @@ class CheckCache(Base):
         self.doc_change("two\n")
         code, out = self.push("origin", f"{first}:refs/heads/feature", "HEAD:refs/heads/main")
         self.assertEqual((code, self.count()), (0, 2), out)
-        self.assertNotIn("its check runs once, there", out)
+        self.assertNotIn("its full check runs once, there", out)
 
     def set_config(self, **changes):
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
