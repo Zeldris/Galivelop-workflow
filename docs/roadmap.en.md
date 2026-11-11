@@ -125,24 +125,24 @@ In this order, because each step uses the previous one.
 | D65 | Archive the log: a total size cap for `docs/handoff.md` (key in `.claude/gw.json`) that `handoff.py check` warns about and B21 uses as a culprit; `handoff.py archive` moves the "Pending" items and minor findings of already published versions to `docs/records/handoff-archive.md` (not read at start), leaving one line with the link; after a compaction, `recover.py` and `SessionStart` re-read only the state and the next step (user, 2026-11-05) | done |
 | D69 | `hotfix` type in `commitFormat` and in `version.py` (counts as a patch), with its test, so projects on `0.5` accept the type before the task record (C11) ([`I-lifecycle.md`](design/I-lifecycle.md) Q11; user, 2026-11-08) | done |
 | D66 | Each version reviews the documentation for people (`README.md` ↔ `README.es.md`, `docs/es/` ↔ `docs/en/`, roadmap) against its CHANGELOG before the push to `main` (`AGENTS.md`); `version.py --release` fails if a file in `releaseDocs` (a `.claude/gw.json` key; default `[]`, here both READMEs) does not name the version being released. Real case: `0.5.1` shipped with the README at "Status: `0.4.3`" (user, 2026-11-06) | done |
-| D70 | `measure.py --since` picks the right session, not the newest log (`0.6` closing harvest, private-project-1 P2) | pending |
-| D71 | `handoff.py close-row` and `set-row` take the branch the same way (`0.6` closing harvest, private-project-1 P3) | pending |
-| D72 | The `gw-orchestrate-dealer` brief says who pushes (on the work branch, the subagent; in a worktree, nobody) and what to do with the commit (leave it uncommitted, or commit it with its log row); the main session checks `git status -sb` on return (`0.6` closing harvest, image-generator P2, world-maker P1) | pending |
-| D73 | `gw-update` ends by opening the PR from the update branch to the protected one (`0.6` closing harvest, instalador P1) | pending |
-| D74 | `related-tests.sh` prints the file count and a temp file with the full command, not the whole list (`0.6` closing harvest, world-maker P2) | pending |
-| D75 | Closing step of a test round: call the project's script that stops what it started (servers, models, sleep inhibitors) (`0.6` closing harvest, world-maker P7) | pending |
-| D88 | The `Stop` hook does not ask to push while background subagents run (extends D41); first check here how world-maker detects them (`0.6` closing harvest, world-maker P4) | pending |
-| B22 | `measure.py` shows the `action` of Artifact calls in HEAVIEST RESULTS (`0.6` closing harvest, portal P4) | pending |
-| B23 | `prototype` publishes the Artifact (with its `quickstart`) from a subagent that returns only the URL (`0.6` closing harvest, portal P3) | pending |
-| B24 | The phase 1 review starts after `/clear` or in a clean subagent (`AGENTS.md`, `gw-selector`) (`0.6` closing harvest, portal P2) | pending |
-| B25 | `gw-scout-updates` with 2 subagents (`0.6` closing harvest, private-project-1 P4) | pending |
-| D76 | `check-green.sh` lock: the same pid updates sha and log, a `check.lock.steal` without pid does not block, another user's process is treated as in `before-stop.py`; `before-stop.py` compares `check.sh`'s full sha with HEAD (`0.6` closing harvest, instalador `0.5.1` review, findings 1-4) | pending |
-| D77 | `merge-branch.sh` validates `check` and `checkWrapper` before merging (`0.6` closing harvest, instalador `0.5.1` review, finding 5) | pending |
-| D78 | `pre-push`: rechecks the green cache after waiting for the lock; with the same tree on a protected ref and a branch, the branch is checked too; `lock_wait` local (`0.6` closing harvest, instalador `0.5.1` review, findings 6-8) | pending |
-| D79 | `private-check.py amend_advice`: no `rebase -i` onto a tag or `HEAD`, no `git add -A`, no unused `cfg` (`0.6` closing harvest, instalador `0.5.1` review, findings 11 and 14) | pending |
-| E38 | `pre-commit`: `PROSE_ASSIGN` catches a one-word capitalised quoted secret in a `.md`; `md_prose_dropped` without one process per line (`0.6` closing harvest, instalador `0.5.1` review, findings 12-13) | pending |
-| E39 | `check.sh` without `--quiet` keeps TTY and colours (E17 regression; reproduced with a test first) (`0.6` closing harvest, instalador `0.5.1` review, finding 10) | pending |
-| E40 | Pruning of `.git/gw` `check-<sha>.log` files: the last `checkLogKeep` (20) are kept (`0.6` closing harvest, instalador `0.5.1` review, finding 9) | pending |
+| D70 | `measure.py --since` picks the right session, not the newest log (`0.6` closing harvest, private-project-1 P2) | done (2026-11-11) |
+| D71 | `handoff.py close-row` and `set-row` take the branch the same way (`0.6` closing harvest, private-project-1 P3) | done (2026-11-11) |
+| D72 | The `gw-orchestrate-dealer` brief says who pushes (on the work branch, the subagent; in a worktree, nobody) and what to do with the commit (leave it uncommitted, or commit it with its log row); the main session checks `git status -sb` on return (`0.6` closing harvest, image-generator P2, world-maker P1) | done (2026-11-11) |
+| D73 | `gw-update` ends by opening the PR from the update branch to the protected one (`0.6` closing harvest, instalador P1) | done (2026-11-11) |
+| D74 | `related-tests.sh` prints the file count and a temp file with the full command, not the whole list (`0.6` closing harvest, world-maker P2) | done (2026-11-11) |
+| D75 | Closing step of a test round: call the project's script that stops what it started (servers, models, sleep inhibitors) (`0.6` closing harvest, world-maker P7) | done (2026-11-11) |
+| D88 | The `Stop` hook does not ask to push while background subagents run (extends D41); first check here how world-maker detects them (`0.6` closing harvest, world-maker P4) | done (2026-11-11) |
+| B22 | `measure.py` shows the `action` of Artifact calls in HEAVIEST RESULTS (`0.6` closing harvest, portal P4) | done (2026-11-11) |
+| B23 | `prototype` publishes the Artifact (with its `quickstart`) from a subagent that returns only the URL (`0.6` closing harvest, portal P3) | done (2026-11-11) |
+| B24 | The phase 1 review starts after `/clear` or in a clean subagent (`AGENTS.md`, `gw-selector`) (`0.6` closing harvest, portal P2) | done (2026-11-11) |
+| B25 | `gw-scout-updates` with 2 subagents (`0.6` closing harvest, private-project-1 P4) | done (2026-11-11) |
+| D76 | `check-green.sh` lock: the same pid updates sha and log, a `check.lock.steal` without pid does not block, another user's process is treated as in `before-stop.py`; `before-stop.py` compares `check.sh`'s full sha with HEAD (`0.6` closing harvest, instalador `0.5.1` review, findings 1-4) | done (2026-11-11) |
+| D77 | `merge-branch.sh` validates `check` and `checkWrapper` before merging (`0.6` closing harvest, instalador `0.5.1` review, finding 5) | done (2026-11-11) |
+| D78 | `pre-push`: rechecks the green cache after waiting for the lock; with the same tree on a protected ref and a branch, the branch is checked too; `lock_wait` local (`0.6` closing harvest, instalador `0.5.1` review, findings 6-8) | done (2026-11-11) |
+| D79 | `private-check.py amend_advice`: no `rebase -i` onto a tag or `HEAD`, no `git add -A`, no unused `cfg` (`0.6` closing harvest, instalador `0.5.1` review, findings 11 and 14) | done (2026-11-11) |
+| E38 | `pre-commit`: `PROSE_ASSIGN` catches a one-word capitalised quoted secret in a `.md`; `md_prose_dropped` without one process per line (`0.6` closing harvest, instalador `0.5.1` review, findings 12-13) | done (2026-11-11) |
+| E39 | `check.sh` without `--quiet` keeps TTY and colours (E17 regression; reproduced with a test first) (`0.6` closing harvest, instalador `0.5.1` review, finding 10) | done (2026-11-11) |
+| E40 | Pruning of `.git/gw` `check-<sha>.log` files: the last `checkLogKeep` (20) are kept (`0.6` closing harvest, instalador `0.5.1` review, finding 9) | done (2026-11-11) |
 
 ## `0.6` "Measure"
 

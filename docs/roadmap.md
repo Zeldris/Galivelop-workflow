@@ -126,24 +126,24 @@ En este orden, porque cada paso usa el anterior.
 | D65 | Historizar la bitácora: tope de tamaño total de `docs/handoff.md` (clave en `.claude/gw.json`) que `handoff.py check` avisa y que B21 usa como culpable; `handoff.py archive` mueve los «Pendiente» y leves de versiones ya publicadas a `docs/records/handoff-archive.md` (que no se lee al empezar), dejando una línea con el enlace; tras compactar, `recover.py` y el `SessionStart` releen solo el estado y el siguiente paso (usuario, 2026-11-05) | hecho |
 | D69 | Tipo `hotfix` en `commitFormat` y en `version.py` (cuenta como parche), con su test, para que los proyectos en `0.5` acepten el tipo antes de la ficha de tarea (C11) ([`I-lifecycle.md`](design/I-lifecycle.md) Q11; usuario, 2026-11-08) | hecho |
 | D66 | Cada versión repasa la documentación para personas (`README.md` ↔ `README.es.md`, `docs/es/` ↔ `docs/en/`, roadmap) contra su CHANGELOG antes de la subida a `main` (`AGENTS.md`); `version.py --release` falla si un archivo de `releaseDocs` (clave en `.claude/gw.json`; por defecto `[]`, aquí los dos README) no nombra la versión que se publica. Caso real: la `0.5.1` salió con el README en «Estado: `0.4.3`» (usuario, 2026-11-06) | hecho |
-| D70 | `measure.py --since` elige la sesión correcta, no la del registro más nuevo (recogida de cierre `0.6`, private-project-1 P2) | pendiente |
-| D71 | `handoff.py close-row` y `set-row` toman la rama del mismo modo (recogida de cierre `0.6`, private-project-1 P3) | pendiente |
-| D72 | El encargo de `gw-orchestrate-dealer` dice quién sube (en la rama de trabajo, el subagente; en un worktree, no) y qué hace con su commit (sin commitear, o con su fila de la bitácora en el mismo commit); la principal mira `git status -sb` al volver (recogida de cierre `0.6`, image-generator P2, world-maker P1) | pendiente |
-| D73 | `gw-update` termina abriendo el PR de la rama de actualización a la protegida (recogida de cierre `0.6`, instalador P1) | pendiente |
-| D74 | `related-tests.sh` dice cuántos archivos y la ruta de un temporal con la orden, no la lista entera (recogida de cierre `0.6`, world-maker P2) | pendiente |
-| D75 | Paso de cierre de una ronda de pruebas: llamar al script del proyecto que para lo levantado (servidores, modelos, inhibidores de suspensión) (recogida de cierre `0.6`, world-maker P7) | pendiente |
-| D88 | El gancho `Stop` no pide subir mientras hay subagentes en segundo plano (amplía D41); primero se comprueba aquí cómo lo detecta world-maker (recogida de cierre `0.6`, world-maker P4) | pendiente |
-| B22 | `measure.py` muestra el `action` de las llamadas a Artifact en HEAVIEST RESULTS (recogida de cierre `0.6`, portal P4) | pendiente |
-| B23 | `prototype` publica el Artifact (con su `quickstart`) desde un subagente que devuelve solo la URL (recogida de cierre `0.6`, portal P3) | pendiente |
-| B24 | La revisión de la fase 1 empieza tras `/clear` o en un subagente limpio (`AGENTS.md`, `gw-selector`) (recogida de cierre `0.6`, portal P2) | pendiente |
-| B25 | `gw-scout-updates` con 2 subagentes (recogida de cierre `0.6`, private-project-1 P4) | pendiente |
-| D76 | Candado de `check-green.sh`: el mismo pid actualiza sha y registro, un `check.lock.steal` sin pid no bloquea, un proceso de otro usuario se trata igual que en `before-stop.py`; `before-stop.py` compara el sha completo de `check.sh` con HEAD (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 1-4) | pendiente |
-| D77 | `merge-branch.sh` valida `check` y `checkWrapper` antes de fusionar (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgo 5) | pendiente |
-| D78 | `pre-push`: vuelve a mirar la caché de verdes tras esperar el candado; con el mismo árbol en una ref protegida y en una rama, la rama también se comprueba; `lock_wait` local (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 6-8) | pendiente |
-| D79 | `private-check.py amend_advice`: sin `rebase -i` sobre una etiqueta o `HEAD`, sin `git add -A` y sin el `cfg` que no usa (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 11 y 14) | pendiente |
-| E38 | `pre-commit`: `PROSE_ASSIGN` no deja pasar un secreto de una palabra en mayúscula entre comillas en un `.md`; `md_prose_dropped` sin un proceso por línea (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 12-13) | pendiente |
-| E39 | `check.sh` sin `--quiet` conserva TTY y colores (regresión de E17; se reproduce con un test antes) (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgo 10) | pendiente |
-| E40 | Poda de los `check-<sha>.log` de `.git/gw`: se guardan los últimos `checkLogKeep` (20) (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgo 9) | pendiente |
+| D70 | `measure.py --since` elige la sesión correcta, no la del registro más nuevo (recogida de cierre `0.6`, private-project-1 P2) | hecho (2026-11-11) |
+| D71 | `handoff.py close-row` y `set-row` toman la rama del mismo modo (recogida de cierre `0.6`, private-project-1 P3) | hecho (2026-11-11) |
+| D72 | El encargo de `gw-orchestrate-dealer` dice quién sube (en la rama de trabajo, el subagente; en un worktree, no) y qué hace con su commit (sin commitear, o con su fila de la bitácora en el mismo commit); la principal mira `git status -sb` al volver (recogida de cierre `0.6`, image-generator P2, world-maker P1) | hecho (2026-11-11) |
+| D73 | `gw-update` termina abriendo el PR de la rama de actualización a la protegida (recogida de cierre `0.6`, instalador P1) | hecho (2026-11-11) |
+| D74 | `related-tests.sh` dice cuántos archivos y la ruta de un temporal con la orden, no la lista entera (recogida de cierre `0.6`, world-maker P2) | hecho (2026-11-11) |
+| D75 | Paso de cierre de una ronda de pruebas: llamar al script del proyecto que para lo levantado (servidores, modelos, inhibidores de suspensión) (recogida de cierre `0.6`, world-maker P7) | hecho (2026-11-11) |
+| D88 | El gancho `Stop` no pide subir mientras hay subagentes en segundo plano (amplía D41); primero se comprueba aquí cómo lo detecta world-maker (recogida de cierre `0.6`, world-maker P4) | hecho (2026-11-11) |
+| B22 | `measure.py` muestra el `action` de las llamadas a Artifact en HEAVIEST RESULTS (recogida de cierre `0.6`, portal P4) | hecho (2026-11-11) |
+| B23 | `prototype` publica el Artifact (con su `quickstart`) desde un subagente que devuelve solo la URL (recogida de cierre `0.6`, portal P3) | hecho (2026-11-11) |
+| B24 | La revisión de la fase 1 empieza tras `/clear` o en un subagente limpio (`AGENTS.md`, `gw-selector`) (recogida de cierre `0.6`, portal P2) | hecho (2026-11-11) |
+| B25 | `gw-scout-updates` con 2 subagentes (recogida de cierre `0.6`, private-project-1 P4) | hecho (2026-11-11) |
+| D76 | Candado de `check-green.sh`: el mismo pid actualiza sha y registro, un `check.lock.steal` sin pid no bloquea, un proceso de otro usuario se trata igual que en `before-stop.py`; `before-stop.py` compara el sha completo de `check.sh` con HEAD (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 1-4) | hecho (2026-11-11) |
+| D77 | `merge-branch.sh` valida `check` y `checkWrapper` antes de fusionar (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgo 5) | hecho (2026-11-11) |
+| D78 | `pre-push`: vuelve a mirar la caché de verdes tras esperar el candado; con el mismo árbol en una ref protegida y en una rama, la rama también se comprueba; `lock_wait` local (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 6-8) | hecho (2026-11-11) |
+| D79 | `private-check.py amend_advice`: sin `rebase -i` sobre una etiqueta o `HEAD`, sin `git add -A` y sin el `cfg` que no usa (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 11 y 14) | hecho (2026-11-11) |
+| E38 | `pre-commit`: `PROSE_ASSIGN` no deja pasar un secreto de una palabra en mayúscula entre comillas en un `.md`; `md_prose_dropped` sin un proceso por línea (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgos 12-13) | hecho (2026-11-11) |
+| E39 | `check.sh` sin `--quiet` conserva TTY y colores (regresión de E17; se reproduce con un test antes) (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgo 10) | hecho (2026-11-11) |
+| E40 | Poda de los `check-<sha>.log` de `.git/gw`: se guardan los últimos `checkLogKeep` (20) (recogida de cierre `0.6`, revisión `0.5.1` del instalador, hallazgo 9) | hecho (2026-11-11) |
 
 ## `0.6` «Medir»
 

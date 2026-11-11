@@ -21,6 +21,8 @@
   "ownedFiles": [],
   "checkCacheInputs": [".claude/gw.local.json"],
   "checkLogKeep": 20,
+  "stopTranscriptBytes": 4194304,
+  "stopSubagentMaxAge": 86400,
   "checkOutputGrace": 5,
   "worktreeLinks": ["node_modules", ".venv"],
   "worktreeDir": "",

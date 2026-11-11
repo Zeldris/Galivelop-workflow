@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **Revisión de bloque hecha (2026-11-11)** sobre `f00a5e6..d7dc74e` (`Findings: 8`; el siguiente bloque se mide desde ese commit). **H18 hecha (2026-11-11)**: decisiones del usuario en el roadmap (D70-D79, D88, B22-B25, E38-E40 a la `0.5.2`, todas antes de publicar la `0.6`; B26-B29, D82, D84-D86, E43 a la `0.6`; resto a `0.7`/`0.8`). **Siguiente:** los arreglos de la `0.5.2` con el dealer (D88: ver primero cómo lo detecta world-maker), después los evolutivos de la `0.6` y la subida a `main` con el usuario. Presupuesto de compactaciones: 1 |
+| Siguiente paso | **Arreglos de la `0.5.2` hechos (2026-11-11)**: fusionados. **Siguiente:** revisión de cierre de la tanda (`MISSING_ITEMS`) y limpiar worktrees/ramas `agent/*` de la `0.5.2`; después los evolutivos de la `0.6` (B26-B29, D82, D84-D86, E43) con el dealer y la subida a `main` con el usuario. Presupuesto de compactaciones: 1 (usada 1) |
 
 ### Fases
 
@@ -43,14 +43,19 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-11 — Revisión de bloque (`f00a5e6..d7dc74e`): 8 hallazgos arreglados con 7 tests: `pre-push` (rama sin commits nuevos → check completo; tests relacionados por rama), `roadmap.py` (`|` escapado en `--note`; estado abierto sin mayúsculas ni marcado), `ci-status.py --failed` (paso del último error, cabecera `Run `, tope `cap` exacto); 2 descartados (D49 y D53, ya en Pendiente).
-2. 2026-11-11 — H18: 28 propuestas (8 proyectos) y 14 hallazgos de la revisión `0.5.1` del instalador, decididos por el usuario y repartidos en el roadmap (es/en) con ids; P6 del portal descartada.
-3. 2026-11-11 — D56: `ci-status.py --failed`: de cada job en rojo, el paso que falló y el final de su registro (tope `ciFailedLines`) y la URL del registro; 11 tests.
-4. 2026-11-11 — D55: `scripts/roadmap.py show <id>` imprime la fila de una tarea en cada idioma (con su sección) y `done <id> [--date D] [--note ES --note EN] [--force]` la marca en los dos a la vez o en ninguno; clave nueva `roadmapFiles` (la `roadmap` reservada sigue booleana: no rompe los `gw.json`); nota en `gw-opt-tokens`; 13 tests.
-5. 2026-11-11 — E27: clave `shellcheckVersion` (`"0.11.0"` aquí); el CI de este repo la instala con `pip install "shellcheck-py==X.Y.Z.*"` en Linux y macOS (no el de apt o brew) y `tests/shellcheck.sh` avisa con esa orden si la local es otra (en el CI falla; `gw.json` ilegible, cerrado); la usa el `install` de la nube; 3 tests.
+1. 2026-11-11 — Arreglos de la `0.5.2` (D70-D79, D88, B22-B25, E38-E40) con el dealer: 8 ramas `agent/*` revisadas y fusionadas; el detalle, en sus commits y en el roadmap. Claves nuevas: `checkLogKeep`, `stopTranscriptBytes`, `stopSubagentMaxAge`.
+2. 2026-11-11 — Revisión de bloque (`f00a5e6..d7dc74e`): 8 hallazgos arreglados con 7 tests (`pre-push`, `roadmap.py`, `ci-status.py --failed`); 2 descartados (D49 y D53, ya en Pendiente).
+3. 2026-11-11 — H18: 28 propuestas (8 proyectos) y 14 hallazgos de la revisión `0.5.1` del instalador, decididos por el usuario y repartidos en el roadmap (es/en) con ids; P6 del portal descartada.
+4. 2026-11-11 — D56: `ci-status.py --failed`: de cada job en rojo, el paso que falló y el final de su registro (tope `ciFailedLines`) y la URL del registro; 11 tests.
+5. 2026-11-11 — D55: `scripts/roadmap.py show|done <id>` (una fila en cada idioma, a la vez o en ninguno); clave `roadmapFiles`; 13 tests.
 
 ## Pendiente
 
+- **D76:** el `.steal` sin pid se descarta tras 1 s: con un `ps` lento, dos procesos pueden robar a la vez un candado vivo.
+- **E38:** un valor de varias palabras con mayúsculas y sin dígitos sigue pasando como prosa en un `.md`.
+- **E39:** la rama BSD de `script(1)` no se prueba en Linux.
+- **D71:** `set-row` no acepta la rama como posicional (solo `--branch`).
+- **D88:** un agente lanzado antes de la cola leída (`stopTranscriptBytes`) no se ve.
 - **D55:** `roadmap.py` solo lee tablas (primera celda = id) y reescribe la última celda entera; la plantilla trae `roadmapFiles: []` (apagado).
 - **E27:** solo para el repo del flujo (la plantilla de CI de un proyecto no la lee); al cambiar la clave, la nube no reinstala sola (el sello guarda la orden; avisa `tests/shellcheck.sh`).
 - **B19:** es una regla de criterio de la skill (ningún script la comprueba); «idénticas» lo dice `apply.py --check`, que el agente corre antes del `/code-review`.
