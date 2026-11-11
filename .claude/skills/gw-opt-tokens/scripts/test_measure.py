@@ -283,6 +283,38 @@ class Measure(unittest.TestCase):
         self.assertNotEqual(bad.returncode, 0)
         self.assertIn('--since: "no-such-xyz" is neither a commit nor an ISO-8601 date', bad.stderr)
 
+    def test_since_picks_the_session_that_covers_the_period(self):
+        """D70: the newest log (a later session) must not win over the one that has the calls of the period."""
+        home, repo = folder(), folder()
+        subprocess.run(['git', 'init', '-q', repo], check=True)
+        proj = os.path.join(home, '.claude', 'projects', '-home-user')
+        old = log(os.path.join(proj, 'old.jsonl'), response('a', 10, timestamp=ago(50)), response('b', 20, timestamp=ago(49)))
+        new = log(os.path.join(proj, 'new.jsonl'), response('c', 30, timestamp=ago(1)))
+        os.utime(old, (1, 1))  # new.jsonl is the newest file
+        env = {**os.environ, 'HOME': home, 'CLAUDE_CODE_REMOTE': 'true'}
+        run = lambda *args: subprocess.run(['python3', MEASURE, *args], capture_output=True, text=True, cwd=repo, env=env)
+        r = run('--since', ago(60))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('Session: old.jsonl', r.stdout)
+        self.assertIn('API calls: 2  |', r.stdout)
+        recent = run('--since', ago(2))  # only the newest has calls there
+        self.assertIn('Session: new.jsonl', recent.stdout)
+        none = run('--since', ago(0.5))  # nobody covers it: the newest, then the usual "no calls" exit
+        self.assertNotEqual(none.returncode, 0)
+        self.assertIn('No calls in that period', none.stderr)
+        self.assertTrue(os.path.exists(new))
+
+    def test_artifact_rows_show_the_action(self):
+        """B22: HEAVIEST RESULTS tells `quickstart` from `publish` for Artifact calls."""
+        parts = [response('a', 100, call('t1', '', name='Artifact', action='quickstart', intent='other')),
+                 result('t1', 'x' * 7000),
+                 response('b', 200, call('t2', '', name='Artifact', file_path='/tmp/p.html', icon='chart')),
+                 result('t2', 'y' * 3500),
+                 response('c', 300, text('end'))]
+        out = self.measure(parts)
+        self.assertIn('Artifact: action=quickstart {"intent": "other"}', out)
+        self.assertIn('Artifact: action=publish file_path=/tmp/p.html', out)
+
     def test_warns_when_the_session_mixes_compaction_windows(self):
         """Stretches that ended in a compaction at 1,000 and then at 300: the window changed inside the period."""
         mixed = self.measure([response('a', 500), response('b', 1000), *compaction(),
