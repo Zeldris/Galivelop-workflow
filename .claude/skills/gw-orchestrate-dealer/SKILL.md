@@ -143,8 +143,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
 - **Approved review findings are dealt by group of files:** after the user approves the findings of a `/code-review`,
   group them by the files they touch (findings that share a file go together; a group stays within the ~30-call cap)
   and deal one subagent per group, in series on the working branch or in parallel worktrees as in the rules above.
-  The rung follows the files: `sonnet` for mechanical fixes (a rename, a doc, the installed copies), `opus` for hooks,
-  push/merge guards, security and the scripts they call (a cheaper model there costs quality). A fix brief is the one
+  The rung follows the files, also for the fixes of a phase 1 review (B27), whose scope is what `review-scope.py`
+  lists (no `vendored` files, D82): `sonnet` for mechanical fixes (a rename, a doc, the installed copies), `opus` for
+  hooks, push/merge guards, security and the scripts they call (a cheaper model there costs quality). A fix brief is the one
   case where the brief copies text: each finding verbatim with its failure scenario (from the findings file), plus
   that file's path, so the subagent fixes the cause, not the symptom. The brief also says what happens to the commit:
   on the working branch the subagent commits its fixes with the `Findings:` trailer and its log row
