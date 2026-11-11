@@ -105,7 +105,7 @@ Opciones: `--review-mark RUTA` (por defecto `docs/records/reviewed.txt`), `--wit
 `--init` solo escribe `.claude/gw.json` si no existe, lo valida y aplica como siempre.
 
 Qué hace (el detalle completo, en `--help`): copia `scripts/` a `.claude/gw/scripts/`, las skills a
-`.claude/skills/`, los ganchos de git a `.githooks/`, el CI a `.github/workflows/check.yml`; **fusiona** en
+`.claude/skills/`, los ganchos de git a `.githooks/`, el tipo de subagente ligero `gw-worker` a `.claude/agents/` (lo nombra el encargo de `gw-orchestrate-dealer`; uno propio con ese nombre se respeta y el del flujo queda como propuesta `.gw-new`), el CI a `.github/workflows/check.yml`; **fusiona** en
 `.claude/settings.json` los ganchos de Claude Code, `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` y
 `worktree.baseRef: "head"` (los worktrees de los subagentes salen del HEAD actual, no de la rama por defecto; un valor
 del proyecto se respeta: quien quiera otra base pone `"baseRef": "fresh"`, porque quitar la clave hace que se vuelva a

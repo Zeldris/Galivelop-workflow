@@ -272,6 +272,20 @@ class Apply(unittest.TestCase):
         self.assertIn("newer than the workflow", out)
         self.assertEqual(p.read(rel), newer)
 
+    def test_installs_the_gw_worker_agent_and_keeps_a_foreign_one(self):  # B28
+        p = self.p
+        self.applied()
+        src = (ROOT / "templates/claude/agents/gw-worker.md").read_text()
+        self.assertEqual(p.read(".claude/agents/gw-worker.md"), src)
+        for field in ("name: gw-worker", "tools:", "model:", "effort:"):
+            self.assertIn(field, src.split("---")[1])
+        mine = "---\nname: gw-worker\n---\nmine\n"
+        p.write(".claude/agents/gw-worker.md", mine)
+        out = self.applied("--update")
+        self.assertIn("propose .claude/agents/gw-worker.md.gw-new", out)
+        self.assertIn("not workflow-owned", out)
+        self.assertEqual(p.read(".claude/agents/gw-worker.md"), mine)
+
     def test_foreign_pre_push_gets_a_proposal(self):
         p = self.p
         foreign = "#!/bin/sh\necho mine\n"

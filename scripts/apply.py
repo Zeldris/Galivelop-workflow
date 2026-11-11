@@ -22,6 +22,7 @@ What it copies (workflow -> project):
                                    or already installed; not the workflow-only gw-harvest; all of them when PROJECT
                                    is the workflow repo itself)
   templates/githooks/*          -> .githooks/
+  templates/claude/agents/*     -> .claude/agents/   (subagent types such as gw-worker; workflow-owned like the hooks)
   templates/claude/settings.json   merged into .claude/settings.json: missing env keys, other missing keys (worktree.baseRef)
                                    and hook entries are added; a value the project already set is kept
                                    (matched by event + matcher + command); nothing is removed or rewritten
@@ -1258,6 +1259,9 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
         if name not in names and header_version((root / ".githooks" / name).read_bytes()):
             plan.orphans.append(Path(".githooks") / name)
 
+    agents_src = WORKFLOW / "templates" / "claude" / "agents"
+    for name in files_under(agents_src):
+        plan.file(agents_src / name, Path(".claude/agents") / name)
     plan.settings(WORKFLOW / "templates" / "claude" / "settings.json")
     plan_templates(plan, cfg, self_apply, wanted_skills)
     plan_gitignore(plan)

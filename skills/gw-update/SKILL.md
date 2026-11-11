@@ -28,7 +28,7 @@ listed (or `origin` unreachable): stop and tell the user the workflow has no pub
 fall back to `pull`.
 
 - Project version: `version` in `.claude/gw.json`.
-- Copied headers: `# galivelop-workflow vX.Y.Z` in `.claude/gw/scripts/*` and `.githooks/*`.
+- Copied headers: `# galivelop-workflow vX.Y.Z` in `.claude/gw/scripts/*`, `.claude/agents/*` and `.githooks/*`.
 - Workflow version: `version` in `<workflow>/.claude-plugin/plugin.json`, and its entries in `CHANGELOG.md`.
 - Config format: `schemaVersion` in the project's `.claude/gw.json` (absent = 0) against `SCHEMA_VERSION` in
   `<workflow>/scripts/config.py`. Older: `apply.py` migrates it (step 2). Newer: the workflow clone is behind; stop
