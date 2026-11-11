@@ -24,3 +24,4 @@ branches-ignore: [{{protectedBranch}}]
 # exist (so this file stays the workflow's, untouched; `ciPython` makes Python a matrix); another toolchain
 # (rust-toolchain...) goes before "Install".
 if: hashFiles('package.json') != ''
+# workflow's, untouched; `ciPython` makes Python a matrix); another toolchain (rust-toolchain...) goes before "Install".

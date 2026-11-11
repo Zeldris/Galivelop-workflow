@@ -7,7 +7,7 @@
 # Node is set up when a directory of `ciNodeDirs` (default ["."]) has a package.json; Rust is cached
 # (Swatinem/rust-cache) for each directory of `ciRustDirs` (default []: none) that has a Cargo.toml; Python and Java
 # when pyproject.toml / requirements*.txt or pom.xml / build.gradle* exist at the root (so this file stays the
-# workflow's, untouched; `ciPython` makes Python a matrix); another toolchain (rust-toolchain...) goes before "Install".
+# workflow's, untouched; `ciPython` makes Python a matrix); another toolchain (rust-toolchain...) goes before the rust-cache step, which is before "Install".
 name: Check
 
 on:
@@ -85,12 +85,6 @@ jobs:
         if: needs.versions.outputs.node == 'true'
         with:
           node-version: lts/*
-      # Swatinem/rust-cache: major tag v2, as its documentation shows; NOT verified against its releases on 2026-11-11
-      # (no network access to the repo from the session that wrote this). Pin a release or a commit if you prefer.
-      - uses: Swatinem/rust-cache@v2
-        if: needs.versions.outputs.rust == 'true'
-        with:
-          workspaces: ${{ needs.versions.outputs.rust_workspaces }}
       - uses: actions/setup-python@v5
         if: hashFiles('pyproject.toml', 'requirements*.txt') != ''
         with:
@@ -100,6 +94,14 @@ jobs:
         with:
           distribution: temurin
           java-version: "21"
+      # A pinned Rust toolchain step (dtolnay/rust-toolchain, rustup...) goes HERE, before the cache: rust-cache keys on
+      # the rustc it finds, so it must come after the toolchain is installed (else it uses the runner's preinstalled one).
+      # Swatinem/rust-cache: major tag v2, as its documentation shows; NOT verified against its releases on 2026-11-11
+      # (no network access to the repo from the session that wrote this). Pin a release or a commit if you prefer.
+      - uses: Swatinem/rust-cache@v2
+        if: needs.versions.outputs.rust == 'true'
+        with:
+          workspaces: ${{ needs.versions.outputs.rust_workspaces }}
       - name: Install
         run: |
           # `ciInstall` when the config sets it (even empty); otherwise `install`. `setup` is for cloud sessions only.

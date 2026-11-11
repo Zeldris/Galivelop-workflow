@@ -369,6 +369,10 @@ class Templates(unittest.TestCase):
         self.assertIn("uses: Swatinem/rust-cache@v2", text)
         self.assertIn("workspaces: ${{ needs.versions.outputs.rust_workspaces }}", text)
         self.assertNotIn("hashFiles('package.json')", text)
+        # a project-added toolchain step goes before the cache, which goes before Install
+        self.assertLess(text.index("actions/setup-java@"), text.index("A pinned Rust toolchain step"))
+        self.assertLess(text.index("A pinned Rust toolchain step"), text.index("Swatinem/rust-cache@v2"))
+        self.assertLess(text.index("Swatinem/rust-cache@v2"), text.index("- name: Install"))
 
     def test_ci_template_is_valid_yaml(self):
         try:
