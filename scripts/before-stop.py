@@ -179,12 +179,18 @@ def check_in_progress(root):
 
 
 def _same_tree_head(root, lock_sha):
-    """True when the lock's sha (`<12 hex>` or `<12 hex>-dirty`, check.sh's name for a run) is this worktree's HEAD."""
+    """True when the lock's sha (`<hex>` or `<hex>-dirty`, check.sh's name for a run: HEAD abbreviated, which may be
+    longer than 12 in a big repository) names this worktree's HEAD. D76: the full shas are compared, so an
+    abbreviation that matches two commits cannot pass for HEAD."""
+    sha = lock_sha[:-6] if lock_sha.endswith("-dirty") else lock_sha
+    if len(sha) < 7 or any(c not in "0123456789abcdef" for c in sha):
+        return False
     try:
-        head = git(root, "rev-parse", "--short=12", "HEAD")[1].strip()
+        head = git(root, "rev-parse", "--verify", "-q", "HEAD")[1].strip()
+        named = git(root, "rev-parse", "--verify", "-q", sha + "^{commit}")[1].strip()
     except GitError:
         return False
-    return bool(head) and (lock_sha[:-6] if lock_sha.endswith("-dirty") else lock_sha) == head
+    return bool(head) and named == head
 
 
 def _marker_branch(marker, head):

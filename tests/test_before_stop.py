@@ -498,6 +498,22 @@ class CheckInProgress(PushHelpers):
         self.live(sha=self.p.sha()[:12] + "-dirty")
         self.assertCheckNotice(self.p.stop()[1])
 
+    def test_full_sha_and_longer_abbreviations_of_this_head_count(self):
+        # D76: compared as commits, not as 12-character strings
+        for sha in (self.p.sha(), self.p.sha()[:13], self.p.sha()[:7], self.p.sha() + "-dirty"):
+            with self.subTest(sha=sha):
+                self.live(sha=sha)
+                self.assertCheckNotice(self.p.stop()[1])
+
+    def test_sha_that_is_not_a_commit_of_this_head_blocks(self):
+        head = self.p.sha()
+        other = ("0" if head[0] != "0" else "1") + head[1:]
+        for sha in (other, head[:5], "zzzzzzzzzzzz", "-dirty", head[:12] + "x"):
+            with self.subTest(sha=sha):
+                self.live(sha=sha)
+                data = self.assertBlocks(self.p.stop()[1], "1 commit", "git push -u origin claude/trabajo")
+                self.assertIn("check of another commit or worktree is running", data["systemMessage"])
+
     def test_lock_of_another_sha_blocks_and_notes_it(self):
         self.live(sha="0123456789ab")
         data = self.assertBlocks(self.p.stop()[1], "1 commit", "git push -u origin claude/trabajo")
