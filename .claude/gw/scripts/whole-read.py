@@ -5,8 +5,9 @@
 read less; with no warning it prints nothing (no opinion).
 
 Watched files: the hand-off log (`log`), its archive (`logArchive`) and every file directly or deeper under
-`recordsDir`. A Read is "whole" when `tool_input` has neither `offset` nor `limit` (a null, 0 or empty value counts
-as absent). A watched file of more than `wholeReadWarnBytes` bytes (default 20000; 0 turns the hook off) gets a note
+`recordsDir`; only text files (not images, PDF or notebooks). A Read is "whole" when `tool_input` has no `offset`,
+`limit` or `pages` (a null, 0 or empty value counts as absent). The log is compared in characters (as `logSize`
+is), the records in bytes. A watched file of more than `wholeReadWarnBytes` bytes (default 20000; 0 turns the hook off) gets a note
 that names the size and the commands that read less:
 
   hand-off log   python3 .claude/gw/scripts/recover.py --state (the state), or grep -n for a row and Read with
@@ -25,6 +26,7 @@ resolved against the event's `cwd`. Python 3.8+ standard library only.
 import json
 import os
 import select
+import stat
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -33,9 +35,7 @@ sys.path.insert(0, HERE)
 import config  # noqa: E402
 
 STDIN_WAIT = 3.0
-DEFAULT_LOG = "docs/handoff.md"
-DEFAULT_ARCHIVE = "docs/records/handoff-archive.md"
-DEFAULT_RECORDS = "docs/records"
+NOT_TEXT = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".pdf", ".ipynb")  # Read shows these otherwise
 
 
 def read_event():
@@ -51,23 +51,26 @@ def read_event():
     return data if isinstance(data, dict) else None
 
 
-def settings():
-    """(threshold, log, archive, records) from the config; the defaults when it cannot be read."""
+def settings(root):
+    """(threshold, log, archive, records) from the config; the schema defaults when it cannot be read (`log` has none
+    there: docs/handoff.md)."""
     try:
-        cfg = config.load(config.find_root())
+        cfg = config.load(root)
     except Exception:  # advice only: any problem with the config means the defaults
         cfg = {}
+    props = config._schema()["properties"]
 
-    def pick(key, default, kind=str):
+    def pick(key, fallback=None):
         value = cfg.get(key)
-        return value if isinstance(value, kind) and not isinstance(value, bool) and value != "" else default
+        if isinstance(value, str) and value:
+            return value
+        return props[key].get("default", fallback)
 
-    return (config.whole_read_warn_bytes(cfg), pick("log", DEFAULT_LOG),
-            pick("logArchive", DEFAULT_ARCHIVE), pick("recordsDir", DEFAULT_RECORDS))
+    return (config.whole_read_warn_bytes(cfg), pick("log", "docs/handoff.md"), pick("logArchive"), pick("recordsDir"))
 
 
 def is_whole(tool_input):
-    return not tool_input.get("offset") and not tool_input.get("limit")
+    return not (tool_input.get("offset") or tool_input.get("limit") or tool_input.get("pages"))
 
 
 def kind_of(path, root, log, archive, records):
@@ -103,23 +106,30 @@ def main():
         return 0
     cwd = event.get("cwd") if isinstance(event.get("cwd"), str) and event.get("cwd") else os.getcwd()
     path = target if os.path.isabs(target) else os.path.join(cwd, target)
+    if path.lower().endswith(NOT_TEXT):
+        return 0
     try:
-        root = str(config.find_root())
+        info = os.stat(path)
+        root = config.find_root()
     except Exception:
         return 0
-    limit, log, archive, records = settings()
-    if limit <= 0:
+    if not stat.S_ISREG(info.st_mode):
         return 0
-    kind = kind_of(path, root, log, archive, records)
+    size = info.st_size
+    limit, log, archive, records = settings(root)
+    if limit <= 0 or size <= limit:
+        return 0
+    kind = kind_of(path, str(root), log, archive, records)
     if kind is None:
         return 0
-    try:
-        size = os.stat(path).st_size
-    except OSError:
-        return 0
-    if size <= limit:
-        return 0
-    rel = os.path.relpath(os.path.realpath(path), os.path.realpath(root))
+    if kind == "log":  # logSize counts characters: a log of accents that passes logSize must not warn here
+        try:
+            with open(path, encoding="utf-8", errors="replace") as handle:
+                if len(handle.read()) <= limit:
+                    return 0
+        except OSError:
+            return 0
+    rel = os.path.relpath(os.path.realpath(path), os.path.realpath(str(root)))
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
                                              "additionalContext": note(kind, rel, size, limit)}}))
     return 0

@@ -66,6 +66,10 @@ same time.
   (`gw-opt-tokens`); it never blocks. If the call has no `model` (`inherit` does not count) and the `subagent_type` does not set its own in
   `.claude/agents/`, the same hook warns that the subagent may run on the session's model and to pick one with
   `gw-selector`; the warning arrives with the tool result, so it serves the next calls (a warning, not a block).
+- **When reading**, the `PreToolUse` hook `whole-read.py` warns (without blocking) that a `Read` with no `offset`,
+  `limit` or `pages` takes whole the log, its archive or a file under `recordsDir` of more than `wholeReadWarnBytes`
+  (20000 by default, `0` = do not warn), and points to `recover.py --state` or to `grep -n` and Read with
+  `offset`/`limit`.
 - **On start**, the new session reads the log and checks that the last commit matches what it says; it does not ask
   where things stood. After a `/clear` or compaction, `recover.py --state` reminds it.
 - When the branch closes, `handoff.py close-row <branch>` leaves its row as "merged, branch finished" so the

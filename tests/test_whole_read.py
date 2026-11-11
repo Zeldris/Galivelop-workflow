@@ -95,6 +95,23 @@ class Silent(Base):
         self.assertEqual(self.read(self.put("docs/notes.md", LIMIT * 5)), "")
         self.assertEqual(self.read(self.put("docs/records-old/a.md", LIMIT * 5)), "")
 
+    def test_pages_is_a_partial_read(self):
+        self.assertEqual(self.read(self.put("docs/log.md", LIMIT * 5), pages="1-2"), "")
+
+    def test_images_pdf_and_notebooks_are_not_watched(self):
+        for name in ("a.png", "b.pdf", "c.ipynb"):
+            self.assertEqual(self.read(self.put("docs/records/" + name, LIMIT * 5)), "")
+
+    def test_log_is_counted_in_characters_like_logSize(self):
+        path = self.p.work / "docs" / "log.md"
+        path.write_text("\u00e1" * 600)  # 1200 bytes, 600 characters: under the limit of logSize
+        self.assertEqual(self.read(path), "")
+        path.write_text("\u00e1" * 1001)  # over in characters too
+        self.assertIn("2002 bytes", self.warning(self.read(path)))
+        rec = self.p.work / "docs" / "records" / "r.md"
+        rec.write_text("\u00e1" * 600)  # records stay in bytes
+        self.assertIn("1200 bytes", self.warning(self.read(rec)))
+
     def test_zero_turns_it_off(self):
         self.write_config({"wholeReadWarnBytes": 0})
         self.assertEqual(self.read(self.put("docs/log.md", LIMIT * 5)), "")
