@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **Arreglos de la `0.5.2` hechos (2026-11-11)**: fusionados. **Siguiente:** revisión de cierre de la tanda (`MISSING_ITEMS`) y limpiar worktrees/ramas `agent/*` de la `0.5.2`; después los evolutivos de la `0.6` (B26-B29, D82, D84-D86, E43) con el dealer y la subida a `main` con el usuario. Presupuesto de compactaciones: 1 (usada 1) |
+| Siguiente paso | **Arreglos de la `0.5.2` hechos (2026-11-11)**: fusionados, revisión de cierre hecha (2 huecos arreglados en `43e14b5`). **Siguiente:** los evolutivos de la `0.6` (B26-B29, D82, D84-D86, E43) con el dealer y la subida a `main` con el usuario. Presupuesto de compactaciones: 1 (usada 1) |
 
 ### Fases
 

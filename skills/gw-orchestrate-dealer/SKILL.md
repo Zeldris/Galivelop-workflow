@@ -142,7 +142,10 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   The rung follows the files: `sonnet` for mechanical fixes (a rename, a doc, the installed copies), `opus` for hooks,
   push/merge guards, security and the scripts they call (a cheaper model there costs quality). A fix brief is the one
   case where the brief copies text: each finding verbatim with its failure scenario (from the findings file), plus
-  that file's path, so the subagent fixes the cause, not the symptom. The main session reviews each returned diff
+  that file's path, so the subagent fixes the cause, not the symptom. The brief also says what happens to the commit:
+  on the working branch the subagent commits its fixes with the `Findings:` trailer and its log row
+  (`handoff.py set-row`) in that same commit; in a worktree it commits without touching the log and the main session
+  writes it after the merge. It never leaves a fix uncommitted. The main session reviews each returned diff
   against those scenarios before the next group. Ten review fixes worked inline took ~100 calls at ~120k context.
 - **One writing subagent at a time on the same branch.** Two that commit to the same branch collide in the log and in
   shared files. In parallel, only what does not write (searching, reading, measuring).
