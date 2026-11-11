@@ -1647,8 +1647,9 @@ class MergeBranch(Base):
         code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
         self.assertEqual(code, 1, out)
         cmd = [l.split(":  ", 1)[1] for l in out.splitlines() if l.startswith("  join both sides:")][0]
-        r = subprocess.run(["bash", "-c", cmd], cwd=self.p.work, capture_output=True, text=True)
+        r = subprocess.run(["bash", "-c", cmd], cwd=self.p.work / "docs", capture_output=True, text=True)  # from a subdirectory
         self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(self.p.git("status", "--porcelain", "--untracked-files=all").stdout.count("??"), 0, "no leftovers in the tree")
         text = base.read_text()
         self.assertIn("agent entry", text)
         self.assertIn("main entry", text)
@@ -1664,6 +1665,22 @@ class MergeBranch(Base):
         self.assertEqual(code, 1, out)
         self.assertIn("CONFLICT (the merge stays open", out)
         self.assertNotIn("only in the hand-off log", out)
+
+    def test_the_suggested_cleanup_skips_a_branch_the_script_never_deletes(self):
+        self.conflict(LOG)
+        self.p.git("branch", "-m", "worktree-agent-1", "claude/side")  # a session branch: cleanup_branch never deletes it
+        code, out = self.p.script("merge-branch.sh", "claude/side", "Merge agent 1")
+        self.assertEqual(code, 1, out)
+        self.assertIn("check.sh --quiet", out)
+        self.assertNotIn("git branch -d", out)
+
+    def test_the_suggested_cleanup_without_a_worktree_has_no_worktree_remove(self):
+        self.conflict(LOG)
+        self.p.git("worktree", "remove", "--force", str(self.p.work / ".claude" / "worktrees" / "worktree-agent-1"))
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
+        self.assertEqual(code, 1, out)
+        self.assertNotIn("git worktree remove", out)
+        self.assertIn("git branch -d worktree-agent-1", out)
 
     def test_no_conflict_prints_no_log_advice(self):
         self.agent()

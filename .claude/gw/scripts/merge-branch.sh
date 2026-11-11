@@ -143,11 +143,15 @@ EOF_CONFLICTS
       printf '%s\n' "$conflicts" | sed 's/^/  /'
       echo "merge-branch: the hand-off log ($log_file) is one of them, but NOT the only one: resolve the other files by hand and git add them; for the log:"
     fi
-    echo "  join both sides:  git show :2:$qlog > $qlog.ours && git show :1:$qlog > $qlog.base && git show :3:$qlog > $qlog.theirs && git merge-file --union $qlog.ours $qlog.base $qlog.theirs && mv $qlog.ours $qlog && rm $qlog.base $qlog.theirs"
+    echo "  join both sides:  cd \"\$(git rev-parse --show-toplevel)\" && t=\$(mktemp -d) && git show :2:$qlog > \$t/ours && { git show :1:$qlog > \$t/base || : > \$t/base; } && git show :3:$qlog > \$t/theirs && git merge-file --union \$t/ours \$t/base \$t/theirs && cp \$t/ours $qlog && rm -rf \$t"
     echo "  then edit $qlog (duplicated rows, Siguiente/Next), and: python3 $here/handoff.py check && git add $qlog${others:+ <the other files>} && git commit --no-edit"
     echo "  WARNING: git checkout --ours -- $qlog (or --theirs) keeps one side and DROPS the other's entries; see what $branch brings with: git diff :1:$qlog :3:$qlog"
     echo "  to give up instead: git merge --abort"
-    echo "  Closing it by hand skips what this script does after a merge (re-running it says \"nothing to merge\"); then run: bash $here/check.sh --quiet${wt:+ && git worktree remove $wt} && git branch -d $branch"
+    # What this script would do after the merge (see cleanup_branch below): worktree only if there is one, branch only if it is not protected, claude/* or the current one.
+    after="bash $here/check.sh --quiet"
+    [ -z "$wt" ] || [ "$wt" = "$root" ] || after="$after && git worktree remove $(printf '%q' "$wt")"
+    case "$branch" in "$protected"|claude/*) ;; *) [ "$branch" = "$(git branch --show-current)" ] || after="$after && git branch -d $(printf '%q' "$branch")" ;; esac
+    echo "  Closing it by hand skips what this script does after a merge (re-running it says \"nothing to merge\"); then run: $after"
   else
     echo "merge-branch: CONFLICT (the merge stays open; resolve it and commit, or abort with: git merge --abort):"
     printf '%s\n' "${conflicts:-$(tail -n 5 "$logs/merge.log")}" | sed 's/^/  /'
