@@ -178,6 +178,12 @@
       ],
       "description": "Files (relative to the repo root, no '..') whose content is part of the check-cache key, for ignored files the check reads and the git tree does not see; a missing file counts as absent; [] = the key is the tree alone."
     },
+    "checkLogKeep": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 20,
+      "description": "How many check-<sha>.log files of <git common dir>/gw scripts/check-green.sh lock-acquire keeps (the newest; the run that starts is never pruned); 0 = keep all."
+    },
     "checkOutputGrace": {
       "type": "integer",
       "minimum": 0,

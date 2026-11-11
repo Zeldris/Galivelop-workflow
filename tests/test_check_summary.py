@@ -438,6 +438,102 @@ class CheckSummary(unittest.TestCase):
         self.assertTrue(os.readlink(lock).startswith("999999|"))
         self.assertFalse(os.path.exists(str(lock) + ".steal"), "the mutex is always released")
 
+    def acquire_as(self, owner, sha, log, env=None):
+        return subprocess.run(["bash", str(self.repo / "scripts" / "check-green.sh"), "lock-acquire", str(owner), sha,
+                               "0", log], cwd=self.repo, capture_output=True, text=True,
+                              env=dict(os.environ, **(env or {})))
+
+    def test_the_same_pid_acquiring_again_updates_the_sha_and_the_log(self):
+        """D76: a hook that checks several refs takes the lock again for the same pid: the lock must name this run."""
+        self.configure(["true"])
+        r = self.acquire_as(999999, "sha1", "/log/one")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        r = self.acquire_as(999999, "sha2", "/log/two")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        parts = self.lock_target().split("|")
+        self.assertEqual((parts[0], parts[2], parts[3]), ("999999", "sha2", "/log/two"))
+        self.assertEqual(list((self.repo / ".git" / "gw").glob("check.lock.*")), [], "no temp link is left")
+
+    def test_a_steal_mutex_without_a_pid_does_not_block_the_lock(self):
+        """D76: an owner that died before writing its pid (or a pid file that is empty) must not block forever."""
+        for content in (None, ""):
+            with self.subTest(pid_file=content):
+                lock = self.stale_lock_with_steal(None)
+                steal = Path(str(lock) + ".steal")
+                steal.mkdir()
+                if content is not None:
+                    (steal / "pid").write_text(content)
+                r = self.acquire()
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertTrue(os.readlink(lock).startswith("999999|"))
+                self.assertFalse(steal.exists())
+                lock.unlink()
+
+    def test_a_process_of_another_user_holds_the_lock_even_if_ps_cannot_tell(self):
+        """D76: kill -0 says EPERM for another user's process, which is alive (before-stop.py accepts it too)."""
+        if os.geteuid() != 0 or not shutil.which("setpriv"):
+            self.skipTest("needs root and setpriv to run a process as another user")
+        stub = self.tmp / "bin"
+        stub.mkdir()
+        (stub / "ps").write_text("#!/bin/sh\nexit 1\n")  # ps that tells nothing, as with a restricted /proc
+        (stub / "ps").chmod(0o755)
+        other = subprocess.Popen(["setpriv", "--reuid=65534", "--regid=65534", "--clear-groups", "sleep", "30"])
+        self.addCleanup(other.kill)
+        time.sleep(0.5)
+        self.configure(["true"])
+        self.make_lock(other.pid, start="?")
+        r = self.acquire_as(999999, "mysha", "-", env={"PATH": f"{stub}:{os.environ['PATH']}"})
+        self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
+        self.assertIn(f"another check is running (pid {other.pid}", r.stderr)
+
+    def prune_setup(self, keep, count=25):
+        self.configure(["true"])
+        cfg = json.loads((self.repo / ".claude" / "gw.json").read_text())
+        if keep is not None:
+            cfg["checkLogKeep"] = keep
+        (self.repo / ".claude" / "gw.json").write_text(json.dumps(cfg))
+        gw = self.repo / ".git" / "gw"
+        gw.mkdir(parents=True, exist_ok=True)
+        for i in range(count):  # check-000 is the oldest
+            f = gw / f"check-{i:03d}.log"
+            f.write_text("x")
+            os.utime(f, (1_000_000 + i, 1_000_000 + i))
+        (gw / "other.txt").write_text("keep me")
+        return gw
+
+    def test_old_check_logs_are_pruned_to_the_default_of_twenty(self):
+        gw = self.prune_setup(None)
+        r = self.acquire_as(999999, "mysha", str(gw / "check-mysha.log"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        left = sorted(f.name for f in gw.glob("check-*.log"))
+        self.assertEqual(left, [f"check-{i:03d}.log" for i in range(5, 25)])
+        self.assertTrue((gw / "other.txt").exists())
+
+    def test_check_log_keep_is_configurable(self):
+        gw = self.prune_setup(3)
+        self.assertEqual(self.acquire_as(999999, "mysha", "-").returncode, 0)
+        self.assertEqual(sorted(f.name for f in gw.glob("check-*.log")), ["check-022.log", "check-023.log", "check-024.log"])
+
+    def test_check_log_keep_zero_keeps_all(self):
+        gw = self.prune_setup(0)
+        self.assertEqual(self.acquire_as(999999, "mysha", "-").returncode, 0)
+        self.assertEqual(len(list(gw.glob("check-*.log"))), 25)
+
+    def test_the_log_of_the_run_that_starts_is_never_pruned(self):
+        gw = self.prune_setup(2)
+        mine = gw / "check-000.log"  # the oldest
+        self.assertEqual(self.acquire_as(999999, "mysha", str(mine)).returncode, 0)
+        self.assertTrue(mine.exists())
+        self.assertEqual(sorted(f.name for f in gw.glob("check-*.log")), ["check-000.log", "check-023.log", "check-024.log"])
+
+    def test_a_waiting_check_does_not_prune(self):
+        gw = self.prune_setup(1)
+        holder = subprocess.Popen(["sleep", "30"])
+        self.addCleanup(holder.kill)
+        self.make_lock(holder.pid)
+        self.assertEqual(self.acquire_as(999999, "mysha", "-").returncode, 3)
+        self.assertEqual(len(list(gw.glob("check-*.log"))), 25)
+
     def test_ctrl_c_releases_the_lock_and_keeps_the_log(self):
         self.configure(["echo partial; sleep 30"])
         p = self.start_check()

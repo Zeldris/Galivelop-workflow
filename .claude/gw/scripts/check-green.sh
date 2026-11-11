@@ -23,6 +23,7 @@
 #                                       # exit 0 taken, 3 another live check holds it (names pid/sha/log) after waiting
 #                                       # <wait-seconds>, 1 cannot. A lock whose process is gone, or whose pid now belongs
 #                                       # to another process (different start time), is discarded.
+#                                       # E40: once taken, the check-<sha>.log files beside it beyond the newest `checkLogKeep` go.
 #   bash check-green.sh lock-release <owner-pid>   # removes the lock only if <owner-pid> owns it
 # GW_CHECK_CACHE=0 makes `has` always miss. Bash 3.2 compatible. Root from this script's path, never from the cwd.
 set -uo pipefail
@@ -216,7 +217,12 @@ lock_file() {  # absolute path of the lock, creating <git common dir>/gw, or fai
 proc_start() {  # the start time of a process as ps prints it ("?" if ps cannot tell but the process exists); empty if gone
   local out
   out="$(LC_ALL=C ps -o lstart= -p "$1" 2>/dev/null | sed 's/^ *//; s/ *$//; s/  */ /g')"
-  if [ -z "$out" ] && kill -0 "$1" 2>/dev/null; then out="?"; fi
+  if [ -z "$out" ]; then  # D76: a process of another user is alive too (kill -0 fails with EPERM, as before-stop.py accepts)
+    case "$(kill -0 "$1" 2>&1)" in
+      "") out="?" ;;
+      *[Nn]ot\ permitted* | *EPERM*) out="?" ;;
+    esac
+  fi
   printf '%s\n' "$out"
 }
 proc_is() {  # proc_is <pid> <start>: that very process is still running (not gone, not a zombie, not a reused pid)
@@ -224,6 +230,21 @@ proc_is() {  # proc_is <pid> <start>: that very process is still running (not go
   st="$(LC_ALL=C ps -o stat= -p "$1" 2>/dev/null | tr -d ' ')"
   case "$st" in Z*) return 1 ;; esac
   [ -n "$2" ] && [ "$(proc_start "$1")" = "$2" ]
+}
+
+prune_logs() {  # prune_logs <lock> <keep-log>: E40 keeps the newest `checkLogKeep` check-<sha>.log of the lock's folder (0 = all)
+  local dir keep f n=0
+  dir="$(dirname "$1")"
+  keep="$(python3 "$here/config.py" --root "$root" get checkLogKeep 2>/dev/null)" || return 0
+  case "$keep" in '' | *[!0-9]*) return 0 ;; esac
+  [ "$keep" -gt 0 ] || return 0
+  # ls -t lists the newest first; the names are check-<sha>.log, with no spaces or newlines.
+  for f in $(ls -1t "$dir"/check-*.log 2>/dev/null); do
+    [ "$f" != "$2" ] || continue  # the log of the run that is starting is never pruned
+    n=$((n + 1))
+    [ "$n" -le "$keep" ] || rm -f "$f" 2>/dev/null
+  done
+  return 0
 }
 
 cmd_lock_acquire() {
@@ -234,7 +255,7 @@ cmd_lock_acquire() {
   mine="$owner|$(proc_start "$owner")|$sha|$log"
   waited=0  # whole seconds slept: $SECONDS ticks on the second, so SECONDS+wait could give up after wait-1 s
   while :; do
-    ln -s "$mine" "$lock" 2>/dev/null && return 0
+    if ln -s "$mine" "$lock" 2>/dev/null; then prune_logs "$lock" "$log"; return 0; fi
     cur="$(readlink "$lock" 2>/dev/null)"
     if [ -z "$cur" ]; then
       if [ -e "$lock" ] || [ -L "$lock" ]; then  # an old-format lock (a directory) or an empty one
@@ -246,12 +267,27 @@ cmd_lock_acquire() {
       [ "$vanished" -lt 5 ] || { echo "check-green: cannot create the lock $lock; make its folder writable: chmod u+w $(dirname "$lock")" >&2; return 1; }
       continue
     fi
-    [ "${cur%%|*}" != "$owner" ] || return 0  # already ours (a hook that checks several refs)
+    if [ "${cur%%|*}" = "$owner" ]; then  # already ours (a hook that checks several refs): D76 it now describes this run
+      [ "$cur" = "$mine" ] && return 0
+      rm -f "$lock.$owner.new"
+      { ln -s "$mine" "$lock.$owner.new" 2>/dev/null && mv -f "$lock.$owner.new" "$lock" 2>/dev/null; } || {
+        rm -f "$lock.$owner.new"
+        echo "check-green: cannot update the lock $lock; make its folder writable: chmod u+w $(dirname "$lock")" >&2; return 1; }
+      return 0
+    fi
     pid="${cur%%|*}"; rest="${cur#*|}"; start="${rest%%|*}"; rest="${rest#*|}"; osha="${rest%%|*}"; olog="${rest#*|}"
     if ! proc_is "$pid" "$start"; then  # orphan: dropped under a mutex, so two stealers never judge and drop in turn
       steal="$lock.steal"
       if ! mkdir "$steal" 2>/dev/null; then
         sp="$(cat "$steal/pid" 2>/dev/null)"
+        if [ -z "$sp" ]; then  # D76: a mutex with no pid is one its owner has not written yet or died before writing
+          sleep 1
+          sp="$(cat "$steal/pid" 2>/dev/null)"
+          if [ -z "$sp" ]; then
+            rm -rf "$steal"
+            continue
+          fi
+        fi
         if [ -n "$sp" ] && ! proc_is "${sp%%|*}" "${sp#*|}"; then  # its owner died holding it
           rm -rf "$steal"
           continue
