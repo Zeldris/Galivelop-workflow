@@ -7,8 +7,8 @@
 # when the work tree has changes; GW_CHECK_LOG overrides the path, a relative one is taken from the current
 # directory), also shown live (with a terminal, the command keeps it: it runs in a pty through script(1) when there is
 # one, E39) unless --quiet (-q, or GW_CHECK_QUIET=1/true/yes): then only the last GW_CHECK_TAIL
-# lines (default 40) of the command that fails are shown, with the log path. The log of a run is never deleted by
-# the scripts. A lock <git common dir>/gw/check.lock (the pid and sha of the run) keeps two checks from running at
+# lines (default 40) of the command that fails are shown, with the log path. The log of a run is only deleted by the
+# pruning of the oldest ones (`checkLogKeep`, check-green.sh lock-acquire). A lock <git common dir>/gw/check.lock (the pid and sha of the run) keeps two checks from running at
 # once (check-green.sh lock-acquire; the pre-push takes the same one): a second one waits up to `checkLockWait`
 # seconds (.claude/gw.json, default 0 = no wait) and then exits 3 saying which pid/sha runs; a lock whose process is
 # gone (or whose pid is now another process) is discarded; Ctrl-C or a kill releases it. The failed line names the
@@ -82,9 +82,10 @@ case "$lock_wait" in ''|*[!0-9]*) lock_wait=0 ;; esac
 grace="$(python3 "$config" --root "$root" get checkOutputGrace 2>/dev/null)" || grace=5
 case "$grace" in ''|*[!0-9]*) grace=5 ;; esac
 [ -f "$helper" ] || fail "$helper is missing, so the check cannot take its lock; reinstall the workflow: /gw-update"
-script_flavor() {  # prints linux (util-linux script -qefc) or bsd (script -q file cmd), nothing when there is no script(1)
+script_flavor() {  # prints linux (util-linux script -qefc) or bsd (Darwin/*BSD script -q file cmd); nothing otherwise (busybox...)
   command -v script > /dev/null 2>&1 || return 0
-  if script --version 2>&1 | grep -qi util-linux; then echo linux; else echo bsd; fi
+  if script --version 2>&1 | grep -qi util-linux; then echo linux; return 0; fi
+  case "$(uname -s 2>/dev/null)" in Darwin|*BSD) echo bsd ;; esac
 }
 have_lock=""
 fifos=""
@@ -129,12 +130,13 @@ while IFS= read -r cmd; do
     # which also copies the output into a temporary file that goes to the log without the carriage returns.
     ptylog="$(mktemp "${TMPDIR:-/tmp}/gw-check-pty.XXXXXX")" || fail "cannot create a file in ${TMPDIR:-/tmp}; free space or set TMPDIR to a writable folder"
     if [ "$pty_flavor" = linux ]; then
-      GW_PUSH_PROTECTED=false script -qefc "$cmd" "$ptylog" < /dev/null
+      GW_PUSH_PROTECTED=false SHELL=bash script -qefc "$cmd" "$ptylog"  # SHELL=bash: script runs it with $SHELL -c < /dev/null
     else
       GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" < /dev/null
     fi
     rc=$?
-    tr -d '\r' < "$ptylog" >> "$log"
+    # util-linux writes its own "Script started/done on ..." lines into the typescript even with -q: not part of the output
+    tr -d '\r' < "$ptylog" | sed -e '/^Script started on /d' -e '/^Script done on /d' >> "$log"
     rm -f "$ptylog"
   else
     # live output, also into the log; stdout and stderr stay on their own streams (two fifos, two tees)
