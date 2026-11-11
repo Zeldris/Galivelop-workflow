@@ -181,7 +181,7 @@ In this order, because each step uses the previous one.
 | B27 | Trivial diffs reviewed without a subagent; phase 1 fixes go to `sonnet` (`0.6` closing harvest, private-project-1 P7) | pending |
 | B28 | Light subagent type (`gw-worker`, in `.claude/agents/`) with only the brief's tools; `gw-init` creates it and the dealer brief names it (`0.6` closing harvest, private-project-3 P1) | done (2026-11-11) |
 | B29 | `measure.py` measures the previous session of the same branch when the current one has fewer than `measure.minCalls` (5) calls (after `/clear`) (`0.6` closing harvest, world-maker P5) | pending |
-| D82 | Files copied unchanged from the workflow (`vendored`) stay out of the phase 1 `/code-review` (next to D53 and B19) (`0.6` closing harvest, instalador P2) | pending |
+| D82 | Files copied unchanged from the workflow (`vendored`) stay out of the phase 1 `/code-review` (next to D53 and B19) (`0.6` closing harvest, instalador P2) | done (2026-11-11) |
 | D84 | `templates/github/check.yml` reads the Node and Rust directories from `.claude/gw.json` and uses `Swatinem/rust-cache` (`0.6` closing harvest, instalador P5) | pending |
 | D85 | `recover.py --state` warns of an overdue review (`changeSize.block` threshold) (`0.6` closing harvest, world-maker P3) | done (2026-11-11) |
 | D86 | `merge-branch.sh` recognises a conflict in the log and gives the command to solve it, with its test (`0.6` closing harvest, portal P5) | done (2026-11-11) |
