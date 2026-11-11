@@ -82,6 +82,44 @@ class CheckSummary(unittest.TestCase):
         self.assertNotIn("err-4", out)
         self.assertIn("err-4", err)
 
+    def run_check_on_tty(self, *args):
+        """Runs check.sh with a pseudo-terminal as its stdout/stderr (what a person at a terminal has)."""
+        import pty
+        master, slave = pty.openpty()
+        env = dict(os.environ, GW_CHECK_CACHE="0")
+        env.pop("GW_CHECK_QUIET", None)
+        proc = subprocess.Popen(["bash", str(self.repo / "scripts" / "check.sh"), *args], stdin=subprocess.DEVNULL,
+                                stdout=slave, stderr=slave, env=env)
+        os.close(slave)
+        chunks = []
+        while True:
+            try:
+                data = os.read(master, 4096)
+            except OSError:
+                break
+            if not data:
+                break
+            chunks.append(data)
+        os.close(master)
+        code = proc.wait()
+        return code, b"".join(chunks).decode(errors="replace").replace("\r", "")
+
+    def test_the_default_mode_keeps_the_terminal_for_the_command(self):
+        # E39: with a terminal, the command still sees one (isatty), so it keeps its colours and progress bars.
+        self.configure(["if [ -t 1 ] && [ -t 2 ]; then echo tty=$((1+0)); else echo tty=$((0+0)); fi"])
+        code, out = self.run_check_on_tty()
+        self.assertEqual(code, 0, out)
+        self.assertIn("\ntty=1\n", out)
+        self.assertIn("\ntty=1\n", self.log(), "the log still gets the output")
+        self.assertNotIn("\r", self.log())
+
+    def test_the_default_mode_on_a_terminal_keeps_the_exit_code_and_the_failed_section(self):
+        self.configure(["echo FAILED: unit; exit 3"])
+        code, out = self.run_check_on_tty()
+        self.assertEqual(code, 1, out)
+        self.assertIn("(exit 3)", out)
+        self.assertIn("(failed: unit)", out)
+
     def test_quiet_log_keeps_a_header_and_the_full_output_of_every_command(self):
         self.configure(["echo first-output", "echo to-stderr >&2"])
         self.assertEqual(self.run_check("-q")[0], 0)
