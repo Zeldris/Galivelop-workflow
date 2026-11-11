@@ -19,13 +19,16 @@ Playwright and ImageMagick with WebP (WMF 2026-10-25 P1), and a leftover docs/di
 while the note names no other); and, when `origin` is on GitHub, a way to read the CI state
 (`gh` logged in, or GITHUB_TOKEN/GH_TOKEN set); and (B11, `models.checkLevers`) no global variable that overrides the model
 or effort picked per agent (CLAUDE_CODE_EFFORT_LEVEL, CLAUDE_CODE_SUBAGENT_MODEL with _FORCE, CLAUDE_CODE_SUBAGENT_EFFORT)
-in the environment or the env block of .claude/settings.json, .claude/settings.local.json or ~/.claude/settings.json.
+in the environment or the env block of .claude/settings.json, .claude/settings.local.json or ~/.claude/settings.json;
+and (E43) a folder holding test_*.py that no `check` command runs (`test dirs`, see check_test_dirs; the folders to skip
+are the `doctorTestDirsIgnore` key).
 The compaction check, the session one, the levers one, the media tools one and the CI
 access one read the machine running doctor, not only the project, so their lines can differ between a person's machine,
 CI and a cloud session.
 Python 3.8+ standard library only.
 """
 import argparse
+import fnmatch
 import json
 import os
 import re
@@ -790,6 +793,83 @@ def check_skill_tests(rep, root):
         rep.ok("skill tests", "every skill script has its test_<name>.py")
 
 
+def test_dirs(root, ignore):
+    """Repo-relative folders (posix, "." for the root) that directly hold a test_*.py, skipping the folders the
+    `doctorTestDirsIgnore` patterns match (fnmatch on the path or on its tail, so "node_modules" also skips
+    "a/node_modules") and any folder with a pyvenv.cfg (a virtualenv)."""
+    found = []
+    for base, dirs, files in os.walk(root):
+        rel = Path(base).relative_to(root).as_posix()
+        if any(f.startswith("test_") and f.endswith(".py") for f in files):
+            found.append(rel)
+        keep = []
+        for d in sorted(dirs):
+            sub = d if rel == "." else f"{rel}/{d}"
+            if any(fnmatch.fnmatchcase(sub, pat) or fnmatch.fnmatchcase(sub, "*/" + pat) for pat in ignore) \
+                    or (Path(base) / d / "pyvenv.cfg").is_file():
+                continue
+            keep.append(d)
+        dirs[:] = keep
+    return found
+
+
+def check_run_text(root, cfg):
+    """What the `check` commands run, as text: the commands, the testMap test paths, and the content of each script or
+    Makefile a command names (one level: `bash tests/check.sh`, `make check`)."""
+    parts = list(cfg.get("check") or [])
+    for rule in (cfg.get("testMap") or {}).get("rules") or []:
+        parts.extend(t for t in rule.get("tests") or [] if isinstance(t, str))
+    for command in list(parts):
+        try:
+            words = shlex.split(command)
+        except ValueError:
+            continue
+        files = [w for w in words if "/" in w or w.endswith((".sh", ".py"))]
+        if "make" in words[:2]:
+            files.append("Makefile")
+        for name in files:
+            path = root / name
+            if path.is_file() and path.stat().st_size < 500_000:
+                parts.append(path.read_text(encoding="utf-8", errors="replace"))
+    return "\n".join(parts)
+
+
+def folder_is_run(folder, text):
+    """Whether `text` runs the test folder `folder`. Rule (documented in config.md): some word in the text is the folder (`-s tests`),
+    a glob that matches it (`skills/*/scripts`), or a file inside it; or `unittest discover` has no `-s` (it starts at
+    "."), or a `pytest` has no path argument (it starts at the root and finds everything)."""
+    for token in re.findall(r"[\w./*?{}\[\]-]+", text):
+        token = token[2:] if token.startswith("./") else token
+        token = token.rstrip("/") or "."
+        if token == "." and folder != ".":
+            continue
+        if fnmatch.fnmatchcase(folder, token) or (folder != "." and token.startswith(folder + "/")):
+            return True
+    for line in text.splitlines():
+        words = line.split()
+        if "pytest" in words and not any("/" in w or w.endswith(".py") for w in words):
+            return True
+        if "discover" in words and "-s" not in words and "--start-directory" not in words and folder == ".":
+            return True
+    return False
+
+
+def check_test_dirs(rep, root, cfg):
+    """WARN with every folder holding test_*.py that no `check` command runs (E43): a test nobody runs is no test. See
+    folder_is_run for what counts as running a folder; nothing is said without `check` commands."""
+    if cfg is None or not cfg.get("check"):
+        return
+    import config
+    text = check_run_text(root, cfg)
+    missing = [f for f in test_dirs(root, config.doctor_test_dirs_ignore(cfg)) if not folder_is_run(f, text)]
+    for folder in missing:
+        rep.warn("test dirs", f"{folder}/ holds test_*.py that no command of 'check' runs",
+                 f"add to 'check' in .claude/gw.json: python3 -m unittest discover -s {folder} -p 'test_*.py' "
+                 f"(or list {folder} in doctorTestDirsIgnore)")
+    if not missing:
+        rep.ok("test dirs", "every folder with test_*.py is run by 'check'")
+
+
 def media_note_folder(root):
     """The `Folder:` the gw-media-content note declares, or None when the note or the line is missing."""
     try:
@@ -956,6 +1036,7 @@ def run(root):
     check_glossary(rep, root)
     check_instructions(rep, root, cfg)
     check_skill_tests(rep, root)
+    check_test_dirs(rep, root, cfg)
     check_media_folder(rep, root)
     check_media_tools(rep, root)
     proposals = check_proposals(rep, root)
