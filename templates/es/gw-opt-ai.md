@@ -40,6 +40,11 @@ cold_ms: 100
 
 <!-- Por tarea, una vez medidos. -->
 
+## Script de parada
+
+<!-- La orden que para lo que levantó una ronda (servidores, modelos locales, inhibidores de suspensión); es el paso
+     de cierre de cada ronda. -->
+
 ## Ya en marcha
 
 <!-- Cada herramienta o ajuste aprobado antes, una línea cada uno, para no volver a proponerlo. -->

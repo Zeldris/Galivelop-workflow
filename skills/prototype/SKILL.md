@@ -38,7 +38,8 @@ The two branches produce very different artifacts, so getting this wrong wastes 
 This section is the only change to the upstream skill.
 
 - **Deliver where the user can open it**, often from a phone: if the agent has a tool to publish a page (for example
-  Claude's Artifact tool), publish the prototype and put the link in the round; otherwise send the file (for example
+  Claude's Artifact tool), publish the prototype from a subagent (its `quickstart` and design guidance would
+  otherwise fill the main context) that returns only the URL, and put the link in the round; otherwise send the file (for example
   with a send-file tool) or give the one command that starts it.
 - Keep a logic prototype in a throwaway folder or branch as the upstream text says; delete UI variants once one is
   chosen.

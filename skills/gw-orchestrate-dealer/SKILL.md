@@ -60,8 +60,10 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    `{scratch}/<id>-<topic>/`: create it, and never read or write another agent's folder. Read your state with
    `python3 .claude/gw/scripts/recover.py --state`; if it reports no row for your branch or the log has no
    per-branch rows, read the next step and pending sections of {log}. If you touch code, read REVIEW.md and
-   AGENTS.md. Follow the project's commit and push rules: commit and push each stable point, log update in the
-   same commit. If the push is rejected, `git fetch` and `git merge` (never rebase), then push again.
+   AGENTS.md. Follow the project's commit and push rules. On the working branch you push each stable point and
+   commit with the log update in the same commit; in a worktree (`agent/<id>-<topic>`) you commit but never push and
+   never touch the log (the main session does both). Leave nothing uncommitted when you reply: every change is in
+   your last commit. If a push is rejected, `git fetch` and `git merge` (never rebase), then push again.
    At ~25 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
    To wait for something long (a push with its check), run it with `run_in_background` and watch it with `Monitor`
    (load it with ToolSearch first) until it exits; keep your turn open while it runs, and never a foreground `sleep`.
@@ -97,7 +99,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    the main session's `git rev-parse HEAD` when dealing (an `isolation` worktree starts from `worktree.baseRef`, often
    `origin/main`, not from it), and `{scratch}` the session's scratchpad folder (outside the tree). Add a line
    for each project rule a fresh agent could miss.
-3. **Review what returns.** Fetch and check the commit (`git fetch`, `git log -1 --stat`) and that the done
+3. **Review what returns.** Run `git status -sb` (a subagent that left changes uncommitted or unpushed is told to
+   commit them, not fixed inline), fetch and check the commit (`git fetch`, `git log -1 --stat`) and that the done
    criterion holds. If it does not close, the retry climbs one ladder rung (the commit of that work carries
    `Retries: <n>`, which `metrics.py quality` reads); two failures, stop and tell the user.
    Chunks that depended on the failed one are marked "cancelled: blocked by X" and listed to the user, never left waiting.

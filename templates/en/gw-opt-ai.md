@@ -40,6 +40,11 @@ cold_ms: 100
 
 <!-- Per task, once measured. -->
 
+## Stop script
+
+<!-- The command that stops what a round started (servers, local models, sleep inhibitors); the closing step of
+     every round calls it. -->
+
 ## Already in place
 
 <!-- Every tool or setting approved before, one line each, so it is not proposed again. -->

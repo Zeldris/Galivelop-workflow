@@ -108,5 +108,7 @@ user from the tables and opens a file only for a row in doubt.
    were 89% of the paths of one update. Review the files the project merged by hand and its own files.
 3. Commit with the message `apply.py` suggested and a real `Next:` line (`Siguiente:` in Spanish projects), update
    the log in the same commit, and `git push`; the pre-push runs the check.
+4. Open the PR from the update branch to `protectedBranch` (the `pr` skill writes the body, listing the CHANGELOG
+   entries between X and Y and what was merged by hand) and give the user its link. Merging stays the user's call.
 
-Done when doctor is green, no `*.gw-new` is left and `version` equals Y.
+Done when doctor is green, no `*.gw-new` is left, `version` equals Y and the PR is open.
