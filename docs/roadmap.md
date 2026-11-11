@@ -181,7 +181,7 @@ En este orden, porque cada paso usa el anterior.
 | B26 | Aviso al leer entera la bitácora o un registro de más de `wholeReadWarnBytes` (20000) (recogida de cierre `0.6`, private-project-1 P1) | hecho (2026-11-11) |
 | B27 | Diffs triviales revisados sin subagente; los arreglos de la fase 1, a `sonnet` (recogida de cierre `0.6`, private-project-1 P7) | pendiente |
 | B28 | Tipo de subagente ligero (`gw-worker`, en `.claude/agents/`) con solo las herramientas del encargo; lo crea `gw-init` y lo nombra el encargo del dealer (recogida de cierre `0.6`, private-project-3 P1) | hecho (2026-11-11) |
-| B29 | `measure.py` mide la sesión anterior de la misma rama si la actual tiene menos de `measure.minCalls` (5) llamadas (tras un `/clear`) (recogida de cierre `0.6`, world-maker P5) | pendiente |
+| B29 | `measure.py` mide la sesión anterior de la misma rama si la actual tiene menos de `measure.minCalls` (5) llamadas (tras un `/clear`) (recogida de cierre `0.6`, world-maker P5) | hecho (2026-11-11) |
 | D82 | Lo copiado tal cual del flujo (`vendored`) queda fuera del `/code-review` de la fase 1 (vecino de D53 y B19) (recogida de cierre `0.6`, instalador P2) | hecho (2026-11-11) |
 | D84 | `templates/github/check.yml` lee de `.claude/gw.json` los directorios de Node y Rust y usa `Swatinem/rust-cache` (recogida de cierre `0.6`, instalador P5) | pendiente |
 | D85 | `recover.py --state` avisa de una revisión atrasada (umbral `changeSize.block`) (recogida de cierre `0.6`, world-maker P3) | hecho (2026-11-11) |
