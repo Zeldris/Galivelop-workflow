@@ -1146,6 +1146,41 @@ class PrePushBranchCheck(Base):
         self.assertIn("full check on", out)
         self.assertIn("branchCheck is full", out)
 
+    def test_a_new_branch_on_commits_the_remote_has_runs_the_full_check(self):
+        p = self.p
+        code, out = p.push("origin", "feature")  # feature = main's tip: no new commits, but the ref is created
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.runs(self.checks), ["check"], out)
+        self.assertIn("no new commits to scope the related tests", out)
+        self.assertNotIn("only its related tests run", out)
+        code, out = p.push("origin", "feature")  # now already at its sha: unchanged, nothing runs again
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.runs(self.checks), ["check"], out)
+        self.assertNotIn("no new commits to scope", out)
+
+    def test_each_ref_of_a_multi_ref_push_gets_its_related_tests_on_its_own_files(self):
+        p = self.p
+        for name in ("a", "b"):
+            p.git("checkout", "-q", "-b", name, "main")
+            p.write(f"src/{name}.py", f"{name} = 1\n"); p.commit(f"code {name}")
+        code, out = p.push("origin", "a", "b")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.runs(self.related), ["src/a.py", "src/b.py"], out)
+        self.assertEqual(self.runs(self.checks), [], out)
+
+    def test_a_failing_first_ref_of_a_multi_ref_push_blocks_it(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["relatedTests"] = {"fast": ['case "{files}" in *a.py*) exit 1 ;; esac'], "slow": []}
+        p.write(".claude/gw.json", json.dumps(cfg)); p.commit("related tests that fail on a.py")
+        p.git("push", "-q", "--no-verify", "origin", "feature")
+        for name in ("a", "b"):
+            p.git("checkout", "-q", "-b", name, "feature")
+            p.write(f"src/{name}.py", f"{name} = 1\n"); p.commit(f"code {name}")
+        code, out = p.push("origin", "a", "b")
+        self.assertEqual(code, 1, out)
+        self.assertIn("the related tests failed", out)
+
     def test_the_push_to_the_protected_branch_runs_the_full_check(self):
         p = self.p
         p.git("checkout", "-q", "main")

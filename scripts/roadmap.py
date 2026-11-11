@@ -115,10 +115,11 @@ def cmd_done(loaded, task, date, notes, force):
     changes = []
     for i, (entry, path, lines, n, _heading) in enumerate(loaded):
         status = status_of(lines[n])
-        if not force and not any(status.startswith(word) for word in entry["open"]):
+        shown = status.lstrip("*_`").lower()  # `**En curso**` and `Pendiente` are open too
+        if not force and not any(shown.startswith(word.lower()) for word in entry["open"]):
             raise RoadmapError(f"{entry['path']}:{n + 1}: {task} is not open (status {status!r}); "
                                f"pass --force to mark it {entry['done']!r} anyway")
-        inner = date + (f"; {notes[i]}" if notes else "")
+        inner = date + (f"; {notes[i].replace('|', chr(92) + '|')}" if notes else "")  # `\|`: cells() skips it
         lines = list(lines)
         lines[n] = with_status(lines[n], f"{entry['done']} ({inner})")
         changes.append((path, lines, entry, n))

@@ -344,8 +344,9 @@ def owned(config, rel):
 
 def semantic_errors(config):
     """Problems the schema subset cannot express: a relatedTests `paths`, testMap `paths`/`contains` or changeSize
-    `exclude`/`pairs` or fullCheckPaths entry that is not a valid regex (or a pair replacement that does not fit its regex), an agentMap
-    prefix that is not one folder name, an instructionLines `warn` above its `fail`, an ownedFiles pattern that is absolute or has a `..`."""
+    `exclude`/`pairs` or fullCheckPaths entry that is not a valid regex (or a pair replacement that does not fit its
+    regex), an agentMap prefix that is not one folder name, an instructionLines `warn` above its `fail`, an
+    ownedFiles pattern that is absolute or has a `..`."""
     errors = []
     warn, fail = instruction_lines(config)
     if warn > fail:

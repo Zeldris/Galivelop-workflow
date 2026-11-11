@@ -90,6 +90,27 @@ class Roadmap(unittest.TestCase):
         self.assertIn("| D5 | Corta | hecho (2026-01-02) |", self.read("docs/roadmap.md"))
         self.assertIn("| D5 | Short | done (2026-01-02) |", self.read("docs/roadmap.en.md"))
 
+    def test_a_pipe_in_a_note_is_escaped_and_the_row_stays_findable(self):
+        code, _, err = self.run_cli("done", "D5", "--date", "2026-01-02", "--note", "a|b", "--note", "c|d")
+        self.assertEqual(code, 0, err)
+        self.assertIn("| D5 | Corta | hecho (2026-01-02; a\\|b) |\n", self.read("docs/roadmap.md"))
+        code, out, err = self.run_cli("show", "D5")
+        self.assertEqual(code, 0, err)
+        self.assertIn("| D5 | Short | done (2026-01-02; c\\|d) |", out)
+        code, _, err = self.run_cli("done", "D5", "--date", "2026-01-03", "--force")
+        self.assertEqual(code, 0, err)
+        self.assertIn("| D5 | Corta | hecho (2026-01-03) |\n", self.read("docs/roadmap.md"))
+
+    def test_the_open_status_ignores_case_and_markdown_emphasis(self):
+        self.write("docs/roadmap.md", ES.replace("| pendiente |", "| Pendiente |")
+                   .replace("| D5 | Corta | en curso |", "| D5 | Corta | **en curso** |"))
+        self.write("docs/roadmap.en.md", EN.replace("| pending |", "| _`Pending`_ |"))
+        code, _, err = self.run_cli("done", "D55", "--date", "2026-01-02")
+        self.assertEqual(code, 0, err)
+        code, _, err = self.run_cli("done", "D5", "--date", "2026-01-02")
+        self.assertEqual(code, 0, err)  # Spanish `**en curso**`, English plain `in progress`
+        self.assertIn("| D5 | Corta | hecho (2026-01-02) |", self.read("docs/roadmap.md"))
+
     def test_a_task_that_is_not_open_is_refused_unless_forced(self):
         code, _, err = self.run_cli("done", "E27", "--date", "2026-11-12")
         self.assertEqual(code, 1)

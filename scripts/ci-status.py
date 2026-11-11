@@ -107,30 +107,40 @@ LOG_STAMP = re.compile(r"^\ufeff?\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z ?")
 
 
 def log_excerpt(log, cap):
-    """(lines, cut): the step of the first `##[error]` line, from its `Run …` header to its last error line, without
-    the timestamps nor the folded command echo; when longer than `cap`, the header and the last cap - 1 lines."""
+    """(lines, cut): the step of the LAST `##[error]` line (an earlier one may be a continue-on-error step or an
+    annotation), from its header (the nearest `##[group]Run ` line above, else the nearest `##[group]`) to that error
+    line, without the timestamps nor the header's folded command echo (up to its first `##[endgroup]`; nested groups
+    after it stay). Never more than `cap` lines: when longer, the header and the last cap - 1 lines, or, when cap
+    leaves no room for the header, only the last `cap` lines; `cut` counts the body lines left out."""
     lines = [LOG_STAMP.sub("", line.rstrip("\r")) for line in log.splitlines()]
     errors = [i for i, line in enumerate(lines) if line.startswith("##[error]")]
     if not errors:
         body = [line for line in lines if line.strip()]
-        return body[-cap:], max(0, len(body) - cap)
-    first = errors[0]
-    start = next((i for i in range(first, -1, -1) if lines[i].startswith("##[group]")), None)
-    end = next((i for i in range(first + 1, len(lines)) if lines[i].startswith("##[group]")), len(lines))
-    end = max(i for i in errors if i < end) + 1
+        keep = max(cap, 0)
+        cut = max(0, len(body) - keep)
+        return body[cut:], cut
+    last = errors[-1]
+    back = range(last, -1, -1)
+    start = next((i for i in back if lines[i].startswith("##[group]Run ")), None)
+    if start is None:
+        start = next((i for i in back if lines[i].startswith("##[group]")), None)
     head, body, folded = [], [], False
-    for i in range(start if start is not None else 0, end):
+    for i in range(start if start is not None else 0, last + 1):
         line = lines[i]
         if i == start:
             head, folded = [line[len("##[group]"):]], True
-        elif folded:
+        elif folded and not line.startswith("##[error]"):  # an error inside the echo group is still shown
             folded = not line.startswith("##[endgroup]")
         elif line.startswith("##[error]"):
             body.append("error: " + line[len("##[error]"):])
         elif line.strip():
             body.append(line)
-    keep = max(cap - len(head), 1)
-    return head + body[-keep:], max(0, len(body) - keep)
+    if cap <= len(head):
+        keep, head = max(cap, 0), []
+    else:
+        keep = cap - len(head)
+    cut = max(0, len(body) - keep)
+    return head + body[cut:], cut
 
 
 def failure_details(repo, report, cap):

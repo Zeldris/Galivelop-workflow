@@ -38,9 +38,11 @@
 #     from the remote tip's config, so a commit cannot relax the rule that judges it (only a protected branch without
 #     a config yet takes the pushed commit's, with a warning). Fails closed when a commit is missing (shallow clones
 #     included).
-#   - Then calls prepush-branches.sh <changed-file> <pushed-file> and related-tests.sh <changed-file> <checkout-dir>
-#     (the folder where the last pushed commit is checked out) from the workflow's scripts folder whenever they exist
-#     (run with bash, executable or not), with git's ref lines on stdin.
+#   - Calls related-tests.sh <changed-file> <checkout-dir> for each ref that takes the related scope (that ref's own
+#     files, the folder where its commit is checked out); a ref that takes the full scope is covered by the call after
+#     the loop, with those refs' files and the last checkout. prepush-branches.sh <changed-file> <pushed-file> gets every
+#     ref's files. Both come from the workflow's scripts folder whenever they exist (run with bash, executable or not),
+#     with git's ref lines on stdin.
 # Skipping it (git push --no-verify) is only for a WIP: commit with red tests.
 # Bash 3.2 compatible. Root from this hook's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
@@ -68,6 +70,7 @@ trap 'exit 129' HUP
 cat > "$work/input"
 : > "$work/changed"
 : > "$work/pushed"
+: > "$work/changed_full"
 
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE  # git sets GIT_DIR in linked worktrees: toplevel would be the cwd
 # The git dir of the worktree that pushes, taken where git runs the hook (its top level), not from the hook's path:
@@ -403,15 +406,26 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   elif [ "$checked" != "$local_sha:$is_protected" ]; then
     scope="full"
     if [ "$is_protected" != "true" ]; then  # D49: a branch push runs only relatedTests unless the environment changes
-      scope="$(printf '%s\n' "$files" | python3 "$config" --root "$root" --rev "$local_sha" push-scope)" \
-        || fail "cannot tell which check this push needs; fix the config and push again: python3 $config --root $root --rev ${local_sha:0:7} validate"
+      if [ -z "$new" ] && [ "$local_sha" != "$remote_sha" ]; then
+        # The ref moves (created or moved onto commits the remote already has) with no new commits to take files from.
+        scope="full no new commits to scope the related tests"
+      else
+        scope="$(printf '%s\n' "$files" | python3 "$config" --root "$root" --rev "$local_sha" push-scope)" \
+          || fail "cannot tell which check this push needs; fix the config and push again: python3 $config --root $root --rev ${local_sha:0:7} validate"
+      fi
     fi
     case "$scope" in
       related)
         echo "pre-push: ${local_sha:0:7} goes to a branch: only its related tests run (branchCheck); the full check runs on the push to $protected and when the environment changes (to run it now: bash $scripts/check.sh)"
-        checkout_at "$local_sha" ;;
+        checkout_at "$local_sha"
+        # This ref's own files on this ref's own tree (the call after the loop only sees the last checkout).
+        if [ -f "$scripts/related-tests.sh" ] && [ -n "$checkdir" ]; then
+          printf '%s\n' "$files" | grep . > "$work/changed_ref"
+          bash "$scripts/related-tests.sh" "$work/changed_ref" "$checkdir" < "$work/input" || fail "the related tests failed; fix them, commit and push again: git push"
+        fi ;;
       full*)
         [ "$is_protected" = "true" ] || [ "$scope" = "full" ] || echo "pre-push: full check on ${local_sha:0:7}: ${scope#full }"
+        printf '%s\n' "$files" | grep . >> "$work/changed_full"
         run_checks "$local_sha" ;;
       *) fail "unexpected answer from config.py push-scope: '$scope'; reinstall the workflow scripts: /gw-update" ;;
     esac
@@ -477,7 +491,8 @@ sort -u -o "$work/changed" "$work/changed"
 if [ -f "$scripts/prepush-branches.sh" ]; then
   bash "$scripts/prepush-branches.sh" "$work/changed" "$work/pushed" < "$work/input" || fail "prepush-branches.sh refused the push; fix what it reports and push again: git push"
 fi
-if [ -f "$scripts/related-tests.sh" ] && [ -n "$checkdir" ]; then
-  bash "$scripts/related-tests.sh" "$work/changed" "$checkdir" < "$work/input" || fail "the related tests failed; fix them, commit and push again: git push"
+if [ -f "$scripts/related-tests.sh" ] && [ -n "$checkdir" ] && [ -s "$work/changed_full" ]; then
+  sort -u -o "$work/changed_full" "$work/changed_full"
+  bash "$scripts/related-tests.sh" "$work/changed_full" "$checkdir" < "$work/input" || fail "the related tests failed; fix them, commit and push again: git push"
 fi
 echo "pre-push: all green."

@@ -317,6 +317,29 @@ class LogExcerpt(unittest.TestCase):
     def test_errors_without_a_step_header_start_at_the_top(self):
         self.assertEqual(self.mod.log_excerpt("a\n##[error]boom\nlater", 5), (["a", "error: boom"], 0))
 
+    def test_the_last_error_picks_the_step_not_the_first(self):
+        log = "\n".join(["##[group]Run flaky", "cmd", "##[endgroup]", "##[error]ignored (continue-on-error)",
+                         "##[group]Run tests", "echo", "##[endgroup]", "FAILED test_x", "##[error]Process exited 1"])
+        self.assertEqual(self.mod.log_excerpt(log, 10), (["Run tests", "FAILED test_x", "error: Process exited 1"], 0))
+
+    def test_the_header_is_the_nearest_run_group_and_nested_groups_do_not_hide_errors(self):
+        log = "\n".join(["##[group]Run tests", "echo", "##[endgroup]", "##[group]Nested", "inner", "##[error]inside",
+                         "##[endgroup]", "##[error]end"])
+        self.assertEqual(self.mod.log_excerpt(log, 10), (
+            ["Run tests", "##[group]Nested", "inner", "error: inside", "##[endgroup]", "error: end"], 0))
+
+    def test_without_a_run_group_the_nearest_group_is_the_header(self):
+        log = "\n".join(["##[group]Set up job", "x", "##[endgroup]", "##[group]Post step", "y", "##[error]boom"])
+        self.assertEqual(self.mod.log_excerpt(log, 10), (["Post step", "error: boom"], 0))
+
+    def test_an_excerpt_never_exceeds_the_cap(self):
+        log = "\n".join(["##[group]Run t", "e", "##[endgroup]", "l1", "l2", "l3", "##[error]boom"])
+        self.assertEqual(self.mod.log_excerpt(log, 3), (["Run t", "l3", "error: boom"], 2))
+        self.assertEqual(self.mod.log_excerpt(log, 1), (["error: boom"], 3))
+        for cap in (1, 2, 3, 4, 5):
+            lines, cut = self.mod.log_excerpt(log, cap)
+            self.assertLessEqual(len(lines), cap)
+
 
 if __name__ == "__main__":
     unittest.main()
