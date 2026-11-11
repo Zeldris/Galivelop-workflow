@@ -352,17 +352,23 @@ class Measure(unittest.TestCase):
             self.assertIn('API calls: 1', local.stdout)
             self.assertIn('warning: log from a session opened outside the repo, in folder -home-user', local.stderr)
 
-    def short_session(self, current: int, config=None, previous: tuple = (('prev', 'feat'),), branch: str = 'feat',
-                      args: tuple = ('--hours', '0')) -> subprocess.CompletedProcess:
+    def short_session(self, current: int, config=None, previous: tuple = (('prev', 'feat'),), branch: str | None = 'feat',
+                      args: tuple = ('--hours', '0'), previous_calls: int = 3, branches: tuple = ()) -> subprocess.CompletedProcess:
         """B29: no --session; the current log (`cur.jsonl`, newest, `current` calls on `branch`) and older logs given
         as (name, branch) with 3 calls each; `config` is the text of the repo's .claude/gw.json (None = no file)."""
         home, repo = folder(), folder()
         subprocess.run(['git', 'init', '-q', repo], check=True)
         proj = os.path.join(home, '.claude', 'projects', '-home-user')
         for i, (name, b) in enumerate(previous):
-            path = log(os.path.join(proj, f'{name}.jsonl'), *[response(f'{name}{n}', 50, gitBranch=b) for n in range(3)])
-            os.utime(path, (100 + i, 100 + i))
-        log(os.path.join(proj, 'cur.jsonl'), *[response(f'c{n}', 10, gitBranch=branch, timestamp=ago(0.1)) for n in range(current)])
+            extra = {'gitBranch': b} if b else {}
+            path = log(os.path.join(proj, f'{name}.jsonl'),
+                       *[response(f'{name}{n}', 50, timestamp=ago(2), **extra) for n in range(previous_calls)])
+            os.utime(path, (100 + i if i >= 0 else 100, 100 + i))
+        extra = {'gitBranch': branch} if branch else {}
+        parts = [response(f'c{n}', 10, timestamp=ago(0.1), **extra) for n in range(current)]
+        for b in branches:  # the session ends on the last of these branches
+            parts.insert(0, response('sw', 10, timestamp=ago(0.2), gitBranch=b))
+        log(os.path.join(proj, 'cur.jsonl'), *parts)
         if config is not None:
             write(os.path.join(repo, '.claude', 'gw.json'), config)
             for rel in ('scripts/config.py', 'schema/gw.schema.json'):
@@ -392,7 +398,7 @@ class Measure(unittest.TestCase):
     def test_previous_session_of_another_branch_or_without_branch_is_not_used(self):
         r = self.short_session(2, previous=(('other', 'main'),))
         self.assertIn('Session: cur.jsonl', r.stdout)
-        self.assertIn('there is no previous session of branch feat: measuring the current one', r.stdout)
+        self.assertIn('there is no previous session of branch feat: measuring cur.jsonl', r.stdout)
         self.assertIn('API calls: 2', r.stdout)
         # the previous one is the newest of the same branch, skipping other branches in between
         r = self.short_session(2, previous=(('old', 'feat'), ('mid', 'main')))
@@ -403,7 +409,7 @@ class Measure(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn('Session: cur.jsonl', r.stdout)
         self.assertIn('Note: the current session has 2 calls (under measure.minCalls = 5) and there is no '
-                      'previous session of branch feat: measuring the current one', r.stdout)
+                      'previous session of branch feat: measuring cur.jsonl', r.stdout)
 
     def test_previous_session_without_calls_in_the_period_is_skipped(self):
         r = self.short_session(2, args=('--since', ago(1)))  # prev.jsonl calls are stamped HOUR (2026-10-19)
@@ -431,6 +437,40 @@ class Measure(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertIn('Session: prev.jsonl', r.stdout, config)
             self.assertIn('measure.minCalls = 5', r.stdout)
+
+    def test_default_period_after_a_clear_still_measures_the_previous_session(self):
+        """The previous log (more calls, inside the 24 h) must not be taken as the current session."""
+        r = self.short_session(1, previous_calls=8, args=())
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('Session: prev.jsonl', r.stdout)
+        self.assertIn('API calls: 8', r.stdout)
+        self.assertIn('Note: the current session has 1 calls', r.stdout)
+        enough = self.short_session(6, previous_calls=8, args=())  # current has enough: the usual choice
+        self.assertNotIn('Note:', enough.stdout)
+
+    def test_session_that_switched_branch_counts_by_its_last_branch(self):
+        r = self.short_session(2, previous=(('onfeat', 'feat'), ('onmain', 'main')), branches=('main',), branch='feat')
+        self.assertIn('Session: onfeat.jsonl', r.stdout)  # ended on feat, though it began on main
+        r = self.short_session(2, previous=(('onfeat', 'feat'), ('onmain', 'main')), branches=('feat',), branch='main')
+        self.assertIn('Session: onmain.jsonl', r.stdout)
+
+    def test_current_session_without_branch_is_measured_with_a_note(self):
+        r = self.short_session(2, branch=None)  # detached HEAD or an old log: no gitBranch
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn('Session: cur.jsonl', r.stdout)
+        self.assertIn('there is no previous session of its branch: measuring cur.jsonl', r.stdout)
+
+    def test_previous_sessions_with_the_same_mtime_break_the_tie_by_name(self):
+        home, repo = folder(), folder()
+        subprocess.run(['git', 'init', '-q', repo], check=True)
+        proj = os.path.join(home, '.claude', 'projects', '-home-user')
+        for name in ('a', 'b'):
+            os.utime(log(os.path.join(proj, f'{name}.jsonl'),
+                         *[response(f'{name}{n}', 5, gitBranch='feat', timestamp=ago(2)) for n in range(3)]), (100, 100))
+        log(os.path.join(proj, 'cur.jsonl'), response('c', 10, gitBranch='feat', timestamp=ago(0.1)))
+        env = {**os.environ, 'HOME': home, 'CLAUDE_CODE_REMOTE': 'true'}
+        r = subprocess.run(['python3', MEASURE, '--hours', '0'], capture_output=True, text=True, cwd=repo, env=env)
+        self.assertIn('Session: b.jsonl', r.stdout)
 
     def test_explicit_session_is_never_replaced(self):
         out = self.measure([response('a', 10, gitBranch='feat')])  # --session with 1 call

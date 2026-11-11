@@ -87,14 +87,27 @@ def session_logs(root):
     return [p for f in dict.fromkeys(folders) for p in glob.glob(os.path.expanduser(f'~/.claude/projects/{f}/*.jsonl'))]
 
 
-DEFAULT_MIN_CALLS = 5  # the schema default of `measure.minCalls`; also what a config that cannot be read gives
+def default_min_calls(root):
+    """The schema default of `measure.minCalls` (one datum, one place): from the workflow's schema next to this
+    script (the repo's `schema/` or an installed `.claude/gw/schema/`) or the project's own; 0 (off) if none is found."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    for path in (os.path.join(here, '..', '..', '..', 'schema', 'gw.schema.json'),
+                 os.path.join(here, '..', '..', '..', 'gw', 'schema', 'gw.schema.json'),
+                 os.path.join(root, '.claude', 'gw', 'schema', 'gw.schema.json')):
+        try:
+            with open(path, encoding='utf-8') as f:
+                return int(json.load(f)['properties']['measure']['properties']['minCalls']['default'])
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+    return 0
 
 
 def min_calls(root):
-    """`measure.minCalls` from the project's config reader (installed copy first, then this repo's own); the default
-    when there is no reader, it fails (malformed config) or its answer is not a non-negative integer."""
+    """`measure.minCalls` from the project's config reader (installed copy first, then this repo's own); the schema
+    default when there is no config, no reader, the config is malformed or the answer is not a non-negative integer."""
+    default = default_min_calls(root)
     if not os.path.isfile(os.path.join(root, '.claude', 'gw.json')):
-        return DEFAULT_MIN_CALLS
+        return default
     for rel in ('.claude/gw/scripts/config.py', 'scripts/config.py'):
         reader = os.path.join(root, rel)
         if os.path.isfile(reader):
@@ -102,14 +115,15 @@ def min_calls(root):
                 r = subprocess.run([sys.executable, reader, '--root', root, 'get', 'measure.minCalls'],
                                    capture_output=True, text=True)
             except OSError:
-                return DEFAULT_MIN_CALLS
+                return default
             value = r.stdout.strip()
-            return int(value) if r.returncode == 0 and value.isdigit() else DEFAULT_MIN_CALLS
-    return DEFAULT_MIN_CALLS
+            return int(value) if r.returncode == 0 and value.isdigit() else default
+    return default
 
 
 def branch_of(path):
-    """The `gitBranch` of the first line of a log that has one, or None."""
+    """The LAST `gitBranch` a log has (a session may switch branch: its branch is the one it ends on), or None."""
+    branch = None
     try:
         with open(path, encoding='utf-8') as log:
             for line in log:
@@ -118,20 +132,26 @@ def branch_of(path):
                 except json.JSONDecodeError:
                     continue
                 if isinstance(d, dict) and d.get('gitBranch'):
-                    return d['gitBranch']
+                    branch = d['gitBranch']
     except OSError:
         pass
-    return None
+    return branch
+
+
+def newest_session(root):
+    """The current session: the newest log (mtime, then name) of the project, whatever the period; None if none."""
+    logs = session_logs(os.path.abspath(root))
+    return max(logs, key=lambda p: (os.path.getmtime(p), p)) if logs else None
 
 
 def previous_session(path, root, since):
-    """The newest other log of the project whose branch is the one of `path` and that has calls in the period;
-    (that log or None, the branch or None)."""
+    """The newest other log of the project whose branch is the one of `path` and that has calls in the period
+    (ties in mtime: the greater file name); (that log or None, the branch or None)."""
     branch = branch_of(path)
     if not branch:
         return None, None
     others = sorted((p for p in session_logs(os.path.abspath(root)) if os.path.abspath(p) != os.path.abspath(path)),
-                    key=os.path.getmtime, reverse=True)
+                    key=lambda p: (os.path.getmtime(p), p), reverse=True)
     for p in others:
         if branch_of(p) == branch and responses_of(p, since):
             return p, branch
@@ -297,18 +317,20 @@ def main():
     path = a.session or default_session(root, since)
     note = None
     threshold = 0 if a.session else min_calls(root)
-    if threshold:
-        have = len(responses_of(path, since))
+    current = newest_session(root) if threshold else None  # the session in progress, not the one with most calls
+    if current:
+        have = len(responses_of(current, since))
         if have < threshold:
-            before, branch = previous_session(path, root, since)
+            before, branch = previous_session(current, root, since)
             if before:
                 note = (f'Note: the current session has {have} calls (under measure.minCalls = {threshold}); '
                         f'measuring the previous session of branch {branch}: {os.path.basename(before)}')
                 path = before
             else:
+                path = current if have and branch else path  # no branch to compare: keep the usual choice
                 note = (f'Note: the current session has {have} calls (under measure.minCalls = {threshold}) and '
                         f'there is no previous session of {"branch " + branch if branch else "its branch"}: '
-                        f'measuring the current one')
+                        f'measuring {os.path.basename(path)}')
 
     usage = collections.Counter()
     api_calls = 0
