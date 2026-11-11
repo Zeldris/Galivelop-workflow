@@ -1,5 +1,7 @@
 """related-tests.sh with deleted files (D29): a push that only deletes still runs the related tests."""
 import json
+import pathlib
+import re
 import sys
 import unittest
 
@@ -94,6 +96,24 @@ class RelatedDeleted(Base):
         code, out, _ = self.run_with({"fast": [], "slow": ["exit 3"]}, ("src/gone.py",))
         self.assertEqual(code, 1, out)
         self.assertIn("related-tests: failed (slow): exit 3", out)
+
+    def test_many_files_print_a_count_and_a_temp_file_not_the_list(self):  # D74
+        files = tuple(f"src/m{i}.py" for i in range(3))
+        rel = {"fast": [{"command": "echo {files} >> out.log; exit 4", "paths": "\\.py$"}], "slow": []}
+        code, out, _ = self.run_with(rel, files, present=files)
+        self.assertEqual(code, 1, out)
+        self.assertIn("related tests (fast): 3 files; the full command is in ", out)
+        self.assertNotIn("m1.py", out)
+        m = re.search(r"the full command is in (\S+)", out)
+        self.assertIn("m1.py", pathlib.Path(m.group(1)).read_text())  # failed: kept, holds the whole command
+        self.assertIn(f"run it again: bash {m.group(1)}", out)
+
+    def test_one_file_command_is_still_printed_whole(self):  # D74
+        rel = {"fast": [{"command": "echo {files} >> out.log; exit 4", "paths": "\\.py$"}], "slow": []}
+        code, out, _ = self.run_with(rel, ("src/a.py",))
+        self.assertEqual(code, 1, out)
+        self.assertIn("src/a.py", out)
+        self.assertNotIn("files; the full command", out)
 
 
 if __name__ == "__main__":

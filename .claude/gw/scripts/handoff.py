@@ -51,7 +51,7 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  rebase is being closed (the pre-push checks those)
   handoff.py in-progress BASE SHA               WARNING only: a task marked 🚧 that the commits name, whose plan
                                                  entry did not change (it may still say "Next: X" with X done)
-  handoff.py close-row BRANCH [--text TEXT]     rewrite BRANCH's row as "merged, branch finished" (last commit
+  handoff.py close-row [BRANCH] [--text TEXT]   rewrite BRANCH's row (or --branch; default: the current one) as "merged, branch finished" (last commit
                                                  before the PR, so main does not inherit a stale "Next")
   handoff.py clash REV OTHER... [--warn]        fail if REV and an OTHER both open a plan entry (an unindented
                                                  "- …ID" / "| ID", done or not) for an id their merge base does not
@@ -853,20 +853,31 @@ def rewrite_row(ctx, branch, text):
     return hit
 
 
+def row_branch(ctx, args):
+    """The branch whose row set-row / close-row touch: --branch on both (close-row also takes it positional), else the
+    current branch (D71)."""
+    given = [b for b in (getattr(args, "branch", None), args.branch_opt) if b]
+    if len(set(given)) > 1:
+        raise Usage(f"two different branches ({given[0]} and {given[1]}); name one: handoff.py {args.cmd} --branch <branch>")
+    branch = given[0] if given else current_branch(ctx)
+    if not branch:
+        raise Usage(f"detached HEAD, so there is no branch whose row to write; name it: handoff.py {args.cmd} --branch <branch>")
+    return branch
+
+
 def cmd_close_row(ctx, args):
     text = args.text or CLOSED_TEXT.get(ctx.config["language"], CLOSED_TEXT["en"])
-    hit = rewrite_row(ctx, args.branch, text)
+    branch = row_branch(ctx, args)
+    hit = rewrite_row(ctx, branch, text)
     if hit != 1:
-        print(f"handoff: found {hit} rows for {args.branch}, expected 1; add the row first: edit {ctx.log}")
+        print(f"handoff: found {hit} rows for {branch}, expected 1; add the row first: edit {ctx.log}")
         return 1
-    print(f"handoff: row of {args.branch} closed in {ctx.log}; commit it: git commit -am 'Close the log row of {args.branch}'")
+    print(f"handoff: row of {branch} closed in {ctx.log}; commit it: git commit -am 'Close the log row of {branch}'")
     return 0
 
 
 def cmd_set_row(ctx, args):
-    branch = args.branch or current_branch(ctx)
-    if not branch:
-        raise Usage("detached HEAD, so there is no branch whose row to write; name it: handoff.py set-row TEXT --branch <branch>")
+    branch = row_branch(ctx, args)
     text = args.text.strip()
     if not text or "\n" in text or "\r" in text:
         raise Usage("TEXT must be one non-empty line (a table cell); write the row text on a single line")
@@ -922,14 +933,15 @@ def main(argv=None):
     k.add_argument("--tip")
     k.add_argument("--merging", action="store_true")
     r = sub.add_parser("close-row")
-    r.add_argument("branch")
+    r.add_argument("branch", nargs="?")
+    r.add_argument("--branch", dest="branch_opt")
     r.add_argument("--text")
     n = sub.add_parser("next-id")
     n.add_argument("prefix")
     n.add_argument("--fetch", action="store_true")
     w = sub.add_parser("set-row")
     w.add_argument("text")
-    w.add_argument("--branch")
+    w.add_argument("--branch", dest="branch_opt")
     args = p.parse_args(argv)
     if args.cmd == "own-row" and (args.staged == (args.commit is not None) or (args.commit is None) != (args.branch is None)):
         print("handoff: own-row takes COMMIT BRANCH, or --staged alone; run: handoff.py own-row --staged", file=sys.stderr)
