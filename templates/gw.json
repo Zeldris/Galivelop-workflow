@@ -41,6 +41,7 @@
   "nonTestExtensions": ["md", "json", "yml", "yaml", "properties", "txt", "csv"],
   "ciKeepSteps": true,
   "ciOnPush": true,
+  "ciFailedLines": 40,
   "legacyNames": true,
   "legacyNamesSkip": ["CHANGELOG*"],
   "legacyNamesMax": 50,

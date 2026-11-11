@@ -159,7 +159,7 @@ En este orden, porque cada paso usa el anterior.
 | B19 | `gw-update` reparte la reconciliación de cada `.gw-new` a un subagente que devuelve la tabla de desvíos; el `/code-review` de la rama de actualización deja fuera las copias idénticas del flujo (recogida de cierre `0.5.1`, world-maker-fantasy P5) | hecha (2026-11-10; pasos 3-5 de la skill: tabla «desvío · arriba · decisión» por subagente ligero y `/code-review` sin las copias idénticas) |
 | E27 | `shellcheckVersion` en `.claude/gw.json`: el CI instala esa versión y `tests/shellcheck.sh` avisa, con la orden para instalarla, si la local es otra (retro `0.5.1` R1) | hecha (2026-11-11; el CI la instala con `pip install shellcheck-py==X.Y.Z.*`; en el CI una versión distinta falla) |
 | D55 | `roadmap.py show <id>` y `roadmap.py done <id>`: ver o marcar una fila del roadmap en los dos idiomas sin leerlo entero (retro `0.5.1` R4) | hecho (2026-11-11; `scripts/roadmap.py`, clave `roadmapFiles` (la `roadmap` reservada sigue siendo booleana); marca los dos idiomas o ninguno) |
-| D56 | `ci-status.py --failed`: de cada job en rojo, solo el paso que falló y sus líneas de error, con tope en una clave y la URL del registro entero (retro `0.5.1` R5) | pendiente |
+| D56 | `ci-status.py --failed`: de cada job en rojo, solo el paso que falló y sus líneas de error, con tope en una clave y la URL del registro entero (retro `0.5.1` R5) | hecho (2026-11-11; `--failed`: el paso de la API de jobs y, del registro, de su cabecera `Run …` a su última línea `##[error]`, sin la orden plegada; tope `ciFailedLines` (40) o `--lines`) |
 
 ## `0.7` «Preguntar»
 

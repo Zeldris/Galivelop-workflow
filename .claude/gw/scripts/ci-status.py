@@ -3,7 +3,8 @@
 """Reads the GitHub Actions status of a branch or a commit through the API: "look at the CI of the last push" without
 opening the web. The same reader review-before-main.sh uses to gate a merge (one place for the token / `gh` logic).
 
-  python3 ci-status.py [--branch BRANCH | --sha SHA] [--repo OWNER/REPO] [--ignore NAME]... [--json] [--root PATH]
+  python3 ci-status.py [--branch BRANCH | --sha SHA] [--repo OWNER/REPO] [--ignore NAME]... [--failed [--lines N]]
+                       [--json] [--root PATH]
 
 Default target: the commit HEAD of the working tree. The repo is read from the `origin` remote. The API goes through
 `gh api` when gh is on PATH and can read the repo, else through curl with $GITHUB_TOKEN or $GH_TOKEN (decided once).
@@ -14,7 +15,11 @@ red or pending check of the project into green, and a commit where only ignored 
 
 Exit 0 green; 1 not green (red, pending, or no CI reported); 2 it could not be read (no token, gh missing, API error:
 fails closed). With --json, one object: {"repo", "sha", "state": green|red|pending|none|error, "problems": [...],
-"ignored": [...], "unstarted": bool, "error"}. Python 3.8+, stdlib only.
+"ignored": [...], "unstarted": bool, "error"} (and "failed": [...] with --failed). Python 3.8+, stdlib only.
+
+--failed (D56): for each finished red job, the step that failed and its error lines (the end of that step's log, at
+most `ciFailedLines` of .claude/gw.json or --lines), plus the URL of the whole log; instead of reading the full job log.
+A check that is not a GitHub Actions job (or whose log cannot be read) gives only its URL; the exit code is unchanged.
 """
 import argparse
 import json
@@ -73,6 +78,15 @@ def backend(path):
 
 
 def api(path):
+    text, how = fetch(path)
+    try:
+        return json.loads(text)
+    except ValueError:
+        raise ApiError(f"{how} did not return JSON: {text.strip()[:200]}")
+
+
+def fetch(path):
+    """(body, how) of a GET; raises ApiError."""
     kind, token = backend(path)
     if kind == "gh":
         r, how = run(["gh", "api", path]), "gh api " + path
@@ -85,10 +99,74 @@ def api(path):
     if r.returncode != 0:
         output = (r.stderr or r.stdout).strip()[:300]
         raise ApiError(f"{how} failed: {output}", output)
-    try:
-        return json.loads(r.stdout)
-    except ValueError:
-        raise ApiError(f"{how} did not return JSON: {r.stdout.strip()[:200]}")
+    return r.stdout, how
+
+
+# A job log line: "2026-11-10T12:00:00.1234567Z text" (a BOM on the first one).
+LOG_STAMP = re.compile(r"^\ufeff?\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d+)?Z ?")
+
+
+def log_excerpt(log, cap):
+    """(lines, cut): the step of the first `##[error]` line, from its `Run …` header to its last error line, without
+    the timestamps nor the folded command echo; when longer than `cap`, the header and the last cap - 1 lines."""
+    lines = [LOG_STAMP.sub("", line.rstrip("\r")) for line in log.splitlines()]
+    errors = [i for i, line in enumerate(lines) if line.startswith("##[error]")]
+    if not errors:
+        body = [line for line in lines if line.strip()]
+        return body[-cap:], max(0, len(body) - cap)
+    first = errors[0]
+    start = next((i for i in range(first, -1, -1) if lines[i].startswith("##[group]")), None)
+    end = next((i for i in range(first + 1, len(lines)) if lines[i].startswith("##[group]")), len(lines))
+    end = max(i for i in errors if i < end) + 1
+    head, body, folded = [], [], False
+    for i in range(start if start is not None else 0, end):
+        line = lines[i]
+        if i == start:
+            head, folded = [line[len("##[group]"):]], True
+        elif folded:
+            folded = not line.startswith("##[endgroup]")
+        elif line.startswith("##[error]"):
+            body.append("error: " + line[len("##[error]"):])
+        elif line.strip():
+            body.append(line)
+    keep = max(cap - len(head), 1)
+    return head + body[-keep:], max(0, len(body) - keep)
+
+
+def failure_details(repo, report, cap):
+    """For each finished red check-run, {"name", "step", "lines", "cut", "url"}; for each red commit status,
+    {"name", "url"} (no log). The log is read only for a GitHub Actions job (a check-run's id is its job's id)."""
+    found = []
+    for run_ in report["red_runs"]:
+        item = {"name": run_.get("name", "?"), "step": None, "lines": [], "cut": 0,
+                "url": run_.get("html_url") or run_.get("details_url")}
+        try:
+            job = api(f"repos/{repo}/actions/jobs/{run_['id']}")
+            item["url"] = job.get("html_url") or item["url"]
+            item["step"] = next((s.get("name") for s in job.get("steps") or []
+                                 if s.get("conclusion") == "failure"), None)
+            log, _ = fetch(f"repos/{repo}/actions/jobs/{run_['id']}/logs")
+            item["lines"], item["cut"] = log_excerpt(log, cap)
+        except (ApiError, KeyError, TypeError, AttributeError) as exc:
+            item["error"] = str(exc).splitlines()[0][:200] if str(exc) else type(exc).__name__
+        found.append(item)
+    for status in report["red_statuses"]:
+        found.append({"name": status.get("context", "?"), "step": None, "lines": [], "cut": 0,
+                      "url": status.get("target_url")})
+    return found
+
+
+def failure_text(found):
+    out = []
+    for item in found:
+        step = f": step {item['step']!r} failed" if item["step"] else ""
+        out.append(f"\n{item['name']}{step}; whole log: {item['url'] or 'no URL'}")
+        if item.get("error"):
+            out.append(f"  (no log: {item['error']})")
+        if item["cut"]:
+            out.append(f"  ({item['cut']} earlier line(s) of the step left out: --lines N, or ciFailedLines)")
+        out += ["  " + line for line in item["lines"]]
+    return "\n".join(out)
 
 
 def ignored(name, patterns):
@@ -135,7 +213,8 @@ def ci_report(repo, sha, ignore=()):
     runs = [c for c in runs if not ignored(c.get("name", "?"), ignore)]
     statuses = [s for s in statuses if not ignored(s.get("context", "?"), ignore)]
     if not runs and not statuses:
-        return {"problems": [NO_CI], "ignored": left_out, "unstarted": False, "pending": False}
+        return {"problems": [NO_CI], "ignored": left_out, "unstarted": False, "pending": False, "red_runs": [],
+                "red_statuses": []}
     bad_runs = [c for c in runs if c.get("status") != "completed" or c.get("conclusion") not in GREEN_RUNS]
     bad_statuses = [s for s in statuses if s.get("state") != "success"]
     bad = [f"{c.get('name', '?')}: {c.get('conclusion') or c.get('status')}" for c in bad_runs]
@@ -143,6 +222,8 @@ def ci_report(repo, sha, ignore=()):
     failed = [c for c in bad_runs if c.get("status") == "completed"] + \
         [s for s in bad_statuses if s.get("state") != "pending"]
     return {"problems": bad, "ignored": left_out, "pending": bool(bad) and not failed,
+            "red_runs": [c for c in bad_runs if c.get("status") == "completed"],
+            "red_statuses": [s for s in bad_statuses if s.get("state") != "pending"],
             "unstarted": bool(bad_runs) and not bad_statuses and all(not_started(repo, c) for c in bad_runs)}
 
 
@@ -167,9 +248,15 @@ def main(argv=None):
     ap.add_argument("--repo", help="OWNER/REPO (default: the origin remote)")
     ap.add_argument("--ignore", action="append", default=[], metavar="NAME",
                     help="a foreign check that does not count, on top of ciIgnore (exact, or `*` for any text)")
+    ap.add_argument("--failed", action="store_true",
+                    help="for each red job, the step that failed, its error lines and the URL of the whole log")
+    ap.add_argument("--lines", type=int, metavar="N", help="with --failed, at most N lines per job (default: "
+                                                           "ciFailedLines of .claude/gw.json)")
     ap.add_argument("--json", action="store_true", help="one JSON object instead of text")
     ap.add_argument("--root", help="project root (default: resolved from this script)")
     args = ap.parse_args(argv)
+    if args.lines is not None and args.lines < 1:
+        ap.error("--lines must be 1 or more")
     sys.dont_write_bytecode = True
     sys.path.insert(0, HERE)
     import config
@@ -230,6 +317,15 @@ def main(argv=None):
     if out["state"] == "none" and cfg.get("ciOnPush") is False:  # D54: check.yml only runs on pull requests
         hint = (f"\nciOnPush is false: check.yml runs only on pull requests; open one, or run the CI locally: "
                 f"python3 {os.path.join(HERE, 'ci-local.py')} --record")
+    if args.failed and out["state"] == "red":
+        if report["unstarted"]:
+            hint += "\nno log: GitHub never started these jobs (Actions quota or payments)"
+        else:
+            found = failure_details(repo, report, args.lines or int(cfg.get("ciFailedLines", 40)))
+            out["failed"] = found
+            hint += failure_text(found)
+    elif args.failed and out["state"] == "pending":
+        hint += f"\nnothing has failed yet; retry when it finishes: python3 {me} --failed"
     return finish(1, f"ci-status: {repo} {sha[:12]}: {out['state']}: {'; '.join(problems)}{note}{hint}")
 
 

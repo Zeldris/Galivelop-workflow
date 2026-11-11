@@ -22,6 +22,10 @@ esac
 if [ -n "${GH_FAIL:-}" ]; then echo "gh: HTTP 502: Bad Gateway (fake)" >&2; exit 1; fi
 case "$2" in
   */annotations) printf '%s' "${GH_NOTES:-[]}" ;;
+  */actions/jobs/*/logs) [ -z "${GH_NO_JOB:-}" ] || { echo "gh: HTTP 404: Not Found (fake)" >&2; exit 1; }
+    printf '%s' "$GH_LOG" ;;
+  */actions/jobs/*) [ -z "${GH_NO_JOB:-}" ] || { echo "gh: HTTP 404: Not Found (fake)" >&2; exit 1; }
+    printf '%s' "$GH_JOB" ;;
   */commits/*/check-runs*) printf '%s' "$GH_RUNS" ;;
   */commits/*/status*) printf '%s' "$GH_STATUS" ;;
   */commits/*) [ -z "${GH_NO_COMMIT:-}" ] || { echo "gh: HTTP 422: No commit found for SHA (fake)" >&2; exit 1; }
@@ -43,7 +47,19 @@ esac
 
 def runs(*items):
     return {"total_count": len(items), "check_runs": [
-        {"name": n, "status": "completed" if c else "in_progress", "conclusion": c} for n, c in items]}
+        {"id": 100 + i, "name": n, "status": "completed" if c else "in_progress", "conclusion": c,
+         "html_url": f"https://github.com/o/r/runs/{100 + i}"} for i, (n, c) in enumerate(items)]}
+
+
+STAMP = "2026-11-10T12:00:00.1234567Z "
+JOB = {"html_url": "https://github.com/o/r/actions/runs/7/job/100", "steps": [
+    {"name": "Set up job", "conclusion": "success"}, {"name": "Check", "conclusion": "failure"},
+    {"name": "Post", "conclusion": "skipped"}]}
+LOG = "\n".join(STAMP + line for line in [
+    "\ufeffSetting up", "##[group]Run actions/checkout@v4", "with: x", "##[endgroup]", "checked out",
+    "##[group]Run bash tests/check.sh", "bash tests/check.sh", "shell: /usr/bin/bash -e {0}", "##[endgroup]",
+    "== unit", "ok 1", "ok 2", "FAIL: test_thing (test_x.Thing)", "AssertionError: 1 != 2",
+    "##[error]Process completed with exit code 1.", "##[group]Run actions/cache/save", "cache", "##[endgroup]"])
 
 
 def statuses(*items):
@@ -82,7 +98,8 @@ class CiStatus(unittest.TestCase):
         full = dict(self.env, PATH=path or f"{self.bin}:{self.env['PATH']}",
                     GH_RUNS=json.dumps(run if run is not None else runs(("build", "success"))),
                     GH_STATUS=json.dumps(status if status is not None else statuses()),
-                    GH_COMMIT=json.dumps({"sha": "b" * 40}), CURL_LOG=str(self.tmp / "curl.log"))
+                    GH_COMMIT=json.dumps({"sha": "b" * 40}), CURL_LOG=str(self.tmp / "curl.log"),
+                    GH_JOB=json.dumps(JOB), GH_LOG=LOG)
         full.update(env or {})
         r = subprocess.run([sys.executable, "-I", str(SCRIPT), "--root", str(self.work), *args], capture_output=True,
                            text=True, env=full, cwd=self.tmp)
@@ -225,6 +242,80 @@ class CiStatus(unittest.TestCase):
     def test_ciignore_validates_in_the_config(self):
         self.config({"ciIgnore": [""]})
         self.assertCi(self.ci(), 2, "ciIgnore")
+
+    # D56: --failed ------------------------------------------------------------------------------------------------
+    def test_failed_prints_the_step_its_error_lines_and_the_log_url(self):
+        code, out = self.ci("--failed", run=runs(("build", "success"), ("macos", "failure")))
+        self.assertCi((code, out), 1, "red", "macos: step 'Check' failed", JOB["html_url"], "Run bash tests/check.sh",
+                      "FAIL: test_thing", "AssertionError: 1 != 2", "error: Process completed with exit code 1.")
+        for gone in ("2026-11-10T", "shell: /usr/bin/bash", "checked out", "actions/cache/save", "Setting up"):
+            self.assertNotIn(gone, out)  # timestamps, the folded command echo and the other steps
+
+    def test_failed_caps_the_lines_from_the_config_and_the_flag(self):
+        self.config({"ciFailedLines": 3})
+        code, out = self.ci("--failed", run=runs(("build", "failure")))
+        self.assertCi((code, out), 1, "Run bash tests/check.sh", "AssertionError", "exit code 1",
+                      "4 earlier line(s) of the step left out", "--lines N")
+        self.assertNotIn("FAIL: test_thing", out)  # the cut keeps the end, where the error is
+        code, out = self.ci("--failed", "--lines", "20", run=runs(("build", "failure")))
+        self.assertCi((code, out), 1, "== unit", "FAIL: test_thing")
+        self.assertNotIn("left out", out)
+
+    def test_failed_lines_must_be_positive(self):
+        code, out = self.ci("--failed", "--lines", "0", run=runs(("build", "failure")))
+        self.assertEqual(code, 2, out)
+        self.assertIn("--lines must be 1 or more", out)
+
+    def test_failed_lines_validates_in_the_config(self):
+        self.config({"ciFailedLines": 0})
+        self.assertCi(self.ci(), 2, "ciFailedLines")
+
+    def test_failed_without_a_readable_job_gives_only_the_url(self):
+        code, out = self.ci("--failed", run=runs(("lint-app", "failure")), env={"GH_NO_JOB": "1"})
+        self.assertCi((code, out), 1, "lint-app; whole log: https://github.com/o/r/runs/100", "(no log:", "404")
+        self.assertNotIn("Process completed", out)
+
+    def test_failed_commit_status_gives_its_url(self):
+        st = {"statuses": [{"context": "deploy", "state": "failure", "target_url": "https://ci.example/9"}]}
+        self.assertCi(self.ci("--failed", status=st), 1, "deploy; whole log: https://ci.example/9")
+
+    def test_failed_json_lists_each_job(self):
+        code, out = self.ci("--failed", "--json", run=runs(("build", "failure")))
+        self.assertEqual(code, 1, out)
+        item, = json.loads(out)["failed"]
+        self.assertEqual((item["name"], item["step"], item["url"], item["cut"]), ("build", "Check", JOB["html_url"], 0))
+        self.assertEqual(item["lines"][0], "Run bash tests/check.sh")
+        self.assertEqual(item["lines"][-1], "error: Process completed with exit code 1.")
+
+    def test_failed_on_green_or_pending_reads_no_log(self):
+        code, out = self.ci("--failed", env={"GH_LOG": "SHOULD NOT SHOW"})
+        self.assertCi((code, out), 0, "green")
+        self.assertNotIn("whole log", out)
+        self.assertCi(self.ci("--failed", run=runs(("slow", None))), 1, "pending", "nothing has failed yet")
+
+    def test_failed_on_jobs_github_never_started_says_so(self):
+        data = runs(("build", "failure"))
+        data["check_runs"][0]["output"] = {"title": "The job was not started because your account is locked due "
+                                                    "to a billing issue", "summary": "spending limit needs to be "
+                                                                                     "increased"}
+        code, out = self.ci("--failed", run=data)
+        self.assertCi((code, out), 1, "GitHub never started these jobs")
+        self.assertNotIn("whole log", out)
+
+
+class LogExcerpt(unittest.TestCase):
+    def setUp(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("ci_status", SCRIPT)
+        self.mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.mod)
+
+    def test_a_log_without_error_lines_gives_its_tail(self):
+        log = "\n".join(f"{STAMP}line {i}" for i in range(10))
+        self.assertEqual(self.mod.log_excerpt(log, 3), (["line 7", "line 8", "line 9"], 7))
+
+    def test_errors_without_a_step_header_start_at_the_top(self):
+        self.assertEqual(self.mod.log_excerpt("a\n##[error]boom\nlater", 5), (["a", "error: boom"], 0))
 
 
 if __name__ == "__main__":

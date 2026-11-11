@@ -274,6 +274,12 @@
       "default": true,
       "description": "true: .github/workflows/check.yml runs on every push outside the protected branch and on every pull request. false: only on pull requests (apply.py renders its push filter as branches-ignore: ['**']; rerun apply.py --update after changing it). ciIgnore and required checks still go by name."
     },
+    "ciFailedLines": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 40,
+      "description": "ci-status.py --failed: at most this many lines of each red job's log (the end of the step that failed, from its first error line back); --lines overrides it. The URL of the whole log is always printed."
+    },
     "shellcheckVersion": {
       "type": "string",
       "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
