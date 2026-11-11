@@ -113,6 +113,17 @@ class CheckSummary(unittest.TestCase):
         self.assertIn("\ntty=1\n", self.log(), "the log still gets the output")
         self.assertNotIn("\r", self.log())
 
+    def test_on_a_terminal_the_command_runs_with_bash_whatever_shell_is_set_and_the_log_has_no_script_lines(self):
+        self.configure(["[[ 1 == 1 ]] && echo bashism=$((1+0))"])
+        old = os.environ.get("SHELL")
+        os.environ["SHELL"] = "/bin/sh"
+        self.addCleanup(lambda: os.environ.__setitem__("SHELL", old) if old else os.environ.pop("SHELL", None))
+        code, out = self.run_check_on_tty()
+        self.assertEqual(code, 0, out)
+        self.assertIn("\nbashism=1\n", out)
+        self.assertNotIn("Script started", self.log())
+        self.assertNotIn("Script done", self.log())
+
     def test_the_default_mode_on_a_terminal_keeps_the_exit_code_and_the_failed_section(self):
         self.configure(["echo FAILED: unit; exit 3"])
         code, out = self.run_check_on_tty()
