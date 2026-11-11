@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **Arreglos de la `0.5.2` hechos (2026-11-11)**: fusionados, revisión de cierre hecha (2 huecos arreglados en `43e14b5`). **Siguiente:** los evolutivos de la `0.6` (B26-B29, D82, D84-D86, E43) con el dealer y la subida a `main` con el usuario. Presupuesto de compactaciones: 1 (usada 1) |
+| Siguiente paso | **Evolutivos de la `0.6` (2026-11-11), con el dealer:** fusionados D85, D86, B28 y B26; en obra B29 y D82+B27 (ramas `agent/*`). **Siguiente:** fusionarlas; D84 y E43 en serie (comparten el config); un check sobre la ola, limpiar worktrees, y `main` con el usuario. Presupuesto de compactaciones: 2 (usadas 2) |
 
 ### Fases
 
@@ -43,14 +43,16 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-11 — Arreglos de la `0.5.2` (D70-D79, D88, B22-B25, E38-E40) con el dealer: 8 ramas `agent/*` revisadas y fusionadas; el detalle, en sus commits y en el roadmap. Claves nuevas: `checkLogKeep`, `stopTranscriptBytes`, `stopSubagentMaxAge`.
-2. 2026-11-11 — Revisión de bloque (`f00a5e6..d7dc74e`): 8 hallazgos arreglados con 7 tests (`pre-push`, `roadmap.py`, `ci-status.py --failed`); 2 descartados (D49 y D53, ya en Pendiente).
+1. 2026-11-11 — Evolutivos `0.6` con el dealer: D85 (`recover.py` avisa de revisión de bloque atrasada), D86 (`merge-branch.sh` guía el conflicto de la bitácora), B28 (agente `gw-worker`), B26 (`whole-read.py`, clave `wholeReadWarnBytes`); revisados y arreglados.
+2. 2026-11-11 — Arreglos de la `0.5.2` (D70-D79, D88, B22-B25, E38-E40) con el dealer: 8 ramas `agent/*` revisadas y fusionadas; el detalle, en sus commits y en el roadmap. Claves nuevas: `checkLogKeep`, `stopTranscriptBytes`, `stopSubagentMaxAge`.
 3. 2026-11-11 — H18: 28 propuestas (8 proyectos) y 14 hallazgos de la revisión `0.5.1` del instalador, decididos por el usuario y repartidos en el roadmap (es/en) con ids; P6 del portal descartada.
-4. 2026-11-11 — D56: `ci-status.py --failed`: de cada job en rojo, el paso que falló y el final de su registro (tope `ciFailedLines`) y la URL del registro; 11 tests.
-5. 2026-11-11 — D55: `scripts/roadmap.py show|done <id>` (una fila en cada idioma, a la vez o en ninguno); clave `roadmapFiles`; 13 tests.
 
 ## Pendiente
 
+- **D85:** las llamadas a git de `change-size.py` desde `recover.py` no tienen timeout; el patrón de importlib está duplicado (`harvest.py:55`).
+- **B28:** `apply.py` no detecta agentes huérfanos en `.claude/agents/`.
+- **B26:** en un worktree bajo `.claude/worktrees/`, las rutas se comparan con la raíz principal, no con la del worktree.
+- **Dealer:** las filas del roadmap que marcan los subagentes chocan al fusionar (filas contiguas): las marca la sesión principal tras fusionar.
 - **D76:** el `.steal` sin pid se descarta tras 1 s: con un `ps` lento, dos procesos pueden robar a la vez un candado vivo.
 - **E38:** un valor de varias palabras con mayúsculas y sin dígitos sigue pasando como prosa en un `.md`.
 - **E39:** la rama BSD de `script(1)` no se prueba en Linux.
