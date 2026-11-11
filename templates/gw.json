@@ -40,6 +40,8 @@
   "proposalsDir": "docs/proposals",
   "ciLocalLog": "docs/records/ci-local.md",
   "ciLocalWorkflows": [],
+  "ciNodeDirs": ["."],
+  "ciRustDirs": [],
   "ciIgnore": [],
   "releaseDocs": [],
   "marketingSheets": {"sources": [], "outDir": "docs/mkt", "maxPages": 1, "css": "", "timeout": 120},

@@ -175,12 +175,15 @@ class Templates(unittest.TestCase):
     def test_ci_sets_up_the_toolchain_from_the_project_files(self):
         text = (TEMPLATES / "github" / "check.yml").read_text()
         install = text.index("- name: Install")
-        for action, files in (("setup-node", "'package.json'"), ("setup-python", "'pyproject.toml'"),
+        for action, files in (("setup-node", None), ("setup-python", "'pyproject.toml'"),
                               ("setup-java", "'pom.xml'")):
             with self.subTest(action=action):
                 at = text.index(f"actions/{action}@")
                 self.assertLess(at, install, f"{action} must run before Install")
-                self.assertIn(f"if: hashFiles({files}", text[at:install])
+                if files is None:  # D84: Node goes by the `dirs` step (ciNodeDirs)
+                    self.assertIn("if: needs.versions.outputs.node == 'true'", text[at:install])
+                else:
+                    self.assertIn(f"if: hashFiles({files}", text[at:install])
 
     def ci_install(self, **keys):
         """Run the CI template's Install step in a temp project whose gw.json has `keys`; return the commands run."""
@@ -229,7 +232,7 @@ class Templates(unittest.TestCase):
     def ci_python(self, pyfiles=("pyproject.toml",), **keys):
         """Run the CI template's `versions` step in a temp project; return (result, matrix JSON or None)."""
         text = (TEMPLATES / "github" / "check.yml").read_text()
-        step = text.split("      - id: python\n        run: |\n", 1)[1].split("  check:", 1)[0]
+        step = text.split("      - id: python\n        run: |\n", 1)[1].split("      - id: dirs", 1)[0]
         script = "\n".join(l[10:] for l in step.splitlines())
         tmp = Path(tempfile.mkdtemp(prefix="gw-ci-")).resolve()
         self.addCleanup(shutil.rmtree, tmp, True)
@@ -297,6 +300,88 @@ class Templates(unittest.TestCase):
         text = (TEMPLATES / "github" / "check.yml").read_text()
         self.assertIn("fromJSON(needs.versions.outputs.python)", text)
         self.assertIn("python-version: ${{ matrix.python }}", text)
+
+    def ci_dirs(self, files=(), **keys):
+        """Run the CI template's `dirs` step in a temp project with `files` (repo-relative); return (result, outputs)."""
+        text = (TEMPLATES / "github" / "check.yml").read_text()
+        step = text.split("      - id: dirs\n", 1)[1].split("        run: |\n", 1)[1].split("  check:", 1)[0]
+        script = "\n".join(l[10:] for l in step.splitlines())
+        tmp = Path(tempfile.mkdtemp(prefix="gw-ci-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        (tmp / ".claude" / "gw").mkdir(parents=True)
+        shutil.copytree(ROOT / "scripts", tmp / ".claude" / "gw" / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(ROOT / "schema", tmp / ".claude" / "gw" / "schema")
+        cfg = {"version": VERSION, "language": "en", "log": "docs/log.md", "protectedBranch": "main",
+               "pushToProtected": "direct", "check": ["true"], "reviewMark": "r.txt", "content": ["^docs/"]}
+        (tmp / ".claude" / "gw.json").write_text(json.dumps(dict(cfg, **keys)))
+        subprocess.run(["git", "init", "-q", str(tmp)], check=True)
+        for f in files:
+            (tmp / f).parent.mkdir(parents=True, exist_ok=True)
+            (tmp / f).write_text("")
+        out = tmp / "out.txt"
+        r = subprocess.run(["bash", "-e", "-c", script], cwd=tmp, capture_output=True, text=True,
+                           env=dict(os.environ, GITHUB_OUTPUT=str(out)))
+        return r, (out.read_text() if out.exists() else None)
+
+    def test_ci_dirs_default_keeps_the_root_node_and_no_rust(self):
+        for files, node in (((), "false"), (("package.json",), "true"), (("app/package.json", "Cargo.toml"), "false")):
+            with self.subTest(files=files):
+                r, out = self.ci_dirs(files)
+                self.assertEqual((r.returncode, out), (0, f"node={node}\nrust=false\nrust_workspaces<<GW_EOF\nGW_EOF\n"),
+                                 r.stderr)
+
+    def test_ci_node_dirs_one_or_several(self):
+        r, out = self.ci_dirs(("app/package.json",), ciNodeDirs=["app"])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(out.startswith("node=true\n"), out)
+        r, out = self.ci_dirs(("web/package.json",), ciNodeDirs=["app", "web"])
+        self.assertTrue(out.startswith("node=true\n"), out)
+        r, out = self.ci_dirs(("package.json",), ciNodeDirs=["app", "web"])
+        self.assertTrue(out.startswith("node=false\n"), out)
+        r, out = self.ci_dirs(("package.json",), ciNodeDirs=[])
+        self.assertTrue(out.startswith("node=false\n"), out)
+
+    def test_ci_rust_dirs_feed_rust_cache_one_workspace_per_line(self):
+        r, out = self.ci_dirs(("src-tauri/Cargo.toml", "tools/Cargo.toml", "docs/x"),
+                              ciRustDirs=["src-tauri", "missing", "tools"])
+        self.assertEqual((r.returncode, out),
+                         (0, "node=false\nrust=true\nrust_workspaces<<GW_EOF\nsrc-tauri\ntools\nGW_EOF\n"), r.stderr)
+        r, out = self.ci_dirs(("Cargo.toml",), ciRustDirs=["missing"])
+        self.assertIn("rust=false\n", out)
+
+    def test_ci_dirs_fail_closed_on_a_bad_value(self):
+        cases = ((dict(ciNodeDirs="app"), "$.ciNodeDirs: expected array"),
+                 (dict(ciNodeDirs=["/abs"]), "$.ciNodeDirs[0]: '/abs' does not match"),
+                 (dict(ciNodeDirs=["a/../b"]), "$.ciNodeDirs[0]: 'a/../b' does not match"),
+                 (dict(ciRustDirs=["a b"]), "$.ciRustDirs[0]: 'a b' does not match"),
+                 (dict(ciRustDirs=["a", "a"]), "$.ciRustDirs[1]: duplicate"),
+                 (dict(ciRustDirs=[1]), "$.ciRustDirs[0]: expected string"))
+        for keys, needle in cases:
+            with self.subTest(keys=keys):
+                r, out = self.ci_dirs(**keys)
+                self.assertNotEqual(r.returncode, 0)
+                self.assertIn(needle, r.stderr)
+                self.assertIsNone(out)
+
+    def test_ci_template_uses_the_dirs_outputs_and_rust_cache(self):
+        text = (TEMPLATES / "github" / "check.yml").read_text()
+        self.assertIn("if: needs.versions.outputs.node == 'true'", text)
+        self.assertIn("uses: Swatinem/rust-cache@v2", text)
+        self.assertIn("workspaces: ${{ needs.versions.outputs.rust_workspaces }}", text)
+        self.assertNotIn("hashFiles('package.json')", text)
+        # a project-added toolchain step goes before the cache, which goes before Install
+        self.assertLess(text.index("actions/setup-java@"), text.index("A pinned Rust toolchain step"))
+        self.assertLess(text.index("A pinned Rust toolchain step"), text.index("Swatinem/rust-cache@v2"))
+        self.assertLess(text.index("Swatinem/rust-cache@v2"), text.index("- name: Install"))
+
+    def test_ci_template_is_valid_yaml(self):
+        try:
+            import yaml
+        except ImportError:
+            self.skipTest("PyYAML is not installed")
+        text = (TEMPLATES / "github" / "check.yml").read_text().replace("{{ciPushIgnore}}", "main")
+        doc = yaml.safe_load(text)
+        self.assertEqual(set(doc["jobs"]), {"versions", "check"})
 
     def test_ci_template_does_not_apply_check_wrapper_or_setup(self):
         text = (TEMPLATES / "github" / "check.yml").read_text()

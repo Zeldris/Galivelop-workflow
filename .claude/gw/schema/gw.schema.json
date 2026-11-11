@@ -340,6 +340,20 @@
       "uniqueItems": true,
       "description": "Python versions the CI template runs as a matrix (non-empty strings without spaces, e.g. [\"3.10\", \"3.13\"]; quote them so 3.10 is not read as 3.1). Absent: one job with \"3.x\". Not [] (use no key)."
     },
+    "ciNodeDirs": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$))\\S+$"},
+      "uniqueItems": true,
+      "default": ["."],
+      "description": "Repo-relative directories (no spaces) the CI template looks in for a package.json: Node is set up when any has one (\".\" is the root; [\"app\", \"web\"] for subfolders). [] never sets Node up."
+    },
+    "ciRustDirs": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$))\\S+$"},
+      "uniqueItems": true,
+      "default": [],
+      "description": "Repo-relative directories (no spaces) with a Cargo.toml whose build the CI template caches with Swatinem/rust-cache, one workspace each (e.g. [\"src-tauri\"]). [] (the default) caches nothing."
+    },
     "ciIgnore": {
       "type": "array",
       "items": {"type": "string", "minLength": 1},
