@@ -7,7 +7,9 @@
 #  - Before merging it reads `check` (at least one command) and `checkWrapper` from the config; if it cannot, it
 #    merges nothing and exits 2 (D77).
 #  - `git merge --no-ff`. On conflict it stops, lists the files and leaves the merge open (resolve it, or abort
-#    with: git merge --abort), exit 1.
+#    with: git merge --abort), exit 1. If the hand-off log (`log` of the config) is among them it says so (D86):
+#    when it is the only one, the commands to keep either side and close the merge; when there are others, that
+#    the log is not the only conflict.
 #  - then `check.sh --quiet` runs every `check` command of .claude/gw.json in the project root (E20): its registry
 #    stays in <git common dir>/gw/check-<sha>.log (never deleted here), it shows that run's summary and the closing
 #    `CHECK <ok|FAILED>: ...` line (not the last output lines), and a green is recorded for the pre-push. If it
@@ -115,8 +117,35 @@ fi
 
 if ! git merge --no-ff "$branch" -m "$message" > "$logs/merge.log" 2>&1; then
   conflicts="$(git diff --name-only --diff-filter=U)"
-  echo "merge-branch: CONFLICT (the merge stays open; resolve it and commit, or abort with: git merge --abort):"
-  printf '%s\n' "${conflicts:-$(tail -n 5 "$logs/merge.log")}" | sed 's/^/  /'
+  # D86: the hand-off log (`log` of the config) is the conflict of almost every parallel merge: say so and give the
+  # commands. Only when it is NOT the only conflicted file do the others come first.
+  log_file="$(python3 "$config" --root "$root" get log 2>/dev/null)" || log_file=""
+  log_hit=""; others=""
+  if [ -n "$log_file" ]; then
+    while IFS= read -r f; do
+      [ -n "$f" ] || continue
+      if [ "$f" = "$log_file" ]; then log_hit=1; else others="${others:+$others
+}$f"; fi
+    done <<EOF_CONFLICTS
+$conflicts
+EOF_CONFLICTS
+  fi
+  if [ -n "$log_hit" ] && [ -z "$others" ]; then
+    qlog="$(printf '%q' "$log_file")"
+    echo "merge-branch: CONFLICT only in the hand-off log ($log_file); the merge stays open. Each branch writes only its own row, so keep one side, then close the merge:"
+    echo "  keep this branch's log:  git checkout --ours -- $qlog && git add $qlog && git commit --no-edit"
+    echo "  keep $branch's log:  git checkout --theirs -- $qlog && git add $qlog && git commit --no-edit"
+    echo "  or merge the rows by hand: edit $qlog, then: git add $qlog && git commit --no-edit"
+    echo "  then check it: python3 $here/handoff.py check; to give up instead: git merge --abort"
+  elif [ -n "$log_hit" ]; then
+    echo "merge-branch: CONFLICT (the merge stays open; resolve it and commit, or abort with: git merge --abort):"
+    printf '%s\n' "$conflicts" | sed 's/^/  /'
+    qlog="$(printf '%q' "$log_file")"
+    echo "merge-branch: the hand-off log ($log_file) is one of them, but NOT the only one: resolve the other files first. For the log, keep one side with: git checkout --ours -- $qlog (or --theirs), or edit it; then git add the files and: git commit --no-edit"
+  else
+    echo "merge-branch: CONFLICT (the merge stays open; resolve it and commit, or abort with: git merge --abort):"
+    printf '%s\n' "${conflicts:-$(tail -n 5 "$logs/merge.log")}" | sed 's/^/  /'
+  fi
   exit 1
 fi
 if [ "$(git rev-parse HEAD)" = "$before" ]; then

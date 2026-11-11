@@ -1227,13 +1227,13 @@ class PrepushBranches(Base):
 
 
 class MergeBranch(Base):
-    def agent(self, name="worktree-agent-1", path="a.txt", text="from the agent\n", message="agent work"):
+    def agent(self, name="worktree-agent-1", path="a.txt", text="from the agent\n", message="agent work", env=DAY):
         """A subagent's branch with its worktree (under .claude/worktrees/) and one commit."""
         wt = self.p.work / ".claude" / "worktrees" / name
         self.p.git("worktree", "add", "-q", "-b", name, str(wt))
         (wt / path).write_text(text)
         self.p.git("add", "-A", cwd=wt)
-        self.p.git("commit", "-q", "-m", message, cwd=wt, env=DAY)
+        self.p.git("commit", "-q", "-m", message, cwd=wt, env=env)
         return wt
 
     def merge_trailers(self):
@@ -1574,6 +1574,61 @@ class MergeBranch(Base):
         self.assertTrue((self.p.work / ".git" / "MERGE_HEAD").is_file())
         self.assertTrue(wt.exists())
         self.assertIn("worktree-agent-1", self.branches())
+
+    def conflict(self, log, other=None):
+        """An agent branch and main that both edit `log` (and `other`, if given) so the merge conflicts."""
+        wt = self.agent(path=log, text="agent log\n", env=dict(DAY, GW_SHARED_LOG="1"))  # on purpose: it forces the conflict
+        if other:
+            (wt / other).parent.mkdir(parents=True, exist_ok=True)
+            (wt / other).write_text("agent other\n")
+            self.p.git("add", "-A", cwd=wt)
+            self.p.git("commit", "-q", "-m", "agent other", cwd=wt, env=DAY)
+            self.p.write(other, "main other\n")
+        self.p.write(log, "main log\n")
+        self.p.commit("main edits", env=dict(DAY, GW_SHARED_LOG="1"))
+
+    def test_conflict_only_in_the_log_gives_the_commands(self):
+        self.conflict(LOG)
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"CONFLICT only in the hand-off log ({LOG})", out)
+        self.assertIn(f"git checkout --ours -- {LOG} && git add {LOG} && git commit --no-edit", out)
+        self.assertIn(f"git checkout --theirs -- {LOG}", out)
+        self.assertIn("git merge --abort", out)
+        self.assertTrue((self.p.work / ".git" / "MERGE_HEAD").is_file())
+
+    def test_conflict_in_the_log_and_another_file_does_not_claim_it_is_only_the_log(self):
+        self.conflict(LOG, other="docs/notes.md")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
+        self.assertEqual(code, 1, out)
+        self.assertNotIn("only in the hand-off log", out)
+        self.assertIn("docs/notes.md", out)
+        self.assertIn(f"the hand-off log ({LOG}) is one of them, but NOT the only one", out)
+
+    def test_conflict_elsewhere_keeps_the_old_message(self):
+        self.conflict("docs/notes.md")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/notes.md", out)
+        self.assertNotIn("hand-off log", out)
+
+    def test_the_log_path_comes_from_the_config(self):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["log"] = "notes/relay.md"
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.write("notes/relay.md", "relay\n")
+        self.p.commit("log moves", env=DAY)
+        self.conflict("notes/relay.md")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
+        self.assertEqual(code, 1, out)
+        self.assertIn("CONFLICT only in the hand-off log (notes/relay.md)", out)
+        self.assertIn("git checkout --ours -- notes/relay.md", out)
+
+    def test_no_conflict_prints_no_log_advice(self):
+        self.agent()
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("hand-off log", out)
 
     def test_failing_check_says_how_to_undo_and_keeps_the_branch(self):
         shutil.rmtree(self.tmp)

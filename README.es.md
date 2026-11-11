@@ -154,7 +154,7 @@ comprobación.
 
 Deterministas, en Python y en bash compatible con la versión de macOS: `apply.py` (montar el flujo), `doctor.py`
 (diagnóstico con la orden que arregla cada problema), `reviewed.sh` (marca de revisión), `recover.py` (estado
-tras `/clear`), `merge-branch.sh` (traer la rama de un subagente, `agent/<id>-<tema>`, con el check en verde, sus `Refs:` en el mensaje de la fusión y limpiar su copia de trabajo),
+tras `/clear`), `merge-branch.sh` (traer la rama de un subagente, `agent/<id>-<tema>`, con el check en verde, sus `Refs:` en el mensaje de la fusión, la orden para resolver un conflicto en la bitácora y limpiar su copia de trabajo),
 `check.sh` (el check, con su verde apuntado, cerrojo y registro), `handoff.py` (la bitácora), `version.py` (versión
 y comprobaciones de la publicación), `private-check.py`, `ci-status.py` y `ci-local.py` (el CI, remoto y en local),
 `red-without-fix.sh`, `harvest.py` y las comprobaciones de enlaces y del mapa para agentes.
