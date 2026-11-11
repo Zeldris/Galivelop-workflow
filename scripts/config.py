@@ -301,6 +301,11 @@ def models(config):
     return _section(config, "models")
 
 
+def measure(config):
+    """The `measure` key as a dict (minCalls) (B29)."""
+    return _section(config, "measure")
+
+
 def test_map(config):
     """The `testMap` key as a dict (rules, command) (E21)."""
     return _section(config, "testMap")
@@ -781,7 +786,7 @@ def main(argv=None):
         scope, reason = push_scope(config, [line for line in sys.stdin.read().splitlines() if line])
         print(f"{scope} {reason}" if reason else scope)
         return 0
-    value = dict(config, metrics=metrics(config), models=models(config))  # inner keys fill from the schema too
+    value = dict(config, metrics=metrics(config), models=models(config), measure=measure(config))  # inner keys fill from the schema too
     for part in args.key.split("."):
         if not isinstance(value, dict) or part not in value or part.startswith("_"):
             print(f"gw config: key '{args.key}' is not set and has no default", file=sys.stderr)

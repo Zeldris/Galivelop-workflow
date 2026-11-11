@@ -22,7 +22,7 @@ retries and redone work.
 
 ## Steps
 
-1. **Measure, do not remember.** Run `python3 <skill folder>/scripts/measure.py` (newest session, last 24 h). Options:
+1. **Measure, do not remember.** Run `python3 <skill folder>/scripts/measure.py` (newest session, last 24 h; if it has fewer than `measure.minCalls` calls, e.g. after a `/clear`, the previous session of the same branch, and it says so). Options:
    `--hours N` (`0` = whole session), `--since <ISO|sha>` (from a date or a commit), `--session <path>`, `--top N`;
    `--help` lists them. The script finds the project root with `git rev-parse --show-toplevel` and the session log in
    the repo's folder or a parent folder, warning on stderr if the session was opened outside the repo. Read only its

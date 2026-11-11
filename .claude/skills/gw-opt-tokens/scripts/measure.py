@@ -20,6 +20,10 @@ stderr: that session may belong to another project, and it did not load the repo
 cloud session (`CLAUDE_CODE_REMOTE=true`) the start folder `-home-user` is the normal one and gives no warning. Last
 resort: the log folder of the home directory's cloud start (`-home-user`). Pass `--session` to skip the search.
 
+Short current session (B29): without `--session`, if the session found has fewer than `measure.minCalls` calls in the
+period (default 5, config `measure.minCalls`, 0 = off; e.g. right after a `/clear`), the newest previous session of the
+same git branch (log lines carry `gitBranch`) with calls in the period is measured instead, and the output says so.
+
 Tokens of a result are estimated from its size (characters / 3.5; an image counts ~1,600). API usage is exact.
 """
 import argparse
@@ -70,11 +74,8 @@ def folder_of(path):
     return re.sub(r'[^A-Za-z0-9]', '-', path)
 
 
-def default_session(root, since=None):
-    """Newest `.jsonl` of the root's log folder or of a parent folder's; exits if there is none.
-    With `since`, the one with most responses from that moment on (the newest file may be a later session that
-    does not cover the period); the newest if none has any."""
-    root = os.path.abspath(root)
+def session_logs(root):
+    """Every `.jsonl` session log of the root's log folder, of its parents' and of the cloud start folder."""
     folders, current = [], root
     while True:
         folders.append(folder_of(current))
@@ -83,8 +84,86 @@ def default_session(root, since=None):
             break
         current = parent
     folders.append('-home-user')  # cloud sessions start in /home/user whatever repo they work on
-    candidates = [p for f in dict.fromkeys(folders)
-                  for p in glob.glob(os.path.expanduser(f'~/.claude/projects/{f}/*.jsonl'))]
+    return [p for f in dict.fromkeys(folders) for p in glob.glob(os.path.expanduser(f'~/.claude/projects/{f}/*.jsonl'))]
+
+
+def default_min_calls(root):
+    """The schema default of `measure.minCalls` (one datum, one place): from the workflow's schema next to this
+    script (the repo's `schema/` or an installed `.claude/gw/schema/`) or the project's own; 0 (off) if none is found."""
+    here = os.path.dirname(os.path.abspath(__file__))
+    for path in (os.path.join(here, '..', '..', '..', 'schema', 'gw.schema.json'),
+                 os.path.join(here, '..', '..', '..', 'gw', 'schema', 'gw.schema.json'),
+                 os.path.join(root, '.claude', 'gw', 'schema', 'gw.schema.json')):
+        try:
+            with open(path, encoding='utf-8') as f:
+                return int(json.load(f)['properties']['measure']['properties']['minCalls']['default'])
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+    return 0
+
+
+def min_calls(root):
+    """`measure.minCalls` from the project's config reader (installed copy first, then this repo's own); the schema
+    default when there is no config, no reader, the config is malformed or the answer is not a non-negative integer."""
+    default = default_min_calls(root)
+    if not os.path.isfile(os.path.join(root, '.claude', 'gw.json')):
+        return default
+    for rel in ('.claude/gw/scripts/config.py', 'scripts/config.py'):
+        reader = os.path.join(root, rel)
+        if os.path.isfile(reader):
+            try:
+                r = subprocess.run([sys.executable, reader, '--root', root, 'get', 'measure.minCalls'],
+                                   capture_output=True, text=True)
+            except OSError:
+                return default
+            value = r.stdout.strip()
+            return int(value) if r.returncode == 0 and value.isdigit() else default
+    return default
+
+
+def branch_of(path):
+    """The LAST `gitBranch` a log has (a session may switch branch: its branch is the one it ends on), or None."""
+    branch = None
+    try:
+        with open(path, encoding='utf-8') as log:
+            for line in log:
+                try:
+                    d = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(d, dict) and d.get('gitBranch'):
+                    branch = d['gitBranch']
+    except OSError:
+        pass
+    return branch
+
+
+def newest_session(root):
+    """The current session: the newest log (mtime, then name) of the project, whatever the period; None if none."""
+    logs = session_logs(os.path.abspath(root))
+    return max(logs, key=lambda p: (os.path.getmtime(p), p)) if logs else None
+
+
+def previous_session(path, root, since):
+    """The newest other log of the project whose branch is the one of `path` and that has calls in the period
+    (ties in mtime: the greater file name); (that log or None, the branch or None)."""
+    branch = branch_of(path)
+    if not branch:
+        return None, None
+    others = sorted((p for p in session_logs(os.path.abspath(root)) if os.path.abspath(p) != os.path.abspath(path)),
+                    key=lambda p: (os.path.getmtime(p), p), reverse=True)
+    for p in others:
+        if branch_of(p) == branch and responses_of(p, since):
+            return p, branch
+    return None, branch
+
+
+def default_session(root, since=None):
+    """Newest `.jsonl` of the root's log folder or of a parent folder's; exits if there is none.
+    With `since`, the one with most responses from that moment on (the newest file may be a later session that
+    does not cover the period); the newest if none has any."""
+    root = os.path.abspath(root)
+    candidates = session_logs(root)
     if not candidates:
         sys.exit(f'No sessions in ~/.claude/projects/{folder_of(root)}/ or its parent folders (use --session)')
     path = max(candidates, key=os.path.getmtime)
@@ -236,6 +315,22 @@ def main():
     elif a.hours > 0:
         since = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=a.hours)
     path = a.session or default_session(root, since)
+    note = None
+    threshold = 0 if a.session else min_calls(root)
+    current = newest_session(root) if threshold else None  # the session in progress, not the one with most calls
+    if current:
+        have = len(responses_of(current, since))
+        if have < threshold:
+            before, branch = previous_session(current, root, since)
+            if before:
+                note = (f'Note: the current session has {have} calls (under measure.minCalls = {threshold}); '
+                        f'measuring the previous session of branch {branch}: {os.path.basename(before)}')
+                path = before
+            else:
+                path = current if have and branch else path  # no branch to compare: keep the usual choice
+                note = (f'Note: the current session has {have} calls (under measure.minCalls = {threshold}) and '
+                        f'there is no previous session of {"branch " + branch if branch else "its branch"}: '
+                        f'measuring {os.path.basename(path)}')
 
     usage = collections.Counter()
     api_calls = 0
@@ -335,6 +430,8 @@ def main():
     period = ('whole session' if not since else f'since {since:%Y-%m-%d %H:%M} UTC' if a.since
               else f'last {a.hours:g} h')
     print(f'Session: {os.path.basename(path)}  |  period: {period}')
+    if note:
+        print(note)
     print(f'API calls: {api_calls}  |  compactions: {len(cuts)}')
     print(f'Input {total_in:,.0f} tokens (cache read {usage["cache_read_input_tokens"]:,.0f} = '
           f'{100 * usage["cache_read_input_tokens"] / max(total_in, 1):.0f} %, written '

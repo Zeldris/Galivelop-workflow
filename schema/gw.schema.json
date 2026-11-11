@@ -647,6 +647,19 @@
       "default": [],
       "description": "D55: the roadmap in each language, the source first; roadmap.py show <id> prints the task's row from each one and roadmap.py done <id> marks it done in all of them at once. [] turns the script off (it says so). Not the reserved `roadmap` key."
     },
+    "measure": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "minCalls": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 5,
+          "description": "B29: calls below which measure.py (skill gw-opt-tokens) measures the previous session of the same branch instead of the current one (right after a /clear the current one has almost nothing), and says so. 0 = always the current one."
+        }
+      },
+      "default": {"minCalls": 5}
+    },
     "models": {
       "type": "object",
       "additionalProperties": false,
