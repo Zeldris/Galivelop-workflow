@@ -82,14 +82,14 @@ class CheckSummary(unittest.TestCase):
         self.assertNotIn("err-4", out)
         self.assertIn("err-4", err)
 
-    def run_check_on_tty(self, *args, env=None):
+    def run_check_on_tty(self, *args, env=None, stdin_tty=False):
         """Runs check.sh with a pseudo-terminal as its stdout/stderr (what a person at a terminal has)."""
         import pty
         master, slave = pty.openpty()
         env = dict(os.environ, GW_CHECK_CACHE="0", **(env or {}))
         env.pop("GW_CHECK_QUIET", None)
-        proc = subprocess.Popen(["bash", str(self.repo / "scripts" / "check.sh"), *args], stdin=subprocess.DEVNULL,
-                                stdout=slave, stderr=slave, env=env)
+        proc = subprocess.Popen(["bash", str(self.repo / "scripts" / "check.sh"), *args],
+                                stdin=slave if stdin_tty else subprocess.DEVNULL, stdout=slave, stderr=slave, env=env)
         os.close(slave)
         chunks = []
         while True:
@@ -122,12 +122,16 @@ class CheckSummary(unittest.TestCase):
             self.assertIn("\n" + line + "\n", self.log(), line + " did not run")
         self.assertEqual(out.count(" ok "), 3, out)
 
-    def test_with_bsd_script_its_stdin_is_a_terminal_so_no_eof_reaches_the_pty(self):
+    def fake_bsd_bin(self, ps_line=None):
         # macOS: script(1) turns EOF on its stdin into a ^D written to the pty, echoed as "^D" before the output, and
         # fails on a fifo (tcgetattr). A fake BSD script (and uname saying Darwin) does the same: it accepts a terminal,
         # refuses a fifo and prints ^D when its stdin ends at once.
         fake = self.tmp / "bin"
         fake.mkdir()
+        names = ["uname", "script"]
+        if ps_line is not None:
+            (fake / "ps").write_text("#!/bin/bash\necho '%s'\n" % ps_line)
+            names.append("ps")
         (fake / "uname").write_text("#!/bin/bash\necho Darwin\n")
         (fake / "script").write_text(
             "#!/bin/bash\n"
@@ -139,14 +143,31 @@ class CheckSummary(unittest.TestCase):
             "else start=$SECONDS; IFS= read -r -t 2 _; [ $((SECONDS - start)) -ge 1 ] || printf '^D\\b\\b'; fi\n"
             "\"$@\" > \"$log\" 2>&1; rc=$?\n"
             "cat \"$log\"; exit $rc\n")
-        for name in ("uname", "script"):
+        for name in names:
             (fake / name).chmod(0o755)
         self.configure(["echo first=$((1+0))", "echo second=$((2+0))"])
-        code, out = self.run_check_on_tty(env={"PATH": str(fake) + os.pathsep + os.environ["PATH"]})
+        return {"PATH": str(fake) + os.pathsep + os.environ["PATH"]}
+
+    def assert_both_ran(self, code, out):
         self.assertEqual(code, 0, out)
-        self.assertNotIn("^D", out)
         for line in ("first=1", "second=2"):
             self.assertIn("\n" + line + "\n", self.log(), line + " did not run")
+
+    def test_with_bsd_script_its_stdin_is_the_terminal_of_stdout_so_no_eof_reaches_the_pty(self):
+        code, out = self.run_check_on_tty(env=self.fake_bsd_bin())
+        self.assert_both_ran(code, out)
+        self.assertNotIn("^D", out)
+
+    def test_with_bsd_script_and_a_terminal_on_stdin_it_reads_that_one_not_the_list(self):
+        code, out = self.run_check_on_tty(env=self.fake_bsd_bin(), stdin_tty=True)
+        self.assert_both_ran(code, out)
+        self.assertNotIn("^D", out)
+
+    def test_with_bsd_script_in_the_background_of_its_terminal_it_gets_dev_null(self):
+        # script would set the terminal raw and be stopped by SIGTTOU: /dev/null instead, and the ^D is accepted
+        code, out = self.run_check_on_tty(env=self.fake_bsd_bin(ps_line="  100   200"))
+        self.assert_both_ran(code, out)
+        self.assertIn("^D", out)
 
     def test_on_a_terminal_the_command_runs_with_bash_whatever_shell_is_set_and_the_log_has_no_script_lines(self):
         self.configure(["[[ 1 == 1 ]] && echo bashism=$((1+0))"])

@@ -115,6 +115,12 @@ echo "check: log: $log"
 summary=""
 failed_cmd=""
 failed_section=""
+in_background() {  # true when the check has a controlling terminal whose foreground process group is not its own
+  # shellcheck disable=SC2046  # word splitting wanted: "pgid tpgid"
+  set -- $(ps -o pgid= -o tpgid= -p $$ 2>/dev/null)
+  [ -n "${2:-}" ] && [ "$2" -gt 0 ] 2>/dev/null && [ "$1" != "$2" ]
+}
+exec 3<&0  # the check's own stdin: inside the loop, stdin is the list of commands
 while IFS= read -r cmd; do
   [ -n "$cmd" ] || continue
   [ -z "$wrapper" ] || cmd="$wrapper bash -c '$(printf '%s' "$cmd" | sed "s/'/'\\\\''/g")'"
@@ -123,7 +129,7 @@ while IFS= read -r cmd; do
   printf '== %s\n' "$cmd" >> "$log"
   offset="$(wc -c < "$log" | tr -d ' ')"
   if [ -n "$quiet" ]; then
-    GW_PUSH_PROTECTED=false bash -c "$cmd" < /dev/null >> "$log" 2>&1
+    GW_PUSH_PROTECTED=false bash -c "$cmd" < /dev/null 3<&- >> "$log" 2>&1
     rc=$?
   elif [ -t 1 ] && pty_flavor="$(script_flavor)" && [ -n "$pty_flavor" ]; then
     # E39: on a terminal the command keeps one (isatty, colours, progress bars): it runs inside a pty made by script(1),
@@ -131,16 +137,20 @@ while IFS= read -r cmd; do
     ptylog="$(mktemp "${TMPDIR:-/tmp}/gw-check-pty.XXXXXX")" || fail "cannot create a file in ${TMPDIR:-/tmp}; free space or set TMPDIR to a writable folder"
     if [ "$pty_flavor" = linux ]; then
       # SHELL=bash: script runs it with $SHELL -c; stdin from /dev/null, or script feeds the rest of the check list to the pty
-      GW_PUSH_PROTECTED=false SHELL=bash script -qefc "$cmd" "$ptylog" < /dev/null
+      GW_PUSH_PROTECTED=false SHELL=bash script -qefc "$cmd" "$ptylog" < /dev/null 3<&-
       rc=$?
     else
       # BSD script turns EOF on its stdin into a ^D written to the pty (echoed as "^D" before the output) and refuses a
       # fifo (tcgetattr fails): its stdin is a terminal, which sends nothing until someone types (keys reach the
-      # command), the check's own stdin if it is one, else the terminal of stdout; the loop reads its own here-string
-      if [ -t 0 ]; then
-        GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd"
+      # command): the check's own stdin (fd 3, saved before the loop) if it is one, else the terminal of stdout. A
+      # check in the background of its terminal gets /dev/null (and the ^D): script would set that terminal raw and be
+      # stopped by SIGTTOU.
+      if in_background; then
+        GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" < /dev/null 3<&-
+      elif [ -t 3 ]; then
+        GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" <&3 3<&-
       else
-        GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" <&1
+        GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" <&1 3<&-
       fi
       rc=$?
     fi
@@ -154,7 +164,7 @@ while IFS= read -r cmd; do
     tee_out=$!
     tee -a "$log" >&2 < "$fifos/err" &
     tee_err=$!
-    GW_PUSH_PROTECTED=false bash -c "$cmd" < /dev/null > "$fifos/out" 2> "$fifos/err"
+    GW_PUSH_PROTECTED=false bash -c "$cmd" < /dev/null 3<&- > "$fifos/out" 2> "$fifos/err"
     rc=$?
     # A background child of the command that kept the output open would hold the tees forever: wait for them at most
     # `checkOutputGrace` seconds, then stop them.
