@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | Encargo de la presentación hecho (JSON de la nube en `docs/records/cloud-usage/`; faltan los de otros repos, que el usuario trae del chat). **`0.5.2` publicada** en `main` (`2e55d66`, 2026-11-12; etiqueta y release, el usuario desde local) y fusionada aquí. Filas R2-R4 de la retro en el roadmap de la `0.6` (E44, D81 adelantada y ampliada, D89); `handoff.py archive` no hizo falta (bitácora bajo `logSize`). Sigue la **`0.6.0`**, primero **E45** (check rápido; tardaba 50-80 min): `scripts/test-run.py` (paralelo por clase, `testJobs`), sus tests y el cableado en `tests/check.sh` con E22 a la vez, escritos; falta medir la suite entera, pasar el check completo y marcar E45 (`roadmap.py done E45`); luego E46 y E47, después E44, D81 y D89, versión `0.6.0`, CHANGELOG, recogida, repaso de documentación y fases 1-3 antes de `main`. |
+| Siguiente paso | **`0.6.0`** en obra. **E45** hecha: `scripts/test-run.py` corre la suite en paralelo por clase (`testJobs`) y E22 va a la vez; la suite bajó de ~2000 s a 556 s con 4 núcleos. Sigue **E46** (repos por clase en los tests más caros: `test-run.py --times`), luego E47, E44, D81 y D89, versión `0.6.0`, CHANGELOG, recogida, repaso de documentación y fases 1-3 antes de `main`. |
 
 ### Fases
 
@@ -43,9 +43,10 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-11 — Evolutivos `0.6` con el dealer, 9 ramas revisadas y fusionadas: D85, D86, B28, B26 (`whole-read.py`), D82 (`review-scope.py`), B27 (`--trivial`), B29 (`measure.py` y la sesión anterior), D84 (CI por carpetas), E43 (doctor y carpetas de tests sin correr). Claves nuevas: `wholeReadWarnBytes`, `reviewTrivialLines`, `measure.minCalls`, `ciNodeDirs`, `ciRustDirs`, `doctorTestDirsIgnore`.
-2. 2026-11-11 — Arreglos de la `0.5.2` (D70-D79, D88, B22-B25, E38-E40) con el dealer: 8 ramas `agent/*` revisadas y fusionadas; el detalle, en sus commits y en el roadmap. Claves nuevas: `checkLogKeep`, `stopTranscriptBytes`, `stopSubagentMaxAge`.
-3. 2026-11-11 — H18: 28 propuestas (8 proyectos) y 14 hallazgos de la revisión `0.5.1` del instalador, decididos por el usuario y repartidos en el roadmap (es/en) con ids; P6 del portal descartada.
+1. 2026-11-12 — 0.5.2 publicada en main (2e55d66, 2026-11-12) y fusionada en la rama; filas R2-R4 de su retro en el roadmap de la 0.6 (E44, D81, D89); filas E45-E47 del check rápido.
+2. 2026-11-11 — Evolutivos `0.6` con el dealer, 9 ramas revisadas y fusionadas: D85, D86, B28, B26 (`whole-read.py`), D82 (`review-scope.py`), B27 (`--trivial`), B29 (`measure.py` y la sesión anterior), D84 (CI por carpetas), E43 (doctor y carpetas de tests sin correr). Claves nuevas: `wholeReadWarnBytes`, `reviewTrivialLines`, `measure.minCalls`, `ciNodeDirs`, `ciRustDirs`, `doctorTestDirsIgnore`.
+3. 2026-11-11 — Arreglos de la `0.5.2` (D70-D79, D88, B22-B25, E38-E40) con el dealer: 8 ramas `agent/*` revisadas y fusionadas; el detalle, en sus commits y en el roadmap. Claves nuevas: `checkLogKeep`, `stopTranscriptBytes`, `stopSubagentMaxAge`.
+4. 2026-11-11 — H18: 28 propuestas (8 proyectos) y 14 hallazgos de la revisión `0.5.1` del instalador, decididos por el usuario y repartidos en el roadmap (es/en) con ids; P6 del portal descartada.
 
 ## Pendiente
 
