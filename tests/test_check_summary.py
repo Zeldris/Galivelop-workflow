@@ -82,11 +82,11 @@ class CheckSummary(unittest.TestCase):
         self.assertNotIn("err-4", out)
         self.assertIn("err-4", err)
 
-    def run_check_on_tty(self, *args):
+    def run_check_on_tty(self, *args, env=None):
         """Runs check.sh with a pseudo-terminal as its stdout/stderr (what a person at a terminal has)."""
         import pty
         master, slave = pty.openpty()
-        env = dict(os.environ, GW_CHECK_CACHE="0")
+        env = dict(os.environ, GW_CHECK_CACHE="0", **(env or {}))
         env.pop("GW_CHECK_QUIET", None)
         proc = subprocess.Popen(["bash", str(self.repo / "scripts" / "check.sh"), *args], stdin=subprocess.DEVNULL,
                                 stdout=slave, stderr=slave, env=env)
@@ -121,6 +121,29 @@ class CheckSummary(unittest.TestCase):
         for line in ("first=1", "second=2", "third=3"):
             self.assertIn("\n" + line + "\n", self.log(), line + " did not run")
         self.assertEqual(out.count(" ok "), 3, out)
+
+    def test_with_bsd_script_its_stdin_never_ends_so_no_eof_reaches_the_pty(self):
+        # macOS: script(1) turns EOF on its stdin into a ^D written to the pty, echoed as "^D" before the output. A fake
+        # BSD script (and uname saying Darwin) does the same when its stdin ends within 2 s.
+        fake = self.tmp / "bin"
+        fake.mkdir()
+        (fake / "uname").write_text("#!/bin/bash\necho Darwin\n")
+        (fake / "script").write_text(
+            "#!/bin/bash\n"
+            "[ \"$1\" = --version ] && { echo 'usage: script [-q] file [command ...]' >&2; exit 1; }\n"
+            "[ \"$1\" = -q ] && shift\n"
+            "log=$1; shift\n"
+            "IFS= read -r -t 2 _; [ $? -gt 128 ] || printf '^D\\b\\b'\n"
+            "\"$@\" > \"$log\" 2>&1; rc=$?\n"
+            "cat \"$log\"; exit $rc\n")
+        for name in ("uname", "script"):
+            (fake / name).chmod(0o755)
+        self.configure(["echo first=$((1+0))", "echo second=$((2+0))"])
+        code, out = self.run_check_on_tty(env={"PATH": str(fake) + os.pathsep + os.environ["PATH"]})
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("^D", out)
+        for line in ("first=1", "second=2"):
+            self.assertIn("\n" + line + "\n", self.log(), line + " did not run")
 
     def test_on_a_terminal_the_command_runs_with_bash_whatever_shell_is_set_and_the_log_has_no_script_lines(self):
         self.configure(["[[ 1 == 1 ]] && echo bashism=$((1+0))"])

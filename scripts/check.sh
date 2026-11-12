@@ -132,10 +132,17 @@ while IFS= read -r cmd; do
     if [ "$pty_flavor" = linux ]; then
       # SHELL=bash: script runs it with $SHELL -c; stdin from /dev/null, or script feeds the rest of the check list to the pty
       GW_PUSH_PROTECTED=false SHELL=bash script -qefc "$cmd" "$ptylog" < /dev/null
+      rc=$?
     else
-      GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" < /dev/null
+      # BSD script turns EOF on its stdin into a ^D written to the pty (echoed as "^D" before the output): its stdin is
+      # a fifo opened read-write, which never has data nor EOF; script ends when the command does
+      { fifos="$(mktemp -d "${TMPDIR:-/tmp}/gw-check-fifo.XXXXXX")" && mkfifo "$fifos/in"; } || fail "cannot create a fifo in ${TMPDIR:-/tmp}; free space or set TMPDIR to a writable folder"
+      exec 4<> "$fifos/in"
+      GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" <&4 4<&-
+      rc=$?
+      exec 4<&-
+      cleanup_output
     fi
-    rc=$?
     # util-linux writes its own "Script started/done on ..." lines into the typescript even with -q: not part of the output
     tr -d '\r' < "$ptylog" | sed -e '/^Script started on /d' -e '/^Script done on /d' >> "$log"
     rm -f "$ptylog"
