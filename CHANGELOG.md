@@ -8,7 +8,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
-## [0.5.2] - 2026-11-11
+## [0.5.2] - 2026-11-12
 
 Parche de la `0.5`: arreglos de las recogidas de la `0.6` (H16 y H18) y de la revisión `0.5.1` del instalador (reparto
 en `docs/roadmap.md`). / Patch of `0.5`: fixes from the `0.6` harvests (H16 and H18) and from the installer's `0.5.1`
