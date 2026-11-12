@@ -56,7 +56,9 @@ python3 scripts/handoff.py check --strict || bad
 # E22 runs alongside the main suite (E45): its output is printed in its own section once both end.
 e22_out="$(mktemp "${TMPDIR:-/tmp}/gw-check-e22.XXXXXX")" || exit 1
 trap 'kill "${e22_pid:-}" 2>/dev/null; rm -f "$e22_out"' EXIT
-bash tests/old-python.sh >"$e22_out" 2>&1 &
+# `&` in a script makes the job ignore SIGINT and SIGQUIT, and a hook started by the tests could not trap them (its
+# interrupt tests would fail): the subshell restores them before exec.
+( trap - INT QUIT; exec bash tests/old-python.sh ) >"$e22_out" 2>&1 &
 e22_pid=$!
 
 section "python"
