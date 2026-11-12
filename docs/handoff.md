@@ -11,8 +11,8 @@
 | Rama | **`version/0.5.2`** (2026-11-12; desde `main` = `eeec886` = `0.5.1`, con las filas P de la `0.6` recogidas según `docs/records/split-0.5.2.md`). La `0.6` sigue en `ccr-d1e2d496-0vzck8`; tras publicar la `0.5.2`, `main` se fusiona en ella |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). Los arreglos del CI de Ubuntu y macOS (`66a4ecd`) están en esta rama; `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.5.0` |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **`0.5.2` en `main`** (`2e55d66`, CI de `e668218` verde en Linux y macOS); textos de la release en `docs/records/release-v0.5.2.md`: el usuario crea la etiqueta `v0.5.2` y la release desde local. Sigue: fusionar `main` en `ccr-d1e2d496-0vzck8`, filas R2-R4 de la retro `retro-2026-11-12-patch-0-5-2.md` en la `0.6`, `handoff.py archive` y preparar la `0.6.0`. |
+| Último punto estable | **`0.5.2` en `main`** (`2e55d66`, marca de revisión sobre `e668218`, 2026-11-12), con confirmación del usuario: fases 1-3 hechas, CI de `2e55d66` en verde en Linux y macOS. Etiqueta y release `v0.5.2` creadas por el agente a petición del usuario (`gh release create`); textos publicados en `docs/records/release-v0.5.2.md` |
+| Siguiente paso | Fusionar `main` en `ccr-d1e2d496-0vzck8`, filas R2-R4 de la retro `retro-2026-11-12-patch-0-5-2.md` en la `0.6`, `handoff.py archive` y preparar la `0.6.0`. |
 
 ### Fases
 
