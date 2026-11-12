@@ -43,7 +43,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-12 — E47: `config.py push-scope --commits` (lo llama el `pre-push`) compara las claves de `.claude/gw.json` de cada commit nuevo con cada padre; solo piden el completo las que no están en `fullCheckSkipKeys` (clave nueva, en el esquema y `config.md`). Config roto o ausente a un lado, o sin `--commits`: completo, como antes.
+1. 2026-11-12 — E47: `config.py push-scope --commits` (desde el `pre-push`) compara las claves de `gw.json` de cada commit nuevo con sus padres; solo piden el completo las de fuera de `fullCheckSkipKeys` (nueva). Config roto o sin `--commits`: completo.
 2. 2026-11-12 — E46: `Snapshot` (tests/test_hooks.py) monta los repos de prueba una vez por clase y copia la carpeta en la misma ruta en cada test; en las tres `Base`, `Hook` y `Doctor`. Suite de 556 s a 352 s (4 núcleos).
 3. 2026-11-12 — 0.5.2 publicada en main (2e55d66, 2026-11-12) y fusionada en la rama; filas R2-R4 de su retro en el roadmap de la 0.6 (E44, D81, D89); filas E45-E47 del check rápido.
 4. 2026-11-11 — Evolutivos `0.6` con el dealer, 9 ramas revisadas y fusionadas: D85, D86, B28, B26 (`whole-read.py`), D82 (`review-scope.py`), B27 (`--trivial`), B29 (`measure.py` y la sesión anterior), D84 (CI por carpetas), E43 (doctor y carpetas de tests sin correr). Claves nuevas: `wholeReadWarnBytes`, `reviewTrivialLines`, `measure.minCalls`, `ciNodeDirs`, `ciRustDirs`, `doctorTestDirsIgnore`.
@@ -54,7 +54,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
 - **Error de proceso (2026-11-11):** los arreglos de la `0.5.2` se hicieron en la rama de la `0.6`. Para la retro: crear la rama del parche desde `main` antes de los arreglos (o pedirla al usuario), y un aviso en `commit-msg` o `merge-branch.sh` cuando una fila de parche cae en una rama con evolutivos de la menor siguiente.
 
 - **FOUND (dealer):** un subagente sacó el HEAD del árbol principal (checkout de su commit) y una fusión cayó en HEAD suelto; rehecha. Los encargos ya prohíben git en el árbol principal; el check del `pre-push` sobre `27bb9cf` corrió con archivos cambiando y no vale.
-- **E47:** la lista por defecto de `fullCheckSkipKeys` se eligió mirando qué leen los scripts del check de este repo; el `check` de un proyecto que lea una de esas claves tiene que quitarla (lo dice `config.md`); se comparan valores en crudo (una clave añadida con su valor por defecto cuenta como cambio).
+- **E47:** la lista por defecto de `fullCheckSkipKeys` sale del check de este repo (un `check` que lea una la quita).
 - **E46:** el índice de git copiado tiene datos de stat viejos: el primer `git status` de un test lo reescribe (un test que compare el índice lo lee después); quedan `/tmp/gw-check-fifo.*` de corridas del check (sin mirar de dónde).
 - **D82:** con el clon del flujo o el árbol sucios, `review-scope.py` puede contar mal lo vendored; en `--trivial` un binario de código cuenta 0 líneas.
 - **D84:** `Swatinem/rust-cache@v2` sin fecha ni fuente comprobada; el job `versions` corre solo en ubuntu.

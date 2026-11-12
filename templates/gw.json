@@ -20,6 +20,7 @@
   "checkReuseMark": true,
   "branchCheck": "related",
   "fullCheckPaths": ["^\\.githooks/", "^\\.claude/gw/", "^\\.claude/settings(\\.local)?\\.json$", "^\\.github/workflows/"],
+  "fullCheckSkipKeys": ["reviewTrivialLines", "wholeReadWarnBytes", "stopTranscriptBytes", "stopSubagentMaxAge", "checkLockWait", "checkOutputGrace", "checkLogKeep", "ciFailedLines", "subagentCap", "contextGuard", "doctorTestDirsIgnore", "commitFormat", "commitRefs", "commitNext", "refsSources", "changeSize", "models", "metrics", "roadmapFiles"],
   "ownedFiles": [],
   "checkCacheInputs": [".claude/gw.local.json"],
   "checkLogKeep": 20,

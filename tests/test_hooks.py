@@ -1187,9 +1187,9 @@ class PrePushBranchCheck(Base):
 
     def test_an_environment_change_runs_the_full_check(self):
         p = self.p
-        for path, reason in (("tools/env.sh", "tools/env.sh"), (".claude/gw.json", ".claude/gw.json")):
+        for path, reason in (("tools/env.sh", "tools/env.sh"), (".claude/gw.json", ".claude/gw.json (testJobs)")):
             if path.endswith(".json"):
-                cfg = json.loads((p.work / path).read_text()); cfg["checkLockWait"] = 1
+                cfg = json.loads((p.work / path).read_text()); cfg["testJobs"] = 3
                 p.write(path, json.dumps(cfg))
             else:
                 p.write(path, "true\n")
@@ -1200,6 +1200,16 @@ class PrePushBranchCheck(Base):
             self.assertEqual(len(self.runs(self.checks)), before + 1, out)
             self.assertIn(f"full check on {p.sha()[:7]}: environment change: {reason}", out)
             self.assertNotIn("only its related tests run", out)
+
+    def test_a_config_change_only_in_skip_keys_runs_the_related_tests(self):  # E47
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text()); cfg["checkLockWait"] = 1
+        p.write(".claude/gw.json", json.dumps(cfg)); p.commit("lock wait only")
+        before = len(self.runs(self.checks))
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(len(self.runs(self.checks)), before, out)
+        self.assertIn("only its related tests run", out)
 
     def test_branch_check_full_runs_the_check_on_every_branch_push(self):
         p = self.p
