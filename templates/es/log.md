@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.5.1 -->
+<!-- galivelop-workflow v0.5.2 -->
 # Bitácora (traspaso)
 
 > Léela entera al empezar cualquier sesión. Lo que no está subido no existe: commit + push en cada punto estable,

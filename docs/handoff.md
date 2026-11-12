@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | **`0.5` «Base»: `ccr-d1e2d496-0vzck8`** (2026-11-02; creada desde `version/1.0.0` en `a61cdc5`; hace de `version/0.5.0` (H-13) mientras la sesión solo pueda subir a esta rama). **No hay `0.4.4`** (usuario, 2026-11-03: «publicamos la 0.5, ya directamente»): sus arreglos salen en la `0.5.0` y `ccr-6dfbc880-ddr41g` queda sin uso. `version/1.0.0` se queda con el diseño (`docs/design/`). `main` = `0e04504` = **`0.4.3`** (etiqueta y release `v0.4.3`, a mano por el usuario) |
+| Rama | **`version/0.5.2`** (2026-11-12; desde `main` = `eeec886` = `0.5.1`, con las filas P de la `0.6` recogidas según `docs/records/split-0.5.2.md`). La `0.6` sigue en `ccr-d1e2d496-0vzck8`; tras publicar la `0.5.2`, `main` se fusiona en ella |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). Los arreglos del CI de Ubuntu y macOS (`66a4ecd`) están en esta rama; `main` (`0e04504`, `v0.4.3`) sigue en rojo en el CI hasta la `0.5.0` |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **`0.5.1`** lista en la rama: filas de las dos recogidas, versión, revisión contra `origin/main` con sus arreglos, y retro (`docs/records/retro-2026-11-05-patch-0-5-1.md`) aprobada por el usuario: R2, R3 y R6 aplicadas (solo texto), R1, R4 y R5 a la `0.6` (E27, D55, D56). El usuario confirmó subir a `main` (2026-11-05). Sigue: check y push de la rama, CI, `reviewed.sh`, push a `main` y `docs/records/release-v0.5.1.md`; la `0.6`, en una sesión nueva (R7). Presupuesto de compactaciones: 2 |
+| Siguiente paso | **`0.5.2`** separada en `version/0.5.2`: cherry-picks de las filas P (y la parte `0.5.2` de D65, D72, D78 y D88), versión `0.5.2`, CHANGELOG y check completo en verde. Sigue: subir la rama (pide permiso del usuario: la sesión en la nube solo sube a `ccr-d1e2d496-0vzck8`), fases 1-3 contra `origin/main` (`/code-review` en limpio, `/gw-opt-tokens` y `/retro`, `reviewed.sh`), `main` con confirmación del usuario y `docs/records/release-v0.5.2.md`; luego fusionar `main` en `ccr-d1e2d496-0vzck8` y preparar la `0.6.0` |
 
 ### Fases
 
