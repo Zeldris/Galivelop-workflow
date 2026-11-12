@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **Antes de nada, encargo de la presentación** (usuario, 2026-11-12): sigue [`docs/records/prompt-cloud-usage.md`](records/prompt-cloud-usage.md) y sube su JSON. Luego: la `0.5.2` ya está publicada (`main` = `2e55d66`, rama `version/0.5.2`); fusionar `main` en esta rama, filas R2-R4 de la retro `retro-2026-11-12-patch-0-5-2.md` en la `0.6`, `handoff.py archive` y preparar la `0.6.0`. |
+| Siguiente paso | Encargo de la presentación hecho (JSON de la nube en `docs/records/cloud-usage/`; faltan los de otros repos, que el usuario trae del chat). Sigue: la `0.5.2` ya está publicada (`main` = `2e55d66`, rama `version/0.5.2`); fusionar `main` en esta rama, filas R2-R4 de la retro `retro-2026-11-12-patch-0-5-2.md` en la `0.6`, `handoff.py archive` y preparar la `0.6.0`. |
 
 ### Fases
 
@@ -49,7 +49,6 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Pendiente
 
-- **Encargo de la presentación (usuario, 2026-11-12):** datos de gasto de las sesiones en la nube, en [`docs/records/prompt-cloud-usage.md`](records/prompt-cloud-usage.md); se quita este aviso al subir su JSON.
 - **Error de proceso (2026-11-11):** los arreglos de la `0.5.2` se hicieron en la rama de la `0.6`. Para la retro: crear la rama del parche desde `main` antes de los arreglos (o pedirla al usuario), y un aviso en `commit-msg` o `merge-branch.sh` cuando una fila de parche cae en una rama con evolutivos de la menor siguiente.
 
 - **FOUND (dealer):** un subagente sacó el HEAD del árbol principal (checkout de su commit) y una fusión cayó en HEAD suelto; rehecha. Los encargos ya prohíben git en el árbol principal; el check del `pre-push` sobre `27bb9cf` corrió con archivos cambiando y no vale.

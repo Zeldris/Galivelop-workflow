@@ -1,0 +1,82 @@
+{
+ "source": "cloud",
+ "project": "Galivelop-workflow",
+ "found": {
+  "transcripts": 1,
+  "ledger_lines": 2
+ },
+ "sessions": [
+  {
+   "session": "02ea343d",
+   "project": "Galivelop-workflow",
+   "branch": "ccr-84d9ed01-seryd6",
+   "start": "2026-11-12T15:55:38.165Z",
+   "end": "2026-11-12T16:00:37.974Z",
+   "turns": 12,
+   "tokens": {
+    "claude-opus-5-5": {
+     "input": 25,
+     "output": 6101,
+     "cache_read": 1270756,
+     "cache_creation": 65407
+    }
+   },
+   "subagents": {
+    "count": 0,
+    "models": []
+   },
+   "clears": 0,
+   "compactions": 0,
+   "deterministic": {},
+   "whole_reads": [],
+   "hook_blocks": {},
+   "review_findings": null
+  }
+ ],
+ "ledger": {
+  "lines_by_branch": {
+   "ccr-d1e2d496-0vzck8": 2
+  },
+  "sessions": [
+   {
+    "session": "9cca132f",
+    "branch": "ccr-d1e2d496-0vzck8",
+    "date": "2026-11-09",
+    "agent": "general-purpose",
+    "refs": [
+     "A10"
+    ],
+    "tokens": {
+     "claude-sonnet-5-5": {
+      "input": 50,
+      "output": 19946,
+      "cache_read": 2087969,
+      "cache_creation": 891622
+     }
+    }
+   },
+   {
+    "session": "9cca132f",
+    "branch": "ccr-d1e2d496-0vzck8",
+    "date": "2026-11-09",
+    "agent": "main",
+    "refs": [
+     "A10"
+    ],
+    "tokens": {
+     "claude-opus-5-5": {
+      "input": 31,
+      "output": 9197,
+      "cache_read": 1327376,
+      "cache_creation": 59592
+     }
+    }
+   }
+  ]
+ },
+ "notes": [
+  "Found: this session's transcript only (2026-11-12, 11 turns) and 2 ledger lines (session 9cca132f, 2026-11-09, main + one general-purpose subagent, A10).",
+  "Not found: transcripts of earlier cloud sessions (each container keeps only its own); so no clears, compactions, deterministic-script calls, whole reads or hook blocks to report beyond this short session.",
+  "Limits: the ledger only exists on the 0.6 branch since B1 (2026-11-09); earlier sessions were never recorded."
+ ]
+}
