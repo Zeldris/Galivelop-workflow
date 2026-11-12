@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.5.1
+# galivelop-workflow v0.5.2
 """Fails when a NEW name in Spanish appears in the workflow's own files (A8: every name is in English).
 
 Usage: python3 scripts/names-check.py

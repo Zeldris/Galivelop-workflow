@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.5.1 -->
+<!-- galivelop-workflow v0.5.2 -->
 @AGENTS.md
 
 ## Solo para Claude Code

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.5.1
+# galivelop-workflow v0.5.2
 """The test files a change calls for, from `testMap` in .claude/gw.json (E21).
 
   python3 tests-for.py FILE [...]          # the test files, one per line (repo-relative, sorted, no repeats)

@@ -1,4 +1,4 @@
-# galivelop-workflow v0.5.1
+# galivelop-workflow v0.5.2
 # Lines that released versions of the CI template (templates/github/check.yml, comprobar.yml before v0.5.0) had and
 # the current one no longer has, stripped, as in the template ({{placeholders}} kept). apply.py does not count them
 # as the project's own when it compares a project's check.yml with the template (D45, CiLines in scripts/apply.py).

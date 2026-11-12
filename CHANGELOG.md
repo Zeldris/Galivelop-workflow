@@ -8,6 +8,70 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.5.2] - 2026-11-12
+
+Parche de la `0.5`: arreglos de las recogidas de la `0.6` (H16 y H18) y de la revisión `0.5.1` del instalador (reparto
+en `docs/roadmap.md`). / Patch of `0.5`: fixes from the `0.6` harvests (H16 and H18) and from the installer's `0.5.1`
+review (split in `docs/roadmap.en.md`).
+
+### ES
+
+- Contexto de arranque (B21, D65): tras un `/clear` o una compactación, `context_guard.py` compara el uso del primer
+  turno con el punto de corte de la compactación y el `SessionStart` avisa o da la alarma (bucle de compactaciones) con el
+  desglose del culpable; tope de tamaño de la bitácora (`logSize`) y `handoff.py archive`, que mueve lo pendiente de
+  versiones publicadas a `logArchive` (sin `plugin.json`, la versión es la etiqueta `vX.Y.Z` más alta).
+- `measure.py` (B20, B22, D70): mide el registro de un subagente, muestra el `action` de las llamadas a Artifact y
+  `--since` elige la sesión correcta.
+- `check.sh` y su candado (D76, E39, E40): el mismo pid actualiza el candado, un `.steal` sin pid no bloquea y
+  `before-stop.py` compara el sha completo; sin `--quiet` conserva TTY y colores; guarda los últimos `checkLogKeep`
+  registros.
+- `pre-push` (D78): vuelve a mirar la caché de verdes tras esperar el candado. `merge-branch.sh` (D77) valida `check`
+  y `checkWrapper` antes de fusionar. `private-check.py` (D79) da un arreglo sin `rebase -i` sobre una etiqueta ni
+  `git add -A`. `pre-commit` (E38) caza un secreto de una palabra entre comillas en un `.md`.
+- El gancho `Stop` (D88) no pide subir mientras hay subagentes en segundo plano (`stopTranscriptBytes`,
+  `stopSubagentMaxAge`).
+- `handoff.py` (D58, D71): `close-row` avisa y sale con 1 con `logRows` apagado y toma la rama como `set-row`.
+  `related-tests.sh` (D74) da el número de archivos y un temporal con la orden. `harvest.py` (D57) sigue los
+  renombrados y marca «… (truncated)» la idea recortada a 2000 caracteres; la plantilla de la bitácora solo explica
+  `logRows` si está encendido (D58, bloques `<!-- if key -->` de `apply.py`).
+- `version.py` (D66, D69): tipo `hotfix` (cuenta como parche) y `--release` exige que los archivos de `releaseDocs`
+  nombren la versión.
+- Plantillas (D59, D60): `commitNext: true` por defecto; `AGENTS.md` nombra `handoff.py set-row` y `close-row`.
+- Guías (D64, D72, D73, D75, B23, B24, B25): la línea del modelo de `gw-selector` separa sesión y subagentes; el
+  encargo del dealer dice quién sube y qué hacer con el commit; `gw-update` abre el PR; cierre de ronda de pruebas;
+  `prototype` publica desde un subagente; la fase 1 se revisa tras `/clear` o en un subagente limpio;
+  `gw-scout-updates` con 2 subagentes. La plantilla de `REVIEW.md` pide redirigir la entrada de un comando dentro de
+  un `while read` y probarlo con dos elementos (retro `0.5.2` R1).
+
+### EN
+
+- Start-up context (B21, D65): after a `/clear` or a compaction, `context_guard.py` compares the first turn's usage
+  with the compaction cut-off and `SessionStart` warns or raises the alarm (compaction loop) with the culprit breakdown; a
+  log size cap (`logSize`) and `handoff.py archive`, which moves pending items of published versions to `logArchive`
+  (without `plugin.json`, the version is the highest `vX.Y.Z` tag).
+- `measure.py` (B20, B22, D70): measures a subagent's log, shows the `action` of Artifact calls and `--since` picks the
+  right session.
+- `check.sh` and its lock (D76, E39, E40): the same pid updates the lock, a `.steal` without pid does not block and
+  `before-stop.py` compares the full sha; without `--quiet` it keeps TTY and colours; it keeps the last `checkLogKeep`
+  logs.
+- `pre-push` (D78): looks at the green cache again after waiting for the lock. `merge-branch.sh` (D77) validates
+  `check` and `checkWrapper` before merging. `private-check.py` (D79) gives a fix without `rebase -i` onto a tag or
+  `git add -A`. `pre-commit` (E38) catches a one-word quoted secret in a `.md`.
+- The `Stop` hook (D88) does not ask to push while background subagents run (`stopTranscriptBytes`,
+  `stopSubagentMaxAge`).
+- `handoff.py` (D58, D71): `close-row` warns and exits 1 with `logRows` off and takes the branch like `set-row`.
+  `related-tests.sh` (D74) gives the file count and a temp file with the command. `harvest.py` (D57) follows renames
+  and marks an idea cut at 2000 characters with "… (truncated)"; the log template only explains `logRows` when it is
+  on (D58, `apply.py`'s `<!-- if key -->` blocks).
+- `version.py` (D66, D69): `hotfix` type (counts as a patch) and `--release` requires the `releaseDocs` files to name
+  the version.
+- Templates (D59, D60): `commitNext: true` by default; `AGENTS.md` names `handoff.py set-row` and `close-row`.
+- Guides (D64, D72, D73, D75, B23, B24, B25): `gw-selector`'s model line keeps session and subagents apart; the dealer
+  brief says who pushes and what to do with the commit; `gw-update` opens the PR; closing step of a test round;
+  `prototype` publishes from a subagent; phase 1 is reviewed after `/clear` or in a clean subagent;
+  `gw-scout-updates` with 2 subagents. The `REVIEW.md` template asks to redirect the input of a command inside a
+  `while read` loop and to test it with two items (`0.5.2` retro R1).
+
 ## [0.5.1] - 2026-11-05
 
 Parche de la `0.5`: arreglos de las recogidas de inicio y de cierre de la `0.5.1` y de la retro de la `0.5.0` (reparto

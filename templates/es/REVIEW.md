@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.5.1 -->
+<!-- galivelop-workflow v0.5.2 -->
 # Guía de revisión
 
 Lo que el revisor (`/code-review`, o cualquier agente que revise un diff) comprueba en cada diff de {{project}},
@@ -36,6 +36,8 @@ creada.
   `proposalsDir`, `ciLocalLog`) son opcionales con defecto en inglés, así que una ausente no es un dato que falte.
   (criterio)
 - Los scripts de shell corren en bash 3.2 (macOS): nada de `mapfile` ni arrays asociativos. (criterio)
+- Un comando lanzado dentro de un `while read … done < archivo` (o `<<<`) lleva la entrada redirigida (`< /dev/null`):
+  si la lee, se come los elementos que quedan del bucle. Su test usa al menos dos elementos. (criterio)
 - Una carpeta con nombre fijo en un directorio compartido (`$TMPDIR`, `/tmp`) es por usuario, se crea con permisos 700
   y se rechaza si ya existe como symlink o de otro usuario; los archivos sueltos, con `mktemp`. (criterio)
 - Un script que hace commits se prueba con los ganchos del proyecto instalados (`commit-msg` estricto incluido): un

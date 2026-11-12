@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.5.1
+# galivelop-workflow v0.5.2
 """The only reader of a project's .claude/gw.json (one fact, one place).
 
 Validates the config against schema/gw.schema.json (a stdlib validator for the subset the schema uses) and fills the
@@ -368,6 +368,30 @@ def owned(config, rel):
     pattern): a workflow file the project made its own on purpose, so apply.py and doctor.py leave it alone."""
     rel = str(rel).replace(os.sep, "/")
     return any(isinstance(p, str) and fnmatch.fnmatchcase(rel, p) for p in config.get("ownedFiles") or [])
+
+
+def context_guard(config):
+    """The `contextGuard` key as a dict (cutoff, window, autocompactShare, warn, alarm), each missing part filled
+    from the schema default (the only place the defaults live)."""
+    schema = json.loads(schema_path().read_text(encoding="utf-8"))
+    props = schema["properties"]["contextGuard"]["properties"]
+    given = config.get("contextGuard")
+    given = given if isinstance(given, dict) else {}
+    return {k: given.get(k, props[k]["default"]) for k in props}
+
+
+def log_size(config):
+    """The `logSize` key: the cap on the hand-off log in characters (0 = no cap), the schema default when absent."""
+    schema = json.loads(schema_path().read_text(encoding="utf-8"))
+    given = config.get("logSize")
+    return given if isinstance(given, int) and not isinstance(given, bool) else schema["properties"]["logSize"]["default"]
+
+
+def log_archive(config):
+    """The `logArchive` key: repo-relative path of the hand-off archive, the schema default when absent."""
+    schema = json.loads(schema_path().read_text(encoding="utf-8"))
+    given = config.get("logArchive")
+    return given if isinstance(given, str) and given else schema["properties"]["logArchive"]["default"]
 
 
 def semantic_errors(config):
