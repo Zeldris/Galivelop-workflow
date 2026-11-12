@@ -404,6 +404,57 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn(needle, r.stderr)
 
+    def test_push_scope_counts_a_config_change_by_its_keys(self):  # E47
+        def git(*args):
+            return subprocess.run(["git", "-C", str(self.tmp), "-c", "user.name=t", "-c", "user.email=t@t", *args],
+                                  capture_output=True, text=True, check=True).stdout.strip()
+
+        def commit(data):
+            self.write(data)
+            git("add", "-A")
+            git("commit", "-q", "-m", "c")
+            return git("rev-parse", "HEAD")
+
+        def scope(commits, files=(".claude/gw.json",)):
+            listing = Path(f"{self.tmp}-commits.txt")  # outside the repo: `git add -A` must not take it
+            self.addCleanup(listing.unlink, missing_ok=True)
+            listing.write_text("\n".join(commits) + "\n")
+            r = subprocess.run(["python3", str(SCRIPT), "--root", str(self.tmp), "--rev", commits[-1], "push-scope",
+                                "--commits", str(listing)], input="\n".join(files), capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            return r.stdout.strip()
+
+        rel = dict(VALID, relatedTests={"fast": ["make test"]})
+        commit(rel)
+        a = commit(dict(rel, reviewTrivialLines=5, wholeReadWarnBytes=1000))
+        self.assertEqual(scope([a]), "related")  # both in the default fullCheckSkipKeys
+        b = commit(dict(rel, reviewTrivialLines=5, wholeReadWarnBytes=1000, check=["make all"]))
+        self.assertEqual(scope([a, b]), "full environment change: .claude/gw.json (check)")
+        self.assertEqual(scope([a], ["src/x.py", ".githooks/pre-push"]),
+                         "full environment change: .githooks/pre-push")  # fullCheckPaths still count
+        c = commit(dict(rel, fullCheckSkipKeys=["check"], check=["make all"]))
+        self.assertEqual(scope([c]), "full environment change: .claude/gw.json (fullCheckSkipKeys, reviewTrivialLines, wholeReadWarnBytes)")
+        d = commit(dict(rel, fullCheckSkipKeys=["check"], check=["make other"]))
+        self.assertEqual(scope([d]), "related")  # the project's own list replaces the default one
+        # A merge is compared with each parent; a broken or missing config on either side fails closed.
+        git("checkout", "-q", "-b", "side", c)
+        e = commit(dict(rel, fullCheckSkipKeys=["check"], check=["make all"], testJobs=2))
+        git("checkout", "-q", "-")
+        git("merge", "-q", "--no-ff", "-m", "m", "side", "-X", "ours")
+        m = git("rev-parse", "HEAD")
+        self.assertEqual(scope([e, m]), "full environment change: .claude/gw.json (testJobs)")
+        (self.tmp / ".claude" / "gw.json").write_text("{")
+        git("commit", "-q", "-am", "broken")
+        broken = git("rev-parse", "HEAD")
+        fixed = commit(dict(rel, fullCheckSkipKeys=["check"], check=["make other"]))
+        self.assertEqual(scope([fixed]),
+                         "full environment change: .claude/gw.json (cannot compare it with its parent)")
+        self.assertEqual(scope([broken, fixed])[:4], "full")
+        # Without --commits (an older pre-push), the config counts whole, as before.
+        r = subprocess.run(["python3", str(SCRIPT), "--root", str(self.tmp), "push-scope"], input=".claude/gw.json",
+                           capture_output=True, text=True)
+        self.assertEqual(r.stdout.strip(), "full environment change: .claude/gw.json")
+
     def test_doctor_test_dirs_ignore_default_and_own_value(self):  # E43
         self.assertIn(".claude/worktrees", config.doctor_test_dirs_ignore({}))
         self.assertEqual(config.doctor_test_dirs_ignore({"doctorTestDirsIgnore": ["vendor"]}), ["vendor"])

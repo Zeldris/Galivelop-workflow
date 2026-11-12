@@ -180,7 +180,36 @@
         "^\\.claude/settings(\\.local)?\\.json$",
         "^\\.github/workflows/"
       ],
-      "description": "Regexes (Python syntax) searched in each repo-relative path a push changes: one match makes a branch push with branchCheck related run the full check (an environment change). .claude/gw.json always counts."
+      "description": "Regexes (Python syntax) searched in each repo-relative path a push changes: one match makes a branch push with branchCheck related run the full check (an environment change). .claude/gw.json always counts, except for the keys in fullCheckSkipKeys."
+    },
+    "fullCheckSkipKeys": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": [
+        "reviewTrivialLines",
+        "wholeReadWarnBytes",
+        "stopTranscriptBytes",
+        "stopSubagentMaxAge",
+        "checkLockWait",
+        "checkOutputGrace",
+        "checkLogKeep",
+        "ciFailedLines",
+        "subagentCap",
+        "contextGuard",
+        "doctorTestDirsIgnore",
+        "commitFormat",
+        "commitRefs",
+        "commitNext",
+        "refsSources",
+        "changeSize",
+        "models",
+        "metrics",
+        "roadmapFiles"
+      ],
+      "description": "Top-level keys of .claude/gw.json whose change does not make a branch push run the full check (E47): when the push's new commits change only these keys of the config, its related tests run. Any other key, an added, removed or broken config, and fullCheckSkipKeys itself still count as an environment change. The list replaces the default one."
     },
     "ownedFiles": {
       "type": "array",

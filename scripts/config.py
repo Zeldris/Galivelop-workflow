@@ -756,10 +756,45 @@ def related_commands(config, kind, files, deleted=(), skipped=None):
     return out
 
 
-def push_scope(config, files):
+def _raw_at(root, rev):
+    """The top-level JSON object of .claude/gw.json in commit `rev`, or None when it is missing or not an object."""
+    try:
+        data = json.loads(read_at(root, rev))
+    except (ConfigError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def config_keys_changed(root, commits):
+    """The top-level keys of .claude/gw.json that `commits` (shas) change, each against every parent it has (E47).
+    None, failing closed, when a commit or a parent has no readable config object there (an added, removed or broken
+    file) or git cannot list a commit's parents."""
+    changed = set()
+    for sha in commits:
+        try:
+            r = subprocess.run(["git", "-C", str(root), "rev-parse", f"{sha}^@"], capture_output=True, text=True)
+        except OSError:
+            return None
+        if r.returncode != 0:
+            return None
+        new = _raw_at(root, sha)
+        for parent in r.stdout.split():
+            old = _raw_at(root, parent)
+            if new is None or old is None:
+                return None
+            changed |= {k for k in set(old) | set(new) if old.get(k, _MISSING) != new.get(k, _MISSING)}
+    return changed
+
+
+_MISSING = object()
+
+
+def push_scope(config, files, commits=None):
     """What the pre-push runs for a branch push that changes `files` (repo-relative), as (scope, reason): ("full",
     why) or ("related", None) (D49). Full when branchCheck is "full", when relatedTests has no command (there would
-    be nothing to run), or when a file is .claude/gw.json or matches a fullCheckPaths regex (an environment change).
+    be nothing to run), or when a file matches a fullCheckPaths regex or is .claude/gw.json (an environment change).
+    E47: with `commits` (the push's new shas), a .claude/gw.json change counts only when one of the keys it changes is
+    not in fullCheckSkipKeys (fullCheckSkipKeys itself always counts; an unreadable config on either side, too).
     The protected branch never asks: it always runs the full check."""
     if config.get("branchCheck", "related") == "full":
         return "full", "branchCheck is full"
@@ -768,8 +803,18 @@ def push_scope(config, files):
         return "full", "relatedTests has no command"
     regexes = [re.compile(rx) for rx in config.get("fullCheckPaths") or []]
     for name in files:
-        if name == CONFIG_REL.as_posix() or any(rx.search(name) for rx in regexes):
+        if any(rx.search(name) for rx in regexes):
             return "full", f"environment change: {name}"
+    if CONFIG_REL.as_posix() in files:
+        if commits is None:
+            return "full", f"environment change: {CONFIG_REL.as_posix()}"
+        keys = config_keys_changed(config["_root"], commits)
+        if keys is None:
+            return "full", f"environment change: {CONFIG_REL.as_posix()} (cannot compare it with its parent)"
+        skip = set(config.get("fullCheckSkipKeys") or []) - {"fullCheckSkipKeys"}
+        counted = sorted(keys - skip)
+        if counted:
+            return "full", f"environment change: {CONFIG_REL.as_posix()} ({', '.join(counted)})"
     return "related", None
 
 
@@ -785,7 +830,9 @@ def main(argv=None):
     related = sub.add_parser("related", help="relatedTests commands that apply to the files on stdin")
     related.add_argument("--kind", choices=("fast", "slow"), required=True)
     related.add_argument("--deleted-file", help="file listing, one per line, the pushed paths that no longer exist")
-    sub.add_parser("push-scope", help="'full <reason>' or 'related' for a branch push changing the files on stdin")
+    scope_p = sub.add_parser("push-scope", help="'full <reason>' or 'related' for a branch push changing the files on stdin")
+    scope_p.add_argument("--commits", help="file listing the push's new commits, one sha per line: a .claude/gw.json "
+                                           "change then counts only by its keys (fullCheckSkipKeys, E47)")
     get = sub.add_parser("get")
     get.add_argument("key", help="top-level key, or dotted (relatedTests.fast)")
     get.add_argument("--json", action="store_true")
@@ -821,7 +868,11 @@ def main(argv=None):
             print(f"related-tests: skipped ({args.kind}): {command} (its changed files were only deleted)", file=sys.stderr)
         return 0
     if args.command == "push-scope":
-        scope, reason = push_scope(config, [line for line in sys.stdin.read().splitlines() if line])
+        commits = None
+        if args.commits:
+            with open(args.commits, encoding="utf-8") as fh:
+                commits = [line.strip() for line in fh.read().splitlines() if line.strip()]
+        scope, reason = push_scope(config, [line for line in sys.stdin.read().splitlines() if line], commits)
         print(f"{scope} {reason}" if reason else scope)
         return 0
     value = dict(config, metrics=metrics(config), models=models(config), measure=measure(config))  # inner keys fill from the schema too
