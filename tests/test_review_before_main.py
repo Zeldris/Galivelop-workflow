@@ -14,7 +14,7 @@ import time
 import unittest
 from pathlib import Path
 
-from test_hooks import ROOT, Project
+from test_hooks import ROOT, Project, Snapshot
 
 FAKE_GH = """#!/bin/sh
 case "$1" in
@@ -59,10 +59,10 @@ GREEN_RUNS = {"total_count": 1, "check_runs": [{"name": "comprobar", "status": "
 NO_STATUSES = {"state": "pending", "statuses": []}
 
 
-class Hook(unittest.TestCase):
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="gw-revision-")).resolve()
-        self.addCleanup(shutil.rmtree, self.tmp, True)
+class Hook(Snapshot):
+    prefix = "gw-revision-"
+
+    def build(self):
         p = self.p = Project(self.tmp)
         self.script = p.work / ".claude" / "gw" / "scripts" / "review-before-main.sh"
         shutil.copy2(ROOT / "scripts" / "review-before-main.sh", self.script)

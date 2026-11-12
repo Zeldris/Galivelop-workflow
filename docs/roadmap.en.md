@@ -190,7 +190,7 @@ In this order, because each step uses the previous one.
 | D81 | `scripts/backport.sh <sha>...`: cherry-pick in topological order (`-m 1 -x`), log and roadmap take the patch's version, empty picks skipped, stops on a code conflict and checks with `git cherry`; also brings the branch's harvest files; in the patch guide and `docs/agent-map.md` (`0.6` closing harvest, image-generator P1; `0.5.2` retro R3) | pending |
 | D89 | `handoff.py`: `published_version` uses the highest tag also when the workflow repo has a `plugin.json`, so `archive` does not run ahead of an unpublished version (`0.5.2` retro R4) | pending |
 | E45 | Fast check: `scripts/test-run.py` runs the Python suite in parallel, one test class per process, the slowest first, across `testJobs` processes (one per core by default), and the E22 pass runs alongside the main one; same tests locally and in CI; target, the full check in 10-15 min (user, 2026-11-12: it took 50-80 min) | done (2026-11-12) |
-| E46 | The most expensive test files per `test-run.py --times` set up their test repos once per class, with a clean state for each test (follows E45) | pending |
+| E46 | The most expensive test files per `test-run.py --times` set up their test repos once per class, with a clean state for each test (follows E45): `Snapshot` in `tests/test_hooks.py` (`build()` once, a copy of the folder at the same path for each test) in the three `Base` classes, `Hook` and `Doctor`; the suite, from 556 s to 352 s on 4 cores | done (2026-11-12) |
 | E47 | The `pre-push` asks for the full check only for the `.claude/gw.json` keys that change what the check runs; the rest get the change's tests (follows E45) | pending |
 
 ## `0.7` "Ask"

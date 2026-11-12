@@ -5,6 +5,7 @@ workflow), with `git push` / `git commit` going through the real hooks (core.hoo
 Git runs isolated from this machine's configuration (GIT_CONFIG_GLOBAL to a temp file, GIT_CONFIG_NOSYSTEM=1), so
 the suite behaves the same on a machine that signs commits and on a CI runner without an identity.
 """
+import copy
 import json
 import os
 import re
@@ -99,21 +100,79 @@ class Project:
             self.git("update-ref", "refs/heads/main", sha, cwd=self.bare)
 
 
-class Base(unittest.TestCase):
-    config = None
-    hooks = ("pre-push", "pre-commit")
+class Snapshot(unittest.TestCase):
+    """E46: `build()` sets up the class's repos once, in `self.tmp`; each test gets a fresh copy of that folder at the
+    same path (so remotes, worktrees and any other absolute path stay valid) and its own deep copy of the attributes
+    `build()` set. A subclass extends `build()` for set-up every test shares and keeps `setUp()` for the rest."""
+    prefix = "gw-"
+
+    def build(self):
+        pass
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        root = Path(tempfile.mkdtemp(prefix=cls.prefix)).resolve()
+        cls.addClassCleanup(cls._remove, root)
+        holder = cls("build")
+        holder.tmp = root / "t"
+        holder.tmp.mkdir()
+        holder.build()
+        cls._template = root / "template"
+        shutil.copytree(holder.tmp, cls._template, symlinks=True)
+        cls._state = {k: v for k, v in vars(holder).items() if not k.startswith("_")}
+
+    @staticmethod
+    def _remove(path):
+        if path.exists():
+            for d, _, _ in os.walk(path):  # a test may have left a folder read-only
+                os.chmod(d, 0o755)
+            shutil.rmtree(path)
 
     def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="gw-ganchos-")).resolve()
-        self.addCleanup(shutil.rmtree, self.tmp, True)
+        state = copy.deepcopy(self._state)
+        tmp = state["tmp"]
+        self._remove(tmp)
+        shutil.copytree(self._template, tmp, symlinks=True)
+        self.__dict__.update(state)
+
+
+class SnapshotCopies(Snapshot):
+    """Snapshot (E46): each test sees what build() left, whatever an earlier test of the class changed."""
+
+    def build(self):
+        (self.tmp / "file").write_text("built\n")
+        self.seen = []
+
+    def check_fresh_and_dirty(self):
+        self.assertEqual((self.tmp / "file").read_text(), "built\n")
+        self.assertEqual(self.seen, [])
+        (self.tmp / "file").write_text("changed\n")
+        (self.tmp / "extra").mkdir()
+        (self.tmp / "extra").chmod(0o500)  # read-only: the next copy must still replace it
+        self.seen.append(1)
+
+    def test_first(self):
+        self.check_fresh_and_dirty()
+
+    def test_second(self):
+        self.check_fresh_and_dirty()
+
+
+class Base(Snapshot):
+    config = None
+    hooks = ("pre-push", "pre-commit")
+    prefix = "gw-ganchos-"
+
+    def build(self):
         self.p = Project(self.tmp, self.config, hooks=self.hooks)
 
 
 class ProtectedBranchMark(Base):
     """The portal's eight cases for a push to the protected branch, plus the real reviewed.sh flow."""
 
-    def setUp(self):
-        super().setUp()
+    def build(self):
+        super().build()
         p = self.p
         p.git("checkout", "-q", "-b", "feature")
         p.write("src/code.py", "x = 1\n"); p.commit("code"); self.code = p.sha()
@@ -325,8 +384,8 @@ class ProtectedBranchMark(Base):
 
 
 class PrePush(Base):
-    def setUp(self):
-        super().setUp()
+    def build(self):
+        super().build()
         self.p.git("checkout", "-q", "-b", "feature")
 
     def test_lists_pushed_commits(self):
@@ -678,8 +737,8 @@ class PrePushWorktree(Base):
     """The temporary worktree the pre-push runs `check` in (anything but the clean working copy), its linked paths,
     the wrapper and the logs. `dirty` is an untracked file: it makes the working copy not clean."""
 
-    def setUp(self):
-        super().setUp()
+    def build(self):
+        super().build()
         self.p.git("checkout", "-q", "-b", "feature")
         self.gwdir = self.gw_folder(self.tmp)
 
@@ -1319,8 +1378,8 @@ class CheckCache(Base):
     SKIP = "check already green on this tree"
     ON = {"GW_CHECK_CACHE": ""}  # anything but 0 turns the cache on
 
-    def setUp(self):
-        super().setUp()
+    def build(self):
+        super().build()
         p = self.p
         self.runs = self.tmp / "runs.txt"      # outside the work tree: the check counts its own runs here
         self.flag = self.tmp / "fail-flag"     # while it exists the check fails
@@ -2133,8 +2192,8 @@ class CheckGreen(Base):
         p.write("docs/notes.md", "edited\n")
         p.write("src/new file.py", "untracked = 1\n")
         (p.work / "docs" / "notes.md").chmod(0o644)
+        status_before = p.git("status", "--porcelain").stdout  # first: it refreshes the stat data of the copied index
         index_before = (p.work / ".git" / "index").read_bytes()
-        status_before = p.git("status", "--porcelain").stdout
         code, out = self.helper("worktree-tree")
         self.assertEqual(code, 0, out)
         self.assertEqual((p.work / ".git" / "index").read_bytes(), index_before)

@@ -13,7 +13,7 @@ import time
 import unittest
 from pathlib import Path
 
-from test_hooks import ROOT, Project
+from test_hooks import ROOT, Project, Snapshot
 
 SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py", "context_guard.py",
            "change-size.py")
@@ -53,12 +53,11 @@ class SessionProject(Project):
         return path
 
 
-class Base(unittest.TestCase):
+class Base(Snapshot):
     config = None
+    prefix = "gw-sesion-"
 
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="gw-sesion-")).resolve()
-        self.addCleanup(shutil.rmtree, self.tmp, True)
+    def build(self):
         self.p = SessionProject(self.tmp, self.config)
 
 

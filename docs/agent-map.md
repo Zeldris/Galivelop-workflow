@@ -48,6 +48,7 @@ documentos. Si mueves una pieza, actualiza su fila en el mismo commit.
 | Tests | `tests/test_*.py`, `skills/*/scripts/test_*.py` | `tests/check.sh` |
 | El Python más viejo disponible (E22) | cabecera de `tests/old-python.sh` | `tests/old-python.sh` (sección de `tests/check.sh`; tests en `tests/test_old_python.py`) |
 | La suite en paralelo (E45: `testJobs`) | cabecera de `scripts/test-run.py`; config `testJobs` ([`es/config.md`](es/config.md)) | `scripts/test-run.py` (sección «python» de `tests/check.sh`, con E22 a la vez; tiempos en `<git común>/gw/test-times.json`; tests en `tests/test_test_run.py`) |
+| Repos de prueba montados una vez por clase (E46) | docstring de `Snapshot` en `tests/test_hooks.py` | `Snapshot` (lo usan las `Base` de `tests/test_hooks.py`, `test_utils.py` y `test_session_log.py`, `Hook` y `Doctor`; tests en `SnapshotCopies`) |
 | Ninguna `TestCase` después de `unittest.main()` (nunca correría) | cabecera de `scripts/tests-after-main.py`; en `check` de `templates/gw.json` | `scripts/tests-after-main.py` (en `tests/check.sh` y en el `check` de las plantillas; tests en `tests/test_tests_after_main.py`) |
 | Problemas conocidos | [`es/troubleshooting.md`](es/troubleshooting.md), [`en/troubleshooting.md`](en/troubleshooting.md) | — |
 

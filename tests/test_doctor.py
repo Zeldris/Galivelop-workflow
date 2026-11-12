@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_hooks import ROOT, VERSION
+from test_hooks import ROOT, Snapshot, VERSION
 from test_session_log import SessionProject
 
 SKILL = """---
@@ -23,10 +23,10 @@ metadata:
 """
 
 
-class Doctor(unittest.TestCase):
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="gw-doctor-")).resolve()
-        self.addCleanup(shutil.rmtree, self.tmp, True)
+class Doctor(Snapshot):
+    prefix = "gw-doctor-"
+
+    def build(self):
         p = self.p = SessionProject(self.tmp)
         for var in ("CI", "GITHUB_ACTIONS"):  # the CI's own variables must not change what these tests expect
             p.env.pop(var, None)

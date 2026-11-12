@@ -14,7 +14,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from test_hooks import BASE_CONFIG, Project, ROOT, VERSION, ZERO
+from test_hooks import BASE_CONFIG, Project, ROOT, Snapshot, VERSION, ZERO
 
 sys.dont_write_bytecode = True
 SCRIPTS = ("handoff.py", "prepush-branches.sh", "merge-branch.sh", "check.sh", "check-green.sh", "red-without-fix.sh", "related-tests.sh",
@@ -64,12 +64,11 @@ class Utils(Project):
         self.git("checkout", "-q", "-b", name, start or self.base)
 
 
-class Base(unittest.TestCase):
+class Base(Snapshot):
     config = None
+    prefix = "gw-utilidades-"
 
-    def setUp(self):
-        self.tmp = Path(tempfile.mkdtemp(prefix="gw-utilidades-")).resolve()
-        self.addCleanup(shutil.rmtree, self.tmp, True)
+    def build(self):
         self.p = Utils(self.tmp, self.config)
 
 

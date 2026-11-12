@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **`0.6.0`** en obra. **E45** hecha: `scripts/test-run.py` corre la suite en paralelo por clase (`testJobs`) y E22 va a la vez; la suite bajó de ~2000 s a 556 s con 4 núcleos. Sigue **E46** (repos por clase en los tests más caros: `test-run.py --times`), luego E47, E44, D81 y D89, versión `0.6.0`, CHANGELOG, recogida, repaso de documentación y fases 1-3 antes de `main`. |
+| Siguiente paso | **`0.6.0`** en obra. **E45** y **E46** hechas: suite en paralelo por clase (`testJobs`) y repos de prueba montados una vez por clase (`Snapshot`); de ~2000 s a 352 s con 4 núcleos (lo que queda caro, `CheckCache`, `MergeBranch` y `Hook`, es el cuerpo de los tests). Sigue **E47**, luego E44, D81 y D89, versión `0.6.0`, CHANGELOG, recogida, repaso de documentación y fases 1-3 antes de `main`. |
 
 ### Fases
 
@@ -43,16 +43,18 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-12 — 0.5.2 publicada en main (2e55d66, 2026-11-12) y fusionada en la rama; filas R2-R4 de su retro en el roadmap de la 0.6 (E44, D81, D89); filas E45-E47 del check rápido.
-2. 2026-11-11 — Evolutivos `0.6` con el dealer, 9 ramas revisadas y fusionadas: D85, D86, B28, B26 (`whole-read.py`), D82 (`review-scope.py`), B27 (`--trivial`), B29 (`measure.py` y la sesión anterior), D84 (CI por carpetas), E43 (doctor y carpetas de tests sin correr). Claves nuevas: `wholeReadWarnBytes`, `reviewTrivialLines`, `measure.minCalls`, `ciNodeDirs`, `ciRustDirs`, `doctorTestDirsIgnore`.
-3. 2026-11-11 — Arreglos de la `0.5.2` (D70-D79, D88, B22-B25, E38-E40) con el dealer: 8 ramas `agent/*` revisadas y fusionadas; el detalle, en sus commits y en el roadmap. Claves nuevas: `checkLogKeep`, `stopTranscriptBytes`, `stopSubagentMaxAge`.
-4. 2026-11-11 — H18: 28 propuestas (8 proyectos) y 14 hallazgos de la revisión `0.5.1` del instalador, decididos por el usuario y repartidos en el roadmap (es/en) con ids; P6 del portal descartada.
+1. 2026-11-12 — E46: `Snapshot` (tests/test_hooks.py) monta los repos de prueba una vez por clase y copia la carpeta en la misma ruta en cada test; en las tres `Base`, `Hook` y `Doctor`. Suite de 556 s a 352 s (4 núcleos).
+2. 2026-11-12 — 0.5.2 publicada en main (2e55d66, 2026-11-12) y fusionada en la rama; filas R2-R4 de su retro en el roadmap de la 0.6 (E44, D81, D89); filas E45-E47 del check rápido.
+3. 2026-11-11 — Evolutivos `0.6` con el dealer, 9 ramas revisadas y fusionadas: D85, D86, B28, B26 (`whole-read.py`), D82 (`review-scope.py`), B27 (`--trivial`), B29 (`measure.py` y la sesión anterior), D84 (CI por carpetas), E43 (doctor y carpetas de tests sin correr). Claves nuevas: `wholeReadWarnBytes`, `reviewTrivialLines`, `measure.minCalls`, `ciNodeDirs`, `ciRustDirs`, `doctorTestDirsIgnore`.
+4. 2026-11-11 — Arreglos de la `0.5.2` (D70-D79, D88, B22-B25, E38-E40) con el dealer: 8 ramas `agent/*` revisadas y fusionadas; el detalle, en sus commits y en el roadmap. Claves nuevas: `checkLogKeep`, `stopTranscriptBytes`, `stopSubagentMaxAge`.
+5. 2026-11-11 — H18: 28 propuestas (8 proyectos) y 14 hallazgos de la revisión `0.5.1` del instalador, decididos por el usuario y repartidos en el roadmap (es/en) con ids; P6 del portal descartada.
 
 ## Pendiente
 
 - **Error de proceso (2026-11-11):** los arreglos de la `0.5.2` se hicieron en la rama de la `0.6`. Para la retro: crear la rama del parche desde `main` antes de los arreglos (o pedirla al usuario), y un aviso en `commit-msg` o `merge-branch.sh` cuando una fila de parche cae en una rama con evolutivos de la menor siguiente.
 
 - **FOUND (dealer):** un subagente sacó el HEAD del árbol principal (checkout de su commit) y una fusión cayó en HEAD suelto; rehecha. Los encargos ya prohíben git en el árbol principal; el check del `pre-push` sobre `27bb9cf` corrió con archivos cambiando y no vale.
+- **E46:** el índice de git copiado tiene datos de stat viejos: el primer `git status` de un test lo reescribe (un test que compare el índice lo lee después); quedan `/tmp/gw-check-fifo.*` de corridas del check (sin mirar de dónde).
 - **D82:** con el clon del flujo o el árbol sucios, `review-scope.py` puede contar mal lo vendored; en `--trivial` un binario de código cuenta 0 líneas.
 - **D84:** `Swatinem/rust-cache@v2` sin fecha ni fuente comprobada; el job `versions` corre solo en ubuntu.
 - **E43:** `testMap` cuenta como corrido aunque solo corre en el `pre-push` de rama; rutas de Windows o absolutas no casan; un solo nivel de script; no poda `build`/`dist`/`target`, y el defecto `env` salta un `src/env` real.
