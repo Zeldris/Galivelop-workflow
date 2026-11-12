@@ -16,8 +16,8 @@ review (split in `docs/roadmap.en.md`).
 
 ### ES
 
-- Contexto de arranque (B21, D65): tras un `/clear` o una compactación, `measure.py` compara el uso del primer turno
-  con el punto de corte de la compactación y el `SessionStart` avisa o da la alarma (bucle de compactaciones) con el
+- Contexto de arranque (B21, D65): tras un `/clear` o una compactación, `context_guard.py` compara el uso del primer
+  turno con el punto de corte de la compactación y el `SessionStart` avisa o da la alarma (bucle de compactaciones) con el
   desglose del culpable; tope de tamaño de la bitácora (`logSize`) y `handoff.py archive`, que mueve lo pendiente de
   versiones publicadas a `logArchive` (sin `plugin.json`, la versión es la etiqueta `vX.Y.Z` más alta).
 - `measure.py` (B20, B22, D70): mide el registro de un subagente, muestra el `action` de las llamadas a Artifact y
@@ -32,7 +32,8 @@ review (split in `docs/roadmap.en.md`).
   `stopSubagentMaxAge`).
 - `handoff.py` (D58, D71): `close-row` avisa y sale con 1 con `logRows` apagado y toma la rama como `set-row`.
   `related-tests.sh` (D74) da el número de archivos y un temporal con la orden. `harvest.py` (D57) sigue los
-  renombrados.
+  renombrados y marca «… (truncated)» la idea recortada a 2000 caracteres; la plantilla de la bitácora solo explica
+  `logRows` si está encendido (D58, bloques `<!-- if key -->` de `apply.py`).
 - `version.py` (D66, D69): tipo `hotfix` (cuenta como parche) y `--release` exige que los archivos de `releaseDocs`
   nombren la versión.
 - Plantillas (D59, D60): `commitNext: true` por defecto; `AGENTS.md` nombra `handoff.py set-row` y `close-row`.
@@ -43,8 +44,8 @@ review (split in `docs/roadmap.en.md`).
 
 ### EN
 
-- Start-up context (B21, D65): after a `/clear` or a compaction, `measure.py` compares the first turn's usage with
-  the compaction cut-off and `SessionStart` warns or raises the alarm (compaction loop) with the culprit breakdown; a
+- Start-up context (B21, D65): after a `/clear` or a compaction, `context_guard.py` compares the first turn's usage
+  with the compaction cut-off and `SessionStart` warns or raises the alarm (compaction loop) with the culprit breakdown; a
   log size cap (`logSize`) and `handoff.py archive`, which moves pending items of published versions to `logArchive`
   (without `plugin.json`, the version is the highest `vX.Y.Z` tag).
 - `measure.py` (B20, B22, D70): measures a subagent's log, shows the `action` of Artifact calls and `--since` picks the
@@ -58,7 +59,9 @@ review (split in `docs/roadmap.en.md`).
 - The `Stop` hook (D88) does not ask to push while background subagents run (`stopTranscriptBytes`,
   `stopSubagentMaxAge`).
 - `handoff.py` (D58, D71): `close-row` warns and exits 1 with `logRows` off and takes the branch like `set-row`.
-  `related-tests.sh` (D74) gives the file count and a temp file with the command. `harvest.py` (D57) follows renames.
+  `related-tests.sh` (D74) gives the file count and a temp file with the command. `harvest.py` (D57) follows renames
+  and marks an idea cut at 2000 characters with "… (truncated)"; the log template only explains `logRows` when it is
+  on (D58, `apply.py`'s `<!-- if key -->` blocks).
 - `version.py` (D66, D69): `hotfix` type (counts as a patch) and `--release` requires the `releaseDocs` files to name
   the version.
 - Templates (D59, D60): `commitNext: true` by default; `AGENTS.md` names `handoff.py set-row` and `close-row`.

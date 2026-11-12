@@ -130,7 +130,8 @@ while IFS= read -r cmd; do
     # which also copies the output into a temporary file that goes to the log without the carriage returns.
     ptylog="$(mktemp "${TMPDIR:-/tmp}/gw-check-pty.XXXXXX")" || fail "cannot create a file in ${TMPDIR:-/tmp}; free space or set TMPDIR to a writable folder"
     if [ "$pty_flavor" = linux ]; then
-      GW_PUSH_PROTECTED=false SHELL=bash script -qefc "$cmd" "$ptylog"  # SHELL=bash: script runs it with $SHELL -c < /dev/null
+      # SHELL=bash: script runs it with $SHELL -c; stdin from /dev/null, or script feeds the rest of the check list to the pty
+      GW_PUSH_PROTECTED=false SHELL=bash script -qefc "$cmd" "$ptylog" < /dev/null
     else
       GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" < /dev/null
     fi

@@ -113,6 +113,15 @@ class CheckSummary(unittest.TestCase):
         self.assertIn("\ntty=1\n", self.log(), "the log still gets the output")
         self.assertNotIn("\r", self.log())
 
+    def test_on_a_terminal_every_command_of_the_list_runs(self):
+        # script(1) must not read the list the loop is reading: with its stdin on it, it ate the commands that were left.
+        self.configure(["echo first=$((1+0))", "echo second=$((2+0))", "echo third=$((3+0))"])
+        code, out = self.run_check_on_tty()
+        self.assertEqual(code, 0, out)
+        for line in ("first=1", "second=2", "third=3"):
+            self.assertIn("\n" + line + "\n", self.log(), line + " did not run")
+        self.assertEqual(out.count(" ok "), 3, out)
+
     def test_on_a_terminal_the_command_runs_with_bash_whatever_shell_is_set_and_the_log_has_no_script_lines(self):
         self.configure(["[[ 1 == 1 ]] && echo bashism=$((1+0))"])
         old = os.environ.get("SHELL")
