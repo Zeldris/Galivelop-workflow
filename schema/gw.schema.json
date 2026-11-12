@@ -209,6 +209,12 @@
       "default": 20,
       "description": "How many check-<sha>.log files of <git common dir>/gw scripts/check-green.sh lock-acquire keeps (the newest; the run that starts is never pruned); 0 = keep all."
     },
+    "testJobs": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "How many test processes scripts/test-run.py runs at once (one test class each, the slowest first); 0 = one per CPU."
+    },
     "checkOutputGrace": {
       "type": "integer",
       "minimum": 0,

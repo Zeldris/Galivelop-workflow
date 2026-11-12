@@ -53,21 +53,23 @@ python3 scripts/mkt-sheet.py check || bad
 section "hand-off log (state-table cells, Done section)"
 python3 scripts/handoff.py check --strict || bad
 
+# E22 runs alongside the main suite (E45): its output is printed in its own section once both end.
+e22_out="$(mktemp "${TMPDIR:-/tmp}/gw-check-e22.XXXXXX")" || exit 1
+trap 'kill "${e22_pid:-}" 2>/dev/null; rm -f "$e22_out"' EXIT
+bash tests/old-python.sh >"$e22_out" 2>&1 &
+e22_pid=$!
+
 section "python"
 if [[ -n "$(git ls-files -- '*.py' "${copies[@]}")" ]]; then
   git ls-files -z -- '*.py' "${copies[@]}" | xargs -0 python3 -m py_compile || bad
 fi
 python3 scripts/tests-after-main.py || bad  # a TestCase after unittest.main() never runs
-python3 -m unittest discover -s tests -p 'test_*.py' || bad
-# Tests bundled with skills (skills/<name>/scripts/test_*.py), each folder on its own.
-for d in skills/*/scripts; do
-  if [[ -n "$(git ls-files "$d/test_*.py")" ]]; then
-    python3 -m unittest discover -s "$d" -p 'test_*.py' || bad
-  fi
-done
+# tests/ and every skills/<name>/scripts with tests, each folder on its own, one class per process (E45, testJobs).
+python3 scripts/test-run.py --times 5 || bad
 
 section "python (oldest available, E22)"
-bash tests/old-python.sh || bad
+wait "$e22_pid" || bad
+cat "$e22_out"
 
 if ((fail)); then
   while IFS= read -r f; do echo "FAILED: $f"; done <<<"$failed"
