@@ -187,6 +187,9 @@ En este orden, porque cada paso usa el anterior.
 | D85 | `recover.py --state` avisa de una revisión atrasada (umbral `changeSize.block`) (recogida de cierre `0.6`, world-maker P3) | hecho (2026-11-11) |
 | D86 | `merge-branch.sh` reconoce el conflicto en la bitácora y da la orden para resolverlo, con su test (recogida de cierre `0.6`, portal P5) | hecho (2026-11-11) |
 | E43 | `doctor.py` avisa de carpetas con `test_*.py` que ningún comando del check corre; carpetas excluidas configurables (recogida de cierre `0.6`, instalador P3) | hecho (2026-11-11) |
+| E44 | El check corre `version.py --release` también en las ramas `version/*` (clave `releaseCheckBranches`), no solo en el `pre-push` a `main` (retro `0.5.2` R2) | pendiente |
+| D81 | `scripts/backport.sh <sha>...`: cherry-pick en orden topológico (`-m 1 -x`), bitácora y roadmap con la versión del parche, vacíos saltados, para en un conflicto de código y comprueba con `git cherry`; trae también los archivos de recogida de la rama; en la guía de parches y `docs/agent-map.md` (recogida de cierre `0.6`, image-generator P1; retro `0.5.2` R3) | pendiente |
+| D89 | `handoff.py`: `published_version` usa la etiqueta más alta también cuando hay `plugin.json` en el repo del flujo, para que `archive` no se adelante a una versión sin publicar (retro `0.5.2` R4) | pendiente |
 
 ## `0.7` «Preguntar»
 
@@ -216,7 +219,6 @@ En este orden, porque cada paso usa el anterior.
 | A12 | Idiomas configurables en un bloque `languages` de `.claude/gw.json`: `code` (código, nombres y comentarios; sustituye la regla fija de A8), `docs.primary` y `docs.others` (doc interna, bitácora, roadmap y commits; el emparejado `docs/es` ↔ `docs/en` los lee), `public.primary` y `public.others` (README, release, publicaciones) y `ui` (hoy `visibleLanguages`); el idioma del agente (en el que hablan usuario y agente) va por usuario en `~/.claude/gw.json`, identificado por `git config user.email`, con el principal de la doc como respaldo; `language` y `visibleLanguages` migran con `apply.py --update`; el MMC lo edita en la `1.1` (usuario, 2026-11-08) | pendiente |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.7` | pendiente |
 | D80 | Aviso automático de un sello de `gw-scout-updates` caducado (recogida de cierre `0.6`, private-project-1 P5) | pendiente |
-| D81 | `scripts/backport.sh <sha>...`: cherry-pick en orden topológico, para en un conflicto y comprueba con `git cherry`; en la guía de parches y `docs/agent-map.md` (recogida de cierre `0.6`, image-generator P1) | pendiente |
 | D83 | `apply.py --update` añade al `staleRefs` del proyecto los nombres que renombra su migración (amplía D46) (recogida de cierre `0.6`, instalador P4) | pendiente |
 | D87 | `gw-init` ofrece licencia doble: MIT para el código y CC BY-NC-SA 4.0 para el contenido, con la nota de terceros (recogida de cierre `0.6`, world-maker P6) | pendiente |
 | E41 | El `pre-commit` rechaza un autor de la lista `authorDeny` (vacía por defecto en los proyectos; con Claude en este repo); cambia la línea de `AGENTS.md` que dice que ningún gancho comprueba el autor (recogida de cierre `0.6`, private-project-1 P6) | pendiente |

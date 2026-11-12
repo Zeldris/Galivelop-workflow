@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **`0.5.2` publicada** en `main` (`2e55d66`, 2026-11-12; etiqueta y release, el usuario desde local) y fusionada aquí. Sigue la **`0.6.0`**: filas R2-R4 de la retro [`retro-2026-11-12-patch-0-5-2.md`](records/retro-2026-11-12-patch-0-5-2.md) en el roadmap de la `0.6`, `handoff.py archive` (la bitácora pasa del tope `logSize`), versión `0.6.0`, CHANGELOG, repaso de documentación y fases 1-3 antes de `main`. |
+| Siguiente paso | **`0.5.2` publicada** en `main` (`2e55d66`, 2026-11-12; etiqueta y release, el usuario desde local) y fusionada aquí. Filas R2-R4 de la retro en el roadmap de la `0.6` (E44, D81 adelantada y ampliada, D89); `handoff.py archive` no hizo falta (bitácora bajo `logSize`). Sigue la **`0.6.0`**: E44, D81 y D89, versión `0.6.0`, CHANGELOG, recogida, repaso de documentación y fases 1-3 antes de `main`. |
 
 ### Fases
 

@@ -186,6 +186,9 @@ In this order, because each step uses the previous one.
 | D85 | `recover.py --state` warns of an overdue review (`changeSize.block` threshold) (`0.6` closing harvest, world-maker P3) | done (2026-11-11) |
 | D86 | `merge-branch.sh` recognises a conflict in the log and gives the command to solve it, with its test (`0.6` closing harvest, portal P5) | done (2026-11-11) |
 | E43 | `doctor.py` warns of folders with `test_*.py` that no check command runs; excluded folders configurable (`0.6` closing harvest, instalador P3) | done (2026-11-11) |
+| E44 | The check also runs `version.py --release` on `version/*` branches (key `releaseCheckBranches`), not only in the `pre-push` to `main` (`0.5.2` retro R2) | pending |
+| D81 | `scripts/backport.sh <sha>...`: cherry-pick in topological order (`-m 1 -x`), log and roadmap take the patch's version, empty picks skipped, stops on a code conflict and checks with `git cherry`; also brings the branch's harvest files; in the patch guide and `docs/agent-map.md` (`0.6` closing harvest, image-generator P1; `0.5.2` retro R3) | pending |
+| D89 | `handoff.py`: `published_version` uses the highest tag also when the workflow repo has a `plugin.json`, so `archive` does not run ahead of an unpublished version (`0.5.2` retro R4) | pending |
 
 ## `0.7` "Ask"
 
@@ -215,7 +218,6 @@ In this order, because each step uses the previous one.
 | A12 | Configurable languages in a `languages` block of `.claude/gw.json`: `code` (code, names and comments; replaces A8's fixed rule), `docs.primary` and `docs.others` (internal docs, log, roadmap and commits; the `docs/es` ↔ `docs/en` pairing reads them), `public.primary` and `public.others` (README, release, posts) and `ui` (today `visibleLanguages`); the agent language (the one user and agent speak) goes per user in `~/.claude/gw.json`, identified by `git config user.email`, with the docs primary as fallback; `language` and `visibleLanguages` migrate with `apply.py --update`; the MMC edits it in `1.1` (user, 2026-11-08) | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.7` | pending |
 | D80 | Automatic warning of a stale `gw-scout-updates` seal (`0.6` closing harvest, private-project-1 P5) | pending |
-| D81 | `scripts/backport.sh <sha>...`: cherry-pick in topological order, stops on a conflict and checks with `git cherry`; in the patch guide and `docs/agent-map.md` (`0.6` closing harvest, image-generator P1) | pending |
 | D83 | `apply.py --update` adds the names its migration renames to the project's `staleRefs` (extends D46) (`0.6` closing harvest, instalador P4) | pending |
 | D87 | `gw-init` offers a dual licence: MIT for code and CC BY-NC-SA 4.0 for content, with the third-party note (`0.6` closing harvest, world-maker P6) | pending |
 | E41 | The `pre-commit` rejects an author in `authorDeny` (empty by default in projects; Claude in this repo); changes the `AGENTS.md` line saying no hook checks the author (`0.6` closing harvest, private-project-1 P6) | pending |
