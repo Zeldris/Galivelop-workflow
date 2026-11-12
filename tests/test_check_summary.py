@@ -122,9 +122,10 @@ class CheckSummary(unittest.TestCase):
             self.assertIn("\n" + line + "\n", self.log(), line + " did not run")
         self.assertEqual(out.count(" ok "), 3, out)
 
-    def test_with_bsd_script_its_stdin_never_ends_so_no_eof_reaches_the_pty(self):
-        # macOS: script(1) turns EOF on its stdin into a ^D written to the pty, echoed as "^D" before the output. A fake
-        # BSD script (and uname saying Darwin) does the same when its stdin ends within 2 s.
+    def test_with_bsd_script_its_stdin_is_a_terminal_so_no_eof_reaches_the_pty(self):
+        # macOS: script(1) turns EOF on its stdin into a ^D written to the pty, echoed as "^D" before the output, and
+        # fails on a fifo (tcgetattr). A fake BSD script (and uname saying Darwin) does the same: it accepts a terminal,
+        # refuses a fifo and prints ^D when its stdin ends at once.
         fake = self.tmp / "bin"
         fake.mkdir()
         (fake / "uname").write_text("#!/bin/bash\necho Darwin\n")
@@ -133,7 +134,9 @@ class CheckSummary(unittest.TestCase):
             "[ \"$1\" = --version ] && { echo 'usage: script [-q] file [command ...]' >&2; exit 1; }\n"
             "[ \"$1\" = -q ] && shift\n"
             "log=$1; shift\n"
-            "IFS= read -r -t 2 _; [ $? -gt 128 ] || printf '^D\\b\\b'\n"
+            "if [ -t 0 ]; then :\n"
+            "elif [ -p /dev/stdin ]; then echo 'script: tcgetattr/ioctl: Operation not supported on socket' >&2; exit 1\n"
+            "else start=$SECONDS; IFS= read -r -t 2 _; [ $((SECONDS - start)) -ge 1 ] || printf '^D\\b\\b'; fi\n"
             "\"$@\" > \"$log\" 2>&1; rc=$?\n"
             "cat \"$log\"; exit $rc\n")
         for name in ("uname", "script"):

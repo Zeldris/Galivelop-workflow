@@ -134,14 +134,15 @@ while IFS= read -r cmd; do
       GW_PUSH_PROTECTED=false SHELL=bash script -qefc "$cmd" "$ptylog" < /dev/null
       rc=$?
     else
-      # BSD script turns EOF on its stdin into a ^D written to the pty (echoed as "^D" before the output): its stdin is
-      # a fifo opened read-write, which never has data nor EOF; script ends when the command does
-      { fifos="$(mktemp -d "${TMPDIR:-/tmp}/gw-check-fifo.XXXXXX")" && mkfifo "$fifos/in"; } || fail "cannot create a fifo in ${TMPDIR:-/tmp}; free space or set TMPDIR to a writable folder"
-      exec 4<> "$fifos/in"
-      GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" <&4 4<&-
+      # BSD script turns EOF on its stdin into a ^D written to the pty (echoed as "^D" before the output) and refuses a
+      # fifo (tcgetattr fails): its stdin is a terminal, which sends nothing until someone types (keys reach the
+      # command), the check's own stdin if it is one, else the terminal of stdout; the loop reads its own here-string
+      if [ -t 0 ]; then
+        GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd"
+      else
+        GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" <&1
+      fi
       rc=$?
-      exec 4<&-
-      cleanup_output
     fi
     # util-linux writes its own "Script started/done on ..." lines into the typescript even with -q: not part of the output
     tr -d '\r' < "$ptylog" | sed -e '/^Script started on /d' -e '/^Script done on /d' >> "$log"
