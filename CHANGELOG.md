@@ -40,7 +40,8 @@ review (split in `docs/roadmap.en.md`).
 - Guías (D64, D72, D73, D75, B23, B24, B25): la línea del modelo de `gw-selector` separa sesión y subagentes; el
   encargo del dealer dice quién sube y qué hacer con el commit; `gw-update` abre el PR; cierre de ronda de pruebas;
   `prototype` publica desde un subagente; la fase 1 se revisa tras `/clear` o en un subagente limpio;
-  `gw-scout-updates` con 2 subagentes.
+  `gw-scout-updates` con 2 subagentes. La plantilla de `REVIEW.md` pide redirigir la entrada de un comando dentro de
+  un `while read` y probarlo con dos elementos (retro `0.5.2` R1).
 
 ### EN
 
@@ -68,7 +69,8 @@ review (split in `docs/roadmap.en.md`).
 - Guides (D64, D72, D73, D75, B23, B24, B25): `gw-selector`'s model line keeps session and subagents apart; the dealer
   brief says who pushes and what to do with the commit; `gw-update` opens the PR; closing step of a test round;
   `prototype` publishes from a subagent; phase 1 is reviewed after `/clear` or in a clean subagent;
-  `gw-scout-updates` with 2 subagents.
+  `gw-scout-updates` with 2 subagents. The `REVIEW.md` template asks to redirect the input of a command inside a
+  `while read` loop and to test it with two items (`0.5.2` retro R1).
 
 ## [0.5.1] - 2026-11-05
 

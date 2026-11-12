@@ -72,3 +72,7 @@ las crea una vez; desde entonces son del proyecto.
   techo 161k, 12 compactaciones (presupuesto 2), 100M; subagentes 25 (492 llamadas, 45M, arranque 54k; tres por
   encima de 35 llamadas). Arrastre mayor: `docs/handoff.md` 45 lecturas y `docs/roadmap.md` 57 (~1,3M) y
   `get_job_logs` 8 (624k). Cambios: retro `0.5.1` R3 y R6; R4 y R5 (D55, D56) a la `0.6`.
+- 2026-11-12, parche `0.5.2` (separación desde la rama de la `0.6`, últimas 10 h): principal 125 llamadas, 122k de
+  media, suelo 96k y techo 165k, 2 compactaciones, 15M; un subagente de revisión (30 llamadas, arranque 64k, 2,9M).
+  Arrastre mayor: `docs/handoff.md` 14 lecturas (326k) con 27.860 caracteres sobre el tope de 20.000. Cambios: retro
+  `0.5.2` R4 (archivar la bitácora tras publicar) a la `0.6`.
