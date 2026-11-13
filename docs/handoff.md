@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | **`0.5` «Base»: `ccr-d1e2d496-0vzck8`** (2026-11-02; creada desde `version/1.0.0` en `a61cdc5`; hace de `version/0.5.0` (H-13) mientras la sesión solo pueda subir a esta rama). **No hay `0.4.4`** (usuario, 2026-11-03: «publicamos la 0.5, ya directamente»): sus arreglos salen en la `0.5.0` y `ccr-6dfbc880-ddr41g` queda sin uso. `version/1.0.0` se queda con el diseño (`docs/design/`). `main` = `eeec886` = **`0.5.1`** (2026-11-05; etiqueta y release `v0.5.1` publicadas desde una sesión local) |
+| Rama | **`0.6` «Medir»: `ccr-d1e2d496-0vzck8`** (hace de `version/0.6.0` mientras la sesión solo pueda subir a esta rama). `main` = `2e55d66` = **`0.5.2`** (2026-11-12, etiqueta `v0.5.2`). `version/1.0.0` se queda con el diseño (`docs/design/`) |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
-| Fase en curso | **6 cerrada**; `0.4.1` en `main` (2026-10-26). La `0.4` es la última menor `0.x` (usuario, 2026-10-25, plan §7): solo parches `0.4.x`, y lo nuevo de una recogida va a la `1.0.0`. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | `0.4.2` en `main` (`8a6f367`, 2026-10-27), con confirmación del usuario: fases 1-3 hechas, marca de revisión `8a6f367`. **Comprobado solo en local** (confirmado por el usuario): el CI de Actions no arranca (sin cuota); el check completo del `pre-push` pasó en verde para la rama y para `main` (con `version.py --release`). Textos de la release en `docs/records/release-v0.4.2.md` (en la rama `ccr-6dfbc880-ddr41g`) |
-| Siguiente paso | **`0.6.0`** en obra. **E45**-**E47** hechas: suite en paralelo por clase (`testJobs`), repos de prueba montados una vez por clase (`Snapshot`; de ~2000 s a 352 s con 4 núcleos) y `pre-push` que solo pide el completo por las claves de `gw.json` fuera de `fullCheckSkipKeys`. **A13** y **E44** hechas (2026-11-13). **D89** y **D81** hechas. Sigue: versión `0.6.0`, CHANGELOG, recogida, repaso de documentación y fases 1-3 antes de `main`. |
+| Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
+| Último punto estable | `0.5.2` en `main` (`2e55d66`, 2026-11-12) |
+| Siguiente paso | **`0.6.0`** en obra: todas sus filas hechas y recogida H19 hecha (2026-11-13). Sigue: los arreglos de H19 (D90-D93, B30), versión `0.6.0` con su CHANGELOG, repaso de documentación y fases 1-3 antes de `main`. |
 
 ### Fases
 
@@ -30,24 +30,18 @@
 
 ## Para la próxima publicación
 
-**Antes de cerrar la `0.6.0`** (usuario, 2026-11-11): recogida (`gw-harvest`) sobre los proyectos que usan el flujo (H18); los arreglos, a un parche de la `0.5`, y los evolutivos, repartidos entre las versiones en `docs/roadmap.md`.
-
-**Política de versiones** (usuario, 2026-11-01, plan §7): solo la última menor publicada recibe parches (hoy la `0.4`);
-los evolutivos van a la siguiente menor (la `0.5`, en esta rama). La `1.0` es el Management Center y sale cuando está
-hecho lo que le asigna el roadmap; la §10 mide la madurez de la `1.x`. Cada versión se publica en este repo
-(público), a lo sumo una al día.
-
-La release `v0.4.0` la creó el usuario a mano (2026-10-25), con los textos de `docs/records/release-v0.4.0.md`. La
-sesión en la nube no puede subir etiquetas (403 del proxy) y sin cuota de Actions `release.yml` no corre. Para la siguiente: `release.yml` con
-lanzamiento manual desde Actions que cree la etiqueta.
+**Política de versiones** (usuario, 2026-11-01, plan §7): solo la última menor publicada recibe parches (hoy la `0.5`);
+los evolutivos van a la siguiente menor que no esté en obra (`docs/roadmap.md`). Cada versión se publica en este repo
+(público), a lo sumo una al día. La sesión en la nube no puede subir etiquetas (403 del proxy): la release, a mano o
+desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-13 — 2026-11-13 — **D81 hecha**: `scripts/backport.sh [--from <rama>] [--refs <id>] [<sha>...]` trae commits de la menor a la rama de un parche: cherry-pick en orden topológico con `-x` (`-m 1` en merges), choques solo de bitácora o roadmap resueltos con la versión del parche, vacíos saltados, parada con la orden en un choque de código y cuenta final de cada sha; con `--from`, los archivos de recogida de `proposalsDir` en un commit propio (`Refs:` solo con ids que acepta el `commit-msg` del parche). En la guía de parches (contributing es/en) y `agent-map.md`; 32 tests. Revisión con 3 arreglos (`Findings: 3`).
-2. 2026-11-13 — 2026-11-13 — **D89 hecha**: `handoff.py` toma como publicada la etiqueta `vX.Y.Z` más alta aunque haya `plugin.json` (que en el repo del flujo cambia antes de publicar); sin etiquetas, `plugin.json`. `archive` ya no se adelanta. Test del caso y docs es/en (`logSize`).
-3. 2026-11-13 — **E44 hecha**: clave `releaseCheckBranches` (por defecto `["version/*"]`, glob de shell; `[]` la apaga): en una rama que casa, `scripts/check.sh` corre el `check` con `GW_PUSH_PROTECTED=true`, así `version.py --release` (falta de recogida, CHANGELOG sin fecha) sale en rojo en la rama de versión y no en la subida a `main`. Solo en `check.sh`, no en el `pre-push` (no bloquea subidas a mitad de versión). En esquema, plantilla, `fullCheckSkipKeys`, docs es/en (config y contributing) y copias; tests de defecto, valor dado, `[]`, HEAD suelto y valor malo. Esta rama (`ccr-…`) no casa con el defecto.
-4. 2026-11-13 — **A13 hecha** (trozo C7, cierre): claves `testScanSkipDirs`, `measure.{imageTokens,mixedRatio,minOutput,coldMs}` (leídas por `measure.py` de `gw-opt-tokens` y de `gw-opt-ai`, con el literal si falta config) y `mediaContent.maxSubjects` (`figures.py`), `measure` y `mediaContent` en `fullCheckSkipKeys`; `quality_bench.py` se deja como está (herramienta interna). Claves de A13 por grupo: C1 `checkReuse*`/`stopSeverity` y afines; C2 `changeSize.severity`, `commitTypes`, `commitWipPrefix`, `agent*`; C3 `contextGuard.*`, `subagent*`; C4 comandos, `retro`, `redWithoutFix`, `branchPrefixes`, `wholeRead*`; C5 `recover`, `handoff`, `taskId`; C6 `harvest`, `ci*`, `patchCommitTypes`, `metrics.gitTimeout`; C7 las de esta fila. Tests de defecto, valor dado y valor malo.
-5. 2026-11-13 — A13 trozo C6 (último): claves `harvest.{ideaChars,commitsShown}`, `applyDiffLines`, `doctorScanBytes`, `patchCommitTypes`, `ciGreenConclusions`, `ciStatusTimeout`, `ciStepTimeout`, `ciSystemCommands`, `staleRefsPaths` y `metrics.gitTimeout` en esquema, plantilla, `config.py`, docs es/en y copias (las ocho primeras en `fullCheckSkipKeys`); duplicados leídos de config sin clave nueva: `LINKABLE` (de `worktreeLinks`), `SKIP_DIRS` de tests-after-main (de `doctorTestDirsIgnore`), `COMMIT_TYPES`/`commitWipPrefix` en version.py y metrics.py, `charsPerToken` en measure.py. Saltadas: fila 15 (ya cubierta por `hookStdinWait`) y fila 28 (un defecto de esquema cambiaría la semántica de `agentMap.path` ausente). Tests del grupo C: marcas únicas en test_session_log (pgrep). Con tests de defecto, valor dado y valor malo.
+1. 2026-11-13 — H19 hecha: recogida de la `0.6.0` sobre los 6 proyectos de H18 (`docs/proposals/2026-11-13-*.md`): 12 propuestas aprobadas; los arreglos D90-D93 y B30, a la `0.6.0`; E48, D94-D96, E49 y B31, a la `0.7`; E50, a la `0.8`. private-project-1 y private-project-3, sin novedades.
+2. 2026-11-13 — 2026-11-13 — **D81 hecha**: `scripts/backport.sh [--from <rama>] [--refs <id>] [<sha>...]` trae commits de la menor a la rama de un parche: cherry-pick en orden topológico con `-x` (`-m 1` en merges), choques solo de bitácora o roadmap resueltos con la versión del parche, vacíos saltados, parada con la orden en un choque de código y cuenta final de cada sha; con `--from`, los archivos de recogida de `proposalsDir` en un commit propio (`Refs:` solo con ids que acepta el `commit-msg` del parche). En la guía de parches (contributing es/en) y `agent-map.md`; 32 tests. Revisión con 3 arreglos (`Findings: 3`).
+3. 2026-11-13 — 2026-11-13 — **D89 hecha**: `handoff.py` toma como publicada la etiqueta `vX.Y.Z` más alta aunque haya `plugin.json` (que en el repo del flujo cambia antes de publicar); sin etiquetas, `plugin.json`. `archive` ya no se adelanta. Test del caso y docs es/en (`logSize`).
+4. 2026-11-13 — **E44 hecha**: clave `releaseCheckBranches` (por defecto `["version/*"]`, glob de shell; `[]` la apaga): en una rama que casa, `scripts/check.sh` corre el `check` con `GW_PUSH_PROTECTED=true`, así `version.py --release` (falta de recogida, CHANGELOG sin fecha) sale en rojo en la rama de versión y no en la subida a `main`. Solo en `check.sh`, no en el `pre-push` (no bloquea subidas a mitad de versión). En esquema, plantilla, `fullCheckSkipKeys`, docs es/en (config y contributing) y copias; tests de defecto, valor dado, `[]`, HEAD suelto y valor malo. Esta rama (`ccr-…`) no casa con el defecto.
+5. 2026-11-13 — **A13 hecha** (trozo C7, cierre): claves `testScanSkipDirs`, `measure.{imageTokens,mixedRatio,minOutput,coldMs}` (leídas por `measure.py` de `gw-opt-tokens` y de `gw-opt-ai`, con el literal si falta config) y `mediaContent.maxSubjects` (`figures.py`), `measure` y `mediaContent` en `fullCheckSkipKeys`; `quality_bench.py` se deja como está (herramienta interna). Claves de A13 por grupo: C1 `checkReuse*`/`stopSeverity` y afines; C2 `changeSize.severity`, `commitTypes`, `commitWipPrefix`, `agent*`; C3 `contextGuard.*`, `subagent*`; C4 comandos, `retro`, `redWithoutFix`, `branchPrefixes`, `wholeRead*`; C5 `recover`, `handoff`, `taskId`; C6 `harvest`, `ci*`, `patchCommitTypes`, `metrics.gitTimeout`; C7 las de esta fila. Tests de defecto, valor dado y valor malo.
 
 ## Pendiente
 
@@ -55,7 +49,6 @@ lanzamiento manual desde Actions que cree la etiqueta.
 - **A13 (C1):** `checkReuseTtl`/`checkReuseKeep` se leen del `gw.json` de la copia de trabajo, no del commit que se sube (`check-green.sh:41`; el `pre-push` usa `cfg_at`).
 - **Error de proceso (2026-11-11):** los arreglos de la `0.5.2` se hicieron en la rama de la `0.6`. Para la retro: crear la rama del parche desde `main` antes de los arreglos (o pedirla al usuario), y un aviso en `commit-msg` o `merge-branch.sh` cuando una fila de parche cae en una rama con evolutivos de la menor siguiente.
 
-- **FOUND (dealer):** un subagente sacó el HEAD del árbol principal (checkout de su commit) y una fusión cayó en HEAD suelto; rehecha. Los encargos ya prohíben git en el árbol principal; el check del `pre-push` sobre `27bb9cf` corrió con archivos cambiando y no vale.
 - **E47:** la lista por defecto de `fullCheckSkipKeys` sale del check de este repo (un `check` que lea una la quita).
 - **E46:** el índice de git copiado tiene datos de stat viejos: el primer `git status` de un test lo reescribe (un test que compare el índice lo lee después); quedan `/tmp/gw-check-fifo.*` de corridas del check (sin mirar de dónde).
 - **D82:** con el clon del flujo o el árbol sucios, `review-scope.py` puede contar mal lo vendored; en `--trivial` un binario de código cuenta 0 líneas.

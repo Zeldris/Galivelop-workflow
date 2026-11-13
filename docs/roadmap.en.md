@@ -151,6 +151,7 @@ In this order, because each step uses the previous one.
 | H16 | `0.6` harvest (`gw-harvest`) and its proposals, to the user | done (B20, D57-D60 to `0.5.2`; D61-D63 to `0.7`) |
 | H17 | User notes (SDD, DDD, TDD, exploration, task record, done per environment) and four external references, split into proposals: [`2026-11-08-notes-and-references.md`](proposals/2026-11-08-notes-and-references.md); all 13 and the 5 questions approved (user, 2026-11-08); the design that joins them, [`I-lifecycle.md`](design/I-lifecycle.md), open until its `grilling` | in progress |
 | H18 | `0.6` closing harvest (`gw-harvest`) before releasing it: fixes to the next `0.5` patch; evolutions, split across the versions (user, 2026-11-11) | done (2026-11-11; 28 proposals and 14 findings of the instalador `0.5.1` review: D70-D79, D88, B22-B25 and E38-E40 to `0.5.2`; B26-B29, D82, D84-D86 and E43 to `0.6`; D80, D81, D83, D87 and E41 to `0.7`; E42 to `0.8`; portal P6 discarded) |
+| H19 | `0.6.0` harvest (`gw-harvest`) before releasing it (user, 2026-11-13: fixes to `0.6.0`; evolutions to `0.7` and `0.8`) | done (2026-11-13; 12 proposals: D90-D93 and B30 to `0.6`; E48, D94-D96, E49 and B31 to `0.7`; E50 to `0.8`) |
 | A10 | One-page A4 workflow presentation sheets: for whoever contracts development, `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (what it solves, how work runs, what it guarantees), and for teams that install it, `docs/es/mkt-adoption.md` ↔ `docs/en/mkt-adoption.md` (user, 2026-11-09), with its HTML and final PDF generated from the `.md` by a script so they do not drift; reviewed on each version (D66) (user, 2026-11-06) | done (`scripts/mkt-sheet.py`, portal style) |
 | B1 | `Stop` hook that reads the session logs | done (`scripts/metrics.py record`, key `metrics`) |
 | B2 | `docs/metrics/ledger.jsonl` in the repo | done (`merge=union` in `.gitattributes`; `apply.py` does not set it in projects yet) |
@@ -193,6 +194,11 @@ In this order, because each step uses the previous one.
 | E46 | The most expensive test files per `test-run.py --times` set up their test repos once per class, with a clean state for each test (follows E45): `Snapshot` in `tests/test_hooks.py` (`build()` once, a copy of the folder at the same path for each test) in the three `Base` classes, `Hook` and `Doctor`; the suite, from 556 s to 352 s on 4 cores | done (2026-11-12) |
 | E47 | The `pre-push` asks for the full check only for the `.claude/gw.json` keys that change what the check runs; the rest get the change's tests (follows E45): `config.py push-scope --commits` compares each new commit's keys with its parents and only those outside `fullCheckSkipKeys` count (new; by default, the ones no check script reads); a broken or missing config on either side, full | done (2026-11-12) |
 | A13 | Review of everything done up to `0.6` so that `.claude/gw.json` is as complete as possible: each threshold, path, warning or behaviour still fixed in the code becomes a key that can be turned on or configured, with its default, its entry in `config.py`, the schema and `docs/en/config.md` (rule "Everything configurable"; user, 2026-11-12) | done (2026-11-13) |
+| D90 | `handoff.py closed` gives the command that fixes it (`handoff.py done '<id>: …'`) (`0.6.0` harvest, world-maker P1) | pending |
+| D91 | The `merge-branch.sh` examples (`AGENTS.md` templates, `gw-orchestrate-dealer`) carry the `Siguiente:` trailer `commitNext` asks for (`0.6.0` harvest, installer P2) | pending |
+| D92 | The `gw-orchestrate-dealer` brief tells the subagent not to answer until its background work ends (`0.6.0` harvest, image-generator P3) | pending |
+| D93 | `gw-orchestrate-dealer`: when applying a document from another repo, the subagent returns each point with its literal text and path, not a summary (`0.6.0` harvest, portal P1) | pending |
+| B30 | Phase 2 of the `AGENTS.md` templates and `gw-opt-ai` (`disable-model-invocation`) agree on who launches it (`0.6.0` harvest, image-generator P1) | pending |
 
 ## `0.7` "Ask"
 
@@ -225,6 +231,12 @@ In this order, because each step uses the previous one.
 | D83 | `apply.py --update` adds the names its migration renames to the project's `staleRefs` (extends D46) (`0.6` closing harvest, instalador P4) | pending |
 | D87 | `gw-init` offers a dual licence: MIT for code and CC BY-NC-SA 4.0 for content, with the third-party note (`0.6` closing harvest, world-maker P6) | pending |
 | E41 | The `pre-commit` rejects an author in `authorDeny` (empty by default in projects; Claude in this repo); changes the `AGENTS.md` line saying no hook checks the author (`0.6` closing harvest, private-project-1 P6) | pending |
+| E48 | `red-without-fix.sh` reverts only the fix inside the test's file (`--patch <diff>` or `--lines A-B`): inline tests in Rust and others (`0.6.0` harvest, installer P1) | pending |
+| D94 | `scripts/push.sh <branch>`: retries at 2, 4, 8 and 16 s and success only if `git ls-remote` matches `HEAD`; `AGENTS.md` points to it (`0.6.0` harvest, image-generator P4) | pending |
+| D95 | `handoff.py add-pending` and `add-decision`: add to the log without reading it (`0.6.0` harvest, installer P3) | pending |
+| D96 | Long log cells: `handoff.py` moves a row's closed items to "Done", or a second cap that fails (new key) (`0.6.0` harvest, image-generator P2) | pending |
+| E49 | `gw-init` with `agentSignatures: false` writes the "no signatures" rule into `CLAUDE.md` against the attribution reminder (`0.6.0` harvest, image-generator P5) | pending |
+| B31 | Warning when the context nears the window with the compaction budget spent (`recover.py --state` or `Stop`), before the compaction (`0.6.0` harvest, image-generator P7) | pending |
 
 ## `0.8` "Front end and other agents"
 
@@ -238,6 +250,7 @@ In this order, because each step uses the previous one.
 | B9 | Non-Anthropic models through opencode | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.8` | pending |
 | E42 | `gw-seo` skill (SEO and link previews for static sites) brought from the portal: no portal paths, English names, tests in the check, es/en docs and its source's MIT LICENSE (`0.6` closing harvest, portal P1) | pending |
+| E50 | `PreToolUse` hook on `Read` that warns, without blocking, when reading loose screenshots and suggests a contact sheet (the project's command in a key) (`0.6.0` harvest, image-generator P6) | pending |
 
 ## `0.9` "Stable"
 
