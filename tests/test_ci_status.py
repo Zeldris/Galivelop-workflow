@@ -125,8 +125,16 @@ class CiStatus(unittest.TestCase):
     def test_green_conclusions_key_changes_what_counts_as_green(self):
         self.config({"ciGreenConclusions": ["success"]})
         self.assertCi(self.ci(run=runs(("a", "success"), ("b", "neutral"))), 1, "red", "b: neutral")
-        self.config({"ciGreenConclusions": ["success", "cancelled"]})
-        self.assertCi(self.ci(run=runs(("a", "success"), ("d", "cancelled"))), 0, "green")
+        self.config({"ciGreenConclusions": ["success", "neutral"]})
+        self.assertCi(self.ci(run=runs(("a", "success"), ("b", "neutral"))), 0, "green")
+
+    def test_green_conclusions_never_accept_a_failing_conclusion(self):
+        for bad in ("failure", "cancelled", "timed_out", "action_required"):
+            with self.subTest(bad=bad):
+                self.config({"ciGreenConclusions": ["success", bad]})
+                code, out = self.ci(run=runs(("a", "success"), ("d", bad)))
+                self.assertEqual(code, 2, out)
+                self.assertIn("ciGreenConclusions[1]: must be one of ['success', 'neutral', 'skipped']", out)
 
     def test_green_conclusions_key_validates_in_the_config(self):
         for bad in ([], "success", ["Success"], [1]):

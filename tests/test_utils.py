@@ -2284,6 +2284,13 @@ class MdLinksSkipAndRoots(Base):
         hits = sorted(l.split(":")[0] for l in self.run_it()[1].splitlines() if "stale reference" in l)
         self.assertEqual(hits, ["README.md", "docs/a.md"])
 
+    def test_stale_refs_paths_docs_folder_is_case_sensitive_and_readme_is_not(self):
+        self.project(self.stale())
+        for rel in ("Docs/a.md", "docs/b.md", "readme.md", "README.es.md"):
+            self.p.write(rel, "fase 3.5\n")
+        hits = sorted(l.split(":")[0] for l in self.run_it()[1].splitlines() if "stale reference" in l)
+        self.assertEqual(hits, ["README.es.md", "docs/b.md", "readme.md"])
+
     def test_stale_refs_paths_validates_in_the_config(self):
         for bad in ([], ["/abs"], ["../up"], [""], "docs/"):
             with self.subTest(bad=bad):

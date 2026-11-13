@@ -238,7 +238,7 @@
     },
     "ciGreenConclusions": {
       "type": "array",
-      "items": {"type": "string", "pattern": "^[a-z_]+$"},
+      "items": {"type": "string", "enum": ["success", "neutral", "skipped"]},
       "minItems": 1,
       "uniqueItems": true,
       "default": ["success", "neutral", "skipped"],
@@ -252,7 +252,8 @@
     },
     "ciSystemCommands": {
       "type": "array",
-      "items": {"type": "string", "pattern": "^[A-Za-z0-9._+-]+$"},
+      "items": {"type": "string", "enum": ["sudo", "apt-get", "apt", "yum", "dnf", "apk", "brew", "choco", "winget", "snap"]},
+      "uniqueItems": true,
       "default": ["sudo", "apt-get", "apt", "yum", "dnf", "apk", "brew", "choco", "winget", "snap"],
       "description": "A13: the commands that make ci-local.py leave a workflow step out as a system-package install (a step that has one of them as a word followed by a space, at the start of a command, is not run: the machine must have the packages already). The list replaces the default one; [] leaves no step out."
     },

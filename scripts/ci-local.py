@@ -50,6 +50,9 @@ def system_packages(commands):
     return re.compile(r"(^|[\s;&|(])(" + "|".join(re.escape(c) for c in commands) + r")\s")
 
 
+PACKAGE_VERB = re.compile(r"(?:^|[\s;&|(])(?:install|update|upgrade|add|remove|refresh|autoremove|clean|-y)(?:\s|$)")
+
+
 HEADER = ("# CI run locally\n\n"
           "Written by `ci-local.py --record`: one line per local run of the GitHub CI (green or red, with what it\n"
           "did not cover). The PR hook takes a green line whose commit has only content after it as the CI that\n"
@@ -730,6 +733,8 @@ class Run:
                     continue
                 script = substitute(step.get("run"), ev)
                 if self.system and self.system.search(script):
+                    if not PACKAGE_VERB.search(script):  # `sudo bash tests/check.sh` is no install: it forbids a green
+                        self.unrun.append(f"{sname} (skipped as a system command but it installs nothing)")
                     self.not_run.append(sname)
                     self.say(f"{sname}: not run (system packages; this machine must have them already)")
                     continue

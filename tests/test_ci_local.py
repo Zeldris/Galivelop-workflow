@@ -341,7 +341,7 @@ jobs:
         self.p.commit("config")
 
     SYSTEM = (f"on: [pull_request]\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n"
-              "      - run: apt-get --version >/dev/null 2>&1 || true\n      - run: echo foo-install\n")
+              "      - run: apt-get update >/dev/null 2>&1 || true\n      - run: echo foo-install\n")
 
     def test_system_package_steps_are_left_out_by_default_and_by_the_ci_system_commands_key(self):
         self.workflow(self.SYSTEM)
@@ -351,9 +351,25 @@ jobs:
         self.set_config(ciSystemCommands=[])  # none left out: the apt-get line runs
         code, out = self.ci()
         self.assertNotIn("not run (system packages", out)
-        self.set_config(ciSystemCommands=["echo"])
+        self.set_config(ciSystemCommands=["apt-get", "brew"])  # a subset of the package managers
         code, out = self.ci()
         self.assertEqual(out.count("not run (system packages"), 1, out)
+
+    def test_ci_system_commands_only_accept_package_managers_and_a_skipped_non_install_is_not_green(self):
+        self.workflow(self.SYSTEM)
+        for bad in ("bash", "echo"):
+            with self.subTest(bad=bad):
+                self.set_config(ciSystemCommands=[bad])
+                code, out = self.ci()
+                self.assertEqual(code, 2, out)
+                self.assertIn("ciSystemCommands[0]: must be one of", out)
+        self.workflow(f"on: [pull_request]\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n"
+                      "      - run: echo ok\n      - run: sudo bash tests/check.sh\n")
+        self.set_config(ciSystemCommands=["sudo"])
+        code, out = self.ci()
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("not green", out)
+        self.assertIn("skipped as a system command but it installs nothing", out)
 
     def test_ci_system_commands_validates_in_the_config(self):
         self.workflow(self.SYSTEM)

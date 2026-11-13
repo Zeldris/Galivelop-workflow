@@ -17,31 +17,15 @@ Exit 0 if every file is clean (or there are no test files, or some only warned);
 """
 import argparse
 import ast
-import fnmatch
 import os
 import subprocess
 import sys
 from pathlib import Path
 
 sys.dont_write_bytecode = True
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-SKIP_DIRS = [".git", "node_modules", ".venv", "venv", "__pycache__", ".tox"]  # only when config.py is not beside this script
-
-
-def skip_patterns(root):
-    """The folder patterns the walk outside git skips: the project's `doctorTestDirsIgnore` (A13: one list for the
-    folders without tests), else the schema default; SKIP_DIRS when config.py cannot be loaded at all."""
-    try:
-        import config
-    except ImportError:
-        return SKIP_DIRS
-    try:
-        return config.doctor_test_dirs_ignore(config.load(root))
-    except (config.ConfigError, OSError, ValueError, KeyError):
-        try:
-            return config.doctor_test_dirs_ignore({})
-        except (config.ConfigError, OSError, ValueError, KeyError):
-            return SKIP_DIRS
+# The walk outside git skips exactly these folders. It stays apart from doctorTestDirsIgnore on purpose (A13): that list
+# is longer (env, site-packages, .claude/gw, ...) and has another job, so merging them would change what is scanned.
+SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", ".tox"}
 
 
 class Scan:
@@ -157,12 +141,8 @@ def discover(root):
         return sorted(f for f in out.split("\0") if f and is_test_file(f))
     except (OSError, subprocess.CalledProcessError):
         found = []
-        patterns = skip_patterns(root)
         for d, dirs, files in os.walk(root):
-            rel = os.path.relpath(d, root).replace(os.sep, "/")
-            dirs[:] = [x for x in dirs if not any(
-                fnmatch.fnmatchcase(sub, pat) or fnmatch.fnmatchcase(sub, "*/" + pat)
-                for sub in [x if rel == "." else f"{rel}/{x}"] for pat in patterns)]
+            dirs[:] = [x for x in dirs if x not in SKIP_DIRS]
             found += [os.path.relpath(os.path.join(d, f), root) for f in files if is_test_file(f)]
         return sorted(found)
 

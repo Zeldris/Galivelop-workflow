@@ -320,8 +320,9 @@ def _string_list_key(config, key):
     asks for `minItems`), else the schema default."""
     prop = _schema()["properties"][key]
     given = config.get(key)
+    allowed = prop.get("items", {}).get("enum")  # a closed list (ciGreenConclusions): anything else is the default
     if (isinstance(given, list) and len(given) >= prop.get("minItems", 0)
-            and all(isinstance(x, str) and x for x in given)):
+            and all(isinstance(x, str) and x and (allowed is None or x in allowed) for x in given)):
         return list(given)
     return list(prop["default"])
 
@@ -349,7 +350,8 @@ def patch_commit_types(config):
 
 
 def ci_green_conclusions(config):
-    """The `ciGreenConclusions` key (A13): the check-run conclusions ci-status.py counts as green."""
+    """The `ciGreenConclusions` key (A13): the check-run conclusions ci-status.py counts as green (success, neutral and
+    skipped only: a failing conclusion can never count as green)."""
     return _string_list_key(config, "ciGreenConclusions")
 
 
@@ -370,10 +372,11 @@ def ci_step_timeout(config):
 def ci_system_commands(config):
     """The `ciSystemCommands` key (A13): the commands whose steps ci-local.py leaves out as system-package installs
     (an empty list leaves none out)."""
+    prop = _schema()["properties"]["ciSystemCommands"]
     given = config.get("ciSystemCommands")
-    if isinstance(given, list) and all(isinstance(x, str) and x for x in given):
-        return list(given)
-    return list(_schema()["properties"]["ciSystemCommands"]["default"])
+    if isinstance(given, list) and all(isinstance(x, str) and x in prop["items"]["enum"] for x in given):
+        return list(given)  # only package managers: a bad entry gives the default, never a way to skip a real step
+    return list(prop["default"])
 
 
 def doctor_scan_bytes(config):

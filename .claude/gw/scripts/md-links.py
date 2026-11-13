@@ -100,9 +100,10 @@ def broken_links(root, md_files, files_only, link_roots=()):
 
 
 def stale_refs(root, patterns, log, skip=(), paths=('docs/', 'README*')):
-    """The `staleRefs` problems of the tracked files that the `paths` globs (staleRefsPaths) match, case-insensitively."""
+    """The `staleRefs` problems of the tracked files that the `paths` globs (staleRefsPaths) match: a glob with a `/`
+    (`docs/`) case-sensitively, one without (`README*`, a file name) case-insensitively, as before A13."""
     problems = []
-    scanned = [re.compile(gwconfig.glob_regex(g).pattern, re.I) for g in paths]
+    scanned = [re.compile(gwconfig.glob_regex(g).pattern, 0 if '/' in g else re.I) for g in paths]
     skipped = [gwconfig.glob_regex(g) for g in skip]
     compiled = []
     for p in patterns:
