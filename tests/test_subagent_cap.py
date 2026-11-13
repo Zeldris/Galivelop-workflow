@@ -587,11 +587,6 @@ class NothingDisabled(Base):
         (self.p.scripts / "models.py").unlink()
         self.assertQuiet(self.p.call(tool_input={"prompt": "x", "model": "opus", "effort": "low"}))
 
-
-if __name__ == "__main__":
-    unittest.main()
-
-
 class Keys(Base):
     """A13: subagentCapStep, subagentCounterStaleDays, subagentTranscriptBytes and subagentCapAction; the defaults are
     the former literals (10, 7, 512 KiB, ask), a set value changes the behaviour, a bad one gives the defaults."""
@@ -681,3 +676,7 @@ class Keys(Base):
         spec = call()  # only the last 1024 bytes: no assistant row, the model cannot be told
         self.assertEqual(spec["permissionDecision"], "ask")
         self.assertIn("cannot be told", spec["permissionDecisionReason"])
+
+
+if __name__ == "__main__":
+    unittest.main()
