@@ -194,11 +194,11 @@ In this order, because each step uses the previous one.
 | E46 | The most expensive test files per `test-run.py --times` set up their test repos once per class, with a clean state for each test (follows E45): `Snapshot` in `tests/test_hooks.py` (`build()` once, a copy of the folder at the same path for each test) in the three `Base` classes, `Hook` and `Doctor`; the suite, from 556 s to 352 s on 4 cores | done (2026-11-12) |
 | E47 | The `pre-push` asks for the full check only for the `.claude/gw.json` keys that change what the check runs; the rest get the change's tests (follows E45): `config.py push-scope --commits` compares each new commit's keys with its parents and only those outside `fullCheckSkipKeys` count (new; by default, the ones no check script reads); a broken or missing config on either side, full | done (2026-11-12) |
 | A13 | Review of everything done up to `0.6` so that `.claude/gw.json` is as complete as possible: each threshold, path, warning or behaviour still fixed in the code becomes a key that can be turned on or configured, with its default, its entry in `config.py`, the schema and `docs/en/config.md` (rule "Everything configurable"; user, 2026-11-12) | done (2026-11-13) |
-| D90 | `handoff.py closed` gives the command that fixes it (`handoff.py done '<id>: …'`) (`0.6.0` harvest, world-maker P1) | pending |
-| D91 | The `merge-branch.sh` examples (`AGENTS.md` templates, `gw-orchestrate-dealer`) carry the `Siguiente:` trailer `commitNext` asks for (`0.6.0` harvest, installer P2) | pending |
-| D92 | The `gw-orchestrate-dealer` brief tells the subagent not to answer until its background work ends (`0.6.0` harvest, image-generator P3) | pending |
-| D93 | `gw-orchestrate-dealer`: when applying a document from another repo, the subagent returns each point with its literal text and path, not a summary (`0.6.0` harvest, portal P1) | pending |
-| B30 | Phase 2 of the `AGENTS.md` templates and `gw-opt-ai` (`disable-model-invocation`) agree on who launches it (`0.6.0` harvest, image-generator P1) | pending |
+| D90 | `handoff.py closed` gives the command that fixes it (`handoff.py done '<id>: …'`) (`0.6.0` harvest, world-maker P1) | done (2026-11-13) |
+| D91 | The `merge-branch.sh` examples (`AGENTS.md` templates, `gw-orchestrate-dealer`) carry the `Siguiente:` trailer `commitNext` asks for (`0.6.0` harvest, installer P2) | done (2026-11-13) |
+| D92 | The `gw-orchestrate-dealer` brief tells the subagent not to answer until its background work ends (`0.6.0` harvest, image-generator P3) | done (2026-11-13) |
+| D93 | `gw-orchestrate-dealer`: when applying a document from another repo, the subagent returns each point with its literal text and path, not a summary (`0.6.0` harvest, portal P1) | done (2026-11-13) |
+| B30 | Phase 2 of the `AGENTS.md` templates and `gw-opt-ai` (`disable-model-invocation`) agree on who launches it (`0.6.0` harvest, image-generator P1) | done (2026-11-13) |
 
 ## `0.7` "Ask"
 

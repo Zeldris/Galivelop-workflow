@@ -8,6 +8,101 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.6.0] - 2026-11-13
+
+Menor de gasto y calidad: métricas de tokens, modelo y esfuerzo por agente, revisión por bloques, check rápido y
+`.claude/gw.json` completo (filas de la `0.6` en `docs/roadmap.md`). / Spend-and-quality minor: token metrics, model
+and effort per agent, review by blocks, a fast check and a complete `.claude/gw.json` (`0.6` rows in
+`docs/roadmap.en.md`).
+
+### ES
+
+- Métricas de tokens (B1-B8): el gancho `Stop` apunta por sesión los tokens por modelo y tipo, rama, `Refs` y
+  subagente en `docs/metrics/ledger.jsonl` (`merge=union`); `scripts/metrics.py` hace informes por periodo
+  (`report`, `--write`), comparaciones (`compare`), precios con fecha (`price`) y señales de calidad junto al gasto
+  (`quality`, trailers `Findings:` y `Retries:`); la skill `gw-metrics` los explica. El `SessionStart` avisa cuando un
+  modelo gasta 1,5× su media (`metrics.alert`).
+- Modelos (B7, B10, B11): `models.disabled` y `scripts/models.py`; `scripts/subagent-cap.py` deniega un modelo
+  apagado y recuerda pasar modelo y esfuerzo en cada subagente (`models.agentFields`); `doctor.py` avisa de las
+  variables globales que los pisan (`models.checkLevers`). `gw-selector` recomienda modelo y esfuerzo de la sesión
+  (`sessionEffort` en `selector.cases`).
+- Revisión (B18, D43, D82, D85, B27): `/code-review` en cada bloque cerrado de una rama larga, con aviso del
+  `commit-msg` por tamaño (`scripts/change-size.py`, `changeSize`); `scripts/review-scope.py` deja fuera lo copiado
+  tal cual del flujo (`vendored`) y `--trivial` reconoce el diff que se revisa sin subagente; `recover.py --state`
+  avisa de una revisión atrasada.
+- Check y subidas (E22, D49, E44, E45, E46, E47, E27): `scripts/test-run.py` corre la suite en paralelo
+  (`testJobs`), con repos de prueba montados una vez por clase (de 556 s a 352 s); `tests/old-python.sh` repite la
+  compilación y los tests del cambio con el Python más viejo disponible; el `pre-push` de una rama corre solo los
+  tests del cambio (`branchCheck`, `scripts/tests-for.py`, `testMap`) y pide el completo solo por las claves que
+  cambian lo que corre (`fullCheckSkipKeys`); `scripts/check.sh` corre `version.py --release` en las ramas
+  `version/*` (`releaseCheckBranches`); el CI instala la versión de ShellCheck de `shellcheckVersion`.
+- Orquestación (B16, D42, B28, B19): tipo de subagente ligero `gw-worker` (`.claude/agents/gw-worker.md`, lo crea
+  `gw-init`); `gw-orchestrate-dealer` reparte los hallazgos aprobados por grupo de archivos, da a cada agente su
+  carpeta en el scratchpad y comprueba la base del worktree; `gw-update` reparte la reconciliación de cada `.gw-new`.
+- Herramientas (D48, D55, D56, D81, D86, D89, B26, B29, E43): `handoff.py next-id` mira las ramas remotas;
+  `scripts/roadmap.py show|done` en los dos idiomas; `scripts/ci-status.py --failed` da solo el paso en rojo;
+  `scripts/backport.sh` lleva commits a un parche; `merge-branch.sh` da la orden para un conflicto en la bitácora;
+  `handoff.py archive` no se adelanta a una versión sin publicar; aviso al leer entera la bitácora o un registro
+  grande (`wholeReadWarnBytes`); `measure.py` mide la sesión anterior tras un `/clear` (`measure.minCalls`);
+  `doctor.py` avisa de tests que ningún comando del check corre.
+- Proyectos (D53, D54, D84): `ownedFiles` para los archivos del flujo que el proyecto hizo suyos; `ciOnPush` elige
+  si el CI corre en cada push o solo en los PR; `templates/github/check.yml` lee de `.claude/gw.json` los
+  directorios de Node y Rust.
+- Configuración (A13): cada umbral, ruta o aviso que iba fijo en el código es una clave de `.claude/gw.json` con su
+  valor por defecto, en `config.py`, el esquema y `docs/es/config.md`.
+- Presentación (A10): hojas A4 para quien contrata desarrollo y para equipos que instalan el flujo
+  (`docs/es/mkt-workflow.md`, `docs/es/mkt-adoption.md`), con HTML y PDF de `scripts/mkt-sheet.py`.
+- Recogidas y diseño (H16-H19): las propuestas de los proyectos, repartidas entre versiones; las notas del usuario y
+  cuatro referencias, en `docs/proposals/2026-11-08-notes-and-references.md` y `docs/design/I-lifecycle.md` (la
+  ficha de tarea, C11, a la `0.7`).
+- Arreglos de la recogida `0.6.0` (D90-D93, B30): `handoff.py closed` da la orden que lo arregla; los ejemplos de
+  `merge-branch.sh` llevan `Siguiente:`; el encargo del dealer pide esperar al trabajo de fondo y, al aplicar un
+  documento de otro repo, el texto literal con su ruta; la fase 2 dice quién lanza `gw-opt-ai`.
+
+### EN
+
+- Token metrics (B1-B8): the `Stop` hook records per session the tokens by model and kind, branch, `Refs` and
+  subagent in `docs/metrics/ledger.jsonl` (`merge=union`); `scripts/metrics.py` makes period reports (`report`,
+  `--write`), comparisons (`compare`), dated prices (`price`) and quality signals next to the spend (`quality`,
+  `Findings:` and `Retries:` trailers); the `gw-metrics` skill explains them. `SessionStart` warns when a model spends
+  1.5× its average (`metrics.alert`).
+- Models (B7, B10, B11): `models.disabled` and `scripts/models.py`; `scripts/subagent-cap.py` denies a disabled
+  model and reminds to pass model and effort on every subagent (`models.agentFields`); `doctor.py` warns of the
+  global variables that override them (`models.checkLevers`). `gw-selector` recommends the session's model and effort
+  (`sessionEffort` in `selector.cases`).
+- Review (B18, D43, D82, D85, B27): `/code-review` at each closed block of a long branch, with a size warning from
+  `commit-msg` (`scripts/change-size.py`, `changeSize`); `scripts/review-scope.py` leaves out the unchanged workflow
+  copies (`vendored`) and `--trivial` spots the diff reviewed without a subagent; `recover.py --state` warns of an
+  overdue review.
+- Check and pushes (E22, D49, E44, E45, E46, E47, E27): `scripts/test-run.py` runs the suite in parallel
+  (`testJobs`), with test repos built once per class (556 s down to 352 s); `tests/old-python.sh` repeats the
+  compilation and the change's tests with the oldest Python available; a branch's `pre-push` runs only the change's
+  tests (`branchCheck`, `scripts/tests-for.py`, `testMap`) and asks for the full check only for the keys that change
+  what it runs (`fullCheckSkipKeys`); `scripts/check.sh` runs `version.py --release` on `version/*` branches
+  (`releaseCheckBranches`); CI installs the ShellCheck version in `shellcheckVersion`.
+- Orchestration (B16, D42, B28, B19): a light subagent type, `gw-worker` (`.claude/agents/gw-worker.md`, created by
+  `gw-init`); `gw-orchestrate-dealer` deals approved findings by group of files, gives each agent its scratchpad
+  folder and checks the worktree's base; `gw-update` deals out the reconciliation of each `.gw-new`.
+- Tools (D48, D55, D56, D81, D86, D89, B26, B29, E43): `handoff.py next-id` looks at remote branches;
+  `scripts/roadmap.py show|done` in both languages; `scripts/ci-status.py --failed` gives only the red step;
+  `scripts/backport.sh` carries commits to a patch; `merge-branch.sh` gives the command for a conflict in the log;
+  `handoff.py archive` no longer runs ahead of an unpublished version; a warning on reading the whole log or a large
+  record (`wholeReadWarnBytes`); `measure.py` measures the previous session after a `/clear` (`measure.minCalls`);
+  `doctor.py` warns of tests that no check command runs.
+- Projects (D53, D54, D84): `ownedFiles` for workflow files the project made its own; `ciOnPush` picks whether CI
+  runs on every push or only on PRs; `templates/github/check.yml` reads the Node and Rust directories from
+  `.claude/gw.json`.
+- Configuration (A13): every threshold, path or warning that was hard-coded is a `.claude/gw.json` key with its
+  default, in `config.py`, the schema and `docs/en/config.md`.
+- Presentation (A10): one-page A4 sheets for those who hire development and for teams that install the workflow
+  (`docs/en/mkt-workflow.md`, `docs/en/mkt-adoption.md`), with HTML and PDF from `scripts/mkt-sheet.py`.
+- Harvests and design (H16-H19): the projects' proposals, split across versions; the user's notes and four
+  references, in `docs/proposals/2026-11-08-notes-and-references.md` and `docs/design/I-lifecycle.md` (the task
+  record, C11, goes to `0.7`).
+- Fixes from the `0.6.0` harvest (D90-D93, B30): `handoff.py closed` gives the command that fixes it; the
+  `merge-branch.sh` examples carry `Siguiente:`; the dealer's brief asks to wait for background work and, when
+  applying a document from another repo, for the literal text with its path; phase 2 says who launches `gw-opt-ai`.
+
 ## [0.5.2] - 2026-11-12
 
 Parche de la `0.5`: arreglos de las recogidas de la `0.6` (H16 y H18) y de la revisión `0.5.1` del instalador (reparto

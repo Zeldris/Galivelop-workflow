@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.5.2 -->
+<!-- galivelop-workflow v0.6.0 -->
 # Guía de revisión
 
 Lo que el revisor (`/code-review`, o cualquier agente que revise un diff) comprueba en cada diff de {{project}},

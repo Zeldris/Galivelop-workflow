@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.5.2
+# galivelop-workflow v0.6.0
 """The commit message rules of the commit-msg hook that need more than grep (D11, D12, D15).
 
   python3 commit-message.py [--root PATH] MSGFILE
