@@ -177,6 +177,34 @@ class Config(Base):
         self.allowed(p.bash("ls -la"))
 
 
+class ExtraPatterns(Base):
+    """A13: agentSignaturePatterns only adds to the built-in patterns."""
+
+    def project(self, **keys):
+        return SigProject(Path(tempfile.mkdtemp(prefix="gw-firmas-", dir=self.tmp)), dict(keys))
+
+    def test_default_set_and_built_ins_stay(self):
+        text = "Fix.\n\nSent from my agent\n"
+        self.allowed(self.project(agentSignatures=False).mcp("add_issue_comment", body=text))
+        p = self.project(agentSignatures=False, agentSignaturePatterns=["^sent from my agent"])
+        self.blocked(p.mcp("add_issue_comment", body=text), "agent signature", "Sent from my agent")
+        self.blocked(p.mcp("add_issue_comment", body=FOOTER), "agent signature")  # a built-in is not removed
+        self.allowed(p.mcp("add_issue_comment", body="clean"))
+        self.allowed(p.mcp("add_issue_comment", body=f"```\n{text}```"))  # fences keep working for the extras too
+        self.blocked(p.bash(f"gh pr create --title t --body '{text}'"), "agent signature")
+
+    def test_without_agent_signatures_false_they_do_nothing(self):
+        p = self.project(agentSignatures=True, agentSignaturePatterns=["^sent from"])
+        self.allowed(p.mcp("add_issue_comment", body="Sent from my agent"))
+
+    def test_a_bad_pattern_blocks_with_the_reason(self):
+        p = self.project(agentSignatures=False, agentSignaturePatterns=["["])
+        self.blocked(p.mcp("add_issue_comment", body="clean"), "cannot read .claude/gw.json",
+                     "$.agentSignaturePatterns[0]: '[' is not a valid regex")
+        self.blocked(self.project(agentSignatures=False, agentSignaturePatterns=[5]).mcp("add_issue_comment", body="clean"),
+                     "cannot read .claude/gw.json", "$.agentSignaturePatterns[0]")
+
+
 class BrokenInput(Base):
     def test_json_that_is_broken_or_not_an_object_blocks(self):
         for raw in (" ", "{ nope", "[1]", '"text"'):

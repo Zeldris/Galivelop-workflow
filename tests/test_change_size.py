@@ -139,6 +139,70 @@ class ChangeSize(unittest.TestCase):
         self.assertIn("$.changeSize.exclude[0]: '(' is not a valid regex", err)
         self.assertIn("$.changeSize.pairs['^a(b)$']: replacement '\\\\2' does not fit its regex", err)
 
+    def test_a13_severity_default_is_warn_and_exits_0(self):
+        self.write("b.txt", lines(11))
+        code, out, err = self.run_cli()
+        self.assertEqual(code, 0)
+        self.assertIn("WARNING: this commit changes 11 lines", err)
+
+    def test_a13_severity_block_exits_1_for_the_commit_and_for_the_block(self):
+        self.configure({"commit": 10, "block": 30, "severity": "block"})
+        self.commit("config")
+        self.write("b.txt", lines(10))
+        self.assertEqual(self.run_cli("--base", "HEAD"), (0, "", ""))
+        self.write("b.txt", lines(11))
+        code, out, err = self.run_cli("--base", "HEAD")
+        self.assertEqual(code, 1)
+        self.assertIn("ERROR: this commit changes 11 lines (more than 10, changeSize.commit", err)
+        self.configure({"commit": 0, "block": 30, "severity": "block"})
+        self.commit("config 2")
+        self.write("c.txt", lines(31))
+        code, out, err = self.run_cli("--base", "HEAD")
+        self.assertEqual(code, 1)
+        self.assertIn("ERROR: the block after HEAD changes 31 lines", err)
+
+    def test_a13_bad_severity_fails_closed_with_the_reason(self):
+        self.configure({"severity": "off"})
+        code, out, err = self.run_cli()
+        self.assertEqual(code, 2)
+        self.assertIn("$.changeSize.severity: must be one of ['warn', 'block'], got 'off'", err)
+
+
+class CommitMsgSeverity(Base):
+    """With severity block the commit-msg hook rejects a commit over the limit; with warn it only warns."""
+    config = {"changeSize": {"commit": 3, "block": 0}}
+    hooks = ("pre-push", "pre-commit", "commit-msg")
+
+    def setUp(self):
+        super().setUp()
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["changeSize"]["severity"] = "block"
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.git("add", ".claude/gw.json")
+        self.p.git("commit", "-q", "--no-verify", "-m", "config")
+
+    def test_a_big_commit_is_rejected(self):
+        before = self.p.sha()
+        self.p.write("docs/notes.md", lines(5))
+        r = self.p.commit("notes", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("change-size: ERROR: this commit changes 6 lines", r.stderr)
+        self.assertIn("too big for changeSize.severity block", r.stderr)
+        self.assertEqual(self.p.sha(), before)
+
+    def test_a_small_commit_passes(self):
+        self.p.write("docs/notes.md", "x\n")
+        r = self.p.commit("notes", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_a_failing_check_still_only_warns(self):
+        script = self.p.work / ".claude" / "gw" / "scripts" / "change-size.py"
+        script.write_text("import sys\nprint('change-size: broken', file=sys.stderr)\nsys.exit(2)\n")
+        self.p.write("docs/notes.md", lines(5))
+        r = self.p.commit("notes", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("WARNING: the size check failed (above); the commit goes on", r.stderr)
+
 
 class CommitMsgSize(Base):
     """templates/githooks/commit-msg calls change-size.py: it warns and the commit goes on."""

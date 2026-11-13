@@ -358,6 +358,37 @@
       "default": false,
       "description": "true: the commit-msg hook requires a non-empty next-step trailer in the last paragraph (`Siguiente:` with language es, `Next:` with en); GW_NO_NEXT=1 skips it for one commit; merges, reverts, cherry-picks, rebases and fixup!/squash!/amend!/Revert lines are exempt, and merge-branch.sh requires it in its message."
     },
+    "commitTypes": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*$"},
+      "minItems": 1,
+      "uniqueItems": true,
+      "default": ["feat", "fix", "hotfix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert"],
+      "description": "A13: the Conventional Commits types the commit-msg hook accepts with commitFormat conventional (letters, digits and hyphens; at least one). The list replaces the default one."
+    },
+    "commitWipPrefix": {
+      "type": "string",
+      "default": "WIP: ",
+      "description": "A13: the prefix of a commit made in red that the commit-msg hook lets stand before the Conventional Commits type (`WIP: feat(D1): x`) when it checks the format. An empty string means no prefix is accepted. Only the commit-msg hook reads it (metrics.py and the pre-push hook still look for WIP:)."
+    },
+    "agentModelNames": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "default": [],
+      "description": "A13: words an Agent: trailer may not name, ADDED (case-insensitive, whole words) to the built-in list of models and providers (claude, anthropic, opus, sonnet, haiku, fable, gpt, chatgpt, openai, gemini, llama, mistral, qwen, deepseek); a project can never remove a built-in one. Read with agentSignatures false."
+    },
+    "agentModelShapes": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "default": [],
+      "description": "A13: regexes (full match, Python syntax) of pieces of an Agent: trailer that name a model, ADDED to the built-in shapes (gpt<digit>..., o<digits>, <digits>o); a project can never remove a built-in one. Read with agentSignatures false."
+    },
+    "agentSignaturePatterns": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "default": [],
+      "description": "A13: regexes (case-insensitive, searched per line, anchor them yourself; use syntax valid for Python re and grep -E) of text that counts as an agent signature, ADDED to the built-in patterns in the commit-msg hook and in agent-signatures.py; a project can never remove a built-in one. Read with agentSignatures false."
+    },
     "refsSources": {
       "type": "array",
       "items": {"type": "string", "minLength": 1},
@@ -800,11 +831,12 @@
       "properties": {
         "commit": {"type": "integer", "minimum": 0, "default": 400, "description": "D43: changed lines (added + deleted) of a commit above which the commit-msg hook warns; 0 = no warning."},
         "block": {"type": "integer", "minimum": 0, "default": 1000, "description": "D43: changed lines of the open review block (B18: the branch's commits after the last one with the metrics.quality.findingsTrailer trailer, plus the staged change) above which the commit-msg hook warns; 0 = no warning."},
+        "severity": {"type": "string", "enum": ["warn", "block"], "default": "warn", "description": "A13: warn (the default) only warns when commit or block is exceeded; block makes change-size.py exit 1 and the commit-msg hook reject the commit until it is split or the review block is closed."},
         "exclude": {"type": "array", "items": {"type": "string", "minLength": 1}, "default": ["^\\.claude/gw/", "(^|/)(package-lock\\.json|npm-shrinkwrap\\.json|yarn\\.lock|pnpm-lock\\.yaml|poetry\\.lock|Pipfile\\.lock|uv\\.lock|Cargo\\.lock|Gemfile\\.lock|composer\\.lock|go\\.sum)$"], "description": "D43: regexes searched in each changed repo-relative path; a path that matches does not count (the workflow's installed copies, lock files). Paths with linguist-generated in .gitattributes and binary files never count."},
         "pairs": {"type": "object", "additionalProperties": {"type": "string"}, "default": {"^docs/en/": "docs/es/", "^(.*)\\.en\\.md$": "\\1.md", "^README\\.md$": "README.es.md"}, "description": "D43: paired documents: regex on a changed path -> its pair (re.sub replacement). When both change in one commit, only the larger side counts."}
       },
       "default": {"commit": 400, "block": 1000},
-      "description": "D43: size warnings, never a block: change-size.py, called by the commit-msg hook, warns about a big commit and about a review block that should be closed."
+      "description": "D43: size warnings (a block only with severity block): change-size.py, called by the commit-msg hook, warns about a big commit and about a review block that should be closed."
     },
     "testMap": {
       "type": "object",

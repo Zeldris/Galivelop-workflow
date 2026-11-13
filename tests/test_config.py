@@ -303,6 +303,34 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, key)
             self.assertIn(why, r.stderr)
 
+    def test_a13_commit_message_keys_default_set_and_bad_values(self):
+        self.write(VALID)
+        types = "feat fix hotfix docs style refactor perf test build ci chore revert".split()
+        self.assertEqual(cli(self.tmp, "get", "commitTypes").stdout.split(), types)
+        self.assertEqual(cli(self.tmp, "get", "commitWipPrefix").stdout.rstrip("\n"), "WIP: ")
+        for key in ("agentModelNames", "agentModelShapes", "agentSignaturePatterns"):
+            self.assertEqual(cli(self.tmp, "get", key).stdout.strip(), "", key)
+        self.assertEqual(cli(self.tmp, "get", "changeSize.severity").stdout.strip(), "warn")
+        self.write(dict(VALID, commitTypes=["feat"], commitWipPrefix="RED: ", agentModelNames=["grok"],
+                        agentModelShapes=["grok\\d+"], agentSignaturePatterns=["^sent from"], changeSize={"severity": "block"}))
+        self.assertEqual(cli(self.tmp, "get", "commitTypes").stdout.split(), ["feat"])
+        self.assertEqual(cli(self.tmp, "get", "commitWipPrefix").stdout.rstrip("\n"), "RED: ")
+        self.assertEqual(cli(self.tmp, "get", "agentModelNames").stdout.split(), ["grok"])
+        self.assertEqual(cli(self.tmp, "get", "changeSize.severity").stdout.strip(), "block")
+        bad = {"commitTypes": ([], "$.commitTypes: needs at least 1 item"),
+               "commitWipPrefix": (5, "$.commitWipPrefix: expected string, got int"),
+               "agentModelNames": ([""], "$.agentModelNames[0]"),
+               "agentModelShapes": (["("], "$.agentModelShapes[0]: '(' is not a valid regex"),
+               "agentSignaturePatterns": (["["], "$.agentSignaturePatterns[0]: '[' is not a valid regex"),
+               "changeSize": ({"severity": "off"}, "$.changeSize.severity: must be one of ['warn', 'block'], got 'off'")}
+        for key, (value, why) in bad.items():
+            self.write(dict(VALID, **{key: value}))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, key)
+            self.assertIn(why, r.stderr)
+        self.write(dict(VALID, commitTypes=["a b"]))
+        self.assertIn("$.commitTypes[0]", cli(self.tmp, "validate").stderr)
+
     def test_hook_stdin_wait_reads_the_key_and_falls_back_to_the_default(self):
         def wait():
             r = subprocess.run(["python3", "-c", "import sys; sys.path.insert(0, sys.argv[1]); import config; "

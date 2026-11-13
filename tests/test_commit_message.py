@@ -496,5 +496,78 @@ class FailClosed(Msg):
         self.assertIn("/gw-update", r.stderr)
 
 
+class A13Keys(Msg):
+    """A13: commitTypes, commitWipPrefix, agentModelNames/Shapes and agentSignaturePatterns."""
+
+    def invalid_config(self, message, *reasons):
+        """The config breaks the schema: the hook refuses every commit, naming the key, and creates nothing."""
+        before = self.p.sha()
+        code, err = self.attempt(message)
+        self.assertNotEqual(code, 0, err)
+        self.assertEqual(self.p.sha(), before, "the refused commit was created")
+        self.assertIn("commit-msg: cannot read or validate .claude/gw.json", err)
+        for reason in reasons:
+            self.assertIn(reason, err)
+
+    def test_commit_types_default_set_and_bad(self):
+        self.configure(commitFormat="conventional")
+        self.accepted("hotfix: x\n\nbody")
+        self.configure(commitTypes=["feat", "chore"])
+        self.accepted("chore: x\n\nbody")
+        self.refused("fix: x\n\nbody", "not in the conventional form", "one of feat, chore")
+        self.configure(commitTypes=[])
+        self.invalid_config("feat: x\n\nbody", "$.commitTypes: needs at least 1 item")
+
+    def test_wip_prefix_default_set_empty_and_bad(self):
+        self.configure(commitFormat="conventional")
+        self.accepted("WIP: feat: x\n\nbody")
+        self.configure(commitWipPrefix="RED: ")
+        self.accepted("RED: feat: x\n\nbody")
+        self.refused("WIP: feat: x\n\nbody", "not in the conventional form")
+        self.configure(commitWipPrefix="")
+        self.accepted("feat: x")
+        self.refused("WIP: feat: x\n\nbody", "not in the conventional form")
+        self.configure(commitWipPrefix=5)
+        self.invalid_config("feat: x", "$.commitWipPrefix: expected string, got int")
+
+    def test_agent_model_names_and_shapes_only_add(self):
+        self.configure(agentSignatures=False)
+        self.accepted("work\n\nAgent: grok-4")
+        self.configure(agentModelNames=["Grok"], agentModelShapes=["zed\\d+"])
+        self.refused("work\n\nAgent: grok-4", "Agent trailer names a model", "Agent: grok-4")
+        self.refused("work\n\nAgent: zed9", "Agent trailer names a model")
+        self.refused("work\n\nAgent: claude-opus", "Agent trailer names a model")  # a built-in stays
+        self.accepted("work\n\nAgent: gw-orchestrate-dealer")
+        self.configure(agentModelNames=["grok"])  # a list without a built-in name does not remove it
+        self.refused("work\n\nAgent: sonnet", "Agent trailer names a model")
+        self.refused("work\n\nAgent: gpt5", "Agent trailer names a model")
+        self.configure(agentSignatures=True)  # without agentSignatures: false they do nothing
+        self.accepted("work\n\nAgent: grok-4")
+
+    def test_bad_agent_model_values_fail_closed_with_the_reason(self):
+        self.configure(agentSignatures=False, agentModelShapes=["("])
+        self.invalid_config("work\n\nAgent: skill", "$.agentModelShapes[0]: '(' is not a valid regex")
+        self.configure(agentModelShapes=[], agentModelNames=[""])
+        self.invalid_config("work\n\nAgent: skill", "$.agentModelNames[0]")
+
+    def test_signature_patterns_only_add_and_fail_closed(self):
+        self.configure(agentSignatures=False)
+        self.accepted("work\n\nSent from my agent")
+        self.configure(agentSignaturePatterns=["^sent from my agent"])
+        self.refused("work\n\nSent from my agent", "agent signature", "Sent from my agent")
+        self.refused("work\n\nClaude-Session: https://x", "agent signature")  # a built-in stays
+        self.accepted("work\n\nNothing to see")
+        self.configure(agentSignaturePatterns=["["])  # not a regex for Python: the schema check refuses
+        self.invalid_config("work\n\nNothing", "$.agentSignaturePatterns[0]")
+        self.configure(agentSignaturePatterns=["[[:foo:]]"])  # Python accepts it, grep -E does not: still closed
+        before = self.p.sha()
+        code, err = self.attempt("work\n\nNothing")
+        self.assertNotEqual(code, 0, err)
+        self.assertEqual(self.p.sha(), before, "the commit was created")
+        self.assertIn("commit-msg: grep failed (status 2) on agentSignaturePatterns", err)
+        self.configure(agentSignatures=True)  # with agentSignatures true they do nothing
+        self.accepted("work\n\nxsig")
+
+
 if __name__ == "__main__":
     unittest.main()

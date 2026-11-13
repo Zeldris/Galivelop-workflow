@@ -423,7 +423,7 @@ def log_archive(config):
 
 def semantic_errors(config):
     """Problems the schema subset cannot express: a relatedTests `paths`, testMap `paths`/`contains` or changeSize
-    `exclude`/`pairs` or fullCheckPaths entry that is not a valid regex (or a pair replacement that does not fit its
+    `exclude`/`pairs`, fullCheckPaths, agentModelShapes or agentSignaturePatterns entry that is not a valid regex (or a pair replacement that does not fit its
     regex), an agentMap prefix that is not one folder name, an instructionLines `warn` above its `fail`, an
     ownedFiles pattern that is absolute or has a `..`."""
     errors = []
@@ -468,6 +468,13 @@ def semantic_errors(config):
                 re.compile(rx)
             except re.error as exc:
                 errors.append(f"$.fullCheckPaths[{i}]: {rx!r} is not a valid regex ({exc})")
+    for key in ("agentModelShapes", "agentSignaturePatterns"):
+        for i, rx in enumerate(config.get(key) or []):
+            if isinstance(rx, str):
+                try:
+                    re.compile(rx)
+                except re.error as exc:
+                    errors.append(f"$.{key}[{i}]: {rx!r} is not a valid regex ({exc})")
     for i, pat in enumerate(config.get("ownedFiles") or []):
         if isinstance(pat, str) and pat:
             parts = pat.replace("\\", "/").split("/")
@@ -903,7 +910,7 @@ def main(argv=None):
         print(f"{scope} {reason}" if reason else scope)
         return 0
     value = dict(config, metrics=metrics(config), models=models(config), measure=measure(config),
-                 stopSeverity=stop_severity(config))  # inner keys fill from the schema too
+                 stopSeverity=stop_severity(config), changeSize=change_size(config))  # inner keys fill from the schema too
     for part in args.key.split("."):
         if not isinstance(value, dict) or part not in value or part.startswith("_"):
             print(f"gw config: key '{args.key}' is not set and has no default", file=sys.stderr)

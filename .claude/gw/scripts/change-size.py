@@ -19,7 +19,8 @@ twice: an upper bound of the review's diff. On the protected branch, or without 
 for the latter).
 
 Who calls it: `recover.py --state` (D85: `block`, for its overdue-review warning) and the commit-msg hook, before every commit that is not a merge, revert, cherry-pick or rebase step; it
-only warns (exit 0) and never stops a commit. A limit of 0 turns its warning off. Fails closed on what it cannot know:
+only warns (exit 0) and never stops a commit, unless `changeSize.severity` is "block" (A13): then it exits 1 when a limit
+is exceeded and the hook rejects the commit. A limit of 0 turns its warning off. Fails closed on what it cannot know:
 an invalid config, a git error or a --base that is not a commit -> exit 2 with what fixes it. Project root and config:
 config.find_root and config.load. Python 3.8+ standard library only.
 """
@@ -167,8 +168,12 @@ def main(argv=None):
         print(f"{PROG}: {exc}", file=sys.stderr)
         return 2
     limit = settings["commit"]
+    strict = settings["severity"] == "block"
+    label = "ERROR" if strict else "WARNING"
+    failed = False
     if limit and commit > limit:
-        print(f"{PROG}: WARNING: this commit changes {commit} lines (more than {limit}, changeSize.commit in "
+        failed = strict
+        print(f"{PROG}: {label}: this commit changes {commit} lines (more than {limit}, changeSize.commit in "
               ".claude/gw.json); if it holds more than one step, split it: git restore --staged <file>, commit "
               "the rest, then the next step", file=sys.stderr)
     elif args.show:
@@ -177,14 +182,15 @@ def main(argv=None):
         lines, where, n = blk
         total, limit = lines + commit, settings["block"]
         if limit and total > limit:
-            print(f"{PROG}: WARNING: the block {where} changes {total} lines with this commit ({n} commit(s) before "
+            failed = failed or strict
+            print(f"{PROG}: {label}: the block {where} changes {total} lines with this commit ({n} commit(s) before "
                   f"it; more than {limit}, changeSize.block in .claude/gw.json); close it: /code-review of its diff, "
                   f"and its fix commit carries `{trailer}: <n>` (0 if the review found nothing)",
                   file=sys.stderr)
         elif args.show:
             print(f"{PROG}: the block {where}: {total} lines with the staged change, {n} commit(s) (limit "
                   f"{limit or 'off'})")
-    return 0
+    return 1 if failed else 0
 
 
 if __name__ == "__main__":

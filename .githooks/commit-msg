@@ -58,7 +58,7 @@ comment_prefix() {
   case "$cc" in ""|auto) cc="#" ;; esac
   printf '%s' "$cc"
 }
-# A WIP commit: its first non-blank line starts with "WIP: " (no leading spaces). Comment lines are not skipped: only
+# A WIP commit: its first non-blank line starts with "WIP: " (only for an unreadable config, where commitWipPrefix cannot be read) (no leading spaces). Comment lines are not skipped: only
 # cleanup=strip removes them, and -m/-F keep them, so a "# x" first line is the real subject there.
 is_wip() {
   [ -n "$msg" ] && [ -r "$msg" ] || return 1
@@ -67,8 +67,13 @@ is_wip() {
   case "$subject" in "WIP: "*) return 0 ;; esac
   return 1
 }
+# agentSignaturePatterns (A13): the project's extra signature regexes, one per line, ADDED to the built-in ones below;
+# empty until the config is read (the unreadable-config path below checks the built-in ones only).
+extra_sigs=""
 # The first agent-signature line of the message, if any (the header says what counts and what is ignored).
 find_signature() {
+  local extra=() line rc
+  while IFS= read -r line; do [ -z "$line" ] || extra+=(-e "$line"); done <<< "$extra_sigs"
   awk -v cc="$(comment_prefix)" '
     substr($0, 1, length(cc)) == cc && $0 ~ / -+ >8 -+$/ { exit }
     substr($0, 1, length(cc)) == cc { next }
@@ -77,7 +82,10 @@ find_signature() {
       -e '^[[:space:]]*co-authored-by:[[:space:]]*claude (code|opus|sonnet|haiku|fable)' \
       -e '^[[:space:]]*claude-session:' \
       -e '^[^[:alnum:]]*generated (with|by) \[?claude code' \
-      -e '^[[:space:]]*<?https?://claude\.ai/code/session' | head -n 1
+      -e '^[[:space:]]*<?https?://claude\.ai/code/session' ${extra[@]+"${extra[@]}"} | head -n 1
+  # grep exits 2 on a pattern it cannot read: fail closed instead of letting a signature through
+  rc="${PIPESTATUS[1]}"
+  [ "$rc" -le 1 ] || { echo "commit-msg: grep failed (status $rc) on agentSignaturePatterns in .claude/gw.json, so signatures cannot be checked; fix the pattern: python3 $config --root $root validate" >&2; exit 1; }
 }
 reject_signature() {
   echo "commit-msg: the message carries an agent signature, which this project forbids (agentSignatures: false in .claude/gw.json): $1" >&2
@@ -90,7 +98,7 @@ config_err="$(python3 "$config" --root "$root" validate 2>&1 >/dev/null)" || {
   # to fix, WIP or not. The two texts are those of scripts/config.py (load); keep both in step (a test pins them).
   if is_wip && [ "$(printf '%s\n' "$config_err" | wc -l)" -eq 1 ] &&
      printf '%s\n' "$config_err" | grep -Eq '^gw config: .*gw\.json( not found; |: invalid JSON at line )'; then
-    found="$(find_signature)"
+    found="$(find_signature)" || exit 1
     [ -z "$found" ] || reject_signature "$found"  # the setting is unknown: treat it as the strict one
     echo "commit-msg: WARNING: cannot read .claude/gw.json, so this WIP commit was not checked (agent signatures apart); fix it: python3 $config --root $root validate" >&2
     exit 0
@@ -105,10 +113,12 @@ done
 signatures="$(python3 "$config" --root "$root" get agentSignatures 2>/dev/null)" || {
   echo "commit-msg: cannot read agentSignatures from .claude/gw.json; check it: python3 $config --root $root get agentSignatures" >&2; exit 1; }
 if [ "$signatures" = false ] && [ "$in_rebase" = false ]; then
+  extra_sigs="$(python3 "$config" --root "$root" get agentSignaturePatterns 2>/dev/null)" || {
+    echo "commit-msg: cannot read agentSignaturePatterns from .claude/gw.json; check it: python3 $config --root $root get agentSignaturePatterns" >&2; exit 1; }
   if [ -z "$msg" ] || [ ! -r "$msg" ]; then
     echo "commit-msg: cannot read the commit message file '${1:-}'; commit again: git commit" >&2; exit 1
   fi
-  found="$(find_signature)"
+  found="$(find_signature)" || exit 1
   [ -z "$found" ] || reject_signature "$found"
 fi
 
@@ -124,11 +134,17 @@ for head in MERGE_HEAD REVERT_HEAD CHERRY_PICK_HEAD; do
 done
 [ "$in_rebase" = false ] || exit 0
 
-# Commit and block size (D43): warnings only. A missing script is a broken install (fails closed); a script that fails
+# Commit and block size (D43): warnings only (a rejection with changeSize.severity block). A missing script is a broken install (fails closed); a script that fails
 # says why and the commit goes on, because a size warning never stops a commit.
 [ -f "$scripts/change-size.py" ] || { echo "commit-msg: $scripts/change-size.py is missing; reinstall the workflow scripts: /gw-update" >&2; exit 1; }
-python3 "$scripts/change-size.py" --root "$root" ||
+# changeSize.severity "block" (A13): exit 1 means a limit was exceeded and the commit is rejected; any other failure only warns.
+size_rc=0
+python3 "$scripts/change-size.py" --root "$root" || size_rc=$?
+if [ "$size_rc" -eq 1 ]; then
+  echo "commit-msg: the commit is too big for changeSize.severity block (above); split it or close the review block, then commit again: python3 $scripts/change-size.py --root $root --show" >&2; exit 1
+elif [ "$size_rc" -ne 0 ]; then
   echo "commit-msg: WARNING: the size check failed (above); the commit goes on; see why: python3 $scripts/change-size.py --root $root --show" >&2
+fi
 
 log="$(python3 "$config" --root "$root" get log 2>/dev/null)" || log=""
 [ -n "$log" ] || exit 0
