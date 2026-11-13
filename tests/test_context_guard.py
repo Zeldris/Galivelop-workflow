@@ -105,6 +105,18 @@ class Cutoff(Base):
     def test_one_million_model(self):
         self.assertEqual(cg.cutoff_for("claude-opus-4-7[1m]", {}), 800000)
 
+    def test_big_window_key_changes_it(self):
+        self.assertEqual(cg.cutoff_for("claude-opus-4-7[1m]", {"contextGuard": {"bigWindow": 500000}}), 400000)
+        self.assertEqual(cg.cutoff_for("claude-opus-4-7-1m", {}), 800000)
+
+    def test_chars_per_token_key_changes_the_estimate(self):
+        self.assertEqual(cg.estimate_tokens("x" * 400, cg.chars_per_token({"contextGuard": {"charsPerToken": 4}})), 100)
+        self.assertEqual(cg.chars_per_token({}), 3.5)
+        self.assertEqual(cg.chars_per_token(None), 3.5)
+
+    def test_the_log_default_comes_from_the_config_schema(self):
+        self.assertEqual(cg.config.schema_default("log"), "docs/handoff.md")
+
     def test_estimate_uses_3_5_characters_per_token(self):
         self.assertEqual(cg.estimate_tokens("x" * 350), 100)
 

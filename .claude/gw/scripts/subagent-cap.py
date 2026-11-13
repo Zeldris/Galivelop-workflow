@@ -4,8 +4,8 @@
 and deny a subagent that would run on a model in `models.disabled` (B7, below).
 
 It counts every Agent/Task call of a session (the matcher in hooks/hooks.json and in the settings.json template is
-`Agent|Task`) and, when the count reaches the cap and every 10 after it (cap, cap+10, cap+20...), returns `ask` so the
-user decides in the permission prompt whether the fan-out is on purpose. It never denies, and below the cap it prints
+`Agent|Task`) and, when the count reaches the cap and every subagentCapStep (default 10) after it (cap, cap+10, cap+20...), returns `ask` so the
+user decides in the permission prompt whether the fan-out is on purpose. By default it never denies (`subagentCapAction`: `warn` only says it, `deny` denies every call from the cap on), and below the cap it prints
 nothing (no opinion: the normal permission flow goes on).
 
 It also warns, without blocking, when the call has no `model` of its own (missing, empty, not a string or `inherit`
@@ -29,13 +29,13 @@ default is used and the count goes on.
 Symbolic links: the counter is opened with O_NOFOLLOW and must be a regular file owned by the user running the hook, so
 a link planted in a shared temp folder is never written through; it is refused with a reason (`ask`, cannot count).
 A hard link is refused too (the counter must have a single link). Old counters: when a session's counter is created, the other gw-subagents-* regular files in the folder that nobody
-has written for STALE_DAYS (7) days are deleted (never a link, never a file of another user, never the one in use). The delete takes no lock: a session resumed after more than STALE_DAYS days may start from
+has written for subagentCounterStaleDays (7) days are deleted (never a link, never a file of another user, never the one in use). The delete takes no lock: a session resumed after more than subagentCounterStaleDays days may start from
 zero if another session cleans its counter just then (the cap is then late, never skipped silently for other files).
 
 Disabled models (B7): when `models.disabled` in .claude/gw.json is not empty, the hook works out the model the
 subagent will run on: the call's own `model`, else the `model:` of its agent definition (as above), else the session's
 model, which a subagent inherits (the `model` of the last assistant message in the event's `transcript_path`, read from
-its last TRANSCRIPT_TAIL bytes). If an entry blocks it (the rule of models.blocked_by: the id, an id prefix, or the
+its last subagentTranscriptBytes bytes). If an entry blocks it (the rule of models.blocked_by: the id, an id prefix, or the
 family alias) the call is denied before it is counted:
 
   {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
@@ -79,12 +79,8 @@ try:
 except ImportError:  # not on POSIX: count without the lock
     fcntl = None
 
-DEFAULT_CAP = 30
-STEP = 10
 COUNTER_DIR_ENV = "GW_SUBAGENT_COUNTER_DIR"
 COUNTER_PREFIX = "gw-subagents-"
-STALE_DAYS = 7
-TRANSCRIPT_TAIL = 512 * 1024
 
 
 class CannotCount(Exception):
@@ -119,14 +115,14 @@ def ask(reason, event=None):
     print(json.dumps({"hookSpecificOutput": out}))
 
 
-DEFAULT_FIELDS = ("model", "effort")
+FIELDS = ("model", "effort")  # the fields models.agentFields can name
 FORK = "fork"  # inherits the session's model and effort by design: never warned
 UNSET_EFFECT = {"model": "the session's model (usually the most expensive one)",
                 "effort": "the session's effort (or the agent type's default)"}
 
 
 def missing_note(missing):
-    """The reminder for a call that lacks the fields in `missing` (in DEFAULT_FIELDS order)."""
+    """The reminder for a call that lacks the fields in `missing` (in FIELDS order)."""
     names = " and no ".join(f"`{f}`" for f in missing)
     runs = " and ".join(UNSET_EFFECT[f] for f in missing)
     passed = " and ".join(f"`{f}`" for f in missing)
@@ -184,14 +180,14 @@ def project_root():
 
 
 def session_model(transcript):
-    """The `model` of the last assistant message in the transcript (its last TRANSCRIPT_TAIL bytes), or None."""
+    """The `model` of the last assistant message in the transcript (its last subagentTranscriptBytes), or None."""
     if not isinstance(transcript, str) or not transcript:
         return None
     try:
         with open(transcript, "rb") as fh:
             fh.seek(0, os.SEEK_END)
             size = fh.tell()
-            fh.seek(max(0, size - TRANSCRIPT_TAIL))
+            fh.seek(max(0, size - config.subagent_settings()["subagentTranscriptBytes"]))
             lines = fh.read().decode("utf-8", errors="replace").splitlines()
     except OSError:
         return None
@@ -265,13 +261,14 @@ def disabled_decision(event):
 
 def fields_from_config():
     """The project's models.agentFields (the default when the config cannot be read or the value is not a list)."""
+    default = tuple(config.models({})["agentFields"])
     try:
         fields = config.models(config.load(config.find_root()))["agentFields"]
     except (config.ConfigError, KeyError, OSError, ValueError):
-        return DEFAULT_FIELDS
+        return default
     if not isinstance(fields, list):
-        return DEFAULT_FIELDS
-    return tuple(f for f in DEFAULT_FIELDS if f in fields)
+        return default
+    return tuple(f for f in FIELDS if f in fields)
 
 
 def missing_fields(event):
@@ -300,24 +297,16 @@ def fields_note(event):
     return missing_note(missing) if missing else None
 
 
-def cap_from_config():
-    """The project's subagentCap, or the default when the config cannot be read or has no valid one."""
-    try:
-        cap = config.load(config.find_root()).get("subagentCap", DEFAULT_CAP)
-    except config.ConfigError:
-        return DEFAULT_CAP
-    return cap if isinstance(cap, int) and not isinstance(cap, bool) and cap >= 1 else DEFAULT_CAP
-
-
 def counter_path(session_id):
     folder = os.environ.get(COUNTER_DIR_ENV) or tempfile.gettempdir()
     return os.path.join(folder, COUNTER_PREFIX + re.sub(r"[^A-Za-z0-9_.-]", "_", session_id)[:120])
 
 
 def clean_old(keep):
-    """Delete the stale counters next to `keep`: own regular files named gw-subagents-* not written for STALE_DAYS."""
+    """Delete the stale counters next to `keep`: own regular files named gw-subagents-* not written for
+    subagentCounterStaleDays days."""
     folder = os.path.dirname(keep)
-    limit = time.time() - STALE_DAYS * 86400
+    limit = time.time() - config.subagent_settings()["subagentCounterStaleDays"] * 86400
     try:
         names = os.listdir(folder)
     except OSError:
@@ -391,7 +380,8 @@ def main():
         ask("subagent-cap.py got an event with no session_id, so it cannot count the subagents of this session; "
             "check they are not looping (gw-opt-tokens)", event)
         return 0
-    cap = cap_from_config()
+    settings = config.subagent_settings()
+    cap, step, action = settings["subagentCap"], settings["subagentCapStep"], settings["subagentCapAction"]
     try:
         count = bump(counter_path(session_id))
     except CannotCount as exc:
@@ -399,11 +389,20 @@ def main():
             f"(gw-opt-tokens)", event)
         return 0
     out = {"hookEventName": "PreToolUse"}
-    if count >= cap and (count - cap) % STEP == 0:
-        out["permissionDecision"] = "ask"
-        out["permissionDecisionReason"] = (f"{count} subagents in this session (subagentCap {cap} in "
-                                           f".claude/gw.json): check they are not looping (gw-opt-tokens)")
+    notes = []
+    if count >= cap and (action == "deny" or (count - cap) % step == 0):
+        reason = (f"{count} subagents in this session (subagentCap {cap} in "
+                  f".claude/gw.json): check they are not looping (gw-opt-tokens)")
+        if action == "warn":  # subagentCapAction: only said, never stopped
+            notes.append(reason)
+        else:  # "ask" (the default) or "deny" (every call from the cap on)
+            out["permissionDecision"] = action
+            out["permissionDecisionReason"] = reason if action == "ask" else (
+                f"{reason}; subagentCapAction is deny: raise subagentCap in .claude/gw.json to go on")
     note = fields_note(event)
+    if note:
+        notes.append(note)
+    note = " | ".join(notes)
     if note:
         out["additionalContext"] = note
     if len(out) > 1:

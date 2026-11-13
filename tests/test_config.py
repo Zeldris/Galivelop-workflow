@@ -214,7 +214,8 @@ class Config(unittest.TestCase):
 
     def test_context_guard_default_and_own_values(self):
         self.write(VALID)
-        default = {"cutoff": 0, "window": 200000, "autocompactShare": 0.8, "warn": 25, "alarm": 50}
+        default = {"cutoff": 0, "window": 200000, "autocompactShare": 0.8, "warn": 25, "alarm": 50,
+                   "charsPerToken": 3.5, "bigWindow": 1000000}
         self.assertEqual(json.loads(cli(self.tmp, "get", "contextGuard").stdout), default)
         self.assertEqual(config.context_guard({}), default)
         self.assertEqual(config.context_guard({"contextGuard": {"cutoff": 140000}}), dict(default, cutoff=140000))
@@ -228,12 +229,46 @@ class Config(unittest.TestCase):
                  ({"autocompactShare": 0}, "$.contextGuard.autocompactShare: must be above 0, got 0"),
                  ({"autocompactShare": 1.5}, "$.contextGuard.autocompactShare: must be at most 1, got 1.5"),
                  ({"cutoff": -1}, "$.contextGuard.cutoff: must be at least 0, got -1"),
+                 ({"charsPerToken": 0}, "$.contextGuard.charsPerToken: must be above 0, got 0"),
+                 ({"charsPerToken": "3"}, "$.contextGuard.charsPerToken"),
+                 ({"bigWindow": 999}, "$.contextGuard.bigWindow: must be at least 1000, got 999"),
                  ({"limit": 1}, "$.contextGuard: unknown key 'limit'")]
         for bad, message in cases:
             self.write(dict(VALID, contextGuard=bad))
             r = cli(self.tmp, "validate")
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn(message, r.stderr)
+
+    def test_context_guard_new_keys_set_values(self):
+        self.write(dict(VALID, contextGuard={"charsPerToken": 4, "bigWindow": 500000}))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        self.assertEqual(config.context_guard({"contextGuard": {"charsPerToken": 4}})["charsPerToken"], 4)
+        self.assertEqual(config.context_guard({"contextGuard": {"bigWindow": 500000}})["bigWindow"], 500000)
+
+    def test_subagent_keys_defaults_set_values_and_bad_values(self):
+        default = {"subagentCap": 30, "subagentCapStep": 10, "subagentCounterStaleDays": 7,
+                   "subagentTranscriptBytes": 524288, "subagentCapAction": "ask"}
+        self.write(VALID)
+        self.assertEqual(config.subagent_settings(self.tmp), default)
+        for key, value in default.items():
+            self.assertEqual(cli(self.tmp, "get", key).stdout.strip(), str(value))
+        own = {"subagentCap": 5, "subagentCapStep": 2, "subagentCounterStaleDays": 1,
+               "subagentTranscriptBytes": 2048, "subagentCapAction": "deny"}
+        self.write(dict(VALID, **own))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        self.assertEqual(config.subagent_settings(self.tmp), own)
+        cases = [({"subagentCapStep": 0}, "$.subagentCapStep: must be at least 1, got 0"),
+                 ({"subagentCounterStaleDays": -1}, "$.subagentCounterStaleDays: must be at least 1, got -1"),
+                 ({"subagentTranscriptBytes": 10}, "$.subagentTranscriptBytes: must be at least 1024, got 10"),
+                 ({"subagentTranscriptBytes": 67108865}, "$.subagentTranscriptBytes: must be at most 67108864"),
+                 ({"subagentCapAction": "block"}, "$.subagentCapAction: must be one of ['ask', 'warn', 'deny'], got 'block'"),
+                 ({"subagentCapStep": "3"}, "$.subagentCapStep")]
+        for bad, message in cases:
+            self.write(dict(VALID, **bad))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn(message, r.stderr)
+            self.assertEqual(config.subagent_settings(self.tmp), default, "an invalid config gives the defaults")
 
     def test_instruction_lines_bad_values_fail_with_their_reason(self):
         cases = [({"warn": 200, "fail": 100}, "$.instructionLines: warn (200) must not be above fail (100)"),

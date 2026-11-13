@@ -286,7 +286,8 @@ def doctor_test_dirs_ignore(config):
 
 
 def context_guard(config):
-    """The `contextGuard` key as a dict (cutoff, window, autocompactShare, warn, alarm)."""
+    """The `contextGuard` key as a dict (cutoff, window, autocompactShare, warn, alarm,
+    charsPerToken, bigWindow)."""
     return _section(config, "contextGuard")
 
 
@@ -379,6 +380,32 @@ def schema_default(key):
     return _schema()["properties"][key]["default"]
 
 
+SUBAGENT_KEYS = ("subagentCap", "subagentCapStep", "subagentCounterStaleDays", "subagentTranscriptBytes",
+                 "subagentCapAction")
+
+
+def subagent_settings(root=None):
+    """The subagent-cap.py keys (A13) as a dict: subagentCap, subagentCapStep, subagentCounterStaleDays,
+    subagentTranscriptBytes, subagentCapAction. A hook must keep counting, so a config it cannot read, or a value
+    that does not fit its schema, gives that key's schema default, never an error."""
+    out = {k: schema_default(k) for k in SUBAGENT_KEYS}
+    try:
+        conf = load(root)
+    except (ConfigError, OSError, ValueError):
+        return out
+    props = _schema()["properties"]
+    for key in SUBAGENT_KEYS:
+        given, prop = conf.get(key), props[key]
+        if prop["type"] == "string":
+            ok = given in prop["enum"]
+        else:
+            ok = (isinstance(given, int) and not isinstance(given, bool) and given >= prop["minimum"]
+                  and given <= prop.get("maximum", given))
+        if ok:
+            out[key] = given
+    return out
+
+
 def stop_severity(config):
     """The `stopSeverity` key (A13) as a dict (unpushed, logRequired), each "block" or "warn"."""
     return _section(config, "stopSeverity")
@@ -395,16 +422,6 @@ def owned(config, rel):
     pattern): a workflow file the project made its own on purpose, so apply.py and doctor.py leave it alone."""
     rel = str(rel).replace(os.sep, "/")
     return any(isinstance(p, str) and fnmatch.fnmatchcase(rel, p) for p in config.get("ownedFiles") or [])
-
-
-def context_guard(config):
-    """The `contextGuard` key as a dict (cutoff, window, autocompactShare, warn, alarm), each missing part filled
-    from the schema default (the only place the defaults live)."""
-    schema = json.loads(schema_path().read_text(encoding="utf-8"))
-    props = schema["properties"]["contextGuard"]["properties"]
-    given = config.get("contextGuard")
-    given = given if isinstance(given, dict) else {}
-    return {k: given.get(k, props[k]["default"]) for k in props}
 
 
 def log_size(config):

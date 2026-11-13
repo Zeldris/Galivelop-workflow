@@ -590,3 +590,94 @@ class NothingDisabled(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Keys(Base):
+    """A13: subagentCapStep, subagentCounterStaleDays, subagentTranscriptBytes and subagentCapAction; the defaults are
+    the former literals (10, 7, 512 KiB, ask), a set value changes the behaviour, a bad one gives the defaults."""
+    cfg = {"subagentCap": 2}
+
+    def setcfg(self, **keys):
+        path = self.p.work / ".claude" / "gw.json"
+        path.write_text(json.dumps(dict(json.loads(path.read_text()), **keys)))
+
+    def spec(self, result):
+        self.assertEqual(result[0], 0, result[1])
+        return self.answer(result[1]) if result[1].strip() else {}
+
+    def decisions(self, n):
+        return [self.spec(self.p.call()).get("permissionDecision") for _ in range(n)]
+
+    def test_step_default_is_ten_and_a_set_value_changes_it(self):
+        self.assertEqual(self.decisions(13), [None, "ask"] + [None] * 9 + ["ask", None])
+        self.setcfg(subagentCapStep=3)
+        self.assertEqual(self.decisions(4), ["ask", None, None, "ask"])  # calls 14-17: (n - 2) % 3 == 0
+        self.assertEqual([self.spec(self.p.call("s2")).get("permissionDecision") for _ in range(6)],
+                         [None, "ask", None, None, "ask", None])
+
+    def test_a_bad_step_gives_the_defaults(self):
+        for bad in (0, -1, "3", True):
+            with self.subTest(bad=bad):
+                self.setcfg(subagentCapStep=bad, subagentCap=2)
+                sid = f"bad{bad!r}"
+                got = [self.spec(self.p.call(sid)).get("permissionDecision") for _ in range(30)]
+                self.assertEqual(got.index("ask"), 29, "an invalid config falls back to the default cap 30")
+
+    def test_stale_days_default_seven_and_a_set_value_changes_it(self):
+        old = self.p.counters / "gw-subagents-five"
+        old.write_text("5")
+        t = old.stat().st_mtime - 5 * 86400
+        os.utime(old, (t, t))
+        self.p.call("a")
+        self.assertTrue(old.exists(), "5 days old: kept by the default of 7")
+        self.setcfg(subagentCounterStaleDays=3)
+        self.p.call("b")
+        self.assertFalse(old.exists(), "5 days old: deleted with subagentCounterStaleDays 3")
+
+    def test_a_bad_stale_days_gives_the_default(self):
+        old = self.p.counters / "gw-subagents-five"
+        old.write_text("5")
+        t = old.stat().st_mtime - 5 * 86400
+        os.utime(old, (t, t))
+        self.setcfg(subagentCounterStaleDays=0)
+        self.p.call("a")
+        self.assertTrue(old.exists(), "0 is invalid: the default 7 days keeps a 5-day-old counter")
+
+    def test_action_warn_only_says_it(self):
+        self.setcfg(subagentCapAction="warn")
+        self.assertEqual(self.spec(self.p.call()), {})
+        spec = self.spec(self.p.call())
+        self.assertNotIn("permissionDecision", spec)
+        self.assertEqual(spec["additionalContext"], self.reason(2, 2))
+        self.assertEqual(self.decisions(2), [None, None])
+
+    def test_action_deny_denies_every_call_from_the_cap(self):
+        self.setcfg(subagentCapAction="deny")
+        got = [self.spec(self.p.call()) for _ in range(4)]
+        self.assertEqual([g.get("permissionDecision") for g in got], [None, "deny", "deny", "deny"])
+        self.assertIn("2 subagents in this session (subagentCap 2", got[1]["permissionDecisionReason"])
+        self.assertIn("subagentCapAction is deny", got[1]["permissionDecisionReason"])
+
+    def test_a_bad_action_gives_ask(self):
+        self.setcfg(subagentCapAction="block", subagentCap=2)
+        got = [self.spec(self.p.call()).get("permissionDecision") for _ in range(30)]
+        self.assertEqual(got.index("ask"), 29)  # invalid config: all defaults, the cap too
+
+    def test_warn_never_lets_a_disabled_model_through(self):
+        self.setcfg(subagentCapAction="warn", models={"disabled": ["opus"]})
+        spec = self.spec(self.p.call(tool_input={"prompt": "x", "model": "opus"}))
+        self.assertEqual(spec["permissionDecision"], "deny")
+        self.assertIn("model opus (the call's `model`) is disabled", spec["permissionDecisionReason"])
+
+    def test_transcript_bytes_default_reads_512k_and_a_set_value_changes_it(self):
+        self.setcfg(models={"disabled": ["opus"]})
+        rows = [json.dumps({"type": "assistant", "message": {"model": "claude-opus-5-5", "content": []}}),
+                json.dumps({"type": "user", "message": {"content": "x" * 3000}})]
+        path = self.tmp / "t.jsonl"
+        path.write_text("\n".join(rows) + "\n")
+        call = lambda: self.spec(self.p.call(tool_input={"prompt": "x", "effort": "low"}, transcript_path=str(path)))
+        self.assertEqual(call()["permissionDecision"], "deny")  # the opus row is within the default 512 KiB
+        self.setcfg(subagentTranscriptBytes=1024)
+        spec = call()  # only the last 1024 bytes: no assistant row, the model cannot be told
+        self.assertEqual(spec["permissionDecision"], "ask")
+        self.assertIn("cannot be told", spec["permissionDecisionReason"])

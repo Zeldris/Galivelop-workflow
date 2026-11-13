@@ -30,8 +30,6 @@ sys.path.insert(0, HERE)
 import config  # noqa: E402
 import session_log  # noqa: E402
 
-CHARS_PER_TOKEN = 3.5  # same rule as skills/gw-opt-tokens/scripts/measure.py
-BIG_WINDOW = 1_000_000
 INCLUDE = re.compile(r"^\s*@(\S+)\s*$")
 
 
@@ -96,12 +94,17 @@ def cutoff_for(model, cfg):
     if guard["cutoff"] > 0:
         return int(guard["cutoff"])
     name = str(model or "").lower()
-    window = BIG_WINDOW if "[1m]" in name or "-1m" in name else guard["window"]
+    window = guard["bigWindow"] if "[1m]" in name or "-1m" in name else guard["window"]
     return int(window * guard["autocompactShare"])
 
 
-def estimate_tokens(text):
-    return int(len(text) / CHARS_PER_TOKEN)
+def chars_per_token(cfg=None):
+    """contextGuard.charsPerToken (default 3.5, the rule of skills/gw-opt-tokens/scripts/measure.py)."""
+    return config.context_guard(cfg or {})["charsPerToken"]
+
+
+def estimate_tokens(text, per_token=None):
+    return int(len(text) / (per_token or chars_per_token()))
 
 
 def read_text(path):
@@ -142,7 +145,7 @@ def skills_text(root):
 
 def breakdown(root, cfg, hook_chars=0):
     """Deterministic estimate of what the startup holds: [(label, tokens, fix)] in a fixed order."""
-    log = (cfg or {}).get("log") or "docs/handoff.md"
+    log = (cfg or {}).get("log") or config.schema_default("log")
     log_text = read_text(os.path.join(str(root), log))
     archive = f"python3 {os.path.join(HERE, 'handoff.py')} archive"
     cap = config.log_size(cfg or {})
@@ -150,12 +153,13 @@ def breakdown(root, cfg, hook_chars=0):
         log_fix = f"over logSize ({len(log_text)} > {cap} chars): {archive}"
     else:
         log_fix = f"shorten it: archive the items of published versions ({archive}) and keep cells ≤ 800 chars"
+    per = chars_per_token(cfg)
     return [
-        ("log", estimate_tokens(log_text), log_fix),
-        ("AGENTS.md/CLAUDE.md", estimate_tokens(instruction_text(root)),
+        ("log", estimate_tokens(log_text, per), log_fix),
+        ("AGENTS.md/CLAUDE.md", estimate_tokens(instruction_text(root), per),
          f"python3 {os.path.join(HERE, 'doctor.py')}: instructionLines"),
-        ("hook output", int(hook_chars / CHARS_PER_TOKEN), "OUTPUT_CAP in recover.py / trim the log state"),
-        ("skills", estimate_tokens(skills_text(root)), "fewer or shorter skill descriptions"),
+        ("hook output", int(hook_chars / chars_per_token(cfg)), "OUTPUT_CAP in recover.py / trim the log state"),
+        ("skills", estimate_tokens(skills_text(root), per), "fewer or shorter skill descriptions"),
     ]
 
 

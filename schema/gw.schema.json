@@ -244,6 +244,10 @@
         "checkLogKeep",
         "ciFailedLines",
         "subagentCap",
+        "subagentCapStep",
+        "subagentCounterStaleDays",
+        "subagentTranscriptBytes",
+        "subagentCapAction",
         "contextGuard",
         "doctorTestDirsIgnore",
         "commitFormat",
@@ -764,6 +768,31 @@
       "default": 30,
       "description": "Subagents (Agent/Task calls) one session may launch before subagent-cap.py asks the user to check they are not looping, and again every 10 after."
     },
+    "subagentCapStep": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 10,
+      "description": "After subagentCap is reached, subagent-cap.py asks again every this many Subagent calls (cap, cap+step, cap+2*step...)."
+    },
+    "subagentCounterStaleDays": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 7,
+      "description": "Days without a write after which subagent-cap.py deletes the other sessions' gw-subagents-* counter files (own regular files only) when it creates a new one."
+    },
+    "subagentTranscriptBytes": {
+      "type": "integer",
+      "minimum": 1024,
+      "maximum": 67108864,
+      "default": 524288,
+      "description": "Bytes read from the end of the session transcript by subagent-cap.py to find the session's model (the one a subagent inherits) when models.disabled is not empty."
+    },
+    "subagentCapAction": {
+      "type": "string",
+      "enum": ["ask", "warn", "deny"],
+      "default": "ask",
+      "description": "What subagent-cap.py does when subagentCap is reached: ask (permission prompt at the cap and every subagentCapStep after, as always), warn (only says it in additionalContext, never stops) or deny (denies every call from the cap on; raise subagentCap to go on). A model in models.disabled is denied whatever this says."
+    },
     "roadmapFiles": {
       "type": "array",
       "items": {
@@ -890,9 +919,11 @@
         "window": {"type": "integer", "minimum": 1000, "default": 200000},
         "autocompactShare": {"type": "number", "exclusiveMinimum": 0, "maximum": 1, "default": 0.8},
         "warn": {"type": "integer", "minimum": 1, "maximum": 100, "default": 25},
-        "alarm": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50}
+        "alarm": {"type": "integer", "minimum": 1, "maximum": 100, "default": 50},
+        "charsPerToken": {"type": "number", "exclusiveMinimum": 0, "default": 3.5},
+        "bigWindow": {"type": "integer", "minimum": 1000, "default": 1000000}
       },
-      "default": {"cutoff": 0, "window": 200000, "autocompactShare": 0.8, "warn": 25, "alarm": 50},
+      "default": {"cutoff": 0, "window": 200000, "autocompactShare": 0.8, "warn": 25, "alarm": 50, "charsPerToken": 3.5, "bigWindow": 1000000},
       "description": "Startup-context guard (B21): recover.py --state compares the first turn after a /clear or a compaction with the compaction cutoff (cutoff tokens, or 0 = window x autocompactShare) and warns above warn percent and alarms above alarm percent; a second startup over alarm after a compaction is a loop."
     },
     "metrics": {
