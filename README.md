@@ -77,6 +77,9 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 - `gw-orchestrate-dealer` turns the main session into an orchestrator: it deals work out to clean-context subagents
   and can keep going for hours without `/clear`.
 - `gw-opt-tokens` measures in the session transcript where the spend went and proposes environment changes.
+- The `Stop` hook records every session's tokens by model, agent, branch and task in `docs/metrics/ledger.jsonl`;
+  `gw-metrics` reads them per period, next to quality signals, and `SessionStart` warns when a model spends 1.5× its
+  average. Models can be switched off for the whole project (`models.disabled`).
 - A hook asks the person when a session has launched many subagents, so a loop doesn't burn tokens unseen.
 - **Quality first:** a saving that worsens the result is no saving.
 
@@ -153,7 +156,9 @@ Deterministic, in Python and in bash that runs on macOS's version: `apply.py` (s
 `/clear`), `merge-branch.sh` (bring in a subagent's branch, `agent/<id>-<topic>`, with a green check, its `Refs:` in the merge message, the commands to resolve a conflict in the log, and clean up its working copy),
 `check.sh` (the check, with its green recorded, a lock and a log), `handoff.py` (the log), `version.py` (version
 and release checks), `private-check.py`, `ci-status.py` and `ci-local.py` (the CI, remote and local),
-`red-without-fix.sh`, `harvest.py` and the checks for links and for the agent map.
+`red-without-fix.sh`, `harvest.py`, `metrics.py` and `models.py` (spend and models), `test-run.py` and `tests-for.py`
+(the suite in parallel, and the tests of a change), `review-scope.py` and `change-size.py` (what is reviewed and
+when), `roadmap.py`, `backport.sh` (carry commits to a patch) and the checks for links and for the agent map.
 
 ### Optional patterns
 

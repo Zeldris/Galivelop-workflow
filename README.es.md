@@ -80,6 +80,9 @@ comprobación.
 - `gw-orchestrate-dealer` convierte la sesión principal en orquestadora: reparte el trabajo a subagentes de contexto
   limpio y puede seguir horas sin `/clear`.
 - `gw-opt-tokens` mide en el registro de la sesión dónde se fue el gasto y propone cambios del entorno.
+- El gancho `Stop` apunta los tokens de cada sesión por modelo, agente, rama y tarea en `docs/metrics/ledger.jsonl`;
+  `gw-metrics` los lee por periodo, junto a señales de calidad, y el `SessionStart` avisa cuando un modelo gasta 1,5×
+  su media. Los modelos se pueden apagar para todo el proyecto (`models.disabled`).
 - Un gancho pregunta a la persona cuando una sesión ha lanzado muchos subagentes, para que un bucle no gaste sin
   que nadie lo vea.
 - **Calidad primero:** un ahorro que empeora el resultado no es ahorro.
@@ -157,7 +160,9 @@ Deterministas, en Python y en bash compatible con la versión de macOS: `apply.p
 tras `/clear`), `merge-branch.sh` (traer la rama de un subagente, `agent/<id>-<tema>`, con el check en verde, sus `Refs:` en el mensaje de la fusión, la orden para resolver un conflicto en la bitácora y limpiar su copia de trabajo),
 `check.sh` (el check, con su verde apuntado, cerrojo y registro), `handoff.py` (la bitácora), `version.py` (versión
 y comprobaciones de la publicación), `private-check.py`, `ci-status.py` y `ci-local.py` (el CI, remoto y en local),
-`red-without-fix.sh`, `harvest.py` y las comprobaciones de enlaces y del mapa para agentes.
+`red-without-fix.sh`, `harvest.py`, `metrics.py` y `models.py` (gasto y modelos), `test-run.py` y `tests-for.py` (la
+suite en paralelo y los tests de un cambio), `review-scope.py` y `change-size.py` (qué se revisa y cuándo),
+`roadmap.py`, `backport.sh` (llevar commits a un parche) y las comprobaciones de enlaces y del mapa para agentes.
 
 ### Patrones opcionales
 

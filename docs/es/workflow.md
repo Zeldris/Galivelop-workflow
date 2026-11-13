@@ -19,6 +19,7 @@ llegue a la rama protegida.
 | Bitácora (`docs/handoff.md`) | Estado actual, siguiente paso, hecho y pendiente; se actualiza en el mismo commit que el trabajo |
 | Skills | Cómo elegir modelo y skill, orquestar subagentes, revisar, hacer retros |
 | Ganchos | Recuperar el estado tras `/clear`, no subir código sin revisión ni con el check en rojo |
+| Métricas (`docs/metrics/ledger.jsonl`) | Gasto de tokens por modelo, agente, rama y tarea; informes por periodo (`gw-metrics`) y señales de calidad junto al gasto |
 | `.claude/gw.json` | Lo que cambia de un proyecto a otro (idioma, bitácora, check, rama protegida…) |
 
 ## De dónde sale

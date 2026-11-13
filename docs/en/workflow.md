@@ -19,6 +19,7 @@ nothing unreviewed reaches the protected branch.
 | Log (`docs/handoff.md`) | Current state, next step, done and pending; updated in the same commit as the work |
 | Skills | How to pick model and skill, orchestrate subagents, review, run retros |
 | Hooks | Recover the state after `/clear`; don't push code without review or with the check failing |
+| Metrics (`docs/metrics/ledger.jsonl`) | Token spend by model, agent, branch and task; period reports (`gw-metrics`) and quality signals next to the spend |
 | `.claude/gw.json` | What varies between projects (language, log, check, protected branch…) |
 
 ## Where it comes from
