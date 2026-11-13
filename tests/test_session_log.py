@@ -449,6 +449,26 @@ class Recover(Base):
                                                       "gitWait": 7}}),
                          dict(defaults, gitWait=7))
 
+    def test_a13_recover_still_prints_the_state_without_a_usable_schema(self):
+        schema = self.p.work / ".claude" / "gw" / "schema" / "gw.schema.json"
+        self.long_log()
+        original = schema.read_text()
+        old = json.loads(original)
+        del old["properties"]["recover"]
+        for label, text in (("without recover", json.dumps(old)), ("missing", None)):
+            if text is None:
+                schema.unlink()
+            else:
+                schema.write_text(text)
+            code, out = self.p.run_recover("--state")
+            self.assertEqual(code, 0, (label, out))
+            self.assertNotIn("Traceback", out, label)
+            self.assertIn("State after compaction or /clear", out, label)
+            self.assertIn("Last commits:", out, label)
+            if text is not None:  # a missing schema cannot load the config at all (as before): no log section then
+                self.assertIn("line number 23", out, label)  # the literal defaults: 25 lines of the section
+                self.assertNotIn("line number 24 ", out, label)
+
     def test_a13_recover_search_max_and_width_default_from_the_config(self):
         path = self.p.transcript(self.p.work, [{"type": "user", "message": {"role": "user", "content": f"needle {i}"}}
                                                for i in range(5)])

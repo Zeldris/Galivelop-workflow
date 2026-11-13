@@ -48,7 +48,20 @@ import session_log  # noqa: E402
 
 # The sizes of --state and --search are the config key `recover` (config.recover; the schema holds the defaults and the
 # minimums, so a low value cannot hide the state). LIMITS is the defaults until use_config() reads the project's.
-LIMITS = config.recover({})
+# The literal copy of the schema defaults is the last resort: a missing or older schema (a half-done /gw-update) has no
+# `recover` key, and the hook must still show the state.
+FALLBACK_LIMITS = {"logLines": 25, "statusLines": 15, "worktrees": 10, "otherBranches": 10, "branchRow": 120,
+                   "worktreeRow": 200, "outputCap": 9500, "gitWait": 5, "searchMax": 10, "searchWidth": 300}
+
+
+def defaults():
+    try:
+        return config.recover({})
+    except Exception:  # no schema, or one without `recover`
+        return dict(FALLBACK_LIMITS)
+
+
+LIMITS = defaults()
 
 
 def use_config(root):
@@ -57,8 +70,8 @@ def use_config(root):
     global LIMITS
     try:
         LIMITS = config.recover(config.load(root))
-    except Exception:  # config.ConfigError, OSError: the hook must still show the state
-        LIMITS = config.recover({})
+    except Exception:  # config.ConfigError, OSError, a schema without `recover`: the hook must still show the state
+        LIMITS = defaults()
     return LIMITS
 
 

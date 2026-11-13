@@ -158,7 +158,7 @@ def breakdown(root, cfg, hook_chars=0):
         ("log", estimate_tokens(log_text, per), log_fix),
         ("AGENTS.md/CLAUDE.md", estimate_tokens(instruction_text(root), per),
          f"python3 {os.path.join(HERE, 'doctor.py')}: instructionLines"),
-        ("hook output", int(hook_chars / chars_per_token(cfg)), "OUTPUT_CAP in recover.py / trim the log state"),
+        ("hook output", int(hook_chars / chars_per_token(cfg)), "recover.outputCap in .claude/gw.json / trim the log state"),
         ("skills", estimate_tokens(skills_text(root), per), "fewer or shorter skill descriptions"),
     ]
 
