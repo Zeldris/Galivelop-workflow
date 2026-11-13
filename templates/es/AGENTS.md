@@ -95,7 +95,7 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
   «Relevos» con la confirmación de la persona: se sube directo (el `pre-push` corre el check) o, para un pull
   request, `python3 .claude/gw/scripts/ci-local.py --record` corre el CI en local y lo apunta; con esa línea verde
   subida, el gancho deja fusionar.
-- La rama de un subagente vuelve con `bash .claude/gw/scripts/merge-branch.sh <rama> "<mensaje>\n\nSiguiente: <próximo paso>"`
+- La rama de un subagente vuelve con `bash .claude/gw/scripts/merge-branch.sh <rama> $'<mensaje>\n\nSiguiente: <próximo paso>'`
   (el mensaje acaba con el trailer que exige el `commit-msg`), que corre el check y los tests
   relacionados, y limpia su worktree.
 

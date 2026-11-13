@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.5.2` en `main` (`2e55d66`, 2026-11-12) |
-| Siguiente paso | **`0.6.0`** en obra: todas sus filas hechas y recogida H19 hecha (2026-11-13). Arreglos de H19 (D90-D93, B30) hechos y versión `0.6.0` con su CHANGELOG. Sigue: repaso de documentación y fases 1-3 antes de `main`. |
+| Siguiente paso | **`0.6.0`** en obra: todas sus filas hechas y recogida H19 hecha (2026-11-13). Arreglos de H19 (D90-D93, B30), versión `0.6.0` con su CHANGELOG y repaso de documentación hechos; fase 1 hecha (11 hallazgos, arreglados). Sigue: fase 2 (`/gw-opt-tokens` y `/retro`, al usuario) y fase 3 antes de `main`. |
 
 ### Fases
 
@@ -39,8 +39,8 @@ desde una sesión local.
 
 1. 2026-11-13 — D90-D93, B30: arreglos de la recogida H19 (orden de `handoff.py closed`, `Siguiente:` en el ejemplo de `merge-branch.sh`, encargo del dealer, quién lanza `gw-opt-ai`)
 2. 2026-11-13 — H19 hecha: recogida de la `0.6.0` sobre los 6 proyectos de H18 (`docs/proposals/2026-11-13-*.md`): 12 propuestas aprobadas; los arreglos D90-D93 y B30, a la `0.6.0`; E48, D94-D96, E49 y B31, a la `0.7`; E50, a la `0.8`. private-project-1 y private-project-3, sin novedades.
-3. 2026-11-13 — 2026-11-13 — **D81 hecha**: `scripts/backport.sh [--from <rama>] [--refs <id>] [<sha>...]` trae commits de la menor a la rama de un parche: cherry-pick en orden topológico con `-x` (`-m 1` en merges), choques solo de bitácora o roadmap resueltos con la versión del parche, vacíos saltados, parada con la orden en un choque de código y cuenta final de cada sha; con `--from`, los archivos de recogida de `proposalsDir` en un commit propio (`Refs:` solo con ids que acepta el `commit-msg` del parche). En la guía de parches (contributing es/en) y `agent-map.md`; 32 tests. Revisión con 3 arreglos (`Findings: 3`).
-4. 2026-11-13 — 2026-11-13 — **D89 hecha**: `handoff.py` toma como publicada la etiqueta `vX.Y.Z` más alta aunque haya `plugin.json` (que en el repo del flujo cambia antes de publicar); sin etiquetas, `plugin.json`. `archive` ya no se adelanta. Test del caso y docs es/en (`logSize`).
+3. 2026-11-13 — **D81 hecha**: `scripts/backport.sh [--from <rama>] [--refs <id>] [<sha>...]` trae commits de la menor a la rama de un parche: cherry-pick en orden topológico con `-x` (`-m 1` en merges), choques solo de bitácora o roadmap resueltos con la versión del parche, vacíos saltados, parada con la orden en un choque de código y cuenta final de cada sha; con `--from`, los archivos de recogida de `proposalsDir` en un commit propio (`Refs:` solo con ids que acepta el `commit-msg` del parche). En la guía de parches (contributing es/en) y `agent-map.md`; 32 tests. Revisión con 3 arreglos (`Findings: 3`).
+4. 2026-11-13 — **D89 hecha**: `handoff.py` toma como publicada la etiqueta `vX.Y.Z` más alta aunque haya `plugin.json` (que en el repo del flujo cambia antes de publicar); sin etiquetas, `plugin.json`. `archive` ya no se adelanta. Test del caso y docs es/en (`logSize`).
 5. 2026-11-13 — **E44 hecha**: clave `releaseCheckBranches` (por defecto `["version/*"]`, glob de shell; `[]` la apaga): en una rama que casa, `scripts/check.sh` corre el `check` con `GW_PUSH_PROTECTED=true`, así `version.py --release` (falta de recogida, CHANGELOG sin fecha) sale en rojo en la rama de versión y no en la subida a `main`. Solo en `check.sh`, no en el `pre-push` (no bloquea subidas a mitad de versión). En esquema, plantilla, `fullCheckSkipKeys`, docs es/en (config y contributing) y copias; tests de defecto, valor dado, `[]`, HEAD suelto y valor malo. Esta rama (`ccr-…`) no casa con el defecto.
 
 ## Pendiente

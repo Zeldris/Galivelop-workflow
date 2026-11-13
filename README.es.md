@@ -82,7 +82,7 @@ comprobación.
 - `gw-opt-tokens` mide en el registro de la sesión dónde se fue el gasto y propone cambios del entorno.
 - El gancho `Stop` apunta los tokens de cada sesión por modelo, agente, rama y tarea en `docs/metrics/ledger.jsonl`;
   `gw-metrics` los lee por periodo, junto a señales de calidad, y el `SessionStart` avisa cuando un modelo gasta 1,5×
-  su media. Los modelos se pueden apagar para todo el proyecto (`models.disabled`).
+  su media. Los modelos se pueden apagar para los subagentes y las recomendaciones (`models.disabled`).
 - Un gancho pregunta a la persona cuando una sesión ha lanzado muchos subagentes, para que un bucle no gaste sin
   que nadie lo vea.
 - **Calidad primero:** un ahorro que empeora el resultado no es ahorro.

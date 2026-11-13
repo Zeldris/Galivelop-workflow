@@ -95,7 +95,7 @@ Each session may run in a throwaway container: **what is not pushed does not exi
   the person's confirmation: push directly (`pre-push` runs the check) or, for a pull request,
   `python3 .claude/gw/scripts/ci-local.py --record` runs the CI locally and records it; with that green line pushed,
   the hook lets the merge through.
-- A subagent's branch comes back with `bash .claude/gw/scripts/merge-branch.sh <branch> "<message>\n\nNext: <next step>"`
+- A subagent's branch comes back with `bash .claude/gw/scripts/merge-branch.sh <branch> $'<message>\n\nNext: <next step>'`
   (the message ends with the trailer the `commit-msg` requires), which runs the check and the
   related tests, and cleans up its worktree.
 

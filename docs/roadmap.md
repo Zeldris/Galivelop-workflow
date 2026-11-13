@@ -196,7 +196,7 @@ En este orden, porque cada paso usa el anterior.
 | E47 | El `pre-push` pide el check completo solo por las claves de `.claude/gw.json` que cambian lo que corre el check; las demás, con los tests del cambio (sigue a E45): `config.py push-scope --commits` compara las claves de cada commit nuevo con sus padres y solo cuentan las que no están en `fullCheckSkipKeys` (nueva; por defecto, las que no lee ningún script del check); un config roto o ausente a cualquier lado, completo | hecho (2026-11-12) |
 | A13 | Repaso de todo lo hecho hasta la `0.6` para que `.claude/gw.json` esté lo más completo posible: cada umbral, ruta, aviso o comportamiento que aún va fijo en el código pasa a ser una clave activable o configurable, con su valor por defecto, su entrada en `config.py`, el esquema y `docs/es/config.md` (regla «Todo configurable»; usuario, 2026-11-12) | hecho (2026-11-13) |
 | D90 | `handoff.py closed` da la orden que lo arregla (`handoff.py done '<id>: …'`) (recogida `0.6.0`, world-maker P1) | hecho (2026-11-13) |
-| D91 | Los ejemplos de `merge-branch.sh` (plantillas de `AGENTS.md`, `gw-orchestrate-dealer`) llevan el trailer `Siguiente:` que pide `commitNext` (recogida `0.6.0`, instalador P2) | hecho (2026-11-13) |
+| D91 | Los ejemplos de `merge-branch.sh` (plantillas de `AGENTS.md`, con `$'…'` para los saltos de línea; el dealer no tiene) llevan el trailer `Siguiente:` que pide `commitNext` (recogida `0.6.0`, instalador P2) | hecho (2026-11-13) |
 | D92 | El encargo de `gw-orchestrate-dealer` pide al subagente no responder hasta que acabe su trabajo de fondo (recogida `0.6.0`, image-generator P3) | hecho (2026-11-13) |
 | D93 | `gw-orchestrate-dealer`: al aplicar un documento de otro repo, el subagente devuelve cada punto con su texto literal y su ruta, no un resumen (recogida `0.6.0`, portal P1) | hecho (2026-11-13) |
 | B30 | La fase 2 de las plantillas de `AGENTS.md` y `gw-opt-ai` (`disable-model-invocation`) dicen lo mismo sobre quién la lanza (recogida `0.6.0`, image-generator P1) | hecho (2026-11-13) |
@@ -238,6 +238,7 @@ En este orden, porque cada paso usa el anterior.
 | D96 | Celdas largas de la bitácora: `handoff.py` mueve a «Hecho» lo cerrado de una fila, o un segundo tope que falla (clave nueva) (recogida `0.6.0`, image-generator P2) | pendiente |
 | E49 | `gw-init` con `agentSignatures: false` escribe en `CLAUDE.md` la regla «sin firmas» frente al recordatorio de atribución (recogida `0.6.0`, image-generator P5) | pendiente |
 | B31 | Aviso de contexto cerca de la ventana con el presupuesto de compactaciones gastado (`recover.py --state` o `Stop`), antes de la compactación (recogida `0.6.0`, image-generator P7) | pendiente |
+| B32 | `apply.py` añade `docs/metrics/ledger.jsonl merge=union` al `.gitattributes` del proyecto, con su test, para que dos ramas que apuntan gasto no choquen al fusionar (revisión de fase 1 de la `0.6.0`; resto de B2) | pendiente |
 
 ## `0.8` «Front y otros agentes»
 

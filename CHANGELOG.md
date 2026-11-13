@@ -18,7 +18,7 @@ and effort per agent, review by blocks, a fast check and a complete `.claude/gw.
 ### ES
 
 - Métricas de tokens (B1-B8): el gancho `Stop` apunta por sesión los tokens por modelo y tipo, rama, `Refs` y
-  subagente en `docs/metrics/ledger.jsonl` (`merge=union`); `scripts/metrics.py` hace informes por periodo
+  subagente en `docs/metrics/ledger.jsonl` (`merge=union` en este repo; en los proyectos, B32 en la `0.7`); `scripts/metrics.py` hace informes por periodo
   (`report`, `--write`), comparaciones (`compare`), precios con fecha (`price`) y señales de calidad junto al gasto
   (`quality`, trailers `Findings:` y `Retries:`); la skill `gw-metrics` los explica. El `SessionStart` avisa cuando un
   modelo gasta 1,5× su media (`metrics.alert`).
@@ -30,12 +30,12 @@ and effort per agent, review by blocks, a fast check and a complete `.claude/gw.
   `commit-msg` por tamaño (`scripts/change-size.py`, `changeSize`); `scripts/review-scope.py` deja fuera lo copiado
   tal cual del flujo (`vendored`) y `--trivial` reconoce el diff que se revisa sin subagente; `recover.py --state`
   avisa de una revisión atrasada.
-- Check y subidas (E22, D49, E44, E45, E46, E47, E27): `scripts/test-run.py` corre la suite en paralelo
+- Check y subidas (E21, E22, D49, E44, E45, E46, E47, E27): `scripts/test-run.py` corre la suite en paralelo
   (`testJobs`), con repos de prueba montados una vez por clase (de 556 s a 352 s); `tests/old-python.sh` repite la
   compilación y los tests del cambio con el Python más viejo disponible; el `pre-push` de una rama corre solo los
-  tests del cambio (`branchCheck`, `scripts/tests-for.py`, `testMap`) y pide el completo solo por las claves que
+  tests del cambio (`branchCheck`, `relatedTests`; este repo los saca de `scripts/tests-for.py` y `testMap`) y pide el completo solo por las claves que
   cambian lo que corre (`fullCheckSkipKeys`); `scripts/check.sh` corre `version.py --release` en las ramas
-  `version/*` (`releaseCheckBranches`); el CI instala la versión de ShellCheck de `shellcheckVersion`.
+  `version/*` (`releaseCheckBranches`); el CI del repo del flujo instala la versión de ShellCheck de `shellcheckVersion`.
 - Orquestación (B16, D42, B28, B19): tipo de subagente ligero `gw-worker` (`.claude/agents/gw-worker.md`, lo crea
   `gw-init`); `gw-orchestrate-dealer` reparte los hallazgos aprobados por grupo de archivos, da a cada agente su
   carpeta en el scratchpad y comprueba la base del worktree; `gw-update` reparte la reconciliación de cada `.gw-new`.
@@ -62,7 +62,7 @@ and effort per agent, review by blocks, a fast check and a complete `.claude/gw.
 ### EN
 
 - Token metrics (B1-B8): the `Stop` hook records per session the tokens by model and kind, branch, `Refs` and
-  subagent in `docs/metrics/ledger.jsonl` (`merge=union`); `scripts/metrics.py` makes period reports (`report`,
+  subagent in `docs/metrics/ledger.jsonl` (`merge=union` in this repo; in projects, B32 in `0.7`); `scripts/metrics.py` makes period reports (`report`,
   `--write`), comparisons (`compare`), dated prices (`price`) and quality signals next to the spend (`quality`,
   `Findings:` and `Retries:` trailers); the `gw-metrics` skill explains them. `SessionStart` warns when a model spends
   1.5× its average (`metrics.alert`).
@@ -74,12 +74,12 @@ and effort per agent, review by blocks, a fast check and a complete `.claude/gw.
   `commit-msg` (`scripts/change-size.py`, `changeSize`); `scripts/review-scope.py` leaves out the unchanged workflow
   copies (`vendored`) and `--trivial` spots the diff reviewed without a subagent; `recover.py --state` warns of an
   overdue review.
-- Check and pushes (E22, D49, E44, E45, E46, E47, E27): `scripts/test-run.py` runs the suite in parallel
+- Check and pushes (E21, E22, D49, E44, E45, E46, E47, E27): `scripts/test-run.py` runs the suite in parallel
   (`testJobs`), with test repos built once per class (556 s down to 352 s); `tests/old-python.sh` repeats the
   compilation and the change's tests with the oldest Python available; a branch's `pre-push` runs only the change's
-  tests (`branchCheck`, `scripts/tests-for.py`, `testMap`) and asks for the full check only for the keys that change
+  tests (`branchCheck`, `relatedTests`; this repo takes them from `scripts/tests-for.py` and `testMap`) and asks for the full check only for the keys that change
   what it runs (`fullCheckSkipKeys`); `scripts/check.sh` runs `version.py --release` on `version/*` branches
-  (`releaseCheckBranches`); CI installs the ShellCheck version in `shellcheckVersion`.
+  (`releaseCheckBranches`); the workflow repo's CI installs the ShellCheck version in `shellcheckVersion`.
 - Orchestration (B16, D42, B28, B19): a light subagent type, `gw-worker` (`.claude/agents/gw-worker.md`, created by
   `gw-init`); `gw-orchestrate-dealer` deals approved findings by group of files, gives each agent its scratchpad
   folder and checks the worktree's base; `gw-update` deals out the reconciliation of each `.gw-new`.
@@ -100,7 +100,7 @@ and effort per agent, review by blocks, a fast check and a complete `.claude/gw.
   references, in `docs/proposals/2026-11-08-notes-and-references.md` and `docs/design/I-lifecycle.md` (the task
   record, C11, goes to `0.7`).
 - Fixes from the `0.6.0` harvest (D90-D93, B30): `handoff.py closed` gives the command that fixes it; the
-  `merge-branch.sh` examples carry `Siguiente:`; the dealer's brief asks to wait for background work and, when
+  `merge-branch.sh` examples carry the `Siguiente:`/`Next:` trailer; the dealer's brief asks to wait for background work and, when
   applying a document from another repo, for the literal text with its path; phase 2 says who launches `gw-opt-ai`.
 
 ## [0.5.2] - 2026-11-12

@@ -79,7 +79,7 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 - `gw-opt-tokens` measures in the session transcript where the spend went and proposes environment changes.
 - The `Stop` hook records every session's tokens by model, agent, branch and task in `docs/metrics/ledger.jsonl`;
   `gw-metrics` reads them per period, next to quality signals, and `SessionStart` warns when a model spends 1.5× its
-  average. Models can be switched off for the whole project (`models.disabled`).
+  average. Models can be switched off for subagents and recommendations (`models.disabled`).
 - A hook asks the person when a session has launched many subagents, so a loop doesn't burn tokens unseen.
 - **Quality first:** a saving that worsens the result is no saving.
 

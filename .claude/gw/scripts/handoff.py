@@ -652,6 +652,7 @@ def split_blank(block):
 def cmd_done(ctx, args):
     path = Path(args.file) if args.file else ctx.root / ctx.log
     text = " ".join(args.text.split())
+    text = re.sub(r"^\d{4}-\d{2}-\d{2}\s*[—–-]\s*", "", text)  # the entry gets its date below: never twice
     done_items = gwconfig.handoff(ctx.config)["doneItems"]
     if not text:
         raise Usage("TEXT is empty; give the entry: handoff.py done \"what was closed\"")

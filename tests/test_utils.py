@@ -413,6 +413,13 @@ class HandoffSizeAndDone(Base):
         self.assertEqual((self.p.work / LOG).read_text(),
                          before.replace("1. nothing yet", f"1. {today} — from the default file\n2. nothing yet"))
 
+    def test_done_does_not_repeat_a_date_given_in_the_text(self):
+        before = (self.p.work / LOG).read_text()
+        code, out = self.p.script("handoff.py", "done", "2026-01-02 — **X1 hecha**: y", "--date", "2026-01-03")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.p.work / LOG).read_text(),
+                         before.replace("1. nothing yet", "1. 2026-01-03 — **X1 hecha**: y\n2. nothing yet"))
+
     def test_done_bad_usage_is_exit_2(self):
         path = self.log(self.doc())
         missing = str(self.tmp / "missing.md")

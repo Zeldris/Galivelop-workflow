@@ -88,7 +88,7 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    If you change a function or a field, grep every user of it and adjust them, or list them under MISSING.
    Your branch is named `agent/<id>-<topic>` (`<id>` = the task id, e.g. `agent/D11-commit-format`); if isolation
    created another name, rename it first: `git branch -m agent/<id>-<topic>`.
-   Applying a document from another repo: return each point with its literal text and path, not a summary.
+   Applying a document from another repo: each point's literal text and path go to a scratchpad file; reply its path.
    If the bug is a pattern (a wrong check, a missing quote, a case left out), grep its other occurrences and fix
    them too, or list them under MISSING.
    If you touch processes, paths or permissions, write it for every platform the project supports.
