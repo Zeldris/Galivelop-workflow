@@ -47,7 +47,16 @@ from apply import OLD_SCRIPTS, OLD_SKILLS, skill_version_span  # noqa: E402  (th
 IDEAS_HEADING = re.compile(r"^#{2,4}\s*(?:For|Para)\s+Galivelop-workflow\b.*$", re.I | re.M)
 IDEAS_LINE = re.compile(r"^([ \t]*)(?:[-*+]\s+|\d+\.\s+)?[*_]{0,2}(?:Propuestas?\s+para\s+el\s+flujo|Proposals?\s+for\s+the\s+workflow)\b",
                         re.I | re.M)
-RETRO_NAME = re.compile(r"(^|/)retro-[^/]*\.md$")
+
+
+def retro_name(repo):
+    """The regex that names a retro file in the harvested project: its `retro.filePattern` (A13), else the default (a
+    project with no key, no config or an unreadable one has the built-in pattern)."""
+    try:
+        pattern = config.retro(config.load(repo))["filePattern"]
+        return re.compile(pattern)
+    except (config.ConfigError, re.error, OSError):
+        return re.compile(config.retro({})["filePattern"])
 
 
 def load_private_check():
@@ -316,6 +325,7 @@ def harvest(repo, state, anonymize=lambda text: text):
         report["history"] = "nothing new since the last harvest"
         changed_files = set()
 
+    retro_re = retro_name(repo)
     ours, theirs = skill_files(ROOT / "skills"), skill_files(repo / ".claude" / "skills")
     for name, path in theirs.items():
         rel = str(path.relative_to(repo))
@@ -360,7 +370,7 @@ def harvest(repo, state, anonymize=lambda text: text):
                 else:
                     report["scripts_changed"].append({"script": name, "path": rel})
         if rel.endswith(".md") and (changed_files is None or rel in changed_files):
-            if RETRO_NAME.search(rel):
+            if retro_re.search(rel):
                 report["retros"].append(rel)
             if not (repo / rel).is_file():
                 continue

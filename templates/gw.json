@@ -93,7 +93,7 @@
   "reviewBeforeMainListFiles": 10,
   "checkTailLines": 40,
   "retro": {"filePattern": "(^|/)retro-[^/]*\\.md$", "statusMarker": "(Estado|Status)", "decidedWords": "aplicad[ao]s?|rechazad[ao]s?|aplazad[ao]s?|decidid[ao]s?|aprobad[ao]s?|applied|rejected|deferred|decided|approved", "pendingWords": "pendientes?|pending|undecided|sin decidir|aún no|not yet"},
-  "redWithoutFix": {},
+  "redWithoutFix": {"compileRegex": "SyntaxError|IndentationError|ModuleNotFoundError|ImportError|ERROR collecting|error: could not compile|error\\[E[0-9]+\\]|error TS[0-9]+|Cannot find module|cannot find symbol|undefined reference|build failed|Failed to compile", "testRegex": "(def|fn|func|function)[[:space:]]+_?[Tt]est|(^|[^[:alnum:]_.])(it|test|describe)[[:space:]]*\\(|#\\[test\\]|@Test|unittest\\.TestCase|^[+@ -]*test_[A-Za-z0-9_]*[[:space:]]*\\(\\)"},
   "branchPrefixes": {"agent": ["worktree-agent-*", "agent/*"], "keep": ["claude/*"]},
   "mergeCleanup": true,
   "wholeReadSkipExtensions": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".pdf", ".ipynb"],

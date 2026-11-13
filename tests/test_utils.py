@@ -1224,13 +1224,18 @@ class PrepushBranches(Base):
         self.assertIn(warning, out)
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         cfg["prepushClashBranches"] = 1
-        self.p.write(".claude/gw.json", json.dumps(cfg)); self.p.commit("one branch", env=DAY)
-        code, out, _, _ = self.run_hook(sha, env=env)  # only the most recent one (feat-c) is compared
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out, _, _ = self.run_hook(sha, env=env)  # the working copy says 1, the pushed commit has no key: 10
+        self.assertEqual(code, 0, out)
+        self.assertIn(warning, out, "the key is read from the pushed commit, not from the working copy")
+        self.p.commit("one branch", env=DAY)
+        sha_one = self.p.sha()
+        code, out, _, _ = self.run_hook(sha_one, env=env)  # the pushed commit says 1: only feat-c is compared
         self.assertEqual(code, 0, out)
         self.assertNotIn("WARNING: handoff: INS-3", out)
         cfg["prepushClashBranches"] = 0
-        self.p.write(".claude/gw.json", json.dumps(cfg))
-        code, out, _, _ = self.run_hook(sha, env=env)
+        self.p.write(".claude/gw.json", json.dumps(cfg)); self.p.commit("zero branches", env=DAY)
+        code, out, _, _ = self.run_hook(self.p.sha(), env=env)
         self.assertEqual(code, 1, out)
         self.assertIn("$.prepushClashBranches: must be at least 1, got 0", out)
 

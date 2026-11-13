@@ -114,6 +114,19 @@ class Harvest(unittest.TestCase):
         self.assertEqual(r["retros"], ["docs/retro-2026-01-01-x.md"])
         self.assertEqual(r["ideas"][0]["text"], "Check shallow clones.")
 
+    def test_retro_file_pattern_of_the_project_names_its_retros(self):
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        (self.repo / "docs").mkdir(exist_ok=True)
+        (self.repo / "docs" / "look-back-1.md").write_text("# Look back\n")
+        (self.repo / "docs" / "retro-2026-01-01-x.md").write_text("# Retro\n")
+        (self.repo / ".claude").mkdir(exist_ok=True)
+        cfg = json.loads((ROOT / "templates" / "gw.json").read_text())
+        cfg["retro"] = {"filePattern": "(^|/)look-back-[^/]*\\.md$"}
+        (self.repo / ".claude" / "gw.json").write_text(json.dumps(cfg))
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "two")
+        self.assertEqual(self.harvest()["retros"], ["docs/look-back-1.md"])
+
     def test_ideas_come_from_any_changed_md_not_only_retros(self):
         run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
         note = self.repo / "docs" / "registros" / "piloto.md"
@@ -348,6 +361,7 @@ class Harvest(unittest.TestCase):
         # A workflow repo of its own (CI clones are shallow): grilling and reviewed.sh with two commits each.
         wf = self.tmp / "wf"
         shutil.copytree(ROOT / "scripts", wf / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(ROOT / "schema", wf / "schema")  # config.py reads the defaults (retro.filePattern) from it
         (wf / "skills" / "grilling").mkdir(parents=True)
         skill = (ROOT / "skills" / "grilling" / "SKILL.md").read_text()
         git(self.tmp, "init", "-q", str(wf))
@@ -421,6 +435,7 @@ class Harvest(unittest.TestCase):
         """A workflow repo whose main lacks the project's "Side." text; it lives on a side branch given by ref_cmd."""
         wf = self.tmp / "wf"
         shutil.copytree(ROOT / "scripts", wf / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(ROOT / "schema", wf / "schema")  # config.py reads the defaults (retro.filePattern) from it
         (wf / "skills" / "grilling").mkdir(parents=True)
         skill = (ROOT / "skills" / "grilling" / "SKILL.md").read_text()
         git(self.tmp, "init", "-q", "-b", "main", str(wf))
@@ -453,6 +468,7 @@ class Harvest(unittest.TestCase):
     def test_a_shallow_workflow_clone_stops_with_the_command_that_fixes_it(self):
         wf = self.tmp / "wf"
         shutil.copytree(ROOT / "scripts", wf / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(ROOT / "schema", wf / "schema")  # config.py reads the defaults (retro.filePattern) from it
         git(self.tmp, "init", "-q", "-b", "main", str(wf))
         git(wf, "add", "-A"); git(wf, "commit", "-qm", "one")
         (wf / "extra.txt").write_text("x\n")
@@ -479,6 +495,7 @@ class Harvest(unittest.TestCase):
     def test_an_old_name_copy_is_matched_against_the_history_under_the_old_name(self):
         wf = self.tmp / "wf"
         shutil.copytree(ROOT / "scripts", wf / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(ROOT / "schema", wf / "schema")  # config.py reads the defaults (retro.filePattern) from it
         skill = (ROOT / "skills" / "gw-selector" / "SKILL.md").read_text()
         git(self.tmp, "init", "-q", "-b", "main", str(wf))
         (wf / "skills/selector").mkdir(parents=True)
@@ -518,7 +535,7 @@ class Anonymized(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         # A workflow copy of its own: harvest.py reads the local file of the repo it lives in.
         self.wf = self.tmp / "wf"
-        for rel in ("scripts", "skills"):
+        for rel in ("scripts", "schema", "skills"):
             shutil.copytree(ROOT / rel, self.wf / rel, ignore=shutil.ignore_patterns("__pycache__"))
         (self.wf / ".claude").mkdir()
         self.script = str(self.wf / "scripts" / "harvest.py")

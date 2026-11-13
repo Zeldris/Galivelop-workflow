@@ -1071,7 +1071,7 @@
         "compileRegex": {"type": "string", "minLength": 1, "default": "SyntaxError|IndentationError|ModuleNotFoundError|ImportError|ERROR collecting|error: could not compile|error\\[E[0-9]+\\]|error TS[0-9]+|Cannot find module|cannot find symbol|undefined reference|build failed|Failed to compile"},
         "testRegex": {"type": "string", "minLength": 1, "default": "(def|fn|func|function)[[:space:]]+_?[Tt]est|(^|[^[:alnum:]_.])(it|test|describe)[[:space:]]*\\(|#\\[test\\]|@Test|unittest\\.TestCase|^[+@ -]*test_[A-Za-z0-9_]*[[:space:]]*\\(\\)"}
       },
-      "default": {},
+      "default": {"compileRegex": "SyntaxError|IndentationError|ModuleNotFoundError|ImportError|ERROR collecting|error: could not compile|error\\[E[0-9]+\\]|error TS[0-9]+|Cannot find module|cannot find symbol|undefined reference|build failed|Failed to compile", "testRegex": "(def|fn|func|function)[[:space:]]+_?[Tt]est|(^|[^[:alnum:]_.])(it|test|describe)[[:space:]]*\\(|#\\[test\\]|@Test|unittest\\.TestCase|^[+@ -]*test_[A-Za-z0-9_]*[[:space:]]*\\(\\)"},
       "description": "red-without-fix.sh, regexes for grep -E (POSIX classes allowed): compileRegex is what a load/compile red prints (--compile-re on the command line wins); testRegex finds test code in a fix file (a match refuses the file, exit 2). An invalid regex makes the script exit 2."
     },
     "branchPrefixes": {

@@ -39,9 +39,6 @@ log="$(python3 "$config" --root "$root" get log)" || {
   echo "prepush-branches: cannot read log; fix the config: python3 $config --root $root validate" >&2; exit 1; }
 protected="$(python3 "$config" --root "$root" get protectedBranch)" || {
   echo "prepush-branches: cannot read protectedBranch; fix the config: python3 $config --root $root validate" >&2; exit 1; }
-clash_branches="$(python3 "$config" --root "$root" get prepushClashBranches)" || {
-  echo "prepush-branches: cannot read prepushClashBranches; fix the config: python3 $config --root $root validate" >&2; exit 1; }
-case "$clash_branches" in ''|*[!0-9]*|0) echo "prepush-branches: prepushClashBranches must be a whole number of 1 or more, got '$clash_branches'; fix .claude/gw.json" >&2; exit 1 ;; esac
 zero=0000000000000000000000000000000000000000
 handoff() { python3 "$handoff" --root "$root" "$@"; }
 
@@ -96,6 +93,10 @@ while read -r local_ref sha_local remote_ref sha_remote; do
     [ -n "$commit" ] || continue
     handoff clash --merge "$commit" --tip "$sha_local" || { echo "handoff: in merge $(git log -1 --format='%h %s' "$commit")"; exit 1; }
   done <<<"$(git rev-list --merges "$sha_local" --not --remotes 2>/dev/null)"
+  # prepushClashBranches as the pushed commit has it, not the working copy
+  clash_branches="$(python3 "$config" --root "$root" --rev "$sha_local" get prepushClashBranches)" || {
+    echo "prepush-branches: cannot read prepushClashBranches from .claude/gw.json in commit ${sha_local:0:7}; commit a valid one: python3 $config --root $root --rev ${sha_local:0:7} validate" >&2; exit 1; }
+  case "$clash_branches" in ''|*[!0-9]*|0) echo "prepush-branches: prepushClashBranches must be a whole number of 1 or more, got '$clash_branches'; fix .claude/gw.json" >&2; exit 1 ;; esac
   others=()
   while IFS= read -r ref; do
     case "$ref" in ""|refs/remotes/origin/HEAD|"refs/remotes/origin/$protected"|"refs/remotes/origin/$branch") continue ;; esac
