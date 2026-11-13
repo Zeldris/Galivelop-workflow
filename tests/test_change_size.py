@@ -145,20 +145,20 @@ class ChangeSize(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("WARNING: this commit changes 11 lines", err)
 
-    def test_a13_severity_block_exits_1_for_the_commit_and_for_the_block(self):
+    def test_a13_severity_block_exits_3_for_the_commit_and_for_the_block(self):
         self.configure({"commit": 10, "block": 30, "severity": "block"})
         self.commit("config")
         self.write("b.txt", lines(10))
         self.assertEqual(self.run_cli("--base", "HEAD"), (0, "", ""))
         self.write("b.txt", lines(11))
         code, out, err = self.run_cli("--base", "HEAD")
-        self.assertEqual(code, 1)
+        self.assertEqual(code, 3)
         self.assertIn("ERROR: this commit changes 11 lines (more than 10, changeSize.commit", err)
         self.configure({"commit": 0, "block": 30, "severity": "block"})
         self.commit("config 2")
         self.write("c.txt", lines(31))
         code, out, err = self.run_cli("--base", "HEAD")
-        self.assertEqual(code, 1)
+        self.assertEqual(code, 3)
         self.assertIn("ERROR: the block after HEAD changes 31 lines", err)
 
     def test_a13_bad_severity_fails_closed_with_the_reason(self):
@@ -195,13 +195,15 @@ class CommitMsgSeverity(Base):
         r = self.p.commit("notes", ok=False)
         self.assertEqual(r.returncode, 0, r.stderr)
 
-    def test_a_failing_check_still_only_warns(self):
+    def test_a_failing_check_still_only_warns_whatever_its_exit_code(self):
         script = self.p.work / ".claude" / "gw" / "scripts" / "change-size.py"
-        script.write_text("import sys\nprint('change-size: broken', file=sys.stderr)\nsys.exit(2)\n")
-        self.p.write("docs/notes.md", lines(5))
-        r = self.p.commit("notes", ok=False)
-        self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("WARNING: the size check failed (above); the commit goes on", r.stderr)
+        for code in (1, 2):  # 1 is what an unhandled Python exception exits with: it is not "too big"
+            script.write_text(f"import sys\nprint('change-size: broken', file=sys.stderr)\nsys.exit({code})\n")
+            self.p.write("docs/notes.md", lines(5) + str(code))
+            r = self.p.commit(f"notes {code}", ok=False)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertIn("WARNING: the size check failed (above); the commit goes on", r.stderr)
+            self.assertNotIn("too big", r.stderr)
 
 
 class CommitMsgSize(Base):

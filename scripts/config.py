@@ -421,6 +421,11 @@ def log_archive(config):
     return given if isinstance(given, str) and given else schema["properties"]["logArchive"]["default"]
 
 
+# What Python re and grep -E do not share (A13): shorthand classes and word boundaries, extension groups, POSIX classes,
+# backreferences. agentSignaturePatterns reach both engines, so they are limited to the common subset.
+SHARED_REGEX_UNSAFE = re.compile(r"\\[dDsSwWbBAZz<>`'1-9]|\(\?|\[\[:|\[\^?\[:")
+
+
 def semantic_errors(config):
     """Problems the schema subset cannot express: a relatedTests `paths`, testMap `paths`/`contains` or changeSize
     `exclude`/`pairs`, fullCheckPaths, agentModelShapes or agentSignaturePatterns entry that is not a valid regex (or a pair replacement that does not fit its
@@ -475,6 +480,11 @@ def semantic_errors(config):
                     re.compile(rx)
                 except re.error as exc:
                     errors.append(f"$.{key}[{i}]: {rx!r} is not a valid regex ({exc})")
+                    continue
+                if key == "agentSignaturePatterns" and (m := SHARED_REGEX_UNSAFE.search(rx)):
+                    errors.append(f"$.{key}[{i}]: {rx!r} uses {m.group(0)!r}, which Python re and grep -E read differently; "
+                                  "write it with the common subset only (literals, . [abc] [^abc] * + ? {n,m} | ( ) ^ $), "
+                                  "e.g. [0-9] instead of \\d, [ \\t] instead of \\s")
     for i, pat in enumerate(config.get("ownedFiles") or []):
         if isinstance(pat, str) and pat:
             parts = pat.replace("\\", "/").split("/")

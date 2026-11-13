@@ -51,6 +51,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Pendiente
 
+- **A13 (C2):** version.py, metrics.py y el pre-push siguen con tipos de commit y `WIP: ` fijos (van al trozo C6).
 - **A13 (C2):** `commitWipPrefix` solo lo lee `commit-message.py`; `metrics.py` (`WIP:`), `version.py` (`COMMIT_TYPES`) y el `pre-push` conservan sus literales; con `gw.json` ilegible `commit-msg` solo aplica las firmas incorporadas.
 - **A13 (C1):** `checkReuseTtl`/`checkReuseKeep` se leen del `gw.json` de la copia de trabajo, no del commit que se sube (`check-green.sh:41`; el `pre-push` usa `cfg_at`).
 - **Error de proceso (2026-11-11):** los arreglos de la `0.5.2` se hicieron en la rama de la `0.6`. Para la retro: crear la rama del parche desde `main` antes de los arreglos (o pedirla al usuario), y un aviso en `commit-msg` o `merge-branch.sh` cuando una fila de parche cae en una rama con evolutivos de la menor siguiente.

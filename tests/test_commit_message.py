@@ -533,7 +533,11 @@ class A13Keys(Msg):
     def test_agent_model_names_and_shapes_only_add(self):
         self.configure(agentSignatures=False)
         self.accepted("work\n\nAgent: grok-4")
-        self.configure(agentModelNames=["Grok"], agentModelShapes=["zed\\d+"])
+        self.accepted("work\n\nAgent: my-model")
+        self.configure(agentModelNames=["Grok", "my-model"], agentModelShapes=["ZED\\d+"])
+        self.refused("work\n\nAgent: my-model", "Agent trailer names a model")
+        self.refused("work\n\nAgent: the My_Model", "Agent trailer names a model")
+        self.accepted("work\n\nAgent: my-models")
         self.refused("work\n\nAgent: grok-4", "Agent trailer names a model", "Agent: grok-4")
         self.refused("work\n\nAgent: zed9", "Agent trailer names a model")
         self.refused("work\n\nAgent: claude-opus", "Agent trailer names a model")  # a built-in stays
@@ -559,13 +563,11 @@ class A13Keys(Msg):
         self.accepted("work\n\nNothing to see")
         self.configure(agentSignaturePatterns=["["])  # not a regex for Python: the schema check refuses
         self.invalid_config("work\n\nNothing", "$.agentSignaturePatterns[0]")
-        self.configure(agentSignaturePatterns=["[[:foo:]]"])  # Python accepts it, grep -E does not: still closed
-        before = self.p.sha()
-        code, err = self.attempt("work\n\nNothing")
-        self.assertNotEqual(code, 0, err)
-        self.assertEqual(self.p.sha(), before, "the commit was created")
-        self.assertIn("commit-msg: grep failed (status 2) on agentSignaturePatterns", err)
-        self.configure(agentSignatures=True)  # with agentSignatures true they do nothing
+        for rx in (r"\d+", "(?i)x", "(?:x)sig", "[[:space:]]*made-by:", r"(a)\1", r"a\bb"):
+            with self.subTest(rx=rx):  # Python re and grep -E read these differently: only the common subset is accepted
+                self.configure(agentSignaturePatterns=[rx])
+                self.invalid_config("work\n\nNothing", "$.agentSignaturePatterns[0]", "read differently")
+        self.configure(agentSignatures=True, agentSignaturePatterns=["xsig"])  # with agentSignatures true they do nothing
         self.accepted("work\n\nxsig")
 
 

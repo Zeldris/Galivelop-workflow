@@ -19,7 +19,7 @@ twice: an upper bound of the review's diff. On the protected branch, or without 
 for the latter).
 
 Who calls it: `recover.py --state` (D85: `block`, for its overdue-review warning) and the commit-msg hook, before every commit that is not a merge, revert, cherry-pick or rebase step; it
-only warns (exit 0) and never stops a commit, unless `changeSize.severity` is "block" (A13): then it exits 1 when a limit
+only warns (exit 0) and never stops a commit, unless `changeSize.severity` is "block" (A13): then it exits 3 when a limit
 is exceeded and the hook rejects the commit. A limit of 0 turns its warning off. Fails closed on what it cannot know:
 an invalid config, a git error or a --base that is not a commit -> exit 2 with what fixes it. Project root and config:
 config.find_root and config.load. Python 3.8+ standard library only.
@@ -36,6 +36,7 @@ sys.path.insert(0, str(HERE))
 import config  # noqa: E402
 
 PROG = "change-size"
+EXCEEDED = 3  # exit code of "a limit is exceeded and changeSize.severity is block" (1 stays an unexpected crash)
 
 
 class SizeError(Exception):
@@ -190,7 +191,7 @@ def main(argv=None):
         elif args.show:
             print(f"{PROG}: the block {where}: {total} lines with the staged change, {n} commit(s) (limit "
                   f"{limit or 'off'})")
-    return 1 if failed else 0
+    return EXCEEDED if failed else 0
 
 
 if __name__ == "__main__":

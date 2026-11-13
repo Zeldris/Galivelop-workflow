@@ -58,7 +58,8 @@ comment_prefix() {
   case "$cc" in ""|auto) cc="#" ;; esac
   printf '%s' "$cc"
 }
-# A WIP commit: its first non-blank line starts with "WIP: " (only for an unreadable config, where commitWipPrefix cannot be read) (no leading spaces). Comment lines are not skipped: only
+# A WIP commit: its first non-blank line starts with "WIP: " (no leading spaces; used only when the config is unreadable, where
+# commitWipPrefix cannot be read). Comment lines are not skipped: only
 # cleanup=strip removes them, and -m/-F keep them, so a "# x" first line is the real subject there.
 is_wip() {
   [ -n "$msg" ] && [ -r "$msg" ] || return 1
@@ -137,10 +138,10 @@ done
 # Commit and block size (D43): warnings only (a rejection with changeSize.severity block). A missing script is a broken install (fails closed); a script that fails
 # says why and the commit goes on, because a size warning never stops a commit.
 [ -f "$scripts/change-size.py" ] || { echo "commit-msg: $scripts/change-size.py is missing; reinstall the workflow scripts: /gw-update" >&2; exit 1; }
-# changeSize.severity "block" (A13): exit 1 means a limit was exceeded and the commit is rejected; any other failure only warns.
+# changeSize.severity "block" (A13): exit 3 means a limit was exceeded and the commit is rejected; any other failure only warns.
 size_rc=0
 python3 "$scripts/change-size.py" --root "$root" || size_rc=$?
-if [ "$size_rc" -eq 1 ]; then
+if [ "$size_rc" -eq 3 ]; then
   echo "commit-msg: the commit is too big for changeSize.severity block (above); split it or close the review block, then commit again: python3 $scripts/change-size.py --root $root --show" >&2; exit 1
 elif [ "$size_rc" -ne 0 ]; then
   echo "commit-msg: WARNING: the size check failed (above); the commit goes on; see why: python3 $scripts/change-size.py --root $root --show" >&2

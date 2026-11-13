@@ -387,7 +387,7 @@
       "type": "array",
       "items": {"type": "string", "minLength": 1},
       "default": [],
-      "description": "A13: regexes (case-insensitive, searched per line, anchor them yourself; use syntax valid for Python re and grep -E) of text that counts as an agent signature, ADDED to the built-in patterns in the commit-msg hook and in agent-signatures.py; a project can never remove a built-in one. Read with agentSignatures false."
+      "description": "A13: regexes (case-insensitive, searched per line, anchor them yourself; only the subset Python re and grep -E share: literals, . [abc] [^abc] * + ? {n,m} | ( ) ^ $; shorthand classes, (?, [[:, and backreferences are rejected) of text that counts as an agent signature, ADDED to the built-in patterns in the commit-msg hook and in agent-signatures.py; a project can never remove a built-in one. Read with agentSignatures false."
     },
     "refsSources": {
       "type": "array",

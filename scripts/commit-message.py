@@ -151,10 +151,10 @@ def model_rules(config):
                 raise Reject(f"{key} in .claude/gw.json has an entry that is not a non-empty string ({item!r}); "
                              f"fix it: python3 {HERE / 'config.py'} validate")
             if key == "agentModelNames":
-                target.add(item.lower())
+                target.add("-".join(t for t in re.split(r"[^a-z0-9]+", item.lower()) if t))
             else:
                 try:
-                    target.append(re.compile(item))
+                    target.append(re.compile(item, re.I))
                 except re.error as exc:
                     raise Reject(f"agentModelShapes in .claude/gw.json has an invalid regex {item!r} ({exc}); "
                                  f"fix it: python3 {HERE / 'config.py'} validate")
@@ -163,8 +163,11 @@ def model_rules(config):
 
 def names_a_model(value, rules=None):
     names, shapes = rules or (MODEL_NAMES, [MODEL_SHAPES])
-    return any(t in names or any(sh.fullmatch(t) for sh in shapes)
-               for t in re.split(r"[^a-z0-9]+", value.lower()) if t)
+    pieces = [t for t in re.split(r"[^a-z0-9]+", value.lower()) if t]
+    joined = "-" + "-".join(pieces) + "-"
+    # a configured name is split the same way, so `my-model` matches the pieces my, model in a row
+    return (any(any(sh.fullmatch(t) for sh in shapes) for t in pieces)
+            or any(n and (n in pieces or f"-{n}-" in joined) for n in names))
 
 
 def check_agent(found, msgfile, rules=None):
