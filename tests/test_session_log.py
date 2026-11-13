@@ -436,7 +436,12 @@ class Recover(Base):
             self.assertIn("Log: unknown", out)  # the config is invalid: the log line says why, the rest still shows
 
     def test_a13_recover_getter_clamps_values_a_caller_could_not_load(self):
-        import config  # scripts/ is on sys.path in the check
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        try:
+            import config
+        finally:
+            sys.path.remove(str(ROOT / "scripts"))
         defaults = config.recover({})
         self.assertEqual(defaults["logLines"], 25)
         self.assertEqual(defaults["outputCap"], 9500)
