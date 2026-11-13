@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.5.2` en `main` (`2e55d66`, 2026-11-12) |
-| Siguiente paso | **`0.6.0`** en obra: todas sus filas hechas y recogida H19 hecha (2026-11-13). Arreglos de H19 (D90-D93, B30), versión `0.6.0` con su CHANGELOG y repaso de documentación hechos; fase 1 hecha (11 hallazgos, arreglados). Sigue: fase 2 (`/gw-opt-tokens` y `/retro`, al usuario) y fase 3 antes de `main`. |
+| Siguiente paso | **`0.6.0`** en obra: todas sus filas hechas y recogida H19 hecha (2026-11-13). Arreglos de H19 (D90-D93, B30), versión `0.6.0` con su CHANGELOG y repaso de documentación hechos; fase 1 hecha (11 hallazgos, arreglados); fase 2: retro y medida en `docs/records/retro-2026-11-13-release-0-6-0.md`, **pendiente de la decisión del usuario** (R1-R5). Sigue: aplicar lo aprobado y fase 3 antes de `main`. |
 
 ### Fases
 
