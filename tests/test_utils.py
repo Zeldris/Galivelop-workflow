@@ -2286,6 +2286,11 @@ class MdLinksSkipAndRoots(Base):
 
     def test_stale_refs_paths_docs_folder_is_case_sensitive_and_readme_is_not(self):
         self.project(self.stale())
+        probe = self.p.work / "CaseProbe"
+        probe.mkdir()
+        if (self.p.work / "caseprobe").exists():  # macOS: `Docs/` and `docs/` are one folder on disk
+            self.skipTest("case-insensitive file system")
+        probe.rmdir()
         for rel in ("Docs/a.md", "docs/b.md", "readme.md", "README.es.md"):
             self.p.write(rel, "fase 3.5\n")
         hits = sorted(l.split(":")[0] for l in self.run_it()[1].splitlines() if "stale reference" in l)
