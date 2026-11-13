@@ -1072,12 +1072,12 @@ class StopKeys(Base):
         elapsed, out = self.silent_stdin()
         self.assertGreaterEqual(elapsed, 2.5, out)
         self.assertIn("could not read the hook JSON on stdin", out)
-        elapsed, out = self.silent_stdin(hookStdinWait=0)
+        elapsed, out = self.silent_stdin(hookStdinWait=0.1)
         self.assertLess(elapsed, 2.0, out)
         self.assertIn("could not read the hook JSON on stdin", out)
 
     def test_hook_stdin_wait_bad_value_gives_the_default(self):
-        self.set_keys(hookStdinWait=-1)
+        self.set_keys(hookStdinWait=0)
         got = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import config; "
                               "print(config.hook_stdin_wait(sys.argv[2]))", str(ROOT / "scripts"), str(self.p.work)],
                              capture_output=True, text=True)

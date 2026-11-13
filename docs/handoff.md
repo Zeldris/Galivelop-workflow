@@ -51,6 +51,7 @@ lanzamiento manual desde Actions que cree la etiqueta.
 
 ## Pendiente
 
+- **A13 (C1):** `checkReuseTtl`/`checkReuseKeep` se leen del `gw.json` de la copia de trabajo, no del commit que se sube (`check-green.sh:41`; el `pre-push` usa `cfg_at`).
 - **Error de proceso (2026-11-11):** los arreglos de la `0.5.2` se hicieron en la rama de la `0.6`. Para la retro: crear la rama del parche desde `main` antes de los arreglos (o pedirla al usuario), y un aviso en `commit-msg` o `merge-branch.sh` cuando una fila de parche cae en una rama con evolutivos de la menor siguiente.
 
 - **FOUND (dealer):** un subagente sacó el HEAD del árbol principal (checkout de su commit) y una fusión cayó en HEAD suelto; rehecha. Los encargos ya prohíben git en el árbol principal; el check del `pre-push` sobre `27bb9cf` corrió con archivos cambiando y no vale.

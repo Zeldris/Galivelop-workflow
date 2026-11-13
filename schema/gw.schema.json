@@ -179,10 +179,10 @@
     },
     "hookStdinWait": {
       "type": "number",
-      "minimum": 0,
+      "minimum": 0.1,
       "maximum": 60,
       "default": 3,
-      "description": "Seconds the hooks (before-stop.py, config-guard.py, subagent-cap.py, whole-read.py, metrics.py) wait for the event JSON on stdin before they go on without it; 0 = do not wait. An unreadable or invalid config gives the default."
+      "description": "Seconds the hooks (before-stop.py, config-guard.py, subagent-cap.py, whole-read.py, metrics.py) wait for the event JSON on stdin before they go on without it; 0.1 to 60 (no wait at all would let a hook miss an event that is still arriving). An unreadable or invalid config gives the default."
     },
     "checkReuseTtl": {
       "type": "integer",

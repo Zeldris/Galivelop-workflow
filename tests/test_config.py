@@ -293,7 +293,7 @@ class Config(unittest.TestCase):
             self.assertEqual(cli(self.tmp, "get", key).stdout.strip(), value, key)
         bad = {"stopPushMarkerMaxAge": (0, "$.stopPushMarkerMaxAge: must be at least 1, got 0"),
                "stopGitTimeout": (601, "$.stopGitTimeout: must be at most 600, got 601"),
-               "hookStdinWait": (-1, "$.hookStdinWait: must be at least 0, got -1"),
+               "hookStdinWait": (0, "$.hookStdinWait: must be at least 0.1, got 0"),
                "checkReuseTtl": ("x", "$.checkReuseTtl: expected integer, got str"),
                "checkReuseKeep": (0, "$.checkReuseKeep: must be at least 1, got 0"),
                "stopSeverity": ({"unpushed": "off"}, "$.stopSeverity.unpushed: must be one of ['block', 'warn'], got 'off'")}
@@ -314,6 +314,8 @@ class Config(unittest.TestCase):
         self.write(dict(VALID, hookStdinWait=1.5))
         self.assertEqual(wait(), "1.5")
         self.write(dict(VALID, hookStdinWait=-1))  # invalid config: the default, not an error
+        self.assertEqual(wait(), "3.0")
+        self.write(dict(VALID, hookStdinWait=0))  # below 0.1: no wait at all could miss the event
         self.assertEqual(wait(), "3.0")
         (self.tmp / ".claude" / "gw.json").unlink()
         self.assertEqual(wait(), "3.0")

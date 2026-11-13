@@ -369,7 +369,7 @@ def hook_stdin_wait(root=None):
         given = load(root)["hookStdinWait"]
     except (ConfigError, OSError, ValueError, KeyError):
         return default
-    if isinstance(given, bool) or not isinstance(given, (int, float)) or not 0 <= given <= 60:
+    if isinstance(given, bool) or not isinstance(given, (int, float)) or not 0.1 <= given <= 60:
         return default
     return float(given)
 
