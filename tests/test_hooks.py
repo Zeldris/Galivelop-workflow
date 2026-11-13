@@ -2328,6 +2328,46 @@ class CheckGreen(Base):
         self.assertRegex(lines[-1], r"^\d{10,} [0-9a-f]{40}$")
         self.assertEqual([e for e in os.listdir(self.cache.parent) if e.startswith("gw-check-green.")], [], "temp left behind")
 
+    def set_keys(self, **keys):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.update(keys)
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+
+    def test_check_reuse_ttl_default_is_a_day_and_a_set_value_changes_it(self):  # A13: checkReuseTtl
+        k = self.key()
+        self.cache.write_text(f"{int(time.time()) - 3600} {k}\n")
+        self.assertEqual(self.helper("has", k)[0], 0)  # default 86400: an hour old is a hit
+        self.set_keys(checkReuseTtl=60)
+        self.assertEqual(self.helper("has", k)[0], 1)  # older than 60 s: a miss
+        self.cache.write_text(f"{int(time.time()) - 90000} {k}\n")
+        self.assertEqual(self.helper("has", k)[0], 1)
+        self.set_keys(checkReuseTtl=100000)
+        self.assertEqual(self.helper("has", k)[0], 0)  # 90000 s old, under the longer ttl
+        self.set_keys(checkReuseTtl=0)
+        self.cache.write_text(f"{int(time.time())} {k}\n")
+        self.assertEqual(self.helper("has", k)[0], 1)  # 0 = never reuse
+
+    def test_check_reuse_ttl_with_an_invalid_config_is_a_miss(self):
+        k = self.key()
+        self.cache.write_text(f"{int(time.time())} {k}\n")
+        self.set_keys(checkReuseTtl=-5)
+        self.assertEqual(self.helper("has", k), (1, ""))  # fails closed: the check runs
+
+    def test_check_reuse_keep_default_is_50_and_a_set_value_changes_it(self):  # A13: checkReuseKeep
+        self.set_keys(checkReuseKeep=3)
+        keys = [self.key(tree=f"{i:040x}") for i in range(6)]
+        for k in keys:
+            self.assertEqual(self.helper("add", k)[0], 0)
+        self.assertEqual([ln.split()[1] for ln in self.cache.read_text().splitlines()], keys[-3:])
+        # the default (50) is the test above, test_add_records_the_epoch_and_the_key_and_keeps_the_last_50_lines
+
+    def test_check_reuse_keep_with_an_invalid_config_records_nothing_and_says_why(self):
+        self.set_keys(checkReuseKeep=0)
+        code, out = self.helper("add", self.key())
+        self.assertEqual(code, 0, out)
+        self.assertIn("cannot read checkReuseKeep, check not recorded", out)
+        self.assertFalse(self.cache.exists())
+
     def test_add_with_an_epoch_records_that_time_and_epoch_reads_it_back(self):
         k = self.key()
         stamp = int(time.time()) - 3600

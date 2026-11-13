@@ -154,6 +154,48 @@
       "default": 86400,
       "description": "Seconds after which a background subagent that never reported back (no task-notification in the transcript) stops counting as running for the Stop hook, so one that died silently cannot silence the push reminder for good; 0 = never expire."
     },
+    "stopPushMarkerMaxAge": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 3600,
+      "description": "Seconds after which the pre-push marker (gw-push-in-progress) counts as a push that died without cleaning up, so the Stop hook (before-stop.py) stops waiting for it and blocks on unpushed commits again."
+    },
+    "stopGitTimeout": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 600,
+      "default": 30,
+      "description": "Seconds each git call of the Stop hook (before-stop.py) may take before it counts as failed (a warning, never a block)."
+    },
+    "stopSeverity": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "unpushed": {"type": "string", "enum": ["block", "warn"], "default": "block"},
+        "logRequired": {"type": "string", "enum": ["block", "warn"], "default": "block"}
+      },
+      "default": {"unpushed": "block", "logRequired": "block"},
+      "description": "What the Stop hook (before-stop.py) does for its two hard cases: unpushed (commits not pushed on a working branch) and logRequired (uncommitted changes while the log is not among them). block stops the session until fixed; warn only says it in the closing message."
+    },
+    "hookStdinWait": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 60,
+      "default": 3,
+      "description": "Seconds the hooks (before-stop.py, config-guard.py, subagent-cap.py, whole-read.py, metrics.py) wait for the event JSON on stdin before they go on without it; 0 = do not wait. An unreadable or invalid config gives the default."
+    },
+    "checkReuseTtl": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 86400,
+      "description": "Seconds a recorded green check (scripts/check-green.sh, the gw-check-green cache in the git dir) is reused; an older record is a miss and the check runs again; 0 = never reuse."
+    },
+    "checkReuseKeep": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 50,
+      "description": "How many lines (one per green tree) the gw-check-green cache file keeps; the oldest go when a new one is recorded."
+    },
     "checkReuseMark": {
       "type": "boolean",
       "default": true,
@@ -193,6 +235,10 @@
         "wholeReadWarnBytes",
         "stopTranscriptBytes",
         "stopSubagentMaxAge",
+        "stopPushMarkerMaxAge",
+        "stopGitTimeout",
+        "stopSeverity",
+        "hookStdinWait",
         "checkLockWait",
         "checkOutputGrace",
         "checkLogKeep",

@@ -278,6 +278,46 @@ class Config(unittest.TestCase):
             self.assertIn("$.wholeReadWarnBytes", r.stderr)
             self.assertIn(why, r.stderr)
 
+    def test_a13_stop_and_check_cache_keys_default_set_and_bad_values(self):
+        self.write(VALID)
+        defaults = {"stopPushMarkerMaxAge": "3600", "stopGitTimeout": "30", "hookStdinWait": "3",
+                    "checkReuseTtl": "86400", "checkReuseKeep": "50", "stopSeverity.unpushed": "block",
+                    "stopSeverity.logRequired": "block"}
+        for key, value in defaults.items():
+            self.assertEqual(cli(self.tmp, "get", key).stdout.strip(), value, key)
+        self.write(dict(VALID, stopPushMarkerMaxAge=7200, stopGitTimeout=5, hookStdinWait=0.5, checkReuseTtl=0,
+                        checkReuseKeep=7, stopSeverity={"unpushed": "warn"}))
+        for key, value in {"stopPushMarkerMaxAge": "7200", "stopGitTimeout": "5", "hookStdinWait": "0.5",
+                           "checkReuseTtl": "0", "checkReuseKeep": "7", "stopSeverity.unpushed": "warn",
+                           "stopSeverity.logRequired": "block"}.items():
+            self.assertEqual(cli(self.tmp, "get", key).stdout.strip(), value, key)
+        bad = {"stopPushMarkerMaxAge": (0, "$.stopPushMarkerMaxAge: must be at least 1, got 0"),
+               "stopGitTimeout": (601, "$.stopGitTimeout: must be at most 600, got 601"),
+               "hookStdinWait": (-1, "$.hookStdinWait: must be at least 0, got -1"),
+               "checkReuseTtl": ("x", "$.checkReuseTtl: expected integer, got str"),
+               "checkReuseKeep": (0, "$.checkReuseKeep: must be at least 1, got 0"),
+               "stopSeverity": ({"unpushed": "off"}, "$.stopSeverity.unpushed: must be one of ['block', 'warn'], got 'off'")}
+        for key, (value, why) in bad.items():
+            self.write(dict(VALID, **{key: value}))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, key)
+            self.assertIn(why, r.stderr)
+
+    def test_hook_stdin_wait_reads_the_key_and_falls_back_to_the_default(self):
+        def wait():
+            r = subprocess.run(["python3", "-c", "import sys; sys.path.insert(0, sys.argv[1]); import config; "
+                                "print(config.hook_stdin_wait(sys.argv[2]))", str(SCRIPT.parent), str(self.tmp)],
+                               capture_output=True, text=True)
+            return r.stdout.strip()
+        self.write(VALID)
+        self.assertEqual(wait(), "3.0")
+        self.write(dict(VALID, hookStdinWait=1.5))
+        self.assertEqual(wait(), "1.5")
+        self.write(dict(VALID, hookStdinWait=-1))  # invalid config: the default, not an error
+        self.assertEqual(wait(), "3.0")
+        (self.tmp / ".claude" / "gw.json").unlink()
+        self.assertEqual(wait(), "3.0")
+
     def test_measure_min_calls_default_and_bad_values(self):
         self.write(VALID)
         self.assertEqual(cli(self.tmp, "get", "measure.minCalls").stdout.strip(), "5")

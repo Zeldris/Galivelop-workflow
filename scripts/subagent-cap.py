@@ -81,7 +81,6 @@ except ImportError:  # not on POSIX: count without the lock
 
 DEFAULT_CAP = 30
 STEP = 10
-STDIN_WAIT = 3.0
 COUNTER_DIR_ENV = "GW_SUBAGENT_COUNTER_DIR"
 COUNTER_PREFIX = "gw-subagents-"
 STALE_DAYS = 7
@@ -97,7 +96,7 @@ def read_event():
     if sys.stdin is None or sys.stdin.isatty():
         return None, "nothing arrived on stdin"
     try:
-        ready, _, _ = select.select([sys.stdin], [], [], STDIN_WAIT)
+        ready, _, _ = select.select([sys.stdin], [], [], config.hook_stdin_wait())
         if not ready:
             return None, "stdin stayed empty"
         text = sys.stdin.read()

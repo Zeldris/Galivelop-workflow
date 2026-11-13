@@ -82,7 +82,6 @@ sys.path.insert(0, HERE)
 import config  # noqa: E402
 import session_log  # noqa: E402
 
-STDIN_WAIT = 3.0
 GIT_TIMEOUT = 30
 FIELDS = (("input", "input_tokens"), ("cacheWrite", "cache_creation_input_tokens"),
           ("cacheRead", "cache_read_input_tokens"), ("output", "output_tokens"))
@@ -98,7 +97,7 @@ def read_event():
     if sys.stdin is None or sys.stdin.isatty():
         return {}
     try:
-        ready, _, _ = select.select([sys.stdin], [], [], STDIN_WAIT)
+        ready, _, _ = select.select([sys.stdin], [], [], config.hook_stdin_wait())
         if not ready:
             return {}
         data = json.loads(sys.stdin.read())

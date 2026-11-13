@@ -357,6 +357,33 @@ def whole_read_warn_bytes(config):
     return _schema()["properties"]["wholeReadWarnBytes"]["default"]
 
 
+def hook_stdin_wait(root=None):
+    """The `hookStdinWait` key (A13): seconds a hook waits for its event JSON on stdin. A hook reads stdin before it
+    knows whether the config is usable, so a missing, unreadable or invalid config (or value) gives the schema
+    default, never an error: the hook then says what is wrong when it reads the config for its own keys."""
+    try:
+        default = float(schema_default("hookStdinWait"))
+    except (ConfigError, OSError, ValueError, KeyError):
+        return 3.0  # only when the schema itself is missing (a broken install): the hook then reports it
+    try:
+        given = load(root)["hookStdinWait"]
+    except (ConfigError, OSError, ValueError, KeyError):
+        return default
+    if isinstance(given, bool) or not isinstance(given, (int, float)) or not 0 <= given <= 60:
+        return default
+    return float(given)
+
+
+def schema_default(key):
+    """The schema default of the top-level key `key` (the only place the defaults live)."""
+    return _schema()["properties"][key]["default"]
+
+
+def stop_severity(config):
+    """The `stopSeverity` key (A13) as a dict (unpushed, logRequired), each "block" or "warn"."""
+    return _section(config, "stopSeverity")
+
+
 def log_archive(config):
     """The `logArchive` key: repo-relative path of the hand-off archive, the schema default when absent."""
     given = config.get("logArchive")
@@ -875,7 +902,8 @@ def main(argv=None):
         scope, reason = push_scope(config, [line for line in sys.stdin.read().splitlines() if line], commits)
         print(f"{scope} {reason}" if reason else scope)
         return 0
-    value = dict(config, metrics=metrics(config), models=models(config), measure=measure(config))  # inner keys fill from the schema too
+    value = dict(config, metrics=metrics(config), models=models(config), measure=measure(config),
+                 stopSeverity=stop_severity(config))  # inner keys fill from the schema too
     for part in args.key.split("."):
         if not isinstance(value, dict) or part not in value or part.startswith("_"):
             print(f"gw config: key '{args.key}' is not set and has no default", file=sys.stderr)

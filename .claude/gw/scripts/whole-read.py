@@ -34,7 +34,6 @@ sys.dont_write_bytecode = True  # no __pycache__ in the project's .claude/gw/scr
 sys.path.insert(0, HERE)
 import config  # noqa: E402
 
-STDIN_WAIT = 3.0
 NOT_TEXT = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".pdf", ".ipynb")  # Read shows these otherwise
 
 
@@ -42,7 +41,7 @@ def read_event():
     if sys.stdin is None or sys.stdin.isatty():
         return None
     try:
-        ready, _, _ = select.select([sys.stdin], [], [], STDIN_WAIT)
+        ready, _, _ = select.select([sys.stdin], [], [], config.hook_stdin_wait())
         if not ready:
             return None
         data = json.loads(sys.stdin.read())

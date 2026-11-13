@@ -73,7 +73,6 @@ sys.dont_write_bytecode = True  # no __pycache__ in the project's .claude/gw/scr
 sys.path.insert(0, HERE)
 import config  # noqa: E402
 
-STDIN_WAIT = 3.0
 EDIT_TOOLS = ("Edit", "Write", "MultiEdit", "NotebookEdit")
 TARGET_KEYS = ("file_path", "notebook_path", "path")
 EXACT = (".claude/settings.json", ".claude/settings.local.json", ".claude/gw.json")
@@ -125,7 +124,7 @@ def read_event():
     if sys.stdin is None or sys.stdin.isatty():
         return None, "nothing arrived on stdin"
     try:
-        ready, _, _ = select.select([sys.stdin], [], [], STDIN_WAIT)
+        ready, _, _ = select.select([sys.stdin], [], [], config.hook_stdin_wait())
         if not ready:
             return None, "stdin stayed empty"
         text = sys.stdin.read()

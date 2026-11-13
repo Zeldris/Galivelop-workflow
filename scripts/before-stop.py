@@ -63,11 +63,10 @@ sys.dont_write_bytecode = True  # no __pycache__ in the project's .claude/gw/scr
 sys.path.insert(0, HERE)
 import config  # noqa: E402
 
-STDIN_WAIT = 3.0
-GIT_TIMEOUT = 30
+GIT_TIMEOUT = None  # main() sets the config values (stopGitTimeout, stopPushMarkerMaxAge); None: the schema default
 PUSH_MARKER = "gw-push-in-progress"  # written by templates/githooks/pre-push while it runs
 CHECK_LOCK = os.path.join("gw", "check.lock")  # under the git common dir; written by check-green.sh lock-acquire
-PUSH_MARKER_MAX_AGE = 3600  # seconds: an older marker is a push that died without cleaning up
+PUSH_MARKER_MAX_AGE = None  # seconds: an older marker is a push that died without cleaning up
 WORKTREES_PREFIX = ".claude/worktrees/"
 
 
@@ -78,7 +77,7 @@ class GitError(Exception):
 def git(root, *args, check=True):
     """(returncode, stdout) of `git -C root ...`; with check, a failure raises GitError naming the command."""
     try:
-        r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, timeout=GIT_TIMEOUT)
+        r = subprocess.run(["git", "-C", str(root), *args], capture_output=True, text=True, timeout=GIT_TIMEOUT or config.schema_default("stopGitTimeout"))
     except (OSError, subprocess.SubprocessError) as exc:
         raise GitError(f"git {args[0]} could not run ({exc})")
     if check and r.returncode != 0:
@@ -91,7 +90,7 @@ def read_event():
     if sys.stdin is None or sys.stdin.isatty():
         return None
     try:
-        ready, _, _ = select.select([sys.stdin], [], [], STDIN_WAIT)
+        ready, _, _ = select.select([sys.stdin], [], [], config.hook_stdin_wait())
         if not ready:
             return None
         data = json.loads(sys.stdin.read())
@@ -320,7 +319,7 @@ def _marker_branch(marker, head):
         with open(marker, encoding="utf-8") as f:
             lines = f.read(4096).splitlines()
         pid_text = lines[0].strip() if lines else ""
-        if not pid_text.isdigit() or not (-300 < age < PUSH_MARKER_MAX_AGE):
+        if not pid_text.isdigit() or not (-300 < age < (PUSH_MARKER_MAX_AGE or config.schema_default("stopPushMarkerMaxAge"))):
             return None
         pid = int(pid_text)
         if pid < 1:
@@ -365,6 +364,7 @@ def changed_paths(root, ignore=()):
 
 
 def main():
+    global GIT_TIMEOUT, PUSH_MARKER_MAX_AGE
     doctor = f"python3 {os.path.join(HERE, 'doctor.py')}"
     warns, blocks, notes = [], [], []
 
@@ -384,6 +384,12 @@ def main():
     if cfg is not None:
         root = cfg["_root"]
         log = posixpath.normpath(cfg["log"])
+        GIT_TIMEOUT = cfg["stopGitTimeout"]
+        PUSH_MARKER_MAX_AGE = cfg["stopPushMarkerMaxAge"]
+        severity = config.stop_severity(cfg)
+        # stopSeverity: "block" stops the session, "warn" only says it in the closing message
+        unpushed_to = blocks if severity["unpushed"] == "block" else notes
+        log_to = blocks if severity["logRequired"] == "block" else notes
         try:
             found = unpushed(root)
             if found:
@@ -414,7 +420,7 @@ def main():
                                          f"{checking[1] or '-'}, sha {checking[2] or '-'}); it does not cover this "
                                          f"HEAD.")
                     elif pushing is None:
-                        blocks.append(f"Branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). What is "
+                        unpushed_to.append(f"Branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). What is "
                                       f"not pushed does not exist for the next session; push it now: git push -u "
                                       f"origin {branch}")
                         if checking is not None:  # a check of another commit or worktree: it does not push this one
@@ -431,7 +437,7 @@ def main():
         try:
             paths = changed_paths(root, {posixpath.normpath(config.metrics(cfg)["ledger"])})
             if paths and log not in paths:
-                blocks.append(f"The working tree has {plural(len(paths), 'uncommitted change')} and the log ({log}) "
+                log_to.append(f"The working tree has {plural(len(paths), 'uncommitted change')} and the log ({log}) "
                               f"is not among them. Update the log (what is done, what is left, the next step) and "
                               f"commit it in the same commit as the work: git add {log} <files> && git commit")
         except GitError as exc:

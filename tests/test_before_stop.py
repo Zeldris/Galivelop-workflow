@@ -944,5 +944,145 @@ class Wiring(unittest.TestCase):
         self.assertTrue(cmds[0].startswith("python3 "), cmds[0])
 
 
+class StopKeys(Base):
+    """A13: the values of the Stop hook that were literals are keys of .claude/gw.json (stopSeverity, stopGitTimeout,
+    stopPushMarkerMaxAge, hookStdinWait); each case checks today's behaviour by default and the change when set."""
+
+    def set_keys(self, **keys):
+        """Set top-level keys of .claude/gw.json, commit and push it (the branch stays level with its upstream)."""
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.update(keys)
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.commit("config")
+        self.p.git("push", "-q", "origin", "HEAD")
+
+    def unpushed(self):
+        self.p.work_branch()
+        self.p.write("src/a.py", "x = 1\n"); self.p.commit("local only")
+
+    def test_severity_unpushed_blocks_by_default_and_only_warns_when_set(self):
+        self.p.work_branch()
+        self.set_keys(stopSeverity={"unpushed": "warn"})  # logRequired is filled from the schema
+        self.p.write("src/a.py", "x = 1\n"); self.p.commit("local only")
+        code, out = self.p.stop()
+        self.assertLetsStop(code, out)
+        message = decision(self, out).get("systemMessage", "")
+        for needle in ("1 commit", "claude/trabajo", "git push -u origin claude/trabajo"):
+            self.assertIn(needle, message, out)
+        self.assertNotIn("decision", decision(self, out), out)
+        self.p.write("src/b.py", "y = 1\n")  # logRequired is still "block"
+        self.assertBlocks(self.p.stop()[1], LOG)
+
+    def test_severity_log_required_blocks_by_default_and_only_warns_when_set(self):
+        self.p.work_branch()
+        self.p.write("src/a.py", "x = 1\n")
+        self.assertBlocks(self.p.stop()[1], LOG, "1 uncommitted change")
+        self.p.git("stash", "-q", "-u")
+        self.set_keys(stopSeverity={"logRequired": "warn"})
+        self.p.write("src/a.py", "x = 1\n")
+        code, out = self.p.stop()
+        self.assertLetsStop(code, out)
+        message = decision(self, out).get("systemMessage", "")
+        for needle in (LOG, "1 uncommitted change", "git add", "git commit"):
+            self.assertIn(needle, message, out)
+        self.p.commit("local only")  # unpushed stays "block"
+        self.assertBlocks(self.p.stop()[1], "1 commit", "git push -u origin claude/trabajo")
+
+    def test_severity_bad_value_is_an_invalid_config_that_only_warns(self):
+        self.unpushed()
+        self.set_keys(stopSeverity={"unpushed": "off"})
+        code, out = self.p.stop()
+        self.assertLetsStop(code, out)
+        message = decision(self, out).get("systemMessage", "")
+        self.assertIn("gw.json is invalid", message)  # the reason (the key and why) is config.py validate's, test_config.py
+
+    def fake_slow_git(self, seconds):
+        """A PATH folder whose `git` waits `seconds` and then runs the real one: (env for p.run)."""
+        folder = self.p.tmp / "slowbin"
+        folder.mkdir(exist_ok=True)
+        (folder / "git").write_text(f"#!/bin/sh\nsleep {seconds}\nexec {shutil.which('git')} \"$@\"\n")
+        (folder / "git").chmod(0o755)
+        return {"PATH": f"{folder}:{os.environ['PATH']}"}
+
+    def test_git_timeout_default_waits_for_a_slow_git_and_a_short_one_warns(self):
+        self.p.work_branch()
+        self.p.write("src/a.py", "x = 1\n"); self.p.commit("local only")
+        env = self.fake_slow_git(2)
+        script = str(self.p.scripts / SCRIPT)
+        payload = json.dumps({"hook_event_name": "Stop", "stop_hook_active": False})
+        code, out = self.p.run("python3", script, stdin=payload, env=env)  # 30 s: a 2 s git is fine
+        self.assertBlocks(out, "1 commit", "git push -u origin claude/trabajo")
+        self.set_keys(stopGitTimeout=1)
+        code, out = self.p.run("python3", script, stdin=payload, env=env)
+        self.assertLetsStop(code, out)
+        message = decision(self, out).get("systemMessage", "")
+        self.assertIn("could not check everything", message)
+        self.assertIn("timed out after 1", message)
+
+    def test_git_timeout_out_of_range_is_an_invalid_config(self):
+        self.unpushed()
+        self.set_keys(stopGitTimeout=0)
+        code, out = self.p.stop()
+        self.assertLetsStop(code, out)
+        self.assertIn("gw.json is invalid", decision(self, out).get("systemMessage", ""))
+
+    def test_push_marker_max_age_default_is_an_hour_and_a_longer_one_keeps_the_marker(self):
+        self.unpushed()
+        marker = self.p.work / ".git" / "gw-push-in-progress.1"
+        old = time.time() - 3601
+
+        def mark_old():
+            marker.write_text(f"{os.getpid()}\n{self.p.sha()} claude/trabajo\n")
+            os.utime(marker, (old, old))
+        mark_old()
+        out = self.p.stop()[1]
+        self.assertBlocks(out, "1 commit", "git push -u origin claude/trabajo")
+        self.assertNotIn("push of this commit is in progress", out)
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        self.p.write(".claude/gw.json", json.dumps(dict(cfg, stopPushMarkerMaxAge=7200)))
+        self.p.commit("config")  # not pushed, like the commit above
+        mark_old()
+        out = self.p.stop()[1]
+        self.assertNotIn('"block"', out)
+        self.assertIn("push of this commit is in progress", decision(self, out).get("systemMessage", ""))
+
+    def test_push_marker_max_age_zero_is_an_invalid_config(self):
+        self.unpushed()
+        self.set_keys(stopPushMarkerMaxAge=0)
+        out = self.p.stop()[1]
+        self.assertIn("gw.json is invalid", decision(self, out).get("systemMessage", ""))
+
+    def silent_stdin(self, **keys):
+        """Seconds the hook takes when nothing ever arrives on its stdin, and its output."""
+        if keys:
+            self.set_keys(**keys)
+        proc = subprocess.Popen([sys.executable, str(self.p.scripts / SCRIPT)], cwd=self.p.work, stdin=subprocess.PIPE,
+                                stdout=subprocess.PIPE, text=True)
+        began = time.monotonic()
+        try:
+            out = proc.stdout.read()
+        finally:
+            elapsed = time.monotonic() - began
+            proc.stdin.close()
+            proc.stdout.close()
+            proc.wait()
+        return elapsed, out
+
+    def test_hook_stdin_wait_default_is_three_seconds_and_a_set_value_changes_it(self):
+        elapsed, out = self.silent_stdin()
+        self.assertGreaterEqual(elapsed, 2.5, out)
+        self.assertIn("could not read the hook JSON on stdin", out)
+        elapsed, out = self.silent_stdin(hookStdinWait=0)
+        self.assertLess(elapsed, 2.0, out)
+        self.assertIn("could not read the hook JSON on stdin", out)
+
+    def test_hook_stdin_wait_bad_value_gives_the_default(self):
+        self.set_keys(hookStdinWait=-1)
+        got = subprocess.run([sys.executable, "-c", "import sys; sys.path.insert(0, sys.argv[1]); import config; "
+                              "print(config.hook_stdin_wait(sys.argv[2]))", str(ROOT / "scripts"), str(self.p.work)],
+                             capture_output=True, text=True)
+        self.assertEqual(got.stdout.strip(), "3.0", got.stderr)
+
+
 if __name__ == "__main__":
     unittest.main()
