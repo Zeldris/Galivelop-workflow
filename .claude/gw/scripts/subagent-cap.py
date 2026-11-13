@@ -324,6 +324,17 @@ def clean_old(keep):
             pass  # cleaning is best effort: it must never stop the count
 
 
+def peek(path):
+    """The session's counter without changing it (0 when missing, not a regular file or not a number)."""
+    try:
+        if os.path.islink(path) or not os.path.isfile(path):
+            return 0
+        with open(path, "rb") as fh:
+            return max(0, int(fh.read(64).decode("ascii").strip()))
+    except (OSError, UnicodeDecodeError, ValueError):
+        return 0
+
+
 def bump(path):
     """Add one to the session's counter under an exclusive lock and return the new count."""
     if not os.path.lexists(path):
@@ -382,6 +393,17 @@ def main():
         return 0
     settings = config.subagent_settings()
     cap, step, action = settings["subagentCap"], settings["subagentCapStep"], settings["subagentCapAction"]
+    if action == "deny" and peek(counter_path(session_id)) + 1 >= cap:
+        # a denied call launches nothing, so it is not counted (raising subagentCap then lets calls through again)
+        reason = (f"{peek(counter_path(session_id)) + 1} subagents in this session (subagentCap {cap} in "
+                  f".claude/gw.json): check they are not looping (gw-opt-tokens); subagentCapAction is deny: raise "
+                  f"subagentCap in .claude/gw.json to go on")
+        out = {"hookEventName": "PreToolUse", "permissionDecision": "deny", "permissionDecisionReason": reason}
+        note = fields_note(event)
+        if note:
+            out["additionalContext"] = note
+        print(json.dumps({"hookSpecificOutput": out}))
+        return 0
     try:
         count = bump(counter_path(session_id))
     except CannotCount as exc:
@@ -390,15 +412,14 @@ def main():
         return 0
     out = {"hookEventName": "PreToolUse"}
     notes = []
-    if count >= cap and (action == "deny" or (count - cap) % step == 0):
+    if count >= cap and (count - cap) % step == 0:
         reason = (f"{count} subagents in this session (subagentCap {cap} in "
                   f".claude/gw.json): check they are not looping (gw-opt-tokens)")
         if action == "warn":  # subagentCapAction: only said, never stopped
             notes.append(reason)
-        else:  # "ask" (the default) or "deny" (every call from the cap on)
-            out["permissionDecision"] = action
-            out["permissionDecisionReason"] = reason if action == "ask" else (
-                f"{reason}; subagentCapAction is deny: raise subagentCap in .claude/gw.json to go on")
+        else:  # "ask" (the default); "deny" was answered above, before counting
+            out["permissionDecision"] = "ask"
+            out["permissionDecisionReason"] = reason
     note = fields_note(event)
     if note:
         notes.append(note)

@@ -653,6 +653,17 @@ class Keys(Base):
         self.assertIn("2 subagents in this session (subagentCap 2", got[1]["permissionDecisionReason"])
         self.assertIn("subagentCapAction is deny", got[1]["permissionDecisionReason"])
 
+    def test_a_denied_call_is_not_counted_and_a_higher_cap_lets_calls_through(self):
+        self.setcfg(subagentCapAction="deny")
+        got = [self.spec(self.p.call()) for _ in range(12)]
+        self.assertEqual([g.get("permissionDecision") for g in got], [None] + ["deny"] * 11)
+        self.assertEqual((self.p.counters / "gw-subagents-s1").read_text(), "1", "denied calls leave the counter")
+        self.assertIn("subagentCapAction is deny", got[-1]["permissionDecisionReason"])
+        self.assertIn("2 subagents in this session (subagentCap 2", got[-1]["permissionDecisionReason"])
+        self.setcfg(subagentCap=5)
+        self.assertEqual(self.decisions(3), [None, None, None])
+        self.assertEqual(self.spec(self.p.call()).get("permissionDecision"), "deny")
+
     def test_a_bad_action_gives_ask(self):
         self.setcfg(subagentCapAction="block", subagentCap=2)
         got = [self.spec(self.p.call()).get("permissionDecision") for _ in range(30)]

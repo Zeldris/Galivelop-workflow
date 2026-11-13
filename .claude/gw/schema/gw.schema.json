@@ -766,7 +766,7 @@
       "type": "integer",
       "minimum": 1,
       "default": 30,
-      "description": "Subagents (Agent/Task calls) one session may launch before subagent-cap.py asks the user to check they are not looping, and again every 10 after."
+      "description": "Subagents (Agent/Task calls) one session may launch before subagent-cap.py asks the user to check they are not looping, and again every subagentCapStep after (what it does at the cap is subagentCapAction)."
     },
     "subagentCapStep": {
       "type": "integer",
