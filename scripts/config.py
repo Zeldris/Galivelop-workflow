@@ -428,8 +428,22 @@ def models(config):
 
 
 def measure(config):
-    """The `measure` key as a dict (minCalls) (B29)."""
+    """The `measure` key as a dict (minCalls, imageTokens, mixedRatio, minOutput, coldMs) (B29, A13)."""
     return _section(config, "measure")
+
+
+def media_content(config):
+    """The `mediaContent` key as a dict (maxSubjects) (A13)."""
+    return _section(config, "mediaContent")
+
+
+def test_scan_skip_dirs(config):
+    """The `testScanSkipDirs` key (A13): the folder names tests-after-main.py skips in its walk outside git; the schema
+    default when absent or invalid (an empty list is valid: skip none)."""
+    given = config.get("testScanSkipDirs")
+    if isinstance(given, list) and all(isinstance(x, str) and x for x in given):
+        return list(given)
+    return list(_schema()["properties"]["testScanSkipDirs"]["default"])
 
 
 def review_trivial_lines(config):
@@ -1108,7 +1122,7 @@ def main(argv=None):
         scope, reason = push_scope(config, [line for line in sys.stdin.read().splitlines() if line], commits)
         print(f"{scope} {reason}" if reason else scope)
         return 0
-    value = dict(config, metrics=metrics(config), models=models(config), measure=measure(config),
+    value = dict(config, metrics=metrics(config), models=models(config), measure=measure(config), mediaContent=media_content(config),
                  recover=recover(config), handoff=handoff(config), harvest=harvest(config),
                  contextGuard=context_guard(config),
                  stopSeverity=stop_severity(config), changeSize=change_size(config),

@@ -147,6 +147,35 @@ class TestsAfterMain(unittest.TestCase):
         self.assertIn("vendor/test_x.py", out)
         self.assertNotIn("node_modules", out)
 
+    def walk_with(self, config):
+        """Like walk(), with a .claude/gw.json (and config.py beside the script: it is) in the folder."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for d in ("vendor", "node_modules", "src"):
+                (root / d).mkdir()
+                (root / d / "test_x.py").write_text(OUTSIDE_IF)
+            (root / ".claude").mkdir()
+            (root / ".claude" / "gw.json").write_text(config)
+            r = subprocess.run([sys.executable, "-B", str(SCRIPT), "--root", tmp], capture_output=True, text=True)
+            return r.returncode, r.stdout + r.stderr
+
+    GW = ('{"version": "0.1.0", "language": "en", "log": "docs/log.md", "protectedBranch": "main", '
+          '"pushToProtected": "pr", "check": ["make check"], "reviewMark": "docs/reviewed.txt", '
+          '"content": ["^docs/"]%s}')
+
+    def test_a13_test_scan_skip_dirs_default_set_value_and_bad_value(self):
+        code, out = self.walk_with(self.GW % "")  # the default: today's list
+        self.assertEqual(code, 1, out)
+        self.assertIn("vendor/test_x.py", out)
+        self.assertNotIn("node_modules", out)
+        code, out = self.walk_with(self.GW % ', "testScanSkipDirs": ["vendor"]')
+        self.assertIn("src/test_x.py", out)
+        self.assertIn("node_modules/test_x.py", out)
+        self.assertNotIn("vendor/test_x.py", out)
+        code, out = self.walk_with(self.GW % ', "testScanSkipDirs": ["node_modules", 3]')  # bad: the default list
+        self.assertIn("vendor/test_x.py", out)
+        self.assertNotIn("node_modules/test_x.py", out)
+
     def test_clean_file_passes(self):
         code, out, _ = self.run_on(CLEAN)
         self.assertEqual(code, 0, out)

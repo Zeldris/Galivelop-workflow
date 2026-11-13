@@ -452,6 +452,33 @@ class Measure(unittest.TestCase):
                          'an invalid value (the config fails closed) keeps 3.5')
         self.assertEqual(self.chars_per_token_in('{not json'), 3.5)
 
+    def measure_value_in(self, config, name, default, integer):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('measure_mod2', MEASURE)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        repo = folder()
+        subprocess.run(['git', 'init', '-q', repo], check=True)
+        if config is not None:
+            write(os.path.join(repo, '.claude', 'gw.json'), config)
+            for rel in ('scripts/config.py', 'schema/gw.schema.json'):
+                os.makedirs(os.path.dirname(os.path.join(repo, rel)), exist_ok=True)
+                shutil.copy(os.path.join(HERE, '..', '..', '..', rel), os.path.join(repo, rel))
+        return mod.measure_value(repo, name, default, integer)
+
+    def test_a13_measure_constants_default_set_and_bad_values(self):
+        for name, default, integer, good, shown in (('imageTokens', 1600, True, 2000, 2000),
+                                                    ('mixedRatio', 1.5, False, 2.5, 2.5),
+                                                    ('minOutput', 100, True, 7, 7)):
+            def in_(config):
+                return self.measure_value_in(config, name, default, integer)
+            self.assertEqual(in_(None), default, name + ': no config')
+            self.assertEqual(in_(self.CONFIG % ''), default, name + ': valid config without the key')
+            self.assertEqual(in_(self.CONFIG % ', "measure": {"%s": %s}' % (name, good)), shown, name + ': set value')
+            for bad in ('0', '-3', '"x"'):  # the config fails closed (its reason: the schema minimum or type): default
+                self.assertEqual(in_(self.CONFIG % ', "measure": {"%s": %s}' % (name, bad)), default, name + bad)
+            self.assertEqual(in_('{not json'), default)
+
     def test_malformed_or_invalid_config_falls_back_to_the_default(self):
         for config in ('{not json', self.CONFIG % ', "measure": {"minCalls": -1}',
                        self.CONFIG % ', "measure": {"minCalls": "x"}'):

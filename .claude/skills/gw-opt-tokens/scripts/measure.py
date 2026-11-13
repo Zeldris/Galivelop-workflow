@@ -36,7 +36,7 @@ import re
 import subprocess
 import sys
 
-IMAGE_TOKENS = 1600
+IMAGE_TOKENS = 1600  # the defaults of measure.imageTokens, measure.mixedRatio and measure.minOutput; main() takes the project's
 CHARS_PER_TOKEN = 3.5  # the default of contextGuard.charsPerToken; main() takes the project's value
 MIXED_RATIO = 1.5  # peaks of closed stretches whose max/min exceeds this: the session mixes compaction windows
 MIN_OUTPUT = 100  # output tokens per call below which a subagent log's output is not trustworthy
@@ -118,6 +118,24 @@ def min_calls(root):
                 return default
             value = r.stdout.strip()
             return int(value) if r.returncode == 0 and value.isdigit() else default
+    return default
+
+
+def measure_value(root, name, default, integer):
+    """`measure.<name>` from the project's config reader (installed copy first, then this repo's own); `default` when
+    there is no config, no reader, the config is malformed or the answer is not a number of at least 1."""
+    if not os.path.isfile(os.path.join(root, '.claude', 'gw.json')):
+        return default
+    for rel in ('.claude/gw/scripts/config.py', 'scripts/config.py'):
+        reader = os.path.join(root, rel)
+        if os.path.isfile(reader):
+            try:
+                r = subprocess.run([sys.executable, reader, '--root', root, 'get', 'measure.' + name],
+                                   capture_output=True, text=True)
+                value = (int(r.stdout.strip()) if integer else float(r.stdout.strip())) if r.returncode == 0 else 0
+            except (OSError, ValueError):
+                return default
+            return value if 1 <= value < float('inf') else default
     return default
 
 
@@ -327,8 +345,11 @@ def main():
     ap.add_argument('--top', type=int, default=12, help='rows per list (default 12)')
     a = ap.parse_args()
     root = project_root()
-    global CHARS_PER_TOKEN
+    global CHARS_PER_TOKEN, IMAGE_TOKENS, MIXED_RATIO, MIN_OUTPUT
     CHARS_PER_TOKEN = chars_per_token(root)
+    IMAGE_TOKENS = measure_value(root, 'imageTokens', IMAGE_TOKENS, True)
+    MIXED_RATIO = measure_value(root, 'mixedRatio', MIXED_RATIO, False)
+    MIN_OUTPUT = measure_value(root, 'minOutput', MIN_OUTPUT, True)
     since = None
     if a.since:
         since = since_moment(a.since)

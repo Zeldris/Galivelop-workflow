@@ -494,6 +494,33 @@ class Config(unittest.TestCase):
         self.assertEqual(cli(self.tmp, "get", "harvest.commitsShown").stdout.strip(), "3")
         self.assertEqual(cli(self.tmp, "get", "applyDiffLines").stdout.strip(), "9")
 
+    def test_a13_c7_measure_media_content_and_test_scan_skip_dirs(self):
+        schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
+        self.assertEqual(config.measure({}), schema["measure"]["default"])
+        self.assertEqual(config.measure({}), {"minCalls": 5, "imageTokens": 1600, "mixedRatio": 1.5,
+                                            "minOutput": 100, "coldMs": 100})
+        self.assertEqual(config.media_content({}), {"maxSubjects": 20})
+        self.assertEqual(config.test_scan_skip_dirs({}), [".git", "node_modules", ".venv", "venv", "__pycache__", ".tox"])
+        self.assertEqual(config.test_scan_skip_dirs({"testScanSkipDirs": []}), [])
+        self.assertEqual(config.test_scan_skip_dirs({"testScanSkipDirs": ["a"]}), ["a"])
+        for bad in ("a", [""], [1]):
+            self.assertEqual(config.test_scan_skip_dirs({"testScanSkipDirs": bad}), config.test_scan_skip_dirs({}))
+        self.write(dict(VALID, measure={"imageTokens": 9, "coldMs": 2.5}, mediaContent={"maxSubjects": 3}))
+        self.assertEqual(cli(self.tmp, "get", "measure.imageTokens").stdout.strip(), "9")
+        self.assertEqual(cli(self.tmp, "get", "measure.coldMs").stdout.strip(), "2.5")
+        self.assertEqual(cli(self.tmp, "get", "measure.minOutput").stdout.strip(), "100")
+        self.assertEqual(cli(self.tmp, "get", "mediaContent.maxSubjects").stdout.strip(), "3")
+        for key, value, why in (("measure", {"imageTokens": 0}, "$.measure.imageTokens: must be at least 1"),
+                                ("measure", {"mixedRatio": 0.5}, "$.measure.mixedRatio: must be at least 1"),
+                                ("measure", {"minOutput": "x"}, "$.measure.minOutput"),
+                                ("measure", {"coldMs": 0}, "$.measure.coldMs: must be at least 1"),
+                                ("mediaContent", {"maxSubjects": 0}, "$.mediaContent.maxSubjects: must be at least 1"),
+                                ("testScanSkipDirs", [""], "testScanSkipDirs")):
+            self.write(dict(VALID, **{key: value}))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, key)
+            self.assertIn(why, r.stderr)
+
     def test_a13_commit_message_keys_default_set_and_bad_values(self):
         self.write(VALID)
         types = "feat fix hotfix docs style refactor perf test build ci chore revert".split()

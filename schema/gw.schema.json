@@ -372,7 +372,9 @@
         "ciStepTimeout",
         "ciSystemCommands",
         "doctorScanBytes",
-        "patchCommitTypes"
+        "patchCommitTypes",
+        "measure",
+        "mediaContent"
       ],
       "description": "Top-level keys of .claude/gw.json whose change does not make a branch push run the full check (E47): when the push's new commits change only these keys of the config, its related tests run. Any other key, an added, removed or broken config, and fullCheckSkipKeys itself still count as an environment change. The list replaces the default one."
     },
@@ -933,9 +935,27 @@
           "minimum": 0,
           "default": 5,
           "description": "B29: calls below which measure.py (skill gw-opt-tokens) measures the previous session of the same branch instead of the current one (right after a /clear the current one has almost nothing), and says so. 0 = always the current one."
-        }
+        },
+        "imageTokens": {"type": "integer", "minimum": 1, "default": 1600, "description": "A13: tokens gw-opt-tokens measure.py estimates for each image in a result."},
+        "mixedRatio": {"type": "number", "minimum": 1, "default": 1.5, "description": "A13: max/min ratio of the context peaks of closed stretches above which measure.py says the session mixes compaction windows."},
+        "minOutput": {"type": "integer", "minimum": 1, "default": 100, "description": "A13: output tokens per call below which measure.py does not trust the output of a subagent log (it prints a dash)."},
+        "coldMs": {"type": "number", "minimum": 1, "default": 100, "description": "A13: load time in ms above which gw-opt-ai measure.py counts a call as a cold load (the --cold-ms argument and cold_ms in gw-opt-ai.md win)."}
       },
-      "default": {"minCalls": 5}
+      "default": {"minCalls": 5, "imageTokens": 1600, "mixedRatio": 1.5, "minOutput": 100, "coldMs": 100}
+    },
+    "mediaContent": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "maxSubjects": {"type": "integer", "minimum": 1, "default": 20, "description": "A13: commit subjects gw-media-content figures.py reads for its figures (the newest ones, at most)."}
+      },
+      "default": {"maxSubjects": 20}
+    },
+    "testScanSkipDirs": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "default": [".git", "node_modules", ".venv", "venv", "__pycache__", ".tox"],
+      "description": "A13: folder names (exact, at any depth) that tests-after-main.py skips when it walks the tree outside a git repo to find test files. Apart from doctorTestDirsIgnore on purpose. [] skips none."
     },
     "models": {
       "type": "object",
