@@ -621,6 +621,7 @@ class HandoffTasks(Base):
         code, out = self.p.script("handoff.py", "--plan", self.PLAN, "closed", "--staged")
         self.assertEqual(code, 1, out)
         self.assertIn("INS-3 is closed in the plan", out)
+        self.assertIn("handoff.py done 'INS-3: <what was done>'", out)
         self.assertIn(f"git add {LOG}", out)  # the commit does not exist yet: no --amend
         self.assertNotIn("--amend", out)
         self.p.write(LOG, log_text().replace("1. nothing yet", "1. ~~INS-3~~ done"))
@@ -694,6 +695,7 @@ class HandoffTasks(Base):
         code, out = self.p.script("handoff.py", "--plan", self.PLAN, "closed", base, self.p.sha())
         self.assertEqual(code, 1, out)
         self.assertIn("FLU-9 is closed in the plan", out)
+        self.assertIn("handoff.py done 'FLU-9: <what was done>'", out)
 
     def test_backreference_in_the_id_regex_is_a_usage_error(self):
         code, out = self.p.script("handoff.py", "--id-regex", r"(a)\1", "closed", "HEAD", "HEAD")

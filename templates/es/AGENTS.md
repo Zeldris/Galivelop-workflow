@@ -95,7 +95,8 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
   «Relevos» con la confirmación de la persona: se sube directo (el `pre-push` corre el check) o, para un pull
   request, `python3 .claude/gw/scripts/ci-local.py --record` corre el CI en local y lo apunta; con esa línea verde
   subida, el gancho deja fusionar.
-- La rama de un subagente vuelve con `bash .claude/gw/scripts/merge-branch.sh <rama> "<mensaje>"`, que corre el check y los tests
+- La rama de un subagente vuelve con `bash .claude/gw/scripts/merge-branch.sh <rama> "<mensaje>\n\nSiguiente: <próximo paso>"`
+  (el mensaje acaba con el trailer que exige el `commit-msg`), que corre el check y los tests
   relacionados, y limpia su worktree.
 
 ## Antes de ir a `{{protectedBranch}}`: tres fases
@@ -114,7 +115,7 @@ Nunca sobre trabajo ya fusionado.
    **En una rama larga, esta fase se adelanta a cada bloque cerrado:** revisión solo del diff desde la
    última revisión de bloque (el último commit con el trailer `Findings:`; el `commit-msg` avisa cuando el bloque pasa
    de `changeSize.block` líneas), para que una sola revisión de muchos commits no deje módulos sin mirar; antes de `{{protectedBranch}}`, solo lo que quede desde entonces.
-2. **Entorno:** la skill `gw-opt-tokens` y luego `retro` (más `gw-opt-ai` si hubo medidas con un modelo de IA local). Sus
+2. **Entorno:** la skill `gw-opt-tokens` y luego `retro` (más `/gw-opt-ai` si hubo medidas con un modelo de IA local: la lanza la persona, el agente se lo pide). Sus
    propuestas se **presentan a la persona**; lo que confirme se aplica en la rama. Una retro escrita sin presentarla no
    vale. Si la persona pidió ir a `{{protectedBranch}}` y no está para decidir la retro, se deja todo listo (retro con
    `**Estado:** pendiente`, check en verde sobre la fusión con `{{protectedBranch}}`, descripción del pull request) y

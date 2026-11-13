@@ -71,7 +71,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    At ~25 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
    To wait for something long (a push with its check), run it with `run_in_background` and watch it with `Monitor`
    (load it with ToolSearch first) until it exits; keep your turn open while it runs, and never a foreground `sleep`.
-   One background wait per long command. To stop a process you started, `TaskStop` with its id (load it with
+   One background wait per long command. Wait for it to finish before your final reply, and reply once (never resend
+   your report). To stop a process you started, `TaskStop` with its id (load it with
    ToolSearch); `kill` and `pkill` are denied to subagents, and a broad `pkill -f` kills other agents' work.
    Push with its output to a file outside the tree (`git push … > "$(git rev-parse --git-dir)/push.log" 2>&1`); if it
    fails, read the pre-push reason in that file before retrying.
@@ -88,6 +89,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    If you change a function or a field, grep every user of it and adjust them, or list them under MISSING.
    Your branch is named `agent/<id>-<topic>` (`<id>` = the task id, e.g. `agent/D11-commit-format`); if isolation
    created another name, rename it first: `git branch -m agent/<id>-<topic>`.
+   If the task applies a document from another repo, return each point with its literal text and its path, not a
+   summary, so the main session does not reread the document.
    If the bug is a pattern (a wrong check, a missing quote, a case left out), grep its other occurrences and fix
    them too, or list them under MISSING.
    If you touch processes, paths or permissions, write it for every platform the project supports.
