@@ -95,7 +95,8 @@ Each session may run in a throwaway container: **what is not pushed does not exi
   the person's confirmation: push directly (`pre-push` runs the check) or, for a pull request,
   `python3 .claude/gw/scripts/ci-local.py --record` runs the CI locally and records it; with that green line pushed,
   the hook lets the merge through.
-- A subagent's branch comes back with `bash .claude/gw/scripts/merge-branch.sh <branch> "<message>"`, which runs the check and the
+- A subagent's branch comes back with `bash .claude/gw/scripts/merge-branch.sh <branch> "<message>\n\nNext: <next step>"`
+  (the message ends with the trailer the `commit-msg` requires), which runs the check and the
   related tests, and cleans up its worktree.
 
 ## Before going to `{{protectedBranch}}`: three phases
@@ -115,8 +116,8 @@ Never on work that is already merged.
    review only (the last commit with a `Findings:` trailer; the commit-msg hook warns when the block passes
    `changeSize.block` lines), so one review of many commits does not leave modules unread;
    before `{{protectedBranch}}`, only what is left since then.
-2. **Environment:** the `gw-opt-tokens` skill, then `retro` (plus `gw-opt-ai` if there were measurements with a local AI
-   model). Their proposals are **presented to the person**; what they confirm is applied on the branch. A retro written
+2. **Environment:** the `gw-opt-tokens` skill, then `retro` (plus `/gw-opt-ai` if there were measurements with a local AI
+   model: the person launches it, the agent asks them to). Their proposals are **presented to the person**; what they confirm is applied on the branch. A retro written
    without presenting it does not count. If the person asked to go to `{{protectedBranch}}` and is not there to decide
    the retro, leave everything ready (retro with `**Status:** pending`, check green on the merge with
    `{{protectedBranch}}`, pull request description) and stop before `reviewed.sh`: their confirmation of the retro is

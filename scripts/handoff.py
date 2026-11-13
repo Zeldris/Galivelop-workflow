@@ -488,6 +488,7 @@ def cmd_closed(ctx, args):
     missing = sorted(new - listed)
     for t in missing:
         print(f"handoff: {t} is closed in the plan; list it in the \"Done\" section of {ctx.log}")
+        print(f"handoff: fix: python3 {HERE / 'handoff.py'} done '{t}: <what was done>'")
     if missing and args.staged:
         print(f"handoff: fix: edit {ctx.log}, stage it (git add {ctx.log}) and commit again")
     elif missing:
