@@ -711,20 +711,22 @@ def cmd_done(ctx, args):
 
 
 def published_version(ctx):
-    """The published version as (text, (major, minor, patch)): `version` of .claude-plugin/plugin.json at the root (the
-    workflow repo) or, without that file (a project), the highest `vX.Y.Z` tag of the repo."""
+    """The published version as (text, (major, minor, patch)): the highest `vX.Y.Z` tag of the repo or, without one,
+    `version` of .claude-plugin/plugin.json at the root (the workflow repo). The tag goes first because the workflow
+    repo bumps plugin.json before the release is published (D89)."""
     path = ctx.root / ".claude-plugin" / "plugin.json"
-    fix = (f"archive needs the published version: create {path} with a \"version\" key or tag the last release "
-           f"(git tag vX.Y.Z), then rerun: python3 {HERE / 'handoff.py'} archive")
-    if not path.exists():
-        tags = ctx.git("tag", "--list", "v[0-9]*")
-        found = [(tuple(int(g or 0) for g in m.groups()), m.group(0)) for m in
-                 (VERSION_IN_TEXT.fullmatch(t.strip()[1:]) for t in (tags.stdout if tags.returncode == 0 else "")
-                  .splitlines()) if m]
-        if not found:
-            raise Usage(f"no {path} and no vX.Y.Z tag in the repo; {fix}")
+    fix = (f"archive needs the published version: tag the last release (git tag vX.Y.Z; git fetch --tags if it is "
+           f"only on the remote) or create {path} with a \"version\" key, then rerun: "
+           f"python3 {HERE / 'handoff.py'} archive")
+    tags = ctx.git("tag", "--list", "v[0-9]*")
+    found = [(tuple(int(g or 0) for g in m.groups()), m.group(0)) for m in
+             (VERSION_IN_TEXT.fullmatch(t.strip()[1:]) for t in (tags.stdout if tags.returncode == 0 else "")
+              .splitlines()) if m]
+    if found:
         best = max(found)
         return best[1], best[0]
+    if not path.exists():
+        raise Usage(f"no vX.Y.Z tag in the repo and no {path}; {fix}")
     try:
         version = json.loads(path.read_text(encoding="utf-8")).get("version")
     except (OSError, ValueError, AttributeError) as exc:
