@@ -92,12 +92,9 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 import config as gwconfig  # noqa: E402
 
-LIMIT = 600
-CELL_LIMIT = 800  # a value cell of the state table (any log, not only logRows)
-DONE_ITEMS = 5  # items kept in the Done section
+# The size limits (a branch row, a state-table cell, the Done items) are the config key `handoff` (config.handoff).
 INDEX = ""  # a "rev" for show()/plan_files(): the staged version
 FREE_ROWS = {"Actualizado", "Tests", "Updated"}  # shared rows every commit may touch
-DEFAULT_ID = r"[A-Z]{2,5}-\d+[a-z]?"
 ROW = re.compile(r"^\|\s*\*\*(?P<label>.+?) · `(?P<branch>[^`]+)`\*\*\s*\|(?P<text>.*)\|\s*$")
 STATE_HEADING = re.compile(r"^##\s+(Estado actual|Current state|Status)\b.*$", re.M | re.I)
 DONE_HEADING = re.compile(r"^##\s+(Hecho|Done)\b.*$", re.M | re.I)
@@ -127,9 +124,9 @@ class Usage(Exception):
 
 
 def task_id_pattern(config, explicit=None):
-    """The task id pattern: `explicit` (--id-regex), else $GW_TASK_ID, else the config's `taskId`, else DEFAULT_ID.
+    """The task id pattern: `explicit` (--id-regex), else $GW_TASK_ID, else the config's `taskId` (its schema default when the config is a bare dict).
     Shared with commit-message.py so both read the ids the same way."""
-    return explicit or os.environ.get("GW_TASK_ID") or config.get("taskId") or DEFAULT_ID
+    return explicit or os.environ.get("GW_TASK_ID") or config.get("taskId") or gwconfig.schema_default("taskId")
 
 
 def entry_regex(id_src):
@@ -286,8 +283,8 @@ def section_lines(text, heading):
     return text[m.end():].split("\n## ", 1)[0].split("\n")[1:] if m else None
 
 
-def long_cells(text):
-    """(label, size) of each value cell of the state table with more than CELL_LIMIT characters."""
+def long_cells(text, limit):
+    """(label, size) of each value cell of the state table with more than `limit` characters."""
     found = []
     for line in section_lines(text, STATE_HEADING) or []:
         if not line.lstrip().startswith("|"):
@@ -296,12 +293,12 @@ def long_cells(text):
         if len(cells) < 2 or all(re.fullmatch(r":?-+:?", c) for c in cells):
             continue
         label = cells[0].replace("*", "").replace("`", "").strip()
-        found += [(label, len(c)) for c in cells[1:] if len(c) > CELL_LIMIT]
+        found += [(label, len(c)) for c in cells[1:] if len(c) > limit]
     return found
 
 
-def done_problems(text, add, recheck):
-    """Messages about the Done section: items not on their own line, numbering not 1..n, more than DONE_ITEMS.
+def done_problems(text, add, recheck, limit):
+    """Messages about the Done section: items not on their own line, numbering not 1..n, more than `limit`.
     `add` is the command that adds an entry (and renumbers), `recheck` the one that checks the log again."""
     lines = section_lines(text, DONE_HEADING)
     if lines is None:
@@ -318,8 +315,8 @@ def done_problems(text, add, recheck):
     if numbers and numbers != list(range(1, len(numbers) + 1)):
         out.append("the Done items are numbered " + ", ".join(map(str, numbers)) + "; number them 1..n in order "
                    f"(the next entry renumbers them: {add})")
-    if len(numbers) > DONE_ITEMS:
-        out.append(f"the Done section has {len(numbers)} items (limit {DONE_ITEMS}); delete the oldest ones, the history "
+    if len(numbers) > limit:
+        out.append(f"the Done section has {len(numbers)} items (limit {limit}); delete the oldest ones, the history "
                    f"is in git (the next entry drops them: {add})")
     return out
 
@@ -335,9 +332,10 @@ def cmd_check(ctx, args):
             raise Usage(message)
         print(f"WARNING: handoff: {message}")  # the module is off: an unreadable log must not block the commit
         return 0
-    soft = [f"a cell of the state table (\"{label}\") has {size} characters (limit {CELL_LIMIT}); shorten it and move what "
-            f"is done to the Done section: {me} done \"<text>\"" for label, size in long_cells(text)]
-    soft += done_problems(text, f"{me} done \"<text>\"", f"{me} check {path} --strict")
+    sizes = gwconfig.handoff(ctx.config)
+    soft = [f"a cell of the state table (\"{label}\") has {size} characters (limit {sizes['cellLimit']}); shorten it and move what "
+            f"is done to the Done section: {me} done \"<text>\"" for label, size in long_cells(text, sizes["cellLimit"])]
+    soft += done_problems(text, f"{me} done \"<text>\"", f"{me} check {path} --strict", sizes["doneItems"])
     cap = gwconfig.log_size(ctx.config)
     if cap > 0 and len(text) > cap:  # a warning only: it never fails the commit, not even with --strict
         print(f"WARNING: handoff: the log has {len(text)} characters (cap logSize = {cap}); archive the items of published "
@@ -355,6 +353,7 @@ def cmd_check(ctx, args):
 
 def rows_problems(ctx, args, lines):
     problems = []
+    limit = gwconfig.handoff(ctx.config)["rowLimit"]
     if args.date:
         found = next((m.group(1) for m in (re.match(r"\|\s*\*\*(?:Actualizado|Updated)\*\*\s*\|\s*[`*]*(\d{4}-\d{2}-\d{2})", l)
                                            for l in lines) if m), None)
@@ -377,8 +376,8 @@ def rows_problems(ctx, args, lines):
             continue
         branches.append(m.group("branch"))
         size = len(m.group("text").strip())
-        if size > LIMIT:
-            problems.append(f"row of {m.group('branch')} has {size} characters (limit {LIMIT}); "
+        if size > limit:
+            problems.append(f"row of {m.group('branch')} has {size} characters (limit {limit}); "
                             "move what is done to the Done section and shorten the row")
     for b in sorted({b for b in branches if branches.count(b) > 1}):
         problems.append(f"two rows for {b}; keep one per branch")
@@ -652,6 +651,7 @@ def split_blank(block):
 def cmd_done(ctx, args):
     path = Path(args.file) if args.file else ctx.root / ctx.log
     text = " ".join(args.text.split())
+    done_items = gwconfig.handoff(ctx.config)["doneItems"]
     if not text:
         raise Usage("TEXT is empty; give the entry: handoff.py done \"what was closed\"")
     try:
@@ -661,7 +661,7 @@ def cmd_done(ctx, args):
     lines = re.findall(r"[^\n]*\n|[^\n]+", raw)  # keeps each line ending: the rest of the file stays byte for byte
     head = next((i for i, l in enumerate(lines) if DONE_HEADING.match(l.rstrip("\r\n"))), None)
     if head is None:
-        print(f"handoff: {path} has no \"## Hecho\" / \"## Done\" section; add the line \"## Done (last {DONE_ITEMS})\" "
+        print(f"handoff: {path} has no \"## Hecho\" / \"## Done\" section; add the line \"## Done (last {done_items})\" "
               f"to it and rerun: python3 {HERE / 'handoff.py'} done \"{text}\" {path}")
         return 1
     eol = "\r\n" if lines[head].endswith("\r\n") else "\n"
@@ -688,14 +688,14 @@ def cmd_done(ctx, args):
     if parts:
         gap = parts[0][1] if len(parts) > 1 else []  # blank lines the log keeps between items
         tail = closing
-        kept = [[entry]] + [p[0] for p in parts[:DONE_ITEMS - 1]]
+        kept = [[entry]] + [p[0] for p in parts[:done_items - 1]]
         body = list(pre)
         for n, block in enumerate(kept):
             if n:
                 body += gap
             body += [re.sub(r"^\d+\.", f"{n + 1}.", block[0], count=1)] + block[1:]
         body += tail
-        dropped = max(len(parts) + 1 - DONE_ITEMS, 0)
+        dropped = max(len(parts) + 1 - done_items, 0)
     else:
         content, tail = split_blank(pre)
         tail = closing or tail
@@ -882,8 +882,9 @@ def cmd_set_row(ctx, args):
     if not text or "\n" in text or "\r" in text:
         raise Usage("TEXT must be one non-empty line (a table cell); write the row text on a single line")
     text = re.sub(r"(?<!\\)\|", r"\\|", text)
-    if len(text) > LIMIT:
-        print(f"handoff: the text has {len(text)} characters (limit {LIMIT}); shorten it, or move what is done to the Done "
+    limit = gwconfig.handoff(ctx.config)["rowLimit"]
+    if len(text) > limit:
+        print(f"handoff: the text has {len(text)} characters (limit {limit}); shorten it, or move what is done to the Done "
               f"section: python3 {HERE / 'handoff.py'} done \"<text>\"")
         return 1
     hit = rewrite_row(ctx, branch, text)

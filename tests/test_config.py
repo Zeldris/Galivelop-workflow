@@ -422,6 +422,33 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, key)
             self.assertIn(why, r.stderr)
 
+    def test_a13_recover_and_handoff_keys_default_set_and_bad_values(self):
+        self.write(VALID)
+        defaults = {"recover.logLines": "25", "recover.statusLines": "15", "recover.worktrees": "10",
+                    "recover.otherBranches": "10", "recover.branchRow": "120", "recover.worktreeRow": "200",
+                    "recover.outputCap": "9500", "recover.gitWait": "5", "recover.searchMax": "10",
+                    "recover.searchWidth": "300", "handoff.rowLimit": "600", "handoff.cellLimit": "800",
+                    "handoff.doneItems": "5", "taskId": r"[A-Z]{2,5}-\d+[a-z]?"}
+        for key, value in defaults.items():
+            self.assertEqual(cli(self.tmp, "get", key).stdout.strip(), value, key)
+        self.write(dict(VALID, recover={"logLines": 40}, handoff={"doneItems": 8}, taskId="T\\d+"))
+        for key, value in {"recover.logLines": "40", "recover.statusLines": "15", "handoff.doneItems": "8",
+                           "handoff.rowLimit": "600", "taskId": "T\\d+"}.items():
+            self.assertEqual(cli(self.tmp, "get", key).stdout.strip(), value, key)
+        bad = {"recover": ({"logLines": 4}, "$.recover.logLines: must be at least 5, got 4"),
+               "handoff": ({"doneItems": 0}, "$.handoff.doneItems: must be at least 1, got 0")}
+        for key, (value, why) in bad.items():
+            self.write(dict(VALID, **{key: value}))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, key)
+            self.assertIn(why, r.stderr)
+        for value, why in (({"outputCap": 9901}, "must be at most 9900"), ({"gitWait": 0}, "must be at least 1"),
+                           ({"searchWidth": 39}, "must be at least 40"), ({"worktrees": "x"}, "expected integer")):
+            self.write(dict(VALID, recover=value))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, value)
+            self.assertIn(why, r.stderr)
+
     def test_a13_commit_message_keys_default_set_and_bad_values(self):
         self.write(VALID)
         types = "feat fix hotfix docs style refactor perf test build ci chore revert".split()

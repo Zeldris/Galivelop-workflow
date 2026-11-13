@@ -177,6 +177,35 @@
       "default": {"unpushed": "block", "logRequired": "block"},
       "description": "What the Stop hook (before-stop.py) does for its two hard cases: unpushed (commits not pushed on a working branch) and logRequired (uncommitted changes while the log is not among them). block stops the session until fixed; warn only says it in the closing message."
     },
+    "recover": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "logLines": {"type": "integer", "minimum": 5, "default": 25, "description": "Lines of the log section --state prints (the rest is cut with a pointer to the log)."},
+        "statusLines": {"type": "integer", "minimum": 1, "default": 15, "description": "Uncommitted files --state lists."},
+        "worktrees": {"type": "integer", "minimum": 1, "default": 10, "description": "Other worktrees --state lists."},
+        "otherBranches": {"type": "integer", "minimum": 1, "default": 10, "description": "Remote branches with unmerged work --state lists."},
+        "branchRow": {"type": "integer", "minimum": 20, "default": 120, "description": "Characters of another branch's log row."},
+        "worktreeRow": {"type": "integer", "minimum": 20, "default": 200, "description": "Characters of another worktree's log row."},
+        "outputCap": {"type": "integer", "minimum": 2000, "maximum": 9900, "default": 9500, "description": "Characters of the whole --state output; Claude Code replaces a hook output over 10000 with a preview, so 9900 is the top."},
+        "gitWait": {"type": "integer", "minimum": 1, "maximum": 60, "default": 5, "description": "Seconds each git call of the remote-branch lines may take (a timeout is no data)."},
+        "searchMax": {"type": "integer", "minimum": 1, "default": 10, "description": "Fragments --search returns (--max overrides it)."},
+        "searchWidth": {"type": "integer", "minimum": 40, "default": 300, "description": "Characters per fragment of --search (--width overrides it)."}
+      },
+      "default": {"logLines": 25, "statusLines": 15, "worktrees": 10, "otherBranches": 10, "branchRow": 120, "worktreeRow": 200, "outputCap": 9500, "gitWait": 5, "searchMax": 10, "searchWidth": 300},
+      "description": "Sizes of recover.py (the SessionStart state and --search): lines, rows and characters it shows. An over-low value cannot hide the state (each key has a minimum); an invalid value, or a config recover.py cannot read, gives the defaults."
+    },
+    "handoff": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rowLimit": {"type": "integer", "minimum": 50, "default": 600, "description": "Characters of a branch row of the log with logRows (handoff.py check fails over it)."},
+        "cellLimit": {"type": "integer", "minimum": 100, "default": 800, "description": "Characters of a value cell of the log's state table (a warning; a failure with check --strict)."},
+        "doneItems": {"type": "integer", "minimum": 1, "default": 5, "description": "Items the Done section keeps (handoff.py done drops the oldest; check warns over it)."}
+      },
+      "default": {"rowLimit": 600, "cellLimit": 800, "doneItems": 5},
+      "description": "Size rules of the log (handoff.py): rowLimit, cellLimit and doneItems."
+    },
     "hookStdinWait": {
       "type": "number",
       "minimum": 0.1,
@@ -238,6 +267,7 @@
         "stopPushMarkerMaxAge",
         "stopGitTimeout",
         "stopSeverity",
+        "recover",
         "hookStdinWait",
         "checkLockWait",
         "checkOutputGrace",
@@ -739,7 +769,8 @@
     "taskId": {
       "type": "string",
       "minLength": 1,
-      "description": "Regex of the project's task ids (handoff.py); default [A-Z]{2,5}-\\d+."
+      "default": "[A-Z]{2,5}-\\d+[a-z]?",
+      "description": "Regex of the project's task ids (handoff.py); default [A-Z]{2,5}-\\d+[a-z]?."
     },
     "agentMap": {
       "type": "object",

@@ -276,6 +276,35 @@ def _section(config, key):
     return {k: given.get(k, prop["default"]) for k, prop in props.items()}
 
 
+def _bounded_section(config, key):
+    """Like `_section`, but a value that is not an integer within the schema's minimum and maximum gives that key's
+    default: for the keys a hook reads, a bad value must never hide what the hook shows (the loader rejects it, a caller
+    that fell back to `{}` still gets numbers)."""
+    props = _schema()["properties"][key]["properties"]
+    given = config.get(key)
+    given = given if isinstance(given, dict) else {}
+    out = {}
+    for k, prop in props.items():
+        v = given.get(k, prop["default"])
+        ok = (isinstance(v, int) and not isinstance(v, bool) and v >= prop.get("minimum", v)
+              and v <= prop.get("maximum", v))
+        out[k] = v if ok else prop["default"]
+    return out
+
+
+def recover(config):
+    """The `recover` key (A13) as a dict (logLines, statusLines, worktrees, otherBranches, branchRow, worktreeRow,
+    outputCap, gitWait, searchMax, searchWidth): the sizes of recover.py's --state and --search. The schema's minimums
+    keep an over-low value from hiding the state; an invalid value (or `{}`, an unreadable config) gives the default."""
+    return _bounded_section(config, "recover")
+
+
+def handoff(config):
+    """The `handoff` key (A13) as a dict (rowLimit, cellLimit, doneItems): the log size rules of handoff.py; an invalid
+    value gives the schema default."""
+    return _bounded_section(config, "handoff")
+
+
 def instruction_lines(config):
     """The `instructionLines` key as (warn, fail): the line limits of AGENTS.md/CLAUDE.md."""
     limits = _section(config, "instructionLines")
@@ -991,6 +1020,7 @@ def main(argv=None):
         print(f"{scope} {reason}" if reason else scope)
         return 0
     value = dict(config, metrics=metrics(config), models=models(config), measure=measure(config),
+                 recover=recover(config), handoff=handoff(config),
                  stopSeverity=stop_severity(config), changeSize=change_size(config),
                  retro=retro(config), redWithoutFix=red_without_fix(config), branchPrefixes=branch_prefixes(config))  # inner keys fill from the schema too
     for part in args.key.split("."):

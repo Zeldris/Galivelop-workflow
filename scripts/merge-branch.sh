@@ -105,10 +105,12 @@ refs_of() {
   parsed="$(git interpret-trailers --parse)" || return 1
   printf '%s\n' "$parsed" | awk -F: 'tolower($1)=="refs" {sub(/^[^:]*:/, ""); gsub(/[,[:space:]]+/, "\n"); print}' | grep -v '^$' || true
 }
-# `get taskId` fails both when the key is not set and when the config is unreadable; the reads above already
-# validated the config, so a failure here means "not set": the default shape applies.
+# `get taskId` gives the schema default when the project did not set the key (it fails only on an unreadable config,
+# which the reads above already ruled out). Then the shape of a branch name's id applies, not handoff.py's `AB-12`: the
+# id of `agent/<id>-<topic>` is cut at the first `-`, so it never looks like `AB-12` (A13 C5: kept, not unified).
 id_pattern="$(python3 "$config" --root "$root" get taskId 2>/dev/null)" || id_pattern=""
-[ -n "$id_pattern" ] || id_pattern='[A-Za-z]+[0-9]+'
+id_default="$(python3 "$config" default taskId 2>/dev/null)" || id_default=""
+if [ -z "$id_pattern" ] || [ "$id_pattern" = "$id_default" ]; then id_pattern='[A-Za-z]+[0-9]+'; fi
 : > "$logs/ids"
 # m = ids the message already carries (kept as given); c = the branch name's and the commits' (must look like an id).
 printf '%s\n' "$message" | refs_of | sed 's/^/m /' >> "$logs/ids" ; [ "${PIPESTATUS[1]}" = 0 ] || refs_fail "the merge message"

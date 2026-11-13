@@ -16,7 +16,8 @@
                                 stays, with a line saying it was cut); the lines after it always survive.
   recover.py --search TEXT      the transcript fragments (main conversation: user, Claude, tool calls and results)
                                 matching TEXT (case-insensitive regex; plain text if it is not a valid regex), newest
-                                last. --max N (10), --width N (300 characters per fragment).
+                                last. --max N (10), --width N (300 characters per fragment);
+                                these and the sizes of --state are the config key `recover`.
   --source S                    the SessionStart source (startup|resume|clear|compact; default: the hook's, else
                                 startup); with compact, a startup over the alarm threshold is a compaction loop
                                 (context_guard.py, B21).
@@ -45,17 +46,25 @@ sys.path.insert(0, HERE)
 import config  # noqa: E402
 import session_log  # noqa: E402
 
-LOG_LINES = 25
-STATUS_LINES = 15
-WORKTREES = 10
-GIT_WAIT = 5  # seconds for each git call of the remote-branch lines (a timeout is "no data")
-OTHER_BRANCHES = 10  # remote branches listed by --state
-BRANCH_ROW = 120  # characters of another branch's log row
-WORKTREE_ROW = 200  # characters of another worktree's log row
+# The sizes of --state and --search are the config key `recover` (config.recover; the schema holds the defaults and the
+# minimums, so a low value cannot hide the state). LIMITS is the defaults until use_config() reads the project's.
+LIMITS = config.recover({})
+
+
+def use_config(root):
+    """Read the project's `recover` sizes into LIMITS; a config that cannot be read keeps the defaults (the state is
+    printed anyway: this runs from the SessionStart hook)."""
+    global LIMITS
+    try:
+        LIMITS = config.recover(config.load(root))
+    except Exception:  # config.ConfigError, OSError: the hook must still show the state
+        LIMITS = config.recover({})
+    return LIMITS
+
+
 # Claude Code replaces a hook's output over 10,000 characters with a file path and a 2,000-character preview
 # (https://code.claude.com/docs/en/hooks.md), and a log cut that way looks complete. So --state measures its own
-# output and, over this cap, cuts at a line boundary and says so in a last line that names the log.
-OUTPUT_CAP = 9500
+# output and, over this cap, cuts at a line boundary and says so in a last line that names the log (LIMITS["outputCap"]).
 # Characters that are not text: C0 controls except \n and \t, DEL, C1 controls, and the bidi / invisible format ones.
 CONTROL = re.compile("[\x00-\x08\x0b-\x1f\x7f-\x9f\u200b-\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff]")
 # A call to this script's search (not a mention: a diff or a message that names it is still searched).
@@ -207,8 +216,8 @@ def named_section(text, heading):
                 out.append(nxt)
             while out and not out[-1].strip():
                 out.pop()
-            if len(out) > LOG_LINES:
-                out = out[:LOG_LINES] + ["… (trimmed; the rest is in the log)"]
+            if len(out) > LIMITS["logLines"]:
+                out = out[:LIMITS["logLines"]] + ["… (trimmed; the rest is in the log)"]
             return out
     return None
 
@@ -226,8 +235,8 @@ def first_section(text):
         out.append(line)
     while out and not out[-1].strip():
         out.pop()
-    if len(out) > LOG_LINES:
-        out = out[:LOG_LINES] + ["… (trimmed; the rest is in the log)"]
+    if len(out) > LIMITS["logLines"]:
+        out = out[:LIMITS["logLines"]] + ["… (trimmed; the rest is in the log)"]
     return out
 
 
@@ -284,7 +293,7 @@ def fit_log(log_lines, room, log):
     fixed lines after it (uncommitted files, last commits, warnings, the --search pointer) always survive."""
     if sum(len(l) + 1 for l in log_lines) <= room:
         return log_lines
-    note = f"  … log section cut here (--state is capped at {OUTPUT_CAP} characters): read {log or 'the log'} whole."
+    note = f"  … log section cut here (--state is capped at {LIMITS['outputCap']} characters): read {log or 'the log'} whole."
     kept, size = [], len(note) + 1
     for line in log_lines:
         if size + len(line) + 1 > room:
@@ -321,7 +330,7 @@ def worktree_lines(root):
     except config.ConfigError:
         cfg = {}
     out = [f"- Other worktrees: {len(trees)}"]
-    for path, branch in trees[:WORKTREES]:
+    for path, branch in trees[:LIMITS["worktrees"]]:
         out.append(f"  {path} (branch {branch})")
         if cfg.get("logRows") and cfg.get("log"):
             try:
@@ -331,9 +340,9 @@ def worktree_lines(root):
             row = row_for_branch(text, branch)
             if row:
                 row = CONTROL.sub("", row)
-                out.append("    row: " + (row if len(row) <= WORKTREE_ROW else row[:WORKTREE_ROW - 1] + "…"))
-    if len(trees) > WORKTREES:
-        out.append(f"  … and {len(trees) - WORKTREES} more (git worktree list)")
+                out.append("    row: " + (row if len(row) <= LIMITS["worktreeRow"] else row[:LIMITS["worktreeRow"] - 1] + "…"))
+    if len(trees) > LIMITS["worktrees"]:
+        out.append(f"  … and {len(trees) - LIMITS['worktrees']} more (git worktree list)")
     return out
 
 
@@ -390,17 +399,17 @@ def protected_branch(root):
 
 def other_branch_lines(root, branch):
     """One line per remote branch (refs/remotes/origin/*, local refs only, no fetch) with commits the protected
-    branch lacks, newest first, at most OTHER_BRANCHES (as prepush-branches.sh); with logRows, the branch's row in
+    branch lacks, newest first, at most LIMITS["otherBranches"] (as prepush-branches.sh); with logRows, the branch's row in
     the log it holds. Only a warning: any failure gives no lines."""
     protected = protected_branch(root)
     base = next((r for r in (f"refs/remotes/origin/{protected}", f"refs/heads/{protected}")
                  if git(root, "rev-parse", "-q", "--verify", r + "^{commit}")), None)
     if not base:
         return []
-    shallow = git(root, "rev-parse", "--is-shallow-repository", timeout=GIT_WAIT) == "true"
+    shallow = git(root, "rev-parse", "--is-shallow-repository", timeout=LIMITS["gitWait"]) == "true"
     # A partial clone (blob:none, a blob limit) fetches a missing blob from its remote on `git show`: no rows then.
-    partial = (git(root, "config", "--bool", "remote.origin.promisor", timeout=GIT_WAIT) == "true"
-               or bool(git(root, "config", "extensions.partialclone", timeout=GIT_WAIT)))
+    partial = (git(root, "config", "--bool", "remote.origin.promisor", timeout=LIMITS["gitWait"]) == "true"
+               or bool(git(root, "config", "extensions.partialclone", timeout=LIMITS["gitWait"])))
     try:
         cfg = config.load(root)
     except config.ConfigError:
@@ -408,29 +417,29 @@ def other_branch_lines(root, branch):
     skip = {"HEAD", protected, branch} | {b for _, b in other_worktrees(root)}  # worktrees already have their lines
     names = []
     refs = git(root, "for-each-ref", f"--no-merged={base}", "--sort=-committerdate", "--format=%(refname)",
-               "refs/remotes/origin/", timeout=GIT_WAIT)
+               "refs/remotes/origin/", timeout=LIMITS["gitWait"])
     for ref in refs.splitlines():
         name = ref[len("refs/remotes/origin/"):]
         if name not in skip:
             names.append((name, ref))
     lines = []
-    for name, ref in names[:OTHER_BRANCHES]:
-        count = git(root, "rev-list", "--count", f"{base}..{ref}", timeout=GIT_WAIT)
+    for name, ref in names[:LIMITS["otherBranches"]]:
+        count = git(root, "rev-list", "--count", f"{base}..{ref}", timeout=LIMITS["gitWait"])
         if not count.isdigit() or int(count) == 0:
             continue
         line = f"  {CONTROL.sub('', name)}: {count} commit(s) not in {protected}"
         if cfg.get("logRows") and cfg.get("log") and not partial:
-            row = row_for_branch(git(root, "show", f"{ref}:{cfg['log']}", timeout=GIT_WAIT), name)
+            row = row_for_branch(git(root, "show", f"{ref}:{cfg['log']}", timeout=LIMITS["gitWait"]), name)
             if row:
                 row = CONTROL.sub("", row)
-                line += " | " + (row if len(row) <= BRANCH_ROW else row[:BRANCH_ROW - 1] + "…")
+                line += " | " + (row if len(row) <= LIMITS["branchRow"] else row[:LIMITS["branchRow"] - 1] + "…")
         lines.append(line)
     if not lines:
         return []
     head = f"- Other remote branches with work not in {protected} (local refs, no fetch)"
     head += "; shallow clone: counts may be too high:" if shallow else ":"
-    if len(names) > OTHER_BRANCHES:
-        lines.append(f"  … and {len(names) - OTHER_BRANCHES} more (git branch -r)")
+    if len(names) > LIMITS["otherBranches"]:
+        lines.append(f"  … and {len(names) - LIMITS['otherBranches']} more (git branch -r)")
     return [head] + lines
 
 
@@ -470,6 +479,7 @@ def review_lines(root, branch):
 
 def state(root, transcript, out, logs, source="startup"):
     """Append the --state lines to `out` (and the log's relative path to `logs`); the caller measures and prints."""
+    use_config(root)
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD") or "?"
     head = [f"State after compaction or /clear (galivelop-workflow), branch {branch}:"]
     log_lines = log_state(root, branch, logs, source)
@@ -478,10 +488,10 @@ def state(root, transcript, out, logs, source="startup"):
     status = git(root, "status", "--short").splitlines()
     if status:
         say(f"- Uncommitted: {len(status)} file(s)")
-        for line in status[:STATUS_LINES]:
+        for line in status[:LIMITS["statusLines"]]:
             say(f"  {line}")
-        if len(status) > STATUS_LINES:
-            say(f"  … and {len(status) - STATUS_LINES} more (git status --short)")
+        if len(status) > LIMITS["statusLines"]:
+            say(f"  … and {len(status) - LIMITS['statusLines']} more (git status --short)")
     else:
         say("- Uncommitted: nothing")
     commits = git(root, "log", "--format=%h %s", "-5").splitlines()
@@ -536,19 +546,19 @@ def state(root, transcript, out, logs, source="startup"):
     say(f"- A detail from before (an error, a piece of code, what the user said): "
         f"{script_command(root)}{session} --search '<text>'; never read the transcript whole.")
     fixed = sum(len(l) + 1 for l in head + tail)
-    out.extend(head + fit_log(log_lines, OUTPUT_CAP - fixed, logs[0] if logs else None) + tail)
+    out.extend(head + fit_log(log_lines, LIMITS["outputCap"] - fixed, logs[0] if logs else None) + tail)
 
 
 def capped(lines, log):
-    """The lines as one text of at most OUTPUT_CAP characters. Over it, whole lines only, then a last line that says
+    """The lines as one text of at most LIMITS["outputCap"] characters. Over it, whole lines only, then a last line that says
     the output is incomplete and which file to read whole instead."""
     text = "\n".join(lines) + "\n"
-    if len(text) <= OUTPUT_CAP:
+    if len(text) <= LIMITS["outputCap"]:
         return text
-    pointer = f"… output incomplete (over {OUTPUT_CAP} characters): read {log or 'the log'} whole."
+    pointer = f"… output incomplete (over {LIMITS['outputCap']} characters): read {log or 'the log'} whole."
     kept, size = [], len(pointer) + 1
     for line in "\n".join(lines).split("\n"):
-        if size + len(line) + 1 > OUTPUT_CAP:
+        if size + len(line) + 1 > LIMITS["outputCap"]:
             break
         kept.append(line)
         size += len(line) + 1
@@ -585,8 +595,8 @@ def main(argv=None):
     mode.add_argument("--state", action="store_true", help="print the state (SessionStart clear|compact)")
     mode.add_argument("--search", metavar="TEXT", help="search the session transcript")
     parser.add_argument("--session", metavar="PATH", help="transcript to read")
-    parser.add_argument("--max", type=int, default=10)
-    parser.add_argument("--width", type=int, default=300)
+    parser.add_argument("--max", type=int, help="fragments --search returns (config recover.searchMax, 10)")
+    parser.add_argument("--width", type=int, help="characters per fragment (config recover.searchWidth, 300)")
     parser.add_argument("--source", choices=("startup", "resume", "clear", "compact"),
                         help="SessionStart source (default: the hook's, else startup)")
     parser.add_argument("--root", help=argparse.SUPPRESS)
@@ -615,7 +625,9 @@ def main(argv=None):
         print("recover.py: no session transcript found for this repo; pass it: "
               f"python3 {os.path.abspath(__file__)} --session <path.jsonl> --search '<text>'", file=sys.stderr)
         return 1
-    search(path, args.search, max(1, args.max), max(40, args.width))
+    limits = use_config(root)
+    search(path, args.search, max(1, args.max if args.max is not None else limits["searchMax"]),
+           max(40, args.width if args.width is not None else limits["searchWidth"]))
     return 0
 
 

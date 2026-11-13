@@ -392,6 +392,69 @@ class Recover(Base):
         self.assertIn("Compactions in this session: unknown", out)
         self.assertIn("--search", out)
 
+    def set_recover(self, **sizes):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["recover"] = sizes
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+
+    def long_log(self):
+        self.p.write("docs/log.md", "# Log\n\n## State\n\n" + "".join(f"line number {i} " + "." * 90 + "\n" for i in range(1, 41)))
+
+    def test_a13_recover_log_lines_default_to_25_and_follow_the_config(self):
+        self.long_log()
+        out = self.p.run_recover("--state")[1]
+        self.assertIn("line number 21", out)
+        self.assertNotIn("line number 40", out)
+        self.assertIn("… (trimmed; the rest is in the log)", out)
+        self.set_recover(logLines=8)
+        out = self.p.run_recover("--state")[1]
+        self.assertIn("line number 5", out)
+        self.assertNotIn("line number 8", out)
+        self.assertIn("… (trimmed; the rest is in the log)", out)
+
+    def test_a13_recover_status_lines_and_output_cap_follow_the_config(self):
+        for i in range(6):
+            self.p.write(f"untracked{i}.txt", "x\n")
+        self.set_recover(statusLines=2)
+        out = self.p.run_recover("--state")[1]
+        self.assertIn("- Uncommitted: 7 file(s)", out)  # the six files and the config change
+        self.assertIn("… and 5 more (git status --short)", out)
+        self.set_recover(outputCap=2000)
+        self.long_log()
+        out = self.p.run_recover("--state")[1]
+        self.assertLessEqual(len(out), 2000)
+        self.assertIn("(--state is capped at 2000 characters)", out)
+
+    def test_a13_recover_an_invalid_value_still_prints_the_state_with_the_defaults(self):
+        self.long_log()
+        for bad in ({"logLines": 0}, {"logLines": "many"}, {"outputCap": 20000}, {"nope": 1}):
+            self.set_recover(**bad)
+            code, out = self.p.run_recover("--state")
+            self.assertEqual(code, 0, out)
+            self.assertIn("State after compaction or /clear", out)
+            self.assertIn("Last commits:", out)
+            self.assertIn("Log: unknown", out)  # the config is invalid: the log line says why, the rest still shows
+
+    def test_a13_recover_getter_clamps_values_a_caller_could_not_load(self):
+        import config  # scripts/ is on sys.path in the check
+        defaults = config.recover({})
+        self.assertEqual(defaults["logLines"], 25)
+        self.assertEqual(defaults["outputCap"], 9500)
+        self.assertEqual(config.recover({"recover": {"logLines": 0, "statusLines": True, "outputCap": 99999,
+                                                      "gitWait": 7}}),
+                         dict(defaults, gitWait=7))
+
+    def test_a13_recover_search_max_and_width_default_from_the_config(self):
+        path = self.p.transcript(self.p.work, [{"type": "user", "message": {"role": "user", "content": f"needle {i}"}}
+                                               for i in range(5)])
+        out = self.p.run_recover("--session", str(path), "--search", "needle")[1]
+        self.assertIn("5 fragment(s) match", out)
+        self.set_recover(searchMax=2)
+        out = self.p.run_recover("--session", str(path), "--search", "needle")[1]
+        self.assertIn("(the last 2 shown", out)
+        out = self.p.run_recover("--session", str(path), "--search", "needle", "--max", "4")[1]
+        self.assertIn("(the last 4 shown", out)
+
     def test_pending_section_comes_back_too(self):
         self.p.write("docs/log.md", "# Log\n\n## State\n\nnow\n\n## Done\n\nold stuff\n\n## Pending\n\n- the left-over task\n")
         code, out = self.p.run_recover("--state")

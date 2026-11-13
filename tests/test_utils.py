@@ -162,6 +162,49 @@ class HandoffSizeAndDone(Base):
         self.assertNotIn("WARNING", out)
         self.assertEqual(self.check(self.doc(cell="x" * 800), "--strict")[0], 0)
 
+    def set_handoff(self, **sizes):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["handoff"] = sizes
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+
+    def test_a13_handoff_limits_come_from_the_config_and_default_to_the_old_ones(self):
+        self.set_handoff(cellLimit=120, doneItems=2)
+        code, out = self.check(self.doc(cell="x" * 121), "--strict")
+        self.assertEqual(code, 1, out)
+        self.assertIn("has 121 characters (limit 120)", out)
+        self.assertEqual(self.check(self.doc(cell="x" * 120), "--strict")[0], 0)
+        code, out = self.check(self.doc(done=self.items(3)), "--strict")
+        self.assertEqual(code, 1, out)
+        self.assertIn("the Done section has 3 items (limit 2)", out)
+        code, out, new = self.run_done(self.doc(done=self.items(3)))
+        self.assertEqual(code, 0, out)
+        self.assertIn("2 oldest dropped", out)
+        self.assertEqual(new.count("\n2. 2026"), 1)
+        self.assertNotIn("\n3. 2026", new)
+        self.set_handoff(rowLimit=60)  # only the keys it names change; the rest keep their defaults
+        self.assertEqual(self.check(self.doc(cell="x" * 801), "--strict")[0], 1)
+        self.assertEqual(self.check(self.doc(done=self.items(5)), "--strict")[0], 0)
+
+    def test_a13_handoff_row_limit_applies_to_branch_rows_and_set_row(self):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["logRows"] = True  # the branch-row rules need it; the size rules of the rest do not
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.set_handoff(rowLimit=60)
+        code, out = self.check(log_text(a="x" * 61))
+        self.assertEqual(code, 1, out)
+        self.assertIn("61 characters (limit 60)", out)
+        self.assertEqual(self.check(log_text(a="x" * 60))[0], 0)
+        self.p.git("checkout", "-q", "-b", "feat-a")
+        code, out = self.p.script("handoff.py", "set-row", "y" * 61)
+        self.assertEqual(code, 1, out)
+        self.assertIn("the text has 61 characters (limit 60)", out)
+
+    def test_a13_a_bad_handoff_value_is_a_config_error_with_its_reason(self):
+        self.set_handoff(doneItems=0)
+        code, out = self.check(self.doc())
+        self.assertEqual(code, 2, out)
+        self.assertIn("handoff.doneItems: must be at least 1, got 0", out)
+
     def test_cell_rules_ignore_other_tables_headers_and_escaped_pipes(self):
         other = self.doc().replace("## Pendiente\n\n", "## Pendiente\n\n| a | " + "y" * 900 + " |\n\n")
         self.assertEqual(self.check(other, "--strict")[0], 0)
@@ -1320,6 +1363,21 @@ class MergeBranch(Base):
         self.assertEqual(self.merge_trailers(), [], "D16 does not match the configured taskId")
         self.p.script("merge-branch.sh", "agent/T7-y", "Merge two", "--reviewed")
         self.assertEqual(self.merge_trailers(), ["Refs: T7"])
+
+    def test_a13_task_id_set_to_the_schema_default_still_reads_ids_from_branch_names(self):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.pop("taskId", None)
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.commit("no task id", env=DAY)
+        self.agent(name="agent/D16-x", path="a.txt")
+        self.p.script("merge-branch.sh", "agent/D16-x", "Merge one", "--reviewed")
+        self.assertEqual(self.merge_trailers(), ["Refs: D16"], "unset: the branch-name shape [A-Za-z]+[0-9]+")
+        cfg["taskId"] = "[A-Z]{2,5}-\\d+[a-z]?"  # the schema default written out: the same as unset
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.commit("default task id", env=DAY)
+        self.agent(name="agent/D17-y", path="b.txt")
+        self.p.script("merge-branch.sh", "agent/D17-y", "Merge two", "--reviewed")
+        self.assertEqual(self.merge_trailers(), ["Refs: D17"])
 
     def test_every_old_refs_line_goes_and_the_new_one_leads_so_the_next_step_line_stays_last(self):
         self.agent(name="agent/D16-x", message="work\n\nRefs: D12")
