@@ -80,6 +80,8 @@ La versión sigue [SemVer](https://semver.org/lang/es/) y vive **solo** en `.cla
 
 Solo la última menor publicada recibe parches (plan §7): una recogida manda las correcciones a su siguiente parche (hoy `0.5.x`) y los evolutivos a la siguiente menor que no esté en obra (hoy la `0.7`, con la `0.6` en obra), según el [roadmap](../roadmap.md).
 
+Para separar un parche de la rama de la menor, desde la rama del parche: `bash scripts/backport.sh [--from <rama>] <sha>...` aplica los commits con `cherry-pick -x` (más antiguo primero; `-m 1` en las fusiones), resuelve con la versión del parche los conflictos que solo estén en la bitácora o el roadmap, salta los que queden vacíos y comprueba al final que cada sha está en el parche; ante un conflicto de código se para y dice qué hacer y qué shas quedan. Con `--from` trae también, en un commit aparte, los archivos de recogida que la rama tiene y el parche no (`version.py --release` los exige); sin shas, `--from` trae solo eso, y `--refs <id>` fija el id del `Refs:` de ese commit cuando ninguno de los de los commits traídos lo acepta el `commit-msg` de la rama del parche.
+
 Cada versión tiene una entrada en [`CHANGELOG.md`](../../CHANGELOG.md) con `### ES` y `### EN`, ambas con el mismo
 contenido; el check falla si la versión de `plugin.json` no tiene entrada. Al subir la versión, el `metadata.version` de
 **todas** las skills (lo exige `test_skills.py`) y las cabeceras `# galivelop-workflow vX.Y.Z` de scripts y plantillas se mueven con
