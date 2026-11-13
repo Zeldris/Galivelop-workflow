@@ -269,17 +269,18 @@ class SessionStart(Base):
         self.assertIn("setup command timed out after 1s", out)
 
     def test_command_timeout_key_sets_the_limit_and_the_environment_wins(self):
-        cloud = self.cloud_config(setup=["sleep 30"], commandTimeout=1)
+        mark = f"{os.getpid()}-{time.time_ns()}"  # unique, so a parallel run of this test is not mistaken for a survivor
+        cloud = self.cloud_config(setup=[f"sleep 30 # run{mark}"], commandTimeout=1)
         started = time.time()
         code, out = self.p.session_start(env=cloud)
         self.assertEqual(code, 0, out)
         self.assertLess(time.time() - started, 20, out)
-        self.assertIn("setup command timed out after 1s: 'sleep 30'", out)
+        self.assertIn(f"setup command timed out after 1s: 'sleep 30 # run{mark}'", out)
         cloud["GW_COMMAND_TIMEOUT"] = "33"                    # the variable beats the key
         code, out = self.p.session_start(env=cloud)
         self.assertEqual(code, 0, out)
         self.assertNotIn("timed out after 1s", out)
-        left = subprocess.run(["pgrep", "-f", "sleep 30"], capture_output=True, text=True).stdout
+        left = subprocess.run(["pgrep", "-f", f"run{mark}"], capture_output=True, text=True).stdout
         self.assertEqual(left.strip(), "", "the command of the first run survived")
 
     def test_command_kill_grace_key_shortens_the_wait_before_kill(self):
