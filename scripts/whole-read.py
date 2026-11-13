@@ -34,7 +34,6 @@ sys.dont_write_bytecode = True  # no __pycache__ in the project's .claude/gw/scr
 sys.path.insert(0, HERE)
 import config  # noqa: E402
 
-NOT_TEXT = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".pdf", ".ipynb")  # Read shows these otherwise
 
 
 def read_event():
@@ -51,8 +50,9 @@ def read_event():
 
 
 def settings(root):
-    """(threshold, log, archive, records) from the config; the schema defaults when it cannot be read (`log` has none
-    there: docs/handoff.md)."""
+    """(threshold, log, archive, records, skip, extra) from the config; the schema defaults when it cannot be read
+    (`log` has none there: docs/handoff.md). `skip`: wholeReadSkipExtensions as a lower-case tuple; `extra`:
+    wholeReadPaths (repo-relative files, or folders ending in /)."""
     try:
         cfg = config.load(root)
     except Exception:  # advice only: any problem with the config means the defaults
@@ -65,15 +65,22 @@ def settings(root):
             return value
         return props[key].get("default", fallback)
 
-    return (config.whole_read_warn_bytes(cfg), pick("log", "docs/handoff.md"), pick("logArchive"), pick("recordsDir"))
+    def pick_list(key):
+        value = cfg.get(key)
+        ok = isinstance(value, list) and all(isinstance(v, str) and v for v in value)
+        return list(value) if ok else list(props[key]["default"])
+
+    return (config.whole_read_warn_bytes(cfg), pick("log", "docs/handoff.md"), pick("logArchive"), pick("recordsDir"),
+            tuple(e.lower() for e in pick_list("wholeReadSkipExtensions")), pick_list("wholeReadPaths"))
 
 
 def is_whole(tool_input):
     return not (tool_input.get("offset") or tool_input.get("limit") or tool_input.get("pages"))
 
 
-def kind_of(path, root, log, archive, records):
-    """'log' for the hand-off log or its archive, 'record' for a file under recordsDir, else None."""
+def kind_of(path, root, log, archive, records, extra=()):
+    """'log' for the hand-off log or its archive, 'record' for a file under recordsDir or one of `extra`
+    (wholeReadPaths: a file, or a folder ending in /), else None."""
     real = os.path.realpath(path)
     for rel in (log, archive):
         if real == os.path.realpath(os.path.join(root, rel)):
@@ -81,6 +88,10 @@ def kind_of(path, root, log, archive, records):
     folder = os.path.realpath(os.path.join(root, records))
     if real.startswith(folder + os.sep):
         return "record"
+    for rel in extra:
+        target = os.path.realpath(os.path.join(root, rel))
+        if real == target or (rel.endswith("/") and real.startswith(target + os.sep)):
+            return "record"
     return None
 
 
@@ -105,8 +116,6 @@ def main():
         return 0
     cwd = event.get("cwd") if isinstance(event.get("cwd"), str) and event.get("cwd") else os.getcwd()
     path = target if os.path.isabs(target) else os.path.join(cwd, target)
-    if path.lower().endswith(NOT_TEXT):
-        return 0
     try:
         info = os.stat(path)
         root = config.find_root()
@@ -115,10 +124,10 @@ def main():
     if not stat.S_ISREG(info.st_mode):
         return 0
     size = info.st_size
-    limit, log, archive, records = settings(root)
-    if limit <= 0 or size <= limit:
+    limit, log, archive, records, skip, extra = settings(root)
+    if limit <= 0 or size <= limit or path.lower().endswith(skip):
         return 0
-    kind = kind_of(path, str(root), log, archive, records)
+    kind = kind_of(path, str(root), log, archive, records, extra)
     if kind is None:
         return 0
     if kind == "log":  # logSize counts characters: a log of accents that passes logSize must not warn here

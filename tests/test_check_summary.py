@@ -29,11 +29,13 @@ class CheckSummary(unittest.TestCase):
     def git(self, *args):
         return subprocess.run(["git", "-C", str(self.repo), *args], capture_output=True, text=True, check=True)
 
-    def configure(self, check, wrapper="", lock_wait=None):
+    def configure(self, check, wrapper="", lock_wait=None, tail=None):
         cfg = {"version": "0.4.3", "schemaVersion": 1, "language": "en", "protectedBranch": "main",
                "pushToProtected": "direct", "content": ["^docs/"], "check": check, "checkWrapper": wrapper}
         if lock_wait is not None:
             cfg["checkLockWait"] = lock_wait
+        if tail is not None:
+            cfg["checkTailLines"] = tail
         (self.repo / ".claude").mkdir(exist_ok=True)
         (self.repo / ".claude" / "gw.json").write_text(json.dumps(cfg))
         self.git("add", "-A")
@@ -216,6 +218,29 @@ class CheckSummary(unittest.TestCase):
         self.assertIn("line-1\n", self.log())  # the log is complete
         self.assertIn("passing-42", self.log())
         self.assertIn("failed: ", err)
+
+    def test_check_tail_lines_default_is_forty(self):
+        self.configure(["for i in $(seq 1 100); do echo line-$i; done; exit 2"])
+        code, out, err = self.run_check("--quiet")
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("last 40 lines of the failed command", out)
+        self.assertIn("line-61\n", out)
+        self.assertNotIn("line-60\n", out)
+
+    def test_check_tail_lines_key_sets_the_tail_and_the_env_var_wins(self):
+        self.configure(["for i in $(seq 1 100); do echo line-$i; done; exit 2"], tail=3)
+        code, out, err = self.run_check("--quiet")
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("last 3 lines of the failed command", out)
+        self.assertNotIn("line-97\n", out)
+        code, out, err = self.run_check("--quiet", env={"GW_CHECK_TAIL": "5"})
+        self.assertIn("last 5 lines of the failed command", out)
+
+    def test_check_tail_lines_bad_value_is_refused_with_the_key_named(self):
+        self.configure(["echo hi; exit 2"], tail=0)
+        code, out, err = self.run_check("--quiet")
+        self.assertNotEqual(code, 0)
+        self.assertIn("checkTailLines", out + err)
 
     def test_quiet_failure_shows_the_tail_of_that_command_and_the_log_path(self):
         self.configure(["echo earlier-output", "echo only-here; exit 4"])

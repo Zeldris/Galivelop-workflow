@@ -134,6 +134,21 @@ class Emails(Repo):
         self.assertEqual(out.count(": e-mail "), 10)
         self.assertIn("… and 5 more", out)
 
+    def test_max_hits_key_changes_how_many_are_printed(self):
+        self.write("docs/many.md", "".join(f"u{i}" + AT + "corp.io\n" for i in range(15)))
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"maxHits": 3})))
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 1, out)
+        self.assertEqual(out.count(": e-mail "), 3)
+        self.assertIn("… and 12 more", out)
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck=True)))  # true: the defaults
+        self.assertEqual(self.check("--all", "--no-names")[1].count(": e-mail "), 10)
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"maxHits": 0})))
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 2, out)
+        self.assertIn("$.privateCheck: matches none of the allowed forms", out)
+        self.assertIn("maxHits: must be at least 1, got 0", out)
+
 
 class Names(Repo):
     def test_names_match_case_and_separators_in_content_paths_and_messages(self):

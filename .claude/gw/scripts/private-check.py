@@ -51,7 +51,6 @@ else:
 PROG = "private-check"
 ALLOW_MARK = "gw-allow-private"
 SECRET_MARK = "gw-allow-secret"
-MAX_HITS = 10
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 EMAIL = re.compile(r"(?<![A-Za-z0-9._%+-])[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?![A-Za-z0-9-])")
 PUBLIC_DOMAINS = ("example.com", "example.org", "example.net")
@@ -110,7 +109,8 @@ def name_regex(names):
 
 
 class Scanner:
-    def __init__(self, keys, emails, allowed, names):
+    def __init__(self, keys, emails, allowed, names, max_hits):
+        self.max_hits = max_hits  # privateCheck.maxHits: findings printed before "... and N more"
         self.keys, self.emails, self.allowed, self.names = keys, emails, {a.lower() for a in allowed}, names
         self.hits = []
         self.total = 0
@@ -133,7 +133,7 @@ class Scanner:
             self.bad.append(self.current)
         for kind, value in found:
             self.total += 1
-            if len(self.hits) < MAX_HITS:
+            if len(self.hits) < self.max_hits:
                 self.hits.append(f"{where}: {kind} {value}")
 
 
@@ -301,7 +301,8 @@ def main(argv=None):
                 names = name_regex(local["privateNames"])
         local_allow = (config.load_local(root) or {}).get("allowEmails", [])
         shas = []
-        scanner = Scanner(key_formats(root), settings["emails"], settings["allowEmails"] + local_allow, names)
+        scanner = Scanner(key_formats(root), settings["emails"], settings["allowEmails"] + local_allow, names,
+                          settings["maxHits"])
         if args.all:
             scan_tree(root, scanner)
         else:

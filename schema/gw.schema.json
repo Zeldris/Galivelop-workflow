@@ -257,7 +257,20 @@
         "changeSize",
         "models",
         "metrics",
-        "roadmapFiles"
+        "roadmapFiles",
+        "commandTimeout",
+        "commandKillGrace",
+        "installLockfiles",
+        "installLocal",
+        "prepushClashBranches",
+        "reviewBeforeMainListFiles",
+        "checkTailLines",
+        "retro",
+        "redWithoutFix",
+        "branchPrefixes",
+        "mergeCleanup",
+        "wholeReadSkipExtensions",
+        "wholeReadPaths"
       ],
       "description": "Top-level keys of .claude/gw.json whose change does not make a branch push run the full check (E47): when the push's new commits change only these keys of the config, its related tests run. Any other key, an added, removed or broken config, and fullCheckSkipKeys itself still count as an environment change. The list replaces the default one."
     },
@@ -998,6 +1011,96 @@
       "default": {"ledger": "docs/metrics/ledger.jsonl", "record": true, "reports": "docs/metrics", "alert": {"factor": 1.5, "days": 28, "minDays": 7}, "quality": {"findingsTrailer": "Findings", "retriesTrailer": "Retries", "reworkTypes": ["fix", "revert"]}},
       "description": "Token ledger (B1-B6): the Stop hook metrics.py record appends, per session, agent, model and UTC date, the tokens the Claude Code transcripts show to the repo-relative ledger path (JSON lines, tokens only, never money); record false turns the recording off. reports: repo-relative folder where metrics.py report --write saves the period reports (daily/, weekly/, monthly/, quarterly/). alert (B6): the SessionStart hook (metrics.py alert) warns when a model's spend on today or yesterday (UTC) passes factor x its mean daily spend over the days before, counting only days with data and only with at least minDays of them; USD when all its rows are priced, else tokens; factor 0 turns it off. prices: dated tables of USD per million tokens per model (input, cacheWrite, cacheRead, output); a ledger row takes the newest table whose since is on or before its date, and the model key equal to its model or, failing that, the longest key that its model starts with followed by '-' (date suffixes); no table or no key = no price. A given prices replaces the whole default list. quality (B8): metrics.py quality reads the commit messages; findingsTrailer and retriesTrailer name the trailers whose integer values are summed per task id (Findings: accepted code-review findings; Retries: attempts that had to climb a rung); reworkTypes: the Conventional Commits types (after an optional WIP: prefix) that count as rework when they are not the first commit of the id, git reverts included."
     },
+    "commandTimeout": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 900,
+      "description": "Seconds each install/setup command may run in session-start.sh (cloud sessions) before it is stopped and reported; the environment variable GW_COMMAND_TIMEOUT, when set, wins."
+    },
+    "commandKillGrace": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 5,
+      "description": "Seconds session-start.sh waits, after sending TERM to an install/setup command that ran past commandTimeout, before it sends KILL."
+    },
+    "installLockfiles": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "default": ["package-lock.json", "*/package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "*/yarn.lock", "pnpm-lock.yaml", "*/pnpm-lock.yaml", "bun.lock", "bun.lockb", "*/bun.lock", "Cargo.lock", "*/Cargo.lock", "poetry.lock", "*/poetry.lock", "uv.lock", "*/uv.lock", "Pipfile.lock", "requirements*.txt", "*/requirements*.txt", "Gemfile.lock", "go.sum", "*/go.sum", "composer.lock", "pom.xml", "*/pom.xml"],
+      "description": "git pathspecs of the files whose content decides whether session-start.sh runs install/setup again (their hash goes into the stamp). The list replaces the default one; empty: only the commands themselves decide."
+    },
+    "installLocal": {
+      "type": "boolean",
+      "default": false,
+      "description": "false: install/setup run only in cloud sessions (CLAUDE_CODE_REMOTE=true); true: also in a local session."
+    },
+    "prepushClashBranches": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 10,
+      "description": "How many other remote branches (the most recently committed to) the pre-push compares with the pushed one for a task id taken twice (a warning only)."
+    },
+    "reviewBeforeMainListFiles": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 10,
+      "description": "How many unreviewed code files the review-before-main block message lists (the rest is counted: \"... and N more\")."
+    },
+    "checkTailLines": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 40,
+      "description": "Lines of the failing log check.sh shows when a check fails; the environment variable GW_CHECK_TAIL, when set, wins."
+    },
+    "retro": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "filePattern": {"type": "string", "minLength": 1, "default": "(^|/)retro-[^/]*\\.md$"},
+        "statusMarker": {"type": "string", "minLength": 1, "default": "(Estado|Status)"},
+        "decidedWords": {"type": "string", "minLength": 1, "default": "aplicad[ao]s?|rechazad[ao]s?|aplazad[ao]s?|decidid[ao]s?|aprobad[ao]s?|applied|rejected|deferred|decided|approved"},
+        "pendingWords": {"type": "string", "minLength": 1, "default": "pendientes?|pending|undecided|sin decidir|aún no|not yet"}
+      },
+      "default": {"filePattern": "(^|/)retro-[^/]*\\.md$", "statusMarker": "(Estado|Status)", "decidedWords": "aplicad[ao]s?|rechazad[ao]s?|aplazad[ao]s?|decidid[ao]s?|aprobad[ao]s?|applied|rejected|deferred|decided|approved", "pendingWords": "pendientes?|pending|undecided|sin decidir|aún no|not yet"},
+      "description": "How reviewed.sh (requireRetro) finds and reads a retro, as regexes in the common subset of grep -E and Python re: filePattern (matched in the path of each file the branch adds), statusMarker (the text after the opening ** of the line that starts the status paragraph), decidedWords (whole words that record the decision) and pendingWords (words that cancel it, in any position of that paragraph). Each key falls back to its default."
+    },
+    "redWithoutFix": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "compileRegex": {"type": "string", "minLength": 1, "default": "SyntaxError|IndentationError|ModuleNotFoundError|ImportError|ERROR collecting|error: could not compile|error\\[E[0-9]+\\]|error TS[0-9]+|Cannot find module|cannot find symbol|undefined reference|build failed|Failed to compile"},
+        "testRegex": {"type": "string", "minLength": 1, "default": "(def|fn|func|function)[[:space:]]+_?[Tt]est|(^|[^[:alnum:]_.])(it|test|describe)[[:space:]]*\\(|#\\[test\\]|@Test|unittest\\.TestCase|^[+@ -]*test_[A-Za-z0-9_]*[[:space:]]*\\(\\)"}
+      },
+      "default": {},
+      "description": "red-without-fix.sh, regexes for grep -E (POSIX classes allowed): compileRegex is what a load/compile red prints (--compile-re on the command line wins); testRegex finds test code in a fix file (a match refuses the file, exit 2). An invalid regex makes the script exit 2."
+    },
+    "branchPrefixes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "agent": {"type": "array", "items": {"type": "string", "minLength": 1}, "default": ["worktree-agent-*", "agent/*"]},
+        "keep": {"type": "array", "items": {"type": "string", "minLength": 1}, "default": ["claude/*"]}
+      },
+      "default": {"agent": ["worktree-agent-*", "agent/*"], "keep": ["claude/*"]},
+      "description": "merge-branch.sh branch cleanup, shell globs: agent = the branches it may delete after a merge (a branch whose worktree is under .claude/worktrees/ also counts); keep = branches it never deletes (the protected branch and the current one never are either). The ids of a task are still read from agent/<id>-<topic>."
+    },
+    "mergeCleanup": {
+      "type": "boolean",
+      "default": true,
+      "description": "true: after a green check, merge-branch.sh removes the merged subagent's worktree and branch; false: it leaves both."
+    },
+    "wholeReadSkipExtensions": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "pattern": "^\\.[A-Za-z0-9]+$"},
+      "default": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".pdf", ".ipynb"],
+      "description": "File extensions (with the dot, compared in lower case) the whole-read warning never looks at: files Read shows as images or pages. The list replaces the default one."
+    },
+    "wholeReadPaths": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "default": [],
+      "description": "Repo-relative files or folders (a folder ends with /) the whole-read warning watches besides the log, logArchive and recordsDir."
+    },
     "privateCheck": {
       "anyOf": [
         {"type": "boolean"},
@@ -1006,12 +1109,13 @@
           "additionalProperties": false,
           "properties": {
             "emails": {"type": "boolean", "default": true},
-            "allowEmails": {"type": "array", "items": {"type": "string", "minLength": 1, "pattern": "^[^@\\s]+@[^@\\s]+$"}, "default": []}
+            "allowEmails": {"type": "array", "items": {"type": "string", "minLength": 1, "pattern": "^[^@\\s]+@[^@\\s]+$"}, "default": []},
+            "maxHits": {"type": "integer", "minimum": 1, "default": 10}
           }
         }
       ],
-      "default": {"emails": true, "allowEmails": []},
-      "description": "private-check.py (pre-push, on what each push adds): key formats, e-mail addresses (emails, default true) other than the built-in example/noreply ones and allowEmails (public; private ones go in the local .claude/gw.local.json), and the privateNames of .claude/gw.local.json. false turns it all off; true is the defaults."
+      "default": {"emails": true, "allowEmails": [], "maxHits": 10},
+      "description": "private-check.py (pre-push, on what each push adds): key formats, e-mail addresses (emails, default true) other than the built-in example/noreply ones and allowEmails (public; private ones go in the local .claude/gw.local.json), maxHits (hits printed before \"... and N more\", default 10), and the privateNames of .claude/gw.local.json. false turns it all off; true is the defaults."
     }
   }
 }

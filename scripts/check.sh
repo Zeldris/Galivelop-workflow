@@ -6,7 +6,7 @@
 # The output of every command always goes to a log: <git common dir>/gw/check-<sha>.log (<sha> = HEAD, plus -dirty
 # when the work tree has changes; GW_CHECK_LOG overrides the path, a relative one is taken from the current
 # directory), also shown live (with a terminal, the command keeps it: it runs in a pty through script(1) when there is
-# one, E39) unless --quiet (-q, or GW_CHECK_QUIET=1/true/yes): then only the last GW_CHECK_TAIL
+# one, E39) unless --quiet (-q, or GW_CHECK_QUIET=1/true/yes): then only the last GW_CHECK_TAIL (else checkTailLines)
 # lines (default 40) of the command that fails are shown, with the log path. The log of a run is only deleted by the
 # pruning of the oldest ones (`checkLogKeep`, check-green.sh lock-acquire). A lock <git common dir>/gw/check.lock (the pid and sha of the run) keeps two checks from running at
 # once (check-green.sh lock-acquire; the pre-push takes the same one): a second one waits up to `checkLockWait`
@@ -25,8 +25,8 @@ case "${1:-}" in
   --quiet|-q) quiet=1; shift ;;
 esac
 [ "$#" -eq 0 ] || { echo "check: unexpected argument '$1'; usage: bash $0 [--quiet|-q]" >&2; exit 2; }
-tail_lines="${GW_CHECK_TAIL:-40}"
-case "$tail_lines" in ''|*[!0-9]*) tail_lines=40 ;; esac
+tail_lines="${GW_CHECK_TAIL:-}"  # else the checkTailLines key (read below, once the config is known to be usable)
+case "$tail_lines" in *[!0-9]*) tail_lines="" ;; esac
 here="$(cd "$(dirname "$0")" && pwd)"
 unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE  # git exports GIT_DIR to hooks, also in a linked worktree
 root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
@@ -42,6 +42,15 @@ fail() {  # fail <message>: the message ends with the command that fixes it
 [ -f "$config" ] || fail "the workflow scripts are missing ($config); reinstall them: /gw-update"
 checks="$(python3 "$config" --root "$root" get check)" || fail "cannot read 'check' from .claude/gw.json; fix the config: python3 $config --root $root validate"
 wrapper="$(python3 "$config" --root "$root" get checkWrapper)" || fail "cannot read 'checkWrapper' from .claude/gw.json; fix the config: python3 $config --root $root validate"
+# A number from the config, else the schema default (config.py is the only place a default lives).
+num() { # num <key>
+  local v
+  v="$(python3 "$config" --root "$root" get "$1" 2>/dev/null)" || v=""
+  case "$v" in ''|*[!0-9]*) v="$(python3 "$config" default "$1" 2>/dev/null)" ;; esac
+  case "$v" in ''|*[!0-9]*) fail "cannot read '$1' or its default; fix the config: python3 $config --root $root validate" ;; esac
+  printf '%s' "$v"
+}
+[ -n "$tail_lines" ] || tail_lines="$(num checkTailLines)" || exit 1
 
 key=""
 inputs=""
@@ -77,10 +86,8 @@ case "$log" in
       fail "the log $log is inside the work tree and would change it; set GW_CHECK_LOG to a path outside the work tree or git-ignored, e.g. GW_CHECK_LOG=$gwdir/check.log" ;;
 esac
 
-lock_wait="$(python3 "$config" --root "$root" get checkLockWait 2>/dev/null)" || lock_wait=0
-case "$lock_wait" in ''|*[!0-9]*) lock_wait=0 ;; esac
-grace="$(python3 "$config" --root "$root" get checkOutputGrace 2>/dev/null)" || grace=5
-case "$grace" in ''|*[!0-9]*) grace=5 ;; esac
+lock_wait="$(num checkLockWait)" || exit 1
+grace="$(num checkOutputGrace)" || exit 1
 [ -f "$helper" ] || fail "$helper is missing, so the check cannot take its lock; reinstall the workflow: /gw-update"
 script_flavor() {  # prints linux (util-linux script -qefc) or bsd (Darwin/*BSD script -q file cmd); nothing otherwise (busybox...)
   command -v script > /dev/null 2>&1 || return 0

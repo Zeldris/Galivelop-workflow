@@ -198,7 +198,7 @@ class TextFiles(Base):
         self.fix_prose("notes.md")
         code, out = self.run_script("true", "notes.md")
         self.assertEqual(code, 2, out)
-        self.assertIn("cannot read nonTestExtensions", out)
+        self.assertIn("cannot read redWithoutFix.compileRegex", out)  # the first key the script reads: the config is invalid
         self.assertIn("nonTestExtensions", out.split("cannot read")[0])  # config.py names the key and the problem
 
     def test_extension_with_a_newline_is_never_skipped(self):
@@ -274,6 +274,47 @@ class RedKind(Base):
                                     self.cmd("boom: cannot parse"), "fix.txt")
         self.assertEqual(code, 1, out)
         self.assertIn("cannot load", out)
+
+    def set_keys(self, **keys):
+        path = self.p.work / ".claude" / "gw.json"
+        cfg = json.loads(path.read_text())
+        cfg["redWithoutFix"] = keys
+        path.write_text(json.dumps(cfg))
+
+    def test_compile_regex_key_replaces_the_built_in_list_and_the_flag_wins(self):
+        self.set_keys(compileRegex="cannot parse")
+        code, out = self.run_script("--fix-at", self.fix, self.cmd("boom: cannot parse"), "fix.txt")
+        self.assertEqual(code, 0, out)
+        self.assertIn("compile/load red", out)
+        code, out = self.run_script("--fix-at", self.fix, self.cmd("ImportError: x"), "fix.txt")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("compile/load red", out)        # a built-in message is no longer one
+        code, out = self.run_script("--compile-re", "ImportError", "--fix-at", self.fix, self.cmd("ImportError: x"),
+                                    "fix.txt")
+        self.assertIn("compile/load red", out)
+
+    def test_invalid_compile_regex_key_exits_2_naming_it(self):
+        self.set_keys(compileRegex="ok[")
+        code, out = self.run_script("--fix-at", self.fix, "true", "fix.txt")
+        self.assertEqual(code, 2, out)
+        self.assertIn("/ok[/ is not a valid extended regex", out)
+        self.assertIn("redWithoutFix", out)
+
+    def test_test_regex_key_decides_what_is_test_code_in_a_fix_file(self):
+        self.p.write("m.py", "old\n")
+        self.p.commit("base m.py", env=DAY)
+        self.p.write("m.py", "def check_it():\n    pass\n")
+        code, out = self.run_script("true", "m.py")
+        self.assertEqual(code, 1, out)                   # not test code by default: it got as far as the run
+        self.assertNotIn("touch test code", out)
+        self.set_keys(testRegex="def check_")
+        code, out = self.run_script("true", "m.py")
+        self.assertEqual(code, 2, out)
+        self.assertIn("touch test code", out)
+        self.p.write("m.py", "def test_it():\n    pass\n")
+        code, out = self.run_script("true", "m.py")
+        self.assertEqual(code, 1, out)                   # the default no longer applies
+        self.assertNotIn("touch test code", out)
 
     def test_invalid_compile_re(self):
         code, out = self.run_script("--compile-re", "ok[", "--fix-at", self.fix, "true", "fix.txt")

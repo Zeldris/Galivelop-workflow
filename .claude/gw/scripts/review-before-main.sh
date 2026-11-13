@@ -570,7 +570,8 @@ def check_mark(cfg, root, scripts, head, refs, what, protected, tip):
         if not after:
             return
         reason, code = f"code changed after the review mark ({mark[:12]}) on the PR head {head[:12]} ({what})", after
-    listed = [f"  {path}" for path in code[:10]] + ([f"  … and {len(code) - 10} more"] if len(code) > 10 else [])
+    cap = config_at(root, policy, paths_at=head)["reviewBeforeMainListFiles"]
+    listed = [f"  {path}" for path in code[:cap]] + ([f"  … and {len(code) - cap} more"] if len(code) > cap else [])
     block(f"Blocked: {reason}; this PR brings unreviewed code to {protected}:", *listed, fix)
 
 

@@ -1202,6 +1202,38 @@ class PrepushBranches(Base):
         self.assertIn('INS-2 is a new task on this branch ("the form") and on refs/remotes/origin/main ("the export")', out)
         self.assertIn("give yours a free id (INS-3)", out)
 
+    def test_prepush_clash_branches_limits_how_many_other_branches_are_compared(self):
+        plan, env = "docs/plan.md", {"GW_PLAN": "docs/plan.md"}
+        start = "- [ ] **INS-1** first\n"
+        self.p.write(plan, start); self.p.commit("plan", env=DAY)
+        self.p.git("push", "-q", "--no-verify", "origin", "main")
+        base = self.p.sha()
+        self.p.branch("feat-b", base)
+        self.p.write(plan, start + "- [ ] **INS-3** the import\n"); self.p.commit("B opens INS-3", env=DAY)
+        self.p.git("push", "-q", "--no-verify", "origin", "feat-b")
+        self.p.branch("feat-c", base)  # newer than feat-b, and with no clash
+        self.p.write(plan, start + "- [ ] **INS-4** other\n")
+        self.p.commit("C opens INS-4", env=dict(DAY, GIT_COMMITTER_DATE="2026-10-22T12:00:00+0000"))
+        self.p.git("push", "-q", "--no-verify", "origin", "feat-c")
+        self.p.branch("feat-a", base)
+        self.p.write(plan, start + "- [ ] **INS-3** the form\n"); self.p.commit("A opens INS-3", env=DAY)
+        sha = self.p.sha()
+        warning = 'WARNING: handoff: INS-3 is a new task on this branch ("the form") and on refs/remotes/origin/feat-b'
+        code, out, _, _ = self.run_hook(sha, env=env)  # default 10: both other branches are compared
+        self.assertEqual(code, 0, out)
+        self.assertIn(warning, out)
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["prepushClashBranches"] = 1
+        self.p.write(".claude/gw.json", json.dumps(cfg)); self.p.commit("one branch", env=DAY)
+        code, out, _, _ = self.run_hook(sha, env=env)  # only the most recent one (feat-c) is compared
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("WARNING: handoff: INS-3", out)
+        cfg["prepushClashBranches"] = 0
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out, _, _ = self.run_hook(sha, env=env)
+        self.assertEqual(code, 1, out)
+        self.assertIn("$.prepushClashBranches: must be at least 1, got 0", out)
+
     def test_new_merge_that_kept_two_tasks_under_one_id_refused(self):
         plan, env = "docs/plan.md", {"GW_PLAN": "docs/plan.md"}
         start = "- [ ] **INS-1** first\n"
@@ -1429,6 +1461,41 @@ class MergeBranch(Base):
         self.assertEqual(code, 0, out)
         self.assertFalse(wt.exists(), out)
         self.assertNotIn("agent/D16-x", self.branches())
+
+    def set_cfg(self, **changes):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.update(changes)
+        self.p.write(".claude/gw.json", json.dumps(cfg)); self.p.commit("merge keys", env=DAY)
+
+    def test_merge_cleanup_false_leaves_the_worktree_and_the_branch(self):
+        self.set_cfg(mergeCleanup=False)
+        wt = self.agent(name="agent/D16-x")
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertTrue(wt.exists(), out)
+        self.assertIn("agent/D16-x", self.branches())
+        self.assertIn("mergeCleanup", out)
+
+    def test_branch_prefixes_agent_adds_a_pattern_that_is_cleaned(self):
+        self.set_cfg(branchPrefixes={"agent": ["bot/*"]})
+        wt = self.agent(name="bot/one")
+        other = self.agent(name="agent/D1-y")
+        code, out = self.p.script("merge-branch.sh", "bot/one", "Merge bot", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertFalse(wt.exists(), out)
+        self.assertNotIn("bot/one", self.branches())
+        code, out = self.p.script("merge-branch.sh", "agent/D1-y", "Merge agent", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertTrue(other.exists(), "agent/* is no longer in the list, so it is kept")
+        self.assertIn("agent/D1-y", self.branches())
+
+    def test_branch_prefixes_keep_protects_a_branch_from_cleanup(self):
+        self.set_cfg(branchPrefixes={"keep": ["agent/D16-*"]})
+        wt = self.agent(name="agent/D16-x")
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertTrue(wt.exists(), out)
+        self.assertIn("agent/D16-x", self.branches())
 
     def test_an_agent_branch_without_a_worktree_is_deleted_once_merged(self):
         self.p.git("branch", "agent/D1-x")

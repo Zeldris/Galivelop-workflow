@@ -268,6 +268,67 @@ class SessionStart(Base):
         self.assertLess(time.time() - started, 20, out)
         self.assertIn("setup command timed out after 1s", out)
 
+    def test_command_timeout_key_sets_the_limit_and_the_environment_wins(self):
+        cloud = self.cloud_config(setup=["sleep 30"], commandTimeout=1)
+        started = time.time()
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertLess(time.time() - started, 20, out)
+        self.assertIn("setup command timed out after 1s: 'sleep 30'", out)
+        cloud["GW_COMMAND_TIMEOUT"] = "33"                    # the variable beats the key
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("timed out after 1s", out)
+        left = subprocess.run(["pgrep", "-f", "sleep 30"], capture_output=True, text=True).stdout
+        self.assertEqual(left.strip(), "", "the command of the first run survived")
+
+    def test_command_kill_grace_key_shortens_the_wait_before_kill(self):
+        cloud = self.cloud_config(setup=["trap '' TERM; sleep 31"], commandTimeout=1, commandKillGrace=1)
+        started = time.time()
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertIn("setup command timed out after 1s", out)
+        self.assertLess(time.time() - started, 5, "with the default grace (5 s) this takes 6 s or more")
+
+    def test_invalid_command_timeout_stops_the_commands_and_says_which_key(self):
+        for key, value in (("commandTimeout", 0), ("commandKillGrace", "x")):
+            with self.subTest(key=key):
+                cloud = self.cloud_config(setup=["echo ran >> ran.log"], **{key: value})
+                code, out = self.p.session_start(env=cloud)
+                self.assertEqual(code, 0, out)
+                self.assertIn(key, out)
+                self.assertFalse((self.p.work / "ran.log").exists(), "a bad config must not run the commands")
+
+    def test_install_lockfiles_key_decides_which_files_rerun_the_install(self):
+        self.p.write("deps.lock", "1\n")
+        self.p.write("package-lock.json", "1\n")
+        cloud = self.cloud_config(install=["echo ran >> ran.log"], installLockfiles=["deps.lock"])
+        self.p.session_start(env=cloud)
+        self.p.write("package-lock.json", "2\n")             # not in the list now: no rerun
+        self.p.session_start(env=cloud)
+        self.assertEqual((self.p.work / "ran.log").read_text().count("ran"), 1)
+        self.p.write("deps.lock", "2\n")                     # in the list: reruns
+        self.p.session_start(env=cloud)
+        self.assertEqual((self.p.work / "ran.log").read_text().count("ran"), 2)
+
+    def test_install_lockfiles_empty_list_means_only_the_commands_decide(self):
+        self.p.write("package-lock.json", "1\n")
+        cloud = self.cloud_config(install=["echo ran >> ran.log"], installLockfiles=[])
+        self.p.session_start(env=cloud)
+        self.p.write("package-lock.json", "2\n")
+        self.p.session_start(env=cloud)
+        self.assertEqual((self.p.work / "ran.log").read_text().count("ran"), 1)
+
+    def test_install_local_runs_the_commands_in_a_local_session(self):
+        self.cloud_config(install=["echo ran >> ran.log"])
+        self.assertEqual(self.p.session_start()[0], 0)        # default false: a local session does not install
+        self.assertFalse((self.p.work / "ran.log").exists())
+        self.cloud_config(install=["echo ran >> ran.log"], installLocal=True)
+        code, out = self.p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertIn("running install command: echo ran >> ran.log", out)
+        self.assertEqual((self.p.work / "ran.log").read_text().count("ran"), 1)
+
     def test_never_exits_non_zero(self):
         p = self.p
         (p.work / ".claude" / "gw.json").write_text("{not json")

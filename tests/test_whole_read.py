@@ -74,6 +74,26 @@ class Warns(Base):
         self.assertIn("reports/a.md", self.warning(self.read(self.put("reports/a.md", LIMIT + 1))))
         self.assertEqual(self.read(self.put("docs/log.md", LIMIT + 1)), "")  # no longer the log
 
+    def test_whole_read_paths_add_files_and_folders_to_the_watched_ones(self):
+        self.write_config(dict(self.cfg, wholeReadPaths=["docs/notes/", "docs/one.md"]))
+        self.assertIn("docs/notes/a.md is 1001 bytes", self.warning(self.read(self.put("docs/notes/a.md", LIMIT + 1))))
+        self.assertIn("docs/one.md is 1001 bytes", self.warning(self.read(self.put("docs/one.md", LIMIT + 1))))
+        self.assertEqual(self.read(self.put("docs/notes-old/a.md", LIMIT + 1)), "")  # a folder only with its /
+        self.assertEqual(self.read(self.put("docs/one.md.bak", LIMIT + 1)), "")
+        self.assertIn("docs/log.md", self.warning(self.read(self.put("docs/log.md", LIMIT + 1))))  # still watched
+
+    def test_whole_read_skip_extensions_replace_the_default_list(self):
+        self.write_config(dict(self.cfg, wholeReadSkipExtensions=[".SVG", ".md"]))
+        self.assertEqual(self.read(self.put("docs/records/a.svg", LIMIT * 5)), "")
+        self.assertEqual(self.read(self.put("docs/records/a.MD", LIMIT * 5)), "")
+        self.assertIn("a.png is 5000 bytes", self.warning(self.read(self.put("docs/records/a.png", LIMIT * 5))))
+
+    def test_bad_new_keys_fall_back_to_the_defaults(self):
+        self.write_config(dict(self.cfg, wholeReadSkipExtensions="png", wholeReadPaths=[3]))
+        self.assertEqual(self.read(self.put("docs/records/a.png", 30000)), "")  # an invalid config gives every default, the list included
+        self.assertEqual(self.read(self.put("docs/notes/a.md", 30000)), "")  # nothing extra is watched
+        self.assertIn("30000 bytes", self.warning(self.read(self.put("docs/records/b.md", 30000))))
+
     def test_missing_key_uses_the_default_20000(self):
         self.write_config({})
         self.assertEqual(self.read(self.put("docs/log.md", 19999)), "")

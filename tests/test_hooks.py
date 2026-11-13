@@ -2595,6 +2595,48 @@ class ReviewedSpanishWithRetro(Base):
         self.assertNotEqual(code, 0, out)
         self.assertIn("**Estado:**/**Status:** paragraph", out)
 
+    def set_retro(self, **keys):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["retro"] = keys
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.commit("retro keys")
+
+    def retro_file(self, name, text):
+        self.p.write(f"docs/registros/{name}", text)
+        self.p.commit(name)
+        self.assertEqual(self.p.push("-u", "origin", "feature")[0], 0)
+        return self.p.run("bash", self.script)
+
+    def test_retro_decided_and_pending_words_come_from_the_config(self):
+        self.set_retro(decidedWords="listo|hecho", pendingWords="falta")
+        code, out = self.retro("listo, sin más")
+        self.assertEqual(code, 0, out)                  # not a default word, but the configured one
+        self.p.git("reset", "-q", "--hard", "HEAD~1")
+        code, out = self.retro("aprobada")               # a default word that is no longer one
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("paragraph records", out)
+        self.assertIn("retro.decidedWords", out)
+        code, out = self.retro("listo; falta la P2")
+        self.assertNotEqual(code, 0, out)
+        code, out = self.retro("listo; pendiente la P2")  # `pendiente` no longer cancels it
+        self.assertEqual(code, 0, out)
+
+    def test_retro_status_marker_and_file_pattern_come_from_the_config(self):
+        self.set_retro(statusMarker="Decision", filePattern="(^|/)notes-[^/]*\\.md$")
+        code, out = self.retro_file("retro-2026-10-23.md", "# R\n\n**Decision:** aprobada\n")
+        self.assertNotEqual(code, 0, out)                # the file name is not the configured one
+        code, out = self.retro_file("notes-2026-10-23.md", "# R\n\n**Estado:** aprobada\n")
+        self.assertNotEqual(code, 0, out)                # the marker is not the configured one
+        code, out = self.retro_file("notes-2026-10-24.md", "# R\n\n**Decision:** aprobada\n")
+        self.assertEqual(code, 0, out)
+
+    def test_an_unusable_retro_regex_is_refused_with_its_reason(self):
+        self.set_retro(decidedWords="\\bdone\\b")
+        code, out = self.p.run("bash", self.script)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("$.retro.decidedWords", out)
+        self.assertIn("common subset", out)
+
     def test_applied_retro_accepted_and_spanish_subject(self):
         code, out = self.retro("aplicada (propuestas 1 y 2), la 3 rechazada")
         self.assertEqual(code, 0, out)

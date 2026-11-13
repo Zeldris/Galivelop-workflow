@@ -8,6 +8,8 @@ defaults the schema declares. Shell scripts call the CLI; Python scripts import 
   python3 config.py validate            # exit 0 if valid; errors on stderr, exit 2
   python3 config.py get KEY             # scalar: one line; list: one item per line; object: JSON
   python3 config.py get KEY --json      # always JSON
+  python3 config.py default KEY         # the schema default of a top-level key, with no config read (a script's
+                                        # fallback when the config cannot be read); a list: one item per line
   python3 config.py root                # the project root it resolved
   python3 config.py related --kind fast|slow [--deleted-file F]   # relatedTests commands to run, NUL-terminated, ready for `bash -c`
                                         # (reads the changed files that exist, one per line, on stdin)
@@ -336,6 +338,21 @@ def change_size(config):
     return _section(config, "changeSize")
 
 
+def retro(config):
+    """The `retro` key as a dict (filePattern, statusMarker, decidedWords, pendingWords) (A13)."""
+    return _section(config, "retro")
+
+
+def red_without_fix(config):
+    """The `redWithoutFix` key as a dict (compileRegex, testRegex) (A13)."""
+    return _section(config, "redWithoutFix")
+
+
+def branch_prefixes(config):
+    """The `branchPrefixes` key as a dict (agent, keep) (A13)."""
+    return _section(config, "branchPrefixes")
+
+
 def marketing_sheets(config):
     """The `marketingSheets` settings (`{"sources": [...]}` alone is a valid way to turn the feature on)."""
     return _section(config, "marketingSheets")
@@ -502,6 +519,17 @@ def semantic_errors(config):
                     errors.append(f"$.{key}[{i}]: {rx!r} uses {m.group(0)!r}, which Python re and grep -E read differently; "
                                   "write it with the common subset only (literals, . [abc] [^abc] * + ? {n,m} | ( ) ^ $), "
                                   "e.g. [0-9] instead of \\d, [ \\t] instead of \\s")
+    retro_keys = config.get("retro") if isinstance(config.get("retro"), dict) else {}
+    for key, rx in retro_keys.items():  # reviewed.sh reads them with grep -E and awk: the common subset only
+        if isinstance(rx, str):
+            try:
+                re.compile(rx)
+            except re.error as exc:
+                errors.append(f"$.retro.{key}: {rx!r} is not a valid regex ({exc})")
+                continue
+            if m := SHARED_REGEX_UNSAFE.search(rx):
+                errors.append(f"$.retro.{key}: {rx!r} uses {m.group(0)!r}, which Python re and grep -E read differently; "
+                              "write it with the common subset only (literals, . [abc] [^abc] * + ? {n,m} | ( ) ^ $)")
     for i, pat in enumerate(config.get("ownedFiles") or []):
         if isinstance(pat, str) and pat:
             parts = pat.replace("\\", "/").split("/")
@@ -763,13 +791,15 @@ def load_local(root):
 
 
 def private_check(config):
-    """The `privateCheck` key as {"emails": bool, "allowEmails": [...]} with its defaults, or None when it is false
-    (private-check.py off)."""
+    """The `privateCheck` key as {"emails": bool, "allowEmails": [...], "maxHits": int} with its defaults, or None when
+    it is false (private-check.py off)."""
     value = config.get("privateCheck", True)
     if value is False:
         return None
     value = value if isinstance(value, dict) else {}
-    return {"emails": value.get("emails", True), "allowEmails": list(value.get("allowEmails") or [])}
+    max_hits = _schema()["properties"]["privateCheck"]["default"]["maxHits"]
+    return {"emails": value.get("emails", True), "allowEmails": list(value.get("allowEmails") or []),
+            "maxHits": value.get("maxHits", max_hits)}
 
 
 def related_commands(config, kind, files, deleted=(), skipped=None):
@@ -879,6 +909,19 @@ def push_scope(config, files, commits=None):
     return "related", None
 
 
+def _print_value(value, as_json):
+    """A scalar on one line, a list one item per line, an object as JSON (`get` and `default`)."""
+    if as_json or isinstance(value, dict):
+        print(json.dumps(value, ensure_ascii=False))
+    elif isinstance(value, list):
+        for item in value:
+            print(item if not isinstance(item, (dict, list)) else json.dumps(item, ensure_ascii=False))
+    elif isinstance(value, bool):
+        print("true" if value else "false")
+    else:
+        print(value)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--root", help="project path (default: see above)")
@@ -886,6 +929,9 @@ def main(argv=None):
     parser.add_argument("--paths-at", help="look for the old-name path fallback in this commit (default: --rev)")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("validate")
+    default_p = sub.add_parser("default", help="the schema default of a top-level key (no config needed): a script's "
+                                               "fallback when the config cannot be read")
+    default_p.add_argument("key")
     sub.add_parser("root")
     sub.add_parser("local", help="the validated local file .claude/gw.local.json as JSON (null when absent)")
     related = sub.add_parser("related", help="relatedTests commands that apply to the files on stdin")
@@ -898,6 +944,14 @@ def main(argv=None):
     get.add_argument("key", help="top-level key, or dotted (relatedTests.fast)")
     get.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
+    if args.command == "default":
+        try:
+            value = schema_default(args.key)
+        except (ConfigError, KeyError, OSError):
+            print(f"gw config: key '{args.key}' has no default in the schema", file=sys.stderr)
+            return 2
+        _print_value(value, False)
+        return 0
     try:
         config = load(args.root, args.rev, args.paths_at)
     except ConfigError as exc:
@@ -937,21 +991,14 @@ def main(argv=None):
         print(f"{scope} {reason}" if reason else scope)
         return 0
     value = dict(config, metrics=metrics(config), models=models(config), measure=measure(config),
-                 stopSeverity=stop_severity(config), changeSize=change_size(config))  # inner keys fill from the schema too
+                 stopSeverity=stop_severity(config), changeSize=change_size(config),
+                 retro=retro(config), redWithoutFix=red_without_fix(config), branchPrefixes=branch_prefixes(config))  # inner keys fill from the schema too
     for part in args.key.split("."):
         if not isinstance(value, dict) or part not in value or part.startswith("_"):
             print(f"gw config: key '{args.key}' is not set and has no default", file=sys.stderr)
             return 2
         value = value[part]
-    if args.json or isinstance(value, dict):
-        print(json.dumps(value, ensure_ascii=False))
-    elif isinstance(value, list):
-        for item in value:
-            print(item if not isinstance(item, (dict, list)) else json.dumps(item, ensure_ascii=False))
-    elif isinstance(value, bool):
-        print("true" if value else "false")
-    else:
-        print(value)
+    _print_value(value, args.json)
     return 0
 
 

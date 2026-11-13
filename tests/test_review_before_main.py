@@ -202,6 +202,32 @@ class Hook(Snapshot):
         cfg.update(changes)
         p.write(".claude/gw.json", json.dumps(cfg)); p.commit("relax the rule"); self.push()
 
+    def many_code_files(self, n):
+        for i in range(n):
+            self.p.write(f"src/m{i:02d}.py", f"x = {i}\n")
+        self.p.commit("many code files"); self.push()
+
+    def listed_files(self, result):
+        text = json.dumps(result)
+        return sum(1 for i in range(30) if f"src/m{i:02d}.py" in text), text
+
+    def test_list_files_default_lists_ten_and_counts_the_rest(self):
+        self.many_code_files(13)
+        result = self.create()
+        self.assertBlocked(result, "no review mark")
+        shown, text = self.listed_files(result)
+        self.assertGreaterEqual(shown, 8)
+        self.assertLessEqual(shown, 10)
+        self.assertRegex(text, r"and \d+ more")
+
+    def test_list_files_key_changes_how_many_are_listed(self):
+        self.many_code_files(13)
+        default_shown, _ = self.listed_files(self.create())
+        self.relax(reviewBeforeMainListFiles=2)
+        shown, text = self.listed_files(self.create())
+        self.assertLess(shown, default_shown)
+        self.assertIn("more", text)
+
     def test_pr_cannot_widen_content_to_pass_its_own_code(self):
         self.relax(content=[".*"])
         self.assertBlocked(self.create(), "no review mark", ".claude/gw.json", "src/code.py")

@@ -39,6 +39,9 @@ log="$(python3 "$config" --root "$root" get log)" || {
   echo "prepush-branches: cannot read log; fix the config: python3 $config --root $root validate" >&2; exit 1; }
 protected="$(python3 "$config" --root "$root" get protectedBranch)" || {
   echo "prepush-branches: cannot read protectedBranch; fix the config: python3 $config --root $root validate" >&2; exit 1; }
+clash_branches="$(python3 "$config" --root "$root" get prepushClashBranches)" || {
+  echo "prepush-branches: cannot read prepushClashBranches; fix the config: python3 $config --root $root validate" >&2; exit 1; }
+case "$clash_branches" in ''|*[!0-9]*|0) echo "prepush-branches: prepushClashBranches must be a whole number of 1 or more, got '$clash_branches'; fix .claude/gw.json" >&2; exit 1 ;; esac
 zero=0000000000000000000000000000000000000000
 handoff() { python3 "$handoff" --root "$root" "$@"; }
 
@@ -85,7 +88,7 @@ while read -r local_ref sha_local remote_ref sha_remote; do
   { [ -n "$branch" ] && [ "$branch" != "$remote_ref" ]; } || branch="$(git branch --show-current 2>/dev/null)"
 
   # A task id this branch opens that the protected branch (or a merge of it) also took for another task; other
-  # remote branches, the 10 most recent, only warn (they may never be merged).
+  # remote branches, the prepushClashBranches (10) most recent, only warn (they may never be merged).
   if git rev-parse -q --verify "refs/remotes/origin/$protected^{commit}" >/dev/null 2>&1; then
     handoff clash "$sha_local" "refs/remotes/origin/$protected" || exit 1
   fi
@@ -97,7 +100,7 @@ while read -r local_ref sha_local remote_ref sha_remote; do
   while IFS= read -r ref; do
     case "$ref" in ""|refs/remotes/origin/HEAD|"refs/remotes/origin/$protected"|"refs/remotes/origin/$branch") continue ;; esac
     others+=("$ref")
-    [ "${#others[@]}" -ge 10 ] && break
+    [ "${#others[@]}" -ge "$clash_branches" ] && break
   done <<<"$(git for-each-ref --sort=-committerdate --format='%(refname)' refs/remotes/origin/ 2>/dev/null)"
   if [ "${#others[@]}" -gt 0 ]; then handoff clash --warn "$sha_local" "${others[@]}"; fi
 

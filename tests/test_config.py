@@ -270,6 +270,84 @@ class Config(unittest.TestCase):
             self.assertIn(message, r.stderr)
             self.assertEqual(config.subagent_settings(self.tmp), default, "an invalid config gives the defaults")
 
+    def test_script_keys_of_c4_defaults_set_values_and_bad_values(self):
+        defaults = {"commandTimeout": "900", "commandKillGrace": "5", "installLocal": "false",
+                    "prepushClashBranches": "10", "reviewBeforeMainListFiles": "10", "checkTailLines": "40",
+                    "mergeCleanup": "true", "privateCheck.maxHits": None}
+        self.write(VALID)
+        for key, value in defaults.items():
+            if value is not None:
+                self.assertEqual(cli(self.tmp, "get", key).stdout.strip(), value, key)
+        self.assertIn("package-lock.json", cli(self.tmp, "get", "installLockfiles").stdout.split("\n"))
+        self.assertEqual(len(cli(self.tmp, "get", "installLockfiles").stdout.split()), 25)
+        self.assertEqual(cli(self.tmp, "get", "wholeReadSkipExtensions").stdout.split(),
+                         [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".pdf", ".ipynb"])
+        self.assertEqual(cli(self.tmp, "get", "wholeReadPaths").stdout.strip(), "")
+        self.assertEqual(cli(self.tmp, "get", "retro.decidedWords").stdout.strip().split("|")[:2],
+                         ["aplicad[ao]s?", "rechazad[ao]s?"])
+        self.assertEqual(cli(self.tmp, "get", "retro.filePattern").stdout.strip(), "(^|/)retro-[^/]*\\.md$")
+        self.assertIn("SyntaxError", cli(self.tmp, "get", "redWithoutFix.compileRegex").stdout)
+        self.assertIn("[[:space:]]", cli(self.tmp, "get", "redWithoutFix.testRegex").stdout)
+        self.assertEqual(cli(self.tmp, "get", "branchPrefixes.agent").stdout.split(), ["worktree-agent-*", "agent/*"])
+        self.assertEqual(cli(self.tmp, "get", "branchPrefixes.keep").stdout.split(), ["claude/*"])
+        self.assertEqual(config.private_check({})["maxHits"], 10)
+        self.assertEqual(config.private_check({"privateCheck": {"emails": False}})["maxHits"], 10)
+        # `default KEY` needs no config at all (a script's fallback when the config cannot be read)
+        (self.tmp / ".claude" / "gw.json").write_text("{not json")
+        self.assertEqual(cli(self.tmp, "default", "checkLockWait").stdout.strip(), "0")
+        self.assertEqual(cli(self.tmp, "default", "installLocal").stdout.strip(), "false")
+        r = cli(self.tmp, "default", "noSuchKey")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("key 'noSuchKey' has no default in the schema", r.stderr)
+        own = {"commandTimeout": 60, "commandKillGrace": 2, "installLockfiles": ["a.lock"], "installLocal": True,
+               "prepushClashBranches": 3, "reviewBeforeMainListFiles": 4, "checkTailLines": 7,
+               "retro": {"statusMarker": "(Decision)"}, "redWithoutFix": {"compileRegex": "boom"},
+               "branchPrefixes": {"keep": ["wip/*"]}, "mergeCleanup": False, "wholeReadSkipExtensions": [".svg"],
+               "wholeReadPaths": ["docs/notes/"], "privateCheck": {"maxHits": 2}}
+        self.write(dict(VALID, **own))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        for key in ("commandTimeout", "commandKillGrace", "prepushClashBranches", "reviewBeforeMainListFiles",
+                    "checkTailLines"):
+            self.assertEqual(cli(self.tmp, "get", key).stdout.strip(), str(own[key]))
+        self.assertEqual(cli(self.tmp, "get", "installLocal").stdout.strip(), "true")
+        self.assertEqual(cli(self.tmp, "get", "mergeCleanup").stdout.strip(), "false")
+        self.assertEqual(cli(self.tmp, "get", "retro.statusMarker").stdout.strip(), "(Decision)")
+        self.assertEqual(cli(self.tmp, "get", "retro.filePattern").stdout.strip(), "(^|/)retro-[^/]*\\.md$",
+                         "an inner key not given keeps its default")
+        self.assertEqual(cli(self.tmp, "get", "redWithoutFix.compileRegex").stdout.strip(), "boom")
+        self.assertEqual(cli(self.tmp, "get", "branchPrefixes.keep").stdout.split(), ["wip/*"])
+        self.assertEqual(cli(self.tmp, "get", "branchPrefixes.agent").stdout.split(), ["worktree-agent-*", "agent/*"])
+        self.assertEqual(config.private_check(config.load(self.tmp))["maxHits"], 2)
+        cases = [({"commandTimeout": 0}, "$.commandTimeout: must be at least 1, got 0"),
+                 ({"commandKillGrace": 0}, "$.commandKillGrace: must be at least 1, got 0"),
+                 ({"prepushClashBranches": 0}, "$.prepushClashBranches: must be at least 1, got 0"),
+                 ({"reviewBeforeMainListFiles": -1}, "$.reviewBeforeMainListFiles: must be at least 1, got -1"),
+                 ({"checkTailLines": 0}, "$.checkTailLines: must be at least 1, got 0"),
+                 ({"installLocal": "yes"}, "$.installLocal: expected boolean, got str"),
+                 ({"mergeCleanup": 1}, "$.mergeCleanup: expected boolean, got int"),
+                 ({"installLockfiles": [""]}, "$.installLockfiles[0]: must not be empty"),
+                 ({"wholeReadSkipExtensions": ["png"]}, "$.wholeReadSkipExtensions[0]"),
+                 ({"branchPrefixes": {"other": []}}, "$.branchPrefixes: unknown key 'other'"),
+                 ({"redWithoutFix": {"testRegex": ""}}, "$.redWithoutFix.testRegex: must not be empty"),
+                 ({"retro": {"decidedWords": "\\bdone\\b"}}, "$.retro.decidedWords: '\\\\bdone\\\\b' uses '\\\\b'"),
+                 ({"retro": {"filePattern": "(unclosed"}}, "$.retro.filePattern: '(unclosed' is not a valid regex"),
+                 ({"privateCheck": {"maxHits": 0}}, "maxHits: must be at least 1, got 0")]
+        for bad, message in cases:
+            self.write(dict(VALID, **bad))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn(message, r.stderr)
+
+    def test_c4_keys_are_in_the_template_and_the_skip_list(self):
+        schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
+        template = json.loads((ROOT / "templates" / "gw.json").read_text())
+        for key in ("commandTimeout", "commandKillGrace", "installLockfiles", "installLocal", "prepushClashBranches",
+                    "reviewBeforeMainListFiles", "checkTailLines", "retro", "redWithoutFix", "branchPrefixes",
+                    "mergeCleanup", "wholeReadSkipExtensions", "wholeReadPaths"):
+            self.assertEqual(template[key], schema[key]["default"], key)
+            self.assertIn(key, schema["fullCheckSkipKeys"]["default"], key)
+            self.assertIn(key, template["fullCheckSkipKeys"], key)
+
     def test_instruction_lines_bad_values_fail_with_their_reason(self):
         cases = [({"warn": 200, "fail": 100}, "$.instructionLines: warn (200) must not be above fail (100)"),
                  ({"warn": 300}, "warn (300) must not be above fail (250)"),
@@ -400,7 +478,7 @@ class Config(unittest.TestCase):
     def test_private_check_default_and_bad_values(self):
         self.write(VALID)
         r = cli(self.tmp, "get", "privateCheck")
-        self.assertEqual(json.loads(r.stdout), {"emails": True, "allowEmails": []})
+        self.assertEqual(json.loads(r.stdout), {"emails": True, "allowEmails": [], "maxHits": 10})
         for good in (False, True, {"emails": False}, {"allowEmails": ["me@example.com"]}):
             self.write(dict(VALID, privateCheck=good))
             self.assertEqual(cli(self.tmp, "validate").returncode, 0, good)

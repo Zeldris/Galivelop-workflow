@@ -23,8 +23,9 @@
 #    empty `relatedTests` a missing script is skipped silently.
 #  - after a green check and green related tests: `git worktree remove` (without force: with uncommitted changes it warns and leaves it)
 #    and `git branch -d` (deletes only what is merged; if it refuses it warns and goes on). Only a branch named
-#    worktree-agent-* or agent/* or whose worktree is under .claude/worktrees/ is cleaned; never the current branch,
-#    the protected branch or claude/* (session branches).
+#    worktree-agent-* or agent/* (branchPrefixes.agent) or whose worktree is under .claude/worktrees/ is cleaned;
+#    never the current branch, the protected branch or claude/* (branchPrefixes.keep: session branches). mergeCleanup
+#    false skips the cleanup altogether.
 #  - Refs (D16): the ids of the branch (the one in a name agent/<id>-<topic>, if it looks like a task id, and the
 #    `Refs:` trailers of the commits it brings, read with git interpret-trailers) are joined with the ones the
 #    message already has into ONE `Refs: A, B` trailer, without repeats; with no ids the message stays as it is.
@@ -70,6 +71,24 @@ printf '%s\n' "$checks" | grep -q '[^[:space:]]' || {
   echo "merge-branch: 'check' in .claude/gw.json has no command, so nothing was merged; set at least one, e.g. \"check\": [\"bash tests/check.sh\"], then retry" >&2; exit 2; }
 python3 "$config" --root "$root" get checkWrapper >/dev/null 2>&1 || {
   echo "merge-branch: cannot read 'checkWrapper' from .claude/gw.json, so nothing was merged; fix the config: python3 $config --root $root validate" >&2; exit 2; }
+
+# Branch cleanup after the merge (A13): which branches it may delete (branchPrefixes.agent), which never (branchPrefixes.keep),
+# and whether it cleans at all (mergeCleanup). Read before merging, so an unreadable key merges nothing.
+agent_globs="$(python3 "$config" --root "$root" get branchPrefixes.agent 2>/dev/null)" || {
+  echo "merge-branch: cannot read 'branchPrefixes.agent' from .claude/gw.json, so nothing was merged; fix the config: python3 $config --root $root validate" >&2; exit 2; }
+keep_globs="$(python3 "$config" --root "$root" get branchPrefixes.keep 2>/dev/null)" || {
+  echo "merge-branch: cannot read 'branchPrefixes.keep' from .claude/gw.json, so nothing was merged; fix the config: python3 $config --root $root validate" >&2; exit 2; }
+merge_cleanup="$(python3 "$config" --root "$root" get mergeCleanup 2>/dev/null)" || {
+  echo "merge-branch: cannot read 'mergeCleanup' from .claude/gw.json, so nothing was merged; fix the config: python3 $config --root $root validate" >&2; exit 2; }
+glob_match() {  # glob_match <name> <globs, one per line>: 0 if the name matches one of them
+  local pat
+  while IFS= read -r pat; do
+    [ -n "$pat" ] || continue
+    # shellcheck disable=SC2254  # the glob is the point
+    case "$1" in $pat) return 0 ;; esac
+  done <<<"$2"
+  return 1
+}
 
 git rev-parse --verify --quiet "$branch^{commit}" >/dev/null || { echo "merge-branch: no branch $branch; list them: git branch -a" >&2; exit 2; }
 before="$(git rev-parse HEAD)"
@@ -149,8 +168,10 @@ EOF_CONFLICTS
     echo "  to give up instead: git merge --abort"
     # What this script would do after the merge (see cleanup_branch below): worktree only if there is one, branch only if it is not protected, claude/* or the current one.
     after="bash $here/check.sh --quiet"
-    [ -z "$wt" ] || [ "$wt" = "$root" ] || after="$after && git worktree remove $(printf '%q' "$wt")"
-    case "$branch" in "$protected"|claude/*) ;; *) [ "$branch" = "$(git branch --show-current)" ] || after="$after && git branch -d $(printf '%q' "$branch")" ;; esac
+    [ "$merge_cleanup" != "true" ] || [ -z "$wt" ] || [ "$wt" = "$root" ] || after="$after && git worktree remove $(printf '%q' "$wt")"
+    if [ "$merge_cleanup" = "true" ] && [ "$branch" != "$protected" ] && ! glob_match "$branch" "$keep_globs" && [ "$branch" != "$(git branch --show-current)" ]; then
+      after="$after && git branch -d $(printf '%q' "$branch")"
+    fi
     echo "  Closing it by hand skips what this script does after a merge (re-running it says \"nothing to merge\"); then run: $after"
   else
     echo "merge-branch: CONFLICT (the merge stays open; resolve it and commit, or abort with: git merge --abort):"
@@ -231,13 +252,13 @@ fi
 cleanup_branch() {
   local current wt
   current="$(git branch --show-current)"
-  case "$branch" in "$protected"|claude/*) return 0 ;; esac
+  [ "$branch" = "$protected" ] && return 0
+  glob_match "$branch" "$keep_globs" && return 0
   [ "$branch" = "$current" ] && return 0
   wt="$(git worktree list --porcelain | awk -v r="refs/heads/$branch" '/^worktree /{w=substr($0,10)} $1=="branch" && $2==r {print w}')"
-  case "$branch" in
-    worktree-agent-*|agent/*) ;;
-    *) case "$wt" in */.claude/worktrees/*) ;; *) return 0 ;; esac ;;
-  esac
+  if ! glob_match "$branch" "$agent_globs"; then
+    case "$wt" in */.claude/worktrees/*) ;; *) return 0 ;; esac
+  fi
   if [ -n "$wt" ] && [ "$wt" != "$root" ]; then
     case "$wt" in
       */.claude/worktrees/*)
@@ -257,6 +278,10 @@ cleanup_branch() {
   fi
   return 0
 }
-cleanup_branch
+if [ "$merge_cleanup" = "true" ]; then
+  cleanup_branch
+else
+  echo "merge-branch: mergeCleanup is false: worktree and branch $branch stay; remove them by hand when done."
+fi
 [ "$reviewed" = "--reviewed" ] || echo "merge-branch: no --reviewed: confirm the /code-review of the diff (step 3 of gw-orchestrate-dealer)."
 exit 0
