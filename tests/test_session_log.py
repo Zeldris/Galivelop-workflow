@@ -235,13 +235,13 @@ class SessionStart(Base):
 
     def test_a_fast_command_leaves_no_watchdog_running(self):
         cloud = self.cloud_config(setup=["echo ok >> ok.log"])
-        cloud["GW_COMMAND_TIMEOUT"] = "33"
+        cloud["GW_COMMAND_TIMEOUT"] = "37"  # its own number: another test's watchdog (33) may be running in parallel
         started = time.time()
         code, out = self.p.session_start(env=cloud)
         self.assertEqual(code, 0, out)
         self.assertLess(time.time() - started, 15, out)
         self.assertEqual((self.p.work / "ok.log").read_text().strip(), "ok")
-        left = subprocess.run(["pgrep", "-f", "sleep 33"], capture_output=True, text=True).stdout
+        left = subprocess.run(["pgrep", "-f", "sleep 37"], capture_output=True, text=True).stdout
         self.assertEqual(left.strip(), "", "the watchdog's sleeper outlived the command")
 
     def test_a_zero_or_non_numeric_limit_falls_back_to_the_default(self):
