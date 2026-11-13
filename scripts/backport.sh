@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # galivelop-workflow v0.5.2
 # Brings commits from a minor's branch onto the current PATCH branch (D81).
-#   bash backport.sh [--from <branch>] <sha>...
+#   bash backport.sh [--from <branch>] [--refs <id>[,<id>]] [<sha>...]
 #  - Refuses to start (exit 2, with the command that fixes it) on: no shas, an unknown sha or branch, a dirty tree
 #    (tracked changes), a detached HEAD, or a cherry-pick/merge/rebase/revert already in progress.
 #  - Cherry-picks the shas oldest first (topological order, whatever order they were given) with `-x`, and `-m 1`
@@ -13,28 +13,33 @@
 #  - At the end every requested sha must be accounted for: already in HEAD, picked (its `-x` line is in a new
 #    commit), upstream (`git cherry` finds an equivalent patch) or skipped empty; otherwise exit 1.
 #  - With --from <branch>, the harvest files of `proposalsDir` that exist in <branch> and not in HEAD (a `.md` whose
-#    first line starts with "# Harvest ") are brought in one commit of their own.
+#    first line starts with "# Harvest ") are brought in one commit of their own. Its `Refs:` keep only the ids of the
+#    requested commits that commit-message.py (the commit-msg check) accepts here, or the ones of --refs; with none
+#    left and `commitRefs` on it stops before touching the index. --from works with no shas (the harvest only).
 # Bash 3.2 compatible. Root from this script's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 self="bash $0"
-usage() { echo "backport: usage: $self [--from <branch>] <sha>...   (run it on the patch branch)" >&2; exit 2; }
+usage() { echo "backport: usage: $self [--from <branch>] [--refs <id>[,<id>]] [<sha>...]   (run it on the patch branch)" >&2; exit 2; }
 die() { echo "backport: $*" >&2; exit 2; }
 in_list() { case " $2 " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
-from=""; shas=""
+from=""; shas=""; refsopt=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --from) [ $# -ge 2 ] || usage; from="$2"; shift 2 ;;
+    --refs) [ $# -ge 2 ] || usage; refsopt="$2"; shift 2 ;;
     -h|--help) usage ;;
     -*) usage ;;
     *) shas="$shas $1"; shift ;;
   esac
 done
 shas="${shas# }"
-[ -n "$shas" ] || die "no commits given; pass the shas to bring: $self [--from <branch>] <sha>..."
+[ -n "$shas" ] || [ -n "$from" ] || die "no commits given; pass the shas to bring: $self [--from <branch>] <sha>..."
 fromopt=""
 [ -z "$from" ] || fromopt="--from $from "
+refsarg=""
+[ -z "$refsopt" ] || refsarg="--refs $refsopt "
 
 root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || \
   die "$here is not inside a git repository; reinstall the workflow: /gw-update"
@@ -44,6 +49,7 @@ cfg() { python3 "$config" --root "$root" get "$1" 2>/dev/null; }
 logfile="$(cfg log)" || die "cannot read 'log'; fix the config: python3 $config --root $root validate"
 roadmaps="$(cfg roadmapFiles)" || die "cannot read 'roadmapFiles'; fix the config: python3 $config --root $root validate"
 proposals="$(cfg proposalsDir)" || die "cannot read 'proposalsDir'; fix the config: python3 $config --root $root validate"
+commitrefs="$(cfg commitRefs)" || die "cannot read 'commitRefs'; fix the config: python3 $config --root $root validate"
 lang="$(cfg language)" || die "cannot read 'language'; fix the config: python3 $config --root $root validate"
 # The files whose conflicts take this branch's side: the log and the path of each roadmap file (JSON lines).
 rpaths="$(printf '%s\n' "$roadmaps" | python3 -c '
@@ -55,6 +61,8 @@ for line in sys.stdin:
 ')" || die "cannot parse 'roadmapFiles'; fix the config: python3 $config --root $root validate"
 auto="$logfile
 $rpaths"
+probe="$(mktemp "${TMPDIR:-/tmp}/gw-backport.XXXXXX")" || die "cannot create a temp file; free space and retry"
+trap 'rm -f "$probe"' EXIT
 is_auto() { printf '%s\n' "$auto" | grep -Fxq -- "$1"; }
 
 # Fail closed before touching anything.
@@ -90,8 +98,9 @@ full="${full# }"
 
 start="$(git rev-parse HEAD)"
 # Oldest first: the commits reachable from the requested ones and not from HEAD, topologically, kept if requested.
+order=""
 # shellcheck disable=SC2086
-order="$(git rev-list --topo-order --reverse $full --not HEAD)" || die "cannot order the commits; check them: git log --oneline $full"
+[ -z "$full" ] || order="$(git rev-list --topo-order --reverse $full --not HEAD)" || die "cannot order the commits; check them: git log --oneline $full"
 todo=""
 for c in $order; do
   ! in_list "$c" "$full" || todo="$todo $c"
@@ -114,27 +123,34 @@ for c in $todo; do
     echo "backport: git cherry-pick failed on $c before starting; fix the cause above and rerun: $self $fromopt$c${rest:+ $rest}" >&2
     exit 1
   fi
-  unmerged="$(git diff --name-only --diff-filter=U)"
+  unmerged="$(git diff --name-only -z --diff-filter=U | tr '\0' '\n')"
   bad=""
-  for f in $unmerged; do is_auto "$f" || bad="$bad $f"; done
+  while IFS= read -r f; do [ -z "$f" ] || is_auto "$f" || bad="$bad $f"; done <<<"$unmerged"
   if [ -n "$bad" ]; then
     echo "backport: conflict in$bad while picking $(git log -1 --format='%h %s' "$c")" >&2
     echo "backport: resolve it, git add the files, then: git cherry-pick --continue" >&2
-    echo "backport: then rerun with the remaining commits: $self $fromopt${rest:-<none left: no rerun needed>}" >&2
+    if [ -n "$rest" ]; then
+      echo "backport: then rerun with the remaining commits: $self $fromopt$refsarg$rest" >&2
+    elif [ -n "$from" ]; then
+      echo "backport: then bring the harvest files (no shas left): $self $fromopt$refsarg" >&2
+    else
+      echo "backport: no commits remain after this one, so no rerun is needed" >&2
+    fi
     echo "backport: or cancel this pick: git cherry-pick --abort" >&2
     exit 1
   fi
-  for f in $unmerged; do
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
     git checkout --ours -- "$f" 2>/dev/null || git rm -q -f -- "$f" 2>/dev/null
     git add -A -- "$f" 2>/dev/null
     echo "backport: conflict in $f resolved with this branch's version ($(git log -1 --format=%h "$c"))"
-  done
+  done <<<"$unmerged"
   if git diff --cached --quiet; then
     git cherry-pick --skip >/dev/null 2>&1 || git cherry-pick --abort >/dev/null 2>&1
     skipped="$skipped $c"
     echo "backport: skipped $(git log -1 --format='%h %s' "$c") (empty: nothing left to apply here)"
   elif ! GIT_EDITOR=true git cherry-pick --continue >/dev/null 2>&1; then
-    echo "backport: cannot continue the pick of $c; finish it by hand (git cherry-pick --continue) and rerun with: $self $fromopt${rest:-<none left>}" >&2
+    echo "backport: cannot continue the pick of $c; finish it by hand (git cherry-pick --continue) and rerun with: $self $fromopt$refsarg$rest" >&2
     exit 1
   else
     echo "backport: picked $(git log -1 --format='%h %s' "$c")"
@@ -163,30 +179,52 @@ fi
 # --from: the harvest files <branch> has and HEAD lacks, in one commit of their own.
 if [ -n "$fromref" ]; then
   found=""
-  for f in $(git ls-tree -r --name-only "$fromref" -- "$proposals"); do
+  while IFS= read -r -d '' f; do
     case "$f" in *.md) ;; *) continue ;; esac
     git cat-file -e "HEAD:$f" 2>/dev/null && continue
-    case "$(git show "$fromref:$f" | head -n 1)" in "# Harvest "*) found="$found $f" ;; esac
-  done
+    case "$(git show "$fromref:$f" | head -n 1)" in "# Harvest "*) found="$found$f
+" ;; esac
+  done < <(git ls-tree -r -z --name-only "$fromref" -- "$proposals")
   if [ -z "$found" ]; then
     echo "backport: no harvest files in $fromref that HEAD lacks; nothing more to bring"
     exit 0
   fi
-  # shellcheck disable=SC2086
-  git checkout "$fromref" -- $found || { echo "backport: cannot bring the harvest files; bring them by hand: git checkout $fromref --$found" >&2; exit 1; }
-  ids=""
-  for c in $full; do
-    for i in $(git log -1 --format=%B "$c" | git interpret-trailers --parse --no-divider | sed -n 's/^Refs:[[:space:]]*//p' | tr ',' ' '); do
-      in_list "$i" "$ids" || ids="$ids $i"
+  # The ids for `Refs:`: the --refs ones, else the ones of the requested commits; only those the commit-msg check
+  # accepts in this branch (its roadmap may lack a row the minor has). With none left, stop before the index.
+  cand="$(printf '%s' "$refsopt" | tr ',' ' ')"
+  if [ -z "$cand" ]; then
+    for c in $full; do
+      for i in $(git log -1 --format=%B "$c" | git interpret-trailers --parse --no-divider | sed -n 's/^Refs:[[:space:]]*//p' | tr ',' ' '); do
+        in_list "$i" "$cand" || cand="$cand $i"
+      done
     done
-  done
-  ids="${ids# }"
+  fi
+  nextword="Next"; [ "$lang" != "es" ] || nextword="Siguiente"
+  ids=""
+  if [ "$commitrefs" = "true" ]; then
+    for i in $cand; do
+      printf 'docs(%s): probe\n\nRefs: %s\n%s: x\n' "$i" "$i" "$nextword" > "$probe"
+      if [ ! -f "$here/commit-message.py" ] || python3 "$here/commit-message.py" --root "$root" "$probe" >/dev/null 2>&1; then
+        ids="$ids $i"
+      fi
+    done
+    ids="${ids# }"
+    if [ -z "$ids" ]; then
+      echo "backport: no task id for the harvest commit's Refs that this branch accepts (commitRefs is on; tried: ${cand:-none}); nothing was staged. Name one that a row of its roadmap opens: $self $fromopt--refs <id> $shas" >&2
+      exit 1
+    fi
+  else
+    ids="${cand# }"
+  fi
+  while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    git checkout "$fromref" -- "$f" || { echo "backport: cannot bring $f; bring the harvest files by hand: git checkout $fromref -- <file>" >&2; exit 1; }
+  done <<<"$found"
   scope=""; refs=""
   if [ -n "$ids" ]; then
     scope="(${ids%% *})"; refs="Refs: $(printf '%s' "$ids" | sed 's/ /, /g')"
   fi
-  # shellcheck disable=SC2086
-  list="$(printf '%s\n' $found | sed 's/^/- /')"
+  list="$(printf '%s' "$found" | sed 's/^/- /')"
   if [ "$lang" = "es" ]; then
     subject="docs$scope: trae las recogidas de $fromref al parche"
     body="Hecho: archivos de recogida que $fromref tiene y esta rama no.
@@ -206,7 +244,13 @@ $body
 
 ${refs:+$refs
 }$next"
-  git commit -q -m "$msg" || { echo "backport: the harvest commit failed; fix the cause above and commit: git commit -m \"<message>\"" >&2; exit 1; }
+  if ! git commit -q -m "$msg"; then
+    while IFS= read -r f; do
+      [ -z "$f" ] || { git reset -q -- "$f"; rm -f -- "$f"; }
+    done <<<"$found"
+    echo "backport: the harvest commit failed (see above); its files were unstaged and removed again. Fix the cause (for the Refs: --refs <id>) and rerun for the harvest only: $self $fromopt$refsarg" >&2
+    exit 1
+  fi
   echo "backport: harvest files brought in one commit: $(git log -1 --format='%h %s')"
 fi
 exit 0

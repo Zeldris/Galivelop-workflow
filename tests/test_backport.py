@@ -19,12 +19,15 @@ HARVEST = "docs/proposals/harvest-1.md"
 
 class Base(Snapshot):
     prefix = "gw-backport-"
+    config = CONFIG
+    log = LOG
+    roadmap_text = "roadmap v1\n"
 
     def build(self):
-        p = self.p = Project(self.tmp, CONFIG)
+        p = self.p = Project(self.tmp, self.config)
         shutil.copy2(ROOT / "scripts" / "backport.sh", p.work / ".claude" / "gw" / "scripts" / "backport.sh")
-        p.write(LOG, "log v1\n")
-        p.write(ROADMAP, "roadmap v1\n")
+        p.write(self.log, "log v1\n")
+        p.write(ROADMAP, self.roadmap_text)
         p.write("code.txt", "line 1\nline 2\nline 3\n")
         p.commit("base files")
         p.git("branch", "minor")
@@ -212,7 +215,7 @@ class Picks(Base):
         self.assertEqual(code, 1, out)
         self.assertIn("conflict in code.txt while picking", out)
         self.assertNotIn(LOG + " while", out)
-        self.assertIn("none left: no rerun needed", out)
+        self.assertIn("no commits remain after this one, so no rerun is needed", out)
 
     def test_rerun_after_resolving_a_conflict_completes(self):
         s1 = self.on_minor({"code.txt": "line 1\nminor\nline 3\n"}, "fix(A1): minor")
@@ -267,6 +270,108 @@ class FromHarvest(Base):
         code, out = self.run_bp(s1)
         self.assertEqual(code, 0, out)
         self.assertFalse((self.p.work / HARVEST).exists())
+
+
+class FromEdgeCases(Base):
+    def test_from_with_no_shas_brings_only_the_harvest(self):
+        self.on_minor({HARVEST: "# Harvest repo\n"}, "docs(A9): harvest")
+        code, out = self.run_bp("--from", "minor")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.subjects(1), ["docs: trae las recogidas de minor al parche"])
+        self.assertEqual((self.p.work / HARVEST).read_text(), "# Harvest repo\n")
+
+    def test_code_conflict_on_the_last_sha_with_from_says_how_to_get_the_harvest(self):
+        s1 = self.on_minor({"code.txt": "line 1\nminor\nline 3\n"}, "fix(A1): minor")
+        self.on_patch({"code.txt": "line 1\npatch\nline 3\n"}, "fix(A2): patch")
+        code, out = self.run_bp("--from", "minor", s1)
+        self.assertEqual(code, 1, out)
+        self.assertIn("then bring the harvest files (no shas left): bash ", out)
+        self.assertIn("backport.sh --from minor \n", out + "\n")
+        self.assertNotIn("no rerun is needed", out)
+
+    def test_no_shas_and_no_from_still_refused(self):
+        code, out = self.run_bp("--refs", "A1")
+        self.assertEqual(code, 2, out)
+        self.assertIn("no commits given", out)
+
+
+class SpacesAndAccents(Base):
+    log = "docs/my log.md"
+    config = dict(CONFIG, log="docs/my log.md")
+
+    def test_log_with_a_space_conflicting_alone_is_resolved(self):
+        s1 = self.on_minor({self.log: "log minor\n", "a.txt": "a\n"}, "fix(A1): a and log")
+        self.on_patch({self.log: "log patch\n"}, "fix(A2): patch log")
+        code, out = self.run_bp(s1)
+        self.assertEqual(code, 0, out)
+        self.assertIn("conflict in docs/my log.md resolved with this branch's version", out)
+        self.assertEqual((self.p.work / self.log).read_text(), "log patch\n")
+
+    def test_harvest_file_with_a_space_and_an_accent_is_brought(self):
+        name = "docs/proposals/recogida \u00e9 1.md"
+        self.on_minor({name: "# Harvest repo\n"}, "docs(A9): harvest")
+        code, out = self.run_bp("--from", "minor")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.p.work / name).read_text(), "# Harvest repo\n")
+        self.assertIn(f"- {name}", self.p.git("log", "-1", "--format=%B").stdout)
+
+
+class HarvestRefs(Base):
+    config = dict(CONFIG, commitRefs=True, commitFormat="conventional", commitNext=True, refsSources=[ROADMAP],
+                  taskId="[A-Z]\\d+")
+    roadmap_text = "| A1 | first | hecho |\n"
+
+    def minor_with(self, refs):
+        sha = self.on_minor({"a.txt": "a\n"}, f"fix(A1): a\n\nRefs: {refs}\nSiguiente: x")
+        self.on_minor({HARVEST: "# Harvest repo\n"}, "docs(A1): harvest\n\nRefs: A1\nSiguiente: x")
+        return sha
+
+    def refs_of_head(self):
+        body = self.p.git("log", "-1", "--format=%B").stdout
+        return self.p.git("interpret-trailers", "--parse", stdin=body).stdout.splitlines()[:1]
+
+    def test_only_accepted_ids_stay_in_refs(self):
+        sha = self.minor_with("A1, D2")
+        code, out = self.run_bp("--from", "minor", sha)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.refs_of_head(), ["Refs: A1"])
+
+    def test_no_accepted_id_stops_before_touching_the_index(self):
+        sha = self.minor_with("D2")
+        code, out = self.run_bp("--from", "minor", sha)
+        self.assertEqual(code, 1, out)
+        self.assertIn("no task id for the harvest commit's Refs that this branch accepts", out)
+        self.assertIn("--refs <id>", out)
+        self.assertEqual(self.p.git("status", "--porcelain").stdout, "")
+        self.assertFalse((self.p.work / HARVEST).exists())
+
+    def test_refs_option_overrides(self):
+        sha = self.minor_with("D2")
+        code, out = self.run_bp("--from", "minor", "--refs", "A1", sha)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.refs_of_head(), ["Refs: A1"])
+
+    def test_refs_option_with_an_unaccepted_id_stops_too(self):
+        sha = self.minor_with("A1")
+        code, out = self.run_bp("--from", "minor", "--refs", "Z9", sha)
+        self.assertEqual(code, 1, out)
+        self.assertIn("tried: Z9", out)
+        self.assertEqual(self.p.git("status", "--porcelain").stdout, "")
+
+    def test_a_failed_commit_unstages_so_the_rerun_is_not_refused(self):
+        sha = self.minor_with("A1")
+        hook = self.p.work / ".githooks" / "commit-msg"
+        hook.write_text("#!/bin/sh\necho boom >&2\nexit 1\n")
+        hook.chmod(0o755)
+        code, out = self.run_bp("--from", "minor", sha)
+        self.assertEqual(code, 1, out)
+        self.assertIn("the harvest commit failed (see above); its files were unstaged and removed again", out)
+        self.assertIn("boom", out)
+        self.assertEqual(self.p.git("status", "--porcelain").stdout.replace("?? .githooks/commit-msg\n", ""), "")
+        hook.unlink()
+        code, out = self.run_bp("--from", "minor", "--refs", "A1")
+        self.assertEqual(code, 0, out)
+        self.assertIn("harvest files brought in one commit", out)
 
 
 if __name__ == "__main__":
