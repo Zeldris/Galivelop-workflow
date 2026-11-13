@@ -3,6 +3,9 @@
 # Runs the project's `check` (every command of .claude/gw.json, prefixed by `checkWrapper` exactly as the pre-push
 # does) at the repo root with GW_PUSH_PROTECTED=false, stopping at the first failure, then prints a summary (each
 # command, ok/FAILED, seconds) and ends with one line `CHECK <ok|FAILED>: <what failed>`.
+# E44: on a branch that matches a `releaseCheckBranches` pattern (shell glob, `*` crosses `/`; default version/*) it
+# runs with GW_PUSH_PROTECTED=true instead, so what only goes before the protected branch (version.py --release in
+# the workflow repo) fails on the version branch, not at the push to main. A detached HEAD matches nothing.
 # The output of every command always goes to a log: <git common dir>/gw/check-<sha>.log (<sha> = HEAD, plus -dirty
 # when the work tree has changes; GW_CHECK_LOG overrides the path, a relative one is taken from the current
 # directory), also shown live (with a terminal, the command keeps it: it runs in a pty through script(1) when there is
@@ -51,6 +54,19 @@ num() { # num <key>
   printf '%s' "$v"
 }
 [ -n "$tail_lines" ] || tail_lines="$(num checkTailLines)" || exit 1
+# E44: the branch decides GW_PUSH_PROTECTED; an unreadable releaseCheckBranches fails (closed), [] matches nothing.
+release_pats="$(python3 "$config" --root "$root" get releaseCheckBranches 2>/dev/null)" ||
+  release_pats="$(python3 "$config" default releaseCheckBranches 2>/dev/null)" ||
+  fail "cannot read 'releaseCheckBranches' or its default; fix the config: python3 $config --root $root validate"
+protected=false
+branch="$(git symbolic-ref --short -q HEAD 2>/dev/null)" || branch=""
+if [ -n "$branch" ]; then
+  while IFS= read -r pat; do
+    [ -n "$pat" ] || continue
+    # shellcheck disable=SC2254  # the pattern is a glob on purpose
+    case "$branch" in $pat) protected=true; break ;; esac
+  done <<<"$release_pats"
+fi
 
 key=""
 inputs=""
@@ -119,6 +135,7 @@ have_lock=1
 
 : > "$log" 2>/dev/null || fail "cannot write the log $log; set GW_CHECK_LOG to a writable file"
 echo "check: log: $log"
+[ "$protected" = false ] || echo "check: branch $branch matches releaseCheckBranches: running with GW_PUSH_PROTECTED=true"
 summary=""
 failed_cmd=""
 failed_section=""
@@ -136,7 +153,7 @@ while IFS= read -r cmd; do
   printf '== %s\n' "$cmd" >> "$log"
   offset="$(wc -c < "$log" | tr -d ' ')"
   if [ -n "$quiet" ]; then
-    GW_PUSH_PROTECTED=false bash -c "$cmd" < /dev/null 3<&- >> "$log" 2>&1
+    GW_PUSH_PROTECTED="$protected" bash -c "$cmd" < /dev/null 3<&- >> "$log" 2>&1
     rc=$?
   elif [ -t 1 ] && pty_flavor="$(script_flavor)" && [ -n "$pty_flavor" ]; then
     # E39: on a terminal the command keeps one (isatty, colours, progress bars): it runs inside a pty made by script(1),
@@ -144,7 +161,7 @@ while IFS= read -r cmd; do
     ptylog="$(mktemp "${TMPDIR:-/tmp}/gw-check-pty.XXXXXX")" || fail "cannot create a file in ${TMPDIR:-/tmp}; free space or set TMPDIR to a writable folder"
     if [ "$pty_flavor" = linux ]; then
       # SHELL=bash: script runs it with $SHELL -c; stdin from /dev/null, or script feeds the rest of the check list to the pty
-      GW_PUSH_PROTECTED=false SHELL=bash script -qefc "$cmd" "$ptylog" < /dev/null 3<&-
+      GW_PUSH_PROTECTED="$protected" SHELL=bash script -qefc "$cmd" "$ptylog" < /dev/null 3<&-
       rc=$?
     else
       # BSD script turns EOF on its stdin into a ^D written to the pty (echoed as "^D" before the output) and refuses a
@@ -153,11 +170,11 @@ while IFS= read -r cmd; do
       # check in the background of its terminal gets /dev/null (and the ^D): script would set that terminal raw and be
       # stopped by SIGTTOU.
       if in_background; then
-        GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" < /dev/null 3<&-
+        GW_PUSH_PROTECTED="$protected" script -q "$ptylog" bash -c "$cmd" < /dev/null 3<&-
       elif [ -t 3 ]; then
-        GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" <&3 3<&-
+        GW_PUSH_PROTECTED="$protected" script -q "$ptylog" bash -c "$cmd" <&3 3<&-
       else
-        GW_PUSH_PROTECTED=false script -q "$ptylog" bash -c "$cmd" <&1 3<&-
+        GW_PUSH_PROTECTED="$protected" script -q "$ptylog" bash -c "$cmd" <&1 3<&-
       fi
       rc=$?
     fi
@@ -171,7 +188,7 @@ while IFS= read -r cmd; do
     tee_out=$!
     tee -a "$log" >&2 < "$fifos/err" &
     tee_err=$!
-    GW_PUSH_PROTECTED=false bash -c "$cmd" < /dev/null 3<&- > "$fifos/out" 2> "$fifos/err"
+    GW_PUSH_PROTECTED="$protected" bash -c "$cmd" < /dev/null 3<&- > "$fifos/out" 2> "$fifos/err"
     rc=$?
     # A background child of the command that kept the output open would hold the tees forever: wait for them at most
     # `checkOutputGrace` seconds, then stop them.

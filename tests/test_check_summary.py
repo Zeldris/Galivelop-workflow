@@ -29,9 +29,11 @@ class CheckSummary(unittest.TestCase):
     def git(self, *args):
         return subprocess.run(["git", "-C", str(self.repo), *args], capture_output=True, text=True, check=True)
 
-    def configure(self, check, wrapper="", lock_wait=None, tail=None):
+    def configure(self, check, wrapper="", lock_wait=None, tail=None, release=None):
         cfg = {"version": "0.4.3", "schemaVersion": 1, "language": "en", "protectedBranch": "main",
                "pushToProtected": "direct", "content": ["^docs/"], "check": check, "checkWrapper": wrapper}
+        if release is not None:
+            cfg["releaseCheckBranches"] = release
         if lock_wait is not None:
             cfg["checkLockWait"] = lock_wait
         if tail is not None:
@@ -235,6 +237,46 @@ class CheckSummary(unittest.TestCase):
         self.assertNotIn("line-97\n", out)
         code, out, err = self.run_check("--quiet", env={"GW_CHECK_TAIL": "5"})
         self.assertIn("last 5 lines of the failed command", out)
+
+    PROT = ['echo "prot=$GW_PUSH_PROTECTED"']
+
+    def test_release_check_branches_default_makes_a_version_branch_protected(self):
+        self.configure(self.PROT)
+        rc, out, _ = self.run_check()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("prot=false", out)  # the default branch is not version/*
+        self.git("checkout", "-q", "-b", "version/1.2.0")
+        rc, out, _ = self.run_check()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("prot=true", out)
+        self.assertIn("check: branch version/1.2.0 matches releaseCheckBranches: running with GW_PUSH_PROTECTED=true", out)
+
+    def test_release_check_branches_given_value_and_empty_list(self):
+        self.configure(self.PROT, release=["rel-*"])
+        self.git("checkout", "-q", "-b", "rel-x/y")
+        rc, out, _ = self.run_check()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("prot=true", out)  # * crosses /
+        self.git("checkout", "-q", "-b", "version/1.2.0")
+        self.assertIn("prot=false", self.run_check()[1])  # the given list replaces the default
+        self.configure(self.PROT, release=[])
+        self.assertIn("prot=false", self.run_check()[1])
+
+    def test_release_check_branches_a_detached_head_matches_nothing(self):
+        self.configure(self.PROT, release=["*"])
+        self.git("checkout", "-q", "--detach")
+        rc, out, _ = self.run_check()
+        self.assertEqual(rc, 0, out)
+        self.assertIn("prot=false", out)
+
+    def test_release_check_branches_bad_value_is_refused_with_the_key_named(self):
+        self.configure(self.PROT, release="version/*")
+        rc, out, err = self.run_check()
+        self.assertEqual(rc, 1)
+        self.assertNotIn("prot=", out)
+        self.assertIn("releaseCheckBranches", err)  # the config fails validation first, naming the key
+        self.assertIn("cannot read 'check' from .claude/gw.json", err)
+        self.assertIn("validate", err)
 
     def test_check_tail_lines_bad_value_is_refused_with_the_key_named(self):
         self.configure(["echo hi; exit 2"], tail=0)

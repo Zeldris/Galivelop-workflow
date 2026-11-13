@@ -90,7 +90,7 @@ todos y deja la entrada del CHANGELOG por rellenar; sin argumento, comprueba que
 la versión**, aunque sea un parche: un proyecto que copió entre las dos vería «ediciones locales» que no hizo.
 `python3 scripts/version.py --release` lo comprueba contra la última etiqueta `vX.Y.Z` alcanzable desde el commit
 (necesita las etiquetas: `git fetch --tags origin`), y el `check` de este repo lo corre en cada subida a `main`
-(`GW_PUSH_PROTECTED`). `python3 scripts/version.py --suggest` sugiere el salto según los commits sin merge desde esa
+(`GW_PUSH_PROTECTED`) y en `bash scripts/check.sh` en una rama `version/*` (`releaseCheckBranches`). `python3 scripts/version.py --suggest` sugiere el salto según los commits sin merge desde esa
 etiqueta (`feat` → menor, `fix` y `perf` → parche, `!` o `BREAKING CHANGE:` → mayor, en la `0.x` menor) y avisa si
 `plugin.json` no casa; solo sugiere (sale con 0) y `--release` muestra lo mismo como aviso.
 `--release` también exige que cada ruta del repo citada entre comillas invertidas en la entrada nueva del CHANGELOG

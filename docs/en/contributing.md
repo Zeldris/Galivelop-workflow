@@ -89,7 +89,7 @@ leaves the CHANGELOG entry to fill in; without an argument it checks none was le
 **Every change to a copyable file** (`scripts/`, `skills/`, `templates/`, `schema/`) between two releases **bumps the
 version**, a patch at least: a project that copied in between would see "local edits" it never made.
 `python3 scripts/version.py --release` checks it against the last `vX.Y.Z` tag reachable from the commit (it needs the
-tags: `git fetch --tags origin`), and this repo's `check` runs it on every push to `main` (`GW_PUSH_PROTECTED`). `python3 scripts/version.py --suggest` suggests the bump from the non-merge commits since that
+tags: `git fetch --tags origin`), and this repo's `check` runs it on every push to `main` (`GW_PUSH_PROTECTED`) and in `bash scripts/check.sh` on a `version/*` branch (`releaseCheckBranches`). `python3 scripts/version.py --suggest` suggests the bump from the non-merge commits since that
 tag (`feat` → minor, `fix` and `perf` → patch, `!` or `BREAKING CHANGE:` → major, minor in `0.x`) and warns when
 `plugin.json` does not match; it only suggests (exit 0) and `--release` prints the same as a warning.
 `--release` also requires every repo path quoted in backticks in the new CHANGELOG entry (`docs/…`, `scripts/…`, `CHANGELOG.md`…; read from

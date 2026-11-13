@@ -359,6 +359,7 @@
         "prepushClashBranches",
         "reviewBeforeMainListFiles",
         "checkTailLines",
+        "releaseCheckBranches",
         "retro",
         "redWithoutFix",
         "branchPrefixes",
@@ -1175,6 +1176,12 @@
       "minimum": 1,
       "default": 40,
       "description": "Lines of the failing log check.sh shows when a check fails; the environment variable GW_CHECK_TAIL, when set, wins."
+    },
+    "releaseCheckBranches": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "default": ["version/*"],
+      "description": "E44: shell glob patterns (* crosses /) of the branches where check.sh runs the check with GW_PUSH_PROTECTED=true, as the push to the protected branch does, so what only goes before it (version.py --release in the workflow repo) fails on the version branch first. A detached HEAD matches nothing; [] keeps every branch at false."
     },
     "retro": {
       "type": "object",
