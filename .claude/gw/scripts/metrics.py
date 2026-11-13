@@ -44,7 +44,7 @@ period twice is an error (exit 2).
 `metrics.py quality --period day|week|month|quarter [--date D] [--write]` (B8) sets quality signals beside the spend of
 each task id. Spend comes from the period's ledger rows; the signals only from the messages of the commits in the
 history from HEAD (no merges) whose committer date (UTC) falls in the period and that have a `Refs:` trailer (the others
-are ignored). Per id: `commits`; `red` (subject starts with `WIP:`, the check was red); `rework` (commits whose
+are ignored). Per id: `commits`; `red` (subject starts with the `commitWipPrefix`, `WIP:` by default: the check was red); `rework` (commits whose
 Conventional Commits type, after a `WIP: ` prefix, is in `metrics.quality.reworkTypes`, and git reverts `Revert "..."`,
 not counting the first commit of the id in the whole history); `findings` and `retries` (the sums of the integer values
 of the trailers `metrics.quality.findingsTrailer` and `retriesTrailer`, matched case-insensitively; a value that is not a
@@ -82,7 +82,7 @@ sys.path.insert(0, HERE)
 import config  # noqa: E402
 import session_log  # noqa: E402
 
-GIT_TIMEOUT = 30
+GIT_TIMEOUT = 30  # seconds per git call; the quality report takes `metrics.gitTimeout` instead (same default)
 FIELDS = (("input", "input_tokens"), ("cacheWrite", "cache_creation_input_tokens"),
           ("cacheRead", "cache_read_input_tokens"), ("output", "output_tokens"))
 TOKEN_KEYS = tuple(k for k, _ in FIELDS)
@@ -558,15 +558,22 @@ def history_commits(root):
     return commits
 
 
-def commit_type(subject):
-    """The Conventional Commits type of a subject (lower case, after a `WIP: ` prefix), or None."""
-    if subject.startswith("WIP:"):
-        subject = subject[4:].lstrip()
+def is_red(subject, wip="WIP: "):
+    """Whether a subject starts with the prefix of a commit made in red (`commitWipPrefix`; "" = none), compared
+    without its trailing space (`WIP:`)."""
+    mark = wip.rstrip()
+    return bool(mark) and subject.startswith(mark)
+
+
+def commit_type(subject, wip="WIP: "):
+    """The Conventional Commits type of a subject (lower case, after the `commitWipPrefix`), or None."""
+    if is_red(subject, wip):
+        subject = subject[len(wip.rstrip()):].lstrip()
     m = TYPE_RE.match(subject)
     return m.group(1).lower() if m else None
 
 
-def commit_signals(commits, first, last, quality):
+def commit_signals(commits, first, last, quality, wip="WIP: "):
     """({id: {"commits", "red", "rework", "findings", "retries"}}, [(sha7, "Key: value") of ignored trailers]) of the
     commits (newest first, all the history) whose day is in first..last. The first commit of an id is the oldest of
     the whole list that names it; it is never rework."""
@@ -581,8 +588,8 @@ def commit_signals(commits, first, last, quality):
         if not first <= c["day"] <= last:
             continue
         subject = c["subject"]
-        red = subject.startswith("WIP:")
-        is_rework = commit_type(subject) in rework_types or subject.startswith('Revert "')
+        red = is_red(subject, wip)
+        is_rework = commit_type(subject, wip) in rework_types or subject.startswith('Revert "')
         sums = dict.fromkeys(names, 0)
         for key, value in c["trailers"]:
             for field, name in names.items():
@@ -655,7 +662,13 @@ def quality_report(root, cfg, kind, day, write=False):
     settings = config.metrics(cfg)
     name, first, last = period_of(kind, day)
     rows = period_rows(root, settings, first, last)
-    signals, ignored = commit_signals(history_commits(root), first, last, settings["quality"])
+    global GIT_TIMEOUT
+    saved, GIT_TIMEOUT = GIT_TIMEOUT, settings["gitTimeout"]  # metrics.gitTimeout, for the git calls of this report
+    try:
+        commits = history_commits(root)
+    finally:
+        GIT_TIMEOUT = saved
+    signals, ignored = commit_signals(commits, first, last, settings["quality"], config.commit_wip_prefix(cfg))
     spend = summarize(rows, settings["prices"])
     if not signals and not rows:
         return None, None

@@ -99,8 +99,10 @@ def broken_links(root, md_files, files_only, link_roots=()):
     return problems
 
 
-def stale_refs(root, patterns, log, skip=()):
+def stale_refs(root, patterns, log, skip=(), paths=('docs/', 'README*')):
+    """The `staleRefs` problems of the tracked files that the `paths` globs (staleRefsPaths) match, case-insensitively."""
     problems = []
+    scanned = [re.compile(gwconfig.glob_regex(g).pattern, re.I) for g in paths]
     skipped = [gwconfig.glob_regex(g) for g in skip]
     compiled = []
     for p in patterns:
@@ -110,7 +112,7 @@ def stale_refs(root, patterns, log, skip=()):
             raise gwconfig.ConfigError(f'staleRefs: {p!r} is not a valid regex ({exc}); fix .claude/gw.json')
     if not compiled:
         return problems
-    files = [f for f in tracked(root) if (f.startswith('docs/') or ('/' not in f and f.upper().startswith('README')))
+    files = [f for f in tracked(root) if any(rx.match(f) for rx in scanned)
              and f != log and not f.startswith('.claude/') and not any(rx.match(f) for rx in skipped)]
     for rel in files:
         try:
@@ -135,7 +137,7 @@ def main(argv=None):
         root = cfg['_root']
         problems = broken_links(root, tracked(root, '*.md'), '--files-only' in argv, cfg.get('linkRoots', []))
         patterns, skip = gwconfig.stale_refs(cfg)
-        problems += stale_refs(root, patterns, cfg['log'], skip)
+        problems += stale_refs(root, patterns, cfg['log'], skip, gwconfig.stale_refs_paths(cfg))
     except gwconfig.ConfigError as exc:
         print(f'md-links: {exc}; fix it: python3 {HERE / "config.py"} validate', file=sys.stderr)
         return 2

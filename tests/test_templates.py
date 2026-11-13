@@ -580,6 +580,33 @@ class Init(unittest.TestCase):
         code, out = p.run_apply()
         self.assertNotIn("REVIEW.md exists", out)
 
+    def test_apply_diff_lines_default_set_value_and_bad_value(self):  # A13
+        p = self.project()
+        self.assertEqual(p.init("en")[0], 0)
+        p.write("REVIEW.md", "# Our review rules\n\n- Keep it short.\n")
+
+        def shown(**extra):
+            cfg = json.loads(p.read(".claude/gw.json"))
+            cfg.pop("applyDiffLines", None)
+            cfg.update(extra)
+            p.write(".claude/gw.json", json.dumps(cfg))
+            code, out = p.run_apply()
+            self.assertEqual(code, 0, out)
+            lines = out.split("what differs from the", 1)[1].splitlines()[1:]
+            diff = [l for l in lines if l.startswith("  ") and "more line(s)" not in l]
+            more = [l for l in lines if "more line(s)" in l]
+            return len(diff), more
+        count, more = shown()
+        self.assertEqual(count, 80)  # today's default
+        self.assertEqual(len(more), 1)
+        count, more = shown(applyDiffLines=5)
+        self.assertEqual(count, 5)
+        self.assertEqual(len(more), 1)
+        self.assertRegex(more[0], r"\d+ more line\(s\)")
+        count, more = shown(applyDiffLines=100000)
+        self.assertGreater(count, 80)
+        self.assertEqual(more, [])
+
     def test_workflow_repo_skips_its_root_templates(self):
         r = subprocess.run(["python3", str(APPLY_SCRIPT), str(ROOT), "--dry-run"], capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)

@@ -30,7 +30,8 @@ import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-GREEN_RUNS = ("success", "neutral", "skipped")
+GREEN_RUNS = ("success", "neutral", "skipped")  # the default of ciGreenConclusions (A13); a caller passes the config's
+TIMEOUT = 0  # seconds a gh/curl call may take (ciStatusTimeout, set by main or by a caller that read the config); 0 = no limit
 NO_CI = "no CI has reported on this commit yet"
 # What GitHub writes on a check-run whose job it refused to start for lack of quota.
 NOT_STARTED = ("job was not started because recent account payments have failed", "spending limit needs to be increased")
@@ -50,7 +51,9 @@ RUN_ENV["GIT_TERMINAL_PROMPT"] = "0"
 def run(cmd, stdin=None):
     try:
         return subprocess.run(cmd, env=RUN_ENV, capture_output=True, text=True, input=stdin,
-                              stdin=None if stdin is not None else subprocess.DEVNULL)
+                              stdin=None if stdin is not None else subprocess.DEVNULL, timeout=TIMEOUT or None)
+    except subprocess.TimeoutExpired:
+        return subprocess.CompletedProcess(cmd, 124, "", f"timed out after {TIMEOUT} s (ciStatusTimeout in .claude/gw.json)")
     except OSError as exc:
         return subprocess.CompletedProcess(cmd, 127, "", str(exc))
 
@@ -205,7 +208,7 @@ def not_started(repo, run_):
     return any(m in text for m in NOT_STARTED)
 
 
-def ci_report(repo, sha, ignore=()):
+def ci_report(repo, sha, ignore=(), green=GREEN_RUNS):
     """{"problems": [...], "ignored": [names left out], "unstarted": True when every problem is a check-run GitHub
     never started, "pending": True when every problem is only unfinished}. Raises ApiError (and KeyError/TypeError
     on an unexpected answer)."""
@@ -225,7 +228,7 @@ def ci_report(repo, sha, ignore=()):
     if not runs and not statuses:
         return {"problems": [NO_CI], "ignored": left_out, "unstarted": False, "pending": False, "red_runs": [],
                 "red_statuses": []}
-    bad_runs = [c for c in runs if c.get("status") != "completed" or c.get("conclusion") not in GREEN_RUNS]
+    bad_runs = [c for c in runs if c.get("status") != "completed" or c.get("conclusion") not in green]
     bad_statuses = [s for s in statuses if s.get("state") != "success"]
     bad = [f"{c.get('name', '?')}: {c.get('conclusion') or c.get('status')}" for c in bad_runs]
     bad += [f"{s.get('context', '?')}: {s.get('state')}" for s in bad_statuses]
@@ -237,9 +240,9 @@ def ci_report(repo, sha, ignore=()):
             "unstarted": bool(bad_runs) and not bad_statuses and all(not_started(repo, c) for c in bad_runs)}
 
 
-def ci_problems(repo, sha, ignore=()):
+def ci_problems(repo, sha, ignore=(), green=GREEN_RUNS):
     """(problems, True when every problem is a check-run GitHub never started)."""
-    report = ci_report(repo, sha, ignore)
+    report = ci_report(repo, sha, ignore, green)
     return report["problems"], report["unstarted"]
 
 
@@ -285,6 +288,9 @@ def main(argv=None):
         root = str(config.find_root(args.root))
         cfg = config.load(root)
         ignore = list(cfg.get("ciIgnore") or []) + args.ignore
+        green = config.ci_green_conclusions(cfg)
+        global TIMEOUT
+        TIMEOUT = config.ci_status_timeout(cfg)
     except config.ConfigError as exc:
         out["error"] = str(exc)
         return finish(2, f"ci-status: {exc}\nfix the config and retry: python3 {os.path.join(HERE, 'config.py')} validate")
@@ -311,7 +317,7 @@ def main(argv=None):
                     return finish(2, f"ci-status: {out['error']}\npush first and retry: git push && python3 {me}")
                 raise
         out["sha"] = sha
-        report = ci_report(repo, sha, ignore)
+        report = ci_report(repo, sha, ignore, green)
     except (ApiError, KeyError, TypeError, ValueError) as exc:
         out["error"] = f"could not read the CI status: {exc}"
         return finish(2, f"ci-status: {out['error']}\nauthenticate (gh auth login, or export GITHUB_TOKEN) and retry: "

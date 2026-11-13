@@ -640,8 +640,10 @@ def handle(action, cfg, root, scripts):
         return
     try:
         policy = tip if tip and config_at(root, tip) is not None else info["sha"]
-        ignore = config_at(root, policy, paths_at=info["sha"])["ciIgnore"]  # the protected branch decides
-        bad, unstarted = ci_status.ci_problems(repo, info["sha"], ignore)
+        policy_cfg = config_at(root, policy, paths_at=info["sha"])  # the protected branch decides
+        ignore = policy_cfg["ciIgnore"]
+        ci_status.TIMEOUT = policy_cfg["ciStatusTimeout"]
+        bad, unstarted = ci_status.ci_problems(repo, info["sha"], ignore, policy_cfg["ciGreenConclusions"])
     except (ApiError, KeyError, TypeError, ValueError) as exc:
         block(f"Blocked: could not verify CI of PR #{number} ({info['sha'][:12]}): {exc}",
               f"check CI in the PR ({info['url']}); once it is all green, authenticate (gh auth login, or export "

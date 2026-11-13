@@ -385,6 +385,33 @@ class Version(unittest.TestCase):
         self.assertIn("2 commit(s) since v0.5.1: patch bump, 0.5.1 -> 0.5.2", r.stdout)
         self.assertNotIn("not in the type(scope): text format", r.stdout)
 
+    def test_suggest_patch_types_come_from_the_config_and_default_to_fix_hotfix_perf(self):
+        self.set_gw(patchCommitTypes=["fix"])
+        r = self.suggest_after("v0.4.3", "perf: c", plugin="0.4.3")
+        self.assertIn("no bump suggested", r.stdout, "perf is not a patch type here")
+        shutil.rmtree(self.tmp / ".git", True)
+        self.set_gw(patchCommitTypes=None)
+        r = self.suggest_after("v0.4.3", "perf: c", plugin="0.4.3")
+        self.assertIn("patch bump, 0.4.3 -> 0.4.4", r.stdout, "the default keeps perf as a patch")
+
+    def test_suggest_reads_the_commit_types_and_the_wip_prefix_of_the_config(self):
+        self.set_gw(commitTypes=["feat", "fix"], commitWipPrefix="RED: ")
+        r = self.suggest_after("v0.4.3", "perf: c", "RED: fix: d", "WIP: fix: e", plugin="0.4.3")
+        self.assertIn("3 commit(s) since v0.4.3, 2 not in", r.stdout)
+        self.assertIn("patch bump, 0.4.3 -> 0.4.4", r.stdout)
+        self.assertIn("2 not in the type(scope): text format", r.stdout, "perf is no type here; WIP: is no prefix here")
+
+    def test_suggest_with_an_empty_wip_prefix_accepts_none(self):
+        self.set_gw(commitWipPrefix="")
+        r = self.suggest_after("v0.4.3", "WIP: fix: a", plugin="0.4.3")
+        self.assertIn("1 not in the type(scope): text format", r.stdout)
+
+    def test_suggest_with_an_unreadable_config_says_which_keys_it_could_not_read(self):
+        (self.tmp / ".claude" / "gw.json").write_text("{not json")
+        r = self.suggest_after("v0.4.3", "fix: a", plugin="0.4.3")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("cannot read commitTypes and patchCommitTypes", r.stderr)
+
     def test_suggest_breaking_is_a_minor_in_0x_and_a_major_from_1_0(self):
         for tag, expected in (("v0.4.3", "minor bump, 0.4.3 -> 0.5.0"), ("v1.2.3", "major bump, 1.2.3 -> 2.0.0")):
             for message in ("feat!: x", "fix(core)!: x", "fix: x\n\nBREAKING CHANGE: the format changes"):

@@ -2268,6 +2268,30 @@ class MdLinksSkipAndRoots(Base):
         hits = sorted(l.split(":")[0] for l in out.splitlines() if "stale reference" in l)
         self.assertEqual(hits, ["docs/registros/other.md", "docs/registros/sub/retro-2.md"])
 
+    def test_stale_refs_paths_chooses_the_scanned_files_and_defaults_to_docs_and_readme(self):
+        self.project(dict(self.stale(), staleRefsPaths=["notes/", "CHANGELOG*", "**/*.txt"]))
+        for rel in ("docs/a.md", "README.md", "src/readme.md"):
+            self.p.write(rel, "fase 3.5\n")          # the defaults no longer scan these
+        for rel in ("notes/n.md", "Changelog.md", "src/deep/x.txt"):
+            self.p.write(rel, "fase 3.5\n")          # case-insensitive, `**` crosses folders
+        code, out = self.run_it()
+        self.assertEqual(code, 1, out)
+        hits = sorted(l.split(":")[0] for l in out.splitlines() if "stale reference" in l)
+        self.assertEqual(hits, ["Changelog.md", "notes/n.md", "src/deep/x.txt"])
+        self.project(self.stale())  # not set: docs/ and README*, as before
+        for rel in ("docs/a.md", "README.md", "notes/n.md", "sub/README.md"):
+            self.p.write(rel, "fase 3.5\n")
+        hits = sorted(l.split(":")[0] for l in self.run_it()[1].splitlines() if "stale reference" in l)
+        self.assertEqual(hits, ["README.md", "docs/a.md"])
+
+    def test_stale_refs_paths_validates_in_the_config(self):
+        for bad in ([], ["/abs"], ["../up"], [""], "docs/"):
+            with self.subTest(bad=bad):
+                self.project(dict(self.stale(), staleRefsPaths=bad))
+                code, out = self.run_it()
+                self.assertEqual(code, 2, out)
+                self.assertIn("staleRefsPaths", out)
+
     def test_empty_skip_and_a_glob_matching_nothing_hide_nothing(self):
         for skip in ([], ["nothing/here/*.md"]):
             with self.subTest(skip=skip):

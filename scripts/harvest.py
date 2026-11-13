@@ -200,14 +200,22 @@ def description(text):
     return match.group(1).strip().strip('"')[:200] if match else ""
 
 
-IDEA_MAX = 2000
 TRUNCATED = "\u2026 (truncated)"
 
 
+def sizes():
+    """The `harvest` key (ideaChars, commitsShown) of the workflow's own config; the defaults when it cannot be read."""
+    try:
+        return config.harvest(config.load(ROOT))
+    except (config.ConfigError, OSError):
+        return config.harvest({})
+
+
 def clip(text):
-    """An idea's text cut to IDEA_MAX characters; a cut one ends in TRUNCATED so nobody takes it for the whole."""
+    """An idea's text cut to `harvest.ideaChars` characters; a cut one ends in TRUNCATED so nobody takes it for the whole."""
     text = text.strip()
-    return text if len(text) <= IDEA_MAX else text[:IDEA_MAX - len(TRUNCATED) - 1].rstrip() + " " + TRUNCATED
+    cap = sizes()["ideaChars"]
+    return text if len(text) <= cap else text[:cap - len(TRUNCATED) - 1].rstrip() + " " + TRUNCATED
 
 
 def changed_since(repo, last, head):
@@ -395,7 +403,7 @@ def markdown(report):
                    f"this harvest misses; {fix}, then harvest again")
     if report["commits"]:
         out.append(f"- Commits since last harvest: {len(report['commits'])}")
-        out += [f"  - {c}" for c in report["commits"][:30]]
+        out += [f"  - {c}" for c in report["commits"][:sizes()["commitsShown"]]]
     sections = [
         ("Workflow skills changed in the project", "skills_changed",
          lambda s: f"`{s['skill']}` (`{s['path']}`){' (' + s['note'] + ')' if s.get('note') else ''}: +{s['added']} −{s['removed']} lines in the body; "

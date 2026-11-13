@@ -471,6 +471,37 @@ class Quality(Base):
         self.assertIn("# Quality report: 2020-03", r.stdout)
         self.assertIn("The deterministic model table (B8, later) waits for four weeks of ledger.", r.stdout)
 
+    def test_the_red_prefix_is_the_commit_wip_prefix_of_the_config(self):
+        self.write_config({"commitWipPrefix": "RED: "})
+        self.commit("feat(Q1): first", "Refs: Q1\nSiguiente: x")
+        self.commit("RED: fix(Q1): red and rework", "Refs: Q1\nSiguiente: x")
+        self.commit("WIP: fix(Q1): not red here, only rework", "Refs: Q1\nSiguiente: x")
+        r = self.month()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # commits, red, rework: the RED: one is red, and rework through its type; the WIP: one has no type here
+        self.assertEqual(self.cells(r.stdout, "Q1")[3:6], ["3", "1", "1"])
+        self.assertTrue(metrics.is_red("WIP: x"), "the default prefix is WIP:")
+        self.assertFalse(metrics.is_red("WIP: x", ""), "an empty prefix marks no commit")
+        self.assertEqual(metrics.commit_type("RED: fix(Q1): x", "RED: "), "fix")
+        self.assertEqual(metrics.commit_type("WIP: fix(Q1): x", ""), "wip", "no prefix is stripped, so the type is WIP")
+
+    def test_the_quality_report_gives_git_the_configured_timeout_and_restores_the_default(self):
+        self.write_config({"metrics": {"gitTimeout": 77}})
+        self.commit("feat(Q1): a", "Refs: Q1\nSiguiente: x")
+        seen = []
+        real = subprocess.run
+
+        def spy(*a, **kw):
+            seen.append(kw.get("timeout"))
+            return real(*a, **kw)
+        cfg = metrics.config.load(self.root)
+        from unittest import mock
+        with mock.patch.object(metrics.subprocess, "run", spy):
+            metrics.quality_report(self.root, cfg, "month", metrics.datetime.date(2020, 3, 15))
+        self.assertTrue(seen and set(seen) == {77}, seen)
+        self.assertEqual(metrics.GIT_TIMEOUT, 30, "restored after the report")
+        self.assertEqual(metrics.config.metrics({})["gitTimeout"], 30, "the default is today's 30")
+
     def test_period_is_the_committer_date_utc(self):
         self.commit("feat(Q1): early", "Refs: Q1\nSiguiente: x", date="2020-02-29T23:59:59Z")
         self.commit("fix(Q1): in march", "Refs: Q1\nRetries: 4\nSiguiente: x", date="2020-03-01T00:00:00Z")

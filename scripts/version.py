@@ -310,9 +310,22 @@ def harvest_check(version, tag):
             "when nothing is new) and retry: python3 scripts/version.py --release"]
 
 
-COMMIT_TYPES = ("feat", "fix", "hotfix", "docs", "style", "refactor", "perf", "test", "build", "ci", "chore", "revert")
-COMMIT_HEAD = re.compile(r"^(?:WIP: )?(" + "|".join(COMMIT_TYPES) + r")(?:\([^()\r\n]*\))?(!)?: \S")
-PATCH_TYPES = ("fix", "hotfix", "perf")
+def commit_head(types, wip):
+    """The regex of a commit subject `[WIP: ]type(scope)!: text` for the `commitTypes` and `commitWipPrefix` keys."""
+    prefix = "(?:" + re.escape(wip) + ")?" if wip else ""
+    return re.compile(r"^" + prefix + r"(" + "|".join(re.escape(t) for t in types) + r")(?:\([^()\r\n]*\))?(!)?: \S")
+
+
+def commit_rules():
+    """(the commit_head regex, patch types) from the config of the commit being released (HEAD): `commitTypes`,
+    `commitWipPrefix` and `patchCommitTypes`. Raises VersionError when that config cannot be read."""
+    try:
+        cfg = config.load(ROOT, rev="HEAD")
+    except (config.ConfigError, OSError) as exc:
+        raise VersionError(f"cannot read commitTypes and patchCommitTypes: {exc}; fix .claude/gw.json and retry: "
+                           "python3 scripts/version.py --suggest")
+    return (commit_head(config.commit_types(cfg), config.commit_wip_prefix(cfg)),
+            tuple(config.patch_commit_types(cfg)))
 
 
 def numbers(version):
@@ -320,9 +333,10 @@ def numbers(version):
     return tuple(int(n) for n in m.groups()) if m else None
 
 
-def is_breaking(message):
-    """True when a commit message has `type!:` in its first line or a BREAKING CHANGE trailer (git's own parse)."""
-    first = COMMIT_HEAD.match(message.split("\n", 1)[0])
+def is_breaking(message, head):
+    """True when a commit message has `type!:` in its first line (`head`: commit_head's regex) or a BREAKING CHANGE
+    trailer (git's own parse)."""
+    first = head.match(message.split("\n", 1)[0])
     if first and first.group(2):
         return True
     r = subprocess.run(["git", "interpret-trailers", "--parse"], input=message, capture_output=True, text=True)
@@ -338,7 +352,7 @@ def is_breaking(message):
 
 def suggest(current):
     """Lines (all starting `suggest:` or `warning:`) with the bump the non-merge commits since the last vX.Y.Z tag
-    ask for: breaking -> major (minor in 0.x, where a minor may break), feat -> minor, fix/hotfix/perf -> patch,
+    ask for: breaking -> major (minor in 0.x, where a minor may break), feat -> minor, a `patchCommitTypes` type (fix/hotfix/perf) -> patch,
     the rest nothing; commits that do not follow the format are counted. Compares with plugin.json's `current` version."""
     code, tag = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*.[0-9]*.[0-9]*", "HEAD")
     base = numbers(tag[1:]) if code == 0 and tag else None
@@ -350,20 +364,21 @@ def suggest(current):
         raise VersionError(f"cannot read the commits since {tag}; fetch it and retry: git fetch --tags origin && "
                            "python3 scripts/version.py --suggest")
     messages = [m.strip() for m in out.split("\x1e") if m.strip()]
+    head, patch_types = commit_rules()
     counts, loose, breaking = {}, 0, False
     for message in messages:
-        m = COMMIT_HEAD.match(message.split("\n", 1)[0])
+        m = head.match(message.split("\n", 1)[0])
         if m:
             counts[m.group(1)] = counts.get(m.group(1), 0) + 1
         else:
             loose += 1
-        breaking = is_breaking(message) or breaking
+        breaking = is_breaking(message, head) or breaking
     major, minor, patch = base
     if breaking:
         level = "major" if major >= 1 else "minor"
     elif counts.get("feat"):
         level = "minor"
-    elif any(counts.get(t) for t in PATCH_TYPES):
+    elif any(counts.get(t) for t in patch_types):
         level = "patch"
     else:
         level = None

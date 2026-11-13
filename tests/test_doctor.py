@@ -332,6 +332,25 @@ class Doctor(Snapshot):
         code, out = self.doctor()
         self.assertNotIn("WARN", out)
 
+    def test_linkable_folders_are_the_schema_default_of_worktree_links(self):  # A13: one list, not two
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import config
+        import doctor
+        self.assertEqual(doctor.linkable(), tuple(config.schema_default("worktreeLinks")))
+        self.assertEqual(doctor.linkable(), ("node_modules", ".venv"))
+
+    def test_doctor_scan_bytes_limits_the_script_text_read_from_a_check_command(self):  # A13
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import doctor
+        self.p.write("big.sh", "echo MARKER_TEXT\n" + "#" * 2000)
+        cfg = {"check": ["bash big.sh"]}
+        self.assertIn("MARKER_TEXT", doctor.check_run_text(self.p.work, cfg))  # default 500000
+        self.assertNotIn("MARKER_TEXT", doctor.check_run_text(self.p.work, dict(cfg, doctorScanBytes=1000)))
+        self.assertIn("MARKER_TEXT", doctor.check_run_text(self.p.work, dict(cfg, doctorScanBytes=5000)))
+        self.assertIn("MARKER_TEXT", doctor.check_run_text(self.p.work, dict(cfg, doctorScanBytes="x")))  # bad: default
+
     def set_check(self, *commands):
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         cfg["check"] = list(commands)

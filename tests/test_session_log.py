@@ -217,13 +217,14 @@ class SessionStart(Base):
         self.assertIn("setup command timed out after 1s: 'sleep 30'", out)
 
     def test_timeout_kills_the_children_of_the_command_too(self):
-        cloud = self.cloud_config(setup=["sleep 31.5 & sleep 32.5 & wait"])
+        mark = str(time.time_ns())[-7:]  # its own sleep lengths: a parallel run of this test is not mistaken for a survivor
+        cloud = self.cloud_config(setup=[f"sleep 31.5{mark} & sleep 32.5{mark} & wait"])
         cloud["GW_COMMAND_TIMEOUT"] = "1"
         code, out = self.p.session_start(env=cloud)
         self.assertEqual(code, 0, out)
         self.assertIn("setup command timed out after 1s", out)
         time.sleep(1)
-        left = subprocess.run(["pgrep", "-f", "sleep 3[12]\\.5"], capture_output=True, text=True).stdout
+        left = subprocess.run(["pgrep", "-f", f"sleep 3[12]\\.5{mark}"], capture_output=True, text=True).stdout
         self.assertEqual(left.strip(), "", "children of the timed-out command survived")
 
     def test_exit_124_of_the_command_is_a_failure_not_a_timeout(self):
@@ -235,13 +236,14 @@ class SessionStart(Base):
 
     def test_a_fast_command_leaves_no_watchdog_running(self):
         cloud = self.cloud_config(setup=["echo ok >> ok.log"])
-        cloud["GW_COMMAND_TIMEOUT"] = "37"  # its own number: another test's watchdog (33) may be running in parallel
+        limit = str(40000 + time.time_ns() % 20000)  # its own number: another run's watchdog may be running in parallel
+        cloud["GW_COMMAND_TIMEOUT"] = limit
         started = time.time()
         code, out = self.p.session_start(env=cloud)
         self.assertEqual(code, 0, out)
         self.assertLess(time.time() - started, 15, out)
         self.assertEqual((self.p.work / "ok.log").read_text().strip(), "ok")
-        left = subprocess.run(["pgrep", "-f", "sleep 37"], capture_output=True, text=True).stdout
+        left = subprocess.run(["pgrep", "-f", f"sleep {limit}( |$)"], capture_output=True, text=True).stdout
         self.assertEqual(left.strip(), "", "the watchdog's sleeper outlived the command")
 
     def test_a_zero_or_non_numeric_limit_falls_back_to_the_default(self):

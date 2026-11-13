@@ -224,11 +224,28 @@ class Harvest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("harvest_mod", SCRIPT)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        exact = "x" * mod.IDEA_MAX
+        self.assertEqual(mod.sizes(), {"ideaChars": 2000, "commitsShown": 30}, "the defaults are today's literals")
+        exact = "x" * 2000
         self.assertEqual(mod.clip(exact), exact, "exactly at the limit is not cut")
         cut = mod.clip(exact + "y")
-        self.assertEqual(len(cut), mod.IDEA_MAX)
+        self.assertEqual(len(cut), 2000)
         self.assertTrue(cut.endswith("\u2026 (truncated)"), cut[-30:])
+
+    def test_the_harvest_key_sets_the_idea_length_and_the_commits_listed(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("harvest_mod2", SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.sizes = lambda: {"ideaChars": 100, "commitsShown": 2}
+        cut = mod.clip("y" * 101)
+        self.assertEqual(len(cut), 100)
+        self.assertTrue(cut.endswith("\u2026 (truncated)"), cut[-30:])
+        report = {"repo": "r", "path": "/p", "head": "h" * 12, "last": None, "uses_gw_json": True, "history": "ok",
+                  "upstream": "origin/main", "behind": None, "commits": ["a1", "b2", "c3"]}
+        text = mod.markdown(dict(report, ideas=[], skills_changed=[], skills_older=[], skills_new=[], scripts_changed=[],
+                                 scripts_older=[], retros=[], skills_missing=[]))
+        self.assertIn("  - b2", text)
+        self.assertNotIn("  - c3", text)
 
     def test_a_long_idea_in_a_report_ends_in_truncated(self):
         r = self.harvest_after("# T\n", "# T\n\nProposal for the workflow: " + "z" * 2500 + "\n")

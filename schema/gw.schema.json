@@ -206,6 +206,69 @@
       "default": {"rowLimit": 600, "cellLimit": 800, "doneItems": 5},
       "description": "Size rules of the log (handoff.py): rowLimit, cellLimit and doneItems."
     },
+    "harvest": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "ideaChars": {"type": "integer", "minimum": 50, "default": 2000, "description": "Characters of an idea harvest.py keeps (a longer one is cut and marked as cut)."},
+        "commitsShown": {"type": "integer", "minimum": 1, "default": 30, "description": "Commits harvest.py lists per project."}
+      },
+      "default": {"ideaChars": 2000, "commitsShown": 30},
+      "description": "Sizes of the report of harvest.py (A13): ideaChars and commitsShown; an invalid value gives the defaults."
+    },
+    "applyDiffLines": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 80,
+      "description": "A13: lines of the template diff apply.py prints for a seeded file the project edited (the rest is counted)."
+    },
+    "doctorScanBytes": {
+      "type": "integer",
+      "minimum": 1000,
+      "default": 500000,
+      "description": "A13: the size in bytes under which doctor.py reads a file that a `check` command names, to find the tools the check uses; a bigger file is not read."
+    },
+    "patchCommitTypes": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*$"},
+      "minItems": 1,
+      "uniqueItems": true,
+      "default": ["fix", "hotfix", "perf"],
+      "description": "A13: the commit types version.py --suggest reads as asking for a patch bump (feat asks for a minor one). Types not in commitTypes never match."
+    },
+    "ciGreenConclusions": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[a-z_]+$"},
+      "minItems": 1,
+      "uniqueItems": true,
+      "default": ["success", "neutral", "skipped"],
+      "description": "A13: the conclusions of a finished check-run that ci-status.py (and the merge guard review-before-main.sh, from the protected branch's config) counts as green. A run with any other conclusion, or not finished, is not green."
+    },
+    "ciStatusTimeout": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 0,
+      "description": "A13: seconds each gh or curl call of ci-status.py may take before it counts as a failed call (the CI state is then unknown, never green); 0 = no limit."
+    },
+    "ciSystemCommands": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[A-Za-z0-9._+-]+$"},
+      "default": ["sudo", "apt-get", "apt", "yum", "dnf", "apk", "brew", "choco", "winget", "snap"],
+      "description": "A13: the commands that make ci-local.py leave a workflow step out as a system-package install (a step that has one of them as a word followed by a space, at the start of a command, is not run: the machine must have the packages already). The list replaces the default one; [] leaves no step out."
+    },
+    "ciStepTimeout": {
+      "type": "number",
+      "minimum": 0,
+      "default": 0,
+      "description": "A13: minutes a step of ci-local.py may run when the step has no `timeout-minutes` of its own (the step's own value always wins); 0 = no limit."
+    },
+    "staleRefsPaths": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$"},
+      "minItems": 1,
+      "default": ["docs/", "README*"],
+      "description": "A13: the tracked files md-links.py scans for the staleRefs patterns, as globs of the repo (`*` inside one folder, `**` across folders, a folder name or one ending in `/` is everything under it; case-insensitive). The log file and `.claude/` are never scanned."
+    },
     "hookStdinWait": {
       "type": "number",
       "minimum": 0.1,
@@ -300,7 +363,15 @@
         "branchPrefixes",
         "mergeCleanup",
         "wholeReadSkipExtensions",
-        "wholeReadPaths"
+        "wholeReadPaths",
+        "harvest",
+        "applyDiffLines",
+        "ciGreenConclusions",
+        "ciStatusTimeout",
+        "ciStepTimeout",
+        "ciSystemCommands",
+        "doctorScanBytes",
+        "patchCommitTypes"
       ],
       "description": "Top-level keys of .claude/gw.json whose change does not make a branch push run the full check (E47): when the push's new commits change only these keys of the config, its related tests run. Any other key, an added, removed or broken config, and fullCheckSkipKeys itself still count as an environment change. The list replaces the default one."
     },
@@ -977,6 +1048,7 @@
         "ledger": {"type": "string", "minLength": 1, "default": "docs/metrics/ledger.jsonl"},
         "record": {"type": "boolean", "default": true},
         "reports": {"type": "string", "minLength": 1, "default": "docs/metrics"},
+        "gitTimeout": {"type": "integer", "minimum": 1, "maximum": 600, "default": 30, "description": "Seconds each git call of the quality report (metrics.py quality) may take."},
         "alert": {
           "type": "object",
           "additionalProperties": false,
@@ -1039,7 +1111,7 @@
         ]
         }
       },
-      "default": {"ledger": "docs/metrics/ledger.jsonl", "record": true, "reports": "docs/metrics", "alert": {"factor": 1.5, "days": 28, "minDays": 7}, "quality": {"findingsTrailer": "Findings", "retriesTrailer": "Retries", "reworkTypes": ["fix", "revert"]}},
+      "default": {"ledger": "docs/metrics/ledger.jsonl", "record": true, "reports": "docs/metrics", "gitTimeout": 30, "alert": {"factor": 1.5, "days": 28, "minDays": 7}, "quality": {"findingsTrailer": "Findings", "retriesTrailer": "Retries", "reworkTypes": ["fix", "revert"]}},
       "description": "Token ledger (B1-B6): the Stop hook metrics.py record appends, per session, agent, model and UTC date, the tokens the Claude Code transcripts show to the repo-relative ledger path (JSON lines, tokens only, never money); record false turns the recording off. reports: repo-relative folder where metrics.py report --write saves the period reports (daily/, weekly/, monthly/, quarterly/). alert (B6): the SessionStart hook (metrics.py alert) warns when a model's spend on today or yesterday (UTC) passes factor x its mean daily spend over the days before, counting only days with data and only with at least minDays of them; USD when all its rows are priced, else tokens; factor 0 turns it off. prices: dated tables of USD per million tokens per model (input, cacheWrite, cacheRead, output); a ledger row takes the newest table whose since is on or before its date, and the model key equal to its model or, failing that, the longest key that its model starts with followed by '-' (date suffixes); no table or no key = no price. A given prices replaces the whole default list. quality (B8): metrics.py quality reads the commit messages; findingsTrailer and retriesTrailer name the trailers whose integer values are summed per task id (Findings: accepted code-review findings; Retries: attempts that had to climb a rung); reworkTypes: the Conventional Commits types (after an optional WIP: prefix) that count as rework when they are not the first commit of the id, git reverts included."
     },
     "commandTimeout": {

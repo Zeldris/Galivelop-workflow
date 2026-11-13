@@ -449,6 +449,51 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, value)
             self.assertIn(why, r.stderr)
 
+    def test_a13_c6_getters_default_set_value_and_bad_value_gives_default(self):
+        schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
+        getters = {"commitTypes": config.commit_types, "patchCommitTypes": config.patch_commit_types,
+                   "ciGreenConclusions": config.ci_green_conclusions, "ciSystemCommands": config.ci_system_commands,
+                   "staleRefsPaths": config.stale_refs_paths, "ciStatusTimeout": config.ci_status_timeout,
+                   "ciStepTimeout": config.ci_step_timeout, "doctorScanBytes": config.doctor_scan_bytes,
+                   "applyDiffLines": config.apply_diff_lines, "commitWipPrefix": config.commit_wip_prefix}
+        for key, getter in getters.items():
+            self.assertEqual(getter({}), schema[key]["default"], key)
+        self.assertEqual(config.harvest({}), schema["harvest"]["default"])
+        self.assertEqual(config.patch_commit_types({}), ["fix", "hotfix", "perf"])
+        self.assertEqual(config.ci_green_conclusions({}), ["success", "neutral", "skipped"])
+        self.assertEqual((config.doctor_scan_bytes({}), config.apply_diff_lines({}), config.ci_status_timeout({})),
+                         (500000, 80, schema["ciStatusTimeout"]["default"]))
+        self.assertEqual(config.ci_step_timeout({}), 0)
+        given = {"commitTypes": ["feat"], "patchCommitTypes": ["fix"], "ciGreenConclusions": ["success"],
+                 "ciSystemCommands": [], "staleRefsPaths": ["x/"], "ciStatusTimeout": 7, "ciStepTimeout": 0.5,
+                 "doctorScanBytes": 1000, "applyDiffLines": 5, "commitWipPrefix": "", "harvest": {"commitsShown": 3}}
+        self.assertEqual(config.commit_types(given), ["feat"])
+        self.assertEqual(config.patch_commit_types(given), ["fix"])
+        self.assertEqual(config.ci_green_conclusions(given), ["success"])
+        self.assertEqual(config.ci_system_commands(given), [])
+        self.assertEqual(config.stale_refs_paths(given), ["x/"])
+        self.assertEqual((config.ci_status_timeout(given), config.ci_step_timeout(given)), (7, 0.5))
+        self.assertEqual((config.doctor_scan_bytes(given), config.apply_diff_lines(given)), (1000, 5))
+        self.assertEqual(config.commit_wip_prefix(given), "")
+        self.assertEqual(config.harvest(given)["commitsShown"], 3)
+        self.assertEqual(config.harvest(given)["ideaChars"], schema["harvest"]["properties"]["ideaChars"]["default"])
+        bad = {"commitTypes": "feat", "patchCommitTypes": [""], "ciGreenConclusions": [1], "ciSystemCommands": "sudo",
+               "staleRefsPaths": [], "ciStatusTimeout": -1, "ciStepTimeout": -1, "doctorScanBytes": "x",
+               "applyDiffLines": True, "commitWipPrefix": 3, "harvest": {"commitsShown": 0}}
+        for key, getter in getters.items():
+            self.assertEqual(getter({key: bad[key]}), getter({}), key)
+        self.assertEqual(config.harvest(bad), config.harvest({}))
+        # the loader rejects them with their reason
+        for key, why in (("ciStatusTimeout", "ciStatusTimeout"), ("applyDiffLines", "applyDiffLines"),
+                         ("staleRefsPaths", "staleRefsPaths"), ("commitTypes", "commitTypes")):
+            self.write(dict(VALID, **{key: bad[key]}))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, key)
+            self.assertIn(why, r.stderr)
+        self.write(dict(VALID, harvest={"commitsShown": 3}, applyDiffLines=9))
+        self.assertEqual(cli(self.tmp, "get", "harvest.commitsShown").stdout.strip(), "3")
+        self.assertEqual(cli(self.tmp, "get", "applyDiffLines").stdout.strip(), "9")
+
     def test_a13_commit_message_keys_default_set_and_bad_values(self):
         self.write(VALID)
         types = "feat fix hotfix docs style refactor perf test build ci chore revert".split()

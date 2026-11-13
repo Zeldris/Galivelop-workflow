@@ -41,7 +41,15 @@ sys.path.insert(0, HERE)
 sys.dont_write_bytecode = True  # no __pycache__: it would make the tree look dirty
 import config  # noqa: E402  the only reader of .claude/gw.json
 
-SYSTEM_PACKAGES = re.compile(r"(^|[\s;&|(])(sudo|apt-get|apt|yum|dnf|apk|brew|choco|winget|snap)\s")
+
+def system_packages(commands):
+    """The regex of a step that installs system packages: one of `commands` (ciSystemCommands) as a word followed by
+    whitespace, at the start of the script or after `;`, `&`, `|` or `(`; None for an empty list."""
+    if not commands:
+        return None
+    return re.compile(r"(^|[\s;&|(])(" + "|".join(re.escape(c) for c in commands) + r")\s")
+
+
 HEADER = ("# CI run locally\n\n"
           "Written by `ci-local.py --record`: one line per local run of the GitHub CI (green or red, with what it\n"
           "did not cover). The PR hook takes a green line whose commit has only content after it as the CI that\n"
@@ -575,6 +583,8 @@ def matrix_combos(strategy, ev):
 class Run:
     def __init__(self, root, cfg, event, plan_only):
         self.root, self.cfg, self.event, self.plan_only = root, cfg, event, plan_only
+        self.system = system_packages(config.ci_system_commands(cfg))
+        self.step_timeout = config.ci_step_timeout(cfg)
         self.os = host_os()
         self.branch = git(root, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip() or "HEAD"
         self.sha = git(root, "rev-parse", "HEAD").stdout.strip()
@@ -719,7 +729,7 @@ class Run:
                     self.say(f"{sname}: not run (uses: {step['uses']}; this machine must have it already)")
                     continue
                 script = substitute(step.get("run"), ev)
-                if SYSTEM_PACKAGES.search(script):
+                if self.system and self.system.search(script):
                     self.not_run.append(sname)
                     self.say(f"{sname}: not run (system packages; this machine must have them already)")
                     continue
@@ -729,6 +739,8 @@ class Run:
                 wd = substitute(step.get("working-directory") or defaults.get("working-directory") or ".", ev)
                 tolerate = text_of(substitute(step.get("continue-on-error"), ev)) == "true"
                 timeout = step.get("timeout-minutes")
+                if timeout is None and self.step_timeout:
+                    timeout = self.step_timeout  # ciStepTimeout: only for a step with no limit of its own
             except Unknown as exc:
                 self.not_covered.append(f"{sname} ({exc})")
                 continue

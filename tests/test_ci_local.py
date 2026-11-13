@@ -333,6 +333,50 @@ jobs:
         self.assertEqual(code, 2, out)
         self.assertIn(".github/workflows/gone.yml (ciLocalWorkflows) does not exist", out)
 
+    def set_config(self, **keys):
+        path = self.p.work / ".claude" / "gw.json"
+        config = json.loads(path.read_text())
+        config.update(keys)
+        path.write_text(json.dumps(config))
+        self.p.commit("config")
+
+    SYSTEM = (f"on: [pull_request]\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n"
+              "      - run: apt-get --version >/dev/null 2>&1 || true\n      - run: echo foo-install\n")
+
+    def test_system_package_steps_are_left_out_by_default_and_by_the_ci_system_commands_key(self):
+        self.workflow(self.SYSTEM)
+        code, out = self.ci()
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out.count("not run (system packages"), 1, out)
+        self.set_config(ciSystemCommands=[])  # none left out: the apt-get line runs
+        code, out = self.ci()
+        self.assertNotIn("not run (system packages", out)
+        self.set_config(ciSystemCommands=["echo"])
+        code, out = self.ci()
+        self.assertEqual(out.count("not run (system packages"), 1, out)
+
+    def test_ci_system_commands_validates_in_the_config(self):
+        self.workflow(self.SYSTEM)
+        self.set_config(ciSystemCommands=["a b"])
+        code, out = self.ci()
+        self.assertEqual(code, 2, out)
+        self.assertIn("ciSystemCommands", out)
+
+    SLOW = f"on: [pull_request]\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n      - run: sleep 20\n"
+
+    def test_step_timeout_defaults_to_none_applies_to_steps_without_their_own_and_loses_to_theirs(self):
+        self.workflow(self.SLOW.replace("sleep 20", "sleep 2"))
+        code, out = self.ci()
+        self.assertEqual(code, 0, out)  # no default limit
+        self.workflow(self.SLOW)
+        self.set_config(ciStepTimeout=0.02)  # 1.2 s
+        code, out = self.ci()
+        self.assertEqual(code, 1, out)
+        self.assertIn("timed out after 0.02 min", out)
+        self.workflow(self.SLOW.replace("- run: sleep 20", "- run: sleep 2\n        timeout-minutes: 1"))
+        code, out = self.ci()
+        self.assertEqual(code, 0, out)  # the step's own timeout-minutes wins over the key
+
     def test_paths_filter(self):
         self.workflow(f"on:\n  pull_request:\n    paths: ['src/**']\njobs:\n  j:\n    runs-on: {HOST}\n"
                       "    steps:\n      - run: 'true'\n")

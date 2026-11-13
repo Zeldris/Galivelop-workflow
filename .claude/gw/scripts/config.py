@@ -305,6 +305,92 @@ def handoff(config):
     return _bounded_section(config, "handoff")
 
 
+def _int_key(config, key):
+    """The top-level integer key `key`: its value when it is an integer within the schema's minimum and maximum, else
+    the schema default (for the keys a script reads after a config it could not read: a bad value never hides a check)."""
+    prop = _schema()["properties"][key]
+    given = config.get(key)
+    ok = (isinstance(given, int) and not isinstance(given, bool) and given >= prop.get("minimum", given)
+          and given <= prop.get("maximum", given))
+    return given if ok else prop["default"]
+
+
+def _string_list_key(config, key):
+    """The top-level key `key`, a list of non-empty strings: the list when it is one (and not empty when the schema
+    asks for `minItems`), else the schema default."""
+    prop = _schema()["properties"][key]
+    given = config.get(key)
+    if (isinstance(given, list) and len(given) >= prop.get("minItems", 0)
+            and all(isinstance(x, str) and x for x in given)):
+        return list(given)
+    return list(prop["default"])
+
+
+def harvest(config):
+    """The `harvest` key (A13) as a dict (ideaChars, commitsShown): the sizes harvest.py prints; an invalid value gives
+    the schema default."""
+    return _bounded_section(config, "harvest")
+
+
+def commit_types(config):
+    """The `commitTypes` key (A13): the Conventional Commits types, the schema default when absent or invalid."""
+    return _string_list_key(config, "commitTypes")
+
+
+def commit_wip_prefix(config):
+    """The `commitWipPrefix` key (A13): the prefix of a commit made in red ("" = none), the default when not a string."""
+    given = config.get("commitWipPrefix")
+    return given if isinstance(given, str) else _schema()["properties"]["commitWipPrefix"]["default"]
+
+
+def patch_commit_types(config):
+    """The `patchCommitTypes` key (A13): the commit types version.py reads as asking for a patch bump."""
+    return _string_list_key(config, "patchCommitTypes")
+
+
+def ci_green_conclusions(config):
+    """The `ciGreenConclusions` key (A13): the check-run conclusions ci-status.py counts as green."""
+    return _string_list_key(config, "ciGreenConclusions")
+
+
+def ci_status_timeout(config):
+    """The `ciStatusTimeout` key (A13): seconds a gh or curl call of ci-status.py may take (0 = no limit)."""
+    return _int_key(config, "ciStatusTimeout")
+
+
+def ci_step_timeout(config):
+    """The `ciStepTimeout` key (A13): minutes a step of ci-local.py without its own `timeout-minutes` may take
+    (0 = no limit; a fraction of a minute is fine, like GitHub's own `timeout-minutes`)."""
+    given = config.get("ciStepTimeout")
+    if isinstance(given, (int, float)) and not isinstance(given, bool) and 0 <= given < float("inf"):
+        return given
+    return _schema()["properties"]["ciStepTimeout"]["default"]
+
+
+def ci_system_commands(config):
+    """The `ciSystemCommands` key (A13): the commands whose steps ci-local.py leaves out as system-package installs
+    (an empty list leaves none out)."""
+    given = config.get("ciSystemCommands")
+    if isinstance(given, list) and all(isinstance(x, str) and x for x in given):
+        return list(given)
+    return list(_schema()["properties"]["ciSystemCommands"]["default"])
+
+
+def doctor_scan_bytes(config):
+    """The `doctorScanBytes` key (A13): the size under which doctor.py reads a file that a `check` command names."""
+    return _int_key(config, "doctorScanBytes")
+
+
+def apply_diff_lines(config):
+    """The `applyDiffLines` key (A13): the lines of template diff apply.py prints for a seeded file."""
+    return _int_key(config, "applyDiffLines")
+
+
+def stale_refs_paths(config):
+    """The `staleRefsPaths` key (A13): the globs of the tracked files md-links.py scans for `staleRefs`."""
+    return _string_list_key(config, "staleRefsPaths")
+
+
 def instruction_lines(config):
     """The `instructionLines` key as (warn, fail): the line limits of AGENTS.md/CLAUDE.md."""
     limits = _section(config, "instructionLines")
@@ -1020,7 +1106,8 @@ def main(argv=None):
         print(f"{scope} {reason}" if reason else scope)
         return 0
     value = dict(config, metrics=metrics(config), models=models(config), measure=measure(config),
-                 recover=recover(config), handoff=handoff(config),
+                 recover=recover(config), handoff=handoff(config), harvest=harvest(config),
+                 contextGuard=context_guard(config),
                  stopSeverity=stop_severity(config), changeSize=change_size(config),
                  retro=retro(config), redWithoutFix=red_without_fix(config), branchPrefixes=branch_prefixes(config))  # inner keys fill from the schema too
     for part in args.key.split("."):

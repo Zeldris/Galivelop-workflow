@@ -6,6 +6,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -26,7 +27,7 @@ case "$2" in
     printf '%s' "$GH_LOG" ;;
   */actions/jobs/*) [ -z "${GH_NO_JOB:-}" ] || { echo "gh: HTTP 404: Not Found (fake)" >&2; exit 1; }
     printf '%s' "$GH_JOB" ;;
-  */commits/*/check-runs*) printf '%s' "$GH_RUNS" ;;
+  */commits/*/check-runs*) [ -z "${GH_SLOW:-}" ] || sleep "$GH_SLOW"; printf '%s' "$GH_RUNS" ;;
   */commits/*/status*) printf '%s' "$GH_STATUS" ;;
   */commits/*) [ -z "${GH_NO_COMMIT:-}" ] || { echo "gh: HTTP 422: No commit found for SHA (fake)" >&2; exit 1; }
     printf '%s' "$GH_COMMIT" ;;
@@ -116,6 +117,33 @@ class CiStatus(unittest.TestCase):
 
     def test_red_check_run_names_it(self):
         self.assertCi(self.ci(run=runs(("build", "success"), ("macos", "failure"))), 1, "red", "macos: failure")
+
+    def test_green_conclusions_default_to_success_neutral_skipped(self):
+        self.assertCi(self.ci(run=runs(("a", "success"), ("b", "neutral"), ("c", "skipped"))), 0, "green")
+        self.assertCi(self.ci(run=runs(("a", "success"), ("d", "cancelled"))), 1, "red", "d: cancelled")
+
+    def test_green_conclusions_key_changes_what_counts_as_green(self):
+        self.config({"ciGreenConclusions": ["success"]})
+        self.assertCi(self.ci(run=runs(("a", "success"), ("b", "neutral"))), 1, "red", "b: neutral")
+        self.config({"ciGreenConclusions": ["success", "cancelled"]})
+        self.assertCi(self.ci(run=runs(("a", "success"), ("d", "cancelled"))), 0, "green")
+
+    def test_green_conclusions_key_validates_in_the_config(self):
+        for bad in ([], "success", ["Success"], [1]):
+            with self.subTest(bad=bad):
+                self.config({"ciGreenConclusions": bad})
+                code, out = self.ci()
+                self.assertEqual(code, 2, out)
+                self.assertIn("ciGreenConclusions", out)
+
+    def test_status_timeout_defaults_to_no_limit_and_a_set_one_fails_closed_with_its_reason(self):
+        self.assertCi(self.ci(env={"GH_SLOW": "2"}), 0, "green")  # no limit: the slow call is waited for
+        self.config({"ciStatusTimeout": 1})
+        started = time.time()
+        code, out = self.ci(env={"GH_SLOW": "20"})
+        self.assertEqual(code, 2, out)
+        self.assertIn("timed out after 1 s (ciStatusTimeout", out)
+        self.assertLess(time.time() - started, 15, out)
 
     def test_pending_check_run_is_pending_not_red(self):
         self.assertCi(self.ci(run=runs(("build", "success"), ("slow", None))), 1, "pending", "slow: in_progress")

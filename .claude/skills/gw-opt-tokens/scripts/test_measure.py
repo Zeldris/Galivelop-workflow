@@ -430,6 +430,28 @@ class Measure(unittest.TestCase):
         absent = self.short_session(2, config=self.CONFIG % '')  # valid config without the key: the default
         self.assertIn('Session: prev.jsonl', absent.stdout)
 
+    def chars_per_token_in(self, config):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location('measure_mod', MEASURE)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        repo = folder()
+        subprocess.run(['git', 'init', '-q', repo], check=True)
+        if config is not None:
+            write(os.path.join(repo, '.claude', 'gw.json'), config)
+            for rel in ('scripts/config.py', 'schema/gw.schema.json'):
+                os.makedirs(os.path.dirname(os.path.join(repo, rel)), exist_ok=True)
+                shutil.copy(os.path.join(HERE, '..', '..', '..', rel), os.path.join(repo, rel))
+        return mod.chars_per_token(repo)
+
+    def test_chars_per_token_comes_from_the_context_guard_config(self):
+        self.assertEqual(self.chars_per_token_in(None), 3.5, 'no config: the built-in value')
+        self.assertEqual(self.chars_per_token_in(self.CONFIG % ''), 3.5, 'valid config without the key: the default')
+        self.assertEqual(self.chars_per_token_in(self.CONFIG % ', "contextGuard": {"charsPerToken": 4}'), 4.0)
+        self.assertEqual(self.chars_per_token_in(self.CONFIG % ', "contextGuard": {"charsPerToken": 0}'), 3.5,
+                         'an invalid value (the config fails closed) keeps 3.5')
+        self.assertEqual(self.chars_per_token_in('{not json'), 3.5)
+
     def test_malformed_or_invalid_config_falls_back_to_the_default(self):
         for config in ('{not json', self.CONFIG % ', "measure": {"minCalls": -1}',
                        self.CONFIG % ', "measure": {"minCalls": "x"}'):

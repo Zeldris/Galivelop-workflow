@@ -277,7 +277,12 @@ def check_worktrees(rep, root, cfg):
 
 
 CD_ENTER = re.compile(r"""(?:^|[;&|(])\s*cd\s+("[^"]+"|'[^']+'|[^\s;&|)"']+)\s*&&""")
-LINKABLE = ("node_modules", ".venv")  # what the pre-push worktree lacks: untracked dependency folders
+
+
+def linkable():
+    """The dependency folders the pre-push worktree lacks (untracked): the schema default of `worktreeLinks`, which
+    is the list apply.py seeds (one list, A13)."""
+    return tuple(config.schema_default("worktreeLinks"))
 
 
 def check_worktree_links(rep, root, cfg):
@@ -294,7 +299,7 @@ def check_worktree_links(rep, root, cfg):
             folder = Path(os.path.normpath(m.group(1).strip("\"'"))).as_posix()
             if os.path.isabs(folder) or folder.startswith("..") or folder == ".":
                 continue
-            for name in LINKABLE:
+            for name in linkable():
                 rel = f"{folder}/{name}"
                 covered = any(rel == l or rel.startswith(l + "/") for l in links)
                 if (root / rel).exists() and not covered:
@@ -832,7 +837,7 @@ def check_run_text(root, cfg):
             try:
                 path = (top / name).resolve()
                 path.relative_to(top)  # a path outside the repo (/etc/passwd, ../x) is never read
-                if path.is_file() and path.stat().st_size < 500_000:
+                if path.is_file() and path.stat().st_size < config.doctor_scan_bytes(cfg):
                     parts.append(path.read_text(encoding="utf-8", errors="replace"))
             except (ValueError, OSError):
                 continue

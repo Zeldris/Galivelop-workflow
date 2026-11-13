@@ -130,6 +130,37 @@ class TestsAfterMain(unittest.TestCase):
         self.assertIn(f"{name}:{line}: class {cls} is defined after the unittest.main() call", out)
         self.assertIn("move it above", out)
 
+    def walk(self):
+        """Run outside git on a folder with a late class under vendor/, node_modules/ and src/."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for d in ("vendor", "node_modules", "src"):
+                (root / d).mkdir()
+                (root / d / "test_x.py").write_text(OUTSIDE_IF)
+            r = subprocess.run([sys.executable, "-B", str(SCRIPT), "--root", tmp], capture_output=True, text=True)
+            return r.returncode, r.stdout + r.stderr
+
+    def test_walk_outside_git_skips_the_default_folders_without_tests(self):
+        code, out = self.walk()
+        self.assertEqual(code, 1, out)
+        self.assertIn("src/test_x.py", out)
+        self.assertIn("vendor/test_x.py", out)
+        self.assertNotIn("node_modules", out)
+
+    def test_skip_patterns_follow_doctor_test_dirs_ignore(self):
+        import importlib.util
+        import json
+        from test_config import VALID
+        spec = importlib.util.spec_from_file_location("tests_after_main", SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run(["git", "init", "-q", tmp], check=True)
+            self.assertIn("node_modules", mod.skip_patterns(tmp))  # no config: the schema default
+            (Path(tmp) / ".claude").mkdir()
+            (Path(tmp) / ".claude" / "gw.json").write_text(json.dumps(dict(VALID, doctorTestDirsIgnore=["vendor"])))
+            self.assertEqual(mod.skip_patterns(tmp), ["vendor"])  # a set list replaces the default one
+
     def test_clean_file_passes(self):
         code, out, _ = self.run_on(CLEAN)
         self.assertEqual(code, 0, out)

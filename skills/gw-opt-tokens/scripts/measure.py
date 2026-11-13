@@ -24,7 +24,7 @@ Short current session (B29): without `--session`, if the session found has fewer
 period (default 5, config `measure.minCalls`, 0 = off; e.g. right after a `/clear`), the newest previous session of the
 same git branch (log lines carry `gitBranch`) with calls in the period is measured instead, and the output says so.
 
-Tokens of a result are estimated from its size (characters / 3.5; an image counts ~1,600). API usage is exact.
+Tokens of a result are estimated from its size (characters / contextGuard.charsPerToken, 3.5 by default; an image counts ~1,600). API usage is exact.
 """
 import argparse
 import collections
@@ -37,7 +37,7 @@ import subprocess
 import sys
 
 IMAGE_TOKENS = 1600
-CHARS_PER_TOKEN = 3.5
+CHARS_PER_TOKEN = 3.5  # the default of contextGuard.charsPerToken; main() takes the project's value
 MIXED_RATIO = 1.5  # peaks of closed stretches whose max/min exceeds this: the session mixes compaction windows
 MIN_OUTPUT = 100  # output tokens per call below which a subagent log's output is not trustworthy
 
@@ -119,6 +119,24 @@ def min_calls(root):
             value = r.stdout.strip()
             return int(value) if r.returncode == 0 and value.isdigit() else default
     return default
+
+
+def chars_per_token(root):
+    """`contextGuard.charsPerToken` from the project's config reader (installed copy first, then this repo's own); the
+    built-in 3.5 when there is no config, no reader, the config is malformed or the answer is not a positive number."""
+    if not os.path.isfile(os.path.join(root, '.claude', 'gw.json')):
+        return CHARS_PER_TOKEN
+    for rel in ('.claude/gw/scripts/config.py', 'scripts/config.py'):
+        reader = os.path.join(root, rel)
+        if os.path.isfile(reader):
+            try:
+                r = subprocess.run([sys.executable, reader, '--root', root, 'get', 'contextGuard.charsPerToken'],
+                                   capture_output=True, text=True)
+                value = float(r.stdout.strip()) if r.returncode == 0 else 0
+            except (OSError, ValueError):
+                return CHARS_PER_TOKEN
+            return value if 0 < value < float('inf') else CHARS_PER_TOKEN
+    return CHARS_PER_TOKEN
 
 
 def branch_of(path):
@@ -309,6 +327,8 @@ def main():
     ap.add_argument('--top', type=int, default=12, help='rows per list (default 12)')
     a = ap.parse_args()
     root = project_root()
+    global CHARS_PER_TOKEN
+    CHARS_PER_TOKEN = chars_per_token(root)
     since = None
     if a.since:
         since = since_moment(a.since)

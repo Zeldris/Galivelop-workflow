@@ -137,7 +137,6 @@ BLOCK_MARK = re.compile(r"^\s*<!--\s*(/?)if(?:\s+(\w+))?\s*-->\s*$")  # a line o
 TEXT_KEYS = ("log", "protectedBranch", "reviewMark", "language")
 LIST_KEYS = ("check", "install")
 DIFFED = ("REVIEW.md", "GLOSSARY.md")  # seeded files whose template diff is printed while unmarked or older
-DIFF_LINES = 80
 ROOT_TEMPLATES = (("AGENTS.md", "merged"), ("CLAUDE.md", "merged"), ("REVIEW.md", "seeded"),
                   ("GLOSSARY.md", "seeded"))
 NOTES = (("gw-opt-tokens.md", None), ("gw-opt-ai.md", "gw-opt-ai"), ("gw-scout-updates.md", "gw-scout-updates"))
@@ -1311,10 +1310,11 @@ def report(plan):
         diff = list(difflib.unified_diff(current.decode("utf-8", "replace").splitlines(),
                                          data.decode("utf-8", "replace").splitlines(),
                                          f"{rel} (project)", f"{rel} (template)", lineterm=""))
-        for line in diff[:DIFF_LINES]:
+        shown = config.apply_diff_lines(plan.cfg)  # applyDiffLines (A13); the schema default for an empty cfg
+        for line in diff[:shown]:
             print(f"  {line}")
-        if len(diff) > DIFF_LINES:
-            print(f"  … {len(diff) - DIFF_LINES} more line(s)")
+        if len(diff) > shown:
+            print(f"  … {len(diff) - shown} more line(s)")
     for line in plan.personal + plan.owned:
         print(f"apply: {line}")
     for warning in plan.warnings:
