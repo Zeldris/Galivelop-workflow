@@ -236,6 +236,10 @@ class Refs(Msg):
     def test_a_mention_inside_a_sentence_passes(self):
         self.accepted("work\n\nthe Findings: 3 trailer and a Retries: 1 one are read\n\nRefs: D11\nSiguiente: x")
 
+    def test_a_prose_line_that_starts_like_the_trailer_passes(self):
+        # metrics.py sums only integer values: a line without one is not a lost trailer
+        self.accepted("work\n\nFindings: the reviewer flagged two edge cases\nRetries: none needed\n\nRefs: D11\nSiguiente: x")
+
     def test_a_space_before_the_colon_is_still_that_trailer(self):
         self.refused("work\n\nFindings : 3\n\nRefs: D11\nSiguiente: x", "`Findings:` line is outside the trailer block")
 

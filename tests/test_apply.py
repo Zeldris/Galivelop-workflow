@@ -1723,6 +1723,17 @@ class LegacyNames(unittest.TestCase):
         self.assertIn("docs/notes.md:2 uses the old name docs/traspaso.md; replace it with docs/handoff.md", found[1])
         self.assertIn("git grep -n -F", found[0])
 
+    def test_a_personal_note_created_in_the_same_run_is_a_new_name_that_exists(self):
+        notes = self.tmp / "notes"
+        notes.mkdir()
+        (notes / "gw-selector.md").write_text("my selector notes\n")
+        self.p.env["GW_PERSONAL_NOTES"] = str(notes)
+        self.p.write("docs/notes.md", "see .claude/gw/selector.md\n")
+        out = self.applied()
+        self.assertTrue((self.p.work / ".claude/gw/gw-selector.md").is_file(), out)
+        self.assertIn("docs/notes.md:1 uses the old name .claude/gw/selector.md; replace it with "
+                      ".claude/gw/gw-selector.md", out)
+
     def test_check_mode_warns_and_dry_run_too_without_failing(self):
         self.p.write("README.md", "see .claude/skills/selector/SKILL.md\n")
         self.applied("--dry-run")
@@ -1901,7 +1912,7 @@ class LegacyNames(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("apply_names", APPLY_SCRIPT)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        paths = {"docs/media/a.md", ".claude/gw/scripts/check-green.sh"}
+        paths = {"/docs/media/a.md", "/.claude/gw/scripts/check-green.sh"}  # as project_paths gives them
         self.assertTrue(mod.name_exists(paths, "docs/media"))
         self.assertTrue(mod.name_exists(paths, "check-green.sh"))
         self.assertFalse(mod.name_exists(paths, "merge-branch.sh"))

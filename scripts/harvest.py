@@ -289,21 +289,35 @@ def ideas_in(text, rel, added):
 
 
 def old_lines(repo, base):
-    """Stripped, non-empty lines of every Markdown file at commit `base` (what was already there at the last harvest,
-    wherever it lived), or None when git cannot say: then nothing is dropped."""
-    out = git(repo, "grep", "-h", "-I", "--no-color", "--no-line-number", "--no-column", "-e", "", base, "--", "*.md")
-    return None if out is None else {line.strip() for line in out.split("\n") if line.strip()}
+    """{stripped non-empty line: the Markdown files that had it} at commit `base` (what was already there at the last
+    harvest, wherever it lived), or None when git cannot say: then nothing is dropped."""
+    proc = subprocess.run(["git", "-C", str(repo), "grep", "-z", "-I", "--no-color", "--no-line-number", "--no-column",
+                           "-e", "", base, "--", "*.md"], capture_output=True, encoding="utf-8", errors="replace")
+    if proc.returncode == 1:
+        return {}  # no Markdown file at the base: nothing is old
+    if proc.returncode != 0:
+        return None
+    found = {}
+    for record in proc.stdout.split("\n"):  # -z: <base>:<path> NUL <line>
+        where, _nul, line = record.partition("\0")
+        if line.strip():
+            found.setdefault(line.strip(), set()).add(where[len(base) + 1:] if where.startswith(f"{base}:") else where)
+    return found
 
 
-def not_old(ideas, old):
-    """Drop the ideas whose every line was already in some Markdown file at the last harvest: an entry moved to an
-    archive file shows as added there, but it is not new (D101). A cut (truncated) idea is always kept: its text is not whole."""
+def not_old(ideas, old, same=()):
+    """Drop the ideas whose every line was already in another Markdown file at the last harvest: an entry moved to an
+    archive file shows as added there, but it is not new (D101). Lines that were in the idea's own file (`same`: its
+    path and the path it was renamed from) do not count: a heading added over them makes them a new idea there. A cut
+    (truncated) idea is always kept: its text is not whole."""
     if not old:
         return ideas
     kept = []
     for idea in ideas:
         lines = [l.strip() for l in idea["text"].split("\n") if l.strip()]
-        if idea["text"].endswith(TRUNCATED) or not lines or not all(l in old for l in lines):
+        own = {idea["path"], *same}
+        if (idea["text"].endswith(TRUNCATED) or not lines
+                or not all(old.get(l, set()) - own for l in lines)):
             kept.append(idea)
     return kept
 
@@ -382,7 +396,7 @@ def harvest(repo, state, anonymize=lambda text: text):
             report["skills_new"].append({"skill": name, "path": rel, "description": description(text)})
     report["skills_missing"] = sorted(set(ours) - set(theirs) - {OLD_SKILLS[n] for n in theirs if n in OLD_SKILLS})
 
-    before = None  # lines of the Markdown files at the last harvest, read once and only if an idea shows up
+    before, read = None, False  # lines of the Markdown files at the last harvest, read once and only if an idea shows up
     our_scripts = {p.name: p for p in (ROOT / "scripts").glob("*") if p.is_file()}
     tracked = (git(repo, "ls-files") or "").splitlines()
     for rel in tracked:
@@ -407,12 +421,12 @@ def harvest(repo, state, anonymize=lambda text: text):
             text = (repo / rel).read_text(encoding="utf-8", errors="replace")
             found = ideas_in(text, rel, added_lines(repo, base, rel, renames.get(rel)))
             if found and base is not None:
-                if before is None:
-                    before = old_lines(repo, base)
+                if not read:
+                    before, read = old_lines(repo, base), True
                     if before is None:
                         report["history"] += ("; warning: git grep failed at the last harvested commit, so ideas moved "
                                               "to another file may be repeated (check them by hand)")
-                found = not_old(found, before)
+                found = not_old(found, before, {renames.get(rel)} - {None})
             report["ideas"] += found
     return report
 

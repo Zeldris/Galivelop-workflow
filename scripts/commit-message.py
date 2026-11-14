@@ -204,7 +204,7 @@ def check_measured(config, message, found, msgfile):
     quality = gwconfig.metrics(config)["quality"]
     for word in (quality["findingsTrailer"], quality["retriesTrailer"]):
         key = word.lower()
-        lines = [l for l in message.splitlines() if re.match(rf"{re.escape(key)}[ \t]*:[ \t]*\S", l, re.IGNORECASE)]
+        lines = [l for l in message.splitlines() if re.match(rf"{re.escape(key)}[ \t]*:[ \t]*\d+[ \t]*$", l, re.IGNORECASE)]
         kept = [k for k, _ in found if k.lower() == key]
         if len(lines) > len(kept):
             raise Reject(f"a `{word}:` line is outside the trailer block, where change-size.py and metrics.py "

@@ -109,8 +109,8 @@ enclosing() {  # <file>; line numbers on stdin -> the lines above each one that 
     { t = $1 + 0; if (t < 1 || t > n) next; m = ind(L[t])
       for (i = t - 1; i >= 1 && m > 0; i--) if (L[i] !~ /^[ \t]*$/ && ind(L[i]) < m) { print L[i]; m = ind(L[i]) } }'
 }
-kindchg="uncommitted"; verb="reverting"
-[ -z "$fixat" ] || { kindchg="committed"; verb="reverting"; }
+kindchg="uncommitted"
+[ -z "$fixat" ] || kindchg="committed"
 # Text and data files (nonTestExtensions of .claude/gw.json) hold no test code: prose such as "improve it (URL)" would
 # match `it(`. The extension is what follows the last dot of the file name, compared in lower case; a name without a
 # dot (Makefile) or with only a leading one (.env) has none and is always searched.
@@ -138,15 +138,16 @@ for f in "$@"; do
     hit=""
   fi
   [ -z "$hit" ] || {
-    echo "red-without-fix: $f has $kindchg changes that touch test code ($hit); $verb the fix would remove that test too, so the check could not tell if the test covers the fix. Put the test in its own file or commit it first (git add -p), then rerun with only the fix files: bash $0 \"$cmd\" <fix-file>..." >&2; exit 2; }
+    echo "red-without-fix: $f has $kindchg changes that touch test code ($hit); reverting the fix would remove that test too, so the check could not tell if the test covers the fix. Put the test in its own file or commit it first (git add -p), then rerun with only the fix files: bash $0 \"$cmd\" <fix-file>..." >&2; exit 2; }
 done
 out="$(mktemp -d "${TMPDIR:-/tmp}/gw-rojo.XXXXXX")" || { echo "red-without-fix: cannot create a temp dir; free space and retry" >&2; exit 2; }
 restored=""
 if [ -n "$fixat" ]; then
   restore() {
     [ -z "$restored" ] || return 0
+    if git checkout -q HEAD -- "$@"; then restored=1; return 0; fi
     restored=1
-    git checkout -q HEAD -- "$@" || { echo "red-without-fix: could not restore the fix files; run: git checkout HEAD -- $*" >&2; return 1; }
+    echo "red-without-fix: could not restore the fix files; run: git checkout HEAD -- $*" >&2; return 1
   }
   trap 'restore "$@"; rm -rf "$out"' EXIT
   trap 'exit 130' INT
@@ -171,8 +172,8 @@ else
   reverted=0; keep=""
   restore() {
     [ -z "$restored" ] || return 0
+    keep=1  # set first: a signal that lands in the middle of this loop must not delete the copies
     restored=1
-    keep=1  # a signal that lands in the middle of this loop must not delete the copies
     local_fail=""; n=0
     for f in "$@"; do
       n=$((n + 1))
@@ -187,7 +188,7 @@ else
     [ -z "$local_fail" ] || { echo "red-without-fix: could not restore the fix files; the copies are in $saved (N = Nth file given): copy them back by hand" >&2; return 1; }
     keep=""
   }
-  trap 'restore "$@"; [ -n "$keep" ] || rm -rf "$out" "$saved"' EXIT
+  trap 'restore "$@"; if [ -n "$keep" ]; then rm -rf "$out"; echo "red-without-fix: the fix files may be only partly restored; the copies are in $saved (N = Nth file given, none for a file the fix deleted): copy them back by hand" >&2; else rm -rf "$out" "$saved"; fi' EXIT
   trap 'exit 129' HUP
   trap 'exit 130' INT
   trap 'exit 143' TERM
@@ -196,10 +197,13 @@ else
     n=$((n + 1))
     if [ -L "$f" ]; then
       printf '%s' "$(readlink -- "$f")" > "$saved/$n.link" || { echo "red-without-fix: cannot save $f; nothing was changed; free space and retry" >&2; exit 2; }
+      echo "red-without-fix: fix file $n saved: $f -> $saved/$n.link (if this run dies, recreate the link by hand)"
     elif [ -e "$f" ]; then
       { cp -p -- "$f" "$saved/$n.tmp" && mv -f -- "$saved/$n.tmp" "$saved/$n"; } || { echo "red-without-fix: cannot save $f; nothing was changed; free space and retry" >&2; exit 2; }
+      echo "red-without-fix: fix file $n saved: $f -> $saved/$n (if this run dies, copy it back by hand)"
+    else
+      echo "red-without-fix: fix file $n: $f does not exist (the fix deletes it); nothing to save"
     fi
-    echo "red-without-fix: fix file $n saved: $f -> $saved/$n (if this run dies, copy it back by hand)"
   done
   n=0
   for f in "$@"; do

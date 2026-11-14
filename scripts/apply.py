@@ -1171,6 +1171,8 @@ def after_plan(plan, rel):
     """Where the file `rel` is once the plan runs: None when it is removed, the target when it (or a folder above it)
     is moved."""
     for kind, target, old, _exec, _detail in plan.actions:
+        if kind not in ("remove", "move"):
+            continue  # for the others the third field is the file's data, not a path
         target, old = Path(str(target)).as_posix(), Path(str(old)).as_posix()
         if kind == "remove" and (rel == target or rel.startswith(f"{target}/")):
             return None
@@ -1188,7 +1190,7 @@ def project_paths(plan):
         return None
     found = {p.decode("utf-8", "replace") for p in r.stdout.split(b"\0") if p}
     found.update(Path(str(a[1])).as_posix() for a in plan.actions if a[0] != "remove")
-    return found
+    return {"/" + p for p in found}  # with a leading slash, so a name matches only whole path components
 
 
 def name_exists(paths, new, root=None):
@@ -1199,10 +1201,7 @@ def name_exists(paths, new, root=None):
     new = new.rstrip("/")
     if root is not None and (root / new).exists():
         return True
-    wrapped = {"/" + p for p in paths}
-    if f"/{new}" in wrapped:
-        return True
-    return any(p.startswith(f"{new}/") or p.endswith(f"/{new}") or f"/{new}/" in p for p in wrapped)
+    return any(p.endswith(f"/{new}") or f"/{new}/" in p for p in paths)
 
 
 def plan_legacy_names(plan, cfg, wanted_skills, keep):
@@ -1234,7 +1233,7 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
     skip = {str(config.CONFIG_REL), ".claude/settings.json"}
     skip_dirs = tuple(f"{cfg[k].rstrip('/')}/" for k in ("recordsDir", "proposalsDir") if cfg.get(k))
     skip_globs = list(cfg.get("legacyNamesSkip", ["CHANGELOG*"]))
-    skip_roadmaps = {str(e["path"]).replace("\\", "/").removeprefix("./") for e in config.roadmap_files(cfg)
+    skip_roadmaps = {re.sub(r"^\./", "", str(e["path"]).replace("\\", "/")) for e in config.roadmap_files(cfg)
                      if isinstance(e, dict) and e.get("path")}  # closed tasks quote old names as history (D100)
     known, exists = None, {}
     limit = int(cfg.get("legacyNamesMax", 50))
@@ -1338,11 +1337,11 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
     plan.settings(WORKFLOW / "templates" / "claude" / "settings.json")
     plan_templates(plan, cfg, self_apply, wanted_skills)
     plan_gitignore(plan)
+    if personal and not is_workflow_repo(root):
+        plan_personal_notes(plan, check)  # before the old names: a note it creates is a new name that exists
     if not self_apply:
         plan_old_scripts(plan)
         plan_legacy_names(plan, cfg, wanted_skills, keep_paths)
-    if personal and not is_workflow_repo(root):
-        plan_personal_notes(plan, check)
     plan_hooks_path(plan)
     for o in [o for o in plan.orphans if plan.is_owned(o)]:  # a file the workflow dropped but the project owns
         plan.orphans.remove(o)

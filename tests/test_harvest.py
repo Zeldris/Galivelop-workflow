@@ -324,7 +324,7 @@ class Harvest(unittest.TestCase):
         import sys
         sys.path.insert(0, str(ROOT / "scripts"))
         import harvest as h
-        self.assertEqual(len(h.not_old([{"path": "a", "text": "x " + h.TRUNCATED}], {"x \u2026 (truncated)", "x"})), 1)
+        self.assertEqual(len(h.not_old([{"path": "a", "text": "x " + h.TRUNCATED}], {"x \u2026 (truncated)": {"b"}, "x": {"b"}})), 1)
 
     def test_an_idea_that_is_new_in_an_archive_file_is_reported(self):
         self.commit_log(self.OLD, "log")
@@ -332,6 +332,43 @@ class Harvest(unittest.TestCase):
         (self.repo / "docs/archive.md").write_text("# A\n\n- Propuesta para el flujo: de verdad nueva\n")
         self.commit_log(self.OLD, "archive")
         self.assertEqual(len(self.harvest()["ideas"]), 1)
+
+    def test_a_heading_added_over_lines_of_the_same_file_is_a_new_idea(self):
+        old = "# T\n\n- usar menos tokens en las retros\n"
+        self.commit_log(old, "log")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        self.commit_log("# T\n\n## For Galivelop-workflow\n\n- usar menos tokens en las retros\n", "heading")
+        self.assertEqual(len(self.harvest()["ideas"]), 1, "its lines were in its own file, not moved from another")
+
+    def test_a_base_without_markdown_gives_no_grep_warning(self):
+        (self.repo / "a.txt").write_text("x\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "txt")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        self.commit_log("# T\n\n- Propuesta para el flujo: nueva\n", "log")
+        (self.repo / "docs/otro.md").write_text("- Propuesta para el flujo: otra\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "otro")
+        report = self.harvest()
+        self.assertEqual(len(report["ideas"]), 2)
+        self.assertNotIn("git grep failed", report["history"])
+
+    def test_old_lines_runs_once_when_git_grep_fails(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import harvest as h
+        self.commit_log(self.OLD, "log")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        (self.repo / "docs/otro.md").write_text("- Propuesta para el flujo: otra\n")
+        self.commit_log(self.OLD + "\n- Propuesta para el flujo: mas\n", "more")
+        calls = []
+        orig, h.old_lines = h.old_lines, lambda repo, base: calls.append(base)
+        try:
+            report = h.harvest(self.repo, json.loads(self.state.read_text()))
+        finally:
+            h.old_lines = orig
+        self.assertEqual(len(calls), 1)
+        self.assertEqual(report["history"].count("git grep failed"), 1)
 
     def test_a_line_only_deleted_reports_nothing(self):
         self.commit_log(self.OLD, "log")

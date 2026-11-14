@@ -321,6 +321,17 @@ class Uncommitted(Base):
         saved = list((self.p.work / ".git").glob("gw-red-saved.*"))
         self.assertEqual(len(saved), 1, out)
         self.assertEqual((saved[0] / "2").read_text(), "mine\n")
+        self.assertIn(f"the copies are in {saved[0]}", out, "the trap tells where to copy them back from")
+
+    def test_a_file_the_fix_deletes_is_not_reported_as_saved(self):
+        self.p.write("gone.txt", "old\n")
+        self.p.git("add", "gone.txt")
+        self.p.commit("add gone", env=DAY)
+        (self.p.work / "gone.txt").unlink()
+        code, out = self.run_script("true", "gone.txt")
+        self.assertIn("gone.txt does not exist (the fix deletes it); nothing to save", out)
+        self.assertNotIn("fix file 1 saved", out)
+        self.assertFalse((self.p.work / "gone.txt").exists(), "the deletion is put back")
 
     def test_symlink_to_a_directory_is_not_taken_for_a_directory(self):
         import os
