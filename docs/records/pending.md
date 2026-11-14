@@ -250,3 +250,6 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   locales (en el CI no, `fetch-depth: 0`): un repo de prueba con sus propias etiquetas.
 - E51: los proyectos ya instalados no reciben `ci-local.py --validate` en su lista `check` (`apply.py --update` no
   toca esa lista); decidir si la migración lo añade o basta con la nota del CHANGELOG.
+- Menores de la revisión de B36 (f14a8ac): si una comprobación posterior del `pre-commit` falla, el libro de tokens
+  se queda preparado en el índice; sus líneas cuentan para `changeSize`, que no lo excluye; `config.py validate`
+  acepta un `metrics.ledger` fuera del repo (el gancho y `apply.py` ya lo saltan).
