@@ -278,6 +278,32 @@ class Harvest(unittest.TestCase):
         self.assertEqual(r["ideas"], [{"path": "docs/traspaso.md",
                                        "text": "Proposal for the workflow: only once."}])
 
+    def test_an_entry_moved_to_an_archive_file_does_not_repeat_its_ideas(self):
+        old = self.OLD + "\n## Old entry\n\n- Propuesta para el flujo: archivada\n"
+        self.commit_log(old, "log")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        (self.repo / "docs/archive.md").write_text("# Archive\n\n- Propuesta para el flujo: archivada\n")
+        self.commit_log(old.replace("- Propuesta para el flujo: archivada\n", ""), "archive")
+        self.assertEqual(self.harvest()["ideas"], [], "moved text is not new; the new file counts only new lines")
+
+    def test_an_idea_that_is_new_in_an_archive_file_is_reported(self):
+        self.commit_log(self.OLD, "log")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        (self.repo / "docs/archive.md").write_text("# A\n\n- Propuesta para el flujo: de verdad nueva\n")
+        self.commit_log(self.OLD, "archive")
+        self.assertEqual(len(self.harvest()["ideas"]), 1)
+
+    def test_a_line_only_deleted_reports_nothing(self):
+        self.commit_log(self.OLD, "log")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        self.commit_log("# T\n\nFin.\n", "cut")
+        self.assertEqual(self.harvest()["ideas"], [])
+
+    def test_an_empty_range_reports_no_ideas(self):
+        self.commit_log(self.OLD, "log")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        self.assertEqual(self.harvest()["ideas"], [])
+
     def test_a_new_file_reports_all_its_ideas(self):
         run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
         self.commit_log("# T\n\n- Propuesta para el flujo: nueva\n", "log")
