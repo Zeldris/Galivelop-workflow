@@ -1049,12 +1049,13 @@ class Migrate(unittest.TestCase):
         return sorted((str(f.relative_to(self.p.work)), f.read_bytes()) for f in self.p.work.rglob("*")
                       if f.is_file() and ".git/" not in str(f) + "/" and not str(f).endswith(".git"))
 
-    def test_dry_run_lists_the_renames(self):
+    def test_full_dry_run_shows_moves_once(self):
         self.old_paths()
         before = self.snapshot()
         code, out = self.p.run_apply("--dry-run")
         self.assertEqual(code, 0, out)
-        self.assertIn("rename  docs/traspaso.md -> docs/handoff.md", out)
+        self.assertIn("move    docs/handoff.md  (from docs/traspaso.md", out)
+        self.assertNotIn("rename  ", out)  # no duplicates of the move lines
         self.assertEqual(before, self.snapshot())
 
     def test_summary_counts_and_lists_renames_without_the_per_file_lines(self):
@@ -1079,6 +1080,58 @@ class Migrate(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertIn("nothing to do", out)
         self.assertNotRegex(out, r"\d+ create")
+
+    def settings_with_old_hook(self):
+        self.p.write(".claude/settings.json", json.dumps({"hooks": {"Stop": [{"hooks": [
+            {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/antes-de-parar.py"}]}]}}))
+
+    def test_summary_lists_hook_renames_but_not_added_hooks(self):
+        self.settings_with_old_hook()  # the template's other hooks are ADDED, not renamed
+        code, out = self.p.run_apply("--dry-run", "--summary")
+        self.assertEqual(code, 0, out)
+        self.assertIn("rename  antes-de-parar.py -> before-stop.py", out)
+        self.assertEqual(len([l for l in out.splitlines() if l.startswith("  rename")]), 1, out)
+        self.assertNotIn("SessionStart hook", "\n".join(l for l in out.splitlines() if l.startswith("  rename")))
+
+    def test_summary_lists_old_script_skill_and_skill_file_renames(self):
+        p = self.p
+        p.write(".claude/gw/scripts/bitacora.py", "# galivelop-workflow v0.4.3\n")
+        p.write(".claude/skills/selector/SKILL.md", SKILL_MD.format(n="selector"))
+        self.commit()
+        code, out = p.run_apply("--dry-run", "--summary")
+        self.assertEqual(code, 0, out)
+        self.assertIn("rename  .claude/gw/scripts/bitacora.py -> .claude/gw/scripts/handoff.py", out)
+        self.assertIn("rename  .claude/skills/selector -> .claude/skills/gw-selector", out)
+        self.assertTrue(self.exists(".claude/gw/scripts/bitacora.py"))
+
+    def test_summary_lists_renamed_skill_files(self):
+        p = self.p
+        self.applied()
+        p.write(".claude/skills/gw-opt-tokens/scripts/medir.py", "x\n")
+        self.commit()
+        code, out = p.run_apply("--dry-run", "--summary")
+        self.assertEqual(code, 0, out)
+        self.assertIn("rename  .claude/skills/gw-opt-tokens/scripts/medir.py -> "
+                      ".claude/skills/gw-opt-tokens/scripts/measure.py", out)
+
+    def test_summary_shows_pending_orphans_and_hooks_path(self):
+        p = self.p
+        self.applied()
+        p.run("git", "config", "--unset", "core.hooksPath")
+        p.write(".claude/gw/scripts/gone.py", "# galivelop-workflow v0.1.0\n")
+        code, out = p.run_apply("--dry-run", "--summary")
+        self.assertEqual(code, 0, out)
+        self.assertIn("core.hooksPath", out)
+        self.assertIn("orphan  .claude/gw/scripts/gone.py", out)
+        self.assertNotIn("nothing to do", out)
+
+    def test_summary_only_hooks_path_is_not_empty(self):
+        p = self.p
+        self.applied()
+        p.run("git", "config", "--unset", "core.hooksPath")
+        code, out = p.run_apply("--dry-run", "--summary")
+        self.assertEqual(code, 0, out)
+        self.assertIn("core.hooksPath", out)
 
     def test_summary_without_dry_run_fails_with_the_fix(self):
         for flags in (("--summary",), ("--check", "--summary")):

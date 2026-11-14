@@ -101,9 +101,9 @@ In the workflow repo itself the copy is generated from scripts/ and skills/, so 
               a pending .gw-new proposal, or a file the workflow no longer has); core.hooksPath is reported but
               does not fail it (a local git setting: a fresh clone in CI has it unset). The drift test.
   --dry-run   print the plan, no writes, exit 0; the renames it would make (moved paths, hook commands) are
-              listed as `rename  old -> new`.
+              shown in the plan as move, remove and merge lines.
   --summary   only with --dry-run: counts per action, what needs a decision (propose, merge), the renames and the
-              warnings, instead of the per-file listing.
+              warnings, instead of the per-file listing; the renames are listed as `rename  old -> new`.
   --keep-paths   keep the old Spanish project paths: write them explicitly in .claude/gw.json instead of moving them.
   --no-personal-notes   do not carry the personal notes (env GW_PERSONAL_NOTES, default ~/.claude/gw/notas/).
 Exit 2 on a missing or invalid config or settings file. Python 3.8+ standard library only.
@@ -277,6 +277,7 @@ class Plan:
         self.cfg = {}       # the project's config, for ownedFiles
         self.owned = []     # info lines about files the project made its own (ownedFiles): never drift
         self.identical = []  # repo-relative paths of workflow copies the project holds unchanged (D82, --vendored)
+        self.renames = []   # 'old -> new' strings: moved paths, renamed hook commands, old-named scripts and skills
         self.moved_to = set()   # repo-relative targets of the planned moves: nothing is seeded there
         self.hooks_path = None  # None, or the hint line about core.hooksPath
         self.set_hooks_path = False
@@ -443,6 +444,7 @@ class Plan:
         renamed = rename_hook_scripts(current)
         merged, added = merge_settings(current, tmpl)
         if renamed:
+            self.renames.extend(sorted(renamed))
             added.insert(0, f"hook commands renamed: {', '.join(sorted(renamed))}")
         hooks = merged.get("hooks") if isinstance(merged.get("hooks"), dict) else {}
         for event, command in stale_flow_hooks(hooks, self.root):
@@ -460,6 +462,7 @@ class Plan:
         if isinstance(mine, dict):
             renamed = rename_hook_scripts(mine)
             if renamed:
+                self.renames.extend(sorted(renamed))
                 self.actions.append(("merge", local, dump(mine), False,
                                      f"hook commands renamed: {', '.join(sorted(renamed))}"))
 
@@ -848,6 +851,7 @@ def plan_move(plan, old, new, why):
                          f"{plan.root} --keep-paths")
     plan.actions.append(("move", new, old, False, f"from {old}; {why}"))
     plan.moved_to.add(str(new))
+    plan.renames.append(f"{old} -> {new}")
 
 
 def rewrite_under(value, old, new):
@@ -1080,6 +1084,7 @@ def plan_old_skills(plan, wanted_skills):
             plan.warnings.append(keep_message(plan.root, rel))
             continue
         plan.actions.append(("remove", rel, None, False, f"replaced by .claude/skills/{new}"))
+        plan.renames.append(f"{rel} -> .claude/skills/{new}")
 
 
 def plan_old_skill_files(plan, wanted_skills):
@@ -1095,6 +1100,7 @@ def plan_old_skill_files(plan, wanted_skills):
             plan.orphans = [o for o in plan.orphans if o != rel and rel not in o.parents]  # reported here, not as orphans
             if clean_in_git(plan.root, rel):
                 plan.actions.append(("remove", rel, None, False, f"old name of {folder / new}"))
+                plan.renames.append(f"{rel} -> {folder / new}")
             else:
                 plan.warnings.append(keep_message(plan.root, rel))
 
@@ -1150,6 +1156,7 @@ def plan_old_scripts(plan):
         else:
             plan.orphans = [o for o in plan.orphans if o != rel]
             plan.actions.append(("remove", rel, None, False, f"old name of {OLD_SCRIPTS[old]}"))
+            plan.renames.append(f"{rel} -> {rel.parent / OLD_SCRIPTS[old]}")
 
 
 def legacy_names(root, keep):
@@ -1367,18 +1374,6 @@ def describe(plan):
     return lines
 
 
-def renames(plan):
-    """The renames the plan makes: 'old -> new' for moved paths, and the renamed hook commands."""
-    out = []
-    for kind, rel, old, _exec, detail in plan.actions:
-        if kind == "move":
-            out.append(f"{old} -> {rel}")
-        elif detail and "hook commands renamed: " in detail:
-            tail = detail.split("hook commands renamed: ", 1)[1]
-            out.extend(x.strip() for x in tail.split(";")[0].split(",") if x.strip())
-    return out
-
-
 def summarize(plan):
     counts = {}
     for kind, *_rest in plan.actions:
@@ -1387,6 +1382,18 @@ def summarize(plan):
     for kind, rel, _d, _e, detail in plan.actions:
         if kind in ("propose", "merge"):
             lines.append(f"  {kind:<8}{rel}" + (f"  ({detail})" if detail else ""))
+    for rel, _why, suffix in plan.pending:
+        lines.append(f"  pending {rel}{suffix}  (a proposal to merge by hand)")
+    for rel in plan.orphans:
+        lines.append(f"  orphan  {rel}  (no longer in the workflow, kept)")
+    for rel, _cur, _data in plan.diffs:
+        lines.append(f"  differs {rel}  (never written; its diff is in the full dry run)")
+    if plan.notes:
+        lines.append(f"  {len(plan.notes)} template update note(s); see the full dry run")
+    if plan.set_hooks_path:
+        lines.append("  git     config core.hooksPath .githooks")
+    for rename in plan.renames:
+        lines.append(f"  rename  {rename}")
     return lines
 
 
@@ -1610,15 +1617,16 @@ def main(argv=None):
         return 0
     if args.dry_run:
         print(f"apply: plan for {root} (workflow v{version}, dry run, nothing written):")
-        for line in (summarize(plan) if args.summary else lines):
+        out = summarize(plan) if args.summary else lines
+        for line in out:
             print(line)
-        if not lines:
+        if not out:
             print("  nothing to do")
-        for line in renames(plan):
-            print(f"  rename  {line}")
         if args.summary:
             for warning in plan.warnings:
                 print(f"apply: WARNING: {warning}")
+            if plan.hooks_path:
+                print(f"apply: {plan.hooks_path}")
             print("apply: summary only; the full per-file plan: drop --summary")
         else:
             report(plan)
