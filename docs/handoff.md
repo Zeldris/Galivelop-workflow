@@ -45,7 +45,7 @@ desde una sesión local.
 
 ## Pendiente
 
-Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (70 entradas); se añade y se quita allí.
+Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (72 entradas); se añade y se quita allí.
 
 ## Comprobar el estado
 

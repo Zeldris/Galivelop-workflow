@@ -244,3 +244,9 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - La `1.0.0` solo como plugin (decidido 2026-10-22): en la Fase 9, plugin como única distribución hacia fuera y
   ganchos de git desde el plugin (sin probar); en la Fase 10, licencia de la `1.0.0` (abierta) y el portal quita su
   copia del flujo desde una sesión suya. Su historial seguirá teniendo la copia `0.2.0` (MIT).
+- Menores de la revisión de E52 (9158b78): el aviso «cannot read the vX template» recomienda `git fetch --tags`
+  también cuando la causa es `render()` o un flujo sin git (que `template_at` devuelva la causa); `--summary` imprime
+  `differs REVIEW.md` aunque la plantilla no cambiara entre vX y vY; los tests de vX se saltan sin las etiquetas
+  locales (en el CI no, `fetch-depth: 0`): un repo de prueba con sus propias etiquetas.
+- E51: los proyectos ya instalados no reciben `ci-local.py --validate` en su lista `check` (`apply.py --update` no
+  toca esa lista); decidir si la migración lo añade o basta con la nota del CHANGELOG.
