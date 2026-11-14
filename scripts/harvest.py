@@ -10,7 +10,8 @@ For each project repository it reports, without judging anything:
   * retro files, and "For Galivelop-workflow" sections in any tracked .md changed since the last harvest, plus the
     lines there that start with "Propuesta para el flujo" / "Proposal for the workflow" (with their indented
     continuation lines), the way projects note requests in their hand-off log; after an earlier harvest, only the
-    ones with a line added or changed since it (never a proposal line twice: inside a section it is part of it);
+    ones with a line added or changed since it (never a proposal line twice: inside a section it is part of it), and never one whose lines were all already in
+    some .md file at the last harvest (an entry moved to an archive file is not new);
   * commits since the last harvested commit;
   * a warning when the clone is behind its upstream branch (as of its last fetch: fetch first), or has no upstream
     (then nobody can tell whether it is up to date).
@@ -287,6 +288,26 @@ def ideas_in(text, rel, added):
     return ideas
 
 
+def old_lines(repo, base):
+    """Stripped, non-empty lines of every Markdown file at commit `base` (what was already there at the last harvest,
+    wherever it lived), or None when git cannot say: then nothing is dropped."""
+    out = git(repo, "grep", "-h", "-I", "--no-color", "--no-line-number", "--no-column", "-e", "", base, "--", "*.md")
+    return None if out is None else {line.strip() for line in out.split("\n") if line.strip()}
+
+
+def not_old(ideas, old):
+    """Drop the ideas whose every line was already in some Markdown file at the last harvest: an entry moved to an
+    archive file shows as added there, but it is not new (D101). A cut (truncated) idea is always kept: its text is not whole."""
+    if not old:
+        return ideas
+    kept = []
+    for idea in ideas:
+        lines = [l.strip() for l in idea["text"].split("\n") if l.strip()]
+        if idea["text"].endswith(TRUNCATED) or not lines or not all(l in old for l in lines):
+            kept.append(idea)
+    return kept
+
+
 def state_key(state, rid, anonymize):
     """The key of this project in the state: its public id (the alias in it), or during 0.x the old real id when only
     that one was recorded."""
@@ -361,6 +382,7 @@ def harvest(repo, state, anonymize=lambda text: text):
             report["skills_new"].append({"skill": name, "path": rel, "description": description(text)})
     report["skills_missing"] = sorted(set(ours) - set(theirs) - {OLD_SKILLS[n] for n in theirs if n in OLD_SKILLS})
 
+    before = None  # lines of the Markdown files at the last harvest, read once and only if an idea shows up
     our_scripts = {p.name: p for p in (ROOT / "scripts").glob("*") if p.is_file()}
     tracked = (git(repo, "ls-files") or "").splitlines()
     for rel in tracked:
@@ -383,7 +405,15 @@ def harvest(repo, state, anonymize=lambda text: text):
             if not (repo / rel).is_file():
                 continue
             text = (repo / rel).read_text(encoding="utf-8", errors="replace")
-            report["ideas"] += ideas_in(text, rel, added_lines(repo, base, rel, renames.get(rel)))
+            found = ideas_in(text, rel, added_lines(repo, base, rel, renames.get(rel)))
+            if found and base is not None:
+                if before is None:
+                    before = old_lines(repo, base)
+                    if before is None:
+                        report["history"] += ("; warning: git grep failed at the last harvested commit, so ideas moved "
+                                              "to another file may be repeated (check them by hand)")
+                found = not_old(found, before)
+            report["ideas"] += found
     return report
 
 
