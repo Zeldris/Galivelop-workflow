@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14; excepción a A-6 aprobada por el usuario). Textos de la release en `docs/records/release-v0.6.1.md` |
-| Siguiente paso | **Release `v0.6.1`**: la publica el usuario desde local (etiqueta sobre `5afda88`, `docs/records/release-v0.6.1.md`); comprobar el CI de `main`. Después, la **`0.7`** (E51, E52, B36 y E41 ampliada), empezando por su recogida si toca. |
+| Siguiente paso | **Release `v0.6.1`**: la publica el usuario desde local (etiqueta sobre `5afda88`, `docs/records/release-v0.6.1.md`); CI de `main` en verde. Después, la **`0.7`** (E51, E52, B36 y E41 ampliada), empezando por su recogida si toca. |
 
 ### Fases
 
