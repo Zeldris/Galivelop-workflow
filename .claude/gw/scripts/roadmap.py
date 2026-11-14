@@ -6,11 +6,18 @@
   python3 roadmap.py done ID [--date D] [--note TEXT ...] [--force]
                                           # mark it done in all of them: the status cell (the last one) becomes
                                           # `<done> (D)` or `<done> (D; TEXT)`
+  python3 roadmap.py list VERSION [--status TEXT]
+                                          # one line per table row under the `## ` section of VERSION (`0.6` also
+                                          # takes its `###` sub-sections), in the first file of `roadmapFiles`:
+                                          # `ID  status  first 80 chars of the description`; --status keeps the
+                                          # rows whose status contains TEXT (case-insensitive)
 
 A task row is a Markdown table line whose first cell is exactly ID. `roadmapFiles` in .claude/gw.json lists the
 roadmap in each language, the source first: `{"path", "done", "open"}`. `done` is the word written at the start of
 the status cell; `open`, the words an open status starts with. `--note` goes once per file, in the order of
 `roadmapFiles` (a note in each language), or not at all; `--date` defaults to today (YYYY-MM-DD).
+
+`list` fails (exit 1) when no `## ` heading has VERSION as a backticked word (e.g. `## `0.6` «Medir»`).
 
 Fails closed, writing nothing, when: `roadmapFiles` is empty, a file is missing, ID has no row or more than one in a
 file, the number of notes does not match, or a status does not start with an `open` word (already done, discarded;
@@ -108,6 +115,35 @@ def cmd_show(loaded):
         print(lines[n].rstrip("\n"))
 
 
+def cmd_list(root, files, version, status):
+    """Print `ID  status  description[:80]` for each table row in the section(s) of `version` in the first file."""
+    entry = files[0]
+    try:
+        lines = (root / entry["path"]).read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        raise RoadmapError(f"cannot read {entry['path']} ({exc.strerror}); fix roadmapFiles in .claude/gw.json")
+    inside, found, table, out = False, False, [], []
+    for line in lines + [""]:
+        if line.startswith("## "):
+            inside = f"`{version}`" in line
+            found = found or inside
+        spans = cells(line) if inside else None
+        if spans:
+            table.append([line[a:b].strip() for a, b in spans])
+            continue
+        # the table ended: its first row is the header when a `---` row follows
+        if table and len(table) > 1 and all(set(c) <= set("-: ") for c in table[1]):
+            table = table[2:]
+        out.extend(table)
+        table = []
+    if not found:
+        raise RoadmapError(f"no section for version {version!r} in {entry['path']}; see the `## ` headings with "
+                           f"`grep -n '^## ' {entry['path']}`")
+    for row in out:
+        if len(row) >= 3 and (not status or status.lower() in row[-1].lower()):
+            print(f"{row[0]}  {row[-1]}  {row[1][:80]}")
+
+
 def cmd_done(loaded, task, date, notes, force):
     if notes and len(notes) != len(loaded):
         raise RoadmapError(f"{len(notes)} --note for {len(loaded)} roadmap files; give one per file, in the order of "
@@ -129,9 +165,10 @@ def cmd_done(loaded, task, date, notes, force):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="See or mark one roadmap row in every language (roadmapFiles).")
-    parser.add_argument("command", choices=["show", "done"])
-    parser.add_argument("task", help="task id, the first cell of its row (D55)")
+    parser = argparse.ArgumentParser(description="See, list or mark roadmap rows in every language (roadmapFiles).")
+    parser.add_argument("command", choices=["show", "done", "list"])
+    parser.add_argument("task", help="task id, the first cell of its row (D55); for list, the version (e.g. 0.6)")
+    parser.add_argument("--status", help="list: only rows whose status cell contains this text (case-insensitive)")
     parser.add_argument("--date", help="done: date in the status cell (default: today, YYYY-MM-DD)")
     parser.add_argument("--note", action="append", default=[],
                         help="done: text after the date; once per roadmap file, in the order of roadmapFiles")
@@ -152,6 +189,9 @@ def main(argv=None):
         print(f"roadmap: --date {args.date!r} is not YYYY-MM-DD; pass e.g. --date 2026-11-11", file=sys.stderr)
         return 1
     try:
+        if args.command == "list":
+            cmd_list(root, files, args.task, args.status)
+            return 0
         loaded = load_files(root, files, args.task)
         if args.command == "show":
             cmd_show(loaded)

@@ -24,7 +24,7 @@ las crea una vez; desde entonces son del proyecto.
 - `gw-harvest` (`0.4.1`): los proyectos se clonan solo para lectura en una carpeta temporal, sin registrarlos
   (`register_repo_root`), y su verificación va con un subagente por proyecto en paralelo.
 
-- `python3 scripts/roadmap.py show <id>` y `done <id> [--note ES --note EN]` (retro `0.5.1` R4, D55): ver o marcar
+- `python3 scripts/roadmap.py show <id>` y `done <id> [--note ES --note EN]` y `list <versión> [--status T]` (retro `0.5.1` R4, D55): ver o marcar
   una fila del roadmap en los dos idiomas sin leerlo entero ni editarlo con `sed`.
 - `gw-orchestrate-dealer` (retro `0.5.1` R3 y R6): los ids del roadmap se commitean antes de repartir; en un
   worktree, solo los tests de lo tocado, y un solo check completo tras fusionar la oleada, sin tocar el árbol.

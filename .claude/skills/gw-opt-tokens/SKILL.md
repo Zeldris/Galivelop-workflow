@@ -60,7 +60,7 @@ retries and redone work.
    - **Files re-read** (`BY FILE`): a big file read many times wants a pointer in a map or a tool that returns the
      part needed. Subagents reading the whole log is the usual case: their brief should point to
      `recover.py --state` (their row), not to the log file; seeing or marking a roadmap row, to
-     `roadmap.py show|done <id>` (`roadmapFiles`), not to the roadmap.
+     `roadmap.py show|done <id>` or `list <version>` (`roadmapFiles`), not to the roadmap.
    - **Images.** A screenshot costs what hundreds of text lines do. If one served a non-visual purpose, improve the
      text tool so it gives that next time.
    - **Rediscovering the known.** Exploring what a document, a skill or a saved scenario already says: write it once

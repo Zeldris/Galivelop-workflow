@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.5.2` en `main` (`2e55d66`, 2026-11-12) |
-| Siguiente paso | **`0.6.0`** en obra: todas sus filas hechas y recogida H19 hecha (2026-11-13). Arreglos de H19 (D90-D93, B30), versión `0.6.0` con su CHANGELOG y repaso de documentación hechos; fase 1 hecha (11 hallazgos, arreglados); fase 2: retro decidida (R1, R2, R4 aprobadas → B33, B34, B35; R3 aplazada). Sigue: B33-B35 repartidas a `gw-worker`, fusión, y fase 3 (`/code-review` de esos commits, `reviewed.sh`) antes de `main`. |
+| Siguiente paso | **`0.6.0`** en obra: todas sus filas hechas y recogida H19 hecha (2026-11-13). Arreglos de H19 (D90-D93, B30), versión `0.6.0` con su CHANGELOG y repaso de documentación hechos; fase 1 hecha (11 hallazgos, arreglados); fase 2: retro decidida (R1, R2, R4 aprobadas → B33, B34, B35; R3 aplazada). B33-B35 hechas y fusionadas. Sigue: check completo, fase 3 (`/code-review` de los commits de B33-B35 desde `a4e48b2`, `reviewed.sh`) y `main` con confirmación del usuario. Para la próxima retro: el subagente de B33 volvió a quedarse esperando su trabajo de fondo tras entregar (D92 no bastó). |
 
 ### Fases
 
