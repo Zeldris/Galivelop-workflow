@@ -332,6 +332,7 @@ def done_problems(text, add, recheck, limit):
 
 
 POINTER_COUNT = re.compile(r"\((\d+)\s+(?:entradas?|entry|entries)\)", re.I)
+PENDING_ITEM = re.compile(r"^(?:[-*+]|\d+[.)])\s")  # a top-level list item: "- ", "* ", "+ ", "1. ", "1) "
 
 
 def pending_section(lines):
@@ -347,7 +348,7 @@ def pending_count(text):
     lines = text.splitlines()
     head, end = pending_section(lines)
     body = lines if head is None else lines[head + 1:end]
-    return sum(1 for l in body if l.startswith("- "))
+    return sum(1 for l in body if PENDING_ITEM.match(l))
 
 
 def pending_problems(ctx, text, me):
@@ -358,20 +359,24 @@ def pending_problems(ctx, text, me):
         return []
     lines = text.splitlines()
     head, end = pending_section(lines)
-    if head is None:
-        return []
     fix = f"{me} move-pending"
-    held = sum(1 for l in lines[head + 1:end] if l.startswith("- "))
+    if head is None:  # fail closed: the pending section is a "## Pendiente" / "## Pending" heading, nothing else
+        return [f"the log has no \"## Pendiente\" / \"## Pending\" section to point to {rel} (pendingFile); add the "
+                f"line \"## Pending\" to it and run: {fix}"]
+    held = sum(1 for l in lines[head + 1:end] if PENDING_ITEM.match(l))
     if held:
         return [f"the log holds {held} pending item(s) under \"{lines[head].strip()}\", but they live in {rel} "
                 f"(pendingFile); move them there: {fix}"]
+    said = [int(m.group(1)) for l in lines[head + 1:end] for m in [POINTER_COUNT.search(l)] if m]
+    if not said:
+        return [f"the log's \"{lines[head].strip()}\" section has no pointer line with the count of {rel} "
+                f"(\"(N entradas)\" / \"(N entries)\"); write it: {fix}"]
     target = ctx.root / rel
     if not target.is_file():
         print(f"WARNING: handoff: the pending file {rel} (pendingFile) does not exist; create it: {fix}")
         return []
     have = pending_count(target.read_text(encoding="utf-8", errors="replace"))
-    said = [int(m.group(1)) for l in lines[head + 1:end] for m in [POINTER_COUNT.search(l)] if m]
-    if said and said[0] != have:
+    if said[0] != have:
         return [f"the log's pending pointer says {said[0]} entries but {rel} has {have}; refresh it: {fix}"]
     return []
 
@@ -887,8 +892,27 @@ def cmd_archive(ctx, args):
     except (OSError, UnicodeDecodeError) as exc:
         raise Usage(f"cannot write the archive or the log ({exc}); check the permissions of {archive.parent} and {path}, "
                     "then rerun: handoff.py archive")
-    print(f"handoff: archived {len(moved)} item(s) to {archive}; log now {shown(size)}; commit both files with the work")
+    if not args.file and gwconfig.pending_file(ctx.config):
+        refresh_pointer(ctx.root / ctx.log, pending_count(new))
+    print(f"handoff: archived {len(moved)} item(s) to {archive}; {log_name} now {shown(size)}; commit both files with "
+          "the work")
     return 0
+
+
+def refresh_pointer(log, count):
+    """D104: rewrite the "(N entradas)" / "(N entries)" of the log's pending pointer to `count` (after `archive` changed
+    the pending file); a log with no pointer is left alone (`check --strict` reports it)."""
+    try:
+        lines = re.findall(r"[^\n]*\n|[^\n]+", log.read_bytes().decode("utf-8"))
+    except (OSError, UnicodeDecodeError):
+        return
+    head, end = pending_section(lines)
+    for i in range(head + 1, end) if head is not None else ():
+        m = POINTER_COUNT.search(lines[i])
+        if m:
+            lines[i] = lines[i][:m.start(1)] + str(count) + lines[i][m.end(1):]
+            log.write_bytes("".join(lines).encode("utf-8"))
+            return
 
 
 def rewrite_row(ctx, branch, text):
@@ -975,7 +999,7 @@ def cmd_move_pending(ctx, args):
     english = lines[head].split()[1].lower().startswith("pending")
     eol = "\r\n" if lines[head].endswith("\r\n") else "\n"
     body = [l.rstrip("\r\n") for l in lines[head + 1:end]]
-    moved = [l for l in body if not POINTER_COUNT.search(l) or l.startswith("- ")]
+    moved = [l for l in body if not POINTER_COUNT.search(l) or PENDING_ITEM.match(l)]
     while moved and not moved[0].strip():
         moved.pop(0)
     while moved and not moved[-1].strip():
@@ -1014,7 +1038,7 @@ def cmd_move_pending(ctx, args):
         path.write_bytes(new_log.encode("utf-8"))
     except OSError as exc:
         raise Usage(f"cannot write {target} or {path} ({exc}); check their permissions and rerun: {me} move-pending")
-    print(f"handoff: moved {sum(1 for l in moved if l.startswith('- '))} item(s) to {rel} ({count} in all); "
+    print(f"handoff: moved {sum(1 for l in moved if PENDING_ITEM.match(l))} item(s) to {rel} ({count} in all); "
           "commit both files with the work")
     return 0
 
