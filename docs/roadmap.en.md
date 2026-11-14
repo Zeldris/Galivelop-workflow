@@ -218,7 +218,7 @@ In this order, because each step uses the previous one.
 | D104 | "Pending" leaves the log for its own file (`pendingFile` key, default `docs/records/pending.md`); the log keeps the pointer and the count, and `handoff.py check --strict` enforces it (`0.6.1` retro, T1) | pending |
 | D105 | `roadmap.py check` in the check: per version, the same ids in every `roadmapFiles` file (`0.6.1` retro, R1) | pending |
 | D106 | `tests-for.py --run` runs shellcheck on the changed `.sh` files (`0.6.1` retro, R2) | pending |
-| D107 | `gw-orchestrate-dealer`: the subagent's final push runs in the foreground, and the main session stops with `TaskStop` one that does not return once its commit is pushed (`0.6.1` retro, R3) | pending |
+| D107 | `gw-orchestrate-dealer`: the subagent's final push runs in the foreground, and the main session stops with `TaskStop` one that does not return once its commit is pushed (`0.6.1` retro, R3) | done (2026-11-14) |
 | D108 | The `commit-msg` repeats the compaction-budget-exceeded warning on the commit that closes a phase or version and asks for `/clear` (`0.6.1` retro, T3) | pending |
 
 ## `0.7` "Ask"

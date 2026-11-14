@@ -37,11 +37,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-14 — Fase 2 del parche `0.6.1`: medida de `/gw-opt-tokens` y retro; aprobadas T1, R1, R2, R3 y T3 (D104-D108), T2 aplazada
-2. 2026-11-14 — Fase 1 del parche `0.6.1`: `/code-review` contra `main`, 10 hallazgos arreglados con sus tests en `apply.py`, `harvest.py`, `red-without-fix.sh` y `commit-message.py` (detalle en el commit `fix(D101)`)
-3. 2026-11-14 — D97, D98, D100, D101: el commit-msg rechaza Findings/Retries fuera del bloque de trailers; red-without-fix.sh aparta el arreglo en una copia bajo .git, sin git stash; apply.py no avisa de nombres viejos en el roadmap ni propone nombres inexistentes; harvest descarta ideas cuyas líneas ya estaban en la última recogida. Parche 0.6.1 completo (D97-D103)
-4. 2026-11-14 — D102, D103: `.claude/skills` en el defecto de `doctorTestDirsIgnore`; el encargo del dealer dice dónde viven los tests de cada capa. Filas de H20 copiadas a `roadmap.en.md` (faltaban). Parche `0.6.1` en esta rama (su diff con `main` son solo documentos)
-5. 2026-11-14 — H20 cerrada: las 14 propuestas de la recogida de la 0.7 repartidas por el usuario (D97-D103 al parche 0.6.1; E51, E52, B36 y E41 ampliada a la 0.7; E53 a la 0.8)
+1. 2026-11-14 — D107: el encargo del dealer pide la subida final en primer plano y la sesión principal para con `TaskStop` al subagente que no vuelve con su commit ya subido
+2. 2026-11-14 — Fase 2 del parche `0.6.1`: medida de `/gw-opt-tokens` y retro; aprobadas T1, R1, R2, R3 y T3 (D104-D108), T2 aplazada
+3. 2026-11-14 — Fase 1 del parche `0.6.1`: `/code-review` contra `main`, 10 hallazgos arreglados con sus tests en `apply.py`, `harvest.py`, `red-without-fix.sh` y `commit-message.py` (detalle en el commit `fix(D101)`)
+4. 2026-11-14 — D97, D98, D100, D101: el commit-msg rechaza Findings/Retries fuera del bloque de trailers; red-without-fix.sh aparta el arreglo en una copia bajo .git, sin git stash; apply.py no avisa de nombres viejos en el roadmap ni propone nombres inexistentes; harvest descarta ideas cuyas líneas ya estaban en la última recogida. Parche 0.6.1 completo (D97-D103)
+5. 2026-11-14 — D102, D103: `.claude/skills` en el defecto de `doctorTestDirsIgnore`; el encargo del dealer dice dónde viven los tests de cada capa. Filas de H20 copiadas a `roadmap.en.md` (faltaban). Parche `0.6.1` en esta rama (su diff con `main` son solo documentos)
 
 ## Pendiente
 

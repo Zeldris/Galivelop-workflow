@@ -69,10 +69,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    never touch the log (the main session does both). Leave nothing uncommitted when you reply: every change is in
    your last commit. If a push is rejected, `git fetch` and `git merge` (never rebase), then push again.
    At ~25 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
-   To wait for something long (a push with its check), run it with `run_in_background` and watch it with `Monitor`
-   (load it with ToolSearch first) until it exits; keep your turn open while it runs, and never a foreground `sleep`.
-   One background wait per long command; let it finish before your final reply, and reply once. To stop a process you
-   started, `TaskStop` with its id (load it with ToolSearch); `kill` and `pkill` are denied to subagents.
+   Final push: in the foreground with a `timeout` of 600000 ms, never in the background; other long waits: background
+   plus `Monitor` (ToolSearch first), never a `sleep`. Reply once, with nothing of yours running. To stop a process
+   you started, `TaskStop` with its id (load it with ToolSearch); `kill` and `pkill` are denied to subagents.
    Push with its output to a file outside the tree (`git push … > "$(git rev-parse --git-dir)/push.log" 2>&1`); if it
    fails, read the pre-push reason in that file before retrying.
    Task: <what, in one or two sentences>.
@@ -106,8 +105,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    for each project rule a fresh agent could miss.
 3. **Review what returns.** Run `git status -sb` (a subagent that left changes uncommitted or unpushed is told to
    commit them, not fixed inline), fetch and check the commit (`git fetch`, `git log -1 --stat`) and that the done
-   criterion holds. If it does not close, the retry climbs one ladder rung (the commit of that work carries
-   `Retries: <n>`, which `metrics.py quality` reads); two failures, stop and tell the user.
+   criterion holds; one whose final commit is already pushed but has not returned is stopped with `TaskStop`. If it
+   does not close, the retry climbs one ladder rung (the commit of that work carries `Retries: <n>`, which
+   `metrics.py quality` reads); two failures, stop and tell the user.
    Chunks that depended on the failed one are marked "cancelled: blocked by X" and listed to the user, never left waiting.
    For every subagent branch built in a worktree, **before merging it**, a subagent reviewer runs a short
    `/code-review` of its diff and returns only the findings; nothing merges until they are fixed. The reviewer's

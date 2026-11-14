@@ -219,7 +219,7 @@ En este orden, porque cada paso usa el anterior.
 | D104 | «Pendiente» sale de la bitácora a su propio archivo (clave `pendingFile`, por defecto `docs/records/pending.md`); la bitácora deja el puntero y la cuenta, y `handoff.py check --strict` lo exige (retro `0.6.1`, T1) | pendiente |
 | D105 | `roadmap.py check` en el check: por versión, los mismos ids en cada archivo de `roadmapFiles` (retro `0.6.1`, R1) | pendiente |
 | D106 | `tests-for.py --run` pasa shellcheck a los `.sh` del cambio (retro `0.6.1`, R2) | pendiente |
-| D107 | `gw-orchestrate-dealer`: la subida final del subagente va en primer plano, y la sesión principal para con `TaskStop` al que no vuelve con su commit ya subido (retro `0.6.1`, R3) | pendiente |
+| D107 | `gw-orchestrate-dealer`: la subida final del subagente va en primer plano, y la sesión principal para con `TaskStop` al que no vuelve con su commit ya subido (retro `0.6.1`, R3) | hecho (2026-11-14) |
 | D108 | El `commit-msg` repite el aviso de presupuesto de compactaciones superado en el commit que cierra una fase o versión y pide `/clear` (retro `0.6.1`, T3) | pendiente |
 
 ## `0.7` «Preguntar»
