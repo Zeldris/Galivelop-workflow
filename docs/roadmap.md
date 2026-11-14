@@ -253,7 +253,7 @@ En este orden, porque cada paso usa el anterior.
 | D83 | `apply.py --update` añade al `staleRefs` del proyecto los nombres que renombra su migración (amplía D46) (recogida de cierre `0.6`, instalador P4) | pendiente |
 | D87 | `gw-init` ofrece licencia doble: MIT para el código y CC BY-NC-SA 4.0 para el contenido, con la nota de terceros (recogida de cierre `0.6`, world-maker P6) | pendiente |
 | E41 | El `pre-commit` rechaza un autor de la lista `authorDeny` (vacía por defecto en los proyectos; con Claude en este repo); cambia la línea de `AGENTS.md` que dice que ningún gancho comprueba el autor (recogida de cierre `0.6`, private-project-1 P6); también comprueba el committer y `doctor.py` avisa si `user.email` es la del agente (recogida `0.7`, image-generator P2, private-project-2 P2) | pendiente |
-| E48 | `red-without-fix.sh` revierte solo el arreglo dentro del archivo del test (`--patch <diff>` o `--lines A-B`): tests en línea de Rust y otros (recogida `0.6.0`, instalador P1) | pendiente |
+| E48 | `red-without-fix.sh` revierte solo el arreglo dentro del archivo del test (`--patch <diff>` o `--lines A-B`): tests en línea de Rust y otros (recogida `0.6.0`, instalador P1) | hecho (2026-11-14) |
 | D94 | `scripts/push.sh <rama>`: reintentos 2, 4, 8 y 16 s y éxito solo si `git ls-remote` coincide con `HEAD`; `AGENTS.md` apunta a él (recogida `0.6.0`, image-generator P4) | pendiente |
 | D95 | `handoff.py add-pending` y `add-decision`: añadir a la bitácora sin leerla (recogida `0.6.0`, instalador P3) | pendiente |
 | D96 | Celdas largas de la bitácora: `handoff.py` mueve a «Hecho» lo cerrado de una fila, o un segundo tope que falla (clave nueva) (recogida `0.6.0`, image-generator P2) | pendiente |

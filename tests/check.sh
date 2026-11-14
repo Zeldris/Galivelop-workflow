@@ -27,6 +27,9 @@ copies=(':!.claude/' ':!.githooks/')
 section "workflow copy in sync (.claude/gw, .claude/skills, .githooks, .claude/settings.json)"
 python3 scripts/apply.py --check . || bad
 
+section "workflow YAML valid (ciYamlCheck, E51)"
+python3 scripts/ci-local.py --validate || bad
+
 section "shell scripts"
 scripts="$(git ls-files -- '*.sh' 'templates/githooks/*' "${copies[@]}")"
 if [[ -n "$scripts" ]]; then

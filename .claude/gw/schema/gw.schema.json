@@ -534,6 +534,11 @@
       "default": [],
       "description": "Repo-relative workflow files that `ci-local.py` runs, whatever their triggers; empty: every .github/workflows/*.yml|yaml triggered by the event."
     },
+    "ciYamlCheck": {
+      "type": "boolean",
+      "default": true,
+      "description": "true: `ci-local.py --validate` (in the check) parses every .github/workflows/*.yml|yaml and fails when one is invalid YAML (GitHub never runs it, so no CI goes red). false: it says it is off and passes."
+    },
     "ciKeepSteps": {
       "type": "boolean",
       "default": true,

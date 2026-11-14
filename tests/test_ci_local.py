@@ -425,5 +425,93 @@ jobs:
         self.assertIn("--plan runs nothing", out)
 
 
+class Validate(unittest.TestCase):
+    """--validate (E51): every workflow file parses; a broken one fails with file, line and reason."""
+    setUp, workflow, ci, set_config = Runs.setUp, Runs.workflow, Runs.ci, Runs.set_config
+    GOOD = f"on: pull_request\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n      - run: 'true'\n"
+
+    def test_real_workflows_of_this_repo_pass(self):
+        for f in sorted((ROOT / ".github" / "workflows").glob("*.y*ml")):
+            ci.load_yaml(f.read_text(encoding="utf-8"))
+
+    def test_valid_files_pass_with_both_extensions(self):
+        self.workflow(self.GOOD)
+        self.workflow(self.GOOD, name="b.yaml")
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 0, out)
+        self.assertIn("2 workflow file(s) checked, 0 invalid", out)
+
+    def test_no_dir_or_empty_dir_passes(self):
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 0, out)
+        self.assertIn("0 workflow file(s)", out)
+        (self.p.work / ".github" / "workflows").mkdir(parents=True)
+        (self.p.work / ".github" / "workflows" / "notes.txt").write_text("a: b: c\n")  # not a workflow file
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 0, out)
+
+    def test_unquoted_colon_in_a_name_fails_with_file_and_line(self):
+        self.workflow("name: a: b\non: push\njobs: {}\n", name="bad.yml")
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 1, out)
+        self.assertIn(".github/workflows/bad.yml: line 1:", out)
+        self.assertIn("ci-local.py --validate", out)
+        self.assertIn("mapping values are not allowed", out)
+        self.assertIn("1 invalid", out)
+
+    def test_step_name_with_colon_and_space_fails(self):
+        self.workflow(self.GOOD.replace("- run: 'true'", "- name: Run: tests\n        run: 'true'"), name="s.yml")
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 1, out)
+        self.assertIn("s.yml: line", out)
+
+    def test_tab_indentation_and_bad_indentation_fail(self):
+        self.workflow("on: push\njobs:\n\tj: 1\n", name="tab.yml")
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 1, out)
+        self.assertIn("tab in indentation", out)
+        self.workflow("on: push\njobs:\n    j:\n      a: 1\n   b: 2\n", name="ind.yml")
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 1, out)
+        self.assertIn("ind.yml: line", out)
+
+    def test_empty_file_and_non_mapping_fail(self):
+        self.workflow("", name="empty.yml")
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 1, out)
+        self.assertIn("empty.yml: the file is empty", out)
+        self.workflow("- a\n- b\n", name="list.yml")
+        code, out = self.ci("--validate")
+        self.assertIn("list.yml: not a mapping at the top level", out)
+
+    def test_non_utf8_fails_closed(self):
+        self.p.write(".github/workflows/bin.yml", "on: push\n")
+        (self.p.work / ".github" / "workflows" / "bin.yml").write_bytes(b"on: push\nname: \xff\xfe\n")
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 1, out)
+        self.assertIn("bin.yml:", out)
+        self.assertIn("codec", out)
+
+    def test_key_off_says_so_and_passes(self):
+        self.workflow("name: a: b\n", name="bad.yml")
+        self.set_config(ciYamlCheck=False)
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 0, out)
+        self.assertIn("workflow YAML check is off (ciYamlCheck", out)
+        self.assertNotIn("bad.yml", out)
+
+    def test_bad_key_value_is_a_config_error(self):
+        self.set_config(ciYamlCheck="no")
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 2, out)
+        self.assertIn("ciYamlCheck", out)
+
+    def test_key_is_in_schema_and_template_and_check_list(self):
+        schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
+        self.assertIs(schema["ciYamlCheck"]["default"], True)
+        tpl = json.loads((ROOT / "templates" / "gw.json").read_text())
+        self.assertIs(tpl["ciYamlCheck"], True)
+        self.assertIn("python3 .claude/gw/scripts/ci-local.py --validate", tpl["check"])
+
 if __name__ == "__main__":
     unittest.main()

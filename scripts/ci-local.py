@@ -6,6 +6,13 @@ The PR hook (review-before-main.sh) takes a committed green record as the CI of 
 that started and failed is never replaced this way. Recording one is the person's call ("checked only locally").
 
   python3 ci-local.py [--event pull_request|push] [--plan] [--record] [--root PATH]
+  python3 ci-local.py --validate [--root PATH]
+
+--validate (E51) runs nothing: it parses every .github/workflows/*.yml|yaml with the reader below and prints
+`<file>: line N: <reason>` for each one that fails (GitHub never runs a workflow with invalid YAML, so no CI goes
+red; e.g. an unquoted `name: a: b`). Exit 0 all valid (or none), 1 some invalid, 2 bad config. With `ciYamlCheck`
+false in .claude/gw.json it says it is off and exits 0. The reader is a subset: a valid file it rejects is a reader
+gap to report, not a reason to skip the file.
 
 What runs: the workflows of `ciLocalWorkflows`, or else every .github/workflows/*.yml|yaml triggered by the event
 (default pull_request, the one a PR merge waits for; branch and path filters honoured), on the working tree as it is.
@@ -263,12 +270,16 @@ class Yaml:
             rest += " " + p[1]
             self.i += 1
         if rest[0] not in "[{'\"":
+            start = self.i
             while True:
                 p = self.peek()
                 if p is None or p[0] <= parent:
                     break
                 rest += " " + p[1]
                 self.i += 1
+            if re.search(r":(\s|$)", rest):  # YAML: a plain scalar cannot hold ': ' (E51)
+                self.i = start - 1  # report the line of the key, not the one read after it
+                self.error(f"mapping values are not allowed here in {rest!r}; quote the value")
         return flow(rest)
 
     def block(self, header, parent):
@@ -850,6 +861,32 @@ def workflows(root, cfg, event, branch):
             if f.endswith((".yml", ".yaml"))]
 
 
+def validate(root, cfg):
+    """--validate (E51): parse every workflow file; 0 all valid, 1 some invalid (fails closed on unreadable files)."""
+    if not cfg["ciYamlCheck"]:
+        print("ci-local: workflow YAML check is off (ciYamlCheck is false in .claude/gw.json)")
+        return 0
+    folder = os.path.join(root, ".github", "workflows")
+    files = sorted(f for f in os.listdir(folder) if f.endswith((".yml", ".yaml"))) if os.path.isdir(folder) else []
+    bad = 0
+    for name in files:
+        rel = os.path.join(".github", "workflows", name)
+        try:
+            with open(os.path.join(root, rel), encoding="utf-8") as fh:
+                text = fh.read()
+            if not text.strip():
+                raise YamlError("the file is empty")
+            doc = load_yaml(text)
+            if not isinstance(doc, dict):
+                raise YamlError("not a mapping at the top level")
+        except (YamlError, UnicodeDecodeError, OSError) as exc:
+            bad += 1
+            print(f"ci-local: {rel}: {exc}; GitHub would not run it. Fix it (quote values holding ': ', use spaces "
+                  f"not tabs) and recheck: python3 {os.path.join(HERE, 'ci-local.py')} --validate", file=sys.stderr)
+    print(f"ci-local: {len(files)} workflow file(s) checked, {bad} invalid")
+    return 1 if bad else 0
+
+
 def dirty(root, log):
     out = git(root, "status", "--porcelain", "--untracked-files=all").stdout.splitlines()
     return any(line[3:].strip('"') != log for line in out if line.strip())
@@ -888,6 +925,7 @@ def main(argv=None):
     p.add_argument("--event", default="pull_request", choices=("pull_request", "push"))
     p.add_argument("--plan", action="store_true", help="say what would run, run nothing")
     p.add_argument("--record", action="store_true", help="append the result to ciLocalLog")
+    p.add_argument("--validate", action="store_true", help="only check that each workflow file is valid YAML")
     args = p.parse_args(argv)
     try:
         root = config.find_root(args.root)
@@ -895,6 +933,8 @@ def main(argv=None):
     except config.ConfigError as exc:
         print(f"ci-local: {exc}; fix the config: python3 {os.path.join(HERE, 'config.py')} validate", file=sys.stderr)
         return 2
+    if args.validate:
+        return validate(root, cfg)
     if args.plan and args.record:
         print("ci-local: --plan runs nothing, so there is nothing to record; drop one: "
               f"python3 {os.path.join(HERE, 'ci-local.py')} --record", file=sys.stderr)
