@@ -78,3 +78,8 @@ las crea una vez; desde entonces son del proyecto.
   media, suelo 96k y techo 165k, 2 compactaciones, 15M; un subagente de revisión (30 llamadas, arranque 64k, 2,9M).
   Arrastre mayor: `docs/handoff.md` 14 lecturas (326k) con 27.860 caracteres sobre el tope de 20.000. Cambios: retro
   `0.5.2` R4 (archivar la bitácora tras publicar) a la `0.6`.
+- 2026-11-14, publicación de la `0.6.0`, H20 y parche `0.6.1` (una sesión en la nube, últimas 24 h): principal 532
+  llamadas, 128k de media, suelo 101k y techo 162k, 6 compactaciones (presupuesto 1), 68M; subagentes 6 (236
+  llamadas, 18M; A13 C7 con 64 llamadas y arranque de 82k). Arrastre mayor: `docs/handoff.md` 33 lecturas (1,7M;
+  «Pendiente» es el 80 % de la bitácora) y `docs/roadmap.md` 44 (816k, antes de `roadmap.py list`). Cambios: retro
+  `0.6.1` T1, R1-R3 y T3 (D104-D108); T2 (tope de subagente con gancho) aplazada.

@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.0` en `main`** (`a1a9705`, 2026-11-14), CI en verde. Etiqueta y release `v0.6.0` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.0.md`. Fusionada `version/0.5.2` (traía `docs/records/release-v0.5.2.md`) |
-| Siguiente paso | **Parche `0.6.1` hecho** (D97-D103) y **fase 1 hecha** (`/code-review` contra `origin/main`: 10 hallazgos, todos arreglados con sus tests, `Findings: 10`). Ahora, fase 2: `/gw-opt-tokens` y `/retro`, sus propuestas al usuario; luego fase 3 y subida con confirmación del usuario. Después, la `0.7` (E51, E52, B36 y E41 ampliada). Presupuesto de compactaciones: 1 (van 2: superado). Para la próxima retro: el subagente de B33 volvió a quedarse esperando su trabajo de fondo tras entregar (D92 no bastó); H20 no copió sus filas a `roadmap.en.md` (ningún check compara los dos roadmaps); la subida falló por una skill de 201 líneas (`test_skills`) y la fusión de D98 por un aviso de shellcheck: `tests-for.py` no corre ni `test_skills` ni shellcheck en los cambios que los necesitan. |
+| Siguiente paso | **Parche `0.6.1`**: D97-D103 y fase 1 hechas (`Findings: 10`). Fase 2 hecha: `/gw-opt-tokens` y `/retro` (`docs/records/retro-2026-11-14-patch-0-6-1.md`); el usuario aprobó T1, R1, R2, R3 y T3 → **D104-D108**, a aplicar ahora con el dealer (T2 aplazada). Luego `/code-review` de esos commits (fase 3), `reviewed.sh` y subida a `main` con confirmación. Después, la `0.7` (E51, E52, B36 y E41 ampliada). Presupuesto de compactaciones: 1 (van 0 en esta sesión). |
 
 ### Fases
 
@@ -37,11 +37,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-14 — Fase 1 del parche `0.6.1`: `/code-review` contra `main`, 10 hallazgos arreglados con sus tests en `apply.py`, `harvest.py`, `red-without-fix.sh` y `commit-message.py` (detalle en el commit `fix(D101)`)
-2. 2026-11-14 — D97, D98, D100, D101: el commit-msg rechaza Findings/Retries fuera del bloque de trailers; red-without-fix.sh aparta el arreglo en una copia bajo .git, sin git stash; apply.py no avisa de nombres viejos en el roadmap ni propone nombres inexistentes; harvest descarta ideas cuyas líneas ya estaban en la última recogida. Parche 0.6.1 completo (D97-D103)
-3. 2026-11-14 — D102, D103: `.claude/skills` en el defecto de `doctorTestDirsIgnore`; el encargo del dealer dice dónde viven los tests de cada capa. Filas de H20 copiadas a `roadmap.en.md` (faltaban). Parche `0.6.1` en esta rama (su diff con `main` son solo documentos)
-4. 2026-11-14 — H20 cerrada: las 14 propuestas de la recogida de la 0.7 repartidas por el usuario (D97-D103 al parche 0.6.1; E51, E52, B36 y E41 ampliada a la 0.7; E53 a la 0.8)
-5. 2026-11-14 — H20 propuesta: recogida de la `0.7` sobre 8 proyectos (los 6 de H19, private-project-2 y `private-project-4` (proyecto nuevo)): 14 propuestas, a la espera del usuario; portal, private-project-1 y private-project-4 sin novedades.
+1. 2026-11-14 — Fase 2 del parche `0.6.1`: medida de `/gw-opt-tokens` y retro; aprobadas T1, R1, R2, R3 y T3 (D104-D108), T2 aplazada
+2. 2026-11-14 — Fase 1 del parche `0.6.1`: `/code-review` contra `main`, 10 hallazgos arreglados con sus tests en `apply.py`, `harvest.py`, `red-without-fix.sh` y `commit-message.py` (detalle en el commit `fix(D101)`)
+3. 2026-11-14 — D97, D98, D100, D101: el commit-msg rechaza Findings/Retries fuera del bloque de trailers; red-without-fix.sh aparta el arreglo en una copia bajo .git, sin git stash; apply.py no avisa de nombres viejos en el roadmap ni propone nombres inexistentes; harvest descarta ideas cuyas líneas ya estaban en la última recogida. Parche 0.6.1 completo (D97-D103)
+4. 2026-11-14 — D102, D103: `.claude/skills` en el defecto de `doctorTestDirsIgnore`; el encargo del dealer dice dónde viven los tests de cada capa. Filas de H20 copiadas a `roadmap.en.md` (faltaban). Parche `0.6.1` en esta rama (su diff con `main` son solo documentos)
+5. 2026-11-14 — H20 cerrada: las 14 propuestas de la recogida de la 0.7 repartidas por el usuario (D97-D103 al parche 0.6.1; E51, E52, B36 y E41 ampliada a la 0.7; E53 a la 0.8)
 
 ## Pendiente
 
