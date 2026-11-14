@@ -4,7 +4,9 @@ Sesión de la `0.6.0`: recogida H19 sobre los seis proyectos de H18, arreglos D9
 y CHANGELOG, repaso de documentación y revisión de la fase 1 en un subagente limpio (11 hallazgos, arreglados en
 `71fe36e`). Incluye la medida de `/gw-opt-tokens`.
 
-**Estado:** pendiente de la decisión del usuario.
+**Estado:** decidida por el usuario (2026-11-14): R1, R2 y R4 aprobadas, para aplicar en la `0.6.0` (B33, B34, B35); R3 aplazada: no elegida para la `0.6.0` (sigue como error de proceso en la bitácora).
+
+R5 queda como medida para la próxima versión.
 
 ## Medida (`gw-opt-tokens`, sesión entera)
 

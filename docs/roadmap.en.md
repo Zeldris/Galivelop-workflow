@@ -199,6 +199,9 @@ In this order, because each step uses the previous one.
 | D92 | The `gw-orchestrate-dealer` brief tells the subagent not to answer until its background work ends (`0.6.0` harvest, image-generator P3) | done (2026-11-13) |
 | D93 | `gw-orchestrate-dealer`: when applying a document from another repo, the subagent returns each point with its literal text and path, not a summary (`0.6.0` harvest, portal P1) | done (2026-11-13) |
 | B30 | Phase 2 of the `AGENTS.md` templates and `gw-opt-ai` (`disable-model-invocation`) agree on who launches it (`0.6.0` harvest, image-generator P1) | done (2026-11-13) |
+| B33 | A branch's `pre-push` skips the related tests when the full check is green in cache on the same tree, and runs them with `scripts/test-run.py` in parallel when it does (`0.6.0` retro R1) | pending |
+| B34 | `apply.py .` (or `version.py <X.Y.Z>`) sets `.claude/gw.json`'s `"version"` to `plugin.json`'s (`0.6.0` retro R2) | pending |
+| B35 | `roadmap.py list <version> [--status <status>]`: ids and status of a version's rows, without reading the roadmap (`0.6.0` retro R4) | pending |
 
 ## `0.7` "Ask"
 
