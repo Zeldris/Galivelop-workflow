@@ -20,6 +20,8 @@ and applies, from .claude/gw.json (read through config.py):
                                or `Next:` (en; NEXT_TRAILERS). WIP: commits need it too; `fixup! `, `squash! `,
                                `amend! `, `Revert "` and `Reapply "` lines are exempt, and so is a
                                merge/revert/cherry-pick/rebase in progress (merge-branch.sh requires it itself).
+                               With commitRefs or commitNext, a `Findings:` or `Retries:` line outside that block is refused
+                               (D97: change-size.py and metrics.py read only the last paragraph).
                                Escape for a legitimate message without it: GW_NO_NEXT=1 git commit ...
   agentSignatures false        an `Agent:` trailer (the subagent's skill, e.g. `Agent: gw-orchestrate-dealer`) must
                                not name a model or provider: the value is split at anything that is not a letter or digit
@@ -195,6 +197,20 @@ def check_next(config, message, found, msgfile):
                  f"GW_NO_NEXT=1 git commit -e -F {msgfile}")
 
 
+def check_measured(message, found, msgfile):
+    """`Findings:` and `Retries:` count only in the last paragraph of trailers (change-size.py, metrics.py): a line
+    of that shape that git does not read as a trailer is lost silently, so it is refused."""
+    for key in ("findings", "retries"):
+        lines = [l for l in message.splitlines() if re.match(rf"{key}:[ \t]*\S", l, re.IGNORECASE)]
+        kept = [k for k, _ in found if k.lower() == key]
+        if len(lines) > len(kept):
+            word = key.capitalize()
+            raise Reject(f"a `{word}:` line is outside the last paragraph of trailers, where change-size.py and metrics.py "
+                         f"do not read it (it would be lost silently)\n"
+                         f"commit-msg: move the `{word}: <n>` line to the last paragraph, next to `Refs:`, and commit "
+                         f"again: git commit -e -F {msgfile}")
+
+
 def check_format(config, message, msgfile):
     types, wip = types_of(config), wip_of(config)
     subject = next((line for line in message.splitlines() if line.strip()), "")
@@ -306,6 +322,8 @@ def run(root, msgfile):
         found = trailers(root, message, msgfile)
     if agent:
         check_agent(found, msgfile, model_rules(config))
+    if not merging and (refs or nxt):
+        check_measured(message, found, msgfile)
     if not merging and refs:
         check_refs(root, config, found, msgfile)
     if not merging and nxt:

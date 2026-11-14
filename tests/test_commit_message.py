@@ -223,6 +223,22 @@ class Refs(Msg):
     def test_trailers_after_refs_are_fine(self):
         self.accepted("work\n\nbody\n\nRefs: D11\nSiguiente: next step")
 
+    def test_findings_in_the_body_is_refused(self):
+        self.refused("work\n\nFindings: 3\n\nmore body\n\nRefs: D11\nSiguiente: x", "`Findings:` line is outside",
+                     "next to `Refs:`")
+
+    def test_retries_in_the_body_is_refused(self):
+        self.refused("work\n\nRetries: 1\n\nRefs: D11\nSiguiente: x", "`Retries:` line is outside")
+
+    def test_both_in_the_last_paragraph_pass(self):
+        self.accepted("work\n\nbody\n\nRefs: D11\nFindings: 3\nRetries: 1\nSiguiente: x")
+
+    def test_a_mention_inside_a_sentence_passes(self):
+        self.accepted("work\n\nthe Findings: 3 trailer and a Retries: 1 one are read\n\nRefs: D11\nSiguiente: x")
+
+    def test_a_message_without_trailers_keeps_its_own_refusal(self):
+        self.refused("work", "no Refs trailer")
+
     def test_an_id_added_in_the_same_commit_is_valid(self):
         self.refused("work\n\nRefs: D20", "D20")
         self.roadmap(ROADMAP + "- [ ] D20 new\n")
