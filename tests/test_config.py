@@ -745,6 +745,7 @@ class Config(unittest.TestCase):
 
     def test_doctor_test_dirs_ignore_default_and_own_value(self):  # E43
         self.assertIn(".claude/worktrees", config.doctor_test_dirs_ignore({}))
+        self.assertIn(".claude/skills", config.doctor_test_dirs_ignore({}))  # D102
         self.assertEqual(config.doctor_test_dirs_ignore({"doctorTestDirsIgnore": ["vendor"]}), ["vendor"])
         self.write(VALID)
         self.assertIn("node_modules", config.doctor_test_dirs_ignore(config.load(str(self.tmp))))
