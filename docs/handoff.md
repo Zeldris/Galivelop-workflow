@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | **`0.6` «Medir»: `ccr-d1e2d496-0vzck8`** (hace de `version/0.6.0` mientras la sesión solo pueda subir a esta rama). `main` = `a1a9705` = **`0.6.0`** (2026-11-14, etiqueta y release `v0.6.0`). `version/1.0.0` se queda con el diseño (`docs/design/`) |
+| Rama | **`0.6` «Medir»: `ccr-d1e2d496-0vzck8`** (hace de `version/0.6.0` mientras la sesión solo pueda subir a esta rama). `main` = `5afda88` = **`0.6.1`** (2026-11-14, etiqueta y release `v0.6.1`). `version/1.0.0` se queda con el diseño (`docs/design/`) |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14; excepción a A-6 aprobada por el usuario). Textos de la release en `docs/records/release-v0.6.1.md` |
-| Siguiente paso | **Release `v0.6.1`**: la publica el usuario desde local (etiqueta sobre `5afda88`, `docs/records/release-v0.6.1.md`); CI de `main` en verde. Después, la **`0.7`** (E51, E52, B36 y E41 ampliada), empezando por su recogida si toca. |
+| Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14; excepción a A-6 aprobada por el usuario). Etiqueta y release `v0.6.1` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.1.md` |
+| Siguiente paso | La **`0.7`** (E51, E52, B36 y E41 ampliada), empezando por su recogida si toca. |
 
 ### Fases
 
