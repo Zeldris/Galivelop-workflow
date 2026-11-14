@@ -241,6 +241,103 @@ class Uncommitted(Base):
         self.assertEqual((self.p.work / "newdir/sub/x.txt").read_text(), "n\n")
 
 
+    def test_symlink_in_the_fix_is_handled_as_a_link(self):
+        import os
+        os.symlink("other.txt", self.p.work / "lnk")
+        code, out = self.run_script("test -L lnk", "lnk")
+        self.assertEqual(code, 0, out)
+        self.assertTrue((self.p.work / "lnk").is_symlink())
+        self.assertEqual(os.readlink(self.p.work / "lnk"), "other.txt")
+        self.assertEqual((self.p.work / "other.txt").read_text(), "x\n")
+
+    def test_dangling_symlink_is_restored(self):
+        import os
+        os.symlink("nowhere", self.p.work / "lnk")
+        code, out = self.run_script("true", "lnk")
+        self.assertEqual(os.readlink(self.p.work / "lnk"), "nowhere", out)
+
+    def test_symlink_replacing_a_tracked_file_does_not_corrupt_its_target(self):
+        import os
+        (self.p.work / "fix.txt").unlink()
+        os.symlink("other.txt", self.p.work / "fix.txt")
+        code, out = self.run_script("grep -qx x fix.txt", "fix.txt")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(os.readlink(self.p.work / "fix.txt"), "other.txt")
+        self.assertEqual((self.p.work / "other.txt").read_text(), "x\n")
+
+    def test_interrupt_during_the_run_keeps_nothing_in_tmp_and_prints_the_copy_path(self):
+        code, out = self.run_script("kill -HUP $PPID; sleep 5", "fix.txt")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("gw-red-saved.", out)
+        self.assertEqual(self.fix_text(), "better\n")
+        self.assertEqual(list((self.p.work / ".git").glob("gw-red-saved.*")), [])
+
+    def test_the_copy_lives_in_the_git_dir_while_the_run_goes(self):
+        code, out = self.run_script("ls .git/gw-red-saved.*/1 && grep -q good fix.txt", "fix.txt")
+        self.assertEqual(code, 1, out)  # `ls` inside the test command proves the copy exists, grep fails: with = no
+        self.assertIn("without the fix: exit 0", out)
+
+    def test_terminate_during_the_copy_leaves_every_file_as_it_was(self):
+        import os, signal, subprocess, time
+        os.mkfifo(self.p.work / "pipe")  # cp blocks opening it: the script is stuck in the copy phase
+        self.p.write("last.txt", "mine\n")
+        proc = subprocess.Popen(["bash", str(self.p.scripts / SCRIPT), "true", "fix.txt", "pipe", "last.txt"],
+                                cwd=self.p.work, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        gitdir = self.p.work / ".git"
+        for _ in range(100):
+            if list(gitdir.glob("gw-red-saved.*/1")):
+                break
+            time.sleep(0.1)
+        time.sleep(0.3)
+        proc.send_signal(signal.SIGTERM)
+        proc.communicate(timeout=30)
+        self.assertEqual(self.fix_text(), "better\n")
+        self.assertEqual((self.p.work / "last.txt").read_text(), "mine\n")
+
+
+    def test_restore_refreshes_the_mtime(self):
+        import os, time
+        path = self.p.work / "fix.txt"
+        old = time.time() - 100000
+        os.utime(path, (old, old))
+        code, out = self.run_script("true", "fix.txt")
+        self.assertGreater(path.stat().st_mtime, old + 1000)
+
+    def test_deleted_file_comes_back_with_its_executable_bit(self):
+        import os
+        self.p.write("run.sh", "#!/bin/sh\n")
+        os.chmod(self.p.work / "run.sh", 0o755)
+        self.p.git("add", "run.sh")
+        self.p.commit("add run.sh", env=DAY)
+        (self.p.work / "run.sh").unlink()
+        code, out = self.run_script("test -x run.sh", "run.sh")
+        self.assertEqual(code, 1, out)
+        self.assertIn("without the fix: exit 0; with the fix: exit 1", out)
+
+    def test_directory_argument_is_refused_with_a_clear_reason(self):
+        self.p.write("d/x.txt", "n\n")
+        code, out = self.run_script("true", "d")
+        self.assertEqual(code, 2, out)
+        self.assertIn("is a directory", out)
+
+    def test_filters_are_applied_to_the_head_version(self):
+        self.p.write(".gitattributes", "*.crlf text eol=crlf\n")
+        self.p.git("add", ".gitattributes")
+        self.p.commit("attrs", env=DAY)
+        self.p.write("a.crlf", "one\n")
+        self.p.git("add", "a.crlf")
+        self.p.commit("crlf", env=DAY)
+        self.p.git("rm", "-q", "--cached", "a.crlf")
+        (self.p.work / "a.crlf").write_bytes(b"two\r\n")
+        self.p.git("add", "a.crlf")
+        self.p.git("reset", "-q", "HEAD", "--", "a.crlf")
+        self.p.git("checkout", "-q", "--", ".gitattributes")
+        (self.p.work / "a.crlf").write_bytes(b"two\r\n")
+        code, out = self.run_script("grep -q 'one.$' a.crlf", "a.crlf")
+        self.assertEqual(code, 1, out)
+        self.assertIn("without the fix: exit 0", out)
+
+
 class TextFiles(Base):
     """Prose in a text/data file must not read as test code (`it(` in "improve it (URL)")."""
 

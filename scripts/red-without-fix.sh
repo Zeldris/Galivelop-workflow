@@ -159,44 +159,62 @@ if [ -n "$fixat" ]; then
     fi
   done
 else
-  # No git stash (it is shared by every worktree of the repo): copy each fix file out of the tree (mode kept), put the
-  # HEAD version in its place (a file HEAD does not have is removed), and always put the copy back, also on a failed
-  # script, a hung test that gets killed, Ctrl-C or SIGTERM. The index and other files are never touched.
-  mkdir -p "$out/saved" || { rm -rf "$out"; echo "red-without-fix: cannot create a temp dir; free space and retry" >&2; exit 2; }
+  # No git stash (it is shared by every worktree of the repo): copy each fix file into a folder inside this worktree's
+  # git dir (it survives a reboot, unlike /tmp), put the HEAD version in its place (a file HEAD does not have is
+  # removed) and always put the copy back, also on a failed script, a killed test, Ctrl-C, SIGTERM or SIGHUP. Only the
+  # files already reverted are touched on the way back. The index is never touched.
+  for f in "$@"; do
+    [ ! -d "$f" ] || { rm -rf "$out"; echo "red-without-fix: $f is a directory; name the fix files one by one: git status --porcelain -- $f" >&2; exit 2; }
+  done
+  gitdir="$(git rev-parse --absolute-git-dir 2>/dev/null)" || { rm -rf "$out"; echo "red-without-fix: cannot find the git dir; check: git rev-parse --git-dir" >&2; exit 2; }
+  saved="$(mktemp -d "$gitdir/gw-red-saved.XXXXXX")" || { rm -rf "$out"; echo "red-without-fix: cannot create a folder in $gitdir; free space and retry" >&2; exit 2; }
+  reverted=0; keep=""
   restore() {
     [ -z "$restored" ] || return 0
     restored=1
     local_fail=""; n=0
     for f in "$@"; do
       n=$((n + 1))
-      if [ -e "$out/saved/$n" ]; then
-        mkdir -p -- "$(dirname -- "$f")" && cp -p -- "$out/saved/$n" "$f" || local_fail=1
-      else
-        rm -f -- "$f"  # the fix deleted it
-      fi
+      [ "$n" -le "$reverted" ] || break
+      rm -f -- "$f"
+      if [ -f "$saved/$n.link" ]; then
+        mkdir -p -- "$(dirname -- "$f")" && ln -s -- "$(cat "$saved/$n.link")" "$f" || local_fail=1
+      elif [ -f "$saved/$n" ]; then
+        mkdir -p -- "$(dirname -- "$f")" && cp -p -- "$saved/$n" "$f" && touch -- "$f" || local_fail=1
+      fi  # else: the fix deleted it
     done
-    [ -z "$local_fail" ] || { echo "red-without-fix: could not restore the fix files; the copies are in $out/saved (1 = first file given): copy them back by hand" >&2; keep=1; return 1; }
+    [ -z "$local_fail" ] || { echo "red-without-fix: could not restore the fix files; the copies are in $saved (N = Nth file given): copy them back by hand" >&2; keep=1; return 1; }
   }
-  keep=""
-  trap 'restore "$@"; [ -n "$keep" ] || rm -rf "$out"' EXIT
+  trap 'restore "$@"; [ -n "$keep" ] || rm -rf "$out" "$saved"' EXIT
+  trap 'exit 129' HUP
   trap 'exit 130' INT
   trap 'exit 143' TERM
   n=0
   for f in "$@"; do
     n=$((n + 1))
-    if [ -e "$f" ]; then
-      cp -p -- "$f" "$out/saved/$n" || { keep=1; restored=1; echo "red-without-fix: cannot copy $f out of the tree; nothing was changed; free space and retry" >&2; exit 2; }
+    if [ -L "$f" ]; then
+      printf '%s' "$(readlink -- "$f")" > "$saved/$n.link" || { echo "red-without-fix: cannot save $f; nothing was changed; free space and retry" >&2; exit 2; }
+    elif [ -e "$f" ]; then
+      cp -p -- "$f" "$saved/$n.tmp" && mv -f -- "$saved/$n.tmp" "$saved/$n" || { echo "red-without-fix: cannot save $f; nothing was changed; free space and retry" >&2; exit 2; }
     fi
+    echo "red-without-fix: fix file $n saved: $f -> $saved/$n (if this run dies, copy it back by hand)"
   done
   n=0
   for f in "$@"; do
     n=$((n + 1))
-    if git cat-file -e "HEAD:$f" 2> /dev/null; then
+    reverted=$n
+    rm -f -- "$f"
+    entry="$(git ls-tree HEAD -- "$f" 2>/dev/null)"
+    if [ -n "$entry" ]; then
+      mode="${entry%% *}"
       mkdir -p -- "$(dirname -- "$f")"
-      git show "HEAD:$f" > "$f" || { echo "red-without-fix: cannot revert $f; the fix is restored on exit" >&2; exit 2; }
-    else
-      rm -f -- "$f"  # new file: HEAD has no version of it
-    fi
+      if [ "$mode" = 120000 ]; then
+        ln -s -- "$(git cat-file blob "HEAD:$f")" "$f" || { echo "red-without-fix: cannot revert $f; the fix is restored on exit" >&2; exit 2; }
+      else
+        git cat-file --filters "HEAD:$f" > "$f" || { echo "red-without-fix: cannot revert $f; the fix is restored on exit" >&2; exit 2; }
+        if [ "$mode" = 100755 ]; then chmod +x -- "$f"; else chmod -x -- "$f"; fi
+      fi
+    fi  # else: new file, HEAD has no version of it
   done
 fi
 bash -c "$cmd" > "$out/without.log" 2>&1 < /dev/null
