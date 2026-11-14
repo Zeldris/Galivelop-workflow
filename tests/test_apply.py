@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from test_hooks import BASE_CONFIG, ROOT
@@ -1804,6 +1805,7 @@ class LegacyNames(unittest.TestCase):
 
     def test_bare_old_ci_file_and_media_folder_are_names(self):
         self.p.write("README.md", "![ci](https://x/actions/workflows/comprobar.yml/badge.svg) docs/difusion/a.md\n")
+        self.p.write("docs/media/b.md", "exists\n")
         found = self.warnings(self.applied())
         self.assertEqual(len(found), 2, found)
         self.assertIn("old name comprobar.yml; replace it with check.yml", found[0])
@@ -1839,6 +1841,71 @@ class LegacyNames(unittest.TestCase):
         found = self.warnings(self.applied())
         self.assertEqual(len(found), 1, found)
         self.assertIn("docs/n.md:1 uses the old name check-verde.sh", found[0])
+
+    # ---- D100: roadmapFiles are history; a new name the project lacks is not proposed
+
+    def roadmap_cfg(self, files):
+        cfg = dict(MIGRATED_CONFIG)
+        if files is not None:
+            cfg["roadmapFiles"] = files
+        self.p.write(".claude/gw.json", json.dumps(cfg, indent=2) + "\n")
+
+    def test_roadmap_files_are_skipped_other_files_are_not(self):
+        self.roadmap_cfg([{"path": "docs/roadmap-front.md", "done": "x", "open": ["y"]}])
+        self.p.write("docs/roadmap-front.md", "closed: run check-verde.sh\n")
+        self.p.write("docs/notes.md", "run check-verde.sh\n")
+        found = self.warnings(self.applied())
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("docs/notes.md:1 uses the old name check-verde.sh", found[0])
+
+    def test_roadmap_files_absent_or_empty_skip_nothing(self):
+        self.p.write("docs/roadmap-front.md", "run check-verde.sh\n")
+        for files in (None, []):
+            self.roadmap_cfg(files)
+            found = self.warnings(self.applied())
+            self.assertEqual(len(found), 1, found)
+            self.assertIn("docs/roadmap-front.md:1 uses the old name", found[0])
+
+    def test_new_name_missing_in_project_is_not_proposed(self):
+        # silent: a warning without a replacement would still send the reader to rename a text that is history
+        self.p.write("docs/notes.md", "run docs/difusion/x.md\n")
+        self.assertEqual(self.warnings(self.applied()), [])
+
+    def test_roadmap_path_is_normalized(self):
+        self.roadmap_cfg([{"path": ".\\docs\\roadmap-front.md", "done": "x", "open": ["y"]}])
+        self.p.write("docs/roadmap-front.md", "run check-verde.sh\n")
+        self.assertEqual(self.warnings(self.applied()), [])
+
+    def test_ls_files_failure_warns_as_before(self):
+        spec = importlib.util.spec_from_file_location("apply_lsf", APPLY_SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        plan = mod.Plan(self.p.work, VERSION, False)
+        failed = subprocess.CompletedProcess([], 128, b"", b"fatal")
+        with unittest.mock.patch.object(mod.subprocess, "run", return_value=failed):
+            paths = mod.project_paths(plan)
+        self.assertIsNone(paths)
+        self.assertTrue(mod.name_exists(paths, "merge-branch.sh"))
+
+    def test_name_on_disk_counts_even_if_ignored(self):
+        self.p.write(".gitignore", ".claude/gw/\n")
+        self.p.write(".claude/gw/scripts/merge-x.sh", "x\n")
+        self.p.write("docs/notes.md", "docs/difusion/x.md\n")
+        spec = importlib.util.spec_from_file_location("apply_disk", APPLY_SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertFalse(mod.name_exists(set(), "merge-x.sh"))
+        self.assertTrue(mod.name_exists(set(), ".claude/gw/scripts/merge-x.sh", self.p.work))
+
+    def test_name_exists_helper(self):
+        spec = importlib.util.spec_from_file_location("apply_names", APPLY_SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        paths = {"docs/media/a.md", ".claude/gw/scripts/check-green.sh"}
+        self.assertTrue(mod.name_exists(paths, "docs/media"))
+        self.assertTrue(mod.name_exists(paths, "check-green.sh"))
+        self.assertFalse(mod.name_exists(paths, "merge-branch.sh"))
+        self.assertFalse(mod.name_exists(paths, "docs/medi"))
 
     def test_git_grep_failure_is_a_warning_not_a_failure(self):
         from unittest import mock
