@@ -21,7 +21,7 @@ while the note names no other); and, when `origin` is on GitHub, a way to read t
 or effort picked per agent (CLAUDE_CODE_EFFORT_LEVEL, CLAUDE_CODE_SUBAGENT_MODEL with _FORCE, CLAUDE_CODE_SUBAGENT_EFFORT)
 in the environment or the env block of .claude/settings.json, .claude/settings.local.json or ~/.claude/settings.json;
 and (E43) a folder holding test_*.py that no `check` command runs (`test dirs`, see check_test_dirs; the folders to skip
-are the `doctorTestDirsIgnore` key); and (E41) the git user.name/user.email do not match `authorDeny` (the pre-commit
+are the `doctorTestDirsIgnore` key); and (E41) the identity git commits with (`git var`) does not match `authorDeny` (the pre-commit
 refuses that author).
 The compaction check, the session one, the levers one, the media tools one and the CI
 access one read the machine running doctor, not only the project, so their lines can differ between a person's machine,
@@ -751,17 +751,19 @@ def strip_invisible_command(name):
 
 
 def check_author(rep, root, cfg):
-    """E41: the identity git will commit with (user.name/user.email) does not match authorDeny."""
+    """E41: the identity git will commit with (git var, as the pre-commit reads it: user.name/user.email and the
+    GIT_AUTHOR_*/GIT_COMMITTER_* variables) does not match authorDeny."""
     patterns = config.author_deny(cfg) if cfg else []
     if not patterns:
         return
-    name, email = git(root, "config", "user.name") or "", git(root, "config", "user.email") or ""
-    hit = config.author_denied(patterns, name, email)
-    if hit:
-        rep.warn("author", f"git user '{name} <{email}>' matches '{hit}' in authorDeny, so the pre-commit refuses "
-                 f"every commit", "git config user.name '<your name>' && git config user.email '<your email>'")
+    code, message = config.author_check(root, patterns)
+    if code:
+        rep.warn("author", f"{message.split('; commit as yourself')[0]}, so the pre-commit refuses every commit",
+                 "git config user.name '<your name>' && git config user.email '<your email>' "
+                 "(and unset GIT_AUTHOR_*/GIT_COMMITTER_* if set)")
     else:
-        rep.ok("author", "the git user.name/user.email do not match authorDeny")
+        rep.ok("author", "the identity git commits with (user.name/user.email, GIT_AUTHOR_*/GIT_COMMITTER_*) does not "
+               "match authorDeny")
 
 
 def check_instructions(rep, root, cfg=None):

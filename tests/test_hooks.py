@@ -3203,6 +3203,59 @@ class PreCommitAuthorDeny(Base):
         self.refused(p.git("commit", "-q", "--no-edit", env=self.CLAUDE, ok=False), "author", "Claude")
         self.assertEqual(p.git("commit", "-q", "--no-edit", ok=False).returncode, 0)
 
+    def test_clean_merge_by_denied_committer_refused_by_the_pre_push(self):
+        # Review of E41: a clean merge skips the pre-commit; the pre-push checks every commit it carries.
+        p = self.p
+        p.git("checkout", "-q", "-b", "side")
+        p.write("docs/side.md", "side\n")
+        p.commit("side")
+        p.git("checkout", "-q", "-b", "feature", "main")
+        self.change()
+        p.commit("feature")
+        p.git("merge", "-q", "--no-edit", "side", env={"GIT_COMMITTER_NAME": "Claude"})
+        code, out = p.push("origin", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn(f"{p.sha()[:7]}: committer Claude <test@example.com> matches 'Claude'", out)
+        self.assertIn("the push carries commits by an identity in authorDeny", out)
+        self.assertIn("--reset-author", out)
+
+    def test_published_commit_by_denied_author_does_not_block_the_push(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "feature")
+        self.change()
+        p.git("add", "-A")
+        p.git("commit", "-q", "--no-verify", "-m", "old", env=self.CLAUDE)
+        p.git("push", "-q", "--no-verify", "origin", "feature")
+        self.change("mine\n")
+        p.commit("mine")
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+
+    def test_empty_list_lets_the_push_and_the_range_through(self):
+        p = self.p
+        p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, authorDeny=[])))
+        p.commit("no deny")
+        p.git("push", "-q", "--no-verify", "origin", "main")
+        base = p.sha()
+        p.git("checkout", "-q", "-b", "feature")
+        self.change()
+        p.git("add", "-A")
+        p.git("commit", "-q", "--no-verify", "-m", "agent", env=self.CLAUDE)
+        code, out = p.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        code, out = p.run("bash", ".githooks/pre-commit", "--range", f"{base}..HEAD")
+        self.assertEqual(code, 0, out)
+
+    def test_range_in_ci_refuses_a_denied_author_with_the_base_list(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "feature")
+        p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, authorDeny=[])))  # the PR cannot empty it for itself
+        p.git("add", "-A")
+        p.git("commit", "-q", "--no-verify", "-m", "agent", env=self.CLAUDE)
+        code, out = p.run("bash", ".githooks/pre-commit", "--range", f"{p.base}..HEAD")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("author Claude <noreply@anthropic.com> matches 'Claude'", out)
+
     def test_unreadable_config_warns_and_goes_on(self):
         self.p.write(".claude/gw.json", "{not json")
         self.change()

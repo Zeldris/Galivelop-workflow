@@ -22,6 +22,8 @@ defaults the schema declares. Shell scripts call the CLI; Python scripts import 
   python3 config.py author-check        # E41: exit 1 when the commit's author or committer (git var GIT_AUTHOR_IDENT /
                                         # GIT_COMMITTER_IDENT, so GIT_AUTHOR_*/GIT_COMMITTER_* count as in git) matches
                                         # authorDeny; an empty list checks nothing (called by the pre-commit hook)
+  python3 config.py --rev REV author-check --commits -   # the same over the commits on stdin, one sha per line
+                                        # (%an/%ae/%cn/%ce; the pre-push on what it pushes, pre-commit --range in CI)
 
 Project root: --root, else the git top level of this script's folder when that repo has .claude/gw.json (the copy
 in a project lives in .claude/gw/scripts/), else the git top level of the current directory when it is
@@ -356,6 +358,36 @@ def parse_ident(ident):
     """`Name <email> 1700000000 +0100` (git var GIT_AUTHOR_IDENT) as (name, email); None when it is not one."""
     m = re.match(r"^(.*?)\s*<([^>]*)>", ident or "")
     return (m.group(1), m.group(2)) if m else None
+
+
+def commits_author_check(root, patterns, shas):
+    """E41: (0, "") when no commit of `shas` has an author or committer matching `patterns` (git commit runs the
+    pre-commit; a clean merge, cherry-pick, revert or rebase does not, so the pre-push and CI check what they carry),
+    else (1, the offending commits and the command that rewrites them). Fails closed when git cannot read them."""
+    shas = [s for s in shas if s]
+    if not patterns or not shas:
+        return 0, ""
+    r = subprocess.run(["git", "log", "--no-walk=unsorted", "--format=%H%x00%an%x00%ae%x00%cn%x00%ce", *shas],
+                       cwd=str(root), capture_output=True, text=True)
+    if r.returncode != 0:
+        return 1, f"cannot read the authors of the commits to check authorDeny; fetch and retry: git log {shas[0][:12]}"
+    bad, oldest = [], None
+    for line in r.stdout.splitlines():
+        parts = line.split("\0")
+        if len(parts) != 5:
+            continue
+        sha, an, ae, cn, ce = parts
+        for role, name, email in (("author", an, ae), ("committer", cn, ce)):
+            hit = author_denied(patterns, name, email)
+            if hit:
+                bad.append(f"  {sha[:7]}: {role} {name} <{email}> matches '{hit}'")
+                oldest = sha
+    if not bad:
+        return 0, ""
+    fix = (f"git config user.name '<your name>' && git config user.email '<your email>' && git rebase -r --exec "
+           f"'git commit --amend --no-edit --reset-author' {oldest[:7]}^")
+    return 1, "these commits have an author or committer in authorDeny (.claude/gw.json):\n" + "\n".join(bad) + \
+        f"\nrewrite them as yourself: {fix}"
 
 
 def author_check(root, patterns):
@@ -1132,7 +1164,8 @@ def main(argv=None):
     scope_p = sub.add_parser("push-scope", help="'full <reason>' or 'related' for a branch push changing the files on stdin")
     scope_p.add_argument("--commits", help="file listing the push's new commits, one sha per line: a .claude/gw.json "
                                            "change then counts only by its keys (fullCheckSkipKeys, E47)")
-    sub.add_parser("author-check", help="exit 1 when the commit's author or committer matches authorDeny (E41)")
+    ac = sub.add_parser("author-check", help="exit 1 when the commit's author or committer matches authorDeny (E41)")
+    ac.add_argument("--commits", help="'-': check the commits on stdin (one sha per line) instead of the next commit")
     get = sub.add_parser("get")
     get.add_argument("key", help="top-level key, or dotted (relatedTests.fast)")
     get.add_argument("--json", action="store_true")
@@ -1164,6 +1197,12 @@ def main(argv=None):
             return 2
         return 0
     if args.command == "author-check":
+        if args.commits:
+            shas = [line.strip() for line in sys.stdin.read().splitlines() if line.strip()]
+            code, message = commits_author_check(config["_root"], author_deny(config), shas)
+            if message:
+                print(f"author-check: {message}", file=sys.stderr)
+            return code
         code, message = author_check(config["_root"], author_deny(config))
         if message:
             print(f"pre-commit: {message}", file=sys.stderr)

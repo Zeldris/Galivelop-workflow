@@ -76,6 +76,10 @@ class Doctor(Snapshot):
         self.p.git("config", "user.email", "NOREPLY@anthropic.com")
         line = self.assertLine(self.doctor()[1], "WARN", "author", "matches 'noreply@anthropic.com'")
         self.assertIn("git config user.email", line)
+        # Review of E41: doctor reads the identity as git var does, environment variables included.
+        self.p.git("config", "user.email", "test@example.com")
+        code, out = self.p.run("python3", str(self.p.scripts / "doctor.py"), cwd=self.tmp, env={"GIT_COMMITTER_NAME": "Claude"})
+        self.assertLine(out, "WARN", "author", "committer Claude", "matches 'Claude'")
 
     def test_config_schema_version(self):
         self.assertLine(self.doctor()[1], "OK", "config schema", "schemaVersion 1 is the workflow's format")

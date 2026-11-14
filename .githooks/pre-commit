@@ -17,7 +17,9 @@
 #   - E41, first of all: neither the author nor the committer (git var GIT_AUTHOR_IDENT/GIT_COMMITTER_IDENT, so
 #     GIT_AUTHOR_*/GIT_COMMITTER_* and --amend count as in git) matches the config's authorDeny (config.py
 #     author-check); an empty list checks nothing. Fails closed without the identity; an unreadable gw.json warns and
-#     skips it, like protectedPaths (commit-msg refuses a commit that is not WIP:).
+#     skips it, like protectedPaths (commit-msg refuses a commit that is not WIP:). It covers git commit only: a clean
+#     merge, cherry-pick, revert or rebase skips this hook, so the pre-push checks every commit it pushes, and
+#     --range (CI) every commit of the range, with the base's authorDeny (a PR cannot empty it for itself).
 #   - B36, first (so the checks below see it): the token ledger metrics.ledger rides with the commit being made when it
 #     has changes (metrics.py stage-ledger: metrics.record and metrics.commitLedger on, not ignored, something else
 #     staged, no merge/cherry-pick/revert/rebase in progress, not git commit <paths>/--only). Fails closed without
@@ -54,6 +56,19 @@ else
   fix_line="move the value to an environment variable, then stage again: git add -p"
 fi
 diff_of() { git diff "$range" "$@"; }
+
+# E41 in CI: the authors and committers of the range, against the base's authorDeny (a base without a readable
+# gw.json, as in the PR that adds the workflow, warns and skips it).
+if [ "$ci" = "1" ]; then
+  if [ -d "$root/.claude/gw/scripts" ]; then scripts="$root/.claude/gw/scripts"; else scripts="$root/scripts"; fi
+  rc=0
+  git rev-list "$range" | python3 "$scripts/config.py" --root "$root" --rev "${range%%..*}" author-check --commits - || rc=$?
+  if [ "$rc" = "2" ]; then
+    echo "pre-commit: WARNING: cannot read authorDeny from .claude/gw.json at ${range%%..*}, so the authors are not checked" >&2
+  elif [ "$rc" != "0" ]; then
+    exit 1
+  fi
+fi
 
 # B36: the token ledger goes with this commit (metrics.py stage-ledger decides when), before the checks below read it.
 if [ "$ci" = "0" ]; then
