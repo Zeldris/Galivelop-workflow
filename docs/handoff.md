@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.5.2` en `main` (`2e55d66`, 2026-11-12) |
-| Siguiente paso | **`0.6.0` publicada en `main`** (`a1a9705`, 2026-11-14): tres fases hechas, check completo y CI en verde. Textos de la release en `docs/records/release-v0.6.0.md`; falta crear la release `v0.6.0` (a mano o subiendo la etiqueta, a elegir por el usuario). Después: la `0.7` (B32 y lo de su tabla en el roadmap), empezando por su recogida. Para la próxima retro: el subagente de B33 volvió a quedarse esperando su trabajo de fondo tras entregar (D92 no bastó). |
+| Siguiente paso | **`0.6.0` publicada en `main`** (`a1a9705`, 2026-11-14): tres fases hechas, check completo y CI en verde. Textos de la release en `docs/records/release-v0.6.0.md`; falta crear la release `v0.6.0`: la crea un agente desde una sesión local (usuario, 2026-11-14), con la etiqueta `v0.6.0` sobre `a1a9705` y el título y el cuerpo de ese archivo. Después: la `0.7` (B32 y lo de su tabla en el roadmap), empezando por su recogida. Para la próxima retro: el subagente de B33 volvió a quedarse esperando su trabajo de fondo tras entregar (D92 no bastó). |
 
 ### Fases
 
