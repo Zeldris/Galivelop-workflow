@@ -14,7 +14,7 @@ Recogida de la `0.7` (H20).
   nuevo, se marca con `gw-allow-secret` y se dice en el PR.
 - **Why it is general:** cualquier proyecto que se actualice desde una versión vieja choca con las tres.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-14) → D99
 
 ## P2. `doctorTestDirsIgnore` deja fuera las skills copiadas del flujo
 
@@ -24,7 +24,7 @@ Recogida de la `0.7` (H20).
 - **Why it is general:** cada actualización copia skills con tests que se prueban en el flujo; `doctor.py` avisa de
   ellos en cada proyecto.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-14) → D102
 
 ## P3. `apply.py --summary` y renombres en el `--dry-run`
 
@@ -36,7 +36,7 @@ Recogida de la `0.7` (H20).
   `skills/gw-update/SKILL.md` y docs.
 - **Why it is general:** cualquier salto de varias versiones da un dry-run ilegible.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-14) → E52
 
 ## Stays in the project
 

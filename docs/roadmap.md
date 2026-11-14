@@ -153,7 +153,7 @@ En este orden, porque cada paso usa el anterior.
 | H17 | Notas del usuario (SDD, DDD, TDD, exploración, ficha de tarea, hecho por entorno) y cuatro referencias externas, repartidas en propuestas: [`2026-11-08-notes-and-references.md`](proposals/2026-11-08-notes-and-references.md); aprobadas las 13 y las 5 preguntas (usuario, 2026-11-08); el diseño que las une, [`I-lifecycle.md`](design/I-lifecycle.md), cerrado con su `grilling` (12 respuestas, 2026-11-08) | hecho |
 | H18 | Recogida de cierre de la `0.6` (`gw-harvest`) antes de publicarla: los arreglos, al siguiente parche de la `0.5`; los evolutivos, repartidos entre las versiones (usuario, 2026-11-11) | hecho (2026-11-11; 28 propuestas y 14 hallazgos de la revisión `0.5.1` del instalador: D70-D79, D88, B22-B25 y E38-E40 a la `0.5.2`; B26-B29, D82, D84-D86 y E43 a la `0.6`; D80, D81, D83, D87 y E41 a la `0.7`; E42 a la `0.8`; portal P6 descartada) |
 | H19 | Recogida de la `0.6.0` (`gw-harvest`) antes de publicarla (usuario, 2026-11-13: los arreglos, a la `0.6.0`; los evolutivos, a la `0.7` y la `0.8`) | hecho (2026-11-13; 12 propuestas: D90-D93 y B30 a la `0.6`; E48, D94-D96, E49 y B31 a la `0.7`; E50 a la `0.8`) |
-| H20 | Recogida de la `0.7` (`gw-harvest`) al empezarla, con `private-project-4` por primera vez (usuario, 2026-11-14) | en curso (2026-11-14; 14 propuestas en `docs/proposals/2026-11-14-*.md`, esperando decisión) |
+| H20 | Recogida de la `0.7` (`gw-harvest`) al empezarla, con `private-project-4` por primera vez (usuario, 2026-11-14) | hecho (2026-11-14; 14 propuestas: D97-D103 al parche `0.6.1`, E51, E52, B36 y E41 ampliada a la `0.7`, E53 a la `0.8`) |
 | A10 | Hojas de presentación del flujo, de una página A4: para quien contrata desarrollo, `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (qué resuelve, cómo se trabaja, qué garantiza), y para equipos que lo instalan, `docs/es/mkt-adoption.md` ↔ `docs/en/mkt-adoption.md` (usuario, 2026-11-09), con su HTML y su PDF final generados desde el `.md` por un script, para que no se desfasen; se repasa en cada versión (D66) (usuario, 2026-11-06) | hecho (`scripts/mkt-sheet.py`, estilo del portal) |
 | B1 | Gancho `Stop` que lee los logs de sesión | hecho (`scripts/metrics.py record`, clave `metrics`) |
 | B2 | `docs/metrics/ledger.jsonl` en el repo | hecho (`merge=union` en `.gitattributes`; falta que `apply.py` lo ponga en los proyectos) |
@@ -205,6 +205,18 @@ En este orden, porque cada paso usa el anterior.
 | B34 | `apply.py .` (o `version.py <X.Y.Z>`) deja `"version"` de `.claude/gw.json` en la versión de `plugin.json` (retro `0.6.0` R2) | hecho (2026-11-14) |
 | B35 | `roadmap.py list <versión> [--status <estado>]`: ids y estado de las filas de una versión, sin leer el roadmap (retro `0.6.0` R4) | hecho (2026-11-14) |
 
+## `0.6.1` — parche
+
+| Id | Tarea | Estado |
+|---|---|---|
+| D97 | El `commit-msg` rechaza `Findings:` y `Retries:` fuera del último párrafo de trailers (`change-size.py` y `metrics.py` solo leen ese párrafo), con su test (recogida `0.7`, world-maker-fantasy P1, private-project-2 P1) | pendiente |
+| D98 | `red-without-fix.sh` sin `git stash`: revierte el arreglo con una copia de los archivos y la restaura siempre, con su test (recogida `0.7`, image-generator P1) | pendiente |
+| D99 | `gw-update`: sigue la skill de la etiqueta destino, no la copia vieja del proyecto; abre el PR tras las tres fases; el CI del PR corre el `pre-commit` viejo de la rama base y se resuelve con `gw-allow-secret` (recogida `0.7`, private-project-3 P1) | pendiente |
+| D100 | El aviso de nombres viejos de `apply.py` (`plan_legacy_names`) salta los `roadmapFiles` y no propone un nombre nuevo que no existe en el proyecto, con su test (recogida `0.7`, world-maker-fantasy P2) | pendiente |
+| D101 | `harvest.py` saca ideas solo de las líneas añadidas en el rango: archivar la bitácora no devuelve ideas viejas, con su test (recogida `0.7`, portal P1) | pendiente |
+| D102 | El valor por defecto de `doctorTestDirsIgnore` (esquema y `templates/gw.json`) incluye `.claude/skills` (recogida `0.7`, private-project-3 P2) | pendiente |
+| D103 | El encargo de `gw-orchestrate-dealer` dice dónde viven los tests de cada capa (recogida `0.7`, image-generator P3) | pendiente |
+
 ## `0.7` «Preguntar»
 
 | Id | Tarea | Estado |
@@ -235,7 +247,7 @@ En este orden, porque cada paso usa el anterior.
 | D80 | Aviso automático de un sello de `gw-scout-updates` caducado (recogida de cierre `0.6`, private-project-1 P5) | pendiente |
 | D83 | `apply.py --update` añade al `staleRefs` del proyecto los nombres que renombra su migración (amplía D46) (recogida de cierre `0.6`, instalador P4) | pendiente |
 | D87 | `gw-init` ofrece licencia doble: MIT para el código y CC BY-NC-SA 4.0 para el contenido, con la nota de terceros (recogida de cierre `0.6`, world-maker P6) | pendiente |
-| E41 | El `pre-commit` rechaza un autor de la lista `authorDeny` (vacía por defecto en los proyectos; con Claude en este repo); cambia la línea de `AGENTS.md` que dice que ningún gancho comprueba el autor (recogida de cierre `0.6`, private-project-1 P6) | pendiente |
+| E41 | El `pre-commit` rechaza un autor de la lista `authorDeny` (vacía por defecto en los proyectos; con Claude en este repo); cambia la línea de `AGENTS.md` que dice que ningún gancho comprueba el autor (recogida de cierre `0.6`, private-project-1 P6); también comprueba el committer y `doctor.py` avisa si `user.email` es la del agente (recogida `0.7`, image-generator P2, private-project-2 P2) | pendiente |
 | E48 | `red-without-fix.sh` revierte solo el arreglo dentro del archivo del test (`--patch <diff>` o `--lines A-B`): tests en línea de Rust y otros (recogida `0.6.0`, instalador P1) | pendiente |
 | D94 | `scripts/push.sh <rama>`: reintentos 2, 4, 8 y 16 s y éxito solo si `git ls-remote` coincide con `HEAD`; `AGENTS.md` apunta a él (recogida `0.6.0`, image-generator P4) | pendiente |
 | D95 | `handoff.py add-pending` y `add-decision`: añadir a la bitácora sin leerla (recogida `0.6.0`, instalador P3) | pendiente |
@@ -243,6 +255,9 @@ En este orden, porque cada paso usa el anterior.
 | E49 | `gw-init` con `agentSignatures: false` escribe en `CLAUDE.md` la regla «sin firmas» frente al recordatorio de atribución (recogida `0.6.0`, image-generator P5) | pendiente |
 | B31 | Aviso de contexto cerca de la ventana con el presupuesto de compactaciones gastado (`recover.py --state` o `Stop`), antes de la compactación (recogida `0.6.0`, image-generator P7) | pendiente |
 | B32 | `apply.py` añade `docs/metrics/ledger.jsonl merge=union` al `.gitattributes` del proyecto, con su test, para que dos ramas que apuntan gasto no choquen al fusionar (revisión de fase 1 de la `0.6.0`; resto de B2) | pendiente |
+| E51 | El check valida el YAML de `.github/workflows/*.yml` con el lector de `ci-local.py`, tras una clave de `.claude/gw.json` (recogida `0.7`, instalador P1) | pendiente |
+| E52 | `apply.py --dry-run --summary` y los renombrados en el ensayo (recogida `0.7`, private-project-3 P3) | pendiente |
+| B36 | El registro de métricas no lleva commits propios: el `pre-commit` lo añade al siguiente commit de trabajo (recogida `0.7`, world-maker-fantasy P3; junto a B32) | pendiente |
 
 ## `0.8` «Front y otros agentes»
 
@@ -257,6 +272,7 @@ En este orden, porque cada paso usa el anterior.
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.8` | pendiente |
 | E42 | Skill `gw-seo` (SEO y vistas previas de webs estáticas) traída del portal: sin rutas del portal, nombres en inglés, tests en el check, docs es/en y la LICENSE MIT de su fuente (recogida de cierre `0.6`, portal P1) | pendiente |
 | E50 | Gancho `PreToolUse` de `Read` que avisa, sin bloquear, al leer capturas sueltas y sugiere montarlas en una hoja (orden del proyecto en una clave) (recogida `0.6.0`, image-generator P6) | pendiente |
+| E53 | Regla de guía: en el CI, el script de instalación del entorno falla en su propio paso (recogida `0.7`, instalador P2) | pendiente |
 
 ## `0.9` «Estable»
 

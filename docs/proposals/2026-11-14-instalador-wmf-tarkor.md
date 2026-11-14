@@ -11,7 +11,7 @@ sale de 1 retro (`docs/records/retro-2026-11-14-ins-47-flu-9.md`, P2 y P3). Reco
   `.github/workflows/*.yml` con el lector de `scripts/ci-local.py`; clave en `.claude/gw.json` para apagarlo.
 - **Why it is general:** un workflow con YAML inválido no corre, así que ningún CI da rojo.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-14) → E51
 
 ## P2. En CI, el script de instalación del entorno falla en su paso
 
@@ -20,7 +20,7 @@ sale de 1 retro (`docs/records/retro-2026-11-14-ins-47-flu-9.md`, P2 y P3). Reco
   con el final de su log, no en el siguiente.
 - **Why it is general:** cualquier proyecto con instalación en CI pierde tiempo buscando el fallo dos pasos después.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-14) → E53
 
 ## Already here
 

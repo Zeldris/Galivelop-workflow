@@ -12,7 +12,7 @@ Recogida de la `0.7` (H20).
 - **Why it is general:** el stash es común a todos los worktrees: con subagentes en paralelo uno puede recoger el
   stash del otro. Pasó dos veces, sin pérdida.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-14) → D98
 
 ## P2. Rechazar el autor o committer del agente
 
@@ -21,7 +21,7 @@ Recogida de la `0.7` (H20).
 - **What changes:** es E41 (pendiente); ver private-project-2 P2.
 - **Why it is general:** ningún gancho del flujo comprueba el autor.
 - **Version bump:** minor (la de E41)
-- **Status:** proposed
+- **Status:** aprobada (2026-11-14) → E41
 
 ## P3. El encargo del dealer dice dónde viven los tests de lo que se toca
 
@@ -30,7 +30,7 @@ Recogida de la `0.7` (H20).
   de cada capa tocada (aquí, `tests/test_ui_browser.py` para la interfaz, que el subagente no encontró).
 - **Why it is general:** cualquier proyecto con tests por capas.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-14) → D103
 
 ## Already here
 

@@ -12,7 +12,7 @@ Recogida de la `0.7` (H20).
   falta cambiar el lector.
 - **Why it is general:** salta «review overdue» con todos los bloques revisados.
 - **Version bump:** patch
-- **Status:** proposed (junto a world-maker-fantasy P1)
+- **Status:** aprobada (2026-11-14) → D97
 
 ## P2. Más evidencia para E41: autor o committer del agente
 
@@ -22,7 +22,7 @@ Recogida de la `0.7` (H20).
   si `git config user.email` es del agente con `agentSignatures: false`. Lo mismo trae galivelop-image-generator P2.
 - **Why it is general:** dos proyectos más tuvieron que reescribir historial por ello; E41 sube de prioridad.
 - **Version bump:** minor (la de E41)
-- **Status:** proposed
+- **Status:** aprobada (2026-11-14) → E41
 
 ## Stays in the project
 

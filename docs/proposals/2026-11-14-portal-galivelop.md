@@ -12,7 +12,7 @@ nuevas. Recogida de la `0.7` (H20).
 - **Why it is general:** cada proyecto que archiva su bitácora repite en cada recogida ideas ya resueltas (aquí, las
   4: D45/D53 y P3-P4 de `2026-10-23-portal-galivelop.md`).
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-14) → D101
 
 ## Stays in the project
 

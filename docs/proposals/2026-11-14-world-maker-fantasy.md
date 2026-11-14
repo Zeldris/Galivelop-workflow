@@ -13,7 +13,7 @@ sale de 1 retro (`docs/records/retro-2026-11-14-gw-update-0.6.md`). Recogida de 
   (`block()`) y `recover.py --state` avisan de «review overdue» con la revisión hecha y `metrics.py quality` pierde
   los hallazgos. Ningún gancho lo coge hoy.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-14) → D97
 
 ## P2. El aviso de nombres viejos de `apply.py --update` no toca el texto histórico
 
@@ -25,7 +25,7 @@ sale de 1 retro (`docs/records/retro-2026-11-14-gw-update-0.6.md`). Recogida de 
 - **Why it is general:** cualquier proyecto con tareas cerradas que citan nombres viejos recibe el mismo cambio
   equivocado.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-14) → D100
 
 ## P3. El ledger de métricas sin commits propios
 
@@ -36,7 +36,7 @@ sale de 1 retro (`docs/records/retro-2026-11-14-gw-update-0.6.md`). Recogida de 
   ruido.
 - **Why it is general:** cada sesión de cada proyecto deja hoy al menos un commit que solo trae el ledger.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-14) → B36
 
 ## Stays in the project
 
