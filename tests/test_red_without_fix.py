@@ -147,6 +147,232 @@ class FixAt(Base):
         self.assertEqual(code, 0, out)
 
 
+class Uncommitted(Base):
+    """The fix is uncommitted: the files are copied aside, never `git stash`ed, and always put back."""
+
+    def setUp(self):
+        super().setUp()
+        self.p.write("fix.txt", "better\n")
+
+    def stashes(self):
+        return self.p.git("stash", "list").stdout.strip()
+
+    def test_restored_after_success_without_a_stash(self):
+        code, out = self.run_script("grep -q better fix.txt", "fix.txt")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.fix_text(), "better\n")
+        self.assertEqual(self.stashes(), "")
+        self.assertEqual(self.p.git("status", "--porcelain").stdout.strip(), "M fix.txt")
+
+    def test_restored_after_the_test_fails_with_the_fix(self):
+        code, out = self.run_script("false", "fix.txt")
+        self.assertEqual(code, 1, out)
+        self.assertIn("does not pass with the fix", out)
+        self.assertEqual(self.fix_text(), "better\n")
+
+    def test_restored_when_the_run_without_the_fix_is_killed(self):
+        code, out = self.run_script("kill -TERM $PPID; sleep 5", "fix.txt")
+        self.assertNotEqual(code, 0, out)
+        self.assertEqual(self.fix_text(), "better\n")
+        self.assertEqual(self.stashes(), "")
+
+    def test_test_sees_the_head_version_without_the_fix(self):
+        code, out = self.run_script("grep -q good fix.txt", "fix.txt")
+        self.assertEqual(code, 1, out)
+        self.assertIn("without the fix: exit 0; with the fix: exit 1", out)
+        self.assertEqual(self.fix_text(), "better\n")
+
+    def test_new_file_is_removed_then_restored(self):
+        self.p.write("brand.txt", "n\n")
+        code, out = self.run_script("test -f brand.txt", "fix.txt", "brand.txt")
+        self.assertEqual(code, 0, out)
+        self.assertIn("without the fix: exit 1; with the fix: exit 0", out)
+        self.assertEqual((self.p.work / "brand.txt").read_text(), "n\n")
+        self.assertEqual(self.stashes(), "")
+
+    def test_staged_new_file_is_restored_and_stays_staged(self):
+        self.p.write("brand.txt", "n\n")
+        self.p.git("add", "brand.txt")
+        code, out = self.run_script("test -f brand.txt", "brand.txt")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.p.work / "brand.txt").read_text(), "n\n")
+        self.assertIn("A  brand.txt", self.p.git("status", "--porcelain").stdout)
+
+    def test_file_deleted_by_the_fix_is_back_then_deleted_again(self):
+        (self.p.work / "other.txt").unlink()
+        code, out = self.run_script("test -f other.txt", "other.txt")
+        self.assertEqual(code, 1, out)
+        self.assertIn("without the fix: exit 0; with the fix: exit 1", out)
+        self.assertFalse((self.p.work / "other.txt").exists())
+        code, out = self.run_script("! test -f other.txt", "other.txt")
+        self.assertEqual(code, 0, out)
+        self.assertFalse((self.p.work / "other.txt").exists())
+        self.assertEqual(self.stashes(), "")
+
+    def test_unrelated_changes_and_the_users_stash_are_untouched(self):
+        self.p.write("other.txt", "mine\n")
+        self.p.git("stash", "push", "--quiet", "--", "other.txt")
+        before = self.stashes()
+        self.assertNotEqual(before, "")
+        self.p.write("later.txt", "unstaged\n")
+        self.p.write("untracked.txt", "u\n")
+        self.p.git("add", "fix.txt")
+        code, out = self.run_script("grep -q better fix.txt", "fix.txt")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.stashes(), before)
+        self.assertEqual((self.p.work / "later.txt").read_text(), "unstaged\n")
+        self.assertEqual((self.p.work / "untracked.txt").read_text(), "u\n")
+        status = self.p.git("status", "--porcelain").stdout
+        self.assertIn("M  fix.txt", status)
+        self.assertIn(" M later.txt", status)
+
+    def test_executable_mode_is_kept(self):
+        import os
+        path = self.p.work / "fix.txt"
+        os.chmod(path, 0o755)
+        code, out = self.run_script("grep -q better fix.txt", "fix.txt")
+        self.assertEqual(code, 0, out)
+        self.assertTrue(os.access(path, os.X_OK))
+
+    def test_fix_file_in_a_new_directory_is_restored(self):
+        self.p.write("newdir/sub/x.txt", "n\n")
+        code, out = self.run_script("test -f newdir/sub/x.txt", "newdir/sub/x.txt")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.p.work / "newdir/sub/x.txt").read_text(), "n\n")
+
+
+    def test_symlink_in_the_fix_is_handled_as_a_link(self):
+        import os
+        os.symlink("other.txt", self.p.work / "lnk")
+        code, out = self.run_script("test -L lnk", "lnk")
+        self.assertEqual(code, 0, out)
+        self.assertTrue((self.p.work / "lnk").is_symlink())
+        self.assertEqual(os.readlink(self.p.work / "lnk"), "other.txt")
+        self.assertEqual((self.p.work / "other.txt").read_text(), "x\n")
+
+    def test_dangling_symlink_is_restored(self):
+        import os
+        os.symlink("nowhere", self.p.work / "lnk")
+        code, out = self.run_script("true", "lnk")
+        self.assertEqual(os.readlink(self.p.work / "lnk"), "nowhere", out)
+
+    def test_symlink_replacing_a_tracked_file_does_not_corrupt_its_target(self):
+        import os
+        (self.p.work / "fix.txt").unlink()
+        os.symlink("other.txt", self.p.work / "fix.txt")
+        code, out = self.run_script("grep -qx x fix.txt", "fix.txt")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(os.readlink(self.p.work / "fix.txt"), "other.txt")
+        self.assertEqual((self.p.work / "other.txt").read_text(), "x\n")
+
+    def test_interrupt_during_the_run_keeps_nothing_in_tmp_and_prints_the_copy_path(self):
+        code, out = self.run_script("kill -HUP $PPID; sleep 5", "fix.txt")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("gw-red-saved.", out)
+        self.assertEqual(self.fix_text(), "better\n")
+        self.assertEqual(list((self.p.work / ".git").glob("gw-red-saved.*")), [])
+
+    def test_the_copy_lives_in_the_git_dir_while_the_run_goes(self):
+        code, out = self.run_script("ls .git/gw-red-saved.*/1 && grep -q good fix.txt", "fix.txt")
+        self.assertEqual(code, 1, out)  # `ls` inside the test command proves the copy exists, grep fails: with = no
+        self.assertIn("without the fix: exit 0", out)
+
+    def fake_cp(self, pattern):
+        """A `cp` first in PATH that blocks (marker file, then waits) when its arguments match `pattern`."""
+        import os
+        d = self.tmp / "fakebin"
+        d.mkdir()
+        marker = self.tmp / "blocked"
+        cp = d / "cp"
+        cp.write_text('#!/bin/bash\ncase "$*" in *%s*) : > "%s"; sleep 60 & wait ;; esac\nexec /bin/cp "$@"\n'
+                      % (pattern.replace(" ", "\\ "), marker))
+        os.chmod(cp, 0o755)
+        return d, marker
+
+    def run_and_term(self, pattern, files):
+        import os, signal, subprocess, time
+        d, marker = self.fake_cp(pattern)
+        env = dict(os.environ, PATH=str(d) + os.pathsep + os.environ["PATH"])
+        proc = subprocess.Popen(["bash", str(self.p.scripts / SCRIPT), "true"] + files, cwd=self.p.work, env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True)
+        for _ in range(200):
+            if marker.exists():
+                break
+            time.sleep(0.1)
+        self.assertTrue(marker.exists(), "the fake cp was never reached")
+        os.killpg(proc.pid, signal.SIGTERM)  # like Ctrl-C/kill of a group: the blocked cp dies too
+        out = proc.communicate(timeout=60)[0]
+        return proc.returncode, out
+
+    def test_terminate_during_the_copy_leaves_every_file_as_it_was(self):
+        self.p.write("other.txt", "mine\n")
+        code, out = self.run_and_term("other.txt", ["fix.txt", "other.txt"])
+        self.assertEqual(code, 143, out)
+        self.assertIn("fix file 1 saved", out)
+        self.assertNotIn("fix file 2 saved", out)
+        self.assertEqual(self.fix_text(), "better\n")
+        self.assertEqual((self.p.work / "other.txt").read_text(), "mine\n")
+
+    def test_terminate_while_restoring_keeps_the_copies(self):
+        self.p.write("other.txt", "mine\n")
+        code, out = self.run_and_term("-- */gw-red-saved.*/2 ", ["fix.txt", "other.txt"])
+        self.assertEqual(code, 143, out)
+        self.assertEqual(self.fix_text(), "better\n")
+        saved = list((self.p.work / ".git").glob("gw-red-saved.*"))
+        self.assertEqual(len(saved), 1, out)
+        self.assertEqual((saved[0] / "2").read_text(), "mine\n")
+
+    def test_symlink_to_a_directory_is_not_taken_for_a_directory(self):
+        import os
+        (self.p.work / "d").mkdir()
+        os.symlink("d", self.p.work / "dl")
+        code, out = self.run_script("true", "dl")
+        self.assertNotIn("is a directory", out)
+        self.assertEqual(os.readlink(self.p.work / "dl"), "d")
+
+    def test_restore_refreshes_the_mtime(self):
+        import os, time
+        path = self.p.work / "fix.txt"
+        old = time.time() - 100000
+        os.utime(path, (old, old))
+        code, out = self.run_script("true", "fix.txt")
+        self.assertGreater(path.stat().st_mtime, old + 1000)
+
+    def test_deleted_file_comes_back_with_its_executable_bit(self):
+        import os
+        self.p.write("run.sh", "#!/bin/sh\n")
+        os.chmod(self.p.work / "run.sh", 0o755)
+        self.p.git("add", "run.sh")
+        self.p.commit("add run.sh", env=DAY)
+        (self.p.work / "run.sh").unlink()
+        code, out = self.run_script("test -x run.sh", "run.sh")
+        self.assertEqual(code, 1, out)
+        self.assertIn("without the fix: exit 0; with the fix: exit 1", out)
+
+    def test_directory_argument_is_refused_with_a_clear_reason(self):
+        self.p.write("d/x.txt", "n\n")
+        code, out = self.run_script("true", "d")
+        self.assertEqual(code, 2, out)
+        self.assertIn("is a directory", out)
+
+    def test_filters_are_applied_to_the_head_version(self):
+        self.p.write(".gitattributes", "*.crlf text eol=crlf\n")
+        self.p.git("add", ".gitattributes")
+        self.p.commit("attrs", env=DAY)
+        self.p.write("a.crlf", "one\n")
+        self.p.git("add", "a.crlf")
+        self.p.commit("crlf", env=DAY)
+        self.p.git("rm", "-q", "--cached", "a.crlf")
+        (self.p.work / "a.crlf").write_bytes(b"two\r\n")
+        self.p.git("add", "a.crlf")
+        self.p.git("reset", "-q", "HEAD", "--", "a.crlf")
+        self.p.git("checkout", "-q", "--", ".gitattributes")
+        (self.p.work / "a.crlf").write_bytes(b"two\r\n")
+        code, out = self.run_script("grep -q 'one.$' a.crlf", "a.crlf")
+        self.assertEqual(code, 1, out)
+        self.assertIn("without the fix: exit 0", out)
+
+
 class TextFiles(Base):
     """Prose in a text/data file must not read as test code (`it(` in "improve it (URL)")."""
 
