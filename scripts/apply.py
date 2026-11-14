@@ -1178,6 +1178,21 @@ def after_plan(plan, rel):
     return rel
 
 
+def project_paths(plan):
+    """Every path of the project (tracked and untracked, not ignored) plus the targets the plan creates (D100)."""
+    r = subprocess.run(["git", "-C", str(plan.root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                       capture_output=True)
+    found = {p.decode("utf-8", "replace") for p in r.stdout.split(b"\0") if p} if r.returncode == 0 else set()
+    found.update(str(a[1]) for a in plan.actions if a[0] != "remove")
+    return found
+
+
+def name_exists(paths, new):
+    """True when `new` (a file, a folder or a bare script name) is one of `paths`, a folder above one, or ends one."""
+    new = new.rstrip("/")
+    return any(p == new or p.startswith(f"{new}/") or p.endswith(f"/{new}") or f"/{new}/" in f"/{p}" for p in paths)
+
+
 def plan_legacy_names(plan, cfg, wanted_skills, keep):
     """D46: warn, with file:line, about uses of the pre-A8 names in the project's own text files. Never fails the run.
     git grep finds them (so ignored files, .git and binaries are out); then skipped: what the plan removes, the files
@@ -1207,6 +1222,9 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
     skip = {str(config.CONFIG_REL), ".claude/settings.json"}
     skip_dirs = tuple(f"{cfg[k].rstrip('/')}/" for k in ("recordsDir", "proposalsDir") if cfg.get(k))
     skip_globs = list(cfg.get("legacyNamesSkip", ["CHANGELOG*"]))
+    skip_roadmaps = {str(Path(str(e.get("path", ""))).as_posix()) for e in config.roadmap_files(cfg)
+                     if isinstance(e, dict) and e.get("path")}  # closed tasks quote old names as history (D100)
+    known = None
     limit = int(cfg.get("legacyNamesMax", 50))
     hits, total, owned = [], 0, {}
     fields = r.stdout.split(b"\0")  # git grep -n -z: path NUL line NUL text NL path NUL line NUL text NL...
@@ -1219,6 +1237,7 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
         shown = after_plan(plan, rel)
         if (shown is None or rel in skip or shown in skip or rel.startswith(own) or shown == cfg.get("log")
                 or shown.startswith(skip_dirs) or rel.endswith((PROPOSAL, OLD_PROPOSAL))
+                or shown in skip_roadmaps or rel in skip_roadmaps
                 or any(fnmatch.fnmatch(shown, g) for g in skip_globs)):
             continue
         if rel not in owned:
@@ -1229,6 +1248,10 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
         if owned[rel]:
             continue
         for m in regex.finditer(text):
+            if known is None:
+                known = project_paths(plan)
+            if not name_exists(known, pairs[m.group(1)]):
+                continue  # the new name is not in this project: renaming would break the text (D100)
             total += 1
             if len(hits) < limit:
                 where = f"{rel}:{number}" + (f" (moved to {shown})" if shown != rel else "")
