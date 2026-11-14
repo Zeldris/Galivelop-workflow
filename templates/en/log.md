@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.6.0 -->
+<!-- galivelop-workflow v0.6.1 -->
 # Log (hand-off)
 
 > Read it whole at the start of every session. What is not pushed does not exist: commit + push at every stable

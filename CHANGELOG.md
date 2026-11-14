@@ -8,6 +8,46 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.6.1] - 2026-11-14
+
+Parche de la recogida `0.7` y de la retro de la `0.6.1` (filas de la `0.6.1` en `docs/roadmap.md`). / Patch from the
+`0.7` harvest and the `0.6.1` retro (`0.6.1` rows in `docs/roadmap.en.md`).
+
+### ES
+
+- Commits (D97, D108): el `commit-msg` rechaza `Findings:` y `Retries:` fuera del último párrafo de trailers, y en el
+  commit que cierra una fase o versión con el presupuesto de compactaciones superado pide `/clear`.
+- Tests (D98, D106): `red-without-fix.sh` aparta el arreglo en una copia bajo `.git`, sin `git stash`;
+  `tests-for.py --run` pasa shellcheck a los `.sh` del cambio.
+- Aplicación y recogida (D100, D101, D102): `apply.py` no avisa de nombres viejos en el roadmap ni propone nombres que
+  no existen; `harvest.py` solo saca ideas de las líneas añadidas en el rango; `doctorTestDirsIgnore` incluye
+  `.claude/skills` por defecto.
+- Pendientes (D104): «Pendiente» sale de la bitácora a su propio archivo (`pendingFile`, por defecto
+  `docs/records/pending.md`); la bitácora deja un puntero con la cuenta, `handoff.py move-pending` los traslada,
+  `archive` trabaja sobre ese archivo y `check --strict` exige que el puntero esté al día.
+- Roadmap (D105): `roadmap.py check`, en el check, exige los mismos ids por versión en cada archivo de `roadmapFiles`.
+- Skills (D99, D103, D107): `gw-update` sigue la skill de la etiqueta destino y abre el PR tras las tres fases; el
+  encargo de `gw-orchestrate-dealer` dice dónde viven los tests de cada capa, pide la subida final en primer plano y
+  manda parar con `TaskStop` al subagente que no vuelve con su commit subido.
+
+### EN
+
+- Commits (D97, D108): the `commit-msg` hook rejects `Findings:` and `Retries:` outside the last trailer paragraph,
+  and asks for `/clear` on the commit that closes a phase or version once the compaction budget is spent.
+- Tests (D98, D106): `red-without-fix.sh` sets the fix aside in a copy under `.git`, without `git stash`;
+  `tests-for.py --run` runs shellcheck on the changed `.sh` files.
+- Apply and harvest (D100, D101, D102): `apply.py` no longer warns about old names in the roadmap nor proposes names
+  that do not exist; `harvest.py` only takes ideas from the lines added in the range; `doctorTestDirsIgnore` includes
+  `.claude/skills` by default.
+- Pending items (D104): "Pending" moves out of the hand-off log into its own file (`pendingFile`, by default
+  `docs/records/pending.md`); the log keeps a pointer with the count, `handoff.py move-pending` moves the items,
+  `archive` works on that file and `check --strict` requires the pointer to be current.
+- Roadmap (D105): `roadmap.py check`, part of the check, requires the same ids per version in every `roadmapFiles`
+  file.
+- Skills (D99, D103, D107): `gw-update` follows the skill of the target tag and opens the PR after the three phases;
+  the `gw-orchestrate-dealer` brief says where each layer's tests live, asks for the final push in the foreground and
+  has the main session stop with `TaskStop` a subagent that does not come back with its commit pushed.
+
 ## [0.6.0] - 2026-11-13
 
 Menor de gasto y calidad: métricas de tokens, modelo y esfuerzo por agente, revisión por bloques, check rápido y

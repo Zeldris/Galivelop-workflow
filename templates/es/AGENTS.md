@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.6.0 -->
+<!-- galivelop-workflow v0.6.1 -->
 # {{project}} — instrucciones para agentes
 
 Este proyecto se trabaja por relevos: una sesión puede acabarse en cualquier momento (tokens, contenedor, cambio de
