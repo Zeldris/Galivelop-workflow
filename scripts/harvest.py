@@ -10,7 +10,8 @@ For each project repository it reports, without judging anything:
   * retro files, and "For Galivelop-workflow" sections in any tracked .md changed since the last harvest, plus the
     lines there that start with "Propuesta para el flujo" / "Proposal for the workflow" (with their indented
     continuation lines), the way projects note requests in their hand-off log; after an earlier harvest, only the
-    ones with a line added or changed since it (never a proposal line twice: inside a section it is part of it);
+    ones with a line added or changed since it (never a proposal line twice: inside a section it is part of it), and never one whose lines were all already in
+    some .md file at the last harvest (an entry moved to an archive file is not new);
   * commits since the last harvested commit;
   * a warning when the clone is behind its upstream branch (as of its last fetch: fetch first), or has no upstream
     (then nobody can tell whether it is up to date).
@@ -290,21 +291,19 @@ def ideas_in(text, rel, added):
 def old_lines(repo, base):
     """Stripped, non-empty lines of every Markdown file at commit `base` (what was already there at the last harvest,
     wherever it lived), or None when git cannot say: then nothing is dropped."""
-    out = git(repo, "grep", "-h", "-I", "--no-color", "-e", "", base, "--", "*.md")
-    return None if out is None else {line.strip() for line in out.splitlines() if line.strip()}
+    out = git(repo, "grep", "-h", "-I", "--no-color", "--no-line-number", "--no-column", "-e", "", base, "--", "*.md")
+    return None if out is None else {line.strip() for line in out.split("\n") if line.strip()}
 
 
 def not_old(ideas, old):
     """Drop the ideas whose every line was already in some Markdown file at the last harvest: an entry moved to an
-    archive file shows as added there, but it is not new (D101). A cut idea is judged on the lines before the cut."""
+    archive file shows as added there, but it is not new (D101). A cut (truncated) idea is always kept: its text is not whole."""
     if not old:
         return ideas
     kept = []
     for idea in ideas:
         lines = [l.strip() for l in idea["text"].split("\n") if l.strip()]
-        if lines and lines[-1].endswith(TRUNCATED):
-            lines = lines[:-1]
-        if not lines or not all(l in old for l in lines):
+        if idea["text"].endswith(TRUNCATED) or not lines or not all(l in old for l in lines):
             kept.append(idea)
     return kept
 
@@ -410,6 +409,9 @@ def harvest(repo, state, anonymize=lambda text: text):
             if found and base is not None:
                 if before is None:
                     before = old_lines(repo, base)
+                    if before is None:
+                        report["history"] += ("; warning: git grep failed at the last harvested commit, so ideas moved "
+                                              "to another file may be repeated (check them by hand)")
                 found = not_old(found, before)
             report["ideas"] += found
     return report

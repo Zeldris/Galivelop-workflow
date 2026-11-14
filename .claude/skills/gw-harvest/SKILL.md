@@ -39,7 +39,8 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
    differs, skills born in the project, copied workflow scripts that differ, retro files, the
    `## For Galivelop-workflow` sections of every changed `.md` (pilot notes too, not only retros), the lines there that
    start with "Propuesta para el flujo" / "Proposal for the workflow" (how projects note requests in their hand-off
-   log), and the commits. A copy equal to an earlier workflow commit is listed apart
+   log) that were added since the last harvest and whose lines were not all already in some `.md` at that commit
+   (an entry moved to an archive file is not new), and the commits. A copy equal to an earlier workflow commit is listed apart
    as an older copy: the project's stale text, never a proposal. If it reports missing history, deepen the clone as
    it says and run it again.
    **Private projects come out anonymized.** With `anonymize` in this repo's `.claude/gw.local.json`

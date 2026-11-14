@@ -286,6 +286,46 @@ class Harvest(unittest.TestCase):
         self.commit_log(old.replace("- Propuesta para el flujo: archivada\n", ""), "archive")
         self.assertEqual(self.harvest()["ideas"], [], "moved text is not new; the new file counts only new lines")
 
+    def test_a_git_grep_line_number_config_does_not_defeat_the_filter(self):
+        old = self.OLD + "\n## Old entry\n\n- Propuesta para el flujo: archivada\n"
+        self.commit_log(old, "log")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        git(self.repo, "config", "grep.lineNumber", "true")
+        git(self.repo, "config", "grep.column", "true")
+        (self.repo / "docs/archive.md").write_text("- Propuesta para el flujo: archivada\n")
+        self.commit_log(old.replace("- Propuesta para el flujo: archivada\n", ""), "archive")
+        self.assertEqual(self.harvest()["ideas"], [])
+
+    def test_crlf_in_the_old_file_still_matches(self):
+        old = "# T\r\n\r\n- Propuesta para el flujo: archivada\r\n"
+        self.commit_log(old, "log")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        (self.repo / "docs/archive.md").write_text("- Propuesta para el flujo: archivada\n")
+        self.commit_log("# T\n", "archive")
+        self.assertEqual(self.harvest()["ideas"], [])
+
+    def test_a_failed_git_grep_adds_a_warning_to_the_report(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import harvest as h
+        self.commit_log(self.OLD, "log")
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        self.commit_log(self.OLD + "\n- Propuesta para el flujo: otra\n", "more")
+        last = json.loads(self.state.read_text())
+        orig, h.old_lines = h.old_lines, lambda repo, base: None
+        try:
+            report = h.harvest(self.repo, last)
+        finally:
+            h.old_lines = orig
+        self.assertIn("git grep failed", report["history"])
+        self.assertEqual(len(report["ideas"]), 1)
+
+    def test_a_truncated_idea_is_never_dropped_as_old(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import harvest as h
+        self.assertEqual(len(h.not_old([{"path": "a", "text": "x " + h.TRUNCATED}], {"x \u2026 (truncated)", "x"})), 1)
+
     def test_an_idea_that_is_new_in_an_archive_file_is_reported(self):
         self.commit_log(self.OLD, "log")
         run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
