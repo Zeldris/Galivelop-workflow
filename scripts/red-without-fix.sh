@@ -164,7 +164,7 @@ else
   # removed) and always put the copy back, also on a failed script, a killed test, Ctrl-C, SIGTERM or SIGHUP. Only the
   # files already reverted are touched on the way back. The index is never touched.
   for f in "$@"; do
-    [ ! -d "$f" ] || { rm -rf "$out"; echo "red-without-fix: $f is a directory; name the fix files one by one: git status --porcelain -- $f" >&2; exit 2; }
+    { [ ! -d "$f" ] || [ -L "$f" ]; } || { rm -rf "$out"; echo "red-without-fix: $f is a directory; name the fix files one by one: git status --porcelain -- $f" >&2; exit 2; }
   done
   gitdir="$(git rev-parse --absolute-git-dir 2>/dev/null)" || { rm -rf "$out"; echo "red-without-fix: cannot find the git dir; check: git rev-parse --git-dir" >&2; exit 2; }
   saved="$(mktemp -d "$gitdir/gw-red-saved.XXXXXX")" || { rm -rf "$out"; echo "red-without-fix: cannot create a folder in $gitdir; free space and retry" >&2; exit 2; }
@@ -172,6 +172,7 @@ else
   restore() {
     [ -z "$restored" ] || return 0
     restored=1
+    keep=1  # a signal that lands in the middle of this loop must not delete the copies
     local_fail=""; n=0
     for f in "$@"; do
       n=$((n + 1))
@@ -183,7 +184,8 @@ else
         mkdir -p -- "$(dirname -- "$f")" && cp -p -- "$saved/$n" "$f" && touch -- "$f" || local_fail=1
       fi  # else: the fix deleted it
     done
-    [ -z "$local_fail" ] || { echo "red-without-fix: could not restore the fix files; the copies are in $saved (N = Nth file given): copy them back by hand" >&2; keep=1; return 1; }
+    [ -z "$local_fail" ] || { echo "red-without-fix: could not restore the fix files; the copies are in $saved (N = Nth file given): copy them back by hand" >&2; return 1; }
+    keep=""
   }
   trap 'restore "$@"; [ -n "$keep" ] || rm -rf "$out" "$saved"' EXIT
   trap 'exit 129' HUP

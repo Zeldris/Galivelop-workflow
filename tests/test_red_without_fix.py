@@ -277,23 +277,58 @@ class Uncommitted(Base):
         self.assertEqual(code, 1, out)  # `ls` inside the test command proves the copy exists, grep fails: with = no
         self.assertIn("without the fix: exit 0", out)
 
-    def test_terminate_during_the_copy_leaves_every_file_as_it_was(self):
+    def fake_cp(self, pattern):
+        """A `cp` first in PATH that blocks (marker file, then waits) when its arguments match `pattern`."""
+        import os
+        d = self.tmp / "fakebin"
+        d.mkdir()
+        marker = self.tmp / "blocked"
+        cp = d / "cp"
+        cp.write_text('#!/bin/bash\ncase "$*" in *%s*) : > "%s"; sleep 60 & wait ;; esac\nexec /bin/cp "$@"\n'
+                      % (pattern.replace(" ", "\\ "), marker))
+        os.chmod(cp, 0o755)
+        return d, marker
+
+    def run_and_term(self, pattern, files):
         import os, signal, subprocess, time
-        os.mkfifo(self.p.work / "pipe")  # cp blocks opening it: the script is stuck in the copy phase
-        self.p.write("last.txt", "mine\n")
-        proc = subprocess.Popen(["bash", str(self.p.scripts / SCRIPT), "true", "fix.txt", "pipe", "last.txt"],
-                                cwd=self.p.work, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        gitdir = self.p.work / ".git"
-        for _ in range(100):
-            if list(gitdir.glob("gw-red-saved.*/1")):
+        d, marker = self.fake_cp(pattern)
+        env = dict(os.environ, PATH=str(d) + os.pathsep + os.environ["PATH"])
+        proc = subprocess.Popen(["bash", str(self.p.scripts / SCRIPT), "true"] + files, cwd=self.p.work, env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True)
+        for _ in range(200):
+            if marker.exists():
                 break
             time.sleep(0.1)
-        time.sleep(0.3)
-        proc.send_signal(signal.SIGTERM)
-        proc.communicate(timeout=30)
-        self.assertEqual(self.fix_text(), "better\n")
-        self.assertEqual((self.p.work / "last.txt").read_text(), "mine\n")
+        self.assertTrue(marker.exists(), "the fake cp was never reached")
+        os.killpg(proc.pid, signal.SIGTERM)  # like Ctrl-C/kill of a group: the blocked cp dies too
+        out = proc.communicate(timeout=60)[0]
+        return proc.returncode, out
 
+    def test_terminate_during_the_copy_leaves_every_file_as_it_was(self):
+        self.p.write("other.txt", "mine\n")
+        code, out = self.run_and_term("other.txt", ["fix.txt", "other.txt"])
+        self.assertEqual(code, 143, out)
+        self.assertIn("fix file 1 saved", out)
+        self.assertNotIn("fix file 2 saved", out)
+        self.assertEqual(self.fix_text(), "better\n")
+        self.assertEqual((self.p.work / "other.txt").read_text(), "mine\n")
+
+    def test_terminate_while_restoring_keeps_the_copies(self):
+        self.p.write("other.txt", "mine\n")
+        code, out = self.run_and_term("-- */gw-red-saved.*/2 ", ["fix.txt", "other.txt"])
+        self.assertEqual(code, 143, out)
+        self.assertEqual(self.fix_text(), "better\n")
+        saved = list((self.p.work / ".git").glob("gw-red-saved.*"))
+        self.assertEqual(len(saved), 1, out)
+        self.assertEqual((saved[0] / "2").read_text(), "mine\n")
+
+    def test_symlink_to_a_directory_is_not_taken_for_a_directory(self):
+        import os
+        (self.p.work / "d").mkdir()
+        os.symlink("d", self.p.work / "dl")
+        code, out = self.run_script("true", "dl")
+        self.assertNotIn("is a directory", out)
+        self.assertEqual(os.readlink(self.p.work / "dl"), "d")
 
     def test_restore_refreshes_the_mtime(self):
         import os, time
