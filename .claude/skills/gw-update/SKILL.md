@@ -44,7 +44,7 @@ newer than the workflow: stop and tell the user to update the workflow clone.
 
 ```bash
 git -C <project> status --short            # a clean tree makes the update easy to review and undo
-python3 <workflow>/scripts/apply.py <project> --dry-run
+python3 <workflow>/scripts/apply.py <project> --dry-run            # add --summary for counts, decisions, renames and warnings only
 ```
 
 It lists what it would create, update or propose, what it would `move` or `remove` to migrate a project installed with

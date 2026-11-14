@@ -2,7 +2,7 @@
 # galivelop-workflow v0.6.1
 """Apply or update the workflow in a project: the deterministic core of /gw-init and /gw-update (plan §5.4).
 
-  python3 <workflow>/scripts/apply.py [PROJECT] [--update] [--check] [--dry-run] [--with SKILL ...]
+  python3 <workflow>/scripts/apply.py [PROJECT] [--update] [--check] [--dry-run [--summary]] [--with SKILL ...]
           [--no-personal-notes] [--keep-paths]
   python3 <workflow>/scripts/apply.py [PROJECT] --vendored   # D82: list the unchanged copies, no writes
   python3 <workflow>/scripts/apply.py [PROJECT] --init --check-command CMD [--language es|en] [--log PATH]
@@ -100,7 +100,10 @@ In the workflow repo itself the copy is generated from scripts/ and skills/, so 
   --check     no writes; exit 1 if the copy differs from the workflow (anything to create, update, merge or chmod,
               a pending .gw-new proposal, or a file the workflow no longer has); core.hooksPath is reported but
               does not fail it (a local git setting: a fresh clone in CI has it unset). The drift test.
-  --dry-run   print the plan, no writes, exit 0.
+  --dry-run   print the plan, no writes, exit 0; the renames it would make (moved paths, hook commands) are
+              listed as `rename  old -> new`.
+  --summary   only with --dry-run: counts per action, what needs a decision (propose, merge), the renames and the
+              warnings, instead of the per-file listing.
   --keep-paths   keep the old Spanish project paths: write them explicitly in .claude/gw.json instead of moving them.
   --no-personal-notes   do not carry the personal notes (env GW_PERSONAL_NOTES, default ~/.claude/gw/notas/).
 Exit 2 on a missing or invalid config or settings file. Python 3.8+ standard library only.
@@ -1364,6 +1367,29 @@ def describe(plan):
     return lines
 
 
+def renames(plan):
+    """The renames the plan makes: 'old -> new' for moved paths, and the renamed hook commands."""
+    out = []
+    for kind, rel, old, _exec, detail in plan.actions:
+        if kind == "move":
+            out.append(f"{old} -> {rel}")
+        elif detail and "hook commands renamed: " in detail:
+            tail = detail.split("hook commands renamed: ", 1)[1]
+            out.extend(x.strip() for x in tail.split(";")[0].split(",") if x.strip())
+    return out
+
+
+def summarize(plan):
+    counts = {}
+    for kind, *_rest in plan.actions:
+        counts[kind] = counts.get(kind, 0) + 1
+    lines = ["  " + ", ".join(f"{n} {k}" for k, n in sorted(counts.items()))] if counts else []
+    for kind, rel, _d, _e, detail in plan.actions:
+        if kind in ("propose", "merge"):
+            lines.append(f"  {kind:<8}{rel}" + (f"  ({detail})" if detail else ""))
+    return lines
+
+
 def report(plan):
     for rel, why, suffix in plan.pending:
         print(f"apply: pending proposal {rel}{suffix} ({rel} differs: {why}); merge it by hand and delete it: "
@@ -1469,6 +1495,8 @@ def main(argv=None):
     parser.add_argument("--update", action="store_true", help="replace local edits in workflow-owned files")
     parser.add_argument("--check", action="store_true", help="no writes; exit 1 if the copy differs")
     parser.add_argument("--dry-run", action="store_true", help="print the plan, no writes")
+    parser.add_argument("--summary", action="store_true",
+                        help="with --dry-run: counts per action, decisions, renames and warnings only")
     parser.add_argument("--vendored", action="store_true",
                         help="no writes; print, one per line, the files the project holds as unchanged copies of "
                              "the workflow (the ones review-scope.py leaves out of the phase 1 review, D82)")
@@ -1507,6 +1535,8 @@ def main(argv=None):
                                  ("--agent-signatures", args.agent_signatures),
                                  ("--visible-language", args.visible_languages),
                                  ("--design-reference", args.design_references)) if v]
+    if args.summary and not args.dry_run:
+        parser.error("--summary only goes with --dry-run; add it: python3 apply.py [PROJECT] --dry-run --summary")
     if init_flags and not args.init:
         parser.error(f"{', '.join(init_flags)} only go with --init")
     if args.init and args.check:
@@ -1580,11 +1610,18 @@ def main(argv=None):
         return 0
     if args.dry_run:
         print(f"apply: plan for {root} (workflow v{version}, dry run, nothing written):")
-        for line in lines:
+        for line in (summarize(plan) if args.summary else lines):
             print(line)
         if not lines:
             print("  nothing to do")
-        report(plan)
+        for line in renames(plan):
+            print(f"  rename  {line}")
+        if args.summary:
+            for warning in plan.warnings:
+                print(f"apply: WARNING: {warning}")
+            print("apply: summary only; the full per-file plan: drop --summary")
+        else:
+            report(plan)
         return 0
     if not lines:
         print(f"apply: nothing to do; {root} is at workflow v{version}")

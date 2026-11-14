@@ -1045,6 +1045,57 @@ class Migrate(unittest.TestCase):
         self.assertEqual(p.read("notes/log.md"), "# mine\n")
         self.assertEqual(p.read("docs/traspaso.md"), "# unrelated old file\n")
 
+    def snapshot(self):
+        return sorted((str(f.relative_to(self.p.work)), f.read_bytes()) for f in self.p.work.rglob("*")
+                      if f.is_file() and ".git/" not in str(f) + "/" and not str(f).endswith(".git"))
+
+    def test_dry_run_lists_the_renames(self):
+        self.old_paths()
+        before = self.snapshot()
+        code, out = self.p.run_apply("--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertIn("rename  docs/traspaso.md -> docs/handoff.md", out)
+        self.assertEqual(before, self.snapshot())
+
+    def test_summary_counts_and_lists_renames_without_the_per_file_lines(self):
+        self.old_paths()
+        before = self.snapshot()
+        code, out = self.p.run_apply("--dry-run", "--summary")
+        self.assertEqual(code, 0, out)
+        self.assertRegex(out, r"\d+ create")
+        self.assertIn("rename  docs/traspaso.md -> docs/handoff.md", out)
+        self.assertNotIn("create  .githooks/pre-push", out)
+        self.assertIn("summary only", out)
+        self.assertEqual(before, self.snapshot())
+        self.assertFalse(self.exists("docs/handoff.md"))
+
+    def test_summary_fresh_install_and_update_and_nothing_to_do(self):
+        code, out = self.p.run_apply("--dry-run", "--summary")
+        self.assertEqual(code, 0, out)
+        self.assertRegex(out, r"\d+ create")
+        self.assertNotIn("  rename", out)
+        self.applied()
+        code, out = self.p.run_apply("--update", "--dry-run", "--summary")
+        self.assertEqual(code, 0, out)
+        self.assertIn("nothing to do", out)
+        self.assertNotRegex(out, r"\d+ create")
+
+    def test_summary_without_dry_run_fails_with_the_fix(self):
+        for flags in (("--summary",), ("--check", "--summary")):
+            code, out = self.p.run_apply(*flags)
+            self.assertEqual(code, 2, out)
+            self.assertIn("--summary only goes with --dry-run", out)
+            self.assertIn("--dry-run --summary", out)
+        self.assertFalse(self.exists(".githooks"))
+
+    def test_summary_rename_whose_target_exists_still_fails_closed(self):
+        p = self.p
+        p.write("docs/traspaso.md", "# Log\n")
+        (p.work / "docs" / "handoff.md").mkdir()
+        code, out = p.run_apply("--dry-run", "--summary")
+        self.assertEqual(code, 2, out)
+        self.assertIn("docs/handoff.md already exists", out)
+
     def test_move_fails_closed_when_the_target_exists(self):
         p = self.p
         p.write("docs/traspaso.md", "# Log\n")

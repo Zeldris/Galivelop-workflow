@@ -261,7 +261,7 @@ En este orden, porque cada paso usa el anterior.
 | B31 | Aviso de contexto cerca de la ventana con el presupuesto de compactaciones gastado (`recover.py --state` o `Stop`), antes de la compactación (recogida `0.6.0`, image-generator P7) | pendiente |
 | B32 | `apply.py` añade `docs/metrics/ledger.jsonl merge=union` al `.gitattributes` del proyecto, con su test, para que dos ramas que apuntan gasto no choquen al fusionar (revisión de fase 1 de la `0.6.0`; resto de B2) | pendiente |
 | E51 | El check valida el YAML de `.github/workflows/*.yml` con el lector de `ci-local.py`, tras una clave de `.claude/gw.json` (recogida `0.7`, instalador P1) | pendiente |
-| E52 | `apply.py --dry-run --summary` y los renombrados en el ensayo (recogida `0.7`, private-project-3 P3) | pendiente |
+| E52 | `apply.py --dry-run --summary` y los renombrados en el ensayo (recogida `0.7`, private-project-3 P3) | hecho (2026-11-14) |
 | B36 | El registro de métricas no lleva commits propios: el `pre-commit` lo añade al siguiente commit de trabajo (recogida `0.7`, world-maker-fantasy P3; junto a B32) | pendiente |
 
 ## `0.8` «Front y otros agentes»
