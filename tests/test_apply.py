@@ -1408,6 +1408,25 @@ class Migrate(unittest.TestCase):
 OLD_SCHEMA_CONFIG = {k: v for k, v in BASE_CONFIG.items() if k != "schemaVersion"}  # written before 0.5
 
 
+class ConfigVersion(unittest.TestCase):
+    """B34: apply.py sets the project's gw.json "version" to the workflow's and keeps every other key."""
+
+    def test_stale_version_is_set_and_the_other_keys_kept(self):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-ver-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        p = Fixture(tmp, {"version": "0.0.1", "commitTypes": ["feat", "fix"]})
+        before = json.loads(p.read(".claude/gw.json"))
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        after = json.loads(p.read(".claude/gw.json"))
+        self.assertEqual(after["version"], VERSION)
+        self.assertEqual({k: v for k, v in after.items() if k != "version"},
+                         {k: v for k, v in before.items() if k != "version"})
+        self.assertTrue(p.read(".claude/gw.json").endswith("}\n"))
+        code, out = p.run_apply("--check")
+        self.assertNotIn(".claude/gw.json", out)
+
+
 class SchemaMigration(unittest.TestCase):
     """A9: a gw.json with an older schemaVersion (absent = 0) is written migrated, in one write of the file."""
 

@@ -39,7 +39,7 @@ and effort per agent, review by blocks, a fast check and a complete `.claude/gw.
 - Orquestación (B16, D42, B28, B19): tipo de subagente ligero `gw-worker` (`.claude/agents/gw-worker.md`, lo crea
   `gw-init`); `gw-orchestrate-dealer` reparte los hallazgos aprobados por grupo de archivos, da a cada agente su
   carpeta en el scratchpad y comprueba la base del worktree; `gw-update` reparte la reconciliación de cada `.gw-new`.
-- Herramientas (D48, D55, D56, D81, D86, D89, B26, B29, E43): `handoff.py next-id` mira las ramas remotas;
+- Herramientas (D48, D55, D56, D81, D86, D89, B26, B29, E43, B34): `handoff.py next-id` mira las ramas remotas; `apply.py` pone la `version` de `.claude/gw.json` del proyecto en la del flujo (B34).
   `scripts/roadmap.py show|done` en los dos idiomas; `scripts/ci-status.py --failed` da solo el paso en rojo;
   `scripts/backport.sh` lleva commits a un parche; `merge-branch.sh` da la orden para un conflicto en la bitácora;
   `handoff.py archive` no se adelanta a una versión sin publicar; aviso al leer entera la bitácora o un registro
@@ -83,7 +83,7 @@ and effort per agent, review by blocks, a fast check and a complete `.claude/gw.
 - Orchestration (B16, D42, B28, B19): a light subagent type, `gw-worker` (`.claude/agents/gw-worker.md`, created by
   `gw-init`); `gw-orchestrate-dealer` deals approved findings by group of files, gives each agent its scratchpad
   folder and checks the worktree's base; `gw-update` deals out the reconciliation of each `.gw-new`.
-- Tools (D48, D55, D56, D81, D86, D89, B26, B29, E43): `handoff.py next-id` looks at remote branches;
+- Tools (D48, D55, D56, D81, D86, D89, B26, B29, E43, B34): `handoff.py next-id` looks at remote branches; `apply.py` sets the project's `.claude/gw.json` `version` to the workflow's (B34).
   `scripts/roadmap.py show|done` in both languages; `scripts/ci-status.py --failed` gives only the red step;
   `scripts/backport.sh` carries commits to a patch; `merge-branch.sh` gives the command for a conflict in the log;
   `handoff.py archive` no longer runs ahead of an unpublished version; a warning on reading the whole log or a large

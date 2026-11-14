@@ -986,6 +986,30 @@ def plan_schema(plan):
     plan.actions.append(("merge", config.CONFIG_REL, dump(migrated), False, "; ".join(details)))
 
 
+def plan_version(plan):
+    """B34: the project's gw.json top-level `version` is set to the workflow's (the only writer of that file, so
+    `version.py <X.Y.Z>` here leaves it to this). Joins a `merge` of gw.json already planned (one write); every other
+    key stays."""
+    try:
+        raw = json.loads((plan.root / config.CONFIG_REL).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if not isinstance(raw, dict):
+        return
+    mine = [i for i, a in enumerate(plan.actions) if a[0] == "merge" and Path(a[1]) == config.CONFIG_REL]
+    base, details = raw, []
+    if mine:
+        base = json.loads(plan.actions[mine[-1]][2].decode("utf-8"))
+        details = [plan.actions[i][4] for i in mine]
+    if base.get("version") == plan.version:
+        return
+    if mine:
+        plan.actions = [a for i, a in enumerate(plan.actions) if i not in mine]
+    base["version"] = plan.version
+    details.append(f"version {raw.get('version')} -> {plan.version}")
+    plan.actions.append(("merge", config.CONFIG_REL, dump(base), False, "; ".join(details)))
+
+
 def plan_media_folder(plan, keep):
     """A8 (0.x): docs/difusion, the old default folder of gw-media-content, moves to docs/media when the project's note
     does not name a folder (a folder the note names is never touched). keep (--keep-paths, or keepLegacyPaths in the
@@ -1219,6 +1243,7 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
         plan_media_folder(plan, keep_paths)
         plan_notes(plan)
     plan_schema(plan)
+    plan_version(plan)
     renamed = [e for e in extra_skills if e in OLD_SKILLS]
     for old in renamed:
         plan.warnings.append(f"--with {old} is the old name; use --with {OLD_SKILLS[old]}")
@@ -1534,9 +1559,6 @@ def main(argv=None):
     for rel, rule in ignored_paths(root):
         print(f"apply: WARNING: git ignores {rel} ({rule}), so the commit would leave it out; add !{rel} to "
               f".gitignore and check: git check-ignore -v {rel}")
-    if cfg.get("version") != version:
-        print(f"apply: .claude/gw.json says version {cfg.get('version')}; set it to {version} once the "
-              f"proposals are reviewed: edit \"version\" in {root / config.CONFIG_REL}")
     if any(a[0] == "propose" for a in plan.actions):
         print(f"apply: review each *{PROPOSAL} (merge by hand, then delete it) before committing")
     if cfg.get("language") == "es":
