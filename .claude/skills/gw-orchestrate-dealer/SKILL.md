@@ -63,7 +63,7 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    `git reset --hard {head}` before anything else. Your scratch files (dumps, logs, drafts, findings) go in
    `{scratch}/<id>-<topic>/`: create it, and never read or write another agent's folder. Read your state with
    `python3 .claude/gw/scripts/recover.py --state`; if it reports no row for your branch or the log has no
-   per-branch rows, read the next step and pending sections of {log}. If you touch code, read REVIEW.md and
+   per-branch rows, read the next step of {log} and the pending file (`pendingFile`, else the log's Pending). If you touch code, read REVIEW.md and
    AGENTS.md. Follow the project's commit and push rules. On the working branch you push each stable point and
    commit with the log update in the same commit; in a worktree (`agent/<id>-<topic>`) you commit but never push and
    never touch the log (the main session does both). Leave nothing uncommitted when you reply: every change is in
@@ -137,7 +137,7 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   (commit it first, as `WIP:` if needed, so nothing is lost if the session ends). The reviewer compares the diff with
   the contract (`AGENTS.md`, `REVIEW.md`, the callers), not the diff alone; its fixes land before moving on.
 - **Before the PR, only what matters:** fix what is serious or medium, and what the fix itself breaks; log the minor
-  findings as pending in `log` and do not review them again in this PR (`/code-review --max-findings all` still
+  findings in the pending file (`pendingFile`, else `log`) and do not review them again in this PR (`/code-review --max-findings all` still
   serves to list them). Otherwise every fix is reviewed again, brings new findings and the PR grows without end.
   The fixes of that review are dealt too, as in the next rule; only a one-file fix whose place the reviewer gave
   stays in the main session.

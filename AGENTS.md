@@ -73,7 +73,7 @@ Los comprueba el `commit-msg` (`commitFormat`, `commitRefs`, `commitNext` y `age
      antes) sin lo copiado tal cual del flujo (`vendored`: `python3 scripts/review-scope.py` lista lo que se revisa,
      D82; uno editado aquí sí entra); un diff trivial (`review-scope.py --trivial` sale en 0: sin
      código o de `reviewTrivialLines` líneas o menos) se revisa en la sesión, sin subagente (B27); arreglos subidos con sus tests. En una rama larga se adelanta a cada bloque cerrado (aviso del
-     `commit-msg` desde `changeSize.block`), solo del diff desde el último `Findings:`; antes de `main`, lo que quede.
+     `commit-msg` desde `changeSize.block`), solo del diff desde el último `Findings:`; antes de `main`, lo que quede y lo leve de `pendingFile`.
   2. **Entorno:** `/gw-opt-tokens` y `/retro`; sus propuestas se presentan al usuario y lo que confirme se aplica en la
      rama (lo general para el flujo se aplica aquí mismo: este repo es el flujo). Si el usuario pidió ir a `main` y no
      está para decidir la retro: todo listo (retro con `**Estado:** pendiente`, check en verde sobre la fusión con

@@ -2624,7 +2624,7 @@ class HandoffPendingFile(Base):
         self.p.write(".claude-plugin/plugin.json", json.dumps({"version": "0.5.1"}))
 
     def use(self, value):
-        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, pendingFile=value)))
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, log="docs/h.md", pendingFile=value)))
 
     def check(self, path):
         return self.p.script("handoff.py", "check", str(path), "--strict")
@@ -2681,6 +2681,32 @@ class HandoffPendingFile(Base):
         self.assertEqual(code, 0, out)
         self.assertIn("WARNING: handoff: the pending file docs/records/pending.md (pendingFile) does not exist; create "
                       "it: python3", out)
+
+    def test_strict_check_fails_closed_without_pointer_count_or_section(self):
+        self.use(self.PENDING)
+        self.p.write(self.PENDING, "# Pendiente\n\n## Pendiente\n\n- one\n")
+        cases = {"Ver el otro archivo.\n": "has no pointer line with the count of docs/records/pending.md",
+                 "* starred item\n1. numbered item\n": "the log holds 2 pending item(s)"}
+        for body, reason in cases.items():
+            code, out = self.check(self.log(body))
+            self.assertEqual(code, 1, out)
+            self.assertIn(reason, out)
+            self.assertRegex(out, r"python3 \S+handoff\.py move-pending")
+        code, out = self.check(self.log("Lo pendiente está en otro archivo (1 entradas).\n", heading="Por hacer"))
+        self.assertEqual(code, 1, out)
+        self.assertIn("the log has no \"## Pendiente\" / \"## Pending\" section to point to docs/records/pending.md", out)
+
+    def test_archive_refreshes_the_pointer_count(self):
+        self.use(self.PENDING)
+        self.p.write(self.PENDING, "# Pendiente\n\n## Pendiente\n\n- **Archivado (2026-11-01):** 1 elemento(s) de "
+                     "versiones ya publicadas (≤ 0.5.0) en [a](a.md)\n- old `0.4.0` thing\n- future `0.9`\n")
+        path = self.log("Lo pendiente está en otro archivo (3 entradas).\n")
+        self.assertEqual(self.check(path)[0], 0)
+        code, out = self.p.script("handoff.py", "archive", "--date", "2026-11-09")
+        self.assertEqual(code, 0, out)
+        self.assertIn("docs/records/pending.md now", out)
+        self.assertIn("(2 entradas)", path.read_text())
+        self.assertEqual(self.check(path), (0, ""))
 
     def test_archive_reads_the_pending_file_when_set(self):
         self.use(self.PENDING)
