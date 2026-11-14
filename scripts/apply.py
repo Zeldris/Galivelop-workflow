@@ -114,6 +114,7 @@ import difflib
 import fnmatch
 import json
 import os
+import posixpath
 import re
 import shutil
 import stat
@@ -653,6 +654,33 @@ def plan_gitignore(plan):
     data = current + sep + f"# galivelop-workflow: private, never committed\n{LOCAL_IGNORE}\n".encode()
     plan.actions.append(("update" if current else "create", Path(".gitignore"), data, False,
                          f"ignore {LOCAL_IGNORE}, the local list of private names"))
+
+
+def gitattributes_line(ledger):
+    """The `.gitattributes` line (B32) that merges the ledger by keeping both sides' lines: a path with a space, quote or
+    backslash goes in git's C-style quotes."""
+    rel = ledger.strip("/")
+    if any(c in rel for c in ' \t"\\'):
+        rel = '"' + rel.replace("\\", "\\\\").replace('"', '\\"').replace("\t", "\\t") + '"'
+    return f"{rel} merge=union"
+
+
+def plan_gitattributes(plan, cfg):
+    """B32: the project's .gitattributes merges the token ledger (`metrics.ledger`) with `merge=union`, so two branches
+    that append spend do not conflict. The line is appended (the file created if missing) unless a line already gives
+    that path `merge=union`; the user's other lines are kept, a missing final newline is added first."""
+    line = gitattributes_line(posixpath.normpath(config.metrics(cfg)["ledger"]))
+    pattern = line.rsplit(" ", 1)[0]
+    path = plan.root / ".gitattributes"
+    current = path.read_bytes() if path.is_file() else b""
+    for given in current.decode("utf-8", "replace").splitlines():
+        parts = given.split()
+        if parts and parts[0].lstrip("/") == pattern.lstrip("/") and "merge=union" in parts[1:]:
+            return
+    sep = b"" if not current or current.endswith(b"\n") else b"\n"
+    data = current + sep + f"# galivelop-workflow: the token ledger only grows, branches merge by keeping both\n{line}\n".encode()
+    plan.actions.append(("update" if current else "create", Path(".gitattributes"), data, False,
+                         f"merge the token ledger by keeping both sides: {line}"))
 
 
 def inline_list(items):
@@ -1398,6 +1426,7 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
     plan.settings(WORKFLOW / "templates" / "claude" / "settings.json")
     plan_templates(plan, cfg, self_apply, wanted_skills)
     plan_gitignore(plan)
+    plan_gitattributes(plan, cfg)
     if personal and not is_workflow_repo(root):
         plan_personal_notes(plan, check)  # before the old names: a note it creates is a new name that exists
     if not self_apply:

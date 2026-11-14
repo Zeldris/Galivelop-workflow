@@ -50,7 +50,7 @@ class Project:
         (gw / "scripts").mkdir(parents=True)
         (gw / "schema").mkdir()
         for name in ("config.py", "is-code.sh", "reviewed.sh", "handoff.py", "check-green.sh", "check.sh", "commit-message.py",
-                     "change-size.py"):
+                     "change-size.py", "metrics.py", "session_log.py"):
             shutil.copy2(ROOT / "scripts" / name, gw / "scripts" / name)
         shutil.copy2(ROOT / "schema" / "gw.schema.json", gw / "schema" / "gw.schema.json")
         (self.work / ".githooks").mkdir()
@@ -3209,6 +3209,171 @@ class PreCommitDone(Base):
         p.git("add", "-A")
         r = p.git("commit", "-q", "--no-edit", ok=False)
         self.assertEqual(r.returncode, 0, r.stderr)
+
+
+class PreCommitLedger(Base):
+    """B36: the pre-commit hook (metrics.py stage-ledger) adds the changed token ledger to the work commit being made."""
+    LEDGER = "docs/metrics/ledger.jsonl"
+    ROW = '{"input":1}\n'
+
+    def work_change(self, text="a = 1\n"):
+        self.p.write("src/a.py", text)
+        self.p.git("add", "src/a.py")
+
+    def commit(self, *args, ok=True):
+        r = self.p.git("commit", "-q", "-m", "work", *args, ok=False)
+        if ok:
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return r
+
+    def in_head(self, rel):
+        return self.p.git("cat-file", "-e", f"HEAD:{rel}", ok=False).returncode == 0
+
+    def clean(self, rel):
+        return self.p.git("status", "--porcelain", "--", rel).stdout == ""
+
+    def set_metrics(self, **metrics):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["metrics"] = metrics
+        self.p.write(".claude/gw.json", json.dumps(cfg, indent=2))
+        self.p.git("add", ".claude/gw.json")
+        self.commit("--no-verify")
+
+    def test_new_ledger_goes_with_the_work_commit(self):
+        self.p.write(self.LEDGER, self.ROW)
+        self.work_change()
+        r = self.commit()
+        self.assertIn(f"pre-commit: added the token ledger {self.LEDGER} to this commit", r.stderr)
+        self.assertTrue(self.in_head(self.LEDGER))
+        self.assertTrue(self.clean(self.LEDGER))
+
+    def test_changed_ledger_goes_with_the_work_commit_and_unchanged_says_nothing(self):
+        self.p.write(self.LEDGER, self.ROW)
+        self.p.git("add", self.LEDGER)
+        self.commit("--no-verify")
+        self.work_change()
+        r = self.commit()  # unchanged: nothing added, nothing said
+        self.assertNotIn("token ledger", r.stderr)
+        self.p.write(self.LEDGER, self.ROW * 2)
+        self.work_change("a = 2\n")
+        self.commit()
+        self.assertEqual(self.p.git("show", f"HEAD:{self.LEDGER}").stdout, self.ROW * 2)
+        self.assertTrue(self.clean(self.LEDGER))
+
+    def test_ignored_ledger_is_left_out(self):
+        self.p.write(".gitignore", "docs/metrics/\n")
+        self.p.git("add", ".gitignore")
+        self.p.write(self.LEDGER, self.ROW)
+        self.work_change()
+        r = self.commit()
+        self.assertNotIn("token ledger", r.stderr)
+        self.assertFalse(self.in_head(self.LEDGER))
+
+    def test_configured_ledger_path(self):
+        self.set_metrics(ledger="var/spend.jsonl")
+        self.p.write("var/spend.jsonl", self.ROW)
+        self.p.write(self.LEDGER, self.ROW)  # not the ledger here: an ordinary untracked file
+        self.work_change()
+        r = self.commit()
+        self.assertIn("added the token ledger var/spend.jsonl", r.stderr)
+        self.assertTrue(self.in_head("var/spend.jsonl"))
+        self.assertFalse(self.in_head(self.LEDGER))
+
+    def test_record_false_or_commit_ledger_false_leave_it(self):
+        for metrics in ({"record": False}, {"commitLedger": False}):
+            with self.subTest(metrics=metrics):
+                self.set_metrics(**metrics)
+                self.p.write(self.LEDGER, self.ROW)
+                self.work_change(f"a = {metrics}\n")
+                r = self.commit()
+                self.assertNotIn("token ledger", r.stderr)
+                self.assertFalse(self.in_head(self.LEDGER))
+
+    def test_merge_in_progress_leaves_it(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "other")
+        p.write("src/b.py", "b = 1\n"); p.git("add", "-A"); self.commit("--no-verify")
+        p.git("checkout", "-q", "main")
+        self.work_change(); self.commit()
+        p.git("merge", "-q", "--no-ff", "--no-commit", "other")
+        p.write(self.LEDGER, self.ROW)
+        r = p.git("commit", "-q", "--no-edit", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("the token ledger is not added: a merge is in progress", r.stderr)
+        self.assertFalse(self.in_head(self.LEDGER))
+
+    def test_commit_of_named_paths_leaves_it(self):
+        self.p.write(self.LEDGER, self.ROW)
+        for args in (["src/a.py"], ["--only", "src/a.py"]):
+            with self.subTest(args=args):
+                self.p.write("src/a.py", f"a = {args}\n")
+                self.p.git("add", "src/a.py")
+                r = self.commit(*args)
+                self.assertIn("the commit names its paths", r.stderr)
+                self.assertFalse(self.in_head(self.LEDGER))
+                self.assertIn("?? docs/metrics/", self.p.git("status", "--porcelain").stdout)
+
+    def test_commit_all_takes_a_new_ledger_too(self):
+        self.p.write("docs/notes.md", "more notes\n")
+        self.p.write(self.LEDGER, self.ROW)
+        self.commit("-a")
+        self.assertTrue(self.in_head(self.LEDGER))
+        self.assertTrue(self.clean(self.LEDGER))
+
+    def test_amend_only_with_a_staged_change(self):
+        self.work_change(); self.commit()
+        self.p.write(self.LEDGER, self.ROW)
+        r = self.p.git("commit", "-q", "--amend", "-m", "reworded", ok=False)  # rewording only: not a work commit
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(self.in_head(self.LEDGER))
+        self.work_change("a = 2\n")
+        self.commit("--amend")
+        self.assertTrue(self.in_head(self.LEDGER))
+
+    def test_never_a_ledger_only_commit(self):
+        self.p.write(self.LEDGER, self.ROW)
+        head = self.p.sha()
+        r = self.commit(ok=False)
+        self.assertNotEqual(r.returncode, 0)  # nothing staged: git refuses, the hook does not make it a ledger commit
+        self.assertEqual(self.p.sha(), head)
+
+    def test_deleted_ledger_is_not_staged(self):
+        self.p.write(self.LEDGER, self.ROW)
+        self.p.git("add", self.LEDGER); self.commit("--no-verify")
+        (self.p.work / self.LEDGER).unlink()
+        self.work_change()
+        r = self.commit()
+        self.assertIn("a deletion is never staged for you", r.stderr)
+        self.assertTrue(self.in_head(self.LEDGER))
+
+    def test_without_python3_it_fails_closed(self):
+        bindir = self.tmp / "bin-no-python"
+        bindir.mkdir()
+        for d in os.environ["PATH"].split(os.pathsep):
+            if not os.path.isdir(d):
+                continue
+            for name in os.listdir(d):
+                if not name.startswith("python") and not (bindir / name).exists():
+                    os.symlink(os.path.join(d, name), bindir / name)
+        self.work_change()
+        r = self.p.git("commit", "-q", "-m", "work", ok=False, env={"PATH": str(bindir)})
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("pre-commit: python3 is not on PATH and the workflow's hooks need it", r.stderr)
+
+    def test_missing_metrics_script_fails_closed(self):
+        (self.p.work / ".claude" / "gw" / "scripts" / "metrics.py").unlink()
+        self.work_change()
+        r = self.commit(ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("metrics.py is missing; reinstall the workflow scripts: /gw-update", r.stderr)
+
+    def test_unreadable_config_warns_and_skips(self):
+        self.p.write(".claude/gw.json", "{not json")
+        self.p.write(self.LEDGER, self.ROW)
+        self.p.git("add", ".claude/gw.json")
+        r = self.commit()
+        self.assertIn("WARNING: cannot read metrics from .claude/gw.json", r.stderr)
+        self.assertFalse(self.in_head(self.LEDGER))
 
 
 class CommitMsg(Base):

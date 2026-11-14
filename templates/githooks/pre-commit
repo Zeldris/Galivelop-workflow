@@ -14,6 +14,10 @@
 #   - With logRows on: the staged log changes only the committing branch's own row (and the free ones), not
 #     another branch's (handoff.py own-row --staged; the pre-push checks it again). Skipped on a detached HEAD
 #     (WARNING) and while closing a merge/cherry-pick/rebase.
+#   - B36, first (so the checks below see it): the token ledger metrics.ledger rides with the commit being made when it
+#     has changes (metrics.py stage-ledger: metrics.record and metrics.commitLedger on, not ignored, something else
+#     staged, no merge/cherry-pick/revert/rebase in progress, not git commit <paths>/--only). Fails closed without
+#     python3 or metrics.py; an unreadable gw.json warns and skips it.
 #   - With logRows on, while concluding a merge: it does not keep two different tasks under one task id, one from each
 #     side (handoff.py clash --merging; the pre-push checks every new merge and the protected branch).
 # CI mode: pre-commit --range BASE..HEAD scans what the range adds instead of the staged changes (run the base
@@ -46,6 +50,17 @@ else
   fix_line="move the value to an environment variable, then stage again: git add -p"
 fi
 diff_of() { git diff "$range" "$@"; }
+
+# B36: the token ledger goes with this commit (metrics.py stage-ledger decides when), before the checks below read it.
+if [ "$ci" = "0" ]; then
+  command -v python3 >/dev/null 2>&1 \
+    || { echo "pre-commit: python3 is not on PATH and the workflow's hooks need it; install Python 3.8+ or put it on PATH" >&2; exit 1; }
+  if [ -d "$root/.claude/gw/scripts" ]; then scripts="$root/.claude/gw/scripts"; else scripts="$root/scripts"; fi
+  for f in metrics.py config.py; do
+    [ -f "$scripts/$f" ] || { echo "pre-commit: $scripts/$f is missing; reinstall the workflow scripts: /gw-update" >&2; exit 1; }
+  done
+  python3 "$scripts/metrics.py" stage-ledger --root "$root" || exit 1
+fi
 
 names="$(diff_of --name-only --no-renames --diff-filter=ACMR)" || { echo "pre-commit: git diff failed; check the range: git log $range" >&2; exit 1; }
 bad_files="$(printf '%s\n' "$names" \

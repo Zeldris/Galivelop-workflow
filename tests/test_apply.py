@@ -191,6 +191,39 @@ class Apply(unittest.TestCase):
         code, out = p.run_apply("--check")
         self.assertEqual(code, 0, out)
 
+    def test_gitattributes_merges_the_ledger_by_union(self):  # B32
+        p = self.p
+        mark = "# galivelop-workflow: the token ledger only grows, branches merge by keeping both\n"
+        code, out = p.run_apply("--dry-run")  # shown in the dry run, nothing written
+        self.assertEqual(code, 0, out)
+        self.assertIn("create  .gitattributes  (merge the token ledger by keeping both sides: "
+                      "docs/metrics/ledger.jsonl merge=union)", out)
+        self.assertFalse((p.work / ".gitattributes").exists())
+        self.assertIn(".gitattributes", self.applied())  # missing: created
+        self.assertEqual(p.read(".gitattributes"), mark + "docs/metrics/ledger.jsonl merge=union\n")
+        self.assertIn("merge: union", p.run("git", "check-attr", "merge", "docs/metrics/ledger.jsonl")[1])
+        self.assertNotIn(".gitattributes", self.applied())  # already there: never a second line
+        self.assertEqual(p.read(".gitattributes").count("merge=union"), 1)
+        p.write(".gitattributes", "*.sh text eol=lf")  # the user's lines kept; no final newline: the line goes below
+        self.applied()
+        self.assertEqual(p.read(".gitattributes"), "*.sh text eol=lf\n" + mark + "docs/metrics/ledger.jsonl merge=union\n")
+        p.write(".gitattributes", "/docs/metrics/ledger.jsonl linguist-generated merge=union\n")  # another form: left alone
+        self.assertNotIn(".gitattributes", self.applied())
+        p.write(".gitattributes", "docs/metrics/ledger.jsonl linguist-generated\n")  # the path without merge=union
+        self.applied()
+        self.assertTrue(p.read(".gitattributes").endswith(mark + "docs/metrics/ledger.jsonl merge=union\n"))
+        self.assertEqual(p.run_apply("--check")[0], 0)
+
+    def test_gitattributes_follows_the_configured_ledger(self):  # B32
+        p = self.p
+        cfg = json.loads(p.read(".claude/gw.json"))
+        cfg["metrics"] = {"ledger": "var/spend log.jsonl"}
+        p.write(".claude/gw.json", json.dumps(cfg, indent=2) + "\n")
+        self.applied()
+        self.assertTrue(p.read(".gitattributes").endswith('"var/spend log.jsonl" merge=union\n'))
+        self.assertIn("merge: union", p.run("git", "check-attr", "merge", "var/spend log.jsonl")[1])
+        self.assertNotIn("docs/metrics", p.read(".gitattributes"))
+
     def test_older_flow_hook_in_settings_is_listed(self):
         p = self.p
         self.applied()

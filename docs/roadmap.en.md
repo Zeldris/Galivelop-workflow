@@ -258,10 +258,10 @@ In this order, because each step uses the previous one.
 | D96 | Long log cells: `handoff.py` moves a row's closed items to "Done", or a second cap that fails (new key) (`0.6.0` harvest, image-generator P2) | pending |
 | E49 | `gw-init` with `agentSignatures: false` writes the "no signatures" rule into `CLAUDE.md` against the attribution reminder (`0.6.0` harvest, image-generator P5) | pending |
 | B31 | Warning when the context nears the window with the compaction budget spent (`recover.py --state` or `Stop`), before the compaction (`0.6.0` harvest, image-generator P7) | pending |
-| B32 | `apply.py` adds `docs/metrics/ledger.jsonl merge=union` to the project's `.gitattributes`, with its test, so two branches that record spend do not clash on merge (`0.6.0` phase 1 review; rest of B2) | pending |
+| B32 | `apply.py` adds `docs/metrics/ledger.jsonl merge=union` to the project's `.gitattributes`, with its test, so two branches that record spend do not clash on merge (`0.6.0` phase 1 review; rest of B2) | done (2026-11-14) |
 | E51 | The check validates the YAML of `.github/workflows/*.yml` with `ci-local.py`'s reader, behind a `.claude/gw.json` key (`0.7` harvest, instalador P1) | done (2026-11-14) |
 | E52 | `apply.py --dry-run --summary` and the renames in the dry run (`0.7` harvest, private-project-3 P3) | done (2026-11-14) |
-| B36 | The metrics ledger gets no commits of its own: the `pre-commit` adds it to the next work commit (`0.7` harvest, world-maker-fantasy P3; with B32) | pending |
+| B36 | The metrics ledger gets no commits of its own: the `pre-commit` adds it to the next work commit (`0.7` harvest, world-maker-fantasy P3; with B32) | done (2026-11-14) |
 
 ## `0.8` "Front end and other agents"
 
