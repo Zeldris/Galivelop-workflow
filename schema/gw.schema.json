@@ -67,6 +67,11 @@
       "default": 20000,
       "description": "Bytes above which whole-read.py (PreToolUse hook on Read) warns when a Read takes whole, with no offset or limit, the hand-off log, its archive or a file under recordsDir; it never blocks. 0 = do not warn."
     },
+    "pendingFile": {
+      "type": "string",
+      "pattern": "^$|^(?!/)(?!(.*/)?\\.\\.(/|$)).+[^/]$",
+      "description": "Repo-relative path of the file that holds the log's Pending items (D104); the log keeps one pointer line with the count, and handoff.py check --strict fails if the log holds items itself. Absent or empty: the items stay in the log. No schema default on purpose (an older project keeps its Pending section); the template sets docs/records/pending.md."
+    },
     "logArchive": {
       "type": "string",
       "minLength": 1,

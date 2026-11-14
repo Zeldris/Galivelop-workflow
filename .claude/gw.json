@@ -3,6 +3,7 @@
   "version": "0.6.0",
   "schemaVersion": 1,
   "language": "es",
+  "pendingFile": "docs/records/pending.md",
   "protectedBranch": "main",
   "pushToProtected": "direct",
   "install": [

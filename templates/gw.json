@@ -9,6 +9,7 @@
   "reviewTrivialLines": 30,
   "wholeReadWarnBytes": 20000,
   "logArchive": "docs/records/handoff-archive.md",
+  "pendingFile": "docs/records/pending.md",
   "logRows": false,
   "protectedBranch": "main",
   "pushToProtected": "direct",

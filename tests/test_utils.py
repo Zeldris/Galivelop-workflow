@@ -2612,5 +2612,85 @@ class HandoffArchive(Base):
         self.assertIn("cap logSize = 20000", self.p.script("handoff.py", "check", str(self.p.work / "docs" / "big.md"))[1])
 
 
+class HandoffPendingFile(Base):
+    """`pendingFile` (D104): Pending lives in its own file; the log keeps a pointer with the count."""
+    config = {"logRows": False}
+    ARCHIVE = HandoffArchive.ARCHIVE
+    PENDING = "docs/records/pending.md"
+    log, section = HandoffArchive.log, HandoffArchive.section
+
+    def setUp(self):
+        super().setUp()
+        self.p.write(".claude-plugin/plugin.json", json.dumps({"version": "0.5.1"}))
+
+    def use(self, value):
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, pendingFile=value)))
+
+    def check(self, path):
+        return self.p.script("handoff.py", "check", str(path), "--strict")
+
+    def test_unset_or_empty_key_keeps_the_old_behaviour(self):
+        path = self.log("- an item kept in the log\n")
+        for value in (None, ""):
+            config = dict(BASE_CONFIG) if value is None else dict(BASE_CONFIG, pendingFile=value)
+            self.p.write(".claude/gw.json", json.dumps(config))
+            self.assertEqual(self.check(path), (0, ""))
+        code, out = self.p.script("handoff.py", "move-pending", str(path))
+        self.assertEqual(code, 2, out)
+        self.assertIn("pendingFile is not set", out)
+
+    def test_strict_check_fails_while_the_log_holds_items_and_names_the_fix(self):
+        self.use(self.PENDING)
+        path = self.log("- first item\n  its detail\n- second item\n")
+        code, out = self.check(path)
+        self.assertEqual(code, 1, out)
+        self.assertRegex(out, r"the log holds 2 pending item\(s\) under \"## Pendiente\", but they live in "
+                              r"docs/records/pending\.md \(pendingFile\); move them there: python3 \S+handoff\.py move-pending")
+        self.assertEqual(self.p.script("handoff.py", "check", str(path))[0], 0)  # without --strict only a warning
+
+    def test_move_pending_creates_the_file_and_leaves_the_pointer(self):
+        self.use(self.PENDING)
+        path = self.log("- first item\n  its detail\n- second item\n")
+        code, out = self.p.script("handoff.py", "move-pending", str(path))
+        self.assertEqual(code, 0, out)
+        moved = (self.p.work / self.PENDING).read_text()
+        self.assertIn("## Pendiente\n\n- first item\n  its detail\n- second item\n", moved)
+        self.assertEqual(self.section(path), "\nLo pendiente está en [`docs/records/pending.md`](records/pending.md) "
+                                             "(2 entradas); se añade y se quita allí.\n")
+        self.assertIn("## Otra\n\nfin\n", path.read_text())
+        self.assertEqual(self.check(path), (0, ""))
+        code, out = self.p.script("handoff.py", "move-pending", str(path))  # a second run moves nothing
+        self.assertEqual((code, (self.p.work / self.PENDING).read_text()), (0, moved), out)
+
+    def test_items_are_appended_to_an_existing_file_and_the_count_must_match(self):
+        self.use(self.PENDING)
+        self.p.write(self.PENDING, "# Pending\n\n## Pending\n\n- old one\n\n## Later\n\nx\n")
+        path = self.log("- new one\n", heading="Pending")
+        self.assertEqual(self.p.script("handoff.py", "move-pending", str(path))[0], 0)
+        self.assertIn("## Pending\n\n- old one\n- new one\n\n## Later\n", (self.p.work / self.PENDING).read_text())
+        self.assertIn("(2 entries); add and remove them there.", self.section(path, "Pending"))
+        self.p.write(self.PENDING, "# Pending\n\n## Pending\n\n- old one\n")
+        code, out = self.check(path)
+        self.assertEqual(code, 1, out)
+        self.assertIn("the log's pending pointer says 2 entries but docs/records/pending.md has 1; refresh it", out)
+
+    def test_pointer_only_log_with_a_missing_file_only_warns(self):
+        self.use(self.PENDING)
+        path = self.log("Lo pendiente está en otro archivo (3 entradas).\n")
+        code, out = self.check(path)
+        self.assertEqual(code, 0, out)
+        self.assertIn("WARNING: handoff: the pending file docs/records/pending.md (pendingFile) does not exist; create "
+                      "it: python3", out)
+
+    def test_archive_reads_the_pending_file_when_set(self):
+        self.use(self.PENDING)
+        self.p.write(self.PENDING, "# Pendiente\n\n## Pendiente\n\n- old `0.4.0` thing\n- future `0.9`\n")
+        path = self.log("Lo pendiente está en otro archivo (2 entradas).\n")
+        self.assertEqual(self.p.script("handoff.py", "archive", "--date", "2026-11-09")[0], 0)
+        self.assertNotIn("old `0.4.0`", (self.p.work / self.PENDING).read_text())
+        self.assertIn("old `0.4.0` thing", (self.p.work / self.ARCHIVE).read_text())
+        self.assertIn("(2 entradas)", path.read_text())
+
+
 if __name__ == "__main__":
     unittest.main()
