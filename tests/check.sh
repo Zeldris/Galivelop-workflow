@@ -50,6 +50,9 @@ python3 scripts/agent-map.py || bad
 section "presentation sheets (A10)"
 python3 scripts/mkt-sheet.py check || bad
 
+section "roadmap parity (same ids in every language, D105)"
+python3 scripts/roadmap.py check || bad
+
 section "hand-off log (state-table cells, Done section)"
 python3 scripts/handoff.py check --strict || bad
 
