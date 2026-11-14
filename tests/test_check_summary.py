@@ -553,11 +553,13 @@ class CheckSummary(unittest.TestCase):
     def test_no_fifo_is_left_in_tmpdir_after_an_interrupt(self):
         tmpdir = self.tmp / "tmpd"
         tmpdir.mkdir()
-        self.configure(["echo partial; sleep 30"])
+        # the command outlasts the wait, so only the interrupt can end the check in time (a slow macOS runner
+        # took over 20 s to tear it down)
+        self.configure(["echo partial; sleep 180"])
         p = self.start_check(env={"TMPDIR": str(tmpdir)})
         self.wait_for(lambda: any(tmpdir.glob("gw-check-fifo.*")))
         os.killpg(p.pid, signal.SIGINT)
-        p.communicate(timeout=20)
+        p.communicate(timeout=90)
         self.assertEqual(list(tmpdir.glob("gw-check-fifo.*")), [])
 
     def test_check_lock_wait_gives_up_after_its_seconds(self):
