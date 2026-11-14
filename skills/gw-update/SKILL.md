@@ -97,7 +97,7 @@ user from the tables and opens a file only for a row in doubt.
    a file of the project still cites under its pre-0.5 name. Show the list to the user and rename each use (or tell
    them which ones you left and why) before closing; `--check` exit 0 does not cover them. `legacyNames: false`
    turns the list off.
-6. Set `version` in `.claude/gw.json` to Y once the proposals are reviewed.
+6. `apply.py` already set `version` in `.claude/gw.json` (step 4.1); check it says Y once the proposals are reviewed.
 
 ## 5. Check and commit
 

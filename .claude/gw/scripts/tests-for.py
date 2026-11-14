@@ -17,7 +17,9 @@ Who uses it: the brief of gw-orchestrate-dealer (a subagent runs the tests of wh
 written by hand) and anyone before a commit. It is not a hook: the push runs `check` and `relatedTests`. Project root
 and config: config.find_root and config.load. Fails closed: no config, an invalid one, a placeholder the rule has no
 group for, or --run with an empty `testMap.command` -> exit 2 with what fixes it. With --run the exit code is the
-command's. Python 3.8+ standard library only.
+command's, except a plain `python3 [-B] -m unittest {files}` (optionally with a PYTHONPATH=<dir> prefix, no other env prefix or interpreter): that runs
+through test-run.py (one test class per process, `testJobs`), exit 0 passed, 1 failed, 2 cannot run (test-run.py
+does not load, or a requested file is not a test_*.py it can discover). Python 3.8+ standard library only.
 """
 import argparse
 import importlib.util
@@ -109,14 +111,22 @@ def diff_files(root, rev):
 
 
 # A testMap.command that is just unittest over {files}: test-run.py runs those same files in parallel instead.
-PLAIN_UNITTEST = re.compile(r"^\s*(PYTHONPATH=\S+\s+)?\S*python3?\s+(-B\s+)?-m\s+unittest\s+\{files\}\s*$")
+# Only what is equivalent to test-run.py's own `python3 -m unittest discover`: an optional PYTHONPATH=<dir> prefix (passed
+# on in the environment), no other env prefix, no other interpreter.
+PLAIN_UNITTEST = re.compile(r"^\s*(?:PYTHONPATH=([\w./:-]+)\s+)?python3\s+(?:-B\s+)?-m\s+unittest\s+\{files\}\s*$")
 
 
-def run_parallel(root, cfg, tests):
+def run_parallel(root, cfg, tests, pythonpath=None):
     """Run the test files through scripts/test-run.py (units, `testJobs`); exit 0 all passed, 1 some failed, 2 cannot run."""
-    spec = importlib.util.spec_from_file_location("gw_test_run", HERE / "test-run.py")
-    tr = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(tr)
+    try:
+        spec = importlib.util.spec_from_file_location("gw_test_run", HERE / "test-run.py")
+        tr = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(tr)
+    except Exception as exc:  # a broken test-run.py is "cannot run", not "some tests failed"
+        print(f"tests-for: cannot load test-run.py ({exc}); reinstall the workflow: /gw-update", file=sys.stderr)
+        return 2
+    if pythonpath:
+        os.environ["PYTHONPATH"] = pythonpath  # the units run with cwd=root, as the serial command would
     jobs = cfg.get("testJobs", 0)
     if not isinstance(jobs, int) or isinstance(jobs, bool) or jobs < 0:
         print("tests-for: testJobs must be an integer >= 0 (0 = one per CPU); fix .claude/gw.json", file=sys.stderr)
@@ -131,13 +141,23 @@ def run_parallel(root, cfg, tests):
     except tr.RunError as exc:
         print(f"tests-for: {exc}", file=sys.stderr)
         return 2
+    found = {os.path.normpath(f"{u[0]}/{u[1]}") for u in units}
+    missing = [t for t in tests if os.path.normpath(t) not in found]
+    if missing:
+        print(f"tests-for: {', '.join(missing)} is not a test_*.py test-run.py can discover; name it test_*.py "
+              "or use a testMap.command other than plain unittest", file=sys.stderr)
+        return 2
     print(f"tests-for: test-run.py: {len(tests)} test files, {len(units)} units, {jobs} jobs", flush=True)
-    failed = []
+    failed, ran_total = [], 0
     with ThreadPoolExecutor(max_workers=jobs) as pool:
-        for unit, code, _secs, _ran, output in pool.map(lambda u: tr.run_unit(root, sys.executable, u), units):
+        for unit, code, _secs, ran, output in pool.map(lambda u: tr.run_unit(root, sys.executable, u), units):
+            ran_total += ran
             if code != 0:
                 failed.append(tr.unit_name(unit))
                 print(f"---- {tr.unit_name(unit)} (exit {code})\n{output.rstrip()}", flush=True)
+    expected = sum(u[3] for u in units)
+    if not failed and not any(u[2] is None for u in units) and ran_total != expected:
+        failed.append(f"ran {ran_total} tests, discovered {expected}: a -k pattern missed or repeated a test")
     if failed:
         print(f"tests-for: FAILED ({'; '.join(failed)})")
         return 1
@@ -181,8 +201,9 @@ def main(argv=None):
     if not tests:
         print("tests-for: no test file for these changes; nothing to run")
         return 0
-    if PLAIN_UNITTEST.match(mapping["command"]) and (HERE / "test-run.py").is_file():
-        return run_parallel(root, cfg, tests)  # B33: the same tests, one class per process (testJobs)
+    plain = PLAIN_UNITTEST.match(mapping["command"])
+    if plain and (HERE / "test-run.py").is_file():
+        return run_parallel(root, cfg, tests, plain.group(1))  # B33: the same tests, one class per process (testJobs)
     command = mapping["command"].replace("{files}", " ".join(shlex.quote(t) for t in tests))
     print(f"tests-for: {command}", flush=True)
     return subprocess.run(["bash", "-c", command], cwd=str(root)).returncode

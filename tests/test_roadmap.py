@@ -83,6 +83,15 @@ class Roadmap(unittest.TestCase):
             "D55  pendiente  `roadmap.py show` con `a | b` en código y \\| escapado",
             "E27  hecha (2026-11-11)  Otra", "D5  en curso  Corta", "Z1  pendiente  " + "x" * 80])
 
+    def test_list_matches_the_headings_own_version_only(self):
+        self.write("docs/roadmap.md", ES + "\n## `0.60` «Otra»\n\n| Id | T | E |\n|---|---|---|\n| Q1 | no | pendiente |\n"
+                   "\n## `0.7` «Preguntar» (tras `0.6`)\n\n| Id | T | E |\n|---|---|---|\n| Q2 | no | pendiente |\n")
+        code, out, err = self.run_cli("list", "0.6")
+        self.assertEqual(code, 0, err)
+        self.assertNotIn("Q1", out)
+        self.assertNotIn("Q2", out)
+        self.assertIn("D55", out)
+
     def test_list_status_filters_ignoring_case(self):
         code, out, err = self.run_cli("list", "0.6", "--status", "EN CURSO")
         self.assertEqual((code, out), (0, "D5  en curso  Corta\n"), err)

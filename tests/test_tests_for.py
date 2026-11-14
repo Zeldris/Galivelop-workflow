@@ -124,7 +124,7 @@ class TestsFor(unittest.TestCase):
         self.write("tests/test_p.py", "import unittest\nclass A(unittest.TestCase):\n    def test_ok(self): pass\n"
                    "class B(unittest.TestCase):\n    def test_ok(self): pass\n")
         self.write("tests/test_f.py", "import unittest\nclass C(unittest.TestCase):\n    def test_bad(self): self.fail('boom-marker')\n")
-        self.configure(RULES, "PYTHONPATH=tests python3 -B -m unittest {files}")
+        self.configure(RULES, "python3 -B -m unittest {files}")
         code, out, err = self.run_cli("--run", "tests/test_p.py")
         self.assertEqual(code, 0, out + err)
         self.assertIn("test-run.py: 1 test files, 2 units", out)
@@ -133,6 +133,47 @@ class TestsFor(unittest.TestCase):
         self.assertEqual(code, 1, out + err)
         self.assertIn("boom-marker", out)
         self.assertIn("FAILED (tests/test_f.py::C)", out)
+
+    def test_a_file_test_run_cannot_discover_fails_closed(self):  # B33 review: 0 units must not be a green
+        self.write("tests/check_x.py", "import unittest\nclass A(unittest.TestCase):\n    def test_bad(self): self.fail('x')\n")
+        self.configure([{"paths": "^src/", "tests": ["tests/check_x.py"]}], "python3 -B -m unittest {files}")
+        self.write("src/a.py", "x\n")
+        code, out, err = self.run_cli("--run", "src/a.py")
+        self.assertEqual(code, 2, out + err)
+        self.assertIn("tests/check_x.py is not a test_*.py test-run.py can discover", err)
+        self.assertNotIn("tests-for: OK", out)
+
+    def test_an_env_prefix_or_other_interpreter_runs_the_command_as_configured(self):  # B33 review
+        self.write("tests/test_p.py", "import unittest\nclass A(unittest.TestCase):\n    def test_ok(self): pass\n")
+        for command in ("FOO=1 python3 -B -m unittest {files}", ".venv/bin/python -m unittest {files}"):
+            self.configure(RULES, command)
+            code, out, err = self.run_cli("--run", "tests/test_p.py")
+            self.assertNotIn("test-run.py", out, command)
+            self.assertIn(f"tests-for: {command.split('{')[0]}", out)
+
+    def test_a_pythonpath_prefix_still_goes_parallel_and_reaches_the_tests(self):  # B33 review
+        self.write("lib/mod.py", "VALUE = 7\n")
+        self.write("tests/test_m.py", "import unittest\nimport mod\nclass M(unittest.TestCase):\n"
+                   "    def test_v(self): self.assertEqual(mod.VALUE, 7)\n")
+        self.configure(RULES, "PYTHONPATH=lib python3 -B -m unittest {files}")
+        code, out, err = self.run_cli("--run", "tests/test_m.py")
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("test-run.py: 1 test files, 1 units", out)
+        self.configure(RULES, "python3 -B -m unittest {files}")  # without it the import fails: the rest is not hiding it
+        code, out, err = self.run_cli("--run", "tests/test_m.py")
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("No module named 'mod'", out)
+
+    def test_a_test_run_that_does_not_load_is_cannot_run(self):  # B33 review
+        scripts = self.tmp / "gw-copy" / "scripts"
+        shutil.copytree(ROOT / "scripts", scripts, ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(ROOT / "schema", scripts.parent / "schema")
+        (scripts / "test-run.py").write_text("raise RuntimeError('broken-marker')\n")
+        self.configure(RULES, "python3 -B -m unittest {files}")
+        r = subprocess.run([sys.executable, "-B", str(scripts / "tests-for.py"), "--root", str(self.tmp), "--run",
+                            "tests/test_a.py"], capture_output=True, text=True, cwd=str(self.tmp))
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("cannot load test-run.py (broken-marker); reinstall the workflow: /gw-update", r.stderr)
 
     def test_another_command_is_still_run_as_configured(self):  # B33
         self.configure(RULES, "printf serial > ran.txt")

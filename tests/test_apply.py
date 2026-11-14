@@ -1418,6 +1418,7 @@ class ConfigVersion(unittest.TestCase):
         before = json.loads(p.read(".claude/gw.json"))
         code, out = p.run_apply("--update")
         self.assertEqual(code, 0, out)
+        self.assertIn(f"version 0.0.1 -> {VERSION}", out)  # the detail names the version it came from
         after = json.loads(p.read(".claude/gw.json"))
         self.assertEqual(after["version"], VERSION)
         self.assertEqual({k: v for k, v in after.items() if k != "version"},
@@ -1425,6 +1426,15 @@ class ConfigVersion(unittest.TestCase):
         self.assertTrue(p.read(".claude/gw.json").endswith("}\n"))
         code, out = p.run_apply("--check")
         self.assertNotIn(".claude/gw.json", out)
+
+    def test_a_project_newer_than_the_workflow_is_not_lowered(self):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-ver-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        p = Fixture(tmp, {"version": "9.9.9"})
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("version 9.9.9", out)
+        self.assertEqual(json.loads(p.read(".claude/gw.json"))["version"], "9.9.9")
 
 
 class SchemaMigration(unittest.TestCase):

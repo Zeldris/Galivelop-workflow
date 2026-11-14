@@ -125,7 +125,8 @@ def cmd_list(root, files, version, status):
     inside, found, table, out = False, False, [], []
     for line in lines + [""]:
         if line.startswith("## "):
-            inside = f"`{version}`" in line
+            first = re.match(r"## `([^`]+)`", line)  # the version is the heading's first code span, not any mention
+            inside = bool(first) and first.group(1) == version
             found = found or inside
         spans = cells(line) if inside else None
         if spans:
