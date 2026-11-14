@@ -208,11 +208,11 @@ In this order, because each step uses the previous one.
 
 | Id | Task | State |
 |---|---|---|
-| D97 | The `commit-msg` rejects `Findings:` and `Retries:` outside the last trailer paragraph (`change-size.py` and `metrics.py` only read that paragraph), with its test (`0.7` harvest, world-maker-fantasy P1, private-project-2 P1) | pending |
-| D98 | `red-without-fix.sh` without `git stash`: reverts the fix from a copy of the files and always restores it, with its test (`0.7` harvest, image-generator P1) | pending |
+| D97 | The `commit-msg` rejects `Findings:` and `Retries:` outside the last trailer paragraph (`change-size.py` and `metrics.py` only read that paragraph), with its test (`0.7` harvest, world-maker-fantasy P1, private-project-2 P1) | done (2026-11-14) |
+| D98 | `red-without-fix.sh` without `git stash`: reverts the fix from a copy of the files and always restores it, with its test (`0.7` harvest, image-generator P1) | done (2026-11-14) |
 | D99 | `gw-update`: follows the skill of the target tag, not the project's old copy; opens the PR after the three phases; the PR's CI runs the base branch's old `pre-commit`, solved with `gw-allow-secret` (`0.7` harvest, private-project-3 P1) | done (2026-11-14) |
-| D100 | `apply.py`'s old-names warning (`plan_legacy_names`) skips the `roadmapFiles` and does not propose a new name that does not exist in the project, with its test (`0.7` harvest, world-maker-fantasy P2) | pending |
-| D101 | `harvest.py` takes ideas only from the lines added in the range: archiving the log does not bring old ideas back, with its test (`0.7` harvest, portal P1) | pending |
+| D100 | `apply.py`'s old-names warning (`plan_legacy_names`) skips the `roadmapFiles` and does not propose a new name that does not exist in the project, with its test (`0.7` harvest, world-maker-fantasy P2) | done (2026-11-14) |
+| D101 | `harvest.py` takes ideas only from the lines added in the range: archiving the log does not bring old ideas back, with its test (`0.7` harvest, portal P1) | done (2026-11-14) |
 | D102 | The default of `doctorTestDirsIgnore` (schema and `templates/gw.json`) includes `.claude/skills` (`0.7` harvest, private-project-3 P2) | done (2026-11-14) |
 | D103 | The `gw-orchestrate-dealer` brief says where the tests of each layer live (`0.7` harvest, image-generator P3) | done (2026-11-14) |
 

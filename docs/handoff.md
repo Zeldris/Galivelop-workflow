@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.0` en `main`** (`a1a9705`, 2026-11-14), CI en verde. Etiqueta y release `v0.6.0` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.0.md`. Fusionada `version/0.5.2` (traía `docs/records/release-v0.5.2.md`) |
-| Siguiente paso | **Parche `0.6.1`** en esta rama (sobre `main` solo lleva documentos): D97, D98, D100 y D101 en worktrees `agent/*` con subagentes; D99, D102 y D103 hechos. Tras fusionarlos y revisarlos, las tres fases y `main`. Después, la `0.7` (E51, E52, B36 y E41 ampliada). Presupuesto de compactaciones: 1. Para la próxima retro: el subagente de B33 volvió a quedarse esperando su trabajo de fondo tras entregar (D92 no bastó); H20 no copió sus filas a `roadmap.en.md` (ningún check compara los dos roadmaps). |
+| Siguiente paso | **Parche `0.6.1` hecho** (D97-D103 fusionados en esta rama). Ahora, las tres fases antes de `main`: fase 1, `/code-review` del diff contra `origin/main` con `Findings:` (el bloque pasó `changeSize.block`); fase 2, `/gw-opt-tokens` y `/retro`; fase 3 y subida con confirmación del usuario. Después, la `0.7` (E51, E52, B36 y E41 ampliada). Presupuesto de compactaciones: 1 (van 2: superado). Para la próxima retro: el subagente de B33 volvió a quedarse esperando su trabajo de fondo tras entregar (D92 no bastó); H20 no copió sus filas a `roadmap.en.md` (ningún check compara los dos roadmaps); la subida falló por una skill de 201 líneas (`test_skills`) y la fusión de D98 por un aviso de shellcheck: `tests-for.py` no corre ni `test_skills` ni shellcheck en los cambios que los necesitan. |
 
 ### Fases
 
@@ -37,14 +37,16 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-14 — D102, D103: `.claude/skills` en el defecto de `doctorTestDirsIgnore`; el encargo del dealer dice dónde viven los tests de cada capa. Filas de H20 copiadas a `roadmap.en.md` (faltaban). Parche `0.6.1` en esta rama (su diff con `main` son solo documentos)
-2. 2026-11-14 — H20 cerrada: las 14 propuestas de la recogida de la 0.7 repartidas por el usuario (D97-D103 al parche 0.6.1; E51, E52, B36 y E41 ampliada a la 0.7; E53 a la 0.8)
-3. 2026-11-14 — H20 propuesta: recogida de la `0.7` sobre 8 proyectos (los 6 de H19, private-project-2 y `private-project-4` (proyecto nuevo)): 14 propuestas, a la espera del usuario; portal, private-project-1 y private-project-4 sin novedades.
-4. 2026-11-13 — D90-D93, B30: arreglos de la recogida H19 (orden de `handoff.py closed`, `Siguiente:` en el ejemplo de `merge-branch.sh`, encargo del dealer, quién lanza `gw-opt-ai`)
-5. 2026-11-13 — H19 hecha: recogida de la `0.6.0` sobre los 6 proyectos de H18 (`docs/proposals/2026-11-13-*.md`): 12 propuestas aprobadas; los arreglos D90-D93 y B30, a la `0.6.0`; E48, D94-D96, E49 y B31, a la `0.7`; E50, a la `0.8`. private-project-1 y private-project-3, sin novedades.
+1. 2026-11-14 — D97, D98, D100, D101: el commit-msg rechaza Findings/Retries fuera del bloque de trailers; red-without-fix.sh aparta el arreglo en una copia bajo .git, sin git stash; apply.py no avisa de nombres viejos en el roadmap ni propone nombres inexistentes; harvest descarta ideas cuyas líneas ya estaban en la última recogida. Parche 0.6.1 completo (D97-D103)
+2. 2026-11-14 — D102, D103: `.claude/skills` en el defecto de `doctorTestDirsIgnore`; el encargo del dealer dice dónde viven los tests de cada capa. Filas de H20 copiadas a `roadmap.en.md` (faltaban). Parche `0.6.1` en esta rama (su diff con `main` son solo documentos)
+3. 2026-11-14 — H20 cerrada: las 14 propuestas de la recogida de la 0.7 repartidas por el usuario (D97-D103 al parche 0.6.1; E51, E52, B36 y E41 ampliada a la 0.7; E53 a la 0.8)
+4. 2026-11-14 — H20 propuesta: recogida de la `0.7` sobre 8 proyectos (los 6 de H19, private-project-2 y `private-project-4` (proyecto nuevo)): 14 propuestas, a la espera del usuario; portal, private-project-1 y private-project-4 sin novedades.
+5. 2026-11-13 — D90-D93, B30: arreglos de la recogida H19 (orden de `handoff.py closed`, `Siguiente:` en el ejemplo de `merge-branch.sh`, encargo del dealer, quién lanza `gw-opt-ai`)
 
 ## Pendiente
 
+- **0.6.1, revisión (leves sin arreglar):** D98, un directorio vacío o un cambio solo de modo no se aparta; no probado en un bash 3.2 real. D101, `git grep` sin timeout. D100, el test del punto 4 no es de punta a punta.
+- **Herramientas (0.6.1):** `apply.py` avisa de que 3 plantillas de `.claude/gw/` (gw-opt-tokens.md, gw-opt-ai.md, gw-scout-updates.md) vienen de la v0.5.1; `tests-for.py --run` pasa de 25 min con agentes en paralelo; `test_hooks.PrePush` falla a ratos con carga.
 - **D81:** la cuenta final de `backport.sh` usa `git cherry`, que no ve los merges ni un commit raíz (`c^` falla): esos salen como no traídos aunque estén en el parche (revisión de D81, leve).
 - **A13 (C1):** `checkReuseTtl`/`checkReuseKeep` se leen del `gw.json` de la copia de trabajo, no del commit que se sube (`check-green.sh:41`; el `pre-push` usa `cfg_at`).
 - **Error de proceso (2026-11-11):** los arreglos de la `0.5.2` se hicieron en la rama de la `0.6`. Para la retro: crear la rama del parche desde `main` antes de los arreglos (o pedirla al usuario), y un aviso en `commit-msg` o `merge-branch.sh` cuando una fila de parche cae en una rama con evolutivos de la menor siguiente.

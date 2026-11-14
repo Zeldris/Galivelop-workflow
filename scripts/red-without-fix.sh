@@ -197,7 +197,7 @@ else
     if [ -L "$f" ]; then
       printf '%s' "$(readlink -- "$f")" > "$saved/$n.link" || { echo "red-without-fix: cannot save $f; nothing was changed; free space and retry" >&2; exit 2; }
     elif [ -e "$f" ]; then
-      cp -p -- "$f" "$saved/$n.tmp" && mv -f -- "$saved/$n.tmp" "$saved/$n" || { echo "red-without-fix: cannot save $f; nothing was changed; free space and retry" >&2; exit 2; }
+      { cp -p -- "$f" "$saved/$n.tmp" && mv -f -- "$saved/$n.tmp" "$saved/$n"; } || { echo "red-without-fix: cannot save $f; nothing was changed; free space and retry" >&2; exit 2; }
     fi
     echo "red-without-fix: fix file $n saved: $f -> $saved/$n (if this run dies, copy it back by hand)"
   done
