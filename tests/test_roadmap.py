@@ -66,6 +66,39 @@ class Roadmap(unittest.TestCase):
         self.assertEqual(self.read("docs/roadmap.md"), ES)
         self.assertEqual(self.read("docs/roadmap.en.md"), EN)
 
+    def test_check_passes_when_files_match(self):
+        code, out, err = self.run_cli("check")
+        self.assertEqual((code, out, err), (0, "", ""))
+
+    def test_check_names_the_id_missing_in_en(self):
+        self.write("docs/roadmap.md", ES + "| D9 | Nueva | pendiente |\n")
+        code, _out, err = self.run_cli("check")
+        self.assertEqual(code, 1)
+        self.assertIn("version 0.6: docs/roadmap.en.md lacks D9; add those rows there", err)
+        self.assertNotIn("docs/roadmap.md lacks", err)
+
+    def test_check_names_the_id_missing_in_es(self):
+        self.write("docs/roadmap.en.md", EN + "| D9 | New | pending |\n")
+        code, _out, err = self.run_cli("check")
+        self.assertEqual(code, 1)
+        self.assertIn("version 0.6: docs/roadmap.md lacks D9", err)
+
+    def test_check_flags_a_version_in_one_file_only(self):
+        self.write("docs/roadmap.md", ES + "\n## `0.7` «Otra» — texto\n\n| Id | T | E |\n|---|---|---|\n| Q1 | a | x |\n")
+        code, _out, err = self.run_cli("check")
+        self.assertEqual(code, 1)
+        self.assertIn("version 0.7: no `## `0.7`` section in docs/roadmap.en.md", err)
+
+    def test_check_matches_versions_by_token_not_heading_text(self):
+        self.write("docs/roadmap.en.md", EN.replace('"Measure"', "— totally different words"))
+        self.assertEqual(self.run_cli("check")[0], 0)
+
+    def test_check_is_a_no_op_with_zero_or_one_file(self):
+        for files in ([], FILES[:1]):
+            self.configure(files)
+            self.write("docs/roadmap.md", ES + "| D9 | Nueva | pendiente |\n")
+            self.assertEqual(self.run_cli("check")[0], 0)
+
     def test_show_prints_the_row_of_each_language_with_its_section(self):
         code, out, err = self.run_cli("show", "D5")
         self.assertEqual(code, 0, err)
