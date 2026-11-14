@@ -114,7 +114,7 @@
   "measure": {"minCalls": 5, "imageTokens": 1600, "mixedRatio": 1.5, "minOutput": 100, "coldMs": 100},
   "mediaContent": {"maxSubjects": 20},
   "testScanSkipDirs": [".git", "node_modules", ".venv", "venv", "__pycache__", ".tox"],
-  "doctorTestDirsIgnore": [".git", "node_modules", ".claude/worktrees", ".claude/gw", "venv", ".venv", "env", ".tox", "site-packages", "__pycache__"],
+  "doctorTestDirsIgnore": [".git", "node_modules", ".claude/worktrees", ".claude/gw", ".claude/skills", "venv", ".venv", "env", ".tox", "site-packages", "__pycache__"],
   "instructionLines": {"warn": 150, "fail": 250},
   "contextGuard": {"cutoff": 0, "window": 200000, "autocompactShare": 0.8, "warn": 25, "alarm": 50, "charsPerToken": 3.5, "bigWindow": 1000000},
   "metrics": {"ledger": "docs/metrics/ledger.jsonl", "record": true, "gitTimeout": 30},

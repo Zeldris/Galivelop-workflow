@@ -1035,7 +1035,7 @@
     "doctorTestDirsIgnore": {
       "type": "array",
       "items": {"type": "string", "minLength": 1},
-      "default": [".git", "node_modules", ".claude/worktrees", ".claude/gw", "venv", ".venv", "env", ".tox", "site-packages", "__pycache__"],
+      "default": [".git", "node_modules", ".claude/worktrees", ".claude/gw", ".claude/skills", "venv", ".venv", "env", ".tox", "site-packages", "__pycache__"],
       "description": "E43: folder patterns (fnmatch on the repo-relative path or its tail, so node_modules also skips a/node_modules) that doctor.py skips when it looks for folders with test_*.py that no command of check runs; a folder with a pyvenv.cfg is always skipped."
     },
     "instructionLines": {

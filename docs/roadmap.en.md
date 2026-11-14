@@ -152,6 +152,7 @@ In this order, because each step uses the previous one.
 | H17 | User notes (SDD, DDD, TDD, exploration, task record, done per environment) and four external references, split into proposals: [`2026-11-08-notes-and-references.md`](proposals/2026-11-08-notes-and-references.md); all 13 and the 5 questions approved (user, 2026-11-08); the design that joins them, [`I-lifecycle.md`](design/I-lifecycle.md), closed with its `grilling` (12 answers, 2026-11-08) | done |
 | H18 | `0.6` closing harvest (`gw-harvest`) before releasing it: fixes to the next `0.5` patch; evolutions, split across the versions (user, 2026-11-11) | done (2026-11-11; 28 proposals and 14 findings of the instalador `0.5.1` review: D70-D79, D88, B22-B25 and E38-E40 to `0.5.2`; B26-B29, D82, D84-D86 and E43 to `0.6`; D80, D81, D83, D87 and E41 to `0.7`; E42 to `0.8`; portal P6 discarded) |
 | H19 | `0.6.0` harvest (`gw-harvest`) before releasing it (user, 2026-11-13: fixes to `0.6.0`; evolutions to `0.7` and `0.8`) | done (2026-11-13; 12 proposals: D90-D93 and B30 to `0.6`; E48, D94-D96, E49 and B31 to `0.7`; E50 to `0.8`) |
+| H20 | `0.7` harvest (`gw-harvest`) at its start, with `private-project-4` for the first time (user, 2026-11-14) | done (2026-11-14; 14 proposals: D97-D103 to the `0.6.1` patch, E51, E52, B36 and extended E41 to `0.7`, E53 to `0.8`) |
 | A10 | One-page A4 workflow presentation sheets: for whoever contracts development, `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (what it solves, how work runs, what it guarantees), and for teams that install it, `docs/es/mkt-adoption.md` ↔ `docs/en/mkt-adoption.md` (user, 2026-11-09), with its HTML and final PDF generated from the `.md` by a script so they do not drift; reviewed on each version (D66) (user, 2026-11-06) | done (`scripts/mkt-sheet.py`, portal style) |
 | B1 | `Stop` hook that reads the session logs | done (`scripts/metrics.py record`, key `metrics`) |
 | B2 | `docs/metrics/ledger.jsonl` in the repo | done (`merge=union` in `.gitattributes`; `apply.py` does not set it in projects yet) |
@@ -203,6 +204,18 @@ In this order, because each step uses the previous one.
 | B34 | `apply.py .` (or `version.py <X.Y.Z>`) sets `.claude/gw.json`'s `"version"` to `plugin.json`'s (`0.6.0` retro R2) | done (2026-11-14) |
 | B35 | `roadmap.py list <version> [--status <status>]`: ids and status of a version's rows, without reading the roadmap (`0.6.0` retro R4) | done (2026-11-14) |
 
+## `0.6.1` — patch
+
+| Id | Task | State |
+|---|---|---|
+| D97 | The `commit-msg` rejects `Findings:` and `Retries:` outside the last trailer paragraph (`change-size.py` and `metrics.py` only read that paragraph), with its test (`0.7` harvest, world-maker-fantasy P1, private-project-2 P1) | pending |
+| D98 | `red-without-fix.sh` without `git stash`: reverts the fix from a copy of the files and always restores it, with its test (`0.7` harvest, image-generator P1) | pending |
+| D99 | `gw-update`: follows the skill of the target tag, not the project's old copy; opens the PR after the three phases; the PR's CI runs the base branch's old `pre-commit`, solved with `gw-allow-secret` (`0.7` harvest, private-project-3 P1) | done (2026-11-14) |
+| D100 | `apply.py`'s old-names warning (`plan_legacy_names`) skips the `roadmapFiles` and does not propose a new name that does not exist in the project, with its test (`0.7` harvest, world-maker-fantasy P2) | pending |
+| D101 | `harvest.py` takes ideas only from the lines added in the range: archiving the log does not bring old ideas back, with its test (`0.7` harvest, portal P1) | pending |
+| D102 | The default of `doctorTestDirsIgnore` (schema and `templates/gw.json`) includes `.claude/skills` (`0.7` harvest, private-project-3 P2) | done (2026-11-14) |
+| D103 | The `gw-orchestrate-dealer` brief says where the tests of each layer live (`0.7` harvest, image-generator P3) | done (2026-11-14) |
+
 ## `0.7` "Ask"
 
 | Id | Task | State |
@@ -233,7 +246,7 @@ In this order, because each step uses the previous one.
 | D80 | Automatic warning of a stale `gw-scout-updates` seal (`0.6` closing harvest, private-project-1 P5) | pending |
 | D83 | `apply.py --update` adds the names its migration renames to the project's `staleRefs` (extends D46) (`0.6` closing harvest, instalador P4) | pending |
 | D87 | `gw-init` offers a dual licence: MIT for code and CC BY-NC-SA 4.0 for content, with the third-party note (`0.6` closing harvest, world-maker P6) | pending |
-| E41 | The `pre-commit` rejects an author in `authorDeny` (empty by default in projects; Claude in this repo); changes the `AGENTS.md` line saying no hook checks the author (`0.6` closing harvest, private-project-1 P6) | pending |
+| E41 | The `pre-commit` rejects an author in `authorDeny` (empty by default in projects; Claude in this repo); changes the `AGENTS.md` line saying no hook checks the author (`0.6` closing harvest, private-project-1 P6); also checks the committer, and `doctor.py` warns if `user.email` is the agent's (`0.7` harvest, image-generator P2, private-project-2 P2) | pending |
 | E48 | `red-without-fix.sh` reverts only the fix inside the test's file (`--patch <diff>` or `--lines A-B`): inline tests in Rust and others (`0.6.0` harvest, installer P1) | pending |
 | D94 | `scripts/push.sh <branch>`: retries at 2, 4, 8 and 16 s and success only if `git ls-remote` matches `HEAD`; `AGENTS.md` points to it (`0.6.0` harvest, image-generator P4) | pending |
 | D95 | `handoff.py add-pending` and `add-decision`: add to the log without reading it (`0.6.0` harvest, installer P3) | pending |
@@ -241,6 +254,9 @@ In this order, because each step uses the previous one.
 | E49 | `gw-init` with `agentSignatures: false` writes the "no signatures" rule into `CLAUDE.md` against the attribution reminder (`0.6.0` harvest, image-generator P5) | pending |
 | B31 | Warning when the context nears the window with the compaction budget spent (`recover.py --state` or `Stop`), before the compaction (`0.6.0` harvest, image-generator P7) | pending |
 | B32 | `apply.py` adds `docs/metrics/ledger.jsonl merge=union` to the project's `.gitattributes`, with its test, so two branches that record spend do not clash on merge (`0.6.0` phase 1 review; rest of B2) | pending |
+| E51 | The check validates the YAML of `.github/workflows/*.yml` with `ci-local.py`'s reader, behind a `.claude/gw.json` key (`0.7` harvest, instalador P1) | pending |
+| E52 | `apply.py --dry-run --summary` and the renames in the dry run (`0.7` harvest, private-project-3 P3) | pending |
+| B36 | The metrics ledger gets no commits of its own: the `pre-commit` adds it to the next work commit (`0.7` harvest, world-maker-fantasy P3; with B32) | pending |
 
 ## `0.8` "Front end and other agents"
 
@@ -255,6 +271,7 @@ In this order, because each step uses the previous one.
 | — | What [`pending.md`](records/pending.md) marks `0.8` | pending |
 | E42 | `gw-seo` skill (SEO and link previews for static sites) brought from the portal: no portal paths, English names, tests in the check, es/en docs and its source's MIT LICENSE (`0.6` closing harvest, portal P1) | pending |
 | E50 | `PreToolUse` hook on `Read` that warns, without blocking, when reading loose screenshots and suggests a contact sheet (the project's command in a key) (`0.6.0` harvest, image-generator P6) | pending |
+| E53 | Guide rule: in CI, the environment's install script fails in its own step (`0.7` harvest, instalador P2) | pending |
 
 ## `0.9` "Stable"
 

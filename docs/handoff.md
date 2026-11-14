@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.0` en `main`** (`a1a9705`, 2026-11-14), CI en verde. Etiqueta y release `v0.6.0` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.0.md`. Fusionada `version/0.5.2` (traía `docs/records/release-v0.5.2.md`) |
-| Siguiente paso | **Parche `0.6.1`** (D97-D103 del roadmap), en una rama nueva desde `main`; después, la `0.7` (con E51, E52, B36 y E41 ampliada). H20 cerrada: 14 propuestas repartidas (usuario, 2026-11-14). Para la próxima retro: el subagente de B33 volvió a quedarse esperando su trabajo de fondo tras entregar (D92 no bastó). |
+| Siguiente paso | **Parche `0.6.1`** en esta rama (sobre `main` solo lleva documentos): D97, D98, D100 y D101 en worktrees `agent/*` con subagentes; D99, D102 y D103 hechos. Tras fusionarlos y revisarlos, las tres fases y `main`. Después, la `0.7` (E51, E52, B36 y E41 ampliada). Presupuesto de compactaciones: 1. Para la próxima retro: el subagente de B33 volvió a quedarse esperando su trabajo de fondo tras entregar (D92 no bastó); H20 no copió sus filas a `roadmap.en.md` (ningún check compara los dos roadmaps). |
 
 ### Fases
 
@@ -37,11 +37,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-14 — H20 cerrada: las 14 propuestas de la recogida de la 0.7 repartidas por el usuario (D97-D103 al parche 0.6.1; E51, E52, B36 y E41 ampliada a la 0.7; E53 a la 0.8)
-2. 2026-11-14 — H20 propuesta: recogida de la `0.7` sobre 8 proyectos (los 6 de H19, private-project-2 y `private-project-4` (proyecto nuevo)): 14 propuestas, a la espera del usuario; portal, private-project-1 y private-project-4 sin novedades.
-3. 2026-11-13 — D90-D93, B30: arreglos de la recogida H19 (orden de `handoff.py closed`, `Siguiente:` en el ejemplo de `merge-branch.sh`, encargo del dealer, quién lanza `gw-opt-ai`)
-4. 2026-11-13 — H19 hecha: recogida de la `0.6.0` sobre los 6 proyectos de H18 (`docs/proposals/2026-11-13-*.md`): 12 propuestas aprobadas; los arreglos D90-D93 y B30, a la `0.6.0`; E48, D94-D96, E49 y B31, a la `0.7`; E50, a la `0.8`. private-project-1 y private-project-3, sin novedades.
-5. 2026-11-13 — **D81 hecha**: `scripts/backport.sh [--from <rama>] [--refs <id>] [<sha>...]` trae commits de la menor a la rama de un parche: cherry-pick en orden topológico con `-x` (`-m 1` en merges), choques solo de bitácora o roadmap resueltos con la versión del parche, vacíos saltados, parada con la orden en un choque de código y cuenta final de cada sha; con `--from`, los archivos de recogida de `proposalsDir` en un commit propio (`Refs:` solo con ids que acepta el `commit-msg` del parche). En la guía de parches (contributing es/en) y `agent-map.md`; 32 tests. Revisión con 3 arreglos (`Findings: 3`).
+1. 2026-11-14 — D102, D103: `.claude/skills` en el defecto de `doctorTestDirsIgnore`; el encargo del dealer dice dónde viven los tests de cada capa. Filas de H20 copiadas a `roadmap.en.md` (faltaban). Parche `0.6.1` en esta rama (su diff con `main` son solo documentos)
+2. 2026-11-14 — H20 cerrada: las 14 propuestas de la recogida de la 0.7 repartidas por el usuario (D97-D103 al parche 0.6.1; E51, E52, B36 y E41 ampliada a la 0.7; E53 a la 0.8)
+3. 2026-11-14 — H20 propuesta: recogida de la `0.7` sobre 8 proyectos (los 6 de H19, private-project-2 y `private-project-4` (proyecto nuevo)): 14 propuestas, a la espera del usuario; portal, private-project-1 y private-project-4 sin novedades.
+4. 2026-11-13 — D90-D93, B30: arreglos de la recogida H19 (orden de `handoff.py closed`, `Siguiente:` en el ejemplo de `merge-branch.sh`, encargo del dealer, quién lanza `gw-opt-ai`)
+5. 2026-11-13 — H19 hecha: recogida de la `0.6.0` sobre los 6 proyectos de H18 (`docs/proposals/2026-11-13-*.md`): 12 propuestas aprobadas; los arreglos D90-D93 y B30, a la `0.6.0`; E48, D94-D96, E49 y B31, a la `0.7`; E50, a la `0.8`. private-project-1 y private-project-3, sin novedades.
 
 ## Pendiente
 

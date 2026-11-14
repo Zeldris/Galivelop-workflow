@@ -211,11 +211,11 @@ En este orden, porque cada paso usa el anterior.
 |---|---|---|
 | D97 | El `commit-msg` rechaza `Findings:` y `Retries:` fuera del último párrafo de trailers (`change-size.py` y `metrics.py` solo leen ese párrafo), con su test (recogida `0.7`, world-maker-fantasy P1, private-project-2 P1) | pendiente |
 | D98 | `red-without-fix.sh` sin `git stash`: revierte el arreglo con una copia de los archivos y la restaura siempre, con su test (recogida `0.7`, image-generator P1) | pendiente |
-| D99 | `gw-update`: sigue la skill de la etiqueta destino, no la copia vieja del proyecto; abre el PR tras las tres fases; el CI del PR corre el `pre-commit` viejo de la rama base y se resuelve con `gw-allow-secret` (recogida `0.7`, private-project-3 P1) | pendiente |
+| D99 | `gw-update`: sigue la skill de la etiqueta destino, no la copia vieja del proyecto; abre el PR tras las tres fases; el CI del PR corre el `pre-commit` viejo de la rama base y se resuelve con `gw-allow-secret` (recogida `0.7`, private-project-3 P1) | hecho (2026-11-14) |
 | D100 | El aviso de nombres viejos de `apply.py` (`plan_legacy_names`) salta los `roadmapFiles` y no propone un nombre nuevo que no existe en el proyecto, con su test (recogida `0.7`, world-maker-fantasy P2) | pendiente |
 | D101 | `harvest.py` saca ideas solo de las líneas añadidas en el rango: archivar la bitácora no devuelve ideas viejas, con su test (recogida `0.7`, portal P1) | pendiente |
-| D102 | El valor por defecto de `doctorTestDirsIgnore` (esquema y `templates/gw.json`) incluye `.claude/skills` (recogida `0.7`, private-project-3 P2) | pendiente |
-| D103 | El encargo de `gw-orchestrate-dealer` dice dónde viven los tests de cada capa (recogida `0.7`, image-generator P3) | pendiente |
+| D102 | El valor por defecto de `doctorTestDirsIgnore` (esquema y `templates/gw.json`) incluye `.claude/skills` (recogida `0.7`, private-project-3 P2) | hecho (2026-11-14) |
+| D103 | El encargo de `gw-orchestrate-dealer` dice dónde viven los tests de cada capa (recogida `0.7`, image-generator P3) | hecho (2026-11-14) |
 
 ## `0.7` «Preguntar»
 
