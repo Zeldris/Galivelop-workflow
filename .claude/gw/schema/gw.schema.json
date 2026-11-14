@@ -701,6 +701,15 @@
       },
       "default": []
     },
+    "authorDeny": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "default": [],
+      "description": "E41: identities the pre-commit refuses as author or committer (case-insensitive; a pattern with @ is a whole email, any other a whole word or phrase of the name); doctor.py warns when user.name/user.email match. Empty: no check."
+    },
     "protectedPaths": {
       "type": "array",
       "items": {

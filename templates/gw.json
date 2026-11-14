@@ -84,6 +84,7 @@
   "selector": {"cases": []},
   "logSections": [],
   "designReferences": [],
+  "authorDeny": [],
   "protectedPaths": [],
   "staleRefs": [],
   "linkRoots": [],

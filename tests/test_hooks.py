@@ -3125,6 +3125,92 @@ class PreCommit(Base):
         self.assertIn("rotate the credential", out)
 
 
+class PreCommitAuthorDeny(Base):
+    """E41: the pre-commit refuses an author or committer in authorDeny, read as git reads it (git var)."""
+    config = {"authorDeny": ["Claude", "noreply@anthropic.com"]}
+    CLAUDE = {"GIT_AUTHOR_NAME": "Claude", "GIT_AUTHOR_EMAIL": "noreply@anthropic.com"}
+
+    def change(self, text="x\n"):
+        self.p.write("docs/notes.md", text)
+
+    def refused(self, r, role, pattern):
+        self.assertNotEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn(f"the commit's {role}", r.stderr)
+        self.assertIn(f"matches '{pattern}' in authorDeny", r.stderr)
+        self.assertIn("git config user.name", r.stderr)
+
+    def test_own_identity_passes(self):
+        self.change()
+        self.assertEqual(self.p.commit("mine", ok=False).returncode, 0)
+
+    def test_empty_list_checks_nothing(self):
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, authorDeny=[])))
+        self.change()
+        self.assertEqual(self.p.commit("empty", env=self.CLAUDE, ok=False).returncode, 0)
+
+    def test_author_env_vars_override_the_config(self):
+        self.change()
+        self.refused(self.p.commit("env", env={"GIT_AUTHOR_EMAIL": "noreply@anthropic.com"}, ok=False),
+                     "author", "noreply@anthropic.com")
+
+    def test_author_ok_but_committer_denied(self):
+        self.change()
+        r = self.p.commit("committer", env={"GIT_COMMITTER_NAME": "Claude"}, ok=False)
+        self.refused(r, "committer", "Claude")
+        self.assertIn("GIT_COMMITTER_NAME", r.stderr)
+
+    def test_configured_user_with_other_case_refused_but_not_a_longer_word(self):
+        self.p.git("config", "user.name", "CLAUDE")
+        self.change()
+        self.refused(self.p.commit("case", ok=False), "author", "Claude")
+        self.p.git("config", "user.name", "Test")
+        self.p.git("config", "user.email", "NoReply@Anthropic.COM")
+        self.refused(self.p.commit("case", ok=False), "author", "noreply@anthropic.com")
+        self.p.git("config", "user.name", "Claudette")
+        self.p.git("config", "user.email", "claudette@example.com")
+        self.assertEqual(self.p.commit("word", ok=False).returncode, 0)
+
+    def test_missing_email_fails_closed_with_the_fix(self):
+        empty = self.p.tmp / "empty-gitconfig"
+        empty.write_text("[user]\n\tuseConfigOnly = true\n")
+        self.p.git("config", "--unset", "user.email", ok=False)
+        env = {"GIT_CONFIG_GLOBAL": str(empty), "EMAIL": ""}
+        code, out = self.p.run("bash", ".githooks/pre-commit", env=env)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("cannot read the commit's author", out)
+        self.assertIn("git config user.email", out)
+
+    def test_amend_keeps_the_denied_author_until_reset(self):
+        self.change()
+        self.p.git("add", "-A")
+        self.p.git("commit", "-q", "--no-verify", "-m", "by agent", env=self.CLAUDE)
+        self.change("y\n")
+        self.p.git("add", "-A")
+        self.refused(self.p.git("commit", "-q", "--amend", "-m", "fix", ok=False), "author", "Claude")
+        self.assertEqual(self.p.git("commit", "-q", "--amend", "--reset-author", "-m", "fix", ok=False).returncode, 0)
+
+    def test_concluding_a_merge_checks_the_author(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "side")
+        self.change("side\n")
+        p.commit("side")
+        p.git("checkout", "-q", "main")
+        self.change("main\n")
+        p.commit("main")
+        self.assertNotEqual(p.git("merge", "-q", "side", ok=False).returncode, 0)  # conflict
+        self.change("both\n")
+        p.git("add", "-A")
+        self.refused(p.git("commit", "-q", "--no-edit", env=self.CLAUDE, ok=False), "author", "Claude")
+        self.assertEqual(p.git("commit", "-q", "--no-edit", ok=False).returncode, 0)
+
+    def test_unreadable_config_warns_and_goes_on(self):
+        self.p.write(".claude/gw.json", "{not json")
+        self.change()
+        r = self.p.commit("broken", env=self.CLAUDE, ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("cannot read authorDeny", r.stderr)
+
+
 class PreCommitDone(Base):
     """INS P6: a task closed in the plan is in the log's "Done" before the commit exists."""
     config = {"logRows": True, "plan": ["docs/plan.md"]}

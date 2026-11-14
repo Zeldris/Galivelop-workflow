@@ -19,6 +19,9 @@ defaults the schema declares. Shell scripts call the CLI; Python scripts import 
                                         # malformed -> exit 2. Never committed: it holds what must not be public
                                         # (privateNames, plus allowEmails for private-check.py and anonymize, the
                                         # aliases harvest.py prints instead of the names)
+  python3 config.py author-check        # E41: exit 1 when the commit's author or committer (git var GIT_AUTHOR_IDENT /
+                                        # GIT_COMMITTER_IDENT, so GIT_AUTHOR_*/GIT_COMMITTER_* count as in git) matches
+                                        # authorDeny; an empty list checks nothing (called by the pre-commit hook)
 
 Project root: --root, else the git top level of this script's folder when that repo has .claude/gw.json (the copy
 in a project lives in .claude/gw/scripts/), else the git top level of the current directory when it is
@@ -325,6 +328,56 @@ def _string_list_key(config, key):
             and all(isinstance(x, str) and x and (allowed is None or x in allowed) for x in given)):
         return list(given)
     return list(prop["default"])
+
+
+def author_deny(config):
+    """E41: the `authorDeny` patterns (an invalid value gives the schema default, the empty list)."""
+    return _string_list_key(config, "authorDeny")
+
+
+def author_denied(patterns, name, email):
+    """E41: the first pattern of `authorDeny` that the identity (name, email) matches, else None. Case-insensitive; a
+    pattern with `@` is a whole email and matches only an equal email; any other pattern is a word or phrase of the
+    name, matched whole (`Claude` hits `Claude`, `claude[bot]` and `Claude Code`, not `Claudette`)."""
+    name, email = (name or "").strip(), (email or "").strip().casefold()
+    for pattern in patterns:
+        wanted = pattern.strip()
+        if not wanted:
+            continue
+        if "@" in wanted:
+            if email == wanted.casefold():
+                return pattern
+        elif re.search(r"(?<!\w)" + re.escape(wanted) + r"(?!\w)", name, re.IGNORECASE):
+            return pattern
+    return None
+
+
+def parse_ident(ident):
+    """`Name <email> 1700000000 +0100` (git var GIT_AUTHOR_IDENT) as (name, email); None when it is not one."""
+    m = re.match(r"^(.*?)\s*<([^>]*)>", ident or "")
+    return (m.group(1), m.group(2)) if m else None
+
+
+def author_check(root, patterns):
+    """E41: (0, "") when neither the author nor the committer of the commit being made matches `patterns`, else
+    (1, message with the command that fixes it). Fails closed when git cannot tell the identity."""
+    if not patterns:
+        return 0, ""
+    for role in ("AUTHOR", "COMMITTER"):
+        r = subprocess.run(["git", "var", f"GIT_{role}_IDENT"], cwd=str(root), capture_output=True, text=True)
+        ident = parse_ident(r.stdout.strip()) if r.returncode == 0 else None
+        if ident is None:
+            return 1, (f"cannot read the commit's {role.lower()} (git var GIT_{role}_IDENT failed), so authorDeny cannot "
+                       f"be checked; set your identity: git config user.name '<name>' && git config user.email '<email>'")
+        hit = author_denied(patterns, *ident)
+        if hit:
+            who = f"{ident[0]} <{ident[1]}>"
+            fix = ("git config user.name '<your name>' && git config user.email '<your email>'"
+                   + (" (and unset GIT_{0}_NAME/GIT_{0}_EMAIL if set)".format(role)))
+            amend = " For --amend, also: git commit --amend --reset-author." if role == "AUTHOR" else ""
+            return 1, (f"the commit's {role.lower()} {who} matches '{hit}' in authorDeny (.claude/gw.json); commit as "
+                       f"yourself: {fix}.{amend}")
+    return 0, ""
 
 
 def harvest(config):
@@ -1079,6 +1132,7 @@ def main(argv=None):
     scope_p = sub.add_parser("push-scope", help="'full <reason>' or 'related' for a branch push changing the files on stdin")
     scope_p.add_argument("--commits", help="file listing the push's new commits, one sha per line: a .claude/gw.json "
                                            "change then counts only by its keys (fullCheckSkipKeys, E47)")
+    sub.add_parser("author-check", help="exit 1 when the commit's author or committer matches authorDeny (E41)")
     get = sub.add_parser("get")
     get.add_argument("key", help="top-level key, or dotted (relatedTests.fast)")
     get.add_argument("--json", action="store_true")
@@ -1109,6 +1163,11 @@ def main(argv=None):
             print(f"gw config: {exc}", file=sys.stderr)
             return 2
         return 0
+    if args.command == "author-check":
+        code, message = author_check(config["_root"], author_deny(config))
+        if message:
+            print(f"pre-commit: {message}", file=sys.stderr)
+        return code
     if args.command == "related":
         files = [line for line in sys.stdin.read().splitlines() if line]
         deleted = []

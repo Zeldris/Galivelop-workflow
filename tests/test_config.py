@@ -62,6 +62,24 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn(needle, r.stderr)
 
+    def test_author_deny_default_empty_bad_value_and_matching(self):
+        # E41: empty by default; a bad value falls back to it; case-insensitive, email whole, name word whole.
+        self.write(VALID)
+        self.assertEqual(cli(self.tmp, "get", "authorDeny", "--json").stdout.strip(), "[]")
+        self.assertEqual(config.author_deny({"authorDeny": [""]}), [])
+        self.write(dict(VALID, authorDeny=[""]))
+        self.assertIn("$.authorDeny[0]: must not be empty", cli(self.tmp, "validate").stderr)
+        deny = ["Claude", "noreply@anthropic.com"]
+        for name, email, hit in (("Claude", "x@y", "Claude"), ("CLAUDE", "x@y", "Claude"),
+                                 ("claude[bot]", "x@y", "Claude"), ("Claude Code", "x@y", "Claude"),
+                                 ("Zeldris", "NoReply@Anthropic.com", "noreply@anthropic.com"),
+                                 ("Claudette", "x@y", None), ("Zeldris", "noreply@anthropic.com.evil", None),
+                                 ("Zeldris", "", None), ("", "", None)):
+            with self.subTest(name=name, email=email):
+                self.assertEqual(config.author_denied(deny, name, email), hit)
+        self.assertEqual(config.parse_ident("A B <a@b> 1700000000 +0100"), ("A B", "a@b"))
+        self.assertIsNone(config.parse_ident("no email here"))
+
     def test_release_docs_defaults_to_empty_and_rejects_bad_values(self):
         self.write(VALID)
         self.assertEqual(cli(self.tmp, "get", "releaseDocs", "--json").stdout.strip(), "[]")

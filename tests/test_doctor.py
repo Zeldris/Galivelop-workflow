@@ -66,6 +66,17 @@ class Doctor(Snapshot):
         items = json.loads(out)
         self.assertTrue(items and all(i["status"] == "OK" for i in items), out)
 
+    def test_git_user_in_author_deny_warns(self):
+        # E41: no line with an empty authorDeny; a warning with the fix when user.name or user.email matches.
+        code, out = self.doctor()
+        self.assertNotIn("author", out.lower().replace("authorise", ""))
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        self.p.write(".claude/gw.json", json.dumps(dict(cfg, authorDeny=["Claude", "noreply@anthropic.com"])))
+        self.assertLine(self.doctor()[1], "OK", "author")
+        self.p.git("config", "user.email", "NOREPLY@anthropic.com")
+        line = self.assertLine(self.doctor()[1], "WARN", "author", "matches 'noreply@anthropic.com'")
+        self.assertIn("git config user.email", line)
+
     def test_config_schema_version(self):
         self.assertLine(self.doctor()[1], "OK", "config schema", "schemaVersion 1 is the workflow's format")
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())

@@ -21,7 +21,8 @@ while the note names no other); and, when `origin` is on GitHub, a way to read t
 or effort picked per agent (CLAUDE_CODE_EFFORT_LEVEL, CLAUDE_CODE_SUBAGENT_MODEL with _FORCE, CLAUDE_CODE_SUBAGENT_EFFORT)
 in the environment or the env block of .claude/settings.json, .claude/settings.local.json or ~/.claude/settings.json;
 and (E43) a folder holding test_*.py that no `check` command runs (`test dirs`, see check_test_dirs; the folders to skip
-are the `doctorTestDirsIgnore` key).
+are the `doctorTestDirsIgnore` key); and (E41) the git user.name/user.email do not match `authorDeny` (the pre-commit
+refuses that author).
 The compaction check, the session one, the levers one, the media tools one and the CI
 access one read the machine running doctor, not only the project, so their lines can differ between a person's machine,
 CI and a cloud session.
@@ -749,6 +750,20 @@ def strip_invisible_command(name):
             f"open(p,\"w\",encoding=\"utf-8\").write(re.sub(\"{INVISIBLE_PATTERN}\",\"\",t))' {name}")
 
 
+def check_author(rep, root, cfg):
+    """E41: the identity git will commit with (user.name/user.email) does not match authorDeny."""
+    patterns = config.author_deny(cfg) if cfg else []
+    if not patterns:
+        return
+    name, email = git(root, "config", "user.name") or "", git(root, "config", "user.email") or ""
+    hit = config.author_denied(patterns, name, email)
+    if hit:
+        rep.warn("author", f"git user '{name} <{email}>' matches '{hit}' in authorDeny, so the pre-commit refuses "
+                 f"every commit", "git config user.name '<your name>' && git config user.email '<your email>'")
+    else:
+        rep.ok("author", "the git user.name/user.email do not match authorDeny")
+
+
 def check_instructions(rep, root, cfg=None):
     """Invisible characters in the files agents obey (a hidden instruction is an injection) and the size of
     AGENTS.md/CLAUDE.md (P7 of proposal 2026-10-25-repos-x.md)."""
@@ -1110,6 +1125,7 @@ def run(root):
     check_session(rep, root)
     check_compaction(rep, root)
     check_levers(rep, root, cfg)
+    check_author(rep, root, cfg)
     return rep
 
 
