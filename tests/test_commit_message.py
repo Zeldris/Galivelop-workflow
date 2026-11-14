@@ -599,5 +599,85 @@ class A13Keys(Msg):
         self.accepted("work\n\nxsig")
 
 
+class ClearWarning(Msg):
+    """D108: a commit that closes a task, with the session's compaction budget passed, asks for /clear; only a warning."""
+    WORDS = "/clear"
+
+    def setUp(self):
+        super().setUp()
+        import os
+        import shutil
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import session_log
+        p = self.p
+        for name in ("recover.py", "session_log.py", "roadmap.py", "context_guard.py"):
+            shutil.copy2(ROOT / "scripts" / name, p.work / ".claude" / "gw" / "scripts" / name)
+        home = p.tmp / "home"
+        p.env["HOME"] = str(home)
+        self.folder = home / ".claude" / "projects" / session_log.folder_of(os.path.realpath(str(p.work)))
+        self.folder.mkdir(parents=True)
+        self.configure(commitFormat="conventional",
+                       roadmapFiles=[{"path": "docs/roadmap.md", "done": "done", "open": ["pending"]}])
+        self.budget(1)
+        self.table("pending", "pending")
+        self.p.git("add", "-A"); self.p.git("commit", "-q", "--no-verify", "-m", "roadmap")
+        self.transcript(2)
+
+    def budget(self, n):
+        line = f"Compaction budget: {n}\n" if n is not None else ""
+        self.p.write("docs/log.md", f"# Log\n\n## Current state\n\n{line}")
+        self.p.git("add", "docs/log.md")
+
+    def table(self, d11, d12):
+        self.roadmap(f"# Roadmap\n\n| id | task | status |\n|---|---|---|\n| D11 | a | {d11} |\n| D12 | b | {d12} |\n")
+
+    def transcript(self, compactions):
+        lines = ['{"type": "user", "message": {"content": "x"}}'] + ['{"type": "system", "subtype": "compact_boundary"}'] * compactions
+        (self.folder / "s.jsonl").write_text("\n".join(lines) + "\n")
+
+    def warned(self, message, expected):
+        code, err = self.attempt(message)
+        self.assertEqual(code, 0, err)
+        (self.assertIn if expected else self.assertNotIn)(self.WORDS, err)
+        return err
+
+    def test_closing_with_the_budget_passed_warns_and_commits(self):
+        self.table("done (2026-11-14)", "pending")
+        before = self.p.sha()
+        err = self.warned("feat(D11): x\n\nRefs: D11", True)
+        self.assertIn("closes D11", err)
+        self.assertIn("(2 > 1)", err)
+        self.assertNotEqual(self.p.sha(), before)
+
+    def test_budget_not_passed_gives_no_warning(self):
+        self.transcript(1)
+        self.table("done", "pending")
+        self.warned("feat(D11): x\n\nRefs: D11", False)
+
+    def test_budget_passed_but_not_closing_gives_no_warning(self):
+        self.warned("feat(D11): x\n\nRefs: D11", False)  # D11 stays pending
+        self.table("done", "pending")
+        self.warned("feat(D11, D12): x\n\nRefs: D11, D12", False)  # D12 still open: not every id closes
+        self.warned("feat(D11): x\n\nRefs: D11", False)  # that commit took the table: D11 done at HEAD: this commit closes nothing
+
+    def test_no_transcript_or_no_budget_line_gives_no_warning(self):
+        (self.folder / "s.jsonl").unlink()
+        self.table("done", "pending")
+        self.warned("feat(D11): x\n\nRefs: D11", False)
+        self.transcript(5)
+        self.budget(None)
+        self.warned("feat(D11): x\n\nRefs: D11", False)
+
+    def test_missing_recover_script_gives_no_warning(self):
+        (self.p.work / ".claude" / "gw" / "scripts" / "recover.py").unlink()
+        self.table("done", "pending")
+        self.warned("feat(D11): x\n\nRefs: D11", False)
+
+    def test_a_wip_commit_gives_no_warning(self):
+        self.table("done", "pending")
+        self.warned("WIP: feat(D11): x\n\nRefs: D11", False)
+
+
 if __name__ == "__main__":
     unittest.main()

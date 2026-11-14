@@ -403,6 +403,22 @@ def compaction_budget(root, branch):
     return handoff.compaction_budget(log_text(root, branch))
 
 
+def budget_overrun(root, branch, transcript=None):
+    """(counted, budget) when the session's compactions since the task started (as --state counts them) pass the
+    log's compaction budget, else None (D108: commit-message.py asks for /clear with it). No transcript, no budget or
+    any failure: None (only a warning reads it; it never raises)."""
+    try:
+        path, _ = session_log.find(root, transcript, warn=False)
+        budget = compaction_budget(root, branch) if path else None
+        if budget is None:
+            return None
+        task = task_start(root, branch)
+        counted = count_compactions(path, task[2] if task else None)
+        return (counted, budget) if counted > budget else None
+    except Exception:
+        return None
+
+
 def protected_branch(root):
     try:
         return config.load(root).get("protectedBranch") or "main"

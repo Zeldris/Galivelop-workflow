@@ -31,6 +31,13 @@ and applies, from .claude/gw.json (read through config.py):
                                these (Claudette passes, haiku-writer and 4o do not). Without that, any
                                `Agent:` value passes. Trailers are read with --no-divider (a `---` line is body).
 
+A warning, never a refusal (D108): when the commit closes a task and the session passed its compaction budget, one
+line on stderr asks for /clear (a long context is almost all the spend; the log is enough to resume). "Closes a task":
+not a WIP commit, every `Refs:` id has a row in the first `roadmapFiles` file whose STAGED status starts with its
+`done` word, and at least one of them did not at HEAD (the commit marks it done: the end of a task, phase or version).
+The budget and the compactions are recover.py's (budget_overrun: `Compaction budget: N` in the log, the newest
+transcript of the repo). Any missing piece (roadmap, recover.py, transcript, budget line) means no warning.
+
 The review-mark commit of reviewed.sh (subject exactly `Revisado: <sha>` or `Reviewed: <sha>`) is exempt from
 format and `Refs:`. Format and `Refs:` are not checked while a merge, revert or cherry-pick is being concluded
 (MERGE_HEAD, REVERT_HEAD, CHERRY_PICK_HEAD) nor during a rebase; `Agent:` is checked in merges too, not in a rebase
@@ -290,6 +297,57 @@ def check_refs(root, config, found, msgfile):
                      f"(git add) and commit again: {edit}")
 
 
+def staged_or_head(root, rev, path):
+    r = git(root, "show", f"{rev}:{path}")
+    return r.stdout if r.returncode == 0 else ""
+
+
+def closed_ids(root, config, message, found):
+    """The `Refs:` ids this commit closes (see the header), or [] when it closes none or a piece is missing."""
+    wip = wip_of(config)
+    subject = next((line for line in message.splitlines() if line.strip()), "")
+    if wip and subject.startswith(wip):
+        return []
+    ids = [t for k, v in found if k.lower() == "refs" for t in re.split(r"[,\s]+", v) if t]
+    files = gwconfig.roadmap_files(config)
+    if not ids or not files or not files[0].get("done"):
+        return []
+    import roadmap
+    entry, done = files[0], files[0]["done"].lower()
+
+    def is_done(text, task):
+        lines = text.splitlines()
+        try:
+            n, _ = roadmap.find_row(lines, task)
+        except roadmap.RoadmapError:
+            return False
+        return roadmap.status_of(lines[n]).lower().startswith(done)
+
+    after, before = staged_or_head(root, "", entry["path"]), staged_or_head(root, "HEAD", entry["path"])
+    if not all(is_done(after, t) for t in ids) or all(is_done(before, t) for t in ids):
+        return []
+    return ids
+
+
+def clear_warning(root, config, message, found, msgfile):
+    """The D108 warning line, or None. Never raises: it is only a warning."""
+    try:
+        found = found or trailers(root, message, msgfile)
+        ids = closed_ids(root, config, message, found)
+        if not ids:
+            return None
+        import recover
+        branch = git(root, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+        over = recover.budget_overrun(Path(root), branch)
+        if not over:
+            return None
+        return (f"commit-msg: WARNING: this commit closes {', '.join(ids)} and the session passed its compaction budget "
+                f"({over[0]} > {over[1]}): push and ask the user for /clear (a long context is almost all the spend; "
+                f"the log is enough to resume)")
+    except Exception:
+        return None
+
+
 def run(root, msgfile):
     try:
         config = gwconfig.load(root)
@@ -330,6 +388,10 @@ def run(root, msgfile):
         check_refs(root, config, found, msgfile)
     if not merging and nxt:
         check_next(config, message, found, msgfile)
+    if not merging:
+        warning = clear_warning(root, config, message, found, msgfile)
+        if warning:
+            print(warning, file=sys.stderr)
 
 
 def main(argv=None):
