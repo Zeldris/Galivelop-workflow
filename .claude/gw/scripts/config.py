@@ -587,6 +587,13 @@ def log_archive(config):
     return given if isinstance(given, str) and given else schema["properties"]["logArchive"]["default"]
 
 
+def pending_file(config):
+    """The `pendingFile` key (D104): repo-relative path of the file that holds the log's Pending items, or "" when the
+    key is absent or empty (the items stay in the log, as before)."""
+    given = config.get("pendingFile")
+    return given if isinstance(given, str) else ""
+
+
 # What Python re and grep -E do not share (A13): shorthand classes and word boundaries, extension groups, POSIX classes,
 # backreferences. agentSignaturePatterns reach both engines, so they are limited to the common subset.
 SHARED_REGEX_UNSAFE = re.compile(r"\\[dDsSwWbBAZz<>`'1-9]|\(\?|\[\[:|\[\^?\[:")

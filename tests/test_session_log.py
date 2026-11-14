@@ -489,6 +489,21 @@ class Recover(Base):
         self.assertIn("the left-over task", out)
         self.assertNotIn("old stuff", out)
 
+    def test_pending_file_entries_are_counted(self):
+        p = self.p
+        config = json.loads((p.work / ".claude" / "gw.json").read_text())
+        p.write("docs/log.md", "# Log\n\n## State\n\nnow\n\n## Pending\n\nIn docs/pending.md (2 entries).\n")
+        code, out = p.run_recover("--state")
+        self.assertNotIn("- Pending:", out)  # key unset: as before
+        p.write(".claude/gw.json", json.dumps(dict(config, pendingFile="docs/pending.md")))
+        code, out = p.run_recover("--state")
+        self.assertIn("- Pending: docs/pending.md (pendingFile) does not exist; create it: python3", out)
+        p.write("docs/pending.md", "# Pending\n\nintro\n- not counted\n\n## Pending\n\n- one\n  more\n- two\n\n## Done\n\n- x\n")
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertIn("- Pending: 2 entries in docs/pending.md (pendingFile)", out)
+        self.assertNotIn("not counted", out)
+
     def test_after_a_compaction_only_the_first_section_comes_back(self):
         self.p.write("docs/log.md", "# Log\n\n## State\n\nnow | next step\n\n## Pending\n\n- the left-over task\n")
         code, out = self.p.run_recover("--state", "--source", "compact")

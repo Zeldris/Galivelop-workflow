@@ -287,7 +287,7 @@ def log_state(root, branch, logs=None, source="startup"):
                            f"heading or the key")
             else:
                 out += [f"- Log ({cfg['log']}), section '{heading}':"] + indented(section)
-        return out + ([only] if compact else [])
+        return out + ([only] if compact else pending_line(root, cfg))
     first = first_section(text)
     out = [f"- Log ({cfg['log']}), first section:"] + indented(first)
     if compact:
@@ -297,7 +297,25 @@ def log_state(root, branch, logs=None, source="startup"):
         if section is not None and section[0] not in first:
             out += [f"- Log ({cfg['log']}), section '{heading}':"] + indented(section)
             break
-    return out
+    return out + pending_line(root, cfg)
+
+
+def pending_line(root, cfg):
+    """D104: with `pendingFile` set, one line with the entries of that file (top-level "- " items of its Pending
+    section, or of the whole file without one); the file itself is not printed."""
+    rel = cfg.get("pendingFile") or ""
+    if not isinstance(rel, str) or not rel:
+        return []
+    path = root / rel
+    if not path.is_file():
+        return [f"- Pending: {rel} (pendingFile) does not exist; create it: python3 {HERE}/handoff.py move-pending"]
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    head = next((i for i, l in enumerate(lines) if re.match(r"^##\s+(Pendiente|Pending)\b", l, re.I)), None)
+    if head is not None:
+        end = next((i for i in range(head + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
+        lines = lines[head + 1:end]
+    count = sum(1 for l in lines if l.startswith("- "))
+    return [f"- Pending: {count} entries in {rel} (pendingFile); read it when the task needs them: grep -n '^- ' {rel}"]
 
 
 def fit_log(log_lines, room, log):
