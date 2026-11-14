@@ -253,3 +253,9 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - Menores de la revisión de B36 (f14a8ac): si una comprobación posterior del `pre-commit` falla, el libro de tokens
   se queda preparado en el índice; sus líneas cuentan para `changeSize`, que no lo excluye; `config.py validate`
   acepta un `metrics.ledger` fuera del repo (el gancho y `apply.py` ya lo saltan).
+- Menores de la revisión de E41 (efa42c6): el código de salida 2 de `config.py author-check` se confunde con el de
+  argparse (un `config.py` viejo tras un `/gw-update` a medias da «cannot read authorDeny» y salta el control; ahora
+  también en `--range`); un patrón sin `@` solo mira el nombre y uno con `@` es correo exacto (pasan
+  un correo de Anthropic con otro nombre y `x+claude@users.noreply.github.com`; ¿patrones de dominio?); un patrón que
+  empieza o acaba en no-palabra (`[bot]`) nunca casa; con `gw.json` ilegible el `pre-commit` deja pasar (podría leer
+  `authorDeny` de `HEAD`).
