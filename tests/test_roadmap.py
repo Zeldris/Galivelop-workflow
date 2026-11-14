@@ -73,6 +73,30 @@ class Roadmap(unittest.TestCase):
             "docs/roadmap.md:9 (`0.6` «Medir»)", "| D5 | Corta | en curso |",
             'docs/roadmap.en.md:9 (`0.6` "Measure")', "| D5 | Short | in progress |"])
 
+    def test_list_prints_id_status_and_description_of_a_version(self):
+        self.write("docs/roadmap.md", ES + "\n### Extra\n\n| Id | Tarea | Estado |\n|---|---|---|\n"
+                   "| Z1 | " + "x" * 100 + " | pendiente |\n\n## `0.7` «Otra»\n\n| Id | T | E |\n|---|---|---|\n"
+                   "| Q1 | fuera | pendiente |\n")
+        code, out, err = self.run_cli("list", "0.6")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(out.splitlines(), [
+            "D55  pendiente  `roadmap.py show` con `a | b` en código y \\| escapado",
+            "E27  hecha (2026-11-11)  Otra", "D5  en curso  Corta", "Z1  pendiente  " + "x" * 80])
+
+    def test_list_status_filters_ignoring_case(self):
+        code, out, err = self.run_cli("list", "0.6", "--status", "EN CURSO")
+        self.assertEqual((code, out), (0, "D5  en curso  Corta\n"), err)
+
+    def test_list_reads_only_the_first_file(self):
+        code, out, _ = self.run_cli("list", "0.6", "--status", "hecha")
+        self.assertEqual(out, "E27  hecha (2026-11-11)  Otra\n")
+
+    def test_list_unknown_version_says_how_to_find_the_sections(self):
+        code, out, err = self.run_cli("list", "9.9")
+        self.assertEqual((code, out), (1, ""))
+        self.assertIn("no section for version '9.9' in docs/roadmap.md", err)
+        self.assertIn("grep -n '^## ' docs/roadmap.md", err)
+
     def test_done_marks_every_language_and_keeps_pipes_inside_code(self):
         code, out, err = self.run_cli("done", "D55", "--date", "2026-11-11", "--note", "nota", "--note", "note")
         self.assertEqual(code, 0, err)

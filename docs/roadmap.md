@@ -202,7 +202,7 @@ En este orden, porque cada paso usa el anterior.
 | B30 | La fase 2 de las plantillas de `AGENTS.md` y `gw-opt-ai` (`disable-model-invocation`) dicen lo mismo sobre quién la lanza (recogida `0.6.0`, image-generator P1) | hecho (2026-11-13) |
 | B33 | El `pre-push` de una rama no corre los tests relacionados cuando el check completo está en verde en caché sobre el mismo árbol, y cuando los corre usa `scripts/test-run.py` en paralelo (retro `0.6.0` R1) | pendiente |
 | B34 | `apply.py .` (o `version.py <X.Y.Z>`) deja `"version"` de `.claude/gw.json` en la versión de `plugin.json` (retro `0.6.0` R2) | pendiente |
-| B35 | `roadmap.py list <versión> [--status <estado>]`: ids y estado de las filas de una versión, sin leer el roadmap (retro `0.6.0` R4) | pendiente |
+| B35 | `roadmap.py list <versión> [--status <estado>]`: ids y estado de las filas de una versión, sin leer el roadmap (retro `0.6.0` R4) | hecho (2026-11-14) |
 
 ## `0.7` «Preguntar»
 

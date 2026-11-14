@@ -40,7 +40,7 @@ and effort per agent, review by blocks, a fast check and a complete `.claude/gw.
   `gw-init`); `gw-orchestrate-dealer` reparte los hallazgos aprobados por grupo de archivos, da a cada agente su
   carpeta en el scratchpad y comprueba la base del worktree; `gw-update` reparte la reconciliación de cada `.gw-new`.
 - Herramientas (D48, D55, D56, D81, D86, D89, B26, B29, E43): `handoff.py next-id` mira las ramas remotas;
-  `scripts/roadmap.py show|done` en los dos idiomas; `scripts/ci-status.py --failed` da solo el paso en rojo;
+  `scripts/roadmap.py show|done|list` en los dos idiomas; `scripts/ci-status.py --failed` da solo el paso en rojo;
   `scripts/backport.sh` lleva commits a un parche; `merge-branch.sh` da la orden para un conflicto en la bitácora;
   `handoff.py archive` no se adelanta a una versión sin publicar; aviso al leer entera la bitácora o un registro
   grande (`wholeReadWarnBytes`); `measure.py` mide la sesión anterior tras un `/clear` (`measure.minCalls`);
@@ -84,7 +84,7 @@ and effort per agent, review by blocks, a fast check and a complete `.claude/gw.
   `gw-init`); `gw-orchestrate-dealer` deals approved findings by group of files, gives each agent its scratchpad
   folder and checks the worktree's base; `gw-update` deals out the reconciliation of each `.gw-new`.
 - Tools (D48, D55, D56, D81, D86, D89, B26, B29, E43): `handoff.py next-id` looks at remote branches;
-  `scripts/roadmap.py show|done` in both languages; `scripts/ci-status.py --failed` gives only the red step;
+  `scripts/roadmap.py show|done|list` in both languages; `scripts/ci-status.py --failed` gives only the red step;
   `scripts/backport.sh` carries commits to a patch; `merge-branch.sh` gives the command for a conflict in the log;
   `handoff.py archive` no longer runs ahead of an unpublished version; a warning on reading the whole log or a large
   record (`wholeReadWarnBytes`); `measure.py` measures the previous session after a `/clear` (`measure.minCalls`);
