@@ -27,7 +27,7 @@ expected to have the toolchain already. Not covered, and listed as such: jobs fo
 Green = every step that ran passed, at least one ran and no job was left out for lack of evaluation (a matrix from
 an expression runs once, with this machine's toolchain; other-OS, `services` and `container` jobs stay only listed). Exit 0 green, 1 not green, 2 no workflow or a bad config.
 The YAML reader covers what workflows use (block maps and lists, flow [..] {..}, quotes, | and > scalars, comments);
-no anchors or tags. Python 3.8+, stdlib only. Root from this script's path (config.find_root).
+anchors and tags are read past (not resolved: an alias stays text). Python 3.8+, stdlib only. Root from this script's path (config.find_root).
 """
 import argparse
 import datetime
@@ -261,6 +261,12 @@ class Yaml:
     def scalar(self, rest, parent):
         """The value `rest` (already read) of a key or list item at column `parent`; block scalars and multi-line
         plain or flow values read their continuation lines (indented past `parent`)."""
+        props = re.match(r"(?:[&!]\S*\s*)+", rest)  # an &anchor or !tag before the value: only its value matters
+        if props:
+            rest = rest[props.end():]
+            if not rest:  # the value is the block node on the next lines
+                nxt = self.peek()
+                return self.node(nxt[0]) if nxt and nxt[0] > parent else None
         if rest[0] in "|>":
             return self.block(rest, parent)
         while rest[0] in "[{" and rest.count(rest[0]) > rest.count("]" if rest[0] == "[" else "}"):

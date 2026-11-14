@@ -464,6 +464,18 @@ class Validate(unittest.TestCase):
         code, out = self.ci("--validate")
         self.assertEqual(code, 1, out)
         self.assertIn("s.yml: line", out)
+        self.assertIn("mapping values are not allowed", out)
+
+    def test_anchors_tags_and_aliases_before_values_are_valid(self):
+        for body in ("d: &x\n  b: 1\n", "d:\n  - &x\n    b: 1\n", "d: &x {b: 1}\n", "d: !!map\n  b: 1\n",
+                     "d: &x\n  b: 1\ne:\n  <<: *x\n", "d: &x plain\ne: *x\n"):
+            self.workflow("on: push\njobs: {}\n" + body, name="a.yml")
+            code, out = self.ci("--validate")
+            self.assertEqual(code, 0, f"{body!r}: {out}")
+        self.workflow("on: push\nname: &x a: b\n", name="a.yml")  # a property does not excuse a ': ' in the value
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 1, out)
+        self.assertIn("mapping values are not allowed", out)
 
     def test_tab_indentation_and_bad_indentation_fail(self):
         self.workflow("on: push\njobs:\n\tj: 1\n", name="tab.yml")
@@ -474,6 +486,7 @@ class Validate(unittest.TestCase):
         code, out = self.ci("--validate")
         self.assertEqual(code, 1, out)
         self.assertIn("ind.yml: line", out)
+        self.assertIn("bad indentation", out)
 
     def test_empty_file_and_non_mapping_fail(self):
         self.workflow("", name="empty.yml")
@@ -482,6 +495,7 @@ class Validate(unittest.TestCase):
         self.assertIn("empty.yml: the file is empty", out)
         self.workflow("- a\n- b\n", name="list.yml")
         code, out = self.ci("--validate")
+        self.assertEqual(code, 1, out)
         self.assertIn("list.yml: not a mapping at the top level", out)
 
     def test_non_utf8_fails_closed(self):
