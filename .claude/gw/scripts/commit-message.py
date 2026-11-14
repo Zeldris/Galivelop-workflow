@@ -31,12 +31,15 @@ and applies, from .claude/gw.json (read through config.py):
                                these (Claudette passes, haiku-writer and 4o do not). Without that, any
                                `Agent:` value passes. Trailers are read with --no-divider (a `---` line is body).
 
-A warning, never a refusal (D108): when the commit closes a task and the session passed its compaction budget, one
-line on stderr asks for /clear (a long context is almost all the spend; the log is enough to resume). "Closes a task":
-not a WIP commit, every `Refs:` id has a row in the first `roadmapFiles` file whose STAGED status starts with its
-`done` word, and at least one of them did not at HEAD (the commit marks it done: the end of a task, phase or version).
-The budget and the compactions are recover.py's (budget_overrun: `Compaction budget: N` in the log, the newest
-transcript of the repo). Any missing piece (roadmap, recover.py, transcript, budget line) means no warning.
+A warning, never a refusal (D108): when the commit closes a phase or version and the session passed its compaction
+budget, one line on stderr asks for /clear (a long context is almost all the spend; the log is enough to resume).
+"Closes a phase or version", in a commit that is not WIP: (a) in the first `roadmapFiles` file, a `## ` section whose
+heading has a backticked version (`## `0.6` ...`, its `###` included) has every task row (a table row whose status,
+the last cell, starts with its `done` word or an `open` one) with a status that starts with `done` in the STAGED
+version, and not at HEAD; or (b) the value of the log's state table row «Fase en curso» / «Phase in progress» /
+«Current phase» differs between HEAD and the staged log. Closing a single row is not enough. The budget and the
+compactions are recover.py's (budget_overrun: `Compaction budget: N` in the log, the newest transcript of the repo).
+Any missing piece (roadmap, recover.py, transcript, budget line) means no warning.
 
 The review-mark commit of reviewed.sh (subject exactly `Revisado: <sha>` or `Reviewed: <sha>`) is exempt from
 format and `Refs:`. Format and `Refs:` are not checked while a merge, revert or cherry-pick is being concluded
@@ -302,46 +305,75 @@ def staged_or_head(root, rev, path):
     return r.stdout if r.returncode == 0 else ""
 
 
-def closed_ids(root, config, message, found):
-    """The `Refs:` ids this commit closes (see the header), or [] when it closes none or a piece is missing."""
+# The log's state-table cell whose change marks a phase change (D108), by its first cell, lowercased.
+PHASE_KEYS = ("fase en curso", "phase in progress", "current phase")
+VERSION_HEADING = re.compile(r"^## .*`\d+\.\d+(?:\.\d+)?`")
+
+
+def phase_cell(text):
+    """The value of the log's «Fase en curso»/«Phase in progress» row in its state section, or None."""
+    import handoff
+    import roadmap
+    m = handoff.STATE_HEADING.search(text)
+    section = text[m.end():].split("\n## ", 1)[0] if m else text
+    for line in section.splitlines():
+        spans = roadmap.cells(line)
+        if spans and len(spans) >= 2 and line[spans[0][0]:spans[0][1]].strip(" *`").lower() in PHASE_KEYS:
+            return line[spans[1][0]:spans[1][1]].strip()
+    return None
+
+
+def version_sections(text, done, open_words):
+    """{`## ` heading with a backticked version: whether every task row under it (its `###` included) is done}. A task
+    row is a table row whose last cell starts with the `done` word or an `open` one (roadmap.py's statuses)."""
+    import roadmap
+    words = (done,) + tuple(w.lower() for w in open_words)
+    rows, heading = {}, None
+    for line in text.splitlines():
+        if line.startswith("## "):
+            heading = line.strip() if VERSION_HEADING.match(line) else None
+            continue
+        spans = roadmap.cells(line) if heading else None
+        status = roadmap.status_of(line).lower() if spans and len(spans) >= 2 else ""
+        if status.startswith(words):
+            rows.setdefault(heading, []).append(status.startswith(done))
+    return {h: all(v) for h, v in rows.items()}
+
+
+def closing(root, config, message):
+    """What this commit closes (see the header): a roadmap version section or the log's phase; None otherwise."""
     wip = wip_of(config)
     subject = next((line for line in message.splitlines() if line.strip()), "")
     if wip and subject.startswith(wip):
-        return []
-    ids = [t for k, v in found if k.lower() == "refs" for t in re.split(r"[,\s]+", v) if t]
+        return None
     files = gwconfig.roadmap_files(config)
-    if not ids or not files or not files[0].get("done"):
-        return []
-    import roadmap
-    entry, done = files[0], files[0]["done"].lower()
-
-    def is_done(text, task):
-        lines = text.splitlines()
-        try:
-            n, _ = roadmap.find_row(lines, task)
-        except roadmap.RoadmapError:
-            return False
-        return roadmap.status_of(lines[n]).lower().startswith(done)
-
-    after, before = staged_or_head(root, "", entry["path"]), staged_or_head(root, "HEAD", entry["path"])
-    if not all(is_done(after, t) for t in ids) or all(is_done(before, t) for t in ids):
-        return []
-    return ids
+    if files and files[0].get("done"):
+        path, done, words = files[0]["path"], files[0]["done"].lower(), files[0].get("open") or []
+        before = version_sections(staged_or_head(root, "HEAD", path), done, words)
+        after = version_sections(staged_or_head(root, "", path), done, words)
+        closed = [h for h, ok in after.items() if ok and before.get(h) is False]
+        if closed:
+            return f"the roadmap section {closed[0][3:]}"
+    log = config.get("log")
+    if log:
+        old, new = phase_cell(staged_or_head(root, "HEAD", log)), phase_cell(staged_or_head(root, "", log))
+        if old is not None and new is not None and old != new:
+            return "a phase (the log's phase row changed)"
+    return None
 
 
-def clear_warning(root, config, message, found, msgfile):
+def clear_warning(root, config, message):
     """The D108 warning line, or None. Never raises: it is only a warning."""
     try:
-        found = found or trailers(root, message, msgfile)
-        ids = closed_ids(root, config, message, found)
-        if not ids:
+        what = closing(root, config, message)
+        if not what:
             return None
         import recover
         branch = git(root, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
         over = recover.budget_overrun(Path(root), branch)
         if not over:
             return None
-        return (f"commit-msg: WARNING: this commit closes {', '.join(ids)} and the session passed its compaction budget "
+        return (f"commit-msg: WARNING: this commit closes {what} and the session passed its compaction budget "
                 f"({over[0]} > {over[1]}): push and ask the user for /clear (a long context is almost all the spend; "
                 f"the log is enough to resume)")
     except Exception:
@@ -389,7 +421,7 @@ def run(root, msgfile):
     if not merging and nxt:
         check_next(config, message, found, msgfile)
     if not merging:
-        warning = clear_warning(root, config, message, found, msgfile)
+        warning = clear_warning(root, config, message)
         if warning:
             print(warning, file=sys.stderr)
 

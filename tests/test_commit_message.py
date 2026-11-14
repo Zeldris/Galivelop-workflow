@@ -600,7 +600,8 @@ class A13Keys(Msg):
 
 
 class ClearWarning(Msg):
-    """D108: a commit that closes a task, with the session's compaction budget passed, asks for /clear; only a warning."""
+    """D108: a commit that closes a phase or version, with the session's compaction budget passed, asks for /clear;
+    only a warning."""
     WORDS = "/clear"
 
     def setUp(self):
@@ -619,18 +620,19 @@ class ClearWarning(Msg):
         self.folder.mkdir(parents=True)
         self.configure(commitFormat="conventional",
                        roadmapFiles=[{"path": "docs/roadmap.md", "done": "done", "open": ["pending"]}])
-        self.budget(1)
+        self.log(1, "1")
         self.table("pending", "pending")
         self.p.git("add", "-A"); self.p.git("commit", "-q", "--no-verify", "-m", "roadmap")
         self.transcript(2)
 
-    def budget(self, n):
-        line = f"Compaction budget: {n}\n" if n is not None else ""
-        self.p.write("docs/log.md", f"# Log\n\n## Current state\n\n{line}")
-        self.p.git("add", "docs/log.md")
+    def log(self, budget, phase):
+        line = f"Compaction budget: {budget}\n" if budget is not None else ""
+        self.p.write("docs/log.md", f"# Log\n\n## Current state\n\n| Field | Value |\n|---|---|\n"
+                                    f"| Phase in progress | **{phase}** |\n\n{line}")
 
-    def table(self, d11, d12):
-        self.roadmap(f"# Roadmap\n\n| id | task | status |\n|---|---|---|\n| D11 | a | {d11} |\n| D12 | b | {d12} |\n")
+    def table(self, d11, d12, d13="pending"):
+        self.roadmap(f"# Roadmap\n\n## `0.6` «Measure»\n\n| id | task | status |\n|---|---|---|\n| D11 | a | {d11} |\n"
+                     f"\n### More\n\n| D12 | b | {d12} |\n\n## `0.7`\n\n| D13 | c | {d13} |\n")
 
     def transcript(self, compactions):
         lines = ['{"type": "user", "message": {"content": "x"}}'] + ['{"type": "system", "subtype": "compact_boundary"}'] * compactions
@@ -642,41 +644,51 @@ class ClearWarning(Msg):
         (self.assertIn if expected else self.assertNotIn)(self.WORDS, err)
         return err
 
-    def test_closing_with_the_budget_passed_warns_and_commits(self):
-        self.table("done (2026-11-14)", "pending")
+    def test_closing_a_version_with_the_budget_passed_warns_and_commits(self):
+        self.table("done (2026-11-14)", "done")
         before = self.p.sha()
-        err = self.warned("feat(D11): x\n\nRefs: D11", True)
-        self.assertIn("closes D11", err)
+        err = self.warned("feat(D12): x", True)
+        self.assertIn("closes the roadmap section `0.6`", err)
         self.assertIn("(2 > 1)", err)
         self.assertNotEqual(self.p.sha(), before)
 
+    def test_changing_the_phase_warns(self):
+        self.log(1, "2")
+        self.assertIn("a phase", self.warned("docs(D11): x", True))
+
     def test_budget_not_passed_gives_no_warning(self):
         self.transcript(1)
-        self.table("done", "pending")
-        self.warned("feat(D11): x\n\nRefs: D11", False)
+        self.table("done", "done")
+        self.warned("feat(D11): x", False)
 
-    def test_budget_passed_but_not_closing_gives_no_warning(self):
-        self.warned("feat(D11): x\n\nRefs: D11", False)  # D11 stays pending
+    def test_closing_a_single_row_gives_no_warning(self):
         self.table("done", "pending")
-        self.warned("feat(D11, D12): x\n\nRefs: D11, D12", False)  # D12 still open: not every id closes
-        self.warned("feat(D11): x\n\nRefs: D11", False)  # that commit took the table: D11 done at HEAD: this commit closes nothing
+        self.warned("feat(D11): x", False)  # D12 still open in `0.6`
+        self.log(1, "1")  # same phase, the log otherwise rewritten
+        self.p.write("docs/log.md", self.p.work.joinpath("docs/log.md").read_text() + "more\n")
+        self.warned("feat(D11): x", False)
 
     def test_no_transcript_or_no_budget_line_gives_no_warning(self):
         (self.folder / "s.jsonl").unlink()
-        self.table("done", "pending")
-        self.warned("feat(D11): x\n\nRefs: D11", False)
+        self.table("done", "done")
+        self.warned("feat(D11): x", False)
         self.transcript(5)
-        self.budget(None)
-        self.warned("feat(D11): x\n\nRefs: D11", False)
+        self.log(None, "3")
+        self.warned("feat(D11): x", False)
 
-    def test_missing_recover_script_gives_no_warning(self):
+    def test_missing_pieces_give_no_warning(self):
         (self.p.work / ".claude" / "gw" / "scripts" / "recover.py").unlink()
-        self.table("done", "pending")
-        self.warned("feat(D11): x\n\nRefs: D11", False)
+        self.table("done", "done")
+        self.warned("feat(D11): x", False)
+        self.configure(roadmapFiles=[])
+        self.p.write(".claude/gw/scripts/recover.py", (ROOT / "scripts" / "recover.py").read_text())
+        self.table("pending", "pending", "done")
+        self.warned("feat(D13): x", False)
 
     def test_a_wip_commit_gives_no_warning(self):
-        self.table("done", "pending")
-        self.warned("WIP: feat(D11): x\n\nRefs: D11", False)
+        self.table("done", "done")
+        self.log(1, "2")
+        self.warned("WIP: feat(D11): x", False)
 
 
 if __name__ == "__main__":
