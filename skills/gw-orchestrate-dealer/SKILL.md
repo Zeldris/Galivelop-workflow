@@ -80,8 +80,7 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    under QUESTIONS.
    Done when: <checkable criterion>. Run before pushing: `bash .claude/gw/scripts/check.sh` (runs {check} and records
    the green so the push does not repeat it). Before each commit, the tests of what you touched:
-   `python3 .claude/gw/scripts/tests-for.py --diff <base> --run` (from `testMap`; if it says the map is empty, pick
-   them yourself).
+   `python3 .claude/gw/scripts/tests-for.py --diff <base> --run` (from `testMap`; if empty, pick them yourself).
    Tests live in: <where the tests of each layer you touch live, e.g. `tests/test_ui_browser.py` for the UI>.
    For guard code or scripts: first list the edge cases (git states, platforms, empty or odd input) and write a
    test for each before calling the chunk done; the review afterwards is the safety net, not the first pass.
