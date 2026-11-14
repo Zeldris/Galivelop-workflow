@@ -667,9 +667,16 @@ def gitattributes_line(ledger):
 
 def plan_gitattributes(plan, cfg):
     """B32: the project's .gitattributes merges the token ledger (`metrics.ledger`) with `merge=union`, so two branches
-    that append spend do not conflict. The line is appended (the file created if missing) unless a line already gives
+    that append spend do not conflict; a ledger outside the project (absolute or `../`) gets no line, only a warning.
+    The line is appended (the file created if missing) unless a line already gives
     that path `merge=union`; the user's other lines are kept, a missing final newline is added first."""
-    line = gitattributes_line(posixpath.normpath(config.metrics(cfg)["ledger"]))
+    ledger = posixpath.normpath(config.metrics(cfg)["ledger"])
+    if ledger.startswith("/") or ledger == ".." or ledger.startswith("../"):
+        plan.warnings.append(f"metrics.ledger '{ledger}' is outside the project, so .gitattributes gets no merge=union "
+                             f"line for it; to merge it by union, set a repo-relative path: python3 "
+                             f"{HERE / 'config.py'} --root {plan.root} get metrics")
+        return
+    line = gitattributes_line(ledger)
     pattern = line.rsplit(" ", 1)[0]
     path = plan.root / ".gitattributes"
     current = path.read_bytes() if path.is_file() else b""

@@ -224,6 +224,20 @@ class Apply(unittest.TestCase):
         self.assertIn("merge: union", p.run("git", "check-attr", "merge", "var/spend log.jsonl")[1])
         self.assertNotIn("docs/metrics", p.read(".gitattributes"))
 
+    def test_gitattributes_skips_a_ledger_outside_the_project(self):  # B36 review
+        p = self.p
+        cfg = json.loads(p.read(".claude/gw.json"))
+        for ledger in ("../outside/ledger.jsonl", str(p.work / "docs" / "l.jsonl"), "/tmp/elsewhere/l.jsonl"):
+            with self.subTest(ledger=ledger):
+                cfg["metrics"] = {"ledger": ledger}
+                p.write(".claude/gw.json", json.dumps(cfg, indent=2) + "\n")
+                code, out = p.run_apply("--dry-run")
+                self.assertEqual(code, 0, out)
+                self.assertIn("is outside the project, so .gitattributes gets no merge=union line", out)
+                self.assertNotIn(".gitattributes  (", out)
+                self.applied()
+                self.assertFalse((p.work / ".gitattributes").exists())
+
     def test_older_flow_hook_in_settings_is_listed(self):
         p = self.p
         self.applied()

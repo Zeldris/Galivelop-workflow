@@ -62,7 +62,7 @@ a bad config (exit 2).
 
 `metrics.py stage-ledger [--root R]` (B36, run by the `pre-commit` hook) adds the ledger to the commit being made, so it
 needs no commit of its own: `git add` of that one path when `metrics.record` and `metrics.commitLedger` are on, the
-ledger is modified or new and not ignored by git, something else is staged (a work commit: never a ledger-only commit,
+ledger is inside the work tree (an absolute path or one leaving it with `../` is skipped), modified or new and not ignored by git, something else is staged (a work commit: never a ledger-only commit,
 nor an amend that only rewords), no merge, cherry-pick, revert or rebase is in progress, and the commit uses the whole
 index (`git commit`, `-a`, `-i`; `git commit <paths>` and `--only` use a temporary index, `next-index-*`, and are left
 alone, so a commit of selected paths takes only those). A skip says why on stderr only when the ledger has changes; an
@@ -876,6 +876,8 @@ def stage_ledger(root, cfg, index_file=None):
     if not (settings["record"] and settings["commitLedger"]):
         return False, None
     rel = posixpath.normpath(settings["ledger"])
+    if rel.startswith("/") or rel == ".." or rel.startswith("../"):
+        return False, None  # outside the work tree: not in git, like an ignored ledger
     tracked = bool(git(root, "ls-files", "--", rel).strip())
     if tracked:
         changed = bool(git(root, "diff", "--name-only", "--", rel).strip())

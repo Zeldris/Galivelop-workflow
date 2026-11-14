@@ -37,7 +37,7 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-14 — B36 y B32: el `pre-commit` añade el libro de tokens cambiado al commit de trabajo (`metrics.py stage-ledger`, clave `metrics.commitLedger`; no en fusiones, `cherry-pick`, `revert`, `rebase`, `git commit <rutas>`/`--only`, ni si es lo único preparado o git lo ignora); `apply.py` añade `<ledger> merge=union` al `.gitattributes`
+1. 2026-11-14 — B36 y B32: el `pre-commit` añade el libro de tokens cambiado al commit de trabajo (`metrics.py stage-ledger`, clave `metrics.commitLedger`; no en fusiones, `cherry-pick`, `revert`, `rebase`, `git commit <rutas>`/`--only`, ni si es lo único preparado o git lo ignora); `apply.py` añade `<ledger> merge=union` al `.gitattributes`. Revisión: 1 medio arreglado (libro fuera del repo: ni se añade ni recibe línea)
 2. 2026-11-14 — E52: (cerrada: plantillas de bitácora y gw-*.md y diff vX→vY de REVIEW/GLOSSARY en el ensayo) `apply.py --dry-run --summary` (recuentos por acción, `propose`/`merge`, renombrados y avisos; solo con `--dry-run`, si no falla con la orden que lo arregla) y `rename  viejo -> nuevo` en el resumen (rutas, scripts, skills, ganchos); docs es/en y `gw-update` al día
 3. 2026-11-14 — E51: `ci-local.py --validate` analiza el YAML de cada workflow (clave `ciYamlCheck`, sección propia de `tests/check.sh`, en `templates/gw.json`); el lector rechaza ya un escalar plano con `: `
 4. 2026-11-14 — Parche 0.6.1 publicado en main (5afda88): fase 3 con 5 hallazgos arreglados (3d89111), versión y CHANGELOG (d28a1a1), notas de la release para publicar desde local

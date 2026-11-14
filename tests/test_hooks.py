@@ -3279,6 +3279,19 @@ class PreCommitLedger(Base):
         self.assertTrue(self.in_head("var/spend.jsonl"))
         self.assertFalse(self.in_head(self.LEDGER))
 
+    def test_ledger_outside_the_repo_is_skipped(self):  # B36 review: git ls-files would exit 128 on every commit
+        for ledger in ("../outside/ledger.jsonl", str(self.tmp / "outside" / "abs.jsonl"),
+                       str(self.p.work / "docs" / "abs.jsonl")):
+            with self.subTest(ledger=ledger):
+                self.set_metrics(ledger=ledger)
+                target = Path(ledger) if ledger.startswith("/") else self.p.work / ledger
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(self.ROW)
+                self.work_change(f"a = {len(ledger)}\n")
+                r = self.commit()
+                self.assertNotIn("token ledger", r.stderr)
+                self.assertFalse(self.in_head("docs/abs.jsonl"))
+
     def test_record_false_or_commit_ledger_false_leave_it(self):
         for metrics in ({"record": False}, {"commitLedger": False}):
             with self.subTest(metrics=metrics):
