@@ -1081,6 +1081,63 @@ class Migrate(unittest.TestCase):
         self.assertIn("nothing to do", out)
         self.assertNotRegex(out, r"\d+ create")
 
+    # ---- E52: template updates in the dry run
+
+    def marked(self, rel, version, body="# mine\n"):
+        self.p.write(rel, f"<!-- galivelop-workflow v{version} -->\n{body}")
+
+    def has_tag(self, tag):
+        return subprocess.run(["git", "-C", str(ROOT), "rev-parse", "-q", "--verify", f"refs/tags/{tag}"],
+                              capture_output=True).returncode == 0
+
+    def test_dry_run_review_diff_is_template_to_template(self):
+        if not self.has_tag("v0.5.1"):
+            self.skipTest("the workflow clone has no v0.5.1 tag")
+        self.marked("REVIEW.md", "0.5.1", "# our own review rules\n")
+        before = self.snapshot()
+        code, out = self.p.run_apply("--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertIn("what the template changed (template v0.5.1 -> v", out)
+        self.assertIn("--- REVIEW.md (template v0.5.1)", out)
+        self.assertNotIn("our own review rules", out)  # the project's text is not in a template-to-template diff
+        self.assertEqual(before, self.snapshot())
+
+    def test_dry_run_review_unchanged_between_versions_says_so(self):
+        if not self.has_tag("v0.6.0"):
+            self.skipTest("the workflow clone has no v0.6.0 tag")
+        self.marked("GLOSSARY.md", "0.6.0")
+        code, out = self.p.run_apply("--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertIn("the template did not change between those versions; only set the marker line", out)
+
+    def test_dry_run_fails_closed_to_the_old_diff_without_the_installed_tag(self):
+        self.marked("REVIEW.md", "0.0.1", "# mine\n")
+        code, out = self.p.run_apply("--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertIn("cannot read the v0.0.1 template of REVIEW.md (no tag v0.0.1", out)
+        self.assertIn("git -C", out)
+        self.assertIn("--tags", out)
+        self.assertIn("+++ REVIEW.md (template)", out)
+
+    def test_dry_run_without_template_changes_has_no_update_notes(self):
+        self.applied()
+        code, out = self.p.run_apply("--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("template update", out)
+        self.assertNotIn("cannot read", out)
+
+    def test_dry_run_reports_the_template_update_of_a_log_with_an_old_name(self):
+        self.old_paths()
+        self.marked("docs/traspaso.md", "0.5.1", "# Log\n")
+        before = self.snapshot()
+        code, out = self.p.run_apply("--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertIn("template update: docs/handoff.md comes from the v0.5.1 template", out)
+        self.assertEqual(before, self.snapshot())
+        self.assertTrue(self.exists("docs/traspaso.md"))
+        code, out = self.p.run_apply("--dry-run", "--summary")
+        self.assertIn("template update note(s)", out)
+
     def settings_with_old_hook(self):
         self.p.write(".claude/settings.json", json.dumps({"hooks": {"Stop": [{"hooks": [
             {"type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/gw/scripts/antes-de-parar.py"}]}]}}))

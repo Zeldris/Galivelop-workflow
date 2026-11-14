@@ -370,6 +370,57 @@ class Plan:
         else:
             self.actions.append(("propose", proposal, data, want_exec, f"{rel} differs: {why}"))
 
+    def moved_source(self, rel):
+        """The old path (absolute) a planned move brings to `rel`, or None."""
+        here = str(rel).replace("\\", "/")
+        for action in self.actions:
+            if action[0] != "move":
+                continue
+            new, old = str(action[1]).replace("\\", "/"), str(action[2]).replace("\\", "/")
+            if here == new:
+                return self.root / old
+            if here.startswith(new + "/"):
+                return self.root / (old + here[len(new):])
+        return None
+
+    def seeded_update(self, rel, current, data):
+        """A seeded file the project has: a note when its marker is older, and for DIFFED files the diff, from the
+        template at the installed version (vX, the workflow's git tag) to the current one (vY); without that tag
+        (or for an unmarked file) the template against the project's file, with a warning."""
+        found = header_version(current)
+        older = found is not None and version_key(found) < version_key(self.version)
+        if str(rel) in DIFFED and (found is None or older):
+            old_tpl = self.template_at(rel, found) if older else None
+            if old_tpl is not None:
+                self.diffs.append((rel, old_tpl, data, f"{rel} (template v{found})", f"{rel} (template v{self.version})"))
+            else:
+                if older:
+                    self.warnings.append(
+                        f"cannot read the v{found} template of {rel} (no tag v{found} in {WORKFLOW}); showing the "
+                        f"current template against the project's file instead; fetch the tags and rerun: "
+                        f"git -C {WORKFLOW} fetch --tags")
+                self.diffs.append((rel, current, data, f"{rel} (project)", f"{rel} (template)"))
+        if older:
+            self.notes.append(f"{rel} comes from the v{found} template and the template is now v{self.version}; "
+                              f"the project's file is never overwritten: review the template change with "
+                              f"/gw-update, then set its marker line to v{self.version}")
+
+    def template_at(self, rel, found):
+        """The rendered template of `rel` as it was at workflow version `found` (git tag v<found>), or None."""
+        lang = self.cfg.get("language")
+        if not lang:
+            return None
+        code, text = git(WORKFLOW, "show", f"v{found}:templates/{lang}/{rel}")
+        if code != 0:
+            return None
+        first, nl, rest = text.partition("\n")
+        if header_version(first.encode("utf-8")) == found:  # the tag's own marker: compare the content, not the version
+            text = first.replace(found, self.version) + nl + rest
+        try:
+            return render(text, self.cfg, self.root, self.version, f"{rel}@v{found}").encode("utf-8")
+        except ApplyError:
+            return None
+
     def arrives_by_folder_move(self, rel):
         """True when `rel` is inside a folder that a planned move brings in and the file exists at the source."""
         for action in self.actions:
@@ -389,7 +440,12 @@ class Plan:
             self.file(None, rel, data=data)
             return
         if str(rel) in self.moved_to or self.arrives_by_folder_move(rel):
-            return  # the project's own file is about to be moved there
+            # the project's own file is about to be moved there: a seeded one is compared at its old place, so the
+            # template update still shows in the dry run (the old-names map applied)
+            moved = self.moved_source(rel) if kind == "seeded" else None
+            if moved is not None and moved.is_file():
+                self.seeded_update(rel, moved.read_bytes(), data)
+            return
         dest = self.root / rel
         if not dest.exists():
             self.actions.append(("create", rel, data, False, ""))
@@ -402,12 +458,7 @@ class Plan:
         found = header_version(current)
         older = found is not None and version_key(found) < version_key(self.version)
         if kind == "seeded":
-            if str(rel) in DIFFED and (found is None or older):
-                self.diffs.append((rel, current, data))
-            if older:
-                self.notes.append(f"{rel} comes from the v{found} template and the template is now v{self.version}; "
-                                  f"the project's file is never overwritten: review the template change with "
-                                  f"/gw-update, then set its marker line to v{self.version}")
+            self.seeded_update(rel, current, data)
             return
         if found is not None and not older:
             return  # the project's own edits at this version (or a newer copy)
@@ -1386,7 +1437,7 @@ def summarize(plan):
         lines.append(f"  pending {rel}{suffix}  (a proposal to merge by hand)")
     for rel in plan.orphans:
         lines.append(f"  orphan  {rel}  (no longer in the workflow, kept)")
-    for rel, _cur, _data in plan.diffs:
+    for rel, _cur, _data, _la, _lb in plan.diffs:
         lines.append(f"  differs {rel}  (never written; its diff is in the full dry run)")
     if plan.notes:
         lines.append(f"  {len(plan.notes)} template update note(s); see the full dry run")
@@ -1405,13 +1456,17 @@ def report(plan):
         print(f"apply: {rel} is no longer in the workflow (kept); delete it if nothing uses it: git rm {rel}")
     for note in plan.notes:
         print(f"apply: template update: {note}")
-    for rel, current, data in plan.diffs:
-        print(f"apply: {rel} exists and is never written; what differs from the v{plan.version} template (bring the "
+    for rel, current, data, label_a, label_b in plan.diffs:
+        what = (f"what the template changed ({label_a.split('(', 1)[1][:-1]} -> v{plan.version})"
+                if "(template v" in label_a else f"what differs from the v{plan.version} template")
+        print(f"apply: {rel} exists and is never written; {what} (bring the "
               f"missing rules by hand, then set its first line to <!-- galivelop-workflow v{plan.version} -->):")
         diff = list(difflib.unified_diff(current.decode("utf-8", "replace").splitlines(),
                                          data.decode("utf-8", "replace").splitlines(),
-                                         f"{rel} (project)", f"{rel} (template)", lineterm=""))
+                                         label_a, label_b, lineterm=""))
         shown = config.apply_diff_lines(plan.cfg)  # applyDiffLines (A13); the schema default for an empty cfg
+        if not diff and "(template v" in label_a:
+            print("  (the template did not change between those versions; only set the marker line)")
         for line in diff[:shown]:
             print(f"  {line}")
         if len(diff) > shown:

@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14; excepción a A-6 aprobada por el usuario). Etiqueta y release `v0.6.1` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.1.md` |
-| Siguiente paso | La **`0.7`**: E52, resto: plantillas en el ensayo; B36 (con B32) y E41 ampliada, en serie con `gw-orchestrate-dealer` (recogida H20 ya hecha). Presupuesto de compactaciones: 2 |
+| Siguiente paso | La **`0.7`**: B36 (con B32), luego E41 ampliada, en serie con `gw-orchestrate-dealer` (recogida H20 ya hecha). Presupuesto de compactaciones: 2 |
 
 ### Fases
 
@@ -37,7 +37,7 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-14 — E52: `apply.py --dry-run --summary` (recuentos por acción, `propose`/`merge`, renombrados y avisos; solo con `--dry-run`, si no falla con la orden que lo arregla) y `rename  viejo -> nuevo` en el resumen (rutas, scripts, skills, ganchos); docs es/en y `gw-update` al día
+1. 2026-11-14 — E52: (cerrada: plantillas de bitácora y gw-*.md y diff vX→vY de REVIEW/GLOSSARY en el ensayo) `apply.py --dry-run --summary` (recuentos por acción, `propose`/`merge`, renombrados y avisos; solo con `--dry-run`, si no falla con la orden que lo arregla) y `rename  viejo -> nuevo` en el resumen (rutas, scripts, skills, ganchos); docs es/en y `gw-update` al día
 2. 2026-11-14 — E51: `ci-local.py --validate` analiza el YAML de cada workflow (clave `ciYamlCheck`, sección propia de `tests/check.sh`, en `templates/gw.json`); el lector rechaza ya un escalar plano con `: `
 3. 2026-11-14 — Parche 0.6.1 publicado en main (5afda88): fase 3 con 5 hallazgos arreglados (3d89111), versión y CHANGELOG (d28a1a1), notas de la release para publicar desde local
 4. 2026-11-14 — D104-D106, D108: «Pendiente» sale a `pendingFile` (`move-pending`, `check --strict`); `roadmap.py check` compara los ids de los dos roadmaps; `tests-for.py --run` pasa shellcheck a los `.sh` cambiados; el `commit-msg` pide `/clear` al cerrar fase o versión con el presupuesto pasado. Revisión: 4 medios arreglados, leves a pendientes

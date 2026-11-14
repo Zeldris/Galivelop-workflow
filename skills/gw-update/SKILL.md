@@ -58,7 +58,10 @@ from the project's copy. Summarise it for the user with the CHANGELOG entries be
 ## 3. Show the template diff for filled files
 
 Log, `REVIEW.md`, `GLOSSARY.md` and the `.claude/gw/*.md` notes are never overwritten, because the project filled
-them in. Show what the **template** changed, not what differs from the project's file:
+them in. Show what the **template** changed, not what differs from the project's file. `apply.py --dry-run` already prints the
+template update notes (also for a log still at its old path) and, for `REVIEW.md` and `GLOSSARY.md`, the diff from the
+installed version's template to the new one (`--summary` counts them); if it warns that it cannot read the `v<X>`
+template, do it by hand:
 
 ```bash
 old="$(mktemp -d)"                                                              # a throwaway folder
