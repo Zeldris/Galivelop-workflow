@@ -1,9 +1,9 @@
 # Release de GitHub `v0.6.1` (textos)
 
-- **Etiqueta:** `v0.6.1`, sobre `d28a1a1` (subida a `main` el 2026-11-14; excepción a A-6 aprobada por el usuario).
+- **Etiqueta:** `v0.6.1`, sobre `5afda88` (subida a `main` el 2026-11-14; excepción a A-6 aprobada por el usuario).
 - **Título:** el bloque de abajo.
 - **Cuerpo:** el segundo bloque. La entrada completa está en el CHANGELOG.
-- **Desde local:** `git fetch origin main && git tag v0.6.1 d28a1a1 && git push origin v0.6.1`, que lanza
+- **Desde local:** `git fetch origin main && git tag v0.6.1 5afda88 && git push origin v0.6.1`, que lanza
   `release.yml`; o a mano, `gh release create v0.6.1 --title "<título>" --notes-file <cuerpo>`.
 
 ```text
