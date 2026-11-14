@@ -1268,6 +1268,86 @@ class PrePushBranchCheck(Base):
         self.assertEqual(self.runs(self.checks), ["check"], out)
         self.assertNotIn("only its related tests run", out)
 
+    SKIPPED = "related tests skipped: the full check is already green on this tree in cache"
+    ON = {"GW_CHECK_CACHE": ""}  # B33 tests: the cache on
+
+    def full_change(self, text="true\n"):
+        self.p.write("tools/env.sh", text); self.p.write("src/a.py", "a = 1\n"); self.p.commit("environment change")
+
+    def record(self):  # the local check records the tree of HEAD as green, as the push of it would
+        code, out = self.p.run("bash", ".claude/gw/scripts/check.sh", env=self.ON)
+        self.assertEqual(code, 0, out)
+
+    def push(self, *refs, cache=True):
+        return self.p.push("origin", *refs, env=self.ON if cache else {"GW_CHECK_CACHE": "0"})
+
+    def counts(self):
+        return len(self.runs(self.checks)), len(self.runs(self.related))
+
+    def test_no_cache_file_runs_check_and_related_tests(self):
+        self.full_change()
+        code, out = self.push("feature")
+        self.assertEqual((code, self.counts()), (0, (1, 1)), out)
+        self.assertNotIn(self.SKIPPED, out)
+
+    def test_cache_green_on_the_same_tree_skips_check_and_related_tests_and_says_so(self):
+        self.full_change()
+        self.record()
+        code, out = self.push("feature")
+        self.assertEqual((code, self.counts()), (0, (1, 0)), out)  # the one check run is the recording
+        self.assertIn("check already green on this tree", out)
+        self.assertRegex(out, r"pre-push: related tests skipped: the full check is already green on this tree in cache and covers "
+                              r"them \(to run them anyway: GW_CHECK_CACHE=0 git push\)")
+
+    def test_cache_off_runs_the_check_and_the_related_tests(self):
+        self.full_change()
+        self.record()
+        code, out = self.push("feature", cache=False)
+        self.assertEqual((code, self.counts()), (0, (2, 1)), out)
+        self.assertNotIn(self.SKIPPED, out)
+
+    def test_a_stale_cache_for_another_tree_runs_both(self):
+        self.full_change()
+        self.record()
+        self.p.write("tools/env.sh", "changed\n"); self.p.commit("another environment change")
+        code, out = self.push("feature")
+        self.assertEqual((code, self.counts()), (0, (2, 1)), out)
+        self.assertNotIn(self.SKIPPED, out)
+
+    def test_the_review_mark_only_commit_also_skips_them(self):
+        self.full_change()
+        self.record()
+        self.p.git("commit", "-q", "--allow-empty", "-m", "an empty commit adds no tree change")
+        code, out = self.push("feature")
+        self.assertEqual((code, self.counts()), (0, (1, 0)), out)
+        self.assertIn(self.SKIPPED, out)
+
+    def test_a_protected_push_keeps_running_check_and_related_tests(self):
+        self.p.write("docs/n.md", "content only, so no review mark is needed\n"); self.p.commit("content")
+        self.record()
+        code, out = self.push("HEAD:refs/heads/main")
+        self.assertEqual((code, self.counts()), (0, (2, 1)), out)
+        self.assertNotIn(self.SKIPPED, out)
+
+    def test_several_refs_one_cached_one_not_still_run_the_related_tests(self):
+        p = self.p
+        self.full_change()
+        self.record()                                           # the tree of `feature` is green
+        p.git("checkout", "-q", "-b", "second", "main")
+        p.write("tools/env.sh", "other\n"); p.commit("another environment change")
+        code, out = self.push("feature", "second")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.counts(), (2, 1), out)            # the recording plus only the new tree's check; related ran
+        self.assertNotIn(self.SKIPPED, out)
+
+    def test_several_refs_all_cached_skip_the_related_tests_once(self):
+        p = self.p
+        self.full_change()
+        self.record()
+        p.git("branch", "second")
+        code, out = self.push("feature", "second")
+        self.assertEqual((code, self.counts()), (0, (1, 0)), out)
+        self.assertEqual(out.count(self.SKIPPED), 1, out)
 
 class PrePushPrivate(Base):
     """E2: the pre-push runs private-check.py on what each ref brings (names from the local, uncommitted list)."""
@@ -1906,8 +1986,8 @@ class CheckCache(Base):
         self.assertEqual(self.count(), 2)
         self.assertIn("is a directory, check not recorded", out)
 
-    def test_the_hook_still_sets_up_the_worktree_for_the_related_tests_when_it_skips(self):
-        # related-tests.sh gets the folder the pushed commit is checked out in, also when the check is skipped.
+    def test_the_hook_sets_up_the_worktree_for_the_related_tests_and_skips_them_when_the_check_is_cached(self):
+        # related-tests.sh gets the folder the pushed commit is checked out in; with the check skipped by the cache, B33 skips them too.
         p = self.p
         where = self.tmp / "related-pwd.txt"
         shutil.copy2(ROOT / "scripts" / "related-tests.sh", p.work / ".claude" / "gw" / "scripts" / "related-tests.sh")
@@ -1923,6 +2003,10 @@ class CheckCache(Base):
         code, out = self.push("origin", "HEAD:refs/heads/other")
         self.assertEqual(code, 0, out)
         self.assertIn(self.SKIP, out)
+        self.assertIn("related tests skipped: the full check is already green on this tree in cache", out)
+        self.assertFalse(where.exists())
+        code, out = self.push("origin", "HEAD:refs/heads/third", env={"GW_CHECK_CACHE": "0"})  # forced: they run, in the worktree
+        self.assertEqual(code, 0, out)
         self.assertIn("related tests (fast)", out)
         ran_in = where.read_text().strip()
         self.assertRegex(ran_in, re.escape(str(self.tmp)) + r"/gw-pre-push-wt-\d+-\d+/wt\.\w+\.d$")

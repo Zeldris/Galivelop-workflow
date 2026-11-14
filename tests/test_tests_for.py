@@ -120,6 +120,26 @@ class TestsFor(unittest.TestCase):
         self.assertEqual(code, 3, err)
         self.assertEqual((self.tmp / "ran.txt").read_text(), "<tests/test_a.py><tests/test_b c.py>")
 
+    def test_plain_unittest_command_goes_through_test_run_in_parallel(self):  # B33
+        self.write("tests/test_p.py", "import unittest\nclass A(unittest.TestCase):\n    def test_ok(self): pass\n"
+                   "class B(unittest.TestCase):\n    def test_ok(self): pass\n")
+        self.write("tests/test_f.py", "import unittest\nclass C(unittest.TestCase):\n    def test_bad(self): self.fail('boom-marker')\n")
+        self.configure(RULES, "PYTHONPATH=tests python3 -B -m unittest {files}")
+        code, out, err = self.run_cli("--run", "tests/test_p.py")
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("test-run.py: 1 test files, 2 units", out)
+        self.assertNotIn("tests-for: PYTHONPATH", out)  # not the serial command
+        code, out, err = self.run_cli("--run", "tests/test_p.py", "tests/test_f.py")
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("boom-marker", out)
+        self.assertIn("FAILED (tests/test_f.py::C)", out)
+
+    def test_another_command_is_still_run_as_configured(self):  # B33
+        self.configure(RULES, "printf serial > ran.txt")
+        code, out, err = self.run_cli("--run", "tests/test_a.py")
+        self.assertEqual((code, (self.tmp / "ran.txt").read_text()), (0, "serial"), err)
+        self.assertNotIn("test-run.py", out)
+
     def test_run_with_nothing_to_run(self):
         self.configure(RULES, "exit 9")
         code, out, err = self.run_cli("--run", "README.md")

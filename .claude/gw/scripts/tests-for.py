@@ -20,11 +20,13 @@ group for, or --run with an empty `testMap.command` -> exit 2 with what fixes it
 command's. Python 3.8+ standard library only.
 """
 import argparse
+import importlib.util
 import os
 import re
 import shlex
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -106,6 +108,43 @@ def diff_files(root, rev):
     return [f for f in (r.stdout + untracked.stdout).splitlines() if f]
 
 
+# A testMap.command that is just unittest over {files}: test-run.py runs those same files in parallel instead.
+PLAIN_UNITTEST = re.compile(r"^\s*(PYTHONPATH=\S+\s+)?\S*python3?\s+(-B\s+)?-m\s+unittest\s+\{files\}\s*$")
+
+
+def run_parallel(root, cfg, tests):
+    """Run the test files through scripts/test-run.py (units, `testJobs`); exit 0 all passed, 1 some failed, 2 cannot run."""
+    spec = importlib.util.spec_from_file_location("gw_test_run", HERE / "test-run.py")
+    tr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tr)
+    jobs = cfg.get("testJobs", 0)
+    if not isinstance(jobs, int) or isinstance(jobs, bool) or jobs < 0:
+        print("tests-for: testJobs must be an integer >= 0 (0 = one per CPU); fix .claude/gw.json", file=sys.stderr)
+        return 2
+    jobs = jobs or os.cpu_count() or 1
+    wanted = {}
+    for t in tests:
+        wanted.setdefault(str(Path(t).parent.as_posix()), set()).add(Path(t).name)
+    try:
+        units = [u for folder, names in sorted(wanted.items()) for u in tr.discover(root, sys.executable, folder)
+                 if u[1] in names]
+    except tr.RunError as exc:
+        print(f"tests-for: {exc}", file=sys.stderr)
+        return 2
+    print(f"tests-for: test-run.py: {len(tests)} test files, {len(units)} units, {jobs} jobs", flush=True)
+    failed = []
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        for unit, code, _secs, _ran, output in pool.map(lambda u: tr.run_unit(root, sys.executable, u), units):
+            if code != 0:
+                failed.append(tr.unit_name(unit))
+                print(f"---- {tr.unit_name(unit)} (exit {code})\n{output.rstrip()}", flush=True)
+    if failed:
+        print(f"tests-for: FAILED ({'; '.join(failed)})")
+        return 1
+    print("tests-for: OK")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="The test files a change calls for (testMap in .claude/gw.json).")
     parser.add_argument("files", nargs="*", help="changed files (absolute or relative to the current directory)")
@@ -142,6 +181,8 @@ def main(argv=None):
     if not tests:
         print("tests-for: no test file for these changes; nothing to run")
         return 0
+    if PLAIN_UNITTEST.match(mapping["command"]) and (HERE / "test-run.py").is_file():
+        return run_parallel(root, cfg, tests)  # B33: the same tests, one class per process (testJobs)
     command = mapping["command"].replace("{files}", " ".join(shlex.quote(t) for t in tests))
     print(f"tests-for: {command}", flush=True)
     return subprocess.run(["bash", "-c", command], cwd=str(root)).returncode

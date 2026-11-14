@@ -35,7 +35,9 @@ and effort per agent, review by blocks, a fast check and a complete `.claude/gw.
   compilación y los tests del cambio con el Python más viejo disponible; el `pre-push` de una rama corre solo los
   tests del cambio (`branchCheck`, `relatedTests`; este repo los saca de `scripts/tests-for.py` y `testMap`) y pide el completo solo por las claves que
   cambian lo que corre (`fullCheckSkipKeys`); `scripts/check.sh` corre `version.py --release` en las ramas
-  `version/*` (`releaseCheckBranches`); el CI del repo del flujo instala la versión de ShellCheck de `shellcheckVersion`.
+  `version/*` (`releaseCheckBranches`); el CI del repo del flujo instala la versión de ShellCheck de `shellcheckVersion`; con el check
+  completo ya en verde en caché sobre el mismo árbol, el `pre-push` no repite los tests relacionados (B33), y `tests-for.py --run` los
+  corre en paralelo con `test-run.py`.
 - Orquestación (B16, D42, B28, B19): tipo de subagente ligero `gw-worker` (`.claude/agents/gw-worker.md`, lo crea
   `gw-init`); `gw-orchestrate-dealer` reparte los hallazgos aprobados por grupo de archivos, da a cada agente su
   carpeta en el scratchpad y comprueba la base del worktree; `gw-update` reparte la reconciliación de cada `.gw-new`.
@@ -79,7 +81,9 @@ and effort per agent, review by blocks, a fast check and a complete `.claude/gw.
   compilation and the change's tests with the oldest Python available; a branch's `pre-push` runs only the change's
   tests (`branchCheck`, `relatedTests`; this repo takes them from `scripts/tests-for.py` and `testMap`) and asks for the full check only for the keys that change
   what it runs (`fullCheckSkipKeys`); `scripts/check.sh` runs `version.py --release` on `version/*` branches
-  (`releaseCheckBranches`); the workflow repo's CI installs the ShellCheck version in `shellcheckVersion`.
+  (`releaseCheckBranches`); the workflow repo's CI installs the ShellCheck version in `shellcheckVersion`; with the full
+  check already green in cache on the same tree, the `pre-push` does not repeat the related tests (B33), and `tests-for.py --run`
+  runs them in parallel with `test-run.py`.
 - Orchestration (B16, D42, B28, B19): a light subagent type, `gw-worker` (`.claude/agents/gw-worker.md`, created by
   `gw-init`); `gw-orchestrate-dealer` deals approved findings by group of files, gives each agent its scratchpad
   folder and checks the worktree's base; `gw-update` deals out the reconciliation of each `.gw-new`.
