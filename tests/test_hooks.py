@@ -3505,7 +3505,7 @@ class PreCommitLedger(Base):
             if not os.path.isdir(d):
                 continue
             for name in os.listdir(d):
-                if not name.startswith("python") and not (bindir / name).exists():
+                if not name.startswith("python") and not os.path.lexists(bindir / name):
                     os.symlink(os.path.join(d, name), bindir / name)
         self.work_change()
         r = self.p.git("commit", "-q", "-m", "work", ok=False, env={"PATH": str(bindir)})
