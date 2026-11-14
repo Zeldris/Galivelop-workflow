@@ -13,9 +13,10 @@ matched, `{name:id}` the same with every character that is not a letter, digit o
 exist is left out, so a broad rule costs nothing. A changed file may be absolute or relative to the current directory;
 one outside the project is an error. Nothing matched: no output, exit 0 (with --run, a note and exit 0).
 
-Changed `.sh` files that still exist (D106) also get shellcheck: listed without --run (`shellcheck: FILES`), run
-with --run after the tests via tests/shellcheck.sh (or shellcheck itself if the project has none); a warning there
-fails the run (exit 1); a missing binary warns, and fails in CI or a cloud session, as tests/shellcheck.sh does.
+Changed `.sh` files that still exist (D106) also get shellcheck: listed on stderr without --run (`shellcheck:
+FILES`; stdout stays test names only, tests/old-python.sh reads it), run with --run after the tests via
+tests/shellcheck.sh (or shellcheck itself if the project has none); a warning there fails the run (exit 1); a missing
+binary warns, and fails in CI or a cloud session, as tests/shellcheck.sh does.
 
 Who uses it: the brief of gw-orchestrate-dealer (a subagent runs the tests of what it touches instead of a list
 written by hand) and anyone before a commit. It is not a hook: the push runs `check` and `relatedTests`. Project root
@@ -229,7 +230,7 @@ def main(argv=None):
         for test in tests:
             print(test)
         if shells:
-            print("shellcheck: " + " ".join(shells) + "  (--run runs it)")
+            print("shellcheck: " + " ".join(shells) + "  (--run runs it)", file=sys.stderr)
         return 0
     if not mapping["command"]:
         print("tests-for: testMap.command is empty; set it in .claude/gw.json "

@@ -254,9 +254,11 @@ class ShellcheckStep(unittest.TestCase):  # D106
 
     def test_without_run_lists_the_step(self):
         self.write("scripts/a b.sh", "x\n")
-        code, out, _ = self.run_cli("scripts/a b.sh")
+        code, out, err = self.run_cli("scripts/a b.sh")
         self.assertEqual(code, 0)
-        self.assertIn("shellcheck: scripts/a b.sh", out)
+        self.assertIn("shellcheck: scripts/a b.sh", err)
+        # stdout stays test names only: tests/old-python.sh feeds it to unittest (E22)
+        self.assertNotIn("shellcheck", out)
 
 
 class ThisRepo(unittest.TestCase):
