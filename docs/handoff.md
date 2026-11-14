@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | **`0.6` «Medir»: `ccr-d1e2d496-0vzck8`** (hace de `version/0.6.0` mientras la sesión solo pueda subir a esta rama). `main` = `2e55d66` = **`0.5.2`** (2026-11-12, etiqueta `v0.5.2`). `version/1.0.0` se queda con el diseño (`docs/design/`) |
+| Rama | **`0.6` «Medir»: `ccr-d1e2d496-0vzck8`** (hace de `version/0.6.0` mientras la sesión solo pueda subir a esta rama). `main` = `a1a9705` = **`0.6.0`** (2026-11-14, etiqueta y release `v0.6.0`). `version/1.0.0` se queda con el diseño (`docs/design/`) |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | `0.5.2` en `main` (`2e55d66`, 2026-11-12) |
-| Siguiente paso | **`0.6.0` publicada en `main`** (`a1a9705`, 2026-11-14): tres fases hechas, check completo y CI en verde. Textos de la release en `docs/records/release-v0.6.0.md`; falta crear la release `v0.6.0`: la crea un agente desde una sesión local (usuario, 2026-11-14), con la etiqueta `v0.6.0` sobre `a1a9705` y el título y el cuerpo de ese archivo. Después: la `0.7` (B32 y lo de su tabla en el roadmap), empezando por su recogida. Para la próxima retro: el subagente de B33 volvió a quedarse esperando su trabajo de fondo tras entregar (D92 no bastó). |
+| Último punto estable | **`0.6.0` en `main`** (`a1a9705`, 2026-11-14), CI en verde. Etiqueta y release `v0.6.0` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.0.md`. Fusionada `version/0.5.2` (traía `docs/records/release-v0.5.2.md`) |
+| Siguiente paso | La `0.7` (B32 y lo de su tabla en el roadmap), empezando por su recogida (`gw-harvest`). Para la próxima retro: el subagente de B33 volvió a quedarse esperando su trabajo de fondo tras entregar (D92 no bastó). |
 
 ### Fases
 
