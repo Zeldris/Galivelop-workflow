@@ -1,6 +1,7 @@
 """scripts/tests-for.py (E21): the test files a change calls for, from testMap in .claude/gw.json. Every failing case
 checks the message, not only the exit code."""
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -198,6 +199,64 @@ class TestsFor(unittest.TestCase):
         code, out, err = self.run_cli("scripts/config-guard.py")
         self.assertEqual(code, 2)
         self.assertIn("$.testMap.rules[0].contains: '(' is not a valid regex", err)
+
+
+class ShellcheckStep(unittest.TestCase):  # D106
+    git, write, configure, run_cli = TestsFor.git, TestsFor.write, TestsFor.configure, TestsFor.run_cli
+
+    def setUp(self):
+        TestsFor.setUp(self)
+        self.configure(RULES, "true {files}")
+
+    def env_run(self, *args, path=None, **env):
+        e = {**os.environ, "CI": "", "CLAUDE_CODE_REMOTE": "", **env}
+        if path is not None:
+            e["PATH"] = path
+        r = subprocess.run([sys.executable, "-B", str(SCRIPT), "--root", str(self.tmp), *args],
+                           capture_output=True, text=True, cwd=str(self.tmp), env=e)
+        return r.returncode, r.stdout, r.stderr
+
+    def test_no_sh_changed_no_step(self):
+        code, out, _ = self.env_run("--run", "scripts/config-guard.py")
+        self.assertNotIn("shellcheck", out)
+
+    @unittest.skipUnless(shutil.which("shellcheck"), "shellcheck not installed")
+    def test_warning_fails_with_reason_and_spaces_work(self):
+        self.write("scripts/a b.sh", "#!/bin/bash\necho $1\n")
+        code, out, _ = self.env_run("--run", "scripts/a b.sh")
+        self.assertEqual(code, 1)
+        self.assertIn("SC2086", out + _)
+        self.assertIn("FAILED (shellcheck", out)
+
+    @unittest.skipUnless(shutil.which("shellcheck"), "shellcheck not installed")
+    def test_clean_sh_passes(self):
+        self.write("scripts/ok.sh", "#!/bin/bash\necho \"$1\"\n")
+        self.assertEqual(self.env_run("--run", "scripts/ok.sh")[0], 0)
+
+    def test_deleted_sh_is_skipped(self):
+        code, out, _ = self.env_run("--run", "scripts/gone.sh")
+        self.assertEqual(code, 0)
+        self.assertNotIn("shellcheck", out)
+
+    def test_missing_shellcheck_warns_locally_and_fails_in_ci(self):
+        self.write("scripts/ok.sh", "#!/bin/bash\n")
+        nobin = self.tmp / "nobin"  # git and bash, but no shellcheck
+        nobin.mkdir()
+        for tool in ("git", "bash"):
+            (nobin / tool).symlink_to(shutil.which(tool))
+        empty = str(nobin)
+        code, out, err = self.env_run("--run", "scripts/ok.sh", path=empty)
+        self.assertEqual(code, 0, err + out)
+        self.assertIn("pip install shellcheck-py", out)
+        code, out, err = self.env_run("--run", "scripts/ok.sh", path=empty, CI="true")
+        self.assertEqual(code, 1)
+        self.assertIn("pip install shellcheck-py", err)
+
+    def test_without_run_lists_the_step(self):
+        self.write("scripts/a b.sh", "x\n")
+        code, out, _ = self.run_cli("scripts/a b.sh")
+        self.assertEqual(code, 0)
+        self.assertIn("shellcheck: scripts/a b.sh", out)
 
 
 class ThisRepo(unittest.TestCase):

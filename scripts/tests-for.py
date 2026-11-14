@@ -13,6 +13,10 @@ matched, `{name:id}` the same with every character that is not a letter, digit o
 exist is left out, so a broad rule costs nothing. A changed file may be absolute or relative to the current directory;
 one outside the project is an error. Nothing matched: no output, exit 0 (with --run, a note and exit 0).
 
+Changed `.sh` files that still exist (D106) also get shellcheck: listed without --run (`shellcheck: FILES`), run
+with --run after the tests via tests/shellcheck.sh (or shellcheck itself if the project has none); a warning there
+fails the run (exit 1); a missing binary warns, and fails in CI or a cloud session, as tests/shellcheck.sh does.
+
 Who uses it: the brief of gw-orchestrate-dealer (a subagent runs the tests of what it touches instead of a list
 written by hand) and anyone before a commit. It is not a hook: the push runs `check` and `relatedTests`. Project root
 and config: config.find_root and config.load. Fails closed: no config, an invalid one, a placeholder the rule has no
@@ -26,6 +30,7 @@ import importlib.util
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -165,6 +170,35 @@ def run_parallel(root, cfg, tests, pythonpath=None):
     return 0
 
 
+def shell_files(root, files):
+    """The changed `.sh` files that still exist (a deleted one is skipped), sorted."""
+    return sorted(f for f in set(files) if f.endswith(".sh") and (root / f).is_file())
+
+
+def run_shellcheck(root, shells):
+    """D106: shellcheck over the changed .sh files, as the check does (tests/shellcheck.sh: `shellcheckVersion`,
+    a missing binary warns locally and fails in CI or a cloud session). Without that script, shellcheck directly."""
+    if not shells:
+        return 0
+    print("tests-for: shellcheck " + " ".join(shells), flush=True)
+    script = root / "tests" / "shellcheck.sh"
+    if script.is_file():
+        code = subprocess.run(["bash", str(script), *shells], cwd=str(root)).returncode
+    elif shutil.which("shellcheck"):
+        code = subprocess.run(["shellcheck", *shells], cwd=str(root)).returncode
+    elif os.environ.get("CI") == "true" or os.environ.get("CLAUDE_CODE_REMOTE") == "true":
+        print("tests-for: shellcheck is missing and the check needs it; install it: pip install shellcheck-py",
+              file=sys.stderr)
+        return 1
+    else:
+        print("tests-for: warning: shellcheck not installed locally, so the .sh files were not checked; "
+              "install it: pip install shellcheck-py")
+        return 0
+    if code != 0:
+        print(f"tests-for: FAILED (shellcheck, exit {code})")
+    return code
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description="The test files a change calls for (testMap in .claude/gw.json).")
     parser.add_argument("files", nargs="*", help="changed files (absolute or relative to the current directory)")
@@ -190,9 +224,12 @@ def main(argv=None):
     if not mapping["rules"]:
         print("tests-for: testMap.rules is empty, so no change calls for a test; add rules to .claude/gw.json "
               "(see docs/en/config.md)", file=sys.stderr)
+    shells = shell_files(root, files)
     if not args.run:
         for test in tests:
             print(test)
+        if shells:
+            print("shellcheck: " + " ".join(shells) + "  (--run runs it)")
         return 0
     if not mapping["command"]:
         print("tests-for: testMap.command is empty; set it in .claude/gw.json "
@@ -200,7 +237,12 @@ def main(argv=None):
         return 2
     if not tests:
         print("tests-for: no test file for these changes; nothing to run")
-        return 0
+        return run_shellcheck(root, shells)
+    code = run_tests(root, cfg, mapping, tests)
+    return code or run_shellcheck(root, shells)
+
+
+def run_tests(root, cfg, mapping, tests):
     plain = PLAIN_UNITTEST.match(mapping["command"])
     if plain and (HERE / "test-run.py").is_file():
         return run_parallel(root, cfg, tests, plain.group(1))  # B33: the same tests, one class per process (testJobs)
