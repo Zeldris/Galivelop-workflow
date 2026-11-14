@@ -11,6 +11,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+import unittest.mock
 from pathlib import Path
 
 from test_hooks import BASE_CONFIG, ROOT
@@ -1869,6 +1870,32 @@ class LegacyNames(unittest.TestCase):
         # silent: a warning without a replacement would still send the reader to rename a text that is history
         self.p.write("docs/notes.md", "run docs/difusion/x.md\n")
         self.assertEqual(self.warnings(self.applied()), [])
+
+    def test_roadmap_path_is_normalized(self):
+        self.roadmap_cfg([{"path": ".\\docs\\roadmap-front.md", "done": "x", "open": ["y"]}])
+        self.p.write("docs/roadmap-front.md", "run check-verde.sh\n")
+        self.assertEqual(self.warnings(self.applied()), [])
+
+    def test_ls_files_failure_warns_as_before(self):
+        spec = importlib.util.spec_from_file_location("apply_lsf", APPLY_SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        plan = mod.Plan(self.p.work, VERSION, False)
+        failed = subprocess.CompletedProcess([], 128, b"", b"fatal")
+        with unittest.mock.patch.object(mod.subprocess, "run", return_value=failed):
+            paths = mod.project_paths(plan)
+        self.assertIsNone(paths)
+        self.assertTrue(mod.name_exists(paths, "merge-branch.sh"))
+
+    def test_name_on_disk_counts_even_if_ignored(self):
+        self.p.write(".gitignore", ".claude/gw/\n")
+        self.p.write(".claude/gw/scripts/merge-x.sh", "x\n")
+        self.p.write("docs/notes.md", "docs/difusion/x.md\n")
+        spec = importlib.util.spec_from_file_location("apply_disk", APPLY_SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        self.assertFalse(mod.name_exists(set(), "merge-x.sh"))
+        self.assertTrue(mod.name_exists(set(), ".claude/gw/scripts/merge-x.sh", self.p.work))
 
     def test_name_exists_helper(self):
         spec = importlib.util.spec_from_file_location("apply_names", APPLY_SCRIPT)

@@ -1171,26 +1171,38 @@ def after_plan(plan, rel):
     """Where the file `rel` is once the plan runs: None when it is removed, the target when it (or a folder above it)
     is moved."""
     for kind, target, old, _exec, _detail in plan.actions:
-        if kind == "remove" and (rel == str(target) or rel.startswith(f"{target}/")):
+        target, old = Path(str(target)).as_posix(), Path(str(old)).as_posix()
+        if kind == "remove" and (rel == target or rel.startswith(f"{target}/")):
             return None
-        if kind == "move" and (rel == str(old) or rel.startswith(f"{old}/")):
-            rel = str(target) + rel[len(str(old)):]
+        if kind == "move" and (rel == old or rel.startswith(f"{old}/")):
+            rel = target + rel[len(old):]
     return rel
 
 
 def project_paths(plan):
-    """Every path of the project (tracked and untracked, not ignored) plus the targets the plan creates (D100)."""
+    """Every path of the project (tracked and untracked, not ignored) plus the targets the plan creates (D100);
+    None when git cannot list them (fail closed: every name then counts as existing)."""
     r = subprocess.run(["git", "-C", str(plan.root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
                        capture_output=True)
-    found = {p.decode("utf-8", "replace") for p in r.stdout.split(b"\0") if p} if r.returncode == 0 else set()
-    found.update(str(a[1]) for a in plan.actions if a[0] != "remove")
+    if r.returncode != 0:
+        return None
+    found = {p.decode("utf-8", "replace") for p in r.stdout.split(b"\0") if p}
+    found.update(Path(str(a[1])).as_posix() for a in plan.actions if a[0] != "remove")
     return found
 
 
-def name_exists(paths, new):
-    """True when `new` (a file, a folder or a bare script name) is one of `paths`, a folder above one, or ends one."""
+def name_exists(paths, new, root=None):
+    """True when `new` (a file, a folder or a bare script name) is one of `paths`, a folder above one, or ends one,
+    or is already on disk (an ignored `.claude/gw/` is not in git's list). paths None: unknown, so it exists."""
+    if paths is None:
+        return True
     new = new.rstrip("/")
-    return any(p == new or p.startswith(f"{new}/") or p.endswith(f"/{new}") or f"/{new}/" in f"/{p}" for p in paths)
+    if root is not None and (root / new).exists():
+        return True
+    wrapped = {"/" + p for p in paths}
+    if f"/{new}" in wrapped:
+        return True
+    return any(p.startswith(f"{new}/") or p.endswith(f"/{new}") or f"/{new}/" in p for p in wrapped)
 
 
 def plan_legacy_names(plan, cfg, wanted_skills, keep):
@@ -1222,9 +1234,9 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
     skip = {str(config.CONFIG_REL), ".claude/settings.json"}
     skip_dirs = tuple(f"{cfg[k].rstrip('/')}/" for k in ("recordsDir", "proposalsDir") if cfg.get(k))
     skip_globs = list(cfg.get("legacyNamesSkip", ["CHANGELOG*"]))
-    skip_roadmaps = {str(Path(str(e.get("path", ""))).as_posix()) for e in config.roadmap_files(cfg)
+    skip_roadmaps = {str(e["path"]).replace("\\", "/").removeprefix("./") for e in config.roadmap_files(cfg)
                      if isinstance(e, dict) and e.get("path")}  # closed tasks quote old names as history (D100)
-    known = None
+    known, exists = None, {}
     limit = int(cfg.get("legacyNamesMax", 50))
     hits, total, owned = [], 0, {}
     fields = r.stdout.split(b"\0")  # git grep -n -z: path NUL line NUL text NL path NUL line NUL text NL...
@@ -1248,9 +1260,12 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
         if owned[rel]:
             continue
         for m in regex.finditer(text):
-            if known is None:
+            if known is None and not exists:
                 known = project_paths(plan)
-            if not name_exists(known, pairs[m.group(1)]):
+            new = pairs[m.group(1)]
+            if new not in exists:
+                exists[new] = name_exists(known, new, plan.root)
+            if not exists[new]:
                 continue  # the new name is not in this project: renaming would break the text (D100)
             total += 1
             if len(hits) < limit:
