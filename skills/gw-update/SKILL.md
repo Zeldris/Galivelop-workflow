@@ -17,6 +17,9 @@ Updates what the workflow owns (scripts, skills, git hooks, settings entries, CI
 project fills in (log, `REVIEW.md`, `GLOSSARY.md`, notes). The mechanical part is `apply.py`; this skill adds the
 judgement: what changed, what the user wants, what to merge by hand. Reply in the project's `language`.
 
+The project's installed copy of this skill is the old version. Once `<workflow>` is at the target tag (step 1), follow
+`<workflow>/skills/gw-update/SKILL.md` instead of the installed copy.
+
 ## 1. Compare versions
 
 `<workflow>` is the clone of `Galivelop-workflow` (a sibling `../Galivelop-workflow`, or attached to the session;
@@ -108,7 +111,10 @@ user from the tables and opens a file only for a row in doubt.
    were 89% of the paths of one update. Review the files the project merged by hand and its own files.
 3. Commit with the message `apply.py` suggested and a real `Next:` line (`Siguiente:` in Spanish projects), update
    the log in the same commit, and `git push`; the pre-push runs the check.
-4. Open the PR from the update branch to `protectedBranch` (the `pr` skill writes the body, listing the CHANGELOG
+4. Open the PR only after the three phases of the project's `AGENTS.md` (code review, environment, closing), not right
+   after the commit. The PR's CI runs the base branch's old `.githooks/pre-commit`: if it rejects text of the workflow
+   itself, mark that line with `gw-allow-secret` and say so in the PR body.
+   Open the PR from the update branch to `protectedBranch` (the `pr` skill writes the body, listing the CHANGELOG
    entries between X and Y and what was merged by hand) and give the user its link. Merging stays the user's call.
 
 Done when doctor is green, no `*.gw-new` is left, `version` equals Y and the PR is open.
