@@ -1297,7 +1297,20 @@ class PrePushBranchCheck(Base):
         self.assertEqual((code, self.counts()), (0, (1, 0)), out)  # the one check run is the recording
         self.assertIn("check already green on this tree", out)
         self.assertRegex(out, r"pre-push: related tests skipped: the full check is already green on this tree in cache and covers "
-                              r"them \(to run them anyway: GW_CHECK_CACHE=0 git push\)")
+                              r"them; only relatedTests.slow run \(to run all: GW_CHECK_CACHE=0 git push\)")
+
+    def test_cache_green_still_runs_the_slow_related_tests_the_check_does_not_cover(self):  # B33 review
+        slow = self.tmp / "slow.txt"
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["relatedTests"]["slow"] = [f'echo slow >> "{slow}"']
+        self.p.write(".claude/gw.json", json.dumps(cfg)); self.p.commit("a slow related test")
+        self.full_change()
+        self.record()
+        code, out = self.push("feature")
+        self.assertEqual((code, self.counts()), (0, (1, 0)), out)  # fast skipped
+        self.assertEqual(self.runs(slow), ["slow"], out)
+        self.assertIn("related tests (slow)", out)
+        self.assertIn("only relatedTests.slow run", out)
 
     def test_cache_off_runs_the_check_and_the_related_tests(self):
         self.full_change()
@@ -1314,12 +1327,22 @@ class PrePushBranchCheck(Base):
         self.assertEqual((code, self.counts()), (0, (2, 1)), out)
         self.assertNotIn(self.SKIPPED, out)
 
-    def test_the_review_mark_only_commit_also_skips_them(self):
+    def test_an_empty_commit_on_a_green_tree_also_skips_them(self):
         self.full_change()
         self.record()
         self.p.git("commit", "-q", "--allow-empty", "-m", "an empty commit adds no tree change")
         code, out = self.push("feature")
         self.assertEqual((code, self.counts()), (0, (1, 0)), out)
+        self.assertIn(self.SKIPPED, out)
+
+    def test_the_review_mark_only_commit_also_skips_them(self):  # the derived hit: a real mark commit, as reviewed.sh makes
+        self.full_change()
+        self.record()
+        head = self.p.sha()
+        self.p.write("docs/revisado.txt", head + "\n"); self.p.commit(f"Revisado: {head}")
+        code, out = self.push("feature")
+        self.assertEqual((code, self.counts()), (0, (1, 0)), out)
+        self.assertIn("only adds the review mark on", out)
         self.assertIn(self.SKIPPED, out)
 
     def test_a_protected_push_keeps_running_check_and_related_tests(self):

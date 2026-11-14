@@ -42,7 +42,7 @@
 #     included).
 #   - Calls related-tests.sh <changed-file> <checkout-dir> for each ref that takes the related scope (that ref's own
 #     files, the folder where its commit is checked out); a ref that takes the full scope is covered by the call after
-#     the loop, with those refs' files and the last checkout. prepush-branches.sh <changed-file> <pushed-file> gets every
+#     the loop, with those refs' files and the last checkout (with the check cached green on every such ref, only the slow ones). prepush-branches.sh <changed-file> <pushed-file> gets every
 #     ref's files. Both come from the workflow's scripts folder whenever they exist (run with bash, executable or not),
 #     with git's ref lines on stdin.
 # Skipping it (git push --no-verify) is only for a WIP: commit with red tests.
@@ -515,11 +515,15 @@ sort -u -o "$work/changed" "$work/changed"
 if [ -f "$scripts/prepush-branches.sh" ]; then
   bash "$scripts/prepush-branches.sh" "$work/changed" "$work/pushed" < "$work/input" || fail "prepush-branches.sh refused the push; fix what it reports and push again: git push"
 fi
+related_kinds="fast slow"
 if [ "$full_ref" = "true" ] && [ "$full_runs" -gt 0 ] && [ "$cache_hits" -eq "$full_runs" ]; then
-  # B33: every full-scope ref passed the whole check on this very tree (cache), which already runs what the related tests would.
-  echo "pre-push: related tests skipped: the full check is already green on this tree in cache and covers them (to run them anyway: GW_CHECK_CACHE=0 git push)"
-elif [ -f "$scripts/related-tests.sh" ] && [ -n "$checkdir" ] && [ "$full_ref" = "true" ]; then
+  # B33: every full-scope ref passed the whole check on this very tree (cache), which already covers the fast related
+  # tests; the slow ones (what the check does not run) still run.
+  echo "pre-push: related tests skipped: the full check is already green on this tree in cache and covers them; only relatedTests.slow run (to run all: GW_CHECK_CACHE=0 git push)"
+  related_kinds="slow"
+fi
+if [ -f "$scripts/related-tests.sh" ] && [ -n "$checkdir" ] && [ "$full_ref" = "true" ]; then
   sort -u -o "$work/changed_full" "$work/changed_full"
-  bash "$scripts/related-tests.sh" "$work/changed_full" "$checkdir" < "$work/input" || fail "the related tests failed; fix them, commit and push again: git push"
+  GW_RELATED_KINDS="$related_kinds" bash "$scripts/related-tests.sh" "$work/changed_full" "$checkdir" < "$work/input" || fail "the related tests failed; fix them, commit and push again: git push"
 fi
 echo "pre-push: all green."

@@ -975,8 +975,11 @@ def plan_schema(plan):
     found = config.schema_version(raw)
     if found >= config.SCHEMA_VERSION:
         return
+    old = raw.get("version")
+    if isinstance(old, str) and version_key(old) > version_key(plan.version):
+        return  # a project newer than this workflow is raised, never lowered (like `newer` for the owned files)
     mine = [i for i, a in enumerate(plan.actions) if a[0] == "merge" and Path(a[1]) == config.CONFIG_REL]
-    base, details = raw, []
+    base, details = dict(raw), []
     if mine:
         base = json.loads(plan.actions[mine[-1]][2].decode("utf-8"))
         details = [plan.actions[i][4] for i in mine]
@@ -996,8 +999,11 @@ def plan_version(plan):
         return
     if not isinstance(raw, dict):
         return
+    old = raw.get("version")
+    if isinstance(old, str) and version_key(old) > version_key(plan.version):
+        return  # a project newer than this workflow is raised, never lowered (like `newer` for the owned files)
     mine = [i for i, a in enumerate(plan.actions) if a[0] == "merge" and Path(a[1]) == config.CONFIG_REL]
-    base, details = raw, []
+    base, details = dict(raw), []
     if mine:
         base = json.loads(plan.actions[mine[-1]][2].decode("utf-8"))
         details = [plan.actions[i][4] for i in mine]
@@ -1006,7 +1012,7 @@ def plan_version(plan):
     if mine:
         plan.actions = [a for i, a in enumerate(plan.actions) if i not in mine]
     base["version"] = plan.version
-    details.append(f"version {raw.get('version')} -> {plan.version}")
+    details.append(f"version {old} -> {plan.version}")
     plan.actions.append(("merge", config.CONFIG_REL, dump(base), False, "; ".join(details)))
 
 

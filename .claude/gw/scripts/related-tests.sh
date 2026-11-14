@@ -69,6 +69,9 @@ run() {  # run <kind>: every command config.py says applies, one NUL-terminated 
   done <<<"$cmds"
 }
 exec 4>&1  # config.py notes (skipped entries) go to stdout
-run fast
-run slow
+# GW_RELATED_KINDS (default "fast slow") picks the kinds to run: the pre-push sets "slow" when the full check is cached green
+# on the tree, because the check already covers the fast ones.
+for kind in ${GW_RELATED_KINDS:-fast slow}; do
+  case "$kind" in fast|slow) run "$kind";; *) echo "related-tests: GW_RELATED_KINDS has '$kind'; use fast and/or slow" >&2; exit 2;; esac
+done
 exit 0
