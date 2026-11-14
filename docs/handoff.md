@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.0` en `main`** (`a1a9705`, 2026-11-14), CI en verde. Etiqueta y release `v0.6.0` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.0.md`. Fusionada `version/0.5.2` (traía `docs/records/release-v0.5.2.md`) |
-| Siguiente paso | **Parche `0.6.1`**: D97-D108 hechas; fases 1, 2 y 3 hechas (fase 3: `/code-review` del diff desde `c44d5cb`, 5 hallazgos arreglados en `3d89111`, leves en `docs/records/pending.md`; check completo y CI en verde). **Ahora:** subida a `main` con confirmación del usuario; después `docs/records/release-v0.6.1.md` y la `0.7` (E51, E52, B36 y E41 ampliada). |
+| Siguiente paso | **Parche `0.6.1`** cerrado y en `d28a1a1` (versión y CHANGELOG); subida a `main` confirmada por el usuario el 2026-11-14 (excepción a A-6) y lanzada. **Ahora:** comprobar que `origin/main` = `d28a1a1` y su CI en verde; la release `v0.6.1` la publica el usuario desde local con `docs/records/release-v0.6.1.md`. Después, la `0.7` (E51, E52, B36 y E41 ampliada). |
 
 ### Fases
 
