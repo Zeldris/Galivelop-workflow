@@ -149,7 +149,11 @@ def breakdown(root, cfg, hook_chars=0):
     log_text = read_text(os.path.join(str(root), log))
     archive = f"python3 {os.path.join(HERE, 'handoff.py')} archive"
     cap = config.log_size(cfg or {})
-    if cap > 0 and len(log_text) > cap:
+    if (cfg or {}).get("pendingFile") and cap > 0 and len(log_text) > cap:  # `archive` works on pendingFile
+        log_fix = f"over logSize ({len(log_text)} > {cap} chars): shorten the log by hand (`archive` does not touch it)"
+    elif (cfg or {}).get("pendingFile"):
+        log_fix = "shorten it by hand and keep cells ≤ 800 chars (`archive` works on pendingFile, not on the log)"
+    elif cap > 0 and len(log_text) > cap:
         log_fix = f"over logSize ({len(log_text)} > {cap} chars): {archive}"
     else:
         log_fix = f"shorten it: archive the items of published versions ({archive}) and keep cells ≤ 800 chars"

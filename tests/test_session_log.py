@@ -503,6 +503,9 @@ class Recover(Base):
         self.assertEqual(code, 0, out)
         self.assertIn("- Pending: 2 entries in docs/pending.md (pendingFile)", out)
         self.assertNotIn("not counted", out)
+        p.write("docs/pending.md", "# Pending\n\n## Pending\n\n- **Archived (2026-11-01):** 3 item(s) of x\n- one\n")
+        code, out = p.run_recover("--state")
+        self.assertIn("- Pending: 1 entries in docs/pending.md (pendingFile)", out)
 
     def test_after_a_compaction_only_the_first_section_comes_back(self):
         self.p.write("docs/log.md", "# Log\n\n## State\n\nnow | next step\n\n## Pending\n\n- the left-over task\n")

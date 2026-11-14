@@ -348,7 +348,7 @@ def pending_count(text):
     lines = text.splitlines()
     head, end = pending_section(lines)
     body = lines if head is None else lines[head + 1:end]
-    return sum(1 for l in body if PENDING_ITEM.match(l))
+    return sum(1 for l in body if PENDING_ITEM.match(l) and not ARCHIVED_LINE.match(l))
 
 
 def pending_problems(ctx, text, me):
@@ -399,8 +399,13 @@ def cmd_check(ctx, args):
     soft += pending_problems(ctx, text, me)
     cap = gwconfig.log_size(ctx.config)
     if cap > 0 and len(text) > cap:  # a warning only: it never fails the commit, not even with --strict
-        print(f"WARNING: handoff: the log has {len(text)} characters (cap logSize = {cap}); archive the items of published "
-              f"versions: {me} archive")
+        if gwconfig.pending_file(ctx.config):  # `archive` works on pendingFile: it cannot shrink the log
+            print(f"WARNING: handoff: the log has {len(text)} characters (cap logSize = {cap}); shorten it by hand (move "
+                  f"what is done out of the state table: {me} done \"<text>\"; the pending items live in "
+                  f"{gwconfig.pending_file(ctx.config)}, `archive` does not touch the log)")
+        else:
+            print(f"WARNING: handoff: the log has {len(text)} characters (cap logSize = {cap}); archive the items of "
+                  f"published versions: {me} archive")
     problems = rows_problems(ctx, args, text.splitlines()) if ctx.config.get("logRows") else []
     if args.strict:
         problems += soft
@@ -812,7 +817,7 @@ def cmd_archive(ctx, args):
     log_name = args.file or gwconfig.pending_file(ctx.config) or ctx.log
     path = Path(args.file) if args.file else ctx.root / log_name
     archive = ctx.root / gwconfig.log_archive(ctx.config)
-    cap = gwconfig.log_size(ctx.config)
+    cap = 0 if (not args.file and gwconfig.pending_file(ctx.config)) else gwconfig.log_size(ctx.config)  # logSize caps the log
     try:
         raw = path.read_bytes().decode("utf-8")
     except (OSError, UnicodeDecodeError) as exc:
@@ -999,7 +1004,12 @@ def cmd_move_pending(ctx, args):
     english = lines[head].split()[1].lower().startswith("pending")
     eol = "\r\n" if lines[head].endswith("\r\n") else "\n"
     body = [l.rstrip("\r\n") for l in lines[head + 1:end]]
-    moved = [l for l in body if not POINTER_COUNT.search(l) or PENDING_ITEM.match(l)]
+    names = {rel, Path(rel).name}
+
+    def is_pointer(l):  # the log's pointer line: not indented, with a count, and naming the pending file
+        return not l[:1].isspace() and POINTER_COUNT.search(l) and any(n in l for n in names)
+
+    moved = [l for l in body if not is_pointer(l)]
     while moved and not moved[0].strip():
         moved.pop(0)
     while moved and not moved[-1].strip():

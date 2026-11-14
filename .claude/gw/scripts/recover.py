@@ -309,12 +309,11 @@ def pending_line(root, cfg):
     path = root / rel
     if not path.is_file():
         return [f"- Pending: {rel} (pendingFile) does not exist; create it: python3 {HERE}/handoff.py move-pending"]
-    lines = path.read_text(encoding="utf-8", errors="replace").splitlines()
-    head = next((i for i, l in enumerate(lines) if re.match(r"^##\s+(Pendiente|Pending)\b", l, re.I)), None)
-    if head is not None:
-        end = next((i for i in range(head + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
-        lines = lines[head + 1:end]
-    count = sum(1 for l in lines if l.startswith("- "))
+    try:
+        import handoff
+    except Exception:  # handoff.py missing or broken: no count rather than a wrong one
+        return [f"- Pending: {rel} (pendingFile); read it when the task needs it"]
+    count = handoff.pending_count(path.read_text(encoding="utf-8", errors="replace"))
     return [f"- Pending: {count} entries in {rel} (pendingFile); read it when the task needs them: grep -n '^- ' {rel}"]
 
 

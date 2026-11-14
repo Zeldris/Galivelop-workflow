@@ -151,6 +151,13 @@ class Breakdown(Base):
         self.assertRegex(fix, r"python3 \S+handoff\.py archive\)")
         self.assertNotIn("D65", fix)
 
+    def test_log_fix_with_pending_file_does_not_name_archive(self):
+        (self.root / "docs" / "log.md").write_text("l" * 500)
+        self.write_config({"logSize": 400, "pendingFile": "docs/pending.md"})
+        fix = {p[0]: p[2] for p in cg.breakdown(self.root, self.cfg())}["log"]
+        self.assertIn("over logSize (500 > 400 chars): shorten the log by hand", fix)
+        self.assertNotIn("handoff.py archive", fix)
+
     def test_missing_files_estimate_zero(self):
         parts = cg.breakdown(self.root, self.cfg())
         self.assertEqual([p[1] for p in parts], [0, 0, 0, 0])

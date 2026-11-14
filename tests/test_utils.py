@@ -2700,12 +2700,13 @@ class HandoffPendingFile(Base):
         self.use(self.PENDING)
         self.p.write(self.PENDING, "# Pendiente\n\n## Pendiente\n\n- **Archivado (2026-11-01):** 1 elemento(s) de "
                      "versiones ya publicadas (≤ 0.5.0) en [a](a.md)\n- old `0.4.0` thing\n- future `0.9`\n")
-        path = self.log("Lo pendiente está en otro archivo (3 entradas).\n")
+        path = self.log("Lo pendiente está en otro archivo (2 entradas).\n")  # the Archivado bullet is not an item
         self.assertEqual(self.check(path)[0], 0)
         code, out = self.p.script("handoff.py", "archive", "--date", "2026-11-09")
         self.assertEqual(code, 0, out)
         self.assertIn("docs/records/pending.md now", out)
-        self.assertIn("(2 entradas)", path.read_text())
+        self.assertIn("(cap none)", out)  # logSize caps the log, not the pending file
+        self.assertIn("(1 entradas)", path.read_text())
         self.assertEqual(self.check(path), (0, ""))
 
     def test_archive_reads_the_pending_file_when_set(self):
@@ -2715,7 +2716,30 @@ class HandoffPendingFile(Base):
         self.assertEqual(self.p.script("handoff.py", "archive", "--date", "2026-11-09")[0], 0)
         self.assertNotIn("old `0.4.0`", (self.p.work / self.PENDING).read_text())
         self.assertIn("old `0.4.0` thing", (self.p.work / self.ARCHIVE).read_text())
-        self.assertIn("(2 entradas)", path.read_text())
+        self.assertIn("(1 entradas)", path.read_text())
+
+    def test_size_warning_with_pending_file_does_not_send_to_archive(self):
+        self.use(self.PENDING)
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, log="docs/h.md", pendingFile=self.PENDING, logSize=200)))
+        path = self.log("Lo pendiente está en otro archivo (0 entradas).\n" + "x" * 300 + "\n")
+        self.p.write(self.PENDING, "# Pendiente\n\n## Pendiente\n")
+        code, out = self.check(path)
+        self.assertEqual(code, 0, out)
+        self.assertIn("cap logSize = 200); shorten it by hand", out)
+        self.assertIn("`archive` does not touch the log", out)
+        self.assertNotIn("archive the items of published versions", out)
+
+    def test_move_pending_keeps_continuations_and_moves_a_bulleted_pointer_out(self):
+        self.use(self.PENDING)
+        body = ("- Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (3 entradas)\n"
+                "- item with detail\n  sigue (4 entradas) aquí\n- second\n")
+        path = self.log(body)
+        code, out = self.p.script("handoff.py", "move-pending", str(path))
+        self.assertEqual(code, 0, out)
+        moved = (self.p.work / self.PENDING).read_text()
+        self.assertIn("- item with detail\n  sigue (4 entradas) aquí\n- second\n", moved)
+        self.assertNotIn("Lo pendiente está en", moved)
+        self.assertIn("(2 entradas)", self.section(path))
 
 
 if __name__ == "__main__":
