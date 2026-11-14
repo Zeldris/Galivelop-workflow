@@ -197,15 +197,17 @@ def check_next(config, message, found, msgfile):
                  f"GW_NO_NEXT=1 git commit -e -F {msgfile}")
 
 
-def check_measured(message, found, msgfile):
-    """`Findings:` and `Retries:` count only in the last paragraph of trailers (change-size.py, metrics.py): a line
-    of that shape that git does not read as a trailer is lost silently, so it is refused."""
-    for key in ("findings", "retries"):
-        lines = [l for l in message.splitlines() if re.match(rf"{key}:[ \t]*\S", l, re.IGNORECASE)]
+def check_measured(config, message, found, msgfile):
+    """The trailers metrics.quality.findingsTrailer and retriesTrailer (`Findings:`, `Retries:`) count only in the
+    trailer block (change-size.py, metrics.py): a line of that shape that git does not read as a trailer is lost
+    silently, so it is refused."""
+    quality = gwconfig.metrics(config)["quality"]
+    for word in (quality["findingsTrailer"], quality["retriesTrailer"]):
+        key = word.lower()
+        lines = [l for l in message.splitlines() if re.match(rf"{re.escape(key)}[ \t]*:[ \t]*\S", l, re.IGNORECASE)]
         kept = [k for k, _ in found if k.lower() == key]
         if len(lines) > len(kept):
-            word = key.capitalize()
-            raise Reject(f"a `{word}:` line is outside the last paragraph of trailers, where change-size.py and metrics.py "
+            raise Reject(f"a `{word}:` line is outside the trailer block, where change-size.py and metrics.py "
                          f"do not read it (it would be lost silently)\n"
                          f"commit-msg: move the `{word}: <n>` line to the last paragraph, next to `Refs:`, and commit "
                          f"again: git commit -e -F {msgfile}")
@@ -323,7 +325,7 @@ def run(root, msgfile):
     if agent:
         check_agent(found, msgfile, model_rules(config))
     if not merging and (refs or nxt):
-        check_measured(message, found, msgfile)
+        check_measured(config, message, found, msgfile)
     if not merging and refs:
         check_refs(root, config, found, msgfile)
     if not merging and nxt:

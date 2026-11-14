@@ -236,6 +236,14 @@ class Refs(Msg):
     def test_a_mention_inside_a_sentence_passes(self):
         self.accepted("work\n\nthe Findings: 3 trailer and a Retries: 1 one are read\n\nRefs: D11\nSiguiente: x")
 
+    def test_a_space_before_the_colon_is_still_that_trailer(self):
+        self.refused("work\n\nFindings : 3\n\nRefs: D11\nSiguiente: x", "`Findings:` line is outside the trailer block")
+
+    def test_the_configured_trailer_names_are_followed(self):
+        self.configure(metrics={"quality": {"findingsTrailer": "Hallazgos"}})
+        self.refused("work\n\nHallazgos: 3\n\nRefs: D11\nSiguiente: x", "`Hallazgos:` line is outside")
+        self.accepted("work\n\nFindings: 3\n\nRefs: D11\nHallazgos: 3\nSiguiente: x")
+
     def test_a_message_without_trailers_keeps_its_own_refusal(self):
         self.refused("work", "no Refs trailer")
 
