@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | `0.5.2` en `main` (`2e55d66`, 2026-11-12) |
-| Siguiente paso | **`0.6.0`** en obra: todas sus filas hechas y recogida H19 hecha (2026-11-13). Arreglos de H19 (D90-D93, B30), versión `0.6.0` con su CHANGELOG y repaso de documentación hechos; fase 1 hecha (11 hallazgos, arreglados); fase 2: retro decidida (R1, R2, R4 aprobadas → B33, B34, B35; R3 aplazada). B33-B35 hechas y fusionadas; fase 3: `/code-review` de B33-B35 hecho (8 hallazgos, arreglados en `fix(B33)` y fusionados). Sigue: check completo, CI, `reviewed.sh`, `version.py --release` y `main` con confirmación del usuario. Para la próxima retro: el subagente de B33 volvió a quedarse esperando su trabajo de fondo tras entregar (D92 no bastó). |
+| Siguiente paso | **`0.6.0` publicada en `main`** (`a1a9705`, 2026-11-14): tres fases hechas, check completo y CI en verde. Textos de la release en `docs/records/release-v0.6.0.md`; falta crear la release `v0.6.0` (a mano o subiendo la etiqueta, a elegir por el usuario). Después: la `0.7` (B32 y lo de su tabla en el roadmap), empezando por su recogida. Para la próxima retro: el subagente de B33 volvió a quedarse esperando su trabajo de fondo tras entregar (D92 no bastó). |
 
 ### Fases
 
