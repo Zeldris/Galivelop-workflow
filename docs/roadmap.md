@@ -216,11 +216,11 @@ En este orden, porque cada paso usa el anterior.
 | D101 | `harvest.py` saca ideas solo de las líneas añadidas en el rango: archivar la bitácora no devuelve ideas viejas, con su test (recogida `0.7`, portal P1) | hecho (2026-11-14) |
 | D102 | El valor por defecto de `doctorTestDirsIgnore` (esquema y `templates/gw.json`) incluye `.claude/skills` (recogida `0.7`, private-project-3 P2) | hecho (2026-11-14) |
 | D103 | El encargo de `gw-orchestrate-dealer` dice dónde viven los tests de cada capa (recogida `0.7`, image-generator P3) | hecho (2026-11-14) |
-| D104 | «Pendiente» sale de la bitácora a su propio archivo (clave `pendingFile`, por defecto `docs/records/pending.md`); la bitácora deja el puntero y la cuenta, y `handoff.py check --strict` lo exige (retro `0.6.1`, T1) | pendiente |
-| D105 | `roadmap.py check` en el check: por versión, los mismos ids en cada archivo de `roadmapFiles` (retro `0.6.1`, R1) | pendiente |
-| D106 | `tests-for.py --run` pasa shellcheck a los `.sh` del cambio (retro `0.6.1`, R2) | pendiente |
+| D104 | «Pendiente» sale de la bitácora a su propio archivo (clave `pendingFile`, por defecto `docs/records/pending.md`); la bitácora deja el puntero y la cuenta, y `handoff.py check --strict` lo exige (retro `0.6.1`, T1) | hecho (2026-11-14) |
+| D105 | `roadmap.py check` en el check: por versión, los mismos ids en cada archivo de `roadmapFiles` (retro `0.6.1`, R1) | hecho (2026-11-14) |
+| D106 | `tests-for.py --run` pasa shellcheck a los `.sh` del cambio (retro `0.6.1`, R2) | hecho (2026-11-14) |
 | D107 | `gw-orchestrate-dealer`: la subida final del subagente va en primer plano, y la sesión principal para con `TaskStop` al que no vuelve con su commit ya subido (retro `0.6.1`, R3) | hecho (2026-11-14) |
-| D108 | El `commit-msg` repite el aviso de presupuesto de compactaciones superado en el commit que cierra una fase o versión y pide `/clear` (retro `0.6.1`, T3) | pendiente |
+| D108 | El `commit-msg` repite el aviso de presupuesto de compactaciones superado en el commit que cierra una fase o versión y pide `/clear` (retro `0.6.1`, T3) | hecho (2026-11-14) |
 
 ## `0.7` «Preguntar»
 
