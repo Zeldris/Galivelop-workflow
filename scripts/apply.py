@@ -132,6 +132,8 @@ from doctor import (  # noqa: E402  (one list each, shared with doctor.py)
 
 WORKFLOW_ONLY_SCRIPTS = {"harvest.py", "apply.py", "version.py", "names-check.py"}
 WORKFLOW_ONLY_SKILLS = {"gw-harvest"}
+CI_VALIDATE = "ci-local.py --validate"
+CI_VALIDATE_CMD = "python3 .claude/gw/scripts/" + CI_VALIDATE
 OPTIONAL_SKILLS = {"gw-opt-ai", "gw-scout-updates"}
 IGNORED = {"__pycache__", ".DS_Store"}
 PROPOSAL = ".gw-new"
@@ -1109,6 +1111,40 @@ def plan_version(plan):
     plan.actions.append(("merge", config.CONFIG_REL, dump(base), False, "; ".join(details)))
 
 
+def plan_ci_validate(plan):
+    """E54: an installed project's `check` list gets `ci-local.py --validate` (E51) when no entry runs it yet. Only with
+    --update, never in the workflow repo (its tests/check.sh runs it), never with `ciYamlCheck` false, never twice (any
+    string entry containing `ci-local.py --validate` counts). The entry goes before `tests-after-main.py` (as in
+    templates/gw.json), else last; the other entries keep their order. A `check` that is not a list is left alone
+    (config.py rejects it before this). Joins a `merge` of gw.json already planned (one write); the merge line (with
+    its detail) is what --check, --dry-run and --dry-run --summary show and count."""
+    if not plan.update or plan.root.resolve() == WORKFLOW.resolve():
+        return
+    try:
+        raw = json.loads((plan.root / config.CONFIG_REL).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if not isinstance(raw, dict) or raw.get("ciYamlCheck", True) is False or not isinstance(raw.get("check"), list):
+        return
+    mine = [i for i, a in enumerate(plan.actions) if a[0] == "merge" and Path(a[1]) == config.CONFIG_REL]
+    base, details = dict(raw), []
+    if mine:
+        base = json.loads(plan.actions[mine[-1]][2].decode("utf-8"))
+        details = [plan.actions[i][4] for i in mine]
+    entries = base.get("check")
+    if not isinstance(entries, list) or base.get("ciYamlCheck", True) is False:
+        return
+    if any(isinstance(e, str) and CI_VALIDATE in e for e in entries):
+        return
+    at = next((i for i, e in enumerate(entries) if isinstance(e, str) and "tests-after-main.py" in e), len(entries))
+    if mine:
+        plan.actions = [a for i, a in enumerate(plan.actions) if i not in mine]
+    base["check"] = entries[:at] + [CI_VALIDATE_CMD] + entries[at:]
+    details.append(f"WARNING check lacks `{CI_VALIDATE}` (E51, workflow YAML validation): added "
+                   f"(set ciYamlCheck false to opt out)")
+    plan.actions.append(("merge", config.CONFIG_REL, dump(base), False, "; ".join(details)))
+
+
 def plan_media_folder(plan, keep):
     """A8 (0.x): docs/difusion, the old default folder of gw-media-content, moves to docs/media when the project's note
     does not name a folder (a folder the note names is never touched). keep (--keep-paths, or keepLegacyPaths in the
@@ -1383,6 +1419,7 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
         plan_notes(plan)
     plan_schema(plan)
     plan_version(plan)
+    plan_ci_validate(plan)
     renamed = [e for e in extra_skills if e in OLD_SKILLS]
     for old in renamed:
         plan.warnings.append(f"--with {old} is the old name; use --with {OLD_SKILLS[old]}")
