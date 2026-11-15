@@ -1917,6 +1917,100 @@ class MergeBranch(Base):
         self.assertTrue((self.p.work / "t.txt").is_file())
         self.assertIn("claude/topic", self.branches())
 
+    # D117: --defer-check merges and cleans up without the check or the related tests, and says so.
+    DEFERRED = "CHECK DEFERRED (--defer-check): neither the check nor the related tests ran on this merge"
+
+    def test_defer_check_merges_and_cleans_up_without_check_or_related_tests(self):
+        self.p.write("check.sh", "echo ran >> check.log\n")
+        self.p.commit("check writes a log", env=DAY)
+        self.related()
+        wt = self.agent(name="agent/D16-x")  # a.txt holds no `good`: the related tests would fail if they ran
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--reviewed", "--defer-check")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(len(self.p.git("log", "-1", "--format=%P").stdout.split()), 2, "merged")
+        self.assertEqual(self.merge_trailers(), ["Refs: D16"], "same Refs handling")
+        self.assertIn(self.DEFERRED, out)
+        self.assertIn("no green was recorded", out)
+        self.assertIn("After the LAST merge of the wave run one full check: bash ", out)
+        self.assertIn("or merge the last branch without --defer-check", out)
+        self.assertFalse((self.p.work / "check.log").exists(), "the check did not run")
+        self.assertFalse((self.p.work / "related.log").exists(), "the related tests did not run")
+        self.assertEqual(list((self.p.work / ".git" / "gw").glob("check-*.log")), [])
+        self.assertFalse((self.p.work / ".git" / "gw-check-green").exists(), "no green recorded")
+        self.assertNotIn("check OK", out)
+        self.assertFalse(wt.exists(), out)
+        self.assertNotIn("agent/D16-x", self.branches())
+        self.assertNotIn("no --reviewed", out)
+
+    def test_defer_check_and_reviewed_go_in_any_order(self):
+        for i, flags in enumerate((("--defer-check", "--reviewed"), ("--reviewed", "--defer-check"), ("--defer-check",))):
+            with self.subTest(flags=flags):
+                wt = self.agent(name=f"worktree-agent-{i}", path=f"f{i}.txt")
+                code, out = self.p.script("merge-branch.sh", f"worktree-agent-{i}", "Merge agent", *flags)
+                self.assertEqual(code, 0, out)
+                self.assertIn(self.DEFERRED, out)
+                self.assertFalse(wt.exists(), out)
+                self.assertEqual("no --reviewed" in out, "--reviewed" not in flags, out)
+
+    def test_defer_check_does_not_need_the_check_scripts_installed(self):
+        self.related()
+        (self.p.scripts / "check.sh").unlink()
+        (self.p.scripts / "related-tests.sh").unlink()
+        self.agent()
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--defer-check")
+        self.assertEqual(code, 0, out)
+        self.assertIn(self.DEFERRED, out)
+        self.assertNotIn("CANNOT RUN", out)
+
+    def test_defer_check_still_fails_closed_on_a_blank_check(self):
+        # The full check at the end of the wave needs `check`: better to stop at the first merge.
+        self.agent(name="agent/D16-x")
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["check"] = [" "]
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.commit("blank check", env=DAY)
+        before = self.p.sha()
+        code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent", "--defer-check")
+        self.assertEqual(code, 2, out)
+        self.assertIn("'check' in .claude/gw.json has no command, so nothing was merged", out)
+        self.assertEqual(self.p.sha(), before, "nothing was merged")
+
+    def test_defer_check_still_stops_on_a_conflict(self):
+        wt = self.agent(path="docs/notes.md", text="agent notes\n")
+        self.p.write("docs/notes.md", "main notes\n")
+        self.p.commit("main edits the same file", env=DAY)
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--defer-check", "--reviewed")
+        self.assertEqual(code, 1, out)
+        self.assertIn("CONFLICT", out)
+        self.assertIn("docs/notes.md", out)
+        self.assertNotIn("CHECK DEFERRED", out)
+        self.assertTrue((self.p.work / ".git" / "MERGE_HEAD").is_file())
+        self.assertTrue(wt.exists())
+        self.assertIn("worktree-agent-1", self.branches())
+
+    def test_defer_check_on_a_log_conflict_leaves_the_check_out_of_the_commands(self):
+        self.conflict(LOG)
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--defer-check")
+        self.assertEqual(code, 1, out)
+        self.assertIn("CONFLICT only in the hand-off log", out)
+        self.assertRegex(out, r"then run: git worktree remove .* && git branch -d worktree-agent-1")
+        self.assertNotIn("check.sh --quiet", out)
+
+    def test_unknown_flags_are_rejected_before_merging(self):
+        self.agent()
+        before = self.p.sha()
+        for flags in (("--defer",), ("--reviewed", "--nope"), ("--defer-check", "extra")):
+            with self.subTest(flags=flags):
+                code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", *flags)
+                self.assertEqual(code, 2, out)
+                self.assertIn("usage: bash", out)
+                self.assertIn("[--reviewed] [--defer-check]", out)
+                self.assertIn("unknown argument: " + flags[-1], out)
+                self.assertEqual(self.p.sha(), before, "nothing was merged")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1")
+        self.assertEqual(code, 2, out)
+        self.assertIn("usage: bash", out)
+
     def test_unknown_branch_and_already_merged(self):
         self.assertEqual(self.p.script("merge-branch.sh", "nope", "m")[0], 2)
         code, out = self.p.script("merge-branch.sh", "main", "m")
