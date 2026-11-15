@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14), etiqueta y release `v0.6.1` |
-| Siguiente paso | **Parche `0.6.2`:** fases 1 y 2 hechas; retro aprobada entera (2026-11-15): D116-D121 en obra con `gw-orchestrate-dealer` (D116+D118 `tests-for.py`, D117 `merge-branch.sh`, D119 `subagent-cap.py`, D121 `version.py` en worktrees; D120 y el encargo del dealer en la principal). Después: check entero, fase 3 (`/code-review` de D116-D121), `reviewed.sh` y, con confirmación, la subida a `main`; luego la `0.7.0` desde `ccr-d1e2d496-0vzck8` |
+| Siguiente paso | **Parche `0.6.2`:** D109-D121 hechos (D116-D121, propuestas de la retro aprobadas por el usuario el 2026-11-15), con su CHANGELOG. Siguiente: check entero de la oleada (`bash scripts/check.sh`), subir `version/0.6.2`, fase 3 (`/code-review` de los commits D116-D121 desde `507e042`; leves a `pending.md`), `bash scripts/reviewed.sh`, subida a `main` con confirmación del usuario y `docs/records/release-v0.6.2.md`. Después, la `0.7.0` en `ccr-d1e2d496-0vzck8` (fusionar `main` y cerrarla). |
 
 ### Fases
 
@@ -45,7 +45,7 @@ desde una sesión local.
 
 ## Pendiente
 
-Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (75 entradas); se añade y se quita allí.
+Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (77 entradas); se añade y se quita allí.
 
 ## Comprobar el estado
 

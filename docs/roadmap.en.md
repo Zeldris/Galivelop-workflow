@@ -233,7 +233,7 @@ In this order, because each step uses the previous one.
 | D114 | The `AGENTS.md` template names `ci-status.py` (and `--failed`) when checking CI (`0.7` closing harvest, private-project-4 P4) | done (2026-11-15) |
 | D115 | The `AGENTS.md` template names the cloud `Stop` hook that asks to sign as Claude and says it is not followed (`0.7` closing harvest, private-project-1 P3) | done (2026-11-15) |
 | D116 | `tests-for.py --run` runs shellcheck on the change's `.sh` files **before** the tests and stops at its first failure; the `gw-orchestrate-dealer` brief asks for shellcheck of the touched `.sh` files before each commit (`0.6.2` retro, R1) | done (2026-11-15) |
-| D117 | `merge-branch.sh --defer-check` merges and cleans up without the check (and says so), for every branch of a wave but the last; the dealer uses it (`0.6.2` retro, T1) | pending |
+| D117 | `merge-branch.sh --defer-check` merges and cleans up without the check (and says so), for every branch of a wave but the last; the dealer uses it (`0.6.2` retro, T1) | done (2026-11-15) |
 | D118 | `tests-for.py --why` says which `testMap` rule and which changed file bring each test, and the dealer brief uses `--diff {head}` as the base (`0.6.2` retro, T2) | done (2026-11-15) |
 | D119 | `subagent-cap.py` warns when a `general-purpose` subagent starts with `sonnet` and `low`/`medium` while `.claude/agents/gw-worker.md` exists (`0.6.2` retro, T3) | done (2026-11-15) |
 | D120 | `gw-orchestrate-dealer`: after accepting a subagent's report, the main session stops it with `TaskStop` (`0.6.2` retro, T4) | done (2026-11-15) |

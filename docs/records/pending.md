@@ -258,3 +258,5 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - Leves de D119 (`0.6.2`): el aviso de `gw-worker` de `subagent-cap.py` solo va en la salida normal, no en el `ask`
   (sin `session_id`, `CannotCount`) ni en la denegación por tope (`subagentCapAction: deny`), aunque su docstring dice
   que las notas van en todo `ask`; falta una línea en blanco antes de `class CapOfOne` en `tests/test_subagent_cap.py`.
+- (D117, revisión corta, leve) `scripts/merge-branch.sh:207` y cabecera: con `--defer-check` nadie corre los tests relacionados de las ramas diferidas; la última fusión solo los pasa sobre su propio diff y `check.sh` no corre `relatedTests`. El aviso debería decirlo o dar la orden con `git diff <base de la oleada> HEAD`.
+- (D117, revisión corta, leve) `scripts/merge-branch.sh:200-203`: si la última rama de la oleada ya estaba fusionada, sale con «nothing to merge» y código 0, sin check final ni aviso.
