@@ -244,3 +244,5 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - La `1.0.0` solo como plugin (decidido 2026-10-22): en la Fase 9, plugin como única distribución hacia fuera y
   ganchos de git desde el plugin (sin probar); en la Fase 10, licencia de la `1.0.0` (abierta) y el portal quita su
   copia del flujo desde una sesión suya. Su historial seguirá teniendo la copia `0.2.0` (MIT).
+- Menor de la revisión de D109 (`0.6.2`): una `refs/remotes/origin/<protegida>` caducada (la rama ya no existe en el
+  remoto) solo cambia el texto del aviso de `reviewed.sh`, no la base; se acepta.

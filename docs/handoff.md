@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14), etiqueta y release `v0.6.1` |
-| Siguiente paso | **Parche `0.6.2`:** D111-D115 hechos; D109 (`reviewed.sh`) y D110 (`before-stop.py`) en subagentes (`agent/D109-reviewed-base`, `agent/D110-stop-remotes`): revisión corta de cada uno, fusión, check entero. Luego CHANGELOG y versión, las tres fases y publicación; después, la `0.7.0` desde `ccr-d1e2d496-0vzck8` |
+| Siguiente paso | **Parche `0.6.2`:** D109 y D111-D115 hechos (D109 fusionado tras su revisión); D110 (`before-stop.py`, `agent/D110-stop-remotes`) aplicando los 3 hallazgos de su revisión: revisar, fusionar con `merge-branch.sh` (check entero) y subir. Luego CHANGELOG y versión, las tres fases y publicación; después, la `0.7.0` desde `ccr-d1e2d496-0vzck8` |
 
 ### Fases
 
@@ -45,7 +45,7 @@ desde una sesión local.
 
 ## Pendiente
 
-Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (70 entradas); se añade y se quita allí.
+Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (71 entradas); se añade y se quita allí.
 
 ## Comprobar el estado
 
