@@ -1,9 +1,9 @@
 # Release de GitHub `v0.7.0` (textos)
 
-- **Etiqueta:** `v0.7.0`, sobre el commit de `main` de la subida del 2026-11-15.
+- **Etiqueta:** `v0.7.0`, sobre `c1e75c8` (subida a `main` el 2026-11-15).
 - **Título:** el bloque de abajo.
 - **Cuerpo:** el segundo bloque. La entrada completa está en el CHANGELOG.
-- **Publicada:** a mano por el usuario en local (elegido por él): `gh release create v0.7.0 --target main --title "Galivelop-workflow v0.7.0" --notes-file <cuerpo>`, con el cuerpo de abajo.
+- **Publicada:** a mano por el usuario en local (elegido por él): `gh release create v0.7.0 --target c1e75c8 --title "Galivelop-workflow v0.7.0" --notes-file <cuerpo>`, con el cuerpo de abajo.
 
 ```text
 Galivelop-workflow v0.7.0
