@@ -535,7 +535,7 @@ class CheckSummary(unittest.TestCase):
 
     def test_a_background_child_holding_the_output_does_not_hang_the_check(self):
         pidfile = self.tmp / "bg.pid"
-        self.configure([f"sleep 60 & echo $! > {pidfile}; echo started"])
+        self.configure([f"sleep {waits.timeout(60):g} & echo $! > {pidfile}; echo started"])  # scaled with the wait
         cfg = json.loads((self.repo / ".claude" / "gw.json").read_text())
         cfg["checkOutputGrace"] = 1
         (self.repo / ".claude" / "gw.json").write_text(json.dumps(cfg))
@@ -551,7 +551,7 @@ class CheckSummary(unittest.TestCase):
         tmpdir.mkdir()
         # the command outlasts the wait, so only the interrupt can end the check in time (a slow macOS runner
         # took over 20 s to tear it down)
-        self.configure(["echo partial; sleep 180"])
+        self.configure([f"echo partial; sleep {waits.timeout(180):g}"])  # scaled with the wait
         p = self.start_check(env={"TMPDIR": str(tmpdir)})
         self.wait_for(lambda: any(tmpdir.glob("gw-check-fifo.*")))
         os.killpg(p.pid, signal.SIGINT)

@@ -256,3 +256,9 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   también en `--range`); un patrón sin `@` solo mira el nombre y uno con `@` es correo exacto (pasan
   un correo de Anthropic con otro nombre y `x+claude@users.noreply.github.com`; ¿patrones de dominio?); un patrón que
   empieza o acaba en no-palabra (`[bot]`) nunca casa.
+- Menores de la revisión de B37+E56+E57 (desde f18432c): `generated-copy.py` avisa de cualquier archivo bajo un prefijo
+  de copia, aunque `apply.py` no lo copie (`WORKFLOW_ONLY_SCRIPTS`, otro `.json` de `schema/`, subcarpetas de
+  `scripts/`, `.claude/skills/README.md`), y no avisa al editar `.claude/settings.json` (fusión con
+  `templates/claude/settings.json`, no copia); `read_event()` va ya repetido en seis ganchos (un ayudante común en
+  `config.py`); el escáner de `tests/test_waits.py` no ve un `wait(10)`/`join(5)` posicional, un plazo en dos líneas
+  ni un sondeo cuyo `sleep(` cae a más de tres líneas.

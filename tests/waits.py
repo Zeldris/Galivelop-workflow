@@ -31,8 +31,8 @@ def timeout(seconds):
 def wait_for(predicate, seconds=20, interval=0.1):
     """Polls `predicate` every `interval` s for up to timeout(seconds); returns its last value (assert on it)."""
     deadline = time.monotonic() + timeout(seconds)
-    while not predicate():
-        if time.monotonic() >= deadline:
-            return predicate()
+    while True:
+        value = predicate()
+        if value or time.monotonic() >= deadline:
+            return value
         time.sleep(interval)
-    return True

@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14; excepción a A-6 aprobada por el usuario). Etiqueta y release `v0.6.1` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.1.md` |
-| Siguiente paso | `/code-review` de B37+E56+E57 (diff desde el último `Findings:`), de la retro del bloque `0.7` (`docs/records/retro-2026-11-15-block-0-7.md`). B37, E56 y E57 hechos. Presupuesto de compactaciones: 1 |
+| Siguiente paso | Fase 1 del flujo hacia `main` de la `0.7`: repaso de la documentación (README, `docs/es/` ↔ `docs/en/`, roadmap, CHANGELOG) y `/code-review` de la rama contra `origin/main`; antes, confirmar con el usuario si la `0.7` se cierra ya o entra algo más del roadmap. Revisión de B37+E56+E57 hecha (`Findings: 6`). Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -37,15 +37,15 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-15 — E57: la skill `retro`, en su sección del flujo, propone al cerrar un bloque o versión una tarea `B` de barrido con los leves de `pendingFile` del script que más tenga (mejor uno que tocó el bloque), para la siguiente versión no empezada; el usuario elige cuáles entran. Copia en `.claude/skills/retro/`; test en `tests/test_skills.py`
-2. 2026-11-15 — E56: gancho `PreToolUse` `scripts/generated-copy.py` sobre `Edit`/`Write`/`MultiEdit`/`NotebookEdit` que, solo en este repo (en `WORKFLOW_ONLY_SCRIPTS`; registrado en `.claude/settings.json`, no en la plantilla), avisa sin bloquear al editar una copia generada (`.claude/gw/scripts/`, `.claude/gw/schema/`, `.claude/skills/`, `.githooks/`, `.claude/agents/`) con la ruta de su fuente; las notas de `.claude/gw/*.md` no cuentan. 8 tests
-3. 2026-11-15 — B37: `tests/waits.py` con `timeout(n)` y `wait_for(pred, n)` escalados por `GW_TEST_TIMEOUT_SCALE` (por defecto 1; uno no numérico o ≤ 0 falla cerrado); las esperas literales de `test_hooks`, `test_check_summary`, `test_session_log` y `test_red_without_fix` pasan por él; `tests/test_waits.py` rechaza un `timeout=`, plazo o bucle de sondeo literal nuevo (`# not a wait` para lo que no lo es); el CI de macOS pone 3
-4. 2026-11-15 — Cierre del bloque `0.7`: revisión desde el último `Findings:` (arreglos de test de B36) sin hallazgos; retro aprobada (B37, E56 y E57 a la `0.7`); E51 marcado hecho en el roadmap español
-5. 2026-11-15 — E55: con `gw.json` ilegible, el `pre-commit` comprueba autor y committer con el `authorDeny` de `HEAD` (`config.py --rev HEAD author-check`); solo sin uno legible allí (primer commit, ausente o roto) avisa y sigue. Copia `.githooks/` igual; 6 tests con el motivo
+1. 2026-11-15 — Revisión de B37+E56+E57 (desde `f18432c`): 6 arreglos (las órdenes `sleep` de dos tests de `test_check_summary` escalan con su espera; `wait_for` devuelve el valor del predicado; el CI elige el factor por `runner.os`; el gancho de E56 acaba en `|| true`; regla de `testMap` para `tests/waits.py`; el escáner ve `timeout = n`), 3 leves a pendientes y 1 rechazado (`GW_TEST_TIMEOUT_SCALE` es de los tests de este repo, no una clave de proyecto)
+2. 2026-11-15 — E57: la skill `retro`, en su sección del flujo, propone al cerrar un bloque o versión una tarea `B` de barrido con los leves de `pendingFile` del script que más tenga (mejor uno que tocó el bloque), para la siguiente versión no empezada; el usuario elige cuáles entran. Copia en `.claude/skills/retro/`; test en `tests/test_skills.py`
+3. 2026-11-15 — E56: gancho `PreToolUse` `scripts/generated-copy.py` sobre `Edit`/`Write`/`MultiEdit`/`NotebookEdit` que, solo en este repo (en `WORKFLOW_ONLY_SCRIPTS`; registrado en `.claude/settings.json`, no en la plantilla), avisa sin bloquear al editar una copia generada (`.claude/gw/scripts/`, `.claude/gw/schema/`, `.claude/skills/`, `.githooks/`, `.claude/agents/`) con la ruta de su fuente; las notas de `.claude/gw/*.md` no cuentan. 8 tests
+4. 2026-11-15 — B37: `tests/waits.py` con `timeout(n)` y `wait_for(pred, n)` escalados por `GW_TEST_TIMEOUT_SCALE` (por defecto 1; uno no numérico o ≤ 0 falla cerrado); las esperas literales de `test_hooks`, `test_check_summary`, `test_session_log` y `test_red_without_fix` pasan por él; `tests/test_waits.py` rechaza un `timeout=`, plazo o bucle de sondeo literal nuevo (`# not a wait` para lo que no lo es); el CI de macOS pone 3
+5. 2026-11-15 — Cierre del bloque `0.7`: revisión desde el último `Findings:` (arreglos de test de B36) sin hallazgos; retro aprobada (B37, E56 y E57 a la `0.7`); E51 marcado hecho en el roadmap español
 
 ## Pendiente
 
-Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (73 entradas); se añade y se quita allí.
+Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (74 entradas); se añade y se quita allí.
 
 ## Comprobar el estado
 

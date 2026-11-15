@@ -148,6 +148,16 @@
         ]
       },
       {
+        "paths": "^tests/waits\\.py$",
+        "tests": [
+          "tests/test_waits.py",
+          "tests/test_check_summary.py",
+          "tests/test_hooks.py",
+          "tests/test_red_without_fix.py",
+          "tests/test_session_log.py"
+        ]
+      },
+      {
         "paths": "^tests/[^/]+\\.py$",
         "contains": "[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+\\.[A-Za-z0-9.-]+",
         "tests": [

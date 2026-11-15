@@ -23,7 +23,8 @@ object on stdout, exit 0,
   {"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": "..."}}
 
 Fails open, because it only advises: stdin it cannot read, another tool, a path outside the repo or outside the copies
-print nothing and exit 0. It waits `hookStdinWait` for the event. A relative path is resolved against the event's `cwd`. Python 3.8+ standard library only.
+print nothing and exit 0; its entry ends in `|| true`, so a missing script (an older checkout) does
+not block the edit either. It waits `hookStdinWait` for the event. A relative path is resolved against the event's `cwd`. Python 3.8+ standard library only.
 """
 import json
 import os

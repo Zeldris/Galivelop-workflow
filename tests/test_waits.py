@@ -15,7 +15,7 @@ import waits  # noqa: E402
 # A literal wait: a timeout= number, a deadline `time()/monotonic() + n`, a watchdog Timer(n, …), or a polling loop
 # `for _ in range(n):` with a sleep in its next lines. A line that is not a wait (a config value named timeout) says so
 # with `# not a wait`.
-LITERAL = re.compile(r"\btimeout=\s*\d|\b(?:time|monotonic)\(\)\s*\+\s*\d|\bTimer\(\s*\d")
+LITERAL = re.compile(r"\btimeout\s*=\s*\d|\b(?:time|monotonic)\(\)\s*\+\s*\d|\bTimer\(\s*\d")
 POLL = re.compile(r"^\s*for _ in range\(\s*\d+\s*\):")
 MARK = "# not a wait"
 
@@ -66,6 +66,9 @@ class WaitFor(unittest.TestCase):
             self.assertTrue(waits.wait_for(lambda: calls.append(1) or len(calls) >= 3))
         self.assertEqual(sleep.call_count, 2)
 
+    def test_returns_the_value_of_the_predicate(self):
+        self.assertEqual(waits.wait_for(lambda: "found"), "found")
+
     def test_past_the_deadline_returns_the_predicate_checked_once_more(self):
         with mock.patch.object(waits.time, "monotonic", side_effect=[0, 30]), mock.patch.object(waits.time, "sleep"):
             self.assertFalse(waits.wait_for(lambda: False, 20))
@@ -75,6 +78,7 @@ class NoLiteralWaits(unittest.TestCase):
     def test_the_scan_finds_each_kind_and_skips_the_marked_line(self):
         text = "\n".join([
             "p.communicate(timeout=20)",
+            "p.wait(timeout = 5)",
             "deadline = time.time() + 20",
             "deadline = time.monotonic() + 5",
             "threading.Timer(10, proc.kill)",
@@ -86,7 +90,7 @@ class NoLiteralWaits(unittest.TestCase):
             "self.config(timeout=7)  # not a wait",
             "p.communicate(timeout=waits.timeout(20))",
         ])
-        self.assertEqual([f.split(":")[1] for f in literal_waits("t.py", text)], ["1", "2", "3", "4", "5"])
+        self.assertEqual([f.split(":")[1] for f in literal_waits("t.py", text)], ["1", "2", "3", "4", "5", "6"])
 
     def test_no_test_has_a_literal_wait_outside_waits_py(self):
         files = subprocess.run(["git", "ls-files", "--", "tests/test_*.py", "skills/*/scripts/test_*.py"], cwd=ROOT,

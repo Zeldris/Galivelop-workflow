@@ -95,7 +95,8 @@ class Wiring(unittest.TestCase):
         self.assertFalse((ROOT / ".claude/gw/scripts/generated-copy.py").exists())
         here = json.loads((ROOT / ".claude/settings.json").read_text(encoding="utf-8"))
         commands = [h["command"] for e in here["hooks"]["PreToolUse"] for h in e["hooks"]]
-        self.assertIn('python3 "$CLAUDE_PROJECT_DIR"/scripts/generated-copy.py', commands)
+        # `|| true`: a checkout without the script (an older commit) must not block every edit (exit 2)
+        self.assertIn('python3 "$CLAUDE_PROJECT_DIR"/scripts/generated-copy.py || true', commands)
         template = (ROOT / "templates/claude/settings.json").read_text(encoding="utf-8")
         self.assertNotIn("generated-copy.py", template)
 
