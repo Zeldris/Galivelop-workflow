@@ -60,6 +60,13 @@ class Scale(unittest.TestCase):
 
 
 class WaitFor(unittest.TestCase):
+    def setUp(self):
+        # the runner's own factor (3 on the macOS CI) would move the mocked deadlines
+        env = {k: v for k, v in os.environ.items() if k != waits.VAR}
+        patcher = mock.patch.dict(os.environ, env, clear=True)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_returns_true_as_soon_as_the_predicate_holds(self):
         calls = []
         with mock.patch.object(waits.time, "sleep") as sleep:
