@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14; excepción a A-6 aprobada por el usuario). Etiqueta y release `v0.6.1` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.1.md` |
-| Siguiente paso | Fase 1 del flujo hacia `main` de la `0.7`: repaso de la documentación (README, `docs/es/` ↔ `docs/en/`, roadmap, CHANGELOG) y `/code-review` de la rama contra `origin/main`; antes, confirmar con el usuario si la `0.7` se cierra ya o entra algo más del roadmap. Revisión de B37+E56+E57 hecha (`Findings: 6`). Presupuesto de compactaciones: 1 |
+| Siguiente paso | **Recogida (`gw-harvest`) antes de cerrar la `0.7`** (usuario, 2026-11-15): sus propuestas, al usuario; luego, fase 1 hacia `main`: repaso de la documentación (README, `docs/es/` ↔ `docs/en/`, roadmap, CHANGELOG) y `/code-review` de la rama contra `origin/main`. Revisión de B37+E56+E57 hecha (`Findings: 6`; CI en verde en `3bc4d53`). Presupuesto de compactaciones: 1 |
 
 ### Fases
 
