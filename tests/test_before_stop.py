@@ -115,21 +115,30 @@ class Commits(Base):
         self.assertEqual(code, 0, out)
         self.assertBlocks(out, "claude/tema", "git push -u origin claude/tema")
 
-    def test_merged_main_commits_already_on_a_remote_are_not_unpushed(self):
+    def test_merged_main_with_a_merge_commit_counts_only_the_merge_commit(self):
         p = self.p
         p.work_branch()
         p.git("checkout", "-q", "main")
         p.write("src/m.py", "m = 1\n"); p.commit("on main")
         p.git("push", "-q", "origin", "main")
         p.git("checkout", "-q", "claude/trabajo")
-        p.git("merge", "-q", "--no-edit", "--no-ff", "origin/main")  # merge commit and main's commit: both unpushed vs @{u}
+        p.git("merge", "-q", "--no-edit", "--no-ff", "origin/main")  # vs @{u}: the merge commit and main's commit
         self.assertEqual(p.git("rev-list", "--count", "@{u}..HEAD").stdout.strip(), "2")
         code, out = p.stop()
         self.assertEqual(code, 0, out)
-        self.assertIn("not on origin/claude/trabajo", out)  # the merge commit itself is on no remote
+        self.assertBlocks(out, "1 commit ", "git push -u origin claude/trabajo")  # the old rule said "2 commits"
         p.git("push", "-q", "origin", "claude/trabajo")
         code, out = p.stop()
         self.assertLetsStop(code, out)
+
+    def test_commit_pushed_only_to_another_remote_branch_still_counts(self):
+        p = self.p
+        p.work_branch()
+        p.write("src/a.py", "x = 1\n"); p.commit("local only")
+        p.git("push", "-q", "origin", "HEAD:refs/heads/claude/otra")  # on a remote, but not on the upstream nor main
+        code, out = p.stop()
+        self.assertEqual(code, 0, out)
+        self.assertBlocks(out, "1 commit ", "git push -u origin claude/trabajo")
 
     def test_merge_of_main_without_a_merge_commit_is_not_unpushed(self):
         p = self.p
@@ -383,7 +392,7 @@ class PushHelpers(Base):
         """A linked worktree on its own pushed branch with one unpushed commit: (path, hook script, git dir, sha)."""
         p = self.p
         linked = p.tmp / "linked"
-        p.git("worktree", "add", "-q", "-b", "claude/otra", str(linked), "origin/main")  # not from HEAD: pushing it would push main's unpushed commit too
+        p.git("worktree", "add", "-q", "-b", "claude/otra", str(linked))
         p.git("push", "-q", "-u", "origin", "claude/otra", cwd=linked)
         (linked / "src").mkdir(exist_ok=True)
         (linked / "src" / "b.py").write_text("y = 1\n")
