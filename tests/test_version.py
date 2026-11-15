@@ -229,6 +229,8 @@ class Version(unittest.TestCase):
         self.assertIn("no harvest for 9.8.7", r.stdout)
         self.assertIn(f"since v{VERSION}", r.stdout)
         self.assertIn("gw-harvest", r.stdout)
+        self.assertIn("git checkout <sha> -- docs/propuestas/", r.stdout)
+        self.assertIn("git log --all --oneline -- docs/propuestas", r.stdout)
         (tmp / "docs" / "propuestas" / "2026-10-24-reparto.md").write_text("# Reparto — 2026-10-24\n")
         self.commit_all("a proposals file that is not a harvest")
         r = run(tmp, "--release")

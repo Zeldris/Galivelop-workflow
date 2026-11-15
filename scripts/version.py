@@ -307,7 +307,9 @@ def harvest_check(version, tag):
                 return []
     return [f"no harvest for {version}: no {PROPOSALS}/*.md starting with '# Harvest' was added since {tag}; run the "
             "gw-harvest skill on the projects that use the workflow, commit its proposals file (one per harvest, also "
-            "when nothing is new) and retry: python3 scripts/version.py --release"]
+            "when nothing is new) and retry: python3 scripts/version.py --release. If a patch branch was cut from main and "
+            f"the harvest was made on another branch, bring it with: git checkout <sha> -- {PROPOSALS}/ (find the "
+            f"sha with: git log --all --oneline -- {PROPOSALS})"]
 
 
 def commit_head(types, wip):
