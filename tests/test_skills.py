@@ -208,5 +208,12 @@ class Skills(unittest.TestCase):
         self.assertIn("A `/code-review` of the update branch leaves out the files that are identical copies", text)
 
 
+    def test_retro_proposes_a_sweep_of_one_script_minors(self):
+        # E57: pending.md grew from 66 to 73 entries in block 0.7; every review left minors and no task cleared them.
+        text = (SKILLS / "retro" / "SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("**When a block or version closes, propose a sweep.**", text)
+        self.assertIn("handoff.py next-id B", text)
+        self.assertIn("the user picks which minors go in", text)
+
 if __name__ == "__main__":
     unittest.main()

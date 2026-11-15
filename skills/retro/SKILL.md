@@ -60,6 +60,11 @@ This section is the only change to the upstream skill.
 - Sort each candidate into one of two outlets and say which:
   - **Project-specific** (paths, stack, domain rules): propose the patch in this repo.
   - **General** (would help any project using the workflow: a skill, a hook, a template, a rule in `AGENTS.md`): propose it **to the workflow itself** as an issue or PR on the `Galivelop-workflow` repository, or leave it in the retro file under a `## For Galivelop-workflow` heading so `gw-harvest` collects it. Do not patch the copied workflow files locally; local edits drift and are overwritten by the next update.
+- **When a block or version closes, propose a sweep.** Group the open minors (`leves`, `minor`) in `pendingFile` by
+  the script they touch and take the script with the most, preferring one the block changed. Propose one `B` task
+  (`python3 .claude/gw/scripts/handoff.py next-id B`) that clears them, for the next version not yet under way, listing
+  each minor; it ranks with the other candidates and the user picks which minors go in. Done when the proposal names
+  the script and every minor it clears, or says that no script has two or more open minors.
 - **Review the project's own skills too.** Look at how `gw-selector`, `gw-orchestrate-dealer`, `gw-opt-tokens`, `pr`, the code
   review and this retro performed; read the skill list before proposing. When a skill failed, the proposal changes
   that skill (or proposes the change to the workflow), not a loose new rule in `AGENTS.md`/`CLAUDE.md`.

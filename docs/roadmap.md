@@ -267,7 +267,7 @@ En este orden, porque cada paso usa el anterior.
 | E55 | Con `gw.json` ilegible, el `pre-commit` lee `authorDeny` de `HEAD` antes de dejar pasar el commit (menor de la revisión de E41; usuario, 2026-11-15) | hecho (2026-11-15; `config.py --rev HEAD author-check`; sin `gw.json` legible en `HEAD` (primer commit, ausente o roto) avisa y sigue) |
 | B37 | Un único factor `GW_TEST_TIMEOUT_SCALE` (por defecto 1; el CI de macOS lo sube) para los esperas de los tests, desde un helper común de `tests/`, y `tests/check.sh` lista los `timeout=` literales nuevos fuera de él (retro del bloque `0.7`, P1; usuario, 2026-11-15) | hecho (2026-11-15; `tests/waits.py`: `timeout()` y `wait_for()`; `tests/test_waits.py` rechaza un `timeout=`, plazo o bucle de sondeo literal fuera de él; el CI de macOS pone 3) |
 | E56 | Gancho `PreToolUse` sobre `Edit`/`Write` que, en el repo del flujo, avisa (sin bloquear) al editar `.claude/gw/`, `.claude/skills/` o `.githooks/` con la ruta de la fuente (retro del bloque `0.7`, P2; usuario, 2026-11-15) | hecho |
-| E57 | `retro`: al cerrar un bloque, propone una tarea `B` de barrido con los leves de `pendingFile` de un mismo script, para la siguiente versión; el usuario decide cuáles entran (retro del bloque `0.7`, P3; usuario, 2026-11-15) | pendiente |
+| E57 | `retro`: al cerrar un bloque, propone una tarea `B` de barrido con los leves de `pendingFile` de un mismo script, para la siguiente versión; el usuario decide cuáles entran (retro del bloque `0.7`, P3; usuario, 2026-11-15) | hecho |
 
 ## `0.8` «Front y otros agentes»
 
