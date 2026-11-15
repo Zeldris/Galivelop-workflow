@@ -115,6 +115,66 @@ class Commits(Base):
         self.assertEqual(code, 0, out)
         self.assertBlocks(out, "claude/tema", "git push -u origin claude/tema")
 
+    def test_merged_main_with_a_merge_commit_counts_only_the_merge_commit(self):
+        p = self.p
+        p.work_branch()
+        p.git("checkout", "-q", "main")
+        p.write("src/m.py", "m = 1\n"); p.commit("on main")
+        p.git("push", "-q", "origin", "main")
+        p.git("checkout", "-q", "claude/trabajo")
+        p.git("merge", "-q", "--no-edit", "--no-ff", "origin/main")  # vs @{u}: the merge commit and main's commit
+        self.assertEqual(p.git("rev-list", "--count", "@{u}..HEAD").stdout.strip(), "2")
+        code, out = p.stop()
+        self.assertEqual(code, 0, out)
+        self.assertBlocks(out, "1 commit ", "git push -u origin claude/trabajo")  # the old rule said "2 commits"
+        p.git("push", "-q", "origin", "claude/trabajo")
+        code, out = p.stop()
+        self.assertLetsStop(code, out)
+
+    def test_commit_pushed_only_to_another_remote_branch_still_counts(self):
+        p = self.p
+        p.work_branch()
+        p.write("src/a.py", "x = 1\n"); p.commit("local only")
+        p.git("push", "-q", "origin", "HEAD:refs/heads/claude/otra")  # on a remote, but not on the upstream nor main
+        code, out = p.stop()
+        self.assertEqual(code, 0, out)
+        self.assertBlocks(out, "1 commit ", "git push -u origin claude/trabajo")
+
+    def test_merge_of_main_without_a_merge_commit_is_not_unpushed(self):
+        p = self.p
+        p.work_branch()
+        p.git("checkout", "-q", "main")
+        p.write("src/m.py", "m = 1\n"); p.commit("on main")
+        p.git("push", "-q", "origin", "main")
+        p.git("checkout", "-q", "claude/trabajo")
+        p.git("merge", "-q", "--ff-only", "origin/main")  # fast-forward: only main's commit, already on origin/main
+        code, out = p.stop()
+        self.assertLetsStop(code, out)
+
+    def test_local_commit_on_top_of_merged_main_counts_only_that_one(self):
+        p = self.p
+        p.work_branch()
+        p.git("checkout", "-q", "main")
+        p.write("src/m.py", "m = 1\n"); p.commit("on main")
+        p.git("push", "-q", "origin", "main")
+        p.git("checkout", "-q", "claude/trabajo")
+        p.git("merge", "-q", "--ff-only", "origin/main")
+        p.write("src/a.py", "x = 1\n"); p.commit("local only")
+        code, out = p.stop()
+        self.assertEqual(code, 0, out)
+        self.assertBlocks(out, "1 commit ", "git push -u origin claude/trabajo")
+
+    def test_upstream_gone_uses_the_same_rule(self):
+        p = self.p
+        p.work_branch()
+        p.git("push", "-q", "origin", "--delete", "claude/trabajo")
+        p.git("fetch", "-q", "--prune", "origin")  # @{u} no longer resolves
+        code, out = p.stop()
+        self.assertLetsStop(code, out)  # HEAD is on origin/main
+        p.write("src/a.py", "x = 1\n"); p.commit("local only")
+        code, out = p.stop()
+        self.assertBlocks(out, "1 commit ", "no upstream branch")
+
     def test_new_branch_with_nothing_new_does_not_block(self):
         p = self.p
         p.git("checkout", "-q", "-b", "claude/vacia")  # same commit as origin/main: nothing unpushed
