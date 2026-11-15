@@ -252,3 +252,6 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   `reviewed.sh` acepta cualquier retro de la historia, sin test; L2, la cabecera de `reviewed.sh` no cuenta la base
   de árbol vacío (D109); L3, `templates/es|en/AGENTS.md` describe el gancho `Stop` de la nube sin fecha ni fuente;
   L4, `docs/es|en/troubleshooting.md` cita el mensaje con «main» literal en vez de `<protegida>`/`<protected>`.
+- Leves de D116/D118 (`0.6.2`): con shellcheck ausente en CI o en la nube, `tests-for.py --run` acaba diciendo «fix
+  the .sh files and run again» cuando lo que toca es instalarlo (la orden sale antes, en stderr); la primera línea del
+  docstring de `run_shellcheck` pasa de 120 caracteres.
