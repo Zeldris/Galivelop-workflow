@@ -137,14 +137,14 @@ else
 fi
 if [ -n "$since" ]; then
   if [ "$since" = "EMPTY" ]; then
-    is_code_since=""; log_range="HEAD"
+    is_code_since=""; log_range=(HEAD)
   elif [ "$has_protected" = "true" ]; then
-    is_code_since="$since"; log_range="$since..HEAD ^refs/remotes/origin/$protected"
+    is_code_since="$since"; log_range=("$since..HEAD" "^refs/remotes/origin/$protected")
   else
-    is_code_since="$since"; log_range="$since..HEAD"
+    is_code_since="$since"; log_range=("$since..HEAD")
   fi
   if unreviewed="$(bash "$here/is-code.sh" "$is_code_since" HEAD 2>/dev/null)" \
-    && own="$(git -c core.quotePath=false log --format= --name-only $log_range 2>/dev/null)"; then
+    && own="$(git -c core.quotePath=false log --format= --name-only "${log_range[@]}" 2>/dev/null)"; then
     # The code files (tree diff) that the branch's own commits touched; whole lines, so paths with spaces stay whole.
     if [ -n "$unreviewed" ] && [ -n "$own" ]; then
       unreviewed="$(printf '%s\n' "$unreviewed" | grep -Fxf <(printf '%s\n' "$own") || true)"

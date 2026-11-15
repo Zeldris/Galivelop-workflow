@@ -226,7 +226,7 @@ In this order, because each step uses the previous one.
 | Id | Task | State |
 |---|---|---|
 | D109 | `reviewed.sh` takes the empty tree as base (like the `pre-push` on a new branch) when the protected branch does not exist on the remote, so the `pre-push` lets it be created, with its test (`0.7` closing harvest, private-project-4 P1) | done (2026-11-15) |
-| D110 | `before-stop.py` counts as unpushed only what is on no remote (`@{u}..HEAD --not --remotes`): `main` commits brought by merge do not count, with its test (`0.7` closing harvest, world-maker-fantasy P1) | pending |
+| D110 | `before-stop.py` counts as unpushed only what is on no remote (`@{u}..HEAD --not --remotes`): `main` commits brought by merge do not count, with its test (`0.7` closing harvest, world-maker-fantasy P1) | done (2026-11-15) |
 | D111 | `gw-orchestrate-dealer`: after the merge, fixes go to a new subagent with the findings file (`merge-branch.sh` removes the worktree) (`0.7` closing harvest, image-generator P1) | done (2026-11-15) |
 | D112 | `gw-orchestrate-dealer`: a red test is pre-existing only if it fails the same on `origin/<protected>`, with the output of both runs, and the main session checks it (`0.7` closing harvest, world-maker-fantasy P2) | done (2026-11-15) |
 | D113 | The phase 1 reviewer gets `pendingFile` with "do not report what is already here" (`AGENTS.md`, its template or `review-scope.py`) (`0.7` closing harvest, image-generator P2) | done (2026-11-15) |

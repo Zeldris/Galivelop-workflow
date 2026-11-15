@@ -246,3 +246,5 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   copia del flujo desde una sesión suya. Su historial seguirá teniendo la copia `0.2.0` (MIT).
 - Menor de la revisión de D109 (`0.6.2`): una `refs/remotes/origin/<protegida>` caducada (la rama ya no existe en el
   remoto) solo cambia el texto del aviso de `reviewed.sh`, no la base; se acepta.
+- Notas de D110 (`0.6.2`): con un upstream de remoto `.` no existe la ref `<remoto>/<protegida>` y `before-stop.py`
+  cuenta solo `@{u}..HEAD`, como antes; un `GitError` de `unpushed()` va a avisos y deja parar (diseño anterior).
