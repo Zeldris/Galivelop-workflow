@@ -263,6 +263,8 @@ En este orden, porque cada paso usa el anterior.
 | E51 | El check valida el YAML de `.github/workflows/*.yml` con el lector de `ci-local.py`, tras una clave de `.claude/gw.json` (recogida `0.7`, instalador P1) | pendiente |
 | E52 | `apply.py --dry-run --summary` y los renombrados en el ensayo (recogida `0.7`, private-project-3 P3) | hecho (2026-11-14) |
 | B36 | El registro de métricas no lleva commits propios: el `pre-commit` lo añade al siguiente commit de trabajo (recogida `0.7`, world-maker-fantasy P3; junto a B32) | hecho (2026-11-14) |
+| E54 | `apply.py --update` añade `ci-local.py --validate` a la lista `check` de los proyectos ya instalados, con aviso en el resumen de `--dry-run` (pregunta abierta de E51; usuario, 2026-11-15) | pendiente |
+| E55 | Con `gw.json` ilegible, el `pre-commit` lee `authorDeny` de `HEAD` antes de dejar pasar el commit (menor de la revisión de E41; usuario, 2026-11-15) | pendiente |
 
 ## `0.8` «Front y otros agentes»
 

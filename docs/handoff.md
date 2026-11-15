@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14; excepción a A-6 aprobada por el usuario). Etiqueta y release `v0.6.1` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.1.md` |
-| Siguiente paso | Revisión de E41 y cierre del bloque de la **`0.7`** (E41, B36 y B32 hechos; recogida H20 ya hecha). Presupuesto de compactaciones: 2 |
+| Siguiente paso | E54 y E55 de la **`0.7`** (decisiones del usuario, 2026-11-15) con `gw-orchestrate-dealer`; luego revisión de cierre del bloque (`/code-review` desde el último `Findings:`) y `/retro`. E51, E52, B36+B32 y E41 hechos, CI en verde en eb2fc3d. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
