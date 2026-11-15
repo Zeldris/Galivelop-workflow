@@ -35,7 +35,7 @@ class Fixture:
         self.env.update(GIT_CONFIG_GLOBAL=str(gitconfig), GIT_CONFIG_NOSYSTEM="1", TMPDIR=str(tmp), HOME=str(home),
                         GW_PERSONAL_NOTES=str(tmp / "no-personal-notes"))  # never the real ~/.claude/gw/notas
         self.run("git", "init", "-q", str(self.work), cwd=tmp)
-        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, **(config or {})), indent=2) + "\n")
+        self.write(".claude/gw.json", json.dumps({**BASE_CONFIG, "ciYamlCheck": False, **(config or {})}, indent=2) + "\n")  # E54: --update would add the E51 entry
         self.write("check.sh", "exit 0\n")
         # The project's own log (no marker): apply.py must leave it alone. AGENTS.md and the CI file come from the
         # workflow's templates (tests/test_templates.py).
@@ -844,7 +844,7 @@ class PersonalNotes(unittest.TestCase):
 
 
 SKILL_MD = "---\nname: {n}\ndescription: old copy\nmetadata:\n  version: \"0.4.3\"\n---\n# {n}\n"
-MIGRATED_CONFIG = {k: v for k, v in BASE_CONFIG.items() if k not in ("log", "reviewMark")}
+MIGRATED_CONFIG = {**{k: v for k, v in BASE_CONFIG.items() if k not in ("log", "reviewMark")}, "ciYamlCheck": False}
 
 
 class Migrate(unittest.TestCase):
@@ -1614,7 +1614,7 @@ class Migrate(unittest.TestCase):
 
 
 
-OLD_SCHEMA_CONFIG = {k: v for k, v in BASE_CONFIG.items() if k != "schemaVersion"}  # written before 0.5
+OLD_SCHEMA_CONFIG = {**{k: v for k, v in BASE_CONFIG.items() if k != "schemaVersion"}, "ciYamlCheck": False}  # written before 0.5
 
 
 class ConfigVersion(unittest.TestCase):
@@ -2223,6 +2223,102 @@ class ConditionalBlocks(unittest.TestCase):
         self.assertEqual(code, 0, out)
         self.assertEqual(p.read("notes/log.md"), log)
         self.assertFalse((p.work / "notes" / "log.md.gw-new").exists())
+
+
+class CiValidateMigration(unittest.TestCase):
+    """E54: --update adds `ci-local.py --validate` (E51) to the `check` list of an installed project."""
+
+    CMD = "python3 .claude/gw/scripts/ci-local.py --validate"
+
+    def project(self, **config):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-civ-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        return Fixture(tmp, dict({"ciYamlCheck": True}, **config, version=VERSION))
+
+    def check_list(self, p):
+        return json.loads(p.read(".claude/gw.json"))["check"]
+
+    def merge_lines(self, out):
+        return [l for l in out.splitlines() if l.lstrip().startswith("merge") and ".claude/gw.json" in l]
+
+    def test_missing_entry_is_added_before_tests_after_main_and_the_rest_keeps_its_order(self):
+        old = ["make check", "python3 x.py", "python3 .claude/gw/scripts/tests-after-main.py"]
+        p = self.project(check=old)
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.check_list(p), old[:2] + [self.CMD] + old[2:])
+        p.run_apply("--update")  # not twice
+        self.assertEqual(self.check_list(p).count(self.CMD), 1)
+
+    def test_without_tests_after_main_it_goes_last(self):
+        p = self.project(check=["make check"])
+        p.run_apply("--update")
+        self.assertEqual(self.check_list(p), ["make check", self.CMD])
+
+    def test_present_in_any_form_is_left_alone(self):
+        for entry in (self.CMD, "bash -c 'python3 scripts/ci-local.py --validate && true'"):
+            p = self.project(check=["make check", entry])
+            before = p.read(".claude/gw.json")
+            code, out = p.run_apply("--update")
+            self.assertEqual(code, 0, out)
+            self.assertEqual(p.read(".claude/gw.json"), before, entry)
+
+    def test_ci_yaml_check_off_is_respected(self):
+        p = self.project(check=["make check"], ciYamlCheck=False)
+        code, out = p.run_apply("--update")
+        self.assertEqual(self.check_list(p), ["make check"], out)
+
+    def test_not_added_without_update(self):
+        p = self.project(check=["make check"])
+        p.run_apply()
+        self.assertEqual(self.check_list(p), ["make check"])
+
+    def test_check_reports_the_difference_and_writes_nothing(self):
+        p = self.project(check=["make check"])
+        before = p.read(".claude/gw.json")
+        code, out = p.run_apply("--update", "--check")
+        self.assertEqual(code, 1, out)
+        self.assertEqual(len(self.merge_lines(out)), 1, out)
+        self.assertIn("ci-local.py --validate", out)
+        self.assertEqual(p.read(".claude/gw.json"), before)
+
+    def test_dry_run_summary_warns_counts_and_writes_nothing(self):
+        p = self.project(check=["make check"])
+        before = p.read(".claude/gw.json")
+        code, out = p.run_apply("--update", "--dry-run", "--summary")
+        self.assertEqual(code, 0, out)
+        lines = self.merge_lines(out)
+        self.assertEqual(len(lines), 1, out)
+        self.assertIn("check lacks `ci-local.py --validate`", lines[0])
+        self.assertRegex(out, r"\d+ merge")
+        self.assertEqual(p.read(".claude/gw.json"), before)
+
+    def test_joins_the_other_gw_json_changes_in_one_write(self):
+        p = self.project(check=["make check"])
+        p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, check=["make check"], version="0.0.1"), indent=2) + "\n")
+        code, out = p.run_apply("--update", "--dry-run")
+        lines = self.merge_lines(out)
+        self.assertEqual(len(lines), 1, out)
+        self.assertIn("version 0.0.1", lines[0])
+        self.assertIn("ci-local.py --validate", lines[0])
+
+    def test_odd_shapes_fail_closed_and_are_never_rewritten(self):
+        # `check` is a required array of non-empty strings: config.py rejects the odd shapes (exit 2) before the guard
+        # runs, so nothing is written. A gw.json without `check` is the same case (no default is invented here).
+        for odd in ({"check": "make check"}, {"check": [1, None]}, {"check": []}, {"check": None}):
+            p = self.project(**odd)
+            before = p.read(".claude/gw.json")
+            code, out = p.run_apply("--update")
+            self.assertEqual(code, 2, (odd, out))
+            self.assertEqual(p.read(".claude/gw.json"), before, odd)
+        p = self.project()
+        raw = json.loads(p.read(".claude/gw.json"))
+        del raw["check"]
+        p.write(".claude/gw.json", json.dumps(raw) + "\n")
+        before = p.read(".claude/gw.json")
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 2, out)
+        self.assertEqual(p.read(".claude/gw.json"), before)
 
 
 if __name__ == "__main__":
