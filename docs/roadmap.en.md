@@ -264,6 +264,9 @@ In this order, because each step uses the previous one.
 | B36 | The metrics ledger gets no commits of its own: the `pre-commit` adds it to the next work commit (`0.7` harvest, world-maker-fantasy P3; with B32) | done (2026-11-14) |
 | E54 | `apply.py --update` adds `ci-local.py --validate` to the `check` list of projects already installed, with a notice in the `--dry-run` summary (open question of E51; user, 2026-11-15) | done (2026-11-15; `plan_ci_validate` in the `gw.json` `merge` action: before `tests-after-main.py` or at the end; not with `ciYamlCheck: false`, if already there, or in the workflow repo; a missing or odd `check` fails closed) |
 | E55 | With an unreadable `gw.json`, the `pre-commit` reads `authorDeny` from `HEAD` before letting the commit through (minor from the E41 review; user, 2026-11-15) | done (2026-11-15; `config.py --rev HEAD author-check`; without a readable `gw.json` at `HEAD` (first commit, absent or broken) it warns and goes on) |
+| B37 | A single `GW_TEST_TIMEOUT_SCALE` factor (default 1; the macOS CI raises it) for the tests' waits, from a shared helper in `tests/`, and `tests/check.sh` lists new literal `timeout=` outside it (block `0.7` retro, P1; user, 2026-11-15) | pending |
+| E56 | `PreToolUse` hook on `Edit`/`Write` that, in the workflow repo, warns (without blocking) when editing `.claude/gw/`, `.claude/skills/` or `.githooks/`, naming the source path (block `0.7` retro, P2; user, 2026-11-15) | pending |
+| E57 | `retro`: when a block closes, proposes a `B` sweep task with the minors of `pendingFile` from one script, for the next version; the user decides which go in (block `0.7` retro, P3; user, 2026-11-15) | pending |
 
 ## `0.8` "Front end and other agents"
 

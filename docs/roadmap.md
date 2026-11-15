@@ -260,11 +260,14 @@ En este orden, porque cada paso usa el anterior.
 | E49 | `gw-init` con `agentSignatures: false` escribe en `CLAUDE.md` la regla «sin firmas» frente al recordatorio de atribución (recogida `0.6.0`, image-generator P5) | pendiente |
 | B31 | Aviso de contexto cerca de la ventana con el presupuesto de compactaciones gastado (`recover.py --state` o `Stop`), antes de la compactación (recogida `0.6.0`, image-generator P7) | pendiente |
 | B32 | `apply.py` añade `docs/metrics/ledger.jsonl merge=union` al `.gitattributes` del proyecto, con su test, para que dos ramas que apuntan gasto no choquen al fusionar (revisión de fase 1 de la `0.6.0`; resto de B2) | hecho (2026-11-14) |
-| E51 | El check valida el YAML de `.github/workflows/*.yml` con el lector de `ci-local.py`, tras una clave de `.claude/gw.json` (recogida `0.7`, instalador P1) | pendiente |
+| E51 | El check valida el YAML de `.github/workflows/*.yml` con el lector de `ci-local.py`, tras una clave de `.claude/gw.json` (recogida `0.7`, instalador P1) | hecho (2026-11-14) |
 | E52 | `apply.py --dry-run --summary` y los renombrados en el ensayo (recogida `0.7`, private-project-3 P3) | hecho (2026-11-14) |
 | B36 | El registro de métricas no lleva commits propios: el `pre-commit` lo añade al siguiente commit de trabajo (recogida `0.7`, world-maker-fantasy P3; junto a B32) | hecho (2026-11-14) |
 | E54 | `apply.py --update` añade `ci-local.py --validate` a la lista `check` de los proyectos ya instalados, con aviso en el resumen de `--dry-run` (pregunta abierta de E51; usuario, 2026-11-15) | hecho (2026-11-15; `plan_ci_validate` en la acción `merge` de `gw.json`: antes de `tests-after-main.py` o al final; no con `ciYamlCheck: false`, ni si ya está, ni en el repo del flujo; `check` ausente o raro falla cerrado) |
 | E55 | Con `gw.json` ilegible, el `pre-commit` lee `authorDeny` de `HEAD` antes de dejar pasar el commit (menor de la revisión de E41; usuario, 2026-11-15) | hecho (2026-11-15; `config.py --rev HEAD author-check`; sin `gw.json` legible en `HEAD` (primer commit, ausente o roto) avisa y sigue) |
+| B37 | Un único factor `GW_TEST_TIMEOUT_SCALE` (por defecto 1; el CI de macOS lo sube) para los esperas de los tests, desde un helper común de `tests/`, y `tests/check.sh` lista los `timeout=` literales nuevos fuera de él (retro del bloque `0.7`, P1; usuario, 2026-11-15) | pendiente |
+| E56 | Gancho `PreToolUse` sobre `Edit`/`Write` que, en el repo del flujo, avisa (sin bloquear) al editar `.claude/gw/`, `.claude/skills/` o `.githooks/` con la ruta de la fuente (retro del bloque `0.7`, P2; usuario, 2026-11-15) | pendiente |
+| E57 | `retro`: al cerrar un bloque, propone una tarea `B` de barrido con los leves de `pendingFile` de un mismo script, para la siguiente versión; el usuario decide cuáles entran (retro del bloque `0.7`, P3; usuario, 2026-11-15) | pendiente |
 
 ## `0.8` «Front y otros agentes»
 
