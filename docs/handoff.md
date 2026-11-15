@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14), etiqueta y release `v0.6.1` |
-| Siguiente paso | **Parche `0.6.2`:** D109-D115 hechos; versión `0.6.2` con CHANGELOG, README y la recogida H21 traída de `ccr`. Siguiente: check entero (`bash scripts/check.sh`) y las tres fases (fase 1: `/code-review` contra `origin/main`); a `main` solo con confirmación del usuario; después, la `0.7.0` desde `ccr-d1e2d496-0vzck8` |
+| Siguiente paso | **Parche `0.6.2`:** D109-D115 hechos, versión `0.6.2`, check entero en verde (2026-11-15) y fase 1 cerrada sin graves ni medios (4 leves a `pending.md`). Siguiente: fase 2 (`/gw-opt-tokens` y `/retro`, propuestas al usuario), fase 3 (`reviewed.sh`) y, con confirmación del usuario, la subida a `main`; después, la `0.7.0` desde `ccr-d1e2d496-0vzck8` |
 
 ### Fases
 
@@ -45,7 +45,7 @@ desde una sesión local.
 
 ## Pendiente
 
-Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (72 entradas); se añade y se quita allí.
+Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (73 entradas); se añade y se quita allí.
 
 ## Comprobar el estado
 

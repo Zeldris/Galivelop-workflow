@@ -248,3 +248,7 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   remoto) solo cambia el texto del aviso de `reviewed.sh`, no la base; se acepta.
 - Notas de D110 (`0.6.2`): con un upstream de remoto `.` no existe la ref `<remoto>/<protegida>` y `before-stop.py`
   cuenta solo `@{u}..HEAD`, como antes; un `GitError` de `unpushed()` va a avisos y deja parar (diseño anterior).
+- Leves de la fase 1 de la `0.6.2` (`review-062.md`): L1, con `requireRetro` y sin la protegida en el remoto,
+  `reviewed.sh` acepta cualquier retro de la historia, sin test; L2, la cabecera de `reviewed.sh` no cuenta la base
+  de árbol vacío (D109); L3, `templates/es|en/AGENTS.md` describe el gancho `Stop` de la nube sin fecha ni fuente;
+  L4, `docs/es|en/troubleshooting.md` cita el mensaje con «main» literal en vez de `<protegida>`/`<protected>`.
