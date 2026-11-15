@@ -237,7 +237,7 @@ En este orden, porque cada paso usa el anterior.
 | D117 | `merge-branch.sh --defer-check` fusiona y limpia sin check (y lo dice), para todas las ramas de una oleada salvo la última; el dealer lo usa (retro `0.6.2`, T1) | pendiente |
 | D118 | `tests-for.py --why` dice qué regla de `testMap` y qué archivo cambiado traen cada test, y el encargo del dealer usa `--diff {head}` como base (retro `0.6.2`, T2) | pendiente |
 | D119 | `subagent-cap.py` avisa cuando un `general-purpose` se lanza con `sonnet` y `low`/`medium` y existe `.claude/agents/gw-worker.md` (retro `0.6.2`, T3) | pendiente |
-| D120 | `gw-orchestrate-dealer`: tras aceptar el informe de un subagente, la sesión principal lo para con `TaskStop` (retro `0.6.2`, T4) | pendiente |
+| D120 | `gw-orchestrate-dealer`: tras aceptar el informe de un subagente, la sesión principal lo para con `TaskStop` (retro `0.6.2`, T4) | hecho (2026-11-15) |
 | D121 | El mensaje de `version.py --release` sin la recogida dice cómo traerla de la rama donde se hizo (`git checkout <sha> -- <proposalsDir>/`) (retro `0.6.2`, N1) | pendiente |
 
 ## `0.7` «Preguntar»

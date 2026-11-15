@@ -236,7 +236,7 @@ In this order, because each step uses the previous one.
 | D117 | `merge-branch.sh --defer-check` merges and cleans up without the check (and says so), for every branch of a wave but the last; the dealer uses it (`0.6.2` retro, T1) | pending |
 | D118 | `tests-for.py --why` says which `testMap` rule and which changed file bring each test, and the dealer brief uses `--diff {head}` as the base (`0.6.2` retro, T2) | pending |
 | D119 | `subagent-cap.py` warns when a `general-purpose` subagent starts with `sonnet` and `low`/`medium` while `.claude/agents/gw-worker.md` exists (`0.6.2` retro, T3) | pending |
-| D120 | `gw-orchestrate-dealer`: after accepting a subagent's report, the main session stops it with `TaskStop` (`0.6.2` retro, T4) | pending |
+| D120 | `gw-orchestrate-dealer`: after accepting a subagent's report, the main session stops it with `TaskStop` (`0.6.2` retro, T4) | done (2026-11-15) |
 | D121 | The `version.py --release` message without the harvest says how to bring it from the branch where it was made (`git checkout <sha> -- <proposalsDir>/`) (`0.6.2` retro, N1) | pending |
 
 ## `0.7` "Ask"
