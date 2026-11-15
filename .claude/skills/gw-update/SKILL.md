@@ -50,7 +50,7 @@ python3 <workflow>/scripts/apply.py <project> --dry-run            # add --summa
 It lists what it would create, update or propose, what it would `move` or `remove` to migrate a project installed with
 the old names (skills without `gw-`, Spanish script names, `.claude/gw/<old>.md` notes, `docs/traspaso.md`,
 `docs/registros/`, `docs/propuestas/`; ask the user; `--keep-paths` keeps the old project paths and writes `keepLegacyPaths: true`, so later runs and `--check` leave them alone), the `merge` of `.claude/gw.json` that migrates
-an older `schemaVersion` (its reason lists each migration, `schemaVersion N → M`), the same `merge` adding `ci-local.py --validate` to `check` (E54; off with `ciYamlCheck: false`), files the workflow no longer has,
+an older `schemaVersion` (its reason lists each migration, `schemaVersion N → M`), files the workflow no longer has,
 and template updates, plus the
 user's personal notes (`~/.claude/gw/notas/`, see `docs/en/config.md`) it would create (`personal note`) or that differ
 from the project's copy. Summarise it for the user with the CHANGELOG entries between X and Y (`### ES` or `### EN` per the user's language).
