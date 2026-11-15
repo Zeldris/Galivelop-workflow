@@ -3,6 +3,7 @@
 Reuses the temporary-repo helpers of test_hooks.py (imported, not modified). The warning never blocks the mark.
 """
 import json
+import shutil
 import unittest
 from pathlib import Path
 
@@ -172,6 +173,88 @@ class MarkFooter(Base):
         self.assertIn("config.py", out)
         self.assertIn("validate", out)
         self.assertNotIn("Reviewed:", self.p.git("log", "-1", "--format=%s").stdout)
+
+
+class ProtectedBranchAbsentOnRemote(Base):
+    """D109: a project that adopts the flow before having its protected branch: the base is the empty tree."""
+
+    def setUp(self):
+        super().setUp()
+        p = self.p
+        p.git("checkout", "-q", "-b", "feature")
+        p.write("src/a.py", "a = 1\n"); p.commit("code")
+        self.assertEqual(p.push("-u", "origin", "feature")[0], 0)
+        p.set_remote_main(None)  # origin has no main
+        self.script = str(p.work / ".claude" / "gw" / "scripts" / "reviewed.sh")
+
+    def test_mark_written_and_pre_push_lets_main_be_created(self):
+        p = self.p
+        code, out = p.run("bash", self.script)
+        self.assertEqual(code, 0, out)
+        self.assertIn("origin has no main yet", out)
+        self.assertIn("src/a.py", out)  # the whole history counts as unreviewed code in the warning
+        self.assertIn("Reviewed: ", p.git("log", "-1", "--format=%s").stdout)
+        code, out = p.push("origin", "HEAD:refs/heads/main")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(p.git("rev-parse", "main", cwd=p.bare).stdout.strip(), p.sha("HEAD"))
+
+    def test_without_the_mark_main_cannot_be_created(self):
+        code, out = self.p.push("origin", "HEAD:refs/heads/main")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("no review mark", out)
+
+    def test_several_roots_still_marks(self):
+        p = self.p
+        p.git("checkout", "-q", "--orphan", "other")
+        p.git("rm", "-rfq", ".")
+        p.write("docs/o.md", "o\n"); p.git("add", "-A"); p.git("commit", "-q", "--no-verify", "-m", "other root")
+        p.git("checkout", "-q", "feature")
+        p.git("merge", "-q", "--allow-unrelated-histories", "--no-edit", "other")
+        self.assertEqual(p.push("origin", "feature")[0], 0)
+        code, out = p.run("bash", self.script)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(p.push("origin", "HEAD:refs/heads/main")[0], 0)
+
+    def test_shallow_clone_marks_without_needing_history(self):
+        p = self.p
+        shallow = self.tmp / "shallow"
+        p.git("clone", "-q", "--depth", "1", "--branch", "feature", "file://" + str(p.bare), str(shallow), cwd=self.tmp)
+        p.git("config", "user.name", "T", cwd=shallow); p.git("config", "user.email", "t@e.x", cwd=shallow)
+        shutil.copytree(p.work / ".claude" / "gw", shallow / ".claude" / "gw", dirs_exist_ok=True)
+        code, out = p.run("bash", str(shallow / ".claude" / "gw" / "scripts" / "reviewed.sh"), cwd=shallow)
+        self.assertEqual(code, 0, out)
+
+    def test_a_branch_ending_in_main_on_the_remote_is_not_main(self):
+        p = self.p
+        self.assertEqual(p.push("origin", "feature:refs/heads/backup/main")[0], 0)
+        code, out = p.run("bash", self.script)
+        self.assertEqual(code, 0, out)
+        self.assertIn("origin has no main yet", out)
+
+    def test_working_on_the_protected_branch_itself_gets_its_own_message(self):
+        p = self.p
+        p.git("checkout", "-q", "-B", "main")
+        code, out = p.run("bash", self.script)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("you are on main itself", out)
+        self.assertIn("another branch", out)
+        self.assertNotIn("Reviewed:", p.git("log", "-1", "--format=%s").stdout)
+
+    def test_detached_head_still_refused(self):
+        self.p.git("checkout", "-q", "--detach")
+        code, out = self.p.run("bash", self.script)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("detached HEAD", out)
+
+    def test_unreachable_remote_fails_closed_with_its_reason(self):
+        p = self.p
+        p.git("remote", "set-url", "origin", str(self.tmp / "nowhere.git"))
+        code, out = p.run("bash", self.script)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("cannot reach origin", out)
+        self.assertIn("exit 128", out)
+        self.assertIn("does not appear to be a git repository", out)  # git's own reason is kept
+        self.assertNotIn("Reviewed:", p.git("log", "-1", "--format=%s").stdout)
 
 
 class InstalledCopies(unittest.TestCase):
