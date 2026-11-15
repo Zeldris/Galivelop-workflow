@@ -28,6 +28,8 @@ las crea una vez; desde entonces son del proyecto.
   una fila del roadmap en los dos idiomas sin leerlo entero ni editarlo con `sed`.
 - `gw-orchestrate-dealer` (retro `0.5.1` R3 y R6): los ids del roadmap se commitean antes de repartir; en un
   worktree, solo los tests de lo tocado, y un solo check completo tras fusionar la oleada, sin tocar el árbol.
+- `gw-worker` con el `model` y el `effort` de la llamada para cualquier peldaño, y `gw-reviewer` para las revisiones
+  (retro de la `0.7.0`, E62): arranque ~13-20k frente a ~65k de `general-purpose`; `subagent-cap.py` lo recuerda.
 - `AGENTS.md` (retro del parche 0.4.3): push y check largo en segundo plano, esperando el aviso (R2); al empezar,
   de `traspaso.md` solo lo que el gancho `SessionStart` recortó (R4).
 
@@ -78,6 +80,9 @@ las crea una vez; desde entonces son del proyecto.
   media, suelo 96k y techo 165k, 2 compactaciones, 15M; un subagente de revisión (30 llamadas, arranque 64k, 2,9M).
   Arrastre mayor: `docs/handoff.md` 14 lecturas (326k) con 27.860 caracteres sobre el tope de 20.000. Cambios: retro
   `0.5.2` R4 (archivar la bitácora tras publicar) a la `0.6`.
+- 2026-11-15, `0.7.0` (sesión larga en la nube, últimas 48 h): principal 1.254 llamadas, 126k de media, suelo 102k y
+  techo 164k, 11 compactaciones (presupuesto 1), 158M; subagentes 10 (338 llamadas, 29M): 6 `gw-worker` con arranque
+  ~13k y 4 `general-purpose` con `opus` con ~65k (181 llamadas, 21M). Cambio: E62.
 - 2026-11-14, publicación de la `0.6.0`, H20 y parche `0.6.1` (una sesión en la nube, últimas 24 h): principal 532
   llamadas, 128k de media, suelo 101k y techo 162k, 6 compactaciones (presupuesto 1), 68M; subagentes 6 (236
   llamadas, 18M; A13 C7 con 64 llamadas y arranque de 82k). Arrastre mayor: `docs/handoff.md` 33 lecturas (1,7M;

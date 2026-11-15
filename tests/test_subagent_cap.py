@@ -437,7 +437,7 @@ class WorkerAgent(Base):  # B28: the gw-worker definition satisfies the model an
         self.assertIn("`sonnet` in models.disabled", spec["permissionDecisionReason"], out)
 
 
-class WorkerWarning(Base):  # D119: general-purpose on sonnet low/medium is told to use gw-worker
+class WorkerWarning(Base):  # D119 and T1 of the 0.7.0 retro: general-purpose is told to use gw-worker
     cfg = {"subagentCap": 50}
 
     def setUp(self):
@@ -475,11 +475,26 @@ class WorkerWarning(Base):  # D119: general-purpose on sonnet low/medium is told
         self.p.agent("gw-worker", WorkerAgent.DEFINITION, user=True)
         self.assertQuiet(self.gp())
 
-    def test_silent_for_other_models_efforts_and_types(self):
-        for kwargs in ({"model": "opus"}, {"model": "haiku"}, {"effort": "high"}, {"effort": "xhigh"},
-                       {"subagent_type": "gw-worker"}, {"subagent_type": "Explore"}):
+    def test_every_rung_is_warned_with_the_same_model_and_effort(self):  # retro of the 0.7.0, T1
+        for kwargs in ({"model": "opus", "effort": "high"}, {"model": "haiku"}, {"effort": "xhigh"}):
             with self.subTest(kwargs=kwargs):
-                self.assertQuiet(self.gp(**kwargs))
+                code, out = self.gp(**kwargs)
+                spec = self.answer(out)
+                self.assertNotIn("permissionDecision", spec, out)
+                note = spec["additionalContext"]
+                self.assertIn("`subagent_type: gw-worker` and the same `model` and `effort`", note)
+                self.assertNotIn("gw-reviewer", note, "no gw-reviewer definition in this project")
+
+    def test_names_gw_reviewer_when_it_exists(self):
+        self.p.agent("gw-reviewer", "---\nname: gw-reviewer\nmodel: opus\neffort: medium\n---\nx\n")
+        code, out = self.gp(model="opus", effort="medium")
+        self.assertIn("`subagent_type: gw-reviewer` for a review", self.answer(out)["additionalContext"])
+
+    def test_silent_without_own_model_or_effort_and_for_other_types(self):
+        for kwargs in ({"model": ""}, {"effort": ""}, {"subagent_type": "gw-worker"}, {"subagent_type": "Explore"}):
+            with self.subTest(kwargs=kwargs):
+                code, out = self.gp(**kwargs)
+                self.assertNotIn("gw-worker` and the same", out)
 
     def test_joined_with_the_cap_ask(self):
         (self.p.work / ".claude" / "gw.json").write_text(json.dumps(dict(BASE_CONFIG, subagentCap=1), indent=2))

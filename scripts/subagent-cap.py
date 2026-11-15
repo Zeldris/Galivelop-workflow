@@ -17,11 +17,12 @@ read uses the default). A `fork` subagent is never warned: it inherits the sessi
 `additionalContext`: Claude Code delivers it with the tool result, so it serves the next calls, not the current one.
 It is also added to every `ask` this hook gives (cap reached, or cannot count).
 
-Light worker (D119): a call to a `general-purpose` subagent (a missing or empty `subagent_type` is general-purpose) with
-its own `model` sonnet (the rule of models.blocked_by against `sonnet`: alias, id or prefix) and its own `effort` low or
-medium is also warned, without blocking, to use `subagent_type: gw-worker`, when .claude/agents/gw-worker.md exists in
-the project root: gw-worker starts without MCP tools and skills, and general-purpose costs ~66-68k tokens just to start
-(retro 2026-11-11). Never with sonnet in models.disabled (that call is denied above), nor without that file.
+Light worker (D119; every rung since the retro of the 0.7.0): a call to a `general-purpose` subagent (a missing or
+empty `subagent_type` is general-purpose) with its own `model` and `effort` is also warned, without blocking, to use
+`subagent_type: gw-worker` with the same model and effort (and `gw-reviewer` for a review, when
+.claude/agents/gw-reviewer.md exists), when .claude/agents/gw-worker.md exists in the project root: those types start
+without MCP tools and skills, and general-purpose costs ~66-68k tokens just to start (retro 2026-11-11). Never for a
+call denied above (a model in models.disabled), nor without that file.
 
 Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse "ask" decision): a JSON object on stdout, exit 0,
 
@@ -304,12 +305,13 @@ def fields_note(event):
 
 
 WORKER = "gw-worker"
+REVIEWER = "gw-reviewer"
 GENERAL = "general-purpose"
-WORKER_EFFORTS = ("low", "medium")
 
 
 def worker_note(event):
-    """The reminder to use gw-worker for a general-purpose sonnet low/medium call (D119), or None."""
+    """The reminder to use gw-worker (or gw-reviewer) for a general-purpose call with its own model and effort (D119,
+    every rung since the retro of the 0.7.0), or None."""
     tool_input = event.get("tool_input")
     if not isinstance(tool_input, dict):
         return None
@@ -317,15 +319,16 @@ def worker_note(event):
     if kind not in (None, "", GENERAL):
         return None
     model, effort = own_model(tool_input), own_model(tool_input, "effort")
-    if model is None or effort is None or effort.lower() not in WORKER_EFFORTS:
-        return None
-    is_sonnet = models.blocked_by(model, ["sonnet"]) if models is not None else model.lower() == "sonnet"
     root = project_root()
-    if not is_sonnet or root is None or not os.path.isfile(os.path.join(str(root), ".claude", "agents", WORKER + ".md")):
+    agents = os.path.join(str(root), ".claude", "agents") if root is not None else None
+    if model is None or effort is None or agents is None or not os.path.isfile(os.path.join(agents, WORKER + ".md")):
         return None
-    return (f"this `{GENERAL}` subagent runs on `{model} {effort}`: launch it with `subagent_type: {WORKER}` instead "
-            f"(same rung, starts without MCP tools and skills; {GENERAL} costs ~66-68k tokens just to start, retro "
-            f"2026-11-11). This reminder arrives with the tool result, so it is for the next calls")
+    review = (f", or `subagent_type: {REVIEWER}` for a review" if os.path.isfile(os.path.join(agents, REVIEWER + ".md"))
+              else "")
+    return (f"this `{GENERAL}` subagent runs on `{model} {effort}`: launch it with `subagent_type: {WORKER}` and the "
+            f"same `model` and `effort`{review} instead (the call's model and effort win over the definition's; it "
+            f"starts without MCP tools and skills; {GENERAL} costs ~66-68k tokens just to start, retro 2026-11-11). "
+            f"This reminder arrives with the tool result, so it is for the next calls")
 
 
 def counter_path(session_id):

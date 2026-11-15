@@ -257,6 +257,8 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | B37 | A single `GW_TEST_TIMEOUT_SCALE` factor (default 1; the macOS CI raises it) for the tests' waits, from a shared helper in `tests/`, and `tests/check.sh` lists new literal `timeout=` outside it (block `0.7` retro, P1; user, 2026-11-15) | done (2026-11-15; `tests/waits.py`: `timeout()` and `wait_for()`; `tests/test_waits.py` rejects a literal `timeout=`, deadline or polling loop outside it; the macOS CI sets 3) |
 | E56 | `PreToolUse` hook on `Edit`/`Write` that, in the workflow repo, warns (without blocking) when editing `.claude/gw/`, `.claude/skills/` or `.githooks/`, naming the source path (block `0.7` retro, P2; user, 2026-11-15) | done |
 | E57 | `retro`: when a block closes, proposes a `B` sweep task with the minors of `pendingFile` from one script, for the next version; the user decides which go in (block `0.7` retro, P3; user, 2026-11-15) | done |
+| E62 | Light subagents for every rung: the dealer uses `gw-worker` with the call's `model` and `effort`, and `gw-reviewer` (`/code-review` without MCP tools) for reviews; `subagent-cap.py` reminds any `general-purpose` call with its own model and effort (`0.7.0` retro, T1; user, 2026-11-15) | done |
+| B39 | `measure.py`: "BY FILE" no longer counts `git config` arguments or an e-mail domain as files (`0.7.0` retro, T3; user, 2026-11-15) | done |
 
 ## `0.8` "Front end and other agents"
 
@@ -293,6 +295,7 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | D96 | Long log cells: `handoff.py` moves a row's closed items to "Done", or a second cap that fails (new key) (`0.6.0` harvest, image-generator P2) | pending (moves from `0.7`) |
 | E49 | `gw-init` with `agentSignatures: false` writes the "no signatures" rule into `CLAUDE.md` against the attribution reminder (`0.6.0` harvest, image-generator P5) | pending (moves from `0.7`) |
 | B31 | Warning when the context nears the window with the compaction budget spent (`recover.py --state` or `Stop`), before the compaction (`0.6.0` harvest, image-generator P7) | pending (moves from `0.7`) |
+| B38 | Sweep of the `scripts/handoff.py` minors in `pending.md` (D104): the pending-pointer count, duplicated and unchecked in a commit that only touches `pending.md`; `archive` requires "## Pendiente" while `check`/`recover` do not, and the missing-file message names the log; the `pre-push` reads `pendingFile` from the working copy; the count only looks at "Pendiente (de la bitácora)"; `move-pending` drops lines that look like pointers (`0.7.0` retro, R2; user, 2026-11-15) | pending |
 | E4 | Install profiles (minimal/core/full, `core` by default) in `gw-init` and `gw-update` | pending |
 | E5 | Front-end tests following the research | pending |
 | E7 | Front-end testing guide in `docs/en/patterns.md` and a config template | pending |

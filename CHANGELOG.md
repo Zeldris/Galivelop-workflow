@@ -33,6 +33,10 @@ Versión «Preguntar» publicada con lo hecho; lo pendiente de la `0.7` pasa a l
 - Entorno y retro (E56, E57): un gancho `PreToolUse` avisa, sin bloquear, al editar una copia generada del flujo
   (`.claude/gw/`, `.claude/skills/`, `.githooks/`) con la ruta de la fuente; la `retro` propone una tarea `B` de
   barrido con los leves de `pendingFile` de un mismo script.
+- Subagentes y medida (E62, B39): el dealer lanza cada trozo con `gw-worker` y el `model` y el `effort` de su
+  peldaño, y cada revisión con el nuevo `gw-reviewer` (`/code-review` sin herramientas MCP), en vez de
+  `general-purpose`; `subagent-cap.py` lo recuerda a cualquier `general-purpose` con modelo y esfuerzo propios.
+  `measure.py` no cuenta como archivos los argumentos de `git config`.
 
 ### EN
 
@@ -53,6 +57,10 @@ Versión «Preguntar» publicada con lo hecho; lo pendiente de la `0.7` pasa a l
 - Environment and retro (E56, E57): a `PreToolUse` hook warns, without blocking, when editing a generated copy of
   the workflow (`.claude/gw/`, `.claude/skills/`, `.githooks/`), naming the source path; the `retro` proposes a `B`
   sweep task with the minors of `pendingFile` from one script.
+- Subagents and measurement (E62, B39): the dealer launches each chunk with `gw-worker` and its rung's `model` and
+  `effort`, and each review with the new `gw-reviewer` (`/code-review` without MCP tools), instead of
+  `general-purpose`; `subagent-cap.py` reminds any `general-purpose` call with its own model and effort.
+  `measure.py` no longer counts `git config` arguments as files.
 
 ## [0.6.2] - 2026-11-15
 

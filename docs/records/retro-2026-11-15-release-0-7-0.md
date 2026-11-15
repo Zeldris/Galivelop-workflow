@@ -5,7 +5,8 @@ Fase 2 de la `0.7.0` en `ccr-d1e2d496-0vzck8`, tras la retro del bloque (`retro-
 `measure.py` sobre la sesión larga de la nube (`784b6819`, últimas 48 h, con sus subagentes) y sobre la sesión de la
 fase 1 (`562bd148`), la bitácora y `docs/records/pending.md`.
 
-**Estado:** pendiente de la decisión del usuario.
+**Estado:** aprobada por el usuario (2026-11-15): T1 aplicada como E62, T3 aplicada como B39 y R2 aprobada como
+B38 a la `0.8`.
 
 ## Medida
 

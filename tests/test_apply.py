@@ -346,6 +346,18 @@ class Apply(unittest.TestCase):
         self.assertIn("not workflow-owned", out)
         self.assertEqual(p.read(".claude/agents/gw-worker.md"), mine)
 
+    def test_installs_the_gw_reviewer_agent(self):  # retro of the 0.7.0, T1
+        self.applied()
+        src = (ROOT / "templates/claude/agents/gw-reviewer.md").read_text()
+        self.assertEqual(self.p.read(".claude/agents/gw-reviewer.md"), src)
+        head = src.split("---")[1]
+        for field in ("name: gw-reviewer", "model: opus", "effort:"):
+            self.assertIn(field, head)
+        tools = head.split("tools:")[1].split("\n")[0]
+        for tool in ("Skill", "Read", "Bash"):
+            self.assertIn(tool, tools)
+        self.assertNotIn("mcp__", tools)
+
     def test_foreign_pre_push_gets_a_proposal(self):
         p = self.p
         foreign = "#!/bin/sh\necho mine\n"
