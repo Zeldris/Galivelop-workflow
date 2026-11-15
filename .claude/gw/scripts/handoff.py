@@ -19,14 +19,18 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  A log over `logSize` characters (config; 0 = no cap) also only warns,
                                                  even with --strict. With `pendingFile` set (config; D104): the log's
                                                  "Pendiente" / "Pending" section holds no "- " items of its own, only
-                                                 the pointer line, and the "(N entradas)" / "(N entries)" of that
-                                                 line matches the items of the file (the same soft rules: --strict
-                                                 fails); a missing file only warns
+                                                 a pointer line (the same soft rules: --strict fails; the pointer
+                                                 carries no count, B38: `recover.py --state` counts the file). A
+                                                 missing file, one with no "## Pendiente" / "## Pending" section
+                                                 (`archive` needs it) or a pointer with an old "(N entradas)" count
+                                                 only warn. --pending PATH reads the pending file from PATH (the
+                                                 pre-push passes the pushed commit's copy; a missing PATH = no file)
   handoff.py move-pending [FILE]                 with `pendingFile` set: move the "- " items (and other text) of the
                                                  log's "Pendiente" / "Pending" section to the end of that file's
-                                                 section of the same name (the file is created when missing), and
-                                                 leave in the log one pointer line with the link and the count;
-                                                 with nothing to move it only refreshes the count
+                                                 section of the same name (the file and the section are created when
+                                                 missing), and leave in the log one pointer line with the link; only
+                                                 an earlier pointer (a line that is not a list item and names the
+                                                 file) is replaced, everything else moves
   handoff.py done TEXT [FILE] [--date YYYY-MM-DD]
                                                  insert "1. <date> — TEXT" at the top of the Done section (date
                                                  default: today), renumber, drop items beyond 5 (a multi-line item
@@ -344,16 +348,15 @@ def pending_section(lines):
 
 
 def pending_count(text):
-    """Top-level "- " items of the pending section of `text`, or of the whole text when it has no such section."""
-    lines = text.splitlines()
-    head, end = pending_section(lines)
-    body = lines if head is None else lines[head + 1:end]
-    return sum(1 for l in body if PENDING_ITEM.match(l) and not ARCHIVED_LINE.match(l))
+    """Top-level items of the whole pending file `text`, in every section (B38: what `grep -n '^- '` shows), but the
+    "Archivado" / "Archived" summary line."""
+    return sum(1 for l in text.splitlines() if PENDING_ITEM.match(l) and not ARCHIVED_LINE.match(l))
 
 
-def pending_problems(ctx, text, me):
-    """D104: with `pendingFile` set, the soft problems of the log's pending section (items kept in the log, a stale
-    count in the pointer); a missing pending file is only a printed warning."""
+def pending_problems(ctx, text, me, pending=None):
+    """D104: with `pendingFile` set, the soft problems of the log's pending section (items kept in the log, no pointer
+    line); a missing pending file, one with no pending section and a pointer with an old count are printed warnings.
+    `pending` is where to read the pending file from (default: the working copy)."""
     rel = gwconfig.pending_file(ctx.config)
     if not rel:
         return []
@@ -367,17 +370,23 @@ def pending_problems(ctx, text, me):
     if held:
         return [f"the log holds {held} pending item(s) under \"{lines[head].strip()}\", but they live in {rel} "
                 f"(pendingFile); move them there: {fix}"]
-    said = [int(m.group(1)) for l in lines[head + 1:end] for m in [POINTER_COUNT.search(l)] if m]
-    if not said:
-        return [f"the log's \"{lines[head].strip()}\" section has no pointer line with the count of {rel} "
-                f"(\"(N entradas)\" / \"(N entries)\"); write it: {fix}"]
-    target = ctx.root / rel
-    if not target.is_file():
+    pointer = [l for l in lines[head + 1:end] if l.strip()]
+    if not pointer:
+        return [f"the log's \"{lines[head].strip()}\" section has no pointer line to {rel} (pendingFile); "
+                f"write it: {fix}"]
+    if any(POINTER_COUNT.search(l) for l in pointer):  # B38: one count, in one place (recover.py --state)
+        print(f"WARNING: handoff: the log's pending pointer still carries a count (\"(N entradas)\" / \"(N entries)\"), "
+              f"which nothing keeps up to date; drop it: {fix}")
+    target = Path(pending) if pending is not None else ctx.root / rel
+    try:
+        found = target.read_text(encoding="utf-8", errors="replace") if target.is_file() else None
+    except OSError:
+        found = None
+    if found is None:
         print(f"WARNING: handoff: the pending file {rel} (pendingFile) does not exist; create it: {fix}")
-        return []
-    have = pending_count(target.read_text(encoding="utf-8", errors="replace"))
-    if said[0] != have:
-        return [f"the log's pending pointer says {said[0]} entries but {rel} has {have}; refresh it: {fix}"]
+    elif pending_section(found.splitlines())[0] is None:
+        print(f"WARNING: handoff: the pending file {rel} (pendingFile) has no \"## Pendiente\" / \"## Pending\" "
+              f"section, which `archive` needs; add it: {fix}")
     return []
 
 
@@ -396,7 +405,7 @@ def cmd_check(ctx, args):
     soft = [f"a cell of the state table (\"{label}\") has {size} characters (limit {sizes['cellLimit']}); shorten it and move what "
             f"is done to the Done section: {me} done \"<text>\"" for label, size in long_cells(text, sizes["cellLimit"])]
     soft += done_problems(text, f"{me} done \"<text>\"", f"{me} check {path} --strict", sizes["doneItems"])
-    soft += pending_problems(ctx, text, me)
+    soft += pending_problems(ctx, text, me, args.pending)
     cap = gwconfig.log_size(ctx.config)
     if cap > 0 and len(text) > cap:  # a warning only: it never fails the commit, not even with --strict
         if gwconfig.pending_file(ctx.config):  # `archive` works on pendingFile: it cannot shrink the log
@@ -814,20 +823,26 @@ def archivable(first_line, published):
 
 
 def cmd_archive(ctx, args):
+    on_pending = not args.file and bool(gwconfig.pending_file(ctx.config))
     log_name = args.file or gwconfig.pending_file(ctx.config) or ctx.log
     path = Path(args.file) if args.file else ctx.root / log_name
     archive = ctx.root / gwconfig.log_archive(ctx.config)
-    cap = 0 if (not args.file and gwconfig.pending_file(ctx.config)) else gwconfig.log_size(ctx.config)  # logSize caps the log
+    cap = 0 if on_pending else gwconfig.log_size(ctx.config)  # logSize caps the log
+    me = f"python3 {HERE / 'handoff.py'}"
     try:
         raw = path.read_bytes().decode("utf-8")
     except (OSError, UnicodeDecodeError) as exc:
+        if on_pending:  # B38: the file it reads is the pending file, not the log
+            raise Usage(f"cannot read {path} ({exc}); create the pending file ({me} move-pending), fix `pendingFile` "
+                        "in .claude/gw.json, or save it as UTF-8")
         raise Usage(f"cannot read {path} ({exc}); create the log or fix `log` in .claude/gw.json")
     version, published = published_version(ctx)
     lines = re.findall(r"[^\n]*\n|[^\n]+", raw)
     head = next((i for i, l in enumerate(lines) if PENDING_HEADING.match(l.rstrip("\r\n"))), None)
     if head is None:
-        print(f"handoff: {path} has no \"## Pendiente\" / \"## Pending\" section; add the line \"## Pending\" to it "
-              f"and rerun: python3 {HERE / 'handoff.py'} archive {path}")
+        how = f" (or run {me} move-pending, which adds it)" if on_pending else ""
+        print(f"handoff: {path} has no \"## Pendiente\" / \"## Pending\" section; add the line \"## Pending\" to it"
+              f"{how} and rerun: {me} archive" + ("" if on_pending else f" {path}"))
         return 1
     english = lines[head].split()[1].lower().startswith("pending")
     eol = "\r\n" if lines[head].endswith("\r\n") else "\n"
@@ -897,27 +912,24 @@ def cmd_archive(ctx, args):
     except (OSError, UnicodeDecodeError) as exc:
         raise Usage(f"cannot write the archive or the log ({exc}); check the permissions of {archive.parent} and {path}, "
                     "then rerun: handoff.py archive")
-    if not args.file and gwconfig.pending_file(ctx.config):
-        refresh_pointer(ctx.root / ctx.log, pending_count(new))
     print(f"handoff: archived {len(moved)} item(s) to {archive}; {log_name} now {shown(size)}; commit both files with "
           "the work")
     return 0
 
 
-def refresh_pointer(log, count):
-    """D104: rewrite the "(N entradas)" / "(N entries)" of the log's pending pointer to `count` (after `archive` changed
-    the pending file); a log with no pointer is left alone (`check --strict` reports it)."""
+def write_atomic(path, data):
+    """Write `data` (bytes) to `path` through a temp file in the same folder and os.replace (B38): a failed write
+    leaves the old file whole."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f".{path.name}.{os.getpid()}.tmp")
     try:
-        lines = re.findall(r"[^\n]*\n|[^\n]+", log.read_bytes().decode("utf-8"))
-    except (OSError, UnicodeDecodeError):
-        return
-    head, end = pending_section(lines)
-    for i in range(head + 1, end) if head is not None else ():
-        m = POINTER_COUNT.search(lines[i])
-        if m:
-            lines[i] = lines[i][:m.start(1)] + str(count) + lines[i][m.end(1):]
-            log.write_bytes("".join(lines).encode("utf-8"))
-            return
+        tmp.write_bytes(data)
+        os.replace(tmp, path)
+    finally:
+        try:
+            tmp.unlink()
+        except OSError:  # already renamed, or not there
+            pass
 
 
 def rewrite_row(ctx, branch, text):
@@ -1004,10 +1016,10 @@ def cmd_move_pending(ctx, args):
     english = lines[head].split()[1].lower().startswith("pending")
     eol = "\r\n" if lines[head].endswith("\r\n") else "\n"
     body = [l.rstrip("\r\n") for l in lines[head + 1:end]]
-    names = {rel, Path(rel).name}
+    names = {rel, Path(rel).name, "`pendingFile`"}  # the template's pointer names the key
 
-    def is_pointer(l):  # the log's pointer line: not indented, with a count, and naming the pending file
-        return not l[:1].isspace() and POINTER_COUNT.search(l) and any(n in l for n in names)
+    def is_pointer(l):  # an earlier pointer: not indented, not a list item (B38: an item always moves), naming the file
+        return not l[:1].isspace() and not PENDING_ITEM.match(l) and any(n in l for n in names)
 
     moved = [l for l in body if not is_pointer(l)]
     while moved and not moved[0].strip():
@@ -1038,14 +1050,13 @@ def cmd_move_pending(ctx, args):
         link = Path(os.path.relpath(target, path.resolve().parent)).as_posix()
     except ValueError:  # another drive on Windows: no relative path
         link = target.as_posix()
-    pointer = (f"Pending items live in [`{rel}`]({link}) ({count} entries); add and remove them there." if english else
-               f"Lo pendiente está en [`{rel}`]({link}) ({count} entradas); se añade y se quita allí.")
+    pointer = (f"Pending items live in [`{rel}`]({link}); add and remove them there." if english else
+               f"Lo pendiente está en [`{rel}`]({link}); se añade y se quita allí.")
     tail = [eol] if end < len(lines) else []
     new_log = "".join(lines[:head + 1] + [eol, pointer + eol] + tail + lines[end:])
-    try:
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(new_text, encoding="utf-8")
-        path.write_bytes(new_log.encode("utf-8"))
+    try:  # the pending file first: if the log write fails, the items are in both files, never in neither
+        write_atomic(target, new_text.encode("utf-8"))
+        write_atomic(path, new_log.encode("utf-8"))
     except OSError as exc:
         raise Usage(f"cannot write {target} or {path} ({exc}); check their permissions and rerun: {me} move-pending")
     print(f"handoff: moved {sum(1 for l in moved if PENDING_ITEM.match(l))} item(s) to {rel} ({count} in all); "
@@ -1065,6 +1076,7 @@ def main(argv=None):
     c.add_argument("--strict", action="store_true")
     c.add_argument("--at", choices=("commit", "push"), default="commit",
                    help="where it runs: at commit time (the commit does not exist yet) or at push time (it does)")
+    c.add_argument("--pending", help="read the pending file (pendingFile) from this path; a missing one = no file")
     d = sub.add_parser("done")
     d.add_argument("text")
     d.add_argument("file", nargs="?")

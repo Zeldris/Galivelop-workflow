@@ -154,6 +154,7 @@ In this order, because each step uses the previous one.
 | H19 | `0.6.0` harvest (`gw-harvest`) before releasing it (user, 2026-11-13: fixes to `0.6.0`; evolutions to `0.7` and `0.8`) | done (2026-11-13; 12 proposals: D90-D93 and B30 to `0.6`; E48, D94-D96, E49 and B31 to `0.7`; E50 to `0.8`) |
 | H20 | `0.7` harvest (`gw-harvest`) at its start, with `private-project-4` for the first time (user, 2026-11-14) | done (2026-11-14; 14 proposals: D97-D103 to the `0.6.1` patch, E51, E52, B36 and extended E41 to `0.7`, E53 to `0.8`) |
 | H21 | `0.7` closing harvest (`gw-harvest`) before publishing it (user, 2026-11-15) | done (2026-11-15; 15 proposals: D109-D115 to the `0.6.2` patch; E58-E61 to `0.8`; 4 not approved) |
+| H22 | `0.8` opening harvest (`gw-harvest`) at its start (AGENTS.md) | done (2026-11-15; 1 installer proposal approved: D122 to the `0.7.1` patch; its P2 extends E58) |
 | A10 | One-page A4 workflow presentation sheets: for whoever contracts development, `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (what it solves, how work runs, what it guarantees), and for teams that install it, `docs/es/mkt-adoption.md` ↔ `docs/en/mkt-adoption.md` (user, 2026-11-09), with its HTML and final PDF generated from the `.md` by a script so they do not drift; reviewed on each version (D66) (user, 2026-11-06) | done (`scripts/mkt-sheet.py`, portal style) |
 | B1 | `Stop` hook that reads the session logs | done (`scripts/metrics.py record`, key `metrics`) |
 | B2 | `docs/metrics/ledger.jsonl` in the repo | done (`merge=union` in `.gitattributes`; `apply.py` does not set it in projects yet) |
@@ -260,6 +261,12 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | E62 | Light subagents for every rung: the dealer uses `gw-worker` with the call's `model` and `effort`, and `gw-reviewer` (`/code-review` without MCP tools) for reviews; `subagent-cap.py` reminds any `general-purpose` call with its own model and effort (`0.7.0` retro, T1; user, 2026-11-15) | done |
 | B39 | `measure.py`: "BY FILE" no longer counts `git config` arguments or an e-mail domain as files (`0.7.0` retro, T3; user, 2026-11-15) | done |
 | B40 | `version.py --release`: counts the harvest a patch brought from the minor's branch (already in its tag, but the commit that added it is new); it stopped the `0.7.0` push to `main` (user, 2026-11-15) | done |
+
+## `0.7.1` — patch
+
+| Id | Task | State |
+|---|---|---|
+| D122 | `recover.py --state`: with the compaction budget spent, if the biggest start-up cost (the `context_guard.py` breakdown) is the system (prompt, tools, MCP), the warning says a `/clear` will not lower it and only removing unused connectors will, instead of asking for `/clear`, with its test (`0.8` harvest, installer P1) | pending |
 
 ## `0.8` "Front end and other agents"
 
