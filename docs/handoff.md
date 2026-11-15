@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14; excepción a A-6 aprobada por el usuario). Etiqueta y release `v0.6.1` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.1.md` |
-| Siguiente paso | E54 y E55 de la **`0.7`** (decisiones del usuario, 2026-11-15) con `gw-orchestrate-dealer`; luego revisión de cierre del bloque (`/code-review` desde el último `Findings:`) y `/retro`. E51, E52, B36+B32 y E41 hechos, CI en verde en eb2fc3d. Presupuesto de compactaciones: 1 |
+| Siguiente paso | Revisión de cierre del bloque `0.7` (`/code-review` desde el último `Findings:`) y `/retro`. E54 y E55 hechos (revisión sin hallazgos, check en verde sobre la fusión); E51, E52, B36+B32 y E41, antes. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -37,15 +37,15 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-14 — E41: el `pre-commit` rechaza autor o committer de la clave `authorDeny` (`config.py author-check`, con `git var`: cuentan `GIT_AUTHOR_*`/`GIT_COMMITTER_*` y `--amend`; sin distinguir mayúsculas, correo entero o palabra entera del nombre; vacía = sin comprobar); `doctor.py` avisa si la identidad de `git var` coincide; este repo niega a Claude. Revisión (2 hallazgos): el `pre-push` y `pre-commit --range` (CI) comprueban también cada commit nuevo (fusión limpia, `cherry-pick`, `rebase`)
-2. 2026-11-14 — B36 y B32: el `pre-commit` añade el libro de tokens cambiado al commit de trabajo (`metrics.py stage-ledger`, clave `metrics.commitLedger`; no en fusiones, `cherry-pick`, `revert`, `rebase`, `git commit <rutas>`/`--only`, ni si es lo único preparado o git lo ignora); `apply.py` añade `<ledger> merge=union` al `.gitattributes`. Revisión: 1 medio arreglado (libro fuera del repo: ni se añade ni recibe línea)
-3. 2026-11-14 — E52: (cerrada: plantillas de bitácora y gw-*.md y diff vX→vY de REVIEW/GLOSSARY en el ensayo) `apply.py --dry-run --summary` (recuentos por acción, `propose`/`merge`, renombrados y avisos; solo con `--dry-run`, si no falla con la orden que lo arregla) y `rename  viejo -> nuevo` en el resumen (rutas, scripts, skills, ganchos); docs es/en y `gw-update` al día
-4. 2026-11-14 — E51: `ci-local.py --validate` analiza el YAML de cada workflow (clave `ciYamlCheck`, sección propia de `tests/check.sh`, en `templates/gw.json`); el lector rechaza ya un escalar plano con `: `
-5. 2026-11-14 — Parche 0.6.1 publicado en main (5afda88): fase 3 con 5 hallazgos arreglados (3d89111), versión y CHANGELOG (d28a1a1), notas de la release para publicar desde local
+1. 2026-11-15 — E55: con `gw.json` ilegible, el `pre-commit` comprueba autor y committer con el `authorDeny` de `HEAD` (`config.py --rev HEAD author-check`); solo sin uno legible allí (primer commit, ausente o roto) avisa y sigue. Copia `.githooks/` igual; 6 tests con el motivo
+2. 2026-11-15 — E54: `apply.py --update` añade `ci-local.py --validate` al `check` de `gw.json` (antes de `tests-after-main.py` o al final) con línea WARNING en `--check`/`--dry-run`/`--summary`; no con `ciYamlCheck: false`, si ya está ni en el repo del flujo; `check` ausente o raro falla cerrado. 9 tests. Revisión de E54+E55: sin hallazgos
+3. 2026-11-14 — E41: el `pre-commit` rechaza autor o committer de la clave `authorDeny` (`config.py author-check`, con `git var`: cuentan `GIT_AUTHOR_*`/`GIT_COMMITTER_*` y `--amend`; sin distinguir mayúsculas, correo entero o palabra entera del nombre; vacía = sin comprobar); `doctor.py` avisa si la identidad de `git var` coincide; este repo niega a Claude. Revisión (2 hallazgos): el `pre-push` y `pre-commit --range` (CI) comprueban también cada commit nuevo (fusión limpia, `cherry-pick`, `rebase`)
+4. 2026-11-14 — B36 y B32: el `pre-commit` añade el libro de tokens cambiado al commit de trabajo (`metrics.py stage-ledger`, clave `metrics.commitLedger`; no en fusiones, `cherry-pick`, `revert`, `rebase`, `git commit <rutas>`/`--only`, ni si es lo único preparado o git lo ignora); `apply.py` añade `<ledger> merge=union` al `.gitattributes`. Revisión: 1 medio arreglado (libro fuera del repo: ni se añade ni recibe línea)
+5. 2026-11-14 — E52: (cerrada: plantillas de bitácora y gw-*.md y diff vX→vY de REVIEW/GLOSSARY en el ensayo) `apply.py --dry-run --summary` (recuentos por acción, `propose`/`merge`, renombrados y avisos; solo con `--dry-run`, si no falla con la orden que lo arregla) y `rename  viejo -> nuevo` en el resumen (rutas, scripts, skills, ganchos); docs es/en y `gw-update` al día
 
 ## Pendiente
 
-Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (74 entradas); se añade y se quita allí.
+Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (73 entradas); se añade y se quita allí.
 
 ## Comprobar el estado
 

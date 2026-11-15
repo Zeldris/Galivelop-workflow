@@ -262,8 +262,8 @@ In this order, because each step uses the previous one.
 | E51 | The check validates the YAML of `.github/workflows/*.yml` with `ci-local.py`'s reader, behind a `.claude/gw.json` key (`0.7` harvest, instalador P1) | done (2026-11-14) |
 | E52 | `apply.py --dry-run --summary` and the renames in the dry run (`0.7` harvest, private-project-3 P3) | done (2026-11-14) |
 | B36 | The metrics ledger gets no commits of its own: the `pre-commit` adds it to the next work commit (`0.7` harvest, world-maker-fantasy P3; with B32) | done (2026-11-14) |
-| E54 | `apply.py --update` adds `ci-local.py --validate` to the `check` list of projects already installed, with a notice in the `--dry-run` summary (open question of E51; user, 2026-11-15) | pending |
-| E55 | With an unreadable `gw.json`, the `pre-commit` reads `authorDeny` from `HEAD` before letting the commit through (minor from the E41 review; user, 2026-11-15) | pending |
+| E54 | `apply.py --update` adds `ci-local.py --validate` to the `check` list of projects already installed, with a notice in the `--dry-run` summary (open question of E51; user, 2026-11-15) | done (2026-11-15; `plan_ci_validate` in the `gw.json` `merge` action: before `tests-after-main.py` or at the end; not with `ciYamlCheck: false`, if already there, or in the workflow repo; a missing or odd `check` fails closed) |
+| E55 | With an unreadable `gw.json`, the `pre-commit` reads `authorDeny` from `HEAD` before letting the commit through (minor from the E41 review; user, 2026-11-15) | done (2026-11-15; `config.py --rev HEAD author-check`; without a readable `gw.json` at `HEAD` (first commit, absent or broken) it warns and goes on) |
 
 ## `0.8` "Front end and other agents"
 

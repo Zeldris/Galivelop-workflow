@@ -248,8 +248,6 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   también cuando la causa es `render()` o un flujo sin git (que `template_at` devuelva la causa); `--summary` imprime
   `differs REVIEW.md` aunque la plantilla no cambiara entre vX y vY; los tests de vX se saltan sin las etiquetas
   locales (en el CI no, `fetch-depth: 0`): un repo de prueba con sus propias etiquetas.
-- (a E54, usuario 2026-11-15) E51: los proyectos ya instalados no reciben `ci-local.py --validate` en su lista `check` (`apply.py --update` no
-  toca esa lista); decidir si la migración lo añade o basta con la nota del CHANGELOG.
 - Menores de la revisión de B36 (f14a8ac): si una comprobación posterior del `pre-commit` falla, el libro de tokens
   se queda preparado en el índice; sus líneas cuentan para `changeSize`, que no lo excluye; `config.py validate`
   acepta un `metrics.ledger` fuera del repo (el gancho y `apply.py` ya lo saltan).
@@ -257,5 +255,4 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   argparse (un `config.py` viejo tras un `/gw-update` a medias da «cannot read authorDeny» y salta el control; ahora
   también en `--range`); un patrón sin `@` solo mira el nombre y uno con `@` es correo exacto (pasan
   un correo de Anthropic con otro nombre y `x+claude@users.noreply.github.com`; ¿patrones de dominio?); un patrón que
-  empieza o acaba en no-palabra (`[bot]`) nunca casa; con `gw.json` ilegible el `pre-commit` deja pasar (podría leer
-  `authorDeny` de `HEAD`; a E55, usuario 2026-11-15).
+  empieza o acaba en no-palabra (`[bot]`) nunca casa.
