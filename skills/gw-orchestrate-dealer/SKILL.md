@@ -4,7 +4,7 @@ description: Run the main session as an orchestrator that deals work out to clea
 license: MIT
 compatibility: Claude Code or any Agent Skills agent with subagents; git; reads .claude/gw.json
 metadata:
-  version: "0.6.1"
+  version: "0.6.2"
   source: "Galivelop workshop; generalised from the Tarkor, installer and portal gw-orchestrate-dealer"
 ---
 
@@ -78,13 +78,14 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    Files: <paths you touch>. Create: <exact names of what is new>. A path not listed here: stop and return it
    under QUESTIONS.
    Done when: <checkable criterion>. Run before pushing: `bash .claude/gw/scripts/check.sh` (runs {check} and records
-   the green so the push does not repeat it). Before each commit, the tests of what you touched:
-   `python3 .claude/gw/scripts/tests-for.py --diff <base> --run` (from `testMap`; if empty, pick them yourself).
+   the green so the push does not repeat it). Before each commit, shellcheck of the `.sh` files you touched and the tests of what you touched:
+   `python3 .claude/gw/scripts/tests-for.py --diff {head} --run` (from `testMap`, shellcheck first; `--why` says which rule brought each test; if empty, pick them yourself).
    Tests live in: <where the tests of each layer you touch live, e.g. `tests/test_ui_browser.py` for the UI>.
    For guard code or scripts: first list the edge cases (git states, platforms, empty or odd input) and write a
    test for each before calling the chunk done; the review afterwards is the safety net, not the first pass.
    Do not: <what belongs to another chunk or needs a user decision>.
    If you change a function or a field, grep every user of it and adjust them, or list them under MISSING.
+   A red test is pre-existing only if it fails the same on `origin/{protectedBranch}` (both outputs under EVIDENCE).
    Your branch is named `agent/<id>-<topic>` (`<id>` = the task id, e.g. `agent/D11-commit-format`); if isolation
    created another name, rename it first: `git branch -m agent/<id>-<topic>`.
    Applying a document from another repo: each point's literal text and path go to a scratchpad file; reply its path.
@@ -103,24 +104,23 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    the main session's `git rev-parse HEAD` when dealing (an `isolation` worktree starts from `worktree.baseRef`, often
    `origin/main`, not from it), and `{scratch}` the session's scratchpad folder (outside the tree). Add a line
    for each project rule a fresh agent could miss.
-3. **Review what returns.** Run `git status -sb` (a subagent that left changes uncommitted or unpushed is told to
-   commit them, not fixed inline), fetch and check the commit (`git fetch`, `git log -1 --stat`) and that the done
-   criterion holds; one whose final commit is already pushed but has not returned is stopped with `TaskStop`. If it
-   does not close, the retry climbs one ladder rung (the commit of that work carries `Retries: <n>`, which
-   `metrics.py quality` reads); two failures, stop and tell the user.
-   Chunks that depended on the failed one are marked "cancelled: blocked by X" and listed to the user, never left waiting.
-   For every subagent branch built in a worktree, **before merging it**, a subagent reviewer runs a short
-   `/code-review` of its diff and returns only the findings; nothing merges until they are fixed. The reviewer's
-   brief asks it to compare the diff with the **contract**: the doc that describes it and the real callers outside
-   the branch (grep on the working branch), not the diff alone. Short per-branch reviews miss cross-branch breaks:
-   a script against its backend, a doc against its code, two branches that edit the same rule. It also asks it to
-   flag data that expire (versions, prices, quotas, limits of an outside service) written without their date and
-   source, and to write its findings to a file outside the tree (the scratchpad, or
-   `"$(git rev-parse --git-dir)/review.md"`) as well as replying: a compaction or a handover loses them from the
-   conversation, and the fix briefs and the minor ones for `log` are taken from that file.
-   The fixes go back to **the subagent that wrote the chunk** (SendMessage to its id): it still holds the context, and
-   a fresh subagent per round of fixes pays the startup and the rediscovery again (four rounds that way cost ~1.5M
-   each).
+3. **Review what returns.** Run `git status -sb` (uncommitted or unpushed work: the subagent is told to commit it, not
+   fixed inline), fetch and check the commit (`git fetch`, `git log -1 --stat`) and that the done criterion holds (a
+   red called pre-existing counts once you see it fail the same on the protected branch); one whose final commit is
+   already pushed but has not returned is stopped with `TaskStop`, and so is one whose report you accepted (else it resends it). If it does not close, the retry climbs one rung
+   (its commit carries `Retries: <n>` for `metrics.py quality`); two failures, stop and tell the user. Chunks that
+   depended on it are marked "cancelled: blocked by X" and listed to the user. For every subagent branch built in a
+   worktree, **before merging it**, a subagent reviewer runs a short `/code-review` of its diff and returns only the
+   findings; nothing merges until they are fixed. The reviewer's brief asks it to compare the diff with the
+   **contract**: the doc that describes it and the real callers outside the branch (grep on the working branch), not
+   the diff alone. Short per-branch reviews miss cross-branch breaks: a script vs. its backend, a doc vs. its code,
+   two branches editing one rule. It also asks it to flag data that expire (versions, prices, quotas, limits of an
+   outside service) written without their date and source, and to write its findings to a file outside the tree (the
+   scratchpad, or `"$(git rev-parse --git-dir)/review.md"`) as well as replying: a compaction or a handover loses them
+   from the conversation, and the fix briefs and the minor ones for `log` are taken from that file. The fixes go back
+   to **the subagent that wrote the chunk** (SendMessage to its id): it still holds the context, and a fresh subagent
+   per round of fixes pays the startup and the rediscovery again (four rounds cost ~1.5M each). After the merge
+   (`merge-branch.sh` removes the worktree) they go to a new subagent with the findings file's path.
    Log what comes back: `FOUND` and `TOOLS` into `log` (or the records the project keeps for them). `QUESTIONS`
    go to the user as they are, with the answer you recommend.
 4. **Close the wave.** After merging the whole wave, one reviewer subagent compares the merged result with the task
@@ -161,8 +161,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
 - **Code fixes of the frontier, in parallel, in isolated worktrees:** each subagent runs with `isolation: "worktree"` in
   the background, commits at every stable point (`WIP:` if still red, so a restart loses nothing), does not touch the
   log or push, and returns its branch. In its worktree it runs the tests of what it touches (`tests-for.py --diff
-  <base> --run`), the linters and the copy check, not the full `check`: the check's lock is one per repo, so parallel full checks run in series. The main
-  session has each one reviewed (step 3), merges them one by one (merge, never rebase), runs one full `check` on the
+  {head} --run`), the linters and the copy check, not the full `check`: the check's lock is one per repo, so parallel full checks run in series. The main
+  session has each one reviewed (step 3), merges them one by one (merge, never rebase; `merge-branch.sh --defer-check` but the last), runs one full `check` on the
   merged wave without editing the tree while it runs (drafts go to the scratchpad), writes the log and pushes. When the session folder is not the repo root
   (a cloud session starts in `/home/user`, next to other repos, and `isolation` lands the worktree in the wrong one),
   the main session creates each worktree itself with `git -C <repo> worktree add <folder> -b agent/<id>-<topic>` and

@@ -8,6 +8,50 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.6.2] - 2026-11-15
+
+Parche de la recogida de cierre de la `0.7` (filas de la `0.6.2` en `docs/roadmap.md`). / Patch from the `0.7`
+closing harvest (`0.6.2` rows in `docs/roadmap.en.md`).
+
+### ES
+
+- Subida a `main` (D109): `reviewed.sh` toma el árbol vacío como base cuando la rama protegida aún no existe en el
+  remoto (como el `pre-push` en una rama nueva), para que se pueda crear; cualquier otro fallo de `git ls-remote`
+  falla cerrado con el error de git.
+- Gancho `Stop` (D110): `before-stop.py` ya no cuenta como sin subir los commits de la rama protegida traídos por
+  merge (`@{u}..HEAD --not <remoto>/<protegida>`); un commit que solo está en otra rama remota sigue contando.
+- Reparto (D111, D112): en `gw-orchestrate-dealer`, tras la fusión los arreglos van a un subagente nuevo con el
+  archivo de hallazgos, y un test en rojo solo es preexistente si falla igual en la rama protegida, con las dos
+  salidas como prueba.
+- Revisión y plantillas (D113, D114, D115): el revisor de la fase 1 recibe `pendingFile` para no repetir lo ya
+  apuntado; la plantilla de `AGENTS.md` nombra `ci-status.py --failed` para leer un CI en rojo y dice que no se
+  sigue el gancho `Stop` de la nube que pide firmar como Claude.
+- Retro del parche (D116-D121): `tests-for.py --run` pasa shellcheck antes de los tests y para en su fallo, y
+  `--why` dice qué regla de `testMap` trajo cada test; `merge-branch.sh --defer-check` fusiona y limpia sin check
+  (para todas las ramas de una oleada salvo la última); `subagent-cap.py` avisa de un `general-purpose` con `sonnet`
+  y esfuerzo bajo o medio cuando existe `gw-worker`; el dealer pide shellcheck antes de cada commit y para con
+  `TaskStop` al subagente cuyo informe aceptó; `version.py --release` dice cómo traer la recogida hecha en otra rama.
+
+### EN
+
+- Push to `main` (D109): `reviewed.sh` takes the empty tree as base when the protected branch does not exist on the
+  remote yet (like the `pre-push` on a new branch), so it can be created; any other `git ls-remote` failure fails
+  closed with git's error.
+- `Stop` hook (D110): `before-stop.py` no longer counts as unpushed the protected branch's commits brought in by a
+  merge (`@{u}..HEAD --not <remote>/<protected>`); a commit that is only on another remote branch still counts.
+- Dealing (D111, D112): in `gw-orchestrate-dealer`, after the merge the fixes go to a new subagent with the findings
+  file, and a red test is pre-existing only if it fails the same on the protected branch, with both outputs as
+  evidence.
+- Review and templates (D113, D114, D115): the phase 1 reviewer gets `pendingFile` so it does not repeat what is
+  already logged; the `AGENTS.md` template names `ci-status.py --failed` to read a red CI and says the cloud `Stop`
+  hook that asks to sign as Claude is not followed.
+- Patch retro (D116-D121): `tests-for.py --run` runs shellcheck before the tests and stops on its failure, and
+  `--why` says which `testMap` rule brought each test; `merge-branch.sh --defer-check` merges and cleans up without
+  the check (for every branch of a wave but the last); `subagent-cap.py` warns about a `general-purpose` with
+  `sonnet` and low or medium effort when `gw-worker` exists; the dealer asks for shellcheck before each commit and
+  stops with `TaskStop` the subagent whose report it accepted; `version.py --release` says how to bring a harvest
+  made on another branch.
+
 ## [0.6.1] - 2026-11-14
 
 Parche de la recogida `0.7` y de la retro de la `0.6.1` (filas de la `0.6.1` en `docs/roadmap.md`). / Patch from the

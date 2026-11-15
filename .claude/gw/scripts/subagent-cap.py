@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.6.1
+# galivelop-workflow v0.6.2
 """PreToolUse hook: ask the user when a session has launched many subagents, so a loop does not burn tokens unseen,
 and deny a subagent that would run on a model in `models.disabled` (B7, below).
 
@@ -16,6 +16,12 @@ same for `effort` (B11: the call's `effort`, else an `effort:` in that frontmatt
 read uses the default). A `fork` subagent is never warned: it inherits the session by design. The warning is
 `additionalContext`: Claude Code delivers it with the tool result, so it serves the next calls, not the current one.
 It is also added to every `ask` this hook gives (cap reached, or cannot count).
+
+Light worker (D119): a call to a `general-purpose` subagent (a missing or empty `subagent_type` is general-purpose) with
+its own `model` sonnet (the rule of models.blocked_by against `sonnet`: alias, id or prefix) and its own `effort` low or
+medium is also warned, without blocking, to use `subagent_type: gw-worker`, when .claude/agents/gw-worker.md exists in
+the project root: gw-worker starts without MCP tools and skills, and general-purpose costs ~66-68k tokens just to start
+(retro 2026-11-11). Never with sonnet in models.disabled (that call is denied above), nor without that file.
 
 Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse "ask" decision): a JSON object on stdout, exit 0,
 
@@ -297,6 +303,31 @@ def fields_note(event):
     return missing_note(missing) if missing else None
 
 
+WORKER = "gw-worker"
+GENERAL = "general-purpose"
+WORKER_EFFORTS = ("low", "medium")
+
+
+def worker_note(event):
+    """The reminder to use gw-worker for a general-purpose sonnet low/medium call (D119), or None."""
+    tool_input = event.get("tool_input")
+    if not isinstance(tool_input, dict):
+        return None
+    kind = tool_input.get("subagent_type")
+    if kind not in (None, "", GENERAL):
+        return None
+    model, effort = own_model(tool_input), own_model(tool_input, "effort")
+    if model is None or effort is None or effort.lower() not in WORKER_EFFORTS:
+        return None
+    is_sonnet = models.blocked_by(model, ["sonnet"]) if models is not None else model.lower() == "sonnet"
+    root = project_root()
+    if not is_sonnet or root is None or not os.path.isfile(os.path.join(str(root), ".claude", "agents", WORKER + ".md")):
+        return None
+    return (f"this `{GENERAL}` subagent runs on `{model} {effort}`: launch it with `subagent_type: {WORKER}` instead "
+            f"(same rung, starts without MCP tools and skills; {GENERAL} costs ~66-68k tokens just to start, retro "
+            f"2026-11-11). This reminder arrives with the tool result, so it is for the next calls")
+
+
 def counter_path(session_id):
     folder = os.environ.get(COUNTER_DIR_ENV) or tempfile.gettempdir()
     return os.path.join(folder, COUNTER_PREFIX + re.sub(r"[^A-Za-z0-9_.-]", "_", session_id)[:120])
@@ -420,9 +451,9 @@ def main():
         else:  # "ask" (the default); "deny" was answered above, before counting
             out["permissionDecision"] = "ask"
             out["permissionDecisionReason"] = reason
-    note = fields_note(event)
-    if note:
-        notes.append(note)
+    for note in (fields_note(event), worker_note(event)):
+        if note:
+            notes.append(note)
     note = " | ".join(notes)
     if note:
         out["additionalContext"] = note

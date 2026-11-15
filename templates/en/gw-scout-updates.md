@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.6.1 -->
+<!-- galivelop-workflow v0.6.2 -->
 # gw-scout-updates — project notes
 
 Read first by the `gw-scout-updates` skill: what to watch and what to skip. Created by the workflow once; from then on

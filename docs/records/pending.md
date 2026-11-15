@@ -262,3 +262,22 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   `templates/claude/settings.json`, no copia); `read_event()` va ya repetido en seis ganchos (un ayudante común en
   `config.py`); el escáner de `tests/test_waits.py` no ve un `wait(10)`/`join(5)` posicional, un plazo en dos líneas
   ni un sondeo cuyo `sleep(` cae a más de tres líneas.
+- Menor de la revisión de D109 (`0.6.2`): una `refs/remotes/origin/<protegida>` caducada (la rama ya no existe en el
+  remoto) solo cambia el texto del aviso de `reviewed.sh`, no la base; se acepta.
+- Notas de D110 (`0.6.2`): con un upstream de remoto `.` no existe la ref `<remoto>/<protegida>` y `before-stop.py`
+  cuenta solo `@{u}..HEAD`, como antes; un `GitError` de `unpushed()` va a avisos y deja parar (diseño anterior).
+- Leves de la fase 1 de la `0.6.2` (`review-062.md`): L1, con `requireRetro` y sin la protegida en el remoto,
+  `reviewed.sh` acepta cualquier retro de la historia, sin test; L2, la cabecera de `reviewed.sh` no cuenta la base
+  de árbol vacío (D109); L3, `templates/es|en/AGENTS.md` describe el gancho `Stop` de la nube sin fecha ni fuente;
+  L4, `docs/es|en/troubleshooting.md` cita el mensaje con «main» literal en vez de `<protegida>`/`<protected>`.
+- Leves de D116/D118 (`0.6.2`): con shellcheck ausente en CI o en la nube, `tests-for.py --run` acaba diciendo «fix
+  the .sh files and run again» cuando lo que toca es instalarlo (la orden sale antes, en stderr); la primera línea del
+  docstring de `run_shellcheck` pasa de 120 caracteres.
+- Leves de D119 (`0.6.2`): el aviso de `gw-worker` de `subagent-cap.py` solo va en la salida normal, no en el `ask`
+  (sin `session_id`, `CannotCount`) ni en la denegación por tope (`subagentCapAction: deny`), aunque su docstring dice
+  que las notas van en todo `ask`; falta una línea en blanco antes de `class CapOfOne` en `tests/test_subagent_cap.py`.
+- (D117, revisión corta, leve) `scripts/merge-branch.sh:207` y cabecera: con `--defer-check` nadie corre los tests relacionados de las ramas diferidas; la última fusión solo los pasa sobre su propio diff y `check.sh` no corre `relatedTests`. El aviso debería decirlo o dar la orden con `git diff <base de la oleada> HEAD`.
+- (D117, revisión corta, leve) `scripts/merge-branch.sh:200-203`: si la última rama de la oleada ya estaba fusionada, sale con «nothing to merge» y código 0, sin check final ni aviso.
+- (fase 3 de la 0.6.2, leve) `skills/gw-orchestrate-dealer/SKILL.md:165` (D117): dice fusionar con `--defer-check` todas las ramas menos la última **y** correr luego un check entero; la última fusión ya lo corre y `check.sh` no reutiliza un verde (solo lo apunta para el `pre-push`), así que leído al pie de la letra la oleada paga dos checks enteros.
+- (fase 3 de la 0.6.2, leve) `docs/es/config.md:138` y `docs/en/config.md:138`: la fila `mergeCleanup` manda a `bash scripts/check.sh` (ruta de este repo); en un proyecto es `.claude/gw/scripts/check.sh`, como en otras filas del mismo documento.
+- (0.6.2, herramienta, leve) `scripts/test-run.py`: una subida de `507e042` falló con «ran 1928 tests, discovered 1924» sin ningún test en rojo y no se reprodujo (check entero en verde en `ede03d6`); el mensaje no dice qué unidad contó de más. Que liste las unidades cuyo recuento no casa con el descubierto.

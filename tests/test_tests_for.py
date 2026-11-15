@@ -252,6 +252,56 @@ class ShellcheckStep(unittest.TestCase):  # D106
         self.assertEqual(code, 1)
         self.assertIn("pip install shellcheck-py", err)
 
+    def ran(self):
+        return (self.tmp / "ran.txt").is_file()
+
+    def test_a_shellcheck_failure_stops_before_the_tests(self):  # D116
+        self.write("tests/shellcheck.sh", "echo \"SC9999 in $*\"; exit 1\n")
+        self.write("scripts/config-guard.sh", "#!/bin/bash\n")
+        self.configure(RULES, "touch ran.txt {files}")
+        code, out, err = self.env_run("--run", "scripts/config-guard.sh")
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("SC9999 in scripts/config-guard.sh", out)
+        self.assertIn("shellcheck failed, so the tests were not run", out)
+        self.assertFalse(self.ran())
+        self.assertLess(out.index("tests-for: shellcheck scripts/"), out.index("FAILED (shellcheck"))
+
+    def test_a_clean_shellcheck_runs_first_then_the_tests(self):  # D116
+        self.write("tests/shellcheck.sh", "echo checked-marker\n")
+        self.write("scripts/config-guard.sh", "#!/bin/bash\n")
+        self.configure(RULES, "echo tests-marker; touch ran.txt {files}")
+        code, out, err = self.env_run("--run", "scripts/config-guard.sh")
+        self.assertEqual(code, 0, out + err)
+        self.assertLess(out.index("checked-marker"), out.index("tests-marker"))
+
+    def test_no_sh_or_a_deleted_sh_still_runs_the_tests(self):  # D116
+        self.configure(RULES, "touch ran.txt {files}")
+        for changed in ("scripts/config-guard.py", "scripts/config-guard.sh"):  # the .sh does not exist
+            if self.ran():
+                (self.tmp / "ran.txt").unlink()
+            code, out, err = self.env_run("--run", changed)
+            self.assertEqual(code, 0, out + err)
+            self.assertNotIn("shellcheck", out)
+            self.assertTrue(self.ran(), changed)
+
+    def test_a_missing_binary_warns_then_runs_the_tests_but_stops_in_ci(self):  # D116
+        self.write("scripts/config-guard.sh", "#!/bin/bash\n")
+        self.configure(RULES, "touch ran.txt {files}")
+        nobin = self.tmp / "nobin"
+        nobin.mkdir()
+        for tool in ("git", "bash", "touch"):
+            (nobin / tool).symlink_to(shutil.which(tool))
+        code, out, err = self.env_run("--run", "scripts/config-guard.sh", path=str(nobin))
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("shellcheck not installed locally", out)
+        self.assertTrue(self.ran())
+        (self.tmp / "ran.txt").unlink()
+        code, out, err = self.env_run("--run", "scripts/config-guard.sh", path=str(nobin), CI="true")
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("shellcheck is missing and the check needs it", err)
+        self.assertIn("shellcheck failed, so the tests were not run", out)
+        self.assertFalse(self.ran())
+
     def test_without_run_lists_the_step(self):
         self.write("scripts/a b.sh", "x\n")
         code, out, err = self.run_cli("scripts/a b.sh")
@@ -259,6 +309,44 @@ class ShellcheckStep(unittest.TestCase):  # D106
         self.assertIn("shellcheck: scripts/a b.sh", err)
         # stdout stays test names only: tests/old-python.sh feeds it to unittest (E22)
         self.assertNotIn("shellcheck", out)
+
+
+class Why(unittest.TestCase):  # D118
+    git, write, configure, run_cli = TestsFor.git, TestsFor.write, TestsFor.configure, TestsFor.run_cli
+
+    def setUp(self):
+        TestsFor.setUp(self)
+
+    def test_rule_with_a_named_group(self):
+        code, out, err = self.run_cli("--why", "scripts/config-guard.py")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(out.splitlines(), ["tests/test_config_guard.py", "tests/test_hooks.py"])  # stdout unchanged
+        self.assertEqual(err.splitlines(), [
+            "why: tests/test_config_guard.py <- scripts/config-guard.py (rule 0: ^scripts/(?P<name>[^/]+)\\.(py|sh)$)",
+            "why: tests/test_hooks.py <- scripts/config-guard.py (rule 1: ^scripts/)",
+        ])
+
+    def test_two_changed_files_bring_the_same_test(self):
+        code, out, err = self.run_cli("--why", "scripts/y.py", "scripts/x.py")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(out.splitlines(), ["tests/test_hooks.py"])
+        self.assertEqual(err.splitlines(), ["why: tests/test_hooks.py <- scripts/x.py (rule 1: ^scripts/)",
+                                            "why: tests/test_hooks.py <- scripts/y.py (rule 1: ^scripts/)"])
+
+    def test_empty_selection_says_so(self):
+        code, out, err = self.run_cli("--why", "README.md")
+        self.assertEqual((code, out), (0, ""), err)
+        self.assertIn("why: no test file for these changes", err)
+
+    def test_with_run_too(self):
+        self.configure(RULES, "true {files}")
+        code, out, err = self.run_cli("--why", "--run", "scripts/config-guard.py")
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("why: tests/test_hooks.py <- scripts/config-guard.py (rule 1: ^scripts/)", err)
+
+    def test_without_why_nothing_is_added(self):
+        code, out, err = self.run_cli("scripts/config-guard.py")
+        self.assertNotIn("why:", out + err)
 
 
 class ThisRepo(unittest.TestCase):

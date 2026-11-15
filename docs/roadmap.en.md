@@ -226,13 +226,19 @@ In this order, because each step uses the previous one.
 
 | Id | Task | State |
 |---|---|---|
-| D109 | `reviewed.sh` takes the branch root as base when the protected branch does not exist on the remote, so the `pre-push` lets it be created, with its test (`0.7` closing harvest, private-project-4 P1) | pending |
-| D110 | `before-stop.py` counts as unpushed only what is on no remote (`@{u}..HEAD --not --remotes`): `main` commits brought by merge do not count, with its test (`0.7` closing harvest, world-maker-fantasy P1) | pending |
-| D111 | `gw-orchestrate-dealer`: after the merge, fixes go to a new subagent with the findings file (`merge-branch.sh` removes the worktree) (`0.7` closing harvest, image-generator P1) | pending |
-| D112 | `gw-orchestrate-dealer`: a red test is pre-existing only if it fails the same on `origin/<protected>`, with the output of both runs, and the main session checks it (`0.7` closing harvest, world-maker-fantasy P2) | pending |
-| D113 | The phase 1 reviewer gets `pendingFile` with "do not report what is already here" (`AGENTS.md`, its template or `review-scope.py`) (`0.7` closing harvest, image-generator P2) | pending |
-| D114 | The `AGENTS.md` template names `ci-status.py` (and `--failed`) when checking CI (`0.7` closing harvest, private-project-4 P4) | pending |
-| D115 | The `AGENTS.md` template names the cloud `Stop` hook that asks to sign as Claude and says it is not followed (`0.7` closing harvest, private-project-1 P3) | pending |
+| D109 | `reviewed.sh` takes the empty tree as base (like the `pre-push` on a new branch) when the protected branch does not exist on the remote, so the `pre-push` lets it be created, with its test (`0.7` closing harvest, private-project-4 P1) | done (2026-11-15) |
+| D110 | `before-stop.py` no longer counts as unpushed what is already on the remote protected branch (`@{u}..HEAD --not <remote>/<protected>`): `main` commits brought by merge do not count, with its test (`0.7` closing harvest, world-maker-fantasy P1) | done (2026-11-15) |
+| D111 | `gw-orchestrate-dealer`: after the merge, fixes go to a new subagent with the findings file (`merge-branch.sh` removes the worktree) (`0.7` closing harvest, image-generator P1) | done (2026-11-15) |
+| D112 | `gw-orchestrate-dealer`: a red test is pre-existing only if it fails the same on `origin/<protected>`, with the output of both runs, and the main session checks it (`0.7` closing harvest, world-maker-fantasy P2) | done (2026-11-15) |
+| D113 | The phase 1 reviewer gets `pendingFile` with "do not report what is already here" (`AGENTS.md`, its template or `review-scope.py`) (`0.7` closing harvest, image-generator P2) | done (2026-11-15) |
+| D114 | The `AGENTS.md` template names `ci-status.py` (and `--failed`) when checking CI (`0.7` closing harvest, private-project-4 P4) | done (2026-11-15) |
+| D115 | The `AGENTS.md` template names the cloud `Stop` hook that asks to sign as Claude and says it is not followed (`0.7` closing harvest, private-project-1 P3) | done (2026-11-15) |
+| D116 | `tests-for.py --run` runs shellcheck on the change's `.sh` files **before** the tests and stops at its first failure; the `gw-orchestrate-dealer` brief asks for shellcheck of the touched `.sh` files before each commit (`0.6.2` retro, R1) | done (2026-11-15) |
+| D117 | `merge-branch.sh --defer-check` merges and cleans up without the check (and says so), for every branch of a wave but the last; the dealer uses it (`0.6.2` retro, T1) | done (2026-11-15) |
+| D118 | `tests-for.py --why` says which `testMap` rule and which changed file bring each test, and the dealer brief uses `--diff {head}` as the base (`0.6.2` retro, T2) | done (2026-11-15) |
+| D119 | `subagent-cap.py` warns when a `general-purpose` subagent starts with `sonnet` and `low`/`medium` while `.claude/agents/gw-worker.md` exists (`0.6.2` retro, T3) | done (2026-11-15) |
+| D120 | `gw-orchestrate-dealer`: after accepting a subagent's report, the main session stops it with `TaskStop` (`0.6.2` retro, T4) | done (2026-11-15) |
+| D121 | The `version.py --release` message without the harvest says how to bring it from the branch where it was made (only its file: `git checkout <sha> -- <proposalsDir>/<file>.md`) (`0.6.2` retro, N1) | done (2026-11-15) |
 
 ## `0.7` "Ask"
 

@@ -227,13 +227,19 @@ En este orden, porque cada paso usa el anterior.
 
 | Id | Tarea | Estado |
 |---|---|---|
-| D109 | `reviewed.sh` toma como base la raíz de la rama cuando la protegida no existe en el remoto, para que el `pre-push` deje crearla, con su test (recogida de cierre `0.7`, private-project-4 P1) | pendiente |
-| D110 | `before-stop.py` cuenta como sin subir solo lo que no está en ningún remoto (`@{u}..HEAD --not --remotes`): los commits de `main` traídos por merge no cuentan, con su test (recogida de cierre `0.7`, world-maker-fantasy P1) | pendiente |
-| D111 | `gw-orchestrate-dealer`: tras la fusión, los arreglos van a un subagente nuevo con el archivo de hallazgos (`merge-branch.sh` borra el worktree) (recogida de cierre `0.7`, image-generator P1) | pendiente |
-| D112 | `gw-orchestrate-dealer`: un rojo solo es preexistente si falla igual en `origin/<protegida>`, con la salida de las dos corridas, y la sesión principal lo comprueba (recogida de cierre `0.7`, world-maker-fantasy P2) | pendiente |
-| D113 | El revisor de la fase 1 recibe `pendingFile` con «no informes de lo que ya está aquí» (`AGENTS.md`, su plantilla o `review-scope.py`) (recogida de cierre `0.7`, image-generator P2) | pendiente |
-| D114 | La plantilla de `AGENTS.md` nombra `ci-status.py` (y `--failed`) al mirar el CI (recogida de cierre `0.7`, private-project-4 P4) | pendiente |
-| D115 | La plantilla de `AGENTS.md` nombra el gancho `Stop` de la nube que pide firmar como Claude y dice que no se sigue (recogida de cierre `0.7`, private-project-1 P3) | pendiente |
+| D109 | `reviewed.sh` toma como base el árbol vacío (como el `pre-push` en una rama nueva) cuando la protegida no existe en el remoto, para que el `pre-push` deje crearla, con su test (recogida de cierre `0.7`, private-project-4 P1) | hecho (2026-11-15) |
+| D110 | `before-stop.py` no cuenta como sin subir lo que ya está en la rama protegida del remoto (`@{u}..HEAD --not <remoto>/<protegida>`): los commits de `main` traídos por merge no cuentan, con su test (recogida de cierre `0.7`, world-maker-fantasy P1) | hecho (2026-11-15) |
+| D111 | `gw-orchestrate-dealer`: tras la fusión, los arreglos van a un subagente nuevo con el archivo de hallazgos (`merge-branch.sh` borra el worktree) (recogida de cierre `0.7`, image-generator P1) | hecho (2026-11-15) |
+| D112 | `gw-orchestrate-dealer`: un rojo solo es preexistente si falla igual en `origin/<protegida>`, con la salida de las dos corridas, y la sesión principal lo comprueba (recogida de cierre `0.7`, world-maker-fantasy P2) | hecho (2026-11-15) |
+| D113 | El revisor de la fase 1 recibe `pendingFile` con «no informes de lo que ya está aquí» (`AGENTS.md`, su plantilla o `review-scope.py`) (recogida de cierre `0.7`, image-generator P2) | hecho (2026-11-15) |
+| D114 | La plantilla de `AGENTS.md` nombra `ci-status.py` (y `--failed`) al mirar el CI (recogida de cierre `0.7`, private-project-4 P4) | hecho (2026-11-15) |
+| D115 | La plantilla de `AGENTS.md` nombra el gancho `Stop` de la nube que pide firmar como Claude y dice que no se sigue (recogida de cierre `0.7`, private-project-1 P3) | hecho (2026-11-15) |
+| D116 | `tests-for.py --run` pasa shellcheck a los `.sh` del cambio **antes** de los tests y para en su primer fallo; el encargo de `gw-orchestrate-dealer` pide shellcheck de los `.sh` tocados antes de cada commit (retro `0.6.2`, R1) | hecho (2026-11-15) |
+| D117 | `merge-branch.sh --defer-check` fusiona y limpia sin check (y lo dice), para todas las ramas de una oleada salvo la última; el dealer lo usa (retro `0.6.2`, T1) | hecho (2026-11-15) |
+| D118 | `tests-for.py --why` dice qué regla de `testMap` y qué archivo cambiado traen cada test, y el encargo del dealer usa `--diff {head}` como base (retro `0.6.2`, T2) | hecho (2026-11-15) |
+| D119 | `subagent-cap.py` avisa cuando un `general-purpose` se lanza con `sonnet` y `low`/`medium` y existe `.claude/agents/gw-worker.md` (retro `0.6.2`, T3) | hecho (2026-11-15) |
+| D120 | `gw-orchestrate-dealer`: tras aceptar el informe de un subagente, la sesión principal lo para con `TaskStop` (retro `0.6.2`, T4) | hecho (2026-11-15) |
+| D121 | El mensaje de `version.py --release` sin la recogida dice cómo traerla de la rama donde se hizo (solo su archivo: `git checkout <sha> -- <proposalsDir>/<archivo>.md`) (retro `0.6.2`, N1) | hecho (2026-11-15) |
 
 ## `0.7` «Preguntar»
 
