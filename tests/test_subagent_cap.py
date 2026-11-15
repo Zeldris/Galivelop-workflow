@@ -437,6 +437,68 @@ class WorkerAgent(Base):  # B28: the gw-worker definition satisfies the model an
         self.assertIn("`sonnet` in models.disabled", spec["permissionDecisionReason"], out)
 
 
+class WorkerWarning(Base):  # D119: general-purpose on sonnet low/medium is told to use gw-worker
+    cfg = {"subagentCap": 50}
+
+    def setUp(self):
+        super().setUp()
+        self.p.agent("gw-worker", WorkerAgent.DEFINITION)
+
+    def gp(self, model="sonnet", effort="low", **extra):
+        return self.p.call(tool_input=dict({"prompt": "x", "model": model, "effort": effort}, **extra))
+
+    def test_general_purpose_sonnet_low_or_medium_is_warned_without_blocking(self):
+        cases = ({}, {"subagent_type": "general-purpose"}, {"subagent_type": ""}, {"subagent_type": None})
+        for effort in ("low", "medium"):
+            for extra in cases:
+                with self.subTest(effort=effort, extra=extra):
+                    code, out = self.gp(effort=effort, **extra)
+                    self.assertEqual(code, 0, out)
+                    spec = self.answer(out)
+                    self.assertNotIn("permissionDecision", spec, "the gw-worker hint warns, it never asks or denies")
+                    note = spec["additionalContext"]
+                    self.assertIn(f"runs on `sonnet {effort}`", note)
+                    self.assertIn("`subagent_type: gw-worker`", note)
+                    self.assertIn("without MCP tools and skills", note)
+                    self.assertIn("~66-68k", note)
+
+    def test_a_sonnet_id_is_warned_too(self):
+        code, out = self.gp(model="claude-sonnet-4-5", effort="medium")
+        self.assertIn("`subagent_type: gw-worker`", self.answer(out)["additionalContext"])
+
+    def test_silent_without_the_gw_worker_definition(self):
+        (self.p.work / ".claude" / "agents" / "gw-worker.md").unlink()
+        self.assertQuiet(self.gp())
+
+    def test_a_user_level_gw_worker_does_not_count(self):
+        (self.p.work / ".claude" / "agents" / "gw-worker.md").unlink()
+        self.p.agent("gw-worker", WorkerAgent.DEFINITION, user=True)
+        self.assertQuiet(self.gp())
+
+    def test_silent_for_other_models_efforts_and_types(self):
+        for kwargs in ({"model": "opus"}, {"model": "haiku"}, {"effort": "high"}, {"effort": "xhigh"},
+                       {"subagent_type": "gw-worker"}, {"subagent_type": "Explore"}):
+            with self.subTest(kwargs=kwargs):
+                self.assertQuiet(self.gp(**kwargs))
+
+    def test_joined_with_the_cap_ask(self):
+        (self.p.work / ".claude" / "gw.json").write_text(json.dumps(dict(BASE_CONFIG, subagentCap=1), indent=2))
+        code, out = self.gp()
+        spec = self.answer(out)
+        self.assertEqual(spec["permissionDecision"], "ask", out)
+        self.assertIn("`subagent_type: gw-worker`", spec["additionalContext"], out)
+
+    def test_sonnet_disabled_is_denied_as_before_with_no_worker_hint(self):
+        (self.p.work / ".claude" / "gw.json").write_text(
+            json.dumps(dict(BASE_CONFIG, subagentCap=50, models={"disabled": ["sonnet"]}), indent=2))
+        code, out = self.gp()
+        self.assertEqual(code, 0, out)
+        spec = self.answer(out)
+        self.assertEqual(spec["permissionDecision"], "deny", out)
+        self.assertIn("model sonnet (the call's `model`) is disabled (`sonnet` in models.disabled",
+                      spec["permissionDecisionReason"], out)
+        self.assertNotIn("gw-worker", json.dumps(spec), out)
+
 class CapOfOne(Base):
     cfg = {"subagentCap": 1}
 
