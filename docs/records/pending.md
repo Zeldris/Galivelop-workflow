@@ -13,7 +13,7 @@ Reparto: scripts, checks, config y git a la `0.5`; `orchestrate-dealer` y los en
 
 P1-P4 salieron en el parche `0.4.3`.
 
-- [ ] `0.7` · **private-project-2 P5**: `orchestrate-dealer`: si la revisión de toda la rama va justo después y ya está decidida, el último
+- [ ] `0.8` · **private-project-2 P5**: `orchestrate-dealer`: si la revisión de toda la rama va justo después y ya está decidida, el último
   bloque no se revisa aparte. [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
 - [x] `0.5` · **private-project-2 P6** (D18, 2026-11-03): `scripts/ci-estado.py`, que lee el estado de Actions de una rama o commit (token y `gh` de
   `revision-antes-de-main.sh`). [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
@@ -61,7 +61,7 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [x] `0.5` · **private-project-1 P5:** (D25, 2026-11-03) `red-without-fix.sh --fix-at <commit>` y distinguir un rojo de compilación de uno de la
   aserción. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
-- [ ] `0.7` · **Portal P4:** `orchestrate-dealer`, los repos que solo se leen se clonan aparte y sin registrar.
+- [ ] `0.8` · **Portal P4:** `orchestrate-dealer`, los repos que solo se leen se clonan aparte y sin registrar.
   [`2026-10-26-portal-galivelop-2.md`](../proposals/2026-10-26-portal-galivelop-2.md)
 - [x] `0.5` · **INS P10:** (D26, 2026-11-03) `doctor.py` avisa de worktrees ya fusionados.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
@@ -70,7 +70,7 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [ ] `0.8` · **INS P11:** `scout-updates` lee la versión de Rust del proyecto.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
-- [ ] `0.7` · **private-project-1 P9:** el encargo de revisión lleva `git diff --stat`.
+- [ ] `0.8` · **private-project-1 P9:** el encargo de revisión lleva `git diff --stat`.
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [ ] `0.8` · **INS P13 + Portal P5:** en la plantilla de `REVIEW.md`, la regla de invariantes y el apartado «Navegadores».
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md),

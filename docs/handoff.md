@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.2` en `main`** (`cd856ca`, 2026-11-15; CI en verde). Etiqueta y release `v0.6.2` creadas por el agente desde una sesión local (`gh release create`, 2026-11-15) con los textos de `docs/records/release-v0.6.2.md` |
-| Siguiente paso | Cerrar la **`0.7.0`** en esta rama: repaso de la documentación (CHANGELOG, README, `docs/es` ↔ `docs/en`, roadmap), `/code-review` contra `origin/main`, fases 2 y 3 y publicación. E58-E61, a la `0.8`. Presupuesto de compactaciones: 1 |
+| Siguiente paso | El repaso de la documentación de la **`0.7.0`** está hecho (CHANGELOG, README, roadmap con lo pendiente pasado a la `0.8`, versión aplicada con `apply.py .`). Sigue la **fase 1**: `/code-review` contra `origin/main`, luego fases 2 y 3 y publicación. Presupuesto de compactaciones: 1 |
 
 ### Fases
 

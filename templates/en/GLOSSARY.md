@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.6.2 -->
+<!-- galivelop-workflow v0.7.0 -->
 # Glossary
 
 Vocabulary of {{project}}. The workflow's terms come first; the project adds its own domain terms below and keeps

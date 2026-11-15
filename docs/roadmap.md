@@ -243,41 +243,12 @@ En este orden, porque cada paso usa el anterior.
 
 ## `0.7` «Preguntar»
 
+Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
+
 | Id | Tarea | Estado |
 |---|---|---|
-| C1 | `docs/questions.md`, una entrada por pregunta | pendiente |
-| C2 | Lista numerada con recomendación; respuestas por número, que un script pasa al archivo | pendiente |
-| C3 | Sin repetir preguntas ya respondidas | pendiente |
-| C4 | Modo restrictivo activo, con su gancho | pendiente |
-| C5 | Modo restrictivo inactivo: aviso y «riesgo aceptado» | pendiente |
-| C6 | Valor por defecto: inactivo en los proyectos, activo en este repo | pendiente |
-| C7 | Un solo interruptor: skill `gw-mode` | pendiente |
-| C8 | `modes.careful` (antes de una orden destructiva), activo por defecto | pendiente |
-| C10 | Un subagente no pregunta al usuario: devuelve la pregunta | pendiente |
-| D14 | `trace.py <id>` | pendiente |
-| D61 | `handoff.py preflight`: lo que el `pre-push` comprueba en la bitácora (fecha de «Actualizado», ids que chocan con `main`), sin subir; en el `check` de la plantilla (recogida `0.6`, private-project-1 P1) | pendiente |
-| D62 | El `pre-push` avisa, sin bloquear, si el último CI de la rama está en rojo (`ci-status.py`, si hay `gh`) (recogida `0.6`, image-generator P5) | pendiente |
-| D63 | `templates/github/check.yml` con `workflow_call`: un `release.yml` lo llama con `uses:` y `needs:` en vez de copiar sus pasos; el del flujo también (recogida `0.6`, image-generator P6) | pendiente |
-| A11 | Los cuatro modos de trabajo en el plan, `AGENTS.md` y `gw-selector`: SDD siempre (ficha), DDD con dominio, TDD con comportamiento testeable, exploración acotada (H17 P2; usuario, 2026-11-08) | pendiente |
-| C11 | Ficha de tarea (`docs/tasks/<id>.md`, `taskRecord`): SDD, criterios de aceptación, archivos previstos y decision log por agente en la carpeta `docs/tasks/<id>/` (un archivo por entrada, `post-commit` rellena el sha); obligatoria en `feat`/`fix`/`hotfix` con código, comprobada por el `commit-msg`; `close-row <id>` exige casillas con test o check nombrado; absorbe D50 (H17 P1; [`I-lifecycle.md`](design/I-lifecycle.md) Q1-Q4; usuario, 2026-11-08) | pendiente |
-| C12 | Rama de exploración `spike/<tema>` sin ficha ni `Refs:`, que el `pre-push` y `merge-branch.sh` no dejan fusionar en una rama de trabajo (H17 P2) | pendiente |
-| C13 | Alcance congelado (`scopeGuard`): aviso o bloqueo al tocar un archivo fuera de `Files` de la ficha, `pre-commit` como respaldo, requisito nuevo = tarea nueva, registro de desviaciones para la retro (H17 P3) | pendiente |
-| D68 | Fragmentos de CHANGELOG por rama (`changelog.d/`), plegados por `merge-branch.sh` o `version.py --release` (H17 P10) | pendiente |
-| E32 | `permissions.deny` de lectura para secretos y gancho `PreToolUse` sobre `cat`/`grep` de esos archivos, con test; en `docs/es/`, qué sale hacia el proveedor (H17 P6) | pendiente |
-| E33 | Contrato de revisión con anclas en `REVIEW.md`: `ruta:línea | severidad | ancla | problema. arreglo.`; sin ancla, observación (H17 P7) | pendiente |
-| E35 | Registro de pruebas inestables (`flaky`): el check apunta lo que falla y pasa al reintentar y propone arreglarlo tras N veces (H17 P12) | pendiente |
-| A12 | Idiomas configurables en un bloque `languages` de `.claude/gw.json`: `code` (código, nombres y comentarios; sustituye la regla fija de A8), `docs.primary` y `docs.others` (doc interna, bitácora, roadmap y commits; el emparejado `docs/es` ↔ `docs/en` los lee), `public.primary` y `public.others` (README, release, publicaciones) y `ui` (hoy `visibleLanguages`); el idioma del agente (en el que hablan usuario y agente) va por usuario en `~/.claude/gw.json`, identificado por `git config user.email`, con el principal de la doc como respaldo; `language` y `visibleLanguages` migran con `apply.py --update`; el MMC lo edita en la `1.1` (usuario, 2026-11-08) | pendiente |
-| — | Lo de [`pending.md`](records/pending.md) marcado `0.7` | pendiente |
-| D80 | Aviso automático de un sello de `gw-scout-updates` caducado (recogida de cierre `0.6`, private-project-1 P5) | pendiente |
-| D83 | `apply.py --update` añade al `staleRefs` del proyecto los nombres que renombra su migración (amplía D46) (recogida de cierre `0.6`, instalador P4) | pendiente |
-| D87 | `gw-init` ofrece licencia doble: MIT para el código y CC BY-NC-SA 4.0 para el contenido, con la nota de terceros (recogida de cierre `0.6`, world-maker P6) | pendiente |
 | E41 | El `pre-commit` rechaza un autor de la lista `authorDeny` (vacía por defecto en los proyectos; con Claude en este repo); cambia la línea de `AGENTS.md` que dice que ningún gancho comprueba el autor (recogida de cierre `0.6`, private-project-1 P6); también comprueba el committer y `doctor.py` avisa si `user.email` es la del agente (recogida `0.7`, image-generator P2, private-project-2 P2) | hecho (2026-11-14; `config.py author-check` con `git var` en el `pre-commit`, y sobre los commits nuevos en el `pre-push` y en `--range` del CI; sin distinguir mayúsculas: correo entero o palabra entera del nombre; un `gw.json` ilegible avisa y sigue, como `protectedPaths`) |
 | E48 | `red-without-fix.sh` revierte solo el arreglo dentro del archivo del test (`--patch <diff>` o `--lines A-B`): tests en línea de Rust y otros (recogida `0.6.0`, instalador P1) | hecho (2026-11-14) |
-| D94 | `scripts/push.sh <rama>`: reintentos 2, 4, 8 y 16 s y éxito solo si `git ls-remote` coincide con `HEAD`; `AGENTS.md` apunta a él (recogida `0.6.0`, image-generator P4) | pendiente |
-| D95 | `handoff.py add-pending` y `add-decision`: añadir a la bitácora sin leerla (recogida `0.6.0`, instalador P3) | pendiente |
-| D96 | Celdas largas de la bitácora: `handoff.py` mueve a «Hecho» lo cerrado de una fila, o un segundo tope que falla (clave nueva) (recogida `0.6.0`, image-generator P2) | pendiente |
-| E49 | `gw-init` con `agentSignatures: false` escribe en `CLAUDE.md` la regla «sin firmas» frente al recordatorio de atribución (recogida `0.6.0`, image-generator P5) | pendiente |
-| B31 | Aviso de contexto cerca de la ventana con el presupuesto de compactaciones gastado (`recover.py --state` o `Stop`), antes de la compactación (recogida `0.6.0`, image-generator P7) | pendiente |
 | B32 | `apply.py` añade `docs/metrics/ledger.jsonl merge=union` al `.gitattributes` del proyecto, con su test, para que dos ramas que apuntan gasto no choquen al fusionar (revisión de fase 1 de la `0.6.0`; resto de B2) | hecho (2026-11-14) |
 | E51 | El check valida el YAML de `.github/workflows/*.yml` con el lector de `ci-local.py`, tras una clave de `.claude/gw.json` (recogida `0.7`, instalador P1) | hecho (2026-11-14) |
 | E52 | `apply.py --dry-run --summary` y los renombrados en el ensayo (recogida `0.7`, private-project-3 P3) | hecho (2026-11-14) |
@@ -292,6 +263,37 @@ En este orden, porque cada paso usa el anterior.
 
 | Id | Tarea | Estado |
 |---|---|---|
+| C1 | `docs/questions.md`, una entrada por pregunta | pendiente (pasa de la `0.7`) |
+| C2 | Lista numerada con recomendación; respuestas por número, que un script pasa al archivo | pendiente (pasa de la `0.7`) |
+| C3 | Sin repetir preguntas ya respondidas | pendiente (pasa de la `0.7`) |
+| C4 | Modo restrictivo activo, con su gancho | pendiente (pasa de la `0.7`) |
+| C5 | Modo restrictivo inactivo: aviso y «riesgo aceptado» | pendiente (pasa de la `0.7`) |
+| C6 | Valor por defecto: inactivo en los proyectos, activo en este repo | pendiente (pasa de la `0.7`) |
+| C7 | Un solo interruptor: skill `gw-mode` | pendiente (pasa de la `0.7`) |
+| C8 | `modes.careful` (antes de una orden destructiva), activo por defecto | pendiente (pasa de la `0.7`) |
+| C10 | Un subagente no pregunta al usuario: devuelve la pregunta | pendiente (pasa de la `0.7`) |
+| D14 | `trace.py <id>` | pendiente (pasa de la `0.7`) |
+| D61 | `handoff.py preflight`: lo que el `pre-push` comprueba en la bitácora (fecha de «Actualizado», ids que chocan con `main`), sin subir; en el `check` de la plantilla (recogida `0.6`, private-project-1 P1) | pendiente (pasa de la `0.7`) |
+| D62 | El `pre-push` avisa, sin bloquear, si el último CI de la rama está en rojo (`ci-status.py`, si hay `gh`) (recogida `0.6`, image-generator P5) | pendiente (pasa de la `0.7`) |
+| D63 | `templates/github/check.yml` con `workflow_call`: un `release.yml` lo llama con `uses:` y `needs:` en vez de copiar sus pasos; el del flujo también (recogida `0.6`, image-generator P6) | pendiente (pasa de la `0.7`) |
+| A11 | Los cuatro modos de trabajo en el plan, `AGENTS.md` y `gw-selector`: SDD siempre (ficha), DDD con dominio, TDD con comportamiento testeable, exploración acotada (H17 P2; usuario, 2026-11-08) | pendiente (pasa de la `0.7`) |
+| C11 | Ficha de tarea (`docs/tasks/<id>.md`, `taskRecord`): SDD, criterios de aceptación, archivos previstos y decision log por agente en la carpeta `docs/tasks/<id>/` (un archivo por entrada, `post-commit` rellena el sha); obligatoria en `feat`/`fix`/`hotfix` con código, comprobada por el `commit-msg`; `close-row <id>` exige casillas con test o check nombrado; absorbe D50 (H17 P1; [`I-lifecycle.md`](design/I-lifecycle.md) Q1-Q4; usuario, 2026-11-08) | pendiente (pasa de la `0.7`) |
+| C12 | Rama de exploración `spike/<tema>` sin ficha ni `Refs:`, que el `pre-push` y `merge-branch.sh` no dejan fusionar en una rama de trabajo (H17 P2) | pendiente (pasa de la `0.7`) |
+| C13 | Alcance congelado (`scopeGuard`): aviso o bloqueo al tocar un archivo fuera de `Files` de la ficha, `pre-commit` como respaldo, requisito nuevo = tarea nueva, registro de desviaciones para la retro (H17 P3) | pendiente (pasa de la `0.7`) |
+| D68 | Fragmentos de CHANGELOG por rama (`changelog.d/`), plegados por `merge-branch.sh` o `version.py --release` (H17 P10) | pendiente (pasa de la `0.7`) |
+| E32 | `permissions.deny` de lectura para secretos y gancho `PreToolUse` sobre `cat`/`grep` de esos archivos, con test; en `docs/es/`, qué sale hacia el proveedor (H17 P6) | pendiente (pasa de la `0.7`) |
+| E33 | Contrato de revisión con anclas en `REVIEW.md`: `ruta:línea | severidad | ancla | problema. arreglo.`; sin ancla, observación (H17 P7) | pendiente (pasa de la `0.7`) |
+| E35 | Registro de pruebas inestables (`flaky`): el check apunta lo que falla y pasa al reintentar y propone arreglarlo tras N veces (H17 P12) | pendiente (pasa de la `0.7`) |
+| A12 | Idiomas configurables en un bloque `languages` de `.claude/gw.json`: `code` (código, nombres y comentarios; sustituye la regla fija de A8), `docs.primary` y `docs.others` (doc interna, bitácora, roadmap y commits; el emparejado `docs/es` ↔ `docs/en` los lee), `public.primary` y `public.others` (README, release, publicaciones) y `ui` (hoy `visibleLanguages`); el idioma del agente (en el que hablan usuario y agente) va por usuario en `~/.claude/gw.json`, identificado por `git config user.email`, con el principal de la doc como respaldo; `language` y `visibleLanguages` migran con `apply.py --update`; el MMC lo edita en la `1.1` (usuario, 2026-11-08) | pendiente (pasa de la `0.7`) |
+| — | Lo de [`pending.md`](records/pending.md) marcado `0.7` | pendiente (pasa de la `0.7`) |
+| D80 | Aviso automático de un sello de `gw-scout-updates` caducado (recogida de cierre `0.6`, private-project-1 P5) | pendiente (pasa de la `0.7`) |
+| D83 | `apply.py --update` añade al `staleRefs` del proyecto los nombres que renombra su migración (amplía D46) (recogida de cierre `0.6`, instalador P4) | pendiente (pasa de la `0.7`) |
+| D87 | `gw-init` ofrece licencia doble: MIT para el código y CC BY-NC-SA 4.0 para el contenido, con la nota de terceros (recogida de cierre `0.6`, world-maker P6) | pendiente (pasa de la `0.7`) |
+| D94 | `scripts/push.sh <rama>`: reintentos 2, 4, 8 y 16 s y éxito solo si `git ls-remote` coincide con `HEAD`; `AGENTS.md` apunta a él (recogida `0.6.0`, image-generator P4) | pendiente (pasa de la `0.7`) |
+| D95 | `handoff.py add-pending` y `add-decision`: añadir a la bitácora sin leerla (recogida `0.6.0`, instalador P3) | pendiente (pasa de la `0.7`) |
+| D96 | Celdas largas de la bitácora: `handoff.py` mueve a «Hecho» lo cerrado de una fila, o un segundo tope que falla (clave nueva) (recogida `0.6.0`, image-generator P2) | pendiente (pasa de la `0.7`) |
+| E49 | `gw-init` con `agentSignatures: false` escribe en `CLAUDE.md` la regla «sin firmas» frente al recordatorio de atribución (recogida `0.6.0`, image-generator P5) | pendiente (pasa de la `0.7`) |
+| B31 | Aviso de contexto cerca de la ventana con el presupuesto de compactaciones gastado (`recover.py --state` o `Stop`), antes de la compactación (recogida `0.6.0`, image-generator P7) | pendiente (pasa de la `0.7`) |
 | E4 | Perfiles de instalación (minimal/core/full, `core` por defecto) en `gw-init` y `gw-update` | pendiente |
 | E5 | Pruebas de front según la investigación | pendiente |
 | E7 | Guía de pruebas de front en `docs/es/patterns.md` y plantilla de config | pendiente |

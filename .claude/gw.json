@@ -1,11 +1,14 @@
 {
   "$schema": "../schema/gw.schema.json",
-  "version": "0.6.2",
+  "version": "0.7.0",
   "schemaVersion": 1,
   "language": "es",
   "pendingFile": "docs/records/pending.md",
   "protectedBranch": "main",
-  "authorDeny": ["Claude", "noreply@anthropic.com"],
+  "authorDeny": [
+    "Claude",
+    "noreply@anthropic.com"
+  ],
   "pushToProtected": "direct",
   "install": [
     "pip install \"shellcheck-py==$(python3 scripts/config.py get shellcheckVersion).*\""

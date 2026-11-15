@@ -242,41 +242,12 @@ In this order, because each step uses the previous one.
 
 ## `0.7` "Ask"
 
+What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
+
 | Id | Task | State |
 |---|---|---|
-| C1 | `docs/questions.md`, one entry per question | pending |
-| C2 | Numbered list with a recommendation; answers by number, which a script copies into the file | pending |
-| C3 | No repeating questions already answered | pending |
-| C4 | Restrictive mode on, with its hook | pending |
-| C5 | Restrictive mode off: a warning and "accepted risk" | pending |
-| C6 | Default: off in projects, on in this repo | pending |
-| C7 | One switch: the `gw-mode` skill | pending |
-| C8 | `modes.careful` (before a destructive command), on by default | pending |
-| C10 | A subagent does not ask the user: it returns the question | pending |
-| D14 | `trace.py <id>` | pending |
-| D61 | `handoff.py preflight`: what the `pre-push` checks in the log (the "Updated" date, ids clashing with `main`), without pushing; in the template's `check` (`0.6` harvest, private-project-1 P1) | pending |
-| D62 | The `pre-push` warns, without blocking, when the branch's last CI is red (`ci-status.py`, when `gh` is there) (`0.6` harvest, image-generator P5) | pending |
-| D63 | `templates/github/check.yml` with `workflow_call`: a `release.yml` calls it with `uses:` and `needs:` instead of copying its steps; the workflow's own too (`0.6` harvest, image-generator P6) | pending |
-| A11 | The four working modes in the plan, `AGENTS.md` and `gw-selector`: SDD always (task record), DDD with a domain, TDD with testable behaviour, bounded exploration (H17 P2; user, 2026-11-08) | pending |
-| C11 | Task record (`docs/tasks/<id>.md`, `taskRecord`): SDD, acceptance criteria, planned files and a decision log per agent; required for `feat`/`fix`/`hotfix` with code, checked by the `commit-msg`; `close-row` requires the boxes; absorbs D50 (H17 P1; user, 2026-11-08) | pending |
-| C12 | Exploration branch `spike/<topic>` with no record and no `Refs:`, which the `pre-push` and `merge-branch.sh` refuse to merge into a working branch (H17 P2) | pending |
-| C13 | Frozen scope (`scopeGuard`): warning or block when touching a file outside the record's `Files`, `pre-commit` as fallback, new requirement = new task, deviation log for the retro (H17 P3) | pending |
-| D68 | CHANGELOG fragments per branch (`changelog.d/`), folded by `merge-branch.sh` or `version.py --release` (H17 P10) | pending |
-| E32 | Read `permissions.deny` for secrets and a `PreToolUse` hook on `cat`/`grep` of those files, with a test; in `docs/en/`, what goes out to the provider (H17 P6) | pending |
-| E33 | Review contract with anchors in `REVIEW.md`: `path:line | severity | anchor | problem. fix.`; no anchor, an observation (H17 P7) | pending |
-| E35 | Flaky test ledger (`flaky`): the check records what fails and passes on retry and proposes a fix after N times (H17 P12) | pending |
-| A12 | Configurable languages in a `languages` block of `.claude/gw.json`: `code` (code, names and comments; replaces A8's fixed rule), `docs.primary` and `docs.others` (internal docs, log, roadmap and commits; the `docs/es` ↔ `docs/en` pairing reads them), `public.primary` and `public.others` (README, release, posts) and `ui` (today `visibleLanguages`); the agent language (the one user and agent speak) goes per user in `~/.claude/gw.json`, identified by `git config user.email`, with the docs primary as fallback; `language` and `visibleLanguages` migrate with `apply.py --update`; the MMC edits it in `1.1` (user, 2026-11-08) | pending |
-| — | What [`pending.md`](records/pending.md) marks `0.7` | pending |
-| D80 | Automatic warning of a stale `gw-scout-updates` seal (`0.6` closing harvest, private-project-1 P5) | pending |
-| D83 | `apply.py --update` adds the names its migration renames to the project's `staleRefs` (extends D46) (`0.6` closing harvest, instalador P4) | pending |
-| D87 | `gw-init` offers a dual licence: MIT for code and CC BY-NC-SA 4.0 for content, with the third-party note (`0.6` closing harvest, world-maker P6) | pending |
 | E41 | The `pre-commit` rejects an author in `authorDeny` (empty by default in projects; Claude in this repo); changes the `AGENTS.md` line saying no hook checks the author (`0.6` closing harvest, private-project-1 P6); also checks the committer, and `doctor.py` warns if `user.email` is the agent's (`0.7` harvest, image-generator P2, private-project-2 P2) | done (2026-11-14; `config.py author-check` with `git var` in the `pre-commit`, and over the new commits in the `pre-push` and CI `--range`; case-insensitive: whole email or whole word of the name; an unreadable `gw.json` warns and goes on, like `protectedPaths`) |
-| E48 | `red-without-fix.sh` reverts only the fix inside the test's file (`--patch <diff>` or `--lines A-B`): inline tests in Rust and others (`0.6.0` harvest, installer P1) | pending |
-| D94 | `scripts/push.sh <branch>`: retries at 2, 4, 8 and 16 s and success only if `git ls-remote` matches `HEAD`; `AGENTS.md` points to it (`0.6.0` harvest, image-generator P4) | pending |
-| D95 | `handoff.py add-pending` and `add-decision`: add to the log without reading it (`0.6.0` harvest, installer P3) | pending |
-| D96 | Long log cells: `handoff.py` moves a row's closed items to "Done", or a second cap that fails (new key) (`0.6.0` harvest, image-generator P2) | pending |
-| E49 | `gw-init` with `agentSignatures: false` writes the "no signatures" rule into `CLAUDE.md` against the attribution reminder (`0.6.0` harvest, image-generator P5) | pending |
-| B31 | Warning when the context nears the window with the compaction budget spent (`recover.py --state` or `Stop`), before the compaction (`0.6.0` harvest, image-generator P7) | pending |
+| E48 | `red-without-fix.sh` reverts only the fix inside the test's file (`--patch <diff>` or `--lines A-B`): inline tests in Rust and others (`0.6.0` harvest, installer P1) | done (2026-11-14) |
 | B32 | `apply.py` adds `docs/metrics/ledger.jsonl merge=union` to the project's `.gitattributes`, with its test, so two branches that record spend do not clash on merge (`0.6.0` phase 1 review; rest of B2) | done (2026-11-14) |
 | E51 | The check validates the YAML of `.github/workflows/*.yml` with `ci-local.py`'s reader, behind a `.claude/gw.json` key (`0.7` harvest, instalador P1) | done (2026-11-14) |
 | E52 | `apply.py --dry-run --summary` and the renames in the dry run (`0.7` harvest, private-project-3 P3) | done (2026-11-14) |
@@ -291,6 +262,37 @@ In this order, because each step uses the previous one.
 
 | Id | Task | State |
 |---|---|---|
+| C1 | `docs/questions.md`, one entry per question | pending (moves from `0.7`) |
+| C2 | Numbered list with a recommendation; answers by number, which a script copies into the file | pending (moves from `0.7`) |
+| C3 | No repeating questions already answered | pending (moves from `0.7`) |
+| C4 | Restrictive mode on, with its hook | pending (moves from `0.7`) |
+| C5 | Restrictive mode off: a warning and "accepted risk" | pending (moves from `0.7`) |
+| C6 | Default: off in projects, on in this repo | pending (moves from `0.7`) |
+| C7 | One switch: the `gw-mode` skill | pending (moves from `0.7`) |
+| C8 | `modes.careful` (before a destructive command), on by default | pending (moves from `0.7`) |
+| C10 | A subagent does not ask the user: it returns the question | pending (moves from `0.7`) |
+| D14 | `trace.py <id>` | pending (moves from `0.7`) |
+| D61 | `handoff.py preflight`: what the `pre-push` checks in the log (the "Updated" date, ids clashing with `main`), without pushing; in the template's `check` (`0.6` harvest, private-project-1 P1) | pending (moves from `0.7`) |
+| D62 | The `pre-push` warns, without blocking, when the branch's last CI is red (`ci-status.py`, when `gh` is there) (`0.6` harvest, image-generator P5) | pending (moves from `0.7`) |
+| D63 | `templates/github/check.yml` with `workflow_call`: a `release.yml` calls it with `uses:` and `needs:` instead of copying its steps; the workflow's own too (`0.6` harvest, image-generator P6) | pending (moves from `0.7`) |
+| A11 | The four working modes in the plan, `AGENTS.md` and `gw-selector`: SDD always (task record), DDD with a domain, TDD with testable behaviour, bounded exploration (H17 P2; user, 2026-11-08) | pending (moves from `0.7`) |
+| C11 | Task record (`docs/tasks/<id>.md`, `taskRecord`): SDD, acceptance criteria, planned files and a decision log per agent; required for `feat`/`fix`/`hotfix` with code, checked by the `commit-msg`; `close-row` requires the boxes; absorbs D50 (H17 P1; user, 2026-11-08) | pending (moves from `0.7`) |
+| C12 | Exploration branch `spike/<topic>` with no record and no `Refs:`, which the `pre-push` and `merge-branch.sh` refuse to merge into a working branch (H17 P2) | pending (moves from `0.7`) |
+| C13 | Frozen scope (`scopeGuard`): warning or block when touching a file outside the record's `Files`, `pre-commit` as fallback, new requirement = new task, deviation log for the retro (H17 P3) | pending (moves from `0.7`) |
+| D68 | CHANGELOG fragments per branch (`changelog.d/`), folded by `merge-branch.sh` or `version.py --release` (H17 P10) | pending (moves from `0.7`) |
+| E32 | Read `permissions.deny` for secrets and a `PreToolUse` hook on `cat`/`grep` of those files, with a test; in `docs/en/`, what goes out to the provider (H17 P6) | pending (moves from `0.7`) |
+| E33 | Review contract with anchors in `REVIEW.md`: `path:line | severity | anchor | problem. fix.`; no anchor, an observation (H17 P7) | pending (moves from `0.7`) |
+| E35 | Flaky test ledger (`flaky`): the check records what fails and passes on retry and proposes a fix after N times (H17 P12) | pending (moves from `0.7`) |
+| A12 | Configurable languages in a `languages` block of `.claude/gw.json`: `code` (code, names and comments; replaces A8's fixed rule), `docs.primary` and `docs.others` (internal docs, log, roadmap and commits; the `docs/es` ↔ `docs/en` pairing reads them), `public.primary` and `public.others` (README, release, posts) and `ui` (today `visibleLanguages`); the agent language (the one user and agent speak) goes per user in `~/.claude/gw.json`, identified by `git config user.email`, with the docs primary as fallback; `language` and `visibleLanguages` migrate with `apply.py --update`; the MMC edits it in `1.1` (user, 2026-11-08) | pending (moves from `0.7`) |
+| — | What [`pending.md`](records/pending.md) marks `0.7` | pending (moves from `0.7`) |
+| D80 | Automatic warning of a stale `gw-scout-updates` seal (`0.6` closing harvest, private-project-1 P5) | pending (moves from `0.7`) |
+| D83 | `apply.py --update` adds the names its migration renames to the project's `staleRefs` (extends D46) (`0.6` closing harvest, instalador P4) | pending (moves from `0.7`) |
+| D87 | `gw-init` offers a dual licence: MIT for code and CC BY-NC-SA 4.0 for content, with the third-party note (`0.6` closing harvest, world-maker P6) | pending (moves from `0.7`) |
+| D94 | `scripts/push.sh <branch>`: retries at 2, 4, 8 and 16 s and success only if `git ls-remote` matches `HEAD`; `AGENTS.md` points to it (`0.6.0` harvest, image-generator P4) | pending (moves from `0.7`) |
+| D95 | `handoff.py add-pending` and `add-decision`: add to the log without reading it (`0.6.0` harvest, installer P3) | pending (moves from `0.7`) |
+| D96 | Long log cells: `handoff.py` moves a row's closed items to "Done", or a second cap that fails (new key) (`0.6.0` harvest, image-generator P2) | pending (moves from `0.7`) |
+| E49 | `gw-init` with `agentSignatures: false` writes the "no signatures" rule into `CLAUDE.md` against the attribution reminder (`0.6.0` harvest, image-generator P5) | pending (moves from `0.7`) |
+| B31 | Warning when the context nears the window with the compaction budget spent (`recover.py --state` or `Stop`), before the compaction (`0.6.0` harvest, image-generator P7) | pending (moves from `0.7`) |
 | E4 | Install profiles (minimal/core/full, `core` by default) in `gw-init` and `gw-update` | pending |
 | E5 | Front-end tests following the research | pending |
 | E7 | Front-end testing guide in `docs/en/patterns.md` and a config template | pending |

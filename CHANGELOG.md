@@ -8,6 +8,52 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.7.0] - 2026-11-15
+
+Versión «Preguntar» publicada con lo hecho; lo pendiente de la `0.7` pasa a la `0.8` (filas de la `0.7` en
+`docs/roadmap.md`). / «Preguntar» release shipped with what was done; what was pending in `0.7` moves to `0.8`
+(`0.7` rows in `docs/roadmap.en.md`).
+
+### ES
+
+- Autor (E41, E55): el `pre-commit` rechaza un autor o committer de la lista `authorDeny` (`config.py author-check`,
+  sin distinguir mayúsculas); el `pre-push` y el CI comprueban autor y committer de cada commit nuevo; con un
+  `gw.json` ilegible, el `pre-commit` lee `authorDeny` de `HEAD` antes de dejar pasar el commit.
+- CI y migración (E51, E54): el check valida el YAML de `.github/workflows/*.yml` con el lector de `ci-local.py`
+  (`--validate`, clave `ciYamlCheck`); `apply.py --update` añade `ci-local.py --validate` a la lista `check` de los
+  proyectos ya instalados, con aviso en el resumen de `--dry-run`.
+- Ensayo de `apply.py` (E52): `--dry-run --summary`, los renombrados salen del plan, y el ensayo muestra las
+  actualizaciones de plantilla y el diff vX → vY de `REVIEW` y `GLOSSARY`.
+- Libro de tokens (B36): no lleva commits propios; el `pre-commit` lo añade al siguiente commit de trabajo y se
+  fusiona por unión; un libro fuera del repo no bloquea los commits.
+- Revisión de pruebas (E48): `red-without-fix.sh` revierte solo el arreglo dentro del archivo del test
+  (`--patch <diff>` o `--lines A-B`).
+- Tests (B37): un único factor `GW_TEST_TIMEOUT_SCALE` para las esperas, desde el helper `tests/waits.py`, y el
+  check rechaza un `timeout=` literal fuera de él; el CI de macOS lo sube.
+- Entorno y retro (E56, E57): un gancho `PreToolUse` avisa, sin bloquear, al editar una copia generada del flujo
+  (`.claude/gw/`, `.claude/skills/`, `.githooks/`) con la ruta de la fuente; la `retro` propone una tarea `B` de
+  barrido con los leves de `pendingFile` de un mismo script.
+
+### EN
+
+- Author (E41, E55): the `pre-commit` rejects an author or committer in the `authorDeny` list (`config.py
+  author-check`, case-insensitive); the `pre-push` and CI check author and committer of each new commit; with an
+  unreadable `gw.json`, the `pre-commit` reads `authorDeny` from `HEAD` before letting the commit through.
+- CI and migration (E51, E54): the check validates the YAML of `.github/workflows/*.yml` with `ci-local.py`'s reader
+  (`--validate`, `ciYamlCheck` key); `apply.py --update` adds `ci-local.py --validate` to the `check` list of
+  already installed projects, with a notice in the `--dry-run` summary.
+- `apply.py` dry run (E52): `--dry-run --summary`, renames come from the plan, and the dry run shows template
+  updates and the vX → vY diff of `REVIEW` and `GLOSSARY`.
+- Token ledger (B36): it gets no commits of its own; the `pre-commit` adds it to the next work commit and it merges
+  by union; a ledger outside the repo does not block commits.
+- Test review (E48): `red-without-fix.sh` reverts only the fix inside the test file (`--patch <diff>` or
+  `--lines A-B`).
+- Tests (B37): a single `GW_TEST_TIMEOUT_SCALE` factor for waits, from the `tests/waits.py` helper, and the check
+  rejects a literal `timeout=` outside it; the macOS CI raises it.
+- Environment and retro (E56, E57): a `PreToolUse` hook warns, without blocking, when editing a generated copy of
+  the workflow (`.claude/gw/`, `.claude/skills/`, `.githooks/`), naming the source path; the `retro` proposes a `B`
+  sweep task with the minors of `pendingFile` from one script.
+
 ## [0.6.2] - 2026-11-15
 
 Parche de la recogida de cierre de la `0.7` (filas de la `0.6.2` en `docs/roadmap.md`). / Patch from the `0.7`
