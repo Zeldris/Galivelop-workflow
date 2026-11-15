@@ -130,7 +130,7 @@ import config  # noqa: E402
 from doctor import (  # noqa: E402  (one list each, shared with doctor.py)
     MEDIA_FOLDER, OLD_MEDIA_FOLDER, ignored_paths, old_media_folder, stale_flow_hooks)
 
-WORKFLOW_ONLY_SCRIPTS = {"harvest.py", "apply.py", "version.py", "names-check.py"}
+WORKFLOW_ONLY_SCRIPTS = {"harvest.py", "apply.py", "version.py", "names-check.py", "generated-copy.py"}
 WORKFLOW_ONLY_SKILLS = {"gw-harvest"}
 CI_VALIDATE = "ci-local.py --validate"
 CI_VALIDATE_CMD = "python3 .claude/gw/scripts/" + CI_VALIDATE

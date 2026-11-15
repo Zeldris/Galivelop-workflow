@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14; excepción a A-6 aprobada por el usuario). Etiqueta y release `v0.6.1` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.1.md` |
-| Siguiente paso | E56 (gancho `PreToolUse` que avisa al editar la copia generada), luego E57, de la retro del bloque `0.7` (`docs/records/retro-2026-11-15-block-0-7.md`). B37 hecho. Presupuesto de compactaciones: 1 |
+| Siguiente paso | E57 (la `retro` propone una tarea `B` de barrido con los leves de `pendingFile` de un mismo script), de la retro del bloque `0.7` (`docs/records/retro-2026-11-15-block-0-7.md`); luego `/code-review` de B37+E56. B37 y E56 hechos. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -37,11 +37,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-15 — B37: `tests/waits.py` con `timeout(n)` y `wait_for(pred, n)` escalados por `GW_TEST_TIMEOUT_SCALE` (por defecto 1; uno no numérico o ≤ 0 falla cerrado); las esperas literales de `test_hooks`, `test_check_summary`, `test_session_log` y `test_red_without_fix` pasan por él; `tests/test_waits.py` rechaza un `timeout=`, plazo o bucle de sondeo literal nuevo (`# not a wait` para lo que no lo es); el CI de macOS pone 3
-2. 2026-11-15 — Cierre del bloque `0.7`: revisión desde el último `Findings:` (arreglos de test de B36) sin hallazgos; retro aprobada (B37, E56 y E57 a la `0.7`); E51 marcado hecho en el roadmap español
-3. 2026-11-15 — E55: con `gw.json` ilegible, el `pre-commit` comprueba autor y committer con el `authorDeny` de `HEAD` (`config.py --rev HEAD author-check`); solo sin uno legible allí (primer commit, ausente o roto) avisa y sigue. Copia `.githooks/` igual; 6 tests con el motivo
-4. 2026-11-15 — E54: `apply.py --update` añade `ci-local.py --validate` al `check` de `gw.json` (antes de `tests-after-main.py` o al final) con línea WARNING en `--check`/`--dry-run`/`--summary`; no con `ciYamlCheck: false`, si ya está ni en el repo del flujo; `check` ausente o raro falla cerrado. 9 tests. Revisión de E54+E55: sin hallazgos
-5. 2026-11-14 — E41: el `pre-commit` rechaza autor o committer de la clave `authorDeny` (`config.py author-check`, con `git var`: cuentan `GIT_AUTHOR_*`/`GIT_COMMITTER_*` y `--amend`; sin distinguir mayúsculas, correo entero o palabra entera del nombre; vacía = sin comprobar); `doctor.py` avisa si la identidad de `git var` coincide; este repo niega a Claude. Revisión (2 hallazgos): el `pre-push` y `pre-commit --range` (CI) comprueban también cada commit nuevo (fusión limpia, `cherry-pick`, `rebase`)
+1. 2026-11-15 — E56: gancho `PreToolUse` `scripts/generated-copy.py` sobre `Edit`/`Write`/`MultiEdit`/`NotebookEdit` que, solo en este repo (en `WORKFLOW_ONLY_SCRIPTS`; registrado en `.claude/settings.json`, no en la plantilla), avisa sin bloquear al editar una copia generada (`.claude/gw/scripts/`, `.claude/gw/schema/`, `.claude/skills/`, `.githooks/`, `.claude/agents/`) con la ruta de su fuente; las notas de `.claude/gw/*.md` no cuentan. 8 tests
+2. 2026-11-15 — B37: `tests/waits.py` con `timeout(n)` y `wait_for(pred, n)` escalados por `GW_TEST_TIMEOUT_SCALE` (por defecto 1; uno no numérico o ≤ 0 falla cerrado); las esperas literales de `test_hooks`, `test_check_summary`, `test_session_log` y `test_red_without_fix` pasan por él; `tests/test_waits.py` rechaza un `timeout=`, plazo o bucle de sondeo literal nuevo (`# not a wait` para lo que no lo es); el CI de macOS pone 3
+3. 2026-11-15 — Cierre del bloque `0.7`: revisión desde el último `Findings:` (arreglos de test de B36) sin hallazgos; retro aprobada (B37, E56 y E57 a la `0.7`); E51 marcado hecho en el roadmap español
+4. 2026-11-15 — E55: con `gw.json` ilegible, el `pre-commit` comprueba autor y committer con el `authorDeny` de `HEAD` (`config.py --rev HEAD author-check`); solo sin uno legible allí (primer commit, ausente o roto) avisa y sigue. Copia `.githooks/` igual; 6 tests con el motivo
+5. 2026-11-15 — E54: `apply.py --update` añade `ci-local.py --validate` al `check` de `gw.json` (antes de `tests-after-main.py` o al final) con línea WARNING en `--check`/`--dry-run`/`--summary`; no con `ciYamlCheck: false`, si ya está ni en el repo del flujo; `check` ausente o raro falla cerrado. 9 tests. Revisión de E54+E55: sin hallazgos
 
 ## Pendiente
 
