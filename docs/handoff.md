@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14), etiqueta y release `v0.6.1` |
-| Siguiente paso | **Parche `0.6.2`:** D109-D115 hechos y fusionados en `version/0.6.2` (check entero en verde salvo un shellcheck de D109, arreglado). Siguiente: CHANGELOG y versión `0.6.2`, repaso de documentación, las tres fases y publicación; después, la `0.7.0` desde `ccr-d1e2d496-0vzck8` |
+| Siguiente paso | **Parche `0.6.2`:** D109-D115 hechos; versión `0.6.2` con CHANGELOG, README y la recogida H21 traída de `ccr`. Siguiente: check entero (`bash scripts/check.sh`) y las tres fases (fase 1: `/code-review` contra `origin/main`); a `main` solo con confirmación del usuario; después, la `0.7.0` desde `ccr-d1e2d496-0vzck8` |
 
 ### Fases
 
