@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14), etiqueta y release `v0.6.1` |
-| Siguiente paso | **Parche `0.6.2`:** D109-D115 hechos, versión `0.6.2`, check entero en verde (2026-11-15) y fase 1 cerrada sin graves ni medios (4 leves a `pending.md`). Siguiente: fase 2 (`/gw-opt-tokens` y `/retro`, propuestas al usuario), fase 3 (`reviewed.sh`) y, con confirmación del usuario, la subida a `main`; después, la `0.7.0` desde `ccr-d1e2d496-0vzck8` |
+| Siguiente paso | **Parche `0.6.2`:** fases 1 y 2 hechas; retro `docs/records/retro-2026-11-15-patch-0-6-2.md` (R1, T1-T4, N1) **pendiente de la decisión del usuario**. Con ella: aplicar lo aprobado (o aplazarlo a `0.7`), escribirla en su `**Estado:**`, `reviewed.sh` y, con confirmación, la subida a `main`; después, la `0.7.0` desde `ccr-d1e2d496-0vzck8` |
 
 ### Fases
 
