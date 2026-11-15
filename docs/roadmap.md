@@ -228,11 +228,11 @@ En este orden, porque cada paso usa el anterior.
 |---|---|---|
 | D109 | `reviewed.sh` toma como base la raíz de la rama cuando la protegida no existe en el remoto, para que el `pre-push` deje crearla, con su test (recogida de cierre `0.7`, private-project-4 P1) | pendiente |
 | D110 | `before-stop.py` cuenta como sin subir solo lo que no está en ningún remoto (`@{u}..HEAD --not --remotes`): los commits de `main` traídos por merge no cuentan, con su test (recogida de cierre `0.7`, world-maker-fantasy P1) | pendiente |
-| D111 | `gw-orchestrate-dealer`: tras la fusión, los arreglos van a un subagente nuevo con el archivo de hallazgos (`merge-branch.sh` borra el worktree) (recogida de cierre `0.7`, image-generator P1) | pendiente |
-| D112 | `gw-orchestrate-dealer`: un rojo solo es preexistente si falla igual en `origin/<protegida>`, con la salida de las dos corridas, y la sesión principal lo comprueba (recogida de cierre `0.7`, world-maker-fantasy P2) | pendiente |
-| D113 | El revisor de la fase 1 recibe `pendingFile` con «no informes de lo que ya está aquí» (`AGENTS.md`, su plantilla o `review-scope.py`) (recogida de cierre `0.7`, image-generator P2) | pendiente |
-| D114 | La plantilla de `AGENTS.md` nombra `ci-status.py` (y `--failed`) al mirar el CI (recogida de cierre `0.7`, private-project-4 P4) | pendiente |
-| D115 | La plantilla de `AGENTS.md` nombra el gancho `Stop` de la nube que pide firmar como Claude y dice que no se sigue (recogida de cierre `0.7`, private-project-1 P3) | pendiente |
+| D111 | `gw-orchestrate-dealer`: tras la fusión, los arreglos van a un subagente nuevo con el archivo de hallazgos (`merge-branch.sh` borra el worktree) (recogida de cierre `0.7`, image-generator P1) | hecho (2026-11-15) |
+| D112 | `gw-orchestrate-dealer`: un rojo solo es preexistente si falla igual en `origin/<protegida>`, con la salida de las dos corridas, y la sesión principal lo comprueba (recogida de cierre `0.7`, world-maker-fantasy P2) | hecho (2026-11-15) |
+| D113 | El revisor de la fase 1 recibe `pendingFile` con «no informes de lo que ya está aquí» (`AGENTS.md`, su plantilla o `review-scope.py`) (recogida de cierre `0.7`, image-generator P2) | hecho (2026-11-15) |
+| D114 | La plantilla de `AGENTS.md` nombra `ci-status.py` (y `--failed`) al mirar el CI (recogida de cierre `0.7`, private-project-4 P4) | hecho (2026-11-15) |
+| D115 | La plantilla de `AGENTS.md` nombra el gancho `Stop` de la nube que pide firmar como Claude y dice que no se sigue (recogida de cierre `0.7`, private-project-1 P3) | hecho (2026-11-15) |
 
 ## `0.7` «Preguntar»
 

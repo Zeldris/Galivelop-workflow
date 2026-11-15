@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14), etiqueta y release `v0.6.1` |
-| Siguiente paso | **Parche `0.6.2`:** D109 (`reviewed.sh`) y D110 (`before-stop.py`) en subagentes; D111-D115 (skill del reparto y plantillas de `AGENTS.md`). Luego CHANGELOG y versión, las tres fases y publicación; después, la `0.7.0` desde `ccr-d1e2d496-0vzck8` |
+| Siguiente paso | **Parche `0.6.2`:** D111-D115 hechos; D109 (`reviewed.sh`) y D110 (`before-stop.py`) en subagentes (`agent/D109-reviewed-base`, `agent/D110-stop-remotes`): revisión corta de cada uno, fusión, check entero. Luego CHANGELOG y versión, las tres fases y publicación; después, la `0.7.0` desde `ccr-d1e2d496-0vzck8` |
 
 ### Fases
 

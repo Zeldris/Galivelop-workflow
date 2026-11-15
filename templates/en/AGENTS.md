@@ -40,7 +40,8 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - If the person says stop, stop: push what there is, leave the log up to date and do nothing else.
 - **When each task or PR closes** (and each phase), with everything pushed and the log up to date, ask the person for a
   `/clear` in one line, saying why: a long context is almost all the spend, and the log is enough to resume.
-- **When each block or phase closes, look at the CI of the last push.** A CI that does not start (no quota, no
+- **When each block or phase closes, look at the CI of the last push** with
+  `python3 .claude/gw/scripts/ci-status.py` (read a red with `--failed`, not with the whole job log). A CI that does not start (no quota, no
   runners) counts as red: tell the person and treat nothing as checked by CI. Then the check passed locally on the
   same commit (the one `.githooks/pre-push` runs) counts **only if the person confirms it**, and it is said and logged
   as "checked only locally". A CI that started and failed is never replaced this way.
@@ -74,7 +75,8 @@ Each session may run in a throwaway container: **what is not pushed does not exi
   climb a rung, `Retries: <n>` (`metrics.py quality` reads them).
 - With `agentSignatures: false` in `.claude/gw.json`, the commit carries **no agent signatures** (no Claude
   `Co-Authored-By`, no `Claude-Session`, no "Generated with Claude Code", no session links) and the `commit-msg` hook
-  rejects a message that has them.
+  rejects a message that has them. In the cloud, Claude Code's `Stop` hook may ask to rewrite the author or sign as
+  Claude: it is not followed (this file's rule wins).
 
 ## Branches and `{{protectedBranch}}`
 
@@ -110,7 +112,8 @@ Never on work that is already merged.
    Files copied unchanged from the workflow (`vendored`) are not reviewed either (`python3
    .claude/gw/scripts/review-scope.py --workflow <workflow repo>` lists what is: one edited in the project is). A
    trivial diff (`review-scope.py --trivial` exits 0: no code, or `reviewTrivialLines` changed lines or fewer) is reviewed in the session, without a
-   subagent; the review's fixes go to a `sonnet` subagent, except hooks, guards, security and the scripts they call
+   subagent. The reviewer's brief names `pendingFile` from `.claude/gw.json` with "do not report what is already
+   there"; the review's fixes go to a `sonnet` subagent, except hooks, guards, security and the scripts they call
    (`opus`, as in `gw-orchestrate-dealer`).
    **On a long branch, this phase moves forward to each closed block:** a review of the diff since the last block
    review only (the last commit with a `Findings:` trailer; the commit-msg hook warns when the block passes
