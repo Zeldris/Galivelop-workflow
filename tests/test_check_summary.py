@@ -11,6 +11,8 @@ import time
 import unittest
 from pathlib import Path
 
+import waits
+
 sys.dont_write_bytecode = True
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -354,16 +356,13 @@ class CheckSummary(unittest.TestCase):
         p = subprocess.Popen(["bash", str(self.repo / "scripts" / "check.sh")], env=full, stdin=subprocess.DEVNULL,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
         self.addCleanup(lambda: p.poll() is None and os.killpg(p.pid, signal.SIGKILL))
-        deadline = time.time() + 20
         def find():
             return next(iter((self.repo / ".git" / "gw").glob("check-*.log")), self.repo / "none")
-        log = find()
-        while time.time() < deadline and not (find().exists() and "partial-output" in find().read_text()):
-            time.sleep(0.1)
+        waits.wait_for(lambda: find().exists() and "partial-output" in find().read_text())
         log = find()
         self.assertIn("partial-output", log.read_text())
         os.killpg(p.pid, signal.SIGINT)
-        out, err = p.communicate(timeout=20)
+        out, err = p.communicate(timeout=waits.timeout(20))
         self.assertNotEqual(p.returncode, 0, out + err)
         self.assertIn("partial-output", log.read_text())
         self.assertNotIn("all green", out)
@@ -414,10 +413,7 @@ class CheckSummary(unittest.TestCase):
         return p
 
     def wait_for(self, predicate):
-        deadline = time.time() + 20
-        while time.time() < deadline and not predicate():
-            time.sleep(0.1)
-        self.assertTrue(predicate(), "timed out waiting")
+        self.assertTrue(waits.wait_for(predicate), "timed out waiting")
 
     def test_the_last_line_is_check_ok_and_a_failure_names_the_failed_section(self):
         self.configure(["echo fine"])
@@ -501,7 +497,7 @@ class CheckSummary(unittest.TestCase):
         self.assertIsNone(waiter.poll())
         holder.kill()  # the holder dies without cleaning: its lock is now an orphan
         holder.wait()  # reaped, or it would stay a zombie
-        out, err = waiter.communicate(timeout=30)
+        out, err = waiter.communicate(timeout=waits.timeout(30))
         self.assertEqual(waiter.returncode, 0, out + err)
         self.assertIn("ran-after-wait", out)
 
@@ -530,7 +526,7 @@ class CheckSummary(unittest.TestCase):
         marker = self.tmp / "ran.log"
         self.configure([f"echo x >> {marker}; sleep 3"])
         procs = [self.start_check(), self.start_check()]
-        results = [(p.communicate(timeout=30), p.returncode) for p in procs]
+        results = [(p.communicate(timeout=waits.timeout(30)), p.returncode) for p in procs]
         codes = sorted(rc for _, rc in results)
         self.assertEqual(codes, [0, 3], results)
         self.assertEqual(marker.read_text(), "x\n", "the command ran once")
@@ -545,7 +541,7 @@ class CheckSummary(unittest.TestCase):
         (self.repo / ".claude" / "gw.json").write_text(json.dumps(cfg))
         self.git("commit", "-qam", "grace")
         p = self.start_check()
-        out, err = p.communicate(timeout=30)  # without the grace it would wait the 60 s of the child
+        out, err = p.communicate(timeout=waits.timeout(30))  # without the grace it would wait the 60 s of the child
         self.addCleanup(lambda: os.kill(int(pidfile.read_text()), signal.SIGKILL))
         self.assertEqual(p.returncode, 0, out + err)
         self.assertFalse(self.lock_exists(), "the lock is released")
@@ -559,7 +555,7 @@ class CheckSummary(unittest.TestCase):
         p = self.start_check(env={"TMPDIR": str(tmpdir)})
         self.wait_for(lambda: any(tmpdir.glob("gw-check-fifo.*")))
         os.killpg(p.pid, signal.SIGINT)
-        p.communicate(timeout=90)
+        p.communicate(timeout=waits.timeout(90))
         self.assertEqual(list(tmpdir.glob("gw-check-fifo.*")), [])
 
     def test_check_lock_wait_gives_up_after_its_seconds(self):
@@ -714,7 +710,7 @@ class CheckSummary(unittest.TestCase):
         self.wait_for(lambda: any("partial" in f.read_text() for f in (self.repo / ".git" / "gw").glob("check-*.log")))
         self.assertTrue(self.lock_exists())
         os.killpg(p.pid, signal.SIGINT)
-        out, err = p.communicate(timeout=20)
+        out, err = p.communicate(timeout=waits.timeout(20))
         self.assertEqual(p.returncode, 130, out + err)
         self.assertFalse(self.lock_exists(), "the lock must be released on Ctrl-C")
         self.assertTrue(list((self.repo / ".git" / "gw").glob("check-*.log")))
@@ -728,7 +724,7 @@ class CheckSummary(unittest.TestCase):
         self.assertTrue(self.lock_exists())
         time.sleep(0.3)
         os.killpg(p.pid, signal.SIGTERM)
-        out, err = p.communicate(timeout=20)
+        out, err = p.communicate(timeout=waits.timeout(20))
         self.assertEqual(p.returncode, 143, out + err)
         self.assertFalse(self.lock_exists())
 

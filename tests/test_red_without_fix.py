@@ -6,6 +6,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import waits
 from test_hooks import ROOT
 from test_utils import DAY, Utils
 
@@ -295,13 +296,10 @@ class Uncommitted(Base):
         env = dict(os.environ, PATH=str(d) + os.pathsep + os.environ["PATH"])
         proc = subprocess.Popen(["bash", str(self.p.scripts / SCRIPT), "true"] + files, cwd=self.p.work, env=env,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, start_new_session=True)
-        for _ in range(200):
-            if marker.exists():
-                break
-            time.sleep(0.1)
+        waits.wait_for(lambda: marker.exists(), 20)
         self.assertTrue(marker.exists(), "the fake cp was never reached")
         os.killpg(proc.pid, signal.SIGTERM)  # like Ctrl-C/kill of a group: the blocked cp dies too
-        out = proc.communicate(timeout=60)[0]
+        out = proc.communicate(timeout=waits.timeout(60))[0]
         return proc.returncode, out
 
     def test_terminate_during_the_copy_leaves_every_file_as_it_was(self):

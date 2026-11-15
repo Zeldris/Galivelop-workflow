@@ -28,4 +28,7 @@ jobs:
           python3 -m pip install "shellcheck-py==$version.*"
           shellcheck --version
       - name: Check
+        # B37: the macOS runner is slower; the tests' waits (tests/waits.py) grow by this factor there.
+        env:
+          GW_TEST_TIMEOUT_SCALE: ${{ matrix.os == 'macos-latest' && '3' || '1' }}
         run: bash tests/check.sh

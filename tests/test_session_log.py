@@ -13,6 +13,7 @@ import time
 import unittest
 from pathlib import Path
 
+import waits
 from test_hooks import ROOT, Project, Snapshot
 
 SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py", "context_guard.py",
@@ -929,7 +930,7 @@ class Recover(Base):
         proc = subprocess.Popen(["python3", str(p.scripts / "recover.py"), "--state"], cwd=p.work, env=p.env,
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         time.sleep(1.5)
-        out, _ = proc.communicate(json.dumps({"transcript_path": str(other)}), timeout=20)
+        out, _ = proc.communicate(json.dumps({"transcript_path": str(other)}), timeout=waits.timeout(20))
         self.assertIn("Compactions in this session: 1", out)
         self.assertNotIn("newest transcript", out)
 
@@ -952,14 +953,14 @@ class Recover(Base):
         p = self.p  # an agent's Bash tool, or `sleep 3 | recover.py --state`: stdin open, nothing on it
         proc = subprocess.Popen(["python3", str(p.scripts / "recover.py"), "--state"], cwd=p.work, env=p.env,
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        watchdog = threading.Timer(10, proc.kill)  # a hang is killed, and fails below with a negative exit code
+        watchdog = threading.Timer(waits.timeout(10), proc.kill)  # a hang is killed, and fails below with a negative exit code
         watchdog.start()
         try:
             out = proc.stdout.read()
         finally:
             watchdog.cancel()
             proc.stdin.close()
-        self.assertEqual(proc.wait(timeout=10), 0, out)
+        self.assertEqual(proc.wait(timeout=waits.timeout(10)), 0, out)
         self.assertIn("Log:", out)
 
     def test_state_into_a_closed_pipe_exits_zero_quietly(self):
@@ -968,7 +969,7 @@ class Recover(Base):
                                 stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         proc.stdout.close()
         err = proc.stderr.read()
-        self.assertEqual(proc.wait(timeout=10), 0, err)
+        self.assertEqual(proc.wait(timeout=waits.timeout(10)), 0, err)
         self.assertNotIn("BrokenPipeError", err)
         self.assertNotIn("Traceback", err)
 

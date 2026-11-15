@@ -320,7 +320,7 @@ class Review(Project):
 
     def test_timeout_is_reported_with_the_key_that_raises_it(self):
         run(self.tmp, "build")
-        self.config(timeout=7)
+        self.config(timeout=7)  # not a wait
 
         def hang(cmd, **kwargs):
             self.assertEqual(kwargs["timeout"], 7)

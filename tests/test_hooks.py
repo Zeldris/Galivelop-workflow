@@ -18,6 +18,8 @@ import time
 import unittest
 from pathlib import Path
 
+import waits
+
 ROOT = Path(__file__).resolve().parent.parent
 ZERO = "0" * 40
 VERSION = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())["version"]  # one fact, one place
@@ -493,16 +495,13 @@ class PrePush(Base):
                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                     start_new_session=True)
             proc.stdin.write(f"refs/heads/feature {p.sha()} refs/heads/feature {ZERO}\n"); proc.stdin.close()
-            for _ in range(100):
-                if started.exists():
-                    break
-                time.sleep(0.1)
+            waits.wait_for(lambda: started.exists(), 10)
             self.assertTrue(started.exists(), "the check never started")
             marker = p.work / ".git" / f"gw-push-in-progress.{proc.pid}"
             self.assertEqual(marker.read_text().splitlines()[0], str(proc.pid), "the marker holds the hook's pid")
             os.killpg(proc.pid, sig)
             proc.stdin = None  # already closed: communicate() in Python 3.12 would flush it and raise
-            proc.communicate(timeout=30)
+            proc.communicate(timeout=waits.timeout(30))
             self.assertNotEqual(proc.returncode, 0)
             self.assertFalse(marker.exists(), f"the marker must go when the hook gets {sig.name}")
 
@@ -1066,12 +1065,9 @@ class PrePushWorktree(Base):
             return subprocess.Popen(["git", "push", *args], cwd=p.work, env=p.env, stdout=subprocess.PIPE,
                                     stderr=subprocess.STDOUT, text=True)
         first = start("origin", "feature")
-        for _ in range(100):
-            if pwds.exists():
-                break
-            time.sleep(0.1)
+        waits.wait_for(lambda: pwds.exists(), 10)
         second = start("origin", "other:refs/heads/other")
-        out1, out2 = first.communicate(timeout=60)[0], second.communicate(timeout=60)[0]
+        out1, out2 = first.communicate(timeout=waits.timeout(60))[0], second.communicate(timeout=waits.timeout(60))[0]
         self.assertEqual((first.returncode, second.returncode), (0, 0), out1 + out2)
         self.assertEqual(len(set(pwds.read_text().split("\n")) - {""}), 2, "each push needs a worktree of its own")
         self.assertNoWorktreeLeft()
@@ -1120,15 +1116,12 @@ class PrePushWorktree(Base):
                                     stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
                                     start_new_session=True)
             proc.stdin.write(f"refs/heads/feature {p.sha()} refs/heads/feature {ZERO}\n"); proc.stdin.close()
-            for _ in range(100):
-                if started.exists():
-                    break
-                time.sleep(0.1)
+            waits.wait_for(lambda: started.exists(), 10)
             self.assertTrue(started.exists(), "the check never started")
             self.assertEqual(len(self.leftovers()), 2, "a worktree and its marker exist while it runs")
             os.killpg(proc.pid, sig)
             proc.stdin = None  # already closed: communicate() in Python 3.12 would flush it and raise
-            proc.communicate(timeout=30)
+            proc.communicate(timeout=waits.timeout(30))
             self.assertNotEqual(proc.returncode, 0)
             self.assertNoWorktreeLeft()
 
@@ -1807,12 +1800,9 @@ class CheckCache(Base):
             return subprocess.Popen(["git", "push", "origin", f"HEAD:refs/heads/{ref}"], cwd=p.work, env=env,
                                     stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
         first = start("feature")
-        for _ in range(100):
-            if self.runs.exists():
-                break
-            time.sleep(0.1)
+        waits.wait_for(lambda: self.runs.exists(), 10)
         second = start("other")
-        out1, out2 = first.communicate(timeout=60)[0], second.communicate(timeout=60)[0]
+        out1, out2 = first.communicate(timeout=waits.timeout(60))[0], second.communicate(timeout=waits.timeout(60))[0]
         self.assertEqual((first.returncode, second.returncode), (0, 0), out1 + out2)
         self.assertEqual(self.count(), 1, out1 + out2)
         self.assertIn(self.SKIP, out2)
@@ -2514,15 +2504,12 @@ class CheckGreen(Base):
         env = dict(self.p.env, GW_CHECK_CACHE="", PATH=f"{bin_dir}:{os.environ['PATH']}")
         proc = subprocess.Popen(["bash", self.HELPER, "add", k], cwd=self.p.work, env=env, stdin=subprocess.DEVNULL,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-        for _ in range(100):
-            if started.exists():
-                break
-            time.sleep(0.05)
+        waits.wait_for(lambda: started.exists(), 5, 0.05)
         self.assertTrue(started.exists(), "add never reached awk")
         self.assertEqual(len([e for e in os.listdir(self.cache.parent) if e.startswith("gw-check-green.")]), 1,
                          "the temp file exists while add runs")
         proc.send_signal(signal.SIGTERM)
-        proc.communicate(timeout=30)
+        proc.communicate(timeout=waits.timeout(30))
         self.assertEqual(proc.returncode, 143)
         self.assertEqual([e for e in os.listdir(self.cache.parent) if e.startswith("gw-check-green.")], [], "temp left behind")
 
