@@ -499,10 +499,11 @@ class Recover(Base):
         p.write(".claude/gw.json", json.dumps(dict(config, pendingFile="docs/pending.md")))
         code, out = p.run_recover("--state")
         self.assertIn("- Pending: docs/pending.md (pendingFile) does not exist; create it: python3", out)
-        p.write("docs/pending.md", "# Pending\n\nintro\n- not counted\n\n## Pending\n\n- one\n  more\n- two\n\n## Done\n\n- x\n")
+        p.write("docs/pending.md", "# Pending\n\nintro\n- from the top\n\n## Pending\n\n- one\n  more\n- two\n\n"
+                                   "## From a harvest\n\n- x\n")
         code, out = p.run_recover("--state")
         self.assertEqual(code, 0, out)
-        self.assertIn("- Pending: 2 entries in docs/pending.md (pendingFile)", out)
+        self.assertIn("- Pending: 4 entries in docs/pending.md (pendingFile)", out)  # every section (B38)
         self.assertNotIn("not counted", out)
         p.write("docs/pending.md", "# Pending\n\n## Pending\n\n- **Archived (2026-11-01):** 3 item(s) of x\n- one\n")
         code, out = p.run_recover("--state")

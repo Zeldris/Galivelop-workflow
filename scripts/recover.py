@@ -301,8 +301,8 @@ def log_state(root, branch, logs=None, source="startup"):
 
 
 def pending_line(root, cfg):
-    """D104: with `pendingFile` set, one line with the entries of that file (top-level "- " items of its Pending
-    section, or of the whole file without one); the file itself is not printed."""
+    """D104: with `pendingFile` set, one line with the entries of that file (its top-level items, in every section:
+    B38); the file itself is not printed."""
     rel = cfg.get("pendingFile") or ""
     if not isinstance(rel, str) or not rel:
         return []
