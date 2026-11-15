@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14), etiqueta y release `v0.6.1` |
-| Siguiente paso | **Parche `0.6.2`:** D109-D121 hechos (D116-D121, propuestas de la retro aprobadas por el usuario el 2026-11-15), con su CHANGELOG. Siguiente: check entero de la oleada (`bash scripts/check.sh`), subir `version/0.6.2`, fase 3 (`/code-review` de los commits D116-D121 desde `507e042`; leves a `pending.md`), `bash scripts/reviewed.sh`, subida a `main` con confirmación del usuario y `docs/records/release-v0.6.2.md`. Después, la `0.7.0` en `ccr-d1e2d496-0vzck8` (fusionar `main` y cerrarla). |
+| Siguiente paso | **Parche `0.6.2`:** D109-D121 hechos con su CHANGELOG; check entero en verde (`ede03d6`) y subido; fase 3 cerrada (0 graves, 1 medio arreglado en `version.py`: la pista de D121 trae solo el archivo de la recogida; 3 leves a `pending.md`). Siguiente: `bash scripts/reviewed.sh`, subida a `main` con confirmación del usuario y `docs/records/release-v0.6.2.md`. Después, la `0.7.0` en `ccr-d1e2d496-0vzck8` (fusionar `main` y cerrarla). |
 
 ### Fases
 
@@ -45,7 +45,7 @@ desde una sesión local.
 
 ## Pendiente
 
-Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (77 entradas); se añade y se quita allí.
+Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (80 entradas); se añade y se quita allí.
 
 ## Comprobar el estado
 
