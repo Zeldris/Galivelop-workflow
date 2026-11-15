@@ -224,6 +224,22 @@ class ProtectedBranchAbsentOnRemote(Base):
         code, out = p.run("bash", str(shallow / ".claude" / "gw" / "scripts" / "reviewed.sh"), cwd=shallow)
         self.assertEqual(code, 0, out)
 
+    def test_a_branch_ending_in_main_on_the_remote_is_not_main(self):
+        p = self.p
+        self.assertEqual(p.push("origin", "feature:refs/heads/backup/main")[0], 0)
+        code, out = p.run("bash", self.script)
+        self.assertEqual(code, 0, out)
+        self.assertIn("origin has no main yet", out)
+
+    def test_working_on_the_protected_branch_itself_gets_its_own_message(self):
+        p = self.p
+        p.git("checkout", "-q", "-B", "main")
+        code, out = p.run("bash", self.script)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("you are on main itself", out)
+        self.assertIn("another branch", out)
+        self.assertNotIn("Reviewed:", p.git("log", "-1", "--format=%s").stdout)
+
     def test_detached_head_still_refused(self):
         self.p.git("checkout", "-q", "--detach")
         code, out = self.p.run("bash", self.script)
@@ -236,6 +252,8 @@ class ProtectedBranchAbsentOnRemote(Base):
         code, out = p.run("bash", self.script)
         self.assertNotEqual(code, 0, out)
         self.assertIn("cannot reach origin", out)
+        self.assertIn("exit 128", out)
+        self.assertIn("does not appear to be a git repository", out)  # git's own reason is kept
         self.assertNotIn("Reviewed:", p.git("log", "-1", "--format=%s").stdout)
 
 

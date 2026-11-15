@@ -61,16 +61,21 @@ fi
 # base is the empty tree (the whole history is what the push creating it brings, as the pre-push judges it with an empty
 # base). Only a definite "no such ref" (ls-remote exit 2) counts; any other failure (network, auth) still fails closed.
 has_protected=true
-git ls-remote --exit-code --heads origin "$protected" >/dev/null 2>&1
-case "$?" in
+# The full ref name: a bare "main" would also match refs/heads/backup/main (ls-remote compares by the tail).
+lsr_err="$(git ls-remote --exit-code origin "refs/heads/$protected" 2>&1 >/dev/null)"; lsr_rc=$?
+case "$lsr_rc" in
   0) ;;
   2) has_protected=false ;;
-  *) echo "reviewed: cannot reach origin to look for $protected; check the network or the remote and retry: git ls-remote --heads origin $protected" >&2; exit 1 ;;
+  *) echo "reviewed: cannot reach origin to look for $protected (git ls-remote exit $lsr_rc): $lsr_err" >&2
+     echo "reviewed: fix the network, the credentials or the remote and retry: git ls-remote --heads origin $protected" >&2; exit 1 ;;
 esac
 if [ "$has_protected" = "true" ]; then
   git fetch -q origin "$protected" "$branch" || {
     echo "reviewed: cannot fetch origin/$protected and origin/$branch; push the branch first: git push -u origin $branch" >&2; exit 1; }
 else
+  if [ "$branch" = "$protected" ]; then
+    echo "reviewed: origin has no $protected yet and you are on $protected itself; push the work to another branch first and mark from there: git push -u origin HEAD:<work-branch> && git switch -c <work-branch> && bash $0" >&2; exit 1
+  fi
   echo "reviewed: origin has no $protected yet; reviewing the whole history of $branch (empty base)" >&2
   git fetch -q origin "$branch" || {
     echo "reviewed: cannot fetch origin/$branch; push the branch first: git push -u origin $branch" >&2; exit 1; }
