@@ -259,6 +259,7 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | E57 | `retro`: when a block closes, proposes a `B` sweep task with the minors of `pendingFile` from one script, for the next version; the user decides which go in (block `0.7` retro, P3; user, 2026-11-15) | done |
 | E62 | Light subagents for every rung: the dealer uses `gw-worker` with the call's `model` and `effort`, and `gw-reviewer` (`/code-review` without MCP tools) for reviews; `subagent-cap.py` reminds any `general-purpose` call with its own model and effort (`0.7.0` retro, T1; user, 2026-11-15) | done |
 | B39 | `measure.py`: "BY FILE" no longer counts `git config` arguments or an e-mail domain as files (`0.7.0` retro, T3; user, 2026-11-15) | done |
+| B40 | `version.py --release`: counts the harvest a patch brought from the minor's branch (already in its tag, but the commit that added it is new); it stopped the `0.7.0` push to `main` (user, 2026-11-15) | done |
 
 ## `0.8` "Front end and other agents"
 

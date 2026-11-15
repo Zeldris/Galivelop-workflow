@@ -297,10 +297,14 @@ def harvest_check(version, tag):
     except config.ConfigError as exc:
         return [f"cannot read proposalsDir: {exc}"]
     code, added = git("diff", "--name-only", "--no-renames", "--diff-filter=A", tag, "HEAD", "--", PROPOSALS)
-    if code != 0:
+    # A patch may bring the closing harvest from the minor's branch (`git checkout <sha> -- <file>`), so the file is
+    # already in the tag; the commit that added it on that branch is still new since the tag (B40).
+    code2, logged = git("log", "--full-history", "--no-renames", "--diff-filter=A", "--name-only", "--format=",
+                        f"{tag}..HEAD", "--", PROPOSALS)
+    if code != 0 or code2 != 0:
         return [f"cannot diff against {tag}; fetch it and retry: git fetch --tags origin && "
                 "python3 scripts/version.py --release"]
-    for path in added.splitlines():
+    for path in sorted(set(added.splitlines()) | set(logged.splitlines())):
         if path.endswith(".md"):
             code, text = git("show", f"HEAD:{path}")
             if code == 0 and text.startswith("# Harvest "):

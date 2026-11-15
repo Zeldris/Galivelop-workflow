@@ -246,6 +246,42 @@ class Version(unittest.TestCase):
         r = run(tmp, "--release")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
+    def test_a_harvest_a_patch_brought_from_the_minor_branch_still_counts(self):
+        """B40: the 0.6.2 patch brought the 0.7 closing harvest with `git checkout <sha> -- <file>`, so the file was
+        already in the tag; the commit that added it on the minor's branch is still new since the tag."""
+        tmp = self.tmp
+        self.git("init", "-q")
+        self.commit_all("released")
+        self.git("branch", "-M", "main")
+        self.git("checkout", "-q", "-b", "minor")
+        self.harvest("# Harvest wmf — 2026-10-25")
+        self.commit_all("harvest on the minor's branch")
+        self.git("checkout", "-q", "main")
+        self.git("checkout", "minor", "--", "docs/propuestas/2026-10-23-portal.md")
+        self.commit_all("patch with the closing harvest")
+        self.git("tag", f"v{VERSION}")
+        self.git("checkout", "-q", "minor")
+        self.git("merge", "-q", "--no-edit", "main")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.fill_entry("9.8.7")
+        self.commit_all("bump")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_a_harvest_added_only_by_the_patch_does_not_count(self):
+        tmp = self.tmp
+        self.git("init", "-q")
+        self.commit_all("released")
+        self.harvest("# Harvest wmf — 2026-10-25")
+        self.commit_all("patch with its own harvest")
+        self.git("tag", f"v{VERSION}")
+        self.assertEqual(run(tmp, "9.8.7").returncode, 0)
+        self.fill_entry("9.8.7")
+        self.commit_all("bump")
+        r = run(tmp, "--release")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("no harvest for 9.8.7", r.stdout)
+
     def release_with_docs(self, docs, readmes, key=True):
         """A bumped, filled-in, harvested release (9.8.7) whose releaseDocs are `docs` (the key is left out with
         key=False) and whose files are `readmes` ({path: text}), all committed in HEAD."""

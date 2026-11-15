@@ -37,6 +37,7 @@ Versión «Preguntar» publicada con lo hecho; lo pendiente de la `0.7` pasa a l
   peldaño, y cada revisión con el nuevo `gw-reviewer` (`/code-review` sin herramientas MCP), en vez de
   `general-purpose`; `subagent-cap.py` lo recuerda a cualquier `general-purpose` con modelo y esfuerzo propios.
   `measure.py` no cuenta como archivos los argumentos de `git config`.
+- Publicar (B40): `version.py --release` cuenta la recogida que un parche se trajo de la rama de la menor.
 
 ### EN
 
@@ -61,6 +62,7 @@ Versión «Preguntar» publicada con lo hecho; lo pendiente de la `0.7` pasa a l
   `effort`, and each review with the new `gw-reviewer` (`/code-review` without MCP tools), instead of
   `general-purpose`; `subagent-cap.py` reminds any `general-purpose` call with its own model and effort.
   `measure.py` no longer counts `git config` arguments as files.
+- Releasing (B40): `version.py --release` counts the harvest a patch brought from the minor's branch.
 
 ## [0.6.2] - 2026-11-15
 

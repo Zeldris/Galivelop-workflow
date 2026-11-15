@@ -260,6 +260,7 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | E57 | `retro`: al cerrar un bloque, propone una tarea `B` de barrido con los leves de `pendingFile` de un mismo script, para la siguiente versión; el usuario decide cuáles entran (retro del bloque `0.7`, P3; usuario, 2026-11-15) | hecho |
 | E62 | Subagentes ligeros para todos los peldaños: el dealer usa `gw-worker` con el `model` y el `effort` de la llamada, y `gw-reviewer` (`/code-review` sin herramientas MCP) para las revisiones; `subagent-cap.py` lo recuerda a cualquier `general-purpose` con modelo y esfuerzo propios (retro de la `0.7.0`, T1; usuario, 2026-11-15) | hecho |
 | B39 | `measure.py`: «BY FILE» no cuenta como archivos los argumentos de `git config` ni el dominio de un correo (retro de la `0.7.0`, T3; usuario, 2026-11-15) | hecho |
+| B40 | `version.py --release`: cuenta la recogida que un parche se trajo de la rama de la menor (ya está en su etiqueta, pero el commit que la añadió es nuevo); la subida de la `0.7.0` a `main` la paraba (usuario, 2026-11-15) | hecho |
 
 ## `0.8` «Front y otros agentes»
 
