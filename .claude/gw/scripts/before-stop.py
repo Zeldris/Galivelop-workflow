@@ -5,7 +5,7 @@
 "What is not pushed does not exist" (AGENTS.md) is the workflow's most important rule and, until this hook, only the
 agent remembered it. It blocks the stop when:
 
-  a. the current branch has commits its upstream does not (`git rev-list @{u}..HEAD`); with no upstream, commits no
+  a. the current branch has commits its upstream does not (`git rev-list @{u}..HEAD --not --remotes`: what a merged-in `main` brings is already on a remote); with no upstream, commits no
      remote branch has (`git rev-list HEAD --not --remotes`). The reason names `git push -u origin <branch>`. On the
      protected branch (`protectedBranch`) it does not: AGENTS.md says a push there needs the user's confirmation and
      the three phases, so Claude cannot fix it alone and a block would only make it push without asking. There it is a
@@ -115,8 +115,9 @@ def unpushed(root):
     rc, upstream = git(root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", check=False)
     if rc == 0 and upstream.strip():
         upstream = upstream.strip()
-        count = int(git(root, "rev-list", "--count", f"{upstream}..HEAD")[1].strip() or 0)
-        where = f"not on {upstream}"
+        # `--not --remotes`: after merging `main` into the branch, the commits already on origin/main are not "unpushed"
+        count = int(git(root, "rev-list", "--count", f"{upstream}..HEAD", "--not", "--remotes")[1].strip() or 0)
+        where = f"not on {upstream}, nor on any remote branch"
     else:
         if not git(root, "remote")[1].strip():
             raise GitError("this repository has no remote, so there is nothing to push to")

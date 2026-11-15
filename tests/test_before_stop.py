@@ -115,6 +115,57 @@ class Commits(Base):
         self.assertEqual(code, 0, out)
         self.assertBlocks(out, "claude/tema", "git push -u origin claude/tema")
 
+    def test_merged_main_commits_already_on_a_remote_are_not_unpushed(self):
+        p = self.p
+        p.work_branch()
+        p.git("checkout", "-q", "main")
+        p.write("src/m.py", "m = 1\n"); p.commit("on main")
+        p.git("push", "-q", "origin", "main")
+        p.git("checkout", "-q", "claude/trabajo")
+        p.git("merge", "-q", "--no-edit", "--no-ff", "origin/main")  # merge commit and main's commit: both unpushed vs @{u}
+        self.assertEqual(p.git("rev-list", "--count", "@{u}..HEAD").stdout.strip(), "2")
+        code, out = p.stop()
+        self.assertEqual(code, 0, out)
+        self.assertIn("not on origin/claude/trabajo", out)  # the merge commit itself is on no remote
+        p.git("push", "-q", "origin", "claude/trabajo")
+        code, out = p.stop()
+        self.assertLetsStop(code, out)
+
+    def test_merge_of_main_without_a_merge_commit_is_not_unpushed(self):
+        p = self.p
+        p.work_branch()
+        p.git("checkout", "-q", "main")
+        p.write("src/m.py", "m = 1\n"); p.commit("on main")
+        p.git("push", "-q", "origin", "main")
+        p.git("checkout", "-q", "claude/trabajo")
+        p.git("merge", "-q", "--ff-only", "origin/main")  # fast-forward: only main's commit, already on origin/main
+        code, out = p.stop()
+        self.assertLetsStop(code, out)
+
+    def test_local_commit_on_top_of_merged_main_counts_only_that_one(self):
+        p = self.p
+        p.work_branch()
+        p.git("checkout", "-q", "main")
+        p.write("src/m.py", "m = 1\n"); p.commit("on main")
+        p.git("push", "-q", "origin", "main")
+        p.git("checkout", "-q", "claude/trabajo")
+        p.git("merge", "-q", "--ff-only", "origin/main")
+        p.write("src/a.py", "x = 1\n"); p.commit("local only")
+        code, out = p.stop()
+        self.assertEqual(code, 0, out)
+        self.assertBlocks(out, "1 commit ", "git push -u origin claude/trabajo")
+
+    def test_upstream_gone_uses_the_same_rule(self):
+        p = self.p
+        p.work_branch()
+        p.git("push", "-q", "origin", "--delete", "claude/trabajo")
+        p.git("fetch", "-q", "--prune", "origin")  # @{u} no longer resolves
+        code, out = p.stop()
+        self.assertLetsStop(code, out)  # HEAD is on origin/main
+        p.write("src/a.py", "x = 1\n"); p.commit("local only")
+        code, out = p.stop()
+        self.assertBlocks(out, "1 commit ", "no upstream branch")
+
     def test_new_branch_with_nothing_new_does_not_block(self):
         p = self.p
         p.git("checkout", "-q", "-b", "claude/vacia")  # same commit as origin/main: nothing unpushed
@@ -332,7 +383,7 @@ class PushHelpers(Base):
         """A linked worktree on its own pushed branch with one unpushed commit: (path, hook script, git dir, sha)."""
         p = self.p
         linked = p.tmp / "linked"
-        p.git("worktree", "add", "-q", "-b", "claude/otra", str(linked))
+        p.git("worktree", "add", "-q", "-b", "claude/otra", str(linked), "origin/main")  # not from HEAD: pushing it would push main's unpushed commit too
         p.git("push", "-q", "-u", "origin", "claude/otra", cwd=linked)
         (linked / "src").mkdir(exist_ok=True)
         (linked / "src" / "b.py").write_text("y = 1\n")
