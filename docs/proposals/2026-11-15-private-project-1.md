@@ -11,7 +11,7 @@ sale de 2 retros. Recogida de cierre de la `0.7` (usuario, 2026-11-15).
 - **Why it is general:** sin el trailer, `metrics.py quality` no cuenta el arreglo y el siguiente `/code-review` de
   bloque arranca desde un punto equivocado.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-15) → E60
 
 ## P2. Aviso para aserciones añadidas a tests existentes en un `fix`
 
@@ -20,7 +20,7 @@ sale de 2 retros. Recogida de cierre de la `0.7` (usuario, 2026-11-15).
   recuerda `red-without-fix.sh`, que ya trata tests editados.
 - **Why it is general:** cualquier arreglo puede traer un test que nunca falla.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** no aprobada (2026-11-15)
 
 ## P3. La plantilla nombra el gancho `Stop` de la nube que pide firmar como Claude
 
@@ -29,7 +29,7 @@ sale de 2 retros. Recogida de cierre de la `0.7` (usuario, 2026-11-15).
   en la nube que pide reescribir el autor como Claude y dicen que no se sigue (como el `CLAUDE.md` de este repo).
 - **Why it is general:** cada proyecto en la nube lo recibe; obedecerlo costó un turno de ~100k.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-15) → D115
 
 ## P4. El aviso de arranque caro nombra los conectores cargados
 
@@ -38,7 +38,7 @@ sale de 2 retros. Recogida de cierre de la `0.7` (usuario, 2026-11-15).
   los conectores MCP cargados, y `gw-opt-tokens` lo recoge.
 - **Why it is general:** cualquier proyecto con conectores paga ese suelo en cada llamada sin saber de dónde viene.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** no aprobada (2026-11-15)
 
 ## Already here
 

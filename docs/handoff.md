@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14; excepción a A-6 aprobada por el usuario). Etiqueta y release `v0.6.1` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.1.md` |
-| Siguiente paso | **El usuario decide las 15 propuestas de la recogida H21** (`docs/proposals/2026-11-15-*.md`): arreglos al parche `0.6.2` o a la `0.7`, evolutivos a la `0.8`; luego, fase 1 hacia `main`: repaso de la documentación (README, `docs/es/` ↔ `docs/en/`, roadmap, CHANGELOG) y `/code-review` de la rama contra `origin/main`. Presupuesto de compactaciones: 1 |
+| Siguiente paso | **Parche `0.6.2`: D109-D115** (recogida H21, decidida por el usuario el 2026-11-15; E58-E61 a la `0.8`), repartidos con `gw-orchestrate-dealer`; cómo se publica el parche (la rama es la de la `0.7`; la `0.6.1` salió de aquí con excepción) se pregunta al usuario. Después, fase 1 de la `0.7` hacia `main`: repaso de la documentación y `/code-review` contra `origin/main`. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -37,7 +37,7 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-15 — Recogida de cierre de la `0.7` (H21) sobre 9 proyectos: 5 traen ideas (15 propuestas en `docs/proposals/2026-11-15-*.md`, de ellas 7 arreglos); 4 sin nada nuevo. La P3 del portal se une a la P3 de world-maker-fantasy (avisos de lectura por Bash); `pending.md` B2 deja de decir que `apply.py` no pone `merge=union` (B32)
+1. 2026-11-15 — Recogida de cierre de la `0.7` (H21) sobre 9 proyectos: 5 traen ideas, 4 sin nada nuevo; 15 propuestas (`docs/proposals/2026-11-15-*.md`): D109-D115 (arreglos) al parche `0.6.2`, E58-E61 a la `0.8`, 4 no aprobadas (usuario). La P3 del portal se une a la P3 de world-maker-fantasy (avisos de lectura por Bash); `pending.md` B2 deja de decir que `apply.py` no pone `merge=union` (B32)
 2. 2026-11-15 — Revisión de B37+E56+E57 (desde `f18432c`): 6 arreglos (las órdenes `sleep` de dos tests de `test_check_summary` escalan con su espera; `wait_for` devuelve el valor del predicado; el CI elige el factor por `runner.os`; el gancho de E56 acaba en `|| true`; regla de `testMap` para `tests/waits.py`; el escáner ve `timeout = n`; los tests de `WaitFor` quitan el factor del entorno, que en el CI de macOS movía sus plazos simulados), 3 leves a pendientes y 1 rechazado (`GW_TEST_TIMEOUT_SCALE` es de los tests de este repo, no una clave de proyecto)
 3. 2026-11-15 — E57: la skill `retro`, en su sección del flujo, propone al cerrar un bloque o versión una tarea `B` de barrido con los leves de `pendingFile` del script que más tenga (mejor uno que tocó el bloque), para la siguiente versión no empezada; el usuario elige cuáles entran. Copia en `.claude/skills/retro/`; test en `tests/test_skills.py`
 4. 2026-11-15 — E56: gancho `PreToolUse` `scripts/generated-copy.py` sobre `Edit`/`Write`/`MultiEdit`/`NotebookEdit` que, solo en este repo (en `WORKFLOW_ONLY_SCRIPTS`; registrado en `.claude/settings.json`, no en la plantilla), avisa sin bloquear al editar una copia generada (`.claude/gw/scripts/`, `.claude/gw/schema/`, `.claude/skills/`, `.githooks/`, `.claude/agents/`) con la ruta de su fuente; las notas de `.claude/gw/*.md` no cuentan. 8 tests

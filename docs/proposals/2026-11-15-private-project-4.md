@@ -14,7 +14,7 @@ Sin nada nuevo desde la recogida anterior: `private-project-2`, `private-project
   toma como base la raíz de la rama cuando la protegida no existe en el remoto, con su test.
 - **Why it is general:** le pasa a cualquier proyecto nuevo que adopta el flujo antes de tener `main`.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-15) → D109
 
 ## P2. `recover.py --state` compara el commit local con el de `origin/<rama>`
 
@@ -24,7 +24,7 @@ Sin nada nuevo desde la recogida anterior: `private-project-2`, `private-project
 - **Why it is general:** el paso 2 se hace a mano en cada arranque y falla a menudo (`rev-parse` de varias
   referencias da «Needed a single revision»; pasó también en la sesión de esta recogida).
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-15) → E59
 
 ## P3. `gw-selector` avisa si la sesión no se abrió en la carpeta del repo
 
@@ -34,7 +34,7 @@ Sin nada nuevo desde la recogida anterior: `private-project-2`, `private-project
 - **Why it is general:** abierta fuera del repo, la sesión no carga ganchos y nada lo avisa (`doctor.py` solo si se
   corre).
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** no aprobada (2026-11-15)
 
 ## P4. La plantilla de `AGENTS.md` nombra `ci-status.py` al mirar el CI
 
@@ -43,7 +43,7 @@ Sin nada nuevo desde la recogida anterior: `private-project-2`, `private-project
   su `--failed`, como el `AGENTS.md` de este repo.
 - **Why it is general:** sin el nombre, el agente lee el CI con la API de GitHub (~560k tokens en 9 llamadas).
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-15) → D114
 
 ## Stays in the project
 

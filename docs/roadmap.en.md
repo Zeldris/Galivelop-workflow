@@ -153,7 +153,7 @@ In this order, because each step uses the previous one.
 | H18 | `0.6` closing harvest (`gw-harvest`) before releasing it: fixes to the next `0.5` patch; evolutions, split across the versions (user, 2026-11-11) | done (2026-11-11; 28 proposals and 14 findings of the instalador `0.5.1` review: D70-D79, D88, B22-B25 and E38-E40 to `0.5.2`; B26-B29, D82, D84-D86 and E43 to `0.6`; D80, D81, D83, D87 and E41 to `0.7`; E42 to `0.8`; portal P6 discarded) |
 | H19 | `0.6.0` harvest (`gw-harvest`) before releasing it (user, 2026-11-13: fixes to `0.6.0`; evolutions to `0.7` and `0.8`) | done (2026-11-13; 12 proposals: D90-D93 and B30 to `0.6`; E48, D94-D96, E49 and B31 to `0.7`; E50 to `0.8`) |
 | H20 | `0.7` harvest (`gw-harvest`) at its start, with `private-project-4` for the first time (user, 2026-11-14) | done (2026-11-14; 14 proposals: D97-D103 to the `0.6.1` patch, E51, E52, B36 and extended E41 to `0.7`, E53 to `0.8`) |
-| H21 | `0.7` closing harvest (`gw-harvest`) before publishing it (user, 2026-11-15) | in progress (2026-11-15; 15 proposals, to the user: `docs/proposals/2026-11-15-*.md`) |
+| H21 | `0.7` closing harvest (`gw-harvest`) before publishing it (user, 2026-11-15) | done (2026-11-15; 15 proposals: D109-D115 to the `0.6.2` patch; E58-E61 to `0.8`; 4 not approved) |
 | A10 | One-page A4 workflow presentation sheets: for whoever contracts development, `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (what it solves, how work runs, what it guarantees), and for teams that install it, `docs/es/mkt-adoption.md` ↔ `docs/en/mkt-adoption.md` (user, 2026-11-09), with its HTML and final PDF generated from the `.md` by a script so they do not drift; reviewed on each version (D66) (user, 2026-11-06) | done (`scripts/mkt-sheet.py`, portal style) |
 | B1 | `Stop` hook that reads the session logs | done (`scripts/metrics.py record`, key `metrics`) |
 | B2 | `docs/metrics/ledger.jsonl` in the repo | done (`merge=union` in `.gitattributes`; `apply.py` does not set it in projects yet) |
@@ -222,6 +222,18 @@ In this order, because each step uses the previous one.
 | D107 | `gw-orchestrate-dealer`: the subagent's final push runs in the foreground, and the main session stops with `TaskStop` one that does not return once its commit is pushed (`0.6.1` retro, R3) | done (2026-11-14) |
 | D108 | The `commit-msg` repeats the compaction-budget-exceeded warning on the commit that closes a phase or version and asks for `/clear` (`0.6.1` retro, T3) | done (2026-11-14) |
 
+## `0.6.2` — patch
+
+| Id | Task | State |
+|---|---|---|
+| D109 | `reviewed.sh` takes the branch root as base when the protected branch does not exist on the remote, so the `pre-push` lets it be created, with its test (`0.7` closing harvest, private-project-4 P1) | pending |
+| D110 | `before-stop.py` counts as unpushed only what is on no remote (`@{u}..HEAD --not --remotes`): `main` commits brought by merge do not count, with its test (`0.7` closing harvest, world-maker-fantasy P1) | pending |
+| D111 | `gw-orchestrate-dealer`: after the merge, fixes go to a new subagent with the findings file (`merge-branch.sh` removes the worktree) (`0.7` closing harvest, image-generator P1) | pending |
+| D112 | `gw-orchestrate-dealer`: a red test is pre-existing only if it fails the same on `origin/<protected>`, with the output of both runs, and the main session checks it (`0.7` closing harvest, world-maker-fantasy P2) | pending |
+| D113 | The phase 1 reviewer gets `pendingFile` with "do not report what is already here" (`AGENTS.md`, its template or `review-scope.py`) (`0.7` closing harvest, image-generator P2) | pending |
+| D114 | The `AGENTS.md` template names `ci-status.py` (and `--failed`) when checking CI (`0.7` closing harvest, private-project-4 P4) | pending |
+| D115 | The `AGENTS.md` template names the cloud `Stop` hook that asks to sign as Claude and says it is not followed (`0.7` closing harvest, private-project-1 P3) | pending |
+
 ## `0.7` "Ask"
 
 | Id | Task | State |
@@ -283,6 +295,10 @@ In this order, because each step uses the previous one.
 | E42 | `gw-seo` skill (SEO and link previews for static sites) brought from the portal: no portal paths, English names, tests in the check, es/en docs and its source's MIT LICENSE (`0.6` closing harvest, portal P1) | pending |
 | E50 | `PreToolUse` hook on `Read` that warns, without blocking, when reading loose screenshots and suggests a contact sheet (the project's command in a key) (`0.6.0` harvest, image-generator P6) | pending |
 | E53 | Guide rule: in CI, the environment's install script fails in its own step (`0.7` harvest, instalador P2) | pending |
+| E58 | Read warnings over Bash: `readPointers` key (`{"<path>": "<command>"}`) and `whole-read.py` extended to `Bash` (`cat`, `sed`, `grep`; not counting a heredoc body) (`0.7` closing harvest, world-maker-fantasy P3, portal P3) | pending |
+| E59 | `recover.py --state` compares the local commit with `origin/<branch>` (up to date, ahead, behind); step 2 of "At the start" points to that output (`0.7` closing harvest, private-project-4 P2) | pending |
+| E60 | The `commit-msg` warns, without rejecting, about review fixes with no `Findings:` (words in a key) (`0.7` closing harvest, private-project-1 P1) | pending |
+| E61 | `handoff.py set-row` and `close-row` print the resulting row and `n/limit` (`0.7` closing harvest, world-maker-fantasy P4) | pending |
 
 ## `0.9` "Stable"
 

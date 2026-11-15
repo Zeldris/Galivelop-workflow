@@ -11,7 +11,7 @@ sale de 4 retros. Recogida de cierre de la `0.7` (usuario, 2026-11-15).
   subagente nuevo con el archivo de hallazgos (la alternativa, `--keep-worktree`, sería minor).
 - **Why it is general:** contradicción entre la skill y el script, en cualquier proyecto que reparta.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-15) → D111
 
 ## P2. El revisor recibe los leves ya apuntados
 
@@ -20,7 +20,7 @@ sale de 4 retros. Recogida de cierre de la `0.7` (usuario, 2026-11-15).
   la ruta de `pendingFile`) pasa al revisor la lista de pendientes con «no informes de lo que ya está aquí».
 - **Why it is general:** cualquier proyecto con `pendingFile` repite hallazgos en cada revisión.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-15) → D113
 
 ## P3. Un script lista los llamadores de lo que cambia una rama
 
@@ -30,7 +30,7 @@ sale de 4 retros. Recogida de cierre de la `0.7` (usuario, 2026-11-15).
   hoy pide un `grep` a mano, recibe su salida. Riesgo: ruido con nombres comunes.
 - **Why it is general:** convierte en comprobación lo que hoy depende de la memoria del revisor.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** no aprobada (2026-11-15)
 
 ## Already here
 

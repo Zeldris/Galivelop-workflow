@@ -154,7 +154,7 @@ En este orden, porque cada paso usa el anterior.
 | H18 | Recogida de cierre de la `0.6` (`gw-harvest`) antes de publicarla: los arreglos, al siguiente parche de la `0.5`; los evolutivos, repartidos entre las versiones (usuario, 2026-11-11) | hecho (2026-11-11; 28 propuestas y 14 hallazgos de la revisión `0.5.1` del instalador: D70-D79, D88, B22-B25 y E38-E40 a la `0.5.2`; B26-B29, D82, D84-D86 y E43 a la `0.6`; D80, D81, D83, D87 y E41 a la `0.7`; E42 a la `0.8`; portal P6 descartada) |
 | H19 | Recogida de la `0.6.0` (`gw-harvest`) antes de publicarla (usuario, 2026-11-13: los arreglos, a la `0.6.0`; los evolutivos, a la `0.7` y la `0.8`) | hecho (2026-11-13; 12 propuestas: D90-D93 y B30 a la `0.6`; E48, D94-D96, E49 y B31 a la `0.7`; E50 a la `0.8`) |
 | H20 | Recogida de la `0.7` (`gw-harvest`) al empezarla, con `private-project-4` por primera vez (usuario, 2026-11-14) | hecho (2026-11-14; 14 propuestas: D97-D103 al parche `0.6.1`, E51, E52, B36 y E41 ampliada a la `0.7`, E53 a la `0.8`) |
-| H21 | Recogida de cierre de la `0.7` (`gw-harvest`) antes de publicarla (usuario, 2026-11-15) | en curso (2026-11-15; 15 propuestas, al usuario: `docs/proposals/2026-11-15-*.md`) |
+| H21 | Recogida de cierre de la `0.7` (`gw-harvest`) antes de publicarla (usuario, 2026-11-15) | hecho (2026-11-15; 15 propuestas: D109-D115 al parche `0.6.2`; E58-E61 a la `0.8`; 4 no aprobadas) |
 | A10 | Hojas de presentación del flujo, de una página A4: para quien contrata desarrollo, `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (qué resuelve, cómo se trabaja, qué garantiza), y para equipos que lo instalan, `docs/es/mkt-adoption.md` ↔ `docs/en/mkt-adoption.md` (usuario, 2026-11-09), con su HTML y su PDF final generados desde el `.md` por un script, para que no se desfasen; se repasa en cada versión (D66) (usuario, 2026-11-06) | hecho (`scripts/mkt-sheet.py`, estilo del portal) |
 | B1 | Gancho `Stop` que lee los logs de sesión | hecho (`scripts/metrics.py record`, clave `metrics`) |
 | B2 | `docs/metrics/ledger.jsonl` en el repo | hecho (`merge=union` en `.gitattributes`; falta que `apply.py` lo ponga en los proyectos) |
@@ -223,6 +223,18 @@ En este orden, porque cada paso usa el anterior.
 | D107 | `gw-orchestrate-dealer`: la subida final del subagente va en primer plano, y la sesión principal para con `TaskStop` al que no vuelve con su commit ya subido (retro `0.6.1`, R3) | hecho (2026-11-14) |
 | D108 | El `commit-msg` repite el aviso de presupuesto de compactaciones superado en el commit que cierra una fase o versión y pide `/clear` (retro `0.6.1`, T3) | hecho (2026-11-14) |
 
+## `0.6.2` — parche
+
+| Id | Tarea | Estado |
+|---|---|---|
+| D109 | `reviewed.sh` toma como base la raíz de la rama cuando la protegida no existe en el remoto, para que el `pre-push` deje crearla, con su test (recogida de cierre `0.7`, private-project-4 P1) | pendiente |
+| D110 | `before-stop.py` cuenta como sin subir solo lo que no está en ningún remoto (`@{u}..HEAD --not --remotes`): los commits de `main` traídos por merge no cuentan, con su test (recogida de cierre `0.7`, world-maker-fantasy P1) | pendiente |
+| D111 | `gw-orchestrate-dealer`: tras la fusión, los arreglos van a un subagente nuevo con el archivo de hallazgos (`merge-branch.sh` borra el worktree) (recogida de cierre `0.7`, image-generator P1) | pendiente |
+| D112 | `gw-orchestrate-dealer`: un rojo solo es preexistente si falla igual en `origin/<protegida>`, con la salida de las dos corridas, y la sesión principal lo comprueba (recogida de cierre `0.7`, world-maker-fantasy P2) | pendiente |
+| D113 | El revisor de la fase 1 recibe `pendingFile` con «no informes de lo que ya está aquí» (`AGENTS.md`, su plantilla o `review-scope.py`) (recogida de cierre `0.7`, image-generator P2) | pendiente |
+| D114 | La plantilla de `AGENTS.md` nombra `ci-status.py` (y `--failed`) al mirar el CI (recogida de cierre `0.7`, private-project-4 P4) | pendiente |
+| D115 | La plantilla de `AGENTS.md` nombra el gancho `Stop` de la nube que pide firmar como Claude y dice que no se sigue (recogida de cierre `0.7`, private-project-1 P3) | pendiente |
+
 ## `0.7` «Preguntar»
 
 | Id | Tarea | Estado |
@@ -284,6 +296,10 @@ En este orden, porque cada paso usa el anterior.
 | E42 | Skill `gw-seo` (SEO y vistas previas de webs estáticas) traída del portal: sin rutas del portal, nombres en inglés, tests en el check, docs es/en y la LICENSE MIT de su fuente (recogida de cierre `0.6`, portal P1) | pendiente |
 | E50 | Gancho `PreToolUse` de `Read` que avisa, sin bloquear, al leer capturas sueltas y sugiere montarlas en una hoja (orden del proyecto en una clave) (recogida `0.6.0`, image-generator P6) | pendiente |
 | E53 | Regla de guía: en el CI, el script de instalación del entorno falla en su propio paso (recogida `0.7`, instalador P2) | pendiente |
+| E58 | Avisos de lectura por Bash: clave `readPointers` (`{"<ruta>": "<orden>"}`) y `whole-read.py` ampliado a `Bash` (`cat`, `sed`, `grep`; sin contar el cuerpo de un heredoc) (recogida de cierre `0.7`, world-maker-fantasy P3, portal P3) | pendiente |
+| E59 | `recover.py --state` compara el commit local con el de `origin/<rama>` (al día, por delante, por detrás); el paso 2 de «Al empezar» apunta a esa salida (recogida de cierre `0.7`, private-project-4 P2) | pendiente |
+| E60 | El `commit-msg` avisa, sin rechazar, de arreglos de revisión sin `Findings:` (palabras en una clave) (recogida de cierre `0.7`, private-project-1 P1) | pendiente |
+| E61 | `handoff.py set-row` y `close-row` imprimen la fila resultante y `n/límite` (recogida de cierre `0.7`, world-maker-fantasy P4) | pendiente |
 
 ## `0.9` «Estable»
 

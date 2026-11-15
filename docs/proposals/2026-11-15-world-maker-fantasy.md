@@ -11,7 +11,7 @@ sale de 3 retros. Recogida de cierre de la `0.7` (usuario, 2026-11-15).
   `@{u}..HEAD --not --remotes`, con su test.
 - **Why it is general:** cada proyecto trae `main` por merge al empezar una tarea (`AGENTS.md`).
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-15) → D110
 
 ## P2. Un rojo solo es «preexistente» si falla igual en la rama protegida
 
@@ -22,7 +22,7 @@ sale de 3 retros. Recogida de cierre de la `0.7` (usuario, 2026-11-15).
 - **Why it is general:** un subagente dio un fallo propio por preexistente sin comprobarlo; nada en la skill lo
   impide.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-15) → D112
 
 ## P3. Avisos de lectura por Bash, configurables
 
@@ -35,7 +35,7 @@ sale de 3 retros. Recogida de cierre de la `0.7` (usuario, 2026-11-15).
   portal lo confirma: con el gancho instalado, leyó la bitácora entera 32 veces (1,49M; ver
   `2026-11-15-portal-galivelop.md`).
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-15) → E58
 
 ## P4. `handoff.py set-row` y `close-row` imprimen la fila y su tamaño frente al límite
 
@@ -45,7 +45,7 @@ sale de 3 retros. Recogida de cierre de la `0.7` (usuario, 2026-11-15).
 - **Why it is general:** evita releer la bitácora o hacer `git diff` tras cada cambio de fila (22 lecturas en la
   retro).
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-15) → E61
 
 ## Already here
 
