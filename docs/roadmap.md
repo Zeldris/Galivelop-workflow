@@ -155,7 +155,7 @@ En este orden, porque cada paso usa el anterior.
 | H19 | Recogida de la `0.6.0` (`gw-harvest`) antes de publicarla (usuario, 2026-11-13: los arreglos, a la `0.6.0`; los evolutivos, a la `0.7` y la `0.8`) | hecho (2026-11-13; 12 propuestas: D90-D93 y B30 a la `0.6`; E48, D94-D96, E49 y B31 a la `0.7`; E50 a la `0.8`) |
 | H20 | Recogida de la `0.7` (`gw-harvest`) al empezarla, con `private-project-4` por primera vez (usuario, 2026-11-14) | hecho (2026-11-14; 14 propuestas: D97-D103 al parche `0.6.1`, E51, E52, B36 y E41 ampliada a la `0.7`, E53 a la `0.8`) |
 | H21 | Recogida de cierre de la `0.7` (`gw-harvest`) antes de publicarla (usuario, 2026-11-15) | hecho (2026-11-15; 15 propuestas: D109-D115 al parche `0.6.2`; E58-E61 a la `0.8`; 4 no aprobadas) |
-| H22 | Recogida de apertura de la `0.8` (`gw-harvest`) al empezarla (AGENTS.md) | en curso (2026-11-15; 1 propuesta, P1 del instalador al parche `0.7.1`, y P2 a E58; pendientes del usuario) |
+| H22 | Recogida de apertura de la `0.8` (`gw-harvest`) al empezarla (AGENTS.md) | hecho (2026-11-15; 1 propuesta del instalador aprobada: D122 al parche `0.7.1`; su P2 amplía E58) |
 | A10 | Hojas de presentación del flujo, de una página A4: para quien contrata desarrollo, `docs/es/mkt-workflow.md` ↔ `docs/en/mkt-workflow.md` (qué resuelve, cómo se trabaja, qué garantiza), y para equipos que lo instalan, `docs/es/mkt-adoption.md` ↔ `docs/en/mkt-adoption.md` (usuario, 2026-11-09), con su HTML y su PDF final generados desde el `.md` por un script, para que no se desfasen; se repasa en cada versión (D66) (usuario, 2026-11-06) | hecho (`scripts/mkt-sheet.py`, estilo del portal) |
 | B1 | Gancho `Stop` que lee los logs de sesión | hecho (`scripts/metrics.py record`, clave `metrics`) |
 | B2 | `docs/metrics/ledger.jsonl` en el repo | hecho (`merge=union` en `.gitattributes`; falta que `apply.py` lo ponga en los proyectos) |
@@ -263,6 +263,12 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | B39 | `measure.py`: «BY FILE» no cuenta como archivos los argumentos de `git config` ni el dominio de un correo (retro de la `0.7.0`, T3; usuario, 2026-11-15) | hecho |
 | B40 | `version.py --release`: cuenta la recogida que un parche se trajo de la rama de la menor (ya está en su etiqueta, pero el commit que la añadió es nuevo); la subida de la `0.7.0` a `main` la paraba (usuario, 2026-11-15) | hecho |
 
+## `0.7.1` — parche
+
+| Id | Tarea | Estado |
+|---|---|---|
+| D122 | `recover.py --state`: con el presupuesto de compactaciones pasado, si el mayor culpable del arranque (desglose de `context_guard.py`) es el sistema (prompt, herramientas, MCP), el aviso dice que un `/clear` no lo baja y que solo lo baja quitar conectores que no se usan, en vez de pedir `/clear`, con su test (recogida `0.8`, instalador P1) | pendiente |
+
 ## `0.8` «Front y otros agentes»
 
 | Id | Tarea | Estado |
@@ -309,7 +315,7 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | E42 | Skill `gw-seo` (SEO y vistas previas de webs estáticas) traída del portal: sin rutas del portal, nombres en inglés, tests en el check, docs es/en y la LICENSE MIT de su fuente (recogida de cierre `0.6`, portal P1) | pendiente |
 | E50 | Gancho `PreToolUse` de `Read` que avisa, sin bloquear, al leer capturas sueltas y sugiere montarlas en una hoja (orden del proyecto en una clave) (recogida `0.6.0`, image-generator P6) | pendiente |
 | E53 | Regla de guía: en el CI, el script de instalación del entorno falla en su propio paso (recogida `0.7`, instalador P2) | pendiente |
-| E58 | Avisos de lectura por Bash: clave `readPointers` (`{"<ruta>": "<orden>"}`) y `whole-read.py` ampliado a `Bash` (`cat`, `sed`, `grep`; sin contar el cuerpo de un heredoc) (recogida de cierre `0.7`, world-maker-fantasy P3, portal P3) | pendiente |
+| E58 | Avisos de lectura por Bash: clave `readPointers` (`{"<ruta>": "<orden>"}`) y `whole-read.py` ampliado a `Bash` (`cat`, `sed`, `grep`; sin contar el cuerpo de un heredoc) ; además, avisar solo al releer entero un archivo ya leído entero en la sesión y sin cambios (recogida de cierre `0.7`, world-maker-fantasy P3, portal P3; recogida `0.8`, instalador P2) | pendiente |
 | E59 | `recover.py --state` compara el commit local con el de `origin/<rama>` (al día, por delante, por detrás); el paso 2 de «Al empezar» apunta a esa salida (recogida de cierre `0.7`, private-project-4 P2) | pendiente |
 | E60 | El `commit-msg` avisa, sin rechazar, de arreglos de revisión sin `Findings:` (palabras en una clave) (recogida de cierre `0.7`, private-project-1 P1) | pendiente |
 | E61 | `handoff.py set-row` y `close-row` imprimen la fila resultante y `n/límite` (recogida de cierre `0.7`, world-maker-fantasy P4) | pendiente |

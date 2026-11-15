@@ -14,14 +14,14 @@ apertura de la `0.8` (H22).
 - **Why it is general:** en el instalador el arranque estaba al 67 % del tope y el 89 % era sistema y MCP; pedir
   `/clear` ahí gasta un relevo sin bajar nada. Pasa en cualquier proyecto con varios conectores.
 - **Version bump:** patch (arreglo de un aviso que engaña: `0.7.1`)
-- **Status:** proposed
+- **Status:** approved (usuario, 2026-11-15): D122 al parche `0.7.1`
 
 ## Joined to another proposal
 
 - P2 (aviso al releer entero un archivo grande ya leído y sin cambios) @ `6eea9fd`: el flujo ya trae `whole-read.py`
   en `PreToolUse` de `Read`; el instalador releyó `docs/05-plan-de-trabajo.md` 24 veces (~238k) y `release.yml` 14
   (~119k). Lo que falta es lo de E58 (lecturas por `cat`/`sed` en Bash) y un criterio nuevo: avisar solo si el
-  archivo ya se leyó entero en la sesión y no ha cambiado. Va a E58 como evidencia y ampliación.
+  archivo ya se leyó entero en la sesión y no ha cambiado. Va a E58 como evidencia y ampliación (aprobado por el usuario, 2026-11-15).
 
 ## Already here
 
