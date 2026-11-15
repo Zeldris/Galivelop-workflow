@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | **`0.7` «Preguntar»: `ccr-d1e2d496-0vzck8`** (hace de `version/0.7.0`), con `main` fusionado. `main` = `cd856ca` = **`0.6.2`** (2026-11-15, etiqueta y release `v0.6.2`). `version/1.0.0` se queda con el diseño (`docs/design/`) |
+| Rama | **`0.7` «Preguntar»: `ccr-d1e2d496-0vzck8`** (hace de `version/0.7.0`), con `main` fusionado. `main` = `c1e75c8` = **`0.7.0`** (2026-11-15, etiqueta y release `v0.7.0`). `version/1.0.0` se queda con el diseño (`docs/design/`) |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | **`0.6.2` en `main`** (`cd856ca`, 2026-11-15; CI en verde). Etiqueta y release `v0.6.2` creadas por el agente desde una sesión local (`gh release create`, 2026-11-15) con los textos de `docs/records/release-v0.6.2.md` |
-| Siguiente paso | El usuario publica en local la release `v0.7.0` sobre `c1e75c8` con `docs/records/release-v0.7.0.md`; luego empieza la `0.8` con su recogida (`gw-harvest`) y el barrido B38. Presupuesto de compactaciones: 1 |
+| Último punto estable | **`0.7.0` en `main`** (`c1e75c8`, 2026-11-15; CI en verde). Etiqueta y release `v0.7.0` creadas por el agente desde una sesión local (`gh release create`, 2026-11-15, a petición del usuario) con los textos de `docs/records/release-v0.7.0.md` |
+| Siguiente paso | Release `v0.7.0` publicada. Empieza la `0.8` con su recogida (`gw-harvest`) y el barrido B38. Presupuesto de compactaciones: 1 |
 
 ### Fases
 

@@ -3,7 +3,7 @@
 - **Etiqueta:** `v0.7.0`, sobre `c1e75c8` (subida a `main` el 2026-11-15).
 - **Título:** el bloque de abajo.
 - **Cuerpo:** el segundo bloque. La entrada completa está en el CHANGELOG.
-- **Publicada:** a mano por el usuario en local (elegido por él): `gh release create v0.7.0 --target c1e75c8 --title "Galivelop-workflow v0.7.0" --notes-file <cuerpo>`, con el cuerpo de abajo.
+- **Publicada** el 2026-11-15 por el agente desde una sesión local, a petición del usuario: `gh release create v0.7.0 --target c1e75c8e73b02f48f376e13d4b72064aebdea142 --title "Galivelop-workflow v0.7.0" --notes-file <cuerpo>`, con el cuerpo de abajo (`--target` pide el SHA completo).
 
 ```text
 Galivelop-workflow v0.7.0
