@@ -233,6 +233,12 @@ En este orden, porque cada paso usa el anterior.
 | D113 | El revisor de la fase 1 recibe `pendingFile` con «no informes de lo que ya está aquí» (`AGENTS.md`, su plantilla o `review-scope.py`) (recogida de cierre `0.7`, image-generator P2) | hecho (2026-11-15) |
 | D114 | La plantilla de `AGENTS.md` nombra `ci-status.py` (y `--failed`) al mirar el CI (recogida de cierre `0.7`, private-project-4 P4) | hecho (2026-11-15) |
 | D115 | La plantilla de `AGENTS.md` nombra el gancho `Stop` de la nube que pide firmar como Claude y dice que no se sigue (recogida de cierre `0.7`, private-project-1 P3) | hecho (2026-11-15) |
+| D116 | `tests-for.py --run` pasa shellcheck a los `.sh` del cambio **antes** de los tests y para en su primer fallo; el encargo de `gw-orchestrate-dealer` pide shellcheck de los `.sh` tocados antes de cada commit (retro `0.6.2`, R1) | pendiente |
+| D117 | `merge-branch.sh --defer-check` fusiona y limpia sin check (y lo dice), para todas las ramas de una oleada salvo la última; el dealer lo usa (retro `0.6.2`, T1) | pendiente |
+| D118 | `tests-for.py --why` dice qué regla de `testMap` y qué archivo cambiado traen cada test, y el encargo del dealer usa `--diff {head}` como base (retro `0.6.2`, T2) | pendiente |
+| D119 | `subagent-cap.py` avisa cuando un `general-purpose` se lanza con `sonnet` y `low`/`medium` y existe `.claude/agents/gw-worker.md` (retro `0.6.2`, T3) | pendiente |
+| D120 | `gw-orchestrate-dealer`: tras aceptar el informe de un subagente, la sesión principal lo para con `TaskStop` (retro `0.6.2`, T4) | pendiente |
+| D121 | El mensaje de `version.py --release` sin la recogida dice cómo traerla de la rama donde se hizo (`git checkout <sha> -- <proposalsDir>/`) (retro `0.6.2`, N1) | pendiente |
 
 ## `0.7` «Preguntar»
 
