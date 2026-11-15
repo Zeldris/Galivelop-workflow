@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.1` en `main`** (`5afda88`, 2026-11-14; excepción a A-6 aprobada por el usuario). Etiqueta y release `v0.6.1` creadas por el agente desde una sesión local (`gh release create`, 2026-11-14) con los textos de `docs/records/release-v0.6.1.md` |
-| Siguiente paso | **Parche `0.6.2`: D109-D115** (recogida H21, decidida por el usuario el 2026-11-15; E58-E61 a la `0.8`), repartidos con `gw-orchestrate-dealer`; cómo se publica el parche (la rama es la de la `0.7`; la `0.6.1` salió de aquí con excepción) se pregunta al usuario. Después, fase 1 de la `0.7` hacia `main`: repaso de la documentación y `/code-review` contra `origin/main`. Presupuesto de compactaciones: 1 |
+| Siguiente paso | **Orden (usuario, 2026-11-15): 1) `0.6.2`, 2) `0.7.0`.** 1: rama `version/0.6.2` desde `origin/main` (si el proxy no deja subirla, se dice al usuario); en ella D109-D115 (recogida H21) con `gw-orchestrate-dealer`, las tres fases y publicación de la `0.6.2`. 2: traer `main` a esta rama (merge) y cerrar la `0.7.0`: repaso de la documentación, `/code-review` contra `origin/main`, fases 2 y 3 y publicación. E58-E61, a la `0.8`. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -34,6 +34,8 @@
 los evolutivos van a la siguiente menor que no esté en obra (`docs/roadmap.md`). Cada versión se publica en este repo
 (público), a lo sumo una al día. La sesión en la nube no puede subir etiquetas (403 del proxy): la release, a mano o
 desde una sesión local.
+
+**Orden de publicación** (usuario, 2026-11-15): primero el parche `0.6.2` (D109-D115) desde su rama `version/0.6.2`, sacada de `main`; después la `0.7.0` desde esta rama, con `main` ya traído.
 
 ## Hecho (5 últimas)
 
