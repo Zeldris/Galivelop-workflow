@@ -255,3 +255,6 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - Leves de D116/D118 (`0.6.2`): con shellcheck ausente en CI o en la nube, `tests-for.py --run` acaba diciendo «fix
   the .sh files and run again» cuando lo que toca es instalarlo (la orden sale antes, en stderr); la primera línea del
   docstring de `run_shellcheck` pasa de 120 caracteres.
+- Leves de D119 (`0.6.2`): el aviso de `gw-worker` de `subagent-cap.py` solo va en la salida normal, no en el `ask`
+  (sin `session_id`, `CannotCount`) ni en la denegación por tope (`subagentCapAction: deny`), aunque su docstring dice
+  que las notas van en todo `ask`; falta una línea en blanco antes de `class CapOfOne` en `tests/test_subagent_cap.py`.
