@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.2` en `main`** (`cd856ca`, 2026-11-15; CI en verde). Etiqueta y release `v0.6.2` creadas por el agente desde una sesión local (`gh release create`, 2026-11-15) con los textos de `docs/records/release-v0.6.2.md` |
-| Siguiente paso | **Fase 2** de la `0.7.0`: `/gw-opt-tokens` y `/retro`, propuestas al usuario; luego fase 3 (`reviewed.sh`), subida a `main` y release. Presupuesto de compactaciones: 1 |
+| Siguiente paso | **Fase 2** de la `0.7.0`: decisión del usuario sobre T1, R2 y T3 de `docs/records/retro-2026-11-15-release-0-7-0.md` (anotarla en su `**Estado:**` y aplicar lo aprobado); luego fase 3 (`reviewed.sh`), subida a `main` y release. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
