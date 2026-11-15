@@ -326,8 +326,8 @@ def worker_note(event):
     review = (f", or `subagent_type: {REVIEWER}` for a review" if os.path.isfile(os.path.join(agents, REVIEWER + ".md"))
               else "")
     return (f"this `{GENERAL}` subagent runs on `{model} {effort}`: launch it with `subagent_type: {WORKER}` and the "
-            f"same `model` and `effort`{review} instead (the call's model and effort win over the definition's; it "
-            f"starts without MCP tools and skills; {GENERAL} costs ~66-68k tokens just to start, retro 2026-11-11). "
+            f"same `model` and `effort`{review} instead, unless it needs skills, web or MCP tools (the call's model and "
+            f"effort win over the definition's; it starts without MCP tools and skills; {GENERAL} costs ~66-68k tokens just to start, retro 2026-11-11). "
             f"This reminder arrives with the tool result, so it is for the next calls")
 
 

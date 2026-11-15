@@ -139,7 +139,12 @@ class Measure(unittest.TestCase):
             # `git config` keys and an e-mail domain are not files; what the command reads after them is.
             response('m6', 100, call('t6', 'git config user.email me@example.com && cat docs/z.md')),
             result('t6', 'x' * 350),
-            response('m7', 100))
+            # It stops at a new line or a quote, and a path after `@` is still read (review of the 0.7.0).
+            response('m7', 100, call('t7', 'git config user.name Z\ncat docs/w.md')),
+            result('t7', 'x' * 350),
+            response('m8', 100, call('t8', 'grep -rn "git config user" docs/v.md && curl -d @docs/u.json')),
+            result('t8', 'x' * 350),
+            response('m9', 100))
         r = subprocess.run(['python3', MEASURE, '--session', path, '--hours', '0'], capture_output=True, text=True, cwd=root)
         self.assertEqual(r.returncode, 0, r.stderr)
         out = r.stdout
@@ -150,6 +155,8 @@ class Measure(unittest.TestCase):
         self.assertNotIn('docs/x.md', by_file)
         self.assertRegex(by_file, r'docs/y.md\s+1x')
         self.assertRegex(by_file, r'docs/z.md\s+1x')
+        for name in ('docs/w.md', 'docs/v.md', 'docs/u.json'):
+            self.assertRegex(by_file, name + r'\s+1x')
         for name in ('user.email', 'example.com'):
             self.assertNotIn(name, by_file)
         for script in ('host.sh', 'z.sh', 'b.py'):

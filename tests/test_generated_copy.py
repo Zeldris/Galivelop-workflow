@@ -39,6 +39,7 @@ class Warns(unittest.TestCase):
             ".claude/skills/LICENSE-mattpocock-skills": "LICENSE-mattpocock-skills",
             ".githooks/pre-push": "templates/githooks/pre-push",
             ".claude/agents/gw-worker.md": "templates/claude/agents/gw-worker.md",
+            ".claude/agents/gw-reviewer.md": "templates/claude/agents/gw-reviewer.md",
         }
         for copy, source in cases.items():
             with self.subTest(copy=copy):

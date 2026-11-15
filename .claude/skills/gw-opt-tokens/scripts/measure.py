@@ -239,9 +239,9 @@ def input_summary(entry, name=None):
     return json.dumps(entry, ensure_ascii=False)[:110]
 
 
-FILE_RE = re.compile(r'(?<![\w/.@-])((?:[\w.-]+/)*[\w.-]+\.(?:[a-z]{1,5}))(?![\w/])')
+FILE_RE = re.compile(r'(?<![\w/.-])((?:[\w.-]+/)*[\w.-]+\.(?:[a-z]{1,5}))(?![\w/])')
 # `git config user.email <address>` names keys and values, not files (retro of the 0.7.0, T3).
-GIT_CONFIG = re.compile(r'\bgit\s+config\s[^;&|]*')
+GIT_CONFIG = re.compile(r'\bgit\s+config\s[^;&|\n"\']*')
 READS = re.compile(r'(?:^|[|;&(]\s*|\s)(?:cat|sed|head|tail|grep|rg|awk|wc|less|nl|cut)\s')
 CD = re.compile(r'^\s*cd\s+(\S+)\s*&&')
 # What comes right after an interpreter (or `./`) is executed, not read: `bash scripts/run.sh grep ...`.

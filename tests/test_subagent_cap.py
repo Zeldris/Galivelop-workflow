@@ -483,6 +483,7 @@ class WorkerWarning(Base):  # D119 and T1 of the 0.7.0 retro: general-purpose is
                 self.assertNotIn("permissionDecision", spec, out)
                 note = spec["additionalContext"]
                 self.assertIn("`subagent_type: gw-worker` and the same `model` and `effort`", note)
+                self.assertIn("unless it needs skills, web or MCP tools", note)
                 self.assertNotIn("gw-reviewer", note, "no gw-reviewer definition in this project")
 
     def test_names_gw_reviewer_when_it_exists(self):
@@ -491,10 +492,15 @@ class WorkerWarning(Base):  # D119 and T1 of the 0.7.0 retro: general-purpose is
         self.assertIn("`subagent_type: gw-reviewer` for a review", self.answer(out)["additionalContext"])
 
     def test_silent_without_own_model_or_effort_and_for_other_types(self):
-        for kwargs in ({"model": ""}, {"effort": ""}, {"subagent_type": "gw-worker"}, {"subagent_type": "Explore"}):
+        for kwargs in ({"subagent_type": "gw-worker"}, {"subagent_type": "Explore"}):
+            with self.subTest(kwargs=kwargs):
+                self.assertQuiet(self.gp(**kwargs))
+        for kwargs in ({"model": ""}, {"effort": ""}):  # only the missing-field reminder
             with self.subTest(kwargs=kwargs):
                 code, out = self.gp(**kwargs)
-                self.assertNotIn("gw-worker` and the same", out)
+                note = self.answer(out)["additionalContext"]
+                self.assertIn("pick the rung for the task", note)
+                self.assertNotIn("gw-worker", note)
 
     def test_joined_with_the_cap_ask(self):
         (self.p.work / ".claude" / "gw.json").write_text(json.dumps(dict(BASE_CONFIG, subagentCap=1), indent=2))

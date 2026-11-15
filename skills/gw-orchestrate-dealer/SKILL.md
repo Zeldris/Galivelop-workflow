@@ -51,8 +51,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    session or to global variables. Where `.claude/agents/gw-worker.md` exists, every chunk uses
    `subagent_type: gw-worker` with its rung as `model` and `effort` (the call's win over the definition's
    `sonnet low`), and every reviewer `subagent_type: gw-reviewer` (`.claude/agents/gw-reviewer.md`: `/code-review`
-   without MCP tools): both start at ~13-20k instead of the ~65-68k of `general-purpose` (retros 2026-11-11 and
-   `0.7.0`, 181 `opus` calls of `general-purpose` in one version). `subagent-cap.py` reminds it. Fixes from a
+   without MCP tools); a chunk that needs skills, web or MCP tools stays `general-purpose`. Both start at ~13-20k instead of the ~65-68k of `general-purpose` (retros 2026-11-11 and
+   `0.7.0`, 181 `opus` calls of `general-purpose` in one version). `subagent-cap.py` reminds it. With `sonnet` in `models.disabled`, the call's `model` names the next rung (the definition's `sonnet` is denied). Fixes from a
    review go to `sonnet` too: the reviewer already closed the plan (where and what to change). The brief carries
    **pointers, not copies**: where the material is (the log row, the plan task, a doc, a commit, a file and
    function), never the pasted text. Template:

@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.6.2` en `main`** (`cd856ca`, 2026-11-15; CI en verde). Etiqueta y release `v0.6.2` creadas por el agente desde una sesión local (`gh release create`, 2026-11-15) con los textos de `docs/records/release-v0.6.2.md` |
-| Siguiente paso | **Fase 3** de la `0.7.0`: `/code-review` (con `gw-reviewer`) de los commits de la fase 2 (E62, B39: `subagent-cap.py`, `measure.py`, dealer); luego `bash scripts/reviewed.sh`, subida a `main` con confirmación del usuario y release. Presupuesto de compactaciones: 1 |
+| Siguiente paso | **Fase 3** de la `0.7.0`, revisión hecha (`gw-reviewer`, 9 hallazgos: 8 arreglados, el de «Todo configurable» a `pending.md`): check completo, `bash scripts/reviewed.sh`, CI de la rama y subida a `main` con confirmación del usuario; luego `docs/records/release-v0.7.0.md` y preguntar por la release. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
