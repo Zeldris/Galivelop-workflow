@@ -3256,10 +3256,55 @@ class PreCommitAuthorDeny(Base):
         self.assertNotEqual(code, 0, out)
         self.assertIn("author Claude <noreply@anthropic.com> matches 'Claude'", out)
 
-    def test_unreadable_config_warns_and_goes_on(self):
+    def test_unreadable_config_with_head_denying_author_is_refused(self):
         self.p.write(".claude/gw.json", "{not json")
         self.change()
         r = self.p.commit("broken", env=self.CLAUDE, ok=False)
+        self.refused(r, "author", "Claude")
+        self.assertIn("authorDeny from HEAD", r.stderr)
+
+    def test_unreadable_config_with_head_denying_committer_is_refused(self):
+        self.p.write(".claude/gw.json", "{not json")
+        self.change()
+        r = self.p.commit("broken", env={"GIT_COMMITTER_NAME": "Claude", "GIT_COMMITTER_EMAIL": "x@example.com"}, ok=False)
+        self.refused(r, "committer", "Claude")
+        self.assertIn("authorDeny from HEAD", r.stderr)
+
+    def test_unreadable_config_with_head_allowing_passes_silently(self):
+        self.p.write(".claude/gw.json", "{not json")
+        self.change()
+        r = self.p.commit("broken", ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("WARNING: cannot read authorDeny", r.stderr)
+
+    def test_unreadable_config_without_head_warns_and_goes_on(self):
+        p = self.p
+        p.git("update-ref", "-d", "HEAD")
+        p.git("rm", "-q", "--cached", "-r", ".", ok=False)
+        p.write(".claude/gw.json", "{not json")
+        self.change()
+        p.git("add", "docs/notes.md")
+        r = p.git("commit", "-q", "-m", "first", env=self.CLAUDE, ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("cannot read authorDeny", r.stderr)
+
+    def test_unreadable_config_absent_at_head_warns_and_goes_on(self):
+        p = self.p
+        p.git("rm", "-q", "--cached", ".claude/gw.json")
+        p.git("commit", "-q", "--no-verify", "-m", "WIP: drop the config")
+        p.write(".claude/gw.json", "{not json")
+        self.change()
+        r = p.commit("broken", env=self.CLAUDE, ok=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("cannot read authorDeny", r.stderr)
+
+    def test_unreadable_config_also_at_head_warns_and_goes_on(self):
+        p = self.p
+        p.write(".claude/gw.json", "{not json")
+        p.git("add", ".claude/gw.json")
+        p.git("commit", "-q", "--no-verify", "-m", "WIP: break the config")
+        self.change()
+        r = p.commit("broken", env=self.CLAUDE, ok=False)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("cannot read authorDeny", r.stderr)
 
