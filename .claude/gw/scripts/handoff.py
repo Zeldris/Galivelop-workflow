@@ -31,6 +31,16 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  missing), and leave in the log one pointer line with the link; only
                                                  an earlier pointer (a line that is not a list item and names the
                                                  file) is replaced, everything else moves
+  handoff.py add-pending TEXT [--section HEADING]
+                                                 append "- TEXT" at the end of the Pending section of `pendingFile`
+                                                 (the log's own "Pendiente" / "Pending" section when unset), or at the
+                                                 end of the "## HEADING" / "### HEADING" of the file (created at the
+                                                 end when missing); the file is created when missing; prints one line,
+                                                 never the content (D95)
+  handoff.py add-decision TEXT [--date YYYY-MM-DD]
+                                                 append "- <date> — TEXT" at the end of the "Decisiones" / "Decisions"
+                                                 section of `decisionsFile` (the log when empty; the section is created
+                                                 before "Pendiente" or at the end); prints one line (D95)
   handoff.py done TEXT [FILE] [--date YYYY-MM-DD]
                                                  insert "1. <date> — TEXT" at the top of the Done section (date
                                                  default: today), renumber, drop items beyond 5 (a multi-line item
@@ -1006,6 +1016,149 @@ def cmd_set_row(ctx, args):
     return 0
 
 
+def pending_skeleton(english):
+    """The text of a new pending file (move-pending and add-pending create it the same way)."""
+    title = "Pending" if english else "Pendiente"
+    return (f"# {title}\n\n" + ("What is still open; the log only points here. Add and remove items in this file.\n"
+                                  if english else
+                                  "Lo que queda abierto; la bitácora solo apunta aquí. Se añade y se quita en este "
+                                  "archivo.\n") + f"\n## {title}\n")
+
+
+DECISIONS_HEADING = re.compile(r"^##\s+(Decisiones|Decisions)\b.*$", re.I)
+
+
+def split_lines(raw):
+    """(lines without their ends, the file's line ending): CRLF when the text has one, else LF."""
+    return (re.split(r"\r?\n", raw.rstrip("\r\n")) if raw.strip() else []), "\r\n" if "\r\n" in raw else "\n"
+
+
+def item_lines(text):
+    """`text` as list lines: the first gets "- " unless it already is an item ("- ", "- [ ]"); the rest are indented two
+    spaces."""
+    rows = text.strip().splitlines()
+    first = rows[0].strip()
+    return [first if first.startswith("- ") else "- " + first] + [("  " + l.rstrip()) if l.strip() else ""
+                                                                   for l in rows[1:]]
+
+
+def section_span(lines, heading_re):
+    """(head, end) of the first section whose heading matches `heading_re`; it ends at the next "## " heading (at the
+    next "## " or "### " one when it is itself a "### " heading); (None, None) when missing."""
+    head = next((i for i, l in enumerate(lines) if heading_re.match(l)), None)
+    if head is None:
+        return None, None
+    stops = ("## ", "### ") if lines[head].startswith("### ") else ("## ",)
+    return head, next((i for i in range(head + 1, len(lines)) if lines[i].startswith(stops)), len(lines))
+
+
+def insert_in_section(lines, head, end, items):
+    """Insert `items` after the last non-blank line of the section (head, end) of `lines`, in place."""
+    pos = end
+    while pos > head + 1 and not lines[pos - 1].strip():
+        pos -= 1
+    new = ([""] if pos == head + 1 else []) + items
+    if end == pos and end < len(lines):  # no blank line before the next heading
+        new.append("")
+    lines[pos:pos] = new
+
+
+def read_for_add(path, me, cmd):
+    try:
+        return path.read_bytes().decode("utf-8") if path.exists() else None
+    except (OSError, UnicodeDecodeError) as exc:
+        raise Usage(f"cannot read {path} ({exc}); fix the file (UTF-8) and rerun: {me} {cmd}")
+
+
+def log_is_english(ctx):
+    """True when the log's Pending or Decisions heading is English (the way move-pending tells)."""
+    try:
+        for l in (ctx.root / ctx.log).read_text(encoding="utf-8").splitlines():
+            if PENDING_HEADING.match(l):
+                return l.split()[1].lower().startswith("pending")
+            if DECISIONS_HEADING.match(l):
+                return l.split()[1].lower().startswith("decisions")
+    except (OSError, UnicodeDecodeError):
+        pass
+    return False
+
+
+def write_added(path, lines, eol, me, cmd):
+    try:
+        write_atomic(path, (eol.join(lines) + eol).encode("utf-8"))
+    except OSError as exc:
+        raise Usage(f"cannot write {path} ({exc}); check its permissions and rerun: {me} {cmd}")
+
+
+def cmd_add_pending(ctx, args):
+    me = f"python3 {HERE / 'handoff.py'}"
+    if not args.text.strip():
+        raise Usage(f"the text is empty; give it: {me} add-pending \"the item\"")
+    own = gwconfig.pending_file(ctx.config)
+    rel = own or ctx.log
+    path = ctx.root / rel
+    raw = read_for_add(path, me, "add-pending")
+    english = log_is_english(ctx)
+    if raw is None:
+        if not own:
+            raise Usage(f"{path} does not exist; fix `log` in .claude/gw.json and rerun: {me} add-pending")
+        raw = pending_skeleton(english)
+    lines, eol = split_lines(raw)
+    if args.section:
+        title = re.escape(args.section.strip())
+        head, end = section_span(lines, re.compile(rf"^###?\s+{title}\s*$"))
+        if head is None:
+            lines += ([""] if lines and lines[-1].strip() else []) + [f"## {args.section.strip()}"]
+            head, end = len(lines) - 1, len(lines)
+    else:
+        head, end = section_span(lines, PENDING_HEADING)
+        if head is None and own:
+            lines += ([""] if lines and lines[-1].strip() else []) + ["## Pending" if english else "## Pendiente"]
+            head, end = len(lines) - 1, len(lines)
+        elif head is None:
+            raise Usage(f"{path} has no \"## Pendiente\" / \"## Pending\" section; add the line \"## Pending\" to it "
+                        f"and rerun: {me} add-pending")
+    insert_in_section(lines, head, end, item_lines(args.text))
+    if own:
+        count = pending_count("\n".join(lines))
+    else:
+        h, e = pending_section(lines)
+        count = pending_count("\n".join(lines[h + 1:e])) if h is not None else 0
+    write_added(path, lines, eol, me, "add-pending")
+    print(f"handoff: added 1 item to {rel} ({count} in all)")
+    return 0
+
+
+def cmd_add_decision(ctx, args):
+    me = f"python3 {HERE / 'handoff.py'}"
+    if not args.text.strip():
+        raise Usage(f"the text is empty; give it: {me} add-decision \"the decision\"")
+    rel = gwconfig.decisions_file(ctx.config) or ctx.log
+    separate = rel != ctx.log
+    path = ctx.root / rel
+    raw = read_for_add(path, me, "add-decision")
+    english = log_is_english(ctx)
+    if raw is None:
+        if not separate:
+            raise Usage(f"{path} does not exist; fix `log` in .claude/gw.json and rerun: {me} add-decision")
+        raw = "# Decisions\n\n## Decisions\n" if english else "# Decisiones\n\n## Decisiones\n"
+    lines, eol = split_lines(raw)
+    item = item_lines(f"{args.date} — {args.text.strip()}")
+    head, end = section_span(lines, DECISIONS_HEADING)
+    if head is None:
+        title = "## Decisions" if english else "## Decisiones"
+        ph, _ = pending_section(lines)
+        if ph is not None and not separate:
+            lines[ph:ph] = [title, ""] + item + [""]
+        else:
+            lines += ([""] if lines and lines[-1].strip() else []) + [title, ""] + item
+    else:
+        insert_in_section(lines, head, end, item)
+    write_added(path, lines, eol, me, "add-decision")
+    print(f"handoff: added 1 decision to {rel}")
+    return 0
+
+
 def cmd_move_pending(ctx, args):
     rel = gwconfig.pending_file(ctx.config)
     me = f"python3 {HERE / 'handoff.py'}"
@@ -1038,10 +1191,7 @@ def cmd_move_pending(ctx, args):
         moved.pop()
     title = "Pending" if english else "Pendiente"
     if old is None:
-        old = (f"# {title}\n\n" + ("What is still open; the log only points here. Add and remove items in this file.\n"
-                                     if english else
-                                     "Lo que queda abierto; la bitácora solo apunta aquí. Se añade y se quita en este "
-                                     "archivo.\n") + f"\n## {title}\n")
+        old = pending_skeleton(english)
     flines = old.splitlines()
     fhead, fend = pending_section(flines)
     if fhead is None:
@@ -1097,6 +1247,12 @@ def main(argv=None):
     a.add_argument("--dry-run", action="store_true")
     m = sub.add_parser("move-pending")
     m.add_argument("file", nargs="?")
+    ap = sub.add_parser("add-pending")
+    ap.add_argument("text")
+    ap.add_argument("--section")
+    ad = sub.add_parser("add-decision")
+    ad.add_argument("text")
+    ad.add_argument("--date")
     o = sub.add_parser("own-row")
     o.add_argument("commit", nargs="?")
     o.add_argument("branch", nargs="?")
@@ -1158,9 +1314,10 @@ def main(argv=None):
             return 0
         if args.cmd == "archive":
             args.date = args.date or datetime.datetime.now(datetime.timezone.utc).date().isoformat()
-        elif args.cmd == "done":
+        elif args.cmd in ("done", "add-decision"):
             args.date = args.date or datetime.date.today().isoformat()
-        elif not ctx.config.get("logRows") and args.cmd not in ("check", "archive", "next-id", "move-pending"):
+        elif not ctx.config.get("logRows") and args.cmd not in ("check", "archive", "next-id", "move-pending",
+                                                                "add-pending"):
             if args.cmd in ("set-row", "close-row"):
                 print("handoff: logRows is off in .claude/gw.json, so there are no branch rows and nothing was written; "
                       f"enable it: set \"logRows\": true in .claude/gw.json, then rerun {args.cmd}")
@@ -1169,7 +1326,8 @@ def main(argv=None):
         return {"check": cmd_check, "done": cmd_done, "own-row": cmd_own_row, "closed": cmd_closed,
                 "in-progress": cmd_in_progress, "close-row": cmd_close_row, "set-row": cmd_set_row, "clash": cmd_clash,
                 "archive": cmd_archive, "next-id": cmd_next_id,
-                "move-pending": cmd_move_pending}[args.cmd](ctx, args)
+                "move-pending": cmd_move_pending, "add-pending": cmd_add_pending,
+                "add-decision": cmd_add_decision}[args.cmd](ctx, args)
     except Usage as exc:
         print(f"handoff: {exc}", file=sys.stderr)
         return 2

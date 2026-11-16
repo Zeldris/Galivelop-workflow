@@ -688,6 +688,12 @@ def pending_file(config):
     return given if isinstance(given, str) else ""
 
 
+def decisions_file(config):
+    """The `decisionsFile` key (D95): repo-relative path of the file with the Decisions section, or "" (the log)."""
+    given = config.get("decisionsFile")
+    return given if isinstance(given, str) else ""
+
+
 # What Python re and grep -E do not share (A13): shorthand classes and word boundaries, extension groups, POSIX classes,
 # backreferences. agentSignaturePatterns reach both engines, so they are limited to the common subset.
 SHARED_REGEX_UNSAFE = re.compile(r"\\[dDsSwWbBAZz<>`'1-9]|\(\?|\[\[:|\[\^?\[:")

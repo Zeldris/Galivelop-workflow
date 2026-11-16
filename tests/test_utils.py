@@ -3002,5 +3002,168 @@ class HandoffPendingFile(Base):
         self.assertNotIn("se añade y se quita allí", moved)
         self.assertEqual(self.section(path), "\n" + self.POINTER)
 
+class HandoffAdd(Base):
+    """`add-pending` and `add-decision` (D95): add to the log or to its side files without reading them."""
+    config = {"logRows": False}
+    PENDING = "docs/records/pending.md"
+    LOG = "# Bitácora\n\n## Hecho (5 últimas)\n\n1. uno\n\n## Pendiente\n\n- viejo\n\n## Comprobar\n\nx\n"
+    LOG_EN = "# Log\n\n## Done (last 5)\n\n1. one\n\n## Pending\n\n- old\n\n## Check\n\nx\n"
+
+    def use(self, **keys):
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, log="docs/h.md", **keys)))
+
+    def log(self, text, raw=False):
+        path = self.p.work / "docs" / "h.md"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(text.encode("utf-8"))
+        return path
+
+    def add(self, *args):
+        return self.p.script("handoff.py", *args)
+
+    def read(self, rel):
+        return (self.p.work / rel).read_bytes().decode("utf-8")
+
+    def test_add_pending_to_the_log_when_pending_file_is_unset(self):
+        self.use()
+        self.log(self.LOG)
+        code, out = self.add("add-pending", "nuevo")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out.strip(), "handoff: added 1 item to docs/h.md (2 in all)")
+        self.assertEqual(self.read("docs/h.md"), self.LOG.replace("- viejo\n", "- viejo\n- nuevo\n"))
+
+    def test_add_pending_to_the_pending_file_and_output_is_one_line(self):
+        self.use(pendingFile=self.PENDING)
+        self.p.write(self.PENDING, "# Pendiente\n\n## Pendiente\n\n- a\n- b\n\n## Otra\n\n- c\n")
+        code, out = self.add("add-pending", "nuevo")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out.strip(), f"handoff: added 1 item to {self.PENDING} (4 in all)")
+        self.assertEqual(len(out.strip().splitlines()), 1)
+        self.assertNotIn("# Pendiente", out)
+        self.assertEqual(self.read(self.PENDING), "# Pendiente\n\n## Pendiente\n\n- a\n- b\n- nuevo\n\n## Otra\n\n- c\n")
+
+    def test_add_pending_creates_the_missing_file_with_the_move_pending_skeleton(self):
+        self.use(pendingFile=self.PENDING)
+        self.log(self.LOG)
+        self.assertEqual(self.add("add-pending", "- [ ] ya con marca")[0], 0)
+        first = self.read(self.PENDING)
+        self.assertEqual(first, "# Pendiente\n\nLo que queda abierto; la bitácora solo apunta aquí. Se añade y se quita "
+                                "en este archivo.\n\n## Pendiente\n\n- [ ] ya con marca\n")
+        self.p.write(self.PENDING, "")
+        os.remove(self.p.work / self.PENDING)
+        self.log(self.LOG_EN)
+        self.assertEqual(self.add("add-pending", "- plain")[0], 0)
+        self.assertIn("# Pending\n\nWhat is still open;", self.read(self.PENDING))
+        self.assertTrue(self.read(self.PENDING).endswith("## Pending\n\n- plain\n"))
+
+    def test_add_pending_creates_the_pending_section_of_an_existing_file(self):
+        self.use(pendingFile=self.PENDING)
+        self.p.write(self.PENDING, "# Notas\n")
+        self.assertEqual(self.add("add-pending", "x")[0], 0)
+        self.assertEqual(self.read(self.PENDING), "# Notas\n\n## Pendiente\n\n- x\n")
+
+    def test_add_pending_without_section_in_the_log_fails_with_the_fix(self):
+        self.use()
+        self.log("# Bitácora\n")
+        code, out = self.add("add-pending", "x")
+        self.assertEqual(code, 2)
+        self.assertRegex(out, r"has no \"## Pendiente\" / \"## Pending\" section; add the line .* rerun: python3 \S+handoff\.py add-pending")
+        self.assertEqual(self.read("docs/h.md"), "# Bitácora\n")
+
+    def test_add_pending_section_existing_and_new(self):
+        self.use(pendingFile=self.PENDING)
+        base = "# P\n\n## Pendiente\n\n- a\n\n### Leves\n\n- l1\n\n### Otros\n\n- o1\n\n## Final\n\n- f\n"
+        self.p.write(self.PENDING, base)
+        self.assertEqual(self.add("add-pending", "l2", "--section", "Leves")[0], 0)
+        self.assertEqual(self.add("add-pending", "f2", "--section", "Final")[0], 0)
+        self.assertEqual(self.add("add-pending", "n1", "--section", "Nueva")[0], 0)
+        self.assertEqual(self.read(self.PENDING), "# P\n\n## Pendiente\n\n- a\n\n### Leves\n\n- l1\n- l2\n\n### Otros\n\n- o1\n\n"
+                                                  "## Final\n\n- f\n- f2\n\n## Nueva\n\n- n1\n")
+        self.assertEqual(self.add("add-pending", "n2", "--section", "Nueva")[0], 0)
+        self.assertTrue(self.read(self.PENDING).endswith("## Nueva\n\n- n1\n- n2\n"))
+        self.assertEqual(self.add("add-pending", "x", "--section", "Lev")[0], 0)  # exact title, not a prefix
+        self.assertIn("## Lev\n\n- x\n", self.read(self.PENDING))
+
+    def test_add_pending_multiline_text_is_indented(self):
+        self.use(pendingFile=self.PENDING)
+        self.p.write(self.PENDING, "## Pendiente\n\n- a\n")
+        self.assertEqual(self.add("add-pending", "primera\nsegunda\n\ntercera")[0], 0)
+        self.assertEqual(self.read(self.PENDING), "## Pendiente\n\n- a\n- primera\n  segunda\n\n  tercera\n")
+
+    def test_add_pending_keeps_crlf(self):
+        self.use(pendingFile=self.PENDING)
+        self.p.write(self.PENDING, "")
+        (self.p.work / self.PENDING).write_bytes(b"# P\r\n\r\n## Pendiente\r\n\r\n- a\r\n\r\n## Otra\r\n")
+        self.assertEqual(self.add("add-pending", "x\ny")[0], 0)
+        self.assertEqual((self.p.work / self.PENDING).read_bytes(),
+                         b"# P\r\n\r\n## Pendiente\r\n\r\n- a\r\n- x\r\n  y\r\n\r\n## Otra\r\n")
+
+    def test_empty_text_is_a_usage_error_with_the_fixing_command(self):
+        self.use()
+        self.log(self.LOG)
+        for cmd, fix in (("add-pending", "the item"), ("add-decision", "the decision")):
+            code, out = self.add(cmd, "  ")
+            self.assertEqual(code, 2)
+            self.assertRegex(out, rf"the text is empty; give it: python3 \S+handoff\.py {cmd} \"{fix}\"")
+        self.assertEqual(self.read("docs/h.md"), self.LOG)
+
+    def test_add_decision_into_an_existing_section_of_the_log(self):
+        self.use()
+        self.log("# B\n\n## Decisiones\n\n- 2026-01-01 — a\n\n## Pendiente\n\n- p\n")
+        code, out = self.add("add-decision", "b", "--date", "2026-02-03")
+        self.assertEqual((code, out.strip()), (0, "handoff: added 1 decision to docs/h.md"))
+        self.assertEqual(self.read("docs/h.md"), "# B\n\n## Decisiones\n\n- 2026-01-01 — a\n- 2026-02-03 — b\n\n## Pendiente\n\n- p\n")
+
+    def test_add_decision_creates_the_section_before_pending_or_at_the_end(self):
+        self.use()
+        self.log(self.LOG)
+        self.assertEqual(self.add("add-decision", "d", "--date", "2026-02-03")[0], 0)
+        self.assertEqual(self.read("docs/h.md"), self.LOG.replace(
+            "## Pendiente", "## Decisiones\n\n- 2026-02-03 — d\n\n## Pendiente"))
+        self.log("# B\n\ntexto\n")
+        self.assertEqual(self.add("add-decision", "d", "--date", "2026-02-03")[0], 0)
+        self.assertEqual(self.read("docs/h.md"), "# B\n\ntexto\n\n## Decisiones\n\n- 2026-02-03 — d\n")
+
+    def test_add_decision_default_date_is_today(self):
+        self.use()
+        self.log(self.LOG)
+        self.assertEqual(self.add("add-decision", "d")[0], 0)
+        self.assertIn(f"- {datetime.date.today().isoformat()} — d\n", self.read("docs/h.md"))
+        code, out = self.add("add-decision", "d", "--date", "2026-13-01")
+        self.assertEqual(code, 2)
+        self.assertIn("--date must be YYYY-MM-DD", out)
+
+    def test_add_decision_into_a_new_separate_file(self):
+        self.use(decisionsFile="docs/records/decisions.md")
+        self.log(self.LOG)
+        code, out = self.add("add-decision", "d", "--date", "2026-02-03")
+        self.assertEqual((code, out.strip()), (0, "handoff: added 1 decision to docs/records/decisions.md"))
+        self.assertEqual(self.read("docs/records/decisions.md"), "# Decisiones\n\n## Decisiones\n\n- 2026-02-03 — d\n")
+        self.assertEqual(self.read("docs/h.md"), self.LOG)
+
+    def test_english_log_gets_english_titles(self):
+        self.use(decisionsFile="docs/records/decisions.md")
+        self.log(self.LOG_EN)
+        self.assertEqual(self.add("add-decision", "d", "--date", "2026-02-03")[0], 0)
+        self.assertEqual(self.read("docs/records/decisions.md"), "# Decisions\n\n## Decisions\n\n- 2026-02-03 — d\n")
+        self.use()
+        self.assertEqual(self.add("add-decision", "e", "--date", "2026-02-04")[0], 0)
+        self.assertIn("## Decisions\n\n- 2026-02-04 — e\n\n## Pending", self.read("docs/h.md"))
+
+    def test_add_decision_keeps_crlf_in_the_log(self):
+        self.use()
+        self.log(self.LOG.replace("\n", "\r\n"))
+        self.assertEqual(self.add("add-decision", "d", "--date", "2026-02-03")[0], 0)
+        raw = (self.p.work / "docs" / "h.md").read_bytes()
+        self.assertEqual(raw.count(b"\n"), raw.count(b"\r\n"))
+        self.assertIn(b"## Decisiones\r\n\r\n- 2026-02-03 \xe2\x80\x94 d\r\n\r\n## Pendiente", raw)
+
+    def test_missing_log_fails_with_the_fix(self):
+        self.use()
+        code, out = self.add("add-decision", "d")
+        self.assertEqual(code, 2)
+        self.assertRegex(out, r"does not exist; fix `log` in \.claude/gw\.json and rerun: python3 \S+handoff\.py add-decision")
+
+
 if __name__ == "__main__":
     unittest.main()

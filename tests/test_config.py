@@ -515,6 +515,13 @@ class Config(unittest.TestCase):
         self.assertEqual(cli(self.tmp, "get", "harvest.commitsShown").stdout.strip(), "3")
         self.assertEqual(cli(self.tmp, "get", "applyDiffLines").stdout.strip(), "9")
 
+    def test_decisions_file(self):
+        # D95: a string path; "" (the log) when absent or not a string.
+        self.assertEqual(config.decisions_file({}), "")
+        self.assertEqual(config.decisions_file({"decisionsFile": "docs/d.md"}), "docs/d.md")
+        for bad in (3, None, ["a"]):
+            self.assertEqual(config.decisions_file({"decisionsFile": bad}), "")
+
     def test_push_retry_delays(self):
         # D94: a list of non-negative integers (empty = no retries); anything else gives the schema default.
         self.assertEqual(config.push_retry_delays({}), [2, 4, 8, 16])

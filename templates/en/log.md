@@ -30,7 +30,7 @@ _(what goes to `{{protectedBranch}}` next, and what it is waiting for)_
 
 ## Pending
 
-Pending items live in the `pendingFile` file (`.claude/gw.json`; by default `docs/records/pending.md`): decisions of the person that block something, known problems, ideas not yet planned. Add and remove them there; `handoff.py move-pending` rewrites this line.
+Pending items live in the `pendingFile` file (`.claude/gw.json`; by default `docs/records/pending.md`): decisions of the person that block something, known problems, ideas not yet planned. Add and remove them there; `handoff.py move-pending` rewrites this line and `handoff.py add-pending "text"` appends without reading the file.
 
 ## Check the state
 

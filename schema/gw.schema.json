@@ -370,6 +370,7 @@
         "branchPrefixes",
         "mergeCleanup",
         "pushRetryDelays",
+        "decisionsFile",
         "wholeReadSkipExtensions",
         "wholeReadPaths",
         "readPointers",
@@ -1246,6 +1247,11 @@
       "items": {"type": "integer", "minimum": 0},
       "default": [2, 4, 8, 16],
       "description": "Seconds push.sh waits before each retry of a push that failed for a transient reason (network, timeout, HTTP 5xx): one retry per item. An empty list = no retries. Any other failure (a hook, non-fast-forward, 403) is never retried."
+    },
+    "decisionsFile": {
+      "type": "string",
+      "default": "",
+      "description": "Repo-relative path of the file with the \"Decisiones\" / \"Decisions\" section that `handoff.py add-decision` appends to (D95). Empty = the log itself."
     },
     "mergeCleanup": {
       "type": "boolean",
