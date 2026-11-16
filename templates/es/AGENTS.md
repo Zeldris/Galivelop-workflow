@@ -9,7 +9,8 @@ en `.claude/skills/` y su configuración en `.claude/gw.json` (solo la lee `.cla
 ## Al empezar cualquier sesión
 
 1. Lee la bitácora, `{{log}}`: rama, tarea en curso, qué falta y siguiente paso.
-2. `git fetch origin <rama>` y comprueba que el último commit coincide con lo que dice la bitácora.
+2. `git fetch origin <rama>`; `python3 .claude/gw/scripts/recover.py --state` dice en «Remote» si vas al día con
+   `origin/<rama>`, y el último commit tiene que coincidir con lo que dice la bitácora.
 3. Comprueba que el check está en verde antes de tocar nada: {{check}}.
 4. Sigue por el **siguiente paso** de la bitácora, salvo que la persona pida otra cosa.
 5. Al empezar cada tarea, trae la rama protegida: `git fetch origin {{protectedBranch}}` y, si trae commits,

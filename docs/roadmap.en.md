@@ -315,7 +315,7 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | E50 | `PreToolUse` hook on `Read` that warns, without blocking, when reading loose screenshots and suggests a contact sheet (the project's command in a key) (`0.6.0` harvest, image-generator P6) | pending |
 | E53 | Guide rule: in CI, the environment's install script fails in its own step (`0.7` harvest, instalador P2) | pending |
 | E58 | Read warnings over Bash: `readPointers` key (`{"<path>": "<command>"}`) and `whole-read.py` extended to `Bash` (`cat`, `sed`, `grep`; not counting a heredoc body) (`0.7` closing harvest, world-maker-fantasy P3, portal P3) | pending |
-| E59 | `recover.py --state` compares the local commit with `origin/<branch>` (up to date, ahead, behind); step 2 of "At the start" points to that output (`0.7` closing harvest, private-project-4 P2) | pending |
+| E59 | `recover.py --state` compares the local commit with `origin/<branch>` (up to date, ahead, behind); step 2 of "At the start" points to that output (`0.7` closing harvest, private-project-4 P2) | done (2026-11-16) |
 | E60 | The `commit-msg` warns, without rejecting, about review fixes with no `Findings:` (words in a key) (`0.7` closing harvest, private-project-1 P1) | done (2026-11-16; `metrics.quality.findingsWords`) |
 | E61 | `handoff.py set-row` and `close-row` print the resulting row and `n/limit` (`0.7` closing harvest, world-maker-fantasy P4) | done (2026-11-16) |
 

@@ -6,7 +6,8 @@
                                 state (with logRows, the current branch's row; else the log's first section, ~25
                                 lines, and on /clear also its Pendiente/Pending section; after a compaction, source
                                 "compact", only the first section, which holds the state and the next step),
-                                `git status --short` (15 lines at most), the last 5 commits, the repo's other
+                                `git status --short` (15 lines at most), the last 5 commits, HEAD against
+                                origin/<branch> (local refs, no fetch: up to date, ahead, behind; E59), the repo's other
                                 worktrees (path, branch and, with logRows, their row; 10 at most), the compactions in
                                 this session and since the branch last took the protected branch (its merge base: the
                                 task's start; WMF P10) with a warning when they pass the task's compaction budget
@@ -443,6 +444,29 @@ def protected_branch(root):
         return "main"
 
 
+def remote_lines(root, branch):
+    """E59: one line comparing HEAD with origin/<branch> (local refs, no fetch): up to date, ahead (unpushed), behind
+    or diverged, each with the command that settles it; none on a detached HEAD."""
+    if branch in ("HEAD", "?"):
+        return []
+    ref = f"refs/remotes/origin/{branch}"
+    shown = f"origin/{CONTROL.sub('', branch)}"
+    if not git(root, "rev-parse", "-q", "--verify", ref + "^{commit}", timeout=LIMITS["gitWait"]):
+        return [f"- Remote: no {shown} in the local refs (never pushed, or not fetched): git fetch origin {branch}, "
+                f"or push it: git push -u origin {branch}"]
+    counts = git(root, "rev-list", "--left-right", "--count", f"HEAD...{ref}", timeout=LIMITS["gitWait"]).split()
+    if len(counts) != 2 or not all(c.isdigit() for c in counts):
+        return []
+    ahead, behind = int(counts[0]), int(counts[1])
+    if not ahead and not behind:
+        return [f"- Remote: up to date with {shown} (local refs; git fetch origin {branch} to refresh them)"]
+    if not behind:
+        return [f"- Remote: {ahead} commit(s) ahead of {shown}, not pushed: git push -u origin {branch}"]
+    if not ahead:
+        return [f"- Remote: {behind} commit(s) behind {shown}: git merge --ff-only {shown}"]
+    return [f"- Remote: diverged from {shown} ({ahead} ahead, {behind} behind): git merge --no-edit {shown}, then push"]
+
+
 def other_branch_lines(root, branch):
     """One line per remote branch (refs/remotes/origin/*, local refs only, no fetch) with commits the protected
     branch lacks, newest first, at most LIMITS["otherBranches"] (as prepush-branches.sh); with logRows, the branch's row in
@@ -544,6 +568,10 @@ def state(root, transcript, out, logs, source="startup"):
     say("- Last commits:" + ("" if commits else " none"))
     for line in commits:
         say(f"  {line}")
+    try:
+        tail.extend(remote_lines(root, branch))
+    except Exception:  # only a warning: --state never fails
+        pass
     tail.extend(worktree_lines(root))
     try:
         tail.extend(other_branch_lines(root, branch))

@@ -13,7 +13,8 @@ Cada regla de abajo que tiene un check lo nombra entre paréntesis; las demás s
 
 1. Lee [`docs/handoff.md`](docs/handoff.md): rama, fase en curso, pendiente y siguiente paso. Si el gancho
    `SessionStart` ya mostró su estado, lee solo lo que recortó (`… (trimmed …)`).
-2. `git fetch origin <rama>` y comprueba que el último commit coincide con lo que dice la bitácora.
+2. `git fetch origin <rama>`; `python3 scripts/recover.py --state` dice en «Remote» si vas al día con `origin/<rama>`,
+   y el último commit tiene que coincidir con lo que dice la bitácora.
 3. Comprueba que el check está en verde antes de tocar nada: `bash tests/check.sh`.
 4. Sigue por el **siguiente paso** de la bitácora, salvo que el usuario pida otra cosa.
 5. Al empezar cada tarea, trae `main` (`git fetch origin main` y `git merge origin/main`; merge, nunca rebase: las

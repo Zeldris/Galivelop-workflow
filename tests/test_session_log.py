@@ -743,6 +743,38 @@ class Recover(Base):
         self.assertNotIn("review overdue", out)
         self.assertNotIn("Traceback", out)
 
+    # ---- E59: HEAD against origin/<branch>
+
+    def remote_line(self):
+        code, out = self.p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        return next((l for l in out.splitlines() if l.startswith("- Remote:")), None)
+
+    def test_remote_line_up_to_date_ahead_behind_and_diverged(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "mine", "main")
+        p.git("push", "-q", "--no-verify", "origin", "mine")
+        self.assertEqual(self.remote_line(), "- Remote: up to date with origin/mine (local refs; git fetch origin mine to "
+                                             "refresh them)")
+        p.write("a.txt", "1\n")
+        p.commit("local work")
+        self.assertEqual(self.remote_line(), "- Remote: 1 commit(s) ahead of origin/mine, not pushed: git push -u origin mine")
+        p.git("push", "-q", "--no-verify", "origin", "mine")
+        p.git("reset", "-q", "--hard", "HEAD~1")
+        self.assertEqual(self.remote_line(), "- Remote: 1 commit(s) behind origin/mine: git merge --ff-only origin/mine")
+        p.write("b.txt", "1\n")
+        p.commit("other local work")
+        self.assertEqual(self.remote_line(), "- Remote: diverged from origin/mine (1 ahead, 1 behind): "
+                                             "git merge --no-edit origin/mine, then push")
+
+    def test_remote_line_without_the_remote_branch_or_on_a_detached_head(self):
+        p = self.p
+        p.git("checkout", "-q", "-b", "fresh", "main")
+        self.assertIn("no origin/fresh in the local refs (never pushed, or not fetched)", self.remote_line())
+        self.assertIn("git push -u origin fresh", self.remote_line())
+        p.git("checkout", "-q", "--detach")
+        self.assertIsNone(self.remote_line())
+
     # ---- D40: remote branches with work the protected branch lacks
 
     def remote_branch(self, name, commits):

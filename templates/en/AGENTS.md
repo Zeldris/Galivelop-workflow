@@ -9,7 +9,8 @@ skills in `.claude/skills/` and its settings in `.claude/gw.json` (read only by 
 ## At the start of every session
 
 1. Read the log, `{{log}}`: branch, task in progress, what is pending and the next step.
-2. `git fetch origin <branch>` and check that the last commit matches what the log says.
+2. `git fetch origin <branch>`; `python3 .claude/gw/scripts/recover.py --state` says under "Remote" whether you are up
+   to date with `origin/<branch>`, and the last commit must match what the log says.
 3. Check the state is green before touching anything: {{check}}.
 4. Carry on with the log's **next step**, unless the person asks for something else.
 5. At the start of every task, bring in the protected branch: `git fetch origin {{protectedBranch}}` and, if it brings
