@@ -260,7 +260,7 @@ class RepeatOnly(Base):
         path = self.put("docs/log.md", LIMIT + 1)
         self.read(path, session="s1")
         path.write_text("y" * (LIMIT + 1))
-        stamp = time.time() + 5
+        stamp = time.time() + 5  # not a wait
         os.utime(path, (stamp, stamp))
         self.assertEqual(self.read(path, session="s1"), "")
         self.assertIn("1001 bytes", self.warning(self.read(path, session="s1")))
