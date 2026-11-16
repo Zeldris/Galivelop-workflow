@@ -18,14 +18,17 @@ opening harvest (`0.7.1` rows in `docs/roadmap.en.md`).
 - Contexto de arranque (D122): con el presupuesto de compactaciones pasado, si el mayor culpable del arranque es el
   resto del sistema (prompt, herramientas, MCP), el aviso de `recover.py --state` dice que un `/clear` no lo baja y
   pide quitar los conectores y servidores MCP que no se usan en vez de `/clear`; la alarma de bucle de compactación
-  de `context_guard.py` hace lo mismo.
+  de `context_guard.py` hace lo mismo. Solo con un arranque grande (por encima de `contextGuard.warn`), con la
+  conversación que arrastra (resumen de compactación, primer prompt) contada aparte, y se apaga con
+  `contextGuard.systemAdvice: false`.
 
 ### EN
 
 - Startup context (D122): with the compaction budget spent, if the largest culprit of the startup is the rest of the
   system (prompt, tools, MCP), the `recover.py --state` warning says a `/clear` does not shrink it and asks to
   disable the unused connectors and MCP servers instead of `/clear`; the compaction-loop alarm of `context_guard.py`
-  does the same.
+  does the same. Only for a big startup (over `contextGuard.warn`), with the conversation it carries over (compaction
+  summary, first prompt) counted apart; `contextGuard.systemAdvice: false` turns it off.
 
 ## [0.7.0] - 2026-11-15
 

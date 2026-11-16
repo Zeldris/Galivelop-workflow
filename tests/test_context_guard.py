@@ -80,7 +80,7 @@ class UsageOf(Base):
 class Startups(Base):
     def test_no_boundary_is_one_segment(self):
         segs = cg.startups(self.transcript([{"type": "user"}, turn(1000), turn(2000)]))
-        self.assertEqual(segs, [{"start": "", "first_usage": 1000, "model": MODEL}])
+        self.assertEqual(segs, [{"start": "", "first_usage": 1000, "model": MODEL, "carried": 0}])
 
     def test_each_boundary_form_opens_a_segment(self):
         lines = [turn(1000), BOUNDARY, {"type": "compact_boundary", "timestamp": "t2"}, turn(3000),
@@ -209,6 +209,13 @@ class Report(Base):
         self.assertIn("/clear does not shrink", loop[0])
         self.assertIn("disable the connectors/MCP servers you do not use", loop[0])
 
+    def test_loop_with_the_summary_largest_asks_for_clear(self):  # D122: the summary is not the system
+        summary = {"type": "user", "isCompactSummary": True, "message": {"content": "s" * 245000}}
+        out = self.report([BOUNDARY, summary, turn(100000), BOUNDARY], source="compact")
+        loop = [l for l in out if "compaction loop" in l]
+        self.assertEqual(len(loop), 1, out)
+        self.assertIn("ask the user for /clear", loop[0])
+
     def test_no_loop_on_compact_when_the_startup_was_small(self):
         out = self.report([turn(20000), BOUNDARY], source="compact")
         self.assertFalse(any("ALARM" in l for l in out), out)
@@ -241,9 +248,28 @@ class SystemIsLargest(Base):  # D122
         self.assertFalse(cg.system_is_largest(self.root, self.cfg(), self.transcript([turn(100000)])))
 
     def test_hook_output_counts_against_the_system(self):
-        path = self.transcript([turn(10000)])
+        path = self.transcript([turn(60000)])
         self.assertTrue(cg.system_is_largest(self.root, self.cfg(), path))
-        self.assertFalse(cg.system_is_largest(self.root, self.cfg(), path, hook_chars=35000))
+        self.assertFalse(cg.system_is_largest(self.root, self.cfg(), path, hook_chars=150000))
+
+    def test_false_when_the_startup_is_small(self):  # a /clear helps when the conversation made the compactions
+        self.assertFalse(cg.system_is_largest(self.root, self.cfg(), self.transcript([turn(20000)])))
+
+    def test_the_compaction_summary_is_not_the_system(self):  # a /clear drops it
+        summary = {"type": "user", "isCompactSummary": True, "message": {"content": "s" * 245000}}  # 70,000 tokens
+        path = self.transcript([turn(100000), BOUNDARY, summary, turn(100000)])
+        self.assertFalse(cg.system_is_largest(self.root, self.cfg(), path))
+        rows = cg.culprit_lines(self.root, self.cfg(), 100000, 0, cg.last_startup(path)["carried"])
+        self.assertTrue(rows[0].startswith("  conversation carried over (compaction summary, first prompt): ~70,000"),
+                        rows)
+
+    def test_the_first_prompt_counts_as_carried(self):
+        prompt = {"type": "user", "message": {"content": [{"type": "text", "text": "p" * 35000}]}}
+        self.assertEqual(cg.last_startup(self.transcript([prompt, turn(60000)]))["carried"], 35000)
+
+    def test_system_advice_off(self):
+        self.write_config({"contextGuard": {"systemAdvice": False}})
+        self.assertFalse(cg.system_is_largest(self.root, self.cfg(), self.transcript([turn(100000)])))
 
     def test_unknown_is_false(self):
         self.assertFalse(cg.system_is_largest(self.root, self.cfg(), self.transcript([{"type": "user"}])))

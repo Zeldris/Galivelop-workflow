@@ -558,6 +558,14 @@ def state(root, transcript, out, logs, source="startup"):
         say("- Warning: no transcript_path arrived from the hook, so this is the newest transcript of the folder; with "
             "two sessions open in this repo it may be the other one's: check it with "
             f"{script_command(root)} --session <path> --search '<text you know>'")
+    frozen = []
+
+    def hook_chars():
+        """The hook output so far, measured once: the budget warning and the culprit list then weigh the same."""
+        if not frozen:
+            frozen.append(sum(len(l) + 1 for l in head + log_lines + tail))
+        return frozen[0]
+
     if path:
         n = count_compactions(path)
         task = task_start(root, branch)
@@ -578,15 +586,16 @@ def state(root, transcript, out, logs, source="startup"):
         if budget is not None:
             say(f"- Compaction budget in the log: {budget}")
             if counted > budget:
+                advice = None
                 try:
                     import context_guard
-                    system = context_guard.system_is_largest(root, config.load(root), path,
-                                                             sum(len(l) + 1 for l in head + log_lines + tail))
+                    if context_guard.system_is_largest(root, config.load(root), path, hook_chars()):
+                        advice = context_guard.SYSTEM_ADVICE  # D122: a /clear does not shrink what weighs most
                 except Exception:  # a warning must not cost the whole state
-                    system = False
-                if system:  # D122: a /clear does not shrink what weighs most
+                    advice = None
+                if advice:
                     say(f"- Warning: compaction budget exceeded ({counted} > {budget}): "
-                        f"{context_guard.SYSTEM_ADVICE}, or deal the work out with gw-orchestrate-dealer")
+                        f"{advice}, or deal the work out with gw-orchestrate-dealer")
                 else:
                     say(f"- Warning: compaction budget exceeded ({counted} > {budget}): push and ask for /clear, or "
                         f"deal the work out with gw-orchestrate-dealer")
@@ -594,8 +603,7 @@ def state(root, transcript, out, logs, source="startup"):
         say("- Compactions in this session: unknown (no session transcript found)")
     try:
         import context_guard
-        tail.extend(context_guard.report(root, config.load(root), path, source,
-                                         hook_chars=sum(len(l) + 1 for l in head + log_lines + tail)))
+        tail.extend(context_guard.report(root, config.load(root), path, source, hook_chars=hook_chars()))
     except Exception as exc:  # only a warning: --state never fails
         tail.append(f"- Startup context: could not be measured ({exc})")
     session = f" --session {path}" if path else ""
