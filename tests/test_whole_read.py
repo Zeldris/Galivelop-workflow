@@ -198,12 +198,31 @@ class Bash(Base):
                         "cat 'docs/records/r.md"):  # an open quote: the command cannot be split
             self.assertEqual(self.bash(command), "", command)
 
+    def test_output_to_a_filter_or_a_file_is_no_whole_read(self):
+        self.put("docs/records/r.md", LIMIT * 5)
+        for command in ("cat docs/records/r.md | head -5", "cat docs/records/r.md | grep x", "cat docs/records/r.md > o",
+                        "sed 's/a/b/' docs/records/r.md > out", "cat docs/records/r.md >/dev/null",
+                        "cat docs/records/r.md &> o", "cat docs/records/r.md | cat -n | head", "nl -b a docs/records/r.md >o"):
+            self.assertEqual(self.bash(command), "", command)
+        for command in ("cat docs/records/r.md | cat -n", "cat docs/records/r.md 2>/dev/null",
+                        "cat docs/records/r.md >&2", "cat docs/records/r.md || true", "nl -b a docs/records/r.md",
+                        "sed -l 80 's/a/b/' docs/records/r.md"):
+            self.assertIn("5000 bytes", self.warning(self.bash(command)), command)
+
+    def test_a_cd_inside_a_subshell_ends_with_it(self):
+        self.put("docs/records/log.md", LIMIT + 1)
+        self.put("docs/log.md", LIMIT + 2)
+        text = self.warning(self.bash("(cd records && ls); cat log.md", cwd=self.p.work / "docs"))
+        self.assertIn("log.md is 1002 bytes", text)
+        self.assertNotIn("records/log.md", text)
+
     def test_heredoc_bodies_are_not_commands(self):
         self.put("docs/log.md", LIMIT * 5)
         self.assertEqual(self.bash("cat > notes.txt <<'EOF'\ncat docs/log.md\nEOF\necho ok"), "")
         self.assertEqual(self.bash("python3 - <<EOF\nprint(open('docs/log.md').read())\ncat docs/log.md\nEOF"), "")
         self.assertIn("5000 bytes", self.warning(self.bash("cat > n.txt <<-EOF\n\tx\n\tEOF\ncat docs/log.md")))
         self.assertIn("5000 bytes", self.warning(self.bash("tr a b <<< x; cat docs/log.md")))  # a here-string ends nothing
+        self.assertEqual(self.bash("cat > n.txt <<\\EOF\ncat docs/log.md\nEOF\necho ok"), "")
 
     def test_cd_moves_the_folder_paths_resolve_against(self):
         self.put("docs/log.md", LIMIT + 1)
@@ -293,6 +312,36 @@ class RepeatOnly(Base):
         self.assertFalse(old.exists())
         self.assertTrue(fresh.exists())
         self.assertTrue((self.state / "gw-reads-s1.json").is_file())
+
+    def test_two_parallel_reads_are_both_kept(self):  # the lock: the last os.replace must not drop the other read
+        a, b = self.put("docs/log.md", LIMIT + 1), self.put("docs/records/r.md", LIMIT + 1)
+        import fcntl
+        import subprocess
+        with open(self.state / "gw-reads-s1.lock", "a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            runs = []
+            for path in (a, b):
+                event = {"hook_event_name": "PreToolUse", "cwd": str(self.p.work), "tool_name": "Read",
+                         "tool_input": {"file_path": str(path)}, "session_id": "s1"}
+                runs.append(subprocess.Popen(["python3", str(self.scripts / SCRIPT)], stdin=subprocess.PIPE,
+                                             cwd=self.p.work, env=dict(self.p.env, TMPDIR=str(self.state)),
+                                             stdout=subprocess.DEVNULL))
+                runs[-1].stdin.write(json.dumps(event).encode())
+                runs[-1].stdin.close()
+            time.sleep(0.5)
+            self.assertEqual([r.poll() for r in runs], [None, None], "both wait for the lock")
+        self.assertEqual([r.wait(30) for r in runs], [0, 0])
+        self.assertIn("already read it whole", self.warning(self.read(a, session="s1")))
+        self.assertIn("already read it whole", self.warning(self.read(b, session="s1")))
+
+    def test_forget_drops_the_session_reads(self):
+        path = self.put("docs/log.md", LIMIT + 1)
+        self.read(path, session="s1")
+        code, out = self.p.run("python3", "-c", "import importlib.util as u, sys; s = u.spec_from_file_location('w', "
+                               "sys.argv[1]); m = u.module_from_spec(s); s.loader.exec_module(m); m.forget('s1')",
+                               str(self.scripts / SCRIPT), env={"TMPDIR": str(self.state)})
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.read(path, session="s1"), "", "after a compaction the first read is a first read again")
 
     def test_a_state_that_is_a_link_is_not_followed(self):
         target = self.tmp / "elsewhere.json"

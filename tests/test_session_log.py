@@ -17,7 +17,7 @@ import waits
 from test_hooks import ROOT, Project, Snapshot
 
 SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py", "context_guard.py",
-           "change-size.py")
+           "change-size.py", "whole-read.py")
 
 
 def folder_of(path):
@@ -381,6 +381,18 @@ class SessionStart(Base):
 
 
 class Recover(Base):
+    def test_a_compaction_or_clear_forgets_the_session_whole_reads(self):  # E58: the content left the context
+        p, tmp = self.p, self.tmp / "tmpdir"
+        tmp.mkdir()
+        p.env["TMPDIR"] = str(tmp)
+        for source, gone in (("startup", False), ("compact", True), ("clear", True)):
+            for name in ("s1", "s2"):
+                (tmp / f"gw-reads-{name}.json").write_text("{}")
+            code, out = p.run_recover("--state", stdin=json.dumps({"source": source, "session_id": "s1"}))
+            self.assertEqual(code, 0, out)
+            self.assertEqual((tmp / "gw-reads-s1.json").exists(), not gone, source)
+            self.assertTrue((tmp / "gw-reads-s2.json").exists(), "another session's reads stay")
+
     def test_plain_log_shows_its_first_section(self):
         p = self.p
         p.write("docs/log.md", "# Log\n\nintro\n\n## State\n\n| Field | Value |\n|---|---|\n| Next step | ship it |\n\n"

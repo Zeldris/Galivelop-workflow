@@ -227,6 +227,9 @@ def check_measured(config, message, found, msgfile):
                          f"again: git commit -e -F {msgfile}")
 
 
+NEGATION = re.compile(r"(?<!\w)(?:sin|ningún|ninguno|no|without|zero|0)\s+$", re.IGNORECASE)  # "sin hallazgos"
+
+
 def findings_warning(config, message, found):
     """E60: the warning line when the message speaks of review fixes (a word or phrase of
     metrics.quality.findingsWords, whole words, any case) and the trailer block has no findingsTrailer, or None. Without
@@ -235,9 +238,11 @@ def findings_warning(config, message, found):
     word = quality["findingsTrailer"]
     if any(k.lower() == word.lower() for k, _ in found):
         return None
+    paragraphs = re.split(r"\n[ \t]*\n", message.strip())
+    text = "\n\n".join(paragraphs[:-1] if found and len(paragraphs) > 1 else paragraphs)  # not the trailers (Siguiente:)
     for phrase in quality["findingsWords"]:
         pattern = r"(?<!\w)" + r"\s+".join(re.escape(p) for p in phrase.split()) + r"(?!\w)"
-        if re.search(pattern, message, re.IGNORECASE):
+        if any(not NEGATION.search(text[:m.start()]) for m in re.finditer(pattern, text, re.IGNORECASE)):
             return (f"commit-msg: WARNING: the message speaks of review fixes (\"{phrase}\") and has no `{word}:` "
                     f"trailer, so metrics.py quality misses them and the next block review starts too early; if it "
                     f"closes a review, add `{word}: <accepted findings>` next to `Refs:`: git commit --amend")

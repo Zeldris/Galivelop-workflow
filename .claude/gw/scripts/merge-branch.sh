@@ -117,7 +117,8 @@ undo=", or undo the merge with: git reset --hard HEAD^1"
 
 # B41: the wave of --defer-check merges. Its base (HEAD before the first deferred merge) is kept per branch in
 # <git common dir>/gw/merge-wave-<branch>, so the merge that closes the wave runs the related tests of every branch
-# of it, not only of its own. A base that is no longer in HEAD's history (reset, other branch) is dropped.
+# of it, not only of its own. A base that is no longer in HEAD's history (reset, other branch) is dropped. A new wave
+# is written only once its first merge is in (done, or left open by a conflict), never on an earlier failure.
 if ! common="$(git rev-parse --git-common-dir 2>/dev/null)" || ! common="$(cd "$common" && pwd)"; then
   echo "merge-branch: cannot find the git common dir; run it inside the repository: cd $root" >&2; exit 2
 fi
@@ -129,11 +130,15 @@ if [ -f "$wave_file" ]; then
     rm -f "$wave_file"; wave_base=""
   fi
 fi
+new_wave=""
 if [ -n "$defer_check" ] && [ -z "$wave_base" ]; then
-  { mkdir -p "$common/gw" && printf '%s\n' "$before" > "$wave_file"; } 2>/dev/null || {
-    echo "merge-branch: cannot record the wave base in $wave_file; free space or fix its permissions and retry" >&2; exit 2; }
-  wave_base="$before"
+  new_wave=1; wave_base="$before"
 fi
+open_wave() {  # records a new wave's base; fails closed, since without it the last merge would miss its related tests
+  [ -n "$new_wave" ] || return 0
+  { mkdir -p "$common/gw" && printf '%s\n' "$wave_base" > "$wave_file"; } 2>/dev/null || {
+    echo "merge-branch: cannot record the wave base in $wave_file, so the last merge of the wave would miss its related tests; free space or fix its permissions, then run: mkdir -p $(printf '%q' "$common/gw") && echo $wave_base > $(printf '%q' "$wave_file")" >&2; exit 2; }
+}
 # The files the related tests look at: the whole open wave, or this merge alone.
 diff_base="${wave_base:-$before}"
 related_cmd="f=\$(mktemp) && git diff --name-only --no-renames ${diff_base:0:7} HEAD > \"\$f\" && bash $here/related-tests.sh \"\$f\""
@@ -216,6 +221,7 @@ EOF_CONFLICTS
     # What this script would do after the merge (see cleanup_branch below): worktree only if there is one, branch only if it is not protected, claude/* or the current one.
     # With --defer-check the check is left for the end of the wave, so the commands are only the cleanup.
     after=""
+    [ -z "$defer_check" ] || open_wave
     if [ -z "$defer_check" ]; then
       after="bash $here/check.sh --quiet"
       # B41: an open wave is closed by this merge, so its related tests (all of its branches) go too.
@@ -227,6 +233,7 @@ EOF_CONFLICTS
     fi
     [ -n "$after" ] && echo "  Closing it by hand skips what this script does after a merge (re-running it says \"nothing to merge\"); then run: $after"
   else
+    [ -z "$defer_check" ] || open_wave
     echo "merge-branch: CONFLICT (the merge stays open; resolve it and commit, or abort with: git merge --abort):"
     printf '%s\n' "${conflicts:-$(tail -n 5 "$logs/merge.log")}" | sed 's/^/  /'
   fi
@@ -234,7 +241,11 @@ EOF_CONFLICTS
 fi
 if [ "$(git rev-parse HEAD)" = "$before" ]; then
   if [ -n "$defer_check" ]; then
-    echo "merge-branch: nothing to merge, $branch is already in the current branch; the wave stays open (since ${wave_base:0:7})."
+    if [ -n "$new_wave" ]; then
+      echo "merge-branch: nothing to merge, $branch is already in the current branch; no wave was opened (nothing ran)."
+    else
+      echo "merge-branch: nothing to merge, $branch is already in the current branch; the wave stays open (since ${wave_base:0:7})."
+    fi
     exit 0
   elif [ -z "$wave_base" ]; then
     echo "merge-branch: nothing to merge, $branch is already in the current branch: no check, related tests or cleanup ran. If it was merged by hand, run the check: bash $here/check.sh"
@@ -246,9 +257,11 @@ if [ "$(git rev-parse HEAD)" = "$before" ]; then
   echo "merge-branch: nothing to merge, $branch is already in the current branch; closing the open wave of --defer-check (since ${wave_base:0:7}): check and related tests of the whole wave."
 else
   echo "merge-branch: merged $branch into $(git branch --show-current) at $(git rev-parse --short HEAD)"
+  [ -n "$defer_check" ] || [ -z "$wave_base" ] || echo "merge-branch: this merge closes the open wave of --defer-check (since ${wave_base:0:7}): check and related tests of the whole wave."
 fi
 
 if [ -n "$defer_check" ]; then
+  open_wave
   echo "merge-branch: CHECK DEFERRED (--defer-check): neither the check nor the related tests ran on this merge and no green was recorded. Wave open since ${wave_base:0:7}: merge the LAST branch without --defer-check, which runs the full check and the related tests of the whole wave (if it is already merged, rerun this script on it without --defer-check)."
 else
   # The check is scripts/check.sh --quiet (E20): one registry per sha in <git common dir>/gw/check-<sha>.log that stays

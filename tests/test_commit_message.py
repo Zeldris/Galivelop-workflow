@@ -265,6 +265,14 @@ class Refs(Msg):
         self.assertNotIn("review fixes", self.warned("feat(D11): findingsWords key\n\nRefs: D11\nSiguiente: x"))
         self.assertNotIn("review fixes", self.warned("feat(D11): plain work\n\nRefs: D11\nSiguiente: x"))
 
+    def test_the_trailers_and_a_negation_do_not_warn(self):  # E60: only the subject and body speak of the fixes
+        msg = "feat(D11): plain work\n\nbody\n\nRefs: D11\nSiguiente: /code-review del bloque y arreglar sus hallazgos"
+        self.assertNotIn("review fixes", self.warned(msg))
+        self.assertNotIn("review fixes", self.warned("feat(D11): x\n\nrevisado, sin hallazgos\n\nRefs: D11\nSiguiente: x"))
+        self.assertNotIn("review fixes", self.warned("feat(D11): x\n\nno findings this time\n\nRefs: D11\nSiguiente: x"))
+        err = self.warned("fix(D11): x\n\nsin hallazgos graves; arregla dos hallazgos leves\n\nRefs: D11\nSiguiente: x")
+        self.assertIn("(\"hallazgos\")", err)
+
     def test_findings_words_follow_the_config_and_empty_turns_it_off(self):  # E60
         self.configure(metrics={"quality": {"findingsTrailer": "Hallazgos", "findingsWords": ["code review"]}})
         err = self.warned("fix(D11): the code\n  review pass\n\nRefs: D11\nSiguiente: x")

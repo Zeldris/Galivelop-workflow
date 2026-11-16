@@ -2097,6 +2097,21 @@ class MergeBranch(Base):
         self.assertFalse(self.wave_file().exists())
         self.assertNotIn("worktree-agent-2", self.branches(), "and cleans up")
 
+    def test_a_wave_opens_only_once_its_first_merge_is_in(self):
+        self.related()
+        self.agent(text="good\n")
+        self.assertEqual(self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")[0], 0)
+        self.agent(name="worktree-agent-2", path="b.txt", text="good\n")
+        self.p.git("merge", "-q", "--no-edit", "worktree-agent-2", env=DAY)
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-2", "Merge agent 2", "--defer-check")
+        self.assertEqual(code, 0, out)
+        self.assertIn("no wave was opened (nothing ran)", out)
+        self.assertFalse(self.wave_file().exists(), "nothing merged: no wave to close later")
+        self.conflict(LOG)
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--defer-check")
+        self.assertEqual(code, 1, out)
+        self.assertTrue(self.wave_file().is_file(), "a merge left open by a conflict is in the wave")
+
     def test_a_stale_wave_base_is_dropped(self):
         self.related()
         self.wave_file().parent.mkdir(parents=True, exist_ok=True)
@@ -2976,6 +2991,16 @@ class HandoffPendingFile(Base):
         self.assertEqual(self.p.script("handoff.py", "move-pending", str(path))[0], 0)
         self.assertEqual(self.section(path), "\n" + self.POINTER)
         self.assertNotIn("el archivo de `pendingFile`", (self.p.work / self.PENDING).read_text())
+
+    def test_move_pending_moves_prose_that_names_the_file_without_being_the_pointer(self):
+        self.use(self.PENDING)
+        prose = "Lo de la 0.6 se archivó desde pending.md, ver docs/records/pending.md.\n"
+        path = self.log(self.POINTER + prose + "- uno\n")
+        self.assertEqual(self.p.script("handoff.py", "move-pending", str(path))[0], 0)
+        moved = (self.p.work / self.PENDING).read_text()
+        self.assertIn(prose, moved)  # only the pointer's own wording is dropped, never a note
+        self.assertNotIn("se añade y se quita allí", moved)
+        self.assertEqual(self.section(path), "\n" + self.POINTER)
 
 if __name__ == "__main__":
     unittest.main()

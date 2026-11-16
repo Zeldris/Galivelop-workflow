@@ -251,12 +251,14 @@ def startup_pct(seg, cfg):
 def system_weighs_most(root, cfg, seg, hook_chars=0, parts=None):
     """D122, the one rule: the startup `seg` is big (at least contextGuard.warn % of the cutoff), the system (prompt,
     tools, MCP) is its largest culprit, so a /clear does not shrink it, and contextGuard.systemAdvice is on. `parts`:
-    the culprits of `seg` if already computed."""
+    the culprits of `seg` if already computed, or a callable that computes them, called only past the guards (B41)."""
     guard = config.context_guard(cfg or {})
     if not guard["systemAdvice"] or startup_pct(seg, cfg) < guard["warn"]:
         return False
     if parts is None:
         parts = culprits(root, cfg, seg["first_usage"], hook_chars, seg.get("carried", 0))
+    elif callable(parts):
+        parts = parts()
     return parts[0][0] == SYSTEM
 
 
@@ -265,7 +267,7 @@ def system_is_largest(root, cfg, path, hook_chars=0, measure=None):
     which then stands for root, cfg, path and hook_chars). False when unknown. Never raises."""
     try:
         m = measure or Measure(root, cfg, path, hook_chars)
-        return bool(m.last) and system_weighs_most(m.root, m.cfg, m.last, m.hook_chars, parts=m.culprits())
+        return bool(m.last) and system_weighs_most(m.root, m.cfg, m.last, m.hook_chars, parts=m.culprits)
     except Exception:  # fail open: unknown means the usual advice
         return False
 
@@ -298,7 +300,7 @@ def report(root, cfg, path, source, hook_chars=0, measure=None):
             return bool(c) and 100 * seg["first_usage"] / c >= guard["alarm"]
 
         if (source == "compact" and over(last)) or (len(segs) >= 2 and over(segs[-1]) and over(segs[-2])):
-            fix = (SYSTEM_ADVICE if system_weighs_most(root, cfg, last, hook_chars, parts=m.culprits())
+            fix = (SYSTEM_ADVICE if system_weighs_most(root, cfg, last, hook_chars, parts=m.culprits)
                    else "push what there is and ask the user for /clear")
             lines.append(f"- ALARM: compaction loop: the previous stretch already started at {pct} % of the cutoff and "
                          f"compacted again. Stop: {fix}; the log's compaction budget applies (see above).")

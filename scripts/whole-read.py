@@ -9,8 +9,9 @@ Watched files: the hand-off log (`log`), its archive (`logArchive`), every file 
 extensions of `wholeReadSkipExtensions` (images, PDF, notebooks). A Read is "whole" when `tool_input` has no
 `offset`, `limit` or `pages` (a null, 0 or empty value counts as absent). A Bash command is "whole" for each file it
 gives to `cat`, `tac`, `nl`, `less`, `more`, `bat` (without a line range) or `sed` (without -n, -i or a `q` script),
-also through `<`; `cd` in the same command moves the folder the paths resolve against, and the body of a heredoc is
-not read as commands. `grep`, `head`, `tail` and `sed -n` read a part and are never warned about. The log is
+also through `<`, unless its output goes to a pipe or a file (`cat F | head`, `cat F > out`); `cd` in the same command
+moves the folder the paths resolve against (inside `( … )` only until it closes), the value of an option that takes
+one (`nl -b a F`) is not a file, and the body of a heredoc (also `<<\\EOF`) is not read as commands. `grep`, `head`, `tail` and `sed -n` read a part and are never warned about. The log is
 compared in characters (as `logSize` is), the rest in bytes. A watched file of more than `wholeReadWarnBytes` bytes
 (default 20000; 0 turns the hook off) gets a note that names the size and the command that reads less:
 
@@ -24,6 +25,8 @@ changed since (same size and modification time): the first whole read is often n
 twice in the context. The reads are kept per session in tempfile.gettempdir()/gw-reads-<session_id>.json (an own
 regular file; the other sessions' files not written for `wholeReadStaleDays` days are deleted when one is created).
 With no `session_id` in the event a repeat cannot be told, so nothing is warned. false = warn on every whole read.
+A lock (gw-reads-<session_id>.lock, fcntl, cleaned like the state) keeps two parallel calls from losing a read, and recover.py --state drops the session's
+reads on SessionStart clear|compact (`forget`): the content left the context, so a reread there is not a repeat.
 
 Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse): a JSON object on stdout, exit 0,
 
@@ -35,6 +38,7 @@ cannot read (the defaults apply to the config) print nothing and exit 0. The
 project root is config.find_root (the script's own repo, never the current directory first); a relative path is
 resolved against the event's `cwd`. Python 3.8+ standard library only.
 """
+import contextlib
 import glob
 import json
 import os
@@ -147,7 +151,10 @@ def note(kind, rel, size, limit, how="this Read", command=None, repeat=False):
 
 WHOLE = {"cat", "tac", "nl", "less", "more", "bat", "batcat"}
 PREFIXES = {"sudo", "env", "command", "exec", "time", "nohup", "builtin"}
-HEREDOC = re.compile(r"(?<!<)<<(?!<)-?\s*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+HEREDOC = re.compile(r"(?<!<)<<(?!<)-?\s*\\?(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
+# Short options that take the next word as their value, so it is not a file (`nl -b a F`, `less -x 4 F`).
+OPTION_ARGS = {"nl": set("bdfhilnsvw"), "less": set("bhjkopxyzDPT"), "more": set("n"), "cat": set(),
+               "tac": set("s"), "bat": set("lmHp"), "batcat": set("lmHp")}
 SED_QUIT = re.compile(r"(^|[0-9$/;{}\s])[qQ]\s*[0-9]*\s*(;|}|$)")
 
 
@@ -165,24 +172,35 @@ def command_lines(command):
 
 
 def simple_commands(line):
-    """[(words, inputs)] for each simple command of one shell line: `words` without redirections, `inputs` the files
-    given with `<`. Raises ValueError on a line shlex cannot split (an open quote)."""
+    """The simple commands of one shell line, in order, as ("cmd", words, inputs, sent, piped) with `words` without
+    redirections, `inputs` the files given with `<`, `sent` True when its standard output goes to a file (so it does
+    not reach the context) and `piped` True when it goes to the next command, plus ("(",) and (")",) for the
+    subshells. Raises ValueError on a line shlex cannot split (an open quote)."""
     lex = shlex.shlex(line, posix=True, punctuation_chars=True)
     lex.whitespace_split = True
-    out, words, inputs, redirect = [], [], [], None
+    out, words, inputs, sent, redirect = [], [], [], False, None
+
+    def close(piped=False):
+        out.append(("cmd", words, inputs, sent, piped))
+
     for token in lex:
         if redirect is not None:
-            if redirect == "<":
+            op, fd = redirect
+            if op == "<":
                 inputs.append(token)
+            elif ">" in op and (op.startswith("&") or fd in ("", "1")) and not (op.endswith("&") and token == "2"):
+                sent = True  # stdout to a file (`> out`, `&> out`); `>&2` still shows
             redirect = None
         elif token and set(token) <= set("<>&") and ("<" in token or ">" in token):
-            redirect = token
+            fd = words.pop() if words and words[-1].isdigit() else ""  # `2>` is fd 2, not a file operand
+            redirect = (token, fd)
         elif token and set(token) <= set(";&|()"):
-            out.append((words, inputs))
-            words, inputs = [], []
+            close(token in ("|", "|&"))
+            words, inputs, sent = [], [], False
+            out.extend((c,) for c in token if c in "()")
         else:
             words.append(token)
-    out.append((words, inputs))
+    close()
     return out
 
 
@@ -192,6 +210,9 @@ def sed_files(args):
     files, scripts, explicit, i = [], [], False, 0
     while i < len(args):
         arg = args[i]
+        if arg in ("-l", "--line-length"):
+            i += 2
+            continue
         if arg in ("-e", "--expression", "-f", "--file"):
             explicit = True
             if arg in ("-e", "--expression") and i + 1 < len(args):
@@ -232,17 +253,55 @@ def whole_files(name, args):
         return None
     if name in ("bat", "batcat") and any(a.startswith(("-r", "--line-range")) for a in args):
         return None
-    return [a for a in args if not a.startswith("-")]
+    files, skip = [], False
+    for arg in args:
+        if skip:
+            skip = False
+        elif arg.startswith("-") and len(arg) > 1:
+            skip = len(arg) == 2 and arg[1] in OPTION_ARGS.get(name, ())
+        else:
+            files.append(arg)
+    return files
+
+
+def program_words(words):
+    """`words` without leading VAR=value assignments and PREFIXES (sudo, env, …)."""
+    while words and (re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", words[0]) or words[0] in PREFIXES):
+        words = words[1:]
+    return words
+
+
+def passes_through(rest):
+    """True when the command a pipe feeds (the first of `rest`) shows its input whole (`| less`, `| cat -n`), so what
+    went into the pipe still reaches the context; False for a filter (`| head`, `| grep x`) or a file sink."""
+    for item in rest:
+        if item[0] != "cmd":
+            continue
+        _, words, inputs, sent, piped = item
+        words = program_words(words)
+        if not words or sent or inputs:
+            return False
+        operands = whole_files(os.path.basename(words[0]), words[1:])
+        return operands == [] and (not piped or passes_through(rest[rest.index(item) + 1:]))
+    return False
 
 
 def bash_reads(command, cwd):
-    """[(path, program)] for each file the Bash `command` reads whole, resolved against `cwd` and the `cd`s before
-    it; globs are expanded. Raises ValueError when a line cannot be split."""
-    found = []
+    """[(path, program)] for each file the Bash `command` reads whole into the context (not into a pipe or a file),
+    resolved against `cwd` and the `cd`s before it (a `cd` inside `( … )` ends with it); globs are expanded. Raises
+    ValueError when a line cannot be split."""
+    found, stack = [], []
     for line in command_lines(command):
-        for words, inputs in simple_commands(line):
-            while words and (re.match(r"^[A-Za-z_][A-Za-z0-9_]*=", words[0]) or words[0] in PREFIXES):
-                words = words[1:]
+        items = simple_commands(line)
+        for index, item in enumerate(items):
+            if item[0] == "(":
+                stack.append(cwd)
+                continue
+            if item[0] == ")":
+                cwd = stack.pop() if stack else cwd
+                continue
+            _, words, inputs, sent, piped = item
+            words = program_words(words)
             if not words:
                 continue
             name = os.path.basename(words[0])
@@ -251,7 +310,7 @@ def bash_reads(command, cwd):
                     cwd = os.path.join(cwd, os.path.expanduser(words[1]))
                 continue
             operands = whole_files(name, words[1:])
-            if operands is None:
+            if operands is None or sent or (piped and not passes_through(items[index + 1:])):
                 continue
             for operand in operands + inputs:
                 path = os.path.join(cwd, os.path.expanduser(operand))
@@ -289,9 +348,10 @@ def load_state(path):
 
 
 def clean_old(keep, days):
-    """Delete other sessions' gw-reads-*.json (own regular files) not written for `days` days."""
+    """Delete other sessions' gw-reads-*.json and their .lock (own regular files) not written for `days` days."""
     folder, cutoff = os.path.dirname(keep), time.time() - days * 86400
-    for path in glob.glob(os.path.join(folder, "gw-reads-*.json")):
+    for path in glob.glob(os.path.join(folder, "gw-reads-*.json")) + \
+            glob.glob(os.path.join(folder, "gw-reads-*.lock")):
         try:
             if path != keep and own_regular(path) and os.lstat(path).st_mtime < cutoff:
                 os.unlink(path)
@@ -314,6 +374,34 @@ def save_state(path, data, stale):
             os.unlink(tmp)
         except OSError:
             pass
+
+
+def forget(session_id):
+    """Drop the session's whole reads: after a compaction or /clear their content is no longer in the context, so a
+    reread is not a repeat (recover.py --state calls it on SessionStart clear|compact)."""
+    path = state_path(session_id)
+    try:
+        if path and os.path.lexists(path) and own_regular(path):
+            os.unlink(path)
+    except OSError:
+        pass
+
+
+@contextlib.contextmanager
+def locked(path):
+    """An exclusive lock on `path` with .lock for .json while the state is read and written, so two Reads in parallel do not lose one
+    of them (the last os.replace would win). No lock where fcntl is missing (Windows) or the file cannot be opened."""
+    try:
+        import fcntl
+        handle = open(path[:-len(".json")] + ".lock", "a")
+    except (ImportError, OSError):
+        yield
+        return
+    try:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        yield
+    finally:
+        handle.close()
 
 
 def check(path, root, conf, state, how):
@@ -381,15 +469,16 @@ def main():
     if conf["limit"] <= 0:
         return 0
     spath = state_path(event.get("session_id")) if conf["repeat"] else None
-    state = load_state(spath) if spath else None
-    before = dict(state) if state is not None else None
     notes = []
-    for path, how in reads:
-        text = check(path, root, conf, state, how)
-        if text and text not in notes:
-            notes.append(text)
-    if spath and state != before:
-        save_state(spath, state, conf["stale"])
+    with locked(spath) if spath else contextlib.nullcontext():
+        state = load_state(spath) if spath else None
+        before = dict(state) if state is not None else None
+        for path, how in reads:
+            text = check(path, root, conf, state, how)
+            if text and text not in notes:
+                notes.append(text)
+        if spath and state != before:
+            save_state(spath, state, conf["stale"])
     if notes:
         print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",
                                                  "additionalContext": "\n".join(notes)}}))

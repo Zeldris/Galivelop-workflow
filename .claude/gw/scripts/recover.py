@@ -689,6 +689,15 @@ def hook_transcript(wait=3.0):
 LEGACY_FLAGS = {"--estado": "--state", "--buscar": "--search", "--sesion": "--session", "--ancho": "--width"}
 
 
+def forget_reads(session_id):
+    """E58: after a compaction or /clear the whole reads of whole-read.py left the context, so a reread is no repeat."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("whole_read", os.path.join(HERE, "whole-read.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    module.forget(session_id)
+
+
 def main(argv=None):
     argv = config.legacy_flags(sys.argv[1:] if argv is None else argv, LEGACY_FLAGS, "recover.py")
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -707,8 +716,10 @@ def main(argv=None):
         try:
             root = config.find_root(args.root)
             data = {} if args.session and args.source else (hook_transcript() or {})
-            state(root, args.session or data.get("transcript_path"), lines, logs,
-                  args.source or data.get("source") or "startup")
+            source = args.source or data.get("source") or "startup"
+            state(root, args.session or data.get("transcript_path"), lines, logs, source)
+            if source in ("clear", "compact") and data.get("session_id"):
+                forget_reads(data["session_id"])
         except BrokenPipeError:
             raise
         except Exception as exc:  # fail open: the hook must never break the session

@@ -337,6 +337,7 @@ def done_problems(text, add, recheck, limit):
 
 
 POINTER_COUNT = re.compile(r"\((\d+)\s+(?:entradas?|entry|entries)\)", re.I)
+POINTER_START = re.compile(r"(?:Lo pendiente está en|Pending items live in)\s", re.I)  # the pointer's own wording
 PENDING_ITEM = re.compile(r"^(?:[-*+]|\d+[.)])\s")  # a top-level list item: "- ", "* ", "+ ", "1. ", "1) "
 
 
@@ -1027,8 +1028,8 @@ def cmd_move_pending(ctx, args):
     body = [l.rstrip("\r\n") for l in lines[head + 1:end]]
     names = {rel, Path(rel).name, "`pendingFile`"}  # the template's pointer names the key
 
-    def is_pointer(l):  # an earlier pointer: not indented, not a list item (B38: an item always moves), naming the file
-        return not l[:1].isspace() and not PENDING_ITEM.match(l) and any(n in l for n in names)
+    def is_pointer(l):  # an earlier pointer, as move-pending or the template writes it, naming the file; prose stays
+        return POINTER_START.match(l) is not None and any(n in l for n in names)
 
     moved = [l for l in body if not is_pointer(l)]
     while moved and not moved[0].strip():

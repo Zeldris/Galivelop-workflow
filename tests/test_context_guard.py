@@ -317,6 +317,13 @@ class MeasureOnce(Base):  # B41: one --state reads the transcript and computes t
         cg.report(self.root, self.cfg(), path, "clear")
         self.assertEqual(calls, {"startups": 1, "breakdown": 0})
 
+    def test_small_startup_or_advice_off_computes_no_culprit_in_the_system_check(self):
+        calls = self.counting()
+        self.assertFalse(cg.system_is_largest(self.root, self.cfg(), self.transcript([turn(20000)]), 500))
+        cfg = dict(self.cfg(), contextGuard={"systemAdvice": False})
+        self.assertFalse(cg.system_is_largest(self.root, cfg, self.transcript([turn(100000), BOUNDARY]), 500))
+        self.assertEqual(calls["breakdown"], 0)
+
 
 class Cli(Base):
     def run_cli(self, script, *args):
