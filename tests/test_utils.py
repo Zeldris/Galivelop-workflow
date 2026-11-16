@@ -950,6 +950,8 @@ class HandoffCloseRow(Base):
         text = (self.p.work / LOG).read_text()
         self.assertIn("| **Task in progress · `feat-a`** | Merged, branch finished: nothing is pending on it. |", text)
         self.assertIn("| **Task in progress · `feat-b`** | doing B |", text)
+        self.assertIn("  | **Task in progress · `feat-a`** | Merged, branch finished: nothing is pending on it. |\n"
+                      "  50/600 characters", out)  # E61: the row as written and n/limit
         self.assertEqual(self.p.script("handoff.py", "check")[0], 0)
 
     def test_close_row_takes_branch_option_or_current_branch_like_set_row(self):  # D71
@@ -1001,6 +1003,7 @@ class HandoffSetRow(Base):
         self.assertEqual(code, 0, out)
         self.assertIn("(12 characters)", out)
         self.assertEqual(self.row(), "| **Task in progress · `feat-a`** | now doing A2 |")
+        self.assertIn("  | **Task in progress · `feat-a`** | now doing A2 |\n  12/600 characters", out)  # E61
         self.assertEqual(self.row("feat-b"), "| **Task in progress · `feat-b`** | doing B |")
         self.assertEqual(self.p.script("handoff.py", "check")[0], 0)
         self.assertEqual(self.p.script("handoff.py", "set-row", "again", "--branch", "feat-b")[0], 0)

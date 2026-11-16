@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.7.0` en `main`** (`c1e75c8`, 2026-11-15; CI en verde). Etiqueta y release `v0.7.0` creadas por el agente desde una sesión local (`gh release create`, 2026-11-15, a petición del usuario) con los textos de `docs/records/release-v0.7.0.md` |
-| Siguiente paso | Los pequeños de la `0.8` de la recogida: E61 (`set-row`/`close-row` imprimen la fila), E60 y E59; luego E58. D122 espera al parche `0.7.1` (rama `version/0.7.1` sacada de `main`). Presupuesto de compactaciones: 1 |
+| Siguiente paso | Los pequeños de la `0.8` de la recogida: E60 (`commit-msg` avisa de arreglos de revisión sin `Findings:`) y E59; luego E58. D122 espera al parche `0.7.1` (rama `version/0.7.1` sacada de `main`). Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-15 — Barrido B38 de `handoff.py`: el puntero de pendientes ya no lleva cuenta (la da `recover.py`, que cuenta todo el archivo); `check` lee el archivo del commit subido (`--pending` en el `pre-push`) y avisa si le falta la sección que `archive` exige; `move-pending` no borra elementos y escribe de forma atómica
-2. 2026-11-15 — Recogida de apertura de la `0.8` (H22) sobre 9 proyectos: solo el instalador trae ideas (`docs/proposals/2026-11-15-instalador-wmf-tarkor.md`): P1 (aviso de bucle de compactación que no pide `/clear` si pesa el sistema, al `0.7.1`) y P2 (a E58), aprobadas por el usuario; P3 ya estaba
-3. 2026-11-15 — Versión `0.7.0` en `main` (`c1e75c8`): fase 3 con `gw-reviewer` (8 arreglos), B40 (`version.py --release` cuenta la recogida que trajo el parche) y textos de la release en `docs/records/release-v0.7.0.md`; la publica el usuario en local.
-4. 2026-11-15 — Fase 2 de la `0.7.0`: `/gw-opt-tokens` y `/retro` (`retro-2026-11-15-release-0-7-0.md`), aprobadas por el usuario: E62 (`gw-worker` con el modelo y el esfuerzo de la llamada para todos los peldaños, nuevo `gw-reviewer` y aviso de `subagent-cap.py`), B39 (`measure.py` sin argumentos de `git config` como archivos) y B38 (barrido de `handoff.py`) a la `0.8`
-5. 2026-11-15 — Fase 1 de la `0.7.0`: lo que quedaba desde el último `Findings:` (`95a54e7`) era trivial (arreglo de `test_waits.py` de `3bc4d53`, sellos de versión de `b44cd14`; la `0.6.2` fusionada ya pasó su fase 1), revisado en la sesión (B27) sin hallazgos; CI de `b44cd14` en verde y check entero en local
+1. 2026-11-16 — E61: `handoff.py set-row` y `close-row` imprimen la fila tal como queda y `n/límite` (copia en `.claude/gw/scripts/`, tests en `test_utils.py`)
+2. 2026-11-15 — Barrido B38 de `handoff.py`: el puntero de pendientes ya no lleva cuenta (la da `recover.py`, que cuenta todo el archivo); `check` lee el archivo del commit subido (`--pending` en el `pre-push`) y avisa si le falta la sección que `archive` exige; `move-pending` no borra elementos y escribe de forma atómica
+3. 2026-11-15 — Recogida de apertura de la `0.8` (H22) sobre 9 proyectos: solo el instalador trae ideas (`docs/proposals/2026-11-15-instalador-wmf-tarkor.md`): P1 (aviso de bucle de compactación que no pide `/clear` si pesa el sistema, al `0.7.1`) y P2 (a E58), aprobadas por el usuario; P3 ya estaba
+4. 2026-11-15 — Versión `0.7.0` en `main` (`c1e75c8`): fase 3 con `gw-reviewer` (8 arreglos), B40 (`version.py --release` cuenta la recogida que trajo el parche) y textos de la release en `docs/records/release-v0.7.0.md`; la publica el usuario en local.
+5. 2026-11-15 — Fase 2 de la `0.7.0`: `/gw-opt-tokens` y `/retro` (`retro-2026-11-15-release-0-7-0.md`), aprobadas por el usuario: E62 (`gw-worker` con el modelo y el esfuerzo de la llamada para todos los peldaños, nuevo `gw-reviewer` y aviso de `subagent-cap.py`), B39 (`measure.py` sin argumentos de `git config` como archivos) y B38 (barrido de `handoff.py`) a la `0.8`
 
 ## Pendiente
 

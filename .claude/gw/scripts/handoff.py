@@ -56,7 +56,8 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  detached HEAD (WARNING) and while a merge, cherry-pick or rebase is closing
   handoff.py set-row TEXT [--branch BRANCH]     rewrite the text of BRANCH's row (default: the current branch) without
                                                  closing it; fails, and writes nothing, if the row is missing, TEXT is
-                                                 empty or has a newline, or it passes 600 characters
+                                                 empty or has a newline, or it passes 600 characters; prints the
+                                                 row as written and n/limit (set-row and close-row)
   handoff.py closed BASE SHA                    every task closed in the plan between BASE and SHA ("- [x] **ID**"
                                                  or struck through) is also recorded in the "Done" section of SHA's
                                                  log: struck through there, or named on a line that starts with a date
@@ -933,7 +934,7 @@ def write_atomic(path, data):
 
 
 def rewrite_row(ctx, branch, text):
-    """Replace the text of `branch`'s row in the log file. Returns the number of rows found; writes only if exactly 1."""
+    """Replace the text of `branch`'s row in the log file. Returns (rows found, the new row); writes only if exactly 1."""
     path = ctx.root / ctx.log
     try:
         with open(path, encoding="utf-8", newline="") as f:  # Path.read_text(newline=) is Python 3.13+
@@ -942,16 +943,22 @@ def rewrite_row(ctx, branch, text):
         raise Usage(f"cannot read {path} ({exc}); fix `log` in .claude/gw.json")
     eol = "\r\n" if "\r\n" in raw else "\n"
     lines = raw.split(eol)
-    hit = 0
+    hit, new = 0, None
     for i, line in enumerate(lines):
         m = ROW.match(line)
         if m and m.group("branch") == branch:
-            lines[i] = f"| **{m.group('label')} · `{branch}`** | {text} |"
+            lines[i] = new = f"| **{m.group('label')} · `{branch}`** | {text} |"
             hit += 1
     if hit == 1:
         with open(path, "w", encoding="utf-8", newline="") as f:  # Path.write_text(newline=) is Python 3.10+
             f.write(eol.join(lines))
-    return hit
+    return hit, new
+
+
+def show_row(ctx, row, text):
+    """Print the row as written and its size against the limit (E61), so the caller need not reread the log."""
+    print(f"  {row}")
+    print(f"  {len(text.strip())}/{gwconfig.handoff(ctx.config)['rowLimit']} characters")
 
 
 def row_branch(ctx, args):
@@ -969,11 +976,12 @@ def row_branch(ctx, args):
 def cmd_close_row(ctx, args):
     text = args.text or CLOSED_TEXT.get(ctx.config["language"], CLOSED_TEXT["en"])
     branch = row_branch(ctx, args)
-    hit = rewrite_row(ctx, branch, text)
+    hit, row = rewrite_row(ctx, branch, text)
     if hit != 1:
         print(f"handoff: found {hit} rows for {branch}, expected 1; add the row first: edit {ctx.log}")
         return 1
     print(f"handoff: row of {branch} closed in {ctx.log}; commit it: git commit -am 'Close the log row of {branch}'")
+    show_row(ctx, row, text)
     return 0
 
 
@@ -988,11 +996,12 @@ def cmd_set_row(ctx, args):
         print(f"handoff: the text has {len(text)} characters (limit {limit}); shorten it, or move what is done to the Done "
               f"section: python3 {HERE / 'handoff.py'} done \"<text>\"")
         return 1
-    hit = rewrite_row(ctx, branch, text)
+    hit, row = rewrite_row(ctx, branch, text)
     if hit != 1:
         print(f"handoff: found {hit} rows for {branch}, expected 1; add the row first: edit {ctx.log}")
         return 1
     print(f"handoff: row of {branch} updated in {ctx.log} ({len(text)} characters); commit it together with the work")
+    show_row(ctx, row, text)
     return 0
 
 
