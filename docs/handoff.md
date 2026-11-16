@@ -11,8 +11,8 @@
 | Rama | **Parche `0.7.1`: `version/0.7.1`**, sacada de `main` (`c1e75c8` = **`0.7.0`**, 2026-11-15, etiqueta y release `v0.7.0`). La `0.8` sigue en `ccr-d1e2d496-0vzck8`; `version/1.0.0` se queda con el diseño (`docs/design/`) |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI de `64770b0` en verde; release `v0.7.1` pendiente, a mano por el usuario en local) |
-| Siguiente paso | El usuario publica en local la release `v0.7.1` con `docs/records/release-v0.7.1.md`. Luego, fusionar `main` en `ccr-d1e2d496-0vzck8` y seguir la `0.8` allí. Presupuesto de compactaciones: 1 |
+| Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI de `64770b0` en verde; release `v0.7.1` pendiente, la publica el agente desde una sesión local) |
+| Siguiente paso | Fusionar `main` en `ccr-d1e2d496-0vzck8` y seguir la `0.8` allí. **Pendiente para la próxima sesión local:** publicar la release `v0.7.1` con `docs/records/release-v0.7.1.md` (orden y textos allí; decisión del usuario, 2026-11-16). Presupuesto de compactaciones: 1 |
 
 ### Fases
 
