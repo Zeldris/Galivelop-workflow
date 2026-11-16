@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI en verde). Etiqueta y release `v0.7.1` creadas por el agente desde una sesión local (2026-11-16, a petición del usuario) |
-| Siguiente paso | D94 + D95 hechos; siguiente: arreglos de la revisión de D94 y revisión de D95. Presupuesto de compactaciones: 1 |
+| Siguiente paso | D94 + D95 hechos; siguiente: revisión de D95. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-16 — D95: `handoff.py add-pending "texto" [--section "título"]` y `add-decision "texto" [--date]` añaden a «Pendiente» (`pendingFile` o la bitácora) y a «Decisiones» (clave nueva `decisionsFile`, por defecto la bitácora) sin leer el archivo, con una sola línea de salida, escritura atómica y fin de línea respetado; el esqueleto del archivo de pendientes se comparte con `move-pending`
-2. 2026-11-16 — D94: `scripts/push.sh [<rama>]` sube con reintentos (`pushRetryDelays`, por defecto 2, 4, 8 y 16 s, solo ante fallos de red o HTTP 5xx) y da éxito solo si `git ls-remote` coincide con la rama local; un rechazo (gancho, non-fast-forward, 403) falla de inmediato con la orden que lo arregla; `AGENTS.md` y las plantillas apuntan a él
-3. 2026-11-16 — Revisión del bloque E58-E61 + B41 (8 hallazgos arreglados): `whole-read.py` no cuenta la salida a un archivo o a un filtro (`| head`, `> o`), cierra el `cd` de una subshell, entiende `<<\EOF` y los valores de opción (`nl -b a`, `sed -l`), apunta dos lecturas a la vez (cerrojo) y olvida las de la sesión tras `/clear` o compactación (`recover.py --state`); `merge-branch.sh` solo escribe la oleada cuando entra su primera fusión; `handoff.py move-pending` no tira prosa que nombra `pending.md`; el aviso de `Findings:` no mira los trailers ni una negación; `context_guard` no calcula culpables si no los usa. Dos leves, a `pending.md`
-4. 2026-11-16 — B41: `merge-branch.sh` guarda la base de una oleada de `--defer-check` (`<git common dir>/gw/merge-wave-<rama>`) y la fusión que la cierra corre los tests relacionados de toda ella; «nothing to merge» con la oleada abierta la cierra (y sin ofrecer deshacer `HEAD`), sin ella avisa de que no corrió nada; el dealer pide un solo check; `context_guard.Measure` lee el transcript y calcula los culpables una vez por `--state`
-5. 2026-11-16 — `0.7.1` en `main` (`7a6d1bd`): CI de `64770b0` en verde, check entero en local, `reviewed.sh` y subida con confirmación del usuario; textos de la release en `release-v0.7.1.md`
+1. 2026-11-16 — Arreglos de la revisión de D94 (5 hallazgos): `push.sh` clasifica solo las líneas de git y del remoto (la salida de un gancho `pre-push` que pasó ya no cuenta como rechazo), amplía los fallos transitorios (red inalcanzable, SSL, 408, 5xx con texto), reintenta solo la comprobación si `ls-remote` falla tras un push correcto y fija upstream y `origin/<rama>` si el remoto ya tenía el commit; fila de `pushRetryDelays` completa; n.º 5, 7 y 8 a `pending.md`
+2. 2026-11-16 — D95: `handoff.py add-pending "texto" [--section "título"]` y `add-decision "texto" [--date]` añaden a «Pendiente» (`pendingFile` o la bitácora) y a «Decisiones» (clave nueva `decisionsFile`, por defecto la bitácora) sin leer el archivo, con una sola línea de salida, escritura atómica y fin de línea respetado; el esqueleto del archivo de pendientes se comparte con `move-pending`
+3. 2026-11-16 — D94: `scripts/push.sh [<rama>]` sube con reintentos (`pushRetryDelays`, por defecto 2, 4, 8 y 16 s, solo ante fallos de red o HTTP 5xx) y da éxito solo si `git ls-remote` coincide con la rama local; un rechazo (gancho, non-fast-forward, 403) falla de inmediato con la orden que lo arregla; `AGENTS.md` y las plantillas apuntan a él
+4. 2026-11-16 — Revisión del bloque E58-E61 + B41 (8 hallazgos arreglados): `whole-read.py` no cuenta la salida a un archivo o a un filtro (`| head`, `> o`), cierra el `cd` de una subshell, entiende `<<\EOF` y los valores de opción (`nl -b a`, `sed -l`), apunta dos lecturas a la vez (cerrojo) y olvida las de la sesión tras `/clear` o compactación (`recover.py --state`); `merge-branch.sh` solo escribe la oleada cuando entra su primera fusión; `handoff.py move-pending` no tira prosa que nombra `pending.md`; el aviso de `Findings:` no mira los trailers ni una negación; `context_guard` no calcula culpables si no los usa. Dos leves, a `pending.md`
+5. 2026-11-16 — B41: `merge-branch.sh` guarda la base de una oleada de `--defer-check` (`<git common dir>/gw/merge-wave-<rama>`) y la fusión que la cierra corre los tests relacionados de toda ella; «nothing to merge» con la oleada abierta la cierra (y sin ofrecer deshacer `HEAD`), sin ella avisa de que no corrió nada; el dealer pide un solo check; `context_guard.Measure` lee el transcript y calcula los culpables una vez por `--state`
 
 ## Pendiente
 

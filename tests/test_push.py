@@ -31,6 +31,9 @@ if [ "$1" = "push" ]; then
     fail:*) echo "${step#fail:}" >&2; exit 1 ;;
   esac
 fi
+if [ "$1" = "ls-remote" ] && [ -s "$FAKE_DIR/lsfail" ]; then  # fail the next N ls-remote calls
+  n=$(cat "$FAKE_DIR/lsfail"); if [ "$n" -gt 0 ]; then echo $((n - 1)) > "$FAKE_DIR/lsfail"; echo "fatal: network blip" >&2; exit 128; fi
+fi
 exec "$REAL_GIT" "$@"
 """
 
@@ -108,11 +111,18 @@ class PushSh(unittest.TestCase):
         for text in ("Connection reset by peer", "Connection refused", "Connection timed out", "Operation timed out",
                      "error: RPC failed; curl 56", "fatal: early EOF", "fatal: the remote end hung up unexpectedly",
                      "error: unexpected disconnect while reading", "The requested URL returned error: 502",
-                     "HTTP 503 Service Unavailable", "returned error: 500", "HTTP/1.1 504 Gateway Timeout"):
+                     "HTTP 503 Service Unavailable", "returned error: 500", "HTTP/1.1 504 Gateway Timeout",
+                     "ssh: connect to host github.com port 22: Network is unreachable",
+                     "Failed to connect to github.com port 443 after 21000 ms: Couldn't connect to server",
+                     "OpenSSL SSL_read: Connection was reset, errno 104", "OpenSSL SSL_read: SSL_ERROR_SYSCALL",
+                     "gnutls_handshake() failed: The TLS connection was non-properly terminated",
+                     "unable to access 'x': The requested URL returned error: 408",
+                     "remote: Internal Server Error", "Bad Gateway", "Service Unavailable",
+                     "Connection closed by remote host", "kex_exchange_identification: read: Connection reset"):
             with self.subTest(text=text):
                 (self.fake / "count").unlink(missing_ok=True)
                 subprocess.run([REAL_GIT, "branch", "-q", "-D", "main"], cwd=self.origin, env=self.env, capture_output=True)
-                self.steps("fail:" + text, "ok")
+                self.steps("fail:fatal: " + text, "ok")
                 r = self.run_push()
                 self.assertEqual((r.returncode, self.pushes()), (0, 2), r.stderr)
 
@@ -145,6 +155,53 @@ class PushSh(unittest.TestCase):
         self.steps("fail:pre-push: Connection timed out in a test\nerror: failed to push some refs", "ok")
         r = self.run_push()
         self.assertEqual((r.returncode, self.pushes()), (1, 1))
+
+    def test_output_of_a_passing_pre_push_hook_does_not_decide(self):
+        # A real pre-push hook that passes but prints text that looks like a rejection; then the network fails.
+        hook = self.work / ".git" / "hooks" / "pre-push"
+        hook.write_text("#!/bin/sh\necho 'pre-push: all green.'\necho 'error: 403 Permission denied in a test'\n"
+                        "echo 'pre-push: hook declined nothing' >&2\nexit 0\n")
+        hook.chmod(0o755)
+        self.steps("fail:error: RPC failed; HTTP 502 curl 22\nfatal: the remote end hung up unexpectedly", "ok")
+        r = self.run_push()
+        self.assertEqual((r.returncode, self.pushes()), (0, 2), r.stderr)
+        self.assertIn("transient failure (attempt 1)", r.stderr)
+        self.assertEqual(self.remote(), self.head())
+
+    def test_real_hook_output_with_a_real_push_passes(self):
+        hook = self.work / ".git" / "hooks" / "pre-push"
+        hook.write_text("#!/bin/sh\necho 'pre-push: all green.'\nexit 0\n")
+        hook.chmod(0o755)
+        r = self.run_push()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("pre-push: all green.", r.stdout)
+
+    def test_request_timeout_408_is_transient(self):
+        self.steps("fail:fatal: unable to access 'x': The requested URL returned error: 408", "ok")
+        r = self.run_push()
+        self.assertEqual((r.returncode, self.pushes()), (0, 2), r.stderr)
+
+    def test_push_ok_but_ls_remote_blips_rechecks_without_pushing_again(self):
+        # push OK, then the first ls-remote after it fails: only the check is retried.
+        self.git(self.work, "push", "-q", "-u", "origin", "main")
+        (self.fake / "lsfail").write_text("1")
+        r = self.run_push()
+        self.assertEqual((r.returncode, self.pushes()), (0, 1), r.stderr)
+
+    def test_push_ok_and_ls_remote_always_fails_reports_it(self):
+        (self.fake / "lsfail").write_text("99")
+        r = self.run_push()
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("origin cannot be read to confirm it", r.stderr)
+        self.assertEqual(self.pushes(), 1)
+
+    def test_late_failure_with_remote_matching_sets_upstream_and_tracking_ref(self):
+        self.steps("late:fatal: the remote end hung up unexpectedly")
+        r = self.run_push()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        up = self.git(self.work, "rev-parse", "--abbrev-ref", "main@{upstream}").stdout.strip()
+        self.assertEqual(up, "origin/main")
+        self.assertEqual(self.git(self.work, "rev-parse", "refs/remotes/origin/main").stdout.strip(), self.head())
 
     def test_forbidden_is_not_retried(self):
         self.steps("fail:fatal: unable to access 'x': The requested URL returned error: 403", "ok")

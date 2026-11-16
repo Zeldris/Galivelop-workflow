@@ -40,11 +40,20 @@ remote_sha() {  # the sha of the branch on origin; empty when absent; non-zero w
   line="$(git ls-remote origin "refs/heads/$branch")" || return 1
   printf '%s\n' "$line" | awk 'NR==1 {print $1}'
 }
-remote_has() { local got; got="$(remote_sha 2>/dev/null)" && [ "$got" = "$want" ]; }
+# 0 = origin has the commit, 1 = it answered with something else, 2 = it could not be read
+remote_state() {
+  local got
+  got="$(remote_sha 2>/dev/null)" || return 2
+  [ "$got" = "$want" ] && return 0
+  return 1
+}
 
-# Not transient even if the text also looks like it (a hook's own output, an HTTP 403 page).
-permanent='non-fast-forward|fetch first|\[rejected\]|\[remote rejected\]|pre-push|hook declined|error: 40[0-9]|HTTP/?[0-9.]* 40[0-9]|Authentication failed|Permission denied|could not read Username|protected branch'
-transient='Could not resolve host|Connection (reset|refused|timed out)|Operation timed out|RPC failed|early EOF|unexpected disconnect|remote end hung up|error: 5[0-9][0-9]|HTTP/?[0-9.]* 5[0-9][0-9]|HTTP code 5[0-9][0-9]'
+# Only the lines git, the transport and the remote write are classified: the output of the pre-push hook that
+# passed (its own `pre-push:` lines, the tests it ran) must not decide anything.
+git_lines='^(error|fatal|remote|hint|warning): |^ ! |^curl |^ssh: |^kex_|^Connection |^Failed to connect|^OpenSSL|^gnutls|^Could not resolve'
+# Not transient even if another line looks like it: a rejection by the remote or a refused access (408 is transient).
+permanent=' ! \[(rejected|remote rejected)\]|fetch first|non-fast-forward|hook declined|returned error: 40[0-79]|HTTP/?[0-9.]* 40[0-79]|Authentication failed|Permission denied \(|could not read Username|protected branch'
+transient='Could not resolve host|Temporary failure in name resolution|Network is unreachable|Couldn.t connect to server|Failed to connect|Connection (was )?(reset|refused|timed out|closed)|Operation timed out|RPC failed|early EOF|unexpected disconnect|remote end hung up|kex_exchange_identification|SSL_ERROR_SYSCALL|SSL_read|gnutls_handshake|Internal Server Error|Bad Gateway|Service Unavailable|Gateway Time-?out|Request Timeout|error: 5[0-9][0-9]|error: 408|HTTP/?[0-9.]* (5[0-9][0-9]|408)|HTTP code (5[0-9][0-9]|408)'
 
 attempt=0
 rest="$delays"
@@ -52,18 +61,34 @@ while :; do
   attempt=$((attempt + 1))
   git push -u origin "$branch" 2>&1 | tee "$out"
   code="${PIPESTATUS[0]}"
-  if remote_has; then
+  remote_state; state=$?
+  if [ "$state" -eq 2 ] && [ "$code" -eq 0 ]; then
+    # The push said OK but the check itself failed (a blip): retry only the check, with the same delays.
+    for d in $delays; do
+      echo "push: cannot read origin yet; checking again in ${d}s" >&2
+      sleep "$d"
+      remote_state; state=$?
+      [ "$state" -ne 2 ] && break
+    done
+    [ "$state" -ne 2 ] || die "git push said OK but origin cannot be read to confirm it; check the network and the remote: git ls-remote origin refs/heads/$branch" 1
+  fi
+  if [ "$state" -eq 0 ]; then
+    if [ "$code" -ne 0 ]; then  # the push failed late but the remote has it: leave what -u would have left
+      git fetch -q origin "$branch" >/dev/null 2>&1 && git branch -q --set-upstream-to="origin/$branch" "$branch" >/dev/null 2>&1 ||
+        echo "push: warning: could not update origin/$branch or its upstream; run: git fetch origin $branch && git branch --set-upstream-to=origin/$branch $branch" >&2
+    fi
     echo "push: ok: origin/$branch is at $want"
     exit 0
   fi
   if [ "$code" -eq 0 ]; then
     die "git push said OK but origin/$branch is not at $want (remote: $(remote_sha 2>/dev/null || echo unreadable)); check the remote and retry: git ls-remote origin refs/heads/$branch && bash $0 $branch" 1
   fi
-  if grep -Eiq "$permanent" "$out" || ! grep -Eiq "$transient" "$out"; then
+  lines="$(grep -E "$git_lines" "$out" | grep -v '^pre-push:')"
+  if printf '%s\n' "$lines" | grep -Eiq "$permanent" || ! printf '%s\n' "$lines" | grep -Eiq "$transient"; then
     echo "push: failed and not retrying: the error is not a transient network one (read the git output above)." >&2
-    if grep -Eiq 'non-fast-forward|fetch first|\[rejected\]' "$out"; then
+    if printf '%s\n' "$lines" | grep -Eiq 'non-fast-forward|fetch first|\[rejected\]'; then
       echo "push: the remote has commits you lack; bring them in and push again: git fetch origin $branch && git merge --no-edit origin/$branch && bash $0 $branch" >&2
-    elif grep -Eiq 'error: 40[0-9]|HTTP/?[0-9.]* 40[0-9]|Authentication failed|Permission denied|could not read Username' "$out"; then
+    elif printf '%s\n' "$lines" | grep -Eiq 'returned error: 40[0-9]|HTTP/?[0-9.]* 40[0-9]|Authentication failed|Permission denied|could not read Username'; then
       echo "push: access was refused; check the credentials or permissions for origin: git remote -v" >&2
     else
       echo "push: a hook or the remote rejected it; read its output above, fix that and run again: bash $0 $branch" >&2
