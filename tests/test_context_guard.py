@@ -277,6 +277,47 @@ class SystemIsLargest(Base):  # D122
         self.assertFalse(cg.system_is_largest(self.root, self.cfg(), str(self.tmp / "nope.jsonl")))
 
 
+class MeasureOnce(Base):  # B41: one --state reads the transcript and computes the culprits once
+    def counting(self):
+        calls = {"startups": 0, "breakdown": 0}
+        real_startups, real_breakdown = cg.startups, cg.breakdown
+
+        def startups(path):
+            calls["startups"] += 1
+            return real_startups(path)
+
+        def breakdown(*a, **kw):
+            calls["breakdown"] += 1
+            return real_breakdown(*a, **kw)
+
+        cg.startups, cg.breakdown = startups, breakdown
+        self.addCleanup(setattr, cg, "startups", real_startups)
+        self.addCleanup(setattr, cg, "breakdown", real_breakdown)
+        return calls
+
+    def test_report_and_system_check_share_one_measure(self):
+        path = self.transcript([turn(100000), BOUNDARY])
+        calls = self.counting()
+        m = cg.Measure(self.root, self.cfg(), path, 500)
+        self.assertTrue(cg.system_is_largest(None, None, None, measure=m))
+        out = cg.report(None, None, None, "compact", measure=m)
+        self.assertIn("ALARM: compaction loop", "\n".join(out))
+        self.assertIn(cg.SYSTEM_ADVICE, "\n".join(out))  # the culprit list and the loop alarm, from the same parts
+        self.assertEqual(calls, {"startups": 1, "breakdown": 1})
+
+    def test_measure_matches_the_path_form(self):
+        path = self.transcript([turn(100000), BOUNDARY])
+        m = cg.Measure(self.root, self.cfg(), path, 500)
+        self.assertEqual(cg.report(None, None, None, "compact", measure=m),
+                         cg.report(self.root, self.cfg(), path, "compact", hook_chars=500))
+
+    def test_small_startup_computes_no_culprit_in_the_report(self):
+        path = self.transcript([turn(20000)])
+        calls = self.counting()
+        cg.report(self.root, self.cfg(), path, "clear")
+        self.assertEqual(calls, {"startups": 1, "breakdown": 0})
+
+
 class Cli(Base):
     def run_cli(self, script, *args):
         env = dict(os.environ, HOME=str(self.home))

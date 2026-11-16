@@ -162,8 +162,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   the background, commits at every stable point (`WIP:` if still red, so a restart loses nothing), does not touch the
   log or push, and returns its branch. In its worktree it runs the tests of what it touches (`tests-for.py --diff
   {head} --run`), the linters and the copy check, not the full `check`: the check's lock is one per repo, so parallel full checks run in series. The main
-  session has each one reviewed (step 3), merges them one by one (merge, never rebase; `merge-branch.sh --defer-check` but the last), runs one full `check` on the
-  merged wave without editing the tree while it runs (drafts go to the scratchpad), writes the log and pushes. When the session folder is not the repo root
+  session has each one reviewed (step 3), merges them one by one (merge, never rebase; `merge-branch.sh --defer-check` but the last, whose merge runs the only full
+  `check`, with the whole wave's related tests; no edits to the tree meanwhile, drafts to the scratchpad), writes the log and pushes. When the session folder is not the repo root
   (a cloud session starts in `/home/user`, next to other repos, and `isolation` lands the worktree in the wrong one),
   the main session creates each worktree itself with `git -C <repo> worktree add <folder> -b agent/<id>-<topic>` and
   puts that folder in the brief, without `isolation` (put it under `.claude/worktrees/`: a folder elsewhere is not

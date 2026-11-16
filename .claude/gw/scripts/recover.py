@@ -594,6 +594,15 @@ def state(root, transcript, out, logs, source="startup"):
             frozen.append(sum(len(l) + 1 for l in head + log_lines + tail))
         return frozen[0]
 
+    measured = []
+
+    def measure():
+        """The transcript read once for every startup warning (B41), with the frozen hook output."""
+        if not measured:
+            import context_guard
+            measured.append(context_guard.Measure(root, config.load(root), path, hook_chars()))
+        return measured[0]
+
     if path:
         n = count_compactions(path)
         task = task_start(root, branch)
@@ -617,7 +626,7 @@ def state(root, transcript, out, logs, source="startup"):
                 advice = None
                 try:
                     import context_guard
-                    if context_guard.system_is_largest(root, config.load(root), path, hook_chars()):
+                    if context_guard.system_is_largest(None, None, None, measure=measure()):
                         advice = context_guard.SYSTEM_ADVICE  # D122: a /clear does not shrink what weighs most
                 except Exception:  # a warning must not cost the whole state
                     advice = None
@@ -631,7 +640,7 @@ def state(root, transcript, out, logs, source="startup"):
         say("- Compactions in this session: unknown (no session transcript found)")
     try:
         import context_guard
-        tail.extend(context_guard.report(root, config.load(root), path, source, hook_chars=hook_chars()))
+        tail.extend(context_guard.report(None, None, None, source, measure=measure()))
     except Exception as exc:  # only a warning: --state never fails
         tail.append(f"- Startup context: could not be measured ({exc})")
     session = f" --session {path}" if path else ""

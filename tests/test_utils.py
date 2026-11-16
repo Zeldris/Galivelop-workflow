@@ -1957,8 +1957,8 @@ class MergeBranch(Base):
         self.assertEqual(self.merge_trailers(), ["Refs: D16"], "same Refs handling")
         self.assertIn(self.DEFERRED, out)
         self.assertIn("no green was recorded", out)
-        self.assertIn("After the LAST merge of the wave run one full check: bash ", out)
-        self.assertIn("or merge the last branch without --defer-check", out)
+        self.assertIn("merge the LAST branch without --defer-check, which runs the full check and the related tests "
+                      "of the whole wave", out)
         self.assertFalse((self.p.work / "check.log").exists(), "the check did not run")
         self.assertFalse((self.p.work / "related.log").exists(), "the related tests did not run")
         self.assertEqual(list((self.p.work / ".git" / "gw").glob("check-*.log")), [])
@@ -2042,6 +2042,81 @@ class MergeBranch(Base):
         code, out = self.p.script("merge-branch.sh", "main", "m")
         self.assertEqual(code, 0, out)
         self.assertIn("nothing to merge", out)
+        self.assertIn("no check, related tests or cleanup ran", out)  # B41: said, not silent
+        self.assertNotIn("check OK", out)
+
+    # B41: the wave of --defer-check merges is closed by the last merge, with the related tests of all its branches.
+    def wave_file(self):
+        return self.p.work / ".git" / "gw" / "merge-wave-main"
+
+    def test_the_last_merge_runs_the_related_tests_of_the_whole_wave(self):
+        self.related()
+        base = self.p.sha()
+        self.agent(name="worktree-agent-1", path="a.txt", text="good\n")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--defer-check")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.wave_file().read_text().strip(), base, "the wave base is HEAD before its first merge")
+        self.assertIn(f"Wave open since {base[:7]}", out)
+        self.agent(name="worktree-agent-2", path="b.txt", text="good\n")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-2", "Merge agent 2", "--defer-check")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.wave_file().read_text().strip(), base, "a later deferred merge keeps the base")
+        self.agent(name="worktree-agent-3", path="c.txt", text="good\n")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-3", "Merge agent 3", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.p.work / "related.log").read_text(), "a.txt b.txt c.txt\n", "the whole wave, once")
+        self.assertIn(f"related tests OK (whole wave since {base[:7]})", out)
+        self.assertFalse(self.wave_file().exists(), "the wave is closed")
+
+    def test_a_red_wave_stays_open_and_a_rerun_after_the_fix_closes_it(self):
+        self.related()
+        self.p.write("related.sh", 'echo "$@" >> related.log\nfor f; do grep -q good "$f" || exit 1; done\n')
+        self.p.commit("every file must hold good", env=DAY)
+        self.agent(name="worktree-agent-1", path="a.txt", text="bad\n")
+        self.assertEqual(self.p.script("merge-branch.sh", "worktree-agent-1", "Merge 1", "--defer-check")[0], 0)
+        self.agent(name="worktree-agent-2", path="b.txt", text="good\n")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-2", "Merge agent 2")
+        self.assertEqual(code, 1, out)
+        self.assertIn("RELATED TESTS FAILED", out)
+        self.assertEqual((self.p.work / "related.log").read_text(), "a.txt b.txt\n", "the deferred branch counts")
+        self.assertIn("stays open: once fixed and committed, rerun this script on worktree-agent-2 without "
+                      "--defer-check to close it", out)
+        self.assertTrue(self.wave_file().is_file())
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-2", "Merge agent 2")  # rerun before the fix
+        self.assertEqual(code, 1, out)
+        self.assertIn("RELATED TESTS FAILED. Nothing was merged now (the wave is being closed)", out)
+        self.assertNotIn("HEAD^1", out, "nothing to undo: HEAD may be the fix itself")
+        self.p.write("a.txt", "good\n")
+        self.p.git("add", "a.txt")
+        self.p.git("commit", "-q", "-m", "fix a", env=DAY)
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-2", "Merge agent 2", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertIn("nothing to merge, worktree-agent-2 is already in the current branch; closing the open wave", out)
+        self.assertIn("check OK", out)
+        self.assertIn("related tests OK (whole wave since", out)
+        self.assertFalse(self.wave_file().exists())
+        self.assertNotIn("worktree-agent-2", self.branches(), "and cleans up")
+
+    def test_a_stale_wave_base_is_dropped(self):
+        self.related()
+        self.wave_file().parent.mkdir(parents=True, exist_ok=True)
+        self.wave_file().write_text("0123456789012345678901234567890123456789\n")
+        self.agent(text="good\n")
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.p.work / "related.log").read_text(), "a.txt\n", "only this merge")
+        self.assertNotIn("whole wave", out)
+        self.assertFalse(self.wave_file().exists())
+
+    def test_a_log_conflict_closing_a_wave_names_its_related_tests(self):
+        self.related()
+        self.agent(name="worktree-agent-9", path="z.txt", text="good\n")
+        self.assertEqual(self.p.script("merge-branch.sh", "worktree-agent-9", "Merge 9", "--defer-check")[0], 0)
+        self.conflict(LOG)
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
+        self.assertEqual(code, 1, out)
+        self.assertRegex(out, r"then run: bash \S+check\.sh --quiet && f=\$\(mktemp\) && git diff --name-only "
+                              r"--no-renames [0-9a-f]{7} HEAD .*related-tests\.sh .* && rm -f \S+merge-wave-main")
 
 
 class RedWithoutFix(Base):

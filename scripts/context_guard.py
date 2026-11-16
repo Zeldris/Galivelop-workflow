@@ -212,15 +212,35 @@ def culprits(root, cfg, measured, hook_chars, carried_chars=0):
     return parts
 
 
-def culprit_lines(root, cfg, measured, hook_chars, carried_chars=0):
+def culprit_lines(root, cfg, measured, hook_chars, carried_chars=0, parts=None):
+    """One line per culprit; `parts` is a list culprits() already made (B41: measured once)."""
+    if parts is None:
+        parts = culprits(root, cfg, measured, hook_chars, carried_chars)
     return [f"  {label}: ~{fmt(t)} tokens ({round(100 * t / measured) if measured else 0} %) — fix: {fix}"
-            for label, t, fix in culprits(root, cfg, measured, hook_chars, carried_chars)]
+            for label, t, fix in parts]
+
+
+class Measure:
+    """One reading of the transcript for recover.py --state (B41): the startups are read once and the culprits of
+    the last one computed once, however many warnings use them. Build it after hook_chars is final."""
+
+    def __init__(self, root, cfg, path, hook_chars=0):
+        self.root, self.cfg, self.path, self.hook_chars = root, cfg, path, hook_chars
+        self.segs = [s for s in startups(path) if s["first_usage"] is not None] if path else []
+        self.last = self.segs[-1] if self.segs else None
+        self._culprits = None
+
+    def culprits(self):
+        """culprits() of the last measured startup, computed on the first call. None without one."""
+        if self._culprits is None and self.last:
+            self._culprits = culprits(self.root, self.cfg, self.last["first_usage"], self.hook_chars,
+                                      self.last.get("carried", 0))
+        return self._culprits
 
 
 def last_startup(path):
     """The last startup with a measured turn, or None."""
-    segs = [s for s in startups(path) if s["first_usage"] is not None] if path else []
-    return segs[-1] if segs else None
+    return Measure(None, None, path).last
 
 
 def startup_pct(seg, cfg):
@@ -228,42 +248,48 @@ def startup_pct(seg, cfg):
     return round(100 * seg["first_usage"] / cutoff) if cutoff else 0
 
 
-def system_weighs_most(root, cfg, seg, hook_chars=0):
+def system_weighs_most(root, cfg, seg, hook_chars=0, parts=None):
     """D122, the one rule: the startup `seg` is big (at least contextGuard.warn % of the cutoff), the system (prompt,
-    tools, MCP) is its largest culprit, so a /clear does not shrink it, and contextGuard.systemAdvice is on."""
+    tools, MCP) is its largest culprit, so a /clear does not shrink it, and contextGuard.systemAdvice is on. `parts`:
+    the culprits of `seg` if already computed."""
     guard = config.context_guard(cfg or {})
     if not guard["systemAdvice"] or startup_pct(seg, cfg) < guard["warn"]:
         return False
-    return culprits(root, cfg, seg["first_usage"], hook_chars, seg.get("carried", 0))[0][0] == SYSTEM
+    if parts is None:
+        parts = culprits(root, cfg, seg["first_usage"], hook_chars, seg.get("carried", 0))
+    return parts[0][0] == SYSTEM
 
 
-def system_is_largest(root, cfg, path, hook_chars=0):
-    """system_weighs_most for the last measured startup of the transcript. False when unknown. Never raises."""
+def system_is_largest(root, cfg, path, hook_chars=0, measure=None):
+    """system_weighs_most for the last measured startup of the transcript (or of `measure`, a Measure already made,
+    which then stands for root, cfg, path and hook_chars). False when unknown. Never raises."""
     try:
-        last = last_startup(path)
-        return bool(last) and system_weighs_most(root, cfg, last, hook_chars)
+        m = measure or Measure(root, cfg, path, hook_chars)
+        return bool(m.last) and system_weighs_most(m.root, m.cfg, m.last, m.hook_chars, parts=m.culprits())
     except Exception:  # fail open: unknown means the usual advice
         return False
 
 
-def report(root, cfg, path, source, hook_chars=0):
-    """Lines for recover.py --state about the startup context. Never raises."""
+def report(root, cfg, path, source, hook_chars=0, measure=None):
+    """Lines for recover.py --state about the startup context (`measure`: a Measure already made, which then stands
+    for root, cfg, path and hook_chars). Never raises."""
     unknown = "- Startup context: unknown (no measured turn yet after the last compaction or /clear)"
     try:
+        m = measure or Measure(root, cfg, path, hook_chars)
+        root, cfg, hook_chars, segs = m.root, m.cfg, m.hook_chars, m.segs
         guard = config.context_guard(cfg or {})
-        segs = [s for s in startups(path) if s["first_usage"] is not None] if path else []
         if not segs:
             return [unknown]
         # At SessionStart the current startup has no assistant turn yet, so the last measured one is the stretch
         # that just ended.
-        last = segs[-1]
+        last = m.last
         cutoff = cutoff_for(last["model"], cfg)
         pct = startup_pct(last, cfg)
         lines = [f"- Startup context of the last stretch: {fmt(last['first_usage'])} tokens = {pct} % of the "
                  f"compaction cutoff {fmt(cutoff)} (model {last['model']})"]
         if pct >= guard["warn"]:
             lines.append(f"- Warning: startup context above {guard['warn']} %: the culprits, largest first:")
-            lines += culprit_lines(root, cfg, last["first_usage"], hook_chars, last["carried"])
+            lines += culprit_lines(root, cfg, last["first_usage"], hook_chars, parts=m.culprits())
         if pct >= guard["alarm"]:
             lines.append(f"- ALARM: startup context above {guard['alarm']} %")
 
@@ -272,7 +298,7 @@ def report(root, cfg, path, source, hook_chars=0):
             return bool(c) and 100 * seg["first_usage"] / c >= guard["alarm"]
 
         if (source == "compact" and over(last)) or (len(segs) >= 2 and over(segs[-1]) and over(segs[-2])):
-            fix = (SYSTEM_ADVICE if system_weighs_most(root, cfg, last, hook_chars)
+            fix = (SYSTEM_ADVICE if system_weighs_most(root, cfg, last, hook_chars, parts=m.culprits())
                    else "push what there is and ask the user for /clear")
             lines.append(f"- ALARM: compaction loop: the previous stretch already started at {pct} % of the cutoff and "
                          f"compacted again. Stop: {fix}; the log's compaction budget applies (see above).")
