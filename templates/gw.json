@@ -112,7 +112,7 @@
   "branchPrefixes": {"agent": ["worktree-agent-*", "agent/*"], "keep": ["claude/*"]},
   "mergeCleanup": true,
   "pushRetryDelays": [2, 4, 8, 16],
-  "decisionsFile": "",
+  "decisionsFile": "docs/records/decisions.md",
   "wholeReadSkipExtensions": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".ico", ".pdf", ".ipynb"],
   "wholeReadPaths": [],
   "readPointers": {},

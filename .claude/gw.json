@@ -4,6 +4,7 @@
   "schemaVersion": 1,
   "language": "es",
   "pendingFile": "docs/records/pending.md",
+  "decisionsFile": "docs/records/decisions.md",
   "protectedBranch": "main",
   "authorDeny": [
     "Claude",

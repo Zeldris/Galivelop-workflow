@@ -34,9 +34,9 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
   handoff.py add-pending TEXT [--section HEADING]
                                                  append "- TEXT" at the end of the Pending section of `pendingFile`
                                                  (the log's own "Pendiente" / "Pending" section when unset), or at the
-                                                 end of the "## HEADING" / "### HEADING" of the file (created at the
-                                                 end when missing); the file is created when missing; prints one line,
-                                                 never the content (D95)
+                                                 end of its "### HEADING" subsection (case and edge spaces ignored;
+                                                 created at the end of Pending when missing); the file is created when
+                                                 missing; prints one line, never the content (D95)
   handoff.py add-decision TEXT [--date YYYY-MM-DD]
                                                  append "- <date> — TEXT" at the end of the "Decisiones" / "Decisions"
                                                  section of `decisionsFile` (the log when empty; the section is created
@@ -1034,30 +1034,46 @@ def split_lines(raw):
 
 
 def item_lines(text):
-    """`text` as list lines: the first gets "- " unless it already is an item ("- ", "- [ ]"); the rest are indented two
-    spaces."""
-    rows = text.strip().splitlines()
-    first = rows[0].strip()
-    return [first if first.startswith("- ") else "- " + first] + [("  " + l.rstrip()) if l.strip() else ""
-                                                                   for l in rows[1:]]
+    """`text` as list lines: the first becomes a "- " item (a "* ", "+ ", "1. " marker is replaced; "- [ ]" stays); the
+    others are indented two spaces and blank ones are dropped (a blank line would end the item)."""
+    rows = [l for l in text.strip().splitlines() if l.strip()]
+    first = re.sub(r"^(?:[-*+]|\d+[.)])\s+", "", rows[0].strip())
+    return ["- " + first] + ["  " + l.rstrip() for l in rows[1:]]
 
 
-def section_span(lines, heading_re):
-    """(head, end) of the first section whose heading matches `heading_re`; it ends at the next "## " heading (at the
-    next "## " or "### " one when it is itself a "### " heading); (None, None) when missing."""
-    head = next((i for i, l in enumerate(lines) if heading_re.match(l)), None)
+def fenced_lines(lines):
+    """The indexes of `lines` inside a fenced code block (```` ``` ```` or ``~~~``), fences included."""
+    inside, mark, out = False, "", set()
+    for i, l in enumerate(lines):
+        m = re.match(r"\s*(```+|~~~+)", l)
+        if m and (not inside or m.group(1)[0] == mark):
+            inside, mark = not inside, m.group(1)[0]
+            out.add(i)
+        elif inside:
+            out.add(i)
+    return out
+
+
+def section_span(lines, heading_re, lo=0, hi=None):
+    """(head, end) of the first section in lines[lo:hi] whose heading matches `heading_re`, outside code fences; it
+    ends at the next "## " heading (at the next "## " or "### " one when it is itself a "### " heading) or at `hi`;
+    (None, None) when missing."""
+    hi = len(lines) if hi is None else hi
+    fenced = fenced_lines(lines)
+    head = next((i for i in range(lo, hi) if i not in fenced and heading_re.match(lines[i])), None)
     if head is None:
         return None, None
     stops = ("## ", "### ") if lines[head].startswith("### ") else ("## ",)
-    return head, next((i for i in range(head + 1, len(lines)) if lines[i].startswith(stops)), len(lines))
+    return head, next((i for i in range(head + 1, hi) if i not in fenced and lines[i].startswith(stops)), hi)
 
 
-def insert_in_section(lines, head, end, items):
-    """Insert `items` after the last non-blank line of the section (head, end) of `lines`, in place."""
+def insert_in_section(lines, head, end, items, lead=False):
+    """Insert `items` after the last non-blank line of the section (head, end) of `lines`, in place (`lead`: after a
+    blank line)."""
     pos = end
     while pos > head + 1 and not lines[pos - 1].strip():
         pos -= 1
-    new = ([""] if pos == head + 1 else []) + items
+    new = ([""] if pos == head + 1 or lead else []) + items
     if end == pos and end < len(lines):  # no blank line before the next heading
         new.append("")
     lines[pos:pos] = new
@@ -1097,33 +1113,36 @@ def cmd_add_pending(ctx, args):
     own = gwconfig.pending_file(ctx.config)
     rel = own or ctx.log
     path = ctx.root / rel
+    section = re.sub(r"^#+\s*", "", args.section.strip()).strip() if args.section else ""
+    if args.section is not None and not section:
+        raise Usage(f"--section is empty; give a title: {me} add-pending \"the item\" --section \"Title\"")
     raw = read_for_add(path, me, "add-pending")
-    english = log_is_english(ctx)
     if raw is None:
         if not own:
             raise Usage(f"{path} does not exist; fix `log` in .claude/gw.json and rerun: {me} add-pending")
-        raw = pending_skeleton(english)
+        raw = pending_skeleton(log_is_english(ctx))
     lines, eol = split_lines(raw)
-    if args.section:
-        title = re.escape(args.section.strip())
-        head, end = section_span(lines, re.compile(rf"^###?\s+{title}\s*$"))
-        if head is None:
-            lines += ([""] if lines and lines[-1].strip() else []) + [f"## {args.section.strip()}"]
-            head, end = len(lines) - 1, len(lines)
+    head, end = section_span(lines, PENDING_HEADING)
+    if head is None and own:
+        lines += ([""] if lines and lines[-1].strip() else []) + ["## Pending" if log_is_english(ctx) else "## Pendiente"]
+        head, end = len(lines) - 1, len(lines)
+    elif head is None:
+        raise Usage(f"{path} has no \"## Pendiente\" / \"## Pending\" section; add the line \"## Pending\" to it "
+                    f"and rerun: {me} add-pending")
+    items = item_lines(args.text)
+    if section:  # a "### <title>" of the Pending section (case and edge spaces ignored); created at its end
+        sub, sub_end = section_span(lines, re.compile(rf"^###\s+{re.escape(section)}\s*$", re.I), head + 1, end)
+        if sub is None:
+            insert_in_section(lines, head, end, [f"### {section}", ""] + items, lead=True)
+        else:
+            insert_in_section(lines, sub, sub_end, items)
     else:
-        head, end = section_span(lines, PENDING_HEADING)
-        if head is None and own:
-            lines += ([""] if lines and lines[-1].strip() else []) + ["## Pending" if english else "## Pendiente"]
-            head, end = len(lines) - 1, len(lines)
-        elif head is None:
-            raise Usage(f"{path} has no \"## Pendiente\" / \"## Pending\" section; add the line \"## Pending\" to it "
-                        f"and rerun: {me} add-pending")
-    insert_in_section(lines, head, end, item_lines(args.text))
+        insert_in_section(lines, head, end, items)
     if own:
         count = pending_count("\n".join(lines))
     else:
-        h, e = pending_section(lines)
-        count = pending_count("\n".join(lines[h + 1:e])) if h is not None else 0
+        h, e = section_span(lines, PENDING_HEADING)
+        count = pending_count("\n".join(lines[h + 1:e]))
     write_added(path, lines, eol, me, "add-pending")
     print(f"handoff: added 1 item to {rel} ({count} in all)")
     return 0
@@ -1134,20 +1153,22 @@ def cmd_add_decision(ctx, args):
     if not args.text.strip():
         raise Usage(f"the text is empty; give it: {me} add-decision \"the decision\"")
     rel = gwconfig.decisions_file(ctx.config) or ctx.log
-    separate = rel != ctx.log
     path = ctx.root / rel
+    separate = path.resolve() != (ctx.root / ctx.log).resolve()
     raw = read_for_add(path, me, "add-decision")
-    english = log_is_english(ctx)
     if raw is None:
         if not separate:
             raise Usage(f"{path} does not exist; fix `log` in .claude/gw.json and rerun: {me} add-decision")
-        raw = "# Decisions\n\n## Decisions\n" if english else "# Decisiones\n\n## Decisiones\n"
+        raw = "# Decisions\n\n## Decisions\n" if log_is_english(ctx) else "# Decisiones\n\n## Decisiones\n"
     lines, eol = split_lines(raw)
-    item = item_lines(f"{args.date} — {args.text.strip()}")
+    text = re.sub(r"^\d{4}-\d{2}-\d{2}\s*[—–-]\s*", "", args.text.strip())  # the entry gets its date: never twice
+    if not text:
+        raise Usage(f"the text is empty (only a date was given); give it: {me} add-decision \"the decision\"")
+    item = item_lines(f"{args.date} — {text}")
     head, end = section_span(lines, DECISIONS_HEADING)
     if head is None:
-        title = "## Decisions" if english else "## Decisiones"
-        ph, _ = pending_section(lines)
+        title = "## Decisions" if log_is_english(ctx) else "## Decisiones"
+        ph, _ = section_span(lines, PENDING_HEADING)
         if ph is not None and not separate:
             lines[ph:ph] = [title, ""] + item + [""]
         else:
