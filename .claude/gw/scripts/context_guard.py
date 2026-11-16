@@ -171,14 +171,42 @@ def fmt(n):
     return f"{int(n):,}"
 
 
-def culprit_lines(root, cfg, measured, hook_chars):
+SYSTEM = "rest of the system (system prompt, tools, MCP)"
+SYSTEM_ADVICE = ("the largest part of the startup is the system (system prompt, tools, MCP), which /clear does not "
+                 "shrink: push what there is and disable the connectors/MCP servers you do not use (/context shows "
+                 "them) instead of asking for /clear")
+
+
+def culprits(root, cfg, measured, hook_chars):
+    """The breakdown plus the rest of the system, largest first: [(label, tokens, fix)]."""
     parts = breakdown(root, cfg, hook_chars)
     rest = max(0, measured - sum(t for _, t, _ in parts))
-    parts.append(("rest of the system (system prompt, tools, MCP)", rest,
-                  "fewer MCP servers/tools: /context shows them; disable the unused ones"))
+    parts.append((SYSTEM, rest, "fewer MCP servers/tools: /context shows them; disable the unused ones"))
     parts.sort(key=lambda p: -p[1])
+    return parts
+
+
+def culprit_lines(root, cfg, measured, hook_chars):
     return [f"  {label}: ~{fmt(t)} tokens ({round(100 * t / measured) if measured else 0} %) — fix: {fix}"
-            for label, t, fix in parts]
+            for label, t, fix in culprits(root, cfg, measured, hook_chars)]
+
+
+def last_startup(path):
+    """The last startup with a measured turn, or None."""
+    segs = [s for s in startups(path) if s["first_usage"] is not None] if path else []
+    return segs[-1] if segs else None
+
+
+def system_is_largest(root, cfg, path, hook_chars=0):
+    """True when the system (prompt, tools, MCP) is the largest culprit of the last measured startup (D122): then a
+    /clear does not shrink the startup. False when unknown. Never raises."""
+    try:
+        last = last_startup(path)
+        if not last:
+            return False
+        return culprits(root, cfg, last["first_usage"], hook_chars)[0][0] == SYSTEM
+    except Exception:  # fail open: unknown means the usual advice
+        return False
 
 
 def report(root, cfg, path, source, hook_chars=0):
@@ -207,9 +235,10 @@ def report(root, cfg, path, source, hook_chars=0):
             return bool(c) and 100 * seg["first_usage"] / c >= guard["alarm"]
 
         if (source == "compact" and over(last)) or (len(segs) >= 2 and over(segs[-1]) and over(segs[-2])):
+            fix = (SYSTEM_ADVICE if culprits(root, cfg, last["first_usage"], hook_chars)[0][0] == SYSTEM
+                   else "push what there is and ask the user for /clear")
             lines.append(f"- ALARM: compaction loop: the previous stretch already started at {pct} % of the cutoff and "
-                         "compacted again. Stop: push what there is and ask the user for /clear; the log's compaction "
-                         "budget applies (see above).")
+                         f"compacted again. Stop: {fix}; the log's compaction budget applies (see above).")
         return lines
     except Exception:  # fail open: a guard must not cost the whole state
         return [unknown]

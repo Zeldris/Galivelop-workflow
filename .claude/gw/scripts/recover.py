@@ -578,8 +578,18 @@ def state(root, transcript, out, logs, source="startup"):
         if budget is not None:
             say(f"- Compaction budget in the log: {budget}")
             if counted > budget:
-                say(f"- Warning: compaction budget exceeded ({counted} > {budget}): push and ask for /clear, or deal "
-                    f"the work out with gw-orchestrate-dealer")
+                try:
+                    import context_guard
+                    system = context_guard.system_is_largest(root, config.load(root), path,
+                                                             sum(len(l) + 1 for l in head + log_lines + tail))
+                except Exception:  # a warning must not cost the whole state
+                    system = False
+                if system:  # D122: a /clear does not shrink what weighs most
+                    say(f"- Warning: compaction budget exceeded ({counted} > {budget}): "
+                        f"{context_guard.SYSTEM_ADVICE}, or deal the work out with gw-orchestrate-dealer")
+                else:
+                    say(f"- Warning: compaction budget exceeded ({counted} > {budget}): push and ask for /clear, or "
+                        f"deal the work out with gw-orchestrate-dealer")
     else:
         say("- Compactions in this session: unknown (no session transcript found)")
     try:

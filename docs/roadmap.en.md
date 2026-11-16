@@ -261,6 +261,12 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | B39 | `measure.py`: "BY FILE" no longer counts `git config` arguments or an e-mail domain as files (`0.7.0` retro, T3; user, 2026-11-15) | done |
 | B40 | `version.py --release`: counts the harvest a patch brought from the minor's branch (already in its tag, but the commit that added it is new); it stopped the `0.7.0` push to `main` (user, 2026-11-15) | done |
 
+## `0.7.1` — patch
+
+| Id | Task | State |
+|---|---|---|
+| D122 | `recover.py --state`: with the compaction budget spent, if the biggest start-up cost (the `context_guard.py` breakdown) is the system (prompt, tools, MCP), the warning says a `/clear` will not lower it and only removing unused connectors will, instead of asking for `/clear`, with its test (`0.8` harvest, installer P1) | done (2026-11-16; also the compaction-loop alarm of `context_guard.py`) |
+
 ## `0.8` "Front end and other agents"
 
 | Id | Task | State |

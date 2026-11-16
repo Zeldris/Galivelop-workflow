@@ -262,6 +262,12 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | B39 | `measure.py`: «BY FILE» no cuenta como archivos los argumentos de `git config` ni el dominio de un correo (retro de la `0.7.0`, T3; usuario, 2026-11-15) | hecho |
 | B40 | `version.py --release`: cuenta la recogida que un parche se trajo de la rama de la menor (ya está en su etiqueta, pero el commit que la añadió es nuevo); la subida de la `0.7.0` a `main` la paraba (usuario, 2026-11-15) | hecho |
 
+## `0.7.1` — parche
+
+| Id | Tarea | Estado |
+|---|---|---|
+| D122 | `recover.py --state`: con el presupuesto de compactaciones pasado, si el mayor culpable del arranque (desglose de `context_guard.py`) es el sistema (prompt, herramientas, MCP), el aviso dice que un `/clear` no lo baja y que solo lo baja quitar conectores que no se usan, en vez de pedir `/clear`, con su test (recogida `0.8`, instalador P1) | hecho (2026-11-16; también la alarma de bucle de compactación de `context_guard.py`) |
+
 ## `0.8` «Front y otros agentes»
 
 | Id | Tarea | Estado |
