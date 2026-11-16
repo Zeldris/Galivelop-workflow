@@ -540,6 +540,15 @@ def review_trivial_lines(config):
     return _schema()["properties"]["reviewTrivialLines"]["default"]
 
 
+def push_retry_delays(config):
+    """The `pushRetryDelays` key (D94): the seconds push.sh waits before each retry of a transient push failure; the
+    schema default when absent or not a list of non-negative integers (an empty list is valid: no retries)."""
+    given = config.get("pushRetryDelays")
+    if isinstance(given, list) and all(isinstance(x, int) and not isinstance(x, bool) and x >= 0 for x in given):
+        return list(given)
+    return list(_schema()["properties"]["pushRetryDelays"]["default"])
+
+
 def test_map(config):
     """The `testMap` key as a dict (rules, command) (E21)."""
     return _section(config, "testMap")

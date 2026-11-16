@@ -369,6 +369,7 @@
         "redWithoutFix",
         "branchPrefixes",
         "mergeCleanup",
+        "pushRetryDelays",
         "wholeReadSkipExtensions",
         "wholeReadPaths",
         "readPointers",
@@ -1239,6 +1240,12 @@
       },
       "default": {"agent": ["worktree-agent-*", "agent/*"], "keep": ["claude/*"]},
       "description": "merge-branch.sh branch cleanup, shell globs: agent = the branches it may delete after a merge (a branch whose worktree is under .claude/worktrees/ also counts); keep = branches it never deletes (the protected branch and the current one never are either). The ids of a task are still read from agent/<id>-<topic>."
+    },
+    "pushRetryDelays": {
+      "type": "array",
+      "items": {"type": "integer", "minimum": 0},
+      "default": [2, 4, 8, 16],
+      "description": "Seconds push.sh waits before each retry of a push that failed for a transient reason (network, timeout, HTTP 5xx): one retry per item. An empty list = no retries. Any other failure (a hook, non-fast-forward, 403) is never retried."
     },
     "mergeCleanup": {
       "type": "boolean",

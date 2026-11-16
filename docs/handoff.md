@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI en verde). Etiqueta y release `v0.7.1` creadas por el agente desde una sesión local (2026-11-16, a petición del usuario) |
-| Siguiente paso | Revisión del bloque E58-E61 + B41 hecha (8 arreglos). Siguiente: la tarea de la `0.8` que elija el usuario (propuestas: D94 + D95, D61 + D62, C1-C10, C11-C13). Presupuesto de compactaciones: 1 |
+| Siguiente paso | D94 hecho; siguiente: D95 (`handoff.py add-pending` y `add-decision`). Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-16 — Revisión del bloque E58-E61 + B41 (8 hallazgos arreglados): `whole-read.py` no cuenta la salida a un archivo o a un filtro (`| head`, `> o`), cierra el `cd` de una subshell, entiende `<<\EOF` y los valores de opción (`nl -b a`, `sed -l`), apunta dos lecturas a la vez (cerrojo) y olvida las de la sesión tras `/clear` o compactación (`recover.py --state`); `merge-branch.sh` solo escribe la oleada cuando entra su primera fusión; `handoff.py move-pending` no tira prosa que nombra `pending.md`; el aviso de `Findings:` no mira los trailers ni una negación; `context_guard` no calcula culpables si no los usa. Dos leves, a `pending.md`
-2. 2026-11-16 — B41: `merge-branch.sh` guarda la base de una oleada de `--defer-check` (`<git common dir>/gw/merge-wave-<rama>`) y la fusión que la cierra corre los tests relacionados de toda ella; «nothing to merge» con la oleada abierta la cierra (y sin ofrecer deshacer `HEAD`), sin ella avisa de que no corrió nada; el dealer pide un solo check; `context_guard.Measure` lee el transcript y calcula los culpables una vez por `--state`
-3. 2026-11-16 — `0.7.1` en `main` (`7a6d1bd`): CI de `64770b0` en verde, check entero en local, `reviewed.sh` y subida con confirmación del usuario; textos de la release en `release-v0.7.1.md`
-4. 2026-11-16 — E58: `whole-read.py` también vigila Bash (`cat`, `sed` sin `-n` y parecidas, con `cd` y sin cuerpos de heredoc); claves `readPointers` (orden que sustituye la lectura), `wholeReadRepeatOnly` (por defecto solo avisa al releer entero un archivo sin cambios en la sesión) y `wholeReadStaleDays`
-5. 2026-11-16 — E59: `recover.py --state` da la línea «Remote» (al día, por delante, por detrás o divergida de `origin/<rama>`, con la orden que lo arregla); el paso 2 de «Al empezar» de `AGENTS.md` y las plantillas apunta a ella
+1. 2026-11-16 — D94: `scripts/push.sh [<rama>]` sube con reintentos (`pushRetryDelays`, por defecto 2, 4, 8 y 16 s, solo ante fallos de red o HTTP 5xx) y da éxito solo si `git ls-remote` coincide con la rama local; un rechazo (gancho, non-fast-forward, 403) falla de inmediato con la orden que lo arregla; `AGENTS.md` y las plantillas apuntan a él
+2. 2026-11-16 — Revisión del bloque E58-E61 + B41 (8 hallazgos arreglados): `whole-read.py` no cuenta la salida a un archivo o a un filtro (`| head`, `> o`), cierra el `cd` de una subshell, entiende `<<\EOF` y los valores de opción (`nl -b a`, `sed -l`), apunta dos lecturas a la vez (cerrojo) y olvida las de la sesión tras `/clear` o compactación (`recover.py --state`); `merge-branch.sh` solo escribe la oleada cuando entra su primera fusión; `handoff.py move-pending` no tira prosa que nombra `pending.md`; el aviso de `Findings:` no mira los trailers ni una negación; `context_guard` no calcula culpables si no los usa. Dos leves, a `pending.md`
+3. 2026-11-16 — B41: `merge-branch.sh` guarda la base de una oleada de `--defer-check` (`<git common dir>/gw/merge-wave-<rama>`) y la fusión que la cierra corre los tests relacionados de toda ella; «nothing to merge» con la oleada abierta la cierra (y sin ofrecer deshacer `HEAD`), sin ella avisa de que no corrió nada; el dealer pide un solo check; `context_guard.Measure` lee el transcript y calcula los culpables una vez por `--state`
+4. 2026-11-16 — `0.7.1` en `main` (`7a6d1bd`): CI de `64770b0` en verde, check entero en local, `reviewed.sh` y subida con confirmación del usuario; textos de la release en `release-v0.7.1.md`
+5. 2026-11-16 — E58: `whole-read.py` también vigila Bash (`cat`, `sed` sin `-n` y parecidas, con `cd` y sin cuerpos de heredoc); claves `readPointers` (orden que sustituye la lectura), `wholeReadRepeatOnly` (por defecto solo avisa al releer entero un archivo sin cambios en la sesión) y `wholeReadStaleDays`
 
 ## Pendiente
 

@@ -301,7 +301,7 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | D80 | Automatic warning of a stale `gw-scout-updates` seal (`0.6` closing harvest, private-project-1 P5) | pending (moves from `0.7`) |
 | D83 | `apply.py --update` adds the names its migration renames to the project's `staleRefs` (extends D46) (`0.6` closing harvest, instalador P4) | pending (moves from `0.7`) |
 | D87 | `gw-init` offers a dual licence: MIT for code and CC BY-NC-SA 4.0 for content, with the third-party note (`0.6` closing harvest, world-maker P6) | pending (moves from `0.7`) |
-| D94 | `scripts/push.sh <branch>`: retries at 2, 4, 8 and 16 s and success only if `git ls-remote` matches `HEAD`; `AGENTS.md` points to it (`0.6.0` harvest, image-generator P4) | pending (moves from `0.7`) |
+| D94 | `scripts/push.sh <branch>`: retries at 2, 4, 8 and 16 s and success only if `git ls-remote` matches `HEAD`; `AGENTS.md` points to it (`0.6.0` harvest, image-generator P4) | done (2026-11-16) |
 | D95 | `handoff.py add-pending` and `add-decision`: add to the log without reading it (`0.6.0` harvest, installer P3) | pending (moves from `0.7`) |
 | D96 | Long log cells: `handoff.py` moves a row's closed items to "Done", or a second cap that fails (new key) (`0.6.0` harvest, image-generator P2) | pending (moves from `0.7`) |
 | E49 | `gw-init` with `agentSignatures: false` writes the "no signatures" rule into `CLAUDE.md` against the attribution reminder (`0.6.0` harvest, image-generator P5) | pending (moves from `0.7`) |

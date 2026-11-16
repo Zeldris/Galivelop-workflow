@@ -302,7 +302,7 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | D80 | Aviso automático de un sello de `gw-scout-updates` caducado (recogida de cierre `0.6`, private-project-1 P5) | pendiente (pasa de la `0.7`) |
 | D83 | `apply.py --update` añade al `staleRefs` del proyecto los nombres que renombra su migración (amplía D46) (recogida de cierre `0.6`, instalador P4) | pendiente (pasa de la `0.7`) |
 | D87 | `gw-init` ofrece licencia doble: MIT para el código y CC BY-NC-SA 4.0 para el contenido, con la nota de terceros (recogida de cierre `0.6`, world-maker P6) | pendiente (pasa de la `0.7`) |
-| D94 | `scripts/push.sh <rama>`: reintentos 2, 4, 8 y 16 s y éxito solo si `git ls-remote` coincide con `HEAD`; `AGENTS.md` apunta a él (recogida `0.6.0`, image-generator P4) | pendiente (pasa de la `0.7`) |
+| D94 | `scripts/push.sh <rama>`: reintentos 2, 4, 8 y 16 s y éxito solo si `git ls-remote` coincide con `HEAD`; `AGENTS.md` apunta a él (recogida `0.6.0`, image-generator P4) | hecho (2026-11-16) |
 | D95 | `handoff.py add-pending` y `add-decision`: añadir a la bitácora sin leerla (recogida `0.6.0`, instalador P3) | pendiente (pasa de la `0.7`) |
 | D96 | Celdas largas de la bitácora: `handoff.py` mueve a «Hecho» lo cerrado de una fila, o un segundo tope que falla (clave nueva) (recogida `0.6.0`, image-generator P2) | pendiente (pasa de la `0.7`) |
 | E49 | `gw-init` con `agentSignatures: false` escribe en `CLAUDE.md` la regla «sin firmas» frente al recordatorio de atribución (recogida `0.6.0`, image-generator P5) | pendiente (pasa de la `0.7`) |

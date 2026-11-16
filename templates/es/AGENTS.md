@@ -34,7 +34,8 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
   está haciendo. Una tarea a medias dice qué está hecho y qué falta.
 - Si hay que parar con algo a medias o en rojo: commit igualmente con `WIP:` al principio del mensaje y, en la
   bitácora, qué falla y por qué. Nunca dejar trabajo solo en local.
-- Push a la rama de trabajo (`git push -u origin <rama>`); si falla por red, reintentar con espera 2, 4, 8 y 16 s.
+- Push a la rama de trabajo con `bash .claude/gw/scripts/push.sh <rama>` (reintenta si falla por red, `pushRetryDelays`, y
+  da por subido solo lo que `git ls-remote` confirma).
   El push y el check largo se lanzan en segundo plano y se espera su aviso, sin bucles de espera.
 - **Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla**: el cambio puede
   haberse guardado, o incluso subido, y repetirlo lo duplica.
