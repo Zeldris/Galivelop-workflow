@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.7.0` en `main`** (`c1e75c8`, 2026-11-15; CI en verde; release `v0.7.0` publicada) |
-| Siguiente paso | Fase 1 de la `0.7.1` hecha (5 hallazgos de D122 arreglados; CI de `9827158` en verde tras relanzar el job de macOS, cancelado sin máquina). Siguiente: mirar el CI de este commit y la fase 2 (`/gw-opt-tokens` y `/retro`), sus propuestas al usuario; luego fase 3, `main` y fusionar `main` en `ccr-d1e2d496-0vzck8`. Presupuesto de compactaciones: 1 |
+| Siguiente paso | Fase 2 de la `0.7.1` decidida (`retro-2026-11-16-patch-0-7-1.md`): R1 = D123 hecho; R2 = D124 (`version.py`) y R3 = D125 (`ci-status.py`) en curso con dos `gw-worker`, sin subir; B41 a la `0.8`; T1 aplazada. Siguiente: revisar y subir D124/D125 con su CHANGELOG, fase 3 (`/code-review` de esos commits, `reviewed.sh`), `main` y fusionar `main` en `ccr-d1e2d496-0vzck8`. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-16 — Fase 1 de la `0.7.1`: `/code-review` en un `gw-reviewer` limpio, 5 hallazgos de D122 arreglados: el consejo de quitar conectores solo con un arranque por encima de `warn` y una sola regla (`context_guard.system_weighs_most`), la conversación arrastrada (resumen de compactación, primer prompt) contada aparte del sistema, el mismo `hook_chars` en el aviso y la lista de `recover.py`, y la clave `contextGuard.systemAdvice`; un leve a `pending.md`
-2. 2026-11-16 — D122 (parche `0.7.1`): con el presupuesto de compactaciones pasado y el resto del sistema como mayor culpable del arranque, `recover.py --state` pide quitar conectores que no se usan en vez de `/clear` (`context_guard.system_is_largest`); la alarma de bucle de compactación, igual; tests en `test_context_guard.py` y `test_session_log.py`
-3. 2026-11-15 — Fase 2 de la `0.7.0`: `/gw-opt-tokens` y `/retro` (`retro-2026-11-15-release-0-7-0.md`), aprobadas por el usuario: E62 (`gw-worker` con el modelo y el esfuerzo de la llamada para todos los peldaños, nuevo `gw-reviewer` y aviso de `subagent-cap.py`), B39 (`measure.py` sin argumentos de `git config` como archivos) y B38 (barrido de `handoff.py`) a la `0.8`
-4. 2026-11-15 — Fase 1 de la `0.7.0`: lo que quedaba desde el último `Findings:` (`95a54e7`) era trivial (arreglo de `test_waits.py` de `3bc4d53`, sellos de versión de `b44cd14`; la `0.6.2` fusionada ya pasó su fase 1), revisado en la sesión (B27) sin hallazgos; CI de `b44cd14` en verde y check entero en local
-5. 2026-11-15 — Parche `0.6.2` (D109-D121) en `main` (`cd856ca`, CI en verde) y release `v0.6.2` publicada por el agente con `gh release create` y los textos de `docs/records/release-v0.6.2.md`; `version/0.6.2` fusionada en esta rama (propuestas de H21 con su estado de aquí, roadmap con D109-D121 hechos, leves del parche a pendientes)
+1. 2026-11-16 — Fase 2 de la `0.7.1`: `/gw-opt-tokens` (arranque de 94k, ~82k del sistema) y `/retro`; el usuario aprueba R1-R3 (D123-D125) y B41 (barrido de `merge-branch.sh`, a la `0.8`) y aplaza T1 (quitar conectores sin uso); D123 hecho (`templates/gw.json` en `testMap`)
+2. 2026-11-16 — Fase 1 de la `0.7.1`: `/code-review` en un `gw-reviewer` limpio, 5 hallazgos de D122 arreglados: el consejo de quitar conectores solo con un arranque por encima de `warn` y una sola regla (`context_guard.system_weighs_most`), la conversación arrastrada (resumen de compactación, primer prompt) contada aparte del sistema, el mismo `hook_chars` en el aviso y la lista de `recover.py`, y la clave `contextGuard.systemAdvice`; un leve a `pending.md`
+3. 2026-11-16 — D122 (parche `0.7.1`): con el presupuesto de compactaciones pasado y el resto del sistema como mayor culpable del arranque, `recover.py --state` pide quitar conectores que no se usan en vez de `/clear` (`context_guard.system_is_largest`); la alarma de bucle de compactación, igual; tests en `test_context_guard.py` y `test_session_log.py`
+4. 2026-11-15 — Fase 2 de la `0.7.0`: `/gw-opt-tokens` y `/retro` (`retro-2026-11-15-release-0-7-0.md`), aprobadas por el usuario: E62 (`gw-worker` con el modelo y el esfuerzo de la llamada para todos los peldaños, nuevo `gw-reviewer` y aviso de `subagent-cap.py`), B39 (`measure.py` sin argumentos de `git config` como archivos) y B38 (barrido de `handoff.py`) a la `0.8`
+5. 2026-11-15 — Fase 1 de la `0.7.0`: lo que quedaba desde el último `Findings:` (`95a54e7`) era trivial (arreglo de `test_waits.py` de `3bc4d53`, sellos de versión de `b44cd14`; la `0.6.2` fusionada ya pasó su fase 1), revisado en la sesión (B27) sin hallazgos; CI de `b44cd14` en verde y check entero en local
 
 ## Pendiente
 

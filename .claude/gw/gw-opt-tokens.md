@@ -80,6 +80,9 @@ las crea una vez; desde entonces son del proyecto.
   media, suelo 96k y techo 165k, 2 compactaciones, 15M; un subagente de revisión (30 llamadas, arranque 64k, 2,9M).
   Arrastre mayor: `docs/handoff.md` 14 lecturas (326k) con 27.860 caracteres sobre el tope de 20.000. Cambios: retro
   `0.5.2` R4 (archivar la bitácora tras publicar) a la `0.6`.
+- 2026-11-16, parche `0.7.1` (nube, tramo tras `/clear`, 2 h): principal 60 llamadas, 124k de media, suelo 91k y
+  techo 151k, 0 compactaciones, 7,4M; arranque 94k (59 % del corte), ~82k del resto del sistema (prompt,
+  herramientas, MCP); subagentes 2 `gw-reviewer` con arranque ~20k. T1 (quitar conectores sin uso) aplazada.
 - 2026-11-15, `0.7.0` (sesión larga en la nube, últimas 48 h): principal 1.254 llamadas, 126k de media, suelo 102k y
   techo 164k, 11 compactaciones (presupuesto 1), 158M; subagentes 10 (338 llamadas, 29M): 6 `gw-worker` con arranque
   ~13k y 4 `general-purpose` con `opus` con ~65k (181 llamadas, 21M). Cambio: E62.

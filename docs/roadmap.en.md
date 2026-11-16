@@ -266,6 +266,9 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | Id | Task | State |
 |---|---|---|
 | D122 | `recover.py --state`: with the compaction budget spent, if the biggest start-up cost (the `context_guard.py` breakdown) is the system (prompt, tools, MCP), the warning says a `/clear` will not lower it and only removing unused connectors will, instead of asking for `/clear`, with its test (`0.8` harvest, installer P1) | done (2026-11-16; also the compaction-loop alarm of `context_guard.py`) |
+| D123 | `testMap`: a change to `templates/gw.json` brings `tests/test_config.py`, like `schema/` (`0.7.1` patch retro, R1) | done (2026-11-16) |
+| D124 | `version.py <X.Y.Z>` warns at the seal when the version's harvest is missing, with the command that brings it, instead of waiting for `--release` (`0.7.1` patch retro, R2) | pending |
+| D125 | `ci-status.py`: a job cancelled before running any step (no runner) stays red, but says so and suggests rerunning the failed jobs (`0.7.1` patch retro, R3) | pending |
 
 ## `0.8` "Front end and other agents"
 
@@ -317,6 +320,7 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | E59 | `recover.py --state` compares the local commit with `origin/<branch>` (up to date, ahead, behind); step 2 of "At the start" points to that output (`0.7` closing harvest, private-project-4 P2) | pending |
 | E60 | The `commit-msg` warns, without rejecting, about review fixes with no `Findings:` (words in a key) (`0.7` closing harvest, private-project-1 P1) | pending |
 | E61 | `handoff.py set-row` and `close-row` print the resulting row and `n/limit` (`0.7` closing harvest, world-maker-fantasy P4) | pending |
+| B41 | Sweep of `scripts/merge-branch.sh` (E57): with `--defer-check` nobody runs the tests of the deferred branches; «nothing to merge» exits 0 with no check or warning; the dealer's line 165 asking for two full checks; and the `context_guard.py` minor (repeated computations in `--state`) (`0.7.1` patch retro) | pending |
 
 ## `0.9` "Stable"
 
