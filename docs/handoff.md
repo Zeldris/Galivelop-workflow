@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.7.0` en `main`** (`c1e75c8`, 2026-11-15; CI en verde; release `v0.7.0` publicada) |
-| Siguiente paso | Fase 2 de la `0.7.1` aplicada (`retro-2026-11-16-patch-0-7-1.md`): D123-D125 hechos; B41 a la `0.8`; T1 aplazada. Siguiente: CI de este commit, fase 3 (`/code-review` de D123-D125 en un `gw-reviewer`, `reviewed.sh`), `bash scripts/check.sh`, `main` y fusionar `main` en `ccr-d1e2d496-0vzck8`. Presupuesto de compactaciones: 1 |
+| Siguiente paso | Fase 3 de la `0.7.1`: `/code-review` de D123-D125 hecho (2 arreglados, 2 leves a `pending.md`). Siguiente: CI de este commit, `bash scripts/check.sh`, confirmación del usuario, `reviewed.sh` y `main`; luego fusionar `main` en `ccr-d1e2d496-0vzck8`. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -39,15 +39,15 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-16 — Fase 2 de la `0.7.1`: `/gw-opt-tokens` (arranque de 94k, ~82k del sistema) y `/retro`; el usuario aprueba R1-R3 (D123-D125) y B41 (barrido de `merge-branch.sh`, a la `0.8`) y aplaza T1 (quitar conectores sin uso); D123 (`templates/gw.json` en `testMap`), D124 (`version.py` avisa al sellar si falta la recogida) y D125 (`ci-status.py`: job cancelado sin pasos, con la orden para relanzarlo) hechos
-2. 2026-11-16 — Fase 1 de la `0.7.1`: `/code-review` en un `gw-reviewer` limpio, 5 hallazgos de D122 arreglados: el consejo de quitar conectores solo con un arranque por encima de `warn` y una sola regla (`context_guard.system_weighs_most`), la conversación arrastrada (resumen de compactación, primer prompt) contada aparte del sistema, el mismo `hook_chars` en el aviso y la lista de `recover.py`, y la clave `contextGuard.systemAdvice`; un leve a `pending.md`
-3. 2026-11-16 — D122 (parche `0.7.1`): con el presupuesto de compactaciones pasado y el resto del sistema como mayor culpable del arranque, `recover.py --state` pide quitar conectores que no se usan en vez de `/clear` (`context_guard.system_is_largest`); la alarma de bucle de compactación, igual; tests en `test_context_guard.py` y `test_session_log.py`
-4. 2026-11-15 — Fase 2 de la `0.7.0`: `/gw-opt-tokens` y `/retro` (`retro-2026-11-15-release-0-7-0.md`), aprobadas por el usuario: E62 (`gw-worker` con el modelo y el esfuerzo de la llamada para todos los peldaños, nuevo `gw-reviewer` y aviso de `subagent-cap.py`), B39 (`measure.py` sin argumentos de `git config` como archivos) y B38 (barrido de `handoff.py`) a la `0.8`
-5. 2026-11-15 — Fase 1 de la `0.7.0`: lo que quedaba desde el último `Findings:` (`95a54e7`) era trivial (arreglo de `test_waits.py` de `3bc4d53`, sellos de versión de `b44cd14`; la `0.6.2` fusionada ya pasó su fase 1), revisado en la sesión (B27) sin hallazgos; CI de `b44cd14` en verde y check entero en local
+1. 2026-11-16 — Fase 3 de la `0.7.1`: `/code-review` de D123-D125 en un `gw-reviewer`, 4 hallazgos: el aviso de relanzar de `ci-status.py` va por check-run y no por nombre (dos workflows con un job `check`), y su texto ya no afirma «no runner was assigned» (también sale si se canceló en cola); los dos leves (`--failed` con job cancelado sin pasos, orden de reintento al sellar en `version.py`) a `pending.md`
+2. 2026-11-16 — Fase 2 de la `0.7.1`: `/gw-opt-tokens` (arranque de 94k, ~82k del sistema) y `/retro`; el usuario aprueba R1-R3 (D123-D125) y B41 (barrido de `merge-branch.sh`, a la `0.8`) y aplaza T1 (quitar conectores sin uso); D123 (`templates/gw.json` en `testMap`), D124 (`version.py` avisa al sellar si falta la recogida) y D125 (`ci-status.py`: job cancelado sin pasos, con la orden para relanzarlo) hechos
+3. 2026-11-16 — Fase 1 de la `0.7.1`: `/code-review` en un `gw-reviewer` limpio, 5 hallazgos de D122 arreglados: el consejo de quitar conectores solo con un arranque por encima de `warn` y una sola regla (`context_guard.system_weighs_most`), la conversación arrastrada (resumen de compactación, primer prompt) contada aparte del sistema, el mismo `hook_chars` en el aviso y la lista de `recover.py`, y la clave `contextGuard.systemAdvice`; un leve a `pending.md`
+4. 2026-11-16 — D122 (parche `0.7.1`): con el presupuesto de compactaciones pasado y el resto del sistema como mayor culpable del arranque, `recover.py --state` pide quitar conectores que no se usan en vez de `/clear` (`context_guard.system_is_largest`); la alarma de bucle de compactación, igual; tests en `test_context_guard.py` y `test_session_log.py`
+5. 2026-11-15 — Fase 2 de la `0.7.0`: `/gw-opt-tokens` y `/retro` (`retro-2026-11-15-release-0-7-0.md`), aprobadas por el usuario: E62 (`gw-worker` con el modelo y el esfuerzo de la llamada para todos los peldaños, nuevo `gw-reviewer` y aviso de `subagent-cap.py`), B39 (`measure.py` sin argumentos de `git config` como archivos) y B38 (barrido de `handoff.py`) a la `0.8`
 
 ## Pendiente
 
-Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (85 entradas); se añade y se quita allí.
+Lo pendiente está en [`docs/records/pending.md`](records/pending.md) (87 entradas); se añade y se quita allí.
 
 ## Comprobar el estado
 

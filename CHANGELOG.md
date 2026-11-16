@@ -23,8 +23,9 @@ opening harvest (`0.7.1` rows in `docs/roadmap.en.md`).
   `contextGuard.systemAdvice: false`.
 - Recogida al sellar (D124): `version.py <X.Y.Z>` avisa ya, sin fallar, si a la versión nueva le falta su recogida,
   con la orden que la trae, en vez de esperar a `version.py --release` antes de `main`.
-- CI sin máquina (D125): `ci-status.py` sigue dando en rojo un job cancelado antes de ejecutar ningún paso, pero lo
-  dice y da la orden para relanzarlo (`gh run rerun <run> --failed`); en `--json`, `unstarted_cancelled`.
+- CI sin máquina (D125): `ci-status.py` sigue dando en rojo un job cancelado antes de ejecutar ningún paso (sin
+  máquina o cancelado en cola), pero lo dice y da la orden para relanzarlo (`gh run rerun <run> --failed`); en
+  `--json`, `unstarted_cancelled`.
 
 ### EN
 
@@ -35,8 +36,9 @@ opening harvest (`0.7.1` rows in `docs/roadmap.en.md`).
   summary, first prompt) counted apart; `contextGuard.systemAdvice: false` turns it off.
 - Harvest at the seal (D124): `version.py <X.Y.Z>` warns right away, without failing, when the new version has no
   harvest, with the command that brings it, instead of waiting for `version.py --release` before `main`.
-- CI with no runner (D125): `ci-status.py` still reports red a job cancelled before running any step, but says so and
-  gives the command to rerun it (`gh run rerun <run> --failed`); in `--json`, `unstarted_cancelled`.
+- CI with no runner (D125): `ci-status.py` still reports red a job cancelled before running any step (no runner, or
+  cancelled while queued), but says so and gives the command to rerun it (`gh run rerun <run> --failed`); in
+  `--json`, `unstarted_cancelled`.
 
 ## [0.7.0] - 2026-11-15
 

@@ -343,11 +343,19 @@ class CiStatus(unittest.TestCase):
     def test_cancelled_without_steps_stays_red_and_suggests_the_rerun(self):
         job = json.dumps({"html_url": "https://github.com/o/r/actions/runs/77/job/101", "steps": []})
         code, out = self.ci(run=runs(("build", "success"), ("macos", "cancelled")), env={"GH_JOB": job})
-        self.assertCi((code, out), 1, "red", "macos: cancelled (cancelled without running any step",
-                      "no runner", "gh run rerun 77 --failed")
+        self.assertCi((code, out), 1, "red", "macos: cancelled (cancelled before any step ran",
+                      "no runner, or cancelled while queued", "gh run rerun 77 --failed")
         code, out = self.ci("--json", run=runs(("macos", "cancelled")), env={"GH_JOB": job})
         self.assertEqual(code, 1, out)
         self.assertEqual(json.loads(out)["unstarted_cancelled"], ["macos"])
+
+    def test_cancelled_hint_follows_the_check_run_not_its_name(self):
+        job = json.dumps({"html_url": "https://github.com/o/r/actions/runs/77/job/101", "steps": []})
+        code, out = self.ci("--json", run=runs(("check", "cancelled"), ("check", "failure")), env={"GH_JOB": job})
+        self.assertEqual(code, 1, out)
+        data = json.loads(out)
+        self.assertIn("gh run rerun 77 --failed", data["problems"][0])
+        self.assertEqual((data["problems"][1], data["unstarted_cancelled"]), ("check: failure", ["check"]))
 
     def test_cancelled_with_a_step_run_is_a_plain_red(self):
         job = json.dumps({"steps": [{"name": "Set up job", "status": "completed", "conclusion": "success"},
