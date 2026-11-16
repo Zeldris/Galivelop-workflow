@@ -509,6 +509,11 @@ def main(argv):
     for path in skipped:
         print(f"skipped {path.relative_to(ROOT)}: not UTF-8; convert it and retry: python3 scripts/version.py {new}",
               file=sys.stderr)
+    # D124: warn now, not only at --release, when this version would have no harvest (the seal still succeeds).
+    code, tag = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD")
+    if code == 0 and tag and tag[1:] != new:
+        for line in harvest_check(new, tag):
+            print(f"warning: {line}", file=sys.stderr)
     print(f"version {current} -> {new}; now: python3 scripts/apply.py . && fill in the CHANGELOG entry")
     return 1 if skipped else 0
 

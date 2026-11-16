@@ -339,6 +339,30 @@ class CiStatus(unittest.TestCase):
         self.assertNotIn("whole log", out)
 
 
+    # D125: cancelled before any step ran --------------------------------------------------------------------------
+    def test_cancelled_without_steps_stays_red_and_suggests_the_rerun(self):
+        job = json.dumps({"html_url": "https://github.com/o/r/actions/runs/77/job/101", "steps": []})
+        code, out = self.ci(run=runs(("build", "success"), ("macos", "cancelled")), env={"GH_JOB": job})
+        self.assertCi((code, out), 1, "red", "macos: cancelled (cancelled without running any step",
+                      "no runner", "gh run rerun 77 --failed")
+        code, out = self.ci("--json", run=runs(("macos", "cancelled")), env={"GH_JOB": job})
+        self.assertEqual(code, 1, out)
+        self.assertEqual(json.loads(out)["unstarted_cancelled"], ["macos"])
+
+    def test_cancelled_with_a_step_run_is_a_plain_red(self):
+        job = json.dumps({"steps": [{"name": "Set up job", "status": "completed", "conclusion": "success"},
+                                    {"name": "Check", "status": "completed", "conclusion": "cancelled"}]})
+        code, out = self.ci("--json", run=runs(("macos", "cancelled")), env={"GH_JOB": job})
+        self.assertEqual(code, 1, out)
+        data = json.loads(out)
+        self.assertEqual((data["state"], data["problems"], data["unstarted_cancelled"]), ("red", ["macos: cancelled"], []))
+
+    def test_cancelled_whose_steps_cannot_be_read_is_a_plain_red(self):
+        code, out = self.ci(run=runs(("macos", "cancelled")), env={"GH_NO_JOB": "1"})
+        self.assertCi((code, out), 1, "macos: cancelled")
+        self.assertNotIn("rerun", out)
+
+
 class LogExcerpt(unittest.TestCase):
     def setUp(self):
         import importlib.util

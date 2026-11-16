@@ -267,8 +267,8 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 |---|---|---|
 | D122 | `recover.py --state`: with the compaction budget spent, if the biggest start-up cost (the `context_guard.py` breakdown) is the system (prompt, tools, MCP), the warning says a `/clear` will not lower it and only removing unused connectors will, instead of asking for `/clear`, with its test (`0.8` harvest, installer P1) | done (2026-11-16; also the compaction-loop alarm of `context_guard.py`) |
 | D123 | `testMap`: a change to `templates/gw.json` brings `tests/test_config.py`, like `schema/` (`0.7.1` patch retro, R1) | done (2026-11-16) |
-| D124 | `version.py <X.Y.Z>` warns at the seal when the version's harvest is missing, with the command that brings it, instead of waiting for `--release` (`0.7.1` patch retro, R2) | pending |
-| D125 | `ci-status.py`: a job cancelled before running any step (no runner) stays red, but says so and suggests rerunning the failed jobs (`0.7.1` patch retro, R3) | pending |
+| D124 | `version.py <X.Y.Z>` warns at the seal when the version's harvest is missing, with the command that brings it, instead of waiting for `--release` (`0.7.1` patch retro, R2) | done (2026-11-16) |
+| D125 | `ci-status.py`: a job cancelled before running any step (no runner) stays red, but says so and suggests rerunning the failed jobs (`0.7.1` patch retro, R3) | done (2026-11-16) |
 
 ## `0.8` "Front end and other agents"
 

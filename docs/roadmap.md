@@ -268,8 +268,8 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 |---|---|---|
 | D122 | `recover.py --state`: con el presupuesto de compactaciones pasado, si el mayor culpable del arranque (desglose de `context_guard.py`) es el sistema (prompt, herramientas, MCP), el aviso dice que un `/clear` no lo baja y que solo lo baja quitar conectores que no se usan, en vez de pedir `/clear`, con su test (recogida `0.8`, instalador P1) | hecho (2026-11-16; también la alarma de bucle de compactación de `context_guard.py`) |
 | D123 | `testMap`: un cambio en `templates/gw.json` trae `tests/test_config.py`, como `schema/` (retro del parche `0.7.1`, R1) | hecho (2026-11-16) |
-| D124 | `version.py <X.Y.Z>` avisa al sellar si falta la recogida de la versión, con la orden que la trae, en vez de esperar a `--release` (retro del parche `0.7.1`, R2) | pendiente |
-| D125 | `ci-status.py`: un job cancelado sin ningún paso ejecutado (sin máquina) sigue en rojo, pero lo dice y sugiere relanzar los jobs fallidos (retro del parche `0.7.1`, R3) | pendiente |
+| D124 | `version.py <X.Y.Z>` avisa al sellar si falta la recogida de la versión, con la orden que la trae, en vez de esperar a `--release` (retro del parche `0.7.1`, R2) | hecho (2026-11-16) |
+| D125 | `ci-status.py`: un job cancelado sin ningún paso ejecutado (sin máquina) sigue en rojo, pero lo dice y sugiere relanzar los jobs fallidos (retro del parche `0.7.1`, R3) | hecho (2026-11-16) |
 
 ## `0.8` «Front y otros agentes»
 

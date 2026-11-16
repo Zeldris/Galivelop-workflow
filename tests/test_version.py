@@ -246,6 +246,31 @@ class Version(unittest.TestCase):
         r = run(tmp, "--release")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
+    def test_the_seal_warns_at_once_when_the_new_version_has_no_harvest(self):
+        """D124: `version.py X.Y.Z` prints the --release harvest warning on stderr; the seal still exits 0."""
+        tmp = self.tmp
+        self.git("init", "-q")
+        self.harvest()
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        r = run(tmp, "9.8.7")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("warning: no harvest for 9.8.7", r.stderr)
+        self.assertIn("\n  git checkout <sha> -- docs/propuestas/<file>.md", r.stderr)
+        self.assertNotIn("no harvest", r.stdout)
+
+    def test_the_seal_does_not_warn_when_the_harvest_is_there(self):
+        tmp = self.tmp
+        self.git("init", "-q")
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        (tmp / "docs" / "propuestas").mkdir(parents=True)
+        (tmp / "docs" / "propuestas" / "2026-10-25-wmf.md").write_text("# Harvest wmf — 2026-10-25\n")
+        self.commit_all("harvest")
+        r = run(tmp, "9.8.7")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertNotIn("no harvest", r.stderr)
+
     def test_a_harvest_a_patch_brought_from_the_minor_branch_still_counts(self):
         """B40: the 0.6.2 patch brought the 0.7 closing harvest with `git checkout <sha> -- <file>`, so the file was
         already in the tag; the commit that added it on the minor's branch is still new since the tag."""
