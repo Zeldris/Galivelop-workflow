@@ -118,8 +118,9 @@ undo=", or undo the merge with: git reset --hard HEAD^1"
 # B41: the wave of --defer-check merges. Its base (HEAD before the first deferred merge) is kept per branch in
 # <git common dir>/gw/merge-wave-<branch>, so the merge that closes the wave runs the related tests of every branch
 # of it, not only of its own. A base that is no longer in HEAD's history (reset, other branch) is dropped.
-common="$(git rev-parse --git-common-dir 2>/dev/null)" && common="$(cd "$common" && pwd)" || {
-  echo "merge-branch: cannot find the git common dir; run it inside the repository: cd $root" >&2; exit 2; }
+if ! common="$(git rev-parse --git-common-dir 2>/dev/null)" || ! common="$(cd "$common" && pwd)"; then
+  echo "merge-branch: cannot find the git common dir; run it inside the repository: cd $root" >&2; exit 2
+fi
 wave_file="$common/gw/merge-wave-$(printf '%s' "$(git branch --show-current)" | tr -c 'A-Za-z0-9._-' '_')"
 wave_base=""
 if [ -f "$wave_file" ]; then
