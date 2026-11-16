@@ -371,6 +371,9 @@
         "mergeCleanup",
         "wholeReadSkipExtensions",
         "wholeReadPaths",
+        "readPointers",
+        "wholeReadRepeatOnly",
+        "wholeReadStaleDays",
         "harvest",
         "applyDiffLines",
         "ciGreenConclusions",
@@ -1252,6 +1255,24 @@
       "items": {"type": "string", "minLength": 1},
       "default": [],
       "description": "Repo-relative files or folders (a folder ends with /) the whole-read warning watches besides the log, logArchive and recordsDir."
+    },
+    "readPointers": {
+      "type": "object",
+      "propertyNames": {"minLength": 1},
+      "additionalProperties": {"type": "string", "minLength": 1},
+      "default": {},
+      "description": "{\"<repo-relative file, or folder ending with />\": \"<command>\"}: files the whole-read warning watches (Read and Bash) and the command its note gives instead of reading them whole; it wins over the note for the log or a record."
+    },
+    "wholeReadRepeatOnly": {
+      "type": "boolean",
+      "default": true,
+      "description": "true: the whole-read warning speaks only when this session already read the same file whole and it has not changed since (same size and modification time); false: on every whole read over wholeReadWarnBytes."
+    },
+    "wholeReadStaleDays": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 7,
+      "description": "Days without a write after which whole-read.py deletes the other sessions' gw-reads-*.json files (own regular files only) when it creates a new one."
     },
     "privateCheck": {
       "anyOf": [

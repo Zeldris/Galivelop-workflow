@@ -307,7 +307,7 @@ class Apply(unittest.TestCase):
         s = json.loads(p.read(".claude/settings.json"))
         reads = [e for e in s["hooks"]["PreToolUse"] if any("whole-read.py" in h["command"] for h in e["hooks"])]
         self.assertEqual(len(reads), 1, s["hooks"]["PreToolUse"])
-        self.assertEqual(reads[0]["matcher"], "Read")
+        self.assertEqual(reads[0]["matcher"], "^(Read|Bash)$")
         before = p.read(".claude/settings.json")
         self.applied()
         self.assertEqual(p.read(".claude/settings.json"), before, "a second run adds nothing")
