@@ -236,7 +236,7 @@ class Config(unittest.TestCase):
     def test_context_guard_default_and_own_values(self):
         self.write(VALID)
         default = {"cutoff": 0, "window": 200000, "autocompactShare": 0.8, "warn": 25, "alarm": 50,
-                   "charsPerToken": 3.5, "bigWindow": 1000000}
+                   "charsPerToken": 3.5, "bigWindow": 1000000, "systemAdvice": True}
         self.assertEqual(json.loads(cli(self.tmp, "get", "contextGuard").stdout), default)
         self.assertEqual(config.context_guard({}), default)
         self.assertEqual(config.context_guard({"contextGuard": {"cutoff": 140000}}), dict(default, cutoff=140000))

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.7.0
+# galivelop-workflow v0.7.1
 """Startup-context and compaction-loop guard (B21). Imported by recover.py --state; also a CLI for hand use.
 
 After a /clear or a compaction the session starts again with the log state, AGENTS.md/CLAUDE.md, hook output, skills
@@ -68,14 +68,31 @@ def is_boundary(entry):
             or bool(entry.get("isCompactSummary")))
 
 
+def text_chars(entry):
+    """Characters of the text a transcript line carries into the context (message content), 0 if none."""
+    message = entry.get("message")
+    content = message.get("content") if isinstance(message, dict) else None
+    if isinstance(content, str):
+        return len(content)
+    total = 0
+    for part in content if isinstance(content, list) else []:
+        if isinstance(part, dict):
+            for key in ("text", "content"):
+                value = part.get(key)
+                total += len(value) if isinstance(value, str) else len(json.dumps(value)) if value else 0
+    return total
+
+
 def startups(path):
     """One segment per stretch between boundaries (file start, compact_boundary, compaction summary), in order:
     {"start": timestamp or "", "first_usage": tokens of its first measured assistant turn or None, "model": id or
-    None}."""
-    segments = [{"start": "", "first_usage": None, "model": None}]
+    None, "carried": characters of the conversation before that turn (compaction summary, first prompt), which a
+    /clear drops}."""
+    segments = [{"start": "", "first_usage": None, "model": None, "carried": 0}]
     for entry in entries(path):
         if is_boundary(entry):
-            segments.append({"start": str(entry.get("timestamp") or ""), "first_usage": None, "model": None})
+            segments.append({"start": str(entry.get("timestamp") or ""), "first_usage": None, "model": None,
+                             "carried": text_chars(entry) if entry.get("isCompactSummary") else 0})
             continue
         seg = segments[-1]
         if seg["first_usage"] is None:
@@ -85,6 +102,8 @@ def startups(path):
                 seg["model"] = entry["message"].get("model")
                 if not seg["start"]:
                     seg["start"] = str(entry.get("timestamp") or "")
+            elif not entry.get("isSidechain"):
+                seg["carried"] += text_chars(entry)
     return segments
 
 
@@ -171,14 +190,60 @@ def fmt(n):
     return f"{int(n):,}"
 
 
-def culprit_lines(root, cfg, measured, hook_chars):
+SYSTEM = "rest of the system (system prompt, tools, MCP)"
+SYSTEM_ADVICE = ("the largest part of the startup is the system (system prompt, tools, MCP), which /clear does not "
+                 "shrink: push what there is and disable the connectors/MCP servers you do not use (/context shows "
+                 "them) instead of asking for /clear")
+
+
+CARRIED = "conversation carried over (compaction summary, first prompt)"
+
+
+def culprits(root, cfg, measured, hook_chars, carried_chars=0):
+    """The breakdown, the conversation carried over and the rest of the system, largest first: [(label, tokens,
+    fix)]."""
     parts = breakdown(root, cfg, hook_chars)
+    if carried_chars:
+        parts.append((CARRIED, int(carried_chars / chars_per_token(cfg)),
+                      "a /clear drops it: push what there is and ask the user for /clear"))
     rest = max(0, measured - sum(t for _, t, _ in parts))
-    parts.append(("rest of the system (system prompt, tools, MCP)", rest,
-                  "fewer MCP servers/tools: /context shows them; disable the unused ones"))
+    parts.append((SYSTEM, rest, "fewer MCP servers/tools: /context shows them; disable the unused ones"))
     parts.sort(key=lambda p: -p[1])
+    return parts
+
+
+def culprit_lines(root, cfg, measured, hook_chars, carried_chars=0):
     return [f"  {label}: ~{fmt(t)} tokens ({round(100 * t / measured) if measured else 0} %) — fix: {fix}"
-            for label, t, fix in parts]
+            for label, t, fix in culprits(root, cfg, measured, hook_chars, carried_chars)]
+
+
+def last_startup(path):
+    """The last startup with a measured turn, or None."""
+    segs = [s for s in startups(path) if s["first_usage"] is not None] if path else []
+    return segs[-1] if segs else None
+
+
+def startup_pct(seg, cfg):
+    cutoff = cutoff_for(seg["model"], cfg)
+    return round(100 * seg["first_usage"] / cutoff) if cutoff else 0
+
+
+def system_weighs_most(root, cfg, seg, hook_chars=0):
+    """D122, the one rule: the startup `seg` is big (at least contextGuard.warn % of the cutoff), the system (prompt,
+    tools, MCP) is its largest culprit, so a /clear does not shrink it, and contextGuard.systemAdvice is on."""
+    guard = config.context_guard(cfg or {})
+    if not guard["systemAdvice"] or startup_pct(seg, cfg) < guard["warn"]:
+        return False
+    return culprits(root, cfg, seg["first_usage"], hook_chars, seg.get("carried", 0))[0][0] == SYSTEM
+
+
+def system_is_largest(root, cfg, path, hook_chars=0):
+    """system_weighs_most for the last measured startup of the transcript. False when unknown. Never raises."""
+    try:
+        last = last_startup(path)
+        return bool(last) and system_weighs_most(root, cfg, last, hook_chars)
+    except Exception:  # fail open: unknown means the usual advice
+        return False
 
 
 def report(root, cfg, path, source, hook_chars=0):
@@ -193,12 +258,12 @@ def report(root, cfg, path, source, hook_chars=0):
         # that just ended.
         last = segs[-1]
         cutoff = cutoff_for(last["model"], cfg)
-        pct = round(100 * last["first_usage"] / cutoff) if cutoff else 0
+        pct = startup_pct(last, cfg)
         lines = [f"- Startup context of the last stretch: {fmt(last['first_usage'])} tokens = {pct} % of the "
                  f"compaction cutoff {fmt(cutoff)} (model {last['model']})"]
         if pct >= guard["warn"]:
             lines.append(f"- Warning: startup context above {guard['warn']} %: the culprits, largest first:")
-            lines += culprit_lines(root, cfg, last["first_usage"], hook_chars)
+            lines += culprit_lines(root, cfg, last["first_usage"], hook_chars, last["carried"])
         if pct >= guard["alarm"]:
             lines.append(f"- ALARM: startup context above {guard['alarm']} %")
 
@@ -207,9 +272,10 @@ def report(root, cfg, path, source, hook_chars=0):
             return bool(c) and 100 * seg["first_usage"] / c >= guard["alarm"]
 
         if (source == "compact" and over(last)) or (len(segs) >= 2 and over(segs[-1]) and over(segs[-2])):
+            fix = (SYSTEM_ADVICE if system_weighs_most(root, cfg, last, hook_chars)
+                   else "push what there is and ask the user for /clear")
             lines.append(f"- ALARM: compaction loop: the previous stretch already started at {pct} % of the cutoff and "
-                         "compacted again. Stop: push what there is and ask the user for /clear; the log's compaction "
-                         "budget applies (see above).")
+                         f"compacted again. Stop: {fix}; the log's compaction budget applies (see above).")
         return lines
     except Exception:  # fail open: a guard must not cost the whole state
         return [unknown]

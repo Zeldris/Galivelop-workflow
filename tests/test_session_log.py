@@ -652,6 +652,24 @@ class Recover(Base):
         self.assertIn("- Warning: compaction budget exceeded (3 > 2): push and ask for /clear, or deal the work out "
                       "with gw-orchestrate-dealer", out)
 
+    def test_an_exceeded_budget_with_the_system_largest_does_not_ask_for_clear(self):  # D122
+        p = self.p
+        p.git("checkout", "-q", "-b", "feature")
+        p.write("docs/log.md", "# Log\n\n## State\n\n| Field | Value |\n|---|---|\n| Next step | go. "
+                "Presupuesto de compactaciones: 1 |\n")
+        p.commit("task work")
+        boundary = {"type": "system", "subtype": "compact_boundary", "timestamp": "2999-01-01T00:00:00Z"}
+        usage = {"input_tokens": 10, "cache_creation_input_tokens": 99890, "cache_read_input_tokens": 100}
+        turn = {"type": "assistant", "message": {"model": "claude-sonnet-5-5", "usage": usage}}
+        p.transcript(p.work, [boundary, turn, boundary])
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        warning = [l for l in out.splitlines() if "budget exceeded (2 > 1)" in l]
+        self.assertEqual(len(warning), 1, out)
+        self.assertIn("/clear does not shrink", warning[0])
+        self.assertIn("disable the connectors/MCP servers you do not use", warning[0])
+        self.assertNotIn("ask for /clear", warning[0])
+
     # ---- D85: overdue block review
 
     def overdue(self, p, lines, message="big work"):

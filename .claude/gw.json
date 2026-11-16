@@ -1,6 +1,6 @@
 {
   "$schema": "../schema/gw.schema.json",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "schemaVersion": 1,
   "language": "es",
   "pendingFile": "docs/records/pending.md",
@@ -169,6 +169,12 @@
       },
       {
         "paths": "^schema/",
+        "tests": [
+          "tests/test_config.py"
+        ]
+      },
+      {
+        "paths": "^templates/gw\\.json$",
         "tests": [
           "tests/test_config.py"
         ]

@@ -8,6 +8,38 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.7.1] - 2026-11-16
+
+Parche de la recogida de apertura de la `0.8` (filas de la `0.7.1` en `docs/roadmap.md`). / Patch from the `0.8`
+opening harvest (`0.7.1` rows in `docs/roadmap.en.md`).
+
+### ES
+
+- Contexto de arranque (D122): con el presupuesto de compactaciones pasado, si el mayor culpable del arranque es el
+  resto del sistema (prompt, herramientas, MCP), el aviso de `recover.py --state` dice que un `/clear` no lo baja y
+  pide quitar los conectores y servidores MCP que no se usan en vez de `/clear`; la alarma de bucle de compactación
+  de `context_guard.py` hace lo mismo. Solo con un arranque grande (por encima de `contextGuard.warn`), con la
+  conversación que arrastra (resumen de compactación, primer prompt) contada aparte, y se apaga con
+  `contextGuard.systemAdvice: false`.
+- Recogida al sellar (D124): `version.py <X.Y.Z>` avisa ya, sin fallar, si a la versión nueva le falta su recogida,
+  con la orden que la trae, en vez de esperar a `version.py --release` antes de `main`.
+- CI sin máquina (D125): `ci-status.py` sigue dando en rojo un job cancelado antes de ejecutar ningún paso (sin
+  máquina o cancelado en cola), pero lo dice y da la orden para relanzarlo (`gh run rerun <run> --failed`); en
+  `--json`, `unstarted_cancelled`.
+
+### EN
+
+- Startup context (D122): with the compaction budget spent, if the largest culprit of the startup is the rest of the
+  system (prompt, tools, MCP), the `recover.py --state` warning says a `/clear` does not shrink it and asks to
+  disable the unused connectors and MCP servers instead of `/clear`; the compaction-loop alarm of `context_guard.py`
+  does the same. Only for a big startup (over `contextGuard.warn`), with the conversation it carries over (compaction
+  summary, first prompt) counted apart; `contextGuard.systemAdvice: false` turns it off.
+- Harvest at the seal (D124): `version.py <X.Y.Z>` warns right away, without failing, when the new version has no
+  harvest, with the command that brings it, instead of waiting for `version.py --release` before `main`.
+- CI with no runner (D125): `ci-status.py` still reports red a job cancelled before running any step (no runner, or
+  cancelled while queued), but says so and gives the command to rerun it (`gh run rerun <run> --failed`); in
+  `--json`, `unstarted_cancelled`.
+
 ## [0.7.0] - 2026-11-15
 
 Versión «Preguntar» publicada con lo hecho; lo pendiente de la `0.7` pasa a la `0.8` (filas de la `0.7` en

@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | **`0.7` «Preguntar»: `ccr-d1e2d496-0vzck8`** (hace de `version/0.7.0`), con `main` fusionado. `main` = `c1e75c8` = **`0.7.0`** (2026-11-15, etiqueta y release `v0.7.0`). `version/1.0.0` se queda con el diseño (`docs/design/`) |
+| Rama | **`0.8`: `ccr-d1e2d496-0vzck8`**, con `main` fusionado. `main` = `7a6d1bd` = **`0.7.1`** (2026-11-16, parche desde `version/0.7.1`). `version/1.0.0` se queda con el diseño (`docs/design/`) |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | **`0.7.0` en `main`** (`c1e75c8`, 2026-11-15; CI en verde). Etiqueta y release `v0.7.0` creadas por el agente desde una sesión local (`gh release create`, 2026-11-15, a petición del usuario) con los textos de `docs/records/release-v0.7.0.md` |
-| Siguiente paso | Los pequeños de la `0.8` de la recogida (E58-E61) están hechos. Siguiente: el parche `0.7.1` (D122, rama `version/0.7.1` sacada de `main`) o la tarea de la `0.8` que elija el usuario. Presupuesto de compactaciones: 1 |
+| Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI en verde). Release `v0.7.1`: ver «Siguiente paso» |
+| Siguiente paso | Publicar la release `v0.7.1` con `docs/records/release-v0.7.1.md` si no está; luego la tarea de la `0.8` que elija el usuario (B41 y el resto de su roadmap). Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-16 — E58: `whole-read.py` también vigila Bash (`cat`, `sed` sin `-n` y parecidas, con `cd` y sin cuerpos de heredoc); claves `readPointers` (orden que sustituye la lectura), `wholeReadRepeatOnly` (por defecto solo avisa al releer entero un archivo sin cambios en la sesión) y `wholeReadStaleDays`
-2. 2026-11-16 — E59: `recover.py --state` da la línea «Remote» (al día, por delante, por detrás o divergida de `origin/<rama>`, con la orden que lo arregla); el paso 2 de «Al empezar» de `AGENTS.md` y las plantillas apunta a ella
-3. 2026-11-16 — E60: el `commit-msg` avisa, sin rechazar, de un mensaje de arreglos de revisión sin `Findings:` (clave `metrics.quality.findingsWords`, `[]` lo apaga; con `commitRefs` o `commitNext`)
-4. 2026-11-16 — E61: `handoff.py set-row` y `close-row` imprimen la fila tal como queda y `n/límite` (copia en `.claude/gw/scripts/`, tests en `test_utils.py`)
-5. 2026-11-15 — Barrido B38 de `handoff.py`: el puntero de pendientes ya no lleva cuenta (la da `recover.py`, que cuenta todo el archivo); `check` lee el archivo del commit subido (`--pending` en el `pre-push`) y avisa si le falta la sección que `archive` exige; `move-pending` no borra elementos y escribe de forma atómica
+1. 2026-11-16 — `0.7.1` en `main` (`7a6d1bd`): CI de `64770b0` en verde, check entero en local, `reviewed.sh` y subida con confirmación del usuario; textos de la release en `release-v0.7.1.md`
+2. 2026-11-16 — E58: `whole-read.py` también vigila Bash (`cat`, `sed` sin `-n` y parecidas, con `cd` y sin cuerpos de heredoc); claves `readPointers` (orden que sustituye la lectura), `wholeReadRepeatOnly` (por defecto solo avisa al releer entero un archivo sin cambios en la sesión) y `wholeReadStaleDays`
+3. 2026-11-16 — E59: `recover.py --state` da la línea «Remote» (al día, por delante, por detrás o divergida de `origin/<rama>`, con la orden que lo arregla); el paso 2 de «Al empezar» de `AGENTS.md` y las plantillas apunta a ella
+4. 2026-11-16 — E60: el `commit-msg` avisa, sin rechazar, de un mensaje de arreglos de revisión sin `Findings:` (clave `metrics.quality.findingsWords`, `[]` lo apaga; con `commitRefs` o `commitNext`)
+5. 2026-11-16 — E61: `handoff.py set-row` y `close-row` imprimen la fila tal como queda y `n/límite` (copia en `.claude/gw/scripts/`, tests en `test_utils.py`)
 
 ## Pendiente
 
