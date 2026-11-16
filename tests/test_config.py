@@ -214,7 +214,9 @@ class Config(unittest.TestCase):
         self.assertIn("$.selector.cases[0].sessionEffort", r.stderr)
 
     def test_metrics_quality_defaults_fill_key_by_key(self):
-        default = {"findingsTrailer": "Findings", "retriesTrailer": "Retries", "reworkTypes": ["fix", "revert"]}
+        default = {"findingsTrailer": "Findings", "retriesTrailer": "Retries", "reworkTypes": ["fix", "revert"],
+                   "findingsWords": ["hallazgo", "hallazgos", "finding", "findings", "arreglos de la revisión",
+                                     "review fixes"]}
         self.assertEqual(config.metrics({})["quality"], default)
         self.assertEqual(config.metrics({"metrics": {"quality": {"retriesTrailer": "Tries"}}})["quality"],
                          dict(default, retriesTrailer="Tries"))
@@ -224,6 +226,7 @@ class Config(unittest.TestCase):
         for value, where in (({"findingsTrailer": "1x"}, "$.metrics.quality.findingsTrailer"),
                              ({"retriesTrailer": "a b"}, "$.metrics.quality.retriesTrailer"),
                              ({"reworkTypes": [""]}, "$.metrics.quality.reworkTypes[0]"),
+                             ({"findingsWords": [""]}, "$.metrics.quality.findingsWords[0]"),
                              ({"other": 1}, "$.metrics.quality")):
             self.write(dict(VALID, metrics={"quality": value}))
             r = cli(self.tmp, "validate")

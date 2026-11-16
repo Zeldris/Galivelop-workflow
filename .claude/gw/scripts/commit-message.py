@@ -31,6 +31,10 @@ and applies, from .claude/gw.json (read through config.py):
                                these (Claudette passes, haiku-writer and 4o do not). Without that, any
                                `Agent:` value passes. Trailers are read with --no-divider (a `---` line is body).
 
+A warning, never a refusal (E60): with commitRefs or commitNext, a message that names review fixes (a word or phrase
+of metrics.quality.findingsWords, whole words, any case; [] = off) without a `Findings:` trailer gets one line on
+stderr asking for it (metrics.py quality and the block review of change-size.py count from that trailer).
+
 A warning, never a refusal (D108): when the commit closes a phase or version and the session passed its compaction
 budget, one line on stderr asks for /clear (a long context is almost all the spend; the log is enough to resume).
 "Closes a phase or version", in a commit that is not WIP: (a) in the first `roadmapFiles` file, a `## ` section whose
@@ -221,6 +225,23 @@ def check_measured(config, message, found, msgfile):
                          f"do not read it (it would be lost silently)\n"
                          f"commit-msg: move the `{word}: <n>` line to the last paragraph, next to `Refs:`, and commit "
                          f"again: git commit -e -F {msgfile}")
+
+
+def findings_warning(config, message, found):
+    """E60: the warning line when the message speaks of review fixes (a word or phrase of
+    metrics.quality.findingsWords, whole words, any case) and the trailer block has no findingsTrailer, or None. Without
+    it metrics.py quality misses the fixes and the next block review starts from the wrong commit."""
+    quality = gwconfig.metrics(config)["quality"]
+    word = quality["findingsTrailer"]
+    if any(k.lower() == word.lower() for k, _ in found):
+        return None
+    for phrase in quality["findingsWords"]:
+        pattern = r"(?<!\w)" + r"\s+".join(re.escape(p) for p in phrase.split()) + r"(?!\w)"
+        if re.search(pattern, message, re.IGNORECASE):
+            return (f"commit-msg: WARNING: the message speaks of review fixes (\"{phrase}\") and has no `{word}:` "
+                    f"trailer, so metrics.py quality misses them and the next block review starts too early; if it "
+                    f"closes a review, add `{word}: <accepted findings>` next to `Refs:`: git commit --amend")
+    return None
 
 
 def check_format(config, message, msgfile):
@@ -420,6 +441,10 @@ def run(root, msgfile):
         check_refs(root, config, found, msgfile)
     if not merging and nxt:
         check_next(config, message, found, msgfile)
+    if not merging and (refs or nxt):
+        warning = findings_warning(config, message, found)
+        if warning:
+            print(warning, file=sys.stderr)
     if not merging:
         warning = clear_warning(root, config, message)
         if warning:

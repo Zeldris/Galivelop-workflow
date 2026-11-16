@@ -248,6 +248,31 @@ class Refs(Msg):
         self.refused("work\n\nHallazgos: 3\n\nRefs: D11\nSiguiente: x", "`Hallazgos:` line is outside")
         self.accepted("work\n\nFindings: 3\n\nRefs: D11\nHallazgos: 3\nSiguiente: x")
 
+    def warned(self, message):
+        code, err = self.attempt(message)
+        self.assertEqual(code, 0, err)
+        return err
+
+    def test_review_fixes_without_findings_warn_but_pass(self):  # E60
+        err = self.warned("fix(D11): arreglos de la revisión\n\ndos casos\n\nRefs: D11\nSiguiente: x")
+        self.assertIn("WARNING: the message speaks of review fixes (\"arreglos de la revisión\")", err)
+        self.assertIn("add `Findings: <accepted findings>` next to `Refs:`", err)
+        err = self.warned("fix(D11): the three FINDINGS of the block\n\nRefs: D11\nSiguiente: x")
+        self.assertIn("(\"findings\")", err)
+
+    def test_review_fixes_with_findings_or_unrelated_words_do_not_warn(self):  # E60
+        self.assertNotIn("review fixes", self.warned("fix(D11): hallazgos\n\nRefs: D11\nFindings: 2\nSiguiente: x"))
+        self.assertNotIn("review fixes", self.warned("feat(D11): findingsWords key\n\nRefs: D11\nSiguiente: x"))
+        self.assertNotIn("review fixes", self.warned("feat(D11): plain work\n\nRefs: D11\nSiguiente: x"))
+
+    def test_findings_words_follow_the_config_and_empty_turns_it_off(self):  # E60
+        self.configure(metrics={"quality": {"findingsTrailer": "Hallazgos", "findingsWords": ["code review"]}})
+        err = self.warned("fix(D11): the code\n  review pass\n\nRefs: D11\nSiguiente: x")
+        self.assertIn("(\"code review\") and has no `Hallazgos:` trailer", err)
+        self.assertNotIn("WARNING", self.warned("fix(D11): code review\n\nRefs: D11\nHallazgos: 1\nSiguiente: x"))
+        self.configure(metrics={"quality": {"findingsWords": []}})
+        self.assertNotIn("WARNING", self.warned("fix(D11): findings\n\nRefs: D11\nSiguiente: x"))
+
     def test_a_message_without_trailers_keeps_its_own_refusal(self):
         self.refused("work", "no Refs trailer")
 
