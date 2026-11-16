@@ -3,9 +3,7 @@
 - **Etiqueta:** `v0.7.1`, sobre `7a6d1bd`, el commit de `main` de la subida del 2026-11-16.
 - **Título:** el bloque de abajo.
 - **Cuerpo:** el segundo bloque. La entrada completa está en el CHANGELOG.
-- **Publicada:** pendiente; la publica el agente desde una sesión local (decisión del usuario, 2026-11-16):
-  `gh release create v0.7.1 --target main --title "Galivelop-workflow v0.7.1" --notes-file <cuerpo>`, con el cuerpo
-  de abajo.
+- **Publicada:** 2026-11-16 por el agente desde una sesión local (`gh release create`, a petición del usuario), con estos textos.
 
 ```text
 Galivelop-workflow v0.7.1

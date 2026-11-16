@@ -11,8 +11,8 @@
 | Rama | **`0.8`: `ccr-d1e2d496-0vzck8`**, con `main` fusionado. `main` = `7a6d1bd` = **`0.7.1`** (2026-11-16, parche desde `version/0.7.1`). `version/1.0.0` se queda con el diseño (`docs/design/`) |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI en verde). Release `v0.7.1`: ver «Siguiente paso» |
-| Siguiente paso | Publicar la release `v0.7.1` con `docs/records/release-v0.7.1.md` si no está; luego la tarea de la `0.8` que elija el usuario (B41 y el resto de su roadmap). Presupuesto de compactaciones: 1 |
+| Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI en verde). Etiqueta y release `v0.7.1` creadas por el agente desde una sesión local (2026-11-16, a petición del usuario) |
+| Siguiente paso | Release `v0.7.1` publicada. Siguiente: la tarea de la `0.8` que elija el usuario (B41 y el resto de su roadmap). Presupuesto de compactaciones: 1 |
 
 ### Fases
 
