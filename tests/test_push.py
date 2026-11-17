@@ -18,6 +18,8 @@ import time
 import unittest
 from pathlib import Path
 
+import waits
+
 ROOT = Path(__file__).resolve().parent.parent
 REAL_GIT = shutil.which("git")
 BASE_CONFIG = {"version": "0.1.0", "language": "en", "log": "docs/log.md", "protectedBranch": "main",
@@ -323,14 +325,14 @@ class PushSh(unittest.TestCase):
     def child_pids(self):
         """The (transport child, fake git) pids the hung ls-remote wrote, once it wrote them."""
         path = self.fake / "lschild.pids"
-        deadline = time.monotonic() + 10
+        deadline = time.monotonic() + waits.timeout(10)
         while not (path.exists() and path.read_text().strip()) and time.monotonic() < deadline:
             time.sleep(0.05)
         return [int(x) for x in path.read_text().split()]
 
     def assertGone(self, pids):
         """Each pid has exited (a zombie waiting for its reaper counts as gone): no orphan of push.sh is left."""
-        deadline = time.monotonic() + 5
+        deadline = time.monotonic() + waits.timeout(5)
         alive = pids
         while alive and time.monotonic() < deadline:
             alive = [pid for pid in pids if subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True,
@@ -361,7 +363,7 @@ class PushSh(unittest.TestCase):
                                         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
                 pids = self.child_pids()
                 proc.send_signal(sig)
-                proc.communicate(timeout=20)
+                proc.communicate(timeout=waits.timeout(20))
                 self.assertEqual(proc.returncode, code)
                 self.assertGone(pids)
 
