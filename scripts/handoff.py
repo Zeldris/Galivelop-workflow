@@ -27,7 +27,7 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  (`archive` needs it) or a pointer with an old "(N entradas)" count
                                                  only warn. --pending PATH reads the pending file from PATH (the
                                                  pre-push passes the pushed commit's copy; a missing PATH = no file)
-  handoff.py preflight [--date YYYY-MM-DD]       what the pre-push checks in the log, without pushing (D61): `check`
+  handoff.py preflight [--date YYYY-MM-DD] [--strict]       what the pre-push checks in the log, without pushing (D61): `check`
                                                  of the working copy's log with --date (default: today if the log has
                                                  uncommitted changes, else the day of the last commit that changed it,
                                                  as the pre-push takes the day of the newest commit that changes it),
@@ -114,12 +114,15 @@ Exit 0 ok, 1 rule broken (each message ends with the command that fixes it), 2 b
 Python 3.8+, stdlib only.
 """
 import argparse
+import contextlib
 import datetime
+import hashlib
 import json
 import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 sys.dont_write_bytecode = True
@@ -1048,8 +1051,23 @@ DECISIONS_HEADING = re.compile(r"^##\s+(Decisiones|Decisions)\b.*$", re.I)
 
 
 def split_lines(raw):
-    """(lines without their ends, the file's line ending): CRLF when the text has one, else LF."""
-    return (re.split(r"\r?\n", raw.rstrip("\r\n")) if raw.strip() else []), "\r\n" if "\r\n" in raw else "\n"
+    """The lines of `raw` cut at "\\n" only: a CRLF line keeps its "\\r" at its end, so every line keeps its own
+    ending and a mixed file stays as it was; blank lines at the end are kept (only the last terminator is dropped).
+    `write_added` joins them back with "\\n"; the lines a command adds take the "\\r" of their neighbour (`ends`)."""
+    if not raw.strip():
+        return []
+    lines = raw.split("\n")
+    if lines[-1] == "":  # the terminator of the last line, not a blank line
+        lines.pop()
+    elif len(lines) > 1 and lines[-2].endswith("\r"):  # no final newline: the last line ends like the one before
+        lines[-1] += "\r"
+    return lines
+
+
+def ends(lines, at):
+    """"\\r" when the line at `at` of `lines` (the last one when `at` is past the end) ends in CRLF, else ""."""
+    i = min(at, len(lines) - 1)
+    return "\r" if 0 <= i and lines[i].endswith("\r") else ""
 
 
 def item_lines(text):
@@ -1088,13 +1106,15 @@ def section_span(lines, heading_re, lo=0, hi=None):
 
 def insert_in_section(lines, head, end, items, lead=False):
     """Insert `items` after the last non-blank line of the section (head, end) of `lines`, in place (`lead`: after a
-    blank line)."""
+    blank line); the new lines end like the section's heading (CRLF or LF)."""
+    cr = ends(lines, head)
+    items = [l + cr for l in items]
     pos = end
     while pos > head + 1 and not lines[pos - 1].strip():
         pos -= 1
-    new = ([""] if pos == head + 1 or lead else []) + items
+    new = ([cr] if pos == head + 1 or lead else []) + items
     if end == pos and end < len(lines):  # no blank line before the next heading
-        new.append("")
+        new.append(cr)
     lines[pos:pos] = new
 
 
@@ -1106,7 +1126,14 @@ def read_for_add(path, me, cmd):
 
 
 def log_is_english(ctx):
-    """True when the log's Pending or Decisions heading is English (the way move-pending tells)."""
+    """True when the log's Pending or Decisions heading is English (the way move-pending tells); the log is read once
+    per run (n.º 11 of the D95 review): the answer is kept in `ctx`."""
+    if not hasattr(ctx, "log_english"):
+        ctx.log_english = _log_is_english(ctx)
+    return ctx.log_english
+
+
+def _log_is_english(ctx):
     try:
         for l in (ctx.root / ctx.log).read_text(encoding="utf-8").splitlines():
             if PENDING_HEADING.match(l):
@@ -1118,14 +1145,65 @@ def log_is_english(ctx):
     return False
 
 
-def write_added(path, lines, eol, me, cmd):
+def write_added(path, lines, me, cmd):
     try:
-        write_atomic(path, (eol.join(lines) + eol).encode("utf-8"))
+        write_atomic(path, ("\n".join(lines) + "\n").encode("utf-8"))
     except OSError as exc:
         raise Usage(f"cannot write {path} ({exc}); check its permissions and rerun: {me} {cmd}")
 
 
+@contextlib.contextmanager
+def file_lock(ctx, path, me, cmd):
+    """An exclusive lock for the read-change-write of `path` (n.º 9 of the D95 review: two `add-*` at once lost an
+    item). `fcntl.flock` on <git common dir>/gw/handoff-<hash>.lock (beside `path` when there is no git dir): the
+    system drops it when the process ends, so a killed run leaves no orphan lock; it waits `handoff.lockWait` seconds
+    and then fails saying how to rerun. Without `fcntl` (Windows) it does not lock."""
+    try:
+        import fcntl
+    except ImportError:
+        yield
+        return
+    name = f"handoff-{hashlib.sha1(str(path.resolve()).encode('utf-8')).hexdigest()[:16]}.lock"
+    common = ctx.git("rev-parse", "--path-format=absolute", "--git-common-dir")
+    gitdir = Path(common.stdout.strip()) if common.returncode == 0 and common.stdout.strip() else None
+    where = gitdir / "gw" / name if gitdir and gitdir.is_dir() else path.with_name("." + name)
+    wait = gwconfig.handoff(ctx.config)["lockWait"]
+    try:
+        where.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(where, os.O_RDWR | os.O_CREAT, 0o644)
+    except OSError as exc:
+        raise Usage(f"cannot open the lock {where} ({exc}); check its permissions and rerun: {me} {cmd}")
+    try:
+        deadline = time.monotonic() + wait
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if time.monotonic() >= deadline:
+                    raise Usage(f"another handoff.py holds the lock {where} and did not let go in {wait} s; wait for "
+                                f"it, or raise handoff.lockWait in .claude/gw.json, and rerun: {me} {cmd}")
+                time.sleep(0.05)
+        yield
+    finally:
+        os.close(fd)  # closing the descriptor releases the lock
+
+
 def cmd_add_pending(ctx, args):
+    me = f"python3 {HERE / 'handoff.py'}"
+    path = ctx.root / (gwconfig.pending_file(ctx.config) or ctx.log)
+    with file_lock(ctx, path, me, "add-pending"):
+        return _add_pending(ctx, args)
+
+
+def cmd_add_decision(ctx, args):
+    me = f"python3 {HERE / 'handoff.py'}"
+    path = ctx.root / (gwconfig.decisions_file(ctx.config) or ctx.log)
+    with file_lock(ctx, path, me, "add-decision"):
+        return _add_decision(ctx, args)
+
+
+def _add_pending(ctx, args):
     me = f"python3 {HERE / 'handoff.py'}"
     if not args.text.strip():
         raise Usage(f"the text is empty; give it: {me} add-pending \"the item\"")
@@ -1140,10 +1218,11 @@ def cmd_add_pending(ctx, args):
         if not own:
             raise Usage(f"{path} does not exist; fix `log` in .claude/gw.json and rerun: {me} add-pending")
         raw = pending_skeleton(log_is_english(ctx))
-    lines, eol = split_lines(raw)
+    lines = split_lines(raw)
     head, end = section_span(lines, PENDING_HEADING)
     if head is None and own:
-        lines += ([""] if lines and lines[-1].strip() else []) + ["## Pending" if log_is_english(ctx) else "## Pendiente"]
+        cr = ends(lines, len(lines))
+        lines += ([cr] if lines and lines[-1].strip() else []) + [("## Pending" if log_is_english(ctx) else "## Pendiente") + cr]
         head, end = len(lines) - 1, len(lines)
     elif head is None:
         raise Usage(f"{path} has no \"## Pendiente\" / \"## Pending\" section; add the line \"## Pending\" to it "
@@ -1162,12 +1241,12 @@ def cmd_add_pending(ctx, args):
     else:
         h, e = section_span(lines, PENDING_HEADING)
         count = pending_count("\n".join(lines[h + 1:e]))
-    write_added(path, lines, eol, me, "add-pending")
+    write_added(path, lines, me, "add-pending")
     print(f"handoff: added 1 item to {rel} ({count} in all)")
     return 0
 
 
-def cmd_add_decision(ctx, args):
+def _add_decision(ctx, args):
     me = f"python3 {HERE / 'handoff.py'}"
     if not args.text.strip():
         raise Usage(f"the text is empty; give it: {me} add-decision \"the decision\"")
@@ -1179,7 +1258,7 @@ def cmd_add_decision(ctx, args):
         if not separate:
             raise Usage(f"{path} does not exist; fix `log` in .claude/gw.json and rerun: {me} add-decision")
         raw = "# Decisions\n\n## Decisions\n" if log_is_english(ctx) else "# Decisiones\n\n## Decisiones\n"
-    lines, eol = split_lines(raw)
+    lines = split_lines(raw)
     text = re.sub(r"^\d{4}-\d{2}-\d{2}\s*[—–-]\s*", "", args.text.strip())  # the entry gets its date: never twice
     if not text:
         raise Usage(f"the text is empty (only a date was given); give it: {me} add-decision \"the decision\"")
@@ -1189,12 +1268,14 @@ def cmd_add_decision(ctx, args):
         title = "## Decisions" if log_is_english(ctx) else "## Decisiones"
         ph, _ = section_span(lines, PENDING_HEADING)
         if ph is not None and not separate:
-            lines[ph:ph] = [title, ""] + item + [""]
+            cr = ends(lines, ph)
+            lines[ph:ph] = [title + cr, cr] + [l + cr for l in item] + [cr]
         else:
-            lines += ([""] if lines and lines[-1].strip() else []) + [title, ""] + item
+            cr = ends(lines, len(lines))
+            lines += ([cr] if lines and lines[-1].strip() else []) + [title + cr, cr] + [l + cr for l in item]
     else:
         insert_in_section(lines, head, end, item)
-    write_added(path, lines, eol, me, "add-decision")
+    write_added(path, lines, me, "add-decision")
     print(f"handoff: added 1 decision to {rel}")
     return 0
 
@@ -1204,7 +1285,7 @@ def cmd_preflight(ctx, args):
     pushing so a green `check` is enough to push."""
     me = f"python3 {HERE / 'handoff.py'}"
     if not ctx.config.get("logRows"):  # the date is a logRows rule: no git needed; the size and Done rules still run
-        return cmd_check(ctx, argparse.Namespace(file=None, date=None, strict=False, at="commit", pending=None))
+        return cmd_check(ctx, argparse.Namespace(file=None, date=None, strict=args.strict, at="commit", pending=None))
     date, dirty = args.date, True
     status = ctx.git("status", "--porcelain", "--", ctx.log)
     # --no-merges: the pre-push dates the log by the commits that change it, never by a merge (diff-tree shows none
@@ -1218,7 +1299,7 @@ def cmd_preflight(ctx, args):
     if not date:
         date = datetime.date.today().isoformat() if dirty else last.stdout.strip()
     # A clean log is already committed: the fix is a new commit (at="push"), not "run the commit again".
-    code = cmd_check(ctx, argparse.Namespace(file=None, date=date, strict=False, at="commit" if dirty else "push",
+    code = cmd_check(ctx, argparse.Namespace(file=None, date=date, strict=args.strict, at="commit" if dirty else "push",
                                              pending=None))
     protected = ctx.config["protectedBranch"]
     ref = f"refs/remotes/origin/{protected}"
@@ -1318,6 +1399,7 @@ def main(argv=None):
     a.add_argument("--dry-run", action="store_true")
     f = sub.add_parser("preflight")
     f.add_argument("--date")
+    f.add_argument("--strict", action="store_true")
     m = sub.add_parser("move-pending")
     m.add_argument("file", nargs="?")
     ap = sub.add_parser("add-pending")

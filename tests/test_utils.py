@@ -3275,6 +3275,89 @@ class HandoffAdd(Base):
         self.assertEqual(raw.count(b"\n"), raw.count(b"\r\n"))
         self.assertIn(b"## Decisiones\r\n\r\n- 2026-02-03 \xe2\x80\x94 d\r\n\r\n## Pendiente", raw)
 
+    def test_add_pending_keeps_the_ending_of_each_line_in_a_mixed_file(self):
+        self.use(pendingFile=self.PENDING)
+        self.p.write(self.PENDING, "")
+        path = self.p.work / self.PENDING
+        path.write_bytes(b"# P\n\n## Pendiente\r\n\r\n- a\r\n\n## Otra\n")
+        self.assertEqual(self.add("add-pending", "x")[0], 0)
+        self.assertEqual(path.read_bytes(), b"# P\n\n## Pendiente\r\n\r\n- a\r\n- x\r\n\n## Otra\n")
+
+    def test_add_pending_keeps_the_blank_lines_at_the_end(self):
+        self.use(pendingFile=self.PENDING)
+        self.p.write(self.PENDING, "")
+        path = self.p.work / self.PENDING
+        path.write_bytes(b"## Pendiente\r\n\r\n- a\r\n\r\n\r\n")
+        self.assertEqual(self.add("add-pending", "x")[0], 0)
+        self.assertEqual(path.read_bytes(), b"## Pendiente\r\n\r\n- a\r\n- x\r\n\r\n\r\n")
+
+    def test_add_pending_to_a_file_without_a_final_newline(self):
+        self.use(pendingFile=self.PENDING)
+        self.p.write(self.PENDING, "")
+        path = self.p.work / self.PENDING
+        path.write_bytes(b"## Pendiente\r\n\r\n- a")
+        self.assertEqual(self.add("add-pending", "x")[0], 0)
+        self.assertEqual(path.read_bytes(), b"## Pendiente\r\n\r\n- a\r\n- x\r\n")
+
+    def lock_file(self, rel):
+        import hashlib
+        common = self.p.git("rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip()
+        digest = hashlib.sha1(str((self.p.work / rel).resolve()).encode()).hexdigest()[:16]
+        return Path(common) / "gw" / f"handoff-{digest}.lock"
+
+    def test_concurrent_add_pending_lose_no_item(self):
+        self.use(pendingFile=self.PENDING)
+        self.p.write(self.PENDING, "## Pendiente\n\n- a\n")
+        cmd = ["python3", str(self.p.scripts / "handoff.py"), "add-pending"]
+        procs = [subprocess.Popen(cmd + [f"item{i}"], cwd=self.p.work, env=self.p.env, stdout=subprocess.PIPE,
+                                  stderr=subprocess.STDOUT, text=True) for i in range(12)]
+        outs = [(q.wait(), q.stdout.read()) for q in procs]
+        self.assertEqual([c for c, _ in outs], [0] * 12, outs)
+        text = self.read(self.PENDING)
+        for i in range(12):
+            self.assertEqual(text.count(f"- item{i}\n"), 1, text)
+
+    def test_an_orphan_lock_file_does_not_block(self):
+        self.use(pendingFile=self.PENDING)
+        self.p.write(self.PENDING, "## Pendiente\n\n- a\n")
+        lock = self.lock_file(self.PENDING)
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        lock.write_text("12345\n")  # left by a run that died: nobody holds it
+        code, out = self.add("add-pending", "x")
+        self.assertEqual(code, 0, out)
+        self.assertIn("- x\n", self.read(self.PENDING))
+
+    def test_a_held_lock_fails_after_lock_wait_naming_the_fix(self):
+        import fcntl
+        self.use(pendingFile=self.PENDING, handoff={"lockWait": 0})
+        self.p.write(self.PENDING, "## Pendiente\n\n- a\n")
+        lock = self.lock_file(self.PENDING)
+        lock.parent.mkdir(parents=True, exist_ok=True)
+        with open(lock, "a") as held:
+            fcntl.flock(held, fcntl.LOCK_EX)
+            code, out = self.add("add-pending", "x")
+        self.assertEqual(code, 2, out)
+        self.assertIn("another handoff.py holds the lock", out)
+        self.assertIn("raise handoff.lockWait in .claude/gw.json, and rerun: python3", out)
+        self.assertEqual(self.read(self.PENDING), "## Pendiente\n\n- a\n")
+        self.assertEqual(self.add("add-pending", "x")[0], 0)  # released: it goes through
+
+    def test_preflight_strict_is_one_pass_with_the_check_strict(self):
+        self.use(handoff={"doneItems": 1})
+        self.log(self.LOG.replace("1. uno\n", "1. uno\n2. dos\n"))
+        code, out = self.add("preflight")
+        self.assertEqual(code, 0, out)
+        self.assertIn("WARNING", out)
+        code, out = self.add("preflight", "--strict")
+        self.assertEqual(code, 1, out)
+        self.assertNotIn("WARNING", out)
+
+    def test_log_is_read_once_to_tell_the_language(self):
+        self.use(pendingFile=self.PENDING)
+        self.log(self.LOG_EN)
+        self.assertEqual(self.add("add-pending", "x")[0], 0)  # creates the file and its heading from one read
+        self.assertIn("## Pending\n", self.read(self.PENDING))
+
     def test_missing_log_fails_with_the_fix(self):
         self.use()
         code, out = self.add("add-decision", "d")

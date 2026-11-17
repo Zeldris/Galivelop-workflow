@@ -321,7 +321,7 @@ def recover(config):
 
 
 def handoff(config):
-    """The `handoff` key (A13) as a dict (rowLimit, cellLimit, cellHardLimit, doneItems): the log size rules of
+    """The `handoff` key (A13) as a dict (rowLimit, cellLimit, cellHardLimit, doneItems, lockWait): the log size rules and the lock wait of
     handoff.py (cellHardLimit 0 = off, D96); an invalid value gives the schema default. A cellHardLimit the project
     did not set never sits below its cellLimit: the default hard cap rises to cellLimit, so a project that only raised
     cellLimit keeps a valid config and a hard cap at or above its warning."""
