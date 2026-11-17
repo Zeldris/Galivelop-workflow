@@ -17,7 +17,9 @@ Sources, in this order (a section with nothing is left out of the text output):
 "Names ID" is a whole-word match: D1 does not match D14 or D1a. --limit N (default 20) caps the entries shown per
 source; the text says how many were left out (--json always carries every entry).
 
-ID must match the project's id pattern (config `taskId`, default `[A-Z]{2,5}-\\d+[a-z]?`; the one handoff.py uses).
+ID must match the project's `taskId` (config key; the schema default applies only when the project sets none).
+A roadmap id cell, a `Refs:` value or a subject scope that lists ids (`D61, D62`) or a range with one prefix
+(`E9-E16`) names every id in it. A merge commit counts only through its subject or its `Refs:`, never its body.
 Exit 0 when something names ID, 1 when ID is well formed but nothing does (the message says where it looked), 2 on a
 malformed ID, a bad config or no git repository. --json prints one object: id, found, and a list per source.
 Project root: config.find_root (--root PATH, else the script's own repo, never the current directory first).
@@ -49,6 +51,25 @@ def word_re(task):
     return re.compile(r"(?<![\w-])" + re.escape(task) + r"(?!\w)")
 
 
+RANGE = re.compile(r"^([A-Za-z]+-?)(\d+)([a-z]?)-\1(\d+)\3$")
+ITEM = re.compile(r"^([A-Za-z]+-?)(\d+)$")
+
+
+def names_id(text, task):
+    """True when `text` (a roadmap id cell, a `Refs:` value or a subject scope) lists `task`: as an item of a
+    comma-, semicolon- or space-separated list (`D61, D62`), or inside a range with the same prefix (`E9-E16`)."""
+    own = ITEM.match(task)
+    for item in re.split(r"[,;\s]+", text.strip().strip("`")):
+        item = item.strip("`")
+        if item == task:
+            return True
+        m = RANGE.match(item)
+        if m and own and own.group(1) == m.group(1) and int(m.group(2)) <= int(own.group(2)) <= int(m.group(4)) \
+                and int(m.group(4)) - int(m.group(2)) < 1000:
+            return True
+    return False
+
+
 def snippet(text):
     text = " ".join(text.split())
     return text if len(text) <= SNIPPET else text[:SNIPPET - 1] + "…"
@@ -73,7 +94,7 @@ def roadmap_rows(root, files, task):
             if line.startswith("## "):
                 heading = line.strip()
             spans = roadmap.cells(line)
-            if spans and line[spans[0][0]:spans[0][1]].strip() == task:
+            if spans and names_id(line[spans[0][0]:spans[0][1]], task):
                 rows.append({"file": entry["path"], "line": n, "section": heading, "text": snippet(line)})
     return rows, notes
 
@@ -100,7 +121,7 @@ def git(root, *args):
 
 
 def commit_entries(root, task, pattern):
-    out = git(root, "log", "--all", "-E", "--grep", re.escape(task), "--format=%x1e%H%x1f%P%x1f%B")
+    out = git(root, "log", "--all", "--format=%x1e%H%x1f%P%x1f%B")
     found = []
     for record in out.split("\x1e"):
         if not record.strip():
@@ -112,14 +133,13 @@ def commit_entries(root, task, pattern):
         for line in lines[1:]:
             m = re.match(r"Refs:\s*(.*)$", line)
             if m:
-                refs += [r.strip() for r in m.group(1).split(",")]
+                refs.append(m.group(1))
         scope = re.match(r"^(?:WIP:\s*)?[\w-]+\(([^)]*)\)!?:", subject)
-        scopes = [s.strip() for s in scope.group(1).split(",")] if scope else []
-        if task in refs:
+        if any(names_id(r, task) for r in refs):
             how = "refs"
-        elif task in scopes:
+        elif scope and names_id(scope.group(1), task):
             how = "scope"
-        elif len(parents.split()) > 1 and pattern.search(message):
+        elif len(parents.split()) > 1 and pattern.search(subject):  # a merge: its subject or Refs:, never the body
             how = "merge"
         else:
             continue
@@ -127,12 +147,15 @@ def commit_entries(root, task, pattern):
     return found
 
 
-def doc_entries(root, task, pattern, skip):
+def doc_entries(root, task, pattern, skip, notes):
     names = git(root, "ls-files", "-z", "--", "*.md").split("\0")
     found = []
     for rel in sorted(n for n in names if n and n not in skip and not n.startswith(".claude/")):
         lines = read_lines(root / rel)
-        for n, line in enumerate(lines or [], 1):
+        if lines is None:
+            notes.append(f"cannot read {rel} (not UTF-8?); it was skipped")
+            continue
+        for n, line in enumerate(lines, 1):
             if pattern.search(line):
                 found.append({"file": rel, "line": n, "text": snippet(line)})
     return found
@@ -150,8 +173,9 @@ def collect(root, cfg, task):
     pend_hits, note = mentions(root, pend_rel, pattern)
     notes += [note] if note else []
     skip = {e["path"] for e in config.roadmap_files(cfg)} | {log_rel, pend_rel}
-    return {"id": task, "roadmap": rows, "log": log_hits, "pending": pend_hits,
-            "commits": commit_entries(root, task, pattern), "docs": doc_entries(root, task, pattern, skip),
+    commits = commit_entries(root, task, pattern)
+    docs = doc_entries(root, task, pattern, skip, notes)
+    return {"id": task, "roadmap": rows, "log": log_hits, "pending": pend_hits, "commits": commits, "docs": docs,
             "notes": notes}
 
 

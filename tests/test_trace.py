@@ -17,7 +17,7 @@ FILES = [
     {"path": "docs/roadmap.md", "done": "hecho", "open": ["pendiente"]},
     {"path": "docs/roadmap.en.md", "done": "done", "open": ["pending"]},
 ]
-ES = "# Roadmap\n\n## `0.7` «Trazar»\n\n| Id | Tarea | Estado |\n|---|---|---|\n| D14 | `trace.py` | pendiente |\n| D1 | Otra | pendiente |\n"
+ES = "# Roadmap\n\n## `0.7` «Trazar»\n\n| Id | Tarea | Estado |\n|---|---|---|\n| D14 | `trace.py` | pendiente |\n| D1 | Otra | pendiente |\n| E9-E16 | Rango | pendiente |\n| D61, D62 | Lista | pendiente |\n"
 EN = "# Roadmap\n\n## `0.7` «Trace»\n\n| Id | Task | Status |\n|---|---|---|\n| D14 | `trace.py` | pending |\n"
 
 
@@ -111,6 +111,32 @@ class Trace(unittest.TestCase):
         self.repo.commit("chore: tidy\n\nThis relates to D14 loosely.")
         data = json.loads(self.repo.trace("D14", "--json").stdout)
         self.assertEqual(data["commits"], [])
+
+    def test_ranges_and_lists(self):
+        r = self.repo
+        r.commit("feat(E9-E16): range scope\n\nRefs: E9-E16")
+        r.commit("fix(D61, D62): list scope")
+        for task, rows in (("E12", 1), ("E16", 1), ("E9", 1), ("E17", 0), ("E8", 0), ("D62", 1), ("D63", 0)):
+            data = json.loads(r.trace(task, "--json").stdout)
+            self.assertEqual(len(data["roadmap"]), rows, task)
+            self.assertEqual(len(data["commits"]), 1 if task in ("E12", "E16", "E9", "D62") else 0, task)
+        out = r.trace("E17")
+        self.assertEqual(out.returncode, 1)
+
+    def test_merge_body_does_not_count(self):
+        r = self.repo
+        r.git("checkout", "-q", "-b", "agent/D63-x")
+        r.commit("chore: x")
+        r.git("checkout", "-q", "main")
+        r.git("merge", "--no-ff", "-q", "-m", "Merge D63\n\nRefs: D63\nSiguiente: fusionar D14", "agent/D63-x")
+        self.assertEqual(json.loads(r.trace("D14", "--json").stdout)["commits"], [])
+        self.assertEqual(len(json.loads(r.trace("D63", "--json").stdout)["commits"]), 1)
+
+    def test_unreadable_doc_is_a_note(self):
+        (self.repo.work / "docs" / "bad.md").write_bytes(b"\xff\xfe D14\n")
+        self.repo.commit("chore: bad doc")
+        out = self.repo.trace("D14")
+        self.assertIn("note: cannot read docs/bad.md", out.stdout)
 
     def test_unknown_id(self):
         out = self.repo.trace("D99")
