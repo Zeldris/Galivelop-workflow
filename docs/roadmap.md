@@ -327,6 +327,7 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | E60 | El `commit-msg` avisa, sin rechazar, de arreglos de revisión sin `Findings:` (palabras en una clave) (recogida de cierre `0.7`, private-project-1 P1) | hecho (2026-11-16; `metrics.quality.findingsWords`) |
 | E61 | `handoff.py set-row` y `close-row` imprimen la fila resultante y `n/límite` (recogida de cierre `0.7`, world-maker-fantasy P4) | hecho (2026-11-16) |
 | B41 | Barrido de `scripts/merge-branch.sh` (E57): con `--defer-check` nadie corre los tests de las ramas diferidas; «nothing to merge» sale con 0 sin check ni aviso; la línea 165 del dealer que pide dos checks enteros; y el leve de `context_guard.py` (cálculos repetidos por `--state`) (retro del parche `0.7.1`) | hecho (2026-11-16; la oleada guarda su base y la última fusión corre los tests relacionados de toda ella) |
+| B42 | Tests que buscan procesos con `pgrep -f` casan con los de otros agentes del mismo contenedor, y `tests-for.py --run` se quedó colgado en `test_hooks` con varios subagentes a la vez (oleada 2 de la `0.8`) | pendiente |
 
 ## `0.9` «Estable»
 

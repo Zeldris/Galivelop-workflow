@@ -326,6 +326,7 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | E60 | The `commit-msg` warns, without rejecting, about review fixes with no `Findings:` (words in a key) (`0.7` closing harvest, private-project-1 P1) | done (2026-11-16; `metrics.quality.findingsWords`) |
 | E61 | `handoff.py set-row` and `close-row` print the resulting row and `n/limit` (`0.7` closing harvest, world-maker-fantasy P4) | done (2026-11-16) |
 | B41 | Sweep of `scripts/merge-branch.sh` (E57): with `--defer-check` nobody runs the tests of the deferred branches; «nothing to merge» exits 0 with no check or warning; the dealer's line 165 asking for two full checks; and the `context_guard.py` minor (repeated computations in `--state`) (`0.7.1` patch retro) | done (2026-11-16; the wave keeps its base and the last merge runs the related tests of all of it) |
+| B42 | Tests that look for processes with `pgrep -f` match those of other agents in the same container, and `tests-for.py --run` hung in `test_hooks` with several subagents at once (`0.8` wave 2) | pending |
 
 ## `0.9` "Stable"
 
