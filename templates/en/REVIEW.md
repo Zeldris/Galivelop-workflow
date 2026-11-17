@@ -69,6 +69,18 @@ once it exists.
   adapted to how this one ships to `{{protectedBranch}}`. (judgement)
 - A table or example in a guide that a script reads is read by that script in a test. (judgement)
 
+## Invariants
+
+- A change that touches an invariant (a fact in one place only, an order of steps, a state that cannot happen) is
+  reviewed by looking for **the other places that uphold it**: the change must not break any of them. (judgement)
+
+## Browsers
+
+<!-- Optional: web projects only; delete it if it does not apply. -->
+
+- What is checked in several browsers and on mobile: APIs missing in Safari, `100vh` (the mobile browser bar), focus
+  and keyboard. (judgement)
+
 ## Visible languages
 
 - If `.claude/gw.json` declares `visibleLanguages`, every new text a user sees exists in each of those languages

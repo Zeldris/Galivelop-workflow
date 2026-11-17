@@ -72,6 +72,18 @@ creada.
   cómo sube este a `{{protectedBranch}}`. (criterio)
 - Una tabla o un ejemplo de una guía que lee un script lo lee ese script en un test. (criterio)
 
+## Invariantes
+
+- Un cambio que toca una invariante (un dato en un solo sitio, un orden de pasos, un estado que no puede darse) se
+  revisa buscando **los demás sitios que la sostienen**: el cambio no debe romper ninguno. (criterio)
+
+## Navegadores
+
+<!-- Opcional: solo para proyectos web; bórralo si no aplica. -->
+
+- Lo que se mira en varios navegadores y en el móvil: APIs que no están en Safari, `100vh` (barra del navegador
+  móvil), foco y teclado. (criterio)
+
 ## Idiomas visibles
 
 - Si `.claude/gw.json` declara `visibleLanguages`, todo texto nuevo que vea un usuario existe en cada uno de esos
