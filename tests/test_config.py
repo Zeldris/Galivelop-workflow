@@ -236,7 +236,8 @@ class Config(unittest.TestCase):
     def test_context_guard_default_and_own_values(self):
         self.write(VALID)
         default = {"cutoff": 0, "window": 200000, "autocompactShare": 0.8, "warn": 25, "alarm": 50,
-                   "charsPerToken": 3.5, "bigWindow": 1000000, "systemAdvice": True, "nearRatio": 0.8}
+                   "charsPerToken": 3.5, "bigWindow": 1000000, "systemAdvice": True, "nearRatio": 0.8,
+                   "warnedMax": 32}
         self.assertEqual(json.loads(cli(self.tmp, "get", "contextGuard").stdout), default)
         self.assertEqual(config.context_guard({}), default)
         self.assertEqual(config.context_guard({"contextGuard": {"cutoff": 140000}}), dict(default, cutoff=140000))
@@ -249,6 +250,8 @@ class Config(unittest.TestCase):
                  ({"window": 999}, "$.contextGuard.window: must be at least 1000, got 999"),
                  ({"autocompactShare": 0}, "$.contextGuard.autocompactShare: must be above 0, got 0"),
                  ({"nearRatio": 1.5}, "$.contextGuard.nearRatio: must be at most 1, got 1.5"),
+                 ({"warnedMax": 0}, "$.contextGuard.warnedMax: must be at least 1, got 0"),
+                 ({"warnedMax": 2.5}, "$.contextGuard.warnedMax"),
                  ({"autocompactShare": 1.5}, "$.contextGuard.autocompactShare: must be at most 1, got 1.5"),
                  ({"cutoff": -1}, "$.contextGuard.cutoff: must be at least 0, got -1"),
                  ({"charsPerToken": 0}, "$.contextGuard.charsPerToken: must be above 0, got 0"),

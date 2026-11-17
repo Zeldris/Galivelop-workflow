@@ -528,7 +528,7 @@ def doctor_test_dirs_ignore(config):
 
 def context_guard(config):
     """The `contextGuard` key as a dict (cutoff, window, autocompactShare, warn, alarm,
-    charsPerToken, bigWindow, systemAdvice, nearRatio)."""
+    charsPerToken, bigWindow, systemAdvice, nearRatio, warnedMax)."""
     return _section(config, "contextGuard")
 
 

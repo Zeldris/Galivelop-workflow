@@ -36,7 +36,8 @@ B31: it also blocks once BEFORE the next compaction: when the task's compaction 
 (or passed) and the context of the stretch reaches `contextGuard.nearRatio` of the compaction cutoff (a known
 window: context_guard.window_known), a one-line reason tells Claude to close the step (log, commit and push, then
 recommend /clear to the user; or, when the system weighs most, D122, that /clear will not lower it). A block,
-because a `systemMessage` reaches only the user; once per stretch (<git dir>/gw-context-warn), and the continued
+because a `systemMessage` reaches only the user; once per stretch of each session (<git dir>/gw-context-warn, one line
+per transcript, so two sessions in one worktree do not overwrite each other's), and the continued
 turn comes back with stop_hook_active, which never blocks, so it cannot loop. Its reason joins the others on its own
 line. Silent if the transcript cannot be read (context_guard.near_cutoff_once). The Stop hook fires at the end of
 every turn, so it comes before the compaction; recover.py --state comes after it.
@@ -382,14 +383,17 @@ def changed_paths(root, ignore=()):
 
 def near_compaction(root, cfg, transcript):
     """B31: context_guard.near_cutoff_once for this branch and transcript (the hook's transcript_path), remembered in
-    <git dir>/gw-context-warn so it blocks once per stretch; None when there is nothing to say or anything fails
-    (a missing context_guard.py, no git, an unreadable transcript): silent, never a block."""
+    <git dir>/gw-context-warn (per transcript) so it blocks once per stretch; None when there is nothing to say or
+    anything fails (a missing context_guard.py, no git dir, an unreadable transcript): silent, never a block."""
     if not transcript:
         return None
     try:
         import context_guard
         branch = git(root, "rev-parse", "--abbrev-ref", "HEAD")[1].strip()
-        state = os.path.join(git(root, "rev-parse", "--absolute-git-dir")[1].strip(), "gw-context-warn")
+        gitdir = git(root, "rev-parse", "--absolute-git-dir")[1].strip()
+        if not gitdir:  # never a marker relative to the current directory
+            return None
+        state = os.path.join(gitdir, "gw-context-warn")
         return context_guard.near_cutoff_once(root, cfg, branch, transcript, state)
     except Exception:
         return None
