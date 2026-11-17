@@ -2342,5 +2342,129 @@ class CiValidateMigration(unittest.TestCase):
         self.assertEqual(p.read(".claude/gw.json"), before)
 
 
+class StaleRefsMigration(unittest.TestCase):
+    """D83: --update adds the names the migration renames to the project's `staleRefs` (both forms, no duplicates)."""
+
+    def project(self, **config):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-stale-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        p = Fixture(tmp)
+        p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, **config), indent=2) + "\n")  # no `log`
+        p.write("docs/traspaso.md", "# Log\n")
+        return p
+
+    def refs(self, p):
+        return json.loads(p.read(".claude/gw.json")).get("staleRefs")
+
+    def test_list_form_keeps_user_entries_and_gets_the_old_names_once(self):
+        p = self.project(staleRefs=["phase 9"])
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        refs = self.refs(p)
+        self.assertEqual(refs[0], "phase 9")
+        self.assertIn(r"(?<![\w.-])docs/traspaso\.md(?![\w-])", refs)
+        self.assertIn("staleRefs gets the renamed names", out)
+        self.assertEqual(len(refs), len(set(refs)))
+        n = len(refs)
+        p.run_apply("--update")  # the paths moved: nothing renamed any more, nothing added
+        self.assertEqual(len(self.refs(p)), n)
+
+    def test_object_form_keeps_skip_and_is_not_duplicated(self):
+        entry = r"(?<![\w.-])docs/traspaso\.md(?![\w-])"
+        p = self.project(staleRefs={"patterns": ["x", entry], "skip": ["docs/old/"]})
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        refs = self.refs(p)
+        self.assertEqual(refs["skip"], ["docs/old/"])
+        self.assertEqual(refs["patterns"].count(entry), 1)
+        self.assertEqual(refs["patterns"][:2], ["x", entry])
+
+    def test_absent_key_becomes_a_list_and_without_update_nothing_is_added(self):
+        p = self.project()
+        code, out = p.run_apply("--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("staleRefs gets", out)
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        self.assertIsInstance(self.refs(p), list)
+        self.assertIn(r"(?<![\w.-])docs/traspaso\.md(?![\w-])", self.refs(p))
+
+
+class GitignoreBlock(unittest.TestCase):
+    """D127: --init writes a marked per-stack block in .gitignore without touching the rest; a rerun replaces it."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="gw-gi-")).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.p = Fixture(self.tmp)
+
+    def block(self, text):
+        lines = text.splitlines()
+        a = next(i for i, l in enumerate(lines) if l.startswith("# galivelop-workflow:gitignore begin"))
+        b = lines.index("# galivelop-workflow:gitignore end")
+        return lines, a, b
+
+    def test_block_is_appended_for_the_detected_stacks_and_the_rest_is_kept(self):
+        p = self.p
+        p.write("package.json", "{}\n")
+        p.write("requirements.txt", "\n")
+        p.write(".gitignore", "mine/\n")
+        code, out = p.run_apply("--init")
+        self.assertEqual(code, 0, out)
+        lines, a, b = self.block(p.read(".gitignore"))
+        self.assertEqual(lines[0], "mine/")
+        self.assertIn("node_modules/", lines[a:b])
+        self.assertIn("__pycache__/", lines[a:b])
+        self.assertNotIn("target/", lines)
+        self.assertIn(".claude/gw.local.json", lines[b:])
+
+    def test_rerun_replaces_only_the_block(self):
+        p = self.p
+        p.write("Cargo.toml", "\n")
+        self.assertEqual(p.run_apply("--init", "--check-command", "true")[0], 0)
+        text = p.read(".gitignore")
+        _, a, b = self.block(text)
+        lines = text.splitlines()
+        lines[a + 1:b] = ["stale"]
+        p.write(".gitignore", "\n".join(["top/"] + lines + ["bottom/"]) + "\n")
+        code, out = p.run_apply("--init")
+        self.assertEqual(code, 0, out)
+        again = p.read(".gitignore").splitlines()
+        self.assertEqual(again[0], "top/")
+        self.assertEqual(again[-1], "bottom/")
+        self.assertNotIn("stale", again)
+        self.assertIn("target/", again)
+        self.assertEqual(again.count("# galivelop-workflow:gitignore end"), 1)
+        before = p.read(".gitignore")
+        p.run_apply("--init")
+        self.assertEqual(p.read(".gitignore"), before)
+
+    def test_without_init_or_stack_there_is_no_block(self):
+        p = self.p
+        p.write("package.json", "{}\n")
+        p.run_apply()
+        self.assertNotIn("gitignore begin", p.read(".gitignore"))
+        q = Fixture(Path(tempfile.mkdtemp(prefix="gw-gi2-")).resolve())
+        self.addCleanup(shutil.rmtree, q.work.parent, True)
+        q.run_apply("--init")
+        self.assertNotIn("gitignore begin", q.read(".gitignore"))
+
+    def test_config_stacks_override_detection_and_unterminated_block_fails_closed(self):
+        p = self.p
+        p.write("package.json", "{}\n")
+        cfg = json.loads(p.read(".claude/gw.json"))
+        cfg["gitignoreStacks"] = ["go"]
+        p.write(".claude/gw.json", json.dumps(cfg))
+        self.assertEqual(p.run_apply("--init")[0], 0)
+        text = p.read(".gitignore")
+        self.assertIn("vendor/", text)
+        self.assertNotIn("node_modules/", text)
+        p.write(".gitignore", "# galivelop-workflow:gitignore begin (managed block; rerun apply.py --init to refresh it)\nx\n")
+        code, out = p.run_apply("--init")
+        self.assertEqual(code, 2, out)
+        self.assertIn("but not its end line", out)
+        self.assertIn("x\n", p.read(".gitignore"))
+
+
 if __name__ == "__main__":
     unittest.main()
