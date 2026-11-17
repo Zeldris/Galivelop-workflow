@@ -34,14 +34,13 @@ Each session may run in a throwaway container: **what is not pushed does not exi
   done. A half-done task says what is done and what is missing.
 - If you have to stop with something half-done or red: commit anyway with `WIP:` at the start of the message and, in
   the log, what fails and why. Never leave work only on the local machine.
-- Push to the working branch with `bash .claude/gw/scripts/push.sh <branch>` (it retries a network failure, see
-  `pushRetryDelays`, and counts as pushed only what `git ls-remote` confirms). The push and the long check run in the background and you wait for their notice, with no
-  polling loop.
+- Push with `bash .claude/gw/scripts/push.sh <branch>` (retries network failures, `pushRetryDelays`; pushed is only what
+  `git ls-remote` confirms). Push and long check run in the background: wait for their notice, never poll.
 - **After an interrupted or rejected call, run `git status` and `git diff` before repeating it**: the change may
   already be saved, or even pushed, and repeating it duplicates it.
 - If the person says stop, stop: push what there is, leave the log up to date and do nothing else.
-- **Questions for the person** go as a numbered list, each point with its recommendation; they answer by number
-  ("5. a, 6. ok") and `python3 .claude/gw/scripts/questions.py answer "5. a, 6. ok"` writes it to `docs/questions.md`.
+- **Questions for the person**: a numbered list, each with its recommendation (`questions.py add`; a subagent returns
+  them to the main session); they answer by number and `questions.py answer "5. a, 6. ok"` records it.
 - **When each task or PR closes** (and each phase), with everything pushed and the log up to date, ask the person for a
   `/clear` in one line, saying why: a long context is almost all the spend, and the log is enough to resume.
 - **When each block or phase closes, look at the CI of the last push** with
@@ -65,8 +64,7 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - A new test must fail without its fix: `bash .claude/gw/scripts/red-without-fix.sh "<test command>" <fix-file>...`.
 - A test that expects a failure checks **the reason** (the message or the cause), not only the exit code: otherwise
   it also passes when it fails for another reason.
-- `python3 .claude/gw/scripts/doctor.py` says whether the workflow is set up right, with the command that fixes each
-  problem.
+- `python3 .claude/gw/scripts/doctor.py` says whether the workflow is set up right, with the fix for each problem.
 
 ## Commit messages
 
@@ -142,8 +140,6 @@ plans, decides and reviews. This line is the authorisation the agent's own instr
 
 - Each subagent gets a brief: goal, paths, constraints, the check to run and what to report back.
 - Other repositories are read through a subagent that returns a summary with paths, never modified from here.
-- A subagent never asks the user: it returns the question and the main session records it with
-  `python3 .claude/gw/scripts/questions.py add --refs <id> --rec <text> "<question>"`.
 
 ## Project rules
 
