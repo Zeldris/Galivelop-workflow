@@ -212,7 +212,9 @@ class Hardening(Base):
 
     def test_questions_file_returns_path_and_root(self):
         path, root = questions.questions_file(self.root)
-        self.assertEqual((path, root), (self.root / "docs" / "questions.md", self.root))
+        # Resolved on both sides: on macOS the temp dir is /var/..., which git reports as /private/var/...
+        want = self.root.resolve()
+        self.assertEqual((path.resolve(), root.resolve()), (want / "docs" / "questions.md", want))
 
     def test_concurrent_adds_get_different_ids(self):
         procs = [subprocess.Popen([sys.executable, str(SCRIPT), "--root", str(self.root), "add", f"Q{i}?"],
