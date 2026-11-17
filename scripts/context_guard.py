@@ -309,77 +309,114 @@ def report(root, cfg, path, source, hook_chars=0, measure=None):
         return [unknown]
 
 
-def current_context(path):
+def tail_entries(path, tail_bytes):
+    """The JSON objects of the transcript's last `tail_bytes` bytes (a line the cut splits is dropped), in order."""
+    with open(path, "rb") as fh:
+        size = fh.seek(0, os.SEEK_END)
+        start = max(0, size - tail_bytes)
+        fh.seek(max(0, start - 1))  # one byte before: tells whether the tail begins at a line start
+        data = fh.read(size - max(0, start - 1))
+    lines = data.split(b"\n")
+    if start > 0:
+        lines = lines[1:]  # data[0] is the byte before the tail: "\n" (empty first piece) or a cut line
+    out = []
+    for raw in lines:
+        try:
+            entry = json.loads(raw)
+        except ValueError:
+            continue
+        if isinstance(entry, dict):
+            out.append(entry)
+    return out
+
+
+def current_context(path, tail_bytes=None):
     """(tokens, model) of the last measured assistant turn of the current stretch (after the last boundary), or None:
-    no such turn yet, or a transcript that cannot be read."""
+    no such turn yet, or a transcript that cannot be read. With `tail_bytes`, only that tail is read."""
     found = None
     try:
-        for entry in entries(path):
+        for entry in (tail_entries(path, tail_bytes) if tail_bytes else entries(path)):
             if is_boundary(entry):
                 found = None
                 continue
             used = usage_of(entry)
             if used is not None:
                 found = (used, entry["message"].get("model"))
-    except (OSError, TypeError, ValueError):
+    except (OSError, TypeError, ValueError, OverflowError, MemoryError):
         return None
     return found
 
 
-def near_cutoff(root, cfg, branch, transcript):
-    """B31: (stretch, message) when the task's compaction budget is already spent (compactions since the task started
-    >= the log's budget, recover.budget_count) and the current context reaches contextGuard.nearRatio of the
-    compaction cutoff, so the next compaction would pass the budget; else None. `stretch` names the stretch
-    (transcript and its compaction count) so the caller warns once per stretch. The message proposes closing the
-    step (log, commit and push, /clear) or, when the system weighs most (D122), says /clear will not lower it.
-    nearRatio 0 turns it off. Only the given transcript is read (no search); any failure: None, never raises."""
+def window_known(root, model):
+    """B31: True when the compaction cutoff of `model` is not a guess: the model id says 1M (`[1m]`/`-1m`), or the
+    project's .claude/gw.json writes contextGuard.cutoff or contextGuard.window itself. The transcript's model id
+    lacks `[1m]` even in a 1M session (seen 2026-11-17), so the default 200,000 window could warn far too early."""
+    name = str(model or "").lower()
+    return "[1m]" in name or "-1m" in name or bool({"cutoff", "window"} & config.given_keys(root, "contextGuard"))
+
+
+def near_cutoff(root, cfg, branch, transcript, state=None):
+    """B31: (stretch, message) when the context of the current stretch reaches contextGuard.nearRatio of the
+    compaction cutoff and the task's compaction budget is already spent (compactions since the task started >= the
+    log's budget, recover.budget_count); else None. The message, for the agent, proposes closing the step (log, commit
+    and push, recommend /clear to the user) or, when the system weighs most (D122), says /clear will not lower it.
+    Cheap checks first: nearRatio 0 (off), the transcript's last `stopTranscriptBytes` bytes (0 = off), a window
+    that is not known (window_known), a context below the ratio; only then the log's budget and the whole transcript.
+    `state` (a file): the stretch warned last; the same stretch gives None, a new one is written there (unwritable:
+    it warns again). `stretch` = transcript and compactions since the task started. Never raises; any failure: None."""
     try:
-        ratio = config.context_guard(cfg or {})["nearRatio"]
-        if not ratio or not transcript or not os.path.isfile(str(transcript)):
+        cfg = cfg or {}
+        ratio = config.context_guard(cfg)["nearRatio"]
+        tail = cfg.get("stopTranscriptBytes", config.schema_default("stopTranscriptBytes"))
+        if not ratio or not tail or not transcript or not os.path.isfile(str(transcript)):
             return None
-        import recover
-        spent = recover.budget_count(root, branch, str(transcript))
-        if spent is None or spent[0] < spent[1]:
-            return None
-        now = current_context(str(transcript))
+        transcript = str(transcript)
+        now = current_context(transcript, tail)
         if now is None:
             return None
         tokens, model = now
         cutoff = cutoff_for(model, cfg)
-        if not cutoff or tokens < ratio * cutoff:
+        if not cutoff or tokens < ratio * cutoff or not window_known(root, model):
             return None
-        if system_is_largest(root, cfg, str(transcript)):
+        import recover
+        spent = recover.budget_count(root, branch, transcript)
+        if spent is None or spent[0] < spent[1]:
+            return None
+        counted, budget = spent
+        stretch = f"{os.path.abspath(transcript)}|{counted}"
+        if state:
+            try:
+                with open(state, encoding="utf-8") as fh:
+                    if fh.read().strip() == stretch:
+                        return None
+            except OSError:
+                pass
+        if counted == budget:
+            where = f"the task's compaction budget is already spent ({counted} of {budget}): the next compaction passes it"
+        else:
+            where = f"the task's compaction budget is already passed ({counted} compactions, budget {budget})"
+        if system_is_largest(root, cfg, transcript):
             advice = f"close the step now (update the log, commit and push); {SYSTEM_ADVICE}"
         else:
-            advice = "close the step now: update the log, commit and push, then ask the user for /clear"
+            advice = "close the step now: update the log, commit and push, then recommend /clear to the user"
         message = (f"Context at {round(100 * tokens / cutoff)} % of the compaction cutoff ({fmt(tokens)} of "
-                   f"{fmt(cutoff)} tokens) and the task's compaction budget is already spent ({spent[0]} of "
-                   f"{spent[1]}): the next compaction passes it; {advice}.")
-        return f"{os.path.abspath(str(transcript))}|{recover.count_compactions(str(transcript))}", message
+                   f"{fmt(cutoff)} tokens) and {where}; {advice}.")
+        if state:
+            try:
+                with open(state, "w", encoding="utf-8") as fh:
+                    fh.write(stretch + "\n")
+            except OSError:
+                pass
+        return stretch, message
     except Exception:  # a warning must never cost the stop
         return None
 
 
 def near_cutoff_once(root, cfg, branch, transcript, state):
-    """near_cutoff's message the first time in a stretch, else None. `state` is a file that remembers the last
-    stretch warned about (before-stop.py: <git dir>/gw-context-warn). Never raises; if the file cannot be written the
-    warning still shows (at most once more)."""
-    found = near_cutoff(root, cfg, branch, transcript)
-    if found is None:
-        return None
-    stretch, message = found
-    try:
-        with open(state, encoding="utf-8") as fh:
-            if fh.read().strip() == stretch:
-                return None
-    except OSError:
-        pass
-    try:
-        with open(state, "w", encoding="utf-8") as fh:
-            fh.write(stretch + "\n")
-    except OSError:
-        pass
-    return message
+    """near_cutoff's message the first time in a stretch (remembered in the file `state`; before-stop.py:
+    <git dir>/gw-context-warn), else None. Never raises."""
+    found = near_cutoff(root, cfg, branch, transcript, state)
+    return found[1] if found else None
 
 
 def main(argv=None):

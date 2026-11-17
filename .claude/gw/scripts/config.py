@@ -496,6 +496,17 @@ def context_guard(config):
     return _section(config, "contextGuard")
 
 
+def given_keys(root, key):
+    """The inner keys the project's .claude/gw.json itself writes under the object key `key` (not the defaults the
+    loader fills), as a set; empty when the file, the key or the JSON is missing (B31: is the window known?)."""
+    try:
+        data = json.loads((Path(root) / CONFIG_REL).read_text(encoding="utf-8"))
+        section = data.get(key) if isinstance(data, dict) else None
+        return set(section) if isinstance(section, dict) else set()
+    except (OSError, ValueError, TypeError):
+        return set()
+
+
 def metrics(config):
     """The `metrics` key as a dict (ledger, record, reports, prices, alert, quality); `alert` and `quality` are filled
     key by key."""

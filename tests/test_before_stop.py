@@ -1004,11 +1004,18 @@ class Wiring(unittest.TestCase):
         self.assertTrue(cmds[0].startswith("python3 "), cmds[0])
 
 
-class NearCompaction(Base):  # B31: the Stop hook warns before the next compaction, once per stretch, never blocks
+class NearCompaction(Base):  # B31: the Stop hook blocks once per stretch before the next compaction
+    REASON = ("Context at 94 % of the compaction cutoff (150,000 of 160,000 tokens) and the task's compaction budget "
+              "is already spent (0 of 0): the next compaction passes it; close the step now: update the log, commit "
+              "and push, then recommend /clear to the user.")
+
     def setUp(self):
         super().setUp()
         for name in ("context_guard.py", "recover.py"):
             shutil.copy2(ROOT / "scripts" / name, self.p.scripts / name)
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["contextGuard"] = {"window": 200000}  # a known window (context_guard.window_known)
+        self.p.write(".claude/gw.json", json.dumps(cfg))
         self.p.write(LOG, "log\nCompaction budget: 0\n" + "l" * 350000 + "\n")  # the log weighs most: /clear helps
         self.p.commit("log with a budget")
         self.p.work_branch()
@@ -1017,16 +1024,33 @@ class NearCompaction(Base):  # B31: the Stop hook warns before the next compacti
         self.transcript.write_text(json.dumps({"type": "assistant", "message": {"model": "claude-sonnet-5-5",
                                                                                  "usage": usage}}) + "\n")
 
-    def test_warns_once_per_stretch_without_blocking(self):
-        code, out = self.p.stop({"transcript_path": str(self.transcript)})
-        self.assertLetsStop(code, out)
-        self.assertIn("Context at 94 % of the compaction cutoff (150,000 of 160,000 tokens) and the task's compaction "
-                      "budget is already spent (0 of 0): the next compaction passes it; close the step now: update "
-                      "the log, commit and push, then ask the user for /clear.",
-                      decision(self, out).get("systemMessage", ""))
-        code, out = self.p.stop({"transcript_path": str(self.transcript)})
+    def stop(self, **extra):
+        return self.p.stop(dict({"transcript_path": str(self.transcript)}, **extra))
+
+    def test_blocks_once_per_stretch_with_the_reason_for_claude(self):
+        code, out = self.stop()
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.assertBlocks(out)["reason"], self.REASON)
+        code, out = self.stop()
         self.assertLetsStop(code, out)
         self.assertNotIn("compaction cutoff", out)
+
+    def test_stop_hook_active_never_blocks_nor_spends_the_stretch(self):
+        code, out = self.stop(stop_hook_active=True)
+        self.assertLetsStop(code, out)
+        self.assertNotIn("compaction cutoff", out)
+        self.assertEqual(self.assertBlocks(self.stop()[1])["reason"], self.REASON)
+
+    def test_joins_the_other_blocks_on_its_own_line(self):
+        self.p.write("work.txt", "x")
+        self.p.commit("unpushed")
+        reason = self.assertBlocks(self.stop()[1])["reason"]
+        lines = reason.split("\n")
+        self.assertEqual(len(lines), 2, reason)
+        self.assertIn("has 1 commit not pushed", lines[0])
+        self.assertEqual(lines[1], self.REASON)
+        reason = self.assertBlocks(self.stop()[1])["reason"]  # the push block stays, the context one is said once
+        self.assertNotIn("compaction cutoff", reason)
 
     def test_missing_transcript_is_silent(self):
         code, out = self.p.stop({"transcript_path": str(self.tmp / "nope.jsonl")})
@@ -1038,7 +1062,7 @@ class NearCompaction(Base):  # B31: the Stop hook warns before the next compacti
         (self.p.scripts / "context_guard.py").unlink()
         self.p.commit("no context_guard.py")
         self.p.git("push", "-q")
-        code, out = self.p.stop({"transcript_path": str(self.transcript)})
+        code, out = self.stop()
         self.assertLetsStop(code, out)
         self.assertNotIn("compaction cutoff", out)
         self.assertNotIn("could not check", out)

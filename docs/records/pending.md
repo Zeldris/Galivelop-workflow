@@ -291,3 +291,4 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - D62 (revisión n.º 5, 0.8): el aviso de CI del `pre-push` deduplica por sha remoto y nombra solo la primera rama; agrupar las ramas por sha y nombrarlas todas.
 - D62 (revisión n.º 8, 0.8): la orden del aviso de CI del `pre-push` usa una ruta relativa a la raíz; desde un subdirectorio no se encuentra: dar la ruta absoluta.
 - D62 (revisión n.º 9, 0.8): si `config.py` no lee `prepushCiWarn` o su timeout, el aviso de CI se apaga sin decir nada; sacar una línea con `config.py validate`.
+- [ ] `0.8` · **Revisión B31 n.º 5**: el marcador del aviso de contexto (`<git dir>/gw-context-warn`) es uno por git dir y guarda solo el último tramo: dos sesiones en el mismo worktree, ambas cerca del corte, se lo pisan y avisan en cada turno (candidato: varias claves, una por transcript, o un archivo por sesión).

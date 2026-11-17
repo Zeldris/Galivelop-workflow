@@ -32,12 +32,14 @@ agent remembered it. It blocks the stop when:
      which the metrics.py Stop hook rewrites on every stop) and the log (`log` in .claude/gw.json) is
      not among them. The reason says to commit the log, updated, in the same commit as the work.
 
-B31: it also warns BEFORE the next compaction, never blocking: when the task's compaction budget in the log is
-already spent and the context of the stretch reaches `contextGuard.nearRatio` of the compaction cutoff, a one-line
-`systemMessage` proposes closing the step (log, commit and push, /clear; or, when the system weighs most, D122, that
-/clear will not lower it). Once per stretch (<git dir>/gw-context-warn); silent if the transcript cannot be read
-(context_guard.near_cutoff_once). The Stop hook fires at the end of every turn, so it comes before the compaction;
-recover.py --state comes after it.
+B31: it also blocks once BEFORE the next compaction: when the task's compaction budget in the log is already spent
+(or passed) and the context of the stretch reaches `contextGuard.nearRatio` of the compaction cutoff (a known
+window: context_guard.window_known), a one-line reason tells Claude to close the step (log, commit and push, then
+recommend /clear to the user; or, when the system weighs most, D122, that /clear will not lower it). A block,
+because a `systemMessage` reaches only the user; once per stretch (<git dir>/gw-context-warn), and the continued
+turn comes back with stop_hook_active, which never blocks, so it cannot loop. Its reason joins the others on its own
+line. Silent if the transcript cannot be read (context_guard.near_cutoff_once). The Stop hook fires at the end of
+every turn, so it comes before the compaction; recover.py --state comes after it.
 
 Output format (https://code.claude.com/docs/en/hooks.md, "Stop decision control"): a block is a JSON object on stdout
 with exit 0, `{"decision": "block", "reason": "..."}`; Claude Code feeds `reason` back to Claude as the explanation
@@ -380,7 +382,7 @@ def changed_paths(root, ignore=()):
 
 def near_compaction(root, cfg, transcript):
     """B31: context_guard.near_cutoff_once for this branch and transcript (the hook's transcript_path), remembered in
-    <git dir>/gw-context-warn so it warns once per stretch; None when there is nothing to say or anything fails
+    <git dir>/gw-context-warn so it blocks once per stretch; None when there is nothing to say or anything fails
     (a missing context_guard.py, no git, an unreadable transcript): silent, never a block."""
     if not transcript:
         return None
@@ -473,8 +475,8 @@ def main():
         except GitError as exc:
             warns.append(str(exc))
         near = near_compaction(root, cfg, event.get("transcript_path"))
-        if near:
-            notes.append(near)
+        if near:  # a block: only `reason` reaches Claude; once per stretch, and stop_hook_active ends it
+            blocks.append(near)
 
     answer = {}
     if blocks:

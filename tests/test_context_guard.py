@@ -278,7 +278,11 @@ class SystemIsLargest(Base):  # D122
 
 
 class NearCutoff(Base):  # B31: warn before the next compaction, once the task's compaction budget is spent
-    """Default cutoff 160,000 (200,000 x 0.8), nearRatio 0.8: the warning starts at 128,000 tokens of context."""
+    """Window written in the config (window_known), cutoff 160,000 (200,000 x 0.8), nearRatio 0.8: from 128,000."""
+
+    def setUp(self):
+        super().setUp()
+        self.write_config({"contextGuard": {"window": 200000}})
 
     def near(self, lines, spent=(2, 2), once=None):
         import recover
@@ -301,16 +305,24 @@ class NearCutoff(Base):  # B31: warn before the next compaction, once the task's
     def test_no_budget_in_the_log_is_silent(self):
         self.assertIsNone(self.near([turn(150000)], spent=None))
 
-    def test_spent_but_below_the_ratio_is_silent(self):
+    def test_spent_but_below_the_ratio_is_silent_without_reading_the_budget(self):
         self.assertIsNone(self.near([turn(127000)]))
+        self.counted.assert_not_called()  # the cheap check comes first
 
     def test_spent_and_above_the_ratio_proposes_closing_the_step(self):
         self.big_log()
-        stretch, message = self.near([turn(150000)], spent=(3, 2))
+        stretch, message = self.near([turn(150000)], spent=(2, 2))
         self.assertEqual(message, "Context at 94 % of the compaction cutoff (150,000 of 160,000 tokens) and the task's "
-                                  "compaction budget is already spent (3 of 2): the next compaction passes it; close "
-                                  "the step now: update the log, commit and push, then ask the user for /clear.")
-        self.assertTrue(stretch.endswith("|0"), stretch)
+                                  "compaction budget is already spent (2 of 2): the next compaction passes it; close "
+                                  "the step now: update the log, commit and push, then recommend /clear to the user.")
+        self.assertTrue(stretch.endswith("|2"), stretch)
+
+    def test_budget_already_passed_says_so(self):
+        self.big_log()
+        _, message = self.near([turn(150000)], spent=(3, 1))
+        self.assertIn("and the task's compaction budget is already passed (3 compactions, budget 1); close the step "
+                      "now:", message)
+        self.assertNotIn("the next compaction passes it", message)
 
     def test_the_current_context_is_the_last_turn_of_the_stretch(self):
         self.big_log()
@@ -318,11 +330,34 @@ class NearCutoff(Base):  # B31: warn before the next compaction, once the task's
         self.assertIsNone(self.near([turn(140000), turn(20000)]))
         self.assertIsNone(self.near([turn(140000), BOUNDARY]))  # nothing measured since the compaction yet
 
+    def test_only_the_tail_is_read(self):
+        self.big_log()
+        self.write_config({"contextGuard": {"window": 200000}, "stopTranscriptBytes": 300})
+        filler = {"type": "user", "message": {"content": "x" * 400}}
+        self.assertIsNone(self.near([turn(150000), filler]))  # the turn is outside the last 300 bytes
+        self.assertIsNotNone(self.near([filler, turn(150000)]))
+        self.write_config({"contextGuard": {"window": 200000}, "stopTranscriptBytes": 0})
+        self.assertIsNone(self.near([turn(150000)]))
+
+    def test_unknown_window_is_silent(self):  # the transcript's model id lacks [1m] even in a 1M session
+        self.big_log()
+        self.write_config({})
+        self.assertIsNone(self.near([turn(150000, model="claude-opus-5-5")]))
+        self.counted.assert_not_called()
+        self.write_config({"contextGuard": {"cutoff": 140000}})
+        self.assertIn("(150,000 of 140,000 tokens)", self.near([turn(150000, model="claude-opus-5-5")])[1])
+
+    def test_a_1m_model_id_is_a_known_window(self):
+        self.big_log()
+        self.write_config({})
+        self.assertIsNone(self.near([turn(150000, model="claude-opus-5-5[1m]")]))  # 150,000 of 800,000
+        self.assertIn("(700,000 of 800,000 tokens)", self.near([turn(700000, model="claude-opus-5-5[1m]")])[1])
+
     def test_system_as_main_culprit_says_clear_will_not_lower_it(self):  # D122
         _, message = self.near([turn(150000)])
         self.assertIn("close the step now (update the log, commit and push); the largest part of the startup is the "
                       "system (system prompt, tools, MCP), which /clear does not shrink", message)
-        self.assertNotIn("ask the user for /clear", message)
+        self.assertNotIn("recommend /clear", message)
 
     def test_missing_or_unreadable_transcript_is_silent(self):
         self.assertIsNone(self.near(None))
@@ -331,14 +366,15 @@ class NearCutoff(Base):  # B31: warn before the next compaction, once the task's
         bad = self.tmp / "bad.jsonl"
         bad.write_bytes(b"\xff\xfe" + json.dumps(turn(150000)).encode()[:20])
         self.assertIsNone(self.near(str(bad)))
+        self.assertIsNone(self.near(str(self.tmp)))  # a folder
 
     def test_key_off_is_silent_and_reads_nothing(self):
-        self.write_config({"contextGuard": {"nearRatio": 0}})
+        self.write_config({"contextGuard": {"window": 200000, "nearRatio": 0}})
         self.assertIsNone(self.near([turn(159000)]))
         self.counted.assert_not_called()
 
     def test_own_ratio(self):
-        self.write_config({"contextGuard": {"nearRatio": 0.5}})
+        self.write_config({"contextGuard": {"window": 200000, "nearRatio": 0.5}})
         self.assertIsNotNone(self.near([turn(81000)]))
         self.assertIsNone(self.near([turn(79000)]))
 
@@ -346,10 +382,11 @@ class NearCutoff(Base):  # B31: warn before the next compaction, once the task's
         self.big_log()
         state = self.tmp / "warned"
         lines = [turn(150000)]
-        self.assertIn("ask the user for /clear", self.near(lines, once=state))
+        self.assertIn("recommend /clear to the user", self.near(lines, once=state))
         self.assertIsNone(self.near(lines, once=state))  # warned already this stretch
         self.assertIsNone(self.near(lines + [turn(155000)], once=state))  # same stretch, more turns
-        self.assertIn("ask the user for /clear", self.near(lines + [BOUNDARY, turn(150000)], once=state))  # new one
+        self.assertIn("already passed (3 compactions, budget 2)",
+                      self.near(lines + [BOUNDARY, turn(150000)], spent=(3, 2), once=state))  # a new stretch
 
     def test_once_with_an_unwritable_state_still_warns(self):
         self.big_log()

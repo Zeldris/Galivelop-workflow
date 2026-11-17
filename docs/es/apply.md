@@ -295,7 +295,8 @@ entra el código ya hoy.
   `python3 .claude/gw/scripts/recover.py --state` (la bitácora, `git status`, los últimos commits, los otros
   worktrees con su rama y su fila, y las compactaciones de la sesión y desde el inicio de la tarea, que es el commit
   base con `protectedBranch`; el presupuesto de `Presupuesto de compactaciones: N` en la bitácora, con aviso si se
-  supera, y antes de pasarlo avisa el gancho `Stop` (`contextGuard.nearRatio`, B31); y las ramas remotas con commits que la protegida no tiene, 10 como mucho, solo con refs locales),
+  supera; con el presupuesto gastado y el contexto cerca del corte, el gancho `Stop` pide al agente cerrar el paso
+  una vez por tramo, con la ventana escrita en `contextGuard` (`nearRatio`, B31); y las ramas remotas con commits que la protegida no tiene, 10 como mucho, solo con refs locales),
   un aviso de revisión atrasada (líneas cambiadas desde el último commit con `Findings:` por encima de
   `changeSize.block`, contadas contra `origin/<protegida>` o la rama local; sin ninguna de las dos, calla; nombra el
   arreglo: `/code-review` de ese diff) y
