@@ -39,6 +39,7 @@ What it copies (workflow -> project):
 In the workflow repo itself the root templates and the CI file are skipped: it has its own AGENTS.md, log and CI.
   .gitignore                    gets the line .claude/gw.local.json (the local, private list private-check.py reads)
                                 appended when none of its lines names that file yet; nothing else in it is touched
+                                (--init also writes the per-stack block, D127: see GITIGNORE_BEGIN)
 
   ~/.claude/gw/notas/*          -> .claude/gw/           PERSONAL NOTES of the person running this (folder overridable
                                    with the env var GW_PERSONAL_NOTES; absent folder = nothing happens). Only regular
@@ -643,19 +644,89 @@ LOCAL_IGNORE = config.LOCAL_REL.as_posix()  # .claude/gw.local.json: private, ne
 LOCAL_IGNORE_LINES = {LOCAL_IGNORE, "/" + LOCAL_IGNORE, "gw.local.json", "/**/gw.local.json", "**/gw.local.json"}
 
 
-def plan_gitignore(plan):
+GITIGNORE_BEGIN_PREFIX = "# galivelop-workflow:gitignore begin"  # a line starting so opens the block, whatever follows
+GITIGNORE_BEGIN = GITIGNORE_BEGIN_PREFIX + " (managed block; rerun apply.py --init to refresh it)"
+GITIGNORE_END = "# galivelop-workflow:gitignore end"
+STACK_MARKERS = {  # D127: the stack -> the root files (exact names, checked with is_file) that say the project uses it
+    "python": ("pyproject.toml", "requirements.txt", "setup.py", "setup.cfg", "Pipfile"),
+    "node": ("package.json",),
+    "go": ("go.mod",),
+    "rust": ("Cargo.toml",),
+}
+
+
+def detect_stacks(root, cfg):
+    """D127: the stacks whose .gitignore fragment (templates/gitignore/<stack>.gitignore) the block gets: the config's
+    `gitignoreStacks` when not empty, else those with a marker file (STACK_MARKERS) in the project's root."""
+    try:
+        given = config.gitignore_stacks(cfg)
+    except config.ConfigError as exc:
+        raise ApplyError(f"apply: {exc}")
+    if given:
+        return given
+    return [s for s, marks in STACK_MARKERS.items() if any((root / m).is_file() for m in marks)]
+
+
+def gitignore_block(stacks):
+    """The marked block, with a final newline: begin line, one `# <stack>` heading and fragment per stack, end line."""
+    out = [GITIGNORE_BEGIN]
+    for stack in stacks:
+        src = WORKFLOW / "templates" / "gitignore" / f"{stack}.gitignore"
+        try:
+            text = src.read_text(encoding="utf-8")
+        except OSError:
+            raise ApplyError(f"apply: no .gitignore template for the stack {stack!r} ({src}); fix gitignoreStacks in "
+                             f"{config.CONFIG_REL} (stacks: {', '.join(sorted(STACK_MARKERS))})")
+        out += [f"# {stack}"] + text.rstrip("\n").split("\n")
+    out.append(GITIGNORE_END)
+    return "\n".join(out) + "\n"
+
+
+def with_gitignore_block(current, block):
+    """`current` (text) with the marked block: replaced in place when its markers are there, else appended. Only the
+    lines between the markers change. A begin line without its end fails closed."""
+    lines = current.splitlines(keepends=True)
+    starts = [i for i, l in enumerate(lines) if l.strip().startswith(GITIGNORE_BEGIN_PREFIX)]
+    if not starts:
+        sep = "" if not current or current.endswith("\n") else "\n"
+        return current + sep + block
+    ends = [i for i, l in enumerate(lines) if i > starts[0] and l.strip() == GITIGNORE_END]
+    if not ends:
+        raise ApplyError(f"apply: .gitignore has the line {GITIGNORE_BEGIN_PREFIX!r} but not its end line {GITIGNORE_END!r}; "
+                         f"add the end line (or delete the block) and rerun: python3 {Path(__file__).resolve()} "
+                         f"{{root}} --init")
+    return "".join(lines[:starts[0]]) + block + "".join(lines[ends[0] + 1:])
+
+
+def plan_gitignore(plan, init=False):
     """The project's .gitignore ignores .claude/gw.local.json (private names and addresses, read by
     private-check.py): the line is appended when no line of .gitignore already names it. Only the file is read, not
     git's global excludes, so --check says the same on every machine."""
     path = plan.root / ".gitignore"
     current = path.read_bytes() if path.is_file() else b""
+    start, notes = current, []
+    stacks = detect_stacks(plan.root, plan.cfg) if init else []
+    if stacks:
+        try:
+            try:
+                existing = current.decode("utf-8")
+            except UnicodeDecodeError:
+                raise ApplyError(f"apply: {path} is not UTF-8, so the .gitignore block is not written (it would "
+                                 f"change the bytes of your patterns); convert it (e.g. iconv -f cp1252 -t utf-8 "
+                                 f"{path}) and rerun: python3 {Path(__file__).resolve()} {plan.root} --init")
+            text = with_gitignore_block(existing, gitignore_block(stacks))
+        except ApplyError as exc:
+            raise ApplyError(str(exc).replace("{root}", str(plan.root)))
+        if text.encode() != current:
+            current = text.encode()
+            notes.append(f".gitignore block for {', '.join(stacks)}")
     lines = {line.strip() for line in current.decode("utf-8", "replace").splitlines()}
-    if lines & LOCAL_IGNORE_LINES:
-        return
-    sep = b"" if not current or current.endswith(b"\n") else b"\n"
-    data = current + sep + f"# galivelop-workflow: private, never committed\n{LOCAL_IGNORE}\n".encode()
-    plan.actions.append(("update" if current else "create", Path(".gitignore"), data, False,
-                         f"ignore {LOCAL_IGNORE}, the local list of private names"))
+    if not lines & LOCAL_IGNORE_LINES:
+        sep = b"" if not current or current.endswith(b"\n") else b"\n"
+        current += sep + f"# galivelop-workflow: private, never committed\n{LOCAL_IGNORE}\n".encode()
+        notes.insert(0, f"ignore {LOCAL_IGNORE}, the local list of private names")
+    if current != start:
+        plan.actions.append(("update" if start else "create", Path(".gitignore"), current, False, "; ".join(notes)))
 
 
 def gitattributes_line(ledger):
@@ -1084,6 +1155,71 @@ def plan_schema(plan):
     plan.actions.append(("merge", config.CONFIG_REL, dump(migrated), False, "; ".join(details)))
 
 
+def stale_pattern(old):
+    """D83: a staleRefs regex for an old name: it, escaped, not inside a longer name or path."""
+    return r"(?<![\w.-])" + re.escape(old) + r"(?![\w-])"
+
+
+def plan_stale_refs(plan):
+    """D83 (extends D46): the names the migration renames (plan.renames: moved paths, old scripts and skills, hook
+    commands) are added to the project's `staleRefs`, so md-links.py keeps flagging them. Only with --update and never
+    in the workflow repo. Both forms of the key (a list, or {"patterns": [...], "skip": [...]}) keep their form and
+    their entries; an entry already there (the same regex, or the escaped name) is not repeated. Joins a `merge` of
+    gw.json already planned (one write), whose detail lists the added names.""" 
+    if not plan.update or plan.root.resolve() == WORKFLOW.resolve() or not plan.renames:
+        return
+    try:
+        raw = json.loads((plan.root / config.CONFIG_REL).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if not isinstance(raw, dict):
+        return
+    mine = [i for i, a in enumerate(plan.actions) if a[0] == "merge" and Path(a[1]) == config.CONFIG_REL]
+    base, details = dict(raw), []
+    if mine:
+        base = json.loads(plan.actions[mine[-1]][2].decode("utf-8"))
+        details = [plan.actions[i][4] for i in mine]
+    value = base.get("staleRefs")
+    if value is None:
+        value = []
+    if isinstance(value, dict):
+        patterns = value.get("patterns")
+        if patterns is None:
+            patterns = []
+        if not isinstance(patterns, list):
+            return
+    elif isinstance(value, list):
+        patterns = value
+    else:
+        return
+    known = {p for p in patterns if isinstance(p, str)}
+    added = []
+    for rename in plan.renames:
+        old = rename.partition(" -> ")[0].strip()
+        pattern = stale_pattern(old)
+        if not old or pattern in known or re.escape(old) in known or old in known:
+            continue
+        known.add(pattern)
+        patterns = patterns + [pattern]
+        added.append(old)
+    if not added:
+        return
+    # The history that apply.py's own old-name rewriting leaves alone (records, proposals, legacyNamesSkip, roadmaps)
+    # may quote the old names: md-links.py skips only the log and .claude/, so the form becomes {patterns, skip}.
+    skip = list(value.get("skip") or []) if isinstance(value, dict) else []
+    cfg = plan.cfg
+    history = [f"{cfg[k].rstrip('/')}/" for k in ("recordsDir", "proposalsDir") if cfg.get(k)]
+    history += [str(g) for g in cfg.get("legacyNamesSkip", ["CHANGELOG*"])]
+    history += [re.sub(r"^\./", "", str(e["path"]).replace("\\", "/")) for e in config.roadmap_files(cfg)
+                if isinstance(e, dict) and e.get("path")]
+    skip += [g for g in dict.fromkeys(history) if g not in skip]
+    base["staleRefs"] = {**(value if isinstance(value, dict) else {}), "patterns": patterns, "skip": skip}
+    if mine:
+        plan.actions = [a for i, a in enumerate(plan.actions) if i not in mine]
+    details.append(f"staleRefs gets the renamed names ({', '.join(added)}), D83")
+    plan.actions.append(("merge", config.CONFIG_REL, dump(base), False, "; ".join(details)))
+
+
 def plan_version(plan):
     """B34: the project's gw.json top-level `version` is set to the workflow's (the only writer of that file, so
     `version.py <X.Y.Z>` here leaves it to this). Joins a `merge` of gw.json already planned (one write); every other
@@ -1409,7 +1545,7 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
                              f"{config.CONFIG_REL} or list them with git grep -n -F '<old name>'")
 
 
-def build(root, version, update, extra_skills, cfg, personal=True, check=False, keep_paths=False):
+def build(root, version, update, extra_skills, cfg, personal=True, check=False, keep_paths=False, init=False):
     self_apply = root.resolve() == WORKFLOW.resolve()
     plan = Plan(root, version, update or self_apply)
     plan.cfg = cfg
@@ -1469,13 +1605,14 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
         plan.file(agents_src / name, Path(".claude/agents") / name)
     plan.settings(WORKFLOW / "templates" / "claude" / "settings.json")
     plan_templates(plan, cfg, self_apply, wanted_skills)
-    plan_gitignore(plan)
+    plan_gitignore(plan, init)
     plan_gitattributes(plan, cfg)
     if personal and not is_workflow_repo(root):
         plan_personal_notes(plan, check)  # before the old names: a note it creates is a new name that exists
     if not self_apply:
         plan_old_scripts(plan)
         plan_legacy_names(plan, cfg, wanted_skills, keep_paths)
+        plan_stale_refs(plan)
     plan_hooks_path(plan)
     for o in [o for o in plan.orphans if plan.is_owned(o)]:  # a file the workflow dropped but the project owns
         plan.orphans.remove(o)
@@ -1609,7 +1746,8 @@ def init_config(args, version):
     for key, flag in (("protectedBranch", args.protected_branch), ("pushToProtected", args.push_to_protected),
                       ("reviewMark", args.review_mark), ("content", args.content or None),
                       ("visibleLanguages", args.visible_languages or None),
-                      ("designReferences", args.design_references or None)):
+                      ("designReferences", args.design_references or None),
+                      ("gitignoreStacks", args.stacks or None)):
         if flag:
             new[key] = flag
     if args.require_retro is not None:
@@ -1661,6 +1799,8 @@ def main(argv=None):
                       help="a product or standard design proposals are contrasted with (repeatable)")
     init.add_argument("--content", action="append", default=[], metavar="REGEX", help="a `content` regex (repeatable)")
     init.add_argument("--review-mark", metavar="PATH")
+    init.add_argument("--stack", dest="stacks", action="append", default=[], metavar="STACK",
+                      help="a stack whose .gitignore block --init writes (repeatable; default: detected, D127)")
     args = parser.parse_args(config.legacy_flags(sys.argv[1:] if argv is None else argv, OLD_FLAGS, "apply"))
     init_flags = [f for f, v in (("--language", args.language), ("--log", args.log),
                                  ("--check-command", args.check_commands), ("--install", args.install),
@@ -1669,7 +1809,8 @@ def main(argv=None):
                                  ("--review-mark", args.review_mark), ("--require-retro", args.require_retro),
                                  ("--agent-signatures", args.agent_signatures),
                                  ("--visible-language", args.visible_languages),
-                                 ("--design-reference", args.design_references)) if v]
+                                 ("--design-reference", args.design_references),
+                                 ("--stack", args.stacks)) if v]
     if args.summary and not args.dry_run:
         parser.error("--summary only goes with --dry-run; add it: python3 apply.py [PROJECT] --dry-run --summary")
     if init_flags and not args.init:
@@ -1687,6 +1828,7 @@ def main(argv=None):
     root = root.resolve()
     version = workflow_version()
     cfg = None
+    init_runs = args.init and not (root / config.CONFIG_REL).is_file()  # an existing gw.json: --init is ignored
     if args.init:
         if (root / config.CONFIG_REL).is_file():
             print(f"apply: {root / config.CONFIG_REL} already exists; left as is (the --init flags are ignored)")
@@ -1721,7 +1863,7 @@ def main(argv=None):
             return 2
     try:
         plan = build(root, version, args.update, args.extra, cfg, not (args.no_personal or args.vendored),
-                     args.check or args.vendored, args.keep_paths)
+                     args.check or args.vendored, args.keep_paths, init_runs)
     except ApplyError as exc:
         print(exc, file=sys.stderr)
         return 2

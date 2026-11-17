@@ -78,6 +78,7 @@
   "legacyNames": true,
   "legacyNamesSkip": ["CHANGELOG*"],
   "legacyNamesMax": 50,
+  "gitignoreStacks": [],
   "content": ["^docs/", "^(README|GLOSSARY|REVIEW|CLAUDE|AGENTS|CHANGELOG|CREDITS)(\\.[a-z]{2})?\\.md$", "^\\.claude/skills/.*\\.md$"],
   "roadmap": false,
   "roadmapFiles": [],

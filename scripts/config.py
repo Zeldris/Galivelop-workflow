@@ -501,6 +501,20 @@ def stale_refs_paths(config):
     return _string_list_key(config, "staleRefsPaths")
 
 
+def gitignore_stacks(config):
+    """The `gitignoreStacks` key (D127): the stacks apply.py --init writes a .gitignore block for, [] = detect them.
+    Fails closed on anything but a list of known stack names, with the command that fixes it."""
+    prop = _schema()["properties"]["gitignoreStacks"]
+    known = prop["items"]["enum"]
+    given = config.get("gitignoreStacks", prop["default"])
+    if (not isinstance(given, list) or not all(isinstance(x, str) and x in known for x in given)
+            or len(set(given)) != len(given)):
+        raise ConfigError(f"gitignoreStacks must be a list of different stacks among {', '.join(known)}, got "
+                          f"{given!r}; fix it in {CONFIG_REL} (e.g. [\"python\"]) and validate: "
+                          f"python3 scripts/config.py validate")
+    return list(given)
+
+
 def instruction_lines(config):
     """The `instructionLines` key as (warn, fail): the line limits of AGENTS.md/CLAUDE.md."""
     limits = _section(config, "instructionLines")

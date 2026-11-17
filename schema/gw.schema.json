@@ -578,6 +578,13 @@
       "default": ["CHANGELOG*"],
       "description": "Globs (fnmatch, on the repo-relative path) of files apply.py never lists old-name uses in, as history that is not renamed. The log, recordsDir and proposalsDir are always skipped."
     },
+    "gitignoreStacks": {
+      "type": "array",
+      "items": {"type": "string", "enum": ["python", "node", "go", "rust"]},
+      "uniqueItems": true,
+      "default": [],
+      "description": "D127: the stacks whose .gitignore block apply.py --init writes (templates/gitignore/<stack>.gitignore). Empty: the stacks found by their marker files in the root (pyproject.toml, package.json, go.mod, Cargo.toml...)."
+    },
     "legacyNamesMax": {
       "type": "integer",
       "minimum": 1,
