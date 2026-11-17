@@ -581,6 +581,7 @@
     "gitignoreStacks": {
       "type": "array",
       "items": {"type": "string", "enum": ["python", "node", "go", "rust"]},
+      "uniqueItems": true,
       "default": [],
       "description": "D127: the stacks whose .gitignore block apply.py --init writes (templates/gitignore/<stack>.gitignore). Empty: the stacks found by their marker files in the root (pyproject.toml, package.json, go.mod, Cargo.toml...)."
     },

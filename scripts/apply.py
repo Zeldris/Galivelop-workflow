@@ -644,9 +644,10 @@ LOCAL_IGNORE = config.LOCAL_REL.as_posix()  # .claude/gw.local.json: private, ne
 LOCAL_IGNORE_LINES = {LOCAL_IGNORE, "/" + LOCAL_IGNORE, "gw.local.json", "/**/gw.local.json", "**/gw.local.json"}
 
 
-GITIGNORE_BEGIN = "# galivelop-workflow:gitignore begin (managed block; rerun apply.py --init to refresh it)"
+GITIGNORE_BEGIN_PREFIX = "# galivelop-workflow:gitignore begin"  # a line starting so opens the block, whatever follows
+GITIGNORE_BEGIN = GITIGNORE_BEGIN_PREFIX + " (managed block; rerun apply.py --init to refresh it)"
 GITIGNORE_END = "# galivelop-workflow:gitignore end"
-STACK_MARKERS = {  # D127: the stack -> the root files (exact names or *.ext globs) that say the project uses it
+STACK_MARKERS = {  # D127: the stack -> the root files (exact names, checked with is_file) that say the project uses it
     "python": ("pyproject.toml", "requirements.txt", "setup.py", "setup.cfg", "Pipfile"),
     "node": ("package.json",),
     "go": ("go.mod",),
@@ -657,7 +658,10 @@ STACK_MARKERS = {  # D127: the stack -> the root files (exact names or *.ext glo
 def detect_stacks(root, cfg):
     """D127: the stacks whose .gitignore fragment (templates/gitignore/<stack>.gitignore) the block gets: the config's
     `gitignoreStacks` when not empty, else those with a marker file (STACK_MARKERS) in the project's root."""
-    given = list(cfg.get("gitignoreStacks") or [])
+    try:
+        given = config.gitignore_stacks(cfg)
+    except config.ConfigError as exc:
+        raise ApplyError(f"apply: {exc}")
     if given:
         return given
     return [s for s, marks in STACK_MARKERS.items() if any((root / m).is_file() for m in marks)]
@@ -682,13 +686,13 @@ def with_gitignore_block(current, block):
     """`current` (text) with the marked block: replaced in place when its markers are there, else appended. Only the
     lines between the markers change. A begin line without its end fails closed."""
     lines = current.splitlines(keepends=True)
-    starts = [i for i, l in enumerate(lines) if l.strip() == GITIGNORE_BEGIN]
+    starts = [i for i, l in enumerate(lines) if l.strip().startswith(GITIGNORE_BEGIN_PREFIX)]
     if not starts:
         sep = "" if not current or current.endswith("\n") else "\n"
         return current + sep + block
     ends = [i for i, l in enumerate(lines) if i > starts[0] and l.strip() == GITIGNORE_END]
     if not ends:
-        raise ApplyError(f"apply: .gitignore has the line {GITIGNORE_BEGIN!r} but not its end line {GITIGNORE_END!r}; "
+        raise ApplyError(f"apply: .gitignore has the line {GITIGNORE_BEGIN_PREFIX!r} but not its end line {GITIGNORE_END!r}; "
                          f"add the end line (or delete the block) and rerun: python3 {Path(__file__).resolve()} "
                          f"{{root}} --init")
     return "".join(lines[:starts[0]]) + block + "".join(lines[ends[0] + 1:])
@@ -704,7 +708,13 @@ def plan_gitignore(plan, init=False):
     stacks = detect_stacks(plan.root, plan.cfg) if init else []
     if stacks:
         try:
-            text = with_gitignore_block(current.decode("utf-8", "replace"), gitignore_block(stacks))
+            try:
+                existing = current.decode("utf-8")
+            except UnicodeDecodeError:
+                raise ApplyError(f"apply: {path} is not UTF-8, so the .gitignore block is not written (it would "
+                                 f"change the bytes of your patterns); convert it (e.g. iconv -f cp1252 -t utf-8 "
+                                 f"{path}) and rerun: python3 {Path(__file__).resolve()} {plan.root} --init")
+            text = with_gitignore_block(existing, gitignore_block(stacks))
         except ApplyError as exc:
             raise ApplyError(str(exc).replace("{root}", str(plan.root)))
         if text.encode() != current:
@@ -1194,10 +1204,16 @@ def plan_stale_refs(plan):
         added.append(old)
     if not added:
         return
-    if isinstance(value, dict):
-        base["staleRefs"] = {**value, "patterns": patterns}
-    else:
-        base["staleRefs"] = patterns
+    # The history that apply.py's own old-name rewriting leaves alone (records, proposals, legacyNamesSkip, roadmaps)
+    # may quote the old names: md-links.py skips only the log and .claude/, so the form becomes {patterns, skip}.
+    skip = list(value.get("skip") or []) if isinstance(value, dict) else []
+    cfg = plan.cfg
+    history = [f"{cfg[k].rstrip('/')}/" for k in ("recordsDir", "proposalsDir") if cfg.get(k)]
+    history += [str(g) for g in cfg.get("legacyNamesSkip", ["CHANGELOG*"])]
+    history += [re.sub(r"^\./", "", str(e["path"]).replace("\\", "/")) for e in config.roadmap_files(cfg)
+                if isinstance(e, dict) and e.get("path")]
+    skip += [g for g in dict.fromkeys(history) if g not in skip]
+    base["staleRefs"] = {**(value if isinstance(value, dict) else {}), "patterns": patterns, "skip": skip}
     if mine:
         plan.actions = [a for i, a in enumerate(plan.actions) if i not in mine]
     details.append(f"staleRefs gets the renamed names ({', '.join(added)}), D83")
@@ -1730,7 +1746,8 @@ def init_config(args, version):
     for key, flag in (("protectedBranch", args.protected_branch), ("pushToProtected", args.push_to_protected),
                       ("reviewMark", args.review_mark), ("content", args.content or None),
                       ("visibleLanguages", args.visible_languages or None),
-                      ("designReferences", args.design_references or None)):
+                      ("designReferences", args.design_references or None),
+                      ("gitignoreStacks", args.stacks or None)):
         if flag:
             new[key] = flag
     if args.require_retro is not None:
@@ -1782,6 +1799,8 @@ def main(argv=None):
                       help="a product or standard design proposals are contrasted with (repeatable)")
     init.add_argument("--content", action="append", default=[], metavar="REGEX", help="a `content` regex (repeatable)")
     init.add_argument("--review-mark", metavar="PATH")
+    init.add_argument("--stack", dest="stacks", action="append", default=[], metavar="STACK",
+                      help="a stack whose .gitignore block --init writes (repeatable; default: detected, D127)")
     args = parser.parse_args(config.legacy_flags(sys.argv[1:] if argv is None else argv, OLD_FLAGS, "apply"))
     init_flags = [f for f, v in (("--language", args.language), ("--log", args.log),
                                  ("--check-command", args.check_commands), ("--install", args.install),
@@ -1790,7 +1809,8 @@ def main(argv=None):
                                  ("--review-mark", args.review_mark), ("--require-retro", args.require_retro),
                                  ("--agent-signatures", args.agent_signatures),
                                  ("--visible-language", args.visible_languages),
-                                 ("--design-reference", args.design_references)) if v]
+                                 ("--design-reference", args.design_references),
+                                 ("--stack", args.stacks)) if v]
     if args.summary and not args.dry_run:
         parser.error("--summary only goes with --dry-run; add it: python3 apply.py [PROJECT] --dry-run --summary")
     if init_flags and not args.init:
@@ -1808,6 +1828,7 @@ def main(argv=None):
     root = root.resolve()
     version = workflow_version()
     cfg = None
+    init_runs = args.init and not (root / config.CONFIG_REL).is_file()  # an existing gw.json: --init is ignored
     if args.init:
         if (root / config.CONFIG_REL).is_file():
             print(f"apply: {root / config.CONFIG_REL} already exists; left as is (the --init flags are ignored)")
@@ -1842,7 +1863,7 @@ def main(argv=None):
             return 2
     try:
         plan = build(root, version, args.update, args.extra, cfg, not (args.no_personal or args.vendored),
-                     args.check or args.vendored, args.keep_paths, args.init)
+                     args.check or args.vendored, args.keep_paths, init_runs)
     except ApplyError as exc:
         print(exc, file=sys.stderr)
         return 2

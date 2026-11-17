@@ -2360,14 +2360,14 @@ class StaleRefsMigration(unittest.TestCase):
         p = self.project(staleRefs=["phase 9"])
         code, out = p.run_apply("--update")
         self.assertEqual(code, 0, out)
-        refs = self.refs(p)
+        refs = self.refs(p)["patterns"]  # the form becomes {patterns, skip} (history skipped, see below)
         self.assertEqual(refs[0], "phase 9")
         self.assertIn(r"(?<![\w.-])docs/traspaso\.md(?![\w-])", refs)
         self.assertIn("staleRefs gets the renamed names", out)
         self.assertEqual(len(refs), len(set(refs)))
         n = len(refs)
         p.run_apply("--update")  # the paths moved: nothing renamed any more, nothing added
-        self.assertEqual(len(self.refs(p)), n)
+        self.assertEqual(len(self.refs(p)["patterns"]), n)
 
     def test_object_form_keeps_skip_and_is_not_duplicated(self):
         entry = r"(?<![\w.-])docs/traspaso\.md(?![\w-])"
@@ -2379,6 +2379,27 @@ class StaleRefsMigration(unittest.TestCase):
         self.assertEqual(refs["patterns"].count(entry), 1)
         self.assertEqual(refs["patterns"][:2], ["x", entry])
 
+    def test_history_folders_go_to_skip_so_old_records_stay_green(self):
+        p = self.project(staleRefs=["phase 9"])
+        p.write("docs/registros/old.md", "see docs/traspaso.md\n")
+        p.write("docs/notes.md", "fine\n")
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        refs = self.refs(p)
+        self.assertIsInstance(refs, dict)
+        self.assertEqual(refs["patterns"][0], "phase 9")
+        self.assertIn("docs/records/", refs["skip"])
+        self.assertIn("docs/proposals/", refs["skip"])
+        self.assertIn("CHANGELOG*", refs["skip"])
+        p.run("git", "add", "-A")
+        code, out = p.run("python3", str(p.work / ".claude/gw/scripts/md-links.py"))
+        self.assertEqual(code, 0, out)  # the moved record quotes the old path: skipped, not red
+        p.write("docs/notes.md", "see docs/traspaso.md\n")
+        p.run("git", "add", "-A")
+        code, out = p.run("python3", str(p.work / ".claude/gw/scripts/md-links.py"))
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("stale reference", out)
+
     def test_absent_key_becomes_a_list_and_without_update_nothing_is_added(self):
         p = self.project()
         code, out = p.run_apply("--dry-run")
@@ -2386,84 +2407,117 @@ class StaleRefsMigration(unittest.TestCase):
         self.assertNotIn("staleRefs gets", out)
         code, out = p.run_apply("--update")
         self.assertEqual(code, 0, out)
-        self.assertIsInstance(self.refs(p), list)
-        self.assertIn(r"(?<![\w.-])docs/traspaso\.md(?![\w-])", self.refs(p))
+        self.assertIn(r"(?<![\w.-])docs/traspaso\.md(?![\w-])", self.refs(p)["patterns"])
 
 
 class GitignoreBlock(unittest.TestCase):
     """D127: --init writes a marked per-stack block in .gitignore without touching the rest; a rerun replaces it."""
+
+    PREFIX = "# galivelop-workflow:gitignore begin"
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp(prefix="gw-gi-")).resolve()
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.p = Fixture(self.tmp)
 
+    def init(self, *args):
+        """--init as a new project does it: gw.json absent (an existing one makes --init a no-op)."""
+        (self.p.work / ".claude/gw.json").unlink(missing_ok=True)
+        return self.p.run_apply("--init", "--check-command", "true", *args)
+
     def block(self, text):
         lines = text.splitlines()
-        a = next(i for i, l in enumerate(lines) if l.startswith("# galivelop-workflow:gitignore begin"))
-        b = lines.index("# galivelop-workflow:gitignore end")
-        return lines, a, b
+        a = next(i for i, l in enumerate(lines) if l.startswith(self.PREFIX))
+        return lines, a, lines.index("# galivelop-workflow:gitignore end")
 
     def test_block_is_appended_for_the_detected_stacks_and_the_rest_is_kept(self):
         p = self.p
         p.write("package.json", "{}\n")
-        p.write("requirements.txt", "\n")
+        p.write("setup.cfg", "\n")
         p.write(".gitignore", "mine/\n")
-        code, out = p.run_apply("--init")
+        code, out = self.init()
         self.assertEqual(code, 0, out)
         lines, a, b = self.block(p.read(".gitignore"))
         self.assertEqual(lines[0], "mine/")
         self.assertIn("node_modules/", lines[a:b])
         self.assertIn("__pycache__/", lines[a:b])
+        self.assertIn("/dist/", lines[a:b])
+        self.assertNotIn("vendor/", lines)
         self.assertNotIn("target/", lines)
         self.assertIn(".claude/gw.local.json", lines[b:])
 
-    def test_rerun_replaces_only_the_block(self):
+    def test_rerun_replaces_only_the_block_even_if_its_begin_text_changed(self):
         p = self.p
         p.write("Cargo.toml", "\n")
-        self.assertEqual(p.run_apply("--init", "--check-command", "true")[0], 0)
-        text = p.read(".gitignore")
-        _, a, b = self.block(text)
-        lines = text.splitlines()
-        lines[a + 1:b] = ["stale"]
+        self.assertEqual(self.init()[0], 0)
+        _, a, b = self.block(p.read(".gitignore"))
+        lines = p.read(".gitignore").splitlines()
+        lines[a:b] = [self.PREFIX + " (older wording)", "stale"]
         p.write(".gitignore", "\n".join(["top/"] + lines + ["bottom/"]) + "\n")
-        code, out = p.run_apply("--init")
+        code, out = self.init()
         self.assertEqual(code, 0, out)
         again = p.read(".gitignore").splitlines()
-        self.assertEqual(again[0], "top/")
-        self.assertEqual(again[-1], "bottom/")
+        self.assertEqual((again[0], again[-1]), ("top/", "bottom/"))
         self.assertNotIn("stale", again)
         self.assertIn("target/", again)
-        self.assertEqual(again.count("# galivelop-workflow:gitignore end"), 1)
+        self.assertEqual(len([l for l in again if l.startswith(self.PREFIX)]), 1)
         before = p.read(".gitignore")
-        p.run_apply("--init")
+        self.assertEqual(self.init()[0], 0)
         self.assertEqual(p.read(".gitignore"), before)
+
+    def test_existing_gw_json_makes_init_ignore_the_gitignore_too(self):
+        p = self.p
+        p.write("package.json", "{}\n")
+        code, out = p.run_apply("--init")
+        self.assertEqual(code, 0, out)
+        self.assertIn("flags are ignored", out)
+        self.assertNotIn("gitignore begin", p.read(".gitignore"))
 
     def test_without_init_or_stack_there_is_no_block(self):
         p = self.p
         p.write("package.json", "{}\n")
         p.run_apply()
         self.assertNotIn("gitignore begin", p.read(".gitignore"))
-        q = Fixture(Path(tempfile.mkdtemp(prefix="gw-gi2-")).resolve())
-        self.addCleanup(shutil.rmtree, q.work.parent, True)
-        q.run_apply("--init")
-        self.assertNotIn("gitignore begin", q.read(".gitignore"))
+        self.p.write("package.json", "")
+        (p.work / "package.json").unlink()
+        self.assertEqual(self.init()[0], 0)
+        self.assertNotIn("gitignore begin", p.read(".gitignore"))
 
-    def test_config_stacks_override_detection_and_unterminated_block_fails_closed(self):
+    def test_stack_flag_overrides_detection(self):
         p = self.p
         p.write("package.json", "{}\n")
-        cfg = json.loads(p.read(".claude/gw.json"))
-        cfg["gitignoreStacks"] = ["go"]
-        p.write(".claude/gw.json", json.dumps(cfg))
-        self.assertEqual(p.run_apply("--init")[0], 0)
-        text = p.read(".gitignore")
-        self.assertIn("vendor/", text)
-        self.assertNotIn("node_modules/", text)
-        p.write(".gitignore", "# galivelop-workflow:gitignore begin (managed block; rerun apply.py --init to refresh it)\nx\n")
-        code, out = p.run_apply("--init")
+        code, out = self.init("--stack", "go")
+        self.assertEqual(code, 0, out)
+        self.assertIn("*.test", p.read(".gitignore"))
+        self.assertNotIn("node_modules/", p.read(".gitignore"))
+        self.assertEqual(json.loads(p.read(".claude/gw.json"))["gitignoreStacks"], ["go"])
+
+    def test_unterminated_block_and_non_utf8_fail_closed_with_the_reason(self):
+        p = self.p
+        p.write("package.json", "{}\n")
+        p.write(".gitignore", self.PREFIX + "\nx\n")
+        code, out = self.init()
         self.assertEqual(code, 2, out)
         self.assertIn("but not its end line", out)
-        self.assertIn("x\n", p.read(".gitignore"))
+        self.assertEqual(p.read(".gitignore"), self.PREFIX + "\nx\n")
+        raw = "A\xf1o/\n".encode("latin-1")
+        (p.work / ".gitignore").write_bytes(raw)
+        code, out = self.init()
+        self.assertEqual(code, 2, out)
+        self.assertIn("is not UTF-8", out)
+        self.assertEqual((p.work / ".gitignore").read_bytes(), raw)
+
+    def test_bad_gitignore_stacks_values_are_refused_with_the_fix(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import config as gwconfig
+        self.assertEqual(gwconfig.gitignore_stacks({}), [])
+        self.assertEqual(gwconfig.gitignore_stacks({"gitignoreStacks": ["go", "node"]}), ["go", "node"])
+        for bad in ("python", ["python", "python"], ["cobol"], [1]):
+            with self.assertRaises(gwconfig.ConfigError) as cm:
+                gwconfig.gitignore_stacks({"gitignoreStacks": bad})
+            self.assertIn("gitignoreStacks must be a list of different stacks", str(cm.exception))
+            self.assertIn("validate", str(cm.exception))
 
 
 if __name__ == "__main__":
