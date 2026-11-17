@@ -8,12 +8,15 @@
 # (Swatinem/rust-cache) for each directory of `ciRustDirs` (default []: none) that has a Cargo.toml; Python and Java
 # when pyproject.toml / requirements*.txt or pom.xml / build.gradle* exist at the root (so this file stays the
 # workflow's, untouched; `ciPython` makes Python a matrix); another toolchain (rust-toolchain...) goes before the rust-cache step, which is before "Install".
+# `workflow_call` (D63): a release.yml of the project runs this check first with `check: {uses: ./.github/workflows/check.yml}`
+# and `needs: check` on its release job, instead of copying these steps.
 name: Check
 
 on:
   push:
     branches-ignore: [{{ciPushIgnore}}]
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
