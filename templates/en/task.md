@@ -25,4 +25,4 @@
 
 —
 
-Open questions: add them to [docs/questions.md](../questions.md), not here.
+Open questions: add them to `docs/questions.md`, not here.

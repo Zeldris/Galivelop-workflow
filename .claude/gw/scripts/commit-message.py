@@ -32,11 +32,12 @@ and applies, from .claude/gw.json (read through config.py):
                                `Agent:` value passes. Trailers are read with --no-divider (a `---` line is body).
 
   taskRecord.enabled true      (C11) a commit whose type is in taskRecord.requiredFor (feat, fix, hotfix) and that changes code
-                               (what is-code.sh calls code, on the staged files; the files under taskRecord.path do not
-                               count) must, for each id of its `Refs:`, touch `<path>/<id>.md` (a contract with the
-                               headings of taskRecord.sections) and ADD a file `<path>/<id>/*.md` (a decision log entry:
-                               header with the id and a non-empty heading for each of taskRecord.logSections; form only,
-                               task.py). Exempt: other types, WIP:, merges, rebases and the review-mark commit.
+                               (what `is-code.sh --list` calls code, on the staged files; the files under taskRecord.path
+                               do not count) needs, for AT LEAST ONE id of its `Refs:` (the others are context), a contract
+                               `<path>/<id>.md` that exists (in the index, which holds HEAD's too, so it need not be edited)
+                               with the headings of taskRecord.sections, and a new file `<path>/<id>/*.md` ADDED by the
+                               commit (a decision log entry: header with the id and non-empty logSections; form only,
+                               task.py); every entry the commit adds must be well formed. Exempt: other types, WIP:, merges, rebases and the review-mark commit.
                                The commit of an entry is resolved on reading (task.py resolve), not written by a hook.
 
 A warning, never a refusal (E60): with commitRefs or commitNext, a message that names review fixes (a word or phrase
@@ -343,23 +344,23 @@ def staged_changes(root):
     return [(items[i], items[i + 1]) for i in range(0, len(items) - 1, 2)]
 
 
-def is_code_path(config, path):
-    """The classification of is-code.sh for one path: the review mark and the local CI log are content, the workflow's
-    own policy and guards are code, then the `content` regexes decide."""
-    if path == config.get("reviewMark"):
-        return False
-    if re.search(r"^(\.claude/(gw\.json|settings\.json|gw/)|\.githooks/)", path):
-        return True
-    if path == config.get("ciLocalLog"):
-        return False
-    for pattern in config.get("content") or []:
-        try:
-            if re.search(pattern, path):
-                return False
-        except re.error as exc:
-            raise Reject(f"content regex {pattern!r} in .claude/gw.json is invalid ({exc}); "
-                         f"fix it: python3 {HERE / 'config.py'} validate")
-    return True
+def code_paths(root, paths):
+    """The paths among `paths` that are code, by is-code.sh (the one classification: --list reads the config of HEAD, so a
+    commit cannot widen `content` and pass its own code as content)."""
+    if not paths:
+        return []
+    script = HERE / "is-code.sh"
+    if not script.is_file():
+        raise Reject(f"{script} is missing; reinstall the workflow scripts: /gw-update")
+    try:
+        r = subprocess.run(["bash", str(script), "--list", *paths], cwd=str(root), capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+    except OSError as exc:
+        raise Reject(f"cannot run bash ({exc}); check that bash is installed: bash --version")
+    if r.returncode != 0:
+        raise Reject(f"is-code.sh could not classify the staged files ({r.stderr.strip()[:300]}); fix the cause above "
+                     f"and commit again (a repository without a first commit needs one: git commit --allow-empty -m 'chore: start')")
+    return [l for l in r.stdout.splitlines() if l]
 
 
 def check_task_record(root, config, message, found, msgfile):
@@ -372,9 +373,9 @@ def check_task_record(root, config, message, found, msgfile):
     m = re.match(r"([a-z]+)(?:\([^()\s][^()]*\))?!?: ", subject)
     if not m or m.group(1) not in record["requiredFor"]:
         return
-    base = record["path"].strip("/")
+    base = record["path"]
     changes = staged_changes(root)
-    if not any(is_code_path(config, path) for _, path in changes if not path.startswith(base + "/")):
+    if not code_paths(root, [path for _, path in changes if not path.startswith(base + "/")]):
         return
     ids = []
     for key, value in found:
@@ -389,26 +390,35 @@ def check_task_record(root, config, message, found, msgfile):
         import task
     except ImportError as exc:
         raise Reject(f"cannot import task.py ({exc}); reinstall the workflow scripts: /gw-update")
+    added = {path for st, path in changes if st == "A"}
+    problems, complete = [], False
     for task_id in ids:
         contract = f"{base}/{task_id}.md"
-        if not any(st in ("A", "M") and path == contract for st, path in changes):
-            raise Reject(f"this {m.group(1)} commit changes code but does not touch its task record {contract} "
-                         f"(taskRecord.enabled in .claude/gw.json)\ncommit-msg: create it with `{cmd} new {task_id}` "
-                         f"or add to its Change log, stage it and commit again: git add {contract} && {edit}")
-        for why in task.contract_errors(show_staged(root, contract), config):
-            raise Reject(f"the staged {contract} is not a task record: {why}\ncommit-msg: fix it, stage it and "
-                         f"commit again: git add {contract} && {edit}")
-        entries = [path for st, path in changes if st == "A" and path.startswith(f"{base}/{task_id}/") and path.endswith(".md")]
+        r = git(root, "show", f":{contract}")  # the index also holds what HEAD has: the contract need not be edited
+        if r.returncode != 0:
+            problems.append(f"{task_id}: {contract} does not exist; create it with `{cmd} new {task_id}`, fill it in and stage it")
+            continue
+        errors = task.contract_errors(r.stdout, config)
+        if errors:
+            problems.append(f"{task_id}: the staged {contract} is not a task record: {errors[0]}")
+            continue
+        entries = sorted(p for p in added if p.startswith(f"{base}/{task_id}/") and p.endswith(".md"))
+        for path in entries:  # every entry a commit adds is kept for ever: each one must be well formed
+            bad = task.entry_errors(show_staged(root, path), task_id, config)
+            if bad:
+                raise Reject(f"the new entry {path} is not a decision log entry: {bad[0]}\ncommit-msg: fix it, stage it "
+                             f"and commit again: git add {path} && {edit}")
         if not entries:
-            raise Reject(f"this {m.group(1)} commit changes code but adds no decision log entry in {base}/{task_id}/ "
-                         f"(taskRecord.enabled in .claude/gw.json)\ncommit-msg: create one with "
-                         f"`{cmd} log {task_id} --agent <skill|session>`, fill it in, stage it and commit again: "
-                         f"git add {base}/{task_id} && {edit}")
-        errors = {path: task.entry_errors(show_staged(root, path), task_id, config) for path in entries}
-        if all(errors.values()):
-            path = entries[0]
-            raise Reject(f"the new entry {path} is not a decision log entry: {errors[path][0]}\ncommit-msg: fix it, "
-                         f"stage it and commit again: git add {path} && {edit}")
+            problems.append(f"{task_id}: the commit adds no decision log entry in {base}/{task_id}/; create one with "
+                            f"`{cmd} log {task_id} --agent <skill|session>`, fill it in and stage it (git commit --amend "
+                            f"is no exception: add a new entry saying what the amend changed)")
+            continue
+        complete = True
+    if not complete:
+        raise Reject(f"this {m.group(1)} commit changes code, so at least one id of its Refs ({', '.join(ids)}) needs its task "
+                     f"record and a new decision log entry (the other ids are context) (taskRecord.enabled in "
+                     f".claude/gw.json)\n" + "\n".join(f"commit-msg: {p}" for p in problems) +
+                     f"\ncommit-msg: then commit again: git add {base} && {edit}")
 
 
 def show_staged(root, path):

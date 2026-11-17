@@ -43,8 +43,8 @@ Con `taskRecord.enabled` ([`config.md`](config.md)), cada tarea con código tien
 (`python3 .claude/gw/scripts/task.py new <id>`): `Goal`, `Scope`, `Acceptance` (casillas), `Files`, `Change log` y
 `Verification`. Cada agente que toca la tarea añade además una entrada nueva en `docs/tasks/<id>/`
 (`task.py log <id> --agent <skill|session>`) con tres apartados: `Why`, `Alternatives` y `Changed because`; nadie edita
-una entrada ya subida. El `commit-msg` pide las dos cosas en un commit `feat`, `fix` o `hotfix` que cambia código
-(no en `docs`, `WIP:`, merges ni la marca de revisión). El commit de cada entrada no se escribe en el archivo:
+una entrada ya subida. El `commit-msg` pide, para al menos un id de `Refs:`, la ficha (que exista, no que se edite) y una entrada nueva válida en un commit `feat`, `fix` o `hotfix` que cambia código
+(no en `docs`, `WIP:`, merges ni la marca de revisión); un `--amend` no añade archivos, así que se añade antes una entrada con `task.py log`. El commit de cada entrada no se escribe en el archivo:
 `task.py resolve <id>` lo lee de git.
 
 ## Guías

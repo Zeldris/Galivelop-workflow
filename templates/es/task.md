@@ -25,4 +25,4 @@
 
 —
 
-Preguntas abiertas: van a [docs/questions.md](../questions.md), no aquí.
+Preguntas abiertas: van a `docs/questions.md`, no aquí.

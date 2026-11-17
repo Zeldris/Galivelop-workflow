@@ -544,7 +544,9 @@ def context_guard(config):
 
 def task_record(config):
     """The `taskRecord` key as a dict (enabled, path, requiredFor, sections, logSections, pendingMarker) (C11)."""
-    return _section(config, "taskRecord")
+    out = _section(config, "taskRecord")
+    out["path"] = posixpath.normpath(out["path"].strip()).strip("/") or "."  # ./docs/tasks, docs//tasks/ -> docs/tasks
+    return out
 
 
 def given_keys(root, key):
@@ -771,6 +773,11 @@ def semantic_errors(config):
     if warn > fail:
         errors.append(f"$.instructionLines: warn ({warn}) must not be above fail ({fail}); lower warn or raise fail "
                       "in .claude/gw.json")
+    record_path = task_record(config)["path"] if isinstance(config.get("taskRecord"), dict) else ""
+    raw_path = (config.get("taskRecord") or {}).get("path") if isinstance(config.get("taskRecord"), dict) else None
+    if isinstance(raw_path, str) and (raw_path.startswith("/") or ".." in posixpath.normpath(raw_path).split("/") or record_path == "."):
+        errors.append(f"$.taskRecord.path: {raw_path!r} must be a folder inside the repo, relative to its root; "
+                      "write it like \"docs/tasks\" in .claude/gw.json")
     sizes = handoff(config)  # only a cellHardLimit set by the project can be below cellLimit (handoff() raises the default)
     if 0 < sizes["cellHardLimit"] < sizes["cellLimit"]:
         errors.append(f"$.handoff: cellHardLimit ({sizes['cellHardLimit']}) must not be below cellLimit "

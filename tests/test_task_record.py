@@ -20,7 +20,7 @@ DOTS = " · "
 
 
 def contract(extra=""):
-    return ("# C11 · record\n\n## Goal\n\nx\n\n## Scope\n\n—\n\n## Acceptance\n\n- [ ] —\n\n## Files\n\n—\n\n"
+    return ("# C11 · record\n\n## Goal\n\nx\n\n## Scope\n\n—\n\n## Acceptance\n\n- [ ] works\n\n## Files\n\n—\n\n"
             "## Change log\n\n—\n\n## Verification\n\n—\n" + extra)
 
 
@@ -106,17 +106,17 @@ class Hook(Record):
         self.enable()
         for t in ("fix", "hotfix"):
             with self.subTest(t=t):
-                self.refused(f"{t}(C11): code\n\nRefs: C11", {}, "does not touch its task record docs/tasks/C11.md")
+                self.refused(f"{t}(C11): code\n\nRefs: C11", {}, "docs/tasks/C11.md does not exist")
 
     def test_missing_contract(self):
         self.enable()
         self.refused("feat(C11): code\n\nRefs: C11", {"docs/tasks/C11/2026-11-17-session-abc1234.md": entry()},
-                     "does not touch its task record docs/tasks/C11.md", "task.py new C11")
+                     "at least one id of its Refs (C11)", "docs/tasks/C11.md does not exist", "task.py new C11")
 
     def test_missing_entry(self):
         self.enable()
         self.refused("feat(C11): code\n\nRefs: C11", {"docs/tasks/C11.md": contract()},
-                     "adds no decision log entry in docs/tasks/C11/", "task.py log C11 --agent")
+                     "adds no decision log entry in docs/tasks/C11/", "task.py log C11 --agent", "git commit --amend")
 
     def test_an_edited_entry_is_not_a_new_one(self):
         self.enable()
@@ -124,6 +124,32 @@ class Hook(Record):
         self.refused("fix(C11): more\n\nRefs: C11", {"docs/tasks/C11.md": contract("more\n"),
                                                      "docs/tasks/C11/2026-11-17-session-abc1234.md": entry() + "edit\n"},
                      "adds no decision log entry")
+
+    def test_the_contract_need_not_be_edited_only_to_exist(self):
+        self.enable()
+        self.good("feat(C11): code\n\nRefs: C11", self.FULL)
+        self.good("fix(C11): more\n\nRefs: C11", {"docs/tasks/C11/2026-11-18-session-bbb2222.md": entry()})  # contract untouched
+
+    def test_every_added_entry_must_be_valid(self):
+        self.enable()
+        self.refused("feat(C11): code\n\nRefs: C11", dict(self.FULL, **{"docs/tasks/C11/zz.md": entry(drop="Why")}),
+                     "docs/tasks/C11/zz.md is not a decision log entry", "no non-empty `## Why`")
+
+    def test_a_dash_is_not_content_where_content_is_the_point(self):
+        self.enable()
+        dash = entry().replace("## Why\n\nreason", "## Why\n\n\u2014")
+        self.refused("feat(C11): code\n\nRefs: C11", {"docs/tasks/C11.md": contract(),
+                                                     "docs/tasks/C11/a.md": dash}, "`## Why` section is only \u2014 or still the template")
+        ok = entry().replace("## Alternatives\n\nreason", "## Alternatives\n\n\u2014")  # the others may be a dash
+        self.good("feat(C11): code\n\nRefs: C11", {"docs/tasks/C11.md": contract(), "docs/tasks/C11/a.md": ok})
+
+    def test_the_goal_and_the_acceptance_cannot_be_the_template(self):
+        self.enable()
+        for old, new, name in (("## Goal\n\nx", "## Goal\n\n\u2014", "Goal"), ("- [ ] works", "- [ ] \u2014", "Acceptance")):
+            with self.subTest(name=name):
+                self.refused("feat(C11): code\n\nRefs: C11", {"docs/tasks/C11.md": contract().replace(old, new),
+                                                             "docs/tasks/C11/a.md": entry()},
+                             f"the `## {name}` section is empty or still the template")
 
     def test_entry_form(self):
         self.enable()
@@ -154,12 +180,27 @@ class Hook(Record):
         self.refused("feat(C11): code\n\nRefs: C11", {"docs/tasks/C11.md": swapped, "docs/tasks/C11/a.md": entry()},
                      "not in the order")
 
-    def test_every_ref_needs_its_record(self):
+    def test_at_least_one_ref_needs_its_record_the_others_are_context(self):
         self.enable()
-        self.refused("feat(C11): code\n\nRefs: C11, C12", self.FULL, "docs/tasks/C12.md")
-        both = dict(self.FULL, **{"docs/tasks/C12.md": contract().replace("C11", "C12"),
-                                  "docs/tasks/C12/a.md": entry("C12")})
-        self.good("feat(C11): code\n\nRefs: C11, C12", both)
+        self.good("feat(C11): code\n\nRefs: C11, C12", self.FULL)  # C12 has nothing: only context
+        self.good("feat(C12): code\n\nRefs: C12, C11", {"docs/tasks/C11/2026-11-19-session-ccc3333.md": entry()})
+        self.refused("fix(C11): code\n\nRefs: C11, C12", {}, "at least one id of its Refs (C11, C12)",
+                     "C11: the commit adds no decision log entry", "C12: docs/tasks/C12.md does not exist")
+
+    def test_a_path_written_with_dot_and_slash_is_the_same_folder(self):
+        self.enable(path="./docs/tasks/")
+        self.good("feat(C11): code\n\nRefs: C11", self.FULL)
+
+    def test_a_path_outside_the_repo_is_refused_by_validate(self):
+        for bad in ("../tasks", "/tasks", "."):
+            with self.subTest(bad=bad):
+                cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+                cfg["taskRecord"] = {"path": bad}
+                self.p.write(".claude/gw.json", json.dumps(cfg))
+                code, out = self.p.run(sys.executable, "-B", str(self.p.work / ".claude" / "gw" / "scripts" / "config.py"), "validate")
+                self.assertNotEqual(code, 0)
+                self.assertIn("$.taskRecord.path", out)
+                self.assertIn("must be a folder inside the repo", out)
 
     def test_no_refs_is_refused_with_the_reason(self):
         self.enable(), self.configure_refs_off()
@@ -223,6 +264,9 @@ class Script(Record):
     def test_new_log_resolve_make_a_record_the_hook_accepts(self):
         self.enable()
         self.task("new", "C11", "--title", "record")
+        card = self.p.work / "docs/tasks/C11.md"  # the template is not a contract until Goal and Acceptance say something
+        card.write_text(card.read_text(encoding="utf-8").replace("## Goal\n\n—", "## Goal\n\ng").replace("- [ ] —", "- [ ] a"),
+                        encoding="utf-8")
         code, out = self.task("log", "C11", "--agent", "gw-orchestrate-dealer", "--date", "2026-11-17")
         rel = out.strip()
         self.assertRegex(rel, r"^docs/tasks/C11/2026-11-17-gw-orchestrate-dealer-[0-9a-f]{7}\.md$")
@@ -255,11 +299,48 @@ class Script(Record):
         code, out = self.task("new", "nope", ok=False)
         self.assertIn("does not have the shape of taskId", out)
 
+    def test_agent_model_names_of_the_project_apply_to_log(self):
+        self.enable(), self.add_config(agentModelNames=["claudette"])
+        code, out = self.task("log", "C11", "--agent", "claudette", ok=False)
+        self.assertEqual(code, 1)
+        self.assertIn("never a model", out)
+
+    def add_config(self, **keys):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.update(keys)
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+
+    def test_new_links_questions_only_when_that_file_exists(self):
+        self.enable()
+        text = self.task("new", "C11")[1]
+        self.assertIn("docs/tasks/C11.md", text)
+        self.assertIn("`docs/questions.md`", (self.p.work / "docs/tasks/C11.md").read_text(encoding="utf-8"))
+        (self.p.work / "docs/questions.md").write_text("# q\n")
+        self.task("new", "C12")
+        self.assertIn("[docs/questions.md](../questions.md)", (self.p.work / "docs/tasks/C12.md").read_text(encoding="utf-8"))
+
     def test_two_entries_of_one_day_do_not_collide(self):
         self.enable()
         a = self.task("log", "C11", "--agent", "session", "--date", "2026-11-17")[1]
         b = self.task("log", "C11", "--agent", "session", "--date", "2026-11-17")[1]
         self.assertNotEqual(a, b)
+
+
+class IsCodeList(Record):
+    def test_list_prints_only_the_code_paths_of_the_config_at_head(self):
+        script = str(self.p.work / ".claude" / "gw" / "scripts" / "is-code.sh")
+        code, out = self.p.run("bash", script, "--list", "src/a.py", "docs/n.md", "README.md", ".githooks/x", "docs/revisado.txt")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out.split(), ["src/a.py", ".githooks/x"])  # content regexes: docs/ and .md; the guards are code
+        code, out = self.p.run("bash", script, "--list")
+        self.assertEqual(code, 2)
+        self.assertIn("--explain|--list <path>...", out)
+
+    def test_the_hook_asks_is_code_not_a_copy_of_it(self):
+        self.enable()
+        self.p.git("rm", "-q", ".claude/gw/scripts/is-code.sh")  # staged deletion: a missing classifier fails closed
+        self.p.git("commit", "-q", "--no-verify", "-m", "drop")
+        self.refused("feat(C11): code\n\nRefs: C11", self.FULL, "is-code.sh is missing")
 
 
 class Templates(unittest.TestCase):
@@ -275,8 +356,10 @@ class Templates(unittest.TestCase):
 
     def test_a_generated_contract_and_entry_pass_their_own_form_check(self):
         cfg = {"language": "en"}
-        self.assertEqual(task.contract_errors(task.contract_text(cfg, "C11"), cfg), [])
-        text = task.entry_text(cfg, "C11", "session", "2026-11-17").replace("—", "x")
+        filled = task.contract_text(cfg, "C11").replace("## Goal\n\n—", "## Goal\n\nx").replace("- [ ] —", "- [ ] y")
+        self.assertEqual(task.contract_errors(filled, cfg), [])
+        self.assertTrue(task.contract_errors(task.contract_text(cfg, "C11"), cfg))  # the template itself is not a contract
+        text = task.entry_text(cfg, "C11", "session", "2026-11-17").replace("## Why\n\n—", "## Why\n\nx")
         self.assertEqual(task.entry_errors(text, "C11", cfg), [])
 
 

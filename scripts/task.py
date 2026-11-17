@@ -16,6 +16,7 @@ Exit 0 ok, 1 refused (each message ends with the command that fixes it). Python 
 """
 import argparse
 import datetime
+import posixpath
 import re
 import secrets
 import subprocess
@@ -30,8 +31,10 @@ import config as gwconfig  # noqa: E402
 SEP = " · "  # the middle dot the entry header uses
 DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 SLUG = re.compile(r"[a-z0-9][a-z0-9-]*")
-OPEN_QUESTIONS = {"es": "Preguntas abiertas: van a [docs/questions.md](../questions.md), no aquí.",
-                  "en": "Open questions: add them to [docs/questions.md](../questions.md), not here."}
+OPEN_QUESTIONS = {"es": "Preguntas abiertas: van a {ref}, no aqu\u00ed.",
+                  "en": "Open questions: add them to {ref}, not here."}
+QUESTIONS_DEFAULT = "docs/questions.md"  # the `questions.path` key of C1, when that key exists in the config
+PLACEHOLDER = re.compile(r"(?:\s|\u2014|-|\*|\[[ xX]\])*")  # a body of only dashes and empty checkboxes says nothing
 ACCEPTANCE = "Acceptance"  # the section whose empty body is a checkbox; the config may rename it, the template keeps it
 
 
@@ -39,14 +42,24 @@ class Refused(Exception):
     pass
 
 
-def contract_text(config, task_id, title=None):
+def questions_ref(config, root, base):
+    """How the contract names the questions file: a relative link when the file exists (md-links.py would flag a link to a
+    file that does not), plain code otherwise."""
+    given = config.get("questions")
+    target = given.get("path") if isinstance(given, dict) and isinstance(given.get("path"), str) else QUESTIONS_DEFAULT
+    if root is not None and (Path(root) / target).is_file():
+        return f"[{target}]({posixpath.relpath(target, base)})"
+    return f"`{target}`"
+
+
+def contract_text(config, task_id, title=None, root=None):
     tr = gwconfig.task_record(config)
     lang = "es" if config.get("language") == "es" else "en"
     head = f"# {task_id}{SEP}{title or ('<título>' if lang == 'es' else '<title>')}"
     parts = [head]
     for name in tr["sections"]:
         parts.append(f"## {name}\n\n" + ("- [ ] —" if name == ACCEPTANCE else "—"))
-    parts.append(OPEN_QUESTIONS[lang])
+    parts.append(OPEN_QUESTIONS[lang].format(ref=questions_ref(config, root, tr["path"])))
     return "\n\n".join(parts) + "\n"
 
 
@@ -80,6 +93,10 @@ def contract_errors(text, config):
     order = [h for h in found if h in [w.lower() for w in wanted]]
     if order != [w.lower() for w in wanted]:
         return [f"the sections are not in the order {', '.join(wanted)}, or one is repeated"]
+    bodies = {h.lower(): body for h, body in sections_of(text)}
+    for name in (wanted[0], ACCEPTANCE):  # the goal and the acceptance criteria are the contract: they cannot be the template
+        if name in wanted and PLACEHOLDER.fullmatch(bodies.get(name.lower(), "")):
+            return [f"the `## {name}` section is empty or still the template; write it (the other sections may stay \u2014)"]
     return []
 
 
@@ -100,6 +117,9 @@ def entry_errors(text, task_id, config):
         if not found.get(name.lower()):
             return [f"no non-empty `## {name}` section (taskRecord.logSections: {', '.join(tr['logSections'])}; "
                     f"write — when there is nothing to say)"]
+    first_name = tr["logSections"][0]
+    if PLACEHOLDER.fullmatch(found[first_name.lower()]):
+        return [f"the `## {first_name}` section is only \u2014 or still the template; say why (the others may stay \u2014)"]
     return []
 
 
@@ -138,10 +158,10 @@ def run(args):
     check_id(config, args.id)
     base = tr["path"].strip("/")
     if args.command == "new":
-        write_new(root, f"{base}/{args.id}.md", contract_text(config, args.id, args.title))
+        write_new(root, f"{base}/{args.id}.md", contract_text(config, args.id, args.title, root))
     elif args.command == "log":
         agent = args.agent.strip().lower()
-        if not SLUG.fullmatch(agent) or names_a_model(agent):
+        if not SLUG.fullmatch(agent) or names_a_model(agent, config):
             raise Refused(f"--agent {args.agent!r} must be a skill name or `session` (letters, digits, hyphens), never a model; "
                           f"e.g.: python3 {HERE / 'task.py'} log {args.id} --agent session")
         date = args.date or datetime.date.today().isoformat()
@@ -156,13 +176,17 @@ def run(args):
             print(f"{resolve(root, rel) or tr['pendingMarker']}  {rel}")
 
 
-def names_a_model(agent):
-    """Whether `agent` names a model or provider (the rule of the Agent trailer, commit-message.py)."""
+def names_a_model(agent, config):
+    """Whether `agent` names a model or provider, by the rule of the Agent trailer (commit-message.py, with the
+    project's agentModelNames and agentModelShapes)."""
     import importlib.util
     spec = importlib.util.spec_from_file_location("commit_message", HERE / "commit-message.py")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
-    return module.names_a_model(agent)
+    try:
+        return module.names_a_model(agent, module.model_rules(config))
+    except module.Reject as exc:
+        raise Refused(str(exc))
 
 
 def main(argv=None):
