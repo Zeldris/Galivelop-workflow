@@ -14,6 +14,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import textwrap
 import time
 import unittest
 from pathlib import Path
@@ -1477,6 +1478,125 @@ class PortableShell(unittest.TestCase):
                                     f"{rel}:{n} uses a bash 4 feature")
                 for template in re.findall(r'mktemp\b[^\n]*?"([^"]*X[^"]*)"', code):
                     self.assertRegex(template, r"XXXXXX$", f"{rel}:{n}: BSD mktemp needs the template to end in XXXXXX")
+
+
+class PrePushCiWarn(Base):
+    """D62: once the push passed, the pre-push warns (never blocks) when the last CI of a pushed branch is red."""
+
+    STUB = textwrap.dedent("""\
+        import json, os, subprocess, sys
+        args = sys.argv[1:]
+        sha = args[args.index("--sha") + 1]
+        with open(os.environ["GW_CI_LOG"], "a") as log:
+            log.write(" ".join(args) + "\\n")
+        mode = json.loads(os.environ.get("GW_CI", "{}")).get(sha, "green")
+        if mode == "sleep":  # a slow gh holding the pipe: the hook must kill the whole group
+            subprocess.run(["sleep", "30"])
+        if mode == "garbage":
+            print("not json"); sys.exit(2)
+        out = {"repo": "o/r", "sha": sha, "state": mode, "problems": [], "ignored": [], "unstarted": False,
+               "unstarted_cancelled": [], "error": None}
+        if mode == "red":
+            out["problems"] = ["check (ubuntu-latest): failure"]
+        if mode == "unstarted":
+            out.update(state="red", problems=["check: cancelled"], unstarted=True)
+        if mode == "error":
+            out["error"] = "could not read the CI status: no token"
+        print(json.dumps(out))
+        sys.exit(0 if mode == "green" else 2 if mode == "error" else 1)
+        """)
+
+    def build(self):
+        super().build()
+        p = self.p
+        p.write(".claude/gw/scripts/ci-status.py", self.STUB)
+        p.commit("ci-status stub")
+        p.git("push", "-q", "--no-verify", "origin", "main")
+        p.git("checkout", "-q", "-b", "feature")
+        p.write("docs/a.md", "a\n"); p.commit("a")
+        p.git("push", "-q", "--no-verify", "origin", "feature")
+        self.remote_tip = p.sha()
+        p.write("docs/a.md", "b\n"); p.commit("b")
+        self.log = self.tmp / "ci.log"
+
+    def push(self, *args, ci=None, env=None):
+        env = dict(env or {}, GW_CI_LOG=str(self.log), GW_CI=json.dumps(ci or {}))
+        return self.p.push("origin", *args, env=env)
+
+    def calls(self):
+        return self.log.read_text().splitlines() if self.log.exists() else []
+
+    def test_red_warns_with_the_commit_and_the_command_and_pushes(self):
+        code, out = self.push("feature", ci={self.remote_tip: "red"})
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"pre-push: WARNING: the last CI of feature (commit {self.remote_tip[:7]}) is red: "
+                      "check (ubuntu-latest): failure", out)
+        self.assertIn(f"the push goes on; read the failure: python3 .claude/gw/scripts/ci-status.py "
+                      f"--sha {self.remote_tip[:12]} --failed", out)
+        self.assertEqual(self.p.git("rev-parse", "feature", cwd=self.p.bare).stdout.strip(), self.p.sha())
+        self.assertIn(f"--sha {self.remote_tip} --json", self.calls()[0])
+
+    def test_unstarted_ci_counts_as_red(self):
+        code, out = self.push("feature", ci={self.remote_tip: "unstarted"})
+        self.assertEqual(code, 0, out)
+        self.assertIn("is red: GitHub never started its jobs (Actions quota or payments)", out)
+
+    def test_green_pending_none_error_and_garbage_are_silent(self):
+        for state in ("green", "pending", "none", "error", "garbage"):
+            with self.subTest(state=state):
+                self.p.git("update-ref", "refs/heads/feature", self.remote_tip, cwd=self.p.bare)
+                code, out = self.push("feature", ci={self.remote_tip: state})
+                self.assertEqual(code, 0, out)
+                self.assertNotIn("CI of", out)
+                self.assertIn("pre-push: all green.", out)
+
+    def test_timeout_says_so_in_one_line_and_does_not_wait(self):
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, prepushCiWarnTimeout=1)))
+        start = time.monotonic()
+        code, out = self.push("feature", ci={self.remote_tip: "sleep"})
+        self.assertEqual(code, 0, out)
+        self.assertLess(time.monotonic() - start, 20, out)
+        self.assertIn("pre-push: CI of feature not read within 1 s (prepushCiWarnTimeout); see it with: python3 "
+                      f".claude/gw/scripts/ci-status.py --sha {self.remote_tip[:12]}", out)
+
+    def test_key_false_turns_it_off(self):
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, prepushCiWarn=False)))
+        code, out = self.push("feature", ci={self.remote_tip: "red"})
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("WARNING", out)
+        self.assertEqual(self.calls(), [])
+
+    def test_the_pushed_branch_is_checked_not_the_current_one(self):
+        p = self.p
+        p.git("checkout", "-q", "main")
+        p.write("docs/m.md", "m\n"); p.commit("on main")
+        code, out = self.push("feature", ci={self.remote_tip: "red", p.sha("origin/main"): "red"})
+        self.assertEqual(code, 0, out)
+        self.assertIn("the last CI of feature", out)
+        self.assertNotIn("CI of main", out)
+        self.assertEqual(len(self.calls()), 1, self.calls())
+
+    def test_deletion_new_branch_and_tag_are_not_checked(self):
+        for args in ((":feature",), ("feature:refs/heads/brand-new",), ("feature:refs/tags/v9",)):
+            with self.subTest(args=args):
+                code, out = self.push(*args, ci={self.remote_tip: "red"})
+                self.assertEqual(code, 0, out)
+                self.assertNotIn("WARNING", out)
+        self.assertEqual(self.calls(), [])
+
+    def test_real_ci_status_without_gh_or_token_is_silent(self):
+        p = self.p
+        shutil.copy2(ROOT / "scripts" / "ci-status.py", p.work / ".claude" / "gw" / "scripts" / "ci-status.py")
+        p.git("remote", "set-url", "origin", "https://github.com/o/r.git")
+        p.git("remote", "set-url", "--push", "origin", str(p.bare))
+        bindir = self.tmp / "bin"; bindir.mkdir()
+        (bindir / "gh").write_text("#!/bin/sh\nexit 1\n"); (bindir / "gh").chmod(0o755)
+        (bindir / "curl").write_text("#!/bin/sh\nexit 7\n"); (bindir / "curl").chmod(0o755)
+        env = {"PATH": f"{bindir}{os.pathsep}{p.env['PATH']}", "GITHUB_TOKEN": "", "GH_TOKEN": ""}
+        code, out = self.push("feature", env=env)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("CI of", out)
+        self.assertIn("pre-push: all green.", out)
 
 
 class CheckCache(Base):

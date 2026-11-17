@@ -58,6 +58,10 @@ python3 .claude/gw/scripts/doctor.py
 El `pre-push` dice qué commits sube, o que no hay nada nuevo (¿se te olvidó `git commit`?). Si rechaza el push,
 el último renglón es la orden que lo arregla.
 
+Si el último CI de una rama que se sube está en rojo (o GitHub no lo arrancó), el `pre-push` lo avisa sin bloquear,
+con el commit y la orden para leer el fallo (`python3 scripts/ci-status.py --sha <sha> --failed`); se apaga con
+`prepushCiWarn` y tarda como mucho `prepushCiWarnTimeout` segundos (D62).
+
 En `.md`, `.markdown` y `.mdx`, el `pre-commit` no toma por secreto un valor citado que parece prosa (empieza por mayúscula y no lleva dígitos, p. ej. la etiqueta «Clave de OpenAI»); un valor con dígitos, en minúscula o tras `Bearer` sigue parado. Si un ejemplo real lo dispara, añade el comentario `gw-allow-secret` a esa línea.
 
 Mientras corre, deja la marca `gw-push-in-progress.<pid>` (su pid y, por cada ref que sube, el sha local y la rama) en el

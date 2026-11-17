@@ -58,6 +58,10 @@ python3 .claude/gw/scripts/doctor.py
 `pre-push` says which commits it pushes, or that there is nothing new (did you forget `git commit`?). When it rejects
 the push, the last line is the command that fixes it.
 
+When the last CI of a pushed branch is red (or GitHub never started it), `pre-push` warns without blocking, with the
+commit and the command to read the failure (`python3 scripts/ci-status.py --sha <sha> --failed`); `prepushCiWarn`
+turns it off and it takes at most `prepushCiWarnTimeout` seconds (D62).
+
 In `.md`, `.markdown` and `.mdx`, the `pre-commit` does not take a quoted value that looks like prose for a secret (it starts with a capital and has no digit, e.g. the label "Clave de OpenAI"); a value with digits, in lowercase or after `Bearer` is still refused. If a real example trips it, add the comment `gw-allow-secret` to that line.
 
 While it runs it keeps the marker `gw-push-in-progress.<pid>` (its pid and, per ref it pushes, the local sha and the

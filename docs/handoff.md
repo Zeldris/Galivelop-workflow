@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI en verde). Etiqueta y release `v0.7.1` creadas por el agente desde una sesión local (2026-11-16, a petición del usuario) |
-| Siguiente paso | D96 + D61 cerrados con los arreglos de su revisión (2026-11-17; falta mirar su CI); siguiente: elegir con el usuario la siguiente tarea de la `0.8`. Presupuesto de compactaciones: 1 |
+| Siguiente paso | D62 hecho (2026-11-17; aviso del `pre-push` si el CI de la rama está en rojo; falta mirar su CI); antes, D96 + D61 cerrados con su revisión. Siguiente: elegir con el usuario la siguiente tarea de la `0.8`. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-17 — Arreglos de la revisión de D96 + D61 (4 hallazgos): `preflight` pide un commit nuevo si la bitácora ya está commiteada, no pregunta la fecha a git sin `logRows`, fecha con `--no-merges` como el `pre-push`; config.md dice «el `pre-push`, con `logRows`». Hallazgos 5 y 6, a pendiente (`0.8`).
-2. 2026-11-17 — D96 + D61: `handoff.cellHardLimit` (1600; 0 = apagado) hace fallar `check` sin `--strict` (y el `commit-msg` y el `pre-push`); `handoff.py preflight` corre sin subir el `check` con fecha y el `clash` con `origin/<protectedBranch>` del `pre-push`, en el `check` de la plantilla y en `tests/check.sh`.
-3. 2026-11-16 — Arreglos de la revisión de D95 (8 hallazgos): `add-pending --section` es siempre un `### título` dentro de «Pendiente» (sin distinguir mayúsculas ni `#`; se crea al final de ella); `add-*` se saltan los bloques cercados, normalizan `* `/`1. ` a `- `, quitan líneas en blanco internas y fechas repetidas y comparan rutas resueltas; `decisionsFile` vale `docs/records/decisions.md` en la plantilla y en este repo (por defecto del esquema, `""`); fila de `config.md` con sus 5 celdas. Tres leves, a `pending.md`
-4. 2026-11-16 — Arreglos de la revisión de D94 (5 hallazgos): `push.sh` clasifica solo las líneas de git y del remoto (la salida de un gancho `pre-push` que pasó ya no cuenta como rechazo), amplía los fallos transitorios (red inalcanzable, SSL, 408, 5xx con texto), reintenta solo la comprobación si `ls-remote` falla tras un push correcto y fija upstream y `origin/<rama>` si el remoto ya tenía el commit; fila de `pushRetryDelays` completa; n.º 5, 7 y 8 a `pending.md`
-5. 2026-11-16 — D95: `handoff.py add-pending "texto" [--section "título"]` y `add-decision "texto" [--date]` añaden a «Pendiente» (`pendingFile` o la bitácora) y a «Decisiones» (clave nueva `decisionsFile`, por defecto la bitácora) sin leer el archivo, con una sola línea de salida, escritura atómica y fin de línea respetado; el esqueleto del archivo de pendientes se comparte con `move-pending`
+1. 2026-11-17 — D62: el `pre-push`, una vez pasa, avisa sin bloquear si el último CI de una rama que se sube (su punta en el remoto; no borrados, ramas nuevas ni etiquetas) está en rojo o GitHub no lo arrancó, con el commit y `ci-status.py --sha … --failed`; verde, en marcha, sin CI, sin `gh`/token o error, calla; claves nuevas `prepushCiWarn` (true) y `prepushCiWarnTimeout` (10 s en total; pasado, una línea). 8 tests nuevos en `test_hooks.PrePushCiWarn` con `ci-status.py` simulado.
+2. 2026-11-17 — Arreglos de la revisión de D96 + D61 (4 hallazgos): `preflight` pide un commit nuevo si la bitácora ya está commiteada, no pregunta la fecha a git sin `logRows`, fecha con `--no-merges` como el `pre-push`; config.md dice «el `pre-push`, con `logRows`». Hallazgos 5 y 6, a pendiente (`0.8`).
+3. 2026-11-17 — D96 + D61: `handoff.cellHardLimit` (1600; 0 = apagado) hace fallar `check` sin `--strict` (y el `commit-msg` y el `pre-push`); `handoff.py preflight` corre sin subir el `check` con fecha y el `clash` con `origin/<protectedBranch>` del `pre-push`, en el `check` de la plantilla y en `tests/check.sh`.
+4. 2026-11-16 — Arreglos de la revisión de D95 (8 hallazgos): `add-pending --section` es siempre un `### título` dentro de «Pendiente» (sin distinguir mayúsculas ni `#`; se crea al final de ella); `add-*` se saltan los bloques cercados, normalizan `* `/`1. ` a `- `, quitan líneas en blanco internas y fechas repetidas y comparan rutas resueltas; `decisionsFile` vale `docs/records/decisions.md` en la plantilla y en este repo (por defecto del esquema, `""`); fila de `config.md` con sus 5 celdas. Tres leves, a `pending.md`
+5. 2026-11-16 — Arreglos de la revisión de D94 (5 hallazgos): `push.sh` clasifica solo las líneas de git y del remoto (la salida de un gancho `pre-push` que pasó ya no cuenta como rechazo), amplía los fallos transitorios (red inalcanzable, SSL, 408, 5xx con texto), reintenta solo la comprobación si `ls-remote` falla tras un push correcto y fija upstream y `origin/<rama>` si el remoto ya tenía el commit; fila de `pushRetryDelays` completa; n.º 5, 7 y 8 a `pending.md`
 
 ## Pendiente
 

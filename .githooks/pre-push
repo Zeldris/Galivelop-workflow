@@ -48,6 +48,10 @@
 #     the loop, with those refs' files and the last checkout (with the check cached green on every such ref, only the slow ones). prepush-branches.sh <changed-file> <pushed-file> gets every
 #     ref's files. Both come from the workflow's scripts folder whenever they exist (run with bash, executable or not),
 #     with git's ref lines on stdin.
+#   - D62: once the push passed, warns (never blocks) when the last CI of a pushed branch is red: for each branch ref
+#     the remote already has (not a deletion, not a tag), ci-status.py --json on the remote's current tip, all of them
+#     within prepushCiWarnTimeout seconds; a CI GitHub never started counts as red. Green, running, no CI, no `gh` or
+#     token, no network or any error: silent (a timeout: one line). Off with prepushCiWarn false.
 # Skipping it (git push --no-verify) is only for a WIP: commit with red tests.
 # Bash 3.2 compatible. Root from this hook's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
@@ -531,4 +535,52 @@ if [ -f "$scripts/related-tests.sh" ] && [ -n "$checkdir" ] && [ "$full_ref" = "
   sort -u -o "$work/changed_full" "$work/changed_full"
   GW_RELATED_KINDS="$related_kinds" bash "$scripts/related-tests.sh" "$work/changed_full" "$checkdir" < "$work/input" || fail "the related tests failed; fix them, commit and push again: git push"
 fi
+ci_warn() {  # D62: a warning about a red CI on the pushed branches; never fails the push
+  [ -f "$scripts/ci-status.py" ] || return 0
+  local on secs
+  on="$(python3 "$config" --root "$root" get prepushCiWarn 2>/dev/null)" || return 0
+  [ "$on" = "true" ] || return 0
+  secs="$(python3 "$config" --root "$root" get prepushCiWarnTimeout 2>/dev/null)" || return 0
+  python3 - "$scripts/ci-status.py" "$root" "$secs" "$work/input" <<'PY' 2>/dev/null || true
+import json, os, signal, subprocess, sys, time
+script, root, secs, refs = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+rel = os.path.relpath(script, root)
+seen, targets = set(), []
+for line in open(refs):
+    f = line.split()
+    if len(f) < 4 or set(f[1]) == {"0"} or set(f[3]) == {"0"} or not f[2].startswith("refs/heads/"):
+        continue  # a deletion, a new branch (no CI yet) or a tag
+    if f[3] not in seen:
+        seen.add(f[3]); targets.append((f[2][len("refs/heads/"):], f[3]))
+deadline = time.monotonic() + secs
+for branch, sha in targets:
+    left = deadline - time.monotonic()
+    if left <= 0:
+        print(f"pre-push: CI of {branch} not read within {secs} s (prepushCiWarnTimeout); see it with: python3 {rel} --sha {sha[:12]}")
+        break
+    proc = subprocess.Popen([sys.executable, script, "--root", root, "--sha", sha, "--json"], stdout=subprocess.PIPE,
+                            stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, text=True, start_new_session=True)
+    try:
+        out, _ = proc.communicate(timeout=left)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)  # gh or curl too: they hold the pipe open
+        except OSError:
+            pass
+        proc.communicate()
+        print(f"pre-push: CI of {branch} not read within {secs} s (prepushCiWarnTimeout); see it with: python3 {rel} --sha {sha[:12]}")
+        break
+    try:
+        report = json.loads(out)
+    except ValueError:
+        continue
+    if report.get("state") != "red":
+        continue  # green, pending, no CI or could not be read: nothing to say
+    why = "GitHub never started its jobs (Actions quota or payments)" if report.get("unstarted") else \
+        "; ".join(report.get("problems") or [])[:300]
+    print(f"pre-push: WARNING: the last CI of {branch} (commit {sha[:7]}) is red: {why}")
+    print(f"  the push goes on; read the failure: python3 {rel} --sha {sha[:12]} --failed")
+PY
+}
+ci_warn
 echo "pre-push: all green."

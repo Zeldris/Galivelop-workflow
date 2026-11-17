@@ -1187,6 +1187,17 @@
       "default": false,
       "description": "false: install/setup run only in cloud sessions (CLAUDE_CODE_REMOTE=true); true: also in a local session."
     },
+    "prepushCiWarn": {
+      "type": "boolean",
+      "default": true,
+      "description": "D62: the pre-push warns, without blocking, when the last CI of a pushed branch (its current tip on the remote) is red, or GitHub never started it; false turns the warning off."
+    },
+    "prepushCiWarnTimeout": {
+      "type": "integer",
+      "minimum": 1,
+      "default": 10,
+      "description": "D62: seconds the pre-push's CI warning may take in all (ci-status.py for every pushed branch); past them it says so in one line and the push goes on."
+    },
     "prepushClashBranches": {
       "type": "integer",
       "minimum": 1,

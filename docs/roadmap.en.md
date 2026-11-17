@@ -286,7 +286,7 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | C10 | A subagent does not ask the user: it returns the question | pending (moves from `0.7`) |
 | D14 | `trace.py <id>` | pending (moves from `0.7`) |
 | D61 | `handoff.py preflight`: what the `pre-push` checks in the log (the "Updated" date, ids clashing with `main`), without pushing; in the template's `check` (`0.6` harvest, private-project-1 P1) | done (2026-11-17; with no `origin/<protectedBranch>` the clash is skipped with a note, as in the `pre-push`) |
-| D62 | The `pre-push` warns, without blocking, when the branch's last CI is red (`ci-status.py`, when `gh` is there) (`0.6` harvest, image-generator P5) | pending (moves from `0.7`) |
+| D62 | The `pre-push` warns, without blocking, when the branch's last CI is red (`ci-status.py`, when `gh` is there) (`0.6` harvest, image-generator P5) | done (2026-11-17; `prepushCiWarn`, `prepushCiWarnTimeout`) |
 | D63 | `templates/github/check.yml` with `workflow_call`: a `release.yml` calls it with `uses:` and `needs:` instead of copying its steps; the workflow's own too (`0.6` harvest, image-generator P6) | pending (moves from `0.7`) |
 | A11 | The four working modes in the plan, `AGENTS.md` and `gw-selector`: SDD always (task record), DDD with a domain, TDD with testable behaviour, bounded exploration (H17 P2; user, 2026-11-08) | pending (moves from `0.7`) |
 | C11 | Task record (`docs/tasks/<id>.md`, `taskRecord`): SDD, acceptance criteria, planned files and a decision log per agent; required for `feat`/`fix`/`hotfix` with code, checked by the `commit-msg`; `close-row` requires the boxes; absorbs D50 (H17 P1; user, 2026-11-08) | pending (moves from `0.7`) |
