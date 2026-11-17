@@ -194,5 +194,8 @@
       }
     ],
     "command": "PYTHONPATH=tests python3 -B -m unittest {files}"
+  },
+  "contextGuard": {
+    "window": 200000
   }
 }
