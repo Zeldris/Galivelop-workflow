@@ -309,12 +309,14 @@ entra el código ya hoy.
   arreglo: `/code-review` de ese diff) y
   `--search TEXTO` (fragmentos de la sesión que casan, como datos tras una línea de cabecera y sin caracteres de
   control; `--max N`, `--width N`, `--session RUTA`). `--state` se corta en 9.500 caracteres, por línea entera, y lo dice.
-- **`trace.py <id>` por línea de órdenes**, para juntar todo lo de una tarea sin leer cada archivo:
-  `python3 .claude/gw/scripts/trace.py D14` (su fila en cada roadmap de `roadmapFiles`, las líneas de la bitácora y de
-  `pendingFile` que lo nombran, los commits cuyo trailer `Refs:` o ámbito del asunto lo citan, las fusiones que lo
-  nombran —lo más cercano a un PR sin red— y los `.md` versionados que lo mencionan). Calcula al momento, sin índice.
-  El id tiene que encajar con `taskId`. Sale con 0 si algo lo nombra, 1 si nada (dice dónde miró) y 2 si el id está
-  mal formado o el config no se lee; `--json` da un objeto con una lista por fuente, `--limit N` (20) recorta el texto.
+- **`trace.py <id>` por línea de órdenes**, para juntar todo lo de una tarea sin leer cada archivo: `python3
+  .claude/gw/scripts/trace.py D14` (lo **declarado**: su fila en el roadmap de `roadmapFiles`, una sola con la
+  traducción como «also», los commits cuyo trailer `Refs:` o ámbito del asunto lo citan y las fusiones que lo nombran
+  —lo más cercano a un PR sin red—; y lo **deducido**: las líneas de la bitácora y de `pendingFile` y los `.md`
+  versionados que lo mencionan). Calcula al momento, sin índice. El id tiene que encajar con `taskId`. Sale con 0 si
+  algo lo nombra, 1 si nada (dice dónde miró) y 2 si el id está mal formado o el config no se lee; `--json` da un
+  objeto con `declared`, `deduced` y una lista por fuente, `--limit N` (20) recorta el texto y `--no-docs` salta la
+  búsqueda en los `.md` (sin leerlos).
 - **`install` a mano.** `session-start.sh` solo lo corre en la nube y cuando cambian las órdenes de `install`/`setup`
   o los lockfiles. Para forzarlo, borra el sello (`rm "$(git rev-parse --git-path gw-install.sha)"`) y abre la sesión
   de nuevo, o ejecuta tú las órdenes de `install` del config.

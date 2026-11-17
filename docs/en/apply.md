@@ -307,13 +307,14 @@ how code already reaches it today.
   `/code-review` of that diff) and
   `--search TEXT` (matching session fragments, printed as data after a header line, with control characters
   stripped; `--max N`, `--width N`, `--session PATH`). `--state` stops at 9,500 characters, at a whole line, and says so.
-- **`trace.py <id>` on the command line**, to gather everything about a task without reading each file:
-  `python3 .claude/gw/scripts/trace.py D14` (its row in each roadmap of `roadmapFiles`, the lines of the log and of
-  `pendingFile` that name it, the commits whose `Refs:` trailer or subject scope cites it, the merges that name it
-  -the closest to a PR without a network- and the tracked `.md` files that mention it). It computes on the spot, with
-  no index. The id must match `taskId`. Exit 0 when something names it, 1 when nothing does (it says where it looked)
-  and 2 when the id is malformed or the config cannot be read; `--json` gives one object with a list per source,
-  `--limit N` (20) trims the text.
+- **`trace.py <id>` on the command line**, to gather everything about a task without reading each file: `python3
+  .claude/gw/scripts/trace.py D14` (what is **declared**: its row in the roadmap of `roadmapFiles`, listed once with
+  the translation as "also", the commits whose `Refs:` trailer or subject scope cites it and the merges that name it
+  -the closest to a PR without a network-; and what is **deduced**: the lines of the log and of `pendingFile` and the
+  tracked `.md` files that mention it). It computes on the spot, with no index. The id must match `taskId`. Exit 0
+  when something names it, 1 when nothing does (it says where it looked) and 2 when the id is malformed or the config
+  cannot be read; `--json` gives one object with `declared`, `deduced` and a list per source, `--limit N` (20) trims
+  the text and `--no-docs` skips the search in `.md` files (it reads none).
 - **`install` by hand.** `session-start.sh` runs it only in the cloud and only when the `install`/`setup` commands or
   the lockfiles change. To force it, delete the stamp (`rm "$(git rev-parse --git-path gw-install.sha)"`) and open the
   session again, or run the config's `install` commands yourself.
