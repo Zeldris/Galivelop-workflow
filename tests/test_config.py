@@ -395,7 +395,8 @@ class Config(unittest.TestCase):
     def test_c8_modes_default_and_skip_list(self):
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
         template = json.loads((ROOT / "templates" / "gw.json").read_text())
-        self.assertEqual(config.modes({}), {"careful": True, "carefulExempt": ["/tmp/", "/var/tmp/", "$TMPDIR/", "${TMPDIR}/"]})
+        self.assertEqual(config.modes({}), {"careful": True, "carefulExempt": ["/tmp/", "/var/tmp/", "$TMPDIR/", "${TMPDIR}/"],
+                                              "carefulWorktrees": [".claude/worktrees/"]})
         self.assertEqual(config.modes({"modes": {"careful": False}})["careful"], False)
         self.assertIn("modes", schema["fullCheckSkipKeys"]["default"])
         self.assertIn("modes", template["fullCheckSkipKeys"])
@@ -570,6 +571,7 @@ class Config(unittest.TestCase):
                                 ("mediaContent", {"maxSubjects": 0}, "$.mediaContent.maxSubjects: must be at least 1"),
                                 ("modes", {"careful": "yes"}, "$.modes.careful"),
                                 ("modes", {"carefulExempt": [""]}, "$.modes.carefulExempt"),
+                                ("modes", {"carefulWorktrees": [""]}, "$.modes.carefulWorktrees"),
                                 ("modes", {"other": True}, "$.modes"),
                                 ("testScanSkipDirs", [""], "testScanSkipDirs")):
             self.write(dict(VALID, **{key: value}))

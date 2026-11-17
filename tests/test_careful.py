@@ -133,11 +133,19 @@ class CarefulTest(unittest.TestCase):
         self.p.git("config", "alias.nuke", "reset --hard")
         self.assertAsks(self.p.bash("git nuke"), "uncommitted")
 
+    def linked(self, name="x", where=".claude/worktrees"):
+        wt = self.p.work / where / name
+        self.p.git("worktree", "add", "-q", "-b", f"agent/{name}", str(wt))
+        return wt
+
+    def set_modes(self, **modes):
+        cfg = json.loads((self.p.work / ".claude/gw.json").read_text())
+        self.p.write(".claude/gw.json", json.dumps(dict(cfg, modes=modes)))
+
     def test_linked_worktree_is_disposable_for_reset_clean_restore_only(self):
-        wt = self.tmp / "wt"
-        self.p.git("worktree", "add", "-q", "-b", "agent/x", str(wt))
-        self.p.git("worktree", "add", "-q", "-b", "agent/y", str(self.tmp / "wt2"))
-        for command in ("git reset --hard abc123", "git clean -fd", "git checkout -- .", "git restore ."):
+        wt = self.linked()
+        for command in ("git reset --hard abc123", "git clean -fd", "git checkout -- .", "git restore .",
+                        "git checkout -f main", "git switch -f main", "git switch --discard-changes main"):
             with self.subTest(command=command, where="linked"):
                 self.assertAllowed(self.p.bash(command, cwd=wt))
             with self.subTest(command=command, where="main"):
@@ -148,6 +156,86 @@ class CarefulTest(unittest.TestCase):
                                 ("git push origin :old", "deletes a remote"), ("git branch -D old", "not merged")):
             with self.subTest(command=command, where="linked still asks"):
                 self.assertAsks(self.p.bash(command, cwd=wt), needle)
+
+    # The nine findings of the review of C8, one test each (the scenario first).
+    def test_f1_cd_in_the_command_removes_the_worktree_exemption(self):
+        wt = self.linked()
+        self.assertAllowed(self.p.bash("git reset --hard", cwd=wt))
+        for command in (f"cd {self.p.work} && git reset --hard", f"pushd {self.p.work}; git clean -fdx",
+                        f"cd {self.p.work}\ngit checkout -- ."):
+            with self.subTest(command=command):
+                self.assertAsks(self.p.bash(command, cwd=wt), "destructive command")
+
+    def test_f2_here_string_and_quoted_heredoc_marker_do_not_hide_what_follows(self):
+        for command in ('grep x <<< "$v"\nrm -rf ~/proj', 'git commit -m "ver <<EOF"\ngit push -f',
+                        'grep x <<<foo\nrm -rf ~/proj', "echo '<<EOF'\ngit reset --hard", "cat <<$v\nrm -rf ~/proj"):
+            with self.subTest(command=command):
+                self.assertAsks(self.p.bash(command), "destructive command")
+        self.assertAllowed(self.p.bash("cat <<-'EOF'\n\trm -rf x\n\tEOF"))
+        self.assertAllowed(self.p.bash("cat <<A <<B\nrm -rf x\nA\ngit reset --hard\nB"))
+
+    def test_f3_git_alias_it_cannot_follow_asks(self):
+        self.p.git("config", "alias.nuke", "!git reset --hard && git clean -fdx")
+        self.assertAsks(self.p.bash("git nuke"), "alias it cannot follow", "runs a shell command")
+
+    def test_f4_eval_joins_its_words(self):
+        self.assertAsks(self.p.bash("eval rm -rf /home/user/proj"), "rm -r")
+        self.assertAsks(self.p.bash("eval git reset --hard"), "uncommitted")
+        self.assertAllowed(self.p.bash("eval echo hi"))
+
+    def test_f5_git_env_prefix_removes_the_worktree_exemption(self):
+        wt = self.linked()
+        for command in (f"GIT_WORK_TREE={self.p.work} GIT_DIR={self.p.work}/.git git reset --hard",
+                        f"GIT_DIR={self.p.work}/.git git clean -fd"):
+            with self.subTest(command=command):
+                self.assertAsks(self.p.bash(command, cwd=wt), "destructive command")
+
+    def test_f6_tmpdir_prefix_needs_tmpdir_set(self):
+        import os
+        for value, asks in (("", True), ("/", True), ("/var/tmp", False)):
+            env_cmd = 'rm -rf "$TMPDIR/home" ${TMPDIR}/x'
+            with self.subTest(TMPDIR=value):
+                self.p.env["TMPDIR"] = value if value else ""
+                res = self.p.bash(env_cmd)
+                self.assertAsks(res, "rm -r") if asks else self.assertAllowed(res)
+        self.p.env.pop("TMPDIR", None)
+        self.assertAsks(self.p.bash("rm -rf $TMPDIR/home"), "rm -r")
+        self.assertAllowed(self.p.bash("rm -rf /tmp/x"))  # the literal prefixes do not depend on TMPDIR
+
+    def test_f7_only_worktrees_under_the_configured_prefixes_are_exempt(self):
+        other = self.linked("feature", where="../side")
+        mine = self.linked("mine")
+        self.assertAsks(self.p.bash("git reset --hard", cwd=other), "uncommitted")  # a real worktree, not an agent's
+        self.assertAllowed(self.p.bash("git reset --hard", cwd=mine))
+        self.set_modes(carefulWorktrees=[])
+        self.assertAsks(self.p.bash("git reset --hard", cwd=mine), "uncommitted")  # empty list = no exemption
+        self.set_modes(carefulWorktrees=["../side/"])
+        self.assertAllowed(self.p.bash("git clean -fd", cwd=other))
+        self.assertAsks(self.p.bash("git clean -fd", cwd=mine), "untracked")
+
+    def test_f8_mirror_prune_and_forced_checkout_ask(self):
+        for command, needle in (("git push --mirror origin", "remote history"), ("git push --prune origin", "remote history"),
+                                ("git checkout -f main", "-f"), ("git checkout --force main", "-f"),
+                                ("git switch -f main", "-f"), ("git switch --discard-changes main", "-f")):
+            with self.subTest(command=command):
+                self.assertAsks(self.p.bash(command), needle)
+        self.assertAllowed(self.p.bash("git switch main"))
+        self.assertAllowed(self.p.bash("git checkout main"))
+
+    def test_f9_git_rev_parse_runs_only_where_the_exemption_matters(self):
+        import subprocess
+        trace = self.tmp / "trace.log"
+        self.p.env["GIT_TRACE"] = str(trace)
+        for command in ("git status", "git log -1", "git diff", "git push origin main", "git branch -a"):
+            self.assertAllowed(self.p.bash(command))
+        self.assertNotIn("--git-common-dir", trace.read_text() if trace.exists() else "")
+        self.assertAsks(self.p.bash("git reset --hard"), "uncommitted")
+        self.assertIn("--git-common-dir", trace.read_text())
+
+    def test_wrappers_and_assignments_before_git_are_looked_through(self):
+        for command in ("sudo git reset --hard", "FOO=1 git push -f", "env -u X git clean -fd", "nice -n 5 git push --mirror"):
+            with self.subTest(command=command):
+                self.assertAsks(self.p.bash(command), "destructive command")
 
     def test_template_and_plugin_register_it(self):
         for rel in ("templates/claude/settings.json", "hooks/hooks.json"):

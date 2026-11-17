@@ -1353,10 +1353,11 @@
       "additionalProperties": false,
       "properties": {
         "careful": {"type": "boolean", "default": true},
-        "carefulExempt": {"type": "array", "items": {"type": "string", "minLength": 1}, "default": ["/tmp/", "/var/tmp/", "$TMPDIR/", "${TMPDIR}/"]}
+        "carefulExempt": {"type": "array", "items": {"type": "string", "minLength": 1}, "default": ["/tmp/", "/var/tmp/", "$TMPDIR/", "${TMPDIR}/"]},
+        "carefulWorktrees": {"type": "array", "items": {"type": "string", "minLength": 1}, "default": [".claude/worktrees/"]}
       },
-      "default": {"careful": true, "carefulExempt": ["/tmp/", "/var/tmp/", "$TMPDIR/", "${TMPDIR}/"]},
-      "description": "Opt-out modes of the workflow's hooks (C8). careful (default true): careful.py, a PreToolUse hook on Bash, asks the user before a destructive command (rm -r, git push --force, git reset --hard, git branch -D, git push --delete, git clean -f, git checkout -- . and git restore .); false = it does nothing. carefulExempt: path prefixes; an rm -r whose every target starts with one (and has no '..') is not asked about; the list replaces the default one."
+      "default": {"careful": true, "carefulExempt": ["/tmp/", "/var/tmp/", "$TMPDIR/", "${TMPDIR}/"], "carefulWorktrees": [".claude/worktrees/"]},
+      "description": "Opt-out modes of the workflow's hooks (C8). careful (default true): careful.py, a PreToolUse hook on Bash, asks the user before a destructive command (rm -r, git push --force, git reset --hard, git branch -D, git push --delete, git clean -f, git checkout -- . and git restore .); false = it does nothing. carefulExempt: path prefixes; an rm -r whose every target starts with one (and has no '..') is not asked about; the list replaces the default one ($TMPDIR/ and ${TMPDIR}/ only count while TMPDIR is set and not empty). carefulWorktrees: folders (relative to the main repository's root) whose linked git worktrees are disposable: there git reset --hard, git clean -f, git checkout|restore . and checkout/switch -f are not asked about (not after a cd or with GIT_DIR set); an empty list = no exemption."
     }
   }
 }

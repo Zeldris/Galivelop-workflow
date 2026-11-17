@@ -127,7 +127,7 @@
   "models": {"disabled": []},
   "measure": {"minCalls": 5, "imageTokens": 1600, "mixedRatio": 1.5, "minOutput": 100, "coldMs": 100},
   "mediaContent": {"maxSubjects": 20},
-  "modes": {"careful": true, "carefulExempt": ["/tmp/", "/var/tmp/", "$TMPDIR/", "${TMPDIR}/"]},
+  "modes": {"careful": true, "carefulExempt": ["/tmp/", "/var/tmp/", "$TMPDIR/", "${TMPDIR}/"], "carefulWorktrees": [".claude/worktrees/"]},
   "testScanSkipDirs": [".git", "node_modules", ".venv", "venv", "__pycache__", ".tox"],
   "doctorTestDirsIgnore": [".git", "node_modules", ".claude/worktrees", ".claude/gw", ".claude/skills", "venv", ".venv", "env", ".tox", "site-packages", "__pycache__"],
   "instructionLines": {"warn": 150, "fail": 250},
