@@ -18,11 +18,13 @@ Prints the report lines. Exit 0 always, except a config error (exit 2, message o
 transcript or file gives "unknown" lines, never an exception out of report(). Python 3.8+ standard library only.
 """
 import argparse
+import contextlib
 import glob
 import json
 import os
 import re
 import sys
+import time
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.dont_write_bytecode = True  # no __pycache__ in the project's .claude/gw/scripts
@@ -355,10 +357,15 @@ def window_known(root, model):
     return "[1m]" in name or "-1m" in name or bool({"cutoff", "window"} & config.given_keys(root, "contextGuard"))
 
 
+WARNED_LOCK_TRIES = 10  # B31: non-blocking tries for the marker's lock, WARNED_LOCK_WAIT seconds apart; then no lock
+WARNED_LOCK_WAIT = 0.05
+
+
 def read_warned(state):
     """B31: {absolute transcript path: compactions counted when it warned} from the state file, one JSON object per
-    line ({"transcript": ..., "counted": ...}), oldest first. The old one-line "path|count" format is read too.
-    Missing, unreadable or bad lines: skipped (at worst a stretch warns again). Never raises."""
+    line ({"transcript": ..., "counted": ...}), oldest first. Missing or unreadable file: {}; a bad line (not that
+    JSON, the previous one-line "path|count" format included): skipped, at worst that stretch warns again. Never
+    raises."""
     warned = {}
     try:
         with open(state, encoding="utf-8", errors="replace") as fh:
@@ -366,40 +373,66 @@ def read_warned(state):
     except (OSError, ValueError):
         return warned
     for line in lines:
-        line = line.strip()
         try:
             item = json.loads(line)
             key, counted = item["transcript"], item["counted"]
-        except (ValueError, TypeError, KeyError):
-            key, sep, counted = line.rpartition("|")
-            if not sep or not counted.isdigit():
-                continue
-            counted = int(counted)
-        if isinstance(key, str) and key and isinstance(counted, int) and not isinstance(counted, bool):
-            warned.pop(key, None)  # the last line for a transcript wins and moves to the end
-            warned[key] = counted
+            if isinstance(key, str) and key and type(counted) is int:
+                warned.pop(key, None)  # the last line for a transcript wins and moves to the end
+                warned[key] = counted
+        except Exception:  # any odd line is just skipped
+            continue
     return warned
 
 
-def write_warned(state, warned, key, counted, keep_max=None):
-    """Write `warned` with key -> counted (moved last), keeping the `keep_max` newest (contextGuard.warnedMax), atomically: a temporary file in
-    the same directory, then os.replace, so a concurrent reader sees the old file or the new one, never half. Two
-    writers at once may lose one entry (that session warns again once), never the file. Never raises."""
-    warned = dict(warned)
-    warned.pop(key, None)
-    warned[key] = counted
-    if not keep_max:
-        keep_max = config.context_guard({})["warnedMax"]
-    keep = list(warned.items())[-max(1, int(keep_max)):]
+@contextlib.contextmanager
+def warned_lock(state):
+    """An exclusive flock on `<state>.lock` while the block runs, so concurrent Stop hooks do not lose each other's
+    entries. Not taken (no fcntl, the lock file cannot be opened, still busy after WARNED_LOCK_TRIES tries): the block
+    runs without it, as before, never waiting longer. Never raises by itself."""
+    fd = None
+    try:
+        import fcntl
+        fd = os.open(f"{state}.lock", os.O_RDWR | os.O_CREAT, 0o644)
+        for attempt in range(WARNED_LOCK_TRIES):
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError:
+                if attempt + 1 < WARNED_LOCK_TRIES:
+                    time.sleep(WARNED_LOCK_WAIT)
+    except Exception:
+        pass
+    try:
+        yield
+    finally:
+        if fd is not None:
+            try:
+                os.close(fd)  # closing the file releases the lock
+            except OSError:
+                pass
+
+
+def write_warned(state, key, counted, keep_max):
+    """Under warned_lock, read the state file again, set key -> counted (moved last), keep the `keep_max` newest
+    (contextGuard.warnedMax) and write it atomically: a temporary file in the same directory, then os.replace, so a
+    reader sees the old file or the new one, never half; the temporary file never stays behind. Never raises."""
     tmp = f"{state}.{os.getpid()}.tmp"
     try:
-        with open(tmp, "w", encoding="utf-8") as fh:
-            for name, value in keep:
-                fh.write(json.dumps({"transcript": name, "counted": value}) + "\n")
-        os.replace(tmp, state)
-    except OSError:
+        with warned_lock(state):
+            warned = read_warned(state)
+            warned.pop(key, None)
+            warned[key] = counted
+            keep = list(warned.items())[-keep_max:]
+            with open(tmp, "w", encoding="utf-8") as fh:
+                for name, value in keep:
+                    fh.write(json.dumps({"transcript": name, "counted": value}) + "\n")
+            os.replace(tmp, state)
+    except Exception:  # unwritable: that stretch warns again
+        pass
+    finally:
         try:
-            os.remove(tmp)
+            if os.path.exists(tmp):
+                os.remove(tmp)
         except OSError:
             pass
 
@@ -415,7 +448,8 @@ def near_cutoff(root, cfg, branch, transcript, state=None):
     overwrite each other's; the same stretch gives None, a new one is written there (unwritable: it warns again). `stretch` = transcript and compactions since the task started. Never raises; any failure: None."""
     try:
         cfg = cfg or {}
-        ratio = config.context_guard(cfg)["nearRatio"]
+        guard = config.context_guard(cfg)
+        ratio = guard["nearRatio"]
         tail = cfg.get("stopTranscriptBytes", config.schema_default("stopTranscriptBytes"))
         if not ratio or not tail or not transcript or not os.path.isfile(str(transcript)):
             return None
@@ -448,7 +482,7 @@ def near_cutoff(root, cfg, branch, transcript, state=None):
         message = (f"Context at {round(100 * tokens / cutoff)} % of the compaction cutoff ({fmt(tokens)} of "
                    f"{fmt(cutoff)} tokens) and {where}; {advice}.")
         if state:
-            write_warned(state, warned, key, counted, config.context_guard(cfg)["warnedMax"])
+            write_warned(state, key, counted, guard["warnedMax"])
         return stretch, message
     except Exception:  # a warning must never cost the stop
         return None
