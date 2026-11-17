@@ -281,8 +281,8 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - (revisión del bloque E58-E61 + B41, leve) Configurabilidad: el remoto `origin` que nombra la línea de `recover.py --state` y la carpeta de estado de `whole-read.py` (`$TMPDIR`) van fijos; pasarlos a claves de `.claude/gw.json` si un proyecto lo pide.
 - [ ] `0.8` · **Revisión D14 n.º 4**: `trace.py` lee todos los `.md` del repo en cada llamada; sin `--no-docs` para saltarlos.
 - [ ] `0.8` · **Revisión D14 n.º 5**: `trace.py` saca dos veces la fila de `roadmap.md` y `roadmap.en.md`, y no separa lo declarado (filas, `Refs:`) de lo deducido (menciones en documentos).
-- [ ] `0.8` · `scripts/reviewed.sh:77` sube con `git push -u origin HEAD:<rama>`: `push.sh` no admite refspec; darle uno o dejar la excepción explicada.
-- [ ] `0.8` · `skills/gw-init/SKILL.md:88` (y su copia en `.claude/skills`) sigue mandando `git push -u origin <rama>` en vez de `push.sh`.
+- [x] `0.8` · (D94, 2026-11-17: el consejo crea la rama y sube con `push.sh`; `push.sh` sin cambios) `scripts/reviewed.sh:77` sube con `git push -u origin HEAD:<rama>`: `push.sh` no admite refspec; darle uno o dejar la excepción explicada.
+- [x] `0.8` · (D87, 2026-11-17) `skills/gw-init/SKILL.md:88` (y su copia en `.claude/skills`) sigue mandando `git push -u origin <rama>` en vez de `push.sh`.
 - [ ] `0.8` · `push.sh` mata el grupo de `ls-remote` con `set -m`: probado solo en Linux; vigilar el CI de macOS.
 - [ ] `0.8` · Herramienta: `pgrep -f tests-for` (y similares) en los tests casa con procesos de otros agentes del mismo contenedor.
 - [ ] `0.8` · **Revisión D95 n.º 5**: `split_lines` elige CRLF si alguna línea lo tiene y reescribe todas así (y quita las líneas en blanco del final); `done` conserva el de cada línea (candidato: respetar el fin de cada línea).
@@ -293,8 +293,10 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - D62 (revisión n.º 5, 0.8): el aviso de CI del `pre-push` deduplica por sha remoto y nombra solo la primera rama; agrupar las ramas por sha y nombrarlas todas.
 - D62 (revisión n.º 8, 0.8): la orden del aviso de CI del `pre-push` usa una ruta relativa a la raíz; desde un subdirectorio no se encuentra: dar la ruta absoluta.
 - D62 (revisión n.º 9, 0.8): si `config.py` no lee `prepushCiWarn` o su timeout, el aviso de CI se apaga sin decir nada; sacar una línea con `config.py validate`.
-- [ ] `0.8` · **Revisión B31 n.º 5**: el marcador del aviso de contexto (`<git dir>/gw-context-warn`) es uno por git dir y guarda solo el último tramo: dos sesiones en el mismo worktree, ambas cerca del corte, se lo pisan y avisan en cada turno (candidato: varias claves, una por transcript, o un archivo por sesión).
+- [x] `0.8` · (B31, 2026-11-17: una línea por transcript, `contextGuard.warnedMax`, cerrojo) **Revisión B31 n.º 5**: el marcador del aviso de contexto (`<git dir>/gw-context-warn`) es uno por git dir y guarda solo el último tramo: dos sesiones en el mismo worktree, ambas cerca del corte, se lo pisan y avisan en cada turno (candidato: varias claves, una por transcript, o un archivo por sesión).
 - [ ] `0.9` · **Revisión D83 n.º 5** (leve): `apply.py --init --stack` con la lista vacía no quita un bloque `.gitignore` que ya existe.
 - [ ] `0.9` · **Revisión D83 n.º 9** (leve): el análisis y la unión de `staleRefs` están duplicados en `apply.py`, y `stale_pattern` repite lo de `rename_hook_scripts`.
 - [ ] `0.9` · **D127, seguimiento**: `apply.py --update` no refresca el bloque `.gitignore` de un proyecto ya iniciado (solo lo escribe el `--init` que crea `gw.json`).
 - [ ] `0.8` · Herramienta: `tests-for.py --run` se quedó colgado en `test_hooks` (`PrePush`, `CheckCache`) con varios subagentes a la vez (oleada 2; ver el ítem de `pgrep`).
+- [ ] `0.9` · **Revisión D87 n.º 6** (leve): `tests/test_apply.py` cubre `<!-- if !clave -->` con false, true y ausente, pero no `! clave` con espacio ni `if !` sin clave.
+- [ ] `0.9` · **Revisión D94 n.º 1** (leve): `test_reviewed.py` no ejecuta la orden que imprime el consejo de `reviewed.sh` (escribe la ruta de `push.sh` a mano, raíz sin espacios): una cita `%q` rota seguiría en verde.

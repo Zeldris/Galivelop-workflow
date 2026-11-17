@@ -52,6 +52,9 @@ HEAD_LINES = 5  # same as header_version()
 UNMARKED = {  # workflow files that carry no header marker, and why
     "templates/gw.json": "JSON; its marker is the top-level \"version\", checked on its own",
     "templates/claude/settings.json": "JSON merged key by key into the project's settings, never owned",
+    "templates/licenses/LICENSE-code.txt": "copied verbatim as the project's LICENSE; a marker would alter the licence",
+    "templates/licenses/LICENSE-content.md": "copied verbatim as the project's content licence (D87)",
+    "templates/licenses/THIRD-PARTY.md": "copied once into the project and then owned by it (D87)",
 }
 
 
