@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI en verde). Etiqueta y release `v0.7.1` creadas por el agente desde una sesión local (2026-11-16, a petición del usuario) |
-| Siguiente paso | Grupo B de la `0.8` (sueltos), oleada 2 a subagentes: D80, D83, D87, E49, E53 y lo marcado `0.8` en `records/pending.md` (D63, D14 y D94/D96 hechos). `contextGuard.window` = 200000 en este repo (usuario, 2026-11-17: la sesión en la nube compacta en 165 600 de 200k; con 1M B31 no avisaría). Presupuesto de compactaciones: 1 |
+| Siguiente paso | Grupo B de la `0.8`, oleada 2 en marcha (worktrees en paralelo): D80+D126 (`gw-scout-updates`), D83+D127 (`apply.py`), E53+E63 (guía y plantilla de `REVIEW.md`), E64 (dealer). Oleada 3: D87+E49 (`gw-init`, tras D83) y los leves de código marcados `0.8` en `records/pending.md`. `contextGuard.window` = 200000 en este repo (usuario, 2026-11-17). Presupuesto de compactaciones: 1 |
 
 ### Fases
 
