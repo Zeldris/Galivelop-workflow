@@ -6,6 +6,8 @@ Unless a file says otherwise, the content of this project (texts, documentation,
 other creative material, everything that is not source code) is licensed under the Creative Commons
 Attribution-NonCommercial-ShareAlike 4.0 International licence (CC BY-NC-SA 4.0).
 
+<!-- Checked 2026-11-17 against creativecommons.org: licence version 4.0 and these two URLs. Recheck before a release. -->
+
 - Summary: <https://creativecommons.org/licenses/by-nc-sa/4.0/>
 - Full legal code: <https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode>
 

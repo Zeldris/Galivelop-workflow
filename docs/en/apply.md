@@ -174,7 +174,7 @@ Also fill in the log's placeholders (at least branch, phase and next step; the o
 until there is something to write) and add the project's own rules to the "Project rules" sections of `REVIEW.md`
 and `AGENTS.md` and its terms to `GLOSSARY.md`: the workflow never writes those files again.
 
-**Conditional blocks in the templates:** `<!-- if key -->` ... `<!-- /if -->`, each marker on its own line and `key` a boolean key of `.claude/gw.json`. With the key `true` only the marker lines are dropped; with `false` or absent, the whole block (so the log explains `logRows` only when it is on). They do not nest; an unclosed or nested block makes `apply.py` fail, naming the template to fix.
+**Conditional blocks in the templates:** `<!-- if key -->` ... `<!-- /if -->`, each marker on its own line and `key` a boolean key of `.claude/gw.json`. With the key `true` only the marker lines are dropped; with `false` or absent, the whole block (so the log explains `logRows` only when it is on). `<!-- if !key -->` is the reverse: the block stays only when the key is explicitly `false` (absent counts as the default, `true`, and hides it; so `CLAUDE.md` carries the "no signatures" rule only with `agentSignatures: false`). They do not nest; an unclosed or nested block makes `apply.py` fail, naming the template to fix.
 
 **A `REVIEW.md` or `GLOSSARY.md` that already existed:** `apply.py` leaves it alone, but prints how it differs from
 the template while it lacks the current version's marker. Bring over by hand what it misses (for instance the
