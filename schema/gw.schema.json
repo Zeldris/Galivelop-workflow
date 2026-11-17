@@ -390,7 +390,8 @@
         "doctorScanBytes",
         "patchCommitTypes",
         "measure",
-        "mediaContent"
+        "mediaContent",
+        "modes"
       ],
       "description": "Top-level keys of .claude/gw.json whose change does not make a branch push run the full check (E47): when the push's new commits change only these keys of the config, its related tests run. Any other key, an added, removed or broken config, and fullCheckSkipKeys itself still count as an environment change. The list replaces the default one."
     },
@@ -1361,6 +1362,17 @@
       ],
       "default": {"emails": true, "allowEmails": [], "maxHits": 10},
       "description": "private-check.py (pre-push, on what each push adds): key formats, e-mail addresses (emails, default true) other than the built-in example/noreply ones and allowEmails (public; private ones go in the local .claude/gw.local.json), maxHits (hits printed before \"... and N more\", default 10), and the privateNames of .claude/gw.local.json. false turns it all off; true is the defaults."
+    },
+    "modes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "careful": {"type": "boolean", "default": true},
+        "carefulExempt": {"type": "array", "items": {"type": "string", "minLength": 1}, "default": ["/tmp/", "/var/tmp/", "$TMPDIR/", "${TMPDIR}/"]},
+        "carefulWorktrees": {"type": "array", "items": {"type": "string", "minLength": 1}, "default": [".claude/worktrees/"]}
+      },
+      "default": {"careful": true, "carefulExempt": ["/tmp/", "/var/tmp/", "$TMPDIR/", "${TMPDIR}/"], "carefulWorktrees": [".claude/worktrees/"]},
+      "description": "Opt-out modes of the workflow's hooks (C8). careful (default true): careful.py, a PreToolUse hook on Bash, asks the user before a destructive command (rm -r, git push --force, git reset --hard, git branch -D, git push --delete, git clean -f, git checkout -- . and git restore .); false = it does nothing. carefulExempt: path prefixes; an rm -r whose every target starts with one (and has no '..') is not asked about; the list replaces the default one ($TMPDIR/ and ${TMPDIR}/ only count while TMPDIR is set and not empty). carefulWorktrees: folders (relative to the main repository's root) whose linked git worktrees are disposable: there git reset --hard, git clean -f, git checkout|restore . and checkout/switch -f are not asked about (not after a cd or with GIT_DIR set); an empty list = no exemption."
     }
   }
 }

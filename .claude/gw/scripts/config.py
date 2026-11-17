@@ -547,6 +547,11 @@ def questions_path(config):
     return _section(config, "questions")["path"]
 
 
+def modes(config):
+    """The `modes` key as a dict (careful, carefulExempt) (C8): on/off switches of the workflow's opt-out hooks."""
+    return _section(config, "modes")
+
+
 def given_keys(root, key):
     """The inner keys the project's .claude/gw.json itself writes under the object key `key` (not the defaults the
     loader fills), as a set; empty when the file, the key or the JSON is missing (B31: is the window known?)."""
@@ -1311,7 +1316,7 @@ def main(argv=None):
         return 0
     value = dict(config, metrics=metrics(config), models=models(config), measure=measure(config), mediaContent=media_content(config),
                  recover=recover(config), handoff=handoff(config), harvest=harvest(config),
-                 contextGuard=context_guard(config),
+                 contextGuard=context_guard(config), modes=modes(config),
                  stopSeverity=stop_severity(config), changeSize=change_size(config),
                  retro=retro(config), redWithoutFix=red_without_fix(config), branchPrefixes=branch_prefixes(config))  # inner keys fill from the schema too
     for part in args.key.split("."):
