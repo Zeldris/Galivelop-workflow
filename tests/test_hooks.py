@@ -9,6 +9,7 @@ import copy
 import json
 import os
 import re
+import shlex
 import shutil
 import signal
 import subprocess
@@ -1492,8 +1493,15 @@ class PrePushCiWarn(Base):
         with open(os.environ["GW_CI_LOG"], "a") as log:
             log.write(" ".join(args) + "\\n")
         mode = json.loads(os.environ.get("GW_CI", "{}")).get(sha, "green")
-        if mode == "sleep":  # a slow gh holding the pipe: the hook must kill the whole group
-            subprocess.run(["sleep", "30"])
+        if mode in ("sleep", "orphan"):  # a slow gh holding the pipe: the hook must kill the whole group
+            child = subprocess.Popen(["sleep", "30"])
+            if os.environ.get("GW_CI_PIDS"):  # this stub, its gh, and the hook's python that waits for it
+                with open(os.environ["GW_CI_PIDS"] + ".tmp", "w") as fh:
+                    fh.write(f"{os.getpid()} {child.pid} {os.getppid()}\\n")
+                os.rename(os.environ["GW_CI_PIDS"] + ".tmp", os.environ["GW_CI_PIDS"])
+            if mode == "orphan":  # ci-status.py ends and leaves its gh holding the pipe
+                sys.exit(0)
+            child.wait()
         if mode == "garbage":
             print("not json"); sys.exit(2)
         out = {"repo": "o/r", "sha": sha, "state": mode, "problems": [], "ignored": [], "unstarted": False,
@@ -1523,6 +1531,7 @@ class PrePushCiWarn(Base):
         self.remote_tip = p.sha()
         p.write("docs/a.md", "b\n"); p.commit("b")
         self.log = self.tmp / "ci.log"
+        self.cmd = "python3 " + shlex.quote(os.path.realpath(p.work / ".claude" / "gw" / "scripts" / "ci-status.py"))
 
     def push(self, *args, ci=None, env=None):
         return self.push_to("origin", *args, ci=ci, env=env)
@@ -1540,7 +1549,7 @@ class PrePushCiWarn(Base):
         self.assertEqual(code, 0, out)
         self.assertIn(f"pre-push: WARNING: the last CI of feature (commit {self.remote_tip[:7]}) is red: "
                       "check (ubuntu-latest): failure", out)
-        self.assertIn(f"the push goes on; read the failure: python3 .claude/gw/scripts/ci-status.py "
+        self.assertIn(f"the push goes on; read the failure: {self.cmd} "
                       f"--repo o/r --sha {self.remote_tip[:12]} --failed", out)
         self.assertEqual(self.p.git("rev-parse", "feature", cwd=self.p.bare).stdout.strip(), self.p.sha())
         self.assertIn(f"--repo o/r --sha {self.remote_tip} --json", self.calls()[0])
@@ -1565,8 +1574,8 @@ class PrePushCiWarn(Base):
         code, out = self.push("feature", ci={self.remote_tip: "sleep"})
         self.assertEqual(code, 0, out)
         self.assertLess(time.monotonic() - start, 20, out)
-        self.assertIn("pre-push: CI of feature not read within 1 s (prepushCiWarnTimeout); see it with: python3 "
-                      f".claude/gw/scripts/ci-status.py --repo o/r --sha {self.remote_tip[:12]}", out)
+        self.assertIn("pre-push: CI of feature not read within 1 s (prepushCiWarnTimeout); see it with: "
+                      f"{self.cmd} --repo o/r --sha {self.remote_tip[:12]}", out)
 
     def workflows(self):
         self.p.write(".github/workflows/check.yml", "on: push\n")
@@ -1578,7 +1587,7 @@ class PrePushCiWarn(Base):
         self.assertIn(f"pre-push: WARNING: no CI has reported on the last commit of feature ({self.remote_tip[:7]}), "
                       "though .github/workflows runs on push: GitHub may not have started it (Actions quota or payments)",
                       out)
-        self.assertIn(f"read the failure: python3 .claude/gw/scripts/ci-status.py --repo o/r --sha {self.remote_tip[:12]}", out)
+        self.assertIn(f"read the failure: {self.cmd} --repo o/r --sha {self.remote_tip[:12]}", out)
 
     def test_no_ci_is_silent_without_workflows_or_with_ci_on_push_false(self):
         code, out = self.push("feature", ci={self.remote_tip: "none"})
@@ -1599,7 +1608,7 @@ class PrePushCiWarn(Base):
         code, out = self.push_to("upstream", "feature", ci={self.remote_tip: "red"})
         self.assertEqual(code, 0, out)
         self.assertIn("--repo u/up --sha", self.calls()[0])
-        self.assertIn(f"read the failure: python3 .claude/gw/scripts/ci-status.py --repo u/up --sha {self.remote_tip[:12]}", out)
+        self.assertIn(f"read the failure: {self.cmd} --repo u/up --sha {self.remote_tip[:12]}", out)
 
     def test_a_remote_not_on_github_is_not_checked(self):
         p = self.p
@@ -1642,6 +1651,102 @@ class PrePushCiWarn(Base):
                 self.assertEqual(code, 0, out)
                 self.assertNotIn("WARNING", out)
         self.assertEqual(self.calls(), [])
+
+    def test_branches_at_the_same_remote_commit_are_read_once_and_all_named(self):
+        p = self.p
+        p.git("update-ref", "refs/heads/other", self.remote_tip, cwd=p.bare)
+        code, out = self.push("feature", "feature:other", ci={self.remote_tip: "red"})
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"pre-push: WARNING: the last CI of feature, other (commit {self.remote_tip[:7]}) is red", out)
+        self.assertEqual(out.count("WARNING"), 1, out)
+        self.assertEqual(len(self.calls()), 1, self.calls())
+
+    def test_the_suggested_command_works_from_a_subfolder(self):
+        p = self.p
+        code, out = p.push("origin", "feature", cwd=p.work / "docs",
+                           env={"GW_CI_LOG": str(self.log), "GW_CI": json.dumps({self.remote_tip: "red"})})
+        self.assertEqual(code, 0, out)
+        line = next(x for x in out.splitlines() if "read the failure:" in x)
+        command = line.split("read the failure: ", 1)[1]
+        self.assertTrue(command.startswith(self.cmd + " --repo o/r"), line)
+        r = subprocess.run(shlex.split(command), cwd=p.work / "docs", capture_output=True, text=True,
+                           env=dict(p.env, GW_CI_LOG=str(self.log), GW_CI="{}"))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_an_unreadable_key_says_so_with_validate_and_pushes(self):
+        validate = f"python3 {shlex.quote(os.path.realpath(self.p.work / '.claude' / 'gw' / 'scripts' / 'config.py'))} validate"
+        for key, value, read, why in (("prepushCiWarn", "yes", "prepushCiWarn", "expected boolean, got str"),
+                                      ("prepushCiWarnTimeout", "soon", "prepushCiWarn", "expected integer, got str")):
+            with self.subTest(key=key):
+                self.p.git("update-ref", "refs/heads/feature", self.remote_tip, cwd=self.p.bare)
+                self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, **{key: value})))
+                code, out = self.push("feature", ci={self.remote_tip: "red"})
+                self.assertEqual(code, 0, out)
+                self.assertIn(f"pre-push: CI warning skipped: {read} could not be read: $.{key}: {why}; "
+                              f"see why: {validate}", out)
+                self.assertNotIn("WARNING", out)
+                self.assertIn("pre-push: all green.", out)
+        self.assertEqual(self.calls(), [])
+
+    @staticmethod
+    def alive(pid):  # a zombie counts as gone: in a container nobody may reap it
+        r = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True)
+        return r.returncode == 0 and r.stdout.strip() != "" and not r.stdout.strip().startswith("Z")
+
+    def run_ci_push(self, mode, name, act):
+        """Pushes with ci-status.py in `mode`; once it started, act(push, [stub pid, its gh pid, hook's python pid]).
+        Returns the push output and the pids of ci-status.py and its gh still alive a little later."""
+        pids_file = self.tmp / f"ci-pids-{name}"
+        self.p.git("update-ref", "refs/heads/feature", self.remote_tip, cwd=self.p.bare)
+        env = dict(self.p.env, GW_CI_LOG=str(self.log), GW_CI=json.dumps({self.remote_tip: mode}),
+                   GW_CI_PIDS=str(pids_file))
+        push = subprocess.Popen(["git", "push", "origin", "feature"], cwd=self.p.work, env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
+                                stdin=subprocess.DEVNULL, start_new_session=True)
+        pids = []
+        try:
+            self.assertTrue(waits.wait_for(pids_file.exists, 60), "ci-status.py never started")
+            pids = [int(x) for x in pids_file.read_text().split()]
+            act(push, pids)
+            out = push.communicate(timeout=waits.timeout(60))[0]
+            waits.wait_for(lambda: not any(self.alive(pid) for pid in pids[:2]), 10)
+            return out, [pid for pid in pids[:2] if self.alive(pid)]
+        finally:
+            for pid in pids[:2]:
+                try:
+                    os.kill(pid, signal.SIGKILL)
+                except OSError:
+                    pass
+            if push.poll() is None:
+                os.killpg(push.pid, signal.SIGKILL)
+                push.communicate()
+
+    def test_an_interrupted_push_kills_ci_status_and_its_children(self):
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, prepushCiWarnTimeout=120)))
+
+        def hook_pid(pids):  # the bash running the hook: the parent of its python
+            return int(subprocess.run(["ps", "-o", "ppid=", "-p", str(pids[2])], capture_output=True,
+                                      text=True).stdout.strip())
+        cases = (("SIGINT to the group", "sleep", lambda push, pids: os.killpg(push.pid, signal.SIGINT)),
+                 ("SIGTERM to the group", "sleep", lambda push, pids: os.killpg(push.pid, signal.SIGTERM)),
+                 ("SIGTERM to the hook only", "sleep", lambda push, pids: os.kill(hook_pid(pids), signal.SIGTERM)),
+                 ("SIGHUP to the hook only", "sleep", lambda push, pids: os.kill(hook_pid(pids), signal.SIGHUP)),
+                 ("SIGINT, ci-status already ended", "orphan",
+                  lambda push, pids: (waits.wait_for(lambda: not self.alive(pids[0]), 10),
+                                      os.killpg(push.pid, signal.SIGINT))))
+        for n, (name, mode, act) in enumerate(cases):
+            with self.subTest(case=name):
+                start = time.monotonic()
+                out, left = self.run_ci_push(mode, str(n), act)
+                self.assertEqual(left, [], f"left running after {name}: {out}")
+                self.assertLess(time.monotonic() - start, 60, out)
+
+    def test_a_timeout_kills_the_gh_ci_status_left_holding_the_pipe(self):
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, prepushCiWarnTimeout=2)))
+        out, left = self.run_ci_push("orphan", "timeout", lambda push, pids: None)
+        self.assertEqual(left, [], out)
+        self.assertIn("pre-push: CI of feature not read within 2 s (prepushCiWarnTimeout)", out)
+        self.assertIn("pre-push: all green.", out)
 
     def test_real_ci_status_without_gh_or_token_is_silent(self):
         p = self.p

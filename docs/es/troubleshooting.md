@@ -60,7 +60,9 @@ el último renglón es la orden que lo arregla.
 
 Si el último CI de una rama que se sube está en rojo (o GitHub no lo arrancó, o no ha informado ningún CI aunque
 el proyecto tiene `.github/workflows` y `ciOnPush` no es `false`), el `pre-push` lo avisa sin bloquear, con el commit
-y la orden para leer el fallo (`python3 .claude/gw/scripts/ci-status.py --repo <dueño>/<repo> --sha <sha> --failed`).
+y la orden para leer el fallo (`python3 <ruta absoluta>/.claude/gw/scripts/ci-status.py --repo <dueño>/<repo> --sha <sha> --failed`, que vale
+desde cualquier carpeta). Si no puede leer `prepushCiWarn` o `prepushCiWarnTimeout`, lo dice en una línea y manda a
+`config.py validate`.
 Mira el repo de GitHub del remoto al que se sube (otro servidor: calla) y no mira un push forzado (su CI es del commit
 que se descarta); se apaga con `prepushCiWarn` y tarda como mucho `prepushCiWarnTimeout` segundos (D62).
 

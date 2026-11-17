@@ -60,7 +60,9 @@ the push, the last line is the command that fixes it.
 
 When the last CI of a pushed branch is red (or GitHub never started it, or no CI has reported although the project
 has `.github/workflows` and `ciOnPush` is not `false`), `pre-push` warns without blocking, with the commit and the
-command to read the failure (`python3 .claude/gw/scripts/ci-status.py --repo <owner>/<repo> --sha <sha> --failed`).
+command to read the failure (`python3 <absolute path>/.claude/gw/scripts/ci-status.py --repo <owner>/<repo> --sha <sha> --failed`, which works
+from any folder). When it cannot read `prepushCiWarn` or `prepushCiWarnTimeout`, it says so in one line and points to
+`config.py validate`.
 It reads the GitHub repo of the remote pushed to (another host: silent) and skips a force push (its CI is about the
 dropped commit); `prepushCiWarn` turns it off and it takes at most `prepushCiWarnTimeout` seconds (D62).
 
