@@ -18,6 +18,10 @@ recursively, wrappers such as `sudo`/`env`/`xargs` looked through):
   git checkout -- . | git checkout . | git restore . (also `:/`, `*`)                       overwrites the whole tree
       (`git restore --staged .` leaves the files alone and is not asked about)
 
+Inside a linked git worktree (`git rev-parse --git-dir` != `--git-common-dir`: an agent's worktree, disposable, and a
+background subagent has nobody to ask) `git reset --hard`, `git clean -f` and `git checkout|restore .` are NOT asked about;
+`rm -r` outside the exempt prefixes, `git push --force`/`--delete` and `git branch -D` still are, there too.
+
 Not asked about, on purpose (false positives; a hook cannot parse a shell):
   - text that is only data: a quoted commit message or argument (`git commit -m "avoid rm -rf"`), the body of a heredoc
     (`cat <<'EOF' ... EOF`), `echo "git reset --hard"`;
@@ -87,8 +91,25 @@ def rm_reason(args, prefixes):
     return "`rm -r` deletes folders and everything below them, with no way back"
 
 
+def linked_worktree(base):
+    """True inside a linked git worktree (`git rev-parse --git-dir` differs from `--git-common-dir`): an agent's worktree
+    is disposable and the dealer resets it with `git reset --hard <sha>`; a subagent has nobody to ask. False when git
+    cannot tell (the main tree, or an error: it asks)."""
+    try:
+        a = guard.git_run(base, "rev-parse", "--path-format=absolute", "--git-dir").strip()
+        b = guard.git_run(base, "rev-parse", "--path-format=absolute", "--git-common-dir").strip()
+    except Exception:  # noqa: BLE001
+        return False
+    return bool(a) and bool(b) and os.path.realpath(a) != os.path.realpath(b)
+
+
 def git_reason(args, k, base):
     sub, rest = args[k], args[k + 1:]
+    try:
+        where = guard.git_cwd(args[:k], base)[0]  # `git -C DIR` runs there
+    except guard.Unknown:
+        where = None
+    disposable = where is not None and linked_worktree(where)
     opts = [w for w in rest if w.startswith("-") and w != "--" and w != "-"]
     before_dd = rest[:rest.index("--")] if "--" in rest else rest
     flags = "".join(w[1:] for w in before_dd if re.fullmatch(r"-[A-Za-z]+", w))
@@ -109,16 +130,16 @@ def git_reason(args, k, base):
             return "`git push --force` rewrites the remote history and can lose other people's commits"
         if "--delete" in longs or "d" in flags or any(p.startswith(":") and len(p) > 1 for p in pos):
             return "`git push --delete` (or `git push <remote> :<ref>`) deletes a remote branch or tag"
-    elif sub == "reset" and "--hard" in longs:
+    elif sub == "reset" and "--hard" in longs and not disposable:
         return "`git reset --hard` throws away every uncommitted change"
     elif sub == "branch":
         forced = "--force" in longs or "f" in flags
         if "D" in flags or (("--delete" in longs or "d" in flags) and forced):
             return "`git branch -D` deletes a branch even if it is not merged"
     elif sub == "clean":
-        if ("--force" in longs or "f" in flags) and not ("--dry-run" in longs or "n" in flags):
+        if ("--force" in longs or "f" in flags) and not ("--dry-run" in longs or "n" in flags) and not disposable:
             return "`git clean -f` deletes untracked files for good"
-    elif sub in ("checkout", "restore") and guard.git_write_call(args, k):
+    elif sub in ("checkout", "restore") and not disposable and guard.git_write_call(args, k):
         paths = rest[rest.index("--") + 1:] if "--" in rest else ([w for w in rest if not w.startswith("-")]
                                                                   if sub == "restore" else rest)
         if any(p in RESTORE_ALL for p in paths) and not (sub == "checkout" and "-b" in opts):

@@ -49,13 +49,13 @@ class CarefulProject(Project):
         for name in ("careful.py", "config-guard.py"):
             shutil.copy2(ROOT / "scripts" / name, self.scripts / name)
 
-    def hook(self, event=None, stdin=None):
-        text = json.dumps({"hook_event_name": "PreToolUse", "cwd": str(self.work), **(event or {})}) \
+    def hook(self, event=None, stdin=None, cwd=None):
+        text = json.dumps({"hook_event_name": "PreToolUse", "cwd": str(cwd or self.work), **(event or {})}) \
             if stdin is None else stdin
         return self.run("python3", str(self.scripts / "careful.py"), stdin=text or None)
 
-    def bash(self, command):
-        return self.hook({"tool_name": "Bash", "tool_input": {"command": command}})
+    def bash(self, command, cwd=None):
+        return self.hook({"tool_name": "Bash", "tool_input": {"command": command}}, cwd=cwd)
 
 
 class CarefulTest(unittest.TestCase):
@@ -132,6 +132,22 @@ class CarefulTest(unittest.TestCase):
     def test_git_alias_is_looked_through(self):
         self.p.git("config", "alias.nuke", "reset --hard")
         self.assertAsks(self.p.bash("git nuke"), "uncommitted")
+
+    def test_linked_worktree_is_disposable_for_reset_clean_restore_only(self):
+        wt = self.tmp / "wt"
+        self.p.git("worktree", "add", "-q", "-b", "agent/x", str(wt))
+        self.p.git("worktree", "add", "-q", "-b", "agent/y", str(self.tmp / "wt2"))
+        for command in ("git reset --hard abc123", "git clean -fd", "git checkout -- .", "git restore ."):
+            with self.subTest(command=command, where="linked"):
+                self.assertAllowed(self.p.bash(command, cwd=wt))
+            with self.subTest(command=command, where="main"):
+                self.assertAsks(self.p.bash(command), "destructive command")
+        self.assertAllowed(self.p.bash(f"git -C {wt} reset --hard"))  # -C into the linked worktree
+        self.assertAsks(self.p.bash(f"git -C {self.p.work} reset --hard", cwd=wt), "uncommitted")
+        for command, needle in (("rm -rf build", "rm -r"), ("git push --force", "remote history"),
+                                ("git push origin :old", "deletes a remote"), ("git branch -D old", "not merged")):
+            with self.subTest(command=command, where="linked still asks"):
+                self.assertAsks(self.p.bash(command, cwd=wt), needle)
 
     def test_template_and_plugin_register_it(self):
         for rel in ("templates/claude/settings.json", "hooks/hooks.json"):

@@ -392,6 +392,14 @@ class Config(unittest.TestCase):
         self.assertEqual(template["testUnitTimeout"], 1800)
         self.assertIn("testUnitTimeout", template["fullCheckSkipKeys"])
 
+    def test_c8_modes_default_and_skip_list(self):
+        schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
+        template = json.loads((ROOT / "templates" / "gw.json").read_text())
+        self.assertEqual(config.modes({}), {"careful": True, "carefulExempt": ["/tmp/", "/var/tmp/", "$TMPDIR/", "${TMPDIR}/"]})
+        self.assertEqual(config.modes({"modes": {"careful": False}})["careful"], False)
+        self.assertIn("modes", schema["fullCheckSkipKeys"]["default"])
+        self.assertIn("modes", template["fullCheckSkipKeys"])
+
     def test_instruction_lines_bad_values_fail_with_their_reason(self):
         cases = [({"warn": 200, "fail": 100}, "$.instructionLines: warn (200) must not be above fail (100)"),
                  ({"warn": 300}, "warn (300) must not be above fail (250)"),
@@ -560,6 +568,9 @@ class Config(unittest.TestCase):
                                 ("measure", {"minOutput": "x"}, "$.measure.minOutput"),
                                 ("measure", {"coldMs": 0}, "$.measure.coldMs: must be at least 1"),
                                 ("mediaContent", {"maxSubjects": 0}, "$.mediaContent.maxSubjects: must be at least 1"),
+                                ("modes", {"careful": "yes"}, "$.modes.careful"),
+                                ("modes", {"carefulExempt": [""]}, "$.modes.carefulExempt"),
+                                ("modes", {"other": True}, "$.modes"),
                                 ("testScanSkipDirs", [""], "testScanSkipDirs")):
             self.write(dict(VALID, **{key: value}))
             r = cli(self.tmp, "validate")

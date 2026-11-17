@@ -390,7 +390,8 @@
         "doctorScanBytes",
         "patchCommitTypes",
         "measure",
-        "mediaContent"
+        "mediaContent",
+        "modes"
       ],
       "description": "Top-level keys of .claude/gw.json whose change does not make a branch push run the full check (E47): when the push's new commits change only these keys of the config, its related tests run. Any other key, an added, removed or broken config, and fullCheckSkipKeys itself still count as an environment change. The list replaces the default one."
     },
