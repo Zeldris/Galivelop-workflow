@@ -144,6 +144,13 @@ real**: el doble solo repite lo que su autor creía del real, así que no ve el 
 real rechaza ni el formato que devuelve distinto. La prueba de humo arranca el componente real y hace una llamada de
 punta a punta. Si falta el real (herramienta, servicio, credencial), se omite en local con el motivo; en el CI, falla.
 
+## En el CI, la instalación falla en su propio paso
+
+El script que instala o prepara el entorno (dependencias, herramientas, base de datos de pruebas) va en un paso del CI
+propio, anterior al de los tests, no escondido dentro de ellos. Así un fallo de instalación se ve como lo que es, con su
+salida, y no como un test en rojo que manda a buscar el fallo donde no está. La plantilla `templates/github/check.yml` ya
+lo hace: el paso `Install` (`ciInstall`, o `install`) va antes del paso `Check`.
+
 ## Recoger mejoras de vuelta
 
 El flujo aprende de los proyectos que lo usan. Hay dos mitades:

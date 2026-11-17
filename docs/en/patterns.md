@@ -149,6 +149,13 @@ argument the real one rejects or a format it returns differently. The smoke test
 one end-to-end call. If the real one is missing (tool, service, credential), it is skipped locally with the reason; in
 CI, it fails.
 
+## In CI, the install fails in its own step
+
+The script that installs or prepares the environment (dependencies, tools, a test database) runs in a CI step of its
+own, before the tests step, not hidden inside it. An install failure then shows as what it is, with its output, and not
+as a red test that sends you looking where the fault is not. The `templates/github/check.yml` template already does
+this: the `Install` step (`ciInstall`, else `install`) comes before the `Check` step.
+
 ## Harvesting improvements back
 
 The workflow learns from the projects that use it. There are two halves:
