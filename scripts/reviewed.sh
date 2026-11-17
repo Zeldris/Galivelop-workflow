@@ -75,7 +75,9 @@ if [ "$has_protected" = "true" ]; then
     echo "reviewed: cannot fetch origin/$protected and origin/$branch; push the branch first: $push_cmd" >&2; exit 1; }
 else
   if [ "$branch" = "$protected" ]; then
-    echo "reviewed: origin has no $protected yet and you are on $protected itself; push the work to another branch first and mark from there: git push -u origin HEAD:<work-branch> && git switch -c <work-branch> && bash $0" >&2; exit 1
+    # Branch first, then push.sh with it: push.sh takes a branch, not a refspec (D94), so no `git push HEAD:<branch>`.
+    printf 'reviewed: origin has no %s yet and you are on %s itself; move the work to another branch, push it and mark from there: git switch -c <work-branch> && bash %q <work-branch> && bash %q\n' \
+      "$protected" "$protected" "$here/push.sh" "$here/reviewed.sh" >&2; exit 1
   fi
   echo "reviewed: origin has no $protected yet; reviewing the whole history of $branch (empty base)" >&2
   git fetch -q origin "$branch" || {

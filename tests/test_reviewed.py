@@ -239,6 +239,17 @@ class ProtectedBranchAbsentOnRemote(Base):
         self.assertIn("you are on main itself", out)
         self.assertIn("another branch", out)
         self.assertNotIn("Reviewed:", p.git("log", "-1", "--format=%s").stdout)
+        # The advice uses push.sh with a branch, never a refspec it does not take (D94), and following it works.
+        self.assertNotIn("HEAD:", out)
+        self.assertIn("git switch -c <work-branch> && bash ", out)
+        self.assertIn("push.sh <work-branch>", out)
+        p.git("switch", "-q", "-c", "work")
+        code, pout = p.run("bash", str(p.work / ".claude" / "gw" / "scripts" / "push.sh"), "work")
+        self.assertEqual(code, 0, pout)
+        self.assertIn("push: ok: origin/work is at", pout)
+        code, out = p.run("bash", self.script)
+        self.assertEqual(code, 0, out)
+        self.assertIn("Reviewed:", p.git("log", "-1", "--format=%s").stdout)
 
     def test_detached_head_still_refused(self):
         self.p.git("checkout", "-q", "--detach")
