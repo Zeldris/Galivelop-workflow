@@ -285,10 +285,10 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | C7 | Un solo interruptor: skill `gw-mode` | pendiente (pasa de la `0.7`) |
 | C8 | `modes.careful` (antes de una orden destructiva), activo por defecto | pendiente (pasa de la `0.7`) |
 | C10 | Un subagente no pregunta al usuario: devuelve la pregunta | pendiente (pasa de la `0.7`) |
-| D14 | `trace.py <id>` | pendiente (pasa de la `0.7`) |
+| D14 | `trace.py <id>` | hecho (2026-11-17; rangos y listas de ids, `--json`, `--limit`) |
 | D61 | `handoff.py preflight`: lo que el `pre-push` comprueba en la bitácora (fecha de «Actualizado», ids que chocan con `main`), sin subir; en el `check` de la plantilla (recogida `0.6`, private-project-1 P1) | hecho (2026-11-17; sin `origin/<protectedBranch>` salta el choque con una nota, como el `pre-push`) |
 | D62 | El `pre-push` avisa, sin bloquear, si el último CI de la rama está en rojo (`ci-status.py`, si hay `gh`) (recogida `0.6`, image-generator P5) | hecho (2026-11-17; `prepushCiWarn`, `prepushCiWarnTimeout`) |
-| D63 | `templates/github/check.yml` con `workflow_call`: un `release.yml` lo llama con `uses:` y `needs:` en vez de copiar sus pasos; el del flujo también (recogida `0.6`, image-generator P6) | pendiente (pasa de la `0.7`) |
+| D63 | `templates/github/check.yml` con `workflow_call`: un `release.yml` lo llama con `uses:` y `needs:` en vez de copiar sus pasos; el del flujo también (recogida `0.6`, image-generator P6) | hecho (2026-11-17; `release.yml`: `verify` → `check` → `release`) |
 | A11 | Los cuatro modos de trabajo en el plan, `AGENTS.md` y `gw-selector`: SDD siempre (ficha), DDD con dominio, TDD con comportamiento testeable, exploración acotada (H17 P2; usuario, 2026-11-08) | pendiente (pasa de la `0.7`) |
 | C11 | Ficha de tarea (`docs/tasks/<id>.md`, `taskRecord`): SDD, criterios de aceptación, archivos previstos y decision log por agente en la carpeta `docs/tasks/<id>/` (un archivo por entrada, `post-commit` rellena el sha); obligatoria en `feat`/`fix`/`hotfix` con código, comprobada por el `commit-msg`; `close-row <id>` exige casillas con test o check nombrado; absorbe D50 (H17 P1; [`I-lifecycle.md`](design/I-lifecycle.md) Q1-Q4; usuario, 2026-11-08) | pendiente (pasa de la `0.7`) |
 | C12 | Rama de exploración `spike/<tema>` sin ficha ni `Refs:`, que el `pre-push` y `merge-branch.sh` no dejan fusionar en una rama de trabajo (H17 P2) | pendiente (pasa de la `0.7`) |

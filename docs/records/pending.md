@@ -279,13 +279,15 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - (fase 3 de la 0.7.1, leve) `scripts/version.py:512-516` (D124): al sellar, el aviso de recogida reutiliza el texto de `harvest_check`, que termina en «retry with this command: python3 scripts/version.py --release»; recién sellado, `--release` falla además por el CHANGELOG sin terminar. Que `harvest_check` reciba la orden de reintento (`retry=`) y al sellar diga «then commit it; `--release` checks it again before main».
 - (revisión del bloque E58-E61 + B41, leve) `whole-read.py` corre en cada `Read` y cada `Bash` (matcher `^(Read|Bash)$`): un arranque de Python por llamada; medir su coste y, si pesa, filtrar antes (por ejemplo, saltar en el propio gancho las órdenes sin `cat`/`sed`/`nl`/… sin cargar el config).
 - (revisión del bloque E58-E61 + B41, leve) Configurabilidad: el remoto `origin` que nombra la línea de `recover.py --state` y la carpeta de estado de `whole-read.py` (`$TMPDIR`) van fijos; pasarlos a claves de `.claude/gw.json` si un proyecto lo pide.
-- [ ] `0.8` · **Revisión D94 n.º 5**: `push.sh` llama a `git ls-remote` sin tiempo límite; con la red colgada se queda esperando tras cada intento (candidato: clave `pushLsRemoteTimeout`).
-- [ ] `0.8` · **Revisión D94 n.º 7**: `config.push_retry_delays()` no la usa nadie (push.sh lee con `get`, que ya valida con el esquema): quitarla con su test, o que `get` la use.
-- [ ] `0.8` · **Revisión D94 n.º 8**: los mensajes de `before-stop.py`, `recover.py`, `reviewed.sh` y `review-before-main.sh` (y sus copias en `.claude/gw/scripts`) siguen mandando `git push -u origin <rama>` en vez de `push.sh`; alinearlos con `AGENTS.md` y las plantillas.
+- [ ] `0.8` · **Revisión D14 n.º 4**: `trace.py` lee todos los `.md` del repo en cada llamada; sin `--no-docs` para saltarlos.
+- [ ] `0.8` · **Revisión D14 n.º 5**: `trace.py` saca dos veces la fila de `roadmap.md` y `roadmap.en.md`, y no separa lo declarado (filas, `Refs:`) de lo deducido (menciones en documentos).
+- [ ] `0.8` · `scripts/reviewed.sh:77` sube con `git push -u origin HEAD:<rama>`: `push.sh` no admite refspec; darle uno o dejar la excepción explicada.
+- [ ] `0.8` · `skills/gw-init/SKILL.md:88` (y su copia en `.claude/skills`) sigue mandando `git push -u origin <rama>` en vez de `push.sh`.
+- [ ] `0.8` · `push.sh` mata el grupo de `ls-remote` con `set -m`: probado solo en Linux; vigilar el CI de macOS.
+- [ ] `0.8` · Herramienta: `pgrep -f tests-for` (y similares) en los tests casa con procesos de otros agentes del mismo contenedor.
 - [ ] `0.8` · **Revisión D95 n.º 5**: `split_lines` elige CRLF si alguna línea lo tiene y reescribe todas así (y quita las líneas en blanco del final); `done` conserva el de cada línea (candidato: respetar el fin de cada línea).
 - [ ] `0.8` · **Revisión D95 n.º 9**: `add-pending` y `add-decision` leen, cambian y reescriben sin cerrojo: dos a la vez (subagentes o ganchos) pierden un ítem aunque ambos informen de éxito (candidato: cerrojo sobre el archivo, como el de `check.sh`).
 - [ ] `0.8` · **Revisión D95 n.º 11**: `log_is_english` relee la bitácora en cada llamada que lo necesita (eficiencia, resuelto en parte: ya solo se llama al crear algo).
-- `0.8`: `handoff.cellHardLimit` menor que `cellLimit` no se valida (revisión de D96, hallazgo 5): `config.py validate` debería rechazarlo o avisar.
 - `0.8`: `tests/check.sh` corre `handoff.py check` dos veces (`check --strict` y dentro de `preflight`; revisión de D61, hallazgo 6): dejar una sola pasada.
 - D62 (revisión n.º 3, 0.8): el aviso de CI del `pre-push` lanza `ci-status.py` con `start_new_session`; con Ctrl-C, ci-status y `gh`/`curl` siguen huérfanos hasta `ciStatusTimeout`: matar el grupo en un try/finally.
 - D62 (revisión n.º 5, 0.8): el aviso de CI del `pre-push` deduplica por sha remoto y nombra solo la primera rama; agrupar las ramas por sha y nombrarlas todas.
