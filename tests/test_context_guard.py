@@ -422,12 +422,25 @@ class NearCutoff(Base):  # B31: warn before the next compaction, once the task's
 
     def test_state_keeps_only_the_newest_transcripts(self):
         state = str(self.tmp / "warned")
-        for i in range(cg.WARNED_MAX + 3):
+        default = config.context_guard({})["warnedMax"]
+        self.assertEqual(default, 32)
+        for i in range(default + 3):
             cg.write_warned(state, cg.read_warned(state), f"/t{i}", i)
         warned = cg.read_warned(state)
-        self.assertEqual(len(warned), cg.WARNED_MAX)
+        self.assertEqual(len(warned), default)
         self.assertEqual(list(warned)[0], "/t3")
-        self.assertEqual(list(warned)[-1], f"/t{cg.WARNED_MAX + 2}")
+        self.assertEqual(list(warned)[-1], f"/t{default + 2}")
+
+    def test_state_keeps_contextguard_warnedmax_sessions(self):
+        self.big_log()
+        self.write_config({"contextGuard": {"window": 200000, "warnedMax": 1}})
+        state = self.tmp / "warned"
+        a = self.transcript([turn(150000)], name="a.jsonl")
+        b = self.transcript([turn(150000)], name="b.jsonl")
+        self.assertIsNotNone(self.near(a, once=state))
+        self.assertIsNotNone(self.near(b, once=state))
+        self.assertEqual(cg.read_warned(str(state)), {str(b): 2})  # one session kept: A was dropped
+        self.assertIsNotNone(self.near(a, once=state))  # and warns once more
 
     def test_state_unwritable_leaves_no_temporary_file(self):
         state = self.tmp / "dir"

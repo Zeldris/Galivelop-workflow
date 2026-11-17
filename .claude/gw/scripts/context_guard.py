@@ -355,9 +355,6 @@ def window_known(root, model):
     return "[1m]" in name or "-1m" in name or bool({"cutoff", "window"} & config.given_keys(root, "contextGuard"))
 
 
-WARNED_MAX = 32  # transcripts remembered in the near-cutoff state file; the oldest written is dropped first
-
-
 def read_warned(state):
     """B31: {absolute transcript path: compactions counted when it warned} from the state file, one JSON object per
     line ({"transcript": ..., "counted": ...}), oldest first. The old one-line "path|count" format is read too.
@@ -384,14 +381,16 @@ def read_warned(state):
     return warned
 
 
-def write_warned(state, warned, key, counted):
-    """Write `warned` with key -> counted (moved last), keeping the WARNED_MAX newest, atomically: a temporary file in
+def write_warned(state, warned, key, counted, keep_max=None):
+    """Write `warned` with key -> counted (moved last), keeping the `keep_max` newest (contextGuard.warnedMax), atomically: a temporary file in
     the same directory, then os.replace, so a concurrent reader sees the old file or the new one, never half. Two
     writers at once may lose one entry (that session warns again once), never the file. Never raises."""
     warned = dict(warned)
     warned.pop(key, None)
     warned[key] = counted
-    keep = list(warned.items())[-WARNED_MAX:]
+    if not keep_max:
+        keep_max = config.context_guard({})["warnedMax"]
+    keep = list(warned.items())[-max(1, int(keep_max)):]
     tmp = f"{state}.{os.getpid()}.tmp"
     try:
         with open(tmp, "w", encoding="utf-8") as fh:
@@ -449,7 +448,7 @@ def near_cutoff(root, cfg, branch, transcript, state=None):
         message = (f"Context at {round(100 * tokens / cutoff)} % of the compaction cutoff ({fmt(tokens)} of "
                    f"{fmt(cutoff)} tokens) and {where}; {advice}.")
         if state:
-            write_warned(state, warned, key, counted)
+            write_warned(state, warned, key, counted, config.context_guard(cfg)["warnedMax"])
         return stretch, message
     except Exception:  # a warning must never cost the stop
         return None
