@@ -77,7 +77,8 @@ class Trace(unittest.TestCase):
         r.git("merge", "--no-ff", "-q", "-m", "Merge branch 'agent/D14-x'", "agent/D14-x")
         out = r.trace("D14")
         self.assertEqual(out.returncode, 0, out.stderr)
-        for expected in ("== roadmap (1)", "docs/roadmap.md:7", "(also docs/roadmap.en.md:7)", "#### declared", "#### deduced", "`0.7` «Trazar»", "== log (1)",
+        for expected in ("== roadmap (1)", "docs/roadmap.md:7", "(also docs/roadmap.en.md:7)", "#### declared",
+                         "#### deduced", "`0.7` «Trazar»", "== log (1)",
                          "== pending (1)", "[refs] feat(D14): the script", "[merge] Merge branch 'agent/D14-x'",
                          "== docs (1)", "docs/design.md:1"):
             self.assertIn(expected, out.stdout)
@@ -181,6 +182,15 @@ class Trace(unittest.TestCase):
         self.repo.commit("chore: bad doc")
         self.assertEqual(json.loads(self.repo.trace("D14", "--no-docs", "--json").stdout)["notes"], [])
         self.assertTrue(json.loads(self.repo.trace("D14", "--json").stdout)["notes"])
+
+    def test_unknown_id_with_no_docs_says_docs_were_skipped(self):
+        self.repo.write("docs/only.md", "D77 only here\n")
+        self.repo.commit("docs: only")
+        out = self.repo.trace("D77", "--no-docs")
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("tracked .md files were skipped (--no-docs)", out.stderr)
+        self.assertNotIn("and tracked .md files)", out.stderr)
+        self.assertIn("and tracked .md files)", self.repo.trace("D78").stderr)
 
     def test_declared_and_deduced_are_separate(self):
         self.repo.commit("feat(D14): d\n\nRefs: D14")

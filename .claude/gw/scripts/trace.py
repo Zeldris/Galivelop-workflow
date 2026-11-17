@@ -251,8 +251,9 @@ def main(argv=None):
     elif result["found"]:
         print(render(result, args.limit))
     else:
+        where = ("tracked .md files were skipped (--no-docs)" if args.no_docs else "and tracked .md files")
         print(f"trace {args.id}: nothing names it (looked in roadmapFiles, the log, pendingFile, the commits' Refs: "
-              "and subject scopes, and tracked .md files); check the id, or fetch the branches that carry it: git fetch --all",
+              f"and subject scopes; {where}); check the id, or fetch the branches that carry it: git fetch --all",
               file=sys.stderr)
         for note in result["notes"]:
             print(f"note: {note}", file=sys.stderr)
