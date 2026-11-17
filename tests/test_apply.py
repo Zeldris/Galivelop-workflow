@@ -1848,6 +1848,15 @@ class CiSteps(unittest.TestCase):
         self.assertTrue(self.proposal().exists(), out)
         self.assertIn("project's own lines (- name: Build; - name: Chk)", out)
 
+    def test_update_adds_workflow_call_to_a_copy_without_own_steps(self):
+        """D63: an old copy of the workflow (no `workflow_call:`) is updated, not proposed, and gains it."""
+        old = self.p.read(self.CI).replace("  workflow_call:\n", "", 1)
+        self.assertNotIn("\n  workflow_call:\n", old)
+        self.p.write(self.CI, old)
+        out = self.applied("--update")
+        self.assertIn("\n  workflow_call:\n", self.p.read(self.CI), out)
+        self.assertFalse(self.proposal().exists(), out)
+
     def test_newer_copy_with_own_lines_keeps_the_newer_message(self):
         text = self.project_edits().replace("galivelop-workflow v0.4.0", "galivelop-workflow v99.0.0", 1)
         self.p.write(self.CI, text)
