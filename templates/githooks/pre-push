@@ -55,8 +55,9 @@
 #     CI at all when the project has .github/workflows and ciOnPush is not false. Green, running, no `gh` or token, no
 #     network or any error: silent (a timeout: one line). Branches at the same remote commit are read once and named
 #     together; the commands it suggests use ci-status.py's absolute path (they work from any folder). An unreadable
-#     prepushCiWarn or prepushCiWarnTimeout says so in one line (config.py validate) and skips it. Ctrl-C, SIGTERM or
-#     SIGHUP kill ci-status.py's whole process group (gh or curl too) before the hook ends. Off with prepushCiWarn false.
+#     prepushCiWarn or prepushCiWarnTimeout says so in one line, naming the key (config.py validate), and skips it. Ctrl-C,
+#     SIGTERM or SIGHUP to the hook (or to its group) kill ci-status.py's whole process group (gh or curl too, even
+#     after ci-status.py ended) as the hook ends. Off with prepushCiWarn false.
 # Skipping it (git push --no-verify) is only for a WIP: commit with red tests.
 # Bash 3.2 compatible. Root from this hook's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
@@ -70,7 +71,9 @@ worktree=""
 log=""  # the temp log of the check commands (the lock names it); removed on any exit
 checklock=""  # 1 while this hook holds the check lock (<git common dir>/gw/check.lock, shared with scripts/check.sh)
 pushmark=""  # <this worktree's git dir>/gw-push-in-progress.<pid of this hook>: line 1 the pid of this hook, then one "<local sha> <branch>" line per ref pushed
+cipid=""  # the pid of the CI warning's python while it runs (D62): any exit sends it SIGTERM so it kills its group
 cleanup() {
+  if [ -n "$cipid" ]; then kill -TERM "$cipid" 2>/dev/null; fi
   # The marker name holds this hook's pid, so no other push ever rewrites it.
   if [ -n "$pushmark" ]; then rm -f "$pushmark" 2>/dev/null; fi
   if [ -n "$checklock" ]; then bash "$scripts/check-green.sh" lock-release "$$" < /dev/null 2>/dev/null; fi
@@ -544,20 +547,27 @@ fi
 ci_warn() {  # D62: a warning about a red CI on the pushed branches; never fails the push
   [ -f "$scripts/ci-status.py" ] || return 0
   local on secs onpush url repo
-  if ! on="$(python3 "$config" --root "$root" get prepushCiWarn 2>/dev/null)" \
-      || { [ "$on" = "true" ] && ! secs="$(python3 "$config" --root "$root" get prepushCiWarnTimeout 2>/dev/null)"; }; then
-    echo "pre-push: CI warning skipped: .claude/gw.json could not be read (prepushCiWarn); see why: python3 '$config' validate"
+  local key=prepushCiWarn why
+  if on="$(python3 "$config" --root "$root" get "$key" 2>"$work/ci-config")"; then
+    [ "$on" = "true" ] || return 0
+    key=prepushCiWarnTimeout
+    secs="$(python3 "$config" --root "$root" get "$key" 2>"$work/ci-config")" && key=""
+  fi
+  if [ -n "$key" ]; then  # config.py checks the whole file: its first problem names the key at fault
+    why="$(sed -e 's/^ *//' -e 's/^gw config: //' "$work/ci-config" 2>/dev/null | awk 'NR == 1 { first = $0 } NR == 2 { print; exit } END { if (NR == 1) print first }' | cut -c 1-200)"
+    printf 'pre-push: CI warning skipped: %s could not be read: %s; see why: python3 %q validate\n' "$key" "${why:-no detail}" "$config"
     return 0
   fi
-  [ "$on" = "true" ] || return 0
   onpush="$(python3 "$config" --root "$root" get ciOnPush 2>/dev/null)" || onpush=true
   # The repo pushed to: the remote's configured URL (before any insteadOf), else the location git gives the hook.
   url="$(git config --get "remote.$remote.pushurl" 2>/dev/null || git config --get "remote.$remote.url" 2>/dev/null || printf '%s' "$pushurl")"
   repo="$(printf '%s\n' "$url" | sed -n -E 's#^.*github\.com[:/]+([^/]+)/([^/]+[^/.])(\.git)?/?$#\1/\2#p' | sed 's/\.git$//')"
   [ -n "$repo" ] || return 0  # not a GitHub remote: nothing to read
-  python3 - "$scripts/ci-status.py" "$root" "$secs" "$work/input" "$repo" "$onpush" <<'PY' 2>/dev/null || true
+  # In the background and waited for, so a signal to this hook runs its trap at once and cleanup() passes it on.
+  python3 - "$scripts/ci-status.py" "$root" "$secs" "$work/input" "$repo" "$onpush" <<'PY' 2>/dev/null &
 import json, os, shlex, signal, subprocess, sys, time
 script, root, secs, refs, repo, onpush = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5], sys.argv[6]
+signal.signal(signal.SIGINT, signal.default_int_handler)  # a background job starts with SIGINT ignored
 signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))  # so the finally below kills ci-status and its gh or curl
 signal.signal(signal.SIGHUP, lambda *_: sys.exit(129))
 cmd = "python3 " + shlex.quote(os.path.abspath(script))  # absolute: it works from any folder
@@ -576,12 +586,12 @@ for line in open(refs):
         names.append(f[2][len("refs/heads/"):])
 
 
-def kill_group(proc):
-    if proc.poll() is None:
+def kill_group(proc):  # even when ci-status.py already ended: a gh or curl it left may still hold the pipe open
+    if proc is not None:
         try:
-            os.killpg(proc.pid, signal.SIGKILL)  # gh or curl too: they hold the pipe open
+            os.killpg(proc.pid, signal.SIGKILL)
         except OSError:
-            pass
+            pass  # ESRCH: the group is already gone
 
 
 deadline = time.monotonic() + secs
@@ -592,10 +602,11 @@ for sha, names in targets.items():
     if left <= 0:
         print(late)
         break
-    proc = subprocess.Popen([sys.executable, script, "--root", root, "--repo", repo, "--sha", sha, "--json"],
-                            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, text=True,
-                            start_new_session=True)
+    proc = None
     try:  # Ctrl-C (KeyboardInterrupt), SIGTERM or SIGHUP: the group it leads must not outlive the push
+        proc = subprocess.Popen([sys.executable, script, "--root", root, "--repo", repo, "--sha", sha, "--json"],
+                                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, text=True,
+                                start_new_session=True)
         out, _ = proc.communicate(timeout=left)
     except subprocess.TimeoutExpired:
         kill_group(proc)
@@ -623,6 +634,9 @@ for sha, names in targets.items():
         continue  # green, running, no CI expected or could not be read: nothing to say
     print(f"  the push goes on; read the failure: {cmd} --repo {repo} --sha {sha[:12]} --failed")
 PY
+  cipid=$!
+  wait "$cipid" || true
+  cipid=""
 }
 ci_warn
 echo "pre-push: all green."
