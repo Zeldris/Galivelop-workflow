@@ -40,9 +40,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    nothing pending blocks: they go out together (see Rules), but two chunks of one wave never share a file: the second
    waits for the first. With more than ~5 chunks, a cheap-model subagent may review the split before launch (missing
    blockers, shared files, criteria that cannot be checked). Cap a subagent at ~30 tool calls (one or two proposal rows); at the cap it saves its state in `log` and the
-   next one resumes from it. A subagent's context grows with every call: chunks of 44-55 calls averaged 100-116k (and 9 of the 10
-   costliest subagents of one session went past 33 calls),
-   and splitting them costs one more ~50k startup but far less than the drag. A one-file fix whose place the reviewer already gave is not a chunk: the main session
+   next one resumes from it. A subagent's context grows with every call: chunks of 44-55 calls averaged 100-116k;
+   splitting them costs one more ~50k startup but far less than the drag. A one-file fix whose place the reviewer already gave is not a chunk: the main session
    makes it, with its tests (a subagent pays ~50k just to start and rediscovers what the session knows).
 2. **Deal.** One subagent per chunk with the Agent tool, in the foreground when the next chunk depends on it. Model and
    effort follow the `gw-selector` ladder: `sonnet` to implement, `opus` to debug something non-obvious, skipping
@@ -111,7 +110,7 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    (its commit carries `Retries: <n>` for `metrics.py quality`); two failures, stop and tell the user. Chunks that
    depended on it are marked "cancelled: blocked by X" and listed to the user. For every subagent branch built in a
    worktree, **before merging it**, a subagent reviewer runs a short `/code-review` of its diff and returns only the
-   findings; nothing merges until they are fixed. The reviewer's brief asks it to compare the diff with the
+   findings; nothing merges until they are fixed. The reviewer's brief carries `git diff --stat` and asks it to compare the diff with the
    **contract**: the doc that describes it and the real callers outside the branch (grep on the working branch), not
    the diff alone. Short per-branch reviews miss cross-branch breaks: a script vs. its backend, a doc vs. its code,
    two branches editing one rule. It also asks it to flag data that expire (versions, prices, quotas, limits of an
@@ -119,7 +118,7 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    scratchpad, or `"$(git rev-parse --git-dir)/review.md"`) as well as replying: a compaction or a handover loses them
    from the conversation, and the fix briefs and the minor ones for `log` are taken from that file. The fixes go back
    to **the subagent that wrote the chunk** (SendMessage to its id): it still holds the context, and a fresh subagent
-   per round of fixes pays the startup and the rediscovery again (four rounds cost ~1.5M each). After the merge
+   per round of fixes pays the startup and the rediscovery again. After the merge
    (`merge-branch.sh` removes the worktree) they go to a new subagent with the findings file's path.
    Log what comes back: `FOUND` and `TOOLS` into `log` (or the records the project keeps for them). `QUESTIONS`
    go to the user as they are, with the answer you recommend.
@@ -134,8 +133,9 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
 - **Code from a subagent gets its own review:** every chunk that changes code (always the hooks, push/merge guards
   and the scripts they call; also code a subagent commits on the working branch, not only worktree branches)
   passes a short `/code-review` by a reviewer subagent as soon as the chunk returns, before the next chunk starts
-  (commit it first, as `WIP:` if needed, so nothing is lost if the session ends). The reviewer compares the diff with
-  the contract (`AGENTS.md`, `REVIEW.md`, the callers), not the diff alone; its fixes land before moving on.
+  (commit it first, as `WIP:` if needed). The reviewer compares the diff with the contract (step 3); its fixes land
+  before moving on.
+  If the review of the whole branch follows right away and is decided, the last block is not reviewed separately.
 - **Before the PR, only what matters:** fix what is serious or medium, and what the fix itself breaks; log the minor
   findings in the pending file (`pendingFile`, else `log`) and do not review them again in this PR (`/code-review --max-findings all` still
   serves to list them). Otherwise every fix is reviewed again, brings new findings and the PR grows without end.
@@ -151,8 +151,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   that file's path, so the subagent fixes the cause, not the symptom. The brief also says what happens to the commit:
   on the working branch the subagent commits its fixes with the `Findings:` trailer and its log row
   (`handoff.py set-row`) in that same commit; in a worktree it commits without touching the log and the main session
-  writes it after the merge. It never leaves a fix uncommitted. The main session reviews each returned diff
-  against those scenarios before the next group. Ten review fixes worked inline took ~100 calls at ~120k context.
+  writes it after the merge. The main session reviews each returned diff against those scenarios before the next
+  group (ten fixes inline: ~100 calls at ~120k).
 - **One writing subagent at a time on the same branch.** Two that commit to the same branch collide in the log and in
   shared files. In parallel, only what does not write (searching, reading, measuring).
 - **A subagent that writes in the background always works in a worktree, even alone:** the main session keeps
@@ -179,8 +179,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   the fly when it grows (batches of 11-14 blew a 60-call cap; 6-8 kept within it). Screenshots only when the finding
   is visual; otherwise the text tool's output. Batches share the environment, so each leaves it in a state the
   next can resume from and says so under `MISSING`. **Before dealing a batch, check that the starting state gives
-  each check its precondition** (the scenario, data or account it needs); if not, the first chunk prepares it.
-  Checks dealt on a state that cannot reach them burn whole subagent calls.
+  each check its precondition** (scenario, data, account); if not, the first chunk prepares it.
+- **Repos only read are cloned apart,** outside the tree, unregistered.
 - **A subagent never talks to the user:** what it needs from them returns as `QUESTIONS`.
 - **A subagent cut off by a usage or API limit is resumed, not restarted:** send it a message (SendMessage to its id)
   once the limit resets; it continues from its transcript. A new subagent would redo the work. Commit its partial
@@ -188,13 +188,13 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
 - **Intermediate state stays out of git:** dumps, screenshots, scratch logs and bench outputs go to a scratch folder
   (or a path in `.gitignore`); only results, tests and the log are committed. Each subagent gets its own
   `{scratch}/<id>-<topic>/` (named like its branch): in one shared folder an agent overwrote another's files.
-- **Measure:** `/gw-opt-tokens` before each PR compares the average context per call, the compactions and the per-model
-  split with the previous session; if they do not fall, the dealing is staying in the main session.
+- **Measure:** `/gw-opt-tokens` before each PR compares context per call, compactions and per-model split with the
+  previous session; if they do not fall, the dealing is staying in the main session.
 - **A batch of approved rows is dealt, not worked inline:** the rows of an approved proposal or a findings list go
   one per subagent (or 2 small related rows per subagent), in series on the working branch, each reviewed as in
   step 3. A row the main session keeps (a one-file fix) counts against a stretch: every 4-5 rows, or as soon as the
-  context passes ~150k, it writes the handover in `log` and recommends a `/clear`. Saying "dealt out" and then
-  working 18 rows inline cost a 191k average context over 157 calls.
+  context passes ~150k, it writes the handover in `log` and recommends a `/clear`. Working 18 rows inline cost a 191k
+  average context over 157 calls.
 - **Automatic compaction is the net, not the plan:** at task boundaries write the handover in `log` and recommend
   a `/clear` to the user rather than letting the context grow. In the cloud the net may be missing: the session
   starts outside the repo and does not load its `.claude/settings.json` (`doctor.py` warns).
