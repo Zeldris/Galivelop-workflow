@@ -206,10 +206,11 @@
       "properties": {
         "rowLimit": {"type": "integer", "minimum": 50, "default": 600, "description": "Characters of a branch row of the log with logRows (handoff.py check fails over it)."},
         "cellLimit": {"type": "integer", "minimum": 100, "default": 800, "description": "Characters of a value cell of the log's state table (a warning; a failure with check --strict)."},
+        "cellHardLimit": {"type": "integer", "minimum": 0, "default": 1600, "description": "Characters of a value cell of the log's state table over which handoff.py check fails even without --strict (D96); 0 = off."},
         "doneItems": {"type": "integer", "minimum": 1, "default": 5, "description": "Items the Done section keeps (handoff.py done drops the oldest; check warns over it)."}
       },
-      "default": {"rowLimit": 600, "cellLimit": 800, "doneItems": 5},
-      "description": "Size rules of the log (handoff.py): rowLimit, cellLimit and doneItems."
+      "default": {"rowLimit": 600, "cellLimit": 800, "cellHardLimit": 1600, "doneItems": 5},
+      "description": "Size rules of the log (handoff.py): rowLimit, cellLimit, cellHardLimit and doneItems."
     },
     "harvest": {
       "type": "object",

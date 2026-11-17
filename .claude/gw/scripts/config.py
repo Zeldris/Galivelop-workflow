@@ -305,8 +305,8 @@ def recover(config):
 
 
 def handoff(config):
-    """The `handoff` key (A13) as a dict (rowLimit, cellLimit, doneItems): the log size rules of handoff.py; an invalid
-    value gives the schema default."""
+    """The `handoff` key (A13) as a dict (rowLimit, cellLimit, cellHardLimit, doneItems): the log size rules of
+    handoff.py (cellHardLimit 0 = off, D96); an invalid value gives the schema default."""
     return _bounded_section(config, "handoff")
 
 

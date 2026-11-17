@@ -59,6 +59,9 @@ python3 scripts/roadmap.py check || bad
 section "hand-off log (state-table cells, Done section)"
 python3 scripts/handoff.py check --strict || bad
 
+section "hand-off log as the pre-push sees it (Updated date, task-id clash with origin/main, D61)"
+python3 scripts/handoff.py preflight || bad
+
 # E22 runs alongside the main suite (E45): its output is printed in its own section once both end.
 e22_out="$(mktemp "${TMPDIR:-/tmp}/gw-check-e22.XXXXXX")" || exit 1
 trap 'kill "${e22_pid:-}" 2>/dev/null; rm -f "$e22_out"' EXIT

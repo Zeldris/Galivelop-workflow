@@ -16,6 +16,8 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  the "Hecho (5 últimas)" / "Done (last 5)" section has <= 5 items,
                                                  numbered 1..n, each on its own line ("N. "). These last rules only
                                                  print `WARNING: ...` and exit 0; with --strict they fail (exit 1).
+                                                 A cell over `handoff.cellHardLimit` (1600; 0 = off) fails even
+                                                 without --strict (D96), naming `done` and `set-row`.
                                                  A log over `logSize` characters (config; 0 = no cap) also only warns,
                                                  even with --strict. With `pendingFile` set (config; D104): the log's
                                                  "Pendiente" / "Pending" section holds no "- " items of its own, only
@@ -25,6 +27,14 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  (`archive` needs it) or a pointer with an old "(N entradas)" count
                                                  only warn. --pending PATH reads the pending file from PATH (the
                                                  pre-push passes the pushed commit's copy; a missing PATH = no file)
+  handoff.py preflight [--date YYYY-MM-DD]       what the pre-push checks in the log, without pushing (D61): `check`
+                                                 of the working copy's log with --date (default: today if the log has
+                                                 uncommitted changes, else the day of the last commit that changed it,
+                                                 as the pre-push takes the day of the newest commit that changes it),
+                                                 and with logRows and a plan, `clash HEAD
+                                                 refs/remotes/origin/<protectedBranch>`; with no such ref (a fresh
+                                                 clone, no remote) the clash is skipped with a note, as the pre-push
+                                                 skips it
   handoff.py move-pending [FILE]                 with `pendingFile` set: move the "- " items (and other text) of the
                                                  log's "Pendiente" / "Pending" section to the end of that file's
                                                  section of the same name (the file and the section are created when
@@ -414,8 +424,16 @@ def cmd_check(ctx, args):
         print(f"WARNING: handoff: {message}")  # the module is off: an unreadable log must not block the commit
         return 0
     sizes = gwconfig.handoff(ctx.config)
+    hard = sizes["cellHardLimit"]  # D96: the warning alone got ignored (a cell reached 10 115 characters)
+    cells = long_cells(text, min(sizes["cellLimit"], hard) if hard > 0 else sizes["cellLimit"])
+    over = [(label, size) for label, size in cells if 0 < hard < size]
     soft = [f"a cell of the state table (\"{label}\") has {size} characters (limit {sizes['cellLimit']}); shorten it and move what "
-            f"is done to the Done section: {me} done \"<text>\"" for label, size in long_cells(text, sizes["cellLimit"])]
+            f"is done to the Done section: {me} done \"<text>\"" for label, size in cells
+            if size > sizes["cellLimit"] and (label, size) not in over]
+    hard_problems = [f"a cell of the state table (\"{label}\") has {size} characters, over the hard cap (handoff.cellHardLimit "
+                     f"= {hard}; it fails even without --strict); move what is closed to the Done section: {me} done "
+                     f"\"<text>\", then shorten the cell (a branch row: {me} set-row \"<short text>\" --branch <branch>; "
+                     f"any other cell: edit {ctx.log})" for label, size in over]
     soft += done_problems(text, f"{me} done \"<text>\"", f"{me} check {path} --strict", sizes["doneItems"])
     soft += pending_problems(ctx, text, me, args.pending)
     cap = gwconfig.log_size(ctx.config)
@@ -428,6 +446,7 @@ def cmd_check(ctx, args):
             print(f"WARNING: handoff: the log has {len(text)} characters (cap logSize = {cap}); archive the items of "
                   f"published versions: {me} archive")
     problems = rows_problems(ctx, args, text.splitlines()) if ctx.config.get("logRows") else []
+    problems += hard_problems
     if args.strict:
         problems += soft
     else:
@@ -1180,6 +1199,32 @@ def cmd_add_decision(ctx, args):
     return 0
 
 
+def cmd_preflight(ctx, args):
+    """D61: the log checks of prepush-branches.sh (check with a date, clash with origin/<protectedBranch>), run before
+    pushing so a green `check` is enough to push."""
+    me = f"python3 {HERE / 'handoff.py'}"
+    date = args.date
+    if not date:
+        status = ctx.git("status", "--porcelain", "--", ctx.log)
+        last = ctx.git("log", "-1", "--format=%as", "--", ctx.log)
+        if status.returncode != 0 or last.returncode != 0:
+            raise Usage(f"git cannot read the state of {ctx.log} ({(status.stderr or last.stderr).strip()}); "
+                        f"check the repository (git status) or pass the day: {me} preflight --date YYYY-MM-DD")
+        dirty = bool(status.stdout.strip()) or not last.stdout.strip()
+        date = datetime.date.today().isoformat() if dirty else last.stdout.strip()
+    code = cmd_check(ctx, argparse.Namespace(file=None, date=date, strict=False, at="commit", pending=None))
+    if not ctx.config.get("logRows"):
+        return code  # the pre-push runs no log check without logRows; `check` still has its size and Done rules
+    protected = ctx.config["protectedBranch"]
+    ref = f"refs/remotes/origin/{protected}"
+    if not ctx.git("rev-parse", "-q", "--verify", f"{ref}^{{commit}}").stdout.strip():
+        print(f"handoff: preflight: no {ref} here, so the task-id clash check is skipped (the pre-push skips it too); "
+              f"to run it, fetch it: git fetch origin {protected}")
+        return code
+    clash = cmd_clash(ctx, argparse.Namespace(revs=["HEAD", ref], warn=False, merge=None, tip=None, merging=False))
+    return code or clash
+
+
 def cmd_move_pending(ctx, args):
     rel = gwconfig.pending_file(ctx.config)
     me = f"python3 {HERE / 'handoff.py'}"
@@ -1266,6 +1311,8 @@ def main(argv=None):
     a.add_argument("file", nargs="?")
     a.add_argument("--date")
     a.add_argument("--dry-run", action="store_true")
+    f = sub.add_parser("preflight")
+    f.add_argument("--date")
     m = sub.add_parser("move-pending")
     m.add_argument("file", nargs="?")
     ap = sub.add_parser("add-pending")
@@ -1338,7 +1385,7 @@ def main(argv=None):
         elif args.cmd in ("done", "add-decision"):
             args.date = args.date or datetime.date.today().isoformat()
         elif not ctx.config.get("logRows") and args.cmd not in ("check", "archive", "next-id", "move-pending",
-                                                                "add-pending"):
+                                                                "add-pending", "preflight"):
             if args.cmd in ("set-row", "close-row"):
                 print("handoff: logRows is off in .claude/gw.json, so there are no branch rows and nothing was written; "
                       f"enable it: set \"logRows\": true in .claude/gw.json, then rerun {args.cmd}")
@@ -1348,7 +1395,7 @@ def main(argv=None):
                 "in-progress": cmd_in_progress, "close-row": cmd_close_row, "set-row": cmd_set_row, "clash": cmd_clash,
                 "archive": cmd_archive, "next-id": cmd_next_id,
                 "move-pending": cmd_move_pending, "add-pending": cmd_add_pending,
-                "add-decision": cmd_add_decision}[args.cmd](ctx, args)
+                "add-decision": cmd_add_decision, "preflight": cmd_preflight}[args.cmd](ctx, args)
     except Usage as exc:
         print(f"handoff: {exc}", file=sys.stderr)
         return 2

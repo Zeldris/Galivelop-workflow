@@ -286,7 +286,7 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | C8 | `modes.careful` (antes de una orden destructiva), activo por defecto | pendiente (pasa de la `0.7`) |
 | C10 | Un subagente no pregunta al usuario: devuelve la pregunta | pendiente (pasa de la `0.7`) |
 | D14 | `trace.py <id>` | pendiente (pasa de la `0.7`) |
-| D61 | `handoff.py preflight`: lo que el `pre-push` comprueba en la bitácora (fecha de «Actualizado», ids que chocan con `main`), sin subir; en el `check` de la plantilla (recogida `0.6`, private-project-1 P1) | pendiente (pasa de la `0.7`) |
+| D61 | `handoff.py preflight`: lo que el `pre-push` comprueba en la bitácora (fecha de «Actualizado», ids que chocan con `main`), sin subir; en el `check` de la plantilla (recogida `0.6`, private-project-1 P1) | hecho (2026-11-17; sin `origin/<protectedBranch>` salta el choque con una nota, como el `pre-push`) |
 | D62 | El `pre-push` avisa, sin bloquear, si el último CI de la rama está en rojo (`ci-status.py`, si hay `gh`) (recogida `0.6`, image-generator P5) | pendiente (pasa de la `0.7`) |
 | D63 | `templates/github/check.yml` con `workflow_call`: un `release.yml` lo llama con `uses:` y `needs:` en vez de copiar sus pasos; el del flujo también (recogida `0.6`, image-generator P6) | pendiente (pasa de la `0.7`) |
 | A11 | Los cuatro modos de trabajo en el plan, `AGENTS.md` y `gw-selector`: SDD siempre (ficha), DDD con dominio, TDD con comportamiento testeable, exploración acotada (H17 P2; usuario, 2026-11-08) | pendiente (pasa de la `0.7`) |
@@ -304,7 +304,7 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | D87 | `gw-init` ofrece licencia doble: MIT para el código y CC BY-NC-SA 4.0 para el contenido, con la nota de terceros (recogida de cierre `0.6`, world-maker P6) | pendiente (pasa de la `0.7`) |
 | D94 | `scripts/push.sh <rama>`: reintentos 2, 4, 8 y 16 s y éxito solo si `git ls-remote` coincide con `HEAD`; `AGENTS.md` apunta a él (recogida `0.6.0`, image-generator P4) | hecho (2026-11-16) |
 | D95 | `handoff.py add-pending` y `add-decision`: añadir a la bitácora sin leerla (recogida `0.6.0`, instalador P3) | hecho (2026-11-16) |
-| D96 | Celdas largas de la bitácora: `handoff.py` mueve a «Hecho» lo cerrado de una fila, o un segundo tope que falla (clave nueva) (recogida `0.6.0`, image-generator P2) | pendiente (pasa de la `0.7`) |
+| D96 | Celdas largas de la bitácora: `handoff.py` mueve a «Hecho» lo cerrado de una fila, o un segundo tope que falla (clave nueva) (recogida `0.6.0`, image-generator P2) | hecho (2026-11-17; `handoff.cellHardLimit`, 1600, 0 = apagado) |
 | E49 | `gw-init` con `agentSignatures: false` escribe en `CLAUDE.md` la regla «sin firmas» frente al recordatorio de atribución (recogida `0.6.0`, image-generator P5) | pendiente (pasa de la `0.7`) |
 | B31 | Aviso de contexto cerca de la ventana con el presupuesto de compactaciones gastado (`recover.py --state` o `Stop`), antes de la compactación (recogida `0.6.0`, image-generator P7) | pendiente (pasa de la `0.7`) |
 | B38 | Barrido de los leves de `scripts/handoff.py` en `pending.md` (D104): la cuenta del puntero de pendientes duplicada y sin vigilar en un commit que solo toca `pending.md`; `archive` exige «## Pendiente» y `check`/`recover` no, y el mensaje sin archivo nombra la bitácora; el `pre-push` lee `pendingFile` de la copia de trabajo; la cuenta solo mira «Pendiente (de la bitácora)»; `move-pending` descarta líneas que parecen punteros (retro de la `0.7.0`, R2; usuario, 2026-11-15) | hecho |

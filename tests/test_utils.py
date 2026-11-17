@@ -205,6 +205,38 @@ class HandoffSizeAndDone(Base):
         self.assertEqual(code, 2, out)
         self.assertIn("handoff.doneItems: must be at least 1, got 0", out)
 
+    def test_d96_a_cell_over_the_hard_cap_fails_without_strict_and_names_the_fix(self):
+        code, out = self.check(self.doc(cell="x" * 1600))  # exactly at the cap (no handoff key): only the warning
+        self.assertEqual(code, 0, out)
+        self.assertIn("WARNING: handoff: a cell of the state table (\"Siguiente paso\") has 1600 characters (limit 800)", out)
+        code, out = self.check(self.doc(cell="x" * 1601))
+        self.assertEqual(code, 1, out)
+        self.assertIn("a cell of the state table (\"Siguiente paso\") has 1601 characters, over the hard cap "
+                      "(handoff.cellHardLimit = 1600; it fails even without --strict)", out)
+        self.assertIn("handoff.py done \"<text>\"", out)
+        self.assertIn("handoff.py set-row \"<short text>\" --branch <branch>", out)
+        self.assertNotIn("WARNING: handoff: a cell", out)  # one message per cell, the failure
+        code, out = self.check(self.doc(cell="x" * 1601), "--strict")
+        self.assertEqual(code, 1, out)
+        self.assertEqual(out.count("has 1601 characters"), 1, out)
+
+    def test_d96_hard_cap_from_the_config_zero_turns_it_off(self):
+        self.set_handoff(cellLimit=120)  # no cellHardLimit: the default 1600
+        self.assertEqual(self.check(self.doc(cell="x" * 1601))[0], 1)
+        self.set_handoff(cellHardLimit=0)
+        code, out = self.check(self.doc(cell="x" * 10115))
+        self.assertEqual(code, 0, out)
+        self.assertIn("has 10115 characters (limit 800)", out)
+        self.set_handoff(cellHardLimit=200)
+        self.assertEqual(self.check(self.doc(cell="x" * 200))[0], 0)
+        code, out = self.check(self.doc(cell="x" * 201))
+        self.assertEqual(code, 1, out)
+        self.assertIn("over the hard cap (handoff.cellHardLimit = 200;", out)
+        self.set_handoff(cellHardLimit=-1)
+        code, out = self.check(self.doc())
+        self.assertEqual(code, 2, out)
+        self.assertIn("handoff.cellHardLimit: must be at least 0, got -1", out)
+
     def test_cell_rules_ignore_other_tables_headers_and_escaped_pipes(self):
         other = self.doc().replace("## Pendiente\n\n", "## Pendiente\n\n| a | " + "y" * 900 + " |\n\n")
         self.assertEqual(self.check(other, "--strict")[0], 0)
@@ -1125,6 +1157,15 @@ class PrepushBranches(Base):
         self.assertEqual(code, 0, out)
         self.assertEqual(changed, [LOG])
         self.assertEqual(pushed, [sha])
+
+    def test_d96_a_state_cell_over_the_hard_cap_blocks_the_push(self):
+        self.p.branch("feat-a")
+        self.p.write(LOG, log_text().replace("| green |", "| " + "x" * 1601 + " |"))
+        self.p.commit("a long Tests cell", env=dict(DAY, GW_SHARED_LOG="1"))
+        code, out, _, _ = self.run_hook(self.p.sha())
+        self.assertEqual(code, 1, out)
+        self.assertIn('a cell of the state table ("Tests") has 1601 characters, over the hard cap', out)
+        self.assertIn("handoff: in commit", out)
 
     def test_other_row_refused_unless_shared(self):
         self.p.branch("feat-a")
@@ -3215,6 +3256,65 @@ class HandoffAdd(Base):
         code, out = self.add("add-decision", "d")
         self.assertEqual(code, 2)
         self.assertRegex(out, r"does not exist; fix `log` in \.claude/gw\.json and rerun: python3 \S+handoff\.py add-decision")
+
+
+class HandoffPreflight(PlanRepo):
+    """D61: `handoff.py preflight` runs, without pushing, the log checks of the pre-push."""
+
+    def preflight(self, *args):
+        return self.p.script("handoff.py", "--plan", self.PLAN, "preflight", *args)
+
+    def test_passes_on_a_committed_log_dated_like_its_last_commit(self):
+        self.assertEqual(self.preflight(), (0, ""))
+
+    def test_old_updated_fails_against_today_when_the_log_is_edited(self):
+        self.p.write(LOG, log_text(updated="2026-10-01"))
+        code, out = self.preflight()
+        today = datetime.date.today().isoformat()
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"\"Updated\" says 2026-10-01 and the commit is from {today}", out)
+        self.assertEqual(self.preflight("--date", "2026-10-01")[0], 0)
+
+    def test_old_updated_fails_against_the_day_of_the_last_commit_that_changed_the_log(self):
+        self.p.write(LOG, log_text().replace("| green |", "| red |"))  # a shared row: any branch may write it
+        self.p.commit("log", env={"GIT_AUTHOR_DATE": "2026-10-23T12:00:00+0000",
+                                  "GIT_COMMITTER_DATE": "2026-10-23T12:00:00+0000"})
+        code, out = self.preflight()
+        self.assertEqual(code, 1, out)
+        self.assertIn("\"Updated\" says 2026-10-21 and the commit is from 2026-10-23", out)
+
+    def test_an_id_the_protected_branch_took_for_another_task_fails(self):
+        self.plan(self.START + "- [ ] **INS-3** the export\n", "main opens INS-3")
+        self.p.git("push", "-q", "--no-verify", "origin", "main")
+        self.p.branch("feat-a", self.base)
+        self.plan(self.START + "- [ ] **INS-3** the form\n", "A opens INS-3")
+        code, out = self.preflight()
+        self.assertEqual(code, 1, out)
+        self.assertIn('INS-3 is a new task on this branch ("the form") and on refs/remotes/origin/main ("the export")', out)
+        self.assertIn("fix: renumber the task", out)
+
+    def test_without_origin_main_the_clash_is_skipped_with_a_note(self):
+        self.p.branch("feat-a", self.base)
+        self.plan(self.START + "- [ ] **INS-3** the form\n", "A opens INS-3")
+        self.p.git("update-ref", "-d", "refs/remotes/origin/main")
+        code, out = self.preflight()
+        self.assertEqual(code, 0, out)
+        self.assertIn("no refs/remotes/origin/main here, so the task-id clash check is skipped", out)
+        self.assertIn("git fetch origin main", out)
+        self.p.write(LOG, log_text(updated="2026-10-01"))  # the log check still runs
+        self.assertEqual(self.preflight()[0], 1)
+
+    def test_without_logrows_only_the_log_size_rules_run(self):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["logRows"] = False
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.git("update-ref", "-d", "refs/remotes/origin/main")
+        self.p.write(LOG, log_text(updated="2026-10-01"))
+        self.assertEqual(self.preflight(), (0, ""))
+        self.p.write(LOG, log_text().replace("| green |", "| " + "x" * 1601 + " |"))
+        code, out = self.preflight()
+        self.assertEqual(code, 1, out)
+        self.assertIn("over the hard cap (handoff.cellHardLimit = 1600;", out)
 
 
 if __name__ == "__main__":
