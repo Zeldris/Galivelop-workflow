@@ -1,14 +1,21 @@
 """scripts/tests-for.py (E21): the test files a change calls for, from testMap in .claude/gw.json. Every failing case
 checks the message, not only the exit code."""
+import contextlib
+import importlib.util
+import io
 import json
 import os
+import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
+import waits
 from test_hooks import BASE_CONFIG, ROOT
 
 sys.dont_write_bytecode = True
@@ -134,6 +141,135 @@ class TestsFor(unittest.TestCase):
         self.assertEqual(code, 1, out + err)
         self.assertIn("boom-marker", out)
         self.assertIn("FAILED (tests/test_f.py::C)", out)
+
+    def configure_timeout(self, seconds, command="python3 -B -m unittest {files}"):
+        cfg = json.loads((self.tmp / ".claude" / "gw.json").read_text())
+        cfg.update(testUnitTimeout=seconds, testMap={"rules": RULES, "command": command})
+        self.write(".claude/gw.json", json.dumps(cfg))
+
+    @staticmethod
+    def pid_writer(path):
+        """Test-file lines that write `<unit pid> <child pid>` to `path` at once (atomic: never read half-written)."""
+        return (f"        open({str(path)!r} + '.tmp', 'w').write(f'{{os.getpid()}} {{p.pid}}')\n"
+                f"        os.rename({str(path)!r} + '.tmp', {str(path)!r})\n")
+
+    def test_a_unit_past_its_timeout_is_killed_and_named_with_the_command_to_run_it_alone(self):  # B42
+        pids = self.tmp / "pids"
+        self.write("tests/test_h.py", "import os, subprocess, time, unittest\n"
+                   "class Hang(unittest.TestCase):\n    def test_hang(self):\n"
+                   "        p = subprocess.Popen(['sleep', '60'])\n" + self.pid_writer(pids) +
+                   "        time.sleep(60)\n"
+                   "class Fine(unittest.TestCase):\n    def test_ok(self): pass\n")
+        limit = max(5, int(waits.timeout(5)))  # room to start on a loaded runner before it writes the pids
+        self.configure_timeout(limit, "PYTHONPATH=tests python3 -B -m unittest {files}")  # review n.º 5: the prefix
+        started = time.monotonic()
+        code, out, err = self.run_cli("--run", "tests/test_h.py")
+        self.assertLess(time.monotonic() - started, limit + waits.timeout(40), out + err)
+        self.assertEqual(code, 1, out + err)
+        self.assertIn(f"tests-for: tests/test_h.py::Hang did not end within {limit}s (testUnitTimeout in "
+                      ".claude/gw.json); run it alone to see which test hangs: PYTHONPATH=tests python3 -B -m "
+                      "unittest discover -s tests -p test_h.py -k '*.Hang.*' -v", out)
+        self.assertIn("FAILED (tests/test_h.py::Hang timed out)", out)
+        self.assertNotIn("Fine", out.split("FAILED")[1])
+        self.assertTrue(pids.exists(), f"the unit did not start within {limit}s: {out}")
+        alive = [pid for pid in map(int, pids.read_text().split()) if self.alive(pid)]
+        self.assertEqual(alive, [], "the unit and its child are killed with their group")
+
+    @staticmethod
+    def alive(pid):  # a zombie counts as gone: in a container nobody may reap it
+        r = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True, text=True)
+        return r.returncode == 0 and r.stdout.strip() != "" and not r.stdout.strip().startswith("Z")
+
+    def test_a_process_left_holding_the_output_does_not_keep_the_run_waiting(self):  # B42
+        pid = self.tmp / "pid"
+        self.write("tests/test_l.py", "import subprocess, unittest\n"
+                   "class Leave(unittest.TestCase):\n    def test_leave(self):\n"
+                   "        p = subprocess.Popen(['sleep', '60'], start_new_session=True)  # out of the unit's group\n"
+                   f"        open({str(pid)!r}, 'w').write(str(p.pid))\n")
+        self.configure_timeout(0)
+        started = time.monotonic()
+        code, out, err = self.run_cli("--run", "tests/test_l.py")
+        left = int(pid.read_text())
+        self.addCleanup(lambda: subprocess.run(["kill", "-9", str(left)], capture_output=True))
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("tests-for: OK", out)
+        self.assertLess(time.monotonic() - started, waits.timeout(30), "waited for the sleep holding the output")
+        self.assertTrue(self.alive(left), "the test's process outlived the unit, as it should for this case")
+
+    def test_what_a_passing_unit_leaves_in_its_group_is_killed_when_it_ends(self):  # review B42 n.º 2
+        pids = self.tmp / "pids"
+        self.write("tests/test_k.py", "import os, subprocess, unittest\n"
+                   "class Keep(unittest.TestCase):\n    def test_keep(self):\n"
+                   "        p = subprocess.Popen(['sleep', '60'], stdout=subprocess.DEVNULL)  # in the unit's group\n"
+                   + self.pid_writer(pids))
+        self.configure_timeout(0)
+        code, out, err = self.run_cli("--run", "tests/test_k.py")
+        self.assertEqual(code, 0, out + err)
+        child = int(pids.read_text().split()[1])
+        self.addCleanup(subprocess.run, ["kill", "-9", str(child)], capture_output=True)
+        self.assertTrue(waits.wait_for(lambda: not self.alive(child), 10), "the unit's leftover sleep survived it")
+
+    def module(self):
+        spec = importlib.util.spec_from_file_location("gw_tests_for", SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_no_unit_starts_once_tests_for_is_stopping(self):  # review B42 n.º 1: the stop and a starting unit
+        mod = self.module()
+        mod.STOPPING.set()
+        marker = self.tmp / "ran"
+        self.write("tests/test_m.py", f"import unittest\nopen({str(marker)!r}, 'w').write('x')\n"
+                   "class M(unittest.TestCase):\n    def test_m(self): pass\n")
+        unit, code, _secs, ran, output = mod.run_unit(self.tmp, ("tests", "test_m.py", "M", 1), 0, re.compile("x"))
+        self.assertEqual((code, ran, output), (-1, 0, "not started: tests-for was stopped"))
+        self.assertFalse(marker.exists(), "the unit ran after the stop")
+        self.assertEqual(mod.LIVE, set())
+
+    def test_an_invalid_unit_timeout_fails_closed_in_run_parallel_too(self):  # review B42 n.º 6
+        mod = self.module()
+        for bad in (-1, "x", True):
+            with self.subTest(bad=bad):
+                err = io.StringIO()
+                with contextlib.redirect_stderr(err):
+                    code = mod.run_parallel(self.tmp, {"testUnitTimeout": bad}, ["tests/test_a.py"])
+                self.assertEqual(code, 2)
+                self.assertIn(f"tests-for: testUnitTimeout must be an integer >= 0 (seconds; 0 = no limit), got {bad!r}; "
+                              "fix .claude/gw.json", err.getvalue())
+
+    def test_stopping_tests_for_kills_the_units_it_started(self):  # B42: they run in sessions of their own
+        pids = self.tmp / "pids"
+        self.write("tests/test_s.py", "import os, subprocess, time, unittest\n"
+                   "class Slow(unittest.TestCase):\n    def test_slow(self):\n"
+                   "        p = subprocess.Popen(['sleep', '60'])\n" + self.pid_writer(pids) +
+                   "        time.sleep(60)\n")
+        self.configure_timeout(0)
+
+        def ignore_sigint():  # review n.º 4: launched with `cmd &` by a non-interactive shell, SIGINT comes ignored
+            signal.signal(signal.SIGINT, signal.SIG_IGN)
+        for sig, preexec in ((signal.SIGTERM, None), (signal.SIGINT, None), (signal.SIGINT, ignore_sigint)):
+            with self.subTest(sig=sig.name, inherited_ignore=preexec is not None):
+                pids.unlink() if pids.exists() else None
+                proc = subprocess.Popen([sys.executable, "-B", str(SCRIPT), "--root", str(self.tmp), "--run",
+                                         "tests/test_s.py"], cwd=str(self.tmp), stdout=subprocess.DEVNULL,
+                                        stderr=subprocess.DEVNULL, preexec_fn=preexec)
+                self.addCleanup(proc.wait)  # review n.º 9: reaped even if an assertion fails first
+                self.addCleanup(proc.kill)
+                self.assertTrue(waits.wait_for(pids.exists, 30), "the unit never started")
+                started = [int(x) for x in pids.read_text().split()]
+                for pid in started:
+                    self.addCleanup(subprocess.run, ["kill", "-9", str(pid)], capture_output=True)
+                proc.send_signal(sig)
+                proc.wait(timeout=waits.timeout(30))
+                gone = waits.wait_for(lambda: not any(self.alive(pid) for pid in started), 10)
+                self.assertTrue(gone, f"left running after {sig.name}: {[x for x in started if self.alive(x)]}")
+
+    def test_an_invalid_unit_timeout_fails_closed(self):  # B42
+        self.write("tests/test_p.py", "import unittest\nclass A(unittest.TestCase):\n    def test_ok(self): pass\n")
+        self.configure_timeout(-1)
+        code, out, err = self.run_cli("--run", "tests/test_p.py")
+        self.assertEqual(code, 2, out + err)
+        self.assertIn("$.testUnitTimeout: must be at least 0", err)
 
     def test_a_file_test_run_cannot_discover_fails_closed(self):  # B33 review: 0 units must not be a green
         self.write("tests/check_x.py", "import unittest\nclass A(unittest.TestCase):\n    def test_bad(self): self.fail('x')\n")

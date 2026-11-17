@@ -342,6 +342,7 @@
         "checkLockWait",
         "checkOutputGrace",
         "checkLogKeep",
+        "testUnitTimeout",
         "ciFailedLines",
         "subagentCap",
         "subagentCapStep",
@@ -424,6 +425,12 @@
       "minimum": 0,
       "default": 0,
       "description": "How many test processes scripts/test-run.py runs at once (one test class each, the slowest first); 0 = one per CPU."
+    },
+    "testUnitTimeout": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 1800,
+      "description": "Seconds a test unit (one test class) of scripts/tests-for.py --run may take before it is killed with its process group and named as failed, with the command that runs it alone; 0 = no limit."
     },
     "checkOutputGrace": {
       "type": "integer",

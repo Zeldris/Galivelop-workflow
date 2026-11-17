@@ -379,6 +379,19 @@ class Config(unittest.TestCase):
             self.assertIn(key, schema["fullCheckSkipKeys"]["default"], key)
             self.assertIn(key, template["fullCheckSkipKeys"], key)
 
+    def test_test_unit_timeout_default_value_and_bad_value(self):  # B42
+        self.assertEqual(config.test_unit_timeout({}), 1800)
+        self.assertEqual(config.test_unit_timeout({"testUnitTimeout": 0}), 0)
+        self.assertEqual(config.test_unit_timeout({"testUnitTimeout": 90}), 90)
+        for bad in (-1, "60", True, 1.5):  # fails closed with its reason, as testJobs does (review B42 n.º 6)
+            with self.assertRaises(config.ConfigError, msg=bad) as ctx:
+                config.test_unit_timeout({"testUnitTimeout": bad})
+            self.assertIn(f"testUnitTimeout must be an integer >= 0 (seconds; 0 = no limit), got {bad!r}",
+                          str(ctx.exception))
+        template = json.loads((ROOT / "templates" / "gw.json").read_text())
+        self.assertEqual(template["testUnitTimeout"], 1800)
+        self.assertIn("testUnitTimeout", template["fullCheckSkipKeys"])
+
     def test_instruction_lines_bad_values_fail_with_their_reason(self):
         cases = [({"warn": 200, "fail": 100}, "$.instructionLines: warn (200) must not be above fail (100)"),
                  ({"warn": 300}, "warn (300) must not be above fail (250)"),
