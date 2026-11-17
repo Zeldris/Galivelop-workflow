@@ -56,11 +56,8 @@ python3 scripts/mkt-sheet.py check || bad
 section "roadmap parity (same ids in every language, D105)"
 python3 scripts/roadmap.py check || bad
 
-section "hand-off log (state-table cells, Done section)"
-python3 scripts/handoff.py check --strict || bad
-
-section "hand-off log as the pre-push sees it (Updated date, task-id clash with origin/main, D61)"
-python3 scripts/handoff.py preflight || bad
+section "hand-off log (state-table cells, Done section, Updated date, task-id clash with origin/main, D61)"
+python3 scripts/handoff.py preflight --strict || bad  # one pass: preflight runs the check (--strict) and the clash
 
 # E22 runs alongside the main suite (E45): its output is printed in its own section once both end.
 e22_out="$(mktemp "${TMPDIR:-/tmp}/gw-check-e22.XXXXXX")" || exit 1

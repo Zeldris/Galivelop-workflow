@@ -27,14 +27,16 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  (`archive` needs it) or a pointer with an old "(N entradas)" count
                                                  only warn. --pending PATH reads the pending file from PATH (the
                                                  pre-push passes the pushed commit's copy; a missing PATH = no file)
-  handoff.py preflight [--date YYYY-MM-DD]       what the pre-push checks in the log, without pushing (D61): `check`
+  handoff.py preflight [--date YYYY-MM-DD] [--strict]
+                                                 what the pre-push checks in the log, without pushing (D61): `check`
                                                  of the working copy's log with --date (default: today if the log has
                                                  uncommitted changes, else the day of the last commit that changed it,
                                                  as the pre-push takes the day of the newest commit that changes it),
                                                  and with logRows and a plan, `clash HEAD
                                                  refs/remotes/origin/<protectedBranch>`; with no such ref (a fresh
                                                  clone, no remote) the clash is skipped with a note, as the pre-push
-                                                 skips it
+                                                 skips it. With --strict the soft rules of `check` (the warnings)
+                                                 fail too (exit 1), so one pass does the work of `check --strict`
   handoff.py move-pending [FILE]                 with `pendingFile` set: move the "- " items (and other text) of the
                                                  log's "Pendiente" / "Pending" section to the end of that file's
                                                  section of the same name (the file and the section are created when
@@ -114,12 +116,15 @@ Exit 0 ok, 1 rule broken (each message ends with the command that fixes it), 2 b
 Python 3.8+, stdlib only.
 """
 import argparse
+import contextlib
 import datetime
+import errno
 import json
 import os
 import re
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 sys.dont_write_bytecode = True
@@ -1048,8 +1053,23 @@ DECISIONS_HEADING = re.compile(r"^##\s+(Decisiones|Decisions)\b.*$", re.I)
 
 
 def split_lines(raw):
-    """(lines without their ends, the file's line ending): CRLF when the text has one, else LF."""
-    return (re.split(r"\r?\n", raw.rstrip("\r\n")) if raw.strip() else []), "\r\n" if "\r\n" in raw else "\n"
+    """The lines of `raw` cut at "\\n" only: a CRLF line keeps its "\\r" at its end, so every line keeps its own
+    ending and a mixed file stays as it was; blank lines at the end are kept (only the last terminator is dropped).
+    `write_added` joins them back with "\\n"; the lines a command adds take the "\\r" of their neighbour (`ends`)."""
+    if not raw.strip():
+        return []
+    lines = raw.split("\n")
+    if lines[-1] == "":  # the terminator of the last line, not a blank line
+        lines.pop()
+    elif len(lines) > 1 and lines[-2].endswith("\r"):  # no final newline: the last line ends like the one before
+        lines[-1] += "\r"
+    return lines
+
+
+def ends(lines, at):
+    """"\\r" when the line at `at` of `lines` (the last one when `at` is past the end) ends in CRLF, else ""."""
+    i = min(at, len(lines) - 1)
+    return "\r" if 0 <= i and lines[i].endswith("\r") else ""
 
 
 def item_lines(text):
@@ -1088,13 +1108,15 @@ def section_span(lines, heading_re, lo=0, hi=None):
 
 def insert_in_section(lines, head, end, items, lead=False):
     """Insert `items` after the last non-blank line of the section (head, end) of `lines`, in place (`lead`: after a
-    blank line)."""
+    blank line); the new lines end like the section's heading (CRLF or LF)."""
+    cr = ends(lines, head)
+    items = [l + cr for l in items]
     pos = end
     while pos > head + 1 and not lines[pos - 1].strip():
         pos -= 1
-    new = ([""] if pos == head + 1 or lead else []) + items
+    new = ([cr] if pos == head + 1 or lead else []) + items
     if end == pos and end < len(lines):  # no blank line before the next heading
-        new.append("")
+        new.append(cr)
     lines[pos:pos] = new
 
 
@@ -1106,7 +1128,14 @@ def read_for_add(path, me, cmd):
 
 
 def log_is_english(ctx):
-    """True when the log's Pending or Decisions heading is English (the way move-pending tells)."""
+    """True when the log's Pending or Decisions heading is English (the way move-pending tells); the log is read once
+    per run (n.º 11 of the D95 review): the answer is kept in `ctx`."""
+    if not hasattr(ctx, "log_english"):
+        ctx.log_english = _log_is_english(ctx)
+    return ctx.log_english
+
+
+def _log_is_english(ctx):
     try:
         for l in (ctx.root / ctx.log).read_text(encoding="utf-8").splitlines():
             if PENDING_HEADING.match(l):
@@ -1118,11 +1147,63 @@ def log_is_english(ctx):
     return False
 
 
-def write_added(path, lines, eol, me, cmd):
+def write_added(path, lines, me, cmd):
     try:
-        write_atomic(path, (eol.join(lines) + eol).encode("utf-8"))
+        write_atomic(path, ("\n".join(lines) + "\n").encode("utf-8"))
     except OSError as exc:
         raise Usage(f"cannot write {path} ({exc}); check its permissions and rerun: {me} {cmd}")
+
+
+# The commands that rewrite the log or `pendingFile`/`decisionsFile`: main() runs them under one lock, the single
+# point that decides what is locked (n.º 1 and 4 of the review of D95).
+WRITING_COMMANDS = ("done", "set-row", "close-row", "archive", "move-pending", "add-pending", "add-decision")
+
+
+@contextlib.contextmanager
+def write_lock(ctx, cmd):
+    """One exclusive lock per repository, <git common dir>/gw/handoff.lock, around the read-change-write of a writing
+    command (two `add-*` at once, or an `add-*` and a `move-pending`, lost an item: n.º 9 of the D95 review).
+    `fcntl.flock`: the system drops it when the process ends, so a killed run leaves no orphan lock. It waits
+    `handoff.lockWait` seconds and then fails saying how to rerun; only EWOULDBLOCK/EAGAIN mean "held". Without
+    `fcntl` (Windows), without a git dir, or when the file system refuses locks (any other OSError) there is no lock
+    and one `WARNING` line says so."""
+    me = f"python3 {HERE / 'handoff.py'}"
+    try:
+        import fcntl
+    except ImportError:
+        print(f"handoff: WARNING: no fcntl on this platform, so {cmd} runs without a lock (two at once can lose an item)",
+              file=sys.stderr)
+        yield
+        return
+    common = gwconfig.git_common_dir(ctx.root)
+    if common is None:
+        print(f"handoff: WARNING: {ctx.root} is not in a git repository, so {cmd} runs without a lock", file=sys.stderr)
+        yield
+        return
+    where = common / "gw" / "handoff.lock"
+    wait = gwconfig.handoff(ctx.config)["lockWait"]
+    try:
+        where.parent.mkdir(parents=True, exist_ok=True)
+        fd = os.open(where, os.O_RDWR | os.O_CREAT, 0o644)
+    except OSError as exc:
+        raise Usage(f"cannot open the lock {where} ({exc}); check its permissions and rerun: {me} {cmd}")
+    try:
+        deadline = time.monotonic() + wait
+        while True:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                break
+            except OSError as exc:
+                if exc.errno not in (errno.EWOULDBLOCK, errno.EAGAIN):  # the file system has no flock: go without
+                    print(f"handoff: WARNING: cannot lock {where} ({exc}), so {cmd} runs without a lock", file=sys.stderr)
+                    break
+                if time.monotonic() >= deadline:
+                    raise Usage(f"another handoff.py holds the lock {where} and did not let go in {wait} s; wait for "
+                                f"it, or raise handoff.lockWait in .claude/gw.json, and rerun: {me} {cmd}")
+                time.sleep(0.05)
+        yield
+    finally:
+        os.close(fd)  # closing the descriptor releases the lock
 
 
 def cmd_add_pending(ctx, args):
@@ -1140,10 +1221,11 @@ def cmd_add_pending(ctx, args):
         if not own:
             raise Usage(f"{path} does not exist; fix `log` in .claude/gw.json and rerun: {me} add-pending")
         raw = pending_skeleton(log_is_english(ctx))
-    lines, eol = split_lines(raw)
+    lines = split_lines(raw)
     head, end = section_span(lines, PENDING_HEADING)
     if head is None and own:
-        lines += ([""] if lines and lines[-1].strip() else []) + ["## Pending" if log_is_english(ctx) else "## Pendiente"]
+        cr = ends(lines, len(lines))
+        lines += ([cr] if lines and lines[-1].strip() else []) + [("## Pending" if log_is_english(ctx) else "## Pendiente") + cr]
         head, end = len(lines) - 1, len(lines)
     elif head is None:
         raise Usage(f"{path} has no \"## Pendiente\" / \"## Pending\" section; add the line \"## Pending\" to it "
@@ -1162,7 +1244,7 @@ def cmd_add_pending(ctx, args):
     else:
         h, e = section_span(lines, PENDING_HEADING)
         count = pending_count("\n".join(lines[h + 1:e]))
-    write_added(path, lines, eol, me, "add-pending")
+    write_added(path, lines, me, "add-pending")
     print(f"handoff: added 1 item to {rel} ({count} in all)")
     return 0
 
@@ -1179,7 +1261,7 @@ def cmd_add_decision(ctx, args):
         if not separate:
             raise Usage(f"{path} does not exist; fix `log` in .claude/gw.json and rerun: {me} add-decision")
         raw = "# Decisions\n\n## Decisions\n" if log_is_english(ctx) else "# Decisiones\n\n## Decisiones\n"
-    lines, eol = split_lines(raw)
+    lines = split_lines(raw)
     text = re.sub(r"^\d{4}-\d{2}-\d{2}\s*[—–-]\s*", "", args.text.strip())  # the entry gets its date: never twice
     if not text:
         raise Usage(f"the text is empty (only a date was given); give it: {me} add-decision \"the decision\"")
@@ -1189,12 +1271,14 @@ def cmd_add_decision(ctx, args):
         title = "## Decisions" if log_is_english(ctx) else "## Decisiones"
         ph, _ = section_span(lines, PENDING_HEADING)
         if ph is not None and not separate:
-            lines[ph:ph] = [title, ""] + item + [""]
+            cr = ends(lines, ph)
+            lines[ph:ph] = [title + cr, cr] + [l + cr for l in item] + [cr]
         else:
-            lines += ([""] if lines and lines[-1].strip() else []) + [title, ""] + item
+            cr = ends(lines, len(lines))
+            lines += ([cr] if lines and lines[-1].strip() else []) + [title + cr, cr] + [l + cr for l in item]
     else:
         insert_in_section(lines, head, end, item)
-    write_added(path, lines, eol, me, "add-decision")
+    write_added(path, lines, me, "add-decision")
     print(f"handoff: added 1 decision to {rel}")
     return 0
 
@@ -1204,7 +1288,7 @@ def cmd_preflight(ctx, args):
     pushing so a green `check` is enough to push."""
     me = f"python3 {HERE / 'handoff.py'}"
     if not ctx.config.get("logRows"):  # the date is a logRows rule: no git needed; the size and Done rules still run
-        return cmd_check(ctx, argparse.Namespace(file=None, date=None, strict=False, at="commit", pending=None))
+        return cmd_check(ctx, argparse.Namespace(file=None, date=None, strict=args.strict, at="commit", pending=None))
     date, dirty = args.date, True
     status = ctx.git("status", "--porcelain", "--", ctx.log)
     # --no-merges: the pre-push dates the log by the commits that change it, never by a merge (diff-tree shows none
@@ -1218,7 +1302,7 @@ def cmd_preflight(ctx, args):
     if not date:
         date = datetime.date.today().isoformat() if dirty else last.stdout.strip()
     # A clean log is already committed: the fix is a new commit (at="push"), not "run the commit again".
-    code = cmd_check(ctx, argparse.Namespace(file=None, date=date, strict=False, at="commit" if dirty else "push",
+    code = cmd_check(ctx, argparse.Namespace(file=None, date=date, strict=args.strict, at="commit" if dirty else "push",
                                              pending=None))
     protected = ctx.config["protectedBranch"]
     ref = f"refs/remotes/origin/{protected}"
@@ -1295,6 +1379,12 @@ def cmd_move_pending(ctx, args):
     return 0
 
 
+COMMANDS = {"check": cmd_check, "done": cmd_done, "own-row": cmd_own_row, "closed": cmd_closed,
+            "in-progress": cmd_in_progress, "close-row": cmd_close_row, "set-row": cmd_set_row, "clash": cmd_clash,
+            "archive": cmd_archive, "next-id": cmd_next_id, "move-pending": cmd_move_pending,
+            "add-pending": cmd_add_pending, "add-decision": cmd_add_decision, "preflight": cmd_preflight}
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--root")
@@ -1318,6 +1408,7 @@ def main(argv=None):
     a.add_argument("--dry-run", action="store_true")
     f = sub.add_parser("preflight")
     f.add_argument("--date")
+    f.add_argument("--strict", action="store_true")
     m = sub.add_parser("move-pending")
     m.add_argument("file", nargs="?")
     ap = sub.add_parser("add-pending")
@@ -1396,11 +1487,8 @@ def main(argv=None):
                       f"enable it: set \"logRows\": true in .claude/gw.json, then rerun {args.cmd}")
                 return 1
             return 0  # the branch-row module is off: nothing to check (`check` still reads the size and Done rules)
-        return {"check": cmd_check, "done": cmd_done, "own-row": cmd_own_row, "closed": cmd_closed,
-                "in-progress": cmd_in_progress, "close-row": cmd_close_row, "set-row": cmd_set_row, "clash": cmd_clash,
-                "archive": cmd_archive, "next-id": cmd_next_id,
-                "move-pending": cmd_move_pending, "add-pending": cmd_add_pending,
-                "add-decision": cmd_add_decision, "preflight": cmd_preflight}[args.cmd](ctx, args)
+        with (write_lock(ctx, args.cmd) if args.cmd in WRITING_COMMANDS else contextlib.nullcontext()):
+            return COMMANDS[args.cmd](ctx, args)
     except Usage as exc:
         print(f"handoff: {exc}", file=sys.stderr)
         return 2
