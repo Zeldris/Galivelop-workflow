@@ -298,8 +298,8 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | E35 | Flaky test ledger (`flaky`): the check records what fails and passes on retry and proposes a fix after N times (H17 P12) | pending (moves from `0.7`) |
 | A12 | Configurable languages in a `languages` block of `.claude/gw.json`: `code` (code, names and comments; replaces A8's fixed rule), `docs.primary` and `docs.others` (internal docs, log, roadmap and commits; the `docs/es` ↔ `docs/en` pairing reads them), `public.primary` and `public.others` (README, release, posts) and `ui` (today `visibleLanguages`); the agent language (the one user and agent speak) goes per user in `~/.claude/gw.json`, identified by `git config user.email`, with the docs primary as fallback; `language` and `visibleLanguages` migrate with `apply.py --update`; the MMC edits it in `1.1` (user, 2026-11-08) | pending (moves from `0.7`) |
 | — | What [`pending.md`](records/pending.md) marks `0.7` | pending (moves from `0.7`) |
-| D80 | Automatic warning of a stale `gw-scout-updates` seal (`0.6` closing harvest, private-project-1 P5) | pending (moves from `0.7`) |
-| D83 | `apply.py --update` adds the names its migration renames to the project's `staleRefs` (extends D46) (`0.6` closing harvest, instalador P4) | pending (moves from `0.7`) |
+| D80 | Automatic warning of a stale `gw-scout-updates` seal (`0.6` closing harvest, private-project-1 P5) | done (2026-11-17, 5e2eb7f) |
+| D83 | `apply.py --update` adds the names its migration renames to the project's `staleRefs` (extends D46) (`0.6` closing harvest, instalador P4) | done (2026-11-17, 69300db) |
 | D87 | `gw-init` offers a dual licence: MIT for code and CC BY-NC-SA 4.0 for content, with the third-party note (`0.6` closing harvest, world-maker P6) | pending (moves from `0.7`) |
 | D94 | `scripts/push.sh <branch>`: retries at 2, 4, 8 and 16 s and success only if `git ls-remote` matches `HEAD`; `AGENTS.md` points to it (`0.6.0` harvest, image-generator P4) | done (2026-11-16) |
 | D95 | `handoff.py add-pending` and `add-decision`: add to the log without reading it (`0.6.0` harvest, installer P3) | done (2026-11-16) |
@@ -316,11 +316,11 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | — | What [`pending.md`](records/pending.md) marks `0.8` | pending |
 | E42 | `gw-seo` skill (SEO and link previews for static sites) brought from the portal: no portal paths, English names, tests in the check, es/en docs and its source's MIT LICENSE (`0.6` closing harvest, portal P1) | pending |
 | E50 | `PreToolUse` hook on `Read` that warns, without blocking, when reading loose screenshots and suggests a contact sheet (the project's command in a key) (`0.6.0` harvest, image-generator P6) | pending |
-| E53 | Guide rule: in CI, the environment's install script fails in its own step (`0.7` harvest, instalador P2) | pending |
-| D126 | `gw-scout-updates` reads the project's Rust version (`rust-toolchain(.toml)`, `rust-version` in `Cargo.toml`) (`0.4` harvest, instalador P11, `pending.md`) | pending |
-| D127 | `apply.py --init` adds a per-stack `.gitignore` in a marked block, without overwriting the existing one (`0.4` harvest, private-project-2 P8, `pending.md`) | pending |
-| E63 | `REVIEW.md` template: the invariants rule and the "Browsers" section (`0.4` harvest, instalador P13 and portal P5, `pending.md`) | pending |
-| E64 | `gw-orchestrate-dealer`: the last block is not reviewed separately when the branch review comes right after; read-only repos are cloned apart, unregistered; the review brief carries `git diff --stat` (private-project-2 P5, portal P4, private-project-1 P9, `pending.md`) | pending |
+| E53 | Guide rule: in CI, the environment's install script fails in its own step (`0.7` harvest, instalador P2) | done (2026-11-17, 889791d) |
+| D126 | `gw-scout-updates` reads the project's Rust version (`rust-toolchain(.toml)`, `rust-version` in `Cargo.toml`) (`0.4` harvest, instalador P11, `pending.md`) | done (2026-11-17, 5e2eb7f) |
+| D127 | `apply.py --init` adds a per-stack `.gitignore` in a marked block, without overwriting the existing one (`0.4` harvest, private-project-2 P8, `pending.md`) | done (2026-11-17, 69300db) |
+| E63 | `REVIEW.md` template: the invariants rule and the "Browsers" section (`0.4` harvest, instalador P13 and portal P5, `pending.md`) | done (2026-11-17, 889791d) |
+| E64 | `gw-orchestrate-dealer`: the last block is not reviewed separately when the branch review comes right after; read-only repos are cloned apart, unregistered; the review brief carries `git diff --stat` (private-project-2 P5, portal P4, private-project-1 P9, `pending.md`) | done (2026-11-17, 2230c89) |
 | E58 | Read warnings over Bash: `readPointers` key (`{"<path>": "<command>"}`) and `whole-read.py` extended to `Bash` (`cat`, `sed`, `grep`; not counting a heredoc body) (`0.7` closing harvest, world-maker-fantasy P3, portal P3) | done (2026-11-16; `cat`, `sed` and the like; `grep` reads a part and is not warned about; plus `wholeReadRepeatOnly` and `wholeReadStaleDays`) |
 | E59 | `recover.py --state` compares the local commit with `origin/<branch>` (up to date, ahead, behind); step 2 of "At the start" points to that output (`0.7` closing harvest, private-project-4 P2) | done (2026-11-16) |
 | E60 | The `commit-msg` warns, without rejecting, about review fixes with no `Findings:` (words in a key) (`0.7` closing harvest, private-project-1 P1) | done (2026-11-16; `metrics.quality.findingsWords`) |

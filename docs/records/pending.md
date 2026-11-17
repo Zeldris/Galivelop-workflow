@@ -13,13 +13,13 @@ Reparto: scripts, checks, config y git a la `0.5`; `orchestrate-dealer` y los en
 
 P1-P4 salieron en el parche `0.4.3`.
 
-- [ ] `0.8` · **private-project-2 P5**: `orchestrate-dealer`: si la revisión de toda la rama va justo después y ya está decidida, el último
+- [x] `0.8` · **private-project-2 P5** (E64, 2026-11-17): `orchestrate-dealer`: si la revisión de toda la rama va justo después y ya está decidida, el último
   bloque no se revisa aparte. [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
 - [x] `0.5` · **private-project-2 P6** (D18, 2026-11-03): `scripts/ci-estado.py`, que lee el estado de Actions de una rama o commit (token y `gh` de
   `revision-antes-de-main.sh`). [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
 - [x] `0.5` · **private-project-2 P7** (D19, 2026-11-03): clave `ciPython` en `gw.json` con las versiones de Python que la plantilla del CI recorre en matriz.
   [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
-- [ ] `0.8` · **private-project-2 P8**: `aplicar.py --init` añade un `.gitignore` por stack en un bloque con marca, sin pisar el existente.
+- [x] `0.8` · **private-project-2 P8** (D127, 2026-11-17): `aplicar.py --init` añade un `.gitignore` por stack en un bloque con marca, sin pisar el existente.
   [`2026-10-27-private-project-2.md`](../proposals/2026-10-27-private-project-2.md)
 
 ## De la recogida del 2026-10-26
@@ -61,18 +61,18 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [x] `0.5` · **private-project-1 P5:** (D25, 2026-11-03) `red-without-fix.sh --fix-at <commit>` y distinguir un rojo de compilación de uno de la
   aserción. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
-- [ ] `0.8` · **Portal P4:** `orchestrate-dealer`, los repos que solo se leen se clonan aparte y sin registrar.
+- [x] `0.8` · **Portal P4:** (E64, 2026-11-17) `orchestrate-dealer`, los repos que solo se leen se clonan aparte y sin registrar.
   [`2026-10-26-portal-galivelop-2.md`](../proposals/2026-10-26-portal-galivelop-2.md)
 - [x] `0.5` · **INS P10:** (D26, 2026-11-03) `doctor.py` avisa de worktrees ya fusionados.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
 - [x] `0.5` · **private-project-1 P7:** (D23, 2026-11-03) `bitacora.py set-row`. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [x] `0.5` · **private-project-1 P8:** (D27, 2026-11-03) `doctor.py` avisa de `cd <carpeta> && …` sin `worktreeLinks`.
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
-- [ ] `0.8` · **INS P11:** `scout-updates` lee la versión de Rust del proyecto.
+- [x] `0.8` · **INS P11:** (D126, 2026-11-17) `scout-updates` lee la versión de Rust del proyecto.
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md)
-- [ ] `0.8` · **private-project-1 P9:** el encargo de revisión lleva `git diff --stat`.
+- [x] `0.8` · **private-project-1 P9:** (E64, 2026-11-17) el encargo de revisión lleva `git diff --stat`.
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
-- [ ] `0.8` · **INS P13 + Portal P5:** en la plantilla de `REVIEW.md`, la regla de invariantes y el apartado «Navegadores».
+- [x] `0.8` · **INS P13 + Portal P5:** (E63, 2026-11-17) en la plantilla de `REVIEW.md`, la regla de invariantes y el apartado «Navegadores».
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md),
   [`2026-10-26-portal-galivelop-2.md`](../proposals/2026-10-26-portal-galivelop-2.md)
 - [ ] `0.9` · **private-project-1 P10:** textos menores (`/clear` tras un commit `WIP:`, `perPage: 1`, `git fetch -q && git status -sb`).
@@ -294,3 +294,7 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - D62 (revisión n.º 8, 0.8): la orden del aviso de CI del `pre-push` usa una ruta relativa a la raíz; desde un subdirectorio no se encuentra: dar la ruta absoluta.
 - D62 (revisión n.º 9, 0.8): si `config.py` no lee `prepushCiWarn` o su timeout, el aviso de CI se apaga sin decir nada; sacar una línea con `config.py validate`.
 - [ ] `0.8` · **Revisión B31 n.º 5**: el marcador del aviso de contexto (`<git dir>/gw-context-warn`) es uno por git dir y guarda solo el último tramo: dos sesiones en el mismo worktree, ambas cerca del corte, se lo pisan y avisan en cada turno (candidato: varias claves, una por transcript, o un archivo por sesión).
+- [ ] `0.9` · **Revisión D83 n.º 5** (leve): `apply.py --init --stack` con la lista vacía no quita un bloque `.gitignore` que ya existe.
+- [ ] `0.9` · **Revisión D83 n.º 9** (leve): el análisis y la unión de `staleRefs` están duplicados en `apply.py`, y `stale_pattern` repite lo de `rename_hook_scripts`.
+- [ ] `0.9` · **D127, seguimiento**: `apply.py --update` no refresca el bloque `.gitignore` de un proyecto ya iniciado (solo lo escribe el `--init` que crea `gw.json`).
+- [ ] `0.8` · Herramienta: `tests-for.py --run` se quedó colgado en `test_hooks` (`PrePush`, `CheckCache`) con varios subagentes a la vez (oleada 2; ver el ítem de `pgrep`).
