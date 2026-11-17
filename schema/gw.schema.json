@@ -391,7 +391,8 @@
         "patchCommitTypes",
         "measure",
         "mediaContent",
-        "modes"
+        "modes",
+        "taskRecord"
       ],
       "description": "Top-level keys of .claude/gw.json whose change does not make a branch push run the full check (E47): when the push's new commits change only these keys of the config, its related tests run. Any other key, an added, removed or broken config, and fullCheckSkipKeys itself still count as an environment change. The list replaces the default one."
     },
@@ -1373,6 +1374,20 @@
       },
       "default": {"careful": true, "carefulExempt": ["/tmp/", "/var/tmp/", "$TMPDIR/", "${TMPDIR}/"], "carefulWorktrees": [".claude/worktrees/"]},
       "description": "Opt-out modes of the workflow's hooks (C8). careful (default true): careful.py, a PreToolUse hook on Bash, asks the user before a destructive command (rm -r, git push --force, git reset --hard, git branch -D, git push --delete, git clean -f, git checkout -- . and git restore .); false = it does nothing. carefulExempt: path prefixes; an rm -r whose every target starts with one (and has no '..') is not asked about; the list replaces the default one ($TMPDIR/ and ${TMPDIR}/ only count while TMPDIR is set and not empty). carefulWorktrees: folders (relative to the main repository's root) whose linked git worktrees are disposable: there git reset --hard, git clean -f, git checkout|restore . and checkout/switch -f are not asked about (not after a cd or with GIT_DIR set); an empty list = no exemption."
+    },
+    "taskRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {"type": "boolean", "default": false},
+        "path": {"type": "string", "minLength": 1, "default": "docs/tasks"},
+        "requiredFor": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true, "default": ["feat", "fix", "hotfix"]},
+        "sections": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "uniqueItems": true, "default": ["Goal", "Scope", "Acceptance", "Files", "Change log", "Verification"]},
+        "logSections": {"type": "array", "items": {"type": "string", "minLength": 1}, "minItems": 1, "uniqueItems": true, "default": ["Why", "Alternatives", "Changed because"]},
+        "pendingMarker": {"type": "string", "minLength": 1, "default": "pending"}
+      },
+      "default": {"enabled": false, "path": "docs/tasks", "requiredFor": ["feat", "fix", "hotfix"], "sections": ["Goal", "Scope", "Acceptance", "Files", "Change log", "Verification"], "logSections": ["Why", "Alternatives", "Changed because"], "pendingMarker": "pending"},
+      "description": "Task record (C11, I-lifecycle design): with enabled true, the commit-msg hook (commit-message.py) requires that a commit of a type in requiredFor that changes code (what is-code.sh calls code; the files under path do not count) and is not WIP, a merge or the review mark touches <path>/<id>.md (with the headings of sections, in order) and ADDS a new file <path>/<id>/<date>-<agent>-<token>.md for each id of its Refs trailer: a first line `# <date> · <skill or session> · <commit or pendingMarker> · <id>` and a non-empty `## <heading>` for each of logSections (form only; REVIEW.md asks for the quality). The commit sha of an entry is not written into the file (that would dirty the tree after the commit): scripts/task.py resolves the pendingMarker from `git log --diff-filter=A`. Default off so installed projects keep working; this repo turns it on. Create the files with: python3 scripts/task.py new <id> and python3 scripts/task.py log <id> --agent <skill|session>."
     }
   }
 }

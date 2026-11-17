@@ -197,5 +197,8 @@
   },
   "contextGuard": {
     "window": 200000
+  },
+  "taskRecord": {
+    "enabled": true
   }
 }

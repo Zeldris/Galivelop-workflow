@@ -207,3 +207,18 @@ Forma de un entorno (ejemplo con tres; con la lista vacía el flujo se comporta 
 10. **Versión del bloque:** **Rec.:** `0.7`: C11 (ficha), A11 (modos), C12 (`spike/`), C13 (alcance), D68
     (fragmentos de changelog), E32, E33, E35; `1.2`: D67 (hecho por entorno, `promote.py`), I1 (`riskPaths`), I2
     (declaraciones de `prod`), con D9, D10, D17 y G8; `0.9`: E34, E36.
+
+## Implementación (2026-11-17)
+
+C11 se implementó así, con cuatro cambios sobre lo decidido arriba:
+
+- **Sin `post-commit`:** modificar el archivo tras el commit ensucia el árbol. La entrada lleva `pending` en el campo del
+  commit y `task.py resolve` lee el sha de `git log --diff-filter=A`.
+- **Nombre y cabecera:** `<fecha>-<agente>-<7 hex aleatorios>.md`; el id va en la cabecera
+  (`# <fecha> · <skill|session> · <commit> · <id>`) y los encabezados del log van en inglés (A8).
+- **Al menos un id:** con varios ids en `Refs:`, basta uno con ficha y entrada nueva; los demás son contexto. La ficha
+  tiene que existir (en el índice o en HEAD) con sus apartados en orden, no hace falta editarla; `Goal`, `Acceptance` y
+  `Why` no pueden ser «—» ni la plantilla. Toda entrada añadida tiene que ser válida.
+- **Límites:** `commit --amend` no se distingue en el `commit-msg` y no añade archivos; el atajo es `task.py log`
+  antes. El enlace a las preguntas abiertas solo se escribe si el archivo existe. La clasificación de código es solo
+  la de `is-code.sh --list`, leída de HEAD.

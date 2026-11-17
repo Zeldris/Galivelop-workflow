@@ -37,6 +37,16 @@ Sus skills incluidas aquí llevan su mención y su licencia ([créditos](../../C
    apunta como pendiente y no se vuelve a revisar en ese PR.
 5. **Lo comprobable lo comprueba un script**, no la opinión de un agente.
 
+## La ficha de tarea
+
+Con `taskRecord.enabled` ([`config.md`](config.md)), cada tarea con código tiene una ficha `docs/tasks/<id>.md`
+(`python3 .claude/gw/scripts/task.py new <id>`): `Goal`, `Scope`, `Acceptance` (casillas), `Files`, `Change log` y
+`Verification`. Cada agente que toca la tarea añade además una entrada nueva en `docs/tasks/<id>/`
+(`task.py log <id> --agent <skill|session>`) con tres apartados: `Why`, `Alternatives` y `Changed because`; nadie edita
+una entrada ya subida. El `commit-msg` pide, para al menos un id de `Refs:`, la ficha (que exista, no que se edite) y una entrada nueva válida en un commit `feat`, `fix` o `hotfix` que cambia código
+(no en `docs`, `WIP:`, merges ni la marca de revisión); un `--amend` no añade archivos, así que se añade antes una entrada con `task.py log`. El commit de cada entrada no se escribe en el archivo:
+`task.py resolve <id>` lo lee de git.
+
 ## Guías
 
 - [Aplicar el flujo a un proyecto](apply.md) (la guía del agente, proyectos nuevos y existentes)
