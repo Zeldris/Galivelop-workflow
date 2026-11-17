@@ -1,0 +1,185 @@
+"""scripts/trace.py (D14): everything about a task id, gathered on the spot. Edge cases covered: id in every source,
+whole-word matching (D1 vs D14 and D14a), Refs lists and scopes, WIP, merge commits, unknown id, malformed ids, --json,
+--limit, a missing roadmap file, no roadmapFiles, not a repo. Failing cases check the message, not only the code."""
+import json
+import os
+import subprocess
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+
+from test_hooks import BASE_CONFIG, ROOT
+
+sys.dont_write_bytecode = True
+SCRIPT = ROOT / "scripts" / "trace.py"
+FILES = [
+    {"path": "docs/roadmap.md", "done": "hecho", "open": ["pendiente"]},
+    {"path": "docs/roadmap.en.md", "done": "done", "open": ["pending"]},
+]
+ES = "# Roadmap\n\n## `0.7` «Trazar»\n\n| Id | Tarea | Estado |\n|---|---|---|\n| D14 | `trace.py` | pendiente |\n| D1 | Otra | pendiente |\n"
+EN = "# Roadmap\n\n## `0.7` «Trace»\n\n| Id | Task | Status |\n|---|---|---|\n| D14 | `trace.py` | pending |\n"
+
+
+class Repo:
+    def __init__(self, tmp, roadmap_files=True):
+        self.root = Path(tmp)
+        self.env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        self.env.update(GIT_CONFIG_GLOBAL=str(self.root / "gitconfig"), GIT_CONFIG_NOSYSTEM="1")
+        (self.root / "gitconfig").write_text("[user]\n\tname = T\n\temail = t@example.com\n[commit]\n\tgpgsign = false\n"
+                                             "[init]\n\tdefaultBranch = main\n")
+        self.work = self.root / "work"
+        self.work.mkdir()
+        self.git("init", "-q")
+        cfg = dict(BASE_CONFIG, log="docs/log.md", pendingFile="docs/pending.md", taskId="[A-H]\\d+[a-z]?")
+        if roadmap_files:
+            cfg["roadmapFiles"] = FILES
+        self.write(".claude/gw.json", json.dumps(cfg))
+        self.write("docs/roadmap.md", ES)
+        self.write("docs/roadmap.en.md", EN)
+        self.write("docs/log.md", "# Log\n\nNow: D14 in progress; D1 done; D14a later\n")
+        self.write("docs/pending.md", "# Pending\n\n- Pending: D14 follow-up\n")
+        self.write("docs/design.md", "Design of D14 here.\nNothing about D1.\n")
+        self.write(".claude/skills/x.md", "copy that names D14\n")
+        self.commit("chore: base")
+
+    def git(self, *args):
+        r = subprocess.run(["git", *args], cwd=self.work, env=self.env, capture_output=True, text=True)
+        assert r.returncode == 0, r.stderr
+        return r
+
+    def write(self, rel, text):
+        path = self.work / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text)
+
+    def commit(self, message):
+        self.git("add", "-A")
+        self.git("commit", "-q", "--allow-empty", "-m", message)
+
+    def trace(self, *args, root=True):
+        cmd = [sys.executable, "-B", str(SCRIPT)] + list(args) + (["--root", str(self.work)] if root else [])
+        return subprocess.run(cmd, env=self.env, capture_output=True, text=True, cwd=self.root)
+
+
+class Trace(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.repo = Repo(self._tmp.name)
+
+    def test_id_in_every_source(self):
+        r = self.repo
+        r.commit("feat(D14): the script\n\nbody\n\nRefs: D14\nSiguiente: x")
+        r.git("checkout", "-q", "-b", "agent/D14-x")
+        r.commit("chore: no id here")
+        r.git("checkout", "-q", "main")
+        r.git("merge", "--no-ff", "-q", "-m", "Merge branch 'agent/D14-x'", "agent/D14-x")
+        out = r.trace("D14")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        for expected in ("== roadmap (2)", "docs/roadmap.md:7", "docs/roadmap.en.md:7", "`0.7` «Trazar»", "== log (1)",
+                         "== pending (1)", "[refs] feat(D14): the script", "[merge] Merge branch 'agent/D14-x'",
+                         "== docs (1)", "docs/design.md:1"):
+            self.assertIn(expected, out.stdout)
+        self.assertNotIn("chore: no id here", out.stdout)  # a commit of the merged branch with no id is not declared
+        self.assertNotIn(".claude/skills", out.stdout)  # generated copies are skipped
+
+    def test_whole_word_match(self):
+        out = self.repo.trace("D1", "--json")
+        data = json.loads(out.stdout)
+        self.assertEqual([x["line"] for x in data["roadmap"]], [8])  # not the D14 rows
+        self.assertEqual(len(data["log"]), 1)  # "D1 done" matches; the D14 and D14a words alone would not
+        self.assertEqual(data["docs"][0]["line"], 2)  # not "Design of D14"
+        self.assertEqual(data["pending"], [])
+
+    def test_prefix_id_does_not_match_suffix_id(self):
+        out = self.repo.trace("D14a", "--json")
+        data = json.loads(out.stdout)
+        self.assertEqual(data["roadmap"], [])
+        self.assertEqual(len(data["log"]), 1)
+
+    def test_refs_list_scope_and_wip(self):
+        r = self.repo
+        r.commit("feat(D3, D14): scoped\n\nRefs: D3")
+        r.commit("WIP: fix(D14): half\n\nRefs: D4, D14\nSiguiente: z")
+        r.commit("fix(D140): other\n\nRefs: D140")
+        data = json.loads(r.trace("D14", "--json").stdout)
+        self.assertEqual([(c["how"], c["subject"]) for c in data["commits"]],
+                         [("refs", "WIP: fix(D14): half"), ("scope", "feat(D3, D14): scoped")])
+
+    def test_mention_in_body_is_not_declared(self):
+        self.repo.commit("chore: tidy\n\nThis relates to D14 loosely.")
+        data = json.loads(self.repo.trace("D14", "--json").stdout)
+        self.assertEqual(data["commits"], [])
+
+    def test_unknown_id(self):
+        out = self.repo.trace("D99")
+        self.assertEqual(out.returncode, 1)
+        self.assertIn("nothing names it", out.stderr)
+        self.assertEqual(out.stdout, "")
+        data = json.loads(self.repo.trace("D99", "--json").stdout)
+        self.assertFalse(data["found"])
+
+    def test_malformed_ids(self):
+        for bad in ("d14", "14", "D", "D14 ", "D14;x", "../D14", "D14|D1"):
+            out = self.repo.trace(bad)
+            self.assertEqual(out.returncode, 2, bad)
+            self.assertIn("is not a task id", out.stderr, bad)
+            self.assertIn("taskId", out.stderr)
+
+    def test_json(self):
+        self.repo.commit("feat(D14): j\n\nRefs: D14")
+        out = self.repo.trace("D14", "--json")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        data = json.loads(out.stdout)
+        self.assertEqual(sorted(data), ["commits", "docs", "found", "id", "log", "notes", "pending", "roadmap"])
+        self.assertTrue(data["found"])
+        self.assertEqual(data["id"], "D14")
+        self.assertEqual(data["commits"][0]["how"], "refs")
+        self.assertEqual(len(data["commits"][0]["sha"]), 40)
+        self.assertEqual({x["file"] for x in data["roadmap"]}, {"docs/roadmap.md", "docs/roadmap.en.md"})
+
+    def test_limit(self):
+        for n in range(4):
+            self.repo.commit(f"feat(D14): n{n}\n\nRefs: D14")
+        out = self.repo.trace("D14", "--limit", "2")
+        self.assertIn("… 2 more", out.stdout)
+        self.assertEqual(len(json.loads(self.repo.trace("D14", "--json", "--limit", "2").stdout)["commits"]), 4)
+        bad = self.repo.trace("D14", "--limit", "0")
+        self.assertEqual(bad.returncode, 2)
+        self.assertIn("--limit must be 1 or more", bad.stderr)
+
+    def test_missing_roadmap_file_is_a_note(self):
+        (self.repo.work / "docs" / "roadmap.en.md").unlink()
+        out = self.repo.trace("D14")
+        self.assertEqual(out.returncode, 0)
+        self.assertIn("note: cannot read docs/roadmap.en.md", out.stdout)
+        self.assertIn("docs/roadmap.md:7", out.stdout)
+
+    def test_no_roadmap_files_configured(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Repo(tmp, roadmap_files=False)
+            data = json.loads(repo.trace("D14", "--json").stdout)
+            self.assertEqual(data["roadmap"], [])
+            self.assertEqual(len(data["log"]), 1)
+            # without roadmapFiles the roadmap file is just another document
+            self.assertIn("docs/roadmap.md", {d["file"] for d in data["docs"]})
+
+    def test_not_a_repo(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            out = subprocess.run([sys.executable, "-B", str(SCRIPT), "D14", "--root", tmp], capture_output=True,
+                                 text=True, env={k: v for k, v in os.environ.items() if not k.startswith("GIT_")})
+        self.assertEqual(out.returncode, 2)
+        self.assertIn("not inside a git repository", out.stderr)
+
+    def test_bad_task_id_regex_in_config(self):
+        cfg = json.loads((self.repo.work / ".claude" / "gw.json").read_text())
+        cfg["taskId"] = "[A-H"
+        self.repo.write(".claude/gw.json", json.dumps(cfg))
+        out = self.repo.trace("D14")
+        self.assertEqual(out.returncode, 2)
+        self.assertIn("taskId", out.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()
