@@ -102,7 +102,7 @@ the project that installs the flow go without backticks, or with the full path i
 
 **Releasing a version:** on `main` (with the three phases done), the CHANGELOG entry dated instead of
 "Unreleased", and the tag: `git tag vX.Y.Z && git push origin vX.Y.Z`. The `release.yml` workflow checks that the tag,
-`plugin.json` and the markers agree and that the version went up, runs the check and creates the release with that entry.
+`plugin.json` and the markers agree and that the version went up, runs the check (by calling `check.yml` with `needs:`; changing its `on:` breaks the release) and creates the release with that entry.
 
 ## Commit, log and `main`
 

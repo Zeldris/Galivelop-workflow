@@ -8,7 +8,8 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  verify:
+    # The cheap refusals come first: a bad tag or CHANGELOG fails in seconds, before the slow check matrix.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,8 +31,6 @@ jobs:
             exit 1
           fi
           python3 scripts/version.py
-      - name: Check
-        run: bash tests/check.sh
       - name: Release notes from the CHANGELOG entry
         run: |
           version="${GITHUB_REF_NAME#v}"
@@ -53,6 +52,24 @@ jobs:
             echo "the CHANGELOG entry for $version still has the placeholders of scripts/version.py; write the notes and tag again" >&2
             exit 1
           fi
+  check:
+    # D63: the same check as every push, run by the reusable workflow, once the tag is verified.
+    needs: verify
+    uses: ./.github/workflows/check.yml
+  release:
+    needs: [verify, check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Release notes
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          # Fixed-string match on the heading: the dots of a version are not regex wildcards.
+          awk -v head="## [$version]" '
+            index($0, head) == 1 { on = 1; next }
+            on && /^## \[/ { exit }
+            on { print }
+          ' CHANGELOG.md > notes.md
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}

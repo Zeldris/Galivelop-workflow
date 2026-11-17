@@ -106,6 +106,17 @@ class Release(unittest.TestCase):
                            env=dict({k: v for k, v in os.environ.items() if not k.startswith("GIT_")}, **env))
         return r.returncode, r.stdout + r.stderr
 
+    def test_release_calls_the_reusable_check_and_waits_for_it(self):
+        """D63: release.yml runs the check through check.yml (workflow_call) and `needs:` it; it does not copy it."""
+        text = self.WORKFLOW.read_text(encoding="utf-8")
+        self.assertRegex(text, r"(?m)^  check:\n(?:    #.*\n)*    needs: verify\n    uses: \./\.github/workflows/check\.yml$")
+        self.assertRegex(text, r"(?m)^  release:\n    needs: \[verify, check\]$")
+        self.assertRegex(text, r"(?m)^  verify:\n(?:    #.*\n)*    runs-on:", "the cheap refusals go in `verify`, first")
+        self.assertNotIn("tests/check.sh", text, "the release job must not run the check itself")
+        for path in (ROOT / ".github" / "workflows" / "check.yml", ROOT / "templates" / "github" / "check.yml"):
+            with self.subTest(workflow=str(path.relative_to(ROOT))):
+                self.assertRegex(path.read_text(encoding="utf-8"), r"(?m)^  workflow_call:$")
+
     def test_run_steps_pass_shellcheck(self):
         if not shutil.which("shellcheck"):
             if os.environ.get("CI") or os.environ.get("CLAUDE_CODE_REMOTE") == "true":

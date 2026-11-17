@@ -104,7 +104,7 @@ comillas invertidas o con la ruta completa de este repo (`skills/gw-media-conten
 
 **Publicar una versión:** en `main` (con las tres fases hechas), la entrada del CHANGELOG con fecha en vez de
 «Unreleased», y la etiqueta: `git tag vX.Y.Z && git push origin vX.Y.Z`. El workflow `release.yml` comprueba que la
-etiqueta, `plugin.json` y los marcadores coinciden y que la versión subió, pasa el check y crea la release con esa entrada.
+etiqueta, `plugin.json` y los marcadores coinciden y que la versión subió, pasa el check (llamando a `check.yml`, con `needs:`; cambiar su `on:` rompe la release) y crea la release con esa entrada.
 
 ## Commit, bitácora y `main`
 
