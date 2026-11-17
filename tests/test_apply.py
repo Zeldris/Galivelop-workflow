@@ -2445,6 +2445,8 @@ class GitignoreBlock(unittest.TestCase):
         self.assertNotIn("vendor/", lines)
         self.assertNotIn("target/", lines)
         self.assertIn(".claude/gw.local.json", lines[b:])
+        # each fragment's own version marker (version.py) stays in the template, not in the user's file
+        self.assertFalse([x for x in lines if x.startswith("# galivelop-workflow v")], lines)
 
     def test_rerun_replaces_only_the_block_even_if_its_begin_text_changed(self):
         p = self.p

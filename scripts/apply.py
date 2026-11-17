@@ -647,6 +647,7 @@ LOCAL_IGNORE_LINES = {LOCAL_IGNORE, "/" + LOCAL_IGNORE, "gw.local.json", "/**/gw
 GITIGNORE_BEGIN_PREFIX = "# galivelop-workflow:gitignore begin"  # a line starting so opens the block, whatever follows
 GITIGNORE_BEGIN = GITIGNORE_BEGIN_PREFIX + " (managed block; rerun apply.py --init to refresh it)"
 GITIGNORE_END = "# galivelop-workflow:gitignore end"
+VERSION_MARKER_LINE = re.compile(r"#\s*galivelop-workflow v\d+\.\d+\.\d+\b")  # the fragment's own marker, not copied
 STACK_MARKERS = {  # D127: the stack -> the root files (exact names, checked with is_file) that say the project uses it
     "python": ("pyproject.toml", "requirements.txt", "setup.py", "setup.cfg", "Pipfile"),
     "node": ("package.json",),
@@ -677,7 +678,8 @@ def gitignore_block(stacks):
         except OSError:
             raise ApplyError(f"apply: no .gitignore template for the stack {stack!r} ({src}); fix gitignoreStacks in "
                              f"{config.CONFIG_REL} (stacks: {', '.join(sorted(STACK_MARKERS))})")
-        out += [f"# {stack}"] + text.rstrip("\n").split("\n")
+        lines = [x for x in text.rstrip("\n").split("\n") if not VERSION_MARKER_LINE.match(x)]
+        out += [f"# {stack}"] + lines
     out.append(GITIGNORE_END)
     return "\n".join(out) + "\n"
 
