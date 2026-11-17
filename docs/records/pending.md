@@ -279,24 +279,33 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - (fase 3 de la 0.7.1, leve) `scripts/version.py:512-516` (D124): al sellar, el aviso de recogida reutiliza el texto de `harvest_check`, que termina en «retry with this command: python3 scripts/version.py --release»; recién sellado, `--release` falla además por el CHANGELOG sin terminar. Que `harvest_check` reciba la orden de reintento (`retry=`) y al sellar diga «then commit it; `--release` checks it again before main».
 - (revisión del bloque E58-E61 + B41, leve) `whole-read.py` corre en cada `Read` y cada `Bash` (matcher `^(Read|Bash)$`): un arranque de Python por llamada; medir su coste y, si pesa, filtrar antes (por ejemplo, saltar en el propio gancho las órdenes sin `cat`/`sed`/`nl`/… sin cargar el config).
 - (revisión del bloque E58-E61 + B41, leve) Configurabilidad: el remoto `origin` que nombra la línea de `recover.py --state` y la carpeta de estado de `whole-read.py` (`$TMPDIR`) van fijos; pasarlos a claves de `.claude/gw.json` si un proyecto lo pide.
-- [ ] `0.8` · **Revisión D14 n.º 4**: `trace.py` lee todos los `.md` del repo en cada llamada; sin `--no-docs` para saltarlos.
-- [ ] `0.8` · **Revisión D14 n.º 5**: `trace.py` saca dos veces la fila de `roadmap.md` y `roadmap.en.md`, y no separa lo declarado (filas, `Refs:`) de lo deducido (menciones en documentos).
+- [x] `0.8` · (D14, 2026-11-17: `--no-docs`) **Revisión D14 n.º 4**: `trace.py` lee todos los `.md` del repo en cada llamada; sin `--no-docs` para saltarlos.
+- [x] `0.8` · (D14, 2026-11-17: una fila con la traducción como `also`; `declared`/`deduced`) **Revisión D14 n.º 5**: `trace.py` saca dos veces la fila de `roadmap.md` y `roadmap.en.md`, y no separa lo declarado (filas, `Refs:`) de lo deducido (menciones en documentos).
 - [x] `0.8` · (D94, 2026-11-17: el consejo crea la rama y sube con `push.sh`; `push.sh` sin cambios) `scripts/reviewed.sh:77` sube con `git push -u origin HEAD:<rama>`: `push.sh` no admite refspec; darle uno o dejar la excepción explicada.
 - [x] `0.8` · (D87, 2026-11-17) `skills/gw-init/SKILL.md:88` (y su copia en `.claude/skills`) sigue mandando `git push -u origin <rama>` en vez de `push.sh`.
 - [ ] `0.8` · `push.sh` mata el grupo de `ls-remote` con `set -m`: probado solo en Linux; vigilar el CI de macOS.
-- [ ] `0.8` · Herramienta: `pgrep -f tests-for` (y similares) en los tests casa con procesos de otros agentes del mismo contenedor.
-- [ ] `0.8` · **Revisión D95 n.º 5**: `split_lines` elige CRLF si alguna línea lo tiene y reescribe todas así (y quita las líneas en blanco del final); `done` conserva el de cada línea (candidato: respetar el fin de cada línea).
-- [ ] `0.8` · **Revisión D95 n.º 9**: `add-pending` y `add-decision` leen, cambian y reescriben sin cerrojo: dos a la vez (subagentes o ganchos) pierden un ítem aunque ambos informen de éxito (candidato: cerrojo sobre el archivo, como el de `check.sh`).
-- [ ] `0.8` · **Revisión D95 n.º 11**: `log_is_english` relee la bitácora en cada llamada que lo necesita (eficiencia, resuelto en parte: ya solo se llama al crear algo).
-- `0.8`: `tests/check.sh` corre `handoff.py check` dos veces (`check --strict` y dentro de `preflight`; revisión de D61, hallazgo 6): dejar una sola pasada.
-- D62 (revisión n.º 3, 0.8): el aviso de CI del `pre-push` lanza `ci-status.py` con `start_new_session`; con Ctrl-C, ci-status y `gh`/`curl` siguen huérfanos hasta `ciStatusTimeout`: matar el grupo en un try/finally.
-- D62 (revisión n.º 5, 0.8): el aviso de CI del `pre-push` deduplica por sha remoto y nombra solo la primera rama; agrupar las ramas por sha y nombrarlas todas.
-- D62 (revisión n.º 8, 0.8): la orden del aviso de CI del `pre-push` usa una ruta relativa a la raíz; desde un subdirectorio no se encuentra: dar la ruta absoluta.
-- D62 (revisión n.º 9, 0.8): si `config.py` no lee `prepushCiWarn` o su timeout, el aviso de CI se apaga sin decir nada; sacar una línea con `config.py validate`.
+- [x] `0.8` · (B42, 2026-11-17: marca `GW_TEST_PROC_MARK` en vez de `pgrep -f`) Herramienta: `pgrep -f tests-for` (y similares) en los tests casa con procesos de otros agentes del mismo contenedor.
+- [x] `0.8` · (D95, 2026-11-17: `split_lines` respeta el fin de cada línea) **Revisión D95 n.º 5**: `split_lines` elige CRLF si alguna línea lo tiene y reescribe todas así (y quita las líneas en blanco del final); `done` conserva el de cada línea (candidato: respetar el fin de cada línea).
+- [x] `0.8` · (D95, 2026-11-17: cerrojo por repo `<git common dir>/gw/handoff.lock`, `handoff.lockWait`) **Revisión D95 n.º 9**: `add-pending` y `add-decision` leen, cambian y reescriben sin cerrojo: dos a la vez (subagentes o ganchos) pierden un ítem aunque ambos informen de éxito (candidato: cerrojo sobre el archivo, como el de `check.sh`).
+- [x] `0.8` · (D95, 2026-11-17: en caché por llamada) **Revisión D95 n.º 11**: `log_is_english` relee la bitácora en cada llamada que lo necesita (eficiencia, resuelto en parte: ya solo se llama al crear algo).
+- [x] `0.8` · (D95, 2026-11-17: solo `preflight --strict`) `tests/check.sh` corre `handoff.py check` dos veces (`check --strict` y dentro de `preflight`; revisión de D61, hallazgo 6): dejar una sola pasada.
+- [x] `0.8` · (D62, 2026-11-17: `cleanup()` mata el grupo) D62 (revisión n.º 3): el aviso de CI del `pre-push` lanza `ci-status.py` con `start_new_session`; con Ctrl-C, ci-status y `gh`/`curl` siguen huérfanos hasta `ciStatusTimeout`: matar el grupo en un try/finally.
+- [x] `0.8` · (D62, 2026-11-17: ramas agrupadas por sha) D62 (revisión n.º 5): el aviso de CI del `pre-push` deduplica por sha remoto y nombra solo la primera rama; agrupar las ramas por sha y nombrarlas todas.
+- [x] `0.8` · (D62, 2026-11-17: ruta absoluta) D62 (revisión n.º 8): la orden del aviso de CI del `pre-push` usa una ruta relativa a la raíz; desde un subdirectorio no se encuentra: dar la ruta absoluta.
+- [x] `0.8` · (D62, 2026-11-17: línea con la clave y `config.py validate`) D62 (revisión n.º 9): si `config.py` no lee `prepushCiWarn` o su timeout, el aviso de CI se apaga sin decir nada; sacar una línea con `config.py validate`.
 - [x] `0.8` · (B31, 2026-11-17: una línea por transcript, `contextGuard.warnedMax`, cerrojo) **Revisión B31 n.º 5**: el marcador del aviso de contexto (`<git dir>/gw-context-warn`) es uno por git dir y guarda solo el último tramo: dos sesiones en el mismo worktree, ambas cerca del corte, se lo pisan y avisan en cada turno (candidato: varias claves, una por transcript, o un archivo por sesión).
 - [ ] `0.9` · **Revisión D83 n.º 5** (leve): `apply.py --init --stack` con la lista vacía no quita un bloque `.gitignore` que ya existe.
 - [ ] `0.9` · **Revisión D83 n.º 9** (leve): el análisis y la unión de `staleRefs` están duplicados en `apply.py`, y `stale_pattern` repite lo de `rename_hook_scripts`.
 - [ ] `0.9` · **D127, seguimiento**: `apply.py --update` no refresca el bloque `.gitignore` de un proyecto ya iniciado (solo lo escribe el `--init` que crea `gw.json`).
-- [ ] `0.8` · Herramienta: `tests-for.py --run` se quedó colgado en `test_hooks` (`PrePush`, `CheckCache`) con varios subagentes a la vez (oleada 2; ver el ítem de `pgrep`).
+- [x] `0.8` · (B42, 2026-11-17: una sesión por unidad, salida a archivo, `testUnitTimeout`) Herramienta: `tests-for.py --run` se quedó colgado en `test_hooks` (`PrePush`, `CheckCache`) con varios subagentes a la vez (oleada 2; ver el ítem de `pgrep`).
 - [ ] `0.9` · **Revisión D87 n.º 6** (leve): `tests/test_apply.py` cubre `<!-- if !clave -->` con false, true y ausente, pero no `! clave` con espacio ni `if !` sin clave.
 - [ ] `0.9` · **Revisión D94 n.º 1** (leve): `test_reviewed.py` no ejecuta la orden que imprime el consejo de `reviewed.sh` (escribe la ruta de `push.sh` a mano, raíz sin espacios): una cita `%q` rota seguiría en verde.
+- [ ] `0.9` · **Revisión D14 n.º 2** (leve): `trace.py` pliega las filas con `first[key]` (la última fila con ese id); una traducción cuyo texto de celda difiere no se pliega.
+- [ ] `0.9` · **Revisión B42 n.º 7** (leve): `tests-for.py` duplica `run_unit` de `test-run.py`.
+- [ ] `0.9` · **Revisión B42 n.º 8** (leve): `tests-for.py` usa manejadores de señal globales y un `LIVE` global.
+- [ ] `0.9` · Herramienta (B42): `scripts/test-run.py` `run_unit` tiene el mismo problema de tubería que `tests-for.py` y ningún tope de tiempo (`testUnitTimeout`).
+- [ ] `0.9` · Herramienta (B42): `tests/test_check_summary.py` lanza `sleep 60/30` que heredan la salida del ejecutor de tests.
+- [ ] `0.9` · Herramienta (B42): `test-times.json` se comparte entre worktrees.
+- [ ] `0.9` · **Revisión D62 n.º 7** (leve): el test del aviso de CI desde un subdirectorio no ejecuta el `ci-status.py` real.
+- [ ] `0.9` · **Revisión D95 n.º 5** (leve): el bucle de `flock` de `handoff.py` duplica el de `context_guard.warned_lock`.
+- [ ] `0.9` · Pregunta al usuario (B42): ¿bajar el `testJobs` por defecto (0 = todas las CPU por agente satura con varios subagentes)? `testUnitTimeout` ya evita el cuelgue.

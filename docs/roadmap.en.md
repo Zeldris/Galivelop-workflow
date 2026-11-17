@@ -284,7 +284,7 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | C7 | One switch: the `gw-mode` skill | pending (moves from `0.7`) |
 | C8 | `modes.careful` (before a destructive command), on by default | pending (moves from `0.7`) |
 | C10 | A subagent does not ask the user: it returns the question | pending (moves from `0.7`) |
-| D14 | `trace.py <id>` | done (2026-11-17; id ranges and lists, `--json`, `--limit`) |
+| D14 | `trace.py <id>` | done (2026-11-17; id ranges and lists, `--json`, `--limit`, `--no-docs`, declared and deduced) |
 | D61 | `handoff.py preflight`: what the `pre-push` checks in the log (the "Updated" date, ids clashing with `main`), without pushing; in the template's `check` (`0.6` harvest, private-project-1 P1) | done (2026-11-17; with no `origin/<protectedBranch>` the clash is skipped with a note, as in the `pre-push`) |
 | D62 | The `pre-push` warns, without blocking, when the branch's last CI is red (`ci-status.py`, when `gh` is there) (`0.6` harvest, image-generator P5) | done (2026-11-17; `prepushCiWarn`, `prepushCiWarnTimeout`) |
 | D63 | `templates/github/check.yml` with `workflow_call`: a `release.yml` calls it with `uses:` and `needs:` instead of copying its steps; the workflow's own too (`0.6` harvest, image-generator P6) | done (2026-11-17; `release.yml`: `verify` → `check` → `release`) |
@@ -300,11 +300,11 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | — | What [`pending.md`](records/pending.md) marks `0.7` | pending (moves from `0.7`) |
 | D80 | Automatic warning of a stale `gw-scout-updates` seal (`0.6` closing harvest, private-project-1 P5) | done (2026-11-17, 5e2eb7f) |
 | D83 | `apply.py --update` adds the names its migration renames to the project's `staleRefs` (extends D46) (`0.6` closing harvest, instalador P4) | done (2026-11-17, 69300db) |
-| D87 | `gw-init` offers a dual licence: MIT for code and CC BY-NC-SA 4.0 for content, with the third-party note (`0.6` closing harvest, world-maker P6) | pending (moves from `0.7`) |
+| D87 | `gw-init` offers a dual licence: MIT for code and CC BY-NC-SA 4.0 for content, with the third-party note (`0.6` closing harvest, world-maker P6) | done (2026-11-17; wave 3a) |
 | D94 | `scripts/push.sh <branch>`: retries at 2, 4, 8 and 16 s and success only if `git ls-remote` matches `HEAD`; `AGENTS.md` points to it (`0.6.0` harvest, image-generator P4) | done (2026-11-16) |
 | D95 | `handoff.py add-pending` and `add-decision`: add to the log without reading it (`0.6.0` harvest, installer P3) | done (2026-11-16) |
 | D96 | Long log cells: `handoff.py` moves a row's closed items to "Done", or a second cap that fails (new key) (`0.6.0` harvest, image-generator P2) | done (2026-11-17; `handoff.cellHardLimit`, 1600, 0 = off) |
-| E49 | `gw-init` with `agentSignatures: false` writes the "no signatures" rule into `CLAUDE.md` against the attribution reminder (`0.6.0` harvest, image-generator P5) | pending (moves from `0.7`) |
+| E49 | `gw-init` with `agentSignatures: false` writes the "no signatures" rule into `CLAUDE.md` against the attribution reminder (`0.6.0` harvest, image-generator P5) | done (2026-11-17; wave 3a) |
 | B31 | Warning when the context nears the window with the compaction budget spent (`recover.py --state` or `Stop`), before the compaction (`0.6.0` harvest, image-generator P7) | done (2026-11-17; `Stop` hook, once per stretch, `contextGuard.nearRatio`) |
 | B38 | Sweep of the `scripts/handoff.py` minors in `pending.md` (D104): the pending-pointer count, duplicated and unchecked in a commit that only touches `pending.md`; `archive` requires "## Pendiente" while `check`/`recover` do not, and the missing-file message names the log; the `pre-push` reads `pendingFile` from the working copy; the count only looks at "Pendiente (de la bitácora)"; `move-pending` drops lines that look like pointers (`0.7.0` retro, R2; user, 2026-11-15) | done |
 | E4 | Install profiles (minimal/core/full, `core` by default) in `gw-init` and `gw-update` | pending |
@@ -326,7 +326,7 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | E60 | The `commit-msg` warns, without rejecting, about review fixes with no `Findings:` (words in a key) (`0.7` closing harvest, private-project-1 P1) | done (2026-11-16; `metrics.quality.findingsWords`) |
 | E61 | `handoff.py set-row` and `close-row` print the resulting row and `n/limit` (`0.7` closing harvest, world-maker-fantasy P4) | done (2026-11-16) |
 | B41 | Sweep of `scripts/merge-branch.sh` (E57): with `--defer-check` nobody runs the tests of the deferred branches; «nothing to merge» exits 0 with no check or warning; the dealer's line 165 asking for two full checks; and the `context_guard.py` minor (repeated computations in `--state`) (`0.7.1` patch retro) | done (2026-11-16; the wave keeps its base and the last merge runs the related tests of all of it) |
-| B42 | Tests that look for processes with `pgrep -f` match those of other agents in the same container, and `tests-for.py --run` hung in `test_hooks` with several subagents at once (`0.8` wave 2) | pending |
+| B42 | Tests that look for processes with `pgrep -f` match those of other agents in the same container, and `tests-for.py --run` hung in `test_hooks` with several subagents at once (`0.8` wave 2) | done (2026-11-17; environment marker instead of `pgrep -f`, one session per unit, `testUnitTimeout`) |
 
 ## `0.9` "Stable"
 
