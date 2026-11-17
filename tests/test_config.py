@@ -523,14 +523,6 @@ class Config(unittest.TestCase):
         for bad in (3, None, ["a"]):
             self.assertEqual(config.decisions_file({"decisionsFile": bad}), "")
 
-    def test_push_retry_delays(self):
-        # D94: a list of non-negative integers (empty = no retries); anything else gives the schema default.
-        self.assertEqual(config.push_retry_delays({}), [2, 4, 8, 16])
-        self.assertEqual(config.push_retry_delays({"pushRetryDelays": []}), [])
-        self.assertEqual(config.push_retry_delays({"pushRetryDelays": [0, 1]}), [0, 1])
-        for bad in ([-1], ["2"], [True], 5, None):
-            self.assertEqual(config.push_retry_delays({"pushRetryDelays": bad}), [2, 4, 8, 16])
-
     def test_a13_c7_measure_media_content_and_test_scan_skip_dirs(self):
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
         self.assertEqual(config.measure({}), schema["measure"]["default"])
@@ -1270,6 +1262,33 @@ class NonCapturing(unittest.TestCase):
         with self.assertRaises(config.ConfigError) as ctx:
             config.non_capturing(r"(a)\1")
         self.assertIn("back-reference", str(ctx.exception))
+
+
+
+class PushCommand(unittest.TestCase):
+    """D94: the push command the hooks suggest names the project's own push.sh, never the copy next to the hook (from
+    the plugin cache that one would take the cache as its root), and is shell-quoted."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="gw push cmd."))  # a space in the path, on purpose
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+
+    def touch(self, rel):
+        path = self.tmp / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("")
+        return path
+
+    def test_installed_copy_first_then_the_source_then_plain_git(self):
+        import shlex
+        self.assertEqual(config.push_command(self.tmp, "feat/x"), "git push -u origin feat/x")
+        source = self.touch("scripts/push.sh")  # this repo: the source of the workflow
+        self.assertEqual(config.push_command(self.tmp, "feat/x"), f"bash {shlex.quote(str(source))} feat/x")
+        installed = self.touch(".claude/gw/scripts/push.sh")  # a project (and this repo's own installed copy)
+        cmd = config.push_command(str(self.tmp), "feat/x")
+        self.assertEqual(cmd, f"bash {shlex.quote(str(installed))} feat/x")
+        self.assertEqual(shlex.split(cmd), ["bash", str(installed), "feat/x"])  # the space survives the shell
+        self.assertEqual(shlex.split(config.push_command(self.tmp, "a b"))[-1], "a b")
 
 
 if __name__ == "__main__":

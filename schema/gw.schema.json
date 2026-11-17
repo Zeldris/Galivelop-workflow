@@ -371,6 +371,7 @@
         "branchPrefixes",
         "mergeCleanup",
         "pushRetryDelays",
+        "pushLsRemoteTimeout",
         "decisionsFile",
         "wholeReadSkipExtensions",
         "wholeReadPaths",
@@ -1260,6 +1261,12 @@
       "items": {"type": "integer", "minimum": 0},
       "default": [2, 4, 8, 16],
       "description": "Seconds push.sh waits before each retry of a push that failed for a transient reason (network, timeout, HTTP 5xx): one retry per item. An empty list = no retries. Any other failure (a hook, non-fast-forward, 403) is never retried."
+    },
+    "pushLsRemoteTimeout": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 30,
+      "description": "Seconds each `git ls-remote` of push.sh (the check that the remote has the pushed commit) may take before it counts as unreadable (D94); 0 = no limit."
     },
     "decisionsFile": {
       "type": "string",

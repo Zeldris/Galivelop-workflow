@@ -4,13 +4,17 @@ A local bare repo is `origin`; a fake `git` first on PATH replaces `git push` wi
 call, read from a counter file) and runs everything else with the real git.
 Edge cases: success first try; transient then success (retried, delays from the config); retries exhausted;
 non-transient rejection (no retry, reason and fix shown); non-fast-forward; push OK but remote differs; push fails
-but remote matches; detached HEAD without argument; explicit branch; unknown branch; no origin; empty delays.
+but remote matches; ls-remote hangs (limited, reason shown, also when the
+push failed too); a hung ls-remote with a child (timeout, Ctrl-C, TERM: no orphan left); timeout 0 (no limit) and a non-numeric one; detached HEAD without argument; explicit branch; unknown branch; no origin; empty delays.
 """
 import json
 import os
+import shlex
 import shutil
+import signal
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -31,6 +35,11 @@ if [ "$1" = "push" ]; then
     fail:*) echo "${step#fail:}" >&2; exit 1 ;;
   esac
 fi
+if [ "$1" = "ls-remote" ] && [ -e "$FAKE_DIR/lshang" ]; then exec sleep 30; fi  # a network that never answers
+if [ "$1" = "ls-remote" ] && [ -e "$FAKE_DIR/lschild" ]; then  # git hung on its transport (git-remote-https): a child
+  sleep 30 & echo "$! $$" > "$FAKE_DIR/lschild.pids"; wait; exit 0
+fi
+if [ "$1" = "ls-remote" ] && [ -s "$FAKE_DIR/lsslow" ]; then sleep "$(cat "$FAKE_DIR/lsslow")"; fi  # a slow but answering network
 if [ "$1" = "ls-remote" ] && [ -s "$FAKE_DIR/lsfail" ]; then  # fail the next N ls-remote calls
   n=$(cat "$FAKE_DIR/lsfail"); if [ "$n" -gt 0 ]; then echo $((n - 1)) > "$FAKE_DIR/lsfail"; echo "fatal: network blip" >&2; exit 128; fi
 fi
@@ -71,9 +80,9 @@ class PushSh(unittest.TestCase):
         self.git(self.work, "add", "-A")
         self.git(self.work, "commit", "-q", "-m", text)
 
-    def set_delays(self, delays):
+    def set_delays(self, delays, **extra):
         (self.work / ".claude").mkdir(exist_ok=True)
-        (self.work / ".claude" / "gw.json").write_text(json.dumps(dict(BASE_CONFIG, pushRetryDelays=delays)))
+        (self.work / ".claude" / "gw.json").write_text(json.dumps(dict(BASE_CONFIG, pushRetryDelays=delays, **extra)))
 
     def steps(self, *lines):
         (self.fake / "steps").write_text("\n".join(lines) + "\n")
@@ -272,6 +281,110 @@ class PushSh(unittest.TestCase):
         r = self.run_push(cwd=outside)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(self.remote(), self.head())
+
+    def test_ls_remote_that_hangs_is_stopped_and_the_reason_shown(self):
+        # D94 n.5: a network that never answers must not block push.sh for ever (the fake would sleep 30 s)
+        self.set_delays([0, 0], pushLsRemoteTimeout=1)
+        (self.fake / "lshang").write_text("1")
+        start = time.monotonic()
+        r = self.run_push()
+        self.assertLess(time.monotonic() - start, 15)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("git ls-remote origin took over 1s and was stopped (pushLsRemoteTimeout", r.stderr)
+        self.assertIn("origin cannot be read to confirm it", r.stderr)
+        self.assertEqual(self.remote(), self.head())  # the push itself did happen, only the confirmation failed
+
+    def test_ls_remote_slower_than_zero_limit_is_waited_for_and_over_a_real_limit_is_not(self):
+        (self.fake / "lsslow").write_text("2")
+        self.set_delays([0], pushLsRemoteTimeout=0)  # 0 = no limit
+        r = self.run_push()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("push: ok", r.stdout)
+        self.commit("two")
+        self.set_delays([0], pushLsRemoteTimeout=1)  # the same 2 s answer is now too slow
+        r = self.run_push()
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("took over 1s", r.stderr)
+
+    def test_ls_remote_timeout_default_is_30_and_a_bad_value_fails_closed(self):
+        self.assertEqual(json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
+                         ["pushLsRemoteTimeout"]["default"], 30)
+        self.assertEqual(self.run_push().returncode, 0)  # absent in the config: the default applies
+        for bad in ("abc", -1, 1.5, True):
+            self.commit(f"bad {bad}")
+            before = self.pushes()
+            self.set_delays([0], pushLsRemoteTimeout=bad)
+            r = self.run_push()
+            self.assertEqual((r.returncode, self.pushes()), (2, before), bad)
+            self.assertIn("push: invalid config (.claude/gw.json); see what is wrong and fix it: python3 ", r.stderr)
+            self.assertIn(" validate", r.stderr)
+            self.assertNotIn("pushRetryDelays", r.stderr)  # it does not blame a key the user may not have touched
+
+    def child_pids(self):
+        """The (transport child, fake git) pids the hung ls-remote wrote, once it wrote them."""
+        path = self.fake / "lschild.pids"
+        deadline = time.monotonic() + 10
+        while not (path.exists() and path.read_text().strip()) and time.monotonic() < deadline:
+            time.sleep(0.05)
+        return [int(x) for x in path.read_text().split()]
+
+    def assertGone(self, pids):
+        """Each pid has exited (a zombie waiting for its reaper counts as gone): no orphan of push.sh is left."""
+        deadline = time.monotonic() + 5
+        alive = pids
+        while alive and time.monotonic() < deadline:
+            alive = [pid for pid in pids if subprocess.run(["ps", "-o", "stat=", "-p", str(pid)], capture_output=True,
+                                                            text=True).stdout.strip()[:1] not in ("", "Z")]
+            time.sleep(0.05)
+        for pid in alive:
+            os.kill(pid, 9)
+        self.assertEqual(alive, [], "processes of the hung ls-remote outlived push.sh")
+
+    def test_ls_remote_timeout_kills_git_and_its_transport_child(self):
+        # D94: killing only `git` would leave the hung git-remote-https behind, one more per retry
+        self.set_delays([0], pushLsRemoteTimeout=1)
+        (self.fake / "lschild").write_text("1")
+        r = self.run_push()
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("took over 1s and was stopped", r.stderr)
+        self.assertGone(self.child_pids())
+
+    def test_interrupt_or_term_kills_the_hung_ls_remote_and_its_child(self):
+        # D94: the background job ignores the terminal's Ctrl-C, so push.sh's own trap must stop it
+        for sig, code in ((signal.SIGINT, 130), (signal.SIGTERM, 143)):
+            with self.subTest(sig=sig):
+                self.commit(f"for {sig.name}")
+                (self.fake / "lschild.pids").unlink(missing_ok=True)
+                self.set_delays([0], pushLsRemoteTimeout=0)  # no limit: only the signal ends it
+                (self.fake / "lschild").write_text("1")
+                proc = subprocess.Popen(["bash", str(self.work / "scripts" / "push.sh")], cwd=self.work, env=self.env,
+                                        stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                pids = self.child_pids()
+                proc.send_signal(sig)
+                proc.communicate(timeout=20)
+                self.assertEqual(proc.returncode, code)
+                self.assertGone(pids)
+
+    def test_push_failed_and_ls_remote_timed_out_says_why(self):
+        # D94: the pushLsRemoteTimeout note also on the failure path, not only after a push that said OK
+        self.set_delays([0], pushLsRemoteTimeout=1)
+        self.steps(*["fail:fatal: Could not resolve host: example.com"] * 3)
+        (self.fake / "lshang").write_text("1")
+        r = self.run_push()
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("used up (pushRetryDelays)", r.stderr)
+        self.assertIn("took over 1s and was stopped (pushLsRemoteTimeout", r.stderr)
+
+    def test_suggested_commands_quote_a_root_with_spaces(self):
+        spaced = self.tmp / "my work"
+        self.set_delays([])
+        shutil.copytree(self.work, spaced, symlinks=True)
+        self.steps("fail:fatal: Could not resolve host: example.com")
+        r = subprocess.run(["bash", str(spaced / "scripts" / "push.sh")], cwd=spaced, env=self.env,
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        line = next(x for x in r.stderr.splitlines() if "used up" in x)
+        self.assertEqual(shlex.split(line.split("run again: ", 1)[1]), ["bash", str(spaced / "scripts" / "push.sh"), "main"])
 
     def test_too_many_arguments(self):
         r = self.run_push("a", "b")

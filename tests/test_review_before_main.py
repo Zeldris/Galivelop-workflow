@@ -183,7 +183,7 @@ class Hook(Snapshot):
         self.assertBlocked(self.create(), "cannot query origin", "missing.git", "ls-remote")
 
     def test_branch_not_on_origin_blocked(self):
-        self.assertBlocked(self.create(head="nowhere"), "not on origin", "git push -u origin nowhere")
+        self.assertBlocked(self.create(head="nowhere"), "not on origin", "push.sh nowhere")
 
     # the mark rule (portal) ---------------------------------------------------------------------------------------
     def test_code_after_mark_blocked(self):

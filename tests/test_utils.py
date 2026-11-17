@@ -227,7 +227,7 @@ class HandoffSizeAndDone(Base):
         code, out = self.check(self.doc(cell="x" * 10115))
         self.assertEqual(code, 0, out)
         self.assertIn("has 10115 characters (limit 800)", out)
-        self.set_handoff(cellHardLimit=200)
+        self.set_handoff(cellLimit=100, cellHardLimit=200)  # the hard cap may not be below cellLimit (D96)
         self.assertEqual(self.check(self.doc(cell="x" * 200))[0], 0)
         code, out = self.check(self.doc(cell="x" * 201))
         self.assertEqual(code, 1, out)
@@ -236,6 +236,30 @@ class HandoffSizeAndDone(Base):
         code, out = self.check(self.doc())
         self.assertEqual(code, 2, out)
         self.assertIn("handoff.cellHardLimit: must be at least 0, got -1", out)
+
+    def test_d96_hard_cap_below_the_soft_limit_is_rejected_with_the_reason(self):
+        for sizes in ({"cellHardLimit": 500}, {"cellLimit": 900, "cellHardLimit": 800}):  # the first: default cellLimit 800
+            self.set_handoff(**sizes)
+            code, out = self.check(self.doc())
+            self.assertEqual(code, 2, out)
+            self.assertIn("handoff: cellHardLimit (", out)
+            self.assertIn("must not be below cellLimit", out)
+            self.assertIn("or set cellHardLimit to 0 (off)", out)
+        for sizes in ({"cellHardLimit": 800}, {"cellLimit": 900, "cellHardLimit": 0}):  # equal, and off, are fine
+            self.set_handoff(**sizes)
+            self.assertEqual(self.check(self.doc())[0], 0)
+
+    def test_d96_only_cell_limit_raised_stays_valid_and_lifts_the_default_hard_cap(self):
+        # A project that only raised cellLimit above the default hard cap (1600) is valid: the hard cap it did not set
+        # rises to cellLimit, so a cell between the two passes and one above cellLimit fails with the reason.
+        self.set_handoff(cellLimit=2000)
+        code, out = self.check(self.doc(cell="x" * 1800))
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("must not be below cellLimit", out)
+        self.assertNotIn("over the hard cap", out)
+        code, out = self.check(self.doc(cell="x" * 2001))
+        self.assertEqual(code, 1, out)
+        self.assertIn("over the hard cap (handoff.cellHardLimit = 2000;", out)
 
     def test_cell_rules_ignore_other_tables_headers_and_escaped_pipes(self):
         other = self.doc().replace("## Pendiente\n\n", "## Pendiente\n\n| a | " + "y" * 900 + " |\n\n")

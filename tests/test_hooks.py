@@ -53,7 +53,7 @@ class Project:
         (gw / "scripts").mkdir(parents=True)
         (gw / "schema").mkdir()
         for name in ("config.py", "is-code.sh", "reviewed.sh", "handoff.py", "check-green.sh", "check.sh", "commit-message.py",
-                     "change-size.py", "metrics.py", "session_log.py"):
+                     "change-size.py", "metrics.py", "session_log.py", "push.sh"):
             shutil.copy2(ROOT / "scripts" / name, gw / "scripts" / name)
         shutil.copy2(ROOT / "schema" / "gw.schema.json", gw / "schema" / "gw.schema.json")
         (self.work / ".githooks").mkdir()
@@ -2763,7 +2763,8 @@ class Reviewed(Base):
         p.write("src/a.py", "a = 2\n"); p.commit("unpushed")
         code, out = p.run("bash", self.script)
         self.assertNotEqual(code, 0, out)
-        self.assertIn("git push -u origin feature", out)
+        self.assertRegex(out, r"bash \S*/push\.sh feature")
+        self.assertNotIn("git push -u origin", out)  # D94: the retrying script, not the bare push
 
     def test_writes_and_commits_the_mark_then_main_accepts_it(self):
         p = self.p

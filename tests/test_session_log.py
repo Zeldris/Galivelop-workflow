@@ -788,7 +788,7 @@ class Recover(Base):
                                              "refresh them)")
         p.write("a.txt", "1\n")
         p.commit("local work")
-        self.assertEqual(self.remote_line(), "- Remote: 1 commit(s) ahead of origin/mine, not pushed: git push -u origin mine")
+        self.assertRegex(self.remote_line(), r"^- Remote: 1 commit\(s\) ahead of origin/mine, not pushed: bash \S*/push\.sh mine$")
         p.git("push", "-q", "--no-verify", "origin", "mine")
         p.git("reset", "-q", "--hard", "HEAD~1")
         self.assertEqual(self.remote_line(), "- Remote: 1 commit(s) behind origin/mine: git merge --ff-only origin/mine")
@@ -801,7 +801,7 @@ class Recover(Base):
         p = self.p
         p.git("checkout", "-q", "-b", "fresh", "main")
         self.assertIn("no origin/fresh in the local refs (never pushed, or not fetched)", self.remote_line())
-        self.assertIn("git push -u origin fresh", self.remote_line())
+        self.assertRegex(self.remote_line(), r"or push it: bash \S*/push\.sh fresh$")
         p.git("checkout", "-q", "--detach")
         self.assertIsNone(self.remote_line())
 
