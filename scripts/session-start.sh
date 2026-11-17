@@ -16,6 +16,8 @@
 #     while git user.email is noreply@anthropic.com (D21).
 #   - spend alert (B6): with a valid config, prints the lines of `metrics.py alert` (a model whose spend today or
 #     yesterday passes metrics.alert.factor x its daily mean); its errors are dropped.
+#   - open questions (C3): with a valid config, prints `questions.py notice`: only "N open questions (path)", or the whole
+#     list when some open question was never shown (mark in the git dir, gw/questions-shown); its errors are dropped.
 # Fails open: always exits 0 (a SessionStart hook cannot block); warnings go to stdout, which enters the agent's
 # context, each ending with the command that fixes it.
 # Project root: the git top level of this script's folder when it holds .claude/gw.json (the copy in
@@ -124,6 +126,9 @@ else
   fi
   if [ -f "$here/metrics.py" ]; then
     python3 "$here/metrics.py" alert --root "$root" 2>/dev/null | while IFS= read -r line; do warn "$line"; done
+  fi
+  if [ -f "$here/questions.py" ]; then
+    python3 "$here/questions.py" --root "$root" notice 2>/dev/null || true
   fi
 fi
 

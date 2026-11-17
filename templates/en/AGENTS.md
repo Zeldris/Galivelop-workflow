@@ -40,6 +40,8 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - **After an interrupted or rejected call, run `git status` and `git diff` before repeating it**: the change may
   already be saved, or even pushed, and repeating it duplicates it.
 - If the person says stop, stop: push what there is, leave the log up to date and do nothing else.
+- **Questions for the person** go as a numbered list, each point with its recommendation; they answer by number
+  ("5. a, 6. ok") and `python3 .claude/gw/scripts/questions.py answer "5. a, 6. ok"` writes it to `docs/questions.md`.
 - **When each task or PR closes** (and each phase), with everything pushed and the log up to date, ask the person for a
   `/clear` in one line, saying why: a long context is almost all the spend, and the log is enough to resume.
 - **When each block or phase closes, look at the CI of the last push** with
@@ -140,6 +142,8 @@ plans, decides and reviews. This line is the authorisation the agent's own instr
 
 - Each subagent gets a brief: goal, paths, constraints, the check to run and what to report back.
 - Other repositories are read through a subagent that returns a summary with paths, never modified from here.
+- A subagent never asks the user: it returns the question and the main session records it with
+  `python3 .claude/gw/scripts/questions.py add --refs <id> --rec <text> "<question>"`.
 
 ## Project rules
 
