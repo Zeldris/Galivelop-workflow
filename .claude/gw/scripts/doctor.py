@@ -29,6 +29,7 @@ CI and a cloud session.
 Python 3.8+ standard library only.
 """
 import argparse
+import datetime
 import fnmatch
 import json
 import os
@@ -706,6 +707,57 @@ def lever_sources(root):
     return sources
 
 
+SCOUT_COMPARE = ".claude/skills/gw-scout-updates/scripts/compare.py"
+
+
+def check_scout(rep, root, cfg):
+    """D80: a gw-scout-updates seal older than `scoutMaxAgeDays`, or on files that changed since, misleads: warn.
+    The seals are read by the skill's own compare.py (one parser); anything that stops it from running is a warning."""
+    folder, max_days = config.scout_settings(cfg or {})
+    arch = Path(root) / folder / "architecture.md"
+    if not arch.exists():
+        return  # the skill was never used here
+    name = f"{folder}/architecture.md"
+    script = Path(root) / SCOUT_COMPARE
+    if not script.is_file():
+        rep.warn("scout", f"{name} exists but {SCOUT_COMPARE} is not installed, so its seals were not checked",
+                 "run /gw-update with the gw-scout-updates skill copied (apply.py --with)")
+        return
+    r = None
+    try:
+        r = subprocess.run([sys.executable, str(script), str(arch), "--root", str(root), "--json", "--no-inventory"],
+                           capture_output=True, text=True, timeout=60)
+        res = json.loads(r.stdout)
+        if not isinstance(res, dict):
+            raise ValueError("not an object")
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        detail = (r.stderr.strip().splitlines() or [str(exc)])[-1] if r else str(exc)
+        rep.warn("scout", f"compare.py could not check {name}: {detail}",
+                 f"run `python3 {script} --root {root}` and fix its error")
+        return
+    problems = []
+    dates = []
+    for item in res.get("same", []) + res.get("changed", []):
+        try:
+            dates.append(datetime.date.fromisoformat(item["date"]))
+        except (KeyError, TypeError, ValueError):
+            pass
+    if not dates and not res.get("unsealed"):
+        problems.append("it has no sealed section")
+    if max_days and dates:
+        age = (datetime.date.today() - min(dates)).days
+        if age > max_days:
+            problems.append(f"the oldest seal is {age} days old (scoutMaxAgeDays {max_days})")
+    for item in res.get("changed", []):
+        problems.append(f"section {item['section']!r} sealed files changed: {', '.join(item['files'])}")
+    for item in res.get("unsealed", []):
+        problems.append(f"section {item['section']!r} has no valid seal")
+    if problems:
+        rep.warn("scout", f"{name} is stale: {'; '.join(problems)}", "re-seal it with /gw-scout-updates")
+    else:
+        rep.ok("scout", f"{name} seals are current")
+
+
 def check_levers(rep, root, cfg):
     """B11: model and effort are picked per agent (gw-selector); a global variable that overrides them is warned."""
     try:
@@ -1127,6 +1179,7 @@ def run(root):
     check_session(rep, root)
     check_compaction(rep, root)
     check_levers(rep, root, cfg)
+    check_scout(rep, root, cfg)
     check_author(rep, root, cfg)
     return rep
 

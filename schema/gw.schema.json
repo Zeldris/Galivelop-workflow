@@ -378,6 +378,7 @@
         "readPointers",
         "wholeReadRepeatOnly",
         "wholeReadStaleDays",
+        "scoutMaxAgeDays",
         "harvest",
         "applyDiffLines",
         "ciGreenConclusions",
@@ -778,6 +779,12 @@
       },
       "default": [],
       "description": "Folders (relative to the repo root, no '..') whose Markdown files write relative links from the repo root instead of from their own folder (md-links.py)."
+    },
+    "scoutMaxAgeDays": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 30,
+      "description": "Days after which the seal of a gw-scout-updates architecture.md section counts as stale: doctor.py warns to re-seal it (D80). 0 = do not check the age (a section whose sealed files changed, or with no seal, is still warned)."
     },
     "scoutDir": {
       "type": "string",

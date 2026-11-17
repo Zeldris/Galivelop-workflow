@@ -1,6 +1,7 @@
 """scripts/doctor.py on temporary projects: a fully set-up one passes; each broken piece gives its FAIL or WARN with
 the command that fixes it. HOME points to a temp folder (no real ~/.claude); git runs isolated as in test_hooks.
 """
+import datetime
 import json
 import re
 import shutil
@@ -841,6 +842,76 @@ class Doctor(Snapshot):
         (user / "settings.json").write_text(json.dumps({"env": ["x"]}))
         out = self.doctor()[1]
         self.assertLine(out, "OK", "levers")
+
+    def scout_lines(self, out):
+        return [l for l in out.splitlines() if re.match(r"(OK|WARN|FAIL) +scout:", l)]
+
+    def install_scout(self):
+        shutil.copytree(ROOT / "skills" / "gw-scout-updates", self.p.work / ".claude" / "skills" / "gw-scout-updates")
+
+    def write_scout(self, date, files="a.txt", body=None):
+        self.p.write("a.txt", "x\n")
+        self.p.commit("a")
+        commit = self.p.git("rev-parse", "--short", "HEAD").stdout.strip()
+        self.p.write(".claude/gw/scout/architecture.md", body if body is not None else
+                     f"## Runtimes\n\n<!-- seal: {date} · {commit} · {files} -->\n\n| Component |\n")
+        self.p.commit("scout")
+
+    def test_scout_without_memory_is_silent(self):
+        self.assertEqual(self.scout_lines(self.doctor()[1]), [])
+
+    def test_scout_old_seal_warns_and_max_age_zero_turns_it_off(self):
+        self.write_scout("2020-01-01")
+        self.install_scout()
+        self.assertLine(self.doctor()[1], "WARN", "scout", "oldest seal", "scoutMaxAgeDays 30", "/gw-scout-updates")
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["scoutMaxAgeDays"] = 0
+        self.p.write(".claude/gw.json", json.dumps(cfg, indent=2))
+        self.assertLine(self.doctor()[1], "OK", "scout")
+
+    def test_scout_recent_seal_is_ok_and_changed_files_warn(self):
+        self.write_scout(datetime.date.today().isoformat())
+        self.install_scout()
+        self.assertLine(self.doctor()[1], "OK", "scout")
+        self.p.write("a.txt", "changed\n")
+        self.assertLine(self.doctor()[1], "WARN", "scout", "files changed", "a.txt")
+
+    def test_scout_unsealed_section_warns(self):
+        self.write_scout("", body="## Runtimes\n\n| Component |\n")
+        self.install_scout()
+        self.assertLine(self.doctor()[1], "WARN", "scout", "has no valid seal")
+
+    def test_scout_file_without_sections_warns(self):
+        self.write_scout("", body="nothing here\n")
+        self.install_scout()
+        self.assertLine(self.doctor()[1], "WARN", "scout", "no sealed section")
+
+    def test_scout_seal_in_constraints_is_not_counted(self):
+        today = datetime.date.today().isoformat()
+        self.write_scout(today)
+        text = (self.p.work / ".claude/gw/scout/architecture.md").read_text()
+        self.p.write(".claude/gw/scout/architecture.md",
+                     text + "\n## Constraints\n\n<!-- seal: 2020-01-01 · abcd123 · a.txt -->\n")
+        self.install_scout()
+        self.assertLine(self.doctor()[1], "OK", "scout")
+
+    def test_scout_without_compare_py_warns(self):
+        self.write_scout(datetime.date.today().isoformat())
+        self.assertLine(self.doctor()[1], "WARN", "scout", "compare.py", "not checked", "/gw-update")
+
+    def test_scout_compare_py_that_crashes_warns_with_the_reason(self):
+        self.write_scout("2020-01-01")
+        self.install_scout()
+        self.p.write(".claude/skills/gw-scout-updates/scripts/compare.py", "raise RuntimeError('boom')\n")
+        out = self.doctor()[1]
+        self.assertLine(out, "WARN", "scout", "could not check", "boom")
+        self.assertEqual([l for l in out.splitlines() if l.startswith("OK   scout")], [])
+
+    def test_scout_unreadable_architecture_warns(self):
+        self.write_scout("", body="")
+        (self.p.work / ".claude/gw/scout/architecture.md").write_bytes(b"\xff\xfe\x00bad")
+        self.install_scout()
+        self.assertLine(self.doctor()[1], "WARN", "scout", "could not check")
 
     def compaction_lines(self, out):
         return [l for l in out.splitlines() if re.match(r"(OK|WARN|FAIL) +compaction:", l)]

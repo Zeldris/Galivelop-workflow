@@ -587,6 +587,15 @@ def review_trivial_lines(config):
     return _schema()["properties"]["reviewTrivialLines"]["default"]
 
 
+def scout_settings(config):
+    """(`scoutDir`, `scoutMaxAgeDays`) of the config (D80): each the schema default when absent or invalid."""
+    prop = _schema()["properties"]["scoutDir"]
+    folder = config.get("scoutDir")
+    if not (isinstance(folder, str) and re.fullmatch(prop["pattern"], folder)):
+        folder = prop["default"]
+    return folder, _int_key(config, "scoutMaxAgeDays")
+
+
 def test_map(config):
     """The `testMap` key as a dict (rules, command) (E21)."""
     return _section(config, "testMap")
