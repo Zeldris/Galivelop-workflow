@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI en verde). Etiqueta y release `v0.7.1` creadas por el agente desde una sesión local (2026-11-16, a petición del usuario) |
-| Siguiente paso | B31 hecho con los arreglos de su revisión (2026-11-17; el `Stop` bloquea una vez por tramo antes de la compactación con el presupuesto gastado; falta mirar su CI). Siguiente: elegir con el usuario la siguiente tarea de la `0.8`. Presupuesto de compactaciones: 1 |
+| Siguiente paso | Grupo A de la `0.8` cerrado (D96, D61, D62, B31; cada uno revisado y con sus arreglos; CI de `6f533fa` en verde, 2026-11-17). Siguiente: decidir con el usuario `contextGuard.window` de este repo (sin ella B31 calla aquí) y elegir el siguiente grupo de la `0.8`. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
