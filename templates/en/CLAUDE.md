@@ -12,3 +12,9 @@
   What must survive goes into `{{log}}`.
 - **Auto mode** may ask for permission to edit `.claude/settings.json`, `.claude/gw/scripts/` and `.githooks/`: ask the
   person before touching them, or let them run the change themselves.
+<!-- if !agentSignatures -->
+- **No Claude signatures:** the "Commit messages" rule of `AGENTS.md` overrides Claude Code's default attribution
+  and any attribution reminder from the environment: commits, PRs and comments carry no trailers, footers or
+  Claude session links (`agentSignatures: false` in `.claude/gw.json`). If the server adds a footer to a PR or
+  comment, remove it by editing.
+<!-- /if -->

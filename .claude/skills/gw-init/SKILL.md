@@ -47,10 +47,19 @@ project: `cd <project> && claude`.
 ## 3. Decide what needs judgement
 
 Follow section 1 of the guide: `language`, `log`, `install`, `check`, protected branch, `direct` or `pr`, `content`
-regexes, and the optional skills `gw-opt-ai` and `gw-scout-updates` (only if the user asks).
+regexes, the agent signatures (`agentSignatures`), and the optional skills `gw-opt-ai` and `gw-scout-updates` (only
+if the user asks).
 
 - Infer `install` and `check` from `package.json`, `pyproject.toml`, `Cargo.toml`, `pom.xml`, `go.mod` or
   `Makefile`, and run the `check` command once.
+- Ask whether the project accepts agent signatures (`Co-Authored-By` of Claude, session links). If not, add
+  `--agent-signatures false`: the `commit-msg` hook then rejects them and `apply.py` writes the "No Claude signatures"
+  rule into the project's `CLAUDE.md`, which overrides the environment's attribution reminder.
+- Offer a licence (an offer, never imposed; skip it if the project already has a `LICENSE` or the user declines): the
+  dual licence of this workflow, MIT for the code and CC BY-NC-SA 4.0 for the content, with a third-party note. Ask for
+  the copyright year and holder. If accepted, copy `<workflow>/templates/licenses/LICENSE-code.txt` to `LICENSE`,
+  `LICENSE-content.md` to `LICENSE-content.md` and `THIRD-PARTY.md` to `THIRD-PARTY.md`, fill `<year>` and `<holder>`
+  and list the project's third-party material (name, source, licence). Mention both in the README's licence section.
 - Ask the user whenever a value is a guess. Offer numbered candidates; one question per unknown.
 
 Done when every fact has an answer the user confirmed.
@@ -65,6 +74,9 @@ Done when every fact has an answer the user confirmed.
      --push-to-protected <direct|pr> --content '<regex>'
    ```
 
+   `--init` also writes a marked per-stack block into `.gitignore` (Node, Python, Rust, Go): the stacks are detected
+   from the project's root files, or fixed with `--stack <stack>` (repeatable; `gitignoreStacks` in
+   `.claude/gw.json`, `docs/en/config.md`). Tell the user which stacks were written.
    Repeat `--install`, `--check-command` and `--content` once per value. Add `--with gw-opt-ai` or
    `--with gw-scout-updates` when chosen. Existing projects: read "Existing projects" in the guide first (hook
    managers, existing `CLAUDE.md`, red check, existing log).
@@ -85,7 +97,8 @@ Done when no `*.gw-new` is left and the log has a next-step line.
 1. `python3 <project>/.claude/gw/scripts/doctor.py`; fix and rerun until no `FAIL` is left. Explain each `WARN` to
    the user (`docs/en/troubleshooting.md`).
 2. Commit with the message `apply.py` suggested, replacing its last line with the real `Next:` (`Siguiente:` in
-   Spanish projects), then `git push -u origin <branch>`; the new pre-push runs the check on the pushed commit.
+   Spanish projects), then `bash .claude/gw/scripts/push.sh <branch>` (it retries on network failures and counts as pushed only what
+   `git ls-remote` confirms); the new pre-push runs the check on the pushed commit.
 3. Report: what was created, what the user must decide next, and that nothing went to the protected branch.
 4. Warn the user: a `.claude/settings.json` created mid-session is not loaded until the next session, so the
    `PreToolUse` hook (the PR guard) is not active in this one. Until they open a new session from the project, check

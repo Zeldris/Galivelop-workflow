@@ -53,7 +53,8 @@ Collect these facts **before** running anything. They all go into `.claude/gw.js
 | Pushing to it (`pushToProtected`) | `direct` if people push straight to it; `pr` if it only takes pull requests |
 | Content (`content`) | Regexes for what is **not** code and needs no `/code-review`: docs, data, texts |
 | Required retro (`requireRetro`) | Ask: "`/retro` on every push to the protected branch, or only on big changes?". Every push: `--require-retro true` (`reviewed.sh` will not mark without a decided retro on the branch); otherwise `false` |
-| Agent signatures (`agentSignatures`) | Ask: "Does the project allow agent signatures in commits (a Claude `Co-Authored-By`, session links)?". If not: `--agent-signatures false` (the `commit-msg` hook rejects a message that carries them); if yes, leave it `true` |
+| Agent signatures (`agentSignatures`) | Ask: "Does the project allow agent signatures in commits (a Claude `Co-Authored-By`, session links)?". If not: `--agent-signatures false` (the `commit-msg` hook rejects a message that carries them); if yes, leave it `true`. With `false`, `CLAUDE.md` gets the "No Claude signatures" rule, which overrides the environment's attribution reminder (E49) |
+| Licence (`gw-init` offer, D87) | Ask whether they want the workflow's dual licence: MIT for the code and CC BY-NC-SA 4.0 for the content, with a third-party note. If yes, `gw-init` copies `templates/licenses/` (`LICENSE-code.txt` → `LICENSE`, `LICENSE-content.md`, `THIRD-PARTY.md`) and fills year and holder; if not, nothing is touched |
 | Visible languages and design references (`visibleLanguages`, `designReferences`) | Only if the project has them: `--visible-language` and `--design-reference`, one flag per value |
 | Optional skills | `gw-opt-ai` (local AI models) and `gw-scout-updates` (update scouting); only if the person asks |
 
