@@ -287,3 +287,7 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [ ] `0.8` · **Revisión D95 n.º 11**: `log_is_english` relee la bitácora en cada llamada que lo necesita (eficiencia, resuelto en parte: ya solo se llama al crear algo).
 - `0.8`: `handoff.cellHardLimit` menor que `cellLimit` no se valida (revisión de D96, hallazgo 5): `config.py validate` debería rechazarlo o avisar.
 - `0.8`: `tests/check.sh` corre `handoff.py check` dos veces (`check --strict` y dentro de `preflight`; revisión de D61, hallazgo 6): dejar una sola pasada.
+- D62 (revisión n.º 3, 0.8): el aviso de CI del `pre-push` lanza `ci-status.py` con `start_new_session`; con Ctrl-C, ci-status y `gh`/`curl` siguen huérfanos hasta `ciStatusTimeout`: matar el grupo en un try/finally.
+- D62 (revisión n.º 5, 0.8): el aviso de CI del `pre-push` deduplica por sha remoto y nombra solo la primera rama; agrupar las ramas por sha y nombrarlas todas.
+- D62 (revisión n.º 8, 0.8): la orden del aviso de CI del `pre-push` usa una ruta relativa a la raíz; desde un subdirectorio no se encuentra: dar la ruta absoluta.
+- D62 (revisión n.º 9, 0.8): si `config.py` no lee `prepushCiWarn` o su timeout, el aviso de CI se apaga sin decir nada; sacar una línea con `config.py validate`.

@@ -1190,7 +1190,7 @@
     "prepushCiWarn": {
       "type": "boolean",
       "default": true,
-      "description": "D62: the pre-push warns, without blocking, when the last CI of a pushed branch (its current tip on the remote) is red, or GitHub never started it; false turns the warning off."
+      "description": "D62: the pre-push warns, without blocking, when the last CI of a pushed branch (its current tip on the remote) is red, GitHub never started it, or no CI reported although .github/workflows exists and ciOnPush is not false (a force push and a remote not on GitHub are not checked); false turns the warning off."
     },
     "prepushCiWarnTimeout": {
       "type": "integer",

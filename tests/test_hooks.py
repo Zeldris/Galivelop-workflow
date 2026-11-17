@@ -1511,6 +1511,9 @@ class PrePushCiWarn(Base):
         p = self.p
         p.write(".claude/gw/scripts/ci-status.py", self.STUB)
         p.commit("ci-status stub")
+        # origin looks like GitHub (the repo the hook names) and still pushes to the local bare repo
+        p.git("remote", "set-url", "origin", "https://github.com/o/r.git")
+        p.git("config", f"url.{p.bare}.insteadOf", "https://github.com/o/r.git")
         p.git("push", "-q", "--no-verify", "origin", "main")
         p.git("checkout", "-q", "-b", "feature")
         p.write("docs/a.md", "a\n"); p.commit("a")
@@ -1520,8 +1523,12 @@ class PrePushCiWarn(Base):
         self.log = self.tmp / "ci.log"
 
     def push(self, *args, ci=None, env=None):
+        return self.push_to("origin", *args, ci=ci, env=env)
+
+    def push_to(self, remote, *args, ci=None, env=None):
         env = dict(env or {}, GW_CI_LOG=str(self.log), GW_CI=json.dumps(ci or {}))
-        return self.p.push("origin", *args, env=env)
+        return self.p.push(*args[:1], remote, *args[1:], env=env) if args and args[0] == "-f" else \
+            self.p.push(remote, *args, env=env)
 
     def calls(self):
         return self.log.read_text().splitlines() if self.log.exists() else []
@@ -1532,9 +1539,9 @@ class PrePushCiWarn(Base):
         self.assertIn(f"pre-push: WARNING: the last CI of feature (commit {self.remote_tip[:7]}) is red: "
                       "check (ubuntu-latest): failure", out)
         self.assertIn(f"the push goes on; read the failure: python3 .claude/gw/scripts/ci-status.py "
-                      f"--sha {self.remote_tip[:12]} --failed", out)
+                      f"--repo o/r --sha {self.remote_tip[:12]} --failed", out)
         self.assertEqual(self.p.git("rev-parse", "feature", cwd=self.p.bare).stdout.strip(), self.p.sha())
-        self.assertIn(f"--sha {self.remote_tip} --json", self.calls()[0])
+        self.assertIn(f"--repo o/r --sha {self.remote_tip} --json", self.calls()[0])
 
     def test_unstarted_ci_counts_as_red(self):
         code, out = self.push("feature", ci={self.remote_tip: "unstarted"})
@@ -1557,7 +1564,57 @@ class PrePushCiWarn(Base):
         self.assertEqual(code, 0, out)
         self.assertLess(time.monotonic() - start, 20, out)
         self.assertIn("pre-push: CI of feature not read within 1 s (prepushCiWarnTimeout); see it with: python3 "
-                      f".claude/gw/scripts/ci-status.py --sha {self.remote_tip[:12]}", out)
+                      f".claude/gw/scripts/ci-status.py --repo o/r --sha {self.remote_tip[:12]}", out)
+
+    def workflows(self):
+        self.p.write(".github/workflows/check.yml", "on: push\n")
+
+    def test_no_ci_when_workflows_run_on_push_counts_as_red(self):
+        self.workflows()
+        code, out = self.push("feature", ci={self.remote_tip: "none"})
+        self.assertEqual(code, 0, out)
+        self.assertIn(f"pre-push: WARNING: no CI has reported on the last commit of feature ({self.remote_tip[:7]}), "
+                      "though .github/workflows runs on push: GitHub may not have started it (Actions quota or payments)",
+                      out)
+        self.assertIn(f"read the failure: python3 .claude/gw/scripts/ci-status.py --repo o/r --sha {self.remote_tip[:12]}", out)
+
+    def test_no_ci_is_silent_without_workflows_or_with_ci_on_push_false(self):
+        code, out = self.push("feature", ci={self.remote_tip: "none"})
+        self.assertNotIn("WARNING", out)
+        self.p.git("update-ref", "refs/heads/feature", self.remote_tip, cwd=self.p.bare)
+        self.workflows()
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, ciOnPush=False)))
+        code, out = self.push("feature", ci={self.remote_tip: "none"})
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("WARNING", out)
+        self.assertEqual(len(self.calls()), 2, self.calls())
+
+    def test_the_repo_is_the_remote_pushed_to_not_origin(self):
+        p = self.p
+        p.git("remote", "add", "upstream", "https://github.com/u/up.git")
+        p.git("config", f"url.{p.bare}.insteadOf", "https://github.com/u/up.git")  # same bare repo, other name
+        p.git("fetch", "-q", "upstream")
+        code, out = self.push_to("upstream", "feature", ci={self.remote_tip: "red"})
+        self.assertEqual(code, 0, out)
+        self.assertIn("--repo u/up --sha", self.calls()[0])
+        self.assertIn(f"read the failure: python3 .claude/gw/scripts/ci-status.py --repo u/up --sha {self.remote_tip[:12]}", out)
+
+    def test_a_remote_not_on_github_is_not_checked(self):
+        p = self.p
+        p.git("remote", "add", "local", str(p.bare))
+        code, out = self.push_to("local", "feature", ci={self.remote_tip: "red"})
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("WARNING", out)
+        self.assertEqual(self.calls(), [])
+
+    def test_a_force_push_does_not_warn_about_the_dropped_commit(self):
+        p = self.p
+        p.git("reset", "-q", "--hard", "main")
+        p.write("docs/c.md", "c\n"); p.commit("rewritten")
+        code, out = self.push("-f", "feature", ci={self.remote_tip: "red"})
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("WARNING", out)
+        self.assertEqual(self.calls(), [])
 
     def test_key_false_turns_it_off(self):
         self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, prepushCiWarn=False)))
@@ -1587,8 +1644,6 @@ class PrePushCiWarn(Base):
     def test_real_ci_status_without_gh_or_token_is_silent(self):
         p = self.p
         shutil.copy2(ROOT / "scripts" / "ci-status.py", p.work / ".claude" / "gw" / "scripts" / "ci-status.py")
-        p.git("remote", "set-url", "origin", "https://github.com/o/r.git")
-        p.git("remote", "set-url", "--push", "origin", str(p.bare))
         bindir = self.tmp / "bin"; bindir.mkdir()
         (bindir / "gh").write_text("#!/bin/sh\nexit 1\n"); (bindir / "gh").chmod(0o755)
         (bindir / "curl").write_text("#!/bin/sh\nexit 7\n"); (bindir / "curl").chmod(0o755)
