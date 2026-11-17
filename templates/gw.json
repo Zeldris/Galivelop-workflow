@@ -89,6 +89,7 @@
   "staleRefs": [],
   "linkRoots": [],
   "scoutDir": ".claude/gw/scout",
+  "scoutMaxAgeDays": 30,
   "relatedTests": {"fast": [], "slow": []},
   "changeSize": {"commit": 400, "block": 1000, "severity": "warn"},
   "testMap": {"rules": [], "command": ""},

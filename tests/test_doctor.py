@@ -1,6 +1,7 @@
 """scripts/doctor.py on temporary projects: a fully set-up one passes; each broken piece gives its FAIL or WARN with
 the command that fixes it. HOME points to a temp folder (no real ~/.claude); git runs isolated as in test_hooks.
 """
+import datetime
 import json
 import re
 import shutil
@@ -841,6 +842,36 @@ class Doctor(Snapshot):
         (user / "settings.json").write_text(json.dumps({"env": ["x"]}))
         out = self.doctor()[1]
         self.assertLine(out, "OK", "levers")
+
+    def scout_lines(self, out):
+        return [l for l in out.splitlines() if re.match(r"(OK|WARN|FAIL) +scout:", l)]
+
+    def write_scout(self, date, files="a.txt", commit=None):
+        self.p.write("a.txt", "x\n")
+        self.p.commit("a")
+        commit = commit or self.p.git("rev-parse", "--short", "HEAD").stdout.strip()
+        self.p.write(".claude/gw/scout/architecture.md",
+                     f"## Runtimes\n\n<!-- seal: {date} · {commit} · {files} -->\n\n| Component |\n")
+        self.p.commit("scout")
+
+    def test_scout_without_memory_is_silent(self):
+        self.assertEqual(self.scout_lines(self.doctor()[1]), [])
+
+    def test_scout_old_seal_warns_and_max_age_zero_turns_it_off(self):
+        self.write_scout("2020-01-01")
+        self.assertLine(self.doctor()[1], "WARN", "scout", "oldest seal", "scoutMaxAgeDays 30", "/gw-scout-updates")
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["scoutMaxAgeDays"] = 0
+        self.p.write(".claude/gw.json", json.dumps(cfg, indent=2))
+        self.assertLine(self.doctor()[1], "OK", "scout")
+
+    def test_scout_recent_seal_is_ok_and_changed_files_warn(self):
+        today = datetime.date.today().isoformat()
+        self.write_scout(today)
+        shutil.copytree(ROOT / "skills" / "gw-scout-updates", self.p.work / ".claude" / "skills" / "gw-scout-updates")
+        self.assertLine(self.doctor()[1], "OK", "scout")
+        self.p.write("a.txt", "changed\n")
+        self.assertLine(self.doctor()[1], "WARN", "scout", "files changed", "a.txt")
 
     def compaction_lines(self, out):
         return [l for l in out.splitlines() if re.match(r"(OK|WARN|FAIL) +compaction:", l)]

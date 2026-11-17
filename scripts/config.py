@@ -573,6 +573,18 @@ def review_trivial_lines(config):
     return _schema()["properties"]["reviewTrivialLines"]["default"]
 
 
+def scout_settings(config):
+    """(`scoutDir`, `scoutMaxAgeDays`) of the config (D80): each the schema default when absent or invalid."""
+    props = _schema()["properties"]
+    folder = config.get("scoutDir")
+    if not (isinstance(folder, str) and folder and not folder.startswith("/") and ".." not in folder.split("/")):
+        folder = props["scoutDir"]["default"]
+    days = config.get("scoutMaxAgeDays")
+    if not (isinstance(days, int) and not isinstance(days, bool) and days >= 0):
+        days = props["scoutMaxAgeDays"]["default"]
+    return folder, days
+
+
 def test_map(config):
     """The `testMap` key as a dict (rules, command) (E21)."""
     return _section(config, "testMap")
