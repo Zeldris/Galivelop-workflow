@@ -467,7 +467,16 @@ class SessionStart(Base):
         self.p.write("docs/questions.md", "## Q-1\n- Status: bogus\n")
         code, out = self.p.session_start()
         self.assertEqual(code, 0, out)
-        self.assertNotIn("open questions", out)
+        self.assertIn("gw session-start: questions:", out)
+        self.assertIn("Status 'bogus'", out)
+        self.assertIn("questions.py --root", out)
+
+    def test_invalid_utf8_questions_file_warns(self):
+        (self.p.work / "docs").mkdir(exist_ok=True)
+        (self.p.work / "docs" / "questions.md").write_bytes(b"## Q-1\n- Status: open\n- Question: \xff\n")
+        code, out = self.p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertIn("gw session-start: questions: cannot read", out)
 
 
 class Recover(Base):

@@ -37,11 +37,11 @@ class Base(unittest.TestCase):
         return out
 
     def fails(self, reason, *args):
-        before = self.file.read_text() if self.file.exists() else None
+        before = self.file.read_bytes() if self.file.exists() else None
         code, out, err = self.q(*args)
         self.assertEqual(code, 1, out)
         self.assertIn(reason, err)
-        self.assertEqual(self.file.read_text() if self.file.exists() else None, before, "nothing is written")
+        self.assertEqual(self.file.read_bytes() if self.file.exists() else None, before, "nothing is written")
 
 
 class Add(Base):
@@ -120,7 +120,7 @@ class Answer(Base):
         self.assertIn("- Answer: fine\n", text)
 
     def test_unknown_number_writes_nothing(self):
-        self.fails("Q-9 does not exist", "answer", "1. a, 9. b")
+        self.fails("Q-9 does not exist", "answer", "1. a; 9. b")
 
     def test_already_answered_fails(self):
         self.ok("answer", "1. a")
@@ -129,6 +129,22 @@ class Answer(Base):
     def test_unreadable_answers_and_empty_answer(self):
         self.fails("cannot read the answers", "answer", "yes")
         self.fails("is empty", "answer", "1. , 2. b")
+
+    def test_marker_inside_an_answer_does_not_answer_another_question(self):
+        self.ok("answer", "1. pick 1, 2) or 3")
+        text = self.file.read_text()
+        self.assertIn("- Answer: pick 1, 2) or 3\n", text)
+        self.assertEqual(self.ok("count").strip(), "2")
+
+    def test_comma_marker_only_for_an_open_question(self):
+        self.ok("answer", "1. version 7. ok, 3. fine")
+        text = self.file.read_text()
+        self.assertIn("- Answer: version 7. ok\n", text)
+        self.assertIn("- Answer: fine\n", text)
+
+    def test_semicolon_always_separates(self):
+        self.ok("answer", "1. a; 2) b")
+        self.assertEqual(self.ok("count").strip(), "1")
 
     def test_same_number_twice_fails(self):
         self.fails("answered twice", "answer", "1. a, 1. b")
@@ -157,6 +173,52 @@ class AcceptRisk(Base):
         self.fails("is not a question id", "accept-risk", "abc")
         self.ok("accept-risk", "Q-1")
         self.fails("already accepted-risk", "accept-risk", "Q-1")
+
+
+class Hardening(Base):
+    def test_refs_cannot_inject_lines(self):
+        self.fails("is not a list of task ids", "add", "--refs", "B4\n- Status: answered", "One?")
+        self.fails("is not a list of task ids", "add", "--refs", "B4 B5", "One?")
+
+    def test_refs_are_normalised(self):
+        self.ok("add", "--refs", "B4 ,B5", "One?")
+        self.assertIn("- Refs: B4, B5\n", self.file.read_text())
+
+    def test_failed_write_leaves_no_tmp(self):
+        self.ok("add", "One?")
+        orig = os.replace
+        os.replace = lambda *a: (_ for _ in ()).throw(OSError("boom"))
+        try:
+            with self.assertRaises(questions.QuestionsError):
+                questions.write(self.file, "", [])
+        finally:
+            os.replace = orig
+        self.assertFalse(self.file.with_name("questions.md.tmp").exists())
+
+    def test_invalid_utf8_is_a_questions_error(self):
+        self.file.parent.mkdir()
+        self.file.write_bytes(b"## Q-1\n- Status: open\n- Question: \xff\n")
+        for fn in (questions.read_entries, questions.open_entries):
+            with self.assertRaises(questions.QuestionsError):
+                fn(self.file)
+        with self.assertRaises(questions.QuestionsError):
+            questions.open_for_task(self.file, "A1")
+        self.fails("cannot read", "count")
+
+    def test_question_without_refs_blocks_no_task(self):
+        self.ok("add", "No task?")
+        self.assertEqual(questions.open_for_task(self.file, "A1"), [])
+        self.assertEqual(questions.open_for_task(self.file, ""), [])
+
+    def test_questions_file_returns_path_and_root(self):
+        path, root = questions.questions_file(self.root)
+        self.assertEqual((path, root), (self.root / "docs" / "questions.md", self.root))
+
+    def test_concurrent_adds_get_different_ids(self):
+        procs = [subprocess.Popen([sys.executable, str(SCRIPT), "--root", str(self.root), "add", f"Q{i}?"],
+                                  stdout=subprocess.PIPE, text=True) for i in range(5)]
+        ids = sorted(p.communicate()[0].strip() for p in procs)
+        self.assertEqual(ids, ["Q-1", "Q-2", "Q-3", "Q-4", "Q-5"])
 
 
 class Reading(Base):

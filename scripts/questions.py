@@ -100,7 +100,8 @@ class Entry:
 
 
 def questions_file(root=None):
-    """The questions file's path for the project at `root` (config `questions.path`); raises ConfigError."""
+    """(path, root): the questions file of the project at `root` (config `questions.path`) and the root itself;
+    raises ConfigError."""
     root = gwconfig.find_root(root)
     cfg = gwconfig.load(root)
     return Path(root) / gwconfig.questions_path(cfg), Path(root)
@@ -131,14 +132,10 @@ def parse(text):
 
 
 def read_entries(path):
-    """The entries of the questions file at `path` (a missing file has none)."""
-    path = Path(path)
-    if not path.is_file():
-        return []
-    try:
-        return parse(path.read_text(encoding="utf-8"))[1]
-    except OSError as exc:
-        raise QuestionsError(f"cannot read {path} ({exc}); check its permissions")
+    """The entries of the questions file at `path` (a missing file has none). Raises QuestionsError when the file
+    cannot be read or parsed (bad UTF-8, a Status that is not valid, a repeated id): a caller that guards something
+    with it (the restrictive mode, C4) must fail closed, that is block, not treat the error as "no questions"."""
+    return load_all(path)[1]
 
 
 def open_entries(path):
@@ -146,17 +143,70 @@ def open_entries(path):
 
 
 def open_for_task(path, task_id):
-    """The open questions that name `task_id` in their Refs (what the restrictive mode, C4, asks for)."""
+    """The open questions that name `task_id` in their Refs, compared exactly (what the restrictive mode, C4, asks
+    for). A question without Refs belongs to no task, so it blocks none. Raises QuestionsError like read_entries."""
     return [e for e in open_entries(path) if task_id in e.refs]
 
 
 def write(path, header, entries):
+    """Atomic: a temporary file next to it, renamed over it; the temporary one is removed when anything fails."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     text = (header or HEADER) + "\n".join(e.render() for e in entries)
     tmp = path.with_name(path.name + ".tmp")
-    tmp.write_text(text, encoding="utf-8")
-    os.replace(tmp, path)
+    try:
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError as exc:
+        try:
+            tmp.unlink()
+        except OSError:
+            pass
+        raise QuestionsError(f"cannot write {path} ({exc}); check its permissions and rerun the command")
+
+
+class locked:
+    """Context manager: an flock on <git dir>/gw/questions.lock, so two writers (subagents) do not overwrite each
+    other; waits `handoff.lockWait` seconds (the config key of handoff.py's lock), then fails. Without fcntl or a
+    file system that has no flock, it goes without."""
+
+    def __init__(self, wait):
+        self.wait, self.fd = wait, None
+
+    def __enter__(self):
+        try:
+            import fcntl
+            import errno
+            import time
+            mark = mark_file()
+            if mark is None:
+                return self
+            lock = mark.with_name("questions.lock")
+            lock.parent.mkdir(parents=True, exist_ok=True)
+            self.fd = os.open(str(lock), os.O_RDWR | os.O_CREAT, 0o644)
+            end = time.monotonic() + self.wait
+            while True:
+                try:
+                    fcntl.flock(self.fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    return self
+                except OSError as exc:
+                    if exc.errno not in (errno.EWOULDBLOCK, errno.EAGAIN):
+                        return self
+                    if time.monotonic() >= end:
+                        os.close(self.fd)
+                        self.fd = None
+                        raise QuestionsError(f"another questions.py command holds the lock for {self.wait}s; wait "
+                                             f"for it or raise handoff.lockWait in .claude/gw.json, and rerun")
+                    time.sleep(0.1)
+        except ImportError:
+            return self
+        except OSError:
+            return self
+
+    def __exit__(self, *exc):
+        if self.fd is not None:
+            os.close(self.fd)
+        return False
 
 
 def load_all(path):
@@ -165,8 +215,9 @@ def load_all(path):
         return "", []
     try:
         return parse(path.read_text(encoding="utf-8"))
-    except OSError as exc:
-        raise QuestionsError(f"cannot read {path} ({exc}); check its permissions")
+    except (OSError, ValueError) as exc:  # ValueError: UnicodeDecodeError
+        raise QuestionsError(f"cannot read {path} ({exc}); fix the file or its permissions and check it: "
+                             f"questions.py count")
 
 
 def one_line(text):
@@ -188,21 +239,28 @@ def show(e):
     return "\n".join(lines)
 
 
-def parse_answers(text):
-    """"5. a, 6. ok" -> [(5, "a"), (6, "ok")]: a marker is a number (or Q-number) with . : or ) at the start or after
-    a comma, semicolon or newline; the text runs to the next marker."""
-    marker = re.compile(r"(?:^|[,;\n])\s*(?:Q-)?(\d+)\s*[.:)]\s*")
-    found = list(marker.finditer(text.strip()))
+def parse_answers(text, known=None):
+    """"5. a, 6. ok" -> [(5, "a"), (6, "ok")]. The first marker is a number (or Q-number) with . : or ) at the start;
+    a later one starts after a newline or a semicolon (any form), or after a comma only as `<n>.` and only when <n>
+    is in `known` (the open question numbers; None = any): so "5. pick 1, 2) or 3" is one answer, and a comma
+    inside an answer followed by "<n>." of an open question can be told apart by using ; or a new line instead."""
     stripped = text.strip()
-    if not found or found[0].start() != 0:
+    marker = re.compile(r"(?:^|[;\n])\s*(?:Q-)?(\d+)\s*[.:)]\s*|(?:,)\s*(\d+)\s*\.\s+")
+    found = []
+    for m in marker.finditer(stripped):
+        number = int(m.group(1) or m.group(2))
+        if m.group(2) and known is not None and number not in known:
+            continue
+        found.append((m, number))
+    if not found or found[0][0].start() != 0:
         raise QuestionsError(f"cannot read the answers '{text}'; write them as \"5. a, 6. ok\" (number, dot, answer)")
     out = []
-    for i, m in enumerate(found):
-        end = found[i + 1].start() if i + 1 < len(found) else len(stripped)
+    for i, (m, number) in enumerate(found):
+        end = found[i + 1][0].start() if i + 1 < len(found) else len(stripped)
         answer = one_line(stripped[m.end():end]).rstrip(",;").strip()
         if not answer:
-            raise QuestionsError(f"the answer to {m.group(1)} is empty; write it after the dot: \"{m.group(1)}. ok\"")
-        out.append((int(m.group(1)), answer))
+            raise QuestionsError(f"the answer to {number} is empty; write it after the dot: \"{number}. ok\"")
+        out.append((number, answer))
     return out
 
 
@@ -213,7 +271,17 @@ def number_of(token):
     return int(m.group(1))
 
 
+def refs_of(text):
+    """The Refs value of `add`: task ids separated by commas, on one line; anything else fails."""
+    ids = [r for r in re.split(r"\s*,\s*", one_line(text or "")) if r]
+    if not all(re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", r) for r in ids):
+        raise QuestionsError(f"--refs '{one_line(text)}' is not a list of task ids; write them like --refs B4 or "
+                             f"--refs B4,B5")
+    return ", ".join(ids)
+
+
 def cmd_add(args, path):
+    refs = refs_of(args.refs)
     header, entries = load_all(path)
     texts = [one_line(q) for q in args.questions]
     if not texts or not all(texts):
@@ -223,7 +291,7 @@ def cmd_add(args, path):
         raise QuestionsError(f"{len(recs)} --rec for {len(texts)} questions; give one --rec per question, or none")
     nxt = max([e.number for e in entries] + [0]) + 1
     for i, text in enumerate(texts):
-        lines = [f"- Refs: {args.refs or ''}".rstrip(), "- Status: open", f"- Asked: {today()}", f"- Question: {text}"]
+        lines = [f"- Refs: {refs}".rstrip(), "- Status: open", f"- Asked: {today()}", f"- Question: {text}"]
         if recs:
             lines.append(f"- Recommendation: {recs[i]}")
         entries.append(Entry(nxt + i, lines))
@@ -258,7 +326,7 @@ def cmd_count(args, path):
 def cmd_answer(args, path):
     header, entries = load_all(path)
     by_number = {e.number: e for e in entries}
-    pairs = parse_answers(" ".join(args.text))
+    pairs = parse_answers(" ".join(args.text), {e.number for e in entries if e.status == "open"})
     for number, _ in pairs:
         e = by_number.get(number)
         if e is None:
@@ -374,8 +442,12 @@ def main(argv=None):
         ROOT = root
         if args.command == "notice":
             return cmd_notice(args, path, root)
-        return {"add": cmd_add, "list": cmd_list, "count": cmd_count, "answer": cmd_answer,
-                "accept-risk": cmd_accept_risk}[args.command](args, path)
+        run = {"add": cmd_add, "list": cmd_list, "count": cmd_count, "answer": cmd_answer,
+               "accept-risk": cmd_accept_risk}[args.command]
+        if args.command in ("add", "answer", "accept-risk"):
+            with locked(gwconfig.handoff(gwconfig.load(root))["lockWait"]):
+                return run(args, path)
+        return run(args, path)
     except (QuestionsError, gwconfig.ConfigError) as exc:
         print(f"questions: {exc}", file=sys.stderr)
         return 1
