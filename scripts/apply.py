@@ -140,7 +140,7 @@ IGNORED = {"__pycache__", ".DS_Store"}
 PROPOSAL = ".gw-new"
 OLD_PROPOSAL = ".gw-nuevo"  # A8 (0.x): the suffix before the rename; still recognized, with a warning
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
-BLOCK_MARK = re.compile(r"^\s*<!--\s*(/?)if(?:\s+(\w+))?\s*-->\s*$")  # a line of its own: <!-- if key --> ... <!-- /if -->
+BLOCK_MARK = re.compile(r"^\s*<!--\s*(/?)if(?:\s+(!?\w+))?\s*-->\s*$")  # a line of its own: <!-- if key --> ... <!-- /if -->
 TEXT_KEYS = ("log", "protectedBranch", "reviewMark", "language")
 LIST_KEYS = ("check", "install")
 DIFFED = ("REVIEW.md", "GLOSSARY.md")  # seeded files whose template diff is printed while unmarked or older
@@ -771,7 +771,8 @@ def inline_list(items):
 
 def conditional_blocks(text, cfg, name):
     """Resolve `<!-- if key -->` ... `<!-- /if -->` (marker lines of their own, boolean config key, no nesting): a true
-    key drops only the marker lines, a false or absent one the whole block."""
+    key drops only the marker lines, a false or absent one the whole block. `<!-- if !key -->` is the reverse: kept
+    only when the key is explicitly false (E49: the "no signatures" rule of CLAUDE.md with `agentSignatures: false`)."""
     out, key, keep, dropped = [], None, True, False
     for n, line in enumerate(text.splitlines(keepends=True), 1):
         m = BLOCK_MARK.match(line)
@@ -794,7 +795,8 @@ def conditional_blocks(text, cfg, name):
             if key is not None:
                 raise ApplyError(f"apply: {where}: <!-- if {m.group(2)} --> inside <!-- if {key} -->, blocks do not "
                                  f"nest; {fix}")
-            key, keep = m.group(2), cfg.get(m.group(2)) is True
+            key = m.group(2)
+            keep = cfg.get(key[1:]) is False if key.startswith("!") else cfg.get(key) is True
     if key is not None:
         raise ApplyError(f"apply: template {name}: <!-- if {key} --> is never closed with <!-- /if -->; "
                          f"{'fix the template in ' + str(WORKFLOW / 'templates')}")

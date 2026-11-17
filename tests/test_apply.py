@@ -2193,6 +2193,12 @@ class ConditionalBlocks(unittest.TestCase):
         self.assertEqual(self.blocks(text, {"logRows": False}), "a\n\nb\n\n\nc\n")  # existing doubles stay
         self.assertEqual(self.blocks(text, {"logRows": True}), "a\n\nx\n\nb\n\n\nc\n")
 
+    def test_negated_key_keeps_the_block_only_when_explicitly_false(self):
+        text = "a\n<!-- if !agentSignatures -->\nx\n<!-- /if -->\nb\n"
+        self.assertEqual(self.blocks(text, {"agentSignatures": False}), "a\nx\nb\n")
+        for cfg in ({"agentSignatures": True}, {}):  # absent is the default, true
+            self.assertEqual(self.blocks(text, cfg), "a\nb\n", cfg)
+
     def test_any_boolean_key_and_odd_spacing(self):
         text = "a\n  <!--   if   otherKey-->  \nb\n<!--/if-->\nc\n"
         self.assertEqual(self.blocks(text, {"otherKey": True}), "a\nb\nc\n")

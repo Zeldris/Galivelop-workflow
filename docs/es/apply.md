@@ -52,7 +52,8 @@ Reúne estos datos **antes** de ejecutar nada. Todo va a `.claude/gw.json` (cada
 | Subir a ella (`pushToProtected`) | `direct` si se hace push directo; `pr` si solo entra por pull request |
 | Contenido (`content`) | Expresiones regulares de lo que **no** es código y no necesita `/code-review`: docs, datos, textos |
 | Retro obligatoria (`requireRetro`) | Pregunta: «¿`/retro` en cada subida a la rama protegida, o solo en cambios grandes?». En cada subida: `--require-retro true` (`reviewed.sh` no marca sin una retro decidida en la rama); si no, `false` |
-| Firmas del agente (`agentSignatures`) | Pregunta: «¿El proyecto admite firmas del agente en los commits (`Co-Authored-By` de Claude, enlaces de sesión)?». Si no: `--agent-signatures false` (el `commit-msg` rechaza el mensaje que las lleve); si sí, déjalo en `true` |
+| Firmas del agente (`agentSignatures`) | Pregunta: «¿El proyecto admite firmas del agente en los commits (`Co-Authored-By` de Claude, enlaces de sesión)?». Si no: `--agent-signatures false` (el `commit-msg` rechaza el mensaje que las lleve); si sí, déjalo en `true`. Con `false`, `CLAUDE.md` recibe la regla «Sin firmas de Claude», que manda sobre el recordatorio de atribución del entorno (E49) |
+| Licencia (oferta de `gw-init`, D87) | Pregunta si quiere la licencia doble del flujo: MIT para el código y CC BY-NC-SA 4.0 para el contenido, con nota de terceros. Si sí, `gw-init` copia `templates/licenses/` (`LICENSE-code.txt` → `LICENSE`, `LICENSE-content.md`, `THIRD-PARTY.md`) y rellena año y titular; si no, no se toca |
 | Idiomas visibles y referencias de diseño (`visibleLanguages`, `designReferences`) | Solo si el proyecto los tiene: `--visible-language` y `--design-reference`, una bandera por valor |
 | Skills opcionales | `gw-opt-ai` (modelos de IA locales) y `gw-scout-updates` (revisar actualizaciones); solo si la persona las pide |
 
@@ -271,7 +272,7 @@ algo que el flujo dice (ramas, mensajes de commit), **gana la del proyecto**: se
 a mano lo que falte de la plantilla: estado actual con siguiente paso, hecho reciente, pendiente y cómo comprobar el
 estado. `doctor.py` exige una línea de «Siguiente paso»/«Next step».
 
-**Bloques condicionales en las plantillas:** `<!-- if clave -->` … `<!-- /if -->`, cada marcador en su propia línea y `clave` una clave booleana de `.claude/gw.json`. Con la clave en `true` se quitan solo las líneas de marcador; con `false` o ausente, el bloque entero (así la bitácora solo explica `logRows` si está encendido). No se anidan; un bloque sin cerrar o anidado hace fallar a `apply.py` con el mensaje y la plantilla a arreglar.
+**Bloques condicionales en las plantillas:** `<!-- if clave -->` … `<!-- /if -->`, cada marcador en su propia línea y `clave` una clave booleana de `.claude/gw.json`. Con la clave en `true` se quitan solo las líneas de marcador; con `false` o ausente, el bloque entero (así la bitácora solo explica `logRows` si está encendido). `<!-- if !clave -->` es el inverso: el bloque queda solo con la clave explícitamente en `false` (ausente cuenta como el valor por defecto, `true`, y lo oculta; así `CLAUDE.md` lleva la regla «sin firmas» solo con `agentSignatures: false`). No se anidan; un bloque sin cerrar o anidado hace fallar a `apply.py` con el mensaje y la plantilla a arreglar.
 
 **CI existente.** `check.yml` es un workflow más; si el proyecto ya corre su check, deja uno de los dos para no
 duplicarlo, pero conserva el paso del `pre-commit` de la rama base sobre el PR. Ese paso sirve suelto en una CI que ya

@@ -146,6 +146,23 @@ class Templates(unittest.TestCase):
                     lines = len((TEMPLATES / lang / name).read_text(encoding="utf-8").splitlines())
                     self.assertLessEqual(lines, 200)
 
+    def test_licence_templates_for_gw_init(self):
+        lic = TEMPLATES / "licenses"
+        code = (lic / "LICENSE-code.txt").read_text(encoding="utf-8")
+        self.assertTrue(code.startswith("MIT License"))
+        self.assertIn("Copyright (c) <year> <holder>", code)
+        content = (lic / "LICENSE-content.md").read_text(encoding="utf-8")
+        for needle in ("CC BY-NC-SA 4.0", "creativecommons.org/licenses/by-nc-sa/4.0/legalcode", "<year> <holder>"):
+            self.assertIn(needle, content)
+        third = (lic / "THIRD-PARTY.md").read_text(encoding="utf-8")
+        self.assertIn("MIT", third)
+        self.assertIn("CC BY-NC-SA 4.0", third)
+        skill = (ROOT / "skills" / "gw-init" / "SKILL.md").read_text(encoding="utf-8")
+        for name in ("LICENSE-code.txt", "LICENSE-content.md", "THIRD-PARTY.md", "--stack", "gitignoreStacks",
+                     "push.sh", "--agent-signatures false"):
+            self.assertIn(name, skill)
+        self.assertNotIn("git push -u", skill)
+
     def test_agents_names_the_own_log_row_commands(self):
         for lang in ("es", "en"):
             agents = (TEMPLATES / lang / "AGENTS.md").read_text(encoding="utf-8")
@@ -473,6 +490,19 @@ class Init(unittest.TestCase):
         code, out = p.run_apply("--require-retro", "false")
         self.assertEqual(code, 2, out)
         self.assertIn("only go with --init", out)
+
+    def test_claude_md_has_the_no_signatures_rule_only_with_agent_signatures_false(self):
+        for lang, needle in (("es", "Sin firmas de Claude"), ("en", "No Claude signatures")):
+            with self.subTest(lang=lang):
+                p = self.project("off-" + lang)
+                code, out = p.init(lang, "--agent-signatures", "false")
+                self.assertEqual(code, 0, out)
+                self.assertIn(needle, p.read("CLAUDE.md"))
+                self.assertNotIn("<!--", p.read("CLAUDE.md").split("\n", 1)[1])
+                p2 = self.project("on-" + lang)
+                code, out = p2.init(lang)
+                self.assertEqual(code, 0, out)
+                self.assertNotIn(needle, p2.read("CLAUDE.md"))
 
     def test_init_agent_signatures_flag(self):
         p = self.project()
