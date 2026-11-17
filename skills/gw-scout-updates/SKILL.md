@@ -47,6 +47,7 @@ Formats: [`references/formats.md`](references/formats.md). Sources by component 
    `changed` or `unsealed`: reread that section's files, rewrite it and seal it with the current commit.
    `uncounted`: a new manifest; add its components to its section. `--section <title>` prints one section alone;
    print the whole file only when rewriting it. *Done when* the script exits 0.
+   `doctor.py` runs the same comparison at session start and warns when a seal is older than `scoutMaxAgeDays`; the inventory reads Rust from `rust-toolchain(.toml)` and `rust-version` in `Cargo.toml`.
 2. **Focus and cost.** Focus: the section the user asked for, or all. Read `proposals.md` and note which components of
    the focus have live or rejected proposals. State the estimate (about 90k tokens per section searched, less the
    ~136k startup saved by grouping into 2 subagents, plus about 2k per candidate pair judged) and **wait for the user's yes**. *Done when* the user confirms focus and cost.

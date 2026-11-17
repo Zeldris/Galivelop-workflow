@@ -156,7 +156,7 @@ def inventory(root, files=None, exclude=EXCLUDE):
             text = read(root, path)
             m = re.search(r'^\s*channel\s*=\s*["\']([^"\']+)', text, re.M)
             if not m and base == 'rust-toolchain' and '[' not in text:  # the legacy file: just the channel
-                m = re.match(r'\s*([^\s#]+)', text)
+                m = re.search(r'^\s*([^\s#][^\s]*)', text, re.M)
             if m:
                 inv['runtimes'].append(comp('rust', m.group(1), path))
         elif base == 'Cargo.toml':

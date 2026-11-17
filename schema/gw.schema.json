@@ -378,6 +378,7 @@
         "readPointers",
         "wholeReadRepeatOnly",
         "wholeReadStaleDays",
+        "scoutMaxAgeDays",
         "harvest",
         "applyDiffLines",
         "ciGreenConclusions",

@@ -57,6 +57,15 @@ class InventoryTest(unittest.TestCase):
         self.assertIn('rust-toolchain.toml', inv['manifests'])
         self.assertIn('crate/rust-toolchain', inv['manifests'])
 
+    def test_rust_toolchain_edge_cases(self):
+        write(self.d, 'a/rust-toolchain', '# pinned for CI\n\n1.80.1  # stable\n')
+        write(self.d, 'b/rust-toolchain.toml', '[toolchain]\npath = "/opt/rust"\n')
+        write(self.d, 'c/Cargo.toml', '[package]\nrust-version.workspace = true\n')
+        inv = inventory.inventory(self.d)
+        self.assertEqual({(c['name'], c['version'], c['origin']) for c in inv['runtimes']},
+                         {('rust', '1.80.1', 'a/rust-toolchain')})
+        self.assertIn('b/rust-toolchain.toml', inv['manifests'])
+
     def test_merges_origins_and_excludes_claude_folder(self):
         write(self.d, '.env.example', 'LLM_MODEL=model-a\n')
         write(self.d, 'src/config/env.ts', "export const m = process.env.LLM_MODEL ?? 'model-a';\n")
