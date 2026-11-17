@@ -575,12 +575,18 @@ def check_mark(cfg, root, scripts, head, refs, what, protected, tip):
     block(f"Blocked: {reason}; this PR brings unreviewed code to {protected}:", *listed, fix)
 
 
+def push_command(root, branch):
+    """The command that pushes `branch` with the project's own push.sh (config.push_command, D94), quoted."""
+    import config  # on sys.path since project()
+    return config.push_command(root, branch)
+
+
 def head_from_branch(root, branch, how):
     branch = branch.split(":")[-1]  # head may come as owner:branch
     sha = remote_sha(root, branch)
     if not sha:
         block(f"the PR branch {branch} is not on origin ({how}), so its reviewed commit cannot be checked.",
-              f"push it and retry: bash {os.path.join(HERE, 'push.sh')} {branch}")
+              f"push it and retry: {push_command(root, branch)}")
     return sha, branch
 
 

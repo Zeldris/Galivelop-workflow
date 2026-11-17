@@ -6,6 +6,7 @@ Every case checks the reason that comes out, not only the exit code.
 """
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -84,6 +85,24 @@ class Commits(Base):
         self.assertEqual(code, 0, out)
         data = self.assertBlocks(out, "1 commit", "claude/trabajo", "push.sh claude/trabajo")
         self.assertNotIn(LOG, data["reason"], "a clean tree needs no log reminder")
+
+    def test_push_command_names_the_projects_copy_also_from_the_plugin_cache(self):
+        # D94: from the plugin cache (${CLAUDE_PLUGIN_ROOT}) the push.sh next to the hook would take the cache as its
+        # root; the reason must name the project's own .claude/gw/scripts/push.sh, quoted, in both layouts.
+        p = self.p
+        p.work_branch()
+        p.write("src/a.py", "x = 1\n"); p.commit("local only")
+        cache = p.work.parent / "plugin cache" / "scripts"
+        cache.mkdir(parents=True)
+        (cache.parent / "schema").mkdir()
+        for name in (SCRIPT, "config.py", "push.sh"):
+            shutil.copy2(ROOT / "scripts" / name, cache / name)
+        shutil.copy2(ROOT / "schema" / "gw.schema.json", cache.parent / "schema" / "gw.schema.json")
+        project_copy = shlex.quote(str(p.work / ".claude" / "gw" / "scripts" / "push.sh"))
+        for script in (cache / SCRIPT, None):  # the plugin cache, then the project's own copy
+            with self.subTest(script=script):
+                data = self.assertBlocks(p.stop(script=script)[1], f"bash {project_copy} claude/trabajo")
+                self.assertNotIn(str(cache), data["reason"])
 
     def test_unpushed_commit_on_the_protected_branch_warns_without_telling_to_push(self):
         p = self.p  # AGENTS.md: a push to the protected branch needs the user's confirmation and the three phases
