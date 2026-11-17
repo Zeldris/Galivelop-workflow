@@ -1203,18 +1203,23 @@ def cmd_preflight(ctx, args):
     """D61: the log checks of prepush-branches.sh (check with a date, clash with origin/<protectedBranch>), run before
     pushing so a green `check` is enough to push."""
     me = f"python3 {HERE / 'handoff.py'}"
-    date = args.date
-    if not date:
-        status = ctx.git("status", "--porcelain", "--", ctx.log)
-        last = ctx.git("log", "-1", "--format=%as", "--", ctx.log)
-        if status.returncode != 0 or last.returncode != 0:
-            raise Usage(f"git cannot read the state of {ctx.log} ({(status.stderr or last.stderr).strip()}); "
-                        f"check the repository (git status) or pass the day: {me} preflight --date YYYY-MM-DD")
+    if not ctx.config.get("logRows"):  # the date is a logRows rule: no git needed; the size and Done rules still run
+        return cmd_check(ctx, argparse.Namespace(file=None, date=None, strict=False, at="commit", pending=None))
+    date, dirty = args.date, True
+    status = ctx.git("status", "--porcelain", "--", ctx.log)
+    # --no-merges: the pre-push dates the log by the commits that change it, never by a merge (diff-tree shows none
+    # for one), so a CI pull_request merge made today does not move the day.
+    last = ctx.git("log", "-1", "--no-merges", "--format=%as", "--", ctx.log)
+    if status.returncode == 0 and last.returncode == 0:
         dirty = bool(status.stdout.strip()) or not last.stdout.strip()
+    elif not date:
+        raise Usage(f"git cannot read the state of {ctx.log} ({(status.stderr or last.stderr).strip()}); "
+                    f"check the repository (git status) or pass the day: {me} preflight --date YYYY-MM-DD")
+    if not date:
         date = datetime.date.today().isoformat() if dirty else last.stdout.strip()
-    code = cmd_check(ctx, argparse.Namespace(file=None, date=date, strict=False, at="commit", pending=None))
-    if not ctx.config.get("logRows"):
-        return code  # the pre-push runs no log check without logRows; `check` still has its size and Done rules
+    # A clean log is already committed: the fix is a new commit (at="push"), not "run the commit again".
+    code = cmd_check(ctx, argparse.Namespace(file=None, date=date, strict=False, at="commit" if dirty else "push",
+                                             pending=None))
     protected = ctx.config["protectedBranch"]
     ref = f"refs/remotes/origin/{protected}"
     if not ctx.git("rev-parse", "-q", "--verify", f"{ref}^{{commit}}").stdout.strip():

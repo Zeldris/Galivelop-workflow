@@ -285,3 +285,5 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [ ] `0.8` · **Revisión D95 n.º 5**: `split_lines` elige CRLF si alguna línea lo tiene y reescribe todas así (y quita las líneas en blanco del final); `done` conserva el de cada línea (candidato: respetar el fin de cada línea).
 - [ ] `0.8` · **Revisión D95 n.º 9**: `add-pending` y `add-decision` leen, cambian y reescriben sin cerrojo: dos a la vez (subagentes o ganchos) pierden un ítem aunque ambos informen de éxito (candidato: cerrojo sobre el archivo, como el de `check.sh`).
 - [ ] `0.8` · **Revisión D95 n.º 11**: `log_is_english` relee la bitácora en cada llamada que lo necesita (eficiencia, resuelto en parte: ya solo se llama al crear algo).
+- `0.8`: `handoff.cellHardLimit` menor que `cellLimit` no se valida (revisión de D96, hallazgo 5): `config.py validate` debería rechazarlo o avisar.
+- `0.8`: `tests/check.sh` corre `handoff.py check` dos veces (`check --strict` y dentro de `preflight`; revisión de D61, hallazgo 6): dejar una sola pasada.

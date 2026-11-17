@@ -3283,6 +3283,49 @@ class HandoffPreflight(PlanRepo):
         self.assertEqual(code, 1, out)
         self.assertIn("\"Updated\" says 2026-10-21 and the commit is from 2026-10-23", out)
 
+    def test_a_committed_log_asks_for_a_new_commit_not_to_rerun_the_commit(self):
+        self.p.write(LOG, log_text().replace("| green |", "| " + "x" * 1601 + " |"))
+        self.p.commit("a long Tests cell", env=dict(DAY, GW_SHARED_LOG="1"))
+        code, out = self.preflight()
+        self.assertEqual(code, 1, out)
+        self.assertIn("over the hard cap", out)
+        self.assertIn(f"handoff: fix: edit {LOG} and make a new commit with the fix: git add {LOG} && git commit", out)
+        self.assertNotIn("run the commit again", out)
+        self.p.write(LOG, log_text(updated="2026-10-01"))  # being edited: the commit is still to come
+        code, out = self.preflight()
+        self.assertEqual(code, 1, out)
+        self.assertIn("run the commit again: git commit", out)
+
+    def test_a_merge_does_not_move_the_day_of_the_log(self):
+        self.p.branch("side", self.base)  # both sides change the log: the merge's log differs from each parent
+        self.p.write(LOG, log_text().replace("1. nothing yet", "1. 2026-10-21 — side work"))
+        self.p.commit("side log", env=dict(DAY, GW_SHARED_LOG="1"))
+        self.p.git("checkout", "-q", "main")
+        self.p.write(LOG, log_text().replace("| green |", "| red |"))
+        self.p.commit("log", env=DAY)
+        later = {"GIT_AUTHOR_DATE": "2026-10-25T12:00:00+0000", "GIT_COMMITTER_DATE": "2026-10-25T12:00:00+0000"}
+        self.p.git("merge", "-q", "--no-ff", "--no-verify", "-m", "merge side", "side", env=later)
+        self.assertEqual(self.preflight(), (0, ""))  # dated by the log's own commit (2026-10-21), not the merge
+
+    def test_without_logrows_git_is_not_asked_for_the_date(self):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["logRows"] = False
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        real = shutil.which("git")
+        fake = self.tmp / "fakebin"
+        fake.mkdir()
+        (fake / "git").write_text("#!/bin/sh\nfor a in \"$@\"; do case \"$a\" in log|status) echo 'fake git: no' >&2; "
+                                  f"exit 128 ;; esac; done\nexec {real} \"$@\"\n")
+        (fake / "git").chmod(0o755)
+        env = {"PATH": f"{fake}{os.pathsep}{os.environ['PATH']}"}
+        self.assertEqual(self.p.script("handoff.py", "--plan", self.PLAN, "preflight", env=env), (0, ""))
+        cfg["logRows"] = True  # with logRows the same git fails closed, naming --date
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "preflight", env=env)
+        self.assertEqual(code, 2, out)
+        self.assertIn("git cannot read the state of docs/log.md (fake git: no)", out)
+        self.assertIn("preflight --date YYYY-MM-DD", out)
+
     def test_an_id_the_protected_branch_took_for_another_task_fails(self):
         self.plan(self.START + "- [ ] **INS-3** the export\n", "main opens INS-3")
         self.p.git("push", "-q", "--no-verify", "origin", "main")
