@@ -77,7 +77,7 @@ class Trace(unittest.TestCase):
         r.git("merge", "--no-ff", "-q", "-m", "Merge branch 'agent/D14-x'", "agent/D14-x")
         out = r.trace("D14")
         self.assertEqual(out.returncode, 0, out.stderr)
-        for expected in ("== roadmap (2)", "docs/roadmap.md:7", "docs/roadmap.en.md:7", "`0.7` «Trazar»", "== log (1)",
+        for expected in ("== roadmap (1)", "docs/roadmap.md:7", "(also docs/roadmap.en.md:7)", "#### declared", "#### deduced", "`0.7` «Trazar»", "== log (1)",
                          "== pending (1)", "[refs] feat(D14): the script", "[merge] Merge branch 'agent/D14-x'",
                          "== docs (1)", "docs/design.md:1"):
             self.assertIn(expected, out.stdout)
@@ -87,16 +87,16 @@ class Trace(unittest.TestCase):
     def test_whole_word_match(self):
         out = self.repo.trace("D1", "--json")
         data = json.loads(out.stdout)
-        self.assertEqual([x["line"] for x in data["roadmap"]], [8])  # not the D14 rows
-        self.assertEqual(len(data["log"]), 1)  # "D1 done" matches; the D14 and D14a words alone would not
-        self.assertEqual(data["docs"][0]["line"], 2)  # not "Design of D14"
-        self.assertEqual(data["pending"], [])
+        self.assertEqual([x["line"] for x in data["declared"]["roadmap"]], [8])  # not the D14 rows
+        self.assertEqual(len(data["deduced"]["log"]), 1)  # "D1 done" matches; the D14 and D14a words alone would not
+        self.assertEqual(data["deduced"]["docs"][0]["line"], 2)  # not "Design of D14"
+        self.assertEqual(data["deduced"]["pending"], [])
 
     def test_prefix_id_does_not_match_suffix_id(self):
         out = self.repo.trace("D14a", "--json")
         data = json.loads(out.stdout)
-        self.assertEqual(data["roadmap"], [])
-        self.assertEqual(len(data["log"]), 1)
+        self.assertEqual(data["declared"]["roadmap"], [])
+        self.assertEqual(len(data["deduced"]["log"]), 1)
 
     def test_refs_list_scope_and_wip(self):
         r = self.repo
@@ -104,13 +104,13 @@ class Trace(unittest.TestCase):
         r.commit("WIP: fix(D14): half\n\nRefs: D4, D14\nSiguiente: z")
         r.commit("fix(D140): other\n\nRefs: D140")
         data = json.loads(r.trace("D14", "--json").stdout)
-        self.assertEqual([(c["how"], c["subject"]) for c in data["commits"]],
+        self.assertEqual([(c["how"], c["subject"]) for c in data["declared"]["commits"]],
                          [("refs", "WIP: fix(D14): half"), ("scope", "feat(D3, D14): scoped")])
 
     def test_mention_in_body_is_not_declared(self):
         self.repo.commit("chore: tidy\n\nThis relates to D14 loosely.")
         data = json.loads(self.repo.trace("D14", "--json").stdout)
-        self.assertEqual(data["commits"], [])
+        self.assertEqual(data["declared"]["commits"], [])
 
     def test_ranges_and_lists(self):
         r = self.repo
@@ -118,8 +118,8 @@ class Trace(unittest.TestCase):
         r.commit("fix(D61, D62): list scope")
         for task, rows in (("E12", 1), ("E16", 1), ("E9", 1), ("E17", 0), ("E8", 0), ("D62", 1), ("D63", 0)):
             data = json.loads(r.trace(task, "--json").stdout)
-            self.assertEqual(len(data["roadmap"]), rows, task)
-            self.assertEqual(len(data["commits"]), 1 if task in ("E12", "E16", "E9", "D62") else 0, task)
+            self.assertEqual(len(data["declared"]["roadmap"]), rows, task)
+            self.assertEqual(len(data["declared"]["commits"]), 1 if task in ("E12", "E16", "E9", "D62") else 0, task)
         out = r.trace("E17")
         self.assertEqual(out.returncode, 1)
 
@@ -129,8 +129,8 @@ class Trace(unittest.TestCase):
         r.commit("chore: x")
         r.git("checkout", "-q", "main")
         r.git("merge", "--no-ff", "-q", "-m", "Merge D63\n\nRefs: D63\nSiguiente: fusionar D14", "agent/D63-x")
-        self.assertEqual(json.loads(r.trace("D14", "--json").stdout)["commits"], [])
-        self.assertEqual(len(json.loads(r.trace("D63", "--json").stdout)["commits"]), 1)
+        self.assertEqual(json.loads(r.trace("D14", "--json").stdout)["declared"]["commits"], [])
+        self.assertEqual(len(json.loads(r.trace("D63", "--json").stdout)["declared"]["commits"]), 1)
 
     def test_unreadable_doc_is_a_note(self):
         (self.repo.work / "docs" / "bad.md").write_bytes(b"\xff\xfe D14\n")
@@ -158,19 +158,44 @@ class Trace(unittest.TestCase):
         out = self.repo.trace("D14", "--json")
         self.assertEqual(out.returncode, 0, out.stderr)
         data = json.loads(out.stdout)
-        self.assertEqual(sorted(data), ["commits", "docs", "found", "id", "log", "notes", "pending", "roadmap"])
+        self.assertEqual(sorted(data), ["declared", "deduced", "found", "id", "notes"])
+        self.assertEqual(sorted(data["declared"]), ["commits", "roadmap"])
+        self.assertEqual(sorted(data["deduced"]), ["docs", "log", "pending"])
         self.assertTrue(data["found"])
         self.assertEqual(data["id"], "D14")
-        self.assertEqual(data["commits"][0]["how"], "refs")
-        self.assertEqual(len(data["commits"][0]["sha"]), 40)
-        self.assertEqual({x["file"] for x in data["roadmap"]}, {"docs/roadmap.md", "docs/roadmap.en.md"})
+        self.assertEqual(data["declared"]["commits"][0]["how"], "refs")
+        self.assertEqual(len(data["declared"]["commits"][0]["sha"]), 40)
+        row, = data["declared"]["roadmap"]  # the translation is folded into the first row, not listed twice
+        self.assertEqual(row["file"], "docs/roadmap.md")
+        self.assertEqual(row["also"], [{"file": "docs/roadmap.en.md", "line": 7}])
+
+    def test_no_docs_skips_the_markdown_search(self):
+        out = self.repo.trace("D14", "--no-docs", "--json")
+        data = json.loads(out.stdout)
+        self.assertEqual(data["deduced"]["docs"], [])
+        self.assertEqual(len(data["declared"]["roadmap"]), 1)
+        self.assertEqual(len(data["deduced"]["log"]), 1)
+        self.assertNotIn("== docs", self.repo.trace("D14", "--no-docs").stdout)
+        # nothing reads the .md files: an unreadable one raises no note (it does without the flag)
+        (self.repo.work / "docs" / "bad.md").write_bytes(b"\xff\xfe D14\n")
+        self.repo.commit("chore: bad doc")
+        self.assertEqual(json.loads(self.repo.trace("D14", "--no-docs", "--json").stdout)["notes"], [])
+        self.assertTrue(json.loads(self.repo.trace("D14", "--json").stdout)["notes"])
+
+    def test_declared_and_deduced_are_separate(self):
+        self.repo.commit("feat(D14): d\n\nRefs: D14")
+        out = self.repo.trace("D14").stdout
+        self.assertLess(out.index("#### declared"), out.index("== roadmap"))
+        self.assertLess(out.index("== commits"), out.index("#### deduced"))
+        self.assertLess(out.index("#### deduced"), out.index("== log"))
+        self.assertLess(out.index("== log"), out.index("== docs"))
 
     def test_limit(self):
         for n in range(4):
             self.repo.commit(f"feat(D14): n{n}\n\nRefs: D14")
         out = self.repo.trace("D14", "--limit", "2")
         self.assertIn("… 2 more", out.stdout)
-        self.assertEqual(len(json.loads(self.repo.trace("D14", "--json", "--limit", "2").stdout)["commits"]), 4)
+        self.assertEqual(len(json.loads(self.repo.trace("D14", "--json", "--limit", "2").stdout)["declared"]["commits"]), 4)
         bad = self.repo.trace("D14", "--limit", "0")
         self.assertEqual(bad.returncode, 2)
         self.assertIn("--limit must be 1 or more", bad.stderr)
@@ -186,10 +211,10 @@ class Trace(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             repo = Repo(tmp, roadmap_files=False)
             data = json.loads(repo.trace("D14", "--json").stdout)
-            self.assertEqual(data["roadmap"], [])
-            self.assertEqual(len(data["log"]), 1)
+            self.assertEqual(data["declared"]["roadmap"], [])
+            self.assertEqual(len(data["deduced"]["log"]), 1)
             # without roadmapFiles the roadmap file is just another document
-            self.assertIn("docs/roadmap.md", {d["file"] for d in data["docs"]})
+            self.assertIn("docs/roadmap.md", {d["file"] for d in data["deduced"]["docs"]})
 
     def test_not_a_repo(self):
         with tempfile.TemporaryDirectory() as tmp:
