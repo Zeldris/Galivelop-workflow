@@ -542,6 +542,11 @@ def context_guard(config):
     return _section(config, "contextGuard")
 
 
+def task_record(config):
+    """The `taskRecord` key as a dict (enabled, path, requiredFor, sections, logSections, pendingMarker) (C11)."""
+    return _section(config, "taskRecord")
+
+
 def given_keys(root, key):
     """The inner keys the project's .claude/gw.json itself writes under the object key `key` (not the defaults the
     loader fills), as a set; empty when the file, the key or the JSON is missing (B31: is the window known?)."""
@@ -1308,7 +1313,8 @@ def main(argv=None):
                  recover=recover(config), handoff=handoff(config), harvest=harvest(config),
                  contextGuard=context_guard(config),
                  stopSeverity=stop_severity(config), changeSize=change_size(config),
-                 retro=retro(config), redWithoutFix=red_without_fix(config), branchPrefixes=branch_prefixes(config))  # inner keys fill from the schema too
+                 retro=retro(config), redWithoutFix=red_without_fix(config), branchPrefixes=branch_prefixes(config),
+                 taskRecord=task_record(config))  # inner keys fill from the schema too
     for part in args.key.split("."):
         if not isinstance(value, dict) or part not in value or part.startswith("_"):
             print(f"gw config: key '{args.key}' is not set and has no default", file=sys.stderr)

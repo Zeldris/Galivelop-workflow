@@ -31,6 +31,14 @@ and applies, from .claude/gw.json (read through config.py):
                                these (Claudette passes, haiku-writer and 4o do not). Without that, any
                                `Agent:` value passes. Trailers are read with --no-divider (a `---` line is body).
 
+  taskRecord.enabled true      (C11) a commit whose type is in taskRecord.requiredFor (feat, fix, hotfix) and that changes code
+                               (what is-code.sh calls code, on the staged files; the files under taskRecord.path do not
+                               count) must, for each id of its `Refs:`, touch `<path>/<id>.md` (a contract with the
+                               headings of taskRecord.sections) and ADD a file `<path>/<id>/*.md` (a decision log entry:
+                               header with the id and a non-empty heading for each of taskRecord.logSections; form only,
+                               task.py). Exempt: other types, WIP:, merges, rebases and the review-mark commit.
+                               The commit of an entry is resolved on reading (task.py resolve), not written by a hook.
+
 A warning, never a refusal (E60): with commitRefs or commitNext, a message that names review fixes (a word or phrase
 of metrics.quality.findingsWords, whole words, any case; [] = off) without a `Findings:` trailer gets one line on
 stderr asking for it (metrics.py quality and the block review of change-size.py count from that trailer).
@@ -326,6 +334,90 @@ def check_refs(root, config, found, msgfile):
                      f"(git add) and commit again: {edit}")
 
 
+def staged_changes(root):
+    """[(status, path)] of the staged files (renames as a delete plus an add)."""
+    r = git(root, "-c", "core.quotepath=false", "diff", "--cached", "--no-renames", "--name-status", "-z")
+    if r.returncode != 0:
+        raise Reject(f"git diff --cached failed ({r.stderr.strip()[:200]}); check the repository: git status")
+    items = r.stdout.split("\0")
+    return [(items[i], items[i + 1]) for i in range(0, len(items) - 1, 2)]
+
+
+def is_code_path(config, path):
+    """The classification of is-code.sh for one path: the review mark and the local CI log are content, the workflow's
+    own policy and guards are code, then the `content` regexes decide."""
+    if path == config.get("reviewMark"):
+        return False
+    if re.search(r"^(\.claude/(gw\.json|settings\.json|gw/)|\.githooks/)", path):
+        return True
+    if path == config.get("ciLocalLog"):
+        return False
+    for pattern in config.get("content") or []:
+        try:
+            if re.search(pattern, path):
+                return False
+        except re.error as exc:
+            raise Reject(f"content regex {pattern!r} in .claude/gw.json is invalid ({exc}); "
+                         f"fix it: python3 {HERE / 'config.py'} validate")
+    return True
+
+
+def check_task_record(root, config, message, found, msgfile):
+    """C11: see the header (taskRecord). Raises Reject; returns when the commit is exempt or complete."""
+    record = gwconfig.task_record(config)
+    subject = next((line for line in message.splitlines() if line.strip()), "")
+    wip = wip_of(config)
+    if (wip and subject.startswith(wip)) or subject.startswith(GIT_LINES):
+        return
+    m = re.match(r"([a-z]+)(?:\([^()\s][^()]*\))?!?: ", subject)
+    if not m or m.group(1) not in record["requiredFor"]:
+        return
+    base = record["path"].strip("/")
+    changes = staged_changes(root)
+    if not any(is_code_path(config, path) for _, path in changes if not path.startswith(base + "/")):
+        return
+    ids = []
+    for key, value in found:
+        if key.lower() == "refs":
+            ids += [t for t in re.split(r"[,\s]+", value) if t]
+    edit = f"git commit -e -F {msgfile}"
+    cmd = f"python3 {HERE / 'task.py'}"
+    if not ids:
+        raise Reject(f"a {m.group(1)} commit that changes code has no Refs trailer, so its task record cannot be found "
+                     f"(taskRecord.enabled in .claude/gw.json)\ncommit-msg: add `Refs: <task id>` and commit again: {edit}")
+    try:
+        import task
+    except ImportError as exc:
+        raise Reject(f"cannot import task.py ({exc}); reinstall the workflow scripts: /gw-update")
+    for task_id in ids:
+        contract = f"{base}/{task_id}.md"
+        if not any(st in ("A", "M") and path == contract for st, path in changes):
+            raise Reject(f"this {m.group(1)} commit changes code but does not touch its task record {contract} "
+                         f"(taskRecord.enabled in .claude/gw.json)\ncommit-msg: create it with `{cmd} new {task_id}` "
+                         f"or add to its Change log, stage it and commit again: git add {contract} && {edit}")
+        for why in task.contract_errors(show_staged(root, contract), config):
+            raise Reject(f"the staged {contract} is not a task record: {why}\ncommit-msg: fix it, stage it and "
+                         f"commit again: git add {contract} && {edit}")
+        entries = [path for st, path in changes if st == "A" and path.startswith(f"{base}/{task_id}/") and path.endswith(".md")]
+        if not entries:
+            raise Reject(f"this {m.group(1)} commit changes code but adds no decision log entry in {base}/{task_id}/ "
+                         f"(taskRecord.enabled in .claude/gw.json)\ncommit-msg: create one with "
+                         f"`{cmd} log {task_id} --agent <skill|session>`, fill it in, stage it and commit again: "
+                         f"git add {base}/{task_id} && {edit}")
+        errors = {path: task.entry_errors(show_staged(root, path), task_id, config) for path in entries}
+        if all(errors.values()):
+            path = entries[0]
+            raise Reject(f"the new entry {path} is not a decision log entry: {errors[path][0]}\ncommit-msg: fix it, "
+                         f"stage it and commit again: git add {path} && {edit}")
+
+
+def show_staged(root, path):
+    r = git(root, "show", f":{path}")
+    if r.returncode != 0:
+        raise Reject(f"cannot read the staged {path} ({r.stderr.strip()[:200]}); stage it again: git add {path}")
+    return r.stdout
+
+
 def staged_or_head(root, rev, path):
     r = git(root, "show", f"{rev}:{path}")
     return r.stdout if r.returncode == 0 else ""
@@ -421,7 +513,8 @@ def run(root, msgfile):
     refs = bool(config.get("commitRefs", False))
     agent = config.get("agentSignatures", True) is False
     nxt = bool(config.get("commitNext", False)) and os.environ.get("GW_NO_NEXT") != "1"
-    if not (fmt or refs or agent or nxt):
+    tasks = bool(gwconfig.task_record(config)["enabled"])
+    if not (fmt or refs or agent or nxt or tasks):
         return
     state = git_paths_exist(root, ("rebase-merge", "rebase-apply") + MERGE_STATES)
     if state["rebase-merge"] or state["rebase-apply"]:
@@ -432,11 +525,11 @@ def run(root, msgfile):
     message = clean_message(root, text)
     subject = next((line for line in message.splitlines() if line.strip()), "")
     if REVIEW_MARK.fullmatch(subject):
-        fmt = refs = False
+        fmt = refs = tasks = False
     if not merging and fmt:
         check_format(config, message, msgfile)
     found = []
-    if agent or (not merging and (refs or nxt)):
+    if agent or (not merging and (refs or nxt or tasks)):
         found = trailers(root, message, msgfile)
     if agent:
         check_agent(found, msgfile, model_rules(config))
@@ -446,6 +539,8 @@ def run(root, msgfile):
         check_refs(root, config, found, msgfile)
     if not merging and nxt:
         check_next(config, message, found, msgfile)
+    if not merging and tasks:
+        check_task_record(root, config, message, found, msgfile)
     if not merging and (refs or nxt):
         warning = findings_warning(config, message, found)
         if warning:

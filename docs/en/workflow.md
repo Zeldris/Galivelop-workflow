@@ -37,6 +37,16 @@ His skills included here carry his credit and licence ([credits](../../CREDITS.m
    fixed; minor ones are logged as pending and not reviewed again in that PR.
 5. **What can be checked is checked by a script**, not by an agent's opinion.
 
+## The task record
+
+With `taskRecord.enabled` ([`config.md`](config.md)), every task with code has a record `docs/tasks/<id>.md`
+(`python3 .claude/gw/scripts/task.py new <id>`): `Goal`, `Scope`, `Acceptance` (checkboxes), `Files`, `Change log` and
+`Verification`. Each agent that touches the task also adds a new entry in `docs/tasks/<id>/`
+(`task.py log <id> --agent <skill|session>`) with three sections: `Why`, `Alternatives` and `Changed because`; nobody
+edits an entry once pushed. The `commit-msg` asks for both in a `feat`, `fix` or `hotfix` commit that changes code
+(not in `docs`, `WIP:`, merges or the review mark). The commit of each entry is not written into the file:
+`task.py resolve <id>` reads it from git.
+
 ## Guides
 
 - [Applying the workflow to a project](apply.md) (the agent's guide, new and existing projects)
