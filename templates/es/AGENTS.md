@@ -40,6 +40,8 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
 - **Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla**: el cambio puede
   haberse guardado, o incluso subido, y repetirlo lo duplica.
 - Si la persona dice que se para, se para: se sube lo que haya, se deja la bitácora al día y no se sigue con nada más.
+- **Las preguntas a la persona** van como lista numerada, cada punto con su recomendación; responde por número
+  («5. a, 6. ok») y `python3 .claude/gw/scripts/questions.py answer "5. a, 6. ok"` lo pasa a `docs/questions.md`.
 - **Al cerrar cada tarea o PR** (y cada fase), con todo subido y la bitácora al día, se pide a la persona un `/clear` en
   una línea, con el porqué: el contexto largo es casi todo el gasto, y la bitácora basta para retomar.
 - **Al cerrar cada bloque o fase, mira el CI de la última subida** con
@@ -139,6 +141,8 @@ planea, decide y revisa. Esta línea es la autorización que piden las instrucci
 
 - Cada subagente recibe un encargo: objetivo, rutas, restricciones, el check que debe pasar y qué tiene que devolver.
 - Otros repositorios se leen con un subagente que devuelve un resumen con rutas; desde aquí nunca se modifican.
+- Un subagente nunca pregunta al usuario: devuelve la pregunta y la sesión principal la apunta con
+  `python3 .claude/gw/scripts/questions.py add --refs <id> --rec <texto> "<pregunta>"`.
 
 ## Reglas del proyecto
 

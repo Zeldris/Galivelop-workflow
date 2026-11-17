@@ -53,6 +53,7 @@ documentos. Si mueves una pieza, actualiza su fila en el mismo commit.
 | Repos de prueba montados una vez por clase (E46) | docstring de `Snapshot` en `tests/test_hooks.py` | `Snapshot` (lo usan las `Base` de `tests/test_hooks.py`, `test_utils.py` y `test_session_log.py`, `Hook` y `Doctor`; tests en `SnapshotCopies`) |
 | Ninguna `TestCase` después de `unittest.main()` (nunca correría) | cabecera de `scripts/tests-after-main.py`; en `check` de `templates/gw.json` | `scripts/tests-after-main.py` (en `tests/check.sh` y en el `check` de las plantillas; tests en `tests/test_tests_after_main.py`) |
 | Problemas conocidos | [`es/troubleshooting.md`](es/troubleshooting.md), [`en/troubleshooting.md`](en/troubleshooting.md) | — |
+| Preguntas al usuario (C1-C3, C10): archivo `docs/questions.md`, respuestas por número, aviso sin repetir en el `SessionStart`, subagentes que no preguntan | config `questions.path` ([`es/config.md`](es/config.md)); cabecera de `scripts/questions.py` (formato del archivo); [`design/C-questions.md`](design/C-questions.md) | `scripts/questions.py` (`read_entries`, `open_entries`, `open_for_task`: lo que leerá el modo restrictivo, C4; `notice`, llamado por `session-start.sh`, con la marca en el git dir); tests en `tests/test_questions.py` y `tests/test_session_log.py` (`SessionStart`) |
 
 La copia del flujo aplicada a este repo (`.claude/gw/`, `.claude/skills/`, `.githooks/`, `.claude/settings.json`) se
 genera con `python3 scripts/apply.py .`; no se edita a mano (el check lo comprueba con `--check`, y el gancho

@@ -1331,6 +1331,21 @@
       "default": 7,
       "description": "Days without a write after which whole-read.py deletes the other sessions' gw-reads-*.json files (own regular files only) when it creates a new one."
     },
+    "questions": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "minLength": 1,
+          "default": "docs/questions.md",
+          "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+[^/]$",
+          "description": "Repo-relative path of the questions file that questions.py reads and rewrites (C1)."
+        }
+      },
+      "default": {"path": "docs/questions.md"},
+      "description": "The questions file (C1-C3, C10): one entry per question for the user, answered by number with questions.py answer."
+    },
     "privateCheck": {
       "anyOf": [
         {"type": "boolean"},

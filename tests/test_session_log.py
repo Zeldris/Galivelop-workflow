@@ -18,7 +18,7 @@ import waits
 from test_hooks import ROOT, Project, Snapshot
 
 SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py", "context_guard.py",
-           "change-size.py", "whole-read.py")
+           "change-size.py", "whole-read.py", "questions.py")
 
 
 MARK_VAR = "GW_TEST_PROC_MARK"
@@ -424,6 +424,59 @@ class SessionStart(Base):
         self.assertIn("this session was started in /home/user, outside the repo root", out)
         code, out = p.session_start(env=cloud, stdin=json.dumps({"cwd": str(self.tmp)}))  # cloud, another folder
         self.assertIn(f"this session was started in {self.tmp}, outside the repo root", out)
+
+
+    def questions(self, *args):
+        return self.p.run("python3", str(self.p.scripts / "questions.py"), *args)
+
+    def test_open_questions_listed_once_then_only_counted(self):
+        self.questions("add", "--refs", "T1", "--rec", "yes", "Should it go?")
+        code, out = self.p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertIn("1 open questions (docs/questions.md)", out)
+        self.assertIn("Should it go?", out)
+        code, out = self.p.session_start()
+        self.assertIn("1 open questions (docs/questions.md)", out)
+        self.assertNotIn("Should it go?", out)
+
+    def test_new_question_lists_everything_again(self):
+        self.questions("add", "First one?")
+        self.p.session_start()
+        self.questions("add", "Second one?")
+        code, out = self.p.session_start()
+        self.assertIn("2 open questions", out)
+        self.assertIn("First one?", out)
+        self.assertIn("Second one?", out)
+
+    def test_list_command_marks_as_shown(self):
+        self.questions("add", "Only one?")
+        self.questions("list")
+        code, out = self.p.session_start()
+        self.assertIn("1 open questions (docs/questions.md)", out)
+        self.assertNotIn("Only one?", out)
+
+    def test_no_open_questions_says_nothing(self):
+        self.questions("add", "Done soon?")
+        self.questions("answer", "1. yes")
+        code, out = self.p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("open questions", out)
+        self.assertNotIn("Done soon?", out)
+
+    def test_broken_questions_file_does_not_break_start(self):
+        self.p.write("docs/questions.md", "## Q-1\n- Status: bogus\n")
+        code, out = self.p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertIn("gw session-start: questions:", out)
+        self.assertIn("Status 'bogus'", out)
+        self.assertIn("questions.py --root", out)
+
+    def test_invalid_utf8_questions_file_warns(self):
+        (self.p.work / "docs").mkdir(exist_ok=True)
+        (self.p.work / "docs" / "questions.md").write_bytes(b"## Q-1\n- Status: open\n- Question: \xff\n")
+        code, out = self.p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertIn("gw session-start: questions: cannot read", out)
 
 
 class Recover(Base):

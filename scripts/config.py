@@ -542,6 +542,11 @@ def context_guard(config):
     return _section(config, "contextGuard")
 
 
+def questions_path(config):
+    """The `questions.path` key (C1): repo-relative path of the questions file, `docs/questions.md` by default."""
+    return _section(config, "questions")["path"]
+
+
 def given_keys(root, key):
     """The inner keys the project's .claude/gw.json itself writes under the object key `key` (not the defaults the
     loader fills), as a set; empty when the file, the key or the JSON is missing (B31: is the window known?)."""

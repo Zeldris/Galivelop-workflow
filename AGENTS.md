@@ -124,4 +124,8 @@ Los comprueba el `commit-msg` (`commitFormat`, `commitRefs`, `commitNext` y `age
   sin preguntar cada vez; la sesión principal planea, decide y revisa.
 - **Lo comprobable lo hace un script**, no un agente; las skills y guías solo deciden lo que exige criterio. Este
   archivo tiene tope de líneas (`instructionLines` de `.claude/gw.json`, `doctor.py`).
+- **Preguntas al usuario** (C2, C10): una lista numerada, cada punto con su recomendación; el usuario responde por
+  número («5. a, 6. ok») y `python3 scripts/questions.py answer "5. a, 6. ok"` lo pasa a `docs/questions.md` (las
+  abiertas: `questions.py list`). Un subagente nunca pregunta al usuario: devuelve la pregunta y la sesión principal
+  la apunta con `questions.py add --refs <id> --rec <texto> "<pregunta>"`.
 - **Calidad primero:** un ahorro de tokens que empeora el resultado no es ahorro.
