@@ -458,7 +458,7 @@ def remote_lines(root, branch):
     shown = f"origin/{CONTROL.sub('', branch)}"
     if not git(root, "rev-parse", "-q", "--verify", ref + "^{commit}", timeout=LIMITS["gitWait"]):
         return [f"- Remote: no {shown} in the local refs (never pushed, or not fetched): git fetch origin {branch}, "
-                f"or push it: git push -u origin {branch}"]
+                f"or push it: bash {os.path.join(HERE, 'push.sh')} {branch}"]
     counts = git(root, "rev-list", "--left-right", "--count", f"HEAD...{ref}", timeout=LIMITS["gitWait"]).split()
     if len(counts) != 2 or not all(c.isdigit() for c in counts):
         return []
@@ -466,7 +466,7 @@ def remote_lines(root, branch):
     if not ahead and not behind:
         return [f"- Remote: up to date with {shown} (local refs; git fetch origin {branch} to refresh them)"]
     if not behind:
-        return [f"- Remote: {ahead} commit(s) ahead of {shown}, not pushed: git push -u origin {branch}"]
+        return [f"- Remote: {ahead} commit(s) ahead of {shown}, not pushed: bash {os.path.join(HERE, 'push.sh')} {branch}"]
     if not ahead:
         return [f"- Remote: {behind} commit(s) behind {shown}: git merge --ff-only {shown}"]
     return [f"- Remote: diverged from {shown} ({ahead} ahead, {behind} behind): git merge --no-edit {shown}, then push"]

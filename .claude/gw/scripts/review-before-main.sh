@@ -580,7 +580,7 @@ def head_from_branch(root, branch, how):
     sha = remote_sha(root, branch)
     if not sha:
         block(f"the PR branch {branch} is not on origin ({how}), so its reviewed commit cannot be checked.",
-              f"push it and retry: git push -u origin {branch}")
+              f"push it and retry: bash {os.path.join(HERE, 'push.sh')} {branch}")
     return sha, branch
 
 

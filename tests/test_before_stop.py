@@ -82,7 +82,7 @@ class Commits(Base):
         p.write("src/a.py", "x = 1\n"); p.commit("local only")
         code, out = p.stop()
         self.assertEqual(code, 0, out)
-        data = self.assertBlocks(out, "1 commit", "claude/trabajo", "git push -u origin claude/trabajo")
+        data = self.assertBlocks(out, "1 commit", "claude/trabajo", "push.sh claude/trabajo")
         self.assertNotIn(LOG, data["reason"], "a clean tree needs no log reminder")
 
     def test_unpushed_commit_on_the_protected_branch_warns_without_telling_to_push(self):
@@ -113,7 +113,7 @@ class Commits(Base):
         p.write("src/a.py", "x = 1\n"); p.commit("on a new branch")
         code, out = p.stop()
         self.assertEqual(code, 0, out)
-        self.assertBlocks(out, "claude/tema", "git push -u origin claude/tema")
+        self.assertBlocks(out, "claude/tema", "push.sh claude/tema")
 
     def test_merged_main_with_a_merge_commit_counts_only_the_merge_commit(self):
         p = self.p
@@ -126,7 +126,7 @@ class Commits(Base):
         self.assertEqual(p.git("rev-list", "--count", "@{u}..HEAD").stdout.strip(), "2")
         code, out = p.stop()
         self.assertEqual(code, 0, out)
-        self.assertBlocks(out, "1 commit ", "git push -u origin claude/trabajo")  # the old rule said "2 commits"
+        self.assertBlocks(out, "1 commit ", "push.sh claude/trabajo")  # the old rule said "2 commits"
         p.git("push", "-q", "origin", "claude/trabajo")
         code, out = p.stop()
         self.assertLetsStop(code, out)
@@ -138,7 +138,7 @@ class Commits(Base):
         p.git("push", "-q", "origin", "HEAD:refs/heads/claude/otra")  # on a remote, but not on the upstream nor main
         code, out = p.stop()
         self.assertEqual(code, 0, out)
-        self.assertBlocks(out, "1 commit ", "git push -u origin claude/trabajo")
+        self.assertBlocks(out, "1 commit ", "push.sh claude/trabajo")
 
     def test_merge_of_main_without_a_merge_commit_is_not_unpushed(self):
         p = self.p
@@ -162,7 +162,7 @@ class Commits(Base):
         p.write("src/a.py", "x = 1\n"); p.commit("local only")
         code, out = p.stop()
         self.assertEqual(code, 0, out)
-        self.assertBlocks(out, "1 commit ", "git push -u origin claude/trabajo")
+        self.assertBlocks(out, "1 commit ", "push.sh claude/trabajo")
 
     def test_upstream_gone_uses_the_same_rule(self):
         p = self.p
@@ -260,7 +260,7 @@ class WorkingTree(Base):
         p.write("src/b.py", "y = 1\n")
         code, out = p.stop()
         self.assertEqual(code, 0, out)
-        self.assertBlocks(out, "git push -u origin claude/trabajo", LOG)
+        self.assertBlocks(out, "push.sh claude/trabajo", LOG)
 
     def test_unpushed_with_the_log_modified_still_blocks_on_the_push(self):
         p = self.p
@@ -268,7 +268,7 @@ class WorkingTree(Base):
         p.write("src/a.py", "x = 1\n"); p.commit("local only")
         p.write(LOG, "log\nmore\n")
         code, out = p.stop()
-        data = self.assertBlocks(out, "git push -u origin claude/trabajo")
+        data = self.assertBlocks(out, "push.sh claude/trabajo")
         self.assertNotIn("git add", data["reason"])
 
     def test_gitignored_changes_do_not_count(self):
@@ -385,7 +385,7 @@ class PushHelpers(Base):
             self.assertIn(needle, data.get("systemMessage", ""), out)
 
     def assertStillBlocks(self, out):
-        self.assertBlocks(out, "1 commit", "claude/trabajo", "git push -u origin claude/trabajo")
+        self.assertBlocks(out, "1 commit", "claude/trabajo", "push.sh claude/trabajo")
         self.assertNotIn("push of this commit is in progress", out)
 
     def linked_worktree(self):
@@ -437,7 +437,7 @@ class PushInProgress(PushHelpers):
         self.assertStillBlocks_n(p.stop()[1], "2 commits")
 
     def assertStillBlocks_n(self, out, count):
-        self.assertBlocks(out, count, "git push -u origin claude/trabajo")
+        self.assertBlocks(out, count, "push.sh claude/trabajo")
         self.assertNotIn("push of this commit is in progress", out)
 
     def test_marker_without_shas_blocks(self):
@@ -489,10 +489,10 @@ class PushInProgress(PushHelpers):
         p = self.p
         linked, script, gitdir, sha = self.linked_worktree()
         self.assertNotEqual(gitdir, p.work / ".git")
-        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
+        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "push.sh claude/otra")
         # the marker of the main checkout's push does not silence the linked one, even if it lists its sha...
         self.mark(sha=sha, branch="claude/otra")
-        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
+        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "push.sh claude/otra")
         # ...one in the linked worktree's own git dir does...
         own = gitdir / f"gw-push-in-progress.{os.getpid()}"
         main_sha = p.sha()
@@ -525,11 +525,11 @@ class PushInProgress(PushHelpers):
         marker.write_text(f"{os.getpid()}\n{sha} claude/otra\n")
         self.assertWarnsWithoutBlocking(p.stop(cwd=linked, script=script)[1], "claude/otra")  # it is read at all
         marker.write_text(f"{self.dead_pid()}\n{sha} claude/otra\n")  # the hook died without cleaning up
-        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
+        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "push.sh claude/otra")
         marker.write_text(f"{os.getpid()}\n{sha} claude/otra\n")
         old = time.time() - 3601
         os.utime(marker, (old, old))
-        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
+        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "push.sh claude/otra")
 
     def test_uncommitted_changes_still_block_while_a_push_runs(self):
         self.mark()
@@ -601,12 +601,12 @@ class CheckInProgress(PushHelpers):
         for sha in (other, head[:5], "zzzzzzzzzzzz", "-dirty", head[:12] + "x"):
             with self.subTest(sha=sha):
                 self.live(sha=sha)
-                data = self.assertBlocks(self.p.stop()[1], "1 commit", "git push -u origin claude/trabajo")
+                data = self.assertBlocks(self.p.stop()[1], "1 commit", "push.sh claude/trabajo")
                 self.assertIn("check of another commit or worktree is running", data["systemMessage"])
 
     def test_lock_of_another_sha_blocks_and_notes_it(self):
         self.live(sha="0123456789ab")
-        data = self.assertBlocks(self.p.stop()[1], "1 commit", "git push -u origin claude/trabajo")
+        data = self.assertBlocks(self.p.stop()[1], "1 commit", "push.sh claude/trabajo")
         for needle in ("check of another commit or worktree is running", f"pid {os.getpid()}", "0123456789ab"):
             self.assertIn(needle, data["systemMessage"])
 
@@ -675,9 +675,9 @@ class CheckInProgress(PushHelpers):
         p = self.p
         linked, script, gitdir, sha = self.linked_worktree()
         self.assertNotEqual(gitdir, p.work / ".git")
-        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
+        self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "push.sh claude/otra")
         self.live()  # a check of the main checkout's HEAD, in the .git shared by every worktree
-        data = self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "git push -u origin claude/otra")
+        data = self.assertBlocks(p.stop(cwd=linked, script=script)[1], "claude/otra", "push.sh claude/otra")
         self.assertIn("check of another commit or worktree is running", data["systemMessage"])
         self.live(sha=sha[:12])  # a check of the linked worktree's own HEAD
         out = p.stop(cwd=linked, script=script)[1]
@@ -739,7 +739,7 @@ class BackgroundSubagents(PushHelpers):
     def assertWaits(self, out, *ids):
         self.assertNotIn('"block"', out)
         msg = decision(self, out).get("systemMessage", "")
-        for needle in ("still running", "Wait for", "push after", "git push -u origin claude/trabajo", *ids):
+        for needle in ("still running", "Wait for", "push after", "push.sh claude/trabajo", *ids):
             self.assertIn(needle, msg, out)
 
     def test_launched_agent_replaces_the_push_block(self):
@@ -1091,7 +1091,7 @@ class StopKeys(Base):
         code, out = self.p.stop()
         self.assertLetsStop(code, out)
         message = decision(self, out).get("systemMessage", "")
-        for needle in ("1 commit", "claude/trabajo", "git push -u origin claude/trabajo"):
+        for needle in ("1 commit", "claude/trabajo", "push.sh claude/trabajo"):
             self.assertIn(needle, message, out)
         self.assertNotIn("decision", decision(self, out), out)
         self.p.write("src/b.py", "y = 1\n")  # logRequired is still "block"
@@ -1110,7 +1110,7 @@ class StopKeys(Base):
         for needle in (LOG, "1 uncommitted change", "git add", "git commit"):
             self.assertIn(needle, message, out)
         self.p.commit("local only")  # unpushed stays "block"
-        self.assertBlocks(self.p.stop()[1], "1 commit", "git push -u origin claude/trabajo")
+        self.assertBlocks(self.p.stop()[1], "1 commit", "push.sh claude/trabajo")
 
     def test_severity_bad_value_is_an_invalid_config_that_only_warns(self):
         self.unpushed()
@@ -1135,7 +1135,7 @@ class StopKeys(Base):
         script = str(self.p.scripts / SCRIPT)
         payload = json.dumps({"hook_event_name": "Stop", "stop_hook_active": False})
         code, out = self.p.run("python3", script, stdin=payload, env=env)  # 30 s: a 2 s git is fine
-        self.assertBlocks(out, "1 commit", "git push -u origin claude/trabajo")
+        self.assertBlocks(out, "1 commit", "push.sh claude/trabajo")
         self.set_keys(stopGitTimeout=1)
         code, out = self.p.run("python3", script, stdin=payload, env=env)
         self.assertLetsStop(code, out)
@@ -1160,7 +1160,7 @@ class StopKeys(Base):
             os.utime(marker, (old, old))
         mark_old()
         out = self.p.stop()[1]
-        self.assertBlocks(out, "1 commit", "git push -u origin claude/trabajo")
+        self.assertBlocks(out, "1 commit", "push.sh claude/trabajo")
         self.assertNotIn("push of this commit is in progress", out)
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         self.p.write(".claude/gw.json", json.dumps(dict(cfg, stopPushMarkerMaxAge=7200)))

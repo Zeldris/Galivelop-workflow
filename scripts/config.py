@@ -551,15 +551,6 @@ def review_trivial_lines(config):
     return _schema()["properties"]["reviewTrivialLines"]["default"]
 
 
-def push_retry_delays(config):
-    """The `pushRetryDelays` key (D94): the seconds push.sh waits before each retry of a transient push failure; the
-    schema default when absent or not a list of non-negative integers (an empty list is valid: no retries)."""
-    given = config.get("pushRetryDelays")
-    if isinstance(given, list) and all(isinstance(x, int) and not isinstance(x, bool) and x >= 0 for x in given):
-        return list(given)
-    return list(_schema()["properties"]["pushRetryDelays"]["default"])
-
-
 def test_map(config):
     """The `testMap` key as a dict (rules, command) (E21)."""
     return _section(config, "testMap")
@@ -713,13 +704,18 @@ SHARED_REGEX_UNSAFE = re.compile(r"\\[dDsSwWbBAZz<>`'1-9]|\(\?|\[\[:|\[\^?\[:")
 def semantic_errors(config):
     """Problems the schema subset cannot express: a relatedTests `paths`, testMap `paths`/`contains` or changeSize
     `exclude`/`pairs`, fullCheckPaths, agentModelShapes or agentSignaturePatterns entry that is not a valid regex (or a pair replacement that does not fit its
-    regex), an agentMap prefix that is not one folder name, an instructionLines `warn` above its `fail`, an
+    regex), an agentMap prefix that is not one folder name, an instructionLines `warn` above its `fail`, a handoff `cellHardLimit` (not 0) below its `cellLimit`, an
     ownedFiles pattern that is absolute or has a `..`."""
     errors = []
     warn, fail = instruction_lines(config)
     if warn > fail:
         errors.append(f"$.instructionLines: warn ({warn}) must not be above fail ({fail}); lower warn or raise fail "
                       "in .claude/gw.json")
+    sizes = handoff(config)
+    if 0 < sizes["cellHardLimit"] < sizes["cellLimit"]:
+        errors.append(f"$.handoff: cellHardLimit ({sizes['cellHardLimit']}) must not be below cellLimit "
+                      f"({sizes['cellLimit']}): the hard cap would fail cells the soft limit still accepts; raise "
+                      "cellHardLimit, lower cellLimit, or set cellHardLimit to 0 (off) in .claude/gw.json")
     agent_map = config.get("agentMap")
     if isinstance(agent_map, dict) and isinstance(agent_map.get("prefixes"), dict):
         for short in agent_map["prefixes"]:

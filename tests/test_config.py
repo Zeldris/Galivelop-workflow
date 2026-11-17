@@ -523,14 +523,6 @@ class Config(unittest.TestCase):
         for bad in (3, None, ["a"]):
             self.assertEqual(config.decisions_file({"decisionsFile": bad}), "")
 
-    def test_push_retry_delays(self):
-        # D94: a list of non-negative integers (empty = no retries); anything else gives the schema default.
-        self.assertEqual(config.push_retry_delays({}), [2, 4, 8, 16])
-        self.assertEqual(config.push_retry_delays({"pushRetryDelays": []}), [])
-        self.assertEqual(config.push_retry_delays({"pushRetryDelays": [0, 1]}), [0, 1])
-        for bad in ([-1], ["2"], [True], 5, None):
-            self.assertEqual(config.push_retry_delays({"pushRetryDelays": bad}), [2, 4, 8, 16])
-
     def test_a13_c7_measure_media_content_and_test_scan_skip_dirs(self):
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
         self.assertEqual(config.measure({}), schema["measure"]["default"])

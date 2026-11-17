@@ -4,13 +4,14 @@ A local bare repo is `origin`; a fake `git` first on PATH replaces `git push` wi
 call, read from a counter file) and runs everything else with the real git.
 Edge cases: success first try; transient then success (retried, delays from the config); retries exhausted;
 non-transient rejection (no retry, reason and fix shown); non-fast-forward; push OK but remote differs; push fails
-but remote matches; detached HEAD without argument; explicit branch; unknown branch; no origin; empty delays.
+but remote matches; ls-remote hangs (limited, reason shown); timeout 0 (no limit) and a non-numeric one; detached HEAD without argument; explicit branch; unknown branch; no origin; empty delays.
 """
 import json
 import os
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -31,6 +32,8 @@ if [ "$1" = "push" ]; then
     fail:*) echo "${step#fail:}" >&2; exit 1 ;;
   esac
 fi
+if [ "$1" = "ls-remote" ] && [ -e "$FAKE_DIR/lshang" ]; then exec sleep 30; fi  # a network that never answers
+if [ "$1" = "ls-remote" ] && [ -s "$FAKE_DIR/lsslow" ]; then sleep "$(cat "$FAKE_DIR/lsslow")"; fi  # a slow but answering network
 if [ "$1" = "ls-remote" ] && [ -s "$FAKE_DIR/lsfail" ]; then  # fail the next N ls-remote calls
   n=$(cat "$FAKE_DIR/lsfail"); if [ "$n" -gt 0 ]; then echo $((n - 1)) > "$FAKE_DIR/lsfail"; echo "fatal: network blip" >&2; exit 128; fi
 fi
@@ -71,9 +74,9 @@ class PushSh(unittest.TestCase):
         self.git(self.work, "add", "-A")
         self.git(self.work, "commit", "-q", "-m", text)
 
-    def set_delays(self, delays):
+    def set_delays(self, delays, **extra):
         (self.work / ".claude").mkdir(exist_ok=True)
-        (self.work / ".claude" / "gw.json").write_text(json.dumps(dict(BASE_CONFIG, pushRetryDelays=delays)))
+        (self.work / ".claude" / "gw.json").write_text(json.dumps(dict(BASE_CONFIG, pushRetryDelays=delays, **extra)))
 
     def steps(self, *lines):
         (self.fake / "steps").write_text("\n".join(lines) + "\n")
@@ -272,6 +275,42 @@ class PushSh(unittest.TestCase):
         r = self.run_push(cwd=outside)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(self.remote(), self.head())
+
+    def test_ls_remote_that_hangs_is_stopped_and_the_reason_shown(self):
+        # D94 n.5: a network that never answers must not block push.sh for ever (the fake would sleep 30 s)
+        self.set_delays([0, 0], pushLsRemoteTimeout=1)
+        (self.fake / "lshang").write_text("1")
+        start = time.monotonic()
+        r = self.run_push()
+        self.assertLess(time.monotonic() - start, 15)
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("git ls-remote origin took over 1s and was stopped (pushLsRemoteTimeout", r.stderr)
+        self.assertIn("origin cannot be read to confirm it", r.stderr)
+        self.assertEqual(self.remote(), self.head())  # the push itself did happen, only the confirmation failed
+
+    def test_ls_remote_slower_than_zero_limit_is_waited_for_and_over_a_real_limit_is_not(self):
+        (self.fake / "lsslow").write_text("2")
+        self.set_delays([0], pushLsRemoteTimeout=0)  # 0 = no limit
+        r = self.run_push()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("push: ok", r.stdout)
+        self.commit("two")
+        self.set_delays([0], pushLsRemoteTimeout=1)  # the same 2 s answer is now too slow
+        r = self.run_push()
+        self.assertEqual(r.returncode, 1, r.stderr)
+        self.assertIn("took over 1s", r.stderr)
+
+    def test_ls_remote_timeout_default_is_30_and_a_bad_value_fails_closed(self):
+        self.assertEqual(json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
+                         ["pushLsRemoteTimeout"]["default"], 30)
+        self.assertEqual(self.run_push().returncode, 0)  # absent in the config: the default applies
+        for bad in ("abc", -1, 1.5, True):
+            self.commit(f"bad {bad}")
+            before = self.pushes()
+            self.set_delays([0], pushLsRemoteTimeout=bad)
+            r = self.run_push()
+            self.assertEqual((r.returncode, self.pushes()), (2, before), bad)
+            self.assertIn("cannot read pushRetryDelays or pushLsRemoteTimeout (invalid config?); fix the config", r.stderr)
 
     def test_too_many_arguments(self):
         r = self.run_push("a", "b")

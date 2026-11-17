@@ -9,6 +9,8 @@
 #  - Success = `git ls-remote origin refs/heads/<branch>` equals the local commit of the branch (HEAD when it is the
 #    current one). Exit 0 only then, also when the push exited non-zero but the remote already has it; a push that
 #    said OK with a different remote is a failure.
+#  - Each `git ls-remote` is limited to `pushLsRemoteTimeout` seconds (default 30; 0 = no limit): a hung network counts
+#    as "cannot read origin" instead of blocking for ever (no `timeout` binary needed: macOS lacks it).
 #  - Exit 0 pushed; 1 push failed; 2 usage or a missing datum (no branch, detached HEAD without argument, no origin,
 #    unreadable config), all before pushing.
 # Bash 3.2 compatible. Root from this script's path, never from $CLAUDE_PROJECT_DIR or the current directory.
@@ -31,21 +33,49 @@ want="$(git rev-parse --verify -q "refs/heads/$branch^{commit}")" || want=""
 [ -n "$want" ] || die "there is no local branch '$branch'; create it or pass an existing one: bash $0 <branch>"
 git remote get-url origin >/dev/null 2>&1 || die "the repository has no remote 'origin'; add it: git remote add origin <url>"
 delays="$(python3 "$config" --root "$root" get pushRetryDelays 2>/dev/null)" || {
-  die "cannot read pushRetryDelays; fix the config: python3 $config --root $root validate"; }
+  die "cannot read pushRetryDelays or pushLsRemoteTimeout (invalid config?); fix the config: python3 $config --root $root validate"; }
+lstimeout="$(python3 "$config" --root "$root" get pushLsRemoteTimeout 2>/dev/null)" || {
+  die "cannot read pushLsRemoteTimeout (invalid config?); fix the config: python3 $config --root $root validate"; }
+case "$lstimeout" in ''|*[!0-9]*) die "pushLsRemoteTimeout is '$lstimeout', not a number of seconds; fix the config: python3 $config --root $root validate";; esac
 out="$(mktemp "${TMPDIR:-/tmp}/gw-push.XXXXXX")" || die "cannot create a temp file; free space and retry"
-trap 'rm -f "$out"' EXIT
 
-remote_sha() {  # the sha of the branch on origin; empty when absent; non-zero when ls-remote fails
-  local line
-  line="$(git ls-remote origin "refs/heads/$branch")" || return 1
-  printf '%s\n' "$line" | awk 'NR==1 {print $1}'
+lsout="$out.ls"
+trap 'rm -f "$out" "$lsout"' EXIT
+timed_out=0
+# `git ls-remote` limited to $lstimeout seconds: run it in the background and poll (bash 3.2, no `timeout` binary).
+limited_ls_remote() {
+  local pid ticks=0 max=$((lstimeout * 10))
+  timed_out=0
+  git ls-remote origin "refs/heads/$branch" >"$lsout" 2>/dev/null &
+  pid=$!
+  while kill -0 "$pid" 2>/dev/null; do
+    if [ "$lstimeout" -gt 0 ] && [ "$ticks" -ge "$max" ]; then
+      kill "$pid" 2>/dev/null
+      wait "$pid" 2>/dev/null
+      timed_out=1
+      return 124
+    fi
+    sleep 0.1
+    ticks=$((ticks + 1))
+  done
+  wait "$pid"
+}
+remote_got=""
+# remote_got = the sha of the branch on origin (empty when absent); non-zero when ls-remote fails or times out
+read_remote() {
+  remote_got=""
+  limited_ls_remote || return 1
+  remote_got="$(awk 'NR==1 {print $1}' "$lsout")"
 }
 # 0 = origin has the commit, 1 = it answered with something else, 2 = it could not be read
 remote_state() {
-  local got
-  got="$(remote_sha 2>/dev/null)" || return 2
-  [ "$got" = "$want" ] && return 0
+  read_remote || return 2
+  [ "$remote_got" = "$want" ] && return 0
   return 1
+}
+unreadable_note() {
+  [ "$timed_out" -eq 1 ] && echo "push: git ls-remote origin took over ${lstimeout}s and was stopped (pushLsRemoteTimeout in .claude/gw.json; 0 = no limit)" >&2
+  return 0
 }
 
 # Only the lines git, the transport and the remote write are classified: the output of the pre-push hook that
@@ -70,6 +100,7 @@ while :; do
       remote_state; state=$?
       [ "$state" -ne 2 ] && break
     done
+    unreadable_note
     [ "$state" -ne 2 ] || die "git push said OK but origin cannot be read to confirm it; check the network and the remote: git ls-remote origin refs/heads/$branch" 1
   fi
   if [ "$state" -eq 0 ]; then
@@ -81,7 +112,7 @@ while :; do
     exit 0
   fi
   if [ "$code" -eq 0 ]; then
-    die "git push said OK but origin/$branch is not at $want (remote: $(remote_sha 2>/dev/null || echo unreadable)); check the remote and retry: git ls-remote origin refs/heads/$branch && bash $0 $branch" 1
+    die "git push said OK but origin/$branch is not at $want (remote: ${remote_got:-absent}); check the remote and retry: git ls-remote origin refs/heads/$branch && bash $0 $branch" 1
   fi
   lines="$(grep -E "$git_lines" "$out" | grep -v '^pre-push:')"
   if printf '%s\n' "$lines" | grep -Eiq "$permanent" || ! printf '%s\n' "$lines" | grep -Eiq "$transient"; then

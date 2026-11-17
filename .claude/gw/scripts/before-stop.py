@@ -7,7 +7,7 @@ agent remembered it. It blocks the stop when:
 
   a. the current branch has commits its upstream does not (`git rev-list @{u}..HEAD --not <remote>/<protectedBranch>`,
      the upstream's remote: what a merged-in `main` brings is already pushed; without that ref, just `@{u}..HEAD`);
-     with no upstream, commits no remote branch has (`git rev-list HEAD --not --remotes`). The reason names `git push -u origin <branch>`. On the
+     with no upstream, commits no remote branch has (`git rev-list HEAD --not --remotes`). The reason names `bash <scripts>/push.sh <branch>`. On the
      protected branch (`protectedBranch`) it does not: AGENTS.md says a push there needs the user's confirmation and
      the three phases, so Claude cannot fix it alone and a block would only make it push without asking. There it is a
      warning to the user (`systemMessage`: the commits are not pushed, and pushing needs their confirmation), never
@@ -437,24 +437,24 @@ def main():
                     if checking is not None and _same_tree_head(root, checking[2]):
                         notes.append(f"A check of this commit is running (pid {checking[0]}, log {checking[1] or '-'}); "
                                      f"branch '{branch}' has {plural(count, 'commit')} not pushed ({where}) until it "
-                                     f"ends. Do not push meanwhile: wait for CHECK ok, then push: git push -u origin "
-                                     f"{branch}")
+                                     f"ends. Do not push meanwhile: wait for CHECK ok, then push: bash "
+                                     f"{os.path.join(HERE, 'push.sh')} {branch}")
                     elif pushing is None and (agents := running_subagents(
                             event.get("transcript_path"), cfg["stopTranscriptBytes"],
                             cfg["stopSubagentMaxAge"])):
                         notes.append(f"{plural(len(agents), 'background subagent')} of this session "
                                      f"{'is' if len(agents) == 1 else 'are'} still running ({', '.join(agents)}); "
                                      f"branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). Wait for "
-                                     f"the subagent{'' if len(agents) == 1 else 's'} to report and push after: git "
-                                     f"push -u origin {branch}")
+                                     f"the subagent{'' if len(agents) == 1 else 's'} to report and push after: bash "
+                                     f"{os.path.join(HERE, 'push.sh')} {branch}")
                         if checking is not None:
                             notes.append(f"A check of another commit or worktree is running (pid {checking[0]}, log "
                                          f"{checking[1] or '-'}, sha {checking[2] or '-'}); it does not cover this "
                                          f"HEAD.")
                     elif pushing is None:
                         unpushed_to.append(f"Branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). What is "
-                                      f"not pushed does not exist for the next session; push it now: git push -u "
-                                      f"origin {branch}")
+                                      f"not pushed does not exist for the next session; push it now: bash "
+                                      f"{os.path.join(HERE, 'push.sh')} {branch}")
                         if checking is not None:  # a check of another commit or worktree: it does not push this one
                             notes.append(f"A check of another commit or worktree is running (pid {checking[0]}, log "
                                          f"{checking[1] or '-'}, sha {checking[2] or '-'}); it does not cover this "

@@ -2763,7 +2763,8 @@ class Reviewed(Base):
         p.write("src/a.py", "a = 2\n"); p.commit("unpushed")
         code, out = p.run("bash", self.script)
         self.assertNotEqual(code, 0, out)
-        self.assertIn("git push -u origin feature", out)
+        self.assertRegex(out, r"bash \S*/push\.sh feature")
+        self.assertNotIn("git push -u origin", out)  # D94: the retrying script, not the bare push
 
     def test_writes_and_commits_the_mark_then_main_accepts_it(self):
         p = self.p

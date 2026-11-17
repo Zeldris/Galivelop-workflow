@@ -71,18 +71,18 @@ case "$lsr_rc" in
 esac
 if [ "$has_protected" = "true" ]; then
   git fetch -q origin "$protected" "$branch" || {
-    echo "reviewed: cannot fetch origin/$protected and origin/$branch; push the branch first: git push -u origin $branch" >&2; exit 1; }
+    echo "reviewed: cannot fetch origin/$protected and origin/$branch; push the branch first: bash $here/push.sh $branch" >&2; exit 1; }
 else
   if [ "$branch" = "$protected" ]; then
     echo "reviewed: origin has no $protected yet and you are on $protected itself; push the work to another branch first and mark from there: git push -u origin HEAD:<work-branch> && git switch -c <work-branch> && bash $0" >&2; exit 1
   fi
   echo "reviewed: origin has no $protected yet; reviewing the whole history of $branch (empty base)" >&2
   git fetch -q origin "$branch" || {
-    echo "reviewed: cannot fetch origin/$branch; push the branch first: git push -u origin $branch" >&2; exit 1; }
+    echo "reviewed: cannot fetch origin/$branch; push the branch first: bash $here/push.sh $branch" >&2; exit 1; }
 fi
 head="$(git rev-parse HEAD)"
 if [ "$head" != "$(git rev-parse -q --verify "refs/remotes/origin/$branch")" ]; then
-  echo "reviewed: HEAD is not what origin/$branch has; push the fixes before marking: git push -u origin $branch" >&2; exit 1
+  echo "reviewed: HEAD is not what origin/$branch has; push the fixes before marking: bash $here/push.sh $branch" >&2; exit 1
 fi
 if [ "$has_protected" = "true" ] && ! git merge-base --is-ancestor "refs/remotes/origin/$protected" HEAD; then
   echo "reviewed: the branch does not include the latest origin/$protected; merge it, review again and mark: git merge origin/$protected" >&2
