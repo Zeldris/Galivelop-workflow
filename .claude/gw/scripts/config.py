@@ -476,6 +476,11 @@ def ci_step_timeout(config):
     return _schema()["properties"]["ciStepTimeout"]["default"]
 
 
+def test_unit_timeout(config):
+    """The `testUnitTimeout` key (B42): seconds a test unit of tests-for.py --run may take (0 = no limit)."""
+    return _int_key(config, "testUnitTimeout")
+
+
 def ci_system_commands(config):
     """The `ciSystemCommands` key (A13): the commands whose steps ci-local.py leaves out as system-package installs
     (an empty list leaves none out)."""

@@ -11,6 +11,7 @@ import tempfile
 import threading
 import time
 import unittest
+import uuid
 from pathlib import Path
 
 import waits
@@ -18,6 +19,54 @@ from test_hooks import ROOT, Project, Snapshot
 
 SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py", "context_guard.py",
            "change-size.py", "whole-read.py")
+
+
+MARK_VAR = "GW_TEST_PROC_MARK"
+
+
+def proc_mark():
+    """B42: an environment for a command whose processes a test looks for afterwards: a value no other run (another
+    agent's tests in the same container) shares, inherited by every descendant, even one that re-parents to init."""
+    return {MARK_VAR: f"{os.getpid()}-{uuid.uuid4().hex}"}
+
+
+def marked_procs(env):
+    """The pids of the live processes that carry `env`'s MARK_VAR value: /proc/<pid>/environ on Linux, `ps -E` (the
+    environment after the command) elsewhere. Never a match on the command line, which another run may repeat."""
+    tag = f"{MARK_VAR}={env[MARK_VAR]}"
+    if os.path.isdir("/proc/self") and os.path.exists("/proc/self/environ"):
+        found = []
+        for pid in filter(str.isdigit, os.listdir("/proc")):
+            try:
+                with open(f"/proc/{pid}/environ", "rb") as f:
+                    if tag.encode() in f.read().split(b"\0"):
+                        found.append(int(pid))
+            except OSError:  # gone, or not ours
+                pass
+        return found
+    out = subprocess.run(["ps", "-A", "-E", "-ww", "-o", "pid=,command="], capture_output=True, text=True).stdout
+    return [int(line.split()[0]) for line in out.splitlines() if f" {tag} " in f"{line} "]
+
+
+def survivors(env, seconds=5):
+    """marked_procs(env) once they are gone or after `seconds` (a killed process takes a moment to go)."""
+    waits.wait_for(lambda: not marked_procs(env), seconds)
+    return marked_procs(env)
+
+
+class MarkedProcs(unittest.TestCase):
+    """B42: the helper finds a process by its marker, and only that one, so an empty answer means none survived."""
+
+    def test_finds_its_own_process_and_not_one_with_another_marker(self):
+        mine, other = proc_mark(), proc_mark()
+        procs = [subprocess.Popen(["sleep", "30"], env=dict(os.environ, **m)) for m in (mine, other)]
+        for proc in procs:
+            self.addCleanup(proc.wait)
+            self.addCleanup(proc.kill)
+        self.assertEqual(marked_procs(mine), [procs[0].pid])
+        self.assertEqual(marked_procs(other), [procs[1].pid])
+        procs[0].kill(); procs[0].wait()
+        self.assertEqual(survivors(mine), [])
 
 
 def folder_of(path):
@@ -218,15 +267,13 @@ class SessionStart(Base):
         self.assertIn("setup command timed out after 1s: 'sleep 30'", out)
 
     def test_timeout_kills_the_children_of_the_command_too(self):
-        mark = str(time.time_ns())[-7:]  # its own sleep lengths: a parallel run of this test is not mistaken for a survivor
-        cloud = self.cloud_config(setup=[f"sleep 31.5{mark} & sleep 32.5{mark} & wait"])
-        cloud["GW_COMMAND_TIMEOUT"] = "1"
+        cloud = self.cloud_config(setup=["sleep 31 & sleep 32 & wait"])
+        cloud.update(proc_mark(), GW_COMMAND_TIMEOUT="1")  # B42: its own processes, not another run's sleeps
         code, out = self.p.session_start(env=cloud)
         self.assertEqual(code, 0, out)
         self.assertIn("setup command timed out after 1s", out)
-        time.sleep(1)
-        left = subprocess.run(["pgrep", "-f", f"sleep 3[12]\\.5{mark}"], capture_output=True, text=True).stdout
-        self.assertEqual(left.strip(), "", "children of the timed-out command survived")
+        left = survivors(cloud)
+        self.assertEqual(left, [], "children of the timed-out command survived")
 
     def test_exit_124_of_the_command_is_a_failure_not_a_timeout(self):
         cloud = self.cloud_config(setup=["exit 124"])
@@ -237,15 +284,14 @@ class SessionStart(Base):
 
     def test_a_fast_command_leaves_no_watchdog_running(self):
         cloud = self.cloud_config(setup=["echo ok >> ok.log"])
-        limit = str(40000 + time.time_ns() % 20000)  # its own number: another run's watchdog may be running in parallel
-        cloud["GW_COMMAND_TIMEOUT"] = limit
+        cloud.update(proc_mark(), GW_COMMAND_TIMEOUT="45000")  # B42: the marker, not the number, tells its watchdog
         started = time.time()
         code, out = self.p.session_start(env=cloud)
         self.assertEqual(code, 0, out)
         self.assertLess(time.time() - started, 15, out)
         self.assertEqual((self.p.work / "ok.log").read_text().strip(), "ok")
-        left = subprocess.run(["pgrep", "-f", f"sleep {limit}( |$)"], capture_output=True, text=True).stdout
-        self.assertEqual(left.strip(), "", "the watchdog's sleeper outlived the command")
+        left = survivors(cloud)
+        self.assertEqual(left, [], "the watchdog's sleeper outlived the command")
 
     def test_a_zero_or_non_numeric_limit_falls_back_to_the_default(self):
         cloud = self.cloud_config(setup=["sleep 1; echo ok >> ok.log"])
@@ -272,19 +318,19 @@ class SessionStart(Base):
         self.assertIn("setup command timed out after 1s", out)
 
     def test_command_timeout_key_sets_the_limit_and_the_environment_wins(self):
-        mark = f"{os.getpid()}-{time.time_ns()}"  # unique, so a parallel run of this test is not mistaken for a survivor
-        cloud = self.cloud_config(setup=[f"sleep 30 # run{mark}"], commandTimeout=1)
+        cloud = self.cloud_config(setup=["sleep 30 # first run"], commandTimeout=1)
+        cloud.update(proc_mark())  # B42: its own processes, not another run's
         started = time.time()
         code, out = self.p.session_start(env=cloud)
         self.assertEqual(code, 0, out)
         self.assertLess(time.time() - started, 20, out)
-        self.assertIn(f"setup command timed out after 1s: 'sleep 30 # run{mark}'", out)
+        self.assertIn("setup command timed out after 1s: 'sleep 30 # first run'", out)
         cloud["GW_COMMAND_TIMEOUT"] = "33"                    # the variable beats the key
         code, out = self.p.session_start(env=cloud)
         self.assertEqual(code, 0, out)
         self.assertNotIn("timed out after 1s", out)
-        left = subprocess.run(["pgrep", "-f", f"run{mark}"], capture_output=True, text=True).stdout
-        self.assertEqual(left.strip(), "", "the command of the first run survived")
+        left = survivors(cloud)
+        self.assertEqual(left, [], "the command of the first run survived")
 
     def test_command_kill_grace_key_shortens_the_wait_before_kill(self):
         cloud = self.cloud_config(setup=["trap '' TERM; sleep 31"], commandTimeout=1, commandKillGrace=1)

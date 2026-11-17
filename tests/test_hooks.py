@@ -602,7 +602,8 @@ class PrePush(Base):
 
     def test_a_push_waits_for_no_one_but_refuses_while_another_check_holds_the_lock(self):
         p = self.p
-        holder = subprocess.Popen(["sleep", "60"])
+        holder = subprocess.Popen(["sleep", "60"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)  # B42: not the runner's output
+        self.addCleanup(holder.wait)
         self.addCleanup(holder.kill)
         start = " ".join(subprocess.run(["ps", "-o", "lstart=", "-p", str(holder.pid)], capture_output=True, text=True,
                                         env=dict(os.environ, LC_ALL="C")).stdout.split())
@@ -1077,7 +1078,8 @@ class PrePushWorktree(Base):
         p = self.p
         self.gwdir.mkdir()
         proc = subprocess.Popen(["true"]); proc.wait(); dead_pid = proc.pid
-        live = subprocess.Popen(["sleep", "60"])
+        live = subprocess.Popen(["sleep", "60"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)  # B42: not the runner's output
+        self.addCleanup(live.wait)
         self.addCleanup(live.kill)
         for name, pid in (("wt.dead00", dead_pid), ("wt.live00", live.pid)):
             p.git("worktree", "add", "-q", "--detach", str(self.gwdir / (name + ".d")), "HEAD")
