@@ -53,7 +53,10 @@
 #     within prepushCiWarnTimeout seconds, on the GitHub repo of the remote pushed to (another host: silent); a force
 #     push is not checked (its CI is about the dropped commit). A CI GitHub never started counts as red, and so does no
 #     CI at all when the project has .github/workflows and ciOnPush is not false. Green, running, no `gh` or token, no
-#     network or any error: silent (a timeout: one line). Off with prepushCiWarn false.
+#     network or any error: silent (a timeout: one line). Branches at the same remote commit are read once and named
+#     together; the commands it suggests use ci-status.py's absolute path (they work from any folder). An unreadable
+#     prepushCiWarn or prepushCiWarnTimeout says so in one line (config.py validate) and skips it. Ctrl-C, SIGTERM or
+#     SIGHUP kill ci-status.py's whole process group (gh or curl too) before the hook ends. Off with prepushCiWarn false.
 # Skipping it (git push --no-verify) is only for a WIP: commit with red tests.
 # Bash 3.2 compatible. Root from this hook's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
@@ -541,21 +544,26 @@ fi
 ci_warn() {  # D62: a warning about a red CI on the pushed branches; never fails the push
   [ -f "$scripts/ci-status.py" ] || return 0
   local on secs onpush url repo
-  on="$(python3 "$config" --root "$root" get prepushCiWarn 2>/dev/null)" || return 0
+  if ! on="$(python3 "$config" --root "$root" get prepushCiWarn 2>/dev/null)" \
+      || { [ "$on" = "true" ] && ! secs="$(python3 "$config" --root "$root" get prepushCiWarnTimeout 2>/dev/null)"; }; then
+    echo "pre-push: CI warning skipped: .claude/gw.json could not be read (prepushCiWarn); see why: python3 '$config' validate"
+    return 0
+  fi
   [ "$on" = "true" ] || return 0
-  secs="$(python3 "$config" --root "$root" get prepushCiWarnTimeout 2>/dev/null)" || return 0
   onpush="$(python3 "$config" --root "$root" get ciOnPush 2>/dev/null)" || onpush=true
   # The repo pushed to: the remote's configured URL (before any insteadOf), else the location git gives the hook.
   url="$(git config --get "remote.$remote.pushurl" 2>/dev/null || git config --get "remote.$remote.url" 2>/dev/null || printf '%s' "$pushurl")"
   repo="$(printf '%s\n' "$url" | sed -n -E 's#^.*github\.com[:/]+([^/]+)/([^/]+[^/.])(\.git)?/?$#\1/\2#p' | sed 's/\.git$//')"
   [ -n "$repo" ] || return 0  # not a GitHub remote: nothing to read
   python3 - "$scripts/ci-status.py" "$root" "$secs" "$work/input" "$repo" "$onpush" <<'PY' 2>/dev/null || true
-import json, os, signal, subprocess, sys, time
+import json, os, shlex, signal, subprocess, sys, time
 script, root, secs, refs, repo, onpush = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5], sys.argv[6]
-rel = os.path.relpath(script, root)
+signal.signal(signal.SIGTERM, lambda *_: sys.exit(143))  # so the finally below kills ci-status and its gh or curl
+signal.signal(signal.SIGHUP, lambda *_: sys.exit(129))
+cmd = "python3 " + shlex.quote(os.path.abspath(script))  # absolute: it works from any folder
 wf = os.path.join(root, ".github", "workflows")
 expects_ci = onpush != "false" and os.path.isdir(wf) and any(n.endswith((".yml", ".yaml")) for n in os.listdir(wf))
-seen, targets = set(), []
+targets = {}  # remote sha -> the branches at it, in push order: one read per commit, every branch named
 for line in open(refs):
     f = line.split()
     if len(f) < 4 or set(f[1]) == {"0"} or set(f[3]) == {"0"} or not f[2].startswith("refs/heads/"):
@@ -563,31 +571,42 @@ for line in open(refs):
     if subprocess.run(["git", "-C", root, "merge-base", "--is-ancestor", f[3], f[1]], stdout=subprocess.DEVNULL,
                       stderr=subprocess.DEVNULL).returncode != 0:
         continue  # a force push (or a tip not in this clone): its CI is about a commit this push drops
-    if f[3] not in seen:
-        seen.add(f[3]); targets.append((f[2][len("refs/heads/"):], f[3]))
+    names = targets.setdefault(f[3], [])
+    if f[2][len("refs/heads/"):] not in names:
+        names.append(f[2][len("refs/heads/"):])
+
+
+def kill_group(proc):
+    if proc.poll() is None:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)  # gh or curl too: they hold the pipe open
+        except OSError:
+            pass
+
+
 deadline = time.monotonic() + secs
-for branch, sha in targets:
+for sha, names in targets.items():
+    branch = ", ".join(names)
     left = deadline - time.monotonic()
-    late = f"pre-push: CI of {branch} not read within {secs} s (prepushCiWarnTimeout); see it with: python3 {rel} --repo {repo} --sha {sha[:12]}"
+    late = f"pre-push: CI of {branch} not read within {secs} s (prepushCiWarnTimeout); see it with: {cmd} --repo {repo} --sha {sha[:12]}"
     if left <= 0:
         print(late)
         break
     proc = subprocess.Popen([sys.executable, script, "--root", root, "--repo", repo, "--sha", sha, "--json"],
                             stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, text=True,
                             start_new_session=True)
-    try:
+    try:  # Ctrl-C (KeyboardInterrupt), SIGTERM or SIGHUP: the group it leads must not outlive the push
         out, _ = proc.communicate(timeout=left)
     except subprocess.TimeoutExpired:
-        try:
-            os.killpg(proc.pid, signal.SIGKILL)  # gh or curl too: they hold the pipe open
-        except OSError:
-            pass
+        kill_group(proc)
         try:
             proc.communicate(timeout=1)  # a grandchild out of the group may still hold the pipe: do not wait for it
         except subprocess.TimeoutExpired:
             pass
         print(late)
         break
+    finally:
+        kill_group(proc)
     try:
         report = json.loads(out)
     except ValueError:
@@ -602,7 +621,7 @@ for branch, sha in targets:
               ".github/workflows runs on push: GitHub may not have started it (Actions quota or payments)")
     else:
         continue  # green, running, no CI expected or could not be read: nothing to say
-    print(f"  the push goes on; read the failure: python3 {rel} --repo {repo} --sha {sha[:12]} --failed")
+    print(f"  the push goes on; read the failure: {cmd} --repo {repo} --sha {sha[:12]} --failed")
 PY
 }
 ci_warn
