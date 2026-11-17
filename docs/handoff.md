@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI en verde). Etiqueta y release `v0.7.1` creadas por el agente desde una sesión local (2026-11-16, a petición del usuario) |
-| Siguiente paso | D94 + D95 hechos y revisados; siguiente: cerrar D94 + D95 (CI de la última subida) y elegir la siguiente tarea de la `0.8`. Presupuesto de compactaciones: 1 |
+| Siguiente paso | D94 + D95 cerrados (CI de `a72ebab` en verde, 2026-11-17); siguiente: elegir con el usuario la siguiente tarea de la `0.8`. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
