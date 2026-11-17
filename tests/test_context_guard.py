@@ -277,6 +277,93 @@ class SystemIsLargest(Base):  # D122
         self.assertFalse(cg.system_is_largest(self.root, self.cfg(), str(self.tmp / "nope.jsonl")))
 
 
+class NearCutoff(Base):  # B31: warn before the next compaction, once the task's compaction budget is spent
+    """Default cutoff 160,000 (200,000 x 0.8), nearRatio 0.8: the warning starts at 128,000 tokens of context."""
+
+    def near(self, lines, spent=(2, 2), once=None):
+        import recover
+        from unittest import mock
+        path = lines if isinstance(lines, (str, Path)) or lines is None else self.transcript(lines)
+        with mock.patch.object(recover, "budget_count", return_value=spent) as counted:
+            if once:
+                got = cg.near_cutoff_once(self.root, self.cfg(), "b", path, str(once))
+            else:
+                got = cg.near_cutoff(self.root, self.cfg(), "b", path)
+        self.counted = counted
+        return got
+
+    def big_log(self):  # the log weighs most in the startup, not the system: /clear helps
+        (self.root / "docs" / "log.md").write_text("l" * 350000)
+
+    def test_budget_not_spent_is_silent(self):
+        self.assertIsNone(self.near([turn(150000)], spent=(1, 2)))
+
+    def test_no_budget_in_the_log_is_silent(self):
+        self.assertIsNone(self.near([turn(150000)], spent=None))
+
+    def test_spent_but_below_the_ratio_is_silent(self):
+        self.assertIsNone(self.near([turn(127000)]))
+
+    def test_spent_and_above_the_ratio_proposes_closing_the_step(self):
+        self.big_log()
+        stretch, message = self.near([turn(150000)], spent=(3, 2))
+        self.assertEqual(message, "Context at 94 % of the compaction cutoff (150,000 of 160,000 tokens) and the task's "
+                                  "compaction budget is already spent (3 of 2): the next compaction passes it; close "
+                                  "the step now: update the log, commit and push, then ask the user for /clear.")
+        self.assertTrue(stretch.endswith("|0"), stretch)
+
+    def test_the_current_context_is_the_last_turn_of_the_stretch(self):
+        self.big_log()
+        self.assertIsNotNone(self.near([turn(20000), turn(140000)]))
+        self.assertIsNone(self.near([turn(140000), turn(20000)]))
+        self.assertIsNone(self.near([turn(140000), BOUNDARY]))  # nothing measured since the compaction yet
+
+    def test_system_as_main_culprit_says_clear_will_not_lower_it(self):  # D122
+        _, message = self.near([turn(150000)])
+        self.assertIn("close the step now (update the log, commit and push); the largest part of the startup is the "
+                      "system (system prompt, tools, MCP), which /clear does not shrink", message)
+        self.assertNotIn("ask the user for /clear", message)
+
+    def test_missing_or_unreadable_transcript_is_silent(self):
+        self.assertIsNone(self.near(None))
+        self.assertIsNone(self.near(str(self.tmp / "nope.jsonl")))
+        self.assertIsNone(self.near(["not json", "{broken"]))
+        bad = self.tmp / "bad.jsonl"
+        bad.write_bytes(b"\xff\xfe" + json.dumps(turn(150000)).encode()[:20])
+        self.assertIsNone(self.near(str(bad)))
+
+    def test_key_off_is_silent_and_reads_nothing(self):
+        self.write_config({"contextGuard": {"nearRatio": 0}})
+        self.assertIsNone(self.near([turn(159000)]))
+        self.counted.assert_not_called()
+
+    def test_own_ratio(self):
+        self.write_config({"contextGuard": {"nearRatio": 0.5}})
+        self.assertIsNotNone(self.near([turn(81000)]))
+        self.assertIsNone(self.near([turn(79000)]))
+
+    def test_once_per_stretch(self):
+        self.big_log()
+        state = self.tmp / "warned"
+        lines = [turn(150000)]
+        self.assertIn("ask the user for /clear", self.near(lines, once=state))
+        self.assertIsNone(self.near(lines, once=state))  # warned already this stretch
+        self.assertIsNone(self.near(lines + [turn(155000)], once=state))  # same stretch, more turns
+        self.assertIn("ask the user for /clear", self.near(lines + [BOUNDARY, turn(150000)], once=state))  # new one
+
+    def test_once_with_an_unwritable_state_still_warns(self):
+        self.big_log()
+        self.assertIsNotNone(self.near([turn(150000)], once=self.tmp / "no" / "dir" / "warned"))
+
+    def test_budget_count_with_a_real_log_budget(self):
+        import recover
+        (self.root / "docs" / "log.md").write_text("Compaction budget: 0\n")
+        path = self.transcript([turn(150000)])
+        self.assertEqual(recover.budget_count(self.root, "main", str(path)), (0, 0))
+        self.assertIsNone(recover.budget_overrun(self.root, "main", str(path)))
+        self.assertIn("(0 of 0)", cg.near_cutoff(self.root, self.cfg(), "main", path)[1])
+
+
 class MeasureOnce(Base):  # B41: one --state reads the transcript and computes the culprits once
     def counting(self):
         calls = {"startups": 0, "breakdown": 0}

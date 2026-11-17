@@ -32,6 +32,13 @@ agent remembered it. It blocks the stop when:
      which the metrics.py Stop hook rewrites on every stop) and the log (`log` in .claude/gw.json) is
      not among them. The reason says to commit the log, updated, in the same commit as the work.
 
+B31: it also warns BEFORE the next compaction, never blocking: when the task's compaction budget in the log is
+already spent and the context of the stretch reaches `contextGuard.nearRatio` of the compaction cutoff, a one-line
+`systemMessage` proposes closing the step (log, commit and push, /clear; or, when the system weighs most, D122, that
+/clear will not lower it). Once per stretch (<git dir>/gw-context-warn); silent if the transcript cannot be read
+(context_guard.near_cutoff_once). The Stop hook fires at the end of every turn, so it comes before the compaction;
+recover.py --state comes after it.
+
 Output format (https://code.claude.com/docs/en/hooks.md, "Stop decision control"): a block is a JSON object on stdout
 with exit 0, `{"decision": "block", "reason": "..."}`; Claude Code feeds `reason` back to Claude as the explanation
 for why it should continue ("`reason` ... Tells Claude why it should continue"). The page also documents exit 2 with
@@ -371,6 +378,21 @@ def changed_paths(root, ignore=()):
     return paths
 
 
+def near_compaction(root, cfg, transcript):
+    """B31: context_guard.near_cutoff_once for this branch and transcript (the hook's transcript_path), remembered in
+    <git dir>/gw-context-warn so it warns once per stretch; None when there is nothing to say or anything fails
+    (a missing context_guard.py, no git, an unreadable transcript): silent, never a block."""
+    if not transcript:
+        return None
+    try:
+        import context_guard
+        branch = git(root, "rev-parse", "--abbrev-ref", "HEAD")[1].strip()
+        state = os.path.join(git(root, "rev-parse", "--absolute-git-dir")[1].strip(), "gw-context-warn")
+        return context_guard.near_cutoff_once(root, cfg, branch, transcript, state)
+    except Exception:
+        return None
+
+
 def main():
     global GIT_TIMEOUT, PUSH_MARKER_MAX_AGE
     doctor = f"python3 {os.path.join(HERE, 'doctor.py')}"
@@ -450,6 +472,9 @@ def main():
                               f"commit it in the same commit as the work: git add {log} <files> && git commit")
         except GitError as exc:
             warns.append(str(exc))
+        near = near_compaction(root, cfg, event.get("transcript_path"))
+        if near:
+            notes.append(near)
 
     answer = {}
     if blocks:

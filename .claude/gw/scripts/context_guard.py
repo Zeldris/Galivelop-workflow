@@ -309,6 +309,79 @@ def report(root, cfg, path, source, hook_chars=0, measure=None):
         return [unknown]
 
 
+def current_context(path):
+    """(tokens, model) of the last measured assistant turn of the current stretch (after the last boundary), or None:
+    no such turn yet, or a transcript that cannot be read."""
+    found = None
+    try:
+        for entry in entries(path):
+            if is_boundary(entry):
+                found = None
+                continue
+            used = usage_of(entry)
+            if used is not None:
+                found = (used, entry["message"].get("model"))
+    except (OSError, TypeError, ValueError):
+        return None
+    return found
+
+
+def near_cutoff(root, cfg, branch, transcript):
+    """B31: (stretch, message) when the task's compaction budget is already spent (compactions since the task started
+    >= the log's budget, recover.budget_count) and the current context reaches contextGuard.nearRatio of the
+    compaction cutoff, so the next compaction would pass the budget; else None. `stretch` names the stretch
+    (transcript and its compaction count) so the caller warns once per stretch. The message proposes closing the
+    step (log, commit and push, /clear) or, when the system weighs most (D122), says /clear will not lower it.
+    nearRatio 0 turns it off. Only the given transcript is read (no search); any failure: None, never raises."""
+    try:
+        ratio = config.context_guard(cfg or {})["nearRatio"]
+        if not ratio or not transcript or not os.path.isfile(str(transcript)):
+            return None
+        import recover
+        spent = recover.budget_count(root, branch, str(transcript))
+        if spent is None or spent[0] < spent[1]:
+            return None
+        now = current_context(str(transcript))
+        if now is None:
+            return None
+        tokens, model = now
+        cutoff = cutoff_for(model, cfg)
+        if not cutoff or tokens < ratio * cutoff:
+            return None
+        if system_is_largest(root, cfg, str(transcript)):
+            advice = f"close the step now (update the log, commit and push); {SYSTEM_ADVICE}"
+        else:
+            advice = "close the step now: update the log, commit and push, then ask the user for /clear"
+        message = (f"Context at {round(100 * tokens / cutoff)} % of the compaction cutoff ({fmt(tokens)} of "
+                   f"{fmt(cutoff)} tokens) and the task's compaction budget is already spent ({spent[0]} of "
+                   f"{spent[1]}): the next compaction passes it; {advice}.")
+        return f"{os.path.abspath(str(transcript))}|{recover.count_compactions(str(transcript))}", message
+    except Exception:  # a warning must never cost the stop
+        return None
+
+
+def near_cutoff_once(root, cfg, branch, transcript, state):
+    """near_cutoff's message the first time in a stretch, else None. `state` is a file that remembers the last
+    stretch warned about (before-stop.py: <git dir>/gw-context-warn). Never raises; if the file cannot be written the
+    warning still shows (at most once more)."""
+    found = near_cutoff(root, cfg, branch, transcript)
+    if found is None:
+        return None
+    stretch, message = found
+    try:
+        with open(state, encoding="utf-8") as fh:
+            if fh.read().strip() == stretch:
+                return None
+    except OSError:
+        pass
+    try:
+        with open(state, "w", encoding="utf-8") as fh:
+            fh.write(stretch + "\n")
+    except OSError:
+        pass
+    return message
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--session", metavar="PATH", help="transcript to read (default: the newest for the repo)")

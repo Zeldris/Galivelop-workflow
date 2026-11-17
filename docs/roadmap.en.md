@@ -305,7 +305,7 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | D95 | `handoff.py add-pending` and `add-decision`: add to the log without reading it (`0.6.0` harvest, installer P3) | done (2026-11-16) |
 | D96 | Long log cells: `handoff.py` moves a row's closed items to "Done", or a second cap that fails (new key) (`0.6.0` harvest, image-generator P2) | done (2026-11-17; `handoff.cellHardLimit`, 1600, 0 = off) |
 | E49 | `gw-init` with `agentSignatures: false` writes the "no signatures" rule into `CLAUDE.md` against the attribution reminder (`0.6.0` harvest, image-generator P5) | pending (moves from `0.7`) |
-| B31 | Warning when the context nears the window with the compaction budget spent (`recover.py --state` or `Stop`), before the compaction (`0.6.0` harvest, image-generator P7) | pending (moves from `0.7`) |
+| B31 | Warning when the context nears the window with the compaction budget spent (`recover.py --state` or `Stop`), before the compaction (`0.6.0` harvest, image-generator P7) | done (2026-11-17; `Stop` hook, once per stretch, `contextGuard.nearRatio`) |
 | B38 | Sweep of the `scripts/handoff.py` minors in `pending.md` (D104): the pending-pointer count, duplicated and unchecked in a commit that only touches `pending.md`; `archive` requires "## Pendiente" while `check`/`recover` do not, and the missing-file message names the log; the `pre-push` reads `pendingFile` from the working copy; the count only looks at "Pendiente (de la bitácora)"; `move-pending` drops lines that look like pointers (`0.7.0` retro, R2; user, 2026-11-15) | done |
 | E4 | Install profiles (minimal/core/full, `core` by default) in `gw-init` and `gw-update` | pending |
 | E5 | Front-end tests following the research | pending |

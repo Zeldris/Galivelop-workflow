@@ -291,7 +291,8 @@ how code already reaches it today.
 - **`recover.py` on the command line**, to get back what a compaction or a `/clear` dropped:
   `python3 .claude/gw/scripts/recover.py --state` (the log, `git status`, the last commits, the other worktrees
   with their branch and row, and the compactions in the session and since the task started, which is the merge base
-  with `protectedBranch`; the budget from `Compaction budget: N` in the log, with a warning when exceeded; and the
+  with `protectedBranch`; the budget from `Compaction budget: N` in the log, with a warning when exceeded, and the
+  `Stop` hook warns before it is passed (`contextGuard.nearRatio`, B31); and the
   remote branches with commits the protected branch lacks, 10 at most, from local refs only),
   a review-overdue warning (lines changed since the last commit with a `Findings:` trailer above `changeSize.block`,
   counted against `origin/<protected>` or the local branch; with neither it stays silent; it names the fix:

@@ -1004,6 +1004,46 @@ class Wiring(unittest.TestCase):
         self.assertTrue(cmds[0].startswith("python3 "), cmds[0])
 
 
+class NearCompaction(Base):  # B31: the Stop hook warns before the next compaction, once per stretch, never blocks
+    def setUp(self):
+        super().setUp()
+        for name in ("context_guard.py", "recover.py"):
+            shutil.copy2(ROOT / "scripts" / name, self.p.scripts / name)
+        self.p.write(LOG, "log\nCompaction budget: 0\n" + "l" * 350000 + "\n")  # the log weighs most: /clear helps
+        self.p.commit("log with a budget")
+        self.p.work_branch()
+        usage = {"input_tokens": 10, "cache_creation_input_tokens": 149890, "cache_read_input_tokens": 100}
+        self.transcript = self.tmp / "s.jsonl"
+        self.transcript.write_text(json.dumps({"type": "assistant", "message": {"model": "claude-sonnet-5-5",
+                                                                                 "usage": usage}}) + "\n")
+
+    def test_warns_once_per_stretch_without_blocking(self):
+        code, out = self.p.stop({"transcript_path": str(self.transcript)})
+        self.assertLetsStop(code, out)
+        self.assertIn("Context at 94 % of the compaction cutoff (150,000 of 160,000 tokens) and the task's compaction "
+                      "budget is already spent (0 of 0): the next compaction passes it; close the step now: update "
+                      "the log, commit and push, then ask the user for /clear.",
+                      decision(self, out).get("systemMessage", ""))
+        code, out = self.p.stop({"transcript_path": str(self.transcript)})
+        self.assertLetsStop(code, out)
+        self.assertNotIn("compaction cutoff", out)
+
+    def test_missing_transcript_is_silent(self):
+        code, out = self.p.stop({"transcript_path": str(self.tmp / "nope.jsonl")})
+        self.assertLetsStop(code, out)
+        self.assertNotIn("compaction cutoff", out)
+        self.assertNotIn("could not check", out)
+
+    def test_without_context_guard_is_silent(self):
+        (self.p.scripts / "context_guard.py").unlink()
+        self.p.commit("no context_guard.py")
+        self.p.git("push", "-q")
+        code, out = self.p.stop({"transcript_path": str(self.transcript)})
+        self.assertLetsStop(code, out)
+        self.assertNotIn("compaction cutoff", out)
+        self.assertNotIn("could not check", out)
+
+
 class StopKeys(Base):
     """A13: the values of the Stop hook that were literals are keys of .claude/gw.json (stopSeverity, stopGitTimeout,
     stopPushMarkerMaxAge, hookStdinWait); each case checks today's behaviour by default and the change when set."""
