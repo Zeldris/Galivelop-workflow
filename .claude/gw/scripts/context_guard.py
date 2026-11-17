@@ -355,6 +355,56 @@ def window_known(root, model):
     return "[1m]" in name or "-1m" in name or bool({"cutoff", "window"} & config.given_keys(root, "contextGuard"))
 
 
+WARNED_MAX = 32  # transcripts remembered in the near-cutoff state file; the oldest written is dropped first
+
+
+def read_warned(state):
+    """B31: {absolute transcript path: compactions counted when it warned} from the state file, one JSON object per
+    line ({"transcript": ..., "counted": ...}), oldest first. The old one-line "path|count" format is read too.
+    Missing, unreadable or bad lines: skipped (at worst a stretch warns again). Never raises."""
+    warned = {}
+    try:
+        with open(state, encoding="utf-8", errors="replace") as fh:
+            lines = fh.read().splitlines()
+    except (OSError, ValueError):
+        return warned
+    for line in lines:
+        line = line.strip()
+        try:
+            item = json.loads(line)
+            key, counted = item["transcript"], item["counted"]
+        except (ValueError, TypeError, KeyError):
+            key, sep, counted = line.rpartition("|")
+            if not sep or not counted.isdigit():
+                continue
+            counted = int(counted)
+        if isinstance(key, str) and key and isinstance(counted, int) and not isinstance(counted, bool):
+            warned.pop(key, None)  # the last line for a transcript wins and moves to the end
+            warned[key] = counted
+    return warned
+
+
+def write_warned(state, warned, key, counted):
+    """Write `warned` with key -> counted (moved last), keeping the WARNED_MAX newest, atomically: a temporary file in
+    the same directory, then os.replace, so a concurrent reader sees the old file or the new one, never half. Two
+    writers at once may lose one entry (that session warns again once), never the file. Never raises."""
+    warned = dict(warned)
+    warned.pop(key, None)
+    warned[key] = counted
+    keep = list(warned.items())[-WARNED_MAX:]
+    tmp = f"{state}.{os.getpid()}.tmp"
+    try:
+        with open(tmp, "w", encoding="utf-8") as fh:
+            for name, value in keep:
+                fh.write(json.dumps({"transcript": name, "counted": value}) + "\n")
+        os.replace(tmp, state)
+    except OSError:
+        try:
+            os.remove(tmp)
+        except OSError:
+            pass
+
+
 def near_cutoff(root, cfg, branch, transcript, state=None):
     """B31: (stretch, message) when the context of the current stretch reaches contextGuard.nearRatio of the
     compaction cutoff and the task's compaction budget is already spent (compactions since the task started >= the
@@ -362,8 +412,8 @@ def near_cutoff(root, cfg, branch, transcript, state=None):
     and push, recommend /clear to the user) or, when the system weighs most (D122), says /clear will not lower it.
     Cheap checks first: nearRatio 0 (off), the transcript's last `stopTranscriptBytes` bytes (0 = off), a window
     that is not known (window_known), a context below the ratio; only then the log's budget and the whole transcript.
-    `state` (a file): the stretch warned last; the same stretch gives None, a new one is written there (unwritable:
-    it warns again). `stretch` = transcript and compactions since the task started. Never raises; any failure: None."""
+    `state` (a file, read_warned): the stretch warned last for each transcript, so sessions sharing it do not
+    overwrite each other's; the same stretch gives None, a new one is written there (unwritable: it warns again). `stretch` = transcript and compactions since the task started. Never raises; any failure: None."""
     try:
         cfg = cfg or {}
         ratio = config.context_guard(cfg)["nearRatio"]
@@ -383,14 +433,11 @@ def near_cutoff(root, cfg, branch, transcript, state=None):
         if spent is None or spent[0] < spent[1]:
             return None
         counted, budget = spent
-        stretch = f"{os.path.abspath(transcript)}|{counted}"
-        if state:
-            try:
-                with open(state, encoding="utf-8") as fh:
-                    if fh.read().strip() == stretch:
-                        return None
-            except OSError:
-                pass
+        key = os.path.abspath(transcript)
+        stretch = f"{key}|{counted}"
+        warned = read_warned(state) if state else {}
+        if warned.get(key) == counted:
+            return None
         if counted == budget:
             where = f"the task's compaction budget is already spent ({counted} of {budget}): the next compaction passes it"
         else:
@@ -402,19 +449,15 @@ def near_cutoff(root, cfg, branch, transcript, state=None):
         message = (f"Context at {round(100 * tokens / cutoff)} % of the compaction cutoff ({fmt(tokens)} of "
                    f"{fmt(cutoff)} tokens) and {where}; {advice}.")
         if state:
-            try:
-                with open(state, "w", encoding="utf-8") as fh:
-                    fh.write(stretch + "\n")
-            except OSError:
-                pass
+            write_warned(state, warned, key, counted)
         return stretch, message
     except Exception:  # a warning must never cost the stop
         return None
 
 
 def near_cutoff_once(root, cfg, branch, transcript, state):
-    """near_cutoff's message the first time in a stretch (remembered in the file `state`; before-stop.py:
-    <git dir>/gw-context-warn), else None. Never raises."""
+    """near_cutoff's message the first time in a stretch (remembered per transcript in the file `state`,
+    read_warned; before-stop.py: <git dir>/gw-context-warn), else None. Never raises."""
     found = near_cutoff(root, cfg, branch, transcript, state)
     return found[1] if found else None
 

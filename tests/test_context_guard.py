@@ -388,6 +388,54 @@ class NearCutoff(Base):  # B31: warn before the next compaction, once the task's
         self.assertIn("already passed (3 compactions, budget 2)",
                       self.near(lines + [BOUNDARY, turn(150000)], spent=(3, 2), once=state))  # a new stretch
 
+    def test_two_sessions_sharing_the_state_do_not_overwrite_each_other(self):
+        self.big_log()
+        state = self.tmp / "warned"
+        a = self.transcript([turn(150000)], name="a.jsonl")
+        b = self.transcript([turn(150000)], name="b.jsonl")
+        self.assertIsNotNone(self.near(a, once=state))
+        self.assertIsNotNone(self.near(b, once=state))
+        self.assertIsNone(self.near(a, once=state))  # B did not erase A's stretch
+        self.assertIsNone(self.near(b, once=state))
+        self.assertEqual(cg.read_warned(str(state)), {str(a): 2, str(b): 2})
+        self.assertEqual(sorted(p.name for p in self.tmp.iterdir() if ".tmp" in p.name), [])  # atomic: no leftovers
+        self.assertIsNotNone(self.near(a, spent=(3, 2), once=state))  # A's new stretch warns, B's is kept
+        self.assertEqual(list(cg.read_warned(str(state)).items()), [(str(b), 2), (str(a), 3)])
+
+    def test_state_reads_the_old_one_line_format(self):
+        self.big_log()
+        a = self.transcript([turn(150000)], name="a.jsonl")
+        state = self.tmp / "warned"
+        state.write_text(f"{a}|2\n")  # written by the previous version: same stretch, still said once
+        self.assertIsNone(self.near(a, once=state))
+        self.assertIsNotNone(self.near(a, spent=(3, 2), once=state))
+        self.assertEqual(cg.read_warned(str(state)), {str(a): 3})
+
+    def test_state_skips_bad_lines_and_keeps_the_rest(self):
+        state = self.tmp / "warned"
+        state.write_text("garbage\n\n{\"transcript\": 1, \"counted\": 2}\n{\"counted\": 2}\nx|y\n"
+                         "{\"transcript\": \"/t\", \"counted\": true}\n[1]\n\xff\n"
+                         "{\"transcript\": \"/ok\", \"counted\": 4}\n")
+        self.assertEqual(cg.read_warned(str(state)), {"/ok": 4})
+        self.assertEqual(cg.read_warned(str(self.tmp / "missing")), {})
+        self.assertEqual(cg.read_warned(str(self.tmp)), {})  # a directory: unreadable, nothing remembered
+
+    def test_state_keeps_only_the_newest_transcripts(self):
+        state = str(self.tmp / "warned")
+        for i in range(cg.WARNED_MAX + 3):
+            cg.write_warned(state, cg.read_warned(state), f"/t{i}", i)
+        warned = cg.read_warned(state)
+        self.assertEqual(len(warned), cg.WARNED_MAX)
+        self.assertEqual(list(warned)[0], "/t3")
+        self.assertEqual(list(warned)[-1], f"/t{cg.WARNED_MAX + 2}")
+
+    def test_state_unwritable_leaves_no_temporary_file(self):
+        state = self.tmp / "dir"
+        state.mkdir()  # os.replace onto a directory fails
+        cg.write_warned(str(state), {}, "/t", 1)
+        self.assertTrue(state.is_dir())
+        self.assertEqual([p.name for p in self.tmp.iterdir() if p.name.endswith(".tmp")], [])
+
     def test_once_with_an_unwritable_state_still_warns(self):
         self.big_log()
         self.assertIsNotNone(self.near([turn(150000)], once=self.tmp / "no" / "dir" / "warned"))

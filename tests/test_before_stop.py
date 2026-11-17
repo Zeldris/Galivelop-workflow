@@ -1054,6 +1054,20 @@ class NearCompaction(Base):  # B31: the Stop hook blocks once per stretch before
         self.assertLetsStop(code, out)
         self.assertNotIn("compaction cutoff", out)
 
+    def test_two_sessions_in_one_worktree_do_not_overwrite_each_other(self):
+        other = self.tmp / "other.jsonl"
+        shutil.copy2(self.transcript, other)
+        self.assertEqual(self.assertBlocks(self.stop()[1])["reason"], self.REASON)  # session A
+        code, out = self.p.stop({"transcript_path": str(other)})  # session B, its own stretch
+        self.assertEqual(self.assertBlocks(out)["reason"], self.REASON)
+        for path in (self.transcript, other):  # each said once: neither forgot the other's
+            code, out = self.p.stop({"transcript_path": str(path)})
+            self.assertLetsStop(code, out)
+            self.assertNotIn("compaction cutoff", out)
+        gitdir = self.p.git("rev-parse", "--absolute-git-dir").stdout.strip()
+        marker = (Path(gitdir) / "gw-context-warn").read_text().splitlines()
+        self.assertEqual([json.loads(l)["transcript"] for l in marker], [str(self.transcript), str(other)])
+
     def test_stop_hook_active_never_blocks_nor_spends_the_stretch(self):
         code, out = self.stop(stop_hook_active=True)
         self.assertLetsStop(code, out)
