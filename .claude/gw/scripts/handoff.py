@@ -27,14 +27,16 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  (`archive` needs it) or a pointer with an old "(N entradas)" count
                                                  only warn. --pending PATH reads the pending file from PATH (the
                                                  pre-push passes the pushed commit's copy; a missing PATH = no file)
-  handoff.py preflight [--date YYYY-MM-DD] [--strict]       what the pre-push checks in the log, without pushing (D61): `check`
+  handoff.py preflight [--date YYYY-MM-DD] [--strict]
+                                                 what the pre-push checks in the log, without pushing (D61): `check`
                                                  of the working copy's log with --date (default: today if the log has
                                                  uncommitted changes, else the day of the last commit that changed it,
                                                  as the pre-push takes the day of the newest commit that changes it),
                                                  and with logRows and a plan, `clash HEAD
                                                  refs/remotes/origin/<protectedBranch>`; with no such ref (a fresh
                                                  clone, no remote) the clash is skipped with a note, as the pre-push
-                                                 skips it
+                                                 skips it. With --strict the soft rules of `check` (the warnings)
+                                                 fail too (exit 1), so one pass does the work of `check --strict`
   handoff.py move-pending [FILE]                 with `pendingFile` set: move the "- " items (and other text) of the
                                                  log's "Pendiente" / "Pending" section to the end of that file's
                                                  section of the same name (the file and the section are created when
@@ -116,7 +118,7 @@ Python 3.8+, stdlib only.
 import argparse
 import contextlib
 import datetime
-import hashlib
+import errno
 import json
 import os
 import re
@@ -1152,21 +1154,33 @@ def write_added(path, lines, me, cmd):
         raise Usage(f"cannot write {path} ({exc}); check its permissions and rerun: {me} {cmd}")
 
 
+# The commands that rewrite the log or `pendingFile`/`decisionsFile`: main() runs them under one lock, the single
+# point that decides what is locked (n.º 1 and 4 of the review of D95).
+WRITING_COMMANDS = ("done", "set-row", "close-row", "archive", "move-pending", "add-pending", "add-decision")
+
+
 @contextlib.contextmanager
-def file_lock(ctx, path, me, cmd):
-    """An exclusive lock for the read-change-write of `path` (n.º 9 of the D95 review: two `add-*` at once lost an
-    item). `fcntl.flock` on <git common dir>/gw/handoff-<hash>.lock (beside `path` when there is no git dir): the
-    system drops it when the process ends, so a killed run leaves no orphan lock; it waits `handoff.lockWait` seconds
-    and then fails saying how to rerun. Without `fcntl` (Windows) it does not lock."""
+def write_lock(ctx, cmd):
+    """One exclusive lock per repository, <git common dir>/gw/handoff.lock, around the read-change-write of a writing
+    command (two `add-*` at once, or an `add-*` and a `move-pending`, lost an item: n.º 9 of the D95 review).
+    `fcntl.flock`: the system drops it when the process ends, so a killed run leaves no orphan lock. It waits
+    `handoff.lockWait` seconds and then fails saying how to rerun; only EWOULDBLOCK/EAGAIN mean "held". Without
+    `fcntl` (Windows), without a git dir, or when the file system refuses locks (any other OSError) there is no lock
+    and one `WARNING` line says so."""
+    me = f"python3 {HERE / 'handoff.py'}"
     try:
         import fcntl
     except ImportError:
+        print(f"handoff: WARNING: no fcntl on this platform, so {cmd} runs without a lock (two at once can lose an item)",
+              file=sys.stderr)
         yield
         return
-    name = f"handoff-{hashlib.sha1(str(path.resolve()).encode('utf-8')).hexdigest()[:16]}.lock"
-    common = ctx.git("rev-parse", "--path-format=absolute", "--git-common-dir")
-    gitdir = Path(common.stdout.strip()) if common.returncode == 0 and common.stdout.strip() else None
-    where = gitdir / "gw" / name if gitdir and gitdir.is_dir() else path.with_name("." + name)
+    common = gwconfig.git_common_dir(ctx.root)
+    if common is None:
+        print(f"handoff: WARNING: {ctx.root} is not in a git repository, so {cmd} runs without a lock", file=sys.stderr)
+        yield
+        return
+    where = common / "gw" / "handoff.lock"
     wait = gwconfig.handoff(ctx.config)["lockWait"]
     try:
         where.parent.mkdir(parents=True, exist_ok=True)
@@ -1179,7 +1193,10 @@ def file_lock(ctx, path, me, cmd):
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
                 break
-            except OSError:
+            except OSError as exc:
+                if exc.errno not in (errno.EWOULDBLOCK, errno.EAGAIN):  # the file system has no flock: go without
+                    print(f"handoff: WARNING: cannot lock {where} ({exc}), so {cmd} runs without a lock", file=sys.stderr)
+                    break
                 if time.monotonic() >= deadline:
                     raise Usage(f"another handoff.py holds the lock {where} and did not let go in {wait} s; wait for "
                                 f"it, or raise handoff.lockWait in .claude/gw.json, and rerun: {me} {cmd}")
@@ -1190,20 +1207,6 @@ def file_lock(ctx, path, me, cmd):
 
 
 def cmd_add_pending(ctx, args):
-    me = f"python3 {HERE / 'handoff.py'}"
-    path = ctx.root / (gwconfig.pending_file(ctx.config) or ctx.log)
-    with file_lock(ctx, path, me, "add-pending"):
-        return _add_pending(ctx, args)
-
-
-def cmd_add_decision(ctx, args):
-    me = f"python3 {HERE / 'handoff.py'}"
-    path = ctx.root / (gwconfig.decisions_file(ctx.config) or ctx.log)
-    with file_lock(ctx, path, me, "add-decision"):
-        return _add_decision(ctx, args)
-
-
-def _add_pending(ctx, args):
     me = f"python3 {HERE / 'handoff.py'}"
     if not args.text.strip():
         raise Usage(f"the text is empty; give it: {me} add-pending \"the item\"")
@@ -1246,7 +1249,7 @@ def _add_pending(ctx, args):
     return 0
 
 
-def _add_decision(ctx, args):
+def cmd_add_decision(ctx, args):
     me = f"python3 {HERE / 'handoff.py'}"
     if not args.text.strip():
         raise Usage(f"the text is empty; give it: {me} add-decision \"the decision\"")
@@ -1376,6 +1379,12 @@ def cmd_move_pending(ctx, args):
     return 0
 
 
+COMMANDS = {"check": cmd_check, "done": cmd_done, "own-row": cmd_own_row, "closed": cmd_closed,
+            "in-progress": cmd_in_progress, "close-row": cmd_close_row, "set-row": cmd_set_row, "clash": cmd_clash,
+            "archive": cmd_archive, "next-id": cmd_next_id, "move-pending": cmd_move_pending,
+            "add-pending": cmd_add_pending, "add-decision": cmd_add_decision, "preflight": cmd_preflight}
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--root")
@@ -1478,11 +1487,8 @@ def main(argv=None):
                       f"enable it: set \"logRows\": true in .claude/gw.json, then rerun {args.cmd}")
                 return 1
             return 0  # the branch-row module is off: nothing to check (`check` still reads the size and Done rules)
-        return {"check": cmd_check, "done": cmd_done, "own-row": cmd_own_row, "closed": cmd_closed,
-                "in-progress": cmd_in_progress, "close-row": cmd_close_row, "set-row": cmd_set_row, "clash": cmd_clash,
-                "archive": cmd_archive, "next-id": cmd_next_id,
-                "move-pending": cmd_move_pending, "add-pending": cmd_add_pending,
-                "add-decision": cmd_add_decision, "preflight": cmd_preflight}[args.cmd](ctx, args)
+        with (write_lock(ctx, args.cmd) if args.cmd in WRITING_COMMANDS else contextlib.nullcontext()):
+            return COMMANDS[args.cmd](ctx, args)
     except Usage as exc:
         print(f"handoff: {exc}", file=sys.stderr)
         return 2

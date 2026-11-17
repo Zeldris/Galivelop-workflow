@@ -208,7 +208,7 @@
         "cellLimit": {"type": "integer", "minimum": 100, "default": 800, "description": "Characters of a value cell of the log's state table (a warning; a failure with check --strict)."},
         "cellHardLimit": {"type": "integer", "minimum": 0, "default": 1600, "description": "Characters of a value cell of the log's state table over which handoff.py check fails even without --strict (D96); 0 = off."},
         "doneItems": {"type": "integer", "minimum": 1, "default": 5, "description": "Items the Done section keeps (handoff.py done drops the oldest; check warns over it)."},
-        "lockWait": {"type": "integer", "minimum": 0, "default": 10, "description": "Seconds add-pending and add-decision wait for another handoff.py that holds the lock of the same file before failing; 0 = do not wait."}
+        "lockWait": {"type": "integer", "minimum": 0, "default": 10, "description": "Seconds the handoff.py commands that rewrite the log or pendingFile wait for another one that holds the repository lock before failing; 0 = do not wait."}
       },
       "default": {"rowLimit": 600, "cellLimit": 800, "cellHardLimit": 1600, "doneItems": 5, "lockWait": 10},
       "description": "Size rules and lock wait of the log (handoff.py): rowLimit, cellLimit, cellHardLimit, doneItems and lockWait."

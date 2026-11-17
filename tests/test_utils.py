@@ -3067,6 +3067,17 @@ class HandoffPendingFile(Base):
         self.assertNotIn("se añade y se quita allí", moved)
         self.assertEqual(self.section(path), "\n" + self.POINTER)
 
+@__import__("contextlib").contextmanager
+def mock_env_no_git():
+    """`git` missing from PATH (its lookup raises FileNotFoundError)."""
+    old = os.environ.get("PATH")
+    os.environ["PATH"] = "/nonexistent"
+    try:
+        yield
+    finally:
+        os.environ["PATH"] = old
+
+
 class HandoffAdd(Base):
     """`add-pending` and `add-decision` (D95): add to the log or to its side files without reading them."""
     config = {"logRows": False}
@@ -3299,11 +3310,9 @@ class HandoffAdd(Base):
         self.assertEqual(self.add("add-pending", "x")[0], 0)
         self.assertEqual(path.read_bytes(), b"## Pendiente\r\n\r\n- a\r\n- x\r\n")
 
-    def lock_file(self, rel):
-        import hashlib
+    def lock_file(self, rel=None):
         common = self.p.git("rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip()
-        digest = hashlib.sha1(str((self.p.work / rel).resolve()).encode()).hexdigest()[:16]
-        return Path(common) / "gw" / f"handoff-{digest}.lock"
+        return Path(common) / "gw" / "handoff.lock"
 
     def test_concurrent_add_pending_lose_no_item(self):
         self.use(pendingFile=self.PENDING)
@@ -3327,20 +3336,86 @@ class HandoffAdd(Base):
         self.assertEqual(code, 0, out)
         self.assertIn("- x\n", self.read(self.PENDING))
 
-    def test_a_held_lock_fails_after_lock_wait_naming_the_fix(self):
+    def test_a_held_lock_fails_every_writing_command_after_lock_wait_naming_the_fix(self):
         import fcntl
         self.use(pendingFile=self.PENDING, handoff={"lockWait": 0})
         self.p.write(self.PENDING, "## Pendiente\n\n- a\n")
-        lock = self.lock_file(self.PENDING)
+        self.log(self.LOG.replace("- viejo", "- [ ] `0.8` viejo"))
+        before = (self.read(self.PENDING), self.read("docs/h.md"))
+        lock = self.lock_file()
         lock.parent.mkdir(parents=True, exist_ok=True)
         with open(lock, "a") as held:
             fcntl.flock(held, fcntl.LOCK_EX)
-            code, out = self.add("add-pending", "x")
-        self.assertEqual(code, 2, out)
-        self.assertIn("another handoff.py holds the lock", out)
-        self.assertIn("raise handoff.lockWait in .claude/gw.json, and rerun: python3", out)
-        self.assertEqual(self.read(self.PENDING), "## Pendiente\n\n- a\n")
+            for cmd in (("add-pending", "x"), ("add-decision", "d"), ("move-pending",), ("done", "x"),
+                        ("archive",)):
+                with self.subTest(cmd=cmd[0]):
+                    code, out = self.add(*cmd)
+                    self.assertEqual(code, 2, out)
+                    self.assertIn("another handoff.py holds the lock", out)
+                    self.assertIn(f"raise handoff.lockWait in .claude/gw.json, and rerun: python3", out)
+                    self.assertIn(f"handoff.py {cmd[0]}", out)
+        self.assertEqual((self.read(self.PENDING), self.read("docs/h.md")), before)
         self.assertEqual(self.add("add-pending", "x")[0], 0)  # released: it goes through
+
+    def load_handoff(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("handoff_under_test", ROOT / "scripts" / "handoff.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def fake_ctx(self, mod, **config):
+        from types import SimpleNamespace
+        return SimpleNamespace(root=self.p.work, log="docs/h.md", config=dict(BASE_CONFIG, **config))
+
+    def test_a_file_system_without_flock_goes_without_lock_and_says_so(self):
+        import errno
+        import fcntl
+        import io
+        from contextlib import redirect_stderr
+        from unittest import mock
+        mod, err = self.load_handoff(), io.StringIO()
+        ctx = self.fake_ctx(mod, handoff={"lockWait": 30})
+        with mock.patch.object(fcntl, "flock", side_effect=OSError(errno.ENOLCK, "No locks available")):
+            started = __import__("time").monotonic()
+            with redirect_stderr(err), mod.write_lock(ctx, "add-pending"):
+                ran = True
+        self.assertTrue(ran)
+        self.assertLess(__import__("time").monotonic() - started, 5)  # it did not wait lockWait for a held lock
+        self.assertIn("cannot lock", err.getvalue())
+        self.assertIn("add-pending runs without a lock", err.getvalue())
+        self.assertNotIn("holds the lock", err.getvalue())
+
+    def test_without_git_there_is_no_lock_and_no_traceback(self):
+        import io
+        from contextlib import redirect_stderr
+        from types import SimpleNamespace
+        mod, err = self.load_handoff(), io.StringIO()
+        plain = Path(tempfile.mkdtemp(dir=self.p.work.parent)) / "nogit"
+        plain.mkdir()
+        ctx = SimpleNamespace(root=plain, log="h.md", config=dict(BASE_CONFIG))
+        with mock_env_no_git(), redirect_stderr(err), mod.write_lock(ctx, "add-pending"):
+            pass
+        self.assertIn("is not in a git repository, so add-pending runs without a lock", err.getvalue())
+        self.assertEqual(list(plain.iterdir()), [])  # nothing left beside the file
+
+    def test_log_is_read_once_to_tell_the_language(self):
+        from unittest import mock
+        mod = self.load_handoff()
+        self.use()
+        self.log(self.LOG_EN)
+        ctx = self.fake_ctx(mod)
+        real, reads = Path.read_text, []
+
+        def counting(path, *a, **kw):
+            reads.append(path.name)
+            return real(path, *a, **kw)
+
+        with mock.patch.object(Path, "read_text", counting):
+            self.assertTrue(mod.log_is_english(ctx))
+            self.assertTrue(mod.log_is_english(ctx))
+            self.assertTrue(mod.log_is_english(ctx))
+        self.assertEqual(reads, ["h.md"])
 
     def test_preflight_strict_is_one_pass_with_the_check_strict(self):
         self.use(handoff={"doneItems": 1})
@@ -3351,12 +3426,6 @@ class HandoffAdd(Base):
         code, out = self.add("preflight", "--strict")
         self.assertEqual(code, 1, out)
         self.assertNotIn("WARNING", out)
-
-    def test_log_is_read_once_to_tell_the_language(self):
-        self.use(pendingFile=self.PENDING)
-        self.log(self.LOG_EN)
-        self.assertEqual(self.add("add-pending", "x")[0], 0)  # creates the file and its heading from one read
-        self.assertIn("## Pending\n", self.read(self.PENDING))
 
     def test_missing_log_fails_with_the_fix(self):
         self.use()
