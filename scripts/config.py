@@ -477,8 +477,13 @@ def ci_step_timeout(config):
 
 
 def test_unit_timeout(config):
-    """The `testUnitTimeout` key (B42): seconds a test unit of tests-for.py --run may take (0 = no limit)."""
-    return _int_key(config, "testUnitTimeout")
+    """The `testUnitTimeout` key (B42): seconds a test unit of tests-for.py --run may take (0 = no limit). A bad value
+    raises ConfigError (fails closed, as testJobs does), never a silent default."""
+    given = config.get("testUnitTimeout", schema_default("testUnitTimeout"))
+    if not isinstance(given, int) or isinstance(given, bool) or given < 0:
+        raise ConfigError(f"testUnitTimeout must be an integer >= 0 (seconds; 0 = no limit), got {given!r}; "
+                          "fix .claude/gw.json")
+    return given
 
 
 def ci_system_commands(config):

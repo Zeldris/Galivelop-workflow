@@ -383,8 +383,11 @@ class Config(unittest.TestCase):
         self.assertEqual(config.test_unit_timeout({}), 1800)
         self.assertEqual(config.test_unit_timeout({"testUnitTimeout": 0}), 0)
         self.assertEqual(config.test_unit_timeout({"testUnitTimeout": 90}), 90)
-        for bad in (-1, "60", True, 1.5):
-            self.assertEqual(config.test_unit_timeout({"testUnitTimeout": bad}), 1800, bad)
+        for bad in (-1, "60", True, 1.5):  # fails closed with its reason, as testJobs does (review B42 n.º 6)
+            with self.assertRaises(config.ConfigError, msg=bad) as ctx:
+                config.test_unit_timeout({"testUnitTimeout": bad})
+            self.assertIn(f"testUnitTimeout must be an integer >= 0 (seconds; 0 = no limit), got {bad!r}",
+                          str(ctx.exception))
         template = json.loads((ROOT / "templates" / "gw.json").read_text())
         self.assertEqual(template["testUnitTimeout"], 1800)
         self.assertIn("testUnitTimeout", template["fullCheckSkipKeys"])
