@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI en verde). Etiqueta y release `v0.7.1` creadas por el agente desde una sesión local (2026-11-16, a petición del usuario) |
-| Siguiente paso | Grupo B de la `0.8` cerrado (oleadas 1, 2, 3a y 3b). Mirar el CI de la subida del cierre (`python3 scripts/ci-status.py`; el de macOS vigila el `set -m` de `push.sh`) y elegir con el usuario el siguiente grupo de la `0.8` (C1-C13, D68, E32-E35, A11-A12, front E4-E16, D7/B9, E42, E50). `contextGuard.window` = 200000 en este repo (usuario, 2026-11-17). Presupuesto de compactaciones: 1 |
+| Siguiente paso | **Grupo C de la `0.8`** (usuario, 2026-11-17), con `gw-orchestrate-dealer` y el diseño cerrado de `docs/design/C-questions.md` e `I-lifecycle.md`. Oleada 1 en worktrees: C1-C3+C10 (`questions.py`, `docs/questions.md`), C8 (`modes.careful`), C11 (ficha de tarea). Oleada 2: C4-C7 (`gw-mode`, modo restrictivo). Oleada 3: C12, C13, A11. CI de `b67e3ce`: Linux en verde; macOS cancelado sin arrancar, relanzado. `contextGuard.window` = 200000 en este repo (usuario, 2026-11-17). Presupuesto de compactaciones: 2 |
 
 ### Fases
 
