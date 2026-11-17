@@ -309,3 +309,10 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [ ] `0.9` · **Revisión D62 n.º 7** (leve): el test del aviso de CI desde un subdirectorio no ejecuta el `ci-status.py` real.
 - [ ] `0.9` · **Revisión D95 n.º 5** (leve): el bucle de `flock` de `handoff.py` duplica el de `context_guard.warned_lock`.
 - [ ] `0.9` · Pregunta al usuario (B42): ¿bajar el `testJobs` por defecto (0 = todas las CPU por agente satura con varios subagentes)? `testUnitTimeout` ya evita el cuelgue.
+- [ ] `0.9` · **Revisión C1 n.º 5** (leve): la marca de preguntas mostradas (`gw/questions-shown`) guarda solo el mayor número, por clon y no por rama; `list` la marca aunque la salida se recorte.
+- [ ] `0.9` · **Revisión C1 n.º 7** (leve): la regla de preguntas de las plantillas `AGENTS.md` no nombra la ruta configurable (`questions.path`).
+- [ ] `0.9` · **Revisión C1 n.º 9** (leve): faltan tests de `list --refs` (no marca), cambio de rama con marca previa, `questions.path` propia en el inicio de sesión y UTF-8 inválido.
+- [ ] `0.9` · **Revisión C11 n.º 3** (leve): el `commit-msg` solo comprueba las entradas añadidas de `docs/tasks/<id>/`; modificar o borrar una ya subida pasa.
+- [ ] `0.9` · **Revisión C11 n.º 5** (leve): `task.py` fija `Acceptance` en la plantilla y su enlace supone `path` a un nivel bajo `docs/`.
+- [ ] `0.9` · **Revisión C11 n.º 6** (leve): `task.py resolve` lanza un `git log` por entrada; uno solo con `--diff-filter=A --name-only` basta.
+- [ ] `0.9` · **Revisión C11** (limitación): con `git commit --amend` la entrada nueva de la ficha no se distingue de la del commit corregido; documentado en `I-lifecycle.md`.
