@@ -4,6 +4,8 @@
 
   python3 review-scope.py [--base REV] [--workflow DIR] [--all]
   python3 review-scope.py --trivial [--base REV] [--workflow DIR]   # B27: exit 0 if the scoped diff is trivial
+                                                                    # (B45: the lines that only change the stamped version
+                                                                    # `galivelop-workflow vX.Y.Z`/`version:` are not counted)
 
 Prints, one repo-relative path per line, the files changed between BASE (default `origin/<protectedBranch>`, else the
 local protected branch) and HEAD. A file is `vendored` when the project holds it as an unchanged copy of the workflow
@@ -28,6 +30,7 @@ HERE = Path(__file__).resolve().parent
 sys.dont_write_bytecode = True  # no __pycache__ in the project's .claude/gw/scripts
 sys.path.insert(0, str(HERE))
 import config  # noqa: E402
+import stamp  # noqa: E402
 
 PROG = "review-scope"
 
@@ -95,17 +98,18 @@ def trivial(root, cfg, base, kept):
     if not code:
         print(f"{PROG}: trivial: no code in the review scope ({len(kept)} file(s))")
         return 0
-    lines = 0
-    out = git(root, "diff", "--numstat", "-z", "--no-renames", f"{base}...HEAD", "--", *code)
-    for tok in out.split("\0"):
-        parts = tok.lstrip("\n").split("\t", 2)
-        if len(parts) == 3 and parts[0].isdigit() and parts[1].isdigit():
-            lines += int(parts[0]) + int(parts[1])
+    lines = stamped = 0
+    for path in code:  # B45: the lines that only change the stamped version (stamp.py) are not counted
+        diff = git(root, "diff", "-U0", "--no-renames", f"{base}...HEAD", "--", path)
+        n_stamp, n_other = stamp.stamp_diff(diff)
+        stamped += n_stamp
+        lines += n_other
+    note = f" ({stamped} version-stamp line(s) not counted)" if stamped else ""
     limit = config.review_trivial_lines(cfg)
     if limit and lines <= limit:
-        print(f"{PROG}: trivial: {lines} changed code line(s), at most reviewTrivialLines={limit}")
+        print(f"{PROG}: trivial: {lines} changed code line(s){note}, at most reviewTrivialLines={limit}")
         return 0
-    print(f"{PROG}: not trivial: {len(code)} code file(s), {lines} changed line(s), reviewTrivialLines={limit}")
+    print(f"{PROG}: not trivial: {len(code)} code file(s), {lines} changed line(s){note}, reviewTrivialLines={limit}")
     return 1
 
 

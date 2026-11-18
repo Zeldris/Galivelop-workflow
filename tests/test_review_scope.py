@@ -156,6 +156,35 @@ class Trivial(ScopeBase):
         self.assertEqual(code, 1, out)
         self.assertIn("reviewTrivialLines=0", out)
 
+    def stamped_base(self, version, n=0):
+        """src/a.py with a version header and N real lines, on main when called first, on the branch after."""
+        self.p.write("src/a.py", f"# galivelop-workflow v{version}\n" + "".join(f"x{i} = {i}\n" for i in range(n)))
+
+    def test_a_diff_of_only_version_headers_is_trivial(self):  # B45
+        self.limit(1)
+        self.stamped_base("0.8.0", 20)
+        self.p.run("git", "add", "-A")
+        self.p.run("git", "commit", "-qm", "base file")
+        self.p.run("git", "branch", "-f", "main", "HEAD")
+        self.stamped_base("0.8.1", 20)
+        self.commit()
+        code, out = self.scope("--trivial")
+        self.assertEqual(code, 0, out)
+        self.assertIn("0 changed code line(s) (2 version-stamp line(s) not counted), at most reviewTrivialLines=1", out)
+
+    def test_headers_plus_a_real_change_over_the_limit_is_not_trivial(self):  # B45
+        self.limit(10)
+        self.stamped_base("0.8.0", 20)
+        self.p.run("git", "add", "-A")
+        self.p.run("git", "commit", "-qm", "base file")
+        self.p.run("git", "branch", "-f", "main", "HEAD")
+        self.stamped_base("0.8.1", 40)  # 20 real lines more, plus the header
+        self.commit()
+        code, out = self.scope("--trivial")
+        self.assertEqual(code, 1, out)
+        self.assertIn("not trivial: 1 code file(s), 20 changed line(s) (2 version-stamp line(s) not counted), "
+                      "reviewTrivialLines=10", out)
+
     def test_an_empty_scope_is_trivial(self):
         code, out = self.scope("--trivial")
         self.assertEqual(code, 0, out)
