@@ -71,7 +71,11 @@ la vez.
 - **Al empezar**, la sesión nueva lee la bitácora y comprueba que el último commit coincide con lo que dice; no
   pregunta por dónde iba. Tras un `/clear` o una compactación, `recover.py --state` se lo recuerda.
 - Al cerrar la rama, `handoff.py close-row <rama>` deja su fila como «fusionada, rama terminada» para que la rama
-  protegida no herede un «Siguiente» viejo.
+  protegida no herede un «Siguiente» viejo. Con un id de tarea que tiene ficha (`docs/tasks/<id>.md`), `close-row <id>`
+  cierra la **tarea**: se niega, listando cada motivo, si falta alguna casilla de `Acceptance` sin marcar o sin test
+  (`tests/test_X.py::Clase` o `== sección` del `check`, entre comillas invertidas) o si `Verification` no trae un
+  commit existente y una orden; si todo está, marca `hecho` su fila en `roadmapFiles`. Si el nombre es a la vez rama e
+  id, decide que exista la ficha (`--branch <rama>` fuerza la rama).
 - **Con `logRows`, la fila propia a mitad de tarea:** `handoff.py set-row "texto"` reescribe la fila de la rama actual
   (`--branch <rama>` para otra) sin cerrarla, con el límite de 600 caracteres comprobado y sin escribir nada si la fila
   falta, el texto está vacío o ocupa más de una línea. Y el `pre-commit` corre `handoff.py own-row --staged`: si la
