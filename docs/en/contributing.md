@@ -26,7 +26,7 @@ here, it gets in the way in every project. Read [`AGENTS.md`](../../AGENTS.md) a
    bash scripts/check.sh      # runs bash tests/check.sh and records the green: pre-push does not repeat it
    ```
 
-5. **CHANGELOG entry**, **log**, commit and push, in the same commit (below).
+5. **CHANGELOG fragment** (`changelog.d/<branch>.md`), **log**, commit and push, in the same commit (below).
 
 ## Tests for every change
 
@@ -87,6 +87,26 @@ content; the check fails when `plugin.json`'s version has no entry. When the ver
 `metadata.version` (`test_skills.py` requires it) and the `# galivelop-workflow vX.Y.Z` headers of scripts and templates move with it, and projects
 pick it up with `/gw-update`. They are not edited by hand: `python3 scripts/version.py X.Y.Z` moves them all and
 leaves the CHANGELOG entry to fill in; without an argument it checks none was left behind.
+
+**Fragments (D68):** a branch does not edit `CHANGELOG.md`: it writes its notes to `changelog.d/<branch>.md` (the
+branch's `/` made `-`: `agent/D68-x` → `changelog.d/agent-D68-x.md`), so two parallel worktrees never clash on it.
+Format: `### ES`, its notes, `### EN`, its notes (the same, in English), with nothing before and no other `#` heading:
+
+```markdown
+### ES
+
+- Lo que cambia (D68).
+
+### EN
+
+- What changes (D68).
+```
+
+`python3 scripts/version.py X.Y.Z` creates the entry, folds the fragments into it (by file name: the ES notes at the
+end of `### ES`, the EN ones at the end of `### EN`, dropping the "to be filled in" placeholder) and deletes them;
+`python3 scripts/version.py --fold` does the same on the entry of `plugin.json`'s version while it has no tag. All or
+nothing: a malformed fragment stops it with the reason and nothing is written. `--release` fails while `HEAD` still has
+unfolded fragments. Keys `changelogFragments` and `changelogFragmentsDir` ([config](config.md)).
 
 **Every change to a copyable file** (`scripts/`, `skills/`, `templates/`, `schema/`) between two releases **bumps the
 version**, a patch at least: a project that copied in between would see "local edits" it never made.

@@ -26,6 +26,7 @@ class Version(unittest.TestCase):
         shutil.copy(ROOT / ".claude" / "gw.json", self.tmp / ".claude" / "gw.json")
         self.set_gw(releaseDocs=None)  # this repo's own releaseDocs would need its READMEs in every temp repo
         shutil.copy(ROOT / "CHANGELOG.md", self.tmp / "CHANGELOG.md")
+        self.git("init", "-q")  # the config (changelogFragments, D68) is read inside a git repository
 
     def set_gw(self, **keys):
         """Set (or, with None, drop) top-level keys of the temp repo's .claude/gw.json."""
@@ -681,3 +682,154 @@ class Version(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Fragments(unittest.TestCase):
+    """D68: CHANGELOG fragments per branch, folded into the version's entry and deleted."""
+    setUp, set_gw, git, commit_all = Version.setUp, Version.set_gw, Version.git, Version.commit_all
+    ES_EN = "### ES\n\n- {0} es.\n\n### EN\n\n- {0} en.\n"
+
+    def frag(self, name, text=None, directory="changelog.d"):
+        path = self.tmp / directory / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if isinstance(text, bytes):
+            path.write_bytes(text)
+        else:
+            path.write_text(self.ES_EN.format(name) if text is None else text)
+        return path
+
+    def entry(self, version):
+        text = (self.tmp / "CHANGELOG.md").read_text()
+        start = text.index(f"## [{version}]")
+        nxt = text.find("\n## [", start + 1)
+        return text[start:nxt if nxt != -1 else None]
+
+    def bump(self):
+        r = run(self.tmp, "9.8.7")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        return r
+
+    def test_bump_folds_two_fragments_sorted_into_the_new_entry_and_deletes_them(self):
+        b = self.frag("agent-D2-b.md"); a = self.frag("agent-D1-a.md"); readme = self.frag("README.md", "# about\n")
+        before = (self.tmp / "CHANGELOG.md").read_text()
+        r = self.bump()
+        self.assertIn("folded changelog.d/agent-D1-a.md into the CHANGELOG entry of 9.8.7", r.stdout)
+        self.assertEqual(self.entry("9.8.7"), "## [9.8.7] - Unreleased\n\n### ES\n\n- agent-D1-a.md es.\n"
+                         "- agent-D2-b.md es.\n\n### EN\n\n- agent-D1-a.md en.\n- agent-D2-b.md en.\n")
+        self.assertFalse(a.exists() or b.exists())
+        self.assertTrue(readme.exists(), "README.md is not a fragment")
+        self.assertTrue((self.tmp / "CHANGELOG.md").read_text().endswith(before[before.index("## ["):]),
+                        "older entries untouched")
+
+    def test_fold_appends_to_the_current_entry_after_its_notes(self):
+        self.bump()
+        log = self.tmp / "CHANGELOG.md"
+        log.write_text(log.read_text().replace("- (por completar)", "- Ya.", 1).replace("- (to be filled in)", "- Was.", 1))
+        self.frag("x.md")
+        r = run(self.tmp, "--fold")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(self.entry("9.8.7"), "## [9.8.7] - Unreleased\n\n### ES\n\n- Ya.\n- x.md es.\n\n### EN\n\n"
+                         "- Was.\n- x.md en.\n")
+
+    def test_no_fragments_is_a_no_op(self):
+        before = (self.tmp / "CHANGELOG.md").read_text()
+        r = run(self.tmp, "--fold")
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "no CHANGELOG fragments to fold"), r.stderr)
+        (self.tmp / "changelog.d").mkdir(); (self.tmp / "changelog.d" / ".gitkeep").write_text("")
+        r = run(self.tmp, "--fold")
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "no CHANGELOG fragments to fold"), r.stderr)
+        self.assertEqual((self.tmp / "CHANGELOG.md").read_text(), before)
+
+    def test_a_malformed_fragment_fails_with_its_reason_and_nothing_changes(self):
+        cases = (("### ES\n\n- a\n", "needs exactly the headings '### ES' then '### EN' (found: '### ES')"),
+                 ("### EN\n\n- a\n\n### ES\n\n- b\n", "(found: '### EN', '### ES')"),
+                 ("### ES\n\n### EN\n\n- a\n", "its ### ES section is empty"),
+                 ("### ES\n\n- a\n\n### EN\n\n\n", "its ### EN section is empty"),
+                 ("intro\n### ES\n- a\n### EN\n- b\n", "text before '### ES'"),
+                 ("### ES\n- a\n## [1.0.0]\n### EN\n- b\n", "'## [1.0.0]'"),
+                 (b"### ES\n- \xe9\n### EN\n- b\n", "not UTF-8"))
+        for text, reason in cases:
+            with self.subTest(reason=reason):
+                good = self.frag("a-good.md"); bad = self.frag("b-bad.md", text)
+                before = (self.tmp / "CHANGELOG.md").read_text()
+                for args in (["--fold"], ["9.8.7"]):
+                    r = run(self.tmp, *args)
+                    self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+                    self.assertIn("changelog.d/b-bad.md", r.stderr)
+                    self.assertIn(reason, r.stderr)
+                    self.assertIn("retry", r.stderr)
+                    self.assertEqual((self.tmp / "CHANGELOG.md").read_text(), before)
+                    self.assertTrue(good.exists() and bad.exists(), "all or nothing")
+                self.assertIn(f'"version": "{VERSION}"', (self.tmp / ".claude-plugin" / "plugin.json").read_text(),
+                              "the bump wrote nothing")
+                bad.unlink()
+
+    def test_a_file_that_is_not_a_md_fragment_fails(self):
+        self.frag("notes.txt", "x\n")
+        r = run(self.tmp, "--fold")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("changelog.d/notes.txt is not a CHANGELOG fragment", r.stderr)
+
+    def test_an_entry_without_its_en_section_fails(self):
+        self.bump()
+        log = self.tmp / "CHANGELOG.md"
+        log.write_text(log.read_text().replace("### EN\n\n- (to be filled in)\n", "", 1))
+        self.frag("x.md")
+        r = run(self.tmp, "--fold")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("the CHANGELOG entry of 9.8.7 has no ### EN section", r.stderr)
+        self.assertTrue((self.tmp / "changelog.d" / "x.md").exists())
+
+    def test_fold_refuses_a_released_version(self):
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        self.frag("x.md")
+        r = run(self.tmp, "--fold")
+        self.assertEqual(r.returncode, 1)
+        self.assertIn(f"{VERSION} is already released (tag v{VERSION})", r.stderr)
+        self.assertIn("python3 scripts/version.py X.Y.Z", r.stderr)
+
+    def test_release_fails_while_head_has_fragments(self):
+        self.frag("README.md", "# about\n")
+        self.commit_all("released")
+        self.git("tag", f"v{VERSION}")
+        self.assertEqual(run(self.tmp, "--release").returncode, 0, "README.md is not a fragment")
+        self.frag("agent-D1-a.md"); self.commit_all("notes")
+        r = run(self.tmp, "--release")
+        self.assertEqual(r.returncode, 1, r.stdout)
+        self.assertIn("unfolded CHANGELOG fragments in HEAD: changelog.d/agent-D1-a.md", r.stdout)
+        self.assertIn("python3 scripts/version.py --fold", r.stdout)
+
+    def test_off_switch_and_custom_directory(self):
+        self.set_gw(changelogFragments=False)
+        self.frag("x.md")
+        before = (self.tmp / "CHANGELOG.md").read_text()
+        self.assertEqual(run(self.tmp, "--fold").stdout.strip(), "no CHANGELOG fragments to fold")
+        self.assertEqual((self.tmp / "CHANGELOG.md").read_text(), before)
+        self.commit_all("x"); self.git("tag", f"v{VERSION}")
+        self.assertNotIn("unfolded", run(self.tmp, "--release").stdout)
+        self.set_gw(changelogFragments=None, changelogFragmentsDir="notes/next")
+        self.git("tag", "-d", f"v{VERSION}")
+        moved = self.frag("y.md", directory="notes/next")
+        self.assertEqual(run(self.tmp, "--fold").returncode, 0)
+        self.assertFalse(moved.exists())
+        self.assertTrue((self.tmp / "changelog.d" / "x.md").exists(), "the old directory is no longer read")
+        self.assertIn("- y.md es.", self.entry(VERSION))
+
+    def test_fragments_of_two_branches_merge_without_conflicts_and_fold(self):
+        self.commit_all("base")
+        self.git("checkout", "-qb", "agent/D1-a"); self.frag("agent-D1-a.md"); self.commit_all("a")
+        self.git("checkout", "-q", "-"); self.git("checkout", "-qb", "agent/D2-b")
+        self.frag("agent-D2-b.md"); self.commit_all("b")
+        self.git("merge", "-q", "--no-ff", "-m", "m", "agent/D1-a")  # check=True: a conflict fails here
+        self.bump()
+        self.assertIn("- agent-D1-a.md es.\n- agent-D2-b.md es.", self.entry("9.8.7"))
+
+    def test_a_crlf_changelog_keeps_its_line_endings(self):
+        log = self.tmp / "CHANGELOG.md"
+        log.write_bytes(log.read_bytes().replace(b"\n", b"\r\n"))
+        self.frag("x.md")
+        self.bump()
+        data = log.read_bytes()
+        self.assertNotIn(b"\n", data.replace(b"\r\n", b""))
+        self.assertIn(b"- x.md en.\r\n", data)
