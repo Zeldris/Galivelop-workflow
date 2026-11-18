@@ -180,7 +180,7 @@ def newest_session(root):
     return max(logs, key=lambda p: (os.path.getmtime(p), p)) if logs else None
 
 
-def previous_session(path, root, since):
+def previous_session(path, root, since, cut=False):
     """The newest other log of the project whose branch is the one of `path` and that has calls in the period
     (ties in mtime: the greater file name); (that log or None, the branch or None)."""
     branch = branch_of(path)
@@ -189,12 +189,12 @@ def previous_session(path, root, since):
     others = sorted((p for p in session_logs(os.path.abspath(root)) if os.path.abspath(p) != os.path.abspath(path)),
                     key=lambda p: (os.path.getmtime(p), p), reverse=True)
     for p in others:
-        if branch_of(p) == branch and responses_of(p, since):
+        if branch_of(p) == branch and responses_of(p, cut_since(p, since, cut)):
             return p, branch
     return None, branch
 
 
-def default_session(root, since=None):
+def default_session(root, since=None, cut=False):
     """Newest `.jsonl` of the root's log folder or of a parent folder's; exits if there is none.
     With `since`, the one with most responses from that moment on (the newest file may be a later session that
     does not cover the period); the newest if none has any."""
@@ -204,7 +204,7 @@ def default_session(root, since=None):
         sys.exit(f'No sessions in ~/.claude/projects/{folder_of(root)}/ or its parent folders (use --session)')
     path = max(candidates, key=os.path.getmtime)
     if since:
-        covered = {p: len(responses_of(p, since)) for p in candidates}
+        covered = {p: len(responses_of(p, cut_since(p, since, cut))) for p in candidates}
         # D139: the repo's own log folder first; a parent folder's (a session opened above the repo) only when
         # none of the repo's logs has calls in the period.
         own = [p for p in candidates if os.path.basename(os.path.dirname(p)) == folder_of(root) and covered[p] > 0]
@@ -220,6 +220,18 @@ def default_session(root, since=None):
     return path
 
 
+# D138: a /clear is a user line made of command tags (`<command-name>`/`<command-message>`, in either order): the
+# line starts with a command tag and has the `/clear` name tag anywhere; a mention inside prose is not one.
+CLEAR_TAG = re.compile(r'<command-name>\s*/clear\s*</command-name>')
+
+
+def cut_since(path, since, cut):
+    """D138: the start of the stretch reported for a log: just after its last /clear or compaction when `cut`
+    (neither --since nor --hours), else `since`. The minCalls fallback and the session choice use it too."""
+    brk = last_break(path) if cut else None
+    return brk[0] + dt.timedelta(microseconds=1) if brk else since  # the marker itself is not a call
+
+
 def last_break(path):
     """D138: moment of the last `/clear` (a user line with `<command-name>/clear</command-name>`) or compaction
     (`compact_boundary`) of a log; (UTC datetime, 'clear' | 'compaction') or None."""
@@ -227,7 +239,7 @@ def last_break(path):
     try:
         with open(path, encoding='utf-8') as log:
             for line in log:
-                if '/clear</command-name>' not in line and 'compact_boundary' not in line:
+                if '/clear</command-name>' not in line and 'command-message>clear<' not in line and 'compact_boundary' not in line:
                     continue  # cheap filter before parsing
                 try:
                     d = json.loads(line)
@@ -241,7 +253,7 @@ def last_break(path):
                 if d.get('type') == 'system' and d.get('subtype') == 'compact_boundary':
                     kind = 'compaction'
                 elif d.get('type') == 'user' and isinstance(content, str) and \
-                        content.lstrip().startswith('<command-name>/clear</command-name>'):
+                        content.lstrip().startswith('<command-') and CLEAR_TAG.search(content):
                     kind = 'clear'
                 else:
                     continue
@@ -398,14 +410,15 @@ def main():
         since = since_moment(a.since)
     elif a.hours is None or a.hours > 0:
         since = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=24 if a.hours is None else a.hours)
-    path = a.session or default_session(root, since)
+    cut = a.since is None and a.hours is None  # D138: stretch since the last /clear or compaction
+    path = a.session or default_session(root, since, cut)
     note = None
     threshold = 0 if a.session else min_calls(root)
     current = newest_session(root) if threshold else None  # the session in progress, not the one with most calls
     if current:
-        have = len(responses_of(current, since))
+        have = len(responses_of(current, cut_since(current, since, cut)))
         if have < threshold:
-            before, branch = previous_session(current, root, since)
+            before, branch = previous_session(current, root, since, cut)
             if before:
                 note = (f'Note: the current session has {have} calls (under measure.minCalls = {threshold}); '
                         f'measuring the previous session of branch {branch}: {os.path.basename(before)}')
@@ -416,11 +429,8 @@ def main():
                         f'there is no previous session of {"branch " + branch if branch else "its branch"}: '
                         f'measuring {os.path.basename(path)}')
 
-    start = None  # D138: with neither --since nor --hours, the stretch starts at the last /clear or compaction
-    if a.since is None and a.hours is None:
-        start = last_break(path)
-        if start:
-            since = start[0] + dt.timedelta(microseconds=1)  # the marker itself is not a call of the stretch
+    start = last_break(path) if cut else None
+    since = cut_since(path, since, cut)
 
     usage = collections.Counter()
     api_calls = 0
