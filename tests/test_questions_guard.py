@@ -172,14 +172,27 @@ class Restrictive(Guard):
                          stdin="not json")[1]
         self.assertDenies(out, "Q-1", "the event named none")
 
-    def test_task_new_on_an_existing_record_still_sets_the_mark(self):
+    def test_task_new_never_switches_a_marked_task(self):  # the user switches it, with `current` (config-guard asks)
         self.p.git("checkout", "-q", "-b", "feature")
-        self.assertEqual(self.task("new", "C9")[0], 0)
+        self.assertEqual(self.task("current", "C4")[0], 0)
+        code, out = self.task("new", "C99")
+        self.assertEqual(code, 0, out)
+        self.assertIn("the current task stays C4", out)
+        self.assertEqual(self.task("current")[1].strip(), "C4")
+        self.assertDenies(self.hook(), "task C4", "Q-1")
+
+    def test_task_new_on_an_existing_record_does_not_mark(self):
+        self.p.git("checkout", "-q", "-b", "feature")
+        self.assertEqual(self.task("new", "C9")[0], 0)  # no mark: written
+        self.assertEqual(self.task("current")[1].strip(), "C9")
         self.assertEqual(self.task("current", "--clear")[0], 0)
         code, out = self.task("new", "C9")
         self.assertEqual(code, 1)
         self.assertIn("exists already", out)
-        self.assertEqual(self.task("current")[1].strip(), "C9")
+        self.assertEqual(self.task("current")[1], "")  # the refused `new` left no mark
+        self.assertEqual(self.task("current", "C4")[0], 0)
+        self.assertEqual(self.task("new", "C9")[0], 1)
+        self.assertEqual(self.task("current")[1].strip(), "C4")
 
     def test_a_broken_config_denies_code_and_names_the_check(self):
         self.p.write(".claude/gw.json", "{ not json")

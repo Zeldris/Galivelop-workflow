@@ -11,7 +11,8 @@ entry in the folder `<taskRecord.path>/<id>/` that nobody edits afterwards.
 
 The current task (C4, C5; docs/design/I-lifecycle.md) is the id in a branch named `agent/<id>-...` and, if the branch
 names none, the per-clone mark `gw/current-task` in the git dir (`git rev-parse --git-path`, so each linked worktree has
-its own and it is never committed), which `new <id>` (also when the record exists) and `current <id>` write and
+its own and it is never committed), which `new <id>` writes only when it created the record and there was no mark (it never switches a
+marked task), `current <id>` writes (config-guard.py asks first) and
 `handoff.py close-row <id>` removes when it names that id. questions-guard.py reads it with
 current_task(); `current` prints that same id (nothing when there is none).
 
@@ -250,8 +251,13 @@ def run(args):
     check_id(config, args.id)
     base = tr["path"].strip("/")
     if args.command == "new":
-        write_mark(root, args.id)  # also when the record exists already: going back to a task makes it current
         write_new(root, f"{base}/{args.id}.md", contract_text(config, args.id, args.title, root))
+        held = mark_task(root, config)
+        if held is None:  # never switches a task already marked: that is `current <id>`, which config-guard asks about
+            write_mark(root, args.id)
+        elif held != args.id:
+            print(f"task: the current task stays {held} (its mark); to switch, the user runs: python3 {HERE / 'task.py'} "
+                  f"current {args.id}", file=sys.stderr)
     elif args.command == "log":
         agent = args.agent.strip().lower()
         if not SLUG.fullmatch(agent) or names_a_model(agent, config):
