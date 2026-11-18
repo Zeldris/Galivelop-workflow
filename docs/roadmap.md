@@ -279,8 +279,8 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | C1 | `docs/questions.md`, una entrada por pregunta | hecho (2026-11-17; `questions.py` add/answer/list/count, `questions.path`, aviso al empezar sesión) |
 | C2 | Lista numerada con recomendación; respuestas por número, que un script pasa al archivo | hecho (2026-11-17; `questions.py answer "5. a, 6. ok"`) |
 | C3 | Sin repetir preguntas ya respondidas | hecho (2026-11-17; el inicio de sesión muestra solo las abiertas no vistas) |
-| C4 | Modo restrictivo activo, con su gancho | pendiente (pasa de la `0.7`) |
-| C5 | Modo restrictivo inactivo: aviso y «riesgo aceptado» | pendiente (pasa de la `0.7`) |
+| C4 | Modo restrictivo activo, con su gancho | hecho (2026-11-18) |
+| C5 | Modo restrictivo inactivo: aviso y «riesgo aceptado» | hecho (2026-11-18; questions-guard.py y task.py current (tarea en curso por rama o marca), con C4) |
 | C6 | Valor por defecto: inactivo en los proyectos, activo en este repo | hecho (2026-11-18; valor por defecto, con C7) |
 | C7 | Un solo interruptor: skill `gw-mode` | hecho (2026-11-18) |
 | C8 | `modes.careful` (antes de una orden destructiva), activo por defecto | hecho (2026-11-17; `careful.py` en PreToolUse, `modes.careful`, `modes.carefulWorktrees`) |

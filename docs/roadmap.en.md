@@ -278,8 +278,8 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | C1 | `docs/questions.md`, one entry per question | pending (moves from `0.7`) |
 | C2 | Numbered list with a recommendation; answers by number, which a script copies into the file | pending (moves from `0.7`) |
 | C3 | No repeating questions already answered | pending (moves from `0.7`) |
-| C4 | Restrictive mode on, with its hook | pending (moves from `0.7`) |
-| C5 | Restrictive mode off: a warning and "accepted risk" | pending (moves from `0.7`) |
+| C4 | Restrictive mode on, with its hook | done (2026-11-18) |
+| C5 | Restrictive mode off: a warning and "accepted risk" | done (2026-11-18; questions-guard.py and task.py current (current task from branch or mark), with C4) |
 | C6 | Default: off in projects, on in this repo | done (2026-11-18; default value, with C7) |
 | C7 | One switch: the `gw-mode` skill | done (2026-11-18) |
 | C8 | `modes.careful` (before a destructive command), on by default | pending (moves from `0.7`) |

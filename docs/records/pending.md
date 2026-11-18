@@ -327,3 +327,7 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [ ] `0.9` · **Revisión C11-close-row n.º 6** (leve): una ficha que no es UTF-8 da una traza en `close-row` en vez de un motivo.
 - [ ] `0.9` · **Revisión C11-close-row n.º 7** (leve): `roadmap.py:214-216` escribe los `roadmapFiles` uno a uno; un fallo a medias deja uno escrito y otro no.
 - [ ] `0.9` · **Revisión C7** (leve, del autor): `models.py disable|enable` reescribe todo `gw.json` con `indent=2` (CRLF, tabs, secciones compactas); usar la edición en su sitio de `mode.py`.
+- [ ] `0.9` · **Revisión C4 n.º 10** (leve): `is-code.sh` clasifica con el config del HEAD del clon principal, no del worktree (mitigado: usa primero la copia del worktree).
+- [ ] `0.9` · **Revisión C4-fix n.º 2** (leve): el agente puede desbloquearse editando `docs/questions.md` (siempre permitido, sin pregunta de `config-guard`) o escribiendo `.git/gw/current-task` con Write; documentarlo como límite o protegerlo.
+- [ ] `0.9` · **Revisión C4-fix n.º 3** (leve): con el flujo instalado como plugin de otra versión, una clave desconocida de `gw.json` da ConfigError y `questions-guard.py` rechaza todo código aunque `modes.questions` esté apagado; el `config.py validate` del mensaje (copia del proyecto) puede salir válido.
+- [ ] `0.9` · **C4** (regla «Todo configurable»): `task.GIT_TIMEOUT` (10 s) es una constante, no una clave de `gw.json`; decidir si pasa a config.
