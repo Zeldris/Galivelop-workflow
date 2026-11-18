@@ -14,6 +14,11 @@ once it exists.
 - Findings are also written to a file outside the tree (the scratchpad, or `"$(git rev-parse --git-dir)/review.md"`),
   not only to the conversation: a compaction or a handover loses them, and that file feeds the fix briefs and the
   minor findings logged as pending. (judgement)
+- Every finding cites its **anchor**: a rule of `REVIEW.md` or `AGENTS.md`, an acceptance criterion of the task
+  record (`docs/tasks/<id>.md`), a plan line or a demonstrated failure. Format:
+  `path:line | severity | anchor | problem. fix.` (judgement)
+- What has no anchor is not a finding: it goes apart, in an «Observations» section, with no severity, and does not
+  block the verdict. (judgement)
 - A fact that expires (a version, a price, a quota, a limit of an outside service) written in the diff carries its
   date and source; if not, it is a finding. (judgement)
 - The review ends with one verdict of three: `SHIP` (nothing to fix), `SHIP WITH FIXES` (there are fixes, none blocks)
