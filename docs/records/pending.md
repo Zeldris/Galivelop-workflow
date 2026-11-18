@@ -331,4 +331,13 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [ ] `0.9` · **Revisión C4-fix n.º 2** (leve): el agente puede desbloquearse editando `docs/questions.md` (siempre permitido, sin pregunta de `config-guard`) o escribiendo `.git/gw/current-task` con Write; documentarlo como límite o protegerlo.
 - [ ] `0.9` · **Revisión C4-fix n.º 3** (leve): con el flujo instalado como plugin de otra versión, una clave desconocida de `gw.json` da ConfigError y `questions-guard.py` rechaza todo código aunque `modes.questions` esté apagado; el `config.py validate` del mensaje (copia del proyecto) puede salir válido.
 - [ ] `0.9` · **C4** (regla «Todo configurable»): `task.GIT_TIMEOUT` (10 s) es una constante, no una clave de `gw.json`; decidir si pasa a config.
+- [ ] `0.9` · **Revisión C12 n.º 3** (leve): la regex del trailer `Spike:` exige el prefijo actual; al cambiar `spikeBranch`, los commits marcados con el viejo dejan de contar (salvo por el asunto del merge).
+- [ ] `0.9` · **Revisión C12 n.º 5** (leve): en un octopus, la regex del asunto del merge solo mira la primera rama: un spike que no va primero no se detecta por el asunto.
+- [ ] `0.9` · **Revisión C12 n.º 9** (leve, confianza baja): `mark_spike` de `commit-message.py` reescribe el mensaje después de que las comprobaciones lo leyeran.
+- [ ] `0.9` · **Revisión C12 n.º 10** (leve, limpieza): el `pre-push` compara el prefijo con un glob de shell además de `config.py spike-branch` (dos sitios para una regla).
+- [ ] `0.9` · **Revisión C13 n.º 7** (leve): los avisos únicos `broken-config` y `git-stuck` de `scope-guard.py` no caducan: tras arreglarse y volver a romperse, no se repiten.
+- [ ] `0.9` · **Revisión C13 n.º 8** (leve): la regex `^Related:` de `task.py` encuentra la línea en cualquier parte de la ficha, no solo en su cabecera.
+- [ ] `0.9` · **Revisión C13 n.º 9** (leve): `scope-guard.py` apunta la desviación y gasta el aviso único antes de saber si la edición sigue adelante.
+- [ ] `0.9` · **Revisión C13 n.º 11** (leve): `warn_once` cambia el global privado `qg.WARNED` en vez de recibir la marca como parámetro.
+- [ ] `0.9` · **Revisión C13 n.º 12** (leve): en cada Edit/Write, `scope-guard.py` repite el trabajo que `questions-guard.py` acaba de hacer (config, tarea en curso).
 - [ ] `0.9` · Herramienta (CI macOS): `test_check_summary.CheckSummary.test_no_fifo_is_left_in_tmpdir_after_an_interrupt` agotó sus 270 s en el CI de macOS de `de6b79d` (2026-11-18; la unidad tardó 341 s con 3 tareas). Ni el test ni `check.sh` cambiaron en la oleada; Ubuntu en verde. Mirar si vuelve en `d3691d8`/`e2457ab`; si se repite, subir su espera o aislarlo.

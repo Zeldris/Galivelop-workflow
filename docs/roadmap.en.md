@@ -283,15 +283,15 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | C6 | Default: off in projects, on in this repo | done (2026-11-18; default value, with C7) |
 | C7 | One switch: the `gw-mode` skill | done (2026-11-18) |
 | C8 | `modes.careful` (before a destructive command), on by default | pending (moves from `0.7`) |
-| C10 | A subagent does not ask the user: it returns the question | pending (moves from `0.7`) |
+| C10 | A subagent does not ask the user: it returns the question | done (2026-11-17; rule in `AGENTS.md` and templates, `questions.py add --refs`) |
 | D14 | `trace.py <id>` | done (2026-11-17; id ranges and lists, `--json`, `--limit`, `--no-docs`, declared and deduced) |
 | D61 | `handoff.py preflight`: what the `pre-push` checks in the log (the "Updated" date, ids clashing with `main`), without pushing; in the template's `check` (`0.6` harvest, private-project-1 P1) | done (2026-11-17; with no `origin/<protectedBranch>` the clash is skipped with a note, as in the `pre-push`) |
 | D62 | The `pre-push` warns, without blocking, when the branch's last CI is red (`ci-status.py`, when `gh` is there) (`0.6` harvest, image-generator P5) | done (2026-11-17; `prepushCiWarn`, `prepushCiWarnTimeout`) |
 | D63 | `templates/github/check.yml` with `workflow_call`: a `release.yml` calls it with `uses:` and `needs:` instead of copying its steps; the workflow's own too (`0.6` harvest, image-generator P6) | done (2026-11-17; `release.yml`: `verify` → `check` → `release`) |
-| A11 | The four working modes in the plan, `AGENTS.md` and `gw-selector`: SDD always (task record), DDD with a domain, TDD with testable behaviour, bounded exploration (H17 P2; user, 2026-11-08) | pending (moves from `0.7`) |
+| A11 | The four working modes in the plan, `AGENTS.md` and `gw-selector`: SDD always (task record), DDD with a domain, TDD with testable behaviour, bounded exploration (H17 P2; user, 2026-11-08) | done (2026-11-18; plan §4.5, «Four modes» rule in `AGENTS.md`, «Modes» column in `gw-selector`) |
 | C11 | Task record (`docs/tasks/<id>.md`, `taskRecord`): SDD, acceptance criteria, planned files and a decision log per agent; required for `feat`/`fix`/`hotfix` with code, checked by the `commit-msg`; `close-row` requires the boxes; absorbs D50 (H17 P1; user, 2026-11-08) | done (2026-11-18) |
-| C12 | Exploration branch `spike/<topic>` with no record and no `Refs:`, which the `pre-push` and `merge-branch.sh` refuse to merge into a working branch (H17 P2) | pending (moves from `0.7`) |
-| C13 | Frozen scope (`scopeGuard`): warning or block when touching a file outside the record's `Files`, `pre-commit` as fallback, new requirement = new task, deviation log for the retro (H17 P3) | pending (moves from `0.7`) |
+| C12 | Exploration branch `spike/<topic>` with no record and no `Refs:`, which the `pre-push` and `merge-branch.sh` refuse to merge into a working branch (H17 P2) | done (2026-11-18) |
+| C13 | Frozen scope (`scopeGuard`): warning or block when touching a file outside the record's `Files`, `pre-commit` as fallback, new requirement = new task, deviation log for the retro (H17 P3) | done (2026-11-18) |
 | D68 | CHANGELOG fragments per branch (`changelog.d/`), folded by `merge-branch.sh` or `version.py --release` (H17 P10) | pending (moves from `0.7`) |
 | E32 | Read `permissions.deny` for secrets and a `PreToolUse` hook on `cat`/`grep` of those files, with a test; in `docs/en/`, what goes out to the provider (H17 P6) | pending (moves from `0.7`) |
 | E33 | Review contract with anchors in `REVIEW.md`: `path:line | severity | anchor | problem. fix.`; no anchor, an observation (H17 P7) | pending (moves from `0.7`) |
