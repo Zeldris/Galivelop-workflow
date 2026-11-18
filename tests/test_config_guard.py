@@ -172,6 +172,10 @@ class BashWrites(Base):
         'python3 .claude/gw/scripts/models.py disable opus',
         'python3 .claude/gw/scripts/models.py --root . enable claude-haiku-5-5',
         'cd .claude/gw/scripts && python3 models.py enable opus',
+        'python3 .claude/gw/scripts/mode.py set careful off',  # C7: an agent must not switch a mode off silently
+        'python3 -B scripts/mode.py --root . set questions off',
+        'cd .claude/gw/scripts && python3 mode.py set questions on',
+        'bash -c "python3 .claude/gw/scripts/mode.py set careful off"',
     ]
     READS = [
         'cat .claude/settings.json',
@@ -179,6 +183,8 @@ class BashWrites(Base):
         'python3 .claude/gw/scripts/config.py validate',
         'python3 .claude/gw/scripts/models.py list',
         'python3 .claude/gw/scripts/models.py check opus',
+        'python3 .claude/gw/scripts/mode.py list',
+        'python3 .claude/gw/scripts/mode.py line',
         'python3 .claude/gw/scripts/doctor.py > /tmp/out.txt',
         'bash .githooks/pre-push',
         'cat .claude/settings.json > /tmp/copy.json',
@@ -479,6 +485,8 @@ class BashWrites(Base):
         self.assertAsks(self.p.tool("Bash", command="cp a .githooks/pre-push"), "writes to .githooks/pre-push:")
         self.assertAsks(self.p.tool("Bash", command="python3 .claude/gw/scripts/models.py enable opus"),
                         "writes to .claude/gw.json:")  # B7: only the user re-enables a model
+        self.assertAsks(self.p.tool("Bash", command="python3 .claude/gw/scripts/mode.py set careful off"),
+                        "writes to .claude/gw.json:")  # C7: nor switches a mode off
 
     def test_reads_are_allowed(self):
         for command in self.READS:

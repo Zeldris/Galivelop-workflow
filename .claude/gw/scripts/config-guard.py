@@ -43,7 +43,7 @@ What it looks at, in the event on stdin (`tool_name`, `tool_input`, `cwd`):
 Also covered (D33): the same paths inside an agent worktree (`.claude/worktrees/<name>/...`); `find ... -exec|-execdir|
 -ok rm|mv|...` on them; `tar -x -C DIR` and `unzip -d DIR` into a protected folder (or from inside one). The file read by
 `touch -r`, `touch|chmod|chown|chgrp --reference` is not written. `python3 .../models.py disable|enable` (B7) counts as
-a write of .claude/gw.json: it rewrites `models.disabled` there.
+a write of .claude/gw.json: it rewrites `models.disabled` there; so does `mode.py set` (C7: `modes.<mode>`).
 
 The git calls that rewrite the working tree without naming a path (`merge`, `pull`, `checkout|switch <branch>`,
 `reset --hard|--merge|--keep`, `stash pop|apply`, `rebase`, `cherry-pick`, `revert`, `apply`) ask only when they would
@@ -691,10 +691,13 @@ def extract_hits(cmd, args, base, root):
 
 
 def models_write(args):
-    """True when a python call runs models.py with `disable` or `enable`, which rewrite .claude/gw.json (B7)."""
+    """True when a python call runs models.py with `disable` or `enable` (B7), or mode.py with `set` (C7), which rewrite
+    .claude/gw.json."""
     for n, w in enumerate(args):
-        if os.path.basename(w) == "models.py":
-            return any(x in ("disable", "enable") for x in args[n + 1:])
+        script = os.path.basename(w)
+        if script in ("models.py", "mode.py"):
+            verbs = ("disable", "enable") if script == "models.py" else ("set",)
+            return any(x in verbs for x in args[n + 1:])
     return False
 
 

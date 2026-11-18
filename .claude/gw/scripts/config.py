@@ -548,7 +548,7 @@ def questions_path(config):
 
 
 def modes(config):
-    """The `modes` key as a dict (careful, carefulExempt) (C8): on/off switches of the workflow's opt-out hooks."""
+    """The `modes` key as a dict (careful, questions, carefulExempt, carefulWorktrees) (C8, C6): on/off switches of the workflow's opt-out hooks."""
     return _section(config, "modes")
 
 

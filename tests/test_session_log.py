@@ -18,7 +18,7 @@ import waits
 from test_hooks import ROOT, Project, Snapshot
 
 SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py", "context_guard.py",
-           "change-size.py", "whole-read.py", "questions.py")
+           "change-size.py", "whole-read.py", "questions.py", "mode.py")
 
 
 MARK_VAR = "GW_TEST_PROC_MARK"
@@ -470,6 +470,37 @@ class SessionStart(Base):
         self.assertIn("gw session-start: questions:", out)
         self.assertIn("Status 'bogus'", out)
         self.assertIn("questions.py --root", out)
+
+    def set_modes(self, modes):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        if modes is None:
+            cfg.pop("modes", None)
+        else:
+            cfg["modes"] = modes
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+
+    def test_c7_modes_line_on_and_off(self):
+        self.set_modes({"careful": True, "questions": True})
+        code, out = self.p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertIn("Modes: careful on, questions restrictive", out.splitlines())
+        self.set_modes({"careful": False, "questions": False})
+        code, out = self.p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertIn("Modes: careful off, questions guide", out.splitlines())
+
+    def test_c7_modes_line_with_the_defaults_when_the_section_is_missing(self):
+        self.set_modes(None)
+        code, out = self.p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertIn("Modes: careful on, questions guide", out.splitlines())
+
+    def test_c7_modes_line_is_a_warning_when_the_config_is_broken(self):
+        self.set_modes({"careful": "yes"})
+        code, out = self.p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("Modes:", out)
+        self.assertIn("modes.careful", out)  # the config warning names the key and the command that fixes it
 
     def test_invalid_utf8_questions_file_warns(self):
         (self.p.work / "docs").mkdir(exist_ok=True)
