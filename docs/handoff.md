@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.0` publicada** (`main` = `b3825b8`, 2026-11-18; CI en verde; etiqueta y release `v0.8.0` creadas desde una sesión local) |
-| Siguiente paso | **Apertura de la `0.9` «Front»: recogida (`gw-harvest`) del 2026-11-18 en curso**; propuestas en `docs/proposals/2026-11-18-*.md`, al usuario para decidir. Presupuesto de compactaciones: 1 |
+| Siguiente paso | **Decidir la recogida del 2026-11-18** (`docs/proposals/2026-11-18-*.md`, 8 archivos): primero el parche `0.8.1` (gancho duplicado, instalador-wmf-tarkor P1), luego abrir la `0.9` «Front» con lo aprobado. Presupuesto de compactaciones: 1 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-18 — Sello de la `0.8.0` preparado: entrada del CHANGELOG (es/en), `version.py 0.8.0` y `apply.py .` (cabeceras y copias), README con el estado y lo nuevo de la `0.8`, roadmap con D68, E33 y E35 hechas; el ítem abierto de `push.sh` en macOS pasa a la `0.10`.
-2. 2026-11-18 — D7 fusionado: `apply.py` copia las skills también en `agentsSkillsDir` (por defecto `.agents/skills`, para opencode y Codex) con huérfanos, `--check` y ganchos al día; AGENTS.md ya era legible sin `@include`; 8 hallazgos de revisión arreglados; check completo en verde. B9 mínimo hecho: guía `other-agents.md` es/en y regla de modelos externos en `gw-selector` (Q-1). Q-2: la recogida del 2026-11-15 cuenta para la `0.8`.
-3. 2026-11-18 — E35 fusionado: `test-run.py` reintenta una clase que falla (`flaky.retries`), la apunta en `<git common dir>/gw/flaky.jsonl`, el resumen del check lo dice y tras `flaky.proposeAfter` propone arreglarla; revisión con 4 hallazgos arreglados; check completo en verde.
-4. 2026-11-18 — Oleada D68+E33 fusionada (fragmentos de CHANGELOG en `changelog.d/`; contrato de revisión con anclas); check de la oleada en rojo por la clave nueva en `templates/gw.json`, el orden de `test_version.py` y la copia de gw-harvest, arreglados. Respuestas Q-1..Q-3: B9 mínimo, recogida si ninguna cuenta, sin `REVIEW.md` en la raíz.
-5. 2026-11-18 — Reparto nuevo de versiones (usuario, 2026-11-18): la `0.8` pasa a «Preguntas y otros agentes» y se cierra con D68, E33, E35, D7 y B9; nueva `0.9` «Front» (A12, E4, E5, E7, E9-E16, E42, E50); la «Estable» pasa a `0.10`, solo correcciones y revisiones (con E32 y B38), y lo evolutivo de las recogidas va a la `1.x` (plan §7 y regla de versiones del roadmap). Lo de `pending.md` marcado `0.9`, a `0.10`.
+1. 2026-11-18 — Recogida (gw-harvest) de apertura de la 0.9 del 2026-11-18 sobre 10 proyectos (private-project-5 es nuevo): propuestas en docs/proposals/2026-11-18-*.md, al usuario para decidir. Fallo de la 0.8.0: gw-update deja whole-read.py registrado dos veces (instalador-wmf-tarkor P1, candidato a 0.8.1).
+2. 2026-11-18 — Sello de la `0.8.0` preparado: entrada del CHANGELOG (es/en), `version.py 0.8.0` y `apply.py .` (cabeceras y copias), README con el estado y lo nuevo de la `0.8`, roadmap con D68, E33 y E35 hechas; el ítem abierto de `push.sh` en macOS pasa a la `0.10`.
+3. 2026-11-18 — D7 fusionado: `apply.py` copia las skills también en `agentsSkillsDir` (por defecto `.agents/skills`, para opencode y Codex) con huérfanos, `--check` y ganchos al día; AGENTS.md ya era legible sin `@include`; 8 hallazgos de revisión arreglados; check completo en verde. B9 mínimo hecho: guía `other-agents.md` es/en y regla de modelos externos en `gw-selector` (Q-1). Q-2: la recogida del 2026-11-15 cuenta para la `0.8`.
+4. 2026-11-18 — E35 fusionado: `test-run.py` reintenta una clase que falla (`flaky.retries`), la apunta en `<git common dir>/gw/flaky.jsonl`, el resumen del check lo dice y tras `flaky.proposeAfter` propone arreglarla; revisión con 4 hallazgos arreglados; check completo en verde.
+5. 2026-11-18 — Oleada D68+E33 fusionada (fragmentos de CHANGELOG en `changelog.d/`; contrato de revisión con anclas); check de la oleada en rojo por la clave nueva en `templates/gw.json`, el orden de `test_version.py` y la copia de gw-harvest, arreglados. Respuestas Q-1..Q-3: B9 mínimo, recogida si ninguna cuenta, sin `REVIEW.md` en la raíz.
 
 ## Pendiente
 

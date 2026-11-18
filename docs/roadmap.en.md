@@ -337,6 +337,7 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | E9-E16 | The front-end checks decided in [`E-quality.md`](design/E-quality.md) (screenshots, when they run, tokens, preprocessors, accessibility, baselines, no paid services, matrix) | pending |
 | E42 | `gw-seo` skill (SEO and link previews for static sites) brought from the portal: no portal paths, English names, tests in the check, es/en docs and its source's MIT LICENSE (`0.6` closing harvest, portal P1) | pending |
 | E50 | `PreToolUse` hook on `Read` that warns, without blocking, when reading loose screenshots and suggests a contact sheet (the project's command in a key) (`0.6.0` harvest, image-generator P6) | pending |
+| H24 | `0.9` opening harvest (`gw-harvest`) at its start, after updating the projects to `0.8.0` (AGENTS.md) | in progress (2026-11-18; proposals to the user) |
 
 ## `0.10` "Stable"
 
