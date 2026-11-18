@@ -636,6 +636,17 @@
       "default": [],
       "description": "Names of foreign CI checks (a check-run name or a commit status context, e.g. a deploy) that do not block the merge nor count as the project's CI. An exact name, or a name with `*` for any text (`vercel*`); case matters; no regex. An ignored check never turns a red or pending check of the project into green, and a commit where only ignored checks reported counts as no CI."
     },
+    "changelogFragments": {
+      "type": "boolean",
+      "default": true,
+      "description": "D68: true: each working or subagent branch writes its CHANGELOG notes to <changelogFragmentsDir>/<branch>.md (the branch's '/' made '-'), with a ### ES and a ### EN section, instead of editing CHANGELOG.md; version.py folds them into the version's entry (on a bump, or with --fold) and deletes them, and version.py --release fails while HEAD still has one. false: CHANGELOG.md is edited by hand and fragments are neither folded nor checked."
+    },
+    "changelogFragmentsDir": {
+      "type": "string",
+      "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$))[^\\s]+[^/\\s]$",
+      "default": "changelog.d",
+      "description": "D68: repo-relative directory of the CHANGELOG fragments (changelogFragments). Its README.md and .gitkeep are not fragments."
+    },
     "releaseDocs": {
       "type": "array",
       "items": {"type": "string", "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+[^/]$"},

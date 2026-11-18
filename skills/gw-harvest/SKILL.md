@@ -62,7 +62,7 @@ them, plus anything a project changed in its copy of the workflow. **It proposes
    each in another project's file, or in one file of their own when no project brings anything (every version needs
    a `# Harvest` file added since the last tag: `python3 scripts/version.py --release`).
 6. **Present them to the user**, most valuable first, and wait. What the user approves becomes a normal change in
-   this repo: the piece updated, a CHANGELOG entry and a version bump (patch, minor or major per plan §7).
+   this repo: the piece updated, a CHANGELOG fragment (`changelog.d/<branch>.md`, `docs/en/contributing.md`) and a version bump (patch, minor or major per plan §7).
 7. **Record the harvest** once the proposals file is committed:
    `python3 scripts/harvest.py --update-state <project-path> ...`, then commit `<proposalsDir>/state.json` in the
    same commit as the proposals.

@@ -14,7 +14,10 @@ check flags one that lacks it (exceptions, with the reason, in UNMARKED).
 .claude/gw.json is this repo's installed copy: only apply.py writes it.
 
   python3 scripts/version.py            # list files whose marker differs from plugin.json; exit 1 if any
-  python3 scripts/version.py 0.2.0      # set plugin.json and every marker to 0.2.0; add a CHANGELOG entry
+  python3 scripts/version.py 0.2.0      # set plugin.json and every marker to 0.2.0; add a CHANGELOG entry and
+                                        # fold the CHANGELOG fragments into it (D68, below)
+  python3 scripts/version.py --fold     # fold the fragments into the entry of plugin.json's version, unless that
+                                        # version is already tagged (released): bump first
   python3 scripts/version.py <current>  # re-sync stale markers to plugin.json's version
   python3 scripts/version.py --suggest  # the bump the commits since the last vX.Y.Z tag ask for (D11); only suggests
                                         # (exit 0); --release prints the same suggestion as a warning
@@ -25,7 +28,12 @@ check flags one that lacks it (exceptions, with the reason, in UNMARKED).
                                         # version needs a harvest since that tag: a <proposalsDir>/*.md
                                         # added after it whose first line is "# Harvest …" (skill gw-harvest)
                                         # and a dated, filled-in CHANGELOG entry (## [X.Y.Z] - YYYY-MM-DD)
-                                        # whose backticked repo paths all exist in HEAD (placeholders skipped)
+                                        # whose backticked repo paths all exist in HEAD (placeholders skipped);
+                                        # and no CHANGELOG fragment left in HEAD
+CHANGELOG fragments (D68, keys changelogFragments and changelogFragmentsDir): each branch writes
+<changelogFragmentsDir>/<branch>.md (its "/" made "-") with a `### ES` and a `### EN` section instead of editing
+CHANGELOG.md; the fold appends each one's notes (fragments sorted by file name) to the ### ES and ### EN of the entry,
+replacing the bump's placeholder, and deletes them. All or nothing: a malformed fragment stops it with the reason.
 Then: python3 scripts/apply.py .  (refresh this repo's copy) and fill in the CHANGELOG entry.
 Files are read and written as strict UTF-8 keeping their line endings; a non-UTF-8 file with a marker is reported
 and left alone.
@@ -432,6 +440,180 @@ def bump_plan(path, new):
     return out
 
 
+# D68: CHANGELOG fragments. Each branch writes <changelogFragmentsDir>/<branch>.md (the branch's "/" made "-")
+# instead of editing CHANGELOG.md, so parallel worktrees never clash on it; the fold puts them into the version's entry.
+FRAGMENT_SKIP = ("README.md", ".gitkeep")  # and every hidden file (.DS_Store …): is_fragment_skipped()
+
+
+def is_fragment_skipped(name):
+    return name in FRAGMENT_SKIP or name.startswith(".")
+
+
+def fragment_settings(rev=None):
+    """(enabled, directory) from changelogFragments / changelogFragmentsDir; raises VersionError when unreadable."""
+    try:
+        cfg = config.load(ROOT, rev=rev) if rev else config.load(ROOT)
+    except Exception as exc:
+        raise VersionError(f"cannot read changelogFragments / changelogFragmentsDir: {exc}") from exc
+    return cfg["changelogFragments"], cfg["changelogFragmentsDir"]
+
+
+def parse_fragment(name, text):
+    """(ES lines, EN lines) of a fragment: blank lines, then `### ES` and its notes, then `### EN` and its notes, each
+    heading once and in that order, each section with some text, and no other `#` heading. Raises VersionError with
+    the reason otherwise."""
+    fix = f"; fix {name} (### ES, its notes, ### EN, its notes) and retry"
+    lines = text.lstrip("﻿").splitlines()
+    heads = [(i, line.strip()) for i, line in enumerate(lines) if line.lstrip().startswith("#")]
+    if [h for _, h in heads] != ["### ES", "### EN"]:
+        found = ", ".join(repr(h) for _, h in heads) or "none"
+        raise VersionError(f"malformed CHANGELOG fragment {name}: it needs exactly the headings '### ES' then "
+                           f"'### EN' (found: {found}){fix}")
+    (es_at, _), (en_at, _) = heads
+    if any(line.strip() for line in lines[:es_at]):
+        raise VersionError(f"malformed CHANGELOG fragment {name}: text before '### ES'{fix}")
+    sections = []
+    for label, body in (("ES", lines[es_at + 1:en_at]), ("EN", lines[en_at + 1:])):
+        while body and not body[0].strip():
+            body = body[1:]
+        while body and not body[-1].strip():
+            body = body[:-1]
+        if not body:
+            raise VersionError(f"malformed CHANGELOG fragment {name}: its ### {label} section is empty{fix}")
+        sections.append(body)
+    return sections[0], sections[1]
+
+
+def fragment_paths(directory):
+    """The fragment files of the working tree's `directory`, sorted by name; anything there but `*.md`, README.md
+    and .gitkeep raises VersionError (a fragment saved with another name would be lost silently)."""
+    base = ROOT / directory
+    if not base.is_dir():
+        return []
+    found = []
+    for path in sorted(base.iterdir()):
+        if is_fragment_skipped(path.name):
+            continue
+        if not path.is_file() or path.suffix != ".md":
+            raise VersionError(f"{directory}/{path.name} is not a CHANGELOG fragment (only <branch>.md files go "
+                               f"there); rename or remove it and retry: python3 scripts/version.py --fold")
+        found.append(path)
+    return found
+
+
+def section_span(lines, start, end, heading):
+    """(index of `heading`, end of its section) within lines[start:end]; None when absent."""
+    at = next((i for i in range(start, end) if lines[i].strip() == heading), None)
+    if at is None:
+        return None
+    nxt = next((i for i in range(at + 1, end) if lines[i].startswith("### ")), end)
+    return at, nxt
+
+
+def fold_plan(version, text, fragments):
+    """The CHANGELOG text with each fragment's ES notes appended to the ### ES section of `version`'s entry and its EN
+    notes to ### EN (a bump's placeholder is replaced). `fragments` = [(name, es lines, en lines)]."""
+    nl = "\r\n" if "\r\n" in text else "\n"
+    lines = text.split(nl)
+    head = next((i for i, line in enumerate(lines) if re.match(rf"## \[{re.escape(version)}\]", line)), None)
+    if head is None:
+        raise VersionError(f"no CHANGELOG entry for {version} to fold the fragments into; add it (## [{version}] - "
+                           f"Unreleased, with ### ES and ### EN) and retry: python3 scripts/version.py --fold")
+    end = next((i for i in range(head + 1, len(lines)) if lines[i].startswith("## ")), len(lines))
+    out = lines[:head]
+    spans = {}
+    for label in ("ES", "EN"):
+        span = section_span(lines, head + 1, end, f"### {label}")
+        if span is None:
+            raise VersionError(f"the CHANGELOG entry of {version} has no ### {label} section to fold the fragments "
+                               f"into; add it and retry: python3 scripts/version.py --fold")
+        spans[label] = span
+    placeholder = {"ES": "- (por completar)", "EN": "- (to be filled in)"}
+    pos = head
+    for index, label in sorted(((spans[k][0], k) for k in spans)):
+        at, stop = spans[label]
+        out += lines[pos:at + 1]
+        body = lines[at + 1:stop]
+        while body and not body[-1].strip():
+            body = body[:-1]
+        body = [line for line in body if line.strip() != placeholder[label]]
+        while body and not body[0].strip():
+            body = body[1:]
+        for _, es, en in fragments:
+            body += es if label == "ES" else en
+        out += [""] + body + [""]
+        pos = stop
+    out += lines[pos:]
+    return nl.join(out)
+
+
+def closed_entry(version, retry):
+    """Why the CHANGELOG entry of `version` must not take a fold, or None: it is released (tag v<version>), or no
+    vX.Y.Z tag is reachable from HEAD, so that cannot be told (fails closed: a clone without tags). `retry` = the
+    command that retries."""
+    code, _ = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD")
+    if code != 0:
+        return (f"no vX.Y.Z tag reachable from HEAD, so it cannot tell whether {version} is already released; fetch "
+                f"the tags and retry: git fetch --tags origin && {retry}")
+    code, tag = git("tag", "--list", f"v{version}")
+    if code != 0:
+        return f"cannot list the tags; fix the clone and retry: {retry}"
+    if tag:
+        return (f"{version} is already released (tag v{version}), so its CHANGELOG entry is closed; bump to a new "
+                "version, which folds the fragments: python3 scripts/version.py X.Y.Z")
+    return None
+
+
+def collect_fragments():
+    """[(path, name, ES lines, EN lines)] of the working tree's fragments, all parsed; [] when the feature is off or
+    there are none. Raises VersionError with the reason for the first bad one."""
+    enabled, directory = fragment_settings()
+    if not enabled:
+        return []
+    fragments = []
+    for path in fragment_paths(directory):
+        name = f"{directory}/{path.name}"
+        try:
+            text = read(path)
+        except UnicodeDecodeError:
+            raise VersionError(f"malformed CHANGELOG fragment {name}: not UTF-8; convert it and retry: "
+                               "python3 scripts/version.py --fold") from None
+        fragments.append((path, name, *parse_fragment(name, text)))
+    return fragments
+
+
+def fold(version, fragments=None):
+    """Folds the fragments (default: collect_fragments()) into `version`'s CHANGELOG entry and deletes them; all or
+    nothing. Returns the folded paths."""
+    fragments = collect_fragments() if fragments is None else fragments
+    if not fragments:
+        return []
+    log = ROOT / "CHANGELOG.md"
+    write(log, fold_plan(version, read(log), [f[1:] for f in fragments]))
+    for fragment in fragments:
+        fragment[0].unlink()
+    return [f[0] for f in fragments]
+
+
+def fragments_release_check():
+    """Problems for a release: fragments still in HEAD, the tree being released, are notes missing from the entry."""
+    try:
+        enabled, directory = fragment_settings(rev="HEAD")
+    except VersionError as e:
+        return [f"{e}; fix the config and retry: python3 scripts/version.py --release"]
+    if not enabled:
+        return []
+    code, out = git("ls-tree", "-r", "--name-only", "HEAD", "--", directory)
+    if code != 0:
+        return [f"cannot list {directory} in HEAD to look for CHANGELOG fragments; commit and retry: "
+                "python3 scripts/version.py --release"]
+    left = [p for p in out.splitlines() if p and not is_fragment_skipped(p.rsplit("/", 1)[-1])]
+    if not left:
+        return []
+    return [f"unfolded CHANGELOG fragments in HEAD: {', '.join(left)}; fold them into the entry, commit and retry: "
+            "python3 scripts/version.py --fold && git add -A CHANGELOG.md " + directory]
+
+
 def changelog_plan(new):
     """The new CHANGELOG text with an entry for new; None when it already has one."""
     log = ROOT / "CHANGELOG.md"
@@ -481,11 +663,26 @@ def main(argv):
             print(f"version: {e}", file=sys.stderr)
             return 1
         return 0
+    if argv == ["--fold"]:
+        try:
+            fragments = collect_fragments()
+            closed = closed_entry(current, "python3 scripts/version.py --fold") if fragments else None
+            if closed:
+                raise VersionError(closed)
+            folded = fold(current, fragments)
+        except VersionError as e:
+            print(f"version: {e}", file=sys.stderr)
+            return 1
+        for path in folded:
+            print(f"folded {path.relative_to(ROOT)} into the CHANGELOG entry of {current}")
+        if not folded:
+            print("no CHANGELOG fragments to fold")
+        return 0
     release = argv[:1] == ["--release"]
     if release:
         argv = argv[1:]
     if not argv:
-        problems = check(current) + (release_check(current) if release else [])
+        problems = check(current) + (release_check(current) + fragments_release_check() if release else [])
         for line in problems:
             print(line)
         if release:
@@ -505,7 +702,19 @@ def main(argv):
         print(f"{new!r} is not SemVer (X.Y.Z); retry: python3 scripts/version.py 0.2.0", file=sys.stderr)
         return 2
     try:
+        if new != current:
+            code, tag = git("tag", "--list", f"v{new}")
+            if code != 0 or tag:
+                raise VersionError(closed_entry(new, f"python3 scripts/version.py {new}")
+                                   or f"cannot list the tags; fix the clone and retry: python3 scripts/version.py {new}")
+        fragments = collect_fragments() if new != current else []
+        closed = closed_entry(new, f"python3 scripts/version.py {new}") if fragments else None
+        if closed:
+            raise VersionError(closed)
+        if fragments:  # checked before anything is written: the new entry must take the fold
+            fold_plan(new, changelog_plan(new) or read(ROOT / "CHANGELOG.md"), [f[1:] for f in fragments])
         _, skipped = sync(new, new != current)
+        folded = fold(new, fragments)
     except VersionError as e:
         print(f"version: {e}", file=sys.stderr)
         return 1
@@ -517,6 +726,8 @@ def main(argv):
     if code == 0 and tag and tag[1:] != new:
         for line in harvest_check(new, tag):
             print(f"warning: {line}", file=sys.stderr)
+    for path in folded:
+        print(f"folded {path.relative_to(ROOT)} into the CHANGELOG entry of {new}")
     print(f"version {current} -> {new}; now: python3 scripts/apply.py . && fill in the CHANGELOG entry")
     return 1 if skipped else 0
 

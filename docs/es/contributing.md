@@ -26,7 +26,7 @@ estorba en todos los proyectos. Lee primero [`AGENTS.md`](../../AGENTS.md) y la 
    bash scripts/check.sh      # corre bash tests/check.sh y apunta el verde: el pre-push no lo repite
    ```
 
-5. **Entrada en el CHANGELOG**, **bitácora**, commit y push, en el mismo commit (abajo).
+5. **Fragmento del CHANGELOG** (`changelog.d/<rama>.md`), **bitácora**, commit y push, en el mismo commit (abajo).
 
 ## Pruebas por cada cambio
 
@@ -87,6 +87,26 @@ contenido; el check falla si la versión de `plugin.json` no tiene entrada. Al s
 **todas** las skills (lo exige `test_skills.py`) y las cabeceras `# galivelop-workflow vX.Y.Z` de scripts y plantillas se mueven con
 ella, y los proyectos la recogen con `/gw-update`. No se tocan a mano: `python3 scripts/version.py X.Y.Z` los mueve
 todos y deja la entrada del CHANGELOG por rellenar; sin argumento, comprueba que ninguno se ha quedado atrás.
+
+**Fragmentos (D68):** una rama no edita `CHANGELOG.md`: escribe sus notas en `changelog.d/<rama>.md` (la `/` de la
+rama se vuelve `-`: `agent/D68-x` → `changelog.d/agent-D68-x.md`), así dos worktrees en paralelo nunca chocan en él.
+Formato: `### ES`, sus notas, `### EN`, sus notas (las mismas, en inglés), sin nada antes ni otros títulos `#` (ninguna línea de una nota puede empezar por `#`: se toma por título y el fragmento se rechaza):
+
+```markdown
+### ES
+
+- Lo que cambia (D68).
+
+### EN
+
+- What changes (D68).
+```
+
+`python3 scripts/version.py X.Y.Z` crea la entrada y pliega en ella los fragmentos (por nombre de archivo: las notas ES
+al final de `### ES`, las EN al de `### EN`, quitando la marca «por completar») y los borra; `python3 scripts/version.py
+--fold` hace lo mismo sobre la entrada de la versión de `plugin.json`, si aún no tiene etiqueta. Todo o nada: un
+fragmento mal formado lo para con el motivo y no escribe nada. `--release` falla mientras `HEAD` tenga fragmentos sin
+plegar. Claves `changelogFragments` y `changelogFragmentsDir` ([config](config.md)).
 
 **Todo cambio en un archivo copiable** (`scripts/`, `skills/`, `templates/`, `schema/`) entre dos publicaciones **sube
 la versión**, aunque sea un parche: un proyecto que copió entre las dos vería «ediciones locales» que no hizo.
