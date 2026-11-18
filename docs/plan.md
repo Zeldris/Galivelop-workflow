@@ -204,6 +204,21 @@ puede arrancar en `/home/user` (lección del portal, `REVIEW.md` §«Ganchos y s
 - **Plantillas**: `/gw-init` copia las de `templates/<idioma>/` según el config.
 - **Mensajes de los scripts**: en inglés, con la orden concreta que arregla el fallo.
 
+### 4.5 Modos de trabajo
+
+Cuatro modos, que se combinan según la tarea (usuario, 2026-11-08; `gw-selector` dice cuáles pide cada caso):
+
+- **SDD, siempre:** toda tarea con código tiene su ficha `docs/tasks/<id>.md` (`taskRecord`): qué se quiere y qué no,
+  criterios de aceptación comprobables y archivos previstos.
+- **DDD, con dominio:** si hay dominio, reglas de negocio o fronteras que modelar, antes del código se fijan el
+  glosario y los ADR (`domain-modeling`).
+- **TDD, con comportamiento testeable:** si el comportamiento se puede expresar en tests, el test rojo va primero
+  (`red-without-fix.sh`).
+- **Exploración, acotada:** solo en una rama `spike/<tema>` (`spikeBranch`), sin ficha ni `Refs:`, y nunca se fusiona
+  en una rama de trabajo; lo que salga se convierte en ficha y se rehace con tests, o se tira.
+
+**Alcance congelado** (`scopeGuard`): un requisito nuevo durante el desarrollo es otra tarea, enlazada con `Related:`.
+
 ## 5. Componentes en detalle
 
 ### 5.1 Skills

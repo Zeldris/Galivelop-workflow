@@ -128,4 +128,7 @@ Los comprueba el `commit-msg` (`commitFormat`, `commitRefs`, `commitNext` y `age
   número («5. a, 6. ok») y `python3 scripts/questions.py answer "5. a, 6. ok"` lo pasa a `docs/questions.md` (las
   abiertas: `questions.py list`). Un subagente nunca pregunta al usuario: devuelve la pregunta y la sesión principal
   la apunta con `questions.py add --refs <id> --rec <texto> "<pregunta>"`.
+- **Cuatro modos** (usuario, 2026-11-08, plan §4.5): SDD siempre (ficha `docs/tasks/<id>.md`); DDD con dominio
+  (`domain-modeling`); TDD con comportamiento testeable; exploración solo en `spike/<tema>`, sin ficha ni `Refs:`,
+  sin fusionar en una rama de trabajo. Un requisito nuevo es otra tarea, con `Related:` (`scopeGuard`).
 - **Calidad primero:** un ahorro de tokens que empeora el resultado no es ahorro.

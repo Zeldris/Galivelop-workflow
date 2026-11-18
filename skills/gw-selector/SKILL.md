@@ -14,23 +14,29 @@ If `.claude/gw/gw-selector.md` exists in the project, read it first: it holds wh
 
 Classify the task with the table, then act on its row. Reply in the project's `language` (`.claude/gw.json`).
 
-| Case | Skill(s) | Session model | Session effort | Subagent model |
-|---|---|---|---|---|
-| Design: new feature, open decision, architecture, UX, anything the user must decide | `grilling` + `domain-modeling`; `prototype` when numbers, rules or screens need trying | large (Opus) | high | light (Haiku) for `Explore` searches |
-| Bug, red or flaky test, something visibly broken | `diagnosing-bugs` | large if the cause is not obvious; medium (Sonnet) if it shows at first sight | high if not obvious; medium | none |
-| Huge or foggy effort that no single session can hold | `wayfinder` (a map of decision tickets, one per session) | large | high | light, for `research` tickets |
-| Write up a feature already discussed as a spec | `to-spec` | large | medium | none |
-| Large change: several systems, data, migration, concurrency, build or routing | the project's plan for it | large | high | light, to find usages |
-| Scoped change: one component, one adjustment, one test, one small endpoint | none | medium | medium | none |
-| Mechanical: docs, log, renames, adapting tests to a new signature, converting files | none | medium or light | low | light |
-| Bring something from another repo (a workflow, skills, documents) | `gw-orchestrate-dealer` | large, to decide what to adapt | medium | light `Explore` that reads the other repo and returns a summary with paths; the main session never reads the files whole |
-| Apply or update the workflow (`gw-init`, `gw-update`, `gw-doctor`) | `gw-orchestrate-dealer` | large, to decide | medium | light, to read the workflow's guide and scripts and return the decisions with paths |
-| Review before the protected branch (phase 1) | after `/clear` or in a clean subagent, never in the session that wrote the code: `/code-review` of what `python3 .claude/gw/scripts/review-scope.py --workflow <workflow repo>` lists (the diff without `vendored` files, the unchanged workflow copies), then `pr` for the description. A trivial diff (`review-scope.py --trivial` exits 0: no code per `is-code.sh`, or `reviewTrivialLines` changed lines or fewer) is reviewed in the session, without a subagent | large | high | none; its fixes go to `sonnet`, except where the dealer rule puts `opus` |
-| Closing a block or phase | `/code-review` of the diff since the last block review (on a long branch: since the last commit with a `Findings:` trailer, `Findings: 0` if none; the commit-msg hook warns when it passes `changeSize.block` lines), then `retro` (Claude runs it, the user confirms its proposals); now and then `improve-codebase-architecture` | large | medium | none |
-| Social posts about the project (what to post, a post, an announcement or an image about something that just happened) | `gw-media-content` to propose, `gw-media-content-now` to produce one piece | medium | medium | none |
-| Token spend or cost of a period (how much, which model, agent or task cost the most, against another period) | `gw-metrics` (the script makes the figures) | medium | low | none |
-| Show or switch a workflow mode (careful, questions) | `gw-mode` (the script reads and writes the config) | light | low | none |
-| Writing for agents (`AGENTS.md`, `CLAUDE.md`, skills, docs agents read) | `writing-for-agents` | medium | medium | none |
+| Case | Skill(s) | Session model | Session effort | Subagent model | Modes |
+|---|---|---|---|---|---|
+| Design: new feature, open decision, architecture, UX, anything the user must decide | `grilling` + `domain-modeling`; `prototype` when numbers, rules or screens need trying | large (Opus) | high | light (Haiku) for `Explore` searches | spec, DDD, TDD if testable |
+| Bug, red or flaky test, something visibly broken | `diagnosing-bugs` | large if the cause is not obvious; medium (Sonnet) if it shows at first sight | high if not obvious; medium | none | spec, TDD (red test first) |
+| Huge or foggy effort that no single session can hold | `wayfinder` (a map of decision tickets, one per session) | large | high | light, for `research` tickets | per ticket |
+| Write up a feature already discussed as a spec | `to-spec` | large | medium | none | spec only |
+| Large change: several systems, data, migration, concurrency, build or routing | the project's plan for it | large | high | light, to find usages | spec, DDD if a domain, TDD |
+| Scoped change: one component, one adjustment, one test, one small endpoint | none | medium | medium | none | spec, TDD |
+| Mechanical: docs, log, renames, adapting tests to a new signature, converting files | none | medium or light | low | light | spec only if code |
+| Bring something from another repo (a workflow, skills, documents) | `gw-orchestrate-dealer` | large, to decide what to adapt | medium | light `Explore` that reads the other repo and returns a summary with paths; the main session never reads the files whole | none |
+| Apply or update the workflow (`gw-init`, `gw-update`, `gw-doctor`) | `gw-orchestrate-dealer` | large, to decide | medium | light, to read the workflow's guide and scripts and return the decisions with paths | none |
+| Review before the protected branch (phase 1) | after `/clear` or in a clean subagent, never in the session that wrote the code: `/code-review` of what `python3 .claude/gw/scripts/review-scope.py --workflow <workflow repo>` lists (the diff without `vendored` files, the unchanged workflow copies), then `pr` for the description. A trivial diff (`review-scope.py --trivial` exits 0: no code per `is-code.sh`, or `reviewTrivialLines` changed lines or fewer) is reviewed in the session, without a subagent | large | high | none; its fixes go to `sonnet`, except where the dealer rule puts `opus` | none |
+| Closing a block or phase | `/code-review` of the diff since the last block review (on a long branch: since the last commit with a `Findings:` trailer, `Findings: 0` if none; the commit-msg hook warns when it passes `changeSize.block` lines), then `retro` (Claude runs it, the user confirms its proposals); now and then `improve-codebase-architecture` | large | medium | none | none |
+| Social posts about the project (what to post, a post, an announcement or an image about something that just happened) | `gw-media-content` to propose, `gw-media-content-now` to produce one piece | medium | medium | none | none |
+| Token spend or cost of a period (how much, which model, agent or task cost the most, against another period) | `gw-metrics` (the script makes the figures) | medium | low | none | none |
+| Show or switch a workflow mode (careful, questions) | `gw-mode` (the script reads and writes the config) | light | low | none | none |
+| Writing for agents (`AGENTS.md`, `CLAUDE.md`, skills, docs agents read) | `writing-for-agents` | medium | medium | none | none |
+
+**Modes** (column above): spec = SDD, the task record `docs/tasks/<id>.md`, always for code; DDD = `domain-modeling`
+(glossary, ADR) when there is a domain, business rules or boundaries; TDD = red test first when the behaviour can be
+tested. Exploration only on a `spike/<topic>` branch without record or `Refs:`, never merged into a working branch:
+its result becomes a record redone with tests, or is thrown away. A new requirement mid-task is a new task, linked
+with `Related:`. Rows with `none` ask for no mode.
 
 Use a skill only if it exists in this repo's `skills/` (or `.claude/skills/`) or the project declares it; otherwise
 do the case without it and say so.
