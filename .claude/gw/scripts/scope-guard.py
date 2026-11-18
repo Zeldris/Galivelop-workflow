@@ -22,6 +22,9 @@ file must be named in `## Files` (task.py files_of/in_files: exact path, a folde
   - `block`: denied, with the same two ways on;
   - `auto`: `block` while `modes.questions` is restrictive, else `warn`;
   - `off`: nothing.
+Not deviations (B44): a file `apply.py --vendored` gives as an unchanged copy of the workflow (review-scope.py's
+caller; needs the workflow repo, `$GW_WORKFLOW`), and a change that only touches the stamped version (stamp.py: the
+`galivelop-workflow vX.Y.Z` header, `version:`), so a version stamp commit is quiet without a record of its own.
 The two ways on: add the file to `## Files` and explain it in the record's `## Change log`; or, if it is a new
 requirement, open a new task linked from this one: task.py new <newid> --related <id>.
 
@@ -49,6 +52,10 @@ import task  # noqa: E402
 _spec = importlib.util.spec_from_file_location("questions_guard", os.path.join(HERE, "questions-guard.py"))
 qg = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(qg)
+_rs_spec = importlib.util.spec_from_file_location("review_scope", os.path.join(HERE, "review-scope.py"))
+rs = importlib.util.module_from_spec(_rs_spec)  # the one `apply.py --vendored` caller (D82)
+_rs_spec.loader.exec_module(rs)
+import stamp  # noqa: E402
 
 WARNED = "gw/scope-warned"
 NAME = "scope-guard"
@@ -117,6 +124,41 @@ def warn_once(top, key):
         qg.WARNED = saved
 
 
+def vendored_set(top):
+    """B44: the files the project holds as unchanged copies of the workflow (`apply.py --vendored`, through
+    review-scope.py), written by `apply.py` and not by the task. Empty when the workflow repo or the answer is not
+    available: then they count as before (the safe side)."""
+    try:
+        workflow = rs.workflow_dir(None)
+        return rs.vendored(top, workflow) if workflow else set()
+    except Exception:  # noqa: BLE001 (a failed lookup only means nothing is skipped)
+        return set()
+
+
+def stamp_only_staged(top, rel):
+    """B44: True when the staged change of `rel` only changes the stamped version (`galivelop-workflow vX.Y.Z`, `version:`)."""
+    r = subprocess.run(["git", "diff", "--cached", "-U0", "--no-renames", "--", rel], cwd=str(top), capture_output=True,
+                       text=True, encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL)
+    if r.returncode != 0:
+        return False
+    stamped, other = stamp.stamp_diff(r.stdout)
+    return stamped > 0 and other == 0
+
+
+def stamp_only_edit(event):
+    """B44: True when an Edit or MultiEdit event only replaces stamped-version lines with the same lines."""
+    inp = event.get("tool_input") or {}
+    edits = inp.get("edits") if event.get("tool_name") == "MultiEdit" else [inp]
+    if not isinstance(edits, list) or not edits:
+        return False
+    for e in edits:
+        if not isinstance(e, dict) or not isinstance(e.get("old_string"), str) or not isinstance(e.get("new_string"), str):
+            return False
+        if not stamp.only_stamp(e["old_string"].splitlines(), e["new_string"].splitlines()):
+            return False
+    return True
+
+
 STATE = {}  # the edited file's worktree, for the crash handler
 
 
@@ -155,6 +197,8 @@ def hook():
     base, record, patterns, ids = scope_of(top, cfg, task_id)
     if patterns is None or always_allowed(rel, cfg, base, ids) or task.in_files(rel, patterns):
         return 0
+    if stamp_only_edit(event) or rel in vendored_set(top):
+        return 0  # B44: a version stamp or a copy of the workflow is not a deviation
     way = how_on(task_id, record, rel, task_cmd(top))
     if mode == "block":
         qg.emit({"permissionDecision": "deny", "permissionDecisionReason":
@@ -232,6 +276,9 @@ def staged_check(top, cfg, mode):
         raise RuntimeError(f"git diff --cached failed: {r.stderr.strip()}")
     names = [p for p in r.stdout.split("\0") if p]
     outside = [p for p in names if not always_allowed(p, cfg, base, ids) and not task.in_files(p, patterns)]
+    if outside:  # B44: copies of the workflow and version-stamp-only changes are not deviations (a `chore(H..)` stamp commit
+        vendored = vendored_set(top)  # is all of them, so it needs no record of its own either)
+        outside = [p for p in outside if p not in vendored and not stamp_only_staged(top, p)]
     grown = unlogged(top, record, cfg) if record in names else []
     if not outside and not grown:
         return 0

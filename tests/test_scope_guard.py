@@ -70,6 +70,13 @@ class ScopeBase(Base):
         self.assertEqual(code, 0, out)
         return out
 
+    def load_guard(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("scope_guard", self.p.work / ".claude/gw/scripts/scope-guard.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
     def spec(self, out):
         data = json.loads(out)
         return data["hookSpecificOutput"]
@@ -227,13 +234,6 @@ class ReviewFixes(ScopeBase):
         self.p.git("add", "-A")
         self.p.git("commit", "-q", "--no-verify", "-m", "block config")
 
-    def load_guard(self):
-        import importlib.util
-        spec = importlib.util.spec_from_file_location("scope_guard", self.p.work / ".claude/gw/scripts/scope-guard.py")
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        return mod
-
     def test_1_workflow_files_from_the_config_are_always_allowed(self):
         self.block()
         sys.path.insert(0, str(ROOT / "scripts"))
@@ -352,6 +352,73 @@ class ReviewFixes(ScopeBase):
         with contextlib.redirect_stdout(out):
             mod.crash(RuntimeError("boom"))
         self.assertNotIn("permissionDecision", json.loads(out.getvalue())["hookSpecificOutput"])  # the session: warn
+
+
+class VersionStamp(ScopeBase):
+    """B44: a copy of the workflow and a version stamp are not deviations; a real change still is."""
+
+    def stamped(self, version="0.8.0", body="x = 1\n"):
+        self.p.write("src/s.py", f"# galivelop-workflow v{version}\n{body}")
+
+    def setUp(self):
+        super().setUp()
+        self.stamped()
+        self.p.commit("a stamped file, outside the scope")  # warn mode: the commit goes through
+
+    def staged_err(self, vendored=None):
+        """(exit code, stderr+stdout) of `scope-guard.py --staged`; VENDORED patches what apply.py --vendored says."""
+        code = ("import importlib.util, sys; from pathlib import Path\n"
+                "spec = importlib.util.spec_from_file_location('sg', '.claude/gw/scripts/scope-guard.py')\n"
+                "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+                f"v = {vendored!r}\n"
+                "if v is not None:\n"
+                "    m.rs.workflow_dir = lambda arg: Path('.')\n"
+                "    m.rs.vendored = lambda root, workflow: v\n"
+                "sys.exit(m.staged(None))\n")
+        return self.p.run(sys.executable, "-B", "-c", code, cwd=str(self.p.work))
+
+    def test_stamp_only_change_is_not_a_deviation(self):
+        self.stamped("0.8.1")
+        self.p.git("add", "-A")
+        code, err = self.staged_err()
+        self.assertEqual((code, err), (0, ""))
+
+    def test_a_stamp_commit_in_block_mode_needs_nothing_else(self):
+        self.stamped("0.8.1")
+        self.p.git("add", "-A")
+        self.set_config(scopeGuard={"mode": "block"})
+        code, err = self.staged_err()
+        self.assertEqual((code, err), (0, ""))
+
+    def test_stamp_plus_real_change_still_counts(self):
+        self.stamped("0.8.1", body="x = 2\n")
+        self.p.git("add", "-A")
+        code, err = self.staged_err()
+        self.assertEqual(code, 0)
+        self.assertIn("these staged files are outside the scope of task C13", err)
+        self.assertIn("  src/s.py", err)
+
+    def test_a_vendored_copy_is_not_a_deviation_and_an_edited_one_is(self):
+        self.p.write("src/b.py", "b = 5\n")
+        self.p.git("add", "-A")
+        self.assertEqual(self.staged_err({"src/b.py"}), (0, ""))
+        code, err = self.staged_err(set())  # the project edited it: no longer an unchanged copy
+        self.assertEqual(code, 0)
+        self.assertIn("  src/b.py", err)
+
+    def test_hook_skips_a_stamp_only_edit_but_not_a_real_one(self):
+        def edit(old, new):
+            event = {"hook_event_name": "PreToolUse", "tool_name": "Edit", "cwd": str(self.p.work),
+                     "tool_input": {"file_path": "src/s.py", "old_string": old, "new_string": new}}
+            code, out = self.p.run(sys.executable, "-B", str(self.p.work / ".claude/gw/scripts/scope-guard.py"),
+                                   stdin=json.dumps(event), cwd=str(self.p.work))
+            self.assertEqual(code, 0, out)
+            return out
+        before = len(self.deviations())
+        self.assertEqual(edit("# galivelop-workflow v0.8.0", "# galivelop-workflow v0.8.1"), "")
+        self.assertEqual(len(self.deviations()), before)
+        out = self.spec(edit("x = 1", "x = 2"))
+        self.assertIn("`src/s.py` is outside the scope of task C13", out["additionalContext"])
 
 
 class Parsing(unittest.TestCase):

@@ -321,6 +321,9 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | B41 | Barrido de `scripts/merge-branch.sh` (E57): con `--defer-check` nadie corre los tests de las ramas diferidas; «nothing to merge» sale con 0 sin check ni aviso; la línea 165 del dealer que pide dos checks enteros; y el leve de `context_guard.py` (cálculos repetidos por `--state`) (retro del parche `0.7.1`) | hecho (2026-11-16; la oleada guarda su base y la última fusión corre los tests relacionados de toda ella) |
 | B42 | Tests que buscan procesos con `pgrep -f` casan con los de otros agentes del mismo contenedor, y `tests-for.py --run` se quedó colgado en `test_hooks` con varios subagentes a la vez (oleada 2 de la `0.8`) | hecho (2026-11-17; marca de entorno en vez de `pgrep -f`, una sesión por unidad, `testUnitTimeout`) |
 | H23 | Reparto de la `0.8`: se cierra con D68, E33, E35, D7 y B9; el front y A12 pasan a la nueva `0.9` «Front» y la «Estable» a la `0.10`, solo correcciones (usuario, 2026-11-18) | hecho (2026-11-18) |
+| B44 | `scope-guard.py` no cuenta como desviación las copias del flujo (`apply.py --vendored`) ni los cambios que solo tocan la versión estampada; un commit de sello no pide ficha (retro de la `0.8.0`, P1) | hecho (2026-11-18) |
+| B45 | `review-scope.py --trivial` descuenta las líneas que solo cambian la versión estampada (retro de la `0.8.0`, P2) | pendiente |
+| B46 | `handoff.py close-row <id>` borra la marca de tarea en curso si es esa tarea y `recover.py --state` dice la tarea en curso (retro de la `0.8.0`, P3) | pendiente |
 
 ## `0.9` «Front»
 

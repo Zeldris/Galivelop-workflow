@@ -55,7 +55,7 @@ class Project:
         (gw / "schema").mkdir()
         for name in ("config.py", "is-code.sh", "reviewed.sh", "handoff.py", "check-green.sh", "check.sh", "commit-message.py",
                      "change-size.py", "metrics.py", "session_log.py", "push.sh",
-                     "scope-guard.py", "questions-guard.py", "questions.py", "task.py"):
+                     "scope-guard.py", "questions-guard.py", "questions.py", "task.py", "review-scope.py", "stamp.py"):
             shutil.copy2(ROOT / "scripts" / name, gw / "scripts" / name)
         shutil.copy2(ROOT / "schema" / "gw.schema.json", gw / "schema" / "gw.schema.json")
         (self.work / ".githooks").mkdir()

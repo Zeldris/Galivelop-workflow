@@ -320,6 +320,9 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | B41 | Sweep of `scripts/merge-branch.sh` (E57): with `--defer-check` nobody runs the tests of the deferred branches; «nothing to merge» exits 0 with no check or warning; the dealer's line 165 asking for two full checks; and the `context_guard.py` minor (repeated computations in `--state`) (`0.7.1` patch retro) | done (2026-11-16; the wave keeps its base and the last merge runs the related tests of all of it) |
 | B42 | Tests that look for processes with `pgrep -f` match those of other agents in the same container, and `tests-for.py --run` hung in `test_hooks` with several subagents at once (`0.8` wave 2) | done (2026-11-17; environment marker instead of `pgrep -f`, one session per unit, `testUnitTimeout`) |
 | H23 | Split of `0.8`: it closes with D68, E33, E35, D7 and B9; the front end and A12 move to the new `0.9` "Front end" and "Stable" to `0.10`, fixes only (user, 2026-11-18) | done (2026-11-18) |
+| B44 | `scope-guard.py` does not count workflow copies (`apply.py --vendored`) nor changes that only touch the stamped version as deviations; a stamp commit needs no record (0.8.0 retro, P1) | done (2026-11-18) |
+| B45 | `review-scope.py --trivial` discounts the lines that only change the stamped version (0.8.0 retro, P2) | pending |
+| B46 | `handoff.py close-row <id>` removes the current-task mark when it is that task, and `recover.py --state` shows the current task (0.8.0 retro, P3) | pending |
 
 ## `0.9` "Front end"
 
