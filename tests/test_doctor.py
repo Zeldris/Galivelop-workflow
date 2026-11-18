@@ -32,7 +32,7 @@ class Doctor(Snapshot):
         for var in ("CI", "GITHUB_ACTIONS"):  # the CI's own variables must not change what these tests expect
             p.env.pop(var, None)
         for name in ("review-before-main.sh", "before-stop.py", "config-guard.py", "subagent-cap.py", "agent-signatures.py",
-                     "metrics.py", "whole-read.py", "careful.py", "questions-guard.py"):
+                     "metrics.py", "whole-read.py", "careful.py", "questions-guard.py", "scope-guard.py"):
             shutil.copy2(ROOT / "scripts" / name, p.scripts / name)
         shutil.copy2(ROOT / "templates" / "claude" / "settings.json", p.work / ".claude" / "settings.json")
         shutil.copy2(ROOT / "templates" / "githooks" / "commit-msg", p.work / ".githooks" / "commit-msg")

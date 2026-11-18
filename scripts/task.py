@@ -6,6 +6,8 @@ entry in the folder `<taskRecord.path>/<id>/` that nobody edits afterwards.
   python3 task.py [--root PATH] new <id> [--title TEXT]            create the contract from the template
   python3 task.py [--root PATH] log <id> --agent <skill|session>   create a decision log entry (commit marker pending)
   python3 task.py [--root PATH] resolve <id>                       list the entries with the commit that added each
+  python3 task.py [--root PATH] new <id> --related <old>         a new requirement of <old> (C13): both get `Related:`
+  python3 task.py [--root PATH] deviations [--task <id>]           list the deviations log (scope-guard.py, C13)
   python3 task.py [--root PATH] current [<id> | --clear]           the current task: with <id> write the mark, with
                                                                    --clear remove it, alone print the current one
 
@@ -13,7 +15,7 @@ The current task (C4, C5; docs/design/I-lifecycle.md) is the id in a branch name
 names none, the per-clone mark `gw/current-task` in the git dir (`git rev-parse --git-path`, so each linked worktree has
 its own and it is never committed), which `new <id>` writes only when it created the record and there was no mark (it never switches a
 marked task), `current <id>` writes (config-guard.py asks first) and
-`handoff.py close-row <id>` removes when it names that id. questions-guard.py reads it with
+`handoff.py close-row <id>` removes when it names that id. questions-guard.py and scope-guard.py read it with
 current_task(); `current` prints that same id (nothing when there is none).
 
 The shape the commit-msg hook (commit-message.py, with `taskRecord.enabled`) asks for lives here too: entry_errors and
@@ -25,6 +27,7 @@ Exit 0 ok, 1 refused (each message ends with the command that fixes it). Python 
 """
 import argparse
 import datetime
+import json
 import os
 import posixpath
 import re
@@ -238,6 +241,101 @@ def clear_mark(root, task_id=None):
         pass
 
 
+FILES = "Files"
+RELATED = re.compile(r"^Related:\s*(.*)$", re.M)
+DEVIATIONS = "gw/deviations.jsonl"
+GLOB = re.compile(r"[*?\[]")
+
+
+def files_of(text):
+    """The paths the `## Files` section of a contract names in backticks (C13), as repo-relative posix patterns: a
+    trailing `/`, `…` or `...` is a folder prefix, `*`, `?` and `[...]` are globs (fnmatch, `*` crosses folders).
+    Tokens with spaces (commands), absolute paths and `..` are skipped. None when there is no `## Files` section."""
+    body = next((b for h, b in sections_of(text) if h.lower() == FILES.lower()), None)
+    if body is None:
+        return None
+    out = []
+    for token in re.findall(r"`([^`\n]+)`", body):
+        token = token.strip().replace("\\", "/")
+        if not token or re.search(r"\s", token) or token.startswith("/") or re.match(r"^[A-Za-z]:/", token):
+            continue
+        token = re.sub(r"/?(…|\.\.\.)$", "/", token)
+        while token.startswith("./"):
+            token = token[2:]
+        if token and ".." not in token.split("/"):
+            out.append(token)
+    return out
+
+
+def in_files(rel, patterns):
+    """Whether the repo-relative posix path `rel` is named by one of `patterns` (files_of): equal, under a folder it
+    names (with or without the trailing `/`), or matched by a glob."""
+    import fnmatch
+    for pattern in patterns:
+        bare = pattern.rstrip("/")
+        if rel == bare or (bare and rel.startswith(bare + "/")):
+            return True
+        if GLOB.search(pattern) and fnmatch.fnmatchcase(rel, pattern):
+            return True
+    return False
+
+
+def related_of(text):
+    """The ids of the `Related:` lines of a contract (a new requirement became another task, C13)."""
+    return [i for line in RELATED.findall(text) for i in re.split(r"[,\s]+", line) if i]
+
+
+def deviations_file(root):
+    """`<git common dir>/gw/deviations.jsonl` of the repository at `root` (shared by its worktrees), or None."""
+    out = _git(root, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    return Path(out) / DEVIATIONS if out else None
+
+
+def log_deviation(root, task_id, path, action, rule="scope"):
+    """Append one JSON line {ts, task, path, rule, action} to the deviations log (the retro reads the repeats); a log
+    that cannot be written is skipped (it is a record, not a guard)."""
+    target = deviations_file(root)
+    if target is None:
+        return
+    line = {"ts": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), "task": task_id,
+            "path": path, "rule": rule, "action": action}
+    try:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with open(target, "a", encoding="utf-8") as f:
+            f.write(json.dumps(line, ensure_ascii=False) + "\n")
+    except OSError:
+        pass
+
+
+def read_deviations(root, task_id=None):
+    """The entries of the deviations log (only `task_id`'s when given); unreadable lines are skipped."""
+    target = deviations_file(root)
+    out = []
+    try:
+        lines = target.read_text(encoding="utf-8").splitlines() if target and target.is_file() else []
+    except (OSError, UnicodeDecodeError):
+        lines = []
+    for line in lines:
+        try:
+            item = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(item, dict) and (task_id is None or item.get("task") == task_id):
+            out.append(item)
+    return out
+
+
+def add_related(root, rel, other):
+    """Add `Related: <other>` under the title of the contract at `rel` (once)."""
+    path = Path(root) / rel
+    text = path.read_text(encoding="utf-8")
+    if other in related_of(text):
+        return
+    head, sep, rest = text.partition("\n")
+    path.write_text(f"{head}\n\nRelated: {other}{sep}{rest}" if sep else f"{text}\n\nRelated: {other}\n",
+                    encoding="utf-8")
+
+
 def resolve(root, rel):
     r = subprocess.run(["git", "-C", str(root), "log", "--diff-filter=A", "--format=%h", "-1", "--", rel],
                        capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -248,10 +346,23 @@ def run(args):
     config, root, tr = _config(args.root)
     if args.command == "current":
         return run_current(args, config, root)
+    if args.command == "deviations":
+        for item in read_deviations(root, args.task):
+            print(f"{item.get('ts', '?')}  {item.get('task', '?')}  {item.get('rule', '?')}  {item.get('action', '?')}  "
+                  f"{item.get('path', '?')}")
+        return
     check_id(config, args.id)
     base = tr["path"].strip("/")
     if args.command == "new":
+        if args.related:
+            check_id(config, args.related)
+            if not (root / base / f"{args.related}.md").is_file():
+                raise Refused(f"{base}/{args.related}.md does not exist, so it cannot link {args.id}; create it first: "
+                              f"python3 {HERE / 'task.py'} new {args.related}")
         write_new(root, f"{base}/{args.id}.md", contract_text(config, args.id, args.title, root))
+        if args.related:  # a new requirement is another task (C13): both records name each other
+            add_related(root, f"{base}/{args.id}.md", args.related)
+            add_related(root, f"{base}/{args.related}.md", args.id)
         held = mark_task(root, config)
         if held is None:  # never switches a task already marked: that is `current <id>`, which config-guard asks about
             write_mark(root, args.id)
@@ -314,12 +425,16 @@ def main(argv=None):
     new = sub.add_parser("new", help="create the contract <path>/<id>.md")
     new.add_argument("id")
     new.add_argument("--title")
+    new.add_argument("--related", metavar="ID", help="the task whose new requirement this is: both records get a "
+                     "`Related:` line (C13)")
     log = sub.add_parser("log", help="create a decision log entry in <path>/<id>/")
     log.add_argument("id")
     log.add_argument("--agent", required=True, help="the skill that works the task, or `session`")
     log.add_argument("--date", help="YYYY-MM-DD (default: today)")
     res = sub.add_parser("resolve", help="list the entries of <id> with the commit that added each")
     res.add_argument("id")
+    dev = sub.add_parser("deviations", help="list the deviations log (<git common dir>/gw/deviations.jsonl, C13)")
+    dev.add_argument("--task", help="only this task's entries")
     cur = sub.add_parser("current", help="print the current task, or set (<id>) or remove (--clear) the mark")
     cur.add_argument("id", nargs="?")
     cur.add_argument("--clear", action="store_true")
