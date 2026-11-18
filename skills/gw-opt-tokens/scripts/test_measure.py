@@ -6,6 +6,7 @@ import datetime as dt
 import itertools
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
@@ -366,6 +367,23 @@ class Measure(unittest.TestCase):
                  _line('user', 'I ran <command-name>/clear</command-name> before', timestamp=ago(4)),
                  response('b', 20, timestamp=ago(3))]
         self.assertIn('API calls: 2  |', self.run_session(parts).stdout)
+
+    def test_d139_the_repo_folder_wins_over_a_parent_folder_with_more_calls(self):
+        home, repo = folder(), folder()
+        subprocess.run(['git', 'init', '-q', repo], check=True)
+        root = os.path.realpath(repo)
+        parent = os.path.join(home, '.claude', 'projects', re.sub(r'[^A-Za-z0-9]', '-', os.path.dirname(root)))
+        own = os.path.join(home, '.claude', 'projects', re.sub(r'[^A-Za-z0-9]', '-', root))
+        log(os.path.join(parent, 'up.jsonl'), *[response(f'p{n}', 5, timestamp=ago(2)) for n in range(4)])
+        log(os.path.join(own, 'own.jsonl'), response('o', 5, timestamp=ago(2)))
+        env = {**os.environ, 'HOME': home}
+        run = lambda: subprocess.run(['python3', MEASURE, '--since', ago(3)], capture_output=True, text=True, cwd=root, env=env)
+        r = run()
+        self.assertIn('Session: own.jsonl', r.stdout)
+        self.assertIn('API calls: 1  |', r.stdout)
+        os.remove(os.path.join(own, 'own.jsonl'))  # the repo's folder has none: the parent's is the fallback
+        r = run()
+        self.assertIn('Session: up.jsonl', r.stdout)
 
     def test_artifact_rows_show_the_action(self):
         """B22: HEAVIEST RESULTS tells `quickstart` from `publish` for Artifact calls."""

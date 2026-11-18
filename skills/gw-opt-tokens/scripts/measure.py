@@ -205,7 +205,12 @@ def default_session(root, since=None):
     path = max(candidates, key=os.path.getmtime)
     if since:
         covered = {p: len(responses_of(p, since)) for p in candidates}
-        if max(covered.values()) > 0:
+        # D139: the repo's own log folder first; a parent folder's (a session opened above the repo) only when
+        # none of the repo's logs has calls in the period.
+        own = [p for p in candidates if os.path.basename(os.path.dirname(p)) == folder_of(root) and covered[p] > 0]
+        if own:
+            candidates = own
+        if max(covered[p] for p in candidates) > 0:
             path = max(candidates, key=lambda p: (covered[p], os.path.getmtime(p)))
     folder = os.path.basename(os.path.dirname(path))
     cloud_start = os.environ.get('CLAUDE_CODE_REMOTE') == 'true' and folder == '-home-user'  # where the cloud starts
