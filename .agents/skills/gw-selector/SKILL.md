@@ -52,6 +52,9 @@ do the case without it and say so.
   with `gw-orchestrate-dealer`, it takes the model and effort of the riskiest row it deals, medium at least. Then
   carry on. Wait for an answer only when the risk is high: data migration, deleting,
   rewriting published content.
+- **Models outside Anthropic** (GPT, Gemini, DeepSeek…): Claude Code cannot launch them, so never pass one to an
+  Agent call. Recommend one only for a session the user runs in opencode or another tool that supports it
+  (`docs/en/other-agents.md`).
 - **Disabled models:** `python3 .claude/gw/scripts/models.py list` prints `models.disabled`; never recommend or pass
   one of them (an alias such as `opus` covers its whole family). If a row's model is disabled, take the next rung
   that is not and say so in the line; only the user re-enables one (`models.py enable`).

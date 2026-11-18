@@ -306,8 +306,8 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | D96 | Celdas largas de la bitácora: `handoff.py` mueve a «Hecho» lo cerrado de una fila, o un segundo tope que falla (clave nueva) (recogida `0.6.0`, image-generator P2) | hecho (2026-11-17; `handoff.cellHardLimit`, 1600, 0 = apagado) |
 | E49 | `gw-init` con `agentSignatures: false` escribe en `CLAUDE.md` la regla «sin firmas» frente al recordatorio de atribución (recogida `0.6.0`, image-generator P5) | hecho (2026-11-17; oleada 3a) |
 | B31 | Aviso de contexto cerca de la ventana con el presupuesto de compactaciones gastado (`recover.py --state` o `Stop`), antes de la compactación (recogida `0.6.0`, image-generator P7) | hecho (2026-11-17; gancho `Stop`, una vez por tramo, `contextGuard.nearRatio`) |
-| D7 | `AGENTS.md` legible sin `@include`; skills también en `.agents/skills` (opencode, Codex) | pendiente |
-| B9 | Modelos de fuera de Anthropic vía opencode | pendiente |
+| D7 | `AGENTS.md` legible sin `@include`; skills también en `.agents/skills` (opencode, Codex) | hecho (2026-11-18) |
+| B9 | Modelos de fuera de Anthropic vía opencode | hecho (2026-11-18) |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.8` | pendiente |
 | E53 | Regla de guía: en el CI, el script de instalación del entorno falla en su propio paso (recogida `0.7`, instalador P2) | hecho (2026-11-17, 889791d) |
 | D126 | `gw-scout-updates` lee la versión de Rust del proyecto (`rust-toolchain(.toml)`, `rust-version` de `Cargo.toml`) (recogida `0.4`, instalador P11, `pending.md`) | hecho (2026-11-17, 5e2eb7f) |

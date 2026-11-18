@@ -305,8 +305,8 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | D96 | Long log cells: `handoff.py` moves a row's closed items to "Done", or a second cap that fails (new key) (`0.6.0` harvest, image-generator P2) | done (2026-11-17; `handoff.cellHardLimit`, 1600, 0 = off) |
 | E49 | `gw-init` with `agentSignatures: false` writes the "no signatures" rule into `CLAUDE.md` against the attribution reminder (`0.6.0` harvest, image-generator P5) | done (2026-11-17; wave 3a) |
 | B31 | Warning when the context nears the window with the compaction budget spent (`recover.py --state` or `Stop`), before the compaction (`0.6.0` harvest, image-generator P7) | done (2026-11-17; `Stop` hook, once per stretch, `contextGuard.nearRatio`) |
-| D7 | `AGENTS.md` readable without `@include`; skills also in `.agents/skills` (opencode, Codex) | pending |
-| B9 | Non-Anthropic models through opencode | pending |
+| D7 | `AGENTS.md` readable without `@include`; skills also in `.agents/skills` (opencode, Codex) | done (2026-11-18) |
+| B9 | Non-Anthropic models through opencode | done (2026-11-18) |
 | — | What [`pending.md`](records/pending.md) marks `0.8` | pending |
 | E53 | Guide rule: in CI, the environment's install script fails in its own step (`0.7` harvest, instalador P2) | done (2026-11-17, 889791d) |
 | D126 | `gw-scout-updates` reads the project's Rust version (`rust-toolchain(.toml)`, `rust-version` in `Cargo.toml`) (`0.4` harvest, instalador P11, `pending.md`) | done (2026-11-17, 5e2eb7f) |

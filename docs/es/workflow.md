@@ -53,6 +53,7 @@ una entrada ya subida. El `commit-msg` pide, para al menos un id de `Refs:`, la 
 
 - [Aplicar el flujo a un proyecto](apply.md) (la guía del agente, proyectos nuevos y existentes)
 - [Configuración: `gw.json`](config.md)
+- [El flujo desde opencode y Codex](other-agents.md)
 - [Patrones opcionales](patterns.md)
 - [Problemas conocidos](troubleshooting.md)
 - [Cambiar el flujo](contributing.md)

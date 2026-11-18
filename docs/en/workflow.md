@@ -53,6 +53,7 @@ edits an entry once pushed. The `commit-msg` asks, for at least one id of `Refs:
 
 - [Applying the workflow to a project](apply.md) (the agent's guide, new and existing projects)
 - [Configuration: `gw.json`](config.md)
+- [The workflow from opencode and Codex](other-agents.md)
 - [Optional patterns](patterns.md)
 - [Troubleshooting](troubleshooting.md)
 - [Changing the workflow](contributing.md)
