@@ -4,6 +4,9 @@
 # `check` commands and the related tests (`relatedTests`) on the result and, if they pass, cleans up the subagent's
 # worktree and branch.
 #   bash merge-branch.sh <branch> "<merge message>" [--reviewed] [--defer-check]   (flags in any order)
+#  - C12: refuses (exit 2, nothing merged) an exploration branch (`spikeBranch` prefix, default spike/) or a branch
+#    that carries a spike's commits (config.py spike-check) unless the current branch is a spike too, and says what
+#    to do instead: a task record and the work redone with tests on a working branch, or the spike thrown away.
 #  - Before merging it reads `check` (at least one command) and `checkWrapper` from the config; if it cannot, it
 #    merges nothing and exits 2 (D77).
 #  - `git merge --no-ff`. On conflict it stops, lists the files and leaves the merge open (resolve it, or abort
@@ -110,6 +113,22 @@ glob_match() {  # glob_match <name> <globs, one per line>: 0 if the name matches
 }
 
 git rev-parse --verify --quiet "$branch^{commit}" >/dev/null || { echo "merge-branch: no branch $branch; list them: git branch -a" >&2; exit 2; }
+# C12: an exploration branch (spikeBranch) is never merged into a working branch: neither by its name nor through a
+# branch that carries its commits (config.py spike-check). Merging into another spike branch is allowed.
+spike_prefix="$(python3 "$config" --root "$root" spike-branch --prefix 2>/dev/null)" || {
+  echo "merge-branch: cannot read 'spikeBranch' from .claude/gw.json, so nothing was merged; fix the config: python3 $config --root $root validate" >&2; exit 2; }
+current_branch="$(git branch --show-current)"
+spike_todo="turn what it taught into a task record and redo it with tests on a working branch (python3 $here/task.py new <id>), or throw it away: git branch -D $branch"
+if [ -n "$spike_prefix" ] && ! python3 "$config" --root "$root" spike-branch "$current_branch"; then
+  if python3 "$config" --root "$root" spike-branch "$branch"; then
+    echo "merge-branch: $branch is an exploration branch (spikeBranch: $spike_prefix), which is never merged into ${current_branch:-a detached HEAD}, so nothing was merged; $spike_todo" >&2
+    exit 2
+  fi
+  if ! git rev-list "HEAD..$branch" | python3 "$config" --root "$root" spike-check --commits -; then
+    echo "merge-branch: $branch carries an exploration branch's commits (above), which never go into ${current_branch:-a detached HEAD}, so nothing was merged; $spike_todo" >&2
+    exit 2
+  fi
+fi
 before="$(git rev-parse HEAD)"
 # What a failure after the merge says about it (the wave-closing rerun below merges nothing and changes them).
 done_note="The merge is ALREADY done in the current branch; branch and worktree stay."

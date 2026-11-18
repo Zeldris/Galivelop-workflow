@@ -310,6 +310,12 @@
       "default": "related",
       "description": "What the pre-push runs on a push to a branch other than the protected one (D49): related = only relatedTests, unless the push changes the environment (.claude/gw.json or a fullCheckPaths match) or relatedTests has no command, then the full check; full = the check commands and relatedTests, as on the protected branch. The push to the protected branch always runs the full check."
     },
+    "spikeBranch": {
+      "type": "string",
+      "pattern": "^[^\\s~^:?*\\[\\\\]*$",
+      "default": "spike/",
+      "description": "C12: prefix of exploration branches (spike/<topic>). A prefix ending in a letter or digit gets a '/' added. On such a branch commit-message.py asks for no Refs nor task record and adds a 'Spike: <branch>' trailer; the pre-push refuses to push to any other branch a commit carrying that trailer or a merge of such a branch, and merge-branch.sh refuses to merge one. Empty turns the feature off."
+    },
     "fullCheckPaths": {
       "type": "array",
       "items": {

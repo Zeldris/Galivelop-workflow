@@ -13,6 +13,10 @@
 #     paths and messages; privateCheck: false in the pushed commit's config turns it off. Fails closed. A refusal says
 #     those commits are not pushed yet and gives the command that fixes only them (git commit --amend, or
 #     git rebase -i <base>).
+#   - C12: to a branch that is not an exploration one (spikeBranch, "" = off; read from the remote tip's config, else
+#     the pushed commit's), refuses any commit the ref gains that no non-spike remote branch has yet when it comes
+#     from a spike (config.py spike-check: a `Spike:` trailer or git's merge subject naming a spike branch), with what
+#     to do instead. Pushing the spike branch itself is allowed.
 #   - E41: no commit it pushes (only those not on the remote yet) has an author or committer in authorDeny, read from
 #     the pushed commit's config (config.py author-check --commits -): a clean merge, cherry-pick, revert or rebase
 #     skips the pre-commit, which only covers git commit. An empty list checks nothing.
@@ -434,6 +438,31 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       else
         echo "pre-push: WARNING: the .claude/gw.json of $remote_ref's tip (${remote_sha:0:7}) is invalid; this push can fix it"
       fi
+    fi
+  fi
+  # C12: exploration branches (spikeBranch) never go into another branch. The prefix is the remote tip's (a pushed
+  # commit cannot turn the rule off for the branch it lands on), else the pushed commit's; the commits judged are all
+  # the ref gains that no other remote branch has yet: a spike branch pushed earlier does not hide its own commits.
+  spike_rev="$local_sha"
+  if [ "$remote_sha" != "$zero" ] && python3 "$config" --root "$root" --rev "$remote_sha" validate >/dev/null 2>&1; then
+    spike_rev="$remote_sha"
+  fi
+  spike_prefix="$(python3 "$config" --root "$root" --rev "$spike_rev" spike-branch --prefix)" \
+    || fail "cannot read 'spikeBranch' from .claude/gw.json in commit ${spike_rev:0:7}; commit a valid one and push again: python3 $config --root $root --rev ${spike_rev:0:7} validate"
+  spike_target=false
+  case "$branch" in "$spike_prefix"?*) spike_target=true ;; esac
+  if [ -n "$spike_prefix" ] && [ "$branch" != "$remote_ref" ] && [ "$spike_target" = false ]; then
+    others=""
+    for ref in $(git for-each-ref --format='%(refname)' refs/remotes/); do
+      short="${ref#refs/remotes/}"; short="${short#*/}"
+      case "$short" in "$spike_prefix"?*) ;; *) others="$others $ref" ;; esac
+    done
+    # shellcheck disable=SC2086  # one sha or ref per word
+    gains="$(git rev-list "$local_sha" --not $known $others)" || fail "cannot list the commits ${local_sha:0:7} brings to $branch; fetch and retry: git fetch $remote"
+    if [ -n "$gains" ]; then
+      printf '%s\n' "$gains" | python3 "$config" --root "$root" --rev "$spike_rev" spike-check --commits - \
+        || fail "the push brings an exploration branch's work into $branch (above); a spike is never merged into a working branch or $protected" \
+                "drop it from $branch (git reset --hard <commit before the merge>), then: python3 $scripts/task.py new <id> and redo it with tests, or throw the spike away: git branch -D <spike branch>"
     fi
   fi
   wt_protected="$(python3 "$config" --root "$root" get protectedBranch 2>/dev/null)" || wt_protected=""

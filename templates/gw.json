@@ -20,6 +20,7 @@
   "checkLockWait": 0,
   "checkReuseMark": true,
   "branchCheck": "related",
+  "spikeBranch": "spike/",
   "fullCheckPaths": ["^\\.githooks/", "^\\.claude/gw/", "^\\.claude/settings(\\.local)?\\.json$", "^\\.github/workflows/"],
   "fullCheckSkipKeys": ["reviewTrivialLines", "wholeReadWarnBytes", "stopTranscriptBytes", "stopSubagentMaxAge", "stopPushMarkerMaxAge", "stopGitTimeout", "stopSeverity", "recover", "hookStdinWait", "checkLockWait", "checkOutputGrace", "checkLogKeep", "testUnitTimeout", "ciFailedLines", "subagentCap", "subagentCapStep", "subagentCounterStaleDays", "subagentTranscriptBytes", "subagentCapAction", "contextGuard", "doctorTestDirsIgnore", "commitFormat", "commitRefs", "commitNext", "refsSources", "changeSize", "models", "metrics", "roadmapFiles", "commandTimeout", "commandKillGrace", "installLockfiles", "installLocal", "prepushClashBranches", "reviewBeforeMainListFiles", "checkTailLines", "releaseCheckBranches", "retro", "redWithoutFix", "branchPrefixes", "mergeCleanup", "pushRetryDelays", "pushLsRemoteTimeout", "decisionsFile", "wholeReadSkipExtensions", "wholeReadPaths", "readPointers", "wholeReadRepeatOnly", "wholeReadStaleDays", "scoutMaxAgeDays", "harvest", "applyDiffLines", "ciGreenConclusions", "ciStatusTimeout", "ciStepTimeout", "ciSystemCommands", "doctorScanBytes", "patchCommitTypes", "measure", "mediaContent", "modes", "taskRecord"],
   "ownedFiles": [],
