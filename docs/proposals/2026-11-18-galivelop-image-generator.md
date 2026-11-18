@@ -13,7 +13,7 @@ tanda L8 no trae nada; la de `hoja-datos` @ `98c1d30` es la de la actualización
 - **Why it is general:** un script que edita la bitácora puede pegar dos filas y perder una sin que ningún check lo
   vea; pasó y solo lo halló la revisión por casualidad.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → D135
 
 ## P2. La plantilla del encargo del dealer cubre el defecto en el archivo hermano
 
@@ -24,7 +24,7 @@ tanda L8 no trae nada; la de `hoja-datos` @ `98c1d30` es la de la actualización
 - **Why it is general:** un barrido dejó un leve a medias y otro duplicado en un archivo tocado; costó un segundo
   subagente.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → E69
 
 ## P3. `gw-selector` y el gancho de inicio recomiendan el `gw-worker` para barridos y arreglos de revisión
 
@@ -36,7 +36,7 @@ tanda L8 no trae nada; la de `hoja-datos` @ `98c1d30` es la de la actualización
 - **Why it is general:** la sesión principal hace el barrido ella misma (dos veces seguidas) con el coste de contexto
   que el reparto evita.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → E68
 
 ## P4. `whole-read.py` puede rechazar rutas, no solo avisar
 
@@ -47,7 +47,7 @@ tanda L8 no trae nada; la de `hoja-datos` @ `98c1d30` es la de la actualización
 - **Why it is general:** sin ella, un proyecto que quiere un rechazo (no un aviso) necesita su propio
   `leer-entero.py` junto al del flujo.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → E70
 
 ## P5. `merge-branch.sh` distingue un worktree bloqueado por un agente vivo
 
@@ -57,7 +57,7 @@ tanda L8 no trae nada; la de `hoja-datos` @ `98c1d30` es la de la actualización
   `git worktree remove --force`; con su caso en los tests.
 - **Why it is general:** hoy el aviso propone `--force`, justo lo que no se debe hacer con un agente vivo.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → D136
 
 ## P6. `doctor.py` avisa de `branchCheck: related` con `relatedTests` vacío
 
@@ -67,7 +67,7 @@ tanda L8 no trae nada; la de `hoja-datos` @ `98c1d30` es la de la actualización
 - **Why it is general:** la configuración por defecto de todo proyecto nuevo cae en ese caso hasta que rellena
   `relatedTests`.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → D137
 
 ## Joined to another proposal
 

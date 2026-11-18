@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.0` publicada** (`main` = `b3825b8`, 2026-11-18; CI en verde; etiqueta y release `v0.8.0` creadas desde una sesión local) |
-| Siguiente paso | **Decidir la recogida del 2026-11-18** (`docs/proposals/2026-11-18-*.md`, 8 archivos): primero el parche `0.8.1` (gancho duplicado, instalador-wmf-tarkor P1), luego abrir la `0.9` «Front» con lo aprobado. Presupuesto de compactaciones: 1 |
+| Siguiente paso | **Parche `0.8.1` en obra** (`docs/roadmap.md`, D128-D140; recogida del 2026-11-18 aprobada entera): primero D128 (gancho duplicado), repartido a `gw-worker`; luego `0.9` (E65-E76 y lo que ya tenía). Presupuesto de compactaciones: 1 |
 
 ### Fases
 

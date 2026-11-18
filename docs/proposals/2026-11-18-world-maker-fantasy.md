@@ -11,7 +11,7 @@ sale de 3 retros (la última, la de la actualización a `0.8.0`). Recogida de ap
   D97); falta que la regla escrita lo diga.
 - **Why it is general:** el gancho rechaza la línea fuera del bloque y la regla que lee el agente no lo dice.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → D131
 
 ## P2. `merge-main.py`: traer la rama protegida sin perder el ledger de métricas
 
@@ -25,7 +25,7 @@ sale de 3 retros (la última, la de la actualización a `0.8.0`). Recogida de ap
   `stash` + `merge` un conflicto dejó el `stash pop` sin aplicar y se perdieron 9 líneas (recuperadas de un commit
   suelto). `merge=union` (B32) evita el conflicto entre ramas, no el del árbol sucio.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → E65
 
 ## P3. El aviso de `handoff.py` tras un rechazo de `pre-commit` dice «repite el mismo `git commit -m …`»
 
@@ -36,7 +36,7 @@ sale de 3 retros (la última, la de la actualización a `0.8.0`). Recogida de ap
 - **Why it is general:** el fallo sale de cómo git guarda el mensaje, no del proyecto. Valor bajo: conviene una
   segunda recogida que lo confirme.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → D140
 
 ## Already here
 

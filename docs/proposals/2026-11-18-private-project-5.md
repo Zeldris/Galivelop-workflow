@@ -13,7 +13,7 @@ coincidente por nombre (ver «Stays in the project»). Lo nuevo sale de 2 retros
 - **Why it is general:** el entorno de la nube pide firmas en cada turno y la regla contraria solo está en
   `AGENTS.md`; el `commit-msg` lo rechaza después, con un intento perdido. Cualquier proyecto con la clave apagada.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → D133
 
 ## P2. `measure.py --since` elige la sesión de la carpeta del repo, no la de una carpeta padre
 
@@ -23,7 +23,7 @@ coincidente por nombre (ver «Stays in the project»). Lo nuevo sale de 2 retros
 - **Why it is general:** una sesión abierta un rato desde la carpeta padre deja allí un transcript con más respuestas
   y `--since` mide la sesión equivocada.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → D139
 
 ## P3. `grilling` escribe cada ronda en el archivo de descubrimiento antes de presentarla
 
@@ -33,7 +33,7 @@ coincidente por nombre (ver «Stays in the project»). Lo nuevo sale de 2 retros
 - **Why it is general:** una ronda solo en el chat se pierde si la sesión se corta antes de la respuesta, y el
   relevo no sabe qué se preguntó.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → E75
 
 ## P4. `review-scope.py` encuentra la copia del flujo de la versión del proyecto
 
@@ -44,7 +44,7 @@ coincidente por nombre (ver «Stays in the project»). Lo nuevo sale de 2 retros
 - **Why it is general:** en cualquier proyecto la revisión antes de la rama protegida recibe lo vendido como código
   propio.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → D132
 
 ## Joined to another proposal
 

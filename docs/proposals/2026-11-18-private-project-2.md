@@ -14,7 +14,7 @@ Recogida de apertura de la `0.9` (2026-11-18).
 - **Why it is general:** todo proyecto que actualiza desde una versión anterior a D104 se queda con la bitácora
   migrada y la clave sin escribir.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → D129
 
 ## P2. `AGENTS.md.gw-new` lista el check viejo tras ampliarlo `apply.py`
 
@@ -23,7 +23,7 @@ Recogida de apertura de la `0.9` (2026-11-18).
   con `ci-local.py --validate`), o `scripts/doctor.py` avisa si la lista del check de `AGENTS.md` no casa con `check`.
 - **Why it is general:** cualquier actualización que amplíe `check` deja la propuesta describiendo otro.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → D130
 
 ## P3. `handoff.py next-id B` en un plan con ids `F1.x`
 
@@ -34,7 +34,7 @@ Recogida de apertura de la `0.9` (2026-11-18).
   el plan no admite `B`. `--plan` vale también tras el subcomando (lo pide private-project-5).
 - **Why it is general:** un plan con ids propios (`F1.x`) no puede dar el id que la retro manda pedir.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → D134
 
 ## P4. `measure.py` por defecto empieza en el último `/clear` o compactación
 
@@ -44,7 +44,7 @@ Recogida de apertura de la `0.9` (2026-11-18).
   (B29 y D70 cubren otros casos: la sesión anterior de la rama y elegir la sesión correcta).
 - **Why it is general:** mezcla el tramo medido con el anterior y obliga a pasar `--since` a mano.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → D138
 
 ## P5. `gw-update` pregunta antes de aplicar las claves nuevas que crean archivos fuera de `.claude/`
 
@@ -55,7 +55,7 @@ Recogida de apertura de la `0.9` (2026-11-18).
 - **Why it is general:** una clave nueva con valor por defecto llena carpetas del proyecto sin que nadie lo haya
   decidido; pasa en cada proyecto que actualiza.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → E67
 
 ## Joined to another proposal
 

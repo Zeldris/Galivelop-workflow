@@ -15,7 +15,7 @@ coincidente por nombre (`gvoice/models.py`, ver «Stays in the project»). Lo nu
 - **Why it is general:** la regla de `/clear` al cerrar tarea no se cumple con solo texto; encadenar tareas costó
   ~15-20M de tokens en un tramo (454 llamadas a 117k de media).
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → E66
 
 ## P2. `measure.py` separa el arranque del entorno de la nube del coste del proyecto
 
@@ -24,7 +24,7 @@ coincidente por nombre (`gvoice/models.py`, ver «Stays in the project»). Lo nu
   MCP, ~85k) y deja el resto como coste del proyecto.
 - **Why it is general:** el arranque fijo tapa lo que sí se puede recortar en cualquier proyecto en la nube.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → E76
 
 ## P3. Aviso mecánico al leer otro repositorio desde la sesión principal
 
@@ -34,7 +34,7 @@ coincidente por nombre (`gvoice/models.py`, ver «Stays in the project»). Lo nu
   solo vigila escrituras.
 - **Why it is general:** «otro repo, con subagente» falló dos veces solo con texto (~380k arrastrados).
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → E74
 
 ## P4. Prefijo propio para las skills del proyecto
 
@@ -46,7 +46,7 @@ coincidente por nombre (`gvoice/models.py`, ver «Stays in the project»). Lo nu
 - **Why it is general:** cualquier proyecto con skills propias necesita distinguirlas de las del flujo (aquí
   `gvg-`), y hoy no hay dónde decirlo ni quién lo compruebe.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → E73
 
 ## Joined to another proposal
 

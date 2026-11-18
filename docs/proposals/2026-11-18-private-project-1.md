@@ -13,7 +13,7 @@ apertura de la `0.9` (2026-11-18).
 - **Why it is general:** cualquier proyecto que commitea archivos generados (clientes, esquemas, catálogos) puede
   subirlos desfasados sin que el check lo note.
 - **Version bump:** minor
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → E72
 
 ## Stays in the project
 

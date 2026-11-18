@@ -325,6 +325,26 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | B45 | `review-scope.py --trivial` descuenta las líneas que solo cambian la versión estampada (retro de la `0.8.0`, P2) | hecho (2026-11-18) |
 | B46 | `handoff.py close-row <id>` borra la marca de tarea en curso si es esa tarea y `recover.py --state` dice la tarea en curso (retro de la `0.8.0`, P3) | hecho (2026-11-18) |
 
+## `0.8.1` — parche
+
+Arreglos de la recogida de apertura de la `0.9` (usuario, 2026-11-18): el gancho duplicado de la `0.8.0` y los parches aprobados.
+
+| Id | Tarea | Estado |
+|---|---|---|
+| D128 | `apply.py --update` quita del proyecto el `command` de un gancho del flujo que la plantilla registra en el mismo evento con otro matcher (la `0.8.0` dejó `whole-read.py` dos veces), y `doctor.py` da `FAIL` con un mismo `command` dos veces en un evento (recogida `0.9`, instalador P1 y cuatro proyectos más) | pendiente |
+| D129 | `apply.py --update` escribe `pendingFile` en el `gw.json` del proyecto cuando migra la bitácora a él, o avisa con la clave y la orden (recogida `0.9`, private-project-2 P1) | pendiente |
+| D130 | `AGENTS.md.gw-new` se renderiza con el `gw.json` ya migrado (lista del check al día) (recogida `0.9`, private-project-2 P2) | pendiente |
+| D131 | Plantillas de `AGENTS.md` (es/en): `Findings:`/`Retries:` van en el último párrafo, con los demás trailers (recogida `0.9`, world-maker-fantasy P1) | pendiente |
+| D132 | `review-scope.py` en un proyecto sin `--workflow` ni `GW_WORKFLOW`: busca la copia del flujo o falla con la orden, en vez de tomarse el proyecto por flujo (recogida `0.9`, private-project-5 P4) | pendiente |
+| D133 | `recover.py --state` con `agentSignatures: false` recuerda en una línea: sin firmas del agente y trailers juntos en el último párrafo (recogida `0.9`, private-project-5 P1) | pendiente |
+| D134 | `handoff.py next-id`: el error con un prefijo que el plan no admite nombra los prefijos válidos y `--id-regex`/`taskId`; `--plan` vale también tras el subcomando (recogida `0.9`, private-project-2 P3 y private-project-5 P5) | pendiente |
+| D135 | `handoff.py check` rechaza una tabla de estado que pierde la fila «Tarea en curso» respecto a `HEAD` sin cierre de rama (recogida `0.9`, image-generator P1) | pendiente |
+| D136 | `merge-branch.sh` distingue un worktree bloqueado por un agente vivo: lo dice y lo deja para la siguiente pasada en vez de fallar (recogida `0.9`, image-generator P5) | pendiente |
+| D137 | `doctor.py` avisa de `branchCheck: related` con `relatedTests` vacío (recogida `0.9`, image-generator P6) | pendiente |
+| D138 | `measure.py` sin `--since` empieza en el último `/clear` o compactación del mismo archivo de sesión (recogida `0.9`, private-project-2 P4) | pendiente |
+| D139 | `measure.py --since` elige la sesión de la carpeta del repo antes que la de una carpeta padre (recogida `0.9`, private-project-5 P2) | pendiente |
+| D140 | El aviso de `handoff.py` tras un rechazo de `pre-commit` dice repetir el mismo `git commit -m …` y solo remite a `COMMIT_EDITMSG` tras un rechazo de `commit-msg` (recogida `0.9`, world-maker-fantasy P3) | pendiente |
+
 ## `0.9` «Front»
 
 Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18): idiomas, front y lo traído de las recogidas para webs.
@@ -338,7 +358,19 @@ Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18)
 | E9-E16 | Los checks de front decididos en [`E-quality.md`](design/E-quality.md) (capturas, cuándo corren, tokens, preprocesadores, accesibilidad, referencias, sin servicios de pago, matriz) | pendiente |
 | E42 | Skill `gw-seo` (SEO y vistas previas de webs estáticas) traída del portal: sin rutas del portal, nombres en inglés, tests en el check, docs es/en y la LICENSE MIT de su fuente (recogida de cierre `0.6`, portal P1) | pendiente |
 | E50 | Gancho `PreToolUse` de `Read` que avisa, sin bloquear, al leer capturas sueltas y sugiere montarlas en una hoja (orden del proyecto en una clave) (recogida `0.6.0`, image-generator P6) | pendiente |
-| H24 | Recogida de apertura de la `0.9` (`gw-harvest`) al empezarla, tras actualizar los proyectos a la `0.8.0` (AGENTS.md) | en curso (2026-11-18; propuestas al usuario) |
+| H24 | Recogida de apertura de la `0.9` (`gw-harvest`) al empezarla, tras actualizar los proyectos a la `0.8.0` (AGENTS.md) | hecho (2026-11-18; las 25 propuestas aprobadas: D128-D140 al parche `0.8.1`, E65-E76 a la `0.9`) |
+| E65 | `merge-main.py`: commitea el ledger de métricas (o se niega con más cambios) antes de `git merge origin/<protectedBranch>`; las plantillas de `AGENTS.md` apuntan a él (recogida `0.9`, world-maker-fantasy P2) | pendiente |
+| E66 | Aviso de `/clear` al cerrar una tarea con el contexto por encima de un umbral (clave nueva) en `recover.py --state` y `before-stop.py`; un «Siguiente» tras un cierre se contesta pidiendo `/clear` (recogida `0.9`, private-project-3 P1) | pendiente |
+| E67 | `gw-update` presenta como decisión, antes de `--update`, las claves nuevas que crean archivos fuera de `.claude/`, con la clave que lo apaga (recogida `0.9`, private-project-2 P5) | pendiente |
+| E68 | `gw-selector` y el gancho de inicio recomiendan el `gw-worker` para barridos y arreglos de revisión de 2 o más puntos (recogida `0.9`, image-generator P3) | pendiente |
+| E69 | Plantilla del encargo de `gw-orchestrate-dealer`: el defecto se busca también en el archivo hermano (recogida `0.9`, image-generator P2) | pendiente |
+| E70 | `wholeReadDenyPaths`: `whole-read.py` rechaza esas rutas con su orden alternativa, no solo avisa (recogida `0.9`, image-generator P4) | pendiente |
+| E71 | `actionlint` en el check de los proyectos con `.github/workflows/` y aviso de `doctor.py` si no lo validan (recogida `0.9`, instalador P2) | pendiente |
+| E72 | Clave `generated` (`{command, paths}`): el check regenera y compara con `git diff --exit-code` (recogida `0.9`, private-project-1 P1) | pendiente |
+| E73 | Clave `projectSkillPrefix`: `gw-init` la escribe y `doctor.py` avisa de skills propias sin el prefijo (recogida `0.9`, private-project-3 P4) | pendiente |
+| E74 | Gancho `PreToolUse` que avisa, sin bloquear, al leer otro repositorio desde la sesión principal, con clave para apagarlo (recogida `0.9`, private-project-3 P3) | pendiente |
+| E75 | `grilling` escribe cada ronda en el archivo de descubrimiento y la sube antes de presentarla (recogida `0.9`, private-project-5 P3) | pendiente |
+| E76 | `measure.py` muestra aparte el arranque fijo (sistema, herramientas, MCP) del coste del proyecto (recogida `0.9`, private-project-3 P2) | pendiente |
 
 ## `0.10` «Estable»
 

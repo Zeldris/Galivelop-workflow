@@ -324,6 +324,26 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | B45 | `review-scope.py --trivial` discounts the lines that only change the stamped version (0.8.0 retro, P2) | done (2026-11-18) |
 | B46 | `handoff.py close-row <id>` removes the current-task mark when it is that task, and `recover.py --state` shows the current task (0.8.0 retro, P3) | done (2026-11-18) |
 
+## `0.8.1` — patch
+
+Fixes from the `0.9` opening harvest (user, 2026-11-18): the `0.8.0` duplicated hook and the approved patches.
+
+| Id | Task | State |
+|---|---|---|
+| D128 | `apply.py --update` drops from the project a workflow hook `command` the template registers in the same event with another matcher (`0.8.0` left `whole-read.py` twice), and `doctor.py` FAILs on the same `command` twice in one event (`0.9` harvest, installer P1 and four more projects) | pending |
+| D129 | `apply.py --update` writes `pendingFile` to the project's `gw.json` when it migrates the log to it, or warns with the key and the command (`0.9` harvest, private-project-2 P1) | pending |
+| D130 | `AGENTS.md.gw-new` is rendered with the already migrated `gw.json` (current check list) (`0.9` harvest, private-project-2 P2) | pending |
+| D131 | `AGENTS.md` templates (es/en): `Findings:`/`Retries:` go in the last paragraph, with the other trailers (`0.9` harvest, world-maker-fantasy P1) | pending |
+| D132 | `review-scope.py` in a project with no `--workflow` nor `GW_WORKFLOW`: finds the workflow copy or fails with the command, instead of taking the project as the workflow (`0.9` harvest, private-project-5 P4) | pending |
+| D133 | `recover.py --state` with `agentSignatures: false` states in one line: no agent signatures, trailers together in the last paragraph (`0.9` harvest, private-project-5 P1) | pending |
+| D134 | `handoff.py next-id`: the error for a prefix the plan does not accept names the valid prefixes and `--id-regex`/`taskId`; `--plan` also works after the subcommand (`0.9` harvest, private-project-2 P3 and private-project-5 P5) | pending |
+| D135 | `handoff.py check` rejects a state table that loses the "Task in progress" row against `HEAD` without a branch close (`0.9` harvest, image-generator P1) | pending |
+| D136 | `merge-branch.sh` tells a worktree locked by a live agent apart: it says so and leaves it for the next pass instead of failing (`0.9` harvest, image-generator P5) | pending |
+| D137 | `doctor.py` warns on `branchCheck: related` with empty `relatedTests` (`0.9` harvest, image-generator P6) | pending |
+| D138 | `measure.py` with no `--since` starts at the last `/clear` or compaction of the same session file (`0.9` harvest, private-project-2 P4) | pending |
+| D139 | `measure.py --since` picks the repo folder's session before a parent folder's (`0.9` harvest, private-project-5 P2) | pending |
+| D140 | The `handoff.py` warning after a `pre-commit` rejection says to repeat the same `git commit -m …` and points to `COMMIT_EDITMSG` only after a `commit-msg` rejection (`0.9` harvest, world-maker-fantasy P3) | pending |
+
 ## `0.9` "Front end"
 
 New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages, front end and the web items the harvests brought.
@@ -337,7 +357,19 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | E9-E16 | The front-end checks decided in [`E-quality.md`](design/E-quality.md) (screenshots, when they run, tokens, preprocessors, accessibility, baselines, no paid services, matrix) | pending |
 | E42 | `gw-seo` skill (SEO and link previews for static sites) brought from the portal: no portal paths, English names, tests in the check, es/en docs and its source's MIT LICENSE (`0.6` closing harvest, portal P1) | pending |
 | E50 | `PreToolUse` hook on `Read` that warns, without blocking, when reading loose screenshots and suggests a contact sheet (the project's command in a key) (`0.6.0` harvest, image-generator P6) | pending |
-| H24 | `0.9` opening harvest (`gw-harvest`) at its start, after updating the projects to `0.8.0` (AGENTS.md) | in progress (2026-11-18; proposals to the user) |
+| H24 | `0.9` opening harvest (`gw-harvest`) at its start, after updating the projects to `0.8.0` (AGENTS.md) | done (2026-11-18; all 25 proposals approved: D128-D140 to the `0.8.1` patch, E65-E76 to `0.9`) |
+| E65 | `merge-main.py`: commits the metrics ledger (or refuses with more changes) before `git merge origin/<protectedBranch>`; the `AGENTS.md` templates point to it (`0.9` harvest, world-maker-fantasy P2) | pending |
+| E66 | `/clear` warning when a task closes with the context over a threshold (new key) in `recover.py --state` and `before-stop.py`; a "Next" after a close is answered asking for `/clear` (`0.9` harvest, private-project-3 P1) | pending |
+| E67 | `gw-update` presents as a decision, before `--update`, the new keys that create files outside `.claude/`, with the key that turns it off (`0.9` harvest, private-project-2 P5) | pending |
+| E68 | `gw-selector` and the start hook recommend `gw-worker` for sweeps and review fixes of 2 or more points (`0.9` harvest, image-generator P3) | pending |
+| E69 | `gw-orchestrate-dealer` brief template: the defect is also looked for in the sibling file (`0.9` harvest, image-generator P2) | pending |
+| E70 | `wholeReadDenyPaths`: `whole-read.py` rejects those paths with their alternative command, not only warns (`0.9` harvest, image-generator P4) | pending |
+| E71 | `actionlint` in the check of projects with `.github/workflows/` and a `doctor.py` warning when they are not validated (`0.9` harvest, installer P2) | pending |
+| E72 | `generated` key (`{command, paths}`): the check regenerates and compares with `git diff --exit-code` (`0.9` harvest, private-project-1 P1) | pending |
+| E73 | `projectSkillPrefix` key: `gw-init` writes it and `doctor.py` warns about own skills without the prefix (`0.9` harvest, private-project-3 P4) | pending |
+| E74 | `PreToolUse` hook that warns, without blocking, when the main session reads another repository, with a key to turn it off (`0.9` harvest, private-project-3 P3) | pending |
+| E75 | `grilling` writes each round to the discovery file and pushes it before presenting it (`0.9` harvest, private-project-5 P3) | pending |
+| E76 | `measure.py` shows the fixed startup (system, tools, MCP) apart from the project's cost (`0.9` harvest, private-project-3 P2) | pending |
 
 ## `0.10` "Stable"
 

@@ -20,7 +20,7 @@ apertura de la `0.9` (2026-11-18).
 - **Why it is general:** le pasó a los cinco proyectos que actualizaron a la `0.8.0` con ese gancho; cualquier cambio
   futuro de matcher repite el fallo.
 - **Version bump:** patch (`0.8.1`: es un fallo de la `0.8.0`)
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → D128
 
 ## P2. Validar `.github/workflows/` con `actionlint` en el check cuando el proyecto tiene workflows
 
@@ -32,7 +32,7 @@ apertura de la `0.9` (2026-11-18).
 - **Why it is general:** un workflow inválido solo falla al correr en el CI; en el proyecto un `app.yml` roto pasó el
   check local. Cualquier proyecto con Actions está igual.
 - **Version bump:** minor (clave y aviso nuevos)
-- **Status:** proposed
+- **Status:** aprobada (2026-11-18) → E71
 
 ## Joined to another proposal
 
