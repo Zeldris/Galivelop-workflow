@@ -14,6 +14,11 @@ creada.
 - Los hallazgos se escriben también en un archivo fuera del árbol (el scratchpad, o
   `"$(git rev-parse --git-dir)/review.md"`), no solo en la conversación: una compactación o un relevo se los lleva, y
   de ese archivo salen los encargos de los arreglos y los leves que se apuntan en la bitácora. (criterio)
+- Cada hallazgo cita su **ancla**: una regla de `REVIEW.md` o de `AGENTS.md`, un criterio de aceptación de la ficha
+  de la tarea (`docs/tasks/<id>.md`), una línea del plan o un fallo demostrado. Formato:
+  `ruta:línea | severidad | ancla | problema. arreglo.` (criterio)
+- Lo que no tiene ancla no es un hallazgo: va aparte, en una sección «Observaciones», sin severidad, y no bloquea el
+  veredicto. (criterio)
 - Un dato que caduca (una versión, un precio, una cuota, un límite de un servicio externo) escrito en el diff lleva su
   fecha y su fuente; si no, es un hallazgo. (criterio)
 - La revisión acaba con un veredicto, uno de tres: `SHIP` (nada que arreglar), `SHIP WITH FIXES` (hay arreglos, ninguno

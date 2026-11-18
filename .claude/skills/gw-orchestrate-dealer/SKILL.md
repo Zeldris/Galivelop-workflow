@@ -110,18 +110,18 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    (its commit carries `Retries: <n>` for `metrics.py quality`); two failures, stop and tell the user. Chunks that
    depended on it are marked "cancelled: blocked by X" and listed to the user. For every subagent branch built in a
    worktree, **before merging it**, a subagent reviewer runs a short `/code-review` of its diff and returns only the
-   findings; nothing merges until they are fixed. The reviewer's brief carries `git diff --stat` and asks it to compare the diff with the
-   **contract**: the doc that describes it and the real callers outside the branch (grep on the working branch), not
-   the diff alone. Short per-branch reviews miss cross-branch breaks: a script vs. its backend, a doc vs. its code,
-   two branches editing one rule. It also asks it to flag data that expire (versions, prices, quotas, limits of an
-   outside service) written without their date and source, and to write its findings to a file outside the tree (the
-   scratchpad, or `"$(git rev-parse --git-dir)/review.md"`) as well as replying: a compaction or a handover loses them
-   from the conversation, and the fix briefs and the minor ones for `log` are taken from that file. The fixes go back
-   to **the subagent that wrote the chunk** (SendMessage to its id): it still holds the context, and a fresh subagent
-   per round of fixes pays the startup and the rediscovery again. After the merge
-   (`merge-branch.sh` removes the worktree) they go to a new subagent with the findings file's path.
-   Log what comes back: `FOUND` and `TOOLS` into `log` (or the records the project keeps for them). `QUESTIONS`
-   go to the user as they are, with the answer you recommend.
+   findings; nothing merges until they are fixed. The reviewer's brief carries `git diff --stat` and asks it to compare the
+   diff with the **contract**: the doc that describes it and the real callers outside the branch (grep on the working
+   branch), not the diff alone. Per-branch reviews miss cross-branch breaks (a script vs. its backend, a doc vs. its code,
+   two branches editing one rule). Findings come as `path:line | severity | anchor | problem. fix.` (anchor: a rule, a
+   `docs/tasks/<id>.md` criterion, a plan line or a demonstrated failure; none: «Observations», no severity). It also asks
+   it to flag data that expire (versions, prices, quotas, limits of an outside service) written without date and source, and
+   to write its findings to a file outside the tree (scratchpad, or `"$(git rev-parse --git-dir)/review.md"`) as well as
+   replying: a compaction or handover loses them, and fix briefs and minor ones for `log` come from that file. The fixes go
+   back to **the subagent that wrote the chunk** (SendMessage to its id): it still holds the context, and a fresh subagent
+   per round pays the startup and the rediscovery again. After the merge (`merge-branch.sh` removes the worktree) they go to
+   a new subagent with the findings file's path. Log what comes back: `FOUND` and `TOOLS` into `log` (or the project's records). `QUESTIONS` go to the user as
+   they are, with the answer you recommend.
 4. **Close the wave.** After merging the whole wave, one reviewer subagent compares the merged result with the task
    and returns `MISSING_ITEMS`: what the task asks for and no chunk covers. Each item becomes a chunk or a question.
 5. **Continue.** Next chunk. One line to the user per chunk closed; the detail lives in `log`. When something long

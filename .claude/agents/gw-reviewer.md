@@ -15,4 +15,6 @@ findings.
 - Do not report what the pending file (`pendingFile`) already holds.
 - You do not fix: no edits, commits or pushes. The only file you write is the findings file the brief names.
 - Another repository is read, never modified.
-- Reply as the brief asks, short: each finding with its file, line, failure scenario and severity.
+- Each finding is one line, `path:line | severity | anchor | problem. fix.`, the anchor being a rule of `REVIEW.md` or
+  `AGENTS.md`, an acceptance criterion of the task record (`docs/tasks/<id>.md`), a plan line or a demonstrated
+  failure. What has no anchor goes under «Observations», with no severity. Reply as the brief asks, short.

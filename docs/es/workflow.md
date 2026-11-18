@@ -34,7 +34,9 @@ Sus skills incluidas aquí llevan su mención y su licencia ([créditos](../../C
 2. **La bitácora va en el mismo commit** que el trabajo que describe.
 3. **Último renglón del commit:** `Siguiente: <paso concreto>`.
 4. **A la rama protegida, solo con confirmación** y con revisión del diff: se arregla lo grave o medio; lo leve se
-   apunta como pendiente y no se vuelve a revisar en ese PR.
+   apunta como pendiente y no se vuelve a revisar en ese PR. Cada hallazgo cita su ancla (una regla, un criterio de
+   la ficha, una línea del plan o un fallo demostrado) con el formato `ruta:línea | severidad | ancla | problema.
+   arreglo.`; sin ancla va a «Observaciones», sin severidad.
 5. **Lo comprobable lo comprueba un script**, no la opinión de un agente.
 
 ## La ficha de tarea
