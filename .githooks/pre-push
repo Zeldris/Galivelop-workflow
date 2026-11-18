@@ -13,10 +13,11 @@
 #     paths and messages; privateCheck: false in the pushed commit's config turns it off. Fails closed. A refusal says
 #     those commits are not pushed yet and gives the command that fixes only them (git commit --amend, or
 #     git rebase -i <base>).
-#   - C12: to a branch that is not an exploration one (spikeBranch, "" = off; read from the remote tip's config, else
-#     the pushed commit's), refuses any commit the ref gains that no non-spike remote branch has yet when it comes
-#     from a spike (config.py spike-check: a `Spike:` trailer or git's merge subject naming a spike branch), with what
-#     to do instead. Pushing the spike branch itself is allowed.
+#   - C12: to a branch that is not an exploration one (spikeBranch, "" = off), refuses a commit that comes from a spike
+#     (config.py spike-check: a `Spike:` trailer or git's merge subject naming a spike branch), with what to do instead.
+#     The prefix comes from the branch's remote tip, else the remote protected branch's (only a first push reads the
+#     pushed commit, where "" cannot turn it off). To the protected branch it judges all it gains; to another, what no
+#     non-spike remote branch has yet. Pushing the spike branch itself is allowed.
 #   - E41: no commit it pushes (only those not on the remote yet) has an author or committer in authorDeny, read from
 #     the pushed commit's config (config.py author-check --commits -): a clean merge, cherry-pick, revert or rebase
 #     skips the pre-commit, which only covers git commit. An empty list checks nothing.
@@ -440,33 +441,57 @@ while read -r local_ref local_sha remote_ref remote_sha; do
       fi
     fi
   fi
-  # C12: exploration branches (spikeBranch) never go into another branch. The prefix is the remote tip's (a pushed
-  # commit cannot turn the rule off for the branch it lands on), else the pushed commit's; the commits judged are all
-  # the ref gains that no other remote branch has yet: a spike branch pushed earlier does not hide its own commits.
-  spike_rev="$local_sha"
-  if [ "$remote_sha" != "$zero" ] && python3 "$config" --root "$root" --rev "$remote_sha" validate >/dev/null 2>&1; then
-    spike_rev="$remote_sha"
+  wt_protected="$(python3 "$config" --root "$root" get protectedBranch 2>/dev/null)" || wt_protected=""
+  [ -n "$wt_protected" ] && [ "$remote_ref" = "refs/heads/$wt_protected" ] && is_protected=true
+  # C12: exploration branches (spikeBranch) never go into another branch. The prefix comes from a config the push
+  # cannot rewrite: the branch's remote tip, else (a new branch) the remote protected branch's tip; only with neither
+  # (a first push) from the pushed commit, and then "" there cannot turn the rule off (the schema default applies).
+  # Judged: on the protected branch, everything it gains (a spike already on another remote branch, merged by a PR or
+  # pushed without hooks, must not reach it); on another branch, what no non-spike remote branch has yet (a spike
+  # branch pushed earlier does not hide its own commits).
+  spike_rev=""
+  prot_tip="$(git rev-parse -q --verify "refs/remotes/$remote/$protected^{commit}" 2>/dev/null)" || prot_tip=""
+  for cand in "$known" "$prot_tip"; do
+    [ -n "$cand" ] || continue
+    if python3 "$config" --root "$root" --rev "$cand" validate >/dev/null 2>&1; then spike_rev="$cand"; break; fi
+  done
+  if [ -n "$spike_rev" ]; then
+    spike_prefix="$(python3 "$config" --root "$root" --rev "$spike_rev" spike-branch --prefix)" \
+      || fail "cannot read 'spikeBranch' from .claude/gw.json in commit ${spike_rev:0:7}; fix that config and push again: python3 $config --root $root --rev ${spike_rev:0:7} validate"
+  else
+    spike_rev="$local_sha"
+    spike_prefix="$(python3 "$config" --root "$root" --rev "$local_sha" spike-branch --prefix)" \
+      || fail "cannot read 'spikeBranch' from .claude/gw.json in commit ${local_sha:0:7}; commit a valid one and push again: python3 $config --root $root --rev ${local_sha:0:7} validate"
+    if [ -z "$spike_prefix" ]; then
+      spike_prefix="$(python3 "$config" default spikeBranch)" \
+        || fail "cannot read the default of 'spikeBranch' from the workflow's schema; reinstall the workflow: /gw-update"
+    fi
   fi
-  spike_prefix="$(python3 "$config" --root "$root" --rev "$spike_rev" spike-branch --prefix)" \
-    || fail "cannot read 'spikeBranch' from .claude/gw.json in commit ${spike_rev:0:7}; commit a valid one and push again: python3 $config --root $root --rev ${spike_rev:0:7} validate"
   spike_target=false
-  case "$branch" in "$spike_prefix"?*) spike_target=true ;; esac
+  if [ -n "$spike_prefix" ]; then
+    python3 "$config" --root "$root" --rev "$spike_rev" spike-branch "$branch" && spike_target=true
+    # an empty prefix at the pushed commit (first push) was replaced by the default: compare by hand then
+    case "$branch" in "$spike_prefix"?*) spike_target=true ;; esac
+  fi
   if [ -n "$spike_prefix" ] && [ "$branch" != "$remote_ref" ] && [ "$spike_target" = false ]; then
     others=""
-    for ref in $(git for-each-ref --format='%(refname)' refs/remotes/); do
-      short="${ref#refs/remotes/}"; short="${short#*/}"
-      case "$short" in "$spike_prefix"?*) ;; *) others="$others $ref" ;; esac
-    done
+    if [ "$is_protected" != true ]; then
+      for ref in $(git for-each-ref --format='%(refname)' refs/remotes/); do
+        short="${ref#refs/remotes/}"; short="${short#*/}"
+        case "$short" in "$spike_prefix"?*) ;; *) others="$others $ref" ;; esac
+      done
+    fi
+    printf '%s\n' "$local_sha" > "$work/spike_tips"
     # shellcheck disable=SC2086  # one sha or ref per word
-    gains="$(git rev-list "$local_sha" --not $known $others)" || fail "cannot list the commits ${local_sha:0:7} brings to $branch; fetch and retry: git fetch $remote"
-    if [ -n "$gains" ]; then
-      printf '%s\n' "$gains" | python3 "$config" --root "$root" --rev "$spike_rev" spike-check --commits - \
+    for ref in $known $others; do printf '^%s\n' "$ref" >> "$work/spike_tips"; done
+    git rev-list --stdin < "$work/spike_tips" > "$work/spike_gains" \
+      || fail "cannot list the commits ${local_sha:0:7} brings to $branch; fetch and retry: git fetch $remote"
+    if [ -s "$work/spike_gains" ]; then
+      python3 "$config" --root "$root" --rev "$spike_rev" spike-check --commits - < "$work/spike_gains" \
         || fail "the push brings an exploration branch's work into $branch (above); a spike is never merged into a working branch or $protected" \
                 "drop it from $branch (git reset --hard <commit before the merge>), then: python3 $scripts/task.py new <id> and redo it with tests, or throw the spike away: git branch -D <spike branch>"
     fi
   fi
-  wt_protected="$(python3 "$config" --root "$root" get protectedBranch 2>/dev/null)" || wt_protected=""
-  [ -n "$wt_protected" ] && [ "$remote_ref" = "refs/heads/$wt_protected" ] && is_protected=true
   this_tree="$(git rev-parse "$local_sha^{tree}" 2>/dev/null)" || this_tree=""
   if [ "$checked" != "$local_sha:$is_protected" ]; then
     scope="full"

@@ -2,6 +2,8 @@
 marks the commit with a `Spike:` trailer; the pre-push and merge-branch.sh refuse to bring a spike into a working
 branch or the protected one, and say what to do instead. End to end in temporary projects."""
 import json
+import os
+import shutil
 import sys
 import unittest
 
@@ -30,6 +32,20 @@ class Prefix(unittest.TestCase):
         self.assertFalse(gwconfig.is_spike_branch("feature/spike/x", "spike/"))
         self.assertFalse(gwconfig.is_spike_branch("spike/x", ""))  # feature off
         self.assertFalse(gwconfig.is_spike_branch("", "spike/"))  # detached HEAD
+
+
+class Marks(unittest.TestCase):
+    def test_only_the_trailer_paragraph_or_a_squash_quote_counts(self):
+        self.assertTrue(gwconfig.spike_marked("x\n\nbody\n\nSpike: spike/a\nNext: y\n", "spike/"))
+        self.assertTrue(gwconfig.spike_marked("Squashed\n\ncommit 1\n\n    idea\n\n    Spike: spike/a\n", "spike/"))
+        self.assertFalse(gwconfig.spike_marked("x\n\nSpike: spike/foo is thrown away\n\nNext: y\n", "spike/"))
+        self.assertFalse(gwconfig.spike_marked("x\n\nspike: spike/a\n", "spike/"))
+
+    def test_a_huge_list_of_commits_fails_with_a_reason_not_a_traceback(self):
+        code, message = gwconfig.spike_commits(ROOT, "spike/", ["f" * 40] * 100000)  # ~4 MB: over ARG_MAX as argv
+        self.assertEqual(code, 1)
+        self.assertIn("cannot read the commits to look for exploration-branch work", message)
+        self.assertIn("fetch and retry: git log", message)
 
 
 class CommitMsg(Msg):
@@ -211,7 +227,62 @@ class Spike(UtilsBase):
         self.p.git("checkout", "-q", "-b", "feature")
         self.refused(*self.push("feature"))
 
+    def test_spike_already_on_another_remote_branch_cannot_reach_main(self):
+        self.feature_with_merge()
+        self.p.git("push", "-q", "--no-verify", "origin", "feature")  # a PR merged on the server, or no hooks
+        code, out = self.push("feature:main")
+        self.refused(code, out)
+        self.assertIn("into main", out)
+
+    def test_a_new_branch_cannot_turn_the_rule_off_for_itself(self):
+        self.feature_with_merge()
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["spikeBranch"] = ""
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.commit("apagar spikes")
+        code, out = self.push("feature")
+        self.refused(code, out)
+
+    def test_a_body_line_starting_with_spike_does_not_block(self):
+        p = self.p
+        p.branch("feature")
+        p.write("docs/w.md", "w\n")
+        p.commit("work\n\nSpike: spike/foo is thrown away, see the log\n\nNext: go on")
+        code, out = self.push("feature")
+        self.assertEqual(code, 0, out)
+
     # merge-branch.sh
+    def test_merge_branch_refuses_a_remote_tracking_spike_by_name(self):
+        self.spike(trailer=False)
+        p = self.p
+        p.git("push", "-q", "--no-verify", "origin", "spike/idea")
+        p.branch("feature")
+        before = p.sha()
+        code, out = p.script("merge-branch.sh", "origin/spike/idea", "Merge spike", "--reviewed")
+        self.assertEqual(code, 2, out)
+        self.assertIn("origin/spike/idea is an exploration branch", out)
+        self.assertEqual(p.sha(), before)
+
+    def test_merge_branch_fails_closed_when_it_cannot_list_the_commits(self):
+        self.spike()
+        p = self.p
+        p.branch("agent/X1-a")
+        p.write("docs/a.md", "a\n")
+        p.commit("agent work")
+        p.branch("feature")
+        fake = p.tmp / "fakebin"
+        fake.mkdir()
+        real = shutil.which("git")
+        (fake / "git").write_text(f'#!/bin/sh\n[ "$1" = rev-list ] && exit 128\nexec {real} "$@"\n')
+        (fake / "git").chmod(0o755)
+        before = p.sha()
+        code, out = p.script("merge-branch.sh", "agent/X1-a", "Merge agent", "--reviewed",
+                             env={"PATH": f"{fake}:{os.environ['PATH']}"})
+        self.assertEqual(code, 2, out)
+        self.assertIn("cannot list the commits agent/X1-a brings, so nothing was merged", out)
+        self.assertEqual(p.sha(), before)
+
     def test_merge_branch_refuses_a_spike_with_its_reason(self):
         self.spike()
         p = self.p

@@ -441,21 +441,35 @@ SPIKE_TODO = ("turn what it taught into a task record (python3 task.py new <id>)
               "branch, or throw it away (git branch -D <spike branch>)")
 
 
+def spike_marked(body, prefix):
+    """C12: whether a commit message carries the spike mark: a `Spike: <prefix>...` line in its last paragraph (the
+    trailer block, where commit-message.py adds it) or indented by four spaces anywhere (how `git merge --squash`
+    quotes the squashed commits' messages). A body line elsewhere that merely starts with `Spike:` does not count."""
+    p = re.escape(prefix)
+    paragraphs = [para for para in re.split(r"\n[ \t]*\n", body.strip("\n")) if para.strip()]
+    if paragraphs and re.search(rf"^Spike:[ \t]*{p}\S", paragraphs[-1], re.M):
+        return True
+    return bool(re.search(rf"^ {{4}}Spike:[ \t]*{p}\S", body, re.M))
+
+
 def spike_commits(root, prefix, shas):
     """C12: (0, "") when no commit of `shas` comes from an exploration branch, else (1, the commits and what to do
-    instead). A commit comes from one when its message has a `Spike: <prefix>...` line (the trailer commit-message.py
-    adds there; indented too, as `git merge --squash` keeps it) or it is a merge whose subject is git's own for a
-    branch named with the prefix. Fails closed (1) when git cannot read them; off (0) with an empty prefix."""
+    instead). A commit comes from one when its message carries the spike mark (spike_marked) or it is a merge whose
+    subject is git's own for a branch named with the prefix. The shas go on git's stdin (a first push may hold the
+    whole history). Fails closed (1, with the reason) when git cannot read them; off (0) with an empty prefix."""
     shas = [s for s in shas if s]
     if not prefix or not shas:
         return 0, ""
-    r = subprocess.run(["git", "log", "--no-walk=unsorted", "--format=%H%x00%P%x00%B%x1e", *shas],
-                       cwd=str(root), capture_output=True, text=True, encoding="utf-8", errors="replace")
+    retry = f"fetch and retry: git log --no-walk {shas[0][:12]}"
+    try:
+        r = subprocess.run(["git", "log", "--no-walk=unsorted", "--stdin", "--format=%H%x00%P%x00%B%x1e"],
+                           cwd=str(root), input="\n".join(shas) + "\n", capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+    except OSError as exc:
+        return 1, f"cannot run git to look for exploration-branch work ({exc}); {retry}"
     if r.returncode != 0:
-        return 1, f"cannot read the commits to look for exploration-branch work; fetch and retry: git log {shas[0][:12]}"
-    p = re.escape(prefix)
-    trailer = re.compile(rf"^\s*Spike:\s*{p}\S", re.M | re.I)
-    merge = re.compile(rf"^Merge (?:remote-tracking )?branch(?:es)? '(?:[^'/]+/)?{p}[^']+'")
+        return 1, f"cannot read the commits to look for exploration-branch work ({r.stderr.strip()[:200]}); {retry}"
+    merge = re.compile(rf"^Merge (?:remote-tracking )?branch(?:es)? '(?:[^'/]+/)?{re.escape(prefix)}[^']+'")
     bad = []
     for record in r.stdout.split("\x1e"):
         parts = record.lstrip("\n").split("\0", 2)
@@ -463,7 +477,7 @@ def spike_commits(root, prefix, shas):
             continue
         sha, parents, body = parts
         subject = body.strip().splitlines()[0] if body.strip() else ""
-        if trailer.search(body):
+        if spike_marked(body, prefix):
             bad.append(f"  {sha[:7]} {subject[:72]} (Spike: trailer)")
         elif len(parents.split()) > 1 and merge.match(subject):
             bad.append(f"  {sha[:7]} {subject[:72]} (merge of an exploration branch)")
