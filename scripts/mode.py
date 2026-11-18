@@ -7,14 +7,18 @@
   python3 mode.py set MODE on|off      # write the mode into .claude/gw.json (also true|false|1|0|yes|no)
 
 The modes it knows are the boolean keys of `modes` (careful, questions); the list keys (carefulExempt,
-carefulWorktrees) are shown by `list` and edited by hand. `set` rewrites .claude/gw.json (two-space JSON, key order
-kept, a missing `modes` section created) and validates it, putting the old text back if the result is invalid;
-config-guard.py treats a gw.json edit by hand the same way. Project root and config: config.find_root and
+carefulWorktrees) are shown by `list` and edited by hand. `set` edits .claude/gw.json in place: only the text of that
+one value changes (EOL, tabs, compact sections and key order stay; a missing key or `modes` section is added), through
+a temp file and os.replace, and the result is validated, putting the old text back if it is invalid. config-guard.py
+asks the user before an agent runs `mode.py set`, as for any edit of that file. Project root and config: config.find_root and
 config.load. Fails closed: no config, an invalid one or an unknown mode -> exit 2 with the command that fixes it.
 Python 3.8+ standard library only.
 """
 import argparse
 import json
+import os
+import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -43,20 +47,88 @@ def boolean_modes(conf):
     return {k: v for k, v in config.modes(conf).items() if isinstance(v, bool)}
 
 
+_WS = re.compile(r"[ \t\r\n]*")
+_DECODER = json.JSONDecoder()
+
+
+def members(text, start):
+    """The members of the JSON object whose `{` is at text[start]: (key, key_start, value_start, value_end) each, and
+    the index of its closing `}`. Raises ValueError when it is not an object."""
+    if text[start] != "{":
+        raise ValueError("not an object")
+    out, i = [], _WS.match(text, start + 1).end()
+    while text[i] != "}":
+        key, key_end = _DECODER.raw_decode(text, i)
+        colon = _WS.match(text, key_end).end()
+        if text[colon] != ":":
+            raise ValueError("no colon after a key")
+        value_start = _WS.match(text, colon + 1).end()
+        _, value_end = _DECODER.raw_decode(text, value_start)
+        out.append((key, i, value_start, value_end))
+        i = _WS.match(text, value_end).end()
+        if text[i] == ",":
+            i = _WS.match(text, i + 1).end()
+    return out, i
+
+
+def lead_of(text, key_start):
+    """The whitespace (newline and indent, or a space) just before a key: reused for a member added after it."""
+    return re.search(r"[ \t\r\n]*\Z", text[:key_start]).group(0) or " "
+
+
+def edit_text(text, mode, value):
+    """`text` (a gw.json) with modes.<mode> set to `value`, changing only that value's text: a member is added after
+    the last one with the same indent and line ending when it is missing, and `modes` itself when that is missing.
+    Everything else (EOL, tabs, compact sections, key order) stays byte for byte."""
+    word = json.dumps(value)
+    top_start = _WS.match(text, 0).end()
+    top, top_end = members(text, top_start)
+    section = [m for m in top if m[0] == "modes"]
+    if section:
+        _, _, v_start, v_end = section[0]
+        inner, inner_end = members(text, v_start)
+        found = [m for m in inner if m[0] == mode]
+        if found:
+            return text[:found[0][2]] + word + text[found[0][3]:]
+        if inner:
+            last = inner[-1]
+            return text[:last[3]] + "," + lead_of(text, last[1]) + json.dumps(mode) + ": " + word + text[last[3]:]
+        return text[:v_start] + "{" + json.dumps(mode) + ": " + word + "}" + text[v_end:]
+    member = json.dumps("modes") + ": {" + json.dumps(mode) + ": " + word + "}"
+    if top:
+        last = top[-1]
+        return text[:last[3]] + "," + lead_of(text, last[1]) + member + text[last[3]:]
+    return text[:top_start] + "{" + member + "}" + text[top_end + 1:]
+
+
 def write(root, mode, value):
-    """Set modes.<mode> to `value` in root/.claude/gw.json and validate it; on an invalid result the old text is put
-    back and ConfigError raised."""
+    """Set modes.<mode> to `value` in root/.claude/gw.json, changing only that value's text, and validate it; the file
+    is replaced atomically (temp file + os.replace), so a failure leaves the old one; on an invalid result the old
+    text is put back and ConfigError raised."""
     path = Path(root) / config.CONFIG_REL
-    old = path.read_text(encoding="utf-8")
+    old = path.read_bytes().decode("utf-8")
     raw = json.loads(old)
-    section = raw.get("modes") if isinstance(raw.get("modes"), dict) else {}
-    section[mode] = value
-    raw["modes"] = section
-    path.write_text(json.dumps(raw, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    expected = dict(raw, modes=dict(raw["modes"] if isinstance(raw.get("modes"), dict) else {}, **{mode: value}))
+    new = edit_text(old, mode, value)
+    if json.loads(new) != expected:
+        raise ValueError("the edit would change more than modes." + mode)
+    replace(path, new)
     try:
         config.load(root)
     except config.ConfigError:
-        path.write_text(old, encoding="utf-8")
+        replace(path, old)
+        raise
+
+
+def replace(path, text):
+    """Write `text` (bytes as given, no newline translation) to `path` through a temp file in the same folder."""
+    tmp = path.with_name(path.name + ".tmp")
+    try:
+        tmp.write_bytes(text.encode("utf-8"))
+        shutil.copymode(path, tmp)
+        os.replace(tmp, path)
+    except BaseException:
+        tmp.unlink(missing_ok=True) if sys.version_info >= (3, 8) else None
         raise
 
 

@@ -101,6 +101,72 @@ class Set(Cli):
         self.assertEqual(self.config.read_text(), old)
 
 
+class Format(Cli):
+    """C7 review 3: `set` changes the text of one value and nothing else."""
+
+    def check(self, text, mode, word, expected_text):
+        self.config.write_bytes(text.encode())
+        code, out, err = self.run_cli("set", mode, word)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(self.config.read_bytes().decode(), expected_text)
+        self.assertFalse(self.config.with_name("gw.json.tmp").exists())
+
+    def base(self, extra=""):
+        data = json.dumps(BASE_CONFIG)[:-1]
+        return data + extra + "}"
+
+    def test_compact_sections_and_an_existing_value_change_one_word(self):
+        text = self.base(', "modes": {"careful": true, "carefulExempt": ["/tmp/"]}, "models": {"disabled": []}') + "\n"
+        self.check(text, "careful", "off", text.replace('"careful": true', '"careful": false'))
+
+    def test_a_missing_key_is_added_after_the_last_member_with_its_indent(self):
+        text = self.base(', "modes": {"careful": true}') + "\n"
+        self.check(text, "questions", "on", text.replace('{"careful": true}', '{"careful": true, "questions": true}'))
+        text = '{\r\n\t"a": 1,\r\n\t"modes": {\r\n\t\t"careful": true\r\n\t}\r\n}\r\n'
+        self.config.write_bytes(text.encode())
+        # not a valid config for the schema (unknown key a)? use the edit function directly for the byte check
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gw_mode_fmt", ROOT / "scripts" / "mode.py")
+        mode = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mode)
+        self.assertEqual(mode.edit_text(text, "questions", True),
+                         '{\r\n\t"a": 1,\r\n\t"modes": {\r\n\t\t"careful": true,\r\n\t\t"questions": true\r\n\t}\r\n}\r\n')
+        self.assertEqual(mode.edit_text(text, "careful", False).count("\r\n"), text.count("\r\n"))
+
+    def test_a_missing_modes_section_is_added_and_crlf_is_kept(self):
+        text = self.base().replace("{", "{\r\n  ", 1) + "\r\n"
+        self.config.write_bytes(text.encode())
+        code, out, err = self.run_cli("set", "questions", "on")
+        self.assertEqual(code, 0, err)
+        after = self.config.read_bytes().decode()
+        self.assertIn('"modes": {"questions": true}', after)
+        self.assertEqual(after.replace('"modes": {"questions": true}', "", 1).count("\n"), text.count("\n"))
+        self.assertNotIn("\n", after.replace("\r\n", ""))  # no bare LF appeared
+        self.assertEqual(json.loads(after).get("modes"), {"questions": True})
+
+    def test_an_empty_modes_object_gets_its_member(self):
+        text = self.base(', "modes": {}') + "\n"
+        self.check(text, "questions", "on", text.replace('"modes": {}', '"modes": {"questions": true}'))
+
+
+class Atomic(Cli):
+    def test_a_failing_write_leaves_the_file_and_says_so(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("gw_mode_atomic", ROOT / "scripts" / "mode.py")
+        mode = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mode)
+        old = self.config.read_bytes()
+        real = mode.os.replace
+        mode.os.replace = lambda *a: (_ for _ in ()).throw(OSError("disk full"))
+        try:
+            with self.assertRaises(OSError):
+                mode.write(self.tmp, "questions", True)
+        finally:
+            mode.os.replace = real
+        self.assertEqual(self.config.read_bytes(), old)
+        self.assertFalse(self.config.with_name("gw.json.tmp").exists())
+
+
 class Broken(Cli):
     def test_invalid_json_fails_closed_with_the_fix(self):
         self.config.write_text("{not json")
