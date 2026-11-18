@@ -344,3 +344,5 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [ ] `0.10` · (D68, herramienta) `task.py new` sale con código 2 aunque crea la ficha.
 - [ ] `0.10` · (D68, herramienta) `scope-guard` no entiende rutas con llaves `{es,en}` en `## Files` de la ficha.
 - [ ] `0.10` · (D68, leve) `docs/proposals/2026-11-08-notes-and-references.md:145` dice que `merge-branch.sh` pliega los fragmentos; lo hace `version.py` (decisión de D68).
+- [ ] `0.10` · (E35, revisión) `tests-for.py --run` (el `pre-push` con `branchCheck`) no reintenta: una prueba inestable rompe la subida aunque el check pase; otra tarea con `Related: E35`.
+- [ ] `0.10` · (E35, revisión, leve) `flaky.jsonl` crece sin poda (como `checkLogKeep`); dos `test-run` a la vez en worktrees que comparten el dir común pueden contar mal; `test-times.json` guarda la suma de pasadas de una unidad inestable.
