@@ -559,6 +559,15 @@ def task_record(config):
     return out
 
 
+def scope_guard(config):
+    """The `scopeGuard` key (C13) as a dict: `mode` as written (off, warn, block or auto) and `effective`, the mode the
+    guard applies (auto = block when modes.questions is restrictive, else warn)."""
+    out = _section(config, "scopeGuard")
+    mode = out["mode"]
+    out["effective"] = ("block" if modes(config)["questions"] else "warn") if mode == "auto" else mode
+    return out
+
+
 def given_keys(root, key):
     """The inner keys the project's .claude/gw.json itself writes under the object key `key` (not the defaults the
     loader fills), as a set; empty when the file, the key or the JSON is missing (B31: is the window known?)."""
