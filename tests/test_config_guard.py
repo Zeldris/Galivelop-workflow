@@ -488,6 +488,21 @@ class BashWrites(Base):
         self.assertAsks(self.p.tool("Bash", command="python3 .claude/gw/scripts/mode.py set careful off"),
                         "writes to .claude/gw.json:")  # C7: nor switches a mode off
 
+    def test_accepting_a_risk_and_switching_the_task_are_the_users_call(self):  # C4, C5
+        for command in ('python3 .claude/gw/scripts/questions.py accept-risk --refs C4',
+                        'python3 -B scripts/questions.py --root /x accept-risk Q-3',
+                        'cd .claude/gw/scripts && python3 questions.py accept-risk Q-1'):
+            with self.subTest(command=command):
+                self.assertAsks(self.p.tool("Bash", command=command), "only the user accepts a risk")
+        for command in ('python3 .claude/gw/scripts/task.py current C9', 'python3 scripts/task.py --root . current --clear',
+                        'bash -c "python3 .claude/gw/scripts/task.py current C2"'):
+            with self.subTest(command=command):
+                self.assertAsks(self.p.tool("Bash", command=command), "only the user switches the task")
+        for command in ('python3 .claude/gw/scripts/task.py current', 'python3 .claude/gw/scripts/questions.py list',
+                        'python3 .claude/gw/scripts/questions.py answer "1. ok"', 'python3 scripts/task.py new C4'):
+            with self.subTest(command=command):
+                self.assertAllowed(self.p.tool("Bash", command=command))
+
     def test_reads_are_allowed(self):
         for command in self.READS:
             with self.subTest(command=command):

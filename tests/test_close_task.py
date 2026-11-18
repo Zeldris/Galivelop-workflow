@@ -63,6 +63,18 @@ class CloseTask(UtilsBase):
         self.assertIn("| C12 | other | pendiente |", (self.p.work / "docs/roadmap.md").read_text())
         self.assertIn("docs/roadmap.md:5: hecho (", out)
 
+    def test_closing_clears_the_current_task_mark_only_when_it_names_the_task(self):
+        mark = self.p.work / ".git" / "gw" / "current-task"  # C4: the questions guard reads it
+        mark.parent.mkdir(parents=True, exist_ok=True)
+        mark.write_text("C12\n")
+        self.put()
+        self.assertEqual(self.close()[0], 0)
+        self.assertEqual(mark.read_text(), "C12\n")  # another task's mark stays
+        self.p.git("checkout", "-q", "--", "docs")
+        mark.write_text("C11\n")
+        self.assertEqual(self.close()[0], 0, mark)
+        self.assertFalse(mark.exists())
+
     def test_a_check_section_counts_as_a_test(self):
         self.put(acceptance="- [x] lint (`== shell scripts (lint)`)\n- [x] units (`== unit tests`)")
         self.assertEqual(self.close()[0], 0)

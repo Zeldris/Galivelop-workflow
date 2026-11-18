@@ -1174,7 +1174,14 @@ def cmd_close_row(ctx, args):
     if record is not None:
         if args.text:
             raise Usage(f"--text is for a branch row; {args.branch} is a task (its record exists): drop --text")
-        return close_task(ctx, args.branch, record)
+        rc = close_task(ctx, args.branch, record)
+        if rc == 0:
+            import task as gwtask
+            try:
+                gwtask.clear_mark(ctx.root, args.branch)  # C4: a closed task is no longer the current one
+            except gwtask.GitStuck:
+                pass
+        return rc
     text = args.text or CLOSED_TEXT.get(ctx.config["language"], CLOSED_TEXT["en"])
     branch = row_branch(ctx, args)
     hit = 0

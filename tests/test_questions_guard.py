@@ -153,7 +153,8 @@ class Restrictive(Guard):
     def test_broken_questions_file_denies_with_the_fix(self):
         self.p.write("docs/questions.md", QUESTIONS.replace("Status: open", "Status: maybe", 1))
         self.assertDenies(self.hook(), "docs/questions.md cannot be read", "Status 'maybe'", "questions.py list")
-        self.assertDenies(self.hook("docs/x.md"), "cannot be read")  # fail closed before classifying anything
+        self.assertEqual(self.hook("docs/x.md"), "")  # documentation is classified first: still allowed
+        self.assertEqual(self.hook("docs/questions.md"), "")  # and the questions file itself, to fix it
 
     def test_windows_style_paths(self):
         self.assertDenies(self.hook("src\\app.py"), "`src/app.py`")
@@ -170,6 +171,78 @@ class Restrictive(Guard):
         out = self.p.run(sys.executable, "-B", str(self.p.work / ".claude" / "gw" / "scripts" / "questions-guard.py"),
                          stdin="not json")[1]
         self.assertDenies(out, "Q-1", "the event named none")
+
+    def test_task_new_on_an_existing_record_still_sets_the_mark(self):
+        self.p.git("checkout", "-q", "-b", "feature")
+        self.assertEqual(self.task("new", "C9")[0], 0)
+        self.assertEqual(self.task("current", "--clear")[0], 0)
+        code, out = self.task("new", "C9")
+        self.assertEqual(code, 1)
+        self.assertIn("exists already", out)
+        self.assertEqual(self.task("current")[1].strip(), "C9")
+
+    def test_a_broken_config_denies_code_and_names_the_check(self):
+        self.p.write(".claude/gw.json", "{ not json")
+        self.p.git("checkout", "-q", "-b", "feature")  # no current task: a broken config still blocks code
+        self.assertDenies(self.hook(), ".claude/gw.json cannot be read", "invalid JSON", "config.py validate")
+        self.assertEqual(self.hook("docs/design.md"), "")
+        self.assertEqual(self.hook(".claude/gw.json"), "")  # the fix itself
+
+    def test_symlink_from_outside_to_code_is_that_code(self):
+        link = self.tmp / "link.py"
+        link.symlink_to(self.p.work / "src" / "app.py")
+        self.assertDenies(self.hook(str(link)), "`src/app.py`")
+
+    def test_a_path_spelled_through_another_name_of_the_root_is_placed(self):
+        # what a case-insensitive file system does with /Users/x/Repo for /Users/x/repo: samefile, not the text
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("qguard", ROOT / "scripts" / "questions-guard.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        alias = self.tmp / "Alias"
+        alias.symlink_to(self.p.work)
+        self.assertEqual(mod.relative(str(alias / "src" / "app.py"), str(self.p.work)), "src/app.py")
+        self.assertIsNone(mod.relative(str(self.tmp / "other" / "x.py"), str(self.p.work)))
+
+    def test_works_from_a_plugin_copy_outside_the_project(self):
+        plugin = self.tmp / "plugin"
+        (plugin / "scripts").mkdir(parents=True)
+        (plugin / "schema").mkdir()
+        for name in ("questions-guard.py", "questions.py", "task.py", "config.py", "handoff.py", "is-code.sh"):
+            shutil.copy2(ROOT / "scripts" / name, plugin / "scripts" / name)
+        shutil.copy2(ROOT / "schema" / "gw.schema.json", plugin / "schema" / "gw.schema.json")
+        event = json.dumps({"tool_name": "Edit", "cwd": str(self.p.work), "tool_input": {"file_path": "src/app.py"}})
+        code, out = self.p.run(sys.executable, "-B", str(plugin / "scripts" / "questions-guard.py"), stdin=event,
+                               env={"CLAUDE_PROJECT_DIR": str(self.p.work)})
+        self.assertEqual(code, 0, out)
+        self.assertDenies(out, "task C4", "Q-1")
+        event = json.dumps({"tool_name": "Edit", "cwd": str(self.p.work), "tool_input": {"file_path": "docs/a.md"}})
+        self.assertEqual(self.p.run(sys.executable, "-B", str(plugin / "scripts" / "questions-guard.py"), stdin=event,
+                                    env={"CLAUDE_PROJECT_DIR": str(self.p.work)})[1], "")
+
+    def test_questions_live_in_the_main_worktree(self):
+        wt = self.tmp / "wt"
+        self.p.git("worktree", "add", "-q", "-b", "agent/C9-side", str(wt))
+        (wt / "docs" / "questions.md").write_text("# Questions\n")  # the worktree's copy has none ...
+        reason = self.assertDenies(self.hook(str(wt / "src" / "app.py")), "task C9", "Q-2")  # ... the main one counts
+        self.assertIn(f"--root {self.p.work}", reason)  # commands that write where the guard reads
+        code, out = self.p.run(sys.executable, "-B", str(self.p.work / ".claude" / "gw" / "scripts" / "questions.py"),
+                               "--root", str(self.p.work), "answer", "2. done")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.hook(str(wt / "src" / "app.py")), "")  # an answer recorded in main unblocks it
+
+    def test_git_hanging_fails_closed(self):
+        fake = self.tmp / "bin"
+        fake.mkdir()
+        real = shutil.which("git")
+        (fake / "git").write_text(f'#!/bin/sh\nfor a in "$@"; do [ "$a" = symbolic-ref ] && exec sleep 60; done\n'
+                                  f'exec "{real}" "$@"\n')
+        (fake / "git").chmod(0o755)
+        import os
+        event = json.dumps({"tool_name": "Edit", "cwd": str(self.p.work), "tool_input": {"file_path": "src/app.py"}})
+        code, out = self.p.run(sys.executable, "-B", str(self.p.work / ".claude" / "gw" / "scripts" / "questions-guard.py"),
+                               stdin=event, env={"PATH": f"{fake}{os.pathsep}{os.environ.get('PATH', '')}"})
+        self.assertDenies(out, "git did not answer", "symbolic-ref", "index.lock")
 
     def test_worktree_has_its_own_branch_and_mark(self):
         wt = self.tmp / "wt"
@@ -209,6 +282,8 @@ class GuideMode(Guard):
         self.p.write("docs/questions.md", "## Q-1\n- Status: open\n\n## Q-1\n- Status: open\n")
         text = self.assertWarns(self.hook(), "cannot be read", "appears twice", "questions.py list")
         self.assertEqual(len(text.splitlines()), 1)
+        self.assertEqual(self.hook(), "")  # once per reason, not on every edit
+        self.assertEqual(self.hook("docs/questions.md"), "")
 
 
 class MissingConfig(Guard):

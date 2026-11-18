@@ -11,7 +11,8 @@ entry in the folder `<taskRecord.path>/<id>/` that nobody edits afterwards.
 
 The current task (C4, C5; docs/design/I-lifecycle.md) is the id in a branch named `agent/<id>-...` and, if the branch
 names none, the per-clone mark `gw/current-task` in the git dir (`git rev-parse --git-path`, so each linked worktree has
-its own and it is never committed), which `new <id>` and `current <id>` write. questions-guard.py reads it with
+its own and it is never committed), which `new <id>` (also when the record exists) and `current <id>` write and
+`handoff.py close-row <id>` removes when it names that id. questions-guard.py reads it with
 current_task(); `current` prints that same id (nothing when there is none).
 
 The shape the commit-msg hook (commit-message.py, with `taskRecord.enabled`) asks for lives here too: entry_errors and
@@ -159,12 +160,22 @@ BRANCH_PREFIX = "agent/"
 MARK = "gw/current-task"
 
 
+GIT_TIMEOUT = 10.0  # seconds a git call may take (like config-guard.py's GIT_TIMEOUT); questions-guard.py runs these on every edit
+
+
+class GitStuck(Exception):
+    """A git call took more than GIT_TIMEOUT: the caller cannot tell the current task (questions-guard.py fails closed)."""
+
+
 def _git(root, *argv):
-    """stdout of `git -C root ...` without the GIT_* variables a git hook exports, or None when it fails."""
+    """stdout of `git -C root ...` without the GIT_* variables a git hook exports, or None when it fails; raises GitStuck
+    when git hangs (an index.lock, a network file system)."""
     env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
     try:
         r = subprocess.run(["git", "-C", str(root), *argv], capture_output=True, text=True, env=env,
-                           stdin=subprocess.DEVNULL)
+                           stdin=subprocess.DEVNULL, timeout=GIT_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        raise GitStuck(f"`git {argv[0]}` took more than {GIT_TIMEOUT:.0f}s")
     except OSError:
         return None
     return r.stdout.strip() if r.returncode == 0 else None
@@ -214,6 +225,18 @@ def write_mark(root, task_id):
     mark.write_text(task_id + "\n", encoding="utf-8")
 
 
+def clear_mark(root, task_id=None):
+    """Remove the current-task mark (only when it names `task_id`, if given); handoff.py close-row <id> calls it."""
+    mark = current_mark(root)
+    if mark is None or not mark.exists():
+        return
+    try:
+        if task_id is None or mark.read_text(encoding="utf-8").strip() == task_id:
+            mark.unlink()
+    except (OSError, UnicodeDecodeError):
+        pass
+
+
 def resolve(root, rel):
     r = subprocess.run(["git", "-C", str(root), "log", "--diff-filter=A", "--format=%h", "-1", "--", rel],
                        capture_output=True, text=True, encoding="utf-8", errors="replace")
@@ -227,8 +250,8 @@ def run(args):
     check_id(config, args.id)
     base = tr["path"].strip("/")
     if args.command == "new":
+        write_mark(root, args.id)  # also when the record exists already: going back to a task makes it current
         write_new(root, f"{base}/{args.id}.md", contract_text(config, args.id, args.title, root))
-        write_mark(root, args.id)
     elif args.command == "log":
         agent = args.agent.strip().lower()
         if not SLUG.fullmatch(agent) or names_a_model(agent, config):
@@ -250,9 +273,7 @@ def run_current(args, config, root):
     if args.clear and args.id:
         raise Refused(f"give an id or --clear, not both: python3 {HERE / 'task.py'} current --clear")
     if args.clear:
-        mark = current_mark(root)
-        if mark is not None and mark.exists():
-            mark.unlink()
+        clear_mark(root)
         return
     if args.id:
         check_id(config, args.id)
@@ -299,6 +320,9 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         run(args)
+    except GitStuck as exc:
+        print(f"task: {exc}; check the repository (git status) and run it again", file=sys.stderr)
+        return 1
     except Refused as exc:
         print(f"task: {exc}", file=sys.stderr)
         return 1
