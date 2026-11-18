@@ -74,9 +74,8 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
   `commitRefs: true`, un trailer `Refs: <id>` en el último párrafo, antes de `Siguiente:`; lo comprueba `commit-msg`.
 - Cuerpo: qué se hizo, qué queda de esa tarea si no está cerrada, y estado del check.
 - **Última línea: `Siguiente: <próximo paso concreto>`**, en el mismo bloque final que las líneas de atribución, si las hay.
-- El commit con los arreglos de una revisión lleva `Findings: <n hallazgos aceptados>` y el de un trabajo que tuvo
-  que subir de peldaño, `Retries: <n>` (los lee `metrics.py quality`), los dos en el último párrafo, con los demás
-  trailers (el `commit-msg` rechaza uno suelto).
+- El commit con los arreglos de una revisión lleva `Findings: <n aceptados>`, y el de un trabajo que subió de peldaño,
+  `Retries: <n>` (`metrics.py quality`), en el último párrafo con los demás trailers (`commit-msg` rechaza uno suelto).
 - Con `agentSignatures: false` en `.claude/gw.json`, el commit **no lleva firmas del agente** (ni `Co-Authored-By` de
   Claude, ni `Claude-Session`, ni «Generated with Claude Code», ni enlaces de sesión) y el gancho `commit-msg` rechaza
   el mensaje que las traiga. En la nube, el gancho `Stop` de Claude Code puede pedir que se reescriba el autor o se
