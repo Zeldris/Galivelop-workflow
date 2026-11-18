@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI en verde). Etiqueta y release `v0.7.1` creadas por el agente desde una sesión local (2026-11-16, a petición del usuario) |
-| Siguiente paso | **Grupo C de la `0.8`: cerrar la oleada 2** (2026-11-18) con un revisor que compare lo fusionado (C4-C7, C11) con las filas del roadmap y devuelva lo que falte (`MISSING_ITEMS`); luego **oleada 3** con `gw-orchestrate-dealer`: C12 (rama `spike/<tema>` que no se fusiona en una de trabajo), C13 (`scopeGuard`, alcance congelado por `Files` de la ficha) y A11 (los cuatro modos de trabajo en plan, `AGENTS.md` y `gw-selector`). Presupuesto de compactaciones: 2 |
+| Siguiente paso | **Grupo C de la `0.8`, oleada 3** con `gw-orchestrate-dealer`: C12 (rama `spike/<tema>` que el `pre-push` y `merge-branch.sh` no dejan fusionar en una de trabajo), C13 (`scopeGuard`, alcance congelado por `Files` de la ficha) y A11 (los cuatro modos de trabajo en plan, `AGENTS.md` y `gw-selector`). La oleada 2 está cerrada (revisor de lo que falta: solo D50, ya hecha). Antes, mirar el CI de macOS de la última subida (`de6b79d` falló por un tiempo de espera de `test_check_summary`, en `pending.md`). Presupuesto de compactaciones: 2 |
 
 ### Fases
 
