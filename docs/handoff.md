@@ -11,8 +11,8 @@
 | Rama | **`0.8`: `ccr-d1e2d496-0vzck8`**, con `main` fusionado. `main` = `7a6d1bd` = **`0.7.1`** (2026-11-16, parche desde `version/0.7.1`). `version/1.0.0` se queda con el diseño (`docs/design/`) |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | **`0.8.0` en `main`** (`b3825b8`, 2026-11-18; CI en verde). Etiqueta y release `v0.8.0` **pendientes de una sesión local** (el proxy de la nube da 403): pasos y textos en `docs/records/release-v0.8.0.md` |
-| Siguiente paso | **`0.8.0` publicada en `main`** (`b3825b8`, 2026-11-18, CI en verde). **Pendiente:** crear la release `v0.8.0` desde una sesión local (el proxy de la nube no deja; usuario, 2026-11-18), con los textos de `docs/records/release-v0.8.0.md`. Después, abrir la `0.9` «Front» con su recogida (`gw-harvest`). Presupuesto de compactaciones: 1 |
+| Último punto estable | **`0.8.0` en `main`** (`b3825b8`, 2026-11-18; CI en verde). Etiqueta y release `v0.8.0` creadas por el agente desde una sesión local (2026-11-18, a petición del usuario) |
+| Siguiente paso | **`0.8.0` publicada en `main`** (`b3825b8`, 2026-11-18, CI en verde); release `v0.8.0` creada desde una sesión local (2026-11-18). Siguiente: abrir la `0.9` «Front» con su recogida (`gw-harvest`). Presupuesto de compactaciones: 1 |
 
 ### Fases
 
