@@ -4,6 +4,11 @@
 - **Título:** el bloque de abajo.
 - **Cuerpo:** el segundo bloque. La entrada completa está en el CHANGELOG.
 - **Publicada:** pendiente: el proxy de la nube no deja crearla; se crea desde una sesión local (usuario, 2026-11-18).
+- **Desde la sesión local** (en `main` al día, `git fetch origin main`):
+  1. A mano: en GitHub, *Draft a new release*, etiqueta nueva `v0.8.0` sobre `b3825b8`, y se pegan el título y el
+     cuerpo de abajo.
+  2. O sola: `git tag v0.8.0 b3825b8 && git push origin v0.8.0`; `release.yml` la crea con estos textos.
+  3. Después, se cambia «Publicada» por la fecha y se quita la línea «Pendiente» de la bitácora.
 
 ```text
 Galivelop-workflow v0.8.0
