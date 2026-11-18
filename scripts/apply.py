@@ -27,7 +27,10 @@ What it copies (workflow -> project):
   templates/claude/agents/*     -> .claude/agents/   (subagent types such as gw-worker; workflow-owned like the hooks)
   templates/claude/settings.json   merged into .claude/settings.json: missing env keys, other missing keys (worktree.baseRef)
                                    and hook entries are added; a value the project already set is kept
-                                   (matched by event + matcher + command); nothing is removed or rewritten
+                                   (matched by event + matcher + command); a command the template registers under another matcher
+                                   of the same event is removed from the project's entries with the other matcher (D128: a
+                                   matcher change such as whole-read.py Read -> ^(Read|Bash)$ must not run the hook twice;
+                                   an entry left without hooks goes too); project-own commands are never touched
   templates/<language>/ (`language` of the config), with {{key}} placeholders rendered from the config:
     AGENTS.md, CLAUDE.md        -> the project root; created when missing; an existing one without the
                                    galivelop-workflow marker, or with an older one, gets a .gw-new proposal to merge
@@ -568,6 +571,22 @@ def merge_settings(current, template):
         if not isinstance(have, list):
             raise ApplyError(f"apply: .claude/settings.json: hooks.{event} is not a list; fix it and rerun: "
                              f"python3 -m json.tool .claude/settings.json")
+        wanted = {}  # command -> the matchers the template registers it under in this event
+        for entry in entries:
+            for h in entry.get("hooks") or []:
+                wanted.setdefault(h.get("command"), set()).add(entry.get("matcher"))
+        for e in list(have):
+            if not isinstance(e, dict) or not isinstance(e.get("hooks"), list):
+                continue
+            stale = [h for h in e["hooks"] if isinstance(h, dict) and h.get("command") in wanted
+                     and e.get("matcher") not in wanted[h.get("command")]]
+            if not stale:
+                continue
+            e["hooks"] = [h for h in e["hooks"] if not any(h is x for x in stale)]
+            if not e["hooks"]:
+                have.remove(e)
+            added.append(f"{event} hook{'s' if len(stale) > 1 else ''} removed from matcher "
+                         f"({e.get('matcher') or 'no matcher'}): the template registers it under another")
         for entry in entries:
             matcher = entry.get("matcher")
             same = [e for e in have if isinstance(e, dict) and e.get("matcher") == matcher]

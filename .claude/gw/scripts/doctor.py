@@ -560,6 +560,20 @@ def check_settings(rep, root):
                         rel = os.path.relpath(f, str(root))
                         rep.fail(f"settings {event}", f"hook command points to {rel}, which does not exist",
                                  "restore it (/gw-update) or fix the command in .claude/settings.json")
+    for event, entries in hooks.items():
+        seen = {}
+        for entry in entries if isinstance(entries, list) else []:
+            for h in (entry.get("hooks") or []) if isinstance(entry, dict) and isinstance(entry.get("hooks"), list) else []:
+                command = h.get("command") if isinstance(h, dict) else None
+                if not command:
+                    continue
+                if command in seen:
+                    problems += 1
+                    rep.fail(f"settings {event}", f"'{command}' is registered in two entries (matchers "
+                             f"'{seen[command]}' and '{entry.get('matcher') or ''}'), so it runs twice",
+                             "python3 scripts/apply.py --update (from the workflow) drops the old one, "
+                             "or delete one entry in .claude/settings.json")
+                seen.setdefault(command, entry.get("matcher") or "")
     for event, command in stale_flow_hooks(hooks, root):
         problems += 1
         rep.warn(f"settings {event}", f"'{command}' runs a workflow script from outside .claude/gw/scripts/ "

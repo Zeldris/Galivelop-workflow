@@ -537,6 +537,71 @@ class Apply(unittest.TestCase):
         self.assertIn(f"Flujo Galivelop-workflow v{VERSION}", out)
         self.assertIn("Siguiente:", out)
 
+    # D128: a matcher the template changed must not leave the project's old entry running the hook twice
+    def _whole_read_entries(self):
+        s = json.loads(self.p.read(".claude/settings.json"))
+        return s, [e for e in s["hooks"]["PreToolUse"] if any("whole-read.py" in h["command"] for h in e["hooks"])]
+
+    def _downgrade_whole_read(self, extra=None):
+        """Settings as 0.7.x left them: whole-read.py under the old matcher `Read` (plus optional `extra` hooks there)."""
+        s, reads = self._whole_read_entries()
+        reads[0]["matcher"] = "Read"
+        if extra:
+            reads[0]["hooks"].extend(extra)
+        self.p.write(".claude/settings.json", json.dumps(s))
+
+    def test_old_matcher_entry_of_a_template_command_is_dropped_on_update(self):
+        self.applied()
+        s, reads = self._whole_read_entries()
+        s["hooks"]["PreToolUse"].append({"matcher": "Read", "hooks": list(reads[0]["hooks"])})  # runs twice
+        self.p.write(".claude/settings.json", json.dumps(s))
+        out = self.applied("--update")
+        self.assertIn("PreToolUse hook removed from matcher (Read)", out)
+        _, reads = self._whole_read_entries()
+        self.assertEqual([e["matcher"] for e in reads], ["^(Read|Bash)$"])
+        before = self.p.read(".claude/settings.json")
+        out = self.applied("--update")
+        self.assertEqual(self.p.read(".claude/settings.json"), before, "a second run changes nothing")
+        self.assertNotIn("removed from matcher", out)
+
+    def test_070_settings_end_with_only_the_new_whole_read_matcher(self):
+        self.applied()
+        self._downgrade_whole_read()
+        out = self.applied("--update")
+        _, reads = self._whole_read_entries()
+        self.assertEqual([e["matcher"] for e in reads], ["^(Read|Bash)$"], out)
+        self.assertEqual(sum(h["command"].count("whole-read.py") for e in reads for h in e["hooks"]), 1)
+
+    def test_dry_run_reports_the_removal_without_writing(self):
+        self.applied()
+        self._downgrade_whole_read()
+        before = self.p.read(".claude/settings.json")
+        code, out = self.p.run_apply("--update", "--dry-run")
+        self.assertEqual(code, 0, out)
+        self.assertIn("removed from matcher (Read)", out)
+        self.assertEqual(self.p.read(".claude/settings.json"), before)
+
+    def test_project_own_hook_shares_the_old_entry_and_keeps_it(self):
+        self.applied()
+        own = {"type": "command", "command": "bash .claude/hooks/mine.sh"}
+        self._downgrade_whole_read([own])  # the old `Read` entry holds whole-read.py and the project's own hook
+        self.applied("--update")
+        s, reads = self._whole_read_entries()
+        self.assertEqual([e["matcher"] for e in reads], ["^(Read|Bash)$"])
+        kept = [e for e in s["hooks"]["PreToolUse"] if own in e["hooks"]]
+        self.assertEqual(len(kept), 1, s["hooks"]["PreToolUse"])
+        self.assertEqual(kept[0]["matcher"], "Read")
+        self.assertEqual(kept[0]["hooks"], [own], "only the template's command left that entry")
+
+    def test_own_hook_alone_under_another_matcher_is_not_touched(self):
+        self.applied()
+        s = json.loads(self.p.read(".claude/settings.json"))
+        own = {"matcher": "Read", "hooks": [{"type": "command", "command": "bash .claude/hooks/mine.sh"}]}
+        s["hooks"]["PreToolUse"].append(own)
+        self.p.write(".claude/settings.json", json.dumps(s))
+        self.applied("--update")
+        self.assertIn(own, json.loads(self.p.read(".claude/settings.json"))["hooks"]["PreToolUse"])
+
 
 class AgentsSkills(unittest.TestCase):  # D7: the skills are also plain copies in agentsSkillsDir
     def make(self, config=None):
