@@ -12,7 +12,13 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.0` publicada** (`main` = `b3825b8`, 2026-11-18; CI en verde; etiqueta y release `v0.8.0` creadas desde una sesión local) |
-| Siguiente paso | **`0.8.0` publicada en `main`** (`b3825b8`, 2026-11-18, CI en ver| Siguiente paso | **Apertura de la `0.9` «Front»: recogida (`gw-harvest`) del 2026-11-18 en curso**; propuestas en `docs/proposals/2026-11-18-*.md`, al usuario para decidir. Presupuesto de compactaciones: 1 |. Skills (2026-10-21)
+| Siguiente paso | **Apertura de la `0.9` «Front»: recogida (`gw-harvest`) del 2026-11-18 en curso**; propuestas en `docs/proposals/2026-11-18-*.md`, al usuario para decidir. Presupuesto de compactaciones: 1 |
+
+### Fases
+
+- [x] 0. Verificar (2026-10-21)
+- [x] 1. Esqueleto (2026-10-21)
+- [x] 2. Skills (2026-10-21)
 - [x] 3. Ganchos y scripts (2026-10-22; CI en verde en Linux y macOS)
 - [x] 4. Plantillas y aplicación (2026-10-22)
 - [x] 5. Piloto: Portal-Galivelop (2026-10-22; cerrada con el usuario)
