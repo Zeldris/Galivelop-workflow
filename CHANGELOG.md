@@ -81,6 +81,9 @@ in `docs/roadmap.en.md`).
   en el CI; `REVIEW.md` gana la regla de invariantes y el apartado «Navegadores»; el dealer no revisa aparte el
   último bloque si la revisión de la rama va justo después, clona sin registrar los repos que solo lee y añade
   `git diff --stat` al encargo de revisión.
+- Retro del sello (B44, B45, B46): `scope-guard.py` no cuenta como desviación las copias del flujo ni los cambios
+  que solo tocan la versión estampada, `review-scope.py --trivial` tampoco cuenta esas líneas y
+  `recover.py --state` dice la tarea en curso.
 
 ### EN
 
@@ -143,6 +146,9 @@ in `docs/roadmap.en.md`).
   `REVIEW.md` gains the invariants rule and the «Browsers» section; the dealer does not review the last block apart
   when the branch review comes right after, clones read-only repos apart without registering them and adds
   `git diff --stat` to the review brief.
+- Stamp retro (B44, B45, B46): `scope-guard.py` does not count workflow copies nor changes that only touch the
+  stamped version as deviations, `review-scope.py --trivial` does not count those lines either, and
+  `recover.py --state` shows the current task.
 
 ## [0.7.1] - 2026-11-16
 

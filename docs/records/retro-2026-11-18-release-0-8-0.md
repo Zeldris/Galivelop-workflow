@@ -1,6 +1,8 @@
 # Retro del sello de la `0.8.0` (2026-11-18)
 
-**Estado:** pendiente de la decisión del usuario.
+**Estado:** decidida por el usuario (2026-11-18): P1, P2 y P3 aprobadas y aplicadas (B44, B45, B46); P5 aprobada
+y aplazada a la `0.10` como B43; P4 rechazada: en la nube no hay conectores que desactivar (los tres servidores
+MCP los pone el entorno).
 
 Sesión del sello: CHANGELOG, versión, README y roadmap por dos `gw-worker` (Sonnet) en paralelo; la sesión principal
 revisó, hizo el commit `9ab4f9d` y corrió el check completo. Incluye el paso de `/gw-opt-tokens`.
