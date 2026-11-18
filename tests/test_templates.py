@@ -118,8 +118,10 @@ class Templates(unittest.TestCase):
 
     def test_agents_md_templates_need_no_include(self):
         """AGENTS.md must be readable by agents that do not expand `@file` lines (D7): only CLAUDE.md may use them."""
-        for lang in ("es", "en"):
-            lines = (TEMPLATES / lang / "AGENTS.md").read_text(encoding="utf-8").splitlines()
+        files = {lang: TEMPLATES / lang / "AGENTS.md" for lang in ("es", "en")}
+        files["repo"] = ROOT / "AGENTS.md"
+        for lang, path in files.items():
+            lines = path.read_text(encoding="utf-8").splitlines()
             with self.subTest(lang=lang):
                 self.assertEqual([l for l in lines if l.startswith("@")], [])
 

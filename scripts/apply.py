@@ -1500,8 +1500,9 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
         return
     regex = re.compile(r"(?<![\w.-])(" + "|".join(re.escape(o) for o in sorted(pairs, key=len, reverse=True))
                        + r")(?![\w-])")
+    skill_roots = [".claude/skills"] + ([config.agents_skills_dir(cfg).rstrip("/")] if config.agents_skills_dir(cfg) else [])
     own = (".claude/gw/scripts/", ".claude/gw/schema/", ".githooks/") + tuple(
-        f".claude/skills/{n}/" for n in sorted(wanted_skills))
+        f"{d}/{n}/" for d in skill_roots for n in sorted(wanted_skills))
     merged = {name for name, mode in ROOT_TEMPLATES if mode == "merged"}
     skip = {str(config.CONFIG_REL), ".claude/settings.json"}
     skip_dirs = tuple(f"{cfg[k].rstrip('/')}/" for k in ("recordsDir", "proposalsDir") if cfg.get(k))
@@ -1593,6 +1594,10 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
             dest = base / name
             owner = skill_version(root / dest / "SKILL.md")
             plan.tree(WORKFLOW / "skills" / name, dest, owner_version=owner, owned=owner is not None)
+    for base in skill_dirs:  # a workflow skill no longer wanted (its .claude/skills copy removed): its copy is an orphan
+        for name in available:
+            if name not in wanted_skills and skill_version(root / base / name / "SKILL.md") is not None:
+                plan.orphans.extend(base / name / f for f in files_under(root / base / name))
     # Skills adapted from Matt Pocock's say "license: MIT (see LICENSE-mattpocock-skills)": the file goes with them.
     if not self_apply:
         plan_old_skills(plan, wanted_skills)

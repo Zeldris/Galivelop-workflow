@@ -37,6 +37,8 @@ class Warns(unittest.TestCase):
             ".claude/gw/schema/gw.schema.json": "schema/gw.schema.json",
             ".claude/skills/gw-update/SKILL.md": "skills/gw-update/SKILL.md",
             ".claude/skills/LICENSE-mattpocock-skills": "LICENSE-mattpocock-skills",
+            ".agents/skills/gw-update/SKILL.md": "skills/gw-update/SKILL.md",
+            ".agents/skills/LICENSE-mattpocock-skills": "LICENSE-mattpocock-skills",
             ".githooks/pre-push": "templates/githooks/pre-push",
             ".claude/agents/gw-worker.md": "templates/claude/agents/gw-worker.md",
             ".claude/agents/gw-reviewer.md": "templates/claude/agents/gw-reviewer.md",

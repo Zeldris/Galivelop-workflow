@@ -612,6 +612,20 @@ class AgentsSkills(unittest.TestCase):  # D7: the skills are also plain copies i
         self.assertEqual(p.read(".agents/skills/my-skill/SKILL.md"), "mine\n")
         self.assertNotIn("my-skill", out)
 
+    def test_unwanted_workflow_skill_copy_is_reported_as_orphan(self):
+        p = self.make()
+        self.applied("--with", "gw-opt-ai")
+        shutil.rmtree(p.work / ".claude" / "skills" / "gw-opt-ai")  # the person uninstalls it
+        out = self.applied()
+        self.assertIn(".agents/skills/gw-opt-ai/SKILL.md is no longer in the workflow", out)
+        self.assertTrue((p.work / ".agents/skills/gw-opt-ai/SKILL.md").exists())
+
+    def test_workflow_copy_is_not_read_as_project_text_by_the_old_names_scan(self):
+        p = self.make()
+        out = self.applied()
+        self.assertNotIn("WARNING: .agents/skills/", out)
+        self.assertNotIn("uses the old name", out)
+
     def test_optional_skills_follow_with_in_both_dirs(self):
         p = self.make()
         self.applied()

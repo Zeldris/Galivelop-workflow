@@ -81,7 +81,7 @@ EXCEPTIONS = {
     },
 }
 
-COPY_PREFIXES = (".claude/gw/", ".claude/skills/", ".githooks/")  # applied copy: derived from the sources
+COPY_PREFIXES = (".claude/gw/", ".claude/skills/", ".agents/skills/", ".githooks/")  # applied copy: derived from the sources
 SKIP_CONTENT = (".md",)
 ACCENTED = re.compile("[áéíóúñüÁÉÍÓÚÑÜ¿¡]")
 WORD_RE = re.compile(r"[A-Z]?[a-z]+|[A-Z]+(?![a-z])|[a-z]+")

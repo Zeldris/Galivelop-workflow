@@ -887,6 +887,17 @@ def semantic_errors(config):
         errors.append(f"$.handoff: cellHardLimit ({sizes['cellHardLimit']}) must not be below cellLimit "
                       f"({sizes['cellLimit']}): the hard cap would fail cells the soft limit still accepts; raise "
                       "cellHardLimit, lower cellLimit, or set cellHardLimit to 0 (off) in .claude/gw.json")
+    agents_dir = config.get("agentsSkillsDir")
+    if isinstance(agents_dir, str) and agents_dir:
+        norm = posixpath.normpath(agents_dir.replace("\\", "/")).strip("/")
+        reason = None
+        if "\\" in agents_dir or re.match(r"^[A-Za-z]:", agents_dir):
+            reason = "must be a repo-relative path with '/' separators, no backslash or drive letter"
+        elif any(norm == d or norm.startswith(d + "/") for d in (".claude/skills", ".git", ".claude/gw")):
+            reason = "must not be .claude/skills (the first copy), nor inside .git or .claude/gw"
+        if reason:
+            errors.append(f"$.agentsSkillsDir: {agents_dir!r} {reason}; use \".agents/skills\" or another folder, or "
+                          "\"\" to turn it off, in .claude/gw.json")
     agent_map = config.get("agentMap")
     if isinstance(agent_map, dict) and isinstance(agent_map.get("prefixes"), dict):
         for short in agent_map["prefixes"]:
