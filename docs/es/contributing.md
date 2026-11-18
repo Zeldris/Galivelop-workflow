@@ -90,7 +90,7 @@ todos y deja la entrada del CHANGELOG por rellenar; sin argumento, comprueba que
 
 **Fragmentos (D68):** una rama no edita `CHANGELOG.md`: escribe sus notas en `changelog.d/<rama>.md` (la `/` de la
 rama se vuelve `-`: `agent/D68-x` → `changelog.d/agent-D68-x.md`), así dos worktrees en paralelo nunca chocan en él.
-Formato: `### ES`, sus notas, `### EN`, sus notas (las mismas, en inglés), sin nada antes ni otros títulos `#`:
+Formato: `### ES`, sus notas, `### EN`, sus notas (las mismas, en inglés), sin nada antes ni otros títulos `#` (ninguna línea de una nota puede empezar por `#`: se toma por título y el fragmento se rechaza):
 
 ```markdown
 ### ES

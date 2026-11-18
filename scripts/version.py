@@ -442,7 +442,11 @@ def bump_plan(path, new):
 
 # D68: CHANGELOG fragments. Each branch writes <changelogFragmentsDir>/<branch>.md (the branch's "/" made "-")
 # instead of editing CHANGELOG.md, so parallel worktrees never clash on it; the fold puts them into the version's entry.
-FRAGMENT_SKIP = ("README.md", ".gitkeep")
+FRAGMENT_SKIP = ("README.md", ".gitkeep")  # and every hidden file (.DS_Store …): is_fragment_skipped()
+
+
+def is_fragment_skipped(name):
+    return name in FRAGMENT_SKIP or name.startswith(".")
 
 
 def fragment_settings(rev=None):
@@ -488,7 +492,7 @@ def fragment_paths(directory):
         return []
     found = []
     for path in sorted(base.iterdir()):
-        if path.name in FRAGMENT_SKIP:
+        if is_fragment_skipped(path.name):
             continue
         if not path.is_file() or path.suffix != ".md":
             raise VersionError(f"{directory}/{path.name} is not a CHANGELOG fragment (only <branch>.md files go "
@@ -543,6 +547,23 @@ def fold_plan(version, text, fragments):
     return nl.join(out)
 
 
+def closed_entry(version, retry):
+    """Why the CHANGELOG entry of `version` must not take a fold, or None: it is released (tag v<version>), or no
+    vX.Y.Z tag is reachable from HEAD, so that cannot be told (fails closed: a clone without tags). `retry` = the
+    command that retries."""
+    code, _ = git("describe", "--tags", "--abbrev=0", "--match", "v[0-9]*", "HEAD")
+    if code != 0:
+        return (f"no vX.Y.Z tag reachable from HEAD, so it cannot tell whether {version} is already released; fetch "
+                f"the tags and retry: git fetch --tags origin && {retry}")
+    code, tag = git("tag", "--list", f"v{version}")
+    if code != 0:
+        return f"cannot list the tags; fix the clone and retry: {retry}"
+    if tag:
+        return (f"{version} is already released (tag v{version}), so its CHANGELOG entry is closed; bump to a new "
+                "version, which folds the fragments: python3 scripts/version.py X.Y.Z")
+    return None
+
+
 def collect_fragments():
     """[(path, name, ES lines, EN lines)] of the working tree's fragments, all parsed; [] when the feature is off or
     there are none. Raises VersionError with the reason for the first bad one."""
@@ -586,7 +607,7 @@ def fragments_release_check():
     if code != 0:
         return [f"cannot list {directory} in HEAD to look for CHANGELOG fragments; commit and retry: "
                 "python3 scripts/version.py --release"]
-    left = [p for p in out.splitlines() if p and p.rsplit("/", 1)[-1] not in FRAGMENT_SKIP]
+    left = [p for p in out.splitlines() if p and not is_fragment_skipped(p.rsplit("/", 1)[-1])]
     if not left:
         return []
     return [f"unfolded CHANGELOG fragments in HEAD: {', '.join(left)}; fold them into the entry, commit and retry: "
@@ -643,17 +664,12 @@ def main(argv):
             return 1
         return 0
     if argv == ["--fold"]:
-        code, tag = git("tag", "--list", f"v{current}")
-        if code != 0:
-            print("version: cannot list the tags; fix the clone and retry: python3 scripts/version.py --fold",
-                  file=sys.stderr)
-            return 1
-        if tag:
-            print(f"version: {current} is already released (tag v{current}), so its entry is closed; bump first, "
-                  "which folds the fragments: python3 scripts/version.py X.Y.Z", file=sys.stderr)
-            return 1
         try:
-            folded = fold(current)
+            fragments = collect_fragments()
+            closed = closed_entry(current, "python3 scripts/version.py --fold") if fragments else None
+            if closed:
+                raise VersionError(closed)
+            folded = fold(current, fragments)
         except VersionError as e:
             print(f"version: {e}", file=sys.stderr)
             return 1
@@ -686,7 +702,15 @@ def main(argv):
         print(f"{new!r} is not SemVer (X.Y.Z); retry: python3 scripts/version.py 0.2.0", file=sys.stderr)
         return 2
     try:
+        if new != current:
+            code, tag = git("tag", "--list", f"v{new}")
+            if code != 0 or tag:
+                raise VersionError(closed_entry(new, f"python3 scripts/version.py {new}")
+                                   or f"cannot list the tags; fix the clone and retry: python3 scripts/version.py {new}")
         fragments = collect_fragments() if new != current else []
+        closed = closed_entry(new, f"python3 scripts/version.py {new}") if fragments else None
+        if closed:
+            raise VersionError(closed)
         if fragments:  # checked before anything is written: the new entry must take the fold
             fold_plan(new, changelog_plan(new) or read(ROOT / "CHANGELOG.md"), [f[1:] for f in fragments])
         _, skipped = sync(new, new != current)

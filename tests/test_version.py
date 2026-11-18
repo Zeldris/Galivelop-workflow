@@ -704,7 +704,16 @@ class Fragments(unittest.TestCase):
         nxt = text.find("\n## [", start + 1)
         return text[start:nxt if nxt != -1 else None]
 
+    def tag_old(self):
+        """A reachable vX.Y.Z tag of an older release, so the fold can tell the version is not released."""
+        self.git("add", "-A")
+        self.git("commit", "-q", "--allow-empty", "-m", "base")
+        self.git("tag", "v0.0.1")
+
     def bump(self):
+        if subprocess.run(["git", "-C", str(self.tmp), "tag", "--list", "v*"], capture_output=True,
+                          text=True).stdout == "":
+            self.tag_old()
         r = run(self.tmp, "9.8.7")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         return r
@@ -810,6 +819,7 @@ class Fragments(unittest.TestCase):
         self.assertNotIn("unfolded", run(self.tmp, "--release").stdout)
         self.set_gw(changelogFragments=None, changelogFragmentsDir="notes/next")
         self.git("tag", "-d", f"v{VERSION}")
+        self.git("tag", "v0.0.1")
         moved = self.frag("y.md", directory="notes/next")
         self.assertEqual(run(self.tmp, "--fold").returncode, 0)
         self.assertFalse(moved.exists())
@@ -833,3 +843,37 @@ class Fragments(unittest.TestCase):
         data = log.read_bytes()
         self.assertNotIn(b"\n", data.replace(b"\r\n", b""))
         self.assertIn(b"- x.md en.\r\n", data)
+
+    def test_fold_and_bump_fail_closed_in_a_clone_without_tags(self):  # Findings 1
+        self.commit_all("released, tags not fetched")
+        self.frag("x.md")
+        before = (self.tmp / "CHANGELOG.md").read_text()
+        for args, retry in ((["--fold"], "python3 scripts/version.py --fold"),
+                            (["9.8.7"], "python3 scripts/version.py 9.8.7")):
+            r = run(self.tmp, *args)
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+            self.assertIn("no vX.Y.Z tag reachable from HEAD", r.stderr)
+            self.assertIn(f"git fetch --tags origin && {retry}", r.stderr)
+            self.assertEqual((self.tmp / "CHANGELOG.md").read_text(), before)
+            self.assertTrue((self.tmp / "changelog.d" / "x.md").exists())
+
+    def test_bump_to_a_released_version_is_refused(self):  # Findings 2
+        self.commit_all("old"); self.git("tag", "v0.4.0")
+        before = (self.tmp / "CHANGELOG.md").read_text()
+        for with_fragment in (False, True):
+            if with_fragment:
+                self.frag("x.md")
+            r = run(self.tmp, "0.4.0")
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+            self.assertIn("0.4.0 is already released (tag v0.4.0)", r.stderr)
+            self.assertEqual((self.tmp / "CHANGELOG.md").read_text(), before)
+            self.assertIn(f'"version": "{VERSION}"', (self.tmp / ".claude-plugin" / "plugin.json").read_text())
+
+    def test_hidden_files_are_not_fragments(self):  # Findings 3
+        self.frag(".DS_Store", b"\x00\x01")
+        self.assertEqual(run(self.tmp, "--fold").stdout.strip(), "no CHANGELOG fragments to fold")
+        self.frag("x.md")
+        self.bump()
+        self.assertTrue((self.tmp / "changelog.d" / ".DS_Store").exists())
+        self.commit_all("with .DS_Store"); self.git("tag", "v9.8.7")
+        self.assertNotIn("unfolded", run(self.tmp, "--release").stdout)

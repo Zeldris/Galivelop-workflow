@@ -90,7 +90,7 @@ leaves the CHANGELOG entry to fill in; without an argument it checks none was le
 
 **Fragments (D68):** a branch does not edit `CHANGELOG.md`: it writes its notes to `changelog.d/<branch>.md` (the
 branch's `/` made `-`: `agent/D68-x` → `changelog.d/agent-D68-x.md`), so two parallel worktrees never clash on it.
-Format: `### ES`, its notes, `### EN`, its notes (the same, in English), with nothing before and no other `#` heading:
+Format: `### ES`, its notes, `### EN`, its notes (the same, in English), with nothing before and no other `#` heading (no line of a note may start with `#`: it is taken for a heading and the fragment is rejected):
 
 ```markdown
 ### ES
