@@ -1,5 +1,6 @@
 """scripts/review-scope.py (D82) and apply.py --vendored: the phase 1 review leaves out unchanged workflow copies. Every
 failing case checks the message, not only the exit code."""
+import json
 import shutil
 import sys
 import tempfile
@@ -184,6 +185,35 @@ class Trivial(ScopeBase):
         self.assertEqual(code, 1, out)
         self.assertIn("not trivial: 1 code file(s), 20 changed line(s) (2 version-stamp line(s) not counted), "
                       "reviewTrivialLines=10", out)
+
+    def test_skip_stamps_off_counts_the_stamp_lines(self):
+        self.limit(1)
+        cfg = json.loads((self.p.work / ".claude/gw.json").read_text())
+        cfg["scopeGuard"] = {"mode": "warn", "skipStamps": False}
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.stamped_base("0.8.0", 20)
+        self.p.run("git", "add", "-A")
+        self.p.run("git", "commit", "-qm", "base file")
+        self.p.run("git", "branch", "-f", "main", "HEAD")
+        self.stamped_base("0.8.1", 20)
+        self.commit()
+        code, out = self.scope("--trivial")
+        self.assertEqual(code, 1, out)
+        self.assertIn("not trivial: 1 code file(s), 2 changed line(s), reviewTrivialLines=1", out)
+
+    def test_bracket_paths_are_literal_in_the_trivial_diff(self):
+        self.limit(25)
+        self.p.write("app/[id].py", "# galivelop-workflow v0.8.0\n" + "".join(f"x{i} = {i}\n" for i in range(20)))
+        self.p.write("app/i.py", "")
+        self.p.run("git", "add", "-A")
+        self.p.run("git", "commit", "-qm", "base files")
+        self.p.run("git", "branch", "-f", "main", "HEAD")
+        self.p.write("app/[id].py", "# galivelop-workflow v0.8.1\n" + "".join(f"x{i} = {i}\n" for i in range(20)))
+        self.p.write("app/i.py", "".join(f"y{i} = {i}\n" for i in range(20)))
+        self.commit()
+        code, out = self.scope("--trivial")
+        self.assertEqual(code, 0, out)  # a glob would count i.py twice (40 lines)
+        self.assertIn("20 changed code line(s) (2 version-stamp line(s) not counted)", out)
 
     def test_an_empty_scope_is_trivial(self):
         code, out = self.scope("--trivial")

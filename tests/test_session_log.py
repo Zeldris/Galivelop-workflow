@@ -924,8 +924,8 @@ class Recover(Base):
 
     def test_state_reads_the_task_from_an_agent_branch(self):
         self.p.git("checkout", "-q", "-b", "agent/GW-13-topic", "main")
-        self.assertEqual(self.task_line(), "- Current task: GW-13 (from the branch); if it is closed or not yours: "
-                         + self.task_line().split("not yours: ")[1])
+        self.assertEqual(self.task_line(), "- Current task: GW-13 (from the branch name); it follows the branch, so "
+                                           "change branch to change it")  # clearing the mark would change nothing
 
     # ---- E59: HEAD against origin/<branch>
 

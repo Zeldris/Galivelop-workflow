@@ -66,6 +66,8 @@ def mode_of(cfg):
     return config.scope_guard(cfg)["effective"]
 
 
+VENDORED_TIMEOUT = 30  # seconds `apply.py --vendored` may take before nothing is skipped
+
 IN_PROGRESS = ("MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "REBASE_HEAD", "rebase-merge", "rebase-apply",
                "SQUASH_MSG")  # metrics.IN_PROGRESS, plus `git merge --squash`: the other side's files
 
@@ -126,27 +128,28 @@ def warn_once(top, key):
 
 def vendored_set(top):
     """B44: the files the project holds as unchanged copies of the workflow (`apply.py --vendored`, through
-    review-scope.py), written by `apply.py` and not by the task. Empty when the workflow repo or the answer is not
-    available: then they count as before (the safe side)."""
+    review-scope.py), written by `apply.py` and not by the task. Only the pre-commit uses it: before an edit a copy is
+    always unchanged, so the hook cannot tell it from a file the task is about to change. Empty when the workflow repo or
+    the answer is not available (a timeout included): then they count as before (the safe side)."""
     try:
         workflow = rs.workflow_dir(None)
-        return rs.vendored(top, workflow) if workflow else set()
-    except Exception:  # noqa: BLE001 (a failed lookup only means nothing is skipped)
+        return rs.vendored(top, workflow, timeout=VENDORED_TIMEOUT) if workflow else set()
+    except Exception:  # noqa: BLE001 (a failed lookup, a timeout, only means nothing is skipped)
         return set()
 
 
 def stamp_only_staged(top, rel):
     """B44: True when the staged change of `rel` only changes the stamped version (`galivelop-workflow vX.Y.Z`, `version:`)."""
-    r = subprocess.run(["git", "diff", "--cached", "-U0", "--no-renames", "--", rel], cwd=str(top), capture_output=True,
+    r = subprocess.run(["git", "--literal-pathspecs", "diff", "--cached", "-U0", "--no-renames", "--", rel], cwd=str(top), capture_output=True,
                        text=True, encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL)
     if r.returncode != 0:
         return False
-    stamped, other = stamp.stamp_diff(r.stdout)
+    stamped, other = stamp.stamp_diff(r.stdout, rel)
     return stamped > 0 and other == 0
 
 
-def stamp_only_edit(event):
-    """B44: True when an Edit or MultiEdit event only replaces stamped-version lines with the same lines."""
+def stamp_only_edit(event, rel=None):
+    """B44: True when an Edit or MultiEdit event only replaces stamped-version lines (of the file REL) with the same lines."""
     inp = event.get("tool_input") or {}
     edits = inp.get("edits") if event.get("tool_name") == "MultiEdit" else [inp]
     if not isinstance(edits, list) or not edits:
@@ -154,7 +157,7 @@ def stamp_only_edit(event):
     for e in edits:
         if not isinstance(e, dict) or not isinstance(e.get("old_string"), str) or not isinstance(e.get("new_string"), str):
             return False
-        if not stamp.only_stamp(e["old_string"].splitlines(), e["new_string"].splitlines()):
+        if not stamp.only_stamp(e["old_string"].splitlines(), e["new_string"].splitlines(), rel):
             return False
     return True
 
@@ -197,8 +200,8 @@ def hook():
     base, record, patterns, ids = scope_of(top, cfg, task_id)
     if patterns is None or always_allowed(rel, cfg, base, ids) or task.in_files(rel, patterns):
         return 0
-    if stamp_only_edit(event) or rel in vendored_set(top):
-        return 0  # B44: a version stamp or a copy of the workflow is not a deviation
+    if config.scope_guard(cfg)["skipStamps"] and stamp_only_edit(event, rel):
+        return 0  # B44: a version stamp is not a deviation (a copy of the workflow is: before the edit it is always unchanged)
     way = how_on(task_id, record, rel, task_cmd(top))
     if mode == "block":
         qg.emit({"permissionDecision": "deny", "permissionDecisionReason":
@@ -276,9 +279,10 @@ def staged_check(top, cfg, mode):
         raise RuntimeError(f"git diff --cached failed: {r.stderr.strip()}")
     names = [p for p in r.stdout.split("\0") if p]
     outside = [p for p in names if not always_allowed(p, cfg, base, ids) and not task.in_files(p, patterns)]
+    guard = config.scope_guard(cfg)
     if outside:  # B44: copies of the workflow and version-stamp-only changes are not deviations (a `chore(H..)` stamp commit
-        vendored = vendored_set(top)  # is all of them, so it needs no record of its own either)
-        outside = [p for p in outside if p not in vendored and not stamp_only_staged(top, p)]
+        vendored = vendored_set(top) if guard["skipVendored"] else set()  # is all of them, so it needs no record either)
+        outside = [p for p in outside if p not in vendored and not (guard["skipStamps"] and stamp_only_staged(top, p))]
     grown = unlogged(top, record, cfg) if record in names else []
     if not outside and not grown:
         return 0

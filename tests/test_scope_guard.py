@@ -373,7 +373,7 @@ class VersionStamp(ScopeBase):
                 f"v = {vendored!r}\n"
                 "if v is not None:\n"
                 "    m.rs.workflow_dir = lambda arg: Path('.')\n"
-                "    m.rs.vendored = lambda root, workflow: v\n"
+                "    m.rs.vendored = lambda root, workflow, timeout=None: v\n"
                 "sys.exit(m.staged(None))\n")
         return self.p.run(sys.executable, "-B", "-c", code, cwd=str(self.p.work))
 
@@ -419,6 +419,81 @@ class VersionStamp(ScopeBase):
         self.assertEqual(len(self.deviations()), before)
         out = self.spec(edit("x = 1", "x = 2"))
         self.assertIn("`src/s.py` is outside the scope of task C13", out["additionalContext"])
+
+    def hook_with_vendored(self, rel, vendored, old="a", new="b"):
+        """Output of the PreToolUse hook for an edit of REL while apply.py --vendored says VENDORED (patched in)."""
+        event = {"hook_event_name": "PreToolUse", "tool_name": "Edit", "cwd": str(self.p.work),
+                 "tool_input": {"file_path": rel, "old_string": old, "new_string": new}}
+        code = ("import importlib.util, sys; from pathlib import Path\n"
+                "spec = importlib.util.spec_from_file_location('sg', '.claude/gw/scripts/scope-guard.py')\n"
+                "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+                "m.rs.workflow_dir = lambda arg: Path('.')\n"
+                f"m.rs.vendored = lambda root, workflow, timeout=None: {vendored!r}\n"
+                "sys.exit(m.main([]))\n")
+        code, out = self.p.run(sys.executable, "-B", "-c", code, stdin=json.dumps(event), cwd=str(self.p.work))
+        self.assertEqual(code, 0, out)
+        return out
+
+    def hook_edit(self, old, new, rel="src/s.py"):
+        event = {"hook_event_name": "PreToolUse", "tool_name": "Edit", "cwd": str(self.p.work),
+                 "tool_input": {"file_path": rel, "old_string": old, "new_string": new}}
+        code, out = self.p.run(sys.executable, "-B", str(self.p.work / ".claude/gw/scripts/scope-guard.py"),
+                               stdin=json.dumps(event), cwd=str(self.p.work))
+        self.assertEqual(code, 0, out)
+        return out
+
+    def test_hook_does_not_exempt_a_vendored_copy_before_the_edit(self):
+        self.p.write("src/b.py", "b = 5\n")
+        out = self.spec(self.hook_with_vendored("src/b.py", {"src/b.py"}))  # before an edit a copy is always unchanged
+        self.assertIn("`src/b.py` is outside the scope of task C13", out["additionalContext"])
+
+    def test_vendored_set_is_empty_when_apply_times_out(self):
+        import subprocess as sp
+        mod = self.load_guard()
+        mod.rs.workflow_dir = lambda arg: Path(".")
+
+        def slow(*a, **k):
+            raise sp.TimeoutExpired("apply.py", k.get("timeout"))
+        saved, sp.run = sp.run, slow
+        try:
+            self.assertEqual(mod.vendored_set(self.p.work), set())  # nothing skipped: the safe side
+        finally:
+            sp.run = saved
+
+    def test_skip_keys_off_make_stamps_and_copies_count_again(self):
+        self.set_config(scopeGuard={"mode": "warn", "skipStamps": False, "skipVendored": False})
+        self.stamped("0.8.1")
+        self.p.git("add", "-A")
+        code, err = self.staged_err()
+        self.assertEqual(code, 0)
+        self.assertIn("  src/s.py", err)  # skipStamps false: the stamp-only change is a deviation
+        self.p.write("src/b.py", "b = 5\n")
+        self.p.git("add", "-A")
+        code, err = self.staged_err({"src/b.py"})
+        self.assertIn("  src/b.py", err)  # skipVendored false: the copy counts
+        out = self.spec(self.hook_edit("# galivelop-workflow v0.8.0", "# galivelop-workflow v0.8.1"))
+        self.assertIn("`src/s.py` is outside the scope of task C13", out["additionalContext"])
+
+    def test_a_json_version_outside_the_stamped_files_is_not_a_stamp(self):
+        self.p.write("src/package.json", '{\n  "version": "4.17.20"\n}\n')
+        self.p.git("add", "-A")
+        self.p.commit("a package")
+        self.p.write("src/package.json", '{\n  "version": "4.17.21"\n}\n')
+        self.p.git("add", "-A")
+        code, err = self.staged_err()
+        self.assertIn("  src/package.json", err)
+
+    def test_the_staged_diff_takes_a_bracket_path_literally(self):
+        self.p.write("app/[id].py", "# galivelop-workflow v0.8.0\n")
+        self.p.write("app/i.py", "x = 1\n")
+        self.p.git("add", "-A")
+        self.p.commit("two files")
+        self.p.write("app/[id].py", "# galivelop-workflow v0.8.1\n")
+        self.p.write("app/i.py", "x = 2\n")
+        self.p.git("add", "-A")
+        code, err = self.staged_err()
+        self.assertIn("  app/i.py", err)
+        self.assertNotIn("app/[id].py", err)  # a glob `[id]` would have read i.py's change into the stamp file's
 
 
 class Parsing(unittest.TestCase):

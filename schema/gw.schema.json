@@ -1428,7 +1428,9 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "mode": {"type": "string", "enum": ["off", "warn", "block", "auto"], "default": "warn"}
+        "mode": {"type": "string", "enum": ["off", "warn", "block", "auto"], "default": "warn"},
+        "skipStamps": {"type": "boolean", "default": true, "description": "B44: a change that only touches the stamped version (galivelop-workflow vX.Y.Z, version) is not a deviation (scope-guard.py), and review-scope.py --trivial does not count those lines. false = they count."},
+        "skipVendored": {"type": "boolean", "default": true, "description": "B44: a staged file that apply.py --vendored says is an unchanged copy of the workflow is not a deviation (pre-commit only; needs the workflow repo: $GW_WORKFLOW). false = it counts."}
       },
       "default": {"mode": "warn"},
       "description": "Frozen scope (C13): scope-guard.py, a PreToolUse hook on Edit/Write/MultiEdit/NotebookEdit, compares the edited file with the `## Files` section of the current task's record (taskRecord.path/<id>.md; the current task as in questions-guard.py). A file outside it: warn = allowed with a warning once per task and file, and a line in <git common dir>/gw/deviations.jsonl (task.py deviations); block = denied; auto = block while modes.questions is true (restrictive), else warn; off = nothing. The record, its folder, the questions file and the log are always allowed; no task, no record or no Files section = allowed. The pre-commit hook checks the staged files the same way (outside Claude Code too): warns, or refuses in block mode. To go on: add the file to Files and explain it in the record's Change log, or open a new task: python3 scripts/task.py new <newid> --related <id>."

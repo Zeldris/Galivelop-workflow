@@ -635,8 +635,8 @@ def task_record(config):
 
 
 def scope_guard(config):
-    """The `scopeGuard` key (C13) as a dict: `mode` as written (off, warn, block or auto) and `effective`, the mode the
-    guard applies (auto = block when modes.questions is restrictive, else warn)."""
+    """The `scopeGuard` key (C13) as a dict: `mode` as written (off, warn, block or auto), `skipStamps` and `skipVendored`
+    (B44) and `effective`, the mode the guard applies (auto = block when modes.questions is restrictive, else warn)."""
     out = _section(config, "scopeGuard")
     mode = out["mode"]
     out["effective"] = ("block" if modes(config)["questions"] else "warn") if mode == "auto" else mode

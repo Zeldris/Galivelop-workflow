@@ -563,6 +563,8 @@ def task_line(root):
         return []
     if not found:
         return ["- Current task: none"]
+    if source == "branch":  # the mark is not what says it: clearing it changes nothing
+        return [f"- Current task: {found} (from the branch name); it follows the branch, so change branch to change it"]
     return [f"- Current task: {found} (from the {source}); if it is closed or not yours: "
             f"{script_command(root).replace('recover.py', 'task.py')} current --clear"]
 
