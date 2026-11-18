@@ -281,8 +281,8 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | C3 | Sin repetir preguntas ya respondidas | hecho (2026-11-17; el inicio de sesión muestra solo las abiertas no vistas) |
 | C4 | Modo restrictivo activo, con su gancho | pendiente (pasa de la `0.7`) |
 | C5 | Modo restrictivo inactivo: aviso y «riesgo aceptado» | pendiente (pasa de la `0.7`) |
-| C6 | Valor por defecto: inactivo en los proyectos, activo en este repo | pendiente (pasa de la `0.7`) |
-| C7 | Un solo interruptor: skill `gw-mode` | pendiente (pasa de la `0.7`) |
+| C6 | Valor por defecto: inactivo en los proyectos, activo en este repo | hecho (2026-11-18; valor por defecto, con C7) |
+| C7 | Un solo interruptor: skill `gw-mode` | hecho (2026-11-18) |
 | C8 | `modes.careful` (antes de una orden destructiva), activo por defecto | hecho (2026-11-17; `careful.py` en PreToolUse, `modes.careful`, `modes.carefulWorktrees`) |
 | C10 | Un subagente no pregunta al usuario: devuelve la pregunta | hecho (2026-11-17; regla en `AGENTS.md` y plantillas, `questions.py add --refs`) |
 | D14 | `trace.py <id>` | hecho (2026-11-17; rangos y listas de ids, `--json`, `--limit`, `--no-docs`, lo declarado y lo deducido) |
@@ -290,7 +290,7 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | D62 | El `pre-push` avisa, sin bloquear, si el último CI de la rama está en rojo (`ci-status.py`, si hay `gh`) (recogida `0.6`, image-generator P5) | hecho (2026-11-17; `prepushCiWarn`, `prepushCiWarnTimeout`) |
 | D63 | `templates/github/check.yml` con `workflow_call`: un `release.yml` lo llama con `uses:` y `needs:` en vez de copiar sus pasos; el del flujo también (recogida `0.6`, image-generator P6) | hecho (2026-11-17; `release.yml`: `verify` → `check` → `release`) |
 | A11 | Los cuatro modos de trabajo en el plan, `AGENTS.md` y `gw-selector`: SDD siempre (ficha), DDD con dominio, TDD con comportamiento testeable, exploración acotada (H17 P2; usuario, 2026-11-08) | pendiente (pasa de la `0.7`) |
-| C11 | Ficha de tarea (`docs/tasks/<id>.md`, `taskRecord`): SDD, criterios de aceptación, archivos previstos y decision log por agente en la carpeta `docs/tasks/<id>/` (un archivo por entrada, `post-commit` rellena el sha); obligatoria en `feat`/`fix`/`hotfix` con código, comprobada por el `commit-msg`; `close-row <id>` exige casillas con test o check nombrado; absorbe D50 (H17 P1; [`I-lifecycle.md`](design/I-lifecycle.md) Q1-Q4; usuario, 2026-11-08) | en curso (2026-11-17: ficha, `task.py` y `commit-msg` hechos; faltan `close-row`, `trace.py` y `REVIEW.md`) |
+| C11 | Ficha de tarea (`docs/tasks/<id>.md`, `taskRecord`): SDD, criterios de aceptación, archivos previstos y decision log por agente en la carpeta `docs/tasks/<id>/` (un archivo por entrada, `post-commit` rellena el sha); obligatoria en `feat`/`fix`/`hotfix` con código, comprobada por el `commit-msg`; `close-row <id>` exige casillas con test o check nombrado; absorbe D50 (H17 P1; [`I-lifecycle.md`](design/I-lifecycle.md) Q1-Q4; usuario, 2026-11-08) | hecho (2026-11-18) |
 | C12 | Rama de exploración `spike/<tema>` sin ficha ni `Refs:`, que el `pre-push` y `merge-branch.sh` no dejan fusionar en una rama de trabajo (H17 P2) | pendiente (pasa de la `0.7`) |
 | C13 | Alcance congelado (`scopeGuard`): aviso o bloqueo al tocar un archivo fuera de `Files` de la ficha, `pre-commit` como respaldo, requisito nuevo = tarea nueva, registro de desviaciones para la retro (H17 P3) | pendiente (pasa de la `0.7`) |
 | D68 | Fragmentos de CHANGELOG por rama (`changelog.d/`), plegados por `merge-branch.sh` o `version.py --release` (H17 P10) | pendiente (pasa de la `0.7`) |

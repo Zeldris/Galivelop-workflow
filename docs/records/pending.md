@@ -317,3 +317,13 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [ ] `0.9` · **Revisión C11 n.º 6** (leve): `task.py resolve` lanza un `git log` por entrada; uno solo con `--diff-filter=A --name-only` basta.
 - [ ] `0.9` · **Revisión C11** (limitación): con `git commit --amend` la entrada nueva de la ficha no se distingue de la del commit corregido; documentado en `I-lifecycle.md`.
 - [ ] `0.9` · Herramienta (D62): `test_hooks.PrePushCiWarn.test_an_interrupted_push_kills_ci_status_and_its_children` («SIGTERM to the group») falló una vez en el `pre-push` con 4 tareas a la vez (2026-11-18: `ci-status.py` y su `gh` vivos tras la señal); aislado pasa 6 de 6. Hipótesis no probada: un segundo TERM del `cleanup` del gancho llega mientras el python del aviso sale y corta el `finally` antes del `killpg` (un caso con dos TERM no lo reprodujo).
+- [ ] `0.9` · **Revisión C11-trace n.º 3** (leve): en `trace.py`, las entradas del mismo día se ordenan por agente y hex, no por hora.
+- [ ] `0.9` · **Revisión C11-trace n.º 4** (leve): `trace.py` fija el nombre `Acceptance` en vez de leer `taskRecord.sections`.
+- [ ] `0.9` · **Revisión C11-trace n.º 5** (leve): `trace.py` cuenta las casillas `- [x]` también dentro de bloques de código.
+- [ ] `0.9` · **Revisión C11-trace n.º 6** (leve): un `taskRecord.path` con `.` o `..` necesita `normpath` en `trace.py`.
+- [ ] `0.9` · **Revisión C11-trace n.º 7** (leve): `trace.py` y `task.py` leen la cabecera de la entrada por separado; compartir `parse_entry`.
+- [ ] `0.9` · **Revisión C11-close-row n.º 4** (leve): `close-row` no ve un criterio de `Acceptance` escrito sin casilla.
+- [ ] `0.9` · **Revisión C11-close-row n.º 5** (leve): `close-row` imprime «closed» antes de que `cmd_done` escriba; un fallo al escribir queda tras el mensaje.
+- [ ] `0.9` · **Revisión C11-close-row n.º 6** (leve): una ficha que no es UTF-8 da una traza en `close-row` en vez de un motivo.
+- [ ] `0.9` · **Revisión C11-close-row n.º 7** (leve): `roadmap.py:214-216` escribe los `roadmapFiles` uno a uno; un fallo a medias deja uno escrito y otro no.
+- [ ] `0.9` · **Revisión C7** (leve, del autor): `models.py disable|enable` reescribe todo `gw.json` con `indent=2` (CRLF, tabs, secciones compactas); usar la edición en su sitio de `mode.py`.
