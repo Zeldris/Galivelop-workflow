@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.7.1 -->
+<!-- galivelop-workflow v0.8.0 -->
 # <date> · <skill o session> · <pending> · <id>
 
 ## Why

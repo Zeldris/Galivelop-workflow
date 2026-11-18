@@ -6,10 +6,11 @@ The Galivelop workshop's way of working with AI coding agents (Claude Code first
 generalised for any repository. It is the **single, versioned source** of its skills, hooks, scripts and templates:
 an improvement is made once here and reaches every project that uses it.
 
-> **Status: `0.7.1`, stage 1 being run in.** It is already applied to real projects by an AI agent. Only the latest
-> published minor gets patches (`0.7.x` today); new work goes into the next minors (`0.8` is being built), and `1.0`
-> will be the Management Center. See the [roadmap](docs/roadmap.en.md), the [plan](docs/plan.en.md), the [log](docs/handoff.md)
-> and the [changelog](CHANGELOG.md).
+> **Status: `0.8.0`, stage 1 being run in.** It is already applied to real projects by an AI agent. Only the latest
+> published minor gets patches (`0.8.x` today); new work goes into the next minors (`0.9` "Front" is being built,
+> then `0.10` "Stable", with fixes only), and `1.0` will be the Management Center. See the
+> [roadmap](docs/roadmap.en.md), the [plan](docs/plan.en.md), the [log](docs/handoff.md) and the
+> [changelog](CHANGELOG.md).
 
 ## What it solves
 
@@ -69,6 +70,20 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
   nothing.
 - A test that expects a failure checks **the reason**, not just the exit code.
 - `pre-push` can also run the tests related to what changed.
+
+### Questions, task records and scope
+
+- **Questions to the person** are a numbered list, each with a recommendation; the person answers by number
+  (`questions.py answer "5. a, 6. ok"`) and the answers go to `docs/questions.md`, so nothing is asked twice. A
+  subagent never asks: it returns the question.
+- **Modes** switched with `gw-mode`: `questions` (restrictive: a hook stops the agent working while questions are
+  open) and `careful` (asks before a destructive command, on by default).
+- **Four ways of working:** a task record (`docs/tasks/<id>.md`, with acceptance criteria, planned files and a decision
+  log) is required for code changes and checked by `commit-msg`; domain modelling where there is a domain; tests first
+  where behaviour can be tested; and exploration only on `spike/<topic>` branches, which `pre-push` and
+  `merge-branch.sh` won't let into a working branch.
+- **Frozen scope** (`scopeGuard`): touching a file outside the record's `Files` warns or blocks (`pre-commit` backs it
+  up); a new requirement is a new task.
 
 ### Token spend is measured, not assumed
 
@@ -148,7 +163,8 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
   `Refs:`, `Siguiente:`, agent signatures and a size warning) and `pre-push` (check on the commit being pushed, private data, review
   mark and log rules).
 - **Claude Code:** recover state at start-up, don't finish without pushing, review before a pull request, warning on
-  too many subagents, a guard on the configuration, and no agent signatures in what is posted to GitHub.
+  too many subagents, a guard on the configuration, a guard before destructive commands (`careful`), another for open questions and for
+  the task's scope, and no agent signatures in what is posted to GitHub.
 
 ### Scripts
 
@@ -157,7 +173,7 @@ Deterministic, in Python and in bash that runs on macOS's version: `apply.py` (s
 `/clear`), `merge-branch.sh` (bring in a subagent's branch, `agent/<id>-<topic>`, with a green check, its `Refs:` in the merge message, the commands to resolve a conflict in the log, and clean up its working copy),
 `check.sh` (the check, with its green recorded, a lock and a log), `handoff.py` (the log), `version.py` (version
 and release checks), `private-check.py`, `ci-status.py` and `ci-local.py` (the CI, remote and local),
-`red-without-fix.sh`, `harvest.py`, `metrics.py` and `models.py` (spend and models), `test-run.py` and `tests-for.py`
+`questions.py` and `task.py` (questions and task records), `red-without-fix.sh`, `harvest.py`, `metrics.py` and `models.py` (spend and models), `test-run.py` and `tests-for.py`
 (the suite in parallel, and the tests of a change), `review-scope.py` and `change-size.py` (what is reviewed and
 when), `roadmap.py`, `backport.sh` (carry commits to a patch) and the checks for links and for the agent map.
 
@@ -188,6 +204,7 @@ specific to Claude Code.
 - [Workflow overview](docs/en/workflow.md)
 - [Applying it to a project](docs/en/apply.md) · [Configuration](docs/en/config.md) · [Patterns](docs/en/patterns.md)
 - [Troubleshooting](docs/en/troubleshooting.md) · [Changing the workflow](docs/en/contributing.md)
+- [From opencode and Codex](docs/en/other-agents.md) (`AGENTS.md` and `.agents/skills` work outside Claude Code)
 - [Plan](docs/plan.en.md) · [Agent map](docs/agent-map.md) · [Changelog](CHANGELOG.md)
 
 ## Acknowledgements

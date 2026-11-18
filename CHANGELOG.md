@@ -1,3 +1,8 @@
+Versión «Preguntas y otros agentes» publicada con lo hecho; el front y lo de las webs pasan a la nueva `0.9`
+«Front» y la «Estable» a la `0.10` (filas de la `0.8` en `docs/roadmap.md`). / «Questions and other agents» release
+shipped with what was done; the front end and the web items move to the new `0.9` «Front» and «Stable» to `0.10`
+(`0.8` rows in `docs/roadmap.en.md`).
+
 # Changelog
 
 Formato: [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) · Versiones: [SemVer](https://semver.org/).
@@ -7,6 +12,137 @@ tiene entrada aquí.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [SemVer](https://semver.org/). Each
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
+
+## [0.8.0] - 2026-11-18
+
+Versión «Preguntas y otros agentes» publicada con lo hecho; el front y lo de las webs pasan a la nueva `0.9`
+«Front» y la «Estable» a la `0.10` (filas de la `0.8` en `docs/roadmap.md`). / «Questions and other agents» release shipped
+with what was done; the front end and the web items move to the new `0.9` «Front» and «Stable» to `0.10` (`0.8` rows
+in `docs/roadmap.en.md`).
+
+### ES
+
+- Preguntas al usuario (C1-C3, C10): `docs/questions.md` con una entrada por pregunta (clave `questions.path`) y
+  `questions.py` (`add`, `answer`, `list`, `count`); las preguntas van en una lista numerada con su recomendación y
+  el usuario responde por número (`questions.py answer "5. a, 6. ok"`); el inicio de sesión muestra solo las abiertas
+  que no ha visto ya. Un subagente nunca pregunta: devuelve la pregunta y la sesión principal la apunta
+  (`questions.py add --refs`), regla ya en `AGENTS.md` y en las plantillas.
+- Modos (C4-C8): skill `gw-mode` y `mode.py` como único interruptor de `modes.questions` (inactivo en los proyectos,
+  activo en este repo); el gancho `questions-guard.py` bloquea con el modo restrictivo activo y, con él inactivo,
+  avisa y deja pasar con «riesgo aceptado»; `task.py current` da la tarea en curso (por rama o por marca). Con
+  `modes.careful` (activo por defecto), `careful.py` pide confirmación antes de una orden destructiva
+  (`modes.carefulExempt`, `modes.carefulWorktrees`); `config-guard` pregunta ante `mode.py set`; la línea de modos
+  sale en `SessionStart`.
+- Ficha de tarea, SDD (C11, D50): `docs/tasks/<id>.md` (`taskRecord`) con criterios de aceptación, archivos previstos
+  (`Files`) y un decision log por agente en `docs/tasks/<id>/` (un archivo por entrada; el `post-commit` rellena el
+  sha); obligatoria en `feat`/`fix`/`hotfix` con código y comprobada por el `commit-msg`; `handoff.py close-row <id>`
+  exige casillas con un test o check nombrado; `trace.py` muestra la ficha y el decision log.
+- Exploración y alcance (C12, C13): ramas `spike/<tema>` (`spikeBranch`) sin ficha ni `Refs:`, con el trailer
+  `Spike:`, que el `pre-push` y `merge-branch.sh` no dejan fusionar en una rama de trabajo. Alcance congelado
+  (`scopeGuard`): el gancho `scope-guard.py` avisa o bloquea al tocar un archivo fuera de `Files` de la ficha, con
+  el `pre-commit` de respaldo, y apunta las desviaciones en `<dir común de git>/gw/deviations.jsonl` para la retro;
+  un requisito nuevo es otra tarea (`task.py new --related`).
+- Cuatro modos (A11): SDD siempre, DDD con dominio, TDD con comportamiento testeable y exploración solo en `spike/`,
+  en el plan (§4.5), la regla de `AGENTS.md` y la columna «Modes» de `gw-selector`.
+- Trazas y bitácora (D14, D61, D95, D96): `trace.py <id>` junta lo declarado (filas, `Refs:`) y lo deducido
+  (menciones en documentos), con rangos y listas de ids, `--json`, `--limit` y `--no-docs`; `handoff.py preflight`
+  comprueba sin subir lo que mira el `pre-push` (fecha de «Actualizado», ids que chocan con `main`) y va en el
+  `check` de la plantilla; `add-pending` y `add-decision` añaden sin leer la bitácora, con cerrojo por repo
+  (`handoff.lockWait`); un segundo tope duro de celda (`handoff.cellHardLimit`, 0 = apagado).
+- Subida y CI (D62, D63, D94): el `pre-push` avisa, sin bloquear, si el último CI de la rama está en rojo
+  (`prepushCiWarn`, `prepushCiWarnTimeout`); `templates/github/check.yml` con `workflow_call`, y `release.yml` lo
+  llama con `uses:` y `needs:` (`verify` → `check` → `release`); `scripts/push.sh <rama>` reintenta a 2, 4, 8 y 16 s
+  y da por subido solo lo que `git ls-remote` confirma.
+- Notas y revisión (D68, E33): fragmentos de CHANGELOG por rama en `changelog.d/<rama>.md` (`changelogFragments`,
+  `changelogFragmentsDir`) que `version.py X.Y.Z` o `version.py --fold` pliegan en la entrada de la versión; el
+  pliegue falla cerrado ante un fragmento mal formado, y `--release` falla con fragmentos en `HEAD`. Contrato de
+  revisión con anclas en `REVIEW.md`, `gw-reviewer` y el dealer: `ruta:línea | severidad | ancla | problema.
+  arreglo.`, y lo que no tiene ancla va a «Observaciones».
+- Pruebas inestables (E35, B42): `test-run.py` reintenta una clase que falla (`flaky.retries`); si pasa, la apunta
+  en `<dir común de git>/gw/flaky.jsonl`, imprime `test-run: flaky:` y desde `flaky.proposeAfter` apuntes propone
+  arreglarla. Los tests ya no buscan procesos con `pgrep -f` (marca de entorno `GW_TEST_PROC_MARK`), y
+  `tests-for.py --run` corre una sesión por unidad con `testUnitTimeout`, sin colgarse con varios subagentes.
+- Otros agentes (D7, B9): `apply.py` copia cada skill también a `agentsSkillsDir` (`.agents/skills`, `""` lo
+  apaga) para opencode y Codex, y `AGENTS.md` se lee sin `@include`; guía `other-agents` (es/en) con lo que funciona
+  fuera de Claude Code y lo que no, y modelos de fuera de Anthropic vía opencode (`gw-selector` no los pasa a
+  subagentes).
+- Recogidas, avisos de lectura y contexto (E58-E61, B31, B41): `readPointers` y `whole-read.py` ampliado a `Bash`
+  (`cat`, `sed`; avisa solo al releer entero un archivo ya leído y sin cambios: `wholeReadRepeatOnly`,
+  `wholeReadStaleDays`); `recover.py --state` compara el commit local con `origin/<rama>`; el `commit-msg` avisa de
+  arreglos de revisión sin `Findings:` (`metrics.quality.findingsWords`); `set-row` y `close-row` imprimen la fila y
+  `n/límite`; aviso de contexto cerca de la ventana con las compactaciones gastadas (gancho `Stop`,
+  `contextGuard.nearRatio`); `merge-branch.sh` con `--defer-check` corre al final los tests relacionados de toda la
+  oleada.
+- Instalación y guías (D7, D80, D83, D87, D126, D127, E49, E53, E63, E64): aviso de un sello de `gw-scout-updates`
+  caducado, y esta lee la versión de Rust del proyecto; `apply.py --update` añade a `staleRefs` los nombres que
+  renombra su migración y `apply.py --init` un `.gitignore` por stack en un bloque con marca; `gw-init` ofrece
+  licencia doble (MIT para el código, CC BY-NC-SA 4.0 para el contenido) y, con `agentSignatures: false`, escribe en
+  `CLAUDE.md` la regla «sin firmas»; la guía manda que el script de instalación del entorno falle en su propio paso
+  en el CI; `REVIEW.md` gana la regla de invariantes y el apartado «Navegadores»; el dealer no revisa aparte el
+  último bloque si la revisión de la rama va justo después, clona sin registrar los repos que solo lee y añade
+  `git diff --stat` al encargo de revisión.
+
+### EN
+
+- Questions for the user (C1-C3, C10): `docs/questions.md` with one entry per question (`questions.path` key) and
+  `questions.py` (`add`, `answer`, `list`, `count`); questions go in a numbered list with their recommendation and
+  the user answers by number (`questions.py answer "5. a, 6. ok"`); session start shows only the open ones not seen
+  yet. A subagent never asks: it returns the question and the main session records it (`questions.py add --refs`),
+  a rule already in `AGENTS.md` and the templates.
+- Modes (C4-C8): the `gw-mode` skill and `mode.py` as the single switch of `modes.questions` (off in projects, on in
+  this repo); the `questions-guard.py` hook blocks with the restrictive mode on and, with it off, warns and lets
+  through as «accepted risk»; `task.py current` gives the task in progress (by branch or by mark). With
+  `modes.careful` (on by default), `careful.py` asks for confirmation before a destructive command
+  (`modes.carefulExempt`, `modes.carefulWorktrees`); `config-guard` asks on `mode.py set`; the modes line shows in
+  `SessionStart`.
+- Task record, SDD (C11, D50): `docs/tasks/<id>.md` (`taskRecord`) with acceptance criteria, planned files (`Files`)
+  and a per-agent decision log in `docs/tasks/<id>/` (one file per entry; the `post-commit` fills in the sha);
+  required for `feat`/`fix`/`hotfix` with code and checked by the `commit-msg`; `handoff.py close-row <id>` requires
+  checkboxes with a named test or check; `trace.py` shows the record and the decision log.
+- Exploration and scope (C12, C13): `spike/<topic>` branches (`spikeBranch`) with no record and no `Refs:`, carrying
+  the `Spike:` trailer, which the `pre-push` and `merge-branch.sh` will not merge into a work branch. Frozen scope
+  (`scopeGuard`): the `scope-guard.py` hook warns or blocks when touching a file outside the record's `Files`, with
+  the `pre-commit` as backup, and logs deviations in `<git common dir>/gw/deviations.jsonl` for the retro; a new
+  requirement is another task (`task.py new --related`).
+- Four modes (A11): SDD always, DDD with a domain, TDD with testable behaviour and exploration only in `spike/`, in
+  the plan (§4.5), the `AGENTS.md` rule and the «Modes» column of `gw-selector`.
+- Traces and log (D14, D61, D95, D96): `trace.py <id>` joins what is declared (rows, `Refs:`) and what is deduced
+  (mentions in documents), with id ranges and lists, `--json`, `--limit` and `--no-docs`; `handoff.py preflight`
+  checks without pushing what the `pre-push` looks at (the «Updated» date, ids clashing with `main`) and is in the
+  template `check`; `add-pending` and `add-decision` add without reading the log, with a per-repo lock
+  (`handoff.lockWait`); a second hard cell limit (`handoff.cellHardLimit`, 0 = off).
+- Push and CI (D62, D63, D94): the `pre-push` warns, without blocking, when the branch's last CI is red
+  (`prepushCiWarn`, `prepushCiWarnTimeout`); `templates/github/check.yml` with `workflow_call`, and `release.yml`
+  calls it with `uses:` and `needs:` (`verify` → `check` → `release`); `scripts/push.sh <branch>` retries at 2, 4, 8
+  and 16 s and counts as pushed only what `git ls-remote` confirms.
+- Notes and review (D68, E33): CHANGELOG fragments per branch in `changelog.d/<branch>.md` (`changelogFragments`,
+  `changelogFragmentsDir`) that `version.py X.Y.Z` or `version.py --fold` fold into the version's entry; the fold
+  fails closed on a malformed fragment, and `--release` fails with fragments in `HEAD`. Review contract with anchors
+  in `REVIEW.md`, `gw-reviewer` and the dealer: `path:line | severity | anchor | problem. fix.`, and a finding with
+  no anchor goes to «Observations».
+- Flaky tests (E35, B42): `test-run.py` retries a failing class (`flaky.retries`); if it passes, it records it in
+  `<git common dir>/gw/flaky.jsonl`, prints `test-run: flaky:` and, from `flaky.proposeAfter` records, proposes
+  fixing it. Tests no longer look for processes with `pgrep -f` (`GW_TEST_PROC_MARK` environment mark), and
+  `tests-for.py --run` runs one session per unit with `testUnitTimeout`, without hanging under several subagents.
+- Other agents (D7, B9): `apply.py` copies every skill also to `agentsSkillsDir` (`.agents/skills`, `""` turns it
+  off) for opencode and Codex, and `AGENTS.md` reads without `@include`; an `other-agents` guide (es/en) with what
+  works outside Claude Code and what does not, and non-Anthropic models via opencode (`gw-selector` does not pass
+  them to subagents).
+- Harvests, read warnings and context (E58-E61, B31, B41): `readPointers` and `whole-read.py` extended to `Bash`
+  (`cat`, `sed`; warns only when re-reading whole a file already read and unchanged: `wholeReadRepeatOnly`,
+  `wholeReadStaleDays`); `recover.py --state` compares the local commit with `origin/<branch>`; the `commit-msg`
+  warns of review fixes without `Findings:` (`metrics.quality.findingsWords`); `set-row` and `close-row` print the
+  row and `n/limit`; context warning near the window with the compactions spent (`Stop` hook,
+  `contextGuard.nearRatio`); `merge-branch.sh` with `--defer-check` runs the related tests of the whole wave at the
+  end.
+- Install and guides (D7, D80, D83, D87, D126, D127, E49, E53, E63, E64): warning for an expired `gw-scout-updates`
+  stamp, which also reads the project's Rust version; `apply.py --update` adds to `staleRefs` the names its
+  migration renames and `apply.py --init` a per-stack `.gitignore` in a marked block; `gw-init` offers a dual
+  licence (MIT for code, CC BY-NC-SA 4.0 for content) and, with `agentSignatures: false`, writes the «no
+  signatures» rule in `CLAUDE.md`; the guide says the environment setup script must fail in its own CI step;
+  `REVIEW.md` gains the invariants rule and the «Browsers» section; the dealer does not review the last block apart
+  when the branch review comes right after, clones read-only repos apart without registering them and adds
+  `git diff --stat` to the review brief.
 
 ## [0.7.1] - 2026-11-16
 

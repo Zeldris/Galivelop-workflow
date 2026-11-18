@@ -6,10 +6,10 @@ La forma de trabajar del taller Galivelop con agentes de programación (primero 
 reales y generalizada para cualquier repositorio. Es la **fuente única y versionada** de sus skills, ganchos, scripts
 y plantillas: una mejora se hace una vez aquí y llega a todos los proyectos que lo usan.
 
-> **Estado: `0.7.1`, etapa 1 en rodaje.** Ya se aplica a proyectos reales con un agente de IA. Solo la última menor
-> publicada recibe parches (hoy `0.7.x`); lo nuevo va a las siguientes menores (la `0.8` está en obra), y la `1.0` será
-> el Management Center. Ver el [roadmap](docs/roadmap.md), el [plan](docs/plan.md), la [bitácora](docs/handoff.md) y el
-> [changelog](CHANGELOG.md).
+> **Estado: `0.8.0`, etapa 1 en rodaje.** Ya se aplica a proyectos reales con un agente de IA. Solo la última menor
+> publicada recibe parches (hoy `0.8.x`); lo nuevo va a las siguientes menores (la `0.9` «Front» está en obra,
+> luego la `0.10` «Estable», solo con correcciones), y la `1.0` será el Management Center. Ver el
+> [roadmap](docs/roadmap.md), el [plan](docs/plan.md), la [bitácora](docs/handoff.md) y el [changelog](CHANGELOG.md).
 
 ## Qué resuelve
 
@@ -72,6 +72,20 @@ comprobación.
   prueba nada.
 - Un test que espera un fallo comprueba **el motivo**, no solo el código de salida.
 - El `pre-push` puede correr también los tests relacionados con lo que cambia.
+
+### Preguntas, ficha de tarea y alcance
+
+- **Las preguntas a la persona** son una lista numerada, cada una con su recomendación; la persona responde por número
+  (`questions.py answer "5. a, 6. ok"`) y las respuestas pasan a `docs/questions.md`, así que nada se pregunta dos
+  veces. Un subagente nunca pregunta: devuelve la pregunta.
+- **Modos** que se cambian con `gw-mode`: `questions` (restrictivo: un gancho frena el trabajo mientras haya preguntas
+  abiertas) y `careful` (pregunta antes de una orden destructiva, activo por defecto).
+- **Cuatro formas de trabajar:** una ficha de tarea (`docs/tasks/<id>.md`, con criterios de aceptación, archivos
+  previstos y decision log) obligatoria en los cambios de código y comprobada por el `commit-msg`; modelado de dominio
+  donde hay dominio; tests primero donde hay comportamiento testeable; y exploración solo en ramas `spike/<tema>`, que
+  el `pre-push` y `merge-branch.sh` no dejan entrar en una rama de trabajo.
+- **Alcance congelado** (`scopeGuard`): tocar un archivo fuera de `Files` de la ficha avisa o bloquea (el
+  `pre-commit` lo respalda); un requisito nuevo es una tarea nueva.
 
 ### El gasto de tokens se mide, no se supone
 
@@ -152,7 +166,8 @@ comprobación.
   (formato, `Refs:`, `Siguiente:`, firmas del agente y aviso de tamaño) y `pre-push` (check sobre el commit que se sube, datos
   privados, marca de revisión y reglas de la bitácora).
 - **De Claude Code:** recuperar el estado al empezar, no acabar sin subir, revisión antes de un pull request, aviso
-  por exceso de subagentes, guardia de la configuración y sin firmas del agente en lo que se publica en GitHub.
+  por exceso de subagentes, guardia de la configuración, guardia antes de órdenes destructivas (`careful`), otra para las preguntas abiertas y
+  el alcance de la tarea, y sin firmas del agente en lo que se publica en GitHub.
 
 ### Scripts
 
@@ -161,7 +176,7 @@ Deterministas, en Python y en bash compatible con la versión de macOS: `apply.p
 tras `/clear`), `merge-branch.sh` (traer la rama de un subagente, `agent/<id>-<tema>`, con el check en verde, sus `Refs:` en el mensaje de la fusión, la orden para resolver un conflicto en la bitácora y limpiar su copia de trabajo),
 `check.sh` (el check, con su verde apuntado, cerrojo y registro), `handoff.py` (la bitácora), `version.py` (versión
 y comprobaciones de la publicación), `private-check.py`, `ci-status.py` y `ci-local.py` (el CI, remoto y en local),
-`red-without-fix.sh`, `harvest.py`, `metrics.py` y `models.py` (gasto y modelos), `test-run.py` y `tests-for.py` (la
+`questions.py` y `task.py` (preguntas y fichas de tarea), `red-without-fix.sh`, `harvest.py`, `metrics.py` y `models.py` (gasto y modelos), `test-run.py` y `tests-for.py` (la
 suite en paralelo y los tests de un cambio), `review-scope.py` y `change-size.py` (qué se revisa y cuándo),
 `roadmap.py`, `backport.sh` (llevar commits a un parche) y las comprobaciones de enlaces y del mapa para agentes.
 
@@ -191,6 +206,7 @@ añade lo propio de Claude Code.
 - [Visión general del flujo](docs/es/workflow.md)
 - [Aplicarlo a un proyecto](docs/es/apply.md) · [Configuración](docs/es/config.md) · [Patrones](docs/es/patterns.md)
 - [Problemas conocidos](docs/es/troubleshooting.md) · [Cambiar el flujo](docs/es/contributing.md)
+- [Desde opencode y Codex](docs/es/other-agents.md) (`AGENTS.md` y `.agents/skills` funcionan fuera de Claude Code)
 - [Plan](docs/plan.md) · [Mapa para agentes](docs/agent-map.md) · [Changelog](CHANGELOG.md)
 
 ## Agradecimientos

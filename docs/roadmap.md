@@ -294,10 +294,10 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | C11 | Ficha de tarea (`docs/tasks/<id>.md`, `taskRecord`): SDD, criterios de aceptación, archivos previstos y decision log por agente en la carpeta `docs/tasks/<id>/` (un archivo por entrada, `post-commit` rellena el sha); obligatoria en `feat`/`fix`/`hotfix` con código, comprobada por el `commit-msg`; `close-row <id>` exige casillas con test o check nombrado; absorbe D50 (H17 P1; [`I-lifecycle.md`](design/I-lifecycle.md) Q1-Q4; usuario, 2026-11-08) | hecho (2026-11-18) |
 | C12 | Rama de exploración `spike/<tema>` sin ficha ni `Refs:`, que el `pre-push` y `merge-branch.sh` no dejan fusionar en una rama de trabajo (H17 P2) | hecho (2026-11-18) |
 | C13 | Alcance congelado (`scopeGuard`): aviso o bloqueo al tocar un archivo fuera de `Files` de la ficha, `pre-commit` como respaldo, requisito nuevo = tarea nueva, registro de desviaciones para la retro (H17 P3) | hecho (2026-11-18) |
-| D68 | Fragmentos de CHANGELOG por rama (`changelog.d/`), plegados por `merge-branch.sh` o `version.py --release` (H17 P10) | pendiente (pasa de la `0.7`) |
-| E33 | Contrato de revisión con anclas en `REVIEW.md`: `ruta:línea | severidad | ancla | problema. arreglo.`; sin ancla, observación (H17 P7) | pendiente (pasa de la `0.7`) |
-| E35 | Registro de pruebas inestables (`flaky`): el check apunta lo que falla y pasa al reintentar y propone arreglarlo tras N veces (H17 P12) | pendiente (pasa de la `0.7`) |
-| — | Lo de [`pending.md`](records/pending.md) marcado `0.7` | pendiente (pasa de la `0.7`) |
+| D68 | Fragmentos de CHANGELOG por rama (`changelog.d/`), plegados por `merge-branch.sh` o `version.py --release` (H17 P10) | hecho (2026-11-18; Fragmentos en changelog.d/<rama>.md (changelogFragments), plegados por version.py X.Y.Z o --fold; --release falla con fragmentos) |
+| E33 | Contrato de revisión con anclas en `REVIEW.md`: `ruta:línea | severidad | ancla | problema. arreglo.`; sin ancla, observación (H17 P7) | hecho (2026-11-18; ruta:línea / severidad / ancla en REVIEW.md, gw-reviewer y el dealer; sin ancla, Observaciones) |
+| E35 | Registro de pruebas inestables (`flaky`): el check apunta lo que falla y pasa al reintentar y propone arreglarlo tras N veces (H17 P12) | hecho (2026-11-18; flaky.retries y flaky.proposeAfter, registro en flaky.jsonl de test-run.py) |
+| — | Lo de [`pending.md`](records/pending.md) marcado `0.7` | hecho (2026-11-18) |
 | D80 | Aviso automático de un sello de `gw-scout-updates` caducado (recogida de cierre `0.6`, private-project-1 P5) | hecho (2026-11-17, 5e2eb7f) |
 | D83 | `apply.py --update` añade al `staleRefs` del proyecto los nombres que renombra su migración (amplía D46) (recogida de cierre `0.6`, instalador P4) | hecho (2026-11-17, 69300db) |
 | D87 | `gw-init` ofrece licencia doble: MIT para el código y CC BY-NC-SA 4.0 para el contenido, con la nota de terceros (recogida de cierre `0.6`, world-maker P6) | hecho (2026-11-17; oleada 3a) |
@@ -308,7 +308,7 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | B31 | Aviso de contexto cerca de la ventana con el presupuesto de compactaciones gastado (`recover.py --state` o `Stop`), antes de la compactación (recogida `0.6.0`, image-generator P7) | hecho (2026-11-17; gancho `Stop`, una vez por tramo, `contextGuard.nearRatio`) |
 | D7 | `AGENTS.md` legible sin `@include`; skills también en `.agents/skills` (opencode, Codex) | hecho (2026-11-18) |
 | B9 | Modelos de fuera de Anthropic vía opencode | hecho (2026-11-18) |
-| — | Lo de [`pending.md`](records/pending.md) marcado `0.8` | pendiente |
+| — | Lo de [`pending.md`](records/pending.md) marcado `0.8` | hecho (2026-11-18; salvo `push.sh` en macOS, que pasa a la `0.10`) |
 | E53 | Regla de guía: en el CI, el script de instalación del entorno falla en su propio paso (recogida `0.7`, instalador P2) | hecho (2026-11-17, 889791d) |
 | D126 | `gw-scout-updates` lee la versión de Rust del proyecto (`rust-toolchain(.toml)`, `rust-version` de `Cargo.toml`) (recogida `0.4`, instalador P11, `pending.md`) | hecho (2026-11-17, 5e2eb7f) |
 | D127 | `apply.py --init` añade un `.gitignore` por stack en un bloque con marca, sin pisar el existente (recogida `0.4`, private-project-2 P8, `pending.md`) | hecho (2026-11-17, 69300db) |
