@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI en verde). Etiqueta y release `v0.7.1` creadas por el agente desde una sesión local (2026-11-16, a petición del usuario) |
-| Siguiente paso | **Sellar la `0.8.0`** (usuario, 2026-11-18): CHANGELOG, versión, README y roadmap hechos. Quedan las fases antes de `main`: 1 (revisión de lo que queda desde `c0ab88b` y lo leve de `pending.md`), 2 (`/gw-opt-tokens` y `/retro`, propuestas al usuario), 3 (`reviewed.sh`) y `main` con confirmación del usuario. Presupuesto de compactaciones: 2 |
+| Siguiente paso | **Sellar la `0.8.0`** (usuario, 2026-11-18): CHANGELOG, versión, README y roadmap hechos. Fase 1 hecha (desde `c0ab88b` solo dos líneas de `gw-selector`, sin hallazgos). Fase 2: retro `retro-2026-11-18-release-0-8-0.md` con P1-P5, pendiente de la decisión del usuario. Quedan, 3 (`reviewed.sh`) y `main` con confirmación del usuario. Presupuesto de compactaciones: 2 |
 
 ### Fases
 
