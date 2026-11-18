@@ -296,6 +296,17 @@ class CheckSummary(unittest.TestCase):
         self.assertNotIn("== echo", tail)
         self.assertIn("full output: " + str(self.default_log()), out)
 
+    def test_quiet_green_run_repeats_the_flaky_lines_of_test_run(self):
+        self.configure(["echo $((6*7)); printf 'test-run: %s\\n' 'flaky: tests/test_x.py::A (passed on retry; 2 times recorded)'",
+                        "echo noisy-2"])
+        code, out, err = self.run_check(env=self.quiet_env())
+        self.assertEqual(code, 0, out + err)
+        self.assertNotIn("\n42\n", out)
+        self.assertEqual(out.count("test-run: flaky: tests/test_x.py::A (passed on retry; 2 times recorded)"), 1)
+        self.assertLess(out.index("check: summary"), out.index("test-run: flaky:"))
+        code, out, err = self.run_check()  # not quiet: the command already streamed it, no repeat
+        self.assertEqual(out.count("test-run: flaky:"), 1)
+
     def test_quiet_green_run_prints_no_command_output(self):
         self.configure(["echo noisy-$((6*7))"])
         code, out, err = self.run_check(env=self.quiet_env())
