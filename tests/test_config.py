@@ -803,9 +803,25 @@ class Config(unittest.TestCase):
                            capture_output=True, text=True)
         self.assertEqual(r.stdout.strip(), "full environment change: .claude/gw.json")
 
+    def test_agents_skills_dir_accessor_and_rejected_values(self):  # D7
+        self.assertEqual(config.agents_skills_dir({}), ".agents/skills")
+        self.assertEqual(config.agents_skills_dir({"agentsSkillsDir": ""}), "")
+        self.assertEqual(config.semantic_errors({"agentsSkillsDir": ""}), [])
+        self.assertEqual(config.semantic_errors({"agentsSkillsDir": "tools/skills"}), [])
+        cases = {".claude/skills": "must not be .claude/skills", ".claude/skills/x": "must not be .claude/skills",
+                 "./.claude/skills/": "must not be .claude/skills", ".git/skills": "nor inside .git or .claude/gw",
+                 ".claude/gw/scripts": "nor inside .git or .claude/gw", "a\\b": "no backslash or drive letter",
+                 "C:/x": "no backslash or drive letter", "C:x": "no backslash or drive letter"}
+        for value, reason in cases.items():
+            with self.subTest(value=value):
+                errors = config.semantic_errors({"agentsSkillsDir": value})
+                self.assertEqual(len(errors), 1, errors)
+                self.assertIn(reason, errors[0])
+
     def test_doctor_test_dirs_ignore_default_and_own_value(self):  # E43
         self.assertIn(".claude/worktrees", config.doctor_test_dirs_ignore({}))
         self.assertIn(".claude/skills", config.doctor_test_dirs_ignore({}))  # D102
+        self.assertIn(".agents/skills", config.doctor_test_dirs_ignore({}))  # D7
         self.assertEqual(config.doctor_test_dirs_ignore({"doctorTestDirsIgnore": ["vendor"]}), ["vendor"])
         self.write(VALID)
         self.assertIn("node_modules", config.doctor_test_dirs_ignore(config.load(str(self.tmp))))

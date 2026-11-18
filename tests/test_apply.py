@@ -538,6 +538,104 @@ class Apply(unittest.TestCase):
         self.assertIn("Siguiente:", out)
 
 
+class AgentsSkills(unittest.TestCase):  # D7: the skills are also plain copies in agentsSkillsDir
+    def make(self, config=None):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-apply-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        self.p = Fixture(tmp, config)
+        return self.p
+
+    def applied(self, *args):
+        code, out = self.p.run_apply(*args)
+        self.assertEqual(code, 0, out)
+        return out
+
+    def test_key_absent_uses_the_default_and_copies_are_identical_plain_files(self):
+        p = self.make()
+        self.applied()
+        mine, theirs = p.work / ".claude" / "skills", p.work / ".agents" / "skills"
+        self.assertEqual(p.read(".agents/skills/gw-selector/SKILL.md"), p.read(".claude/skills/gw-selector/SKILL.md"))
+        self.assertEqual(p.read(".agents/skills/LICENSE-mattpocock-skills"), p.read(".claude/skills/LICENSE-mattpocock-skills"))
+        self.assertEqual(sorted(x.name for x in mine.iterdir()), sorted(x.name for x in theirs.iterdir()))
+        self.assertFalse(any(x.is_symlink() for x in theirs.rglob("*")))
+        self.assertIn("nothing to do", self.applied())
+
+    def test_empty_key_disables_the_second_copy(self):
+        p = self.make({"agentsSkillsDir": ""})
+        self.applied()
+        self.assertTrue((p.work / ".claude" / "skills" / "gw-selector" / "SKILL.md").is_file())
+        self.assertFalse((p.work / ".agents").exists())
+
+    def test_custom_dir(self):
+        p = self.make({"agentsSkillsDir": "tools/skills"})
+        self.applied()
+        self.assertTrue((p.work / "tools" / "skills" / "gw-selector" / "SKILL.md").is_file())
+        self.assertFalse((p.work / ".agents").exists())
+
+    def test_check_reports_a_missing_and_a_stale_copy(self):
+        p = self.make()
+        self.applied()
+        skill = p.work / ".agents" / "skills" / "gw-selector"
+        original = (skill / "SKILL.md").read_text()
+        (skill / "SKILL.md").unlink()
+        code, out = p.run_apply("--check")
+        self.assertEqual(code, 1, out)
+        self.assertIn("create  .agents/skills/gw-selector/SKILL.md", out)
+        self.applied()
+        (skill / "SKILL.md").write_text(original.replace(f'version: "{VERSION}"', 'version: "0.0.1"'))
+        code, out = p.run_apply("--check")
+        self.assertEqual(code, 1, out)
+        self.assertIn("update  .agents/skills/gw-selector/SKILL.md", out)
+        self.applied()
+        self.assertEqual((skill / "SKILL.md").read_text(), original)
+
+    def test_orphan_file_is_reported_and_kept(self):
+        p = self.make()
+        self.applied()
+        extra = p.work / ".agents" / "skills" / "gw-selector" / "OLD.md"
+        extra.write_text("gone upstream\n")
+        out = self.applied()
+        self.assertIn(".agents/skills/gw-selector/OLD.md is no longer in the workflow", out)
+        self.assertTrue(extra.exists())
+
+    def test_users_own_skill_with_a_workflow_name_is_kept_and_a_proposal_made(self):
+        p = self.make()
+        p.write(".agents/skills/gw-selector/SKILL.md", "---\nname: gw-selector\n---\nmine\n")
+        out = self.applied()
+        self.assertEqual(p.read(".agents/skills/gw-selector/SKILL.md"), "---\nname: gw-selector\n---\nmine\n")
+        self.assertTrue((p.work / ".agents/skills/gw-selector/SKILL.md.gw-new").is_file(), out)
+
+    def test_users_other_skill_is_left_alone(self):
+        p = self.make()
+        p.write(".agents/skills/my-skill/SKILL.md", "mine\n")
+        out = self.applied()
+        self.assertEqual(p.read(".agents/skills/my-skill/SKILL.md"), "mine\n")
+        self.assertNotIn("my-skill", out)
+
+    def test_unwanted_workflow_skill_copy_is_reported_as_orphan(self):
+        p = self.make()
+        self.applied("--with", "gw-opt-ai")
+        shutil.rmtree(p.work / ".claude" / "skills" / "gw-opt-ai")  # the person uninstalls it
+        out = self.applied()
+        self.assertIn(".agents/skills/gw-opt-ai/SKILL.md is no longer in the workflow", out)
+        self.assertTrue((p.work / ".agents/skills/gw-opt-ai/SKILL.md").exists())
+
+    def test_workflow_copy_is_not_read_as_project_text_by_the_old_names_scan(self):
+        p = self.make()
+        out = self.applied()
+        self.assertNotIn("WARNING: .agents/skills/", out)
+        self.assertNotIn("uses the old name", out)
+
+    def test_optional_skills_follow_with_in_both_dirs(self):
+        p = self.make()
+        self.applied()
+        self.assertFalse((p.work / ".agents" / "skills" / "gw-opt-ai").exists())
+        out = self.applied("--with", "gw-opt-ai")
+        self.assertIn("create  .agents/skills/gw-opt-ai/SKILL.md", out)
+        self.assertEqual(p.read(".agents/skills/gw-opt-ai/SKILL.md"), p.read(".claude/skills/gw-opt-ai/SKILL.md"))
+        self.assertIn("nothing to do", self.applied())
+
+
 class OwnedFiles(unittest.TestCase):  # D53
     HOOK = ".githooks/commit-msg"
 

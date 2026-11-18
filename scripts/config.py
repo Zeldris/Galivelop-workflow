@@ -846,6 +846,16 @@ def pending_file(config):
     return given if isinstance(given, str) else ""
 
 
+def agents_skills_dir(config):
+    """The `agentsSkillsDir` key (D7): repo-relative folder where apply.py also copies the skills (opencode, Codex),
+    the schema default when absent, "" when empty (off)."""
+    given = config.get("agentsSkillsDir")
+    if isinstance(given, str):
+        return given
+    schema = json.loads(schema_path().read_text(encoding="utf-8"))
+    return schema["properties"]["agentsSkillsDir"]["default"]
+
+
 def decisions_file(config):
     """The `decisionsFile` key (D95): repo-relative path of the file with the Decisions section, or "" (the log)."""
     given = config.get("decisionsFile")
@@ -877,6 +887,17 @@ def semantic_errors(config):
         errors.append(f"$.handoff: cellHardLimit ({sizes['cellHardLimit']}) must not be below cellLimit "
                       f"({sizes['cellLimit']}): the hard cap would fail cells the soft limit still accepts; raise "
                       "cellHardLimit, lower cellLimit, or set cellHardLimit to 0 (off) in .claude/gw.json")
+    agents_dir = config.get("agentsSkillsDir")
+    if isinstance(agents_dir, str) and agents_dir:
+        norm = posixpath.normpath(agents_dir.replace("\\", "/")).strip("/")
+        reason = None
+        if "\\" in agents_dir or re.match(r"^[A-Za-z]:", agents_dir):
+            reason = "must be a repo-relative path with '/' separators, no backslash or drive letter"
+        elif any(norm == d or norm.startswith(d + "/") for d in (".claude/skills", ".git", ".claude/gw")):
+            reason = "must not be .claude/skills (the first copy), nor inside .git or .claude/gw"
+        if reason:
+            errors.append(f"$.agentsSkillsDir: {agents_dir!r} {reason}; use \".agents/skills\" or another folder, or "
+                          "\"\" to turn it off, in .claude/gw.json")
     agent_map = config.get("agentMap")
     if isinstance(agent_map, dict) and isinstance(agent_map.get("prefixes"), dict):
         for short in agent_map["prefixes"]:

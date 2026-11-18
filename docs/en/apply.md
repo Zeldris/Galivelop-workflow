@@ -106,7 +106,7 @@ python3 <workflow>/scripts/apply.py <project> --dry-run --init --language en \
 Options: `--review-mark PATH` (default `docs/records/reviewed.txt`), `--with gw-opt-ai` and `--with gw-scout-updates`.
 `--init` writes `.claude/gw.json` only when it does not exist, validates it and applies as usual.
 
-What it does (full detail in `--help`): copies `scripts/` to `.claude/gw/scripts/`, the skills to `.claude/skills/`,
+What it does (full detail in `--help`): copies `scripts/` to `.claude/gw/scripts/`, the skills to `.claude/skills/` (and to `.agents/skills/` for opencode and Codex; turn it off with `"agentsSkillsDir": ""`, see `config.md`),
 the git hooks to `.githooks/`, the light subagent types `gw-worker` and `gw-reviewer` to `.claude/agents/` (the `gw-orchestrate-dealer` brief names them; a project's own file of either name is kept and the workflow's becomes a `.gw-new` proposal), the CI to `.github/workflows/check.yml`; **merges** the Claude Code hooks and
 `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` and `worktree.baseRef: "head"` (subagent worktrees branch from the current
 HEAD, not the default branch; a project value is kept: to get another base set `"baseRef": "fresh"`, since removing

@@ -62,9 +62,21 @@ def read_event():
     return data if isinstance(data, dict) else None
 
 
+def copies():
+    """COPIES plus the agentsSkillsDir copy of the skills (D7); the schema default when the config cannot be read."""
+    try:
+        agents = config.agents_skills_dir(config.load(ROOT))
+    except Exception:  # advice only: an unreadable config gives the default
+        agents = config.agents_skills_dir({})
+    agents = agents.strip("/")
+    if not agents:
+        return COPIES
+    return ((f"{agents}/LICENSE-mattpocock-skills", "LICENSE-mattpocock-skills"), (f"{agents}/", "skills/")) + COPIES
+
+
 def source_of(rel):
     """The source path (repo-relative, '/'-separated) of the copy `rel`, or None when `rel` is not a copy."""
-    for copy, source in COPIES:
+    for copy, source in copies():
         if rel == copy or (copy.endswith("/") and rel.startswith(copy) and len(rel) > len(copy)):
             return source + rel[len(copy):]
     return None

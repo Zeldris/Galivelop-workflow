@@ -116,6 +116,15 @@ class Templates(unittest.TestCase):
                                      f"{lang}/REVIEW.md: this rule names no check nor says ({judgement}): {bullet[0]}")
                 self.assertTrue(any("(check: " in b[-1] for b in bullets), f"{lang}/REVIEW.md: no rule names a check")
 
+    def test_agents_md_templates_need_no_include(self):
+        """AGENTS.md must be readable by agents that do not expand `@file` lines (D7): only CLAUDE.md may use them."""
+        files = {lang: TEMPLATES / lang / "AGENTS.md" for lang in ("es", "en")}
+        files["repo"] = ROOT / "AGENTS.md"
+        for lang, path in files.items():
+            lines = path.read_text(encoding="utf-8").splitlines()
+            with self.subTest(lang=lang):
+                self.assertEqual([l for l in lines if l.startswith("@")], [])
+
     def test_every_template_starts_with_the_version_marker(self):
         for lang in ("es", "en"):
             for name in lang_files(lang):

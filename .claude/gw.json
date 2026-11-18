@@ -24,6 +24,7 @@
     ".claude/worktrees",
     ".claude/gw",
     ".claude/skills",
+    ".agents/skills",
     "venv",
     ".venv",
     "env",
@@ -115,7 +116,8 @@
     "exclude": [
       "^\\.claude/gw/",
       "(^|/)(package-lock\\.json|npm-shrinkwrap\\.json|yarn\\.lock|pnpm-lock\\.yaml|poetry\\.lock|Pipfile\\.lock|uv\\.lock|Cargo\\.lock|Gemfile\\.lock|composer\\.lock|go\\.sum)$",
-      "^\\.claude/skills/"
+      "^\\.claude/skills/",
+      "^\\.agents/skills/"
     ],
     "pairs": {
       "^docs/en/": "docs/es/",
