@@ -446,7 +446,7 @@ def spike_marked(body, prefix):
     trailer block, where commit-message.py adds it) or indented by four spaces anywhere (how `git merge --squash`
     quotes the squashed commits' messages). A body line elsewhere that merely starts with `Spike:` does not count."""
     p = re.escape(prefix)
-    paragraphs = [para for para in re.split(r"\n[ \t]*\n", body.strip("\n")) if para.strip()]
+    paragraphs = [part for part in re.split(r"\n[ \t]*\n", body.strip("\n")) if part.strip()]
     if paragraphs and re.search(rf"^Spike:[ \t]*{p}\S", paragraphs[-1], re.M):
         return True
     return bool(re.search(rf"^ {{4}}Spike:[ \t]*{p}\S", body, re.M))
