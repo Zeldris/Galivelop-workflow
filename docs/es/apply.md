@@ -313,7 +313,9 @@ entra el código ya hoy.
   .claude/gw/scripts/trace.py D14` (lo **declarado**: su fila en el roadmap de `roadmapFiles`, una sola con la
   traducción como «also», los commits cuyo trailer `Refs:` o ámbito del asunto lo citan y las fusiones que lo nombran
   —lo más cercano a un PR sin red—; y lo **deducido**: las líneas de la bitácora y de `pendingFile` y los `.md`
-  versionados que lo mencionan). Calcula al momento, sin índice. El id tiene que encajar con `taskId`. Sale con 0 si
+  versionados que lo mencionan; la ficha `<taskRecord.path>/<id>.md` con su Goal y el estado de su Acceptance y las
+  entradas del decision log de `<taskRecord.path>/<id>/`, por fecha, se declaran y salen una vez, no otra como
+  documentos). Calcula al momento, sin índice. El id tiene que encajar con `taskId`. Sale con 0 si
   algo lo nombra, 1 si nada (dice dónde miró) y 2 si el id está mal formado o el config no se lee; `--json` da un
   objeto con `declared`, `deduced` y una lista por fuente, `--limit N` (20) recorta el texto y `--no-docs` salta la
   búsqueda en los `.md` (sin leerlos).

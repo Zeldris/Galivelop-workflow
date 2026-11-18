@@ -90,6 +90,15 @@ creada.
   idiomas (etiquetas, textos alternativos, títulos de página, mensajes), y una traducción es de verdad, no el mismo
   texto. (criterio)
 
+## Ficha de tarea
+
+<!-- Solo si `taskRecord.enabled` es true en `.claude/gw.json`. -->
+
+- El gancho `commit-msg` comprueba la forma de la ficha y de las entradas del decision log; aquí se lee la calidad: el
+  `Why` es la razón real (no repite el cambio), las `Alternatives` son reales (opciones que se sopesaron, no relleno),
+  el `Change log` de la ficha coincide con el diff y cada casilla de `Acceptance` nombra un test que de verdad la
+  comprueba (se lee el test, no solo el nombre). (criterio)
+
 ## Reglas del proyecto
 
 <!-- Las rellena el proyecto: lo que nunca se publica, reglas del dominio, accesibilidad, rendimiento, seguridad. -->

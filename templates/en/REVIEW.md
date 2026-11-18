@@ -86,6 +86,15 @@ once it exists.
 - If `.claude/gw.json` declares `visibleLanguages`, every new text a user sees exists in each of those languages
   (labels, alternative texts, page titles, messages), and a translation is a real one, not the same text. (judgement)
 
+## Task record
+
+<!-- Only if `taskRecord.enabled` is true in `.claude/gw.json`. -->
+
+- The `commit-msg` hook checks the form of the task record and of its decision log entries; the quality is read here:
+  the `Why` is the real reason (not a restatement of the change), the `Alternatives` are real (options that were
+  weighed, not filler), the `Change log` of the record matches the diff, and each `Acceptance` box names a test that
+  really checks it (read the test, not just the name). (judgement)
+
 ## Project rules
 
 <!-- The project fills this in: what is never published, domain rules, accessibility, performance, security. -->

@@ -14,6 +14,11 @@ about the id; DEDUCED is only a mention found by reading text:
   commits   declared: the commits (all local branches and remote-tracking refs) whose `Refs:` trailer lists ID or
             whose subject scope names it (`feat(D14): ...`, `feat(D1, D14): ...`); and the merge commits whose
             message names it (the branch that was merged: the offline stand-in for a PR; nothing is fetched)
+  task      declared: the task record `<taskRecord.path>/ID.md` (its Goal and the state of its Acceptance boxes) and the
+            decision log entries in `<taskRecord.path>/ID/`, sorted by file name (so by date), each with its date,
+            agent, commit (`pending` while the commit is not resolved) and Why; an entry whose form is wrong is shown
+            with the reason and a note, never a crash. The task's own files are not listed again under docs; shown
+            even with --no-docs (it reads two named paths, not the tracked .md files)
   docs      deduced: the tracked Markdown files that name ID, other than the roadmap, the log and the pending file (copies
             under `.claude/` are skipped: they are generated); --no-docs skips it without reading any .md
 "Names ID" is a whole-word match: D1 does not match D14 or D1a. --limit N (default 20) caps the entries shown per
@@ -23,12 +28,13 @@ ID must match the project's `taskId` (config key; the schema default applies onl
 A roadmap id cell, a `Refs:` value or a subject scope that lists ids (`D61, D62`) or a range with one prefix
 (`E9-E16`) names every id in it. A merge commit counts only through its subject or its `Refs:`, never its body.
 Exit 0 when something names ID, 1 when ID is well formed but nothing does (the message says where it looked), 2 on a
-malformed ID, a bad config or no git repository. --json prints one object: id, found, `declared` {roadmap, commits}, `deduced` {log, pending, docs} and notes.
+malformed ID, a bad config or no git repository. --json prints one object: id, found, `declared` {roadmap, task, commits}, `deduced` {log, pending, docs} and notes.
 Project root: config.find_root (--root PATH, else the script's own repo, never the current directory first).
 Python 3.8+ standard library only.
 """
 import argparse
 import json
+import posixpath
 import re
 import subprocess
 import sys
@@ -39,8 +45,9 @@ sys.dont_write_bytecode = True  # no __pycache__ in the project's .claude/gw/scr
 sys.path.insert(0, str(HERE))
 import config  # noqa: E402
 import roadmap  # noqa: E402
+import task as taskrec  # noqa: E402
 
-DECLARED = ("roadmap", "commits")
+DECLARED = ("roadmap", "task", "commits")
 DEDUCED = ("log", "pending", "docs")
 SOURCES = DECLARED + DEDUCED
 SNIPPET = 160
@@ -156,6 +163,43 @@ def commit_entries(root, task, pattern):
     return found
 
 
+def task_entries(root, cfg, task, notes):
+    """The task record and its decision log entries as items: {kind: record|entry, file, ...}; [] when there are none."""
+    tr = config.task_record(cfg)
+    base = tr["path"]
+    rec_rel = posixpath.join(base, task + ".md")
+    items = []
+    text = read_lines(root / rec_rel) if (root / rec_rel).is_file() else None
+    if text is not None:
+        body = {h.lower(): b for h, b in taskrec.sections_of("\n".join(text))}
+        goal = body.get(tr["sections"][0].lower(), "")
+        acc = body.get(taskrec.ACCEPTANCE.lower(), "")
+        done = len(re.findall(r"^\s*[-*]\s*\[[xX]\]", acc, re.M))
+        total = done + len(re.findall(r"^\s*[-*]\s*\[ \]", acc, re.M))
+        items.append({"kind": "record", "file": rec_rel, "goal": snippet(goal), "done": done, "total": total})
+    elif (root / rec_rel).is_file():
+        notes.append(f"cannot read {rec_rel} (not UTF-8?); it was skipped")
+    folder = root / base / task
+    names = sorted(p.name for p in folder.glob("*.md") if p.is_file()) if folder.is_dir() else []
+    for name in names:
+        rel = posixpath.join(base, task, name)
+        lines = read_lines(root / rel)
+        if lines is None:
+            notes.append(f"cannot read {rel} (not UTF-8?); it was skipped")
+            continue
+        first = next((l for l in lines if l.strip()), "")
+        parts = first[2:].split(taskrec.SEP) if first.startswith("# ") else []
+        date, agent, commit = (x.strip() for x in parts[:3]) if len(parts) == 4 else (name[:10], "?", "?")
+        errors = taskrec.entry_errors("\n".join(lines), task, cfg)
+        why = {h.lower(): b for h, b in taskrec.sections_of("\n".join(lines))}.get(tr["logSections"][0].lower(), "")
+        item = {"kind": "entry", "file": rel, "date": date, "agent": agent, "commit": commit, "why": snippet(why)}
+        if errors:
+            item["warning"] = errors[0]
+            notes.append(f"{rel} is not a valid decision log entry: {errors[0]}")
+        items.append(item)
+    return items
+
+
 def doc_entries(root, task, pattern, skip, notes):
     names = git(root, "ls-files", "-z", "--", "*.md").split("\0")
     found = []
@@ -181,10 +225,11 @@ def collect(root, cfg, task, docs=True):
     notes += [note] if note else []
     pend_hits, note = mentions(root, pend_rel, pattern)
     notes += [note] if note else []
-    skip = {e["path"] for e in config.roadmap_files(cfg)} | {log_rel, pend_rel}
+    task_items = task_entries(root, cfg, task, notes)
+    skip = {e["path"] for e in config.roadmap_files(cfg)} | {log_rel, pend_rel} | {i["file"] for i in task_items}
     commits = commit_entries(root, task, pattern)
     found_docs = doc_entries(root, task, pattern, skip, notes) if docs else []
-    return {"id": task, "declared": {"roadmap": rows, "commits": commits},
+    return {"id": task, "declared": {"roadmap": rows, "task": task_items, "commits": commits},
             "deduced": {"log": log_hits, "pending": pend_hits, "docs": found_docs}, "notes": notes}
 
 
@@ -209,6 +254,12 @@ def render_group(group, names, limit):
         for item in items[:limit]:
             if source == "commits":
                 lines.append(f"  {item['short']} [{item['how']}] {item['subject']}")
+            elif source == "task" and item["kind"] == "record":
+                lines.append(f"  {item['file']}: Goal: {item['goal']}; Acceptance {item['done']}/{item['total']} done")
+            elif source == "task":
+                warn = f"  [WARNING: {item['warning']}]" if "warning" in item else ""
+                lines.append(f"  {item['date']} · {item['agent']} · {item['commit']} ({item['file']}): "
+                             f"{item['why']}{warn}")
             elif source == "roadmap":
                 also = "".join(f" (also {a['file']}:{a['line']})" for a in item["also"])
                 lines.append(f"  {item['file']}:{item['line']} {item['section']}{also}\n    {item['text']}")

@@ -311,7 +311,7 @@ how code already reaches it today.
   .claude/gw/scripts/trace.py D14` (what is **declared**: its row in the roadmap of `roadmapFiles`, listed once with
   the translation as "also", the commits whose `Refs:` trailer or subject scope cites it and the merges that name it
   -the closest to a PR without a network-; and what is **deduced**: the lines of the log and of `pendingFile` and the
-  tracked `.md` files that mention it). It computes on the spot, with no index. The id must match `taskId`. Exit 0
+  tracked `.md` files that mention it; the task record `<taskRecord.path>/<id>.md` with its Goal and Acceptance state and the decision log entries in `<taskRecord.path>/<id>/`, by date, are declared and listed once, not again as documents). It computes on the spot, with no index. The id must match `taskId`. Exit 0
   when something names it, 1 when nothing does (it says where it looked) and 2 when the id is malformed or the config
   cannot be read; `--json` gives one object with `declared`, `deduced` and a list per source, `--limit N` (20) trims
   the text and `--no-docs` skips the search in `.md` files (it reads none).

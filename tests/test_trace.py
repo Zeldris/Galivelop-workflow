@@ -160,7 +160,7 @@ class Trace(unittest.TestCase):
         self.assertEqual(out.returncode, 0, out.stderr)
         data = json.loads(out.stdout)
         self.assertEqual(sorted(data), ["declared", "deduced", "found", "id", "notes"])
-        self.assertEqual(sorted(data["declared"]), ["commits", "roadmap"])
+        self.assertEqual(sorted(data["declared"]), ["commits", "roadmap", "task"])
         self.assertEqual(sorted(data["deduced"]), ["docs", "log", "pending"])
         self.assertTrue(data["found"])
         self.assertEqual(data["id"], "D14")
@@ -240,6 +240,84 @@ class Trace(unittest.TestCase):
         out = self.repo.trace("D14")
         self.assertEqual(out.returncode, 2)
         self.assertIn("taskId", out.stderr)
+
+    TASK_CFG = {"taskRecord": {"enabled": True}}
+
+    def with_task(self):
+        r = self.repo
+        cfg = json.loads((r.work / ".claude" / "gw.json").read_text())
+        cfg.update(self.TASK_CFG)
+        r.write(".claude/gw.json", json.dumps(cfg))
+        r.write("docs/tasks/D14.md", "# D14 · t\n\n## Goal\n\nTrace the task D14.\n\n## Acceptance\n\n- [x] a\n- [ ] b\n- [x] c\n")
+        return r
+
+    def entry(self, name, date, commit, why, task="D14", agent="session"):
+        self.repo.write(f"docs/tasks/D14/{name}.md", f"# {date} · {agent} · {commit} · {task}\n\n## Why\n\n{why}\n\n"
+                        "## Alternatives\n\n—\n\n## Changed because\n\n—\n")
+
+    def test_task_record_and_log_shown_sorted_pending(self):
+        r = self.with_task()
+        self.entry("2026-11-18-session-bbbbbbb", "2026-11-18", "abc1234", "second")
+        self.entry("2026-11-17-session-aaaaaaa", "2026-11-17", "pending", "first")
+        data = json.loads(r.trace("D14", "--json").stdout)
+        task = data["declared"]["task"]
+        self.assertEqual([t["kind"] for t in task], ["record", "entry", "entry"])
+        self.assertEqual((task[0]["done"], task[0]["total"], task[0]["goal"]), (2, 3, "Trace the task D14."))
+        self.assertEqual([(t["date"], t["commit"]) for t in task[1:]], [("2026-11-17", "pending"), ("2026-11-18", "abc1234")])
+        out = r.trace("D14").stdout
+        self.assertIn("== task (3)", out)
+        self.assertIn("Acceptance 2/3 done", out)
+        self.assertIn("2026-11-17 · session · pending (docs/tasks/D14/2026-11-17-session-aaaaaaa.md): first", out)
+        self.assertLess(out.index("first"), out.index("second"))
+        # the task's own files are not listed again among the documents
+        self.assertNotIn("docs/tasks/", "".join(d["file"] for d in data["deduced"]["docs"]))
+        self.assertNotIn("docs/tasks/", out.split("== docs")[-1])
+
+    def test_no_docs_still_shows_task(self):
+        r = self.with_task()
+        out = r.trace("D14", "--no-docs")
+        self.assertIn("== task (1)", out.stdout)
+        self.assertNotIn("== docs", out.stdout)
+
+    def test_missing_and_empty_task_folder(self):
+        r = self.with_task()
+        (r.work / "docs/tasks/D14").mkdir()
+        data = json.loads(r.trace("D14", "--json").stdout)
+        self.assertEqual([t["kind"] for t in data["declared"]["task"]], ["record"])
+        data = json.loads(r.trace("D1", "--json").stdout)  # no record, no folder
+        self.assertEqual(data["declared"]["task"], [])
+        self.assertNotIn("== task", r.trace("D1").stdout)
+
+    def test_only_entries_without_record(self):
+        r = self.repo
+        self.entry("2026-11-17-session-aaaaaaa", "2026-11-17", "pending", "only")
+        out = r.trace("D14")
+        self.assertIn("== task (1)", out.stdout)
+
+    def test_malformed_entry_warns(self):
+        r = self.with_task()
+        r.write("docs/tasks/D14/2026-11-16-session-ccccccc.md", "not a header\n\n## Why\n\nx\n")
+        out = r.trace("D14")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("WARNING: the first line is not", out.stdout)
+        self.assertIn("note: docs/tasks/D14/2026-11-16-session-ccccccc.md is not a valid decision log entry", out.stdout)
+        self.assertNotIn("Traceback", out.stderr)
+
+    def test_limit_applies_to_task(self):
+        r = self.with_task()
+        for i in range(3):
+            self.entry(f"2026-11-1{i}-session-aaaaaa{i}", f"2026-11-1{i}", "pending", f"w{i}")
+        out = r.trace("D14", "--limit", "2").stdout
+        self.assertIn("== task (4)", out)
+        self.assertIn("… 2 more", out)
+
+    def test_task_in_id_range_row(self):
+        r = self.repo
+        r.write("docs/tasks/E12.md", "# E12\n\n## Goal\n\ng\n\n## Acceptance\n\n- [ ] x\n")
+        data = json.loads(r.trace("E12", "--json").stdout)
+        self.assertEqual(len(data["declared"]["roadmap"]), 1)  # the E9-E16 row
+        self.assertEqual(data["declared"]["task"][0]["file"], "docs/tasks/E12.md")  # default path docs/tasks
+        self.assertEqual(data["deduced"]["docs"], [])
 
 
 if __name__ == "__main__":
