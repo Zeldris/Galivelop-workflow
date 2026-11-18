@@ -27,6 +27,7 @@
   "checkCacheInputs": [".claude/gw.local.json"],
   "checkLogKeep": 20,
   "testJobs": 0,
+  "flaky": {"retries": 1, "proposeAfter": 3},
   "testUnitTimeout": 1800,
   "stopTranscriptBytes": 4194304,
   "stopSubagentMaxAge": 86400,

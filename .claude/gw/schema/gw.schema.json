@@ -436,6 +436,16 @@
       "default": 0,
       "description": "How many test processes scripts/test-run.py runs at once (one test class each, the slowest first); 0 = one per CPU."
     },
+    "flaky": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "retries": {"type": "integer", "minimum": 0, "maximum": 5, "default": 1, "description": "Times scripts/test-run.py runs a failed test class again; one that passes on a retry is a flaky and is recorded; 0 = no retry and no record."},
+        "proposeAfter": {"type": "integer", "minimum": 1, "default": 3, "description": "Records of the same unit in <git common dir>/gw/flaky.jsonl from which the flaky line also proposes fixing it."}
+      },
+      "default": {"retries": 1, "proposeAfter": 3},
+      "description": "Flaky-test registry of scripts/test-run.py (E35): retries and proposeAfter."
+    },
     "testUnitTimeout": {
       "type": "integer",
       "minimum": 0,

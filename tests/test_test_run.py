@@ -132,6 +132,88 @@ class TestRun(unittest.TestCase):
         self.assertEqual(code, 0, out + err)
         self.assertIn(f"{os.cpu_count()} jobs", out)
 
+    # E35: the flaky registry. A class that fails only while its marker file is missing, then creates it.
+    def flaky_test(self, fails=1):
+        marker = self.tmp / "marker"
+        self.write("tests/test_b.py", "import unittest\nfrom pathlib import Path\nclass Gamma(unittest.TestCase):\n"
+                   "    def test_x(self):\n"
+                   f"        m = Path({str(marker)!r}); n = int(m.read_text()) if m.exists() else 0\n"
+                   "        m.write_text(str(n + 1))\n"
+                   f"        self.assertGreaterEqual(n, {fails}, 'FLAKY FIRST')\n")
+        return marker
+
+    def registry(self):
+        path = self.tmp / ".git" / "gw" / "flaky.jsonl"
+        return [json.loads(x) for x in path.read_text().splitlines()] if path.exists() else []
+
+    def test_a_unit_that_passes_on_retry_is_recorded_and_reported(self):
+        self.flaky_test()
+        code, out, err = self.run_cli("tests")
+        self.assertEqual(code, 0, out + err)
+        self.assertIn("test-run: flaky: tests/test_b.py::Gamma (passed on retry; 1 times recorded)", out)
+        self.assertNotIn("fix it", out)
+        self.assertTrue(out.rstrip().endswith(": OK"), out)
+        (rec,) = self.registry()
+        self.assertEqual(rec["unit"], "tests/test_b.py::Gamma")
+        self.assertIn("FLAKY FIRST", rec["output"])
+        self.assertRegex(rec["date"], r"^\d{4}-\d\d-\d\dT")
+        self.assertRegex(rec["commit"], r"^$|^[0-9a-f]{7,}$")  # an empty repo has no HEAD yet
+
+    def test_a_unit_that_fails_twice_is_a_normal_failure_with_both_outputs(self):
+        self.flaky_test(fails=5)
+        code, out, err = self.run_cli("tests")
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("FAILED (tests/test_b.py::Gamma)", out)
+        self.assertIn("--- run 1 of 2", out)
+        self.assertIn("--- run 2 of 2", out)
+        self.assertNotIn("flaky:", out)
+        self.assertEqual(self.registry(), [])
+
+    def test_retries_zero_neither_retries_nor_records(self):
+        marker = self.flaky_test()
+        self.configure(flaky={"retries": 0})
+        code, out, err = self.run_cli("tests")
+        self.assertEqual(code, 1, out + err)
+        self.assertEqual(marker.read_text(), "1")  # run once
+        self.assertEqual(self.registry(), [])
+
+    def test_the_proposal_appears_at_propose_after(self):
+        self.configure(flaky={"proposeAfter": 2})
+        for n in (1, 2):
+            if (self.tmp / "marker").exists():
+                (self.tmp / "marker").unlink()
+            self.flaky_test()
+            code, out, err = self.run_cli("tests")
+            self.assertEqual(code, 0, out + err)
+            self.assertIn(f"passed on retry; {n} times recorded)", out)
+            self.assertEqual("fix it" in out, n == 2, out)
+        self.assertIn("unittest discover -s tests -p test_b.py -k '*.Gamma.*' -v", out)
+
+    def test_a_bad_flaky_config_is_refused_with_its_reason(self):
+        for bad, reason in (({"retries": -1}, "$.flaky.retries: must be at least 0"),
+                            ({"proposeAfter": 0}, "$.flaky.proposeAfter: must be at least 1"),
+                            ({"retries": "1"}, "$.flaky.retries"), ({"other": 1}, "$.flaky")):
+            self.configure(flaky=bad)
+            code, out, err = self.run_cli("tests")
+            self.assertEqual(code, 2, out + err)
+            self.assertIn(reason, err)
+
+    def test_without_a_git_common_dir_the_flaky_unit_still_passes(self):
+        import contextlib
+        import importlib.util
+        import io
+        spec = importlib.util.spec_from_file_location("test_run_under_test", SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        mod.times_path = lambda root: None  # what `git rev-parse --git-common-dir` failing gives
+        self.flaky_test()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = mod.main(["tests", "--root", str(self.tmp)])
+        self.assertEqual(code, 0, out.getvalue())
+        self.assertIn("passed on retry; 0 times recorded)", out.getvalue())
+        self.assertEqual(self.registry(), [])
+
 
 if __name__ == "__main__":
     unittest.main()
