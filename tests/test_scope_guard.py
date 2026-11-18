@@ -3,6 +3,7 @@
 the deviations log, `new --related`). A temporary project laid out like one that applied the workflow; "allowed" is no
 output. Every case that expects a warning or a deny checks what it says, not only the exit code."""
 import json
+import shutil
 import sys
 import unittest
 
@@ -43,7 +44,7 @@ Guard the scope.
 """
 
 
-class Scope(Base):
+class ScopeBase(Base):
     config = {"taskId": "[A-H]\\d+"}
     hooks = ("pre-commit",)
 
@@ -77,6 +78,9 @@ class Scope(Base):
         f = self.p.work / ".git" / "gw" / "deviations.jsonl"
         return [json.loads(l) for l in f.read_text().splitlines()] if f.exists() else []
 
+
+
+class Scope(ScopeBase):
     # In scope and always allowed
 
     def test_in_scope_file_is_allowed(self):
@@ -209,6 +213,145 @@ class Scope(Base):
         err = r.stdout + r.stderr
         self.assertIn("scope-guard (block mode): these staged files are outside the scope of task C13", err)
         self.assertIn("git restore --staged -- 'src/b.py'", err)
+
+
+class ReviewFixes(ScopeBase):
+    """The /code-review findings 1-6 and 10 (C13)."""
+
+    def staged(self, env=None):
+        return self.p.run(sys.executable, "-B", str(self.p.work / ".claude/gw/scripts/scope-guard.py"), "--staged",
+                          env=env)
+
+    def block(self):
+        self.set_config(scopeGuard={"mode": "block"})
+        self.p.git("add", "-A")
+        self.p.git("commit", "-q", "--no-verify", "-m", "block config")
+
+    def load_guard(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("scope_guard", self.p.work / ".claude/gw/scripts/scope-guard.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    def test_1_workflow_files_from_the_config_are_always_allowed(self):
+        self.block()
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import config as gwconfig
+        cfg = gwconfig.load(self.p.work)
+        for rel in (gwconfig.metrics(cfg)["ledger"], cfg["reviewMark"], cfg["ciLocalLog"]):
+            self.assertEqual(self.hook(rel), "", rel)
+        self.p.write(gwconfig.metrics(cfg)["ledger"], "{}\n")
+        self.p.write(cfg["reviewMark"], "abc\n")
+        r = self.p.commit("ledger and mark")
+        self.assertNotIn("scope-guard", r.stdout + r.stderr)
+
+    def test_2_a_related_record_is_the_guards_own_way_on(self):
+        self.block()
+        code, out = self.p.run(sys.executable, "-B", str(self.p.work / ".claude/gw/scripts/task.py"), "new", "C20",
+                               "--related", "C13")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.hook("docs/tasks/C20.md"), "")
+        self.assertEqual(self.hook("docs/tasks/C20/2026-11-18-session-abc.md"), "")
+        r = self.p.commit("new requirement")
+        self.assertNotIn("scope-guard", r.stdout + r.stderr)
+        self.assertNotEqual(self.hook("docs/tasks/C21.md"), "")  # an unrelated record is not
+
+    def test_3_git_stuck_warns_in_warn_mode_and_refuses_in_block(self):
+        import contextlib
+        import io
+        mod = self.load_guard()
+
+        def stuck(*_):
+            raise mod.task.GitStuck("`git rev-parse` took more than 10s")
+        mod.task.current_task = stuck
+        for mode, code in (("warn", 0), ("block", 1)):
+            self.set_config(scopeGuard={"mode": mode})
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                self.assertEqual(mod.staged(str(self.p.work)), code)
+            self.assertIn("git did not answer (`git rev-parse` took more than 10s)", err.getvalue())
+            self.assertIn("index.lock", err.getvalue())
+            self.assertIn("(block mode)" if mode == "block" else "WARNING", err.getvalue())
+
+    def test_3_own_failure_names_the_fix(self):
+        fake = self.p.tmp / "fakebin"
+        fake.mkdir()
+        (fake / "git").write_text('#!/bin/sh\ncase "$*" in *"--name-only --no-renames -z"*) echo boom >&2; exit 2;; '
+                                  'esac\nexec ' + shutil.which("git") + ' "$@"\n')
+        (fake / "git").chmod(0o755)
+        self.p.write("src/b.py", "b = 9\n")
+        self.p.git("add", "-A")
+        env = {"PATH": f"{fake}:{self.p.env['PATH']}"}
+        code, out = self.staged(env)
+        self.assertEqual(code, 0, out)
+        self.assertIn("WARNING: it failed (RuntimeError: git diff --cached failed: boom)", out)
+        self.assertIn("scope-guard.py --staged", out)
+
+    def test_4_revert_squash_and_rebase_in_progress_are_skipped(self):
+        self.block()
+        self.p.write("src/b.py", "b = 4\n")
+        self.p.git("add", "-A")
+        code, out = self.staged()
+        self.assertEqual(code, 1, out)
+        for name in ("REVERT_HEAD", "SQUASH_MSG", "rebase-merge"):
+            path = self.p.work / ".git" / name
+            path.mkdir() if name == "rebase-merge" else path.write_text("x\n")
+            code, out = self.staged()
+            self.assertEqual((code, out), (0, ""), name)
+            shutil.rmtree(path) if name == "rebase-merge" else path.unlink()
+
+    def test_5_growing_files_needs_a_change_log_line(self):
+        self.block()
+        rec = self.p.work / "docs/tasks/C13.md"
+        rec.write_text(rec.read_text().replace("- `src/a.py`\n", "- `src/a.py`\n- `src/c.py`\n"))
+        self.p.write("src/c.py", "c = 1\n")
+        r = self.p.commit("grow", ok=False)
+        self.assertNotEqual(r.returncode, 0)
+        err = r.stdout + r.stderr
+        self.assertIn("docs/tasks/C13.md adds to `## Files` without naming them in its `## Change log`", err)
+        self.assertIn("  src/c.py", err)
+        rec.write_text(rec.read_text().replace("## Change log\n\n—", "## Change log\n\n- `src/c.py`: the parser lives there"))
+        r = self.p.commit("grow, explained")
+        self.assertNotIn("scope-guard", r.stdout + r.stderr)
+
+    def test_5_warn_mode_logs_the_unexplained_growth(self):
+        rec = self.p.work / "docs/tasks/C13.md"
+        rec.write_text(rec.read_text().replace("- `src/a.py`\n", "- `src/a.py`\n- `src/d.py`\n"))
+        r = self.p.commit("grow")
+        self.assertIn("WARNING: docs/tasks/C13.md adds to `## Files`", r.stdout + r.stderr)
+        self.assertEqual(self.deviations()[-1]["action"], "files-unlogged")
+
+    def test_6_pre_commit_names_each_missing_script(self):
+        for name in ("task.py", "questions-guard.py", "questions.py"):
+            path = self.p.work / ".claude/gw/scripts" / name
+            saved = path.read_bytes()
+            path.unlink()
+            r = self.p.commit(f"no {name}", ok=False)
+            self.assertNotEqual(r.returncode, 0)
+            self.assertIn(f".claude/gw/scripts/{name} is missing; reinstall the workflow scripts: /gw-update",
+                          r.stdout + r.stderr)
+            path.write_bytes(saved)
+
+    def test_10_crash_reads_the_mode_of_the_edited_worktree(self):
+        import contextlib
+        import io
+        wt = self.p.tmp / "wt"
+        self.p.git("worktree", "add", "-q", "-b", "agent/C13-wt", str(wt))
+        (wt / ".claude" / "gw.json").write_text(json.dumps(dict(BASE_CONFIG, **self.config, scopeGuard={"mode": "block"})))
+        mod = self.load_guard()
+        mod.STATE["top"] = wt
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.crash(RuntimeError("boom"))
+        spec = json.loads(out.getvalue())["hookSpecificOutput"]
+        self.assertEqual(spec["permissionDecision"], "deny")
+        self.assertIn("scope-guard.py failed (RuntimeError: boom)", spec["permissionDecisionReason"])
+        mod.STATE.clear()
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            mod.crash(RuntimeError("boom"))
+        self.assertNotIn("permissionDecision", json.loads(out.getvalue())["hookSpecificOutput"])  # the session: warn
 
 
 class Parsing(unittest.TestCase):

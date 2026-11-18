@@ -12,7 +12,9 @@ the project's git common dir; that worktree gives the config and the current tas
 naming no file it can place (a Windows drive path elsewhere), no current task, no record `<taskRecord.path>/<id>.md` or
 a record without a `## Files` section: allowed, silently (there is no scope to compare with).
 
-Always allowed: the record, its folder `<id>/` (the decision log), the questions file and the log (`log`). Any other
+Always allowed: the record, its folder `<id>/` (the decision log), the records and folders of the ids its `Related:`
+lines name (`task.py new <newid> --related <id>` links both), and the files the workflow itself writes, read from the
+config (questions file, `log`, `metrics.ledger`, `reviewMark`, `ciLocalLog`). Any other
 file must be named in `## Files` (task.py files_of/in_files: exact path, a folder prefix, a simple glob). Outside it, by
 `scopeGuard.mode` (config.scope_guard()):
   - `warn` (default): allowed; `additionalContext` once per task and file (mark `gw/scope-warned` in the worktree's git
@@ -28,7 +30,9 @@ job is to warn, so a .claude/gw.json it cannot read gives a one-line warning onc
 questions guard already blocks code edits then, and commit-msg refuses a commit that is not WIP:); git hanging, or a
 crash, denies only when the mode it could read is block. Not covered: files written with Bash. Output: nothing or one
 JSON object on stdout, exit 0. With --staged: warnings on stderr, exit 1 only in block mode with staged files outside
-Files. Python 3.8+ standard library only.
+Files, a staged record whose `## Files` grows without its `## Change log` naming the new paths (P3: going on means
+writing it there), or a failure of its own (git hanging); skipped while closing a merge, cherry-pick, revert, rebase,
+`git am` or `git merge --squash`. Python 3.8+ standard library only.
 """
 import importlib.util
 import os
@@ -55,21 +59,41 @@ def mode_of(cfg):
     return config.scope_guard(cfg)["effective"]
 
 
-def always_allowed(rel, cfg, record_base, task_id):
-    q = config.questions_path(cfg).strip("/")
-    log = (cfg.get("log") or config.schema_default("log") or "").strip("/")
-    return (rel in (f"{record_base}/{task_id}.md", q, log) or rel.startswith(f"{record_base}/{task_id}/"))
+IN_PROGRESS = ("MERGE_HEAD", "CHERRY_PICK_HEAD", "REVERT_HEAD", "REBASE_HEAD", "rebase-merge", "rebase-apply",
+               "SQUASH_MSG")  # metrics.IN_PROGRESS, plus `git merge --squash`: the other side's files
+
+
+def flow_files(cfg):
+    """The files the workflow itself writes and commits (from the config, never fixed): the questions file, the log, the
+    token ledger that the pre-commit stages (metrics.ledger), the review mark and the local CI record."""
+    out = {config.questions_path(cfg), cfg.get("log") or config.schema_default("log"), cfg.get("reviewMark"),
+           cfg.get("ciLocalLog")}
+    try:
+        out.add(config.metrics(cfg)["ledger"])
+    except Exception:  # noqa: BLE001 (a broken metrics key leaves the rest)
+        pass
+    return {f.strip().strip("/") for f in out if isinstance(f, str) and f.strip()}
+
+
+def always_allowed(rel, cfg, record_base, task_ids):
+    """The records and decision-log folders of the task and of the tasks its `Related:` lines name (a new requirement's
+    record, the guard's own way on), and the workflow's own files."""
+    for tid in task_ids:
+        if rel == f"{record_base}/{tid}.md" or rel.startswith(f"{record_base}/{tid}/"):
+            return True
+    return rel in flow_files(cfg)
 
 
 def scope_of(top, cfg, task_id):
-    """(record rel path, patterns) of the task, or (rel, None) when there is no record or no Files section."""
+    """(base, record rel path, patterns, ids): patterns None when there is no record or no Files section; ids are the
+    task and its `Related:` ones."""
     base = config.task_record(cfg)["path"].strip("/")
     rel = f"{base}/{task_id}.md"
     try:
         text = (Path(top) / rel).read_text(encoding="utf-8")
     except (OSError, UnicodeDecodeError):
-        return base, rel, None
-    return base, rel, task.files_of(text)
+        return base, rel, None, [task_id]
+    return base, rel, task.files_of(text), [task_id] + task.related_of(text)
 
 
 def how_on(task_id, record, rel, script_cmd):
@@ -93,6 +117,9 @@ def warn_once(top, key):
         qg.WARNED = saved
 
 
+STATE = {}  # the edited file's worktree, for the crash handler
+
+
 def hook():
     event = qg.read_event()
     if event is None or event.get("tool_name") not in qg.TOOLS:
@@ -104,6 +131,7 @@ def hook():
     top, rel = qg.place(path, home)
     if top is None:
         return 0  # outside the project
+    STATE["top"] = top
     cfg, broken = qg.load(top)
     if broken:
         if rel != ".claude/gw.json" and warn_once(top, "broken-config"):
@@ -124,8 +152,8 @@ def hook():
         return 0
     if not task_id:
         return 0
-    base, record, patterns = scope_of(top, cfg, task_id)
-    if patterns is None or always_allowed(rel, cfg, base, task_id) or task.in_files(rel, patterns):
+    base, record, patterns, ids = scope_of(top, cfg, task_id)
+    if patterns is None or always_allowed(rel, cfg, base, ids) or task.in_files(rel, patterns):
         return 0
     way = how_on(task_id, record, rel, task_cmd(top))
     if mode == "block":
@@ -137,6 +165,25 @@ def hook():
         qg.emit({"additionalContext": f"{NAME}: `{rel}` is outside the scope of task {task_id} (`## Files` of {record}); "
                                       f"{way}. (Shown once per task and file; logged in deviations.jsonl.)"})
     return 0
+
+
+def unlogged(top, record, cfg):
+    """Paths that the staged record adds to `## Files` (against HEAD) without naming them in its `## Change log`: growing
+    the scope must say why (P3). Empty for a new record (its first Files is the plan) or one it cannot read."""
+    def show(rev):
+        r = subprocess.run(["git", "show", f"{rev}:{record}"], cwd=str(top), capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", stdin=subprocess.DEVNULL)
+        return r.stdout if r.returncode == 0 else None
+    old, new = show("HEAD"), show("")
+    if old is None or new is None:
+        return []
+    before, after = task.files_of(old) or [], task.files_of(new) or []
+    log_name = config.task_record(cfg)["sections"]
+    log_name = next((n for n in log_name if n.lower() == "change log"), "Change log")
+    body = next((b for h, b in task.sections_of(new) if h.lower() == log_name.lower()), "")
+    old_body = next((b for h, b in task.sections_of(old) if h.lower() == log_name.lower()), "")
+    added_log = body if not old_body else body.replace(old_body, "", 1) if old_body in body else body
+    return [f for f in after if f not in before and f.rstrip("/") not in added_log]
 
 
 def staged(root_arg):
@@ -153,37 +200,60 @@ def staged(root_arg):
     mode = mode_of(cfg)
     if mode == "off":
         return 0
-    for head in ("MERGE_HEAD", "CHERRY_PICK_HEAD", "REBASE_HEAD"):  # the other side's files are not this task's
+    try:
+        return staged_check(top, cfg, mode)
+    except task.GitStuck as exc:
+        why = f"git did not answer ({exc}), so the task's scope is not checked; check the repository (git status, a " \
+              f"stale .git/index.lock) and commit again"
+    except Exception as exc:  # noqa: BLE001 (warn mode never blocks a commit on the guard's own failure)
+        why = f"it failed ({type(exc).__name__}: {exc}); check it: python3 {os.path.join(HERE, 'scope-guard.py')} --staged"
+    if mode == "block":
+        print(f"pre-commit: {NAME} (block mode): {why}", file=sys.stderr)
+        return 1
+    print(f"pre-commit: {NAME}: WARNING: {why}", file=sys.stderr)
+    return 0
+
+
+def staged_check(top, cfg, mode):
+    for head in IN_PROGRESS:  # the other side's files are not this task's
         out = qg.git(top, "rev-parse", "--git-path", head)
         if out and (Path(top) / out).exists():
             return 0
     task_id, _ = task.current_task(top, cfg)
     if not task_id:
         return 0
-    base, record, patterns = scope_of(top, cfg, task_id)
+    base, record, patterns, ids = scope_of(top, cfg, task_id)
     if patterns is None:
         return 0
     # The hook's own environment (GIT_INDEX_FILE of `git commit -a` or `git commit <paths>`) says what is staged.
     r = subprocess.run(["git", "diff", "--cached", "--name-only", "--no-renames", "-z"], cwd=str(top),
                        capture_output=True, text=True, stdin=subprocess.DEVNULL)
     if r.returncode != 0:
-        print(f"{NAME}: git diff --cached failed ({r.stderr.strip()}); check the repository: git status", file=sys.stderr)
-        return 1 if mode == "block" else 0
-    outside = [p for p in r.stdout.split("\0") if p and not always_allowed(p, cfg, base, task_id)
-               and not task.in_files(p, patterns)]
-    if not outside:
+        raise RuntimeError(f"git diff --cached failed: {r.stderr.strip()}")
+    names = [p for p in r.stdout.split("\0") if p]
+    outside = [p for p in names if not always_allowed(p, cfg, base, ids) and not task.in_files(p, patterns)]
+    grown = unlogged(top, record, cfg) if record in names else []
+    if not outside and not grown:
         return 0
-    way = how_on(task_id, record, outside[0], task_cmd(top))
-    listed = "\n".join(f"  {p}" for p in outside)
+    lines = []
+    if outside:
+        listed = "\n".join(f"  {p}" for p in outside)
+        lines.append(f"these staged files are outside the scope of task {task_id} (`## Files` of {record}):\n{listed}\n"
+                     f"pre-commit: {how_on(task_id, record, outside[0], task_cmd(top))}")
+    if grown:
+        listed = "\n".join(f"  {p}" for p in grown)
+        lines.append(f"{record} adds to `## Files` without naming them in its `## Change log`:\n{listed}\n"
+                     f"pre-commit: write why in `## Change log` (one line naming `{grown[0]}`), then: git add {record}")
     if mode == "block":
-        print(f"pre-commit: {NAME} (block mode): these staged files are outside the scope of task {task_id} (`## Files` "
-              f"of {record}):\n{listed}\npre-commit: {way}; or unstage them: git restore --staged -- '{outside[0]}'",
-              file=sys.stderr)
+        text = "\npre-commit: ".join(lines)
+        print(f"pre-commit: {NAME} (block mode): {text}" + (f"\npre-commit: or unstage them: git restore --staged -- "
+              f"'{outside[0]}'" if outside else ""), file=sys.stderr)
         return 1
     for p in outside:
         task.log_deviation(top, task_id, p, "commit-warn")
-    print(f"pre-commit: {NAME}: WARNING: these staged files are outside the scope of task {task_id} (`## Files` of "
-          f"{record}):\n{listed}\npre-commit: {way}", file=sys.stderr)
+    for p in grown:
+        task.log_deviation(top, task_id, p, "files-unlogged")
+    print(f"pre-commit: {NAME}: WARNING: " + "\npre-commit: ".join(lines), file=sys.stderr)
     return 0
 
 
@@ -194,17 +264,22 @@ def main(argv):
     return hook()
 
 
+def crash(exc):
+    """A failure of the hook: deny only when the mode of the edited file's worktree (else the session's) is block."""
+    why = f"{NAME}.py failed ({type(exc).__name__}: {exc}); check it: python3 {os.path.join(HERE, 'scope-guard.py')}"
+    try:
+        cfg, broken = qg.load(STATE.get("top") or qg.home_root(None))
+        strict = not broken and mode_of(cfg) == "block"
+    except Exception:  # noqa: BLE001
+        strict = False
+    qg.emit({"permissionDecision": "deny", "permissionDecisionReason": why} if strict else {"additionalContext": why})
+
+
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--staged"]:
         sys.exit(main(sys.argv[1:]))
     try:
         sys.exit(main(sys.argv[1:]))
-    except Exception as exc:  # noqa: BLE001 (deny only when the mode it can read is block; else say why)
-        why = f"{NAME}.py failed ({type(exc).__name__}: {exc}); check it: python3 {os.path.join(HERE, 'scope-guard.py')}"
-        try:
-            cfg, broken = qg.load(qg.home_root(None))
-            strict = not broken and mode_of(cfg) == "block"
-        except Exception:  # noqa: BLE001
-            strict = False
-        qg.emit({"permissionDecision": "deny", "permissionDecisionReason": why} if strict else {"additionalContext": why})
+    except Exception as exc:  # noqa: BLE001
+        crash(exc)
         sys.exit(0)

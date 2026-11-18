@@ -209,7 +209,7 @@ fi
 # Tasks closed in the plan, recorded in the log's "Done" before the commit exists (not after, with --amend).
 if [ "$ci" = "0" ]; then
   if [ -d "$root/.claude/gw/scripts" ]; then scripts="$root/.claude/gw/scripts"; else scripts="$root/scripts"; fi
-  for f in handoff.py config.py scope-guard.py; do
+  for f in handoff.py config.py scope-guard.py questions-guard.py questions.py task.py; do
     [ -f "$scripts/$f" ] || { echo "pre-commit: $scripts/$f is missing; reinstall the workflow scripts: /gw-update" >&2; exit 1; }
   done
   # C13: staged files outside `## Files` of the current task's record (scopeGuard: warn, or refuse in block mode).
