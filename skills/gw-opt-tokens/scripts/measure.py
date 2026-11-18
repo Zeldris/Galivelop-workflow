@@ -215,6 +215,40 @@ def default_session(root, since=None):
     return path
 
 
+def last_break(path):
+    """D138: moment of the last `/clear` (a user line with `<command-name>/clear</command-name>`) or compaction
+    (`compact_boundary`) of a log; (UTC datetime, 'clear' | 'compaction') or None."""
+    found = None
+    try:
+        with open(path, encoding='utf-8') as log:
+            for line in log:
+                if '/clear</command-name>' not in line and 'compact_boundary' not in line:
+                    continue  # cheap filter before parsing
+                try:
+                    d = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if not isinstance(d, dict) or d.get('isSidechain') or not d.get('timestamp'):
+                    continue
+                content = (d.get('message') or {}).get('content')
+                if isinstance(content, list):
+                    content = ' '.join(b.get('text') or '' for b in content if isinstance(b, dict))
+                if d.get('type') == 'system' and d.get('subtype') == 'compact_boundary':
+                    kind = 'compaction'
+                elif d.get('type') == 'user' and isinstance(content, str) and \
+                        content.lstrip().startswith('<command-name>/clear</command-name>'):
+                    kind = 'clear'
+                else:
+                    continue
+                try:
+                    found = (parse_time(d['timestamp']), kind)
+                except ValueError:
+                    continue
+    except OSError:
+        pass
+    return found
+
+
 def tokens_of(content):
     """Estimated tokens and image count of a `tool_result`."""
     if isinstance(content, str):
@@ -341,7 +375,9 @@ def main():
                     'repeats, per-file reads, per-model and per-subagent split. Standard library only.')
     ap.add_argument('--session', metavar='PATH.jsonl',
                     help='session log to read (default: newest of the repo folder or its parent folders)')
-    ap.add_argument('--hours', type=float, default=24, help='period in hours, 0 = the whole session (default 24)')
+    ap.add_argument('--hours', type=float, default=None,
+                    help='period in hours, 0 = the whole session (default: from the last /clear or compaction of the '
+                         'session log, else 24)')
     ap.add_argument('--since', metavar='ISO|SHA',
                     help='only from that moment (commit: its date; ISO-8601 date, no zone = UTC); replaces --hours')
     ap.add_argument('--top', type=int, default=12, help='rows per list (default 12)')
@@ -355,8 +391,8 @@ def main():
     since = None
     if a.since:
         since = since_moment(a.since)
-    elif a.hours > 0:
-        since = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=a.hours)
+    elif a.hours is None or a.hours > 0:
+        since = dt.datetime.now(dt.timezone.utc) - dt.timedelta(hours=24 if a.hours is None else a.hours)
     path = a.session or default_session(root, since)
     note = None
     threshold = 0 if a.session else min_calls(root)
@@ -374,6 +410,12 @@ def main():
                 note = (f'Note: the current session has {have} calls (under measure.minCalls = {threshold}) and '
                         f'there is no previous session of {"branch " + branch if branch else "its branch"}: '
                         f'measuring {os.path.basename(path)}')
+
+    start = None  # D138: with neither --since nor --hours, the stretch starts at the last /clear or compaction
+    if a.since is None and a.hours is None:
+        start = last_break(path)
+        if start:
+            since = start[0] + dt.timedelta(microseconds=1)  # the marker itself is not a call of the stretch
 
     usage = collections.Counter()
     api_calls = 0
@@ -471,7 +513,8 @@ def main():
 
     total_in = usage['input_tokens'] + usage['cache_creation_input_tokens'] + usage['cache_read_input_tokens']
     period = ('whole session' if not since else f'since {since:%Y-%m-%d %H:%M} UTC' if a.since
-              else f'last {a.hours:g} h')
+              else f'since the last {"/clear" if start[1] == "clear" else "compaction"} ({since:%Y-%m-%d %H:%M} UTC)'
+              if start else f'last {24 if a.hours is None else a.hours:g} h')
     print(f'Session: {os.path.basename(path)}  |  period: {period}')
     if note:
         print(note)

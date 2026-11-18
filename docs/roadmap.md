@@ -341,7 +341,7 @@ Arreglos de la recogida de apertura de la `0.9` (usuario, 2026-11-18): el gancho
 | D135 | `handoff.py check` rechaza una tabla de estado que pierde la fila «Tarea en curso» respecto a `HEAD` sin cierre de rama (recogida `0.9`, image-generator P1) | pendiente |
 | D136 | `merge-branch.sh` distingue un worktree bloqueado por un agente vivo: lo dice y lo deja para la siguiente pasada en vez de fallar (recogida `0.9`, image-generator P5) | pendiente |
 | D137 | `doctor.py` avisa de `branchCheck: related` con `relatedTests` vacío (recogida `0.9`, image-generator P6) | pendiente |
-| D138 | `measure.py` sin `--since` empieza en el último `/clear` o compactación del mismo archivo de sesión (recogida `0.9`, private-project-2 P4) | pendiente |
+| D138 | `measure.py` sin `--since` empieza en el último `/clear` o compactación del mismo archivo de sesión (recogida `0.9`, private-project-2 P4) | hecho (2026-11-18) |
 | D139 | `measure.py --since` elige la sesión de la carpeta del repo antes que la de una carpeta padre (recogida `0.9`, private-project-5 P2) | pendiente |
 | D140 | El aviso de `handoff.py` tras un rechazo de `pre-commit` dice repetir el mismo `git commit -m …` y solo remite a `COMMIT_EDITMSG` tras un rechazo de `commit-msg` (recogida `0.9`, world-maker-fantasy P3) | pendiente |
 
