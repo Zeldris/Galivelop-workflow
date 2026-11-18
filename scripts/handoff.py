@@ -471,7 +471,7 @@ def cmd_check(ctx, args):
             print(f"WARNING: handoff: {w}")
     if args.at == "push":  # the commit already exists: the fix is a new commit
         return report(problems, f"edit {ctx.log} and make a new commit with the fix: git add {ctx.log} && git commit")
-    return report(problems, f"edit {ctx.log}, stage it (git add {ctx.log}) and run the commit again: git commit")
+    return report(problems, f"edit {ctx.log}, stage it (git add {ctx.log}) and repeat the same commit: git commit -m \"...\"")
 
 
 def rows_problems(ctx, args, lines):

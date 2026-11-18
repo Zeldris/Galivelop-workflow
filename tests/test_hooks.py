@@ -3865,7 +3865,7 @@ class CommitMsg(Base):
         self.assertIn("commit-msg:", r.stderr)
         self.assertIn("git add docs/log.md", r.stderr)
         # the commit does not exist yet: --amend would rewrite the previous one
-        self.assertIn("handoff: fix: edit docs/log.md, stage it (git add docs/log.md) and run the commit again: git commit",
+        self.assertIn("handoff: fix: edit docs/log.md, stage it (git add docs/log.md) and repeat the same commit: git commit -m \"...\"",
                       r.stderr)
         self.assertNotIn("--amend", r.stderr)
 

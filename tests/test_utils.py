@@ -90,7 +90,7 @@ class HandoffRows(Base):
         self.p.write(LOG, log_text(a="x" * 601))
         code, out = self.p.script("handoff.py", "check")
         self.assertEqual(code, 1, out)
-        self.assertIn(f"handoff: fix: edit {LOG}, stage it (git add {LOG}) and run the commit again: git commit", out)
+        self.assertIn(f"handoff: fix: edit {LOG}, stage it (git add {LOG}) and repeat the same commit: git commit -m \"...\"", out)
         self.assertNotIn("--amend", out)
 
     def test_check_at_push_hints_a_new_commit_not_amend(self):
@@ -3492,11 +3492,12 @@ class HandoffPreflight(PlanRepo):
         self.assertEqual(code, 1, out)
         self.assertIn("over the hard cap", out)
         self.assertIn(f"handoff: fix: edit {LOG} and make a new commit with the fix: git add {LOG} && git commit", out)
-        self.assertNotIn("run the commit again", out)
+        self.assertNotIn("repeat the same commit", out)
         self.p.write(LOG, log_text(updated="2026-10-01"))  # being edited: the commit is still to come
         code, out = self.preflight()
         self.assertEqual(code, 1, out)
-        self.assertIn("run the commit again: git commit", out)
+        self.assertIn("repeat the same commit: git commit -m", out)
+        self.assertNotIn("COMMIT_EDITMSG", out)
 
     def test_a_merge_does_not_move_the_day_of_the_log(self):
         self.p.branch("side", self.base)  # both sides change the log: the merge's log differs from each parent

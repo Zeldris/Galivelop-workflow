@@ -342,7 +342,7 @@ Fixes from the `0.9` opening harvest (user, 2026-11-18): the `0.8.0` duplicated 
 | D137 | `doctor.py` warns on `branchCheck: related` with empty `relatedTests` (`0.9` harvest, image-generator P6) | pending |
 | D138 | `measure.py` with no `--since` starts at the last `/clear` or compaction of the same session file (`0.9` harvest, private-project-2 P4) | pending |
 | D139 | `measure.py --since` picks the repo folder's session before a parent folder's (`0.9` harvest, private-project-5 P2) | pending |
-| D140 | The `handoff.py` warning after a `pre-commit` rejection says to repeat the same `git commit -m …` and points to `COMMIT_EDITMSG` only after a `commit-msg` rejection (`0.9` harvest, world-maker-fantasy P3) | pending |
+| D140 | The `handoff.py` warning after a `pre-commit` rejection says to repeat the same `git commit -m …` and points to `COMMIT_EDITMSG` only after a `commit-msg` rejection (`0.9` harvest, world-maker-fantasy P3) | done (2026-11-18) |
 
 ## `0.9` "Front end"
 
