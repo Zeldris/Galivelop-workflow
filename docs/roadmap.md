@@ -337,7 +337,7 @@ Arreglos de la recogida de apertura de la `0.9` (usuario, 2026-11-18): el gancho
 | D131 | Plantillas de `AGENTS.md` (es/en): `Findings:`/`Retries:` van en el último párrafo, con los demás trailers (recogida `0.9`, world-maker-fantasy P1) | hecho (2026-11-18) |
 | D132 | `review-scope.py` en un proyecto sin `--workflow` ni `GW_WORKFLOW`: busca la copia del flujo o falla con la orden, en vez de tomarse el proyecto por flujo (recogida `0.9`, private-project-5 P4) | pendiente |
 | D133 | `recover.py --state` con `agentSignatures: false` recuerda en una línea: sin firmas del agente y trailers juntos en el último párrafo (recogida `0.9`, private-project-5 P1) | pendiente |
-| D134 | `handoff.py next-id`: el error con un prefijo que el plan no admite nombra los prefijos válidos y `--id-regex`/`taskId`; `--plan` vale también tras el subcomando (recogida `0.9`, private-project-2 P3 y private-project-5 P5) | pendiente |
+| D134 | `handoff.py next-id`: el error con un prefijo que el plan no admite nombra los prefijos válidos y `--id-regex`/`taskId`; `--plan` vale también tras el subcomando (recogida `0.9`, private-project-2 P3 y private-project-5 P5) | hecho (2026-11-18) |
 | D135 | `handoff.py check` rechaza una tabla de estado que pierde la fila «Tarea en curso» respecto a `HEAD` sin cierre de rama (recogida `0.9`, image-generator P1) | pendiente |
 | D136 | `merge-branch.sh` distingue un worktree bloqueado por un agente vivo: lo dice y lo deja para la siguiente pasada en vez de fallar (recogida `0.9`, image-generator P5) | pendiente |
 | D137 | `doctor.py` avisa de `branchCheck: related` con `relatedTests` vacío (recogida `0.9`, image-generator P6) | pendiente |

@@ -235,7 +235,7 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   recorded in the same commit (not with an `--amend` before the push). With `plan`, the push also refuses a task id
   the branch opens that `origin/<protectedBranch>` uses for another task (or a new merge that kept both under one id),
   and warns when it clashes with another remote branch (`handoff.py clash`); the `pre-commit` of a conflicted merge
-  checks it earlier. To avoid getting there, `handoff.py next-id <prefix> [--fetch]` gives the next free id from the
+  checks it earlier. To avoid getting there, `handoff.py next-id <prefix> [--fetch]` gives the next free id (an unknown prefix lists the accepted ones and points to `--id-regex` or `taskId`; `--root`, `--plan` and `--id-regex` work before or after the subcommand) from the
   work tree, the index and every local and remote branch (it works without `logRows`). `handoff.py preflight
   [--date YYYY-MM-DD]` runs, without pushing, what the push checks in the log (D61): `check` with the date (today if
   the log has uncommitted changes; else the day of the last commit that changed it) and, with `logRows` and `plan`,
