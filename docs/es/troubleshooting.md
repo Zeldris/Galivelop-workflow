@@ -34,6 +34,7 @@ python3 .claude/gw/scripts/doctor.py
 | `log` (OK/FAIL) | «Siguientes pasos» / «Next steps» en plural también cuenta como línea de siguiente paso | — |
 | `glossary` (WARN) | El mismo `**Término**:` aparece dos veces en `GLOSSARY.md` | Fusiona las entradas en una |
 | `ignored` (FAIL) | Git ignora un archivo del flujo, o el de `reviewMark`: el commit lo dejaría fuera | Añade `!<ruta>` a `.gitignore` y comprueba `git check-ignore -v <ruta>` |
+| `settings <evento>` (FAIL) | El mismo `command` está en dos entradas de un evento (p. ej. `whole-read.py` con el matcher viejo y el nuevo): corre dos veces (D128) | `python3 scripts/apply.py --update` desde el flujo quita la vieja, o borra una entrada de `.claude/settings.json` |
 | `settings <evento>` (WARN) | Una orden de gancho ejecuta un script del flujo (por su cabecera `# galivelop-workflow v…`) desde fuera de `.claude/gw/scripts/`; un script propio con el mismo nombre no avisa | Borra esa entrada de `.claude/settings.json` |
 | `check syntax-only` (WARN) | Una orden de `check` es `bash -n`/`sh -n` con varios archivos, un glob (`*`, `?`, `[`) o `$(…)`: solo se lee el primer archivo y el resto no se comprueba | Una orden por archivo en `check` de `.claude/gw.json`, o `for f in …; do bash -n "$f"; done` (el aviso da la orden) |
 | `check command` (FAIL) | La primera palabra de una orden de `check` no está en el `PATH` ni es un archivo del repo | Instala esa herramienta o corrige `check` en `.claude/gw.json` |

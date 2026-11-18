@@ -295,7 +295,7 @@ entra el código ya hoy.
 - **Archivos de una skill que el flujo sustituye** (por ejemplo, el banco y los `evals` de un `gw-scout-updates`
   propio): `apply.py` no los borra, los lista como «no longer in the workflow (kept)». Muévelos a una carpeta del
   proyecto (p. ej. `tools/scout/`) o bórralos con `git rm` si nada los usa; no los dejes dentro de `.claude/skills/`.
-- **Ganchos viejos en `.claude/settings.json`.** `apply.py` fusiona los nuevos sin quitar nada, y avisa
+- **Ganchos viejos en `.claude/settings.json`.** `apply.py` fusiona los nuevos, quita del proyecto el `command` que la plantilla registra ahora con otro matcher en el mismo evento (D128; lo propio no se toca) y avisa
   («also runs '…'») de una entrada de `SessionStart`, `PreToolUse` o `Stop` que ejecuta un script del flujo desde fuera de
   `.claude/gw/scripts/`; `doctor.py` también. Bórrala a mano, o correrá dos veces.
 - **`recover.py` por línea de órdenes**, para recuperar lo que una compactación o un `/clear` se llevó:

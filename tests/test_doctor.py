@@ -185,6 +185,24 @@ class Doctor(Snapshot):
         self.assertEqual(code, 1, out)
         self.assertLine(out, "FAIL", "settings PreToolUse", "whole-read.py", "does not exist")
 
+    def test_same_command_in_two_entries_of_an_event_fails(self):  # D128
+        s = self.settings()
+        reads = [e for e in s["hooks"]["PreToolUse"] if any("whole-read.py" in h["command"] for h in e["hooks"])]
+        s["hooks"]["PreToolUse"].append({"matcher": "Read", "hooks": list(reads[0]["hooks"])})
+        self.save_settings(s)
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", "settings PreToolUse", "whole-read.py", "runs twice", "apply.py --update")
+
+    def test_same_command_in_different_events_is_fine(self):  # D128
+        s = self.settings()
+        command = s["hooks"]["Stop"][0]["hooks"][0]["command"]
+        s["hooks"]["PreToolUse"].append({"matcher": "Nothing", "hooks": [{"type": "command", "command": command}]})
+        self.save_settings(s)
+        code, out = self.doctor()
+        self.assertNotIn("runs twice", out)
+        self.assertEqual(code, 0, out)
+
     def test_missing_subagent_cap_script_fails(self):
         (self.p.scripts / "subagent-cap.py").unlink()
         code, out = self.doctor()

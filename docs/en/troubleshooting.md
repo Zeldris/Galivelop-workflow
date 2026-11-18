@@ -34,6 +34,7 @@ python3 .claude/gw/scripts/doctor.py
 | `log` (OK/FAIL) | "Siguientes pasos" / "Next steps" in the plural also counts as a next-step line | — |
 | `glossary` (WARN) | The same `**Term**:` appears twice in `GLOSSARY.md` | Merge the entries into one |
 | `ignored` (FAIL) | Git ignores a workflow file, or the `reviewMark` file: a commit would leave it out | Add `!<path>` to `.gitignore` and check `git check-ignore -v <path>` |
+| `settings <event>` (FAIL) | The same `command` is in two entries of one event (e.g. `whole-read.py` under the old and the new matcher): it runs twice (D128) | `python3 scripts/apply.py --update` from the workflow drops the old one, or delete one entry in `.claude/settings.json` |
 | `settings <event>` (WARN) | A hook command runs a workflow script (recognised by its `# galivelop-workflow v…` header) from outside `.claude/gw/scripts/`; a project's own script with the same name does not warn | Delete that entry from `.claude/settings.json` |
 | `check syntax-only` (WARN) | A `check` command is `bash -n`/`sh -n` with several files, a glob (`*`, `?`, `[`) or `$(…)`: only the first file is read, the rest go unchecked | One command per file in `check` in `.claude/gw.json`, or `for f in …; do bash -n "$f"; done` (the warning gives the command) |
 | `check command` (FAIL) | The first word of a `check` command is neither on `PATH` nor a file in the repo | Install that tool or fix `check` in `.claude/gw.json` |
