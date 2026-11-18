@@ -90,13 +90,76 @@ class ReviewScope(ScopeBase):
         self.commit()
         self.assertEqual(self.listed("--all"), [SCRIPT, "src/a.py"])
 
-    def test_without_a_workflow_the_whole_diff_is_listed_with_a_note(self):
+    def bare(self, *args):
+        return self.p.run("python3", str(self.p.work / ".claude/gw/scripts/review-scope.py"), "--base", "main", *args)
+
+    def test_a_project_without_a_workflow_fails_closed_with_the_clone_command(self):  # D132
         self.p.write("src/a.py", "a\n")
         self.commit()
-        code, out = self.p.run("python3", str(self.p.work / ".claude/gw/scripts/review-scope.py"), "--base", "main")
+        code, out = self.bare()
+        self.assertEqual(code, 2, out)
+        self.assertIn("no workflow copy at v", out)
+        self.assertIn("git clone --branch v", out)
+        self.assertIn("--workflow <DIR>", out)
+        self.assertNotIn("src/a.py", out)
+
+    def test_the_trivial_path_fails_closed_too(self):  # D132
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        code, out = self.bare("--trivial")
+        self.assertEqual(code, 2, out)
+        self.assertIn("git clone --branch v", out)
+
+    def test_all_needs_no_workflow(self):  # D132
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        code, out = self.bare("--all")
         self.assertEqual(code, 0, out)
         self.assertIn("src/a.py", out)
-        self.assertIn("no workflow repo to compare with", out)
+
+    def test_the_env_var_gives_the_workflow(self):  # D132
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        self.p.env["GW_WORKFLOW"] = str(ROOT)
+        code, out = self.bare()
+        self.assertEqual(code, 0, out)
+        self.assertIn("src/a.py", out)
+
+    def test_a_sibling_clone_at_the_project_version_is_found(self):  # D132
+        sib = self.p.work.parent / "Galivelop-workflow"
+        shutil.copytree(ROOT, sib, ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__"))
+        self.addCleanup(shutil.rmtree, sib, True)
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        cfg = json.loads((self.p.work / ".claude/gw.json").read_text())
+        plug = sib / ".claude-plugin/plugin.json"
+        data = json.loads(plug.read_text())
+        data["version"] = cfg["version"]
+        plug.write_text(json.dumps(data))
+        code, out = self.bare()
+        self.assertEqual(code, 0, out)
+        self.assertIn("src/a.py", out)
+        data["version"] = "0.0.1"  # another version: not accepted, and the message says which one it is
+        plug.write_text(json.dumps(data))
+        code, out = self.bare()
+        self.assertEqual(code, 2, out)
+        self.assertIn("is at v0.0.1", out)
+
+    def test_the_workflow_repo_itself_is_its_own_copy(self):  # D132
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        wf = self.tmp / "wf"
+        shutil.copytree(ROOT, wf, ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__"))
+        (wf / ".claude").mkdir()
+        shutil.copy(ROOT / ".claude/gw.json", wf / ".claude/gw.json")
+        for args in (["init", "-q", "-b", "main"], ["add", "-A"], ["commit", "-qm", "base"], ["checkout", "-q", "-b", "w"]):
+            self.p.run("git", "-C", str(wf), *args)
+        (wf / "x.py").write_text("x\n")
+        self.p.run("git", "-C", str(wf), "add", "-A")
+        self.p.run("git", "-C", str(wf), "commit", "-qm", "w")
+        code, out = self.p.run("python3", str(wf / "scripts/review-scope.py"), "--base", "main", cwd=str(wf))
+        self.assertEqual(code, 0, out)
+        self.assertIn("x.py", out)
 
     def test_a_base_that_is_not_a_commit_fails_with_the_fix(self):
         code, out = self.scope("--base", "nope")
