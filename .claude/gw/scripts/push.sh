@@ -60,14 +60,16 @@ timed_out=0
 # `set -m` gives the job its own process group, so a timeout or an interrupt kills git and its transport together; it
 # also keeps the terminal's Ctrl-C from reaching the job, which is why the INT/TERM/EXIT traps stop it.
 limited_ls_remote() {
-  local ticks=0 max=$((lstimeout * 10)) rc
+  local ticks=0 max=$((lstimeout * 10)) start=$SECONDS rc
   timed_out=0
   set -m
   git ls-remote origin "refs/heads/$branch" >"$lsout" 2>/dev/null </dev/null &
   ls_pid=$!
   set +m
   while kill -0 "$ls_pid" 2>/dev/null; do
-    if [ "$lstimeout" -gt 0 ] && [ "$ticks" -ge "$max" ]; then
+    # Ticks undercount on a loaded machine (each `sleep 0.1` takes longer), so wall time ($SECONDS, whole seconds:
+    # a difference over the limit means at least that many seconds really passed) stops it too.
+    if [ "$lstimeout" -gt 0 ] && { [ "$ticks" -ge "$max" ] || [ $((SECONDS - start)) -gt "$lstimeout" ]; }; then
       stop_ls
       timed_out=1
       return 124

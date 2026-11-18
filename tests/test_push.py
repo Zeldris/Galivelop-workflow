@@ -297,13 +297,15 @@ class PushSh(unittest.TestCase):
         self.assertEqual(self.remote(), self.head())  # the push itself did happen, only the confirmation failed
 
     def test_ls_remote_slower_than_zero_limit_is_waited_for_and_over_a_real_limit_is_not(self):
-        (self.fake / "lsslow").write_text("2")
+        # 4 s: the limit of 1 s stops it by 2 s of wall time even on a loaded runner (macOS CI, where 10 ticks of
+        # `sleep 0.1` took over 2 s and the answer arrived first).
+        (self.fake / "lsslow").write_text("4")
         self.set_delays([0], pushLsRemoteTimeout=0)  # 0 = no limit
         r = self.run_push()
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("push: ok", r.stdout)
         self.commit("two")
-        self.set_delays([0], pushLsRemoteTimeout=1)  # the same 2 s answer is now too slow
+        self.set_delays([0], pushLsRemoteTimeout=1)  # the same 4 s answer is now too slow
         r = self.run_push()
         self.assertEqual(r.returncode, 1, r.stderr)
         self.assertIn("took over 1s", r.stderr)
