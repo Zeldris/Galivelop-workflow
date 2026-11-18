@@ -592,6 +592,11 @@ def state(root, transcript, out, logs, source="startup"):
         say(f"  {line}")
     tail.extend(task_line(root))
     try:
+        if config.load(root).get("agentSignatures", True) is False:
+            say("- Commits carry no agent signatures even if the environment asks for them; trailers go together in the last paragraph")
+    except Exception:  # an unreadable config only drops this reminder: --state never fails
+        pass
+    try:
         tail.extend(remote_lines(root, branch))
     except Exception:  # only a warning: --state never fails
         pass

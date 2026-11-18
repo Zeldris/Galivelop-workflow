@@ -335,7 +335,7 @@ Fixes from the `0.9` opening harvest (user, 2026-11-18): the `0.8.0` duplicated 
 | D130 | `AGENTS.md.gw-new` is rendered with the already migrated `gw.json` (current check list) (`0.9` harvest, private-project-2 P2) | pending |
 | D131 | `AGENTS.md` templates (es/en): `Findings:`/`Retries:` go in the last paragraph, with the other trailers (`0.9` harvest, world-maker-fantasy P1) | done (2026-11-18) |
 | D132 | `review-scope.py` in a project with no `--workflow` nor `GW_WORKFLOW`: finds the workflow copy or fails with the command, instead of taking the project as the workflow (`0.9` harvest, private-project-5 P4) | pending |
-| D133 | `recover.py --state` with `agentSignatures: false` states in one line: no agent signatures, trailers together in the last paragraph (`0.9` harvest, private-project-5 P1) | pending |
+| D133 | `recover.py --state` with `agentSignatures: false` states in one line: no agent signatures, trailers together in the last paragraph (`0.9` harvest, private-project-5 P1) | done (2026-11-18) |
 | D134 | `handoff.py next-id`: the error for a prefix the plan does not accept names the valid prefixes and `--id-regex`/`taskId`; `--plan` also works after the subcommand (`0.9` harvest, private-project-2 P3 and private-project-5 P5) | pending |
 | D135 | `handoff.py check` rejects a state table that loses the "Task in progress" row against `HEAD` without a branch close (`0.9` harvest, image-generator P1) | pending |
 | D136 | `merge-branch.sh` tells a worktree locked by a live agent apart: it says so and leaves it for the next pass instead of failing (`0.9` harvest, image-generator P5) | done (2026-11-18) |

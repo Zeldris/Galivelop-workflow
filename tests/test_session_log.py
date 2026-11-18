@@ -1308,6 +1308,24 @@ class Recover(Base):
         code, out = p.run("python3", script, "--state")  # not the cloud: it still warns
         self.assertIn("this transcript is in -home-user, not the repo's folder: the session was opened outside", out)
 
+    def test_d133_no_signatures_line_follows_agent_signatures(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        marker = "Commits carry no agent signatures"
+        for value, shown in ((False, True), (True, False)):
+            p.write(".claude/gw.json", json.dumps(dict(cfg, agentSignatures=value)))
+            code, out = p.run_recover("--state")
+            self.assertEqual(code, 0, out)
+            self.assertEqual(marker in out, shown, (value, out))
+        cfg.pop("agentSignatures", None)
+        p.write(".claude/gw.json", json.dumps(cfg))  # key missing: the default is true, no line
+        self.assertNotIn(marker, p.run_recover("--state")[1])
+        p.write(".claude/gw.json", "{not json")  # unreadable: the state still comes back, without the line
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn(marker, out)
+        self.assertIn("Last commits:", out)
+
 
 class SessionLog(Base):
     def test_cloud_start_transcript_found_without_warning_in_the_cloud(self):
