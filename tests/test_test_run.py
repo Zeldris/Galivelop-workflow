@@ -175,6 +175,8 @@ class TestRun(unittest.TestCase):
         code, out, err = self.run_cli("tests")
         self.assertEqual(code, 1, out + err)
         self.assertEqual(marker.read_text(), "1")  # run once
+        self.assertIn("FAILED (tests/test_b.py::Gamma)", out)
+        self.assertNotIn("--- run", out)
         self.assertEqual(self.registry(), [])
 
     def test_the_proposal_appears_at_propose_after(self):
@@ -211,8 +213,28 @@ class TestRun(unittest.TestCase):
         with contextlib.redirect_stdout(out):
             code = mod.main(["tests", "--root", str(self.tmp)])
         self.assertEqual(code, 0, out.getvalue())
-        self.assertIn("passed on retry; 0 times recorded)", out.getvalue())
+        self.assertIn("passed on retry; not recorded: no git common dir)", out.getvalue())
         self.assertEqual(self.registry(), [])
+
+
+    def test_an_unwritable_registry_says_why_it_is_not_recorded(self):
+        (self.tmp / ".git" / "gw").mkdir(exist_ok=True)
+        (self.tmp / ".git" / "gw" / "flaky.jsonl").mkdir()  # a directory: opening it for append fails
+        self.flaky_test()
+        code, out, err = self.run_cli("tests")
+        self.assertEqual(code, 0, out + err)
+        self.assertRegex(out, r"passed on retry; not recorded: .*(directory|Is a)")
+        self.assertNotIn("times recorded", out)
+
+    def test_the_fix_command_quotes_a_path_with_spaces(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("test_run_quote", SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        cmd = mod.alone_command(("my tests", "test_a b.py", "Cls", 1))
+        self.assertIn("-s 'my tests' -p 'test_a b.py' -k '*.Cls.*' -v", cmd)
+        self.assertEqual(mod.alone_command(("tests", "test_b.py", None, 0)),
+                         "python3 -B -m unittest discover -s tests -p test_b.py -v")
 
 
 if __name__ == "__main__":

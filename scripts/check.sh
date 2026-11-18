@@ -138,6 +138,7 @@ echo "check: log: $log"
 [ "$protected" = false ] || echo "check: branch $branch matches releaseCheckBranches: running with GW_PUSH_PROTECTED=true"
 summary=""
 failed_cmd=""
+flaky_lines=""
 failed_section=""
 in_background() {  # true when the check has a controlling terminal whose foreground process group is not its own
   # shellcheck disable=SC2046  # word splitting wanted: "pgid tpgid"
@@ -200,6 +201,14 @@ while IFS= read -r cmd; do
     cleanup_output
   fi
   secs=$((SECONDS - start))
+  if [ -n "$quiet" ]; then
+    # The flaky units test-run.py reported (E35): a green run would otherwise leave them only in the log.
+    found="$(tail -c +"$((offset + 1))" "$log" | grep '^test-run: flaky: ' || true)"
+    if [ -n "$found" ]; then
+      flaky_lines="$flaky_lines$found
+"
+    fi
+  fi
   if [ "$rc" -eq 0 ]; then
     summary="$summary  ok      ${secs}s  $cmd
 "
@@ -216,6 +225,9 @@ done <<<"$checks"
 
 echo "check: summary"
 printf '%s' "$summary"
+if [ -n "$flaky_lines" ]; then
+  printf '%s' "$flaky_lines"
+fi
 if [ -n "$failed_cmd" ]; then
   if [ -n "$quiet" ]; then
     echo "check: last $tail_lines lines of the failed command:"

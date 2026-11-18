@@ -27,6 +27,7 @@ import datetime
 import json
 import os
 import re
+import shlex
 import subprocess
 import sys
 import time
@@ -131,9 +132,10 @@ def run_with_retry(root, python, unit, retries):
 
 
 def record_flaky(root, path, unit, first_output, trim):
-    """Append the record to `path` (None = no git common dir: nothing kept); returns how many times `unit` is recorded."""
+    """Append the record to `path`; returns how many times `unit` is recorded, or a str saying why it is not (None
+    path = no git common dir; an OSError)."""
     if path is None:
-        return 0
+        return "no git common dir"
     head = subprocess.run(["git", "rev-parse", "--short", "HEAD"], cwd=str(root), stdout=subprocess.PIPE,
                           stderr=subprocess.DEVNULL, text=True, check=False).stdout.strip()
     lines = first_output.rstrip().splitlines()[-trim:]
@@ -150,14 +152,17 @@ def record_flaky(root, path, unit, first_output, trim):
                     pass
         with path.open("a", encoding="utf-8") as fh:
             fh.write(json.dumps(record, sort_keys=True) + "\n")
-    except OSError:
-        return 0  # a registry: losing a line must not fail the run
+    except OSError as exc:
+        return f"{exc.strerror or exc}"  # a registry: losing a line must not fail the run
     return count
 
 
 def alone_command(unit):
     folder, file, cls, _ = unit
-    return f"python3 -B -m unittest discover -s {folder} -p {file}" + (f" -k '*.{cls}.*'" if cls else "") + " -v"
+    args = ["python3", "-B", "-m", "unittest", "discover", "-s", folder, "-p", file]
+    if cls:
+        args += ["-k", f"*.{cls}.*"]
+    return " ".join(shlex.quote(a) for a in args + ["-v"])
 
 
 def load_times(path):
@@ -222,8 +227,9 @@ def main(argv=None):
             ran_total += ran
             if first is not None:
                 n = record_flaky(root, fpath, unit, first, 10)
-                msg = f"test-run: flaky: {unit_name(unit)} (passed on retry; {n} times recorded)"
-                if n and n >= flaky["proposeAfter"]:
+                recorded = f"{n} times recorded" if isinstance(n, int) else f"not recorded: {n}"
+                msg = f"test-run: flaky: {unit_name(unit)} (passed on retry; {recorded})"
+                if isinstance(n, int) and n >= flaky["proposeAfter"]:
                     msg += f"; flaky {n} times, fix it: run it alone with {alone_command(unit)}"
                 print(msg, flush=True)
             if code != 0 or unit[2] is None:
