@@ -24,6 +24,13 @@ defaults the schema declares. Shell scripts call the CLI; Python scripts import 
                                         # authorDeny; an empty list checks nothing (called by the pre-commit hook)
   python3 config.py --rev REV author-check --commits -   # the same over the commits on stdin, one sha per line
                                         # (%an/%ae/%cn/%ce; the pre-push on what it pushes, pre-commit --range in CI)
+  python3 config.py spike-branch NAME   # C12: exit 0 when branch NAME is an exploration branch (spikeBranch prefix),
+                                        # 1 when it is not or the feature is off (""); --prefix prints the prefix as
+                                        # applied (`spike` -> `spike/`; empty when off)
+  python3 config.py --rev REV spike-check --commits -    # C12: exit 1 (and the reason, with what to do instead)
+                                        # when a commit on stdin comes from an exploration branch: a `Spike:` trailer
+                                        # naming one (also indented, as a squash message keeps it) or a merge whose
+                                        # subject names one ("Merge branch 'spike/x'", remote-tracking too)
 
 Project root: --root, else the git top level of this script's folder when that repo has .claude/gw.json (the copy
 in a project lives in .claude/gw/scripts/), else the git top level of the current directory when it is
@@ -410,6 +417,74 @@ def commits_author_check(root, patterns, shas):
            f"'git commit --amend --no-edit --reset-author' {oldest[:7]}^")
     return 1, "these commits have an author or committer in authorDeny (.claude/gw.json):\n" + "\n".join(bad) + \
         f"\nrewrite them as yourself: {fix}"
+
+
+def spike_prefix(config):
+    """C12: the exploration branch prefix of `spikeBranch` ("" = off). One that ends in a letter or digit gets a "/",
+    so `spike` means `spike/` and a branch called `spiked` never counts; `spike-` stays as written."""
+    prefix = str(config.get("spikeBranch", "spike/") or "").strip()
+    if prefix and prefix[-1].isalnum():
+        prefix += "/"
+    return prefix
+
+
+def is_spike_branch(name, prefix):
+    """C12: whether branch `name` (refs/heads/ or a remote's name/ removed by the caller) is an exploration branch: it
+    starts with `prefix` and has a topic after it."""
+    name = (name or "").strip()
+    if name.startswith("refs/heads/"):
+        name = name[len("refs/heads/"):]
+    return bool(prefix) and name.startswith(prefix) and len(name) > len(prefix)
+
+
+SPIKE_TODO = ("turn what it taught into a task record (python3 task.py new <id>) and redo it with tests on a working "
+              "branch, or throw it away (git branch -D <spike branch>)")
+
+
+def spike_marked(body, prefix):
+    """C12: whether a commit message carries the spike mark: a `Spike: <prefix>...` line in its last paragraph (the
+    trailer block, where commit-message.py adds it) or indented by four spaces anywhere (how `git merge --squash`
+    quotes the squashed commits' messages). A body line elsewhere that merely starts with `Spike:` does not count."""
+    p = re.escape(prefix)
+    paragraphs = [para for para in re.split(r"\n[ \t]*\n", body.strip("\n")) if para.strip()]
+    if paragraphs and re.search(rf"^Spike:[ \t]*{p}\S", paragraphs[-1], re.M):
+        return True
+    return bool(re.search(rf"^ {{4}}Spike:[ \t]*{p}\S", body, re.M))
+
+
+def spike_commits(root, prefix, shas):
+    """C12: (0, "") when no commit of `shas` comes from an exploration branch, else (1, the commits and what to do
+    instead). A commit comes from one when its message carries the spike mark (spike_marked) or it is a merge whose
+    subject is git's own for a branch named with the prefix. The shas go on git's stdin (a first push may hold the
+    whole history). Fails closed (1, with the reason) when git cannot read them; off (0) with an empty prefix."""
+    shas = [s for s in shas if s]
+    if not prefix or not shas:
+        return 0, ""
+    retry = f"fetch and retry: git log --no-walk {shas[0][:12]}"
+    try:
+        r = subprocess.run(["git", "log", "--no-walk=unsorted", "--stdin", "--format=%H%x00%P%x00%B%x1e"],
+                           cwd=str(root), input="\n".join(shas) + "\n", capture_output=True, text=True,
+                           encoding="utf-8", errors="replace")
+    except OSError as exc:
+        return 1, f"cannot run git to look for exploration-branch work ({exc}); {retry}"
+    if r.returncode != 0:
+        return 1, f"cannot read the commits to look for exploration-branch work ({r.stderr.strip()[:200]}); {retry}"
+    merge = re.compile(rf"^Merge (?:remote-tracking )?branch(?:es)? '(?:[^'/]+/)?{re.escape(prefix)}[^']+'")
+    bad = []
+    for record in r.stdout.split("\x1e"):
+        parts = record.lstrip("\n").split("\0", 2)
+        if len(parts) != 3:
+            continue
+        sha, parents, body = parts
+        subject = body.strip().splitlines()[0] if body.strip() else ""
+        if spike_marked(body, prefix):
+            bad.append(f"  {sha[:7]} {subject[:72]} (Spike: trailer)")
+        elif len(parents.split()) > 1 and merge.match(subject):
+            bad.append(f"  {sha[:7]} {subject[:72]} (merge of an exploration branch)")
+    if not bad:
+        return 0, ""
+    return 1, (f"these commits come from an exploration branch ({prefix}<topic>, spikeBranch in .claude/gw.json), "
+               f"which never goes into a working branch:\n" + "\n".join(bad) + f"\ninstead: {SPIKE_TODO}")
 
 
 def author_check(root, patterns):
@@ -1274,6 +1349,11 @@ def main(argv=None):
                                            "change then counts only by its keys (fullCheckSkipKeys, E47)")
     ac = sub.add_parser("author-check", help="exit 1 when the commit's author or committer matches authorDeny (E41)")
     ac.add_argument("--commits", help="'-': check the commits on stdin (one sha per line) instead of the next commit")
+    sb = sub.add_parser("spike-branch", help="exit 0 when the branch is an exploration branch (spikeBranch, C12)")
+    sb.add_argument("name", nargs="?", default="")
+    sb.add_argument("--prefix", action="store_true", help="print the prefix as it is applied ('' = off) and exit 0")
+    sc = sub.add_parser("spike-check", help="exit 1 when a commit on stdin comes from an exploration branch (C12)")
+    sc.add_argument("--commits", required=True, help="'-': the commits on stdin, one sha per line")
     get = sub.add_parser("get")
     get.add_argument("key", help="top-level key, or dotted (relatedTests.fast)")
     get.add_argument("--json", action="store_true")
@@ -1314,6 +1394,17 @@ def main(argv=None):
         code, message = author_check(config["_root"], author_deny(config))
         if message:
             print(f"pre-commit: {message}", file=sys.stderr)
+        return code
+    if args.command == "spike-branch" and args.prefix:
+        print(spike_prefix(config))
+        return 0
+    if args.command == "spike-branch":
+        return 0 if is_spike_branch(args.name, spike_prefix(config)) else 1
+    if args.command == "spike-check":
+        shas = [line.strip() for line in sys.stdin.read().splitlines() if line.strip()]
+        code, message = spike_commits(config["_root"], spike_prefix(config), shas)
+        if message:
+            print(f"spike-check: {message}", file=sys.stderr)
         return code
     if args.command == "related":
         files = [line for line in sys.stdin.read().splitlines() if line]

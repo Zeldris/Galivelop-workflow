@@ -40,6 +40,11 @@ and applies, from .claude/gw.json (read through config.py):
                                task.py); every entry the commit adds must be well formed. Exempt: other types, WIP:, merges, rebases and the review-mark commit.
                                The commit of an entry is resolved on reading (task.py resolve), not written by a hook.
 
+On an exploration branch (C12: the current branch starts with the `spikeBranch` prefix, default `spike/`; "" = off)
+commitRefs and taskRecord are not asked; format, agent signatures and the next-step trailer still are (a spike is
+relayed like any other work). The hook adds a `Spike: <branch>` trailer at the start of the trailer block when the
+message has none, also in a merge, so the commit stays recognisable on any branch it reaches (config.py spike-check).
+
 A warning, never a refusal (E60): with commitRefs or commitNext, a message that names review fixes (a word or phrase
 of metrics.quality.findingsWords, whole words, any case; [] = off) without a `Findings:` trailer gets one line on
 stderr asking for it (metrics.py quality and the block review of change-size.py count from that trailer).
@@ -508,6 +513,27 @@ def clear_warning(root, config, message):
         return None
 
 
+def spike_branch(root, config):
+    """C12: the current branch when it is an exploration branch (spikeBranch), else "" (detached HEAD, feature off)."""
+    prefix = gwconfig.spike_prefix(config)
+    if not prefix:
+        return ""
+    r = git(root, "symbolic-ref", "--short", "-q", "HEAD")
+    name = r.stdout.strip() if r.returncode == 0 else ""
+    return name if gwconfig.is_spike_branch(name, prefix) else ""
+
+
+def mark_spike(root, path, branch):
+    """C12: adds `Spike: <branch>` at the start of the trailer block unless one is there, so the pre-push and
+    merge-branch.sh can tell this commit from a working branch's wherever it travels (merge, cherry-pick, rebase,
+    squash message). Fails closed: without the mark the commit could reach a working branch unnoticed."""
+    r = git(root, "interpret-trailers", "--in-place", "--no-divider", "--where", "start", "--if-exists", "doNothing",
+            "--trailer", f"Spike: {branch}", str(path))
+    if r.returncode != 0:
+        raise Reject(f"cannot add the `Spike: {branch}` trailer ({r.stderr.strip()[:200]}); add it to the last "
+                     f"paragraph by hand and commit again: git commit -e -F {path}")
+
+
 def run(root, msgfile):
     try:
         config = gwconfig.load(root)
@@ -524,10 +550,14 @@ def run(root, msgfile):
     agent = config.get("agentSignatures", True) is False
     nxt = bool(config.get("commitNext", False)) and os.environ.get("GW_NO_NEXT") != "1"
     tasks = bool(gwconfig.task_record(config)["enabled"])
-    if not (fmt or refs or agent or nxt or tasks):
-        return
     state = git_paths_exist(root, ("rebase-merge", "rebase-apply") + MERGE_STATES)
     if state["rebase-merge"] or state["rebase-apply"]:
+        return
+    spike = spike_branch(root, config)
+    if spike:
+        refs = tasks = False  # C12: an exploration branch needs no Refs nor task record; the rest still applies
+        mark_spike(root, path, spike)
+    if not (fmt or refs or agent or nxt or tasks):
         return
     merging = any(state[name] for name in MERGE_STATES)
     if not (agent or not merging):
