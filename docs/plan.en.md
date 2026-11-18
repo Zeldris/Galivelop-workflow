@@ -208,6 +208,21 @@ the session may start in `/home/user` (portal lesson, `REVIEW.md` § "Hooks and 
 - **Templates**: `/gw-init` copies those in `templates/<language>/` according to the config.
 - **Script messages**: in English, with the exact command that fixes the failure.
 
+### 4.5 Working modes
+
+Four modes, combined as the task needs (user, 2026-11-08; `gw-selector` says which ones each case asks for):
+
+- **SDD, always:** every task with code has its record `docs/tasks/<id>.md` (`taskRecord`): what is wanted and what
+  is not, checkable acceptance criteria and planned files.
+- **DDD, with a domain:** if there is a domain, business rules or boundaries to model, the glossary and ADRs are
+  fixed before the code (`domain-modeling`).
+- **TDD, with testable behaviour:** if the behaviour can be expressed in tests, the red test comes first
+  (`red-without-fix.sh`).
+- **Exploration, bounded:** only on a `spike/<topic>` branch (`spikeBranch`), without record or `Refs:`, and never
+  merged into a working branch; what comes out becomes a record and is redone with tests, or is thrown away.
+
+**Frozen scope** (`scopeGuard`): a new requirement during development is a new task, linked with `Related:`.
+
 ## 5. Components in detail
 
 ### 5.1 Skills
