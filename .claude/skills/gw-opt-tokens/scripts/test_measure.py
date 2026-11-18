@@ -368,6 +368,43 @@ class Measure(unittest.TestCase):
                  response('b', 20, timestamp=ago(3))]
         self.assertIn('API calls: 2  |', self.run_session(parts).stdout)
 
+    def test_d138_clear_is_found_with_the_message_tag_first_or_list_content(self):
+        for content in ('<command-message>clear</command-message>\n<command-name>/clear</command-name>\n<command-args></command-args>',
+                        [{'type': 'text', 'text': '<command-message>clear</command-message>\n'
+                                                  '<command-name>/clear</command-name>'}]):
+            parts = [response('a', 10, timestamp=ago(5)), _line('user', content, timestamp=ago(3)),
+                     response('b', 30, timestamp=ago(2))]
+            r = self.run_session(parts)
+            self.assertIn('API calls: 1  |', r.stdout, content)
+            self.assertIn('since the last /clear (', r.stdout, content)
+
+    def break_session(self, calls_before: int, break_line, calls_after: int, prev_calls: int = 3) -> subprocess.CompletedProcess:
+        """D138: no --session; `cur.jsonl` (newest) has `calls_before` calls, a break 1 h ago, `calls_after` after it."""
+        home, repo = folder(), folder()
+        subprocess.run(['git', 'init', '-q', repo], check=True)
+        proj = os.path.join(home, '.claude', 'projects', '-home-user')
+        prev = log(os.path.join(proj, 'prev.jsonl'),
+                   *[response(f'p{n}', 50, timestamp=ago(4), gitBranch='feat') for n in range(prev_calls)])
+        os.utime(prev, (100, 100))
+        parts = [response(f'b{n}', 10, timestamp=ago(3), gitBranch='feat') for n in range(calls_before)]
+        parts.append(break_line)
+        parts += [response(f'a{n}', 10, timestamp=ago(0.5), gitBranch='feat') for n in range(calls_after)]
+        log(os.path.join(proj, 'cur.jsonl'), *parts)
+        env = {**os.environ, 'HOME': home, 'CLAUDE_CODE_REMOTE': 'true'}
+        return subprocess.run(['python3', MEASURE], capture_output=True, text=True, cwd=repo, env=env)
+
+    def test_d138_min_calls_looks_at_the_stretch_after_the_break(self):
+        compaction_line = _line('system', subtype='compact_boundary', content='Conversation compacted', timestamp=ago(1))
+        # 300 calls in 24 h but 1 after the compaction: the fallback triggers on the reported stretch
+        r = self.break_session(300, compaction_line, 1)
+        self.assertIn('Note: the current session has 1 calls (under measure.minCalls = 5)', r.stdout)
+        self.assertIn('Session: prev.jsonl', r.stdout)
+        # the previous session is measured whole, not cut to its own tail by its own break
+        r = self.break_session(2, self.clear_line(1), 6)
+        self.assertIn('Session: cur.jsonl', r.stdout)
+        self.assertNotIn('Note:', r.stdout)
+        self.assertIn('API calls: 6  |', r.stdout)
+
     def test_d139_the_repo_folder_wins_over_a_parent_folder_with_more_calls(self):
         home, repo = folder(), folder()
         subprocess.run(['git', 'init', '-q', repo], check=True)
