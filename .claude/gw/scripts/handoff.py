@@ -130,6 +130,7 @@ import ast
 import contextlib
 import datetime
 import errno
+import functools
 import json
 import os
 import re
@@ -470,7 +471,7 @@ def cmd_check(ctx, args):
             print(f"WARNING: handoff: {w}")
     if args.at == "push":  # the commit already exists: the fix is a new commit
         return report(problems, f"edit {ctx.log} and make a new commit with the fix: git add {ctx.log} && git commit")
-    return report(problems, f"edit {ctx.log}, stage it (git add {ctx.log}) and run the commit again: git commit")
+    return report(problems, f"edit {ctx.log}, stage it (git add {ctx.log}) and repeat the same commit: git commit -m \"...\"")
 
 
 def rows_problems(ctx, args, lines):
@@ -739,8 +740,12 @@ def cmd_next_id(ctx, args):
     sep = "-" if prefix.endswith("-") or (ctx.id.fullmatch(f"{prefix}-1") and not ctx.id.fullmatch(f"{prefix}1")) else ""
     nxt = free_id(ctx, revs, prefix, worktree_ids(ctx), sep)
     if not ctx.id.fullmatch(nxt):
-        raise Usage(f"{nxt} does not match the task id pattern ({ctx.id.pattern}); pass the prefix the plan uses, "
-                    "for example: handoff.py next-id D")
+        known = {id_prefix(i) for i in worktree_ids(ctx) | {i for rev in revs for i in ctx.titles(rev)}}
+        known = sorted(k for k in known if ctx.id.fullmatch(f"{k}1") or ctx.id.fullmatch(f"{k}-1"))
+        seen = (f"the prefixes this plan accepts: {', '.join(known)}; for example: handoff.py next-id {known[0]}"
+                if known else "no id in the plan matches that pattern")
+        raise Usage(f"{nxt} does not match the task id pattern ({ctx.id.pattern}); {seen}. If the plan's ids follow "
+                    "another pattern, pass --id-regex REGEX (or set `taskId` in .claude/gw.json)")
     print(nxt)
     return 0
 
@@ -1570,7 +1575,14 @@ def main(argv=None):
     p.add_argument("--root")
     p.add_argument("--plan", action="append")
     p.add_argument("--id-regex")
+    # D134: the same three options after the subcommand too (`next-id B --plan docs/plan.md`); SUPPRESS keeps the
+    # global value when the subcommand does not repeat them, and the subcommand's wins when both are given.
+    common = argparse.ArgumentParser(add_help=False, argument_default=argparse.SUPPRESS)
+    common.add_argument("--root")
+    common.add_argument("--plan", action="append")
+    common.add_argument("--id-regex")
     sub = p.add_subparsers(dest="cmd", required=True)
+    sub.add_parser = functools.partial(sub.add_parser, parents=[common])
     c = sub.add_parser("check")
     c.add_argument("file", nargs="?")
     c.add_argument("--date")
