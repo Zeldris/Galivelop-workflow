@@ -16,7 +16,7 @@ about the id; DEDUCED is only a mention found by reading text:
             message names it (the branch that was merged: the offline stand-in for a PR; nothing is fetched)
   task      declared: the task record `<taskRecord.path>/ID.md` (its Goal and the state of its Acceptance boxes) and the
             decision log entries in `<taskRecord.path>/ID/`, sorted by file name (so by date), each with its date,
-            agent, commit (`pending` while the commit is not resolved) and Why; an entry whose form is wrong is shown
+            agent, commit (read from `git log --diff-filter=A` of the file; `pending` only while it is not committed) and Why; an entry whose form is wrong is shown
             with the reason and a note, never a crash. The task's own files are not listed again under docs; shown
             even with --no-docs (it reads two named paths, not the tracked .md files)
   docs      deduced: the tracked Markdown files that name ID, other than the roadmap, the log and the pending file (copies
@@ -192,6 +192,11 @@ def task_entries(root, cfg, task, notes):
         date, agent, commit = (x.strip() for x in parts[:3]) if len(parts) == 4 else (name[:10], "?", "?")
         errors = taskrec.entry_errors("\n".join(lines), task, cfg)
         why = {h.lower(): b for h, b in taskrec.sections_of("\n".join(lines))}.get(tr["logSections"][0].lower(), "")
+        if commit == tr["pendingMarker"]:  # the header is never rewritten: the commit that added the file, if any
+            try:
+                commit = taskrec.resolve(root, rel) or commit
+            except OSError:
+                pass
         item = {"kind": "entry", "file": rel, "date": date, "agent": agent, "commit": commit, "why": snippet(why)}
         if errors:
             item["warning"] = errors[0]

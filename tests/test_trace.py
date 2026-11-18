@@ -303,6 +303,15 @@ class Trace(unittest.TestCase):
         self.assertIn("note: docs/tasks/D14/2026-11-16-session-ccccccc.md is not a valid decision log entry", out.stdout)
         self.assertNotIn("Traceback", out.stderr)
 
+    def test_committed_entry_shows_sha_uncommitted_pending(self):
+        r = self.with_task()
+        self.entry("2026-11-17-session-aaaaaaa", "2026-11-17", "pending", "committed")
+        r.commit("feat(D14): x")
+        sha = r.git("rev-parse", "--short", "HEAD").stdout.strip()
+        self.entry("2026-11-18-session-bbbbbbb", "2026-11-18", "pending", "not yet")
+        entries = [t for t in json.loads(r.trace("D14", "--json").stdout)["declared"]["task"] if t["kind"] == "entry"]
+        self.assertEqual([e["commit"][:7] for e in entries], [sha[:7], "pending"])
+
     def test_limit_applies_to_task(self):
         r = self.with_task()
         for i in range(3):
