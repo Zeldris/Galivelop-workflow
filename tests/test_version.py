@@ -680,10 +680,6 @@ class Version(unittest.TestCase):
         self.assertEqual(run(ROOT, "1.2").returncode, 2)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class Fragments(unittest.TestCase):
     """D68: CHANGELOG fragments per branch, folded into the version's entry and deleted."""
     setUp, set_gw, git, commit_all = Version.setUp, Version.set_gw, Version.git, Version.commit_all
@@ -877,3 +873,7 @@ class Fragments(unittest.TestCase):
         self.assertTrue((self.tmp / "changelog.d" / ".DS_Store").exists())
         self.commit_all("with .DS_Store"); self.git("tag", "v9.8.7")
         self.assertNotIn("unfolded", run(self.tmp, "--release").stdout)
+
+
+if __name__ == "__main__":
+    unittest.main()

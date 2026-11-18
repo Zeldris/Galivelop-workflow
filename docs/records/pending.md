@@ -341,3 +341,6 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [ ] `0.10` · **Revisión C13 n.º 11** (leve): `warn_once` cambia el global privado `qg.WARNED` en vez de recibir la marca como parámetro.
 - [ ] `0.10` · **Revisión C13 n.º 12** (leve): en cada Edit/Write, `scope-guard.py` repite el trabajo que `questions-guard.py` acaba de hacer (config, tarea en curso).
 - [ ] `0.10` · Herramienta (CI macOS): `test_check_summary.CheckSummary.test_no_fifo_is_left_in_tmpdir_after_an_interrupt` agotó sus 270 s en el CI de macOS de `de6b79d` (2026-11-18; la unidad tardó 341 s con 3 tareas). Ni el test ni `check.sh` cambiaron en la oleada; Ubuntu en verde. Mirar si vuelve en `d3691d8`/`e2457ab`; si se repite, subir su espera o aislarlo.
+- [ ] `0.10` · (D68, herramienta) `task.py new` sale con código 2 aunque crea la ficha.
+- [ ] `0.10` · (D68, herramienta) `scope-guard` no entiende rutas con llaves `{es,en}` en `## Files` de la ficha.
+- [ ] `0.10` · (D68, leve) `docs/proposals/2026-11-08-notes-and-references.md:145` dice que `merge-branch.sh` pliega los fragmentos; lo hace `version.py` (decisión de D68).
