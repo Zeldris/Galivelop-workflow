@@ -2198,6 +2198,30 @@ class MergeBranch(Base):
         self.assertRegex(out, r"then run: bash \S+check\.sh --quiet && f=\$\(mktemp\) && git diff --name-only "
                               r"--no-renames [0-9a-f]{7} HEAD .*related-tests\.sh .* && rm -f \S+merge-wave-main")
 
+    def test_d136_a_locked_worktree_is_left_with_its_branch_and_the_merge_exits_0(self):
+        for reason in (None, "agent running (pid 42)"):
+            with self.subTest(reason=reason):
+                name = "agent/D136-%s" % ("plain" if reason is None else "reason")
+                wt = self.agent(name=name, path=name.split("-")[1] + ".txt")
+                self.p.git("worktree", "lock", *(("--reason", reason) if reason else ()), str(wt))
+                code, out = self.p.script("merge-branch.sh", name, "Merge agent", "--reviewed")
+                self.assertEqual(code, 0, out)
+                self.assertIn("merged " + name, out)
+                self.assertIn("is locked by a live agent", out)
+                self.assertIn("git worktree unlock", out)
+                self.assertIn("git branch -d", out)
+                self.assertEqual(len([l for l in out.splitlines() if "locked by a live agent" in l]), 1, out)
+                self.assertTrue(wt.exists(), "the locked worktree stays")
+                self.assertIn(name, self.branches(), "its branch stays too")
+
+    def test_d136_an_unlocked_worktree_is_still_removed(self):
+        wt = self.agent(name="agent/D136-free")
+        code, out = self.p.script("merge-branch.sh", "agent/D136-free", "Merge agent", "--reviewed")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("locked", out)
+        self.assertFalse(wt.exists(), out)
+        self.assertNotIn("agent/D136-free", self.branches())
+
 
 class RedWithoutFix(Base):
     def setUp(self):

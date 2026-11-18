@@ -27,6 +27,8 @@
 #  - after a green check and green related tests: `git worktree remove` (without force: with uncommitted changes it warns and leaves it)
 #    and `git branch -d` (deletes only what is merged; if it refuses it warns and goes on). Only a branch named
 #    worktree-agent-* or agent/* (branchPrefixes.agent) or whose worktree is under .claude/worktrees/ is cleaned;
+#    a worktree locked by a live agent (D136) is left with its branch: it says so and gives the commands to remove it
+#    by hand once the agent ends, and the exit stays 0 (the merge succeeded);
 #    never the current branch, the protected branch or claude/* (branchPrefixes.keep: session branches). mergeCleanup
 #    false skips the cleanup altogether.
 #  - Refs (D16): the ids of the branch (the one in a name agent/<id>-<topic>, if it looks like a task id, and the
@@ -379,6 +381,17 @@ cleanup_branch() {
   if [ -n "$wt" ] && [ "$wt" != "$root" ]; then
     case "$wt" in
       */.claude/worktrees/*)
+        # D136: a worktree locked by a live agent cannot be removed (and its branch is checked out in it): leave both.
+        locked="$(git worktree list --porcelain | awk -v r="refs/heads/$branch" '
+          /^worktree /{w=substr($0,10); l=0; hit=0}
+          $1=="locked"{l=1}
+          $1=="branch" && $2==r {hit=1}
+          /^$/{if (hit && l) print w; hit=0; l=0}
+          END{if (hit && l) print w}')"
+        if [ -n "$locked" ]; then
+          echo "merge-branch: worktree $wt is locked by a live agent, so it and $branch stay; merged, to be cleaned on a later pass. Once the agent ends: git worktree unlock $(printf '%q' "$wt") && git worktree remove $(printf '%q' "$wt") && git branch -d $(printf '%q' "$branch")"
+          return 0
+        fi
         if git worktree remove "$wt" > "$logs/wt.log" 2>&1; then
           echo "merge-branch: worktree $wt removed."
         else

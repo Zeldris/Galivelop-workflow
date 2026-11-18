@@ -339,7 +339,7 @@ Arreglos de la recogida de apertura de la `0.9` (usuario, 2026-11-18): el gancho
 | D133 | `recover.py --state` con `agentSignatures: false` recuerda en una línea: sin firmas del agente y trailers juntos en el último párrafo (recogida `0.9`, private-project-5 P1) | pendiente |
 | D134 | `handoff.py next-id`: el error con un prefijo que el plan no admite nombra los prefijos válidos y `--id-regex`/`taskId`; `--plan` vale también tras el subcomando (recogida `0.9`, private-project-2 P3 y private-project-5 P5) | pendiente |
 | D135 | `handoff.py check` rechaza una tabla de estado que pierde la fila «Tarea en curso» respecto a `HEAD` sin cierre de rama (recogida `0.9`, image-generator P1) | pendiente |
-| D136 | `merge-branch.sh` distingue un worktree bloqueado por un agente vivo: lo dice y lo deja para la siguiente pasada en vez de fallar (recogida `0.9`, image-generator P5) | pendiente |
+| D136 | `merge-branch.sh` distingue un worktree bloqueado por un agente vivo: lo dice y lo deja para la siguiente pasada en vez de fallar (recogida `0.9`, image-generator P5) | hecho (2026-11-18) |
 | D137 | `doctor.py` avisa de `branchCheck: related` con `relatedTests` vacío (recogida `0.9`, image-generator P6) | pendiente |
 | D138 | `measure.py` sin `--since` empieza en el último `/clear` o compactación del mismo archivo de sesión (recogida `0.9`, private-project-2 P4) | hecho (2026-11-18) |
 | D139 | `measure.py --since` elige la sesión de la carpeta del repo antes que la de una carpeta padre (recogida `0.9`, private-project-5 P2) | hecho (2026-11-18) |
