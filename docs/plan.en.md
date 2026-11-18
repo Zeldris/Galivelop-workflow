@@ -344,7 +344,8 @@ milestone roadmap, several accounts, PR) and the Tarkor installer (Rust/Tauri: t
   `version/0.5.0`), and the patches are merged into it too. Work moves through `0.x` (`0.5` "Base", `0.6`
   "Measure"…): in `0.y.z` a minor may break. `1.0` is the Management Center and ships when what
   the roadmap assigns to it is done (A-5); the §10 criteria measure the maturity of the `1.x` line and do not block
-  the tag. The split by version is in [`roadmap.en.md`](roadmap.en.md) (design in `docs/design/H-roadmap.md`).
+  the tag. The last minor before `1.0`, `0.10` "Stable", takes only fixes and reviews: new features the harvests
+  bring meanwhile go to `1.x` (user, 2026-11-18). The split by version is in [`roadmap.en.md`](roadmap.en.md) (design in `docs/design/H-roadmap.md`).
 - **Every version is published in this repo** (public, A1): push to `main`, tag and release. **At most one
   publication a day** (A-6): whatever arrives later waits on the branch and goes out together in the next one; only a
   serious fix (a hook that blocks good pushes, data loss) skips it, with the user's confirmation.

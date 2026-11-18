@@ -27,7 +27,8 @@ Only the latest published minor gets patches; new features go to the next minor 
 harvest's go to `0.7` (user, 2026-11-05). Work moves through
 `0.x`, where a minor may break: **everything that breaks goes into `0.5`**, so projects migrate once. `1.0` is the
 MMC: each patch leaves what it touches configurable (thresholds, paths, behaviours) so the MMC can edit it (G4;
-user, 2026-11-04). At most one release a day (A-6).
+user, 2026-11-04). At most one release a day (A-6). `0.10` "Stable" takes only fixes and reviews; new
+features that arrive then go to `1.x` (user, 2026-11-18).
 
 ## `0.4.4` — patch (not released)
 
@@ -271,7 +272,7 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | D124 | `version.py <X.Y.Z>` warns at the seal when the version's harvest is missing, with the command that brings it, instead of waiting for `--release` (`0.7.1` patch retro, R2) | done (2026-11-16) |
 | D125 | `ci-status.py`: a job cancelled before running any step (no runner) stays red, but says so and suggests rerunning the failed jobs (`0.7.1` patch retro, R3) | done (2026-11-16) |
 
-## `0.8` "Front end and other agents"
+## `0.8` "Questions and other agents"
 
 | Id | Task | State |
 |---|---|---|
@@ -293,10 +294,8 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | C12 | Exploration branch `spike/<topic>` with no record and no `Refs:`, which the `pre-push` and `merge-branch.sh` refuse to merge into a working branch (H17 P2) | done (2026-11-18) |
 | C13 | Frozen scope (`scopeGuard`): warning or block when touching a file outside the record's `Files`, `pre-commit` as fallback, new requirement = new task, deviation log for the retro (H17 P3) | done (2026-11-18) |
 | D68 | CHANGELOG fragments per branch (`changelog.d/`), folded by `merge-branch.sh` or `version.py --release` (H17 P10) | pending (moves from `0.7`) |
-| E32 | Read `permissions.deny` for secrets and a `PreToolUse` hook on `cat`/`grep` of those files, with a test; in `docs/en/`, what goes out to the provider (H17 P6) | pending (moves from `0.7`) |
 | E33 | Review contract with anchors in `REVIEW.md`: `path:line | severity | anchor | problem. fix.`; no anchor, an observation (H17 P7) | pending (moves from `0.7`) |
 | E35 | Flaky test ledger (`flaky`): the check records what fails and passes on retry and proposes a fix after N times (H17 P12) | pending (moves from `0.7`) |
-| A12 | Configurable languages in a `languages` block of `.claude/gw.json`: `code` (code, names and comments; replaces A8's fixed rule), `docs.primary` and `docs.others` (internal docs, log, roadmap and commits; the `docs/es` ↔ `docs/en` pairing reads them), `public.primary` and `public.others` (README, release, posts) and `ui` (today `visibleLanguages`); the agent language (the one user and agent speak) goes per user in `~/.claude/gw.json`, identified by `git config user.email`, with the docs primary as fallback; `language` and `visibleLanguages` migrate with `apply.py --update`; the MMC edits it in `1.1` (user, 2026-11-08) | pending (moves from `0.7`) |
 | — | What [`pending.md`](records/pending.md) marks `0.7` | pending (moves from `0.7`) |
 | D80 | Automatic warning of a stale `gw-scout-updates` seal (`0.6` closing harvest, private-project-1 P5) | done (2026-11-17, 5e2eb7f) |
 | D83 | `apply.py --update` adds the names its migration renames to the project's `staleRefs` (extends D46) (`0.6` closing harvest, instalador P4) | done (2026-11-17, 69300db) |
@@ -306,16 +305,9 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | D96 | Long log cells: `handoff.py` moves a row's closed items to "Done", or a second cap that fails (new key) (`0.6.0` harvest, image-generator P2) | done (2026-11-17; `handoff.cellHardLimit`, 1600, 0 = off) |
 | E49 | `gw-init` with `agentSignatures: false` writes the "no signatures" rule into `CLAUDE.md` against the attribution reminder (`0.6.0` harvest, image-generator P5) | done (2026-11-17; wave 3a) |
 | B31 | Warning when the context nears the window with the compaction budget spent (`recover.py --state` or `Stop`), before the compaction (`0.6.0` harvest, image-generator P7) | done (2026-11-17; `Stop` hook, once per stretch, `contextGuard.nearRatio`) |
-| B38 | Sweep of the `scripts/handoff.py` minors in `pending.md` (D104): the pending-pointer count, duplicated and unchecked in a commit that only touches `pending.md`; `archive` requires "## Pendiente" while `check`/`recover` do not, and the missing-file message names the log; the `pre-push` reads `pendingFile` from the working copy; the count only looks at "Pendiente (de la bitácora)"; `move-pending` drops lines that look like pointers (`0.7.0` retro, R2; user, 2026-11-15) | done |
-| E4 | Install profiles (minimal/core/full, `core` by default) in `gw-init` and `gw-update` | pending |
-| E5 | Front-end tests following the research | pending |
-| E7 | Front-end testing guide in `docs/en/patterns.md` and a config template | pending |
-| E9-E16 | The front-end checks decided in [`E-quality.md`](design/E-quality.md) (screenshots, when they run, tokens, preprocessors, accessibility, baselines, no paid services, matrix) | pending |
 | D7 | `AGENTS.md` readable without `@include`; skills also in `.agents/skills` (opencode, Codex) | pending |
 | B9 | Non-Anthropic models through opencode | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.8` | pending |
-| E42 | `gw-seo` skill (SEO and link previews for static sites) brought from the portal: no portal paths, English names, tests in the check, es/en docs and its source's MIT LICENSE (`0.6` closing harvest, portal P1) | pending |
-| E50 | `PreToolUse` hook on `Read` that warns, without blocking, when reading loose screenshots and suggests a contact sheet (the project's command in a key) (`0.6.0` harvest, image-generator P6) | pending |
 | E53 | Guide rule: in CI, the environment's install script fails in its own step (`0.7` harvest, instalador P2) | done (2026-11-17, 889791d) |
 | D126 | `gw-scout-updates` reads the project's Rust version (`rust-toolchain(.toml)`, `rust-version` in `Cargo.toml`) (`0.4` harvest, instalador P11, `pending.md`) | done (2026-11-17, 5e2eb7f) |
 | D127 | `apply.py --init` adds a per-stack `.gitignore` in a marked block, without overwriting the existing one (`0.4` harvest, private-project-2 P8, `pending.md`) | done (2026-11-17, 69300db) |
@@ -327,8 +319,25 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | E61 | `handoff.py set-row` and `close-row` print the resulting row and `n/limit` (`0.7` closing harvest, world-maker-fantasy P4) | done (2026-11-16) |
 | B41 | Sweep of `scripts/merge-branch.sh` (E57): with `--defer-check` nobody runs the tests of the deferred branches; «nothing to merge» exits 0 with no check or warning; the dealer's line 165 asking for two full checks; and the `context_guard.py` minor (repeated computations in `--state`) (`0.7.1` patch retro) | done (2026-11-16; the wave keeps its base and the last merge runs the related tests of all of it) |
 | B42 | Tests that look for processes with `pgrep -f` match those of other agents in the same container, and `tests-for.py --run` hung in `test_hooks` with several subagents at once (`0.8` wave 2) | done (2026-11-17; environment marker instead of `pgrep -f`, one session per unit, `testUnitTimeout`) |
+| H23 | Split of `0.8`: it closes with D68, E33, E35, D7 and B9; the front end and A12 move to the new `0.9` "Front end" and "Stable" to `0.10`, fixes only (user, 2026-11-18) | done (2026-11-18) |
 
-## `0.9` "Stable"
+## `0.9` "Front end"
+
+New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages, front end and the web items the harvests brought.
+
+| Id | Task | State |
+|---|---|---|
+| A12 | Configurable languages in a `languages` block of `.claude/gw.json`: `code` (code, names and comments; replaces A8's fixed rule), `docs.primary` and `docs.others` (internal docs, log, roadmap and commits; the `docs/es` ↔ `docs/en` pairing reads them), `public.primary` and `public.others` (README, release, posts) and `ui` (today `visibleLanguages`); the agent language (the one user and agent speak) goes per user in `~/.claude/gw.json`, identified by `git config user.email`, with the docs primary as fallback; `language` and `visibleLanguages` migrate with `apply.py --update`; the MMC edits it in `1.1` (user, 2026-11-08) | pending (moves from `0.7`) |
+| E4 | Install profiles (minimal/core/full, `core` by default) in `gw-init` and `gw-update` | pending |
+| E5 | Front-end tests following the research | pending |
+| E7 | Front-end testing guide in `docs/en/patterns.md` and a config template | pending |
+| E9-E16 | The front-end checks decided in [`E-quality.md`](design/E-quality.md) (screenshots, when they run, tokens, preprocessors, accessibility, baselines, no paid services, matrix) | pending |
+| E42 | `gw-seo` skill (SEO and link previews for static sites) brought from the portal: no portal paths, English names, tests in the check, es/en docs and its source's MIT LICENSE (`0.6` closing harvest, portal P1) | pending |
+| E50 | `PreToolUse` hook on `Read` that warns, without blocking, when reading loose screenshots and suggests a contact sheet (the project's command in a key) (`0.6.0` harvest, image-generator P6) | pending |
+
+## `0.10` "Stable"
+
+Fixes and reviews only, no new features: new features from the harvests go to `1.x` (user, 2026-11-18).
 
 | Id | Task | State |
 |---|---|---|
@@ -341,7 +350,9 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | E34 | `scripts/audit.py`: overlaps and duplicates across `AGENTS.md`, skills and `docs/`, with each datum's owner and the tokens it saves; used by `gw-opt-tokens`, E31 and the MMC (H17 P9) | pending |
 | E36 | Behaviour tests for the skills (a couple of cases per skill, run by hand before each version) (H17 P13) | pending |
 | E37 | Repo citations: `docs/design` and `docs/research` keep only public repos with a link and the user's private projects become "pilot project A/B"; the rule in one line of `AGENTS.md` and the `privateNames` key of `.claude/gw.json` checked by `names-check.py` ([`I-lifecycle.md`](design/I-lifecycle.md) Q8 and Q12; user, 2026-11-08) | pending |
-| — | What [`pending.md`](records/pending.md) marks `0.9` | pending |
+| E32 | Read `permissions.deny` for secrets and a `PreToolUse` hook on `cat`/`grep` of those files, with a test; in `docs/en/`, what goes out to the provider (H17 P6) | pending (moves from `0.7`) |
+| B38 | Sweep of the `scripts/handoff.py` minors in `pending.md` (D104): the pending-pointer count, duplicated and unchecked in a commit that only touches `pending.md`; `archive` requires "## Pendiente" while `check`/`recover` do not, and the missing-file message names the log; the `pre-push` reads `pendingFile` from the working copy; the count only looks at "Pendiente (de la bitácora)"; `move-pending` drops lines that look like pointers (`0.7.0` retro, R2; user, 2026-11-15) | done |
+| — | What [`pending.md`](records/pending.md) marks `0.10` | pending |
 
 ## `1.0` — MMC 1, read-only
 

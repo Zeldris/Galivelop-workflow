@@ -340,7 +340,8 @@ Ejemplos que los pilotos tienen que cubrir: el portal (Node, subida directa, tre
   `0.5`, rama `version/0.5.0`), y los parches se fusionan también en ella. Se avanza por la `0.x` (`0.5` «Base»,
   `0.6` «Measure»…): en `0.y.z` una menor puede romper. La `1.0` es el Management Center y sale cuando está hecho lo
   que el roadmap le asigna (A-5); los criterios de la §10 miden la madurez de la línea `1.x` y no bloquean la
-  etiqueta. El reparto por versiones está en [`roadmap.md`](roadmap.md) (diseño en `docs/design/H-roadmap.md`).
+  etiqueta. La última menor antes de la `1.0`, la `0.10` «Estable», solo admite correcciones y revisiones: lo evolutivo
+  que traigan las recogidas mientras tanto va a la `1.x` (usuario, 2026-11-18). El reparto por versiones está en [`roadmap.md`](roadmap.md) (diseño en `docs/design/H-roadmap.md`).
 - **Cada versión se publica en este repo** (público, A1): subida a `main`, etiqueta y release. **A lo sumo una
   publicación al día** (A-6): lo que llegue después espera en la rama y sale junto en la siguiente; solo un arreglo
   grave (un gancho que bloquea subidas buenas, pérdida de datos) se la salta, con confirmación del usuario.

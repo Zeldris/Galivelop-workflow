@@ -28,7 +28,8 @@ Solo la última menor publicada recibe parches; los evolutivos van a la siguient
 recogida van a la `0.7` (usuario, 2026-11-05). Se avanza por
 la `0.x`, donde una menor puede romper: **todo lo que rompe va en la `0.5`**, para migrar una sola vez. La `1.0` es
 el MMC: cada parche deja configurable lo que toca (umbrales, rutas, comportamientos) para que el MMC lo edite (G4;
-usuario, 2026-11-04). A lo sumo una publicación al día (A-6).
+usuario, 2026-11-04). A lo sumo una publicación al día (A-6). La `0.10` «Estable» solo lleva correcciones y
+revisiones; lo evolutivo que llegue entonces va a la `1.x` (usuario, 2026-11-18).
 
 ## `0.4.4` — parche (no se publica)
 
@@ -272,7 +273,7 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | D124 | `version.py <X.Y.Z>` avisa al sellar si falta la recogida de la versión, con la orden que la trae, en vez de esperar a `--release` (retro del parche `0.7.1`, R2) | hecho (2026-11-16) |
 | D125 | `ci-status.py`: un job cancelado sin ningún paso ejecutado (sin máquina) sigue en rojo, pero lo dice y sugiere relanzar los jobs fallidos (retro del parche `0.7.1`, R3) | hecho (2026-11-16) |
 
-## `0.8` «Front y otros agentes»
+## `0.8` «Preguntas y otros agentes»
 
 | Id | Tarea | Estado |
 |---|---|---|
@@ -294,10 +295,8 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | C12 | Rama de exploración `spike/<tema>` sin ficha ni `Refs:`, que el `pre-push` y `merge-branch.sh` no dejan fusionar en una rama de trabajo (H17 P2) | hecho (2026-11-18) |
 | C13 | Alcance congelado (`scopeGuard`): aviso o bloqueo al tocar un archivo fuera de `Files` de la ficha, `pre-commit` como respaldo, requisito nuevo = tarea nueva, registro de desviaciones para la retro (H17 P3) | hecho (2026-11-18) |
 | D68 | Fragmentos de CHANGELOG por rama (`changelog.d/`), plegados por `merge-branch.sh` o `version.py --release` (H17 P10) | pendiente (pasa de la `0.7`) |
-| E32 | `permissions.deny` de lectura para secretos y gancho `PreToolUse` sobre `cat`/`grep` de esos archivos, con test; en `docs/es/`, qué sale hacia el proveedor (H17 P6) | pendiente (pasa de la `0.7`) |
 | E33 | Contrato de revisión con anclas en `REVIEW.md`: `ruta:línea | severidad | ancla | problema. arreglo.`; sin ancla, observación (H17 P7) | pendiente (pasa de la `0.7`) |
 | E35 | Registro de pruebas inestables (`flaky`): el check apunta lo que falla y pasa al reintentar y propone arreglarlo tras N veces (H17 P12) | pendiente (pasa de la `0.7`) |
-| A12 | Idiomas configurables en un bloque `languages` de `.claude/gw.json`: `code` (código, nombres y comentarios; sustituye la regla fija de A8), `docs.primary` y `docs.others` (doc interna, bitácora, roadmap y commits; el emparejado `docs/es` ↔ `docs/en` los lee), `public.primary` y `public.others` (README, release, publicaciones) y `ui` (hoy `visibleLanguages`); el idioma del agente (en el que hablan usuario y agente) va por usuario en `~/.claude/gw.json`, identificado por `git config user.email`, con el principal de la doc como respaldo; `language` y `visibleLanguages` migran con `apply.py --update`; el MMC lo edita en la `1.1` (usuario, 2026-11-08) | pendiente (pasa de la `0.7`) |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.7` | pendiente (pasa de la `0.7`) |
 | D80 | Aviso automático de un sello de `gw-scout-updates` caducado (recogida de cierre `0.6`, private-project-1 P5) | hecho (2026-11-17, 5e2eb7f) |
 | D83 | `apply.py --update` añade al `staleRefs` del proyecto los nombres que renombra su migración (amplía D46) (recogida de cierre `0.6`, instalador P4) | hecho (2026-11-17, 69300db) |
@@ -307,16 +306,9 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | D96 | Celdas largas de la bitácora: `handoff.py` mueve a «Hecho» lo cerrado de una fila, o un segundo tope que falla (clave nueva) (recogida `0.6.0`, image-generator P2) | hecho (2026-11-17; `handoff.cellHardLimit`, 1600, 0 = apagado) |
 | E49 | `gw-init` con `agentSignatures: false` escribe en `CLAUDE.md` la regla «sin firmas» frente al recordatorio de atribución (recogida `0.6.0`, image-generator P5) | hecho (2026-11-17; oleada 3a) |
 | B31 | Aviso de contexto cerca de la ventana con el presupuesto de compactaciones gastado (`recover.py --state` o `Stop`), antes de la compactación (recogida `0.6.0`, image-generator P7) | hecho (2026-11-17; gancho `Stop`, una vez por tramo, `contextGuard.nearRatio`) |
-| B38 | Barrido de los leves de `scripts/handoff.py` en `pending.md` (D104): la cuenta del puntero de pendientes duplicada y sin vigilar en un commit que solo toca `pending.md`; `archive` exige «## Pendiente» y `check`/`recover` no, y el mensaje sin archivo nombra la bitácora; el `pre-push` lee `pendingFile` de la copia de trabajo; la cuenta solo mira «Pendiente (de la bitácora)»; `move-pending` descarta líneas que parecen punteros (retro de la `0.7.0`, R2; usuario, 2026-11-15) | hecho |
-| E4 | Perfiles de instalación (minimal/core/full, `core` por defecto) en `gw-init` y `gw-update` | pendiente |
-| E5 | Pruebas de front según la investigación | pendiente |
-| E7 | Guía de pruebas de front en `docs/es/patterns.md` y plantilla de config | pendiente |
-| E9-E16 | Los checks de front decididos en [`E-quality.md`](design/E-quality.md) (capturas, cuándo corren, tokens, preprocesadores, accesibilidad, referencias, sin servicios de pago, matriz) | pendiente |
 | D7 | `AGENTS.md` legible sin `@include`; skills también en `.agents/skills` (opencode, Codex) | pendiente |
 | B9 | Modelos de fuera de Anthropic vía opencode | pendiente |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.8` | pendiente |
-| E42 | Skill `gw-seo` (SEO y vistas previas de webs estáticas) traída del portal: sin rutas del portal, nombres en inglés, tests en el check, docs es/en y la LICENSE MIT de su fuente (recogida de cierre `0.6`, portal P1) | pendiente |
-| E50 | Gancho `PreToolUse` de `Read` que avisa, sin bloquear, al leer capturas sueltas y sugiere montarlas en una hoja (orden del proyecto en una clave) (recogida `0.6.0`, image-generator P6) | pendiente |
 | E53 | Regla de guía: en el CI, el script de instalación del entorno falla en su propio paso (recogida `0.7`, instalador P2) | hecho (2026-11-17, 889791d) |
 | D126 | `gw-scout-updates` lee la versión de Rust del proyecto (`rust-toolchain(.toml)`, `rust-version` de `Cargo.toml`) (recogida `0.4`, instalador P11, `pending.md`) | hecho (2026-11-17, 5e2eb7f) |
 | D127 | `apply.py --init` añade un `.gitignore` por stack en un bloque con marca, sin pisar el existente (recogida `0.4`, private-project-2 P8, `pending.md`) | hecho (2026-11-17, 69300db) |
@@ -328,8 +320,25 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | E61 | `handoff.py set-row` y `close-row` imprimen la fila resultante y `n/límite` (recogida de cierre `0.7`, world-maker-fantasy P4) | hecho (2026-11-16) |
 | B41 | Barrido de `scripts/merge-branch.sh` (E57): con `--defer-check` nadie corre los tests de las ramas diferidas; «nothing to merge» sale con 0 sin check ni aviso; la línea 165 del dealer que pide dos checks enteros; y el leve de `context_guard.py` (cálculos repetidos por `--state`) (retro del parche `0.7.1`) | hecho (2026-11-16; la oleada guarda su base y la última fusión corre los tests relacionados de toda ella) |
 | B42 | Tests que buscan procesos con `pgrep -f` casan con los de otros agentes del mismo contenedor, y `tests-for.py --run` se quedó colgado en `test_hooks` con varios subagentes a la vez (oleada 2 de la `0.8`) | hecho (2026-11-17; marca de entorno en vez de `pgrep -f`, una sesión por unidad, `testUnitTimeout`) |
+| H23 | Reparto de la `0.8`: se cierra con D68, E33, E35, D7 y B9; el front y A12 pasan a la nueva `0.9` «Front» y la «Estable» a la `0.10`, solo correcciones (usuario, 2026-11-18) | hecho (2026-11-18) |
 
-## `0.9` «Estable»
+## `0.9` «Front»
+
+Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18): idiomas, front y lo traído de las recogidas para webs.
+
+| Id | Tarea | Estado |
+|---|---|---|
+| A12 | Idiomas configurables en un bloque `languages` de `.claude/gw.json`: `code` (código, nombres y comentarios; sustituye la regla fija de A8), `docs.primary` y `docs.others` (doc interna, bitácora, roadmap y commits; el emparejado `docs/es` ↔ `docs/en` los lee), `public.primary` y `public.others` (README, release, publicaciones) y `ui` (hoy `visibleLanguages`); el idioma del agente (en el que hablan usuario y agente) va por usuario en `~/.claude/gw.json`, identificado por `git config user.email`, con el principal de la doc como respaldo; `language` y `visibleLanguages` migran con `apply.py --update`; el MMC lo edita en la `1.1` (usuario, 2026-11-08) | pendiente (pasa de la `0.7`) |
+| E4 | Perfiles de instalación (minimal/core/full, `core` por defecto) en `gw-init` y `gw-update` | pendiente |
+| E5 | Pruebas de front según la investigación | pendiente |
+| E7 | Guía de pruebas de front en `docs/es/patterns.md` y plantilla de config | pendiente |
+| E9-E16 | Los checks de front decididos en [`E-quality.md`](design/E-quality.md) (capturas, cuándo corren, tokens, preprocesadores, accesibilidad, referencias, sin servicios de pago, matriz) | pendiente |
+| E42 | Skill `gw-seo` (SEO y vistas previas de webs estáticas) traída del portal: sin rutas del portal, nombres en inglés, tests en el check, docs es/en y la LICENSE MIT de su fuente (recogida de cierre `0.6`, portal P1) | pendiente |
+| E50 | Gancho `PreToolUse` de `Read` que avisa, sin bloquear, al leer capturas sueltas y sugiere montarlas en una hoja (orden del proyecto en una clave) (recogida `0.6.0`, image-generator P6) | pendiente |
+
+## `0.10` «Estable»
+
+Solo correcciones y revisiones, sin funciones nuevas: lo evolutivo de las recogidas va a la `1.x` (usuario, 2026-11-18).
 
 | Id | Tarea | Estado |
 |---|---|---|
@@ -342,7 +351,9 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | E34 | `scripts/audit.py`: solapes y duplicados entre `AGENTS.md`, skills y `docs/`, con el dueño del dato y los tokens que ahorra; lo usan `gw-opt-tokens`, E31 y el MMC (H17 P9) | pendiente |
 | E36 | Pruebas de comportamiento de las skills (un par de casos por skill, a mano antes de cada versión) (H17 P13) | pendiente |
 | E37 | Citas de repos: en `docs/design` y `docs/research` quedan solo repos públicos con enlace y los proyectos privados del usuario pasan a «proyecto piloto A/B»; la regla en una línea de `AGENTS.md` y la clave `privateNames` de `.claude/gw.json` comprobada por `names-check.py` ([`I-lifecycle.md`](design/I-lifecycle.md) Q8 y Q12; usuario, 2026-11-08) | pendiente |
-| — | Lo de [`pending.md`](records/pending.md) marcado `0.9` | pendiente |
+| E32 | `permissions.deny` de lectura para secretos y gancho `PreToolUse` sobre `cat`/`grep` de esos archivos, con test; en `docs/es/`, qué sale hacia el proveedor (H17 P6) | pendiente (pasa de la `0.7`) |
+| B38 | Barrido de los leves de `scripts/handoff.py` en `pending.md` (D104): la cuenta del puntero de pendientes duplicada y sin vigilar en un commit que solo toca `pending.md`; `archive` exige «## Pendiente» y `check`/`recover` no, y el mensaje sin archivo nombra la bitácora; el `pre-push` lee `pendingFile` de la copia de trabajo; la cuenta solo mira «Pendiente (de la bitácora)»; `move-pending` descarta líneas que parecen punteros (retro de la `0.7.0`, R2; usuario, 2026-11-15) | hecho |
+| — | Lo de [`pending.md`](records/pending.md) marcado `0.10` | pendiente |
 
 ## `1.0` — MMC 1, solo lectura
 

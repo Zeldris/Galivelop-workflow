@@ -7,7 +7,7 @@ commit, y la entrada va al CHANGELOG de esa versión. Lo marcado `[x]` se hizo e
 `0.5`.
 
 Reparto: scripts, checks, config y git a la `0.5`; `orchestrate-dealer` y los encargos de revisión a la `0.7`
-(junto a C10); instalación, plantillas y stacks a la `0.8` (junto a E4); textos de la documentación a la `0.9` (E8).
+(junto a C10); instalación, plantillas y stacks a la `0.9` (junto a E4); textos de la documentación a la `0.10` (E8).
 
 ## De la recogida del 2026-10-27 (`private-project-2`)
 
@@ -75,7 +75,7 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [x] `0.8` · **INS P13 + Portal P5:** (E63, 2026-11-17) en la plantilla de `REVIEW.md`, la regla de invariantes y el apartado «Navegadores».
   [`2026-10-26-instalador-wmf-tarkor-2.md`](../proposals/2026-10-26-instalador-wmf-tarkor-2.md),
   [`2026-10-26-portal-galivelop-2.md`](../proposals/2026-10-26-portal-galivelop-2.md)
-- [ ] `0.9` · **private-project-1 P10:** textos menores (`/clear` tras un commit `WIP:`, `perPage: 1`, `git fetch -q && git status -sb`).
+- [ ] `0.10` · **private-project-1 P10:** textos menores (`/clear` tras un commit `WIP:`, `perPage: 1`, `git fetch -q && git status -sb`).
   [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
 - [x] `0.5` · **private-project-1 P11 (archivos borrados):** (D29, 2026-11-03) `related-tests.sh` incluye los archivos borrados en `{files}` o corre
   todo si un push solo borra. [`2026-10-26-private-project-1.md`](../proposals/2026-10-26-private-project-1.md)
@@ -294,50 +294,50 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [x] `0.8` · (D62, 2026-11-17: ruta absoluta) D62 (revisión n.º 8): la orden del aviso de CI del `pre-push` usa una ruta relativa a la raíz; desde un subdirectorio no se encuentra: dar la ruta absoluta.
 - [x] `0.8` · (D62, 2026-11-17: línea con la clave y `config.py validate`) D62 (revisión n.º 9): si `config.py` no lee `prepushCiWarn` o su timeout, el aviso de CI se apaga sin decir nada; sacar una línea con `config.py validate`.
 - [x] `0.8` · (B31, 2026-11-17: una línea por transcript, `contextGuard.warnedMax`, cerrojo) **Revisión B31 n.º 5**: el marcador del aviso de contexto (`<git dir>/gw-context-warn`) es uno por git dir y guarda solo el último tramo: dos sesiones en el mismo worktree, ambas cerca del corte, se lo pisan y avisan en cada turno (candidato: varias claves, una por transcript, o un archivo por sesión).
-- [ ] `0.9` · **Revisión D83 n.º 5** (leve): `apply.py --init --stack` con la lista vacía no quita un bloque `.gitignore` que ya existe.
-- [ ] `0.9` · **Revisión D83 n.º 9** (leve): el análisis y la unión de `staleRefs` están duplicados en `apply.py`, y `stale_pattern` repite lo de `rename_hook_scripts`.
-- [ ] `0.9` · **D127, seguimiento**: `apply.py --update` no refresca el bloque `.gitignore` de un proyecto ya iniciado (solo lo escribe el `--init` que crea `gw.json`).
+- [ ] `0.10` · **Revisión D83 n.º 5** (leve): `apply.py --init --stack` con la lista vacía no quita un bloque `.gitignore` que ya existe.
+- [ ] `0.10` · **Revisión D83 n.º 9** (leve): el análisis y la unión de `staleRefs` están duplicados en `apply.py`, y `stale_pattern` repite lo de `rename_hook_scripts`.
+- [ ] `0.10` · **D127, seguimiento**: `apply.py --update` no refresca el bloque `.gitignore` de un proyecto ya iniciado (solo lo escribe el `--init` que crea `gw.json`).
 - [x] `0.8` · (B42, 2026-11-17: una sesión por unidad, salida a archivo, `testUnitTimeout`) Herramienta: `tests-for.py --run` se quedó colgado en `test_hooks` (`PrePush`, `CheckCache`) con varios subagentes a la vez (oleada 2; ver el ítem de `pgrep`).
-- [ ] `0.9` · **Revisión D87 n.º 6** (leve): `tests/test_apply.py` cubre `<!-- if !clave -->` con false, true y ausente, pero no `! clave` con espacio ni `if !` sin clave.
-- [ ] `0.9` · **Revisión D94 n.º 1** (leve): `test_reviewed.py` no ejecuta la orden que imprime el consejo de `reviewed.sh` (escribe la ruta de `push.sh` a mano, raíz sin espacios): una cita `%q` rota seguiría en verde.
-- [ ] `0.9` · **Revisión D14 n.º 2** (leve): `trace.py` pliega las filas con `first[key]` (la última fila con ese id); una traducción cuyo texto de celda difiere no se pliega.
-- [ ] `0.9` · **Revisión B42 n.º 7** (leve): `tests-for.py` duplica `run_unit` de `test-run.py`.
-- [ ] `0.9` · **Revisión B42 n.º 8** (leve): `tests-for.py` usa manejadores de señal globales y un `LIVE` global.
-- [ ] `0.9` · Herramienta (B42): `scripts/test-run.py` `run_unit` tiene el mismo problema de tubería que `tests-for.py` y ningún tope de tiempo (`testUnitTimeout`).
-- [ ] `0.9` · Herramienta (B42): `tests/test_check_summary.py` lanza `sleep 60/30` que heredan la salida del ejecutor de tests.
-- [ ] `0.9` · Herramienta (B42): `test-times.json` se comparte entre worktrees.
-- [ ] `0.9` · **Revisión D62 n.º 7** (leve): el test del aviso de CI desde un subdirectorio no ejecuta el `ci-status.py` real.
-- [ ] `0.9` · **Revisión D95 n.º 5** (leve): el bucle de `flock` de `handoff.py` duplica el de `context_guard.warned_lock`.
-- [ ] `0.9` · Pregunta al usuario (B42): ¿bajar el `testJobs` por defecto (0 = todas las CPU por agente satura con varios subagentes)? `testUnitTimeout` ya evita el cuelgue.
-- [ ] `0.9` · **Revisión C1 n.º 5** (leve): la marca de preguntas mostradas (`gw/questions-shown`) guarda solo el mayor número, por clon y no por rama; `list` la marca aunque la salida se recorte.
-- [ ] `0.9` · **Revisión C1 n.º 7** (leve): la regla de preguntas de las plantillas `AGENTS.md` no nombra la ruta configurable (`questions.path`).
-- [ ] `0.9` · **Revisión C1 n.º 9** (leve): faltan tests de `list --refs` (no marca), cambio de rama con marca previa, `questions.path` propia en el inicio de sesión y UTF-8 inválido.
-- [ ] `0.9` · **Revisión C11 n.º 3** (leve): el `commit-msg` solo comprueba las entradas añadidas de `docs/tasks/<id>/`; modificar o borrar una ya subida pasa.
-- [ ] `0.9` · **Revisión C11 n.º 5** (leve): `task.py` fija `Acceptance` en la plantilla y su enlace supone `path` a un nivel bajo `docs/`.
-- [ ] `0.9` · **Revisión C11 n.º 6** (leve): `task.py resolve` lanza un `git log` por entrada; uno solo con `--diff-filter=A --name-only` basta.
-- [ ] `0.9` · **Revisión C11** (limitación): con `git commit --amend` la entrada nueva de la ficha no se distingue de la del commit corregido; documentado en `I-lifecycle.md`.
-- [ ] `0.9` · Herramienta (D62): `test_hooks.PrePushCiWarn.test_an_interrupted_push_kills_ci_status_and_its_children` («SIGTERM to the group») falló una vez en el `pre-push` con 4 tareas a la vez (2026-11-18: `ci-status.py` y su `gh` vivos tras la señal); aislado pasa 6 de 6. Hipótesis no probada: un segundo TERM del `cleanup` del gancho llega mientras el python del aviso sale y corta el `finally` antes del `killpg` (un caso con dos TERM no lo reprodujo).
-- [ ] `0.9` · **Revisión C11-trace n.º 3** (leve): en `trace.py`, las entradas del mismo día se ordenan por agente y hex, no por hora.
-- [ ] `0.9` · **Revisión C11-trace n.º 4** (leve): `trace.py` fija el nombre `Acceptance` en vez de leer `taskRecord.sections`.
-- [ ] `0.9` · **Revisión C11-trace n.º 5** (leve): `trace.py` cuenta las casillas `- [x]` también dentro de bloques de código.
-- [ ] `0.9` · **Revisión C11-trace n.º 6** (leve): un `taskRecord.path` con `.` o `..` necesita `normpath` en `trace.py`.
-- [ ] `0.9` · **Revisión C11-trace n.º 7** (leve): `trace.py` y `task.py` leen la cabecera de la entrada por separado; compartir `parse_entry`.
-- [ ] `0.9` · **Revisión C11-close-row n.º 4** (leve): `close-row` no ve un criterio de `Acceptance` escrito sin casilla.
-- [ ] `0.9` · **Revisión C11-close-row n.º 5** (leve): `close-row` imprime «closed» antes de que `cmd_done` escriba; un fallo al escribir queda tras el mensaje.
-- [ ] `0.9` · **Revisión C11-close-row n.º 6** (leve): una ficha que no es UTF-8 da una traza en `close-row` en vez de un motivo.
-- [ ] `0.9` · **Revisión C11-close-row n.º 7** (leve): `roadmap.py:214-216` escribe los `roadmapFiles` uno a uno; un fallo a medias deja uno escrito y otro no.
-- [ ] `0.9` · **Revisión C7** (leve, del autor): `models.py disable|enable` reescribe todo `gw.json` con `indent=2` (CRLF, tabs, secciones compactas); usar la edición en su sitio de `mode.py`.
-- [ ] `0.9` · **Revisión C4 n.º 10** (leve): `is-code.sh` clasifica con el config del HEAD del clon principal, no del worktree (mitigado: usa primero la copia del worktree).
-- [ ] `0.9` · **Revisión C4-fix n.º 2** (leve): el agente puede desbloquearse editando `docs/questions.md` (siempre permitido, sin pregunta de `config-guard`) o escribiendo `.git/gw/current-task` con Write; documentarlo como límite o protegerlo.
-- [ ] `0.9` · **Revisión C4-fix n.º 3** (leve): con el flujo instalado como plugin de otra versión, una clave desconocida de `gw.json` da ConfigError y `questions-guard.py` rechaza todo código aunque `modes.questions` esté apagado; el `config.py validate` del mensaje (copia del proyecto) puede salir válido.
-- [ ] `0.9` · **C4** (regla «Todo configurable»): `task.GIT_TIMEOUT` (10 s) es una constante, no una clave de `gw.json`; decidir si pasa a config.
-- [ ] `0.9` · **Revisión C12 n.º 3** (leve): la regex del trailer `Spike:` exige el prefijo actual; al cambiar `spikeBranch`, los commits marcados con el viejo dejan de contar (salvo por el asunto del merge).
-- [ ] `0.9` · **Revisión C12 n.º 5** (leve): en un octopus, la regex del asunto del merge solo mira la primera rama: un spike que no va primero no se detecta por el asunto.
-- [ ] `0.9` · **Revisión C12 n.º 9** (leve, confianza baja): `mark_spike` de `commit-message.py` reescribe el mensaje después de que las comprobaciones lo leyeran.
-- [ ] `0.9` · **Revisión C12 n.º 10** (leve, limpieza): el `pre-push` compara el prefijo con un glob de shell además de `config.py spike-branch` (dos sitios para una regla).
-- [ ] `0.9` · **Revisión C13 n.º 7** (leve): los avisos únicos `broken-config` y `git-stuck` de `scope-guard.py` no caducan: tras arreglarse y volver a romperse, no se repiten.
-- [ ] `0.9` · **Revisión C13 n.º 8** (leve): la regex `^Related:` de `task.py` encuentra la línea en cualquier parte de la ficha, no solo en su cabecera.
-- [ ] `0.9` · **Revisión C13 n.º 9** (leve): `scope-guard.py` apunta la desviación y gasta el aviso único antes de saber si la edición sigue adelante.
-- [ ] `0.9` · **Revisión C13 n.º 11** (leve): `warn_once` cambia el global privado `qg.WARNED` en vez de recibir la marca como parámetro.
-- [ ] `0.9` · **Revisión C13 n.º 12** (leve): en cada Edit/Write, `scope-guard.py` repite el trabajo que `questions-guard.py` acaba de hacer (config, tarea en curso).
-- [ ] `0.9` · Herramienta (CI macOS): `test_check_summary.CheckSummary.test_no_fifo_is_left_in_tmpdir_after_an_interrupt` agotó sus 270 s en el CI de macOS de `de6b79d` (2026-11-18; la unidad tardó 341 s con 3 tareas). Ni el test ni `check.sh` cambiaron en la oleada; Ubuntu en verde. Mirar si vuelve en `d3691d8`/`e2457ab`; si se repite, subir su espera o aislarlo.
+- [ ] `0.10` · **Revisión D87 n.º 6** (leve): `tests/test_apply.py` cubre `<!-- if !clave -->` con false, true y ausente, pero no `! clave` con espacio ni `if !` sin clave.
+- [ ] `0.10` · **Revisión D94 n.º 1** (leve): `test_reviewed.py` no ejecuta la orden que imprime el consejo de `reviewed.sh` (escribe la ruta de `push.sh` a mano, raíz sin espacios): una cita `%q` rota seguiría en verde.
+- [ ] `0.10` · **Revisión D14 n.º 2** (leve): `trace.py` pliega las filas con `first[key]` (la última fila con ese id); una traducción cuyo texto de celda difiere no se pliega.
+- [ ] `0.10` · **Revisión B42 n.º 7** (leve): `tests-for.py` duplica `run_unit` de `test-run.py`.
+- [ ] `0.10` · **Revisión B42 n.º 8** (leve): `tests-for.py` usa manejadores de señal globales y un `LIVE` global.
+- [ ] `0.10` · Herramienta (B42): `scripts/test-run.py` `run_unit` tiene el mismo problema de tubería que `tests-for.py` y ningún tope de tiempo (`testUnitTimeout`).
+- [ ] `0.10` · Herramienta (B42): `tests/test_check_summary.py` lanza `sleep 60/30` que heredan la salida del ejecutor de tests.
+- [ ] `0.10` · Herramienta (B42): `test-times.json` se comparte entre worktrees.
+- [ ] `0.10` · **Revisión D62 n.º 7** (leve): el test del aviso de CI desde un subdirectorio no ejecuta el `ci-status.py` real.
+- [ ] `0.10` · **Revisión D95 n.º 5** (leve): el bucle de `flock` de `handoff.py` duplica el de `context_guard.warned_lock`.
+- [ ] `0.10` · Pregunta al usuario (B42): ¿bajar el `testJobs` por defecto (0 = todas las CPU por agente satura con varios subagentes)? `testUnitTimeout` ya evita el cuelgue.
+- [ ] `0.10` · **Revisión C1 n.º 5** (leve): la marca de preguntas mostradas (`gw/questions-shown`) guarda solo el mayor número, por clon y no por rama; `list` la marca aunque la salida se recorte.
+- [ ] `0.10` · **Revisión C1 n.º 7** (leve): la regla de preguntas de las plantillas `AGENTS.md` no nombra la ruta configurable (`questions.path`).
+- [ ] `0.10` · **Revisión C1 n.º 9** (leve): faltan tests de `list --refs` (no marca), cambio de rama con marca previa, `questions.path` propia en el inicio de sesión y UTF-8 inválido.
+- [ ] `0.10` · **Revisión C11 n.º 3** (leve): el `commit-msg` solo comprueba las entradas añadidas de `docs/tasks/<id>/`; modificar o borrar una ya subida pasa.
+- [ ] `0.10` · **Revisión C11 n.º 5** (leve): `task.py` fija `Acceptance` en la plantilla y su enlace supone `path` a un nivel bajo `docs/`.
+- [ ] `0.10` · **Revisión C11 n.º 6** (leve): `task.py resolve` lanza un `git log` por entrada; uno solo con `--diff-filter=A --name-only` basta.
+- [ ] `0.10` · **Revisión C11** (limitación): con `git commit --amend` la entrada nueva de la ficha no se distingue de la del commit corregido; documentado en `I-lifecycle.md`.
+- [ ] `0.10` · Herramienta (D62): `test_hooks.PrePushCiWarn.test_an_interrupted_push_kills_ci_status_and_its_children` («SIGTERM to the group») falló una vez en el `pre-push` con 4 tareas a la vez (2026-11-18: `ci-status.py` y su `gh` vivos tras la señal); aislado pasa 6 de 6. Hipótesis no probada: un segundo TERM del `cleanup` del gancho llega mientras el python del aviso sale y corta el `finally` antes del `killpg` (un caso con dos TERM no lo reprodujo).
+- [ ] `0.10` · **Revisión C11-trace n.º 3** (leve): en `trace.py`, las entradas del mismo día se ordenan por agente y hex, no por hora.
+- [ ] `0.10` · **Revisión C11-trace n.º 4** (leve): `trace.py` fija el nombre `Acceptance` en vez de leer `taskRecord.sections`.
+- [ ] `0.10` · **Revisión C11-trace n.º 5** (leve): `trace.py` cuenta las casillas `- [x]` también dentro de bloques de código.
+- [ ] `0.10` · **Revisión C11-trace n.º 6** (leve): un `taskRecord.path` con `.` o `..` necesita `normpath` en `trace.py`.
+- [ ] `0.10` · **Revisión C11-trace n.º 7** (leve): `trace.py` y `task.py` leen la cabecera de la entrada por separado; compartir `parse_entry`.
+- [ ] `0.10` · **Revisión C11-close-row n.º 4** (leve): `close-row` no ve un criterio de `Acceptance` escrito sin casilla.
+- [ ] `0.10` · **Revisión C11-close-row n.º 5** (leve): `close-row` imprime «closed» antes de que `cmd_done` escriba; un fallo al escribir queda tras el mensaje.
+- [ ] `0.10` · **Revisión C11-close-row n.º 6** (leve): una ficha que no es UTF-8 da una traza en `close-row` en vez de un motivo.
+- [ ] `0.10` · **Revisión C11-close-row n.º 7** (leve): `roadmap.py:214-216` escribe los `roadmapFiles` uno a uno; un fallo a medias deja uno escrito y otro no.
+- [ ] `0.10` · **Revisión C7** (leve, del autor): `models.py disable|enable` reescribe todo `gw.json` con `indent=2` (CRLF, tabs, secciones compactas); usar la edición en su sitio de `mode.py`.
+- [ ] `0.10` · **Revisión C4 n.º 10** (leve): `is-code.sh` clasifica con el config del HEAD del clon principal, no del worktree (mitigado: usa primero la copia del worktree).
+- [ ] `0.10` · **Revisión C4-fix n.º 2** (leve): el agente puede desbloquearse editando `docs/questions.md` (siempre permitido, sin pregunta de `config-guard`) o escribiendo `.git/gw/current-task` con Write; documentarlo como límite o protegerlo.
+- [ ] `0.10` · **Revisión C4-fix n.º 3** (leve): con el flujo instalado como plugin de otra versión, una clave desconocida de `gw.json` da ConfigError y `questions-guard.py` rechaza todo código aunque `modes.questions` esté apagado; el `config.py validate` del mensaje (copia del proyecto) puede salir válido.
+- [ ] `0.10` · **C4** (regla «Todo configurable»): `task.GIT_TIMEOUT` (10 s) es una constante, no una clave de `gw.json`; decidir si pasa a config.
+- [ ] `0.10` · **Revisión C12 n.º 3** (leve): la regex del trailer `Spike:` exige el prefijo actual; al cambiar `spikeBranch`, los commits marcados con el viejo dejan de contar (salvo por el asunto del merge).
+- [ ] `0.10` · **Revisión C12 n.º 5** (leve): en un octopus, la regex del asunto del merge solo mira la primera rama: un spike que no va primero no se detecta por el asunto.
+- [ ] `0.10` · **Revisión C12 n.º 9** (leve, confianza baja): `mark_spike` de `commit-message.py` reescribe el mensaje después de que las comprobaciones lo leyeran.
+- [ ] `0.10` · **Revisión C12 n.º 10** (leve, limpieza): el `pre-push` compara el prefijo con un glob de shell además de `config.py spike-branch` (dos sitios para una regla).
+- [ ] `0.10` · **Revisión C13 n.º 7** (leve): los avisos únicos `broken-config` y `git-stuck` de `scope-guard.py` no caducan: tras arreglarse y volver a romperse, no se repiten.
+- [ ] `0.10` · **Revisión C13 n.º 8** (leve): la regex `^Related:` de `task.py` encuentra la línea en cualquier parte de la ficha, no solo en su cabecera.
+- [ ] `0.10` · **Revisión C13 n.º 9** (leve): `scope-guard.py` apunta la desviación y gasta el aviso único antes de saber si la edición sigue adelante.
+- [ ] `0.10` · **Revisión C13 n.º 11** (leve): `warn_once` cambia el global privado `qg.WARNED` en vez de recibir la marca como parámetro.
+- [ ] `0.10` · **Revisión C13 n.º 12** (leve): en cada Edit/Write, `scope-guard.py` repite el trabajo que `questions-guard.py` acaba de hacer (config, tarea en curso).
+- [ ] `0.10` · Herramienta (CI macOS): `test_check_summary.CheckSummary.test_no_fifo_is_left_in_tmpdir_after_an_interrupt` agotó sus 270 s en el CI de macOS de `de6b79d` (2026-11-18; la unidad tardó 341 s con 3 tareas). Ni el test ni `check.sh` cambiaron en la oleada; Ubuntu en verde. Mirar si vuelve en `d3691d8`/`e2457ab`; si se repite, subir su espera o aislarlo.
