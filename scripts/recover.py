@@ -6,7 +6,8 @@
                                 state (with logRows, the current branch's row; else the log's first section, ~25
                                 lines, and on /clear also its Pendiente/Pending section; after a compaction, source
                                 "compact", only the first section, which holds the state and the next step),
-                                `git status --short` (15 lines at most), the last 5 commits, HEAD against
+                                `git status --short` (15 lines at most), the last 5 commits, the current task (B46: `Current task: <id>` or
+                                `none`; handoff.py close-row <id> clears its mark), HEAD against
                                 origin/<branch> (local refs, no fetch: up to date, ahead, behind; E59), the repo's other
                                 worktrees (path, branch and, with logRows, their row; 10 at most), the compactions in
                                 this session and since the branch last took the protected branch (its merge base: the
@@ -552,6 +553,20 @@ def review_lines(root, branch):
         return [f"- Warning: review check could not run ({CONTROL.sub('', str(exc))[:200]})"]
 
 
+def task_line(root):
+    """B46: the current task (task.py: the branch `agent/<id>-...`, else the mark `gw/current-task`) or `none`, so a mark
+    left by a closed task is seen at the start (`task.py current <id>` sets it, `task.py current --clear` removes it)."""
+    try:
+        import task
+        found, source = task.current_task(root, config.load(root))
+    except Exception:  # only a note: --state never fails
+        return []
+    if not found:
+        return ["- Current task: none"]
+    return [f"- Current task: {found} (from the {source}); if it is closed or not yours: "
+            f"{script_command(root).replace('recover.py', 'task.py')} current --clear"]
+
+
 def state(root, transcript, out, logs, source="startup"):
     """Append the --state lines to `out` (and the log's relative path to `logs`); the caller measures and prints."""
     use_config(root)
@@ -573,6 +588,7 @@ def state(root, transcript, out, logs, source="startup"):
     say("- Last commits:" + ("" if commits else " none"))
     for line in commits:
         say(f"  {line}")
+    tail.extend(task_line(root))
     try:
         tail.extend(remote_lines(root, branch))
     except Exception:  # only a warning: --state never fails

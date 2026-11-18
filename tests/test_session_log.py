@@ -903,6 +903,30 @@ class Recover(Base):
         self.assertNotIn("review overdue", out)
         self.assertNotIn("Traceback", out)
 
+    # ---- B46: the current task
+
+    def task_line(self):
+        code, out = self.p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        return next((l for l in out.splitlines() if l.startswith("- Current task:")), None)
+
+    def test_state_says_the_current_task_or_none(self):
+        p = self.p
+        self.assertEqual(self.task_line(), "- Current task: none")
+        mark = p.work / ".git" / "gw" / "current-task"
+        mark.parent.mkdir(parents=True, exist_ok=True)
+        mark.write_text("GW-12\n")
+        line = self.task_line()
+        self.assertTrue(line.startswith("- Current task: GW-12 (from the mark); if it is closed or not yours: "), line)
+        self.assertTrue(line.endswith("task.py current --clear"), line)
+        mark.unlink()
+        self.assertEqual(self.task_line(), "- Current task: none")
+
+    def test_state_reads_the_task_from_an_agent_branch(self):
+        self.p.git("checkout", "-q", "-b", "agent/GW-13-topic", "main")
+        self.assertEqual(self.task_line(), "- Current task: GW-13 (from the branch); if it is closed or not yours: "
+                         + self.task_line().split("not yours: ")[1])
+
     # ---- E59: HEAD against origin/<branch>
 
     def remote_line(self):

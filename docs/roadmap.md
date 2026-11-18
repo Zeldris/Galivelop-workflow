@@ -323,7 +323,7 @@ Lo que no se hizo en la `0.7` pasó a la `0.8` (usuario, 2026-11-15).
 | H23 | Reparto de la `0.8`: se cierra con D68, E33, E35, D7 y B9; el front y A12 pasan a la nueva `0.9` «Front» y la «Estable» a la `0.10`, solo correcciones (usuario, 2026-11-18) | hecho (2026-11-18) |
 | B44 | `scope-guard.py` no cuenta como desviación las copias del flujo (`apply.py --vendored`) ni los cambios que solo tocan la versión estampada; un commit de sello no pide ficha (retro de la `0.8.0`, P1) | hecho (2026-11-18) |
 | B45 | `review-scope.py --trivial` descuenta las líneas que solo cambian la versión estampada (retro de la `0.8.0`, P2) | hecho (2026-11-18) |
-| B46 | `handoff.py close-row <id>` borra la marca de tarea en curso si es esa tarea y `recover.py --state` dice la tarea en curso (retro de la `0.8.0`, P3) | pendiente |
+| B46 | `handoff.py close-row <id>` borra la marca de tarea en curso si es esa tarea y `recover.py --state` dice la tarea en curso (retro de la `0.8.0`, P3) | hecho (2026-11-18) |
 
 ## `0.9` «Front»
 
