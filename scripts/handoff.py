@@ -126,6 +126,7 @@ Exit 0 ok, 1 rule broken (each message ends with the command that fixes it), 2 b
 Python 3.8+, stdlib only.
 """
 import argparse
+import ast
 import contextlib
 import datetime
 import errno
@@ -1072,20 +1073,43 @@ def acceptance_reasons(ctx, body, sections):
             if root not in path.parents or not path.is_file():
                 out.append(f"Acceptance {shown!r} names {r.group('file')}, which does not exist; fix the name or write the test")
                 continue
-            source = path.read_text(encoding="utf-8", errors="replace")
-            if not re.search(rf"(?m)^\s*class\s+{r.group('cls')}\b", source):
-                out.append(f"Acceptance {shown!r}: {r.group('file')} has no class {r.group('cls')}; fix the name")
-            elif r.group("fn") and not re.search(rf"(?m)^\s*def\s+{r.group('fn')}\b", source):
-                out.append(f"Acceptance {shown!r}: {r.group('file')} has no test {r.group('fn')}; fix the name")
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+            except (SyntaxError, ValueError):
+                out.append(f"Acceptance {shown!r}: {r.group('file')} does not parse as Python; fix the file")
+                continue
+            classes = [n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == r.group("cls")]
+            if not classes:
+                out.append(f"Acceptance {shown!r}: {r.group('file')} has no class {r.group('cls')} at module level; fix the name")
+            elif r.group("fn") and not any(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == r.group("fn")
+                                           for c in classes for n in c.body):
+                out.append(f"Acceptance {shown!r}: class {r.group('cls')} of {r.group('file')} has no test {r.group('fn')}; fix the name")
         for title in REF_SECTION.findall(text):
             named += 1
-            if not any(t == title or t.startswith(title) for t in sections):
+            if title not in sections:
                 out.append(f"Acceptance {shown!r} names the check section `== {title}`, which no `check` command prints; "
                            "fix the name (the `== …` lines of `bash tests/check.sh`)")
         if not named:
             out.append(f"Acceptance box ticked without a test: {shown!r}; name one as `tests/test_X.py::Class` "
                        "or a check section as `== name` (in backticks)")
     return out
+
+
+RUNNERS = ("python", "python3", "bash", "sh", "zsh", "npm", "npx", "yarn", "pnpm", "make", "pytest", "node", "git", "cargo",
+           "go", "uv", "pip", "ruby", "php", "mvn", "gradle", "dotnet", "deno", "bun", "tox", "gh")
+
+
+def runnable(ctx, span):
+    """Whether a backquoted text starts like a command: a known program, or an existing script of the project (a bare
+    path such as docs/questions.md or a branch name is not one)."""
+    words = span.split()
+    if not words or SHA_WORD.fullmatch(span.strip()):
+        return False
+    first = words[0]
+    if first in RUNNERS:
+        return True
+    path = Path(ctx.root) / first
+    return first.endswith((".sh", ".py", ".js")) and path.is_file()
 
 
 def verification_reasons(ctx, body):
@@ -1103,8 +1127,9 @@ def verification_reasons(ctx, body):
                    "fix the sha (git log --oneline)")
     spans = re.findall(r"`([^`\n]+)`", body) + [l.strip() for b in re.findall(r"```[^\n]*\n(.*?)```", body, re.S)
                                                for l in b.splitlines() if l.strip()]
-    if not any(s.strip() and not SHA_WORD.fullmatch(s.strip()) for s in spans):
-        out.append("`## Verification` names no command; write the command that proves it between backticks")
+    if not any(runnable(ctx, s) for s in spans):
+        out.append("`## Verification` names no command; write the command that proves it between backticks, starting with "
+                   "a program (python3, bash, npm, make, pytest, ...) or an existing script")
     return out
 
 

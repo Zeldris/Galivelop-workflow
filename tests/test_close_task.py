@@ -64,7 +64,7 @@ class CloseTask(UtilsBase):
         self.assertIn("docs/roadmap.md:5: hecho (", out)
 
     def test_a_check_section_counts_as_a_test(self):
-        self.put(acceptance="- [x] lint (`== shell scripts`)\n- [x] units (`== unit tests`)")
+        self.put(acceptance="- [x] lint (`== shell scripts (lint)`)\n- [x] units (`== unit tests`)")
         self.assertEqual(self.close()[0], 0)
 
     def test_unticked_box(self):
@@ -89,12 +89,33 @@ class CloseTask(UtilsBase):
         self.refused("has no class Bad", acceptance="- [x] a (`tests/test_ok.py::Bad`)")
         self.refused("has no test test_z", acceptance="- [x] a (`tests/test_ok.py::Good::test_z`)")
 
+    def test_the_test_must_be_inside_the_named_class_and_real(self):
+        self.p.write("tests/test_two.py", 'class A:\n    def test_a(self):\n        pass\n\n\nclass B:\n    def test_y(self):\n'
+                     '        pass\n\n\n"""\nclass Ghost:\n    pass\n"""\n')
+        self.refused("class A of tests/test_two.py has no test test_y", acceptance="- [x] a (`tests/test_two.py::A::test_y`)")
+        self.refused("has no class Ghost", acceptance="- [x] a (`tests/test_two.py::Ghost`)")
+        self.put(acceptance="- [x] a (`tests/test_two.py::B::test_y`)")
+        self.assertEqual(self.close()[0], 0)
+
     def test_nonexistent_check_section(self):
         self.refused("`== nope`, which no `check` command prints", acceptance="- [x] a (`== nope`)")
 
     def test_empty_or_template_verification(self):
         self.refused("`## Verification` is empty or still the template", verification="—")
         self.refused("`## Verification` is empty or still the template", verification="")
+
+    def test_a_path_or_branch_in_backticks_is_not_a_command(self):
+        self.refused("names no command", verification=f"Commit {self.sha}\n\n`docs/questions.md`")
+        self.refused("names no command", verification=f"Commit {self.sha} en `main`")
+        self.refused("names no command", verification=f"Commit {self.sha}, `docs/roadmap.md`")
+        self.put(verification=f"Commit {self.sha}, `check.sh`")  # an existing script is a command
+        self.assertEqual(self.close()[0], 0)
+
+    def test_a_section_prefix_is_not_a_section(self):
+        self.refused("`== unit`, which no `check` command prints", acceptance="- [x] a (`== unit`)")
+        self.refused("`== s`, which no `check` command prints", acceptance="- [x] a (`== s`)")
+        self.put(acceptance="- [x] a (`== shell scripts (lint)`)")
+        self.assertEqual(self.close()[0], 0)
 
     def test_unknown_sha(self):
         self.refused("abcdef12, which is not a commit", verification="Commit abcdef12, `python3 -m unittest`.")
