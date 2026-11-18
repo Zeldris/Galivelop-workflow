@@ -73,7 +73,11 @@ same time.
 - **On start**, the new session reads the log and checks that the last commit matches what it says; it does not ask
   where things stood. After a `/clear` or compaction, `recover.py --state` reminds it.
 - When the branch closes, `handoff.py close-row <branch>` leaves its row as "merged, branch finished" so the
-  protected branch does not inherit a stale "Next".
+  protected branch does not inherit a stale "Next". With a task id that has a record (`docs/tasks/<id>.md`),
+  `close-row <id>` closes the **task**: it refuses, listing every reason, if an `Acceptance` box is unticked or names
+  no test (`tests/test_X.py::Class` or a `== section` of `check`, in backticks) or if `Verification` lacks an existing
+  commit and a command; when all is in order it marks its row in `roadmapFiles` done. If the name is both a branch
+  and an id, the record's existence decides (`--branch <branch>` forces the branch).
 - **With `logRows`, your own row mid-task:** `handoff.py set-row "text"` rewrites the current branch's row (`--branch
   <branch>` for another) without closing it, with the 600-character limit checked and nothing written if the row is
   missing, the text is empty or spans more than one line. And the `pre-commit` runs `handoff.py own-row --staged`: if

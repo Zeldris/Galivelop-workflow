@@ -90,6 +90,16 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  entry did not change (it may still say "Next: X" with X done)
   handoff.py close-row [BRANCH] [--text TEXT]   rewrite BRANCH's row (or --branch; default: the current one) as "merged, branch finished" (last commit
                                                  before the PR, so main does not inherit a stale "Next")
+  handoff.py close-row ID                       close TASK ID (C11): when ID has the shape of taskId and its task record
+                                                 (`taskRecord.path`/ID.md) exists, it is a task, not a branch (the record's
+                                                 existence decides; `--branch ID` always means the branch). Fails, writing
+                                                 nothing and listing every reason, unless each box of `## Acceptance` is [x]
+                                                 and names an existing test (`tests/test_X.py::Class[::test_y]`) or a
+                                                 `== section` of the `check` commands (in backticks), and `## Verification`
+                                                 holds an existing commit sha and a command (in backticks); then marks
+                                                 ID's roadmap row done in every `roadmapFiles` file (the row must be
+                                                 open) and prints it. An ID with no record and no branch row: create the
+                                                 record, `task.py new ID`. Works without logRows; --text is for branches
   handoff.py clash REV OTHER... [--warn]        fail if REV and an OTHER both open a plan entry (an unindented
                                                  "- …ID" / "| ID", done or not) for an id their merge base does not
                                                  have, with different titles (two tasks that took the same id; the
@@ -116,6 +126,7 @@ Exit 0 ok, 1 rule broken (each message ends with the command that fixes it), 2 b
 Python 3.8+, stdlib only.
 """
 import argparse
+import ast
 import contextlib
 import datetime
 import errno
@@ -1008,11 +1019,173 @@ def row_branch(ctx, args):
     return branch
 
 
+def task_record_path(ctx, args):
+    """(is the argument the shape of a task id, the path of its task record if that file exists else None). A branch
+    given with --branch is always a branch: only the positional argument can be a task (C11)."""
+    given = getattr(args, "branch", None)
+    if not given or getattr(args, "branch_opt", None) or not re.fullmatch(ctx.id_src, given):
+        return False, None
+    path = Path(ctx.root) / gwconfig.task_record(ctx.config)["path"] / f"{given}.md"
+    return True, (path if path.is_file() else None)
+
+
+REF_TEST = re.compile(r"(?P<file>[\w./-]*test_[\w.-]+\.py)::(?P<cls>\w+)(?:::(?P<fn>\w+))?")
+REF_SECTION = re.compile(r"`==\s*([^`]+?)\s*`")
+SHA_WORD = re.compile(r"(?<![0-9A-Za-z])[0-9a-f]{7,40}(?![0-9A-Za-z])")
+BOX = re.compile(r"^\s*[-*]\s*\[(.)\]\s*(.*)$")
+
+
+def check_sections(ctx):
+    """The `== …` titles the project's `check` commands print: every word of a command that is a file of the project
+    is read for `section "title"` and `echo "== title"` (what tests/check.sh does)."""
+    import shlex
+    titles = set()
+    for command in ctx.config.get("check") or []:
+        try:
+            words = shlex.split(command)
+        except ValueError:
+            words = command.split()
+        for word in words:
+            path = Path(ctx.root) / word
+            if path.is_file():
+                text = path.read_text(encoding="utf-8", errors="replace")
+                titles.update(m.strip() for m in re.findall(r'(?m)^\s*section\s+"([^"]+)"', text))
+                titles.update(m.strip() for m in re.findall(r'echo\s+"==\s*([^"]+)"', text))
+    return titles
+
+
+def acceptance_reasons(ctx, body, sections):
+    boxes = [m for m in (BOX.match(l) for l in body.splitlines()) if m]
+    if not boxes:
+        return ["`## Acceptance` has no checkbox; write the criteria as `- [ ] text (tests/test_X.py::Class)`"]
+    out = []
+    root = Path(ctx.root).resolve()
+    for m in boxes:
+        mark, text = m.group(1), m.group(2).strip()
+        shown = text if len(text) <= 60 else text[:57] + "..."
+        if mark not in "xX":
+            out.append(f"Acceptance box not ticked: {shown!r}; tick it with [x] once its test passes")
+            continue
+        named = 0
+        for r in REF_TEST.finditer(text):
+            named += 1
+            path = (root / r.group("file")).resolve()
+            if root not in path.parents or not path.is_file():
+                out.append(f"Acceptance {shown!r} names {r.group('file')}, which does not exist; fix the name or write the test")
+                continue
+            try:
+                tree = ast.parse(path.read_text(encoding="utf-8", errors="replace"))
+            except (SyntaxError, ValueError):
+                out.append(f"Acceptance {shown!r}: {r.group('file')} does not parse as Python; fix the file")
+                continue
+            classes = [n for n in tree.body if isinstance(n, ast.ClassDef) and n.name == r.group("cls")]
+            if not classes:
+                out.append(f"Acceptance {shown!r}: {r.group('file')} has no class {r.group('cls')} at module level; fix the name")
+            elif r.group("fn") and not any(isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) and n.name == r.group("fn")
+                                           for c in classes for n in c.body):
+                out.append(f"Acceptance {shown!r}: class {r.group('cls')} of {r.group('file')} has no test {r.group('fn')}; fix the name")
+        for title in REF_SECTION.findall(text):
+            named += 1
+            if title not in sections:
+                out.append(f"Acceptance {shown!r} names the check section `== {title}`, which no `check` command prints; "
+                           "fix the name (the `== …` lines of `bash tests/check.sh`)")
+        if not named:
+            out.append(f"Acceptance box ticked without a test: {shown!r}; name one as `tests/test_X.py::Class` "
+                       "or a check section as `== name` (in backticks)")
+    return out
+
+
+RUNNERS = ("python", "python3", "bash", "sh", "zsh", "npm", "npx", "yarn", "pnpm", "make", "pytest", "node", "git", "cargo",
+           "go", "uv", "pip", "ruby", "php", "mvn", "gradle", "dotnet", "deno", "bun", "tox", "gh")
+
+
+def runnable(ctx, span):
+    """Whether a backquoted text starts like a command: a known program, or an existing script of the project (a bare
+    path such as docs/questions.md or a branch name is not one)."""
+    words = span.split()
+    if not words or SHA_WORD.fullmatch(span.strip()):
+        return False
+    first = words[0]
+    if first in RUNNERS:
+        return True
+    path = Path(ctx.root) / first
+    return first.endswith((".sh", ".py", ".js")) and path.is_file()
+
+
+def verification_reasons(ctx, body):
+    if not body.strip() or re.fullmatch(r"(?:\s|—|-|\*)*", body):
+        return ["`## Verification` is empty or still the template; write the commit and the command that proves it"]
+    out = []
+    candidates = [w for w in SHA_WORD.findall(body) if re.search(r"\d", w)]
+    known = [w for w in candidates
+             if subprocess.run(["git", "-C", str(ctx.root), "cat-file", "-e", f"{w}^{{commit}}"],
+                               capture_output=True).returncode == 0]
+    if not candidates:
+        out.append("`## Verification` names no commit sha; add the sha of the commit that did the work (git rev-parse --short HEAD)")
+    elif not known:
+        out.append(f"`## Verification` names {', '.join(candidates)}, which is not a commit of this repository; "
+                   "fix the sha (git log --oneline)")
+    spans = re.findall(r"`([^`\n]+)`", body) + [l.strip() for b in re.findall(r"```[^\n]*\n(.*?)```", body, re.S)
+                                               for l in b.splitlines() if l.strip()]
+    if not any(runnable(ctx, s) for s in spans):
+        out.append("`## Verification` names no command; write the command that proves it between backticks, starting with "
+                   "a program (python3, bash, npm, make, pytest, ...) or an existing script")
+    return out
+
+
+def close_task(ctx, task_id, record):
+    """C11: mark a task's roadmap row done, only when its record shows the work is tested and verified."""
+    import task as gwtask
+    import roadmap as gwroadmap
+    text = record.read_text(encoding="utf-8").replace("\r\n", "\n")
+    sections = {h.lower(): b for h, b in gwtask.sections_of(text)}
+    rel = record.relative_to(Path(ctx.root)).as_posix()
+    reasons = []
+    for name, check in (("acceptance", lambda b: acceptance_reasons(ctx, b, check_sections(ctx))),
+                        ("verification", lambda b: verification_reasons(ctx, b))):
+        if name in sections:
+            reasons += check(sections[name])
+        else:
+            reasons.append(f"{rel} has no `## {name.title()}` section; see the template (task.py new)")
+    if reasons:
+        print(f"handoff: {task_id} is not ready to close, nothing was written ({len(reasons)} reasons) in {rel}:")
+        for r in reasons:
+            print(f"  - {r}")
+        print(f"fix {rel} and run again: python3 {HERE / 'handoff.py'} close-row {task_id}")
+        return 1
+    files = gwconfig.roadmap_files(ctx.config)
+    if not files:
+        print("handoff: roadmapFiles is empty in .claude/gw.json, so there is no roadmap row to mark; list the roadmap "
+              "in each language (see docs/en/config.md)")
+        return 1
+    try:
+        loaded = gwroadmap.load_files(Path(ctx.root), files, task_id)
+        print(f"handoff: {task_id} closed; roadmap rows marked done:")
+        gwroadmap.cmd_done(loaded, task_id, datetime.date.today().isoformat(), [], False)
+    except gwroadmap.RoadmapError as exc:
+        print(f"handoff: {exc}; nothing was written (see: python3 {HERE / 'roadmap.py'} show {task_id})")
+        return 1
+    print(f"commit it: git commit -am 'Close {task_id}'")
+    return 0
+
+
 def cmd_close_row(ctx, args):
+    shaped, record = task_record_path(ctx, args)
+    if record is not None:
+        if args.text:
+            raise Usage(f"--text is for a branch row; {args.branch} is a task (its record exists): drop --text")
+        return close_task(ctx, args.branch, record)
     text = args.text or CLOSED_TEXT.get(ctx.config["language"], CLOSED_TEXT["en"])
     branch = row_branch(ctx, args)
-    hit, row = rewrite_row(ctx, branch, text)
+    hit = 0
+    if ctx.config.get("logRows"):
+        hit, row = rewrite_row(ctx, branch, text)
     if hit != 1:
+        if shaped:
+            rec = gwconfig.task_record(ctx.config)["path"]
+            print(f"handoff: {branch} has no task record ({rec}/{branch}.md) and no branch row in {ctx.log}; for a task, "
+                  f"create the record: python3 {HERE / 'task.py'} new {branch}; for a branch: handoff.py close-row --branch {branch}")
+            return 1
         print(f"handoff: found {hit} rows for {branch}, expected 1; add the row first: edit {ctx.log}")
         return 1
     print(f"handoff: row of {branch} closed in {ctx.log}; commit it: git commit -am 'Close the log row of {branch}'")
@@ -1480,8 +1653,9 @@ def main(argv=None):
             args.date = args.date or datetime.datetime.now(datetime.timezone.utc).date().isoformat()
         elif args.cmd in ("done", "add-decision"):
             args.date = args.date or datetime.date.today().isoformat()
-        elif not ctx.config.get("logRows") and args.cmd not in ("check", "archive", "next-id", "move-pending",
-                                                                "add-pending", "preflight"):
+        elif (not ctx.config.get("logRows") and args.cmd not in ("check", "archive", "next-id", "move-pending",
+                                                                 "add-pending", "preflight")
+              and not (args.cmd == "close-row" and task_record_path(ctx, args)[0])):  # a task id needs no branch rows
             if args.cmd in ("set-row", "close-row"):
                 print("handoff: logRows is off in .claude/gw.json, so there are no branch rows and nothing was written; "
                       f"enable it: set \"logRows\": true in .claude/gw.json, then rerun {args.cmd}")
