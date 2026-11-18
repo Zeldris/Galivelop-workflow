@@ -846,6 +846,16 @@ def pending_file(config):
     return given if isinstance(given, str) else ""
 
 
+def agents_skills_dir(config):
+    """The `agentsSkillsDir` key (D7): repo-relative folder where apply.py also copies the skills (opencode, Codex),
+    the schema default when absent, "" when empty (off)."""
+    given = config.get("agentsSkillsDir")
+    if isinstance(given, str):
+        return given
+    schema = json.loads(schema_path().read_text(encoding="utf-8"))
+    return schema["properties"]["agentsSkillsDir"]["default"]
+
+
 def decisions_file(config):
     """The `decisionsFile` key (D95): repo-relative path of the file with the Decisions section, or "" (the log)."""
     given = config.get("decisionsFile")

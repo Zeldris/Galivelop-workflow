@@ -67,6 +67,12 @@
       "default": 20000,
       "description": "Bytes above which whole-read.py (PreToolUse hook on Read) warns when a Read takes whole, with no offset or limit, the hand-off log, its archive or a file under recordsDir; it never blocks. 0 = do not warn."
     },
+    "agentsSkillsDir": {
+      "type": "string",
+      "pattern": "^$|^(?!/)(?!(.*/)?\\.\\.(/|$)).+[^/]$",
+      "default": ".agents/skills",
+      "description": "Repo-relative folder where apply.py also copies the workflow skills as plain copies (no symlinks), for opencode and Codex (D7); .claude/skills is always kept. Empty string: no second copy."
+    },
     "pendingFile": {
       "type": "string",
       "pattern": "^$|^(?!/)(?!(.*/)?\\.\\.(/|$)).+[^/]$",

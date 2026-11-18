@@ -22,6 +22,7 @@ What it copies (workflow -> project):
   skills/<name>/                -> .claude/skills/<name>/ (not the optional gw-opt-ai and gw-scout-updates unless --with
                                    or already installed; not the workflow-only gw-harvest; all of them when PROJECT
                                    is the workflow repo itself)
+                                -> also a plain copy in `agentsSkillsDir` (default .agents/skills; "" = off)
   templates/githooks/*          -> .githooks/
   templates/claude/agents/*     -> .claude/agents/   (subagent types such as gw-worker; workflow-owned like the hooks)
   templates/claude/settings.json   merged into .claude/settings.json: missing env keys, other missing keys (worktree.baseRef)
@@ -1576,6 +1577,8 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
         raise ApplyError(f"apply: unknown skill(s) for --with: {', '.join(unknown)}; available: "
                          f"{', '.join(available)}")
     installed = root / ".claude" / "skills"
+    agents_dir = config.agents_skills_dir(cfg)
+    skill_dirs = [Path(".claude/skills")] + ([Path(agents_dir)] if agents_dir else [])
     old_name = {new: old for old, new in OLD_SKILLS.items()}
     wanted_skills = set()
     for name in available:
@@ -1586,15 +1589,17 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
         if not wanted:
             continue
         wanted_skills.add(name)
-        dest = Path(".claude/skills") / name
-        owner = skill_version(root / dest / "SKILL.md")
-        plan.tree(WORKFLOW / "skills" / name, dest, owner_version=owner, owned=owner is not None)
+        for base in skill_dirs:  # .claude/skills, and the agentsSkillsDir copy for opencode and Codex (D7)
+            dest = base / name
+            owner = skill_version(root / dest / "SKILL.md")
+            plan.tree(WORKFLOW / "skills" / name, dest, owner_version=owner, owned=owner is not None)
     # Skills adapted from Matt Pocock's say "license: MIT (see LICENSE-mattpocock-skills)": the file goes with them.
     if not self_apply:
         plan_old_skills(plan, wanted_skills)
         plan_old_skill_files(plan, wanted_skills)
     if any(SKILL_LICENSE in (WORKFLOW / "skills" / n / "SKILL.md").read_text(encoding="utf-8") for n in wanted_skills):
-        plan.file(WORKFLOW / SKILL_LICENSE, Path(".claude/skills") / SKILL_LICENSE)
+        for base in skill_dirs:
+            plan.file(WORKFLOW / SKILL_LICENSE, base / SKILL_LICENSE)
 
     hooks_src = WORKFLOW / "templates" / "githooks"
     names = files_under(hooks_src)
