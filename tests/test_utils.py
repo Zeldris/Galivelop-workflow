@@ -90,7 +90,7 @@ class HandoffRows(Base):
         self.p.write(LOG, log_text(a="x" * 601))
         code, out = self.p.script("handoff.py", "check")
         self.assertEqual(code, 1, out)
-        self.assertIn(f"handoff: fix: edit {LOG}, stage it (git add {LOG}) and run the commit again: git commit", out)
+        self.assertIn(f"handoff: fix: edit {LOG}, stage it (git add {LOG}) and repeat the same commit: git commit -m \"...\"", out)
         self.assertNotIn("--amend", out)
 
     def test_check_at_push_hints_a_new_commit_not_amend(self):
@@ -967,13 +967,39 @@ class HandoffNextId(PlanRepo):
         self.assertEqual(self.next_id("INS"), (0, "INS-3"))
         self.assertEqual(self.next_id("INSX"), (0, "INSX-41"))
         self.assertEqual(self.handoff("--plan", self.PLAN, "--id-regex", r"[A-H]\d+", "next-id", "Q"),
-                         (2, "handoff: Q1 does not match the task id pattern ([A-H]\\d+); pass the prefix the plan "
-                             "uses, for example: handoff.py next-id D"))
+                         (2, "handoff: Q1 does not match the task id pattern ([A-H]\\d+); no id in the plan matches that "
+                             "pattern. If the plan's ids follow another pattern, pass --id-regex REGEX (or set `taskId` "
+                             "in .claude/gw.json)"))
         self.p.write(self.PLAN, "- [ ] **D7** one\n| D12 | two |\n- [ ] **DE3** other\n")
         self.assertEqual(self.handoff("--plan", self.PLAN, "--id-regex", r"[A-H]{1,2}\d+", "next-id", "D"),
                          (0, "D13"))
         self.assertEqual(self.handoff("--plan", self.PLAN, "--id-regex", r"[A-H]{1,2}\d+", "next-id", "F"),
                          (0, "F1"))
+
+    def test_unknown_prefix_lists_the_valid_ones_and_points_to_id_regex(self):
+        self.p.write(self.PLAN, "- [ ] **D7** one\n| E2 | two |\n")
+        code, out = self.handoff("--plan", self.PLAN, "--id-regex", r"[A-H]\d+", "next-id", "Q")
+        self.assertEqual(code, 2, out)
+        self.assertIn("the prefixes this plan accepts: D, E; for example: handoff.py next-id D", out)
+        self.assertIn("--id-regex REGEX (or set `taskId` in .claude/gw.json)", out)
+        self.p.write(self.PLAN, "- [ ] **T-1.x** other pattern\n")  # ids of another pattern: none match
+        code, out = self.handoff("--plan", self.PLAN, "--id-regex", r"[A-H]\d+", "next-id", "Q")
+        self.assertEqual(code, 2, out)
+        self.assertIn("no id in the plan matches that pattern", out)
+        self.assertIn("--id-regex REGEX", out)
+        self.assertEqual(self.handoff("--plan", self.PLAN, "next-id", "F", "--id-regex", r"F\d+(?:\.x)?"), (0, "F1"))
+
+    def test_plan_root_and_id_regex_work_after_the_subcommand_too(self):
+        self.p.write(self.PLAN, "- [ ] **D7** one\n")
+        rx = r"[A-H]\d+"
+        self.assertEqual(self.handoff("--id-regex", rx, "next-id", "D", "--plan", self.PLAN), (0, "D8"))
+        self.assertEqual(self.handoff("next-id", "D", "--plan", self.PLAN, "--id-regex", rx), (0, "D8"))
+        self.assertEqual(self.handoff("next-id", "D", "--root", str(self.p.work), "--plan", self.PLAN, "--id-regex", rx),
+                         (0, "D8"))
+        # both given: the subcommand's value wins
+        self.p.write("docs/other.md", "- [ ] **D20** other\n")
+        self.assertEqual(self.handoff("--plan", "docs/other.md", "next-id", "D", "--plan", self.PLAN,
+                                      "--id-regex", rx), (0, "D8"))
 
     def test_clash_suggests_a_free_id_without_a_dash(self):
         self.p.branch("feat-b", self.base)
@@ -3490,11 +3516,12 @@ class HandoffPreflight(PlanRepo):
         self.assertEqual(code, 1, out)
         self.assertIn("over the hard cap", out)
         self.assertIn(f"handoff: fix: edit {LOG} and make a new commit with the fix: git add {LOG} && git commit", out)
-        self.assertNotIn("run the commit again", out)
+        self.assertNotIn("repeat the same commit", out)
         self.p.write(LOG, log_text(updated="2026-10-01"))  # being edited: the commit is still to come
         code, out = self.preflight()
         self.assertEqual(code, 1, out)
-        self.assertIn("run the commit again: git commit", out)
+        self.assertIn("repeat the same commit: git commit -m", out)
+        self.assertNotIn("COMMIT_EDITMSG", out)
 
     def test_a_merge_does_not_move_the_day_of_the_log(self):
         self.p.branch("side", self.base)  # both sides change the log: the merge's log differs from each parent

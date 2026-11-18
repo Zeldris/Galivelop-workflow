@@ -238,7 +238,7 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   alta y `origin/<protectedBranch>` usa para otra tarea (o un merge nuevo que dejó las dos con el mismo id), y avisa
   si choca con otra rama remota (`handoff.py clash`); el `pre-commit` de un merge con conflictos lo mira antes. Para
   no llegar a eso, `handoff.py next-id <prefijo> [--fetch]` da el siguiente id libre mirando la copia, el índice y
-  todas las ramas locales y remotas (funciona sin `logRows`). `handoff.py preflight [--date AAAA-MM-DD]` corre sin
+  todas las ramas locales y remotas (funciona sin `logRows`; con un prefijo que el patrón no admite, el error lista los que sí y remite a `--id-regex` o a `taskId`; `--root`, `--plan` e `--id-regex` valen antes o después del subcomando). `handoff.py preflight [--date AAAA-MM-DD]` corre sin
   subir lo que el push mira en la bitácora (D61): `check` con la fecha (hoy si la bitácora tiene cambios sin commit;
   si no, el día del último commit que la cambió) y, con `logRows` y `plan`, `clash HEAD
   refs/remotes/origin/<protectedBranch>`; sin esa rama remota (clon nuevo, sin remoto) se salta el choque con una
