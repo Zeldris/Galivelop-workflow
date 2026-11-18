@@ -222,3 +222,10 @@ C11 se implementó así, con cuatro cambios sobre lo decidido arriba:
 - **Límites:** `commit --amend` no se distingue en el `commit-msg` y no añade archivos; el atajo es `task.py log`
   antes. El enlace a las preguntas abiertas solo se escribe si el archivo existe. La clasificación de código es solo
   la de `is-code.sh --list`, leída de HEAD.
+
+## Tarea en curso del modo restrictivo (2026-11-18, C4/C5)
+
+El diseño de C (punto 4) bloquea con las preguntas abiertas de «la tarea en curso» sin decir cómo se sabe cuál es.
+Decisión de la sesión principal: la tarea en curso es el id del nombre de la rama `agent/<id>-…`, y si no, la marca por
+clon (`gw/current-task` en el directorio de git) que deja `task.py new <id>` o `task.py current <id>`. Sin tarea
+conocida no bloquea nada, igual que una pregunta sin `Refs`.

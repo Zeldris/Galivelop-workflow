@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.7.1` en `main`** (`7a6d1bd`, 2026-11-16; CI en verde). Etiqueta y release `v0.7.1` creadas por el agente desde una sesión local (2026-11-16, a petición del usuario) |
-| Siguiente paso | **Grupo C de la `0.8`, oleada 2** (usuario, 2026-11-17), con `gw-orchestrate-dealer` y el diseño de `docs/design/C-questions.md` e `I-lifecycle.md`: segunda mitad de C11 (`handoff.py close-row <id>` exige la ficha cerrada: casillas de `Acceptance` marcadas con su test y `Verification` rellena; `trace.py` concatena `docs/tasks/<id>/`; regla de `REVIEW.md`) y C4-C7 (`gw-mode`, gancho del modo restrictivo con `questions.open_for_task`, «riesgo aceptado», modos al empezar sesión). Oleada 3: C12, C13, A11. Mirar el CI de la subida de la oleada 1 (y el macOS de `b67e3ce`). Lección: no fusionar ni editar el árbol mientras corre un `pre-push` o un check (lee el árbol: 44 fallos falsos). `contextGuard.window` = 200000 en este repo. Presupuesto de compactaciones: 2 |
+| Siguiente paso | **Grupo C de la `0.8`, oleada 2, en obra** (2026-11-18) con `gw-orchestrate-dealer`: oleada A en worktrees (C11a `close-row <id>`; C11b `trace.py` con `docs/tasks/<id>/` y regla de `REVIEW.md`; C6+C7 `modes.questions`, `mode.py`, skill `gw-mode`, modos al empezar sesión); oleada B: C4+C5 (gancho de preguntas; tarea en curso = rama `agent/<id>-` o marca `gw/current-task`, `I-lifecycle.md`). Encargos en el scratchpad (`brief-*.md`). Oleada 3: C12, C13, A11. No fusionar ni editar el árbol mientras corre un check. Presupuesto de compactaciones: 2 |
 
 ### Fases
 
