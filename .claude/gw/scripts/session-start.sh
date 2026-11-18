@@ -18,6 +18,8 @@
 #     yesterday passes metrics.alert.factor x its daily mean); its errors are dropped.
 #   - open questions (C3): with a valid config, prints `questions.py notice`: only "N open questions (path)", or the whole
 #     list when some open question was never shown (mark in the git dir, gw/questions-shown); a broken questions file is a one-line warning.
+#   - active modes (C7): with a valid config, prints `mode.py line` ("Modes: careful on, questions restrictive"); a broken
+#     config is a one-line warning.
 # Fails open: always exits 0 (a SessionStart hook cannot block); warnings go to stdout, which enters the agent's
 # context, each ending with the command that fixes it.
 # Project root: the git top level of this script's folder when it holds .claude/gw.json (the copy in
@@ -126,6 +128,13 @@ else
   fi
   if [ -f "$here/metrics.py" ]; then
     python3 "$here/metrics.py" alert --root "$root" 2>/dev/null | while IFS= read -r line; do warn "$line"; done
+  fi
+  if [ -f "$here/mode.py" ]; then
+    if mout="$(python3 "$here/mode.py" --root "$root" line 2>&1)"; then
+      [ -z "$mout" ] || printf '%s\n' "$mout"
+    else
+      warn "$(printf '%s' "$mout" | head -n 3 | tr '\n' ' ')- the active modes are not shown until it is fixed; check it: python3 $here/mode.py --root $root list"
+    fi
   fi
   if [ -f "$here/questions.py" ]; then
     if qout="$(python3 "$here/questions.py" --root "$root" notice 2>&1)"; then

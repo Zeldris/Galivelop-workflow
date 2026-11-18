@@ -118,9 +118,9 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 ### Skills
 
-27 skills in the open [Agent Skills](https://github.com/agentskills/agentskills) format.
+28 skills in the open [Agent Skills](https://github.com/agentskills/agentskills) format.
 
-**The workflow's own (12):**
+**The workflow's own (13):**
 
 | Skill | What for |
 |---|---|
@@ -134,6 +134,7 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 | `gw-doctor` | Check it is set up correctly and explain every failure with its fix |
 | `gw-harvest` | Collect as proposals what projects changed or invented |
 | `gw-metrics` | Read the token reports per period (by model, agent, branch and task) and explain where the spend went |
+| `gw-mode` | Show or switch the workflow's modes (careful, questions) with one command |
 | `gw-media-content` | Propose posts for the project's social channels |
 | `gw-media-content-now` | Produce one specific post, with texts per channel and images |
 

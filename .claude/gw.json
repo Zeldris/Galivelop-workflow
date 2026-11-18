@@ -200,5 +200,8 @@
   },
   "taskRecord": {
     "enabled": true
+  },
+  "modes": {
+    "questions": true
   }
 }
