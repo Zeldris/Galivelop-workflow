@@ -501,7 +501,7 @@ class Plan:
         else:
             current = {}
         renamed = rename_hook_scripts(current)
-        merged, added = merge_settings(current, tmpl)
+        merged, added = merge_settings(current, tmpl, self.warnings)
         if renamed:
             self.renames.extend(sorted(renamed))
             added.insert(0, f"hook commands renamed: {', '.join(sorted(renamed))}")
@@ -530,11 +530,19 @@ def dump(data):
     return (json.dumps(data, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
 
 
-def merge_settings(current, template):
+def matcher_alternatives(matcher):
+    """The set of alternatives of a hook matcher (`^(Read|Bash)$` -> {Read, Bash}); None for an empty or `*` matcher."""
+    if not isinstance(matcher, str) or matcher.strip() in ("", "*"):
+        return None
+    return {a.strip("^$() ") for a in matcher.split("|")}
+
+
+def merge_settings(current, template, warnings=None):
     """Add the template's missing env keys, hook commands and the keys of MERGED_SETTINGS_KEYS (only those: other
     top-level template keys are not merged) to a copy of current; project values are kept. Returns (merged, [what added])."""
     merged = json.loads(json.dumps(current))
     added = []
+    warnings = warnings if warnings is not None else []
     tenv = template.get("env") or {}
     if tenv:
         env = merged.setdefault("env", {})
@@ -578,8 +586,23 @@ def merge_settings(current, template):
         for e in list(have):
             if not isinstance(e, dict) or not isinstance(e.get("hooks"), list):
                 continue
-            stale = [h for h in e["hooks"] if isinstance(h, dict) and h.get("command") in wanted
-                     and e.get("matcher") not in wanted[h.get("command")]]
+            stale, wider = [], []
+            for h in e["hooks"]:
+                if not isinstance(h, dict) or h.get("command") not in wanted or e.get("matcher") in wanted[h.get("command")]:
+                    continue
+                # D128: only the template's own old matcher goes (its alternatives all inside a matcher the template
+                # uses for that command); a wider project matcher is the project's choice and stays, with a warning.
+                mine = matcher_alternatives(e.get("matcher"))
+                if mine is not None and any(mine <= (matcher_alternatives(m) or set()) for m in wanted[h.get("command")]):
+                    stale.append(h)
+                else:
+                    wider.append(h)
+            if wider:
+                uses = ", ".join(repr(m or "") for m in sorted(wanted[wider[0].get("command")], key=str))
+                warnings.append(f".claude/settings.json {event} registers a workflow command under the matcher "
+                                f"'{e.get('matcher') or ''}', which the template does not use (it uses {uses}); kept, as it is "
+                                f"wider than the template's; if it makes the hook run twice, delete that command from that "
+                                f"entry in .claude/settings.json")
             if not stale:
                 continue
             e["hooks"] = [h for h in e["hooks"] if not any(h is x for x in stale)]

@@ -488,6 +488,15 @@ def is_flow_script(command, root):
     return False
 
 
+def matchers_overlap(a, b):
+    """True when two hook matchers can fire on the same tool: an empty or `*` matcher matches everything, else they
+    share an alternative (split on `|`, anchors and parentheses ignored)."""
+    def alts(m):
+        return None if m.strip() in ("", "*") else {x.strip("^$() ") for x in m.split("|")}
+    x, y = alts(a), alts(b)
+    return x is None or y is None or bool(x & y)
+
+
 def stale_flow_hooks(hooks, root):
     """[(event, command)] of SessionStart/PreToolUse/Stop hooks that run a workflow script (by name and by its
     header) from another folder."""
@@ -561,19 +570,29 @@ def check_settings(rep, root):
                         rep.fail(f"settings {event}", f"hook command points to {rel}, which does not exist",
                                  "restore it (/gw-update) or fix the command in .claude/settings.json")
     for event, entries in hooks.items():
-        seen = {}
+        seen = {}  # command -> matchers of the entries that already register it
         for entry in entries if isinstance(entries, list) else []:
             for h in (entry.get("hooks") or []) if isinstance(entry, dict) and isinstance(entry.get("hooks"), list) else []:
                 command = h.get("command") if isinstance(h, dict) else None
                 if not command:
                     continue
-                if command in seen:
+                matcher = entry.get("matcher") or ""
+                for other in seen.get(command, []):
+                    if not matchers_overlap(other, matcher):
+                        continue  # disjoint matchers: the command runs once per tool call
                     problems += 1
-                    rep.fail(f"settings {event}", f"'{command}' is registered in two entries (matchers "
-                             f"'{seen[command]}' and '{entry.get('matcher') or ''}'), so it runs twice",
-                             "python3 scripts/apply.py --update (from the workflow) drops the old one, "
-                             "or delete one entry in .claude/settings.json")
-                seen.setdefault(command, entry.get("matcher") or "")
+                    if ".claude/gw/scripts/" in command:
+                        rep.fail(f"settings {event}", f"'{command}' is registered in two entries (matchers "
+                                 f"'{other}' and '{matcher}') that match the same tool, so it runs twice",
+                                 "python3 scripts/apply.py --update (from the workflow) drops the old one, "
+                                 "or delete one entry in .claude/settings.json")
+                    else:
+                        rep.warn(f"settings {event}", f"'{command}' is registered in two entries (matchers "
+                                 f"'{other}' and '{matcher}') that match the same tool, so it runs twice",
+                                 f"delete one of the two entries (matcher '{matcher}') from .claude/settings.json by hand; "
+                                 "apply.py --update does not touch project commands")
+                    break
+                seen.setdefault(command, []).append(matcher)
     for event, command in stale_flow_hooks(hooks, root):
         problems += 1
         rep.warn(f"settings {event}", f"'{command}' runs a workflow script from outside .claude/gw/scripts/ "
