@@ -353,10 +353,6 @@ class RepeatOnly(Base):
         self.assertEqual(target.read_text(), "{}")
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class Deny(Base):  # E70: wholeReadDenyPaths rejects the whole read instead of warning
     def denial(self, out):
         data = json.loads(out)
@@ -403,3 +399,7 @@ class Deny(Base):  # E70: wholeReadDenyPaths rejects the whole read instead of w
         for bad in ({"docs/plan.md": 3}, ["docs/plan.md"], {"": "tool"}):
             self.write_config(dict(self.cfg, wholeReadDenyPaths=bad))
             self.assertEqual(self.read(self.put("docs/plan.md", 10)), "", bad)
+
+
+if __name__ == "__main__":
+    unittest.main()
