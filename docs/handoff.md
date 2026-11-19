@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.0` publicada** (`main` = `b3825b8`, 2026-11-18; CI en verde; etiqueta y release `v0.8.0` creadas desde una sesión local) |
-| Siguiente paso | **`0.8.1` publicada en `main`** (`4ca45d0`, 2026-11-19). Falta la release de GitHub `v0.8.1` (textos en `docs/records/release-v0.8.1.md`): a mano o con la etiqueta (`release.yml`), según decida el usuario. Luego `0.9` (E65-E76), empezando por su recogida (`gw-harvest`). Presupuesto de compactaciones: 0 |
+| Siguiente paso | **`0.8.1` publicada en `main`** (`4ca45d0`, 2026-11-19). Release de GitHub `v0.8.1` sin crear: la publica el agente desde una sesión local (decisión del usuario), con los textos de `docs/records/release-v0.8.1.md`. Luego `0.9` (E65-E76), empezando por su recogida (`gw-harvest`). Presupuesto de compactaciones: 0 |
 
 ### Fases
 
