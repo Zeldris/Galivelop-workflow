@@ -532,6 +532,22 @@ class Quality(Base):
         ids = r.stdout.split("## By task id")[1].split("## By model")[0]
         self.assertLess(ids.index("`Q1`"), ids.index("`Q2`"))  # more tokens first
 
+    def test_d141_a_merge_adds_its_findings_and_retries_but_is_not_a_commit(self):
+        self.commit("feat(Q1): a", "Refs: Q1\nSiguiente: x")
+        branch = self.git("rev-parse", "--abbrev-ref", "HEAD").strip()
+        self.git("checkout", "-q", "-b", "fixes")
+        self.commit("fix(Q1): the finding", "Refs: Q1\nSiguiente: x")
+        self.git("checkout", "-q", branch)
+        self.commit("docs(Q1): meanwhile", "Refs: Q1\nSiguiente: x")
+        env = dict(self.env, GIT_COMMITTER_DATE="2020-03-10T12:00:00Z", GIT_AUTHOR_DATE="2020-03-10T12:00:00Z")
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t", "merge", "-q",
+                        "--no-ff", "-m", "merge(Q1): review fixes\n\nRefs: Q1\nFindings: 3\nRetries: 1", "fixes"],
+                       env=env, check=True, capture_output=True, text=True)
+        r = self.month()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        # commits, red, rework (the fix after the first commit), findings, retries: the merge only adds its trailers
+        self.assertEqual(self.cells(r.stdout, "Q1")[3:], ["3", "0", "1", "3", "1"])
+
     def test_bad_trailer_values_are_listed_not_counted(self):
         self.commit("feat(Q1): a", "Refs: Q1\nSiguiente: x")
         self.commit("fix(Q1): b", "Refs: Q1\nFindings: -2\nRetries: three\nFindings: 1\nSiguiente: x")

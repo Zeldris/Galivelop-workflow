@@ -344,6 +344,7 @@ Arreglos de la recogida de apertura de la `0.9` (usuario, 2026-11-18): el gancho
 | D138 | `measure.py` sin `--since` empieza en el último `/clear` o compactación del mismo archivo de sesión (recogida `0.9`, private-project-2 P4) | hecho (2026-11-18) |
 | D139 | `measure.py --since` elige la sesión de la carpeta del repo antes que la de una carpeta padre (recogida `0.9`, private-project-5 P2) | hecho (2026-11-18) |
 | D140 | El aviso de `handoff.py` tras un rechazo de `pre-commit` dice repetir el mismo `git commit -m …` y solo remite a `COMMIT_EDITMSG` tras un rechazo de `commit-msg` (recogida `0.9`, world-maker-fantasy P3) | hecho (2026-11-18) |
+| D141 | El `Findings:` de un commit de merge cierra el bloque de revisión (`change-size.py`, aviso de `recover.py --state`) y suma en `metrics.py quality` (sin contar el merge como commit); antes se ignoraba por `--no-merges` | hecho (2026-11-19) |
 
 ## `0.9` «Front»
 

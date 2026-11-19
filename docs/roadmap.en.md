@@ -343,6 +343,7 @@ Fixes from the `0.9` opening harvest (user, 2026-11-18): the `0.8.0` duplicated 
 | D138 | `measure.py` with no `--since` starts at the last `/clear` or compaction of the same session file (`0.9` harvest, private-project-2 P4) | done (2026-11-18) |
 | D139 | `measure.py --since` picks the repo folder's session before a parent folder's (`0.9` harvest, private-project-5 P2) | done (2026-11-18) |
 | D140 | The `handoff.py` warning after a `pre-commit` rejection says to repeat the same `git commit -m …` and points to `COMMIT_EDITMSG` only after a `commit-msg` rejection (`0.9` harvest, world-maker-fantasy P3) | done (2026-11-18) |
+| D141 | A `Findings:` on a merge commit ends the review block (`change-size.py`, the `recover.py --state` warning) and adds up in `metrics.py quality` (the merge is not counted as a commit); `--no-merges` ignored it before | done (2026-11-19) |
 
 ## `0.9` "Front end"
 

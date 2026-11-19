@@ -106,6 +106,18 @@ class ChangeSize(unittest.TestCase):
         self.assertIn("changes 31 lines with this commit (1 commit(s) before it; more than 30, changeSize.block", err)
         self.assertIn("`Findings: <n>`", err)
 
+    def test_d141_a_findings_trailer_on_a_merge_ends_the_block(self):
+        self.write("b.txt", lines(20)); self.commit("before the review")
+        self.git("checkout", "-q", "-b", "fixes")
+        self.write("c.txt", lines(5)); self.commit("fix: one finding")
+        self.git("checkout", "-q", "work")
+        self.git("merge", "-q", "--no-ff", "-m", "merge: review fixes\n\nFindings: 1", "fixes")
+        self.write("d.txt", lines(9)); self.commit("after")
+        code, out, err = self.run_cli("--show")
+        self.assertEqual((code, err), (0, ""))
+        self.assertRegex(out, r"the block after [0-9a-f]{12} \(last commit with a Findings: trailer\): 9 lines with "
+                              r"the staged change, 1 commit\(s\)")
+
     def test_without_a_review_the_block_is_the_whole_branch_and_base_overrides_it(self):
         self.write("b.txt", lines(20)); self.commit("one")
         self.write("c.txt", lines(15)); self.commit("two")
