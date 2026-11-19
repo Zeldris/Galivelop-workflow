@@ -346,6 +346,14 @@ Arreglos de la recogida de apertura de la `0.9` (usuario, 2026-11-18): el gancho
 | D140 | El aviso de `handoff.py` tras un rechazo de `pre-commit` dice repetir el mismo `git commit -m …` y solo remite a `COMMIT_EDITMSG` tras un rechazo de `commit-msg` (recogida `0.9`, world-maker-fantasy P3) | hecho (2026-11-18) |
 | D141 | El `Findings:` de un commit de merge cierra el bloque de revisión (`change-size.py`, aviso de `recover.py --state`) y suma en `metrics.py quality` (sin contar el merge como commit); antes se ignoraba por `--no-merges` | hecho (2026-11-19) |
 
+## `0.8.2` — parche
+
+Se hace al cerrar el desarrollo de la `0.9`, antes de publicarla: recogida y sus arreglos, junto con lo de abajo (usuario, 2026-11-19).
+
+| Id | Tarea | Estado |
+|---|---|---|
+| D142 | `gw-selector`: la sesión se para cuando el modelo o el esfuerzo recomendado no coincide con el actual (hoy avisa y sigue, y el orquestador toma el modelo de la fila más arriesgada, así que casi nunca baja de Opus); el comportamiento exacto, en `docs/questions.md` (usuario, 2026-11-19; Related: E66) | pendiente |
+
 ## `0.9` «Front»
 
 Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18): idiomas, front y lo traído de las recogidas para webs.

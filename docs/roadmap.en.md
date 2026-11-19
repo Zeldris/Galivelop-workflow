@@ -345,6 +345,14 @@ Fixes from the `0.9` opening harvest (user, 2026-11-18): the `0.8.0` duplicated 
 | D140 | The `handoff.py` warning after a `pre-commit` rejection says to repeat the same `git commit -m …` and points to `COMMIT_EDITMSG` only after a `commit-msg` rejection (`0.9` harvest, world-maker-fantasy P3) | done (2026-11-18) |
 | D141 | A `Findings:` on a merge commit ends the review block (`change-size.py`, the `recover.py --state` warning) and adds up in `metrics.py quality` (the merge is not counted as a commit); `--no-merges` ignored it before | done (2026-11-19) |
 
+## `0.8.2` — patch
+
+Done when the `0.9` development closes, before publishing it: a harvest and its fixes, together with what is below (user, 2026-11-19).
+
+| Id | Task | Status |
+|---|---|---|
+| D142 | `gw-selector`: the session stops when the recommended model or effort differs from the current one (today it warns and carries on, and the orchestrator takes the riskiest row's model, so it almost never goes below Opus); the exact behaviour, in `docs/questions.md` (user, 2026-11-19; Related: E66) | pending |
+
 ## `0.9` "Front end"
 
 New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages, front end and the web items the harvests brought.
