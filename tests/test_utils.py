@@ -133,6 +133,7 @@ class HandoffRows(Base):
         code, out = self.p.script("handoff.py", "check")
         self.assertEqual(code, 1, out)
         self.assertIn('the "Task in progress" row of feat-b is gone from the state table', out)
+        self.assertIn("restore it (git show HEAD:", out)
         self.assertIn("close-row --branch feat-b", out)
 
     def test_own_lost_task_row_refused_and_close_row_is_accepted(self):
@@ -152,7 +153,40 @@ class HandoffRows(Base):
     def test_lost_task_row_is_a_commit_time_rule_not_a_push_one(self):
         self.p.write(LOG, self.lost_row_log())
         self.assertEqual(self.p.script("handoff.py", "check", "--at", "push")[0], 0)  # a later commit may restore it
-        self.assertEqual(self.p.script("handoff.py", "check")[0], 1)
+        code, out = self.p.script("handoff.py", "check")
+        self.assertEqual(code, 1, out)
+        self.assertIn("row of feat-b is gone", out)
+
+    def commit_log(self, text):
+        self.p.write(LOG, text)
+        self.p.git("add", LOG)
+        self.p.commit("log", env=dict(DAY, GW_SHARED_LOG="1"))
+
+    def test_closed_row_in_head_can_be_deleted(self):
+        self.p.script("handoff.py", "close-row", "feat-b")
+        self.commit_log((self.p.work / LOG).read_text())
+        self.p.write(LOG, self.lost_row_log())
+        code, out = self.p.script("handoff.py", "check")
+        self.assertEqual(code, 0, out)
+
+    def test_head_row_without_branch_does_not_block_adding_it(self):
+        self.commit_log(log_text().replace("| **Task in progress · `feat-b`** |", "| **Task in progress** |"))
+        self.p.write(LOG, log_text())
+        code, out = self.p.script("handoff.py", "check")
+        self.assertEqual(code, 0, out)
+
+    def test_lost_row_allowed_in_a_shared_log(self):
+        self.p.write(LOG, self.lost_row_log())
+        for var in ("GW_SHARED_LOG", "BITACORA_COMPARTIDA"):
+            code, out = self.p.script("handoff.py", "check", env={var: "1"})
+            self.assertEqual(code, 0, out)
+
+    def test_lost_row_allowed_while_reverting(self):
+        self.p.write(LOG, self.lost_row_log())
+        git_dir = Path(self.p.git("rev-parse", "--absolute-git-dir").stdout.strip())
+        (git_dir / "REVERT_HEAD").write_text("0" * 40 + "\n")
+        code, out = self.p.script("handoff.py", "check")
+        self.assertEqual(code, 0, out)
 
     def test_lost_task_row_is_off_without_logrows(self):
         shutil.rmtree(self.tmp)
