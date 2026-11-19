@@ -1,6 +1,8 @@
 # Retro del parche 0.8.1 (2026-11-19)
 
-**Estado:** pendiente de la decisión del usuario.
+**Estado:** decidida por el usuario (2026-11-19): P3 y P4 aprobadas y aplicadas en `.claude/gw/gw-opt-tokens.md`;
+P1 (D142) aplazada al parche `0.8.2`, P2 (D143) a la `0.9` y P5 (B47) a la `0.10`, apuntadas en
+`docs/records/pending.md`.
 
 Sesión `39d112ea` (nube, abierta en `/home/user`): D141, sellado de la `0.8.1` (H25) y fase 1 de su revisión.
 Medida con `gw-opt-tokens`: 91 llamadas, contexto medio 129k (suelo 87k, techo 164k), 0 compactaciones; 11,8M de

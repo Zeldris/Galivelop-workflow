@@ -32,6 +32,8 @@ las crea una vez; desde entonces son del proyecto.
   (retro de la `0.7.0`, E62): arranque ~13-20k frente a ~65k de `general-purpose`; `subagent-cap.py` lo recuerda.
 - `AGENTS.md` (retro del parche 0.4.3): push y check largo en segundo plano, esperando el aviso (R2); al empezar,
   de `traspaso.md` solo lo que el gancho `SessionStart` recortó (R4).
+- Push de un commit de sello (retro de la `0.8.1`, P3): su `pre-push` corre casi todos los tests (>20 min); se lanza
+  en segundo plano con `timeout` de 90 min (5400000 ms), no con el tope por defecto, que lo corta.
 
 ## Costes conocidos
 
@@ -51,6 +53,8 @@ las crea una vez; desde entonces son del proyecto.
   ciegas con etiquetas que quizá no existen.
 - Modelo: el grande se mantiene para ganchos, guardas y seguridad; el medio para guías y porte mecánico (bajar de
   modelo en guardas costaría calidad).
+- Contexto fijo en la nube (medida del 2026-11-19, retro de la `0.8.1`, P4): ~79k de sistema y herramientas MCP
+  (GitHub, Docs, nube), el 91 % del suelo. Quitar del entorno de este repo los conectores que no se usan aquí.
 
 ## Ajustes en vigor
 

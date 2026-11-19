@@ -82,6 +82,18 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [x] `0.5` · **Del arreglo de INS P8** (arreglado en la `0.4.2`, `4aecf5c`): `prepush-ramas.sh` comprueba la bitácora como
   queda en la punta que se sube, así que un log malo en un commit intermedio se arregla con un commit nuevo encima.
 
+## De la retro del parche `0.8.1`
+
+- [ ] `0.8.2` · **D142 (`measure.py`, fallo):** sin `--session`, en la nube mide una sesión vieja de la carpeta del
+  repo en vez de la sesión en curso (`-home-user`, la más nueva): la preferencia de D139 por la carpeta del repo gana a
+  la más reciente. La sesión en curso es la más nueva de todas las carpetas; D139 solo desempata. Con su test.
+  `retro-2026-11-19-patch-0.8.1.md`.
+- [ ] `0.9` · **D143 (`pre-commit`, copias instaladas):** avisar si un archivo preparado de `scripts/` difiere de su
+  copia en `.claude/gw/scripts/` (falta `apply.py .`); hoy solo lo ve el check completo tras subir. Con su test.
+  `retro-2026-11-19-patch-0.8.1.md`.
+- [ ] `0.10` · **B47 (barrido de `trace.py`):** cierra sus leves de abajo: D14 n.º 2 y C11-trace n.º 3 a 7.
+  `retro-2026-11-19-patch-0.8.1.md`.
+
 ## De la retro del parche `0.4.3`
 
 - [x] `0.5` · **R1 (`version.py`, CHANGELOG):** (D30, 2026-11-03) comprobar que existe cada ruta del repo citada entre comillas invertidas en la

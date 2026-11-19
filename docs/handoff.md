@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.0` publicada** (`main` = `b3825b8`, 2026-11-18; CI en verde; etiqueta y release `v0.8.0` creadas desde una sesión local) |
-| Siguiente paso | **Parche `0.8.1` sellado** (H25: D128-D141, CHANGELOG, README, `version.py 0.8.1` y `apply.py .`; check completo en verde antes del sello). Fase 1 hecha (`Findings: 2`). Ahora fase 2 (`/gw-opt-tokens`, `/retro`, `reviewed.sh`), con confirmación del usuario; luego `0.9` (E65-E76). Presupuesto de compactaciones: 0 |
+| Siguiente paso | **Parche `0.8.1` sellado** (H25). Fases 1 (`Findings: 2`) y 2 hechas (retro `retro-2026-11-19-patch-0.8.1.md` decidida: P3-P4 aplicadas; D142 a `0.8.2`, D143 a `0.9`, B47 a `0.10`). Ahora fase 3: check sobre la fusión con `main`, y con confirmación del usuario `reviewed.sh` y subida a `main`; luego `release-v0.8.1.md` y `0.9` (E65-E76). Presupuesto de compactaciones: 0 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-19 — Fase 1 del 0.8.1 (revisión del bloque D141/H25): 2 hallazgos aceptados (doc de metrics.py y config.md: cuenta por id y cierre por merge) y 3 leves a pendientes de la 0.10.
-2. 2026-11-19 — Sello del parche 0.8.1 (H25): CHANGELOG es/en con D128-D141, README en 0.8.1, version.py 0.8.1 y apply.py .; check completo en verde sobre 9feae0a antes del sello.
-3. 2026-11-19 — D141: el Findings: de un merge cierra el bloque de revisión y cuenta en metrics.py quality (antes --no-merges lo ignoraba y recover.py --state avisaba de una revisión ya hecha); visto al empezar el cierre del 0.8.1.
-4. 2026-11-19 — Segunda oleada del 0.8.1 fusionada (D129+D130, D135, D137) y revisada: 7 hallazgos arreglados (guarda de filas de handoff.py, pendingFile de apply.py) y 5 leves a pendientes de la 0.10.
-5. 2026-11-19 — Revisión del bloque de la primera oleada del 0.8.1: 11 hallazgos aceptados y arreglados (uno descartado por falso), entre ellos scope-guard llamaba a workflow_dir con la firma vieja y apagaba B44 sin aviso; claves nuevas workflowRepository y workflowClone. Check de la oleada en verde salvo la copia del esquema, arreglada.
+1. 2026-11-19 — Fase 2 de la `0.8.1`: `/gw-opt-tokens` y `/retro` decididas por el usuario (P3-P4 aplicadas; D142, D143 y B47 apuntados en `pending.md`).
+2. 2026-11-19 — Fase 1 del 0.8.1 (revisión del bloque D141/H25): 2 hallazgos aceptados (doc de metrics.py y config.md: cuenta por id y cierre por merge) y 3 leves a pendientes de la 0.10.
+3. 2026-11-19 — Sello del parche 0.8.1 (H25): CHANGELOG es/en con D128-D141, README en 0.8.1, version.py 0.8.1 y apply.py .; check completo en verde sobre 9feae0a antes del sello.
+4. 2026-11-19 — D141: el Findings: de un merge cierra el bloque de revisión y cuenta en metrics.py quality (antes --no-merges lo ignoraba y recover.py --state avisaba de una revisión ya hecha); visto al empezar el cierre del 0.8.1.
+5. 2026-11-19 — Segunda oleada del 0.8.1 fusionada (D129+D130, D135, D137) y revisada: 7 hallazgos arreglados (guarda de filas de handoff.py, pendingFile de apply.py) y 5 leves a pendientes de la 0.10.
 
 ## Pendiente
 
