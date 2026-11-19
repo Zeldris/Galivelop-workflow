@@ -47,7 +47,7 @@ project: `cd <project> && claude`.
 ## 3. Decide what needs judgement
 
 Follow section 1 of the guide: `language`, `log`, `install`, `check`, protected branch, `direct` or `pr`, `content`
-regexes, the agent signatures (`agentSignatures`), and the optional skills `gw-opt-ai` and `gw-scout-updates` (only
+regexes, the agent signatures (`agentSignatures`), the own skills prefix (`projectSkillPrefix`), and the optional skills `gw-opt-ai` and `gw-scout-updates` (only
 if the user asks).
 
 - Infer `install` and `check` from `package.json`, `pyproject.toml`, `Cargo.toml`, `pom.xml`, `go.mod` or
@@ -55,6 +55,8 @@ if the user asks).
 - Ask whether the project accepts agent signatures (`Co-Authored-By` of Claude, session links). If not, add
   `--agent-signatures false`: the `commit-msg` hook then rejects them and `apply.py` writes the "No Claude signatures"
   rule into the project's `CLAUDE.md`, which overrides the environment's attribution reminder.
+- Ask which prefix the project gives its own skills (e.g. `gvg-`; never `gw-`, the workflow's). If it has or will
+  have its own skills, add `--project-skill-prefix <prefix>`: `doctor.py` then warns of an own skill without it.
 - Offer a licence (an offer, never imposed; skip it if the project already has a `LICENSE` or the user declines): the
   dual licence of this workflow, MIT for the code and CC BY-NC-SA 4.0 for the content, with a third-party note. Ask for
   the copyright year and holder; the files are copied in step 4, after `--init`.
