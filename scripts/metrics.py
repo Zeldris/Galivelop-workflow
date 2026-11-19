@@ -43,12 +43,13 @@ period twice is an error (exit 2).
 
 `metrics.py quality --period day|week|month|quarter [--date D] [--write]` (B8) sets quality signals beside the spend of
 each task id. Spend comes from the period's ledger rows; the signals only from the messages of the commits in the
-history from HEAD (a merge counts only for its findings and retries, D141) whose committer date (UTC) falls in the period and that have a `Refs:` trailer (the others
-are ignored). Per id: `commits`; `red` (subject starts with the `commitWipPrefix`, `WIP:` by default: the check was red); `rework` (commits whose
+history from HEAD whose committer date (UTC) falls in the period and that have a `Refs:` trailer (the others are
+ignored; a merge with `Refs:` adds only its findings and retries, D141). Per id: `commits`; `red` (subject starts with the `commitWipPrefix`, `WIP:` by default: the check was red); `rework` (commits whose
 Conventional Commits type, after a `WIP: ` prefix, is in `metrics.quality.reworkTypes`, and git reverts `Revert "..."`,
 not counting the first commit of the id in the whole history); `findings` and `retries` (the sums of the integer values
 of the trailers `metrics.quality.findingsTrailer` and `retriesTrailer`, matched case-insensitively; a value that is not a
-non-negative integer is ignored and listed under "Ignored trailers"). A second table gives the same by model: the signals
+non-negative integer is ignored and listed under "Ignored trailers"; a commit or merge with several ids counts its
+whole value for each of them, so the rows do not add up to the reviews' total). A second table gives the same by model: the signals
 of the ids each model spent on (an id counts for every model that spent on it). It prints the report; `--write` saves it
 as `<reports>/<daily|weekly|monthly|quarterly>/<name>-quality.md`. Nothing in the period (no commits with `Refs:` and no
 ledger rows) says so on stderr and writes nothing (exit 0); no git repository or a git failure, or a bad config, exit 2.
