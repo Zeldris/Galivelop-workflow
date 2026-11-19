@@ -12,7 +12,10 @@ dirty with it, and a plain `git merge` then refuses or, after a `stash`, can los
      (`chore(<id>): ...`, trailers `Refs: <id>` and the next-step trailer of the project's `language`, so the
      commit-msg hook accepts it); anything else -> exit 1 naming those paths and the command that fixes it
      (commit them, `git stash` or `git checkout -- <path>`). Nothing is committed or merged then.
-     `<id>` is `--refs`, else the `Refs:` of HEAD's commit (the task in progress); with neither, exit 1.
+     `<id>` is `--refs`, else the newest `Refs:` of the branch's own commits (`git log --first-parent --no-merges`);
+     with neither, exit 1. On a spike branch (`spikeBranch`) the commit has no scope and no `Refs:`.
+     With `metrics.commitLedger` false the ledger counts as any other dirty file, and nothing is committed when
+     `origin/<protectedBranch>` brings nothing new.
   3. `git merge --no-edit origin/<protectedBranch>` (never a rebase); its exit status is this script's. After a
      conflict the ledger commit stays and git's own instructions apply.
 
@@ -67,12 +70,16 @@ def dirty_paths(root):
 
 
 def head_refs(root):
-    res = git(root, "log", "-1", "--format=%(trailers:key=Refs,valueonly)")
-    ids = []
-    if res.returncode == 0:
-        for line in res.stdout.splitlines():
-            ids += [x.strip() for x in line.split(",") if x.strip()]
-    return ids
+    """The ids of the newest `Refs:` trailer on the branch's own first-parent line (merge commits, which carry none,
+    and the commits a merge brought in are skipped)."""
+    res = git(root, "log", "--first-parent", "--no-merges", "--format=%(trailers:key=Refs,valueonly)%x00")
+    if res.returncode != 0:
+        return []
+    for chunk in res.stdout.split("\0"):
+        ids = [x.strip() for line in chunk.splitlines() for x in line.split(",") if x.strip()]
+        if ids:
+            return ids
+    return []
 
 
 def main(argv=None):
@@ -81,10 +88,13 @@ def main(argv=None):
     ap.add_argument("--refs", help="task id(s), comma separated, for the ledger commit (default: HEAD's Refs:)")
     args = ap.parse_args(argv)
     try:
-        cfg = config.load(args.root or config.find_root())
+        cfg = config.load(config.find_root(args.root))
         root = cfg["_root"]
         branch = cfg.get("protectedBranch")
-        ledger = config.metrics(cfg).get("ledger")
+        metrics = config.metrics(cfg)
+        ledger = metrics.get("ledger")
+        commit_ledger = bool(metrics.get("commitLedger", True))
+        spike_prefix = config.spike_prefix(cfg)
     except config.ConfigError as exc:
         say(f"cannot read the config: {exc}; fix it: python3 {HERE / 'config.py'} validate")
         return 2
@@ -104,19 +114,25 @@ def main(argv=None):
     if paths is None:
         say(f"git status failed in {root}; is it a git repository? run: git -C {root} status")
         return 2
-    others = [p for p in paths if p != ledger]
+    others = [p for p in paths if p != ledger or not commit_ledger]
     if others:
         say(f"uncommitted changes besides the ledger: {', '.join(others)}; commit them, or put them away with "
             f"`git stash` (or `git checkout -- <path>`), then run it again: python3 {Path(__file__).resolve()}")
         return 1
-    if paths:  # only the ledger
-        ids = [x.strip() for x in (args.refs or "").split(",") if x.strip()] or head_refs(root)
-        if not ids:
+    new = git(root, "rev-list", "--count", f"HEAD..origin/{branch}")
+    brings = new.returncode != 0 or new.stdout.strip() != "0"  # when unsure, commit and let the merge say
+    if paths and brings:  # only the ledger, and a merge is coming
+        name = git(root, "symbolic-ref", "--short", "-q", "HEAD").stdout.strip()
+        spike = bool(name) and config.is_spike_branch(name, spike_prefix)
+        ids = [] if spike else ([x.strip() for x in (args.refs or "").split(",") if x.strip()] or head_refs(root))
+        if not ids and not spike:
             say(f"the ledger ({ledger}) needs a commit but there is no task id for its Refs: trailer; pass one: "
                 f"python3 {Path(__file__).resolve()} --refs <id>")
             return 1
         subject, nxt = TEXT[lang]
-        message = (f"chore({ids[0]}): {subject.format(branch=branch)}\n\nRefs: {', '.join(ids)}\n"
+        scope = f"({ids[0]})" if ids else ""
+        refs = f"Refs: {', '.join(ids)}\n" if ids else ""
+        message = (f"chore{scope}: {subject.format(branch=branch)}\n\n{refs}"
                    f"{NEXT[lang]}: {nxt.format(branch=branch)}\n")
         for cmd in (["add", "--", ledger], ["commit", "-m", message, "--", ledger]):
             res = git(root, *cmd)

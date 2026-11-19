@@ -83,7 +83,7 @@ comprobación.
 - **Cuatro formas de trabajar:** una ficha de tarea (`docs/tasks/<id>.md`, con criterios de aceptación, archivos
   previstos y decision log) obligatoria en los cambios de código y comprobada por el `commit-msg`; modelado de dominio
   donde hay dominio; tests primero donde hay comportamiento testeable; y exploración solo en ramas `spike/<tema>`, que
-  el `pre-push` y `merge-main.py` (trae la rama protegida, commiteando antes el ledger de métricas), `merge-branch.sh` no dejan entrar en una rama de trabajo.
+  el `pre-push` y `merge-branch.sh` no dejan entrar en una rama de trabajo.
 - **Alcance congelado** (`scopeGuard`): tocar un archivo fuera de `Files` de la ficha avisa o bloquea (el
   `pre-commit` lo respalda); un requisito nuevo es una tarea nueva.
 
@@ -173,7 +173,7 @@ comprobación.
 
 Deterministas, en Python y en bash compatible con la versión de macOS: `apply.py` (montar el flujo), `doctor.py`
 (diagnóstico con la orden que arregla cada problema), `reviewed.sh` (marca de revisión), `recover.py` (estado
-tras `/clear`), `merge-branch.sh` (traer la rama de un subagente, `agent/<id>-<tema>`, con el check en verde, sus `Refs:` en el mensaje de la fusión, la orden para resolver un conflicto en la bitácora y limpiar su copia de trabajo),
+tras `/clear`), `merge-main.py` (trae la rama protegida, commiteando antes el ledger de métricas), `merge-branch.sh` (traer la rama de un subagente, `agent/<id>-<tema>`, con el check en verde, sus `Refs:` en el mensaje de la fusión, la orden para resolver un conflicto en la bitácora y limpiar su copia de trabajo),
 `check.sh` (el check, con su verde apuntado, cerrojo y registro), `handoff.py` (la bitácora), `version.py` (versión
 y comprobaciones de la publicación), `private-check.py`, `ci-status.py` y `ci-local.py` (el CI, remoto y en local),
 `questions.py` y `task.py` (preguntas y fichas de tarea), `red-without-fix.sh`, `harvest.py`, `metrics.py` y `models.py` (gasto y modelos), `test-run.py` y `tests-for.py` (la

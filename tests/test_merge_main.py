@@ -88,11 +88,87 @@ class MergeMain(unittest.TestCase):
         self.assertIn("Refs: E1", msg)
         self.assertIn("Siguiente: Fusionar origin/main", msg)
 
-    def test_refs_option_names_the_id(self):
+    def message_ok(self, rev="HEAD"):
+        """The commit message at `rev` passes the real commit-message.py rules of the project's config."""
+        msg = self.tmp / "msg.txt"
+        msg.write_text(self.git(self.work, "log", "-1", "--format=%B", rev), encoding="utf-8")
+        res = subprocess.run([sys.executable, str(ROOT / "scripts" / "commit-message.py"), "--root", str(self.work),
+                              str(msg)], capture_output=True, text=True, env=ENV)
+        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+
+    def strict(self, **extra):
+        self.put(self.work, ".claude/gw.json", json.dumps(self.config(commitRefs=True, commitNext=True, taskId="[A-H]\\d+", refsSources=["docs/log.md"], **extra)))
+        self.put(self.work, "docs/log.md", "| E1 | task |\n- E9: other\n")
+        self.git(self.work, "add", "-A")
+        self.git(self.work, "commit", "-qm", "strict\n\nRefs: E1")
+
+    def test_ledger_commit_passes_the_commit_msg_rules(self):
+        self.strict()
+        self.upstream()
         self.put(self.work, LEDGER, '{"n":1}\n{"n":2}\n')
         code, out = self.run_it("--refs", "E9")
         self.assertEqual(code, 0, out)
-        self.assertIn("Refs: E9", self.git(self.work, "log", "-1", "--format=%B"))
+        self.message_ok("HEAD^")
+
+    def test_id_comes_from_the_branch_not_from_a_merge_commit(self):
+        self.strict()
+        self.upstream()
+        self.run_it()  # a merge commit is now HEAD
+        self.assertEqual(self.git(self.work, "log", "-1", "--format=%P").count(" "), 1)
+        self.upstream("c.txt", "c\n")
+        self.put(self.work, LEDGER, '{"n":1}\n{"n":2}\n')
+        code, out = self.run_it()
+        self.assertEqual(code, 0, out)
+        self.assertIn("chore(E1)", " ".join(self.subjects()))
+
+    def test_spike_branch_commits_without_scope_or_refs(self):
+        self.strict()
+        self.git(self.work, "checkout", "-q", "-b", "spike/idea")
+        self.git(self.work, "commit", "-q", "--allow-empty", "-m", "no refs")
+        self.upstream()
+        self.put(self.work, LEDGER, '{"n":1}\n{"n":2}\n')
+        code, out = self.run_it()
+        self.assertEqual(code, 0, out)
+        msg = self.git(self.work, "log", "--format=%B", "-n", "1", "--skip=1")
+        self.assertTrue(msg.startswith("chore: "), msg)
+        self.assertNotIn("Refs:", msg)
+        self.assertIn("Siguiente:", msg)
+        self.message_ok("HEAD^")
+
+    def test_commit_ledger_false_treats_it_as_dirty(self):
+        self.put(self.work, ".claude/gw.json", json.dumps(self.config(metrics={"commitLedger": False})))
+        self.git(self.work, "commit", "-qam", "cfg")
+        self.upstream()
+        self.put(self.work, LEDGER, '{"n":1}\n{"n":2}\n')
+        head = self.git(self.work, "rev-parse", "HEAD")
+        code, out = self.run_it()
+        self.assertEqual(code, 1)
+        self.assertIn("uncommitted changes besides the ledger: " + LEDGER, out)
+        self.assertEqual(self.git(self.work, "rev-parse", "HEAD"), head)
+
+    def test_nothing_to_merge_commits_nothing(self):
+        self.put(self.work, LEDGER, '{"n":1}\n{"n":2}\n')
+        head = self.git(self.work, "rev-parse", "HEAD")
+        code, out = self.run_it()
+        self.assertEqual(code, 0, out)
+        self.assertIn("Already up to date", out)
+        self.assertEqual(self.git(self.work, "rev-parse", "HEAD"), head)
+        self.assertIn(LEDGER, self.git(self.work, "status", "--porcelain"))
+
+    def test_root_in_a_subdirectory(self):
+        self.upstream()
+        self.put(self.work, LEDGER, '{"n":1}\n{"n":2}\n')
+        res = subprocess.run([sys.executable, str(SCRIPT), "--root", str(self.work / "docs")], capture_output=True,
+                             text=True, env=ENV)
+        self.assertEqual(res.returncode, 0, res.stdout + res.stderr)
+        self.assertTrue((self.work / "b.txt").is_file())
+
+    def test_refs_option_names_the_id(self):
+        self.upstream()
+        self.put(self.work, LEDGER, '{"n":1}\n{"n":2}\n')
+        code, out = self.run_it("--refs", "E9")
+        self.assertEqual(code, 0, out)
+        self.assertIn("Refs: E9", self.git(self.work, "log", "-1", "--format=%B", "HEAD^"))
 
     def test_ledger_and_other_file_dirty_refuses(self):
         self.upstream()
@@ -129,7 +205,7 @@ class MergeMain(unittest.TestCase):
         self.assertEqual(code, 1, out)
         self.assertIn("CONFLICT", out)
         self.assertIn("chore(E1)", " ".join(self.subjects()))
-        self.assertIn(self.git(self.work, "show", "HEAD:" + LEDGER), '{"n":1}\n{"n":2}\n')
+        self.assertEqual(self.git(self.work, "show", "HEAD:" + LEDGER), '{"n":1}\n{"n":2}\n')
 
     def test_missing_config_fails_closed(self):
         (self.work / ".claude" / "gw.json").unlink()
@@ -151,7 +227,9 @@ class MergeMain(unittest.TestCase):
         self.assertIn("git fetch origin main failed", out)
 
     def test_ledger_without_task_id_asks_for_refs(self):
+        self.git(self.work, "checkout", "-q", "--orphan", "fresh")  # a history with no Refs: at all
         self.git(self.work, "commit", "-q", "--allow-empty", "-m", "no refs")
+        self.upstream()
         self.put(self.work, LEDGER, '{"n":1}\n{"n":2}\n')
         code, out = self.run_it()
         self.assertEqual(code, 1)
