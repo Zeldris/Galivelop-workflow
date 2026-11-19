@@ -332,7 +332,7 @@ Arreglos de la recogida de apertura de la `0.9` (usuario, 2026-11-18): el gancho
 | Id | Tarea | Estado |
 |---|---|---|
 | D128 | `apply.py --update` quita del proyecto el `command` de un gancho del flujo que la plantilla registra en el mismo evento con otro matcher (la `0.8.0` dejó `whole-read.py` dos veces), y `doctor.py` da `FAIL` con un mismo `command` dos veces en un evento (recogida `0.9`, instalador P1 y cuatro proyectos más) | hecho (2026-11-18) |
-| D129 | `apply.py --update` escribe `pendingFile` en el `gw.json` del proyecto cuando migra la bitácora a él, o avisa con la clave y la orden (recogida `0.9`, private-project-2 P1) | pendiente |
+| D129 | `apply.py --update` escribe `pendingFile` en el `gw.json` del proyecto cuando migra la bitácora a él, o avisa con la clave y la orden (recogida `0.9`, private-project-2 P1) | hecho (2026-11-18) |
 | D130 | `AGENTS.md.gw-new` se renderiza con el `gw.json` ya migrado (lista del check al día) (recogida `0.9`, private-project-2 P2) | pendiente |
 | D131 | Plantillas de `AGENTS.md` (es/en): `Findings:`/`Retries:` van en el último párrafo, con los demás trailers (recogida `0.9`, world-maker-fantasy P1) | hecho (2026-11-18) |
 | D132 | `review-scope.py` en un proyecto sin `--workflow` ni `GW_WORKFLOW`: busca la copia del flujo o falla con la orden, en vez de tomarse el proyecto por flujo (recogida `0.9`, private-project-5 P4) | hecho (2026-11-18) |

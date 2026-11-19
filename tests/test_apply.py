@@ -1311,6 +1311,8 @@ class Migrate(unittest.TestCase):
         self.assertRegex(out, r"\d+ create")
         self.assertNotIn("  rename", out)
         self.applied()
+        raw = json.loads(self.p.read(".claude/gw.json"))
+        self.p.write(".claude/gw.json", json.dumps(dict(raw, pendingFile="docs/records/pending.md")) + "\n")  # D129
         code, out = self.p.run_apply("--update", "--dry-run", "--summary")
         self.assertEqual(code, 0, out)
         self.assertIn("nothing to do", out)
@@ -2522,6 +2524,90 @@ class CiValidateMigration(unittest.TestCase):
         code, out = p.run_apply("--update")
         self.assertEqual(code, 2, out)
         self.assertEqual(p.read(".claude/gw.json"), before)
+
+
+class PendingFileMigration(unittest.TestCase):
+    """D129: --update writes `pendingFile` when the log points to the pending file; D130: the AGENTS.md proposal is
+    rendered with the already migrated gw.json."""
+
+    POINTER = "\nPending items live in the `pendingFile` file (`.claude/gw.json`).\n"
+    DEFAULT = "docs/records/pending.md"
+
+    def project(self, pointer=True, **config):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-pf-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        p = Fixture(tmp, dict(config, version=VERSION))
+        if pointer:
+            p.write("docs/log.md", p.read("docs/log.md") + self.POINTER)
+        return p
+
+    def test_no_pointer_in_the_log_needs_no_migration(self):
+        p = self.project(pointer=False)
+        before = p.read(".claude/gw.json")
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(p.read(".claude/gw.json"), before)
+        self.assertNotIn("pendingFile", out)
+
+    def test_without_update_nothing_is_written(self):
+        p = self.project()
+        before = p.read(".claude/gw.json")
+        p.run_apply()
+        self.assertEqual(p.read(".claude/gw.json"), before)
+
+    def test_key_already_set_is_never_overwritten(self):
+        for value in ("notes/todo.md", ""):
+            p = self.project(pendingFile=value)
+            code, out = p.run_apply("--update")
+            self.assertEqual(code, 0, out)
+            self.assertEqual(json.loads(p.read(".claude/gw.json"))["pendingFile"], value)
+            self.assertNotIn("pendingFile set to", out)
+
+    def test_unwritable_gw_json_warns_with_the_key_and_the_command(self):
+        p = self.project()
+        before = p.read(".claude/gw.json")
+        with unittest.mock.patch.object(os, "access", return_value=False):
+            module = load_apply()
+            plan = module.Plan(p.work, VERSION, True)
+            plan.cfg = {"log": "docs/log.md"}
+            module.plan_pending_file(plan)
+        self.assertEqual(plan.actions, [])
+        self.assertEqual(len(plan.warnings), 1)
+        self.assertIn('"pendingFile": "docs/records/pending.md"', plan.warnings[0])
+        self.assertIn("cannot be read or written", plan.warnings[0])
+        self.assertIn("handoff.py", plan.warnings[0])
+        self.assertEqual(p.read(".claude/gw.json"), before)
+
+    def test_unreadable_gw_json_warns_instead_of_writing(self):
+        p = self.project()
+        p.write(".claude/gw.json", "{not json")
+        module = load_apply()
+        plan = module.Plan(p.work, VERSION, True)
+        plan.cfg = {"log": "docs/log.md"}
+        module.plan_pending_file(plan)
+        self.assertEqual(plan.actions, [])
+        self.assertIn("pendingFile", plan.warnings[0])
+        self.assertEqual(p.read(".claude/gw.json"), "{not json")
+
+    def test_key_is_written_with_the_templates_value_and_once(self):
+        p = self.project()
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(json.loads(p.read(".claude/gw.json"))["pendingFile"], self.DEFAULT)
+        self.assertIn("pendingFile set to", out)
+        code, out = p.run_apply("--update")
+        self.assertNotIn("pendingFile set to", out)
+
+    def test_it_shares_the_single_gw_json_write_with_the_schema_migration(self):
+        p = self.project()
+        raw = json.loads(p.read(".claude/gw.json"))
+        del raw["schemaVersion"]
+        p.write(".claude/gw.json", json.dumps(raw) + "\n")
+        code, out = p.run_apply("--update", "--dry-run")
+        lines = [l for l in out.splitlines() if l.lstrip().startswith("merge") and ".claude/gw.json" in l]
+        self.assertEqual(len(lines), 1, out)
+        self.assertIn("schemaVersion 0", lines[0])
+        self.assertIn("pendingFile set to", lines[0])
 
 
 class StaleRefsMigration(unittest.TestCase):

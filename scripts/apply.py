@@ -1267,6 +1267,51 @@ def plan_stale_refs(plan):
     plan.actions.append(("merge", config.CONFIG_REL, dump(base), False, "; ".join(details)))
 
 
+def plan_pending_file(plan):
+    """D129: with --update, a project whose log already points to the pending file (the template's `pendingFile`
+    pointer line) but whose gw.json has no `pendingFile` gets the template's value written (`handoff.py move-pending`
+    aborts with "pendingFile is not set" otherwise). A key already present (any value, even "") is the project's choice
+    and is never touched; a log without the pointer needs no migration. When gw.json cannot be read or written the key
+    and the command that sets it are warned instead. Joins a `merge` of gw.json already planned (one write); never in
+    the workflow repo."""
+    if not plan.update or plan.root.resolve() == WORKFLOW.resolve():
+        return
+    log = plan.root / str(plan.cfg.get("log") or "")
+    try:
+        points = log.is_file() and "pendingFile" in log.read_text(encoding="utf-8")
+    except (OSError, ValueError):
+        return
+    if not points:
+        return
+    path = plan.root / config.CONFIG_REL
+    default = json.loads((WORKFLOW / "templates" / "gw.json").read_text(encoding="utf-8"))["pendingFile"]
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raw = None
+    if isinstance(raw, dict) and "pendingFile" in raw:
+        return
+    mine = [i for i, a in enumerate(plan.actions) if a[0] == "merge" and Path(a[1]) == config.CONFIG_REL]
+    base, details = raw, []
+    if isinstance(raw, dict) and mine:
+        base = json.loads(plan.actions[mine[-1]][2].decode("utf-8"))
+        details = [plan.actions[i][4] for i in mine]
+        if "pendingFile" in base:
+            return
+    if not isinstance(base, dict) or not os.access(path, os.W_OK):
+        plan.warnings.append(
+            f"the log points to the pending file but {config.CONFIG_REL} cannot be read or written, so `pendingFile` "
+            f"is not set; add it by hand (\"pendingFile\": \"{default}\") and validate: "
+            f"python3 {HERE / 'config.py'} --root {plan.root} validate; then python3 {HERE / 'handoff.py'} "
+            f"move-pending")
+        return
+    if mine:
+        plan.actions = [a for i, a in enumerate(plan.actions) if i not in mine]
+    base["pendingFile"] = default
+    details.append(f"pendingFile set to {default} (D129: the log points to it)")
+    plan.actions.append(("merge", config.CONFIG_REL, dump(base), False, "; ".join(details)))
+
+
 def plan_version(plan):
     """B34: the project's gw.json top-level `version` is set to the workflow's (the only writer of that file, so
     `version.py <X.Y.Z>` here leaves it to this). Joins a `merge` of gw.json already planned (one write); every other
@@ -1604,6 +1649,7 @@ def build(root, version, update, extra_skills, cfg, personal=True, check=False, 
     plan_schema(plan)
     plan_version(plan)
     plan_ci_validate(plan)
+    plan_pending_file(plan)
     renamed = [e for e in extra_skills if e in OLD_SKILLS]
     for old in renamed:
         plan.warnings.append(f"--with {old} is the old name; use --with {OLD_SKILLS[old]}")

@@ -331,7 +331,7 @@ Fixes from the `0.9` opening harvest (user, 2026-11-18): the `0.8.0` duplicated 
 | Id | Task | State |
 |---|---|---|
 | D128 | `apply.py --update` drops from the project a workflow hook `command` the template registers in the same event with another matcher (`0.8.0` left `whole-read.py` twice), and `doctor.py` FAILs on the same `command` twice in one event (`0.9` harvest, installer P1 and four more projects) | done (2026-11-18) |
-| D129 | `apply.py --update` writes `pendingFile` to the project's `gw.json` when it migrates the log to it, or warns with the key and the command (`0.9` harvest, private-project-2 P1) | pending |
+| D129 | `apply.py --update` writes `pendingFile` to the project's `gw.json` when it migrates the log to it, or warns with the key and the command (`0.9` harvest, private-project-2 P1) | done (2026-11-18) |
 | D130 | `AGENTS.md.gw-new` is rendered with the already migrated `gw.json` (current check list) (`0.9` harvest, private-project-2 P2) | pending |
 | D131 | `AGENTS.md` templates (es/en): `Findings:`/`Retries:` go in the last paragraph, with the other trailers (`0.9` harvest, world-maker-fantasy P1) | done (2026-11-18) |
 | D132 | `review-scope.py` in a project with no `--workflow` nor `GW_WORKFLOW`: finds the workflow copy or fails with the command, instead of taking the project as the workflow (`0.9` harvest, private-project-5 P4) | done (2026-11-18) |
