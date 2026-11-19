@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-19 — E73: clave `projectSkillPrefix` (`""`; nunca `gw-`): `apply.py --init --project-skill-prefix` la escribe y `gw-init` la pregunta; `doctor.py` avisa (`skill prefix`) de cada skill propia (sin `metadata.source` del flujo) que no la lleva, con el renombrado
-2. 2026-11-19 — E72: clave `generated` (`[{command, paths}]`, `[]`): `generated-check.py` (en el `check` de la plantilla) corre cada orden y falla si cambia, añade o quita archivos bajo sus `paths`, con la orden `git add`; `doctor.py` avisa (`generated files`) si la clave tiene entradas y el `check` no lo corre
-3. 2026-11-19 — E71: `ci-local.py --validate` corre también `actionlint -shellcheck=` sobre los workflows (claves `ciActionlint`, `auto` por defecto, y `actionlintVersion`, `1.7.12`); la plantilla de CI lo instala en GitHub en un venv; `doctor.py` avisa (`workflow lint`) si hay workflows y el `check` no los valida
-4. 2026-11-19 — E70: clave `wholeReadDenyPaths` (`{ruta: orden}`): `whole-read.py` rechaza (`permissionDecision: deny`) la lectura entera de esas rutas, sea cual sea su tamaño y aunque el aviso esté apagado, con la orden alternativa en el motivo; la lectura parcial pasa
-5. 2026-11-19 — E69: la plantilla del encargo de gw-orchestrate-dealer amplía la regla del patrón al mismo defecto en un archivo hermano (gemelo, otro idioma, copia) y DONE: pide, por cada punto, si se hizo entero o en parte
+1. 2026-11-19 — E77: el push y el check largo, en segundo plano con `timeout` de 5400000 ms (90 min) en `AGENTS.md` y sus plantillas, `gw-opt-tokens.md` (cualquier subida) y la subida final de `gw-orchestrate-dealer` (usuario, Q-7 a Q-9; Q-8, que `push.sh` anuncie el alcance, no)
+2. 2026-11-19 — E73: clave `projectSkillPrefix` (`""`; nunca `gw-`): `apply.py --init --project-skill-prefix` la escribe y `gw-init` la pregunta; `doctor.py` avisa (`skill prefix`) de cada skill propia (sin `metadata.source` del flujo) que no la lleva, con el renombrado
+3. 2026-11-19 — E72: clave `generated` (`[{command, paths}]`, `[]`): `generated-check.py` (en el `check` de la plantilla) corre cada orden y falla si cambia, añade o quita archivos bajo sus `paths`, con la orden `git add`; `doctor.py` avisa (`generated files`) si la clave tiene entradas y el `check` no lo corre
+4. 2026-11-19 — E71: `ci-local.py --validate` corre también `actionlint -shellcheck=` sobre los workflows (claves `ciActionlint`, `auto` por defecto, y `actionlintVersion`, `1.7.12`); la plantilla de CI lo instala en GitHub en un venv; `doctor.py` avisa (`workflow lint`) si hay workflows y el `check` no los valida
+5. 2026-11-19 — E70: clave `wholeReadDenyPaths` (`{ruta: orden}`): `whole-read.py` rechaza (`permissionDecision: deny`) la lectura entera de esas rutas, sea cual sea su tamaño y aunque el aviso esté apagado, con la orden alternativa en el motivo; la lectura parcial pasa
 
 ## Pendiente
 

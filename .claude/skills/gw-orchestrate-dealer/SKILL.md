@@ -68,8 +68,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    never touch the log (the main session does both). Leave nothing uncommitted when you reply: every change is in
    your last commit. If a push is rejected, `git fetch` and `git merge` (never rebase), then push again.
    At ~25 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
-   Final push: in the foreground with a `timeout` of 600000 ms, never in the background; other long waits: background
-   plus `Monitor` (ToolSearch first), never a `sleep`. Reply once, with nothing of yours running. To stop a process
+   Final push and other long waits: in the background with a `timeout` of 5400000 ms (a full check takes over 10
+   minutes, the foreground cap), waited for with its notice or `Monitor` (ToolSearch first), never a `sleep`. Reply once, with nothing of yours running. To stop a process
    you started, `TaskStop` with its id (load it with ToolSearch); `kill` and `pkill` are denied to subagents.
    Push with its output to a file outside the tree (`git push … > "$(git rev-parse --git-dir)/push.log" 2>&1`); if it
    fails, read the pre-push reason in that file before retrying.

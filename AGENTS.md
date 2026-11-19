@@ -28,8 +28,8 @@ Cada regla de abajo que tiene un check lo nombra entre paréntesis; las demás s
 - Si hay que parar con algo a medias o en rojo: commit igualmente con `WIP:` al principio y, en la bitácora, qué
   falla y por qué.
 - Push con `bash scripts/push.sh <rama>` (reintenta si falla por red, `pushRetryDelays`, y da por subido solo lo que
-  `git ls-remote` confirma). El push y el check
-  largo van en segundo plano y se espera su aviso, sin bucles de espera.
+  `git ls-remote` confirma). El push y el check largo van en segundo plano con `timeout` de 5400000 ms (un check
+  completo pasa de 20 min) y se espera su aviso, sin bucles de espera.
 - Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla.
 - **Al cerrar cada fase, tarea o PR**, se para y se informa de qué queda hecho y qué sigue; con la bitácora al día, se
   pide `/clear` (la bitácora basta); un «Siguiente» tras un cierre se contesta igual (`clearAfterTask`).

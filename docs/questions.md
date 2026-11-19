@@ -50,3 +50,30 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Asked: 2026-11-19
 - Question: D142: el gancho de inicio compara el modelo recomendado con el del transcript y avisa, en la misma tarea
 - Recommendation: sí
+
+## Q-7
+- Refs: E77
+- Status: answered
+- Asked: 2026-11-19
+- Question: ¿Regla general: push y check largo en segundo plano con timeout de 5400000 ms (90 min), no solo en los commits de sello?
+- Recommendation: sí, una línea en «Relevos» de AGENTS.md y la nota de gw-opt-tokens.md para cualquier subida
+- Answer: ok
+- Answered: 2026-11-19
+
+## Q-8
+- Refs: E77
+- Status: answered
+- Asked: 2026-11-19
+- Question: ¿Que push.sh diga el alcance (completo o relacionado) y cuánto tardó la última vez antes de empezar?
+- Recommendation: no por ahora; con la regla 1 deja de importar
+- Answer: no
+- Answered: 2026-11-19
+
+## Q-9
+- Refs: E77
+- Status: answered
+- Asked: 2026-11-19
+- Question: ¿La subida final de los subagentes de gw-orchestrate-dealer pasa de primer plano con 600000 ms a segundo plano con 90 min?
+- Recommendation: sí, segundo plano con 90 min, en la misma tarea
+- Answer: ok
+- Answered: 2026-11-19

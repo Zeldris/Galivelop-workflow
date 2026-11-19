@@ -35,7 +35,7 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - If you have to stop with something half-done or red: commit anyway with `WIP:` at the start of the message and, in
   the log, what fails and why. Never leave work only on the local machine.
 - Push with `bash .claude/gw/scripts/push.sh <branch>` (retries network failures, `pushRetryDelays`; pushed is only what
-  `git ls-remote` confirms). Push and long check run in the background: wait for their notice, never poll.
+  `git ls-remote` confirms). Push and long check run in the background with a `timeout` of 5400000 ms (90 min): wait for their notice, never poll.
 - **After an interrupted or rejected call, run `git status` and `git diff` before repeating it**: the change may
   already be saved, or even pushed, and repeating it duplicates it.
 - If the person says stop, stop: push what there is, leave the log up to date and do nothing else.
