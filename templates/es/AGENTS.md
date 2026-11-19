@@ -13,10 +13,9 @@ en `.claude/skills/` y su configuración en `.claude/gw.json` (solo la lee `.cla
    `origin/<rama>`, y el último commit tiene que coincidir con lo que dice la bitácora.
 3. Comprueba que el check está en verde antes de tocar nada: {{check}}.
 4. Sigue por el **siguiente paso** de la bitácora, salvo que la persona pida otra cosa.
-5. Al empezar cada tarea, trae la rama protegida con `python3 .claude/gw/scripts/merge-main.py` (hace el fetch,
-   commitea el ledger de métricas, se niega si hay más cambios sin commit y hace `git merge
-   origin/{{protectedBranch}}`; merge, nunca rebase: las ramas están subidas). Si el conflicto toca la misma lógica
-   por los dos lados, se para y se consulta a la persona.
+5. Al empezar cada tarea, trae la rama protegida con `python3 .claude/gw/scripts/merge-main.py` (fetch, commit del
+   ledger de métricas, se niega con más cambios sin commit y `git merge origin/{{protectedBranch}}`; merge, nunca
+   rebase: ramas subidas). Si el conflicto toca la misma lógica por los dos lados, se para y se consulta a la persona.
 6. **La sesión se abre con el repo como carpeta de trabajo.** Abierta en otra (una que contiene varios repos, la
    carpeta personal), no carga `.claude/settings.json`: ni el tope de compactación, ni el gancho de inicio, ni el que
    vigila la subida a la rama protegida. Si pasa, dilo a la persona para que la reabra desde el repo; mientras tanto,

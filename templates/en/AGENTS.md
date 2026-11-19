@@ -13,10 +13,9 @@ skills in `.claude/skills/` and its settings in `.claude/gw.json` (read only by 
    to date with `origin/<branch>`, and the last commit must match what the log says.
 3. Check the state is green before touching anything: {{check}}.
 4. Carry on with the log's **next step**, unless the person asks for something else.
-5. At the start of every task, bring in the protected branch with `python3 .claude/gw/scripts/merge-main.py` (it
-   fetches, commits the metrics ledger, refuses if anything else is uncommitted and runs `git merge
-   origin/{{protectedBranch}}`; merge, never rebase: branches are pushed). If the conflict touches the same logic on
-   both sides, stop and ask the person.
+5. At the start of every task, bring in the protected branch with `python3 .claude/gw/scripts/merge-main.py` (fetch,
+   commit of the metrics ledger, refuses with other uncommitted changes, `git merge origin/{{protectedBranch}}`; merge,
+   never rebase: branches are pushed). If the conflict touches the same logic on both sides, stop and ask the person.
 6. **The session is opened with the repo as its working folder.** Opened anywhere else (a folder holding several
    repos, the home folder), it does not load `.claude/settings.json`: no compaction limit, no start hook, no guard on
    the protected branch. If that happens, tell the person so they reopen it from the repo; meanwhile run
