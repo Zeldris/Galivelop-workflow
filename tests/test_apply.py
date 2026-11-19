@@ -638,6 +638,26 @@ class AgentsSkills(unittest.TestCase):  # D7: the skills are also plain copies i
         self.assertFalse(any(x.is_symlink() for x in theirs.rglob("*")))
         self.assertIn("nothing to do", self.applied())
 
+    # ---- E67: a key absent from gw.json whose default creates files outside .claude/ is a decision
+
+    def test_dry_run_presents_the_absent_key_as_a_decision_with_its_off_switch(self):
+        self.make()
+        n = len([1 for line in self.applied("--dry-run").splitlines() if line.startswith("  create  .agents/skills/")])
+        self.assertGreater(n, 0)
+        for args in (("--dry-run",), ("--dry-run", "--summary")):
+            out = self.applied(*args)
+            self.assertIn(f"  decide  agentsSkillsDir: creates {n} file(s) under .agents/skills/ (the default; the "
+                          f"key is not in .claude/gw.json); to turn it off: \"agentsSkillsDir\": \"\"", out)
+        self.assertFalse((self.p.work / ".agents").exists())
+
+    def test_no_decision_when_the_key_is_written_or_nothing_is_created(self):
+        for config in ({"agentsSkillsDir": ".agents/skills"}, {"agentsSkillsDir": ""}):
+            self.make(config)
+            self.assertNotIn("decide  ", self.applied("--dry-run", "--summary"))
+        self.make()
+        self.applied()
+        self.assertNotIn("decide  ", self.applied("--update", "--dry-run", "--summary"))
+
     def test_empty_key_disables_the_second_copy(self):
         p = self.make({"agentsSkillsDir": ""})
         self.applied()

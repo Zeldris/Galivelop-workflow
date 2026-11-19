@@ -1786,6 +1786,36 @@ def summarize(plan):
     return lines
 
 
+# E67: keys whose default creates files outside .claude/ -> (folder it names, the value that turns it off). When the
+# project's gw.json does not write the key, the files the plan creates there are a decision nobody took yet.
+OUTSIDE_KEYS = (("agentsSkillsDir", config.agents_skills_dir, '""'),)
+
+
+def decisions(plan):
+    """E67: one `decide` line per OUTSIDE_KEYS key absent from the project's .claude/gw.json (unreadable counts as
+    absent) whose folder gets `create` actions: how many files, and the value that turns it off. Shown by --dry-run
+    and --dry-run --summary, before the user runs --update; never in the workflow repo."""
+    if plan.root.resolve() == WORKFLOW.resolve():
+        return []
+    try:
+        raw = json.loads((plan.root / config.CONFIG_REL).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raw = {}
+    out = []
+    for key, folder_of, off in OUTSIDE_KEYS:
+        if isinstance(raw, dict) and key in raw:
+            continue
+        folder = (folder_of(plan.cfg) or "").strip("/")
+        if not folder:
+            continue
+        n = sum(1 for kind, rel, *_r in plan.actions
+                if kind == "create" and str(rel).replace(os.sep, "/").startswith(folder + "/"))
+        if n:
+            out.append(f"  decide  {key}: creates {n} file(s) under {folder}/ (the default; the key is not in "
+                       f"{config.CONFIG_REL}); to turn it off: \"{key}\": {off}")
+    return out
+
+
 def report(plan):
     for rel, why, suffix in plan.pending:
         print(f"apply: pending proposal {rel}{suffix} ({rel} differs: {why}); merge it by hand and delete it: "
@@ -2015,7 +2045,7 @@ def main(argv=None):
         return 0
     if args.dry_run:
         print(f"apply: plan for {root} (workflow v{version}, dry run, nothing written):")
-        out = summarize(plan) if args.summary else lines
+        out = (summarize(plan) if args.summary else lines) + decisions(plan)
         for line in out:
             print(line)
         if not out:

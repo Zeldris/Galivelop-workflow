@@ -55,6 +55,11 @@ and template updates, plus the
 user's personal notes (`~/.claude/gw/notas/`, see `docs/en/config.md`) it would create (`personal note`) or that differ
 from the project's copy. Summarise it for the user with the CHANGELOG entries between X and Y (`### ES` or `### EN` per the user's language).
 
+A `decide` line (both forms) is a key the project's `.claude/gw.json` does not write whose default creates files
+outside `.claude/` (e.g. `agentsSkillsDir` and its `.agents/skills/` copies). Before `--update`, put it to the user
+as a decision with the value the line gives to turn it off; whatever they choose, write the key into
+`.claude/gw.json` so later updates stop asking.
+
 ## 3. Show the template diff for filled files
 
 Log, `REVIEW.md`, `GLOSSARY.md` and the `.claude/gw/*.md` notes are never overwritten, because the project filled
