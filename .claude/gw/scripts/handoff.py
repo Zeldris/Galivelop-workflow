@@ -469,8 +469,8 @@ def cmd_check(ctx, args):
     if ctx.config.get("logRows"):
         for key, line in lost_task_rows(ctx, args, text):
             problems.append(f"the \"Task in progress\" row of {key} is gone from the state table compared with the previous "
-                            f"log ({line[:60]}); put it back, or if the branch is finished close it: {me} close-row --branch "
-                            f"{key}")
+                            f"log ({line[:60]}); restore it (git show HEAD:{ctx.log}) and, if the branch is "
+                            f"finished, close it with: {me} close-row --branch {key}")
     problems += hard_problems
     if args.strict:
         problems += soft
@@ -498,7 +498,8 @@ def lost_task_rows(ctx, args, text):
     """D135: the "Task in progress" rows of HEAD's log that `text` no longer has, unless the commit closes their branch
     (close-row keeps the row, with the closed text) or is a merge. Commit time only: at push the pre-push checks the tip
     as a file, and a later commit may put the row back."""
-    if args.at == "push" or closing_other_side(ctx) or squash_in_progress(ctx):
+    if (args.at == "push" or closing_other_side(ctx) or squash_in_progress(ctx)
+            or os.environ.get("BITACORA_COMPARTIDA") or os.environ.get("GW_SHARED_LOG")):
         return []
     rev = "HEAD"
     if ctx.git("rev-parse", "--verify", "-q", rev).returncode != 0:
@@ -507,7 +508,9 @@ def lost_task_rows(ctx, args, text):
         return []  # the log is being created
     before = task_row_keys(ctx.show(rev, ctx.log))
     after = set(task_row_keys(text)) | {m.group("branch") for m in map(ROW.match, text.splitlines()) if m}  # any label
-    return [(k, line) for k, line in sorted(before.items()) if k not in after]  # a closed row (close-row) is still there
+    closed = tuple(CLOSED_TEXT.values())
+    return [(k, line) for k, line in sorted(before.items())
+            if k not in after and ROW.match(line) and not any(c in line for c in closed)]  # no branch / closed: nothing to lose
 
 
 def rows_problems(ctx, args, lines):
@@ -602,8 +605,8 @@ def squash_in_progress(ctx):
 
 
 def closing_other_side(ctx):
-    """True while a merge, cherry-pick or rebase is being closed: its closures come from the other side."""
-    for head in ("MERGE_HEAD", "CHERRY_PICK_HEAD", "REBASE_HEAD"):
+    """True while a merge, cherry-pick, revert or rebase is being closed: its closures come from the other side."""
+    for head in ("MERGE_HEAD", "CHERRY_PICK_HEAD", "REBASE_HEAD", "REVERT_HEAD"):
         path = Path(ctx.git("rev-parse", "--git-path", head).stdout.strip())
         if (path if path.is_absolute() else ctx.root / path).exists():
             return True
