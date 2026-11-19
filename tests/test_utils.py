@@ -125,6 +125,56 @@ class HandoffRows(Base):
         self.assertIn("logRows is off", out)
         self.assertNotIn("Merged", (p.work / LOG).read_text())
 
+    def lost_row_log(self):
+        return log_text().replace("| **Task in progress · `feat-b`** | doing B |\n", "")
+
+    def test_lost_task_row_refused_with_the_reason(self):  # D135: another branch's row removed
+        self.p.write(LOG, self.lost_row_log())
+        code, out = self.p.script("handoff.py", "check")
+        self.assertEqual(code, 1, out)
+        self.assertIn('the "Task in progress" row of feat-b is gone from the state table', out)
+        self.assertIn("close-row --branch feat-b", out)
+
+    def test_own_lost_task_row_refused_and_close_row_is_accepted(self):
+        self.p.write(LOG, log_text().replace("| **Task in progress · `feat-a`** | doing A |\n", ""))
+        self.assertIn("row of feat-a is gone", self.p.script("handoff.py", "check")[1])
+        self.p.write(LOG, log_text())
+        self.p.script("handoff.py", "close-row", "feat-a")  # the closed row stays: the branch is closed, not lost
+        code, out = self.p.script("handoff.py", "check")
+        self.assertEqual(code, 0, out)
+        self.assertIn("Merged, branch finished", (self.p.work / LOG).read_text())
+
+    def test_renamed_task_row_is_not_lost(self):
+        self.p.write(LOG, log_text().replace("| **Task in progress · `feat-b`**", "| **Next task · `feat-b`**"))
+        code, out = self.p.script("handoff.py", "check")
+        self.assertEqual(code, 0, out)
+
+    def test_lost_task_row_is_a_commit_time_rule_not_a_push_one(self):
+        self.p.write(LOG, self.lost_row_log())
+        self.assertEqual(self.p.script("handoff.py", "check", "--at", "push")[0], 0)  # a later commit may restore it
+        self.assertEqual(self.p.script("handoff.py", "check")[0], 1)
+
+    def test_lost_task_row_is_off_without_logrows(self):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        p = Utils(self.tmp, {"logRows": False})
+        p.write(LOG, self.lost_row_log())
+        self.assertEqual(p.script("handoff.py", "check")[0], 0)
+
+    def test_lost_task_row_with_no_log_at_head_compares_nothing(self):
+        self.p.git("rm", "-q", LOG)
+        self.p.commit("no log", env=dict(DAY, GW_SHARED_LOG="1"))
+        self.p.write(LOG, self.lost_row_log())
+        self.assertEqual(self.p.script("handoff.py", "check")[0], 0)
+
+    def test_lost_task_row_on_the_first_commit_compares_nothing(self):
+        shutil.rmtree(self.tmp)
+        self.tmp.mkdir()
+        p = Utils(self.tmp)
+        p.git("checkout", "-q", "--orphan", "fresh")  # no HEAD commit
+        p.write(LOG, self.lost_row_log())
+        self.assertEqual(p.script("handoff.py", "check")[0], 0)
+
 
 class HandoffSizeAndDone(Base):
     """`check` on the state-table cells and the Done section (any log, warnings unless --strict) and `done`."""
