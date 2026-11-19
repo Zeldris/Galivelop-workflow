@@ -594,6 +594,18 @@
       "default": true,
       "description": "true: `ci-local.py --validate` (in the check) parses every .github/workflows/*.yml|yaml and fails when one is invalid YAML (GitHub never runs it, so no CI goes red). false: it says it is off and passes."
     },
+    "ciActionlint": {
+      "type": "string",
+      "enum": ["auto", "require", "off"],
+      "default": "auto",
+      "description": "E71: `ci-local.py --validate` (in the check) runs `actionlint -shellcheck=` over the workflows once they parse. auto: a missing actionlint is a warning with the command that installs it; require: a failure; off: not run (doctor.py says so instead of warning). The CI template installs it on GitHub unless off."
+    },
+    "actionlintVersion": {
+      "type": "string",
+      "pattern": "^([0-9]+\\.[0-9]+\\.[0-9]+)?$",
+      "default": "1.7.12",
+      "description": "E71: the actionlint version (X.Y.Z) the CI template installs (pip install actionlint-py==X.Y.Z.*) and `ci-local.py --validate` expects: another local version is a warning with that command. Empty: not pinned."
+    },
     "ciKeepSteps": {
       "type": "boolean",
       "default": true,

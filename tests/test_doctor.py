@@ -39,6 +39,7 @@ class Doctor(Snapshot):
         p.write(".github/workflows/check.yml", "name: check\njobs:\n  c:\n    steps:\n      - run: bash check.sh\n")
         p.write("AGENTS.md", "# Rules\n\nDeal multi-step work to subagents (skill gw-orchestrate-dealer).\n")
         cfg = json.loads((p.work / ".claude" / "gw.json").read_text())  # D137: a filled relatedTests, so no WARN
+        cfg["check"] = list(cfg.get("check") or []) + ["python3 .claude/gw/scripts/ci-local.py --validate"]  # E71
         p.write(".claude/gw.json", json.dumps(dict(cfg, relatedTests={"fast": ["true"], "slow": []})))
         p.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| Next step | write tests |\n")
         p.write(".claude/skills/gw-selector/SKILL.md", SKILL.format(version=VERSION))
@@ -400,7 +401,8 @@ class Doctor(Snapshot):
         (self.p.work / "web" / "node_modules").mkdir(parents=True)
         (self.p.work / "api" / ".venv").mkdir(parents=True)
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
-        cfg["check"] = ["bash check.sh", "cd ./web/ && npm test", "cd api && pytest"]
+        cfg["check"] = ["bash check.sh", "cd ./web/ && npm test", "cd api && pytest",
+                        "python3 .claude/gw/scripts/ci-local.py --validate"]  # E71: no workflow lint WARN
         cfg["worktreeLinks"] = ["./web//node_modules", "api/"]  # exact path, and a parent folder, unnormalised
         self.p.write(".claude/gw.json", json.dumps(cfg))
         code, out = self.doctor()
@@ -529,6 +531,37 @@ class Doctor(Snapshot):
         line = self.assertLine(out, "OK", "ci", "check.yml run(s) the check")
         self.assertNotIn("templates/github", line)
         self.assertNotIn("WARN  ci", out)
+
+    def set_cfg(self, **keys):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.update(keys)
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+
+    def test_workflows_not_validated_by_the_check_warn_with_the_command(self):
+        """E71: a check (bash check.sh) that does not validate .github/workflows."""
+        self.set_cfg(check=["bash check.sh"])
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "workflow lint", "no `check` command validates them",
+                        "ci-local.py --validate", 'ciActionlint "off"')
+
+    def test_workflows_validated_by_ci_local_or_actionlint_in_a_named_script_are_ok(self):
+        code, out = self.doctor()
+        self.assertLine(out, "OK", "workflow lint", "validates .github/workflows")
+        self.set_cfg(check=["bash tools/lint.sh"])
+        self.p.write("tools/lint.sh", "actionlint -shellcheck= .github/workflows/*.yml\n")
+        code, out = self.doctor()
+        self.assertLine(out, "OK", "workflow lint", "validates")
+        self.assertNotIn("WARN workflow lint", out)
+
+    def test_workflow_lint_off_or_no_workflows_says_nothing_to_fix(self):
+        self.set_cfg(ciActionlint="off")
+        code, out = self.doctor()
+        self.assertLine(out, "OK", "workflow lint", "actionlint is off (ciActionlint)")
+        self.set_cfg(ciActionlint="auto")
+        shutil.rmtree(self.p.work / ".github")
+        code, out = self.doctor()
+        self.assertNotIn("workflow lint", out)
 
     def test_ci_that_does_not_run_the_check_proposes_check_yml_or_the_pre_commit_step(self):
         self.p.write(".github/workflows/deploy.yml", "name: deploy\njobs:\n  d:\n    steps:\n      - run: ./deploy.sh\n")

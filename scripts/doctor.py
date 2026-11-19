@@ -458,6 +458,26 @@ def check_ci(rep, root, cfg=None):
                  "step that runs the base branch's .githooks/pre-commit --range (docs/en/apply.md, Existing CI)")
 
 
+
+def check_workflow_lint(rep, root, cfg):
+    """E71: WARN when the project has workflows and no `check` command (nor a script or Makefile it names) runs
+    `ci-local.py --validate` or `actionlint`: a broken workflow would only show when GitHub runs it. With `ciActionlint`
+    off, an OK that says so; nothing without workflows or `check` commands."""
+    wf = root / ".github" / "workflows"
+    if cfg is None or not cfg.get("check") or not (wf.is_dir() and any(wf.glob("*.y*ml"))):
+        return
+    if cfg.get("ciActionlint") == "off":
+        rep.ok("workflow lint", "actionlint is off (ciActionlint); only ci-local.py --validate's YAML check, if any")
+        return
+    text = check_run_text(root, cfg)
+    if re.search(r"ci-local\.py\s+--validate|\bactionlint\b", text):
+        rep.ok("workflow lint", "the check validates .github/workflows (ci-local.py --validate / actionlint)")
+    else:
+        rep.warn("workflow lint", "the project has .github/workflows but no `check` command validates them, so a "
+                 "broken workflow only shows when GitHub runs it",
+                 "add \"python3 .claude/gw/scripts/ci-local.py --validate\" to `check` in .claude/gw.json (it runs "
+                 "actionlint too; ciActionlint \"off\" silences this)")
+
 def hook_files(command, root):
     """Files a hook command runs: words that use $CLAUDE_PROJECT_DIR, or a path given as the program itself."""
     expanded = command.replace("${CLAUDE_PROJECT_DIR}", str(root)).replace("$CLAUDE_PROJECT_DIR", str(root))
@@ -1215,6 +1235,7 @@ def run(root):
     check_log(rep, root, cfg)
     check_commands(rep, root, cfg)
     check_ci(rep, root, cfg)
+    check_workflow_lint(rep, root, cfg)
     check_ci_access(rep, root)
     check_settings(rep, root)
     check_subagents(rep, root)

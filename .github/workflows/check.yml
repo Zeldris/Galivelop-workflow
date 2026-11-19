@@ -28,6 +28,18 @@ jobs:
           version="$(python3 scripts/config.py get shellcheckVersion)"
           python3 -m pip install "shellcheck-py==$version.*"
           shellcheck --version
+      - name: Install actionlint (actionlintVersion of .claude/gw.json)
+        # E71: `ci-local.py --validate` (tests/check.sh) lints the workflows with it unless `ciActionlint` is off. Only on
+        # GitHub (ci-local.py runs this file on a machine expected to have its own tools), in a venv under RUNNER_TEMP
+        # so the runner's system Python is not touched.
+        run: |
+          if [ "${GITHUB_ACTIONS:-}" = true ] && [ "$(python3 scripts/config.py get ciActionlint)" != off ] \
+              && compgen -G '.github/workflows/*.y*ml' >/dev/null; then
+            version="$(python3 scripts/config.py get actionlintVersion)"
+            python3 -m venv "$RUNNER_TEMP/actionlint"
+            "$RUNNER_TEMP/actionlint/bin/pip" install --quiet "actionlint-py${version:+==$version.*}"
+            echo "$RUNNER_TEMP/actionlint/bin" >> "$GITHUB_PATH"
+          fi
       - name: Check
         # B37: the macOS runner is slower; the tests' waits (tests/waits.py) grow by this factor there.
         env:

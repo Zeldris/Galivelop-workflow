@@ -74,6 +74,8 @@
   "ciLocalLog": "docs/records/ci-local.md",
   "ciLocalWorkflows": [],
   "ciYamlCheck": true,
+  "ciActionlint": "auto",
+  "actionlintVersion": "1.7.12",
   "ciNodeDirs": ["."],
   "ciRustDirs": [],
   "ciIgnore": [],

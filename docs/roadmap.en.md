@@ -374,7 +374,7 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | E68 | `gw-selector` and the start hook recommend `gw-worker` for sweeps and review fixes of 2 or more points (`0.9` harvest, image-generator P3) | done (2026-11-19) |
 | E69 | `gw-orchestrate-dealer` brief template: the defect is also looked for in the sibling file (`0.9` harvest, image-generator P2) | done (2026-11-19) |
 | E70 | `wholeReadDenyPaths`: `whole-read.py` rejects those paths with their alternative command, not only warns (`0.9` harvest, image-generator P4) | done (2026-11-19) |
-| E71 | `actionlint` in the check of projects with `.github/workflows/` and a `doctor.py` warning when they are not validated (`0.9` harvest, installer P2) | pending |
+| E71 | `actionlint` in the check of projects with `.github/workflows/` and a `doctor.py` warning when they are not validated (`0.9` harvest, installer P2) | done (2026-11-19) |
 | E72 | `generated` key (`{command, paths}`): the check regenerates and compares with `git diff --exit-code` (`0.9` harvest, private-project-1 P1) | pending |
 | E73 | `projectSkillPrefix` key: `gw-init` writes it and `doctor.py` warns about own skills without the prefix (`0.9` harvest, private-project-3 P4) | pending |
 | E74 | `PreToolUse` hook that warns, without blocking, when the main session reads another repository, with a key to turn it off (`0.9` harvest, private-project-3 P3) | pending |

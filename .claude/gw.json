@@ -12,7 +12,8 @@
   ],
   "pushToProtected": "direct",
   "install": [
-    "pip install \"shellcheck-py==$(python3 scripts/config.py get shellcheckVersion).*\""
+    "pip install \"shellcheck-py==$(python3 scripts/config.py get shellcheckVersion).*\"",
+    "pip install \"actionlint-py==$(python3 scripts/config.py get actionlintVersion).*\""
   ],
   "check": [
     "bash tests/check.sh",

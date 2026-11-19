@@ -4,6 +4,7 @@ workflow of plain `run:` steps, which say what ran, what not, what is not covere
 """
 import importlib.util
 import json
+import os
 import platform
 import shutil
 import tempfile
@@ -138,6 +139,10 @@ class Runs(unittest.TestCase):
         self.p = Project(self.tmp)
         shutil.copy2(ROOT / "scripts" / "ci-local.py", self.p.work / ".claude" / "gw" / "scripts" / "ci-local.py")
         self.p.git("checkout", "-q", "-b", "feature")
+        # E71: neither GitHub's own variable nor an actionlint installed here (the CI installs one) changes these tests
+        self.p.env.pop("GITHUB_ACTIONS", None)
+        self.p.env["PATH"] = os.pathsep.join(d for d in self.p.env.get("PATH", os.defpath).split(os.pathsep)
+                                             if not os.path.isfile(os.path.join(d, "actionlint")))
 
     def workflow(self, body, name="ci.yml", commit=True):
         self.p.write(f".github/workflows/{name}", body)
@@ -526,6 +531,134 @@ class Validate(unittest.TestCase):
         tpl = json.loads((ROOT / "templates" / "gw.json").read_text())
         self.assertIs(tpl["ciYamlCheck"], True)
         self.assertIn("python3 .claude/gw/scripts/ci-local.py --validate", tpl["check"])
+
+
+class Actionlint(unittest.TestCase):
+    """E71: --validate also runs `actionlint -shellcheck=` over valid workflows (`ciActionlint`, `actionlintVersion`);
+    a fake actionlint on PATH records its arguments and answers as told."""
+    setUp_runs, workflow, ci, set_config = Runs.setUp, Runs.workflow, Runs.ci, Runs.set_config
+    GOOD = Validate.GOOD
+    FAKE = """#!/bin/sh
+if [ "$1" = -version ]; then echo "${FAKE_VERSION:-1.7.12}"; echo "installed by pip"; exit 0; fi
+echo "$@" >> "$FAKE_LOG"
+[ -z "${FAKE_FAIL:-}" ] || { echo "$FAKE_FAIL"; exit 1; }
+"""
+
+    def setUp(self):
+        self.setUp_runs()
+        self.bin = self.tmp / "fakebin"
+        self.bin.mkdir()
+        self.calls = self.tmp / "actionlint-calls"
+        self.p.env["FAKE_LOG"] = str(self.calls)
+
+    def install(self):
+        (self.bin / "actionlint").write_text(self.FAKE)
+        (self.bin / "actionlint").chmod(0o755)
+        self.p.env["PATH"] = str(self.bin) + os.pathsep + self.p.env["PATH"]
+
+    def called(self):
+        return self.calls.read_text().splitlines() if self.calls.exists() else []
+
+    def test_installed_runs_over_every_workflow_without_shellcheck(self):
+        self.install()
+        self.workflow(self.GOOD)
+        self.workflow(self.GOOD, name="b.yaml")
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 0, out)
+        [args] = self.called()
+        self.assertEqual(args.split(), ["-shellcheck=", ".github/workflows/b.yaml", ".github/workflows/ci.yml"])
+        self.assertIn("actionlint: 2 workflow file(s) clean", out)
+
+    def test_its_findings_fail_with_the_fix(self):
+        self.install()
+        self.p.env["FAKE_FAIL"] = ".github/workflows/ci.yml:3:5: unexpected key \"job\" [syntax-check]"
+        self.workflow(self.GOOD)
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 1, out)
+        self.assertIn('ci.yml:3:5: unexpected key "job"', out)
+        self.assertIn("actionlint found errors", out)
+        self.assertIn("ci-local.py --validate", out)
+
+    def test_invalid_yaml_does_not_run_it(self):
+        self.install()
+        self.workflow("name: a: b\n", name="bad.yml")
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 1, out)
+        self.assertEqual(self.called(), [])
+
+    def test_no_workflow_does_not_run_it(self):
+        self.install()
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.called(), [])
+        self.assertNotIn("actionlint", out)
+
+    def test_missing_warns_with_the_pinned_install_in_auto_and_fails_in_require(self):
+        self.workflow(self.GOOD)
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 0, out)
+        self.assertIn("warning: actionlint is not installed", out)
+        self.assertIn('pip install "actionlint-py==1.7.12.*"', out)
+        self.set_config(ciActionlint="require")
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 1, out)
+        self.assertIn("actionlint is not installed and ciActionlint is require", out)
+        self.assertIn('pip install "actionlint-py==1.7.12.*"', out)
+        self.set_config(actionlintVersion="")
+        code, out = self.ci("--validate")
+        self.assertIn('pip install actionlint-py', out)
+        self.assertNotIn("==", out)
+
+    def test_off_does_not_run_it(self):
+        self.install()
+        self.p.env["FAKE_FAIL"] = "boom"
+        self.workflow(self.GOOD)
+        self.set_config(ciActionlint="off")
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.called(), [])
+        self.assertIn("actionlint is off (ciActionlint", out)
+
+    def test_another_version_warns_and_still_runs(self):
+        self.install()
+        self.p.env["FAKE_VERSION"] = "1.6.0"
+        self.workflow(self.GOOD)
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 0, out)
+        self.assertIn("warning: actionlint 1.6.0 here, but actionlintVersion is 1.7.12", out)
+        self.assertIn('pip install "actionlint-py==1.7.12.*"', out)
+        self.assertEqual(len(self.called()), 1)
+        self.set_config(actionlintVersion="")
+        code, out = self.ci("--validate")
+        self.assertNotIn("warning: actionlint", out)
+
+    def test_bad_values_are_config_errors(self):
+        self.workflow(self.GOOD)
+        for key, value in (("ciActionlint", "yes"), ("actionlintVersion", "1.7")):
+            self.set_config(**{key: value})
+            code, out = self.ci("--validate")
+            self.assertEqual(code, 2, out)
+            self.assertIn(key, out)
+            self.set_config(ciActionlint="auto", actionlintVersion="1.7.12")
+
+    def test_keys_are_in_schema_and_template(self):
+        schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
+        self.assertEqual(schema["ciActionlint"]["default"], "auto")
+        self.assertEqual(schema["ciActionlint"]["enum"], ["auto", "require", "off"])
+        self.assertEqual(schema["actionlintVersion"]["default"], "1.7.12")
+        tpl = json.loads((ROOT / "templates" / "gw.json").read_text())
+        self.assertEqual((tpl["ciActionlint"], tpl["actionlintVersion"]), ("auto", "1.7.12"))
+
+    def test_the_ci_template_installs_the_pinned_version_only_on_github(self):
+        text = (ROOT / "templates" / "github" / "check.yml").read_text()
+        step = text.split("- name: Install actionlint", 1)[1].split("- name:", 1)[0]
+        self.assertIn('[ "${GITHUB_ACTIONS:-}" = true ]', step)
+        self.assertIn("config.py get actionlintVersion", step)
+        self.assertIn("config.py get ciActionlint", step)
+        self.assertIn('"$RUNNER_TEMP/actionlint"', step)
+        self.assertIn("GITHUB_PATH", step)
+        self.assertLess(text.index("- name: Install actionlint"), text.index("- name: Check\n"))
+
 
 if __name__ == "__main__":
     unittest.main()
