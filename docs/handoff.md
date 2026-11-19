@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.0` publicada** (`main` = `b3825b8`, 2026-11-18; CI en verde; etiqueta y release `v0.8.0` creadas desde una sesión local) |
-| Siguiente paso | **Parche `0.8.1` en obra** (`docs/roadmap.md`, D128-D141): las dos oleadas fusionadas y revisadas (`Findings: 11` y `Findings: 7`); ahora cierre del 0.8.1 (CHANGELOG y README hechos, H25; falta check completo, CI, documentación, CHANGELOG, versión y fases antes de `main`, con confirmación del usuario); luego `0.9` (E65-E76). Presupuesto de compactaciones: 0 |
+| Siguiente paso | **Parche `0.8.1` sellado** (H25: D128-D141, CHANGELOG, README, `version.py 0.8.1` y `apply.py .`; check completo en verde antes del sello). Ahora las fases antes de `main` (revisión del bloque desde el último `Findings:`, `/gw-opt-tokens`, `/retro`, `reviewed.sh`), con confirmación del usuario; luego `0.9` (E65-E76). Presupuesto de compactaciones: 0 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-19 — D141: el Findings: de un merge cierra el bloque de revisión y cuenta en metrics.py quality (antes --no-merges lo ignoraba y recover.py --state avisaba de una revisión ya hecha); visto al empezar el cierre del 0.8.1.
-2. 2026-11-19 — Segunda oleada del 0.8.1 fusionada (D129+D130, D135, D137) y revisada: 7 hallazgos arreglados (guarda de filas de handoff.py, pendingFile de apply.py) y 5 leves a pendientes de la 0.10.
-3. 2026-11-19 — Revisión del bloque de la primera oleada del 0.8.1: 11 hallazgos aceptados y arreglados (uno descartado por falso), entre ellos scope-guard llamaba a workflow_dir con la firma vieja y apagaba B44 sin aviso; claves nuevas workflowRepository y workflowClone. Check de la oleada en verde salvo la copia del esquema, arreglada.
-4. 2026-11-18 — Primera oleada del parche 0.8.1 fusionada: D128 (gancho duplicado por cambio de matcher; doctor lo detecta), D131, D132 (review-scope.py busca la copia del flujo o falla con la orden), D133, D134, D136, D138, D139 y D140. D131 dejó las plantillas en 151 líneas (tope 150), arreglado. Conflicto del roadmap en D132, resuelto.
-5. 2026-11-18 — Recogida (gw-harvest) de apertura de la 0.9 del 2026-11-18 sobre 10 proyectos (private-project-5 es nuevo): propuestas en docs/proposals/2026-11-18-*.md, al usuario para decidir. Fallo de la 0.8.0: gw-update deja whole-read.py registrado dos veces (instalador-wmf-tarkor P1, candidato a 0.8.1).
+1. 2026-11-19 — Sello del parche 0.8.1 (H25): CHANGELOG es/en con D128-D141, README en 0.8.1, version.py 0.8.1 y apply.py .; check completo en verde sobre 9feae0a antes del sello.
+2. 2026-11-19 — D141: el Findings: de un merge cierra el bloque de revisión y cuenta en metrics.py quality (antes --no-merges lo ignoraba y recover.py --state avisaba de una revisión ya hecha); visto al empezar el cierre del 0.8.1.
+3. 2026-11-19 — Segunda oleada del 0.8.1 fusionada (D129+D130, D135, D137) y revisada: 7 hallazgos arreglados (guarda de filas de handoff.py, pendingFile de apply.py) y 5 leves a pendientes de la 0.10.
+4. 2026-11-19 — Revisión del bloque de la primera oleada del 0.8.1: 11 hallazgos aceptados y arreglados (uno descartado por falso), entre ellos scope-guard llamaba a workflow_dir con la firma vieja y apagaba B44 sin aviso; claves nuevas workflowRepository y workflowClone. Check de la oleada en verde salvo la copia del esquema, arreglada.
+5. 2026-11-18 — Primera oleada del parche 0.8.1 fusionada: D128 (gancho duplicado por cambio de matcher; doctor lo detecta), D131, D132 (review-scope.py busca la copia del flujo o falla con la orden), D133, D134, D136, D138, D139 y D140. D131 dejó las plantillas en 151 líneas (tope 150), arreglado. Conflicto del roadmap en D132, resuelto.
 
 ## Pendiente
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.8.0
+# galivelop-workflow v0.8.1
 """Apply or update the workflow in a project: the deterministic core of /gw-init and /gw-update (plan §5.4).
 
   python3 <workflow>/scripts/apply.py [PROJECT] [--update] [--check] [--dry-run [--summary]] [--with SKILL ...]

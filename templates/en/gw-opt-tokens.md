@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.8.0 -->
+<!-- galivelop-workflow v0.8.1 -->
 # gw-opt-tokens — project notes
 
 Read by the `gw-opt-tokens` skill before proposing anything, and updated when the person approves a change. Created by
