@@ -339,7 +339,7 @@ Fixes from the `0.9` opening harvest (user, 2026-11-18): the `0.8.0` duplicated 
 | D134 | `handoff.py next-id`: the error for a prefix the plan does not accept names the valid prefixes and `--id-regex`/`taskId`; `--plan` also works after the subcommand (`0.9` harvest, private-project-2 P3 and private-project-5 P5) | done (2026-11-18) |
 | D135 | `handoff.py check` rejects a state table that loses the "Task in progress" row against `HEAD` without a branch close (`0.9` harvest, image-generator P1) | done (2026-11-18) |
 | D136 | `merge-branch.sh` tells a worktree locked by a live agent apart: it says so and leaves it for the next pass instead of failing (`0.9` harvest, image-generator P5) | done (2026-11-18) |
-| D137 | `doctor.py` warns on `branchCheck: related` with empty `relatedTests` (`0.9` harvest, image-generator P6) | pending |
+| D137 | `doctor.py` warns on `branchCheck: related` with empty `relatedTests` (`0.9` harvest, image-generator P6) | done (2026-11-18) |
 | D138 | `measure.py` with no `--since` starts at the last `/clear` or compaction of the same session file (`0.9` harvest, private-project-2 P4) | done (2026-11-18) |
 | D139 | `measure.py --since` picks the repo folder's session before a parent folder's (`0.9` harvest, private-project-5 P2) | done (2026-11-18) |
 | D140 | The `handoff.py` warning after a `pre-commit` rejection says to repeat the same `git commit -m …` and points to `COMMIT_EDITMSG` only after a `commit-msg` rejection (`0.9` harvest, world-maker-fantasy P3) | done (2026-11-18) |

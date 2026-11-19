@@ -38,6 +38,8 @@ class Doctor(Snapshot):
         shutil.copy2(ROOT / "templates" / "githooks" / "commit-msg", p.work / ".githooks" / "commit-msg")
         p.write(".github/workflows/check.yml", "name: check\njobs:\n  c:\n    steps:\n      - run: bash check.sh\n")
         p.write("AGENTS.md", "# Rules\n\nDeal multi-step work to subagents (skill gw-orchestrate-dealer).\n")
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())  # D137: a filled relatedTests, so no WARN
+        p.write(".claude/gw.json", json.dumps(dict(cfg, relatedTests={"fast": ["true"], "slow": []})))
         p.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| Next step | write tests |\n")
         p.write(".claude/skills/gw-selector/SKILL.md", SKILL.format(version=VERSION))
         p.commit("set up")
@@ -1283,6 +1285,29 @@ class Doctor(Snapshot):
         self.assertLine(self.doctor_env(self.tools(magick="WEBP"))[1], "WARN", "media tools", "Playwright")
         self.install_playwright(self.tmp)  # doctor runs in self.tmp; a node_modules above also resolves
         self.assertLine(self.doctor_env(self.tools(magick="WEBP"))[1], "OK", "media tools", "Playwright")
+
+    # --- D137: branchCheck related with empty relatedTests
+
+    def set_cfg(self, **keys):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.pop("branchCheck", None)
+        cfg.pop("relatedTests", None)
+        self.p.write(".claude/gw.json", json.dumps(dict(cfg, **keys)))
+
+    def test_related_tests_empty_with_branch_check_related_warns(self):
+        for keys in ({"branchCheck": "related"}, {}, {"branchCheck": "related", "relatedTests": {}},
+                     {"relatedTests": {"fast": [], "slow": []}}):
+            self.set_cfg(**keys)
+            line = self.assertLine(self.doctor()[1], "WARN", "related tests", "relatedTests has no command")
+            self.assertIn("fill relatedTests in .claude/gw.json", line)
+            self.assertIn('"branchCheck": "full"', line)
+
+    def test_related_tests_no_warning_for_full_or_filled(self):
+        for keys in ({"branchCheck": "full"}, {"branchCheck": "full", "relatedTests": {"fast": ["true"]}},
+                     {"branchCheck": "related", "relatedTests": {"fast": ["true"]}},
+                     {"relatedTests": {"slow": ["true"]}}):
+            self.set_cfg(**keys)
+            self.assertNotIn("related tests", self.doctor()[1])
 
 
 class TemplatesAgree(unittest.TestCase):

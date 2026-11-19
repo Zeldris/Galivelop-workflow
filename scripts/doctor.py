@@ -1149,6 +1149,22 @@ def check_media_tools(rep, root):
         rep.ok("media tools", f"gw-media-content: {', '.join(found)} found")
 
 
+def check_related_tests(rep, cfg):
+    """D137: WARN when branchCheck is "related" (the default) but relatedTests has no command in fast or slow: the
+    branch pre-push then falls back to the full check on every push (config.py push_scope), so "related" saves nothing.
+    Any other branchCheck, or a relatedTests with a command, says nothing."""
+    if not cfg or cfg.get("branchCheck", "related") != "related":
+        return
+    related = cfg.get("relatedTests")
+    related = related if isinstance(related, dict) else {}
+    if any(related.get(kind) for kind in ("fast", "slow")):
+        return
+    rep.warn("related tests", 'branchCheck is "related" but relatedTests has no command, so the branch pre-push has '
+             "no related tests to run and runs the full check on every push",
+             'fill relatedTests in .claude/gw.json ({"fast": ["<test command for {files}>"], "slow": []}, see '
+             'docs/en/config.md), or set "branchCheck": "full" to say so')
+
+
 GITHUB_REMOTE = re.compile(r"^(?:https?://(?:[^/@]+@)?|ssh://(?:[^/@]+@)?|[^/@:]+@)github\.com[:/]", re.I)
 
 
@@ -1208,6 +1224,7 @@ def run(root):
     check_test_dirs(rep, root, cfg)
     check_media_folder(rep, root)
     check_media_tools(rep, root)
+    check_related_tests(rep, cfg)
     proposals = check_proposals(rep, root)
     check_skills(rep, root, version, proposals, cfg)
     check_session(rep, root)
