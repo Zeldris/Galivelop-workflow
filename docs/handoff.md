@@ -11,7 +11,7 @@
 | Rama | **`0.9`: `ccr-d1e2d496-0vzck8`**, con `main` fusionado. `main` = `4ca45d0` = **`0.8.1`**. `version/1.0.0` se queda con el diseño (`docs/design/`) |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | **`0.8.1` publicada** (`main` = `4ca45d0`, 2026-11-19; etiqueta y release `v0.8.1` creadas desde una sesión local) |
+| Último punto estable | **`0.8.1` publicada** (`main` = `4ca45d0`, 2026-11-19; CI en verde; etiqueta y release `v0.8.1` creadas desde una sesión local) |
 | Siguiente paso | **`0.9` «Front»**: la recogida de apertura (H24) ya está hecha; tareas E65-E76 de la recogida, en orden, y luego A12, E4, E5, E7, E9-E16, E42 y E50. Presupuesto de compactaciones: 0 |
 
 ### Fases

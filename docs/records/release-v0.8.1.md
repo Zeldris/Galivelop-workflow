@@ -3,7 +3,7 @@
 - **Etiqueta:** `v0.8.1`, sobre `4ca45d0`, el commit de `main` de la subida del 2026-11-19.
 - **Título:** el bloque de abajo.
 - **Cuerpo:** el segundo bloque. La entrada completa está en el CHANGELOG.
-- **Publicada:** no todavía; el usuario decidió (2026-11-19) que la publique el agente desde una sesión local (`gh release create v0.8.1 --target 4ca45d0`, con estos textos).
+- **Publicada:** 2026-11-19 por el agente desde una sesión local (`gh release create --target 4ca45d0`, a petición del usuario; CI de `fb30793` en verde en Linux y macOS), con estos textos.
 
 ```text
 Galivelop-workflow v0.8.1
