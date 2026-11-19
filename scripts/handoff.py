@@ -11,7 +11,10 @@ contradicting "Next" lines, so each branch writes only in its own row and the ro
                                                  with logRows: rows well formed, one per branch, <= 600 characters;
                                                  with --date, the "Updated" row is not older than that day; a "Task
                                                  in progress" row with no `branch` fails even if the other rows are
-                                                 fine. On any log: every value cell of the state table (first
+                                                 fine; and (D135) a "Task in progress" row of HEAD's log (at commit time
+                                                 only, not with --at push) that is gone, not even renamed (its branch has no
+                                                 row left), fails, unless the commit closes that branch (its row
+                                                 says "merged, branch finished", close-row) or is a merge. On any log: every value cell of the state table (first
                                                  "Estado actual" / "Current state" section) <= 800 characters, and
                                                  the "Hecho (5 últimas)" / "Done (last 5)" section has <= 5 items,
                                                  numbered 1..n, each on its own line ("N. "). These last rules only
@@ -463,6 +466,11 @@ def cmd_check(ctx, args):
             print(f"WARNING: handoff: the log has {len(text)} characters (cap logSize = {cap}); archive the items of "
                   f"published versions: {me} archive")
     problems = rows_problems(ctx, args, text.splitlines()) if ctx.config.get("logRows") else []
+    if ctx.config.get("logRows"):
+        for key, line in lost_task_rows(ctx, args, text):
+            problems.append(f"the \"Task in progress\" row of {key} is gone from the state table compared with the previous "
+                            f"log ({line[:60]}); put it back, or if the branch is finished close it: {me} close-row --branch "
+                            f"{key}")
     problems += hard_problems
     if args.strict:
         problems += soft
@@ -472,6 +480,34 @@ def cmd_check(ctx, args):
     if args.at == "push":  # the commit already exists: the fix is a new commit
         return report(problems, f"edit {ctx.log} and make a new commit with the fix: git add {ctx.log} && git commit")
     return report(problems, f"edit {ctx.log}, stage it (git add {ctx.log}) and repeat the same commit: git commit -m \"...\"")
+
+
+def task_row_keys(text):
+    """{key: line} of the "Task in progress" rows: the branch when the row has one (a renamed label is the same row),
+    else the label."""
+    out = {}
+    for line in text.splitlines():
+        m = TASK_ROW.match(line)
+        if m:
+            r = ROW.match(line)
+            out[r.group("branch") if r else m.group(1).lower()] = line
+    return out
+
+
+def lost_task_rows(ctx, args, text):
+    """D135: the "Task in progress" rows of HEAD's log that `text` no longer has, unless the commit closes their branch
+    (close-row keeps the row, with the closed text) or is a merge. Commit time only: at push the pre-push checks the tip
+    as a file, and a later commit may put the row back."""
+    if args.at == "push" or closing_other_side(ctx) or squash_in_progress(ctx):
+        return []
+    rev = "HEAD"
+    if ctx.git("rev-parse", "--verify", "-q", rev).returncode != 0:
+        return []  # the first commit: nothing before it
+    if ctx.git("cat-file", "-e", f"{rev}:{ctx.log}").returncode != 0:
+        return []  # the log is being created
+    before = task_row_keys(ctx.show(rev, ctx.log))
+    after = set(task_row_keys(text)) | {m.group("branch") for m in map(ROW.match, text.splitlines()) if m}  # any label
+    return [(k, line) for k, line in sorted(before.items()) if k not in after]  # a closed row (close-row) is still there
 
 
 def rows_problems(ctx, args, lines):
