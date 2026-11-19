@@ -6,7 +6,7 @@ The Galivelop workshop's way of working with AI coding agents (Claude Code first
 generalised for any repository. It is the **single, versioned source** of its skills, hooks, scripts and templates:
 an improvement is made once here and reaches every project that uses it.
 
-> **Status: `0.8.0`, stage 1 being run in.** It is already applied to real projects by an AI agent. Only the latest
+> **Status: `0.8.1`, stage 1 being run in.** It is already applied to real projects by an AI agent. Only the latest
 > published minor gets patches (`0.8.x` today); new work goes into the next minors (`0.9` "Front" is being built,
 > then `0.10` "Stable", with fixes only), and `1.0` will be the Management Center. See the
 > [roadmap](docs/roadmap.en.md), the [plan](docs/plan.en.md), the [log](docs/handoff.md) and the

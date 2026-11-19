@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.0` publicada** (`main` = `b3825b8`, 2026-11-18; CI en verde; etiqueta y release `v0.8.0` creadas desde una sesión local) |
-| Siguiente paso | **Parche `0.8.1` en obra** (`docs/roadmap.md`, D128-D141): las dos oleadas fusionadas y revisadas (`Findings: 11` y `Findings: 7`); ahora cierre del 0.8.1 (check completo, CI, documentación, CHANGELOG, versión y fases antes de `main`, con confirmación del usuario); luego `0.9` (E65-E76). Presupuesto de compactaciones: 0 |
+| Siguiente paso | **Parche `0.8.1` en obra** (`docs/roadmap.md`, D128-D141): las dos oleadas fusionadas y revisadas (`Findings: 11` y `Findings: 7`); ahora cierre del 0.8.1 (CHANGELOG y README hechos, H25; falta check completo, CI, documentación, CHANGELOG, versión y fases antes de `main`, con confirmación del usuario); luego `0.9` (E65-E76). Presupuesto de compactaciones: 0 |
 
 ### Fases
 
