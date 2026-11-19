@@ -360,7 +360,7 @@ Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18)
 | E42 | Skill `gw-seo` (SEO y vistas previas de webs estáticas) traída del portal: sin rutas del portal, nombres en inglés, tests en el check, docs es/en y la LICENSE MIT de su fuente (recogida de cierre `0.6`, portal P1) | pendiente |
 | E50 | Gancho `PreToolUse` de `Read` que avisa, sin bloquear, al leer capturas sueltas y sugiere montarlas en una hoja (orden del proyecto en una clave) (recogida `0.6.0`, image-generator P6) | pendiente |
 | H24 | Recogida de apertura de la `0.9` (`gw-harvest`) al empezarla, tras actualizar los proyectos a la `0.8.0` (AGENTS.md) | hecho (2026-11-18; las 25 propuestas aprobadas: D128-D140 al parche `0.8.1`, E65-E76 a la `0.9`) |
-| H25 | Cierre del parche `0.8.1`: CHANGELOG, README, sello (`version.py`, `apply.py .`) y fases antes de `main` | en obra (2026-11-19; sellado) |
+| H25 | Cierre del parche `0.8.1`: CHANGELOG, README, sello (`version.py`, `apply.py .`) y fases antes de `main` | hecho (2026-11-19; `main` = `4ca45d0`, release `v0.8.1` publicada) |
 | E65 | `merge-main.py`: commitea el ledger de métricas (o se niega con más cambios) antes de `git merge origin/<protectedBranch>`; las plantillas de `AGENTS.md` apuntan a él (recogida `0.9`, world-maker-fantasy P2) | pendiente |
 | E66 | Aviso de `/clear` al cerrar una tarea con el contexto por encima de un umbral (clave nueva) en `recover.py --state` y `before-stop.py`; un «Siguiente» tras un cierre se contesta pidiendo `/clear` (recogida `0.9`, private-project-3 P1) | pendiente |
 | E67 | `gw-update` presenta como decisión, antes de `--update`, las claves nuevas que crean archivos fuera de `.claude/`, con la clave que lo apaga (recogida `0.9`, private-project-2 P5) | pendiente |
