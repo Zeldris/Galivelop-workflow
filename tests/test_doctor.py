@@ -537,6 +537,24 @@ class Doctor(Snapshot):
         cfg.update(keys)
         self.p.write(".claude/gw.json", json.dumps(cfg))
 
+    def test_generated_without_generated_check_in_the_check_warns(self):
+        """E72: `generated` set, but no `check` command runs generated-check.py."""
+        self.set_cfg(generated=[{"command": "make gen", "paths": ["gen"]}])
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertLine(out, "WARN", "generated files", "no `check` command runs generated-check.py",
+                        "python3 .claude/gw/scripts/generated-check.py")
+
+    def test_generated_with_generated_check_in_the_check_is_ok_and_empty_says_nothing(self):
+        code, out = self.doctor()
+        self.assertNotIn("generated files", out)
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        self.set_cfg(generated=[{"command": "make gen", "paths": ["gen"]}],
+                     check=cfg["check"] + ["python3 .claude/gw/scripts/generated-check.py"])
+        code, out = self.doctor()
+        self.assertLine(out, "OK", "generated files", "1 entry")
+        self.assertNotIn("WARN  generated files", out)
+
     def test_workflows_not_validated_by_the_check_warn_with_the_command(self):
         """E71: a check (bash check.sh) that does not validate .github/workflows."""
         self.set_cfg(check=["bash check.sh"])

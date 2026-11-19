@@ -594,6 +594,20 @@
       "default": true,
       "description": "true: `ci-local.py --validate` (in the check) parses every .github/workflows/*.yml|yaml and fails when one is invalid YAML (GitHub never runs it, so no CI goes red). false: it says it is off and passes."
     },
+    "generated": {
+      "type": "array",
+      "default": [],
+      "items": {
+        "type": "object",
+        "required": ["command", "paths"],
+        "additionalProperties": false,
+        "properties": {
+          "command": {"type": "string", "minLength": 1},
+          "paths": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}
+        }
+      },
+      "description": "E72: files the project commits but a command generates. `generated-check.py` (in the check) runs each `command` at the repo root and fails when it changes, adds or removes a file under its `paths` (relative to the root): the committed copies are stale. doctor.py warns when it is set and no `check` command runs generated-check.py."
+    },
     "ciActionlint": {
       "type": "string",
       "enum": ["auto", "require", "off"],

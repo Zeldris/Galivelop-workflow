@@ -486,6 +486,19 @@ def check_workflow_lint(rep, root, cfg):
                  "actionlint too; ciActionlint \"off\" silences this)")
 
 
+def check_generated(rep, root, cfg):
+    """E72: `generated` set but no `check` command runs generated-check.py, so stale generated files go unnoticed."""
+    entries = (cfg or {}).get("generated") or []
+    if not entries:
+        return
+    if re.search(r"generated-check\.py\b", check_run_text(root, cfg)):
+        rep.ok("generated files", f"the check regenerates {len(entries)} entry(ies) of `generated` (generated-check.py)")
+    else:
+        rep.warn("generated files", f"`generated` has {len(entries)} entry(ies) but no `check` command runs "
+                 "generated-check.py, so stale generated files are pushed unnoticed",
+                 "add \"python3 .claude/gw/scripts/generated-check.py\" to `check` in .claude/gw.json")
+
+
 def hook_files(command, root):
     """Files a hook command runs: words that use $CLAUDE_PROJECT_DIR, or a path given as the program itself."""
     expanded = command.replace("${CLAUDE_PROJECT_DIR}", str(root)).replace("$CLAUDE_PROJECT_DIR", str(root))
@@ -1244,6 +1257,7 @@ def run(root):
     check_commands(rep, root, cfg)
     check_ci(rep, root, cfg)
     check_workflow_lint(rep, root, cfg)
+    check_generated(rep, root, cfg)
     check_ci_access(rep, root)
     check_settings(rep, root)
     check_subagents(rep, root)

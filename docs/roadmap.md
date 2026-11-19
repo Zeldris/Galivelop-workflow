@@ -376,7 +376,7 @@ Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18)
 | E69 | Plantilla del encargo de `gw-orchestrate-dealer`: el defecto se busca también en el archivo hermano (recogida `0.9`, image-generator P2) | hecho (2026-11-19) |
 | E70 | `wholeReadDenyPaths`: `whole-read.py` rechaza esas rutas con su orden alternativa, no solo avisa (recogida `0.9`, image-generator P4) | hecho (2026-11-19) |
 | E71 | `actionlint` en el check de los proyectos con `.github/workflows/` y aviso de `doctor.py` si no lo validan (recogida `0.9`, instalador P2) | hecho (2026-11-19) |
-| E72 | Clave `generated` (`{command, paths}`): el check regenera y compara con `git diff --exit-code` (recogida `0.9`, private-project-1 P1) | pendiente |
+| E72 | Clave `generated` (`{command, paths}`): el check regenera y compara con `git diff --exit-code` (recogida `0.9`, private-project-1 P1) | hecho (2026-11-19) |
 | E73 | Clave `projectSkillPrefix`: `gw-init` la escribe y `doctor.py` avisa de skills propias sin el prefijo (recogida `0.9`, private-project-3 P4) | pendiente |
 | E74 | Gancho `PreToolUse` que avisa, sin bloquear, al leer otro repositorio desde la sesión principal, con clave para apagarlo (recogida `0.9`, private-project-3 P3) | pendiente |
 | E75 | `grilling` escribe cada ronda en el archivo de descubrimiento y la sube antes de presentarla (recogida `0.9`, private-project-5 P3) | pendiente |

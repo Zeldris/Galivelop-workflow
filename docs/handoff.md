@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.1` publicada** (`main` = `4ca45d0`, 2026-11-19; CI en verde; etiqueta y release `v0.8.1` creadas desde una sesión local) |
-| Siguiente paso | **`0.9` «Front»**: la recogida de apertura (H24) ya está hecha; tareas E72-E76 de la recogida (E65-E71 hechas y su bloque revisado, 2026-11-19), en orden, y luego A12, E4, E5, E7, E9-E16, E42 y E50. **Al cerrar el desarrollo de la `0.9`, antes de publicarla:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 0 |
+| Siguiente paso | **`0.9` «Front»**: la recogida de apertura (H24) ya está hecha; tareas E73-E76 de la recogida (E65-E72 hechas; bloque E65-E71 revisado, 2026-11-19), en orden, y luego A12, E4, E5, E7, E9-E16, E42 y E50. **Al cerrar el desarrollo de la `0.9`, antes de publicarla:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 0 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-19 — E71: `ci-local.py --validate` corre también `actionlint -shellcheck=` sobre los workflows (claves `ciActionlint`, `auto` por defecto, y `actionlintVersion`, `1.7.12`); la plantilla de CI lo instala en GitHub en un venv; `doctor.py` avisa (`workflow lint`) si hay workflows y el `check` no los valida
-2. 2026-11-19 — E70: clave `wholeReadDenyPaths` (`{ruta: orden}`): `whole-read.py` rechaza (`permissionDecision: deny`) la lectura entera de esas rutas, sea cual sea su tamaño y aunque el aviso esté apagado, con la orden alternativa en el motivo; la lectura parcial pasa
-3. 2026-11-19 — E69: la plantilla del encargo de gw-orchestrate-dealer amplía la regla del patrón al mismo defecto en un archivo hermano (gemelo, otro idioma, copia) y DONE: pide, por cada punto, si se hizo entero o en parte
-4. 2026-11-19 — E68: `gw-selector` recomienda repartir a un `gw-worker` los barridos y los arreglos de revisión de 2 o más puntos, y `session-start.sh` lo repite en una línea `Workers: …` (clave nueva `workerHint`, `true`; solo si existe `.claude/agents/gw-worker.md`)
-5. 2026-11-19 — E67: `apply.py --dry-run` (y `--summary`) da una línea `decide` por clave ausente del `gw.json` cuyo valor por defecto crea archivos fuera de `.claude/` (hoy `agentsSkillsDir`), con el recuento y el valor que la apaga; `gw-update` (paso 2) la presenta como decisión antes de `--update`
+1. 2026-11-19 — E72: clave `generated` (`[{command, paths}]`, `[]`): `generated-check.py` (en el `check` de la plantilla) corre cada orden y falla si cambia, añade o quita archivos bajo sus `paths`, con la orden `git add`; `doctor.py` avisa (`generated files`) si la clave tiene entradas y el `check` no lo corre
+2. 2026-11-19 — E71: `ci-local.py --validate` corre también `actionlint -shellcheck=` sobre los workflows (claves `ciActionlint`, `auto` por defecto, y `actionlintVersion`, `1.7.12`); la plantilla de CI lo instala en GitHub en un venv; `doctor.py` avisa (`workflow lint`) si hay workflows y el `check` no los valida
+3. 2026-11-19 — E70: clave `wholeReadDenyPaths` (`{ruta: orden}`): `whole-read.py` rechaza (`permissionDecision: deny`) la lectura entera de esas rutas, sea cual sea su tamaño y aunque el aviso esté apagado, con la orden alternativa en el motivo; la lectura parcial pasa
+4. 2026-11-19 — E69: la plantilla del encargo de gw-orchestrate-dealer amplía la regla del patrón al mismo defecto en un archivo hermano (gemelo, otro idioma, copia) y DONE: pide, por cada punto, si se hizo entero o en parte
+5. 2026-11-19 — E68: `gw-selector` recomienda repartir a un `gw-worker` los barridos y los arreglos de revisión de 2 o más puntos, y `session-start.sh` lo repite en una línea `Workers: …` (clave nueva `workerHint`, `true`; solo si existe `.claude/agents/gw-worker.md`)
 
 ## Pendiente
 
