@@ -350,3 +350,4 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [ ] `0.10` · (D135, revisión) `handoff.py check` compara siempre con HEAD: quitar en un `git commit --amend` una fila que añadió el commit enmendado, o renombrar la rama (`git branch -m`) y su fila, da «row … is gone»; el rechazo no tiene clave propia en `gw.json` (solo se apaga sin `logRows`).
 - [ ] `0.10` · (D130, revisión, leve) `migrated_config` en `apply.py` solo toma `check` e `install` del merge: si una migración futura cambia `log` u otra clave de texto, las plantillas se renderizan con el valor viejo.
 - [ ] `0.10` · (D137, revisión, leve) `doctor.py` copia la condición de `config.push_scope` en vez de llamarla; su aviso sale en todo proyecto recién instalado (la plantilla trae `relatedTests` vacío).
+- [ ] `0.10` · (D135, revisión, leve) Una fila cerrada con `close-row --text <propio>` no se reconoce como cerrada: borrarla sigue dando «row … is gone».
