@@ -1280,6 +1280,16 @@ class ClearAfterTask(Base):  # E66: blocks once per closed task when the stretch
         gitdir = self.p.git("rev-parse", "--absolute-git-dir").stdout.strip()
         self.assertTrue((Path(gitdir) / "gw-clear-warn").is_file())
 
+    def test_no_request_with_uncommitted_changes(self):
+        self.p.git("push", "-q")
+        self.p.write(LOG, "log edited, not committed\n")  # the log is among the changes: nothing else to say
+        code, out = self.stop()
+        self.assertLetsStop(code, out)
+        gitdir = self.p.git("rev-parse", "--absolute-git-dir").stdout.strip()
+        self.assertFalse((Path(gitdir) / "gw-clear-warn").exists())
+        self.p.git("checkout", "--", LOG)
+        self.assertIn("Task E1 closed", self.assertBlocks(self.stop()[1])["reason"])
+
 
 if __name__ == "__main__":
     unittest.main()

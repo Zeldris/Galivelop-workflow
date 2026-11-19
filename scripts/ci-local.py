@@ -899,7 +899,9 @@ def validate(root, cfg):
 
 
 def actionlint(root, cfg, files):
-    """E71: `actionlint -shellcheck=` over the workflow files; 0 clean, skipped or missing in `auto`, 1 otherwise."""
+    """E71: `actionlint -shellcheck= -pyflakes=` over the workflow files (the CI's shellcheck and pyflakes are the
+    check's own job); 0 clean, skipped or missing in `auto`, 1 otherwise. Each call is limited to ciStepTimeout
+    minutes (0 = no limit): a timeout is 1 under `require`, a warning under `auto`."""
     mode, want = cfg["ciActionlint"], cfg["actionlintVersion"]
     if mode == "off":
         print("ci-local: actionlint is off (ciActionlint is off in .claude/gw.json)")
@@ -914,15 +916,29 @@ def actionlint(root, cfg, files):
         print(f"ci-local: warning: actionlint is not installed, so the workflows' keys and expressions are not "
               f"checked: {install}")
         return 0
+    limit = config.ci_step_timeout(cfg) * 60 or None
+    timed_out = (f"ci-local: actionlint timed out after {config.ci_step_timeout(cfg)} min (ciStepTimeout in "
+                 f".claude/gw.json); raise it or check the workflows by hand: actionlint -shellcheck= -pyflakes=")
     if want:
         try:
-            have = subprocess.run([exe, "-version"], capture_output=True, text=True).stdout.split("\n", 1)[0].strip()
+            have = subprocess.run([exe, "-version"], capture_output=True, text=True,
+                                  timeout=limit).stdout.split("\n", 1)[0].strip()
         except OSError:
             have = ""
+        except subprocess.TimeoutExpired:
+            print(timed_out, file=sys.stderr if mode == "require" else sys.stdout)
+            return 1 if mode == "require" else 0
+        if have.startswith("v"):
+            have = have[1:]
         if have != want:
             print(f"ci-local: warning: actionlint {have or '?'} here, but actionlintVersion is {want}; its findings "
                   f"may differ from the CI's: {install}")
-    r = subprocess.run([exe, "-shellcheck=", *files], cwd=root, capture_output=True, text=True)
+    try:
+        r = subprocess.run([exe, "-shellcheck=", "-pyflakes=", *files], cwd=root, capture_output=True, text=True,
+                           timeout=limit)
+    except subprocess.TimeoutExpired:
+        print(timed_out, file=sys.stderr if mode == "require" else sys.stdout)
+        return 1 if mode == "require" else 0
     if r.returncode != 0:
         sys.stdout.write(r.stdout)
         sys.stderr.write(r.stderr)

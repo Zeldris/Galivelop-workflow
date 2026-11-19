@@ -489,6 +489,7 @@ def main():
                                      f"again: wait for it and check git status -sb afterwards.")
         except GitError as exc:
             warns.append(str(exc))
+        paths = None  # unknown (git failed) is not "clean"
         try:
             paths = changed_paths(root, {posixpath.normpath(config.metrics(cfg)["ledger"])})
             if paths and log not in paths:
@@ -500,7 +501,7 @@ def main():
         near = near_compaction(root, cfg, event.get("transcript_path"))
         if near:  # a block: only `reason` reaches Claude; once per stretch, and stop_hook_active ends it
             blocks.append(near)
-        if not blocks and not notes:  # E66: only once the rest is in order (pushed, log committed)
+        if not blocks and not notes and paths == set():  # E66: only once the rest is in order (pushed, nothing uncommitted)
             done = clear_after_task(root, cfg, event.get("transcript_path"))
             if done:  # a block: only `reason` reaches Claude; once per closed task, and stop_hook_active ends it
                 blocks.append(done)

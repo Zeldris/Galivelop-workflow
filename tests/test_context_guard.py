@@ -652,8 +652,9 @@ class ClearAfterTask(Base):  # E66: a task closed in the stretch with a long con
 
     def test_warns_with_the_closed_task_and_the_growth(self):
         self.roadmap("done", "open", "close E1")
-        tasks, message = cg.clear_after_task(self.root, self.cfg(), self.session())
+        tasks, message, start = cg.clear_after_task(self.root, self.cfg(), self.session())
         self.assertEqual(tasks, ["E1"])
+        self.assertEqual(start, "2000-01-01T00:00:00Z")
         self.assertEqual(message, "Task E1 closed in this stretch and the conversation since its start weighs 30,000 "
                          "tokens (30 % of the compaction cutoff 100,000; contextGuard.clearAfterTask 0.25): with the "
                          "log up to date and everything pushed, do not chain the next task; ask the user for /clear in "
@@ -680,6 +681,26 @@ class ClearAfterTask(Base):  # E66: a task closed in the stretch with a long con
         self.assertIsNone(cg.clear_after_task_once(self.root, self.cfg(), path, state))
         self.roadmap("done", "done", "close E2")
         self.assertIn("Task E1, E2 closed", cg.clear_after_task_once(self.root, self.cfg(), path, state))
+
+    def test_a_new_stretch_warns_again_after_a_compaction(self):
+        from unittest import mock
+        self.roadmap("done", "open", "close E1")
+        state = self.tmp / "warn"
+        first = self.transcript([turn(10000), turn(40000)])
+        self.assertIn("Task E1 closed", cg.clear_after_task_once(self.root, self.cfg(), first, state))
+        self.assertIsNone(cg.clear_after_task_once(self.root, self.cfg(), first, state))
+        # a compaction restarts the count: one task closed in the second stretch must warn, not be hidden by the 1
+        second = self.transcript([turn(10000), turn(40000), BOUNDARY, turn(10000), turn(40000)])
+        with mock.patch.object(cg, "closed_tasks", return_value=["E2"]):
+            self.assertIn("Task E2 closed", cg.clear_after_task_once(self.root, self.cfg(), second, state))
+            self.assertIsNone(cg.clear_after_task_once(self.root, self.cfg(), second, state))
+
+    def test_silent_when_the_window_is_not_known(self):
+        self.roadmap("done", "open", "close E1")
+        cfg = self.cfg()  # cutoff given here, but not written in .claude/gw.json
+        self.write_config({"roadmapFiles": [{"path": "docs/roadmap.md", "done": "done", "open": ["open"]}]})
+        self.assertFalse(cg.window_known(self.root, MODEL))
+        self.assertIsNone(cg.clear_after_task(self.root, cfg, self.session()))
 
     def test_recover_state_prints_the_warning(self):
         import recover

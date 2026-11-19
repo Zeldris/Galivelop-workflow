@@ -554,6 +554,25 @@ class Doctor(Snapshot):
         self.assertLine(out, "OK", "workflow lint", "validates")
         self.assertNotIn("WARN workflow lint", out)
 
+    def test_workflow_lint_needs_a_real_invocation(self):
+        for text in ("pip install actionlint-py\n", "actionlint-py --version\n", "# actionlint later\n",
+                     "echo see ci-local.py for actionlint\n"):
+            self.set_cfg(check=["bash tools/lint.sh"])
+            self.p.write("tools/lint.sh", text)
+            code, out = self.doctor()
+            self.assertLine(out, "WARN", "workflow lint", "no `check` command validates them")
+        self.p.write("tools/lint.sh", "set -e\nbash x.sh && ./bin/actionlint .github/workflows/*.yml\n")
+        code, out = self.doctor()
+        self.assertLine(out, "OK", "workflow lint", "validates")
+
+    def test_ci_local_validate_with_ci_yaml_check_false_warns(self):
+        self.set_cfg(check=["python3 .claude/gw/scripts/ci-local.py --validate"], ciYamlCheck=False)
+        code, out = self.doctor()
+        self.assertLine(out, "WARN", "workflow lint", "ciYamlCheck is false", "stops before actionlint")
+        self.set_cfg(check=["python3 .claude/gw/scripts/ci-local.py --validate", "actionlint"], ciYamlCheck=False)
+        code, out = self.doctor()
+        self.assertLine(out, "OK", "workflow lint", "validates")
+
     def test_workflow_lint_off_or_no_workflows_says_nothing_to_fix(self):
         self.set_cfg(ciActionlint="off")
         code, out = self.doctor()

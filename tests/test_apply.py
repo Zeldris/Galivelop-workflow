@@ -2168,6 +2168,15 @@ class LegacyNames(unittest.TestCase):
         self.assertIn("README.md:1 uses the old name .claude/skills/selector; replace it with "
                       ".claude/skills/gw-selector", out)
 
+    def test_a_dotted_agents_skills_dir_is_normalized_before_the_prefix_comparison(self):
+        self.p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, agentsSkillsDir="./.agents/skills"), indent=2) + "\n")
+        self.applied()
+        skill = self.p.work / ".agents" / "skills" / "gw-selector" / "SKILL.md"
+        self.assertTrue(skill.is_file())
+        skill.write_text(skill.read_text() + "\nrun scripts/check-verde.sh\n")  # a workflow copy: not the project's text
+        out = self.p.run_apply("--check")[1]
+        self.assertNotIn(".agents/skills/gw-selector/SKILL.md:", "\n".join(self.warnings(out)))
+
     def test_binary_file_is_skipped(self):
         path = self.p.work / "data.bin"
         path.write_bytes(b"\x00\x01check-verde.sh\n")

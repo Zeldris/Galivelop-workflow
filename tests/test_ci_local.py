@@ -540,6 +540,7 @@ class Actionlint(unittest.TestCase):
     GOOD = Validate.GOOD
     FAKE = """#!/bin/sh
 if [ "$1" = -version ]; then echo "${FAKE_VERSION:-1.7.12}"; echo "installed by pip"; exit 0; fi
+[ -z "${FAKE_SLEEP:-}" ] || sleep "$FAKE_SLEEP"
 echo "$@" >> "$FAKE_LOG"
 [ -z "${FAKE_FAIL:-}" ] || { echo "$FAKE_FAIL"; exit 1; }
 """
@@ -566,8 +567,30 @@ echo "$@" >> "$FAKE_LOG"
         code, out = self.ci("--validate")
         self.assertEqual(code, 0, out)
         [args] = self.called()
-        self.assertEqual(args.split(), ["-shellcheck=", ".github/workflows/b.yaml", ".github/workflows/ci.yml"])
+        self.assertEqual(args.split(), ["-shellcheck=", "-pyflakes=", ".github/workflows/b.yaml", ".github/workflows/ci.yml"])
         self.assertIn("actionlint: 2 workflow file(s) clean", out)
+
+    def test_a_v_prefixed_version_matches_without_warning(self):
+        self.install()
+        self.p.env["FAKE_VERSION"] = "v1.7.12"
+        self.workflow(self.GOOD)
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("warning: actionlint", out)
+        self.assertEqual(len(self.called()), 1)
+
+    def test_a_hung_actionlint_times_out_failing_in_require_and_warning_in_auto(self):
+        self.install()
+        self.p.env["FAKE_SLEEP"] = "5"
+        self.workflow(self.GOOD)
+        self.set_config(ciStepTimeout=0.01)  # minutes: 0.6 s
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 0, out)
+        self.assertIn("actionlint timed out after 0.01 min (ciStepTimeout", out)
+        self.set_config(ciStepTimeout=0.01, ciActionlint="require")
+        code, out = self.ci("--validate")
+        self.assertEqual(code, 1, out)
+        self.assertIn("actionlint timed out after 0.01 min (ciStepTimeout", out)
 
     def test_its_findings_fail_with_the_fix(self):
         self.install()

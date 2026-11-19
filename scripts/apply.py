@@ -1590,6 +1590,12 @@ def name_exists(paths, new, root=None):
     return any(p.endswith(f"/{new}") or f"/{new}/" in p for p in paths)
 
 
+def norm_dir(path):
+    """A repo-relative folder as the plan and git name it: `./.agents/skills/` -> `.agents/skills`; "" stays ""."""
+    path = str(path or "").replace("\\", "/").strip()
+    return posixpath.normpath(path).strip("/") if path.strip("/") else ""
+
+
 def plan_legacy_names(plan, cfg, wanted_skills, keep):
     """D46: warn, with file:line, about uses of the pre-A8 names in the project's own text files. Never fails the run.
     git grep finds them (so ignored files, .git and binaries are out); then skipped: what the plan removes, the files
@@ -1613,7 +1619,7 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
         return
     regex = re.compile(r"(?<![\w.-])(" + "|".join(re.escape(o) for o in sorted(pairs, key=len, reverse=True))
                        + r")(?![\w-])")
-    skill_roots = [".claude/skills"] + ([config.agents_skills_dir(cfg).rstrip("/")] if config.agents_skills_dir(cfg) else [])
+    skill_roots = [".claude/skills"] + ([norm_dir(config.agents_skills_dir(cfg))] if norm_dir(config.agents_skills_dir(cfg)) else [])
     own = (".claude/gw/scripts/", ".claude/gw/schema/", ".githooks/") + tuple(
         f"{d}/{n}/" for d in skill_roots for n in sorted(wanted_skills))
     merged = {name for name, mode in ROOT_TEMPLATES if mode == "merged"}
@@ -1805,7 +1811,7 @@ def decisions(plan):
     for key, folder_of, off in OUTSIDE_KEYS:
         if isinstance(raw, dict) and key in raw:
             continue
-        folder = (folder_of(plan.cfg) or "").strip("/")
+        folder = norm_dir(folder_of(plan.cfg))
         if not folder:
             continue
         n = sum(1 for kind, rel, *_r in plan.actions

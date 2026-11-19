@@ -470,13 +470,21 @@ def check_workflow_lint(rep, root, cfg):
         rep.ok("workflow lint", "actionlint is off (ciActionlint); only ci-local.py --validate's YAML check, if any")
         return
     text = check_run_text(root, cfg)
-    if re.search(r"ci-local\.py\s+--validate|\bactionlint\b", text):
+    validate = re.search(r"ci-local\.py\s+--validate\b", text)
+    # actionlint run as a command (start of a line or after ; & | ( ), not actionlint-py or a pip install of it
+    direct = re.search(r"(?:^|[;&|(])[ \t]*(?:[\w.~$-]*/)*actionlint(?=\s|$)", text, re.MULTILINE)
+    if validate and cfg.get("ciYamlCheck", True) is False and not direct:
+        rep.warn("workflow lint", "the check runs ci-local.py --validate, but ciYamlCheck is false, so --validate "
+                 "stops before actionlint and validates nothing",
+                 "set ciYamlCheck to true in .claude/gw.json, or run actionlint in the check")
+    elif validate or direct:
         rep.ok("workflow lint", "the check validates .github/workflows (ci-local.py --validate / actionlint)")
     else:
         rep.warn("workflow lint", "the project has .github/workflows but no `check` command validates them, so a "
                  "broken workflow only shows when GitHub runs it",
                  "add \"python3 .claude/gw/scripts/ci-local.py --validate\" to `check` in .claude/gw.json (it runs "
                  "actionlint too; ciActionlint \"off\" silences this)")
+
 
 def hook_files(command, root):
     """Files a hook command runs: words that use $CLAUDE_PROJECT_DIR, or a path given as the program itself."""

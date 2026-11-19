@@ -541,11 +541,13 @@ def closed_tasks(root, cfg, since):
 
 
 def clear_after_task(root, cfg, transcript, tail_bytes=None):
-    """E66: (closed task ids, message) when a task was closed in the current stretch (closed_tasks since the stretch
-    started) and the conversation the stretch added since its startup, which a /clear drops, reaches
+    """E66: (closed task ids, message, stretch start) when a task was closed in the current stretch (closed_tasks
+    since the stretch started) and the conversation the stretch added since its startup, which a /clear drops, reaches
     contextGuard.clearAfterTask of the compaction cutoff; else None. The message asks to answer the next "next" with
     a one-line request for /clear. Cheap checks first: the key (0 = off), the transcript's tail (`tail_bytes`), the
-    context against the threshold; only then the whole transcript and git. Never raises."""
+    context against the threshold, a window that is not known (window_known); only then the whole transcript and
+    git. The stretch start (its ISO timestamp, "" for the first stretch) tells one stretch from the next. Never
+    raises."""
     try:
         cfg = cfg or {}
         ratio = config.context_guard(cfg)["clearAfterTask"]
@@ -557,7 +559,7 @@ def clear_after_task(root, cfg, transcript, tail_bytes=None):
             return None
         tokens, model = now
         cutoff = cutoff_for(model, cfg)
-        if not cutoff or tokens < ratio * cutoff:
+        if not cutoff or tokens < ratio * cutoff or not window_known(root, model):
             return None
         seg = Measure(root, cfg, transcript).last
         if not seg:
@@ -573,19 +575,20 @@ def clear_after_task(root, cfg, transcript, tail_bytes=None):
                    f"contextGuard.clearAfterTask {ratio}): with the log up to date and everything pushed, do not chain "
                    f"the next task; ask the user for /clear in one line (a long context is almost all the spend; "
                    f"the log is enough to resume), and answer a \"next\" after a close the same way.")
-        return tasks, message
+        return tasks, message, seg["start"]
     except Exception:  # a warning must never cost the stop
         return None
 
 
 def clear_after_task_once(root, cfg, transcript, state, tail_bytes=None):
-    """clear_after_task's message once per closed task of each transcript (the number of closed tasks warned last is
-    remembered in the file `state`, read_warned; before-stop.py: <git dir>/gw-clear-warn), else None. Never raises."""
+    """clear_after_task's message once per closed task of each stretch (the number of closed tasks warned last is
+    remembered in the file `state` under transcript|stretch start, so a compaction restarts the count, read_warned;
+    before-stop.py: <git dir>/gw-clear-warn), else None. Never raises."""
     found = clear_after_task(root, cfg, transcript, tail_bytes)
     if not found:
         return None
     try:
-        key = os.path.abspath(str(transcript))
+        key = f"{os.path.abspath(str(transcript))}|{found[2]}"
         if read_warned(state).get(key, 0) >= len(found[0]):
             return None
         write_warned(state, key, len(found[0]), config.context_guard(cfg or {})["warnedMax"])
