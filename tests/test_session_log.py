@@ -426,6 +426,33 @@ class SessionStart(Base):
         self.assertIn(f"this session was started in {self.tmp}, outside the repo root", out)
 
 
+    WORKER_LINE = "Workers: deal sweeps and review fixes of 2 or more points to a gw-worker subagent"
+
+    def with_worker(self, hint=None):
+        self.p.write(".claude/agents/gw-worker.md", "---\nname: gw-worker\n---\n")
+        if hint is not None:
+            cfg = self.p.work / ".claude" / "gw.json"
+            cfg.write_text(json.dumps(dict(json.loads(cfg.read_text()), workerHint=hint), indent=2))
+
+    def test_worker_hint_when_the_agent_type_exists(self):
+        self.with_worker()
+        code, out = self.p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertIn(self.WORKER_LINE, out)
+        self.assertIn("subagent_type: gw-worker", out)
+        self.assertNotIn("gw session-start:", out)
+
+    def test_no_worker_hint_without_the_agent_type(self):
+        code, out = self.p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("Workers:", out)
+
+    def test_worker_hint_false_says_nothing(self):
+        self.with_worker(hint=False)
+        code, out = self.p.session_start()
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("Workers:", out)
+
     def questions(self, *args):
         return self.p.run("python3", str(self.p.scripts / "questions.py"), *args)
 

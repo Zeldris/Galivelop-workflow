@@ -16,6 +16,8 @@
 #     while git user.email is noreply@anthropic.com (D21).
 #   - spend alert (B6): with a valid config, prints the lines of `metrics.py alert` (a model whose spend today or
 #     yesterday passes metrics.alert.factor x its daily mean); its errors are dropped.
+#   - worker hint (E68): with a valid config, .claude/agents/gw-worker.md and workerHint not false, one line that deals
+#     sweeps and review fixes of 2 or more points to a gw-worker subagent instead of the main session.
 #   - open questions (C3): with a valid config, prints `questions.py notice`: only "N open questions (path)", or the whole
 #     list when some open question was never shown (mark in the git dir, gw/questions-shown); a broken questions file is a one-line warning.
 #   - active modes (C7): with a valid config, prints `mode.py line` ("Modes: careful on, questions restrictive"); a broken
@@ -135,6 +137,9 @@ else
     else
       warn "$(printf '%s' "$mout" | head -n 3 | tr '\n' ' ')- the active modes are not shown until it is fixed; check it: python3 $here/mode.py --root $root list"
     fi
+  fi
+  if [ -f "$root/.claude/agents/gw-worker.md" ] && [ "$(python3 "$config" --root "$root" get workerHint 2>/dev/null)" != false ]; then
+    echo "Workers: deal sweeps and review fixes of 2 or more points to a gw-worker subagent (subagent_type: gw-worker, with model and effort; gw-orchestrate-dealer), not in the main session; to hide this line: \"workerHint\": false"
   fi
   if [ -f "$here/questions.py" ]; then
     if qout="$(python3 "$here/questions.py" --root "$root" notice 2>&1)"; then

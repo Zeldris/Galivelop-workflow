@@ -388,6 +388,7 @@
         "commandKillGrace",
         "installLockfiles",
         "installLocal",
+        "workerHint",
         "prepushClashBranches",
         "reviewBeforeMainListFiles",
         "checkTailLines",
@@ -1260,6 +1261,11 @@
       "type": "boolean",
       "default": false,
       "description": "false: install/setup run only in cloud sessions (CLAUDE_CODE_REMOTE=true); true: also in a local session."
+    },
+    "workerHint": {
+      "type": "boolean",
+      "default": true,
+      "description": "true: session-start.sh prints one line recommending a gw-worker subagent for sweeps and review fixes of 2 or more points, when .claude/agents/gw-worker.md exists (E68); false: no line."
     },
     "prepushCiWarn": {
       "type": "boolean",

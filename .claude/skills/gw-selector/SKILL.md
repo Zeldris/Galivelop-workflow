@@ -67,6 +67,9 @@ do the case without it and say so.
   and decisions stay in the main session.
 - **Closed plan, scoped implementation:** goes to a `sonnet` subagent and the main session reviews its diff before
   the commit. The fixes from a review are a closed plan too (`sonnet`); `opus` only to debug something non-obvious. Anything of more than one step runs through `gw-orchestrate-dealer`.
+- **Sweeps and review fixes of 2 or more points:** at their start, recommend dealing them to a `gw-worker` subagent
+  (`subagent_type: gw-worker`, with `model` and `effort`) where `.claude/agents/gw-worker.md` exists, not doing them
+  in the main session: the main session reviews the worker's diff. The session-start hook repeats it (`workerHint`).
 - **Subagent ladder:** `sonnet low` → `sonnet medium` → `opus medium` → `opus high`. Start at the lowest rung that
   fits; when a subagent does not finish its brief, the next attempt climbs one rung. **Two failures at one rung: stop
   and ask the user.** A subagent that never starts (tool error) is retried on the same rung and does not count as a
