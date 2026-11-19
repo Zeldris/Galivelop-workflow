@@ -374,7 +374,8 @@ class Config(unittest.TestCase):
         template = json.loads((ROOT / "templates" / "gw.json").read_text())
         for key in ("commandTimeout", "commandKillGrace", "installLockfiles", "installLocal", "prepushClashBranches",
                     "reviewBeforeMainListFiles", "checkTailLines", "retro", "redWithoutFix", "branchPrefixes",
-                    "mergeCleanup", "wholeReadSkipExtensions", "wholeReadPaths", "releaseCheckBranches"):
+                    "mergeCleanup", "wholeReadSkipExtensions", "wholeReadPaths", "releaseCheckBranches",
+                    "wholeReadDenyPaths"):
             self.assertEqual(template[key], schema[key]["default"], key)
             self.assertIn(key, schema["fullCheckSkipKeys"]["default"], key)
             self.assertIn(key, template["fullCheckSkipKeys"], key)

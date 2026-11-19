@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 # galivelop-workflow v0.8.1
-"""PreToolUse hook on `Read` and `Bash` (B26, E58): warn when a session reads WHOLE a watched file that is larger
+"""PreToolUse hook on `Read` and `Bash` (B26, E58, E70): warn when a session reads WHOLE a watched file that is larger
 than `wholeReadWarnBytes` in .claude/gw.json. It never blocks: it adds `additionalContext` to the call, so the next
-steps read less; with no warning it prints nothing (no opinion).
+steps read less (it only blocks the files of `wholeReadDenyPaths`, below); with nothing to say it prints nothing.
 
 Watched files: the hand-off log (`log`), its archive (`logArchive`), every file directly or deeper under
 `recordsDir`, the files and folders (ending in /) of `wholeReadPaths` and the keys of `readPointers`; never the
@@ -28,9 +28,16 @@ With no `session_id` in the event a repeat cannot be told, so nothing is warned.
 A lock (gw-reads-<session_id>.lock, fcntl, cleaned like the state) keeps two parallel calls from losing a read, and recover.py --state drops the session's
 reads on SessionStart clear|compact (`forget`): the content left the context, so a reread there is not a repeat.
 
+`wholeReadDenyPaths` (E70; {"<path>": "<command>"}, a folder key ends in /) turns the warning into a rejection for
+those files: a whole read of one of them (as above, whatever its size, extension, wholeReadWarnBytes or
+wholeReadRepeatOnly) is denied with a reason that names its command; a partial read passes. A denial wins over the
+warnings of the same call. A bad value denies nothing (the default, {}).
+
 Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse): a JSON object on stdout, exit 0,
 
   {"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": "..."}}
+  {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                          "permissionDecisionReason": "..."}}
 
 Fails open, because it only advises: stdin it cannot read, an event that is not a Read or a Bash call, a command it
 cannot split, a path outside the project, a file it cannot stat, a state file it cannot read or write or a config it
@@ -91,16 +98,19 @@ def settings(root):
         ok = isinstance(value, list) and all(isinstance(v, str) and v for v in value)
         return list(value) if ok else list(props[key]["default"])
 
-    pointers = cfg.get("readPointers")
-    if not (isinstance(pointers, dict) and all(isinstance(k, str) and k and isinstance(v, str) and v
-                                               for k, v in pointers.items())):
-        pointers = dict(props["readPointers"]["default"])
+    def pick_map(key):
+        value = cfg.get(key)
+        ok = isinstance(value, dict) and all(isinstance(k, str) and k and isinstance(v, str) and v
+                                             for k, v in value.items())
+        return dict(value) if ok else dict(props[key]["default"])
+
+    pointers = pick_map("readPointers")
     repeat = cfg.get("wholeReadRepeatOnly")
     stale = cfg.get("wholeReadStaleDays")
     return {"limit": config.whole_read_warn_bytes(cfg), "log": pick("log", "docs/handoff.md"),
             "archive": pick("logArchive"), "records": pick("recordsDir"),
             "skip": tuple(e.lower() for e in pick_list("wholeReadSkipExtensions")),
-            "extra": pick_list("wholeReadPaths"), "pointers": pointers,
+            "extra": pick_list("wholeReadPaths"), "pointers": pointers, "deny": pick_map("wholeReadDenyPaths"),
             "repeat": repeat if isinstance(repeat, bool) else props["wholeReadRepeatOnly"]["default"],
             "stale": (stale if isinstance(stale, int) and not isinstance(stale, bool) and stale >= 1
                       else props["wholeReadStaleDays"]["default"])}
@@ -132,6 +142,20 @@ def kind_of(path, root, log, archive, records, extra=(), pointers=None):
         if matches(real, root, rel):
             return "record", None
     return None, None
+
+
+def denied(path, root, deny):
+    """The command of the first wholeReadDenyPaths key that `path` is (or lies under), else None."""
+    real = os.path.realpath(path)
+    for rel, command in deny.items():
+        if matches(real, root, rel):
+            return command
+    return None
+
+
+def deny_reason(rel, how, command):
+    return (f"{rel} may not be read whole (wholeReadDenyPaths in .claude/gw.json): {how} takes it whole. "
+            f"Instead: `{command}`, or grep -n for what you need and Read with offset and limit.")
 
 
 def note(kind, rel, size, limit, how="this Read", command=None, repeat=False):
@@ -466,6 +490,18 @@ def main():
     except Exception:
         return 0
     conf = settings(root)
+    reasons = []
+    for path, how in reads:
+        command = denied(path, root, conf["deny"])
+        if command:
+            rel = os.path.relpath(os.path.realpath(path), os.path.realpath(root))
+            text = deny_reason(rel, how, command)
+            if text not in reasons:
+                reasons.append(text)
+    if reasons:  # a denial wins over any warning of the same call
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                                 "permissionDecisionReason": "\n".join(reasons)}}))
+        return 0
     if conf["limit"] <= 0:
         return 0
     spath = state_path(event.get("session_id")) if conf["repeat"] else None

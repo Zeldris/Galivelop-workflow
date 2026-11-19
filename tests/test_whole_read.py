@@ -355,3 +355,51 @@ class RepeatOnly(Base):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Deny(Base):  # E70: wholeReadDenyPaths rejects the whole read instead of warning
+    def denial(self, out):
+        data = json.loads(out)
+        spec = data["hookSpecificOutput"]
+        self.assertEqual(spec["hookEventName"], "PreToolUse")
+        self.assertEqual(spec["permissionDecision"], "deny", out)
+        self.assertNotIn("additionalContext", spec)
+        return spec["permissionDecisionReason"]
+
+    def test_a_whole_read_of_a_denied_file_is_rejected_with_its_command(self):
+        self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/plan.md": "python3 tools/plan.py --section"}))
+        path = self.put("docs/plan.md", 10)  # whatever its size
+        text = self.denial(self.read(path))
+        self.assertIn("docs/plan.md", text)
+        self.assertIn("`python3 tools/plan.py --section`", text)
+        self.assertIn("wholeReadDenyPaths", text)
+        self.assertIn("python3 tools/plan.py", self.denial(self.bash("cat docs/plan.md")))
+
+    def test_a_partial_read_or_a_filter_passes(self):
+        self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/plan.md": "tool"}))
+        path = self.put("docs/plan.md", LIMIT + 1)
+        self.assertEqual(self.read(path, offset=1, limit=10), "")
+        self.assertEqual(self.bash("grep -n x docs/plan.md; cat docs/plan.md | head"), "")
+
+    def test_folders_end_in_slash_and_other_paths_pass(self):
+        self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/big/": "tool big"}))
+        self.assertIn("`tool big`", self.denial(self.read(self.put("docs/big/a.png", 10))))
+        self.assertEqual(self.read(self.put("docs/big-old/a.md", 10)), "")
+
+    def test_it_denies_even_with_the_warning_off_and_repeat_only(self):
+        self.write_config({"wholeReadWarnBytes": 0, "wholeReadRepeatOnly": True,
+                           "wholeReadDenyPaths": {"docs/plan.md": "tool"}})
+        self.denial(self.read(self.put("docs/plan.md", 10), session="s1"))
+
+    def test_a_denial_wins_over_a_warning_in_the_same_command(self):
+        self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/plan.md": "tool"}))
+        self.put("docs/plan.md", 10)
+        self.put("docs/handoff.md", LIMIT + 1)
+        text = self.denial(self.bash("cat docs/handoff.md docs/plan.md"))
+        self.assertIn("docs/plan.md", text)
+        self.assertNotIn("recover.py", text)
+
+    def test_a_bad_value_denies_nothing(self):
+        for bad in ({"docs/plan.md": 3}, ["docs/plan.md"], {"": "tool"}):
+            self.write_config(dict(self.cfg, wholeReadDenyPaths=bad))
+            self.assertEqual(self.read(self.put("docs/plan.md", 10)), "", bad)
