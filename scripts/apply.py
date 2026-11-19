@@ -132,6 +132,7 @@ HERE = Path(__file__).resolve().parent
 WORKFLOW = HERE.parent
 sys.path.insert(0, str(HERE))
 import config  # noqa: E402
+from handoff import POINTER_START  # noqa: E402  (the pointer line's wording, shared with move-pending)
 from doctor import (  # noqa: E402  (one list each, shared with doctor.py)
     MEDIA_FOLDER, OLD_MEDIA_FOLDER, ignored_paths, old_media_folder, stale_flow_hooks)
 
@@ -1293,9 +1294,17 @@ def plan_pending_file(plan):
     the workflow repo."""
     if not plan.update or plan.root.resolve() == WORKFLOW.resolve():
         return
-    log = plan.root / str(plan.cfg.get("log") or "")
+    logrel = str(plan.cfg.get("log") or "")
+    for a in plan.actions:  # plan_paths already switched cfg to the new path: read the file where it still is
+        if a[0] == "move":
+            new, old = str(a[1]), str(a[2])
+            if logrel == new or logrel.startswith(new + "/"):
+                logrel = old + logrel[len(new):]
+                break
+    log = plan.root / logrel
     try:
-        points = log.is_file() and "pendingFile" in log.read_text(encoding="utf-8")
+        points = log.is_file() and any(POINTER_START.match(l) and "pendingFile" in l
+                                       for l in log.read_text(encoding="utf-8").splitlines())
     except (OSError, ValueError):
         return
     if not points:

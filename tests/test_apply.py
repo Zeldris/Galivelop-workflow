@@ -2629,6 +2629,22 @@ class PendingFileMigration(unittest.TestCase):
         self.assertIn("make old-check", proposal)
         self.assertNotIn("ci-local.py --validate", proposal)
 
+    def test_a_mention_of_pendingfile_in_the_log_is_not_the_pointer(self):  # review: only the pointer line counts
+        p = self.project(pointer=False)
+        p.write("docs/log.md", p.read("docs/log.md") + "\n- Done: talked about `pendingFile` here\n")
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("pendingFile", json.loads(p.read(".claude/gw.json")))
+        self.assertNotIn("pendingFile set to", out)
+
+    def test_old_log_path_still_to_move_is_read_where_it_is(self):  # review: plan_paths moves the log in the same run
+        p = self.project(pointer=False, log="docs/traspaso.md")
+        p.write("docs/traspaso.md", "# Log\n" + self.POINTER)
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        self.assertIn("from docs/traspaso.md", out)
+        self.assertEqual(json.loads(p.read(".claude/gw.json"))["pendingFile"], self.DEFAULT)
+
 
 class StaleRefsMigration(unittest.TestCase):
     """D83: --update adds the names the migration renames to the project's `staleRefs` (both forms, no duplicates)."""
