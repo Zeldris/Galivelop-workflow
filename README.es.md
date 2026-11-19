@@ -83,7 +83,7 @@ comprobación.
 - **Cuatro formas de trabajar:** una ficha de tarea (`docs/tasks/<id>.md`, con criterios de aceptación, archivos
   previstos y decision log) obligatoria en los cambios de código y comprobada por el `commit-msg`; modelado de dominio
   donde hay dominio; tests primero donde hay comportamiento testeable; y exploración solo en ramas `spike/<tema>`, que
-  el `pre-push` y `merge-branch.sh` no dejan entrar en una rama de trabajo.
+  el `pre-push` y `merge-main.py` (trae la rama protegida, commiteando antes el ledger de métricas), `merge-branch.sh` no dejan entrar en una rama de trabajo.
 - **Alcance congelado** (`scopeGuard`): tocar un archivo fuera de `Files` de la ficha avisa o bloquea (el
   `pre-commit` lo respalda); un requisito nuevo es una tarea nueva.
 

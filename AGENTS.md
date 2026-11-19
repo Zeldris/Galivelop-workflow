@@ -17,8 +17,8 @@ Cada regla de abajo que tiene un check lo nombra entre paréntesis; las demás s
    y el último commit tiene que coincidir con lo que dice la bitácora.
 3. Comprueba que el check está en verde antes de tocar nada: `bash tests/check.sh`.
 4. Sigue por el **siguiente paso** de la bitácora, salvo que el usuario pida otra cosa.
-5. Al empezar cada tarea, trae `main` (`git fetch origin main` y `git merge origin/main`; merge, nunca rebase: las
-   ramas están subidas).
+5. Al empezar cada tarea, trae `main` con `python3 scripts/merge-main.py` (fetch, commit del ledger y
+   `git merge origin/main`; merge, nunca rebase: las ramas están subidas).
 
 ## Relevos: commit y push constantes
 

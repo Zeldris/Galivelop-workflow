@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.1` publicada** (`main` = `4ca45d0`, 2026-11-19; CI en verde; etiqueta y release `v0.8.1` creadas desde una sesión local) |
-| Siguiente paso | **`0.9` «Front»**: la recogida de apertura (H24) ya está hecha; tareas E65-E76 de la recogida, en orden, y luego A12, E4, E5, E7, E9-E16, E42 y E50. Presupuesto de compactaciones: 0 |
+| Siguiente paso | **`0.9` «Front»**: la recogida de apertura (H24) ya está hecha; tareas E66-E76 de la recogida (E65 hecha), en orden, y luego A12, E4, E5, E7, E9-E16, E42 y E50. Presupuesto de compactaciones: 0 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-19 — Release v0.8.1 publicada en GitHub desde una sesión local (comprobada); H25 cerrada y la rama pasa a la 0.9.
-2. 2026-11-19 — `0.8.1` subida a `main` (`4ca45d0`) tras `reviewed.sh`; textos de la release en `docs/records/release-v0.8.1.md`.
-3. 2026-11-19 — Fase 2 de la `0.8.1`: `/gw-opt-tokens` y `/retro` decididas por el usuario (P3-P4 aplicadas; D142, D143 y B47 apuntados en `pending.md`).
-4. 2026-11-19 — Fase 1 del 0.8.1 (revisión del bloque D141/H25): 2 hallazgos aceptados (doc de metrics.py y config.md: cuenta por id y cierre por merge) y 3 leves a pendientes de la 0.10.
-5. 2026-11-19 — Sello del parche 0.8.1 (H25): CHANGELOG es/en con D128-D141, README en 0.8.1, version.py 0.8.1 y apply.py .; check completo en verde sobre 9feae0a antes del sello.
+1. 2026-11-19 — E65: scripts/merge-main.py (fetch, commit del ledger si es lo único sucio, si no se niega, merge --no-edit) con tests/test_merge_main.py (11); el paso 5 de AGENTS.md y de las plantillas apunta a él
+2. 2026-11-19 — Release v0.8.1 publicada en GitHub desde una sesión local (comprobada); H25 cerrada y la rama pasa a la 0.9.
+3. 2026-11-19 — `0.8.1` subida a `main` (`4ca45d0`) tras `reviewed.sh`; textos de la release en `docs/records/release-v0.8.1.md`.
+4. 2026-11-19 — Fase 2 de la `0.8.1`: `/gw-opt-tokens` y `/retro` decididas por el usuario (P3-P4 aplicadas; D142, D143 y B47 apuntados en `pending.md`).
+5. 2026-11-19 — Fase 1 del 0.8.1 (revisión del bloque D141/H25): 2 hallazgos aceptados (doc de metrics.py y config.md: cuenta por id y cierre por merge) y 3 leves a pendientes de la 0.10.
 
 ## Pendiente
 
