@@ -41,8 +41,8 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - If the person says stop, stop: push what there is, leave the log up to date and do nothing else.
 - **Questions for the person**: a numbered list, each with its recommendation (`questions.py add`; a subagent returns
   them to the main session); they answer by number and `questions.py answer "5. a, 6. ok"` records it.
-- **When each task or PR closes** (and each phase), with everything pushed and the log up to date, ask the person for a
-  `/clear` in one line, saying why: a long context is almost all the spend, and the log is enough to resume.
+- **When each task or PR closes** (and each phase), with everything pushed and the log up to date, ask for a `/clear`
+  in one line, saying why (a long context is almost all the spend); a "next" after a close gets the same answer.
 - **When each block or phase closes, look at the CI of the last push** with
   `python3 .claude/gw/scripts/ci-status.py` (read a red with `--failed`, not with the whole job log). A CI that does not start (no quota, no
   runners) counts as red: tell the person and treat nothing as checked by CI. Then the check passed locally on the

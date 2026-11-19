@@ -42,6 +42,11 @@ turn comes back with stop_hook_active, which never blocks, so it cannot loop. It
 line. Silent if the transcript cannot be read (context_guard.near_cutoff_once). The Stop hook fires at the end of
 every turn, so it comes before the compaction; recover.py --state comes after it.
 
+E66: once the rest is in order (nothing else to block or note), it blocks once per closed task when a roadmap row
+turned done in a commit of the current stretch and the conversation the stretch added since its startup reaches
+`contextGuard.clearAfterTask` of the cutoff: the reason asks Claude to request /clear in one line instead of
+chaining the next task (context_guard.clear_after_task_once; <git dir>/gw-clear-warn, per transcript).
+
 Output format (https://code.claude.com/docs/en/hooks.md, "Stop decision control"): a block is a JSON object on stdout
 with exit 0, `{"decision": "block", "reason": "..."}`; Claude Code feeds `reason` back to Claude as the explanation
 for why it should continue ("`reason` ... Tells Claude why it should continue"). The page also documents exit 2 with
@@ -399,6 +404,20 @@ def near_compaction(root, cfg, transcript):
         return None
 
 
+def clear_after_task(root, cfg, transcript):
+    """E66: context_guard.clear_after_task_once for this transcript, remembered in <git dir>/gw-clear-warn (per
+    transcript) so it blocks once per closed task; None when there is nothing to say or anything fails: silent."""
+    try:
+        import context_guard
+        gitdir = git(root, "rev-parse", "--absolute-git-dir")[1].strip() if transcript else ""
+        if not gitdir:  # never a marker relative to the current directory
+            return None
+        state = os.path.join(gitdir, "gw-clear-warn")
+        return context_guard.clear_after_task_once(root, cfg, transcript, state, cfg.get("stopTranscriptBytes"))
+    except Exception:
+        return None
+
+
 def main():
     global GIT_TIMEOUT, PUSH_MARKER_MAX_AGE
     doctor = f"python3 {os.path.join(HERE, 'doctor.py')}"
@@ -481,6 +500,10 @@ def main():
         near = near_compaction(root, cfg, event.get("transcript_path"))
         if near:  # a block: only `reason` reaches Claude; once per stretch, and stop_hook_active ends it
             blocks.append(near)
+        if not blocks and not notes:  # E66: only once the rest is in order (pushed, log committed)
+            done = clear_after_task(root, cfg, event.get("transcript_path"))
+            if done:  # a block: only `reason` reaches Claude; once per closed task, and stop_hook_active ends it
+                blocks.append(done)
 
     answer = {}
     if blocks:

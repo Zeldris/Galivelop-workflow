@@ -13,7 +13,9 @@
                                 this session and since the branch last took the protected branch (its merge base: the
                                 task's start; WMF P10) with a warning when they pass the task's compaction budget
                                 (gw-selector: "Compaction budget: N" in the log), the remote branches (local refs, no
-                                fetch, 10 at most) with commits the protected branch lacks, and how to search the
+                                fetch, 10 at most) with commits the protected branch lacks, a warning when a task
+                                closed in this stretch and its conversation passed contextGuard.clearAfterTask (E66:
+                                ask for /clear, do not chain the next task), and how to search the
                                 transcript for a detail. Over ~9,500 characters the log section gives way (its start
                                 stays, with a line saying it was cut); the lines after it always survive.
   recover.py --search TEXT      the transcript fragments (main conversation: user, Claude, tool calls and results)
@@ -671,6 +673,13 @@ def state(root, transcript, out, logs, source="startup"):
         tail.extend(context_guard.report(None, None, None, source, measure=measure()))
     except Exception as exc:  # only a warning: --state never fails
         tail.append(f"- Startup context: could not be measured ({exc})")
+    try:
+        import context_guard
+        done = context_guard.clear_after_task(root, config.load(root), path) if path else None
+        if done:  # E66: a task closed in this stretch with a long conversation: /clear before the next one
+            say(f"- Warning: {done[1]}")
+    except Exception:  # only a warning: --state never fails
+        pass
     session = f" --session {path}" if path else ""
     say(f"- A detail from before (an error, a piece of code, what the user said): "
         f"{script_command(root)}{session} --search '<text>'; never read the transcript whole.")

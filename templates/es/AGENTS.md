@@ -41,8 +41,8 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
 - Si la persona dice que se para, se para: se sube lo que haya, se deja la bitácora al día y no se sigue con nada más.
 - **Las preguntas a la persona**: lista numerada, cada una con su recomendación (`questions.py add`; un subagente las
   devuelve a la sesión principal); responde por número y `questions.py answer "5. a, 6. ok"` lo apunta.
-- **Al cerrar cada tarea o PR** (y cada fase), con todo subido y la bitácora al día, se pide a la persona un `/clear` en
-  una línea, con el porqué: el contexto largo es casi todo el gasto, y la bitácora basta para retomar.
+- **Al cerrar cada tarea o PR** (y cada fase), con todo subido y la bitácora al día, se pide un `/clear` en una línea,
+  con el porqué (el contexto largo es casi todo el gasto); un «Siguiente» tras un cierre se contesta igual.
 - **Al cerrar cada bloque o fase, mira el CI de la última subida** con
   `python3 .claude/gw/scripts/ci-status.py` (un rojo se lee con `--failed`, no con el registro entero del job). Un CI que no arranca (sin cuota, sin runners)
   cuenta como rojo: se dice a la persona y no se da nada por comprobado en el CI. Entonces vale el check pasado en

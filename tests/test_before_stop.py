@@ -1241,5 +1241,45 @@ class StopKeys(Base):
         self.assertEqual(got.stdout.strip(), "3.0", got.stderr)
 
 
+class ClearAfterTask(Base):  # E66: blocks once per closed task when the stretch's conversation is long
+    def setUp(self):
+        super().setUp()
+        for name in ("context_guard.py", "recover.py", "roadmap.py"):
+            shutil.copy2(ROOT / "scripts" / name, self.p.scripts / name)
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["contextGuard"] = {"cutoff": 100000}
+        cfg["roadmapFiles"] = [{"path": "docs/roadmap.md", "done": "done", "open": ["open"]}]
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.write("docs/roadmap.md", "| Id | Task | Status |\n|---|---|---|\n| E1 | one | open |\n")
+        self.p.commit("roadmap")
+        self.p.work_branch()
+        self.p.write("docs/roadmap.md", "| Id | Task | Status |\n|---|---|---|\n| E1 | one | done |\n")
+        self.p.commit("close E1")
+        self.transcript = self.tmp / "s.jsonl"
+        lines = []
+        for tokens, stamp in ((10000, "2000-01-01T00:00:00Z"), (40000, "")):
+            usage = {"input_tokens": 10, "cache_creation_input_tokens": tokens - 110, "cache_read_input_tokens": 100}
+            lines.append(json.dumps({"type": "assistant", "timestamp": stamp,
+                                     "message": {"model": "claude-sonnet-5-5", "usage": usage}}))
+        self.transcript.write_text("\n".join(lines) + "\n")
+
+    def stop(self):
+        return self.p.stop({"transcript_path": str(self.transcript)})
+
+    def test_waits_for_the_push_then_blocks_once(self):
+        reason = self.assertBlocks(self.stop()[1])["reason"]
+        self.assertIn("has 1 commit not pushed", reason)
+        self.assertNotIn("Task E1 closed", reason)
+        self.p.git("push", "-q")
+        reason = self.assertBlocks(self.stop()[1])["reason"]
+        self.assertTrue(reason.startswith("Task E1 closed in this stretch and the conversation since its start "
+                                          "weighs 30,000 tokens"), reason)
+        self.assertIn("ask the user for /clear in one line", reason)
+        code, out = self.stop()
+        self.assertLetsStop(code, out)
+        gitdir = self.p.git("rev-parse", "--absolute-git-dir").stdout.strip()
+        self.assertTrue((Path(gitdir) / "gw-clear-warn").is_file())
+
+
 if __name__ == "__main__":
     unittest.main()

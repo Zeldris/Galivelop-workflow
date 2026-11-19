@@ -617,5 +617,77 @@ class Cli(Base):
         self.assertIn("- ALARM: compaction loop", r.stdout)
 
 
+class ClearAfterTask(Base):  # E66: a task closed in the stretch with a long conversation asks for /clear
+    ROADMAP = "## `0.9`\n\n| Id | Task | Status |\n|---|---|---|\n| E1 | one | {e1} |\n| E2 | two | {e2} |\n"
+
+    def setUp(self):
+        super().setUp()
+        self.write_config({"roadmapFiles": [{"path": "docs/roadmap.md", "done": "done", "open": ["open"]}],
+                           "contextGuard": {"cutoff": 100000}})
+        self.roadmap("open", "open", "start")
+
+    def roadmap(self, e1, e2, message, extra=""):
+        (self.root / "docs" / "roadmap.md").write_text(self.ROADMAP.format(e1=e1, e2=e2) + extra)
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t", "add", "-A"],
+                       check=True)
+        subprocess.run(["git", "-C", str(self.root), "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q",
+                        "-m", message], check=True, env=dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull))
+
+    def session(self, last=40000, first=10000):
+        return self.transcript([turn(first, timestamp="2000-01-01T00:00:00Z"), turn(last)])
+
+    def test_closed_tasks_lists_rows_turned_done_oldest_first(self):
+        self.roadmap("done (2026-11-19)", "open", "close E1")
+        self.roadmap("done", "done", "close E2")
+        self.assertEqual(cg.closed_tasks(self.root, self.cfg(), ""), ["E1", "E2"])
+
+    def test_a_row_born_done_or_reopened_does_not_count(self):
+        self.roadmap("open", "open", "new row already done", "| E3 | x | done |\n")
+        self.roadmap("open", "open", "E3 reopened", "| E3 | x | open |\n")
+        self.assertEqual(cg.closed_tasks(self.root, self.cfg(), ""), [])
+
+    def test_commits_before_the_stretch_do_not_count(self):
+        self.roadmap("done", "open", "close E1")
+        self.assertEqual(cg.closed_tasks(self.root, self.cfg(), "2999-01-01T00:00:00Z"), [])
+
+    def test_warns_with_the_closed_task_and_the_growth(self):
+        self.roadmap("done", "open", "close E1")
+        tasks, message = cg.clear_after_task(self.root, self.cfg(), self.session())
+        self.assertEqual(tasks, ["E1"])
+        self.assertEqual(message, "Task E1 closed in this stretch and the conversation since its start weighs 30,000 "
+                         "tokens (30 % of the compaction cutoff 100,000; contextGuard.clearAfterTask 0.25): with the "
+                         "log up to date and everything pushed, do not chain the next task; ask the user for /clear in "
+                         "one line (a long context is almost all the spend; the log is enough to resume), and answer a "
+                         "\"next\" after a close the same way.")
+
+    def test_silent_below_the_growth_even_with_a_big_startup(self):
+        self.roadmap("done", "open", "close E1")
+        self.assertIsNone(cg.clear_after_task(self.root, self.cfg(), self.session(last=80000, first=60000)))
+
+    def test_silent_without_a_closed_task(self):
+        self.assertIsNone(cg.clear_after_task(self.root, self.cfg(), self.session()))
+
+    def test_zero_turns_it_off(self):
+        self.roadmap("done", "open", "close E1")
+        self.write_config({"roadmapFiles": [{"path": "docs/roadmap.md", "done": "done", "open": ["open"]}],
+                           "contextGuard": {"cutoff": 100000, "clearAfterTask": 0}})
+        self.assertIsNone(cg.clear_after_task(self.root, self.cfg(), self.session()))
+
+    def test_once_per_closed_task(self):
+        self.roadmap("done", "open", "close E1")
+        state, path = self.tmp / "warn", self.session()
+        self.assertIn("Task E1 closed", cg.clear_after_task_once(self.root, self.cfg(), path, state))
+        self.assertIsNone(cg.clear_after_task_once(self.root, self.cfg(), path, state))
+        self.roadmap("done", "done", "close E2")
+        self.assertIn("Task E1, E2 closed", cg.clear_after_task_once(self.root, self.cfg(), path, state))
+
+    def test_recover_state_prints_the_warning(self):
+        import recover
+        self.roadmap("done", "open", "close E1")
+        out = []
+        recover.state(self.root, str(self.session()), out, [])
+        self.assertIn("- Warning: Task E1 closed in this stretch", "\n".join(out))
+
+
 if __name__ == "__main__":
     unittest.main()

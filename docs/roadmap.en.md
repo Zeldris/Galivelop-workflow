@@ -361,7 +361,7 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | H24 | `0.9` opening harvest (`gw-harvest`) at its start, after updating the projects to `0.8.0` (AGENTS.md) | done (2026-11-18; all 25 proposals approved: D128-D140 to the `0.8.1` patch, E65-E76 to `0.9`) |
 | H25 | `0.8.1` patch close: CHANGELOG, README, seal (`version.py`, `apply.py .`) and the phases before `main` | in progress (2026-11-19; stamped) |
 | E65 | `merge-main.py`: commits the metrics ledger (or refuses with more changes) before `git merge origin/<protectedBranch>`; the `AGENTS.md` templates point to it (`0.9` harvest, world-maker-fantasy P2) | done (2026-11-19) |
-| E66 | `/clear` warning when a task closes with the context over a threshold (new key) in `recover.py --state` and `before-stop.py`; a "Next" after a close is answered asking for `/clear` (`0.9` harvest, private-project-3 P1) | pending |
+| E66 | `/clear` warning when a task closes with the context over a threshold (new key) in `recover.py --state` and `before-stop.py`; a "Next" after a close is answered asking for `/clear` (`0.9` harvest, private-project-3 P1) | done (2026-11-19; contextGuard.clearAfterTask; before-stop.py and recover.py --state) |
 | E67 | `gw-update` presents as a decision, before `--update`, the new keys that create files outside `.claude/`, with the key that turns it off (`0.9` harvest, private-project-2 P5) | pending |
 | E68 | `gw-selector` and the start hook recommend `gw-worker` for sweeps and review fixes of 2 or more points (`0.9` harvest, image-generator P3) | pending |
 | E69 | `gw-orchestrate-dealer` brief template: the defect is also looked for in the sibling file (`0.9` harvest, image-generator P2) | pending |

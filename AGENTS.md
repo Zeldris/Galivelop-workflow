@@ -31,8 +31,8 @@ Cada regla de abajo que tiene un check lo nombra entre paréntesis; las demás s
   `git ls-remote` confirma). El push y el check
   largo van en segundo plano y se espera su aviso, sin bucles de espera.
 - Tras una llamada interrumpida o rechazada, `git status` y `git diff` antes de repetirla.
-- **Al cerrar cada fase, tarea o PR**, se para y se informa al usuario de qué queda hecho y qué sigue; con la
-  bitácora al día, se recomienda `/clear` (la bitácora basta para retomar).
+- **Al cerrar cada fase, tarea o PR**, se para y se informa de qué queda hecho y qué sigue; con la bitácora al día, se
+  pide `/clear` (la bitácora basta); un «Siguiente» tras un cierre se contesta igual (`clearAfterTask`).
 - **La sesión se abre desde la carpeta del repo**; si no, no carga `.claude/settings.json` (`doctor.py` lo detecta).
 - **Al cerrar cada bloque o fase, mira el CI de la última subida** (`python3 scripts/ci-status.py`; `ciIgnore`; un
   rojo se lee con `--failed`, no con el registro entero del job). Un CI que no arranca (sin cuota de Actions) cuenta
