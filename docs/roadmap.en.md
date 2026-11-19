@@ -376,7 +376,7 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | E70 | `wholeReadDenyPaths`: `whole-read.py` rejects those paths with their alternative command, not only warns (`0.9` harvest, image-generator P4) | done (2026-11-19) |
 | E71 | `actionlint` in the check of projects with `.github/workflows/` and a `doctor.py` warning when they are not validated (`0.9` harvest, installer P2) | done (2026-11-19) |
 | E72 | `generated` key (`{command, paths}`): the check regenerates and compares with `git diff --exit-code` (`0.9` harvest, private-project-1 P1) | done (2026-11-19) |
-| E73 | `projectSkillPrefix` key: `gw-init` writes it and `doctor.py` warns about own skills without the prefix (`0.9` harvest, private-project-3 P4) | pending |
+| E73 | `projectSkillPrefix` key: `gw-init` writes it and `doctor.py` warns about own skills without the prefix (`0.9` harvest, private-project-3 P4) | done (2026-11-19) |
 | E74 | `PreToolUse` hook that warns, without blocking, when the main session reads another repository, with a key to turn it off (`0.9` harvest, private-project-3 P3) | pending |
 | E75 | `grilling` writes each round to the discovery file and pushes it before presenting it (`0.9` harvest, private-project-5 P3) | pending |
 | E76 | `measure.py` shows the fixed startup (system, tools, MCP) apart from the project's cost (`0.9` harvest, private-project-3 P2) | pending |

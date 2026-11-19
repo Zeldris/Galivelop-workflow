@@ -731,6 +731,23 @@ def check_skills(rep, root, version, proposals=(), cfg=None):
         rep.ok("skills", f"copied workflow skills at version {version}")
 
 
+def check_skill_prefix(rep, root, cfg):
+    """E73: the project's own skills (a SKILL.md whose metadata.source does not name the workflow) carry
+    projectSkillPrefix, so they are told apart from the workflow's gw- ones. Silent with no prefix set."""
+    prefix = (cfg or {}).get("projectSkillPrefix") or ""
+    base = root / ".claude" / "skills"
+    if not prefix or not base.is_dir():
+        return
+    own = [s.parent.name for s in sorted(base.glob("*/SKILL.md"))
+           if not SOURCES.search(skill_metadata(s).get("source", ""))]
+    bad = [name for name in own if not name.startswith(prefix)]
+    if bad:
+        rep.warn("skill prefix", f"project skill(s) without the projectSkillPrefix {prefix!r}: {', '.join(bad)}",
+                 "; ".join(f"rename .claude/skills/{n} to {prefix}{n} (and its `name:`)" for n in bad))
+    else:
+        rep.ok("skill prefix", f"{len(own)} project skill(s), all with the prefix {prefix!r}")
+
+
 def check_session(rep, root):
     folder = session_log.opened_outside(root)
     if session_log.cloud_start(folder):
@@ -1270,6 +1287,7 @@ def run(root):
     check_related_tests(rep, cfg)
     proposals = check_proposals(rep, root)
     check_skills(rep, root, version, proposals, cfg)
+    check_skill_prefix(rep, root, cfg)
     check_session(rep, root)
     check_compaction(rep, root)
     check_levers(rep, root, cfg)

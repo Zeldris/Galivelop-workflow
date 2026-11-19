@@ -687,6 +687,28 @@ class Doctor(Snapshot):
         line = self.assertLine(out, "WARN", "gw-selector (0.0.5)", "/gw-update")
         self.assertNotIn("local", line)
 
+    def set_prefix(self, prefix):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        self.p.write(".claude/gw.json", json.dumps(dict(cfg, projectSkillPrefix=prefix)))
+
+    def test_project_skill_without_the_prefix_warns(self):
+        # E73: a skill of the project (source not the workflow's) without projectSkillPrefix; workflow skills pass
+        self.p.write(".claude/skills/deploy/SKILL.md", "---\nname: deploy\n---\n")
+        self.p.write(".claude/skills/gvg-ok/SKILL.md", "---\nname: gvg-ok\n---\n")
+        code, out = self.doctor()
+        self.assertNotIn("skill prefix", out)  # no prefix set: nothing said
+        self.set_prefix("gvg-")
+        code, out = self.doctor()
+        line = self.assertLine(out, "WARN", "deploy", "rename .claude/skills/deploy to gvg-deploy")
+        self.assertNotIn("gvg-ok", line)
+        self.assertNotIn("gw-selector", line)
+
+    def test_project_skills_with_the_prefix_pass(self):
+        self.p.write(".claude/skills/gvg-deploy/SKILL.md", "---\nname: gvg-deploy\n---\n")
+        self.set_prefix("gvg-")
+        code, out = self.doctor()
+        self.assertLine(out, "OK", "skill prefix", "gvg-")
+
     def test_skill_citing_a_missing_license(self):
         self.p.write(".claude/skills/grilling/SKILL.md",
                      SKILL.format(version=VERSION).replace("---\n", "---\nlicense: MIT (see LICENSE-mattpocock-skills)\n", 1))

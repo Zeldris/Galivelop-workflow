@@ -2808,6 +2808,15 @@ class GitignoreBlock(unittest.TestCase):
         self.assertIn("flags are ignored", out)
         self.assertNotIn("gitignore begin", p.read(".gitignore"))
 
+    def test_init_writes_the_project_skill_prefix_and_rejects_the_workflow_one(self):
+        # E73: --project-skill-prefix goes to projectSkillPrefix; gw- is the workflow's and fails the schema
+        code, out = self.init("--project-skill-prefix", "gvg-")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(json.loads(self.p.read(".claude/gw.json"))["projectSkillPrefix"], "gvg-")
+        code, out = self.init("--project-skill-prefix", "gw-")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("projectSkillPrefix", out)
+
     def test_without_init_or_stack_there_is_no_block(self):
         p = self.p
         p.write("package.json", "{}\n")

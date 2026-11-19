@@ -1294,6 +1294,12 @@
       "default": true,
       "description": "true: session-start.sh prints one line recommending a gw-worker subagent for sweeps and review fixes of 2 or more points, when .claude/agents/gw-worker.md exists (E68); false: no line."
     },
+    "projectSkillPrefix": {
+      "type": "string",
+      "default": "",
+      "pattern": "^$|^(?!gw-)[a-z0-9]+(?:-[a-z0-9]+)*-$",
+      "description": "E73: prefix of the project's own skills (e.g. \"gvg-\"), never the workflow's \"gw-\"; gw-init asks for it and apply.py --init --project-skill-prefix writes it. doctor.py warns of each .claude/skills/<name>/ whose SKILL.md is not a workflow copy (its metadata.source does not name the workflow) and whose name lacks it. Empty: no check."
+    },
     "prepushCiWarn": {
       "type": "boolean",
       "default": true,

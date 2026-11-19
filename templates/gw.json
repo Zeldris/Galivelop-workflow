@@ -117,6 +117,7 @@
   "installLockfiles": ["package-lock.json", "*/package-lock.json", "npm-shrinkwrap.json", "yarn.lock", "*/yarn.lock", "pnpm-lock.yaml", "*/pnpm-lock.yaml", "bun.lock", "bun.lockb", "*/bun.lock", "Cargo.lock", "*/Cargo.lock", "poetry.lock", "*/poetry.lock", "uv.lock", "*/uv.lock", "Pipfile.lock", "requirements*.txt", "*/requirements*.txt", "Gemfile.lock", "go.sum", "*/go.sum", "composer.lock", "pom.xml", "*/pom.xml"],
   "installLocal": false,
   "workerHint": true,
+  "projectSkillPrefix": "",
   "prepushCiWarn": true,
   "prepushCiWarnTimeout": 10,
   "prepushClashBranches": 10,

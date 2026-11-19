@@ -8,6 +8,7 @@
   python3 <workflow>/scripts/apply.py [PROJECT] --init --check-command CMD [--language es|en] [--log PATH]
           [--install CMD ...] [--protected-branch B] [--push-to-protected direct|pr] [--content REGEX ...]
           [--review-mark PATH] [--require-retro true|false] [--agent-signatures true|false]
+          [--project-skill-prefix PREFIX]
           [--visible-language LANG ...] [--design-reference REF ...]
 
 Runs FROM the workflow repo (this script's own repo is the source) ONTO a project: PROJECT, else the git top level
@@ -1918,6 +1919,8 @@ def init_config(args, version):
         new["requireRetro"] = args.require_retro == "true"
     if args.agent_signatures is not None:
         new["agentSignatures"] = args.agent_signatures == "true"
+    if args.project_skill_prefix is not None:
+        new["projectSkillPrefix"] = args.project_skill_prefix
     schema = json.loads((WORKFLOW / "schema" / "gw.schema.json").read_text(encoding="utf-8"))
     errors = config.validate(new, schema)
     if errors:
@@ -1957,6 +1960,9 @@ def main(argv=None):
                       help="reviewed.sh requires a decided retro on the branch (default: false)")
     init.add_argument("--agent-signatures", choices=["true", "false"],
                       help="false: the commit-msg hook rejects agent signatures in commit messages (default: true)")
+    init.add_argument("--project-skill-prefix", metavar="PREFIX",
+                      help="prefix of the project's own skills, e.g. gvg- (never gw-; doctor.py warns of those "
+                           "without it, E73)")
     init.add_argument("--visible-language", dest="visible_languages", action="append", default=[], metavar="LANG",
                       help="a language every user-visible text must exist in (repeatable)")
     init.add_argument("--design-reference", dest="design_references", action="append", default=[], metavar="REF",
@@ -1972,6 +1978,7 @@ def main(argv=None):
                                  ("--push-to-protected", args.push_to_protected), ("--content", args.content),
                                  ("--review-mark", args.review_mark), ("--require-retro", args.require_retro),
                                  ("--agent-signatures", args.agent_signatures),
+                                 ("--project-skill-prefix", args.project_skill_prefix),
                                  ("--visible-language", args.visible_languages),
                                  ("--design-reference", args.design_references),
                                  ("--stack", args.stacks)) if v]
