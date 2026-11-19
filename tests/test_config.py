@@ -375,7 +375,7 @@ class Config(unittest.TestCase):
         for key in ("commandTimeout", "commandKillGrace", "installLockfiles", "installLocal", "prepushClashBranches",
                     "reviewBeforeMainListFiles", "checkTailLines", "retro", "redWithoutFix", "branchPrefixes",
                     "mergeCleanup", "wholeReadSkipExtensions", "wholeReadPaths", "releaseCheckBranches",
-                    "wholeReadDenyPaths"):
+                    "wholeReadDenyPaths", "otherRepoReadWarn"):
             self.assertEqual(template[key], schema[key]["default"], key)
             self.assertIn(key, schema["fullCheckSkipKeys"]["default"], key)
             self.assertIn(key, template["fullCheckSkipKeys"], key)

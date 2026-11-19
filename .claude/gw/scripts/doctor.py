@@ -57,7 +57,7 @@ OLD_PROPOSAL = ".gw-nuevo"  # A8 (0.x): the suffix before the rename; still reco
 FLOW_HOOK_SCRIPTS = ("session-start.sh", "recover.py", "review-before-main.sh", "before-stop.py",
                      "config-guard.py", "subagent-cap.py", "agent-signatures.py", "metrics.py",
                      "whole-read.py", "careful.py", "questions-guard.py",
-                     "scope-guard.py")  # the settings template's
+                     "scope-guard.py", "other-repo-read.py")  # the settings template's
 # Zero-width, bidi and BOM characters, written as escapes so the fix command can embed them. A zero width joiner (U+200D)
 # is fine only inside an emoji sequence (family, profession, flag, heart): after an emoji, a variation selector or a
 # skin tone, and before an emoji. Between letters, accents or punctuation (`и‍г`, `é‍ñ`), next to ASCII, a line edge

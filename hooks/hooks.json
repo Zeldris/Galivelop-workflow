@@ -80,6 +80,15 @@
         ]
       },
       {
+        "matcher": "^(Read|Grep|Glob|Bash)$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"${CLAUDE_PLUGIN_ROOT}\"/scripts/other-repo-read.py"
+          }
+        ]
+      },
+      {
         "matcher": "^(Read|Bash)$",
         "hooks": [
           {

@@ -404,6 +404,7 @@
         "wholeReadPaths",
         "readPointers",
         "wholeReadDenyPaths",
+        "otherRepoReadWarn",
         "wholeReadRepeatOnly",
         "wholeReadStaleDays",
         "scoutMaxAgeDays",
@@ -1414,6 +1415,11 @@
       "additionalProperties": {"type": "string", "minLength": 1},
       "default": {},
       "description": "{\"<repo-relative file, or folder ending with />\": \"<command>\"}: files whose whole read (Read without offset or limit, cat and the like by Bash) whole-read.py rejects, whatever their size, with a reason that gives the command instead (E70); a partial read passes and the denial wins over the warnings."
+    },
+    "otherRepoReadWarn": {
+      "type": "boolean",
+      "default": true,
+      "description": "true: other-repo-read.py warns, without blocking, when the main session reads a path inside another git repository (Read, Grep, Glob or a Bash command), since another repo is read through a subagent that returns a summary with paths (E74); false turns the warning off."
     },
     "wholeReadRepeatOnly": {
       "type": "boolean",
