@@ -2609,6 +2609,26 @@ class PendingFileMigration(unittest.TestCase):
         self.assertIn("schemaVersion 0", lines[0])
         self.assertIn("pendingFile set to", lines[0])
 
+    def test_agents_proposal_lists_the_migrated_check(self):  # D130
+        cmd = "python3 .claude/gw/scripts/ci-local.py --validate"
+        p = self.project(pointer=False, ciYamlCheck=True, check=["make old-check"])
+        p.write("AGENTS.md", "# Project rules, no marker\n")
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        proposal = p.read("AGENTS.md.gw-new")
+        self.assertIn(cmd, proposal)
+        self.assertIn("make old-check", proposal)
+        self.assertIn(cmd, p.read(".claude/gw.json"))
+
+    def test_agents_proposal_keeps_the_current_check_without_a_migration(self):  # D130
+        p = self.project(pointer=False, check=["make old-check"])  # ciYamlCheck false: no merge of the check list
+        p.write("AGENTS.md", "# Project rules, no marker\n")
+        code, out = p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        proposal = p.read("AGENTS.md.gw-new")
+        self.assertIn("make old-check", proposal)
+        self.assertNotIn("ci-local.py --validate", proposal)
+
 
 class StaleRefsMigration(unittest.TestCase):
     """D83: --update adds the names the migration renames to the project's `staleRefs` (both forms, no duplicates)."""

@@ -868,7 +868,24 @@ def render(text, cfg, root, version, name):
     return PLACEHOLDER.sub(value, text)
 
 
+def migrated_config(plan, cfg):
+    """D130: `cfg` with the `check` and `install` lists of the gw.json the plan already migrates (the `merge` of
+    .claude/gw.json), so AGENTS.md.gw-new lists the check the project will have, not the old one. Without such a
+    merge, or when its content is not a JSON object, `cfg` as is."""
+    for action in reversed(plan.actions):
+        if action[0] == "merge" and Path(action[1]) == config.CONFIG_REL:
+            try:
+                merged = json.loads(action[2].decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                return cfg
+            if not isinstance(merged, dict):
+                return cfg
+            return dict(cfg, **{k: merged[k] for k in LIST_KEYS if isinstance(merged.get(k), list)})
+    return cfg
+
+
 def plan_templates(plan, cfg, self_apply, wanted_skills):
+    cfg = migrated_config(plan, cfg)
     lang_dir = WORKFLOW / "templates" / cfg["language"]
 
     def rendered(src):
