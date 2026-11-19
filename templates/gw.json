@@ -7,6 +7,8 @@
   "log": "docs/handoff.md",
   "logSize": 20000,
   "reviewTrivialLines": 30,
+  "workflowClone": "../Galivelop-workflow",
+  "workflowRepository": "https://github.com/Zeldris/Galivelop-workflow",
   "wholeReadWarnBytes": 20000,
   "logArchive": "docs/records/handoff-archive.md",
   "agentsSkillsDir": ".agents/skills",

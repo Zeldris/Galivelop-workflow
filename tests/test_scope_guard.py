@@ -3,9 +3,11 @@
 the deviations log, `new --related`). A temporary project laid out like one that applied the workflow; "allowed" is no
 output. Every case that expects a warning or a deny checks what it says, not only the exit code."""
 import json
+import os
 import shutil
 import sys
 import unittest
+from unittest import mock
 
 from test_hooks import BASE_CONFIG, Base, ROOT
 
@@ -372,7 +374,7 @@ class VersionStamp(ScopeBase):
                 "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
                 f"v = {vendored!r}\n"
                 "if v is not None:\n"
-                "    m.rs.workflow_dir = lambda arg: Path('.')\n"
+                "    m.rs.workflow_dir = lambda arg, root, cfg: Path('.')\n"
                 "    m.rs.vendored = lambda root, workflow, timeout=None: v\n"
                 "sys.exit(m.staged(None))\n")
         return self.p.run(sys.executable, "-B", "-c", code, cwd=str(self.p.work))
@@ -427,7 +429,7 @@ class VersionStamp(ScopeBase):
         code = ("import importlib.util, sys; from pathlib import Path\n"
                 "spec = importlib.util.spec_from_file_location('sg', '.claude/gw/scripts/scope-guard.py')\n"
                 "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
-                "m.rs.workflow_dir = lambda arg: Path('.')\n"
+                "m.rs.workflow_dir = lambda arg, root, cfg: Path('.')\n"
                 f"m.rs.vendored = lambda root, workflow, timeout=None: {vendored!r}\n"
                 "sys.exit(m.main([]))\n")
         code, out = self.p.run(sys.executable, "-B", "-c", code, stdin=json.dumps(event), cwd=str(self.p.work))
@@ -450,7 +452,7 @@ class VersionStamp(ScopeBase):
     def test_vendored_set_is_empty_when_apply_times_out(self):
         import subprocess as sp
         mod = self.load_guard()
-        mod.rs.workflow_dir = lambda arg: Path(".")
+        mod.rs.workflow_dir = lambda arg, root, cfg: Path(".")
 
         def slow(*a, **k):
             raise sp.TimeoutExpired("apply.py", k.get("timeout"))
@@ -459,6 +461,20 @@ class VersionStamp(ScopeBase):
             self.assertEqual(mod.vendored_set(self.p.work), set())  # nothing skipped: the safe side
         finally:
             sp.run = saved
+
+    def test_vendored_set_reads_a_fake_workflow_without_mocks(self):  # D132
+        wf = self.p.work.parent / "fake-wf"
+        (wf / "scripts").mkdir(parents=True)
+        (wf / "skills").mkdir()
+        (wf / ".claude-plugin").mkdir()
+        (wf / ".claude-plugin/plugin.json").write_text(json.dumps({"name": "galivelop-workflow", "version": "0.8.0"}))
+        (wf / "scripts/apply.py").write_text("print('src/b.py')\n")
+        self.addCleanup(shutil.rmtree, wf, True)
+        mod = self.load_guard()
+        with mock.patch.dict(os.environ, {"GW_WORKFLOW": str(wf)}):
+            self.assertEqual(mod.vendored_set(self.p.work), {"src/b.py"})
+        with mock.patch.dict(os.environ, {"GW_WORKFLOW": str(wf / "nope")}):
+            self.assertEqual(mod.vendored_set(self.p.work), set())  # not a workflow: nothing skipped
 
     def test_skip_keys_off_make_stamps_and_copies_count_again(self):
         self.set_config(scopeGuard={"mode": "warn", "skipStamps": False, "skipVendored": False})

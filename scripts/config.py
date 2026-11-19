@@ -689,6 +689,22 @@ def test_scan_skip_dirs(config):
     return list(_schema()["properties"]["testScanSkipDirs"]["default"])
 
 
+def workflow_clone(config):
+    """The `workflowClone` key (D132): where a project looks for its workflow clone (relative to the repo root)."""
+    given = config.get("workflowClone")
+    if isinstance(given, str) and given:
+        return given
+    return _schema()["properties"]["workflowClone"]["default"]
+
+
+def workflow_repository(config):
+    """The `workflowRepository` key (D132): the URL review-scope.py tells to clone when it finds no workflow copy."""
+    given = config.get("workflowRepository")
+    if isinstance(given, str) and given:
+        return given
+    return _schema()["properties"]["workflowRepository"]["default"]
+
+
 def review_trivial_lines(config):
     """The `reviewTrivialLines` key (B27): the changed lines at or under which a phase 1 diff is trivial; the schema
     default when absent or not a non-negative integer."""

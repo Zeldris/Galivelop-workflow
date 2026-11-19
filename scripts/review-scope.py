@@ -71,37 +71,69 @@ def changed(root, base):
     return [p for p in out.split("\0") if p]
 
 
-REPO_URL = "https://github.com/Zeldris/Galivelop-workflow"
-SIBLING = "Galivelop-workflow"
+WORKFLOW_NAME = "galivelop-workflow"
+
+
+def plugin_field(cand, field):
+    try:
+        data = json.loads((Path(cand) / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data.get(field) if isinstance(data, dict) else None
 
 
 def is_workflow(cand):
-    return bool(cand) and (Path(cand) / "scripts" / "apply.py").is_file() and (Path(cand) / "skills").is_dir()
+    """A folder is the workflow repo only when it has the workflow layout and its plugin.json names the workflow (a
+    project that vendors the scripts has scripts/apply.py and skills/ too, and must not be run as the workflow)."""
+    return (bool(cand) and (Path(cand) / "scripts" / "apply.py").is_file() and (Path(cand) / "skills").is_dir()
+            and plugin_field(cand, "name") == WORKFLOW_NAME)
 
 
 def plugin_version(cand):
-    try:
-        return json.loads((Path(cand) / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")).get("version")
-    except (OSError, ValueError, AttributeError):
-        return None
+    return plugin_field(cand, "version")
 
 
 def workflow_dir(arg, root, cfg):
-    """D132: --workflow, else $GW_WORKFLOW, else this script's own repo. When that is none (the script is the project's
-    vendored copy, so its repo is the project) the workflow repo itself is its own copy (root has the workflow layout);
-    a project looks for the sibling clone `../Galivelop-workflow` at the version of its `.claude/gw.json`. None found:
-    fail closed with the command that clones the tagged version (a whole diff would hand vendored files over as code)."""
-    for cand in (arg, os.environ.get("GW_WORKFLOW"), str(HERE.parent), str(root)):
+    """D132: --workflow, else $GW_WORKFLOW (both must be the workflow repo: a wrong one is an error, not ignored; a
+    version other than the project's warns), else this script's own repo, else `root` when that is the workflow. A
+    project looks for the clone at `workflowClone` (default `../Galivelop-workflow`) at the version of its
+    `.claude/gw.json`. None found, or no `version` to compare: fail closed with the command that fixes it."""
+    version = cfg.get("version")
+    version = version if isinstance(version, str) and version else None
+    for origin, cand in (("--workflow", arg), ("GW_WORKFLOW", os.environ.get("GW_WORKFLOW"))):
+        if not cand:
+            continue
+        if not is_workflow(cand):
+            raise ScopeError(f"{origin} {cand} is not the {WORKFLOW_NAME} repo (no scripts/apply.py, skills/ and a "
+                             f".claude-plugin/plugin.json named {WORKFLOW_NAME}); point it at a clone: "
+                             f"python3 {Path(__file__).name} --workflow <DIR> (or --all to list the whole diff)")
+        found = plugin_version(cand)
+        if version and found != version:
+            print(f"{PROG}: warning: {origin} {cand} is at v{found}, the project at v{version}; what is vendored "
+                  f"may differ: git clone --branch v{version} --depth 1 {repo_url(cand, cfg)} <DIR>", file=sys.stderr)
+        return Path(cand)
+    for cand in (str(HERE.parent), str(root)):
         if is_workflow(cand):
             return Path(cand)
-    version = cfg.get("version")
-    sibling = Path(root).resolve().parent / SIBLING
-    if is_workflow(sibling) and plugin_version(sibling) == version:
-        return sibling
-    seen = f"; {sibling} is at v{plugin_version(sibling)}, not v{version}" if is_workflow(sibling) else ""
+    clone = (Path(root).resolve() / config.workflow_clone(cfg)).resolve()
+    url = repo_url(clone, cfg)
+    if version is None:
+        raise ScopeError(f"{Path(root) / '.claude' / 'gw.json'} has no \"version\", so no workflow copy can be matched; "
+                         f"add it (the installed workflow version, as in templates/gw.json) or clone one and give it: "
+                         f"git clone --depth 1 {url} <DIR> && python3 {Path(__file__).name} --workflow <DIR> "
+                         "(or --all to list the whole diff)")
+    if is_workflow(clone) and plugin_version(clone) == version:
+        return clone
+    seen = f"; {clone} is at v{plugin_version(clone)}, not v{version}" if is_workflow(clone) else ""
     raise ScopeError(f"no workflow copy at v{version} to tell what is vendored{seen}; clone the tagged version and "
-                     f"rerun with --workflow: git clone --branch v{version} --depth 1 {REPO_URL} <DIR> && "
+                     f"rerun with --workflow: git clone --branch v{version} --depth 1 {url} <DIR> && "
                      f"python3 {Path(__file__).name} --workflow <DIR> (or --all to list the whole diff)")
+
+
+def repo_url(cand, cfg):
+    """The workflow's clone URL: `repository` of its plugin.json when `cand` is the workflow, else `workflowRepository`."""
+    url = plugin_field(cand, "repository") if is_workflow(cand) else None
+    return url if isinstance(url, str) and url else config.workflow_repository(cfg)
 
 
 def vendored(root, workflow, timeout=None):

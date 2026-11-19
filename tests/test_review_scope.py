@@ -161,6 +161,110 @@ class ReviewScope(ScopeBase):
         self.assertEqual(code, 0, out)
         self.assertIn("x.py", out)
 
+    def fake_wf(self, name="galivelop-workflow", version=None, repository=None):
+        wf = self.tmp / "fake-wf"
+        shutil.copytree(ROOT / "scripts", wf / "scripts", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copytree(ROOT / "skills", wf / "skills")
+        shutil.copytree(ROOT / "schema", wf / "schema")
+        (wf / ".claude-plugin").mkdir()
+        data = {"name": name, "version": version or json.loads((self.p.work / ".claude/gw.json").read_text())["version"]}
+        if repository:
+            data["repository"] = repository
+        (wf / ".claude-plugin/plugin.json").write_text(json.dumps(data))
+        return wf
+
+    def set_cfg(self, **kv):
+        path = self.p.work / ".claude/gw.json"
+        cfg = json.loads(path.read_text())
+        cfg.update(kv)
+        cfg = {k: v for k, v in cfg.items() if v is not None}
+        path.write_text(json.dumps(cfg))
+        self.p.run("git", "add", "-A")
+        self.p.run("git", "commit", "-qm", "cfg")
+
+    def test_an_explicit_workflow_that_is_not_the_workflow_is_an_error(self):  # D132
+        self.commit()
+        code, out = self.bare("--workflow", str(self.p.work))  # a project: has scripts/apply.py, skills/, another name
+        self.assertEqual(code, 2, out)
+        self.assertIn("--workflow", out)
+        self.assertIn("is not the galivelop-workflow repo", out)
+        self.assertIn("--workflow <DIR>", out)
+        code, out = self.bare("--workflow", str(self.tmp / "nowhere"))
+        self.assertEqual(code, 2, out)
+        self.assertIn("is not the galivelop-workflow repo", out)
+
+    def test_a_wrong_env_var_is_an_error_too(self):  # D132
+        self.commit()
+        self.p.env["GW_WORKFLOW"] = str(self.tmp / "nowhere")
+        code, out = self.bare()
+        self.assertEqual(code, 2, out)
+        self.assertIn("GW_WORKFLOW", out)
+        self.assertIn("is not the galivelop-workflow repo", out)
+
+    def test_a_workflow_at_another_version_warns(self):  # D132
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        wf = self.fake_wf(version="0.0.1", repository="https://example.test/wf")
+        code, out = self.bare("--workflow", str(wf), "--all")
+        self.assertEqual(code, 0, out)  # --all never looks for the workflow
+        code, out = self.bare("--workflow", str(wf))
+        self.assertIn("warning", out)
+        self.assertIn("is at v0.0.1", out)
+        self.assertIn("https://example.test/wf", out)  # the URL comes from the workflow's plugin.json
+
+    def test_a_gw_json_without_version_fails_closed(self):  # D132: the config loader refuses it before the lookup
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        self.set_cfg(version=None)
+        code, out = self.bare()
+        self.assertEqual(code, 2, out)
+        self.assertIn("missing required key 'version'", out)
+        self.assertNotIn("vNone", out)
+
+    def test_workflow_dir_without_version_never_matches_none_with_none(self):  # D132
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("rs", ROOT / "scripts/review-scope.py")
+        rs = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rs)
+        rs.HERE = self.tmp / "not-the-workflow"  # the script's own repo must not answer in this test
+        sib = self.tmp / "Galivelop-workflow"
+        shutil.copytree(ROOT, sib, ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__"))
+        plug = sib / ".claude-plugin/plugin.json"
+        data = json.loads(plug.read_text())
+        data.pop("version", None)
+        plug.write_text(json.dumps(data))
+        proj = self.tmp / "proj"
+        proj.mkdir()
+        with self.assertRaises(rs.ScopeError) as cm:
+            rs.workflow_dir(None, proj, {})
+        self.assertIn('has no "version"', str(cm.exception))
+        self.assertIn("git clone --depth 1", str(cm.exception))
+        self.assertNotIn("vNone", str(cm.exception))
+
+    def test_the_clone_path_and_the_url_come_from_gw_json(self):  # D132
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        self.set_cfg(workflowClone="../elsewhere", workflowRepository="https://example.test/own.git")
+        code, out = self.bare()
+        self.assertEqual(code, 2, out)
+        self.assertIn("https://example.test/own.git", out)
+        shutil.copytree(ROOT, self.p.work.parent / "elsewhere", ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__"))
+        self.addCleanup(shutil.rmtree, self.p.work.parent / "elsewhere", True)
+        code, out = self.bare()
+        self.assertEqual(code, 0, out)
+
+    def test_a_project_copy_is_not_taken_for_the_workflow(self):  # D132
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        # the project holds scripts/apply.py and skills/ (a vendored layout) but its plugin.json is not the workflow's
+        (self.p.work / "scripts").mkdir(exist_ok=True)
+        (self.p.work / "scripts/apply.py").write_text("raise SystemExit('must not run')\n")
+        (self.p.work / "skills").mkdir(exist_ok=True)
+        code, out = self.bare()
+        self.assertEqual(code, 2, out)
+        self.assertIn("no workflow copy at v", out)
+        self.assertNotIn("must not run", out)
+
     def test_a_base_that_is_not_a_commit_fails_with_the_fix(self):
         code, out = self.scope("--base", "nope")
         self.assertEqual(code, 2)
