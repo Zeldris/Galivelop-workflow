@@ -373,7 +373,7 @@ Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18)
 | E66 | Aviso de `/clear` al cerrar una tarea con el contexto por encima de un umbral (clave nueva) en `recover.py --state` y `before-stop.py`; un «Siguiente» tras un cierre se contesta pidiendo `/clear` (recogida `0.9`, private-project-3 P1) | hecho (2026-11-19; contextGuard.clearAfterTask; before-stop.py y recover.py --state) |
 | E67 | `gw-update` presenta como decisión, antes de `--update`, las claves nuevas que crean archivos fuera de `.claude/`, con la clave que lo apaga (recogida `0.9`, private-project-2 P5) | hecho (2026-11-19) |
 | E68 | `gw-selector` y el gancho de inicio recomiendan el `gw-worker` para barridos y arreglos de revisión de 2 o más puntos (recogida `0.9`, image-generator P3) | hecho (2026-11-19) |
-| E69 | Plantilla del encargo de `gw-orchestrate-dealer`: el defecto se busca también en el archivo hermano (recogida `0.9`, image-generator P2) | pendiente |
+| E69 | Plantilla del encargo de `gw-orchestrate-dealer`: el defecto se busca también en el archivo hermano (recogida `0.9`, image-generator P2) | hecho (2026-11-19) |
 | E70 | `wholeReadDenyPaths`: `whole-read.py` rechaza esas rutas con su orden alternativa, no solo avisa (recogida `0.9`, image-generator P4) | pendiente |
 | E71 | `actionlint` en el check de los proyectos con `.github/workflows/` y aviso de `doctor.py` si no lo validan (recogida `0.9`, instalador P2) | pendiente |
 | E72 | Clave `generated` (`{command, paths}`): el check regenera y compara con `git diff --exit-code` (recogida `0.9`, private-project-1 P1) | pendiente |

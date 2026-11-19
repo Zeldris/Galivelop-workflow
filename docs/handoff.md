@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.1` publicada** (`main` = `4ca45d0`, 2026-11-19; CI en verde; etiqueta y release `v0.8.1` creadas desde una sesión local) |
-| Siguiente paso | **`0.9` «Front»**: la recogida de apertura (H24) ya está hecha; tareas E69-E76 de la recogida (E65-E68 hechas), en orden, y luego A12, E4, E5, E7, E9-E16, E42 y E50. **Al cerrar el desarrollo de la `0.9`, antes de publicarla:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 0 |
+| Siguiente paso | **`0.9` «Front»**: la recogida de apertura (H24) ya está hecha; tareas E70-E76 de la recogida (E65-E69 hechas), en orden, y luego A12, E4, E5, E7, E9-E16, E42 y E50. **Al cerrar el desarrollo de la `0.9`, antes de publicarla:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 0 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-19 — E68: `gw-selector` recomienda repartir a un `gw-worker` los barridos y los arreglos de revisión de 2 o más puntos, y `session-start.sh` lo repite en una línea `Workers: …` (clave nueva `workerHint`, `true`; solo si existe `.claude/agents/gw-worker.md`)
-2. 2026-11-19 — E67: `apply.py --dry-run` (y `--summary`) da una línea `decide` por clave ausente del `gw.json` cuyo valor por defecto crea archivos fuera de `.claude/` (hoy `agentsSkillsDir`), con el recuento y el valor que la apaga; `gw-update` (paso 2) la presenta como decisión antes de `--update`
-3. 2026-11-19 — E66: `contextGuard.clearAfterTask` (0,25): con una fila del roadmap cerrada en el tramo y la conversación crecida por encima del umbral, `before-stop.py` bloquea una vez por tarea pidiendo `/clear` y `recover.py --state` lo dice; regla del «Siguiente» en AGENTS.md y plantillas
-4. 2026-11-19 — E65 revisada (7 hallazgos arreglados): merge-main.py toma el id de la rama (first-parent), respeta spike y metrics.commitLedger, no commitea sin nada que fusionar y usa find_root; test_merge_main.py (17)
-5. 2026-11-19 — E65: scripts/merge-main.py (fetch, commit del ledger si es lo único sucio, si no se niega, merge --no-edit) con tests/test_merge_main.py (11); el paso 5 de AGENTS.md y de las plantillas apunta a él
+1. 2026-11-19 — E69: la plantilla del encargo de gw-orchestrate-dealer amplía la regla del patrón al mismo defecto en un archivo hermano (gemelo, otro idioma, copia) y DONE: pide, por cada punto, si se hizo entero o en parte
+2. 2026-11-19 — E68: `gw-selector` recomienda repartir a un `gw-worker` los barridos y los arreglos de revisión de 2 o más puntos, y `session-start.sh` lo repite en una línea `Workers: …` (clave nueva `workerHint`, `true`; solo si existe `.claude/agents/gw-worker.md`)
+3. 2026-11-19 — E67: `apply.py --dry-run` (y `--summary`) da una línea `decide` por clave ausente del `gw.json` cuyo valor por defecto crea archivos fuera de `.claude/` (hoy `agentsSkillsDir`), con el recuento y el valor que la apaga; `gw-update` (paso 2) la presenta como decisión antes de `--update`
+4. 2026-11-19 — E66: `contextGuard.clearAfterTask` (0,25): con una fila del roadmap cerrada en el tramo y la conversación crecida por encima del umbral, `before-stop.py` bloquea una vez por tarea pidiendo `/clear` y `recover.py --state` lo dice; regla del «Siguiente» en AGENTS.md y plantillas
+5. 2026-11-19 — E65 revisada (7 hallazgos arreglados): merge-main.py toma el id de la rama (first-parent), respeta spike y metrics.commitLedger, no commitea sin nada que fusionar y usa find_root; test_merge_main.py (17)
 
 ## Pendiente
 

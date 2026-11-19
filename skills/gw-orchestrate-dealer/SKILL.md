@@ -89,11 +89,12 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    created another name, rename it first: `git branch -m agent/<id>-<topic>`.
    Applying a document from another repo: each point's literal text and path go to a scratchpad file; reply its path.
    If the bug is a pattern (a wrong check, a missing quote, a case left out), grep its other occurrences and fix
-   them too, or list them under MISSING.
+   them too, or list them under MISSING; the same goes for the same defect in a sibling of a file you touch (its
+   twin, the other language, a copy).
    If you touch processes, paths or permissions, write it for every platform the project supports.
    If something needs a user decision, stop and return it as a question (never ask the user yourself). Never merge into {protectedBranch}.
    Write your reply and commit message in {language}. Reply in at most 15 lines:
-   DONE: … · COMMIT: <sha> · EVIDENCE: <command and summarised result> · MISSING: … · QUESTIONS: …
+   DONE: <per point of the task: whole or partial, and what is left> · COMMIT: <sha> · EVIDENCE: <command and summarised result> · MISSING: … · QUESTIONS: …
    If the chunk cannot be tested, reply NOT_TESTABLE: <reason> + the command that checks it another way, in place of
    EVIDENCE. Every number you report you counted yourself.
    Add FOUND: (one line per finding) and TOOLS: (failures of the project's scripts, hooks or CI) only if you have any.

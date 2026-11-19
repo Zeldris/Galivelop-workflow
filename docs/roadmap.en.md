@@ -372,7 +372,7 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | E66 | `/clear` warning when a task closes with the context over a threshold (new key) in `recover.py --state` and `before-stop.py`; a "Next" after a close is answered asking for `/clear` (`0.9` harvest, private-project-3 P1) | done (2026-11-19; contextGuard.clearAfterTask; before-stop.py and recover.py --state) |
 | E67 | `gw-update` presents as a decision, before `--update`, the new keys that create files outside `.claude/`, with the key that turns it off (`0.9` harvest, private-project-2 P5) | done (2026-11-19) |
 | E68 | `gw-selector` and the start hook recommend `gw-worker` for sweeps and review fixes of 2 or more points (`0.9` harvest, image-generator P3) | done (2026-11-19) |
-| E69 | `gw-orchestrate-dealer` brief template: the defect is also looked for in the sibling file (`0.9` harvest, image-generator P2) | pending |
+| E69 | `gw-orchestrate-dealer` brief template: the defect is also looked for in the sibling file (`0.9` harvest, image-generator P2) | done (2026-11-19) |
 | E70 | `wholeReadDenyPaths`: `whole-read.py` rejects those paths with their alternative command, not only warns (`0.9` harvest, image-generator P4) | pending |
 | E71 | `actionlint` in the check of projects with `.github/workflows/` and a `doctor.py` warning when they are not validated (`0.9` harvest, installer P2) | pending |
 | E72 | `generated` key (`{command, paths}`): the check regenerates and compares with `git diff --exit-code` (`0.9` harvest, private-project-1 P1) | pending |
