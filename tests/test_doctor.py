@@ -203,6 +203,44 @@ class Doctor(Snapshot):
         self.assertNotIn("runs twice", out)
         self.assertEqual(code, 0, out)
 
+    def _add_entry(self, matcher, command):
+        s = self.settings()
+        s["hooks"]["PreToolUse"].append({"matcher": matcher, "hooks": [{"type": "command", "command": command}]})
+        self.save_settings(s)
+
+    def test_project_command_with_overlapping_matchers_only_warns(self):  # D128 review
+        self._add_entry("Edit|Write", "bash scripts/lint.sh")
+        self._add_entry("Write", "bash scripts/lint.sh")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        line = self.assertLine(out, "WARN", "settings PreToolUse", "lint.sh", "runs twice", "by hand")
+        self.assertNotIn("apply.py --update (from", line)
+        self.assertNotIn("FAIL settings PreToolUse", out)
+
+    def test_project_command_with_disjoint_matchers_is_fine(self):  # D128 review
+        self._add_entry("Edit", "bash scripts/lint.sh")
+        self._add_entry("Write", "bash scripts/lint.sh")
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("lint.sh", out)
+
+    def test_workflow_command_with_disjoint_matchers_is_fine(self):  # D128 review
+        s = self.settings()
+        reads = [e for e in s["hooks"]["PreToolUse"] if any("whole-read.py" in h["command"] for h in e["hooks"])]
+        s["hooks"]["PreToolUse"].append({"matcher": "Nothing", "hooks": list(reads[0]["hooks"])})
+        self.save_settings(s)
+        code, out = self.doctor()
+        self.assertNotIn("runs twice", out)
+
+    def test_workflow_command_under_an_empty_matcher_fails(self):  # D128 review
+        s = self.settings()
+        reads = [e for e in s["hooks"]["PreToolUse"] if any("whole-read.py" in h["command"] for h in e["hooks"])]
+        s["hooks"]["PreToolUse"].append({"matcher": "*", "hooks": list(reads[0]["hooks"])})
+        self.save_settings(s)
+        code, out = self.doctor()
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", "settings PreToolUse", "whole-read.py", "runs twice")
+
     def test_missing_subagent_cap_script_fails(self):
         (self.p.scripts / "subagent-cap.py").unlink()
         code, out = self.doctor()

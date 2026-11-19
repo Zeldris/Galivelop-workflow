@@ -104,6 +104,18 @@ keep_globs="$(python3 "$config" --root "$root" get branchPrefixes.keep 2>/dev/nu
   echo "merge-branch: cannot read 'branchPrefixes.keep' from .claude/gw.json, so nothing was merged; fix the config: python3 $config --root $root validate" >&2; exit 2; }
 merge_cleanup="$(python3 "$config" --root "$root" get mergeCleanup 2>/dev/null)" || {
   echo "merge-branch: cannot read 'mergeCleanup' from .claude/gw.json, so nothing was merged; fix the config: python3 $config --root $root validate" >&2; exit 2; }
+# D136: succeeds when the worktree at $1 is locked; its `locked <reason>` line from the porcelain goes to lock_reason.
+worktree_locked() {
+  local locked
+  lock_reason=""
+  locked="$(git worktree list --porcelain | awk -v p="$1" '
+    /^worktree /{w=substr($0,10); hit=(w==p)}
+    hit && $1=="locked"{print "L" substr($0,8); exit}')"
+  [ -n "$locked" ] || return 1
+  lock_reason="$(printf '%s' "${locked#L}" | sed 's/^ *//')"
+  return 0
+}
+
 glob_match() {  # glob_match <name> <globs, one per line>: 0 if the name matches one of them
   local pat
   while IFS= read -r pat; do
@@ -262,7 +274,10 @@ EOF_CONFLICTS
       # B41: an open wave is closed by this merge, so its related tests (all of its branches) go too.
       [ -z "$wave_base" ] || after="$after && $related_cmd && rm -f $(printf '%q' "$wave_file")"
     fi
-    [ "$merge_cleanup" != "true" ] || [ -z "$wt" ] || [ "$wt" = "$root" ] || after="${after:+$after && }git worktree remove $(printf '%q' "$wt")"
+    if [ "$merge_cleanup" = "true" ] && [ -n "$wt" ] && [ "$wt" != "$root" ]; then
+      worktree_locked "$wt" && after="${after:+$after && }git worktree unlock $(printf '%q' "$wt")"
+      after="${after:+$after && }git worktree remove $(printf '%q' "$wt")"
+    fi
     if [ "$merge_cleanup" = "true" ] && [ "$branch" != "$protected" ] && ! glob_match "$branch" "$keep_globs" && [ "$branch" != "$(git branch --show-current)" ]; then
       after="${after:+$after && }git branch -d $(printf '%q' "$branch")"
     fi
@@ -382,14 +397,8 @@ cleanup_branch() {
     case "$wt" in
       */.claude/worktrees/*)
         # D136: a worktree locked by a live agent cannot be removed (and its branch is checked out in it): leave both.
-        locked="$(git worktree list --porcelain | awk -v r="refs/heads/$branch" '
-          /^worktree /{w=substr($0,10); l=0; hit=0}
-          $1=="locked"{l=1}
-          $1=="branch" && $2==r {hit=1}
-          /^$/{if (hit && l) print w; hit=0; l=0}
-          END{if (hit && l) print w}')"
-        if [ -n "$locked" ]; then
-          echo "merge-branch: worktree $wt is locked by a live agent, so it and $branch stay; merged, to be cleaned on a later pass. Once the agent ends: git worktree unlock $(printf '%q' "$wt") && git worktree remove $(printf '%q' "$wt") && git branch -d $(printf '%q' "$branch")"
+        if worktree_locked "$wt"; then
+          echo "merge-branch: worktree $wt is locked (${lock_reason:-no reason given}); it may be a live agent or a stale lock of a dead one. It and $branch stay (merged). If no agent uses it: git worktree unlock $(printf '%q' "$wt") && git worktree remove $(printf '%q' "$wt") && git branch -d $(printf '%q' "$branch")"
           return 0
         fi
         if git worktree remove "$wt" > "$logs/wt.log" 2>&1; then

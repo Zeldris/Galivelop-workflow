@@ -564,6 +564,19 @@ class Apply(unittest.TestCase):
         self.assertEqual(self.p.read(".claude/settings.json"), before, "a second run changes nothing")
         self.assertNotIn("removed from matcher", out)
 
+    def test_wider_project_matcher_of_a_template_command_is_kept_with_a_warning(self):  # D128 review
+        self.applied()
+        s, reads = self._whole_read_entries()
+        s["hooks"]["PreToolUse"].append({"matcher": "Read|Bash|mcp__shell__run", "hooks": list(reads[0]["hooks"])})
+        self.p.write(".claude/settings.json", json.dumps(s))
+        out = self.applied("--update")
+        _, reads = self._whole_read_entries()
+        self.assertEqual([e["matcher"] for e in reads], ["^(Read|Bash)$", "Read|Bash|mcp__shell__run"])
+        self.assertNotIn("removed from matcher", out)
+        self.assertIn("PreToolUse registers a workflow command under the matcher 'Read|Bash|mcp__shell__run'", out)
+        self.assertIn("kept, as it is wider than the template's", out)
+        self.assertIn("delete that command from that entry", out)
+
     def test_070_settings_end_with_only_the_new_whole_read_matcher(self):
         self.applied()
         self._downgrade_whole_read()

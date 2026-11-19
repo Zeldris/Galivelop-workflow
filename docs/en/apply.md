@@ -292,7 +292,7 @@ how code already reaches it today.
 - **Files of a skill the workflow replaces** (for instance the bench and `evals` of a project-made `gw-scout-updates`):
   `apply.py` does not delete them, it lists them as "no longer in the workflow (kept)". Move them to a folder of the
   project (e.g. `tools/scout/`) or `git rm` them if nothing uses them; do not leave them inside `.claude/skills/`.
-- **Old hooks in `.claude/settings.json`.** `apply.py` merges the new ones, drops from the project a `command` the template now registers under another matcher in the same event (D128; the project's own hooks are never touched) and warns
+- **Old hooks in `.claude/settings.json`.** `apply.py` merges the new ones, drops from the project a `command` the template now registers under another matcher in the same event when the old matcher is equal to or narrower than the template's; a wider one is kept with a warning naming the entry to delete by hand (D128; the project's own hooks are never touched) and warns
   ("also runs '…'") about a `SessionStart`, `PreToolUse` or `Stop` entry that runs a workflow script from outside
   `.claude/gw/scripts/`; so does `doctor.py`. Delete it by hand, or it runs twice.
 - **`recover.py` on the command line**, to get back what a compaction or a `/clear` dropped:

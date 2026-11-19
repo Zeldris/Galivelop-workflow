@@ -2233,10 +2233,11 @@ class MergeBranch(Base):
                 code, out = self.p.script("merge-branch.sh", name, "Merge agent", "--reviewed")
                 self.assertEqual(code, 0, out)
                 self.assertIn("merged " + name, out)
-                self.assertIn("is locked by a live agent", out)
+                self.assertIn("it may be a live agent or a stale lock", out)
+                self.assertIn("(%s)" % (reason or "no reason given"), out)
                 self.assertIn("git worktree unlock", out)
                 self.assertIn("git branch -d", out)
-                self.assertEqual(len([l for l in out.splitlines() if "locked by a live agent" in l]), 1, out)
+                self.assertEqual(len([l for l in out.splitlines() if "may be a live agent" in l]), 1, out)
                 self.assertTrue(wt.exists(), "the locked worktree stays")
                 self.assertIn(name, self.branches(), "its branch stays too")
 
@@ -2247,6 +2248,22 @@ class MergeBranch(Base):
         self.assertNotIn("locked", out)
         self.assertFalse(wt.exists(), out)
         self.assertNotIn("agent/D136-free", self.branches())
+
+    def test_d136_a_log_conflict_with_a_locked_worktree_hints_the_unlock_first(self):
+        wt = self.agent(path=LOG, text="agent log\n", env=dict(DAY, GW_SHARED_LOG="1"))
+        self.p.write(LOG, "main log\n")
+        self.p.commit("main edits", env=dict(DAY, GW_SHARED_LOG="1"))
+        self.p.git("worktree", "lock", "--reason", "pid 7", str(wt))
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
+        self.assertEqual(code, 1, out)
+        self.assertRegex(out, r"git worktree unlock \S+ && git worktree remove \S+")
+
+    def test_d136_a_log_conflict_with_a_free_worktree_does_not_hint_an_unlock(self):
+        self.conflict(LOG)
+        code, out = self.p.script("merge-branch.sh", "worktree-agent-1", "Merge agent 1")
+        self.assertEqual(code, 1, out)
+        self.assertIn("git worktree remove", out)
+        self.assertNotIn("git worktree unlock", out)
 
 
 class RedWithoutFix(Base):
