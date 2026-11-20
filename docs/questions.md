@@ -77,3 +77,52 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: sí, segundo plano con 90 min, en la misma tarea
 - Answer: ok
 - Answered: 2026-11-19
+
+## Q-10
+- Refs: A12
+- Status: open
+- Asked: 2026-11-20
+- Question: A12, alcance: a) una sola ficha repartida en trozos; b) partir el idioma del agente por usuario en otra tarea con Related:
+- Recommendation: a: una ficha A12, repartida en 3 trozos (esquema y lectura en config.py con migración; consumidores; idioma del agente)
+
+## Q-11
+- Refs: A12
+- Status: open
+- Asked: 2026-11-20
+- Question: A12, forma del bloque languages en este repo (código en inglés; doc interna es+en; README y releases públicos en+es; ui vacío)
+- Recommendation: sí: {"code":"en","docs":{"primary":"es","others":["en"]},"public":{"primary":"en","others":["es"]},"ui":[]}, códigos ISO 639-1
+
+## Q-12
+- Refs: A12
+- Status: open
+- Asked: 2026-11-20
+- Question: A12, migración: a) apply.py --update migra y config.py acepta las claves viejas como respaldo con aviso; b) migración y sin respaldo (falla cerrado)
+- Recommendation: a: apply.py --update migra (language → docs.primary y public.primary; visibleLanguages → ui; code = en) y config.py sigue leyendo las claves viejas si falta el bloque, con aviso de doctor.py
+
+## Q-13
+- Refs: A12
+- Status: open
+- Asked: 2026-11-20
+- Question: A12, plantillas de un idioma sin carpeta en templates/ (p. ej. gl): a) usar en y avisar; b) fallar cerrado
+- Recommendation: a: plantillas por docs.primary; si no hay plantillas en ese idioma, las de en y aviso de doctor.py
+
+## Q-14
+- Refs: A12
+- Status: open
+- Asked: 2026-11-20
+- Question: A12: ¿el idioma de commits y textos generados por los scripts sale de docs.primary?
+- Recommendation: sí: commits (trailer Siguiente/Next), bitácora, roadmap y textos de handoff.py/merge-main.py/task.py siguen a docs.primary
+
+## Q-15
+- Refs: A12
+- Status: open
+- Asked: 2026-11-20
+- Question: A12, names-check con code distinto de en: a) se salta y lo dice; b) se generaliza a cualquier par de idiomas (más trabajo)
+- Recommendation: a: names-check.py solo comprueba cuando code es en (hoy solo detecta nombres en español); con otro valor, lo salta y lo dice
+
+## Q-16
+- Refs: A12
+- Status: open
+- Asked: 2026-11-20
+- Question: A12, idioma del agente por usuario en ~/.claude/gw.json por email, anunciado por el gancho de inicio
+- Recommendation: sí: ~/.claude/gw.json {"agentLanguage": {"<email>": "es"}}; el gancho SessionStart imprime 'Agent language: es' (respaldo: docs.primary); CLAUDE.md deja de fijar el idioma
