@@ -223,6 +223,91 @@ class List(Cli):
         self.assertIn("boss -> gone (missing on disk)", self.run_cli("list")[1])
 
 
+class Review(Cli):
+    """The findings of the review of chunk 2a, one test each."""
+
+    def test_new_fixes_the_executors_own_missing_profile(self):  # 1
+        self.profile("admin")
+        self.run_cli("role", "boss", "admin")
+        subprocess.run(["git", "-C", str(self.tmp), "config", "user.email", MAIL], check=True)
+        self.run_cli("assign", MAIL, "--profile", "admin")
+        (self.dir / "admin.json").unlink()
+        code, out, err = self.run_cli("new", "admin")
+        self.assertEqual(code, 0, err)
+        self.assertTrue((self.dir / "admin.json").is_file())
+
+    def test_role_fixes_the_executors_missing_role_profile(self):  # 1
+        self.profile("admin")
+        self.run_cli("role", "boss", "admin")
+        subprocess.run(["git", "-C", str(self.tmp), "config", "user.email", MAIL], check=True)
+        self.run_cli("assign", MAIL, "--role", "boss")
+        raw = json.loads(self.config.read_text())
+        del raw["profiles"]["roles"]["boss"]
+        self.write(raw)
+        self.profile("other")
+        self.assertEqual(self.run_cli("list")[0], 0)
+        self.assertEqual(self.run_cli("role", "boss", "other")[0], 0)
+
+    def test_role_with_an_invalid_profile_is_refused_even_in_ci(self):  # 2
+        self.profile("bad", '{"version": "9"}')
+        for ci in (False, True):
+            with self.subTest(ci=ci):
+                err = self.fails("role", "dev", "bad", reason="a profile cannot change what is installed", ci=ci)
+                self.assertIn("config.py profile", err)
+        self.assertNotIn("profiles", json.loads(self.config.read_text()))
+
+    def test_assign_with_an_invalid_profile_is_refused(self):  # 2
+        self.profile("bad", '{"nope": 1}')
+        self.fails("assign", MAIL, "--profile", "bad", reason="unknown key 'nope'")
+        self.assertNotIn("profiles", json.loads(self.config.read_text()))
+
+    def test_assign_does_not_keep_a_retired_role(self):  # 3
+        self.profile("admin")
+        self.profile("mine")
+        self.run_cli("role", "qa", "admin")
+        self.run_cli("assign", MAIL, "--role", "qa")
+        raw = json.loads(self.config.read_text())
+        del raw["profiles"]["roles"]["qa"]
+        self.write(raw)
+        err = self.fails("assign", MAIL, "--profile", "mine", reason="role `qa` this person already has")
+        self.assertIn("profile.py role qa <profile>", err)
+
+    def test_docstring_says_the_guard_is_pending(self):  # 4
+        text = (ROOT / "scripts" / "profile.py").read_text()
+        self.assertIn("is pending, E4 chunk 2b", text)
+        self.assertNotIn("config-guard.py asks the user", text)
+
+    def test_show_with_a_missing_profile_fails_with_its_own_message(self):  # 5
+        self.profile("mine")
+        self.run_cli("assign", MAIL, "--profile", "mine")
+        (self.dir / "mine.json").unlink()
+        err = self.fails("show", MAIL, reason="unknown profile `mine`")
+        self.assertNotIn("nothing was changed", err)
+        self.assertIn("gw profile show:", err)
+
+    def test_show_with_a_role_without_profile_fails_with_its_own_message(self):  # 5
+        self.profile("a")
+        self.run_cli("role", "qa", "a")
+        self.run_cli("assign", MAIL, "--role", "qa")
+        raw = json.loads(self.config.read_text())
+        del raw["profiles"]["roles"]["qa"]
+        self.write(raw)
+        err = self.fails("show", MAIL, reason="has no profile in profiles.roles")
+        self.assertNotIn("nothing was changed", err)
+
+    def test_email_needs_a_local_part_and_a_domain(self):  # 6
+        self.profile("a")
+        for bad in ("@", "a@", "@b.c", "a@b@c", "a b@c.d"):
+            with self.subTest(bad):
+                self.fails("assign", bad, "--profile", "a", reason="is not an e-mail address")
+        self.assertEqual(self.run_cli("assign", "a@b", "--profile", "a")[0], 0)
+
+    def test_profile_dir_default_comes_from_the_schema(self):  # 7
+        self.assertNotIn(".claude/gw/profiles", (ROOT / "scripts" / "profile.py").read_text())
+        self.assertEqual(self.run_cli("new", "z")[0], 0)
+        self.assertTrue((self.dir / "z.json").is_file())
+
+
 class NoConfig(Cli):
     def test_no_config(self):
         self.config.unlink()

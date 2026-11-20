@@ -8,18 +8,20 @@
   python3 profile.py role ROLE PROFILE          # profiles.roles: the role works with that profile
   python3 profile.py show [EMAIL]               # the profile that applies (default: git user.email) and its layer
 
-Layers (Q-23): default (the project's .claude/gw.json) -> the person's role profile -> the person's own profile; CI
+Writing commands and `list` read the project's config alone (no profile layers), so `new` and `role` can fix a profile or
+role that is missing; `show` applies the layers. Layers (Q-23): default (the project's .claude/gw.json) -> the person's role profile -> the person's own profile; CI
 always runs with the default (Q-26). `assign` writes only the SHA-256 of the e-mail (trimmed, lower case; config.email_hash)
 into `profiles.people`, never the address (Q-25: the repo may be public). It is convenience, not access control (Q-27).
 Writes edit .claude/gw.json in place like mode.py: only the text of the affected value changes (EOL, tabs, compact
 sections and key order stay), through a temp file and os.replace, validated with config.load, and the old text is put
-back if the result is invalid. config-guard.py asks the user before an agent runs the writing commands. Project root and
+back if the result is invalid. (config-guard.py asking the user before an agent runs the writing commands is pending, E4 chunk 2b.) Project root and
 config: config.find_root and config.load. Fails closed: no config, an invalid one, an unknown or invalid name -> exit 2
 with the command that fixes it. Python 3.8+ standard library only.
 """
 import argparse
 import json
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -30,6 +32,7 @@ import config  # noqa: E402
 import mode  # noqa: E402  (its JSON text-editing helpers)
 
 NAME = Path(__file__).name
+EMAIL = re.compile(r"^[^@\s]+@[^@\s]+$")
 
 
 class Fail(Exception):
@@ -67,9 +70,21 @@ def edit_text(text, keys, value):
     return set_at(text, mode._WS.match(text, 0).end(), list(keys), value)
 
 
-def write(root, keys, value):
+def check_chain(root, raw, email):
+    """Fail closed unless the profiles that apply to `email` under the raw config `raw` load and are valid (CI or not):
+    Fail with config.apply_profiles's reason."""
+    try:
+        raw, _done = config.migrate(json.loads(json.dumps(raw)))  # as load() does before it layers the profiles
+        config.apply_profiles(raw, root, None, config._schema(), email=email, force=True)
+    except config.ConfigError as exc:
+        raise Fail(f"{exc}")
+
+
+def write(root, keys, value, check_email=None):
     """Set the config value at `keys` in root/.claude/gw.json, changing only that text; atomic (temp file +
-    os.replace); validated with config.load, putting the old text back if it is invalid (ConfigError)."""
+    os.replace). With `check_email`, the profile chain of that e-mail under the new config is validated first
+    (check_chain); the file is then validated with config.load without layers, putting the old text back if it is
+    invalid (ConfigError)."""
     path = Path(root) / config.CONFIG_REL
     old = path.read_bytes().decode("utf-8")
     expected = json.loads(old)
@@ -82,9 +97,11 @@ def write(root, keys, value):
     new = edit_text(old, keys, value)
     if json.loads(new) != expected:
         raise ValueError("the edit would change more than " + ".".join(keys[:2]))
+    if check_email is not None:
+        check_chain(root, expected, check_email)
     mode.replace(path, new)
     try:
-        config.load(root)
+        config.load(root, profiles=False)
     except config.ConfigError:
         mode.replace(path, old)
         raise
@@ -96,7 +113,8 @@ def block(conf):
 
 
 def profile_dir(conf):
-    return Path(conf["_root"]) / (block(conf).get("dir") or ".claude/gw/profiles")
+    default = config._schema()["properties"]["profiles"]["default"]["dir"]
+    return Path(conf["_root"]) / (block(conf).get("dir") or default)
 
 
 def valid_name(name, what="profile name"):
@@ -164,6 +182,11 @@ def cmd_new(conf, name, source):
 def cmd_role(conf, role, name):
     valid_name(role, "role name")
     need_profile(conf, name)
+    fake = "role-check@invalid"
+    probe = json.loads((Path(conf["_root"]) / config.CONFIG_REL).read_text(encoding="utf-8"))
+    probe = dict(probe, profiles=dict(probe.get("profiles") or {}, people={config.email_hash(fake): {"role": role}},
+                                      roles=dict((probe.get("profiles") or {}).get("roles") or {}, **{role: name})))
+    check_chain(conf["_root"], probe, fake)
     write(conf["_root"], ["profiles", "roles", role], name)
     print(f"profiles.roles.{role}: {name}")
     return 0
@@ -172,7 +195,7 @@ def cmd_role(conf, role, name):
 def cmd_assign(conf, email, role, name):
     if not role and not name:
         raise Fail(f"assign needs --role or --profile (or both); run: python3 {NAME} assign <email> --role <role>")
-    if "@" not in email.strip() or not email.strip():
+    if not EMAIL.match(email.strip()):
         raise Fail(f"`{email}` is not an e-mail address; run: python3 {NAME} assign <email> --role <role>")
     if role:
         valid_name(role, "role name")
@@ -183,7 +206,11 @@ def cmd_assign(conf, email, role, name):
     digest = config.email_hash(email)
     entry = dict((block(conf).get("people") or {}).get(digest) or {})
     entry.update({k: v for k, v in (("role", role), ("profile", name)) if v})
-    write(conf["_root"], ["profiles", "people", digest], entry)
+    if entry.get("role") and entry["role"] not in (block(conf).get("roles") or {}):
+        raise Fail(f"the role `{entry['role']}` this person already has is not in profiles.roles any more; give it a "
+                   f"profile: python3 {NAME} role {entry['role']} <profile>, or assign another: python3 {NAME} "
+                   f"assign <email> --role <role>")
+    write(conf["_root"], ["profiles", "people", digest], entry, check_email=email)
     print(f"profiles.people.{short(digest)}...: {json.dumps(entry)}  (the address itself is not stored)")
     return 0
 
@@ -198,6 +225,8 @@ def cmd_show(conf, email):
               f"{NAME} show <email>")
         return 0
     choice = config.choose_profile(conf, who)
+    for name in choice.get("_chain", []):
+        need_profile(conf, name)
     tag = f"person {short(config.email_hash(who))}"
     if choice["layer"] == "default":
         print(f"{tag}: layer default (no assignment), the project's .claude/gw.json applies")
@@ -228,7 +257,7 @@ def main(argv=None):
     show.add_argument("email", nargs="?")
     args = parser.parse_args(argv)
     try:
-        conf = config.load(args.root)
+        conf = config.load(args.root, profiles=False)
     except config.ConfigError as exc:
         print(f"gw profile: {exc}; fix .claude/gw.json, then: python3 {NAME} list", file=sys.stderr)
         return 2
@@ -243,10 +272,14 @@ def main(argv=None):
             return cmd_assign(conf, args.email, args.role, args.profile)
         return cmd_show(conf, args.email)
     except Fail as exc:
-        print(f"gw profile: {exc}", file=sys.stderr)
+        print(f"gw profile{' show' if args.command == 'show' else ''}: {exc}", file=sys.stderr)
         return 2
     except (OSError, ValueError, config.ConfigError) as exc:
-        print(f"gw profile: nothing was changed ({exc}); fix it, then: python3 config.py validate", file=sys.stderr)
+        if args.command in ("list", "show"):
+            print(f"gw profile {args.command}: {exc}; fix it, then: python3 {NAME} {args.command}", file=sys.stderr)
+        else:
+            print(f"gw profile: nothing was changed ({exc}); fix it, then: python3 config.py validate",
+                  file=sys.stderr)
         return 2
 
 

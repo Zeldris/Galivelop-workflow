@@ -1347,11 +1347,12 @@ def choose_profile(config, email):
     return out
 
 
-def apply_profiles(config, root, rev, schema, email=None):
+def apply_profiles(config, root, rev, schema, email=None, force=False):
     """E4: `config` (raw, already valid) with the profiles of the person (git user.email, or `email`) layered on top,
     each validated; and the choice (choose_profile, for `config.py profile`). CI and no assignment: the config as it
-    is. Raises ConfigError (fail closed) for a missing, broken or invalid profile or one naming a denied key."""
-    if in_ci() or not (config.get("profiles") or {}).get("people"):
+    is. `force` skips the CI and no-assignment shortcuts (profile.py checks a profile chain with it). Raises ConfigError
+    (fail closed) for a missing, broken or invalid profile or one naming a denied key."""
+    if not force and (in_ci() or not (config.get("profiles") or {}).get("people")):
         return config, {"layer": "default", "profile": None}
     choice = choose_profile(config, git_email(root) if email is None else email)
     folder = (config.get("profiles") or {}).get("dir") or schema["properties"]["profiles"]["default"]["dir"]
@@ -1380,13 +1381,14 @@ def apply_profiles(config, root, rev, schema, email=None):
     return config, choice
 
 
-def load(root=None, rev=None, paths_at=None):
+def load(root=None, rev=None, paths_at=None, profiles=True):
     """Return the validated config with defaults, plus '_root' (Path) and '_schemaFrom' (the schemaVersion it had
     before load() migrated it in memory to SCHEMA_VERSION; an absent one is 0, a newer one fails closed). With `rev`,
     the config as that commit has it instead of the working tree's. `paths_at` (a commit) is where the old-Spanish-path fallback looks for files: a
     policy config read from the protected branch's tip still resolves the paths of the commit being pushed or
     merged, so every reader gets the same path for the same commit; an old path the tip names explicitly follows
-    that commit's move to the English default (with_defaults, follow_moves). Raises ConfigError."""
+    that commit's move to the English default (with_defaults, follow_moves). `profiles=False` skips the profile layers
+    (E4: profile.py loads the project's config alone, so its commands can fix a broken profile). Raises ConfigError."""
     root = find_root(root)
     path = root / CONFIG_REL
     if rev:
@@ -1415,7 +1417,7 @@ def load(root=None, rev=None, paths_at=None):
                     "{\"code\": \"en\", \"docs\": {\"primary\": \"es\", \"others\": [\"en\"]}, \"public\": {\"primary\": "
                     "\"en\", \"others\": []}, \"ui\": []}, then validate: python3 " + str(HERE / "config.py") + f" --root {root} validate")
         raise ConfigError(f"{path} is invalid:\n  " + "\n  ".join(errors) + hint)
-    config, choice = apply_profiles(config, root, rev, schema)
+    config, choice = apply_profiles(config, root, rev, schema) if profiles else (config, {"layer": "default", "profile": None})
     if paths_at:
         env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
         try:

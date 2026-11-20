@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-20 — E4 trozo 2a: `scripts/profile.py` (`list`, `new`, `assign` con hash SHA-256 sin correo, `role`, `show`), edita `.claude/gw.json` solo en el valor afectado y revierte si queda inválido; 35 tests en `test_profile.py`; faltan `config-guard.py` y `doctor.py` (trozo 2b)
-2. 2026-11-20 — E4 trozo 1: `config.py` carga perfiles por capas (`default` → cargo → propio; bloque `profiles` en el esquema y `templates/gw.json`), con `--rev` lee los perfiles de ese commit, `CI` siempre `default`; perfil que falta, roto, con clave desconocida o de instalación falla cerrado; `config.py profile`; 12 tests en `test_config.py`
-3. 2026-11-20 — A12 cerrada: trozo 3 (idioma del agente por usuario en `~/.claude/gw.json`, línea `Agent language:` en el inicio y en `recover.py --state` tras compactar) con sus 6 arreglos de revisión; filas de A12 del roadmap a hecho
-4. 2026-11-20 — A12 trozo 2b, revisión: 6 hallazgos arreglados (docs del config y guía de instalación con el bloque `languages`, Q-15 acotada al flujo, `test_repo.py` con `config.languages()`, `REVIEW.md`, wording de skills) y aviso único de `apply.py` al caer a plantillas `en`
-5. 2026-11-20 — A12 trozo 2b: `doctor.py` avisa de claves viejas y de `docs.primary` sin plantillas, `names-check.py` se salta con `code` distinto de `en`, `REVIEW.md` y skills a `languages`, `test_repo.py` lee el bloque, fuera `config.compat_views`; tests en `test_doctor.py`, `test_names_check.py`, `test_config.py`
+1. 2026-11-20 — E4 trozo 2a, revisión: 7 hallazgos arreglados (`profile.py` carga sin capas y solo `show` las aplica; `role`/`assign` validan la cadena destino con `apply_profiles(force=True)`; `assign` no conserva un cargo retirado; correo con parte local y dominio; `show` con mensaje propio; sin literal del directorio); `config.load(profiles=False)`; 45 tests en `test_profile.py`
+2. 2026-11-20 — E4 trozo 2a: `scripts/profile.py` (`list`, `new`, `assign` con hash SHA-256 sin correo, `role`, `show`), edita `.claude/gw.json` solo en el valor afectado y revierte si queda inválido; 35 tests en `test_profile.py`; faltan `config-guard.py` y `doctor.py` (trozo 2b)
+3. 2026-11-20 — E4 trozo 1: `config.py` carga perfiles por capas (`default` → cargo → propio; bloque `profiles` en el esquema y `templates/gw.json`), con `--rev` lee los perfiles de ese commit, `CI` siempre `default`; perfil que falta, roto, con clave desconocida o de instalación falla cerrado; `config.py profile`; 12 tests en `test_config.py`
+4. 2026-11-20 — A12 cerrada: trozo 3 (idioma del agente por usuario en `~/.claude/gw.json`, línea `Agent language:` en el inicio y en `recover.py --state` tras compactar) con sus 6 arreglos de revisión; filas de A12 del roadmap a hecho
+5. 2026-11-20 — A12 trozo 2b, revisión: 6 hallazgos arreglados (docs del config y guía de instalación con el bloque `languages`, Q-15 acotada al flujo, `test_repo.py` con `config.languages()`, `REVIEW.md`, wording de skills) y aviso único de `apply.py` al caer a plantillas `en`
 
 ## Pendiente
 
