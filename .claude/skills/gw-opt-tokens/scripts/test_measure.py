@@ -597,6 +597,35 @@ class Measure(unittest.TestCase):
                 self.assertEqual(in_(self.CONFIG % ', "measure": {"%s": %s}' % (name, bad)), default, name + bad)
             self.assertEqual(in_('{not json'), default)
 
+    def fixed_startup_run(self, with_workflow: bool) -> str:
+        """E76: a repo with AGENTS.md of 3,500 characters (1,000 tokens), no log and no skills, and a session of three
+        calls of 10,000 tokens each: the fixed startup is the first call minus the project's part."""
+        repo = folder()
+        subprocess.run(['git', 'init', '-q', repo], check=True)
+        write(os.path.join(repo, 'AGENTS.md'), 'x' * 3500)
+        if with_workflow:
+            for rel in ('scripts', 'schema'):
+                shutil.copytree(os.path.join(HERE, '..', '..', '..', rel), os.path.join(repo, rel),
+                                ignore=shutil.ignore_patterns('__pycache__'))
+        path = log(os.path.join(repo, 's.jsonl'), response('m1', 10000), response('m2', 10000), response('m3', 10000))
+        r = subprocess.run(['python3', MEASURE, '--session', path, '--hours', '0'], capture_output=True, text=True,
+                           cwd=repo, env={**os.environ, 'HOME': folder()})
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout
+
+    def test_e76_the_fixed_startup_is_shown_apart_from_the_project_cost(self):
+        out = self.fixed_startup_run(True)
+        self.assertIn('Fixed startup (system prompt, tools, MCP; neither /clear nor the project shrinks it; it also holds '
+                      'the SessionStart hook output, which the log does not keep): ~9,000 tokens per call x 3 calls = 27,000 input (90 %)', out)
+        self.assertIn('Project cost (the rest: instructions, log, skills, conversation, results): '
+                      '3,000 input (10 %)', out)
+
+    def test_e76_without_the_workflow_scripts_the_fixed_startup_is_unknown(self):
+        out = self.fixed_startup_run(False)
+        self.assertIn('Fixed startup: unknown (no context_guard.py of the workflow in .claude/gw/scripts/ or scripts/)',
+                      out)
+        self.assertNotIn('Project cost', out)
+
     def test_malformed_or_invalid_config_falls_back_to_the_default(self):
         for config in ('{not json', self.CONFIG % ', "measure": {"minCalls": -1}',
                        self.CONFIG % ', "measure": {"minCalls": "x"}'):

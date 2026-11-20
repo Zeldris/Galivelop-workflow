@@ -157,6 +157,34 @@ def chars_per_token(root):
     return CHARS_PER_TOKEN
 
 
+def fixed_startup(root, path):
+    """E76: tokens of the fixed startup (system prompt, tools, MCP) of the last measured startup of `path`, from the
+    workflow's own estimate (context_guard.py, installed copy first, then this repo's: one datum, one place). It is the
+    startup minus the project's part (log, AGENTS.md/CLAUDE.md, skills, conversation carried over); the SessionStart
+    hook output stays in it, since the session log does not keep it. Returns
+    (tokens or None, reason when None); fails open: any error gives None."""
+    for rel in ('.claude/gw/scripts', 'scripts'):
+        guard = os.path.join(root, rel, 'context_guard.py')
+        if not os.path.isfile(guard):
+            continue
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location('gw_context_guard', guard)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            try:
+                cfg = mod.config.load(root)
+            except Exception:  # no or bad config: the estimate takes the defaults
+                cfg = None
+            parts = mod.Measure(root, cfg, path).culprits()
+        except Exception as exc:  # fails open: the report goes on without the split
+            return None, f'{rel}/context_guard.py failed: {exc}'
+        if not parts:
+            return None, 'no measured startup in the session log'
+        return next((t for label, t, _ in parts if label == mod.SYSTEM), None), 'no system part in the estimate'
+    return None, 'no context_guard.py of the workflow in .claude/gw/scripts/ or scripts/'
+
+
 def branch_of(path):
     """The LAST `gitBranch` a log has (a session may switch branch: its branch is the one it ends on), or None."""
     branch = None
@@ -541,6 +569,16 @@ def main():
     print(f'Average context per call: {total_in / api_calls:,.0f} tokens  ->  every extra call costs that '
           f'(at cache price, ~{total_in / api_calls / 10:,.0f} tokens of normal input)')
     print(f'Average output per call: {usage["output_tokens"] / api_calls:,.0f} tokens (includes reasoning)')
+    # E76: the fixed startup (system prompt, tools, MCP) rides on every call and hides what the project can cut.
+    system, why = fixed_startup(root, path)
+    if system is None:
+        print(f'Fixed startup: unknown ({why})')
+    else:
+        fixed = min(system * api_calls, total_in)
+        print(f'Fixed startup (system prompt, tools, MCP; neither /clear nor the project shrinks it; it also holds '
+              f'the SessionStart hook output, which the log does not keep): ~{system:,} tokens per call x {api_calls} calls = {fixed:,} input ({100 * fixed / max(total_in, 1):.0f} %)')
+        print(f'Project cost (the rest: instructions, log, skills, conversation, results): '
+              f'{total_in - fixed:,} input ({100 * (total_in - fixed) / max(total_in, 1):.0f} %)')
     # Curve between compactions: the floor is the fixed context (instructions, tools, summary) and the ceiling is
     # how far it grows before compacting. A ceiling far above the floor says compaction comes too late.
     stretches, closed, start = [], [], 0  # closed: the stretch ended in a compaction (it peaked where compaction fires)

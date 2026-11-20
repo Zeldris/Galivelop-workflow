@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.1` publicada** (`main` = `4ca45d0`, 2026-11-19; CI en verde; etiqueta y release `v0.8.1` creadas desde una sesión local) |
-| Siguiente paso | **`0.9` «Front»**: la recogida de apertura (H24) ya está hecha; tarea E76 de la recogida (E65-E75 hechas; bloques E65-E71 y E72-E74 revisados, 2026-11-20), en orden, y luego A12, E4, E5, E7, E9-E16, E42 y E50. **Al cerrar el desarrollo de la `0.9`, antes de publicarla:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 0 |
+| Siguiente paso | **`0.9` «Front»**: la recogida de apertura (H24) ya está hecha; las tareas de la recogida ya están (E65-E77; bloques E65-E71 y E72-E74 revisados, 2026-11-20; E75-E77 sin revisar), así que sigue A12 y luego E4, E5, E7, E9-E16, E42 y E50. **Al cerrar el desarrollo de la `0.9`, antes de publicarla:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 0 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-20 — E75: `grilling` (sección del flujo) apunta cada ronda en el archivo de preguntas con `questions.py add` (respuestas vacías), la sube con la bitácora nombrando sus `Q-<n>` y solo entonces la presenta, numerada con esos ids; test en `test_skills.py`
-2. 2026-11-19 — E74: gancho `other-repo-read.py` (`PreToolUse` en Read, Grep, Glob y Bash): avisa, sin bloquear, cuando la sesión principal (evento sin `agent_id`) lee una ruta fuera del proyecto y dentro de otro repositorio git, con la regla del subagente; clave `otherRepoReadWarn` (`true`) para apagarlo
-3. 2026-11-19 — E77: el push y el check largo, en segundo plano con `timeout` de 5400000 ms (90 min) en `AGENTS.md` y sus plantillas, `gw-opt-tokens.md` (cualquier subida) y la subida final de `gw-orchestrate-dealer` (usuario, Q-7 a Q-9; Q-8, que `push.sh` anuncie el alcance, no)
-4. 2026-11-19 — E73: clave `projectSkillPrefix` (`""`; nunca `gw-`): `apply.py --init --project-skill-prefix` la escribe y `gw-init` la pregunta; `doctor.py` avisa (`skill prefix`) de cada skill propia (sin `metadata.source` del flujo) que no la lleva, con el renombrado
-5. 2026-11-19 — E72: clave `generated` (`[{command, paths}]`, `[]`): `generated-check.py` (en el `check` de la plantilla) corre cada orden y falla si cambia, añade o quita archivos bajo sus `paths`, con la orden `git add`; `doctor.py` avisa (`generated files`) si la clave tiene entradas y el `check` no lo corre
+1. 2026-11-20 — E76: `measure.py` (`gw-opt-tokens`) muestra aparte el arranque fijo (sistema, herramientas, MCP, con la estimación de `context_guard.py`) por llamada × llamadas y el coste del proyecto (el resto); sin `context_guard.py`, `Fixed startup: unknown`; tests en `test_measure.py`
+2. 2026-11-20 — E75: `grilling` (sección del flujo) apunta cada ronda en el archivo de preguntas con `questions.py add` (respuestas vacías), la sube con la bitácora nombrando sus `Q-<n>` y solo entonces la presenta, numerada con esos ids; test en `test_skills.py`
+3. 2026-11-19 — E74: gancho `other-repo-read.py` (`PreToolUse` en Read, Grep, Glob y Bash): avisa, sin bloquear, cuando la sesión principal (evento sin `agent_id`) lee una ruta fuera del proyecto y dentro de otro repositorio git, con la regla del subagente; clave `otherRepoReadWarn` (`true`) para apagarlo
+4. 2026-11-19 — E77: el push y el check largo, en segundo plano con `timeout` de 5400000 ms (90 min) en `AGENTS.md` y sus plantillas, `gw-opt-tokens.md` (cualquier subida) y la subida final de `gw-orchestrate-dealer` (usuario, Q-7 a Q-9; Q-8, que `push.sh` anuncie el alcance, no)
+5. 2026-11-19 — E73: clave `projectSkillPrefix` (`""`; nunca `gw-`): `apply.py --init --project-skill-prefix` la escribe y `gw-init` la pregunta; `doctor.py` avisa (`skill prefix`) de cada skill propia (sin `metadata.source` del flujo) que no la lleva, con el renombrado
 
 ## Pendiente
 
