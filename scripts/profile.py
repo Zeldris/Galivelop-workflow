@@ -21,7 +21,6 @@ with the command that fixes it. Python 3.8+ standard library only.
 import argparse
 import json
 import os
-import re
 import sys
 from pathlib import Path
 
@@ -32,7 +31,6 @@ import config  # noqa: E402
 import mode  # noqa: E402  (its JSON text-editing helpers)
 
 NAME = Path(__file__).name
-EMAIL = re.compile(r"^[^@\s]+@[^@\s]+$")
 
 
 class Fail(Exception):
@@ -195,7 +193,7 @@ def cmd_role(conf, role, name):
 def cmd_assign(conf, email, role, name):
     if not role and not name:
         raise Fail(f"assign needs --role or --profile (or both); run: python3 {NAME} assign <email> --role <role>")
-    if not EMAIL.match(email.strip()):
+    if not config.EMAIL_ADDRESS.match(email.strip()):
         raise Fail(f"`{email}` is not an e-mail address; run: python3 {NAME} assign <email> --role <role>")
     if role:
         valid_name(role, "role name")

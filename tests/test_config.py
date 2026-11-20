@@ -1579,6 +1579,16 @@ class Profiles(unittest.TestCase):
                 self.assertIn("profile.py", r.stderr)
                 self.assertTrue("ghost" in r.stderr or "role 'dev'" in r.stderr, r.stderr)
 
+    def test_profile_shape_problems_is_the_shared_check(self):  # E4 review: doctor.py uses the same helper
+        props = config._schema()["properties"]
+        self.assertEqual(config.profile_shape_problems({"logSize": 1}, props), [])
+        self.assertIn("must be a JSON object", config.profile_shape_problems([], props)[0])
+        self.assertIn("unknown key 'nope'", config.profile_shape_problems({"nope": 1}, props)[0])
+        self.assertIn("cannot change what is installed", config.profile_shape_problems({"profiles": {}}, props)[0])
+        self.assertTrue(config.EMAIL_IN_TEXT.search("ana@example.org"))
+        self.assertFalse(config.EMAIL_IN_TEXT.search("prettier@3.0.0 git@github.com:o/r"))
+        self.assertFalse(config.EMAIL_ADDRESS.match("no-at-sign"))
+
     def test_unknown_or_install_key_or_invalid_value_in_a_profile_fails_closed(self):
         cases = (({"logSise": 1}, "unknown key 'logSise'"),
                  ({"agentsSkillsDir": "x"}, "cannot change what is installed"),

@@ -1291,59 +1291,110 @@ def check_ci_access(rep, root):
                  "run `gh auth login` (or export GITHUB_TOKEN)")
 
 
-EMAIL_IN_CLEAR = re.compile(r'[^@\s"]+@[^@\s"]+\.[^@\s"]+')  # E4 (Q-25): only SHA-256 hashes may be stored
+def _profile_dir(block, rep, tool):
+    """The `profiles.dir` to read: the block's when it is a string the schema accepts (relative, no `..`), else a
+    warning and the schema default, so doctor never reads outside the repo."""
+    prop = config._schema()["properties"]["profiles"]
+    default = prop["default"]["dir"]
+    given = block.get("dir")
+    if given is None or given == "":
+        return default
+    if isinstance(given, str) and re.match(prop["properties"]["dir"]["pattern"], given):
+        return given
+    rep.warn("profiles", f"profiles.dir {given!r} is not a relative folder without `..`, so {default} is checked instead",
+             f"edit profiles.dir in {config.CONFIG_REL.as_posix()} (e.g. \"{default}\")")
+    return default
 
 
 def check_profiles(rep, root):
-    """E4: warn about orphan profile files, roles or people whose profile is missing, and e-mails in clear in the
-    `profiles` block or in a profile file. It reads the raw config (it must also work when the layers fail to load)."""
+    """E4: warn about orphan profile files, roles or people whose profile is missing, profiles that config.load would
+    reject, and e-mails in clear in the `profiles` block or in a profile file. It reads the raw config (it must also
+    work when the layers fail to load) and never raises on a malformed block."""
     try:
-        raw = json.loads((Path(root) / ".claude" / "gw.json").read_text(encoding="utf-8"))
+        raw = json.loads((Path(root) / config.CONFIG_REL).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return  # check_config already reported it
     block = raw.get("profiles") if isinstance(raw, dict) else None
     if not isinstance(block, dict) or not block:
         return
-    tool = f"python3 {HERE / 'profile.py'} --root {shlex.quote(str(root))}"
-    where = block.get("dir") or config.schema_default("profiles")["dir"]
+    q = shlex.quote
+    tool = f"python3 {HERE / 'profile.py'} --root {q(str(root))}"
+    cfg_rel = config.CONFIG_REL.as_posix()
+    where = _profile_dir(block, rep, tool)
     folder = Path(root) / where
     roles = block.get("roles") if isinstance(block.get("roles"), dict) else {}
     people = block.get("people") if isinstance(block.get("people"), dict) else {}
-    files = {p.stem: p for p in sorted(folder.glob("*.json")) if p.is_file()} if folder.is_dir() else {}
+    valid = lambda v: isinstance(v, str) and bool(config.PROFILE_NAME.match(v))  # noqa: E731
     named = {}  # profile name -> who names it
-    for role, name in sorted(roles.items()):
-        named.setdefault(name, f"role '{role}'")
-    for digest, person in sorted(people.items()):
-        person = person if isinstance(person, dict) else {}
-        if person.get("profile"):
-            named.setdefault(person["profile"], f"person {digest[:8]}")
+    for role, name in sorted(roles.items(), key=lambda kv: str(kv[0])):
+        if valid(name):
+            named.setdefault(name, f"role '{role}'")
+        else:
+            rep.warn("profiles", f"role '{role}' names the invalid profile {name!r}",
+                     f"{tool} role {q(str(role))} <profile>  (or edit profiles.roles in {cfg_rel})")
+    for digest, person in sorted(people.items(), key=lambda kv: str(kv[0])):
+        who = f"person {str(digest)[:8]}"
+        if not isinstance(person, dict):
+            rep.warn("profiles", f"{who} is not an object ({{role?, profile?}})", f"edit profiles.people in {cfg_rel}")
+            continue
+        if person.get("profile") is not None:
+            if valid(person["profile"]):
+                named.setdefault(person["profile"], who)
+            else:
+                rep.warn("profiles", f"{who} names the invalid profile {person['profile']!r}",
+                         f"{tool} assign <email> --profile <profile>  (or edit profiles.people in {cfg_rel})")
         role = person.get("role")
-        if role and role not in roles:
-            rep.warn("profiles", f"person {digest[:8]} has role '{role}', which is missing from profiles.roles",
-                     f"{tool} role {role} <profile>")
+        if role is not None and not (isinstance(role, str) and role):
+            rep.warn("profiles", f"{who} has the invalid role {role!r}", f"{tool} assign <email> --role <role>")
+        elif role and role not in roles:
+            rep.warn("profiles", f"{who} has role '{role}', which is missing from profiles.roles",
+                     f"{tool} role {q(role)} <profile>")
+    texts = {f"{cfg_rel} (profiles block)": json.dumps(block, ensure_ascii=False)}
+    props = config._schema().get("properties", {})
+    present = {}  # stem -> path of the readable profile files
+    if folder.is_dir():
+        for path in sorted(folder.glob("*.json")):
+            if not path.is_file():
+                continue
+            if not config.PROFILE_NAME.match(path.stem):
+                rep.warn("profiles", f"{where}/{path.name} is not a valid profile name (letters, digits, `.`, `_`, `-`; "
+                         f"it starts with a letter or digit), so profile.py and config.load never use it",
+                         f"rename or delete {where}/{path.name}")
+                continue
+            present[path.stem] = path
     for name, who in named.items():
-        if not isinstance(name, str) or not config.PROFILE_NAME.match(name):
-            rep.warn("profiles", f"{who} names the invalid profile '{name}'",
-                     f"edit profiles in .claude/gw.json (or {tool} role <role> <profile>)")
-        elif name not in files:
+        path = folder / f"{name}.json"
+        if not path.is_file():
             rep.warn("profiles", f"{who} names profile '{name}', but {where}/{name}.json does not exist",
-                     f"{tool} new {name}")
-    for name in files:
-        if name not in named:
+                     f"{tool} new {q(name)}")
+    def names_file(path):
+        for name in named:
+            try:
+                if (folder / f"{name}.json").exists() and os.path.samefile(folder / f"{name}.json", path):
+                    return True  # also on a case-insensitive file system (macOS): `Dev.json` is `dev`'s file
+            except OSError:
+                pass
+        return False
+    for name, path in present.items():
+        if name not in named and not names_file(path):
             rep.warn("profiles", f"orphan profile {where}/{name}.json: no role and no person names it",
-                     f"{tool} role <role> {name}  (or {tool} assign <email> --profile {name}, or delete the file)")
-    texts = {".claude/gw.json (profiles block)": json.dumps(block, ensure_ascii=False)}
-    for name, path in files.items():
+                     f"{tool} role <role> {q(name)}  (or {tool} assign <email> --profile {q(name)}, or delete the file)")
+    for name, path in present.items():
+        label = f"{where}/{path.name}"
         try:
             text = path.read_text(encoding="utf-8")
-            json.loads(text)
+            data = json.loads(text)
         except (OSError, ValueError) as exc:
-            rep.warn("profiles", f"profile {where}/{name}.json cannot be read as JSON: {exc}",
-                     f"edit {where}/{name}.json (valid JSON), or recreate it: {tool} new {name}")
+            rep.warn("profiles", f"profile {label} cannot be read as JSON: {exc}",
+                     f"edit {label} (valid JSON), or recreate it: {tool} new {q(name)}")
             continue
-        texts[f"{where}/{name}.json"] = text
+        texts[label] = text
+        problems = config.profile_shape_problems(data, props)
+        if problems:
+            rep.warn("profiles", f"profile {label} is rejected by config.load: {'; '.join(problems)}",
+                     f"edit {label} (only the keys it changes; see `python3 {HERE / 'config.py'} profile`)")
     for label, text in texts.items():
-        if EMAIL_IN_CLEAR.search(text):
+        if config.EMAIL_IN_TEXT.search(text):
             rep.warn("profiles", f"{label} has an e-mail address in clear (only SHA-256 hashes may be stored)",
                      f"remove it from the file; assign people with `{tool} assign <email>`, which stores the hash")
 

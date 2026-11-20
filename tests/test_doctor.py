@@ -1069,9 +1069,10 @@ class Doctor(Snapshot):
 
     def test_orphan_profile_warns_with_the_fix(self):
         self.profiles({"roles": {"dev": "dev"}}, {"dev": "{}", "lost": "{}"})
-        lines = self.profile_lines(self.doctor()[1])
+        out = self.doctor()[1]
+        lines = self.profile_lines(out)
         self.assertEqual(len(lines), 1, lines)
-        line = self.assertLine(self.doctor()[1], "WARN", "profiles", "orphan profile", "lost.json", "no role and no person")
+        line = self.assertLine(out, "WARN", "profiles", "orphan profile", "lost.json", "no role and no person")
         self.assertIn("profile.py", line)
         self.assertIn("role <role> lost", line)
         self.assertIn("assign <email> --profile lost", line)
@@ -1123,7 +1124,76 @@ class Doctor(Snapshot):
 
     def test_hashes_are_not_taken_for_emails(self):
         self.profiles({"roles": {"dev": "dev"}, "people": {self.HASH: {"role": "dev"}}}, {"dev": "{}"})
-        self.assertNotIn("e-mail", self.doctor()[1])
+        self.assertEqual(self.profile_lines(self.doctor()[1]), [])
+
+    def test_non_string_values_warn_instead_of_crashing(self):  # review 1
+        cases = ({"roles": {"dev": ["x"]}}, {"roles": {"dev": 5}}, {"people": {self.HASH: {"profile": ["x"]}}},
+                 {"people": {self.HASH: {"role": ["x"]}}}, {"people": {self.HASH: "dev"}}, {"roles": []},
+                 {"people": {self.HASH: {"role": 7}}})
+        for block in cases:
+            with self.subTest(block=block):
+                self.profiles(block)
+                code, out = self.doctor()
+                self.assertNotIn("Traceback", out)
+                self.assertIn(code, (0, 1), out)
+                self.assertTrue(any(w in out for w in ("invalid", "is not an object")) or self.profile_lines(out) == [], out)
+        self.profiles({"roles": {"dev": ["x"]}})
+        self.assertLine(self.doctor()[1], "WARN", "profiles", "role 'dev'", "invalid profile ['x']")
+        self.profiles({"people": {self.HASH: {"role": ["x"]}}})
+        self.assertLine(self.doctor()[1], "WARN", "profiles", "invalid role ['x']")
+        self.profiles({"people": {self.HASH: "dev"}})
+        self.assertLine(self.doctor()[1], "WARN", "profiles", "is not an object", "profiles.people")
+
+    def test_bad_profiles_dir_warns_and_is_never_read(self):  # review 2
+        outside = self.tmp / "outside"
+        outside.mkdir()
+        (outside / "stray.json").write_text("{}")
+        for bad in (5, ["a"], "/tmp", "../outside", "a/../../outside", str(outside)):
+            with self.subTest(dir=bad):
+                self.profiles({"dir": bad, "roles": {}})
+                code, out = self.doctor()
+                self.assertNotIn("Traceback", out)
+                line = self.assertLine(out, "WARN", "profiles", "profiles.dir", "without `..`", ".claude/gw/profiles")
+                self.assertIn("edit profiles.dir", line)
+                self.assertNotIn("stray", out)
+
+    def test_npm_specs_and_scp_remotes_are_not_emails(self):  # review 3
+        text = json.dumps({"commitWipPrefix": "prettier@3.0.0 lodash@4.17.21 git@github.com:org/repo.git"})
+        self.profiles({"roles": {"dev": "dev"}}, {"dev": text})
+        self.assertEqual(self.profile_lines(self.doctor()[1]), [])
+        self.p.write(".claude/gw/profiles/dev.json", json.dumps({"note": "write to ana@example.org."}))
+        self.assertLine(self.doctor()[1], "WARN", "profiles", "dev.json", "e-mail address in clear")
+
+    def test_profile_that_config_load_rejects_warns(self):  # review 4
+        cases = (("[]", "must be a JSON object"), ('{"logSise": 1}', "unknown key 'logSise'"),
+                 ('{"agentsSkillsDir": "x"}', "cannot change what is installed"),
+                 ('{"profiles": {}}', "cannot change what is installed"))
+        for text, reason in cases:
+            with self.subTest(text=text):
+                self.profiles({"roles": {"dev": "dev"}}, {"dev": text})
+                line = self.assertLine(self.doctor()[1], "WARN", "profiles", "dev.json", "rejected by config.load", reason)
+                self.assertIn("edit .claude/gw/profiles/dev.json", line)
+                self.assertIn("config.py", line)
+
+    def test_odd_file_names_are_not_profiles_and_commands_are_quoted(self):  # review 5
+        self.profiles({"roles": {"dev": "dev"}}, {"dev": "{}", "My Profile": "{}", ".draft": "{}", "odd name": "{}"})
+        out = self.doctor()[1]
+        for name in ("My Profile.json", ".draft.json"):
+            line = self.assertLine(out, "WARN", "profiles", name, "not a valid profile name")
+            self.assertIn(f"rename or delete .claude/gw/profiles/{name}", line)
+        self.assertNotIn("orphan profile", out)
+        self.profiles({"people": {self.HASH: {"role": "qa lead"}}})
+        self.assertLine(self.doctor()[1], "WARN", "profiles", "role 'qa lead'", "role 'qa lead' <profile>")
+
+    def test_profile_file_with_other_case_is_not_orphan_where_the_fs_ignores_case(self):  # observation
+        self.profiles({"roles": {"dev": "dev"}}, {"Dev": "{}"})
+        out = self.doctor()[1]
+        insensitive = (self.p.work / ".claude/gw/profiles/dev.json").exists()
+        if insensitive:
+            self.assertEqual(self.profile_lines(out), [])
+        else:
+            self.assertLine(out, "WARN", "profiles", "does not exist")
+            self.assertLine(out, "WARN", "profiles", "orphan profile", "Dev.json")
 
     def scout_lines(self, out):
         return [l for l in out.splitlines() if re.match(r"(OK|WARN|FAIL) +scout:", l)]

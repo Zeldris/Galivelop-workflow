@@ -1279,6 +1279,22 @@ PROFILE_DENIED = ("$schema", "version", "schemaVersion", "profiles", "languages"
                   "actionlintVersion")
 PROFILE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 EMAIL_HASH = re.compile(r"^[0-9a-f]{64}$")
+EMAIL_ADDRESS = re.compile(r"^[^@\s]+@[^@\s]+$")  # E4: what profile.py accepts as an address to hash
+# E4 (Q-25): an address inside free text (doctor.py): a TLD of letters that ends the word, so `prettier@3.0.0` and
+# `git@github.com:org/repo` (npm specs, scp-style remotes) are not taken for addresses.
+EMAIL_IN_TEXT = re.compile(r'[^@\s"]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?![A-Za-z0-9:/@-])')
+PROFILE_OBJECT_MSG = "must be a JSON object with the keys it changes, e.g. {\"logSize\": 5000}"
+
+
+def profile_shape_problems(data, props):
+    """The problems of a profile's content before it is merged (one list for apply_profiles and doctor.py): not an
+    object, a key the schema (`props`) does not know, or a denied one (PROFILE_DENIED)."""
+    if not isinstance(data, dict):
+        return [PROFILE_OBJECT_MSG]
+    problems = [f"$: unknown key '{k}' (check spelling against schema/gw.schema.json)" for k in data if k not in props]
+    problems += [f"$.{k}: a profile cannot change what is installed or the config's shape (it is committed for "
+                 f"everyone); change it in {CONFIG_REL} instead" for k in data if k in PROFILE_DENIED]
+    return problems
 
 
 def email_hash(email):
@@ -1368,10 +1384,8 @@ def apply_profiles(config, root, rev, schema, email=None, force=False):
         except json.JSONDecodeError as exc:
             raise ConfigError(f"{where}: invalid JSON at line {exc.lineno}: {exc.msg}")
         if not isinstance(data, dict):
-            raise ConfigError(f"{where}: must be a JSON object with the keys it changes, e.g. {{\"logSize\": 5000}}")
-        problems = [f"$: unknown key '{k}' (check spelling against schema/gw.schema.json)" for k in data if k not in props]
-        problems += [f"$.{k}: a profile cannot change what is installed or the config's shape (it is committed for "
-                     f"everyone); change it in {CONFIG_REL} instead" for k in data if k in PROFILE_DENIED]
+            raise ConfigError(f"{where}: {PROFILE_OBJECT_MSG}")
+        problems = profile_shape_problems(data, props)
         merged = deep_merge(config, data) if not problems else config
         problems = problems or validate(merged, schema) or semantic_errors(merged)
         if problems:
