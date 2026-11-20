@@ -1,9 +1,19 @@
 {
   "$schema": "gw/schema/gw.schema.json",
   "version": "0.8.1",
-  "schemaVersion": 1,
-  "language": "en",
-  "visibleLanguages": [],
+  "schemaVersion": 2,
+  "languages": {
+    "code": "en",
+    "docs": {
+      "primary": "en",
+      "others": []
+    },
+    "public": {
+      "primary": "en",
+      "others": []
+    },
+    "ui": []
+  },
   "log": "docs/handoff.md",
   "logSize": 20000,
   "reviewTrivialLines": 30,

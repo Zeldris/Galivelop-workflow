@@ -458,8 +458,8 @@ class Init(unittest.TestCase):
                 code, out = p.init(lang)
                 self.assertEqual(code, 0, out)
                 cfg = json.loads(p.read(".claude/gw.json"))
-                self.assertEqual((cfg["language"], cfg["log"], cfg["check"]), (lang, LOGS[lang], ["bash check.sh"]))
-                self.assertEqual(cfg["schemaVersion"], 1)  # A9: a new config is written in the current format
+                self.assertEqual((cfg["languages"]["docs"]["primary"], cfg["log"], cfg["check"]), (lang, LOGS[lang], ["bash check.sh"]))
+                self.assertEqual(cfg["schemaVersion"], 2)  # A9: a new config is written in the current format
                 for rel in RENDERED + (LOGS[lang],):
                     self.assertTrue((p.work / rel).is_file(), rel)
                     self.assertIsNone(re.search(r"(?<!\$)\{\{", p.read(rel)), rel)  # `${{ }}` is GitHub's own
@@ -494,7 +494,7 @@ class Init(unittest.TestCase):
                            "--design-reference", "WCAG 2.2")
         self.assertEqual(code, 0, out)
         cfg = json.loads(p.read(".claude/gw.json"))
-        self.assertEqual((cfg["requireRetro"], cfg["visibleLanguages"], cfg["designReferences"]),
+        self.assertEqual((cfg["requireRetro"], cfg["languages"]["ui"], cfg["designReferences"]),
                          (True, ["es", "en"], ["WCAG 2.2"]))
         code, out = p.run_apply("--require-retro", "false")
         self.assertEqual(code, 2, out)

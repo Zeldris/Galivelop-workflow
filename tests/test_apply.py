@@ -14,7 +14,11 @@ import unittest
 import unittest.mock
 from pathlib import Path
 
-from test_hooks import BASE_CONFIG, ROOT
+from test_hooks import BASE_CONFIG as HOOKS_CONFIG, ROOT
+
+# A12: the fixtures are written as schemaVersion 2 has them (`languages` instead of `language`)
+BLOCK = {"code": "en", "docs": {"primary": "en", "others": []}, "public": {"primary": "en", "others": []}, "ui": []}
+BASE_CONFIG = {**{k: v for k, v in HOOKS_CONFIG.items() if k != "language"}, "schemaVersion": 2, "languages": BLOCK}
 
 APPLY_SCRIPT = ROOT / "scripts" / "apply.py"
 VERSION = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text())["version"]
@@ -531,7 +535,7 @@ class Apply(unittest.TestCase):
 
     def test_spanish_project_commit_message(self):
         (self.tmp / "es").mkdir()
-        p = Fixture(self.tmp / "es", {"language": "es"})
+        p = Fixture(self.tmp / "es", {"languages": dict(BLOCK, docs={"primary": "es", "others": []})})
         code, out = p.run_apply()
         self.assertEqual(code, 0, out)
         self.assertIn(f"Flujo Galivelop-workflow v{VERSION}", out)
@@ -1824,7 +1828,7 @@ class Migrate(unittest.TestCase):
 
 
 
-OLD_SCHEMA_CONFIG = {**{k: v for k, v in BASE_CONFIG.items() if k != "schemaVersion"}, "ciYamlCheck": False}  # written before 0.5
+OLD_SCHEMA_CONFIG = {**{k: v for k, v in HOOKS_CONFIG.items() if k != "schemaVersion"}, "ciYamlCheck": False}  # written before 0.5: has `language`
 
 
 class ConfigVersion(unittest.TestCase):
@@ -1856,6 +1860,68 @@ class ConfigVersion(unittest.TestCase):
         self.assertEqual(json.loads(p.read(".claude/gw.json"))["version"], "9.9.9")
 
 
+class LanguagesInit(unittest.TestCase):
+    """A12: --init writes the `languages` block; --update writes schemaVersion 2 from a config with the old keys."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="gw-lang-")).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.p = Fixture(self.tmp)
+
+    def init(self, *args):
+        (self.p.work / ".claude/gw.json").unlink(missing_ok=True)
+        code, out = self.p.run_apply("--init", "--check-command", "true", *args)
+        return code, out, (json.loads(self.p.read(".claude/gw.json")) if code == 0 else None)
+
+    def test_default_block(self):
+        code, out, cfg = self.init()
+        self.assertEqual(code, 0, out)
+        self.assertEqual((cfg["schemaVersion"], cfg["languages"]), (2, BLOCK))
+        self.assertNotIn("language", cfg)
+        self.assertNotIn("visibleLanguages", cfg)
+
+    def test_language_fills_both_primaries_and_visible_language_fills_ui(self):
+        code, out, cfg = self.init("--language", "es", "--visible-language", "es", "--visible-language", "gl")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(cfg["languages"], {"code": "en", "docs": {"primary": "es", "others": []},
+                                            "public": {"primary": "es", "others": []}, "ui": ["es", "gl"]})
+        self.assertEqual(cfg["log"], "docs/handoff.md")
+
+    def test_the_new_flags_are_repeatable_and_the_first_is_the_primary(self):
+        code, out, cfg = self.init("--language", "en", "--code-language", "es", "--docs-language", "es",
+                                   "--docs-language", "en", "--public-language", "en", "--public-language", "es")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(cfg["languages"], {"code": "es", "docs": {"primary": "es", "others": ["en"]},
+                                            "public": {"primary": "en", "others": ["es"]}, "ui": []})
+
+    def test_an_invalid_code_fails_with_its_reason_and_writes_nothing(self):
+        code, out, cfg = self.init("--docs-language", "Spanish")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("$.languages.docs.primary: 'Spanish' does not match", out)
+        self.assertFalse((self.p.work / ".claude/gw.json").exists())
+
+    def test_the_new_flags_need_init(self):
+        code, out = self.p.run_apply("--docs-language", "es")
+        self.assertEqual(code, 2, out)
+        self.assertIn("--docs-language only go with --init", out)
+
+    def test_update_writes_schema_2_from_the_old_keys(self):
+        old = {k: v for k, v in HOOKS_CONFIG.items() if k != "language"}
+        self.p.write(".claude/gw.json", json.dumps(dict(old, schemaVersion=1, language="es",
+                                                        visibleLanguages=["es", "en"], ciYamlCheck=False),
+                                                   indent=2) + "\n")
+        code, out = self.p.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        cfg = json.loads(self.p.read(".claude/gw.json"))
+        self.assertEqual(cfg["schemaVersion"], 2)
+        self.assertEqual(cfg["languages"], {"code": "en", "docs": {"primary": "es", "others": []},
+                                            "public": {"primary": "es", "others": []}, "ui": ["es", "en"]})
+        self.assertNotIn("language", cfg)
+        self.assertNotIn("visibleLanguages", cfg)
+        self.assertNotIn(".claude/gw.json", "\n".join(l for l in self.p.run_apply("--check")[1].splitlines()
+                                                      if l.lstrip().startswith("merge")))
+
+
 class SchemaMigration(unittest.TestCase):
     """A9: a gw.json with an older schemaVersion (absent = 0) is written migrated, in one write of the file."""
 
@@ -1875,11 +1941,11 @@ class SchemaMigration(unittest.TestCase):
         self.assertEqual(code, 0, out)
         lines = self.config_lines(out)
         self.assertEqual(len(lines), 1, out)
-        self.assertIn("schemaVersion 0 → 1: schemaVersion written", lines[0])
+        self.assertIn("schemaVersion 0 → 2: schemaVersion written", lines[0])
         code, out = p.run_apply("--check")
         self.assertEqual(code, 1, out)
         self.assertEqual(len(self.config_lines(out)), 1, out)
-        self.assertIn("schemaVersion 0 → 1", out)
+        self.assertIn("schemaVersion 0 → 2", out)
         self.assertEqual(p.read(".claude/gw.json"), before)
 
     def test_update_writes_it_after_version_and_keeps_the_rest(self):
@@ -1887,9 +1953,14 @@ class SchemaMigration(unittest.TestCase):
         code, out = p.run_apply("--update")
         self.assertEqual(code, 0, out)
         cfg = json.loads(p.read(".claude/gw.json"))
-        self.assertEqual(cfg["schemaVersion"], 1)
+        self.assertEqual(cfg["schemaVersion"], 2)
         self.assertEqual(list(cfg)[:2], ["version", "schemaVersion"])
-        self.assertEqual({k: v for k, v in cfg.items() if k != "schemaVersion"}, OLD_SCHEMA_CONFIG)
+        expected = {k: v for k, v in OLD_SCHEMA_CONFIG.items() if k != "language"}
+        expected["languages"] = BLOCK  # A12: `language` "en" became the block
+        self.assertEqual({k: v for k, v in cfg.items() if k not in ("schemaVersion", "languages")},
+                         {k: v for k, v in expected.items() if k != "languages"})
+        self.assertEqual(cfg["languages"], BLOCK)
+        self.assertNotIn("language", cfg)
         code, out = p.run_apply("--check")
         self.assertNotIn(".claude/gw.json", "\n".join(self.config_lines(out)), out)
         self.assertEqual(code, 0, out)
@@ -1906,11 +1977,11 @@ class SchemaMigration(unittest.TestCase):
         lines = self.config_lines(out)
         self.assertEqual(len(lines), 1, out)
         self.assertIn("keys with the old paths dropped", lines[0])
-        self.assertIn("schemaVersion 0 → 1", lines[0])
+        self.assertIn("schemaVersion 0 → 2", lines[0])
         code, out = p.run_apply()
         self.assertEqual(code, 0, out)
         cfg = json.loads(p.read(".claude/gw.json"))
-        self.assertEqual(cfg["schemaVersion"], 1)
+        self.assertEqual(cfg["schemaVersion"], 2)
         self.assertNotIn("log", cfg)
         self.assertNotIn("reviewMark", cfg)
         self.assertEqual(p.read("docs/handoff.md"), "# Log\n")
@@ -1928,14 +1999,14 @@ class SchemaMigration(unittest.TestCase):
         self.assertEqual(len(lines), 1, out)
         self.assertIn("--keep-paths:", lines[0])
         cfg = json.loads(p.read(".claude/gw.json"))
-        self.assertEqual((cfg["schemaVersion"], cfg["log"], cfg["keepLegacyPaths"]), (1, "docs/traspaso.md", True))
+        self.assertEqual((cfg["schemaVersion"], cfg["log"], cfg["keepLegacyPaths"]), (2, "docs/traspaso.md", True))
 
     def test_a_newer_schema_version_fails_closed_and_writes_nothing(self):
         p = self.p
         p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, schemaVersion=99), indent=2) + "\n")
         code, out = p.run_apply()
         self.assertEqual(code, 2, out)
-        self.assertIn("schemaVersion 99 is newer than this copy of the workflow knows (1)", out)
+        self.assertIn("schemaVersion 99 is newer than this copy of the workflow knows (2)", out)
         self.assertIn("/gw-update", out)
         self.assertFalse((p.work / ".claude" / "gw" / "scripts").exists())
 
@@ -2438,7 +2509,7 @@ class ConditionalBlocks(unittest.TestCase):
     def apply_log(self, log_rows, update=False):
         tmp = Path(tempfile.mkdtemp(prefix="gw-apply-")).resolve()
         self.addCleanup(shutil.rmtree, tmp, True)
-        p = Fixture(tmp, {"log": "notes/log.md", "language": "es", "logRows": log_rows})
+        p = Fixture(tmp, {"log": "notes/log.md", "languages": dict(BLOCK, docs={"primary": "es", "others": []}), "logRows": log_rows})
         code, out = p.run_apply()
         self.assertEqual(code, 0, out)
         return p, p.read("notes/log.md")

@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "required": [
     "version",
-    "language",
+    "languages",
     "protectedBranch",
     "pushToProtected",
     "check",
@@ -28,20 +28,33 @@
       "minimum": 0,
       "description": "Version of the gw.json format; absent = 0 (written before 0.5). An older one is migrated in memory by config.py and written by /gw-update; a newer one than the workflow knows fails closed."
     },
-    "language": {
-      "enum": [
-        "es",
-        "en"
-      ],
-      "description": "Templates and reply language."
-    },
-    "visibleLanguages": {
-      "type": "array",
-      "items": {
-        "type": "string",
-        "minLength": 2
-      },
-      "description": "Languages every user-visible text must exist in (REVIEW.md)."
+    "languages": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {"code": "en", "docs": {"primary": "en", "others": []}, "public": {"primary": "en", "others": []}, "ui": []},
+      "description": "A12: the language of each thing, as ISO 639-1 two-letter lowercase codes. `code`: code, identifiers and script messages; `docs`: internal documentation (primary: the log, roadmap, commit trailer and templates; others: the translations kept paired); `public`: public documentation (README, release); `ui`: languages every user-visible text must exist in (REVIEW.md). Replaces `language` and `visibleLanguages` (schemaVersion 2).",
+      "properties": {
+        "code": {"type": "string", "pattern": "^[a-z]{2}$", "default": "en", "description": "Language of code, identifiers and script messages (names-check.py only checks with en)."},
+        "docs": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "primary": {"type": "string", "pattern": "^[a-z]{2}$", "default": "en", "description": "Main language of the internal documentation: templates (templates/<primary>/), log, roadmap and next-step trailer."},
+            "others": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z]{2}$"}, "default": [], "description": "Other languages the internal documentation is kept in, paired with the primary one."}
+          },
+          "description": "Internal documentation languages."
+        },
+        "public": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "primary": {"type": "string", "pattern": "^[a-z]{2}$", "default": "en", "description": "Main language of the public documentation (README, release)."},
+            "others": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z]{2}$"}, "default": [], "description": "Other languages the public documentation is kept in."}
+          },
+          "description": "Public documentation languages."
+        },
+        "ui": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z]{2}$"}, "default": [], "description": "Languages every user-visible text must exist in (REVIEW.md)."}
+      }
     },
     "log": {
       "type": "string",

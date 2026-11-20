@@ -867,7 +867,7 @@ class Config(unittest.TestCase):
         self.write(bad)
         r = cli(self.tmp, "validate")
         self.assertEqual(r.returncode, 2)
-        for fragment in ("pushToProtected", "unknown key 'chek'", "missing required key 'language'", "at least 1"):
+        for fragment in ("pushToProtected", "unknown key 'chek'", "missing required key 'languages'", "at least 1"):
             self.assertIn(fragment, r.stderr)
 
     def test_broken_json_reports_the_line(self):
@@ -915,6 +915,11 @@ def load_field(root, field, rev=None):
     return subprocess.run(["python3", "-c", code], capture_output=True, text=True)
 
 
+# A12: VALID as schemaVersion 2 has it: the `languages` block instead of `language`
+BLOCK = {"code": "en", "docs": {"primary": "en", "others": []}, "public": {"primary": "en", "others": []}, "ui": []}
+VALID2 = {**{k: v for k, v in VALID.items() if k != "language"}, "languages": BLOCK}
+
+
 class SchemaVersion(unittest.TestCase):
     """A9: gw.json carries a schemaVersion; an older one is migrated in memory, a newer one fails closed."""
 
@@ -952,7 +957,7 @@ class SchemaVersion(unittest.TestCase):
 
     def test_current_version_loads_as_is(self):
         version = self.current().SCHEMA_VERSION
-        self.write(dict(VALID, schemaVersion=version))
+        self.write(dict(VALID2, schemaVersion=version))
         self.assertEqual(load_field(self.tmp, "_schemaFrom").stdout.strip(), str(version))
         self.assertEqual(cli(self.tmp, "get", "schemaVersion").stdout.strip(), str(version))
 
@@ -979,7 +984,7 @@ class SchemaVersion(unittest.TestCase):
         self.write(VALID)  # as a protected branch written before 0.5 has it
         subprocess.run([*self.git, "add", "-A"], check=True)
         subprocess.run([*self.git, "commit", "-q", "-m", "old"], check=True)
-        self.write(dict(VALID, schemaVersion=version, protectedBranch="trunk"))
+        self.write(dict(VALID2, schemaVersion=version, protectedBranch="trunk"))
         r = cli(self.tmp, "--rev", "HEAD", "get", "protectedBranch")
         self.assertEqual((r.returncode, r.stdout.strip()), (0, "main"), r.stderr)
         self.assertEqual(load_field(self.tmp, "_schemaFrom", "HEAD").stdout.strip(), "0")
@@ -999,7 +1004,8 @@ class SchemaVersion(unittest.TestCase):
         raw = {"$schema": "x", "version": "0.4.3", "language": "en"}
         out, done = config.migrate(raw)
         self.assertEqual(raw, {"$schema": "x", "version": "0.4.3", "language": "en"})  # untouched
-        self.assertEqual(list(out), ["$schema", "version", "schemaVersion", "language"])  # right after version
+        self.assertEqual(out["languages"]["docs"]["primary"], "en")
+        self.assertEqual(list(out), ["$schema", "version", "schemaVersion", "languages"])  # right after version
         self.assertEqual(out["schemaVersion"], config.SCHEMA_VERSION)
         self.assertEqual(len(done), config.SCHEMA_VERSION)
         self.assertEqual(config.migrate(out), (out, []))
@@ -1337,6 +1343,110 @@ class PushCommand(unittest.TestCase):
         self.assertEqual(cmd, f"bash {shlex.quote(str(installed))} feat/x")
         self.assertEqual(shlex.split(cmd), ["bash", str(installed), "feat/x"])  # the space survives the shell
         self.assertEqual(shlex.split(config.push_command(self.tmp, "a b"))[-1], "a b")
+
+
+
+class Languages(unittest.TestCase):
+    """A12: the `languages` block replaces `language` and `visibleLanguages` (schemaVersion 2)."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        subprocess.run(["git", "init", "-q", str(self.tmp)], check=True)
+        (self.tmp / ".claude").mkdir()
+        self.config = config
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def write(self, data):
+        (self.tmp / ".claude" / "gw.json").write_text(json.dumps(data))
+
+    def migrated(self, **over):
+        raw = {k: v for k, v in VALID.items() if k != "language"}
+        raw.update(over)
+        return self.config.migrate(raw)[0]
+
+    def test_old_keys_are_migrated(self):
+        out = self.migrated(language="es", visibleLanguages=["es", "gl"], schemaVersion=1)
+        self.assertEqual(out["languages"], {"code": "en", "docs": {"primary": "es", "others": []},
+                                            "public": {"primary": "es", "others": []}, "ui": ["es", "gl"]})
+        self.assertEqual(out["schemaVersion"], 2)
+        self.assertNotIn("language", out)
+        self.assertNotIn("visibleLanguages", out)
+
+    def test_old_config_loads_migrated_and_exposes_the_compat_views(self):
+        self.write(dict(VALID, language="es", visibleLanguages=["en"]))
+        r = cli(self.tmp, "get", "languages.docs.primary")
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "es"), r.stderr)
+        self.assertIn("en", cli(self.tmp, "get", "languages.ui").stdout)
+        self.assertEqual(cli(self.tmp, "get", "language").stdout.strip(), "es")  # A12 chunk 2 removes this
+        self.assertIn("en", cli(self.tmp, "get", "visibleLanguages").stdout)
+        self.assertEqual(json.loads((self.tmp / ".claude" / "gw.json").read_text())["language"], "es")  # not written
+
+    def test_absent_block_and_no_old_keys_fails_closed(self):
+        self.write({k: v for k, v in VALID.items() if k != "language"})
+        r = cli(self.tmp, "validate")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("missing required key 'languages'", r.stderr)
+
+    def test_partial_block_gets_defaults(self):
+        self.write(dict(VALID2, languages={"docs": {"primary": "es"}}))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        block = self.config.languages(self.config.load(self.tmp))
+        self.assertEqual(block, {"code": "en", "docs": {"primary": "es", "others": []},
+                                 "public": {"primary": "en", "others": []}, "ui": []})
+        self.assertEqual(self.config.languages({}), BLOCK)
+
+    def test_block_wins_over_old_keys(self):
+        out = self.migrated(language="es", languages={"docs": {"primary": "gl"}}, schemaVersion=1)
+        self.assertEqual(out["languages"]["docs"], {"primary": "gl", "others": []})
+        self.assertEqual(out["languages"]["public"]["primary"], "es")  # filled from the old key
+        self.assertEqual(list(out).count("languages"), 1)
+
+    def test_schema_2_with_old_keys_is_refused(self):
+        self.write(dict(VALID2, schemaVersion=2, language="es"))
+        r = cli(self.tmp, "validate")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("unknown key 'language'", r.stderr)
+
+    def test_schema_2_is_not_migrated_again(self):
+        raw = dict(VALID2, schemaVersion=2)
+        self.assertEqual(self.config.migrate(raw), (raw, []))
+
+    def test_invalid_blocks_fail_with_their_reason(self):
+        cases = [
+            (dict(BLOCK, code="EN"), "$.languages.code: 'EN' does not match"),
+            (dict(BLOCK, code="eng"), "$.languages.code: 'eng' does not match"),
+            (dict(BLOCK, docs={"primary": "es", "others": "en"}), "$.languages.docs.others: expected array"),
+            (dict(BLOCK, docs={"primary": "es", "others": ["es"]}),
+             "$.languages.docs.others: 'es' is already languages.docs.primary"),
+            (dict(BLOCK, public={"primary": "en", "others": ["es", "es"]}), "duplicate of an earlier item"),
+            (dict(BLOCK, ui=["en-US"]), "$.languages.ui[0]: 'en-US' does not match"),
+            (dict(BLOCK, extra=1), "unknown key 'extra'"),
+            ("es", "$.languages: expected object"),
+        ]
+        for block, reason in cases:
+            with self.subTest(reason=reason):
+                self.write(dict(VALID2, languages=block))
+                r = cli(self.tmp, "validate")
+                self.assertEqual(r.returncode, 2)
+                self.assertIn(reason, r.stderr)
+                self.assertIn("ISO 639-1", r.stderr)  # names the fix
+                self.assertIn("config.py", r.stderr)
+
+    def test_invalid_old_language_is_refused_after_migration(self):
+        self.write(dict(VALID, language="Spanish"))
+        r = cli(self.tmp, "validate")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("$.languages.docs.primary: 'Spanish' does not match", r.stderr)
+
+    def test_the_repo_config_and_the_template_carry_the_block(self):
+        for path in (ROOT / ".claude" / "gw.json", ROOT / "templates" / "gw.json"):
+            raw = json.loads(path.read_text())
+            self.assertEqual(raw["schemaVersion"], 2, path)
+            self.assertNotIn("language", raw)
+            self.assertNotIn("visibleLanguages", raw)
+            self.assertEqual(set(raw["languages"]), {"code", "docs", "public", "ui"})
 
 
 if __name__ == "__main__":

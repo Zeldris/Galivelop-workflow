@@ -9,6 +9,7 @@
           [--install CMD ...] [--protected-branch B] [--push-to-protected direct|pr] [--content REGEX ...]
           [--review-mark PATH] [--require-retro true|false] [--agent-signatures true|false]
           [--project-skill-prefix PREFIX]
+          [--code-language LANG] [--docs-language LANG ...] [--public-language LANG ...]
           [--visible-language LANG ...] [--design-reference REF ...]
 
 Runs FROM the workflow repo (this script's own repo is the source) ONTO a project: PROJECT, else the git top level
@@ -1903,14 +1904,21 @@ def init_config(args, version):
     new = json.loads((WORKFLOW / "templates" / "gw.json").read_text(encoding="utf-8"))
     new["version"] = version
     new["schemaVersion"] = config.SCHEMA_VERSION
-    if args.language:
-        new["language"] = args.language
-    new["log"] = args.log or LOG_BY_LANGUAGE.get(new["language"], new["log"])
+    block = new["languages"]
+    if args.language:  # A12: the single language of before fills both primaries; the new flags refine it
+        block["docs"]["primary"] = block["public"]["primary"] = args.language
+    if args.code_languages:
+        block["code"] = args.code_languages[0]
+    for part, given in (("docs", args.docs_languages), ("public", args.public_languages)):
+        if given:  # repeatable: the first is the primary one, the rest the others
+            block[part]["primary"], block[part]["others"] = given[0], given[1:]
+    if args.visible_languages:
+        block["ui"] = args.visible_languages
+    new["log"] = args.log or LOG_BY_LANGUAGE.get(block["docs"]["primary"], new["log"])
     new["check"] = args.check_commands
     new["install"] = args.install
     for key, flag in (("protectedBranch", args.protected_branch), ("pushToProtected", args.push_to_protected),
                       ("reviewMark", args.review_mark), ("content", args.content or None),
-                      ("visibleLanguages", args.visible_languages or None),
                       ("designReferences", args.design_references or None),
                       ("gitignoreStacks", args.stacks or None)):
         if flag:
@@ -1949,7 +1957,14 @@ def main(argv=None):
                              "them: they are written explicitly in .claude/gw.json instead of being moved")
     init = parser.add_argument_group("--init (write .claude/gw.json first, only when it does not exist)")
     init.add_argument("--init", action="store_true", help="write .claude/gw.json from templates/gw.json + flags")
-    init.add_argument("--language", choices=["es", "en"])
+    init.add_argument("--language", choices=["es", "en"],
+                      help="docs and public primary language (A12; the flags below refine each one)")
+    init.add_argument("--code-language", dest="code_languages", action="append", default=[], metavar="LANG",
+                      help="the language of code and identifiers, a two-letter ISO 639-1 code (A12; the first is used)")
+    init.add_argument("--docs-language", dest="docs_languages", action="append", default=[], metavar="LANG",
+                      help="a language of the internal docs (repeatable; the first is the primary one)")
+    init.add_argument("--public-language", dest="public_languages", action="append", default=[], metavar="LANG",
+                      help="a language of the public docs (repeatable; the first is the primary one)")
     init.add_argument("--log", metavar="PATH")
     init.add_argument("--check-command", dest="check_commands", action="append", default=[], metavar="CMD",
                       help="a `check` command (repeatable; at least one)")
@@ -1973,6 +1988,9 @@ def main(argv=None):
                       help="a stack whose .gitignore block --init writes (repeatable; default: detected, D127)")
     args = parser.parse_args(config.legacy_flags(sys.argv[1:] if argv is None else argv, OLD_FLAGS, "apply"))
     init_flags = [f for f, v in (("--language", args.language), ("--log", args.log),
+                                 ("--code-language", args.code_languages),
+                                 ("--docs-language", args.docs_languages),
+                                 ("--public-language", args.public_languages),
                                  ("--check-command", args.check_commands), ("--install", args.install),
                                  ("--protected-branch", args.protected_branch),
                                  ("--push-to-protected", args.push_to_protected), ("--content", args.content),
@@ -2012,7 +2030,7 @@ def main(argv=None):
             text = json.dumps(new, indent=2, ensure_ascii=False) + "\n"
             if args.dry_run:
                 print(f"apply: --init would write {root / config.CONFIG_REL}:\n{text}", end="")
-                cfg = config.with_defaults(new, schema)
+                cfg = config.compat_views(config.with_defaults(new, schema))  # A12 chunk 2 removes the compat views
                 cfg["_root"] = root
                 cfg["_schemaFrom"] = config.SCHEMA_VERSION
             else:

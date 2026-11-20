@@ -66,7 +66,7 @@ ALIAS = re.compile(r"^private-project-\d+$")
 # The format of gw.json (its `schemaVersion`; absent = 0, written before 0.5). load() migrates an older config in
 # memory, so every reader sees the current shape; apply.py (/gw-update) writes the migration to disk. A newer one
 # fails closed: this copy of the workflow cannot know what changed.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 class ConfigError(Exception):
@@ -86,9 +86,57 @@ def _migrate_to_1(raw):
     return out
 
 
+def _migrate_to_2(raw):
+    """1 -> 2 (A12, Q-12): `language` -> `languages.docs.primary` and `languages.public.primary`, `visibleLanguages` ->
+    `languages.ui`, `languages.code` = "en", the `others` lists []; both old keys are removed. A `languages` block
+    already there wins: the old keys only fill what it lacks. The block takes the place of `language`; a config with
+    neither old key gets none (the schema then says `languages` is missing). `schemaVersion` becomes 2 in place."""
+    old_language = raw.get("language")
+    old_visible = raw.get("visibleLanguages")
+    has_old = "language" in raw or "visibleLanguages" in raw
+    block = raw.get("languages")
+    if has_old and not isinstance(block, dict):
+        if "languages" in raw:  # not an object: left for the schema to reject
+            has_old = False
+        else:
+            block = {}
+    out = {}
+    placed = False
+    for key, value in raw.items():
+        if key in ("language", "visibleLanguages"):
+            if not placed and has_old:
+                out["languages"] = block
+                placed = True
+            continue
+        if key == "languages" and placed:
+            continue
+        out[key] = value
+        if key == "languages":
+            placed = True
+    if has_old and not placed:
+        out["languages"] = block
+    if has_old:
+        block = out["languages"]
+        block.setdefault("code", "en")
+        for part in ("docs", "public"):
+            sub = block.setdefault(part, {})
+            if isinstance(sub, dict):
+                if "language" in raw:
+                    sub.setdefault("primary", old_language)
+                sub.setdefault("others", [])
+        if "visibleLanguages" in raw:
+            block.setdefault("ui", old_visible)
+        else:
+            block.setdefault("ui", [])
+    out["schemaVersion"] = 2
+    return out
+
+
 # (target schemaVersion, what it changes in one line, function(raw dict) -> raw dict), in order.
 MIGRATIONS = [
     (1, "schemaVersion written (the format is versioned from now on)", _migrate_to_1),
+    (2, "language and visibleLanguages become the languages block (docs.primary, public.primary, ui; code en)",
+     _migrate_to_2),
 ]
 
 
@@ -302,6 +350,32 @@ def _section(config, key):
     given = config.get(key)
     given = given if isinstance(given, dict) else {}
     return {k: given.get(k, prop["default"]) for k, prop in props.items()}
+
+
+def languages(config):
+    """A12: the `languages` block of the config, normalized: {"code": "en", "docs": {"primary", "others"}, "public":
+    {"primary", "others"}, "ui": [...]}, each missing key filled from the schema default (the readers' one accessor;
+    a partial or absent block, or a caller that fell back to `{}`, still gets every key)."""
+    props = _schema()["properties"]["languages"]["properties"]
+    given = config.get("languages") if isinstance(config, dict) else None
+    given = given if isinstance(given, dict) else {}
+    out = {"code": given.get("code", props["code"]["default"])}
+    for part in ("docs", "public"):
+        inner = given.get(part) if isinstance(given.get(part), dict) else {}
+        out[part] = {"primary": inner.get("primary", props[part]["properties"]["primary"]["default"]),
+                     "others": list(inner.get("others", props[part]["properties"]["others"]["default"]))}
+    out["ui"] = list(given.get("ui", props["ui"]["default"]))
+    return out
+
+
+def compat_views(config):
+    """A12 chunk 2 removes this: the old read-only keys `language` (= languages.docs.primary) and `visibleLanguages`
+    (= languages.ui), set in memory so the readers not yet moved to languages() keep working. Never written to disk
+    (the schema no longer allows them in the file). Returns `config`."""
+    block = languages(config)
+    config["language"] = block["docs"]["primary"]
+    config["visibleLanguages"] = block["ui"]
+    return config
 
 
 def _bounded_section(config, key):
@@ -903,6 +977,13 @@ def semantic_errors(config):
         errors.append(f"$.handoff: cellHardLimit ({sizes['cellHardLimit']}) must not be below cellLimit "
                       f"({sizes['cellLimit']}): the hard cap would fail cells the soft limit still accepts; raise "
                       "cellHardLimit, lower cellLimit, or set cellHardLimit to 0 (off) in .claude/gw.json")
+    block = config.get("languages") if isinstance(config.get("languages"), dict) else {}
+    for part in ("docs", "public"):
+        inner = block.get(part) if isinstance(block.get(part), dict) else {}
+        primary = inner.get("primary", "en")
+        if isinstance(primary, str) and isinstance(inner.get("others"), list) and primary in inner["others"]:
+            errors.append(f"$.languages.{part}.others: {primary!r} is already languages.{part}.primary; remove it from "
+                          f"`others` in .claude/gw.json")
     agents_dir = config.get("agentsSkillsDir")
     if isinstance(agents_dir, str) and agents_dir:
         norm = posixpath.normpath(agents_dir.replace("\\", "/")).strip("/")
@@ -1175,7 +1256,12 @@ def load(root=None, rev=None, paths_at=None):
     schema = json.loads(schema_path().read_text(encoding="utf-8"))
     errors = validate(config, schema) or semantic_errors(config)
     if errors:
-        raise ConfigError(f"{path} is invalid:\n  " + "\n  ".join(errors))
+        hint = ""
+        if any(e.startswith("$.languages") for e in errors):
+            hint = ("\n  languages: write two-letter lowercase ISO 639-1 codes (\"es\", \"en\") in .claude/gw.json, e.g. "
+                    "{\"code\": \"en\", \"docs\": {\"primary\": \"es\", \"others\": [\"en\"]}, \"public\": {\"primary\": "
+                    "\"en\", \"others\": []}, \"ui\": []}, then validate: python3 " + str(HERE / "config.py") + " validate")
+        raise ConfigError(f"{path} is invalid:\n  " + "\n  ".join(errors) + hint)
     if paths_at:
         env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
         try:
@@ -1189,6 +1275,7 @@ def load(root=None, rev=None, paths_at=None):
     # following a move only makes sense for a config read for ANOTHER commit (the protected tip judging a push)
     follow = bool(paths_at) and rev is not None and _commit(root, paths_at) != _commit(root, rev)
     config = with_defaults(config, schema, path_exists_fn(root, paths_at or rev), follow_moves=follow)
+    compat_views(config)  # A12 chunk 2 removes this
     config["_root"] = root
     config["_schemaFrom"] = schema_from  # the schemaVersion on disk (or at `rev`) before the in-memory migration
     return config

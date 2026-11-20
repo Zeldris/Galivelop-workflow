@@ -41,6 +41,9 @@ class Doctor(Snapshot):
         p.write("AGENTS.md", "# Rules\n\nDeal multi-step work to subagents (skill gw-orchestrate-dealer).\n")
         cfg = json.loads((p.work / ".claude" / "gw.json").read_text())  # D137: a filled relatedTests, so no WARN
         cfg["check"] = list(cfg.get("check") or []) + ["python3 .claude/gw/scripts/ci-local.py --validate"]  # E71
+        cfg["schemaVersion"] = 2  # A12: the current format has the `languages` block instead of `language`
+        cfg["languages"] = {"code": "en", "docs": {"primary": cfg.pop("language", "en"), "others": []},
+                            "public": {"primary": "en", "others": []}, "ui": []}
         p.write(".claude/gw.json", json.dumps(dict(cfg, relatedTests={"fast": ["true"], "slow": []})))
         p.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| Next step | write tests |\n")
         p.write(".claude/skills/gw-selector/SKILL.md", SKILL.format(version=VERSION))
@@ -87,17 +90,17 @@ class Doctor(Snapshot):
         self.assertLine(out, "WARN", "author", "committer Claude", "matches 'Claude'")
 
     def test_config_schema_version(self):
-        self.assertLine(self.doctor()[1], "OK", "config schema", "schemaVersion 1 is the workflow's format")
+        self.assertLine(self.doctor()[1], "OK", "config schema", "schemaVersion 2 is the workflow's format")
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         old = {k: v for k, v in cfg.items() if k != "schemaVersion"}
         self.p.write(".claude/gw.json", json.dumps(old, indent=2))
         code, out = self.doctor()
         self.assertEqual(code, 0, out)  # a warning: every reader migrates it in memory
-        self.assertLine(out, "WARN", "config schema", "schemaVersion 0 (absent = 0)", "format is 1", "/gw-update")
-        self.p.write(".claude/gw.json", json.dumps(dict(cfg, schemaVersion=2), indent=2))
+        self.assertLine(out, "WARN", "config schema", "schemaVersion 0 (absent = 0)", "format is 2", "/gw-update")
+        self.p.write(".claude/gw.json", json.dumps(dict(cfg, schemaVersion=3), indent=2))
         code, out = self.doctor()
         self.assertEqual(code, 1, out)
-        self.assertLine(out, "FAIL", "config", "schemaVersion 2 is newer than this copy of the workflow knows (1)")
+        self.assertLine(out, "FAIL", "config", "schemaVersion 3 is newer than this copy of the workflow knows (2)")
 
     def test_missing_session_start_matcher(self):
         s = self.settings()
