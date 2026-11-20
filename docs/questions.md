@@ -140,3 +140,45 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: sí: ~/.claude/gw.json {"agentLanguage": {"<email>": "es"}}; el gancho SessionStart imprime 'Agent language: es' (respaldo: docs.primary); CLAUDE.md deja de fijar el idioma
 - Answer: sí
 - Answered: 2026-11-20
+
+## Q-17
+- Refs: E4
+- Status: open
+- Asked: 2026-11-20
+- Question: E4, alcance: ¿los perfiles solo eligen skills y agentes (a) o también ganchos (b)?
+- Recommendation: a: los perfiles solo deciden qué skills y agentes se instalan; ganchos, scripts, plantillas y bitácora van siempre
+
+## Q-18
+- Refs: E4
+- Status: open
+- Asked: 2026-11-20
+- Question: E4, reparto de skills por perfil (el diseño solo nombraba algunas)
+- Recommendation: minimal = gw-init, gw-update, gw-doctor y gw-mode; core = minimal + gw-selector, gw-orchestrate-dealer, retro, gw-opt-tokens, pr, gw-metrics, diagnosing-bugs, grilling, domain-modeling, writing-for-agents y los agentes gw-worker y gw-reviewer; full = todo lo demás (resto de mattpocock, gw-media-content(-now), gw-opt-ai, gw-scout-updates); gw-harvest sigue solo en el repo del flujo
+
+## Q-19
+- Refs: E4
+- Status: open
+- Asked: 2026-11-20
+- Question: E4, dónde vive el perfil
+- Recommendation: clave install.profile en .claude/gw.json (defecto core), --profile en apply.py la escribe, --with suma skills sueltas encima
+
+## Q-20
+- Refs: E4
+- Status: open
+- Asked: 2026-11-20
+- Question: E4, proyectos ya instalados al actualizar
+- Recommendation: un proyecto sin la clave conserva todo lo que tiene (no se borra nada); bajar de perfil a propósito quita solo las copias del flujo sin tocar, y gw-update lo presenta como decisión antes de --update
+
+## Q-21
+- Refs: E4
+- Status: open
+- Asked: 2026-11-20
+- Question: E4, plantillas que nombran skills ausentes
+- Recommendation: las plantillas de AGENTS.md/CLAUDE.md quitan las líneas de skills no instaladas (gw-selector en minimal) con una marca por skill
+
+## Q-22
+- Refs: E4
+- Status: open
+- Asked: 2026-11-20
+- Question: E4, perfil de este repo (el flujo)
+- Recommendation: full
