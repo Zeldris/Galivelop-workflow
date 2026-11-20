@@ -14,7 +14,7 @@ always runs with the default (Q-26). `assign` writes only the SHA-256 of the e-m
 into `profiles.people`, never the address (Q-25: the repo may be public). It is convenience, not access control (Q-27).
 Writes edit .claude/gw.json in place like mode.py: only the text of the affected value changes (EOL, tabs, compact
 sections and key order stay), through a temp file and os.replace, validated with config.load, and the old text is put
-back if the result is invalid. (config-guard.py asking the user before an agent runs the writing commands is pending, E4 chunk 2b.) Project root and
+back if the result is invalid. (config-guard.py asks the user before an agent runs `new`, `assign` or `role` or edits a profile, E4.) Project root and
 config: config.find_root and config.load. Fails closed: no config, an invalid one, an unknown or invalid name -> exit 2
 with the command that fixes it. Python 3.8+ standard library only.
 """

@@ -785,6 +785,143 @@ class GitTreeWrites(Base):
         self.assertAsks((code, out), "cannot tell which files it changes", "boom")
 
 
+class Profiles(Base):
+    """E4 (Q-24/Q-26/Q-27): a profile can change any config key, so profile.py's writing verbs and the profiles folder
+    (profiles.dir) ask like .claude/gw.json."""
+    VERB = "profile.py new|assign|role"
+
+    def set_dir(self, folder):
+        path = self.p.work / ".claude" / "gw.json"
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            data = {}
+        data["profiles"] = {"dir": folder}
+        path.write_text(json.dumps(data), encoding="utf-8")
+
+    def assertBashAsks(self, commands, *needles):
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertAsks(self.p.tool("Bash", command=command), "this command writes to",
+                                "only with the user's OK", *needles)
+
+    def assertBashAllowed(self, commands):
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertAllowed(self.p.tool("Bash", command=command))
+
+    def test_each_writing_verb_of_profile_py_asks(self):
+        self.assertBashAsks([
+            'python3 .claude/gw/scripts/profile.py new dev',
+            'python3 .claude/gw/scripts/profile.py new dev --from base',
+            'python3 .claude/gw/scripts/profile.py assign a@b.c --role dev',
+            'python3 .claude/gw/scripts/profile.py role dev dev',
+            'cd .claude/gw/scripts && python3 profile.py new dev',
+            'cd .claude/gw/scripts && python3 profile.py assign a@b.c --profile dev',
+            'cd .claude/gw/scripts; python3 profile.py role lead dev',
+            'bash -c "python3 .claude/gw/scripts/profile.py new dev"',
+            "sh -c 'python3 scripts/profile.py role dev dev'",
+            'python3 -B scripts/profile.py --root . role dev dev',
+            'python3 -B scripts/profile.py --root=. assign a@b.c --role dev',
+            'sudo python3 .claude/gw/scripts/profile.py new dev',
+            'env -u X python3 .claude/gw/scripts/profile.py new dev',
+            'timeout 5 python3.12 .claude/gw/scripts/profile.py new dev',
+            'echo ok && python3 .claude/gw/scripts/profile.py assign a@b.c --role dev',
+        ], ".claude/gw.json or a profile", self.VERB)
+
+    def test_list_and_show_do_not_ask(self):
+        self.assertBashAllowed([
+            'python3 .claude/gw/scripts/profile.py list',
+            'python3 .claude/gw/scripts/profile.py show',
+            'python3 .claude/gw/scripts/profile.py show a@b.c',
+            'python3 -B scripts/profile.py --root . show',
+            'python3 -B scripts/profile.py --root new list',  # a root folder named like a verb is not the verb
+            'cd .claude/gw/scripts && python3 profile.py list',
+            'python3 .claude/gw/scripts/profile.py show new',  # an e-mail that reads like a verb
+        ])
+
+    def test_edit_and_write_of_a_profile_ask(self):
+        for rel in (".claude/gw/profiles/x.json", ".claude/gw/profiles/sub/y.json", ".claude/gw/profiles",
+                    ".claude/worktrees/agent-x/.claude/gw/profiles/x.json"):
+            for tool in ("Edit", "Write", "MultiEdit"):
+                with self.subTest(tool=tool, path=rel):
+                    reason = self.assertAsks(self.p.tool(tool, file_path=str(self.p.work / rel)), f"would change {rel}:",
+                                             "only with the user's OK")
+                    self.assertIn(tool, reason)
+
+    def test_odd_spellings_of_the_profiles_folder_ask(self):
+        cases = {".claude/gw/profiles/./x.json": ".claude/gw/profiles/x.json",
+                 "src/../.claude/gw/profiles/x.json": ".claude/gw/profiles/x.json",
+                 ".claude/gw/scripts/../profiles/x.json": ".claude/gw/profiles/x.json",
+                 ".claude//gw/profiles//x.json": ".claude/gw/profiles/x.json",
+                 ".CLAUDE/GW/Profiles/X.json": ".CLAUDE/GW/Profiles/X.json"}  # a case-insensitive disk
+        for given, rel in cases.items():
+            with self.subTest(path=given):
+                self.assertAsks(self.p.tool("Write", file_path=given), f"would change {rel}:", "only with the user's OK")
+
+    def test_a_folder_next_to_the_profiles_one_is_not_protected(self):
+        for rel in (".claude/gw/profiles-old/x.json", ".claude/gw/profilesx.json", "src/profiles/x.json"):
+            with self.subTest(path=rel):
+                self.assertAllowed(self.p.tool("Write", file_path=str(self.p.work / rel)))
+
+    def test_bash_writers_on_the_profiles_folder_ask(self):
+        self.assertBashAsks([
+            'echo {} > .claude/gw/profiles/x.json',
+            'sed -i s/a/b/ .claude/gw/profiles/x.json',
+            'cp /tmp/x .claude/gw/profiles/x.json',
+            'rm .claude/gw/profiles/x.json',
+            'rm -r .claude/gw/profiles',
+            'rm -rf .claude/worktrees/agent-x/.claude/gw/profiles',
+            'mv .claude/gw/profiles /tmp/p',
+            'git checkout -- .claude/gw/profiles',
+            'cd .claude/gw/profiles && echo {} > x.json',
+            'find .claude/gw/profiles -delete',
+        ], ".claude/gw/profiles")
+        self.assertBashAllowed(['cat .claude/gw/profiles/x.json', 'cp .claude/gw/profiles/x.json /tmp/x.json',
+                                'ls .claude/gw/profiles', 'git diff -- .claude/gw/profiles'])
+
+    def test_a_custom_profiles_dir_is_protected_with_the_folders_that_hold_it(self):
+        self.set_dir("config/team/profiles/")
+        self.assertAsks(self.p.tool("Edit", file_path=str(self.p.work / "config/team/profiles/x.json")),
+                        "would change config/team/profiles/x.json:", "only with the user's OK")
+        self.assertBashAsks(['echo {} > config/team/profiles/x.json', 'rm -r config/team/profiles'],
+                            "config/team/profiles")
+        self.assertBashAsks(['rm -rf config', 'mv config/team /tmp/t'], "writes to config")
+        self.assertAllowed(self.p.tool("Edit", file_path=str(self.p.work / "config/team/other.json")))
+        self.assertBashAllowed(['echo x > config/team/notes.txt', 'rm -rf config/other'])
+
+    def test_a_broken_config_still_protects_the_default_folder(self):
+        for text in ("{not json", "[]", '{"profiles": 3}', '{"profiles": {"dir": "/abs/p"}}', '{"profiles": {"dir": ""}}'):
+            with self.subTest(config=text):
+                (self.p.work / ".claude" / "gw.json").write_text(text, encoding="utf-8")
+                self.assertAsks(self.p.tool("Write", file_path=".claude/gw/profiles/x.json"),
+                                "would change .claude/gw/profiles/x.json:")
+                self.assertAsks(self.p.tool("Bash", command="rm -r .claude/gw/profiles"), "writes to .claude")
+
+    def test_a_missing_schema_still_protects_the_default_folder(self):
+        shutil.rmtree(self.p.work / ".claude" / "gw" / "schema", ignore_errors=True)
+        self.assertAsks(self.p.tool("Write", file_path=".claude/gw/profiles/x.json"),
+                        "would change .claude/gw/profiles/x.json:")
+
+    def test_a_profiles_folder_reached_through_a_symlink_asks(self):
+        (self.p.work / "shared" / "profiles").mkdir(parents=True)
+        self.set_dir("team")
+        os.symlink(self.p.work / "shared" / "profiles", self.p.work / "team")
+        self.assertAsks(self.p.tool("Write", file_path="team/x.json"), "would change shared/profiles/x.json:")
+        self.assertAsks(self.p.tool("Write", file_path="shared/profiles/x.json"), "would change shared/profiles/x.json:")
+        outside = self.tmp / "elsewhere"
+        outside.mkdir()
+        (self.p.work / "team").unlink()
+        os.symlink(outside, self.p.work / "team")
+        self.assertAsks(self.p.tool("Write", file_path="team/x.json"), f"would change {outside / 'x.json'}:")
+        self.assertAllowed(self.p.tool("Write", file_path=str(self.tmp / "other.json")))
+
+    def test_a_link_into_the_profiles_folder_asks(self):
+        (self.p.work / ".claude" / "gw" / "profiles").mkdir(parents=True, exist_ok=True)
+        os.symlink(self.p.work / ".claude" / "gw" / "profiles", self.p.work / "src" / "p")
+        self.assertAsks(self.p.tool("Write", file_path="src/p/x.json"), "would change .claude/gw/profiles/x.json:")
+
+
 class FailClosed(Base):
     def test_unusable_stdin_asks_with_that_reason(self):
         cases = {"": "nothing arrived on stdin", "not json": "not valid JSON", "[1, 2]": "not a JSON object",

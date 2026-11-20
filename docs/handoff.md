@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.1` publicada** (`main` = `4ca45d0`, 2026-11-19; CI en verde; etiqueta y release `v0.8.1` creadas desde una sesión local) |
-| Siguiente paso | **`0.9` «Front»**: la recogida de apertura (H24) ya está hecha; las tareas de la recogida ya están (E65-E77; bloques E65-E71 y E72-E74 revisados, 2026-11-20; E75-E77 sin revisar), A12 hecha (2026-11-20, `docs/tasks/A12.md`), así que siguen E4 (diseño cerrado, Q-23 a Q-28; ficha `docs/tasks/E4.md`; trozos 1 (carga) y 2a (`profile.py`) hechos; sigue el 2b, `config-guard.py` y `doctor.py`), E5, E7, E9-E16, E42 y E50. **Al cerrar el desarrollo de la `0.9`, antes de publicarla:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 1 (E4) |
+| Siguiente paso | **`0.9` «Front»**: la recogida de apertura (H24) ya está hecha; las tareas de la recogida ya están (E65-E77; bloques E65-E71 y E72-E74 revisados, 2026-11-20; E75-E77 sin revisar), A12 hecha (2026-11-20, `docs/tasks/A12.md`), así que siguen E4 (diseño cerrado, Q-23 a Q-28; ficha `docs/tasks/E4.md`; trozos 1 (carga), 2a (`profile.py`) y 2b-guard (`config-guard.py`) hechos; sigue el 2b-doctor, `doctor.py`), E5, E7, E9-E16, E42 y E50. **Al cerrar el desarrollo de la `0.9`, antes de publicarla:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 1 (E4) |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-20 — E4 trozo 2a, revisión: 7 hallazgos arreglados (`profile.py` carga sin capas y solo `show` las aplica; `role`/`assign` validan la cadena destino con `apply_profiles(force=True)`; `assign` no conserva un cargo retirado; correo con parte local y dominio; `show` con mensaje propio; sin literal del directorio); `config.load(profiles=False)`; 45 tests en `test_profile.py`
-2. 2026-11-20 — E4 trozo 2a: `scripts/profile.py` (`list`, `new`, `assign` con hash SHA-256 sin correo, `role`, `show`), edita `.claude/gw.json` solo en el valor afectado y revierte si queda inválido; 35 tests en `test_profile.py`; faltan `config-guard.py` y `doctor.py` (trozo 2b)
-3. 2026-11-20 — E4 trozo 1: `config.py` carga perfiles por capas (`default` → cargo → propio; bloque `profiles` en el esquema y `templates/gw.json`), con `--rev` lee los perfiles de ese commit, `CI` siempre `default`; perfil que falta, roto, con clave desconocida o de instalación falla cerrado; `config.py profile`; 12 tests en `test_config.py`
-4. 2026-11-20 — A12 cerrada: trozo 3 (idioma del agente por usuario en `~/.claude/gw.json`, línea `Agent language:` en el inicio y en `recover.py --state` tras compactar) con sus 6 arreglos de revisión; filas de A12 del roadmap a hecho
-5. 2026-11-20 — A12 trozo 2b, revisión: 6 hallazgos arreglados (docs del config y guía de instalación con el bloque `languages`, Q-15 acotada al flujo, `test_repo.py` con `config.languages()`, `REVIEW.md`, wording de skills) y aviso único de `apply.py` al caer a plantillas `en`
+1. 2026-11-20 — E4 trozo 2b-guard: `config-guard.py` pregunta antes de `profile.py new|assign|role` (también con `cd` a scripts, `bash -c`, envoltorios y `--root`; `list` y `show` no) y antes de escribir en la carpeta de perfiles (`profiles.dir` del config crudo, defecto del esquema si está roto; con `..`, mayúsculas, symlinks y worktrees; sus carpetas padre cuentan como ancestros); 11 tests en `test_config_guard.py`; falta `doctor.py`
+2. 2026-11-20 — E4 trozo 2a, revisión: 7 hallazgos arreglados (`profile.py` carga sin capas y solo `show` las aplica; `role`/`assign` validan la cadena destino con `apply_profiles(force=True)`; `assign` no conserva un cargo retirado; correo con parte local y dominio; `show` con mensaje propio; sin literal del directorio); `config.load(profiles=False)`; 45 tests en `test_profile.py`
+3. 2026-11-20 — E4 trozo 2a: `scripts/profile.py` (`list`, `new`, `assign` con hash SHA-256 sin correo, `role`, `show`), edita `.claude/gw.json` solo en el valor afectado y revierte si queda inválido; 35 tests en `test_profile.py`; faltan `config-guard.py` y `doctor.py` (trozo 2b)
+4. 2026-11-20 — E4 trozo 1: `config.py` carga perfiles por capas (`default` → cargo → propio; bloque `profiles` en el esquema y `templates/gw.json`), con `--rev` lee los perfiles de ese commit, `CI` siempre `default`; perfil que falta, roto, con clave desconocida o de instalación falla cerrado; `config.py profile`; 12 tests en `test_config.py`
+5. 2026-11-20 — A12 cerrada: trozo 3 (idioma del agente por usuario en `~/.claude/gw.json`, línea `Agent language:` en el inicio y en `recover.py --state` tras compactar) con sus 6 arreglos de revisión; filas de A12 del roadmap a hecho
 
 ## Pendiente
 

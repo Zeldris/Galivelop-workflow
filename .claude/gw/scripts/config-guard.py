@@ -2,8 +2,8 @@
 # galivelop-workflow v0.8.1
 """PreToolUse hook: ask the user before Claude edits the workflow's own configuration.
 
-The files that wire the workflow (.claude/settings.json, .claude/settings.local.json, .claude/gw.json, everything under .githooks/ and under
-.claude/gw/scripts/) change only with the user's OK; AGENTS.md says so, and this hook makes the rule checkable. It
+The files that wire the workflow (.claude/settings.json, .claude/settings.local.json, .claude/gw.json, everything under .githooks/,
+.claude/gw/scripts/ and the profiles folder, E4) change only with the user's OK; AGENTS.md says so, and this hook makes the rule checkable. It
 never denies: it returns `ask`, so the user decides in the permission prompt.
 
 Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse "ask" decision): a JSON object on stdout, exit 0,
@@ -43,7 +43,11 @@ What it looks at, in the event on stdin (`tool_name`, `tool_input`, `cwd`):
 Also covered (D33): the same paths inside an agent worktree (`.claude/worktrees/<name>/...`); `find ... -exec|-execdir|
 -ok rm|mv|...` on them; `tar -x -C DIR` and `unzip -d DIR` into a protected folder (or from inside one). The file read by
 `touch -r`, `touch|chmod|chown|chgrp --reference` is not written. `python3 .../models.py disable|enable` (B7) counts as
-a write of .claude/gw.json: it rewrites `models.disabled` there; so does `mode.py set` (C7: `modes.<mode>`).
+a write of .claude/gw.json: it rewrites `models.disabled` there; so does `mode.py set` (C7: `modes.<mode>`), and
+`profile.py new|assign|role` (E4: .claude/gw.json and/or a profile; `list` and `show` only read). The profiles folder
+(E4, Q-24/Q-26/Q-27: a profile can change any config key) is protected like .githooks/: `profiles.dir` of the raw
+.claude/gw.json (default .claude/gw/profiles, also when the config is broken), as written and through a symlink, and
+the folders that hold it count as ancestors (`rm -r`, `mv`, `git checkout`).
 `questions.py accept-risk` (C5) and `task.py current <id>|--clear` (C4) ask too: accepting a risk and switching the
 task the questions guard reads are the user's call.
 
@@ -58,7 +62,7 @@ ask when `git status` shows a protected path they would touch. A `git` alias is 
 the config); `!` aliases and chains ask. It asks, with that as the reason: "the working tree (git ...; cannot tell which files it changes: ...)".
 
 Project root: config.find_root (the script's own repo when it holds .claude/gw.json, else the project the hook runs
-in); it does not read or validate the config. Fails closed: stdin it cannot read, an event without the tool name or
+in); it does not validate the config, and reads only `profiles.dir` from it. Fails closed: stdin it cannot read, an event without the tool name or
 the target, or a root it cannot find -> `ask`, with that as the reason. Python 3.8+ standard library only.
 """
 import json
@@ -81,6 +85,8 @@ EXACT = (".claude/settings.json", ".claude/settings.local.json", ".claude/gw.jso
 TREES = (".githooks", ".claude/gw/scripts")
 WORKTREE = re.compile(r"\.claude/worktrees/[^/]+/(.+)$")  # an agent's worktree holds its own copy of every protected path
 ANCESTORS = (".claude", ".claude/gw")  # removing or moving one takes protected files with it
+PROFILES_DEFAULT = ".claude/gw/profiles"  # the schema's default for profiles.dir (read from the schema when it can be)
+_PROFILES = {}  # root -> (relative trees, absolute real folders, ancestors): profiles.dir is read once per run
 WRITERS = {"tee", "cp", "mv", "rm", "install", "ln", "chmod", "chown", "chgrp", "truncate", "touch", "dd", "rsync",
            "unlink", "shred", "rmdir", "patch"}
 DESTRUCTIVE = {"rm", "mv", "unlink", "shred", "rmdir"}  # these also count when they name an ancestor folder
@@ -146,6 +152,42 @@ def ask(reason):
                                              "permissionDecisionReason": reason}}))
 
 
+def profile_dirs(root):
+    """E4 (Q-24/Q-26/Q-27): the profiles folder protects like TREES, since a profile can change any config key. Returns
+    (project-relative folders in lower case, their real absolute paths in lower case, the folders that hold them). It
+    is profiles.dir of the raw .claude/gw.json (no validation: a broken or missing config, or a value that is not a
+    relative path, falls back to the schema default), as written and with symlinks resolved."""
+    if root in _PROFILES:
+        return _PROFILES[root]
+    try:
+        default = config._schema()["properties"]["profiles"]["default"]["dir"]
+    except Exception:  # the schema is not there or not readable: the guard must still protect the usual folder
+        default = PROFILES_DEFAULT
+    folder = default
+    try:
+        with open(os.path.join(root, ".claude", "gw.json"), encoding="utf-8") as fh:
+            block = json.load(fh).get("profiles")
+        given = block.get("dir") if isinstance(block, dict) else None
+        if isinstance(given, str) and given.strip() and not os.path.isabs(given):
+            folder = given
+    except (OSError, ValueError, AttributeError):
+        pass
+    rels, reals, holders = [], [], []
+    for path in (os.path.normpath(os.path.join(root, folder)), os.path.realpath(os.path.join(root, folder))):
+        rel = os.path.relpath(path, root).replace(os.sep, "/")
+        if rel == "." or rel == ".." or rel.startswith("../"):
+            if rel != ".":
+                reals.append(path.lower())  # a symlink out of the project: its files are still the profiles
+            continue
+        rels.append(rel.lower())
+        parent = os.path.dirname(rel)
+        while parent:
+            holders.append(parent.lower())
+            parent = os.path.dirname(parent)
+    _PROFILES[root] = (tuple(rels), tuple(reals), tuple(holders))
+    return _PROFILES[root]
+
+
 def classify(token, base, root):
     """The project-relative, normalised path `token` names and its kind: ('protected' | 'ancestor' | 'root' | None). `base`
     is the folder relative paths are read from; `root` the real project root."""
@@ -163,16 +205,20 @@ def classify(token, base, root):
         rel = os.path.relpath(path, root)
     except (OSError, ValueError):
         return None, None
+    profiles, outside, holders = profile_dirs(root)
     if rel == ".." or rel.startswith("../") or rel.startswith(".." + os.sep):
+        low = path.lower()
+        if any(low == t or low.startswith(t + os.sep) for t in outside):
+            return path, "protected"  # the profiles folder is a symlink out of the project
         return None, None  # outside the project
     rel = rel.replace(os.sep, "/")
     low = rel.lower()  # a case-insensitive disk (macOS, Windows) must not be a way round
     inner = WORKTREE.match(low)
     if inner:
         low = inner.group(1)
-    if low in EXACT or any(low == t or low.startswith(t + "/") for t in TREES):
+    if low in EXACT or any(low == t or low.startswith(t + "/") for t in TREES + profiles):
         return rel, "protected"
-    if low in ANCESTORS:
+    if low in ANCESTORS or low in holders:
         return rel, "ancestor"
     if rel == ".":
         return rel, "root"  # the project folder itself: only a pathspec that covers every protected file cares
@@ -694,7 +740,7 @@ def extract_hits(cmd, args, base, root):
 
 def models_write(args):
     """What a python call rewrites that only the user may change, or None: models.py `disable`/`enable` (B7) and mode.py
-    `set` (C7) rewrite .claude/gw.json; questions.py `accept-risk` (C5: accepting a risk is the user's call) the questions
+    `set` (C7) rewrite .claude/gw.json; profile.py `new`/`assign`/`role` (E4) .claude/gw.json or a profile; questions.py `accept-risk` (C5: accepting a risk is the user's call) the questions
     file; task.py `current <id>`/`--clear` (C4: switching the task the questions guard reads) the current-task mark."""
     for n, w in enumerate(args):
         script = os.path.basename(w)
@@ -702,6 +748,11 @@ def models_write(args):
         if script in ("models.py", "mode.py"):
             verbs = ("disable", "enable") if script == "models.py" else ("set",)
             return ".claude/gw.json" if any(x in verbs for x in rest) else None
+        if script == "profile.py":
+            verb = next((x for k, x in enumerate(rest) if not x.startswith("-")
+                         and not (k and rest[k - 1] == "--root")), None)
+            return (".claude/gw.json or a profile (profile.py new|assign|role: a profile can change any config key, E4)"
+                    if verb in ("new", "assign", "role") else None)
         if script == "questions.py":
             return ("the questions file (questions.py accept-risk: only the user accepts a risk, C5)"
                     if "accept-risk" in rest else None)
@@ -747,7 +798,7 @@ def find_may_reach(args, root):
     if not patterns:
         return True
     names = {os.path.basename(t) for t in EXACT}
-    for tree in TREES:
+    for tree in TREES + profile_dirs(root)[0]:
         for _, dirs, files in os.walk(os.path.join(root, tree)):
             names.update(files)
             names.update(dirs)
