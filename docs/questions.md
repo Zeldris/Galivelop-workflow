@@ -143,42 +143,108 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-17
 - Refs: E4
-- Status: open
+- Status: answered
 - Asked: 2026-11-20
 - Question: E4, alcance: ¿los perfiles solo eligen skills y agentes (a) o también ganchos (b)?
 - Recommendation: a: los perfiles solo deciden qué skills y agentes se instalan; ganchos, scripts, plantillas y bitácora van siempre
+- Answer: superada por Q-23 a Q-28 (perfiles por persona y cargo)
+- Answered: 2026-11-20
 
 ## Q-18
 - Refs: E4
-- Status: open
+- Status: answered
 - Asked: 2026-11-20
 - Question: E4, reparto de skills por perfil (el diseño solo nombraba algunas)
 - Recommendation: minimal = gw-init, gw-update, gw-doctor y gw-mode; core = minimal + gw-selector, gw-orchestrate-dealer, retro, gw-opt-tokens, pr, gw-metrics, diagnosing-bugs, grilling, domain-modeling, writing-for-agents y los agentes gw-worker y gw-reviewer; full = todo lo demás (resto de mattpocock, gw-media-content(-now), gw-opt-ai, gw-scout-updates); gw-harvest sigue solo en el repo del flujo
+- Answer: superada por Q-23 a Q-28 (perfiles por persona y cargo)
+- Answered: 2026-11-20
 
 ## Q-19
 - Refs: E4
-- Status: open
+- Status: answered
 - Asked: 2026-11-20
 - Question: E4, dónde vive el perfil
 - Recommendation: clave install.profile en .claude/gw.json (defecto core), --profile en apply.py la escribe, --with suma skills sueltas encima
+- Answer: superada por Q-23 a Q-28 (perfiles por persona y cargo)
+- Answered: 2026-11-20
 
 ## Q-20
 - Refs: E4
-- Status: open
+- Status: answered
 - Asked: 2026-11-20
 - Question: E4, proyectos ya instalados al actualizar
 - Recommendation: un proyecto sin la clave conserva todo lo que tiene (no se borra nada); bajar de perfil a propósito quita solo las copias del flujo sin tocar, y gw-update lo presenta como decisión antes de --update
+- Answer: superada por Q-23 a Q-28 (perfiles por persona y cargo)
+- Answered: 2026-11-20
 
 ## Q-21
 - Refs: E4
-- Status: open
+- Status: answered
 - Asked: 2026-11-20
 - Question: E4, plantillas que nombran skills ausentes
 - Recommendation: las plantillas de AGENTS.md/CLAUDE.md quitan las líneas de skills no instaladas (gw-selector en minimal) con una marca por skill
+- Answer: superada por Q-23 a Q-28 (perfiles por persona y cargo)
+- Answered: 2026-11-20
 
 ## Q-22
 - Refs: E4
-- Status: open
+- Status: answered
 - Asked: 2026-11-20
 - Question: E4, perfil de este repo (el flujo)
 - Recommendation: full
+- Answer: superada por Q-23 a Q-28 (perfiles por persona y cargo)
+- Answered: 2026-11-20
+
+## Q-23
+- Refs: E4
+- Status: answered
+- Asked: 2026-11-20
+- Question: E4: ¿los perfiles de persona y de cargo se suman por capas o se sustituyen?
+- Recommendation: por capas: default → cargo → propio
+- Answer: ok
+- Answered: 2026-11-20
+
+## Q-24
+- Refs: E4
+- Status: answered
+- Asked: 2026-11-20
+- Question: E4: ¿dónde se guardan las asignaciones correo→cargo/perfil y cargo→perfil?
+- Recommendation: en .claude/gw.json
+- Answer: ok
+- Answered: 2026-11-20
+
+## Q-25
+- Refs: E4
+- Status: answered
+- Asked: 2026-11-20
+- Question: E4: privacidad de los correos en un repo público
+- Recommendation: hash del correo, no el correo
+- Answer: ok
+- Answered: 2026-11-20
+
+## Q-26
+- Refs: E4
+- Status: answered
+- Asked: 2026-11-20
+- Question: E4: ¿qué obligaciones puede saltarse un perfil?
+- Recommendation: cualquier clave, pero el CI siempre corre con default
+- Answer: ok
+- Answered: 2026-11-20
+
+## Q-27
+- Refs: E4
+- Status: answered
+- Asked: 2026-11-20
+- Question: E4: el correo de git se falsifica y los ganchos se saltan con --no-verify; ¿se acepta?
+- Recommendation: aceptado: comodidad, no control de acceso
+- Answer: ok
+- Answered: 2026-11-20
+
+## Q-28
+- Refs: E4
+- Status: answered
+- Asked: 2026-11-20
+- Question: E4: ¿cómo se manejan los perfiles hasta que exista el MMC?
+- Recommendation: profile.py list|new|assign|role|show; el MMC (G4) usará las mismas órdenes
+- Answer: ok
+- Answered: 2026-11-20

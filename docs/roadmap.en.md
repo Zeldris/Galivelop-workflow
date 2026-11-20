@@ -360,7 +360,7 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | Id | Task | State |
 |---|---|---|
 | A12 | Configurable languages in a `languages` block of `.claude/gw.json`: `code` (code, names and comments; replaces A8's fixed rule), `docs.primary` and `docs.others` (internal docs, log, roadmap and commits; the `docs/es` ↔ `docs/en` pairing reads them), `public.primary` and `public.others` (README, release, posts) and `ui` (today `visibleLanguages`); the agent language (the one user and agent speak) goes per user in `~/.claude/gw.json`, identified by `git config user.email`, with the docs primary as fallback; `language` and `visibleLanguages` migrate with `apply.py --update`; the MMC edits it in `1.1` (user, 2026-11-08) | done (2026-11-20; record `docs/tasks/A12.md`; `names-check.py` limited to the workflow repo) |
-| E4 | Install profiles (minimal/core/full, `core` by default) in `gw-init` and `gw-update` | pending |
+| E4 | Per-person and per-role profiles: each email (stored as a hash) uses its own profile, else its role's, else `default`; a profile changes any key except what gets installed; CI always runs with `default`; `profile.py` (user, 2026-11-20; formerly "install profiles", now a separate task) | in progress (record `docs/tasks/E4.md`) |
 | E5 | Front-end tests following the research | pending |
 | E7 | Front-end testing guide in `docs/en/patterns.md` and a config template | pending |
 | E9-E16 | The front-end checks decided in [`E-quality.md`](design/E-quality.md) (screenshots, when they run, tokens, preprocessors, accessibility, baselines, no paid services, matrix) | pending |

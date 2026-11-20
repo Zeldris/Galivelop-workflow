@@ -361,7 +361,7 @@ Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18)
 | Id | Tarea | Estado |
 |---|---|---|
 | A12 | Idiomas configurables en un bloque `languages` de `.claude/gw.json`: `code` (código, nombres y comentarios; sustituye la regla fija de A8), `docs.primary` y `docs.others` (doc interna, bitácora, roadmap y commits; el emparejado `docs/es` ↔ `docs/en` los lee), `public.primary` y `public.others` (README, release, publicaciones) y `ui` (hoy `visibleLanguages`); el idioma del agente (en el que hablan usuario y agente) va por usuario en `~/.claude/gw.json`, identificado por `git config user.email`, con el principal de la doc como respaldo; `language` y `visibleLanguages` migran con `apply.py --update`; el MMC lo edita en la `1.1` (usuario, 2026-11-08) | hecho (2026-11-20; ficha `docs/tasks/A12.md`; `names-check.py` acotado al repo del flujo) |
-| E4 | Perfiles de instalación (minimal/core/full, `core` por defecto) en `gw-init` y `gw-update` | pendiente |
+| E4 | Perfiles por persona y por cargo: cada correo (guardado como hash) usa su perfil, si no el de su cargo, si no `default`; un perfil cambia cualquier clave salvo lo que se instala; el CI siempre con `default`; `profile.py` (usuario, 2026-11-20; antes «perfiles de instalación», que pasa a tarea aparte) | en curso (ficha `docs/tasks/E4.md`) |
 | E5 | Pruebas de front según la investigación | pendiente |
 | E7 | Guía de pruebas de front en `docs/es/patterns.md` y plantilla de config | pendiente |
 | E9-E16 | Los checks de front decididos en [`E-quality.md`](design/E-quality.md) (capturas, cuándo corren, tokens, preprocesadores, accesibilidad, referencias, sin servicios de pago, matriz) | pendiente |
