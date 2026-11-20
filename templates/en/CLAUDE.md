@@ -3,7 +3,7 @@
 
 ## Claude Code only
 
-- Reply in the project's language (`{{language}}`).
+- Reply in the language of the `Agent language:` line printed at session start.
 - At the start of every task, say in one line which skill and which model the case calls for, with the `gw-selector`
   skill. The session's model is the person's choice; subagents get the cheapest model that does the job well.
 - **Compaction:** `.claude/settings.json` sets the auto-compaction window. After a compaction or a `/clear`, the

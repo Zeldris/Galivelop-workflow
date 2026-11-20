@@ -20,6 +20,8 @@
 #     sweeps and review fixes of 2 or more points to a gw-worker subagent instead of the main session.
 #   - open questions (C3): with a valid config, prints `questions.py notice`: only "N open questions (path)", or the whole
 #     list when some open question was never shown (mark in the git dir, gw/questions-shown); a broken questions file is a one-line warning.
+#   - agent language (A12): with a valid config, "Agent language: <code>" from ~/.claude/gw.json (agentLanguage, keyed by
+#     the repo's git user.email; GW_USER_CONFIG overrides the path), else languages.docs.primary; a bad file is a warning.
 #   - active modes (C7): with a valid config, prints `mode.py line` ("Modes: careful on, questions restrictive"); a broken
 #     config is a one-line warning.
 # Fails open: always exits 0 (a SessionStart hook cannot block); warnings go to stdout, which enters the agent's
@@ -131,6 +133,11 @@ else
   if [ -f "$here/metrics.py" ]; then
     python3 "$here/metrics.py" alert --root "$root" 2>/dev/null | while IFS= read -r line; do warn "$line"; done
   fi
+  lang_err="$(mktemp 2>/dev/null)" || lang_err=/dev/null
+  if agent_lang="$(python3 "$config" --root "$root" agent-language 2>"$lang_err")" && [ -n "$agent_lang" ]; then
+    echo "Agent language: $agent_lang"
+  fi
+  [ "$lang_err" = /dev/null ] || { [ ! -s "$lang_err" ] || warn "$(head -n 2 "$lang_err" | tr '\n' ' ')"; rm -f "$lang_err"; }
   if [ -f "$here/mode.py" ]; then
     if mout="$(python3 "$here/mode.py" --root "$root" line 2>&1)"; then
       [ -z "$mout" ] || printf '%s\n' "$mout"

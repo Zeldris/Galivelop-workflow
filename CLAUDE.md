@@ -2,7 +2,7 @@
 
 ## Solo para Claude Code
 
-- Responde en español (idioma del proyecto).
+- Responde en el idioma de la línea `Agent language:` que imprime el inicio de sesión.
 - Al empezar cada tarea, di en una línea qué modelo, esfuerzo y skill pide el caso, con la skill
   `gw-selector`. El modelo y el esfuerzo de la sesión los elige el usuario.
 - **Sin firmas de Claude:** «Mensajes de commit» de `AGENTS.md` manda sobre la atribución por defecto de Claude

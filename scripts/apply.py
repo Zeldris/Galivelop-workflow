@@ -874,7 +874,7 @@ def render(text, cfg, root, version, name):
         key = m.group(1)
         if key in TEXT_KEYS:
             return str(cfg[key])
-        if key == "language":  # A12 (Q-14): the docs primary language; chunk 3 rewrites the line that uses it
+        if key == "language":  # A12 (Q-14): the docs primary language
             return docs_language(cfg)
         if key in LIST_KEYS:
             return inline_list(cfg.get(key) or [])

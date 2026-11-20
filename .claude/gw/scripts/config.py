@@ -369,6 +369,37 @@ def languages(config):
     return out
 
 
+def user_config_path():
+    """A12 (Q-16): the per-user file (not the project config): $GW_USER_CONFIG, else ~/.claude/gw.json."""
+    given = os.environ.get("GW_USER_CONFIG")
+    return Path(given) if given else Path.home() / ".claude" / "gw.json"
+
+
+def agent_language(config):
+    """A12 (Q-16): (code, warning) of the language the agent talks in: the user file's `agentLanguage[<git config
+    user.email of the repo>]`, else `languages.docs.primary`. A missing file, entry or email falls back silently; an
+    unreadable file or a bad `agentLanguage` falls back with a one-line warning (never an exception)."""
+    fallback = languages(config)["docs"]["primary"]
+    path = user_config_path()
+    if not path.is_file():
+        return fallback, None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        table = data.get("agentLanguage") if isinstance(data, dict) else None
+        if "agentLanguage" in (data if isinstance(data, dict) else {}) and not isinstance(table, dict):
+            raise ValueError("`agentLanguage` must be an object of {email: language code}")
+        if not isinstance(data, dict):
+            raise ValueError("it must be a JSON object")
+    except (OSError, ValueError) as exc:  # JSONDecodeError is a ValueError
+        return fallback, (f"{path} is not usable ({exc}); using '{fallback}' (languages.docs.primary); fix it: "
+                          '{"agentLanguage": {"<git config user.email>": "<code>"}}')
+    r = subprocess.run(["git", "-C", str(config.get("_root", ".")), "config", "--get", "user.email"],
+                       capture_output=True, text=True)
+    email = r.stdout.strip()
+    value = (table or {}).get(email) if email else None
+    return (value if isinstance(value, str) and value else fallback), None
+
+
 def _bounded_section(config, key):
     """Like `_section`, but a value that is not an integer within the schema's minimum and maximum gives that key's
     default: for the keys a hook reads, a bad value must never hide what the hook shows (the loader rejects it, a caller
@@ -1455,6 +1486,7 @@ def main(argv=None):
                                                "fallback when the config cannot be read")
     default_p.add_argument("key")
     sub.add_parser("root")
+    sub.add_parser("agent-language", help="the agent's language for this user (~/.claude/gw.json, A12); a warning goes to stderr")
     sub.add_parser("local", help="the validated local file .claude/gw.local.json as JSON (null when absent)")
     related = sub.add_parser("related", help="relatedTests commands that apply to the files on stdin")
     related.add_argument("--kind", choices=("fast", "slow"), required=True)
@@ -1491,6 +1523,12 @@ def main(argv=None):
         return 0
     if args.command == "root":
         print(config["_root"])
+        return 0
+    if args.command == "agent-language":
+        code, warning = agent_language(config)
+        if warning:
+            print(f"gw config: {warning}", file=sys.stderr)
+        print(code)
         return 0
     if args.command == "local":
         try:

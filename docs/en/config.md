@@ -265,6 +265,20 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   `schemaVersion` 2 file that still carries the old keys is refused (`unknown key 'language'`). With a `languages`
   block and the old keys together (before migrating), the block wins and the old keys only fill what it lacks.
 
+## Agent language per user
+
+The language the agent talks in belongs to each person, not to the project (A12, Q-16): it lives in the user file
+`~/.claude/gw.json` (another path with the `GW_USER_CONFIG` environment variable), **outside any repo**:
+
+```json
+{"agentLanguage": {"<the repo's git config user.email>": "es"}}
+```
+
+The `SessionStart` hook prints `Agent language: <code>` (`config.py agent-language` gives the same); `CLAUDE.md` tells
+the agent to reply in that language. With no file, no entry for that email, no `user.email` in the repo, or with
+invalid JSON or an `agentLanguage` that is not an object, `languages.docs.primary` applies; the last two cases warn
+in one line (the hook does not fail).
+
 ## Personal notes
 
 If you have notes that should reach every project where you apply the workflow, keep them **outside any repo**, in

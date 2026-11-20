@@ -267,6 +267,20 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   un archivo con `schemaVersion` 2 que aún lleve las claves viejas se rechaza (`unknown key 'language'`). Con un bloque
   `languages` y las claves viejas a la vez (antes de migrar), manda el bloque y las viejas solo rellenan lo que le falta.
 
+## Idioma del agente por usuario
+
+El idioma en que habla el agente es de cada persona, no del proyecto (A12, Q-16): se guarda en el archivo de usuario
+`~/.claude/gw.json` (otra ruta con la variable de entorno `GW_USER_CONFIG`), **fuera de cualquier repo**:
+
+```json
+{"agentLanguage": {"<git config user.email del repo>": "es"}}
+```
+
+El gancho `SessionStart` imprime `Agent language: <código>` (`config.py agent-language` da lo mismo); `CLAUDE.md` manda
+responder en ese idioma. Sin archivo, sin entrada para ese correo, sin `user.email` en el repo, o con el JSON
+inválido o `agentLanguage` que no es un objeto, vale `languages.docs.primary`; los dos últimos casos avisan en una
+línea (sin fallar el gancho).
+
 ## Notas personales
 
 Si tienes notas que deben llegar a todos los proyectos donde aplicas el flujo, guárdalas **fuera de cualquier
