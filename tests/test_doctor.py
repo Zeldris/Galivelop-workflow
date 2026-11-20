@@ -1037,6 +1037,94 @@ class Doctor(Snapshot):
         out = self.doctor()[1]
         self.assertLine(out, "OK", "levers")
 
+    # ---- E4: profiles (orphans, roles without profile, e-mails in clear)
+
+    HASH = "a" * 64
+    HASH2 = "b" * 64
+
+    def profiles(self, block, files=None):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["profiles"] = block
+        self.p.write(".claude/gw.json", json.dumps(cfg, indent=2))
+        for name, text in (files or {}).items():
+            self.p.write(f".claude/gw/profiles/{name}.json", text)
+
+    def profile_lines(self, out):
+        return [l for l in out.splitlines() if re.match(r"(WARN|FAIL) +profiles:", l)]
+
+    def test_profiles_without_block_or_empty_give_no_warning(self):
+        self.assertEqual(self.profile_lines(self.doctor()[1]), [])
+        self.profiles({})
+        code, out = self.doctor()
+        self.assertEqual((code, self.profile_lines(out)), (0, []), out)
+
+    def test_profiles_all_consistent_give_no_warning(self):
+        self.profiles({"roles": {"dev": "dev"}, "people": {self.HASH: {"role": "dev", "profile": "ana"}}},
+                      {"dev": "{}", "ana": "{}"})
+        self.assertEqual(self.profile_lines(self.doctor()[1]), [])
+
+    def test_profile_named_only_by_a_role_or_only_by_a_person_is_not_orphan(self):
+        self.profiles({"roles": {"dev": "dev"}, "people": {self.HASH: {"profile": "ana"}}}, {"dev": "{}", "ana": "{}"})
+        self.assertEqual(self.profile_lines(self.doctor()[1]), [])
+
+    def test_orphan_profile_warns_with_the_fix(self):
+        self.profiles({"roles": {"dev": "dev"}}, {"dev": "{}", "lost": "{}"})
+        lines = self.profile_lines(self.doctor()[1])
+        self.assertEqual(len(lines), 1, lines)
+        line = self.assertLine(self.doctor()[1], "WARN", "profiles", "orphan profile", "lost.json", "no role and no person")
+        self.assertIn("profile.py", line)
+        self.assertIn("role <role> lost", line)
+        self.assertIn("assign <email> --profile lost", line)
+
+    def test_orphan_profile_without_roles_or_people(self):
+        self.profiles({"dir": ".claude/gw/profiles"}, {"x": "{}"})
+        self.assertLine(self.doctor()[1], "WARN", "profiles", "orphan profile", "x.json")
+
+    def test_role_missing_from_profiles_roles_warns(self):
+        self.profiles({"people": {self.HASH: {"role": "qa"}}})
+        line = self.assertLine(self.doctor()[1], "WARN", "profiles", "role 'qa'", "missing from profiles.roles",
+                               self.HASH[:8])
+        self.assertIn("profile.py", line)
+        self.assertIn("role qa <profile>", line)
+
+    def test_role_whose_profile_file_is_missing_warns(self):
+        self.profiles({"roles": {"dev": "ghost"}})
+        line = self.assertLine(self.doctor()[1], "WARN", "profiles", "role 'dev'", "profile 'ghost'", "does not exist")
+        self.assertIn("profile.py", line)
+        self.assertIn("new ghost", line)
+
+    def test_person_whose_profile_file_is_missing_warns(self):
+        self.profiles({"people": {self.HASH2: {"profile": "mine"}}})
+        line = self.assertLine(self.doctor()[1], "WARN", "profiles", f"person {self.HASH2[:8]}", "'mine'", "does not exist")
+        self.assertIn("new mine", line)
+
+    def test_invalid_profile_name_warns_naming_the_file_to_edit(self):
+        self.profiles({"roles": {"dev": "../x"}})
+        line = self.assertLine(self.doctor()[1], "WARN", "profiles", "invalid profile '../x'")
+        self.assertIn(".claude/gw.json", line)
+
+    def test_broken_profile_json_warns_naming_the_file_and_does_not_crash(self):
+        self.profiles({"roles": {"dev": "dev"}}, {"dev": "{not json"})
+        code, out = self.doctor()
+        self.assertNotIn("Traceback", out)
+        line = self.assertLine(out, "WARN", "profiles", "dev.json", "cannot be read as JSON")
+        self.assertIn("edit", line)
+        self.assertIn("new dev", line)
+
+    def test_email_in_clear_in_a_profile_file_warns(self):
+        self.profiles({"roles": {"dev": "dev"}}, {"dev": json.dumps({"note": "ana@example.org"})})
+        line = self.assertLine(self.doctor()[1], "WARN", "profiles", "dev.json", "e-mail address in clear", "SHA-256")
+        self.assertIn("profile.py", line)
+        self.assertIn("assign <email>", line)
+
+    def test_email_in_clear_in_the_profiles_block_warns(self):
+        self.profiles({"roles": {"dev": "dev"}, "people": {"ana@example.org": {"role": "dev"}}}, {"dev": "{}"})
+        self.assertLine(self.doctor()[1], "WARN", "profiles", "gw.json (profiles block)", "e-mail address in clear")
+
+    def test_hashes_are_not_taken_for_emails(self):
+        self.profiles({"roles": {"dev": "dev"}, "people": {self.HASH: {"role": "dev"}}}, {"dev": "{}"})
+        self.assertNotIn("e-mail", self.doctor()[1])
+
     def scout_lines(self, out):
         return [l for l in out.splitlines() if re.match(r"(OK|WARN|FAIL) +scout:", l)]
 

@@ -1291,6 +1291,63 @@ def check_ci_access(rep, root):
                  "run `gh auth login` (or export GITHUB_TOKEN)")
 
 
+EMAIL_IN_CLEAR = re.compile(r'[^@\s"]+@[^@\s"]+\.[^@\s"]+')  # E4 (Q-25): only SHA-256 hashes may be stored
+
+
+def check_profiles(rep, root):
+    """E4: warn about orphan profile files, roles or people whose profile is missing, and e-mails in clear in the
+    `profiles` block or in a profile file. It reads the raw config (it must also work when the layers fail to load)."""
+    try:
+        raw = json.loads((Path(root) / ".claude" / "gw.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return  # check_config already reported it
+    block = raw.get("profiles") if isinstance(raw, dict) else None
+    if not isinstance(block, dict) or not block:
+        return
+    tool = f"python3 {HERE / 'profile.py'} --root {shlex.quote(str(root))}"
+    where = block.get("dir") or config.schema_default("profiles")["dir"]
+    folder = Path(root) / where
+    roles = block.get("roles") if isinstance(block.get("roles"), dict) else {}
+    people = block.get("people") if isinstance(block.get("people"), dict) else {}
+    files = {p.stem: p for p in sorted(folder.glob("*.json")) if p.is_file()} if folder.is_dir() else {}
+    named = {}  # profile name -> who names it
+    for role, name in sorted(roles.items()):
+        named.setdefault(name, f"role '{role}'")
+    for digest, person in sorted(people.items()):
+        person = person if isinstance(person, dict) else {}
+        if person.get("profile"):
+            named.setdefault(person["profile"], f"person {digest[:8]}")
+        role = person.get("role")
+        if role and role not in roles:
+            rep.warn("profiles", f"person {digest[:8]} has role '{role}', which is missing from profiles.roles",
+                     f"{tool} role {role} <profile>")
+    for name, who in named.items():
+        if not isinstance(name, str) or not config.PROFILE_NAME.match(name):
+            rep.warn("profiles", f"{who} names the invalid profile '{name}'",
+                     f"edit profiles in .claude/gw.json (or {tool} role <role> <profile>)")
+        elif name not in files:
+            rep.warn("profiles", f"{who} names profile '{name}', but {where}/{name}.json does not exist",
+                     f"{tool} new {name}")
+    for name in files:
+        if name not in named:
+            rep.warn("profiles", f"orphan profile {where}/{name}.json: no role and no person names it",
+                     f"{tool} role <role> {name}  (or {tool} assign <email> --profile {name}, or delete the file)")
+    texts = {".claude/gw.json (profiles block)": json.dumps(block, ensure_ascii=False)}
+    for name, path in files.items():
+        try:
+            text = path.read_text(encoding="utf-8")
+            json.loads(text)
+        except (OSError, ValueError) as exc:
+            rep.warn("profiles", f"profile {where}/{name}.json cannot be read as JSON: {exc}",
+                     f"edit {where}/{name}.json (valid JSON), or recreate it: {tool} new {name}")
+            continue
+        texts[f"{where}/{name}.json"] = text
+    for label, text in texts.items():
+        if EMAIL_IN_CLEAR.search(text):
+            rep.warn("profiles", f"{label} has an e-mail address in clear (only SHA-256 hashes may be stored)",
+                     f"remove it from the file; assign people with `{tool} assign <email>`, which stores the hash")
+
+
 def run(root):
     rep = Report()
     cfg = check_config(rep, root)
@@ -1323,6 +1380,7 @@ def run(root):
     check_compaction(rep, root)
     check_levers(rep, root, cfg)
     check_scout(rep, root, cfg)
+    check_profiles(rep, root)
     check_author(rep, root, cfg)
     return rep
 
