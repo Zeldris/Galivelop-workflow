@@ -1483,10 +1483,6 @@ class Languages(unittest.TestCase):
             self.assertEqual(set(raw["languages"]), {"code", "docs", "public", "ui"})
 
 
-if __name__ == "__main__":
-    unittest.main()
-
-
 class Profiles(unittest.TestCase):
     """E4: per-person and per-role profiles layered on top of the project config (default -> role -> own)."""
 
@@ -1636,3 +1632,7 @@ class Profiles(unittest.TestCase):
         r = subprocess.run(["python3", str(SCRIPT), "--root", str(self.tmp), "get", "logSize"], capture_output=True,
                            text=True, env=env)
         self.assertEqual((r.returncode, r.stdout.strip()), (0, "20000"), r.stderr)
+
+
+if __name__ == "__main__":
+    unittest.main()
