@@ -1918,6 +1918,8 @@ class LanguagesInit(unittest.TestCase):
         self.assertNotIn("Traceback", out)
         self.assertEqual(cfg["languages"]["docs"]["primary"], "gl")
         self.assertTrue((self.p.work / "AGENTS.md").is_file())
+        self.assertEqual(out.count("has no templates/gl/ folder, so the English templates (en) are used"), 1, out)
+        self.assertIn("languages.docs.primary is 'gl'", out)
 
     def test_the_new_flags_need_init(self):
         code, out = self.p.run_apply("--docs-language", "es")
@@ -2984,6 +2986,14 @@ class TemplateAtFallback(unittest.TestCase):
 
     def test_a_language_without_a_folder_uses_the_english_one(self):
         self.assertEqual(self.plan("gl").template_at("b.md", "0.1.0"), b"en b")
+
+    def test_the_english_fallback_warns_once_per_run_and_names_the_language(self):
+        plan = self.plan("gl")
+        plan.template_at("a.md", "0.1.0")
+        plan.template_at("b.md", "0.1.0")
+        self.assertEqual(plan.warnings, ["languages.docs.primary is 'gl' but the workflow has no templates/gl/ folder, "
+                                         "so the English templates (en) are used"])
+        self.plan("es").template_at("a.md", "0.1.0")  # a language with a folder says nothing
 
 
 if __name__ == "__main__":

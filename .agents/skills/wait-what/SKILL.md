@@ -18,5 +18,5 @@ Wait, I don't understand where you've got to here. Re-pitch that: give me a litt
 
 This section is the only change to the upstream skill.
 
-- If the project's `languages.docs.primary` in `.claude/gw.json` is not English, re-pitch in that language, in short plain
+- If the project's docs language (`languages.docs.primary`) in `.claude/gw.json` is not English, re-pitch in that language, in short plain
   sentences with one idea each, instead of ASD-STE100.

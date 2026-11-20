@@ -20,7 +20,7 @@ Follow it step by step. This skill only fixes where to find things and what to c
 files and returns the step-1 decision table, each candidate value with its source path, and the conflicts with the
 project (existing `CLAUDE.md`, hook managers, a red check). The main session decides from that summary and never
 reads the workflow's guides or scripts whole.
-Reply to the user in the language they use; the project's `languages.docs.primary` is decided in step 3.
+Reply to the user in the language they use; the project's docs language (`languages.docs.primary`) is decided in step 3.
 
 ## 1. Find the workflow repo
 

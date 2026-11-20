@@ -23,7 +23,7 @@ the report's numbers, and when a question needs a number the report does not sho
    `python3 .claude/gw/scripts/metrics.py report --period <period> [--date YYYY-MM-DD]`. Done when it printed a report
    or said `no ledger rows`; in that case tell the user the period is empty and, if the ledger itself is missing, that
    `metrics.record` must be on (`python3 .claude/gw/scripts/config.py get metrics`).
-3. **Explain it** in the project's `languages.docs.primary` (`.claude/gw.json`), in a few lines, each one citing the table it comes
+3. **Explain it** in the project's docs language (`languages.docs.primary`; `.claude/gw.json`), in a few lines, each one citing the table it comes
    from:
    - the total in tokens and USD, and that USD is a reference when the user pays by subscription;
    - the biggest share by model, by agent and by task id, and anything that stands out (one subagent type above the main

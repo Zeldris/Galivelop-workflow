@@ -13,6 +13,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+import config  # noqa: E402  (the one reader of .claude/gw.json)
 SEMVER = re.compile(r"^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$")
 PAIR_LINK = re.compile(r"\[(?:English|Español)\]\(([^)]+\.md)\)")
 
@@ -197,7 +199,7 @@ class Pairs(unittest.TestCase):
     def languages(self):
         """A12: the languages this repo declares: docs.primary + docs.others, and the public primary (README.md) and
         others (README.<lang>.md)."""
-        block = json.loads((ROOT / ".claude" / "gw.json").read_text(encoding="utf-8"))["languages"]
+        block = config.languages(config.load(ROOT))
         docs = [block["docs"]["primary"]] + block["docs"]["others"]
         readmes = [ROOT / "README.md"] + [ROOT / f"README.{lang}.md" for lang in block["public"]["others"]]
         return docs, readmes
@@ -210,6 +212,8 @@ class Pairs(unittest.TestCase):
         for doc in self.pairs():
             rel = doc.relative_to(ROOT)
             with self.subTest(doc=str(rel)):
+                self.assertTrue(doc.is_file(), f"{rel}: listed by languages.public.others (README.<lang>.md) in "
+                                               ".claude/gw.json but missing; create it or remove the language")
                 links = PAIR_LINK.findall(doc.read_text(encoding="utf-8"))
                 self.assertTrue(links, f"{rel}: add a '[English](...)' or '[Español](...)' link to its pair")
                 pair = (doc.parent / links[0]).resolve()

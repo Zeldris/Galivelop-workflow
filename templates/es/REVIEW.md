@@ -91,7 +91,7 @@ creada.
 
 ## Idiomas visibles
 
-- Si `.claude/gw.json` declara `languages.ui`, todo texto nuevo que vea un usuario existe en cada uno de esos
+- Si `languages.ui` (`.claude/gw.json`) no está vacío, todo texto nuevo que vea un usuario existe en cada uno de esos
   idiomas (etiquetas, textos alternativos, títulos de página, mensajes), y una traducción es de verdad, no el mismo
   texto. (criterio)
 

@@ -88,7 +88,7 @@ This section is the only change to the upstream skill. Where the text above name
 or `/setup-matt-pocock-skills`, this section wins: the workflow has neither a tracker nor that setup.
 
 - **Destination:** write the spec to `docs/specs/<YYYY-MM-DD>-<slug>.md` (slug from the feature, folder created if
-  needed) in the project's `languages.docs.primary` (`.claude/gw.json`) and report the path. No triage label.
+  needed) in the project's docs language (`languages.docs.primary`; `.claude/gw.json`) and report the path. No triage label.
 - If the project note (`.claude/gw/to-spec.md`) names another folder or a tracker, use that instead.
 - If the project keeps a plan (`plan` in `.claude/gw.json`), link the spec from the plan task it belongs to, in the
   same commit.

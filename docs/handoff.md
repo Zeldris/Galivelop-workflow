@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-20 — A12 trozo 2b: `doctor.py` avisa de claves viejas y de `docs.primary` sin plantillas, `names-check.py` se salta con `code` distinto de `en`, `REVIEW.md` y skills a `languages`, `test_repo.py` lee el bloque, fuera `config.compat_views`; tests en `test_doctor.py`, `test_names_check.py`, `test_config.py`
-2. 2026-11-20 — A12 trozo 2a, revisión: 2 hallazgos arreglados (`config.py get languages.*` pasa por `languages()`: bloque incompleto o esquema 1 sin `language` dan el defecto; `template_at` vuelve a `en` solo si no había carpeta del idioma en la etiqueta)
-3. 2026-11-20 — A12 trozo 2a: `apply.py`, `commit-message.py`, `reviewed.sh`, `merge-branch.sh`, `backport.sh`, `handoff.py`, `merge-main.py` y `task.py` leen `languages.docs.primary` en vez de `language`; una prueba de esquema 2 cada uno
-4. 2026-11-20 — A12 trozo 1, revisión: 6 hallazgos arreglados (respaldo `en` de plantillas, `--init` valida con `semantic_errors`, `ui` admite etiquetas BCP 47, migración con `languages` no objeto, pista ISO solo de patrón con `--root`, `--code-language` de un solo valor)
-5. 2026-11-20 — A12 trozo 1: bloque `languages` en `gw.json` (`schemaVersion` 2, migración de `language`/`visibleLanguages`, validación ISO 639-1, `config.languages()`), `apply.py --init` con `--code-language`/`--docs-language`/`--public-language`; tests en `test_config.py` y `test_apply.py`
+1. 2026-11-20 — A12 trozo 2b, revisión: 6 hallazgos arreglados (docs del config y guía de instalación con el bloque `languages`, Q-15 acotada al flujo, `test_repo.py` con `config.languages()`, `REVIEW.md`, wording de skills) y aviso único de `apply.py` al caer a plantillas `en`
+2. 2026-11-20 — A12 trozo 2b: `doctor.py` avisa de claves viejas y de `docs.primary` sin plantillas, `names-check.py` se salta con `code` distinto de `en`, `REVIEW.md` y skills a `languages`, `test_repo.py` lee el bloque, fuera `config.compat_views`; tests en `test_doctor.py`, `test_names_check.py`, `test_config.py`
+3. 2026-11-20 — A12 trozo 2a, revisión: 2 hallazgos arreglados (`config.py get languages.*` pasa por `languages()`: bloque incompleto o esquema 1 sin `language` dan el defecto; `template_at` vuelve a `en` solo si no había carpeta del idioma en la etiqueta)
+4. 2026-11-20 — A12 trozo 2a: `apply.py`, `commit-message.py`, `reviewed.sh`, `merge-branch.sh`, `backport.sh`, `handoff.py`, `merge-main.py` y `task.py` leen `languages.docs.primary` en vez de `language`; una prueba de esquema 2 cada uno
+5. 2026-11-20 — A12 trozo 1, revisión: 6 hallazgos arreglados (respaldo `en` de plantillas, `--init` valida con `semantic_errors`, `ui` admite etiquetas BCP 47, migración con `languages` no objeto, pista ISO solo de patrón con `--root`, `--code-language` de un solo valor)
 
 ## Pendiente
 

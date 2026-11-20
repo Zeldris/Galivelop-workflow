@@ -45,7 +45,7 @@ Collect these facts **before** running anything. They all go into `.claude/gw.js
 
 | Fact | How it is decided |
 |---|---|
-| Language (`language`: `es` or `en`) | The person's and the project docs'; it drives the templates and the replies |
+| Languages (`languages`: `code`, `docs`, `public`, `ui`) | `--code-language` (code and identifiers, one), `--docs-language` and `--public-language` (repeatable; the first is the primary) and `--language` (shortcut: sets both primaries). `docs.primary` drives the templates (`templates/<language>/`; with no folder, the `en` ones with a warning) |
 | Log path (`log`) | Default `docs/handoff.md` (every language); the project's own if it already has one |
 | Install command(s) (`install`) | Inferred (below); empty if there are no dependencies |
 | Check command(s) (`check`) | Inferred (below); **at least one**, it is what `pre-push` and CI run |
@@ -56,7 +56,7 @@ Collect these facts **before** running anything. They all go into `.claude/gw.js
 | Agent signatures (`agentSignatures`) | Ask: "Does the project allow agent signatures in commits (a Claude `Co-Authored-By`, session links)?". If not: `--agent-signatures false` (the `commit-msg` hook rejects a message that carries them); if yes, leave it `true`. With `false`, `CLAUDE.md` gets the "No Claude signatures" rule, which overrides the environment's attribution reminder (E49) |
 | Own skills prefix (`projectSkillPrefix`) | Ask: "Which prefix does the project give its own skills (e.g. `gvg-`)?", with candidates drawn from the project's name; `gw-` belongs to the workflow and is refused. If it has or will have its own skills: `--project-skill-prefix <prefix>`; if not, leave it empty. `doctor.py` warns of each own skill without it (E73) |
 | Licence (`gw-init` offer, D87) | Ask whether they want the workflow's dual licence: MIT for the code and CC BY-NC-SA 4.0 for the content, with a third-party note. If yes, `gw-init` copies `templates/licenses/` (`LICENSE-code.txt` → `LICENSE`, `LICENSE-content.md`, `THIRD-PARTY.md`) and fills year and holder; if not, nothing is touched |
-| Visible languages and design references (`visibleLanguages`, `designReferences`) | Only if the project has them: `--visible-language` and `--design-reference`, one flag per value |
+| Visible languages and design references (`languages.ui`, `designReferences`) | Only if the project has them: `--visible-language` and `--design-reference`, one flag per value |
 | Optional skills | `gw-opt-ai` (local AI models) and `gw-scout-updates` (update scouting); only if the person asks |
 
 **Inferring `install` and `check`.** Read the build file and propose commands that really exist:

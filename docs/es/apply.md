@@ -44,7 +44,7 @@ Reúne estos datos **antes** de ejecutar nada. Todo va a `.claude/gw.json` (cada
 
 | Dato | Cómo se decide |
 |---|---|
-| Idioma (`language`: `es` o `en`) | El de la persona y el de la documentación del proyecto; manda sobre las plantillas y las respuestas |
+| Idiomas (`languages`: `code`, `docs`, `public`, `ui`) | `--code-language` (código e identificadores, uno), `--docs-language` y `--public-language` (repetibles; el primero es el principal) y `--language` (atajo: fija el principal de ambos). `docs.primary` manda sobre las plantillas (`templates/<idioma>/`; sin carpeta, las de `en` con un aviso) |
 | Ruta de la bitácora (`log`) | Por defecto `docs/handoff.md` (en todos los idiomas); si el proyecto ya tiene una, esa |
 | Orden de instalación (`install`) | Se infiere (abajo); vacío si no hay dependencias |
 | Orden(es) de comprobación (`check`) | Se infiere (abajo); **al menos una**, es lo que corre el `pre-push` y el CI |
@@ -55,7 +55,7 @@ Reúne estos datos **antes** de ejecutar nada. Todo va a `.claude/gw.json` (cada
 | Firmas del agente (`agentSignatures`) | Pregunta: «¿El proyecto admite firmas del agente en los commits (`Co-Authored-By` de Claude, enlaces de sesión)?». Si no: `--agent-signatures false` (el `commit-msg` rechaza el mensaje que las lleve); si sí, déjalo en `true`. Con `false`, `CLAUDE.md` recibe la regla «Sin firmas de Claude», que manda sobre el recordatorio de atribución del entorno (E49) |
 | Prefijo de las skills propias (`projectSkillPrefix`) | Pregunta: «¿Con qué prefijo nombra el proyecto sus propias skills (p. ej. `gvg-`)?», con candidatos sacados del nombre del proyecto; `gw-` es del flujo y no vale. Si tiene o tendrá skills propias: `--project-skill-prefix <prefijo>`; si no, se deja vacío. `doctor.py` avisa de cada skill propia sin él (E73) |
 | Licencia (oferta de `gw-init`, D87) | Pregunta si quiere la licencia doble del flujo: MIT para el código y CC BY-NC-SA 4.0 para el contenido, con nota de terceros. Si sí, `gw-init` copia `templates/licenses/` (`LICENSE-code.txt` → `LICENSE`, `LICENSE-content.md`, `THIRD-PARTY.md`) y rellena año y titular; si no, no se toca |
-| Idiomas visibles y referencias de diseño (`visibleLanguages`, `designReferences`) | Solo si el proyecto los tiene: `--visible-language` y `--design-reference`, una bandera por valor |
+| Idiomas visibles y referencias de diseño (`languages.ui`, `designReferences`) | Solo si el proyecto los tiene: `--visible-language` y `--design-reference`, una bandera por valor |
 | Skills opcionales | `gw-opt-ai` (modelos de IA locales) y `gw-scout-updates` (revisar actualizaciones); solo si la persona las pide |
 
 **Inferir `install` y `check`.** Mira el archivo de construcción y propón órdenes que existan de verdad:

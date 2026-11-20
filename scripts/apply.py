@@ -416,6 +416,13 @@ class Plan:
                               f"the project's file is never overwritten: review the template change with "
                               f"/gw-update, then set its marker line to v{self.version}")
 
+    def english_fallback(self, lang):
+        """A12 (Q-13): say once per run that a docs language without templates/<lang>/ uses the English templates."""
+        message = (f"languages.docs.primary is '{lang}' but the workflow has no templates/{lang}/ folder, so the "
+                   f"English templates (en) are used")
+        if message not in self.warnings:
+            self.warnings.append(message)
+
     def template_at(self, rel, found):
         """The rendered template of `rel` as it was at workflow version `found` (git tag v<found>), or None."""
         lang = docs_language(self.cfg)
@@ -423,6 +430,7 @@ class Plan:
         if code != 0 and lang != "en":  # A12 (Q-13): only a language with no folder at all in that tag used the English ones
             tree = git(WORKFLOW, "ls-tree", "--name-only", f"v{found}", f"templates/{lang}")
             if tree[0] == 0 and not tree[1].strip():
+                self.english_fallback(lang)
                 code, text = git(WORKFLOW, "show", f"v{found}:templates/en/{rel}")
         if code != 0:
             return None
@@ -902,6 +910,7 @@ def plan_templates(plan, cfg, self_apply, wanted_skills):
     lang_dir = WORKFLOW / "templates" / docs_language(cfg)
     if not lang_dir.is_dir():  # A12 (Q-13): a language without templates uses the English ones
         lang_dir = WORKFLOW / "templates" / "en"
+        plan.english_fallback(docs_language(cfg))
 
     def rendered(src):
         return render(src.read_text(encoding="utf-8"), cfg, plan.root, plan.version,
