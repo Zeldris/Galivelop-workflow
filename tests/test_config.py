@@ -1485,3 +1485,154 @@ class Languages(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class Profiles(unittest.TestCase):
+    """E4: per-person and per-role profiles layered on top of the project config (default -> role -> own)."""
+
+    ME = "Ana@Example.org"
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        subprocess.run(["git", "init", "-q", str(self.tmp)], check=True)
+        self.git("config", "user.email", f"  {self.ME} ")
+        self.git("config", "user.name", "Ana")
+        (self.tmp / ".claude" / "gw" / "profiles").mkdir(parents=True)
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+
+    def git(self, *args):
+        return subprocess.run(["git", "-C", str(self.tmp), *args], check=True, capture_output=True, text=True)
+
+    def write(self, data):
+        (self.tmp / ".claude" / "gw.json").write_text(json.dumps(data))
+
+    def profile(self, name, data):
+        (self.tmp / ".claude" / "gw" / "profiles" / f"{name}.json").write_text(json.dumps(data))
+
+    def run_cli(self, *args, ci=False):
+        env = {k: v for k, v in os.environ.items() if k not in ("CI", "GITHUB_ACTIONS")}
+        if ci:
+            env["CI"] = "true"
+        return subprocess.run(["python3", str(SCRIPT), "--root", str(self.tmp), *args], capture_output=True,
+                              text=True, env=env)
+
+    def get(self, key, ci=False):
+        r = self.run_cli("get", key, ci=ci)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        return r.stdout.strip()
+
+    def assigned(self, roles=None, **person):
+        return dict(VALID, profiles={"roles": roles or {}, "people": {config.email_hash(self.ME): person}})
+
+    def test_email_hash_is_sha256_of_the_trimmed_lowercase_address(self):
+        import hashlib
+        self.assertEqual(config.email_hash("  Ana@Example.org\n"), hashlib.sha256(b"ana@example.org").hexdigest())
+
+    def test_no_assignment_gives_the_project_default(self):
+        self.write(dict(VALID, profiles={"roles": {"admin": "admin"}, "people": {"0" * 64: {"role": "admin"}}}))
+        self.profile("admin", {"logSize": 5})
+        self.assertEqual(self.get("logSize"), "20000")
+        self.assertEqual(json.loads(self.run_cli("profile").stdout), {"layer": "default", "profile": None})
+
+    def test_role_profile_then_own_profile_on_top(self):
+        self.write(self.assigned(roles={"admin": "admin"}, role="admin"))
+        self.profile("admin", {"logSize": 5, "commitRefs": False, "handoff": {"rowLimit": 70}})
+        self.assertEqual(self.get("logSize"), "5")
+        self.assertEqual(self.get("commitRefs"), "false")
+        self.assertEqual(json.loads(self.run_cli("profile").stdout),
+                         {"layer": "role", "profile": "admin", "role": "admin"})
+        self.write(self.assigned(roles={"admin": "admin"}, role="admin", profile="ana"))
+        self.profile("ana", {"logSize": 9, "handoff": {"cellLimit": 300}})
+        self.assertEqual(self.get("logSize"), "9")  # the own profile wins
+        self.assertEqual(self.get("commitRefs"), "false")  # the role's still shows through
+        self.assertEqual(json.loads(self.get("handoff")), {**config.handoff(dict(VALID)), "rowLimit": 70, "cellLimit": 300})
+        self.assertEqual(json.loads(self.run_cli("profile").stdout),
+                         {"layer": "person", "profile": "ana", "role": "admin", "roleProfile": "admin"})
+
+    def test_objects_merge_deep_and_lists_are_replaced(self):
+        self.write(dict(self.assigned(profile="ana"), check=["a", "b"], handoff={"rowLimit": 60, "cellLimit": 200}))
+        self.profile("ana", {"check": ["c"], "handoff": {"cellLimit": 400}})
+        self.assertEqual(self.get("check"), "c")
+        handoff = json.loads(self.get("handoff"))
+        self.assertEqual((handoff["rowLimit"], handoff["cellLimit"]), (60, 400))
+
+    def test_ci_always_runs_with_the_default(self):
+        self.write(self.assigned(profile="ana"))
+        self.profile("ana", {"logSize": 9})
+        self.assertEqual(self.get("logSize", ci=True), "20000")
+        self.assertEqual(json.loads(self.run_cli("profile", ci=True).stdout)["layer"], "default")
+
+    def test_rev_reads_the_profiles_of_that_commit(self):
+        self.write(self.assigned(profile="ana"))
+        self.profile("ana", {"logSize": 9})
+        self.git("add", "-A")
+        self.git("commit", "-qm", "c")
+        self.profile("ana", {"logSize": 11})
+        self.assertEqual(self.run_cli("--rev", "HEAD", "get", "logSize").stdout.strip(), "9")
+        self.assertEqual(self.get("logSize"), "11")
+
+    def test_missing_profile_fails_closed_with_the_fix(self):
+        for data in (self.assigned(profile="ghost"), self.assigned(roles={}, role="dev"),
+                     self.assigned(roles={"dev": "ghost"}, role="dev")):
+            with self.subTest(data=data["profiles"]):
+                self.write(data)
+                r = self.run_cli("get", "logSize")
+                self.assertEqual(r.returncode, 2)
+                self.assertIn("profile.py", r.stderr)
+                self.assertTrue("ghost" in r.stderr or "role 'dev'" in r.stderr, r.stderr)
+
+    def test_unknown_or_install_key_or_invalid_value_in_a_profile_fails_closed(self):
+        cases = (({"logSise": 1}, "unknown key 'logSise'"),
+                 ({"agentsSkillsDir": "x"}, "cannot change what is installed"),
+                 ({"profiles": {}}, "cannot change what is installed"),
+                 ({"logSize": "big"}, "$.logSize: expected integer"),
+                 ([1], "must be a JSON object"))
+        self.write(self.assigned(profile="ana"))
+        for data, reason in cases:
+            with self.subTest(data=data):
+                self.profile("ana", data)
+                r = self.run_cli("get", "logSize")
+                self.assertEqual(r.returncode, 2)
+                self.assertIn(reason, r.stderr)
+                self.assertIn("ana.json", r.stderr)
+
+    def test_broken_profile_json_fails_closed(self):
+        self.write(self.assigned(profile="ana"))
+        (self.tmp / ".claude" / "gw" / "profiles" / "ana.json").write_text("{")
+        r = self.run_cli("get", "logSize")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("invalid JSON", r.stderr)
+
+    def test_assignments_are_validated(self):
+        cases = (({"people": {"ana@example.org": {"profile": "ana"}}}, "SHA-256"),
+                 ({"people": {"0" * 64: {}}}, "needs a role or a profile"),
+                 ({"roles": {"dev": "../x"}}, "does not match"),
+                 ({"dir": "/abs"}, "$.profiles.dir: '/abs' does not match"))
+        for profiles, reason in cases:
+            with self.subTest(profiles=profiles):
+                self.write(dict(VALID, profiles=profiles))
+                r = self.run_cli("validate")
+                self.assertEqual(r.returncode, 2)
+                self.assertIn(reason, r.stderr)
+
+    def test_dir_is_configurable(self):
+        self.write(dict(self.assigned(profile="ana"), profiles=dict(self.assigned(profile="ana")["profiles"],
+                                                                    dir="conf/p")))
+        (self.tmp / "conf" / "p").mkdir(parents=True)
+        (self.tmp / "conf" / "p" / "ana.json").write_text(json.dumps({"logSize": 3}))
+        self.assertEqual(self.get("logSize"), "3")
+
+    def test_no_email_configured_gives_the_default(self):
+        self.write(self.assigned(profile="ana"))
+        self.profile("ana", {"logSize": 9})
+        self.git("config", "--unset", "user.email")
+        env_home = self.tmp / "home"
+        env_home.mkdir()
+        env = {k: v for k, v in os.environ.items() if k not in ("CI", "GITHUB_ACTIONS")}
+        env.update(HOME=str(env_home), XDG_CONFIG_HOME=str(env_home), GIT_CONFIG_NOSYSTEM="1",
+                   GIT_CONFIG_GLOBAL=str(env_home / "none"))
+        r = subprocess.run(["python3", str(SCRIPT), "--root", str(self.tmp), "get", "logSize"], capture_output=True,
+                           text=True, env=env)
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, "20000"), r.stderr)

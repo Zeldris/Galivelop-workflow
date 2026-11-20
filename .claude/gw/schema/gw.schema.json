@@ -1512,6 +1512,17 @@
       },
       "default": {"mode": "warn"},
       "description": "Frozen scope (C13): scope-guard.py, a PreToolUse hook on Edit/Write/MultiEdit/NotebookEdit, compares the edited file with the `## Files` section of the current task's record (taskRecord.path/<id>.md; the current task as in questions-guard.py). A file outside it: warn = allowed with a warning once per task and file, and a line in <git common dir>/gw/deviations.jsonl (task.py deviations); block = denied; auto = block while modes.questions is true (restrictive), else warn; off = nothing. The record, its folder, the questions file and the log are always allowed; no task, no record or no Files section = allowed. The pre-commit hook checks the staged files the same way (outside Claude Code too): warns, or refuses in block mode. To go on: add the file to Files and explain it in the record's Change log, or open a new task: python3 scripts/task.py new <newid> --related <id>."
+    },
+    "profiles": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dir": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$", "default": ".claude/gw/profiles"},
+        "roles": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"}, "default": {}},
+        "people": {"type": "object", "additionalProperties": {"type": "object", "additionalProperties": false, "properties": {"role": {"type": "string", "minLength": 1}, "profile": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"}}}, "default": {}}
+      },
+      "default": {"dir": ".claude/gw/profiles", "roles": {}, "people": {}},
+      "description": "E4: per-person and per-role profiles. Layers: the project config (default) -> the profile of the person's role -> the person's own profile; each profile (<dir>/<name>.json) holds only the keys it changes, objects merge deep, lists are replaced, the last layer wins. `roles` maps a role to a profile name; `people` maps the SHA-256 of a person's git user.email (trimmed, lower case; never the address: python3 scripts/profile.py assign writes it) to {role?, profile?}. A profile may change any key except the ones that decide what is installed or the config's shape (version, schemaVersion, $schema, profiles, languages, agentsSkillsDir, projectSkillPrefix, gitignoreStacks and the ci* template keys). CI (the CI environment variable) always runs with the default. Convenience, not access control: git's e-mail can be changed and hooks skipped with --no-verify."
     }
   }
 }

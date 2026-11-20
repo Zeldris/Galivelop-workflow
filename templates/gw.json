@@ -161,5 +161,6 @@
   "agentMap": {"prefixes": {}, "roots": []},
   "questions": {"path": "docs/questions.md"},
   "taskRecord": {"enabled": false, "path": "docs/tasks", "requiredFor": ["feat", "fix", "hotfix"], "sections": ["Goal", "Scope", "Acceptance", "Files", "Change log", "Verification"], "logSections": ["Why", "Alternatives", "Changed because"], "pendingMarker": "pending"},
-  "scopeGuard": {"mode": "warn"}
+  "scopeGuard": {"mode": "warn"},
+  "profiles": {"dir": ".claude/gw/profiles", "roles": {}, "people": {}}
 }

@@ -44,6 +44,7 @@ Python 3.8+ (macOS ships 3.9).
 import argparse
 import fnmatch
 import functools
+import hashlib
 import json
 import os
 import posixpath
@@ -1000,6 +1001,14 @@ def semantic_errors(config):
     regex), an agentMap prefix that is not one folder name, an instructionLines `warn` above its `fail`, a handoff `cellHardLimit` set by the project (not 0) below its `cellLimit`, an
     ownedFiles pattern that is absolute or has a `..`."""
     errors = []
+    people = (config.get("profiles") or {}).get("people") if isinstance(config.get("profiles"), dict) else None
+    for key, person in (people or {}).items() if isinstance(people, dict) else ():
+        if not EMAIL_HASH.match(key):
+            errors.append(f"$.profiles.people: key {key[:3]}... is not the SHA-256 of an e-mail (64 hex digits); never "
+                          f"write the address: python3 {HERE / 'profile.py'} assign <email> --role <role> writes the hash")
+        elif isinstance(person, dict) and not (person.get("role") or person.get("profile")):
+            errors.append(f"$.profiles.people.{key[:12]}...: needs a role or a profile; assign one: "
+                          f"python3 {HERE / 'profile.py'} assign <email> (--role <role> | --profile <name>)")
     warn, fail = instruction_lines(config)
     if warn > fail:
         errors.append(f"$.instructionLines: warn ({warn}) must not be above fail ({fail}); lower warn or raise fail "
@@ -1265,6 +1274,112 @@ def _commit(root, rev):
     return r.stdout.strip() if r.returncode == 0 else ""
 
 
+PROFILE_DENIED = ("$schema", "version", "schemaVersion", "profiles", "languages", "agentsSkillsDir", "projectSkillPrefix",
+                  "gitignoreStacks", "ciInstall", "ciPython", "ciNodeDirs", "ciRustDirs", "ciKeepSteps", "ciOnPush",
+                  "actionlintVersion")
+PROFILE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+EMAIL_HASH = re.compile(r"^[0-9a-f]{64}$")
+
+
+def email_hash(email):
+    """E4 (Q-25): the SHA-256 (hex) of an e-mail address, trimmed and in lower case: what `profiles.people` keys."""
+    return hashlib.sha256(email.strip().lower().encode("utf-8")).hexdigest()
+
+
+def in_ci():
+    """Whether this runs in CI (the CI environment variable set and not false/0): CI always uses the default (Q-26)."""
+    return os.environ.get("CI", "").strip().lower() not in ("", "0", "false")
+
+
+def git_email(root):
+    """The `git config user.email` of `root` ("" when unset or git fails)."""
+    env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
+    try:
+        r = subprocess.run(["git", "-C", str(root), "config", "user.email"], capture_output=True, text=True, env=env)
+    except OSError:
+        return ""
+    return r.stdout.strip() if r.returncode == 0 else ""
+
+
+def deep_merge(base, over):
+    """`base` with `over` on top: objects merge key by key (deep), anything else (lists too) is replaced."""
+    out = dict(base)
+    for key, value in over.items():
+        out[key] = deep_merge(out[key], value) if isinstance(out.get(key), dict) and isinstance(value, dict) else value
+    return out
+
+
+def _read_profile(root, rev, rel):
+    """The text of the profile file `rel` in the working tree, or in commit `rev`; None when it is not there."""
+    if not rev:
+        path = Path(root) / rel
+        return path.read_text(encoding="utf-8") if path.is_file() else None
+    env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
+    try:
+        r = subprocess.run(["git", "-C", str(root), "show", f"{rev}:{rel}"], capture_output=True, text=True, env=env)
+    except OSError as exc:
+        raise ConfigError(f"cannot run git to read {rel} at {rev}: {exc}")
+    return r.stdout if r.returncode == 0 else None
+
+
+def choose_profile(config, email):
+    """The profiles that apply to `email` under the config's `profiles` block, as {"layer": "default" | "role" |
+    "person", "profile": name or None, "role"?: role, "roleProfile"?: name}, plus "_chain": [names] (role first)."""
+    block = config.get("profiles") if isinstance(config.get("profiles"), dict) else {}
+    person = (block.get("people") or {}).get(email_hash(email)) if email else None
+    if not person:
+        return {"layer": "default", "profile": None, "_chain": []}
+    role = person.get("role")
+    chain, out = [], {}
+    if role:
+        roles = block.get("roles") or {}
+        if role not in roles:
+            raise ConfigError(f"profiles: role '{role}' is assigned but has no profile in profiles.roles; give it one: "
+                              f"python3 {HERE / 'profile.py'} role {role} <profile>")
+        chain.append(roles[role])
+        out.update(role=role, roleProfile=roles[role], layer="role", profile=roles[role])
+    if person.get("profile"):
+        chain.append(person["profile"])
+        out.update(layer="person", profile=person["profile"])
+    if out.get("layer") == "role":
+        del out["roleProfile"]
+    out["_chain"] = chain
+    return out
+
+
+def apply_profiles(config, root, rev, schema, email=None):
+    """E4: `config` (raw, already valid) with the profiles of the person (git user.email, or `email`) layered on top,
+    each validated; and the choice (choose_profile, for `config.py profile`). CI and no assignment: the config as it
+    is. Raises ConfigError (fail closed) for a missing, broken or invalid profile or one naming a denied key."""
+    if in_ci() or not (config.get("profiles") or {}).get("people"):
+        return config, {"layer": "default", "profile": None}
+    choice = choose_profile(config, git_email(root) if email is None else email)
+    folder = (config.get("profiles") or {}).get("dir") or schema["properties"]["profiles"]["default"]["dir"]
+    props = schema.get("properties", {})
+    for name in choice.pop("_chain"):
+        rel = posixpath.join(folder.rstrip("/"), f"{name}.json")
+        where = f"{rev}:{rel}" if rev else rel
+        text = _read_profile(root, rev, rel)
+        if text is None:
+            raise ConfigError(f"profile '{name}' ({where}) not found; create it: python3 {HERE / 'profile.py'} new {name}")
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError as exc:
+            raise ConfigError(f"{where}: invalid JSON at line {exc.lineno}: {exc.msg}")
+        if not isinstance(data, dict):
+            raise ConfigError(f"{where}: must be a JSON object with the keys it changes, e.g. {{\"logSize\": 5000}}")
+        problems = [f"$: unknown key '{k}' (check spelling against schema/gw.schema.json)" for k in data if k not in props]
+        problems += [f"$.{k}: a profile cannot change what is installed or the config's shape (it is committed for "
+                     f"everyone); change it in {CONFIG_REL} instead" for k in data if k in PROFILE_DENIED]
+        merged = deep_merge(config, data) if not problems else config
+        problems = problems or validate(merged, schema) or semantic_errors(merged)
+        if problems:
+            raise ConfigError(f"{where} is invalid:\n  " + "\n  ".join(problems) +
+                              f"\n  fix the profile, then check: python3 {HERE / 'config.py'} profile")
+        config = merged
+    return config, choice
+
+
 def load(root=None, rev=None, paths_at=None):
     """Return the validated config with defaults, plus '_root' (Path) and '_schemaFrom' (the schemaVersion it had
     before load() migrated it in memory to SCHEMA_VERSION; an absent one is 0, a newer one fails closed). With `rev`,
@@ -1300,6 +1415,7 @@ def load(root=None, rev=None, paths_at=None):
                     "{\"code\": \"en\", \"docs\": {\"primary\": \"es\", \"others\": [\"en\"]}, \"public\": {\"primary\": "
                     "\"en\", \"others\": []}, \"ui\": []}, then validate: python3 " + str(HERE / "config.py") + f" --root {root} validate")
         raise ConfigError(f"{path} is invalid:\n  " + "\n  ".join(errors) + hint)
+    config, choice = apply_profiles(config, root, rev, schema)
     if paths_at:
         env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
         try:
@@ -1315,6 +1431,7 @@ def load(root=None, rev=None, paths_at=None):
     config = with_defaults(config, schema, path_exists_fn(root, paths_at or rev), follow_moves=follow)
     config["_root"] = root
     config["_schemaFrom"] = schema_from  # the schemaVersion on disk (or at `rev`) before the in-memory migration
+    config["_profile"] = choice  # E4: the layer and profile applied (config.py profile)
     return config
 
 
@@ -1502,6 +1619,7 @@ def main(argv=None):
     default_p.add_argument("key")
     sub.add_parser("root")
     sub.add_parser("agent-language", help="the agent's language for this user (~/.claude/gw.json, A12); a warning goes to stderr")
+    sub.add_parser("profile", help="E4: the layer (default, role or person) and profile the config was loaded with, as JSON")
     sub.add_parser("local", help="the validated local file .claude/gw.local.json as JSON (null when absent)")
     related = sub.add_parser("related", help="relatedTests commands that apply to the files on stdin")
     related.add_argument("--kind", choices=("fast", "slow"), required=True)
@@ -1549,6 +1667,9 @@ def main(argv=None):
         if warning:
             print(f"gw config: {warning}", file=sys.stderr)
         print(code)
+        return 0
+    if args.command == "profile":
+        print(json.dumps(config["_profile"], ensure_ascii=False))
         return 0
     if args.command == "local":
         try:
