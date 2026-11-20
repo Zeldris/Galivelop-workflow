@@ -272,10 +272,10 @@ class Review(Cli):
         err = self.fails("assign", MAIL, "--profile", "mine", reason="role `qa` this person already has")
         self.assertIn("profile.py role qa <profile>", err)
 
-    def test_docstring_says_the_guard_is_pending(self):  # 4
+    def test_docstring_says_the_guard_asks(self):  # 4 (E4 chunk 2b-guard: the guard is done)
         text = (ROOT / "scripts" / "profile.py").read_text()
-        self.assertIn("is pending, E4 chunk 2b", text)
-        self.assertNotIn("config-guard.py asks the user", text)
+        self.assertIn("config-guard.py asks the user before an agent runs `new`, `assign` or `role`", text)
+        self.assertNotIn("is pending, E4 chunk 2b", text)
 
     def test_show_with_a_missing_profile_fails_with_its_own_message(self):  # 5
         self.profile("mine")
