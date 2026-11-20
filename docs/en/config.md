@@ -276,8 +276,11 @@ The language the agent talks in belongs to each person, not to the project (A12,
 
 The `SessionStart` hook prints `Agent language: <code>` (`config.py agent-language` gives the same); `CLAUDE.md` tells
 the agent to reply in that language. With no file, no entry for that email, no `user.email` in the repo, or with
-invalid JSON or an `agentLanguage` that is not an object, `languages.docs.primary` applies; the last two cases warn
-in one line (the hook does not fail).
+invalid JSON, an `agentLanguage` that is not an object or a code that does not match the schema's language pattern
+(`[a-z]{2}`), `languages.docs.primary` applies; the last three cases warn in one line (the hook does not fail). The
+email is compared trimmed and lowercase. After a compaction `recover.py --state` prints the line; with an unreadable
+project config the hook prints the user file's language or `en` and says so. The path changes only with
+`GW_USER_CONFIG` (the file is the user's, not the project's: an exception to "everything configurable").
 
 ## Personal notes
 

@@ -576,6 +576,14 @@ def state(root, transcript, out, logs, source="startup"):
     use_config(root)
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD") or "?"
     head = [f"State after compaction or /clear (galivelop-workflow), branch {branch}:"]
+    if source == "compact":  # A12 (Q-16): the start hook prints it on startup|resume|clear, never on compact
+        try:
+            line, warning = config.agent_language_line(config.load(root))
+            head.append(line)
+            if warning:
+                head.append(f"- Warning: {warning}")
+        except Exception:  # an unreadable config only drops this line: --state never fails
+            pass
     log_lines = log_state(root, branch, logs, source)
     tail = []
     say = tail.append

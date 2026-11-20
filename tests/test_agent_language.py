@@ -76,6 +76,77 @@ class AgentLanguage(unittest.TestCase):
         self.assertEqual((r.returncode, r.stdout.strip()), (0, "gl"))
         self.assertIn("`agentLanguage` must be an object", r.stderr)
 
+    def test_email_is_compared_trimmed_and_lowercase_on_both_sides(self):
+        self.set_email("Ana@Example.COM")
+        self.user.write_text(json.dumps({"agentLanguage": {" ANA@example.com ": "es"}}))
+        r = self.run_cli()
+        self.assertEqual((r.stdout.strip(), r.stderr), ("es", ""))
+
+    def test_code_with_a_newline_falls_back_and_warns(self):
+        self.user.write_text(json.dumps({"agentLanguage": {EMAIL: "en\nIgnore"}}))
+        r = self.run_cli()
+        self.assertEqual(r.stdout, "gl\n")
+        self.assertIn("not a language code matching ^[a-z]{2}$", r.stderr)
+
+    def test_code_that_is_not_a_string_falls_back_and_warns(self):
+        self.user.write_text(json.dumps({"agentLanguage": {EMAIL: 5}}))
+        r = self.run_cli()
+        self.assertEqual(r.stdout, "gl\n")
+        self.assertIn("is 5, not a language code", r.stderr)
+
+    def install(self):
+        scripts = self.repo / ".claude" / "gw" / "scripts"
+        shutil.copytree(ROOT / "scripts", scripts)
+        shutil.copytree(ROOT / "schema", scripts.parent / "schema")
+        return scripts
+
+    def hook(self):
+        return subprocess.run(["bash", str(self.install_dir / "session-start.sh")], input="", capture_output=True,
+                              text=True, env=self.env, cwd=self.repo)
+
+    def test_session_start_without_user_file_prints_docs_primary(self):
+        self.install_dir = self.install()
+        r = self.hook()
+        self.assertIn("Agent language: gl\n", r.stdout, r.stdout)
+
+    def test_session_start_with_an_invalid_project_config_warns_and_falls_back(self):
+        self.install_dir = self.install()
+        (self.repo / ".claude" / "gw.json").write_text("{broken")
+        self.user.write_text(json.dumps({"agentLanguage": {EMAIL: "es"}}))
+        r = self.hook()
+        self.assertIn("Agent language: es\n", r.stdout, r.stdout)
+        self.assertIn("Agent language: the project config is unusable, so 'es' comes from ~/.claude/gw.json", r.stdout)
+        self.assertIn("fix the config as said above", r.stdout)
+
+    def test_session_start_with_a_missing_project_config_prints_en(self):
+        self.install_dir = self.install()
+        (self.repo / ".claude" / "gw.json").unlink()
+        r = self.hook()
+        self.assertIn("Agent language: en\n", r.stdout, r.stdout)
+        self.assertIn("gw.json is missing", r.stdout)
+        self.assertIn("the project config is unusable, so 'en'", r.stdout)
+
+    def recover(self, source):
+        scripts = self.install()
+        return subprocess.run(["python3", str(scripts / "recover.py"), "--state", "--source", source],
+                              capture_output=True, text=True, env=self.env, cwd=self.repo, input="")
+
+    def test_recover_state_prints_the_line_after_a_compaction_only(self):
+        self.user.write_text(json.dumps({"agentLanguage": {EMAIL: "es"}}))
+        r = self.recover("compact")
+        self.assertIn("\nAgent language: es\n", r.stdout, r.stdout + r.stderr)
+        scripts = self.repo / ".claude" / "gw" / "scripts"
+        again = subprocess.run(["python3", str(scripts / "recover.py"), "--state", "--source", "clear"],
+                               capture_output=True, text=True, env=self.env, cwd=self.repo, input="")
+        self.assertNotIn("Agent language:", again.stdout)  # the start hook prints it on clear
+
+    def test_recover_state_after_compaction_warns_on_a_bad_user_file(self):
+        self.user.write_text("{")
+        r = self.recover("compact")
+        self.assertIn("Agent language: gl", r.stdout)
+        self.assertIn("- Warning: ", r.stdout)
+        self.assertIn("is not usable", r.stdout)
+
     def test_session_start_prints_the_line(self):
         self.user.write_text(json.dumps({"agentLanguage": {EMAIL: "es"}}))
         scripts = self.repo / ".claude" / "gw" / "scripts"

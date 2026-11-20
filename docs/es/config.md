@@ -278,8 +278,11 @@ El idioma en que habla el agente es de cada persona, no del proyecto (A12, Q-16)
 
 El gancho `SessionStart` imprime `Agent language: <código>` (`config.py agent-language` da lo mismo); `CLAUDE.md` manda
 responder en ese idioma. Sin archivo, sin entrada para ese correo, sin `user.email` en el repo, o con el JSON
-inválido o `agentLanguage` que no es un objeto, vale `languages.docs.primary`; los dos últimos casos avisan en una
-línea (sin fallar el gancho).
+inválido, `agentLanguage` que no es un objeto o un código que no cumple el patrón de idioma del esquema (`[a-z]{2}`),
+vale `languages.docs.primary`; los tres últimos casos avisan en una línea (sin fallar el gancho). El correo se compara
+sin espacios ni mayúsculas. Tras una compactación la línea la imprime `recover.py --state`; con un config de proyecto
+ilegible, el gancho imprime la del archivo de usuario o `en` y lo avisa. La ruta solo se cambia con `GW_USER_CONFIG`
+(el archivo es del usuario, no del proyecto: excepción a «todo configurable»).
 
 ## Notas personales
 

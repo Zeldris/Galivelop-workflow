@@ -114,6 +114,13 @@ version_lt() {  # version_lt A B: true when A < B (numeric X.Y.Z; pre-release su
   return 1
 }
 config_ok=""
+agent_language_fallback() {
+  # A12 (Q-16): without a usable project config the language comes from the user file, else en; say why.
+  [ -f "$config" ] || return 0
+  fb="$(python3 "$config" --root "$root" agent-language 2>/dev/null)"
+  echo "Agent language: ${fb:-en}"
+  warn "Agent language: the project config is unusable, so '${fb:-en}' comes from ~/.claude/gw.json or the default 'en', not from languages.docs.primary; fix the config as said above, then restart the session"
+}
 if [ ! -f "$root/.claude/gw.json" ]; then
   warn ".claude/gw.json is missing, so the workflow is not configured for this repo; apply it (docs/en/apply.md): /gw-init"
 elif [ ! -f "$config" ]; then
@@ -156,6 +163,7 @@ else
     fi
   fi
 fi
+[ -n "$config_ok" ] || agent_language_fallback
 
 # run_limited <seconds> <command> <log>: runs the command with bash in its own process group (set -m), output to the
 # log. A watchdog sleeps <seconds> and then marks the run as timed out, sends TERM to the group and, $kill_grace s

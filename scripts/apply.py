@@ -148,7 +148,7 @@ PROPOSAL = ".gw-new"
 OLD_PROPOSAL = ".gw-nuevo"  # A8 (0.x): the suffix before the rename; still recognized, with a warning
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
 BLOCK_MARK = re.compile(r"^\s*<!--\s*(/?)if(?:\s+(!?\w+))?\s*-->\s*$")  # a line of its own: <!-- if key --> ... <!-- /if -->
-TEXT_KEYS = ("log", "protectedBranch", "reviewMark")  # `language` is a computed key: languages.docs.primary (A12)
+TEXT_KEYS = ("log", "protectedBranch", "reviewMark")
 LIST_KEYS = ("check", "install")
 DIFFED = ("REVIEW.md", "GLOSSARY.md")  # seeded files whose template diff is printed while unmarked or older
 ROOT_TEMPLATES = (("AGENTS.md", "merged"), ("CLAUDE.md", "merged"), ("REVIEW.md", "seeded"),
@@ -874,8 +874,6 @@ def render(text, cfg, root, version, name):
         key = m.group(1)
         if key in TEXT_KEYS:
             return str(cfg[key])
-        if key == "language":  # A12 (Q-14): the docs primary language
-            return docs_language(cfg)
         if key in LIST_KEYS:
             return inline_list(cfg.get(key) or [])
         if key == "ciPushIgnore":  # D54: the branches a push does not run CI on; '**' is every branch

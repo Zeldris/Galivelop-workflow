@@ -377,27 +377,42 @@ def user_config_path():
 
 def agent_language(config):
     """A12 (Q-16): (code, warning) of the language the agent talks in: the user file's `agentLanguage[<git config
-    user.email of the repo>]`, else `languages.docs.primary`. A missing file, entry or email falls back silently; an
-    unreadable file or a bad `agentLanguage` falls back with a one-line warning (never an exception)."""
+    user.email of the repo>]` (emails compared trimmed and lowercase), else `languages.docs.primary`. A missing file,
+    entry or email falls back silently; an unreadable file, a bad `agentLanguage` or a code that does not match the
+    schema's language pattern falls back with a one-line warning (never an exception)."""
     fallback = languages(config)["docs"]["primary"]
     path = user_config_path()
     if not path.is_file():
         return fallback, None
+    fix = '{"agentLanguage": {"<git config user.email>": "<code>"}}'
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-        table = data.get("agentLanguage") if isinstance(data, dict) else None
-        if "agentLanguage" in (data if isinstance(data, dict) else {}) and not isinstance(table, dict):
-            raise ValueError("`agentLanguage` must be an object of {email: language code}")
         if not isinstance(data, dict):
             raise ValueError("it must be a JSON object")
+        table = data.get("agentLanguage")
+        if "agentLanguage" in data and not isinstance(table, dict):
+            raise ValueError("`agentLanguage` must be an object of {email: language code}")
     except (OSError, ValueError) as exc:  # JSONDecodeError is a ValueError
-        return fallback, (f"{path} is not usable ({exc}); using '{fallback}' (languages.docs.primary); fix it: "
-                          '{"agentLanguage": {"<git config user.email>": "<code>"}}')
+        return fallback, f"{path} is not usable ({exc}); using '{fallback}' (languages.docs.primary); fix it: {fix}"
     r = subprocess.run(["git", "-C", str(config.get("_root", ".")), "config", "--get", "user.email"],
                        capture_output=True, text=True)
-    email = r.stdout.strip()
-    value = (table or {}).get(email) if email else None
-    return (value if isinstance(value, str) and value else fallback), None
+    email = r.stdout.strip().lower()
+    if not email:
+        return fallback, None
+    value = {str(k).strip().lower(): v for k, v in (table or {}).items()}.get(email)
+    if value is None:
+        return fallback, None
+    pattern = _schema()["properties"]["languages"]["properties"]["docs"]["properties"]["primary"]["pattern"]
+    if not isinstance(value, str) or not re.fullmatch(pattern, value):
+        return fallback, (f"{path}: agentLanguage for {email} is {value!r}, not a language code matching {pattern}; "
+                          f"using '{fallback}' (languages.docs.primary); fix it: {fix}")
+    return value, None
+
+
+def agent_language_line(config):
+    """A12 (Q-16): (the `Agent language: <code>` line, warning or None) printed at session start and after a compaction."""
+    code, warning = agent_language(config)
+    return f"Agent language: {code}", warning
 
 
 def _bounded_section(config, key):
@@ -1516,6 +1531,11 @@ def main(argv=None):
     try:
         config = load(args.root, args.rev, args.paths_at)
     except ConfigError as exc:
+        if args.command == "agent-language":  # an unusable project config still gets the user file's language, else en
+            code, warning = agent_language({"_root": args.root or "."})
+            print(f"gw config: {exc}", file=sys.stderr)
+            print(code)
+            return 0
         print(f"gw config: {exc}", file=sys.stderr)
         return 2
     if args.command == "validate":
