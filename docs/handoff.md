@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-20 — A12 trozo 2a: `apply.py`, `commit-message.py`, `reviewed.sh`, `merge-branch.sh`, `backport.sh`, `handoff.py`, `merge-main.py` y `task.py` leen `languages.docs.primary` en vez de `language`; una prueba de esquema 2 cada uno
-2. 2026-11-20 — A12 trozo 1, revisión: 6 hallazgos arreglados (respaldo `en` de plantillas, `--init` valida con `semantic_errors`, `ui` admite etiquetas BCP 47, migración con `languages` no objeto, pista ISO solo de patrón con `--root`, `--code-language` de un solo valor)
-3. 2026-11-20 — A12 trozo 1: bloque `languages` en `gw.json` (`schemaVersion` 2, migración de `language`/`visibleLanguages`, validación ISO 639-1, `config.languages()`), `apply.py --init` con `--code-language`/`--docs-language`/`--public-language`; tests en `test_config.py` y `test_apply.py`
-4. 2026-11-20 — E76: `measure.py` (`gw-opt-tokens`) muestra aparte el arranque fijo (sistema, herramientas, MCP, con la estimación de `context_guard.py`) por llamada × llamadas y el coste del proyecto (el resto); sin `context_guard.py`, `Fixed startup: unknown`; tests en `test_measure.py`
-5. 2026-11-20 — E75: `grilling` (sección del flujo) apunta cada ronda en el archivo de preguntas con `questions.py add` (respuestas vacías), la sube con la bitácora nombrando sus `Q-<n>` y solo entonces la presenta, numerada con esos ids; test en `test_skills.py`
+1. 2026-11-20 — A12 trozo 2a, revisión: 2 hallazgos arreglados (`config.py get languages.*` pasa por `languages()`: bloque incompleto o esquema 1 sin `language` dan el defecto; `template_at` vuelve a `en` solo si no había carpeta del idioma en la etiqueta)
+2. 2026-11-20 — A12 trozo 2a: `apply.py`, `commit-message.py`, `reviewed.sh`, `merge-branch.sh`, `backport.sh`, `handoff.py`, `merge-main.py` y `task.py` leen `languages.docs.primary` en vez de `language`; una prueba de esquema 2 cada uno
+3. 2026-11-20 — A12 trozo 1, revisión: 6 hallazgos arreglados (respaldo `en` de plantillas, `--init` valida con `semantic_errors`, `ui` admite etiquetas BCP 47, migración con `languages` no objeto, pista ISO solo de patrón con `--root`, `--code-language` de un solo valor)
+4. 2026-11-20 — A12 trozo 1: bloque `languages` en `gw.json` (`schemaVersion` 2, migración de `language`/`visibleLanguages`, validación ISO 639-1, `config.languages()`), `apply.py --init` con `--code-language`/`--docs-language`/`--public-language`; tests en `test_config.py` y `test_apply.py`
+5. 2026-11-20 — E76: `measure.py` (`gw-opt-tokens`) muestra aparte el arranque fijo (sistema, herramientas, MCP, con la estimación de `context_guard.py`) por llamada × llamadas y el coste del proyecto (el resto); sin `context_guard.py`, `Fixed startup: unknown`; tests en `test_measure.py`
 
 ## Pendiente
 

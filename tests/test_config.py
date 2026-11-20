@@ -37,6 +37,16 @@ class Config(unittest.TestCase):
     def test_this_repo_config_is_valid(self):
         self.assertEqual(cli(ROOT, "validate").returncode, 0)
 
+    def test_get_languages_fills_a_partial_block_and_a_schema_1_without_language(self):
+        base = {k: v for k, v in VALID.items() if k != "language"}
+        cases = (dict(base, schemaVersion=2, languages={"code": "en", "docs": {"others": []}}),
+                 dict(base, schemaVersion=1, visibleLanguages=["es"]))
+        for data in cases:
+            with self.subTest(data=data):
+                self.write(data)
+                r = cli(self.tmp, "get", "languages.docs.primary")
+                self.assertEqual((r.returncode, r.stdout.strip()), (0, "en"), r.stderr)
+
     def test_ci_install_is_unset_until_given_and_an_empty_list_is_a_value(self):
         self.write(VALID)
         r = cli(self.tmp, "get", "ciInstall")

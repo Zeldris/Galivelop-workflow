@@ -2954,5 +2954,37 @@ class GitignoreBlock(unittest.TestCase):
             self.assertIn("validate", str(cm.exception))
 
 
+class TemplateAtFallback(unittest.TestCase):
+    """A12 (Q-13): template_at falls back to templates/en only for a language with no folder in the tag."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+        self.flow = self.tmp / "flow"
+        for rel, text in (("templates/es/a.md", "es a\n"), ("templates/en/a.md", "en a\n"),
+                          ("templates/en/b.md", "en b\n")):
+            path = self.flow / rel
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text)
+        env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@e", GIT_COMMITTER_NAME="t",
+                   GIT_COMMITTER_EMAIL="t@e")
+        for args in (["init", "-q"], ["add", "-A"], ["commit", "-qm", "x"], ["tag", "v0.1.0"]):
+            subprocess.run(["git", "-C", str(self.flow), *args], check=True, env=env, capture_output=True)
+        self.apply = load_apply()
+        self.apply.WORKFLOW = self.flow
+
+    def plan(self, primary):
+        plan = self.apply.Plan(self.tmp / "proj", "0.2.0", True)
+        plan.cfg = {"languages": {"docs": {"primary": primary}}}
+        return plan
+
+    def test_a_language_with_a_folder_never_takes_an_english_file(self):
+        self.assertEqual(self.plan("es").template_at("a.md", "0.1.0"), b"es a")
+        self.assertIsNone(self.plan("es").template_at("b.md", "0.1.0"))  # templates/es existed: no per-file fallback
+
+    def test_a_language_without_a_folder_uses_the_english_one(self):
+        self.assertEqual(self.plan("gl").template_at("b.md", "0.1.0"), b"en b")
+
+
 if __name__ == "__main__":
     unittest.main()

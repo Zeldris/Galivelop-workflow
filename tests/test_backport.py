@@ -292,6 +292,19 @@ class SchemaTwoLanguage(Base):
                 self.assertEqual(self.p.git("log", "-1", "--format=%B").stdout.strip().splitlines()[-1], nxt)
 
 
+class PartialLanguagesBlock(Base):
+    def test_a_partial_block_gives_the_default_language_not_an_error(self):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.pop("language", None)
+        cfg.update(schemaVersion=2, languages={"code": "en", "docs": {"others": []}})
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.commit("partial languages")
+        self.on_minor({"docs/proposals/harvest-p.md": "# Harvest repo\n"}, "docs(A9): harvest")
+        code, out = self.run_bp("--from", "minor")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.subjects(1), ["docs: bring the harvest files of minor into the patch"])
+
+
 class FromEdgeCases(Base):
     def test_from_with_no_shas_brings_only_the_harvest(self):
         self.on_minor({HARVEST: "# Harvest repo\n"}, "docs(A9): harvest")

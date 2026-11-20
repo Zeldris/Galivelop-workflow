@@ -1557,7 +1557,7 @@ def main(argv=None):
                  contextGuard=context_guard(config), modes=modes(config),
                  stopSeverity=stop_severity(config), changeSize=change_size(config),
                  retro=retro(config), redWithoutFix=red_without_fix(config), branchPrefixes=branch_prefixes(config),
-                 taskRecord=task_record(config))  # inner keys fill from the schema too
+                 taskRecord=task_record(config), languages=languages(config))  # inner keys fill from the schema too
     for part in args.key.split("."):
         if not isinstance(value, dict) or part not in value or part.startswith("_"):
             print(f"gw config: key '{args.key}' is not set and has no default", file=sys.stderr)

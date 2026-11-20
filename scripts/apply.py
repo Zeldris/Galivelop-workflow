@@ -420,8 +420,10 @@ class Plan:
         """The rendered template of `rel` as it was at workflow version `found` (git tag v<found>), or None."""
         lang = docs_language(self.cfg)
         code, text = git(WORKFLOW, "show", f"v{found}:templates/{lang}/{rel}")
-        if code != 0 and lang != "en":  # A12 (Q-13): a language without templates used the English ones
-            code, text = git(WORKFLOW, "show", f"v{found}:templates/en/{rel}")
+        if code != 0 and lang != "en":  # A12 (Q-13): only a language with no folder at all in that tag used the English ones
+            tree = git(WORKFLOW, "ls-tree", "--name-only", f"v{found}", f"templates/{lang}")
+            if tree[0] == 0 and not tree[1].strip():
+                code, text = git(WORKFLOW, "show", f"v{found}:templates/en/{rel}")
         if code != 0:
             return None
         first, nl, rest = text.partition("\n")
