@@ -159,12 +159,41 @@ def check_config(rep, root):
     rep.ok("config", f".claude/gw.json valid (version {cfg['version']})")
     found = cfg.get("_schemaFrom", config.SCHEMA_VERSION)
     if found < config.SCHEMA_VERSION:  # a newer one already failed in config.load
+        old_keys = _old_language_keys(root)  # A12 (Q-12): the keys that the `languages` block replaced
+        extra = (f" (it still has {' and '.join('`' + k + '`' for k in old_keys)}, now `languages`)"
+                 if old_keys else "")
         rep.warn("config schema", f".claude/gw.json has schemaVersion {found} (absent = 0) and the workflow's format is "
-                 f"{config.SCHEMA_VERSION}; it is migrated in memory on every read until it is written",
+                 f"{config.SCHEMA_VERSION}{extra}; it is migrated in memory on every read until it is written",
                  "run /gw-update (apply.py writes the migrated config)")
     else:
         rep.ok("config schema", f".claude/gw.json schemaVersion {found} is the workflow's format")
+    check_template_language(rep, cfg)
     return cfg
+
+
+def _old_language_keys(root):
+    """The pre-A12 keys (`language`, `visibleLanguages`) present in the project's .claude/gw.json on disk."""
+    try:
+        raw = json.loads((Path(root) / config.CONFIG_REL).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return [k for k in ("language", "visibleLanguages") if isinstance(raw, dict) and k in raw]
+
+
+def check_template_language(rep, cfg):
+    """A12 (Q-13): a docs.primary language with no templates/<lang>/ in the workflow gets the English templates. Only
+    judged where the workflow's templates/ folder sits next to the scripts (the workflow itself, not a project copy)."""
+    templates = HERE.parent / "templates"
+    if not templates.is_dir():
+        return
+    lang = config.languages(cfg)["docs"]["primary"]
+    if (templates / lang).is_dir():
+        rep.ok("template language", f"templates/{lang}/ exists for languages.docs.primary")
+    else:
+        rep.warn("template language", f"languages.docs.primary is '{lang}' but the workflow has no templates/{lang}/, "
+                 "so the English templates (en) are used",
+                 f"translate templates/en/ into templates/{lang}/ in the workflow, or set languages.docs.primary to "
+                 "a language it ships")
 
 # What a commit must carry for the workflow to work; a `.gitignore` with `.claude/*` would leave it out.
 MUST_BE_TRACKED = (".claude/gw.json", ".claude/gw/scripts/config.py", ".claude/settings.json",

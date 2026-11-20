@@ -20,7 +20,7 @@ Follow it step by step. This skill only fixes where to find things and what to c
 files and returns the step-1 decision table, each candidate value with its source path, and the conflicts with the
 project (existing `CLAUDE.md`, hook managers, a red check). The main session decides from that summary and never
 reads the workflow's guides or scripts whole.
-Reply to the user in the language they use; the project's `language` is decided in step 3.
+Reply to the user in the language they use; the project's `languages.docs.primary` is decided in step 3.
 
 ## 1. Find the workflow repo
 
@@ -46,7 +46,7 @@ project: `cd <project> && claude`.
 
 ## 3. Decide what needs judgement
 
-Follow section 1 of the guide: `language`, `log`, `install`, `check`, protected branch, `direct` or `pr`, `content`
+Follow section 1 of the guide: `languages.docs.primary`, `log`, `install`, `check`, protected branch, `direct` or `pr`, `content`
 regexes, the agent signatures (`agentSignatures`), the own skills prefix (`projectSkillPrefix`), and the optional skills `gw-opt-ai` and `gw-scout-updates` (only
 if the user asks).
 

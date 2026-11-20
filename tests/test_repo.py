@@ -194,9 +194,17 @@ class Release(unittest.TestCase):
 class Pairs(unittest.TestCase):
     """Every human doc in Spanish has its English pair and vice versa, linked both ways."""
 
+    def languages(self):
+        """A12: the languages this repo declares: docs.primary + docs.others, and the public primary (README.md) and
+        others (README.<lang>.md)."""
+        block = json.loads((ROOT / ".claude" / "gw.json").read_text(encoding="utf-8"))["languages"]
+        docs = [block["docs"]["primary"]] + block["docs"]["others"]
+        readmes = [ROOT / "README.md"] + [ROOT / f"README.{lang}.md" for lang in block["public"]["others"]]
+        return docs, readmes
+
     def pairs(self):
-        docs = tracked("docs/es/*.md") + tracked("docs/en/*.md") + [ROOT / "README.md", ROOT / "README.es.md"]
-        return docs
+        docs, readmes = self.languages()
+        return [doc for lang in docs for doc in tracked(f"docs/{lang}/*.md")] + readmes
 
     def test_each_doc_links_to_an_existing_pair_that_links_back(self):
         for doc in self.pairs():
@@ -210,8 +218,10 @@ class Pairs(unittest.TestCase):
                 self.assertIn(doc.resolve(), back, f"{pair.relative_to(ROOT)} must link back to {rel}")
 
     def test_folders_have_the_same_number_of_docs(self):
-        es, en = tracked("docs/es/*.md"), tracked("docs/en/*.md")
-        self.assertEqual(len(es), len(en), "docs/es and docs/en must have the same number of files")
+        docs, _ = self.languages()
+        counts = {lang: len(tracked(f"docs/{lang}/*.md")) for lang in docs}
+        self.assertTrue(all(counts.values()), f"every docs language needs its docs/<lang>/ folder: {counts}")
+        self.assertEqual(len(set(counts.values())), 1, f"the docs/<lang> folders must have the same number of files: {counts}")
 
 
 class ShellcheckStep(unittest.TestCase):

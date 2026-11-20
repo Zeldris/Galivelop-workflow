@@ -369,8 +369,29 @@ def tracked_files(root):
     return [f for f in out.stdout.split("\0") if f]
 
 
+def skip_reason(root):
+    """A12 (Q-15): why the check does not apply (languages.code is not en), or "" when it does. Fails closed: a config
+    that cannot be read keeps the check on."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    try:
+        import config
+        lang = config.languages(config.load(root))["code"]
+    except Exception:  # unreadable config: check anyway
+        return ""
+    finally:
+        sys.path.pop(0)
+    if lang == "en":
+        return ""
+    return (f"languages.code is '{lang}', not 'en' in .claude/gw.json; the English-names rule applies only to "
+            "English code (set languages.code to 'en' to check)")
+
+
 def main(argv=None):
     root = Path(__file__).resolve().parent.parent
+    code = skip_reason(root)
+    if code:  # A12 (Q-15): the English-names rule is for projects whose code language is English
+        print(f"names-check: skipped: {code}")
+        return 0
     problems = check_files(root, tracked_files(root))
     for line in problems:
         print(f"names-check: {line}", file=sys.stderr)

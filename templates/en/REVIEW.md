@@ -88,7 +88,7 @@ once it exists.
 
 ## Visible languages
 
-- If `.claude/gw.json` declares `visibleLanguages`, every new text a user sees exists in each of those languages
+- If `.claude/gw.json` declares `languages.ui`, every new text a user sees exists in each of those languages
   (labels, alternative texts, page titles, messages), and a translation is a real one, not the same text. (judgement)
 
 ## Task record

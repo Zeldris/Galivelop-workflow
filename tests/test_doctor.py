@@ -102,6 +102,28 @@ class Doctor(Snapshot):
         self.assertEqual(code, 1, out)
         self.assertLine(out, "FAIL", "config", "schemaVersion 3 is newer than this copy of the workflow knows (2)")
 
+    def test_old_language_keys_on_disk_warn_with_the_fix(self):  # A12 (Q-12)
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        old = {k: v for k, v in cfg.items() if k != "languages"}
+        self.p.write(".claude/gw.json", json.dumps(dict(old, schemaVersion=1, language="es", visibleLanguages=["en"])))
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        line = self.assertLine(out, "WARN", "config schema", "schemaVersion 1")
+        self.assertIn("`language` and `visibleLanguages`", line)
+        self.assertIn("/gw-update", line)
+
+    def test_docs_language_without_templates_warns(self):  # A12 (Q-13)
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        (self.p.work / ".claude" / "gw" / "templates" / "en").mkdir(parents=True)
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.assertLine(self.doctor()[1], "OK", "template language", "languages.docs.primary")
+        cfg["languages"]["docs"]["primary"] = "gl"
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = self.doctor()
+        self.assertEqual(code, 0, out)
+        line = self.assertLine(out, "WARN", "template language", "no templates/gl/", "English templates")
+        self.assertIn("languages.docs.primary", line)
+
     def test_missing_session_start_matcher(self):
         s = self.settings()
         del s["hooks"]["SessionStart"][0]["matcher"]

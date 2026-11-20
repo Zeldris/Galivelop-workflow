@@ -1384,13 +1384,13 @@ class Languages(unittest.TestCase):
         self.assertNotIn("language", out)
         self.assertNotIn("visibleLanguages", out)
 
-    def test_old_config_loads_migrated_and_exposes_the_compat_views(self):
+    def test_old_config_loads_migrated_and_the_old_views_are_gone(self):
         self.write(dict(VALID, language="es", visibleLanguages=["en"]))
         r = cli(self.tmp, "get", "languages.docs.primary")
         self.assertEqual((r.returncode, r.stdout.strip()), (0, "es"), r.stderr)
         self.assertIn("en", cli(self.tmp, "get", "languages.ui").stdout)
-        self.assertEqual(cli(self.tmp, "get", "language").stdout.strip(), "es")  # A12 chunk 2 removes this
-        self.assertIn("en", cli(self.tmp, "get", "visibleLanguages").stdout)
+        for key in ("language", "visibleLanguages"):  # the in-memory views of chunk 1 are gone (A12 chunk 2b)
+            self.assertNotEqual(cli(self.tmp, "get", key).returncode, 0, key)
         self.assertEqual(json.loads((self.tmp / ".claude" / "gw.json").read_text())["language"], "es")  # not written
 
     def test_absent_block_and_no_old_keys_fails_closed(self):

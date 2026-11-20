@@ -15,7 +15,7 @@ If `.claude/gw/gw-update.md` exists in the project, read it first: it holds what
 
 Updates what the workflow owns (scripts, skills, git hooks, settings entries, CI) and reports changes in what the
 project fills in (log, `REVIEW.md`, `GLOSSARY.md`, notes). The mechanical part is `apply.py`; this skill adds the
-judgement: what changed, what the user wants, what to merge by hand. Reply in the project's `language`.
+judgement: what changed, what the user wants, what to merge by hand. Reply in the project's `languages.docs.primary`.
 
 The project's installed copy of this skill is the old version. Once `<workflow>` is at the target tag (step 1), follow
 `<workflow>/skills/gw-update/SKILL.md` instead of the installed copy.

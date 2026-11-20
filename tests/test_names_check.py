@@ -1,6 +1,9 @@
 """scripts/names-check.py: a Spanish name in the workflow's own files fails with its reason; English passes.
 One pass case and one fail case per kind of name, in temporary folders."""
+import contextlib
 import importlib.util
+import io
+import json
 import subprocess
 import sys
 import tempfile
@@ -152,6 +155,36 @@ class Repo(unittest.TestCase):
                              capture_output=True, text=True)
         self.assertEqual(out.returncode, 0, out.stderr)
         self.assertIn("names-check: OK", out.stdout)
+
+
+class CodeLanguage(unittest.TestCase):
+    """A12 (Q-15): the check only applies when languages.code is en."""
+
+    def project(self, code):
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        cfg = json.loads((ROOT / ".claude" / "gw.json").read_text(encoding="utf-8"))
+        cfg["languages"]["code"] = code
+        subprocess.run(["git", "init", "-q", tmp.name], check=True)  # config.load needs a repository
+        (Path(tmp.name) / ".claude").mkdir()
+        (Path(tmp.name) / ".claude" / "gw.json").write_text(json.dumps(cfg), encoding="utf-8")
+        return Path(tmp.name)
+
+    def test_english_code_is_checked(self):
+        self.assertEqual(names_check.skip_reason(self.project("en")), "")
+
+    def test_other_code_language_is_skipped_and_says_why(self):
+        reason = names_check.skip_reason(self.project("es"))
+        self.assertIn("languages.code is 'es', not 'en'", reason)
+        self.assertIn("set languages.code to 'en'", reason)
+
+    def test_main_prints_the_skip_reason_and_succeeds(self):
+        out = io.StringIO()
+        with unittest.mock.patch.object(names_check, "skip_reason", return_value="because"), \
+                unittest.mock.patch.object(names_check, "check_files", side_effect=AssertionError("ran")), \
+                contextlib.redirect_stdout(out):
+            self.assertEqual(names_check.main(), 0)
+        self.assertEqual(out.getvalue().strip(), "names-check: skipped: because")
 
 
 if __name__ == "__main__":

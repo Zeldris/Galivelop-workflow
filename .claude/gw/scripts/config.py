@@ -369,16 +369,6 @@ def languages(config):
     return out
 
 
-def compat_views(config):
-    """A12 chunk 2 removes this: the old read-only keys `language` (= languages.docs.primary) and `visibleLanguages`
-    (= languages.ui), set in memory so the readers not yet moved to languages() keep working. Never written to disk
-    (the schema no longer allows them in the file). Returns `config`."""
-    block = languages(config)
-    config["language"] = block["docs"]["primary"]
-    config["visibleLanguages"] = block["ui"]
-    return config
-
-
 def _bounded_section(config, key):
     """Like `_section`, but a value that is not an integer within the schema's minimum and maximum gives that key's
     default: for the keys a hook reads, a bad value must never hide what the hook shows (the loader rejects it, a caller
@@ -1277,7 +1267,6 @@ def load(root=None, rev=None, paths_at=None):
     # following a move only makes sense for a config read for ANOTHER commit (the protected tip judging a push)
     follow = bool(paths_at) and rev is not None and _commit(root, paths_at) != _commit(root, rev)
     config = with_defaults(config, schema, path_exists_fn(root, paths_at or rev), follow_moves=follow)
-    compat_views(config)  # A12 chunk 2 removes this
     config["_root"] = root
     config["_schemaFrom"] = schema_from  # the schemaVersion on disk (or at `rev`) before the in-memory migration
     return config

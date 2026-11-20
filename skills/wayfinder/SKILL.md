@@ -155,5 +155,5 @@ assignee or `/setup-matt-pocock-skills`, this section wins: map those words onto
   **Out of scope:** check the line and move it to the Out of scope section with the reason.
 - **Research tickets:** the findings go where the `research` skill writes them, linked from the ticket's
   `## Answer`, instead of a throwaway branch.
-- Write the map and tickets in the project's `language` (`.claude/gw.json`); commit them like any other work, with
+- Write the map and tickets in the project's `languages.docs.primary` (`.claude/gw.json`); commit them like any other work, with
   the log updated (`log` in `.claude/gw.json`).

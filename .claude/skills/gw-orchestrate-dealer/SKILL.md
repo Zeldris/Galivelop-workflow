@@ -14,10 +14,10 @@ If `.claude/gw/gw-orchestrate-dealer.md` exists in the project, read it first: i
 
 The main session is the **orchestrator**: it holds the plan, the decisions and the thread with the user, and deals each
 chunk of work to a subagent that starts with an empty context. Every deal is an automatic `/clear`: the main session
-receives a short summary and grows slowly. Reply to the user in the project's `language`.
+receives a short summary and grows slowly. Reply to the user in the project's `languages.docs.primary`.
 
 Config values used below come from `.claude/gw.json`: `check` (list of commands), `log` (handover file),
-`protectedBranch`, `language`. Read it once at the start.
+`protectedBranch`, `languages.docs.primary`. Read it once at the start.
 
 ## Who does what
 

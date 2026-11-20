@@ -12,7 +12,7 @@ metadata:
 
 If `.claude/gw/gw-selector.md` exists in the project, read it first: it holds what is specific to the project.
 
-Classify the task with the table, then act on its row. Reply in the project's `language` (`.claude/gw.json`).
+Classify the task with the table, then act on its row. Reply in the project's `languages.docs.primary` (`.claude/gw.json`).
 
 | Case | Skill(s) | Session model | Session effort | Subagent model | Modes |
 |---|---|---|---|---|---|

@@ -2045,7 +2045,7 @@ def main(argv=None):
             text = json.dumps(new, indent=2, ensure_ascii=False) + "\n"
             if args.dry_run:
                 print(f"apply: --init would write {root / config.CONFIG_REL}:\n{text}", end="")
-                cfg = config.compat_views(config.with_defaults(new, schema))  # A12 chunk 2 removes the compat views
+                cfg = config.with_defaults(new, schema)
                 cfg["_root"] = root
                 cfg["_schemaFrom"] = config.SCHEMA_VERSION
             else:
