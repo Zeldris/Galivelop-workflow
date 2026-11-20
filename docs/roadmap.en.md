@@ -378,7 +378,7 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | E72 | `generated` key (`{command, paths}`): the check regenerates and compares with `git diff --exit-code` (`0.9` harvest, private-project-1 P1) | done (2026-11-19) |
 | E73 | `projectSkillPrefix` key: `gw-init` writes it and `doctor.py` warns about own skills without the prefix (`0.9` harvest, private-project-3 P4) | done (2026-11-19) |
 | E74 | `PreToolUse` hook that warns, without blocking, when the main session reads another repository, with a key to turn it off (`0.9` harvest, private-project-3 P3) | done (2026-11-19) |
-| E75 | `grilling` writes each round to the discovery file and pushes it before presenting it (`0.9` harvest, private-project-5 P3) | pending |
+| E75 | `grilling` writes each round to the questions file (`questions.py add`) and pushes it before presenting it (`0.9` harvest, private-project-5 P3) | done (2026-11-20) |
 | E76 | `measure.py` shows the fixed startup (system, tools, MCP) apart from the project's cost (`0.9` harvest, private-project-3 P2) | pending |
 | E77 | Push and long check in the background with a 90 min `timeout` in `AGENTS.md` (and its templates), `gw-opt-tokens.md` and `gw-orchestrate-dealer`'s final push (user, 2026-11-19; Q-7 to Q-9) | done (2026-11-19) |
 

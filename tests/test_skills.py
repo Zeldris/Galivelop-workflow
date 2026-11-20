@@ -190,6 +190,16 @@ class Skills(unittest.TestCase):
         self.assertIn("| Apply or update the workflow (`gw-init`", (SKILLS / "gw-selector" / "SKILL.md").read_text())
         self.assertIn("`gw-orchestrate-dealer`", (SKILLS / "gw-init" / "SKILL.md").read_text())
 
+    def test_grilling_saves_each_round_before_showing_it(self):
+        # E75: a round only in the chat was lost when the session was cut before the answer (private-project-5 P3).
+        text = (SKILLS / "grilling" / "SKILL.md").read_text(encoding="utf-8")
+        section = text.split("## In a Galivelop-workflow project", 1)[1]
+        self.assertIn("questions.py add --refs", section)
+        self.assertIn("push", section)
+        self.assertIn("only then present the round", section)
+        self.assertIn("`Q-<n>`", section, "the round uses the ids of the questions file")
+        self.assertIn('questions.py answer', section)
+
     def test_gw_update_fetches_the_latest_tag_not_pull(self):
         # A single-branch clone of an old branch has neither main nor the tags: pull never reaches the new version.
         text = (SKILLS / "gw-update" / "SKILL.md").read_text(encoding="utf-8")

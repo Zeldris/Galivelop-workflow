@@ -41,6 +41,14 @@ The session is done when the frontier is empty: every branch of the design tree 
 
 This section is the only change to the upstream skill.
 
+- **Save each round before you show it**, so a session cut before the answer loses nothing and the next one knows
+  what was asked. Append every question of the round to the questions file with
+  `python3 .claude/gw/scripts/questions.py add --refs <task id> --rec "<recommended answer>" "<question>" ...` (one
+  `--rec` per question, in order; the answers stay empty), commit it with the hand-off log naming the round's ids
+  (`Q-<n>` to `Q-<m>`), push with `bash .claude/gw/scripts/push.sh <branch>`, and only then present the round.
+  Number its questions with those `Q-<n>` ids instead of `Q1`, `Q2`. The user answers by number and
+  `questions.py answer "5. a, 6. ok"` writes the answers into the file.
+
 - If `.claude/gw.json` lists `designReferences` (products, frameworks or standards the project measures itself
   against), contrast each recommended answer with them and say which reference it comes from. Without the key, skip
   this.
