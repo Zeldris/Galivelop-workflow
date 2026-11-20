@@ -704,6 +704,24 @@ class Doctor(Snapshot):
         self.assertNotIn("gvg-ok", line)
         self.assertNotIn("gw-selector", line)
 
+    def test_own_skill_with_gw_prefix_gets_it_replaced_and_sources_are_exact(self):
+        # E73: a project skill named gw-foo becomes gvg-foo (replace, not prepend); a workflow skill is told apart by
+        # its real metadata.source ("Galivelop workshop", "mattpocock/skills@..."), not by any word in it
+        self.p.write(".claude/skills/gw-foo/SKILL.md", "---\nname: gw-foo\nmetadata:\n  source: \"ours\"\n---\n")
+        self.p.write(".claude/skills/workflowish/SKILL.md",
+                     "---\nname: workflowish\nmetadata:\n  source: \"our workflow notes\"\n---\n")
+        self.p.write(".claude/skills/grilling/SKILL.md",
+                     "---\nname: grilling\nmetadata:\n  source: \"mattpocock/skills@5beb35b\"\n---\n")
+        self.p.write(".claude/skills/gw-x/SKILL.md",
+                     "---\nname: gw-x\nmetadata:\n  source: \"Galivelop workshop; generalised\"\n---\n")
+        self.set_prefix("gvg-")
+        code, out = self.doctor()
+        line = self.assertLine(out, "WARN", "gw-foo", "rename .claude/skills/gw-foo to gvg-foo ")
+        self.assertIn("workflowish", line)
+        self.assertNotIn("gvg-gw-foo", line)
+        self.assertNotIn("grilling", line)
+        self.assertNotIn("gw-x", line)
+
     def test_project_skills_with_the_prefix_pass(self):
         self.p.write(".claude/skills/gvg-deploy/SKILL.md", "---\nname: gvg-deploy\n---\n")
         self.set_prefix("gvg-")

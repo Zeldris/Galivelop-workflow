@@ -24,6 +24,7 @@ only.
 """
 import json
 import os
+import re
 import select
 import shlex
 import sys
@@ -88,6 +89,26 @@ def words(command):
     return list(lexer)
 
 
+def fixed_part(text):
+    """The folder part of `text` before its first wildcard (`*?[{`); `text` itself with no wildcard."""
+    cuts = [i for i in (text.find(c) for c in "*?[{") if i >= 0]
+    if not cuts:
+        return text
+    head = text[:min(cuts)]
+    return head.rsplit("/", 1)[0] if "/" in head else ""
+
+
+def word_paths(word):
+    """The paths a Bash word may name: the word without a glued short option (`-C/x`), and its part before a wildcard."""
+    if re.match(r"^-[A-Za-z][/~]", word):
+        word = word[2:]
+    out = [word]
+    cut = fixed_part(word)
+    if cut and cut != word:
+        out.append(cut)
+    return out
+
+
 def candidates(event, cwd):
     """The paths the call reads, as (path, must_exist) pairs."""
     tool, tool_input = event["tool_name"], event["tool_input"]
@@ -95,15 +116,28 @@ def candidates(event, cwd):
         value = tool_input.get("file_path")
     elif tool in ("Grep", "Glob"):
         value = tool_input.get("path")
+        found = [(value, False)] if isinstance(value, str) and value else []
+        text = tool_input.get("pattern" if tool == "Glob" else "glob")
+        if isinstance(text, str) and (os.path.isabs(text) or text.startswith("~")):
+            found.append((fixed_part(text) or "/", False))
+        if not found or not value:
+            found.append((cwd, True))
+        return found
     else:
         command = tool_input.get("command")
         if not isinstance(command, str) or not command:
             return []
         try:
-            return [(w, True) for w in words(command)]
+            return [(p, True) for w in words(command) for p in word_paths(w)] + [(cwd, True)]
         except ValueError:
             return []
     return [(value, False)] if isinstance(value, str) and value else []
+
+
+def same_project(repo, root):
+    """True when `repo` is a checkout (a linked worktree) of the project's own repository, as config.find_root compares."""
+    mine, theirs = config.git_common_dir(root), config.git_common_dir(repo)
+    return mine is not None and theirs is not None and os.path.realpath(str(mine)) == os.path.realpath(str(theirs))
 
 
 def other_repos(event, root, cwd):
@@ -117,6 +151,8 @@ def other_repos(event, root, cwd):
             if inside(real, root) or (must_exist and not os.path.exists(real)):
                 continue
             repo = repo_root(real)
+            if repo and same_project(repo, root):
+                continue
             if repo and not any(real == r for r, _ in found):
                 found.append((real, repo))
     return found

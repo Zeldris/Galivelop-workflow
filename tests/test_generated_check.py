@@ -91,6 +91,37 @@ class Generated(Base):
         self.assertEqual(code, 1, out)
         self.assertIn("changed: gen/a.txt", out)
 
+    def test_suggested_git_add_quotes_each_path(self):
+        self.write("src/a.txt", "beta\n")
+        self.config([{"command": "bash tools/gen.sh; echo x > 'my gen.txt'", "paths": ["gen", "my gen.txt"]}])
+        code, out = self.run_it()
+        self.assertEqual(code, 1, out)
+        self.assertIn("git add -- gen 'my gen.txt'", out)
+
+    def test_in_a_temporary_worktree_it_says_to_run_the_command_in_the_working_copy(self):
+        base = ["git", "-c", "user.name=t", "-c", "user.email=t@t", "-C", str(self.work)]
+        self.config([{"command": "bash tools/gen.sh", "paths": ["gen"]}])
+        subprocess.run(base + ["add", "-A"], check=True)
+        subprocess.run(base + ["commit", "-q", "-m", "x"], check=True)
+        wt = self.tmp / "wt"
+        subprocess.run(base + ["worktree", "add", "-q", "--detach", str(wt)], check=True)
+        (wt / "src" / "a.txt").write_text("beta\n")
+        r = subprocess.run([sys.executable, str(wt / ".claude" / "gw" / "scripts" / SCRIPT)], cwd=wt,
+                           capture_output=True, text=True, stdin=subprocess.DEVNULL)
+        out = r.stdout + r.stderr
+        self.assertEqual(r.returncode, 1, out)
+        self.assertIn("run `bash tools/gen.sh` in your working copy, then git add -- gen", out)
+        self.assertNotIn("commit them", out)
+
+    def test_a_symlinked_subfolder_is_followed_and_a_loop_ends(self):
+        self.write("real/x.txt", "old\n")
+        (self.work / "gen" / "sub").symlink_to(self.work / "real", target_is_directory=True)
+        (self.work / "real" / "loop").symlink_to(self.work / "real", target_is_directory=True)
+        self.config([{"command": "bash tools/gen.sh; echo new > real/x.txt", "paths": ["gen"]}])
+        code, out = self.run_it()
+        self.assertEqual(code, 1, out)
+        self.assertIn("changed: gen/sub/x.txt", out)
+
     def test_a_dirty_tree_regenerated_to_the_same_content_passes(self):
         """The comparison is with the files on disk before the command, not with HEAD: uncommitted work whose
         generated files are already regenerated passes."""

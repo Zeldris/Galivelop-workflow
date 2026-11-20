@@ -80,6 +80,26 @@ class Warns(Base):
         self.warns(self.run_hook(self.event("Bash", {"command": f"git -C {self.other} log"})), self.other, self.other)
         self.warns(self.run_hook(self.event("Bash", {"command": f"cd {self.other} && ls"})), self.other, self.other)
 
+    def test_glob_pattern_with_an_absolute_fixed_part(self):
+        out = self.run_hook(self.event("Glob", {"pattern": f"{self.other}/**/*.py"}))
+        self.warns(out, self.other, self.other)
+        out = self.run_hook(self.event("Grep", {"pattern": "x", "glob": f"{self.other}/src/*.txt"}))
+        self.warns(out, self.other / "src", self.other)
+
+    def test_bash_wildcard_word(self):
+        out = self.run_hook(self.event("Bash", {"command": f"cat {self.other}/src/*.py"}))
+        self.warns(out, self.other / "src", self.other)
+
+    def test_bash_glued_short_option(self):
+        out = self.run_hook(self.event("Bash", {"command": f"git -C{self.other} log"}))
+        self.warns(out, self.other, self.other)
+
+    def test_bash_cwd_in_another_repo(self):
+        out = self.run_hook(self.event("Bash", {"command": "git log -p"}, cwd=self.other / "src"))
+        self.warns(out, self.other / "src", self.other)
+        out = self.run_hook(self.event("Grep", {"pattern": "a"}, cwd=self.other))
+        self.warns(out, self.other, self.other)
+
     def test_worktree_file_counts_as_a_repo(self):
         path = self.worktree / "b.txt"
         self.warns(self.run_hook(self.event("Read", {"file_path": str(path)})), path, self.worktree)
@@ -98,6 +118,18 @@ class Silent(Base):
         self.p.write("docs/x.md", "x\n")
         self.silent(self.run_hook(self.event("Read", {"file_path": str(self.p.work / "docs" / "x.md")})))
         self.silent(self.run_hook(self.event("Bash", {"command": "cat docs/x.md; git -C . log"})))
+
+    def test_cwd_inside_the_project(self):
+        self.silent(self.run_hook(self.event("Bash", {"command": "git log -p"})))
+        self.silent(self.run_hook(self.event("Grep", {"pattern": "a"})))
+
+    def test_linked_worktree_of_the_same_project_is_not_another_repo(self):
+        self.p.git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "--allow-empty", "-m", "x")
+        wt = self.tmp / "same-project-wt"
+        self.p.git("worktree", "add", "-q", "--detach", str(wt))
+        (wt / "f.txt").write_text("f\n")
+        self.silent(self.run_hook(self.event("Read", {"file_path": str(wt / "f.txt")})))
+        self.silent(self.run_hook(self.event("Bash", {"command": f"git -C {wt} log"})))
 
     def test_outside_every_repo(self):
         self.silent(self.run_hook(self.event("Read", {"file_path": str(self.loose / "c.txt")})))

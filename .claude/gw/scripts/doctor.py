@@ -52,6 +52,7 @@ PR_TOOLS = ("create_pull_request", "merge_pull_request")
 PR_GUARD = "review-before-main.sh"
 INTERPRETERS = {"bash", "sh", "zsh", "python", "python3", "node", "env", "exec"}
 SOURCES = re.compile(r"galivelop|workflow|mattpocock", re.I)
+OWN_SOURCES = ("Galivelop workshop", "mattpocock/skills@")  # metadata.source of the shipped skills
 PROPOSAL = ".gw-new"  # apply.py's proposals for files with local edits
 OLD_PROPOSAL = ".gw-nuevo"  # A8 (0.x): the suffix before the rename; still recognized, with a warning
 FLOW_HOOK_SCRIPTS = ("session-start.sh", "recover.py", "review-before-main.sh", "before-stop.py",
@@ -739,11 +740,12 @@ def check_skill_prefix(rep, root, cfg):
     if not prefix or not base.is_dir():
         return
     own = [s.parent.name for s in sorted(base.glob("*/SKILL.md"))
-           if not SOURCES.search(skill_metadata(s).get("source", ""))]
+           if not str(skill_metadata(s).get("source", "")).startswith(OWN_SOURCES)]
     bad = [name for name in own if not name.startswith(prefix)]
     if bad:
         rep.warn("skill prefix", f"project skill(s) without the projectSkillPrefix {prefix!r}: {', '.join(bad)}",
-                 "; ".join(f"rename .claude/skills/{n} to {prefix}{n} (and its `name:`)" for n in bad))
+                 "; ".join(f"rename .claude/skills/{n} to {prefix}{n[3:] if n.startswith('gw-') else n} "
+                           f"(and its `name:`)" for n in bad))
     else:
         rep.ok("skill prefix", f"{len(own)} project skill(s), all with the prefix {prefix!r}")
 

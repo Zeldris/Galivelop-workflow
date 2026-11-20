@@ -16,7 +16,9 @@ outside the repository). Python 3.8+, stdlib only. Root from this script's path 
 import argparse
 import hashlib
 import os
+import shlex
 import subprocess
+import tempfile
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -29,8 +31,8 @@ def inside(root, rel):
     """The absolute path of `rel` when it stays inside `root`, else None."""
     if os.path.isabs(rel):
         return None
-    full = os.path.normpath(os.path.join(str(root), rel))
-    base = os.path.normpath(str(root))
+    full = os.path.realpath(os.path.join(str(root), rel))
+    base = os.path.realpath(str(root))
     return full if full == base or full.startswith(base + os.sep) else None
 
 
@@ -52,11 +54,29 @@ def snapshot(root, paths):
         if os.path.isfile(full) or os.path.islink(full):
             add(full)
         elif os.path.isdir(full):
-            for top, dirs, files in os.walk(full):
+            seen = set()  # real paths of the folders already walked: a symlink loop is walked once
+            for top, dirs, files in os.walk(full, followlinks=True):
+                real = os.path.realpath(top)
+                if real in seen:
+                    dirs[:] = []
+                    continue
+                seen.add(real)
                 dirs[:] = sorted(d for d in dirs if d != ".git")
                 for name in sorted(files):
                     add(os.path.join(top, name))
     return found
+
+
+def outside_working_copy(root):
+    """True when `root` is a linked worktree under the temp folder: where the pre-push runs the check, not the user's
+    checkout, so the regenerated files on disk are not the ones the user can commit."""
+    try:
+        base = os.path.realpath(tempfile.gettempdir())
+        real = os.path.realpath(str(root))
+        linked = os.path.isfile(os.path.join(real, ".git"))
+    except OSError:
+        return False
+    return linked and real.startswith(base.rstrip(os.sep) + os.sep)
 
 
 def check_entry(root, entry):
@@ -74,7 +94,11 @@ def check_entry(root, entry):
              + [f"  removed: {p}" for p in sorted(set(before) - set(after))])
     if not diffs:
         return []
-    quoted = " ".join(rels)
+    quoted = " ".join(shlex.quote(rel) for rel in rels)
+    if outside_working_copy(root):
+        return ([f"generated: '{command}' changed {len(diffs)} file(s): the committed copies are stale"] + diffs
+                + [f"generated: this run is in a temporary checkout, not your working copy; run `{command}` in your "
+                   f"working copy, then git add -- {quoted}"])
     return ([f"generated: '{command}' changed {len(diffs)} file(s): the committed copies are stale"] + diffs
             + [f"generated: the regenerated files are on disk; commit them: git add -- {quoted}"])
 
