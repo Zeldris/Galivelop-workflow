@@ -53,7 +53,7 @@
           },
           "description": "Public documentation languages."
         },
-        "ui": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z]{2}$"}, "default": [], "description": "Languages every user-visible text must exist in (REVIEW.md)."}
+        "ui": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$"}, "default": [], "description": "Languages every user-visible text must exist in (REVIEW.md); BCP 47 tags such as pt-BR or es-419 are allowed here (as visibleLanguages allowed)."}
       }
     },
     "log": {

@@ -1900,6 +1900,25 @@ class LanguagesInit(unittest.TestCase):
         self.assertIn("$.languages.docs.primary: 'Spanish' does not match", out)
         self.assertFalse((self.p.work / ".claude/gw.json").exists())
 
+    def test_a_primary_repeated_in_others_is_refused_before_writing(self):
+        code, out, cfg = self.init("--docs-language", "es", "--docs-language", "es")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("is already languages.docs.primary", out)
+        self.assertFalse((self.p.work / ".claude/gw.json").exists())
+
+    def test_code_language_takes_one_value(self):
+        code, out, cfg = self.init("--code-language", "es", "--code-language", "en")
+        self.assertEqual(code, 2, out)
+        self.assertIn("--code-language takes one value", out)
+        self.assertFalse((self.p.work / ".claude/gw.json").exists())
+
+    def test_a_docs_language_without_templates_uses_the_english_ones(self):
+        code, out, cfg = self.init("--docs-language", "gl")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("Traceback", out)
+        self.assertEqual(cfg["languages"]["docs"]["primary"], "gl")
+        self.assertTrue((self.p.work / "AGENTS.md").is_file())
+
     def test_the_new_flags_need_init(self):
         code, out = self.p.run_apply("--docs-language", "es")
         self.assertEqual(code, 2, out)

@@ -890,6 +890,8 @@ def migrated_config(plan, cfg):
 def plan_templates(plan, cfg, self_apply, wanted_skills):
     cfg = migrated_config(plan, cfg)
     lang_dir = WORKFLOW / "templates" / cfg["language"]
+    if not lang_dir.is_dir():  # A12 (Q-13): a language without templates uses the English ones
+        lang_dir = WORKFLOW / "templates" / "en"
 
     def rendered(src):
         return render(src.read_text(encoding="utf-8"), cfg, plan.root, plan.version,
@@ -1930,7 +1932,7 @@ def init_config(args, version):
     if args.project_skill_prefix is not None:
         new["projectSkillPrefix"] = args.project_skill_prefix
     schema = json.loads((WORKFLOW / "schema" / "gw.schema.json").read_text(encoding="utf-8"))
-    errors = config.validate(new, schema)
+    errors = config.validate(new, schema) or config.semantic_errors(new)
     if errors:
         raise ApplyError("apply: the config --init would write is invalid:\n  " + "\n  ".join(errors)
                          + "\napply: fix the flags and rerun")
@@ -1960,7 +1962,7 @@ def main(argv=None):
     init.add_argument("--language", choices=["es", "en"],
                       help="docs and public primary language (A12; the flags below refine each one)")
     init.add_argument("--code-language", dest="code_languages", action="append", default=[], metavar="LANG",
-                      help="the language of code and identifiers, a two-letter ISO 639-1 code (A12; the first is used)")
+                      help="the language of code and identifiers, a two-letter ISO 639-1 code (A12; one value)")
     init.add_argument("--docs-language", dest="docs_languages", action="append", default=[], metavar="LANG",
                       help="a language of the internal docs (repeatable; the first is the primary one)")
     init.add_argument("--public-language", dest="public_languages", action="append", default=[], metavar="LANG",
@@ -2000,6 +2002,9 @@ def main(argv=None):
                                  ("--visible-language", args.visible_languages),
                                  ("--design-reference", args.design_references),
                                  ("--stack", args.stacks)) if v]
+    if len(args.code_languages) > 1:
+        parser.error("--code-language takes one value (the language of the code has no others); "
+                     "give it once: --code-language en")
     if args.summary and not args.dry_run:
         parser.error("--summary only goes with --dry-run; add it: python3 apply.py [PROJECT] --dry-run --summary")
     if init_flags and not args.init:

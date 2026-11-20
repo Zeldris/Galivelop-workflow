@@ -1421,7 +1421,7 @@ class Languages(unittest.TestCase):
             (dict(BLOCK, docs={"primary": "es", "others": ["es"]}),
              "$.languages.docs.others: 'es' is already languages.docs.primary"),
             (dict(BLOCK, public={"primary": "en", "others": ["es", "es"]}), "duplicate of an earlier item"),
-            (dict(BLOCK, ui=["en-US"]), "$.languages.ui[0]: 'en-US' does not match"),
+            (dict(BLOCK, ui=["EN_us"]), "$.languages.ui[0]: 'EN_us' does not match"),
             (dict(BLOCK, extra=1), "unknown key 'extra'"),
             ("es", "$.languages: expected object"),
         ]
@@ -1431,8 +1431,32 @@ class Languages(unittest.TestCase):
                 r = cli(self.tmp, "validate")
                 self.assertEqual(r.returncode, 2)
                 self.assertIn(reason, r.stderr)
-                self.assertIn("ISO 639-1", r.stderr)  # names the fix
-                self.assertIn("config.py", r.stderr)
+                if "does not match" in reason:  # the pattern errors name the fix
+                    self.assertIn("ISO 639-1", r.stderr)
+                    self.assertIn("config.py", r.stderr)
+
+    def test_ui_takes_bcp47_tags_and_old_visible_languages_still_load(self):
+        self.write(dict(VALID, visibleLanguages=["pt-BR", "es-419", "zh-Hant"]))
+        r = cli(self.tmp, "validate")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.write(dict(VALID2, languages=dict(BLOCK, docs={"primary": "pt-BR", "others": []})))
+        r = cli(self.tmp, "validate")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("$.languages.docs.primary: 'pt-BR' does not match", r.stderr)
+
+    def test_migration_keeps_the_old_keys_when_languages_is_not_an_object(self):
+        out, _done = self.config.migrate({"schemaVersion": 1, "language": "es", "languages": "x"})
+        self.assertEqual(out, {"schemaVersion": 2, "language": "es", "languages": "x"})
+
+    def test_the_hint_is_only_for_pattern_errors_and_names_the_root(self):
+        self.write(dict(VALID2, languages=dict(BLOCK, docs={"primary": "es", "others": ["es"]})))
+        r = cli(self.tmp, "validate")
+        self.assertIn("is already languages.docs.primary", r.stderr)
+        self.assertNotIn("ISO 639-1", r.stderr)
+        self.write(dict(VALID2, languages=dict(BLOCK, code="EN")))
+        r = cli(self.tmp, "validate")
+        self.assertIn("ISO 639-1", r.stderr)
+        self.assertIn(f"config.py --root {self.tmp.resolve()} validate", r.stderr)
 
     def test_invalid_old_language_is_refused_after_migration(self):
         self.write(dict(VALID, language="Spanish"))

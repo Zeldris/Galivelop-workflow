@@ -96,10 +96,11 @@ def _migrate_to_2(raw):
     has_old = "language" in raw or "visibleLanguages" in raw
     block = raw.get("languages")
     if has_old and not isinstance(block, dict):
-        if "languages" in raw:  # not an object: left for the schema to reject
-            has_old = False
-        else:
-            block = {}
+        if "languages" in raw:  # not an object: the old keys stay, and the schema rejects `languages` with its reason
+            out = dict(raw)
+            out["schemaVersion"] = 2
+            return out
+        block = {}
     out = {}
     placed = False
     for key, value in raw.items():
@@ -1257,10 +1258,11 @@ def load(root=None, rev=None, paths_at=None):
     errors = validate(config, schema) or semantic_errors(config)
     if errors:
         hint = ""
-        if any(e.startswith("$.languages") for e in errors):
-            hint = ("\n  languages: write two-letter lowercase ISO 639-1 codes (\"es\", \"en\") in .claude/gw.json, e.g. "
+        if any(e.startswith("$.languages") and "does not match" in e for e in errors):
+            hint = ("\n  languages: write two-letter lowercase ISO 639-1 codes (\"es\", \"en\"; `ui` also takes tags like "
+                    "\"pt-BR\") in .claude/gw.json, e.g. "
                     "{\"code\": \"en\", \"docs\": {\"primary\": \"es\", \"others\": [\"en\"]}, \"public\": {\"primary\": "
-                    "\"en\", \"others\": []}, \"ui\": []}, then validate: python3 " + str(HERE / "config.py") + " validate")
+                    "\"en\", \"others\": []}, \"ui\": []}, then validate: python3 " + str(HERE / "config.py") + f" --root {root} validate")
         raise ConfigError(f"{path} is invalid:\n  " + "\n  ".join(errors) + hint)
     if paths_at:
         env = {k: v for k, v in os.environ.items() if k not in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE")}
