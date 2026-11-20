@@ -56,12 +56,13 @@ same time.
   as usual. Untracked files
   under `.claude/worktrees/` (Claude Code's isolated worktrees) do not count as uncommitted changes.
 - **On touching the workflow's configuration**, the `PreToolUse` hook `config-guard.py` asks the person before
-  `.claude/settings.json`, `.claude/gw.json`, `.githooks/` or `.claude/gw/scripts/` or the profiles folder (`profiles.dir`, by default `.claude/gw/profiles/`) are edited, or
-  `profile.py new|assign|role` runs (with `Edit`, `Write` or
+  `.claude/settings.json`, `.claude/gw.json`, `.githooks/`, `.claude/gw/scripts/` or the profiles folder
+  (`profiles.dir`, by default `.claude/gw/profiles/`) are edited (with `Edit`, `Write` or
   a `Bash` command that writes there; also `.claude/settings.local.json` and the same paths under `.claude/worktrees/`;
   git commands that rewrite the tree —`merge`, `checkout`, `switch`, `reset --hard`, `stash pop`, `rebase`,
   `cherry-pick`, `revert`, `apply`— ask only if they would change one of those paths, or if it cannot work that out; `stash` and `clean -f` too when they would touch something protected, and git aliases are followed one level, with `!` or chains asking). `pull` always asks (what it merges is not known until its `fetch`: better `git fetch` and then `git merge`), and so do `am`, `bisect`, `checkout-index`, `read-tree -u` and `stash branch`. A `find` that deletes or writes from the project folder asks unless it only filters with `-name`/`-iname` and no protected name matches. Limits: `fetch && merge` in one command is judged before the `fetch`; with uncommitted changes in a protected path it may ask needlessly (false positive); and a session opened inside a worktree does not protect the main repo's `.claude`. A `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_CONFIG*` or `GIT_COMMON_DIR` assigned or exported anywhere in the command (also inside `sh -c`) makes every tree-rewriting git call in it ask. Not watched: `clean -i`, `worktree add`, `find -exec sh -c`, `xargs rm` and aliases more than one level deep. If it cannot read the event it asks too. To regenerate the applied copy:
   `python3 scripts/apply.py .`.
+  It also asks before `profile.py new|assign|role` runs, since they write `.claude/gw.json` or a profile.
 - **When dealing work to subagents**, the `PreToolUse` hook `subagent-cap.py` counts the session's `Agent`/`Task`
   calls and, at `subagentCap` (30 by default) and every 10 after, asks the person to check they are not looping
   (`gw-opt-tokens`); it never blocks. If the call has no `model` (`inherit` does not count) and the `subagent_type` does not set its own in

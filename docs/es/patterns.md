@@ -55,12 +55,13 @@ la vez.
   `HEAD` anterior (commits hechos después de empezar el push), con pid muerto, vieja o ilegible bloquea como siempre.
   No cuenta como cambio sin commitear lo no versionado bajo `.claude/worktrees/` (los worktrees aislados de Claude Code).
 - **Al tocar la configuración del flujo**, el gancho `PreToolUse` `config-guard.py` pide permiso a la persona antes de
-  editar `.claude/settings.json`, `.claude/gw.json`, `.githooks/` o `.claude/gw/scripts/`, o la carpeta de perfiles (`profiles.dir`, por defecto `.claude/gw/profiles/`), o de ejecutar
-  `profile.py new|assign|role` (con `Edit`, `Write` o una
+  editar `.claude/settings.json`, `.claude/gw.json`, `.githooks/`, `.claude/gw/scripts/` o la carpeta de perfiles
+  (`profiles.dir`, por defecto `.claude/gw/profiles/`) (con `Edit`, `Write` o una
   orden de `Bash` que escriba ahí, también `.claude/settings.local.json` y las mismas rutas en `.claude/worktrees/`;
   las órdenes de git que reescriben el árbol —`merge`, `checkout`, `switch`, `reset --hard`, `stash pop`,
   `rebase`, `cherry-pick`, `revert`, `apply`— preguntan solo si cambiarían una de esas rutas, o si no puede calcularlo; también `stash` y `clean -f` si hay algo protegido que tocarían, y los alias de git se siguen un nivel, con `!` o cadenas preguntando). `pull` pregunta siempre (lo que fusiona no se sabe hasta su `fetch`: mejor `git fetch` y luego `git merge`), y también `am`, `bisect`, `checkout-index`, `read-tree -u` y `stash branch`. Un `find` que borra o escribe desde la carpeta del proyecto pregunta salvo que solo filtre con `-name`/`-iname` y ningún nombre protegido encaje. Límites: `fetch && merge` en una sola orden se evalúa antes del `fetch`; con cambios sin commitear en una ruta protegida puede preguntar de más; y una sesión abierta dentro de un worktree no protege el `.claude` del repo principal. Un `GIT_DIR`, `GIT_WORK_TREE`, `GIT_INDEX_FILE`, `GIT_CONFIG*` o `GIT_COMMON_DIR` asignado o exportado en cualquier parte de la orden (también dentro de `sh -c`) hace preguntar a todo git que reescriba el árbol. Sin vigilar: `clean -i`, `worktree add`, `find -exec sh -c`, `xargs rm` y los alias de más de un nivel. Si no entiende la entrada, también pregunta. Para regenerar la copia aplicada:
   `python3 scripts/apply.py .`.
+  También pregunta antes de ejecutar `profile.py new|assign|role`, que escriben `.claude/gw.json` o un perfil.
 - **Al repartir a subagentes**, el gancho `PreToolUse` `subagent-cap.py` cuenta los `Agent`/`Task` de la sesión y,
   al llegar a `subagentCap` (30 por defecto) y cada 10 después, pide a la persona que compruebe que no están en bucle
   (`gw-opt-tokens`); nunca bloquea. Si la llamada no lleva `model` (`inherit` no cuenta) y el `subagent_type` no fija el suyo en

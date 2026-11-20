@@ -829,6 +829,26 @@ class Profiles(Base):
             'echo ok && python3 .claude/gw/scripts/profile.py assign a@b.c --role dev',
         ], ".claude/gw.json or a profile", self.VERB)
 
+    def test_abbreviations_of_root_do_not_hide_the_verb(self):  # review 2b-guard, finding 1
+        self.assertBashAsks([
+            'python3 .claude/gw/scripts/profile.py --r . new dev',
+            'python3 .claude/gw/scripts/profile.py --ro . new dev',
+            'python3 .claude/gw/scripts/profile.py --roo . assign a@b.c --role dev',
+            'python3 .claude/gw/scripts/profile.py --ro=. role dev dev',
+            'cd .claude/gw/scripts && python3 profile.py --ro list role dev dev',  # `list` is the root's value here
+        ], ".claude/gw.json or a profile", self.VERB)
+        self.assertBashAllowed(['python3 .claude/gw/scripts/profile.py --ro . list',
+                                'python3 .claude/gw/scripts/profile.py --r . show a@b.c',
+                                'python3 .claude/gw/scripts/profile.py --help'])
+
+    def test_a_verb_it_cannot_read_asks(self):  # review 2b-guard, finding 1: what it cannot tell fails toward asking
+        self.assertBashAsks([
+            'python3 .claude/gw/scripts/profile.py "$VERB" dev',
+            'python3 .claude/gw/scripts/profile.py --rot . new dev',
+            'python3 .claude/gw/scripts/profile.py --x . new dev',
+            'python3 .claude/gw/scripts/profile.py . new dev',
+        ], ".claude/gw.json or a profile", "cannot tell the verb")
+
     def test_list_and_show_do_not_ask(self):
         self.assertBashAllowed([
             'python3 .claude/gw/scripts/profile.py list',
@@ -889,6 +909,36 @@ class Profiles(Base):
         self.assertBashAsks(['rm -rf config', 'mv config/team /tmp/t'], "writes to config")
         self.assertAllowed(self.p.tool("Edit", file_path=str(self.p.work / "config/team/other.json")))
         self.assertBashAllowed(['echo x > config/team/notes.txt', 'rm -rf config/other'])
+
+    def test_a_profiles_dir_that_is_the_root_protects_its_json_files(self):  # review 2b-guard, finding 2
+        for folder in (".", "./", "a/.."):
+            with self.subTest(dir=folder):
+                self.set_dir(folder)
+                (self.p.work / "dev.json").write_text("{}", encoding="utf-8")
+                self.assertAsks(self.p.tool("Write", file_path="dev.json"), "would change dev.json:",
+                                "only with the user's OK")
+                self.assertBashAsks(['echo {} > dev.json', 'rm dev.json'], "writes to dev.json:")
+                self.assertBashAsks(['find . -name dev.json -delete'], "writes to .:")
+                self.assertAllowed(self.p.tool("Write", file_path="src/dev.json"))
+                self.assertAllowed(self.p.tool("Write", file_path="notes.md"))
+
+    def test_find_sees_a_profiles_dir_with_capitals(self):  # review 2b-guard, finding 3: a case-sensitive disk
+        self.set_dir("Team/Profiles")
+        (self.p.work / "Team" / "Profiles").mkdir(parents=True)
+        (self.p.work / "Team" / "Profiles" / "dev.json").write_text("{}", encoding="utf-8")
+        self.assertBashAsks(['find . -name dev.json -delete', 'find . -iname DEV.JSON -delete'], "writes to .:")
+        self.assertBashAllowed(['find . -name nothing-like-it.txt -delete'])
+
+    def test_an_agent_worktree_with_its_own_profiles_dir_protects_both(self):  # review 2b-guard, observation
+        wt = self.p.work / ".claude" / "worktrees" / "agent-x"
+        (wt / ".claude").mkdir(parents=True)
+        (wt / ".claude" / "gw.json").write_text(json.dumps({"profiles": {"dir": "wt/p"}}), encoding="utf-8")
+        for rel in (".claude/worktrees/agent-x/wt/p/x.json", ".claude/worktrees/agent-x/.claude/gw/profiles/x.json"):
+            with self.subTest(path=rel):
+                self.assertAsks(self.p.tool("Write", file_path=rel), f"would change {rel}:", "only with the user's OK")
+        self.assertBashAsks(['rm -rf .claude/worktrees/agent-x/wt'], "writes to .claude/worktrees/agent-x/wt:")
+        self.assertAllowed(self.p.tool("Write", file_path="wt/p/x.json"))  # the main project's folder is the default
+        self.assertAllowed(self.p.tool("Write", file_path=".claude/worktrees/agent-x/wt/other.json"))
 
     def test_a_broken_config_still_protects_the_default_folder(self):
         for text in ("{not json", "[]", '{"profiles": 3}', '{"profiles": {"dir": "/abs/p"}}', '{"profiles": {"dir": ""}}'):

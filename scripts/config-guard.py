@@ -47,7 +47,10 @@ a write of .claude/gw.json: it rewrites `models.disabled` there; so does `mode.p
 `profile.py new|assign|role` (E4: .claude/gw.json and/or a profile; `list` and `show` only read). The profiles folder
 (E4, Q-24/Q-26/Q-27: a profile can change any config key) is protected like .githooks/: `profiles.dir` of the raw
 .claude/gw.json (default .claude/gw/profiles, also when the config is broken), as written and through a symlink, and
-the folders that hold it count as ancestors (`rm -r`, `mv`, `git checkout`).
+the folders that hold it count as ancestors (`rm -r`, `mv`, `git checkout`); in an agent worktree, also the worktree's
+own `profiles.dir`. A `profiles.dir` that is the project root (the schema rejects it) protects every *.json there.
+`profile.py` asks unless its verb, the first word that is not an option or the value of `--root` (or an abbreviation
+argparse accepts: `--r`, `--ro`, `--roo`), is `list` or `show`: an unknown verb asks.
 `questions.py accept-risk` (C5) and `task.py current <id>|--clear` (C4) ask too: accepting a risk and switching the
 task the questions guard reads are the user's call.
 
@@ -154,9 +157,11 @@ def ask(reason):
 
 def profile_dirs(root):
     """E4 (Q-24/Q-26/Q-27): the profiles folder protects like TREES, since a profile can change any config key. Returns
-    (project-relative folders in lower case, their real absolute paths in lower case, the folders that hold them). It
-    is profiles.dir of the raw .claude/gw.json (no validation: a broken or missing config, or a value that is not a
-    relative path, falls back to the schema default), as written and with symlinks resolved."""
+    (project-relative folders in lower case, their real absolute paths out of the project in lower case, the folders
+    that hold them in lower case, the project-relative folders as written, whether the folder is the project root). It
+    is profiles.dir of the raw .claude/gw.json under `root` (no validation: a broken or missing config, or a value that
+    is not a relative path, falls back to the schema default), as written and with symlinks resolved. A folder that is
+    the project itself (`.`, `a/..`; the schema rejects it) protects every *.json at the root: fail closed."""
     if root in _PROFILES:
         return _PROFILES[root]
     try:
@@ -172,20 +177,31 @@ def profile_dirs(root):
             folder = given
     except (OSError, ValueError, AttributeError):
         pass
-    rels, reals, holders = [], [], []
+    rels, reals, holders, written, at_root = [], [], [], [], False
     for path in (os.path.normpath(os.path.join(root, folder)), os.path.realpath(os.path.join(root, folder))):
         rel = os.path.relpath(path, root).replace(os.sep, "/")
-        if rel == "." or rel == ".." or rel.startswith("../"):
-            if rel != ".":
-                reals.append(path.lower())  # a symlink out of the project: its files are still the profiles
+        if rel == ".":
+            at_root = True
+            continue
+        if rel == ".." or rel.startswith("../"):
+            reals.append(path.lower())  # a symlink out of the project: its files are still the profiles
             continue
         rels.append(rel.lower())
+        written.append(rel)
         parent = os.path.dirname(rel)
         while parent:
             holders.append(parent.lower())
             parent = os.path.dirname(parent)
-    _PROFILES[root] = (tuple(rels), tuple(reals), tuple(holders))
+    _PROFILES[root] = (tuple(rels), tuple(reals), tuple(holders), tuple(written), at_root)
     return _PROFILES[root]
+
+
+def profile_kind(low, root):
+    """'protected' | 'ancestor' | None for the lower-case project-relative path `low` against the profiles folder."""
+    rels, _, holders, _, at_root = profile_dirs(root)
+    if any(low == t or low.startswith(t + "/") for t in rels) or (at_root and "/" not in low and low.endswith(".json")):
+        return "protected"
+    return "ancestor" if low in holders else None
 
 
 def classify(token, base, root):
@@ -205,20 +221,24 @@ def classify(token, base, root):
         rel = os.path.relpath(path, root)
     except (OSError, ValueError):
         return None, None
-    profiles, outside, holders = profile_dirs(root)
     if rel == ".." or rel.startswith("../") or rel.startswith(".." + os.sep):
         low = path.lower()
-        if any(low == t or low.startswith(t + os.sep) for t in outside):
+        if any(low == t or low.startswith(t + os.sep) for t in profile_dirs(root)[1]):
             return path, "protected"  # the profiles folder is a symlink out of the project
         return None, None  # outside the project
     rel = rel.replace(os.sep, "/")
     low = rel.lower()  # a case-insensitive disk (macOS, Windows) must not be a way round
     inner = WORKTREE.match(low)
+    whole = low
     if inner:
         low = inner.group(1)
-    if low in EXACT or any(low == t or low.startswith(t + "/") for t in TREES + profiles):
+    kinds = {profile_kind(low, root)}
+    if inner:  # an agent worktree may have its own profiles.dir: the union of both folders counts
+        kinds.add(profile_kind(low, os.path.join(root, rel[:inner.start(1)])))
+    kinds.add(profile_kind(whole, root))  # the main project's profiles.dir may itself sit under .claude/worktrees
+    if low in EXACT or any(low == t or low.startswith(t + "/") for t in TREES) or "protected" in kinds:
         return rel, "protected"
-    if low in ANCESTORS or low in holders:
+    if low in ANCESTORS or "ancestor" in kinds:
         return rel, "ancestor"
     if rel == ".":
         return rel, "root"  # the project folder itself: only a pathspec that covers every protected file cares
@@ -738,6 +758,9 @@ def extract_hits(cmd, args, base, root):
     return hits
 
 
+ROOT_OPTION = re.compile(r"--r(o(o(t)?)?)?")  # `--root` and the abbreviations argparse accepts for it (it takes a value)
+
+
 def models_write(args):
     """What a python call rewrites that only the user may change, or None: models.py `disable`/`enable` (B7) and mode.py
     `set` (C7) rewrite .claude/gw.json; profile.py `new`/`assign`/`role` (E4) .claude/gw.json or a profile; questions.py `accept-risk` (C5: accepting a risk is the user's call) the questions
@@ -750,9 +773,11 @@ def models_write(args):
             return ".claude/gw.json" if any(x in verbs for x in rest) else None
         if script == "profile.py":
             verb = next((x for k, x in enumerate(rest) if not x.startswith("-")
-                         and not (k and rest[k - 1] == "--root")), None)
-            return (".claude/gw.json or a profile (profile.py new|assign|role: a profile can change any config key, E4)"
-                    if verb in ("new", "assign", "role") else None)
+                         and not (k and ROOT_OPTION.fullmatch(rest[k - 1]))), None)
+            if verb is None or verb in ("list", "show"):
+                return None  # only reads (`--help` and no verb write nothing either)
+            return ".claude/gw.json or a profile (profile.py new|assign|role: a profile can change any config key, E4" + (
+                ")" if verb in ("new", "assign", "role") else f"; cannot tell the verb from `{verb}`, so it may be one)")
         if script == "questions.py":
             return ("the questions file (questions.py accept-risk: only the user accepts a risk, C5)"
                     if "accept-risk" in rest else None)
@@ -798,7 +823,9 @@ def find_may_reach(args, root):
     if not patterns:
         return True
     names = {os.path.basename(t) for t in EXACT}
-    for tree in TREES + profile_dirs(root)[0]:
+    if profile_dirs(root)[4]:  # profiles.dir is the project root: its *.json files are the profiles
+        names.update(n for n in os.listdir(root) if n.lower().endswith(".json"))
+    for tree in TREES + profile_dirs(root)[3]:  # as written: a case-sensitive disk needs the folder's own case
         for _, dirs, files in os.walk(os.path.join(root, tree)):
             names.update(files)
             names.update(dirs)

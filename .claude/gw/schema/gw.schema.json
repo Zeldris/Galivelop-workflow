@@ -1517,7 +1517,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "dir": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$", "default": ".claude/gw/profiles"},
+        "dir": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$))(?!(\\.(/+|$))+$).+$", "default": ".claude/gw/profiles"},
         "roles": {"type": "object", "additionalProperties": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"}, "default": {}},
         "people": {"type": "object", "additionalProperties": {"type": "object", "additionalProperties": false, "properties": {"role": {"type": "string", "minLength": 1}, "profile": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"}}}, "default": {}}
       },

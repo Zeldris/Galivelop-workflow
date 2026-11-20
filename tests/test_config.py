@@ -1605,7 +1605,11 @@ class Profiles(unittest.TestCase):
         cases = (({"people": {"ana@example.org": {"profile": "ana"}}}, "SHA-256"),
                  ({"people": {"0" * 64: {}}}, "needs a role or a profile"),
                  ({"roles": {"dev": "../x"}}, "does not match"),
-                 ({"dir": "/abs"}, "$.profiles.dir: '/abs' does not match"))
+                 ({"dir": "/abs"}, "$.profiles.dir: '/abs' does not match"),
+                 ({"dir": "."}, "$.profiles.dir: '.' does not match"),  # the project root: every *.json a profile
+                 ({"dir": "./"}, "$.profiles.dir: './' does not match"),
+                 ({"dir": "././"}, "$.profiles.dir: '././' does not match"),
+                 ({"dir": "a/.."}, "$.profiles.dir: 'a/..' does not match"))
         for profiles, reason in cases:
             with self.subTest(profiles=profiles):
                 self.write(dict(VALID, profiles=profiles))
