@@ -33,7 +33,7 @@ What it copies (workflow -> project):
                                    of the same event is removed from the project's entries with the other matcher (D128: a
                                    matcher change such as whole-read.py Read -> ^(Read|Bash)$ must not run the hook twice;
                                    an entry left without hooks goes too); project-own commands are never touched
-  templates/<language>/ (`language` of the config), with {{key}} placeholders rendered from the config:
+  templates/<lang>/ (`languages.docs.primary` of the config; no folder for it: `en`), with {{key}} placeholders rendered from the config:
     AGENTS.md, CLAUDE.md        -> the project root; created when missing; an existing one without the
                                    galivelop-workflow marker, or with an older one, gets a .gw-new proposal to merge
                                    by hand (the project fills in its own rules there, so they are never overwritten)
@@ -148,7 +148,7 @@ PROPOSAL = ".gw-new"
 OLD_PROPOSAL = ".gw-nuevo"  # A8 (0.x): the suffix before the rename; still recognized, with a warning
 PLACEHOLDER = re.compile(r"\{\{(\w+)\}\}")
 BLOCK_MARK = re.compile(r"^\s*<!--\s*(/?)if(?:\s+(!?\w+))?\s*-->\s*$")  # a line of its own: <!-- if key --> ... <!-- /if -->
-TEXT_KEYS = ("log", "protectedBranch", "reviewMark", "language")
+TEXT_KEYS = ("log", "protectedBranch", "reviewMark")  # `language` is a computed key: languages.docs.primary (A12)
 LIST_KEYS = ("check", "install")
 DIFFED = ("REVIEW.md", "GLOSSARY.md")  # seeded files whose template diff is printed while unmarked or older
 ROOT_TEMPLATES = (("AGENTS.md", "merged"), ("CLAUDE.md", "merged"), ("REVIEW.md", "seeded"),
@@ -418,10 +418,10 @@ class Plan:
 
     def template_at(self, rel, found):
         """The rendered template of `rel` as it was at workflow version `found` (git tag v<found>), or None."""
-        lang = self.cfg.get("language")
-        if not lang:
-            return None
+        lang = docs_language(self.cfg)
         code, text = git(WORKFLOW, "show", f"v{found}:templates/{lang}/{rel}")
+        if code != 0 and lang != "en":  # A12 (Q-13): a language without templates used the English ones
+            code, text = git(WORKFLOW, "show", f"v{found}:templates/en/{rel}")
         if code != 0:
             return None
         first, nl, rest = text.partition("\n")
@@ -849,6 +849,12 @@ def conditional_blocks(text, cfg, name):
     return "".join(out)
 
 
+def docs_language(cfg):
+    """A12: the primary language of the project's docs (`languages.docs.primary`), the one the templates, the log and
+    the generated texts follow (Q-14)."""
+    return config.languages(cfg)["docs"]["primary"]
+
+
 def render(text, cfg, root, version, name):
     """Replace {{key}}: config keys (lists as an inline code list), {{version}} (the workflow's), {{project}},
     {{ciPushIgnore}} (protectedBranch, or '**' with `ciOnPush: false`).
@@ -858,6 +864,8 @@ def render(text, cfg, root, version, name):
         key = m.group(1)
         if key in TEXT_KEYS:
             return str(cfg[key])
+        if key == "language":  # A12 (Q-14): the docs primary language; chunk 3 rewrites the line that uses it
+            return docs_language(cfg)
         if key in LIST_KEYS:
             return inline_list(cfg.get(key) or [])
         if key == "ciPushIgnore":  # D54: the branches a push does not run CI on; '**' is every branch
@@ -889,7 +897,7 @@ def migrated_config(plan, cfg):
 
 def plan_templates(plan, cfg, self_apply, wanted_skills):
     cfg = migrated_config(plan, cfg)
-    lang_dir = WORKFLOW / "templates" / cfg["language"]
+    lang_dir = WORKFLOW / "templates" / docs_language(cfg)
     if not lang_dir.is_dir():  # A12 (Q-13): a language without templates uses the English ones
         lang_dir = WORKFLOW / "templates" / "en"
 
@@ -2113,7 +2121,7 @@ def main(argv=None):
               f".gitignore and check: git check-ignore -v {rel}")
     if any(a[0] == "propose" for a in plan.actions):
         print(f"apply: review each *{PROPOSAL} (merge by hand, then delete it) before committing")
-    if cfg.get("language") == "es":
+    if docs_language(cfg) == "es":
         title, nxt = f"Flujo Galivelop-workflow v{version}", "Siguiente: <próximo paso concreto>"
     else:
         title, nxt = f"Galivelop-workflow v{version} workflow", "Next: <next concrete step>"

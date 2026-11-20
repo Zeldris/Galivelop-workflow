@@ -145,6 +145,16 @@ class HandoffRows(Base):
         self.assertEqual(code, 0, out)
         self.assertIn("Merged, branch finished", (self.p.work / LOG).read_text())
 
+    def test_close_row_text_follows_languages_docs_primary_of_a_schema_2_config(self):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.pop("language", None)
+        cfg.update(schemaVersion=2, languages={"docs": {"primary": "es"}})
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.write(LOG, log_text())
+        code, out = self.p.script("handoff.py", "close-row", "feat-a")
+        self.assertEqual(code, 0, out)
+        self.assertIn("Al fusionarse, rama terminada", (self.p.work / LOG).read_text())
+
     def test_renamed_task_row_is_not_lost(self):
         self.p.write(LOG, log_text().replace("| **Task in progress · `feat-b`**", "| **Next task · `feat-b`**"))
         code, out = self.p.script("handoff.py", "check")
@@ -1663,6 +1673,19 @@ class MergeBranch(Base):
         code, out = self.p.script("merge-branch.sh", "agent/D16-x", "Merge agent\n\nSiguiente: probar", "--reviewed")
         self.assertEqual(code, 0, out)
         self.assertEqual(self.p.git("log", "-1", "--format=%B").stdout.strip().splitlines()[-1], "Siguiente: probar")
+
+    def test_commit_next_word_follows_languages_docs_primary_of_a_schema_2_config(self):
+        for primary, word in (("es", "Siguiente"), ("gl", "Next")):
+            with self.subTest(primary=primary):
+                self.agent(name=f"agent/D16-{primary}")
+                cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+                cfg.pop("language", None)
+                cfg.update(schemaVersion=2, languages={"docs": {"primary": primary}}, commitNext=True)
+                self.p.write(".claude/gw.json", json.dumps(cfg))
+                self.p.commit("schema 2 config", env=DAY)
+                code, out = self.p.script("merge-branch.sh", f"agent/D16-{primary}", "Merge agent", "--reviewed")
+                self.assertEqual(code, 2, out)
+                self.assertIn(f"no `{word}:` trailer", out)
 
     def test_commit_next_escape_merges_without_it(self):
         self.agent(name="agent/D16-x")

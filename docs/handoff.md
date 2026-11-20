@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.1` publicada** (`main` = `4ca45d0`, 2026-11-19; CI en verde; etiqueta y release `v0.8.1` creadas desde una sesión local) |
-| Siguiente paso | **`0.9` «Front»**: la recogida de apertura (H24) ya está hecha; las tareas de la recogida ya están (E65-E77; bloques E65-E71 y E72-E74 revisados, 2026-11-20; E75-E77 sin revisar), así que sigue A12 (decidida: Q-10 a Q-16 respondidas; ficha `docs/tasks/A12.md`; trozos: 1 esquema hecho, 2 consumidores y 3 idioma del agente por hacer; el 2 quita las vistas `language`/`visibleLanguages` de `config.compat_views`) y luego E4, E5, E7, E9-E16, E42 y E50. **Al cerrar el desarrollo de la `0.9`, antes de publicarla:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 1 (A12) |
+| Siguiente paso | **`0.9` «Front»**: la recogida de apertura (H24) ya está hecha; las tareas de la recogida ya están (E65-E77; bloques E65-E71 y E72-E74 revisados, 2026-11-20; E75-E77 sin revisar), así que sigue A12 (decidida: Q-10 a Q-16 respondidas; ficha `docs/tasks/A12.md`; trozos: 1 esquema y 2a (scripts que leían `language`) hechos; por hacer 2b (doctor, names-check, REVIEW, test_repo, skills, sesión) y 3 idioma del agente; el 2b quita las vistas `language`/`visibleLanguages` de `config.compat_views`) y luego E4, E5, E7, E9-E16, E42 y E50. **Al cerrar el desarrollo de la `0.9`, antes de publicarla:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 1 (A12) |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-20 — A12 trozo 1, revisión: 6 hallazgos arreglados (respaldo `en` de plantillas, `--init` valida con `semantic_errors`, `ui` admite etiquetas BCP 47, migración con `languages` no objeto, pista ISO solo de patrón con `--root`, `--code-language` de un solo valor)
-2. 2026-11-20 — A12 trozo 1: bloque `languages` en `gw.json` (`schemaVersion` 2, migración de `language`/`visibleLanguages`, validación ISO 639-1, `config.languages()`), `apply.py --init` con `--code-language`/`--docs-language`/`--public-language`; tests en `test_config.py` y `test_apply.py`
-3. 2026-11-20 — E76: `measure.py` (`gw-opt-tokens`) muestra aparte el arranque fijo (sistema, herramientas, MCP, con la estimación de `context_guard.py`) por llamada × llamadas y el coste del proyecto (el resto); sin `context_guard.py`, `Fixed startup: unknown`; tests en `test_measure.py`
-4. 2026-11-20 — E75: `grilling` (sección del flujo) apunta cada ronda en el archivo de preguntas con `questions.py add` (respuestas vacías), la sube con la bitácora nombrando sus `Q-<n>` y solo entonces la presenta, numerada con esos ids; test en `test_skills.py`
-5. 2026-11-19 — E74: gancho `other-repo-read.py` (`PreToolUse` en Read, Grep, Glob y Bash): avisa, sin bloquear, cuando la sesión principal (evento sin `agent_id`) lee una ruta fuera del proyecto y dentro de otro repositorio git, con la regla del subagente; clave `otherRepoReadWarn` (`true`) para apagarlo
+1. 2026-11-20 — A12 trozo 2a: `apply.py`, `commit-message.py`, `reviewed.sh`, `merge-branch.sh`, `backport.sh`, `handoff.py`, `merge-main.py` y `task.py` leen `languages.docs.primary` en vez de `language`; una prueba de esquema 2 cada uno
+2. 2026-11-20 — A12 trozo 1, revisión: 6 hallazgos arreglados (respaldo `en` de plantillas, `--init` valida con `semantic_errors`, `ui` admite etiquetas BCP 47, migración con `languages` no objeto, pista ISO solo de patrón con `--root`, `--code-language` de un solo valor)
+3. 2026-11-20 — A12 trozo 1: bloque `languages` en `gw.json` (`schemaVersion` 2, migración de `language`/`visibleLanguages`, validación ISO 639-1, `config.languages()`), `apply.py --init` con `--code-language`/`--docs-language`/`--public-language`; tests en `test_config.py` y `test_apply.py`
+4. 2026-11-20 — E76: `measure.py` (`gw-opt-tokens`) muestra aparte el arranque fijo (sistema, herramientas, MCP, con la estimación de `context_guard.py`) por llamada × llamadas y el coste del proyecto (el resto); sin `context_guard.py`, `Fixed startup: unknown`; tests en `test_measure.py`
+5. 2026-11-20 — E75: `grilling` (sección del flujo) apunta cada ronda en el archivo de preguntas con `questions.py add` (respuestas vacías), la sube con la bitácora nombrando sus `Q-<n>` y solo entonces la presenta, numerada con esos ids; test en `test_skills.py`
 
 ## Pendiente
 

@@ -88,6 +88,21 @@ class MergeMain(unittest.TestCase):
         self.assertIn("Refs: E1", msg)
         self.assertIn("Siguiente: Fusionar origin/main", msg)
 
+    def test_the_trailer_word_follows_languages_docs_primary_of_a_schema_2_config(self):
+        for primary, word in (("es", "Siguiente: Fusionar"), ("gl", "Next: Merge")):
+            with self.subTest(primary=primary):
+                cfg = self.config(schemaVersion=2, languages={"docs": {"primary": primary}})
+                del cfg["language"]
+                self.put(self.work, ".claude/gw.json", json.dumps(cfg))
+                self.git(self.work, "add", "-A")
+                self.git(self.work, "commit", "-qm", "schema 2\n\nRefs: E1")
+                self.upstream(f"b-{primary}.txt")
+                self.put(self.work, LEDGER, '{"n":1}\n{"n":2}\n' + primary + "\n")
+                code, out = self.run_it()
+                self.assertEqual(code, 0, out)
+                msg = self.git(self.work, "log", "--format=%B", "-n", "2", "--skip=1")
+                self.assertIn(word, msg)
+
     def message_ok(self, rev="HEAD"):
         """The commit message at `rev` passes the real commit-message.py rules of the project's config."""
         msg = self.tmp / "msg.txt"

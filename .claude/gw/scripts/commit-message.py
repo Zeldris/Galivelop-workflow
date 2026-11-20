@@ -16,7 +16,7 @@ and applies, from .claude/gw.json (read through config.py):
                                id opens an entry (table row or list item, the `entry` expression of handoff.py) with
                                the shape of `taskId` in one of `refsSources` (empty: `plan` plus `log`). The STAGED
                                version of each file is read, so a commit that adds the id can cite it.
-  commitNext true              the trailer block has a non-empty next-step trailer, named after `language`: `Siguiente:` (es)
+  commitNext true              the trailer block has a non-empty next-step trailer, named after `languages.docs.primary`: `Siguiente:` (es)
                                or `Next:` (en; NEXT_TRAILERS). WIP: commits need it too; `fixup! `, `squash! `,
                                `amend! `, `Revert "` and `Reapply "` lines are exempt, and so is a
                                merge/revert/cherry-pick/rebase in progress (merge-branch.sh requires it itself).
@@ -88,10 +88,10 @@ GIT_LINES = ("fixup! ", "squash! ", "amend! ", 'Revert "', 'Reapply "', "Merge "
 MODEL_NAMES = frozenset(("claude", "anthropic", "opus", "sonnet", "haiku", "fable", "gpt", "chatgpt", "openai",
                          "gemini", "llama", "mistral", "qwen", "deepseek"))
 MODEL_SHAPES = re.compile(r"gpt\d.*|o\d+|\d+o")
-# The next-step trailer per config `language` (the word the templates/<lang>/AGENTS.md use); other languages: English.
+# The next-step trailer per config `languages.docs.primary` (the word the templates/<lang>/AGENTS.md use); other languages: English.
 NEXT_TRAILERS = {"es": "Siguiente", "en": "Next"}
 MERGE_STATES = ("MERGE_HEAD", "REVERT_HEAD", "CHERRY_PICK_HEAD")
-# The subject reviewed.sh writes for the review-mark commit (by `language`; SHA-1 or SHA-256 object names): it has no
+# The subject reviewed.sh writes for the review-mark commit (by `languages.docs.primary`; SHA-1 or SHA-256 object names): it has no
 # task of its own, so format and Refs are not asked of it (the next-step trailer is, and reviewed.sh writes it).
 REVIEW_MARK = re.compile(r"(?:Revisado|Reviewed): [0-9a-f]{40}(?:[0-9a-f]{24})?")
 
@@ -211,7 +211,7 @@ def check_agent(found, msgfile, rules=None):
 
 def check_next(config, message, found, msgfile):
     wip = wip_of(config)
-    word = NEXT_TRAILERS.get(config.get("language"), NEXT_TRAILERS["en"])
+    word = NEXT_TRAILERS.get(gwconfig.languages(config)["docs"]["primary"], NEXT_TRAILERS["en"])
     subject = next((line for line in message.splitlines() if line.strip()), "")
     rest = without_wip(subject, wip)
     # "Merge " is not exempt here: a real merge is skipped by its MERGE_HEAD, and a plain commit titled "Merge ..." is not one.

@@ -24,6 +24,16 @@ class Msg(Base):
         p.git("add", ".claude/gw.json")
         p.git("commit", "-q", "--no-verify", "-m", "config")
 
+    def configure_docs(self, primary):
+        """A12: a schema-2 config (the `languages` block; the old `language` key is gone)."""
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg.pop("language", None)
+        cfg.update(schemaVersion=2, languages={"docs": {"primary": primary}})
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.git("add", ".claude/gw.json")
+        p.git("commit", "-q", "--no-verify", "-m", "config")
+
     def roadmap(self, text=ROADMAP, stage=True):
         self.p.write("docs/roadmap.md", text)
         if stage:
@@ -464,6 +474,14 @@ class NextTrailer(Msg):
         self.configure(language="es")
         self.refused("work\n\nNext: do it", "no `Siguiente:` trailer")
         self.accepted("work\n\nSiguiente: lo que sea")
+
+    def test_the_word_follows_languages_docs_primary_of_a_schema_2_config(self):
+        self.configure_docs("es")
+        self.refused("work\n\nNext: do it", "no `Siguiente:` trailer")
+        self.accepted("work\n\nSiguiente: lo que sea")
+        self.configure_docs("gl")  # no word of its own: English
+        self.refused("work\n\nSiguiente: lo que sea", "no `Next:` trailer")
+        self.accepted("work\n\nNext: do it")
 
     def test_an_empty_value_or_a_line_in_the_body_is_missing(self):
         self.refused("work\n\nNext:", "no `Next:` trailer")

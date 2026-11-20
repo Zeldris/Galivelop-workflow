@@ -3,6 +3,7 @@
 Same conventions as test_utils.py (the temporary project comes from test_hooks.py; git runs isolated from this
 machine's configuration).
 """
+import json
 import shutil
 import sys
 import unittest
@@ -270,6 +271,25 @@ class FromHarvest(Base):
         code, out = self.run_bp(s1)
         self.assertEqual(code, 0, out)
         self.assertFalse((self.p.work / HARVEST).exists())
+
+
+class SchemaTwoLanguage(Base):
+    """A12: the language of the commit it writes is `languages.docs.primary` of a schema-2 config."""
+
+    def test_the_harvest_commit_follows_the_docs_primary_language(self):
+        for primary, subject, nxt in (("es", "docs: trae las recogidas de minor al parche", "Siguiente: seguir con el parche"),
+                                      ("gl", "docs: bring the harvest files of minor into the patch", "Next: go on with the patch")):
+            with self.subTest(primary=primary):
+                cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+                cfg.pop("language", None)
+                cfg.update(schemaVersion=2, languages={"docs": {"primary": primary}})
+                self.p.write(".claude/gw.json", json.dumps(cfg))
+                self.p.commit("schema 2 config")
+                self.on_minor({f"docs/proposals/harvest-{primary}.md": "# Harvest repo\n"}, "docs(A9): harvest")
+                code, out = self.run_bp("--from", "minor")
+                self.assertEqual(code, 0, out)
+                self.assertEqual(self.subjects(1), [subject])
+                self.assertEqual(self.p.git("log", "-1", "--format=%B").stdout.strip().splitlines()[-1], nxt)
 
 
 class FromEdgeCases(Base):

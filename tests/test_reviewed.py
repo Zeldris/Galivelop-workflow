@@ -123,6 +123,7 @@ class MarkFooter(Base):
     def configure(self, **keys):
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         cfg.update(keys)
+        cfg = {k: v for k, v in cfg.items() if v is not None}  # a None value drops the key
         self.p.write(".claude/gw.json", json.dumps(cfg))
         self.p.commit("config")
         self.assertEqual(self.p.push("origin", "feature")[0], 0)
@@ -143,6 +144,16 @@ class MarkFooter(Base):
         msg = self.body()
         self.assertTrue(msg.startswith("Revisado: "), msg)
         self.assertTrue(msg.endswith("\n\nSiguiente: crear el PR"), msg)
+
+    def test_footer_follows_languages_docs_primary_of_a_schema_2_config(self):
+        for primary, subject, footer in (("es", "Revisado: ", "Siguiente: crear el PR"),
+                                         ("gl", "Reviewed: ", "Next: open the PR")):
+            with self.subTest(primary=primary):
+                self.configure(commitNext=True, schemaVersion=2, language=None,
+                               languages={"docs": {"primary": primary}})
+                msg = self.body()
+                self.assertTrue(msg.startswith(subject), msg)
+                self.assertTrue(msg.endswith("\n\n" + footer), msg)
 
     def test_no_footer_without_commit_next(self):
         self.configure(commitNext=False)

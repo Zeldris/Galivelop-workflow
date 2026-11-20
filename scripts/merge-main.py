@@ -9,7 +9,7 @@ dirty with it, and a plain `git merge` then refuses or, after a `stash`, can los
 
   1. `git fetch origin <protectedBranch>` (a failure: exit 1 with git's reason).
   2. Uncommitted changes (tracked or untracked): none -> go on; only the ledger -> commit it first
-     (`chore(<id>): ...`, trailers `Refs: <id>` and the next-step trailer of the project's `language`, so the
+     (`chore(<id>): ...`, trailers `Refs: <id>` and the next-step trailer of the project's `languages.docs.primary`, so the
      commit-msg hook accepts it); anything else -> exit 1 naming those paths and the command that fixes it
      (commit them, `git stash` or `git checkout -- <path>`). Nothing is committed or merged then.
      `<id>` is `--refs`, else the newest `Refs:` of the branch's own commits (`git log --first-parent --no-merges`);
@@ -102,7 +102,8 @@ def main(argv=None):
         say("protectedBranch or metrics.ledger is not set in .claude/gw.json; set them (docs/en/config.md)")
         return 2
     ledger = posixpath.normpath(ledger)
-    lang = cfg.get("language") if cfg.get("language") in NEXT else "en"
+    lang = config.languages(cfg)["docs"]["primary"]
+    lang = lang if lang in NEXT else "en"
 
     res = git(root, "fetch", "origin", branch)
     if res.returncode != 0:

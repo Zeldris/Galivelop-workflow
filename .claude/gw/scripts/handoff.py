@@ -1226,7 +1226,7 @@ def cmd_close_row(ctx, args):
             except gwtask.GitStuck:
                 pass
         return rc
-    text = args.text or CLOSED_TEXT.get(ctx.config["language"], CLOSED_TEXT["en"])
+    text = args.text or CLOSED_TEXT.get(gwconfig.languages(ctx.config)["docs"]["primary"], CLOSED_TEXT["en"])
     branch = row_branch(ctx, args)
     hit = 0
     if ctx.config.get("logRows"):

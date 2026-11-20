@@ -346,7 +346,7 @@ class IsCodeList(Record):
 class Templates(unittest.TestCase):
     def test_the_templates_are_what_task_py_writes(self):
         for lang in ("es", "en"):
-            cfg = {"language": lang}
+            cfg = {"languages": {"docs": {"primary": lang}}}
             tmpl = (ROOT / "templates" / lang / "task.md").read_text(encoding="utf-8").split("\n", 1)[1]  # no marker line
             title = "<título>" if lang == "es" else "<title>"
             self.assertEqual(task.contract_text(cfg, "<id>"), tmpl.replace("<id> · " + title, "<id> · " + title))
@@ -354,8 +354,13 @@ class Templates(unittest.TestCase):
             marker = "<skill o session>" if lang == "es" else "<skill or session>"
             self.assertEqual(task.entry_text(cfg, "<id>", marker, "<date>").replace("pending", "<pending>"), entry_tmpl)
 
+    def test_the_language_is_languages_docs_primary_of_a_schema_2_config(self):
+        for primary, title in (("es", "<título>"), ("gl", "<title>")):
+            cfg = {"schemaVersion": 2, "languages": {"docs": {"primary": primary}}}
+            self.assertIn("<id> · " + title, task.contract_text(cfg, "<id>"))
+
     def test_a_generated_contract_and_entry_pass_their_own_form_check(self):
-        cfg = {"language": "en"}
+        cfg = {"languages": {"docs": {"primary": "en"}}}
         filled = task.contract_text(cfg, "C11").replace("## Goal\n\n—", "## Goal\n\nx").replace("- [ ] —", "- [ ] y")
         self.assertEqual(task.contract_errors(filled, cfg), [])
         self.assertTrue(task.contract_errors(task.contract_text(cfg, "C11"), cfg))  # the template itself is not a contract
