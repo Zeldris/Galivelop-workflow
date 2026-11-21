@@ -590,7 +590,10 @@ class Run(Base):
     def test_full_on_macos_without_docker_refuses_with_the_reason(self):
         self.cache()
         self.fake(self.bin, "node", "npm")
-        code, out = self.main("run", "full", system="Darwin")
+        from unittest import mock
+        which = self.mod.shutil.which  # PATH keeps /usr/bin, where a CI runner has a real docker: hide it
+        with mock.patch.object(self.mod.shutil, "which", lambda t, *a, **k: None if t == "docker" else which(t, *a, **k)):
+            code, out = self.main("run", "full", system="Darwin")
         self.assertEqual(code, 3, out)
         self.assertIn("only match on Linux (E-9)", out)
         self.assertIn("Darwin without a running Docker: nothing was checked", out)
