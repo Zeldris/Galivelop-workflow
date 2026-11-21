@@ -314,7 +314,9 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-36
 - Refs: E5
-- Status: open
+- Status: answered
 - Asked: 2026-11-21
 - Question: front.py solo enlaza node_modules en front.dir: si front.dir importa la plantilla desde fuera, @playwright/test no se resuelve. ¿Lo documentamos o se enlaza también en la raíz de la copia?
 - Recommendation: documentarlo en templates/front/README.md: la plantilla se copia dentro de front.dir
+- Answer: lo recomendado (documentarlo en templates/front/README.md)
+- Answered: 2026-11-21

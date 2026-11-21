@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.1` publicada** (`main` = `4ca45d0`, 2026-11-19; CI en verde; etiqueta y release `v0.8.1` creadas desde una sesión local) |
-| Siguiente paso | **`0.9` «Front»**: E75-E77 sin revisar; **E5 hecha** (2026-11-21; Q-36 abierta: `node_modules` solo en `front.dir`). Sigue **E7** (plantilla de CI con `front.py run full`, Q-35, `Related: E5`), luego E78 (sello de capturas, Q-34), E42 y E50. **Al cerrar el desarrollo de la `0.9`, antes de publicarla:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 2 (E5) |
+| Siguiente paso | **`0.9` «Front»**: E75-E77 sin revisar; **E5 hecha** (2026-11-21). Pendiente de Q-36 (respondida: documentarlo): en `templates/front/README.md`, que la plantilla se copia dentro de `front.dir` porque `node_modules` solo se enlaza ahí. Sigue **E7** (plantilla de CI con `front.py run full`, Q-35, `Related: E5`), luego E78 (sello de capturas, Q-34), E42 y E50. **Al cerrar el desarrollo de la `0.9`, antes de publicarla:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 2 (E5) |
 
 ### Fases
 
