@@ -162,7 +162,9 @@ def fixed_startup(root, path):
     workflow's own estimate (context_guard.py, installed copy first, then this repo's: one datum, one place). It is the
     startup minus the project's part (log, AGENTS.md/CLAUDE.md, skills, conversation carried over); the SessionStart
     hook output stays in it, since the session log does not keep it. Returns
-    (tokens or None, reason when None); fails open: any error gives None."""
+    (tokens or None, reason when None); fails open: a copy that fails (an old install without `Measure`) gives way
+    to the next one, and with none left the result is None."""
+    failed = None
     for rel in ('.claude/gw/scripts', 'scripts'):
         guard = os.path.join(root, rel, 'context_guard.py')
         if not os.path.isfile(guard):
@@ -177,12 +179,15 @@ def fixed_startup(root, path):
             except Exception:  # no or bad config: the estimate takes the defaults
                 cfg = None
             parts = mod.Measure(root, cfg, path).culprits()
-        except Exception as exc:  # fails open: the report goes on without the split
-            return None, f'{rel}/context_guard.py failed: {exc}'
+        except BaseException as exc:  # fails open (SystemExit too, from an import): try the next copy
+            if isinstance(exc, KeyboardInterrupt):
+                raise
+            failed = f'{rel}/context_guard.py failed: {exc!r}'
+            continue
         if not parts:
             return None, 'no measured startup in the session log'
         return next((t for label, t, _ in parts if label == mod.SYSTEM), None), 'no system part in the estimate'
-    return None, 'no context_guard.py of the workflow in .claude/gw/scripts/ or scripts/'
+    return None, failed or 'no context_guard.py of the workflow in .claude/gw/scripts/ or scripts/'
 
 
 def branch_of(path):
@@ -570,13 +575,18 @@ def main():
           f'(at cache price, ~{total_in / api_calls / 10:,.0f} tokens of normal input)')
     print(f'Average output per call: {usage["output_tokens"] / api_calls:,.0f} tokens (includes reasoning)')
     # E76: the fixed startup (system prompt, tools, MCP) rides on every call and hides what the project can cut.
-    system, why = fixed_startup(root, path)
+    # A subagent's log has only sidechain lines, which context_guard skips: its startup is not measured there.
+    system, why = (None, 'the split does not apply to a subagent log') if own_log else fixed_startup(root, path)
     if system is None:
         print(f'Fixed startup: unknown ({why})')
     else:
-        fixed = min(system * api_calls, total_in)
-        print(f'Fixed startup (system prompt, tools, MCP; neither /clear nor the project shrinks it; it also holds '
-              f'the SessionStart hook output, which the log does not keep): ~{system:,} tokens per call x {api_calls} calls = {fixed:,} input ({100 * fixed / max(total_in, 1):.0f} %)')
+        # Only real calls carry it: the synthetic messages (API errors, "No response requested") have no model.
+        real_calls = sum(1 for model, ctx in zip(call_models, contexts) if model and ctx)
+        fixed = min(system * real_calls, total_in)
+        print(f'Fixed startup (system prompt, tools, MCP; per call, neither /clear nor the project shrinks it, so the '
+              f'total falls only with fewer calls or fewer MCP servers and connectors; it also holds the SessionStart '
+              f'hook output, which the log does not keep): ~{system:,} tokens per call x {real_calls} calls = '
+              f'{fixed:,} input ({100 * fixed / max(total_in, 1):.0f} %)')
         print(f'Project cost (the rest: instructions, log, skills, conversation, results): '
               f'{total_in - fixed:,} input ({100 * (total_in - fixed) / max(total_in, 1):.0f} %)')
     # Curve between compactions: the floor is the fixed context (instructions, tools, summary) and the ceiling is

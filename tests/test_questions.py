@@ -58,6 +58,19 @@ class Add(Base):
         self.ok("add", "a\nb   c")
         self.assertIn("- Question: a b c\n", self.file.read_text())
 
+    def test_rec_next_to_each_question(self):
+        self.assertEqual(self.ok("add", "--refs", "C1", "--rec", "a", "One?", "--rec", "b", "Two?", "--rec", "c",
+                                 "Three?").split(), ["Q-1", "Q-2", "Q-3"])
+        text = self.file.read_text()
+        self.assertIn("- Question: Two?\n- Recommendation: b\n", text)
+        self.assertIn("- Question: Three?\n- Recommendation: c\n", text)
+
+    def test_unknown_option_still_fails(self):
+        code, _, err = self.q("add", "--rec", "a", "One?", "--bogus", "x")
+        self.assertEqual(code, 2)
+        self.assertIn("unrecognized arguments: --bogus x", err)
+        self.assertFalse(self.file.exists(), "nothing is written")
+
     def test_rec_count_must_match(self):
         self.fails("2 --rec for 1 questions", "add", "--rec", "a", "--rec", "b", "One?")
 

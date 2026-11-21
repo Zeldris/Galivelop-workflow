@@ -29,8 +29,9 @@ retries and redone work.
    output, never the raw log. It gives:
    - real API usage and the **average context per call** (what each extra call costs);
    - the **fixed startup** (system prompt, tools, MCP, from the workflow's `context_guard.py` estimate) times the calls,
-     apart from the **project cost** (the rest): only the project cost is cut by this skill's proposals; the fixed
-     part shrinks only by disabling unused connectors or MCP servers (`/context`), never by `/clear`;
+     apart from the **project cost** (the rest): the per-call fixed part shrinks only by disabling unused connectors
+     or MCP servers (`/context`), never by `/clear`, but its total falls with every call saved, so a proposal that
+     cuts calls cuts both;
    - per tool and per result, the tokens that entered the context and those **dragged along** (a result is resent
      on every call until the next compaction);
    - per file reads, repeats, per-model split, and `BY SUBAGENT`: one row per subagent with calls, average context,

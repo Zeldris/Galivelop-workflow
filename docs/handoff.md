@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.1` publicada** (`main` = `4ca45d0`, 2026-11-19; CI en verde; etiqueta y release `v0.8.1` creadas desde una sesión local) |
-| Siguiente paso | **`0.9` «Front»**: E75-E77 sin revisar; **E5, E7 y E78 hechas** (2026-11-21). **E42 y E50 hechas**. Sigue E75-E77 (revisar) o la siguiente pendiente de la `0.9` en el roadmap. **Al cerrar el desarrollo de la `0.9`, antes de publicarla:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 1 (E42) |
+| Siguiente paso | **`0.9` «Front»: desarrollo cerrado** (E75-E77 revisadas, 2026-11-21). Sigue: CI de la última subida y, **antes de publicar la `0.9`:** recogida y `0.8.2` (D142 y los arreglos que traiga; preguntas Q-4 a Q-6). Presupuesto de compactaciones: 1 (E42) |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-21 — E50 hecha: `whole-read.py` cuenta las imágenes distintas que la sesión lee con `Read` y, en `screenshotSheet.after` (3) y sus múltiplos, aconseja montarlas en una hoja con `screenshotSheet.command` (o un ejemplo genérico); `ignorePaths`, `extensions`; vale con `wholeReadWarnBytes` a 0; la cuenta se borra con `forget`
-2. 2026-11-21 — E42 documentada: `gw-seo` en README.md ↔ README.es.md (29 skills) y hecha en el roadmap es/en; sin sección sin publicar en el CHANGELOG (se escribe al publicar la `0.9`).
-3. 2026-11-21 — E42 traída y revisada (13 hallazgos arreglados, `Findings: 13`): skill `gw-seo` (SKILL.md, references con fechas, note.md, LICENSE MIT de claude-seo) y `scripts/check_seo.py` con sus tests, en inglés y sin rutas del portal; copias en `.claude/` y `.agents/`; docs es/en y roadmap quedan para otro trozo
-4. 2026-11-21 — E78 hecha: `front.py run full --update-snapshots` (Linux o Docker) devuelve al árbol las capturas nuevas o cambiadas y escribe la versión fijada de Playwright en `front.snapshotStamp`; falla con 2 en `fast` o sin versión exacta; `doctor.py` propone la orden
-5. 2026-11-21 — E7 hecha: `front.py install --matrix` (navegadores de la matriz), la plantilla de CI corre `front.py run full` tras «Check» con `front.tokens` (Q-35) y monta node, guía «Pruebas de front» en `patterns.md` es/en; Q-36 documentada en `templates/front/README.md`
+1. 2026-11-21 — E75-E77 revisadas (5 hallazgos arreglados, `Findings: 5`): `questions.py add` acepta cada `--rec` junto a su pregunta (como lo escribe `grilling`); `measure.py` cuenta solo las llamadas reales para el arranque fijo, dice que su total baja con menos llamadas, no lo calcula en el log de un subagente y, si la copia instalada de `context_guard.py` falla, prueba la del repo; los leves, en `pending.md`
+2. 2026-11-21 — E50 hecha: `whole-read.py` cuenta las imágenes distintas que la sesión lee con `Read` y, en `screenshotSheet.after` (3) y sus múltiplos, aconseja montarlas en una hoja con `screenshotSheet.command` (o un ejemplo genérico); `ignorePaths`, `extensions`; vale con `wholeReadWarnBytes` a 0; la cuenta se borra con `forget`
+3. 2026-11-21 — E42 documentada: `gw-seo` en README.md ↔ README.es.md (29 skills) y hecha en el roadmap es/en; sin sección sin publicar en el CHANGELOG (se escribe al publicar la `0.9`).
+4. 2026-11-21 — E42 traída y revisada (13 hallazgos arreglados, `Findings: 13`): skill `gw-seo` (SKILL.md, references con fechas, note.md, LICENSE MIT de claude-seo) y `scripts/check_seo.py` con sus tests, en inglés y sin rutas del portal; copias en `.claude/` y `.agents/`; docs es/en y roadmap quedan para otro trozo
+5. 2026-11-21 — E78 hecha: `front.py run full --update-snapshots` (Linux o Docker) devuelve al árbol las capturas nuevas o cambiadas y escribe la versión fijada de Playwright en `front.snapshotStamp`; falla con 2 en `fast` o sin versión exacta; `doctor.py` propone la orden
 
 ## Pendiente
 
