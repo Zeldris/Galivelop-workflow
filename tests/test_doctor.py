@@ -571,6 +571,57 @@ class Doctor(Snapshot):
         self.assertLine(out, "WARN", "generated files", "no `check` command runs generated-check.py",
                         "python3 .claude/gw/scripts/generated-check.py")
 
+    def front_project(self, stamp="1.63.0"):
+        """E5: a project with front.tokens and Playwright 1.63.0 pinned in package.json."""
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["front"] = {"tokens": "design/tokens.json", "lfsThresholdKb": 1}
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.write("package.json", json.dumps({"devDependencies": {"@playwright/test": "1.63.0"}}))
+        if stamp:
+            self.p.write("front/snapshots.version", stamp + "\n")
+
+    def snapshot(self, rel, size):
+        path = self.p.work / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(b"\x89PNG" + b"0" * (size - 4))
+
+    def test_front_snapshot_from_darwin_warns(self):
+        self.front_project()
+        self.snapshot("tests/home.spec.ts-snapshots/home-chromium-desktop-darwin.png", 100)
+        self.snapshot("tests/home.spec.ts-snapshots/home-chromium-desktop-linux.png", 100)
+        self.p.commit("baselines")
+        code, out = self.doctor()
+        line = self.assertLine(out, "WARN", "front snapshots", "1 baseline(s) from another platform",
+                               "home-chromium-desktop-darwin.png")
+        self.assertNotIn("-linux.png", line)
+        self.assertNotIn("outside Git LFS", out)
+
+    def test_front_snapshot_of_another_playwright_warns(self):
+        self.front_project(stamp="1.50.0")
+        self.snapshot("tests/a.spec.ts-snapshots/a-chromium-mobile-linux.png", 100)
+        self.p.commit("baselines")
+        code, out = self.doctor()
+        self.assertLine(out, "WARN", "front snapshots", "Playwright 1.50.0", "pins 1.63.0")
+
+    def test_front_large_snapshot_outside_lfs_warns_and_inside_lfs_does_not(self):
+        self.front_project()
+        self.snapshot("tests/a.spec.ts-snapshots/big-chromium-mobile-linux.png", 4096)
+        self.p.commit("big baseline")
+        code, out = self.doctor()
+        self.assertLine(out, "WARN", "front snapshots", "over front.lfsThresholdKb (1 KiB) outside Git LFS",
+                        "big-chromium-mobile-linux.png", "git lfs track")
+        self.p.write(".gitattributes", "**/*-snapshots/*.png filter=lfs diff=lfs merge=lfs -text\n")
+        self.p.commit("in LFS")
+        code, out = self.doctor()
+        self.assertNotIn("outside Git LFS", out)
+        self.assertLine(out, "OK", "front snapshots", "1 baseline(s)")
+
+    def test_front_snapshots_without_tokens_say_nothing(self):
+        self.snapshot("tests/a.spec.ts-snapshots/a-chromium-mobile-darwin.png", 4096)
+        self.p.commit("baseline, no front")
+        code, out = self.doctor()
+        self.assertNotIn("front snapshots", out)
+
     def test_generated_with_generated_check_in_the_check_is_ok_and_empty_says_nothing(self):
         code, out = self.doctor()
         self.assertNotIn("generated files", out)

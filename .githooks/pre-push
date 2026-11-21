@@ -48,6 +48,10 @@
 #     from the remote tip's config, so a commit cannot relax the rule that judges it (only a protected branch without
 #     a config yet takes the pushed commit's, with a warning). Fails closed when a commit is missing (shallow clones
 #     included).
+#   - E5: when the pushed commit's config sets front.tokens, runs `front.py --root <its checkout> run fast` (Stylelint,
+#     layout and axe on the main breakpoints; front.py installs its packages outside the tree) on that commit, after
+#     its check; a red or a front.py that cannot run (no node, no browser) refuses the push, with the command. A
+#     project without front.py but with front.tokens fails closed. Without front.tokens nothing runs.
 #   - Calls related-tests.sh <changed-file> <checkout-dir> for each ref that takes the related scope (that ref's own
 #     files, the folder where its commit is checked out); a ref that takes the full scope is covered by the call after
 #     the loop, with those refs' files and the last checkout (with the check cached green on every such ref, only the slow ones). prepush-branches.sh <changed-file> <pushed-file> gets every
@@ -132,6 +136,7 @@ cfg_at() {  # cfg_at <sha> <key> [<paths-sha>]: the key as commit <sha>'s .claud
 }
 [ -f "$config" ] || fail "the workflow scripts are missing ($config); reinstall them: /gw-update"
 protected=""
+checkdir_sha=""  # the commit $checkdir holds (checkout_at)
 shallow="$(git rev-parse --is-shallow-repository 2>/dev/null || echo false)"
 fetch_hint() {
   if [ "$shallow" = "true" ]; then echo "git fetch --deepen=200 $remote $protected"; else echo "git fetch $remote $protected"; fi
@@ -247,6 +252,7 @@ checkout_at() {  # checkout_at <sha>: $checkdir = the project (HEAD clean) or a 
     dir="$worktree"
   fi
   checkdir="$dir"
+  checkdir_sha="$sha"
 }
 cache_hit() {  # cache_hit <sha>: 0 (and says why) when $key, or the mark-only parent's key, is recorded green; uses run_checks' variables
   local sha="$1"
@@ -328,6 +334,17 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
     key=""
   fi
   [ -z "$key" ] || bash "$scripts/check-green.sh" add "$key" < /dev/null
+}
+
+run_front() {  # run_front <sha>: E5, `front.py run fast` on that commit when its config sets front.tokens
+  local sha="$1" tokens
+  tokens="$(cfg_at "$sha" front.tokens)" || exit 1
+  [ -n "$tokens" ] && [ "$tokens" != "null" ] && [ "$tokens" != "None" ] || return 0
+  [ -f "$scripts/front.py" ] || fail "${sha:0:7} sets front.tokens but the workflow has no front.py ($scripts/front.py); update the workflow: /gw-update"
+  [ "$checkdir_sha" = "$sha" ] && [ -n "$checkdir" ] || checkout_at "$sha"
+  echo "pre-push: front checks (front.py run fast) on ${sha:0:7}…"
+  python3 "$scripts/front.py" --root "$checkdir" run fast < /dev/null >&2 \
+    || fail "the front checks failed on ${sha:0:7} (above); fix them, commit and push again; reproduce with: python3 $scripts/front.py --root $root run fast"
 }
 
 scan_leftovers() {  # scan_leftovers <sha> <files> <what>: conflict markers and *.rej / *.orig files among <files> in <sha>
@@ -525,6 +542,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         fi ;;
       *) fail "unexpected answer from config.py push-scope: '$scope'; reinstall the workflow scripts: /gw-update" ;;
     esac
+    run_front "$local_sha"
     checked="$local_sha:$is_protected"
   fi
 

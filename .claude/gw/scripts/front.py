@@ -1,10 +1,22 @@
 #!/usr/bin/env python3
 # galivelop-workflow v0.8.1
-"""E5 (trozo 1): the design tokens of a front-end project as data, and what is generated from them.
+"""E5: the design tokens of a front-end project as data, what is generated from them and the front checks.
 
   python3 front.py check       # validate the tokens JSON (front.tokens in .claude/gw.json)
   python3 front.py generate    # check, then write into front.out: tokens.css, _tokens.scss,
                                # stylelint.tokens.json and playwright.projects.json
+  python3 front.py run fast    # Stylelint, then Playwright without the visual tests (front.visualTag) on the main
+                               # breakpoints (front.browsers.all x the main ones): what the pre-push runs
+  python3 front.py run full    # Stylelint and the whole matrix, visual tests included: Linux only, or through
+                               # Docker (front.dockerImage) elsewhere; otherwise it refuses (exit 3), never a false green
+  python3 front.py install [--package-dir DIR] [--browsers B ...] [--with-deps]
+                               # the npm packages of front.dir (or DIR) and, if asked, Playwright's browsers
+
+`run` installs the packages of `front.dir`/package.json with `npm ci` in `<git common dir>/gw/front-node/` (never a
+node_modules in the tree; reinstalled only when package.json or package-lock.json change, under a lock, the same
+cache tests/test_front_sample.py uses) and runs from a temporary copy of `front.dir` with node_modules linked to it, so
+the working tree is left as it was. Exit 3 = cannot run here (no node or npm, a browser missing, full outside Linux
+without Docker); 1 = a check failed.
 
 The tokens file is a subset of the W3C Design Tokens format (DTCG): nested groups, leaves with `$value` and `$type`
 (color, dimension, fontFamily, fontWeight, number, duration; a group's `$type` is inherited by its tokens), aliases
@@ -15,16 +27,22 @@ breakpoint x `front.browsers.all`, plus `front.mainBreakpoints` (default: the sm
 
 Output is deterministic (sorted, LF, one trailing newline): two runs give the same bytes, so a project can declare the
 files in `generated` (E72) and the check compares them. Without `front.tokens` (null, the default) every subcommand
-does nothing and exits 0. Fails closed: exit 1 = the tokens are invalid, 2 = bad config, path outside the repository
+does nothing and exits 0 (`install --package-dir` excepted). Fails closed: exit 1 = the tokens are invalid, 2 = bad config, path outside the repository
 or usage; each message names the command that fixes it. Root: --root, else config.find_root (this script's repo).
 Python 3.8+, standard library only.
 """
 import argparse
+import contextlib
 import json
 import math
 import os
+import platform
 import re
+import shutil
+import subprocess
 import sys
+import shlex
+import tempfile
 import unicodedata
 from pathlib import Path
 
@@ -399,7 +417,7 @@ def stylelint_fragment(front):
 
 def playwright_projects(tokens, front):
     marks = tokens.breakpoints()
-    main = {css_part(n) for n in front["mainBreakpoints"]} or {marks[0][0], marks[-1][0]}
+    main = set(main_breakpoints(tokens, front))
     out = []
     for name, width, height in marks:
         browsers = list(front["browsers"]["all"])
@@ -441,12 +459,221 @@ def write_files(root, front, files):
     return [f"{front['out'].rstrip('/')}/{name}" for name in sorted(files)]
 
 
+# -- run (trozo 3) ---------------------------------------------------------------------------------------------------
+COPY_IGNORE = ("node_modules", "test-results", "playwright-report", ".git", "blob-report")
+
+
+def run_command(root, mode):
+    return f"python3 {Path(__file__).resolve()} --root {root} run {mode}"
+
+
+def main_breakpoints(tokens, front):
+    """The names of the main breakpoints: front.mainBreakpoints, else the smallest and the largest."""
+    marks = tokens.breakpoints()
+    main = {css_part(n) for n in front["mainBreakpoints"]} or {marks[0][0], marks[-1][0]}
+    return [name for name, _w, _h in marks if name in main]
+
+
+def fast_projects(tokens, front):
+    """`run fast`: every browser of front.browsers.all on the main breakpoints only."""
+    return [f"{browser}-{name}" for name in main_breakpoints(tokens, front) for browser in front["browsers"]["all"]]
+
+
+def matrix_browsers(front):
+    out = list(front["browsers"]["all"])
+    return out + [b for b in front["browsers"]["main"] if b not in out]
+
+
+def node_cache(root):
+    """<git common dir>/gw/front-node: shared by the main checkout and the pre-push's temporary worktrees."""
+    common = config.git_common_dir(root)
+    if common is None:
+        raise Fail(f"{root} has no git directory for the npm cache; run it inside the repository: {run_command(root, 'fast')}", 2)
+    return common / "gw" / "front-node"
+
+
+def package_dir(root, front, given=None):
+    rel = given if given is not None else front["dir"]
+    path = inside(root, rel)
+    if path is None or not (path / "package.json").is_file():
+        where = "--package-dir" if given is not None else "front.dir in .claude/gw.json"
+        raise Fail(f"no package.json in {rel!r}; copy the workflow's templates/front there (README.md) or fix {where}", 2)
+    return path
+
+
+def pinned_playwright(pkg):
+    """The @playwright/test version pinned in <pkg>/package.json, or None."""
+    try:
+        data = json.loads((pkg / "package.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    for key in ("devDependencies", "dependencies"):
+        version = (data.get(key) or {}).get("@playwright/test") if isinstance(data, dict) else None
+        if isinstance(version, str) and re.fullmatch(r"\d+\.\d+\.\d+", version):
+            return version
+    return None
+
+
+def need_node(fix):
+    missing = [tool for tool in ("node", "npm") if not shutil.which(tool)]
+    if missing:
+        raise Fail(f"{' and '.join(missing)} not found; install node 22+ (with npm), then run: {fix}", 3)
+
+
+@contextlib.contextmanager
+def locked(cache):
+    cache.mkdir(parents=True, exist_ok=True)
+    with open(str(cache / ".lock"), "w") as handle:
+        try:
+            import fcntl
+        except ImportError:  # no flock (Windows): one run at a time is then the user's business
+            yield
+            return
+        fcntl.flock(handle, fcntl.LOCK_EX)  # one npm ci at a time; the others wait for it
+        yield
+
+
+def install_packages(pkg, cache, fix):
+    """npm ci of <pkg> into <cache>, skipped when the stamp says the same package files are installed: the same stamp
+    (package-lock.json + package.json bytes, in `installed-from`) tests/test_front_sample.py writes."""
+    lock_file = pkg / "package-lock.json"
+    if not lock_file.is_file():
+        raise Fail(f"no package-lock.json next to {pkg / 'package.json'}; create it with npm install there and commit "
+                   f"it, then run: {fix}", 2)
+    wanted = lock_file.read_bytes() + (pkg / "package.json").read_bytes()
+    with locked(cache):
+        stamp = cache / "installed-from"
+        if stamp.is_file() and stamp.read_bytes() == wanted and (cache / "node_modules" / ".bin").is_dir():
+            return cache / "node_modules"
+        need_node(fix)
+        shutil.copy(str(pkg / "package.json"), str(cache / "package.json"))
+        shutil.copy(str(lock_file), str(cache / "package-lock.json"))
+        shutil.rmtree(str(cache / "node_modules"), True)
+        print(f"front: npm ci in {cache}", flush=True)
+        done = subprocess.run(["npm", "ci", "--no-audit", "--no-fund"], cwd=str(cache), stdin=subprocess.DEVNULL)
+        if done.returncode != 0:
+            raise Fail(f"npm ci failed in {cache} (above); fix package.json or the network, then run: {fix}", 3)
+        stamp.write_bytes(wanted)
+    return cache / "node_modules"
+
+
+def browsers_path():
+    return Path(os.environ.get("PLAYWRIGHT_BROWSERS_PATH") or Path.home() / ".cache" / "ms-playwright")
+
+
+def missing_browsers(modules, wanted):
+    """The browsers of `wanted` whose build, as the installed Playwright asks for it, is not in the browsers folder."""
+    try:
+        data = json.loads((modules / "playwright-core" / "browsers.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return list(wanted)
+    path = browsers_path()
+    missing = []
+    for browser in wanted:
+        entries = [e for e in data.get("browsers", []) if e.get("name") == browser
+                   or (browser == "chromium" and e.get("name") == "chromium-headless-shell")]
+        if not entries or any(not (path / f"{e['name'].replace('-', '_')}-{e['revision']}").is_dir() for e in entries):
+            missing.append(browser)
+    return missing
+
+
+def docker_ready():
+    docker = shutil.which("docker")
+    if not docker:
+        return None
+    done = subprocess.run([docker, "info"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
+    return docker if done.returncode == 0 else None
+
+
+def copy_tree(pkg, dest):
+    shutil.copytree(str(pkg), str(dest), symlinks=True, ignore=shutil.ignore_patterns(*COPY_IGNORE))
+
+
+def step(cmd, cwd, what, fix):
+    print(f"front: {what}: {' '.join(cmd)}", flush=True)
+    done = subprocess.run(cmd, cwd=str(cwd), stdin=subprocess.DEVNULL)
+    if done.returncode != 0:
+        raise Fail(f"{what} failed (exit {done.returncode}, above); fix it and run again: {fix}", 1)
+
+
+def playwright_args(tokens, front, mode):
+    args = ["test", "--trace", "off", "--forbid-only", "--reporter", "line"]
+    if mode == "fast":
+        args += ["--grep-invert", front["visualTag"]]
+        for name in fast_projects(tokens, front):
+            args += ["--project", name]
+    return args
+
+
+def run(root, front, tokens, mode):
+    fix = run_command(root, mode)
+    pkg = package_dir(root, front)
+    docker = None
+    if mode == "full" and platform.system() != "Linux":
+        docker = docker_ready()
+        if docker is None:
+            raise Fail(f"`run full` compares screenshots, which only match on Linux (E-9), and this is "
+                       f"{platform.system()} without a running Docker: nothing was checked. Start Docker and run it "
+                       f"again ({fix}), or let the CI on Linux run it; here: {run_command(root, 'fast')}", 3)
+    stylelint = ["stylelint", "--allow-empty-input", *front["stylelintFiles"]]
+    tests = playwright_args(tokens, front, mode)
+    with tempfile.TemporaryDirectory(prefix="gw-front-run-") as tmp:
+        work = Path(tmp) / "work"
+        copy_tree(pkg, work)
+        if docker:
+            version = pinned_playwright(pkg)
+            if version is None:
+                raise Fail(f"no exact @playwright/test version in {pkg / 'package.json'} for the Docker image; pin it "
+                           f"(templates/front/package.json), then run: {fix}", 2)
+            image = front["dockerImage"].replace("{playwright}", version)
+            script = " && ".join([
+                "npm ci --no-audit --no-fund",
+                "npx " + " ".join(shlex.quote(a) for a in stylelint),
+                "npx playwright " + " ".join(shlex.quote(a) for a in tests)])
+            step([docker, "run", "--rm", "--ipc=host", "-v", f"{work}:/work", "-w", "/work", image, "bash", "-c", script],
+                 work, f"{mode} checks in Docker ({image})", fix)
+        else:
+            modules = install_packages(pkg, node_cache(root), fix)
+            need_node(fix)
+            wanted = front["browsers"]["all"] if mode == "fast" else matrix_browsers(front)
+            missing = missing_browsers(modules, wanted)
+            if missing:
+                raise Fail(f"Playwright's {', '.join(missing)} not installed; install it with: python3 "
+                           f"{Path(__file__).resolve()} --root {root} install --browsers {' '.join(missing)}, "
+                           f"then run: {fix}", 3)
+            os.symlink(str(modules), str(work / "node_modules"))
+            binary = modules / ".bin"
+            step([str(binary / "stylelint"), *stylelint[1:]], work, "stylelint", fix)
+            step([str(binary / "playwright"), *tests], work, f"playwright ({mode})", fix)
+    print(f"front: run {mode} passed")
+    return 0
+
+
+def install(root, front, package, browsers, with_deps):
+    pkg = package_dir(root, front, package)
+    fix = f"python3 {Path(__file__).resolve()} --root {root} install" + (f" --package-dir {package}" if package else "")
+    modules = install_packages(pkg, node_cache(root), fix)
+    if browsers:
+        need_node(fix)
+        cmd = [str(modules / ".bin" / "playwright"), "install", *(["--with-deps"] if with_deps else []), *browsers]
+        step(cmd, pkg, "playwright install", fix)
+    print(f"front: packages of {pkg} installed in {modules}")
+    return 0
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="front.py", description=__doc__.split("\n")[0])
     parser.add_argument("--root", help="project root (default: the repo of this script)")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("check", help="validate the tokens JSON")
     sub.add_parser("generate", help="check, then write the generated files into front.out")
+    run_p = sub.add_parser("run", help="the front checks: fast (pre-push) or full (CI, Linux or Docker)")
+    run_p.add_argument("mode", choices=("fast", "full"))
+    inst = sub.add_parser("install", help="npm packages (outside the tree) and, if asked, Playwright's browsers")
+    inst.add_argument("--package-dir", help="repo-relative folder with package.json (default front.dir; works "
+                                           "without front.tokens)")
+    inst.add_argument("--browsers", nargs="+", choices=("chromium", "firefox", "webkit"), default=[])
+    inst.add_argument("--with-deps", action="store_true", help="also the system libraries (needs sudo; CI)")
     args = parser.parse_args(argv)
     try:
         try:
@@ -454,6 +681,8 @@ def main(argv=None):
             front = config.front(config.load(root))
         except config.ConfigError as exc:
             raise Fail(str(exc), 2)
+        if args.cmd == "install" and (args.package_dir or front["tokens"] is not None):
+            return install(root, front, args.package_dir, args.browsers, args.with_deps)
         tokens = load_tokens(root, front)
         if tokens is None:
             return 0
@@ -461,6 +690,10 @@ def main(argv=None):
             print(f"front: {front['tokens']} is valid ({len(tokens.leaves)} tokens, "
                   f"{len(tokens.breakpoints())} breakpoints)")
             return 0
+        if args.cmd == "run":
+            return run(root, front, tokens, args.mode)
+        if args.cmd == "install":
+            return 0  # not reached: with tokens it installed above
         for path in write_files(root, front, generated_files(tokens, front)):
             print(f"front: wrote {path}")
         return 0

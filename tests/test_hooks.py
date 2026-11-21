@@ -1484,6 +1484,104 @@ class PortableShell(unittest.TestCase):
                     self.assertRegex(template, r"XXXXXX$", f"{rel}:{n}: BSD mktemp needs the template to end in XXXXXX")
 
 
+FAKE_FRONT = """import os, pathlib, sys
+args = sys.argv[1:]
+root = pathlib.Path(args[args.index("--root") + 1])
+tokens = root / "design" / "tokens.json"
+with open(os.environ["FRONT_LOG"], "a") as log:
+    log.write(" ".join(args[2:]) + "|" + str(root) + "|" + (tokens.read_text().strip() if tokens.exists() else "-") + "\\n")
+print("front: fake ran")
+sys.exit(int(os.environ.get("FRONT_EXIT", "0")))
+"""
+
+
+class PrePushFront(Base):
+    """E5 (trozo 3): with front.tokens in the pushed commit's config the pre-push runs `front.py run fast` on that
+    commit (its checkout, not the working tree); without it, nothing. Fails closed."""
+
+    def setUp(self):
+        super().setUp()
+        p = self.p
+        self.log = self.tmp / "front.log"
+        self.log.write_text("")
+        self.env = {"FRONT_LOG": str(self.log)}
+        (p.work / ".claude" / "gw" / "scripts" / "front.py").write_text(FAKE_FRONT)
+        p.commit("front.py")
+        p.git("checkout", "-q", "-b", "feature")
+
+    def set_tokens(self, value):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["front"] = {"tokens": value}
+        p.write(".claude/gw.json", json.dumps(cfg, indent=2))
+
+    def calls(self):
+        return [line.split("|") for line in self.log.read_text().splitlines()]
+
+    def remote_has(self, sha):
+        return sha in self.p.git("ls-remote", "origin", "refs/heads/feature").stdout
+
+    def test_without_tokens_front_does_not_run(self):
+        p = self.p
+        for value in ("absent", None):
+            if value is None:
+                self.set_tokens(None)
+            p.write("docs/a.md", f"{value}\n")
+            p.commit(f"notes {value}")
+            code, out = p.push("origin", "feature", env=self.env)
+            self.assertEqual(code, 0, out)
+            self.assertNotIn("front checks", out)
+        self.assertEqual(self.calls(), [])
+
+    def test_with_tokens_it_runs_fast_on_the_pushed_commit(self):
+        p = self.p
+        self.set_tokens("design/tokens.json")
+        p.write("design/tokens.json", "pushed\n")
+        p.commit("tokens")
+        p.write("design/tokens.json", "working tree only\n")  # the commit pushed differs from the working tree
+        code, out = p.push("origin", "feature", env=self.env)
+        self.assertEqual(code, 0, out)
+        self.assertIn("front checks (front.py run fast)", out)
+        calls = self.calls()
+        self.assertEqual(len(calls), 1, calls)
+        self.assertEqual(calls[0][0], "run fast")
+        self.assertEqual(calls[0][2], "pushed")
+        self.assertNotEqual(Path(calls[0][1]).resolve(), p.work.resolve())
+        self.assertTrue(self.remote_has(p.sha()))
+
+    def test_tokens_only_in_the_working_tree_do_not_count(self):
+        p = self.p
+        p.write("docs/a.md", "notes\n")
+        p.commit("notes")
+        self.set_tokens("design/tokens.json")  # not committed
+        code, out = p.push("origin", "feature", env=self.env)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.calls(), [])
+
+    def test_a_red_front_refuses_the_push_with_the_reason(self):
+        p = self.p
+        self.set_tokens("design/tokens.json")
+        p.write("design/tokens.json", "x\n")
+        p.commit("tokens")
+        code, out = p.push("origin", "feature", env=dict(self.env, FRONT_EXIT="1"))
+        self.assertNotEqual(code, 0, out)
+        self.assertIn(f"the front checks failed on {p.sha()[:7]}", out)
+        self.assertIn("run fast", out)
+        self.assertFalse(self.remote_has(p.sha()))
+
+    def test_tokens_without_front_py_fail_closed(self):
+        p = self.p
+        (p.work / ".claude" / "gw" / "scripts" / "front.py").unlink()
+        self.set_tokens("design/tokens.json")
+        p.write("design/tokens.json", "x\n")
+        p.commit("tokens, no front.py")
+        code, out = p.push("origin", "feature", env=self.env)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("sets front.tokens but the workflow has no front.py", out)
+        self.assertIn("/gw-update", out)
+        self.assertFalse(self.remote_has(p.sha()))
+
+
 class PrePushCiWarn(Base):
     """D62: once the push passed, the pre-push warns (never blocks) when the last CI of a pushed branch is red."""
 

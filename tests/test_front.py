@@ -255,8 +255,9 @@ class NoFront(Base):
                 self.assertFalse((self.tmp / "front").exists())
 
     def test_unknown_subcommand_is_a_usage_error(self):
-        r = self.run_cli("run")
-        self.assertEqual(r.returncode, 2)
+        for args in (("nope",), ("run",), ("run", "slow")):
+            r = self.run_cli(*args)
+            self.assertEqual(r.returncode, 2, args)
 
 
 class Generate(Base):
@@ -501,6 +502,187 @@ class Review(Base):
         self.assertIn("front", schema["profiles"]["description"])
 
 
+PACKAGE = json.dumps({"name": "x", "private": True, "devDependencies": {"@playwright/test": "1.63.0"}})
+FAKE_TOOL = """#!/bin/sh
+printf '%s|%s\\n' "$(basename "$0") $*" "$PWD" >> "$FAKE_LOG"
+[ -e "$PWD/node_modules" ] && echo "node_modules=yes" >> "$FAKE_LOG"
+case "$(basename "$0") $1" in "docker info") exit "${FAKE_DOCKER_INFO:-0}" ;; esac
+exit "${FAKE_EXIT:-0}"
+"""
+
+
+class Run(Base):
+    """E5 (trozo 3): `run fast|full`, in-process so the platform can be faked; node, npm, docker, Stylelint and
+    Playwright are fakes that log their arguments and folder."""
+
+    def setUp(self):
+        super().setUp()
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import front
+        self.mod = front
+        self.tokens(SAMPLE)
+        self.write_config()
+        (self.tmp / "package.json").write_text(PACKAGE)
+        (self.tmp / "package-lock.json").write_text("{}\n")
+        self.bin = self.tmp.parent / (self.tmp.name + "-bin")
+        self.bin.mkdir()
+        self.addCleanup(shutil.rmtree, self.bin, True)
+        self.log = self.bin / "log"
+        self.log.write_text("")
+        self.browsers = self.bin / "browsers"
+        (self.browsers / "chromium-1").mkdir(parents=True)
+        self.env = {"PATH": str(self.bin) + os.pathsep + "/usr/bin:/bin", "FAKE_LOG": str(self.log),
+                    "PLAYWRIGHT_BROWSERS_PATH": str(self.browsers), "GIT_CONFIG_GLOBAL": os.devnull}
+
+    def fake(self, folder, *names):
+        for name in names:
+            path = folder / name
+            path.write_text(FAKE_TOOL)
+            path.chmod(0o755)
+
+    def cache(self):
+        """A filled npm cache, as `npm ci` would leave it, with the stamp of this package."""
+        cache = self.tmp / ".git" / "gw" / "front-node"
+        modules = cache / "node_modules"
+        (modules / ".bin").mkdir(parents=True)
+        (modules / "playwright-core").mkdir()
+        (modules / "playwright-core" / "browsers.json").write_text(json.dumps(
+            {"browsers": [{"name": "chromium", "revision": "1"}, {"name": "webkit", "revision": "2"}]}))
+        self.fake(modules / ".bin", "stylelint", "playwright")
+        (cache / "installed-from").write_bytes(b"{}\n" + PACKAGE.encode())
+        return modules
+
+    def main(self, *args, system="Linux", env=None):
+        import contextlib
+        import io
+        from unittest import mock
+        err, out = io.StringIO(), io.StringIO()
+        with mock.patch.object(self.mod.platform, "system", return_value=system), \
+                mock.patch.dict(os.environ, dict(self.env, **(env or {}))), \
+                contextlib.redirect_stderr(err), contextlib.redirect_stdout(out):
+            code = self.mod.main(["--root", str(self.tmp), *args])
+        return code, out.getvalue() + err.getvalue()
+
+    def calls(self):
+        return [line.split("|") for line in self.log.read_text().splitlines() if "|" in line]
+
+    def test_without_tokens_run_does_nothing_and_exits_0(self):
+        for front in (None, {"tokens": None}):
+            self.write_config(front)
+            for mode, system in (("fast", "Linux"), ("full", "Linux"), ("full", "Darwin")):
+                code, out = self.main("run", mode, system=system)
+                self.assertEqual(code, 0, (front, mode, out))
+                self.assertEqual(out, "")
+        self.assertEqual(self.calls(), [])
+
+    def test_full_on_macos_without_docker_refuses_with_the_reason(self):
+        self.cache()
+        self.fake(self.bin, "node", "npm")
+        code, out = self.main("run", "full", system="Darwin")
+        self.assertEqual(code, 3, out)
+        self.assertIn("only match on Linux (E-9)", out)
+        self.assertIn("Darwin without a running Docker: nothing was checked", out)
+        self.assertIn("run fast", out)  # what can run here
+        self.assertNotIn("passed", out)
+        self.assertEqual(self.calls(), [])  # no Stylelint, no Playwright: no partial green
+
+    def test_full_on_macos_with_docker_stopped_refuses_too(self):
+        self.fake(self.bin, "docker")
+        code, out = self.main("run", "full", system="Darwin", env={"FAKE_DOCKER_INFO": "1"})
+        self.assertEqual(code, 3, out)
+        self.assertIn("without a running Docker", out)
+        self.assertEqual([c[0] for c in self.calls()], ["docker info"])
+
+    def test_full_on_macos_with_docker_runs_the_pinned_image(self):
+        self.fake(self.bin, "docker")
+        code, out = self.main("run", "full", system="Darwin")
+        self.assertEqual(code, 0, out)
+        run = [c for c in self.calls() if c[0].startswith("docker run")]
+        self.assertEqual(len(run), 1, self.calls())
+        self.assertIn("mcr.microsoft.com/playwright:v1.63.0-noble", run[0][0])
+        self.assertIn("npx playwright test", run[0][0])
+        self.assertNotIn("--grep-invert", run[0][0])
+        code, out = self.main("run", "full", system="Darwin", env={"FAKE_EXIT": "1"})
+        self.assertEqual(code, 1, out)
+        self.assertIn("full checks in Docker", out)
+
+    def test_fast_runs_stylelint_and_layout_on_the_main_breakpoints_from_a_copy(self):
+        self.cache()
+        self.fake(self.bin, "node", "npm")
+        code, out = self.main("run", "fast")
+        self.assertEqual(code, 0, out)
+        calls = self.calls()
+        self.assertEqual([c[0].split()[0] for c in calls], ["stylelint", "playwright"], calls)
+        self.assertIn("**/*.{css,scss}", calls[0][0])
+        pw = calls[1][0]
+        self.assertIn("--grep-invert @visual", pw)
+        self.assertIn("--project chromium-mobile --project chromium-desktop", pw)
+        self.assertNotIn("tablet", pw)
+        for call in calls:  # a temporary copy, never the tree
+            self.assertNotEqual(Path(call[1]).resolve(), self.tmp)
+        self.assertIn("node_modules=yes", self.log.read_text())
+        self.assertFalse((self.tmp / "node_modules").exists())
+        self.assertEqual(subprocess.run(["git", "-C", str(self.tmp), "status", "--porcelain", "--ignored"],
+                                        capture_output=True, text=True).stdout.count("node_modules"), 0)
+
+    def test_full_on_linux_runs_the_whole_matrix(self):
+        self.cache()
+        self.fake(self.bin, "node", "npm")
+        (self.browsers / "webkit-2").mkdir()
+        self.write_config({"tokens": "design/tokens.json", "browsers": {"all": ["chromium"], "main": ["webkit"]}})
+        code, out = self.main("run", "full")
+        self.assertEqual(code, 0, out)
+        pw = self.calls()[1][0]
+        self.assertNotIn("--grep-invert", pw)
+        self.assertNotIn("--project", pw)
+
+    def test_a_missing_browser_names_the_install_command(self):
+        self.cache()
+        self.fake(self.bin, "node", "npm")
+        code, out = self.main("run", "full")  # firefox (browsers.main) has no build in the browsers folder
+        self.assertEqual(code, 3, out)
+        self.assertIn("Playwright's webkit, firefox not installed", out)
+        self.assertIn("install --browsers webkit firefox", out)
+
+    def test_a_failed_check_exits_1_with_the_step(self):
+        self.cache()
+        self.fake(self.bin, "node", "npm")
+        code, out = self.main("run", "fast", env={"FAKE_EXIT": "2"})
+        self.assertEqual(code, 1, out)
+        self.assertIn("stylelint failed (exit 2", out)
+        self.assertIn("run fast", out)
+
+    def test_without_node_it_says_so(self):
+        code, out = self.main("run", "fast")  # no cache yet, so npm ci is needed
+        self.assertEqual(code, 3, out)
+        self.assertIn("node and npm not found; install node 22+", out)
+
+    def test_without_package_json_names_front_dir(self):
+        (self.tmp / "package.json").unlink()
+        code, out = self.main("run", "fast")
+        self.assertEqual(code, 2, out)
+        self.assertIn("no package.json in '.'", out)
+        self.assertIn("front.dir", out)
+
+    def test_install_installs_into_the_git_dir_and_stamps_it(self):
+        self.fake(self.bin, "node", "npm")
+        code, out = self.main("install")
+        self.assertEqual(code, 0, out)
+        cache = self.tmp / ".git" / "gw" / "front-node"
+        self.assertEqual([c[0] for c in self.calls()], ["npm ci --no-audit --no-fund"])
+        self.assertEqual(Path(self.calls()[0][1]).resolve(), cache.resolve())
+        self.assertEqual((cache / "installed-from").read_bytes(), b"{}\n" + PACKAGE.encode())
+
+    def test_install_without_tokens_does_nothing_unless_given_a_package_dir(self):
+        self.write_config(None)
+        self.fake(self.bin, "node", "npm")
+        self.assertEqual(self.main("install")[0], 0)
+        self.assertEqual(self.calls(), [])
+        self.assertEqual(self.main("install", "--package-dir", ".")[0], 0)
+        self.assertEqual([c[0] for c in self.calls()], ["npm ci --no-audit --no-fund"])
+
+
 class Config(unittest.TestCase):
     def test_schema_defaults_and_template_agree(self):
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]["front"]
@@ -518,6 +700,8 @@ class Config(unittest.TestCase):
         got = config.front({"front": {"tokens": "t.json", "browsers": {"main": ["webkit"]}}})
         self.assertEqual(got["browsers"], {"all": ["chromium"], "main": ["webkit"]})
         self.assertEqual(got["out"], "front/generated")
+        self.assertEqual(got["lfsThresholdKb"], 200)
+        self.assertEqual(got["visualTag"], "@visual")
 
 
 if __name__ == "__main__":

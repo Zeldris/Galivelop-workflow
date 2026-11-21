@@ -40,6 +40,25 @@ jobs:
             "$RUNNER_TEMP/actionlint/bin/pip" install --quiet "actionlint-py${version:+==$version.*}"
             echo "$RUNNER_TEMP/actionlint/bin" >> "$GITHUB_PATH"
           fi
+      - uses: actions/setup-node@v4
+        if: runner.os == 'Linux'
+        with:
+          node-version: "22"
+      - name: Front (E5) on Linux - packages outside the tree, Chromium, then front.py run full
+        # npm ci of templates/front into <git dir>/gw/front-node (the cache tests/test_front_sample.py reads, so the
+        # sample runs instead of being skipped) and the Chromium that pinned Playwright asks for; --with-deps (apt,
+        # sudo) only on GitHub. `run full` does nothing while .claude/gw.json has no front.tokens. macOS: the sample
+        # stays skipped with its reason (E-9).
+        if: runner.os == 'Linux'
+        run: |
+          deps=""
+          if [ "${GITHUB_ACTIONS:-}" = true ]; then deps="--with-deps"; fi
+          if [ "$(uname)" = Linux ] && command -v npm >/dev/null; then
+            python3 scripts/front.py install --package-dir templates/front --browsers chromium $deps
+            python3 scripts/front.py run full
+          else
+            echo "front: skipped (Linux with node and npm only)"
+          fi
       - name: Check
         # B37: the macOS runner is slower; the tests' waits (tests/waits.py) grow by this factor there.
         env:

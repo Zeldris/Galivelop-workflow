@@ -529,6 +529,54 @@ def check_generated(rep, root, cfg):
                  "add \"python3 .claude/gw/scripts/generated-check.py\" to `check` in .claude/gw.json")
 
 
+def check_front_snapshots(rep, root, cfg):
+    """E5: screenshot baselines (front.snapshotGlob, tracked) taken on another platform (`-darwin`, `-win32`: they only
+    match on Linux, E-9) or with another Playwright than the one pinned in front.dir/package.json (front.snapshotStamp),
+    and baselines over front.lfsThresholdKb that .gitattributes does not put in Git LFS. Only with front.tokens."""
+    front = config.front(cfg or {})
+    if not front["tokens"]:
+        return
+    listed = git(root, "ls-files", "-z") or ""
+    snaps = sorted(f for f in listed.split("\0") if f and fnmatch.fnmatch(f, front["snapshotGlob"]))
+    if not snaps:
+        return
+    problems = 0
+    foreign = [f for f in snaps if re.search(r"-(darwin|win32)\.[^/.]+$", f)]
+    if foreign:
+        problems += 1
+        rep.warn("front snapshots", f"{len(foreign)} baseline(s) from another platform than Linux, which never match "
+                 f"the CI's render (E-9): {', '.join(foreign[:5])}",
+                 "delete them and take them on Linux or in Docker: python3 .claude/gw/scripts/front.py run full "
+                 "(Playwright --update-snapshots there)")
+    try:  # the same reading as front.py's pinned_playwright (doctor.py must not need front.py)
+        package = json.loads((root / front["dir"] / "package.json").read_text(encoding="utf-8"))
+        pinned = ((package.get("devDependencies") or {}).get("@playwright/test")
+                  or (package.get("dependencies") or {}).get("@playwright/test"))
+    except (OSError, ValueError, AttributeError):
+        pinned = None
+    stamp_path = root / front["snapshotStamp"]
+    stamp = stamp_path.read_text(encoding="utf-8").strip() if stamp_path.is_file() else None
+    if pinned and stamp != pinned:
+        problems += 1
+        seen = f"Playwright {stamp}" if stamp else f"an unknown Playwright (no {front['snapshotStamp']})"
+        rep.warn("front snapshots", f"the baselines were taken with {seen}, but {front['dir']}/package.json pins "
+                 f"{pinned}: renders differ between versions",
+                 f"take them again with Playwright {pinned} on Linux and write {pinned} into {front['snapshotStamp']}")
+    limit = front["lfsThresholdKb"] * 1024
+    big = [f for f in snaps if (root / f).is_file() and (root / f).stat().st_size > limit]
+    attrs = (git(root, "check-attr", "filter", "--", *big) or "") if big else ""
+    in_lfs = {line.split(": filter: ")[0] for line in attrs.splitlines() if line.endswith(": filter: lfs")}
+    outside = [f for f in big if f not in in_lfs]
+    if outside:
+        problems += 1
+        rep.warn("front snapshots", f"{len(outside)} baseline(s) over front.lfsThresholdKb ({front['lfsThresholdKb']} "
+                 f"KiB) outside Git LFS: {', '.join(outside[:5])}",
+                 f"track them with LFS: git lfs track '{front['snapshotGlob']}' (writes .gitattributes), then "
+                 "git add --renormalize .")
+    if not problems:
+        rep.ok("front snapshots", f"{len(snaps)} baseline(s): Linux, Playwright {pinned or '?'}, large ones in LFS")
+
+
 def hook_files(command, root):
     """Files a hook command runs: words that use $CLAUDE_PROJECT_DIR, or a path given as the program itself."""
     expanded = command.replace("${CLAUDE_PROJECT_DIR}", str(root)).replace("$CLAUDE_PROJECT_DIR", str(root))
@@ -1414,6 +1462,7 @@ def run(root):
     check_ci(rep, root, cfg)
     check_workflow_lint(rep, root, cfg)
     check_generated(rep, root, cfg)
+    check_front_snapshots(rep, root, cfg)
     check_ci_access(rep, root)
     check_settings(rep, root)
     check_subagents(rep, root)
