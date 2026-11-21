@@ -508,6 +508,8 @@ FAKE_TOOL = """#!/bin/sh
 printf '%s|%s\\n' "$(basename "$0") $*" "$PWD" >> "$FAKE_LOG"
 [ -e "$PWD/node_modules" ] && echo "node_modules=yes" >> "$FAKE_LOG"
 [ -n "$FAKE_PROBE" ] && [ -e "$PWD/$FAKE_PROBE" ] && echo "probe=yes" >> "$FAKE_LOG"
+case "$(basename "$0") $*" in *--update-snapshots*) [ -n "$FAKE_SNAP" ] && [ "${FAKE_EXIT:-0}" = 0 ] && \
+  mkdir -p "$(dirname "$PWD/$FAKE_SNAP")" && printf 'new' > "$PWD/$FAKE_SNAP" ;; esac
 case "$(basename "$0") $1" in "docker info") exit "${FAKE_DOCKER_INFO:-0}" ;; esac
 exit "${FAKE_EXIT:-0}"
 """
@@ -651,6 +653,59 @@ class Run(Base):
         pw = self.calls()[1][0]
         self.assertNotIn("--grep-invert", pw)
         self.assertNotIn("--project", pw)
+
+    SNAP = "tests/home.spec.ts-snapshots/home-chromium-desktop-linux.png"
+
+    def test_update_snapshots_brings_the_baselines_back_and_writes_the_stamp(self):
+        """E78 (Q-34): the run is in a temporary copy, so the new or changed baselines come back to the tree and the
+        pinned Playwright goes into front.snapshotStamp; nothing else of the copy comes back."""
+        self.cache()
+        self.fake(self.bin, "node", "npm")
+        (self.browsers / "webkit-2").mkdir()
+        self.write_config({"tokens": "design/tokens.json", "browsers": {"all": ["chromium"], "main": ["webkit"]}})
+        old = self.tmp / "tests/a.spec.ts-snapshots/a-chromium-mobile-linux.png"
+        old.parent.mkdir(parents=True)
+        old.write_text("old")
+        self.track()
+        code, out = self.main("run", "full", "--update-snapshots", env={"FAKE_SNAP": self.SNAP})
+        self.assertEqual(code, 0, out)
+        self.assertIn("--update-snapshots", self.calls()[1][0])
+        self.assertEqual((self.tmp / self.SNAP).read_text(), "new")
+        self.assertEqual(old.read_text(), "old")
+        self.assertEqual((self.tmp / "front/snapshots.version").read_text(), "1.63.0\n")
+        self.assertIn(f"front: updated {self.SNAP}", out)
+        self.assertIn("review them with git diff", out)
+        self.assertFalse((self.tmp / "node_modules").exists())
+
+    def test_update_snapshots_in_docker_brings_them_back_too(self):
+        self.fake(self.bin, "docker")
+        code, out = self.main("run", "full", "--update-snapshots", system="Darwin", env={"FAKE_SNAP": self.SNAP})
+        self.assertEqual(code, 0, out)
+        run = [c for c in self.calls() if c[0].startswith("docker run")]
+        self.assertIn("--update-snapshots", run[0][0])
+        self.assertEqual((self.tmp / self.SNAP).read_text(), "new")
+        self.assertEqual((self.tmp / "front/snapshots.version").read_text(), "1.63.0\n")
+
+    def test_update_snapshots_after_a_failure_leaves_the_tree_and_the_stamp_alone(self):
+        self.fake(self.bin, "docker")
+        code, out = self.main("run", "full", "--update-snapshots", system="Darwin",
+                              env={"FAKE_SNAP": self.SNAP, "FAKE_EXIT": "1"})
+        self.assertEqual(code, 1, out)
+        self.assertFalse((self.tmp / self.SNAP).exists())
+        self.assertFalse((self.tmp / "front/snapshots.version").exists())
+
+    def test_update_snapshots_needs_full_and_an_exact_pin(self):
+        code, out = self.main("run", "fast", "--update-snapshots")
+        self.assertEqual(code, 2, out)
+        self.assertIn("--update-snapshots only goes with `run full`", out)
+        self.assertEqual(self.calls(), [])
+        (self.tmp / "package.json").write_text(PACKAGE.replace('"1.63.0"', '"^1.63.0"'))
+        self.track()
+        code, out = self.main("run", "full", "--update-snapshots")
+        self.assertEqual(code, 2, out)
+        self.assertIn("no exact @playwright/test version", out)
+        self.assertIn("snapshots.version", out)
+        self.assertEqual(self.calls(), [])
 
     def test_a_missing_browser_names_the_install_command(self):
         self.cache()

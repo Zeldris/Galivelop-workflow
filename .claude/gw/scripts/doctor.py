@@ -529,6 +529,9 @@ def check_generated(rep, root, cfg):
                  "add \"python3 .claude/gw/scripts/generated-check.py\" to `check` in .claude/gw.json")
 
 
+UPDATE_SNAPSHOTS = "python3 .claude/gw/scripts/front.py run full --update-snapshots"
+
+
 def check_front_snapshots(rep, root, cfg):
     """E5: screenshot baselines (front.snapshotGlob, tracked) taken on another platform (`-darwin`, `-win32`: they only
     match on Linux, E-9) or with another Playwright than the one pinned in front.dir/package.json (front.snapshotStamp),
@@ -554,16 +557,10 @@ def check_front_snapshots(rep, root, cfg):
     foreign = [f for f in snaps if re.search(r"-(darwin|win32)\.[^/.]+$", f)]
     if foreign:
         problems += 1
-        # `front.py run full` works in a temporary copy, so it cannot leave baselines in the tree: they are taken by
-        # hand on Linux (or in the Playwright image) until E78 automates it.
-        image = front["dockerImage"].replace("{playwright}", pinned or "<version pinned in package.json>")
-        update = f"npm ci && npx playwright test --grep {front['visualTag']} --update-snapshots"
+        # E78: `run full --update-snapshots` takes them on Linux or in Docker, copies them back and writes the stamp.
         rep.warn("front snapshots", f"{len(foreign)} baseline(s) from another platform than Linux, which never match "
                  f"the CI's render (E-9): {', '.join(foreign[:5])}",
-                 f"delete them and take them again on Linux: cd {front['dir']} && {update} (elsewhere, in Docker from "
-                 f"the repo root: docker run --rm -v \"$PWD\":/work -w /work/{front['dir']} {image} sh -c '{update}'), "
-                 f"then delete {front['dir']}/node_modules and write {pinned or 'the pinned Playwright'} into "
-                 f"{front['snapshotStamp']}; E78 will automate it")
+                 f"delete them and take them again: {UPDATE_SNAPSHOTS} (on Linux, or elsewhere with Docker running)")
     stamp_path = root / front["snapshotStamp"]
     stamp = stamp_path.read_text(encoding="utf-8").strip() if stamp_path.is_file() else None
     if pinned and stamp != pinned:
@@ -571,7 +568,7 @@ def check_front_snapshots(rep, root, cfg):
         seen = f"Playwright {stamp}" if stamp else f"an unknown Playwright (no {front['snapshotStamp']})"
         rep.warn("front snapshots", f"the baselines were taken with {seen}, but {front['dir']}/package.json pins "
                  f"{pinned}: renders differ between versions",
-                 f"take them again with Playwright {pinned} on Linux and write {pinned} into {front['snapshotStamp']}")
+                 f"take them again with Playwright {pinned}: {UPDATE_SNAPSHOTS} (it writes {front['snapshotStamp']})")
     limit = front["lfsThresholdKb"] * 1024
     big = [f for f in snaps if (root / f).is_file() and (root / f).stat().st_size > limit]
     # -z: NUL-separated <path> <attribute> <value>, paths unquoted (core.quotePath would quote a non-ASCII one)

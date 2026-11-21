@@ -381,7 +381,7 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | E75 | `grilling` writes each round to the questions file (`questions.py add`) and pushes it before presenting it (`0.9` harvest, private-project-5 P3) | done (2026-11-20) |
 | E76 | `measure.py` shows the fixed startup (system, tools, MCP) apart from the project's cost (`0.9` harvest, private-project-3 P2) | done (2026-11-20) |
 | E77 | Push and long check in the background with a 90 min `timeout` in `AGENTS.md` (and its templates), `gw-opt-tokens.md` and `gw-orchestrate-dealer`'s final push (user, 2026-11-19; Q-7 to Q-9) | done (2026-11-19) |
-| E78 | `front.py run full --update-snapshots` writes the Playwright version stamp of the snapshots that `doctor.py` reads (user, 2026-11-21; Q-34) | pending |
+| E78 | `front.py run full --update-snapshots` writes the Playwright version stamp of the snapshots that `doctor.py` reads (user, 2026-11-21; Q-34) | done (2026-11-21) |
 
 ## `0.10` "Stable"
 

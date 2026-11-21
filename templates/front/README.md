@@ -36,8 +36,9 @@ Tag the screenshot tests `@visual` (`front.visualTag`): `run fast` leaves them o
 (`*-snapshots/*.png`) only match the render they were taken on, so they are taken on Linux (or in the Playwright
 Docker image) with the Playwright pinned in `package.json`, and that version is written into
 `front/snapshots.version` (`front.snapshotStamp`); `doctor.py` warns when the stamp and the pin differ, about
-baselines from `-darwin`/`-win32` and about large ones outside Git LFS. Until E78 automates it, take them by hand in
-this folder: `npm ci && npx playwright test --grep @visual --update-snapshots`, then delete `node_modules`.
+baselines from `-darwin`/`-win32` and about large ones outside Git LFS. Take or refresh them with
+`python3 .claude/gw/scripts/front.py run full --update-snapshots` (Linux, or Docker elsewhere): the new or changed
+baselines come back to the tree and the stamp is written; review them with `git diff` before the commit.
 
 `GW_PLAYWRIGHT_PROJECTS` overrides the path of `playwright.projects.json` (default: `front/generated/` next to
 `gw-config.ts`, the default `front.out`). `.stylelintrc.json` extends `./front/generated/stylelint.tokens.json` and

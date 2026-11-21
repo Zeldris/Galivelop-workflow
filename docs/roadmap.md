@@ -382,7 +382,7 @@ Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18)
 | E75 | `grilling` escribe cada ronda en el archivo de preguntas (`questions.py add`) y la sube antes de presentarla (recogida `0.9`, private-project-5 P3) | hecho (2026-11-20) |
 | E76 | `measure.py` muestra aparte el arranque fijo (sistema, herramientas, MCP) del coste del proyecto (recogida `0.9`, private-project-3 P2) | hecho (2026-11-20) |
 | E77 | El push y el check largo, en segundo plano con `timeout` de 90 min en `AGENTS.md` (y sus plantillas), `gw-opt-tokens.md` y la subida final de `gw-orchestrate-dealer` (usuario, 2026-11-19; Q-7 a Q-9) | hecho (2026-11-19) |
-| E78 | `front.py run full --update-snapshots` escribe el sello de versión de Playwright de las capturas que lee `doctor.py` (usuario, 2026-11-21; Q-34) | pendiente |
+| E78 | `front.py run full --update-snapshots` escribe el sello de versión de Playwright de las capturas que lee `doctor.py` (usuario, 2026-11-21; Q-34) | hecho (2026-11-21) |
 
 ## `0.10` «Estable»
 

@@ -597,15 +597,18 @@ class Doctor(Snapshot):
         self.assertNotIn("outside Git LFS", out)
 
     def test_front_snapshot_fix_is_a_procedure_that_works_today(self):
-        """Finding 7: `run full` runs in a temporary copy, so it cannot be the fix; the manual one and E78 are."""
+        """Finding 7, then E78: the fix is `run full --update-snapshots`, which brings the baselines back and stamps
+        them; a bare `run full` (a temporary copy) would not be one."""
         self.front_project()
         self.snapshot("tests/home.spec.ts-snapshots/home-chromium-desktop-darwin.png", 100)
         self.p.commit("baselines")
         code, out = self.doctor()
-        line = self.assertLine(out, "WARN", "front snapshots", "from another platform",
-                               "npx playwright test --grep @visual --update-snapshots",
-                               "mcr.microsoft.com/playwright:v1.63.0-noble", "front/snapshots.version", "E78")
-        self.assertNotIn("run full", line)
+        self.assertLine(out, "WARN", "front snapshots", "from another platform",
+                        "python3 .claude/gw/scripts/front.py run full --update-snapshots", "Docker")
+        self.p.write("front/snapshots.version", "1.62.0\n")
+        code, out = self.doctor()
+        self.assertLine(out, "WARN", "front snapshots", "taken with Playwright 1.62.0",
+                        "front.py run full --update-snapshots", "front/snapshots.version")
 
     def test_front_snapshot_stamp_compares_only_an_exact_pin(self):
         """Finding 10: a range ("^1.63.0") is not a pin, as front.py reads it: no endless warning."""

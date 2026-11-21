@@ -9,6 +9,9 @@
                                # breakpoints (front.browsers.all x the main ones): what the pre-push runs
   python3 front.py run full    # Stylelint and the whole matrix, visual tests included: Linux only, or through
                                # Docker (front.dockerImage) elsewhere; otherwise it refuses (exit 3), never a false green
+  python3 front.py run full --update-snapshots
+                               # the same, rewriting the visual baselines: the new or changed ones (front.snapshotGlob)
+                               # come back to the tree and the pinned Playwright goes into front.snapshotStamp (E78)
   python3 front.py install [--package-dir DIR] [--browsers B ...] [--matrix] [--with-deps]
                                # the npm packages of front.dir (or DIR) and, if asked, Playwright's browsers
                                # (--matrix: every browser of front.browsers.all and .main, what `run full` needs; CI)
@@ -36,6 +39,7 @@ Python 3.8+, standard library only.
 """
 import argparse
 import contextlib
+import fnmatch
 import hashlib
 import json
 import math
@@ -727,8 +731,8 @@ def step(cmd, cwd, what, fix):
         raise Fail(f"{what} failed (exit {done.returncode}, above); fix it and run again: {fix}", 1)
 
 
-def playwright_args(tokens, front, mode):
-    args = ["test", "--trace", "off", "--forbid-only", "--reporter", "line"]
+def playwright_args(tokens, front, mode, update=False):
+    args = ["test", "--trace", "off", "--forbid-only", "--reporter", "line"] + (["--update-snapshots"] if update else [])
     if mode == "fast":
         args += ["--grep-invert", front["visualTag"]]
         for name in fast_projects(tokens, front):
@@ -736,11 +740,54 @@ def playwright_args(tokens, front, mode):
     return args
 
 
-def run(root, front, tokens, mode):
+def snapshot_files(work):
+    """The regular files of the copy `work` by repo-relative path (what Playwright may have written), outside
+    node_modules."""
+    found = {}
+    for dirpath, dirnames, names in os.walk(str(work)):
+        dirnames[:] = [d for d in dirnames if d != "node_modules"]
+        for name in names:
+            path = Path(dirpath) / name
+            if path.is_file() and not path.is_symlink():
+                found[path.relative_to(work).as_posix()] = path
+    return found
+
+
+def bring_back_snapshots(root, front, work, version):
+    """E78: the baselines (front.snapshotGlob) that the run wrote or changed in the copy go back to the tree, and the
+    pinned Playwright into front.snapshotStamp. Nothing else of the copy comes back, and nothing is committed."""
+    updated = []
+    for rel, path in sorted(snapshot_files(work).items()):
+        if not fnmatch.fnmatch(rel, front["snapshotGlob"]):
+            continue
+        target = Path(root) / rel
+        data = path.read_bytes()
+        if target.is_file() and target.read_bytes() == data:
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+        updated.append(rel)
+        print(f"front: updated {rel}")
+    stamp = Path(root) / front["snapshotStamp"]
+    stamp.parent.mkdir(parents=True, exist_ok=True)
+    stamp.write_text(version + "\n", encoding="utf-8")
+    print(f"front: {len(updated)} baseline(s) updated, Playwright {version} written into {front['snapshotStamp']}; "
+          "review them with git diff (and git status for new ones) before the commit")
+
+
+def run(root, front, tokens, mode, update=False):
     """Stylelint from the root of a copy of the tracked files (front.stylelintFiles are repo-relative globs, with the
-    config of front.dir), then Playwright from the copy's front.dir."""
-    fix = run_command(root, mode)
+    config of front.dir), then Playwright from the copy's front.dir. With `update` (`run full --update-snapshots`,
+    E78) Playwright rewrites the baselines and bring_back_snapshots copies them to the tree."""
+    fix = run_command(root, mode) + (" --update-snapshots" if update else "")
+    if update and mode != "full":
+        raise Fail(f"--update-snapshots only goes with `run full` (baselines are only valid from Linux or Docker, "
+                   f"E-9); run: {run_command(root, 'full')} --update-snapshots", 2)
     pkg = package_dir(root, front)
+    version = pinned_playwright(pkg)
+    if update and version is None:
+        raise Fail(f"no exact @playwright/test version in {pkg / 'package.json'}, so the baselines cannot be stamped "
+                   f"in {front['snapshotStamp']}; pin it (templates/front/package.json), then run: {fix}", 2)
     rel_dir = pkg.relative_to(os.path.realpath(str(root))).as_posix() if pkg != Path(os.path.realpath(str(root))) else "."
     docker = None
     if mode == "full" and platform.system() != "Linux":
@@ -756,14 +803,13 @@ def run(root, front, tokens, mode):
                    f"nothing; set repo-relative globs of the project's CSS in .claude/gw.json, then run: {fix}", 2)
     config_name = stylelint_config(pkg)
     lint_args = (["--config", f"{rel_dir}/{config_name}"] if config_name else []) + list(globs)
-    tests = playwright_args(tokens, front, mode)
+    tests = playwright_args(tokens, front, mode, update)
     with tempfile.TemporaryDirectory(prefix="gw-front-run-") as tmp:
         work = Path(tmp) / "work"
         work.mkdir()
         copy_tracked(os.path.realpath(str(root)), files, work)
         work_pkg = work / rel_dir
         if docker:
-            version = pinned_playwright(pkg)
             if version is None:
                 raise Fail(f"no exact @playwright/test version in {pkg / 'package.json'} for the Docker image; pin it "
                            f"(templates/front/package.json), then run: {fix}", 2)
@@ -788,6 +834,8 @@ def run(root, front, tokens, mode):
             binary = modules / ".bin"
             step([str(binary / "stylelint"), *lint_args], work, "stylelint", fix)
             step([str(binary / "playwright"), *tests], work_pkg, f"playwright ({mode})", fix)
+        if update:
+            bring_back_snapshots(os.path.realpath(str(root)), front, work, version)
     print(f"front: run {mode} passed")
     return 0
 
@@ -812,6 +860,9 @@ def main(argv=None):
     sub.add_parser("generate", help="check, then write the generated files into front.out")
     run_p = sub.add_parser("run", help="the front checks: fast (pre-push) or full (CI, Linux or Docker)")
     run_p.add_argument("mode", choices=("fast", "full"))
+    run_p.add_argument("--update-snapshots", action="store_true",
+                       help="full only: rewrite the visual baselines, copy them to the tree and stamp the pinned "
+                            "Playwright in front.snapshotStamp (E78)")
     inst = sub.add_parser("install", help="npm packages (outside the tree) and, if asked, Playwright's browsers")
     inst.add_argument("--package-dir", help="repo-relative folder with package.json (default front.dir; works "
                                            "without front.tokens)")
@@ -837,7 +888,7 @@ def main(argv=None):
                   f"{len(tokens.breakpoints())} breakpoints)")
             return 0
         if args.cmd == "run":
-            return run(root, front, tokens, args.mode)
+            return run(root, front, tokens, args.mode, args.update_snapshots)
         if args.cmd == "install":
             return 0  # not reached: with tokens it installed above
         for path in write_files(root, front, generated_files(tokens, front)):
