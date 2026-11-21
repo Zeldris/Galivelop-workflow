@@ -371,6 +371,127 @@ class Generate(Base):
         self.assertTrue((self.tmp / "web" / "gen" / "tokens.css").is_file())
 
 
+def tweak(**colors):
+    """The sample with extra tokens under `color` (a dict name -> token)."""
+    data = json.loads(json.dumps(SAMPLE))
+    data["color"].update(colors)
+    return data
+
+
+class Review(Base):
+    """E5 trozo 1, review findings: one case per cause."""
+
+    def test_scss_defines_a_variable_before_an_alias_uses_it(self):
+        self.generate(tweak(**{"a-x": {"$value": "{color.z-y}"}, "z-y": {"$value": "#ffffff"}}))
+        scss = self.out("_tokens.scss")
+        self.assertLess(scss.index("$color-z-y: #ffffff;"), scss.index("$color-a-x: $color-z-y;"))
+        chain = tweak(**{"a1": {"$value": "{color.b1}"}, "b1": {"$value": "{color.c1}"}, "c1": {"$value": "#000"}})
+        self.generate(chain)
+        scss = self.out("_tokens.scss")
+        self.assertLess(scss.index("$color-c1:"), scss.index("$color-b1:"))
+        self.assertLess(scss.index("$color-b1:"), scss.index("$color-a1:"))
+
+    def test_underscore_and_hyphen_are_the_same_name(self):
+        self.fails(tweak(**{"q_r": {"$value": "#111"}, "q-r": {"$value": "#222"}}), "both become --color-q-r")
+
+    def test_font_weight_names_become_numbers(self):
+        data = json.loads(json.dumps(SAMPLE))
+        data["font"]["weight"]["semi"] = {"$type": "fontWeight", "$value": "semi-bold"}
+        data["font"]["weight"]["float"] = {"$type": "fontWeight", "$value": 700.0}
+        self.generate(data)
+        css = self.out("tokens.css")
+        self.assertIn("--font-weight-semi: 600;", css)
+        self.assertIn("--font-weight-float: 700;", css)
+        self.assertNotIn("semi-bold", css)
+
+    def test_font_weight_unknown_name_fails(self):
+        data = json.loads(json.dumps(SAMPLE))
+        data["font"]["weight"]["x"] = {"$type": "fontWeight", "$value": "chunky"}
+        self.fails(data, "fontWeight value 'chunky'")
+
+    def test_nan_and_infinity_fail(self):
+        for word in ("NaN", "Infinity", "-Infinity"):
+            text = json.dumps(SAMPLE).replace("1.618", word)
+            self.fails(text, f"{word} is not a JSON number")
+        self.fails(json.dumps(SAMPLE).replace("1.618", "1e999"), "must be a finite JSON number")
+
+    def test_stylelint_reports_functions_and_expands_shorthands(self):
+        self.generate()
+        cfg = json.loads(self.out("stylelint.tokens.json"))
+        opts = cfg["rules"]["scale-unlimited/declaration-strict-value"][1]
+        self.assertIs(opts["ignoreFunctions"], False)
+        self.assertIs(opts["expandShorthand"], True)
+
+    def test_dimension_needs_digits_and_a_unit(self):
+        for bad in ("16.", "16", ".", "16 px", "16px\n", "px"):
+            data = json.loads(json.dumps(SAMPLE))
+            data["space"]["bad"] = {"$value": bad}
+            self.fails(data, "dimension value")
+        data = json.loads(json.dumps(SAMPLE))
+        data["space"]["zero"] = {"$value": "0"}
+        data["space"]["frac"] = {"$value": ".5rem"}
+        self.generate(data)
+        self.assertIn("--space-zero: 0;", self.out("tokens.css"))
+
+    def test_a_failed_replace_leaves_no_temp_file(self):
+        self.tokens(SAMPLE)
+        blocked = self.tmp / "front" / "generated" / "tokens.css"
+        blocked.mkdir(parents=True)
+        r = self.run_cli("generate")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("cannot write front/generated", r.stderr)
+        self.assertEqual([p.name for p in blocked.parent.iterdir() if p.name.endswith(".tmp")], [])
+
+    def test_alias_to_a_token_without_type_names_the_target(self):
+        data = json.loads(json.dumps(SAMPLE))
+        data["misc"] = {"plain": {"$value": "1px"}, "al": {"$type": "dimension", "$value": "{misc.plain}"}}
+        self.fails(data, "misc.plain has no $type")
+
+    def test_alias_without_type_inherits_its_targets(self):
+        data = json.loads(json.dumps(SAMPLE))
+        data["misc"] = {"al": {"$value": "{color.brand}"}, "bad": {"$type": "dimension", "$value": "{color.brand}"}}
+        self.fails(data, "misc.bad: type dimension differs")
+        del data["misc"]["bad"]
+        self.generate(data)
+        self.assertIn("--misc-al: var(--color-brand);", self.out("tokens.css"))
+
+    def test_alias_chain_without_type_resolves_breakpoint(self):
+        data = json.loads(json.dumps(SAMPLE))
+        data["size"] = {"wide": {"$type": "dimension", "$value": "1440px"}}
+        data["breakpoint"]["wide"] = {"$value": "{size.wide}"}
+        self.generate(data)
+
+    def test_values_that_could_break_the_output_fail(self):
+        for bad, reason in (("red; color: blue", "could end or open"), ("red; } body {", "mixes an alias"), ("red\nblue", "could end or open"),
+                            ("red /* x", "comment marker"), ("a // b", "comment marker"),
+                            ("rgb(1 2 3", "parentheses are not balanced"), ("#{x}", "mixes an alias")):
+            self.fails(tweak(bad={"$value": bad}), reason)
+        data = json.loads(json.dumps(SAMPLE))
+        data["font"]["family"]["base"]["$value"] = ["Evil; } x {"]
+        self.fails(data, "could end or open")
+
+    def test_stylelint_lists_and_default_height_are_configurable(self):
+        self.front = {"tokens": "design/tokens.json", "defaultHeight": 900,
+                      "stylelint": {"colorProperties": ["color"], "sizeProperties": [], "ignoreValues": ["inherit"],
+                                    "expandShorthand": False}}
+        self.generate()
+        props, opts = json.loads(self.out("stylelint.tokens.json"))["rules"][
+            "scale-unlimited/declaration-strict-value"]
+        self.assertEqual(props, ["color", "/^margin/", "/^padding/", "/^gap/", "/^row-gap/", "/^column-gap/"])
+        self.assertEqual(opts["ignoreValues"], ["inherit"])
+        self.assertIs(opts["expandShorthand"], False)
+        projects = json.loads(self.out("playwright.projects.json"))
+        self.assertIn(900, [p["viewport"]["height"] for p in projects if "tablet" in p["name"]])
+
+    def test_front_is_not_a_profile_key(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import config
+        self.assertIn("front", config.PROFILE_DENIED)
+        schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
+        self.assertIn("front", schema["profiles"]["description"])
+
+
 class Config(unittest.TestCase):
     def test_schema_defaults_and_template_agree(self):
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]["front"]

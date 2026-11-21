@@ -1522,7 +1522,7 @@
         "people": {"type": "object", "additionalProperties": {"type": "object", "additionalProperties": false, "properties": {"role": {"type": "string", "minLength": 1}, "profile": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"}}}, "default": {}}
       },
       "default": {"dir": ".claude/gw/profiles", "roles": {}, "people": {}},
-      "description": "E4: per-person and per-role profiles. Layers: the project config (default) -> the profile of the person's role -> the person's own profile; each profile (<dir>/<name>.json) holds only the keys it changes, objects merge deep, lists are replaced, the last layer wins. `roles` maps a role to a profile name; `people` maps the SHA-256 of a person's git user.email (trimmed, lower case; never the address: python3 scripts/profile.py assign writes it) to {role?, profile?}. A profile may change any key except the ones that decide what is installed or the config's shape (version, schemaVersion, $schema, profiles, languages, agentsSkillsDir, projectSkillPrefix, gitignoreStacks and the ci* template keys). CI (the CI environment variable) always runs with the default. Convenience, not access control: git's e-mail can be changed and hooks skipped with --no-verify."
+      "description": "E4: per-person and per-role profiles. Layers: the project config (default) -> the profile of the person's role -> the person's own profile; each profile (<dir>/<name>.json) holds only the keys it changes, objects merge deep, lists are replaced, the last layer wins. `roles` maps a role to a profile name; `people` maps the SHA-256 of a person's git user.email (trimmed, lower case; never the address: python3 scripts/profile.py assign writes it) to {role?, profile?}. A profile may change any key except the ones that decide what is installed or the config's shape (version, schemaVersion, $schema, profiles, languages, agentsSkillsDir, projectSkillPrefix, gitignoreStacks, front (E5: it decides the bytes of the generated files, which must be the same for everyone and CI) and the ci* template keys). CI (the CI environment variable) always runs with the default. Convenience, not access control: git's e-mail can be changed and hooks skipped with --no-verify."
     },
     "front": {
       "type": "object",
@@ -1532,6 +1532,20 @@
         "out": {"type": "string", "minLength": 1, "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$))(?!(\\.(/+|$))+$).+$", "default": "front/generated"},
         "breakpointGroup": {"type": "string", "minLength": 1, "pattern": "^[^.{}$]+$", "default": "breakpoint"},
         "mainBreakpoints": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true, "default": []},
+        "defaultHeight": {"type": "integer", "minimum": 1, "default": 800, "description": "Viewport height of a breakpoint without `$extensions.gw.height`."},
+        "stylelint": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "colorProperties": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}, "default": ["color", "background-color", "border-color", "border-top-color", "border-right-color", "border-bottom-color", "border-left-color", "outline-color", "fill", "stroke"]},
+            "spacingProperties": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}, "default": ["/^margin/", "/^padding/", "/^gap/", "/^row-gap/", "/^column-gap/"]},
+            "sizeProperties": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}, "default": ["font-size"]},
+            "ignoreValues": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}, "default": ["inherit", "initial", "unset", "revert", "none", "transparent", "currentColor", "currentcolor", "0", "auto"]},
+            "expandShorthand": {"type": "boolean", "default": true}
+          },
+          "default": {"colorProperties": ["color", "background-color", "border-color", "border-top-color", "border-right-color", "border-bottom-color", "border-left-color", "outline-color", "fill", "stroke"], "spacingProperties": ["/^margin/", "/^padding/", "/^gap/", "/^row-gap/", "/^column-gap/"], "sizeProperties": ["font-size"], "ignoreValues": ["inherit", "initial", "unset", "revert", "none", "transparent", "currentColor", "currentcolor", "0", "auto"], "expandShorthand": true},
+          "description": "E5: the Stylelint fragment `generate` writes (stylelint-declaration-strict-value): properties that must use a token variable or function (`colorProperties`, `spacingProperties`, `sizeProperties`; `/regex/` strings allowed), values always allowed (`ignoreValues`) and `expandShorthand` (also checks the parts of `background`, `border`, `outline`, `margin`, `padding`...). Literal values inside functions (`rgb(...)`, `calc(13px)`) are always reported."
+        },
         "browsers": {
           "type": "object",
           "additionalProperties": false,
@@ -1542,7 +1556,7 @@
           "default": {"all": ["chromium"], "main": ["webkit", "firefox"]}
         }
       },
-      "default": {"tokens": null, "out": "front/generated", "breakpointGroup": "breakpoint", "mainBreakpoints": [], "browsers": {"all": ["chromium"], "main": ["webkit", "firefox"]}},
+      "default": {"tokens": null, "out": "front/generated", "breakpointGroup": "breakpoint", "mainBreakpoints": [], "defaultHeight": 800, "stylelint": {"colorProperties": ["color", "background-color", "border-color", "border-top-color", "border-right-color", "border-bottom-color", "border-left-color", "outline-color", "fill", "stroke"], "spacingProperties": ["/^margin/", "/^padding/", "/^gap/", "/^row-gap/", "/^column-gap/"], "sizeProperties": ["font-size"], "ignoreValues": ["inherit", "initial", "unset", "revert", "none", "transparent", "currentColor", "currentcolor", "0", "auto"], "expandShorthand": true}, "browsers": {"all": ["chromium"], "main": ["webkit", "firefox"]}},
       "description": "E5: front-end tests. `tokens` is the repo-relative path to a design-tokens JSON (a subset of the W3C DTCG format: nested groups, leaves with `$value` and `$type`, aliases `{group.token}`); null = the project has no front and `front.py` does nothing. `python3 scripts/front.py check` validates it and `generate` writes `tokens.css`, `_tokens.scss`, `stylelint.tokens.json` and `playwright.projects.json` into `out` (declare them in `generated` so the check compares them). `breakpointGroup` is the token group whose leaves are the breakpoints (px widths; optional viewport height in `$extensions.gw.height`, default 800). `mainBreakpoints` names the breakpoints that also run in `browsers.main`; empty = the smallest and the largest. `browsers.all` runs at every breakpoint."
     }
   }

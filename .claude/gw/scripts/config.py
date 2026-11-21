@@ -631,9 +631,11 @@ def front(config):
     """E5: the `front` block normalized ({"tokens", "out", "breakpointGroup", "mainBreakpoints", "browsers":
     {"all", "main"}}), every missing inner key filled from the schema default (front.py's one accessor)."""
     out = _section(config, "front")
-    props = _schema()["properties"]["front"]["properties"]["browsers"]["properties"]
-    given = out["browsers"] if isinstance(out["browsers"], dict) else {}
-    out["browsers"] = {k: list(given.get(k, prop["default"])) for k, prop in props.items()}
+    for key in ("browsers", "stylelint"):
+        props = _schema()["properties"]["front"]["properties"][key]["properties"]
+        given = out[key] if isinstance(out[key], dict) else {}
+        out[key] = {k: (list(given.get(k, prop["default"])) if isinstance(prop["default"], list)
+                        else given.get(k, prop["default"])) for k, prop in props.items()}
     out["mainBreakpoints"] = list(out["mainBreakpoints"])
     return out
 
@@ -1287,7 +1289,7 @@ def _commit(root, rev):
 
 PROFILE_DENIED = ("$schema", "version", "schemaVersion", "profiles", "languages", "agentsSkillsDir", "projectSkillPrefix",
                   "gitignoreStacks", "ciInstall", "ciPython", "ciNodeDirs", "ciRustDirs", "ciKeepSteps", "ciOnPush",
-                  "actionlintVersion")
+                  "actionlintVersion", "front")
 PROFILE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 EMAIL_HASH = re.compile(r"^[0-9a-f]{64}$")
 EMAIL_ADDRESS = re.compile(r"^[^@\s]+@[^@\s]+$")  # E4: what profile.py accepts as an address to hash

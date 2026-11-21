@@ -21,6 +21,7 @@ Python 3.8+, standard library only.
 """
 import argparse
 import json
+import math
 import os
 import re
 import sys
@@ -33,20 +34,17 @@ sys.path.insert(0, str(HERE))
 import config  # noqa: E402  the only reader of .claude/gw.json
 
 TYPES = ("color", "dimension", "fontFamily", "fontWeight", "number", "duration")
-DEFAULT_HEIGHT = 800
-DIMENSION = re.compile(r"^-?(\d+\.?\d*|\.\d+)(px|rem|em|%|vw|vh|vmin|vmax|ch|ex|pt|cm|mm|in)?$")
-DURATION = re.compile(r"^\d+(\.\d+)?(ms|s)$")
-PX = re.compile(r"^(\d+)px$")
-ALIAS = re.compile(r"^\{([^{}]+)\}$")
-WEIGHTS = ("thin", "hairline", "extra-light", "ultra-light", "light", "normal", "regular", "book", "medium",
-           "semi-bold", "demi-bold", "bold", "extra-bold", "ultra-bold", "black", "heavy", "extra-black", "ultra-black")
+NUMBER = r"-?(?:\d+(?:\.\d+)?|\.\d+)"
+DIMENSION = re.compile(NUMBER + r"(px|rem|em|%|vw|vh|vmin|vmax|ch|ex|pt|cm|mm|in)")
+DURATION = re.compile(r"\d+(\.\d+)?(ms|s)")
+PX = re.compile(r"(\d+)px")
+ALIAS = re.compile(r"\{([^{}]+)\}")
+# DTCG weight names as numbers: CSS font-weight only knows normal, bold, bolder, lighter and numbers
+WEIGHTS = {"thin": 100, "hairline": 100, "extra-light": 200, "ultra-light": 200, "light": 300, "normal": 400,
+           "regular": 400, "book": 400, "medium": 500, "semi-bold": 600, "demi-bold": 600, "bold": 700,
+           "extra-bold": 800, "ultra-bold": 800, "black": 900, "heavy": 900, "extra-black": 950, "ultra-black": 950}
 GENERIC_FAMILIES = ("serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "ui-serif", "ui-sans-serif",
                     "ui-monospace", "ui-rounded", "emoji", "math", "fangsong")
-COLOR_PROPERTIES = ["color", "background-color", "border-color", "border-top-color", "border-right-color",
-                    "border-bottom-color", "border-left-color", "outline-color", "fill", "stroke"]
-SPACING_PROPERTIES = ["/^margin/", "/^padding/", "/^gap/", "/^row-gap/", "/^column-gap/"]
-IGNORE_VALUES = ["inherit", "initial", "unset", "revert", "none", "transparent", "currentColor", "currentcolor",
-                 "0", "auto"]
 STRICT_VALUE_RULE = "scale-unlimited/declaration-strict-value"
 FILES = ("tokens.css", "_tokens.scss", "stylelint.tokens.json", "playwright.projects.json")
 
@@ -73,10 +71,11 @@ def inside(root, rel):
 
 
 def css_part(segment):
-    """One name segment as CSS-safe text: accents folded to ASCII, lower case, anything else becomes '-'."""
+    """One name segment as CSS-safe text: accents folded to ASCII, lower case, anything else becomes '-' (also
+    '_': Sass treats - and _ in a variable name as the same character)."""
     text = unicodedata.normalize("NFKD", segment)
     text = "".join(c for c in text if not unicodedata.combining(c)).lower()
-    return re.sub(r"[^a-z0-9_]+", "-", text).strip("-")
+    return re.sub(r"[^a-z0-9]+", "-", text).strip("-")
 
 
 def css_name(path):
@@ -85,6 +84,10 @@ def css_name(path):
 
 def dotted(path):
     return ".".join(path)
+
+
+def non_finite(constant):
+    raise ValueError(f"{constant} is not a JSON number (CSS and Sass reject it)")
 
 
 def no_duplicates(pairs):
@@ -99,8 +102,9 @@ def no_duplicates(pairs):
 class Tokens:
     """The parsed, validated tokens: `leaves` {dotted path: Leaf} in file order."""
 
-    def __init__(self, data, group, root):
+    def __init__(self, data, group, root, front):
         self.root = root
+        self.front = front
         self.leaves = {}
         self.fix = f"fix the tokens file, then check it with: {command(root)}"
         self.group = group
@@ -151,8 +155,8 @@ class Tokens:
 
     # -- aliases -----------------------------------------------------------------------------------------------
     def alias_of(self, value):
-        if isinstance(value, str) and ALIAS.match(value):
-            return ALIAS.match(value).group(1)
+        if isinstance(value, str) and ALIAS.fullmatch(value):
+            return ALIAS.fullmatch(value).group(1)
         return None
 
     def _aliases(self):
@@ -186,49 +190,72 @@ class Tokens:
 
     # -- values ------------------------------------------------------------------------------------------------
     def _values(self):
-        for name, leaf in self.leaves.items():
+        for name, leaf in self.leaves.items():  # own and inherited types first: an alias takes its target's
             kind = leaf["type"]
+            if kind is None and leaf["alias"] is not None:
+                continue
             if kind is None:
                 raise Fail(f"{name} has no $type (and no group above it sets one); add \"$type\" (one of "
                            f"{', '.join(TYPES)}); {self.fix}")
             if kind not in TYPES:
                 raise Fail(f"{name}: $type '{kind}' is not allowed (allowed: {', '.join(TYPES)}); {self.fix}")
-            if leaf["alias"] is not None:
-                end = self.leaves[self.resolve(name)]
-                if end["type"] != kind:
-                    raise Fail(f"{name}: type {kind} differs from the type of its alias target "
-                               f"{{{leaf['alias']}}} ({end['type']}); {self.fix}")
+        for name, leaf in self.leaves.items():
+            if leaf["alias"] is None:
+                leaf["text"] = self.render(name, leaf["type"], leaf["value"])
                 continue
-            leaf["text"] = self.render(name, kind, leaf["value"])
+            end_name = self.resolve(name)
+            end = self.leaves[end_name]
+            if leaf["type"] is None:
+                leaf["type"] = end["type"]  # DTCG: an alias without a type has its target's
+            elif end["type"] != leaf["type"]:
+                raise Fail(f"{name}: type {leaf['type']} differs from the type of its alias target "
+                           f"{{{leaf['alias']}}} ({end['type']}); {self.fix}")
+
+    def unsafe(self, name, text):
+        """Fails when `text` could break the CSS or SCSS written from it (a declaration ended early, a block or a
+        comment opened, an interpolation, a line break, unbalanced parentheses)."""
+        bad = next((c for c in text if c in ";{}\\" or ord(c) < 32 or ord(c) == 127), None)
+        reason = None
+        if bad is not None:
+            reason = f"the character {bad!r} could end or open a declaration, a block or a line in the generated files"
+        elif "/*" in text or "*/" in text or "//" in text:
+            reason = "a comment marker (/* */ or //) could swallow what follows it in the generated files"
+        elif text.count("(") != text.count(")"):
+            reason = "its parentheses are not balanced"
+        if reason:
+            raise Fail(f"{name}: value {text!r} is not safe to write into CSS and SCSS: {reason}; {self.fix}")
+        return text
 
     def render(self, name, kind, value):
         bad = f"; {self.fix}"
         if kind == "color":
             if not isinstance(value, str) or not value.strip():
                 raise Fail(f"{name}: color value {value!r} must be a non-empty string{bad}")
-            return value.strip()
+            return self.unsafe(name, value.strip())
         if kind == "dimension":
-            if not isinstance(value, str) or not DIMENSION.match(value):
-                raise Fail(f"{name}: dimension value {value!r} is not a number with a unit, e.g. \"16px\"{bad}")
+            if not isinstance(value, str) or not (DIMENSION.fullmatch(value) or value in ("0", "-0")):
+                raise Fail(f"{name}: dimension value {value!r} is not a number with a unit (or 0), e.g. \"16px\"{bad}")
             return value
         if kind == "duration":
-            if not isinstance(value, str) or not DURATION.match(value):
+            if not isinstance(value, str) or not DURATION.fullmatch(value):
                 raise Fail(f"{name}: duration value {value!r} is not a number of ms or s, e.g. \"150ms\"{bad}")
             return value
         if kind == "number":
-            if isinstance(value, bool) or not isinstance(value, (int, float)):
-                raise Fail(f"{name}: number value {value!r} must be a JSON number{bad}")
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value):
+                raise Fail(f"{name}: number value {value!r} must be a finite JSON number{bad}")
             return str(int(value)) if float(value).is_integer() else repr(float(value))
         if kind == "fontWeight":
-            if isinstance(value, bool) or not (isinstance(value, int) and 1 <= value <= 1000
-                                               or isinstance(value, str) and value in WEIGHTS):
-                raise Fail(f"{name}: fontWeight value {value!r} must be a number from 1 to 1000 or a name "
-                           f"like \"bold\"{bad}")
-            return str(value)
+            if isinstance(value, str) and value in WEIGHTS:
+                return str(WEIGHTS[value])
+            if (not isinstance(value, bool) and isinstance(value, (int, float)) and math.isfinite(value)
+                    and float(value).is_integer() and 1 <= value <= 1000):
+                return str(int(value))
+            raise Fail(f"{name}: fontWeight value {value!r} must be a whole number from 1 to 1000 or a name "
+                       f"like \"bold\" ({', '.join(sorted(WEIGHTS))}){bad}")
         families = value if isinstance(value, list) else [value]  # fontFamily
         if not families or not all(isinstance(f, str) and f.strip() for f in families):
             raise Fail(f"{name}: fontFamily value {value!r} must be a name or a non-empty list of names{bad}")
-        return ", ".join(self._family(f.strip()) for f in families)
+        return ", ".join(self._family(self.unsafe(name, f.strip())) for f in families)
 
     @staticmethod
     def _family(text):
@@ -245,11 +272,11 @@ class Tokens:
             if not name.startswith(prefix):
                 continue
             end = self.leaves[self.resolve(name)]
-            match = PX.match(end["value"]) if isinstance(end["value"], str) and end["type"] == "dimension" else None
+            match = PX.fullmatch(end["value"]) if isinstance(end["value"], str) and end["type"] == "dimension" else None
             if not match or int(match.group(1)) < 1:
                 raise Fail(f"{name} must be a px dimension (a whole number of px, e.g. \"768px\"), got "
                            f"{end['value']!r}; {self.fix}")
-            height = DEFAULT_HEIGHT
+            height = self.front["defaultHeight"]
             ext = leaf["ext"]
             gw = ext.get("gw") if isinstance(ext, dict) else None
             if isinstance(gw, dict) and "height" in gw:
@@ -279,11 +306,11 @@ def load_tokens(root, front):
     if not text.strip():
         raise Fail(f"{shown} is empty; add the tokens (a JSON object), then run: {command(root)}")
     try:
-        data = json.loads(text, object_pairs_hook=no_duplicates)
+        data = json.loads(text, object_pairs_hook=no_duplicates, parse_constant=non_finite)
     except json.JSONDecodeError as exc:
         raise Fail(f"{shown}: invalid JSON at line {exc.lineno}: {exc.msg}; fix it, then run: {command(root)}")
     except ValueError as exc:
-        raise Fail(f"{shown}: {exc}; remove the repeated one, then run: {command(root)}")
+        raise Fail(f"{shown}: {exc}; fix it, then run: {command(root)}")
     if not isinstance(data, dict):
         raise Fail(f"{shown}: the root must be a JSON object (groups of tokens), got {type(data).__name__}; "
                    f"fix it, then run: {command(root)}")
@@ -296,7 +323,7 @@ def load_tokens(root, front):
         raise Fail(f"breakpoint group '{group}' not found in {shown}; {fix}")
     if not _has_leaf(node):
         raise Fail(f"breakpoint group '{group}' has no breakpoints (tokens with $value); {fix}")
-    tokens = Tokens(data, group, root)
+    tokens = Tokens(data, group, root, front)
     marks = tokens.breakpoints()
     known = {b[0] for b in marks}
     for name in front["mainBreakpoints"]:
@@ -311,7 +338,18 @@ def _has_leaf(node):
 
 
 # -- output ----------------------------------------------------------------------------------------------------------
+def depth(tokens, leaf):
+    """How many aliases lead from `leaf` to a plain value (0 = a plain value)."""
+    steps = 0
+    while leaf["alias"] is not None:
+        leaf = tokens.leaves[leaf["alias"]]
+        steps += 1
+    return steps
+
+
 def declarations(tokens, css):
+    """[(name, value)]. CSS: sorted by name (var() resolves late). SCSS: a variable must exist before another one
+    uses it, so ordered by alias depth (plain values first), then by name."""
     rows = []
     for leaf in tokens.leaves.values():
         if leaf["alias"] is not None:
@@ -319,8 +357,8 @@ def declarations(tokens, css):
             value = f"var(--{target})" if css else f"${target}"
         else:
             value = leaf["text"]
-        rows.append((leaf["css"], value))
-    return sorted(rows)
+        rows.append((0 if css else depth(tokens, leaf), leaf["css"], value))
+    return [(name, value) for _depth, name, value in sorted(rows)]
 
 
 def render_css(tokens, source):
@@ -339,10 +377,14 @@ def as_json(data):
     return json.dumps(data, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
 
 
-def stylelint_fragment():
-    props = COLOR_PROPERTIES + SPACING_PROPERTIES + ["font-size"]
-    return {"plugins": ["stylelint-declaration-strict-value"],
-            "rules": {STRICT_VALUE_RULE: [props, {"ignoreValues": IGNORE_VALUES, "disableFix": True}]}}
+def stylelint_fragment(front):
+    """Colors, spacing and sizes must be variables (var(--x), $x): functions with literals (rgb(...), calc(13px)) are
+    reported too (ignoreFunctions false), and shorthands are expanded so `background: #f00` is checked."""
+    rules = front["stylelint"]
+    props = rules["colorProperties"] + rules["spacingProperties"] + rules["sizeProperties"]
+    options = {"disableFix": True, "expandShorthand": rules["expandShorthand"], "ignoreFunctions": False,
+               "ignoreValues": rules["ignoreValues"]}
+    return {"plugins": ["stylelint-declaration-strict-value"], "rules": {STRICT_VALUE_RULE: [props, options]}}
 
 
 def playwright_projects(tokens, front):
@@ -362,7 +404,7 @@ def playwright_projects(tokens, front):
 def generated_files(tokens, front):
     source = front["tokens"]
     return {"tokens.css": render_css(tokens, source), "_tokens.scss": render_scss(tokens, source),
-            "stylelint.tokens.json": as_json(stylelint_fragment()),
+            "stylelint.tokens.json": as_json(stylelint_fragment(front)),
             "playwright.projects.json": as_json(playwright_projects(tokens, front))}
 
 
@@ -378,8 +420,12 @@ def write_files(root, front, files):
             data = text.encode("utf-8")
             if not target.is_file() or target.read_bytes() != data:
                 tmp = out / f".{name}.tmp"
-                tmp.write_bytes(data)
-                os.replace(str(tmp), str(target))
+                try:
+                    tmp.write_bytes(data)
+                    os.replace(str(tmp), str(target))
+                finally:  # a failed write or replace must not leave a stray file in a folder `generated` compares
+                    if tmp.exists():
+                        tmp.unlink()
     except OSError as exc:
         raise Fail(f"cannot write {front['out']}: {exc}; fix front.out in .claude/gw.json", 2)
     return [f"{front['out'].rstrip('/')}/{name}" for name in sorted(files)]
