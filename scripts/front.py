@@ -57,6 +57,16 @@ class Fail(Exception):
         self.code = code
 
 
+HEX_PAIRS = re.compile(r"#([0-9a-fA-F])\1([0-9a-fA-F])\2([0-9a-fA-F])\3(?:([0-9a-fA-F])\4)?")
+
+
+def short_hex(value):
+    """`#ffffff` as `#fff` (and `#ff00ccaa` as `#f0ca`) when every pair repeats a digit: the form Stylelint's standard
+    config asks for, so the generated CSS and SCSS pass it. Any other value is returned as is."""
+    m = HEX_PAIRS.fullmatch(value)
+    return "#" + "".join(g for g in m.groups() if g) if m else value
+
+
 def command(root, sub="check"):
     return f"python3 {Path(__file__).resolve()} --root {root} {sub}"
 
@@ -231,7 +241,7 @@ class Tokens:
         if kind == "color":
             if not isinstance(value, str) or not value.strip():
                 raise Fail(f"{name}: color value {value!r} must be a non-empty string{bad}")
-            return self.unsafe(name, value.strip())
+            return short_hex(self.unsafe(name, value.strip()))
         if kind == "dimension":
             if not isinstance(value, str) or not (DIMENSION.fullmatch(value) or value in ("0", "-0")):
                 raise Fail(f"{name}: dimension value {value!r} is not a number with a unit (or 0), e.g. \"16px\"{bad}")

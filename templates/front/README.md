@@ -21,22 +21,24 @@ npx playwright test --project 'chromium-*'
 npx stylelint "**/*.{css,scss}"        # colours, spacing and font sizes must be tokens
 ```
 
-`GW_PLAYWRIGHT_PROJECTS` overrides the path of `playwright.projects.json` (default
-`front/generated/playwright.projects.json`, the default `front.out`). `.stylelintrc.json` extends
-`./front/generated/stylelint.tokens.json`: change it if `front.out` is elsewhere.
+`GW_PLAYWRIGHT_PROJECTS` overrides the path of `playwright.projects.json` (default: `front/generated/` next to
+`gw-config.ts`, the default `front.out`). `.stylelintrc.json` extends `./front/generated/stylelint.tokens.json` and
+ignores `front/generated/**` (generated, not hand-written): change both if `front.out` is elsewhere.
 
 ## What is here
 
 | File | What it gives |
 |---|---|
-| `playwright.config.ts` | `gwConfig(overrides)`: the generated projects, `animations: 'disabled'` on screenshots |
+| `gw-config.ts` | `gwConfig(overrides, projectsFile?)`: the generated projects, `animations: 'disabled'` on screenshots; the default projects file is `front/generated/playwright.projects.json` next to it |
+| `playwright.config.ts` | `export default gwConfig()`: the one to run; copy it and pass `overrides` (`baseURL`, `webServer`) |
 | `fixtures/stable.ts` | `test` with the automatic `stable` fixture (reduced motion, fixed clock, only the app's origin on the network, no animations); `gotoStable(page, url)` also waits for `document.fonts.ready` |
-| `helpers/layout.ts` | `expectNoOverflow(page)`, `expectNoOverlap(a, b)`, `expectTouchTargets(page, minPx = 24)` |
+| `helpers/layout.ts` | `expectNoOverflow(page)` (content in a scroller or parked off-screen is not an overflow), `expectNoOverlap(a, b)`, `expectTouchTargets(page, minPx = 24, { exclude })` (WCAG 2.5.8 exceptions: links inside a sentence and visually hidden elements are skipped) |
 | `helpers/a11y.ts` | `expectNoSeriousA11y(page)`: axe, blocks only on serious or critical |
 | `.stylelintrc.json` | the standard SCSS config plus the generated strict-value rules |
 
 Every failure message names the element and the reason. Set `baseURL` (and a `webServer`) through
-`gwConfig({ use: { baseURL }, webServer })`. Screenshots (`toHaveScreenshot`) are compared only on Linux or in Docker
+`gwConfig({ use: { baseURL }, webServer })`: `stable` needs `baseURL` to know the app's origin and fails with a message
+asking for it when it is missing. Screenshots (`toHaveScreenshot`) are compared only on Linux or in Docker
 (E-9): baselines are per platform and are not part of this template yet.
 
 ## Pinned versions

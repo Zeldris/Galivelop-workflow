@@ -21,7 +21,7 @@ class Version(unittest.TestCase):
         self.tmp = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.tmp, True)
         for rel in ("scripts", "skills", "templates", "schema", ".claude-plugin"):
-            shutil.copytree(ROOT / rel, self.tmp / rel, ignore=shutil.ignore_patterns("__pycache__"))
+            shutil.copytree(ROOT / rel, self.tmp / rel, ignore=shutil.ignore_patterns("__pycache__", "node_modules"))
         (self.tmp / ".claude").mkdir()
         shutil.copy(ROOT / ".claude" / "gw.json", self.tmp / ".claude" / "gw.json")
         self.set_gw(releaseDocs=None)  # this repo's own releaseDocs would need its READMEs in every temp repo

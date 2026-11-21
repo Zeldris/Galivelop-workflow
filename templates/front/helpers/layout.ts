@@ -11,7 +11,9 @@ const DESCRIBE = `(el) => {
   return el.tagName.toLowerCase() + id + cls + (tid ? '[data-testid=' + tid + ']' : '');
 }`;
 
-/** No horizontal scroll and no visible element that sticks out of the viewport on the right. */
+/** No horizontal scroll and no visible element that sticks out of the viewport on the right. Content clipped or
+ *  scrolled by an ancestor (`overflow-x: auto|scroll|hidden|clip`) or parked off-screen with a transform is not an
+ *  overflow of the page, and of a group of nested offenders only the outermost is named. */
 export async function expectNoOverflow(page: Page): Promise<void> {
   const problems = await page.evaluate(`(() => {
     const describe = ${DESCRIBE};
@@ -19,14 +21,31 @@ export async function expectNoOverflow(page: Page): Promise<void> {
     const out = [];
     const scroll = document.documentElement.scrollWidth;
     if (scroll > width) out.push('the page scrolls horizontally: scrollWidth ' + scroll + 'px > viewport ' + width + 'px');
+    const clipping = (el) => {
+      for (let p = el.parentElement; p && p !== document.body && p !== document.documentElement; p = p.parentElement) {
+        if (['auto', 'scroll', 'hidden', 'clip'].includes(getComputedStyle(p).overflowX)) return true;
+      }
+      return false;
+    };
+    const transformed = (el) => {
+      for (let p = el; p && p !== document.documentElement; p = p.parentElement) {
+        if (getComputedStyle(p).transform !== 'none') return true;
+      }
+      return false;
+    };
+    const offenders = [];
     for (const el of document.querySelectorAll('body *')) {
       const box = el.getBoundingClientRect();
       if (box.width === 0 || box.height === 0) continue;
       if (getComputedStyle(el).visibility === 'hidden') continue;
-      if (box.right > width + 0.5) {
-        out.push(describe(el) + ' is wider than the viewport: its right edge is at ' + Math.round(box.right) +
-          'px, the viewport is ' + width + 'px wide');
-      }
+      if (box.right <= width + 0.5) continue;
+      if (clipping(el)) continue;
+      if (box.left >= width && transformed(el)) continue;
+      offenders.push({ el, text: describe(el) + ' is wider than the viewport: its right edge is at ' +
+        Math.round(box.right) + 'px, the viewport is ' + width + 'px wide' });
+    }
+    for (const o of offenders) {
+      if (!offenders.some((other) => other !== o && other.el.contains(o.el))) out.push(o.text);
     }
     return out;
   })()`);
@@ -56,23 +75,39 @@ export async function expectNoOverlap(a: Locator, b: Locator): Promise<void> {
   }
 }
 
-/** Every visible interactive element is at least `minPx` x `minPx` CSS px (WCAG 2.2, 2.5.8: 24). */
-export async function expectTouchTargets(page: Page, minPx = 24): Promise<void> {
-  const problems = await page.evaluate(`((min) => {
+export type TouchTargetOptions = {
+  /** CSS selectors of elements to leave out (the element itself or anything inside a match). */
+  exclude?: string[];
+};
+
+/** Every visible interactive element is at least `minPx` x `minPx` CSS px (WCAG 2.2, 2.5.8: 24). The exceptions of
+ *  that criterion are not reported: a link inside a sentence (inline, with text around it in its parent) and an
+ *  element visually hidden (1px or less, as `sr-only` makes it). `options.exclude` leaves out more. */
+export async function expectTouchTargets(page: Page, minPx = 24, options: TouchTargetOptions = {}): Promise<void> {
+  const problems = await page.evaluate(`((min, exclude) => {
     const describe = ${DESCRIBE};
     const out = [];
     const sel = 'a[href], button, input:not([type=hidden]), select, textarea, [role=button], [role=link], [tabindex]:not([tabindex="-1"])';
+    const inSentence = (el) => {
+      if (getComputedStyle(el).display !== 'inline') return false;
+      const around = Array.from(el.parentElement ? el.parentElement.childNodes : [])
+        .filter((n) => n !== el && n.nodeType === Node.TEXT_NODE && n.textContent.trim() !== '');
+      return around.length > 0;
+    };
     for (const el of document.querySelectorAll(sel)) {
       const box = el.getBoundingClientRect();
       if (box.width === 0 && box.height === 0) continue;
       if (getComputedStyle(el).visibility === 'hidden') continue;
+      if (box.width <= 1 && box.height <= 1) continue;
+      if (exclude.some((s) => el.closest(s))) continue;
+      if (inSentence(el)) continue;
       if (box.width < min || box.height < min) {
         out.push(describe(el) + ' is ' + Math.round(box.width) + 'x' + Math.round(box.height) +
           'px, smaller than the ' + min + 'x' + min + 'px minimum touch target');
       }
     }
     return out;
-  })(${JSON.stringify(minPx)})`);
+  })(${JSON.stringify(minPx)}, ${JSON.stringify(options.exclude ?? [])})`);
   if ((problems as string[]).length > 0) {
     throw new Error('touch targets too small:\n  ' + (problems as string[]).join('\n  '));
   }

@@ -4,7 +4,7 @@
   "description": "Front-end tests of Galivelop-workflow (E5): Playwright, axe and Stylelint, fed by the files front.py generates",
   "scripts": {
     "test:layout": "playwright test --trace off",
-    "lint:css": "stylelint \"**/*.{css,scss}\" --ignore-path .gitignore",
+    "lint:css": "stylelint \"**/*.{css,scss}\"",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

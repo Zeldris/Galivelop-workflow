@@ -2,5 +2,6 @@
   "extends": [
     "stylelint-config-standard-scss",
     "./front/generated/stylelint.tokens.json"
-  ]
+  ],
+  "ignoreFiles": ["front/generated/**", "node_modules/**"]
 }

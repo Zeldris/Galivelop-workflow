@@ -288,7 +288,7 @@ class Generate(Base):
         self.generate()
         css = self.out("tokens.css")
         self.assertIn("\n:root {\n", css)
-        self.assertIn("  --color-brand: #0044cc;\n", css)
+        self.assertIn("  --color-brand: #04c;\n", css)
         self.assertIn("  --color-link: var(--color-brand);\n", css)
         self.assertIn("  --space-sm: 8px;\n", css)
         self.assertIn('  --font-family-base: Inter, "Open Sans", sans-serif;\n', css)
@@ -300,14 +300,14 @@ class Generate(Base):
     def test_scss_has_variables_and_alias_as_variable(self):
         self.generate()
         scss = self.out("_tokens.scss")
-        self.assertIn("$color-brand: #0044cc;\n", scss)
+        self.assertIn("$color-brand: #04c;\n", scss)
         self.assertIn("$color-link: $color-brand;\n", scss)
         self.assertIn('$font-family-base: Inter, "Open Sans", sans-serif;\n', scss)
 
     def test_unicode_names_become_css_safe(self):
         self.generate()
-        self.assertIn("  --color-nandu-verde: #00aa44;\n", self.out("tokens.css"))
-        self.assertIn("$color-nandu-verde: #00aa44;\n", self.out("_tokens.scss"))
+        self.assertIn("  --color-nandu-verde: #0a4;\n", self.out("tokens.css"))
+        self.assertIn("$color-nandu-verde: #0a4;\n", self.out("_tokens.scss"))
 
     def test_sorted_properties(self):
         self.generate()
@@ -381,10 +381,19 @@ def tweak(**colors):
 class Review(Base):
     """E5 trozo 1, review findings: one case per cause."""
 
+    def test_hex_colors_are_written_short_when_every_pair_repeats(self):
+        """E5 trozo 2 review: Stylelint's standard config wants `#fff`, and the generated files are linted."""
+        self.generate(tweak(**{"white": {"$value": "#ffffff"}, "alpha": {"$value": "#ff00ccaa"},
+                               "keep": {"$value": "#0b5fff"}, "upper": {"$value": "#AABBCC"}, "named": {"$value": "red"}}))
+        css = self.out("tokens.css")
+        for line in ("--color-white: #fff;", "--color-alpha: #f0ca;", "--color-keep: #0b5fff;", "--color-upper: #ABC;",
+                     "--color-named: red;"):
+            self.assertIn(line, css)
+
     def test_scss_defines_a_variable_before_an_alias_uses_it(self):
         self.generate(tweak(**{"a-x": {"$value": "{color.z-y}"}, "z-y": {"$value": "#ffffff"}}))
         scss = self.out("_tokens.scss")
-        self.assertLess(scss.index("$color-z-y: #ffffff;"), scss.index("$color-a-x: $color-z-y;"))
+        self.assertLess(scss.index("$color-z-y: #fff;"), scss.index("$color-a-x: $color-z-y;"))
         chain = tweak(**{"a1": {"$value": "{color.b1}"}, "b1": {"$value": "{color.c1}"}, "c1": {"$value": "#000"}})
         self.generate(chain)
         scss = self.out("_tokens.scss")

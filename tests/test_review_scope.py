@@ -127,7 +127,7 @@ class ReviewScope(ScopeBase):
 
     def test_a_sibling_clone_at_the_project_version_is_found(self):  # D132
         sib = self.p.work.parent / "Galivelop-workflow"
-        shutil.copytree(ROOT, sib, ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__"))
+        shutil.copytree(ROOT, sib, ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__", "node_modules"))
         self.addCleanup(shutil.rmtree, sib, True)
         self.p.write("src/a.py", "a\n")
         self.commit()
@@ -149,7 +149,7 @@ class ReviewScope(ScopeBase):
         self.p.write("src/a.py", "a\n")
         self.commit()
         wf = self.tmp / "wf"
-        shutil.copytree(ROOT, wf, ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__"))
+        shutil.copytree(ROOT, wf, ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__", "node_modules"))
         (wf / ".claude").mkdir()
         shutil.copy(ROOT / ".claude/gw.json", wf / ".claude/gw.json")
         for args in (["init", "-q", "-b", "main"], ["add", "-A"], ["commit", "-qm", "base"], ["checkout", "-q", "-b", "w"]):
@@ -228,7 +228,7 @@ class ReviewScope(ScopeBase):
         spec.loader.exec_module(rs)
         rs.HERE = self.tmp / "not-the-workflow"  # the script's own repo must not answer in this test
         sib = self.tmp / "Galivelop-workflow"
-        shutil.copytree(ROOT, sib, ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__"))
+        shutil.copytree(ROOT, sib, ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__", "node_modules"))
         plug = sib / ".claude-plugin/plugin.json"
         data = json.loads(plug.read_text())
         data.pop("version", None)
@@ -248,7 +248,7 @@ class ReviewScope(ScopeBase):
         code, out = self.bare()
         self.assertEqual(code, 2, out)
         self.assertIn("https://example.test/own.git", out)
-        shutil.copytree(ROOT, self.p.work.parent / "elsewhere", ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__"))
+        shutil.copytree(ROOT, self.p.work.parent / "elsewhere", ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__", "node_modules"))
         self.addCleanup(shutil.rmtree, self.p.work.parent / "elsewhere", True)
         code, out = self.bare()
         self.assertEqual(code, 0, out)

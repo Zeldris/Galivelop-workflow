@@ -54,7 +54,7 @@ class Harvest(unittest.TestCase):
         proj = self.tmp / "work"
         (proj / ".claude").mkdir(parents=True)
         for rel in ("scripts", "schema", "skills", "templates", ".claude-plugin"):
-            shutil.copytree(ROOT / rel, proj / rel, ignore=shutil.ignore_patterns("__pycache__"))
+            shutil.copytree(ROOT / rel, proj / rel, ignore=shutil.ignore_patterns("__pycache__", "node_modules"))
         git(self.tmp, "init", "-q", str(proj))
         gw = proj / ".claude" / "gw.json"
         base = json.loads((ROOT / "templates" / "gw.json").read_text())
@@ -78,7 +78,7 @@ class Harvest(unittest.TestCase):
         proj = self.tmp / "work-old"
         (proj / ".claude").mkdir(parents=True)
         for rel in ("scripts", "schema", "skills", "templates", ".claude-plugin"):
-            shutil.copytree(ROOT / rel, proj / rel, ignore=shutil.ignore_patterns("__pycache__"))
+            shutil.copytree(ROOT / rel, proj / rel, ignore=shutil.ignore_patterns("__pycache__", "node_modules"))
         git(self.tmp, "init", "-q", str(proj))
         (proj / ".claude" / "gw.json").write_text((ROOT / "templates" / "gw.json").read_text())
         old = proj / "docs" / "proposals" / "estado.json"
@@ -656,7 +656,7 @@ class Anonymized(unittest.TestCase):
         # A workflow copy of its own: harvest.py reads the local file of the repo it lives in.
         self.wf = self.tmp / "wf"
         for rel in ("scripts", "schema", "skills"):
-            shutil.copytree(ROOT / rel, self.wf / rel, ignore=shutil.ignore_patterns("__pycache__"))
+            shutil.copytree(ROOT / rel, self.wf / rel, ignore=shutil.ignore_patterns("__pycache__", "node_modules"))
         (self.wf / ".claude").mkdir()
         self.script = str(self.wf / "scripts" / "harvest.py")
         self.state = self.tmp / "state.json"

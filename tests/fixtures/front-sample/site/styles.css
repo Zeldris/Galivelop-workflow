@@ -46,3 +46,25 @@ h1 {
   from { opacity: 1; }
   to { opacity: 0.2; }
 }
+
+.sr-only {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.tiny {
+  display: block;
+  inline-size: 10px;
+  block-size: 10px;
+}
+
+.scroller {
+  overflow-x: auto;
+}
+
+.wide-table {
+  width: 1200px;
+}

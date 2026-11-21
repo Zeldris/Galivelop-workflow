@@ -13,26 +13,47 @@ const NO_MOTION = `*, *::before, *::after {
   caret-color: transparent !important;
 }`;
 
-/** Apply the stable setup to `page`; `origin` is the only origin allowed on the network (default: the baseURL's). */
-export async function makeStable(page: Page, origin?: string): Promise<void> {
-  const allowed = origin ?? new URL(String(test.info().project.use.baseURL ?? 'http://localhost')).origin;
+/** The origin the app is served from: the project's `baseURL`. Without one there is no way to tell the app from the
+ *  rest of the network, so it fails instead of blocking the app's own requests. */
+export function appOrigin(baseURL: unknown): string {
+  if (typeof baseURL !== 'string' || baseURL === '') {
+    throw new Error(
+      "stable: set `baseURL` in the Playwright config (gwConfig({ use: { baseURL: 'http://localhost:3000' } })): " +
+        "the app's origin is the only one the network may reach, and without it every request would be blocked",
+    );
+  }
+  return new URL(baseURL).origin;
+}
+
+/** Apply the stable setup to `page`; `origin` is the only origin allowed on the network. */
+export async function makeStable(page: Page, origin: string): Promise<void> {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await page.clock.install({ time: FIXED_TIME });
   await page.clock.setFixedTime(FIXED_TIME);
   await page.route(
-    (url) => /^https?:$/.test(url.protocol) && url.origin !== allowed,
+    (url) => /^https?:$/.test(url.protocol) && url.origin !== origin,
     (route) => route.abort('blockedbyclient'),
   );
-  // Runs in every document before its scripts: the style goes in as soon as <head> exists.
+  // Runs in every document before its scripts. <head> does not exist yet, so the style goes onto <html> the moment
+  // that element exists (a MutationObserver), which is before the first paint.
   await page.addInitScript((css) => {
     const add = () => {
       const style = document.createElement('style');
       style.dataset.gwStable = '';
       style.textContent = css;
-      (document.head || document.documentElement).appendChild(style);
+      document.documentElement.appendChild(style);
     };
-    if (document.head) add();
-    else document.addEventListener('DOMContentLoaded', add, { once: true });
+    if (document.documentElement) {
+      add();
+    } else {
+      const observer = new MutationObserver(() => {
+        if (document.documentElement) {
+          observer.disconnect();
+          add();
+        }
+      });
+      observer.observe(document, { childList: true });
+    }
   }, NO_MOTION);
 }
 
@@ -44,7 +65,7 @@ export async function whenStable(page: Page): Promise<void> {
 export const test = base.extend<{ stable: void }>({
   stable: [
     async ({ page, baseURL }, use) => {
-      await makeStable(page, baseURL ? new URL(baseURL).origin : undefined);
+      await makeStable(page, appOrigin(baseURL));
       await use();
     },
     { auto: true },
