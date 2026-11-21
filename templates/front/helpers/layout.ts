@@ -1,3 +1,4 @@
+// galivelop-workflow v0.8.1
 // Layout checks that need no baseline (ref-front-testing, section 3). Each failure names the element and the reason.
 import type { Locator, Page } from '@playwright/test';
 

@@ -43,6 +43,20 @@ class Version(unittest.TestCase):
         r = run(ROOT)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
+    def test_installed_node_modules_and_ignored_files_need_no_marker(self):
+        """E5: an installed templates/front/node_modules or a git-ignored local file must not turn the check red."""
+        lib = self.tmp / "templates" / "front" / "node_modules" / "pkg"
+        lib.mkdir(parents=True, exist_ok=True)
+        (lib / "index.js").write_text("module.exports = 1\n")
+        (self.tmp / "templates" / "front" / "local-cache.txt").write_text("no marker\n")
+        (self.tmp / ".gitignore").write_text("local-cache.txt\n")
+        r = run(self.tmp)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        (self.tmp / "templates" / "front" / "tracked.ts").write_text("export {}\n")
+        r = run(self.tmp)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("missing marker: templates/front/tracked.ts", r.stdout + r.stderr)
+
     def git(self, *args):
         subprocess.run(["git", "-C", str(self.tmp), "-c", "user.name=t", "-c", "user.email=t@t",
                         "-c", "commit.gpgsign=false", "-c", "tag.gpgsign=false", *args], check=True, capture_output=True)

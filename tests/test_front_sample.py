@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -31,8 +32,8 @@ def skip_reason():
     return None
 
 
-def run(cmd, cwd, timeout=900):
-    env = {k: v for k, v in os.environ.items() if k != "CI"}
+def run(cmd, cwd, timeout=900, env=None):
+    env = {**{k: v for k, v in os.environ.items() if k != "CI"}, **(env or {})}
     return subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, env=env, timeout=timeout)
 
 
@@ -68,8 +69,11 @@ class FrontSample(unittest.TestCase):
                              "config of this test) and commit it")
 
     def test_playwright_specs_pass_in_chromium(self):
+        with socket.socket() as sock:  # a free port, so two runs in parallel do not clash
+            sock.bind(("127.0.0.1", 0))
+            port = sock.getsockname()[1]
         done = run([str(BIN / "playwright"), "test", "--trace", "off", "--project", "chromium-*", "--reporter", "line"],
-                   SAMPLE)
+                   SAMPLE, env={"GW_SAMPLE_PORT": str(port)})
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertRegex(done.stdout, r"\d+ passed")
 
