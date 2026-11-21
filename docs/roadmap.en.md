@@ -362,7 +362,7 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | A12 | Configurable languages in a `languages` block of `.claude/gw.json`: `code` (code, names and comments; replaces A8's fixed rule), `docs.primary` and `docs.others` (internal docs, log, roadmap and commits; the `docs/es` ↔ `docs/en` pairing reads them), `public.primary` and `public.others` (README, release, posts) and `ui` (today `visibleLanguages`); the agent language (the one user and agent speak) goes per user in `~/.claude/gw.json`, identified by `git config user.email`, with the docs primary as fallback; `language` and `visibleLanguages` migrate with `apply.py --update`; the MMC edits it in `1.1` (user, 2026-11-08) | done (2026-11-20; record `docs/tasks/A12.md`; `names-check.py` limited to the workflow repo) |
 | E4 | Per-person and per-role profiles: each email (stored as a hash) uses its own profile, else its role's, else `default`; a profile changes any key except what gets installed; CI always runs with `default`; `profile.py` (user, 2026-11-20; formerly "install profiles", now a separate task) | done (2026-11-21) |
 | E5 | Front-end tests following the research | pending |
-| E7 | Front-end testing guide in `docs/en/patterns.md` and a config template | pending |
+| E7 | Front-end testing guide in `docs/en/patterns.md` and a config template; the projects' CI template runs `front.py run full` (Q-35) | pending |
 | E9-E16 | The front-end checks decided in [`E-quality.md`](design/E-quality.md) (screenshots, when they run, tokens, preprocessors, accessibility, baselines, no paid services, matrix) | pending |
 | E42 | `gw-seo` skill (SEO and link previews for static sites) brought from the portal: no portal paths, English names, tests in the check, es/en docs and its source's MIT LICENSE (`0.6` closing harvest, portal P1) | pending |
 | E50 | `PreToolUse` hook on `Read` that warns, without blocking, when reading loose screenshots and suggests a contact sheet (the project's command in a key) (`0.6.0` harvest, image-generator P6) | pending |
@@ -381,6 +381,7 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | E75 | `grilling` writes each round to the questions file (`questions.py add`) and pushes it before presenting it (`0.9` harvest, private-project-5 P3) | done (2026-11-20) |
 | E76 | `measure.py` shows the fixed startup (system, tools, MCP) apart from the project's cost (`0.9` harvest, private-project-3 P2) | done (2026-11-20) |
 | E77 | Push and long check in the background with a 90 min `timeout` in `AGENTS.md` (and its templates), `gw-opt-tokens.md` and `gw-orchestrate-dealer`'s final push (user, 2026-11-19; Q-7 to Q-9) | done (2026-11-19) |
+| E78 | `front.py run full --update-snapshots` writes the Playwright version stamp of the snapshots that `doctor.py` reads (user, 2026-11-21; Q-34) | pending |
 
 ## `0.10` "Stable"
 

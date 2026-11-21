@@ -363,7 +363,7 @@ Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18)
 | A12 | Idiomas configurables en un bloque `languages` de `.claude/gw.json`: `code` (código, nombres y comentarios; sustituye la regla fija de A8), `docs.primary` y `docs.others` (doc interna, bitácora, roadmap y commits; el emparejado `docs/es` ↔ `docs/en` los lee), `public.primary` y `public.others` (README, release, publicaciones) y `ui` (hoy `visibleLanguages`); el idioma del agente (en el que hablan usuario y agente) va por usuario en `~/.claude/gw.json`, identificado por `git config user.email`, con el principal de la doc como respaldo; `language` y `visibleLanguages` migran con `apply.py --update`; el MMC lo edita en la `1.1` (usuario, 2026-11-08) | hecho (2026-11-20; ficha `docs/tasks/A12.md`; `names-check.py` acotado al repo del flujo) |
 | E4 | Perfiles por persona y por cargo: cada correo (guardado como hash) usa su perfil, si no el de su cargo, si no `default`; un perfil cambia cualquier clave salvo lo que se instala; el CI siempre con `default`; `profile.py` (usuario, 2026-11-20; antes «perfiles de instalación», que pasa a tarea aparte) | hecho (2026-11-21) |
 | E5 | Pruebas de front según la investigación | pendiente |
-| E7 | Guía de pruebas de front en `docs/es/patterns.md` y plantilla de config | pendiente |
+| E7 | Guía de pruebas de front en `docs/es/patterns.md` y plantilla de config; la plantilla de CI de los proyectos corre `front.py run full` (Q-35) | pendiente |
 | E9-E16 | Los checks de front decididos en [`E-quality.md`](design/E-quality.md) (capturas, cuándo corren, tokens, preprocesadores, accesibilidad, referencias, sin servicios de pago, matriz) | pendiente |
 | E42 | Skill `gw-seo` (SEO y vistas previas de webs estáticas) traída del portal: sin rutas del portal, nombres en inglés, tests en el check, docs es/en y la LICENSE MIT de su fuente (recogida de cierre `0.6`, portal P1) | pendiente |
 | E50 | Gancho `PreToolUse` de `Read` que avisa, sin bloquear, al leer capturas sueltas y sugiere montarlas en una hoja (orden del proyecto en una clave) (recogida `0.6.0`, image-generator P6) | pendiente |
@@ -382,6 +382,7 @@ Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18)
 | E75 | `grilling` escribe cada ronda en el archivo de preguntas (`questions.py add`) y la sube antes de presentarla (recogida `0.9`, private-project-5 P3) | hecho (2026-11-20) |
 | E76 | `measure.py` muestra aparte el arranque fijo (sistema, herramientas, MCP) del coste del proyecto (recogida `0.9`, private-project-3 P2) | hecho (2026-11-20) |
 | E77 | El push y el check largo, en segundo plano con `timeout` de 90 min en `AGENTS.md` (y sus plantillas), `gw-opt-tokens.md` y la subida final de `gw-orchestrate-dealer` (usuario, 2026-11-19; Q-7 a Q-9) | hecho (2026-11-19) |
+| E78 | `front.py run full --update-snapshots` escribe el sello de versión de Playwright de las capturas que lee `doctor.py` (usuario, 2026-11-21; Q-34) | pendiente |
 
 ## `0.10` «Estable»
 

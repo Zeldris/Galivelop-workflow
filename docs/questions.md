@@ -293,3 +293,21 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: stylelint-declaration-strict-value para colores, espaciados y tamaños de letra; versiones de Stylelint, Playwright y axe fijadas en la plantilla
 - Answer: ok
 - Answered: 2026-11-21
+
+## Q-34
+- Refs: E5
+- Status: answered
+- Asked: 2026-11-21
+- Question: ¿front.py escribe el sello de versión de Playwright de las capturas (run full --update-snapshots) en vez de a mano?
+- Recommendation: sí, en otra tarea
+- Answer: Si 35. Si
+- Answered: 2026-11-21
+
+## Q-35
+- Refs: E5, E7
+- Status: answered
+- Asked: 2026-11-21
+- Question: ¿La plantilla de CI de los proyectos corre front.py run full dentro de E7?
+- Recommendation: sí, en E7
+- Answer: Si
+- Answered: 2026-11-21
