@@ -248,3 +248,38 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: profile.py list|new|assign|role|show; el MMC (G4) usará las mismas órdenes
 - Answer: ok
 - Answered: 2026-11-20
+
+## Q-29
+- Refs: E5
+- Status: open
+- Asked: 2026-11-21
+- Question: E5, alcance: los tres trozos de la ficha (dato y generador; plantillas con fixture stable() y helpers de layout; perfiles fast/full y avisos de doctor.py), con E7 (guía y plantilla de config) aparte
+- Recommendation: sí; E9-E16 quedan como decisiones aplicadas dentro de E5 y se marcan hechas con ella
+
+## Q-30
+- Refs: E5
+- Status: open
+- Asked: 2026-11-21
+- Question: E5, formato del JSON de tokens y breakpoints: a) subconjunto W3C Design Tokens ($value, $type); b) formato propio plano (colors, spacing, fontSizes, breakpoints)
+- Recommendation: a, para que un proyecto con Style Dictionary lo reutilice
+
+## Q-31
+- Refs: E5
+- Status: open
+- Asked: 2026-11-21
+- Question: E5, lenguaje de las plantillas (playwright.config, fixture, helpers): a) TypeScript; b) JavaScript
+- Recommendation: a, el defecto de Playwright
+
+## Q-32
+- Refs: E5
+- Status: open
+- Asked: 2026-11-21
+- Question: E5, cómo se prueba aquí, que no tiene front: a) proyecto de ejemplo en tests/fixtures/front-sample que el check corre con node y Playwright en Linux (sin node o en macOS, se omite con aviso); b) solo tests en Python del generador
+- Recommendation: a; el generador lleva además tests en Python siempre
+
+## Q-33
+- Refs: E5
+- Status: open
+- Asked: 2026-11-21
+- Question: E5, reglas de Stylelint generadas: ¿qué propiedades se limitan a tokens y con qué plugin?
+- Recommendation: stylelint-declaration-strict-value para colores, espaciados y tamaños de letra; versiones de Stylelint, Playwright y axe fijadas en la plantilla
