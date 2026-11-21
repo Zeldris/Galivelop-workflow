@@ -1,0 +1,50 @@
+[
+  {
+    "browser": "chromium",
+    "name": "chromium-mobile",
+    "viewport": {
+      "height": 740,
+      "width": 375
+    }
+  },
+  {
+    "browser": "webkit",
+    "name": "webkit-mobile",
+    "viewport": {
+      "height": 740,
+      "width": 375
+    }
+  },
+  {
+    "browser": "firefox",
+    "name": "firefox-mobile",
+    "viewport": {
+      "height": 740,
+      "width": 375
+    }
+  },
+  {
+    "browser": "chromium",
+    "name": "chromium-desktop",
+    "viewport": {
+      "height": 800,
+      "width": 1280
+    }
+  },
+  {
+    "browser": "webkit",
+    "name": "webkit-desktop",
+    "viewport": {
+      "height": 800,
+      "width": 1280
+    }
+  },
+  {
+    "browser": "firefox",
+    "name": "firefox-desktop",
+    "viewport": {
+      "height": 800,
+      "width": 1280
+    }
+  }
+]

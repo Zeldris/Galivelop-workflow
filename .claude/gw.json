@@ -158,6 +158,12 @@
         ]
       },
       {
+        "paths": "^(templates/front|tests/fixtures/front-sample)/",
+        "tests": [
+          "tests/test_front_sample.py"
+        ]
+      },
+      {
         "paths": "^tests/(?P<name>[^/]+)\\.sh$",
         "tests": [
           "tests/test_{name:id}.py"

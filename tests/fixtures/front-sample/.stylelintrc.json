@@ -1,0 +1,6 @@
+{
+  "extends": [
+    "stylelint-config-standard-scss",
+    "./front/generated/stylelint.tokens.json"
+  ]
+}

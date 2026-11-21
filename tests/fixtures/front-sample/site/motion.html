@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Motion</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header><h1>Motion</h1></header>
+<main>
+  <p id="clock"></p>
+  <div id="pulse" class="pulse">Pulse</div>
+  <p id="external">pending</p>
+  <script>
+    document.getElementById("clock").textContent = new Date().toISOString();
+    fetch("https://example.com/")
+      .then(() => { document.getElementById("external").textContent = "reached"; })
+      .catch(() => { document.getElementById("external").textContent = "blocked"; });
+  </script>
+</main>
+</body>
+</html>

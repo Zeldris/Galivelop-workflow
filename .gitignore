@@ -3,3 +3,4 @@ __pycache__/
 .claude/worktrees/
 # galivelop-workflow: private, never committed
 .claude/gw.local.json
+node_modules/

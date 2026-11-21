@@ -1,0 +1,7 @@
+@use "../front/generated/tokens" as t;
+
+.badge {
+  padding: t.$space-2 t.$space-3;
+  color: t.$color-on-brand;
+  background-color: t.$color-brand;
+}
