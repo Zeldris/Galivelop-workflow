@@ -92,6 +92,16 @@ class TestRun(unittest.TestCase):
         self.assertEqual(code, 1, out + err)
         self.assertIn("ran 7 tests, discovered 6", out)
 
+    def test_a_class_skipped_in_setupclass_counts_its_tests(self):
+        # setUpClass raising SkipTest (no browser, another platform) makes unittest print "Ran 0 tests ... OK
+        # (skipped=1)": the class's tests were skipped, not missed, so the totals must still match.
+        self.write("tests/test_b.py", "import unittest\nclass Gamma(unittest.TestCase):\n"
+                                      "    @classmethod\n    def setUpClass(cls): raise unittest.SkipTest('no browser')\n"
+                                      "    def test_x(self): pass\n    def test_y(self): pass\n")
+        code, out, err = self.run_cli("tests")
+        self.assertEqual(code, 0, out + err)
+        self.assertNotIn("discovered", out)
+
     def test_the_slowest_unit_by_the_last_run_goes_first(self):
         (self.tmp / ".git" / "gw").mkdir(parents=True)
         (self.tmp / ".git" / "gw" / "test-times.json").write_text(json.dumps(
