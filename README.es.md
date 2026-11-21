@@ -136,9 +136,9 @@ comprobación.
 
 ### Skills
 
-28 skills en formato abierto [Agent Skills](https://github.com/agentskills/agentskills).
+29 skills en formato abierto [Agent Skills](https://github.com/agentskills/agentskills).
 
-**Propias del flujo (13):**
+**Propias del flujo (14):**
 
 | Skill | Para qué |
 |---|---|
@@ -155,6 +155,7 @@ comprobación.
 | `gw-mode` | Ver o cambiar los modos del flujo (careful, questions) con una sola orden |
 | `gw-media-content` | Proponer publicaciones para las redes del proyecto |
 | `gw-media-content-now` | Preparar una publicación concreta, con textos por canal e imágenes |
+| `gw-seo` | Comprobar el SEO y las vistas previas de una web estática antes de publicarla |
 
 **De [Matt Pocock](https://github.com/mattpocock) (15):** `codebase-design`, `diagnosing-bugs`, `domain-modeling`,
 `grill-with-docs`, `grilling`, `improve-codebase-architecture`, `pr`, `prototype`, `research`, `retro`,

@@ -365,7 +365,7 @@ Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18)
 | E5 | Pruebas de front según la investigación | hecho (2026-11-21) |
 | E7 | Guía de pruebas de front en `docs/es/patterns.md` y plantilla de config; la plantilla de CI de los proyectos corre `front.py run full` (Q-35) | hecho (2026-11-21) |
 | E9-E16 | Los checks de front decididos en [`E-quality.md`](design/E-quality.md) (capturas, cuándo corren, tokens, preprocesadores, accesibilidad, referencias, sin servicios de pago, matriz) | hecho (2026-11-21) |
-| E42 | Skill `gw-seo` (SEO y vistas previas de webs estáticas) traída del portal: sin rutas del portal, nombres en inglés, tests en el check, docs es/en y la LICENSE MIT de su fuente (recogida de cierre `0.6`, portal P1) | pendiente |
+| E42 | Skill `gw-seo` (SEO y vistas previas de webs estáticas) traída del portal: sin rutas del portal, nombres en inglés, tests en el check, docs es/en y la LICENSE MIT de su fuente (recogida de cierre `0.6`, portal P1) | hecho (2026-11-21) |
 | E50 | Gancho `PreToolUse` de `Read` que avisa, sin bloquear, al leer capturas sueltas y sugiere montarlas en una hoja (orden del proyecto en una clave) (recogida `0.6.0`, image-generator P6) | pendiente |
 | H24 | Recogida de apertura de la `0.9` (`gw-harvest`) al empezarla, tras actualizar los proyectos a la `0.8.0` (AGENTS.md) | hecho (2026-11-18; las 25 propuestas aprobadas: D128-D140 al parche `0.8.1`, E65-E76 a la `0.9`) |
 | H25 | Cierre del parche `0.8.1`: CHANGELOG, README, sello (`version.py`, `apply.py .`) y fases antes de `main` | hecho (2026-11-19; `main` = `4ca45d0`, release `v0.8.1` publicada) |

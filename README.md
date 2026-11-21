@@ -133,9 +133,9 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 
 ### Skills
 
-28 skills in the open [Agent Skills](https://github.com/agentskills/agentskills) format.
+29 skills in the open [Agent Skills](https://github.com/agentskills/agentskills) format.
 
-**The workflow's own (13):**
+**The workflow's own (14):**
 
 | Skill | What for |
 |---|---|
@@ -152,6 +152,7 @@ skills and guides are left for what needs judgement. If a rule keeps being broke
 | `gw-mode` | Show or switch the workflow's modes (careful, questions) with one command |
 | `gw-media-content` | Propose posts for the project's social channels |
 | `gw-media-content-now` | Produce one specific post, with texts per channel and images |
+| `gw-seo` | Check the SEO and link previews of a static website before publishing it |
 
 **By [Matt Pocock](https://github.com/mattpocock) (15):** `codebase-design`, `diagnosing-bugs`, `domain-modeling`,
 `grill-with-docs`, `grilling`, `improve-codebase-architecture`, `pr`, `prototype`, `research`, `retro`,
