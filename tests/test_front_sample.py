@@ -13,6 +13,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import waits
 from test_hooks import BASE_CONFIG, ROOT
 
 TEMPLATE = ROOT / "templates" / "front"
@@ -32,9 +33,9 @@ def skip_reason():
     return None
 
 
-def run(cmd, cwd, timeout=900, env=None):
+def run(cmd, cwd, limit=900, env=None):
     env = {**{k: v for k, v in os.environ.items() if k != "CI"}, **(env or {})}
-    return subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, env=env, timeout=timeout)
+    return subprocess.run(cmd, cwd=str(cwd), capture_output=True, text=True, env=env, timeout=waits.timeout(limit))
 
 
 class FrontSample(unittest.TestCase):
