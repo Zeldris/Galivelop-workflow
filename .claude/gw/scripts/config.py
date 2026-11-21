@@ -627,6 +627,17 @@ def harvest(config):
     return _bounded_section(config, "harvest")
 
 
+def front(config):
+    """E5: the `front` block normalized ({"tokens", "out", "breakpointGroup", "mainBreakpoints", "browsers":
+    {"all", "main"}}), every missing inner key filled from the schema default (front.py's one accessor)."""
+    out = _section(config, "front")
+    props = _schema()["properties"]["front"]["properties"]["browsers"]["properties"]
+    given = out["browsers"] if isinstance(out["browsers"], dict) else {}
+    out["browsers"] = {k: list(given.get(k, prop["default"])) for k, prop in props.items()}
+    out["mainBreakpoints"] = list(out["mainBreakpoints"])
+    return out
+
+
 def commit_types(config):
     """The `commitTypes` key (A13): the Conventional Commits types, the schema default when absent or invalid."""
     return _string_list_key(config, "commitTypes")
