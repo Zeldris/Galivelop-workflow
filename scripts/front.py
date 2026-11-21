@@ -12,10 +12,12 @@
   python3 front.py install [--package-dir DIR] [--browsers B ...] [--with-deps]
                                # the npm packages of front.dir (or DIR) and, if asked, Playwright's browsers
 
-`run` installs the packages of `front.dir`/package.json with `npm ci` in `<git common dir>/gw/front-node/` (never a
-node_modules in the tree; reinstalled only when package.json or package-lock.json change, under a lock, the same
-cache tests/test_front_sample.py uses) and runs from a temporary copy of `front.dir` with node_modules linked to it, so
-the working tree is left as it was. Exit 3 = cannot run here (no node or npm, a browser missing, full outside Linux
+`run` installs the packages of `front.dir`/package.json with `npm ci` in `<git common dir>/gw/front-node/<hash of
+package-lock.json and package.json>/` (never a node_modules in the tree; one folder per lock, under a lock while it
+installs; tests/test_front_sample.py uses the same cache) and runs from a temporary copy of the files git tracks (not
+what it ignores), with node_modules linked into its `front.dir`, so the working tree is left as it was. Stylelint runs
+from the copy's root on `front.stylelintFiles` (repo-relative globs; none matching a tracked file fails) with the
+config of `front.dir`. Exit 3 = cannot run here (no node or npm, a browser missing, full outside Linux
 without Docker); 1 = a check failed.
 
 The tokens file is a subset of the W3C Design Tokens format (DTCG): nested groups, leaves with `$value` and `$type`
@@ -33,6 +35,7 @@ Python 3.8+, standard library only.
 """
 import argparse
 import contextlib
+import hashlib
 import json
 import math
 import os
@@ -460,9 +463,6 @@ def write_files(root, front, files):
 
 
 # -- run (trozo 3) ---------------------------------------------------------------------------------------------------
-COPY_IGNORE = ("node_modules", "test-results", "playwright-report", ".git", "blob-report")
-
-
 def run_command(root, mode):
     return f"python3 {Path(__file__).resolve()} --root {root} run {mode}"
 
@@ -484,12 +484,20 @@ def matrix_browsers(front):
     return out + [b for b in front["browsers"]["main"] if b not in out]
 
 
-def node_cache(root):
-    """<git common dir>/gw/front-node: shared by the main checkout and the pre-push's temporary worktrees."""
+def package_files(pkg):
+    """The bytes that decide an install: package-lock.json then package.json (the stamp tests/test_front_sample.py
+    compares too)."""
+    return (pkg / "package-lock.json").read_bytes() + (pkg / "package.json").read_bytes()
+
+
+def node_cache(root, pkg):
+    """<git common dir>/gw/front-node/<hash of the package files>: shared by the main checkout and the pre-push's
+    temporary worktrees, one folder per package-lock, so a branch with another lock never rewrites the node_modules a
+    run of this one is using."""
     common = config.git_common_dir(root)
     if common is None:
         raise Fail(f"{root} has no git directory for the npm cache; run it inside the repository: {run_command(root, 'fast')}", 2)
-    return common / "gw" / "front-node"
+    return common / "gw" / "front-node" / hashlib.sha256(package_files(pkg)).hexdigest()[:16]
 
 
 def package_dir(root, front, given=None):
@@ -533,19 +541,23 @@ def locked(cache):
         yield
 
 
-def install_packages(pkg, cache, fix):
-    """npm ci of <pkg> into <cache>, skipped when the stamp says the same package files are installed: the same stamp
-    (package-lock.json + package.json bytes, in `installed-from`) tests/test_front_sample.py writes."""
+def install_packages(pkg, root, fix):
+    """npm ci of <pkg> into its cache (node_cache), skipped when the stamp `installed-from` holds the same package
+    files. The stamp goes before anything is removed and is written only after a good npm ci: a failed install never
+    leaves a stamp over a half node_modules."""
     lock_file = pkg / "package-lock.json"
     if not lock_file.is_file():
         raise Fail(f"no package-lock.json next to {pkg / 'package.json'}; create it with npm install there and commit "
                    f"it, then run: {fix}", 2)
-    wanted = lock_file.read_bytes() + (pkg / "package.json").read_bytes()
+    wanted = package_files(pkg)
+    cache = node_cache(root, pkg)
     with locked(cache):
         stamp = cache / "installed-from"
         if stamp.is_file() and stamp.read_bytes() == wanted and (cache / "node_modules" / ".bin").is_dir():
             return cache / "node_modules"
         need_node(fix)
+        if stamp.exists():
+            stamp.unlink()
         shutil.copy(str(pkg / "package.json"), str(cache / "package.json"))
         shutil.copy(str(lock_file), str(cache / "package-lock.json"))
         shutil.rmtree(str(cache / "node_modules"), True)
@@ -557,22 +569,46 @@ def install_packages(pkg, cache, fix):
     return cache / "node_modules"
 
 
-def browsers_path():
-    return Path(os.environ.get("PLAYWRIGHT_BROWSERS_PATH") or Path.home() / ".cache" / "ms-playwright")
+def browsers_path(modules):
+    """Where Playwright looks for its browsers, as it resolves it: PLAYWRIGHT_BROWSERS_PATH (0 = inside
+    playwright-core), else the per-platform cache folder (Linux: $XDG_CACHE_HOME or ~/.cache; macOS:
+    ~/Library/Caches; Windows: %LOCALAPPDATA%) plus ms-playwright."""
+    given = os.environ.get("PLAYWRIGHT_BROWSERS_PATH")
+    if given == "0":
+        return modules / "playwright-core" / ".local-browsers"
+    if given:
+        return Path(given)
+    home = Path.home()
+    system = platform.system()
+    if system == "Darwin":
+        base = home / "Library" / "Caches"
+    elif system == "Windows":
+        base = Path(os.environ.get("LOCALAPPDATA") or home / "AppData" / "Local")
+    else:
+        base = Path(os.environ.get("XDG_CACHE_HOME") or home / ".cache")
+    return base / "ms-playwright"
 
 
 def missing_browsers(modules, wanted):
-    """The browsers of `wanted` whose build, as the installed Playwright asks for it, is not in the browsers folder."""
+    """The browsers of `wanted` whose build, as the installed Playwright asks for it, is not in the browsers folder.
+    A build counts when its folder exists for `revision` or for any of its `revisionOverrides` (the host-specific
+    builds; which one applies is Playwright's call, so none of them is taken for missing)."""
     try:
         data = json.loads((modules / "playwright-core" / "browsers.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return list(wanted)
-    path = browsers_path()
+    path = browsers_path(modules)
     missing = []
     for browser in wanted:
         entries = [e for e in data.get("browsers", []) if e.get("name") == browser
                    or (browser == "chromium" and e.get("name") == "chromium-headless-shell")]
-        if not entries or any(not (path / f"{e['name'].replace('-', '_')}-{e['revision']}").is_dir() for e in entries):
+
+        def present(entry):
+            builds = [entry.get("revision")] + list((entry.get("revisionOverrides") or {}).values())
+            folder = entry["name"].replace("-", "_")
+            return any(r and (path / f"{folder}-{r}").is_dir() for r in builds)
+
+        if not entries or not all(present(e) for e in entries):
             missing.append(browser)
     return missing
 
@@ -585,8 +621,71 @@ def docker_ready():
     return docker if done.returncode == 0 else None
 
 
-def copy_tree(pkg, dest):
-    shutil.copytree(str(pkg), str(dest), symlinks=True, ignore=shutil.ignore_patterns(*COPY_IGNORE))
+def tracked_files(root):
+    """The files git tracks in `root` (the pushed commit's checkout, or the working tree): what is ignored or
+    untracked never reaches the checks."""
+    done = subprocess.run(["git", "-C", str(root), "ls-files", "-z"], capture_output=True, stdin=subprocess.DEVNULL)
+    if done.returncode != 0:
+        raise Fail(f"cannot list the files git tracks in {root}; check the repository: git -C {root} ls-files", 2)
+    return [f for f in done.stdout.decode("utf-8", "surrogateescape").split("\0") if f]
+
+
+def copy_tracked(root, files, dest):
+    """Copy the tracked `files` of `root` into `dest` (symlinks as symlinks; a file deleted in the tree is skipped)."""
+    for rel in files:
+        src = Path(root) / rel
+        target = dest / rel
+        if src.is_symlink():
+            target.parent.mkdir(parents=True, exist_ok=True)
+            os.symlink(os.readlink(str(src)), str(target))
+        elif src.is_file():  # a submodule (a folder) or a file deleted in the tree is skipped
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(str(src), str(target))
+
+
+def glob_regex(pattern):
+    """A Stylelint (fast-glob) pattern as a regex on repo paths: `**/` any folders, `*` and `?` within a name,
+    `{a,b}` alternatives."""
+    out, i = [], 0
+    while i < len(pattern):
+        c = pattern[i]
+        if pattern.startswith("**/", i):
+            out.append("(?:.*/)?")
+            i += 3
+            continue
+        if pattern.startswith("**", i):
+            out.append(".*")
+            i += 2
+            continue
+        if c == "*":
+            out.append("[^/]*")
+        elif c == "?":
+            out.append("[^/]")
+        elif c == "{":
+            end = pattern.find("}", i)
+            if end > i:
+                out.append("(?:" + "|".join(re.escape(x) for x in pattern[i + 1:end].split(",")) + ")")
+                i = end + 1
+                continue
+            out.append(re.escape(c))
+        else:
+            out.append(re.escape(c))
+        i += 1
+    return re.compile("".join(out))
+
+
+STYLELINT_CONFIGS = (".stylelintrc.json", ".stylelintrc", ".stylelintrc.yaml", ".stylelintrc.yml", ".stylelintrc.js",
+                     ".stylelintrc.cjs", ".stylelintrc.mjs", "stylelint.config.js", "stylelint.config.cjs",
+                     "stylelint.config.mjs")
+
+
+def stylelint_config(pkg):
+    """The Stylelint config of front.dir, passed with --config so files outside it (src/ next to a front-tests/) use
+    it too; None = Stylelint looks for one itself."""
+    for name in STYLELINT_CONFIGS:
+        if (pkg / name).is_file():
+            return name
+    return None
 
 
 def step(cmd, cwd, what, fix):
@@ -606,8 +705,11 @@ def playwright_args(tokens, front, mode):
 
 
 def run(root, front, tokens, mode):
+    """Stylelint from the root of a copy of the tracked files (front.stylelintFiles are repo-relative globs, with the
+    config of front.dir), then Playwright from the copy's front.dir."""
     fix = run_command(root, mode)
     pkg = package_dir(root, front)
+    rel_dir = pkg.relative_to(os.path.realpath(str(root))).as_posix() if pkg != Path(os.path.realpath(str(root))) else "."
     docker = None
     if mode == "full" and platform.system() != "Linux":
         docker = docker_ready()
@@ -615,25 +717,34 @@ def run(root, front, tokens, mode):
             raise Fail(f"`run full` compares screenshots, which only match on Linux (E-9), and this is "
                        f"{platform.system()} without a running Docker: nothing was checked. Start Docker and run it "
                        f"again ({fix}), or let the CI on Linux run it; here: {run_command(root, 'fast')}", 3)
-    stylelint = ["stylelint", "--allow-empty-input", *front["stylelintFiles"]]
+    files = tracked_files(root)
+    globs = front["stylelintFiles"]
+    if not any(glob_regex(g).fullmatch(f) for g in globs for f in files):
+        raise Fail(f"front.stylelintFiles ({', '.join(globs)}) matches no file git tracks, so Stylelint would check "
+                   f"nothing; set repo-relative globs of the project's CSS in .claude/gw.json, then run: {fix}", 2)
+    config_name = stylelint_config(pkg)
+    lint_args = (["--config", f"{rel_dir}/{config_name}"] if config_name else []) + list(globs)
     tests = playwright_args(tokens, front, mode)
     with tempfile.TemporaryDirectory(prefix="gw-front-run-") as tmp:
         work = Path(tmp) / "work"
-        copy_tree(pkg, work)
+        work.mkdir()
+        copy_tracked(os.path.realpath(str(root)), files, work)
+        work_pkg = work / rel_dir
         if docker:
             version = pinned_playwright(pkg)
             if version is None:
                 raise Fail(f"no exact @playwright/test version in {pkg / 'package.json'} for the Docker image; pin it "
                            f"(templates/front/package.json), then run: {fix}", 2)
             image = front["dockerImage"].replace("{playwright}", version)
+            inner = shlex.quote(f"/work/{rel_dir}")
             script = " && ".join([
-                "npm ci --no-audit --no-fund",
-                "npx " + " ".join(shlex.quote(a) for a in stylelint),
-                "npx playwright " + " ".join(shlex.quote(a) for a in tests)])
+                f"cd {inner}", "npm ci --no-audit --no-fund", "cd /work",
+                " ".join(shlex.quote(a) for a in [f"{rel_dir}/node_modules/.bin/stylelint", *lint_args]),
+                f"cd {inner}", "npx playwright " + " ".join(shlex.quote(a) for a in tests)])
             step([docker, "run", "--rm", "--ipc=host", "-v", f"{work}:/work", "-w", "/work", image, "bash", "-c", script],
                  work, f"{mode} checks in Docker ({image})", fix)
         else:
-            modules = install_packages(pkg, node_cache(root), fix)
+            modules = install_packages(pkg, root, fix)
             need_node(fix)
             wanted = front["browsers"]["all"] if mode == "fast" else matrix_browsers(front)
             missing = missing_browsers(modules, wanted)
@@ -641,10 +752,10 @@ def run(root, front, tokens, mode):
                 raise Fail(f"Playwright's {', '.join(missing)} not installed; install it with: python3 "
                            f"{Path(__file__).resolve()} --root {root} install --browsers {' '.join(missing)}, "
                            f"then run: {fix}", 3)
-            os.symlink(str(modules), str(work / "node_modules"))
+            os.symlink(str(modules), str(work_pkg / "node_modules"))
             binary = modules / ".bin"
-            step([str(binary / "stylelint"), *stylelint[1:]], work, "stylelint", fix)
-            step([str(binary / "playwright"), *tests], work, f"playwright ({mode})", fix)
+            step([str(binary / "stylelint"), *lint_args], work, "stylelint", fix)
+            step([str(binary / "playwright"), *tests], work_pkg, f"playwright ({mode})", fix)
     print(f"front: run {mode} passed")
     return 0
 
@@ -652,7 +763,7 @@ def run(root, front, tokens, mode):
 def install(root, front, package, browsers, with_deps):
     pkg = package_dir(root, front, package)
     fix = f"python3 {Path(__file__).resolve()} --root {root} install" + (f" --package-dir {package}" if package else "")
-    modules = install_packages(pkg, node_cache(root), fix)
+    modules = install_packages(pkg, root, fix)
     if browsers:
         need_node(fix)
         cmd = [str(modules / ".bin" / "playwright"), "install", *(["--with-deps"] if with_deps else []), *browsers]

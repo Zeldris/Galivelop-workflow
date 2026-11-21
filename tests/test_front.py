@@ -506,6 +506,7 @@ PACKAGE = json.dumps({"name": "x", "private": True, "devDependencies": {"@playwr
 FAKE_TOOL = """#!/bin/sh
 printf '%s|%s\\n' "$(basename "$0") $*" "$PWD" >> "$FAKE_LOG"
 [ -e "$PWD/node_modules" ] && echo "node_modules=yes" >> "$FAKE_LOG"
+[ -n "$FAKE_PROBE" ] && [ -e "$PWD/$FAKE_PROBE" ] && echo "probe=yes" >> "$FAKE_LOG"
 case "$(basename "$0") $1" in "docker info") exit "${FAKE_DOCKER_INFO:-0}" ;; esac
 exit "${FAKE_EXIT:-0}"
 """
@@ -525,6 +526,9 @@ class Run(Base):
         self.write_config()
         (self.tmp / "package.json").write_text(PACKAGE)
         (self.tmp / "package-lock.json").write_text("{}\n")
+        (self.tmp / "site").mkdir()
+        (self.tmp / "site" / "a.css").write_text("a { color: var(--color-brand); }\n")
+        self.track()
         self.bin = self.tmp.parent / (self.tmp.name + "-bin")
         self.bin.mkdir()
         self.addCleanup(shutil.rmtree, self.bin, True)
@@ -541,14 +545,20 @@ class Run(Base):
             path.write_text(FAKE_TOOL)
             path.chmod(0o755)
 
-    def cache(self):
+    def track(self):
+        subprocess.run(["git", "-C", str(self.tmp), "add", "-A"], check=True)
+
+    def cache_dir(self, pkg=None):
+        return self.mod.node_cache(self.tmp, pkg or self.tmp)
+
+    def cache(self, browsers=None):
         """A filled npm cache, as `npm ci` would leave it, with the stamp of this package."""
-        cache = self.tmp / ".git" / "gw" / "front-node"
+        cache = self.cache_dir()
         modules = cache / "node_modules"
         (modules / ".bin").mkdir(parents=True)
         (modules / "playwright-core").mkdir()
-        (modules / "playwright-core" / "browsers.json").write_text(json.dumps(
-            {"browsers": [{"name": "chromium", "revision": "1"}, {"name": "webkit", "revision": "2"}]}))
+        (modules / "playwright-core" / "browsers.json").write_text(json.dumps({"browsers": browsers or [
+            {"name": "chromium", "revision": "1"}, {"name": "webkit", "revision": "2"}]}))
         self.fake(modules / ".bin", "stylelint", "playwright")
         (cache / "installed-from").write_bytes(b"{}\n" + PACKAGE.encode())
         return modules
@@ -615,6 +625,7 @@ class Run(Base):
         calls = self.calls()
         self.assertEqual([c[0].split()[0] for c in calls], ["stylelint", "playwright"], calls)
         self.assertIn("**/*.{css,scss}", calls[0][0])
+        self.assertNotIn("--allow-empty-input", calls[0][0])
         pw = calls[1][0]
         self.assertIn("--grep-invert @visual", pw)
         self.assertIn("--project chromium-mobile --project chromium-desktop", pw)
@@ -669,7 +680,8 @@ class Run(Base):
         self.fake(self.bin, "node", "npm")
         code, out = self.main("install")
         self.assertEqual(code, 0, out)
-        cache = self.tmp / ".git" / "gw" / "front-node"
+        cache = self.cache_dir()
+        self.assertEqual(cache.parent, self.tmp / ".git" / "gw" / "front-node")
         self.assertEqual([c[0] for c in self.calls()], ["npm ci --no-audit --no-fund"])
         self.assertEqual(Path(self.calls()[0][1]).resolve(), cache.resolve())
         self.assertEqual((cache / "installed-from").read_bytes(), b"{}\n" + PACKAGE.encode())
@@ -682,6 +694,114 @@ class Run(Base):
         self.assertEqual(self.main("install", "--package-dir", ".")[0], 0)
         self.assertEqual([c[0] for c in self.calls()], ["npm ci --no-audit --no-fund"])
 
+
+    # -- review of chunk 3 -------------------------------------------------------------------------------------------
+    def browsers_path(self, system, env):
+        from unittest import mock
+        clean = {k: v for k, v in os.environ.items()
+                 if k not in ("PLAYWRIGHT_BROWSERS_PATH", "XDG_CACHE_HOME", "LOCALAPPDATA")}
+        with mock.patch.object(self.mod.platform, "system", return_value=system), \
+                mock.patch.dict(os.environ, dict(clean, HOME="/h", **env), clear=True):
+            return self.mod.browsers_path(Path("/nm"))
+
+    def test_browsers_path_follows_playwright_on_each_platform(self):
+        self.assertEqual(self.browsers_path("Linux", {}), Path("/h/.cache/ms-playwright"))
+        self.assertEqual(self.browsers_path("Linux", {"XDG_CACHE_HOME": "/x"}), Path("/x/ms-playwright"))
+        self.assertEqual(self.browsers_path("Darwin", {}), Path("/h/Library/Caches/ms-playwright"))
+        self.assertEqual(self.browsers_path("Windows", {"LOCALAPPDATA": "/w"}), Path("/w/ms-playwright"))
+        self.assertEqual(self.browsers_path("Darwin", {"PLAYWRIGHT_BROWSERS_PATH": "/p"}), Path("/p"))
+        self.assertEqual(self.browsers_path("Linux", {"PLAYWRIGHT_BROWSERS_PATH": "0"}),
+                         Path("/nm/playwright-core/.local-browsers"))
+
+    def test_fast_on_macos_finds_the_browsers_in_library_caches(self):
+        """Finding 1: on a Mac Playwright installs into ~/Library/Caches; the pre-push must not refuse every push."""
+        self.cache()
+        self.fake(self.bin, "node", "npm")
+        home = self.bin / "home"
+        (home / "Library" / "Caches" / "ms-playwright" / "chromium-1").mkdir(parents=True)
+        env = {k: v for k, v in self.env.items() if k != "PLAYWRIGHT_BROWSERS_PATH"}
+        from unittest import mock
+        with mock.patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("PLAYWRIGHT_BROWSERS_PATH", None)
+            self.env = env
+            code, out = self.main("run", "fast", system="Darwin", env={"HOME": str(home)})
+        self.assertEqual(code, 0, out)
+
+    def test_a_host_specific_build_counts_as_installed(self):
+        """Finding 12: a host-specific build (revisionOverrides) is the one Playwright installs there."""
+        self.cache(browsers=[{"name": "chromium", "revision": "1"},
+                             {"name": "webkit", "revision": "2", "revisionOverrides": {"mac12": "7"}},
+                             {"name": "firefox", "revision": "3"}])
+        self.fake(self.bin, "node", "npm")
+        (self.browsers / "webkit-7").mkdir()
+        (self.browsers / "firefox-3").mkdir()
+        code, out = self.main("run", "full")
+        self.assertEqual(code, 0, out)
+
+    def test_stylelint_runs_from_the_root_with_the_config_of_front_dir(self):
+        """Finding 3: front.dir in a subfolder and the app's CSS outside it: Stylelint still checks it."""
+        default_cache = self.cache()
+        sub = self.tmp / "front-tests"
+        sub.mkdir()
+        for name in ("package.json", "package-lock.json"):
+            (self.tmp / name).rename(sub / name)
+        (sub / ".stylelintrc.json").write_text("{}\n")
+        self.write_config({"tokens": "design/tokens.json", "dir": "front-tests", "stylelintFiles": ["site/**/*.css"]})
+        self.track()
+        self.assertEqual(self.mod.node_cache(self.tmp, sub), default_cache.parent)  # same files, same cache
+        self.fake(self.bin, "node", "npm")
+        code, out = self.main("run", "fast", env={"FAKE_PROBE": "site/a.css"})
+        self.assertEqual(code, 0, out)
+        calls = self.calls()
+        self.assertIn("--config front-tests/.stylelintrc.json site/**/*.css", calls[0][0])
+        self.assertEqual(Path(calls[1][1]).name, "front-tests")  # Playwright from the copy's front.dir
+        self.assertNotEqual(Path(calls[0][1]).name, "front-tests")
+        self.assertIn("probe=yes", self.log.read_text())  # the CSS outside front.dir is in the copy
+
+    def test_globs_that_match_no_tracked_file_fail_with_the_reason(self):
+        self.cache()
+        self.fake(self.bin, "node", "npm")
+        self.write_config({"tokens": "design/tokens.json", "stylelintFiles": ["../src/**/*.css", "nope/*.scss"]})
+        code, out = self.main("run", "fast")
+        self.assertEqual(code, 2, out)
+        self.assertIn("matches no file git tracks", out)
+        self.assertIn("front.stylelintFiles", out)
+        self.assertEqual(self.calls(), [])
+
+    def test_ignored_files_are_not_copied(self):
+        """Finding 4: what git ignores (a built dist/app.css) is not part of the commit, so not of the checks."""
+        self.cache()
+        self.fake(self.bin, "node", "npm")
+        (self.tmp / ".gitignore").write_text("dist/\n")
+        (self.tmp / "dist").mkdir()
+        (self.tmp / "dist" / "app.css").write_text("a { color: #f00; }\n")
+        self.track()
+        code, out = self.main("run", "fast", env={"FAKE_PROBE": "dist/app.css"})
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("probe=yes", self.log.read_text())
+        code, out = self.main("run", "fast", env={"FAKE_PROBE": "site/a.css"})
+        self.assertIn("probe=yes", self.log.read_text())  # the probe works: tracked files are there
+
+    def test_another_lock_gets_its_own_cache(self):
+        """Finding 5: two locks never share (nor remove) one node_modules."""
+        first = self.cache()
+        (self.tmp / "package-lock.json").write_text('{"v": 2}\n')
+        self.assertNotEqual(self.cache_dir(), first.parent)
+        self.fake(self.bin, "node", "npm")
+        self.assertEqual(self.main("install")[0], 0)
+        self.assertTrue((first / ".bin" / "stylelint").is_file())
+        self.assertTrue((self.cache_dir() / "installed-from").is_file())
+
+    def test_a_failed_npm_ci_leaves_no_stamp(self):
+        """Finding 6: the old stamp goes before node_modules does, and a failed npm ci writes none."""
+        cache = self.cache_dir()
+        (cache / "node_modules" / ".bin").mkdir(parents=True)
+        (cache / "installed-from").write_bytes(b"older install")
+        self.fake(self.bin, "node", "npm")
+        code, out = self.main("install", env={"FAKE_EXIT": "1"})
+        self.assertEqual(code, 3, out)
+        self.assertIn("npm ci failed", out)
+        self.assertFalse((cache / "installed-from").exists())
 
 class Config(unittest.TestCase):
     def test_schema_defaults_and_template_agree(self):
