@@ -265,6 +265,62 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   `schemaVersion` 2 file that still carries the old keys is refused (`unknown key 'language'`). With a `languages`
   block and the old keys together (before migrating), the block wins and the old keys only fill what it lacks.
 
+## Per-person and per-role profiles
+
+The `profiles` block (E4) lets each person work with their own configuration without touching the project's. The
+workflow provides the mechanism; each project decides its own profiles, roles and who uses which.
+
+```json
+"profiles": {"dir": ".claude/gw/profiles", "roles": {"admin": "admin"}, "people": {"<sha256 of the email>": {"role": "admin"}}}
+```
+
+- `dir`: folder of the profiles (default `.claude/gw/profiles`), relative to the root and never the root itself nor
+  containing `..`. Each profile is `<dir>/<name>.json`, an object with **only the keys it changes**.
+- `roles`: role → profile name.
+- `people`: SHA-256 of the email (trimmed, lower case) → `{role?, profile?}`; at least one of the two is needed.
+
+**Layers** (last wins): `default` (the project's `.claude/gw.json`, with its defaults) → the role's profile → the
+person's own profile. Objects merge deep; lists are **replaced** whole. The person comes from `git config user.email`
+(no email, or no assignment, means `default`). **CI always runs with `default`**: with the `CI` environment variable
+set (and not `0` or `false`) no layer is applied, `--rev` included.
+
+**What a profile cannot change** (`PROFILE_DENIED` in `scripts/config.py`): what decides what is installed or the shape
+of the config, because they are repo files versioned for everyone: `$schema`, `version`, `schemaVersion`, `profiles`,
+`languages` (the agent language per person already lives in `~/.claude/gw.json`), `agentsSkillsDir`,
+`projectSkillPrefix`, `gitignoreStacks` and the CI template keys (`ciInstall`, `ciPython`, `ciNodeDirs`, `ciRustDirs`,
+`ciKeepSteps`, `ciOnPush`, `actionlintVersion`). Any other configurable key is allowed.
+
+**Fails closed** (exit 2, with the reason and the command that fixes it): a profile that does not exist, is not an
+object, has broken JSON, an unknown or denied key, or a value the schema does not accept.
+
+### Commands: `profile.py`
+
+`--root <project>` is optional (by default, the root of the repo where it runs):
+
+```bash
+python3 .claude/gw/scripts/profile.py list                                   # profiles, roles and people
+python3 .claude/gw/scripts/profile.py new admin [--from dev]                 # creates <dir>/admin.json ({} or a copy)
+python3 .claude/gw/scripts/profile.py role admin admin                       # the admin role uses the admin profile
+python3 .claude/gw/scripts/profile.py assign ana@example.org --role admin    # stores only the hash
+python3 .claude/gw/scripts/profile.py assign ana@example.org --profile ana   # own profile (can add to the role)
+python3 .claude/gw/scripts/profile.py show [ana@example.org]                 # which profile applies and its layer
+```
+
+Writing commands edit `.claude/gw.json` in place and validate the result (an invalid one is rolled back). The `1.0`
+MMC (G4) will use the same commands.
+
+### Privacy
+
+The repo may be public: **only the SHA-256 of the email is stored**, never the address (`assign` computes it; `show`
+does not print it). `doctor.py` warns, with the command that fixes it, of clear-text emails in the `profiles` block or
+in a profile, of orphan profiles, of roles without a profile and of profiles with broken JSON.
+
+### Security notice
+
+Profiles are **convenience, not access control**: anyone with write access can edit them, git's email can be changed
+and hooks skipped with `--no-verify`. `config-guard.py` asks before an agent writes assignments or profiles, but it is
+no barrier for a person either. The real control is CI (which ignores profiles) and the protection of `main`.
+
 ## Agent language per user
 
 The language the agent talks in belongs to each person, not to the project (A12, Q-16): it lives in the user file

@@ -267,6 +267,63 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   un archivo con `schemaVersion` 2 que aún lleve las claves viejas se rechaza (`unknown key 'language'`). Con un bloque
   `languages` y las claves viejas a la vez (antes de migrar), manda el bloque y las viejas solo rellenan lo que le falta.
 
+## Perfiles por persona y por cargo
+
+El bloque `profiles` (E4) deja que cada persona trabaje con su propia configuración sin tocar la del proyecto. El flujo
+da el mecanismo; los perfiles, los cargos y quién usa cuál los decide cada proyecto.
+
+```json
+"profiles": {"dir": ".claude/gw/profiles", "roles": {"admin": "admin"}, "people": {"<sha256 del correo>": {"role": "admin"}}}
+```
+
+- `dir`: carpeta de los perfiles (defecto `.claude/gw/profiles`), relativa a la raíz y nunca la raíz misma ni con `..`.
+  Cada perfil es `<dir>/<nombre>.json`, un objeto con **solo las claves que cambia**.
+- `roles`: cargo → nombre de perfil.
+- `people`: SHA-256 del correo (recortado y en minúsculas) → `{role?, profile?}`; hace falta al menos uno de los dos.
+
+**Capas** (último gana): `default` (el `.claude/gw.json` del proyecto, con sus valores por defecto) → perfil del cargo
+→ perfil propio. Los objetos se mezclan en profundidad; las listas se **sustituyen** enteras. La persona sale de
+`git config user.email` (sin correo, o sin asignación, vale `default`). **El CI siempre corre con `default`**: con la
+variable de entorno `CI` puesta (y no `0` ni `false`) no se aplica ninguna capa, ni `--rev` la salta.
+
+**Qué no puede cambiar un perfil** (`PROFILE_DENIED` en `scripts/config.py`): lo que decide qué se instala o la forma
+del config, porque son archivos del repo que se versionan para todos: `$schema`, `version`, `schemaVersion`, `profiles`,
+`languages` (el idioma del agente por persona ya va en `~/.claude/gw.json`), `agentsSkillsDir`, `projectSkillPrefix`,
+`gitignoreStacks` y las claves de la plantilla del CI (`ciInstall`, `ciPython`, `ciNodeDirs`, `ciRustDirs`,
+`ciKeepSteps`, `ciOnPush`, `actionlintVersion`). Cualquier otra clave configurable sí.
+
+**Falla cerrado** (salida 2, con el motivo y la orden que lo arregla): un perfil que no existe, que no es un objeto, con
+JSON roto, con una clave desconocida o prohibida, o con un valor que el esquema no admite.
+
+### Órdenes: `profile.py`
+
+`--root <proyecto>` es opcional (por defecto, la raíz del repo donde se lanza):
+
+```bash
+python3 .claude/gw/scripts/profile.py list                                   # perfiles, cargos y personas
+python3 .claude/gw/scripts/profile.py new admin [--from dev]                 # crea <dir>/admin.json ({} o copia)
+python3 .claude/gw/scripts/profile.py role admin admin                       # el cargo admin usa el perfil admin
+python3 .claude/gw/scripts/profile.py assign ana@example.org --role admin    # guarda solo el hash
+python3 .claude/gw/scripts/profile.py assign ana@example.org --profile ana   # perfil propio (se puede sumar al cargo)
+python3 .claude/gw/scripts/profile.py show [ana@example.org]                 # qué perfil toca y de qué capa sale
+```
+
+Las órdenes que escriben editan `.claude/gw.json` en su sitio y validan el resultado (si queda inválido, lo
+devuelven). El MMC de la `1.0` (G4) usará las mismas.
+
+### Privacidad
+
+El repo puede ser público: **solo se guarda el SHA-256 del correo**, nunca el correo (`assign` lo calcula; `show` no
+lo imprime). `doctor.py` avisa, con la orden que lo arregla, de correos en claro en el bloque `profiles` o en un perfil,
+de perfiles huérfanos, de cargos sin perfil y de perfiles con JSON roto.
+
+### Aviso de seguridad
+
+Los perfiles son **comodidad, no control de acceso**: cualquiera con acceso de escritura puede editarlos, el correo de
+git se cambia y los ganchos se saltan con `--no-verify`. `config-guard.py` pide confirmación al agente antes de escribir
+asignaciones o perfiles, pero tampoco es una barrera para una persona. El control real es el CI (que ignora los
+perfiles) y la protección de `main`.
+
 ## Idioma del agente por usuario
 
 El idioma en que habla el agente es de cada persona, no del proyecto (A12, Q-16): se guarda en el archivo de usuario

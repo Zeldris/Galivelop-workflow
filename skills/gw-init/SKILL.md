@@ -60,6 +60,9 @@ if the user asks).
 - Offer a licence (an offer, never imposed; skip it if the project already has a `LICENSE` or the user declines): the
   dual licence of this workflow, MIT for the code and CC BY-NC-SA 4.0 for the content, with a third-party note. Ask for
   the copyright year and holder; the files are copied in step 4, after `--init`.
+- Mention that the project can give people or roles their own config through profiles (`profile.py`, the `profiles` block;
+  convenience, not access control): nothing to set now; if the user wants one, `python3 .claude/gw/scripts/profile.py new <name>`
+  then `assign <email> --profile <name>`, and the config reference (`docs/*/config.md`) has the rest.
 - Ask the user whenever a value is a guess. Offer numbered candidates; one question per unknown.
 
 Done when every fact has an answer the user confirmed.
