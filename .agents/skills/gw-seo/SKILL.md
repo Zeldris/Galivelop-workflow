@@ -5,7 +5,7 @@ license: MIT (adapted material from claude-seo, see LICENSE-claude-seo.txt)
 compatibility: "Claude Code or any Agent Skills agent; python3 3.10+ for scripts/check_seo.py (standard library only) and the project's own build."
 metadata:
   version: "0.8.1"
-  source: "Galivelop workshop (born in Portal-Galivelop, E42); checks and references adapted from AgriciDaniel/claude-seo@6be93f4 (MIT)"
+  source: "Galivelop workshop (born in a project's static website, E42); checks and references adapted from AgriciDaniel/claude-seo@6be93f4 (MIT)"
 ---
 
 # gw-seo
@@ -26,7 +26,7 @@ promise a ranking effect.
 2. **Run the check** from the repo root:
 
    ```bash
-   python3 .claude/skills/gw-seo/scripts/check_seo.py <build-dir> [--site <url>] [--langs es,gl,en]
+   python3 .claude/skills/gw-seo/scripts/check_seo.py <build-dir> [--site <url>] [--langs en,es]
    ```
 
    Without `--site` it reads the site from the `Sitemap:` line of `robots.txt`; without `--langs`, from the hreflang

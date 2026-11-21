@@ -40,7 +40,7 @@ desde una sesión local.
 ## Hecho (5 últimas)
 
 1. 2026-11-21 — E42 documentada: `gw-seo` en README.md ↔ README.es.md (29 skills) y hecha en el roadmap es/en; sin sección sin publicar en el CHANGELOG (se escribe al publicar la `0.9`).
-2. 2026-11-21 — E42 traída: skill `gw-seo` (SKILL.md, references con fechas, note.md, LICENSE MIT de claude-seo) y `scripts/check_seo.py` con sus tests, en inglés y sin rutas del portal; copias en `.claude/` y `.agents/`; docs es/en y roadmap quedan para otro trozo
+2. 2026-11-21 — E42 traída y revisada (13 hallazgos arreglados, `Findings: 13`): skill `gw-seo` (SKILL.md, references con fechas, note.md, LICENSE MIT de claude-seo) y `scripts/check_seo.py` con sus tests, en inglés y sin rutas del portal; copias en `.claude/` y `.agents/`; docs es/en y roadmap quedan para otro trozo
 3. 2026-11-21 — E78 hecha: `front.py run full --update-snapshots` (Linux o Docker) devuelve al árbol las capturas nuevas o cambiadas y escribe la versión fijada de Playwright en `front.snapshotStamp`; falla con 2 en `fast` o sin versión exacta; `doctor.py` propone la orden
 4. 2026-11-21 — E7 hecha: `front.py install --matrix` (navegadores de la matriz), la plantilla de CI corre `front.py run full` tras «Check» con `front.tokens` (Q-35) y monta node, guía «Pruebas de front» en `patterns.md` es/en; Q-36 documentada en `templates/front/README.md`
 5. 2026-11-21 — E5 cerrada: criterios de la ficha marcados, roadmap con E5 y E9-E16 hechas, Q-36 apuntada (`node_modules` solo en `front.dir`); arreglado el test de «macOS sin Docker», que veía el Docker real del runner (CI rojo en `aec7bba`)
