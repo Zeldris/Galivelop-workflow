@@ -39,6 +39,13 @@ Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse): a JSON obj
   {"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
                           "permissionDecisionReason": "..."}}
 
+`screenshotSheet` (E50) advises on loose screenshots: each Read of a file with one of its `extensions` (outside its
+`ignorePaths`) adds the image to the session's state (the same gw-reads-<session_id>.json, under "screenshots"; a
+reread does not count) and, when the session has read `after` distinct images (default 3; 0 turns it off) or a
+multiple of it, the note says to mount the ones still needed in one sheet and Read that: with `command`, the
+project's own; without it, a generic example and the key. It works whatever wholeReadWarnBytes says, and `forget`
+restarts the count. With no `session_id` nothing is counted.
+
 Fails open, because it only advises: stdin it cannot read, an event that is not a Read or a Bash call, a command it
 cannot split, a path outside the project, a file it cannot stat, a state file it cannot read or write or a config it
 cannot read (the defaults apply to the config) print nothing and exit 0. The
@@ -113,7 +120,23 @@ def settings(root):
             "extra": pick_list("wholeReadPaths"), "pointers": pointers, "deny": pick_map("wholeReadDenyPaths"),
             "repeat": repeat if isinstance(repeat, bool) else props["wholeReadRepeatOnly"]["default"],
             "stale": (stale if isinstance(stale, int) and not isinstance(stale, bool) and stale >= 1
-                      else props["wholeReadStaleDays"]["default"])}
+                      else props["wholeReadStaleDays"]["default"]),
+            "shots": shot_settings(cfg.get("screenshotSheet"), props["screenshotSheet"]["properties"])}
+
+
+def shot_settings(given, props):
+    """The `screenshotSheet` keys (E50), each the schema default when absent or invalid: `after`, `ext` (extensions in
+    lower case), `command` and `ignore` (ignorePaths)."""
+    given = given if isinstance(given, dict) else {}
+    after, command = given.get("after"), given.get("command")
+    ext, ignore = given.get("extensions"), given.get("ignorePaths")
+    ok_list = lambda value: isinstance(value, list) and all(isinstance(v, str) and v for v in value)  # noqa: E731
+    return {"after": (after if isinstance(after, int) and not isinstance(after, bool) and after >= 0
+                      else props["after"]["default"]),
+            "ext": tuple(e.lower() for e in (ext if ok_list(ext) and all(e.startswith(".") for e in ext)
+                                             else props["extensions"]["default"])),
+            "command": command if isinstance(command, str) else props["command"]["default"],
+            "ignore": list(ignore) if ok_list(ignore) else list(props["ignorePaths"]["default"])}
 
 
 def is_whole(tool_input):
@@ -169,6 +192,42 @@ def note(kind, rel, size, limit, how="this Read", command=None, repeat=False):
         return head + ("Next time: `python3 .claude/gw/scripts/recover.py --state` for the state, "
                        "or grep -n for the row you need and Read with offset and limit.")
     return head + "Next time: grep -n for the heading you need, then Read with offset and limit."
+
+
+# --- E50: loose screenshots -----------------------------------------------------------------------------------------
+
+SHOTS = "screenshots"  # the state key of the images read; never a real path (those are absolute)
+SHEET_EXAMPLE = "montage <images> -tile 4x -geometry +4+4 sheet.png"
+
+
+def is_shot(path, shots):
+    return shots["after"] > 0 and path.lower().endswith(shots["ext"])
+
+
+def shot_note(path, root, shots, state):
+    """The advice for the Read of the image `path`, or None. Records the image in `state` (a dict) when it counts."""
+    if state is None or not os.path.isfile(path):
+        return None
+    real = os.path.realpath(path)
+    if any(matches(real, root, rel) for rel in shots["ignore"]):
+        return None
+    seen = state.get(SHOTS)
+    seen = [s for s in seen if isinstance(s, str)] if isinstance(seen, list) else []
+    if real in seen:
+        return None
+    seen.append(real)
+    state[SHOTS] = seen
+    if len(seen) % shots["after"]:
+        return None
+    base = os.path.realpath(root)
+    shown = os.path.relpath(real, base) if real.startswith(base.rstrip(os.sep) + os.sep) else real
+    head = (f"This session has now read {len(seen)} images one by one (the last: {shown}); each one stays in the "
+            "context and costs tokens on every turn. If you still need to look at several, mount them in one sheet "
+            "and Read only that: ")
+    if shots["command"]:
+        return head + f"`{shots['command']}` (screenshotSheet.command in .claude/gw.json)."
+    return head + (f"for example `{SHEET_EXAMPLE}` (ImageMagick); set screenshotSheet.command in .claude/gw.json "
+                   "to the project's own command.")
 
 
 # --- Bash: which files a command reads whole -------------------------------------------------------------------------
@@ -502,18 +561,25 @@ def main():
         print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
                                                  "permissionDecisionReason": "\n".join(reasons)}}))
         return 0
-    if conf["limit"] <= 0:
+    shots = conf["shots"]
+    shot_reads = [path for path, how in reads if how == "this Read" and is_shot(path, shots)]
+    if conf["limit"] <= 0 and not shot_reads:
         return 0
-    spath = state_path(event.get("session_id")) if conf["repeat"] else None
+    need_state = (conf["repeat"] and conf["limit"] > 0) or shot_reads
+    spath = state_path(event.get("session_id")) if need_state else None
     notes = []
     with locked(spath) if spath else contextlib.nullcontext():
         state = load_state(spath) if spath else None
-        before = dict(state) if state is not None else None
-        for path, how in reads:
-            text = check(path, root, conf, state, how)
+        before = json.dumps(state, sort_keys=True) if state is not None else None
+        for path, how in reads if conf["limit"] > 0 else ():
+            text = check(path, root, conf, state if conf["repeat"] else None, how)
             if text and text not in notes:
                 notes.append(text)
-        if spath and state != before:
+        for path in shot_reads:
+            text = shot_note(path, root, shots, state)
+            if text:
+                notes.append(text)
+        if spath and json.dumps(state, sort_keys=True) != before:
             save_state(spath, state, conf["stale"])
     if notes:
         print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse",

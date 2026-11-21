@@ -365,7 +365,7 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | E7 | Front-end testing guide in `docs/en/patterns.md` and a config template; the projects' CI template runs `front.py run full` (Q-35) | done (2026-11-21) |
 | E9-E16 | The front-end checks decided in [`E-quality.md`](design/E-quality.md) (screenshots, when they run, tokens, preprocessors, accessibility, baselines, no paid services, matrix) | done (2026-11-21) |
 | E42 | `gw-seo` skill (SEO and link previews for static sites) brought from the portal: no portal paths, English names, tests in the check, es/en docs and its source's MIT LICENSE (`0.6` closing harvest, portal P1) | done (2026-11-21) |
-| E50 | `PreToolUse` hook on `Read` that warns, without blocking, when reading loose screenshots and suggests a contact sheet (the project's command in a key) (`0.6.0` harvest, image-generator P6) | pending |
+| E50 | `PreToolUse` hook on `Read` that warns, without blocking, when reading loose screenshots and suggests a contact sheet (the project's command in a key) (`0.6.0` harvest, image-generator P6) | done (2026-11-21; in `whole-read.py`, key `screenshotSheet`) |
 | H24 | `0.9` opening harvest (`gw-harvest`) at its start, after updating the projects to `0.8.0` (AGENTS.md) | done (2026-11-18; all 25 proposals approved: D128-D140 to the `0.8.1` patch, E65-E76 to `0.9`) |
 | H25 | `0.8.1` patch close: CHANGELOG, README, seal (`version.py`, `apply.py .`) and the phases before `main` | in progress (2026-11-19; stamped) |
 | E65 | `merge-main.py`: commits the metrics ledger (or refuses with more changes) before `git merge origin/<protectedBranch>`; the `AGENTS.md` templates point to it (`0.9` harvest, world-maker-fantasy P2) | done (2026-11-19) |

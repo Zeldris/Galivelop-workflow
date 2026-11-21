@@ -420,6 +420,7 @@
         "otherRepoReadWarn",
         "wholeReadRepeatOnly",
         "wholeReadStaleDays",
+        "screenshotSheet",
         "scoutMaxAgeDays",
         "harvest",
         "applyDiffLines",
@@ -1444,6 +1445,18 @@
       "minimum": 1,
       "default": 7,
       "description": "Days without a write after which whole-read.py deletes the other sessions' gw-reads-*.json files (own regular files only) when it creates a new one."
+    },
+    "screenshotSheet": {
+      "type": "object",
+      "additionalProperties": false,
+      "default": {},
+      "description": "E50: whole-read.py counts the distinct images a session reads with Read and, at `after` and each multiple of it, advises (never blocks) to mount the ones still needed in one sheet and Read that instead. The count lives in the session's gw-reads-*.json and restarts after /clear or a compaction; with no session_id nothing is counted.",
+      "properties": {
+        "after": {"type": "integer", "minimum": 0, "default": 3, "description": "Distinct images read one by one before the advice (and each multiple of it); 0 turns it off."},
+        "extensions": {"type": "array", "items": {"type": "string", "minLength": 1, "pattern": "^\\.[A-Za-z0-9]+$"}, "default": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"], "description": "File extensions (with the dot, compared in lower case) that count as images. The list replaces the default one."},
+        "command": {"type": "string", "default": "", "description": "The project's command that mounts images in one sheet, named in the advice; empty: the advice gives a generic example and names this key."},
+        "ignorePaths": {"type": "array", "items": {"type": "string", "minLength": 1}, "default": [], "description": "Repo-relative files or folders (a folder ends with /) whose images do not count, such as the sheet itself."}
+      }
     },
     "questions": {
       "type": "object",

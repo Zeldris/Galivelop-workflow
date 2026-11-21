@@ -401,5 +401,64 @@ class Deny(Base):  # E70: wholeReadDenyPaths rejects the whole read instead of w
             self.assertEqual(self.read(self.put("docs/plan.md", 10)), "", bad)
 
 
+class Screenshots(Base):  # E50: loose screenshots read one by one get the advice to mount them in one sheet
+    cfg = {"wholeReadWarnBytes": LIMIT, "wholeReadRepeatOnly": False,
+           "screenshotSheet": {"command": "npm run sheet -- <images>"}}
+
+    def shot(self, rel):
+        return self.put(rel, 10)
+
+    def test_the_third_distinct_image_warns_with_the_project_command(self):
+        self.assertEqual(self.read(self.shot("shots/a.png"), session="s1"), "")
+        self.assertEqual(self.read(self.shot("shots/a.png"), session="s1"), "", "a reread does not count")
+        self.assertEqual(self.read(self.shot("shots/b.jpg"), session="s1"), "")
+        text = self.warning(self.read(self.shot("shots/c.PNG"), session="s1"))
+        for part in ("3 images one by one", "`npm run sheet -- <images>`", "screenshotSheet.command",
+                     "shots/c.PNG"):
+            self.assertIn(part, text)
+        self.assertEqual(self.read(self.shot("shots/d.png"), session="s1"), "", "not on every image after it")
+        self.assertEqual(self.read(self.shot("shots/e.png"), session="s1"), "")
+        self.assertIn("6 images one by one", self.warning(self.read(self.shot("shots/f.png"), session="s1")))
+
+    def test_without_a_command_it_gives_an_example_and_the_key(self):
+        self.write_config({"screenshotSheet": {"after": 1}})
+        text = self.warning(self.read(self.shot("a.webp"), session="s1"))
+        self.assertIn("montage", text)
+        self.assertIn("set screenshotSheet.command", text)
+
+    def test_silent_cases(self):
+        self.write_config({"screenshotSheet": {"after": 0}})
+        self.assertEqual(self.read(self.shot("a.png"), session="s1"), "", "after 0 turns it off")
+        self.write_config({"screenshotSheet": {"after": 1, "ignorePaths": ["sheets/", "one.png"],
+                                               "extensions": [".png"]}})
+        for rel in ("sheets/all.png", "one.png", "x.jpg"):
+            self.assertEqual(self.read(self.shot(rel), session="s1"), "", rel)
+        self.assertEqual(self.read(self.shot("two.png")), "", "no session, no count")
+        self.assertEqual(self.read(self.shot("missing.png").with_name("gone.png"), session="s1"), "", "no file")
+
+    def test_bad_values_fall_back_to_the_defaults(self):
+        self.write_config({"screenshotSheet": {"after": "x", "extensions": 3, "command": 4, "ignorePaths": "y"}})
+        for name in ("a", "b"):
+            self.assertEqual(self.read(self.shot(f"{name}.png"), session="s1"), "")
+        self.assertIn("montage", self.warning(self.read(self.shot("c.png"), session="s1")))
+
+    def test_it_works_with_the_size_warning_off_and_beside_it(self):
+        self.write_config({"wholeReadWarnBytes": 0, "screenshotSheet": {"after": 1}})
+        self.assertIn("1 images one by one", self.warning(self.read(self.shot("a.png"), session="s1")))
+        self.write_config({"wholeReadWarnBytes": LIMIT, "wholeReadRepeatOnly": False, "screenshotSheet": {"after": 2}})
+        self.assertIn("docs/log.md is", self.warning(self.read(self.put("docs/log.md", LIMIT + 1), session="s2")))
+        self.read(self.shot("b.png"), session="s2")
+        self.assertIn("2 images one by one", self.warning(self.read(self.shot("c.png"), session="s2")))
+
+    def test_forget_restarts_the_count(self):
+        self.write_config({"screenshotSheet": {"after": 2}})
+        self.read(self.shot("a.png"), session="s1")
+        code, out = self.p.run("python3", "-c", "import importlib.util as u, sys; s = u.spec_from_file_location('w', "
+                               "sys.argv[1]); m = u.module_from_spec(s); s.loader.exec_module(m); m.forget('s1')",
+                               str(self.scripts / SCRIPT), env={"TMPDIR": str(self.state)})
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.read(self.shot("b.png"), session="s1"), "", "after /clear the images left the context")
+
+
 if __name__ == "__main__":
     unittest.main()
