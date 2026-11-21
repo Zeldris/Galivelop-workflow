@@ -11,6 +11,10 @@ Set `front.dir` in `.claude/gw.json` to this folder (default `.`) and `front.tok
 are never installed in the tree: `front.py` runs `npm ci` (exact versions from `package-lock.json`; needs node 22+)
 into `<git common dir>/gw/front-node/<lock hash>/`, shared by the worktrees.
 
+Keep every file of this template, and every spec or config that imports `@playwright/test`, `@axe-core/playwright` or
+`stylelint`, **inside `front.dir`**: the run links `node_modules` only into `front.dir` of its temporary copy, so an
+import from a file outside it does not resolve (Q-36).
+
 ```sh
 python3 .claude/gw/scripts/front.py install --browsers chromium   # packages and a browser, once per machine
 python3 .claude/gw/scripts/front.py generate   # tokens.css, _tokens.scss, stylelint.tokens.json, playwright.projects.json

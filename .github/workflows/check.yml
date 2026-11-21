@@ -48,8 +48,8 @@ jobs:
         # npm ci of templates/front into <git dir>/gw/front-node (the cache tests/test_front_sample.py reads, so the
         # sample runs instead of being skipped) and the Chromium that pinned Playwright asks for; --with-deps (apt,
         # sudo) only on GitHub. With front.tokens set, also front.dir's packages and every browser of its matrix
-        # (front.browsers.all and .main), which `run full` needs; without it `run full` does nothing. macOS: the sample
-        # stays skipped with its reason (E-9).
+        # (`--matrix`: front.browsers.all and .main), which `run full` needs; without it `run full` does nothing.
+        # macOS: the sample stays skipped with its reason (E-9).
         if: runner.os == 'Linux'
         run: |
           deps=""
@@ -58,9 +58,8 @@ jobs:
             python3 scripts/front.py install --package-dir templates/front --browsers chromium $deps
             tokens="$(python3 scripts/config.py get front.tokens)"
             if [ -n "$tokens" ] && [ "$tokens" != None ] && [ "$tokens" != null ]; then
-              matrix="$(python3 scripts/config.py get front | python3 -c 'import json, sys; b = json.load(sys.stdin)["browsers"]; print(" ".join(dict.fromkeys(b["all"] + b["main"])))')"
-              # shellcheck disable=SC2086  # one word per browser
-              python3 scripts/front.py install --browsers $matrix $deps
+              # shellcheck disable=SC2086  # $deps is empty or one flag
+              python3 scripts/front.py install --matrix $deps
             fi
             python3 scripts/front.py run full
           else

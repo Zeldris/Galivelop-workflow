@@ -157,6 +157,25 @@ propio, anterior al de los tests, no escondido dentro de ellos. Así un fallo de
 salida, y no como un test en rojo que manda a buscar el fallo donde no está. La plantilla `templates/github/check.yml` ya
 lo hace: el paso `Install` (`ciInstall`, o `install`) va antes del paso `Check`.
 
+## Pruebas de front
+
+Para un proyecto con interfaz web: Stylelint, layout, accesibilidad y capturas con Playwright, deterministas y sin
+servicios de pago (E5, E7). Las normas de diseño se escriben como dato y el flujo genera de ahí las reglas y la matriz.
+
+1. **Tokens:** un JSON en el formato W3C Design Tokens (grupos, hojas con `$value` y `$type`, alias `{grupo.token}`),
+   con un grupo de breakpoints en `px`. `front.tokens` de `.claude/gw.json` apunta a él; sin él no corre nada
+   ([config](config.md)).
+2. **Plantilla:** copia `templates/front/` del flujo en la carpeta de `front.dir` y deja **dentro** de ella todo lo que
+   importe `@playwright/test`, axe o Stylelint: `node_modules` solo se enlaza ahí (Q-36). Los paquetes se instalan
+   fuera del árbol: `python3 .claude/gw/scripts/front.py install --browsers chromium`.
+3. **Generar:** `front.py generate` escribe `tokens.css`, `_tokens.scss`, las reglas de Stylelint y los proyectos de
+   Playwright; decláralos en `generated` para que el check los compare.
+4. **Cuándo corre:** el `pre-push`, `front.py run fast` (sin las capturas, breakpoints principales); el cierre
+   (`scripts/check.sh`) y el CI de la plantilla, `front.py run full` (todo, la matriz entera). `run full` solo en
+   Linux o con Docker: en macOS sin Docker se niega, nunca da un verde falso.
+5. **Capturas de referencia:** las pruebas `@visual` se comparan con capturas tomadas en Linux con la versión de
+   Playwright fijada; `doctor.py` avisa de capturas de otra plataforma o versión y de las grandes fuera de Git LFS.
+
 ## Recoger mejoras de vuelta
 
 El flujo aprende de los proyectos que lo usan. Hay dos mitades:

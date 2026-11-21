@@ -9,8 +9,9 @@
                                # breakpoints (front.browsers.all x the main ones): what the pre-push runs
   python3 front.py run full    # Stylelint and the whole matrix, visual tests included: Linux only, or through
                                # Docker (front.dockerImage) elsewhere; otherwise it refuses (exit 3), never a false green
-  python3 front.py install [--package-dir DIR] [--browsers B ...] [--with-deps]
+  python3 front.py install [--package-dir DIR] [--browsers B ...] [--matrix] [--with-deps]
                                # the npm packages of front.dir (or DIR) and, if asked, Playwright's browsers
+                               # (--matrix: every browser of front.browsers.all and .main, what `run full` needs; CI)
 
 `run` installs the packages of `front.dir`/package.json with `npm ci` in `<git common dir>/gw/front-node/<hash of
 package-lock.json and package.json>/` (never a node_modules in the tree; one folder per lock, under a lock while it
@@ -815,6 +816,8 @@ def main(argv=None):
     inst.add_argument("--package-dir", help="repo-relative folder with package.json (default front.dir; works "
                                            "without front.tokens)")
     inst.add_argument("--browsers", nargs="+", choices=("chromium", "firefox", "webkit"), default=[])
+    inst.add_argument("--matrix", action="store_true", help="also every browser of front.browsers.all and .main "
+                                                               "(what run full needs; E7)")
     inst.add_argument("--with-deps", action="store_true", help="also the system libraries (needs sudo; CI)")
     args = parser.parse_args(argv)
     try:
@@ -824,7 +827,8 @@ def main(argv=None):
         except config.ConfigError as exc:
             raise Fail(str(exc), 2)
         if args.cmd == "install" and (args.package_dir or front["tokens"] is not None):
-            return install(root, front, args.package_dir, args.browsers, args.with_deps)
+            browsers = args.browsers + (front["browsers"]["all"] + front["browsers"]["main"] if args.matrix else [])
+            return install(root, front, args.package_dir, list(dict.fromkeys(browsers)), args.with_deps)
         tokens = load_tokens(root, front)
         if tokens is None:
             return 0

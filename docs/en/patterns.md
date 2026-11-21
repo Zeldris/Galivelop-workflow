@@ -162,6 +162,26 @@ own, before the tests step, not hidden inside it. An install failure then shows 
 as a red test that sends you looking where the fault is not. The `templates/github/check.yml` template already does
 this: the `Install` step (`ciInstall`, else `install`) comes before the `Check` step.
 
+## Front tests
+
+For a project with a web front end: Stylelint, layout, accessibility and screenshots with Playwright, deterministic and
+with no paid services (E5, E7). The design rules are written as data and the workflow generates the rules and the
+matrix from it.
+
+1. **Tokens:** a JSON in the W3C Design Tokens format (groups, leaves with `$value` and `$type`, aliases
+   `{group.token}`), with a group of breakpoints in `px`. `front.tokens` in `.claude/gw.json` points at it; without it
+   nothing runs ([config](config.md)).
+2. **Template:** copy the workflow's `templates/front/` into the `front.dir` folder and keep **inside** it everything
+   that imports `@playwright/test`, axe or Stylelint: `node_modules` is linked only there (Q-36). The packages are
+   installed outside the tree: `python3 .claude/gw/scripts/front.py install --browsers chromium`.
+3. **Generate:** `front.py generate` writes `tokens.css`, `_tokens.scss`, the Stylelint rules and the Playwright
+   projects; declare them in `generated` so the check compares them.
+4. **When it runs:** the `pre-push`, `front.py run fast` (no screenshots, main breakpoints); the closing check
+   (`scripts/check.sh`) and the template's CI, `front.py run full` (everything, the whole matrix). `run full` only on
+   Linux or with Docker: on macOS without Docker it refuses, never a false green.
+5. **Baselines:** the `@visual` tests compare against screenshots taken on Linux with the pinned Playwright;
+   `doctor.py` warns of baselines from another platform or version and of large ones outside Git LFS.
+
 ## Harvesting improvements back
 
 The workflow learns from the projects that use it. There are two halves:

@@ -353,7 +353,7 @@ class Templates(unittest.TestCase):
         for files, node in (((), "false"), (("package.json",), "true"), (("app/package.json", "Cargo.toml"), "false")):
             with self.subTest(files=files):
                 r, out = self.ci_dirs(files)
-                self.assertEqual((r.returncode, out), (0, f"node={node}\nrust=false\nrust_workspaces<<GW_EOF\nGW_EOF\n"),
+                self.assertEqual((r.returncode, out), (0, f"node={node}\nrust=false\nrust_workspaces<<GW_EOF\nGW_EOF\nfront=false\n"),
                                  r.stderr)
 
     def test_ci_node_dirs_one_or_several(self):
@@ -367,11 +367,32 @@ class Templates(unittest.TestCase):
         r, out = self.ci_dirs(("package.json",), ciNodeDirs=[])
         self.assertTrue(out.startswith("node=false\n"), out)
 
+    def test_e7_ci_front_tokens_set_front_and_node(self):
+        r, out = self.ci_dirs((), front={"tokens": "design/tokens.json"}, ciNodeDirs=[])
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(out.startswith("node=true\n"), out)
+        self.assertTrue(out.endswith("front=true\n"), out)
+        r, out = self.ci_dirs(("package.json",))
+        self.assertTrue(out.endswith("front=false\n"), out)
+
+    def test_e7_ci_front_step_runs_full_after_check_only_with_front(self):
+        text = (TEMPLATES / "github" / "check.yml").read_text()
+        self.assertIn("front: ${{ steps.dirs.outputs.front }}", text)
+        check = text.index("      - name: Check\n")
+        front = text.index("      - name: Front (E7)")
+        base = text.index("      - name: Base branch's pre-commit")
+        self.assertLess(check, front)
+        self.assertLess(front, base)
+        step = text[front:base]
+        self.assertIn("if: needs.versions.outputs.front == 'true'", step)
+        self.assertIn("front.py install --matrix --with-deps\n", step)
+        self.assertIn("front.py run full\n", step)
+
     def test_ci_rust_dirs_feed_rust_cache_one_workspace_per_line(self):
         r, out = self.ci_dirs(("src-tauri/Cargo.toml", "tools/Cargo.toml", "docs/x"),
                               ciRustDirs=["src-tauri", "missing", "tools"])
         self.assertEqual((r.returncode, out),
-                         (0, "node=false\nrust=true\nrust_workspaces<<GW_EOF\nsrc-tauri\ntools\nGW_EOF\n"), r.stderr)
+                         (0, "node=false\nrust=true\nrust_workspaces<<GW_EOF\nsrc-tauri\ntools\nGW_EOF\nfront=false\n"), r.stderr)
         r, out = self.ci_dirs(("Cargo.toml",), ciRustDirs=["missing"])
         self.assertIn("rust=false\n", out)
 

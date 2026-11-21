@@ -698,6 +698,22 @@ class Run(Base):
         self.assertEqual(self.main("install", "--package-dir", ".")[0], 0)
         self.assertEqual([c[0] for c in self.calls()], ["npm ci --no-audit --no-fund"])
 
+    def test_e7_install_matrix_asks_for_each_browser_of_the_matrix_once(self):
+        self.fake(self.bin, "node", "npm")
+        self.write_config({"tokens": "design/tokens.json",
+                           "browsers": {"all": ["chromium", "webkit"], "main": ["webkit", "firefox"]}})
+        self.cache()
+        code, out = self.main("install", "--matrix", "--with-deps")
+        self.assertEqual(code, 0, out)
+        self.assertEqual([c[0] for c in self.calls()],
+                         ["playwright install --with-deps chromium webkit firefox"])
+
+    def test_e7_install_matrix_without_tokens_does_nothing(self):
+        self.write_config(None)
+        self.fake(self.bin, "node", "npm")
+        self.assertEqual(self.main("install", "--matrix")[0], 0)
+        self.assertEqual(self.calls(), [])
+
 
     # -- review of chunk 3 -------------------------------------------------------------------------------------------
     def browsers_path(self, system, env):
