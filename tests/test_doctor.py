@@ -596,6 +596,35 @@ class Doctor(Snapshot):
         self.assertNotIn("-linux.png", line)
         self.assertNotIn("outside Git LFS", out)
 
+    def test_front_snapshot_fix_is_a_procedure_that_works_today(self):
+        """Finding 7: `run full` runs in a temporary copy, so it cannot be the fix; the manual one and E78 are."""
+        self.front_project()
+        self.snapshot("tests/home.spec.ts-snapshots/home-chromium-desktop-darwin.png", 100)
+        self.p.commit("baselines")
+        code, out = self.doctor()
+        line = self.assertLine(out, "WARN", "front snapshots", "from another platform",
+                               "npx playwright test --grep @visual --update-snapshots",
+                               "mcr.microsoft.com/playwright:v1.63.0-noble", "front/snapshots.version", "E78")
+        self.assertNotIn("run full", line)
+
+    def test_front_snapshot_stamp_compares_only_an_exact_pin(self):
+        """Finding 10: a range ("^1.63.0") is not a pin, as front.py reads it: no endless warning."""
+        self.front_project()
+        self.p.write("package.json", json.dumps({"devDependencies": {"@playwright/test": "^1.63.0"}}))
+        self.snapshot("tests/a.spec.ts-snapshots/a-chromium-mobile-linux.png", 100)
+        self.p.commit("baselines")
+        code, out = self.doctor()
+        self.assertNotIn("pins", out)
+
+    def test_front_large_snapshot_with_a_non_ascii_path_in_lfs_is_not_reported(self):
+        """Finding 11: check-attr without -z quotes a non-ASCII path, which then never matched."""
+        self.front_project()
+        self.snapshot("tests/menú.spec.ts-snapshots/big-chromium-mobile-linux.png", 4096)
+        self.p.write(".gitattributes", "**/*-snapshots/*.png filter=lfs diff=lfs merge=lfs -text\n")
+        self.p.commit("big baseline in LFS")
+        code, out = self.doctor()
+        self.assertNotIn("outside Git LFS", out)
+
     def test_front_snapshot_of_another_playwright_warns(self):
         self.front_project(stamp="1.50.0")
         self.snapshot("tests/a.spec.ts-snapshots/a-chromium-mobile-linux.png", 100)

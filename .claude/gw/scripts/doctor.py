@@ -541,19 +541,29 @@ def check_front_snapshots(rep, root, cfg):
     if not snaps:
         return
     problems = 0
+    pinned = None
+    try:  # the same reading as front.py's pinned_playwright, X.Y.Z only (doctor.py must not need front.py)
+        package = json.loads((root / front["dir"] / "package.json").read_text(encoding="utf-8"))
+        for key in ("devDependencies", "dependencies"):
+            version = (package.get(key) or {}).get("@playwright/test")
+            if isinstance(version, str) and re.fullmatch(r"\d+\.\d+\.\d+", version):
+                pinned = version
+                break
+    except (OSError, ValueError, AttributeError):
+        pinned = None
     foreign = [f for f in snaps if re.search(r"-(darwin|win32)\.[^/.]+$", f)]
     if foreign:
         problems += 1
+        # `front.py run full` works in a temporary copy, so it cannot leave baselines in the tree: they are taken by
+        # hand on Linux (or in the Playwright image) until E78 automates it.
+        image = front["dockerImage"].replace("{playwright}", pinned or "<version pinned in package.json>")
+        update = f"npm ci && npx playwright test --grep {front['visualTag']} --update-snapshots"
         rep.warn("front snapshots", f"{len(foreign)} baseline(s) from another platform than Linux, which never match "
                  f"the CI's render (E-9): {', '.join(foreign[:5])}",
-                 "delete them and take them on Linux or in Docker: python3 .claude/gw/scripts/front.py run full "
-                 "(Playwright --update-snapshots there)")
-    try:  # the same reading as front.py's pinned_playwright (doctor.py must not need front.py)
-        package = json.loads((root / front["dir"] / "package.json").read_text(encoding="utf-8"))
-        pinned = ((package.get("devDependencies") or {}).get("@playwright/test")
-                  or (package.get("dependencies") or {}).get("@playwright/test"))
-    except (OSError, ValueError, AttributeError):
-        pinned = None
+                 f"delete them and take them again on Linux: cd {front['dir']} && {update} (elsewhere, in Docker from "
+                 f"the repo root: docker run --rm -v \"$PWD\":/work -w /work/{front['dir']} {image} sh -c '{update}'), "
+                 f"then delete {front['dir']}/node_modules and write {pinned or 'the pinned Playwright'} into "
+                 f"{front['snapshotStamp']}; E78 will automate it")
     stamp_path = root / front["snapshotStamp"]
     stamp = stamp_path.read_text(encoding="utf-8").strip() if stamp_path.is_file() else None
     if pinned and stamp != pinned:
@@ -564,8 +574,9 @@ def check_front_snapshots(rep, root, cfg):
                  f"take them again with Playwright {pinned} on Linux and write {pinned} into {front['snapshotStamp']}")
     limit = front["lfsThresholdKb"] * 1024
     big = [f for f in snaps if (root / f).is_file() and (root / f).stat().st_size > limit]
-    attrs = (git(root, "check-attr", "filter", "--", *big) or "") if big else ""
-    in_lfs = {line.split(": filter: ")[0] for line in attrs.splitlines() if line.endswith(": filter: lfs")}
+    # -z: NUL-separated <path> <attribute> <value>, paths unquoted (core.quotePath would quote a non-ASCII one)
+    attrs = (git(root, "check-attr", "-z", "filter", "--", *big) or "").split("\0") if big else []
+    in_lfs = {attrs[i] for i in range(0, len(attrs) - 2, 3) if attrs[i + 2] == "lfs"}
     outside = [f for f in big if f not in in_lfs]
     if outside:
         problems += 1

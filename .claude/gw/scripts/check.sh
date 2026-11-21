@@ -45,6 +45,17 @@ fail() {  # fail <message>: the message ends with the command that fixes it
 [ -f "$config" ] || fail "the workflow scripts are missing ($config); reinstall them: /gw-update"
 checks="$(python3 "$config" --root "$root" get check)" || fail "cannot read 'check' from .claude/gw.json; fix the config: python3 $config --root $root validate"
 wrapper="$(python3 "$config" --root "$root" get checkWrapper)" || fail "cannot read 'checkWrapper' from .claude/gw.json; fix the config: python3 $config --root $root validate"
+# E5: with front.tokens set, the closing check also runs `front.py run full` (the visual tests and the whole browser
+# matrix) after the project's commands. A run full that cannot run here (no node or browser, outside Linux without
+# Docker) exits non-zero, so the check is red with its reason, never green without it. Without front.tokens: nothing.
+front_tokens="$(python3 "$config" --root "$root" get front.tokens)" || fail "cannot read 'front.tokens' from .claude/gw.json; fix the config: python3 $config --root $root validate"
+case "$front_tokens" in
+  ''|null|None) ;;
+  *)
+    [ -f "$scripts/front.py" ] || fail "front.tokens is set but the workflow has no front.py ($scripts/front.py); update the workflow: /gw-update"
+    checks="$checks
+python3 '$scripts/front.py' --root '$root' run full" ;;
+esac
 # A number from the config, else the schema default (config.py is the only place a default lives).
 num() { # num <key>
   local v

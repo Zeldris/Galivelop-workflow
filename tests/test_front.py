@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -791,6 +792,36 @@ class Run(Base):
         self.assertEqual(self.main("install")[0], 0)
         self.assertTrue((first / ".bin" / "stylelint").is_file())
         self.assertTrue((self.cache_dir() / "installed-from").is_file())
+
+    def test_old_caches_of_other_locks_are_pruned_and_busy_or_recent_ones_kept(self):
+        """front.nodeCacheDays: one cache per lock would grow for ever; only old, idle ones of other locks go."""
+        import fcntl
+        current = self.cache().parent
+        base = current.parent
+        old_time = time.time() - 40 * 86400
+
+        def other(name, age):
+            folder = base / name
+            (folder / "node_modules").mkdir(parents=True)
+            (folder / "installed-from").write_bytes(b"x")
+            os.utime(str(folder / "installed-from"), (age, age))
+            return folder
+        old, recent, busy, legacy = (other("a" * 16, old_time), other("b" * 16, time.time()), other("c" * 16, old_time),
+                                     other("node_modules_old", old_time))
+        os.utime(str(current / "installed-from"), (old_time, old_time))  # the current one, even if old, stays
+        self.fake(self.bin, "node", "npm")
+        with open(str(busy / ".lock"), "w") as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX)
+            code, out = self.main("install")
+        self.assertEqual(code, 0, out)
+        self.assertFalse(old.exists())
+        for kept in (current, recent, busy, legacy):
+            self.assertTrue(kept.is_dir(), kept)
+        self.assertGreater((current / "installed-from").stat().st_mtime, old_time + 86400)  # the use is dated
+        old = other("d" * 16, old_time)
+        self.write_config({"tokens": "design/tokens.json", "nodeCacheDays": 0})
+        self.assertEqual(self.main("install")[0], 0)
+        self.assertTrue(old.is_dir())
 
     def test_a_failed_npm_ci_leaves_no_stamp(self):
         """Finding 6: the old stamp goes before node_modules does, and a failed npm ci writes none."""

@@ -31,11 +31,13 @@ class CheckSummary(unittest.TestCase):
     def git(self, *args):
         return subprocess.run(["git", "-C", str(self.repo), *args], capture_output=True, text=True, check=True)
 
-    def configure(self, check, wrapper="", lock_wait=None, tail=None, release=None):
+    def configure(self, check, wrapper="", lock_wait=None, tail=None, release=None, front=None):
         cfg = {"version": "0.4.3", "schemaVersion": 1, "language": "en", "protectedBranch": "main",
                "pushToProtected": "direct", "content": ["^docs/"], "check": check, "checkWrapper": wrapper}
         if release is not None:
             cfg["releaseCheckBranches"] = release
+        if front is not None:
+            cfg["front"] = front
         if lock_wait is not None:
             cfg["checkLockWait"] = lock_wait
         if tail is not None:
@@ -63,6 +65,39 @@ class CheckSummary(unittest.TestCase):
 
     def quiet_env(self, **extra):
         return dict({"GW_CHECK_QUIET": "1"}, **extra)
+
+    def fake_front(self, code, message=""):
+        """scripts/front.py replaced by one that prints its arguments (and a message on stderr) and exits `code`."""
+        (self.repo / "scripts" / "front.py").write_text(
+            "import sys\nprint('front-args: ' + ' '.join(sys.argv[1:]))\n"
+            f"sys.stderr.write({message!r})\nsys.exit({code})\n")
+
+    def test_front_tokens_add_run_full_after_the_commands(self):
+        """Finding 2 (E5): the closing check runs `front.py run full` when the project has front.tokens."""
+        self.fake_front(0)
+        self.configure(["echo first-output"], front={"tokens": "design/tokens.json"})
+        code, out, err = self.run_check()
+        self.assertEqual(code, 0, out + err)
+        self.assertIn(f"front-args: --root {self.repo} run full", out)
+        summary = out.split("check: summary")[1]
+        self.assertRegex(summary, r"ok +\d+s +echo first-output\n")
+        self.assertRegex(summary, r"ok +\d+s +python3 .*front\.py' --root .* run full\n")
+
+    def test_a_run_full_that_cannot_run_makes_the_check_red_with_its_reason(self):
+        self.fake_front(3, "front: run full needs Linux or Docker running; start Docker\n")
+        self.configure(["echo first-output"], front={"tokens": "design/tokens.json"})
+        code, out, err = self.run_check()
+        self.assertEqual(code, 1, out + err)
+        self.assertIn("run full needs Linux or Docker running", err)
+        self.assertRegex(out, r"CHECK FAILED: python3 .*front\.py' --root .* run full")
+
+    def test_without_front_tokens_front_does_not_run(self):
+        self.fake_front(0)
+        self.configure(["echo first-output"])
+        code, out, err = self.run_check()
+        self.assertEqual(code, 0, out + err)
+        self.assertNotIn("front-args", out)
+        self.assertNotIn("run full", out)
 
     def test_green_run_streams_and_prints_one_ok_line_per_command(self):
         self.configure(["echo first-output", "echo second-output"])

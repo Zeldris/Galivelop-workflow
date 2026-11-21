@@ -7,19 +7,33 @@ project (or a subfolder of it) and keep the pinned versions of `package.json` to
 
 ## Install
 
+Set `front.dir` in `.claude/gw.json` to this folder (default `.`) and `front.tokens` to the tokens file. The packages
+are never installed in the tree: `front.py` runs `npm ci` (exact versions from `package-lock.json`; needs node 22+)
+into `<git common dir>/gw/front-node/<lock hash>/`, shared by the worktrees.
+
 ```sh
-npm ci                          # exact versions from package-lock.json; needs node 22+
-npx playwright install chromium # once per machine (browsers are not part of the package)
+python3 .claude/gw/scripts/front.py install --browsers chromium   # packages and a browser, once per machine
 python3 .claude/gw/scripts/front.py generate   # tokens.css, _tokens.scss, stylelint.tokens.json, playwright.projects.json
 ```
 
 ## Run
 
 ```sh
-npx playwright test --trace off        # one project per breakpoint and browser (playwright.projects.json)
-npx playwright test --project 'chromium-*'
-npx stylelint "**/*.{css,scss}"        # colours, spacing and font sizes must be tokens
+python3 .claude/gw/scripts/front.py run fast   # Stylelint + Playwright without @visual, main breakpoints (the pre-push)
+python3 .claude/gw/scripts/front.py run full   # everything, whole matrix: Linux, or Docker elsewhere (CI, closing check)
 ```
+
+Both run from a temporary copy of what git tracks. Stylelint checks `front.stylelintFiles` (repo-relative globs,
+default `**/*.{css,scss}`) with this folder's `.stylelintrc.json`: colours, spacing and font sizes must be tokens.
+
+## Visual tests and baselines
+
+Tag the screenshot tests `@visual` (`front.visualTag`): `run fast` leaves them out, `run full` runs them. Baselines
+(`*-snapshots/*.png`) only match the render they were taken on, so they are taken on Linux (or in the Playwright
+Docker image) with the Playwright pinned in `package.json`, and that version is written into
+`front/snapshots.version` (`front.snapshotStamp`); `doctor.py` warns when the stamp and the pin differ, about
+baselines from `-darwin`/`-win32` and about large ones outside Git LFS. Until E78 automates it, take them by hand in
+this folder: `npm ci && npx playwright test --grep @visual --update-snapshots`, then delete `node_modules`.
 
 `GW_PLAYWRIGHT_PROJECTS` overrides the path of `playwright.projects.json` (default: `front/generated/` next to
 `gw-config.ts`, the default `front.out`). `.stylelintrc.json` extends `./front/generated/stylelint.tokens.json` and
@@ -39,7 +53,7 @@ ignores `front/generated/**` (generated, not hand-written): change both if `fron
 Every failure message names the element and the reason. Set `baseURL` (and a `webServer`) through
 `gwConfig({ use: { baseURL }, webServer })`: `stable` needs `baseURL` to know the app's origin and fails with a message
 asking for it when it is missing. Screenshots (`toHaveScreenshot`) are compared only on Linux or in Docker
-(E-9): baselines are per platform and are not part of this template yet.
+(E-9): baselines are per platform and are not part of this template.
 
 ## Pinned versions
 

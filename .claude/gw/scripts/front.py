@@ -46,6 +46,7 @@ import subprocess
 import sys
 import shlex
 import tempfile
+import time
 import unicodedata
 from pathlib import Path
 
@@ -541,10 +542,37 @@ def locked(cache):
         yield
 
 
-def install_packages(pkg, root, fix):
+def prune_caches(current, days):
+    """front.nodeCacheDays: removes the other caches of front-node/ (16-hex names) whose stamp (touched on every use)
+    or, without one, folder is older than that many days, each under its own lock taken without waiting (an install
+    in progress holds it, so its cache stays). 0 = never; without flock (Windows), nothing is removed."""
+    if days <= 0:
+        return
+    try:
+        import fcntl
+    except ImportError:
+        return
+    limit = time.time() - days * 86400
+    for other in sorted(current.parent.iterdir()):
+        if other == current or other.is_symlink() or not other.is_dir() or not re.fullmatch(r"[0-9a-f]{16}", other.name):
+            continue
+        stamp = other / "installed-from"
+        try:
+            used = (stamp if stamp.exists() else other).stat().st_mtime
+            if used > limit:
+                continue
+            with open(str(other / ".lock"), "a") as handle:
+                fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                shutil.rmtree(str(other), True)
+                print(f"front: removed the package cache {other} (unused for {days}+ days, front.nodeCacheDays)")
+        except OSError:  # busy (locked) or gone: left alone
+            continue
+
+
+def install_packages(pkg, root, fix, keep_days=0):
     """npm ci of <pkg> into its cache (node_cache), skipped when the stamp `installed-from` holds the same package
-    files. The stamp goes before anything is removed and is written only after a good npm ci: a failed install never
-    leaves a stamp over a half node_modules."""
+    files (the stamp is then touched: it dates the last use for prune_caches). The stamp goes before anything is
+    removed and is written only after a good npm ci: a failed install never leaves a stamp over a half node_modules."""
     lock_file = pkg / "package-lock.json"
     if not lock_file.is_file():
         raise Fail(f"no package-lock.json next to {pkg / 'package.json'}; create it with npm install there and commit "
@@ -554,6 +582,8 @@ def install_packages(pkg, root, fix):
     with locked(cache):
         stamp = cache / "installed-from"
         if stamp.is_file() and stamp.read_bytes() == wanted and (cache / "node_modules" / ".bin").is_dir():
+            os.utime(str(stamp))
+            prune_caches(cache, keep_days)
             return cache / "node_modules"
         need_node(fix)
         if stamp.exists():
@@ -566,6 +596,7 @@ def install_packages(pkg, root, fix):
         if done.returncode != 0:
             raise Fail(f"npm ci failed in {cache} (above); fix package.json or the network, then run: {fix}", 3)
         stamp.write_bytes(wanted)
+    prune_caches(cache, keep_days)
     return cache / "node_modules"
 
 
@@ -744,7 +775,7 @@ def run(root, front, tokens, mode):
             step([docker, "run", "--rm", "--ipc=host", "-v", f"{work}:/work", "-w", "/work", image, "bash", "-c", script],
                  work, f"{mode} checks in Docker ({image})", fix)
         else:
-            modules = install_packages(pkg, root, fix)
+            modules = install_packages(pkg, root, fix, front["nodeCacheDays"])
             need_node(fix)
             wanted = front["browsers"]["all"] if mode == "fast" else matrix_browsers(front)
             missing = missing_browsers(modules, wanted)
@@ -763,7 +794,7 @@ def run(root, front, tokens, mode):
 def install(root, front, package, browsers, with_deps):
     pkg = package_dir(root, front, package)
     fix = f"python3 {Path(__file__).resolve()} --root {root} install" + (f" --package-dir {package}" if package else "")
-    modules = install_packages(pkg, root, fix)
+    modules = install_packages(pkg, root, fix, front["nodeCacheDays"])
     if browsers:
         need_node(fix)
         cmd = [str(modules / ".bin" / "playwright"), "install", *(["--with-deps"] if with_deps else []), *browsers]
