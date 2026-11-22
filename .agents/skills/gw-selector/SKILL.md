@@ -51,7 +51,8 @@ do the case without it and say so.
 - **The user picks the session model and effort** (`/model`, `/effort`); an agent only recommends them and cannot
   switch them. State the case in **one line** that keeps the session and the subagents apart and names the current
   ones: `Session: <model> <effort> (current: <X> <E>; /model and /effort to change them) · Subagents: <rung or none>
-  · Skill: <y>`. `<X>` is the model the session reports (its system prompt, or the session tool in the cloud); `<E>`
+  · Skill: <y>`, starting the line, with the labels `Session:`, `Subagents:` and `Skill:` in English whatever the
+  reply language (the `SessionStart` check reads that line). `<X>` is the model the session reports (its system prompt, or the session tool in the cloud); `<E>`
   is the effort it reports, or the value of `CLAUDE_CODE_EFFORT_LEVEL` when set (it beats `/effort`: say so if it
   differs from the recommendation); write `unknown` for either when nothing says it.
 - **A different model or effort stops the session** (D142): when the recommended session model or effort differs

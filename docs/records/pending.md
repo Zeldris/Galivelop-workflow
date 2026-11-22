@@ -117,6 +117,20 @@ Hallazgos menores de la oleada 2 (2026-11-22):
 - [ ] `0.9` · **Tests de tiempo:** `test_session_log.SessionStart.test_command_kill_grace_key_shortens_the_wait_before_kill`
   falla con la máquina cargada (5,2 s y 12 s contra un tope de 5 s; solo da 4,7 s). Ampliar el margen o medir otra cosa.
 
+### Hallazgos de la fase 1 (2026-11-22)
+
+Menores de la revisión del diff entero contra `main`; no se revisan otra vez en este parche.
+
+- [ ] `0.9` · **`gw-selector` (`SKILL.md:66`):** lee `metrics.py quality --period month` entero (~3.7k tokens); bastaría
+  la línea del resumen.
+- [ ] `0.9` · **`recover.py:576`:** el prefijo `version/` va fijo; existe `releaseCheckBranches`.
+- [ ] `0.9` · **`recover.py:593`:** cuenta la fila de relleno «—» como un id.
+- [ ] `0.9` · **`doctor.py:1216`:** dice `<workflow repo URL>` aunque existe la clave `workflowRepository`.
+- [ ] `0.9` · **Copia instalada `.agents/skills/gw-opt-tokens/scripts/test_measure.py`:** falla (5 errores, 9 fallos);
+  la oculta `doctorTestDirsIgnore`.
+- Observaciones: el aviso de D158 de `doctor.py` sale siempre en el CI y en una sesión de la nube con un solo repo;
+  D151, D145, D148 y D164 no tienen ficha en `docs/tasks/`.
+
 ## De la retro del parche `0.8.1`
 
 - [x] `0.8.2` · **D144 (`measure.py`, fallo; antes «D142», id repetido):** sin `--session`, en la nube mide una sesión vieja de la carpeta del

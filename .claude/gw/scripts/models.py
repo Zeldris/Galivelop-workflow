@@ -44,7 +44,8 @@ import config  # noqa: E402
 
 ALIASES = ("opus", "sonnet", "haiku", "fable")
 SIZES = {"large": "opus", "medium": "sonnet", "light": "haiku"}  # the gw-selector table's words
-SESSION_LINE = re.compile(r"^\s*(?:\*\*)?Session:\W*([A-Za-z][\w.\-]*)(?:\s+or\s+([A-Za-z][\w.\-]*))?", re.MULTILINE)
+# D142 review: the label also in Spanish, and a bullet, quote or backtick before it; or after a ' · ' separator mid-line (not in bare prose)
+SESSION_LINE = re.compile(r"(?:^[\s>`*\-\u2022]*|\u00b7\s*)(?:Session|Sesi[o\u00f3]n):\W*([A-Za-z][\w.\-]*)(?:\s+or\s+([A-Za-z][\w.\-]*))?", re.MULTILINE)
 
 
 def normalize(name):

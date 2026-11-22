@@ -157,6 +157,12 @@ class SessionCheck(unittest.TestCase):
     def test_review_findings_line_start_sidechain_and_unknown_words(self):
         self.assertIsNone(self.check([said("as the skill says, Session: large high")]))  # not at a line start
         self.assertIn("recommends opus", self.check([said("Case: design\n  Session: large high")]))
+        # review of phase 1: the Spanish label and a bullet, quote or backtick before it count, and mid-line after a ' · '
+        for text in ("Sesión: large high", "Sesion: Opus high", "- Session: large high", "> **Sesión:** Opus 5.5 high",
+                     "`Session: large high (current: Sonnet medium)`", "• Sesión: large high"):
+            with self.subTest(text=text):
+                self.assertIn("recommends opus", self.check([said(text)]))
+        self.assertIn("recommends opus", self.check([said("Caso: diseño · Sesión: large high")]))
         side = dict(said("Session: light low", "claude-haiku-4-5"), isSidechain=True)
         self.assertIn("runs on claude-sonnet-5-5", self.check([said("Session: large high"), side]))
         # a word that is no model does not hide an earlier real line, in the same text or an earlier row
