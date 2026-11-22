@@ -91,10 +91,11 @@ def session_logs(root):
 
 def default_min_calls(root):
     """The schema default of `measure.minCalls` (one datum, one place): from the workflow's schema next to this
-    script (the repo's `schema/` or an installed `.claude/gw/schema/`) or the project's own; 0 (off) if none is found."""
+    script (the repo's `schema/` or an installed `.claude/gw/schema/`, also from the `.agents/skills/` copy) or the project's own; 0 (off) if none is found."""
     here = os.path.dirname(os.path.abspath(__file__))
     for path in (os.path.join(here, '..', '..', '..', 'schema', 'gw.schema.json'),
                  os.path.join(here, '..', '..', '..', 'gw', 'schema', 'gw.schema.json'),
+                 os.path.join(here, '..', '..', '..', '..', '.claude', 'gw', 'schema', 'gw.schema.json'),  # the .agents/skills copy
                  os.path.join(root, '.claude', 'gw', 'schema', 'gw.schema.json')):
         try:
             with open(path, encoding='utf-8') as f:

@@ -28,8 +28,9 @@ def folder() -> str:
 def copy_config_file(rel: str, repo: str) -> None:
     """D145: copy `scripts/config.py` or `schema/gw.schema.json` into a test repo, from the workflow repo root or, with
     the workflow installed in a project, from `.claude/gw/`."""
-    top = os.path.join(HERE, '..', '..', '..')  # the workflow repo root, or .claude/ in an installed project
-    for src in (os.path.join(top, rel), os.path.join(top, 'gw', rel)):
+    top = os.path.join(HERE, '..', '..', '..')  # the workflow repo root, or .claude/ or .agents/ in an installed project
+    project = os.path.join(top, '..')  # the project root, for the copy in .agents/skills/ (agentsSkillsDir)
+    for src in (os.path.join(top, rel), os.path.join(top, 'gw', rel), os.path.join(project, '.claude', 'gw', rel)):
         if os.path.isfile(src):
             os.makedirs(os.path.dirname(os.path.join(repo, rel)), exist_ok=True)
             shutil.copy(src, os.path.join(repo, rel))
@@ -666,7 +667,11 @@ class Measure(unittest.TestCase):
         write(os.path.join(repo, 'AGENTS.md'), 'x' * 3500)
         if with_workflow:
             for rel in ('scripts', 'schema'):
-                shutil.copytree(os.path.join(HERE, '..', '..', '..', rel), os.path.join(repo, rel),
+                top = os.path.join(HERE, '..', '..', '..')
+                for base in (top, os.path.join(top, 'gw'), os.path.join(top, '..', '.claude', 'gw')):
+                    if os.path.isdir(os.path.join(base, rel)):
+                        break
+                shutil.copytree(os.path.join(base, rel), os.path.join(repo, rel),
                                 ignore=shutil.ignore_patterns('__pycache__'))
         if installed_guard:  # an installed copy that fails on import
             write(os.path.join(repo, '.claude', 'gw', 'scripts', 'context_guard.py'), installed_guard)
