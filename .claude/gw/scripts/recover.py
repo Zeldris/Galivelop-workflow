@@ -577,13 +577,14 @@ def task_line(root):
 
 def open_rows_line(root, branch):
     """D166: one line with the open roadmap rows of the version in progress (a branch matching `releaseCheckBranches`
-    whose last segment is `X.Y.Z` or `X.Y`; the section of X.Y.Z, else of X.Y, said in the line), so a version is not
-    closed with a row still open. [] when unknown: --state never fails. Only a config, roadmap or file problem is
-    soft; any other error (an ImportError, a bug in roadmap.py) is not hidden."""
+    whose last segment is `X.Y.Z` or `X.Y`, with an optional `v`; the section of X.Y.Z, else of X.Y, said in the line), so a version is not
+    closed with a row still open. [] when unknown. Only a config, roadmap or file problem is soft here; any other
+    error (an ImportError, a bug in roadmap.py) is not hidden: it reaches main(), which still exits 0 but prints
+    «recover.py --state could not finish (…)» with the command that shows why."""
     try:
         cfg = config.load(root)
         files = config.roadmap_files(cfg)
-        m = re.fullmatch(r"(?:.*/)?(\d+\.\d+)(\.\d+)?", branch)
+        m = re.fullmatch(r"(?:.*/)?v?(\d+\.\d+)(\.\d+)?", branch)
         if not m or not files or not any(fnmatch.fnmatchcase(branch, pat)
                                          for pat in cfg.get("releaseCheckBranches") or []):
             return []
