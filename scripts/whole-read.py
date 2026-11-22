@@ -495,6 +495,24 @@ def passes_through(rest):
     return False
 
 
+def piped_range(rest):
+    """(name, lines) when the command a pipe feeds (the first of `rest`) is a `head` or `sed -n A,Bp` with no file of its
+    own whose output reaches the context (E85: `cat F | head -n 200` reads 200 lines of F); else None."""
+    for item in rest:
+        if item[0] != "cmd":
+            continue
+        _, words, inputs, sent, piped = item
+        words = program_words(words)
+        if not words or sent or piped or inputs:
+            return None
+        name = os.path.basename(words[0])
+        found = range_files(name, words[1:])
+        if found is None or found[0]:
+            return None
+        return " ".join([name] + words[1:]), found[1]
+    return None
+
+
 def bash_reads(command, cwd):
     """[(path, program, lines)] for each file the Bash `command` reads into the context (not into a pipe or a file):
     whole (`lines` None) or, for `sed -n A,Bp` and `head`, a range of `lines` (E85),
@@ -523,6 +541,11 @@ def bash_reads(command, cwd):
             if operands is None:
                 operands, lines = range_files(name, words[1:]) or (None, None)
                 name = f"{name} " + " ".join(words[1:]) if lines is not None else name
+            if operands is not None and lines is None and piped and not sent:
+                tail = piped_range(items[index + 1:])
+                if tail:
+                    name, lines = f"{name} {' '.join(words[1:])} | {tail[0]}", tail[1]
+                    piped = False
             if operands is None or sent or (piped and not passes_through(items[index + 1:])):
                 continue
             for operand in operands + inputs:

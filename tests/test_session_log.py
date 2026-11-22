@@ -345,12 +345,22 @@ class SessionStart(Base):
         self.assertEqual(left, [], "the command of the first run survived")
 
     def test_command_kill_grace_key_shortens_the_wait_before_kill(self):
-        cloud = self.cloud_config(setup=["trap '' TERM; sleep 31"], commandTimeout=1, commandKillGrace=1)
-        started = time.time()
+        # Measured inside the command (TERM received -> last sign of life), not by the wall clock of the whole session
+        # start, so a loaded machine does not move it: with the default grace it would be 5 s, with the key 1 s.
+        prog = ("import signal,time\n"
+                "t=[0]\n"
+                "signal.signal(signal.SIGTERM, lambda *a: t.__setitem__(0, time.time()))\n"
+                "while True:\n"
+                "    time.sleep(0.05)\n"
+                "    if t[0]: open('alive.txt','w').write(repr(time.time()-t[0]))\n")
+        self.p.write("hold.py", prog)
+        cloud = self.cloud_config(setup=["python3 hold.py"], commandTimeout=1, commandKillGrace=1)
         code, out = self.p.session_start(env=cloud)
         self.assertEqual(code, 0, out)
         self.assertIn("setup command timed out after 1s", out)
-        self.assertLess(time.time() - started, 5, "with the default grace (5 s) this takes 6 s or more")
+        alive = float((self.p.work / "alive.txt").read_text())
+        self.assertGreater(alive, 0.5, "it was killed before the 1 s grace")
+        self.assertLess(alive, 3.5, "with the default grace (5 s) it stays alive 5 s after TERM")
 
     def test_invalid_command_timeout_stops_the_commands_and_says_which_key(self):
         for key, value in (("commandTimeout", 0), ("commandKillGrace", "x")):

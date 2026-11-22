@@ -92,7 +92,7 @@ Hallazgos menores de las revisiones por rama de la oleada 1 (2026-11-22); no se 
   `subagentTranscriptBytes`; en una sesión larga reanudada no avisa (límite documentado en `config.md`).
 - [x] `0.9` · **D152 (`tests-for.py`):** el prefijo `.claude/gw/` va escrito a mano (una ruta con `./` no casa);
   `tests/test_ci_local.py:226` no comprueba `code` y mezcla tres fases.
-- [ ] `0.9` · **D160 (`ci-local.py`):** otro ejecutor local de `check.yml` (act, a mano) sigue dejando `.gw-ci/`; mover
+- [x] `0.9` · **D160 (`ci-local.py`):** otro ejecutor local de `check.yml` (act, a mano) sigue dejando `.gw-ci/`; mover
   la escritura a `$RUNNER_TEMP` en `templates/github/check.yml` (con `check.legacy-lines.txt` y `test_doctor.py`).
 - [x] `0.9` · **D158/D159 (`doctor.py`):** `check_workflow_clone` ignora `GW_WORKFLOW`/`--workflow` y solo mira
   `is_dir()` (no `is_workflow`); `check_agent_files_ignored` duplica la lógica de `ignored_paths()` (extraer un
@@ -107,7 +107,7 @@ Hallazgos menores de la oleada 2 (2026-11-22):
 - [x] `0.9` · **D161/D165 (`apply.py`):** el recuento por nombre viejo se hace tras filtrar `legacyNamesSkip`, pero el
   `git grep -n -F` sugerido lista también los saltados (cifra y salida pueden no casar: decirlo en el mensaje); la
   ayuda de `--summary` no nombra el recuento.
-- [ ] `0.9` · **E85 (`whole-read.py`, leve):** `cat docs/handoff.md | head -n 200` no avisa: `passes_through` trata todo
+- [x] `0.9` · **E85 (`whole-read.py`, leve):** `cat docs/handoff.md | head -n 200` no avisa: `passes_through` trata todo
   `head` como filtro. Si el siguiente comando es un `head` o `sed -n A,Bp` sin archivo propio, avisar del archivo de
   arriba con el recuento de líneas de ese comando, con su test. (El `\0` que el regex de descriptores deja en palabras
   entrecomilladas como `"x 2>y"` solo afecta a nombres raros: sin acción.)
@@ -118,7 +118,7 @@ Hallazgos menores de la oleada 2 (2026-11-22):
   desacoplado, sección ausente).
 - [x] `0.9` · **D162 (`apply.py`):** `ledger` con globs, `./`, `../` o absoluto no casa en `paths-ignore` (solo
   documentado en `config.md`; validar o normalizar).
-- [ ] `0.9` · **Tests de tiempo:** `test_session_log.SessionStart.test_command_kill_grace_key_shortens_the_wait_before_kill`
+- [x] `0.9` · **Tests de tiempo:** `test_session_log.SessionStart.test_command_kill_grace_key_shortens_the_wait_before_kill`
   falla con la máquina cargada (5,2 s y 12 s contra un tope de 5 s; solo da 4,7 s). Ampliar el margen o medir otra cosa.
 
 Leves de la revisión de D166 (`554568c`, 2026-11-22):

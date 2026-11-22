@@ -25,3 +25,9 @@ branches-ignore: [{{protectedBranch}}]
 # (rust-toolchain...) goes before "Install".
 if: hashFiles('package.json') != ''
 # workflow's, untouched; `ciPython` makes Python a matrix); another toolchain (rust-toolchain...) goes before "Install".
+--- v0.8.1 (4ca45d0) ---
+mkdir -p .gw-ci
+git show "$base:.githooks/pre-commit" > .gw-ci/pre-commit
+# The base branch's hook may still be the one that only knows --rango (the old name of --range)
+grep -q -- '--range' .gw-ci/pre-commit || flag=--rango
+bash .gw-ci/pre-commit "$flag" "$(git merge-base "$base" HEAD)..HEAD"

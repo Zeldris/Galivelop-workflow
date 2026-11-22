@@ -287,6 +287,22 @@ class Ranges(Base):  # E85: a long range of the log or a roadmap file read by Ba
                         "grep -n x docs/log.md", "ls docs", "echo sed -n 1,80p docs/log.md", "sed -n 1,80p docs/nope.md"):
             self.assertEqual(self.bash(command), "", command)
 
+    def test_a_file_piped_into_a_range_command_warns_with_that_commands_lines(self):  # E85
+        for command in ("cat docs/log.md | head -n 200", "cat docs/log.md | sed -n 1,200p", "cat docs/log.md | head -200",
+                        "cat < docs/log.md | head -n 200", "cat docs/log.md | head --lines=200"):
+            text = self.warning(self.bash(command))
+            for part in ("docs/log.md is 1001 bytes", "reads 200 lines of it", "recover.py --state"):
+                self.assertIn(part, text, command)
+        self.assertIn("to the end", self.warning(self.bash("cat docs/log.md | sed -n p")))
+        self.assertIn("docs/roadmap.md", self.warning(self.bash("cat docs/roadmap.md | head -n 200")))
+
+    def test_a_piped_range_that_is_short_or_not_the_files_own_stays_silent(self):  # E85
+        for command in ("cat docs/log.md | head -n 20", "cat docs/log.md | head", "cat docs/log.md | head -n 200 other.txt",
+                        "cat docs/log.md | head -n 200 > out.txt", "cat docs/log.md | head -n 200 | wc -l",
+                        "cat docs/log.md | head -c 500", "cat docs/log.md | head -n -5", "cat docs/log.md | grep x",
+                        "cat docs/log.md | head -n 200 < other.txt", "cat docs/log.md > out.txt | head -n 200"):
+            self.assertEqual(self.bash(command), "", command)
+
     def test_the_threshold_is_the_key_and_zero_warns_every_range(self):
         self.write_config(dict(self.cfg, wholeReadShortLines=100))
         self.assertEqual(self.bash("sed -n 1,80p docs/log.md"), "")
