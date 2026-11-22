@@ -6,6 +6,9 @@
   python3 models.py check MODEL           # exit 1 and the entry that blocks MODEL; exit 0 when it is enabled
   python3 models.py disable MODEL [...]   # add entries to models.disabled (an entry already there is kept once)
   python3 models.py enable MODEL [...]    # remove entries; one that is not in the list -> exit 2, nothing written
+  python3 models.py session-check --transcript PATH [--model MODEL]
+                                          # D142: one warning line when the session model differs from the one the
+                                          # last gw-selector line recommends; nothing otherwise (always exit 0)
 
 An entry blocks a model when, compared in lower case and without a context suffix such as `[1m]`, it is the model
 (`claude-opus-5-5`), a prefix of it followed by `-` (`claude-opus` blocks `claude-opus-5-5` and
@@ -17,7 +20,15 @@ Who reads it: subagent-cap.py (PreToolUse on Agent/Task) denies a subagent whose
 gw-orchestrate-dealer never pick one. `disable` and `enable` rewrite .claude/gw.json (two-space JSON, key order kept)
 and validate it, putting the old text back if the result is invalid; config-guard.py asks the user before an agent runs
 them, as for any edit of that file. Project root and config: config.find_root and config.load. Fails closed: no
-config or an invalid one -> exit 2 with the command that fixes it. Python 3.8+ standard library only.
+config or an invalid one -> exit 2 with the command that fixes it.
+
+`session-check` (D142, called by session-start.sh with the hook's `transcript_path` and `model`) reads the last
+subagentTranscriptBytes of the transcript (format internal to Claude Code: assistant rows carry `message.model` and text
+blocks, as subagent-cap.py reads them). The recommendation is the last `Session: <model> <effort>` line an assistant text
+block holds (the gw-selector line; `large`/`medium`/`light` stand for opus/sonnet/haiku, `X or Y` allows both); the
+current model is `--model` (the hook's input), else the model of the last assistant message. It compares families only
+(effort is not in the transcript). Unknown or unreadable data, or `models.sessionCheck` false, prints nothing: a
+SessionStart hook cannot block, and a wrong warning costs more than a missing one. Python 3.8+ standard library only.
 """
 import argparse
 import json
@@ -31,6 +42,8 @@ sys.path.insert(0, str(HERE))
 import config  # noqa: E402
 
 ALIASES = ("opus", "sonnet", "haiku", "fable")
+SIZES = {"large": "opus", "medium": "sonnet", "light": "haiku"}  # the gw-selector table's words
+SESSION_LINE = re.compile(r"Session:\W*([A-Za-z][\w.\-]*)(?:\s+or\s+([A-Za-z][\w.\-]*))?")
 
 
 def normalize(name):
@@ -66,6 +79,71 @@ def disabled(conf):
     return [e for e in entries if isinstance(e, str)] if isinstance(entries, list) else []
 
 
+def recommended_families(text):
+    """The families the last `Session: <model> ...` line of `text` recommends (a set), or None when there is no such
+    line or a model in it is not known."""
+    matches = SESSION_LINE.findall(text or "")
+    if not matches:
+        return None
+    out = set()
+    for word in (w for w in matches[-1] if w):
+        word = normalize(word)
+        fam = SIZES.get(word) or family(word)
+        if fam is None:
+            return None
+        out.add(fam)
+    return out
+
+
+def transcript_tail(path, tail_bytes):
+    """The JSON rows of the last `tail_bytes` of the transcript at `path` ([] when it cannot be read)."""
+    try:
+        with open(path, "rb") as fh:
+            fh.seek(0, 2)
+            fh.seek(max(0, fh.tell() - tail_bytes))
+            lines = fh.read().decode("utf-8", errors="replace").splitlines()
+    except (OSError, TypeError, ValueError):
+        return []
+    rows = []
+    for line in lines:
+        try:
+            row = json.loads(line)
+        except ValueError:
+            continue  # the first line of the tail may be cut
+        if isinstance(row, dict):
+            rows.append(row)
+    return rows
+
+
+def session_check(rows, hook_model=None):
+    """The warning line when the session's model family is not one the last selector line recommends, else None."""
+    recommended, current = None, normalize(hook_model) if isinstance(hook_model, str) else ""
+    for row in reversed(rows):
+        message = row.get("message") if row.get("type") == "assistant" else None
+        if not isinstance(message, dict):
+            continue
+        model = message.get("model")
+        if not current and isinstance(model, str) and model.strip() and not model.startswith("<"):
+            current = normalize(model)
+        content = message.get("content")
+        texts = [b.get("text") for b in content if isinstance(b, dict) and b.get("type") == "text"] \
+            if isinstance(content, list) else [content] if isinstance(content, str) else []
+        if recommended is None:
+            for text in reversed([t for t in texts if isinstance(t, str)]):
+                if "Session:" in text:
+                    recommended = recommended_families(text) or set()
+                    break
+        if current and recommended is not None:
+            break
+    fam = family(current) if current else None
+    if not recommended or fam is None or fam in recommended:
+        return None
+    wanted = " or ".join(sorted(recommended))
+    return (f"the last gw-selector line recommends {wanted} for this session, but it runs on {current}; stop and ask the "
+            f"user to switch (/model {sorted(recommended)[0]}, and /effort as the line says) before working, or say "
+            f"why it stays (turn this off: models.sessionCheck false in .claude/gw.json)")
+
+
 def write(root, entries):
     """Set models.disabled to `entries` in root/.claude/gw.json and validate it; on an invalid result the old text is
     put back and ConfigError raised."""
@@ -92,7 +170,22 @@ def main(argv=None):
     check.add_argument("model")
     for name in ("disable", "enable"):
         sub.add_parser(name).add_argument("model", nargs="+")
+    sc = sub.add_parser("session-check", help="D142: warn when the session model differs from the selector's")
+    sc.add_argument("--transcript", default="", help="the hook's transcript_path")
+    sc.add_argument("--model", default="", help="the hook's model, when it gives one")
     args = parser.parse_args(argv)
+    if args.command == "session-check":
+        try:
+            conf = config.load(args.root)
+        except config.ConfigError:
+            return 0  # session-start.sh already warns about a broken config
+        if config.models(conf).get("sessionCheck") is False or not args.transcript:
+            return 0
+        tail = config.subagent_settings(conf["_root"])["subagentTranscriptBytes"]
+        line = session_check(transcript_tail(args.transcript, tail), args.model or None)
+        if line:
+            print(line)
+        return 0
     try:
         conf = config.load(args.root)
     except config.ConfigError as exc:

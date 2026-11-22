@@ -1464,6 +1464,7 @@ def main(argv=None):
         print(f"{scope} {reason}" if reason else scope)
         return 0
     value = dict(config, metrics=metrics(config), models=models(config), measure=measure(config), mediaContent=media_content(config),
+                 selector=_section(config, "selector"),
                  recover=recover(config), handoff=handoff(config), harvest=harvest(config),
                  contextGuard=context_guard(config), modes=modes(config),
                  stopSeverity=stop_severity(config), changeSize=change_size(config),

@@ -18,7 +18,7 @@ import waits
 from test_hooks import ROOT, Project, Snapshot
 
 SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py", "context_guard.py",
-           "change-size.py", "whole-read.py", "questions.py", "mode.py")
+           "change-size.py", "whole-read.py", "questions.py", "mode.py", "models.py")
 
 
 MARK_VAR = "GW_TEST_PROC_MARK"
@@ -119,6 +119,18 @@ class SessionStart(Base):
         self.assertEqual(code, 0, out)
         self.assertEqual(p.git("config", "--get", "core.hooksPath").stdout.strip(), ".githooks")
         self.assertNotIn("gw session-start:", out)
+
+    def test_warns_when_the_session_model_is_not_the_selectors_d142(self):
+        p = self.p
+        transcript = p.work / "t.jsonl"
+        transcript.write_text(json.dumps({"type": "assistant", "message": {
+            "model": "claude-sonnet-5-5", "content": [{"type": "text", "text": "Session: large high (current: ...)"}]}}) + "\n")
+        code, out = p.session_start(stdin=json.dumps({"transcript_path": str(transcript), "source": "resume"}))
+        self.assertEqual(code, 0, out)
+        self.assertIn("gw session-start: the last gw-selector line recommends opus for this session, but it runs on "
+                      "claude-sonnet-5-5", out)
+        code, out = p.session_start(stdin=json.dumps({"transcript_path": str(transcript), "model": "claude-opus-5-5"}))
+        self.assertNotIn("gw-selector line", out)  # the hook's model is the session's
 
     def test_respects_another_hook_manager(self):
         p = self.p

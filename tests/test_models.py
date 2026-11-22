@@ -115,5 +115,64 @@ class Cli(unittest.TestCase):
         self.assertEqual((r.returncode, r.stdout.strip()), (0, "[]"), r.stderr)
 
 
+def said(text, model="claude-sonnet-5-5"):
+    """An assistant transcript row with one text block."""
+    return {"type": "assistant", "message": {"model": model, "content": [{"type": "text", "text": text}]}}
+
+
+class SessionCheck(unittest.TestCase):
+    """D142: the selector's `Session: <model> <effort>` line against the model the session runs on."""
+
+    def check(self, rows, hook_model=None):
+        return models.session_check(rows, hook_model)
+
+    def test_a_different_family_warns_with_the_switch(self):
+        line = self.check([said("Session: large high (current: Sonnet medium) · Subagents: none · Skill: none")])
+        self.assertIn("recommends opus for this session, but it runs on claude-sonnet-5-5", line)
+        self.assertIn("/model opus", line)
+        self.assertIn("models.sessionCheck false", line)
+
+    def test_cases_that_stay_silent(self):
+        cases = {
+            "same family, context suffix": [said("**Session:** Opus high", "claude-opus-5-5[1m]")],
+            "either of two": [said("Session: medium or light low", "claude-haiku-4-5")],
+            "no selector line": [said("Nothing to pick here")],
+            "the skill's placeholder": [said("`Session: <model> <effort> (current: ...)`")],
+            "a model outside the families": [said("Session: gpt-5 high")],
+            "an unknown current model": [said("Session: large high", "gpt-5")],
+            "only a synthetic model": [said("Session: large high", "<synthetic>")],
+            "nothing": [],
+        }
+        for name, rows in cases.items():
+            with self.subTest(name):
+                self.assertIsNone(self.check(rows))
+
+    def test_the_last_line_and_the_last_model_win(self):
+        rows = [said("Session: large high", "claude-opus-5-5"), said("Session: medium medium", "claude-opus-5-5"),
+                {"type": "user", "message": {"content": "Session: light low"}},
+                said("done", "claude-sonnet-5-5")]
+        self.assertIsNone(self.check(rows))  # the user's text is not the selector line; the newest model is sonnet
+        self.assertIn("runs on claude-opus-5-5", self.check(rows, "claude-opus-5-5"))  # the hook's model wins
+
+    def test_cli_reads_the_tail_and_respects_the_key(self):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-models-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        subprocess.run(["git", "init", "-q", str(tmp)], check=True)
+        (tmp / ".claude").mkdir()
+        transcript = tmp / "t.jsonl"
+        transcript.write_text('{"cut li\n' + json.dumps(said("Session: large high")) + "\n")
+
+        def run(cfg, path=transcript):
+            (tmp / ".claude" / "gw.json").write_text(json.dumps(cfg))
+            return subprocess.run([sys.executable, "-B", str(ROOT / "scripts" / "models.py"), "--root", str(tmp),
+                                   "session-check", "--transcript", str(path)], capture_output=True, text=True)
+        r = run(BASE_CONFIG)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("recommends opus", r.stdout)
+        self.assertEqual(run(dict(BASE_CONFIG, models={"sessionCheck": False})).stdout, "")
+        r = run(BASE_CONFIG, tmp / "missing.jsonl")
+        self.assertEqual((r.returncode, r.stdout), (0, ""))
+
+
 if __name__ == "__main__":
     unittest.main()
