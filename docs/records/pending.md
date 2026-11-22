@@ -104,7 +104,7 @@ Hallazgos menores de las revisiones por rama de la oleada 1 (2026-11-22); no se 
 
 Hallazgos menores de la oleada 2 (2026-11-22):
 
-- [ ] `0.9` · **D161/D165 (`apply.py`):** el recuento por nombre viejo se hace tras filtrar `legacyNamesSkip`, pero el
+- [x] `0.9` · **D161/D165 (`apply.py`):** el recuento por nombre viejo se hace tras filtrar `legacyNamesSkip`, pero el
   `git grep -n -F` sugerido lista también los saltados (cifra y salida pueden no casar: decirlo en el mensaje); la
   ayuda de `--summary` no nombra el recuento.
 - [ ] `0.9` · **E85 (`whole-read.py`, leve):** `cat docs/handoff.md | head -n 200` no avisa: `passes_through` trata todo
@@ -116,7 +116,7 @@ Hallazgos menores de la oleada 2 (2026-11-22):
   `X.Y` con la etiqueta `X.Y.Z` (decir qué sección usa); `open_rows` da por cerrado todo estado que no empieza por una
   palabra de `open` («aplazada» también: documentarlo); faltan tests de falla suave (sin `roadmapFiles`, HEAD
   desacoplado, sección ausente).
-- [ ] `0.9` · **D162 (`apply.py`):** `ledger` con globs, `./`, `../` o absoluto no casa en `paths-ignore` (solo
+- [x] `0.9` · **D162 (`apply.py`):** `ledger` con globs, `./`, `../` o absoluto no casa en `paths-ignore` (solo
   documentado en `config.md`; validar o normalizar).
 - [ ] `0.9` · **Tests de tiempo:** `test_session_log.SessionStart.test_command_kill_grace_key_shortens_the_wait_before_kill`
   falla con la máquina cargada (5,2 s y 12 s contra un tope de 5 s; solo da 4,7 s). Ampliar el margen o medir otra cosa.

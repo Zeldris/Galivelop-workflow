@@ -2172,6 +2172,21 @@ class CiSteps(unittest.TestCase):
         out = self.applied("--update")
         self.assertIn('paths-ignore: ["tele/l.jsonl"]', self.p.read(self.CI), out)
 
+    def test_ci_ledger_path_is_normalized_and_a_glob_fails_closed(self):
+        """D162: `./x` and `a//x` still match in paths-ignore once normalized; a glob fails with the fixing step."""
+        for given, want in (("./tele/l.jsonl", "tele/l.jsonl"), ("tele//sub/./l.jsonl", "tele/sub/l.jsonl")):
+            with self.subTest(ledger=given):
+                self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, metrics={"ledger": given}), indent=2) + "\n")
+                out = self.applied("--update")
+                self.assertIn(f'paths-ignore: ["{want}"]', self.p.read(self.CI), out)
+        for glob in ("tele/*.jsonl", "tele/l?.jsonl", "tele/[ab].jsonl"):
+            with self.subTest(ledger=glob):
+                self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, metrics={"ledger": glob}), indent=2) + "\n")
+                code, out = self.p.run_apply("--update")
+                self.assertNotEqual(code, 0, out)
+                self.assertIn("has a glob character", out)
+                self.assertIn("edit metrics.ledger in", out)
+
     def test_ci_on_push_false_runs_check_yml_only_on_pull_requests_and_back(self):
         """D54: `ciOnPush: false` renders the push filter as every branch; the copy stays the workflow's."""
         self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, ciOnPush=False), indent=2) + "\n")
@@ -2321,6 +2336,18 @@ class LegacyNames(unittest.TestCase):
         self.assertIn("3 use(s) of the old name docs/traspaso.md", lines[0])
         self.assertIn("git grep -n -F 'docs/traspaso.md'", lines[0])
         self.assertNotIn("docs/notes.md:", out)
+        self.assertIn("files in legacyNamesSkip not counted", lines[0])
+        self.assertIn("its output may be longer", lines[0])
+
+    def test_old_name_warning_says_git_grep_also_lists_the_skipped_files(self):
+        """D161: the per-use line warns that the suggested git grep includes legacyNamesSkip files."""
+        self.p.write("docs/notes.md", "docs/traspaso.md\n")
+        out = self.applied()
+        self.assertIn("files in legacyNamesSkip included, so the number may be higher", out)
+
+    def test_summary_help_names_the_old_name_count(self):
+        code, out = self.p.run_apply("--help")
+        self.assertIn("count of uses per old name", " ".join(out.split()))
 
     def test_old_name_warning_suggests_legacy_names_skip_for_quotes_of_other_repos(self):
         """D165: the warning names the key that silences a file quoting another repo."""

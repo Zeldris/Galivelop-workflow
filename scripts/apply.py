@@ -109,8 +109,8 @@ In the workflow repo itself the copy is generated from scripts/ and skills/, so 
               does not fail it (a local git setting: a fresh clone in CI has it unset). The drift test.
   --dry-run   print the plan, no writes, exit 0; the renames it would make (moved paths, hook commands) are
               shown in the plan as move, remove and merge lines.
-  --summary   only with --dry-run: counts per action, what needs a decision (propose, merge), the renames and the
-              warnings, instead of the per-file listing; the renames are listed as `rename  old -> new`.
+  --summary   only with --dry-run: counts per action, what needs a decision (propose, merge), the renames, the
+              warnings and the count of uses per old name (after legacyNamesSkip), instead of the per-file listing; the renames are listed as `rename  old -> new`.
   --keep-paths   keep the old Spanish project paths: write them explicitly in .claude/gw.json instead of moving them.
   --no-personal-notes   do not carry the personal notes (env GW_PERSONAL_NOTES, default ~/.claude/gw/notas/).
 Exit 2 on a missing or invalid config or settings file. Python 3.8+ standard library only.
@@ -866,6 +866,20 @@ def docs_language(cfg):
     return config.languages(cfg)["docs"]["primary"]
 
 
+def ci_ledger_path(ledger):
+    """D162: `metrics.ledger` as the literal path `paths-ignore` matches. A leading `./` and doubled or trailing slashes
+    are normalized away; a glob character (`*`, `?`, `[`) would make the filter match something else, so it fails
+    closed. A path outside the repo (absolute or `../`) is left as is: no push touches it, the filter just never
+    matches and CI runs (as documented in config.md)."""
+    if any(c in ledger for c in "*?["):
+        raise ApplyError(f"apply: metrics.ledger '{ledger}' has a glob character (*, ? or [), so the CI paths-ignore "
+                         f"would not match that file; use a literal path: edit metrics.ledger in {config.CONFIG_REL} "
+                         f"(current value: python3 scripts/config.py get metrics.ledger)")
+    if ledger.startswith("/"):
+        return ledger
+    return posixpath.normpath(ledger)
+
+
 def render(text, cfg, root, version, name):
     """Replace {{key}}: config keys (lists as an inline code list), {{version}} (the workflow's), {{project}},
     {{ciPushIgnore}} (protectedBranch, or '**' with `ciOnPush: false`), {{ciLedgerPath}} (`metrics.ledger`, quoted).
@@ -880,7 +894,7 @@ def render(text, cfg, root, version, name):
         if key == "ciPushIgnore":  # D54: the branches a push does not run CI on; '**' is every branch
             return str(cfg["protectedBranch"]) if cfg.get("ciOnPush", True) else "'**'"
         if key == "ciLedgerPath":  # D162: a push that only changes the metrics ledger does not run CI
-            return json.dumps(config.metrics(cfg)["ledger"])
+            return json.dumps(ci_ledger_path(config.metrics(cfg)["ledger"]))
         if key == "version":
             return version
         if key == "project":
@@ -1687,7 +1701,8 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
             if len(hits) < limit:
                 where = f"{rel}:{number}" + (f" (moved to {shown})" if shown != rel else "")
                 hits.append(f"{where} uses the old name {m.group(1)}; replace it with {pairs[m.group(1)]} "
-                            f"(find them all: git grep -n -F '{m.group(1)}'; if it quotes another repo's text, "
+                            f"(find them all, files in legacyNamesSkip included, so the number may be higher: "
+                            f"git grep -n -F '{m.group(1)}'; if it quotes another repo's text, "
                             f"add the file to legacyNamesSkip in {config.CONFIG_REL})")
             counts[m.group(1)] = counts.get(m.group(1), 0) + 1
     plan.warnings.extend(hits)
@@ -2117,7 +2132,8 @@ def main(argv=None):
                 if warning not in plan.legacy_lines:
                     print(f"apply: WARNING: {warning}")
             for old, n in sorted(plan.legacy_counts.items()):
-                print(f"apply: WARNING: {n} use(s) of the old name {old}; list them: git grep -n -F '{old}' "
+                print(f"apply: WARNING: {n} use(s) of the old name {old} (files in legacyNamesSkip not counted); "
+                      f"git grep -n -F '{old}' also lists those, so its output may be longer "
                       f"(text quoting other repos: add the file to legacyNamesSkip in {config.CONFIG_REL})")
             if plan.hooks_path:
                 print(f"apply: {plan.hooks_path}")
