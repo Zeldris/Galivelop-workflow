@@ -376,6 +376,10 @@ Done when the `0.9` development closes, before publishing it: a harvest and its 
 | D164 | The install guide recommends opening each cloud session with a single repo (H26 harvest, private-project-5 P4) | done (2026-11-22) |
 | D165 | The legacy-names warning suggests `legacyNamesSkip` when it cites other repos; text only (detecting the citations, E83) (H26 harvest, image-generator P3) | done (2026-11-22) |
 | D166 | `recover.py --state` gives one line with the open rows of the current version (the `reviewed.sh` warning, E81) (H26 harvest, private-project-5 P1) | done (2026-11-22) |
+| D167 | The installed copy of `gw-opt-tokens` in `.agents/skills/` finds the project's schema and scripts (`measure.py`, `test_measure.py`) (minor from `pending.md`) | done (2026-11-22) |
+| D168 | `gw-selector` reads only the summary line of `metrics.py quality --period month` (minor from `pending.md`) | done (2026-11-22) |
+| D169 | The `pre-commit` warns when a staged `scripts/` file differs from its copy in `.claude/gw/scripts/` (formerly D143, repeated id; `0.8.1` patch retro) | done (2026-11-22) |
+| D170 | Medium findings of the E85 review: the `commandKillGrace` test no longer depends on Python start-up time; the header and `config.md` state the `cat F \| head -n N` exception | done (2026-11-22) |
 
 ## `0.9` "Front end"
 
