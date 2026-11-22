@@ -751,8 +751,12 @@
                 "type": "string"
               }
             }
-          }
+          },
+          "default": []
         }
+      },
+      "default": {
+        "cases": []
       }
     },
     "logSections": {
@@ -1078,12 +1082,18 @@
           "type": "boolean",
           "default": true,
           "description": "B11: doctor.py warns when a global Claude Code variable overrides the model or effort picked per agent (CLAUDE_CODE_EFFORT_LEVEL, CLAUDE_CODE_SUBAGENT_MODEL with CLAUDE_CODE_SUBAGENT_MODEL_FORCE, the undocumented CLAUDE_CODE_SUBAGENT_EFFORT) in the environment or an env block of the project or user settings. false turns the check off."
+        },
+        "sessionCheck": {
+          "type": "boolean",
+          "default": true,
+          "description": "D142: session-start.sh compares the session model the last gw-selector line of the transcript recommends (`Session: <model> <effort>`) with the model the session runs on (the hook's `model`, else the last assistant message) and warns when their families differ, so a resumed session does not carry on with the wrong model. false turns the warning off."
         }
       },
       "default": {
         "disabled": [],
         "agentFields": ["model", "effort"],
-        "checkLevers": true
+        "checkLevers": true,
+        "sessionCheck": true
       },
       "description": "Which models the workflow may use (B7) and how each agent gets its model and effort (B11)."
     },
