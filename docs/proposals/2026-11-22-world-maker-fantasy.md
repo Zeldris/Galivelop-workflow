@@ -10,7 +10,7 @@ el parche local de `test_measure.py`. Lo nuevo sale de 3 retros (`retro-2026-11-
 - **What changes:** `flow_files()` de `scripts/scope-guard.py` incluye `roadmapFiles` y `pendingFile`.
 - **Why it is general:** cerrar cualquier tarea toca el roadmap y los pendientes: ~120 desviaciones falsas en una rama.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D149
 
 ## P2. `scope-guard` dice por qué no saltó lo vendored
 
@@ -20,7 +20,7 @@ el parche local de `test_measure.py`. Lo nuevo sale de 3 retros (`retro-2026-11-
 - **Why it is general:** sin `workflowClone` en la nube salieron 108 avisos de alcance de copias del flujo (B44 no
   saltaba nada).
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D150
 
 ## P3. `doctor.py` avisa si `.claude/agents/gw-worker.md` está ignorado
 
@@ -29,7 +29,7 @@ el parche local de `test_measure.py`. Lo nuevo sale de 3 retros (`retro-2026-11-
   el `.gitignore` tiene `.claude/*`.
 - **Why it is general:** un `.gitignore` con `.claude/*` dejó el `gw-worker` (B28) fuera de git sin aviso.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D159
 
 ## P4. `measure.py` midió la sesión de otra rama
 
@@ -38,7 +38,7 @@ el parche local de `test_measure.py`. Lo nuevo sale de 3 retros (`retro-2026-11-
   sospecha: `branch_of()` toma el último `gitBranch`. Arreglo con un test del caso real; va con D144 (antes «D142»).
 - **Why it is general:** la medición de `gw-opt-tokens` sale de otra sesión y lo dice como si fuera la correcta.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D151
 
 ## P5. `handoff.py set-row`/`close-row` ponen la fecha de hoy en «Actualizado»
 
@@ -46,7 +46,7 @@ el parche local de `test_measure.py`. Lo nuevo sale de 3 retros (`retro-2026-11-
 - **What changes:** al reescribir la fila de la rama, actualizan también «Actualizado/Updated».
 - **Why it is general:** hoy el `commit-msg` rechaza el commit siguiente por la fecha vieja; rechazo evitable.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D154
 
 ## P6. Aviso falso de `Findings:` (E60)
 
@@ -55,7 +55,7 @@ el parche local de `test_measure.py`. Lo nuevo sale de 3 retros (`retro-2026-11-
   revisión»/«review fixes»), o solo mira el asunto.
 - **Why it is general:** un aviso que salta por la prosa enseña a ignorar el de verdad.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D155
 
 ## P7. Marca de tarea vieja o cerrada
 
@@ -65,7 +65,7 @@ el parche local de `test_measure.py`. Lo nuevo sale de 3 retros (`retro-2026-11-
   otra tarea, y `gw-update` limpia o avisa de la marca de una tarea cerrada antes de `--update`.
 - **Why it is general:** 35 y 108 avisos de alcance falsos; B46 solo limpia la marca con `close-row`.
 - **Version bump:** minor
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → E80
 
 ## Joined to another proposal
 

@@ -11,7 +11,7 @@ nuevo sale de `docs/records/retro-2026-11-19-gw-update-0-8-1.md` y de dos cambio
 - **Why it is general:** con `tests-for.py --run {files}` en `relatedTests.fast` (lo que propone D137) y sin
   shellcheck en la nube, el `pre-push` falló tras un `/gw-update` que tocó scripts `.sh`, antes de correr los tests.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D152
 
 ## Joined to another proposal
 

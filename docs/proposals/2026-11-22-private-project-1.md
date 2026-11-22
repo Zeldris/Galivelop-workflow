@@ -12,7 +12,7 @@ scripts cambiados. Lo nuevo sale de una retro de su rama de móvil (R1-R4).
 - **Why it is general:** 3 y 7 commits de ruido «métricas de la sesión» en dos tareas; lo mismo en
   instalador-wmf-tarkor. Es el arreglo inmediato; el de fondo es `2026-11-22-galivelop-image-generator.md` P1.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D148
 
 ## Stays in the project
 

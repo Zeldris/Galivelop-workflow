@@ -13,7 +13,7 @@ De `f60399b3` a `50535c7` (`scripts/harvest.py`). Skills y scripts iguales a `da
 - **Why it is general:** `FileNotFoundError` en cualquier proyecto (5 tests en rojo en el CI); cada `/gw-update` borra
   el parche local.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D145
 
 ## P2. `doctor.py` comprueba que exista la carpeta de `workflowClone`
 
@@ -23,7 +23,7 @@ De `f60399b3` a `50535c7` (`scripts/harvest.py`). Skills y scripts iguales a `da
 - **Why it is general:** con `"../galivelop-workflow"` y el clon en `Galivelop-workflow`, `review-scope.py` (D132) y
   `scope-guard.py` (B44) no encuentran lo vendored y nada lo dice.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D158
 
 ## P3. `paths-ignore` del ledger en la plantilla del CI
 
@@ -32,7 +32,7 @@ De `f60399b3` a `50535c7` (`scripts/harvest.py`). Skills y scripts iguales a `da
   métricas.
 - **Why it is general:** una docena de commits solo de métricas en un PR dejó el CI siempre en cola.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D162
 
 ## Joined to another proposal
 

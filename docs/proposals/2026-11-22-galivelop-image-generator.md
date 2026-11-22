@@ -17,7 +17,7 @@ De `61ce5096` a `f025f40` (`scripts/harvest.py`). Sin skills ni scripts del fluj
   5 en private-project-3 (~0,5M), commits solo de ledger en private-project-1 (3 y 7) e instalador-wmf-tarkor (una
   docena en un PR, con el CI siempre en cola). Lo traen cuatro proyectos.
 - **Version bump:** minor
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → E79
 
 ## P2. `apply.py --dry-run --summary` resume los avisos de nombres viejos
 
@@ -27,7 +27,7 @@ De `61ce5096` a `f025f40` (`scripts/harvest.py`). Sin skills ni scripts del fluj
 - **Why it is general:** ~50 líneas (2,9k tokens, arrastrados con 118k de contexto), el resultado más pesado de la
   sesión; contradice el propósito de `--summary` (E52).
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D161
 
 ## P3. El aviso de nombres viejos no salta en citas de otros repos
 
@@ -37,7 +37,7 @@ De `61ce5096` a `f025f40` (`scripts/harvest.py`). Sin skills ni scripts del fluj
 - **Why it is general:** renombrar esas citas las rompería; el proyecto acabó con `legacyNames: false`, que apaga
   también los avisos buenos.
 - **Version bump:** patch (el texto del aviso); minor (detectar las citas)
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D165, E83
 
 ## Stays in the project
 

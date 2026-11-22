@@ -352,8 +352,31 @@ Se hace al cerrar el desarrollo de la `0.9`, antes de publicarla: recogida y sus
 
 | Id | Tarea | Estado |
 |---|---|---|
-| H26 | Recogida de cierre de la `0.9` y del parche `0.8.2` (`gw-harvest`, 10 proyectos al día; 7 con propuestas, `docs/proposals/2026-11-22-*.md`), al usuario | hecho (2026-11-22; propuestas pendientes de decidir) |
+| H26 | Recogida de cierre de la `0.9` y del parche `0.8.2` (`gw-harvest`, 10 proyectos al día; 7 con propuestas, `docs/proposals/2026-11-22-*.md`), al usuario | hecho (2026-11-22; las 24 propuestas aprobadas y la de `next-id`: D145-D166 a este parche, E79-E83 a la `1.0`) |
 | D142 | `gw-selector`: la sesión se para cuando el modelo o el esfuerzo recomendado no coincide con el actual (hoy avisa y sigue, y el orquestador toma el modelo de la fila más arriesgada, así que casi nunca baja de Opus); el comportamiento exacto, en `docs/questions.md` (usuario, 2026-11-19; Related: E66) | pendiente |
+| D144 | `measure.py` sin `--session` mide la sesión en curso (la más nueva de todas las carpetas); la preferencia de D139 por la carpeta del repo solo desempata (retro de la `0.8.1`; antes «D142», id repetido) | pendiente |
+| D145 | `test_measure.py` pasa con el flujo instalado en un proyecto (hoy 5 tests en rojo en su CI y cada `/gw-update` borra el parche local) (recogida H26, instalador P1 y world-maker-fantasy) | pendiente |
+| D146 | `gw-reviewer` sin `Agent` en sus herramientas: un subagente anidado con Opus gastó 2,3 M de 2,6 M tokens de una revisión (recogida H26, private-project-5 P2) | pendiente |
+| D147 | `gw-selector` lee solo las claves que usa con `config.py get`, no `gw.json` entero (~5k tokens por tarea); junto con D142 (recogida H26, private-project-2 P1) | pendiente |
+| D148 | Plantillas de `AGENTS.md` (es/en): no se hace un commit solo para el ledger aunque lo pida el gancho `Stop` de la nube (recogida H26, private-project-1 P1 e instalador) | pendiente |
+| D149 | `scope-guard.py`: `roadmapFiles` y `pendingFile` cuentan como archivos del flujo (~120 avisos falsos en una rama) (recogida H26, world-maker-fantasy P1) | pendiente |
+| D150 | `scope-guard.py` dice en una línea, con la clave `workflowClone` o la orden, que no saltó las copias del flujo por no encontrar su clon (recogida H26, world-maker-fantasy P2) | pendiente |
+| D151 | `measure.py` no mide la sesión de otra rama; junto con D144 (recogida H26, world-maker-fantasy P4) | pendiente |
+| D152 | `tests-for.py --run` no pasa shellcheck a las copias del flujo en `.claude/gw/` (sin shellcheck, la subida falla tras un `/gw-update`) (recogida H26, private-project-3 P1) | pendiente |
+| D153 | Plantilla del encargo de `gw-orchestrate-dealer`: `red-without-fix.sh` para cada test nuevo (recogida H26, private-project-2 P2) | pendiente |
+| D154 | `handoff.py set-row`/`close-row` ponen la fecha de hoy en «Actualizado» (hoy el `commit-msg` rechaza el commit siguiente) (recogida H26, world-maker-fantasy P5) | pendiente |
+| D155 | Las palabras sueltas «hallazgo»/«finding» del cuerpo no disparan el aviso de `Findings:` (recogida H26, world-maker-fantasy P6) | pendiente |
+| D156 | El aviso de arranque no salta por el contexto del sistema, que no se puede reducir (hoy salta en cada arranque en la nube) (recogida H26, private-project-5 P3) | pendiente |
+| D157 | `handoff.py next-id` lee también `pendingFile`, para no repetir ids (propuso D143, ya usado) (recogida H26) | pendiente |
+| D158 | `doctor.py` avisa si la carpeta de `workflowClone` no existe (recogida H26, instalador P2) | pendiente |
+| D159 | `doctor.py` avisa si `.claude/agents/gw-worker.md` está ignorado por el `.gitignore` (recogida H26, world-maker-fantasy P3) | pendiente |
+| D160 | `ci-local.py --record` no deja `.gw-ci/` en el árbol (recogida H26, private-project-2 P4) | pendiente |
+| D161 | `apply.py --dry-run --summary` da un recuento por nombre viejo en vez de ~50 líneas (recogida H26, image-generator P2) | pendiente |
+| D162 | Plantilla del CI: `paths-ignore` del ledger de métricas (un push que solo lo cambia no lanza el CI) (recogida H26, instalador P3) | pendiente |
+| D163 | La retro no da por hecho que los ids del proyecto sean de letra (recogida H26, private-project-2 P3) | pendiente |
+| D164 | La guía de instalación recomienda abrir cada sesión de la nube con un solo repo (recogida H26, private-project-5 P4) | pendiente |
+| D165 | El aviso de nombres viejos sugiere `legacyNamesSkip` cuando cita otros repos; solo el texto (detectar las citas, E83) (recogida H26, image-generator P3) | pendiente |
+| D166 | `recover.py --state` da una línea con las filas abiertas de la versión en curso (el aviso de `reviewed.sh`, E81) (recogida H26, private-project-5 P1) | pendiente |
 
 ## `0.9` «Front»
 
@@ -413,6 +436,11 @@ Solo correcciones y revisiones, sin funciones nuevas: lo evolutivo de las recogi
 | G3 | `mmc.py --static` para la nube | pendiente |
 | G6 | Vistas de datos | pendiente |
 | G7 | Vista de git: ramas, entornos, etiquetas, check y CI | pendiente |
+| E79 | El ledger de métricas se escribe fuera del árbol y se vuelca al commit en el `pre-commit` (hoy cada turno ensucia el árbol y el gancho `Stop` de la nube pide subir); se diseña con B2, sin perder el ledger si muere el contenedor (recogida H26, image-generator P1 y 3 proyectos más) | pendiente |
+| E80 | Marca de tarea vieja o cerrada: el aviso de `scope-guard` propone `task.py current <id>` cuando el commit nombra otra tarea, y `gw-update` limpia la marca de una tarea cerrada (recogida H26, world-maker-fantasy P7) | pendiente |
+| E81 | `reviewed.sh` avisa de las filas abiertas de la versión antes de cerrarla (la línea de `recover.py`, D166) (recogida H26, private-project-5 P1) | pendiente |
+| E82 | Skill de revisión corta para cambios pequeños: pasada determinista y revisión ligera, con un diseño antes (recogida H26, private-project-2 P5) | pendiente |
+| E83 | El aviso de nombres viejos detecta las citas de otros repos y no salta en ellas (el texto, D165) (recogida H26, image-generator P3) | pendiente |
 
 ## `1.1` — MMC 2, config
 

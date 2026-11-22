@@ -11,7 +11,7 @@ sale de `docs/records/retro-2026-11-22-version-0.3.0.md` @ `93f23d3` (Ideas para
 - **Why it is general:** ~5,3k tokens por lectura; 106k arrastrados en una sesión de 22 llamadas. El selector corre al
   empezar cada tarea en todos los proyectos.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D147
 
 ## P2. El encargo de `gw-orchestrate-dealer` pide `red-without-fix.sh` por cada test nuevo
 
@@ -21,7 +21,7 @@ sale de `docs/records/retro-2026-11-22-version-0.3.0.md` @ `93f23d3` (Ideas para
 - **Why it is general:** la regla está en `AGENTS.md` pero el encargo no la nombra; dos revisiones encontraron tests que
   pasaban sin su arreglo.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D153
 
 ## P3. La retro no da por hecho ids de letra
 
@@ -30,7 +30,7 @@ sale de `docs/records/retro-2026-11-22-version-0.3.0.md` @ `93f23d3` (Ideas para
   de fijar `handoff.py next-id B`.
 - **Why it is general:** con ids `F<n>.<m>` la orden de la retro falla. D134 ya mejoró el error; falta el texto.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D163
 
 ## P4. `ci-local.py --record` no deja `.gw-ci/` en el árbol
 
@@ -39,7 +39,7 @@ sale de `docs/records/retro-2026-11-22-version-0.3.0.md` @ `93f23d3` (Ideas para
   `ci-local.py` borra lo que crea, o `dirty()` ignora `.gw-ci/`.
 - **Why it is general:** la siguiente ejecución sale «(uncommitted changes)» y el gancho del PR rechaza la línea.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D160
 
 ## P5. Skill de revisión corta
 
@@ -49,7 +49,7 @@ sale de `docs/records/retro-2026-11-22-version-0.3.0.md` @ `93f23d3` (Ideas para
   `/code-review`.
 - **Why it is general:** revisiones más baratas en cambios pequeños sin perder lo mecánico.
 - **Version bump:** minor
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → E82
 
 ## Stays in the project
 

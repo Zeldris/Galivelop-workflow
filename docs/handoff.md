@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.1` publicada** (`main` = `4ca45d0`, 2026-11-19; CI en verde; etiqueta y release `v0.8.1` creadas desde una sesión local) |
-| Siguiente paso | **Recogida H26 hecha** (2026-11-22, `docs/proposals/2026-11-22-*.md`; Q-4 a Q-6 respondidas): el usuario decide las propuestas; luego, `0.8.2` (D142, D144 y los arreglos aprobados) en `version/0.8.2` desde `main`, y después la `0.9`. Presupuesto de compactaciones: 1 (E42) |
+| Siguiente paso | **Propuestas de H26 aprobadas** (2026-11-22, todas): abrir `version/0.8.2` desde `main` y hacer con `gw-orchestrate-dealer` D142 (Q-4 a, Q-5 con métricas, Q-6 sí), D144 y D145-D166 (roadmap `0.8.2`); luego, fases antes de `main`, publicar `0.8.2`, fusionarla aquí y cerrar la `0.9`. E79-E83 van a la `1.0`. Presupuesto de compactaciones: 1 (E42) |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-22 — H26, recogida de cierre de la `0.9` y del `0.8.2` sobre 10 proyectos al día (fetch + ff): 7 traen propuestas (24, en `docs/proposals/2026-11-22-*.md`), portal, labs y private-project-4 nada; Q-4 a Q-6 respondidas; el fallo de `measure.py` de `pending.md` pasa de «D142» (repetido) a D144
-2. 2026-11-21 — E75-E77 revisadas (5 hallazgos arreglados, `Findings: 5`): `questions.py add` acepta cada `--rec` junto a su pregunta (como lo escribe `grilling`); `measure.py` cuenta solo las llamadas reales para el arranque fijo, dice que su total baja con menos llamadas, no lo calcula en el log de un subagente y, si la copia instalada de `context_guard.py` falla, prueba la del repo; los leves, en `pending.md`
-3. 2026-11-21 — E50 hecha: `whole-read.py` cuenta las imágenes distintas que la sesión lee con `Read` y, en `screenshotSheet.after` (3) y sus múltiplos, aconseja montarlas en una hoja con `screenshotSheet.command` (o un ejemplo genérico); `ignorePaths`, `extensions`; vale con `wholeReadWarnBytes` a 0; la cuenta se borra con `forget`
-4. 2026-11-21 — E42 documentada: `gw-seo` en README.md ↔ README.es.md (29 skills) y hecha en el roadmap es/en; sin sección sin publicar en el CHANGELOG (se escribe al publicar la `0.9`).
-5. 2026-11-21 — E42 traída y revisada (13 hallazgos arreglados, `Findings: 13`): skill `gw-seo` (SKILL.md, references con fechas, note.md, LICENSE MIT de claude-seo) y `scripts/check_seo.py` con sus tests, en inglés y sin rutas del portal; copias en `.claude/` y `.agents/`; docs es/en y roadmap quedan para otro trozo
+1. 2026-11-22 — Propuestas de H26 aprobadas por el usuario (todas, con las recomendaciones): D144 y D145-D166 al parche `0.8.2` (con D142), E79-E83 a la `1.0` (la `0.10` no admite evolutivos); estados en `docs/proposals/2026-11-22-*.md`
+2. 2026-11-22 — H26, recogida de cierre de la `0.9` y del `0.8.2` sobre 10 proyectos al día (fetch + ff): 7 traen propuestas (24, en `docs/proposals/2026-11-22-*.md`), portal, labs y private-project-4 nada; Q-4 a Q-6 respondidas; el fallo de `measure.py` de `pending.md` pasa de «D142» (repetido) a D144
+3. 2026-11-21 — E75-E77 revisadas (5 hallazgos arreglados, `Findings: 5`): `questions.py add` acepta cada `--rec` junto a su pregunta (como lo escribe `grilling`); `measure.py` cuenta solo las llamadas reales para el arranque fijo, dice que su total baja con menos llamadas, no lo calcula en el log de un subagente y, si la copia instalada de `context_guard.py` falla, prueba la del repo; los leves, en `pending.md`
+4. 2026-11-21 — E50 hecha: `whole-read.py` cuenta las imágenes distintas que la sesión lee con `Read` y, en `screenshotSheet.after` (3) y sus múltiplos, aconseja montarlas en una hoja con `screenshotSheet.command` (o un ejemplo genérico); `ignorePaths`, `extensions`; vale con `wholeReadWarnBytes` a 0; la cuenta se borra con `forget`
+5. 2026-11-21 — E42 documentada: `gw-seo` en README.md ↔ README.es.md (29 skills) y hecha en el roadmap es/en; sin sección sin publicar en el CHANGELOG (se escribe al publicar la `0.9`).
 
 ## Pendiente
 

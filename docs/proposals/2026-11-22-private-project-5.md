@@ -10,7 +10,7 @@ sale de las retros de cierre de sus versiones `0.2.0` y `0.3.0`.
   de `roadmap.py list`), y `reviewed.sh` avisa, sin bloquear, si la versión que va a la protegida tiene filas abiertas.
 - **Why it is general:** dos versiones seguidas casi se cerraron con una fila pendiente sin aviso.
 - **Version bump:** minor (patch si solo la línea de `recover.py --state`)
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D166, E81
 
 ## P2. `gw-reviewer` sin subagentes anidados
 
@@ -20,7 +20,7 @@ sale de las retros de cierre de sus versiones `0.2.0` y `0.3.0`.
 - **Why it is general:** el revisor lanzó un `general-purpose` en Opus que gastó 2,3M de los 2,6M de la revisión (26 %
   de la tarea).
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D146
 
 ## P3. El aviso de arranque no salta por lo que no se puede tocar
 
@@ -31,7 +31,7 @@ sale de las retros de cierre de sus versiones `0.2.0` y `0.3.0`.
 - **Why it is general:** en la nube la alarma salta en cada arranque (87k de 160k, 91 % sistema y MCP) y se acaba
   ignorando.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D156
 
 ## P4. La guía de instalación recomienda una sesión por repo
 
@@ -41,7 +41,7 @@ sale de las retros de cierre de sus versiones `0.2.0` y `0.3.0`.
 - **Why it is general:** con dos repos en la sesión el gancho de inicio no corre y nada avisa; hoy solo lo dice
   `troubleshooting.md`, cuando ya ha pasado.
 - **Version bump:** patch
-- **Status:** pendiente
+- **Status:** aprobada (2026-11-22) → D164
 
 ## Stays in the project
 
