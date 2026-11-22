@@ -163,6 +163,27 @@ class Config(unittest.TestCase):
         self.write(dict(VALID, reviewTrivialLines=-1))
         self.assertEqual(cli(self.tmp, "validate").returncode, 2)
 
+    def test_review_split_lines_default_own_value_invalid_schema_and_template(self):
+        self.write(VALID)
+        self.assertEqual(json.loads(cli(self.tmp, "get", "review.splitLines").stdout), 600)
+        self.assertEqual(config.review_split_lines({}), 600)
+        self.assertEqual(config.review_split_lines({"review": {"splitLines": 0}}), 0)
+        self.assertEqual(config.review_split_lines({"review": {"splitLines": 90}}), 90)
+        for bad in ("x", -1, True, None, 1.5, {}, []):  # an accessor never trusts a value: the default
+            self.assertEqual(config.review_split_lines({"review": {"splitLines": bad}}), 600)
+        for bad in ("x", [], None, 3):  # the block itself of the wrong type
+            self.assertEqual(config.review_split_lines({"review": bad}), 600)
+        self.write(dict(VALID, review={"splitLines": -1}))
+        r = cli(self.tmp, "validate")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("$.review.splitLines", r.stderr)
+        self.write(dict(VALID, review={"splitLines": "x"}))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 2)
+        self.write(dict(VALID, review={"splitLines": 0}))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        tpl = json.loads((Path(__file__).resolve().parent.parent / "templates" / "gw.json").read_text())
+        self.assertEqual(tpl["review"], {"splitLines": 600})
+
     def test_log_size_and_log_archive_defaults_and_own_values(self):
         self.write(VALID)
         self.assertEqual(json.loads(cli(self.tmp, "get", "logSize").stdout), 20000)

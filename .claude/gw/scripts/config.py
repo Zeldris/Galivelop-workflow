@@ -848,6 +848,17 @@ def review_trivial_lines(config):
     return _schema()["properties"]["reviewTrivialLines"]["default"]
 
 
+def review_split_lines(config):
+    """The `review.splitLines` key (E86): the changed lines above which the phase 1 review is dealt to several
+    reviewers (0 = never split); the schema default when the block or the value is absent or invalid."""
+    default = _schema()["properties"]["review"]["properties"]["splitLines"]["default"]
+    block = config.get("review")
+    given = block.get("splitLines") if isinstance(block, dict) else None
+    if isinstance(given, int) and not isinstance(given, bool) and given >= 0:
+        return given
+    return default
+
+
 def scout_settings(config):
     """(`scoutDir`, `scoutMaxAgeDays`) of the config (D80): each the schema default when absent or invalid."""
     prop = _schema()["properties"]["scoutDir"]

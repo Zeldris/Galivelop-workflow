@@ -134,13 +134,13 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   and the scripts they call; also code a subagent commits on the working branch, not only worktree branches)
   passes a short `/code-review` by a reviewer subagent as soon as the chunk returns, before the next chunk starts
   (commit it first, as `WIP:` if needed). The reviewer compares the diff with the contract (step 3); its fixes land
-  before moving on.
-  If the review of the whole branch follows right away and is decided, the last block is not reviewed separately.
+  before moving on. If the whole-branch review follows right away and is decided, the last block skips its own.
 - **Before the PR, only what matters:** fix what is serious or medium, and what the fix itself breaks; log the minor
-  findings in the pending file (`pendingFile`, else `log`) and do not review them again in this PR (`/code-review --max-findings all` still
-  serves to list them). Otherwise every fix is reviewed again, brings new findings and the PR grows without end.
-  The fixes of that review are dealt too, as in the next rule; only a one-file fix whose place the reviewer gave
-  stays in the main session.
+  findings in the pending file (`pendingFile`, else `log`), not reviewed again in this PR (`/code-review --max-findings
+  all` lists them), or every fix brings new findings and the PR never ends. Its fixes are dealt too (next rule).
+- **A big phase 1 review is dealt too (E86):** above `python3 scripts/config.py get review.splitLines` changed lines
+  (`0` = never), deal two or more `gw-reviewer` by `review-scope.py` file groups (a shared contract stays in one
+  group) plus a short one that reads only what crosses the groups; each gets `pendingFile`; join the findings.
 - **Approved review findings are dealt by group of files:** after the user approves the findings of a `/code-review`,
   group them by the files they touch (findings that share a file go together; a group stays within the ~30-call cap)
   and deal one subagent per group, in series on the working branch or in parallel worktrees as in the rules above.

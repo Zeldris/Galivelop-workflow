@@ -433,6 +433,7 @@
         "patchCommitTypes",
         "measure",
         "mediaContent",
+        "review",
         "modes",
         "taskRecord",
         "scopeGuard"
@@ -1095,6 +1096,14 @@
         "maxSubjects": {"type": "integer", "minimum": 1, "default": 20, "description": "A13: commit subjects gw-media-content figures.py reads for its figures (the newest ones, at most)."}
       },
       "default": {"maxSubjects": 20}
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "splitLines": {"type": "integer", "minimum": 0, "default": 600, "description": "E86: changed lines (vendored files left out, as review-scope.py counts them) above which gw-orchestrate-dealer deals the phase 1 review to two or more reviewers by review-scope.py file groups plus a short one that crosses the contracts; a single reviewer is held to the ~30-call cap. 0 = never split."}
+      },
+      "default": {"splitLines": 600}
     },
     "testScanSkipDirs": {
       "type": "array",

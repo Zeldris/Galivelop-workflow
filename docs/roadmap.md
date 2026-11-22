@@ -409,7 +409,7 @@ Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18)
 | E78 | `front.py run full --update-snapshots` escribe el sello de versión de Playwright de las capturas que lee `doctor.py` (usuario, 2026-11-21; Q-36) | hecho (2026-11-21) |
 | E84 | `push.sh --wip` sube un commit `WIP:` sin esperar al verde, fuera de la rama protegida, y `before-stop.py` lo recomienda con commits sin subir y el último check en rojo (retro `0.8.2`, P1) | hecho (2026-11-22) |
 | E85 | `whole-read.py` avisa también de un `cat`/`sed`/`head` por `Bash` del `log` o de `roadmapFiles` por encima de `wholeReadWarnBytes`, con la orden que da lo mismo (retro `0.8.2`, P3) | hecho (2026-11-22) |
-| E86 | `gw-orchestrate-dealer` reparte la revisión de la fase 1 de un diff grande (clave nueva `review.splitLines`) en revisores por grupos de archivos más uno que cruce los contratos (retro `0.8.2`, P4) | pendiente |
+| E86 | `gw-orchestrate-dealer` reparte la revisión de la fase 1 de un diff grande (clave nueva `review.splitLines`) en revisores por grupos de archivos más uno que cruce los contratos (retro `0.8.2`, P4) | hecho (2026-11-22) |
 
 ## `0.10` «Estable»
 

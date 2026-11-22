@@ -408,7 +408,7 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | E78 | `front.py run full --update-snapshots` writes the Playwright version stamp of the snapshots that `doctor.py` reads (user, 2026-11-21; Q-36) | done (2026-11-21) |
 | E84 | `push.sh --wip` pushes a `WIP:` commit without waiting for green, off the protected branch, and `before-stop.py` recommends it with unpushed commits and a red last check (`0.8.2` retro, P1) | done (2026-11-22) |
 | E85 | `whole-read.py` also warns on a `cat`/`sed`/`head` through `Bash` of the `log` or `roadmapFiles` above `wholeReadWarnBytes`, naming the command that gives the same (`0.8.2` retro, P3) | done (2026-11-22) |
-| E86 | `gw-orchestrate-dealer` splits the phase 1 review of a large diff (new key `review.splitLines`) into reviewers by file group plus one that crosses the contracts (`0.8.2` retro, P4) | pending |
+| E86 | `gw-orchestrate-dealer` splits the phase 1 review of a large diff (new key `review.splitLines`) into reviewers by file group plus one that crosses the contracts (`0.8.2` retro, P4) | done (2026-11-22) |
 
 ## `0.10` "Stable"
 
