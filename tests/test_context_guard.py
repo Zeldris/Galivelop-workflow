@@ -179,6 +179,7 @@ class Report(Base):
 
     def test_between_warn_and_alarm_names_the_culprit(self):
         (self.root / "docs" / "log.md").write_text("l" * 70000)  # 20,000 tokens
+        self.write_config({"contextGuard": {"systemAdvice": False}})
         out = self.report([turn(60000)], hook_chars=3500)
         self.assertIn("= 38 % of", out[0])
         self.assertTrue(any(l.startswith("- Warning: startup context above 25 %") for l in out), out)
@@ -190,9 +191,35 @@ class Report(Base):
         self.assertEqual(sizes, sorted(sizes, reverse=True))
 
     def test_above_alarm(self):
+        self.write_config({"contextGuard": {"systemAdvice": False}})  # D156: with the advice on, the system is not counted
         out = self.report([turn(100000)])
         self.assertTrue(any(l.startswith("- ALARM: startup context above 50 %") for l in out), out)
         self.assertFalse(any("compaction loop" in l for l in out), out)
+
+    def test_system_only_startup_is_a_note_not_a_warning(self):  # D156
+        out = self.report([turn(100000)])  # 62 % of the cutoff, all of it the system
+        self.assertIn("= 62 % of", out[0])
+        self.assertFalse(any("Warning" in l or "ALARM" in l for l in out), out)
+        note = [l for l in out if l.startswith("- Note: startup context is 62 %")]
+        self.assertEqual(len(note), 1, out)
+        self.assertIn("part you control is 0 %", note[0])
+        self.assertIn("nothing to trim here", note[0])
+
+    def test_controllable_part_over_warn_still_warns(self):  # D156
+        (self.root / "docs" / "log.md").write_text("l" * 140000)  # 40,000 tokens = 25 % of 160,000
+        out = self.report([turn(100000)])  # the system is the rest: 60,000
+        self.assertTrue(any(l.startswith("- Warning: startup context above 25 %") for l in out), out)
+        self.assertFalse(any(l.startswith("- Note") for l in out), out)
+
+    def test_controllable_part_over_alarm_alarms(self):  # D156
+        (self.root / "docs" / "log.md").write_text("l" * 300000)  # 85,714 tokens: over 50 %, the largest culprit
+        out = self.report([turn(100000)])
+        self.assertTrue(any(l.startswith("- ALARM: startup context above 50 %") for l in out), out)
+
+    def test_system_advice_off_counts_the_system(self):  # D156
+        self.write_config({"contextGuard": {"systemAdvice": False}})
+        out = self.report([turn(100000)])
+        self.assertTrue(any(l.startswith("- Warning: startup context above 25 %") for l in out), out)
 
     def test_loop_on_compact_source(self):
         (self.root / "docs" / "log.md").write_text("l" * 350000)  # the log is the largest culprit
@@ -227,7 +254,7 @@ class Report(Base):
         self.assertFalse(any("compaction loop" in l for l in out), out)
 
     def test_own_thresholds_and_cutoff(self):
-        self.write_config({"contextGuard": {"cutoff": 140000, "warn": 10, "alarm": 20}})
+        self.write_config({"contextGuard": {"cutoff": 140000, "warn": 10, "alarm": 20, "systemAdvice": False}})
         out = self.report([turn(30000)])
         self.assertIn("= 21 % of the compaction cutoff 140,000", out[0])
         self.assertTrue(any("above 20 %" in l for l in out), out)
@@ -609,6 +636,7 @@ class Cli(Base):
         self.assertIn("$.contextGuard.warn: must be at least 1", r.stderr)
 
     def test_recover_state_smoke(self):
+        self.write_config({"contextGuard": {"systemAdvice": False}})
         path = self.transcript([turn(100000), BOUNDARY])
         r = self.run_cli("recover.py", "--state", "--session", str(path), "--source", "compact", "--root", str(self.root))
         self.assertEqual(r.returncode, 0, r.stderr)
