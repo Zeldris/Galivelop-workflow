@@ -1,6 +1,8 @@
 # Retro del parche 0.8.2 (2026-11-22)
 
-**Estado:** pendiente de la decisión del usuario.
+**Estado:** decidida por el usuario (2026-11-22), las seis aprobadas: P2 aplicada en las plantillas `REVIEW.md`;
+P1, P3 y P4 aplazadas a la `0.9` y P6 a la `0.10`, apuntadas en `pendingFile`; P5 la hace el usuario (sesión nueva
+para la `0.9`).
 
 Sesión `784b6819` (nube, abierta en `/home/user`), parche `0.8.2` con `gw-orchestrate-dealer` (D142, D144-D166) y
 fase 1 de su revisión. Medida con `gw-opt-tokens` desde la base con `main` (4ca45d0, 2026-11-19; incluye el final de

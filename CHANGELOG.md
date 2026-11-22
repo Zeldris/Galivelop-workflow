@@ -23,7 +23,7 @@ Parche de la recogida H26 (filas de la `0.8.2` en `docs/roadmap.md`). / Patch fr
 - Selector (D142, D147): `gw-selector` se para cuando el modelo o el esfuerzo recomendado no coincide con el actual
   (en ambos sentidos; `unknown` no cuenta) y lee solo sus claves con `config.py get`; nuevo `models.py
   session-check`, llamado desde `session-start.sh`, avisa al arrancar o reanudar si el modelo de la sesión no es la
-  familia de la última línea `Session:` (clave `models.sessionCheck`).
+  familia de la última línea `Session:` o `Sesión:` (clave `models.sessionCheck`).
 - Medición (D144, D145, D151): `measure.py` sin `--session` mide la sesión en curso (la más nueva de todas las
   carpetas; D139 solo desempata) y no cuenta registros de otra rama; `test_measure.py` pasa con el flujo instalado.
 - Avisos (D149, D150): `scope-guard.py` cuenta `roadmapFiles` y `pendingFile` como archivos del flujo y, si no pudo
@@ -47,13 +47,15 @@ Parche de la recogida H26 (filas de la `0.8.2` en `docs/roadmap.md`). / Patch fr
   `legacyNamesSkip` cuando cita texto de otros repos.
 - CI y retro (D162, D163): la plantilla `check.yml` no corre en un push que solo toca el ledger de métricas
   (`paths-ignore`, desde `metrics.ledger`); `retro` ya no da por hechos ids de letra.
+- Revisión (retro del parche): la plantilla `REVIEW.md` pide un test con una muestra real para el código que lee lo
+  que escribe un agente o una persona.
 
 ### EN
 
 - Selector (D142, D147): `gw-selector` stops when the recommended model or effort does not match the current one
   (both ways; `unknown` does not count) and reads only its keys with `config.py get`; new `models.py session-check`,
   called from `session-start.sh`, warns on start or resume when the session's model is not the family of the last
-  `Session:` line (key `models.sessionCheck`).
+  `Session:` or `Sesión:` line (key `models.sessionCheck`).
 - Measuring (D144, D145, D151): `measure.py` without `--session` measures the current session (the newest across
   all folders; D139 only breaks ties) and leaves out logs of another branch; `test_measure.py` passes with the
   workflow installed.
@@ -78,6 +80,8 @@ Parche de la recogida H26 (filas de la `0.8.2` en `docs/roadmap.md`). / Patch fr
   `legacyNamesSkip` when it quotes other repos' text.
 - CI and retro (D162, D163): the `check.yml` template does not run on a push that only touches the metrics ledger
   (`paths-ignore`, from `metrics.ledger`); `retro` no longer assumes letter ids.
+- Review (patch retro): the `REVIEW.md` template asks for a test with a real sample for code that reads what an
+  agent or a person writes.
 
 ## [0.8.1] - 2026-11-19
 

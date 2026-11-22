@@ -117,6 +117,18 @@ Hallazgos menores de la oleada 2 (2026-11-22):
 - [ ] `0.9` · **Tests de tiempo:** `test_session_log.SessionStart.test_command_kill_grace_key_shortens_the_wait_before_kill`
   falla con la máquina cargada (5,2 s y 12 s contra un tope de 5 s; solo da 4,7 s). Ampliar el margen o medir otra cosa.
 
+### De la retro del parche `0.8.2` (2026-11-22, aprobadas)
+
+Propuestas en [`retro-2026-11-22-patch-0.8.2.md`](retro-2026-11-22-patch-0.8.2.md).
+
+- [ ] `0.9` · **P1:** `push.sh --wip` sube un commit `WIP:` sin esperar al verde, fuera de la rama protegida, y
+  `before-stop.py` lo recomienda con commits sin subir y el último check en rojo.
+- [ ] `0.9` · **P3:** `whole-read.py` avisa también de un `cat`/`sed`/`head` por `Bash` del `log` o de `roadmapFiles`
+  por encima de `wholeReadWarnBytes`, con la orden que da lo mismo.
+- [ ] `0.9` · **P4:** `gw-orchestrate-dealer` reparte la revisión de la fase 1 de un diff grande (clave nueva) en
+  revisores por grupos de archivos más uno que cruce los contratos.
+- [ ] `0.10` · **P6:** barrido de los leves abiertos de `apply.py` (una tarea B).
+
 ### Hallazgos de la fase 1 (2026-11-22)
 
 Menores de la revisión del diff entero contra `main`; no se revisan otra vez en este parche.
