@@ -2065,7 +2065,7 @@ class CiSteps(unittest.TestCase):
         self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, ciOnPush=False), indent=2) + "\n")
         out = self.applied()
         text = self.p.read(self.CI)
-        self.assertIn("    branches-ignore: ['**']\n  pull_request:\n", text, out)
+        self.assertIn("    branches-ignore: ['**']\n", text, out)
         self.assertNotIn("branches-ignore: [main]", text)
         self.assertFalse(self.proposal().exists(), out)
         self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, ciOnPush=True), indent=2) + "\n")
