@@ -216,8 +216,7 @@ class Config(unittest.TestCase):
 
     def test_metrics_quality_defaults_fill_key_by_key(self):
         default = {"findingsTrailer": "Findings", "retriesTrailer": "Retries", "reworkTypes": ["fix", "revert"],
-                   "findingsWords": ["hallazgo", "hallazgos", "finding", "findings", "arreglos de la revisión",
-                                     "review fixes"]}
+                   "findingsWords": ["arreglos de la revisión", "review fixes"]}
         self.assertEqual(config.metrics({})["quality"], default)
         self.assertEqual(config.metrics({"metrics": {"quality": {"retriesTrailer": "Tries"}}})["quality"],
                          dict(default, retriesTrailer="Tries"))
