@@ -279,6 +279,7 @@ class Plan:
         self.actions = []   # (kind, rel, data, exec, detail); kind: create | update | propose | chmod | merge
         self.notes = []     # reported, never acted on
         self.warnings = []  # the same, about the project's own files
+        self.legacy_lines, self.legacy_counts = [], {}  # the old-name warnings among them, and uses per old name (D161)
         self.diffs = []     # (rel, project's bytes, template bytes): printed, never written
         self.personal = []  # info lines about personal notes the project has differently: never drift
         self.pending = []   # proposals already written and still current
@@ -1624,7 +1625,7 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
                      if isinstance(e, dict) and e.get("path")}  # closed tasks quote old names as history (D100)
     known, exists = None, {}
     limit = int(cfg.get("legacyNamesMax", 50))
-    hits, total, owned = [], 0, {}
+    hits, total, owned, counts = [], 0, {}, {}
     fields = r.stdout.split(b"\0")  # git grep -n -z: path NUL line NUL text NL path NUL line NUL text NL...
     found, rel = [], fields[0].decode("utf-8", "replace") if fields else ""
     for i in range(1, len(fields) - 1, 2):
@@ -1657,11 +1658,17 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
             if len(hits) < limit:
                 where = f"{rel}:{number}" + (f" (moved to {shown})" if shown != rel else "")
                 hits.append(f"{where} uses the old name {m.group(1)}; replace it with {pairs[m.group(1)]} "
-                            f"(find them all: git grep -n -F '{m.group(1)}')")
+                            f"(find them all: git grep -n -F '{m.group(1)}'; if it quotes another repo's text, "
+                            f"add the file to legacyNamesSkip in {config.CONFIG_REL})")
+            counts[m.group(1)] = counts.get(m.group(1), 0) + 1
     plan.warnings.extend(hits)
+    plan.legacy_lines = list(hits)
     if total > len(hits):
-        plan.warnings.append(f"{total - len(hits)} more use(s) of old names not listed; raise legacyNamesMax in "
-                             f"{config.CONFIG_REL} or list them with git grep -n -F '<old name>'")
+        more = (f"{total - len(hits)} more use(s) of old names not listed; raise legacyNamesMax in "
+                f"{config.CONFIG_REL} or list them with git grep -n -F '<old name>'")
+        plan.warnings.append(more)
+        plan.legacy_lines.append(more)
+    plan.legacy_counts = counts  # D161: --dry-run --summary prints these instead of the per-use lines
 
 
 def build(root, version, update, extra_skills, cfg, personal=True, check=False, keep_paths=False, init=False):
@@ -2022,7 +2029,11 @@ def main(argv=None):
             print("  nothing to do")
         if args.summary:
             for warning in plan.warnings:
-                print(f"apply: WARNING: {warning}")
+                if warning not in plan.legacy_lines:
+                    print(f"apply: WARNING: {warning}")
+            for old, n in sorted(plan.legacy_counts.items()):
+                print(f"apply: WARNING: {n} use(s) of the old name {old}; list them: git grep -n -F '{old}' "
+                      f"(text quoting other repos: add the file to legacyNamesSkip in {config.CONFIG_REL})")
             if plan.hooks_path:
                 print(f"apply: {plan.hooks_path}")
             print("apply: summary only; the full per-file plan: drop --summary")
