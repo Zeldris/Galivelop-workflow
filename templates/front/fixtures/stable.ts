@@ -1,4 +1,4 @@
-// galivelop-workflow v0.8.1
+// galivelop-workflow v0.8.2
 // `stable`: what makes a page render the same every time (ref-front-testing, section 4): reduced motion, a fixed
 // clock, fonts loaded, no network but the app's own origin, and no animations or transitions. It is an automatic
 // fixture of the `test` this file exports, so every test that imports `test` from here gets it.

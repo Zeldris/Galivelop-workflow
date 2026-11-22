@@ -1,4 +1,4 @@
-"""A12 (Q-16): the agent's language per user (~/.claude/gw.json) and the SessionStart line `Agent language:`."""
+"""A12 (Q-18): the agent's language per user (~/.claude/gw.json) and the SessionStart line `Agent language:`."""
 import json
 import os
 import shutil

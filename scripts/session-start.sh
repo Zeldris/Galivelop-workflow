@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# galivelop-workflow v0.8.1
+# galivelop-workflow v0.8.2
 # Claude Code SessionStart hook (startup|resume|clear): leaves the project ready to work. Idempotent.
 #   - git hooks: sets core.hooksPath to .githooks when it is unset and .githooks exists; when another hook manager
 #     owns the hooks (core.hooksPath elsewhere, or hooks installed in .git/hooks), it says how to chain the
@@ -22,6 +22,9 @@
 #     list when some open question was never shown (mark in the git dir, gw/questions-shown); a broken questions file is a one-line warning.
 #   - agent language (A12): with a valid config, "Agent language: <code>" from ~/.claude/gw.json (agentLanguage, keyed by
 #     the repo's git user.email; GW_USER_CONFIG overrides the path), else languages.docs.primary; a bad file is a warning.
+#   - session model (D142): with a valid config and the hook's transcript_path, prints `models.py session-check`: a
+#     warning when the last gw-selector line in the transcript recommends another model family than the session's
+#     (the hook's `model`, else the last assistant message); models.sessionCheck false turns it off.
 #   - active modes (C7): with a valid config, prints `mode.py line` ("Modes: careful on, questions restrictive"); a broken
 #     config is a one-line warning.
 # Fails open: always exits 0 (a SessionStart hook cannot block); warnings go to stdout, which enters the agent's
@@ -115,7 +118,7 @@ version_lt() {  # version_lt A B: true when A < B (numeric X.Y.Z; pre-release su
 }
 config_ok=""
 agent_language_fallback() {
-  # A12 (Q-16): without a usable project config the language comes from the user file, else en; say why.
+  # A12 (Q-18): without a usable project config the language comes from the user file, else en; say why.
   [ -f "$config" ] || return 0
   fb="$(python3 "$config" --root "$root" agent-language 2>/dev/null)"
   echo "Agent language: ${fb:-en}"
@@ -160,6 +163,22 @@ else
       [ -z "$qout" ] || printf '%s\n' "$qout"
     else
       warn "$(printf '%s' "$qout" | head -n 3 | tr '\n' ' ')- the open questions are not shown until it is fixed; check it: python3 $here/questions.py --root $root count"
+    fi
+  fi
+  if [ -f "$here/models.py" ] && [ -n "$input" ]; then
+    # D142: the selector's recommended session model against the one the session runs on (its errors are dropped)
+    hook_fields="$(printf '%s' "$input" | python3 -c 'import json,sys
+try: d=json.load(sys.stdin)
+except Exception: d={}
+d=d if isinstance(d,dict) else {}
+m=d.get("model")
+m=m.get("id") if isinstance(m,dict) else m
+for v in (d.get("transcript_path"), m): print(v if isinstance(v,str) else "")' 2>/dev/null)"
+    transcript="$(printf '%s\n' "$hook_fields" | sed -n 1p)"
+    hook_model="$(printf '%s\n' "$hook_fields" | sed -n 2p)"
+    if [ -n "$transcript" ]; then
+      python3 "$here/models.py" --root "$root" session-check --transcript "$transcript" --model "$hook_model" 2>/dev/null \
+        | while IFS= read -r line; do warn "$line"; done
     fi
   fi
 fi

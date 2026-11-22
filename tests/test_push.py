@@ -382,7 +382,8 @@ class PushSh(unittest.TestCase):
     def test_suggested_commands_quote_a_root_with_spaces(self):
         spaced = self.tmp / "my work"
         self.set_delays([])
-        shutil.copytree(self.work, spaced, symlinks=True)
+        # git's background maintenance can drop a *.lock mid-copy (macOS CI, 1e3027b): copy without lock files
+        shutil.copytree(self.work, spaced, symlinks=True, ignore=shutil.ignore_patterns("*.lock"))
         self.steps("fail:fatal: Could not resolve host: example.com")
         r = subprocess.run(["bash", str(spaced / "scripts" / "push.sh")], cwd=spaced, env=self.env,
                            capture_output=True, text=True)

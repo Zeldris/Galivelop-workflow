@@ -166,7 +166,7 @@ servicios de pago (E5, E7). Las normas de diseño se escriben como dato y el flu
    con un grupo de breakpoints en `px`. `front.tokens` de `.claude/gw.json` apunta a él; sin él no corre nada
    ([config](config.md)).
 2. **Plantilla:** copia `templates/front/` del flujo en la carpeta de `front.dir` y deja **dentro** de ella todo lo que
-   importe `@playwright/test`, axe o Stylelint: `node_modules` solo se enlaza ahí (Q-36). Los paquetes se instalan
+   importe `@playwright/test`, axe o Stylelint: `node_modules` solo se enlaza ahí (Q-38). Los paquetes se instalan
    fuera del árbol: `python3 .claude/gw/scripts/front.py install --browsers chromium`.
 3. **Generar:** `front.py generate` escribe `tokens.css`, `_tokens.scss`, las reglas de Stylelint y los proyectos de
    Playwright; decláralos en `generated` para que el check los compare.

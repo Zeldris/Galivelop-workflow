@@ -158,7 +158,7 @@ class Repo(unittest.TestCase):
 
 
 class CodeLanguage(unittest.TestCase):
-    """A12 (Q-15): the check only applies when languages.code is en."""
+    """A12 (Q-17): the check only applies when languages.code is en."""
 
     def project(self, code):
         tmp = tempfile.TemporaryDirectory()

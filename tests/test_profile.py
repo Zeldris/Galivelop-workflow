@@ -1,4 +1,4 @@
-"""scripts/profile.py (E4, Q-28): list, new, assign, role and show over the `profiles` block of .claude/gw.json and the
+"""scripts/profile.py (E4, Q-30): list, new, assign, role and show over the `profiles` block of .claude/gw.json and the
 profile files. Every failing case checks the message, not only the exit code.
 """
 import hashlib

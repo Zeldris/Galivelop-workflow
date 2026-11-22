@@ -369,6 +369,14 @@ class ShellcheckStep(unittest.TestCase):  # D106
         self.write("scripts/ok.sh", "#!/bin/bash\necho \"$1\"\n")
         self.assertEqual(self.env_run("--run", "scripts/ok.sh")[0], 0)
 
+    def test_workflow_copies_under_claude_gw_are_not_shellchecked(self):  # D152
+        self.write(".claude/gw/scripts/x.sh", "#!/bin/bash\necho $1\n")
+        self.write("scripts/y.sh", "#!/bin/bash\necho \"$1\"\n")
+        code, out, err = self.env_run("--run", ".claude/gw/scripts/x.sh", "scripts/y.sh")
+        self.assertIn("shellcheck scripts/y.sh", out)
+        self.assertNotIn(".claude/gw/scripts/x.sh", out)
+        self.assertNotIn("SC2086", out + err)
+
     def test_deleted_sh_is_skipped(self):
         code, out, _ = self.env_run("--run", "scripts/gone.sh")
         self.assertEqual(code, 0)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.8.1
+# galivelop-workflow v0.8.2
 """The only reader of a project's .claude/gw.json (one fact, one place).
 
 Validates the config against schema/gw.schema.json (a stdlib validator for the subset the schema uses) and fills the
@@ -88,7 +88,7 @@ def _migrate_to_1(raw):
 
 
 def _migrate_to_2(raw):
-    """1 -> 2 (A12, Q-12): `language` -> `languages.docs.primary` and `languages.public.primary`, `visibleLanguages` ->
+    """1 -> 2 (A12, Q-14): `language` -> `languages.docs.primary` and `languages.public.primary`, `visibleLanguages` ->
     `languages.ui`, `languages.code` = "en", the `others` lists []; both old keys are removed. A `languages` block
     already there wins: the old keys only fill what it lacks. The block takes the place of `language`; a config with
     neither old key gets none (the schema then says `languages` is missing). `schemaVersion` becomes 2 in place."""
@@ -371,13 +371,13 @@ def languages(config):
 
 
 def user_config_path():
-    """A12 (Q-16): the per-user file (not the project config): $GW_USER_CONFIG, else ~/.claude/gw.json."""
+    """A12 (Q-18): the per-user file (not the project config): $GW_USER_CONFIG, else ~/.claude/gw.json."""
     given = os.environ.get("GW_USER_CONFIG")
     return Path(given) if given else Path.home() / ".claude" / "gw.json"
 
 
 def agent_language(config):
-    """A12 (Q-16): (code, warning) of the language the agent talks in: the user file's `agentLanguage[<git config
+    """A12 (Q-18): (code, warning) of the language the agent talks in: the user file's `agentLanguage[<git config
     user.email of the repo>]` (emails compared trimmed and lowercase), else `languages.docs.primary`. A missing file,
     entry or email falls back silently; an unreadable file, a bad `agentLanguage` or a code that does not match the
     schema's language pattern falls back with a one-line warning (never an exception)."""
@@ -411,7 +411,7 @@ def agent_language(config):
 
 
 def agent_language_line(config):
-    """A12 (Q-16): (the `Agent language: <code>` line, warning or None) printed at session start and after a compaction."""
+    """A12 (Q-18): (the `Agent language: <code>` line, warning or None) printed at session start and after a compaction."""
     code, warning = agent_language(config)
     return f"Agent language: {code}", warning
 
@@ -1293,7 +1293,7 @@ PROFILE_DENIED = ("$schema", "version", "schemaVersion", "profiles", "languages"
 PROFILE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 EMAIL_HASH = re.compile(r"^[0-9a-f]{64}$")
 EMAIL_ADDRESS = re.compile(r"^[^@\s]+@[^@\s]+$")  # E4: what profile.py accepts as an address to hash
-# E4 (Q-25): an address inside free text (doctor.py): a TLD of letters that ends the word, so `prettier@3.0.0` and
+# E4 (Q-27): an address inside free text (doctor.py): a TLD of letters that ends the word, so `prettier@3.0.0` and
 # `git@github.com:org/repo` (npm specs, scp-style remotes) are not taken for addresses.
 EMAIL_IN_TEXT = re.compile(r'[^@\s"]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)*\.[A-Za-z]{2,}(?![A-Za-z0-9:/@-])')
 PROFILE_OBJECT_MSG = "must be a JSON object with the keys it changes, e.g. {\"logSize\": 5000}"
@@ -1311,12 +1311,12 @@ def profile_shape_problems(data, props):
 
 
 def email_hash(email):
-    """E4 (Q-25): the SHA-256 (hex) of an e-mail address, trimmed and in lower case: what `profiles.people` keys."""
+    """E4 (Q-27): the SHA-256 (hex) of an e-mail address, trimmed and in lower case: what `profiles.people` keys."""
     return hashlib.sha256(email.strip().lower().encode("utf-8")).hexdigest()
 
 
 def in_ci():
-    """Whether this runs in CI (the CI environment variable set and not false/0): CI always uses the default (Q-26)."""
+    """Whether this runs in CI (the CI environment variable set and not false/0): CI always uses the default (Q-28)."""
     return os.environ.get("CI", "").strip().lower() not in ("", "0", "false")
 
 
@@ -1750,6 +1750,7 @@ def main(argv=None):
         print(f"{scope} {reason}" if reason else scope)
         return 0
     value = dict(config, metrics=metrics(config), models=models(config), measure=measure(config), mediaContent=media_content(config),
+                 selector=_section(config, "selector"),
                  recover=recover(config), handoff=handoff(config), harvest=harvest(config),
                  contextGuard=context_guard(config), modes=modes(config),
                  stopSeverity=stop_severity(config), changeSize=change_size(config),

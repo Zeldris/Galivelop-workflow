@@ -202,7 +202,8 @@ class Config(unittest.TestCase):
             self.assertIn(where, r.stderr)
 
     def test_models_agent_fields_and_check_levers(self):
-        self.assertEqual(config.models({}), {"disabled": [], "agentFields": ["model", "effort"], "checkLevers": True})
+        self.assertEqual(config.models({}), {"disabled": [], "agentFields": ["model", "effort"], "checkLevers": True,
+                                            "sessionCheck": True})
         self.assertEqual(config.models({"models": {"agentFields": []}})["agentFields"], [])
         self.write(dict(VALID, models={"agentFields": ["effort"], "checkLevers": False}))
         self.assertEqual(cli(self.tmp, "validate").returncode, 0)
@@ -225,8 +226,7 @@ class Config(unittest.TestCase):
 
     def test_metrics_quality_defaults_fill_key_by_key(self):
         default = {"findingsTrailer": "Findings", "retriesTrailer": "Retries", "reworkTypes": ["fix", "revert"],
-                   "findingsWords": ["hallazgo", "hallazgos", "finding", "findings", "arreglos de la revisión",
-                                     "review fixes"]}
+                   "findingsWords": ["arreglos de la revisión", "review fixes"]}
         self.assertEqual(config.metrics({})["quality"], default)
         self.assertEqual(config.metrics({"metrics": {"quality": {"retriesTrailer": "Tries"}}})["quality"],
                          dict(default, retriesTrailer="Tries"))
@@ -694,6 +694,19 @@ class Config(unittest.TestCase):
         self.assertEqual(cli(self.tmp, "get", "log").stdout.strip(), "docs/log.md")
         self.assertEqual(cli(self.tmp, "get", "requireRetro").stdout.strip(), "false")
         self.assertEqual(cli(self.tmp, "get", "install", "--json").stdout.strip(), "[]")
+
+    def test_selector_keys_by_get_d147(self):
+        # D147: gw-selector reads only selector.cases and models.sessionCheck with `get`, never the whole gw.json
+        for given in ({}, {"selector": {}}):
+            with self.subTest(given=given):
+                self.write(dict(VALID, **given))
+                r = cli(self.tmp, "get", "selector.cases", "--json")
+                self.assertEqual((r.returncode, r.stdout.strip()), (0, "[]"), r.stderr)
+                self.assertEqual(cli(self.tmp, "get", "models.sessionCheck").stdout.strip(), "true")
+        row = {"case": "Migration", "skill": "none", "sessionModel": "large"}
+        self.write(dict(VALID, selector={"cases": [row]}, models={"sessionCheck": False}))
+        self.assertEqual(json.loads(cli(self.tmp, "get", "selector.cases", "--json").stdout), [row])
+        self.assertEqual(cli(self.tmp, "get", "models.sessionCheck").stdout.strip(), "false")
 
     def test_check_wrapper_and_worktree_links_defaults_and_values(self):
         self.write(VALID)

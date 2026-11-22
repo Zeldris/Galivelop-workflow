@@ -353,30 +353,30 @@ Se hace al cerrar el desarrollo de la `0.9`, antes de publicarla: recogida y sus
 | Id | Tarea | Estado |
 |---|---|---|
 | H26 | Recogida de cierre de la `0.9` y del parche `0.8.2` (`gw-harvest`, 10 proyectos al día; 7 con propuestas, `docs/proposals/2026-11-22-*.md`), al usuario | hecho (2026-11-22; las 24 propuestas aprobadas y la de `next-id`: D145-D166 a este parche, E79-E83 a la `1.0`) |
-| D142 | `gw-selector`: la sesión se para cuando el modelo o el esfuerzo recomendado no coincide con el actual (hoy avisa y sigue, y el orquestador toma el modelo de la fila más arriesgada, así que casi nunca baja de Opus); el comportamiento exacto, en `docs/questions.md` (usuario, 2026-11-19; Related: E66) | pendiente |
-| D144 | `measure.py` sin `--session` mide la sesión en curso (la más nueva de todas las carpetas); la preferencia de D139 por la carpeta del repo solo desempata (retro de la `0.8.1`; antes «D142», id repetido) | pendiente |
-| D145 | `test_measure.py` pasa con el flujo instalado en un proyecto (hoy 5 tests en rojo en su CI y cada `/gw-update` borra el parche local) (recogida H26, instalador P1 y world-maker-fantasy) | pendiente |
-| D146 | `gw-reviewer` sin `Agent` en sus herramientas: un subagente anidado con Opus gastó 2,3 M de 2,6 M tokens de una revisión (recogida H26, private-project-5 P2) | pendiente |
-| D147 | `gw-selector` lee solo las claves que usa con `config.py get`, no `gw.json` entero (~5k tokens por tarea); junto con D142 (recogida H26, private-project-2 P1) | pendiente |
-| D148 | Plantillas de `AGENTS.md` (es/en): no se hace un commit solo para el ledger aunque lo pida el gancho `Stop` de la nube (recogida H26, private-project-1 P1 e instalador) | pendiente |
-| D149 | `scope-guard.py`: `roadmapFiles` y `pendingFile` cuentan como archivos del flujo (~120 avisos falsos en una rama) (recogida H26, world-maker-fantasy P1) | pendiente |
-| D150 | `scope-guard.py` dice en una línea, con la clave `workflowClone` o la orden, que no saltó las copias del flujo por no encontrar su clon (recogida H26, world-maker-fantasy P2) | pendiente |
-| D151 | `measure.py` no mide la sesión de otra rama; junto con D144 (recogida H26, world-maker-fantasy P4) | pendiente |
-| D152 | `tests-for.py --run` no pasa shellcheck a las copias del flujo en `.claude/gw/` (sin shellcheck, la subida falla tras un `/gw-update`) (recogida H26, private-project-3 P1) | pendiente |
-| D153 | Plantilla del encargo de `gw-orchestrate-dealer`: `red-without-fix.sh` para cada test nuevo (recogida H26, private-project-2 P2) | pendiente |
-| D154 | `handoff.py set-row`/`close-row` ponen la fecha de hoy en «Actualizado» (hoy el `commit-msg` rechaza el commit siguiente) (recogida H26, world-maker-fantasy P5) | pendiente |
-| D155 | Las palabras sueltas «hallazgo»/«finding» del cuerpo no disparan el aviso de `Findings:` (recogida H26, world-maker-fantasy P6) | pendiente |
-| D156 | El aviso de arranque no salta por el contexto del sistema, que no se puede reducir (hoy salta en cada arranque en la nube) (recogida H26, private-project-5 P3) | pendiente |
-| D157 | `handoff.py next-id` lee también `pendingFile`, para no repetir ids (propuso D143, ya usado) (recogida H26) | pendiente |
-| D158 | `doctor.py` avisa si la carpeta de `workflowClone` no existe (recogida H26, instalador P2) | pendiente |
-| D159 | `doctor.py` avisa si `.claude/agents/gw-worker.md` está ignorado por el `.gitignore` (recogida H26, world-maker-fantasy P3) | pendiente |
-| D160 | `ci-local.py --record` no deja `.gw-ci/` en el árbol (recogida H26, private-project-2 P4) | pendiente |
-| D161 | `apply.py --dry-run --summary` da un recuento por nombre viejo en vez de ~50 líneas (recogida H26, image-generator P2) | pendiente |
-| D162 | Plantilla del CI: `paths-ignore` del ledger de métricas (un push que solo lo cambia no lanza el CI) (recogida H26, instalador P3) | pendiente |
-| D163 | La retro no da por hecho que los ids del proyecto sean de letra (recogida H26, private-project-2 P3) | pendiente |
-| D164 | La guía de instalación recomienda abrir cada sesión de la nube con un solo repo (recogida H26, private-project-5 P4) | pendiente |
-| D165 | El aviso de nombres viejos sugiere `legacyNamesSkip` cuando cita otros repos; solo el texto (detectar las citas, E83) (recogida H26, image-generator P3) | pendiente |
-| D166 | `recover.py --state` da una línea con las filas abiertas de la versión en curso (el aviso de `reviewed.sh`, E81) (recogida H26, private-project-5 P1) | pendiente |
+| D142 | `gw-selector`: la sesión se para cuando el modelo o el esfuerzo recomendado no coincide con el actual (hoy avisa y sigue, y el orquestador toma el modelo de la fila más arriesgada, así que casi nunca baja de Opus); el comportamiento exacto, en `docs/questions.md` (usuario, 2026-11-19; Related: E66) | hecho (2026-11-22) |
+| D144 | `measure.py` sin `--session` mide la sesión en curso (la más nueva de todas las carpetas); la preferencia de D139 por la carpeta del repo solo desempata (retro de la `0.8.1`; antes «D142», id repetido) | hecho (2026-11-22) |
+| D145 | `test_measure.py` pasa con el flujo instalado en un proyecto (hoy 5 tests en rojo en su CI y cada `/gw-update` borra el parche local) (recogida H26, instalador P1 y world-maker-fantasy) | hecho (2026-11-22) |
+| D146 | `gw-reviewer` sin `Agent` en sus herramientas: un subagente anidado con Opus gastó 2,3 M de 2,6 M tokens de una revisión (recogida H26, private-project-5 P2) | hecho (2026-11-22) |
+| D147 | `gw-selector` lee solo las claves que usa con `config.py get`, no `gw.json` entero (~5k tokens por tarea); junto con D142 (recogida H26, private-project-2 P1) | hecho (2026-11-22) |
+| D148 | Plantillas de `AGENTS.md` (es/en): no se hace un commit solo para el ledger aunque lo pida el gancho `Stop` de la nube (recogida H26, private-project-1 P1 e instalador) | hecho (2026-11-22) |
+| D149 | `scope-guard.py`: `roadmapFiles` y `pendingFile` cuentan como archivos del flujo (~120 avisos falsos en una rama) (recogida H26, world-maker-fantasy P1) | hecho (2026-11-22) |
+| D150 | `scope-guard.py` dice en una línea, con la clave `workflowClone` o la orden, que no saltó las copias del flujo por no encontrar su clon (recogida H26, world-maker-fantasy P2) | hecho (2026-11-22) |
+| D151 | `measure.py` no mide la sesión de otra rama; junto con D144 (recogida H26, world-maker-fantasy P4) | hecho (2026-11-22) |
+| D152 | `tests-for.py --run` no pasa shellcheck a las copias del flujo en `.claude/gw/` (sin shellcheck, la subida falla tras un `/gw-update`) (recogida H26, private-project-3 P1) | hecho (2026-11-22) |
+| D153 | Plantilla del encargo de `gw-orchestrate-dealer`: `red-without-fix.sh` para cada test nuevo (recogida H26, private-project-2 P2) | hecho (2026-11-22) |
+| D154 | `handoff.py set-row`/`close-row` ponen la fecha de hoy en «Actualizado» (hoy el `commit-msg` rechaza el commit siguiente) (recogida H26, world-maker-fantasy P5) | hecho (2026-11-22) |
+| D155 | Las palabras sueltas «hallazgo»/«finding» del cuerpo no disparan el aviso de `Findings:` (recogida H26, world-maker-fantasy P6) | hecho (2026-11-22) |
+| D156 | El aviso de arranque no salta por el contexto del sistema, que no se puede reducir (hoy salta en cada arranque en la nube) (recogida H26, private-project-5 P3) | hecho (2026-11-22) |
+| D157 | `handoff.py next-id` lee también `pendingFile`, para no repetir ids (propuso D143, ya usado) (recogida H26) | hecho (2026-11-22) |
+| D158 | `doctor.py` avisa si la carpeta de `workflowClone` no existe (recogida H26, instalador P2) | hecho (2026-11-22) |
+| D159 | `doctor.py` avisa si `.claude/agents/gw-worker.md` está ignorado por el `.gitignore` (recogida H26, world-maker-fantasy P3) | hecho (2026-11-22) |
+| D160 | `ci-local.py --record` no deja `.gw-ci/` en el árbol (recogida H26, private-project-2 P4) | hecho (2026-11-22) |
+| D161 | `apply.py --dry-run --summary` da un recuento por nombre viejo en vez de ~50 líneas (recogida H26, image-generator P2) | hecho (2026-11-22) |
+| D162 | Plantilla del CI: `paths-ignore` del ledger de métricas (un push que solo lo cambia no lanza el CI) (recogida H26, instalador P3) | hecho (2026-11-22) |
+| D163 | La retro no da por hecho que los ids del proyecto sean de letra (recogida H26, private-project-2 P3) | hecho (2026-11-22) |
+| D164 | La guía de instalación recomienda abrir cada sesión de la nube con un solo repo (recogida H26, private-project-5 P4) | hecho (2026-11-22) |
+| D165 | El aviso de nombres viejos sugiere `legacyNamesSkip` cuando cita otros repos; solo el texto (detectar las citas, E83) (recogida H26, image-generator P3) | hecho (2026-11-22) |
+| D166 | `recover.py --state` da una línea con las filas abiertas de la versión en curso (el aviso de `reviewed.sh`, E81) (recogida H26, private-project-5 P1) | hecho (2026-11-22) |
 
 ## `0.9` «Front»
 
@@ -387,7 +387,7 @@ Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18)
 | A12 | Idiomas configurables en un bloque `languages` de `.claude/gw.json`: `code` (código, nombres y comentarios; sustituye la regla fija de A8), `docs.primary` y `docs.others` (doc interna, bitácora, roadmap y commits; el emparejado `docs/es` ↔ `docs/en` los lee), `public.primary` y `public.others` (README, release, publicaciones) y `ui` (hoy `visibleLanguages`); el idioma del agente (en el que hablan usuario y agente) va por usuario en `~/.claude/gw.json`, identificado por `git config user.email`, con el principal de la doc como respaldo; `language` y `visibleLanguages` migran con `apply.py --update`; el MMC lo edita en la `1.1` (usuario, 2026-11-08) | hecho (2026-11-20; ficha `docs/tasks/A12.md`; `names-check.py` acotado al repo del flujo) |
 | E4 | Perfiles por persona y por cargo: cada correo (guardado como hash) usa su perfil, si no el de su cargo, si no `default`; un perfil cambia cualquier clave salvo lo que se instala; el CI siempre con `default`; `profile.py` (usuario, 2026-11-20; antes «perfiles de instalación», que pasa a tarea aparte) | hecho (2026-11-21) |
 | E5 | Pruebas de front según la investigación | hecho (2026-11-21) |
-| E7 | Guía de pruebas de front en `docs/es/patterns.md` y plantilla de config; la plantilla de CI de los proyectos corre `front.py run full` (Q-35) | hecho (2026-11-21) |
+| E7 | Guía de pruebas de front en `docs/es/patterns.md` y plantilla de config; la plantilla de CI de los proyectos corre `front.py run full` (Q-37) | hecho (2026-11-21) |
 | E9-E16 | Los checks de front decididos en [`E-quality.md`](design/E-quality.md) (capturas, cuándo corren, tokens, preprocesadores, accesibilidad, referencias, sin servicios de pago, matriz) | hecho (2026-11-21) |
 | E42 | Skill `gw-seo` (SEO y vistas previas de webs estáticas) traída del portal: sin rutas del portal, nombres en inglés, tests en el check, docs es/en y la LICENSE MIT de su fuente (recogida de cierre `0.6`, portal P1) | hecho (2026-11-21) |
 | E50 | Gancho `PreToolUse` de `Read` que avisa, sin bloquear, al leer capturas sueltas y sugiere montarlas en una hoja (orden del proyecto en una clave) (recogida `0.6.0`, image-generator P6) | hecho (2026-11-21; en `whole-read.py`, clave `screenshotSheet`) |
@@ -405,8 +405,8 @@ Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18)
 | E74 | Gancho `PreToolUse` que avisa, sin bloquear, al leer otro repositorio desde la sesión principal, con clave para apagarlo (recogida `0.9`, private-project-3 P3) | hecho (2026-11-19) |
 | E75 | `grilling` escribe cada ronda en el archivo de preguntas (`questions.py add`) y la sube antes de presentarla (recogida `0.9`, private-project-5 P3) | hecho (2026-11-20) |
 | E76 | `measure.py` muestra aparte el arranque fijo (sistema, herramientas, MCP) del coste del proyecto (recogida `0.9`, private-project-3 P2) | hecho (2026-11-20) |
-| E77 | El push y el check largo, en segundo plano con `timeout` de 90 min en `AGENTS.md` (y sus plantillas), `gw-opt-tokens.md` y la subida final de `gw-orchestrate-dealer` (usuario, 2026-11-19; Q-7 a Q-9) | hecho (2026-11-19) |
-| E78 | `front.py run full --update-snapshots` escribe el sello de versión de Playwright de las capturas que lee `doctor.py` (usuario, 2026-11-21; Q-34) | hecho (2026-11-21) |
+| E77 | El push y el check largo, en segundo plano con `timeout` de 90 min en `AGENTS.md` (y sus plantillas), `gw-opt-tokens.md` y la subida final de `gw-orchestrate-dealer` (usuario, 2026-11-19; Q-9 a Q-11) | hecho (2026-11-19) |
+| E78 | `front.py run full --update-snapshots` escribe el sello de versión de Playwright de las capturas que lee `doctor.py` (usuario, 2026-11-21; Q-36) | hecho (2026-11-21) |
 
 ## `0.10` «Estable»
 

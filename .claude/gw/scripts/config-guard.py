@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.8.1
+# galivelop-workflow v0.8.2
 """PreToolUse hook: ask the user before Claude edits the workflow's own configuration.
 
 The files that wire the workflow (.claude/settings.json, .claude/settings.local.json, .claude/gw.json, everything under .githooks/,
@@ -45,7 +45,7 @@ Also covered (D33): the same paths inside an agent worktree (`.claude/worktrees/
 `touch -r`, `touch|chmod|chown|chgrp --reference` is not written. `python3 .../models.py disable|enable` (B7) counts as
 a write of .claude/gw.json: it rewrites `models.disabled` there; so does `mode.py set` (C7: `modes.<mode>`), and
 `profile.py new|assign|role` (E4: .claude/gw.json and/or a profile; `list` and `show` only read). The profiles folder
-(E4, Q-24/Q-26/Q-27: a profile can change any config key) is protected like .githooks/: `profiles.dir` of the raw
+(E4, Q-26/Q-28/Q-29: a profile can change any config key) is protected like .githooks/: `profiles.dir` of the raw
 .claude/gw.json (default .claude/gw/profiles, also when the config is broken), as written and through a symlink, and
 the folders that hold it count as ancestors (`rm -r`, `mv`, `git checkout`); in an agent worktree, also the worktree's
 own `profiles.dir`. A `profiles.dir` that is the project root (the schema rejects it) protects every *.json there.
@@ -156,7 +156,7 @@ def ask(reason):
 
 
 def profile_dirs(root):
-    """E4 (Q-24/Q-26/Q-27): the profiles folder protects like TREES, since a profile can change any config key. Returns
+    """E4 (Q-26/Q-28/Q-29): the profiles folder protects like TREES, since a profile can change any config key. Returns
     (project-relative folders in lower case, their real absolute paths out of the project in lower case, the folders
     that hold them in lower case, the project-relative folders as written, whether the folder is the project root). It
     is profiles.dir of the raw .claude/gw.json under `root` (no validation: a broken or missing config, or a value that

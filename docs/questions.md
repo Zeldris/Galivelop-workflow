@@ -58,6 +58,20 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answered: 2026-11-22
 
 ## Q-7
+- Refs: D142
+- Status: open
+- Asked: 2026-11-22
+- Question: D142 (Q-6): ¿el aviso de modelo distinto del gancho de inicio salta también tras una compactación (matcher «compact» de SessionStart)? Hoy solo al arrancar, reanudar o tras /clear, y tras /clear el transcript es nuevo y no avisa
+- Recommendation: sí: el aviso salta también tras una compactación, dentro de la misma tarea
+
+## Q-8
+- Refs: D142
+- Status: open
+- Asked: 2026-11-22
+- Question: D142 (Q-6): ¿además, un aviso en cada mensaje del usuario (gancho UserPromptSubmit) mientras no cambie de modelo?
+- Recommendation: no: ruido y coste en cada turno; basta con el inicio, la compactación y la regla de la skill
+
+## Q-9
 - Refs: E77
 - Status: answered
 - Asked: 2026-11-19
@@ -66,7 +80,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: ok
 - Answered: 2026-11-19
 
-## Q-8
+## Q-10
 - Refs: E77
 - Status: answered
 - Asked: 2026-11-19
@@ -75,7 +89,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: no
 - Answered: 2026-11-19
 
-## Q-9
+## Q-11
 - Refs: E77
 - Status: answered
 - Asked: 2026-11-19
@@ -84,7 +98,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: ok
 - Answered: 2026-11-19
 
-## Q-10
+## Q-12
 - Refs: A12
 - Status: answered
 - Asked: 2026-11-20
@@ -93,7 +107,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: a
 - Answered: 2026-11-20
 
-## Q-11
+## Q-13
 - Refs: A12
 - Status: answered
 - Asked: 2026-11-20
@@ -102,7 +116,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: ok
 - Answered: 2026-11-20
 
-## Q-12
+## Q-14
 - Refs: A12
 - Status: answered
 - Asked: 2026-11-20
@@ -111,7 +125,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: a
 - Answered: 2026-11-20
 
-## Q-13
+## Q-15
 - Refs: A12
 - Status: answered
 - Asked: 2026-11-20
@@ -120,7 +134,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: a
 - Answered: 2026-11-20
 
-## Q-14
+## Q-16
 - Refs: A12
 - Status: answered
 - Asked: 2026-11-20
@@ -129,7 +143,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: sí
 - Answered: 2026-11-20
 
-## Q-15
+## Q-17
 - Refs: A12
 - Status: answered
 - Asked: 2026-11-20
@@ -138,7 +152,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: a
 - Answered: 2026-11-20
 
-## Q-16
+## Q-18
 - Refs: A12
 - Status: answered
 - Asked: 2026-11-20
@@ -147,61 +161,61 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: sí
 - Answered: 2026-11-20
 
-## Q-17
+## Q-19
 - Refs: E4
 - Status: answered
 - Asked: 2026-11-20
 - Question: E4, alcance: ¿los perfiles solo eligen skills y agentes (a) o también ganchos (b)?
 - Recommendation: a: los perfiles solo deciden qué skills y agentes se instalan; ganchos, scripts, plantillas y bitácora van siempre
-- Answer: superada por Q-23 a Q-28 (perfiles por persona y cargo)
-- Answered: 2026-11-20
-
-## Q-18
-- Refs: E4
-- Status: answered
-- Asked: 2026-11-20
-- Question: E4, reparto de skills por perfil (el diseño solo nombraba algunas)
-- Recommendation: minimal = gw-init, gw-update, gw-doctor y gw-mode; core = minimal + gw-selector, gw-orchestrate-dealer, retro, gw-opt-tokens, pr, gw-metrics, diagnosing-bugs, grilling, domain-modeling, writing-for-agents y los agentes gw-worker y gw-reviewer; full = todo lo demás (resto de mattpocock, gw-media-content(-now), gw-opt-ai, gw-scout-updates); gw-harvest sigue solo en el repo del flujo
-- Answer: superada por Q-23 a Q-28 (perfiles por persona y cargo)
-- Answered: 2026-11-20
-
-## Q-19
-- Refs: E4
-- Status: answered
-- Asked: 2026-11-20
-- Question: E4, dónde vive el perfil
-- Recommendation: clave install.profile en .claude/gw.json (defecto core), --profile en apply.py la escribe, --with suma skills sueltas encima
-- Answer: superada por Q-23 a Q-28 (perfiles por persona y cargo)
+- Answer: superada por Q-25 a Q-30 (perfiles por persona y cargo)
 - Answered: 2026-11-20
 
 ## Q-20
 - Refs: E4
 - Status: answered
 - Asked: 2026-11-20
-- Question: E4, proyectos ya instalados al actualizar
-- Recommendation: un proyecto sin la clave conserva todo lo que tiene (no se borra nada); bajar de perfil a propósito quita solo las copias del flujo sin tocar, y gw-update lo presenta como decisión antes de --update
-- Answer: superada por Q-23 a Q-28 (perfiles por persona y cargo)
+- Question: E4, reparto de skills por perfil (el diseño solo nombraba algunas)
+- Recommendation: minimal = gw-init, gw-update, gw-doctor y gw-mode; core = minimal + gw-selector, gw-orchestrate-dealer, retro, gw-opt-tokens, pr, gw-metrics, diagnosing-bugs, grilling, domain-modeling, writing-for-agents y los agentes gw-worker y gw-reviewer; full = todo lo demás (resto de mattpocock, gw-media-content(-now), gw-opt-ai, gw-scout-updates); gw-harvest sigue solo en el repo del flujo
+- Answer: superada por Q-25 a Q-30 (perfiles por persona y cargo)
 - Answered: 2026-11-20
 
 ## Q-21
 - Refs: E4
 - Status: answered
 - Asked: 2026-11-20
-- Question: E4, plantillas que nombran skills ausentes
-- Recommendation: las plantillas de AGENTS.md/CLAUDE.md quitan las líneas de skills no instaladas (gw-selector en minimal) con una marca por skill
-- Answer: superada por Q-23 a Q-28 (perfiles por persona y cargo)
+- Question: E4, dónde vive el perfil
+- Recommendation: clave install.profile en .claude/gw.json (defecto core), --profile en apply.py la escribe, --with suma skills sueltas encima
+- Answer: superada por Q-25 a Q-30 (perfiles por persona y cargo)
 - Answered: 2026-11-20
 
 ## Q-22
 - Refs: E4
 - Status: answered
 - Asked: 2026-11-20
-- Question: E4, perfil de este repo (el flujo)
-- Recommendation: full
-- Answer: superada por Q-23 a Q-28 (perfiles por persona y cargo)
+- Question: E4, proyectos ya instalados al actualizar
+- Recommendation: un proyecto sin la clave conserva todo lo que tiene (no se borra nada); bajar de perfil a propósito quita solo las copias del flujo sin tocar, y gw-update lo presenta como decisión antes de --update
+- Answer: superada por Q-25 a Q-30 (perfiles por persona y cargo)
 - Answered: 2026-11-20
 
 ## Q-23
+- Refs: E4
+- Status: answered
+- Asked: 2026-11-20
+- Question: E4, plantillas que nombran skills ausentes
+- Recommendation: las plantillas de AGENTS.md/CLAUDE.md quitan las líneas de skills no instaladas (gw-selector en minimal) con una marca por skill
+- Answer: superada por Q-25 a Q-30 (perfiles por persona y cargo)
+- Answered: 2026-11-20
+
+## Q-24
+- Refs: E4
+- Status: answered
+- Asked: 2026-11-20
+- Question: E4, perfil de este repo (el flujo)
+- Recommendation: full
+- Answer: superada por Q-25 a Q-30 (perfiles por persona y cargo)
+- Answered: 2026-11-20
+
+## Q-25
 - Refs: E4
 - Status: answered
 - Asked: 2026-11-20
@@ -210,7 +224,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: ok
 - Answered: 2026-11-20
 
-## Q-24
+## Q-26
 - Refs: E4
 - Status: answered
 - Asked: 2026-11-20
@@ -219,7 +233,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: ok
 - Answered: 2026-11-20
 
-## Q-25
+## Q-27
 - Refs: E4
 - Status: answered
 - Asked: 2026-11-20
@@ -228,7 +242,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: ok
 - Answered: 2026-11-20
 
-## Q-26
+## Q-28
 - Refs: E4
 - Status: answered
 - Asked: 2026-11-20
@@ -237,7 +251,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: ok
 - Answered: 2026-11-20
 
-## Q-27
+## Q-29
 - Refs: E4
 - Status: answered
 - Asked: 2026-11-20
@@ -246,7 +260,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: ok
 - Answered: 2026-11-20
 
-## Q-28
+## Q-30
 - Refs: E4
 - Status: answered
 - Asked: 2026-11-20
@@ -255,7 +269,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: ok
 - Answered: 2026-11-20
 
-## Q-29
+## Q-31
 - Refs: E5
 - Status: answered
 - Asked: 2026-11-21
@@ -264,7 +278,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: Si
 - Answered: 2026-11-21
 
-## Q-30
+## Q-32
 - Refs: E5
 - Status: answered
 - Asked: 2026-11-21
@@ -273,7 +287,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: a
 - Answered: 2026-11-21
 
-## Q-31
+## Q-33
 - Refs: E5
 - Status: answered
 - Asked: 2026-11-21
@@ -282,7 +296,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: a
 - Answered: 2026-11-21
 
-## Q-32
+## Q-34
 - Refs: E5
 - Status: answered
 - Asked: 2026-11-21
@@ -291,7 +305,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: ok
 - Answered: 2026-11-21
 
-## Q-33
+## Q-35
 - Refs: E5
 - Status: answered
 - Asked: 2026-11-21
@@ -300,7 +314,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: ok
 - Answered: 2026-11-21
 
-## Q-34
+## Q-36
 - Refs: E5
 - Status: answered
 - Asked: 2026-11-21
@@ -309,7 +323,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: Si 35. Si
 - Answered: 2026-11-21
 
-## Q-35
+## Q-37
 - Refs: E5, E7
 - Status: answered
 - Asked: 2026-11-21
@@ -318,7 +332,7 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Answer: Si
 - Answered: 2026-11-21
 
-## Q-36
+## Q-38
 - Refs: E5
 - Status: answered
 - Asked: 2026-11-21

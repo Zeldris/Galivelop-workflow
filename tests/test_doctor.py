@@ -47,6 +47,7 @@ class Doctor(Snapshot):
         p.write(".claude/gw.json", json.dumps(dict(cfg, relatedTests={"fast": ["true"], "slow": []})))
         p.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| Next step | write tests |\n")
         p.write(".claude/skills/gw-selector/SKILL.md", SKILL.format(version=VERSION))
+        (p.work.parent / "Galivelop-workflow").mkdir(exist_ok=True)  # D158: the default workflowClone folder exists
         p.commit("set up")
 
     def doctor(self, *args):
@@ -102,7 +103,7 @@ class Doctor(Snapshot):
         self.assertEqual(code, 1, out)
         self.assertLine(out, "FAIL", "config", "schemaVersion 3 is newer than this copy of the workflow knows (2)")
 
-    def test_old_language_keys_on_disk_warn_with_the_fix(self):  # A12 (Q-12)
+    def test_old_language_keys_on_disk_warn_with_the_fix(self):  # A12 (Q-14)
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         old = {k: v for k, v in cfg.items() if k != "languages"}
         self.p.write(".claude/gw.json", json.dumps(dict(old, schemaVersion=1, language="es", visibleLanguages=["en"])))
@@ -112,7 +113,7 @@ class Doctor(Snapshot):
         self.assertIn("`language` and `visibleLanguages`", line)
         self.assertIn("/gw-update", line)
 
-    def test_docs_language_without_templates_warns(self):  # A12 (Q-13)
+    def test_docs_language_without_templates_warns(self):  # A12 (Q-15)
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         (self.p.work / ".claude" / "gw" / "templates" / "en").mkdir(parents=True)
         self.p.write(".claude/gw.json", json.dumps(cfg))
@@ -1678,6 +1679,27 @@ class Doctor(Snapshot):
             line = self.assertLine(self.doctor()[1], "WARN", "related tests", "relatedTests has no command")
             self.assertIn("fill relatedTests in .claude/gw.json", line)
             self.assertIn('"branchCheck": "full"', line)
+
+    def test_workflow_clone_missing_warns(self):
+        self.set_cfg(branchCheck="full", workflowClone="../no-such-clone")
+        line = self.assertLine(self.doctor()[1], "WARN", "workflow clone", "../no-such-clone")
+        self.assertIn("git clone", line)
+        self.assertIn('"workflowClone"', line)
+
+    def test_workflow_clone_present_is_quiet(self):
+        (self.p.work.parent / "clone").mkdir(exist_ok=True)
+        self.set_cfg(branchCheck="full", workflowClone="../clone")
+        self.assertNotIn("workflow clone", self.doctor()[1])
+
+    def test_ignored_agent_file_warns(self):
+        self.p.write(".claude/agents/gw-worker.md", "# w\n")
+        self.p.write(".gitignore", ".claude/agents/\n")
+        line = self.assertLine(self.doctor()[1], "WARN", "agents ignored", "gw-worker.md")
+        self.assertIn("!.claude/agents/gw-worker.md", line)
+
+    def test_unignored_agent_file_is_quiet(self):
+        self.p.write(".claude/agents/gw-worker.md", "# w\n")
+        self.assertNotIn("agents ignored", self.doctor()[1])
 
     def test_related_tests_no_warning_for_full_or_filled(self):
         for keys in ({"branchCheck": "full"}, {"branchCheck": "full", "relatedTests": {"fast": ["true"]}},

@@ -7,7 +7,7 @@ con BCP 47, migración con `languages` no objeto, pista de `load()`, `--code-lan
 
 ## Alternatives
 
-Limitar `docs.primary` a idiomas con plantillas (descartado: Q-13 manda el respaldo `en`); normalizar los tags de
+Limitar `docs.primary` a idiomas con plantillas (descartado: Q-15 manda el respaldo `en`); normalizar los tags de
 `visibleLanguages` en la migración (descartado: `ui` admite BCP 47 como `visibleLanguages`).
 
 ## Changed because

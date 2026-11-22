@@ -116,6 +116,14 @@ class Scope(ScopeBase):
         self.assertEqual(self.hook("C:\\work\\src\\b.py"), "")
         self.assertEqual(self.hook(str(self.p.tmp / "elsewhere.py")), "")
 
+    def test_roadmap_and_pending_files_are_always_allowed(self):  # D149
+        self.set_config(scopeGuard={"mode": "block"}, pendingFile="docs/records/pending.md",
+                        roadmapFiles=[{"path": "docs/roadmap.md", "done": "hecho", "open": ["pendiente"]},
+                                      {"path": "docs/other-roadmap.md", "done": "hecho", "open": ["pendiente"]}])
+        for path in ("docs/roadmap.md", "docs/other-roadmap.md", "docs/records/pending.md"):
+            self.assertEqual(self.hook(path), "", path)
+        self.assertIn("outside the scope", self.hook("docs/records/other.md"))  # only the named files
+
     # Out of scope
 
     def test_out_of_scope_warns_once_then_silent_and_logs_each_time(self):
@@ -461,6 +469,52 @@ class VersionStamp(ScopeBase):
             self.assertEqual(mod.vendored_set(self.p.work), set())  # nothing skipped: the safe side
         finally:
             sp.run = saved
+
+    def test_no_workflow_clone_is_said_in_one_line_naming_the_fix(self):  # D150
+        self.p.write("src/b.py", "b = 5\n")
+        self.p.git("add", "-A")
+        code = ("import importlib.util, sys\n"
+                "spec = importlib.util.spec_from_file_location('sg', '.claude/gw/scripts/scope-guard.py')\n"
+                "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+                "def nope(arg, root, cfg):\n"
+                "    raise m.rs.ScopeError('no workflow copy at v0.8.0 to tell what is vendored; clone it')\n"
+                "m.rs.workflow_dir = nope\n"
+                "sys.exit(m.staged(None))\n")
+        code, err = self.p.run(sys.executable, "-B", "-c", code, cwd=str(self.p.work))
+        self.assertEqual(code, 0)
+        self.assertIn("  src/b.py", err)
+        lines = [l for l in err.splitlines() if "were not skipped" in l]
+        self.assertEqual(len(lines), 1, err)
+        self.assertIn("no workflow copy at v0.8.0 to tell what is vendored)", lines[0])
+        self.assertNotIn("clone it", lines[0])  # only the first sentence, not review-scope's own command
+        self.assertIn("`workflowClone`", lines[0])
+        self.assertIn("GW_WORKFLOW", lines[0])
+
+    def test_apply_failure_does_not_blame_workflow_clone(self):  # D150
+        self.p.write("src/b.py", "b = 5\n")
+        self.p.git("add", "-A")
+        code = ("import importlib.util, sys; from pathlib import Path\n"
+                "spec = importlib.util.spec_from_file_location('sg', '.claude/gw/scripts/scope-guard.py')\n"
+                "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+                "m.rs.workflow_dir = lambda arg, root, cfg: Path('/wf')\n"
+                "def boom(root, workflow, timeout=None):\n"
+                "    raise m.rs.ScopeError('apply.py --vendored took more than 30s; run it by hand: python3 x')\n"
+                "m.rs.vendored = boom\n"
+                "sys.exit(m.staged(None))\n")
+        code, err = self.p.run(sys.executable, "-B", "-c", code, cwd=str(self.p.work))
+        self.assertEqual(code, 0)
+        lines = [l for l in err.splitlines() if "were not skipped" in l]
+        self.assertEqual(len(lines), 1, err)
+        self.assertIn("(apply.py --vendored took more than 30s)", lines[0])
+        self.assertIn("python3 /wf/scripts/apply.py --vendored", lines[0])
+        self.assertNotIn("workflowClone", lines[0])
+
+    def test_no_note_when_the_workflow_was_found(self):  # D150
+        self.p.write("src/b.py", "b = 5\n")
+        self.p.git("add", "-A")
+        code, err = self.staged_err(set())
+        self.assertEqual(code, 0)
+        self.assertNotIn("were not skipped", err)
 
     def test_vendored_set_reads_a_fake_workflow_without_mocks(self):  # D132
         wf = self.p.work.parent / "fake-wf"

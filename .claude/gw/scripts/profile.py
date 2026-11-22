@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.8.1
-"""Per-person and per-role profiles (E4, Q-23 to Q-28): who works with which profile, kept in .claude/gw.json.
+# galivelop-workflow v0.8.2
+"""Per-person and per-role profiles (E4, Q-25 to Q-30): who works with which profile, kept in .claude/gw.json.
 
   python3 profile.py list                       # profiles on disk, roles -> profile, people per role/profile
   python3 profile.py new NAME [--from OTHER]    # create <profiles.dir>/NAME.json ({} or a copy of OTHER)
@@ -9,9 +9,9 @@
   python3 profile.py show [EMAIL]               # the profile that applies (default: git user.email) and its layer
 
 Writing commands and `list` read the project's config alone (no profile layers), so `new` and `role` can fix a profile or
-role that is missing; `show` applies the layers. Layers (Q-23): default (the project's .claude/gw.json) -> the person's role profile -> the person's own profile; CI
-always runs with the default (Q-26). `assign` writes only the SHA-256 of the e-mail (trimmed, lower case; config.email_hash)
-into `profiles.people`, never the address (Q-25: the repo may be public). It is convenience, not access control (Q-27).
+role that is missing; `show` applies the layers. Layers (Q-25): default (the project's .claude/gw.json) -> the person's role profile -> the person's own profile; CI
+always runs with the default (Q-28). `assign` writes only the SHA-256 of the e-mail (trimmed, lower case; config.email_hash)
+into `profiles.people`, never the address (Q-27: the repo may be public). It is convenience, not access control (Q-29).
 Writes edit .claude/gw.json in place like mode.py: only the text of the affected value changes (EOL, tabs, compact
 sections and key order stay), through a temp file and os.replace, validated with config.load, and the old text is put
 back if the result is invalid. (config-guard.py asks the user before an agent runs `new`, `assign` or `role` or edits a profile, E4.) Project root and
@@ -216,7 +216,7 @@ def cmd_assign(conf, email, role, name):
 def cmd_show(conf, email):
     who = email if email is not None else config.git_email(conf["_root"])
     if config.in_ci():
-        print("CI is set in the environment: CI always runs with the default (Q-26), no role or person layer applies")
+        print("CI is set in the environment: CI always runs with the default (Q-28), no role or person layer applies")
         return 0
     if not who.strip():
         print("no e-mail (git config user.email is unset): layer default; set one, or: python3 "

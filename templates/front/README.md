@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.8.1 -->
+<!-- galivelop-workflow v0.8.2 -->
 # Front tests template (E5)
 
 Playwright (layout, accessibility, visual) and Stylelint for a project with a front end, fed by the files
@@ -13,7 +13,7 @@ into `<git common dir>/gw/front-node/<lock hash>/`, shared by the worktrees.
 
 Keep every file of this template, and every spec or config that imports `@playwright/test`, `@axe-core/playwright` or
 `stylelint`, **inside `front.dir`**: the run links `node_modules` only into `front.dir` of its temporary copy, so an
-import from a file outside it does not resolve (Q-36).
+import from a file outside it does not resolve (Q-38).
 
 ```sh
 python3 .claude/gw/scripts/front.py install --browsers chromium   # packages and a browser, once per machine

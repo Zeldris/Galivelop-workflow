@@ -786,7 +786,7 @@ class GitTreeWrites(Base):
 
 
 class Profiles(Base):
-    """E4 (Q-24/Q-26/Q-27): a profile can change any config key, so profile.py's writing verbs and the profiles folder
+    """E4 (Q-26/Q-28/Q-29): a profile can change any config key, so profile.py's writing verbs and the profiles folder
     (profiles.dir) ask like .claude/gw.json."""
     VERB = "profile.py new|assign|role"
 

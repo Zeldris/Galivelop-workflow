@@ -136,7 +136,7 @@ class Templates(unittest.TestCase):
 
     def test_placeholders_are_only_config_keys_project_version_and_computed(self):
         allowed = {"log", "protectedBranch", "check", "install", "reviewMark", "language", "version", "project",
-                   "ciPushIgnore"}  # ciPushIgnore: computed from ciOnPush and protectedBranch (D54)
+                   "ciPushIgnore", "ciLedgerPath"}  # ciLedgerPath: metrics.ledger (D162); ciPushIgnore: computed from ciOnPush and protectedBranch (D54)
         for path in sorted(TEMPLATES.rglob("*")):
             if path.is_file() and path.suffix in (".md", ".yml"):
                 with self.subTest(file=str(path.relative_to(ROOT))):
@@ -426,7 +426,7 @@ class Templates(unittest.TestCase):
             import yaml
         except ImportError:
             self.skipTest("PyYAML is not installed")
-        text = (TEMPLATES / "github" / "check.yml").read_text().replace("{{ciPushIgnore}}", "main")
+        text = (TEMPLATES / "github" / "check.yml").read_text().replace("{{ciPushIgnore}}", "main").replace("{{ciLedgerPath}}", '"l.jsonl"')
         doc = yaml.safe_load(text)
         self.assertEqual(set(doc["jobs"]), {"versions", "check"})
 

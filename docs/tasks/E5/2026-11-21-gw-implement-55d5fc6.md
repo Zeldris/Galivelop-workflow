@@ -2,7 +2,7 @@
 
 ## Why
 
-Trozo 1 de E5 (Q-30, E-16): las normas de front como dato. `front.py check` valida el JSON de tokens (DTCG reducido) y
+Trozo 1 de E5 (Q-32, E-16): las normas de front como dato. `front.py check` valida el JSON de tokens (DTCG reducido) y
 `generate` saca de él CSS, SCSS, la config de Stylelint y la matriz de Playwright, de forma determinista para que
 `generated` (E72) pueda compararla.
 

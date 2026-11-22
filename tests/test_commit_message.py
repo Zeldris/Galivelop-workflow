@@ -267,21 +267,28 @@ class Refs(Msg):
         err = self.warned("fix(D11): arreglos de la revisión\n\ndos casos\n\nRefs: D11\nSiguiente: x")
         self.assertIn("WARNING: the message speaks of review fixes (\"arreglos de la revisión\")", err)
         self.assertIn("add `Findings: <accepted findings>` next to `Refs:`", err)
-        err = self.warned("fix(D11): the three FINDINGS of the block\n\nRefs: D11\nSiguiente: x")
-        self.assertIn("(\"findings\")", err)
+        err = self.warned("fix(D11): the three REVIEW FIXES of the block\n\nRefs: D11\nSiguiente: x")
+        self.assertIn("(\"review fixes\")", err)
 
     def test_review_fixes_with_findings_or_unrelated_words_do_not_warn(self):  # E60
-        self.assertNotIn("review fixes", self.warned("fix(D11): hallazgos\n\nRefs: D11\nFindings: 2\nSiguiente: x"))
+        self.assertNotIn("review fixes", self.warned("fix(D11): review fixes\n\nRefs: D11\nFindings: 2\nSiguiente: x"))
         self.assertNotIn("review fixes", self.warned("feat(D11): findingsWords key\n\nRefs: D11\nSiguiente: x"))
         self.assertNotIn("review fixes", self.warned("feat(D11): plain work\n\nRefs: D11\nSiguiente: x"))
 
     def test_the_trailers_and_a_negation_do_not_warn(self):  # E60: only the subject and body speak of the fixes
         msg = "feat(D11): plain work\n\nbody\n\nRefs: D11\nSiguiente: /code-review del bloque y arreglar sus hallazgos"
         self.assertNotIn("review fixes", self.warned(msg))
-        self.assertNotIn("review fixes", self.warned("feat(D11): x\n\nrevisado, sin hallazgos\n\nRefs: D11\nSiguiente: x"))
-        self.assertNotIn("review fixes", self.warned("feat(D11): x\n\nno findings this time\n\nRefs: D11\nSiguiente: x"))
-        err = self.warned("fix(D11): x\n\nsin hallazgos graves; arregla dos hallazgos leves\n\nRefs: D11\nSiguiente: x")
-        self.assertIn("(\"hallazgos\")", err)
+        self.assertNotIn("WARNING", self.warned("feat(D11): x\n\nsin arreglos de la revisión\n\nRefs: D11\nSiguiente: x"))
+        self.assertNotIn("WARNING", self.warned("feat(D11): x\n\nno review fixes this time\n\nRefs: D11\nSiguiente: x"))
+        err = self.warned("fix(D11): x\n\nsin review fixes graves; hechos los review fixes leves\n\nRefs: D11\nSiguiente: x")
+        self.assertIn("(\"review fixes\")", err)
+
+    def test_the_loose_words_finding_and_hallazgo_do_not_warn_by_default(self):  # D155
+        for word in ("hallazgo", "hallazgos", "finding", "findings"):
+            msg = f"feat(D11): x\n\nEl análisis dio un {word} sobre el parser\n\nRefs: D11\nSiguiente: x"
+            self.assertNotIn("WARNING", self.warned(msg), word)
+        self.assertIn("WARNING", self.warned("fix(D11): review fixes\n\nsolo un hallazgo\n\nRefs: D11\nSiguiente: x"))
+        self.assertNotIn("WARNING", self.warned("fix(D11): review fixes\n\nRefs: D11\nFindings: 1\nSiguiente: x"))
 
     def test_findings_words_follow_the_config_and_empty_turns_it_off(self):  # E60
         self.configure(metrics={"quality": {"findingsTrailer": "Hallazgos", "findingsWords": ["code review"]}})

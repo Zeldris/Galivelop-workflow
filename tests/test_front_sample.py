@@ -1,4 +1,4 @@
-"""E5 (trozo 2, Q-32): the sample project in tests/fixtures/front-sample runs the templates in templates/front with
+"""E5 (trozo 2, Q-34): the sample project in tests/fixtures/front-sample runs the templates in templates/front with
 node and Playwright, on Linux only. The npm packages are installed OUTSIDE the tree (`<git dir>/gw/front-node/`, never
 a node_modules inside the repository) and linked into a temporary copy of the templates and the sample that the specs
 run from. A green case per helper passes; a red case per helper fails for its reason (the

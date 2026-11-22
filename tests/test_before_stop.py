@@ -855,7 +855,8 @@ class BackgroundSubagents(PushHelpers):
         out = self.stop(path)
         self.assertWaits(out, "b2")
         self.assertIn("1 background subagent of this session is", out)
-        self.assertNotIn("a1", decision(self, out)["systemMessage"])
+        # the id list, not the bare id: the temp path can hold "a1" (gw-parar-mqe_xa1y failed once)
+        self.assertIn("still running (b2)", decision(self, out)["systemMessage"])
         out = self.stop(self.transcript(self.launch("a1"), self.launch("b2")))
         self.assertIn("2 background subagents of this session are", out)
         self.assertStillBlocks(self.stop(self.transcript(self.launch("a1"), self.launch("b2"), self.done("a1"),

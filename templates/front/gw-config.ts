@@ -1,4 +1,4 @@
-// galivelop-workflow v0.8.1
+// galivelop-workflow v0.8.2
 // Config builder of the front tests (galivelop-workflow, E5). The projects come from the file front.py generates
 // (`playwright.projects.json`: one per breakpoint and browser, E-16), so a change in the tokens file changes the matrix.
 import { readFileSync } from 'node:fs';

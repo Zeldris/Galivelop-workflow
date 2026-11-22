@@ -2163,12 +2163,21 @@ class CiSteps(unittest.TestCase):
         self.assertFalse(self.proposal().exists(), out)
         self.assertIn("branches-ignore: [release]", self.p.read(self.CI))
 
+    def test_push_that_only_changes_the_metrics_ledger_does_not_run_ci(self):
+        """D162: check.yml carries `paths-ignore` of `metrics.ledger` (the configured path) on push only."""
+        text = self.p.read(self.CI)
+        self.assertIn('    paths-ignore: ["docs/metrics/ledger.jsonl"]\n  pull_request:\n', text)
+        cfg = dict(BASE_CONFIG, metrics={"ledger": "tele/l.jsonl"})
+        self.p.write(".claude/gw.json", json.dumps(cfg, indent=2) + "\n")
+        out = self.applied("--update")
+        self.assertIn('paths-ignore: ["tele/l.jsonl"]', self.p.read(self.CI), out)
+
     def test_ci_on_push_false_runs_check_yml_only_on_pull_requests_and_back(self):
         """D54: `ciOnPush: false` renders the push filter as every branch; the copy stays the workflow's."""
         self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, ciOnPush=False), indent=2) + "\n")
         out = self.applied()
         text = self.p.read(self.CI)
-        self.assertIn("    branches-ignore: ['**']\n  pull_request:\n", text, out)
+        self.assertIn("    branches-ignore: ['**']\n", text, out)
         self.assertNotIn("branches-ignore: [main]", text)
         self.assertFalse(self.proposal().exists(), out)
         self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, ciOnPush=True), indent=2) + "\n")
@@ -2301,6 +2310,24 @@ class LegacyNames(unittest.TestCase):
         self.assertIn("2 more use(s) of old names not listed; raise legacyNamesMax", out)
         self.p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, legacyNames=False), indent=2) + "\n")
         self.assertEqual(self.warnings(self.applied()), [])
+
+    def test_dry_run_summary_gives_one_count_per_old_name(self):
+        """D161: the summary prints one line per old name, not one per use."""
+        self.p.write("docs/notes.md", "docs/traspaso.md\ndocs/traspaso.md\ndocs/traspaso.md\n")
+        code, out = self.p.run_apply("--dry-run", "--summary")
+        self.assertEqual(code, 0, out)
+        lines = [l for l in out.splitlines() if "old name" in l or "old names" in l]
+        self.assertEqual(len(lines), 1, out)
+        self.assertIn("3 use(s) of the old name docs/traspaso.md", lines[0])
+        self.assertIn("git grep -n -F 'docs/traspaso.md'", lines[0])
+        self.assertNotIn("docs/notes.md:", out)
+
+    def test_old_name_warning_suggests_legacy_names_skip_for_quotes_of_other_repos(self):
+        """D165: the warning names the key that silences a file quoting another repo."""
+        self.p.write("docs/notes.md", "docs/traspaso.md\n")
+        out = self.applied()
+        self.assertIn("docs/notes.md:1 uses the old name docs/traspaso.md", out)
+        self.assertIn("if it quotes another repo's text, add the file to legacyNamesSkip", out)
 
     def test_keep_legacy_paths_does_not_warn_about_docs_paths(self):
         self.p.write("docs/notes.md", "docs/traspaso.md and check-verde.sh\n")
@@ -2957,7 +2984,7 @@ class GitignoreBlock(unittest.TestCase):
 
 
 class TemplateAtFallback(unittest.TestCase):
-    """A12 (Q-13): template_at falls back to templates/en only for a language with no folder in the tag."""
+    """A12 (Q-15): template_at falls back to templates/en only for a language with no folder in the tag."""
 
     def setUp(self):
         self.tmp = Path(tempfile.mkdtemp())

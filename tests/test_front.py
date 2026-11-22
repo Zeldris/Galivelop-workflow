@@ -657,7 +657,7 @@ class Run(Base):
     SNAP = "tests/home.spec.ts-snapshots/home-chromium-desktop-linux.png"
 
     def test_update_snapshots_brings_the_baselines_back_and_writes_the_stamp(self):
-        """E78 (Q-34): the run is in a temporary copy, so the new or changed baselines come back to the tree and the
+        """E78 (Q-36): the run is in a temporary copy, so the new or changed baselines come back to the tree and the
         pinned Playwright goes into front.snapshotStamp; nothing else of the copy comes back."""
         self.cache()
         self.fake(self.bin, "node", "npm")

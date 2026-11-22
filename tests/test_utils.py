@@ -1056,6 +1056,14 @@ class HandoffNextId(PlanRepo):
         self.p.git("checkout", "--", self.PLAN)
         self.assertEqual(self.next_id("INS"), (0, "INS-10"))  # the index too
 
+    def test_ids_used_in_the_pending_file_are_skipped(self):  # D157
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, plan=[self.PLAN], pendingFile="docs/pending.md")))
+        self.assertEqual(self.next_id("INS"), (0, "INS-3"))
+        self.p.write("docs/pending.md", "# Pending\n\n- see INS-7 later\n")
+        self.assertEqual(self.next_id("INS"), (0, "INS-8"))
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, plan=[self.PLAN], pendingFile="docs/none.md")))
+        self.assertEqual(self.next_id("INS"), (0, "INS-3"))  # a missing pending file is not an error
+
     def test_a_prefix_is_whole_and_ids_without_a_dash_keep_none(self):
         self.p.write(self.PLAN, self.START + "- [ ] **INSX-40** other prefix\n")
         self.assertEqual(self.next_id("INS"), (0, "INS-3"))
@@ -1185,12 +1193,30 @@ class HandoffSetRow(Base):
         self.assertEqual(self.p.script("handoff.py", "set-row", "again", "--branch", "feat-b")[0], 0)
         self.assertEqual(self.row("feat-b"), "| **Task in progress · `feat-b`** | again |")
 
+    def test_set_row_and_close_row_set_todays_date_in_the_updated_row(self):  # D154
+        import datetime
+        today = datetime.date.today().isoformat()
+        self.p.branch("feat-a")
+        self.assertEqual(self.p.script("handoff.py", "set-row", "now")[0], 0)
+        self.assertIn(f"| **Updated** | {today} |", (self.p.work / LOG).read_text())
+        self.p.write(LOG, log_text())  # back to the stale 2026-10-21
+        self.assertEqual(self.p.script("handoff.py", "close-row")[0], 0)
+        self.assertIn(f"| **Updated** | {today} |", (self.p.work / LOG).read_text())
+        self.assertNotIn("2026-10-21", (self.p.work / LOG).read_text())
+
+    def test_set_row_without_an_updated_row_adds_none(self):  # D154
+        self.p.branch("feat-a")
+        self.p.write(LOG, log_text().replace("| **Updated** | 2026-10-21 |\n", ""))
+        self.assertEqual(self.p.script("handoff.py", "set-row", "now")[0], 0)
+        self.assertNotIn("Updated", (self.p.work / LOG).read_text())
+
     def test_set_row_keeps_the_rest_of_the_file_byte_for_byte_and_crlf(self):
         self.p.branch("feat-a")
         path = self.p.work / LOG
         path.write_bytes(log_text().replace("\n", "\r\n").encode())
         self.assertEqual(self.p.script("handoff.py", "set-row", "A | with a pipe")[0], 0)
-        want = log_text().replace("| doing A |", "| A \\| with a pipe |").replace("\n", "\r\n")
+        import datetime
+        want = log_text(updated=datetime.date.today().isoformat()).replace("| doing A |", "| A \\| with a pipe |").replace("\n", "\r\n")
         self.assertEqual(path.read_bytes().decode(), want)
 
     def test_set_row_limit_is_600_and_writes_nothing_over_it(self):

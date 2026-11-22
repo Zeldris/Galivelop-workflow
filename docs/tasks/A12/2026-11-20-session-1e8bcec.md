@@ -2,7 +2,7 @@
 
 ## Why
 
-La revisión del trozo 3 halló que Q-16 fallaba tras una compactación, con el config roto, con otro tipo de letra en el
+La revisión del trozo 3 halló que Q-18 fallaba tras una compactación, con el config roto, con otro tipo de letra en el
 correo y con códigos que no son un idioma.
 
 ## Alternatives

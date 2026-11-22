@@ -82,9 +82,70 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [x] `0.5` · **Del arreglo de INS P8** (arreglado en la `0.4.2`, `4aecf5c`): `prepush-ramas.sh` comprueba la bitácora como
   queda en la punta que se sube, así que un log malo en un commit intermedio se arregla con un commit nuevo encima.
 
+## De las revisiones del parche `0.8.2`
+
+Hallazgos menores de las revisiones por rama de la oleada 1 (2026-11-22); no se revisan otra vez en este parche.
+
+- [ ] `0.9` · **D144/D151 (`measure.py`):** con periodo explícito y la sesión en curso sin `gitBranch`, no se excluye
+  ningún registro de otra rama.
+- [ ] `0.9` · **D142 (`models.py session-check`):** la línea `Session:` solo se busca en la cola de
+  `subagentTranscriptBytes`; en una sesión larga reanudada no avisa (límite documentado en `config.md`).
+- [ ] `0.9` · **D152 (`tests-for.py`):** el prefijo `.claude/gw/` va escrito a mano (una ruta con `./` no casa);
+  `tests/test_ci_local.py:226` no comprueba `code` y mezcla tres fases.
+- [ ] `0.9` · **D160 (`ci-local.py`):** otro ejecutor local de `check.yml` (act, a mano) sigue dejando `.gw-ci/`; mover
+  la escritura a `$RUNNER_TEMP` en `templates/github/check.yml` (con `check.legacy-lines.txt` y `test_doctor.py`).
+- [ ] `0.9` · **D158/D159 (`doctor.py`):** `check_workflow_clone` ignora `GW_WORKFLOW`/`--workflow` y solo mira
+  `is_dir()` (no `is_workflow`); `check_agent_files_ignored` duplica la lógica de `ignored_paths()` (extraer un
+  helper); sin git, `FileNotFoundError` (ya pasaba); faltan tests: `workflowClone` vacío o absoluto, silencio en el
+  repo del flujo, regla `!`, `gw-reviewer.md`, repo sin git.
+- [ ] `0.9` · **D154/D157 (`handoff.py`):** `UPDATED_ROW` duplica la regex de `check` (una sola constante);
+  `date.today()` es hora local y el `commit-msg` usa la fecha del commit; `next-id` en `pendingFile` sin `\b`
+  («abcD99»); falta el test de «Actualizado» en español en `set-row`.
+
+Hallazgos menores de la oleada 2 (2026-11-22):
+
+- [ ] `0.9` · **D161/D165 (`apply.py`):** el recuento por nombre viejo se hace tras filtrar `legacyNamesSkip`, pero el
+  `git grep -n -F` sugerido lista también los saltados (cifra y salida pueden no casar: decirlo en el mensaje); la
+  ayuda de `--summary` no nombra el recuento.
+- [ ] `0.9` · **D166 (`recover.py`, `roadmap.py`):** `except Exception: return []` esconde un `ImportError` o un fallo de
+  `roadmap.py` (capturar solo `RoadmapError`/`OSError`/`ValueError`); en `version/X.Y.Z` sin su sección cae a la de
+  `X.Y` con la etiqueta `X.Y.Z` (decir qué sección usa); `open_rows` da por cerrado todo estado que no empieza por una
+  palabra de `open` («aplazada» también: documentarlo); faltan tests de falla suave (sin `roadmapFiles`, HEAD
+  desacoplado, sección ausente).
+- [ ] `0.9` · **D162 (`apply.py`):** `ledger` con globs, `./`, `../` o absoluto no casa en `paths-ignore` (solo
+  documentado en `config.md`; validar o normalizar).
+- [ ] `0.9` · **Tests de tiempo:** `test_session_log.SessionStart.test_command_kill_grace_key_shortens_the_wait_before_kill`
+  falla con la máquina cargada (5,2 s y 12 s contra un tope de 5 s; solo da 4,7 s). Ampliar el margen o medir otra cosa.
+
+### De la retro del parche `0.8.2` (2026-11-22, aprobadas)
+
+Propuestas en [`retro-2026-11-22-patch-0.8.2.md`](retro-2026-11-22-patch-0.8.2.md).
+
+- [ ] `0.9` · **P1:** `push.sh --wip` sube un commit `WIP:` sin esperar al verde, fuera de la rama protegida, y
+  `before-stop.py` lo recomienda con commits sin subir y el último check en rojo.
+- [ ] `0.9` · **P3:** `whole-read.py` avisa también de un `cat`/`sed`/`head` por `Bash` del `log` o de `roadmapFiles`
+  por encima de `wholeReadWarnBytes`, con la orden que da lo mismo.
+- [ ] `0.9` · **P4:** `gw-orchestrate-dealer` reparte la revisión de la fase 1 de un diff grande (clave nueva) en
+  revisores por grupos de archivos más uno que cruce los contratos.
+- [ ] `0.10` · **P6:** barrido de los leves abiertos de `apply.py` (una tarea B).
+
+### Hallazgos de la fase 1 (2026-11-22)
+
+Menores de la revisión del diff entero contra `main`; no se revisan otra vez en este parche.
+
+- [ ] `0.9` · **`gw-selector` (`SKILL.md:66`):** lee `metrics.py quality --period month` entero (~3.7k tokens); bastaría
+  la línea del resumen.
+- [ ] `0.9` · **`recover.py:576`:** el prefijo `version/` va fijo; existe `releaseCheckBranches`.
+- [ ] `0.9` · **`recover.py:593`:** cuenta la fila de relleno «—» como un id.
+- [ ] `0.9` · **`doctor.py:1216`:** dice `<workflow repo URL>` aunque existe la clave `workflowRepository`.
+- [ ] `0.9` · **Copia instalada `.agents/skills/gw-opt-tokens/scripts/test_measure.py`:** falla (5 errores, 9 fallos);
+  la oculta `doctorTestDirsIgnore`.
+- Observaciones: el aviso de D158 de `doctor.py` sale siempre en el CI y en una sesión de la nube con un solo repo;
+  D151, D145, D148 y D164 no tienen ficha en `docs/tasks/`.
+
 ## De la retro del parche `0.8.1`
 
-- [ ] `0.8.2` · **D144 (`measure.py`, fallo; antes «D142», id repetido):** sin `--session`, en la nube mide una sesión vieja de la carpeta del
+- [x] `0.8.2` · **D144 (`measure.py`, fallo; antes «D142», id repetido):** sin `--session`, en la nube mide una sesión vieja de la carpeta del
   repo en vez de la sesión en curso (`-home-user`, la más nueva): la preferencia de D139 por la carpeta del repo gana a
   la más reciente. La sesión en curso es la más nueva de todas las carpetas; D139 solo desempata. Con su test.
   `retro-2026-11-19-patch-0.8.1.md`.

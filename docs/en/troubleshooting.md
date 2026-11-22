@@ -54,6 +54,8 @@ python3 .claude/gw/scripts/doctor.py
 | `media tools` (WARN) | Only if the project uses `gw-media-content` (`.claude/gw/gw-media-content.md` exists, or the folder it names, `docs/media` by default): `node`, Playwright (from the current folder or `GW_PLAYWRIGHT_DIR`) or ImageMagick with WebP (`magick` or `convert` with WEBP in `-list format`) is missing | `apt install imagemagick webp` / `brew install imagemagick webp`; in the project, `npm i -D playwright && npx playwright install chromium` |
 | `ci access` (WARN) | `origin` is on GitHub (https or ssh) but the agent cannot read the CI state: no `gh` on `PATH` (or `gh auth status` fails) and neither `GITHUB_TOKEN` nor `GH_TOKEN` is set. `AGENTS.md` asks to look at the CI of the last push when each block closes. It reads the machine running doctor; the token is never printed | Install GitHub CLI and run `gh auth login`, or `export GITHUB_TOKEN=<token>` |
 | `related tests` (WARN) | `branchCheck` is `related` (the default) but `relatedTests` has no command in `fast` or `slow`: the branch `pre-push` has no related tests to run and runs the full `check` on every push, so `related` saves nothing | Fill `relatedTests` in `.claude/gw.json` (`docs/en/config.md`), or set `"branchCheck": "full"` |
+| `workflow clone` (WARN) | The folder of `workflowClone` does not exist, so `review-scope.py` cannot tell what is `vendored` | `git clone` the workflow there, or set `workflowClone` in `.claude/gw.json` |
+| `agents ignored` (WARN) | `.gitignore` ignores `.claude/agents/gw-worker.md` or `gw-reviewer.md`: a commit leaves them out | Add `!<path>` to `.gitignore` and check `git check-ignore -v <path>` |
 
 ## Pushing (`pre-push`)
 

@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.8.1 -->
+<!-- galivelop-workflow v0.8.2 -->
 # Guía de revisión
 
 Lo que el revisor (`/code-review`, o cualquier agente que revise un diff) comprueba en cada diff de {{project}},
@@ -76,6 +76,8 @@ creada.
 - Lo que viene de un proyecto que sube de otra forma (directo a la rama protegida, o por pull request) se adapta a
   cómo sube este a `{{protectedBranch}}`. (criterio)
 - Una tabla o un ejemplo de una guía que lee un script lo lee ese script en un test. (criterio)
+- El código que lee lo que escribe un agente o una persona (la línea del selector, trailers, respuestas a preguntas)
+  lleva al menos un test con una muestra real, copiada de una transcripción o de la bitácora. (criterio)
 
 ## Invariantes
 

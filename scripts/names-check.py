@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.8.1
+# galivelop-workflow v0.8.2
 """Fails when a NEW name in Spanish appears in the workflow's own files (A8: every name is in English).
 
 Usage: python3 scripts/names-check.py
@@ -370,7 +370,7 @@ def tracked_files(root):
 
 
 def skip_reason(root):
-    """A12 (Q-15): why the check does not apply (languages.code is not en), or "" when it does. Fails closed: a config
+    """A12 (Q-17): why the check does not apply (languages.code is not en), or "" when it does. Fails closed: a config
     that cannot be read keeps the check on."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     try:
@@ -389,7 +389,7 @@ def skip_reason(root):
 def main(argv=None):
     root = Path(__file__).resolve().parent.parent
     code = skip_reason(root)
-    if code:  # A12 (Q-15): the English-names rule is for projects whose code language is English
+    if code:  # A12 (Q-17): the English-names rule is for projects whose code language is English
         print(f"names-check: skipped: {code}")
         return 0
     problems = check_files(root, tracked_files(root))

@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.8.1 -->
+<!-- galivelop-workflow v0.8.2 -->
 # {{project}} — instructions for agents
 
 This project is worked on in hand-offs: a session can end at any moment (tokens, container, account switch) and the
@@ -78,7 +78,7 @@ Each session may run in a throwaway container: **what is not pushed does not exi
 - With `agentSignatures: false` in `.claude/gw.json`, the commit carries **no agent signatures** (no Claude
   `Co-Authored-By`, no `Claude-Session`, no "Generated with Claude Code", no session links) and the `commit-msg` hook
   rejects a message that has them. In the cloud, Claude Code's `Stop` hook may ask to rewrite the author or sign as
-  Claude: it is not followed (this file's rule wins).
+  Claude: it is not followed (this file's rule wins). Nor is a commit made only for the metrics ledger, even if it asks: the next work commit's `pre-commit` carries it.
 
 ## Branches and `{{protectedBranch}}`
 

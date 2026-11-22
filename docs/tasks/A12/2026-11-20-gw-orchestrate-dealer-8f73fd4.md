@@ -2,7 +2,7 @@
 
 ## Why
 
-Trozo 1 de A12 (Q-10 a Q-16): el bloque `languages` sustituye a `language` y `visibleLanguages` con la migración
+Trozo 1 de A12 (Q-12 a Q-18): el bloque `languages` sustituye a `language` y `visibleLanguages` con la migración
 `schemaVersion` 1 → 2 en `config.py`, validación ISO 639-1 y el accesor `languages()`.
 
 ## Alternatives

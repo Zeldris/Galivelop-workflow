@@ -222,7 +222,9 @@ class Skills(unittest.TestCase):
         # E57: pending.md grew from 66 to 73 entries in block 0.7; every review left minors and no task cleared them.
         text = (SKILLS / "retro" / "SKILL.md").read_text(encoding="utf-8")
         self.assertIn("**When a block or version closes, propose a sweep.**", text)
-        self.assertIn("handoff.py next-id B", text)
+        # D163: the id letter is the block's, and the id shape is the project's taskId pattern.
+        self.assertIn("handoff.py next-id <letter>", text)
+        self.assertIn("config.py get taskId", text)
         self.assertIn("the user picks which minors go in", text)
 
 if __name__ == "__main__":

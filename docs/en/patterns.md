@@ -172,7 +172,7 @@ matrix from it.
    `{group.token}`), with a group of breakpoints in `px`. `front.tokens` in `.claude/gw.json` points at it; without it
    nothing runs ([config](config.md)).
 2. **Template:** copy the workflow's `templates/front/` into the `front.dir` folder and keep **inside** it everything
-   that imports `@playwright/test`, axe or Stylelint: `node_modules` is linked only there (Q-36). The packages are
+   that imports `@playwright/test`, axe or Stylelint: `node_modules` is linked only there (Q-38). The packages are
    installed outside the tree: `python3 .claude/gw/scripts/front.py install --browsers chromium`.
 3. **Generate:** `front.py generate` writes `tokens.css`, `_tokens.scss`, the Stylelint rules and the Playwright
    projects; declare them in `generated` so the check compares them.

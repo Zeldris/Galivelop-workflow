@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.8.1
+# galivelop-workflow v0.8.2
 """Apply or update the workflow in a project: the deterministic core of /gw-init and /gw-update (plan §5.4).
 
   python3 <workflow>/scripts/apply.py [PROJECT] [--update] [--check] [--dry-run [--summary]] [--with SKILL ...]
@@ -281,6 +281,7 @@ class Plan:
         self.actions = []   # (kind, rel, data, exec, detail); kind: create | update | propose | chmod | merge
         self.notes = []     # reported, never acted on
         self.warnings = []  # the same, about the project's own files
+        self.legacy_lines, self.legacy_counts = [], {}  # the old-name warnings among them, and uses per old name (D161)
         self.diffs = []     # (rel, project's bytes, template bytes): printed, never written
         self.personal = []  # info lines about personal notes the project has differently: never drift
         self.pending = []   # proposals already written and still current
@@ -417,7 +418,7 @@ class Plan:
                               f"/gw-update, then set its marker line to v{self.version}")
 
     def english_fallback(self, lang):
-        """A12 (Q-13): say once per run that a docs language without templates/<lang>/ uses the English templates."""
+        """A12 (Q-15): say once per run that a docs language without templates/<lang>/ uses the English templates."""
         message = (f"languages.docs.primary is '{lang}' but the workflow has no templates/{lang}/ folder, so the "
                    f"English templates (en) are used")
         if message not in self.warnings:
@@ -427,7 +428,7 @@ class Plan:
         """The rendered template of `rel` as it was at workflow version `found` (git tag v<found>), or None."""
         lang = docs_language(self.cfg)
         code, text = git(WORKFLOW, "show", f"v{found}:templates/{lang}/{rel}")
-        if code != 0 and lang != "en":  # A12 (Q-13): only a language with no folder at all in that tag used the English ones
+        if code != 0 and lang != "en":  # A12 (Q-15): only a language with no folder at all in that tag used the English ones
             tree = git(WORKFLOW, "ls-tree", "--name-only", f"v{found}", f"templates/{lang}")
             if tree[0] == 0 and not tree[1].strip():
                 self.english_fallback(lang)
@@ -861,13 +862,13 @@ def conditional_blocks(text, cfg, name):
 
 def docs_language(cfg):
     """A12: the primary language of the project's docs (`languages.docs.primary`), the one the templates, the log and
-    the generated texts follow (Q-14)."""
+    the generated texts follow (Q-16)."""
     return config.languages(cfg)["docs"]["primary"]
 
 
 def render(text, cfg, root, version, name):
     """Replace {{key}}: config keys (lists as an inline code list), {{version}} (the workflow's), {{project}},
-    {{ciPushIgnore}} (protectedBranch, or '**' with `ciOnPush: false`).
+    {{ciPushIgnore}} (protectedBranch, or '**' with `ciOnPush: false`), {{ciLedgerPath}} (`metrics.ledger`, quoted).
     First the `<!-- if key -->` blocks (conditional_blocks)."""
     text = conditional_blocks(text, cfg, name)
     def value(m):
@@ -878,6 +879,8 @@ def render(text, cfg, root, version, name):
             return inline_list(cfg.get(key) or [])
         if key == "ciPushIgnore":  # D54: the branches a push does not run CI on; '**' is every branch
             return str(cfg["protectedBranch"]) if cfg.get("ciOnPush", True) else "'**'"
+        if key == "ciLedgerPath":  # D162: a push that only changes the metrics ledger does not run CI
+            return json.dumps(config.metrics(cfg)["ledger"])
         if key == "version":
             return version
         if key == "project":
@@ -906,7 +909,7 @@ def migrated_config(plan, cfg):
 def plan_templates(plan, cfg, self_apply, wanted_skills):
     cfg = migrated_config(plan, cfg)
     lang_dir = WORKFLOW / "templates" / docs_language(cfg)
-    if not lang_dir.is_dir():  # A12 (Q-13): a language without templates uses the English ones
+    if not lang_dir.is_dir():  # A12 (Q-15): a language without templates uses the English ones
         lang_dir = WORKFLOW / "templates" / "en"
         plan.english_fallback(docs_language(cfg))
 
@@ -1651,7 +1654,7 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
                      if isinstance(e, dict) and e.get("path")}  # closed tasks quote old names as history (D100)
     known, exists = None, {}
     limit = int(cfg.get("legacyNamesMax", 50))
-    hits, total, owned = [], 0, {}
+    hits, total, owned, counts = [], 0, {}, {}
     fields = r.stdout.split(b"\0")  # git grep -n -z: path NUL line NUL text NL path NUL line NUL text NL...
     found, rel = [], fields[0].decode("utf-8", "replace") if fields else ""
     for i in range(1, len(fields) - 1, 2):
@@ -1684,11 +1687,17 @@ def plan_legacy_names(plan, cfg, wanted_skills, keep):
             if len(hits) < limit:
                 where = f"{rel}:{number}" + (f" (moved to {shown})" if shown != rel else "")
                 hits.append(f"{where} uses the old name {m.group(1)}; replace it with {pairs[m.group(1)]} "
-                            f"(find them all: git grep -n -F '{m.group(1)}')")
+                            f"(find them all: git grep -n -F '{m.group(1)}'; if it quotes another repo's text, "
+                            f"add the file to legacyNamesSkip in {config.CONFIG_REL})")
+            counts[m.group(1)] = counts.get(m.group(1), 0) + 1
     plan.warnings.extend(hits)
+    plan.legacy_lines = list(hits)
     if total > len(hits):
-        plan.warnings.append(f"{total - len(hits)} more use(s) of old names not listed; raise legacyNamesMax in "
-                             f"{config.CONFIG_REL} or list them with git grep -n -F '<old name>'")
+        more = (f"{total - len(hits)} more use(s) of old names not listed; raise legacyNamesMax in "
+                f"{config.CONFIG_REL} or list them with git grep -n -F '<old name>'")
+        plan.warnings.append(more)
+        plan.legacy_lines.append(more)
+    plan.legacy_counts = counts  # D161: --dry-run --summary prints these instead of the per-use lines
 
 
 def build(root, version, update, extra_skills, cfg, personal=True, check=False, keep_paths=False, init=False):
@@ -2105,7 +2114,11 @@ def main(argv=None):
             print("  nothing to do")
         if args.summary:
             for warning in plan.warnings:
-                print(f"apply: WARNING: {warning}")
+                if warning not in plan.legacy_lines:
+                    print(f"apply: WARNING: {warning}")
+            for old, n in sorted(plan.legacy_counts.items()):
+                print(f"apply: WARNING: {n} use(s) of the old name {old}; list them: git grep -n -F '{old}' "
+                      f"(text quoting other repos: add the file to legacyNamesSkip in {config.CONFIG_REL})")
             if plan.hooks_path:
                 print(f"apply: {plan.hooks_path}")
             print("apply: summary only; the full per-file plan: drop --summary")

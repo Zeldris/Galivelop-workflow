@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.8.1 -->
+<!-- galivelop-workflow v0.8.2 -->
 # Review guide
 
 What the reviewer (`/code-review`, or any agent reviewing a diff) checks in every diff of {{project}}, besides the
@@ -73,6 +73,8 @@ once it exists.
 - What comes from a project that ships another way (straight to the protected branch, or by pull request) is
   adapted to how this one ships to `{{protectedBranch}}`. (judgement)
 - A table or example in a guide that a script reads is read by that script in a test. (judgement)
+- Code that reads what an agent or a person writes (the selector line, trailers, answers to questions) has at least
+  one test with a real sample, copied from a transcript or the log. (judgement)
 
 ## Invariants
 
