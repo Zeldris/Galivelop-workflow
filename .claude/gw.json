@@ -1,6 +1,6 @@
 {
   "$schema": "../schema/gw.schema.json",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "schemaVersion": 1,
   "language": "es",
   "pendingFile": "docs/records/pending.md",

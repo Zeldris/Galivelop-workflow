@@ -13,6 +13,46 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.8.2] - Unreleased
+
+Parche de la recogida H26 (filas de la `0.8.2` en `docs/roadmap.md`). / Patch from the H26 harvest (`0.8.2` rows in
+`docs/roadmap.en.md`).
+
+### ES
+
+- Selector (D142, D147): `gw-selector` se para cuando el modelo o el esfuerzo recomendado no coincide con el actual
+  (en ambos sentidos; `unknown` no cuenta) y lee solo sus claves con `config.py get`; nuevo `models.py
+  session-check`, llamado desde `session-start.sh`, avisa al arrancar o reanudar si el modelo de la sesión no es la
+  familia de la última línea `Session:` (clave `models.sessionCheck`).
+- Medición (D144, D145, D151): `measure.py` sin `--session` mide la sesión en curso (la más nueva de todas las
+  carpetas; D139 solo desempata) y no cuenta registros de otra rama; `test_measure.py` pasa con el flujo instalado.
+- Avisos (D149, D150): `scope-guard.py` cuenta `roadmapFiles` y `pendingFile` como archivos del flujo y, si no pudo
+  saltar las copias del flujo, lo dice en una línea con la clave `workflowClone` o la orden.
+- Check (D152, D160): `tests-for.py --run` no pasa shellcheck a las copias de `.claude/gw/`; `ci-local.py --record`
+  no deja `.gw-ci/` en el árbol.
+- Bitácora (D154, D157): `handoff.py set-row`/`close-row` ponen la fecha de hoy en «Actualizado»; `next-id` lee
+  también `pendingFile`.
+- Diagnóstico (D158, D159): `doctor.py` avisa si la carpeta de `workflowClone` no existe y si los agentes
+  `gw-worker`/`gw-reviewer` están ignorados por el `.gitignore`.
+
+### EN
+
+- Selector (D142, D147): `gw-selector` stops when the recommended model or effort does not match the current one
+  (both ways; `unknown` does not count) and reads only its keys with `config.py get`; new `models.py session-check`,
+  called from `session-start.sh`, warns on start or resume when the session's model is not the family of the last
+  `Session:` line (key `models.sessionCheck`).
+- Measuring (D144, D145, D151): `measure.py` without `--session` measures the current session (the newest across
+  all folders; D139 only breaks ties) and leaves out logs of another branch; `test_measure.py` passes with the
+  workflow installed.
+- Warnings (D149, D150): `scope-guard.py` counts `roadmapFiles` and `pendingFile` as workflow files and, when it
+  could not skip the workflow copies, says so in one line with the `workflowClone` key or the command.
+- Check (D152, D160): `tests-for.py --run` does not shellcheck the copies in `.claude/gw/`; `ci-local.py --record`
+  leaves no `.gw-ci/` in the tree.
+- Log (D154, D157): `handoff.py set-row`/`close-row` put today's date in «Updated»; `next-id` also reads
+  `pendingFile`.
+- Diagnostics (D158, D159): `doctor.py` warns when the `workflowClone` folder does not exist and when the
+  `gw-worker`/`gw-reviewer` agents are git-ignored.
+
 ## [0.8.1] - 2026-11-19
 
 Parche de la recogida de apertura de la `0.9` (filas de la `0.8.1` en `docs/roadmap.md`). / Patch from the `0.9`

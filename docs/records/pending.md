@@ -82,9 +82,29 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 - [x] `0.5` · **Del arreglo de INS P8** (arreglado en la `0.4.2`, `4aecf5c`): `prepush-ramas.sh` comprueba la bitácora como
   queda en la punta que se sube, así que un log malo en un commit intermedio se arregla con un commit nuevo encima.
 
+## De las revisiones del parche `0.8.2`
+
+Hallazgos menores de las revisiones por rama de la oleada 1 (2026-11-22); no se revisan otra vez en este parche.
+
+- [ ] `0.9` · **D144/D151 (`measure.py`):** con periodo explícito y la sesión en curso sin `gitBranch`, no se excluye
+  ningún registro de otra rama.
+- [ ] `0.9` · **D142 (`models.py session-check`):** la línea `Session:` solo se busca en la cola de
+  `subagentTranscriptBytes`; en una sesión larga reanudada no avisa (límite documentado en `config.md`).
+- [ ] `0.9` · **D152 (`tests-for.py`):** el prefijo `.claude/gw/` va escrito a mano (una ruta con `./` no casa);
+  `tests/test_ci_local.py:226` no comprueba `code` y mezcla tres fases.
+- [ ] `0.9` · **D160 (`ci-local.py`):** otro ejecutor local de `check.yml` (act, a mano) sigue dejando `.gw-ci/`; mover
+  la escritura a `$RUNNER_TEMP` en `templates/github/check.yml` (con `check.legacy-lines.txt` y `test_doctor.py`).
+- [ ] `0.9` · **D158/D159 (`doctor.py`):** `check_workflow_clone` ignora `GW_WORKFLOW`/`--workflow` y solo mira
+  `is_dir()` (no `is_workflow`); `check_agent_files_ignored` duplica la lógica de `ignored_paths()` (extraer un
+  helper); sin git, `FileNotFoundError` (ya pasaba); faltan tests: `workflowClone` vacío o absoluto, silencio en el
+  repo del flujo, regla `!`, `gw-reviewer.md`, repo sin git.
+- [ ] `0.9` · **D154/D157 (`handoff.py`):** `UPDATED_ROW` duplica la regex de `check` (una sola constante);
+  `date.today()` es hora local y el `commit-msg` usa la fecha del commit; `next-id` en `pendingFile` sin `\b`
+  («abcD99»); falta el test de «Actualizado» en español en `set-row`.
+
 ## De la retro del parche `0.8.1`
 
-- [ ] `0.8.2` · **D144 (`measure.py`, fallo; antes «D142», id repetido):** sin `--session`, en la nube mide una sesión vieja de la carpeta del
+- [x] `0.8.2` · **D144 (`measure.py`, fallo; antes «D142», id repetido):** sin `--session`, en la nube mide una sesión vieja de la carpeta del
   repo en vez de la sesión en curso (`-home-user`, la más nueva): la preferencia de D139 por la carpeta del repo gana a
   la más reciente. La sesión en curso es la más nueva de todas las carpetas; D139 solo desempata. Con su test.
   `retro-2026-11-19-patch-0.8.1.md`.
