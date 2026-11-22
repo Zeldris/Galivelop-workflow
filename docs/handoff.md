@@ -11,8 +11,8 @@
 | Rama | **Parche `0.8.2`: `version/0.8.2`**, desde `main` (`4ca45d0` = **`0.8.1`**). La `0.9` sigue en `ccr-d1e2d496-0vzck8`. `version/1.0.0` se queda con el diseño (`docs/design/`) |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | **`0.8.2` en `main`** (`a725647`, 2026-11-22; las tres fases hechas, retro decidida). Textos de la release en `docs/records/release-v0.8.2.md`: **la release de GitHub queda pendiente**, la crea el usuario desde una sesión local (etiqueta `v0.8.2` sobre `a725647`) |
-| Siguiente paso | **Fusionar la `0.8.2` en la `0.9`** (`ccr-d1e2d496-0vzck8`; ojo: clave `language` de `main` frente a `languages.docs.primary` de A12), check y subida, y cerrar la `0.9` en una sesión nueva (P5 de la retro). Pendiente fuera de la nube: release `v0.8.2`. Q-7 y Q-8 esperan al usuario. Presupuesto de compactaciones: 2 |
+| Último punto estable | **`0.8.2` en `main`** (`a725647`, 2026-11-22; las tres fases hechas, retro decidida). Release `v0.8.2` creada el 2026-11-22 desde una sesión local (etiqueta sobre `a725647`; textos en `docs/records/release-v0.8.2.md`) |
+| Siguiente paso | **Fusionar la `0.8.2` en la `0.9`** (`ccr-d1e2d496-0vzck8`; ojo: clave `language` de `main` frente a `languages.docs.primary` de A12), check y subida, y cerrar la `0.9` en una sesión nueva (P5 de la retro). Q-7 y Q-8 esperan al usuario. Presupuesto de compactaciones: 2 |
 
 ### Fases
 

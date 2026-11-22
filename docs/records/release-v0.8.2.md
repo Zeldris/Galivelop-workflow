@@ -3,7 +3,7 @@
 - **Etiqueta:** `v0.8.2`, sobre `a725647`, el commit de `main` de la subida del 2026-11-22.
 - **Título:** el bloque de abajo.
 - **Cuerpo:** el segundo bloque. La entrada completa está en el CHANGELOG.
-- **Publicada:** pendiente; la crea el usuario desde una sesión local (en la nube no se publican releases), con estos textos.
+- **Publicada:** 2026-11-22 por el agente desde una sesión local (`gh release create --target a725647`, a petición del usuario; CI de `a725647` en verde), con estos textos.
 
 ```text
 Galivelop-workflow v0.8.2
