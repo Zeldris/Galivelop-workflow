@@ -1460,6 +1460,11 @@
       "default": true,
       "description": "true: the whole-read warning speaks only when this session already read the same file whole and it has not changed since (same size and modification time); false: on every whole read over wholeReadWarnBytes."
     },
+    "installedCopyWarn": {
+      "type": "boolean",
+      "default": true,
+      "description": "true: the pre-commit hook warns, without refusing, when a staged scripts/<file> differs from its installed copy .claude/gw/scripts/<file> (apply.py . has not been run); false: it does not look (D169)."
+    },
     "wholeReadStaleDays": {
       "type": "integer",
       "minimum": 1,

@@ -28,6 +28,8 @@
 #   - C13 (scopeGuard, not off): staged files outside `## Files` of the current task's record (branch agent/<id>-..., else
 #     the mark gw/current-task) are warned about, or refused in block mode (scope-guard.py --staged; outside Claude Code
 #     too). Skipped while closing a merge/cherry-pick/rebase, and with no task, no record or no Files section.
+#   - D169 (installedCopyWarn, default on): a staged scripts/<file> that differs from its copy .claude/gw/scripts/<file> is
+#     warned about (never refused): the copy is stale, run python3 scripts/apply.py . Not in CI mode.
 #   - With logRows on, while concluding a merge: it does not keep two different tasks under one task id, one from each
 #     side (handoff.py clash --merging; the pre-push checks every new merge and the protected branch).
 # CI mode: pre-commit --range BASE..HEAD scans what the range adds instead of the staged changes (run the base
@@ -202,6 +204,25 @@ if [ "${CLAUDECODE:-}" = "1" ] && [ "$ci" = "0" ]; then
       first="$(printf '%s' "$refused" | head -n 1)"
       echo "pre-commit: unstage them: git restore --staged -- '$first'" >&2
       exit 1
+    fi
+  fi
+fi
+
+# D169: a staged scripts/ file that differs from its installed copy (apply.py . not run yet): warn, never refuse.
+if [ "$ci" = "0" ] && [ -d "$root/.claude/gw/scripts" ] && [ -d "$root/scripts" ]; then
+  scripts="$root/.claude/gw/scripts"
+  if [ "$(python3 "$scripts/config.py" --root "$root" get installedCopyWarn 2>/dev/null)" != "false" ]; then
+    stale=""
+    while IFS= read -r path; do
+      case "$path" in scripts/*) ;; *) continue ;; esac
+      copy="$root/.claude/gw/$path"
+      [ -f "$copy" ] || continue
+      git show ":$path" 2>/dev/null | cmp -s - "$copy" || stale="$stale$path"$'\n'
+    done <<<"$(git diff --cached --no-renames --name-only --diff-filter=ACM)"
+    if [ -n "$stale" ]; then
+      echo "pre-commit: WARNING: these staged scripts/ files differ from their installed copy in .claude/gw/scripts/, so the hooks run the old ones:" >&2
+      printf '%s' "$stale" | sed 's/^/  /' >&2
+      echo "pre-commit: refresh the copies and stage them: python3 scripts/apply.py . && git add -A" >&2
     fi
   fi
 fi

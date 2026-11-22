@@ -175,7 +175,7 @@ Menores de la revisión del diff entero contra `main`; no se revisan otra vez en
   repo en vez de la sesión en curso (`-home-user`, la más nueva): la preferencia de D139 por la carpeta del repo gana a
   la más reciente. La sesión en curso es la más nueva de todas las carpetas; D139 solo desempata. Con su test.
   `retro-2026-11-19-patch-0.8.1.md`.
-- [ ] `0.9` · **D143 (`pre-commit`, copias instaladas):** avisar si un archivo preparado de `scripts/` difiere de su
+- [x] `0.9` · **D143 (`pre-commit`, copias instaladas):** avisar si un archivo preparado de `scripts/` difiere de su
   copia en `.claude/gw/scripts/` (falta `apply.py .`); hoy solo lo ve el check completo tras subir. Con su test.
   `retro-2026-11-19-patch-0.8.1.md`.
 - [ ] `0.10` · **B47 (barrido de `trace.py`):** cierra sus leves de abajo: D14 n.º 2 y C11-trace n.º 3 a 7.

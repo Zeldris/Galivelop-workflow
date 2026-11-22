@@ -3648,6 +3648,42 @@ class PreCommit(Base):
         self.assertIn("rotate the credential", out)
 
 
+class PreCommitInstalledCopy(Base):
+    """D169: a staged scripts/ file that differs from its copy in .claude/gw/scripts/ is warned about, never refused."""
+    WARNING = "these staged scripts/ files differ from their installed copy in .claude/gw/scripts/"
+
+    def stage(self, copy, source):
+        self.p.write(".claude/gw/scripts/demo.py", copy)
+        self.p.write("scripts/demo.py", source)
+        self.p.git("add", "-A")
+
+    def commit(self):
+        return self.p.git("commit", "-q", "-m", "demo", ok=False)
+
+    def test_a_staged_script_that_differs_from_its_copy_warns_but_commits(self):
+        self.stage("a = 1\n", "a = 2\n")
+        r = self.commit()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(self.WARNING, r.stderr)
+        self.assertIn("  scripts/demo.py", r.stderr)
+        self.assertIn("python3 scripts/apply.py .", r.stderr)
+
+    def test_an_identical_copy_does_not_warn(self):
+        self.stage("a = 1\n", "a = 1\n")
+        r = self.commit()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn(self.WARNING, r.stderr)
+
+    def test_the_key_installedCopyWarn_false_silences_it(self):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["installedCopyWarn"] = False
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.stage("a = 1\n", "a = 2\n")
+        r = self.commit()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn(self.WARNING, r.stderr)
+
+
 class PreCommitAuthorDeny(Base):
     """E41: the pre-commit refuses an author or committer in authorDeny, read as git reads it (git var)."""
     config = {"authorDeny": ["Claude", "noreply@anthropic.com"]}

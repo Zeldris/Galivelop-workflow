@@ -20,6 +20,7 @@
   "workflowClone": "../Galivelop-workflow",
   "workflowRepository": "https://github.com/Zeldris/Galivelop-workflow",
   "wholeReadWarnBytes": 20000,
+  "installedCopyWarn": true,
   "logArchive": "docs/records/handoff-archive.md",
   "agentsSkillsDir": ".agents/skills",
   "pendingFile": "docs/records/pending.md",
