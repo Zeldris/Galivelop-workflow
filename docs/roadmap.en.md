@@ -345,6 +345,38 @@ Fixes from the `0.9` opening harvest (user, 2026-11-18): the `0.8.0` duplicated 
 | D140 | The `handoff.py` warning after a `pre-commit` rejection says to repeat the same `git commit -m …` and points to `COMMIT_EDITMSG` only after a `commit-msg` rejection (`0.9` harvest, world-maker-fantasy P3) | done (2026-11-18) |
 | D141 | A `Findings:` on a merge commit ends the review block (`change-size.py`, the `recover.py --state` warning) and adds up in `metrics.py quality` (the merge is not counted as a commit); `--no-merges` ignored it before | done (2026-11-19) |
 
+## `0.8.2` — patch
+
+Done when the `0.9` development closes, before publishing it: a harvest and its fixes, together with what is below (user, 2026-11-19).
+
+| Id | Task | Status |
+|---|---|---|
+| H26 | Closing harvest of `0.9` and of patch `0.8.2` (`gw-harvest`, 10 projects up to date; 7 with proposals, `docs/proposals/2026-11-22-*.md`), to the user | done (2026-11-22; the 24 proposals and the `next-id` one approved: D145-D166 to this patch, E79-E83 to `1.0`) |
+| D142 | `gw-selector`: the session stops when the recommended model or effort differs from the current one (today it warns and carries on, and the orchestrator takes the riskiest row's model, so it almost never goes below Opus); the exact behaviour, in `docs/questions.md` (user, 2026-11-19; Related: E66) | pending |
+| D144 | `measure.py` without `--session` measures the current session (the newest across all folders); D139's preference for the repo folder only breaks ties (`0.8.1` retro; formerly "D142", a repeated id) | pending |
+| D145 | `test_measure.py` passes with the workflow installed in a project (today 5 red tests in its CI, and each `/gw-update` wipes the local patch) (H26 harvest, instalador P1 and world-maker-fantasy) | pending |
+| D146 | `gw-reviewer` without `Agent` in its tools: a nested Opus subagent spent 2.3 M of a review's 2.6 M tokens (H26 harvest, private-project-5 P2) | pending |
+| D147 | `gw-selector` reads only the keys it uses with `config.py get`, not the whole `gw.json` (~5k tokens per task); together with D142 (H26 harvest, private-project-2 P1) | pending |
+| D148 | `AGENTS.md` templates (es/en): no commit just for the ledger even if the cloud `Stop` hook asks for it (H26 harvest, private-project-1 P1 and instalador) | pending |
+| D149 | `scope-guard.py`: `roadmapFiles` and `pendingFile` count as workflow files (~120 false warnings on one branch) (H26 harvest, world-maker-fantasy P1) | pending |
+| D150 | `scope-guard.py` says in one line, with the `workflowClone` key or the command, that it did not skip the workflow copies because it found no clone (H26 harvest, world-maker-fantasy P2) | pending |
+| D151 | `measure.py` does not measure another branch's session; together with D144 (H26 harvest, world-maker-fantasy P4) | pending |
+| D152 | `tests-for.py --run` does not run shellcheck on the workflow copies in `.claude/gw/` (without shellcheck, the push fails after a `/gw-update`) (H26 harvest, private-project-3 P1) | pending |
+| D153 | `gw-orchestrate-dealer` brief template: `red-without-fix.sh` for each new test (H26 harvest, private-project-2 P2) | pending |
+| D154 | `handoff.py set-row`/`close-row` set today's date in "Updated" (today `commit-msg` rejects the next commit) (H26 harvest, world-maker-fantasy P5) | pending |
+| D155 | Loose words "hallazgo"/"finding" in the body do not trigger the `Findings:` warning (H26 harvest, world-maker-fantasy P6) | pending |
+| D156 | The startup warning does not fire for the system context, which cannot be reduced (today it fires on every cloud start) (H26 harvest, private-project-5 P3) | pending |
+| D157 | `handoff.py next-id` also reads `pendingFile`, so ids are not repeated (it proposed D143, already used) (H26 harvest) | pending |
+| D158 | `doctor.py` warns when the `workflowClone` folder does not exist (H26 harvest, instalador P2) | pending |
+| D159 | `doctor.py` warns when `.claude/agents/gw-worker.md` is ignored by `.gitignore` (H26 harvest, world-maker-fantasy P3) | pending |
+| D160 | `ci-local.py --record` does not leave `.gw-ci/` in the tree (H26 harvest, private-project-2 P4) | pending |
+| D161 | `apply.py --dry-run --summary` gives a count per legacy name instead of ~50 lines (H26 harvest, image-generator P2) | pending |
+| D162 | CI template: `paths-ignore` for the metrics ledger (a push that only changes it does not start CI) (H26 harvest, instalador P3) | pending |
+| D163 | The retro does not assume the project's ids are letter ids (H26 harvest, private-project-2 P3) | pending |
+| D164 | The install guide recommends opening each cloud session with a single repo (H26 harvest, private-project-5 P4) | pending |
+| D165 | The legacy-names warning suggests `legacyNamesSkip` when it cites other repos; text only (detecting the citations, E83) (H26 harvest, image-generator P3) | pending |
+| D166 | `recover.py --state` gives one line with the open rows of the current version (the `reviewed.sh` warning, E81) (H26 harvest, private-project-5 P1) | pending |
+
 ## `0.9` "Front end"
 
 New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages, front end and the web items the harvests brought.

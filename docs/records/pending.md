@@ -84,7 +84,7 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 
 ## De la retro del parche `0.8.1`
 
-- [ ] `0.8.2` · **D142 (`measure.py`, fallo):** sin `--session`, en la nube mide una sesión vieja de la carpeta del
+- [ ] `0.8.2` · **D144 (`measure.py`, fallo; antes «D142», id repetido):** sin `--session`, en la nube mide una sesión vieja de la carpeta del
   repo en vez de la sesión en curso (`-home-user`, la más nueva): la preferencia de D139 por la carpeta del repo gana a
   la más reciente. La sesión en curso es la más nueva de todas las carpetas; D139 solo desempata. Con su test.
   `retro-2026-11-19-patch-0.8.1.md`.

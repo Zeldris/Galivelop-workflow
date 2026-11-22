@@ -29,3 +29,30 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: no: el flujo lee la plantilla instalada; dos copias se desincronizan
 - Answer: ok
 - Answered: 2026-11-18
+
+## Q-4
+- Refs: D142
+- Status: answered
+- Asked: 2026-11-19
+- Question: D142, al parar por modelo o esfuerzo distinto: a) en los dos sentidos (bajar para ahorrar, subir por calidad); b) solo para bajar; c) avisar y seguir
+- Recommendation: a
+- Answer: a
+- Answered: 2026-11-22
+
+## Q-5
+- Refs: D142
+- Status: answered
+- Asked: 2026-11-19
+- Question: D142, orquestador: la sesión toma el modelo del trabajo que hace ella misma (planear, decidir, revisar; suele ser Sonnet medium) y solo pide Opus para diseño o causas nada obvias
+- Recommendation: sí
+- Answer: sí, pero teniendo siempre en cuenta las métricas de los modelos (metrics.py): quién ha funcionado mejor en cada caso o ha dado mejor calidad/coste
+- Answered: 2026-11-22
+
+## Q-6
+- Refs: D142
+- Status: answered
+- Asked: 2026-11-19
+- Question: D142: el gancho de inicio compara el modelo recomendado con el del transcript y avisa, en la misma tarea
+- Recommendation: sí
+- Answer: sí
+- Answered: 2026-11-22

@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | **`0.8`: `ccr-d1e2d496-0vzck8`**, con `main` fusionado. `main` = `7a6d1bd` = **`0.7.1`** (2026-11-16, parche desde `version/0.7.1`). `version/1.0.0` se queda con el diseño (`docs/design/`) |
+| Rama | **Parche `0.8.2`: `version/0.8.2`**, desde `main` (`4ca45d0` = **`0.8.1`**). La `0.9` sigue en `ccr-d1e2d496-0vzck8`. `version/1.0.0` se queda con el diseño (`docs/design/`) |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | **`0.8.0` publicada** (`main` = `b3825b8`, 2026-11-18; CI en verde; etiqueta y release `v0.8.0` creadas desde una sesión local) |
-| Siguiente paso | **Parche `0.8.1` sellado** (H25). Fases 1 (`Findings: 2`) y 2 hechas (retro `retro-2026-11-19-patch-0.8.1.md` decidida: P3-P4 aplicadas; D142 a `0.8.2`, D143 a `0.9`, B47 a `0.10`). Ahora fase 3: check sobre la fusión con `main`, y con confirmación del usuario `reviewed.sh` y subida a `main`; luego `release-v0.8.1.md` y `0.9` (E65-E76). Presupuesto de compactaciones: 0 |
+| Último punto estable | **`0.8.1` publicada** (`main` = `4ca45d0`, 2026-11-19; CI en verde; etiqueta y release `v0.8.1` creadas desde una sesión local) |
+| Siguiente paso | **Parche `0.8.2` abierto** (2026-11-22) con las filas de H26 del roadmap, las propuestas y Q-4 a Q-6. Hacer con `gw-orchestrate-dealer` D142 (Q-4 a, Q-5 con métricas, Q-6 sí), D144 y D145-D166; luego fases antes de `main`, publicar `0.8.2`, fusionarla en la `0.9` y cerrarla. Presupuesto de compactaciones: 2 |
 
 ### Fases
 
@@ -39,11 +39,11 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
-1. 2026-11-19 — Fase 2 de la `0.8.1`: `/gw-opt-tokens` y `/retro` decididas por el usuario (P3-P4 aplicadas; D142, D143 y B47 apuntados en `pending.md`).
-2. 2026-11-19 — Fase 1 del 0.8.1 (revisión del bloque D141/H25): 2 hallazgos aceptados (doc de metrics.py y config.md: cuenta por id y cierre por merge) y 3 leves a pendientes de la 0.10.
-3. 2026-11-19 — Sello del parche 0.8.1 (H25): CHANGELOG es/en con D128-D141, README en 0.8.1, version.py 0.8.1 y apply.py .; check completo en verde sobre 9feae0a antes del sello.
-4. 2026-11-19 — D141: el Findings: de un merge cierra el bloque de revisión y cuenta en metrics.py quality (antes --no-merges lo ignoraba y recover.py --state avisaba de una revisión ya hecha); visto al empezar el cierre del 0.8.1.
-5. 2026-11-19 — Segunda oleada del 0.8.1 fusionada (D129+D130, D135, D137) y revisada: 7 hallazgos arreglados (guarda de filas de handoff.py, pendingFile de apply.py) y 5 leves a pendientes de la 0.10.
+1. 2026-11-22 — Rama `version/0.8.2` abierta desde `main`: filas D142-D166 y H26 del roadmap es/en, propuestas de H26 (`docs/proposals/2026-11-22-*.md`), Q-4 a Q-6 y el fallo de `measure.py` renombrado a D144 en `pending.md`
+2. 2026-11-19 — Fase 2 de la `0.8.1`: `/gw-opt-tokens` y `/retro` decididas por el usuario (P3-P4 aplicadas; D142, D143 y B47 apuntados en `pending.md`).
+3. 2026-11-19 — Fase 1 del 0.8.1 (revisión del bloque D141/H25): 2 hallazgos aceptados (doc de metrics.py y config.md: cuenta por id y cierre por merge) y 3 leves a pendientes de la 0.10.
+4. 2026-11-19 — Sello del parche 0.8.1 (H25): CHANGELOG es/en con D128-D141, README en 0.8.1, version.py 0.8.1 y apply.py .; check completo en verde sobre 9feae0a antes del sello.
+5. 2026-11-19 — D141: el Findings: de un merge cierra el bloque de revisión y cuenta en metrics.py quality (antes --no-merges lo ignoraba y recover.py --state avisaba de una revisión ya hecha); visto al empezar el cierre del 0.8.1.
 
 ## Pendiente
 
