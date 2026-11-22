@@ -16,8 +16,8 @@ The main session is the **orchestrator**: it holds the plan, the decisions and t
 chunk of work to a subagent that starts with an empty context. Every deal is an automatic `/clear`: the main session
 receives a short summary and grows slowly. Reply to the user in the project's docs language (`languages.docs.primary`). Its own model is that of its own work (plan, decide, review: usually Sonnet `medium`), weighed with `metrics.py quality`; Opus only for design or a non-obvious cause (`gw-selector`).
 
-Config values used below come from `.claude/gw.json`: `check` (list of commands), `log` (handover file),
-`protectedBranch`, `languages.docs.primary`. Read it once at the start.
+Config values used below come from `.claude/gw.json`: `check`, `log` (handover file), `protectedBranch`,
+`languages.docs.primary`. Read it once at the start.
 
 ## Who does what
 
@@ -41,8 +41,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    waits for the first. With more than ~5 chunks, a cheap-model subagent may review the split before launch (missing
    blockers, shared files, criteria that cannot be checked). Cap a subagent at ~30 tool calls (one or two proposal rows); at the cap it saves its state in `log` and the
    next one resumes from it. A subagent's context grows with every call: chunks of 44-55 calls averaged 100-116k;
-   splitting them costs one more ~50k startup but far less than the drag. A one-file fix whose place the reviewer already gave is not a chunk: the main session
-   makes it, with its tests (a subagent pays ~50k just to start and rediscovers what the session knows).
+   splitting them costs one more ~50k startup but far less than the drag. A one-file fix whose place the reviewer gave is
+   not a chunk: the main session makes it, with its tests (a subagent pays ~50k to start and rediscovers what it knows).
 2. **Deal.** One subagent per chunk with the Agent tool, in the foreground when the next chunk depends on it. Model and
    effort follow the `gw-selector` ladder: `sonnet` to implement, `opus` to debug something non-obvious, skipping
    any model in `models.disabled` (`subagent-cap.py` denies it). Every call passes the rung as both `model` and
@@ -137,10 +137,12 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   before moving on. If the whole-branch review follows right away and is decided, the last block skips its own.
 - **Before the PR, only what matters:** fix what is serious or medium, and what the fix itself breaks; log the minor
   findings in the pending file (`pendingFile`, else `log`), not reviewed again in this PR (`/code-review --max-findings
-  all` lists them), or every fix brings new findings and the PR never ends. Its fixes are dealt too (next rule).
-- **A big phase 1 review is dealt too (E86):** above `python3 scripts/config.py get review.splitLines` changed lines
-  (`0` = never), deal two or more `gw-reviewer` by `review-scope.py` file groups (a shared contract stays in one
-  group) plus a short one that reads only what crosses the groups; each gets `pendingFile`; join the findings.
+  all` lists them), or every fix brings new findings and the PR never ends. Its fixes are dealt too (next rule); only a
+  one-file fix whose place the reviewer gave stays in the main session.
+- **A big phase 1 review is dealt too (E86):** a trivial diff (`review-scope.py --trivial` exits 0) never splits.
+  Count the changed lines of the files it lists (`git diff --shortstat <base> -- <files>`); above `python3 scripts/config.py
+  get review.splitLines` (`0` = never) form the groups yourself (a shared contract stays in one), deal one `gw-reviewer`
+  per group plus a short one for what crosses them, each with `pendingFile`; join the findings.
 - **Approved review findings are dealt by group of files:** after the user approves the findings of a `/code-review`,
   group them by the files they touch (findings that share a file go together; a group stays within the ~30-call cap)
   and deal one subagent per group, in series on the working branch or in parallel worktrees as in the rules above.
@@ -180,21 +182,19 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
   is visual; otherwise the text tool's output. Batches share the environment, so each leaves it in a state the
   next can resume from and says so under `MISSING`. **Before dealing a batch, check that the starting state gives
   each check its precondition** (scenario, data, account); if not, the first chunk prepares it.
-- **Repos only read are cloned apart,** outside the tree, unregistered.
-- **A subagent never talks to the user:** what it needs from them returns as `QUESTIONS`.
+- **Repos only read are cloned apart,** outside the tree, unregistered. **A subagent never talks to the user:** its
+  questions return as `QUESTIONS`.
 - **A subagent cut off by a usage or API limit is resumed, not restarted:** send it a message (SendMessage to its id)
-  once the limit resets; it continues from its transcript. A new subagent would redo the work. Commit its partial
-  work as `WIP:` meanwhile.
+  once the limit resets; it continues from its transcript (a new one would redo the work). Commit its partial work as
+  `WIP:` meanwhile.
 - **Intermediate state stays out of git:** dumps, screenshots, scratch logs and bench outputs go to a scratch folder
   (or a path in `.gitignore`); only results, tests and the log are committed. Each subagent gets its own
-  `{scratch}/<id>-<topic>/` (named like its branch): in one shared folder an agent overwrote another's files.
-- **Measure:** `/gw-opt-tokens` before each PR compares context per call, compactions and per-model split with the
-  previous session; if they do not fall, the dealing is staying in the main session.
+  `{scratch}/<id>-<topic>/` (like its branch): in a shared folder an agent overwrote another's files.
+- **Measure:** `/gw-opt-tokens` before each PR compares context, compactions and model split; if they do not fall, dealing stays here.
 - **A batch of approved rows is dealt, not worked inline:** the rows of an approved proposal or a findings list go
-  one per subagent (or 2 small related rows per subagent), in series on the working branch, each reviewed as in
-  step 3. A row the main session keeps (a one-file fix) counts against a stretch: every 4-5 rows, or as soon as the
-  context passes ~150k, it writes the handover in `log` and recommends a `/clear`. Working 18 rows inline cost a 191k
-  average context over 157 calls.
+  one per subagent (or 2 small related rows), in series on the working branch, each reviewed as in step 3. A row the
+  main session keeps (a one-file fix) counts against a stretch: every 4-5 rows, or at ~150k context, it writes the
+  handover in `log` and recommends a `/clear`. 18 rows inline cost a 191k average context over 157 calls.
 - **Automatic compaction is the net, not the plan:** at task boundaries write the handover in `log` and recommend
   a `/clear` to the user rather than letting the context grow. In the cloud the net may be missing: the session
   starts outside the repo and does not load its `.claude/settings.json` (`doctor.py` warns).

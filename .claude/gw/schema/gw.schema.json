@@ -1101,7 +1101,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "splitLines": {"type": "integer", "minimum": 0, "default": 600, "description": "E86: changed lines (vendored files left out, as review-scope.py counts them) above which gw-orchestrate-dealer deals the phase 1 review to two or more reviewers by review-scope.py file groups plus a short one that crosses the contracts; a single reviewer is held to the ~30-call cap. 0 = never split."}
+        "splitLines": {"type": "integer", "minimum": 0, "default": 600, "description": "E86: changed lines of the files review-scope.py lists (vendored ones left out; a trivial diff never splits) above which gw-orchestrate-dealer deals the phase 1 review to two or more reviewers by review-scope.py file groups plus a short one that crosses the contracts; a single reviewer is held to the ~30-call cap. 0 = never split."}
       },
       "default": {"splitLines": 600}
     },

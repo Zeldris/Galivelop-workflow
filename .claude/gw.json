@@ -21,6 +21,9 @@
   "pendingFile": "docs/records/pending.md",
   "decisionsFile": "docs/records/decisions.md",
   "protectedBranch": "main",
+  "review": {
+    "splitLines": 600
+  },
   "authorDeny": [
     "Claude",
     "noreply@anthropic.com"

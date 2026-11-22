@@ -173,6 +173,9 @@ class Config(unittest.TestCase):
             self.assertEqual(config.review_split_lines({"review": {"splitLines": bad}}), 600)
         for bad in ("x", [], None, 3):  # the block itself of the wrong type
             self.assertEqual(config.review_split_lines({"review": bad}), 600)
+        self.write(dict(VALID, review={"splitLines": 250}))  # the CLI gives the project's own value
+        self.assertEqual(json.loads(cli(self.tmp, "get", "review.splitLines").stdout), 250)
+        self.assertEqual(config.review_split_lines(config.load(self.tmp)), 250)
         self.write(dict(VALID, review={"splitLines": -1}))
         r = cli(self.tmp, "validate")
         self.assertEqual(r.returncode, 2)
