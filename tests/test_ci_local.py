@@ -210,6 +210,27 @@ jobs:
         self.assertEqual(code, 1, out)
         self.assertIn("red:", out)
 
+    def test_a_dir_the_run_writes_is_removed_so_the_next_record_is_clean(self):  # D160
+        for step in ("mkdir -p .gw-ci && echo x > .gw-ci/pre-commit", "mkdir -p .gw-ci && exit 1"):
+            self.workflow(f"on: [pull_request]\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n      - run: {step}\n")
+            self.ci("--record")
+            self.assertFalse((self.p.work / ".gw-ci").exists(), step)
+        self.p.git("checkout", "--", ".")
+        self.p.git("clean", "-fdq")
+        self.workflow(f"on: [pull_request]\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n      - run: mkdir .gw-ci\n")
+        self.ci("--record")
+        self.p.git("add", "-A")
+        self.p.commit("log")
+        code, out = self.ci("--record")
+        self.assertNotIn("uncommitted changes", self.log().strip().splitlines()[-1])
+
+    def test_a_dir_that_was_already_there_is_left(self):  # D160
+        (self.p.work / ".gw-ci").mkdir()
+        (self.p.work / ".gw-ci" / "keep").write_text("1")
+        self.workflow(f"on: [pull_request]\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n      - run: true\n")
+        self.ci()
+        self.assertTrue((self.p.work / ".gw-ci" / "keep").is_file())
+
     def test_a_job_it_cannot_evaluate_forbids_the_green(self):
         self.workflow("""on: [pull_request]
 jobs:
