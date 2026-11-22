@@ -2181,6 +2181,24 @@ class LegacyNames(unittest.TestCase):
         self.p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, legacyNames=False), indent=2) + "\n")
         self.assertEqual(self.warnings(self.applied()), [])
 
+    def test_dry_run_summary_gives_one_count_per_old_name(self):
+        """D161: the summary prints one line per old name, not one per use."""
+        self.p.write("docs/notes.md", "docs/traspaso.md\ndocs/traspaso.md\ndocs/traspaso.md\n")
+        code, out = self.p.run_apply("--dry-run", "--summary")
+        self.assertEqual(code, 0, out)
+        lines = [l for l in out.splitlines() if "old name" in l or "old names" in l]
+        self.assertEqual(len(lines), 1, out)
+        self.assertIn("3 use(s) of the old name docs/traspaso.md", lines[0])
+        self.assertIn("git grep -n -F 'docs/traspaso.md'", lines[0])
+        self.assertNotIn("docs/notes.md:", out)
+
+    def test_old_name_warning_suggests_legacy_names_skip_for_quotes_of_other_repos(self):
+        """D165: the warning names the key that silences a file quoting another repo."""
+        self.p.write("docs/notes.md", "docs/traspaso.md\n")
+        out = self.applied()
+        self.assertIn("docs/notes.md:1 uses the old name docs/traspaso.md", out)
+        self.assertIn("if it quotes another repo's text, add the file to legacyNamesSkip", out)
+
     def test_keep_legacy_paths_does_not_warn_about_docs_paths(self):
         self.p.write("docs/notes.md", "docs/traspaso.md and check-verde.sh\n")
         self.p.write(".claude/gw.json", json.dumps(dict(MIGRATED_CONFIG, keepLegacyPaths=True,
