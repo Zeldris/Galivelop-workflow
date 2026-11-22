@@ -148,16 +148,45 @@ def unpushed(root, protected=None):
     return (branch, count, where) if count else None
 
 
-def wip_hint(root, branch):
-    """E84: when the head commit starts with `WIP:` (a commit that goes red, per AGENTS.md) the push may skip the check:
-    the extra sentence naming `push.sh --wip`; empty for any other head or a project without push.sh."""
+def green_recorded(root, cfg):
+    """True when the HEAD tree has a green check recorded (scripts/check.sh and a green push write it, check-green.sh);
+    any doubt (no helper, no record, an error) is False: the hint is then given."""
+    helper = os.path.join(HERE, "check-green.sh")
+    if not os.path.isfile(helper):
+        return False
+    env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    def run(args, text, cwd=None):
+        return subprocess.run(["bash", helper, *args], input=text, capture_output=True, text=True, cwd=cwd or str(root),
+                              env=env, timeout=GIT_TIMEOUT or config.schema_default("stopGitTimeout"))
+    try:
+        tree = git(root, "rev-parse", "HEAD^{tree}")[1].strip()
+        inputs = run(["inputs", str(root)], "\n".join(cfg.get("checkCacheInputs") or []) + "\n")
+        if inputs.returncode != 0:
+            return False
+        key = run(["key", tree, (cfg.get("checkWrapper") or "").strip(), inputs.stdout.strip()],
+                  "\n".join(cfg.get("check") or []) + "\n")
+        return key.returncode == 0 and run(["has", key.stdout.strip()], None).returncode == 0
+    except (OSError, subprocess.SubprocessError, GitError):
+        return False
+
+
+def wip_hint(root, branch, cfg=None):
+    """E84: when the head commit starts with `WIP:` (a commit that goes red, per AGENTS.md) and its tree has no green
+    check recorded, the push may skip the check: the extra sentence naming `push.sh --wip`. Empty for any other head, a
+    green one or a project without push.sh; with a push.sh that does not know `--wip` (an older copy) it says to update."""
     try:
         subject = git(root, "log", "-1", "--format=%s", "HEAD")[1].strip()
     except GitError:
         return ""
-    cmd = config.push_command(root, branch, wip=True)
-    if not subject.startswith("WIP:") or not cmd:
+    if not subject.startswith("WIP:") or not config.push_command(root, branch) \
+            or not config.push_command(root, branch).startswith("bash "):
         return ""
+    if cfg is not None and green_recorded(root, cfg):
+        return ""
+    cmd = config.push_command(root, branch, wip=True)
+    if not cmd:
+        return (" The last commit is a WIP (its check is red), but this project's push.sh does not know --wip; "
+                "update the workflow copy: /gw-update")
     return (f" The last commit is a WIP (its check is red): push it without waiting for the check, "
             f"never to the protected branch: {cmd}")
 
@@ -491,7 +520,7 @@ def main():
                     elif pushing is None:
                         unpushed_to.append(f"Branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). What is "
                                       f"not pushed does not exist for the next session; push it now: "
-                                      f"{config.push_command(root, branch)}" + wip_hint(root, branch))
+                                      f"{config.push_command(root, branch)}" + wip_hint(root, branch, cfg))
                         if checking is not None:  # a check of another commit or worktree: it does not push this one
                             notes.append(f"A check of another commit or worktree is running (pid {checking[0]}, log "
                                          f"{checking[1] or '-'}, sha {checking[2] or '-'}); it does not cover this "

@@ -102,6 +102,32 @@ class Commits(Base):
         p.write("src/a.py", "x = 1\n"); p.commit("WIP: half done")
         code, out = p.stop()
         self.assertNotIn("--wip", out)
+        self.assertIn("is the protected branch", out)
+
+    def test_wip_hint_names_update_when_the_copied_push_sh_is_old(self):
+        p = self.p
+        p.work_branch()
+        push = p.scripts / "push.sh"
+        push.write_text(push.read_text().replace("--wip", "--old"))
+        p.write("src/a.py", "x = 1\n"); p.commit("WIP: half done")
+        data = self.assertBlocks(p.stop()[1], "does not know --wip", "/gw-update")
+        self.assertNotIn("push.sh --wip", data["reason"])
+
+    def test_wip_head_with_its_tree_recorded_green_gets_no_hint(self):
+        p = self.p
+        p.work_branch()
+        p.write("src/a.py", "x = 1\n"); p.commit("WIP: half done")
+        self.assertBlocks(p.stop()[1], "push.sh --wip")
+        helper, cfgpy = str(p.scripts / "check-green.sh"), str(p.scripts / "config.py")
+        get = lambda key: p.run("python3", cfgpy, "--root", str(p.work), "get", key)[1]
+        tree = p.git("rev-parse", "HEAD^{tree}").stdout.strip()
+        inputs = p.run("bash", helper, "inputs", str(p.work), stdin=get("checkCacheInputs") or "\n")[1].strip()
+        key = p.run("bash", helper, "key", tree, get("checkWrapper").strip(), inputs, stdin=get("check"))[1].strip()
+        self.assertEqual(p.run("bash", helper, "add", key, env={"GW_CHECK_CACHE": "1"})[0], 0)
+        stop = json.dumps({"hook_event_name": "Stop", "stop_hook_active": False})  # the suite's GW_CHECK_CACHE=0 is off here
+        data = self.assertBlocks(p.run("python3", str(p.scripts / SCRIPT), stdin=stop, env={"GW_CHECK_CACHE": "1"})[1],
+                                 "push.sh claude/trabajo")
+        self.assertNotIn("--wip", data["reason"])
 
     def test_push_command_names_the_projects_copy_also_from_the_plugin_cache(self):
         # D94: from the plugin cache (${CLAUDE_PLUGIN_ROOT}) the push.sh next to the hook would take the cache as its

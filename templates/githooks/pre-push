@@ -368,22 +368,37 @@ scan_leftovers() {  # scan_leftovers <sha> <files> <what>: conflict markers and 
   fi
 }
 
-# E84: `push.sh --wip` (GW_PUSH_WIP=1): a WIP: commit goes to a working branch without the check, never to the protected one.
+# E84: `push.sh --wip` (GW_PUSH_WIP=1): a WIP: head goes to a working branch without running the `check`, the related tests
+# or front.py; every other guard (conflict markers, private-check, authorDeny, spike) still runs on what is pushed.
+# Never to the protected branch; every ref must be a branch (tags are refused) with a `WIP:` head, no deletions.
+wip=false
+wip_ancestor() {  # wip_ancestor <sha>: the nearest of its 20 latest ancestors whose .claude/gw.json is valid (a red commit may break it)
+  local c
+  for c in $(git rev-list --max-count=20 --skip=1 "$1" 2>/dev/null); do
+    if python3 "$config" --root "$root" --rev "$c" validate >/dev/null 2>&1; then echo "$c"; return 0; fi
+  done
+  return 1
+}
 if [ "${GW_PUSH_WIP:-}" = "1" ]; then
+  wip=true
   wip_n=0
   while read -r _wl wip_sha wip_ref wip_rsha; do
     [ -n "${wip_sha:-}" ] || continue
     [ "$wip_sha" != "$zero" ] || fail "GW_PUSH_WIP covers pushing a WIP: commit, not deleting $wip_ref; delete it without it: git push origin --delete ${wip_ref#refs/heads/}"
     case "$wip_ref" in refs/heads/*) ;; *) fail "GW_PUSH_WIP covers branches only, not $wip_ref; push it without it: git push" ;; esac
     wip_sha="$(git rev-parse -q --verify "$wip_sha^{commit}" 2>/dev/null)" || fail "commit ${wip_sha:0:7} is not in this clone; fetch it and retry: git fetch $remote"
-    wip_prot="$(cfg_at "$wip_sha" protectedBranch)" || exit 1
-    wip_wtprot="$(python3 "$config" --root "$root" get protectedBranch 2>/dev/null)" || wip_wtprot=""
-    wip_rprot=""
-    if [ "$wip_rsha" != "$zero" ] && git cat-file -e "$wip_rsha^{commit}" 2>/dev/null; then
-      wip_rprot="$(python3 "$config" --root "$root" --rev "$wip_rsha" get protectedBranch 2>/dev/null)" || wip_rprot=""
-    fi
-    for wip_p in "$wip_prot" "$wip_wtprot" "$wip_rprot"; do
-      [ -z "$wip_p" ] || [ "$wip_ref" != "refs/heads/$wip_p" ] || fail "a WIP push never goes to the protected branch ($wip_p); push a working branch, or follow the main-branch rules of AGENTS.md" 
+    # The pushed commit's config first, then the remote tip's and the working tree's: a red WIP commit may carry an
+    # invalid gw.json, which must not make the push unreadable (it is refused only when no config can be read at all).
+    wip_read=false
+    wip_prots=""
+    wip_wtprot="$(python3 "$config" --root "$root" get protectedBranch 2>/dev/null)" && { wip_read=true; wip_prots="$wip_prots $wip_wtprot"; }
+    if wip_p="$(python3 "$config" --root "$root" --rev "$wip_sha" get protectedBranch 2>/dev/null)"; then wip_read=true; wip_prots="$wip_prots $wip_p"; fi
+    if [ "$wip_rsha" != "$zero" ] && git cat-file -e "$wip_rsha^{commit}" 2>/dev/null &&
+       wip_p="$(python3 "$config" --root "$root" --rev "$wip_rsha" get protectedBranch 2>/dev/null)"; then wip_read=true; wip_prots="$wip_prots $wip_p"; fi
+    if wip_c="$(wip_ancestor "$wip_sha")" && wip_p="$(python3 "$config" --root "$root" --rev "$wip_c" get protectedBranch 2>/dev/null)"; then wip_read=true; wip_prots="$wip_prots $wip_p"; fi
+    [ "$wip_read" = true ] || fail "cannot read 'protectedBranch' from .claude/gw.json (the pushed commit's, the remote tip's, a recent ancestor's or the working tree's), so a WIP push cannot tell it is not the protected branch; fix it and push again: python3 $config --root $root validate"
+    for wip_p in $wip_prots; do
+      [ "$wip_ref" != "refs/heads/$wip_p" ] || fail "a WIP push never goes to the protected branch ($wip_p); push a working branch, or follow the main-branch rules of AGENTS.md"
     done
     wip_subject="$(git log -1 --format=%s "$wip_sha")"
     case "$wip_subject" in
@@ -392,10 +407,9 @@ if [ "${GW_PUSH_WIP:-}" = "1" ]; then
     esac
     { [ -z "$pushgit" ] || echo "$(date +%s) $wip_sha ${wip_ref#refs/heads/}" >> "$pushgit/gw-wip-pushes"; } 2>/dev/null
     wip_n=$((wip_n + 1))
-    echo "pre-push: WIP push of ${wip_sha:0:7} to ${wip_ref#refs/heads/}: no check run (E84); run the check before the work is closed"
+    echo "pre-push: WIP push of ${wip_sha:0:7} to ${wip_ref#refs/heads/}: no check or related tests run (E84); the other guards still do; run the check before the work is closed"
   done < "$work/input"
   [ "$wip_n" -gt 0 ] || fail "GW_PUSH_WIP is set but this push has no branch to check; push without it: git push"
-  exit 0
 fi
 checked=""
 # Trees this push sends to the protected branch (by the pushed commit's own config): a branch pushed with the same tree
@@ -419,8 +433,23 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   [ "$local_sha" = "$zero" ] && continue                  # deleting a ref
   case "$remote_ref" in refs/tags/*) continue ;; esac  # a tag sent to a branch is checked like any commit
   local_sha="$(git rev-parse -q --verify "$local_sha^{commit}" 2>/dev/null)" || fail "commit ${local_sha:0:7} is not in this clone; fetch it and retry: git fetch $remote"
-  checks="$(cfg_at "$local_sha" check)" || exit 1
-  protected="$(cfg_at "$local_sha" protectedBranch)" || exit 1
+  rev_args=(--rev "$local_sha")  # the config the guards below read: the pushed commit's
+  if [ "$wip" = true ] && ! python3 "$config" --root "$root" --rev "$local_sha" validate >/dev/null 2>&1; then
+    # E84: a red WIP commit may carry an invalid gw.json: judge it by the remote tip's config, else the working tree's
+    rev_args=()
+    for wip_c in "$remote_sha" "$(git rev-parse -q --verify "refs/remotes/$remote/${remote_ref#refs/heads/}^{commit}" 2>/dev/null)" "$(wip_ancestor "$local_sha")"; do
+      if [ -n "$wip_c" ] && [ "$wip_c" != "$zero" ] && python3 "$config" --root "$root" --rev "$wip_c" validate >/dev/null 2>&1; then rev_args=(--rev "$wip_c"); break; fi
+    done
+    wip_cfg="the working tree"
+    [ "${#rev_args[@]}" -eq 0 ] || wip_cfg="commit ${rev_args[1]:0:7}"
+    echo "pre-push: WARNING: the .claude/gw.json of ${local_sha:0:7} is invalid; this WIP push is judged by the config of $wip_cfg"
+  fi
+  if [ "$wip" = true ]; then
+    protected="$(python3 "$config" --root "$root" ${rev_args[@]+"${rev_args[@]}"} get protectedBranch)" || fail "cannot read 'protectedBranch' from .claude/gw.json; fix it and push again: python3 $config --root $root validate"
+  else
+    checks="$(cfg_at "$local_sha" check)" || exit 1
+    protected="$(cfg_at "$local_sha" protectedBranch)" || exit 1
+  fi
   files=""  # what this ref's new commits change (set below when it brings any)
 
   # What this push adds: commits no remote-tracking ref (nor the remote's current tip) already has.
@@ -463,14 +492,14 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     scan_leftovers "$local_sha" "$files" "the push"
     if [ -f "$scripts/private-check.py" ]; then  # an older project without it: skipped, like the optional scripts
       pc_rc=0
-      printf '%s\n' "$new" | python3 "$scripts/private-check.py" --root "$root" --rev "$local_sha" --base "$known" --remote "$remote" --ref "${local_ref#refs/heads/}" --commits - || pc_rc=$?
+      printf '%s\n' "$new" | python3 "$scripts/private-check.py" --root "$root" ${rev_args[@]+"${rev_args[@]}"} --base "$known" --remote "$remote" --ref "${local_ref#refs/heads/}" --commits - || pc_rc=$?
       if [ "$pc_rc" = 1 ]; then
         fail "the push carries private data or a key (above); those commits are not pushed yet: fix only them with the command above, then push again"
       elif [ "$pc_rc" != 0 ]; then
         fail "private-check could not run, exit $pc_rc (above); fix that and push again, reproduce with: python3 $scripts/private-check.py --root $root --commits - --rev ${local_sha:0:7}"
       fi
     fi
-    printf '%s\n' "$new" | python3 "$config" --root "$root" --rev "$local_sha" author-check --commits - \
+    printf '%s\n' "$new" | python3 "$config" --root "$root" ${rev_args[@]+"${rev_args[@]}"} author-check --commits - \
       || fail "the push carries commits by an identity in authorDeny (above); those commits are not pushed yet: rewrite them with the command above, then push again"
   fi
 
@@ -509,17 +538,19 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     spike_prefix="$(python3 "$config" --root "$root" --rev "$spike_rev" spike-branch --prefix)" \
       || fail "cannot read 'spikeBranch' from .claude/gw.json in commit ${spike_rev:0:7}; fix that config and push again: python3 $config --root $root --rev ${spike_rev:0:7} validate"
   else
-    spike_rev="$local_sha"
-    spike_prefix="$(python3 "$config" --root "$root" --rev "$local_sha" spike-branch --prefix)" \
+    spike_rev="${rev_args[1]:-}"  # E84: empty = the working tree's config (a WIP with an invalid one)
+    spike_prefix="$(python3 "$config" --root "$root" ${rev_args[@]+"${rev_args[@]}"} spike-branch --prefix)" \
       || fail "cannot read 'spikeBranch' from .claude/gw.json in commit ${local_sha:0:7}; commit a valid one and push again: python3 $config --root $root --rev ${local_sha:0:7} validate"
     if [ -z "$spike_prefix" ]; then
       spike_prefix="$(python3 "$config" default spikeBranch)" \
         || fail "cannot read the default of 'spikeBranch' from the workflow's schema; reinstall the workflow: /gw-update"
     fi
   fi
+  spike_args=()
+  [ -z "$spike_rev" ] || spike_args=(--rev "$spike_rev")
   spike_target=false
   if [ -n "$spike_prefix" ]; then
-    python3 "$config" --root "$root" --rev "$spike_rev" spike-branch "$branch" && spike_target=true
+    python3 "$config" --root "$root" ${spike_args[@]+"${spike_args[@]}"} spike-branch "$branch" && spike_target=true
     # an empty prefix at the pushed commit (first push) was replaced by the default: compare by hand then
     case "$branch" in "$spike_prefix"?*) spike_target=true ;; esac
   fi
@@ -537,13 +568,15 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     git rev-list --stdin < "$work/spike_tips" > "$work/spike_gains" \
       || fail "cannot list the commits ${local_sha:0:7} brings to $branch; fetch and retry: git fetch $remote"
     if [ -s "$work/spike_gains" ]; then
-      python3 "$config" --root "$root" --rev "$spike_rev" spike-check --commits - < "$work/spike_gains" \
+      python3 "$config" --root "$root" ${spike_args[@]+"${spike_args[@]}"} spike-check --commits - < "$work/spike_gains" \
         || fail "the push brings an exploration branch's work into $branch (above); a spike is never merged into a working branch or $protected" \
                 "drop it from $branch (git reset --hard <commit before the merge>), then: python3 $scripts/task.py new <id> and redo it with tests, or throw the spike away: git branch -D <spike branch>"
     fi
   fi
   this_tree="$(git rev-parse "$local_sha^{tree}" 2>/dev/null)" || this_tree=""
-  if [ "$checked" != "$local_sha:$is_protected" ]; then
+  if [ "$wip" = true ]; then
+    :  # E84: no check, related tests or front.py for a WIP: head (announced above); the guards before this point ran
+  elif [ "$checked" != "$local_sha:$is_protected" ]; then
     scope="full"
     if [ "$is_protected" != "true" ]; then  # D49: a branch push runs only relatedTests unless the environment changes
       if [ -z "$new" ] && [ "$local_sha" != "$remote_sha" ]; then

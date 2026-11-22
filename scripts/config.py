@@ -188,10 +188,18 @@ PUSH_SCRIPTS = (".claude/gw/scripts/push.sh", "scripts/push.sh")
 def push_command(root, branch, wip=False):
     """The shell command that pushes `branch` of the project at `root` (D94): `bash <root>/<copy>/push.sh <branch>`
     with the project's own push.sh (PUSH_SCRIPTS), shell-quoted; without one, `git push -u origin <branch>`.
-    `wip` (E84) adds `--wip` (a WIP: head pushed without the check); it is None when the project has no push.sh."""
+    `wip` (E84) adds `--wip` (a WIP: head pushed without the check); it is None when the project has no push.sh or its
+    copy does not know `--wip` (an older one)."""
     for rel in PUSH_SCRIPTS:
         path = os.path.join(str(root), rel)
         if os.path.isfile(path):
+            if wip:
+                try:
+                    with open(path, encoding="utf-8", errors="replace") as f:
+                        if "--wip" not in f.read():
+                            return None
+                except OSError:
+                    return None
             return f"bash {shlex.quote(path)} {'--wip ' if wip else ''}{shlex.quote(branch)}"
     return None if wip else f"git push -u origin {shlex.quote(branch)}"
 

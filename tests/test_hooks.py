@@ -743,6 +743,7 @@ class PrePushWip(Snapshot):
 
     def build(self):
         self.p = Project(self.tmp, check="exit 1")
+        shutil.copy2(ROOT / "scripts" / "private-check.py", self.p.work / ".claude" / "gw" / "scripts" / "private-check.py")
         self.p.git("checkout", "-q", "-b", "feature")
         self.push_sh = str(self.p.work / ".claude" / "gw" / "scripts" / "push.sh")
 
@@ -763,7 +764,7 @@ class PrePushWip(Snapshot):
         code, out = self.wip("--wip", "feature")
         self.assertEqual(code, 0, out)
         self.assertEqual(self.remote("feature"), p.sha(), "ls-remote must have the WIP commit")
-        self.assertIn("no check run (E84)", out)
+        self.assertIn("no check or related tests run (E84)", out)
         record = Path(p.git("rev-parse", "--absolute-git-dir").stdout.strip(), "gw-wip-pushes").read_text()
         self.assertIn(f" {p.sha()} feature", record)
 
@@ -771,8 +772,53 @@ class PrePushWip(Snapshot):
         self.commit_wip()
         code, out = self.wip("feature", env={"GW_PUSH_WIP": "1"})  # a stray variable must not skip the check
         self.assertNotEqual(code, 0, out)
-        self.assertNotIn("no check run", out)
+        self.assertNotIn("no check or related tests run", out)
+        self.assertIn("pre-push:", out)
+        self.assertIn("check failed on", out)  # the project's red check really ran, and its failure is the reason
+        self.assertIn("'bash check.sh'", out)
         self.assertEqual(self.remote("feature"), "")
+
+    def commit_as(self, subject, name, text="b = 2\n"):
+        self.p.write("src/b.py", text)
+        self.p.git("add", "-A")
+        self.p.git("commit", "-q", "--no-verify", "-m", subject, env={"GIT_AUTHOR_NAME": name, "GIT_COMMITTER_NAME": name})
+
+    def test_wip_keeps_the_author_guard(self):
+        p = self.p
+        p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, authorDeny=["Claude"]), indent=2))
+        p.commit("config")
+        self.commit_as("WIP: by an agent", "Claude")
+        code, out = self.wip("--wip", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("the push carries commits by an identity in authorDeny", out)
+        self.assertEqual(self.remote("feature"), "")
+
+    def test_wip_keeps_the_private_data_guard(self):
+        self.commit_as("WIP: with a key", "t", "key = '" + "AKIA" + "ABCDEFGH12345678" + "'\n")
+        code, out = self.wip("--wip", "feature")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("the push carries private data or a key", out)
+        self.assertEqual(self.remote("feature"), "")
+
+    def test_wip_with_an_invalid_config_is_still_pushed(self):
+        p = self.p
+        p.write(".claude/gw.json", "{ not json")
+        p.git("add", "-A")
+        p.git("commit", "-q", "--no-verify", "-m", "WIP: broke the config")
+        code, out = self.wip("--wip", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertIn("is invalid; this WIP push is judged by the config of", out)
+        self.assertEqual(self.remote("feature"), p.sha())
+
+    def test_wip_does_not_send_tags_even_with_follow_tags(self):
+        p = self.p
+        self.commit_wip()
+        p.git("config", "push.followTags", "true")
+        p.git("tag", "-a", "-m", "t", "v-wip")
+        code, out = self.wip("--wip", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.remote("feature"), p.sha())
+        self.assertEqual(p.git("tag", "-l", cwd=p.bare).stdout.strip(), "", "the tag must stay local")
 
     def test_a_head_without_wip_is_refused_with_the_reason_and_not_pushed(self):
         for subject in ("fix: done", "WIP half done", "wip: lower", " WIP: leading space", "fix: WIP: inside"):

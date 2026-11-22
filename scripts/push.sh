@@ -46,12 +46,14 @@ git remote get-url origin >/dev/null 2>&1 || die "the repository has no remote '
 # invalid config, with the command that says what is wrong.
 { delays="$(python3 "$config" --root "$root" get pushRetryDelays 2>/dev/null)" &&
   lstimeout="$(python3 "$config" --root "$root" get pushLsRemoteTimeout 2>/dev/null)"; } ||
+  { [ "$wip" -eq 1 ] && delays="$(python3 "$config" default pushRetryDelays 2>/dev/null)" &&  # E84: a red WIP may break its gw.json
+    lstimeout="$(python3 "$config" default pushLsRemoteTimeout 2>/dev/null)" &&
+    echo "push: warning: .claude/gw.json is invalid; the WIP push uses the default retry settings (fix it: python3 $(q "$config") --root $(q "$root") validate)" >&2; } ||
   die "invalid config (.claude/gw.json); see what is wrong and fix it: python3 $(q "$config") --root $(q "$root") validate"
 retry="$self $([ "$wip" -eq 1 ] && echo '--wip ')$(q "$branch")"
 if [ "$wip" -eq 1 ]; then
-  protected="$(python3 "$config" --root "$root" get protectedBranch 2>/dev/null)" ||
-    die "cannot read 'protectedBranch' from .claude/gw.json; fix the config: python3 $(q "$config") --root $(q "$root") validate"
-  [ "$branch" != "$protected" ] ||
+  protected="$(python3 "$config" --root "$root" get protectedBranch 2>/dev/null)" || protected=""  # unreadable: the hook judges it
+  [ -z "$protected" ] || [ "$branch" != "$protected" ] ||
     die "--wip never pushes to the protected branch ($protected); push a working branch with --wip, or follow the main-branch rules of AGENTS.md" 1
   subject="$(git log -1 --format=%s "$want")"
   case "$subject" in
@@ -130,7 +132,11 @@ attempt=0
 rest="$delays"
 while :; do
   attempt=$((attempt + 1))
-  git push -u origin "$branch" 2>&1 | tee "$out"
+  if [ "$wip" -eq 1 ]; then  # E84: only this branch (push.followTags or a push refspec must not add tags: the hook refuses them)
+    git push -u --no-follow-tags origin "refs/heads/$branch:refs/heads/$branch" 2>&1 | tee "$out"
+  else
+    git push -u origin "$branch" 2>&1 | tee "$out"
+  fi
   code="${PIPESTATUS[0]}"
   remote_state; state=$?
   [ "$state" -eq 2 ] && [ "$code" -ne 0 ] && unreadable_note  # the push failed too: say why origin could not be read
