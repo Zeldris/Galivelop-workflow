@@ -56,3 +56,17 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: sí
 - Answer: sí
 - Answered: 2026-11-22
+
+## Q-7
+- Refs: D142
+- Status: open
+- Asked: 2026-11-22
+- Question: D142 (Q-6): ¿el aviso de modelo distinto del gancho de inicio salta también tras una compactación (matcher «compact» de SessionStart)? Hoy solo al arrancar, reanudar o tras /clear, y tras /clear el transcript es nuevo y no avisa
+- Recommendation: sí: el aviso salta también tras una compactación, dentro de la misma tarea
+
+## Q-8
+- Refs: D142
+- Status: open
+- Asked: 2026-11-22
+- Question: D142 (Q-6): ¿además, un aviso en cada mensaje del usuario (gancho UserPromptSubmit) mientras no cambie de modelo?
+- Recommendation: no: ruido y coste en cada turno; basta con el inicio, la compactación y la regla de la skill
