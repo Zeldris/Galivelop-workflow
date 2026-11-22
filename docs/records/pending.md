@@ -107,6 +107,10 @@ Hallazgos menores de la oleada 2 (2026-11-22):
 - [ ] `0.9` · **D161/D165 (`apply.py`):** el recuento por nombre viejo se hace tras filtrar `legacyNamesSkip`, pero el
   `git grep -n -F` sugerido lista también los saltados (cifra y salida pueden no casar: decirlo en el mensaje); la
   ayuda de `--summary` no nombra el recuento.
+- [ ] `0.9` · **E85 (`whole-read.py`, leve):** `cat docs/handoff.md | head -n 200` no avisa: `passes_through` trata todo
+  `head` como filtro. Si el siguiente comando es un `head` o `sed -n A,Bp` sin archivo propio, avisar del archivo de
+  arriba con el recuento de líneas de ese comando, con su test. (El `\0` que el regex de descriptores deja en palabras
+  entrecomilladas como `"x 2>y"` solo afecta a nombres raros: sin acción.)
 - [ ] `0.9` · **D166 (`recover.py`, `roadmap.py`):** `except Exception: return []` esconde un `ImportError` o un fallo de
   `roadmap.py` (capturar solo `RoadmapError`/`OSError`/`ValueError`); en `version/X.Y.Z` sin su sección cae a la de
   `X.Y` con la etiqueta `X.Y.Z` (decir qué sección usa); `open_rows` da por cerrado todo estado que no empieza por una
