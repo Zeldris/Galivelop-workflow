@@ -909,6 +909,15 @@ def whole_read_warn_bytes(config):
     return _schema()["properties"]["wholeReadWarnBytes"]["default"]
 
 
+def whole_read_short_lines(config):
+    """The `wholeReadShortLines` key (E85): lines above which a Bash range read of the log or a roadmap file warns
+    (0 = every range), the schema default when absent or invalid."""
+    given = config.get("wholeReadShortLines")
+    if isinstance(given, int) and not isinstance(given, bool) and given >= 0:
+        return given
+    return _schema()["properties"]["wholeReadShortLines"]["default"]
+
+
 def hook_stdin_wait(root=None):
     """The `hookStdinWait` key (A13): seconds a hook waits for its event JSON on stdin. A hook reads stdin before it
     knows whether the config is usable, so a missing, unreadable or invalid config (or value) gives the schema

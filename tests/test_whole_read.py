@@ -256,7 +256,7 @@ class Ranges(Base):  # E85: a long range of the log or a roadmap file read by Ba
 
     def test_a_long_range_of_the_log_names_the_state_command(self):
         for command in ("sed -n 1,80p docs/log.md", "sed -n '1,80p' docs/log.md", "head -n 80 docs/log.md",
-                        "head -80 docs/log.md", "head -n80 docs/log.md", "head --lines=80 docs/log.md",
+                        "head -80 docs/log.md", "head -n80 docs/log.md", "sed -ne 1,80p docs/log.md", "sed -n -e1,80p docs/log.md", "sed -ne1,80p docs/log.md", "head --lines=80 docs/log.md",
                         "head --lines 80 docs/log.md", "sed -n -e 1,80p docs/log.md", "sed --quiet 1,80p docs/log.md",
                         "sed -n 1,\\$p docs/log.md", "sed -n p docs/log.md", "sed -n 1,41p docs/log.md"):
             text = self.warning(self.bash(command))
@@ -282,7 +282,7 @@ class Ranges(Base):  # E85: a long range of the log or a roadmap file read by Ba
         for command in ("sed -n 1,20p docs/log.md", "head -n 20 docs/log.md", "head -20 docs/log.md",
                         "head docs/log.md", "sed -n 1,40p docs/roadmap.md", "sed -n 5p docs/roadmap.md",
                         "sed -n 80,60p docs/roadmap.md", "tail -n 80 docs/log.md", "head -c 5000 docs/log.md",
-                        "sed -n '/a/,/b/p' docs/log.md", "sed -n '1,80p;90q' docs/log.md", "sed -i 1,80p docs/log.md",
+                        "sed -n '/a/,/b/p' docs/log.md", "sed -n '1,80p;90q' docs/log.md", "sed -i 1,80p docs/log.md", "sed -nie 1,80p docs/log.md", "sed -ne 1,80p -e 90p docs/log.md", "sed -ne",
                         "head -n 1k docs/log.md", "head -n -5 docs/log.md", "head -n", "sed -n", "sed -n 1,80p",
                         "grep -n x docs/log.md", "ls docs", "echo sed -n 1,80p docs/log.md", "sed -n 1,80p docs/nope.md"):
             self.assertEqual(self.bash(command), "", command)

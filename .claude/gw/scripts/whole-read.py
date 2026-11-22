@@ -132,7 +132,7 @@ def settings(root):
 
 def roadmap_paths(cfg):
     """The `path` of each valid entry of `roadmapFiles` (E85); [] when the key is absent or invalid."""
-    given = cfg.get("roadmapFiles")
+    given = config.roadmap_files(cfg)
     if not isinstance(given, list):
         return []
     return [e["path"] for e in given if isinstance(e, dict) and isinstance(e.get("path"), str) and e["path"]]
@@ -140,10 +140,7 @@ def roadmap_paths(cfg):
 
 def short_lines(cfg, props):
     """`wholeReadShortLines` (E85): the schema default when absent or invalid."""
-    given = cfg.get("wholeReadShortLines")
-    if isinstance(given, int) and not isinstance(given, bool) and given >= 0:
-        return given
-    return props["wholeReadShortLines"]["default"]
+    return config.whole_read_short_lines(cfg)
 
 
 def shot_settings(given, props):
@@ -386,9 +383,20 @@ def sed_range(args):
             if arg.startswith("--in-place") or arg.startswith(("--expression=", "--file=")):
                 return None
         elif arg.startswith("-") and len(arg) > 1:
-            if "i" in arg[1:] or "f" in arg[1:] or "e" in arg[1:]:
+            flags = arg[1:]
+            before, has_e, attached = flags.partition("e")  # `-ne 1,80p`, `-e1,80p`, `-n -e 1,80p`
+            if "i" in before or "f" in before or (has_e and ("i" in attached or "f" in attached)):
                 return None
-            quiet = quiet or "n" in arg[1:]
+            quiet = quiet or "n" in before
+            if has_e:
+                explicit = True
+                if attached:
+                    scripts.append(attached)
+                elif i + 1 < len(args):
+                    scripts.append(args[i + 1])
+                    i += 1
+                else:
+                    return None
         elif not explicit and not scripts:
             scripts.append(arg)
         else:
