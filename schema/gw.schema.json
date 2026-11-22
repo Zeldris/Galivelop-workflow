@@ -420,6 +420,7 @@
         "otherRepoReadWarn",
         "wholeReadRepeatOnly",
         "wholeReadStaleDays",
+        "wholeReadShortLines",
         "screenshotSheet",
         "scoutMaxAgeDays",
         "harvest",
@@ -1455,6 +1456,12 @@
       "minimum": 1,
       "default": 7,
       "description": "Days without a write after which whole-read.py deletes the other sessions' gw-reads-*.json files (own regular files only) when it creates a new one."
+    },
+    "wholeReadShortLines": {
+      "type": "integer",
+      "minimum": 0,
+      "default": 40,
+      "description": "Lines above which a Bash range read (sed -n A,Bp, head -n N) of the hand-off log or a roadmapFiles file bigger than wholeReadWarnBytes counts as a whole read for whole-read.py (E85); a shorter range says nothing. 0 = every range warns."
     },
     "screenshotSheet": {
       "type": "object",

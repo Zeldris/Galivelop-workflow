@@ -148,6 +148,7 @@
   "otherRepoReadWarn": true,
   "wholeReadRepeatOnly": true,
   "wholeReadStaleDays": 7,
+  "wholeReadShortLines": 40,
   "screenshotSheet": {"after": 3, "extensions": [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp"], "command": "", "ignorePaths": []},
   "models": {"disabled": []},
   "measure": {"minCalls": 5, "imageTokens": 1600, "mixedRatio": 1.5, "minOutput": 100, "coldMs": 100},

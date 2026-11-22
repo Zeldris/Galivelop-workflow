@@ -243,6 +243,128 @@ class Bash(Base):
         self.assertIn("docs/records/r.md is 1002 bytes", text)
 
 
+class Ranges(Base):  # E85: a long range of the log or a roadmap file read by Bash warns like a whole read
+    ROADMAPS = [{"path": "docs/roadmap.md", "done": "hecho", "open": ["pendiente"]},
+                {"path": "docs/roadmap.en.md", "done": "done", "open": ["pending"]}]
+    cfg = {"wholeReadWarnBytes": LIMIT, "wholeReadRepeatOnly": False, "roadmapFiles": ROADMAPS}
+
+    def setUp(self):
+        super().setUp()
+        self.write_config(self.cfg)
+        self.log = self.put("docs/log.md", LIMIT + 1)
+        self.road = self.put("docs/roadmap.md", LIMIT + 2)
+
+    def test_a_long_range_of_the_log_names_the_state_command(self):
+        for command in ("sed -n 1,80p docs/log.md", "sed -n '1,80p' docs/log.md", "head -n 80 docs/log.md",
+                        "head -80 docs/log.md", "head -n80 docs/log.md", "head --lines=80 docs/log.md",
+                        "head --lines 80 docs/log.md", "sed -n -e 1,80p docs/log.md", "sed --quiet 1,80p docs/log.md",
+                        "sed -n 1,\\$p docs/log.md", "sed -n p docs/log.md", "sed -n 1,41p docs/log.md"):
+            text = self.warning(self.bash(command))
+            for part in ("docs/log.md is 1001 bytes", "wholeReadShortLines 40", "recover.py --state"):
+                self.assertIn(part, text, command)
+            self.assertNotIn("takes it whole", text, command)
+        self.assertIn("reads 80 lines of it", self.warning(self.bash("sed -n 1,80p docs/log.md")))
+        self.assertIn("to the end", self.warning(self.bash("sed -n p docs/log.md")))
+
+    def test_a_long_range_of_a_roadmap_file_names_roadmap_show(self):
+        self.put("docs/roadmap.en.md", LIMIT + 3)
+        for command in ("sed -n 1,80p docs/roadmap.md", "head -n 80 docs/roadmap.md", "head -100 docs/roadmap.md",
+                        "cat docs/roadmap.md", "sed 's/a/b/' docs/roadmap.md"):
+            text = self.warning(self.bash(command))
+            self.assertIn("docs/roadmap.md is 1002 bytes", text, command)
+            self.assertIn("roadmap.py show <id>", text, command)
+            self.assertNotIn("recover.py", text, command)
+        self.assertIn("docs/roadmap.en.md is 1003 bytes", self.warning(self.bash("sed -n 1,80p docs/roadmap.en.md")))
+        self.assertIn("roadmap.py show", self.warning(self.read(self.road)))  # a whole Read too
+
+    def test_short_ranges_and_other_readers_are_silent(self):
+        self.assertIn("1001 bytes", self.warning(self.bash("sed -n 1,41p docs/log.md")))  # the same file, a longer range
+        for command in ("sed -n 1,20p docs/log.md", "head -n 20 docs/log.md", "head -20 docs/log.md",
+                        "head docs/log.md", "sed -n 1,40p docs/roadmap.md", "sed -n 5p docs/roadmap.md",
+                        "sed -n 80,60p docs/roadmap.md", "tail -n 80 docs/log.md", "head -c 5000 docs/log.md",
+                        "sed -n '/a/,/b/p' docs/log.md", "sed -n '1,80p;90q' docs/log.md", "sed -i 1,80p docs/log.md",
+                        "head -n 1k docs/log.md", "head -n -5 docs/log.md", "head -n", "sed -n", "sed -n 1,80p",
+                        "grep -n x docs/log.md", "ls docs", "echo sed -n 1,80p docs/log.md", "sed -n 1,80p docs/nope.md"):
+            self.assertEqual(self.bash(command), "", command)
+
+    def test_the_threshold_is_the_key_and_zero_warns_every_range(self):
+        self.write_config(dict(self.cfg, wholeReadShortLines=100))
+        self.assertEqual(self.bash("sed -n 1,80p docs/log.md"), "")
+        self.assertIn("reads 101 lines", self.warning(self.bash("head -n 101 docs/log.md")))
+        self.write_config(dict(self.cfg, wholeReadShortLines=0))
+        self.assertIn("wholeReadShortLines 0", self.warning(self.bash("head -n 1 docs/log.md")))
+        self.put("docs/handoff.md", 30000)  # an invalid config gives every default: 20000 bytes, the log docs/handoff.md
+        for bad in ("x", -1, True, 2.5):
+            self.write_config(dict(self.cfg, wholeReadShortLines=bad))
+            self.assertEqual(self.bash("sed -n 1,40p docs/handoff.md"), "", bad)
+            self.assertIn("wholeReadShortLines 40", self.warning(self.bash("sed -n 1,41p docs/handoff.md")), bad)
+
+    def test_small_files_and_the_warning_off_are_silent(self):
+        self.assertIn("1002 bytes", self.warning(self.bash("head -n 80 docs/roadmap.md")))  # big enough: it warns
+        self.put("docs/log.md", LIMIT)
+        self.put("docs/roadmap.md", 10)
+        self.assertEqual(self.bash("sed -n 1,80p docs/log.md; head -n 80 docs/roadmap.md"), "")
+        self.write_config(dict(self.cfg, wholeReadWarnBytes=0))
+        self.put("docs/roadmap.md", LIMIT * 5)
+        self.assertEqual(self.bash("sed -n 1,80p docs/roadmap.md"), "")
+
+    def test_only_the_log_and_roadmap_files_count_for_a_range(self):
+        self.assertIn("1001 bytes", self.warning(self.bash("sed -n 1,80p docs/log.md")))
+        for rel in ("docs/records/r.md", "docs/notes.md", "docs/roadmap.md.bak"):
+            self.put(rel, LIMIT * 5)
+            self.assertEqual(self.bash(f"sed -n 1,80p {rel}; head -n 80 {rel}"), "", rel)
+        self.assertIn("5000 bytes", self.warning(self.bash("cat docs/records/r.md")))  # a whole read still does
+
+    def test_path_forms(self):
+        for command in ("sed -n 1,80p ./docs/roadmap.md", f"sed -n 1,80p {self.road}", "sed -n 1,80p 'docs/roadmap.md'",
+                        'head -n 80 "docs/roadmap.md"', "sed -n 1,80p docs/../docs/roadmap.md",
+                        "cd docs && sed -n 1,80p roadmap.md", "sed -n 1,80p docs/roadm*.md"):
+            self.assertIn("docs/roadmap.md is 1002 bytes", self.warning(self.bash(command)), command)
+        self.assertIn("docs/roadmap.md", self.warning(self.bash("head -n 80 roadmap.md", cwd=self.p.work / "docs")))
+        self.assertEqual(self.bash("head -n 80 roadmap.md"), "")  # no such file at the root
+
+    def test_chains_pipes_and_redirections(self):
+        for command in ("git status && sed -n 1,80p docs/log.md; echo done", "true || head -n 80 docs/log.md",
+                        "echo $(sed -n 1,80p docs/log.md)", "FOO=1 head -n 80 docs/log.md", "sed -n 1,80p docs/log.md | cat -n",
+                        "sed -n 1,80p < docs/log.md", "head -n 80 < docs/log.md", "head -n 80 docs/log.md 2>/dev/null",
+                        "sed -n 1,80p docs/log.md\nhead -n 80 docs/log.md"):
+            self.assertIn("1001 bytes", self.warning(self.bash(command)), command)
+        for command in ("sed -n 1,80p docs/log.md | head -5", "head -n 80 docs/log.md | grep x",
+                        "head -n 80 docs/log.md > out", "sed -n 1,80p docs/log.md >/dev/null",
+                        "cat > n.txt <<EOF\nhead -n 80 docs/log.md\nEOF"):
+            self.assertEqual(self.bash(command), "", command)
+
+    def test_two_files_in_one_command_give_two_notes(self):
+        text = self.warning(self.bash("head -n 80 docs/log.md docs/roadmap.md"))
+        self.assertIn("docs/log.md is 1001 bytes", text)
+        self.assertIn("docs/roadmap.md is 1002 bytes", text)
+
+    def test_a_range_warns_every_time_and_is_not_a_repeat(self):
+        self.write_config(dict(self.cfg, wholeReadRepeatOnly=True))
+        for _ in range(2):
+            self.assertIn("1001 bytes", self.warning(self.bash("sed -n 1,80p docs/log.md", session="s1")))
+        self.assertEqual([f.name for f in self.state.iterdir() if f.suffix == ".json"], [])  # nothing remembered
+        self.assertEqual(self.read(self.log, session="s1"), "", "the first whole Read is still free")
+
+    def test_a_range_is_never_denied(self):
+        self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/log.md": "tool"}))
+        text = self.warning(self.bash("head -n 80 docs/log.md"))
+        self.assertIn("recover.py --state", text)
+        self.assertIn("deny", json.dumps(json.loads(self.bash("cat docs/log.md"))))  # a whole read still is
+
+    def test_bad_roadmap_files_and_malformed_input_fail_open(self):
+        self.assertIn("1002 bytes", self.warning(self.bash("sed -n 1,80p docs/roadmap.md")))  # a good key warns
+        for bad in ("x", [3], [{"path": 3}], [{"path": ""}], {"path": "docs/roadmap.md"}):
+            self.write_config(dict(self.cfg, roadmapFiles=bad))
+            self.assertEqual(self.bash("sed -n 1,80p docs/roadmap.md"), "", bad)
+        for command in ("head -n 80 'docs/log.md", "sed -n 1,80p \"docs/log.md", "", "   ", "|", "head -n 80 |"):
+            self.assertEqual(self.bash(command), "", command)
+        for bad in (json.dumps({"tool_name": "Bash", "tool_input": {"command": 3}}),
+                    json.dumps({"tool_name": "Bash", "tool_input": {}}),
+                    json.dumps({"tool_name": "Bash", "tool_input": "head"}), "not json"):
+            self.assertEqual(self.raw(bad), "", bad)
+
+
 class Pointers(Base):
     def test_a_pointer_file_is_watched_and_its_command_given(self):
         self.write_config(dict(self.cfg, readPointers={"docs/plan.md": "python3 tools/plan.py --section"}))

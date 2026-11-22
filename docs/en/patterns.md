@@ -71,7 +71,9 @@ same time.
 - **When reading**, the `PreToolUse` hook `whole-read.py` warns (without blocking) that a `Read` with no `offset`,
   `limit` or `pages` takes whole the log, its archive or a file under `recordsDir` of more than `wholeReadWarnBytes`
   (20000 by default, `0` = do not warn), and points to `recover.py --state` or to `grep -n` and Read with
-  `offset`/`limit`.
+  `offset`/`limit`. It also watches Bash: `cat` and the like, and (E85) a range of the log or a `roadmapFiles` file
+  (`sed -n 1,80p`, `head -n 80`) longer than `wholeReadShortLines` (40 by default), pointing to `recover.py --state` or
+  `roadmap.py show <id>`; a shorter range (`sed -n 1,20p`) says nothing.
 - **On start**, the new session reads the log and checks that the last commit matches what it says; it does not ask
   where things stood. After a `/clear` or compaction, `recover.py --state` reminds it.
 - When the branch closes, `handoff.py close-row <branch>` leaves its row as "merged, branch finished" so the

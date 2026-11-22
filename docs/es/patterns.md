@@ -69,7 +69,10 @@ la vez.
   elija con `gw-selector`; el aviso llega con el resultado, así que vale para las próximas llamadas (aviso, no bloqueo).
 - **Al leer**, el gancho `PreToolUse` `whole-read.py` avisa (sin bloquear) de que un `Read` sin `offset`, `limit` ni
   `pages` toma entera la bitácora, su archivo o un archivo de `recordsDir` de más de `wholeReadWarnBytes` (20000 por
-  defecto, `0` = no avisar), y apunta a `recover.py --state` o a `grep -n` y `Read` con `offset`/`limit`.
+  defecto, `0` = no avisar), y apunta a `recover.py --state` o a `grep -n` y `Read` con `offset`/`limit`. Vigila
+  también `Bash`: `cat` y parecidos y (E85) un rango de la bitácora o de un archivo de `roadmapFiles` (`sed -n 1,80p`,
+  `head -n 80`) de más de `wholeReadShortLines` líneas (40 por defecto), con `recover.py --state` o
+  `roadmap.py show <id>`; un rango más corto (`sed -n 1,20p`) se calla.
 - **Al empezar**, la sesión nueva lee la bitácora y comprueba que el último commit coincide con lo que dice; no
   pregunta por dónde iba. Tras un `/clear` o una compactación, `recover.py --state` se lo recuerda.
 - Al cerrar la rama, `handoff.py close-row <rama>` deja su fila como «fusionada, rama terminada» para que la rama
