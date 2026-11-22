@@ -2051,6 +2051,15 @@ class CiSteps(unittest.TestCase):
         self.assertFalse(self.proposal().exists(), out)
         self.assertIn("branches-ignore: [release]", self.p.read(self.CI))
 
+    def test_push_that_only_changes_the_metrics_ledger_does_not_run_ci(self):
+        """D162: check.yml carries `paths-ignore` of `metrics.ledger` (the configured path) on push only."""
+        text = self.p.read(self.CI)
+        self.assertIn('    paths-ignore: ["docs/metrics/ledger.jsonl"]\n  pull_request:\n', text)
+        cfg = dict(BASE_CONFIG, metrics={"ledger": "tele/l.jsonl"})
+        self.p.write(".claude/gw.json", json.dumps(cfg, indent=2) + "\n")
+        out = self.applied("--update")
+        self.assertIn('paths-ignore: ["tele/l.jsonl"]', self.p.read(self.CI), out)
+
     def test_ci_on_push_false_runs_check_yml_only_on_pull_requests_and_back(self):
         """D54: `ciOnPush: false` renders the push filter as every branch; the copy stays the workflow's."""
         self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, ciOnPush=False), indent=2) + "\n")
