@@ -36,6 +36,7 @@ first). Python 3.8+ standard library only.
 """
 import argparse
 import datetime
+import fnmatch
 import json
 import os
 import pathlib
@@ -56,6 +57,9 @@ import session_log  # noqa: E402
 # `recover` key, and the hook must still show the state.
 FALLBACK_LIMITS = {"logLines": 25, "statusLines": 15, "worktrees": 10, "otherBranches": 10, "branchRow": 120,
                    "worktreeRow": 200, "outputCap": 9500, "gitWait": 5, "searchMax": 10, "searchWidth": 300}
+
+
+FILLER_IDS = {"", "—", "–", "-"}  # an empty roadmap table has one filler row; its id is not a task
 
 
 def defaults():
@@ -572,30 +576,39 @@ def task_line(root):
 
 
 def open_rows_line(root, branch):
-    """D166: one line with the open roadmap rows of the version in progress (a `version/X.Y.Z` branch; the section of
-    X.Y.Z, else of X.Y), so a version is not closed with a row still open. [] when unknown: --state never fails."""
+    """D166: one line with the open roadmap rows of the version in progress (a branch matching `releaseCheckBranches`
+    whose last segment is `X.Y.Z` or `X.Y`; the section of X.Y.Z, else of X.Y, said in the line), so a version is not
+    closed with a row still open. [] when unknown: --state never fails. Only a config, roadmap or file problem is
+    soft; any other error (an ImportError, a bug in roadmap.py) is not hidden."""
     try:
-        m = re.fullmatch(r"version/(\d+\.\d+)(\.\d+)?", branch)
-        files = config.roadmap_files(config.load(root))
-        if not m or not files:
+        cfg = config.load(root)
+        files = config.roadmap_files(cfg)
+        m = re.fullmatch(r"(?:.*/)?(\d+\.\d+)(\.\d+)?", branch)
+        if not m or not files or not any(fnmatch.fnmatchcase(branch, pat)
+                                         for pat in cfg.get("releaseCheckBranches") or []):
             return []
-        import roadmap
-        rows = None
-        for version in dict.fromkeys([m.group(1) + (m.group(2) or ""), m.group(1)]):
-            try:
-                rows = roadmap.open_rows(pathlib.Path(root), files, version)
-                break
-            except roadmap.RoadmapError:
-                continue
-        if rows is None:
-            return []
-        shown = branch.split("/", 1)[1]
-        if not rows:
-            return [f"- Roadmap {shown}: no open rows"]
-        return [f"- Roadmap {shown}: {len(rows)} open row(s): " + ", ".join(r[0] for r in rows)
-                + f" ({script_command(root).replace('recover.py', 'roadmap.py')} list {shown})"]
-    except Exception:
+    except (config.ConfigError, OSError, ValueError):
         return []
+    import roadmap
+    shown = m.group(1) + (m.group(2) or "")
+    rows = section = None
+    for version in dict.fromkeys([shown, m.group(1)]):
+        try:
+            rows = roadmap.open_rows(pathlib.Path(root), files, version)
+            section = version
+            break
+        except roadmap.RoadmapError:
+            continue
+        except (OSError, ValueError):
+            return []
+    if rows is None:
+        return []
+    rows = [r for r in rows if r[0].strip() not in FILLER_IDS]  # the «—» filler row is not a task
+    label = shown if section == shown else f"{shown} (no section of its own; using {section})"
+    if not rows:
+        return [f"- Roadmap {label}: no open rows"]
+    return [f"- Roadmap {label}: {len(rows)} open row(s): " + ", ".join(r[0] for r in rows)
+            + f" ({script_command(root).replace('recover.py', 'roadmap.py')} list {section})"]
 
 
 def state(root, transcript, out, logs, source="startup"):

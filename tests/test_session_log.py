@@ -975,6 +975,58 @@ class Recover(Base):
     def test_state_has_no_roadmap_line_without_the_section_or_config(self):
         self.assertIsNone(self.roadmap_line("version/7.7.7"))
 
+    def test_state_roadmap_line_says_which_section_it_uses_when_the_patch_has_none(self):
+        # version/0.9.1 has no `0.9.1` section: it falls back to `0.9` and the line says so instead of calling it 0.9.1
+        line = self.roadmap_line("version/0.9.1")
+        self.assertTrue(line.startswith("- Roadmap 0.9.1 (no section of its own; using 0.9): 1 open row(s): E1 ("), line)
+        self.assertIn("roadmap.py list 0.9)", line)
+
+    def test_state_roadmap_line_skips_the_filler_row_and_any_other_status_counts_as_closed(self):
+        rows = ("| \u2014 | \u2014 | \u2014 |\n| D1 | one | aplazada |\n| D2 | two | pendiente |\n")
+        self.assertEqual(self.roadmap_line("version/0.8.2", rows).split(" (")[0],
+                         "- Roadmap 0.8.2: 1 open row(s): D2")
+
+    def test_state_roadmap_line_counts_only_the_filler_row_as_no_open_rows(self):
+        self.assertEqual(self.roadmap_line("version/0.8.2", "| \u2014 | \u2014 | pendiente |\n"),
+                         "- Roadmap 0.8.2: no open rows")
+
+    def test_state_roadmap_line_follows_release_check_branches_not_a_fixed_prefix(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["releaseCheckBranches"] = ["release/*"]
+        (p.work / ".claude" / "gw.json").write_text(json.dumps(cfg))
+        self.assertIsNone(self.roadmap_line("version/0.8.2"))  # no longer a release branch
+        p.git("checkout", "-q", "main")
+        line = self.roadmap_line("release/0.8.2")
+        self.assertTrue(line.startswith("- Roadmap 0.8.2: 2 open row(s): D2, D3 ("), line)
+
+    def test_state_has_no_roadmap_line_without_roadmap_files_or_on_a_detached_head(self):
+        self.assertIsNone(self.roadmap_line("version/0.8.2", config=False))
+        p = self.p
+        p.git("checkout", "-q", "--detach")
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("- Roadmap ", out)
+        self.assertNotIn("Traceback", out)
+
+    def test_open_rows_line_hides_only_the_expected_failures(self):
+        import sys
+        from unittest import mock
+        self.roadmap_line("version/0.8.2")
+        sys.path.insert(0, str(ROOT / "scripts"))
+        try:
+            import recover
+            import roadmap
+        finally:
+            sys.path.remove(str(ROOT / "scripts"))
+        root = str(self.p.work)
+        with mock.patch.object(roadmap, "open_rows", side_effect=OSError("gone")):
+            self.assertEqual(recover.open_rows_line(root, "version/0.8.2"), [])
+        with mock.patch.object(roadmap, "open_rows", side_effect=RuntimeError("bug in roadmap.py")):
+            with self.assertRaises(RuntimeError) as ctx:
+                recover.open_rows_line(root, "version/0.8.2")
+        self.assertIn("bug in roadmap.py", str(ctx.exception))
+
     # ---- B46: the current task
 
     def task_line(self):

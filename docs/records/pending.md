@@ -111,7 +111,7 @@ Hallazgos menores de la oleada 2 (2026-11-22):
   `head` como filtro. Si el siguiente comando es un `head` o `sed -n A,Bp` sin archivo propio, avisar del archivo de
   arriba con el recuento de líneas de ese comando, con su test. (El `\0` que el regex de descriptores deja en palabras
   entrecomilladas como `"x 2>y"` solo afecta a nombres raros: sin acción.)
-- [ ] `0.9` · **D166 (`recover.py`, `roadmap.py`):** `except Exception: return []` esconde un `ImportError` o un fallo de
+- [x] `0.9` · **D166 (`recover.py`, `roadmap.py`):** `except Exception: return []` esconde un `ImportError` o un fallo de
   `roadmap.py` (capturar solo `RoadmapError`/`OSError`/`ValueError`); en `version/X.Y.Z` sin su sección cae a la de
   `X.Y` con la etiqueta `X.Y.Z` (decir qué sección usa); `open_rows` da por cerrado todo estado que no empieza por una
   palabra de `open` («aplazada» también: documentarlo); faltan tests de falla suave (sin `roadmapFiles`, HEAD
@@ -139,8 +139,8 @@ Menores de la revisión del diff entero contra `main`; no se revisan otra vez en
 
 - [ ] `0.9` · **`gw-selector` (`SKILL.md:66`):** lee `metrics.py quality --period month` entero (~3.7k tokens); bastaría
   la línea del resumen.
-- [ ] `0.9` · **`recover.py:576`:** el prefijo `version/` va fijo; existe `releaseCheckBranches`.
-- [ ] `0.9` · **`recover.py:593`:** cuenta la fila de relleno «—» como un id.
+- [x] `0.9` · **`recover.py:576`:** el prefijo `version/` va fijo; existe `releaseCheckBranches`.
+- [x] `0.9` · **`recover.py:593`:** cuenta la fila de relleno «—» como un id.
 - [ ] `0.9` · **`doctor.py:1216`:** dice `<workflow repo URL>` aunque existe la clave `workflowRepository`.
 - [ ] `0.9` · **Copia instalada `.agents/skills/gw-opt-tokens/scripts/test_measure.py`:** falla (5 errores, 9 fallos);
   la oculta `doctorTestDirsIgnore`.
