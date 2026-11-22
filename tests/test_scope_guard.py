@@ -485,9 +485,29 @@ class VersionStamp(ScopeBase):
         self.assertIn("  src/b.py", err)
         lines = [l for l in err.splitlines() if "were not skipped" in l]
         self.assertEqual(len(lines), 1, err)
-        self.assertIn("no workflow copy at v0.8.0", lines[0])
+        self.assertIn("no workflow copy at v0.8.0 to tell what is vendored)", lines[0])
+        self.assertNotIn("clone it", lines[0])  # only the first sentence, not review-scope's own command
         self.assertIn("`workflowClone`", lines[0])
         self.assertIn("GW_WORKFLOW", lines[0])
+
+    def test_apply_failure_does_not_blame_workflow_clone(self):  # D150
+        self.p.write("src/b.py", "b = 5\n")
+        self.p.git("add", "-A")
+        code = ("import importlib.util, sys; from pathlib import Path\n"
+                "spec = importlib.util.spec_from_file_location('sg', '.claude/gw/scripts/scope-guard.py')\n"
+                "m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)\n"
+                "m.rs.workflow_dir = lambda arg, root, cfg: Path('/wf')\n"
+                "def boom(root, workflow, timeout=None):\n"
+                "    raise m.rs.ScopeError('apply.py --vendored took more than 30s; run it by hand: python3 x')\n"
+                "m.rs.vendored = boom\n"
+                "sys.exit(m.staged(None))\n")
+        code, err = self.p.run(sys.executable, "-B", "-c", code, cwd=str(self.p.work))
+        self.assertEqual(code, 0)
+        lines = [l for l in err.splitlines() if "were not skipped" in l]
+        self.assertEqual(len(lines), 1, err)
+        self.assertIn("(apply.py --vendored took more than 30s)", lines[0])
+        self.assertIn("python3 /wf/scripts/apply.py --vendored", lines[0])
+        self.assertNotIn("workflowClone", lines[0])
 
     def test_no_note_when_the_workflow_was_found(self):  # D150
         self.p.write("src/b.py", "b = 5\n")

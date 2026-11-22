@@ -135,14 +135,26 @@ def vendored_lookup(top):
     review-scope.py), written by `apply.py` and not by the task. Only the pre-commit uses it: before an edit a copy is
     always unchanged, so the hook cannot tell it from a file the task is about to change. Empty when the workflow repo or
     the answer is not available (a timeout included): then they count as before (the safe side). WHY (D150) is the
-    reason when no workflow clone was found (review-scope's message, with the command that fixes it), else None."""
+    one-line notice naming the fix (`workflowClone` when no clone was found, the by-hand command when apply failed), else None."""
     try:
         workflow = rs.workflow_dir(None, top, config.load(str(top)))
-        return rs.vendored(top, workflow, timeout=VENDORED_TIMEOUT), None
-    except rs.ScopeError as exc:
-        return set(), str(exc).strip().replace("\n", " ")
+    except rs.ScopeError as exc:  # no (usable) clone: the fix is where it is looked for
+        return set(), (f"copies of the workflow were not skipped ({first_sentence(exc)}); set `workflowClone` in "
+                       f".claude/gw.json or export GW_WORKFLOW=<clone>")
     except (config.ConfigError, OSError, subprocess.SubprocessError):
-        return set(), None  # a failed lookup or a timeout only mean nothing is skipped (a bug still shows)
+        return set(), None
+    try:
+        return rs.vendored(top, workflow, timeout=VENDORED_TIMEOUT), None
+    except rs.ScopeError as exc:  # the clone was found but `apply.py --vendored` failed or timed out: not a clone problem
+        return set(), (f"copies of the workflow were not skipped ({first_sentence(exc)}); run it by hand: "
+                       f"python3 {Path(workflow) / 'scripts' / 'apply.py'} --vendored {top}")
+    except (OSError, subprocess.SubprocessError):
+        return set(), None  # a failed lookup only means nothing is skipped (a bug still shows)
+
+
+def first_sentence(exc):
+    """The first sentence of a ScopeError on one line (review-scope.py's commands come after its first `;`)."""
+    return " ".join(str(exc).split(";")[0].split())
 
 
 def vendored_set(top):
@@ -296,8 +308,7 @@ def staged_check(top, cfg, mode):
         vendored, why = vendored_lookup(top) if guard["skipVendored"] else (set(), None)  # is all of them, so it needs no record either)
         outside = [p for p in outside if p not in vendored and not (guard["skipStamps"] and stamp_only_staged(top, p))]
         if outside and why:  # D150: say that the copies of the workflow were not skipped, and how to fix it
-            print(f"{NAME}: copies of the workflow were not skipped ({why}); set `workflowClone` in .claude/gw.json "
-                  f"or export GW_WORKFLOW=<clone>", file=sys.stderr)
+            print(f"{NAME}: {why}", file=sys.stderr)
     grown = unlogged(top, record, cfg) if record in names else []
     if not outside and not grown:
         return 0
