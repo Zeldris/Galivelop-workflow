@@ -378,7 +378,7 @@ Se hace al cerrar el desarrollo de la `0.9`, antes de publicarla: recogida y sus
 | D165 | El aviso de nombres viejos sugiere `legacyNamesSkip` cuando cita otros repos; solo el texto (detectar las citas, E83) (recogida H26, image-generator P3) | hecho (2026-11-22) |
 | D166 | `recover.py --state` da una línea con las filas abiertas de la versión en curso (el aviso de `reviewed.sh`, E81) (recogida H26, private-project-5 P1) | hecho (2026-11-22) |
 | D167 | La copia instalada de `gw-opt-tokens` en `.agents/skills/` halla el esquema y los scripts del proyecto (`measure.py`, `test_measure.py`) (leve de `pending.md`) | hecho (2026-11-22) |
-| D168 | `gw-selector` lee solo la línea del resumen de `metrics.py quality --period month` (leve de `pending.md`) | pendiente |
+| D168 | `gw-selector` lee solo la línea del resumen de `metrics.py quality --period month` (leve de `pending.md`) | hecho (2026-11-22) |
 | D169 | El `pre-commit` avisa si un `scripts/` preparado difiere de su copia en `.claude/gw/scripts/` (antes D143, id repetido; retro del parche `0.8.1`) | pendiente |
 
 ## `0.9` «Front»

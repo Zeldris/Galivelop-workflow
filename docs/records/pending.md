@@ -159,7 +159,7 @@ Propuestas en [`retro-2026-11-22-patch-0.8.2.md`](retro-2026-11-22-patch-0.8.2.m
 
 Menores de la revisión del diff entero contra `main`; no se revisan otra vez en este parche.
 
-- [ ] `0.9` · **`gw-selector` (`SKILL.md:66`):** lee `metrics.py quality --period month` entero (~3.7k tokens); bastaría
+- [x] `0.9` · **`gw-selector` (`SKILL.md:66`):** lee `metrics.py quality --period month` entero (~3.7k tokens); bastaría
   la línea del resumen.
 - [x] `0.9` · **`recover.py:576`:** el prefijo `version/` va fijo; existe `releaseCheckBranches`.
 - [x] `0.9` · **`recover.py:593`:** cuenta la fila de relleno «—» como un id.

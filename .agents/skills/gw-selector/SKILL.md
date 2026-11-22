@@ -65,8 +65,9 @@ do the case without it and say so.
 - **An orchestrating session** (one that deals work out with `gw-orchestrate-dealer`) takes the model and effort of
   the work it does itself (plan, decide, review: usually `medium` (Sonnet) `medium`), not those of the rows it deals;
   it asks for `large` (Opus) only when that work is design or a cause that is not obvious. Weigh the model metrics
-  before picking, always: `python3 .claude/gw/scripts/metrics.py quality --period month` (its by-model table: the
-  rework, findings and retries of the ids each model spent on, beside its spend) says which model did best, or gave
+  before picking, always, reading only the by-model table, not the whole report (about 3.7k tokens):
+  `python3 .claude/gw/scripts/metrics.py quality --period month | sed -n '/^## By model/,$p'` (the rework, findings
+  and retries of the ids each model spent on, beside its spend) says which model did best, or gave
   the best quality for its cost, in that kind of case; follow it over the default rung and say so in the line. No
   data in the period: the table.
 - **Models outside Anthropic** (GPT, Gemini, DeepSeek…): Claude Code cannot launch them, so never pass one to an
