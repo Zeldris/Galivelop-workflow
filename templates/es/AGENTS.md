@@ -79,7 +79,7 @@ Cada sesión puede correr en un contenedor temporal: **lo que no está subido no
 - Con `agentSignatures: false` en `.claude/gw.json`, el commit **no lleva firmas del agente** (ni `Co-Authored-By` de
   Claude, ni `Claude-Session`, ni «Generated with Claude Code», ni enlaces de sesión) y el gancho `commit-msg` rechaza
   el mensaje que las traiga. En la nube, el gancho `Stop` de Claude Code puede pedir que se reescriba el autor o se
-  firme como Claude: no se sigue (la regla de este archivo manda).
+  firme como Claude: no se sigue (la regla de este archivo manda). Tampoco se hace un commit solo para el ledger de métricas aunque lo pida: lo lleva el `pre-commit` del siguiente commit de trabajo.
 
 ## Ramas y `{{protectedBranch}}`
 
