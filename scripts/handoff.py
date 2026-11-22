@@ -151,6 +151,16 @@ import config as gwconfig  # noqa: E402
 
 # The size limits (a branch row, a state-table cell, the Done items) are the config key `handoff` (config.handoff).
 INDEX = ""  # a "rev" for show()/plan_files(): the staged version
+# The "Updated" row of the log: group 1 is what comes before the date, group 2 the date (check and set-row share it).
+UPDATED_ROW = re.compile(r"(\|\s*\*\*(?:Actualizado|Updated)\*\*\s*\|\s*[`*]*)(\d{4}-\d{2}-\d{2})")
+
+
+def today():
+    """D154: today's date in LOCAL time, like the commit-msg hook's `date +%F` that `check --date` compares against
+    (both follow TZ), so a row written here is never "stale" for the hook."""
+    return datetime.date.today().isoformat()
+
+
 FREE_ROWS = {"Actualizado", "Tests", "Updated"}  # shared rows every commit may touch
 ROW = re.compile(r"^\|\s*\*\*(?P<label>.+?) · `(?P<branch>[^`]+)`\*\*\s*\|(?P<text>.*)\|\s*$")
 STATE_HEADING = re.compile(r"^##\s+(Estado actual|Current state|Status)\b.*$", re.M | re.I)
@@ -519,8 +529,7 @@ def rows_problems(ctx, args, lines):
     problems = []
     limit = gwconfig.handoff(ctx.config)["rowLimit"]
     if args.date:
-        found = next((m.group(1) for m in (re.match(r"\|\s*\*\*(?:Actualizado|Updated)\*\*\s*\|\s*[`*]*(\d{4}-\d{2}-\d{2})", l)
-                                           for l in lines) if m), None)
+        found = next((m.group(2) for m in map(UPDATED_ROW.match, lines) if m), None)
         if not found:
             problems.append("the \"Updated\" row is missing; add \"| **Updated** | YYYY-MM-DD |\" with today's date")
         elif found < args.date:
@@ -771,7 +780,8 @@ def pending_ids(ctx):
     path = ctx.root / rel if rel else None
     if not path or not path.is_file():
         return set()
-    return set(ctx.ids(path.read_text(encoding="utf-8", errors="replace")))
+    text = path.read_text(encoding="utf-8", errors="replace")
+    return {m.group(0) for m in re.finditer(rf"\b{ctx.id_src}", text)}  # \b: "abcD99" is not D99
 
 
 def cmd_next_id(ctx, args):
@@ -1035,9 +1045,6 @@ def write_atomic(path, data):
             pass
 
 
-UPDATED_ROW = re.compile(r"(\|\s*\*\*(?:Actualizado|Updated)\*\*\s*\|\s*[`*]*)\d{4}-\d{2}-\d{2}")
-
-
 def rewrite_row(ctx, branch, text):
     """Replace the text of `branch`'s row in the log file. Returns (rows found, the new row); writes only if exactly 1."""
     path = ctx.root / ctx.log
@@ -1055,11 +1062,11 @@ def rewrite_row(ctx, branch, text):
             lines[i] = new = f"| **{m.group('label')} · `{branch}`** | {text} |"
             hit += 1
     if hit == 1:
-        today = datetime.date.today().isoformat()  # D154: the commit-msg rejects a stale "Updated" row
+        day = today()  # D154: the commit-msg rejects a stale "Updated" row
         for i, line in enumerate(lines):
             m = UPDATED_ROW.match(line)
             if m:
-                lines[i] = f"{m.group(1)}{today}{line[m.end():]}"
+                lines[i] = f"{m.group(1)}{day}{line[m.end():]}"
                 break
         with open(path, "w", encoding="utf-8", newline="") as f:  # Path.write_text(newline=) is Python 3.10+
             f.write(eol.join(lines))
@@ -1226,7 +1233,7 @@ def close_task(ctx, task_id, record):
     try:
         loaded = gwroadmap.load_files(Path(ctx.root), files, task_id)
         print(f"handoff: {task_id} closed; roadmap rows marked done:")
-        gwroadmap.cmd_done(loaded, task_id, datetime.date.today().isoformat(), [], False)
+        gwroadmap.cmd_done(loaded, task_id, today(), [], False)
     except gwroadmap.RoadmapError as exc:
         print(f"handoff: {exc}; nothing was written (see: python3 {HERE / 'roadmap.py'} show {task_id})")
         return 1
@@ -1545,7 +1552,7 @@ def cmd_preflight(ctx, args):
         raise Usage(f"git cannot read the state of {ctx.log} ({(status.stderr or last.stderr).strip()}); "
                     f"check the repository (git status) or pass the day: {me} preflight --date YYYY-MM-DD")
     if not date:
-        date = datetime.date.today().isoformat() if dirty else last.stdout.strip()
+        date = today() if dirty else last.stdout.strip()
     # A clean log is already committed: the fix is a new commit (at="push"), not "run the commit again".
     code = cmd_check(ctx, argparse.Namespace(file=None, date=date, strict=args.strict, at="commit" if dirty else "push",
                                              pending=None))
@@ -1731,7 +1738,7 @@ def main(argv=None):
         if args.cmd == "archive":
             args.date = args.date or datetime.datetime.now(datetime.timezone.utc).date().isoformat()
         elif args.cmd in ("done", "add-decision"):
-            args.date = args.date or datetime.date.today().isoformat()
+            args.date = args.date or today()
         elif (not ctx.config.get("logRows") and args.cmd not in ("check", "archive", "next-id", "move-pending",
                                                                  "add-pending", "preflight")
               and not (args.cmd == "close-row" and task_record_path(ctx, args)[0])):  # a task id needs no branch rows

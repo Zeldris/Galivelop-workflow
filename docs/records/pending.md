@@ -94,11 +94,11 @@ Hallazgos menores de las revisiones por rama de la oleada 1 (2026-11-22); no se 
   `tests/test_ci_local.py:226` no comprueba `code` y mezcla tres fases.
 - [ ] `0.9` · **D160 (`ci-local.py`):** otro ejecutor local de `check.yml` (act, a mano) sigue dejando `.gw-ci/`; mover
   la escritura a `$RUNNER_TEMP` en `templates/github/check.yml` (con `check.legacy-lines.txt` y `test_doctor.py`).
-- [ ] `0.9` · **D158/D159 (`doctor.py`):** `check_workflow_clone` ignora `GW_WORKFLOW`/`--workflow` y solo mira
+- [x] `0.9` · **D158/D159 (`doctor.py`):** `check_workflow_clone` ignora `GW_WORKFLOW`/`--workflow` y solo mira
   `is_dir()` (no `is_workflow`); `check_agent_files_ignored` duplica la lógica de `ignored_paths()` (extraer un
   helper); sin git, `FileNotFoundError` (ya pasaba); faltan tests: `workflowClone` vacío o absoluto, silencio en el
   repo del flujo, regla `!`, `gw-reviewer.md`, repo sin git.
-- [ ] `0.9` · **D154/D157 (`handoff.py`):** `UPDATED_ROW` duplica la regex de `check` (una sola constante);
+- [x] `0.9` · **D154/D157 (`handoff.py`):** `UPDATED_ROW` duplica la regex de `check` (una sola constante);
   `date.today()` es hora local y el `commit-msg` usa la fecha del commit; `next-id` en `pendingFile` sin `\b`
   («abcD99»); falta el test de «Actualizado» en español en `set-row`.
 
@@ -150,7 +150,7 @@ Menores de la revisión del diff entero contra `main`; no se revisan otra vez en
   la línea del resumen.
 - [x] `0.9` · **`recover.py:576`:** el prefijo `version/` va fijo; existe `releaseCheckBranches`.
 - [x] `0.9` · **`recover.py:593`:** cuenta la fila de relleno «—» como un id.
-- [ ] `0.9` · **`doctor.py:1216`:** dice `<workflow repo URL>` aunque existe la clave `workflowRepository`.
+- [x] `0.9` · **`doctor.py:1216`:** dice `<workflow repo URL>` aunque existe la clave `workflowRepository`.
 - [ ] `0.9` · **Copia instalada `.agents/skills/gw-opt-tokens/scripts/test_measure.py`:** falla (5 errores, 9 fallos);
   la oculta `doctorTestDirsIgnore`.
 - Observaciones: el aviso de D158 de `doctor.py` sale siempre en el CI y en una sesión de la nube con un solo repo;

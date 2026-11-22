@@ -1064,6 +1064,11 @@ class HandoffNextId(PlanRepo):
         self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, plan=[self.PLAN], pendingFile="docs/none.md")))
         self.assertEqual(self.next_id("INS"), (0, "INS-3"))  # a missing pending file is not an error
 
+    def test_an_id_glued_to_a_word_in_the_pending_file_is_not_that_id(self):  # D157: \b before the id
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, plan=[self.PLAN], pendingFile="docs/pending.md")))
+        self.p.write("docs/pending.md", "# Pending\n\n- abcINS-9 and xINS-8 are not ids; INS-7 is\n")
+        self.assertEqual(self.next_id("INS"), (0, "INS-8"))
+
     def test_a_prefix_is_whole_and_ids_without_a_dash_keep_none(self):
         self.p.write(self.PLAN, self.START + "- [ ] **INSX-40** other prefix\n")
         self.assertEqual(self.next_id("INS"), (0, "INS-3"))
@@ -1194,7 +1199,6 @@ class HandoffSetRow(Base):
         self.assertEqual(self.row("feat-b"), "| **Task in progress · `feat-b`** | again |")
 
     def test_set_row_and_close_row_set_todays_date_in_the_updated_row(self):  # D154
-        import datetime
         today = datetime.date.today().isoformat()
         self.p.branch("feat-a")
         self.assertEqual(self.p.script("handoff.py", "set-row", "now")[0], 0)
@@ -1203,6 +1207,35 @@ class HandoffSetRow(Base):
         self.assertEqual(self.p.script("handoff.py", "close-row")[0], 0)
         self.assertIn(f"| **Updated** | {today} |", (self.p.work / LOG).read_text())
         self.assertNotIn("2026-10-21", (self.p.work / LOG).read_text())
+
+    def test_set_row_updates_the_spanish_actualizado_row(self):  # D154
+        self.p.branch("feat-a")
+        self.p.write(LOG, log_text().replace("| **Updated** | 2026-10-21 |", "| **Actualizado** | `2026-10-21` extra |"))
+        self.assertEqual(self.p.script("handoff.py", "set-row", "now")[0], 0)
+        text = (self.p.work / LOG).read_text()
+        self.assertIn(f"| **Actualizado** | `{datetime.date.today().isoformat()}` extra |", text)
+        self.assertNotIn("2026-10-21", text)
+
+    def test_today_is_local_time_like_the_hooks_date_f(self):  # D154: the commit-msg compares with `date +%F`
+        import importlib.util
+        import time
+        spec = importlib.util.spec_from_file_location("handoff_today", ROOT / "scripts" / "handoff.py")
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["handoff_today"] = mod
+        spec.loader.exec_module(mod)
+        old = os.environ.get("TZ")
+        try:
+            for tz in ("Pacific/Kiritimati", "Pacific/Pago_Pago"):  # UTC+14 and UTC-11: never the same day for long
+                os.environ["TZ"] = tz
+                time.tzset()
+                want = subprocess.run(["date", "+%F"], capture_output=True, text=True, env=dict(os.environ)).stdout.strip()
+                self.assertEqual(mod.today(), want, tz)
+        finally:
+            if old is None:
+                os.environ.pop("TZ", None)
+            else:
+                os.environ["TZ"] = old
+            time.tzset()
 
     def test_set_row_without_an_updated_row_adds_none(self):  # D154
         self.p.branch("feat-a")

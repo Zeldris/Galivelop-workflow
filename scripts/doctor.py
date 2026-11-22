@@ -215,16 +215,25 @@ def must_be_tracked(root):
     return paths
 
 
-def ignored_paths(root):
-    """[(path, the .gitignore rule that ignores it)] for must_be_tracked(root); a tracked file is never ignored."""
+def git_ignored(root, rels):
+    """[(path, the .gitignore rule that ignores it)] for the paths of `rels`; a tracked file or a `!` rule never counts.
+    No git (or a folder that is not a repo) gives [], the config and hooks checks say that."""
     out = []
-    for rel in must_be_tracked(root):
-        r = subprocess.run(["git", "-C", str(root), "check-ignore", "-v", "--", rel], capture_output=True, text=True)
+    for rel in rels:
+        try:
+            r = subprocess.run(["git", "-C", str(root), "check-ignore", "-v", "--", rel], capture_output=True, text=True)
+        except OSError:
+            return []
         # -v also prints (and exits 0 on) a matching `!` rule, which un-ignores the path: <source>:<line>:<pattern>
         rule = r.stdout.split("\t")[0].strip()
         if r.returncode == 0 and not rule.split(":", 2)[-1].startswith("!"):
             out.append((rel, rule))
     return out
+
+
+def ignored_paths(root):
+    """[(path, the .gitignore rule that ignores it)] for must_be_tracked(root)."""
+    return git_ignored(root, must_be_tracked(root))
 
 
 def check_ignored(rep, root):
@@ -1455,19 +1464,42 @@ def check_profiles(rep, root):
                      f"remove it from the file; assign people with `{tool} assign <email>`, which stores the hash")
 
 
-def check_workflow_clone(rep, root, cfg):
-    """D158: WARN when the folder of `workflowClone` does not exist (review-scope.py needs it to tell what is
-    `vendored`). The workflow repo itself has no clone to find, so it says nothing."""
-    if not cfg or ((root / "scripts" / "apply.py").is_file() and (root / "skills").is_dir()
-                   and (root / ".claude-plugin" / "plugin.json").is_file()):
+WORKFLOW_NAME = "galivelop-workflow"  # the `name` of the workflow's own .claude-plugin/plugin.json
+
+
+def is_workflow(path):
+    """Same test as review-scope.py: the workflow layout and a plugin.json that names the workflow."""
+    path = Path(path)
+    try:
+        name = json.loads((path / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")).get("name")
+    except (OSError, ValueError, AttributeError):
+        return False
+    return (path / "scripts" / "apply.py").is_file() and (path / "skills").is_dir() and name == WORKFLOW_NAME
+
+
+def check_workflow_clone(rep, root, cfg, workflow=None):
+    """D158: WARN when review-scope.py would find no workflow copy (it needs one to tell what is `vendored`): the
+    `--workflow` folder or $GW_WORKFLOW when given (a wrong one is a WARN, as review-scope.py fails on it), else
+    the folder of `workflowClone`, which must be the workflow repo and not just exist. The workflow repo itself has
+    no clone to find, so it says nothing."""
+    if not cfg or is_workflow(root):
+        return
+    for origin, cand in (("--workflow", workflow), ("GW_WORKFLOW", os.environ.get("GW_WORKFLOW"))):
+        if not cand:
+            continue
+        if not is_workflow(cand):
+            rep.warn("workflow clone", f"{origin} {cand} is not the workflow repo (scripts/apply.py, skills/ and "
+                     f".claude-plugin/plugin.json named {WORKFLOW_NAME}), so review-scope.py stops on it",
+                     f"point {origin} at a clone: git clone --depth 1 {config.workflow_repository(cfg)} <DIR>, or unset it")
         return
     rel = config.workflow_clone(cfg)
-    if (root / rel).is_dir():
+    if is_workflow(root / rel):
         return
-    rep.warn("workflow clone", f"workflowClone points at {rel}, which does not exist, so review-scope.py cannot tell "
+    why = "does not exist" if not (root / rel).is_dir() else "is not the workflow repo"
+    rep.warn("workflow clone", f"workflowClone points at {rel}, which {why}, so review-scope.py cannot tell "
              "what is vendored and the review reads the whole diff",
-             f"git clone --depth 1 <workflow repo URL> {rel}, or set \"workflowClone\" in .claude/gw.json to the "
-             "folder of your clone")
+             f"git clone --depth 1 {config.workflow_repository(cfg)} {rel}, or set \"workflowClone\" in "
+             ".claude/gw.json to the folder of your clone")
 
 
 AGENT_FILES = (".claude/agents/gw-worker.md", ".claude/agents/gw-reviewer.md")
@@ -1475,14 +1507,7 @@ AGENT_FILES = (".claude/agents/gw-worker.md", ".claude/agents/gw-reviewer.md")
 
 def check_agent_files_ignored(rep, root):
     """D159: WARN when .gitignore leaves out an agent file the workflow installs (a commit then drops it)."""
-    found = []
-    for rel in AGENT_FILES:
-        if not (root / rel).is_file():
-            continue
-        r = subprocess.run(["git", "-C", str(root), "check-ignore", "-v", "--", rel], capture_output=True, text=True)
-        rule = r.stdout.split("\t")[0].strip()
-        if r.returncode == 0 and not rule.split(":", 2)[-1].startswith("!"):
-            found.append((rel, rule))
+    found = git_ignored(root, [rel for rel in AGENT_FILES if (root / rel).is_file()])
     if found:
         rep.warn("agents ignored", "git ignores subagent files, so a commit leaves them out and other clones lack "
                  "them: " + "; ".join(f"{rel} by {rule}" for rel, rule in found),
@@ -1490,7 +1515,7 @@ def check_agent_files_ignored(rep, root):
                  + " (and git check-ignore -v <path> until none is ignored)")
 
 
-def run(root):
+def run(root, workflow=None):
     rep = Report()
     cfg = check_config(rep, root)
     version = cfg["version"] if cfg else None
@@ -1516,7 +1541,7 @@ def run(root):
     check_media_folder(rep, root)
     check_media_tools(rep, root)
     check_related_tests(rep, cfg)
-    check_workflow_clone(rep, root, cfg)
+    check_workflow_clone(rep, root, cfg, workflow)
     check_agent_files_ignored(rep, root)
     proposals = check_proposals(rep, root)
     check_skills(rep, root, version, proposals, cfg)
@@ -1534,13 +1559,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--root", help="project path")
+    parser.add_argument("--workflow", help="the workflow repo review-scope.py will use (default $GW_WORKFLOW, else workflowClone)")
     args = parser.parse_args(argv)
     try:
         root = config.find_root(args.root)
     except config.ConfigError as exc:
         print(f"doctor: {exc}", file=sys.stderr)
         return 2
-    rep = run(root)
+    rep = run(root, args.workflow)
     if args.json:
         print(json.dumps(rep.items, indent=2, ensure_ascii=False))
     else:

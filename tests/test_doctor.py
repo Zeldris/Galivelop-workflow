@@ -47,8 +47,18 @@ class Doctor(Snapshot):
         p.write(".claude/gw.json", json.dumps(dict(cfg, relatedTests={"fast": ["true"], "slow": []})))
         p.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| Next step | write tests |\n")
         p.write(".claude/skills/gw-selector/SKILL.md", SKILL.format(version=VERSION))
-        (p.work.parent / "Galivelop-workflow").mkdir(exist_ok=True)  # D158: the default workflowClone folder exists
+        self.make_workflow(p.work.parent / "Galivelop-workflow")  # D158: the default workflowClone folder exists
         p.commit("set up")
+
+    @staticmethod
+    def make_workflow(path):
+        """A folder with the workflow layout: scripts/apply.py, skills/ and a plugin.json that names it."""
+        (path / "scripts").mkdir(parents=True, exist_ok=True)
+        (path / "scripts" / "apply.py").write_text("")
+        (path / "skills").mkdir(exist_ok=True)
+        (path / ".claude-plugin").mkdir(exist_ok=True)
+        (path / ".claude-plugin" / "plugin.json").write_text('{"name": "galivelop-workflow"}')
+        return path
 
     def doctor(self, *args):
         return self.p.run("python3", str(self.p.scripts / "doctor.py"), *args, cwd=self.tmp)
@@ -1687,9 +1697,55 @@ class Doctor(Snapshot):
         self.assertIn('"workflowClone"', line)
 
     def test_workflow_clone_present_is_quiet(self):
-        (self.p.work.parent / "clone").mkdir(exist_ok=True)
+        self.make_workflow(self.p.work.parent / "clone")
         self.set_cfg(branchCheck="full", workflowClone="../clone")
         self.assertNotIn("workflow clone", self.doctor()[1])
+
+    def test_workflow_clone_that_is_not_the_workflow_warns(self):  # D158: is_dir() is not enough
+        (self.p.work.parent / "other").mkdir(exist_ok=True)
+        self.set_cfg(branchCheck="full", workflowClone="../other")
+        line = self.assertLine(self.doctor()[1], "WARN", "workflow clone", "../other")
+        self.assertIn("is not the workflow repo", line)
+
+    def test_workflow_clone_empty_is_a_config_failure_not_a_crash(self):
+        self.set_cfg(branchCheck="full", workflowClone="")
+        code, out = self.doctor()
+        self.assertNotIn("Traceback", out)
+        self.assertEqual(code, 1, out)
+        self.assertLine(out, "FAIL", "config", "invalid")
+        self.assertNotIn("workflow clone", out)  # the config check already says it
+
+    def test_workflow_clone_absolute_path(self):
+        clone = self.make_workflow(self.tmp / "abs-clone")
+        self.set_cfg(branchCheck="full", workflowClone=str(clone))
+        self.assertNotIn("workflow clone", self.doctor()[1])
+        self.set_cfg(branchCheck="full", workflowClone=str(self.tmp / "abs-missing"))
+        self.assertLine(self.doctor()[1], "WARN", "workflow clone", "abs-missing")
+
+    def test_workflow_clone_warning_names_the_configured_repository(self):
+        self.set_cfg(branchCheck="full", workflowClone="../none", workflowRepository="https://example.test/wf.git")
+        line = self.assertLine(self.doctor()[1], "WARN", "workflow clone")
+        self.assertIn("git clone --depth 1 https://example.test/wf.git ../none", line)
+        self.assertNotIn("<workflow repo URL>", line)
+
+    def test_workflow_clone_silent_in_the_workflow_repo(self):
+        self.make_workflow(self.p.work)
+        self.set_cfg(branchCheck="full", workflowClone="../none")
+        self.assertNotIn("workflow clone", self.doctor()[1])
+
+    def test_gw_workflow_and_the_workflow_option_replace_the_clone_folder(self):  # D158
+        self.set_cfg(branchCheck="full", workflowClone="../none")
+        good = self.make_workflow(self.tmp / "elsewhere")
+        env = dict(self.p.env, GW_WORKFLOW=str(good))
+        self.assertNotIn("workflow clone", self.doctor_env(env)[1])
+        self.assertNotIn("workflow clone", self.doctor("--workflow", str(good))[1])
+        bad = self.tmp / "not-wf"
+        bad.mkdir()
+        line = self.assertLine(self.doctor_env(dict(self.p.env, GW_WORKFLOW=str(bad)))[1], "WARN", "workflow clone")
+        self.assertIn("GW_WORKFLOW", line)
+        self.assertIn("is not the workflow repo", line)
+        line = self.assertLine(self.doctor("--workflow", str(bad))[1], "WARN", "workflow clone", "--workflow")
+        self.assertIn("is not the workflow repo", line)
 
     def test_ignored_agent_file_warns(self):
         self.p.write(".claude/agents/gw-worker.md", "# w\n")
@@ -1697,9 +1753,32 @@ class Doctor(Snapshot):
         line = self.assertLine(self.doctor()[1], "WARN", "agents ignored", "gw-worker.md")
         self.assertIn("!.claude/agents/gw-worker.md", line)
 
+    def test_ignored_reviewer_file_warns(self):
+        self.p.write(".claude/agents/gw-reviewer.md", "# r\n")
+        self.p.write(".gitignore", ".claude/agents/\n")
+        line = self.assertLine(self.doctor()[1], "WARN", "agents ignored", "gw-reviewer.md")
+        self.assertIn("!.claude/agents/gw-reviewer.md", line)
+
+    def test_agent_file_reincluded_by_a_negation_rule_is_quiet(self):
+        self.p.write(".claude/agents/gw-worker.md", "# w\n")
+        self.p.write(".gitignore", ".claude/agents/*\n!.claude/agents/gw-worker.md\n")
+        self.assertNotIn("agents ignored", self.doctor()[1])
+
     def test_unignored_agent_file_is_quiet(self):
         self.p.write(".claude/agents/gw-worker.md", "# w\n")
         self.assertNotIn("agents ignored", self.doctor()[1])
+
+    def test_without_git_the_ignore_checks_do_not_crash(self):  # D159: FileNotFoundError
+        self.p.write(".claude/agents/gw-worker.md", "# w\n")
+        bin_dir = self.tmp / "nogit-bin"
+        bin_dir.mkdir(exist_ok=True)
+        for name in ("python3", "bash", "sh"):
+            if not (bin_dir / name).exists():
+                (bin_dir / name).symlink_to(shutil.which(name))
+        code, out = self.doctor_env(dict(self.p.env, PATH=str(bin_dir)))
+        self.assertNotIn("Traceback", out)
+        self.assertNotIn("FileNotFoundError", out)
+        self.assertNotIn("agents ignored", out)
 
     def test_related_tests_no_warning_for_full_or_filled(self):
         for keys in ({"branchCheck": "full"}, {"branchCheck": "full", "relatedTests": {"fast": ["true"]}},
