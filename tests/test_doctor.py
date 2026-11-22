@@ -771,12 +771,6 @@ class Doctor(Snapshot):
         code, out = self.doctor()
         self.assertLine(out, "OK", "ci", "check.yml run(s) the check")
 
-    def test_the_workflow_template_writes_the_base_hook_outside_the_tree(self):  # D160
-        text = (ROOT / "templates" / "github" / "check.yml").read_text()
-        self.assertNotIn(".gw-ci", text, "a local runner (act, by hand) would leave it in the work tree")
-        self.assertIn("RUNNER_TEMP", text)
-        self.assertNotIn('git show "$base:.githooks/pre-commit" > .githooks', text)
-
     def test_missing_setup_command_warns(self):
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
         cfg["setup"] = ["no-such-setup-tool-xyz --build"]

@@ -92,8 +92,11 @@ Hallazgos menores de las revisiones por rama de la oleada 1 (2026-11-22); no se 
   `subagentTranscriptBytes`; en una sesión larga reanudada no avisa (límite documentado en `config.md`).
 - [x] `0.9` · **D152 (`tests-for.py`):** el prefijo `.claude/gw/` va escrito a mano (una ruta con `./` no casa);
   `tests/test_ci_local.py:226` no comprueba `code` y mezcla tres fases.
-- [x] `0.9` · **D160 (`ci-local.py`):** otro ejecutor local de `check.yml` (act, a mano) sigue dejando `.gw-ci/`; mover
+- [ ] `0.9` · **D160 (`ci-local.py`):** otro ejecutor local de `check.yml` (act, a mano) sigue dejando `.gw-ci/`; mover
   la escritura a `$RUNNER_TEMP` en `templates/github/check.yml` (con `check.legacy-lines.txt` y `test_doctor.py`).
+  Intento 2026-11-22 revertido: escribir el hook fuera del árbol rompe `.githooks/pre-commit`, que deriva su raíz de la
+  ruta de su script; probar otra ruta dentro de `git rev-parse --git-dir` o un `git worktree` temporal, o pasar la raíz
+  por variable.
 - [x] `0.9` · **D158/D159 (`doctor.py`):** `check_workflow_clone` ignora `GW_WORKFLOW`/`--workflow` y solo mira
   `is_dir()` (no `is_workflow`); `check_agent_files_ignored` duplica la lógica de `ignored_paths()` (extraer un
   helper); sin git, `FileNotFoundError` (ya pasaba); faltan tests: `workflowClone` vacío o absoluto, silencio en el

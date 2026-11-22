@@ -168,10 +168,9 @@ jobs:
             echo "the base branch has no .githooks/pre-commit yet; skipped"
             exit 0
           fi
-          # D160: outside the work tree (RUNNER_TEMP; any local runner of this file, act included, leaves nothing in it)
-          hook="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/gw-base-pre-commit"
-          git show "$base:.githooks/pre-commit" > "$hook"
+          mkdir -p .gw-ci
+          git show "$base:.githooks/pre-commit" > .gw-ci/pre-commit
           # The base branch's hook may still be the one that only knows --rango (the old name of --range)
           flag=--range
-          grep -q -- '--range' "$hook" || flag=--rango
-          bash "$hook" "$flag" "$(git merge-base "$base" HEAD)..HEAD"
+          grep -q -- '--range' .gw-ci/pre-commit || flag=--rango
+          bash .gw-ci/pre-commit "$flag" "$(git merge-base "$base" HEAD)..HEAD"
