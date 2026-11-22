@@ -154,6 +154,23 @@ class SessionCheck(unittest.TestCase):
         self.assertIsNone(self.check(rows))  # the user's text is not the selector line; the newest model is sonnet
         self.assertIn("runs on claude-opus-5-5", self.check(rows, "claude-opus-5-5"))  # the hook's model wins
 
+    def test_review_findings_line_start_sidechain_and_unknown_words(self):
+        self.assertIsNone(self.check([said("as the skill says, Session: large high")]))  # not at a line start
+        self.assertIn("recommends opus", self.check([said("Case: design\n  Session: large high")]))
+        side = dict(said("Session: light low", "claude-haiku-4-5"), isSidechain=True)
+        self.assertIn("runs on claude-sonnet-5-5", self.check([said("Session: large high"), side]))
+        # a word that is no model does not hide an earlier real line, in the same text or an earlier row
+        self.assertIn("recommends opus", self.check([said("Session: large high\nSession: whatever high")]))
+        self.assertIn("recommends opus", self.check([said("Session: large high"), said("Session: gpt-5 high")]))
+
+    def test_family_takes_a_leading_alias_word(self):
+        for name, fam in (("opus-5.5", "opus"), ("opus 5.5", "opus"), ("sonnet-5", "sonnet"), ("opusx", None),
+                          ("gpt-5", None), ("claude-opus-5-5", "opus")):
+            with self.subTest(name=name):
+                self.assertEqual(models.family(name), fam)
+        self.assertIn("recommends opus", self.check([said("Session: Opus 5.5 high")]))
+        self.assertIsNone(self.check([said("Session: opus-5.5 high", "claude-opus-5-5")]))
+
     def test_cli_reads_the_tail_and_respects_the_key(self):
         tmp = Path(tempfile.mkdtemp(prefix="gw-models-")).resolve()
         self.addCleanup(shutil.rmtree, tmp, True)

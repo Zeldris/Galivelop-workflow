@@ -27,7 +27,8 @@ subagentTranscriptBytes of the transcript (format internal to Claude Code: assis
 blocks, as subagent-cap.py reads them). The recommendation is the last `Session: <model> <effort>` line an assistant text
 block holds (the gw-selector line; `large`/`medium`/`light` stand for opus/sonnet/haiku, `X or Y` allows both); the
 current model is `--model` (the hook's input), else the model of the last assistant message. It compares families only
-(effort is not in the transcript). Unknown or unreadable data, or `models.sessionCheck` false, prints nothing: a
+(effort is not in the transcript). Known limit: only that tail is read, so on a long resumed session whose selector
+line is older than the tail nothing is said (raising subagentTranscriptBytes reaches further back). Unknown or unreadable data, or `models.sessionCheck` false, prints nothing: a
 SessionStart hook cannot block, and a wrong warning costs more than a missing one. Python 3.8+ standard library only.
 """
 import argparse
@@ -43,7 +44,7 @@ import config  # noqa: E402
 
 ALIASES = ("opus", "sonnet", "haiku", "fable")
 SIZES = {"large": "opus", "medium": "sonnet", "light": "haiku"}  # the gw-selector table's words
-SESSION_LINE = re.compile(r"Session:\W*([A-Za-z][\w.\-]*)(?:\s+or\s+([A-Za-z][\w.\-]*))?")
+SESSION_LINE = re.compile(r"^\s*(?:\*\*)?Session:\W*([A-Za-z][\w.\-]*)(?:\s+or\s+([A-Za-z][\w.\-]*))?", re.MULTILINE)
 
 
 def normalize(name):
@@ -55,6 +56,9 @@ def family(model):
     """The family alias of a `claude-<family>-...` id, or the alias itself; None for anything else."""
     if model in ALIASES:
         return model
+    match = re.match(r"([a-z]+)[\s-]", model)  # `opus-5.5`, `opus 5.5`
+    if match and match.group(1) in ALIASES:
+        return match.group(1)
     match = re.match(r"claude-([a-z]+)(-|$)", model)
     return match.group(1) if match and match.group(1) in ALIASES else None
 
@@ -80,19 +84,19 @@ def disabled(conf):
 
 
 def recommended_families(text):
-    """The families the last `Session: <model> ...` line of `text` recommends (a set), or None when there is no such
-    line or a model in it is not known."""
-    matches = SESSION_LINE.findall(text or "")
-    if not matches:
-        return None
-    out = set()
-    for word in (w for w in matches[-1] if w):
-        word = normalize(word)
-        fam = SIZES.get(word) or family(word)
-        if fam is None:
-            return None
-        out.add(fam)
-    return out
+    """The families the last line of `text` that starts with `Session: <model> ...` recommends (a set), or None when
+    no such line names known models (a line with a word that is no model is skipped, an earlier one still counts)."""
+    for match in reversed(SESSION_LINE.findall(text or "")):
+        out = set()
+        for word in (normalize(w) for w in match if w):
+            fam = SIZES.get(word) or family(word)
+            if fam is None:
+                out = None
+                break
+            out.add(fam)
+        if out:
+            return out
+    return None
 
 
 def transcript_tail(path, tail_bytes):
@@ -119,6 +123,8 @@ def session_check(rows, hook_model=None):
     """The warning line when the session's model family is not one the last selector line recommends, else None."""
     recommended, current = None, normalize(hook_model) if isinstance(hook_model, str) else ""
     for row in reversed(rows):
+        if row.get("isSidechain"):
+            continue  # a subagent's row: neither its model nor its text is the session's
         message = row.get("message") if row.get("type") == "assistant" else None
         if not isinstance(message, dict):
             continue
@@ -130,8 +136,8 @@ def session_check(rows, hook_model=None):
             if isinstance(content, list) else [content] if isinstance(content, str) else []
         if recommended is None:
             for text in reversed([t for t in texts if isinstance(t, str)]):
-                if "Session:" in text:
-                    recommended = recommended_families(text) or set()
+                recommended = recommended_families(text)
+                if recommended:
                     break
         if current and recommended is not None:
             break
