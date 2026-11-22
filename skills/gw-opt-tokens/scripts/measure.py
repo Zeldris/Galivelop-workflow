@@ -23,6 +23,8 @@ resort: the log folder of the home directory's cloud start (`-home-user`). Pass 
 Short current session (B29): without `--session`, if the session found has fewer than `measure.minCalls` calls in the
 period (default 5, config `measure.minCalls`, 0 = off; e.g. right after a `/clear`), the newest previous session of the
 same git branch (log lines carry `gitBranch`) with calls in the period is measured instead, and the output says so.
+With an explicit period, logs of another branch are never picked; when the current log has no `gitBranch` yet, the
+repo's checked-out branch stands in for it (a detached HEAD: no branch filter).
 
 Tokens of a result are estimated from its size (characters / contextGuard.charsPerToken, 3.5 by default; an image counts ~1,600). API usage is exact.
 """
@@ -239,7 +241,8 @@ def default_session(root, since=None, cut=False):
     own_folder = folder_of(root)
     path = max(candidates, key=lambda p: (os.path.getmtime(p), os.path.basename(os.path.dirname(p)) == own_folder))
     if since and not cut:  # explicit period: the log covering it, D139's folder preference, never another branch's (D151)
-        branch = branch_of(path)
+        # the log's own branch; a session without `gitBranch` (just started) falls back to the repo's current branch
+        branch = branch_of(path) or git('symbolic-ref', '--short', '-q', 'HEAD', cwd=root)
         if branch:  # a log of another branch is out; one without `gitBranch` is not discarded
             candidates = [p for p in candidates if p == path or branch_of(p) in (None, branch)]
         covered = {p: len(responses_of(p, cut_since(p, since, cut))) for p in candidates}

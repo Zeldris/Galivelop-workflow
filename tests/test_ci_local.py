@@ -215,18 +215,30 @@ jobs:
         self.assertEqual(code, 1, out)
         self.assertIn("red:", out)
 
-    def test_a_dir_the_run_writes_is_removed_so_the_next_record_is_clean(self):  # D160
-        for step in ("mkdir -p .gw-ci && echo x > .gw-ci/pre-commit", "mkdir -p .gw-ci && exit 1"):
-            self.workflow(f"on: [pull_request]\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n      - run: {step}\n")
-            self.ci("--record")
-            self.assertFalse((self.p.work / ".gw-ci").exists(), step)
-        self.p.git("checkout", "--", ".")
-        self.p.git("clean", "-fdq")
-        self.workflow(f"on: [pull_request]\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n      - run: mkdir .gw-ci\n")
-        self.ci("--record")
+    def gw_ci_workflow(self, step):
+        self.workflow(f"on: [pull_request]\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n      - run: {step}\n")
+
+    def test_a_dir_a_green_run_writes_is_removed(self):  # D160
+        self.gw_ci_workflow("mkdir -p .gw-ci && echo x > .gw-ci/pre-commit")
+        code, out = self.ci("--record")
+        self.assertEqual(code, 0, out)
+        self.assertFalse((self.p.work / ".gw-ci").exists(), out)
+
+    def test_a_dir_a_red_run_writes_is_removed(self):  # D160
+        self.gw_ci_workflow("mkdir -p .gw-ci && exit 1")
+        code, out = self.ci("--record")
+        self.assertEqual(code, 1, out)
+        self.assertIn("red:", out)
+        self.assertFalse((self.p.work / ".gw-ci").exists(), out)
+
+    def test_a_dir_the_run_writes_leaves_the_next_record_without_uncommitted_changes(self):  # D160
+        self.gw_ci_workflow("mkdir .gw-ci")
+        code, out = self.ci("--record")
+        self.assertEqual(code, 0, out)
         self.p.git("add", "-A")
         self.p.commit("log")
         code, out = self.ci("--record")
+        self.assertEqual(code, 0, out)
         self.assertNotIn("uncommitted changes", self.log().strip().splitlines()[-1])
 
     def test_a_dir_that_was_already_there_is_left(self):  # D160

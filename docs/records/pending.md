@@ -86,11 +86,11 @@ Decididas el 2026-10-27; las correcciones (INS P8, private-project-1 P3, P4 y la
 
 Hallazgos menores de las revisiones por rama de la oleada 1 (2026-11-22); no se revisan otra vez en este parche.
 
-- [ ] `0.9` · **D144/D151 (`measure.py`):** con periodo explícito y la sesión en curso sin `gitBranch`, no se excluye
+- [x] `0.9` · **D144/D151 (`measure.py`):** con periodo explícito y la sesión en curso sin `gitBranch`, no se excluye
   ningún registro de otra rama.
-- [ ] `0.9` · **D142 (`models.py session-check`):** la línea `Session:` solo se busca en la cola de
+- [x] `0.9` · **D142 (`models.py session-check`):** la línea `Session:` solo se busca en la cola de
   `subagentTranscriptBytes`; en una sesión larga reanudada no avisa (límite documentado en `config.md`).
-- [ ] `0.9` · **D152 (`tests-for.py`):** el prefijo `.claude/gw/` va escrito a mano (una ruta con `./` no casa);
+- [x] `0.9` · **D152 (`tests-for.py`):** el prefijo `.claude/gw/` va escrito a mano (una ruta con `./` no casa);
   `tests/test_ci_local.py:226` no comprueba `code` y mezcla tres fases.
 - [ ] `0.9` · **D160 (`ci-local.py`):** otro ejecutor local de `check.yml` (act, a mano) sigue dejando `.gw-ci/`; mover
   la escritura a `$RUNNER_TEMP` en `templates/github/check.yml` (con `check.legacy-lines.txt` y `test_doctor.py`).

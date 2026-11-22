@@ -377,6 +377,15 @@ class ShellcheckStep(unittest.TestCase):  # D106
         self.assertNotIn(".claude/gw/scripts/x.sh", out)
         self.assertNotIn("SC2086", out + err)
 
+    def test_d152_a_dot_slash_path_to_a_workflow_copy_is_still_not_shellchecked(self):
+        self.write(".claude/gw/scripts/x.sh", "#!/bin/bash\necho $1\n")
+        self.write("scripts/y.sh", "#!/bin/bash\necho \"$1\"\n")
+        spec = importlib.util.spec_from_file_location("tests_for_mod", ROOT / "scripts" / "tests-for.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        got = mod.shell_files(self.tmp, ["./.claude/gw/scripts/x.sh", ".claude//gw/scripts/x.sh", "./scripts/y.sh"])
+        self.assertEqual(got, ["scripts/y.sh"])
+
     def test_deleted_sh_is_skipped(self):
         code, out, _ = self.env_run("--run", "scripts/gone.sh")
         self.assertEqual(code, 0)

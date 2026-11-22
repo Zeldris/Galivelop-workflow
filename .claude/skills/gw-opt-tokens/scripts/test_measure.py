@@ -460,6 +460,16 @@ class Measure(unittest.TestCase):
             self.assertIn('Session: cur.jsonl', r.stdout, args)
             self.assertNotIn('other.jsonl', r.stdout)
 
+    def test_d151_explicit_period_current_log_without_branch_uses_the_repo_branch(self):
+        for args in (('--hours', '24'), ('--since', ago(5))):
+            r = self.short_session(5, previous=(('other', 'main'),), args=args, previous_calls=7, branch=None,
+                                   repo_branch='feat')  # other has more calls and is of another branch
+            self.assertIn('Session: cur.jsonl', r.stdout, args)
+            self.assertNotIn('other.jsonl', r.stdout)
+        r = self.short_session(5, previous=(('same', 'feat'),), args=('--hours', '24'), previous_calls=7, branch=None,
+                               repo_branch='feat')  # a log of the repo's branch still competes
+        self.assertIn('Session: same.jsonl', r.stdout)
+
     def test_d144_newest_session_without_calls_in_the_default_period_is_still_the_one(self):
         home, repo = folder(), folder()
         subprocess.run(['git', 'init', '-q', repo], check=True)
@@ -522,11 +532,14 @@ class Measure(unittest.TestCase):
             self.assertIn('warning: log from a session opened outside the repo, in folder -home-user', local.stderr)
 
     def short_session(self, current: int, config=None, previous: tuple = (('prev', 'feat'),), branch: str | None = 'feat',
-                      args: tuple = ('--hours', '0'), previous_calls: int = 3, branches: tuple = ()) -> subprocess.CompletedProcess:
+                      args: tuple = ('--hours', '0'), previous_calls: int = 3, branches: tuple = (),
+                      repo_branch: str | None = None) -> subprocess.CompletedProcess:
         """B29: no --session; the current log (`cur.jsonl`, newest, `current` calls on `branch`) and older logs given
         as (name, branch) with 3 calls each; `config` is the text of the repo's .claude/gw.json (None = no file)."""
         home, repo = folder(), folder()
         subprocess.run(['git', 'init', '-q', repo], check=True)
+        if repo_branch:
+            subprocess.run(['git', '-C', repo, 'symbolic-ref', 'HEAD', f'refs/heads/{repo_branch}'], check=True)
         proj = os.path.join(home, '.claude', 'projects', '-home-user')
         for i, (name, b) in enumerate(previous):
             extra = {'gitBranch': b} if b else {}

@@ -196,6 +196,28 @@ class SessionCheck(unittest.TestCase):
         r = run(BASE_CONFIG, tmp / "missing.jsonl")
         self.assertEqual((r.returncode, r.stdout), (0, ""))
 
+    def test_d142_a_selector_line_older_than_the_tail_says_the_check_did_not_run(self):
+        tmp = Path(tempfile.mkdtemp(prefix="gw-models-")).resolve()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        subprocess.run(["git", "init", "-q", str(tmp)], check=True)
+        (tmp / ".claude").mkdir()
+        (tmp / ".claude" / "gw.json").write_text(json.dumps(dict(BASE_CONFIG, subagentTranscriptBytes=1024)))
+        filler = json.dumps({"type": "user", "message": {"content": "x" * 300}}) + "\n"
+
+        def run(*rows):
+            path = tmp / "t.jsonl"
+            path.write_text("".join(rows))
+            return subprocess.run([sys.executable, "-B", str(ROOT / "scripts" / "models.py"), "--root", str(tmp),
+                                   "session-check", "--transcript", str(path)], capture_output=True, text=True)
+        selector = json.dumps(said("Session: large high")) + "\n"
+        r = run(selector, *[filler] * 10)  # the line is older than the 1024 bytes read
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("check did not run: no `Session:` line in the last 1024 bytes", r.stdout)
+        self.assertIn("subagentTranscriptBytes", r.stdout)
+        self.assertEqual(run(*[filler] * 2).stdout, "")  # a short transcript with no line: nothing to say
+        self.assertIn("recommends opus", run(*[filler] * 10, selector).stdout)  # the line is inside the tail
+        self.assertEqual(run(selector, *[filler] * 10).returncode, 0)
+
 
 if __name__ == "__main__":
     unittest.main()
