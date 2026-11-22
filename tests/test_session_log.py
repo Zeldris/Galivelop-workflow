@@ -1013,6 +1013,14 @@ class Recover(Base):
         line = self.roadmap_line("release/0.8.2")
         self.assertTrue(line.startswith("- Roadmap 0.8.2: 2 open row(s): D2, D3 ("), line)
 
+    def test_state_roadmap_line_accepts_a_v_before_the_version(self):
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg["releaseCheckBranches"] = ["release/*"]
+        (p.work / ".claude" / "gw.json").write_text(json.dumps(cfg))
+        line = self.roadmap_line("release/v0.8.2")
+        self.assertTrue(line.startswith("- Roadmap 0.8.2: 2 open row(s): D2, D3 ("), line)
+
     def test_state_has_no_roadmap_line_without_roadmap_files_or_on_a_detached_head(self):
         self.assertIsNone(self.roadmap_line("version/0.8.2", config=False))
         p = self.p
