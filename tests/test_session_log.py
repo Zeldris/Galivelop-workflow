@@ -350,14 +350,17 @@ class SessionStart(Base):
         prog = ("import signal,time\n"
                 "t=[0]\n"
                 "signal.signal(signal.SIGTERM, lambda *a: t.__setitem__(0, time.time()))\n"
+                "open('ready.txt','w').write('1')\n"
                 "while True:\n"
                 "    time.sleep(0.05)\n"
                 "    if t[0]: open('alive.txt','w').write(repr(time.time()-t[0]))\n")
         self.p.write("hold.py", prog)
-        cloud = self.cloud_config(setup=["python3 hold.py"], commandTimeout=1, commandKillGrace=1)
+        cloud = self.cloud_config(setup=["python3 hold.py"], commandTimeout=3, commandKillGrace=1)
         code, out = self.p.session_start(env=cloud)
         self.assertEqual(code, 0, out)
-        self.assertIn("setup command timed out after 1s", out)
+        self.assertIn("setup command timed out after 3s", out)
+        self.assertTrue((self.p.work / "ready.txt").exists(),
+                        "TERM arrived before python installed its handler (slow start): raise commandTimeout")
         alive = float((self.p.work / "alive.txt").read_text())
         self.assertGreater(alive, 0.5, "it was killed before the 1 s grace")
         self.assertLess(alive, 3.5, "with the default grace (5 s) it stays alive 5 s after TERM")

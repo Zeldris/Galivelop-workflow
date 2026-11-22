@@ -143,6 +143,29 @@ Leves de la revisión de D158 (`ec31444`, 2026-11-22):
 - [ ] `0.9` · **D154 (`a6837e7`):** el commit de D144/D142/D152 se subió con `WIP:` por un check que no se había
   completado; el check completo del pre-push salió en verde sobre `a6837e7` (2026-11-22). No se reescribe.
 
+### Leves de la revisión de E85 (`20945e6`…`0e6353b`)
+
+Los dos medios se arreglaron en D170; lo demás queda aquí, sin arreglar.
+
+- [ ] `0.9` · **`whole-read.py:547`:** con `cat < docs/log.md | head -n 200` la etiqueta del aviso sale con doble espacio y
+  sin el archivo (`this `cat  | head -n 200``). Construir la etiqueta con las partes no vacías y añadir `< archivo` para `inputs`.
+- [ ] `0.9` · **`whole-read.py:544-554`:** cada operando recibe el recuento entero: `cat a b | head -n 200` dice «lee 200
+  líneas» de cada archivo aunque se compartan. Aplicar el rango solo con un único operando o entrada.
+- [ ] `0.9` · **`whole-read.py:509`:** `-` se trata como archivo propio (`cat log | head -n 200 -` no avisa del log). En
+  `piped_range`, los operandos `-` son la entrada estándar.
+- [ ] `0.9` · **`whole-read.py:504`:** un rango que va a una etapa de paso (`… | head -n 200 | cat -n`, `| sed -n 1,500p | less`,
+  `| head -n 200 | tee out`) no avisa. Con `piped`, aceptar el rango si `passes_through(rest[i+1:])`.
+- [ ] `0.9` · **`whole-read.py:544`:** solo se trata el comando de lectura entera a la cabeza del pipe: `sed -n 1,5000p log | head -n 200`
+  y `cat log | cat | head -n 200` no avisan. Probar `piped_range` también tras un rango y saltar etapas de paso.
+- [ ] `0.9` · **`whole-read.py:430` (`head_range`, anterior):** `head -n +200` (GNU: 200 líneas) devuelve `None` y
+  `cat log | head -n +200` no avisa. Aceptar un `+` inicial.
+- [ ] `0.9` · **Observación, `test_session_log.py:349`:** el test de `commandKillGrace` depende de que `bash -c "python3 hold.py"`
+  haga `exec` de python (así `wait` vuelve solo con KILL); bash 3.2 también lo hace, pero no está dicho. Anotarlo en el test.
+- [ ] `0.9` · **Observación, `test_session_log.py:355`:** `open('alive.txt','w').write(...)` sin reemplazo atómico puede dejar el
+  archivo vacío si KILL llega entre la apertura y la escritura (`float('')` falla). Raro; escribir en un temporal y `os.replace`.
+- [ ] `0.9` · **Observación (sin acción):** `cat F | head -c 500`, `| head -n -5`, `| sed -n '3p'`, `|&`, `2>/dev/null`, `sudo head`,
+  `cat F|head` sin espacios y `; echo`/`&& ls` detrás se comportan como se quiere.
+
 ### De la retro del parche `0.8.2` (2026-11-22, aprobadas)
 
 Propuestas en [`retro-2026-11-22-patch-0.8.2.md`](retro-2026-11-22-patch-0.8.2.md).

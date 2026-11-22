@@ -9,7 +9,8 @@ Watched files: the hand-off log (`log`), its archive (`logArchive`), every file 
 extensions of `wholeReadSkipExtensions` (images, PDF, notebooks). A Read is "whole" when `tool_input` has no
 `offset`, `limit` or `pages` (a null, 0 or empty value counts as absent). A Bash command is "whole" for each file it
 gives to `cat`, `tac`, `nl`, `less`, `more`, `bat` (without a line range) or `sed` (without -n, -i or a `q` script),
-also through `<`, unless its output goes to a pipe or a file (`cat F | head`, `cat F > out`); `cd` in the same command
+also through `<`, unless its output goes to a pipe or a file (`cat F | head`, `cat F > out`; exception, E85: `cat F | head -n N` and
+`cat F | sed -n A,Bp` warn with the line count of that second command, as a range read); `cd` in the same command
 moves the folder the paths resolve against (inside `( … )` only until it closes), the value of an option that takes
 one (`nl -b a F`) is not a file, and the body of a heredoc (also `<<\\EOF`) is not read as commands. `grep`, `tail`, `head` and `sed -n` read a part and are not warned about, with one exception (E85): a range read of
 the log or a `roadmapFiles` file over `wholeReadWarnBytes` (`sed -n A,Bp`, `sed -n p`, `head -n N`, `head` without a count
