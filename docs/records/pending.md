@@ -121,6 +121,15 @@ Hallazgos menores de la oleada 2 (2026-11-22):
 - [ ] `0.9` · **Tests de tiempo:** `test_session_log.SessionStart.test_command_kill_grace_key_shortens_the_wait_before_kill`
   falla con la máquina cargada (5,2 s y 12 s contra un tope de 5 s; solo da 4,7 s). Ampliar el margen o medir otra cosa.
 
+Leves de la revisión de D166 (`554568c`, 2026-11-22):
+
+- [ ] `0.9` · **`releaseCheckBranches` (`config.md`):** su fila no dice que `recover.py --state` también lo usa (ni lo
+  lista en «usado por»), ni que `[]` apaga la línea de filas abiertas; añadirlo en es/en.
+- [ ] `0.9` · **`recover.py` (docstring de `--state`):** aún dice «never fails», pero `import roadmap` y
+  `open_rows_line` ya no están protegidos; reescribirlo o dejar una guarda estrecha con una línea visible.
+- [ ] `0.9` · **`recover.py:585`:** la regex exige `X.Y[.Z]` exacto en el último tramo; un patrón `release/v*` no da línea
+  ni mensaje: documentar el límite o admitir una `v` opcional.
+
 ### De la retro del parche `0.8.2` (2026-11-22, aprobadas)
 
 Propuestas en [`retro-2026-11-22-patch-0.8.2.md`](retro-2026-11-22-patch-0.8.2.md).
