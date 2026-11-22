@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 # galivelop-workflow v0.8.2
 # Pushes a branch with retries and says "pushed" only when the remote really has the commit (D94).
-#   bash push.sh [<branch>]     (default: the current branch)
+#   bash push.sh [--wip] [<branch>]     (default: the current branch)
+#  - E84 `--wip`: pushes a branch whose head commit subject starts with `WIP:` without waiting for the check (the
+#    pre-push hook lets it through and records it in <git dir>/gw-wip-pushes), so a long red stretch is not left
+#    unpushed. Never to the protected branch (`protectedBranch`) and never a head without `WIP:`: it fails first, with
+#    the reason and nothing pushed (the hook judges it again). Everything else (retries, the remote confirmation) is the same.
 #  - Runs `git push -u origin <branch>`; its output is shown and also classified when it fails.
 #  - A transient failure (network, timeouts, RPC, early EOF, HTTP 5xx) is retried after each delay of `pushRetryDelays`
 #    (seconds; default 2, 4, 8, 16). Anything else (a hook rejection, non-fast-forward, 403, authentication) fails at
@@ -21,7 +25,9 @@ here="$(cd "$(dirname "$0")" && pwd)"
 die() { echo "push: $1" >&2; exit "${2:-2}"; }
 q() { printf '%q' "$1"; }  # a path or branch in a suggested command, quoted (the root may have spaces)
 self="bash $(q "$0")"
-[ $# -le 1 ] || die "usage: $self [<branch>]"
+wip=0
+if [ "${1:-}" = "--wip" ]; then wip=1; shift; fi
+[ $# -le 1 ] || die "usage: $self [--wip] [<branch>]"
 # Git exports GIT_DIR (and friends) to hooks; with it set `rev-parse --show-toplevel` answers $here, not the root.
 root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
   die "$here is not inside a git repository; reinstall the workflow: /gw-update"; }
@@ -41,7 +47,21 @@ git remote get-url origin >/dev/null 2>&1 || die "the repository has no remote '
 { delays="$(python3 "$config" --root "$root" get pushRetryDelays 2>/dev/null)" &&
   lstimeout="$(python3 "$config" --root "$root" get pushLsRemoteTimeout 2>/dev/null)"; } ||
   die "invalid config (.claude/gw.json); see what is wrong and fix it: python3 $(q "$config") --root $(q "$root") validate"
-retry="$self $(q "$branch")"
+retry="$self $([ "$wip" -eq 1 ] && echo '--wip ')$(q "$branch")"
+if [ "$wip" -eq 1 ]; then
+  protected="$(python3 "$config" --root "$root" get protectedBranch 2>/dev/null)" ||
+    die "cannot read 'protectedBranch' from .claude/gw.json; fix the config: python3 $(q "$config") --root $(q "$root") validate"
+  [ "$branch" != "$protected" ] ||
+    die "--wip never pushes to the protected branch ($protected); push a working branch with --wip, or follow the main-branch rules of AGENTS.md" 1
+  subject="$(git log -1 --format=%s "$want")"
+  case "$subject" in
+    "WIP:"*) ;;
+    *) die "--wip needs the head commit of '$branch' to start with 'WIP:' (it is '$subject'); amend its message, or wait for the check and push without --wip: $self $(q "$branch")" 1 ;;
+  esac
+  export GW_PUSH_WIP=1
+else
+  unset GW_PUSH_WIP  # a stray value must not skip the hook's check on a normal push
+fi
 out="$(mktemp "${TMPDIR:-/tmp}/gw-push.XXXXXX")" || die "cannot create a temp file; free space and retry"
 
 lsout="$out.ls"

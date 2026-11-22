@@ -736,6 +736,114 @@ class PrePush(Base):
         self.assertIn("related-ran-and-failed", out)
 
 
+class PrePushWip(Snapshot):
+    """E84: `push.sh --wip` and the hook's GW_PUSH_WIP: a WIP: head goes to a working branch with no check, never to the
+    protected one. The project's check is red (`exit 1`), so a push that ran it would fail."""
+    prefix = "gw-wip-"
+
+    def build(self):
+        self.p = Project(self.tmp, check="exit 1")
+        self.p.git("checkout", "-q", "-b", "feature")
+        self.push_sh = str(self.p.work / ".claude" / "gw" / "scripts" / "push.sh")
+
+    def wip(self, *args, env=None):
+        return self.p.run("bash", self.push_sh, *args, env=env)
+
+    def remote(self, branch):
+        r = self.p.git("rev-parse", "--verify", "-q", f"refs/heads/{branch}", cwd=self.p.bare, ok=False)
+        return r.stdout.strip()
+
+    def commit_wip(self, subject="WIP: half done"):
+        self.p.write("src/a.py", f"a = {subject!r}\n")
+        self.p.commit(subject)
+
+    def test_wip_head_is_pushed_without_the_check_to_a_new_branch(self):
+        p = self.p
+        self.commit_wip()
+        code, out = self.wip("--wip", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.remote("feature"), p.sha(), "ls-remote must have the WIP commit")
+        self.assertIn("no check run (E84)", out)
+        record = Path(p.git("rev-parse", "--absolute-git-dir").stdout.strip(), "gw-wip-pushes").read_text()
+        self.assertIn(f" {p.sha()} feature", record)
+
+    def test_without_wip_the_same_push_runs_the_red_check_and_is_refused(self):
+        self.commit_wip()
+        code, out = self.wip("feature", env={"GW_PUSH_WIP": "1"})  # a stray variable must not skip the check
+        self.assertNotEqual(code, 0, out)
+        self.assertNotIn("no check run", out)
+        self.assertEqual(self.remote("feature"), "")
+
+    def test_a_head_without_wip_is_refused_with_the_reason_and_not_pushed(self):
+        for subject in ("fix: done", "WIP half done", "wip: lower", " WIP: leading space", "fix: WIP: inside"):
+            with self.subTest(subject=subject):
+                self.commit_wip(subject)
+                code, out = self.wip("--wip", "feature")
+                self.assertEqual(code, 1, out)
+                self.assertIn("--wip needs the head commit of 'feature' to start with 'WIP:'", out)
+                self.assertEqual(self.remote("feature"), "")
+
+    def test_empty_subject_is_refused(self):
+        self.p.write("src/a.py", "a = 1\n")
+        self.p.git("add", "-A")
+        self.p.git("commit", "-q", "--allow-empty-message", "-m", "")
+        code, out = self.wip("--wip", "feature")
+        self.assertEqual(code, 1, out)
+        self.assertIn("to start with 'WIP:' (it is '')", out)
+
+    def test_the_protected_branch_is_refused_even_with_a_wip_head(self):
+        p = self.p
+        p.git("checkout", "-q", "main")
+        self.commit_wip()
+        before = self.remote("main")
+        code, out = self.wip("--wip")
+        self.assertEqual(code, 1, out)
+        self.assertIn("--wip never pushes to the protected branch (main)", out)
+        self.assertEqual(self.remote("main"), before)
+
+    def test_the_hook_alone_refuses_the_protected_branch_a_non_wip_head_and_a_deletion(self):
+        p = self.p
+        env = {"GW_PUSH_WIP": "1"}
+        self.commit_wip()
+        code, out = p.push("origin", "HEAD:refs/heads/main", env=env)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("a WIP push never goes to the protected branch (main)", out)
+        self.commit_wip("fix: done")
+        code, out = p.push("origin", "feature", env=env)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("does not start with 'WIP:'", out)
+        self.assertEqual(self.remote("feature"), "")
+        code, out = p.push("origin", "--delete", "main", env=env)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("covers pushing a WIP: commit, not deleting refs/heads/main", out)
+        self.assertNotEqual(self.remote("main"), "")
+
+    def test_the_hook_alone_refuses_a_tag(self):
+        self.commit_wip()
+        self.p.git("tag", "t1")
+        code, out = self.p.push("origin", "t1", env={"GW_PUSH_WIP": "1"})
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("covers branches only, not refs/tags/t1", out)
+
+    def test_detached_head_needs_the_branch_argument(self):
+        p = self.p
+        self.commit_wip()
+        p.git("checkout", "-q", "--detach")
+        code, out = self.wip("--wip")
+        self.assertEqual(code, 2, out)
+        self.assertIn("detached HEAD and no branch given", out)
+        code, out = self.wip("--wip", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.remote("feature"), p.sha("feature"))
+
+    def test_no_origin_fails_before_pushing(self):
+        self.commit_wip()
+        self.p.git("remote", "remove", "origin")
+        code, out = self.wip("--wip", "feature")
+        self.assertEqual(code, 2, out)
+        self.assertIn("has no remote 'origin'", out)
+
+
 class PrePushWorktree(Base):
     """The temporary worktree the pre-push runs `check` in (anything but the clean working copy), its linked paths,
     the wrapper and the logs. `dirty` is an untracked file: it makes the working copy not clean."""

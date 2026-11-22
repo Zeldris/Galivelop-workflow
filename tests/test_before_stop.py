@@ -86,6 +86,23 @@ class Commits(Base):
         data = self.assertBlocks(out, "1 commit", "claude/trabajo", "push.sh claude/trabajo")
         self.assertNotIn(LOG, data["reason"], "a clean tree needs no log reminder")
 
+    def test_wip_head_unpushed_recommends_push_wip_and_a_normal_head_does_not(self):
+        # E84: a WIP: head is a red check; the reason adds push.sh --wip. With any other head it does not.
+        p = self.p
+        p.work_branch()
+        p.write("src/a.py", "x = 1\n"); p.commit("WIP: half done")
+        data = self.assertBlocks(p.stop()[1], "push.sh --wip claude/trabajo", "check is red")
+        self.assertIn("never to the protected branch", data["reason"])
+        p.write("src/a.py", "x = 2\n"); p.commit("feat: done")
+        data = self.assertBlocks(p.stop()[1], "push.sh claude/trabajo")
+        self.assertNotIn("--wip", data["reason"])
+
+    def test_wip_head_on_the_protected_branch_never_recommends_push_wip(self):
+        p = self.p
+        p.write("src/a.py", "x = 1\n"); p.commit("WIP: half done")
+        code, out = p.stop()
+        self.assertNotIn("--wip", out)
+
     def test_push_command_names_the_projects_copy_also_from_the_plugin_cache(self):
         # D94: from the plugin cache (${CLAUDE_PLUGIN_ROOT}) the push.sh next to the hook would take the cache as its
         # root; the reason must name the project's own .claude/gw/scripts/push.sh, quoted, in both layouts.

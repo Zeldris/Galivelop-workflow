@@ -67,6 +67,10 @@
 #     prepushCiWarn or prepushCiWarnTimeout says so in one line, naming the key (config.py validate), and skips it. Ctrl-C,
 #     SIGTERM or SIGHUP to the hook (or to its group) kill ci-status.py's whole process group (gh or curl too, even
 #     after ci-status.py ended) as the hook ends. Off with prepushCiWarn false.
+#   - E84: with GW_PUSH_WIP=1 (set by `push.sh --wip`) it runs no check: every ref pushed must be a branch (not a tag, not
+#     a deletion), not the protected branch (the pushed commit's config, the remote tip's and the working tree's) and
+#     its commit subject must start with `WIP:`; otherwise it refuses with the reason. A WIP push is recorded as
+#     "<epoch> <sha> <branch>" in <git dir>/gw-wip-pushes (best effort) and the hook ends there.
 # Skipping it (git push --no-verify) is only for a WIP: commit with red tests.
 # Bash 3.2 compatible. Root from this hook's path, never from $CLAUDE_PROJECT_DIR or the current directory.
 set -uo pipefail
@@ -364,6 +368,35 @@ scan_leftovers() {  # scan_leftovers <sha> <files> <what>: conflict markers and 
   fi
 }
 
+# E84: `push.sh --wip` (GW_PUSH_WIP=1): a WIP: commit goes to a working branch without the check, never to the protected one.
+if [ "${GW_PUSH_WIP:-}" = "1" ]; then
+  wip_n=0
+  while read -r _wl wip_sha wip_ref wip_rsha; do
+    [ -n "${wip_sha:-}" ] || continue
+    [ "$wip_sha" != "$zero" ] || fail "GW_PUSH_WIP covers pushing a WIP: commit, not deleting $wip_ref; delete it without it: git push origin --delete ${wip_ref#refs/heads/}"
+    case "$wip_ref" in refs/heads/*) ;; *) fail "GW_PUSH_WIP covers branches only, not $wip_ref; push it without it: git push" ;; esac
+    wip_sha="$(git rev-parse -q --verify "$wip_sha^{commit}" 2>/dev/null)" || fail "commit ${wip_sha:0:7} is not in this clone; fetch it and retry: git fetch $remote"
+    wip_prot="$(cfg_at "$wip_sha" protectedBranch)" || exit 1
+    wip_wtprot="$(python3 "$config" --root "$root" get protectedBranch 2>/dev/null)" || wip_wtprot=""
+    wip_rprot=""
+    if [ "$wip_rsha" != "$zero" ] && git cat-file -e "$wip_rsha^{commit}" 2>/dev/null; then
+      wip_rprot="$(python3 "$config" --root "$root" --rev "$wip_rsha" get protectedBranch 2>/dev/null)" || wip_rprot=""
+    fi
+    for wip_p in "$wip_prot" "$wip_wtprot" "$wip_rprot"; do
+      [ -z "$wip_p" ] || [ "$wip_ref" != "refs/heads/$wip_p" ] || fail "a WIP push never goes to the protected branch ($wip_p); push a working branch, or follow the main-branch rules of AGENTS.md" 
+    done
+    wip_subject="$(git log -1 --format=%s "$wip_sha")"
+    case "$wip_subject" in
+      "WIP:"*) ;;
+      *) fail "the head commit ${wip_sha:0:7} of ${wip_ref#refs/heads/} does not start with 'WIP:' (it is '$wip_subject'); amend its message or push it with its check: git push" ;;
+    esac
+    { [ -z "$pushgit" ] || echo "$(date +%s) $wip_sha ${wip_ref#refs/heads/}" >> "$pushgit/gw-wip-pushes"; } 2>/dev/null
+    wip_n=$((wip_n + 1))
+    echo "pre-push: WIP push of ${wip_sha:0:7} to ${wip_ref#refs/heads/}: no check run (E84); run the check before the work is closed"
+  done < "$work/input"
+  [ "$wip_n" -gt 0 ] || fail "GW_PUSH_WIP is set but this push has no branch to check; push without it: git push"
+  exit 0
+fi
 checked=""
 # Trees this push sends to the protected branch (by the pushed commit's own config): a branch pushed with the same tree
 # is still checked with its own scope (related tests run), but repeats no full check: the protected one is stricter

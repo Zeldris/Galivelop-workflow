@@ -7,7 +7,7 @@ agent remembered it. It blocks the stop when:
 
   a. the current branch has commits its upstream does not (`git rev-list @{u}..HEAD --not <remote>/<protectedBranch>`,
      the upstream's remote: what a merged-in `main` brings is already pushed; without that ref, just `@{u}..HEAD`);
-     with no upstream, commits no remote branch has (`git rev-list HEAD --not --remotes`). The reason names `bash <root>/.claude/gw/scripts/push.sh <branch>` (config.push_command). On the
+     with no upstream, commits no remote branch has (`git rev-list HEAD --not --remotes`). The reason names `bash <root>/.claude/gw/scripts/push.sh <branch>` (config.push_command); when the head commit starts with `WIP:` (E84: a red one) it adds `push.sh --wip <branch>`, which skips the check. On the
      protected branch (`protectedBranch`) it does not: AGENTS.md says a push there needs the user's confirmation and
      the three phases, so Claude cannot fix it alone and a block would only make it push without asking. There it is a
      warning to the user (`systemMessage`: the commits are not pushed, and pushing needs their confirmation), never
@@ -146,6 +146,20 @@ def unpushed(root, protected=None):
         count = int(git(root, "rev-list", "--count", "HEAD", "--not", "--remotes")[1].strip() or 0)
         where = "no upstream branch, and not on any remote branch"
     return (branch, count, where) if count else None
+
+
+def wip_hint(root, branch):
+    """E84: when the head commit starts with `WIP:` (a commit that goes red, per AGENTS.md) the push may skip the check:
+    the extra sentence naming `push.sh --wip`; empty for any other head or a project without push.sh."""
+    try:
+        subject = git(root, "log", "-1", "--format=%s", "HEAD")[1].strip()
+    except GitError:
+        return ""
+    cmd = config.push_command(root, branch, wip=True)
+    if not subject.startswith("WIP:") or not cmd:
+        return ""
+    return (f" The last commit is a WIP (its check is red): push it without waiting for the check, "
+            f"never to the protected branch: {cmd}")
 
 
 def push_in_progress(root):
@@ -477,7 +491,7 @@ def main():
                     elif pushing is None:
                         unpushed_to.append(f"Branch '{branch}' has {plural(count, 'commit')} not pushed ({where}). What is "
                                       f"not pushed does not exist for the next session; push it now: "
-                                      f"{config.push_command(root, branch)}")
+                                      f"{config.push_command(root, branch)}" + wip_hint(root, branch))
                         if checking is not None:  # a check of another commit or worktree: it does not push this one
                             notes.append(f"A check of another commit or worktree is running (pid {checking[0]}, log "
                                          f"{checking[1] or '-'}, sha {checking[2] or '-'}); it does not cover this "
