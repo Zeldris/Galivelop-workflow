@@ -352,6 +352,7 @@ Se hace al cerrar el desarrollo de la `0.9`, antes de publicarla: recogida y sus
 
 | Id | Tarea | Estado |
 |---|---|---|
+| H26 | Recogida de cierre de la `0.9` y del parche `0.8.2` (`gw-harvest`, 10 proyectos al día; 7 con propuestas, `docs/proposals/2026-11-22-*.md`), al usuario | hecho (2026-11-22; propuestas pendientes de decidir) |
 | D142 | `gw-selector`: la sesión se para cuando el modelo o el esfuerzo recomendado no coincide con el actual (hoy avisa y sigue, y el orquestador toma el modelo de la fila más arriesgada, así que casi nunca baja de Opus); el comportamiento exacto, en `docs/questions.md` (usuario, 2026-11-19; Related: E66) | pendiente |
 
 ## `0.9` «Front»

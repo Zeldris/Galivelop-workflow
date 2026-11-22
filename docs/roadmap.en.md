@@ -351,6 +351,7 @@ Done when the `0.9` development closes, before publishing it: a harvest and its 
 
 | Id | Task | Status |
 |---|---|---|
+| H26 | Closing harvest of `0.9` and of patch `0.8.2` (`gw-harvest`, 10 projects up to date; 7 with proposals, `docs/proposals/2026-11-22-*.md`), to the user | done (2026-11-22; proposals awaiting decision) |
 | D142 | `gw-selector`: the session stops when the recommended model or effort differs from the current one (today it warns and carries on, and the orchestrator takes the riskiest row's model, so it almost never goes below Opus); the exact behaviour, in `docs/questions.md` (user, 2026-11-19; Related: E66) | pending |
 
 ## `0.9` "Front end"
