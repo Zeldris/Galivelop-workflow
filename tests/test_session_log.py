@@ -18,7 +18,7 @@ import waits
 from test_hooks import ROOT, Project, Snapshot
 
 SCRIPTS = ("session-start.sh", "recover.py", "session_log.py", "doctor.py", "handoff.py", "context_guard.py",
-           "change-size.py", "whole-read.py", "questions.py", "mode.py", "models.py")
+           "change-size.py", "whole-read.py", "questions.py", "mode.py", "models.py", "roadmap.py")
 
 
 MARK_VAR = "GW_TEST_PROC_MARK"
@@ -914,6 +914,39 @@ class Recover(Base):
         code, out = self.p.run_recover("--state", cwd=d)
         self.assertNotIn("review overdue", out)
         self.assertNotIn("Traceback", out)
+
+    # ---- D166: the open rows of the version in progress
+
+    def roadmap_line(self, branch, table=None, config=True):
+        p = self.p
+        rows = table or ("| D1 | one | hecho (2026-11-01) |\n| D2 | two | pendiente |\n| D3 | three | en curso |\n")
+        (p.work / "docs").mkdir(exist_ok=True)
+        (p.work / "docs" / "roadmap.md").write_text(
+            "# Roadmap\n\n## `0.8.2` patch\n\n| ID | Task | Status |\n|---|---|---|\n" + rows + "\n## `0.9` next\n\n"
+            "| ID | Task | Status |\n|---|---|---|\n| E1 | later | pendiente |\n")
+        if config:
+            cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+            cfg["roadmapFiles"] = [{"path": "docs/roadmap.md", "done": "hecho", "open": ["pendiente", "en curso"]}]
+            (p.work / ".claude" / "gw.json").write_text(json.dumps(cfg))
+        p.git("checkout", "-q", "-b", branch, "main")
+        code, out = p.run_recover("--state")
+        self.assertEqual(code, 0, out)
+        return next((l for l in out.splitlines() if l.startswith("- Roadmap ")), None)
+
+    def test_state_lists_the_open_rows_of_the_version_branch(self):
+        line = self.roadmap_line("version/0.8.2")
+        self.assertTrue(line.startswith("- Roadmap 0.8.2: 2 open row(s): D2, D3 ("), line)
+        self.assertIn("roadmap.py list 0.8.2)", line)
+
+    def test_state_says_no_open_rows(self):
+        self.assertEqual(self.roadmap_line("version/0.8.2", "| D1 | one | hecho (2026-11-01) |\n"),
+                         "- Roadmap 0.8.2: no open rows")
+
+    def test_state_has_no_roadmap_line_off_a_version_branch(self):
+        self.assertIsNone(self.roadmap_line("feature/x"))
+
+    def test_state_has_no_roadmap_line_without_the_section_or_config(self):
+        self.assertIsNone(self.roadmap_line("version/7.7.7"))
 
     # ---- B46: the current task
 
