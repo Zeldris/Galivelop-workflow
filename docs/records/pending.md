@@ -102,6 +102,21 @@ Hallazgos menores de las revisiones por rama de la oleada 1 (2026-11-22); no se 
   `date.today()` es hora local y el `commit-msg` usa la fecha del commit; `next-id` en `pendingFile` sin `\b`
   («abcD99»); falta el test de «Actualizado» en español en `set-row`.
 
+Hallazgos menores de la oleada 2 (2026-11-22):
+
+- [ ] `0.9` · **D161/D165 (`apply.py`):** el recuento por nombre viejo se hace tras filtrar `legacyNamesSkip`, pero el
+  `git grep -n -F` sugerido lista también los saltados (cifra y salida pueden no casar: decirlo en el mensaje); la
+  ayuda de `--summary` no nombra el recuento.
+- [ ] `0.9` · **D166 (`recover.py`, `roadmap.py`):** `except Exception: return []` esconde un `ImportError` o un fallo de
+  `roadmap.py` (capturar solo `RoadmapError`/`OSError`/`ValueError`); en `version/X.Y.Z` sin su sección cae a la de
+  `X.Y` con la etiqueta `X.Y.Z` (decir qué sección usa); `open_rows` da por cerrado todo estado que no empieza por una
+  palabra de `open` («aplazada» también: documentarlo); faltan tests de falla suave (sin `roadmapFiles`, HEAD
+  desacoplado, sección ausente).
+- [ ] `0.9` · **D162 (`apply.py`):** `ledger` con globs, `./`, `../` o absoluto no casa en `paths-ignore` (solo
+  documentado en `config.md`; validar o normalizar).
+- [ ] `0.9` · **Tests de tiempo:** `test_session_log.SessionStart.test_command_kill_grace_key_shortens_the_wait_before_kill`
+  falla con la máquina cargada (5,2 s y 12 s contra un tope de 5 s; solo da 4,7 s). Ampliar el margen o medir otra cosa.
+
 ## De la retro del parche `0.8.1`
 
 - [x] `0.8.2` · **D144 (`measure.py`, fallo; antes «D142», id repetido):** sin `--session`, en la nube mide una sesión vieja de la carpeta del

@@ -34,6 +34,19 @@ Parche de la recogida H26 (filas de la `0.8.2` en `docs/roadmap.md`). / Patch fr
   también `pendingFile`.
 - Diagnóstico (D158, D159): `doctor.py` avisa si la carpeta de `workflowClone` no existe y si los agentes
   `gw-worker`/`gw-reviewer` están ignorados por el `.gitignore`.
+- Subagentes (D146, D153): `gw-reviewer` ya no tiene la herramienta `Agent`; el encargo de `gw-orchestrate-dealer`
+  pide probar cada test nuevo en rojo sin el arreglo con `red-without-fix.sh`.
+- Plantillas e instalación (D148, D164): las plantillas de `AGENTS.md` no piden commit solo para el ledger de
+  métricas; `apply.md` recomienda un repo por sesión en la nube.
+- Aviso de `Findings:` (D155): el defecto de `metrics.quality.findingsWords` pasa a `["arreglos de la revisión",
+  "review fixes"]`; «hallazgo» o «finding» sueltos ya no avisan. Quien contaba con ellos sin fijarlos en su `gw.json`
+  pierde el aviso: añádalos ahí.
+- Arranque (D156, D166): con `contextGuard.systemAdvice`, el aviso de arranque se mide sin la parte del sistema que el
+  usuario no puede recortar; `recover.py --state` da las filas abiertas del roadmap en una rama `version/X.Y[.Z]`.
+- `apply.py` (D161, D165): `--dry-run --summary` da un recuento por nombre viejo; el aviso de nombres viejos sugiere
+  `legacyNamesSkip` cuando cita texto de otros repos.
+- CI y retro (D162, D163): la plantilla `check.yml` no corre en un push que solo toca el ledger de métricas
+  (`paths-ignore`, desde `metrics.ledger`); `retro` ya no da por hechos ids de letra.
 
 ### EN
 
@@ -52,6 +65,19 @@ Parche de la recogida H26 (filas de la `0.8.2` en `docs/roadmap.md`). / Patch fr
   `pendingFile`.
 - Diagnostics (D158, D159): `doctor.py` warns when the `workflowClone` folder does not exist and when the
   `gw-worker`/`gw-reviewer` agents are git-ignored.
+- Subagents (D146, D153): `gw-reviewer` no longer has the `Agent` tool; the `gw-orchestrate-dealer` brief asks to
+  prove each new test red without the fix with `red-without-fix.sh`.
+- Templates and install (D148, D164): the `AGENTS.md` templates ask for no commit only for the metrics ledger;
+  `apply.md` recommends one repo per cloud session.
+- `Findings:` warning (D155): the default of `metrics.quality.findingsWords` becomes `["arreglos de la revisión",
+  "review fixes"]`; lone "hallazgo" or "finding" no longer warn. If you relied on them without setting them in your
+  `gw.json`, add them there.
+- Startup (D156, D166): with `contextGuard.systemAdvice`, the startup warning is measured without the system part the
+  user cannot trim; `recover.py --state` lists the open roadmap rows on a `version/X.Y[.Z]` branch.
+- `apply.py` (D161, D165): `--dry-run --summary` gives one count per legacy name; the legacy-names warning suggests
+  `legacyNamesSkip` when it quotes other repos' text.
+- CI and retro (D162, D163): the `check.yml` template does not run on a push that only touches the metrics ledger
+  (`paths-ignore`, from `metrics.ledger`); `retro` no longer assumes letter ids.
 
 ## [0.8.1] - 2026-11-19
 
