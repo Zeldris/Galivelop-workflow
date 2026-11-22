@@ -13,7 +13,7 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
-## [0.8.2] - Unreleased
+## [0.8.2] - 2026-11-22
 
 Parche de la recogida H26 (filas de la `0.8.2` en `docs/roadmap.md`). / Patch from the H26 harvest (`0.8.2` rows in
 `docs/roadmap.en.md`).

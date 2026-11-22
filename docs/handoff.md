@@ -11,7 +11,7 @@
 | Rama | **Parche `0.8.2`: `version/0.8.2`**, desde `main` (`4ca45d0` = **`0.8.1`**). La `0.9` sigue en `ccr-d1e2d496-0vzck8`. `version/1.0.0` se queda con el diseño (`docs/design/`) |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | **Oleadas 1 y 2 de la `0.8.2` fusionadas** (todas las filas D142-D166 hechas; cada rama revisada, menores en `pending.md`), CHANGELOG al día; `MISSING_ITEMS` cerrados (fila `metrics` de `docs/es/config.md`, README en `0.8.2`) y test de la retro al día con D163. `main` = `4ca45d0` = `0.8.1` |
+| Último punto estable | **Oleadas 1 y 2 de la `0.8.2` fusionadas** (todas las filas D142-D166 hechas; cada rama revisada, menores en `pending.md`), CHANGELOG al día; `MISSING_ITEMS` cerrados (fila `metrics` de `docs/es/config.md`, README en `0.8.2`) y test de la retro al día con D163; CHANGELOG fechado (`version.py --release` lo exige en `version/*`). **Ojo:** hasta este commit nada de la `0.8.2` estaba subido (`origin` seguía en `f6f6529`). `main` = `4ca45d0` = `0.8.1` |
 | Siguiente paso | **Parche `0.8.2`, cierre:** fases antes de `main` (1: `/code-review` de lo que lista `review-scope.py`; 2: `/gw-opt-tokens` y `/retro`; 3: `reviewed.sh`); `main` solo con confirmación del usuario; publicar; fusionar en la `0.9` (ojo: clave `language` en `main` frente a `languages.docs.primary` de A12) y cerrarla. Q-7 y Q-8 esperan al usuario. Presupuesto de compactaciones: 2 |
 
 ### Fases
