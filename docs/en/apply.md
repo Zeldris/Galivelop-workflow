@@ -23,7 +23,7 @@ which do not load plugins declared in the repo.
    becoming a working folder of the session (it would load its `CLAUDE.md` and skills): if it is public, a plain
    `git clone`; if it is added with `add_repo`, do not register it as a root, and check the path it returns with `ls`
    (it may come lowercased and not exist).
-3. **The session is opened with the project as its working folder.** Opened elsewhere, it does not load
+3. **The session is opened with the project as its working folder.** In the cloud, open each session with **a single repo**: with two, the start hook does not run and nothing warns about it. Opened elsewhere, it does not load
    `.claude/settings.json` (nor the hooks). If it is not, ask the person to reopen it from the project.
 4. `git status` is clean in the project, or the person knows what is unpushed. Generated files (`__pycache__/`,
    `node_modules/`, `target/`, build output) are in `.gitignore`: running the check must not dirty the tree.
