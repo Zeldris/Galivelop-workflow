@@ -197,7 +197,7 @@ def previous_session(path, root, since, cut=False):
 def default_session(root, since=None, cut=False):
     """The session in progress: the newest `.jsonl` of the root's log folder, of a parent folder's or of the cloud
     start folder (D144; on a tie in mtime the repo's own folder wins, D139); exits if there is none.
-    With an explicit period (`cut` false) the one with most responses from that moment on (the newest file may be a later session that
+    With the default period (`cut`) that session whatever its calls; with an explicit period the one with most responses from that moment on (the newest file may be a later session that
     does not cover the period); the newest if none has any."""
     root = os.path.abspath(root)
     candidates = session_logs(root)
@@ -205,18 +205,18 @@ def default_session(root, since=None, cut=False):
         sys.exit(f'No sessions in ~/.claude/projects/{folder_of(root)}/ or its parent folders (use --session)')
     own_folder = folder_of(root)
     path = max(candidates, key=lambda p: (os.path.getmtime(p), os.path.basename(os.path.dirname(p)) == own_folder))
-    if since:
+    if since and not cut:  # explicit period: the log covering it, D139's folder preference, never another branch's (D151)
+        branch = branch_of(path)
+        if branch:  # a log of another branch is out; one without `gitBranch` is not discarded
+            candidates = [p for p in candidates if p == path or branch_of(p) in (None, branch)]
         covered = {p: len(responses_of(p, cut_since(p, since, cut))) for p in candidates}
-        if cut and covered[path]:
-            pass  # D144: no explicit period: the session in progress is the newest of all folders (D139 only breaks a tie)
-        else:
-            # D139: the repo's own log folder first; a parent folder's (a session opened above the repo) only when
-            # none of the repo's logs has calls in the period.
-            own = [p for p in candidates if os.path.basename(os.path.dirname(p)) == own_folder and covered[p] > 0]
-            if own:
-                candidates = own
-            if max(covered[p] for p in candidates) > 0:
-                path = max(candidates, key=lambda p: (covered[p], os.path.getmtime(p)))
+        # D139: the repo's own log folder first; a parent folder's (a session opened above the repo) only when
+        # none of the repo's logs has calls in the period.
+        own = [p for p in candidates if os.path.basename(os.path.dirname(p)) == own_folder and covered[p] > 0]
+        if own:
+            candidates = own
+        if max(covered[p] for p in candidates) > 0:
+            path = max(candidates, key=lambda p: (covered[p], os.path.getmtime(p)))
     folder = os.path.basename(os.path.dirname(path))
     cloud_start = os.environ.get('CLAUDE_CODE_REMOTE') == 'true' and folder == '-home-user'  # where the cloud starts
     if folder != folder_of(root) and not cloud_start:

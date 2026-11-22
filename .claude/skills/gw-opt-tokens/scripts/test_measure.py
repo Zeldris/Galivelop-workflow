@@ -454,6 +454,25 @@ class Measure(unittest.TestCase):
         self.assertNotIn('other.jsonl', r.stdout)
         self.assertIn('API calls: 2', r.stdout)
 
+    def test_d151_explicit_period_never_picks_a_log_of_another_branch(self):
+        for args in (('--hours', '24'), ('--since', ago(5))):
+            r = self.short_session(5, previous=(('other', 'main'),), args=args, previous_calls=7)  # other has more calls
+            self.assertIn('Session: cur.jsonl', r.stdout, args)
+            self.assertNotIn('other.jsonl', r.stdout)
+
+    def test_d144_newest_session_without_calls_in_the_default_period_is_still_the_one(self):
+        home, repo = folder(), folder()
+        subprocess.run(['git', 'init', '-q', repo], check=True)
+        proj = os.path.join(home, '.claude', 'projects', '-home-user')
+        old = log(os.path.join(proj, 'older.jsonl'), *[response(f'o{n}', 5, timestamp=ago(2)) for n in range(3)])
+        log(os.path.join(proj, 'cur.jsonl'), response('c', 5, timestamp=ago(30)))  # the newest file, calls out of the 24 h
+        os.utime(old, (100, 100))
+        env = {**os.environ, 'HOME': home, 'CLAUDE_CODE_REMOTE': 'true'}
+        r = subprocess.run(['python3', MEASURE], capture_output=True, text=True, cwd=repo, env=env)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn('No calls in that period', r.stderr)
+        self.assertNotIn('older.jsonl', r.stdout)
+
     def test_artifact_rows_show_the_action(self):
         """B22: HEAVIEST RESULTS tells `quickstart` from `publish` for Artifact calls."""
         parts = [response('a', 100, call('t1', '', name='Artifact', action='quickstart', intent='other')),
