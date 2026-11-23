@@ -386,6 +386,8 @@ Se hace al cerrar el desarrollo de la `0.9`, antes de publicarla: recogida y sus
 | D173 | Leves de `whole-read.py` de la revisión de E85 (`head -n +N`, `-` como entrada estándar, etiqueta, rango con un solo archivo, etapas de paso) y dos observaciones de `test_session_log.py` | hecho (2026-11-23) |
 | D174 | Leves `0.9` de la revisión del bloque 0.9 (copia preparada en el aviso de D169, `\b` de `pending_ids`, `ci_ledger_path`, nota de `models.py`) y P3 comprobado | hecho (2026-11-23) |
 | D175 | P1 y P4 de la `0.9` comprobados (ya hechos en E84 y E86) y marcados | hecho (2026-11-23) |
+| D176 | El `commit-msg` avisa de pedir `/clear` al cerrar una fila de tarea (clave `clearOnTaskClose`, retro `0.9` R1) | en curso |
+| D177 | `handoff.py check` avisa de una entrada abierta de `pending.md` que cita un id del roadmap ya cerrado (retro `0.9` R2) | en curso |
 
 ## `0.9` «Front»
 
