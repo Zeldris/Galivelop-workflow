@@ -823,6 +823,25 @@ def test_scan_skip_dirs(config):
     return list(_schema()["properties"]["testScanSkipDirs"]["default"])
 
 
+WORKFLOW_NAME = "galivelop-workflow"  # the `name` of the workflow's own .claude-plugin/plugin.json
+
+
+def plugin_field(cand, field):
+    """A field of `<cand>/.claude-plugin/plugin.json`, or None when it is unreadable or not an object."""
+    try:
+        data = json.loads((Path(cand) / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data.get(field) if isinstance(data, dict) else None
+
+
+def is_workflow(cand):
+    """A folder is the workflow repo only when it has the workflow layout and its plugin.json names the workflow (a
+    project that vendors the scripts has scripts/apply.py and skills/ too, and must not be taken for the workflow)."""
+    return (bool(cand) and (Path(cand) / "scripts" / "apply.py").is_file() and (Path(cand) / "skills").is_dir()
+            and plugin_field(cand, "name") == WORKFLOW_NAME)
+
+
 def workflow_clone(config):
     """The `workflowClone` key (D132): where a project looks for its workflow clone (relative to the repo root)."""
     given = config.get("workflowClone")

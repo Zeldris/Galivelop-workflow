@@ -71,22 +71,9 @@ def changed(root, base):
     return [p for p in out.split("\0") if p]
 
 
-WORKFLOW_NAME = "galivelop-workflow"
-
-
-def plugin_field(cand, field):
-    try:
-        data = json.loads((Path(cand) / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return None
-    return data.get(field) if isinstance(data, dict) else None
-
-
-def is_workflow(cand):
-    """A folder is the workflow repo only when it has the workflow layout and its plugin.json names the workflow (a
-    project that vendors the scripts has scripts/apply.py and skills/ too, and must not be run as the workflow)."""
-    return (bool(cand) and (Path(cand) / "scripts" / "apply.py").is_file() and (Path(cand) / "skills").is_dir()
-            and plugin_field(cand, "name") == WORKFLOW_NAME)
+WORKFLOW_NAME = config.WORKFLOW_NAME
+plugin_field = config.plugin_field
+is_workflow = config.is_workflow
 
 
 def plugin_version(cand):

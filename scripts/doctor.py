@@ -1464,25 +1464,16 @@ def check_profiles(rep, root):
                      f"remove it from the file; assign people with `{tool} assign <email>`, which stores the hash")
 
 
-WORKFLOW_NAME = "galivelop-workflow"  # the `name` of the workflow's own .claude-plugin/plugin.json
-
-
-def is_workflow(path):
-    """Same test as review-scope.py: the workflow layout and a plugin.json that names the workflow."""
-    path = Path(path)
-    try:
-        name = json.loads((path / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8")).get("name")
-    except (OSError, ValueError, AttributeError):
-        return False
-    return (path / "scripts" / "apply.py").is_file() and (path / "skills").is_dir() and name == WORKFLOW_NAME
+WORKFLOW_NAME = config.WORKFLOW_NAME
+is_workflow = config.is_workflow
 
 
 def check_workflow_clone(rep, root, cfg, workflow=None):
     """D158: WARN when review-scope.py would find no workflow copy (it needs one to tell what is `vendored`): the
     `--workflow` folder or $GW_WORKFLOW when given (a wrong one is a WARN, as review-scope.py fails on it), else
     the folder of `workflowClone`, which must be the workflow repo and not just exist. The workflow repo itself has
-    no clone to find, so it says nothing."""
-    if not cfg or is_workflow(root):
+    no clone to find (nor does a run from a workflow clone with `--root <project>`), so it says nothing."""
+    if not cfg or is_workflow(root) or is_workflow(HERE.parent):
         return
     for origin, cand in (("--workflow", workflow), ("GW_WORKFLOW", os.environ.get("GW_WORKFLOW"))):
         if not cand:

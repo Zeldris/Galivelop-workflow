@@ -135,12 +135,12 @@ Leves de la revisión de D166 (`554568c`, 2026-11-22):
 
 Leves de la revisión de D158 (`ec31444`, 2026-11-22):
 
-- [ ] `0.9` · **`doctor.py:1481`:** `check_workflow_clone` no usa, como `review-scope.py:115`, el propio repo del script
+- [x] `0.9` · **`doctor.py:1481`:** `check_workflow_clone` no usa, como `review-scope.py:115`, el propio repo del script
   (`HERE.parent`): con `doctor.py --root <proyecto>` desde un clon del flujo avisa de más. Volver pronto si
   `is_workflow(Path(__file__).resolve().parent.parent)`.
-- [ ] `0.9` · **`doctor.py:1467`:** `WORKFLOW_NAME` e `is_workflow` copian `review-scope.py:74-89` («un dato, un
+- [x] `0.9` · **`doctor.py:1467`:** `WORKFLOW_NAME` e `is_workflow` copian `review-scope.py:74-89` («un dato, un
   sitio»): importarlos o llevarlos a `config.py`. Además, `handoff.py archive` (~1739) aún usa la fecha UTC y no `today()`.
-- [ ] `0.9` · **D154 (`a6837e7`):** el commit de D144/D142/D152 se subió con `WIP:` por un check que no se había
+- [x] `0.9` · **D154 (`a6837e7`):** el commit de D144/D142/D152 se subió con `WIP:` por un check que no se había
   completado; el check completo del pre-push salió en verde sobre `a6837e7` (2026-11-22). No se reescribe.
 
 ### Leves de la revisión de E85 (`20945e6`…`0e6353b`)

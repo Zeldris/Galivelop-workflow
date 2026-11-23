@@ -1736,7 +1736,7 @@ def main(argv=None):
             print(f"handoff: WARNING: skipping the {what} check of this commit: {exc}", file=sys.stderr)
             return 0
         if args.cmd == "archive":
-            args.date = args.date or datetime.datetime.now(datetime.timezone.utc).date().isoformat()
+            args.date = args.date or today()
         elif args.cmd in ("done", "add-decision"):
             args.date = args.date or today()
         elif (not ctx.config.get("logRows") and args.cmd not in ("check", "archive", "next-id", "move-pending",

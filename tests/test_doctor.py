@@ -1696,6 +1696,14 @@ class Doctor(Snapshot):
         self.assertIn("git clone", line)
         self.assertIn('"workflowClone"', line)
 
+    def test_workflow_clone_is_quiet_when_run_from_the_workflow_repo_on_a_project(self):
+        # D171: the script's own repo is the workflow, so `--root <project>` has no clone to look for
+        self.set_cfg(branchCheck="full", workflowClone="../no-such-clone")
+        repo = Path(__file__).resolve().parent.parent
+        out = self.p.run("python3", str(repo / "scripts" / "doctor.py"), "--root", str(self.p.work), cwd=self.tmp)[1]
+        self.assertNotIn("workflow clone", out)
+        self.assertLine(self.doctor()[1], "WARN", "workflow clone", "../no-such-clone")  # the project's own copy still warns
+
     def test_workflow_clone_present_is_quiet(self):
         self.make_workflow(self.p.work.parent / "clone")
         self.set_cfg(branchCheck="full", workflowClone="../clone")

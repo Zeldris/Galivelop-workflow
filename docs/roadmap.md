@@ -381,6 +381,7 @@ Se hace al cerrar el desarrollo de la `0.9`, antes de publicarla: recogida y sus
 | D168 | `gw-selector` lee solo la línea del resumen de `metrics.py quality --period month` (leve de `pending.md`) | hecho (2026-11-22) |
 | D169 | El `pre-commit` avisa si un `scripts/` preparado difiere de su copia en `.claude/gw/scripts/` (antes D143, id repetido; retro del parche `0.8.1`) | hecho (2026-11-22) |
 | D170 | Medios de la revisión de E85: el test de `commandKillGrace` no depende del arranque de Python; cabecera y `config.md` dicen la excepción `cat F \| head -n N` | hecho (2026-11-22) |
+| D171 | Leves de la revisión de D158: `is_workflow` y `WORKFLOW_NAME` solo en `config.py`; `check_workflow_clone` calla desde un clon del flujo; `handoff.py archive` usa `today()` | hecho (2026-11-23) |
 
 ## `0.9` «Front»
 
