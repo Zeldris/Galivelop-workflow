@@ -383,6 +383,7 @@ Se hace al cerrar el desarrollo de la `0.9`, antes de publicarla: recogida y sus
 | D170 | Medios de la revisión de E85: el test de `commandKillGrace` no depende del arranque de Python; cabecera y `config.md` dicen la excepción `cat F \| head -n N` | hecho (2026-11-22) |
 | D171 | Leves de la revisión de D158: `is_workflow` y `WORKFLOW_NAME` solo en `config.py`; `check_workflow_clone` calla desde un clon del flujo; `handoff.py archive` usa `today()` | hecho (2026-11-23) |
 | D172 | Revisión del bloque 0.9: el aviso de copia instalada del `pre-commit` (D169) solo corre en el repo del flujo, no en los proyectos que lo usan | hecho (2026-11-23) |
+| D173 | Leves de `whole-read.py` de la revisión de E85 (`head -n +N`, `-` como entrada estándar, etiqueta, rango con un solo archivo, etapas de paso) y dos observaciones de `test_session_log.py` | hecho (2026-11-23) |
 
 ## `0.9` «Front»
 

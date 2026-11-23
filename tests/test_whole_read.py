@@ -296,6 +296,22 @@ class Ranges(Base):  # E85: a long range of the log or a roadmap file read by Ba
         self.assertIn("to the end", self.warning(self.bash("cat docs/log.md | sed -n p")))
         self.assertIn("docs/roadmap.md", self.warning(self.bash("cat docs/roadmap.md | head -n 200")))
 
+    def test_piped_range_forms_of_the_e85_review_warn_with_a_clean_label(self):  # D173
+        for command in ("cat docs/log.md | head -n +200", "cat docs/log.md | head -n200 -", "cat docs/log.md | head -n 200 | cat -n",
+                        "cat docs/log.md | sed -n 1,500p | less", "sed -n 1,5000p docs/log.md | head -n 200",
+                        "cat docs/log.md | cat | head -n 200", "cat < docs/log.md | head -n 200"):
+            text = self.warning(self.bash(command))
+            for part in ("docs/log.md is 1001 bytes", "reads 200 lines of it") if "500p" not in command else ("docs/log.md is 1001 bytes", "reads 500 lines of it"):
+                self.assertIn(part, text, command)
+        text = self.warning(self.bash("cat < docs/log.md | head -n 200"))
+        self.assertIn("this `cat < docs/log.md | head -n 200`", text)
+        self.assertNotIn("  ", text.split("this `", 1)[1].split("`", 1)[0])
+
+    def test_a_piped_range_is_not_applied_to_several_files_or_to_a_sink_after_it(self):  # D173
+        for command in ("cat docs/log.md docs/roadmap.md | head -n 200", "cat docs/log.md | head -n 200 | tee out.txt",
+                        "cat docs/log.md | head -n 200 | wc -l", "cat docs/log.md | head -n 200 other.txt"):
+            self.assertEqual(self.bash(command), "", command)
+
     def test_a_piped_range_that_is_short_or_not_the_files_own_stays_silent(self):  # E85
         for command in ("cat docs/log.md | head -n 20", "cat docs/log.md | head", "cat docs/log.md | head -n 200 other.txt",
                         "cat docs/log.md | head -n 200 > out.txt", "cat docs/log.md | head -n 200 | wc -l",

@@ -438,6 +438,7 @@ def head_range(args):
         else:
             files.append(arg)
         if value is not None:
+            value = value[1:] if value.startswith("+") else value  # GNU: `-n +200` is 200 lines
             if not value.isdigit():
                 return None
             lines = int(value)
@@ -497,18 +498,26 @@ def passes_through(rest):
 
 
 def piped_range(rest):
-    """(name, lines) when the command a pipe feeds (the first of `rest`) is a `head` or `sed -n A,Bp` with no file of its
-    own whose output reaches the context (E85: `cat F | head -n 200` reads 200 lines of F); else None."""
-    for item in rest:
+    """(name, lines) when the command a pipe feeds is a `head` or `sed -n A,Bp` with no file of its own (an operand `-`
+    is the standard input) whose output reaches the context (E85: `cat F | head -n 200` reads 200 lines of F). Stages
+    that only pass their input on (`| cat |`) are skipped before it, and stages that pass its output on (`| cat -n`)
+    may follow it; anything else gives None."""
+    for index, item in enumerate(rest):
         if item[0] != "cmd":
             continue
         _, words, inputs, sent, piped = item
         words = program_words(words)
-        if not words or sent or piped or inputs:
+        if not words or sent or inputs:
             return None
         name = os.path.basename(words[0])
         found = range_files(name, words[1:])
-        if found is None or found[0]:
+        if found is None:
+            if piped and whole_files(name, words[1:]) == []:
+                continue  # a stage that passes its input on: the range command may come after it
+            return None
+        if [f for f in found[0] if f != "-"]:
+            return None
+        if piped and not passes_through(rest[index + 1:]):
             return None
         return " ".join([name] + words[1:]), found[1]
     return None
@@ -539,13 +548,16 @@ def bash_reads(command, cwd):
                     cwd = os.path.join(cwd, os.path.expanduser(words[1]))
                 continue
             operands, lines = whole_files(name, words[1:]), None
+            label = " ".join([name] + words[1:] + [f"< {i}" for i in inputs])
             if operands is None:
                 operands, lines = range_files(name, words[1:]) or (None, None)
                 name = f"{name} " + " ".join(words[1:]) if lines is not None else name
-            if operands is not None and lines is None and piped and not sent:
+            # the range of a later `head`/`sed -n` (also after a range or a pass-through stage) is what reaches the
+            # context, but only when one file feeds it: with several, the count is not any one file's
+            if operands is not None and piped and not sent and len(operands + inputs) == 1:
                 tail = piped_range(items[index + 1:])
                 if tail:
-                    name, lines = f"{name} {' '.join(words[1:])} | {tail[0]}", tail[1]
+                    name, lines = f"{label} | {tail[0]}", tail[1] if lines is None else min(lines, tail[1])
                     piped = False
             if operands is None or sent or (piped and not passes_through(items[index + 1:])):
                 continue

@@ -347,13 +347,17 @@ class SessionStart(Base):
     def test_command_kill_grace_key_shortens_the_wait_before_kill(self):
         # Measured inside the command (TERM received -> last sign of life), not by the wall clock of the whole session
         # start, so a loaded machine does not move it: with the default grace it would be 5 s, with the key 1 s.
-        prog = ("import signal,time\n"
+        # It relies on `bash -c "python3 hold.py"` exec'ing python (bash 3.2 does too), so the KILL reaches python itself
+        # and `wait` returns only then.
+        prog = ("import os,signal,time\n"
                 "t=[0]\n"
                 "signal.signal(signal.SIGTERM, lambda *a: t.__setitem__(0, time.time()))\n"
                 "open('ready.txt','w').write('1')\n"
                 "while True:\n"
                 "    time.sleep(0.05)\n"
-                "    if t[0]: open('alive.txt','w').write(repr(time.time()-t[0]))\n")
+                "    if t[0]:\n"
+                "        open('alive.tmp','w').write(repr(time.time()-t[0]))\n"
+                "        os.replace('alive.tmp','alive.txt')  # KILL between open and write must not leave it empty\n")
         self.p.write("hold.py", prog)
         cloud = self.cloud_config(setup=["python3 hold.py"], commandTimeout=3, commandKillGrace=1)
         code, out = self.p.session_start(env=cloud)
