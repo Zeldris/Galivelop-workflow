@@ -170,11 +170,11 @@ Los dos medios se arreglaron en D170; lo demás queda aquí, sin arreglar.
 
 Propuestas en [`retro-2026-11-22-patch-0.8.2.md`](retro-2026-11-22-patch-0.8.2.md).
 
-- [ ] `0.9` · **P1:** `push.sh --wip` sube un commit `WIP:` sin esperar al verde, fuera de la rama protegida, y
+- [x] `0.9` · **P1:** (E84, 2026-11-22; comprobado en D175) `push.sh --wip` sube un commit `WIP:` sin esperar al verde, fuera de la rama protegida, y
   `before-stop.py` lo recomienda con commits sin subir y el último check en rojo.
 - [x] `0.9` · **P3:** (E85, D170, D173; D174 lo comprueba) `whole-read.py` avisa también de un `cat`/`sed`/`head` por `Bash` del `log` o de `roadmapFiles`
   por encima de `wholeReadWarnBytes`, con la orden que da lo mismo (cabecera de `scripts/whole-read.py`, tests de `test_whole_read.py`).
-- [ ] `0.9` · **P4:** `gw-orchestrate-dealer` reparte la revisión de la fase 1 de un diff grande (clave nueva) en
+- [x] `0.9` · **P4:** (E86; comprobado en D175) `gw-orchestrate-dealer` reparte la revisión de la fase 1 de un diff grande (clave nueva) en
   revisores por grupos de archivos más uno que cruce los contratos.
 - [ ] `0.10` · **P6:** barrido de los leves abiertos de `apply.py` (una tarea B).
 

@@ -384,6 +384,7 @@ Done when the `0.9` development closes, before publishing it: a harvest and its 
 | D172 | 0.9 block review: the `pre-commit` installed-copy warning (D169) runs only in the workflow repo, not in projects that use it | done (2026-11-23) |
 | D173 | `whole-read.py` minor findings from the E85 review (`head -n +N`, `-` as standard input, label, range only with one file, pass-through stages) and two `test_session_log.py` observations | done (2026-11-23) |
 | D174 | `0.9` minor findings from the 0.9 block review (staged copy in the D169 warning, `pending_ids` `\b`, `ci_ledger_path`, `models.py` note) and P3 verified | done (2026-11-23) |
+| D175 | `0.9` P1 and P4 verified (already done in E84 and E86) and marked | done (2026-11-23) |
 
 ## `0.9` "Front end"
 
