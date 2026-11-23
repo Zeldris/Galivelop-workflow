@@ -483,3 +483,14 @@ Menores de la revisión del diff entero contra `main`; no se revisan otra vez en
 - [ ] `0.10` · (E4, revisión, leve) `doctor.py` busca correos en claro en el texto crudo de los perfiles: uno escrito con escapes JSON (`@`) no se detecta. Buscar en los valores ya parseados (claves incluidas).
 - [ ] `0.10` · (E42, revisión, leve) `check_seo.py`: con `Disallow: /` junto a `Allow: /` en `User-agent: *` da `robots-blocks-all` (la precedencia Allow/Disallow no se evalúa); un `<svg><title>` tapa un `<title>` que falta; las rutas no ASCII del build no se comparan con su forma percent-encoded en el sitemap; las páginas excluidas con `--ignore` salen como destino hreflang que falta. Decidir cuáles merecen su caso.
 - [ ] `0.10` · (E75-E77, revisión, leve) Los tests de `gw-opt-tokens` copian `../../../scripts` y fallan en la copia instalada (`.claude/skills/…`); el `timeout` de 5400000 ms está escrito en cinco textos (`AGENTS.md`, sus plantillas, `gw-opt-tokens.md`, `gw-orchestrate-dealer`) y no sale de una clave de `.claude/gw.json`; con E75 cada ronda de `grilling` espera a una subida que, con E77, puede pasar por un `pre-push` largo antes de enseñar las preguntas. Decidir cuáles se arreglan.
+
+### Leves de la revisión del bloque 0.9 (`eb6c8cc`…`ca88948`, 2026-11-23)
+
+El importante se arregló en D172 (el aviso de D169 solo corre en el repo del flujo); lo demás queda aquí.
+
+- [ ] `0.9` · **`templates/githooks/pre-commit` (D169):** compara `scripts/<f>` preparado con la copia de `.claude/gw/` en disco, no con la preparada: tras `apply.py .` y `git add scripts/<f>` sin la copia no avisa. Comparar con `git show ":.claude/gw/$path"`.
+- [ ] `0.9` · **`handoff.py:784`:** el `\b{id_src}` necesita un carácter de palabra antes del id; con un patrón de id que empiece por no-palabra (`#\d+`) `pending_ids()` sale vacío y `next-id` puede repetir. Usar `(?<![A-Za-z0-9_])`.
+- [ ] `0.9` · **`apply.py:869` (`ci_ledger_path`):** rechaza `*?[` pero no `+`, un `!` inicial ni `\`, que los filtros de rutas de GitHub también tratan aparte: `docs/c++/ledger.jsonl` nunca casa en `paths-ignore`.
+- [ ] `0.9` · **`models.py:397`:** la nota «session model check did not run» sale en sesiones reanudadas o compactadas que nunca pasaron por el selector, en cada `SessionStart`. Mostrarla solo con un `Session:` anterior como prueba, o una vez por sesión.
+- Observación (sin acción): `doctor.py` `check_workflow_clone` no compara la versión del clon con la del proyecto; `review-scope.py` falla luego con «no workflow copy at vX» (anterior a este bloque).
+

@@ -209,7 +209,10 @@ if [ "${CLAUDECODE:-}" = "1" ] && [ "$ci" = "0" ]; then
 fi
 
 # D169: a staged scripts/ file that differs from its installed copy (apply.py . not run yet): warn, never refuse.
-if [ "$ci" = "0" ] && [ -d "$root/.claude/gw/scripts" ] && [ -d "$root/scripts" ]; then
+if [ "$ci" = "0" ] && [ -d "$root/.claude/gw/scripts" ] && [ -d "$root/scripts" ] \
+   && python3 -c 'import sys; sys.path.insert(0, sys.argv[1]); import config; sys.exit(0 if config.is_workflow(sys.argv[2]) else 1)' \
+        "$root/.claude/gw/scripts" "$root" 2>/dev/null; then
+  # only in the workflow repo: a project's own scripts/ has no copy to refresh (and no apply.py to refresh it with)
   scripts="$root/.claude/gw/scripts"
   if [ "$(python3 "$scripts/config.py" --root "$root" get installedCopyWarn 2>/dev/null)" != "false" ]; then
     stale=""

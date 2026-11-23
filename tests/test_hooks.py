@@ -3652,7 +3652,11 @@ class PreCommitInstalledCopy(Base):
     """D169: a staged scripts/ file that differs from its copy in .claude/gw/scripts/ is warned about, never refused."""
     WARNING = "these staged scripts/ files differ from their installed copy in .claude/gw/scripts/"
 
-    def stage(self, copy, source):
+    def stage(self, copy, source, workflow=True):
+        if workflow:  # the block runs only in the workflow repo itself (review of D169)
+            self.p.write("scripts/apply.py", "")
+            self.p.write("skills/.keep", "")
+            self.p.write(".claude-plugin/plugin.json", '{"name": "galivelop-workflow"}')
         self.p.write(".claude/gw/scripts/demo.py", copy)
         self.p.write("scripts/demo.py", source)
         self.p.git("add", "-A")
@@ -3670,6 +3674,13 @@ class PreCommitInstalledCopy(Base):
 
     def test_an_identical_copy_does_not_warn(self):
         self.stage("a = 1\n", "a = 1\n")
+        r = self.commit()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn(self.WARNING, r.stderr)
+
+    def test_a_project_that_only_uses_the_workflow_is_not_warned(self):
+        # its own scripts/ has no copy to refresh and no apply.py to refresh it with
+        self.stage("a = 1\n", "a = 2\n", workflow=False)
         r = self.commit()
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertNotIn(self.WARNING, r.stderr)
