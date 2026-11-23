@@ -92,7 +92,7 @@ Hallazgos menores de las revisiones por rama de la oleada 1 (2026-11-22); no se 
   `subagentTranscriptBytes`; en una sesión larga reanudada no avisa (límite documentado en `config.md`).
 - [x] `0.9` · **D152 (`tests-for.py`):** el prefijo `.claude/gw/` va escrito a mano (una ruta con `./` no casa);
   `tests/test_ci_local.py:226` no comprueba `code` y mezcla tres fases.
-- [ ] `0.9` · **D160 (`ci-local.py`):** otro ejecutor local de `check.yml` (act, a mano) sigue dejando `.gw-ci/`; mover
+- [ ] `0.9` · **(D160) `ci-local.py`:** otro ejecutor local de `check.yml` (act, a mano) sigue dejando `.gw-ci/`; mover
   la escritura a `$RUNNER_TEMP` en `templates/github/check.yml` (con `check.legacy-lines.txt` y `test_doctor.py`).
   Intento 2026-11-22 revertido: escribir el hook fuera del árbol rompe `.githooks/pre-commit`, que deriva su raíz de la
   ruta de su script; probar otra ruta dentro de `git rev-parse --git-dir` o un `git worktree` temporal, o pasar la raíz
@@ -201,7 +201,7 @@ Menores de la revisión del diff entero contra `main`; no se revisan otra vez en
 - [x] `0.9` · **D143 (`pre-commit`, copias instaladas):** avisar si un archivo preparado de `scripts/` difiere de su
   copia en `.claude/gw/scripts/` (falta `apply.py .`); hoy solo lo ve el check completo tras subir. Con su test.
   `retro-2026-11-19-patch-0.8.1.md`.
-- [ ] `0.10` · **B47 (barrido de `trace.py`):** cierra sus leves de abajo: D14 n.º 2 y C11-trace n.º 3 a 7.
+- [ ] `0.10` · **(B47) barrido de `trace.py`:** cierra sus leves de abajo (D14 n.º 2 y C11-trace n.º 3 a 7).
   `retro-2026-11-19-patch-0.8.1.md`.
 
 ## De la retro del parche `0.4.3`
@@ -418,7 +418,7 @@ Menores de la revisión del diff entero contra `main`; no se revisan otra vez en
 - [x] `0.8` · (B31, 2026-11-17: una línea por transcript, `contextGuard.warnedMax`, cerrojo) **Revisión B31 n.º 5**: el marcador del aviso de contexto (`<git dir>/gw-context-warn`) es uno por git dir y guarda solo el último tramo: dos sesiones en el mismo worktree, ambas cerca del corte, se lo pisan y avisan en cada turno (candidato: varias claves, una por transcript, o un archivo por sesión).
 - [ ] `0.10` · **Revisión D83 n.º 5** (leve): `apply.py --init --stack` con la lista vacía no quita un bloque `.gitignore` que ya existe.
 - [ ] `0.10` · **Revisión D83 n.º 9** (leve): el análisis y la unión de `staleRefs` están duplicados en `apply.py`, y `stale_pattern` repite lo de `rename_hook_scripts`.
-- [ ] `0.10` · **D127, seguimiento**: `apply.py --update` no refresca el bloque `.gitignore` de un proyecto ya iniciado (solo lo escribe el `--init` que crea `gw.json`).
+- [ ] `0.10` · **(D127) seguimiento**: `apply.py --update` no refresca el bloque `.gitignore` de un proyecto ya iniciado (solo lo escribe el `--init` que crea `gw.json`).
 - [x] `0.8` · (B42, 2026-11-17: una sesión por unidad, salida a archivo, `testUnitTimeout`) Herramienta: `tests-for.py --run` se quedó colgado en `test_hooks` (`PrePush`, `CheckCache`) con varios subagentes a la vez (oleada 2; ver el ítem de `pgrep`).
 - [ ] `0.10` · **Revisión D87 n.º 6** (leve): `tests/test_apply.py` cubre `<!-- if !clave -->` con false, true y ausente, pero no `! clave` con espacio ni `if !` sin clave.
 - [ ] `0.10` · **Revisión D94 n.º 1** (leve): `test_reviewed.py` no ejecuta la orden que imprime el consejo de `reviewed.sh` (escribe la ruta de `push.sh` a mano, raíz sin espacios): una cita `%q` rota seguiría en verde.
@@ -452,7 +452,7 @@ Menores de la revisión del diff entero contra `main`; no se revisan otra vez en
 - [ ] `0.10` · **Revisión C4 n.º 10** (leve): `is-code.sh` clasifica con el config del HEAD del clon principal, no del worktree (mitigado: usa primero la copia del worktree).
 - [ ] `0.10` · **Revisión C4-fix n.º 2** (leve): el agente puede desbloquearse editando `docs/questions.md` (siempre permitido, sin pregunta de `config-guard`) o escribiendo `.git/gw/current-task` con Write; documentarlo como límite o protegerlo.
 - [ ] `0.10` · **Revisión C4-fix n.º 3** (leve): con el flujo instalado como plugin de otra versión, una clave desconocida de `gw.json` da ConfigError y `questions-guard.py` rechaza todo código aunque `modes.questions` esté apagado; el `config.py validate` del mensaje (copia del proyecto) puede salir válido.
-- [ ] `0.10` · **C4** (regla «Todo configurable»): `task.GIT_TIMEOUT` (10 s) es una constante, no una clave de `gw.json`; decidir si pasa a config.
+- [ ] `0.10` · **(C4)** regla «Todo configurable»: `task.GIT_TIMEOUT` (10 s) es una constante, no una clave de `gw.json`; decidir si pasa a config.
 - [ ] `0.10` · **Revisión C12 n.º 3** (leve): la regex del trailer `Spike:` exige el prefijo actual; al cambiar `spikeBranch`, los commits marcados con el viejo dejan de contar (salvo por el asunto del merge).
 - [ ] `0.10` · **Revisión C12 n.º 5** (leve): en un octopus, la regex del asunto del merge solo mira la primera rama: un spike que no va primero no se detecta por el asunto.
 - [ ] `0.10` · **Revisión C12 n.º 9** (leve, confianza baja): `mark_spike` de `commit-message.py` reescribe el mensaje después de que las comprobaciones lo leyeran.
@@ -482,7 +482,7 @@ Menores de la revisión del diff entero contra `main`; no se revisan otra vez en
 - [ ] `0.10` · (E74, revisión, leve) Los ganchos que solo aconsejan (`whole-read.py`, `other-repo-read.py`) fallan abiertos, contra «fallan cerrados si les falta un dato» de `AGENTS.md`: apuntar allí la excepción.
 - [ ] `0.10` · (E4, revisión, leve) `doctor.py` busca correos en claro en el texto crudo de los perfiles: uno escrito con escapes JSON (`@`) no se detecta. Buscar en los valores ya parseados (claves incluidas).
 - [ ] `0.10` · (E42, revisión, leve) `check_seo.py`: con `Disallow: /` junto a `Allow: /` en `User-agent: *` da `robots-blocks-all` (la precedencia Allow/Disallow no se evalúa); un `<svg><title>` tapa un `<title>` que falta; las rutas no ASCII del build no se comparan con su forma percent-encoded en el sitemap; las páginas excluidas con `--ignore` salen como destino hreflang que falta. Decidir cuáles merecen su caso.
-- [ ] `0.10` · (E75-E77, revisión, leve) Los tests de `gw-opt-tokens` copian `../../../scripts` y fallan en la copia instalada (`.claude/skills/…`); el `timeout` de 5400000 ms está escrito en cinco textos (`AGENTS.md`, sus plantillas, `gw-opt-tokens.md`, `gw-orchestrate-dealer`) y no sale de una clave de `.claude/gw.json`; con E75 cada ronda de `grilling` espera a una subida que, con E77, puede pasar por un `pre-push` largo antes de enseñar las preguntas. Decidir cuáles se arreglan.
+- [ ] `0.10` · (E75-E77, revisión, leve) Los tests de `gw-opt-tokens` copian `../../../scripts` y fallan en la copia instalada (`.claude/skills/…`); el `timeout` de 5400000 ms está escrito en cinco textos (`AGENTS.md`, sus plantillas, `gw-opt-tokens.md`, `gw-orchestrate-dealer`) y no sale de una clave de `.claude/gw.json`; (E75) cada ronda de `grilling` espera a una subida que, (E77) puede pasar por un `pre-push` largo antes de enseñar las preguntas. Decidir cuáles se arreglan.
 
 ### Leves de la revisión del bloque 0.9 (`eb6c8cc`…`ca88948`, 2026-11-23)
 
@@ -497,7 +497,7 @@ El importante se arregló en D172 (el aviso de D169 solo corre en el repo del fl
 ### Para la retro de la `0.9` (2026-11-23, el usuario pidió anotarlo)
 
 - [ ] `0.9` · **Fallo: no se pidió `/clear` al cerrar tareas.** `AGENTS.md` («Relevos») manda parar, informar y pedir `/clear`
-  al cerrar cada tarea con la bitácora al día. En esta sesión se cerraron D171, D172, D173 y D174 seguidas, solo con
+  al cerrar cada tarea con la bitácora al día. En esta sesión se cerraron (D171, D172, D173, D174) seguidas, solo con
   preguntas sueltas («¿sigo con…?»), y fue el usuario quien lo echó en falta. Dos causas a mirar: (1) del agente: tomó el
   «Sí» ambiguo a una pregunta de dos opciones como orden de seguir y no trató cada cierre como parada obligatoria;
   (2) de los avisos: `before-stop.py` y `context_guard.py` (`contextGuard.clearAfterTask`, 0.25 del corte) deberían

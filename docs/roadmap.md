@@ -388,6 +388,7 @@ Se hace al cerrar el desarrollo de la `0.9`, antes de publicarla: recogida y sus
 | D175 | P1 y P4 de la `0.9` comprobados (ya hechos en E84 y E86) y marcados | hecho (2026-11-23) |
 | D176 | El `commit-msg` avisa de pedir `/clear` al cerrar una fila de tarea (clave `clearOnTaskClose`, retro `0.9` R1) | hecho (2026-11-23; aviso de /clear al cerrar una fila (clearOnTaskClose)) |
 | D177 | `handoff.py check` avisa de una entrada abierta de `pending.md` que cita un id del roadmap ya cerrado (retro `0.9` R2) | hecho (2026-11-23; check avisa de pendientes abiertos que citan un id cerrado (pendingClosedIdCheck)) |
+| D178 | Respuestas de Q-7 y Q-39: el aviso de modelo de D142 salta también tras una compactación (`recover.py --state`) y `pendingClosedIdCheck` se enciende aquí, con la excepción ampliada a «revisión»/«review» y a ids entre paréntesis | hecho (2026-11-23; aviso de modelo tras compactar y pendingClosedIdCheck encendido) |
 
 ## `0.9` «Front»
 

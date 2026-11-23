@@ -773,6 +773,27 @@ def hook_transcript(wait=3.0):
     return data if isinstance(data, dict) else None
 
 
+def compact_model_check(root, data):
+    """Q-7 (D178): after a compaction the session-start hook does not run, so the model warning of D142 (models.py
+    session-check) is printed here, as `- Warning:` lines; any failure only drops it (--state never fails)."""
+    try:
+        import contextlib
+        import io
+        import models
+        model = data.get("model")
+        model = model.get("id") if isinstance(model, dict) else model
+        transcript = data.get("transcript_path")
+        if not isinstance(transcript, str) or not transcript:
+            return []
+        buf = io.StringIO()
+        with contextlib.redirect_stdout(buf):
+            models.main(["--root", str(root), "session-check", "--transcript", transcript,
+                         "--model", model if isinstance(model, str) else ""])
+        return [f"- Warning: {l}" for l in buf.getvalue().splitlines() if l.strip()]
+    except Exception:
+        return []
+
+
 LEGACY_FLAGS = {"--estado": "--state", "--buscar": "--search", "--sesion": "--session", "--ancho": "--width"}
 
 
@@ -807,6 +828,8 @@ def main(argv=None):
             state(root, args.session or data.get("transcript_path"), lines, logs, source)
             if source in ("clear", "compact") and data.get("session_id"):
                 forget_reads(data["session_id"])
+            if source == "compact":
+                lines.extend(compact_model_check(root, data))
         except BrokenPipeError:
             raise
         except Exception as exc:  # fail open: the hook must never break the session

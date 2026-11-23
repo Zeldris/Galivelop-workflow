@@ -579,6 +579,21 @@ class Recover(Base):
             self.assertEqual((tmp / "gw-reads-s1.json").exists(), not gone, source)
             self.assertTrue((tmp / "gw-reads-s2.json").exists(), "another session's reads stay")
 
+    def test_a_compaction_warns_when_the_session_model_is_not_the_selectors_d178(self):  # Q-7
+        p = self.p
+        transcript = p.work / "t.jsonl"
+        transcript.write_text(json.dumps({"type": "assistant", "message": {
+            "model": "claude-sonnet-5-5", "content": [{"type": "text", "text": "Session: large high (current: ...)"}]}}) + "\n")
+        code, out = p.run_recover("--state", stdin=json.dumps({"transcript_path": str(transcript), "source": "compact"}))
+        self.assertEqual(code, 0, out)
+        self.assertIn("- Warning: the last gw-selector line recommends opus for this session, but it runs on "
+                      "claude-sonnet-5-5", out)
+        code, out = p.run_recover("--state", stdin=json.dumps(
+            {"transcript_path": str(transcript), "source": "compact", "model": "claude-opus-5-5"}))
+        self.assertNotIn("gw-selector line", out)  # the hook's model is the session's
+        code, out = p.run_recover("--state", stdin=json.dumps({"transcript_path": str(transcript), "source": "clear"}))
+        self.assertNotIn("gw-selector line", out)  # /clear starts a new transcript: the start hook's job
+
     def test_plain_log_shows_its_first_section(self):
         p = self.p
         p.write("docs/log.md", "# Log\n\nintro\n\n## State\n\n| Field | Value |\n|---|---|\n| Next step | ship it |\n\n"

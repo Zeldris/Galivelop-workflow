@@ -3237,10 +3237,11 @@ class HandoffPendingFile(Base):
         self.assertIn("cites E84", out)
 
     def test_closed_id_in_a_continuation_line_counts_and_exceptions_are_kept(self):
-        for entry in ("- [ ] P1: x\n  and E84 in the next line\n",):
+        for entry in ("- [ ] P1: x\n  and E84 in the next line\n", "- [ ] P1 (E85): x\n  but E84 here\n"):
             self.assertIn("cites E84", self.p.script("handoff.py", "check", str(self.closed_id_setup(entry)))[1])
         for entry in ("- [ ] Related: E84, a new requirement\n", "- [ ] **Related:** E84\n", "- [ ] P1: ver E84\n",
-                      "- [ ] P1: see E84\n", "- [ ] P1: see also `E84`\n", "- [ ] P1: Related: E84\n"):
+                      "- [ ] P1: see E84\n", "- [ ] P1: see also `E84`\n", "- [ ] P1: Related: E84\n",
+                      "- [ ] **Revisión E84 n.º 3** (leve): x\n", "- [ ] P1 (E84, E85): x\n", "- [ ] P1: Review `E84`\n"):
             with self.subTest(entry=entry):
                 self.assertEqual(self.p.script("handoff.py", "check", str(self.closed_id_setup(entry)), "--strict"), (0, ""))
 

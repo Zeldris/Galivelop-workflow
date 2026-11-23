@@ -387,6 +387,7 @@ Done when the `0.9` development closes, before publishing it: a harvest and its 
 | D175 | `0.9` P1 and P4 verified (already done in E84 and E86) and marked | done (2026-11-23) |
 | D176 | `commit-msg` warns to ask for `/clear` when a task row is closed (key `clearOnTaskClose`, `0.9` retro R1) | done (2026-11-23; /clear warning when a task row closes (clearOnTaskClose)) |
 | D177 | `handoff.py check` warns about an open `pending.md` entry citing an already closed roadmap id (`0.9` retro R2) | done (2026-11-23; check warns about open pending entries citing a closed id (pendingClosedIdCheck)) |
+| D178 | Answers to Q-7 and Q-39: the D142 model warning also fires after a compaction (`recover.py --state`) and `pendingClosedIdCheck` is turned on here, with the exemption widened to "revisión"/"review" and ids inside parentheses | done (2026-11-23; model warning after a compaction and pendingClosedIdCheck on) |
 
 ## `0.9` "Front end"
 

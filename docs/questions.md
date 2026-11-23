@@ -59,17 +59,21 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-7
 - Refs: D142
-- Status: open
+- Status: answered
 - Asked: 2026-11-22
 - Question: D142 (Q-6): ¿el aviso de modelo distinto del gancho de inicio salta también tras una compactación (matcher «compact» de SessionStart)? Hoy solo al arrancar, reanudar o tras /clear, y tras /clear el transcript es nuevo y no avisa
 - Recommendation: sí: el aviso salta también tras una compactación, dentro de la misma tarea
+- Answer: ok
+- Answered: 2026-11-23
 
 ## Q-8
 - Refs: D142
-- Status: open
+- Status: answered
 - Asked: 2026-11-22
 - Question: D142 (Q-6): ¿además, un aviso en cada mensaje del usuario (gancho UserPromptSubmit) mientras no cambie de modelo?
 - Recommendation: no: ruido y coste en cada turno; basta con el inicio, la compactación y la regla de la skill
+- Answer: ok
+- Answered: 2026-11-23
 
 ## Q-9
 - Refs: E77
@@ -343,7 +347,9 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-39
 - Refs: D177
-- Status: open
+- Status: answered
 - Asked: 2026-11-23
 - Question: D177 está apagado en este repo (pendingClosedIdCheck=false) por unos 60 falsos avisos de pending.md: ¿ampliar la excepción y encenderlo, limpiar pending.md, o dejarlo apagado?
 - Recommendation: ampliar la excepción de D177 a ids dentro de «Revisión …» o de un paréntesis «(B42, …)» y encender la clave; la alternativa, dejarla apagada aquí, hace que el aviso no proteja al propio flujo
+- Answer: ok, Q-7. ok, Q-8. ok
+- Answered: 2026-11-23

@@ -19,7 +19,7 @@
     "ui": []
   },
   "pendingFile": "docs/records/pending.md",
-  "pendingClosedIdCheck": false,
+  "pendingClosedIdCheck": true,
   "decisionsFile": "docs/records/decisions.md",
   "protectedBranch": "main",
   "review": {

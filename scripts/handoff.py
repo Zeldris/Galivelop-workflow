@@ -444,7 +444,13 @@ def pending_problems(ctx, text, me, pending=None):
     return []
 
 
-CLOSED_ID_EXEMPT = re.compile(r"(?:\bver|\bsee|\bsee also|\brelated)\s*:?\s*[*`]*$", re.I)
+CLOSED_ID_EXEMPT = re.compile(r"(?:\bver|\bsee|\bsee also|\brelated|\brevisi[oó]n|\breview)\s*:?\s*[*`]*$", re.I)
+
+
+def inside_parenthesis(before):
+    """Q-39: whether the id that follows `before` sits inside an open parenthesis of its own line ("(B42, D3)")."""
+    line = before.rsplit("\n", 1)[-1]
+    return line.count("(") > line.count(")")
 
 
 def closed_roadmap_ids(ctx):
@@ -470,8 +476,9 @@ def closed_roadmap_ids(ctx):
 def closed_id_problems(ctx, pending=None):
     """D177: with `pendingClosedIdCheck` (default true), one soft problem per open entry (`- [ ]`, with its indented
     continuation lines) of the pending file that cites an id whose roadmap row is closed, as if it were still to do.
-    Exempt: an entry that starts with `Related: <id>` and an id written right after ver / see / see also / related
-    (with an optional colon): those point at the closed task on purpose."""
+    Exempt: an entry that starts with `Related: <id>`, an id written right after ver / see / see also / related /
+    revisión / review (with an optional colon) and an id inside a parenthesis ("(B42, D3)", Q-39): those point at the
+    closed task on purpose."""
     rel = gwconfig.pending_file(ctx.config)
     if not rel or not ctx.config.get("pendingClosedIdCheck", True):
         return []
@@ -500,7 +507,7 @@ def closed_id_problems(ctx, pending=None):
             continue
         for m in ctx.id.finditer(text):
             if (m.group(0) in closed and (m.start() == 0 or not text[m.start() - 1].isalnum())
-                    and not CLOSED_ID_EXEMPT.search(text[:m.start()])):
+                    and not CLOSED_ID_EXEMPT.search(text[:m.start()]) and not inside_parenthesis(text[:m.start()])):
                 out.append(f"the open pending entry \"{entry[0].strip()[:70]}\" in {rel} cites {m.group(0)}, whose roadmap row "
                            f"is closed; close the entry, or write \"see {m.group(0)}\" / start it with \"Related: "
                            f"{m.group(0)}\" if the mention is on purpose (pendingClosedIdCheck in .claude/gw.json)")
