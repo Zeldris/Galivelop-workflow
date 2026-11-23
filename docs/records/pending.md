@@ -494,3 +494,16 @@ El importante se arregló en D172 (el aviso de D169 solo corre en el repo del fl
 - [x] `0.9` · **`models.py:397`:** la nota «session model check did not run» sale en sesiones reanudadas o compactadas que nunca pasaron por el selector, en cada `SessionStart`. Mostrarla solo con un `Session:` anterior como prueba, o una vez por sesión.
 - Observación (sin acción): `doctor.py` `check_workflow_clone` no compara la versión del clon con la del proyecto; `review-scope.py` falla luego con «no workflow copy at vX» (anterior a este bloque).
 
+### Para la retro de la `0.9` (2026-11-23, el usuario pidió anotarlo)
+
+- [ ] `0.9` · **Fallo: no se pidió `/clear` al cerrar tareas.** `AGENTS.md` («Relevos») manda parar, informar y pedir `/clear`
+  al cerrar cada tarea con la bitácora al día. En esta sesión se cerraron D171, D172, D173 y D174 seguidas, solo con
+  preguntas sueltas («¿sigo con…?»), y fue el usuario quien lo echó en falta. Dos causas a mirar: (1) del agente: tomó el
+  «Sí» ambiguo a una pregunta de dos opciones como orden de seguir y no trató cada cierre como parada obligatoria;
+  (2) de los avisos: `before-stop.py` y `context_guard.py` (`contextGuard.clearAfterTask`, 0.25 del corte) deberían
+  haber pedido el `/clear`, pero en la sesión solo llegó el aviso «Unverified» del gancho del entorno. Comprobar con
+  `python3 scripts/context_guard.py` si la conversación pasó el umbral (el trabajo repartido a subagentes mantiene baja la
+  del principal) y si el aviso se pierde cuando coinciden dos ganchos de parada. Propuesta a decidir en la retro:
+  que el cierre de una tarea (commit con `Refs:` de una tarea que pasa a hecha) pida el `/clear` por regla, sin
+  depender del umbral, o bajar `clearAfterTask`.
+

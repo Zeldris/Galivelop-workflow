@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.2` publicada** (`main` = `a725647`, 2026-11-22; las tres fases hechas, retro decidida; release `v0.8.2` de GitHub publicada desde una sesión local del usuario) y fusionada en la `0.9` |
-| Siguiente paso | **Cerrar la `0.9`** (E84-E86, los de D166, D158, D161/D165, D162, la revisión del bloque (D172) y whole-read.py (D173) hechos): los leves que quedan de `pending.md` marcados `0.9` y las fases antes de `main`. Q-7 y Q-8 esperan al usuario. E79-E83 van a la `1.0`. Presupuesto de compactaciones: 2 |
+| Siguiente paso | **Cerrar la `0.9`** (E84-E86, los de D166, D158, D161/D165, D162, la revisión del bloque (D172) y whole-read.py (D173) hechos): los leves que quedan de `pending.md` marcados `0.9` y las fases antes de `main`. Q-7 y Q-8 esperan al usuario. E79-E83 van a la `1.0`. **Antes de seguir, leer en `pending.md` «Para la retro de la `0.9`»** (fallo: no se pidió `/clear` al cerrar tareas). Presupuesto de compactaciones: 2 |
 
 ### Fases
 
