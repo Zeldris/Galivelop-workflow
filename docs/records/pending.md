@@ -506,4 +506,5 @@ El importante se arregló en D172 (el aviso de D169 solo corre en el repo del fl
   del principal) y si el aviso se pierde cuando coinciden dos ganchos de parada. Propuesta a decidir en la retro:
   que el cierre de una tarea (commit con `Refs:` de una tarea que pasa a hecha) pida el `/clear` por regla, sin
   depender del umbral, o bajar `clearAfterTask`.
+- `0.10` · **D173 (`whole-read.py`, revisión de la fase 1 de la `0.9`):** la condición de un solo operando se evalúa antes de expandir los globs: `cat docs/*.md | head -n 200` aplica el rango a cada archivo expandido. Arreglo: aplicar el rango solo si el operando no tiene `*?[` o se expande a un único archivo.
 
