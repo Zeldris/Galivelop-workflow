@@ -1,6 +1,8 @@
 # Retro: bloque `0.9` (2026-11-23)
 
-**Estado:** pendiente de la decisión del usuario (nada aplicado todavía).
+**Estado:** decidida por el usuario (2026-11-23, «seguimos tus recomendaciones»): R1 y R2 aprobadas y aplicadas (D176, D177); R3 rechazada como tarea nueva porque B43 ya la cubre; R4 y R5 sin acción.
+
+Queda una decisión derivada: D177 se dejó apagado en este repo (`pendingClosedIdCheck: false` en `.claude/gw.json`) porque unas 60 entradas de `pending.md` citan a propósito su tarea de origen; ver `docs/questions.md`.
 
 Fuentes: `measure.py` de esta sesión (22 llamadas, contexto medio 103k, 84 % arranque fijo), `pending.md`, el registro de
 desviaciones (`task.py deviations`) y la sesión de los cierres D171-D175. Todas las propuestas son **generales** (este repo

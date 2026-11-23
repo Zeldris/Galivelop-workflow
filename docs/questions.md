@@ -340,3 +340,10 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: documentarlo en templates/front/README.md: la plantilla se copia dentro de front.dir
 - Answer: lo recomendado (documentarlo en templates/front/README.md)
 - Answered: 2026-11-21
+
+## Q-39
+- Refs: D177
+- Status: open
+- Asked: 2026-11-23
+- Question: D177 está apagado en este repo (pendingClosedIdCheck=false) por unos 60 falsos avisos de pending.md: ¿ampliar la excepción y encenderlo, limpiar pending.md, o dejarlo apagado?
+- Recommendation: ampliar la excepción de D177 a ids dentro de «Revisión …» o de un paréntesis «(B42, …)» y encender la clave; la alternativa, dejarla apagada aquí, hace que el aviso no proteja al propio flujo
