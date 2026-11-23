@@ -868,11 +868,11 @@ def docs_language(cfg):
 
 def ci_ledger_path(ledger):
     """D162: `metrics.ledger` as the literal path `paths-ignore` matches. A leading `./` and doubled or trailing slashes
-    are normalized away; a glob character (`*`, `?`, `[`) would make the filter match something else, so it fails
-    closed. A path outside the repo (absolute or `../`) is left as is: no push touches it, the filter just never
+    are normalized away; a glob character (`*`, `?`, `[`), a `+`, a leading `!` or a `\\` would make the filter match
+    something else (GitHub treats them apart), so it fails closed. A path outside the repo (absolute or `../`) is left as is: no push touches it, the filter just never
     matches and CI runs (as documented in config.md)."""
-    if any(c in ledger for c in "*?["):
-        raise ApplyError(f"apply: metrics.ledger '{ledger}' has a glob character (*, ? or [), so the CI paths-ignore "
+    if any(c in ledger for c in "*?[+\\") or ledger.startswith("!"):
+        raise ApplyError(f"apply: metrics.ledger '{ledger}' has a glob character (*, ?, [, +, \\ or a leading !), so the CI paths-ignore "
                          f"would not match that file; use a literal path: edit metrics.ledger in {config.CONFIG_REL} "
                          f"(current value: python3 scripts/config.py get metrics.ledger)")
     if ledger.startswith("/"):

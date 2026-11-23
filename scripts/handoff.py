@@ -781,7 +781,7 @@ def pending_ids(ctx):
     if not path or not path.is_file():
         return set()
     text = path.read_text(encoding="utf-8", errors="replace")
-    return {m.group(0) for m in re.finditer(rf"\b{ctx.id_src}", text)}  # \b: "abcD99" is not D99
+    return {m.group(0) for m in re.finditer(rf"(?<![A-Za-z0-9_]){ctx.id_src}", text)}  # "abcD99" is not D99; works for ids starting with a non-word char
 
 
 def cmd_next_id(ctx, args):

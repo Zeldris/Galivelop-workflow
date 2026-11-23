@@ -1069,6 +1069,12 @@ class HandoffNextId(PlanRepo):
         self.p.write("docs/pending.md", "# Pending\n\n- abcINS-9 and xINS-8 are not ids; INS-7 is\n")
         self.assertEqual(self.next_id("INS"), (0, "INS-8"))
 
+    def test_a_pending_id_starting_with_a_non_word_char_is_seen(self):  # review of 0.9: \b needed a word char before it
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, pendingFile="docs/pending.md")))
+        self.p.write(self.PLAN, "- [ ] **#3** one\n")
+        self.p.write("docs/pending.md", "# Pending\n\n- see #7 later\n")
+        self.assertEqual(self.handoff("--plan", self.PLAN, "--id-regex", r"#\d+", "next-id", "#"), (0, "#8"))
+
     def test_a_prefix_is_whole_and_ids_without_a_dash_keep_none(self):
         self.p.write(self.PLAN, self.START + "- [ ] **INSX-40** other prefix\n")
         self.assertEqual(self.next_id("INS"), (0, "INS-3"))

@@ -218,9 +218,9 @@ if [ "$ci" = "0" ] && [ -d "$root/.claude/gw/scripts" ] && [ -d "$root/scripts" 
     stale=""
     while IFS= read -r path; do
       case "$path" in scripts/*) ;; *) continue ;; esac
-      copy="$root/.claude/gw/$path"
-      [ -f "$copy" ] || continue
-      git show ":$path" 2>/dev/null | cmp -s - "$copy" || stale="$stale$path"$'\n'
+      # the copy as staged, not as on disk: `git add scripts/<f>` without the copy must still warn
+      copy_id="$(git rev-parse -q --verify ":.claude/gw/$path" 2>/dev/null)" || continue
+      [ "$(git rev-parse ":$path")" = "$copy_id" ] || stale="$stale$path"$'\n'
     done <<<"$(git diff --cached --no-renames --name-only --diff-filter=ACM)"
     if [ -n "$stale" ]; then
       echo "pre-commit: WARNING: these staged scripts/ files differ from their installed copy in .claude/gw/scripts/, so the hooks run the old ones:" >&2

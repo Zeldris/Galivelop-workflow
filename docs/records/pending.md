@@ -172,8 +172,8 @@ Propuestas en [`retro-2026-11-22-patch-0.8.2.md`](retro-2026-11-22-patch-0.8.2.m
 
 - [ ] `0.9` · **P1:** `push.sh --wip` sube un commit `WIP:` sin esperar al verde, fuera de la rama protegida, y
   `before-stop.py` lo recomienda con commits sin subir y el último check en rojo.
-- [ ] `0.9` · **P3:** `whole-read.py` avisa también de un `cat`/`sed`/`head` por `Bash` del `log` o de `roadmapFiles`
-  por encima de `wholeReadWarnBytes`, con la orden que da lo mismo.
+- [x] `0.9` · **P3:** (E85, D170, D173; D174 lo comprueba) `whole-read.py` avisa también de un `cat`/`sed`/`head` por `Bash` del `log` o de `roadmapFiles`
+  por encima de `wholeReadWarnBytes`, con la orden que da lo mismo (cabecera de `scripts/whole-read.py`, tests de `test_whole_read.py`).
 - [ ] `0.9` · **P4:** `gw-orchestrate-dealer` reparte la revisión de la fase 1 de un diff grande (clave nueva) en
   revisores por grupos de archivos más uno que cruce los contratos.
 - [ ] `0.10` · **P6:** barrido de los leves abiertos de `apply.py` (una tarea B).
@@ -488,9 +488,9 @@ Menores de la revisión del diff entero contra `main`; no se revisan otra vez en
 
 El importante se arregló en D172 (el aviso de D169 solo corre en el repo del flujo); lo demás queda aquí.
 
-- [ ] `0.9` · **`templates/githooks/pre-commit` (D169):** compara `scripts/<f>` preparado con la copia de `.claude/gw/` en disco, no con la preparada: tras `apply.py .` y `git add scripts/<f>` sin la copia no avisa. Comparar con `git show ":.claude/gw/$path"`.
-- [ ] `0.9` · **`handoff.py:784`:** el `\b{id_src}` necesita un carácter de palabra antes del id; con un patrón de id que empiece por no-palabra (`#\d+`) `pending_ids()` sale vacío y `next-id` puede repetir. Usar `(?<![A-Za-z0-9_])`.
-- [ ] `0.9` · **`apply.py:869` (`ci_ledger_path`):** rechaza `*?[` pero no `+`, un `!` inicial ni `\`, que los filtros de rutas de GitHub también tratan aparte: `docs/c++/ledger.jsonl` nunca casa en `paths-ignore`.
-- [ ] `0.9` · **`models.py:397`:** la nota «session model check did not run» sale en sesiones reanudadas o compactadas que nunca pasaron por el selector, en cada `SessionStart`. Mostrarla solo con un `Session:` anterior como prueba, o una vez por sesión.
+- [x] `0.9` · **`templates/githooks/pre-commit` (D169):** compara `scripts/<f>` preparado con la copia de `.claude/gw/` en disco, no con la preparada: tras `apply.py .` y `git add scripts/<f>` sin la copia no avisa. Comparar con `git show ":.claude/gw/$path"`.
+- [x] `0.9` · **`handoff.py:784`:** el `\b{id_src}` necesita un carácter de palabra antes del id; con un patrón de id que empiece por no-palabra (`#\d+`) `pending_ids()` sale vacío y `next-id` puede repetir. Usar `(?<![A-Za-z0-9_])`.
+- [x] `0.9` · **`apply.py:869` (`ci_ledger_path`):** rechaza `*?[` pero no `+`, un `!` inicial ni `\`, que los filtros de rutas de GitHub también tratan aparte: `docs/c++/ledger.jsonl` nunca casa en `paths-ignore`.
+- [x] `0.9` · **`models.py:397`:** la nota «session model check did not run» sale en sesiones reanudadas o compactadas que nunca pasaron por el selector, en cada `SessionStart`. Mostrarla solo con un `Session:` anterior como prueba, o una vez por sesión.
 - Observación (sin acción): `doctor.py` `check_workflow_clone` no compara la versión del clon con la del proyecto; `review-scope.py` falla luego con «no workflow copy at vX» (anterior a este bloque).
 

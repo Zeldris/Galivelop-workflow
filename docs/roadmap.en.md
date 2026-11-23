@@ -383,6 +383,7 @@ Done when the `0.9` development closes, before publishing it: a harvest and its 
 | D171 | Minor findings of the D158 review: `is_workflow` and `WORKFLOW_NAME` only in `config.py`; `check_workflow_clone` stays quiet when run from a workflow clone; `handoff.py archive` uses `today()` | done (2026-11-23) |
 | D172 | 0.9 block review: the `pre-commit` installed-copy warning (D169) runs only in the workflow repo, not in projects that use it | done (2026-11-23) |
 | D173 | `whole-read.py` minor findings from the E85 review (`head -n +N`, `-` as standard input, label, range only with one file, pass-through stages) and two `test_session_log.py` observations | done (2026-11-23) |
+| D174 | `0.9` minor findings from the 0.9 block review (staged copy in the D169 warning, `pending_ids` `\b`, `ci_ledger_path`, `models.py` note) and P3 verified | done (2026-11-23) |
 
 ## `0.9` "Front end"
 

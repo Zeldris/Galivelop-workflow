@@ -129,6 +129,27 @@ def transcript_tail(path, tail_bytes):
     return rows
 
 
+def session_text_before_tail(path, tail_bytes, chunk=1 << 20):
+    """True when the text `Session: ` appears before the last `tail_bytes` of the transcript: the evidence that a selector
+    line exists but is out of reach. A resumed or compacted session that never had one has none (no note then)."""
+    needle = b"Session: "
+    try:
+        with open(path, "rb") as fh:
+            left = max(0, os.path.getsize(path) - tail_bytes)
+            carry = b""
+            while left > 0:
+                data = fh.read(min(chunk, left))
+                if not data:
+                    break
+                left -= len(data)
+                if needle in carry + data:
+                    return True
+                carry = data[-(len(needle) - 1):]
+    except (OSError, TypeError, ValueError):
+        return False
+    return False
+
+
 def session_line_seen(rows):
     """True when a main-session assistant text in `rows` has a `Session: <model> ...` line naming known models."""
     for row in rows:
@@ -214,7 +235,8 @@ def main(argv=None):
         line = session_check(rows, args.model or None)
         if line:
             print(line)
-        elif not session_line_seen(rows) and transcript_size(args.transcript) > tail:
+        elif not session_line_seen(rows) and transcript_size(args.transcript) > tail \
+                and session_text_before_tail(args.transcript, tail):
             # D142: the selector line may be older than the tail; say the check did not run rather than stay silent
             print(f"gw models: the session model check did not run: no `Session:` line in the last {tail} bytes of a "
                   f"longer transcript; raise subagentTranscriptBytes in .claude/gw.json to look further back, or "

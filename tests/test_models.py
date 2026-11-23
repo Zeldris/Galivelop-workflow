@@ -214,6 +214,7 @@ class SessionCheck(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("check did not run: no `Session:` line in the last 1024 bytes", r.stdout)
         self.assertIn("subagentTranscriptBytes", r.stdout)
+        self.assertEqual(run(*[filler] * 10).stdout, "")  # long, but no `Session:` text anywhere: nothing to say
         self.assertEqual(run(*[filler] * 2).stdout, "")  # a short transcript with no line: nothing to say
         self.assertIn("recommends opus", run(*[filler] * 10, selector).stdout)  # the line is inside the tail
         self.assertEqual(run(selector, *[filler] * 10).returncode, 0)

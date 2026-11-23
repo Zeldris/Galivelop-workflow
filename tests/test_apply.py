@@ -2179,7 +2179,8 @@ class CiSteps(unittest.TestCase):
                 self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, metrics={"ledger": given}), indent=2) + "\n")
                 out = self.applied("--update")
                 self.assertIn(f'paths-ignore: ["{want}"]', self.p.read(self.CI), out)
-        for glob in ("tele/*.jsonl", "tele/l?.jsonl", "tele/[ab].jsonl"):
+        for glob in ("tele/*.jsonl", "tele/l?.jsonl", "tele/[ab].jsonl", "docs/c++/l.jsonl", "!tele/l.jsonl",
+                     "tele\\l.jsonl"):
             with self.subTest(ledger=glob):
                 self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, metrics={"ledger": glob}), indent=2) + "\n")
                 code, out = self.p.run_apply("--update")

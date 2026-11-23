@@ -3672,6 +3672,18 @@ class PreCommitInstalledCopy(Base):
         self.assertIn("  scripts/demo.py", r.stderr)
         self.assertIn("python3 scripts/apply.py .", r.stderr)
 
+    def test_a_script_staged_without_its_copy_warns_even_if_the_copy_on_disk_matches(self):
+        # review of 0.9: the copy is compared as staged, not as it sits on disk
+        self.stage("a = 1\n", "a = 1\n")
+        self.p.git("commit", "-q", "-m", "base")
+        self.p.write("scripts/demo.py", "a = 2\n")
+        self.p.write(".claude/gw/scripts/demo.py", "a = 2\n")  # on disk equal, but not staged
+        self.p.git("add", "scripts/demo.py")
+        r = self.commit()
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn(self.WARNING, r.stderr)
+        self.assertIn("  scripts/demo.py", r.stderr)
+
     def test_an_identical_copy_does_not_warn(self):
         self.stage("a = 1\n", "a = 1\n")
         r = self.commit()
