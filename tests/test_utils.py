@@ -3137,6 +3137,7 @@ class HandoffPendingFile(Base):
     def setUp(self):
         super().setUp()
         self.p.write(".claude-plugin/plugin.json", json.dumps({"version": "0.5.1"}))
+        shutil.copy2(ROOT / "scripts" / "roadmap.py", self.p.scripts / "roadmap.py")  # D177 reads the roadmap rows
 
     def use(self, value):
         self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, log="docs/h.md", pendingFile=value)))
@@ -3214,6 +3215,41 @@ class HandoffPendingFile(Base):
         self.assertEqual(code, 0, out)
         self.assertRegex(out, r"the pending file docs/records/pending\.md \(pendingFile\) has no \"## Pendiente\" / "
                               r"\"## Pending\" section, which `archive` needs; add it: python3 \S+handoff\.py move-pending")
+
+    def closed_id_setup(self, pending, **extra):  # D177
+        self.p.write(".claude/gw.json", json.dumps(dict(
+            BASE_CONFIG, log="docs/h.md", pendingFile=self.PENDING, taskId="[A-H]\\d+",
+            roadmapFiles=[{"path": "docs/roadmap.md", "done": "done", "open": ["pending"]}], **extra)))
+        self.p.write("docs/roadmap.md", "| id | task | status |\n|---|---|---|\n| E84 | a | done (2026-11-01) |\n"
+                                        "| E85 | b | pending |\n")
+        self.p.write(self.PENDING, "# Pending\n\n## Pending\n\n" + pending)
+        return self.log(self.POINTER)
+
+    def test_open_pending_entry_citing_a_closed_id_is_warned(self):
+        path = self.closed_id_setup("- [ ] **P1:** finish what E84 left\n- [ ] P2: E85 is still open\n- [x] P3: E84 done\n")
+        code, out = self.p.script("handoff.py", "check", str(path))
+        self.assertEqual(code, 0, out)
+        self.assertRegex(out, r"WARNING: handoff: the open pending entry \"- \[ \] \*\*P1:\*\*.*cites E84, whose roadmap row is closed")
+        self.assertNotIn("P2", out)
+        self.assertNotIn("P3", out)
+        code, out = self.check(path)  # --strict makes it an error
+        self.assertEqual(code, 1, out)
+        self.assertIn("cites E84", out)
+
+    def test_closed_id_in_a_continuation_line_counts_and_exceptions_are_kept(self):
+        for entry in ("- [ ] P1: x\n  and E84 in the next line\n",):
+            self.assertIn("cites E84", self.p.script("handoff.py", "check", str(self.closed_id_setup(entry)))[1])
+        for entry in ("- [ ] Related: E84, a new requirement\n", "- [ ] **Related:** E84\n", "- [ ] P1: ver E84\n",
+                      "- [ ] P1: see E84\n", "- [ ] P1: see also `E84`\n", "- [ ] P1: Related: E84\n"):
+            with self.subTest(entry=entry):
+                self.assertEqual(self.p.script("handoff.py", "check", str(self.closed_id_setup(entry)), "--strict"), (0, ""))
+
+    def test_closed_id_check_off_or_without_roadmap_gives_nothing(self):
+        path = self.closed_id_setup("- [ ] P1: E84 again\n", pendingClosedIdCheck=False)
+        self.assertEqual(self.check(path), (0, ""))
+        path = self.closed_id_setup("- [ ] P1: E84 again\n")
+        self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, log="docs/h.md", pendingFile=self.PENDING, taskId="[A-H]\\d+")))
+        self.assertEqual(self.check(path), (0, ""))
 
     def test_check_reads_the_pending_file_from_the_given_path(self):
         self.use(self.PENDING)

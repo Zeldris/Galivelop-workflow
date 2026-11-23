@@ -719,11 +719,22 @@ class ClearWarning(Msg):
         self.table("done", "done")
         self.warned("feat(D11): x", False)
 
-    def test_closing_a_single_row_gives_no_warning(self):
-        self.table("done", "pending")
-        self.warned("feat(D11): x", False)  # D12 still open in `0.6`
-        self.log(1, "1")  # same phase, the log otherwise rewritten
+    def test_closing_a_single_row_warns_with_the_budget_passed(self):  # D176
+        self.table("done", "pending")  # D12 still open in `0.6`: no section closes
+        err = self.warned("feat(D11): x", True)
+        self.assertIn("closes the roadmap task D11", err)
+        self.log(1, "1")  # the row is done at HEAD now; same phase, the log otherwise rewritten, no row changed
         self.p.write("docs/log.md", self.p.work.joinpath("docs/log.md").read_text() + "more\n")
+        self.warned("feat(D11): x", False)
+
+    def test_closing_a_single_row_gives_no_warning_when_clear_on_task_close_is_off(self):  # D176
+        self.configure(clearOnTaskClose=False)
+        self.table("done", "pending")
+        self.warned("feat(D11): x", False)
+
+    def test_closing_a_single_row_without_the_budget_passed_gives_no_warning(self):  # D176
+        self.transcript(1)
+        self.table("done", "pending")
         self.warned("feat(D11): x", False)
 
     def test_no_transcript_or_no_budget_line_gives_no_warning(self):

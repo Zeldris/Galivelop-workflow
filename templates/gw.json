@@ -24,6 +24,8 @@
   "logArchive": "docs/records/handoff-archive.md",
   "agentsSkillsDir": ".agents/skills",
   "pendingFile": "docs/records/pending.md",
+  "pendingClosedIdCheck": true,
+  "clearOnTaskClose": true,
   "logRows": false,
   "protectedBranch": "main",
   "pushToProtected": "direct",

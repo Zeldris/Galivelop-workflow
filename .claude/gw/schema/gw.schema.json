@@ -103,8 +103,19 @@
       "pattern": "^$|^(?!/)(?!(.*/)?\\.\\.(/|$)).+[^/]$",
       "description": "Repo-relative path of the file that holds the log's Pending items (D104); the log keeps one pointer line with the count, and handoff.py check --strict fails if the log holds items itself. Absent or empty: the items stay in the log. No schema default on purpose (an older project keeps its Pending section); the template sets docs/records/pending.md."
     },
+    "pendingClosedIdCheck": {
+      "type": "boolean",
+      "default": true,
+      "description": "true: handoff.py check warns (an error with --strict) about an open entry (`- [ ]`) of pendingFile that cites a task id whose roadmapFiles row is closed (D177); exempt: an entry that starts with `Related: <id>` and an id written right after ver / see / see also / related. false: no check."
+    },
+    "clearOnTaskClose": {
+      "type": "boolean",
+      "default": true,
+      "description": "true: the commit-msg /clear warning (D108, D176) also counts a commit that turns a roadmapFiles task row from open to closed, not only a version section or the log's phase; it is still shown only when the session passed its compaction budget. false: only sections and phase."
+    },
     "logArchive": {
       "type": "string",
+      "minLength": 1,
       "minLength": 1,
       "default": "docs/records/handoff-archive.md",
       "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+[^/]$",

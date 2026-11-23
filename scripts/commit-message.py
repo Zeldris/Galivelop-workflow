@@ -55,7 +55,8 @@ budget, one line on stderr asks for /clear (a long context is almost all the spe
 heading has a backticked version (`## `0.6` ...`, its `###` included) has every task row (a table row whose status,
 the last cell, starts with its `done` word or an `open` one) with a status that starts with `done` in the STAGED
 version, and not at HEAD; or (b) the value of the log's state table row «Fase en curso» / «Phase in progress» /
-«Current phase» differs between HEAD and the staged log. Closing a single row is not enough. The budget and the
+«Current phase» differs between HEAD and the staged log; or (c, D176, `clearOnTaskClose`, default true) a task row of
+that file is open at HEAD and done in the staged version. Closing a single row counts only through (c). The budget and the
 compactions are recover.py's (budget_overrun: `Compaction budget: N` in the log, the newest transcript of the repo).
 Any missing piece (roadmap, recover.py, transcript, budget line) means no warning.
 
@@ -473,8 +474,24 @@ def version_sections(text, done, open_words):
     return {h: all(v) for h, v in rows.items()}
 
 
+def task_rows(text, done, open_words):
+    """{id (first cell): whether the row is done} for every table row whose last cell starts with the `done` word or an
+    `open` one (D176; the rows version_sections groups by section)."""
+    import roadmap
+    words = (done,) + tuple(w.lower() for w in open_words)
+    rows = {}
+    for line in text.splitlines():
+        spans = roadmap.cells(line)
+        if spans and len(spans) >= 3:
+            status = roadmap.status_of(line).lower()
+            if status.startswith(words):
+                rows[line[spans[0][0]:spans[0][1]].strip(" *`~")] = status.startswith(done)
+    return rows
+
+
 def closing(root, config, message):
-    """What this commit closes (see the header): a roadmap version section or the log's phase; None otherwise."""
+    """What this commit closes (see the header): a roadmap version section, a task row (clearOnTaskClose) or the log's
+    phase; None otherwise."""
     wip = wip_of(config)
     subject = next((line for line in message.splitlines() if line.strip()), "")
     if wip and subject.startswith(wip):
@@ -487,6 +504,12 @@ def closing(root, config, message):
         closed = [h for h, ok in after.items() if ok and before.get(h) is False]
         if closed:
             return f"the roadmap section {closed[0][3:]}"
+        if config.get("clearOnTaskClose", True):  # D176: a single task row turned done counts too
+            rows_before = task_rows(staged_or_head(root, "HEAD", path), done, words)
+            rows_after = task_rows(staged_or_head(root, "", path), done, words)
+            rows = [t for t, ok in rows_after.items() if ok and rows_before.get(t) is False]
+            if rows:
+                return f"the roadmap task {rows[0]}"
     log = config.get("log")
     if log:
         old, new = phase_cell(staged_or_head(root, "HEAD", log)), phase_cell(staged_or_head(root, "", log))
