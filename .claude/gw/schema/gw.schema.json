@@ -106,7 +106,7 @@
     "pendingClosedIdCheck": {
       "type": "boolean",
       "default": true,
-      "description": "true: handoff.py check warns (an error with --strict) about an open entry (`- [ ]`) of pendingFile that cites a task id whose roadmapFiles row is closed (D177); exempt: an entry that starts with `Related: <id>` and an id written right after ver / see / see also / related. false: no check."
+      "description": "true: handoff.py check warns (an error with --strict) about an open entry (`- [ ]`) of pendingFile that cites a task id whose roadmapFiles row is closed (D177); exempt: an entry that starts with `Related: <id>` and an id written right after ver / see / see also / related / revisión / review (with an optional colon) and an id inside a parenthesis (\"(B42, D3)\"). false: no check."
     },
     "clearOnTaskClose": {
       "type": "boolean",
@@ -115,7 +115,6 @@
     },
     "logArchive": {
       "type": "string",
-      "minLength": 1,
       "minLength": 1,
       "default": "docs/records/handoff-archive.md",
       "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+[^/]$",

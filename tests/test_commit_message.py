@@ -676,7 +676,7 @@ class ClearWarning(Msg):
         p.env["HOME"] = str(home)
         self.folder = home / ".claude" / "projects" / session_log.folder_of(os.path.realpath(str(p.work)))
         self.folder.mkdir(parents=True)
-        self.configure(commitFormat="conventional",
+        self.configure(commitFormat="conventional", taskId="[A-Z]\\d+",
                        roadmapFiles=[{"path": "docs/roadmap.md", "done": "done", "open": ["pending"]}])
         self.log(1, "1")
         self.table("pending", "pending")
@@ -726,6 +726,13 @@ class ClearWarning(Msg):
         self.log(1, "1")  # the row is done at HEAD now; same phase, the log otherwise rewritten, no row changed
         self.p.write("docs/log.md", self.p.work.joinpath("docs/log.md").read_text() + "more\n")
         self.warned("feat(D11): x", False)
+
+    def test_filler_rows_are_not_task_rows(self):  # D178: rows keyed by "—" overwrote each other
+        head = "| id | task | status |\n|---|---|---|\n"
+        self.roadmap(head + "| — | x | done |\n| — | y | pending |\n")
+        self.p.git("add", "-A"); self.p.git("commit", "-q", "--no-verify", "-m", "filler")
+        self.roadmap(head + "| — | y | pending |\n| — | x | done |\n")  # the last «—» row moves
+        self.assertNotIn("closes the roadmap task", self.warned("feat(D11): x", False))
 
     def test_closing_a_single_row_gives_no_warning_when_clear_on_task_close_is_off(self):  # D176
         self.configure(clearOnTaskClose=False)

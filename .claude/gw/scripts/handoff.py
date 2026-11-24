@@ -444,36 +444,36 @@ def pending_problems(ctx, text, me, pending=None):
     return []
 
 
-CLOSED_ID_EXEMPT = re.compile(r"(?:\bver|\bsee|\bsee also|\brelated|\brevisi[oó]n|\breview)\s*:?\s*[*`]*$", re.I)
+CLOSED_ID_EXEMPT = re.compile(r"(?:\bver|\bsee|\bsee also|\brelated|\brevisi[oó]n|\breview)[*`]*\s*:?\s*[*`]*$", re.I)
 
 
 def inside_parenthesis(before):
-    """Q-39: whether the id that follows `before` sits inside an open parenthesis of its own line ("(B42, D3)")."""
-    line = before.rsplit("\n", 1)[-1]
-    return line.count("(") > line.count(")")
+    """Q-39: whether the id that follows `before` sits inside an open parenthesis of its entry ("(B42, D3)"), even
+    when the parenthesis opened on an earlier line."""
+    return before.count("(") > before.count(")")
 
 
-def closed_roadmap_ids(ctx):
-    """The ids of the rows of the first `roadmapFiles` file whose status is not one of its `open` words (a closed
-    row, in roadmap.py's sense), as a set; empty without roadmapFiles."""
+def closed_roadmap_ids(ctx, roadmap_path=None):
+    """The ids of the rows of the first `roadmapFiles` file whose status starts with its `done` word, as a set; empty
+    without roadmapFiles. `roadmap_path`: read the file from this path instead (the pushed one)."""
     import roadmap
     files = gwconfig.roadmap_files(ctx.config)
-    path = ctx.root / files[0]["path"] if files and files[0].get("done") else None
+    path = (Path(roadmap_path) if roadmap_path is not None else ctx.root / files[0]["path"]) if files and files[0].get("done") else None
     if not path or not path.is_file():
         return set()
-    words = tuple(w.lower() for w in files[0].get("open") or [])
+    done = files[0]["done"].lower()
     out = set()
     for line in path.read_text(encoding="utf-8", errors="replace").splitlines():
         spans = roadmap.cells(line)
         if not spans or len(spans) < 3:
             continue
         key = line[spans[0][0]:spans[0][1]].strip(" *`~")
-        if ctx.id.fullmatch(key) and not roadmap.status_of(line).lower().startswith(words):
+        if ctx.id.fullmatch(key) and roadmap.status_of(line).lower().startswith(done):
             out.add(key)
     return out
 
 
-def closed_id_problems(ctx, pending=None):
+def closed_id_problems(ctx, pending=None, roadmap=None):
     """D177: with `pendingClosedIdCheck` (default true), one soft problem per open entry (`- [ ]`, with its indented
     continuation lines) of the pending file that cites an id whose roadmap row is closed, as if it were still to do.
     Exempt: an entry that starts with `Related: <id>`, an id written right after ver / see / see also / related /
@@ -485,7 +485,7 @@ def closed_id_problems(ctx, pending=None):
     target = Path(pending) if pending is not None else ctx.root / rel
     try:
         found = target.read_text(encoding="utf-8", errors="replace") if target.is_file() else ""
-        closed = closed_roadmap_ids(ctx) if found else set()
+        closed = closed_roadmap_ids(ctx, roadmap) if found else set()
     except (OSError, ImportError):
         return []
     if not closed:
@@ -503,6 +503,7 @@ def closed_id_problems(ctx, pending=None):
     for entry in entries:
         text = "\n".join(entry)
         body = re.sub(r"^\s*- \[ \]\s*", "", text)
+        body = re.sub(r"^[*`\s]*\d+(?:\.\d+)*[*`\s]*·\s*", "", body)  # a version prefix ("`0.10` · ")
         if re.match(rf"[*`]*related\s*:", body, re.I):
             continue
         for m in ctx.id.finditer(text):
@@ -539,7 +540,7 @@ def cmd_check(ctx, args):
                      f"any other cell: edit {ctx.log})" for label, size in over]
     soft += done_problems(text, f"{me} done \"<text>\"", f"{me} check {path} --strict", sizes["doneItems"])
     soft += pending_problems(ctx, text, me, args.pending)
-    soft += closed_id_problems(ctx, args.pending)
+    soft += closed_id_problems(ctx, args.pending, getattr(args, "roadmap", None))
     cap = gwconfig.log_size(ctx.config)
     if cap > 0 and len(text) > cap:  # a warning only: it never fails the commit, not even with --strict
         if gwconfig.pending_file(ctx.config):  # `archive` works on pendingFile: it cannot shrink the log
@@ -1728,6 +1729,7 @@ def main(argv=None):
     c.add_argument("--strict", action="store_true")
     c.add_argument("--at", choices=("commit", "push"), default="commit",
                    help="where it runs: at commit time (the commit does not exist yet) or at push time (it does)")
+    c.add_argument("--roadmap", help="read the roadmap (roadmapFiles[0]) from this path for the closed-id check; a missing one = none")
     c.add_argument("--pending", help="read the pending file (pendingFile) from this path; a missing one = no file")
     d = sub.add_parser("done")
     d.add_argument("text")

@@ -1425,6 +1425,23 @@ class PrepushBranches(Base):
         sha = self.p.sha()
         self.assertEqual(self.run_hook(sha)[0], 0)
 
+    def test_closed_id_check_reads_the_roadmap_as_the_pushed_tip_has_it(self):  # D178
+        p = self.p
+        shutil.copy2(ROOT / "scripts" / "roadmap.py", p.work / ".claude" / "gw" / "scripts" / "roadmap.py")
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        p.write(".claude/gw.json", json.dumps(dict(cfg, pendingFile="docs/pending.md", taskId="[A-H]\\d+",
+                                                   roadmapFiles=[{"path": "docs/roadmap.md", "done": "done", "open": ["pending"]}])))
+        p.branch("feat-a")
+        p.write("docs/pending.md", "# Pending\n\n## Pending\n\n- [ ] P1: E84 again\n")
+        p.write("docs/roadmap.md", "| id | task | status |\n|---|---|---|\n| E84 | a | pending |\n")
+        p.write(LOG, log_text(a="A moved on") + "\n## Pending\n\nPending items live in docs/pending.md.\n")
+        p.commit("open entry", env=dict(DAY, GW_SHARED_LOG="1"))
+        sha = p.sha()
+        p.write("docs/roadmap.md", "| id | task | status |\n|---|---|---|\n| E84 | a | done |\n")  # uncommitted
+        code, out, _, _ = self.run_hook(sha)
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("cites E84", out)
+
     def test_pending_file_is_read_as_the_pushed_tip_has_it(self):
         # B38: the pre-push checked the log of the pushed commit but the pending file of the working copy.
         p = self.p
@@ -3242,6 +3259,16 @@ class HandoffPendingFile(Base):
         for entry in ("- [ ] Related: E84, a new requirement\n", "- [ ] **Related:** E84\n", "- [ ] P1: ver E84\n",
                       "- [ ] P1: see E84\n", "- [ ] P1: see also `E84`\n", "- [ ] P1: Related: E84\n",
                       "- [ ] **Revisión E84 n.º 3** (leve): x\n", "- [ ] P1 (E84, E85): x\n", "- [ ] P1: Review `E84`\n"):
+            with self.subTest(entry=entry):
+                self.assertEqual(self.p.script("handoff.py", "check", str(self.closed_id_setup(entry)), "--strict"), (0, ""))
+
+    def test_closed_id_review_fixes_d178(self):
+        # a row of a table whose last column is not a status is not closed
+        path = self.closed_id_setup("- [ ] P1: B8 needs work\n")
+        self.p.write("docs/roadmap.md", "| id | task | needs |\n|---|---|---|\n| B8 | a | the user |\n")
+        self.assertEqual(self.p.script("handoff.py", "check", str(path), "--strict"), (0, ""))
+        for entry in ("- [ ] `0.10` · Related: E84, E85 x\n", "- [ ] **see** E84\n", "- [ ] **ver** E84\n",
+                      "- [ ] P1 (see the\n  note, E84)\n"):
             with self.subTest(entry=entry):
                 self.assertEqual(self.p.script("handoff.py", "check", str(self.closed_id_setup(entry)), "--strict"), (0, ""))
 

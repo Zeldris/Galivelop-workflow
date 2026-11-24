@@ -474,7 +474,7 @@ def version_sections(text, done, open_words):
     return {h: all(v) for h, v in rows.items()}
 
 
-def task_rows(text, done, open_words):
+def task_rows(text, done, open_words, task_id):
     """{id (first cell): whether the row is done} for every table row whose last cell starts with the `done` word or an
     `open` one (D176; the rows version_sections groups by section)."""
     import roadmap
@@ -484,8 +484,9 @@ def task_rows(text, done, open_words):
         spans = roadmap.cells(line)
         if spans and len(spans) >= 3:
             status = roadmap.status_of(line).lower()
-            if status.startswith(words):
-                rows[line[spans[0][0]:spans[0][1]].strip(" *`~")] = status.startswith(done)
+            key = line[spans[0][0]:spans[0][1]].strip(" *`~")
+            if status.startswith(words) and task_id.fullmatch(key):
+                rows[key] = status.startswith(done)
     return rows
 
 
@@ -505,8 +506,10 @@ def closing(root, config, message):
         if closed:
             return f"the roadmap section {closed[0][3:]}"
         if config.get("clearOnTaskClose", True):  # D176: a single task row turned done counts too
-            rows_before = task_rows(staged_or_head(root, "HEAD", path), done, words)
-            rows_after = task_rows(staged_or_head(root, "", path), done, words)
+            import handoff
+            tid = re.compile(gwconfig.non_capturing(handoff.task_id_pattern(config)))
+            rows_before = task_rows(staged_or_head(root, "HEAD", path), done, words, tid)
+            rows_after = task_rows(staged_or_head(root, "", path), done, words, tid)
             rows = [t for t, ok in rows_after.items() if ok and rows_before.get(t) is False]
             if rows:
                 return f"the roadmap task {rows[0]}"
