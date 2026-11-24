@@ -354,6 +354,7 @@ Se hace al cerrar el desarrollo de la `0.9`, antes de publicarla: recogida y sus
 |---|---|---|
 | H26 | Recogida de cierre de la `0.9` y del parche `0.8.2` (`gw-harvest`, 10 proyectos al día; 7 con propuestas, `docs/proposals/2026-11-22-*.md`), al usuario | hecho (2026-11-22; las 24 propuestas aprobadas y la de `next-id`: D145-D166 a este parche, E79-E83 a la `1.0`) |
 | H27 | Cierre de la `0.9`: subida a `0.9.0` (plugin.json, sellos, CHANGELOG, README), recogida de cierre y las tres fases antes de `main` | hecho (2026-11-24; `main` = `8357389`, textos en `docs/records/release-v0.9.0.md`) |
+| H28 | Recogida de apertura de la `0.10` (`gw-harvest`, 6 proyectos con propuestas, `docs/proposals/2026-11-24-*.md`), al usuario | en curso (2026-11-24) |
 | D142 | `gw-selector`: la sesión se para cuando el modelo o el esfuerzo recomendado no coincide con el actual (hoy avisa y sigue, y el orquestador toma el modelo de la fila más arriesgada, así que casi nunca baja de Opus); el comportamiento exacto, en `docs/questions.md` (usuario, 2026-11-19; Related: E66) | hecho (2026-11-22) |
 | D144 | `measure.py` sin `--session` mide la sesión en curso (la más nueva de todas las carpetas); la preferencia de D139 por la carpeta del repo solo desempata (retro de la `0.8.1`; antes «D142», id repetido) | hecho (2026-11-22) |
 | D145 | `test_measure.py` pasa con el flujo instalado en un proyecto (hoy 5 tests en rojo en su CI y cada `/gw-update` borra el parche local) (recogida H26, instalador P1 y world-maker-fantasy) | hecho (2026-11-22) |
