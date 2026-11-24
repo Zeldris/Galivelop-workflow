@@ -44,7 +44,7 @@ class Doctor(Snapshot):
         cfg["schemaVersion"] = 2  # A12: the current format has the `languages` block instead of `language`
         cfg["languages"] = {"code": "en", "docs": {"primary": cfg.pop("language", "en"), "others": []},
                             "public": {"primary": "en", "others": []}, "ui": []}
-        p.write(".claude/gw.json", json.dumps(dict(cfg, relatedTests={"fast": ["true"], "slow": []})))
+        p.write(".claude/gw.json", json.dumps(dict(cfg, relatedTests={"fast": ["true"], "slow": []}, workflowCloneAlso=["../{owner}/{repo}"])))
         p.write("docs/log.md", "# Log\n\n| Field | Value |\n|---|---|\n| Next step | write tests |\n")
         p.write(".claude/skills/gw-selector/SKILL.md", SKILL.format(version=VERSION))
         self.make_workflow(p.work.parent / "Galivelop-workflow")  # D158: the default workflowClone folder exists
@@ -1708,6 +1708,16 @@ class Doctor(Snapshot):
         self.make_workflow(self.p.work.parent / "clone")
         self.set_cfg(branchCheck="full", workflowClone="../clone")
         self.assertNotIn("workflow clone", self.doctor()[1])
+
+    def test_workflow_clone_found_in_the_cloud_layout_ignoring_case(self):  # B48
+        self.make_workflow(self.p.work.parent / "zeldris" / "galivelop-workflow")
+        self.set_cfg(branchCheck="full", workflowClone="../no-such-clone")
+        self.assertNotIn("workflow clone", self.doctor()[1])
+
+    def test_workflow_clone_also_list_can_be_emptied(self):  # B48
+        self.make_workflow(self.p.work.parent / "zeldris" / "galivelop-workflow")
+        self.set_cfg(branchCheck="full", workflowClone="../no-such-clone", workflowCloneAlso=["../none/{repo}"])
+        self.assertLine(self.doctor()[1], "WARN", "workflow clone", "../no-such-clone")
 
     def test_workflow_clone_that_is_not_the_workflow_warns(self):  # D158: is_dir() is not enough
         (self.p.work.parent / "other").mkdir(exist_ok=True)

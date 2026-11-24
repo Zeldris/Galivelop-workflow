@@ -430,7 +430,7 @@ Only fixes from the opening harvest of `0.10` (only the latest published minor g
 | Id | Task | State |
 |---|---|---|
 | H28 | Opening harvest of `0.10` (`gw-harvest`, 6 projects with proposals, `docs/proposals/2026-11-24-*.md`), to the user | done (2026-11-24; fixes to `0.9.1`, new features to `0.11`) |
-| B48 | `workflowClone` is also looked up in the cloud layout (`../<owner>/<repo>`, `/home/user/<owner>/<repo>`, case-insensitive): a shared helper in `config.py` for `doctor.py`, `apply.py`, `review-scope.py` and `gw-update`; extends D158 (harvest `2026-11-24`, user 2026-11-24) | pending |
+| B48 | `workflowClone` is also looked up in the cloud layout (`../<owner>/<repo>`, `/home/user/<owner>/<repo>`, case-insensitive): a shared helper in `config.py` for `doctor.py`, `apply.py`, `review-scope.py` and `gw-update`; extends D158 (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-24) |
 | B49 | `other-repo-read.py` does not warn when running the clone's `apply.py` (only on reads) (harvest `2026-11-24`, user 2026-11-24) | pending |
 | B50 | `check.yml` and its template put only the actionlint binary on `PATH`, not its venv (it loses PyYAML) (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-24) |
 | B51 | `gw-update`: stop if the branch is behind the protected one, warn about the clash with the ledger and check that a key exists before recommending it (harvest `2026-11-24`, user 2026-11-24) | pending |

@@ -20,6 +20,10 @@ class ScopeBase(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.p = Fixture(self.tmp)
         self.assertEqual(self.p.run_apply()[0], 0)
+        cfg_path = self.p.work / ".claude/gw.json"  # B48: only relative candidates, so a real /home/user clone cannot answer
+        cfg = json.loads(cfg_path.read_text())
+        cfg["workflowCloneAlso"] = ["../{owner}/{repo}"]
+        cfg_path.write_text(json.dumps(cfg))
         self.p.run("git", "add", "-A")
         self.p.run("git", "commit", "-qm", "base")
         self.p.run("git", "checkout", "-q", "-b", "work")
@@ -250,6 +254,19 @@ class ReviewScope(ScopeBase):
         self.assertIn("https://example.test/own.git", out)
         shutil.copytree(ROOT, self.p.work.parent / "elsewhere", ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__", "node_modules"))
         self.addCleanup(shutil.rmtree, self.p.work.parent / "elsewhere", True)
+        code, out = self.bare()
+        self.assertEqual(code, 0, out)
+
+    def test_the_clone_is_found_in_the_cloud_layout_ignoring_case(self):  # B48
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        self.set_cfg(workflowClone="../no-such-clone")
+        code, out = self.bare()
+        self.assertEqual(code, 2, out)
+        self.assertIn("no workflow copy at v", out)
+        dest = self.p.work.parent / "zeldris" / "galivelop-workflow"
+        shutil.copytree(ROOT, dest, ignore=shutil.ignore_patterns(".git", ".claude", "__pycache__", "node_modules"))
+        self.addCleanup(shutil.rmtree, self.p.work.parent / "zeldris", True)
         code, out = self.bare()
         self.assertEqual(code, 0, out)
 

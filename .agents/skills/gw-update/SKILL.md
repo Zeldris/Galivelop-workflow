@@ -22,8 +22,9 @@ The project's installed copy of this skill is the old version. Once `<workflow>`
 
 ## 1. Compare versions
 
-`<workflow>` is the clone of `Galivelop-workflow` (a sibling `../Galivelop-workflow`, or attached to the session;
-else ask the user). Read it, never edit it. Bring it to the latest
+`<workflow>` is the clone of `Galivelop-workflow`: the first folder that `python3 .claude/gw/scripts/config.py get workflowClone`
+and `workflowCloneAlso` give that exists (a sibling `../Galivelop-workflow`, or the cloud's `/home/user/<owner>/<repo>`,
+letter case ignored), or the one attached to the session; else ask the user. Read it, never edit it. Bring it to the latest
 published tag, not to the tip of whatever branch the clone follows (a single-branch clone of an old branch has neither
 `main` nor the tags): `git -C <workflow> ls-remote --tags --refs --sort=-v:refname origin` (the first line is the
 latest `vX.Y.Z`), then `git -C <workflow> fetch origin tag vX.Y.Z` and `git -C <workflow> checkout vX.Y.Z`. No tags

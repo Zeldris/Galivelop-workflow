@@ -850,6 +850,51 @@ def workflow_clone(config):
     return _schema()["properties"]["workflowClone"]["default"]
 
 
+def workflow_clone_candidates(root, config):
+    """B48: the folders a project looks for its workflow clone in, in order: `workflowClone` (relative to `root`), then
+    each `workflowCloneAlso` template (`{owner}` and `{repo}` come from `workflowRepository`; relative ones to `root`),
+    e.g. the layout the cloud gives an added repo, `/home/user/<owner>/<repo>`. Each is resolved without caring about
+    letter case, so `/home/user/zeldris/galivelop-workflow` matches `Zeldris/Galivelop-workflow`."""
+    parts = [p for p in re.sub(r"\.git$", "", workflow_repository(config).rstrip("/")).split("/") if p]
+    repo = parts[-1] if parts else ""
+    owner = parts[-2] if len(parts) > 1 else ""
+    given = config.get("workflowCloneAlso")
+    alts = given if isinstance(given, list) else _schema()["properties"]["workflowCloneAlso"]["default"]
+    seen, out = set(), []
+    for tpl in [workflow_clone(config)] + [a for a in alts if isinstance(a, str) and a]:
+        cand = _ci_resolve(Path(root) / tpl.replace("{owner}", owner).replace("{repo}", repo))
+        if str(cand) not in seen:
+            seen.add(str(cand))
+            out.append(cand)
+    return out
+
+
+def _ci_resolve(path):
+    """`path` made absolute, each component matched against the folder's real entries ignoring case (exact first)."""
+    path = Path(os.path.abspath(path))
+    cur = Path(path.anchor)
+    for name in path.parts[1:]:
+        nxt = cur / name
+        if not nxt.exists() and cur.is_dir():
+            try:
+                hit = next((e for e in sorted(os.listdir(cur)) if e.lower() == name.lower()), None)
+            except OSError:
+                hit = None
+            if hit:
+                nxt = cur / hit
+        cur = nxt
+    return cur
+
+
+def find_workflow_clone(root, config, version=None):
+    """B48: the first candidate of `workflow_clone_candidates` that is the workflow repo (and, with `version`, at that
+    version); None when there is none."""
+    for cand in workflow_clone_candidates(root, config):
+        if is_workflow(cand) and (version is None or plugin_field(cand, "version") == version):
+            return cand
+    return None
+
+
 def workflow_repository(config):
     """The `workflowRepository` key (D132): the URL review-scope.py tells to clone when it finds no workflow copy."""
     given = config.get("workflowRepository")

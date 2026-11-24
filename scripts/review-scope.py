@@ -102,7 +102,8 @@ def workflow_dir(arg, root, cfg):
     for cand in (str(HERE.parent), str(root)):
         if is_workflow(cand):
             return Path(cand)
-    clone = (Path(root).resolve() / config.workflow_clone(cfg)).resolve()
+    found = config.find_workflow_clone(root, cfg, version) or config.find_workflow_clone(root, cfg)
+    clone = found or (Path(root).resolve() / config.workflow_clone(cfg)).resolve()
     url = repo_url(clone, cfg)
     if version is None:
         raise ScopeError(f"{Path(root) / '.claude' / 'gw.json'} has no \"version\", so no workflow copy can be matched; "

@@ -1484,7 +1484,7 @@ def check_workflow_clone(rep, root, cfg, workflow=None):
                      f"point {origin} at a clone: git clone --depth 1 {config.workflow_repository(cfg)} <DIR>, or unset it")
         return
     rel = config.workflow_clone(cfg)
-    if is_workflow(root / rel):
+    if config.find_workflow_clone(root, cfg):
         return
     why = "does not exist" if not (root / rel).is_dir() else "is not the workflow repo"
     rep.warn("workflow clone", f"workflowClone points at {rel}, which {why}, so review-scope.py cannot tell "

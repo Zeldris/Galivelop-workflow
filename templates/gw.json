@@ -18,6 +18,7 @@
   "logSize": 20000,
   "reviewTrivialLines": 30,
   "workflowClone": "../Galivelop-workflow",
+  "workflowCloneAlso": ["../{owner}/{repo}", "/home/user/{owner}/{repo}", "/home/user/{repo}"],
   "workflowRepository": "https://github.com/Zeldris/Galivelop-workflow",
   "wholeReadWarnBytes": 20000,
   "installedCopyWarn": true,
