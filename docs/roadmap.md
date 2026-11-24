@@ -440,7 +440,7 @@ Solo arreglos de la recogida de apertura de la `0.10` (solo la última menor pub
 | B54 | `review-scope.py` avisa de un árbol sin confirmar y admite `--worktree` (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
 | B55 | `push.sh` dice la ruta del registro y que hay un bloqueo al empezar el check del `pre-push` (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
 | B56 | Reglas de `REVIEW.md` (sin guardas temporales en tests; un comando con tiempo límite mata su grupo de procesos) y regla del reparto de contrastar el valor esperado con el código (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
-| B57 | El gancho `Stop` (`before-stop.py`) avisa cuando el último commit subido tiene el CI sin resolver (ni verde ni rojo) y no se ha programado su comprobación: una vez por commit, con clave en `stopSeverity` (retro de la `0.9.1`, usuario 2026-11-24) | pendiente |
+| B57 | El gancho `Stop` (`before-stop.py`) avisa cuando el último commit subido tiene el CI sin resolver (ni verde ni rojo) y no se ha programado su comprobación: una vez por commit, con clave en `stopSeverity` (retro de la `0.9.1`, usuario 2026-11-24) | hecho (2026-11-24) |
 
 ## `0.10` «Estable»
 
