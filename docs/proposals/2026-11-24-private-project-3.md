@@ -10,7 +10,7 @@ De `d7d8def` a `aeca90d` (`scripts/harvest.py`). 10 commits; skills, scripts y `
   `gw-update` prueban `/home/user/<owner>/<repo>` y `/home/user/<repo>` en minúsculas antes de avisar (observado:
   `/home/user/zeldris/galivelop-workflow`), con un ayudante común en `config.py` y lista configurable.
 - **Version bump:** patch
-- **Status:** proposed (unida a la otra)
+- **Status:** aprobada (2026-11-24) → B48 (`0.9.1`)
 
 ## Joined to another proposal
 

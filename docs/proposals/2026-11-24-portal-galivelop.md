@@ -11,7 +11,7 @@ De `7973aa5` a `e2c9b9b` (`scripts/harvest.py`). 38 commits; ningún skill ni sc
 - **Why it is general:** un subagente escribió un correo real en un test; el `pre-push` lo cazó tarde y arreglarlo
   obligó a reescribir dos commits.
 - **Version bump:** minor (evolutivo)
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → E87 (`0.11`)
 
 ## P2. `handoff.py show <sección>`
 
@@ -19,7 +19,7 @@ De `7973aa5` a `e2c9b9b` (`scripts/harvest.py`). 38 commits; ningún skill ni sc
 - **What changes:** lee una fila o sección de la bitácora sin `sed` a mano.
 - **Why it is general:** la bitácora se releyó entera 24 veces (1,34 M tokens). Mirar antes `recover.py --state`.
 - **Version bump:** minor (evolutivo)
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → E88 (`0.11`)
 
 ## P3. Regla de `REVIEW.md`: sin guardas temporales en los tests
 
@@ -28,7 +28,7 @@ De `7973aa5` a `e2c9b9b` (`scripts/harvest.py`). 38 commits; ningún skill ni sc
   que exista lo que comprueba (`if (existsSync(...))`); si falta, se marca pendiente.
 - **Why it is general:** un subagente apagó una comprobación en silencio.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → B56 (`0.9.1`)
 
 ## Stays in the project
 

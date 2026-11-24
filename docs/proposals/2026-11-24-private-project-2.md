@@ -10,7 +10,7 @@ del proyecto). Lo nuevo sale de siete archivos `docs/records/retro-*`.
   `doctor.py` avisa si ningún id del plan casa con `taskId`.
 - **Why it is general:** la skill `retro` depende de `next-id`; D134 solo mejoró el texto del error.
 - **Version bump:** patch (arreglo)
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → B52 (`0.9.1`)
 
 ## P2. `red-without-fix.sh` decide por ruta, no por contenido
 
@@ -19,7 +19,7 @@ del proyecto). Lo nuevo sale de siete archivos `docs/records/retro-*`.
   no por `grep` del contenido (`redWithoutFix.testRegex` cubre solo en parte).
 - **Why it is general:** rechazo falso en código corriente.
 - **Version bump:** patch (arreglo)
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → B53 (`0.9.1`)
 
 ## P3. Regla de `REVIEW.md`: un comando externo con tiempo límite mata su grupo de procesos
 
@@ -27,7 +27,7 @@ del proyecto). Lo nuevo sale de siete archivos `docs/records/retro-*`.
 - **What changes:** una regla en `templates/{es,en}/REVIEW.md` (hay reglas de `pkill`, no esta).
 - **Why it is general:** cualquier proyecto que lance procesos con `timeout`.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → B56 (`0.9.1`)
 
 ## P4. El resumen del reparto contrasta el valor esperado con el código
 
@@ -36,7 +36,7 @@ del proyecto). Lo nuevo sale de siete archivos `docs/records/retro-*`.
   devuelve como `QUESTIONS` (el canal existe, la regla no).
 - **Why it is general:** un valor esperado equivocado en un encargo (`think_sent` False/True) se vuelve test mal escrito.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → B56 (`0.9.1`)
 
 ## P5. Aviso de `/clear` por subpaso (`Findings:`)
 
@@ -46,14 +46,14 @@ del proyecto). Lo nuevo sale de siete archivos `docs/records/retro-*`.
   Se deciden juntas.
 - **Why it is general:** medido: 6,1 M tokens sin `/clear` frente a 2,3-3,8 M con él.
 - **Version bump:** minor (evolutivo; con D176 `clearOnTaskClose` solapa: mirar antes)
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → E91 (`0.11`)
 
 ## P6. `gw-update`: parar si la rama va por detrás de la protegida
 
 - **Source:** `retro-2026-11-24-gw-update-0.9.0.md` P1 @ `618a52c` (skill); es el mismo texto que
   `2026-11-24-galivelop-image-generator.md` P4. `workflowClone` hermano (P5) y `other-repo-read.py` (P3): con P1 y P2 de ese archivo.
 - **Version bump:** patch
-- **Status:** proposed (unida a la otra)
+- **Status:** aprobada (2026-11-24) → B51 (`0.9.1`)
 
 ## Stays in the project / a medias
 

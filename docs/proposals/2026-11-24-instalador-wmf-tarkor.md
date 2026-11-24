@@ -13,7 +13,7 @@ De `50535c7` a `56f0108` (`scripts/harvest.py`). 16 commits; ningún skill ni sc
 - **Why it is general:** cualquier proyecto con `ciActionlint` distinto de `off` y dependencias Python previas; el
   proyecto lo esquivó con `"ciActionlint": "off"`.
 - **Version bump:** patch (arreglo)
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → B50 (`0.9.1`)
 
 ## P2. `gw-update` comprueba que la clave existe antes de recomendarla
 
@@ -21,7 +21,7 @@ De `50535c7` a `56f0108` (`scripts/harvest.py`). 16 commits; ningún skill ni sc
 - **What changes:** un paso: antes de recomendar excluir o apagar algo, mirar en `config.py`/`apply.py` que la clave
   existe (habría recomendado una clave de exclusión inexistente).
 - **Version bump:** patch
-- **Status:** proposed (sobra para skills si se acepta P3)
+- **Status:** aprobada (2026-11-24) → B51 (`0.9.1`)
 
 ## P3. Clave `skillsExclude` para no instalar skills sin uso
 
@@ -30,7 +30,7 @@ De `50535c7` a `56f0108` (`scripts/harvest.py`). 16 commits; ningún skill ni sc
   respetan `apply.py --update`/`--check` y `doctor.py` (hoy solo hay `OPTIONAL_SKILLS | WORKFLOW_ONLY_SKILLS`).
 - **Why it is general:** un proyecto sin web no quiere `gw-seo`; sirve a todo el que no tenga el dominio.
 - **Version bump:** minor (evolutivo)
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → E90 (`0.11`)
 
 ## P4. `push.sh` dice la ruta del registro y que hay un bloqueo
 
@@ -39,7 +39,7 @@ De `50535c7` a `56f0108` (`scripts/harvest.py`). 16 commits; ningún skill ni sc
   check is running», con un test del texto.
 - **Why it is general:** un check de más de 20 min parece colgado.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → B55 (`0.9.1`)
 
 ## Stays in the project
 

@@ -354,7 +354,6 @@ Se hace al cerrar el desarrollo de la `0.9`, antes de publicarla: recogida y sus
 |---|---|---|
 | H26 | Recogida de cierre de la `0.9` y del parche `0.8.2` (`gw-harvest`, 10 proyectos al día; 7 con propuestas, `docs/proposals/2026-11-22-*.md`), al usuario | hecho (2026-11-22; las 24 propuestas aprobadas y la de `next-id`: D145-D166 a este parche, E79-E83 a la `1.0`) |
 | H27 | Cierre de la `0.9`: subida a `0.9.0` (plugin.json, sellos, CHANGELOG, README), recogida de cierre y las tres fases antes de `main` | hecho (2026-11-24; `main` = `8357389`, textos en `docs/records/release-v0.9.0.md`) |
-| H28 | Recogida de apertura de la `0.10` (`gw-harvest`, 6 proyectos con propuestas, `docs/proposals/2026-11-24-*.md`), al usuario | en curso (2026-11-24) |
 | D142 | `gw-selector`: la sesión se para cuando el modelo o el esfuerzo recomendado no coincide con el actual (hoy avisa y sigue, y el orquestador toma el modelo de la fila más arriesgada, así que casi nunca baja de Opus); el comportamiento exacto, en `docs/questions.md` (usuario, 2026-11-19; Related: E66) | hecho (2026-11-22) |
 | D144 | `measure.py` sin `--session` mide la sesión en curso (la más nueva de todas las carpetas); la preferencia de D139 por la carpeta del repo solo desempata (retro de la `0.8.1`; antes «D142», id repetido) | hecho (2026-11-22) |
 | D145 | `test_measure.py` pasa con el flujo instalado en un proyecto (hoy 5 tests en rojo en su CI y cada `/gw-update` borra el parche local) (recogida H26, instalador P1 y world-maker-fantasy) | hecho (2026-11-22) |
@@ -425,9 +424,26 @@ Funciones nuevas que pasan de la `0.8` para cerrarla antes (usuario, 2026-11-18)
 | E85 | `whole-read.py` avisa también de un `cat`/`sed`/`head` por `Bash` del `log` o de `roadmapFiles` por encima de `wholeReadWarnBytes`, con la orden que da lo mismo (retro `0.8.2`, P3) | hecho (2026-11-22) |
 | E86 | `gw-orchestrate-dealer` reparte la revisión de la fase 1 de un diff grande (clave nueva `review.splitLines`) en revisores por grupos de archivos más uno que cruce los contratos (retro `0.8.2`, P4) | hecho (2026-11-22) |
 
+## `0.9.1` — parche
+
+Solo arreglos de la recogida de apertura de la `0.10` (solo la última menor publicada recibe parches, usuario, 2026-11-01).
+
+| Id | Tarea | Estado |
+|---|---|---|
+| H28 | Recogida de apertura de la `0.10` (`gw-harvest`, 6 proyectos con propuestas, `docs/proposals/2026-11-24-*.md`), al usuario | hecho (2026-11-24; arreglos a la `0.9.1`, evolutivos a la `0.11`) |
+| B48 | `workflowClone` se busca también en la disposición de la nube (`../<owner>/<repo>`, `/home/user/<owner>/<repo>`, sin distinguir mayúsculas): ayudante común en `config.py` para `doctor.py`, `apply.py`, `review-scope.py` y `gw-update`; amplía D158 (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| B49 | `other-repo-read.py` no avisa al correr `apply.py` del clon (solo en lecturas) (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| B50 | `check.yml` y su plantilla ponen en `PATH` solo el binario de actionlint, no su venv (pierde PyYAML) (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| B51 | `gw-update`: parar si la rama va por detrás de la protegida, avisar del choque con el ledger y comprobar que una clave existe antes de recomendarla (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| B52 | `handoff.py next-id` lee ids en celdas de tabla (`**B3**`) y `doctor.py` avisa si ninguno casa con `taskId` (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| B53 | `red-without-fix.sh` decide por ruta o `testMap`, no por el contenido del archivo (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| B54 | `review-scope.py` avisa de un árbol sin confirmar y admite `--worktree` (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| B55 | `push.sh` dice la ruta del registro y que hay un bloqueo al empezar el check del `pre-push` (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| B56 | Reglas de `REVIEW.md` (sin guardas temporales en tests; un comando con tiempo límite mata su grupo de procesos) y regla del reparto de contrastar el valor esperado con el código (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+
 ## `0.10` «Estable»
 
-Solo correcciones y revisiones, sin funciones nuevas: lo evolutivo de las recogidas va a la `1.x` (usuario, 2026-11-18).
+Solo correcciones y revisiones, sin funciones nuevas: lo evolutivo de las recogidas va a la `0.11` (usuario, 2026-11-24; antes `1.x`).
 
 | Id | Tarea | Estado |
 |---|---|---|
@@ -444,6 +460,18 @@ Solo correcciones y revisiones, sin funciones nuevas: lo evolutivo de las recogi
 | B38 | Barrido de los leves de `scripts/handoff.py` en `pending.md` (D104): la cuenta del puntero de pendientes duplicada y sin vigilar en un commit que solo toca `pending.md`; `archive` exige «## Pendiente» y `check`/`recover` no, y el mensaje sin archivo nombra la bitácora; el `pre-push` lee `pendingFile` de la copia de trabajo; la cuenta solo mira «Pendiente (de la bitácora)»; `move-pending` descarta líneas que parecen punteros (retro de la `0.7.0`, R2; usuario, 2026-11-15) | hecho |
 | B43 | Barrido de los leves de `scripts/trace.py` en `pending.md`: plegar filas cuyo texto traducido difiere (revisión D14 n.º 2); ordenar las entradas del día por hora (C11-trace n.º 3); leer `taskRecord.sections` en vez de fijar `Acceptance` (n.º 4); no contar `- [x]` dentro de bloques de código (n.º 5); `normpath` en `taskRecord.path` (n.º 6); `parse_entry` compartido con `task.py` (n.º 7) (retro de la `0.8.0`, P5; usuario, 2026-11-18) | pendiente |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.10` | pendiente |
+
+## `0.11` — evolutivos de las recogidas
+
+Funciones nuevas que no caben en la `0.10` (solo correcciones): la siguiente menor que no está en obra (usuario, 2026-11-05 y 2026-11-24).
+
+| Id | Tarea | Estado |
+|---|---|---|
+| E87 | `private-check.py` también en el `pre-commit`, con clave para apagarlo (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| E88 | `handoff.py show <sección>` (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| E89 | `config.py set <clave> <valor>`, validado con `schema/gw.schema.json` (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| E90 | Clave `skillsExclude` para no instalar skills sin uso (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| E91 | Aviso de `/clear` por subpaso (`Findings:`), decidido junto con D176 y Q-64 (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
 
 ## `1.0` — MMC 1, solo lectura
 

@@ -13,7 +13,7 @@ De `f025f40` a `7c2f412` (`scripts/harvest.py`). 17 commits; ningún skill ni sc
 - **Why it is general:** `add_repo` deja el clon en `/home/user/<owner>/<repo>` en minúsculas; cada proyecto en la
   nube recibe el aviso de `doctor.py` y busca el clon a mano (cuatro proyectos lo han contado).
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → B48 (`0.9.1`)
 
 ## P2. `other-repo-read.py` no avisa al correr `apply.py` del clon
 
@@ -23,7 +23,7 @@ De `f025f40` a `7c2f412` (`scripts/harvest.py`). 17 commits; ningún skill ni sc
 - **Why it is general:** ruido en el paso de actualización de todos los proyectos. Exentar solo `apply.py`, no todo
   script del clon: una lectura disfrazada de ejecución sigue avisando.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → B49 (`0.9.1`)
 
 ## P3. `review-scope.py` avisa de un árbol sin confirmar
 
@@ -32,7 +32,7 @@ De `f025f40` a `7c2f412` (`scripts/harvest.py`). 17 commits; ningún skill ni sc
   Hoy solo mira commits y, antes de confirmar, lista solo la bitácora y el ledger: parece que no hay nada que revisar.
 - **Why it is general:** cualquier proyecto que corra el alcance antes de confirmar.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → B54 (`0.9.1`)
 
 ## P4. `gw-update`, paso 1: rama nueva y ledger
 
@@ -42,7 +42,7 @@ De `f025f40` a `7c2f412` (`scripts/harvest.py`). 17 commits; ningún skill ni sc
   choca con el ledger sin confirmar (`merge-main.py` lo confirma antes, o se aparta).
 - **Why it is general:** ocurre en cada ciclo de actualización.
 - **Version bump:** patch
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → B51 (`0.9.1`)
 
 ## Joined to another proposal
 

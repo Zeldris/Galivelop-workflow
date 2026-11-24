@@ -10,7 +10,7 @@ De `5590cda` a `904226bd` (`scripts/harvest.py`). 13 commits; ningún skill ni s
   antes de guardar (hoy solo hay `get`; el proyecto editó `workflowClone` con un script suelto).
 - **Why it is general:** sirve a cualquier clave y a la regla «todo configurable» (G4, MMC).
 - **Version bump:** minor (evolutivo)
-- **Status:** proposed
+- **Status:** aprobada (2026-11-24) → E89 (`0.11`)
 
 ## Joined to another proposal
 
