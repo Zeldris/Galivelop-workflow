@@ -484,16 +484,17 @@ class Config(unittest.TestCase):
         self.write(VALID)
         defaults = {"stopPushMarkerMaxAge": "3600", "stopGitTimeout": "30", "hookStdinWait": "3",
                     "checkReuseTtl": "86400", "checkReuseKeep": "50", "stopSeverity.unpushed": "block",
-                    "stopSeverity.logRequired": "block"}
+                    "stopSeverity.logRequired": "block", "stopSeverity.ciPending": "block", "stopCiTimeout": "30"}
         for key, value in defaults.items():
             self.assertEqual(cli(self.tmp, "get", key).stdout.strip(), value, key)
         self.write(dict(VALID, stopPushMarkerMaxAge=7200, stopGitTimeout=5, hookStdinWait=0.5, checkReuseTtl=0,
-                        checkReuseKeep=7, stopSeverity={"unpushed": "warn"}))
+                        checkReuseKeep=7, stopCiTimeout=5, stopSeverity={"unpushed": "warn", "ciPending": "off"}))
         for key, value in {"stopPushMarkerMaxAge": "7200", "stopGitTimeout": "5", "hookStdinWait": "0.5",
                            "checkReuseTtl": "0", "checkReuseKeep": "7", "stopSeverity.unpushed": "warn",
-                           "stopSeverity.logRequired": "block"}.items():
+                           "stopSeverity.logRequired": "block", "stopCiTimeout": "5", "stopSeverity.ciPending": "off"}.items():
             self.assertEqual(cli(self.tmp, "get", key).stdout.strip(), value, key)
         bad = {"stopPushMarkerMaxAge": (0, "$.stopPushMarkerMaxAge: must be at least 1, got 0"),
+               "stopCiTimeout": (0, "$.stopCiTimeout: must be at least 1, got 0"),
                "stopGitTimeout": (601, "$.stopGitTimeout: must be at most 600, got 601"),
                "hookStdinWait": (0, "$.hookStdinWait: must be at least 0.1, got 0"),
                "checkReuseTtl": ("x", "$.checkReuseTtl: expected integer, got str"),

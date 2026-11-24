@@ -213,15 +213,23 @@
       "default": 30,
       "description": "Seconds each git call of the Stop hook (before-stop.py) may take before it counts as failed (a warning, never a block)."
     },
+    "stopCiTimeout": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 600,
+      "default": 30,
+      "description": "Seconds the Stop hook (before-stop.py) waits for ci-status.py when it looks for a CI of the pushed HEAD that is still queued or running (stopSeverity.ciPending); past it, the read counts as failed (a warning, never a block)."
+    },
     "stopSeverity": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
         "unpushed": {"type": "string", "enum": ["block", "warn"], "default": "block"},
-        "logRequired": {"type": "string", "enum": ["block", "warn"], "default": "block"}
+        "logRequired": {"type": "string", "enum": ["block", "warn"], "default": "block"},
+        "ciPending": {"type": "string", "enum": ["block", "warn", "off"], "default": "block"}
       },
-      "default": {"unpushed": "block", "logRequired": "block"},
-      "description": "What the Stop hook (before-stop.py) does for its two hard cases: unpushed (commits not pushed on a working branch) and logRequired (uncommitted changes while the log is not among them). block stops the session until fixed; warn only says it in the closing message."
+      "default": {"unpushed": "block", "logRequired": "block", "ciPending": "block"},
+      "description": "What the Stop hook (before-stop.py) does for its hard cases: unpushed (commits not pushed on a working branch), logRequired (uncommitted changes while the log is not among them) and ciPending (HEAD is pushed and its CI is still queued or running: how to schedule the check). block stops the session until fixed (ciPending: once per commit); warn only says it in the closing message; off (ciPending only) does not look."
     },
     "recover": {
       "type": "object",
@@ -384,6 +392,7 @@
         "stopSubagentMaxAge",
         "stopPushMarkerMaxAge",
         "stopGitTimeout",
+        "stopCiTimeout",
         "stopSeverity",
         "recover",
         "hookStdinWait",

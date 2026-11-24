@@ -1335,5 +1335,121 @@ class ClearAfterTask(Base):  # E66: blocks once per closed task when the stretch
         self.assertIn("Task E1 closed", self.assertBlocks(self.stop()[1])["reason"])
 
 
+class CiPending(Base):
+    """B57: a pushed HEAD whose CI has no verdict yet blocks once per commit with the order to schedule the check; a
+    stub ci-status.py (the real one reads GitHub) answers from the file `ci-answer` next to it."""
+
+    STUB = (
+        "import json, os, sys, time\n"
+        "text = open(%r).read()\n"
+        "if text.startswith('sleep '):\n"
+        "    time.sleep(float(text.split()[1]))\n"
+        "    text = '{\"state\": \"pending\"}'\n"
+        "if text.startswith('crash'):\n"
+        "    print('boom', file=sys.stderr); sys.exit(3)\n"
+        "print(text)\n"
+    )
+
+    def setUp(self):
+        super().setUp()
+        self.p.work_branch()  # pushed and level with its upstream: the rule a. has nothing to say
+        self.answer_file = self.tmp / "ci-answer"  # outside the repo: changing it leaves the tree clean
+        self.p.write(".claude/gw/scripts/ci-status.py", self.STUB % str(self.answer_file))
+        self.p.commit("ci-status stub")
+        self.p.git("push", "-q")
+        self.answer("pending")
+
+    def answer(self, state, error=None):
+        text = state if state.startswith(("sleep", "crash")) else json.dumps({"state": state, "error": error})
+        self.answer_file.write_text(text)
+
+    def mark(self):
+        gitdir = self.p.git("rev-parse", "--absolute-git-dir").stdout.strip()
+        return Path(gitdir) / "gw-ci-warn"
+
+    def set_keys(self, **keys):
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg.update(keys)
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        self.p.commit("config")
+        self.p.git("push", "-q", "origin", "HEAD")
+
+    def stop(self):
+        return self.p.stop()  # no transcript: the E66 /clear request stays out of the way
+
+    def test_pending_blocks_once_per_commit_with_the_order_to_schedule_it(self):
+        reason = self.assertBlocks(self.stop()[1], "is pushed but its CI is still queued or running", "send_later",
+                                   "ScheduleWakeup", "Monitor", "ci-status.py --failed", "ci-status.py --json")["reason"]
+        self.assertIn(self.p.git("rev-parse", "HEAD").stdout.strip()[:12], reason)
+        self.assertIn(self.p.git("rev-parse", "HEAD").stdout.strip(), self.mark().read_text())
+        code, out = self.stop()
+        self.assertLetsStop(code, out)
+        self.assertEqual(out.strip(), "", "the same commit is not warned twice")
+        self.p.write("src/a.py", "x = 1\n"); self.p.commit("next")
+        self.p.git("push", "-q")
+        self.assertBlocks(self.stop()[1], "still queued or running")  # a new commit, a new warning
+
+    def test_a_verdict_does_not_block_and_leaves_no_mark(self):
+        for state in ("green", "red", "none"):
+            self.answer(state)
+            code, out = self.stop()
+            self.assertLetsStop(code, out)
+            self.assertEqual(out.strip(), "", f"{state}: nothing to say")
+        self.assertFalse(self.mark().exists())
+
+    def test_unpushed_commits_are_rule_a_and_not_this(self):
+        self.p.write("src/a.py", "x = 1\n"); self.p.commit("local only")
+        reason = self.assertBlocks(self.stop()[1], "1 commit not pushed")["reason"]
+        self.assertNotIn("CI", reason)
+        self.assertFalse(self.mark().exists())
+
+    def test_stop_hook_active_never_blocks(self):
+        code, out = self.p.stop({"stop_hook_active": True})
+        self.assertLetsStop(code, out)
+        self.assertEqual(out.strip(), "")
+        self.assertFalse(self.mark().exists())
+
+    def test_a_failed_read_is_a_warning_not_a_block(self):
+        for answer, needle in (("error", "could not be read: no token"), ("crash", "gave no readable answer (boom)")):
+            self.answer(answer, "no token")
+            code, out = self.stop()
+            self.assertLetsStop(code, out)
+            message = decision(self, out)["systemMessage"]
+            self.assertIn("could not check everything", message)
+            self.assertIn(needle, message)
+        self.assertFalse(self.mark().exists())
+
+    def test_a_slow_ci_status_times_out_into_a_warning(self):
+        self.set_keys(stopCiTimeout=1)
+        self.answer("sleep 30")
+        started = time.time()
+        code, out = self.stop()
+        self.assertLess(time.time() - started, 20)
+        self.assertLetsStop(code, out)
+        self.assertIn("took more than 1 s (stopCiTimeout", decision(self, out)["systemMessage"])
+        self.assertFalse(self.mark().exists())
+
+    def test_no_ci_status_script_is_silent(self):
+        self.p.git("rm", "-q", ".claude/gw/scripts/ci-status.py")
+        self.p.commit("no ci-status.py")
+        self.p.git("push", "-q")
+        code, out = self.stop()
+        self.assertLetsStop(code, out)
+        self.assertEqual(out.strip(), "")
+
+    def test_severity_warn_says_it_every_time_and_off_does_not_look(self):
+        self.set_keys(stopSeverity={"ciPending": "warn"})
+        for _ in range(2):
+            code, out = self.stop()
+            self.assertLetsStop(code, out)
+            self.assertIn("still queued or running", decision(self, out)["systemMessage"])
+        self.assertFalse(self.mark().exists())
+        self.set_keys(stopSeverity={"ciPending": "off"})
+        self.answer_file.unlink()  # a stub that would crash if it ran
+        code, out = self.stop()
+        self.assertLetsStop(code, out)
+        self.assertEqual(out.strip(), "")
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -47,6 +47,14 @@ turned done in a commit of the current stretch and the conversation the stretch 
 `contextGuard.clearAfterTask` of the cutoff: the reason asks Claude to request /clear in one line instead of
 chaining the next task (context_guard.clear_after_task_once; <git dir>/gw-clear-warn, per transcript).
 
+B57: with HEAD pushed (a branch with an upstream, nothing a. would block) it asks `ci-status.py --json` (waiting at most
+`stopCiTimeout` seconds) and, when the CI of HEAD has no verdict yet (state `pending`: queued or running), blocks once
+per commit (`stopSeverity.ciPending`; <git dir>/gw-ci-warn lists the shas already warned) with the order to schedule the
+check (send_later or ScheduleWakeup running ci-status.py) or to wait for it with Monitor, so a turn never ends on a "I
+will look at the CI later" that nothing wakes up. A green or red CI, no ci-status.py, unpushed commits, `off` and
+stop_hook_active do not block; a read that fails (no network, no token, a remote that is not GitHub, a timeout) is a
+`warns` entry, never a block.
+
 Output format (https://code.claude.com/docs/en/hooks.md, "Stop decision control"): a block is a JSON object on stdout
 with exit 0, `{"decision": "block", "reason": "..."}`; Claude Code feeds `reason` back to Claude as the explanation
 for why it should continue ("`reason` ... Tells Claude why it should continue"). The page also documents exit 2 with
@@ -461,6 +469,72 @@ def clear_after_task(root, cfg, transcript):
         return None
 
 
+CI_MARK = "gw-ci-warn"  # under the git dir: the shas whose pending CI was already reported (one per line)
+CI_MARK_KEEP = 32
+
+
+def ci_pending(root, cfg, mode):
+    """B57: (message, warn) for the pushed HEAD whose CI has no verdict yet. `message` is the reason to give (once per
+    commit when `mode` is "block", every time for "warn"), `warn` a read that failed; both None when there is nothing
+    to say (a verdict, no upstream or detached HEAD, no ci-status.py, a commit already warned). Raises GitError."""
+    script = os.path.join(HERE, "ci-status.py")
+    if mode == "off" or not os.path.isfile(script):
+        return None, None
+    if git(root, "symbolic-ref", "-q", "HEAD", check=False)[0] != 0 \
+            or git(root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", check=False)[0] != 0:
+        return None, None  # detached HEAD or no upstream: not provably pushed
+    sha = git(root, "rev-parse", "HEAD")[1].strip()
+    mark = os.path.join(git(root, "rev-parse", "--absolute-git-dir")[1].strip(), CI_MARK)
+    if mode == "block" and sha in _read_lines(mark):
+        return None, None
+    timeout = cfg["stopCiTimeout"]
+    cmd = [sys.executable, script, "--json", "--root", str(root)]
+    try:
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, start_new_session=True)
+    except OSError as exc:
+        return None, f"ci-status.py could not run ({exc})"
+    try:
+        out, err = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, 9)  # its gh/curl children too: they would hold the pipe open
+        except OSError:
+            proc.kill()
+        proc.communicate()
+        return None, f"ci-status.py took more than {timeout} s (stopCiTimeout in .claude/gw.json)"
+    try:
+        data = json.loads(out)
+        state = data["state"]
+    except (ValueError, KeyError, TypeError):
+        return None, f"ci-status.py gave no readable answer ({(err or out).strip()[:200] or 'exit ' + str(proc.returncode)})"
+    if state == "error":
+        return None, f"the CI of {sha[:12]} could not be read: {data.get('error') or 'unknown error'}"
+    if state != "pending":
+        return None, None  # green, red or no CI: a verdict (or nothing to wait for)
+    if mode == "block":
+        try:
+            _write_lines(mark, (_read_lines(mark) + [sha])[-CI_MARK_KEEP:])
+        except OSError:
+            return None, None  # without a mark it would block on every stop: stay silent instead
+    return (f"HEAD {sha[:12]} is pushed but its CI is still queued or running (ci-status.py: pending), and nothing "
+            f"will wake this session to read it. Do not end the turn on \"I will look at it later\": schedule the check "
+            f"(send_later or ScheduleWakeup a few minutes ahead, running: python3 {script} --failed), or wait for it "
+            f"here with Monitor on an until-loop over: python3 {script} --json. This reminder shows once for this commit."), None
+
+
+def _read_lines(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            return [line.strip() for line in f if line.strip()]
+    except OSError:
+        return []
+
+
+def _write_lines(path, lines):
+    with open(path, "w", encoding="utf-8") as f:
+        f.write("\n".join(lines) + "\n")
+
+
 def main():
     global GIT_TIMEOUT, PUSH_MARKER_MAX_AGE
     doctor = f"python3 {os.path.join(HERE, 'doctor.py')}"
@@ -488,8 +562,10 @@ def main():
         # stopSeverity: "block" stops the session, "warn" only says it in the closing message
         unpushed_to = blocks if severity["unpushed"] == "block" else notes
         log_to = blocks if severity["logRequired"] == "block" else notes
+        pushed = False  # B57: HEAD is known to be pushed (nothing for a. to say, no git failure)
         try:
             found = unpushed(root, cfg["protectedBranch"])
+            pushed = not found
             if found:
                 branch, count, where = found
                 if branch == cfg["protectedBranch"]:
@@ -532,6 +608,7 @@ def main():
                                      f"again: wait for it and check git status -sb afterwards.")
         except GitError as exc:
             warns.append(str(exc))
+            pushed = False
         paths = None  # unknown (git failed) is not "clean"
         try:
             paths = changed_paths(root, {posixpath.normpath(config.metrics(cfg)["ledger"])})
@@ -548,6 +625,16 @@ def main():
             done = clear_after_task(root, cfg, event.get("transcript_path"))
             if done:  # a block: only `reason` reaches Claude; once per closed task, and stop_hook_active ends it
                 blocks.append(done)
+        if pushed and not blocks:  # B57: a pushed HEAD whose CI nobody is going to read
+            try:
+                ci_mode = severity["ciPending"]
+                ci_message, ci_warn = ci_pending(root, cfg, ci_mode)
+            except GitError as exc:
+                ci_message, ci_warn = None, str(exc)
+            if ci_warn:
+                warns.append(ci_warn)
+            if ci_message:  # a block: only `reason` reaches Claude; once per commit, and stop_hook_active ends it
+                (blocks if ci_mode == "block" else notes).append(ci_message)
 
     answer = {}
     if blocks:

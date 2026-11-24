@@ -997,7 +997,7 @@ def subagent_settings(root=None):
 
 
 def stop_severity(config):
-    """The `stopSeverity` key (A13) as a dict (unpushed, logRequired), each "block" or "warn"."""
+    """The `stopSeverity` key (A13) as a dict (unpushed, logRequired, ciPending), each "block" or "warn" (ciPending also "off")."""
     return _section(config, "stopSeverity")
 
 
