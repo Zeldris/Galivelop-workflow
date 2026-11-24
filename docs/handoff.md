@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.9.0` en `main`** (`8357389`, las tres fases hechas: revisión con 7 hallazgos arreglados, retro D176/D177, `reviewed.sh`; CI de `4b9b5e4` en verde). Release de GitHub `v0.9.0` pendiente (textos en `docs/records/release-v0.9.0.md`) |
-| Siguiente paso | **El usuario crea la release `v0.9.0`** (a mano con los textos de `docs/records/release-v0.9.0.md`, o subiendo la etiqueta con `release.yml`; la nube no sube etiquetas: 403). Mira el CI de la última subida (`ci-status.py`). Después, la `0.10` «Estable» (E8, E28-E31…, `docs/roadmap.md`); `task.py current` sigue en E86 (solo lo cambia el usuario). Presupuesto de compactaciones: 2 |
+| Siguiente paso | **Release `v0.9.0` de GitHub, pendiente: la crea un agente desde una sesión local** (usuario, 2026-11-24; la nube no sube etiquetas: 403), con los textos de `docs/records/release-v0.9.0.md` y la etiqueta sobre `8357389`; al hacerlo, apuntar «Publicada» en ese archivo. Mira antes el CI de la última subida (`ci-status.py`). Después, la `0.10` «Estable» (E8, E28-E31…, `docs/roadmap.md`); `task.py current` sigue en E86 (solo lo cambia el usuario). Presupuesto de compactaciones: 2 |
 
 ### Fases
 
