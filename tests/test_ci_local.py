@@ -713,6 +713,9 @@ echo "$@" >> "$FAKE_LOG"
         self.assertIn("config.py get ciActionlint", step)
         self.assertIn('"$RUNNER_TEMP/actionlint"', step)
         self.assertIn("GITHUB_PATH", step)
+        # B50: only the binary on PATH, never the venv's bin/ (its python3 has no PyYAML).
+        self.assertIn('echo "$RUNNER_TEMP/actionlint-bin" >> "$GITHUB_PATH"', step)
+        self.assertNotIn('actionlint/bin" >> "$GITHUB_PATH"', step)
         self.assertLess(text.index("- name: Install actionlint"), text.index("- name: Check\n"))
 
 

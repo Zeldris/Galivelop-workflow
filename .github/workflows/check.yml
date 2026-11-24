@@ -38,7 +38,10 @@ jobs:
             version="$(python3 scripts/config.py get actionlintVersion)"
             python3 -m venv "$RUNNER_TEMP/actionlint"
             "$RUNNER_TEMP/actionlint/bin/pip" install --quiet "actionlint-py${version:+==$version.*}"
-            echo "$RUNNER_TEMP/actionlint/bin" >> "$GITHUB_PATH"
+            # Only the binary goes on PATH: the venv's bin/ would put its python3 (no PyYAML) before the runner's (B50).
+            mkdir -p "$RUNNER_TEMP/actionlint-bin"
+            ln -sf "$RUNNER_TEMP/actionlint/bin/actionlint" "$RUNNER_TEMP/actionlint-bin/actionlint"
+            echo "$RUNNER_TEMP/actionlint-bin" >> "$GITHUB_PATH"
           fi
       - uses: actions/setup-node@v4
         if: runner.os == 'Linux'
