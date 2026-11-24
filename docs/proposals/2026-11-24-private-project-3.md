@@ -22,5 +22,5 @@ De `d7d8def` a `aeca90d` (`scripts/harvest.py`). 10 commits; skills, scripts y `
 
 ## Sin novedades
 
-- `private-project-4`: nada desde `6cc80cc` (la recogida anterior). `private-project-1`: no se ha recogido en esta ronda
+- `private-project-4`: nada desde `6cc80cc` (la recogida anterior). `private-project-1`: nada desde `f646009` (la recogida anterior), recogido con permiso del usuario el 2026-11-24
   (no se pudo añadir su repo en solo lectura); sigue en `f646009`.
