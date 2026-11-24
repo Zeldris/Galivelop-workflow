@@ -13,6 +13,47 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) · Versions: [S
 entry has `### ES` and `### EN`. The version lives only in `.claude-plugin/plugin.json`; CI checks it has an entry
 here.
 
+## [0.9.0] - 2026-11-24
+
+Versión «Front» (filas de la `0.9` en `docs/roadmap.md`). / "Front" release (`0.9` rows in `docs/roadmap.en.md`).
+
+### ES
+
+- Idiomas (A12): bloque `languages` en `.claude/gw.json` (`code`, `docs`, `public`, `ui`) y el idioma del agente por
+  usuario en `~/.claude/gw.json`; `language` y `visibleLanguages` migran con `apply.py --update`.
+- Perfiles (E4): `profile.py` y perfiles por persona y por cargo; el CI siempre usa `default`.
+- Front (E5, E7, E9-E16, E78): pruebas de front con `front.py run full` (capturas, accesibilidad, matriz), su guía en
+  `docs/es/patterns.md` y el sello de versión de Playwright de las capturas.
+- Webs (E42, E50): skill `gw-seo` y aviso de `whole-read.py` al leer capturas sueltas (clave `screenshotSheet`).
+- De la recogida de apertura (E65-E77): `merge-main.py` commitea el ledger de métricas antes de fusionar; aviso de
+  `/clear` al cerrar una tarea (`contextGuard.clearAfterTask`); `wholeReadDenyPaths`; `actionlint` en el check; clave
+  `generated`; `projectSkillPrefix`; aviso al leer otro repo; `measure.py` separa el arranque fijo.
+- Retros (E84-E86, D176, D177): `push.sh --wip`, avisos de `whole-read.py` por `Bash`, reparto de la revisión de la
+  fase 1 (`review.splitLines`), aviso de `/clear` al cerrar una fila (`clearOnTaskClose`) y de pendientes que citan
+  un id cerrado (`pendingClosedIdCheck`).
+- Arreglos de las revisiones (D167-D175, D178): copias instaladas de `gw-opt-tokens` y `pre-commit` al día,
+  `is_workflow` en `config.py`, leves de `recover.py`, `whole-read.py` y `handoff.py`, y aviso de modelo tras
+  compactar en `recover.py --state`.
+
+### EN
+
+- Languages (A12): `languages` block in `.claude/gw.json` (`code`, `docs`, `public`, `ui`) and the agent's language
+  per user in `~/.claude/gw.json`; `language` and `visibleLanguages` migrate with `apply.py --update`.
+- Profiles (E4): `profile.py` and per-person and per-role profiles; CI always uses `default`.
+- Front end (E5, E7, E9-E16, E78): front-end tests with `front.py run full` (screenshots, accessibility, matrix),
+  their guide in `docs/en/patterns.md` and the Playwright version stamp of the screenshots.
+- Websites (E42, E50): `gw-seo` skill and a `whole-read.py` warning when loose screenshots are read
+  (`screenshotSheet` key).
+- From the opening harvest (E65-E77): `merge-main.py` commits the metrics ledger before merging; `/clear` warning
+  when a task closes (`contextGuard.clearAfterTask`); `wholeReadDenyPaths`; `actionlint` in the check; `generated`
+  key; `projectSkillPrefix`; warning when reading another repo; `measure.py` shows the fixed start-up apart.
+- Retros (E84-E86, D176, D177): `push.sh --wip`, `whole-read.py` warnings for `Bash` reads, split of the phase-1
+  review (`review.splitLines`), `/clear` warning when a task row closes (`clearOnTaskClose`) and of pending entries
+  citing a closed id (`pendingClosedIdCheck`).
+- Review fixes (D167-D175, D178): installed copies of `gw-opt-tokens` and `pre-commit` up to date, `is_workflow` in
+  `config.py`, minor fixes in `recover.py`, `whole-read.py` and `handoff.py`, and a model notice after compaction in
+  `recover.py --state`.
+
 ## [0.8.2] - 2026-11-22
 
 Parche de la recogida H26 (filas de la `0.8.2` en `docs/roadmap.md`). / Patch from the H26 harvest (`0.8.2` rows in

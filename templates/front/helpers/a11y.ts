@@ -1,4 +1,4 @@
-// galivelop-workflow v0.8.2
+// galivelop-workflow v0.9.0
 // Accessibility check (E-13): axe blocks on serious or critical violations only; minor and moderate are not reported.
 import AxeBuilder from '@axe-core/playwright';
 import type { Page } from '@playwright/test';

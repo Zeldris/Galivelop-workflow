@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.8.2
+# galivelop-workflow v0.9.0
 """PreToolUse hook on Edit/Write/MultiEdit/NotebookEdit, in the workflow repo only (E56): warn when a session edits a
 copy that `apply.py` generates from a source in this repo, and name the source. It never blocks: it adds
 `additionalContext` to the call, so the agent edits the source next; with no warning it prints nothing (no opinion).

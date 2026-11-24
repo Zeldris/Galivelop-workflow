@@ -352,6 +352,7 @@ Done when the `0.9` development closes, before publishing it: a harvest and its 
 | Id | Task | Status |
 |---|---|---|
 | H26 | Closing harvest of `0.9` and of patch `0.8.2` (`gw-harvest`, 10 projects up to date; 7 with proposals, `docs/proposals/2026-11-22-*.md`), to the user | done (2026-11-22; the 24 proposals and the `next-id` one approved: D145-D166 to this patch, E79-E83 to `1.0`) |
+| H27 | `0.9` closing: bump to `0.9.0` (plugin.json, stamps, CHANGELOG, README), closing harvest and the three phases before `main` | in progress (2026-11-24; the harvest, run by the user, is missing) |
 | D142 | `gw-selector`: the session stops when the recommended model or effort differs from the current one (today it warns and carries on, and the orchestrator takes the riskiest row's model, so it almost never goes below Opus); the exact behaviour, in `docs/questions.md` (user, 2026-11-19; Related: E66) | done (2026-11-22) |
 | D144 | `measure.py` without `--session` measures the current session (the newest across all folders); D139's preference for the repo folder only breaks ties (`0.8.1` retro; formerly "D142", a repeated id) | done (2026-11-22) |
 | D145 | `test_measure.py` passes with the workflow installed in a project (today 5 red tests in its CI, and each `/gw-update` wipes the local patch) (H26 harvest, instalador P1 and world-maker-fantasy) | done (2026-11-22) |
