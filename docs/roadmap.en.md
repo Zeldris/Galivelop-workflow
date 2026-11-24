@@ -423,9 +423,26 @@ New features moved out of `0.8` to close it sooner (user, 2026-11-18): languages
 | E85 | `whole-read.py` also warns on a `cat`/`sed`/`head` through `Bash` of the `log` or `roadmapFiles` above `wholeReadWarnBytes`, naming the command that gives the same (`0.8.2` retro, P3) | done (2026-11-22) |
 | E86 | `gw-orchestrate-dealer` splits the phase 1 review of a large diff (new key `review.splitLines`) into reviewers by file group plus one that crosses the contracts (`0.8.2` retro, P4) | done (2026-11-22) |
 
+## `0.9.1` — patch
+
+Only fixes from the opening harvest of `0.10` (only the latest published minor gets patches, user, 2026-11-01).
+
+| Id | Task | State |
+|---|---|---|
+| H28 | Opening harvest of `0.10` (`gw-harvest`, 6 projects with proposals, `docs/proposals/2026-11-24-*.md`), to the user | done (2026-11-24; fixes to `0.9.1`, new features to `0.11`) |
+| B48 | `workflowClone` is also looked up in the cloud layout (`../<owner>/<repo>`, `/home/user/<owner>/<repo>`, case-insensitive): a shared helper in `config.py` for `doctor.py`, `apply.py`, `review-scope.py` and `gw-update`; extends D158 (harvest `2026-11-24`, user 2026-11-24) | pending |
+| B49 | `other-repo-read.py` does not warn when running the clone's `apply.py` (only on reads) (harvest `2026-11-24`, user 2026-11-24) | pending |
+| B50 | `check.yml` and its template put only the actionlint binary on `PATH`, not its venv (it loses PyYAML) (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-24) |
+| B51 | `gw-update`: stop if the branch is behind the protected one, warn about the clash with the ledger and check that a key exists before recommending it (harvest `2026-11-24`, user 2026-11-24) | pending |
+| B52 | `handoff.py next-id` reads ids in table cells (`**B3**`) and `doctor.py` warns if none matches `taskId` (harvest `2026-11-24`, user 2026-11-24) | pending |
+| B53 | `red-without-fix.sh` decides by path or `testMap`, not by file content (harvest `2026-11-24`, user 2026-11-24) | pending |
+| B54 | `review-scope.py` warns about an uncommitted tree and accepts `--worktree` (harvest `2026-11-24`, user 2026-11-24) | pending |
+| B55 | `push.sh` says the log path and that the `pre-push` check holds a lock when it starts (harvest `2026-11-24`, user 2026-11-24) | pending |
+| B56 | `REVIEW.md` rules (no temporary guards in tests; a command with a timeout kills its process group) and the dealing rule of checking the expected value against the code (harvest `2026-11-24`, user 2026-11-24) | pending |
+
 ## `0.10` "Stable"
 
-Fixes and reviews only, no new features: new features from the harvests go to `1.x` (user, 2026-11-18).
+Fixes and reviews only, no new features: new features from the harvests go to `0.11` (user, 2026-11-24; before, `1.x`).
 
 | Id | Task | State |
 |---|---|---|
@@ -442,6 +459,18 @@ Fixes and reviews only, no new features: new features from the harvests go to `1
 | B38 | Sweep of the `scripts/handoff.py` minors in `pending.md` (D104): the pending-pointer count, duplicated and unchecked in a commit that only touches `pending.md`; `archive` requires "## Pendiente" while `check`/`recover` do not, and the missing-file message names the log; the `pre-push` reads `pendingFile` from the working copy; the count only looks at "Pendiente (de la bitácora)"; `move-pending` drops lines that look like pointers (`0.7.0` retro, R2; user, 2026-11-15) | done |
 | B43 | Sweep of the `scripts/trace.py` minors in `pending.md`: fold rows whose translated text differs (D14 review #2); sort a day's entries by time (C11-trace #3); read `taskRecord.sections` instead of a fixed `Acceptance` (#4); do not count `- [x]` inside code blocks (#5); `normpath` on `taskRecord.path` (#6); share `parse_entry` with `task.py` (#7) (0.8.0 retro, P5; user, 2026-11-18) | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.10` | pending |
+
+## `0.11` — features from the harvests
+
+New features that do not fit `0.10` (fixes only): the next minor not in progress (user, 2026-11-05 and 2026-11-24).
+
+| Id | Task | State |
+|---|---|---|
+| E87 | `private-check.py` also in the `pre-commit`, with a key to turn it off (harvest `2026-11-24`, user 2026-11-24) | pending |
+| E88 | `handoff.py show <section>` (harvest `2026-11-24`, user 2026-11-24) | pending |
+| E89 | `config.py set <key> <value>`, validated with `schema/gw.schema.json` (harvest `2026-11-24`, user 2026-11-24) | pending |
+| E90 | `skillsExclude` key to skip installing unused skills (harvest `2026-11-24`, user 2026-11-24) | pending |
+| E91 | `/clear` warning per sub-step (`Findings:`), decided together with D176 and Q-64 (harvest `2026-11-24`, user 2026-11-24) | pending |
 
 ## `1.0` — MMC 1, read-only
 
