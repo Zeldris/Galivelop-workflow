@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.8.2` publicada** (`main` = `a725647`, 2026-11-22; las tres fases hechas, retro decidida; release `v0.8.2` de GitHub publicada desde una sesión local del usuario) y fusionada en la `0.9` |
-| Siguiente paso | **H27, cierre de la `0.9`**: subido a `0.9.0` (plugin.json, sellos, CHANGELOG, README). **Falta la recogida de cierre: la lanza el usuario con `/gw-harvest`** (`version.py --release` la exige añadida después de `v0.8.2`; el agente no puede invocarla). Con ella: `python3 scripts/version.py --release` en verde, `bash scripts/check.sh`, y con la orden del usuario `bash scripts/reviewed.sh` y la subida a `main` (fase 3); luego `docs/records/release-v0.9.0.md`. El `current` de `task.py` apunta a E86 (solo lo cambia el usuario). Presupuesto de compactaciones: 2 |
+| Siguiente paso | **H27, cierre de la `0.9`**: subido a `0.9.0` (plugin.json, sellos, CHANGELOG, README); `version.py --release` en verde (la recogida H26 vale, no hace falta otra). Revisión de D176-D178 (código tras la fase 1) en curso con `gw-reviewer`; luego `bash scripts/check.sh`, y con la orden del usuario (dada 2026-11-24) `bash scripts/reviewed.sh` y la subida a `main` (fase 3); después `docs/records/release-v0.9.0.md`. El `current` de `task.py` apunta a E86 (solo lo cambia el usuario). Presupuesto de compactaciones: 2 |
 
 ### Fases
 
