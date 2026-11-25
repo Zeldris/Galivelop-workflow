@@ -113,7 +113,32 @@ class Warns(Base):
         self.assertEqual(out.count("additionalContext"), 1)
 
 
+    def test_apply_script_does_not_hide_a_read_in_the_same_command(self):
+        (self.other / "scripts").mkdir()
+        (self.other / "scripts" / "apply.py").write_text("")
+        a = self.other / "src" / "a.txt"
+        out = self.run_hook(self.event("Bash", {"command": f"python3 {self.other}/scripts/apply.py x && cat {a}"}))
+        self.warns(out, a, self.other)
+
+    def test_other_script_of_the_clone_still_warns(self):
+        (self.other / "scripts").mkdir()
+        (self.other / "scripts" / "doctor.py").write_text("")
+        (self.other / "scripts" / "apply.py").write_text("")
+        path = self.other / "scripts" / "doctor.py"
+        out = self.run_hook(self.event("Bash", {"command": f"python3 {path}"}))
+        self.warns(out, path, self.other)
+        out = self.run_hook(self.event("Bash", {"command": f"cat {self.other}/scripts/apply.py"}))
+        self.warns(out, self.other / "scripts" / "apply.py", self.other)
+
+
 class Silent(Base):
+    def test_apply_script_of_the_clone(self):
+        (self.other / "scripts").mkdir()
+        (self.other / "scripts" / "apply.py").write_text("")
+        for command in (f"python3 {self.other}/scripts/apply.py {self.p.work} --dry-run",
+                        f"python3 -B {self.other}/scripts/apply.py {self.p.work} --update"):
+            self.silent(self.run_hook(self.event("Bash", {"command": command})))
+
     def test_inside_the_project(self):
         self.p.write("docs/x.md", "x\n")
         self.silent(self.run_hook(self.event("Read", {"file_path": str(self.p.work / "docs" / "x.md")})))
