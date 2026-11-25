@@ -2069,6 +2069,13 @@ class CheckCache(Base):
         self.assertNotIn(self.SKIP, out)
         self.assertIn("check 'bash check.sh'", out)
 
+    def test_running_check_says_its_log_and_the_lock(self):  # B55
+        self.doc_change("lock\n")
+        code, out = self.push("origin", "feature")
+        self.assertEqual(code, 0, out)
+        self.assertIn("check lock held (a long check is running", out)
+        self.assertRegex(out, r"its output goes to \S*gw-pre-push-check\.\w+ \(follow it: tail -f ")
+
     def test_different_check_commands_run_the_check(self):
         self.doc_change()
         self.assertEqual(self.push("origin", "feature")[0], 0)
