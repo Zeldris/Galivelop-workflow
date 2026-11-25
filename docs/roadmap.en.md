@@ -434,7 +434,7 @@ Only fixes from the opening harvest of `0.10` (only the latest published minor g
 | B49 | `other-repo-read.py` does not warn when running the clone's `apply.py` (only on reads) (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
 | B50 | `check.yml` and its template put only the actionlint binary on `PATH`, not its venv (it loses PyYAML) (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-24) |
 | B51 | `gw-update`: stop if the branch is behind the protected one, warn about the clash with the ledger and check that a key exists before recommending it (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
-| B52 | `handoff.py next-id` reads ids in table cells (`**B3**`) and `doctor.py` warns if none matches `taskId` (harvest `2026-11-24`, user 2026-11-24) | pending |
+| B52 | `handoff.py next-id` reads ids in table cells (`**B3**`) and `doctor.py` warns if none matches `taskId` (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
 | B53 | `red-without-fix.sh` decides by path or `testMap`, not by file content (harvest `2026-11-24`, user 2026-11-24) | pending |
 | B54 | `review-scope.py` warns about an uncommitted tree and accepts `--worktree` (harvest `2026-11-24`, user 2026-11-24) | pending |
 | B55 | `push.sh` says the log path and that the `pre-push` check holds a lock when it starts (harvest `2026-11-24`, user 2026-11-24) | pending |

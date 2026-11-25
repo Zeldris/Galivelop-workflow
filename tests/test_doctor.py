@@ -1805,6 +1805,20 @@ class Doctor(Snapshot):
             self.set_cfg(**keys)
             self.assertNotIn("related tests", self.doctor()[1])
 
+    def test_plan_without_an_id_matching_task_id_warns(self):  # B52
+        self.set_cfg(plan=["docs/roadmap.md"])
+        self.p.write("docs/roadmap.md", "# Roadmap\n\n| Task | State |\n|---|---|\n| 1. export | open |\n")
+        line = self.assertLine(self.doctor()[1], "WARN", "plan ids", "matches taskId")
+        self.assertIn("set taskId in .claude/gw.json", line)
+
+    def test_plan_ids_quiet_with_a_match_a_later_cell_or_no_plan(self):  # B52
+        for plan in ("| B3 | open |\n", "| 1 | **B3** | open |\n", "- [ ] B3 open\n"):
+            self.set_cfg(plan=["docs/roadmap.md"], taskId=r"[A-H]\d+")
+            self.p.write("docs/roadmap.md", "# Roadmap\n\n" + plan)
+            self.assertNotIn("plan ids", self.doctor()[1])
+        self.set_cfg(plan=["docs/missing.md"])
+        self.assertNotIn("plan ids", self.doctor()[1])
+
 
 class TemplatesAgree(unittest.TestCase):
     def test_plugin_hooks_and_project_template_use_the_same_matchers_and_scripts(self):

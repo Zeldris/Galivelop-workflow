@@ -44,6 +44,7 @@ HERE = Path(__file__).resolve().parent
 sys.dont_write_bytecode = True  # no __pycache__ in the project's .claude/gw/scripts
 sys.path.insert(0, str(HERE))
 import config  # noqa: E402
+import handoff  # noqa: E402
 import session_log  # noqa: E402
 
 HEADER = re.compile(r"^# galivelop-workflow v(\S+)\s*$", re.M)
@@ -1319,6 +1320,32 @@ def check_related_tests(rep, cfg):
              'docs/en/config.md), or set "branchCheck": "full" to say so')
 
 
+def check_plan_ids(rep, root, cfg):
+    """B52: WARN when the plan files (`plan`) exist and have lines but none opens an entry whose id matches `taskId`:
+    `handoff.py next-id`, `clash` and the `Refs:` check then see no task. Quiet without a plan or with no plan file."""
+    plans = (cfg or {}).get("plan") or []
+    if not plans:
+        return
+    pattern = cfg.get("taskId") or config.schema_default("taskId")
+    try:
+        entry = handoff.entry_regex(f"(?:{config.non_capturing(pattern)})")
+    except (re.error, config.ConfigError):
+        return  # an invalid taskId is check_config's to report
+    texts = []
+    for p in plans:
+        path = root / p
+        for f in sorted(path.rglob("*.md")) if path.is_dir() else [path] if path.is_file() else []:
+            texts.append(f.read_text(encoding="utf-8", errors="replace"))
+    if not any(t.strip() for t in texts):
+        return
+    if any(entry.match(line) for t in texts for line in t.splitlines()):
+        return
+    rep.warn("plan ids", f"no entry of the plan ({', '.join(plans)}) starts with an id that matches taskId "
+             f"`{pattern}`, so next-id and the Refs check see no task",
+             "set taskId in .claude/gw.json to the pattern the plan's ids follow (docs/en/config.md), or write the "
+             "ids at the start of a table cell or list item")
+
+
 GITHUB_REMOTE = re.compile(r"^(?:https?://(?:[^/@]+@)?|ssh://(?:[^/@]+@)?|[^/@:]+@)github\.com[:/]", re.I)
 
 
@@ -1532,6 +1559,7 @@ def run(root, workflow=None):
     check_media_folder(rep, root)
     check_media_tools(rep, root)
     check_related_tests(rep, cfg)
+    check_plan_ids(rep, root, cfg)
     check_workflow_clone(rep, root, cfg, workflow)
     check_agent_files_ignored(rep, root)
     proposals = check_proposals(rep, root)

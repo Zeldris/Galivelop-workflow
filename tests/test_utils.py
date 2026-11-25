@@ -1056,6 +1056,10 @@ class HandoffNextId(PlanRepo):
         self.p.git("checkout", "--", self.PLAN)
         self.assertEqual(self.next_id("INS"), (0, "INS-10"))  # the index too
 
+    def test_id_in_a_later_table_cell_counts(self):  # B52
+        self.p.write(self.PLAN, self.START + "| Phase | **INS-7** | the export |\n| 2 | Depends | see INS-9 later |\n")
+        self.assertEqual(self.next_id("INS"), (0, "INS-8"))  # INS-7 is seen; INS-9 sits mid-text in a cell, not at its start
+
     def test_ids_used_in_the_pending_file_are_skipped(self):  # D157
         self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, plan=[self.PLAN], pendingFile="docs/pending.md")))
         self.assertEqual(self.next_id("INS"), (0, "INS-3"))
