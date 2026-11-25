@@ -409,7 +409,7 @@ class TextFiles(Base):
         self.assertIn("touch test code", out)
 
     def test_file_without_extension_is_still_searched(self):
-        self.p.write("Makefile", "improve it (see URL)\n")
+        self.p.write("Makefile", "it(see URL)\n")
         code, out = self.run_script("true", "Makefile")
         self.assertEqual(code, 2, out)
         self.assertIn("touch test code", out)
@@ -419,7 +419,7 @@ class TextFiles(Base):
         cfg = json.loads(path.read_text())
         cfg["nonTestExtensions"] = []
         path.write_text(json.dumps(cfg))
-        self.fix_prose("notes.md")
+        self.fix_prose("notes.md", "it(see URL)\n")
         code, out = self.run_script("true", "notes.md")
         self.assertEqual(code, 2, out)
         self.assertIn("touch test code", out)
@@ -430,7 +430,7 @@ class TextFiles(Base):
         cfg = json.loads(path.read_text())
         cfg["nonTestExtensions"] = ["MD"]
         path.write_text(json.dumps(cfg))
-        self.fix_prose("notes.md")
+        self.fix_prose("notes.md", "it(see URL)\n")
         code, out = self.run_script("true", "notes.md")
         self.assertEqual(code, 2, out)
         self.assertIn("cannot read redWithoutFix.compileRegex", out)  # the first key the script reads: the config is invalid
@@ -438,7 +438,7 @@ class TextFiles(Base):
 
     def test_extension_with_a_newline_is_never_skipped(self):
         name = "t.md\ndef test_x"
-        self.p.write(name, "improve it (see URL)\n")
+        self.p.write(name, "it(see URL)\n")
         code, out = self.run_script("true", name)
         self.assertEqual(code, 2, out)
         self.assertIn("touch test code", out)

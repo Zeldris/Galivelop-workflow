@@ -24,6 +24,9 @@
 #   --reject-compile-red  a compile/load red exits 1 (unless --fails-with is given, whose regex then decides).
 #   --compile-re REGEX    replaces the list of load-failure messages (redWithoutFix.compileRegex of .claude/gw.json, else the
 #                         built-in one; for a runner it does not know). redWithoutFix.testRegex does the same for test code.
+#   A fix file is test code by its PATH first (redWithoutFix.testPathRegex: tests/, test_x.py, x_test.go, x.spec.ts...);
+#   only a file whose path does not say so is searched for anchored test markers (testRegex), so prose or a docstring
+#   that mentions "test" in a source file no longer refuses it.
 # Make the command run exactly the new test (by its exact name): a filter that matches nothing may "pass" without
 # running it. Without --fix-at every fix file must have uncommitted changes (a new, untracked file counts).
 # The test must NOT be uncommitted in a fix file: reverting the fix would take the test with it and the check could not
@@ -70,7 +73,9 @@ if [ -z "$compile_re" ]; then
 fi
 test_re="$(python3 "$here/config.py" --root "$root" get redWithoutFix.testRegex)" || {
   echo "red-without-fix: cannot read redWithoutFix.testRegex; fix .claude/gw.json: python3 $here/config.py --root $root validate" >&2; exit 2; }
-for re in "$pattern" "$one" "$compile_re" "$test_re"; do  # an invalid regex would make grep print nothing and the check pass: refuse it now
+path_re="$(python3 "$here/config.py" --root "$root" get redWithoutFix.testPathRegex)" || {
+  echo "red-without-fix: cannot read redWithoutFix.testPathRegex; fix .claude/gw.json: python3 $here/config.py --root $root validate" >&2; exit 2; }
+for re in "$pattern" "$one" "$compile_re" "$test_re" "$path_re"; do  # an invalid regex would make grep print nothing and the check pass: refuse it now
   [ -n "$re" ] || continue
   printf '\n' | grep -Eq -- "$re" 2>/dev/null
   [ $? -ne 2 ] || { echo "red-without-fix: /$re/ is not a valid extended regex (grep -E); fix it (a regex of redWithoutFix in .claude/gw.json, or the flag) and rerun: $usage" >&2; exit 2; }
@@ -117,6 +122,10 @@ kindchg="uncommitted"
 skipexts="$(python3 "$here/config.py" --root "$root" get nonTestExtensions)" || {
   echo "red-without-fix: cannot read nonTestExtensions; fix .claude/gw.json: python3 $here/config.py --root $root validate" >&2; exit 2; }
 for f in "$@"; do
+  # A path that says "test" decides on its own (redWithoutFix.testPathRegex), whatever the extension: no reading of content.
+  if printf '%s\n' "$f" | grep -Eq -- "$path_re"; then
+    echo "red-without-fix: $f is a test file by its path (redWithoutFix.testPathRegex), so it has $kindchg changes that touch test code; reverting the fix would remove that test too. Name only the fix files (not test files): bash $0 \"$cmd\" <fix-file>..." >&2; exit 2
+  fi
   base="${f##*/}"; ext=""
   case "${base#.}" in *.*) ext="$(printf '%s' "${base##*.}" | tr '[:upper:]' '[:lower:]')" ;; esac
   case "$ext" in *[!a-z0-9]*) ext="" ;; esac  # the schema allows only [a-z0-9]: anything else (a newline would split the grep patterns) is never skipped
