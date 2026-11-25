@@ -445,6 +445,61 @@ class TextFiles(Base):
         self.assertNotIn("text/data file", out)
 
 
+class PathDecides(Base):
+    """B53: a path that says test decides by itself; a source file that only mentions tests is not refused."""
+
+    def set_keys(self, **keys):
+        path = self.p.work / ".claude" / "gw.json"
+        cfg = json.loads(path.read_text())
+        cfg["redWithoutFix"] = keys
+        path.write_text(json.dumps(cfg))
+
+    def fix_file(self, name, text):
+        self.p.write(name, "old\n")
+        self.p.commit("base " + name, env=DAY)
+        self.p.write(name, text)
+
+    def test_docstring_mentioning_a_test_in_source_is_not_test_code(self):
+        self.fix_file("mod.py", '"""Helpers. Example: def test_x(): ... and it(works) in tests."""\nx = 1\n')
+        code, out = self.run_script("true", "mod.py")
+        self.assertEqual(code, 1, out)  # got as far as the run: not refused
+        self.assertNotIn("touch test code", out)
+
+    def test_test_path_is_refused_without_reading_its_content(self):
+        self.fix_file("tests/helper.py", "x = 1\n")
+        code, out = self.run_script("true", "tests/helper.py")
+        self.assertEqual(code, 2, out)
+        self.assertIn("is a test file by its path", out)
+
+    def test_name_patterns_of_test_files_are_refused(self):
+        for name in ("test_a.py", "a_test.go", "a.spec.ts", "a.test.js", "ATests.java"):
+            with self.subTest(name=name):
+                self.fix_file(name, "x = 1\n")
+                code, out = self.run_script("true", name)
+                self.assertEqual(code, 2, out)
+                self.assertIn("is a test file by its path", out)
+
+    def test_inline_test_marker_in_a_source_path_is_still_refused(self):
+        self.fix_file("lib.rs", "#[test]\nfn t() {}\n")
+        code, out = self.run_script("true", "lib.rs")
+        self.assertEqual(code, 2, out)
+        self.assertIn("touch test code", out)
+
+    def test_path_regex_comes_from_the_config(self):
+        self.set_keys(testPathRegex="^checks/")
+        self.fix_file("checks/a.py", "x = 1\n")
+        code, out = self.run_script("true", "checks/a.py")
+        self.assertEqual(code, 2, out)
+        self.assertIn("is a test file by its path", out)
+
+    def test_invalid_path_regex_exits_2_naming_it(self):
+        self.set_keys(testPathRegex="ok[")
+        self.fix_file("a.py", "x = 1\n")
+        code, out = self.run_script("true", "a.py")
+        self.assertEqual(code, 2, out)
+        self.assertIn("/ok[/ is not a valid extended regex", out)
+
+
 class RedKind(Base):
     def cmd(self, message, word="good"):
         return f"if grep -q {word} fix.txt; then exit 0; fi; echo \"{message}\"; exit 1"

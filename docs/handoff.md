@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.9.0` en `main`** (`8357389`, las tres fases hechas: revisión con 7 hallazgos arreglados, retro D176/D177, `reviewed.sh`; CI de `4b9b5e4` en verde). Release de GitHub `v0.9.0` publicada (2026-11-24, sesión local; etiqueta sobre `8357389`) |
-| Siguiente paso | **La `0.9.1`** (parche B48-B56, `docs/roadmap.md`: B48-B52 y B57 hechos; sigue B53), luego la `0.10` «Estable» (E28 primero). Evolutivos de la recogida a la `0.11` (E87-E92). `task.py current` sigue en E86 (solo lo cambia el usuario). Presupuesto de compactaciones: 2 |
+| Siguiente paso | **La `0.9.1`** (parche B48-B56, `docs/roadmap.md`: B48-B52 y B57 hechos; B53 en WIP), luego la `0.10` «Estable» (E28 primero). Evolutivos de la recogida a la `0.11` (E87-E92). `task.py current` sigue en E86 (solo lo cambia el usuario). Presupuesto de compactaciones: 2 |
 
 ### Fases
 
@@ -39,6 +39,7 @@ desde una sesión local.
 
 ## Hecho (5 últimas)
 
+1. 2026-11-25 — WIP B53: `red-without-fix.sh` decide por ruta (clave nueva `redWithoutFix.testPathRegex`, rechaza con exit 2 sin leer) y `testRegex` queda con marcadores anclados; esquema, plantilla, docs es/en y clase `PathDecides` en `test_red_without_fix.py`. **Sin verificar**: `test_red_without_fix.py` estaba corriendo; faltan ajustar los casos viejos que usan `def test_` en `m.py`, copias de `.claude/gw/scripts/`, ficha `docs/tasks/B53.md`, roadmap y check completo.
 1. 2026-11-25 — B52: `entry_regex` (`handoff.py`) lee el id en cualquier celda de una fila de tabla (la primera que empieza con id: `| 1 | **B3** |`), y `doctor.py` avisa (`plan ids`) si ninguna entrada del plan casa con `taskId`; filas en ambos `troubleshooting.md`. `test_doctor` (186) y `HandoffNextId` (10) en verde; check completo pendiente.
 2. 2026-11-25 — B51: `gw-update` paso 1 comprueba `HEAD..origin/<protectedBranch>` y para (con `merge-main.py` o rama nueva, y el aviso del ledger); paso 2, comprobar que la clave existe antes de recomendarla. Solo texto de skill y copias; tests de skills y check completo pendientes.
 3. 2026-11-25 — B49: `other-repo-read.py` exenta la palabra `<dir>/scripts/apply.py` tras un intérprete `python*` (`apply_script_words`); otro script del clon o una lectura en el mismo comando siguen avisando. `test_other_repo_read` (23) en verde; check completo pendiente.
