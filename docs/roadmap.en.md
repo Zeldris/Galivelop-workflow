@@ -436,7 +436,7 @@ Only fixes from the opening harvest of `0.10` (only the latest published minor g
 | B51 | `gw-update`: stop if the branch is behind the protected one, warn about the clash with the ledger and check that a key exists before recommending it (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
 | B52 | `handoff.py next-id` reads ids in table cells (`**B3**`) and `doctor.py` warns if none matches `taskId` (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
 | B53 | `red-without-fix.sh` decides by path or `testMap`, not by file content (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
-| B54 | `review-scope.py` warns about an uncommitted tree and accepts `--worktree` (harvest `2026-11-24`, user 2026-11-24) | pending |
+| B54 | `review-scope.py` warns about an uncommitted tree and accepts `--worktree` (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
 | B55 | `push.sh` says the log path and that the `pre-push` check holds a lock when it starts (harvest `2026-11-24`, user 2026-11-24) | pending |
 | B56 | `REVIEW.md` rules (no temporary guards in tests; a command with a timeout kills its process group) and the dealing rule of checking the expected value against the code (harvest `2026-11-24`, user 2026-11-24) | pending |
 | B57 | The `Stop` hook (`before-stop.py`) warns when the last pushed commit has an unresolved CI (neither green nor red) and no check of it is scheduled: once per commit, with a key in `stopSeverity` (retro of `0.9.1`, user 2026-11-24) | done (2026-11-24) |

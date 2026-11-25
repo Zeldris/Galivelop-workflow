@@ -2,10 +2,14 @@
 # galivelop-workflow v0.9.0
 """The files the phase 1 `/code-review` reads before the protected branch: the branch's diff without `vendored` files (D82).
 
-  python3 review-scope.py [--base REV] [--workflow DIR] [--all]
+  python3 review-scope.py [--base REV] [--workflow DIR] [--all] [--worktree]
   python3 review-scope.py --trivial [--base REV] [--workflow DIR]   # B27: exit 0 if the scoped diff is trivial
                                                                     # (B45: the lines that only change the stamped version
                                                                     # `galivelop-workflow vX.Y.Z`/`version:` are not counted)
+
+B54: it reads commits, so a dirty tree warns on stderr (`commit first or pass --worktree`); `--worktree` lists the
+files changed between the merge base and the working tree instead (committed, staged, unstaged and untracked files;
+not with `--trivial`, which reads commits).
 
 Prints, one repo-relative path per line, the files changed between BASE (default `origin/<protectedBranch>`, else the
 local protected branch) and HEAD. A file is `vendored` when the project holds it as an unchanged copy of the workflow
@@ -65,10 +69,22 @@ def default_base(root, cfg):
                      f"python3 {Path(__file__).name} --base <commit>")
 
 
-def changed(root, base):
-    """Paths changed since the merge base of BASE and HEAD (no rename detection: old and new path both appear)."""
-    out = git(root, "diff", "--name-only", "-z", "--no-renames", f"{base}...HEAD")
-    return [p for p in out.split("\0") if p]
+def changed(root, base, worktree=False):
+    """Paths changed since the merge base of BASE and HEAD (no rename detection: old and new path both appear); with
+    `worktree`, since that merge base up to the working tree, untracked files included (B54)."""
+    if not worktree:
+        out = git(root, "diff", "--name-only", "-z", "--no-renames", f"{base}...HEAD")
+        return [p for p in out.split("\0") if p]
+    merge_base = git(root, "merge-base", base, "HEAD").strip()
+    out = git(root, "diff", "--name-only", "-z", "--no-renames", merge_base)
+    out += "\0" + git(root, "ls-files", "-z", "--others", "--exclude-standard")
+    return sorted({p for p in out.split("\0") if p})
+
+
+def dirty(root):
+    """B54: the paths with changes not committed yet (tracked or untracked)."""
+    out = git(root, "status", "--porcelain", "-z", "--no-renames")
+    return [e[3:] for e in out.split("\0") if e]
 
 
 WORKFLOW_NAME = config.WORKFLOW_NAME
@@ -185,6 +201,8 @@ def main(argv=None):
                     help="exit 0 and say why when the scoped diff is trivial (no code, or reviewTrivialLines changed "
                          "lines or fewer), 1 otherwise; prints no paths")
     ap.add_argument("--all", action="store_true", help="the whole diff, nothing left out")
+    ap.add_argument("--worktree", action="store_true",
+                    help="list what changed up to the working tree (uncommitted and untracked files too), not only commits")
     args = ap.parse_args(argv)
     try:
         root = config.find_root()
@@ -192,7 +210,14 @@ def main(argv=None):
         base = args.base or default_base(root, cfg)
         if not has_ref(root, base):
             raise ScopeError(f"--base {base} is not a commit; give one that is: git log --oneline")
-        paths = changed(root, base)
+        if args.worktree and args.trivial:
+            raise ScopeError("--worktree cannot be combined with --trivial (it reads commits); commit first, then: "
+                             f"python3 {Path(__file__).name} --trivial")
+        paths = changed(root, base, args.worktree)
+        pending = [] if args.worktree else dirty(root)
+        if pending:
+            print(f"{PROG}: warning: {len(pending)} uncommitted file(s) are not in this diff; commit first or pass "
+                  f"--worktree: python3 {Path(__file__).name} --worktree", file=sys.stderr)
         skip = set()
         if not args.all:
             skip = vendored(root, workflow_dir(args.workflow, root, cfg))

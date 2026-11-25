@@ -94,6 +94,40 @@ class ReviewScope(ScopeBase):
         self.commit()
         self.assertEqual(self.listed("--all"), [SCRIPT, "src/a.py"])
 
+    def test_a_dirty_tree_warns_and_names_worktree(self):  # B54
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        self.p.write("src/b.py", "b\n")  # untracked, not committed
+        code, out = self.scope()
+        self.assertEqual(code, 0, out)
+        self.assertIn("1 uncommitted file(s) are not in this diff; commit first or pass --worktree", out)
+        self.assertEqual([l for l in out.splitlines() if not l.startswith("review-scope:")], ["src/a.py"])
+
+    def test_a_clean_tree_does_not_warn(self):  # B54
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        code, out = self.scope()
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("uncommitted", out)
+
+    def test_worktree_lists_committed_staged_unstaged_and_untracked(self):  # B54
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        self.p.write("src/staged.py", "s\n")
+        self.p.run("git", "add", "src/staged.py")
+        self.p.write("src/a.py", "changed\n")
+        self.p.write("src/new.py", "n\n")
+        code, out = self.scope("--worktree")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("uncommitted", out)
+        self.assertEqual([l for l in out.splitlines() if not l.startswith("review-scope:")],
+                         ["src/a.py", "src/new.py", "src/staged.py"])
+
+    def test_worktree_with_trivial_is_refused_with_the_reason(self):  # B54
+        code, out = self.scope("--worktree", "--trivial")
+        self.assertEqual(code, 2, out)
+        self.assertIn("--worktree cannot be combined with --trivial (it reads commits)", out)
+
     def bare(self, *args):
         return self.p.run("python3", str(self.p.work / ".claude/gw/scripts/review-scope.py"), "--base", "main", *args)
 
