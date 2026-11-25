@@ -22,6 +22,12 @@ The project's installed copy of this skill is the old version. Once `<workflow>`
 
 ## 1. Compare versions
 
+Before anything else, check the project's branch against the protected branch:
+`git fetch origin && git rev-list --count HEAD..origin/<protectedBranch>`. Not 0: stop and offer the user
+`python3 .claude/gw/scripts/merge-main.py` (it commits the ledger first, then merges) or a new branch from the protected
+one. A new branch plus the merge of the old one collides with the ledger left uncommitted, so commit it first with
+`merge-main.py` or set it aside.
+
 `<workflow>` is the clone of `Galivelop-workflow`: the first folder that `python3 .claude/gw/scripts/config.py get workflowClone`
 and `workflowCloneAlso` give that exists (a sibling `../Galivelop-workflow`, or the cloud's `/home/user/<owner>/<repo>`,
 letter case ignored), or the one attached to the session; else ask the user. Read it, never edit it. Bring it to the latest
@@ -55,6 +61,9 @@ an older `schemaVersion` (its reason lists each migration, `schemaVersion N → 
 and template updates, plus the
 user's personal notes (`~/.claude/gw/notas/`, see `docs/en/config.md`) it would create (`personal note`) or that differ
 from the project's copy. Summarise it for the user with the CHANGELOG entries between X and Y (`### ES` or `### EN` per the user's language).
+
+Before recommending to exclude or turn something off, check that the key exists (`python3 .claude/gw/scripts/config.py get
+<key>`, or grep `<workflow>/scripts/config.py` and `apply.py`); never recommend a key that is not there.
 
 A `decide` line (both forms) is a key the project's `.claude/gw.json` does not write whose default creates files
 outside `.claude/` (e.g. `agentsSkillsDir` and its `.agents/skills/` copies). Before `--update`, put it to the user

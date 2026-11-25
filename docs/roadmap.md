@@ -434,7 +434,7 @@ Solo arreglos de la recogida de apertura de la `0.10` (solo la última menor pub
 | B48 | `workflowClone` se busca también en la disposición de la nube (`../<owner>/<repo>`, `/home/user/<owner>/<repo>`, sin distinguir mayúsculas): ayudante común en `config.py` para `doctor.py`, `apply.py`, `review-scope.py` y `gw-update`; amplía D158 (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-24) |
 | B49 | `other-repo-read.py` no avisa al correr `apply.py` del clon (solo en lecturas) (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-25) |
 | B50 | `check.yml` y su plantilla ponen en `PATH` solo el binario de actionlint, no su venv (pierde PyYAML) (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-24) |
-| B51 | `gw-update`: parar si la rama va por detrás de la protegida, avisar del choque con el ledger y comprobar que una clave existe antes de recomendarla (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| B51 | `gw-update`: parar si la rama va por detrás de la protegida, avisar del choque con el ledger y comprobar que una clave existe antes de recomendarla (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-25) |
 | B52 | `handoff.py next-id` lee ids en celdas de tabla (`**B3**`) y `doctor.py` avisa si ninguno casa con `taskId` (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
 | B53 | `red-without-fix.sh` decide por ruta o `testMap`, no por el contenido del archivo (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
 | B54 | `review-scope.py` avisa de un árbol sin confirmar y admite `--worktree` (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
