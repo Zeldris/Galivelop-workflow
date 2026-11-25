@@ -348,7 +348,7 @@ class Config(unittest.TestCase):
         self.assertIn("SyntaxError", cli(self.tmp, "get", "redWithoutFix.compileRegex").stdout)
         self.assertIn("[[:space:]]", cli(self.tmp, "get", "redWithoutFix.testRegex").stdout)
         default = json.loads(cli(self.tmp, "default", "redWithoutFix").stdout)  # the whole object, as retro has it
-        self.assertEqual(sorted(default), ["compileRegex", "testRegex"])
+        self.assertEqual(sorted(default), ["compileRegex", "testPathRegex", "testRegex"])
         self.assertIn("SyntaxError", default["compileRegex"])
         self.assertIn("[[:space:]]", default["testRegex"])
         template = json.loads((ROOT / "templates" / "gw.json").read_text())
