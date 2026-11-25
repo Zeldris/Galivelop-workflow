@@ -472,6 +472,7 @@ New features that do not fit `0.10` (fixes only): the next minor not in progress
 | E89 | `config.py set <key> <value>`, validated with `schema/gw.schema.json` (harvest `2026-11-24`, user 2026-11-24) | pending |
 | E90 | `skillsExclude` key to skip installing unused skills (harvest `2026-11-24`, user 2026-11-24) | pending |
 | E91 | `/clear` warning per sub-step (`Findings:`), decided together with D176 and Q-64 (harvest `2026-11-24`, user 2026-11-24) | pending |
+| E92 | Local front-end CI: study how `ci-local.py` and `check.sh` can cover lint, types, tests, build and browser tests (Playwright) of a front-end project, and what is missing (`uses:` steps, Node and Chromium on the machine); to be developed when `0.11` starts (user, 2026-11-25) | pending |
 
 ## `1.0` — MMC 1, read-only
 

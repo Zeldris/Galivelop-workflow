@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.9.0` en `main`** (`8357389`, las tres fases hechas: revisión con 7 hallazgos arreglados, retro D176/D177, `reviewed.sh`; CI de `4b9b5e4` en verde). Release de GitHub `v0.9.0` publicada (2026-11-24, sesión local; etiqueta sobre `8357389`) |
-| Siguiente paso | **La `0.9.1`** (parche B48-B56, `docs/roadmap.md`: B48-B51 y B57 hechos; sigue B52), luego la `0.10` «Estable» (E28 primero). Evolutivos de la recogida a la `0.11` (E87-E91). `task.py current` sigue en E86 (solo lo cambia el usuario). Presupuesto de compactaciones: 2 |
+| Siguiente paso | **La `0.9.1`** (parche B48-B56, `docs/roadmap.md`: B48-B51 y B57 hechos; sigue B52), luego la `0.10` «Estable» (E28 primero). Evolutivos de la recogida a la `0.11` (E87-E92). `task.py current` sigue en E86 (solo lo cambia el usuario). Presupuesto de compactaciones: 2 |
 
 ### Fases
 

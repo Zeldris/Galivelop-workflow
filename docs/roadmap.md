@@ -473,6 +473,7 @@ Funciones nuevas que no caben en la `0.10` (solo correcciones): la siguiente men
 | E89 | `config.py set <clave> <valor>`, validado con `schema/gw.schema.json` (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
 | E90 | Clave `skillsExclude` para no instalar skills sin uso (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
 | E91 | Aviso de `/clear` por subpaso (`Findings:`), decidido junto con D176 y Q-64 (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
+| E92 | CI de front en local: estudiar cómo cubrir con `ci-local.py` y `check.sh` lint, tipos, tests, build y pruebas de navegador (Playwright) de un proyecto de front, y qué le falta (pasos `uses:`, Node y Chromium en la máquina); se desarrolla al llegar a la `0.11` (usuario, 2026-11-25) | pendiente |
 
 ## `1.0` — MMC 1, solo lectura
 
