@@ -199,8 +199,9 @@ def task_id_pattern(config, explicit=None):
 def entry_regex(id_src):
     """The regex that tells a line opens a task entry (a table row `| D1 |` or a list item `- D1 …`, with or without a
     checkbox, bold, backticks or strike-through): group `id` is the task id, `box` the checkbox, `strike` the `~~`.
+    A table row may open with other cells (`| 1 | **B3** | …`): the first cell that starts with an id is the entry's.
     `id_src` is the id pattern as a non-capturing group. Shared with commit-message.py (valid `Refs:` ids)."""
-    return re.compile(rf"[-|]\s*(?:\[(?P<box>[ xX])\]\s*)?(?P<strike>~~)?\s*(?:\*\*)?`?(?P<id>{id_src})")
+    return re.compile(rf"(?:\|[^|\n]*)*?[-|]\s*(?:\[(?P<box>[ xX])\]\s*)?(?P<strike>~~)?\s*(?:\*\*)?`?(?P<id>{id_src})")
 
 
 class Ctx:
