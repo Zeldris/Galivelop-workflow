@@ -362,3 +362,17 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: a) sí: con wholeReadDenyPaths configurado, un comando que no se sabe partir y nombra una ruta denegada se rechaza, un limit por encima del tamaño del archivo cuenta como lectura entera, y config.py validate rechaza claves como / o ../
 - Answer: a
 - Answered: 2026-11-26
+
+## Q-41
+- Refs: B43
+- Status: open
+- Asked: 2026-11-26
+- Question: B43: ¿qué sección de la ficha cuenta como aceptación en trace.py? a) Acceptance o la tercera de sections; b) una clave nueva en gw.json
+- Recommendation: a) Acceptance si está en taskRecord.sections; si no, la tercera
+
+## Q-42
+- Refs: B43
+- Status: open
+- Asked: 2026-11-26
+- Question: B43: contract_errors y entry_text de task.py siguen fijando Acceptance; ¿se apunta como leve de la 0.10?
+- Recommendation: apuntarlo como leve 0.10 en pending.md, fuera de B43
