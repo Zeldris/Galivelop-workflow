@@ -356,7 +356,9 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-40
 - Refs: D180
-- Status: open
+- Status: answered
 - Asked: 2026-11-26
 - Question: D180: con wholeReadDenyPaths configurado, ¿whole-read.py rechaza lo que no entiende (comando que no sabe partir, limit enorme, claves / o ../) en vez de dejarlo pasar? a) rechazar (falla cerrado solo para rutas denegadas); b) dejar pasar y documentarlo como límite
 - Recommendation: a) sí: con wholeReadDenyPaths configurado, un comando que no se sabe partir y nombra una ruta denegada se rechaza, un limit por encima del tamaño del archivo cuenta como lectura entera, y config.py validate rechaza claves como / o ../
+- Answer: a
+- Answered: 2026-11-26
