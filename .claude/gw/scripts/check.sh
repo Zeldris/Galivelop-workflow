@@ -83,9 +83,18 @@ key=""
 inputs=""
 input_paths=""
 tree_before=""
+ignore_paths=""
 if [ "${GW_CHECK_CACHE:-}" != "0" ] && [ -f "$helper" ]; then  # any failure of the cache only means no recording
   # Its reason for not giving a tree (a skip-worktree entry, a modified submodule) goes to stderr: the check still runs.
   tree_before="$(bash "$helper" worktree-tree)" || tree_before=""
+  # B58: files hooks append on their own (checkCacheIgnore, the token ledger) are left out of the key; no list, no key.
+  ignore_paths=""
+  if [ -n "$tree_before" ]; then
+    { ignore_paths="$(python3 "$config" --root "$root" get checkCacheIgnore)" \
+      && tree_before="$(printf '%s\n' "$ignore_paths" | bash "$helper" strip "$tree_before")"; } || {
+      tree_before=""
+      echo "check: cannot leave the files of 'checkCacheIgnore' out of the key (see above), so this green is not recorded; fix the config: python3 $config --root $root validate" >&2; }
+  fi
   if [ -n "$tree_before" ]; then
     # E23: the ignored files the check reads (checkCacheInputs) are part of the key, as the tree does not see them.
     # A list that cannot be read means no recording (fail closed), not a key without the inputs.
@@ -262,7 +271,7 @@ if [ -z "$key" ]; then
     finish_ok "check: all green (not recorded for the pre-push: the cache is unavailable, see above; after fixing it: bash $0)"
   fi
 fi
-tree_after="$(bash "$helper" worktree-tree 2>/dev/null)" || tree_after=""
+tree_after="$(bash "$helper" worktree-tree 2>/dev/null)" && tree_after="$(printf '%s\n' "$ignore_paths" | bash "$helper" strip "$tree_after" 2>/dev/null)" || tree_after=""
 if [ "$tree_after" != "$tree_before" ]; then
   finish_ok "check: all green, but the work tree changed during the run (${tree_before:0:7} -> ${tree_after:0:7}); not recorded, so the next push runs the check again. To record it: bash $0"
 fi

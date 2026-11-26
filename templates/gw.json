@@ -42,6 +42,7 @@
   "fullCheckSkipKeys": ["reviewTrivialLines", "wholeReadWarnBytes", "stopTranscriptBytes", "stopSubagentMaxAge", "stopPushMarkerMaxAge", "stopGitTimeout", "stopCiTimeout", "stopSeverity", "recover", "hookStdinWait", "checkLockWait", "checkOutputGrace", "checkLogKeep", "testUnitTimeout", "ciFailedLines", "subagentCap", "subagentCapStep", "subagentCounterStaleDays", "subagentTranscriptBytes", "subagentCapAction", "contextGuard", "doctorTestDirsIgnore", "commitFormat", "commitRefs", "commitNext", "refsSources", "changeSize", "models", "metrics", "roadmapFiles", "commandTimeout", "commandKillGrace", "installLockfiles", "installLocal", "workerHint", "prepushClashBranches", "reviewBeforeMainListFiles", "checkTailLines", "releaseCheckBranches", "retro", "redWithoutFix", "branchPrefixes", "mergeCleanup", "pushRetryDelays", "pushLsRemoteTimeout", "decisionsFile", "wholeReadSkipExtensions", "wholeReadPaths", "readPointers", "wholeReadDenyPaths", "otherRepoReadWarn", "wholeReadRepeatOnly", "wholeReadStaleDays", "screenshotSheet", "scoutMaxAgeDays", "harvest", "applyDiffLines", "ciGreenConclusions", "ciStatusTimeout", "ciStepTimeout", "ciSystemCommands", "doctorScanBytes", "patchCommitTypes", "measure", "mediaContent", "modes", "taskRecord", "scopeGuard"],
   "ownedFiles": [],
   "checkCacheInputs": [".claude/gw.local.json"],
+  "checkCacheIgnore": ["docs/metrics/ledger.jsonl"],
   "checkLogKeep": 20,
   "testJobs": 0,
   "flaky": {"retries": 1, "proposeAfter": 3},

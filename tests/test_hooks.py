@@ -2741,6 +2741,36 @@ class CheckRunner(Base):
         self.assertIn("not recorded", out)
         self.assertFalse(self.cache.exists())
 
+    # --- B58: files hooks append on their own (checkCacheIgnore) are left out of the key
+    LEDGER = "docs/metrics/ledger.jsonl"
+
+    def ledger_check(self):  # a check during which a hook appends to the ledger, as the token hooks do
+        p = self.p
+        p.write(self.LEDGER, "{}\n")
+        p.write("check.sh", f'echo run >> "{self.runs}"; echo "{{}}" >> {self.LEDGER}\n')
+        p.commit("check appends to the ledger")
+
+    def test_a_ledger_appended_during_the_run_still_records_and_the_push_of_it_skips(self):
+        self.ledger_check()
+        code, out = self.run_check()
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("the work tree changed during the run", out)
+        self.assertIn("the next push of this same tree will skip the check", out)
+        self.p.commit("the ledger grew")  # the pushed tree has a newer ledger than the one checked
+        code, out = self.p.push("origin", "feature", env=CheckCache.ON)
+        self.assertEqual((code, self.count()), (0, 1), out)
+        self.assertIn("check already green on this tree", out)
+
+    def test_an_empty_ignore_list_keeps_the_old_behaviour(self):
+        self.ledger_check()
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["checkCacheIgnore"] = []
+        self.p.write(".claude/gw.json", json.dumps(cfg)); self.p.commit("nothing ignored")
+        code, out = self.run_check()
+        self.assertEqual(code, 0, out)
+        self.assertIn("the work tree changed during the run", out)
+        self.assertFalse(self.cache.exists())
+
 
 class CheckGreen(Base):
     """scripts/check-green.sh on its own: key, worktree-tree, has and add, with their edge cases."""
@@ -2768,6 +2798,30 @@ class CheckGreen(Base):
                 self.key(commands="bash  check.sh\n"), self.key(commands="\n")}
         self.assertEqual(len(keys), 5)
         self.assertNotIn(base, keys)
+
+    def strip(self, tree, paths):
+        code, out = self.helper("strip", tree, stdin=paths)
+        self.assertEqual(code, 0, out)
+        return out.strip()
+
+    def test_strip_ignores_only_the_listed_paths(self):  # B58
+        p = self.p
+        ledger = "docs/metrics/ledger.jsonl\n"
+        p.write("docs/metrics/ledger.jsonl", "1\n"); p.commit("ledger 1")
+        t1 = p.git("rev-parse", "HEAD^{tree}").stdout.strip()
+        p.write("docs/metrics/ledger.jsonl", "1\n2\n"); p.commit("ledger 2")
+        t2 = p.git("rev-parse", "HEAD^{tree}").stdout.strip()
+        p.write("docs/notes.md", "other\n"); p.commit("other change")
+        t3 = p.git("rev-parse", "HEAD^{tree}").stdout.strip()
+        index_before = (p.work / ".git" / "index").read_bytes()
+        self.assertEqual(self.strip(t1, ledger), self.strip(t2, ledger))
+        self.assertNotEqual(self.strip(t2, ledger), self.strip(t3, ledger))
+        self.assertEqual(self.strip(t1, "\n"), t1)  # an empty list: the tree as is
+        self.assertNotEqual(self.strip(t1, "\n"), self.strip(t2, "\n"))
+        self.assertEqual((p.work / ".git" / "index").read_bytes(), index_before)
+        code, out = self.helper("strip", t1, stdin="../x\n")
+        self.assertNotEqual(code, 0)
+        self.assertIn("must be a path inside the repo", out)
 
     def inputs(self, paths, cwd=None):
         code, out = self.helper("inputs", stdin=paths, cwd=cwd)

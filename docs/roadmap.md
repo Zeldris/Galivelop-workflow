@@ -442,7 +442,7 @@ Solo arreglos de la recogida de apertura de la `0.10` (solo la última menor pub
 | B56 | Reglas de `REVIEW.md` (sin guardas temporales en tests; un comando con tiempo límite mata su grupo de procesos) y regla del reparto de contrastar el valor esperado con el código (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-26) |
 | B57 | El gancho `Stop` (`before-stop.py`) avisa cuando el último commit subido tiene el CI sin resolver (ni verde ni rojo) y no se ha programado su comprobación: una vez por commit, con clave en `stopSeverity` (retro de la `0.9.1`, usuario 2026-11-24) | hecho (2026-11-24) |
 | D179 | Arreglos de la revisión de la fase 1 de la `0.9.1` (B48-B57): 6 importantes y 11 leves aprobados (usuario, 2026-11-26) | hecho (2026-11-26) |
-| B58 | La caché del check ignora las rutas de `checkCacheIgnore` (por defecto, el ledger de métricas): un ledger escrito durante el check ya no obliga a repetirlo en el `pre-push` (retro de la `0.9.1`, P1; usuario 2026-11-26) | en curso |
+| B58 | La caché del check ignora las rutas de `checkCacheIgnore` (por defecto, el ledger de métricas): un ledger escrito durante el check ya no obliga a repetirlo en el `pre-push` (retro de la `0.9.1`, P1; usuario 2026-11-26) | hecho (2026-11-26) |
 | B59 | Un clon superficial para el check en segundos con `git fetch --unshallow`, no tras el check entero (retro de la `0.9.1`, P2; usuario 2026-11-26) | hecho (2026-11-26) |
 | B60 | El encargo de `gw-orchestrate-dealer` dice cómo crear la entrada del registro de decisiones (`task.py log`) cuando `taskRecord` está activo (retro de la `0.9.1`, P3; usuario 2026-11-26) | hecho (2026-11-26) |
 | B61 | `review-scope.py --worktree` en los `config.md` (retro de la `0.9.1`, P6; usuario 2026-11-26) | hecho (2026-11-26) |

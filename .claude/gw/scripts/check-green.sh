@@ -13,6 +13,9 @@
 #   bash check-green.sh worktree-tree   # the tree the working copy would commit after `git add -A` (real index untouched);
 #                                       # fails when that tree may not be what a check sees (assume-unchanged or
 #                                       # skip-worktree entries, sparse checkout, a modified submodule)
+#   printf '%s\n' "$paths" | bash check-green.sh strip <tree-sha>   # B58: the tree without the paths listed (checkCacheIgnore,
+#                                       # files hooks append on their own, e.g. the token ledger), built in a temporary
+#                                       # index (the real one untouched); no paths: prints <tree-sha> as is; fails on any problem (no key)
 #   bash check-green.sh has <key>       # exit 0 and the age in minutes if recorded < `checkReuseTtl` ago; any problem is a miss (1)
 #   bash check-green.sh epoch <key>     # exit 0 and the epoch (seconds) of the newest line for the key if recorded < `checkReuseTtl` ago
 #   bash check-green.sh add <key> [<epoch>]  # records the key now (or at <epoch>, to inherit the age of the green it derives
@@ -44,7 +47,7 @@ cfg_number() {  # cfg_number <key>: the key's value from .claude/gw.json (the de
 }
 
 usage() {
-  echo "check-green: $1; usage: bash $0 key <tree-sha> <wrapper> [<inputs-hash>] | inputs [<dir>] | worktree-tree | has <key> | epoch <key> | add <key> [<epoch>] | lock-acquire <pid> <sha> <wait> <log> | lock-release <pid>" >&2
+  echo "check-green: $1; usage: bash $0 key <tree-sha> <wrapper> [<inputs-hash>] | inputs [<dir>] | worktree-tree | strip <tree-sha> | has <key> | epoch <key> | add <key> [<epoch>] | lock-acquire <pid> <sha> <wait> <log> | lock-release <pid>" >&2
   exit 2
 }
 valid_key() {  # a git object name: 40 (sha-1) or 64 (sha-256) lowercase hex digits
@@ -150,6 +153,38 @@ cmd_worktree_tree() {
   fi
   GIT_INDEX_FILE="$tmp/index" git write-tree 2>/dev/null || {
     echo "check-green: cannot write the tree of the work tree; reproduce it with: git add -A --dry-run && git write-tree" >&2; return 1; }
+}
+
+tmp_strip=""  # the temp index of strip, global for the same reason
+cmd_strip() {  # <tree-sha>; paths on stdin, one per line: prints the tree without them
+  [ "$#" -eq 1 ] || usage "strip needs a tree sha"
+  local tree="$1" path paths=""
+  valid_key "$tree" || usage "'$tree' is not a git object name"
+  while IFS= read -r path || [ -n "$path" ]; do
+    [ -n "$path" ] || continue
+    case "$path" in
+      /* | .. | ../* | */../* | */..) echo "check-green: checkCacheIgnore entry '$path' must be a path inside the repo; fix it: python3 $here/config.py validate" >&2; return 1 ;;
+    esac
+    paths="$paths$path"$'\n'
+  done
+  if [ -z "$paths" ]; then echo "$tree"; return 0; fi
+  tmp_strip="$(mktemp "${TMPDIR:-/tmp}/gw-check-strip.XXXXXX")" || {
+    echo "check-green: cannot create a temp index in ${TMPDIR:-/tmp}; free space and retry" >&2; return 1; }
+  trap 'rm -f "$tmp_strip"' EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap 'exit 129' HUP
+  GIT_INDEX_FILE="$tmp_strip" git read-tree "$tree" 2>/dev/null || {
+    echo "check-green: cannot read tree $tree; check the repository: git cat-file -t $tree" >&2; return 1; }
+  while IFS= read -r path; do
+    [ -n "$path" ] || continue
+    GIT_INDEX_FILE="$tmp_strip" git rm --cached -r -f -q --ignore-unmatch -- ":(literal)$path" >/dev/null 2>&1 || {
+      echo "check-green: cannot drop '$path' from tree $tree; check the repository: git ls-tree $tree -- '$path'" >&2; return 1; }
+  done <<EOF2
+$paths
+EOF2
+  GIT_INDEX_FILE="$tmp_strip" git write-tree 2>/dev/null || {
+    echo "check-green: cannot write the stripped tree of $tree; check the repository: git write-tree" >&2; return 1; }
 }
 
 lookup_epoch() {  # lookup_epoch <key>: prints the epoch of the newest line for the key if it is younger than `checkReuseTtl`, else fails
@@ -338,6 +373,7 @@ case "$sub" in
   key) cmd_key "$@" ;;
   inputs) cmd_inputs "$@" ;;
   worktree-tree) cmd_worktree_tree ;;
+  strip) cmd_strip "$@" ;;
   has) cmd_has "$@" ;;
   epoch) cmd_epoch "$@" ;;
   add) cmd_add "$@" ;;

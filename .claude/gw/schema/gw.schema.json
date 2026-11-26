@@ -486,6 +486,18 @@
       ],
       "description": "Files (relative to the repo root, no '..') whose content is part of the check-cache key, for ignored files the check reads and the git tree does not see; a missing file counts as absent; [] = the key is the tree alone."
     },
+    "checkCacheIgnore": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+$"
+      },
+      "default": [
+        "docs/metrics/ledger.jsonl"
+      ],
+      "description": "Tracked paths (relative to the repo root, no '..') left out of the tree the check-cache key uses, for files hooks append on their own (the token ledger); [] = the whole tree is the key."
+    },
     "checkLogKeep": {
       "type": "integer",
       "minimum": 0,
