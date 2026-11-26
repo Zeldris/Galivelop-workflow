@@ -3,6 +3,8 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+
+import waits
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -16,7 +18,7 @@ class ShallowCheckTest(unittest.TestCase):
             shutil.copy(ROOT / "tests" / "check.sh", clone / "tests" / "check.sh")
             try:
                 p = subprocess.run(["bash", str(clone / "tests" / "check.sh")], capture_output=True, text=True,
-                                   timeout=60)
+                                   timeout=waits.timeout(60))
             except subprocess.TimeoutExpired:
                 self.fail("check.sh did not stop early in a shallow clone")
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)

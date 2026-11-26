@@ -307,8 +307,6 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | B31 | Warning when the context nears the window with the compaction budget spent (`recover.py --state` or `Stop`), before the compaction (`0.6.0` harvest, image-generator P7) | done (2026-11-17; `Stop` hook, once per stretch, `contextGuard.nearRatio`) |
 | D7 | `AGENTS.md` readable without `@include`; skills also in `.agents/skills` (opencode, Codex) | done (2026-11-18) |
 | B9 | Non-Anthropic models through opencode | done (2026-11-18) |
-| D180 | Sweep of the `scripts/whole-read.py` minors in `pending.md`: fails open with `wholeReadDenyPaths` on a command it cannot split or a huge `limit` (E70); the exception for hooks that only advise, in `AGENTS.md` (E74) (retro of `0.9.1`, P5; user 2026-11-26) | pending |
-| B62 | The `commit-msg` `findingsWords` warning does not fire if a commit since the last review close already carries `Findings:` (it would count twice in `metrics.py quality`) (retro of `0.9.1`, P4; user 2026-11-26) | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.8` | done (2026-11-18; except `push.sh` on macOS, which moves to `0.10`) |
 | E53 | Guide rule: in CI, the environment's install script fails in its own step (`0.7` harvest, instalador P2) | done (2026-11-17, 889791d) |
 | D126 | `gw-scout-updates` reads the project's Rust version (`rust-toolchain(.toml)`, `rust-version` in `Cargo.toml`) (`0.4` harvest, instalador P11, `pending.md`) | done (2026-11-17, 5e2eb7f) |
@@ -466,6 +464,8 @@ Fixes and reviews only, no new features: new features from the harvests go to `0
 | E32 | Read `permissions.deny` for secrets and a `PreToolUse` hook on `cat`/`grep` of those files, with a test; in `docs/en/`, what goes out to the provider (H17 P6) | pending (moves from `0.7`) |
 | B38 | Sweep of the `scripts/handoff.py` minors in `pending.md` (D104): the pending-pointer count, duplicated and unchecked in a commit that only touches `pending.md`; `archive` requires "## Pendiente" while `check`/`recover` do not, and the missing-file message names the log; the `pre-push` reads `pendingFile` from the working copy; the count only looks at "Pendiente (de la bitácora)"; `move-pending` drops lines that look like pointers (`0.7.0` retro, R2; user, 2026-11-15) | done |
 | B43 | Sweep of the `scripts/trace.py` minors in `pending.md`: fold rows whose translated text differs (D14 review #2); sort a day's entries by time (C11-trace #3); read `taskRecord.sections` instead of a fixed `Acceptance` (#4); do not count `- [x]` inside code blocks (#5); `normpath` on `taskRecord.path` (#6); share `parse_entry` with `task.py` (#7) (0.8.0 retro, P5; user, 2026-11-18) | pending |
+| D180 | Sweep of the `scripts/whole-read.py` minors in `pending.md`: fails open with `wholeReadDenyPaths` on a command it cannot split or a huge `limit` (E70); the exception for hooks that only advise, in `AGENTS.md` (E74) (retro of `0.9.1`, P5; user 2026-11-26) | pending |
+| B62 | The `commit-msg` `findingsWords` warning does not fire if a commit since the last review close already carries `Findings:` (it would count twice in `metrics.py quality`) (retro of `0.9.1`, P4; user 2026-11-26) | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.10` | pending |
 
 ## `0.11` — features from the harvests
