@@ -16,7 +16,7 @@ one (`nl -b a F`) is not a file, and the body of a heredoc (also `<<\\EOF`) is n
 the log or a `roadmapFiles` file over `wholeReadWarnBytes` (`sed -n A,Bp`, `sed -n p`, `head -n N`, `head` without a count
 is 10 lines) warns when it covers more than `wholeReadShortLines` lines (default 40; a shorter range is silent), whatever
 `wholeReadRepeatOnly` says (a range is not a whole read, so it is not remembered) and with the same output rules as above
-(never into a pipe that filters or a file), and it is never denied. The log is
+(never into a pipe that filters or a file); it is denied only when it reaches the end of a denied file (below). The log is
 compared in characters (as `logSize` is), the rest in bytes. A watched file of more than `wholeReadWarnBytes` bytes
 (default 20000; 0 turns the hook off) gets a note that names the size and the command that reads less:
 
@@ -37,7 +37,11 @@ reads on SessionStart clear|compact (`forget`): the content left the context, so
 `wholeReadDenyPaths` (E70; {"<path>": "<command>"}, a folder key ends in /) turns the warning into a rejection for
 those files: a whole read of one of them (as above, whatever its size, extension, wholeReadWarnBytes or
 wholeReadRepeatOnly) is denied with a reason that names its command; a partial read passes. A denial wins over the
-warnings of the same call. A bad value denies nothing (the default, {}).
+warnings of the same call. A bad value denies nothing (the default, {}). For these files it fails closed (D180): a
+Read from the top (`offset` absent, 0, 1 or not an integer) with no `limit` or one at or above the file's line count
+(a `limit` that is not an integer, or a file it cannot count, too), and a Bash range (`sed -n`, `head`) that runs to
+the end or covers the file's line count, are whole reads; `pages` only excuses a PDF. A Bash command it cannot split
+is denied when one of its words, or a file its glob matches, is a denied path (against `cwd` or the root).
 
 Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse): a JSON object on stdout, exit 0,
 
@@ -52,8 +56,8 @@ multiple of it, the note says to mount the ones still needed in one sheet and Re
 project's own; without it, a generic example and the key. It works whatever wholeReadWarnBytes says, and `forget`
 restarts the count. With no `session_id` nothing is counted.
 
-Fails open, because it only advises: stdin it cannot read, an event that is not a Read or a Bash call, a command it
-cannot split, a path outside the project, a file it cannot stat, a state file it cannot read or write or a config it
+Fails open, because it only advises (except for the denied paths, above): stdin it cannot read, an event that is not
+a Read or a Bash call, a command it cannot split, a path outside the project, a file it cannot stat, a state file it cannot read or write or a config it
 cannot read (the defaults apply to the config) print nothing and exit 0. The
 project root is config.find_root (the script's own repo, never the current directory first); a relative path is
 resolved against the event's `cwd`. Python 3.8+ standard library only.
@@ -691,6 +695,80 @@ def check(path, root, conf, state, how, lines=None):
     return note(kind, rel, size, limit, how, command, repeat, lines, conf["short"])
 
 
+def deny_out(reasons):
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                             "permissionDecisionReason": "\n".join(reasons)}}))
+    return 0
+
+
+def line_count(path):
+    """The lines of `path` as Read counts them (a last line without a newline counts), or None when it cannot be read."""
+    try:
+        with open(path, "rb") as handle:
+            return sum(1 for _ in handle)
+    except OSError:
+        return None
+
+
+def reaches_the_end(tool_input, path):
+    """How a partial-looking Read takes the denied `path` whole (D180), or None: it starts at the top (`offset` absent,
+    0, 1 or not an integer) and has no `limit` (`offset` 1 alone reads like no offset) or one at or above the file's
+    line count. Fails closed: a `limit` that is not an integer, or a file it cannot count, counts as whole; `pages`
+    only excuses a PDF (Read ignores it on any other file)."""
+    offset, limit = tool_input.get("offset"), tool_input.get("limit")
+    if tool_input.get("pages") and path.lower().endswith(".pdf"):
+        return None
+    if is_number(offset) and offset > 1:
+        return None
+    if not limit:
+        return f"this Read (offset {offset!r} and no limit: it starts at the top)"
+    reach = covers(limit if is_number(limit) else TO_END, path)
+    return f"this Read (limit {limit!r}; {reach})" if reach else None
+
+
+def is_number(value):
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def covers(lines, path):
+    """Why a read of the first `lines` lines of the denied `path` takes it whole (D180), or None: `lines` is TO_END
+    (or not known) or at or above the file's line count; a file it cannot count counts as whole."""
+    if lines >= TO_END:
+        return "it runs to the end"
+    count = line_count(path)
+    if count is None:
+        return "the file's lines cannot be counted"
+    return f"the file has {count} lines" if lines >= count else None
+
+
+NAME = re.compile(r"[^\s;&|()<>'\"`=]+")
+
+
+def named_denied(command, cwd, root, deny):
+    """[(rel, command)] of the wholeReadDenyPaths files that a Bash `command` bash_reads cannot split names (D180):
+    each word, resolved against `cwd` and against the root (a `cd` before it is not followed), with its glob expanded."""
+    found = []
+    for word in NAME.findall(command):
+        word = os.path.expanduser(word)
+        for base in (cwd, root):
+            path = os.path.join(base, word)
+            hits = [path] + (sorted(glob.glob(path)) if any(c in word for c in "*?[") else [])
+            for hit in hits:
+                alternative = denied(hit, root, deny)
+                if not alternative:
+                    continue
+                rel = os.path.relpath(os.path.realpath(hit), os.path.realpath(root))
+                if (rel, alternative) not in found:
+                    found.append((rel, alternative))
+    return found
+
+
+def unparsed_reason(rel, command):
+    return (f"{rel} may not be read whole (wholeReadDenyPaths in .claude/gw.json) and this command cannot be split "
+            f"(an open quote?), so it is denied because it names it. Fix the quoting, or instead: `{command}`, or "
+            f"grep -n for what you need and Read with offset and limit.")
+
+
 def main():
     event = read_event()
     if not event or event.get("tool_name") not in ("Read", "Bash"):
@@ -699,35 +777,51 @@ def main():
     if not isinstance(tool_input, dict):
         return 0
     cwd = event.get("cwd") if isinstance(event.get("cwd"), str) and event.get("cwd") else os.getcwd()
+    partial = unparsed = None  # D180: what only a wholeReadDenyPaths entry can deny
     if event["tool_name"] == "Read":
         target = tool_input.get("file_path")
-        if not is_whole(tool_input) or not isinstance(target, str) or not target:
+        if not isinstance(target, str) or not target:
             return 0
-        reads = [(target if os.path.isabs(target) else os.path.join(cwd, target), "this Read", None)]
+        target = target if os.path.isabs(target) else os.path.join(cwd, target)
+        reads = [(target, "this Read", None)] if is_whole(tool_input) else []
+        partial = None if reads else target
     else:
         command = tool_input.get("command")
         if not isinstance(command, str) or not command:
             return 0
-        reads = [(path, f"this `{name}`", lines) for path, name, lines in bash_reads(command, cwd)]
-    if not reads:
+        try:
+            reads = [(path, f"this `{name}`", lines) for path, name, lines in bash_reads(command, cwd)]
+        except Exception:  # a command it cannot split: only a denied path it names stops it
+            reads, unparsed = [], command
+    if not reads and partial is None and unparsed is None:
         return 0
     try:
         root = str(config.find_root())
     except Exception:
         return 0
     conf = settings(root)
+    if partial is not None:
+        alternative = denied(partial, root, conf["deny"])
+        how = reaches_the_end(tool_input, partial) if alternative else None
+        if how:
+            rel = os.path.relpath(os.path.realpath(partial), os.path.realpath(root))
+            return deny_out([deny_reason(rel, how, alternative)])
+        return 0
+    if unparsed is not None:
+        reasons = [unparsed_reason(rel, alternative)
+                   for rel, alternative in named_denied(unparsed, cwd, root, conf["deny"])]
+        return deny_out(reasons) if reasons else 0
     reasons = []
     for path, how, lines in reads:
-        command = None if lines is not None else denied(path, root, conf["deny"])
-        if command:
+        command = denied(path, root, conf["deny"])
+        reach = covers(lines, path) if command and lines is not None else None
+        if command and (lines is None or reach):  # D180: a range that reaches the end is a whole read
             rel = os.path.relpath(os.path.realpath(path), os.path.realpath(root))
-            text = deny_reason(rel, how, command)
+            text = deny_reason(rel, how if lines is None else f"{how} ({reach})", command)
             if text not in reasons:
                 reasons.append(text)
     if reasons:  # a denial wins over any warning of the same call
-        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
-                                                 "permissionDecisionReason": "\n".join(reasons)}}))
-        return 0
+        return deny_out(reasons)
     shots = conf["shots"]
     shot_reads = [path for path, how, _ in reads if how == "this Read" and is_shot(path, shots)]
     if conf["limit"] <= 0 and not shot_reads:
