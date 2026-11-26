@@ -328,6 +328,55 @@ class Trace(unittest.TestCase):
         self.assertEqual(data["declared"]["task"][0]["file"], "docs/tasks/E12.md")  # default path docs/tasks
         self.assertEqual(data["deduced"]["docs"], [])
 
+    def test_translation_with_another_id_cell_text_is_folded(self):
+        r = self.repo
+        r.write("docs/roadmap.md", ES.replace("| D61, D62 |", "| `D61; D62` |"))
+        r.write("docs/roadmap.en.md", EN + "| D61, D62 | List | pending |\n")
+        rows = json.loads(r.trace("D61", "--json").stdout)["declared"]["roadmap"]
+        self.assertEqual(len(rows), 1)
+        self.assertEqual([a["file"] for a in rows[0]["also"]], ["docs/roadmap.en.md"])
+
+    def test_same_day_entries_ordered_by_time_not_name(self):
+        r = self.with_task()
+        self.entry("2026-11-18-aaa-1111111", "2026-11-18", "pending", "later", agent="aaa")
+        self.entry("2026-11-18-zzz-2222222", "2026-11-18", "pending", "earlier", agent="zzz")
+        os.utime(r.work / "docs/tasks/D14/2026-11-18-aaa-1111111.md", (2000000000, 2000000000))
+        os.utime(r.work / "docs/tasks/D14/2026-11-18-zzz-2222222.md", (1000000000, 1000000000))
+        entries = [t for t in json.loads(r.trace("D14", "--json").stdout)["declared"]["task"] if t["kind"] == "entry"]
+        self.assertEqual([e["why"] for e in entries], ["earlier", "later"])
+
+    def test_acceptance_section_read_from_task_record_sections(self):
+        r = self.with_task()
+        cfg = json.loads((r.work / ".claude" / "gw.json").read_text())
+        cfg["taskRecord"]["sections"] = ["Goal", "Scope", "Criteria"]
+        r.write(".claude/gw.json", json.dumps(cfg))
+        r.write("docs/tasks/D14.md", "# D14\n\n## Goal\n\ng\n\n## Scope\n\ns\n\n## Criteria\n\n- [x] a\n- [ ] b\n")
+        rec = json.loads(r.trace("D14", "--json").stdout)["declared"]["task"][0]
+        self.assertEqual((rec["done"], rec["total"]), (1, 2))
+
+    def test_checkbox_in_code_fence_is_not_counted(self):
+        r = self.with_task()
+        r.write("docs/tasks/D14.md", "# D14\n\n## Goal\n\ng\n\n## Acceptance\n\n- [x] a\n\n```\n- [x] quoted\n- [ ] too\n```\n- [ ] b\n")
+        rec = json.loads(r.trace("D14", "--json").stdout)["declared"]["task"][0]
+        self.assertEqual((rec["done"], rec["total"]), (1, 2))
+
+    def test_task_record_path_with_dots_is_normalised(self):
+        r = self.with_task()
+        cfg = json.loads((r.work / ".claude" / "gw.json").read_text())
+        cfg["taskRecord"]["path"] = "./docs/../docs//tasks/"
+        r.write(".claude/gw.json", json.dumps(cfg))
+        self.entry("2026-11-17-session-aaaaaaa", "2026-11-17", "pending", "w")
+        task = json.loads(r.trace("D14", "--json").stdout)["declared"]["task"]
+        self.assertEqual([t["file"] for t in task], ["docs/tasks/D14.md", "docs/tasks/D14/2026-11-17-session-aaaaaaa.md"])
+
+    def test_entry_header_is_read_by_task_parse_entry(self):
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import task
+        self.assertEqual(task.parse_entry("\n# 2026-11-17 · session · pending · D14\n\n## Why\n"),
+                         ("2026-11-17", "session", "pending", "D14"))
+        self.assertIsNone(task.parse_entry("# 17/11 · session · pending · D14\n"))
+        self.assertIsNone(task.parse_entry("no header\n"))
+
 
 if __name__ == "__main__":
     unittest.main()

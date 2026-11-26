@@ -113,13 +113,24 @@ def contract_errors(text, config):
     return []
 
 
-def entry_errors(text, task_id, config):
-    """Why `text` is not a decision log entry for `task_id` (form only); [] if it is."""
-    tr = gwconfig.task_record(config)
+def parse_entry(text):
+    """(date, agent, commit, id) from the header line of a decision log entry, or None when the first line is not
+    `# <date> · <skill or session> · <commit> · <id>` (the one reader of that line: trace.py shares it)."""
     first = next((l for l in text.splitlines() if l.strip()), "")
     parts = first[2:].split(SEP) if first.startswith("# ") else []
     if len(parts) != 4 or not DATE.fullmatch(parts[0].strip()) or not parts[1].strip():
+        return None
+    return tuple(p.strip() for p in parts)
+
+
+def entry_errors(text, task_id, config):
+    """Why `text` is not a decision log entry for `task_id` (form only); [] if it is."""
+    tr = gwconfig.task_record(config)
+    header = parse_entry(text)
+    if header is None:
+        first = next((l for l in text.splitlines() if l.strip()), "")
         return [f"the first line is not `# <date>{SEP}<skill or session>{SEP}<commit>{SEP}<id>`: {first!r}"]
+    parts = header
     commit = parts[2].strip()
     if commit != tr["pendingMarker"] and not re.fullmatch(r"[0-9a-f]{7,64}", commit):
         return [f"the commit field is {commit!r}, not `{tr['pendingMarker']}` or a sha"]
