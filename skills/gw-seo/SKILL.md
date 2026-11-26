@@ -4,7 +4,7 @@ description: Check and improve the SEO and link previews of a project's static w
 license: MIT (adapted material from claude-seo, see LICENSE-claude-seo.txt)
 compatibility: "Claude Code or any Agent Skills agent; python3 3.10+ for scripts/check_seo.py (standard library only) and the project's own build."
 metadata:
-  version: "0.9.0"
+  version: "0.9.1"
   source: "Galivelop workshop (born in a project's static website, E42); checks and references adapted from AgriciDaniel/claude-seo@6be93f4 (MIT)"
 ---
 

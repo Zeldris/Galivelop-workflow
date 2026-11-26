@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.9.0
+# galivelop-workflow v0.9.1
 """Per-person and per-role profiles (E4, Q-25 to Q-30): who works with which profile, kept in .claude/gw.json.
 
   python3 profile.py list                       # profiles on disk, roles -> profile, people per role/profile

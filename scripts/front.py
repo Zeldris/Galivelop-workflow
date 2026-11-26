@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.9.0
+# galivelop-workflow v0.9.1
 """E5: the design tokens of a front-end project as data, what is generated from them and the front checks.
 
   python3 front.py check       # validate the tokens JSON (front.tokens in .claude/gw.json)

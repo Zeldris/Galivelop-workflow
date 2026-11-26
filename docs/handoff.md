@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.9.0` en `main`** (`8357389`, las tres fases hechas: revisión con 7 hallazgos arreglados, retro D176/D177, `reviewed.sh`; CI de `4b9b5e4` en verde). Release de GitHub `v0.9.0` publicada (2026-11-24, sesión local; etiqueta sobre `8357389`) |
-| Siguiente paso | **Subir a `0.9.1`**: D179 hecho (17 arreglos, en la rama). Check completo (`bash scripts/check.sh`) y subida; luego `plugin.json`, CHANGELOG es/en, README y repaso de docs (`version.py --release`), fase 2 (`/gw-opt-tokens`, `/retro`) y fase 3 con la confirmación del usuario. `task.py current` sigue en E86 (solo lo cambia el usuario). Presupuesto de compactaciones: 2 |
+| Siguiente paso | **Fase 2 de la `0.9.1`**: versión subida a `0.9.1` (marcas, CHANGELOG es/en, README; docs contrastadas). Check completo (`bash scripts/check.sh`) y subida; luego `/gw-opt-tokens` y `/retro` con sus propuestas al usuario, y fase 3 (`reviewed.sh`, subida a `main`) solo con su confirmación. `task.py current` sigue en E86 (solo lo cambia el usuario). Presupuesto de compactaciones: 2 |
 
 ### Fases
 

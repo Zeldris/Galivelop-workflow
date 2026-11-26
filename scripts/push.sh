@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# galivelop-workflow v0.9.0
+# galivelop-workflow v0.9.1
 # Pushes a branch with retries and says "pushed" only when the remote really has the commit (D94).
 #   bash push.sh [--wip] [<branch>]     (default: the current branch)
 #  - E84 `--wip`: pushes a branch whose head commit subject starts with `WIP:` without waiting for the check (the

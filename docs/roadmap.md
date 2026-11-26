@@ -441,7 +441,7 @@ Solo arreglos de la recogida de apertura de la `0.10` (solo la última menor pub
 | B55 | El gancho `pre-push` dice la ruta del registro y que hay un bloqueo al empezar su check (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-25) |
 | B56 | Reglas de `REVIEW.md` (sin guardas temporales en tests; un comando con tiempo límite mata su grupo de procesos) y regla del reparto de contrastar el valor esperado con el código (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-26) |
 | B57 | El gancho `Stop` (`before-stop.py`) avisa cuando el último commit subido tiene el CI sin resolver (ni verde ni rojo) y no se ha programado su comprobación: una vez por commit, con clave en `stopSeverity` (retro de la `0.9.1`, usuario 2026-11-24) | hecho (2026-11-24) |
-| D179 | Arreglos de la revisión de la fase 1 de la `0.9.1` (B48-B57): 6 importantes y 11 leves aprobados (usuario, 2026-11-26) | hecho |
+| D179 | Arreglos de la revisión de la fase 1 de la `0.9.1` (B48-B57): 6 importantes y 11 leves aprobados (usuario, 2026-11-26) | hecho (2026-11-26) |
 
 ## `0.10` «Estable»
 

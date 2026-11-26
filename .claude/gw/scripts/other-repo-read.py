@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.9.0
+# galivelop-workflow v0.9.1
 """PreToolUse hook on `Read`, `Grep`, `Glob` and `Bash` (E74): warn when the MAIN session reads a path that is outside
 the project and inside another git repository. The rule is that another repo is read through a subagent that returns
 a summary with paths (skill gw-orchestrate-dealer), not in the main context; this hook makes it a mechanical notice.

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.9.0
+# galivelop-workflow v0.9.1
 """E72: the committed copies of generated files are up to date. For each entry of `generated` in .claude/gw.json
 ({"command": ..., "paths": [...]}), runs `command` with bash at the repo root and compares the files under its
 `paths` (files or folders, relative to the root) before and after: a file changed, added or removed means the

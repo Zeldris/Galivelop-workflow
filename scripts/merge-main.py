@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# galivelop-workflow v0.9.0
+# galivelop-workflow v0.9.1
 """Bring the protected branch into the working branch without losing the metrics ledger (E65).
 
   python3 merge-main.py [--root PATH] [--refs ID[,ID]]

@@ -4,7 +4,7 @@ description: Pick the skill and models for the task that is starting. Use at the
 license: MIT
 compatibility: Claude Code or any Agent Skills agent; reads keys of .claude/gw.json through config.py when present
 metadata:
-  version: "0.9.0"
+  version: "0.9.1"
   source: "Galivelop workshop; generalised from the Tarkor, installer and portal selectors"
 ---
 

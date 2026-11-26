@@ -1,4 +1,4 @@
-<!-- galivelop-workflow v0.9.0 -->
+<!-- galivelop-workflow v0.9.1 -->
 # Front tests template (E5)
 
 Playwright (layout, accessibility, visual) and Stylelint for a project with a front end, fed by the files
