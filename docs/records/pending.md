@@ -201,7 +201,7 @@ Menores de la revisión del diff entero contra `main`; no se revisan otra vez en
 - [x] `0.9` · **D143 (`pre-commit`, copias instaladas):** avisar si un archivo preparado de `scripts/` difiere de su
   copia en `.claude/gw/scripts/` (falta `apply.py .`); hoy solo lo ve el check completo tras subir. Con su test.
   `retro-2026-11-19-patch-0.8.1.md`.
-- [ ] `0.10` · **(B47) barrido de `trace.py`:** cierra sus leves de abajo (D14 n.º 2 y C11-trace n.º 3 a 7).
+- [x] `0.10` · **(B43) barrido de `trace.py`:** (2026-11-26) cierra sus leves de abajo (D14 n.º 2 y C11-trace n.º 3 a 7).
   `retro-2026-11-19-patch-0.8.1.md`.
 
 ## De la retro del parche `0.4.3`
@@ -423,7 +423,7 @@ Menores de la revisión del diff entero contra `main`; no se revisan otra vez en
 - [x] `0.8` · (B42, 2026-11-17: una sesión por unidad, salida a archivo, `testUnitTimeout`) Herramienta: `tests-for.py --run` se quedó colgado en `test_hooks` (`PrePush`, `CheckCache`) con varios subagentes a la vez (oleada 2; ver el ítem de `pgrep`).
 - [ ] `0.10` · **Revisión D87 n.º 6** (leve): `tests/test_apply.py` cubre `<!-- if !clave -->` con false, true y ausente, pero no `! clave` con espacio ni `if !` sin clave.
 - [ ] `0.10` · **Revisión D94 n.º 1** (leve): `test_reviewed.py` no ejecuta la orden que imprime el consejo de `reviewed.sh` (escribe la ruta de `push.sh` a mano, raíz sin espacios): una cita `%q` rota seguiría en verde.
-- [ ] `0.10` · **Revisión D14 n.º 2** (leve): `trace.py` pliega las filas con `first[key]` (la última fila con ese id); una traducción cuyo texto de celda difiere no se pliega.
+- [x] `0.10` · **Revisión D14 n.º 2** (B43, 2026-11-26) (leve): `trace.py` pliega las filas con `first[key]` (la última fila con ese id); una traducción cuyo texto de celda difiere no se pliega.
 - [ ] `0.10` · **Revisión B42 n.º 7** (leve): `tests-for.py` duplica `run_unit` de `test-run.py`.
 - [ ] `0.10` · **Revisión B42 n.º 8** (leve): `tests-for.py` usa manejadores de señal globales y un `LIVE` global.
 - [ ] `0.10` · Herramienta (B42): `scripts/test-run.py` `run_unit` tiene el mismo problema de tubería que `tests-for.py` y ningún tope de tiempo (`testUnitTimeout`).
@@ -440,11 +440,11 @@ Menores de la revisión del diff entero contra `main`; no se revisan otra vez en
 - [ ] `0.10` · **Revisión C11 n.º 6** (leve): `task.py resolve` lanza un `git log` por entrada; uno solo con `--diff-filter=A --name-only` basta.
 - [ ] `0.10` · **Revisión C11** (limitación): con `git commit --amend` la entrada nueva de la ficha no se distingue de la del commit corregido; documentado en `I-lifecycle.md`.
 - [ ] `0.10` · Herramienta (D62): `test_hooks.PrePushCiWarn.test_an_interrupted_push_kills_ci_status_and_its_children` («SIGTERM to the group») falló una vez en el `pre-push` con 4 tareas a la vez (2026-11-18: `ci-status.py` y su `gh` vivos tras la señal); aislado pasa 6 de 6. Hipótesis no probada: un segundo TERM del `cleanup` del gancho llega mientras el python del aviso sale y corta el `finally` antes del `killpg` (un caso con dos TERM no lo reprodujo).
-- [ ] `0.10` · **Revisión C11-trace n.º 3** (leve): en `trace.py`, las entradas del mismo día se ordenan por agente y hex, no por hora.
-- [ ] `0.10` · **Revisión C11-trace n.º 4** (leve): `trace.py` fija el nombre `Acceptance` en vez de leer `taskRecord.sections`.
-- [ ] `0.10` · **Revisión C11-trace n.º 5** (leve): `trace.py` cuenta las casillas `- [x]` también dentro de bloques de código.
-- [ ] `0.10` · **Revisión C11-trace n.º 6** (leve): un `taskRecord.path` con `.` o `..` necesita `normpath` en `trace.py`.
-- [ ] `0.10` · **Revisión C11-trace n.º 7** (leve): `trace.py` y `task.py` leen la cabecera de la entrada por separado; compartir `parse_entry`.
+- [x] `0.10` · **Revisión C11-trace n.º 3** (B43, 2026-11-26) (leve): en `trace.py`, las entradas del mismo día se ordenan por agente y hex, no por hora.
+- [x] `0.10` · **Revisión C11-trace n.º 4** (B43, 2026-11-26) (leve): `trace.py` fija el nombre `Acceptance` en vez de leer `taskRecord.sections`.
+- [x] `0.10` · **Revisión C11-trace n.º 5** (B43, 2026-11-26) (leve): `trace.py` cuenta las casillas `- [x]` también dentro de bloques de código.
+- [x] `0.10` · **Revisión C11-trace n.º 6** (B43, 2026-11-26) (leve): un `taskRecord.path` con `.` o `..` necesita `normpath` en `trace.py`.
+- [x] `0.10` · **Revisión C11-trace n.º 7** (B43, 2026-11-26) (leve): `trace.py` y `task.py` leen la cabecera de la entrada por separado; compartir `parse_entry`.
 - [ ] `0.10` · **Revisión C11-close-row n.º 4** (leve): `close-row` no ve un criterio de `Acceptance` escrito sin casilla.
 - [ ] `0.10` · **Revisión C11-close-row n.º 5** (leve): `close-row` imprime «closed» antes de que `cmd_done` escriba; un fallo al escribir queda tras el mensaje.
 - [ ] `0.10` · **Revisión C11-close-row n.º 6** (leve): una ficha que no es UTF-8 da una traza en `close-row` en vez de un motivo.
