@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.9.1` en `main`** (`664c0dd`, 2026-11-26; las tres fases hechas: revisión de B58-B61 con 3 leves arreglados, retro, `reviewed.sh`; CI de `664c0dd` en verde). Release de GitHub `v0.9.1` publicada (2026-11-26, sesión local; etiqueta sobre `664c0dd`) |
-| Siguiente paso | **Fase 7. Rodaje etapa 1** y la `0.10` (`docs/roadmap.md`, `pending.md`). `task.py current` quedó en B59 (lo cambia el usuario). Presupuesto de compactaciones: 2 |
+| Siguiente paso | **`0.10` «Estable»**, barridos pequeños primero (usuario, 2026-11-26): B62, B43 y B63 repartidos en worktrees; D180 espera la decisión del usuario (con `wholeReadDenyPaths`, ¿lo que no se entiende se rechaza?). Después, E28-E30 y al final E8/E31. Fase 7 (rodaje) en paralelo. Presupuesto de compactaciones: 2 |
 
 ### Fases
 

@@ -467,6 +467,7 @@ Solo correcciones y revisiones, sin funciones nuevas: lo evolutivo de las recogi
 | B43 | Barrido de los leves de `scripts/trace.py` en `pending.md`: plegar filas cuyo texto traducido difiere (revisión D14 n.º 2); ordenar las entradas del día por hora (C11-trace n.º 3); leer `taskRecord.sections` en vez de fijar `Acceptance` (n.º 4); no contar `- [x]` dentro de bloques de código (n.º 5); `normpath` en `taskRecord.path` (n.º 6); `parse_entry` compartido con `task.py` (n.º 7) (retro de la `0.8.0`, P5; usuario, 2026-11-18) | pendiente |
 | D180 | Barrido de los leves de `scripts/whole-read.py` en `pending.md`: falla abierto con `wholeReadDenyPaths` ante un comando que no sabe partir o un `limit` enorme (E70); la excepción de los ganchos que solo aconsejan, en `AGENTS.md` (E74) (retro de la `0.9.1`, P5; usuario 2026-11-26) | pendiente |
 | B62 | El aviso de `findingsWords` del `commit-msg` no salta si un commit desde el último cierre de revisión ya lleva `Findings:` (contaría dos veces en `metrics.py quality`) (retro de la `0.9.1`, P4; usuario 2026-11-26) | pendiente |
+| B63 | El defecto de `checkCacheIgnore` sigue a `metrics.ledger` en vez de copiar su ruta: si se cambia `metrics.ledger`, la caché sigue ignorando el registro (revisión de B58-B61, leve 2; usuario 2026-11-26) | pendiente |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.10` | pendiente |
 
 ## `0.11` — evolutivos de las recogidas
