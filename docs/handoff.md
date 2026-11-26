@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.9.1` en `main`** (`664c0dd`, 2026-11-26; las tres fases hechas: revisión de B58-B61 con 3 leves arreglados, retro, `reviewed.sh`; CI de `664c0dd` en verde). Release de GitHub `v0.9.1` publicada (2026-11-26, sesión local; etiqueta sobre `664c0dd`) |
-| Siguiente paso | **`0.10` «Estable»**, barridos pequeños primero (usuario, 2026-11-26): **B43 fusionado** (`7f7552d1`, revisado, 3 leves arreglados; Q-41 y Q-42 quedan como las recomendadas). B62 en arreglos de su revisión (1 media, 2 leves); B63 y D180 terminando en sus worktrees. Se fusionan uno a uno, el último sin `--defer-check`. Tras B63, la validación de claves `/` y `../` de `wholeReadDenyPaths` en `config.py validate` (D180). Después, E28-E30 y al final E8/E31. Fase 7 (rodaje) en paralelo. Presupuesto de compactaciones: 2 |
+| Siguiente paso | **`0.10` «Estable»**, barridos pequeños primero (usuario, 2026-11-26): **B43, B62 y D180 fusionados** (revisados y arreglados; check completo diferido a la última fusión). B63 en arreglos de su revisión (1 media, 2 leves); se fusiona el último, sin `--defer-check`, y se sube. Después, D180: validar en `config.py validate` las claves `/` y `../` de `wholeReadDenyPaths`. Luego E28-E30 y al final E8/E31. Fase 7 (rodaje) en paralelo. Presupuesto de compactaciones: 2 |
 
 ### Fases
 
