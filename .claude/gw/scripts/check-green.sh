@@ -162,8 +162,8 @@ cmd_strip() {  # <tree-sha>; paths on stdin, one per line: prints the tree witho
   valid_key "$tree" || usage "'$tree' is not a git object name"
   while IFS= read -r path || [ -n "$path" ]; do
     [ -n "$path" ] || continue
-    case "$path" in
-      /* | .. | ../* | */../* | */..) echo "check-green: checkCacheIgnore entry '$path' must be a path inside the repo; fix it: python3 $here/config.py validate" >&2; return 1 ;;
+    case "${path//\\//}" in  # B63: a Windows separator counts as `/`, and a drive letter is absolute
+      /* | [A-Za-z]:* | .. | ../* | */../* | */..) echo "check-green: checkCacheIgnore entry '$path' must be a path inside the repo; fix it: python3 $here/config.py validate" >&2; return 1 ;;
     esac
     paths="$paths$path"$'\n'
   done

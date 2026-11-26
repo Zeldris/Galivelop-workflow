@@ -802,11 +802,15 @@ def metrics(config):
 def cache_ignore_default(config, schema=None):
     """B63: the `checkCacheIgnore` a config gets when it does not set the key: the path of `metrics.ledger` (the
     token ledger hooks append on their own), so a project that moves the ledger keeps it out of the check-cache key.
-    A ledger outside the repo (absolute or with `..`) is not a tracked file: none."""
+    A ledger outside the repo (absolute, with a drive letter or with `..`) is not a tracked file: none. Windows
+    separators count as `/`, the way git names the path."""
     props = (schema or _schema())["properties"]["metrics"]["properties"]
     given = config.get("metrics") if isinstance(config.get("metrics"), dict) else {}
     ledger = given.get("ledger", props["ledger"]["default"])
-    rel = posixpath.normpath(ledger.strip()) if isinstance(ledger, str) else "."
+    ledger = ledger.strip().replace("\\", "/") if isinstance(ledger, str) else ""
+    if not ledger or re.match(r"[A-Za-z]:", ledger):
+        return []
+    rel = posixpath.normpath(ledger)
     if rel in (".", "..") or rel.startswith(("/", "../")):
         return []
     return [rel]

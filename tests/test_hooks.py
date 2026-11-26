@@ -2837,6 +2837,15 @@ class CheckGreen(Base):
         self.assertNotEqual(code, 0)
         self.assertIn("must be a path inside the repo", out)
 
+    def test_strip_refuses_windows_paths_outside_the_repo(self):  # B63
+        self.p.write("a.txt", "1\n"); self.p.commit("a")
+        tree = self.p.git("rev-parse", "HEAD^{tree}").stdout.strip()
+        for path in ("..\\x", "a\\..\\..\\x", "a\\..", "C:/x", "c:\\x", "\\x"):
+            with self.subTest(path=path):
+                code, out = self.helper("strip", tree, stdin=path + "\n")
+                self.assertNotEqual(code, 0, out)
+                self.assertIn("must be a path inside the repo", out)
+
     def inputs(self, paths, cwd=None):
         code, out = self.helper("inputs", stdin=paths, cwd=cwd)
         self.assertEqual(code, 0, out)

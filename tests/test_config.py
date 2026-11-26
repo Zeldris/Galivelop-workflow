@@ -53,6 +53,15 @@ class Config(unittest.TestCase):
                  (dict(VALID, metrics={"ledger": "./var//tokens.jsonl"}), ["var/tokens.jsonl"]),
                  (dict(VALID, metrics={"ledger": "/abs/tokens.jsonl"}), []),  # outside the repo: not tracked
                  (dict(VALID, metrics={"ledger": "../tokens.jsonl"}), []),
+                 (dict(VALID, metrics={"ledger": "var/../../tokens.jsonl"}), []),
+                 (dict(VALID, metrics={"ledger": ".."}), []),
+                 (dict(VALID, metrics={"ledger": "   "}), []),  # blank: no path
+                 (dict(VALID, metrics={"ledger": "var\\tokens.jsonl"}), ["var/tokens.jsonl"]),  # git's separator
+                 (dict(VALID, metrics={"ledger": "..\\tokens.jsonl"}), []),
+                 (dict(VALID, metrics={"ledger": "var\\..\\..\\tokens.jsonl"}), []),
+                 (dict(VALID, metrics={"ledger": "\\abs\\tokens.jsonl"}), []),
+                 (dict(VALID, metrics={"ledger": "C:/abs/tokens.jsonl"}), []),  # a drive letter is absolute
+                 (dict(VALID, metrics={"ledger": "c:\\abs\\tokens.jsonl"}), []),
                  (dict(VALID, metrics={"ledger": "var/tokens.jsonl"}, checkCacheIgnore=["a.txt"]), ["a.txt"]),
                  (dict(VALID, metrics={"ledger": "var/tokens.jsonl"}, checkCacheIgnore=[]), []))
         for data, want in cases:
