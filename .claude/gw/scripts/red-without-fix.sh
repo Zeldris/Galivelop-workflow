@@ -67,6 +67,14 @@ cmd="$1"; shift
 root="$(unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE; git -C "$here" rev-parse --show-toplevel 2>/dev/null)" || {
   echo "red-without-fix: $here is not inside a git repository; reinstall the workflow: /gw-update" >&2; exit 2; }
 cd "$root" || exit 2
+# Fix files relative to the repo: testPathRegex must not see the checkout's own path (/home/me/test/proj matches
+# `(^|/)tests?/`), and `git show HEAD:<file>` takes no absolute path.
+n=$#
+while [ "$n" -gt 0 ]; do
+  f="$1"; shift; n=$((n - 1))
+  case "$f" in "$root"/*) f="${f#"$root"/}" ;; esac
+  set -- "$@" "$f"
+done
 if [ -z "$compile_re" ]; then
   compile_re="$(python3 "$here/config.py" --root "$root" get redWithoutFix.compileRegex)" || {
     echo "red-without-fix: cannot read redWithoutFix.compileRegex; fix .claude/gw.json: python3 $here/config.py --root $root validate" >&2; exit 2; }
