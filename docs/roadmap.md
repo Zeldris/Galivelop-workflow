@@ -481,6 +481,7 @@ Funciones nuevas que no caben en la `0.10` (solo correcciones): la siguiente men
 | E90 | Clave `skillsExclude` para no instalar skills sin uso (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
 | E91 | Aviso de `/clear` por subpaso (`Findings:`), decidido junto con D176 y Q-64 (recogida `2026-11-24`, usuario 2026-11-24) | pendiente |
 | E92 | CI de front en local: estudiar cómo cubrir con `ci-local.py` y `check.sh` lint, tipos, tests, build y pruebas de navegador (Playwright) de un proyecto de front, y qué le falta (pasos `uses:`, Node y Chromium en la máquina); se desarrolla al llegar a la `0.11` (usuario, 2026-11-25) | pendiente |
+| E93 | Registro de las decisiones de los guardianes: cada gancho que avisa o bloquea (`careful`, `scope-guard`, `questions-guard`…) añade una línea a un JSONL que solo crece (hora, gancho, herramienta, decisión, motivo), y `/retro` lo lee; además, cada propuesta de `/retro` y `gw-opt-tokens` trae su prueba y no la aprueba quien la propone (ideas de ARTEX, usuario 2026-11-26) | pendiente |
 
 ## `1.0` — MMC 1, solo lectura
 
@@ -526,6 +527,7 @@ Se le pone versión al abrir la menor en que quepa, cuando exista lo que necesit
 | B13 | Tendencia publicada y una prueba A/B con el flujo y sin él | Ledger |
 | B12 | Patrón «scouts» en `gw-orchestrate-dealer`, medido antes y después | Ledger |
 | C9 | `modes.freeze <carpeta>` | C7 |
+| E94 | Juez de cuestionario cerrado para `careful`: el modelo responde preguntas fijas (solo lectura, pérdida de datos, credenciales) y el código decide (idea de ARTEX, `intercept/closed_judge.go`; usuario 2026-11-26) | Datos de E93 que muestren fallos de `careful` |
 | G10 | MMC multiproyecto | `1.0` |
 | — | OpenTelemetry como opción de B1 | B1 |
 | — | Recogida de los repos privados (R3) | Acceso de lectura |

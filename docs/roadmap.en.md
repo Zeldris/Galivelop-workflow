@@ -480,6 +480,7 @@ New features that do not fit `0.10` (fixes only): the next minor not in progress
 | E90 | `skillsExclude` key to skip installing unused skills (harvest `2026-11-24`, user 2026-11-24) | pending |
 | E91 | `/clear` warning per sub-step (`Findings:`), decided together with D176 and Q-64 (harvest `2026-11-24`, user 2026-11-24) | pending |
 | E92 | Local front-end CI: study how `ci-local.py` and `check.sh` can cover lint, types, tests, build and browser tests (Playwright) of a front-end project, and what is missing (`uses:` steps, Node and Chromium on the machine); to be developed when `0.11` starts (user, 2026-11-25) | pending |
+| E93 | Guard decision log: each hook that warns or blocks (`careful`, `scope-guard`, `questions-guard`…) appends a line to an append-only JSONL (time, hook, tool, decision, reason), and `/retro` reads it; also, each proposal of `/retro` and `gw-opt-tokens` carries its evidence and is not approved by whoever proposed it (ideas from ARTEX, user 2026-11-26) | pending |
 
 ## `1.0` — MMC 1, read-only
 
@@ -525,6 +526,7 @@ It gets a version when the minor it fits in opens and what it needs exists.
 | B13 | Published trend and an A/B test with and without the workflow | Ledger |
 | B12 | "Scouts" pattern in `gw-orchestrate-dealer`, measured before and after | Ledger |
 | C9 | `modes.freeze <folder>` | C7 |
+| E94 | Closed-question judge for `careful`: the model answers fixed questions (read-only, data loss, credentials) and code decides (idea from ARTEX, `intercept/closed_judge.go`; user 2026-11-26) | E93 data showing `careful` failures |
 | G10 | Multi-project MMC | `1.0` |
 | — | OpenTelemetry as an option for B1 | B1 |
 | — | Harvest of the private repos (R3) | Read access |
