@@ -196,12 +196,15 @@ def task_id_pattern(config, explicit=None):
     return explicit or os.environ.get("GW_TASK_ID") or config.get("taskId") or gwconfig.schema_default("taskId")
 
 
-def entry_regex(id_src):
+def entry_regex(id_src, any_cell=False):
     """The regex that tells a line opens a task entry (a table row `| D1 |` or a list item `- D1 …`, with or without a
     checkbox, bold, backticks or strike-through): group `id` is the task id, `box` the checkbox, `strike` the `~~`.
-    A table row may open with other cells (`| 1 | **B3** | …`): the first cell that starts with an id is the entry's.
-    `id_src` is the id pattern as a non-capturing group. Shared with commit-message.py (valid `Refs:` ids)."""
-    return re.compile(rf"(?:\|[^|\n]*)*?[-|]\s*(?:\[(?P<box>[ xX])\]\s*)?(?P<strike>~~)?\s*(?:\*\*)?`?(?P<id>{id_src})")
+    `id_src` is the id pattern as a non-capturing group. Shared with commit-message.py (valid `Refs:` ids), which
+    keeps the default: the id must open the line's first cell or list item. With `any_cell` (B52, next-id only) a
+    table row may open with other cells (`| 1 | **B3** | …`): the first cell that starts with an id is the entry's;
+    the id must follow a cell's `|` (or the list `-`), never a hyphen inside a cell's text (`D18-D31`, D179)."""
+    head = r"(?:-|(?:\|[^|\n]*)*?\|)" if any_cell else r"[-|]"
+    return re.compile(rf"{head}\s*(?:\[(?P<box>[ xX])\]\s*)?(?P<strike>~~)?\s*(?:\*\*)?`?(?P<id>{id_src})")
 
 
 class Ctx:
@@ -227,6 +230,7 @@ class Ctx:
         self.sep = rf"(?:{RANGE}|\s*(?:,|\by\b|\band\b)\s*)"
         self.closed_box = re.compile(rf"^\s*[-*]\s*\[[xX]\]\s*(?:\*\*)?`?(?P<id>{self.id_src})", re.M)
         self.entry = entry_regex(self.id_src)
+        self.entry_any = entry_regex(self.id_src, any_cell=True)  # next-id only (B52, D179)
         self._titles, self._blob_titles = {}, {}
 
     def git(self, *a):
@@ -280,24 +284,25 @@ class Ctx:
                     out[path] = meta.split()[1 if rev == INDEX else 2]
         return out
 
-    def titles(self, rev):
+    def titles(self, rev, any_cell=False):
         """Task id -> set of titles of the plan entries that open it at `rev`: unindented lines that `entry` matches,
-        done or not (cached by rev and by blob: several revs share most plan files)."""
-        if rev not in self._titles:
+        done or not (cached by rev and by blob: several revs share most plan files). `any_cell` uses `entry_any`."""
+        entry, key = (self.entry_any, (rev, True)) if any_cell else (self.entry, rev)
+        if key not in self._titles:
             res = {}
             for blob in self.plan_blobs(rev).values():
-                if blob not in self._blob_titles:
+                if (blob, any_cell) not in self._blob_titles:
                     found = {}
                     for line in self.git("cat-file", "blob", blob).stdout.splitlines():
-                        m = self.entry.match(line)
+                        m = entry.match(line)
                         if m:
                             rest = re.sub(r"\[[ xX]\]|[*`~]", "", line[m.end("id"):]).lstrip(" ·:—–-|")
                             found.setdefault(m.group("id"), set()).add(" ".join(TITLE_END.split(rest, 1)[0].split()).casefold())
-                    self._blob_titles[blob] = found
-                for i, t in self._blob_titles[blob].items():
+                    self._blob_titles[(blob, any_cell)] = found
+                for i, t in self._blob_titles[(blob, any_cell)].items():
                     res.setdefault(i, set()).update(t)
-            self._titles[rev] = res
-        return self._titles[rev]
+            self._titles[key] = res
+        return self._titles[key]
 
     def entries(self, text):
         """Open plan entries: id -> text from the line that opens it to the next unindented line. Struck and
@@ -769,14 +774,14 @@ def id_prefix(taken):
     return m.group(1) if m else taken
 
 
-def free_id(ctx, revs, taken, ids=(), sep=None):
+def free_id(ctx, revs, taken, ids=(), sep=None, any_cell=False):
     """The next id after the highest one with `taken`'s prefix that any of `revs` (or `ids`) opens, with the separator
     those ids use ("INS-4", "D49"); with none of them, `sep` (default: the one `taken` has)."""
     prefix = taken[:-1] if taken.endswith("-") else id_prefix(taken)
     top = 0
     if sep is None:
         sep = "-" if taken[len(prefix):].startswith("-") else ""
-    for i in [i for rev in revs for i in ctx.titles(rev)] + list(ids):
+    for i in [i for rev in revs for i in ctx.titles(rev, any_cell)] + list(ids):
         m = ID_NUMBER.fullmatch(i[len(prefix):]) if i.startswith(prefix) else None
         if m and int(m.group("num")) >= top:
             top, sep = int(m.group("num")), m.group("sep")
@@ -835,14 +840,14 @@ def cmd_clash(ctx, args):
 
 
 def worktree_ids(ctx):
-    """Ids the plan files in the work tree open (saved, not yet staged or committed)."""
+    """Ids the plan files in the work tree open (saved, not yet staged or committed), any cell (next-id only)."""
     found = set()
     for p in ctx.plans:
         path = ctx.root / p
         files = sorted(path.rglob("*.md")) if path.is_dir() else [path] if path.is_file() else []
         for f in files:
             for line in f.read_text(encoding="utf-8", errors="replace").splitlines():
-                m = ctx.entry.match(line)
+                m = ctx.entry_any.match(line)
                 if m:
                     found.add(m.group("id"))
     return found
@@ -873,9 +878,9 @@ def cmd_next_id(ctx, args):
     prefix = args.prefix
     sep = "-" if prefix.endswith("-") or (ctx.id.fullmatch(f"{prefix}-1") and not ctx.id.fullmatch(f"{prefix}1")) else ""
     used = worktree_ids(ctx) | pending_ids(ctx)
-    nxt = free_id(ctx, revs, prefix, used, sep)
+    nxt = free_id(ctx, revs, prefix, used, sep, any_cell=True)
     if not ctx.id.fullmatch(nxt):
-        known = {id_prefix(i) for i in used | {i for rev in revs for i in ctx.titles(rev)}}
+        known = {id_prefix(i) for i in used | {i for rev in revs for i in ctx.titles(rev, True)}}
         known = sorted(k for k in known if ctx.id.fullmatch(f"{k}1") or ctx.id.fullmatch(f"{k}-1"))
         seen = (f"the prefixes this plan accepts: {', '.join(known)}; for example: handoff.py next-id {known[0]}"
                 if known else "no id in the plan matches that pattern")

@@ -1825,6 +1825,14 @@ class Doctor(Snapshot):
         self.set_cfg(plan=["docs/missing.md"])
         self.assertNotIn("plan ids", self.doctor()[1])
 
+    def test_plan_ids_reads_gw_task_id_and_only_md_files(self):  # D179
+        self.set_cfg(plan=["docs/roadmap.md"])
+        self.p.write("docs/roadmap.md", "# Roadmap\n\n| INS-1 | open |\n")
+        self.assertNotIn("plan ids", self.doctor_env(dict(self.p.env, GW_TASK_ID=r"INS-\d+"))[1])
+        self.set_cfg(plan=["docs/roadmap.txt"], taskId=r"[A-H]\d+")
+        self.p.write("docs/roadmap.txt", "| 1. export | open |\n")
+        self.assertNotIn("plan ids", self.doctor()[1])
+
 
 class TemplatesAgree(unittest.TestCase):
     def test_plugin_hooks_and_project_template_use_the_same_matchers_and_scripts(self):

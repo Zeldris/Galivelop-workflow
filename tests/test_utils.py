@@ -1060,6 +1060,18 @@ class HandoffNextId(PlanRepo):
         self.p.write(self.PLAN, self.START + "| Phase | **INS-7** | the export |\n| 2 | Depends | see INS-9 later |\n")
         self.assertEqual(self.next_id("INS"), (0, "INS-8"))  # INS-7 is seen; INS-9 sits mid-text in a cell, not at its start
 
+    def test_a_hyphen_inside_a_later_cell_opens_no_id(self):  # D179
+        self.p.write(self.PLAN, self.START + "| 2 | see INS-3-INS-31 and more |\n| Next | patch INS-4-INS-56 x |\n")
+        self.assertEqual(self.next_id("INS"), (0, "INS-3"))
+
+    def test_clash_reads_only_the_first_cell(self):  # D179: a later cell's id is no entry for clash
+        self.p.branch("feat-b", self.base)
+        b = self.plan(self.START + "| - | the export | INS-3 |\n")
+        self.p.branch("feat-a", self.base)
+        a = self.plan(self.START + "- [ ] **INS-3** the form\n")
+        code, out = self.p.script("handoff.py", "--plan", self.PLAN, "clash", a, b)
+        self.assertEqual((code, out.strip()), (0, ""))
+
     def test_ids_used_in_the_pending_file_are_skipped(self):  # D157
         self.p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, plan=[self.PLAN], pendingFile="docs/pending.md")))
         self.assertEqual(self.next_id("INS"), (0, "INS-3"))
