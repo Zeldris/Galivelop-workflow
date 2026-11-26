@@ -49,7 +49,7 @@ chaining the next task (context_guard.clear_after_task_once; <git dir>/gw-clear-
 
 B57: with HEAD pushed (a branch with an upstream, nothing a. would block) it asks `ci-status.py --json` (waiting at most
 `stopCiTimeout` seconds) and, when the CI of HEAD has no verdict yet (state `pending`: queued or running), blocks once
-per commit (`stopSeverity.ciPending`; <git dir>/gw-ci-warn lists the shas already warned) with the order to schedule the
+per commit (`stopSeverity.ciPending`; <git dir>/gw-ci-warn lists the shas already read) with the order to schedule the
 check (send_later or ScheduleWakeup running ci-status.py) or to wait for it with Monitor, so a turn never ends on a "I
 will look at the CI later" that nothing wakes up. A green or red CI, no ci-status.py, unpushed commits, `off` and
 stop_hook_active do not block; a read that fails (no network, no token, a remote that is not GitHub, a timeout) is a
@@ -469,24 +469,43 @@ def clear_after_task(root, cfg, transcript):
         return None
 
 
-CI_MARK = "gw-ci-warn"  # under the git dir: the shas whose pending CI was already reported (one per line)
+CI_MARK = "gw-ci-warn"  # under the git dir: "<sha> <state>" per line, the shas already read (pending: warned)
 CI_MARK_KEEP = 32
+
+
+def _ci_on_push(root, cfg):
+    """D179: the CI runs on each push (check.yml present and ciOnPush not false), so `none` only means GitHub has not
+    created the check suite yet."""
+    return cfg.get("ciOnPush", True) is not False \
+        and os.path.isfile(os.path.join(str(root), ".github", "workflows", "check.yml"))
 
 
 def ci_pending(root, cfg, mode):
     """B57: (message, warn) for the pushed HEAD whose CI has no verdict yet. `message` is the reason to give (once per
-    commit when `mode` is "block", every time for "warn"), `warn` a read that failed; both None when there is nothing
-    to say (a verdict, no upstream or detached HEAD, no ci-status.py, a commit already warned). Raises GitError."""
+    commit when `mode` is "block", every time for "warn"), `warn` a read that failed (once per commit); both None when
+    there is nothing to say (a verdict, no upstream or detached HEAD, HEAD not on its upstream, no ci-status.py, a
+    commit already read). Raises GitError."""
     script = os.path.join(HERE, "ci-status.py")
     if mode == "off" or not os.path.isfile(script):
         return None, None
     if git(root, "symbolic-ref", "-q", "HEAD", check=False)[0] != 0 \
-            or git(root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", check=False)[0] != 0:
-        return None, None  # detached HEAD or no upstream: not provably pushed
+            or git(root, "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}", check=False)[0] != 0 \
+            or git(root, "merge-base", "--is-ancestor", "HEAD", "@{u}", check=False)[0] != 0:
+        return None, None  # detached HEAD, no upstream or HEAD not on it (D179): not provably pushed
     sha = git(root, "rev-parse", "HEAD")[1].strip()
     mark = os.path.join(git(root, "rev-parse", "--absolute-git-dir")[1].strip(), CI_MARK)
-    if mode == "block" and sha in _read_lines(mark):
-        return None, None
+    seen = {line.split()[0]: (line.split() + ["pending"])[1] for line in _read_lines(mark)}
+    if sha in seen and (mode == "block" or seen[sha] != "pending"):
+        return None, None  # D179: a commit already read is not read (nor reported) again
+
+    def remember(state):
+        try:
+            kept = [line for line in _read_lines(mark) if line.split()[0] != sha]
+            _write_lines(mark, (kept + [f"{sha} {state}"])[-CI_MARK_KEEP:])
+            return True
+        except OSError:
+            return False
+
     timeout = cfg["stopCiTimeout"]
     cmd = [sys.executable, script, "--json", "--root", str(root)]
     try:
@@ -507,15 +526,16 @@ def ci_pending(root, cfg, mode):
         state = data["state"]
     except (ValueError, KeyError, TypeError):
         return None, f"ci-status.py gave no readable answer ({(err or out).strip()[:200] or 'exit ' + str(proc.returncode)})"
+    if state == "none" and _ci_on_push(root, cfg):
+        state = "pending"  # D179: pushed a moment ago, the check suite does not exist yet
     if state == "error":
+        remember("error")  # D179: once per commit, not on every turn
         return None, f"the CI of {sha[:12]} could not be read: {data.get('error') or 'unknown error'}"
     if state != "pending":
+        remember(state)  # D179: a verdict does not change; do not ask GitHub again on every stop
         return None, None  # green, red or no CI: a verdict (or nothing to wait for)
-    if mode == "block":
-        try:
-            _write_lines(mark, (_read_lines(mark) + [sha])[-CI_MARK_KEEP:])
-        except OSError:
-            return None, None  # without a mark it would block on every stop: stay silent instead
+    if mode == "block" and not remember("pending"):
+        return None, None  # without a mark it would block on every stop: stay silent instead
     return (f"HEAD {sha[:12]} is pushed but its CI is still queued or running (ci-status.py: pending), and nothing "
             f"will wake this session to read it. Do not end the turn on \"I will look at it later\": schedule the check "
             f"(send_later or ScheduleWakeup a few minutes ahead, running: python3 {script} --failed), or wait for it "
