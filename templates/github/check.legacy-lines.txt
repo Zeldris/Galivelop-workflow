@@ -25,4 +25,5 @@ branches-ignore: [{{protectedBranch}}]
 # (rust-toolchain...) goes before "Install".
 if: hashFiles('package.json') != ''
 # workflow's, untouched; `ciPython` makes Python a matrix); another toolchain (rust-toolchain...) goes before "Install".
+--- v0.9.0 (8357389) ---
 echo "$RUNNER_TEMP/actionlint/bin" >> "$GITHUB_PATH"

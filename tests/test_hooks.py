@@ -2348,6 +2348,9 @@ class CheckCache(Base):
         self.assertEqual((first.returncode, second.returncode), (0, 0), out1 + out2)
         self.assertEqual(self.count(), 1, out1 + out2)
         self.assertIn(self.SKIP, out2)
+        # D179: a hit after the lock deletes the log and runs nothing, so it must not advertise `tail -f` of it.
+        self.assertNotIn("tail -f", out2)
+        self.assertIn("tail -f", out1)
         self.assertEqual(list(self.tmp.glob("gw-pre-push-check.*")), [])
         self.assertFalse((p.work / ".git" / "gw" / "check.lock").exists(), "the lock must be released")
 

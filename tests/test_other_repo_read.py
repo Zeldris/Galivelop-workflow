@@ -33,6 +33,14 @@ class Base(unittest.TestCase):
         self.loose.mkdir()
         (self.loose / "c.txt").write_text("c\n")
 
+    def make_workflow(self):
+        """Lay `self.other` out as the workflow repo (config.is_workflow): scripts/apply.py, skills/, plugin.json."""
+        (self.other / "scripts").mkdir()
+        (self.other / "scripts" / "apply.py").write_text("")
+        (self.other / "skills").mkdir()
+        (self.other / ".claude-plugin").mkdir()
+        (self.other / ".claude-plugin" / "plugin.json").write_text('{"name": "galivelop-workflow"}')
+
     def event(self, tool, tool_input, cwd=None, **extra):
         return dict({"hook_event_name": "PreToolUse", "cwd": str(cwd or self.p.work), "tool_name": tool,
                      "tool_input": tool_input}, **extra)
@@ -131,10 +139,23 @@ class Warns(Base):
         self.warns(out, self.other / "scripts" / "apply.py", self.other)
 
 
-class Silent(Base):
-    def test_apply_script_of_the_clone(self):
+    def test_apply_script_of_a_repo_that_is_not_the_workflow_warns(self):
         (self.other / "scripts").mkdir()
         (self.other / "scripts" / "apply.py").write_text("")
+        path = self.other / "scripts" / "apply.py"
+        out = self.run_hook(self.event("Bash", {"command": f"python3 {path} x"}))
+        self.warns(out, path, self.other)
+
+    def test_only_the_first_apply_script_word_is_skipped(self):
+        self.make_workflow()
+        path = self.other / "scripts" / "apply.py"
+        out = self.run_hook(self.event("Bash", {"command": f"python3 {path} {path}"}))
+        self.warns(out, path, self.other)
+
+
+class Silent(Base):
+    def test_apply_script_of_the_clone(self):
+        self.make_workflow()
         for command in (f"python3 {self.other}/scripts/apply.py {self.p.work} --dry-run",
                         f"python3 -B {self.other}/scripts/apply.py {self.p.work} --update"):
             self.silent(self.run_hook(self.event("Bash", {"command": command})))

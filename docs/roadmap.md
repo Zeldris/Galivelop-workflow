@@ -431,14 +431,14 @@ Solo arreglos de la recogida de apertura de la `0.10` (solo la última menor pub
 | Id | Tarea | Estado |
 |---|---|---|
 | H28 | Recogida de apertura de la `0.10` (`gw-harvest`, 6 proyectos con propuestas, `docs/proposals/2026-11-24-*.md`), al usuario | hecho (2026-11-24; arreglos a la `0.9.1`, evolutivos a la `0.11`) |
-| B48 | `workflowClone` se busca también en la disposición de la nube (`../<owner>/<repo>`, `/home/user/<owner>/<repo>`, sin distinguir mayúsculas): ayudante común en `config.py` para `doctor.py`, `apply.py`, `review-scope.py` y `gw-update`; amplía D158 (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-24) |
+| B48 | `workflowClone` se busca también en la disposición de la nube (`../<owner>/<repo>`, `/home/user/<owner>/<repo>`, sin distinguir mayúsculas): ayudante común en `config.py` para `doctor.py`, `review-scope.py` y `gw-update`; amplía D158 (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-24) |
 | B49 | `other-repo-read.py` no avisa al correr `apply.py` del clon (solo en lecturas) (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-25) |
 | B50 | `check.yml` y su plantilla ponen en `PATH` solo el binario de actionlint, no su venv (pierde PyYAML) (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-24) |
 | B51 | `gw-update`: parar si la rama va por detrás de la protegida, avisar del choque con el ledger y comprobar que una clave existe antes de recomendarla (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-25) |
 | B52 | `handoff.py next-id` lee ids en celdas de tabla (`**B3**`) y `doctor.py` avisa si ninguno casa con `taskId` (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-25) |
-| B53 | `red-without-fix.sh` decide por ruta o `testMap`, no por el contenido del archivo (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-25) |
+| B53 | `red-without-fix.sh` decide por ruta (`redWithoutFix.testPathRegex`) y marcas ancladas, no por el contenido del archivo (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-25) |
 | B54 | `review-scope.py` avisa de un árbol sin confirmar y admite `--worktree` (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-25) |
-| B55 | `push.sh` dice la ruta del registro y que hay un bloqueo al empezar el check del `pre-push` (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-25) |
+| B55 | El gancho `pre-push` dice la ruta del registro y que hay un bloqueo al empezar su check (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-25) |
 | B56 | Reglas de `REVIEW.md` (sin guardas temporales en tests; un comando con tiempo límite mata su grupo de procesos) y regla del reparto de contrastar el valor esperado con el código (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-26) |
 | B57 | El gancho `Stop` (`before-stop.py`) avisa cuando el último commit subido tiene el CI sin resolver (ni verde ni rojo) y no se ha programado su comprobación: una vez por commit, con clave en `stopSeverity` (retro de la `0.9.1`, usuario 2026-11-24) | hecho (2026-11-24) |
 | D179 | Arreglos de la revisión de la fase 1 de la `0.9.1` (B48-B57): 6 importantes y 11 leves aprobados (usuario, 2026-11-26) | en curso |

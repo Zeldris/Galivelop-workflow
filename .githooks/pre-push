@@ -310,13 +310,13 @@ run_checks() {  # run_checks <sha>: every check command on that commit, in $chec
       fail "cannot take the check lock (above, exit $lrc); fix that and push again: git push"
     fi
     checklock=1
-    echo "pre-push: check lock held (a long check is running; it may take minutes, this is not a hang); its output goes to $log (follow it: tail -f $log)" >&2
     # Another check may have recorded this tree green while this push waited for the lock: look again before running.
     if [ -n "$usecache" ] && cache_hit "$sha"; then
       bash "$scripts/check-green.sh" lock-release "$$" < /dev/null 2>/dev/null; checklock=""
       rm -f "$log"; log=""
       return 0
     fi
+    echo "pre-push: check lock held (a long check is running; it may take minutes, this is not a hang); its output goes to $log (follow it: tail -f $log)" >&2
   fi
   while IFS= read -r cmd; do
     [ -n "$cmd" ] || continue

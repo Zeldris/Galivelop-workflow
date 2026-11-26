@@ -110,18 +110,22 @@ def word_paths(word):
     return out
 
 
-def apply_script_words(parts):
+def apply_script_words(parts, cwd):
     """Indexes of the words that are `<dir>/scripts/apply.py` run by an interpreter in the same simple command
     (`python3 -B <workflow>/scripts/apply.py ...`): running the workflow's own updater is not reading the clone (B49).
-    Only that exact script name; any other script or word of the command still counts."""
+    Only that exact script name, only when its root is the workflow (config.is_workflow), and only the first such word
+    after the interpreter; any other script or word of the command still counts."""
     skip, interp = set(), False
     for i, word in enumerate(parts):
         if re.fullmatch(r"[;&|()<>]+", word):
             interp = False
         elif re.fullmatch(r"python[0-9.]*", os.path.basename(word)):
             interp = True
-        elif interp and word.endswith("/scripts/apply.py") or interp and word == "scripts/apply.py":
-            skip.add(i)
+        elif interp and (word.endswith("/scripts/apply.py") or word == "scripts/apply.py"):
+            base = os.path.dirname(os.path.dirname(os.path.join(cwd, os.path.expanduser(word))))
+            if config.is_workflow(base):
+                skip.add(i)
+            interp = False
         elif not word.startswith("-"):
             interp = False
     return skip
@@ -147,7 +151,7 @@ def candidates(event, cwd):
             return []
         try:
             parts = words(command)
-            skip = apply_script_words(parts)
+            skip = apply_script_words(parts, cwd)
             return [(p, True) for i, w in enumerate(parts) if i not in skip for p in word_paths(w)] + [(cwd, True)]
         except ValueError:
             return []

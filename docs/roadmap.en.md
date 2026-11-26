@@ -430,14 +430,14 @@ Only fixes from the opening harvest of `0.10` (only the latest published minor g
 | Id | Task | State |
 |---|---|---|
 | H28 | Opening harvest of `0.10` (`gw-harvest`, 6 projects with proposals, `docs/proposals/2026-11-24-*.md`), to the user | done (2026-11-24; fixes to `0.9.1`, new features to `0.11`) |
-| B48 | `workflowClone` is also looked up in the cloud layout (`../<owner>/<repo>`, `/home/user/<owner>/<repo>`, case-insensitive): a shared helper in `config.py` for `doctor.py`, `apply.py`, `review-scope.py` and `gw-update`; extends D158 (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-24) |
+| B48 | `workflowClone` is also looked up in the cloud layout (`../<owner>/<repo>`, `/home/user/<owner>/<repo>`, case-insensitive): a shared helper in `config.py` for `doctor.py`, `review-scope.py` and `gw-update`; extends D158 (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-24) |
 | B49 | `other-repo-read.py` does not warn when running the clone's `apply.py` (only on reads) (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
 | B50 | `check.yml` and its template put only the actionlint binary on `PATH`, not its venv (it loses PyYAML) (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-24) |
 | B51 | `gw-update`: stop if the branch is behind the protected one, warn about the clash with the ledger and check that a key exists before recommending it (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
 | B52 | `handoff.py next-id` reads ids in table cells (`**B3**`) and `doctor.py` warns if none matches `taskId` (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
-| B53 | `red-without-fix.sh` decides by path or `testMap`, not by file content (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
+| B53 | `red-without-fix.sh` decides by path (`redWithoutFix.testPathRegex`) and anchored markers, not by file content (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
 | B54 | `review-scope.py` warns about an uncommitted tree and accepts `--worktree` (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
-| B55 | `push.sh` says the log path and that the `pre-push` check holds a lock when it starts (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
+| B55 | The `pre-push` hook says the log path and that its check holds a lock when it starts (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
 | B56 | `REVIEW.md` rules (no temporary guards in tests; a command with a timeout kills its process group) and the dealing rule of checking the expected value against the code (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-26) |
 | B57 | The `Stop` hook (`before-stop.py`) warns when the last pushed commit has an unresolved CI (neither green nor red) and no check of it is scheduled: once per commit, with a key in `stopSeverity` (retro of `0.9.1`, user 2026-11-24) | done (2026-11-24) |
 | D179 | Fixes from the phase 1 review of `0.9.1` (B48-B57): 6 important and 11 minor findings approved (user, 2026-11-26) | in progress |
