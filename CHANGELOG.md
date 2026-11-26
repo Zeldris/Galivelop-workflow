@@ -38,6 +38,10 @@ Parche de la recogida H28 (filas de la `0.9.1` en `docs/roadmap.md`). / Patch fr
 - Reglas (B56): `REVIEW.md` sin guardas temporales en tests y con tiempo límite que mata el grupo de procesos; el
   reparto contrasta el valor esperado con el código.
 - Arreglos de la revisión (D179): 17 hallazgos de la fase 1 sobre lo anterior, cada uno con su test.
+- De la retro (B58-B61): la caché del check ignora las rutas de `checkCacheIgnore` (por defecto, el ledger de
+  métricas), así que un ledger escrito durante el check no obliga a repetirlo en el `pre-push`; `tests/check.sh` se
+  para en segundos en un clon superficial y nombra `git fetch --unshallow`; el encargo de `gw-orchestrate-dealer` dice
+  cómo crear la entrada del registro de decisiones (`task.py log`); `review-scope.py --worktree` en los `config.md`.
 
 ### EN
 
@@ -58,6 +62,10 @@ Parche de la recogida H28 (filas de la `0.9.1` en `docs/roadmap.md`). / Patch fr
 - Rules (B56): `REVIEW.md` has no temporary guards in tests and a timeout kills the process group; dealing checks
   the expected value against the code.
 - Review fixes (D179): 17 phase 1 findings on the above, each with its test.
+- From the retro (B58-B61): the check cache ignores the paths in `checkCacheIgnore` (by default, the metrics ledger),
+  so a ledger written during the check no longer forces `pre-push` to run it again; `tests/check.sh` stops in seconds
+  in a shallow clone and names `git fetch --unshallow`; the `gw-orchestrate-dealer` brief says how to create the
+  decision log entry (`task.py log`); `review-scope.py --worktree` in the `config.md` files.
 
 ## [0.9.0] - 2026-11-24
 
