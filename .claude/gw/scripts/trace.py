@@ -93,6 +93,12 @@ def read_lines(path):
         return None
 
 
+def id_key(cell):
+    """The ids a roadmap id cell lists, as a hashable key: the translation of a row may write the list otherwise
+    (`D61, D62` / `D61; D62`, with or without backticks) and still be the same row."""
+    return tuple(sorted(i for i in (x.strip("`") for x in re.split(r"[,;\s]+", cell.strip())) if i))
+
+
 def roadmap_rows(root, files, task):
     rows, notes, first = [], [], {}  # first: id cell -> the row of the first file that has it
     for entry in files:
@@ -106,12 +112,13 @@ def roadmap_rows(root, files, task):
                 heading = line.strip()
             spans = roadmap.cells(line)
             if spans and names_id(line[spans[0][0]:spans[0][1]], task):
-                key = line[spans[0][0]:spans[0][1]].strip()
+                key = id_key(line[spans[0][0]:spans[0][1]])
                 if key in first and first[key]["file"] != entry["path"]:  # the translation of a row already listed
                     first[key]["also"].append({"file": entry["path"], "line": n})
                     continue
-                first[key] = {"file": entry["path"], "line": n, "section": heading, "text": snippet(line), "also": []}
-                rows.append(first[key])
+                row = {"file": entry["path"], "line": n, "section": heading, "text": snippet(line), "also": []}
+                first.setdefault(key, row)  # a repeated id in the same file stays a row of its own; the first one is folded into
+                rows.append(row)
     return rows, notes
 
 
@@ -163,17 +170,54 @@ def commit_entries(root, task, pattern):
     return found
 
 
+def unfenced(text):
+    """`text` without the lines inside ``` code fences (a `- [x]` quoted in a code block is not a box)."""
+    out, fence = [], False
+    for line in text.splitlines():
+        if line.lstrip().startswith(("```", "~~~")):
+            fence = not fence
+        elif not fence:
+            out.append(line)
+    return "\n".join(out)
+
+
+def added_times(root, base, task):
+    """{file name: (author time of the commit that added it, mtime)} for the entries of the task folder, from ONE
+    `git log`; a file git does not know (not committed yet, or git failing) has 0 for the first and its mtime for the
+    second. The mtime breaks the ties of entries added in the same commit (or of a shallow clone's boundary commit)."""
+    folder = root / base / task
+    times = {}
+    try:
+        out = git(root, "log", "--diff-filter=A", "--name-only", "--format=%x1e%at", "--", posixpath.join(base, task))
+    except TraceError:
+        out = ""
+    for record in out.split("\x1e"):
+        lines = [l for l in record.splitlines() if l.strip()]
+        if not lines or not lines[0].isdigit():
+            continue
+        for rel in lines[1:]:
+            times.setdefault(posixpath.basename(rel), int(lines[0]))
+    result = {}
+    for p in folder.glob("*.md") if folder.is_dir() else []:
+        try:
+            mtime = int(p.stat().st_mtime)
+        except OSError:
+            mtime = 0
+        result[p.name] = (times.get(p.name, 0), mtime)
+    return result
+
+
 def task_entries(root, cfg, task, notes):
     """The task record and its decision log entries as items: {kind: record|entry, file, ...}; [] when there are none."""
     tr = config.task_record(cfg)
-    base = tr["path"]
+    base = tr["path"]  # config.task_record already normalises it (`./docs//tasks/`, `a/../b`)
     rec_rel = posixpath.join(base, task + ".md")
     items = []
     text = read_lines(root / rec_rel) if (root / rec_rel).is_file() else None
     if text is not None:
         body = {h.lower(): b for h, b in taskrec.sections_of("\n".join(text))}
         goal = body.get(tr["sections"][0].lower(), "")
-        acc = body.get(taskrec.ACCEPTANCE.lower(), "")
+        acc = unfenced(body.get(taskrec.acceptance_section(tr["sections"]).lower(), ""))
         done = len(re.findall(r"^\s*[-*]\s*\[[xX]\]", acc, re.M))
         total = done + len(re.findall(r"^\s*[-*]\s*\[ \]", acc, re.M))
         items.append({"kind": "record", "file": rec_rel, "goal": snippet(goal), "done": done, "total": total})
@@ -181,15 +225,17 @@ def task_entries(root, cfg, task, notes):
         notes.append(f"cannot read {rec_rel} (not UTF-8?); it was skipped")
     folder = root / base / task
     names = sorted(p.name for p in folder.glob("*.md") if p.is_file()) if folder.is_dir() else []
+    # by date (the file name starts with it), and within a day by the time the entry was added, not by agent and token
+    stamps = added_times(root, base, task)
+    names.sort(key=lambda n: (n[:10], stamps.get(n, (0, 0)), n))
     for name in names:
         rel = posixpath.join(base, task, name)
         lines = read_lines(root / rel)
         if lines is None:
             notes.append(f"cannot read {rel} (not UTF-8?); it was skipped")
             continue
-        first = next((l for l in lines if l.strip()), "")
-        parts = first[2:].split(taskrec.SEP) if first.startswith("# ") else []
-        date, agent, commit = (x.strip() for x in parts[:3]) if len(parts) == 4 else (name[:10], "?", "?")
+        header = taskrec.parse_entry("\n".join(lines))
+        date, agent, commit = header[:3] if header else (name[:10], "?", "?")
         errors = taskrec.entry_errors("\n".join(lines), task, cfg)
         why = {h.lower(): b for h, b in taskrec.sections_of("\n".join(lines))}.get(tr["logSections"][0].lower(), "")
         if commit == tr["pendingMarker"]:  # the header is never rewritten: the commit that added the file, if any
