@@ -59,6 +59,9 @@ creada.
 - `pkill -f <patrón>` (y `pgrep -f`) casa también con la orden que lo lanza cuando el patrón va en ella
   (`bash -c "… pkill -f servidor"`), y la mata: un pidfile, `pgrep -x` o un patrón que no se case a sí mismo
   (`[s]ervidor`). (criterio)
+- Un comando externo lanzado con tiempo límite (`timeout`, un plazo propio) mata **su grupo de procesos**, no solo al
+  proceso directo: los hijos que deja vivos retienen la salida y el bloqueo. Se lanza como líder de grupo
+  (`start_new_session`, `setsid`) y al vencer se envía la señal al grupo. (criterio)
 - Un runbook o encargo que sigue una tarea programada (una sesión sin persona delante) se revisa como código, aunque
   case con `content`: lo que dice se ejecuta tal cual. (criterio)
 
@@ -67,6 +70,8 @@ creada.
 - Un componente que los tests sustituyen por un doble (fake, mock, stub) tiene también una prueba de humo contra el
   real: arrancarlo y hacer una llamada de punta a punta. Se omite en local si falta el real y falla en el CI.
   (criterio)
+- Un test no depende de que exista lo que comprueba (`if (existsSync(...))`, `if os.path.exists(...)`): si falta, el
+  test falla o se marca pendiente a la vista, no se apaga en silencio. (criterio)
 
 ## Traído de otro repo: se adapta a los contratos de este
 

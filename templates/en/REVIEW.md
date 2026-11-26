@@ -57,6 +57,9 @@ once it exists.
 - `pkill -f <pattern>` (and `pgrep -f`) also matches the command that launches it when the pattern is in it
   (`bash -c "… pkill -f server"`), and kills it: use a pidfile, `pgrep -x` or a pattern that does not match itself
   (`[s]erver`). (judgement)
+- An outside command launched with a time limit (`timeout`, a deadline of its own) kills **its process group**, not
+  just the direct process: surviving children keep the output and the lock. Launch it as a group leader
+  (`start_new_session`, `setsid`) and signal the group on expiry. (judgement)
 - A runbook or brief that a scheduled task follows (a session with nobody watching) is reviewed as code, even if it
   matches `content`: what it says runs as it is. (judgement)
 
@@ -65,6 +68,8 @@ once it exists.
 - A component that the tests replace with a double (fake, mock, stub) also has a smoke test against the real thing:
   start it and make one end-to-end call. It is skipped locally when the real one is missing and fails in CI.
   (judgement)
+- A test does not depend on the thing it checks existing (`if (existsSync(...))`, `if os.path.exists(...)`): if it
+  is missing, the test fails or is visibly marked pending, never silently switched off. (judgement)
 
 ## Brought from another repo: adapt to this repo's contracts
 
