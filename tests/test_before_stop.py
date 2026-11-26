@@ -1389,12 +1389,40 @@ class CiPending(Base):
         self.p.git("push", "-q")
         self.assertBlocks(self.stop()[1], "still queued or running")  # a new commit, a new warning
 
-    def test_a_verdict_does_not_block_and_leaves_no_mark(self):
+    def test_a_verdict_does_not_block_and_is_read_once(self):
         for state in ("green", "red", "none"):
+            self.mark().unlink(missing_ok=True)
             self.answer(state)
             code, out = self.stop()
             self.assertLetsStop(code, out)
             self.assertEqual(out.strip(), "", f"{state}: nothing to say")
+            sha = self.p.git("rev-parse", "HEAD").stdout.strip()
+            self.assertIn(f"{sha} {state}", self.mark().read_text(), "D179: a verdict is remembered")
+            self.answer("pending")  # would block if ci-status.py ran again
+            code, out = self.stop()
+            self.assertEqual(out.strip(), "", f"{state}: D179, not asked again for the same commit")
+
+    def test_none_is_pending_when_the_ci_runs_on_push(self):
+        self.p.write(".github/workflows/check.yml", "on: push\n")
+        self.p.commit("ci"); self.p.git("push", "-q")
+        self.answer("none")
+        self.assertBlocks(self.stop()[1], "still queued or running")
+        self.mark().unlink()
+        self.set_keys(ciOnPush=False)  # check.yml only on pull requests: none is no CI
+        code, out = self.stop()
+        self.assertLetsStop(code, out)
+        self.assertEqual(out.strip(), "")
+
+    def test_head_not_on_its_upstream_is_not_pushed(self):
+        # D179: a fast-forward to a commit already on origin/<protected> leaves rule a. silent, but @{u} lacks it
+        self.p.git("checkout", "-q", "main")
+        self.p.git("merge", "-q", "--ff-only", "claude/trabajo")
+        self.p.write("src/m.py", "m = 1\n"); self.p.commit("on main")
+        self.p.git("push", "-q", "origin", "main")
+        self.p.git("checkout", "-q", "claude/trabajo")
+        self.p.git("merge", "-q", "--ff-only", "origin/main")
+        code, out = self.stop()
+        self.assertNotIn("still queued or running", out)
         self.assertFalse(self.mark().exists())
 
     def test_unpushed_commits_are_rule_a_and_not_this(self):
@@ -1417,7 +1445,11 @@ class CiPending(Base):
             message = decision(self, out)["systemMessage"]
             self.assertIn("could not check everything", message)
             self.assertIn(needle, message)
-        self.assertFalse(self.mark().exists())
+            code, out = self.stop()
+            if answer == "error":  # D179: an error is reported once per commit
+                self.assertNotIn("could not be read", out)
+                self.mark().unlink()
+
 
     def test_a_slow_ci_status_times_out_into_a_warning(self):
         self.set_keys(stopCiTimeout=1)
