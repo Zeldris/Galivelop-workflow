@@ -547,6 +547,14 @@ class Deny(Base):  # E70: wholeReadDenyPaths rejects the whole read instead of w
             self.assertIn("`tool`", text, given)
         self.assertIn("limit 5000; the file has 40 lines", self.denial(self.read(path, limit=5000)))
 
+    def test_offset_one_without_a_limit_is_a_whole_read(self):  # D180
+        self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/plan.md": "tool"}))
+        path = self.put_lines("docs/plan.md", 40)
+        text = self.denial(self.read(path, offset=1))
+        self.assertIn("docs/plan.md may not be read whole", text)
+        self.assertIn("offset 1 without a limit", text)
+        self.assertEqual(self.read(path, offset=2), "", "a later offset is a partial read")
+
     def test_a_partial_limit_or_a_later_offset_passes(self):  # D180
         self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/plan.md": "tool"}))
         path = self.put_lines("docs/plan.md", 40)

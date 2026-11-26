@@ -39,7 +39,7 @@ those files: a whole read of one of them (as above, whatever its size, extension
 wholeReadRepeatOnly) is denied with a reason that names its command; a partial read passes. A denial wins over the
 warnings of the same call. A bad value denies nothing (the default, {}). For these files it fails closed (D180): a
 Read whose `limit` is at or above the file's line count (from the top: `offset` absent, 0 or 1; a `limit` that is not
-a whole number, or a file it cannot count, too) is a whole read, and a Bash command it cannot split is denied when one
+a whole number, or a file it cannot count, too) is a whole read, and so is `offset` 1 without a `limit`, and a Bash command it cannot split is denied when one
 of its words is a denied path (against `cwd` or the root).
 
 Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse): a JSON object on stdout, exit 0,
@@ -710,13 +710,16 @@ def line_count(path):
 
 
 def reaches_the_end(tool_input, path):
-    """How a Read with a `limit` takes the denied `path` whole (D180), or None: it starts at the top (`offset` absent,
-    0 or 1) and its `limit` is at or above the file's line count. Fails closed: a `limit` that is not a whole number,
-    or a file it cannot count, counts as whole; no `limit` (only an offset) or `pages` (a PDF range) never does."""
+    """How a partial-looking Read takes the denied `path` whole (D180), or None: it starts at the top (`offset` absent,
+    0 or 1) and has no `limit` (`offset` 1 alone reads like no offset) or one at or above the file's line count. Fails
+    closed: a `limit` that is not a whole number, or a file it cannot count, counts as whole; `pages` (a PDF range)
+    never does."""
     offset, limit = tool_input.get("offset"), tool_input.get("limit")
     number = lambda v: isinstance(v, int) and not isinstance(v, bool)  # noqa: E731
-    if tool_input.get("pages") or not limit or (offset and not (number(offset) and offset <= 1)):
+    if tool_input.get("pages") or (offset and not (number(offset) and offset <= 1)):
         return None
+    if not limit:
+        return f"this Read (offset {offset!r} without a limit starts at the top)"
     lines = line_count(path)
     if number(limit) and lines is not None and limit < lines:
         return None
