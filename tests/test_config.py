@@ -1686,5 +1686,29 @@ class Profiles(unittest.TestCase):
         self.assertEqual((r.returncode, r.stdout.strip()), (0, "20000"), r.stderr)
 
 
+class WorkflowClone(unittest.TestCase):  # B48
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp)
+
+    def test_an_ssh_url_gives_owner_and_repo(self):
+        for url in ("git@github.com:Zeldris/Galivelop-workflow.git", "https://github.com/Zeldris/Galivelop-workflow.git",
+                    "ssh://git@github.com/Zeldris/Galivelop-workflow"):
+            cfg = {"workflowRepository": url, "workflowClone": "x", "workflowCloneAlso": ["{owner}/{repo}"]}
+            cands = config.workflow_clone_candidates(self.tmp, cfg)
+            self.assertEqual(cands[-1], self.tmp / "Zeldris" / "Galivelop-workflow", url)
+
+    def test_a_folder_of_another_account_is_skipped(self):
+        (self.tmp / "o" / "r").mkdir(parents=True)
+        cfg = {"workflowRepository": "https://h/o/r", "workflowClone": "x", "workflowCloneAlso": ["{owner}/{repo}"]}
+        self.assertIn(self.tmp / "o" / "r", config.workflow_clone_candidates(self.tmp, cfg))
+        real = os.getuid
+        os.getuid = lambda: real() + 1
+        try:
+            self.assertNotIn(self.tmp / "o" / "r", config.workflow_clone_candidates(self.tmp, cfg))
+        finally:
+            os.getuid = real
+
+
 if __name__ == "__main__":
     unittest.main()

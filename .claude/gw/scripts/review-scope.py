@@ -83,7 +83,7 @@ def changed(root, base, worktree=False):
 
 def dirty(root):
     """B54: the paths with changes not committed yet (tracked or untracked)."""
-    out = git(root, "status", "--porcelain", "-z", "--no-renames")
+    out = git(root, "status", "--porcelain", "-z", "--no-renames", "--untracked-files=all")
     return [e[3:] for e in out.split("\0") if e]
 
 
