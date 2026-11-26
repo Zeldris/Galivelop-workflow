@@ -24,6 +24,13 @@ $current
 # the linters and compilers only look at the sources.
 copies=(':!.claude/' ':!.githooks/')
 
+# B59: test_harvest.py runs harvest.py on this repo, which needs the full history; a shallow clone would fail it only
+# after the whole check (~50 min), so stop here, in seconds. CI clones with fetch-depth: 0.
+if [[ "$(git rev-parse --is-shallow-repository 2>/dev/null)" == "true" ]]; then
+  echo "check: $root is a shallow clone and tests/test_harvest.py needs the full history; run: git fetch --unshallow origin" >&2
+  exit 1
+fi
+
 section "workflow copy in sync (.claude/gw, .claude/skills, .githooks, .claude/settings.json)"
 python3 scripts/apply.py --check . || bad
 

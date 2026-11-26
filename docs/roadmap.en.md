@@ -307,6 +307,8 @@ What was not done in `0.7` moved to `0.8` (user, 2026-11-15).
 | B31 | Warning when the context nears the window with the compaction budget spent (`recover.py --state` or `Stop`), before the compaction (`0.6.0` harvest, image-generator P7) | done (2026-11-17; `Stop` hook, once per stretch, `contextGuard.nearRatio`) |
 | D7 | `AGENTS.md` readable without `@include`; skills also in `.agents/skills` (opencode, Codex) | done (2026-11-18) |
 | B9 | Non-Anthropic models through opencode | done (2026-11-18) |
+| D180 | Sweep of the `scripts/whole-read.py` minors in `pending.md`: fails open with `wholeReadDenyPaths` on a command it cannot split or a huge `limit` (E70); the exception for hooks that only advise, in `AGENTS.md` (E74) (retro of `0.9.1`, P5; user 2026-11-26) | pending |
+| B62 | The `commit-msg` `findingsWords` warning does not fire if a commit since the last review close already carries `Findings:` (it would count twice in `metrics.py quality`) (retro of `0.9.1`, P4; user 2026-11-26) | pending |
 | — | What [`pending.md`](records/pending.md) marks `0.8` | done (2026-11-18; except `push.sh` on macOS, which moves to `0.10`) |
 | E53 | Guide rule: in CI, the environment's install script fails in its own step (`0.7` harvest, instalador P2) | done (2026-11-17, 889791d) |
 | D126 | `gw-scout-updates` reads the project's Rust version (`rust-toolchain(.toml)`, `rust-version` in `Cargo.toml`) (`0.4` harvest, instalador P11, `pending.md`) | done (2026-11-17, 5e2eb7f) |
@@ -441,6 +443,10 @@ Only fixes from the opening harvest of `0.10` (only the latest published minor g
 | B56 | `REVIEW.md` rules (no temporary guards in tests; a command with a timeout kills its process group) and the dealing rule of checking the expected value against the code (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-26) |
 | B57 | The `Stop` hook (`before-stop.py`) warns when the last pushed commit has an unresolved CI (neither green nor red) and no check of it is scheduled: once per commit, with a key in `stopSeverity` (retro of `0.9.1`, user 2026-11-24) | done (2026-11-24) |
 | D179 | Fixes from the phase 1 review of `0.9.1` (B48-B57): 6 important and 11 minor findings approved (user, 2026-11-26) | done (2026-11-26) |
+| B58 | The check cache ignores the paths in `checkCacheIgnore` (by default, the metrics ledger): a ledger written during the check no longer forces the `pre-push` to repeat it (retro of `0.9.1`, P1; user 2026-11-26) | in progress |
+| B59 | A shallow clone stops the check in seconds with `git fetch --unshallow`, not after the whole check (retro of `0.9.1`, P2; user 2026-11-26) | done (2026-11-26) |
+| B60 | The `gw-orchestrate-dealer` brief says how to create the decision-log entry (`task.py log`) when `taskRecord` is on (retro of `0.9.1`, P3; user 2026-11-26) | done (2026-11-26) |
+| B61 | `review-scope.py --worktree` in the `config.md` files (retro of `0.9.1`, P6; user 2026-11-26) | done (2026-11-26) |
 
 ## `0.10` "Stable"
 

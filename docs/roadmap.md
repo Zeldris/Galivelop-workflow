@@ -442,6 +442,10 @@ Solo arreglos de la recogida de apertura de la `0.10` (solo la última menor pub
 | B56 | Reglas de `REVIEW.md` (sin guardas temporales en tests; un comando con tiempo límite mata su grupo de procesos) y regla del reparto de contrastar el valor esperado con el código (recogida `2026-11-24`, usuario 2026-11-24) | hecho (2026-11-26) |
 | B57 | El gancho `Stop` (`before-stop.py`) avisa cuando el último commit subido tiene el CI sin resolver (ni verde ni rojo) y no se ha programado su comprobación: una vez por commit, con clave en `stopSeverity` (retro de la `0.9.1`, usuario 2026-11-24) | hecho (2026-11-24) |
 | D179 | Arreglos de la revisión de la fase 1 de la `0.9.1` (B48-B57): 6 importantes y 11 leves aprobados (usuario, 2026-11-26) | hecho (2026-11-26) |
+| B58 | La caché del check ignora las rutas de `checkCacheIgnore` (por defecto, el ledger de métricas): un ledger escrito durante el check ya no obliga a repetirlo en el `pre-push` (retro de la `0.9.1`, P1; usuario 2026-11-26) | en curso |
+| B59 | Un clon superficial para el check en segundos con `git fetch --unshallow`, no tras el check entero (retro de la `0.9.1`, P2; usuario 2026-11-26) | hecho (2026-11-26) |
+| B60 | El encargo de `gw-orchestrate-dealer` dice cómo crear la entrada del registro de decisiones (`task.py log`) cuando `taskRecord` está activo (retro de la `0.9.1`, P3; usuario 2026-11-26) | hecho (2026-11-26) |
+| B61 | `review-scope.py --worktree` en los `config.md` (retro de la `0.9.1`, P6; usuario 2026-11-26) | hecho (2026-11-26) |
 
 ## `0.10` «Estable»
 
@@ -461,6 +465,8 @@ Solo correcciones y revisiones, sin funciones nuevas: lo evolutivo de las recogi
 | E32 | `permissions.deny` de lectura para secretos y gancho `PreToolUse` sobre `cat`/`grep` de esos archivos, con test; en `docs/es/`, qué sale hacia el proveedor (H17 P6) | pendiente (pasa de la `0.7`) |
 | B38 | Barrido de los leves de `scripts/handoff.py` en `pending.md` (D104): la cuenta del puntero de pendientes duplicada y sin vigilar en un commit que solo toca `pending.md`; `archive` exige «## Pendiente» y `check`/`recover` no, y el mensaje sin archivo nombra la bitácora; el `pre-push` lee `pendingFile` de la copia de trabajo; la cuenta solo mira «Pendiente (de la bitácora)»; `move-pending` descarta líneas que parecen punteros (retro de la `0.7.0`, R2; usuario, 2026-11-15) | hecho |
 | B43 | Barrido de los leves de `scripts/trace.py` en `pending.md`: plegar filas cuyo texto traducido difiere (revisión D14 n.º 2); ordenar las entradas del día por hora (C11-trace n.º 3); leer `taskRecord.sections` en vez de fijar `Acceptance` (n.º 4); no contar `- [x]` dentro de bloques de código (n.º 5); `normpath` en `taskRecord.path` (n.º 6); `parse_entry` compartido con `task.py` (n.º 7) (retro de la `0.8.0`, P5; usuario, 2026-11-18) | pendiente |
+| D180 | Barrido de los leves de `scripts/whole-read.py` en `pending.md`: falla abierto con `wholeReadDenyPaths` ante un comando que no sabe partir o un `limit` enorme (E70); la excepción de los ganchos que solo aconsejan, en `AGENTS.md` (E74) (retro de la `0.9.1`, P5; usuario 2026-11-26) | pendiente |
+| B62 | El aviso de `findingsWords` del `commit-msg` no salta si un commit desde el último cierre de revisión ya lleva `Findings:` (contaría dos veces en `metrics.py quality`) (retro de la `0.9.1`, P4; usuario 2026-11-26) | pendiente |
 | — | Lo de [`pending.md`](records/pending.md) marcado `0.10` | pendiente |
 
 ## `0.11` — evolutivos de las recogidas

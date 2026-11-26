@@ -65,7 +65,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    per-branch rows, read the next step of {log} and the pending file (`pendingFile`, else the log's Pending). If you touch code, read REVIEW.md and
    AGENTS.md. Follow the project's commit and push rules. On the working branch you push each stable point and
    commit with the log update in the same commit; in a worktree (`agent/<id>-<topic>`) you commit but never push and
-   never touch the log (the main session does both). Leave nothing uncommitted when you reply: every change is in
+   never touch the log (the main session does both). If `taskRecord` is on, the commit also needs a decision-log entry under `docs/tasks/<id>/`:
+   `python3 .claude/gw/scripts/task.py log --agent <skill> <id>`, staged with the work. Leave nothing uncommitted when you reply: every change is in
    your last commit. If a push is rejected, `git fetch` and `git merge` (never rebase), then push again.
    At ~25 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
    Final push and other long waits: in the background with a `timeout` of 5400000 ms (a full check takes over 10
