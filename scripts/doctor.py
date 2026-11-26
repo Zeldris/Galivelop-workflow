@@ -1514,10 +1514,12 @@ def check_workflow_clone(rep, root, cfg, workflow=None):
     if config.find_workflow_clone(root, cfg):
         return
     why = "does not exist" if not (root / rel).is_dir() else "is not the workflow repo"
-    rep.warn("workflow clone", f"workflowClone points at {rel}, which {why}, so review-scope.py cannot tell "
-             "what is vendored and the review reads the whole diff",
-             f"git clone --depth 1 {config.workflow_repository(cfg)} {rel}, or set \"workflowClone\" in "
-             ".claude/gw.json to the folder of your clone")
+    tried = ", ".join(str(c) for c in config.workflow_clone_candidates(root, cfg))
+    rep.warn("workflow clone", f"workflowClone points at {rel}, which {why}, and no workflowCloneAlso folder "
+             f"holds the workflow (tried: {tried}), so review-scope.py cannot tell what is vendored and the review "
+             "reads the whole diff",
+             f"git clone --depth 1 {config.workflow_repository(cfg)} {rel}, or set \"workflowClone\" (or "
+             "\"workflowCloneAlso\") in .claude/gw.json to the folder of your clone")
 
 
 AGENT_FILES = (".claude/agents/gw-worker.md", ".claude/agents/gw-reviewer.md")

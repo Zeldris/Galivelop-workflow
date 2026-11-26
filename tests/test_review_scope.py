@@ -103,6 +103,14 @@ class ReviewScope(ScopeBase):
         self.assertIn("1 uncommitted file(s) are not in this diff; commit first or pass --worktree", out)
         self.assertEqual([l for l in out.splitlines() if not l.startswith("review-scope:")], ["src/a.py"])
 
+    def test_an_untracked_folder_counts_each_file(self):  # B54
+        self.p.write("src/a.py", "a\n")
+        self.commit()
+        self.p.write("new/b.py", "b\n")
+        self.p.write("new/c.py", "c\n")
+        out = self.scope()[1]
+        self.assertIn("2 uncommitted file(s) are not in this diff", out)
+
     def test_a_clean_tree_does_not_warn(self):  # B54
         self.p.write("src/a.py", "a\n")
         self.commit()

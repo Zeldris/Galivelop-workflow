@@ -1719,6 +1719,12 @@ class Doctor(Snapshot):
         self.set_cfg(branchCheck="full", workflowClone="../no-such-clone", workflowCloneAlso=["../none/{repo}"])
         self.assertLine(self.doctor()[1], "WARN", "workflow clone", "../no-such-clone")
 
+    def test_workflow_clone_warning_lists_the_folders_tried(self):  # B48
+        self.set_cfg(branchCheck="full", workflowClone="../no-such-clone", workflowCloneAlso=["../none/{repo}"])
+        line = self.assertLine(self.doctor()[1], "WARN", "workflow clone", "../no-such-clone")
+        self.assertIn("workflowCloneAlso", line)
+        self.assertIn(str(self.p.work.parent / "none" / "Galivelop-workflow"), line)
+
     def test_workflow_clone_that_is_not_the_workflow_warns(self):  # D158: is_dir() is not enough
         (self.p.work.parent / "other").mkdir(exist_ok=True)
         self.set_cfg(branchCheck="full", workflowClone="../other")
