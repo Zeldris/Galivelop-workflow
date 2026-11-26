@@ -799,6 +799,23 @@ def metrics(config):
     return out
 
 
+def cache_ignore_default(config, schema=None):
+    """B63: the `checkCacheIgnore` a config gets when it does not set the key: the path of `metrics.ledger` (the
+    token ledger hooks append on their own), so a project that moves the ledger keeps it out of the check-cache key.
+    A ledger outside the repo (absolute, with a drive letter or with `..`) is not a tracked file: none. Windows
+    separators count as `/`, the way git names the path."""
+    props = (schema or _schema())["properties"]["metrics"]["properties"]
+    given = config.get("metrics") if isinstance(config.get("metrics"), dict) else {}
+    ledger = given.get("ledger", props["ledger"]["default"])
+    ledger = ledger.strip().replace("\\", "/") if isinstance(ledger, str) else ""
+    if not ledger or re.match(r"[A-Za-z]:", ledger):
+        return []
+    rel = posixpath.normpath(ledger)
+    if rel in (".", "..") or rel.startswith(("/", "../")):
+        return []
+    return [rel]
+
+
 def models(config):
     """The `models` key as a dict (disabled) (B7)."""
     return _section(config, "models")
@@ -1280,6 +1297,8 @@ def with_defaults(config, schema, exists=None, follow_moves=False):
             if old and exists is not None and not exists(value) and exists(old):
                 value = legacy[key] = old
             filled[key] = value
+    if "checkCacheIgnore" not in config and "checkCacheIgnore" in schema.get("properties", {}):
+        filled["checkCacheIgnore"] = cache_ignore_default(filled, schema)  # B63: follows metrics.ledger
     if legacy:
         filled["_legacy"] = legacy
     return filled

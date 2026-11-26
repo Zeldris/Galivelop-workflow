@@ -440,9 +440,12 @@ class Templates(unittest.TestCase):
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())
         self.assertEqual(config.validate(sample, schema), [])
         # ciInstall is left out on purpose: absent means "CI runs `install`", while [] would mean "CI installs nothing";
-        # shellcheckVersion is the workflow repo's own pin (E27): a project's CI template does not read it
-        self.assertEqual(set(sample), set(schema["properties"]) - {"ciInstall", "ciPython", "shellcheckVersion"},
-                         "templates/gw.json must show every key but ciInstall, ciPython and shellcheckVersion")
+        # shellcheckVersion is the workflow repo's own pin (E27): a project's CI template does not read it;
+        # checkCacheIgnore is left out so it follows metrics.ledger (B63): written, it would pin the default path
+        self.assertEqual(set(sample), set(schema["properties"]) - {"ciInstall", "ciPython", "shellcheckVersion",
+                                                                   "checkCacheIgnore"},
+                         "templates/gw.json must show every key but ciInstall, ciPython, shellcheckVersion and "
+                         "checkCacheIgnore")
         self.assertEqual(sample["version"], VERSION)
         # D59: the AGENTS.md template asks for the next-step trailer, so a new project must have it enforced
         self.assertIs(sample["commitNext"], True)
@@ -471,6 +474,17 @@ class Init(unittest.TestCase):
     def project(self, name="p"):
         (self.tmp / name).mkdir()
         return Project(self.tmp / name)
+
+    def test_init_leaves_check_cache_ignore_following_metrics_ledger(self):  # B63
+        p = self.project()
+        code, out = p.init()
+        self.assertEqual(code, 0, out)
+        cfg = json.loads(p.read(".claude/gw.json"))
+        self.assertNotIn("checkCacheIgnore", cfg)
+        cfg["metrics"]["ledger"] = "var/tokens.jsonl"
+        p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = p.run("python3", str(p.work / ".claude/gw/scripts/config.py"), "get", "checkCacheIgnore", "--json")
+        self.assertEqual((code, json.loads(out)), (0, ["var/tokens.jsonl"]), out)
 
     def test_init_on_an_empty_repo_es_and_en(self):
         for lang in ("es", "en"):

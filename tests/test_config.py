@@ -47,6 +47,29 @@ class Config(unittest.TestCase):
                 r = cli(self.tmp, "get", "languages.docs.primary")
                 self.assertEqual((r.returncode, r.stdout.strip()), (0, "en"), r.stderr)
 
+    def test_check_cache_ignore_follows_metrics_ledger_unless_given(self):  # B63
+        cases = ((VALID, ["docs/metrics/ledger.jsonl"]),
+                 (dict(VALID, metrics={"ledger": "var/tokens.jsonl"}), ["var/tokens.jsonl"]),
+                 (dict(VALID, metrics={"ledger": "./var//tokens.jsonl"}), ["var/tokens.jsonl"]),
+                 (dict(VALID, metrics={"ledger": "/abs/tokens.jsonl"}), []),  # outside the repo: not tracked
+                 (dict(VALID, metrics={"ledger": "../tokens.jsonl"}), []),
+                 (dict(VALID, metrics={"ledger": "var/../../tokens.jsonl"}), []),
+                 (dict(VALID, metrics={"ledger": ".."}), []),
+                 (dict(VALID, metrics={"ledger": "   "}), []),  # blank: no path
+                 (dict(VALID, metrics={"ledger": "var\\tokens.jsonl"}), ["var/tokens.jsonl"]),  # git's separator
+                 (dict(VALID, metrics={"ledger": "..\\tokens.jsonl"}), []),
+                 (dict(VALID, metrics={"ledger": "var\\..\\..\\tokens.jsonl"}), []),
+                 (dict(VALID, metrics={"ledger": "\\abs\\tokens.jsonl"}), []),
+                 (dict(VALID, metrics={"ledger": "C:/abs/tokens.jsonl"}), []),  # a drive letter is absolute
+                 (dict(VALID, metrics={"ledger": "c:\\abs\\tokens.jsonl"}), []),
+                 (dict(VALID, metrics={"ledger": "var/tokens.jsonl"}, checkCacheIgnore=["a.txt"]), ["a.txt"]),
+                 (dict(VALID, metrics={"ledger": "var/tokens.jsonl"}, checkCacheIgnore=[]), []))
+        for data, want in cases:
+            with self.subTest(data=data):
+                self.write(data)
+                r = cli(self.tmp, "get", "checkCacheIgnore", "--json")
+                self.assertEqual((r.returncode, json.loads(r.stdout or "null")), (0, want), r.stderr)
+
     def test_ci_install_is_unset_until_given_and_an_empty_list_is_a_value(self):
         self.write(VALID)
         r = cli(self.tmp, "get", "ciInstall")
