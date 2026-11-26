@@ -1,5 +1,7 @@
 """B59: tests/check.sh stops at its start, in seconds, in a shallow clone, naming `git fetch --unshallow`."""
+import os
 import shutil
+import signal
 import subprocess
 import tempfile
 import unittest
@@ -16,15 +18,22 @@ class ShallowCheckTest(unittest.TestCase):
             clone = Path(tmp) / "shallow"
             subprocess.run(["git", "clone", "-q", "--depth", "1", f"file://{ROOT}", str(clone)], check=True)
             shutil.copy(ROOT / "tests" / "check.sh", clone / "tests" / "check.sh")
+            # Own process group: on a timeout the whole check (bash and the tests it started) is killed, not only bash.
+            proc = subprocess.Popen(["bash", str(clone / "tests" / "check.sh")], stdout=subprocess.PIPE,
+                                    stderr=subprocess.PIPE, text=True, start_new_session=True)
             try:
-                p = subprocess.run(["bash", str(clone / "tests" / "check.sh")], capture_output=True, text=True,
-                                   timeout=waits.timeout(60))
+                out, err = proc.communicate(timeout=waits.timeout(60))
             except subprocess.TimeoutExpired:
+                os.killpg(proc.pid, signal.SIGKILL)
+                proc.communicate()
                 self.fail("check.sh did not stop early in a shallow clone")
+            p = subprocess.CompletedProcess(proc.args, proc.returncode, out, err)
             self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
             self.assertIn("is a shallow clone", p.stderr)
             self.assertIn("git fetch --unshallow", p.stderr)
             self.assertNotIn("== ", p.stdout)
+            self.assertIn("FAILED: shallow clone", p.stdout)
+            self.assertIn("CHECK FAILED", p.stdout)
 
 
 if __name__ == "__main__":

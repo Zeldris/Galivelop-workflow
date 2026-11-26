@@ -65,8 +65,8 @@ A read of more than ~200 lines, or a long output, in the main session is a chunk
    per-branch rows, read the next step of {log} and the pending file (`pendingFile`, else the log's Pending). If you touch code, read REVIEW.md and
    AGENTS.md. Follow the project's commit and push rules. On the working branch you push each stable point and
    commit with the log update in the same commit; in a worktree (`agent/<id>-<topic>`) you commit but never push and
-   never touch the log (the main session does both). With `taskRecord` on, stage `task.py log --agent <skill> <id>`
-   with the work. Commit everything before replying; a rejected push: `git fetch`, `git merge` (never rebase), push.
+   never touch the log (the main session does both). With `taskRecord` on, run `python3 .claude/gw/scripts/task.py log --agent <skill> <id>`
+   and `git add` the entry with the work. Commit everything before replying; a rejected push: `git fetch`, `git merge` (never rebase), push.
    At ~25 tool calls, commit (`WIP:` if red), push, and reply with what is left under MISSING.
    Final push and other long waits: in the background with a `timeout` of 5400000 ms (a full check takes over 10
    minutes, the foreground cap), waited for with its notice or `Monitor` (ToolSearch first), never a `sleep`. Wait for the background push with `Monitor` until it ends, never by ending your turn, and reply once, with nothing of yours running, only after `git ls-remote` confirms the push. To stop a process

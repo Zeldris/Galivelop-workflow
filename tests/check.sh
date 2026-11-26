@@ -28,6 +28,8 @@ copies=(':!.claude/' ':!.githooks/')
 # after the whole check (~50 min), so stop here, in seconds. CI clones with fetch-depth: 0.
 if [[ "$(git rev-parse --is-shallow-repository 2>/dev/null)" == "true" ]]; then
   echo "check: $root is a shallow clone and tests/test_harvest.py needs the full history; run: git fetch --unshallow origin" >&2
+  echo "FAILED: shallow clone"
+  echo "CHECK FAILED"
   exit 1
 fi
 
