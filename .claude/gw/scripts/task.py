@@ -51,6 +51,15 @@ PLACEHOLDER = re.compile(r"(?:\s|\u2014|-|\*|\[[ xX]\])*")  # a body of only das
 ACCEPTANCE = "Acceptance"  # the section whose empty body is a checkbox; the config may rename it, the template keeps it
 
 
+def acceptance_section(sections):
+    """The section of `taskRecord.sections` whose body holds the acceptance boxes: `Acceptance` when the list has it,
+    else the third one (the last when the list is shorter). The one rule: trace.py and the hook share it."""
+    for name in sections:
+        if name.lower() == ACCEPTANCE.lower():
+            return name
+    return sections[min(2, len(sections) - 1)]
+
+
 class Refused(Exception):
     pass
 
@@ -71,7 +80,7 @@ def contract_text(config, task_id, title=None, root=None):
     head = f"# {task_id}{SEP}{title or ('<título>' if lang == 'es' else '<title>')}"
     parts = [head]
     for name in tr["sections"]:
-        parts.append(f"## {name}\n\n" + ("- [ ] —" if name == ACCEPTANCE else "—"))
+        parts.append(f"## {name}\n\n" + ("- [ ] —" if name == acceptance_section(tr["sections"]) else "—"))
     parts.append(OPEN_QUESTIONS[lang].format(ref=questions_ref(config, root, tr["path"])))
     return "\n\n".join(parts) + "\n"
 
@@ -107,7 +116,7 @@ def contract_errors(text, config):
     if order != [w.lower() for w in wanted]:
         return [f"the sections are not in the order {', '.join(wanted)}, or one is repeated"]
     bodies = {h.lower(): body for h, body in sections_of(text)}
-    for name in (wanted[0], ACCEPTANCE):  # the goal and the acceptance criteria are the contract: they cannot be the template
+    for name in (wanted[0], acceptance_section(wanted)):  # the goal and the acceptance criteria are the contract: they cannot be the template
         if name in wanted and PLACEHOLDER.fullmatch(bodies.get(name.lower(), "")):
             return [f"the `## {name}` section is empty or still the template; write it (the other sections may stay \u2014)"]
     return []

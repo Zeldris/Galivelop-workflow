@@ -170,35 +170,41 @@ def commit_entries(root, task, pattern):
     return found
 
 
-def acceptance_name(sections):
-    """The section of `taskRecord.sections` that holds the acceptance boxes: `Acceptance` when the project keeps that
-    name, else the one at its default place (third, or the last when the list is shorter)."""
-    if any(s.lower() == taskrec.ACCEPTANCE.lower() for s in sections):
-        return taskrec.ACCEPTANCE
-    return sections[min(2, len(sections) - 1)]
-
-
 def unfenced(text):
     """`text` without the lines inside ``` code fences (a `- [x]` quoted in a code block is not a box)."""
     out, fence = [], False
     for line in text.splitlines():
-        if line.lstrip().startswith("```"):
+        if line.lstrip().startswith(("```", "~~~")):
             fence = not fence
         elif not fence:
             out.append(line)
     return "\n".join(out)
 
 
-def added_at(root, rel):
-    """When the file was added, for ordering: the author time of the commit that added it, else its mtime (an entry that
-    is not committed yet), else 0."""
+def added_times(root, base, task):
+    """{file name: (author time of the commit that added it, mtime)} for the entries of the task folder, from ONE
+    `git log`; a file git does not know (not committed yet, or git failing) has 0 for the first and its mtime for the
+    second. The mtime breaks the ties of entries added in the same commit (or of a shallow clone's boundary commit)."""
+    folder = root / base / task
+    times = {}
     try:
-        out = git(root, "log", "--diff-filter=A", "--format=%at", "-1", "--", rel).strip()
-        if out:
-            return int(out)
-        return int((root / rel).stat().st_mtime)
-    except (TraceError, OSError, ValueError):
-        return 0
+        out = git(root, "log", "--diff-filter=A", "--name-only", "--format=%x1e%at", "--", posixpath.join(base, task))
+    except TraceError:
+        out = ""
+    for record in out.split("\x1e"):
+        lines = [l for l in record.splitlines() if l.strip()]
+        if not lines or not lines[0].isdigit():
+            continue
+        for rel in lines[1:]:
+            times.setdefault(posixpath.basename(rel), int(lines[0]))
+    result = {}
+    for p in folder.glob("*.md") if folder.is_dir() else []:
+        try:
+            mtime = int(p.stat().st_mtime)
+        except OSError:
+            mtime = 0
+        result[p.name] = (times.get(p.name, 0), mtime)
+    return result
 
 
 def task_entries(root, cfg, task, notes):
@@ -211,7 +217,7 @@ def task_entries(root, cfg, task, notes):
     if text is not None:
         body = {h.lower(): b for h, b in taskrec.sections_of("\n".join(text))}
         goal = body.get(tr["sections"][0].lower(), "")
-        acc = unfenced(body.get(acceptance_name(tr["sections"]).lower(), ""))
+        acc = unfenced(body.get(taskrec.acceptance_section(tr["sections"]).lower(), ""))
         done = len(re.findall(r"^\s*[-*]\s*\[[xX]\]", acc, re.M))
         total = done + len(re.findall(r"^\s*[-*]\s*\[ \]", acc, re.M))
         items.append({"kind": "record", "file": rec_rel, "goal": snippet(goal), "done": done, "total": total})
@@ -220,7 +226,8 @@ def task_entries(root, cfg, task, notes):
     folder = root / base / task
     names = sorted(p.name for p in folder.glob("*.md") if p.is_file()) if folder.is_dir() else []
     # by date (the file name starts with it), and within a day by the time the entry was added, not by agent and token
-    names.sort(key=lambda n: (n[:10], added_at(root, posixpath.join(base, task, n)), n))
+    stamps = added_times(root, base, task)
+    names.sort(key=lambda n: (n[:10], stamps.get(n, (0, 0)), n))
     for name in names:
         rel = posixpath.join(base, task, name)
         lines = read_lines(root / rel)

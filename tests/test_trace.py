@@ -377,6 +377,47 @@ class Trace(unittest.TestCase):
         self.assertIsNone(task.parse_entry("# 17/11 · session · pending · D14\n"))
         self.assertIsNone(task.parse_entry("no header\n"))
 
+    def test_same_commit_entries_ordered_by_mtime(self):
+        r = self.with_task()
+        self.entry("2026-11-18-aaa-1111111", "2026-11-18", "pending", "later", agent="aaa")
+        self.entry("2026-11-18-zzz-2222222", "2026-11-18", "pending", "earlier", agent="zzz")
+        r.commit("feat(D14): both")
+        os.utime(r.work / "docs/tasks/D14/2026-11-18-aaa-1111111.md", (2000000000, 2000000000))
+        os.utime(r.work / "docs/tasks/D14/2026-11-18-zzz-2222222.md", (1000000000, 1000000000))
+        entries = [t for t in json.loads(r.trace("D14", "--json").stdout)["declared"]["task"] if t["kind"] == "entry"]
+        self.assertEqual([e["why"] for e in entries], ["earlier", "later"])
+
+    def test_mtime_used_when_git_log_fails(self):
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import trace as tr
+        r = self.with_task()
+        self.entry("2026-11-18-aaa-1111111", "2026-11-18", "pending", "x", agent="aaa")
+        os.utime(r.work / "docs/tasks/D14/2026-11-18-aaa-1111111.md", (1500000000, 1500000000))
+        real = tr.git
+        def boom(*a, **k):
+            raise tr.TraceError("git down")
+        tr.git = boom
+        try:
+            got = tr.added_times(r.work, "docs/tasks", "D14")
+        finally:
+            tr.git = real
+        self.assertEqual(got["2026-11-18-aaa-1111111.md"], (0, 1500000000))
+
+    def test_tilde_fence_is_not_counted(self):
+        r = self.with_task()
+        r.write("docs/tasks/D14.md", "# D14\n\n## Goal\n\ng\n\n## Acceptance\n\n- [x] a\n\n~~~\n- [x] quoted\n~~~\n- [ ] b\n")
+        rec = json.loads(r.trace("D14", "--json").stdout)["declared"]["task"][0]
+        self.assertEqual((rec["done"], rec["total"]), (1, 2))
+
+    def test_contract_uses_the_same_acceptance_rule(self):
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import task
+        self.assertEqual(task.acceptance_section(["Goal", "Acceptance", "Files"]), "Acceptance")
+        self.assertEqual(task.acceptance_section(["Goal", "Scope", "Criteria", "Files"]), "Criteria")
+        self.assertEqual(task.acceptance_section(["Goal", "Done"]), "Done")
+        text = task.contract_text({"taskRecord": {"sections": ["Goal", "Scope", "Criteria"]}}, "D14")
+        self.assertIn("## Criteria\n\n- [ ]", text)
+
 
 if __name__ == "__main__":
     unittest.main()
