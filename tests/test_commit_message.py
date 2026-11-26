@@ -329,6 +329,31 @@ class Refs(Msg):
         self.p.git("fetch", "-q", "origin")
         self.assertIn("WARNING", self.warned(self.FIXES))
 
+    def test_without_the_protected_branch_the_warning_stays(self):  # B62: no block, as in change-size.py
+        p = self.p
+        p.git("checkout", "-q", "-b", "work")
+        p.git("branch", "-q", "-D", "main")
+        p.git("update-ref", "-d", "refs/remotes/origin/main")
+        self.accepted("fix(D11): a\n\nRefs: D11\nFindings: 3\nSiguiente: x")
+        self.assertIn("WARNING", self.warned(self.FIXES))
+
+    def test_a_git_error_keeps_the_warning(self):  # B62: git log fails after printing a close, the warning stays
+        import importlib.util
+        import subprocess
+        spec = importlib.util.spec_from_file_location("commit_message_b62", ROOT / "scripts" / "commit-message.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+
+        def fake(root, *args):
+            if args[0] == "log":
+                return subprocess.CompletedProcess(args, 128, "\x02Findings: 3\n\0", "fatal: bad object")
+            return subprocess.CompletedProcess(args, 0, "", "")
+        mod.git = fake
+        self.assertFalse(mod.review_just_closed(self.p.work, {}, "Findings"))
+        cfg = mod.gwconfig.load(self.p.work)
+        self.assertIn("WARNING", mod.findings_warning(cfg, "fix(D11): review fixes\n\nRefs: D11", [("Refs", "D11")],
+                                                      self.p.work))
+
     def test_a_shallow_clone_reads_what_it_has(self):  # B62: the boundary ends the walk without an error
         p = self.p
         self.accepted("fix(D11): a\n\nRefs: D11\nFindings: 3\nSiguiente: x")

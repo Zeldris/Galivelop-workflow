@@ -51,7 +51,8 @@ stderr asking for it (metrics.py quality and the block review of change-size.py 
 when the review is already closed, that is, when the open block of change-size.py is empty: walking the branch (HEAD,
 not `origin/<protectedBranch>`, merges read but skipped as in change-size.py), a commit with `Findings:` comes before
 any non-merge commit without it (adding it again would count those findings twice). No such commit (no review closed
-yet, a shallow clone that ends first) or a git error: the warning stays.
+yet, a shallow clone that ends first), no `origin/<protectedBranch>` nor `<protectedBranch>` or a git error: the
+warning stays.
 
 A warning, never a refusal (D108): when the commit closes a phase or version and the session passed its compaction
 budget, one line on stderr asks for /clear (a long context is almost all the spend; the log is enough to resume).
@@ -252,13 +253,15 @@ NEGATION = re.compile(r"(?<!\w)(?:sin|ningún|ninguno|no|without|zero|0)\s+$", r
 def review_just_closed(root, config, key):
     """B62: whether the open review block (change-size.py block: the branch commits after the newest one carrying the
     `key` trailer, merges skipped) is empty, so this commit comes right after the review's fix commits. False when no
-    commit carries it, on a git error or in a shallow clone that ends first (the warning then stays)."""
+    commit carries it, without the protected branch, on a git error or in a shallow clone that ends first (the warning then stays)."""
     branch = config.get("protectedBranch") or "main"
     stop = []
     for ref in (f"refs/remotes/origin/{branch}", f"refs/heads/{branch}"):
         if git(root, "rev-parse", "-q", "--verify", ref + "^{commit}").returncode == 0:
             stop = ["^" + ref]
             break
+    if not stop:  # like change-size.py block(): no protected branch, no block, and an old close must not count
+        return False
     r = git(root, "log", "-z", f"--format=%P%x02%(trailers:key={key},valueonly,separator=%x2C)", "HEAD", *stop, "--")
     if r.returncode != 0:
         return False
