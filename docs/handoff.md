@@ -8,11 +8,11 @@
 
 | Campo | Valor |
 |---|---|
-| Rama | **`0.9.0` publicada en `main`: `ccr-d1e2d496-0vzck8`** = `main` = `8357389` (2026-11-24). La `0.9` queda cerrada; la siguiente es la `0.10` «Estable» |
+| Rama | **`ccr-96d7a385-yx2p8o`** (sesión 2026-11-26), sacada de `ccr-d1e2d496-0vzck8` (`7cb0d10`); `main` = `8357389` = **`0.9.0`**. La `0.9` queda cerrada; en obra el parche `0.9.1` |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.9.0` en `main`** (`8357389`, las tres fases hechas: revisión con 7 hallazgos arreglados, retro D176/D177, `reviewed.sh`; CI de `4b9b5e4` en verde). Release de GitHub `v0.9.0` publicada (2026-11-24, sesión local; etiqueta sobre `8357389`) |
-| Siguiente paso | **La `0.9.1`** (parche B48-B56, `docs/roadmap.md`: B48-B57 hechos; falta cerrar el parche: las tres fases y la versión), luego la `0.10` «Estable» (E28 primero). Evolutivos de la recogida a la `0.11` (E87-E92). `task.py current` sigue en E86 (solo lo cambia el usuario). Presupuesto de compactaciones: 2 |
+| Siguiente paso | **D179**: arreglos aprobados de la revisión de la fase 1 de la `0.9.1` (n.º 1-14, 16-18; ficha `docs/tasks/D179.md`), repartidos a `gw-worker` en worktrees. Luego subir a `0.9.1` (plugin.json, CHANGELOG, README, repaso de docs), check completo, fase 2 (`/gw-opt-tokens`, `/retro`) y fase 3 con la confirmación del usuario. `task.py current` sigue en E86 (solo lo cambia el usuario). Presupuesto de compactaciones: 2 |
 
 ### Fases
 

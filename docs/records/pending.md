@@ -508,3 +508,8 @@ El importante se arregló en D172 (el aviso de D169 solo corre en el repo del fl
   depender del umbral, o bajar `clearAfterTask`.
 - `0.10` · **D173 (`whole-read.py`, revisión de la fase 1 de la `0.9`):** la condición de un solo operando se evalúa antes de expandir los globs: `cat docs/*.md | head -n 200` aplica el rango a cada archivo expandido. Arreglo: aplicar el rango solo si el operando no tiene `*?[` o se expande a un único archivo.
 
+
+## De la revisión de la fase 1 de la `0.9.1` (D179)
+
+- `0.11` · **D179 n.º 15 (`gw-update`):** la skill busca el clon a mano (`workflowClone`, `workflowCloneAlso`, `{owner}`/`{repo}`, sin distinguir mayúsculas) aunque `config.find_workflow_clone` ya lo hace. Arreglo: orden `config.py workflow-clone` y la skill la usa (usuario, 2026-11-26).
+- `0.10` · **D179 n.º 19 (`fullCheckSkipKeys`):** el valor por defecto difiere entre `schema/gw.schema.json`, `templates/gw.json` (`review`, `wholeReadShortLines`) y las filas de `docs/{es,en}/config.md` (les faltan `testUnitTimeout`, `pushRetryDelays`, `pushLsRemoteTimeout`, `decisionsFile`, `taskRecord`, `scopeGuard`); ya en `main` (usuario, 2026-11-26).

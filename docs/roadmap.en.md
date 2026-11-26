@@ -440,6 +440,7 @@ Only fixes from the opening harvest of `0.10` (only the latest published minor g
 | B55 | `push.sh` says the log path and that the `pre-push` check holds a lock when it starts (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-25) |
 | B56 | `REVIEW.md` rules (no temporary guards in tests; a command with a timeout kills its process group) and the dealing rule of checking the expected value against the code (harvest `2026-11-24`, user 2026-11-24) | done (2026-11-26) |
 | B57 | The `Stop` hook (`before-stop.py`) warns when the last pushed commit has an unresolved CI (neither green nor red) and no check of it is scheduled: once per commit, with a key in `stopSeverity` (retro of `0.9.1`, user 2026-11-24) | done (2026-11-24) |
+| D179 | Fixes from the phase 1 review of `0.9.1` (B48-B57): 6 important and 11 minor findings approved (user, 2026-11-26) | in progress |
 
 ## `0.10` "Stable"
 
