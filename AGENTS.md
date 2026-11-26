@@ -117,8 +117,8 @@ Los comprueba el `commit-msg` (`commitFormat`, `commitRefs`, `commitNext` y `age
 - **Ganchos y scripts** (plan §4.3 y §12): raíz desde la ruta del script o `git rev-parse --show-toplevel`, nunca
   desde `$CLAUDE_PROJECT_DIR` ni el directorio actual; un gancho de subida comprueba el commit que se sube; fallan
   cerrados si les falta un dato (salvo los que solo aconsejan, `whole-read.py` y `other-repo-read.py`, que fallan
-  abiertos); cada cambio lleva su caso en los tests, y un caso que espera un fallo comprueba el
-  motivo, no solo el código de salida.
+  abiertos salvo para las rutas de `wholeReadDenyPaths`); cada cambio lleva su caso en los tests, y un caso que
+  espera un fallo comprueba el motivo, no solo el código de salida.
 - **Mapa para agentes:** [`docs/agent-map.md`](docs/agent-map.md) dice dónde está cada contrato, qué lo implementa
   y qué no leer; los encargos a subagentes apuntan a él en vez de a varios documentos.
 - **Reparto a subagentes autorizado:** el trabajo de más de un paso se reparte con la skill `gw-orchestrate-dealer`

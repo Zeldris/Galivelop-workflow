@@ -378,8 +378,9 @@ class Ranges(Base):  # E85: a long range of the log or a roadmap file read by Ba
         self.assertEqual([f.name for f in self.state.iterdir() if f.suffix == ".json"], [])  # nothing remembered
         self.assertEqual(self.read(self.log, session="s1"), "", "the first whole Read is still free")
 
-    def test_a_range_is_never_denied(self):
+    def test_a_range_short_of_the_end_is_not_denied(self):  # D180: one that reaches the end is (Deny)
         self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/log.md": "tool"}))
+        self.log.write_text(("x" * 10 + "\n") * 200)  # over LIMIT bytes and over 80 lines
         text = self.warning(self.bash("head -n 80 docs/log.md"))
         self.assertIn("recover.py --state", text)
         self.assertIn("deny", json.dumps(json.loads(self.bash("cat docs/log.md"))))  # a whole read still is
@@ -552,13 +553,40 @@ class Deny(Base):  # E70: wholeReadDenyPaths rejects the whole read instead of w
         path = self.put_lines("docs/plan.md", 40)
         text = self.denial(self.read(path, offset=1))
         self.assertIn("docs/plan.md may not be read whole", text)
-        self.assertIn("offset 1 without a limit", text)
+        self.assertIn("offset 1 and no limit", text)
         self.assertEqual(self.read(path, offset=2), "", "a later offset is a partial read")
+
+    def test_a_bash_range_that_reaches_the_end_is_a_whole_read(self):  # D180
+        self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/plan.md": "tool"}))
+        self.put_lines("docs/plan.md", 40)
+        for command in ("sed -n p docs/plan.md", "sed -n '1,$p' docs/plan.md", "head -n 100000 docs/plan.md",
+                        "head -n 40 docs/plan.md", "cat docs/plan.md | head -n 100000"):
+            text = self.denial(self.bash(command))
+            self.assertIn("docs/plan.md may not be read whole", text, command)
+            self.assertIn("`tool`", text, command)
+        self.assertIn("it runs to the end", self.denial(self.bash("sed -n p docs/plan.md")))
+        self.assertIn("the file has 40 lines", self.denial(self.bash("head -n 100000 docs/plan.md")))
+        for command in ("head -n 39 docs/plan.md", "sed -n 2,40p docs/plan.md", "cat docs/plan.md | head"):
+            self.assertEqual(self.bash(command), "", command)
+
+    def test_an_offset_that_is_not_an_integer_is_the_start(self):  # D180
+        self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/plan.md": "tool"}))
+        path = self.put_lines("docs/plan.md", 40)
+        for given in ({"offset": "1"}, {"offset": 1.0}, {"offset": "1", "limit": 5000}, {"offset": 1.0, "limit": 40}):
+            self.assertIn("docs/plan.md may not be read whole", self.denial(self.read(path, **given)), given)
+        self.assertEqual(self.read(path, offset=2, limit=5000), "")
+
+    def test_pages_only_excuses_a_pdf(self):  # D180: Read ignores pages on any other file
+        self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/plan.md": "tool", "docs/plan.PDF": "tool"}))
+        path = self.put_lines("docs/plan.md", 40)
+        for given in ({"pages": "1"}, {"pages": "1-3", "limit": 5000}):
+            self.assertIn("docs/plan.md may not be read whole", self.denial(self.read(path, **given)), given)
+        self.assertEqual(self.read(self.put_lines("docs/plan.PDF", 40), pages="1-3", limit=5000), "")
 
     def test_a_partial_limit_or_a_later_offset_passes(self):  # D180
         self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/plan.md": "tool"}))
         path = self.put_lines("docs/plan.md", 40)
-        for given in ({"limit": 39}, {"offset": 2, "limit": 5000}, {"offset": 30}, {"pages": "1-3", "limit": 5000}):
+        for given in ({"limit": 39}, {"offset": 2, "limit": 5000}, {"offset": 30}):
             self.assertEqual(self.read(path, **given), "", given)
         self.denial(self.read(path, limit=40))  # the contrast: the limit that reaches the end is denied
         other = self.put_lines("docs/other.md", 40)
@@ -575,6 +603,14 @@ class Deny(Base):  # E70: wholeReadDenyPaths rejects the whole read instead of w
             self.assertIn("cannot be split", text, command)
             self.assertIn("`tool`", text, command)
         self.assertIn("`tool big`", self.denial(self.bash("cat docs/big/a.md 'x")))
+
+    def test_an_unsplittable_command_with_a_glob_of_a_denied_path_is_denied(self):  # D180
+        self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/plan.md": "tool"}))
+        self.put("docs/plan.md", 10)
+        self.put("docs/other.md", 10)
+        for command in ("cat docs/pla*.md 'x", "cat docs/pl?n.md 'x", "cat d*/plan.[m]d 'x"):
+            self.assertIn("docs/plan.md may not be read whole", self.denial(self.bash(command)), command)
+        self.assertEqual(self.bash("cat docs/oth*.md 'x"), "")
 
     def test_an_unsplittable_command_that_names_no_denied_path_passes(self):  # D180
         self.write_config(dict(self.cfg, wholeReadDenyPaths={"docs/plan.md": "tool"}))
