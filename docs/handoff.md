@@ -11,8 +11,8 @@
 | Rama | **`ccr-96d7a385-yx2p8o`** (sesión 2026-11-26), sacada de `ccr-d1e2d496-0vzck8` (`7cb0d10`); `main` = `664c0dd` = **`0.9.1`** |
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
-| Último punto estable | **`0.9.1` en `main`** (`664c0dd`, 2026-11-26; las tres fases hechas: revisión de B58-B61 con 3 leves arreglados, retro, `reviewed.sh`; CI de `664c0dd` en verde). Textos de la release en `docs/records/release-v0.9.1.md` |
-| Siguiente paso | **Release de GitHub `v0.9.1` pendiente**: la crea el agente desde una **sesión local** (usuario, 2026-11-26), etiqueta `v0.9.1` sobre `664c0dd` con los textos de `docs/records/release-v0.9.1.md`. Después, **Fase 7. Rodaje etapa 1** y la `0.10` (`docs/roadmap.md`, `pending.md`). `task.py current` quedó en B59 (lo cambia el usuario). Presupuesto de compactaciones: 2 |
+| Último punto estable | **`0.9.1` en `main`** (`664c0dd`, 2026-11-26; las tres fases hechas: revisión de B58-B61 con 3 leves arreglados, retro, `reviewed.sh`; CI de `664c0dd` en verde). Release de GitHub `v0.9.1` publicada (2026-11-26, sesión local; etiqueta sobre `664c0dd`) |
+| Siguiente paso | **Fase 7. Rodaje etapa 1** y la `0.10` (`docs/roadmap.md`, `pending.md`). `task.py current` quedó en B59 (lo cambia el usuario). Presupuesto de compactaciones: 2 |
 
 ### Fases
 

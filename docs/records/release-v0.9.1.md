@@ -3,8 +3,7 @@
 - **Etiqueta:** `v0.9.1`, sobre `664c0dd`, el commit de `main` de la subida del 2026-11-26.
 - **Título:** el bloque de abajo.
 - **Cuerpo:** el segundo bloque. La entrada completa está en el CHANGELOG.
-- **Publicada:** pendiente. La crea el agente desde una sesión local (usuario, 2026-11-26): la nube no puede subir
-  etiquetas (403 del proxy).
+- **Publicada:** 2026-11-26 desde una sesión local, con estos textos y la etiqueta sobre `664c0dd`.
 
 ```text
 Galivelop-workflow v0.9.1
