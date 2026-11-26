@@ -492,6 +492,26 @@ class PathDecides(Base):
         self.assertEqual(code, 2, out)
         self.assertIn("is a test file by its path", out)
 
+    def test_tab_indented_test_lines_are_test_code(self):
+        for name, text in (("src.ts", "if (import.meta.vitest) {\n\tit(\"works\", () => {})\n}\n"),
+                           ("src.py", "class T:\n\tdef test_x(self):\n\t\tpass\n")):
+            with self.subTest(name=name):
+                self.fix_file(name, text)
+                code, out = self.run_script("true", name)
+                self.assertEqual(code, 2, out)
+                self.assertIn("touch test code", out)
+
+    def test_absolute_path_under_a_repo_inside_tests_is_not_a_test_path(self):
+        tmp = self.tmp / "tests" / "x"
+        tmp.mkdir(parents=True)
+        p = Utils(tmp)
+        p.write("fix.py", "old\n")
+        p.commit("base", env=DAY)
+        p.write("fix.py", "x = 1\n")
+        code, out = p.script(SCRIPT, "true", str(p.work / "fix.py"))
+        self.assertEqual(code, 1, out)  # got as far as the run: not refused by its path
+        self.assertNotIn("is a test file by its path", out)
+
     def test_invalid_path_regex_exits_2_naming_it(self):
         self.set_keys(testPathRegex="ok[")
         self.fix_file("a.py", "x = 1\n")
