@@ -466,7 +466,7 @@ Fixes and reviews only, no new features: new features from the harvests go to `0
 | B43 | Sweep of the `scripts/trace.py` minors in `pending.md`: fold rows whose translated text differs (D14 review #2); sort a day's entries by time (C11-trace #3); read `taskRecord.sections` instead of a fixed `Acceptance` (#4); do not count `- [x]` inside code blocks (#5); `normpath` on `taskRecord.path` (#6); share `parse_entry` with `task.py` (#7) (0.8.0 retro, P5; user, 2026-11-18) | done (2026-11-26) |
 | D180 | Sweep of the `scripts/whole-read.py` minors in `pending.md`: fails open with `wholeReadDenyPaths` on a command it cannot split or a huge `limit` (E70); the exception for hooks that only advise, in `AGENTS.md` (E74) (retro of `0.9.1`, P5; user 2026-11-26) | pending |
 | B62 | The `commit-msg` `findingsWords` warning does not fire if a commit since the last review close already carries `Findings:` (it would count twice in `metrics.py quality`) (retro of `0.9.1`, P4; user 2026-11-26) | done (2026-11-26) |
-| B63 | The `checkCacheIgnore` default follows `metrics.ledger` instead of copying its path: if `metrics.ledger` changes, the check cache still ignores the ledger (review of B58-B61, minor 2; user 2026-11-26) | pending |
+| B63 | The `checkCacheIgnore` default follows `metrics.ledger` instead of copying its path: if `metrics.ledger` changes, the check cache still ignores the ledger (review of B58-B61, minor 2; user 2026-11-26) | done (2026-11-26) |
 | — | What [`pending.md`](records/pending.md) marks `0.10` | pending |
 
 ## `0.11` — features from the harvests
