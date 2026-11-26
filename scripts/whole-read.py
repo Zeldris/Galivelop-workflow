@@ -37,7 +37,10 @@ reads on SessionStart clear|compact (`forget`): the content left the context, so
 `wholeReadDenyPaths` (E70; {"<path>": "<command>"}, a folder key ends in /) turns the warning into a rejection for
 those files: a whole read of one of them (as above, whatever its size, extension, wholeReadWarnBytes or
 wholeReadRepeatOnly) is denied with a reason that names its command; a partial read passes. A denial wins over the
-warnings of the same call. A bad value denies nothing (the default, {}).
+warnings of the same call. A bad value denies nothing (the default, {}). For these files it fails closed (D180): a
+Read whose `limit` is at or above the file's line count (from the top: `offset` absent, 0 or 1; a `limit` that is not
+a whole number, or a file it cannot count, too) is a whole read, and a Bash command it cannot split is denied when one
+of its words is a denied path (against `cwd` or the root).
 
 Output format (https://code.claude.com/docs/en/hooks.md, PreToolUse): a JSON object on stdout, exit 0,
 
@@ -52,8 +55,8 @@ multiple of it, the note says to mount the ones still needed in one sheet and Re
 project's own; without it, a generic example and the key. It works whatever wholeReadWarnBytes says, and `forget`
 restarts the count. With no `session_id` nothing is counted.
 
-Fails open, because it only advises: stdin it cannot read, an event that is not a Read or a Bash call, a command it
-cannot split, a path outside the project, a file it cannot stat, a state file it cannot read or write or a config it
+Fails open, because it only advises (except for the denied paths, above): stdin it cannot read, an event that is not
+a Read or a Bash call, a command it cannot split, a path outside the project, a file it cannot stat, a state file it cannot read or write or a config it
 cannot read (the defaults apply to the config) print nothing and exit 0. The
 project root is config.find_root (the script's own repo, never the current directory first); a relative path is
 resolved against the event's `cwd`. Python 3.8+ standard library only.
@@ -691,6 +694,61 @@ def check(path, root, conf, state, how, lines=None):
     return note(kind, rel, size, limit, how, command, repeat, lines, conf["short"])
 
 
+def deny_out(reasons):
+    print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
+                                             "permissionDecisionReason": "\n".join(reasons)}}))
+    return 0
+
+
+def line_count(path):
+    """The lines of `path` as Read counts them (a last line without a newline counts), or None when it cannot be read."""
+    try:
+        with open(path, "rb") as handle:
+            return sum(1 for _ in handle)
+    except OSError:
+        return None
+
+
+def reaches_the_end(tool_input, path):
+    """How a Read with a `limit` takes the denied `path` whole (D180), or None: it starts at the top (`offset` absent,
+    0 or 1) and its `limit` is at or above the file's line count. Fails closed: a `limit` that is not a whole number,
+    or a file it cannot count, counts as whole; no `limit` (only an offset) or `pages` (a PDF range) never does."""
+    offset, limit = tool_input.get("offset"), tool_input.get("limit")
+    number = lambda v: isinstance(v, int) and not isinstance(v, bool)  # noqa: E731
+    if tool_input.get("pages") or not limit or (offset and not (number(offset) and offset <= 1)):
+        return None
+    lines = line_count(path)
+    if number(limit) and lines is not None and limit < lines:
+        return None
+    counted = f"the file has {lines} lines" if lines is not None else "the file's lines cannot be counted"
+    return f"this Read (limit {limit!r}; {counted})"
+
+
+NAME = re.compile(r"[^\s;&|()<>'\"`=]+")
+
+
+def named_denied(command, cwd, root, deny):
+    """[(rel, command)] of the wholeReadDenyPaths files that a Bash `command` bash_reads cannot split names (D180):
+    each word, resolved against `cwd` and against the root (a `cd` before it is not followed)."""
+    found = []
+    for word in NAME.findall(command):
+        word = os.path.expanduser(word)
+        for base in (cwd, root):
+            path = os.path.join(base, word)
+            alternative = denied(path, root, deny)
+            if alternative:
+                rel = os.path.relpath(os.path.realpath(path), os.path.realpath(root))
+                if (rel, alternative) not in found:
+                    found.append((rel, alternative))
+    return found
+
+
+def unparsed_reason(rel, command):
+    return (f"{rel} may not be read whole (wholeReadDenyPaths in .claude/gw.json) and this command cannot be split "
+            f"(an open quote?), so it is denied because it names it. Fix the quoting, or instead: `{command}`, or "
+            f"grep -n for what you need and Read with offset and limit.")
+
+
 def main():
     event = read_event()
     if not event or event.get("tool_name") not in ("Read", "Bash"):
@@ -699,23 +757,40 @@ def main():
     if not isinstance(tool_input, dict):
         return 0
     cwd = event.get("cwd") if isinstance(event.get("cwd"), str) and event.get("cwd") else os.getcwd()
+    partial = unparsed = None  # D180: what only a wholeReadDenyPaths entry can deny
     if event["tool_name"] == "Read":
         target = tool_input.get("file_path")
-        if not is_whole(tool_input) or not isinstance(target, str) or not target:
+        if not isinstance(target, str) or not target:
             return 0
-        reads = [(target if os.path.isabs(target) else os.path.join(cwd, target), "this Read", None)]
+        target = target if os.path.isabs(target) else os.path.join(cwd, target)
+        reads = [(target, "this Read", None)] if is_whole(tool_input) else []
+        partial = None if reads else target
     else:
         command = tool_input.get("command")
         if not isinstance(command, str) or not command:
             return 0
-        reads = [(path, f"this `{name}`", lines) for path, name, lines in bash_reads(command, cwd)]
-    if not reads:
+        try:
+            reads = [(path, f"this `{name}`", lines) for path, name, lines in bash_reads(command, cwd)]
+        except Exception:  # a command it cannot split: only a denied path it names stops it
+            reads, unparsed = [], command
+    if not reads and partial is None and unparsed is None:
         return 0
     try:
         root = str(config.find_root())
     except Exception:
         return 0
     conf = settings(root)
+    if partial is not None:
+        alternative = denied(partial, root, conf["deny"])
+        how = reaches_the_end(tool_input, partial) if alternative else None
+        if how:
+            rel = os.path.relpath(os.path.realpath(partial), os.path.realpath(root))
+            return deny_out([deny_reason(rel, how, alternative)])
+        return 0
+    if unparsed is not None:
+        reasons = [unparsed_reason(rel, alternative)
+                   for rel, alternative in named_denied(unparsed, cwd, root, conf["deny"])]
+        return deny_out(reasons) if reasons else 0
     reasons = []
     for path, how, lines in reads:
         command = None if lines is not None else denied(path, root, conf["deny"])
@@ -725,9 +800,7 @@ def main():
             if text not in reasons:
                 reasons.append(text)
     if reasons:  # a denial wins over any warning of the same call
-        print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "permissionDecision": "deny",
-                                                 "permissionDecisionReason": "\n".join(reasons)}}))
-        return 0
+        return deny_out(reasons)
     shots = conf["shots"]
     shot_reads = [path for path, how, _ in reads if how == "this Read" and is_shot(path, shots)]
     if conf["limit"] <= 0 and not shot_reads:
