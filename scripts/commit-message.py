@@ -47,7 +47,11 @@ message has none, also in a merge, so the commit stays recognisable on any branc
 
 A warning, never a refusal (E60): with commitRefs or commitNext, a message that names review fixes (a word or phrase
 of metrics.quality.findingsWords, whole words, any case; [] = off) without a `Findings:` trailer gets one line on
-stderr asking for it (metrics.py quality and the block review of change-size.py count from that trailer).
+stderr asking for it (metrics.py quality and the block review of change-size.py count from that trailer). B62: not
+when the review is already closed, that is, when the open block of change-size.py is empty: walking the branch (HEAD,
+not `origin/<protectedBranch>`, merges read but skipped as in change-size.py), a commit with `Findings:` comes before
+any non-merge commit without it (adding it again would count those findings twice). No such commit (no review closed
+yet, a shallow clone that ends first) or a git error: the warning stays.
 
 A warning, never a refusal (D108): when the commit closes a phase or version and the session passed its compaction
 budget, one line on stderr asks for /clear (a long context is almost all the spend; the log is enough to resume).
@@ -245,7 +249,31 @@ def check_measured(config, message, found, msgfile):
 NEGATION = re.compile(r"(?<!\w)(?:sin|ningún|ninguno|no|without|zero|0)\s+$", re.IGNORECASE)  # "sin hallazgos"
 
 
-def findings_warning(config, message, found):
+def review_just_closed(root, config, key):
+    """B62: whether the open review block (change-size.py block: the branch commits after the newest one carrying the
+    `key` trailer, merges skipped) is empty, so this commit comes right after the review's fix commits. False when no
+    commit carries it, on a git error or in a shallow clone that ends first (the warning then stays)."""
+    branch = config.get("protectedBranch") or "main"
+    stop = []
+    for ref in (f"refs/remotes/origin/{branch}", f"refs/heads/{branch}"):
+        if git(root, "rev-parse", "-q", "--verify", ref + "^{commit}").returncode == 0:
+            stop = ["^" + ref]
+            break
+    r = git(root, "log", "-z", f"--format=%P%x02%(trailers:key={key},valueonly,separator=%x2C)", "HEAD", *stop, "--")
+    if r.returncode != 0:
+        return False
+    for token in r.stdout.split("\0"):
+        parents, sep, trailer = token.strip("\n").partition("\x02")
+        if not sep:
+            continue
+        if trailer.strip():
+            return True
+        if len(parents.split()) <= 1:
+            return False
+    return False
+
+
+def findings_warning(config, message, found, root=None):
     """E60: the warning line when the message speaks of review fixes (a word or phrase of
     metrics.quality.findingsWords, whole words, any case) and the trailer block has no findingsTrailer, or None. Without
     it metrics.py quality misses the fixes and the next block review starts from the wrong commit."""
@@ -258,6 +286,8 @@ def findings_warning(config, message, found):
     for phrase in quality["findingsWords"]:
         pattern = r"(?<!\w)" + r"\s+".join(re.escape(p) for p in phrase.split()) + r"(?!\w)"
         if any(not NEGATION.search(text[:m.start()]) for m in re.finditer(pattern, text, re.IGNORECASE)):
+            if root is not None and review_just_closed(root, config, word):
+                return None
             return (f"commit-msg: WARNING: the message speaks of review fixes (\"{phrase}\") and has no `{word}:` "
                     f"trailer, so metrics.py quality misses them and the next block review starts too early; if it "
                     f"closes a review, add `{word}: <accepted findings>` next to `Refs:`: git commit --amend")
@@ -608,7 +638,7 @@ def run(root, msgfile):
     if not merging and tasks:
         check_task_record(root, config, message, found, msgfile)
     if not merging and (refs or nxt):
-        warning = findings_warning(config, message, found)
+        warning = findings_warning(config, message, found, root)
         if warning:
             print(warning, file=sys.stderr)
     if not merging:

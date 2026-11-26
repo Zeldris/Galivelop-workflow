@@ -296,6 +296,51 @@ class Refs(Msg):
         self.assertIn("WARNING", self.warned("fix(D11): review fixes\n\nsolo un hallazgo\n\nRefs: D11\nSiguiente: x"))
         self.assertNotIn("WARNING", self.warned("fix(D11): review fixes\n\nRefs: D11\nFindings: 1\nSiguiente: x"))
 
+    FIXES = "fix(D11): arreglos de la revisión\n\ncierre\n\nRefs: D11\nSiguiente: x"
+
+    def test_no_review_closed_yet_warns(self):  # B62: no commit of the branch carries Findings:
+        self.accepted("feat(D11): plain\n\nRefs: D11\nSiguiente: x")
+        self.assertIn("WARNING", self.warned(self.FIXES))
+
+    def test_a_closed_review_right_before_does_not_warn_again(self):  # B62: it would count twice in metrics.py
+        self.accepted("fix(D11): a\n\nRefs: D11\nFindings: 3\nSiguiente: x")
+        self.accepted("fix(D11): b\n\nRefs: D11\nFindings: 2\nSiguiente: x")
+        self.assertNotIn("WARNING", self.warned(self.FIXES))
+
+    def test_a_commit_after_the_close_opens_the_block_and_warns(self):  # B62: the risk, a later real close
+        self.accepted("fix(D11): a\n\nRefs: D11\nFindings: 3\nSiguiente: x")
+        self.accepted("feat(D11): more work\n\nRefs: D11\nSiguiente: x")
+        self.assertIn("WARNING", self.warned(self.FIXES))
+
+    def test_merges_are_read_like_change_size(self):  # B62 with D141: a merge carries it or is skipped
+        p = self.p
+        for n, (side, merge) in enumerate((("", "Findings: 4\n"), ("Findings: 1\n", ""))):
+            p.git("checkout", "-q", "-b", f"fix{n}")
+            p.write("docs/side.md", f"{n}\n")
+            p.git("add", "-A")
+            p.git("commit", "-q", "--no-verify", "-m", f"fix(D11): side\n\nRefs: D11\n{side}Siguiente: x")
+            p.git("checkout", "-q", "main")
+            p.git("merge", "-q", "--no-ff", "--no-verify", "-m", f"Merge\n\nRefs: D11\n{merge}Siguiente: x", f"fix{n}")
+            self.assertNotIn("WARNING", self.warned(self.FIXES), (side, merge))
+
+    def test_a_close_already_on_the_protected_branch_does_not_count(self):  # B62: only the branch's commits
+        self.accepted("fix(D11): a\n\nRefs: D11\nFindings: 3\nSiguiente: x")
+        self.p.git("push", "-q", "--no-verify", "origin", "main")
+        self.p.git("fetch", "-q", "origin")
+        self.assertIn("WARNING", self.warned(self.FIXES))
+
+    def test_a_shallow_clone_reads_what_it_has(self):  # B62: the boundary ends the walk without an error
+        p = self.p
+        self.accepted("fix(D11): a\n\nRefs: D11\nFindings: 3\nSiguiente: x")
+        closed = p.sha()
+        self.accepted("feat(D11): more\n\nRefs: D11\nSiguiente: x")
+        shallow = p.work / ".git" / "shallow"
+        shallow.write_text(p.sha() + "\n")  # the close is beyond the boundary: the block looks open
+        self.assertIn("WARNING", self.warned(self.FIXES))
+        p.git("reset", "-q", "--hard", closed)
+        shallow.write_text(closed + "\n")  # the boundary is the close itself
+        self.assertNotIn("WARNING", self.warned(self.FIXES))
+
     def test_findings_words_follow_the_config_and_empty_turns_it_off(self):  # E60
         self.configure(metrics={"quality": {"findingsTrailer": "Hallazgos", "findingsWords": ["code review"]}})
         err = self.warned("fix(D11): the code\n  review pass\n\nRefs: D11\nSiguiente: x")
