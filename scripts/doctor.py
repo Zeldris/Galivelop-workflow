@@ -1326,15 +1326,15 @@ def check_plan_ids(rep, root, cfg):
     plans = (cfg or {}).get("plan") or []
     if not plans:
         return
-    pattern = cfg.get("taskId") or config.schema_default("taskId")
+    pattern = handoff.task_id_pattern(cfg)  # $GW_TASK_ID too, as next-id reads it (D179)
     try:
-        entry = handoff.entry_regex(f"(?:{config.non_capturing(pattern)})")
+        entry = handoff.entry_regex(f"(?:{config.non_capturing(pattern)})", any_cell=True)
     except (re.error, config.ConfigError):
         return  # an invalid taskId is check_config's to report
     texts = []
     for p in plans:
         path = root / p
-        for f in sorted(path.rglob("*.md")) if path.is_dir() else [path] if path.is_file() else []:
+        for f in sorted(path.rglob("*.md")) if path.is_dir() else [path] if path.is_file() and path.suffix == ".md" else []:
             texts.append(f.read_text(encoding="utf-8", errors="replace"))
     if not any(t.strip() for t in texts):
         return

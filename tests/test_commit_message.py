@@ -213,6 +213,12 @@ class Refs(Msg):
     def test_unknown_id(self):
         self.refused("work\n\nRefs: D99", "no entry opens: D99", "docs/roadmap.md")
 
+    def test_an_id_in_a_later_cell_is_not_valid(self):  # D179: Refs reads only the first cell
+        self.roadmap(ROADMAP + "| Siguiente paso | B99 crear ficha |\n| 2 | see D18-D31 |\n")
+        self.p.git("commit", "-q", "--no-verify", "-m", "roadmap")
+        self.refused("work\n\nRefs: B99", "no entry opens: B99")
+        self.refused("work\n\nRefs: D31", "no entry opens: D31")
+
     def test_one_unknown_among_several(self):
         self.refused("work\n\nRefs: D11, D99, D98", "D99, D98")
 
