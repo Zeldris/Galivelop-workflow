@@ -2761,6 +2761,20 @@ class CheckRunner(Base):
         self.assertEqual((code, self.count()), (0, 1), out)
         self.assertIn("check already green on this tree", out)
 
+    def test_a_moved_ledger_is_ignored_without_the_key(self):  # B63: the default follows metrics.ledger
+        p = self.p
+        cfg = json.loads((p.work / ".claude" / "gw.json").read_text())
+        cfg.pop("checkCacheIgnore", None)
+        cfg["metrics"] = dict(cfg.get("metrics", {}), ledger="var/tokens.jsonl")
+        p.write(".claude/gw.json", json.dumps(cfg))
+        p.write("var/tokens.jsonl", "{}\n")
+        p.write("check.sh", f'echo run >> "{self.runs}"; echo "{{}}" >> var/tokens.jsonl\n')
+        p.commit("the ledger moved")
+        code, out = self.run_check()
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("the work tree changed during the run", out)
+        self.assertIn("the next push of this same tree will skip the check", out)
+
     def test_an_empty_ignore_list_keeps_the_old_behaviour(self):
         self.ledger_check()
         cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())

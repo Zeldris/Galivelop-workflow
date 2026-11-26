@@ -496,7 +496,7 @@
       "default": [
         "docs/metrics/ledger.jsonl"
       ],
-      "description": "Tracked paths (relative to the repo root, no '..') left out of the tree the check-cache key uses, for files hooks append on their own (the token ledger); [] = the whole tree is the key."
+      "description": "Tracked paths (relative to the repo root, no '..') left out of the tree the check-cache key uses, for files hooks append on their own (the token ledger); [] = the whole tree is the key. Absent, it follows metrics.ledger (B63: config.py resolves it); the default shown is the one for the default ledger."
     },
     "checkLogKeep": {
       "type": "integer",
