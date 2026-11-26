@@ -1476,14 +1476,14 @@
     },
     "readPointers": {
       "type": "object",
-      "propertyNames": {"minLength": 1},
+      "propertyNames": {"minLength": 1, "pattern": "^(?![/~])(?!(.*/)?\\.\\.(/|$))", "errorMessage": "must be a repo-relative path (no leading / or ~, no .. segment); write it from the repo root, e.g. docs/plan.md"},
       "additionalProperties": {"type": "string", "minLength": 1},
       "default": {},
       "description": "{\"<repo-relative file, or folder ending with />\": \"<command>\"}: files the whole-read warning watches (Read and Bash) and the command its note gives instead of reading them whole; it wins over the note for the log or a record."
     },
     "wholeReadDenyPaths": {
       "type": "object",
-      "propertyNames": {"minLength": 1},
+      "propertyNames": {"minLength": 1, "pattern": "^(?![/~])(?!(.*/)?\\.\\.(/|$))", "errorMessage": "must be a repo-relative path (no leading / or ~, no .. segment); write it from the repo root, e.g. docs/plan.md"},
       "additionalProperties": {"type": "string", "minLength": 1},
       "default": {},
       "description": "{\"<repo-relative file, or folder ending with />\": \"<command>\"}: files whose whole read (Read without offset or limit, cat and the like by Bash) whole-read.py rejects, whatever their size, with a reason that gives the command instead (E70); a partial read passes and the denial wins over the warnings."

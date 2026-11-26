@@ -316,7 +316,7 @@ def validate(value, schema, path="$"):
         if len(value) < schema.get("minLength", 0):
             errors.append(f"{path}: must not be empty")
         if "pattern" in schema and not re.search(schema["pattern"], value):
-            errors.append(f"{path}: {value!r} does not match {schema['pattern']}")
+            errors.append(f"{path}: {value!r} " + schema.get("errorMessage", f"does not match {schema['pattern']}"))
     if isinstance(value, list):
         if len(value) < schema.get("minItems", 0):
             errors.append(f"{path}: needs at least {schema['minItems']} item(s)")
@@ -335,6 +335,8 @@ def validate(value, schema, path="$"):
             if key not in value:
                 errors.append(f"{path}: missing required key '{key}'")
         for key, item in value.items():
+            if "propertyNames" in schema:  # D181: e.g. a path key must stay inside the repo
+                errors += validate(key, schema["propertyNames"], f"{path} key")
             if key in props:
                 errors += validate(item, props[key], f"{path}.{key}")
             elif isinstance(schema.get("additionalProperties"), dict):

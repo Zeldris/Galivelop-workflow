@@ -426,6 +426,22 @@ class Config(unittest.TestCase):
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn(message, r.stderr)
 
+    def test_path_keys_must_stay_inside_the_repo(self):  # D181: "/" or "../" would match files outside the repo
+        for key in ("wholeReadDenyPaths", "readPointers"):
+            for bad in ("/", "../", "/etc/passwd", "~/notes.md", "docs/../../x", ".."):
+                self.write(dict(VALID, **{key: {bad: "tool"}}))
+                r = cli(self.tmp, "validate")
+                self.assertEqual(r.returncode, 2, (key, bad))
+                self.assertIn(f"$.{key} key: {bad!r} must be a repo-relative path", r.stderr)
+                self.assertIn("e.g. docs/plan.md", r.stderr)
+            for good in ("docs/plan.md", "docs/", "./docs/x.md", "a..b/c.md", "docs/..notes.md"):
+                self.write(dict(VALID, **{key: {good: "tool"}}))
+                r = cli(self.tmp, "validate")
+                self.assertEqual(r.returncode, 0, (key, good, r.stderr))
+        self.write(dict(VALID, wholeReadDenyPaths={"": "tool"}))
+        r = cli(self.tmp, "validate")
+        self.assertIn("$.wholeReadDenyPaths key: must not be empty", r.stderr)
+
     def test_c4_keys_are_in_the_template_and_the_skip_list(self):
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
         template = json.loads((ROOT / "templates" / "gw.json").read_text())
