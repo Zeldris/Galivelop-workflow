@@ -21,9 +21,12 @@ Checks:
     *.example domain, *@users.noreply.github.com, local part noreply/no-reply/git (git@<host> is an SSH remote),
     privateCheck.allowEmails of
     .claude/gw.json (public) and allowEmails of .claude/gw.local.json (private).
-  - privateNames of the local file .claude/gw.local.json (never committed), plus the names of its `anonymize`
-    (config.py adds them): case-insensitive, with `-`, `_` and space taken as the same. No local file: skipped with a
-    notice; a malformed one: exit 2.
+  - privateNames of the local list (never committed), plus the names of its `anonymize` (config.py adds them):
+    case-insensitive, with `-`, `_` and space taken as the same. The list is the file .claude/gw.local.json or, when
+    it is absent (cloud containers), the same JSON object in the environment variable privateCheck.localEnv (default
+    GW_LOCAL_JSON); the file wins. No list: with privateCheck.requireNames "protected" (default) a push to the
+    protectedBranch (--ref) exits 2 naming both fixes, "always" exits 2 on any run, "never" and any other push only
+    print a notice (--no-names skips the names whatever it says); a malformed list: exit 2.
 A line with gw-allow-private is skipped (a checked false positive); one with gw-allow-secret skips the key check only,
 as in the pre-commit hook. privateCheck: false in .claude/gw.json turns everything off.
 Exit 0 clean, 1 something found (at most 10 hits, `path:line: <kind> <match>`), 2 cannot check (fails closed).
@@ -293,13 +296,21 @@ def main(argv=None):
             return 0
         names = None
         if not args.no_names:
-            local = config.load_local(root)
+            local = config.load_local(root, settings["localEnv"])
             if local is None:
-                print(f"{PROG}: no {config.LOCAL_REL.as_posix()}, so private names are not checked; list them there: "
+                mode = settings["requireNames"]
+                if mode == "always" or (mode == "protected" and args.ref and args.ref == cfg["protectedBranch"]):
+                    raise CheckError(
+                        f"no local list of private names ({config.LOCAL_REL.as_posix()} absent and "
+                        f"${settings['localEnv']} unset or empty), and privateCheck.requireNames is \"{mode}\"; "
+                        f"create the file or set the environment variable (cloud: in the environment settings) to "
+                        f'{{"privateNames": ["..."]}}, or push with --no-names only if the names were checked elsewhere')
+                print(f"{PROG}: no {config.LOCAL_REL.as_posix()}, so private names are not checked "
+                      f"(nor is ${settings['localEnv']} set); list them there or in it: "
                       f'{{"privateNames": ["..."]}}', file=sys.stderr)
             else:
                 names = name_regex(local["privateNames"])
-        local_allow = (config.load_local(root) or {}).get("allowEmails", [])
+        local_allow = (config.load_local(root, settings["localEnv"]) or {}).get("allowEmails", [])
         shas = []
         scanner = Scanner(key_formats(root), settings["emails"], settings["allowEmails"] + local_allow, names,
                           settings["maxHits"])

@@ -30,6 +30,9 @@ everything printed, and the project id recorded in the state file, carries the a
 `-`, `_` and space alike: the matching of private-check.py). A name of privateNames still in a project's report (no
 alias for it) -> that project is not printed and the exit code is 1, saying to add the alias. The state is looked up
 under the alias and, during 0.x, under the old real id, which --update-state replaces with the alias.
+The local list is the file or, when it is absent (cloud containers), the environment variable privateCheck.localEnv
+(GW_LOCAL_JSON). With neither it fails closed (E29: exit 2, nothing printed, since the text would carry the real names)
+unless privateCheck.requireNames is "never".
 """
 import argparse
 import difflib
@@ -495,7 +498,19 @@ def main():
     source = legacy or args.state
     state = json.loads(source.read_text(encoding="utf-8")) if source.is_file() else {}
     try:
-        anonymize = Anonymizer(config.load_local(ROOT))
+        try:
+            settings = config.private_check(config.load(str(ROOT))) or {}
+        except config.ConfigError:  # an unreadable config of this repo: the defaults (fail closed)
+            settings = {}
+        local = config.load_local(ROOT, settings.get("localEnv"))
+        if local is None and settings.get("requireNames", "protected") != "never":
+            print(f"harvest: no local list, so the real names of private projects would be printed; create "
+                  f"{config.LOCAL_REL.as_posix()} in {ROOT} or set the environment variable "
+                  f"{settings.get('localEnv', 'GW_LOCAL_JSON')} to the same JSON object "
+                  f"({{\"anonymize\": {{\"<name>\": \"private-project-N\"}}}}); or set privateCheck.requireNames "
+                  f"to \"never\" in .claude/gw.json", file=sys.stderr)
+            return 2
+        anonymize = Anonymizer(local)
     except config.ConfigError as exc:
         print(f"harvest: {exc}", file=sys.stderr)
         return 2

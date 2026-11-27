@@ -764,11 +764,18 @@ class Config(unittest.TestCase):
     def test_private_check_default_and_bad_values(self):
         self.write(VALID)
         r = cli(self.tmp, "get", "privateCheck")
-        self.assertEqual(json.loads(r.stdout), {"emails": True, "allowEmails": [], "maxHits": 10})
-        for good in (False, True, {"emails": False}, {"allowEmails": ["me@example.com"]}):
+        self.assertEqual(json.loads(r.stdout), {"emails": True, "allowEmails": [], "maxHits": 10,
+                                                "localEnv": "GW_LOCAL_JSON", "requireNames": "protected"})
+        self.assertEqual(config.private_check({})["requireNames"], "protected")
+        self.assertEqual(config.private_check({"privateCheck": {"localEnv": "X_Y"}})["localEnv"], "X_Y")
+        for good in (False, True, {"emails": False}, {"allowEmails": ["me@example.com"]}, {"requireNames": "never"},
+                     {"requireNames": "always", "localEnv": "MY_NAMES"}):
             self.write(dict(VALID, privateCheck=good))
             self.assertEqual(cli(self.tmp, "validate").returncode, 0, good)
         cases = {"x": "expected", json.dumps({"mails": True}): "mails",
+                 json.dumps({"requireNames": "sometimes"}): "requireNames",
+                 json.dumps({"localEnv": "not a name"}): "localEnv",
+                 json.dumps({"localEnv": ""}): "localEnv",
                  json.dumps({"allowEmails": ["not-an-address"]}): "does not match",
                  json.dumps({"allowEmails": "me@example.com"}): "expected", json.dumps({"emails": "yes"}): "expected"}
         for bad, why in cases.items():

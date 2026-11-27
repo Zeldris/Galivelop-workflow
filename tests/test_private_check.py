@@ -59,10 +59,12 @@ class Repo(unittest.TestCase):
     def local(self, data):
         self.write(".claude/gw.local.json", data if isinstance(data, str) else json.dumps(data))
 
-    def check(self, *args, stdin=None):
+    def check(self, *args, stdin=None, env=None):
         if "--all" in args:  # --all reads the tracked files
             self.git("add", "-A")
-        r =subprocess.run(["python3", str(SCRIPT), "--root", str(self.work), *args], cwd=self.tmp, env=self.env,
+        run_env = {k: v for k, v in self.env.items() if k != "GW_LOCAL_JSON"}  # only what a test gives
+        run_env.update(env or {})
+        r =subprocess.run(["python3", str(SCRIPT), "--root", str(self.work), *args], cwd=self.tmp, env=run_env,
                            capture_output=True, text=True, input=stdin)
         return r.returncode, r.stdout + r.stderr
 
@@ -199,6 +201,82 @@ class Names(Repo):
             self.assertIn(reason, out)
             self.assertIn("config.py", out)  # the command that checks the fix
             self.assertEqual(self.check("--all", "--no-names")[0], 2, bad)  # its allowEmails are read too
+
+    def test_the_environment_variable_is_the_list_when_the_file_is_absent(self):
+        self.write("docs/a.md", "from secret-app\n")
+        code, out = self.check("--all", env={"GW_LOCAL_JSON": '{"privateNames": ["Secret App"]}'})
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/a.md:1: private name secret-app", out)
+
+    def test_the_file_wins_over_the_environment_variable(self):
+        self.local({"privateNames": ["Zork Inc"]})
+        self.write("docs/a.md", "from secret-app\n")
+        code, out = self.check("--all", env={"GW_LOCAL_JSON": '{"privateNames": ["Secret App"]}'})
+        self.assertEqual(code, 0, out)
+
+    def test_a_malformed_environment_variable_fails_closed_like_the_file(self):
+        for bad, reason in (("{nope", "invalid JSON"), ('["x"]', "expected a JSON object"),
+                            ('{"privateName": ["x"]}', "unknown key 'privateName'"),
+                            ('{"anonymize": {"x": "project-1"}}', "aliases private-project-N")):
+            code, out = self.check("--all", env={"GW_LOCAL_JSON": bad})
+            self.assertEqual(code, 2, bad)
+            self.assertIn("$GW_LOCAL_JSON: ", out)
+            self.assertIn(reason, out)
+
+    def test_an_empty_environment_variable_is_no_list(self):
+        for empty in ("", "  "):
+            code, out = self.check("--all", env={"GW_LOCAL_JSON": empty})
+            self.assertEqual(code, 0, out)
+            self.assertIn("private names are not checked", out)
+
+    def test_the_environment_variable_name_is_privatecheck_localenv(self):
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"localEnv": "MY_NAMES"})))
+        self.write("docs/a.md", "from secret-app\n")
+        code, out = self.check("--all", env={"MY_NAMES": '{"privateNames": ["Secret App"]}'})
+        self.assertEqual(code, 1, out)
+        code, out = self.check("--all", env={"GW_LOCAL_JSON": '{"privateNames": ["Secret App"]}'})
+        self.assertEqual(code, 0, out)  # the default name is not read any more
+
+    def test_environment_allow_emails_count_too(self):
+        self.write("docs/team.md", "write to " + PRIVATE_MAIL + "\n")
+        code, out = self.check("--all", env={"GW_LOCAL_JSON": json.dumps({"allowEmails": [PRIVATE_MAIL]})})
+        self.assertEqual(code, 0, out)
+
+    def test_require_names_protected_fails_closed_only_on_the_protected_branch(self):
+        self.write("docs/a.md", "x\n")
+        self.commit("work")
+        rng = f"{self.base}..HEAD"
+        code, out = self.check("--range", rng, "--ref", "main")
+        self.assertEqual(code, 2, out)
+        self.assertIn("no local list of private names", out)
+        self.assertIn("create the file or set the environment variable", out)
+        self.assertIn(".claude/gw.local.json", out)
+        self.assertIn("$GW_LOCAL_JSON", out)
+        for args in (("--ref", "feature"), (), ("--ref", "main", "--no-names")):
+            code, out = self.check("--range", rng, *args)
+            self.assertEqual(code, 0, out)
+        code, out = self.check("--range", rng, "--ref", "main", env={"GW_LOCAL_JSON": "{}"})
+        self.assertEqual(code, 0, out)  # a list, even an empty one, is a list
+
+    def test_require_names_always_never_and_a_bad_value(self):
+        self.write("docs/a.md", "x\n")
+        self.commit("work")
+        rng = f"{self.base}..HEAD"
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"requireNames": "always"})))
+        for args in (("--ref", "feature"), ()):
+            code, out = self.check("--range", rng, *args)
+            self.assertEqual(code, 2, out)
+            self.assertIn('requireNames is "always"', out)
+        self.assertEqual(self.check("--range", rng, "--no-names")[0], 0)
+        self.assertEqual(self.check("--all", env={"GW_LOCAL_JSON": "{}"})[0], 0)
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"requireNames": "never"})))
+        code, out = self.check("--range", rng, "--ref", "main")
+        self.assertEqual(code, 0, out)
+        self.assertIn("private names are not checked", out)
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"requireNames": "sometimes"})))
+        code, out = self.check("--range", rng, "--ref", "main")
+        self.assertEqual(code, 2, out)
+        self.assertIn("requireNames", out)
 
     def test_config_local_command(self):
         cli = ["python3", str(CONFIG), "--root", str(self.work), "local"]

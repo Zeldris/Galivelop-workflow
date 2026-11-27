@@ -1602,6 +1602,20 @@ class PrePushPrivate(Base):
         self.assertEqual(code, 0, out)
         self.assertIn("no .claude/gw.local.json, so private names are not checked", out)
 
+    def test_push_to_main_without_a_list_is_refused_and_the_variable_or_the_file_lets_it_through(self):
+        p = self.p
+        p.git("checkout", "-q", "main")
+        self.assertEqual(p.push("--no-verify", "origin", "main")[0], 0)  # the setUp commits (code) are there already
+        p.write("docs/a.md", "plain notes\n")
+        p.commit("notes")
+        code, out = p.push("origin", "main")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("no local list of private names", out)
+        self.assertIn("create the file or set the environment variable", out)
+        self.assertIn("private-check could not run, exit 2", out)
+        code, out = p.push("origin", "main", env={"GW_LOCAL_JSON": '{"privateNames": ["Secret Client"]}'})
+        self.assertEqual(code, 0, out)
+
     def test_e_mail_refused_unless_allowed(self):
         p = self.p
         p.write("docs/a.md", f"ask {self.mail}\n")
