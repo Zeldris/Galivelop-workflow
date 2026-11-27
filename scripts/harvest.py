@@ -63,6 +63,19 @@ def retro_name(repo):
         return re.compile(config.retro({})["filePattern"])
 
 
+def retro_aliases(repo, paths):
+    """{real path: `retro-<date>-<n>`} (E29, A4): a retro's file name tells its topic, so the report never prints it. <date>
+    is the YYYY-MM-DD in the name, else the file's last commit date in the project; <n> counts the retros of one date in
+    the sorted order of the real paths."""
+    seen, out = {}, {}
+    for rel in sorted(paths):
+        m = re.search(r"\d{4}-\d{2}-\d{2}", Path(rel).name)
+        date = m.group(0) if m else (git(repo, "log", "-1", "--format=%cs", "--", rel) or "undated")
+        seen[date] = seen.get(date, 0) + 1
+        out[rel] = f"retro-{date}-{seen[date]}"
+    return out
+
+
 def load_private_check():
     """scripts/private-check.py as a module (its file name has a dash): its name_regex is the one name matcher."""
     spec = importlib.util.spec_from_file_location("private_check", str(Path(__file__).resolve().parent /
@@ -372,6 +385,7 @@ def harvest(repo, state, anonymize=lambda text: text):
         changed_files = set()
 
     retro_re = retro_name(repo)
+    retro_paths = []  # the real paths: internal, report["retros"] ends with their aliases (harvest.retroAlias)
     ours, theirs = skill_files(ROOT / "skills"), skill_files(repo / ".claude" / "skills")
     for name, path in theirs.items():
         rel = str(path.relative_to(repo))
@@ -418,6 +432,7 @@ def harvest(repo, state, anonymize=lambda text: text):
                     report["scripts_changed"].append({"script": name, "path": rel})
         if rel.endswith(".md") and (changed_files is None or rel in changed_files):
             if retro_re.search(rel):
+                retro_paths.append(rel)
                 report["retros"].append(rel)
             if not (repo / rel).is_file():
                 continue
@@ -431,6 +446,11 @@ def harvest(repo, state, anonymize=lambda text: text):
                                               "to another file may be repeated (check them by hand)")
                 found = not_old(found, before, {renames.get(rel)} - {None})
             report["ideas"] += found
+    if retro_paths and sizes()["retroAlias"]:
+        alias = retro_aliases(repo, retro_paths)
+        report["retros"] = [alias[r] for r in retro_paths]
+        for idea in report["ideas"]:
+            idea["path"] = alias.get(idea["path"], idea["path"])
     return report
 
 

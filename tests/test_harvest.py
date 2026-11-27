@@ -127,7 +127,7 @@ class Harvest(unittest.TestCase):
         r = self.harvest()
         self.assertEqual(len(r["commits"]), 1)
         self.assertEqual(r["skills_changed"], [], "unchanged files since the last harvest are not reported")
-        self.assertEqual(r["retros"], ["docs/retro-2026-01-01-x.md"])
+        self.assertEqual(r["retros"], ["retro-2026-01-01-1"])
         self.assertEqual(r["ideas"][0]["text"], "Check shallow clones.")
 
     def test_retro_file_pattern_of_the_project_names_its_retros(self):
@@ -141,7 +141,44 @@ class Harvest(unittest.TestCase):
         (self.repo / ".claude" / "gw.json").write_text(json.dumps(cfg))
         git(self.repo, "add", "-A")
         git(self.repo, "commit", "-qm", "two")
-        self.assertEqual(self.harvest()["retros"], ["docs/look-back-1.md"])
+        day = git(self.repo, "log", "-1", "--format=%cs", "--", "docs/look-back-1.md").strip()
+        self.assertEqual(self.harvest()["retros"], [f"retro-{day}-1"])
+
+    def commit_retros(self, *names):
+        run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
+        for n in names:
+            f = self.repo / n
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text("# Retro\n")
+        git(self.repo, "add", "-A")
+        git(self.repo, "commit", "-qm", "retros")
+
+    def test_retros_are_published_as_alias_not_by_file_name(self):
+        self.commit_retros("docs/retro-2026-02-03-secret-topic.md", "docs/retro-2026-02-03-other.md",
+                           "docs/retros/retro-2026-03-04-sub.md", "docs/retro-notes.md")
+        day = git(self.repo, "log", "-1", "--format=%cs", "--", "docs/retro-notes.md").strip()
+        r = self.harvest()
+        self.assertEqual(sorted(r["retros"]), sorted(["retro-2026-02-03-1", "retro-2026-02-03-2", "retro-2026-03-04-1",
+                                                      f"retro-{day}-1"]))
+        self.assertNotIn("secret-topic", json.dumps(r))
+        md = run("python3", str(SCRIPT), "--state", str(self.state), str(self.repo))
+        self.assertIn("`retro-2026-02-03-2`", md)
+        self.assertNotIn("secret-topic", md)
+
+    def test_retro_numbers_follow_the_sorted_real_paths(self):
+        self.commit_retros("docs/retro-2026-02-03-b.md", "docs/retro-2026-02-03-a.md")
+        self.assertEqual(self.harvest()["retros"], ["retro-2026-02-03-1", "retro-2026-02-03-2"])
+
+    def test_no_retros_gives_an_empty_list(self):
+        self.commit_retros("docs/notes.md")
+        self.assertEqual(self.harvest()["retros"], [])
+
+    def test_retro_alias_is_a_config_key_on_by_default(self):
+        import sys
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import config
+        self.assertEqual(config.harvest({})["retroAlias"], 1)
+        self.assertEqual(config.harvest({"harvest": {"retroAlias": 0}})["retroAlias"], 0)
 
     def test_ideas_come_from_any_changed_md_not_only_retros(self):
         run("python3", str(SCRIPT), "--update-state", "--state", str(self.state), str(self.repo))
