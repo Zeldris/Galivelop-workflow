@@ -209,6 +209,7 @@ class Names(Repo):
         self.assertIn("docs/a.md:1: private name secret-app", out)
 
     def test_the_file_wins_over_the_environment_variable(self):
+        self.write(".gitignore", ".claude/gw.local.json\n")  # --all scans the tracked files, not the private list
         self.local({"privateNames": ["Zork Inc"]})
         self.write("docs/a.md", "from secret-app\n")
         code, out = self.check("--all", env={"GW_LOCAL_JSON": '{"privateNames": ["Secret App"]}'})
