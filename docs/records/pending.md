@@ -9,6 +9,21 @@ commit, y la entrada va al CHANGELOG de esa versión. Lo marcado `[x]` se hizo e
 Reparto: scripts, checks, config y git a la `0.5`; `orchestrate-dealer` y los encargos de revisión a la `0.7`
 (junto a C10); instalación, plantillas y stacks a la `0.9` (junto a E4); textos de la documentación a la `0.10` (E8).
 
+## De la revisión de seguridad E28
+
+Hallazgos menores que el usuario aprobó dejar para la `0.10` (detalle en
+[`security-review-E28.md`](security-review-E28.md)).
+
+- [ ] `0.10` · **E28 F1**: `ci-status.py` codifica `--branch`, `--sha` y `--repo` en la ruta de la API.
+- [ ] `0.10` · **E28 F2**: un archivo llamado `--rootdir=/x` no llega como opción al comando de tests (`related-tests.sh`).
+- [ ] `0.10` · **E28 F3**: `harvest.py` no sigue enlaces de `.md` que salen del proyecto recogido.
+- [ ] `0.10` · **E28 F4**: el revisor (`gw-reviewer`) sin `Write` ni `Bash` libre, o con lista cerrada.
+- [ ] `0.10` · **E28 E5**: `agent-signatures.py` mira también `--body "$(cat f)"` y pone tope a los patrones del config.
+- [ ] `0.10` · **E28 ledger**: los lectores del registro de tokens (`period_rows`, `alert`) y `metrics.reports` con la
+  misma contención de ruta que `ledger_target`.
+- [ ] `0.10` · **E28 push_command**: revisar que `config.py` (`push_command`) no compone órdenes con valores sin validar.
+- [ ] `0.10` · **E28 hooksPath**: `core.hooksPath` absoluto hace que un worktree corra los ganchos del checkout principal.
+
 ## De la recogida del 2026-10-27 (`private-project-2`)
 
 P1-P4 salieron en el parche `0.4.3`.
