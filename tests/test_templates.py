@@ -413,13 +413,13 @@ class Templates(unittest.TestCase):
     def test_ci_template_uses_the_dirs_outputs_and_rust_cache(self):
         text = (TEMPLATES / "github" / "check.yml").read_text()
         self.assertIn("if: needs.versions.outputs.node == 'true'", text)
-        self.assertIn("uses: Swatinem/rust-cache@v2", text)
+        self.assertIn("uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3", text)
         self.assertIn("workspaces: ${{ needs.versions.outputs.rust_workspaces }}", text)
         self.assertNotIn("hashFiles('package.json')", text)
         # a project-added toolchain step goes before the cache, which goes before Install
         self.assertLess(text.index("actions/setup-java@"), text.index("A pinned Rust toolchain step"))
-        self.assertLess(text.index("A pinned Rust toolchain step"), text.index("Swatinem/rust-cache@v2"))
-        self.assertLess(text.index("Swatinem/rust-cache@v2"), text.index("- name: Install"))
+        self.assertLess(text.index("A pinned Rust toolchain step"), text.index("uses: Swatinem/rust-cache@"))
+        self.assertLess(text.index("uses: Swatinem/rust-cache@"), text.index("- name: Install"))
 
     def test_ci_template_is_valid_yaml(self):
         try:
@@ -686,6 +686,51 @@ class Init(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         for name in ("AGENTS.md", "CLAUDE.md", "REVIEW.md", "GLOSSARY.md", "check.yml", "docs/handoff.md"):
             self.assertNotIn(name, r.stdout)
+
+
+class WorkflowHardening(unittest.TestCase):
+    """E28 C1-C3: the workflows pin external actions by commit, keep no token in the checkout and release with least privilege."""
+
+    FILES = (".github/workflows/check.yml", ".github/workflows/release.yml", "templates/github/check.yml")
+
+    def lines(self, rel):
+        return (ROOT / rel).read_text(encoding="utf-8").splitlines()
+
+    def test_external_actions_are_pinned_by_full_sha_with_a_version_comment(self):
+        for rel in self.FILES:
+            for n, line in enumerate(self.lines(rel), 1):
+                m = re.match(r"\s*-?\s*uses:\s*(\S+)(.*)$", line)
+                if not m or m.group(1).startswith("./"):
+                    continue
+                with self.subTest(file=rel, line=n):
+                    self.assertRegex(m.group(1), r"^[\w.-]+/[\w./-]+@[0-9a-f]{40}$",
+                                     f"{rel}:{n} pin the action by its 40-char commit SHA: git ls-remote --tags https://github.com/<owner>/<repo>")
+                    self.assertRegex(m.group(2), r"^\s+# v\d+\.\d+\.\d+\s*$", f"{rel}:{n} add the version as a trailing comment, e.g. `# v4.4.0`")
+
+    def test_every_checkout_sets_persist_credentials_and_only_the_git_fetch_job_keeps_the_token(self):
+        for rel in self.FILES:
+            lines = self.lines(rel)
+            for n, line in enumerate(lines):
+                if "uses: actions/checkout@" not in line:
+                    continue
+                block = []
+                for nxt in lines[n + 1:]:
+                    if re.match(r"\s*- ", nxt) or not nxt.startswith(" " * (len(line) - len(line.lstrip()) + 2)):
+                        break
+                    block.append(nxt.strip())
+                value = next((b.split(":", 1)[1].split("#")[0].strip() for b in block if b.startswith("persist-credentials:")), None)
+                with self.subTest(file=rel, line=n + 1):
+                    expected = "true" if rel.endswith("release.yml") and n < 25 else "false"
+                    self.assertEqual(value, expected, f"{rel}:{n + 1} set `persist-credentials: {expected}` under the checkout's `with:`")
+
+    def test_release_workflow_is_read_only_except_the_release_job(self):
+        text = (ROOT / ".github/workflows/release.yml").read_text(encoding="utf-8")
+        self.assertRegex(text, r"(?m)^permissions:\n  contents: read\n", "top-level permissions of release.yml must be `contents: read`")
+        self.assertEqual(len(re.findall(r"contents: write", text)), 1, "only the release job may have `contents: write`")
+        job = text.split("\n  release:\n", 1)[1]
+        self.assertIn("    permissions:\n      contents: write\n", job)
+        check = (ROOT / ".github/workflows/check.yml").read_text(encoding="utf-8")
+        self.assertNotIn("write", check)
 
 
 if __name__ == "__main__":

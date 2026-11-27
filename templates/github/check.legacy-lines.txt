@@ -27,3 +27,11 @@ if: hashFiles('package.json') != ''
 # workflow's, untouched; `ciPython` makes Python a matrix); another toolchain (rust-toolchain...) goes before "Install".
 --- v0.9.0 (8357389) ---
 echo "$RUNNER_TEMP/actionlint/bin" >> "$GITHUB_PATH"
+--- v0.9.1 (0d37471) ---
+- uses: actions/checkout@v4
+- uses: actions/setup-node@v4
+- uses: actions/setup-python@v5
+- uses: actions/setup-java@v4
+- uses: Swatinem/rust-cache@v2
+# Swatinem/rust-cache: major tag v2, as its documentation shows; NOT verified against its releases on 2026-11-11
+# (no network access to the repo from the session that wrote this). Pin a release or a commit if you prefer.
