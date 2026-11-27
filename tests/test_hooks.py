@@ -4133,6 +4133,7 @@ class PreCommitLedger(Base):
         self.assertFalse(self.in_head(self.LEDGER))
 
     def test_ledger_outside_the_repo_is_skipped(self):  # B36 review: git ls-files would exit 128 on every commit
+        # Since E28 (B2) such a ledger fails validate: the hook warns with the fix and never stages it.
         for ledger in ("../outside/ledger.jsonl", str(self.tmp / "outside" / "abs.jsonl"),
                        str(self.p.work / "docs" / "abs.jsonl")):
             with self.subTest(ledger=ledger):
@@ -4142,7 +4143,9 @@ class PreCommitLedger(Base):
                 target.write_text(self.ROW)
                 self.work_change(f"a = {len(ledger)}\n")
                 r = self.commit()
-                self.assertNotIn("token ledger", r.stderr)
+                self.assertIn("token ledger is not added to this commit", r.stderr)
+                self.assertIn("must be a repo-relative path", r.stderr)
+                self.assertNotIn("added the token ledger", r.stderr)
                 self.assertFalse(self.in_head("docs/abs.jsonl"))
 
     def test_record_false_or_commit_ledger_false_leave_it(self):

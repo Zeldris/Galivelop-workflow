@@ -7,7 +7,8 @@
 The hooks write the metrics ledger (`metrics.ledger` in .claude/gw.json) all the time, so the tree is nearly always
 dirty with it, and a plain `git merge` then refuses or, after a `stash`, can lose its lines. Steps:
 
-  1. `git fetch origin <protectedBranch>` (a failure: exit 1 with git's reason).
+  1. `git fetch -- origin +refs/heads/<protectedBranch>:refs/remotes/origin/<protectedBranch>` (a failure: exit 1 with
+     git's reason; a protectedBranch starting with `-`: exit 2, git would read it as an option, E28).
   2. Uncommitted changes (tracked or untracked): none -> go on; only the ledger -> commit it first
      (`chore(<id>): ...`, trailers `Refs: <id>` and the next-step trailer of the project's `languages.docs.primary`, so the
      commit-msg hook accepts it); anything else -> exit 1 naming those paths and the command that fixes it
@@ -101,11 +102,16 @@ def main(argv=None):
     if not branch or not ledger:
         say("protectedBranch or metrics.ledger is not set in .claude/gw.json; set them (docs/en/config.md)")
         return 2
+    if branch.startswith("-"):  # E28 (A1): git would read it as an option (--upload-pack=...); the schema refuses it too
+        say(f"protectedBranch {branch!r} starts with '-', which git reads as an option; set a branch name in "
+            f".claude/gw.json and check it: python3 {HERE / 'config.py'} validate")
+        return 2
     ledger = posixpath.normpath(ledger)
     lang = config.languages(cfg)["docs"]["primary"]
     lang = lang if lang in NEXT else "en"
 
-    res = git(root, "fetch", "origin", branch)
+    # An explicit refspec after `--`: the value is never an option, and origin/<branch> is updated in any clone.
+    res = git(root, "fetch", "--", "origin", f"+refs/heads/{branch}:refs/remotes/origin/{branch}")
     if res.returncode != 0:
         say(f"git fetch origin {branch} failed: {(res.stderr or res.stdout).strip()}; check the remote and the "
             f"network, then run it again: python3 {Path(__file__).resolve()}")

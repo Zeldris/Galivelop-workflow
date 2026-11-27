@@ -21,7 +21,8 @@ Idempotent without a cursor file: the tokens already in the ledger are summed pe
 whose transcript total exceeds that sum (per field, the difference). Rerunning without new usage writes nothing; a key
 whose ledger sum is above the transcript (a rotated transcript) is left alone. The write is one append of all new lines.
 
-Configuration (`metrics` in .claude/gw.json): `ledger` (repo-relative path, its folder is created), `record` (false
+Configuration (`metrics` in .claude/gw.json): `ledger` (repo-relative path, its folder is created; a symlink or a path
+that resolves outside the repo is not written, the hook says why, E28), `record` (false
 writes nothing), `reports` (B4, the folder of the written reports) and `prices` (B3): dated tables of USD per million tokens per model. Money is computed when reading
 (`price_of`, `cost_of`; `metrics.py price MODEL [--date D]` prints the price a row of that model and date takes): the
 newest table whose `since` is on or before the row's date, then the model key equal to the row's model or, failing
@@ -698,12 +699,31 @@ def quality_report(root, cfg, kind, day, write=False):
     return text, path
 
 
+def ledger_target(root, rel):
+    """E28 (B2): the absolute ledger path the record may append to; MetricsError when it is a symlink or would land
+    (or create folders) outside the repo, so a config or a committed link cannot make the hook write elsewhere."""
+    real_root = os.path.realpath(str(root))
+    path = os.path.join(str(root), *posixpath.normpath(rel).split("/"))
+    fix = (f"set metrics.ledger in .claude/gw.json to a path inside the repo (python3 "
+           f"{os.path.join(HERE, 'config.py')} validate), or turn recording off with metrics.record false")
+    if os.path.islink(path):
+        raise MetricsError(f"the ledger {rel} is a symlink (to {os.readlink(path)}), not written; replace it with a "
+                           f"regular file (git rm --cached {rel} && rm {rel}) or {fix}")
+    folder = os.path.dirname(path)
+    while not os.path.lexists(folder):  # the nearest existing folder decides where makedirs would create the rest
+        folder = os.path.dirname(folder)
+    real = os.path.realpath(folder)
+    if real != real_root and not real.startswith(real_root.rstrip(os.sep) + os.sep):
+        raise MetricsError(f"the ledger {rel} resolves outside the repo ({real}), not written; {fix}")
+    return path
+
+
 def record(root, transcript, cfg):
     """Append the new tokens of `transcript` to the ledger; returns the number of lines written."""
     settings = config.metrics(cfg)
     if not settings["record"]:
         return 0
-    ledger = os.path.join(str(root), *posixpath.normpath(settings["ledger"]).split("/"))
+    ledger = ledger_target(root, settings["ledger"])
     seen = ledger_sums(ledger)
     new = []
     for key, now in sorted(totals(transcript).items()):
@@ -723,7 +743,9 @@ def record(root, transcript, cfg):
         row = dict(diff, session=session, agent=agent, model=model, date=day, branch=branch, refs=refs, recorded=stamp)
         text += json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n"
     os.makedirs(os.path.dirname(ledger), exist_ok=True)
-    with open(ledger, "a", encoding="utf-8") as f:
+    ledger = ledger_target(root, settings["ledger"])  # again after makedirs: nothing swapped in meanwhile
+    flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
+    with os.fdopen(os.open(ledger, flags, 0o666), "a", encoding="utf-8") as f:
         f.write(text)  # one write: the lines of this run go in together
     return len(new)
 

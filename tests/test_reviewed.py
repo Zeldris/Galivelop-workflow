@@ -186,6 +186,18 @@ class MarkFooter(Base):
         self.assertNotIn("Reviewed:", self.p.git("log", "-1", "--format=%s").stdout)
 
 
+    def test_e28_protected_branch_as_an_option_runs_nothing(self):  # A1: "--upload-pack=<cmd>" ran <cmd>
+        marker = self.p.work.parent / "pwned"
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["protectedBranch"] = f"--upload-pack=touch {marker};"
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = self.p.run("bash", self.script)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("must be a git branch name", out)
+        self.assertIn("validate", out)
+        self.assertFalse(marker.exists(), out)
+        self.assertNotIn("Reviewed:", self.p.git("log", "-1", "--format=%s").stdout)
+
 class ProtectedBranchAbsentOnRemote(Base):
     """D109: a project that adopts the flow before having its protected branch: the base is the empty tree."""
 

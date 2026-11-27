@@ -67,6 +67,24 @@ class MergeMain(unittest.TestCase):
     def subjects(self):
         return self.git(self.work, "log", "--format=%s").splitlines()
 
+    def test_e28_protected_branch_as_an_option_runs_nothing(self):  # A1: "--upload-pack=<cmd>" ran <cmd>
+        marker = self.tmp / "pwned"
+        for value in (f"--upload-pack=touch {marker};", "-x"):
+            self.put(self.work, ".claude/gw.json", json.dumps(self.config(protectedBranch=value)))
+            code, out = self.run_it()
+            self.assertEqual(code, 2, out)
+            self.assertIn("protectedBranch", out)
+            self.assertIn("must be a git branch name", out)
+            self.assertIn("validate", out)
+            self.assertFalse(marker.exists(), out)
+
+    def test_e28_fetch_updates_origin_main_with_a_narrow_fetch_refspec(self):  # A1: explicit refspec
+        self.git(self.work, "config", "remote.origin.fetch", "+refs/heads/work:refs/remotes/origin/work")
+        self.upstream()
+        code, out = self.run_it()
+        self.assertEqual(code, 0, out)
+        self.assertTrue((self.work / "b.txt").is_file(), out)
+
     def test_clean_tree_merges(self):
         self.upstream()
         code, out = self.run_it()

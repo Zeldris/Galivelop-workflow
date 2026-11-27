@@ -51,10 +51,7 @@ class Config(unittest.TestCase):
         cases = ((VALID, ["docs/metrics/ledger.jsonl"]),
                  (dict(VALID, metrics={"ledger": "var/tokens.jsonl"}), ["var/tokens.jsonl"]),
                  (dict(VALID, metrics={"ledger": "./var//tokens.jsonl"}), ["var/tokens.jsonl"]),
-                 (dict(VALID, metrics={"ledger": "/abs/tokens.jsonl"}), []),  # outside the repo: not tracked
-                 (dict(VALID, metrics={"ledger": "../tokens.jsonl"}), []),
-                 (dict(VALID, metrics={"ledger": "var/../../tokens.jsonl"}), []),
-                 (dict(VALID, metrics={"ledger": ".."}), []),
+                 # an absolute ledger or one with a .. segment fails validate since E28 (B2)
                  (dict(VALID, metrics={"ledger": "   "}), []),  # blank: no path
                  (dict(VALID, metrics={"ledger": "var\\tokens.jsonl"}), ["var/tokens.jsonl"]),  # git's separator
                  (dict(VALID, metrics={"ledger": "..\\tokens.jsonl"}), []),
@@ -441,6 +438,29 @@ class Config(unittest.TestCase):
         self.write(dict(VALID, wholeReadDenyPaths={"": "tool"}))
         r = cli(self.tmp, "validate")
         self.assertIn("$.wholeReadDenyPaths key: must not be empty", r.stderr)
+
+    def test_e28_protected_branch_must_be_a_branch_name(self):  # A1: git would read "--upload-pack=..." as an option
+        for bad in ("--upload-pack=touch x;", "-x", "a b", "a..b", "a~1", "a^", "a:b", "a?", "a*", "a[b", "a\\b",
+                    "/main", "main/", "a@{1}", "main\n", "a\tb"):
+            self.write(dict(VALID, protectedBranch=bad))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn(f"$.protectedBranch: {bad!r} must be a git branch name", r.stderr)
+        for good in ("main", "master", "release/1.0", "feat-x", "v1.2", "a.b_c"):
+            self.write(dict(VALID, protectedBranch=good))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 0, (good, r.stderr))
+
+    def test_e28_metrics_ledger_must_stay_inside_the_repo(self):  # B2: "../../.bashrc" got JSON rows appended
+        for bad in ("../../.bashrc", "/etc/passwd", "~/.bashrc", "docs/../../x", ".."):
+            self.write(dict(VALID, metrics={"ledger": bad}))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 2, bad)
+            self.assertIn(f"$.metrics.ledger: {bad!r} must be a repo-relative path", r.stderr)
+        for good in ("docs/metrics/ledger.jsonl", "ledger.jsonl", "./data/t.jsonl", "a..b/t.jsonl"):
+            self.write(dict(VALID, metrics={"ledger": good}))
+            r = cli(self.tmp, "validate")
+            self.assertEqual(r.returncode, 0, (good, r.stderr))
 
     def test_c4_keys_are_in_the_template_and_the_skip_list(self):
         schema = json.loads((ROOT / "schema" / "gw.schema.json").read_text())["properties"]
