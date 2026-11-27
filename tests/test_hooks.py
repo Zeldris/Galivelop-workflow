@@ -44,7 +44,7 @@ class Project:
         gitconfig.write_text("[user]\n\tname = Test\n\temail = test@example.com\n[commit]\n\tgpgsign = false\n"
                              "[tag]\n\tgpgsign = false\n[init]\n\tdefaultBranch = main\n[advice]\n\tdetachedHead = false\n")
         self.env = {k: v for k, v in os.environ.items()
-                    if not k.startswith("GIT_") and k not in ("CLAUDECODE", "CLAUDE_PROJECT_DIR")}
+                    if not k.startswith("GIT_") and k not in ("CLAUDECODE", "CLAUDE_PROJECT_DIR", "GW_LOCAL_JSON")}
         self.env.update(GIT_CONFIG_GLOBAL=str(gitconfig), GIT_CONFIG_NOSYSTEM="1", TMPDIR=str(tmp),
                         GW_CHECK_CACHE="0")  # the cache is off except in the classes that test it
         self.git("init", "-q", "--bare", str(self.bare), cwd=tmp)
@@ -1601,6 +1601,20 @@ class PrePushPrivate(Base):
         code, out = p.push("origin", "feature")
         self.assertEqual(code, 0, out)
         self.assertIn("no .claude/gw.local.json, so private names are not checked", out)
+
+    def test_push_to_main_without_a_list_is_refused_and_the_variable_or_the_file_lets_it_through(self):
+        p = self.p
+        p.git("checkout", "-q", "main")
+        self.assertEqual(p.push("--no-verify", "origin", "main")[0], 0)  # the setUp commits (code) are there already
+        p.write("docs/a.md", "plain notes\n")
+        p.commit("notes")
+        code, out = p.push("origin", "main")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("no local list of private names", out)
+        self.assertIn("create the file or set the environment variable", out)
+        self.assertIn("private-check could not run, exit 2", out)
+        code, out = p.push("origin", "main", env={"GW_LOCAL_JSON": '{"privateNames": ["Secret Client"]}'})
+        self.assertEqual(code, 0, out)
 
     def test_e_mail_refused_unless_allowed(self):
         p = self.p

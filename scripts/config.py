@@ -1619,38 +1619,47 @@ def load(root=None, rev=None, paths_at=None, profiles=True):
     return config
 
 
-def load_local(root):
-    """The local file .claude/gw.local.json of `root` as {"privateNames": [...], "allowEmails": [...], "anonymize":
-    {name: alias}}, or None when it does not exist. The names of `anonymize` are added to privateNames, so they are
+def load_local(root, env_name=None):
+    """The local list of `root`: the file .claude/gw.local.json, else (E29, cloud containers, where the file never
+    exists) the same JSON object in the environment variable `env_name` (privateCheck.localEnv, default GW_LOCAL_JSON;
+    an unset or empty variable is no list). The file wins when both exist. As {"privateNames": [...], "allowEmails": [...], "anonymize":
+    {name: alias}}, or None when neither exists. The names of `anonymize` are added to privateNames, so they are
     written once and private-check.py checks them too. Raises ConfigError (fail closed) when it is not a JSON object
     with only the LOCAL_KEYS: privateNames and allowEmails lists of non-empty strings, anonymize an object that maps
     non-empty names to aliases private-project-N."""
     path = Path(root) / LOCAL_REL
-    if not path.is_file():
-        return None
+    raw = None
+    if path.is_file():
+        source = str(path)
+    else:
+        env_name = env_name or _schema()["properties"]["privateCheck"]["default"]["localEnv"]
+        raw = os.environ.get(env_name, "")
+        if not raw.strip():
+            return None
+        source = f"${env_name}"
     fix = (f"fix it (a JSON object with {', '.join(sorted(LOCAL_KEYS))}: lists of strings, and anonymize "
            f'{{"<name>": "private-project-N"}}) and check: python3 {HERE / "config.py"} --root {root} local')
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        data = json.loads(path.read_text(encoding="utf-8") if raw is None else raw)
     except json.JSONDecodeError as exc:
-        raise ConfigError(f"{path}: invalid JSON at line {exc.lineno}: {exc.msg}; {fix}")
+        raise ConfigError(f"{source}: invalid JSON at line {exc.lineno}: {exc.msg}; {fix}")
     except (OSError, UnicodeDecodeError) as exc:
-        raise ConfigError(f"{path}: cannot read it ({exc}); {fix}")
+        raise ConfigError(f"{source}: cannot read it ({exc}); {fix}")
     if not isinstance(data, dict):
-        raise ConfigError(f"{path}: expected a JSON object, got {type(data).__name__}; {fix}")
+        raise ConfigError(f"{source}: expected a JSON object, got {type(data).__name__}; {fix}")
     out = {}
     for key, value in data.items():
         if key not in LOCAL_KEYS:
-            raise ConfigError(f"{path}: unknown key '{key}' (allowed: {', '.join(sorted(LOCAL_KEYS))}); {fix}")
+            raise ConfigError(f"{source}: unknown key '{key}' (allowed: {', '.join(sorted(LOCAL_KEYS))}); {fix}")
         if key == "anonymize":
             if not isinstance(value, dict) or not all(k.strip() and isinstance(v, str) and ALIAS.match(v)
                                                       for k, v in value.items()):
-                raise ConfigError(f"{path}: 'anonymize' must map non-empty names to aliases private-project-N "
+                raise ConfigError(f"{source}: 'anonymize' must map non-empty names to aliases private-project-N "
                                   f"(N a number); {fix}")
             out[key] = dict(value)
             continue
         if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
-            raise ConfigError(f"{path}: '{key}' must be a list of non-empty strings; {fix}")
+            raise ConfigError(f"{source}: '{key}' must be a list of non-empty strings; {fix}")
         out[key] = list(value)
     out.setdefault("privateNames", [])
     out.setdefault("allowEmails", [])
@@ -1660,15 +1669,18 @@ def load_local(root):
 
 
 def private_check(config):
-    """The `privateCheck` key as {"emails": bool, "allowEmails": [...], "maxHits": int} with its defaults, or None when
+    """The `privateCheck` key as {"emails": bool, "allowEmails": [...], "maxHits": int, "localEnv": str,
+    "requireNames": "protected"|"always"|"never"} with its defaults, or None when
     it is false (private-check.py off)."""
     value = config.get("privateCheck", True)
     if value is False:
         return None
     value = value if isinstance(value, dict) else {}
-    max_hits = _schema()["properties"]["privateCheck"]["default"]["maxHits"]
+    default = _schema()["properties"]["privateCheck"]["default"]
     return {"emails": value.get("emails", True), "allowEmails": list(value.get("allowEmails") or []),
-            "maxHits": value.get("maxHits", max_hits)}
+            "maxHits": value.get("maxHits", default["maxHits"]),
+            "localEnv": value.get("localEnv", default["localEnv"]),
+            "requireNames": value.get("requireNames", default["requireNames"])}
 
 
 def related_commands(config, kind, files, deleted=(), skipped=None):
@@ -1857,7 +1869,9 @@ def main(argv=None):
         return 0
     if args.command == "local":
         try:
-            print(json.dumps(load_local(config["_root"]), ensure_ascii=False))
+            settings = private_check(config)
+            print(json.dumps(load_local(config["_root"], settings["localEnv"] if settings else None),
+                             ensure_ascii=False))
         except ConfigError as exc:
             print(f"gw config: {exc}", file=sys.stderr)
             return 2

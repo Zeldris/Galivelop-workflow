@@ -1,5 +1,6 @@
 """scripts/harvest.py against a temporary project repository."""
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -8,6 +9,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "harvest.py"
+
+
+def setUpModule():
+    # E29: harvest.py fails closed without a local list; these tests are about the report, so they have an empty one
+    # (the Anonymized tests of the fail-closed path remove it).
+    global _saved
+    _saved = os.environ.get("GW_LOCAL_JSON")
+    os.environ["GW_LOCAL_JSON"] = "{}"
+
+
+def tearDownModule():
+    if _saved is None:
+        os.environ.pop("GW_LOCAL_JSON", None)
+    else:
+        os.environ["GW_LOCAL_JSON"] = _saved
 
 
 def run(*args, cwd=None):
@@ -677,9 +693,14 @@ class Anonymized(unittest.TestCase):
     def local(self, data):
         (self.wf / ".claude" / "gw.local.json").write_text(json.dumps(data))
 
-    def harvest(self, *args):
+    def harvest(self, *args, env=None):
+        """`env` replaces the extra variables: {} = none, so no GW_LOCAL_JSON (the module sets an empty list)."""
+        run_env = dict(os.environ)
+        if env is not None:
+            run_env.pop("GW_LOCAL_JSON", None)
+            run_env.update(env)
         return subprocess.run(["python3", self.script, "--state", str(self.state), *args, str(self.repo)],
-                              capture_output=True, text=True)
+                              capture_output=True, text=True, env=run_env)
 
     def test_everything_printed_carries_the_alias(self):
         self.local({"anonymize": {"Secret App": "private-project-1"}})
@@ -749,8 +770,39 @@ class Anonymized(unittest.TestCase):
         self.assertIn("'anonymize' must map non-empty names to aliases private-project-N", r.stderr)
         self.assertEqual(r.stdout, "")
 
-    def test_without_a_local_file_nothing_changes(self):
-        r = self.harvest("--json")
+    def test_without_a_list_it_fails_closed_naming_both_fixes(self):
+        r = self.harvest("--json", env={})
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertEqual(r.stdout, "")
+        self.assertIn("no local list", r.stderr)
+        self.assertIn(".claude/gw.local.json", r.stderr)
+        self.assertIn("GW_LOCAL_JSON", r.stderr)
+        self.assertNotRegex(r.stderr, r"(?i)secret")
+        r = self.harvest("--json", env={"GW_LOCAL_JSON": "  "})  # an empty variable is no list
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertIn("no local list", r.stderr)
+
+    def test_the_environment_variable_anonymizes_and_the_file_wins(self):
+        env = {"GW_LOCAL_JSON": json.dumps({"anonymize": {"Secret App": "private-project-1"}})}
+        r = self.harvest("--json", env=env)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout)[0]["repo"], "someone/private-project-1")
+        self.local({"anonymize": {"Secret App": "private-project-7"}})
+        r = self.harvest("--json", env=env)
+        self.assertEqual(json.loads(r.stdout)[0]["repo"], "someone/private-project-7")
+
+    def test_a_malformed_environment_variable_fails_closed(self):
+        r = self.harvest("--json", env={"GW_LOCAL_JSON": "{nope"})
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("$GW_LOCAL_JSON: invalid JSON", r.stderr)
+        self.assertEqual(r.stdout, "")
+
+    def test_require_names_never_prints_without_a_list(self):
+        config = json.loads((ROOT / ".claude" / "gw.json").read_text())
+        config["privateCheck"] = {"requireNames": "never"}
+        git(self.tmp, "init", "-q", str(self.wf))  # config.py reads the config of a git root
+        (self.wf / ".claude" / "gw.json").write_text(json.dumps(config))
+        r = self.harvest("--json", env={})
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(json.loads(r.stdout)[0]["repo"], "someone/secret-app")
 
