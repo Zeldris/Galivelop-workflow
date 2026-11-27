@@ -450,6 +450,7 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   [ -n "${local_sha:-}" ] || continue
   [ "$local_sha" = "$zero" ] && continue                  # deleting a ref
   if [ -f "$scripts/private-check.py" ]; then
+    pc_ref="${remote_ref#refs/heads/}"
     pc_cfg=()
     pc_commit="$(git rev-parse -q --verify "$local_sha^{commit}" 2>/dev/null)" || pc_commit=""
     [ -z "$pc_commit" ] || pc_cfg=(--rev "$pc_commit")
@@ -461,17 +462,17 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         if [ -n "$pc_c" ] && [ "$pc_c" != "$zero" ] && python3 "$config" --root "$root" --rev "$pc_c" validate >/dev/null 2>&1; then pc_cfg=(--rev "$pc_c"); break; fi
       done
     fi
-    pc_run "the name of $remote_ref" ${pc_cfg[@]+"${pc_cfg[@]}"} --text - --label "ref name" <<< "$remote_ref"
+    pc_run "the name of $remote_ref" ${pc_cfg[@]+"${pc_cfg[@]}"} --ref "$pc_ref" --text - --label "ref name" <<< "$remote_ref"
     case "$remote_ref" in refs/tags/*)
       if [ "$(git cat-file -t "$local_sha" 2>/dev/null)" = tag ]; then  # annotated: its message (the lines after the header)
         pc_msg="$(git cat-file tag "$local_sha" | sed '1,/^$/d')"
-        [ -z "$pc_msg" ] || pc_run "the message of tag $remote_ref" ${pc_cfg[@]+"${pc_cfg[@]}"} --text - --label "tag message" <<< "$pc_msg"
+        [ -z "$pc_msg" ] || pc_run "the message of tag $remote_ref" ${pc_cfg[@]+"${pc_cfg[@]}"} --ref "$pc_ref" --text - --label "tag message" <<< "$pc_msg"
       fi
       if [ -n "$pc_commit" ]; then  # the commits the tag brings that no remote has (a tag on a pushed commit brings none)
         pc_known=""; if [ "$remote_sha" != "$zero" ] && git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then pc_known="$remote_sha"; fi
         # shellcheck disable=SC2086
         pc_new="$(git rev-list --reverse "$pc_commit" --not --remotes $pc_known)" || fail "cannot list the commits of tag $remote_ref; fetch and retry: git fetch $remote"
-        [ -z "$pc_new" ] || pc_run "the commits of tag $remote_ref" "${pc_cfg[@]}" --base "$pc_known" --remote "$remote" --ref "$remote_ref" --commits - <<< "$pc_new"
+        [ -z "$pc_new" ] || pc_run "the commits of tag $remote_ref" ${pc_cfg[@]+"${pc_cfg[@]}"} --base "$pc_known" --remote "$remote" --ref "$pc_ref" --commits - <<< "$pc_new"
       fi ;;
     esac
   fi
