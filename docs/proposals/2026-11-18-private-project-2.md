@@ -80,4 +80,4 @@ Recogida de apertura de la `0.9` (2026-11-18).
 ## Nothing new
 
 - `private-project-4`: sin commits desde la última recogida.
-- `labs-log-detective`: sin commits desde la última recogida.
+- `private-project-7`: sin commits desde la última recogida.

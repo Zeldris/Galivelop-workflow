@@ -2,7 +2,7 @@
 
 Pedido por el usuario el 2026-11-12 para una presentación del flujo (lunes 2026-11-16). La sesión en la nube que abra
 esta rama lo hace **antes del siguiente paso de la bitácora** y luego sigue con él. En otros repos (World-Maker-Fantasy,
-galivelop-image-generator), el usuario pega el bloque en una sesión de allí y el JSON se devuelve en el chat, sin
+private-project-6), el usuario pega el bloque en una sesión de allí y el JSON se devuelve en el chat, sin
 commit.
 
 ```text

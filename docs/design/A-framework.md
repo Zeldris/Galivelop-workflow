@@ -23,7 +23,7 @@ la `1.0.0`. Encontrado al preparar este bloque:
 
 - `AGENTS.md` lleva el correo personal del usuario (la orden `git config user.email …`).
 - `docs/proposals/` tiene diez recogidas con el nombre y el contenido de proyectos del usuario (Tarkor, portal,
-  private-project-1…), y dos de ellos eran privados el 2026-10-27 (`galivelop-image-generator`, `private-project-3`).
+  private-project-1…), y dos de ellos eran privados el 2026-10-27 (`private-project-6`, `private-project-3`).
 - La limpieza completa de la documentación (sin «basura», ajustada a lo que hay) es del bloque E; aquí solo se
   decide el criterio.
 

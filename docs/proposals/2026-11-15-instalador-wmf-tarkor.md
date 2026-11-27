@@ -36,8 +36,8 @@ apertura de la `0.8` (H22).
 
 ## Nothing new
 
-- galivelop-image-generator (`6e73f1ec` → `46248251`, 17 commits): su retro `retro-2026-11-15-l7.md` dice «Nada: P3
+- private-project-6 (`6e73f1ec` → `46248251`, 17 commits): su retro `retro-2026-11-15-l7.md` dice «Nada: P3
   ya estaba en el flujo».
 - portal-galivelop (`45823a62` → `c926bcc9`, 1 commit): revisión semanal de los proyectos, sin ideas para el flujo.
-- labs-log-detective, private-project-1, private-project-2, private-project-3, private-project-4 y
+- private-project-7, private-project-1, private-project-2, private-project-3, private-project-4 y
   world-maker-fantasy: sin commits desde la recogida de cierre de la `0.7`.

@@ -6,7 +6,7 @@ De `d7d8def` a `aeca90d` (`scripts/harvest.py`). 10 commits; skills, scripts y `
 ## P1. Clon del flujo en la disposición de `add_repo`
 
 - **Source:** `retro-2026-11-22-gw-update-0-8-2.md` P3 @ `1580d1f` (script + skill)
-- **What changes:** igual que `2026-11-24-galivelop-image-generator.md` P1: `doctor.py`, `review-scope.py` y
+- **What changes:** igual que `2026-11-24-private-project-6.md` P1: `doctor.py`, `review-scope.py` y
   `gw-update` prueban `/home/user/<owner>/<repo>` y `/home/user/<repo>` en minúsculas antes de avisar (observado:
   `/home/user/zeldris/galivelop-workflow`), con un ayudante común en `config.py` y lista configurable.
 - **Version bump:** patch
@@ -14,7 +14,7 @@ De `d7d8def` a `aeca90d` (`scripts/harvest.py`). 10 commits; skills, scripts y `
 
 ## Joined to another proposal
 
-- Retro P2 (el ledger fuera del árbol): con `2026-11-22-galivelop-image-generator.md` P1; un caso más de la nube.
+- Retro P2 (el ledger fuera del árbol): con `2026-11-22-private-project-6.md` P1; un caso más de la nube.
 
 ## Stays in the project
 

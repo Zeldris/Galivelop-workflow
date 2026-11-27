@@ -1,4 +1,4 @@
-# Harvest galivelop-image-generator — 2026-11-03
+# Harvest private-project-6 — 2026-11-03
 
 De `never` a `e11f87a2` (`scripts/harvest.py`). Primera recogida; el proyecto usa la v0.4.0.
 

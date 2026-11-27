@@ -78,4 +78,4 @@ local; sin skills ni scripts del flujo cambiados. Lo nuevo sale de 5 retros. Rec
 
 ## Sin novedades
 
-- `private-project-2` (`70b0396a`) y `labs-log-detective` (`bc501f91`): nada desde la última recogida.
+- `private-project-2` (`70b0396a`) y `private-project-7` (`bc501f91`): nada desde la última recogida.

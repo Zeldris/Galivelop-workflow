@@ -1,10 +1,10 @@
-# Harvest galivelop-image-generator — 2026-11-05
+# Harvest private-project-6 — 2026-11-05
 
 De `849b3012` a `71a69a34` (`scripts/harvest.py`), recogida de inicio de la `0.6`. 126 commits; sin skills del flujo
 cambiadas ni skills nuevas (`gw-orchestrate-dealer`, `gw-update` y los scripts de `.claude/gw/scripts/` son copias
 de la `0.5.0`).
 
-Sin nada nuevo desde la última recogida: `instalador-wmf-tarkor` (`a73f8812`), `labs-log-detective` (`bc501f91`),
+Sin nada nuevo desde la última recogida: `instalador-wmf-tarkor` (`a73f8812`), `private-project-7` (`bc501f91`),
 `portal-galivelop` (`dd327106`), `private-project-2` (`70b0396a`), `private-project-3` (`195bb867`) y
 `world-maker-fantasy` (`d35bfaa1`).
 
@@ -75,7 +75,7 @@ Sin nada nuevo desde la última recogida: `instalador-wmf-tarkor` (`a73f8812`), 
 
 - `gimg/doctor.py`: el doctor del motor de imágenes; solo comparte nombre con el del flujo.
 - Retros de 2026-10-25 (diseño, f0, f1), 2026-10-27-f2-0 y 2026-11-04-f2-motor: ya recogidas
-  (`2026-11-03-galivelop-image-generator.md`, `2026-11-04-galivelop-image-generator.md`; D32, D37, B14, B17); solo
+  (`2026-11-03-private-project-6.md`, `2026-11-04-private-project-6.md`; D32, D37, B14, B17); solo
   cambiaron de ruta.
 - De `retro-2026-11-05-f4.md`: el test inestable de cancelar y Chrome/tmpfs/`Browser.close`.
 - De `retro-2026-11-05-plan-piezas.md`: paridad de los CHANGELOG, opciones de `gimg` en la documentación y la entrada

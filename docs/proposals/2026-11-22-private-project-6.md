@@ -1,4 +1,4 @@
-# Harvest galivelop-image-generator — 2026-11-22
+# Harvest private-project-6 — 2026-11-22
 
 De `61ce5096` a `f025f40` (`scripts/harvest.py`). Sin skills ni scripts del flujo cambiados (copias de `da1a462`,
 `0.8.1`); lo nuevo sale de `docs/records/retro-2026-11-19-gw-0.8.1.md`. Recogida de cierre de la `0.9` y del parche

@@ -10,7 +10,7 @@ scripts cambiados. Lo nuevo sale de una retro de su rama de móvil (R1-R4).
   sigue lo que pide el gancho `Stop` de la nube sobre autor y firma): si lo único sucio es el ledger, no se commitea;
   lo lleva el `pre-commit` del siguiente commit de trabajo (B36).
 - **Why it is general:** 3 y 7 commits de ruido «métricas de la sesión» en dos tareas; lo mismo en
-  instalador-wmf-tarkor. Es el arreglo inmediato; el de fondo es `2026-11-22-galivelop-image-generator.md` P1.
+  instalador-wmf-tarkor. Es el arreglo inmediato; el de fondo es `2026-11-22-private-project-6.md` P1.
 - **Version bump:** patch
 - **Status:** aprobada (2026-11-22) → D148
 

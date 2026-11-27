@@ -51,7 +51,7 @@ del proyecto). Lo nuevo sale de siete archivos `docs/records/retro-*`.
 ## P6. `gw-update`: parar si la rama va por detrás de la protegida
 
 - **Source:** `retro-2026-11-24-gw-update-0.9.0.md` P1 @ `618a52c` (skill); es el mismo texto que
-  `2026-11-24-galivelop-image-generator.md` P4. `workflowClone` hermano (P5) y `other-repo-read.py` (P3): con P1 y P2 de ese archivo.
+  `2026-11-24-private-project-6.md` P4. `workflowClone` hermano (P5) y `other-repo-read.py` (P3): con P1 y P2 de ese archivo.
 - **Version bump:** patch
 - **Status:** aprobada (2026-11-24) → B51 (`0.9.1`)
 

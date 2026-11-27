@@ -37,7 +37,7 @@ De `f60399b3` a `50535c7` (`scripts/harvest.py`). Skills y scripts iguales a `da
 ## Joined to another proposal
 
 - La línea de `AGENTS.md` sobre el gancho `Stop` y el ledger: con `2026-11-22-private-project-1.md` P1; el ledger fuera
-  del árbol, con `2026-11-22-galivelop-image-generator.md` P1.
+  del árbol, con `2026-11-22-private-project-6.md` P1.
 
 ## Stays in the project
 

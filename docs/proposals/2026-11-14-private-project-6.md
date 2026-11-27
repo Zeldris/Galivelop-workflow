@@ -1,4 +1,4 @@
-# Harvest galivelop-image-generator — 2026-11-14
+# Harvest private-project-6 — 2026-11-14
 
 De `529468bc` a `1c178d30` (`scripts/harvest.py`). 41 commits; sin skills ni scripts del flujo cambiados. Lo nuevo
 sale de 2 retros (`docs/records/retro-2026-11-13-leves-y-negative.md`, `docs/records/retro-2026-11-14-segunda-ida-a-main.md`).

@@ -1,4 +1,4 @@
-# Harvest galivelop-image-generator — 2026-11-11
+# Harvest private-project-6 — 2026-11-11
 
 De `71a69a34` a `db9c3645` (`scripts/harvest.py`). 129 commits de marca, portal, motor y worker; ninguno toca skills,
 scripts ni `.claude/` del flujo. Lo nuevo sale de 3 retros. Recogida de cierre de la `0.6` (H18).

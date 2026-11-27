@@ -4,7 +4,7 @@ De `never` a `70b0396a` (`scripts/recoger.py`, 24 commits desde `7822eec`; el pr
 propios en skills ni scripts del flujo: todo son copias antiguas). Primera recogida de la `1.0.0`. Las ideas salen de
 `docs/registros/retro-2026-10-25-aplicar-flujo.md` @ `f92d90a` y `docs/registros/retro-2026-10-25-f0.md` @ `6e2e8e5`.
 
-`galivelop-image-generator` y `private-project-3` no se recogieron: son privados y la sesión no pudo añadirlos
+`private-project-6` y `private-project-3` no se recogieron: son privados y la sesión no pudo añadirlos
 (permiso denegado). Quedan para una sesión que los tenga.
 
 Política de versiones (plan §7): lo que es corrección va a un parche `0.4.x`; lo nuevo, a la `1.0.0`.
@@ -46,7 +46,7 @@ Política de versiones (plan §7): lo que es corrección va a un parche `0.4.x`;
 - **Source:** `docs/registros/retro-2026-10-25-f0.md` @ `6e2e8e5`
 - **What changes:** `bash -n a b` solo comprueba `a` (los demás son argumentos). `doctor.py` da WARN si una orden de
   `check` es `bash -n` con más de un archivo, con la orden que lo arregla (una por archivo). El `check` de este
-  proyecto no cae en el caso; la retro dice que `galivelop-image-generator` sí.
+  proyecto no cae en el caso; la retro dice que `private-project-6` sí.
 - **Why it is general:** un check que parece cubrir varios scripts y solo mira uno da verde falso.
 - **Version bump:** patch → `0.4.3` (aviso nuevo de un fallo silencioso)
 - **Status:** aprobada (2026-10-27)
