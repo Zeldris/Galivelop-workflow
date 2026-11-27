@@ -8,12 +8,14 @@
   python3 private-check.py --text -       # the text on stdin, line by line, reported as `<label>:<line>` (--label NAME,
                                           # default `text`): the pre-push checks a tag's message and the pushed ref names
   python3 private-check.py --all          # every tracked file as it is in the working tree (paths and content)
-  python3 private-check.py --names-required --ref BRANCH  # only whether the push to BRANCH needs the local list and
+  python3 private-check.py --names-required --dest BRANCH  # only whether the push to BRANCH needs the local list and
                                           # it is missing (exit 1, with both fixes); the pre-push runs it on the
                                           # destination of every pushed ref, even one that brings no new commit
   options: --no-names (skip the private names), --root PATH, --rev REV (read .claude/gw.json as commit REV has it),
            --base SHA / --remote NAME / --ref BRANCH (the pre-push passes them: the remote tip already pushed, the
-           remote and the branch pushed, so a failure names the exact command that fixes only the unpushed commits)
+           remote and the branch pushed, so a failure names the exact command that fixes only the unpushed commits),
+           --dest BRANCH (the branch the push goes to: what privateCheck.requireNames compares with protectedBranch;
+           default --ref, so a manual run with --ref main is judged as a push to main)
 
 What a commit adds: its added lines (against its parent; a merge, only the lines that are in none of its parents),
 the paths of the files it adds (renames included: --no-renames) and its message. So a value added in one commit and
@@ -285,17 +287,22 @@ def names_demanded(cfg, settings, ref):
     return mode == "always" or (mode == "protected" and bool(ref) and ref == cfg["protectedBranch"])
 
 
+def destination(args):
+    """The branch the push goes to: --dest, else --ref (a `git push origin x:main` pushes the local x to main)."""
+    return args.dest if args.dest is not None else args.ref
+
+
 def no_list_message(settings):
     return (f"no local list of private names ({config.LOCAL_REL.as_posix()} absent and "
             f"${settings['localEnv']} unset or empty), and privateCheck.requireNames is \"{settings['requireNames']}\"; "
             f"create the file or set the environment variable (cloud: in the environment settings) to "
-            f'{{"privateNames": ["..."]}}, or push with --no-names only if the names were checked elsewhere')
+            f'{{"privateNames": ["..."]}}, then push again')
 
 
 def names_required(root, cfg, settings, args):
     """--names-required: 1 when the push to --ref needs the list and there is none, 0 otherwise (a malformed list
     still raises: exit 2). Asked apart from the scans so a push that brings no new commit is not let through."""
-    if args.no_names or not names_demanded(cfg, settings, args.ref):
+    if args.no_names or not names_demanded(cfg, settings, destination(args)):
         return 0
     if config.load_local(root, settings["localEnv"]) is not None:
         return 0
@@ -311,16 +318,17 @@ def main(argv=None):
     what.add_argument("--all", action="store_true", help="scan every tracked file of the working tree")
     what.add_argument("--text", metavar="FILE", help="scan the text of FILE (- for stdin), line by line, with the same rules")
     what.add_argument("--names-required", action="store_true",
-                      help="scan nothing: exit 1 if privateCheck.requireNames asks for the local list for --ref (the "
-                           "destination of the push) and there is none, else 0")
+                      help="scan nothing: exit 1 if privateCheck.requireNames asks for the local list for --dest "
+                           "(else --ref) and there is none, else 0")
     parser.add_argument("--label", default="text", help="what --text is called in the findings (default: text)")
     parser.add_argument("--no-names", action="store_true", help="skip the private names of .claude/gw.local.json")
     parser.add_argument("--root", help="project path (default: as config.py finds it)")
     parser.add_argument("--rev", help="read .claude/gw.json as this commit has it (the pushed one)")
     parser.add_argument("--base", help="sha of the remote tip already pushed (names the fix command on failure)")
     parser.add_argument("--remote", help="remote name; its protected branch is the fallback base of the fix command")
-    parser.add_argument("--ref", help="branch being pushed (named in the fix command; with --names-required, the "
-                                      "destination branch, compared with protectedBranch)")
+    parser.add_argument("--ref", help="branch being pushed (named in the fix command)")
+    parser.add_argument("--dest", help="branch the push goes to, compared with protectedBranch for "
+                                       "privateCheck.requireNames (default: --ref)")
     args = parser.parse_args(argv)
     try:
         cfg = config.load(args.root, args.rev)
@@ -335,7 +343,7 @@ def main(argv=None):
         if not args.no_names:
             local = config.load_local(root, settings["localEnv"])
             if local is None:
-                if names_demanded(cfg, settings, args.ref):
+                if names_demanded(cfg, settings, destination(args)):
                     raise CheckError(no_list_message(settings))
                 print(f"{PROG}: no {config.LOCAL_REL.as_posix()}, so private names are not checked "
                       f"(nor is ${settings['localEnv']} set); list them there or in it: "

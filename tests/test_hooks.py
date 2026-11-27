@@ -1666,6 +1666,20 @@ class PrePushPrivate(Base):
         self.assertEqual(code, 0, out)
         code, out = p.push("origin", "--delete", "main")
         self.assertNotIn("no local list of private names", out)
+        self.assertIn("pre-push: all green.", out)  # the hook lets a deletion through: it publishes nothing
+        self.assertNotEqual(code, 0, out)  # the remote refuses to delete its current branch
+        self.assertIn("refusing to delete the current branch", out)
+
+    def test_main_pushed_to_another_branch_is_judged_by_where_it_goes(self):
+        self.names_on_main()
+        p = self.p
+        p.git("checkout", "-q", "main")
+        p.write("docs/b.md", "more notes\n")
+        p.commit("more")  # new commits, so the commit scan runs, with --ref main (the local branch)
+        code, out = p.push("origin", "main:backup")
+        self.assertEqual(code, 0, out)
+        self.assertIn("no .claude/gw.local.json, so private names are not checked", out)
+        self.assertNotIn("no local list of private names", out)
 
     def test_require_names_never_lets_main_through_without_a_list(self):
         self.names_on_main({"requireNames": "never"})

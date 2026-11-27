@@ -320,6 +320,20 @@ class Names(Repo):
         self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"requireNames": "never"})))
         self.assertEqual(self.check("--names-required", "--ref", "main"), (0, ""))
 
+    def test_dest_not_ref_decides_require_names(self):
+        self.write("docs/a.md", "x\n")
+        self.commit("work")
+        rng = f"{self.base}..HEAD"
+        code, out = self.check("--range", rng, "--ref", "main", "--dest", "backup")
+        self.assertEqual(code, 0, out)
+        self.assertIn("private names are not checked", out)
+        for args in (("--range", rng), ("--names-required",)):
+            code, out = self.check(*args, "--ref", "feature", "--dest", "main")
+            self.assertEqual(code, 2 if "--range" in args else 1, out)
+            self.assertIn('requireNames is "protected"', out)
+            self.assertIn("then push again", out)
+            self.assertNotIn("--no-names", out)
+
     def test_config_local_command(self):
         cli = ["python3", str(CONFIG), "--root", str(self.work), "local"]
         r = subprocess.run(cli, capture_output=True, text=True, env=self.env)
