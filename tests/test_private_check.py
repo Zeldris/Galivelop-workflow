@@ -28,7 +28,7 @@ class Repo(unittest.TestCase):
         gitconfig = self.tmp / "gitconfig"
         gitconfig.write_text("[user]\n\tname = Test\n\temail = test@example.com\n[commit]\n\tgpgsign = false\n"
                              "[init]\n\tdefaultBranch = main\n")
-        self.env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+        self.env = {k: v for k, v in os.environ.items() if not k.startswith("GIT_") and k != "GW_LOCAL_JSON"}
         self.env.update(GIT_CONFIG_GLOBAL=str(gitconfig), GIT_CONFIG_NOSYSTEM="1")
         self.work = self.tmp / "work"
         self.git("init", "-q", str(self.work), cwd=self.tmp)
