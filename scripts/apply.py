@@ -127,6 +127,7 @@ import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.dont_write_bytecode = True  # no __pycache__ next to the scripts
@@ -195,6 +196,57 @@ SENSITIVE = (".claude/settings.json", ".claude/gw/scripts/", ".githooks/")
 
 class ApplyError(Exception):
     pass
+
+
+def safe_target(root, rel, make_parent=False, link_leaf=False):
+    """B1 (E28): root / rel for a write, chmod, move or delete, refused (ApplyError) when rel itself (unless link_leaf:
+    renaming a link moves only the link) or a folder between root and it is a symbolic link, or when its folder's
+    real path is outside root: a cloned repo may track `.githooks/pre-commit` or `.claude/gw` as a link to ~/.bashrc.
+    make_parent creates the missing folders, after checking the existing ones."""
+    root, rel = Path(root), Path(rel)
+    if rel.is_absolute() or ".." in rel.parts:
+        raise ApplyError(f"apply: {rel} is not a path inside {root}, so it is not written; report it, the plan "
+                         f"should never hold it: {Path(__file__).resolve()}")
+    cur = root
+    for i, part in enumerate(rel.parts):
+        cur = cur / part
+        if cur.is_symlink() and not (link_leaf and i == len(rel.parts) - 1):
+            raise ApplyError(f"apply: {cur} is a symbolic link, so apply.py does not write, change or delete through "
+                             f"it (it may point outside {root}); remove the link (rm {cur}) and rerun: python3 "
+                             f"{Path(__file__).resolve()} {root}")
+    dest = root / rel
+    if make_parent:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.parent.exists():
+        real, real_root = dest.parent.resolve(), root.resolve()
+        if real != real_root and real_root not in real.parents:
+            raise ApplyError(f"apply: the folder of {dest} is really {real}, outside {real_root}, so it is not "
+                             f"written; make it a plain folder of the project and rerun: python3 "
+                             f"{Path(__file__).resolve()} {root}")
+    return dest
+
+
+def write_file(root, rel, data):
+    """B1 (E28): write data to root / rel through safe_target, via a temporary file in the same folder and
+    os.replace (never through a link; an existing file keeps its permissions)."""
+    dest = safe_target(root, rel, make_parent=True)
+    if dest.exists():
+        mode = stat.S_IMODE(dest.stat().st_mode)
+    else:
+        umask = os.umask(0)
+        os.umask(umask)
+        mode = 0o666 & ~umask
+    fd, tmp = tempfile.mkstemp(dir=dest.parent, prefix=f".{dest.name}.", suffix=".gw-tmp")
+    try:
+        with os.fdopen(fd, "wb") as out:
+            out.write(data)
+        os.chmod(tmp, mode)
+        os.replace(tmp, dest)
+    except BaseException:
+        if os.path.lexists(tmp):
+            os.unlink(tmp)
+        raise
+    return dest
 
 
 def workflow_version():
@@ -725,10 +777,14 @@ def detect_stacks(root, cfg):
     return [s for s, marks in STACK_MARKERS.items() if any((root / m).is_file() for m in marks)]
 
 
+GITIGNORE_COMMON = "common"  # E28 (C4): templates/gitignore/common.gitignore, first in every block (secrets, local settings)
+
+
 def gitignore_block(stacks):
-    """The marked block, with a final newline: begin line, one `# <stack>` heading and fragment per stack, end line."""
+    """The marked block, with a final newline: begin line, the common fragment, then one `# <stack>` heading and
+    fragment per stack, end line."""
     out = [GITIGNORE_BEGIN]
-    for stack in stacks:
+    for stack in [GITIGNORE_COMMON] + list(stacks):
         src = WORKFLOW / "templates" / "gitignore" / f"{stack}.gitignore"
         try:
             text = src.read_text(encoding="utf-8")
@@ -765,7 +821,7 @@ def plan_gitignore(plan, init=False):
     current = path.read_bytes() if path.is_file() else b""
     start, notes = current, []
     stacks = detect_stacks(plan.root, plan.cfg) if init else []
-    if stacks:
+    if init:  # E28 (C4): the common fragment (.env, settings.local.json) is written even with no stack detected
         try:
             try:
                 existing = current.decode("utf-8")
@@ -778,7 +834,7 @@ def plan_gitignore(plan, init=False):
             raise ApplyError(str(exc).replace("{root}", str(plan.root)))
         if text.encode() != current:
             current = text.encode()
-            notes.append(f".gitignore block for {', '.join(stacks)}")
+            notes.append(f".gitignore block for {', '.join([GITIGNORE_COMMON] + stacks)}")
     lines = {line.strip() for line in current.decode("utf-8", "replace").splitlines()}
     if not lines & LOCAL_IGNORE_LINES:
         sep = b"" if not current or current.endswith(b"\n") else b"\n"
@@ -1900,7 +1956,8 @@ def report(plan):
 
 def move(root, old, new):
     """old -> new under root: git mv when git tracks something there (a folder moves whole, tracked or not)."""
-    (root / new).parent.mkdir(parents=True, exist_ok=True)
+    safe_target(root, old, link_leaf=True)
+    safe_target(root, new, make_parent=True)
     if is_tracked(root, old):
         code, out = git(root, "mv", str(old), str(new))
         if code != 0:
@@ -1915,22 +1972,25 @@ def apply(plan):
         print("apply: note: Claude Code's auto mode may ask for permission to edit .claude/settings.json, "
               ".claude/gw/scripts/ and .githooks/; approve it, or run this script yourself: "
               f"python3 {Path(__file__).resolve()} {plan.root}")
+    for kind, rel, old, _exec, _detail in plan.actions:  # B1 (E28): one link refuses the whole plan, before any write
+        if kind == "move":
+            safe_target(plan.root, old, link_leaf=True)
+        safe_target(plan.root, rel)
     for kind, rel, old, _exec, _detail in plan.actions:
         if kind == "move":
             move(plan.root, old, rel)
     for kind, rel, data, want_exec, _detail in plan.actions:
-        dest = plan.root / rel
         if kind == "move":
             continue
+        dest = safe_target(plan.root, rel)  # B1 (E28): never through a symbolic link
         if kind == "remove":
-            if dest.is_dir() and not dest.is_symlink():
+            if dest.is_dir():
                 shutil.rmtree(dest)
             else:
                 dest.unlink()
             continue
         if kind != "chmod":
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_bytes(data)
+            write_file(plan.root, rel, data)
         if want_exec:
             dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     if plan.set_hooks_path:
@@ -2080,8 +2140,11 @@ def main(argv=None):
                 cfg["_root"] = root
                 cfg["_schemaFrom"] = config.SCHEMA_VERSION
             else:
-                (root / ".claude").mkdir(parents=True, exist_ok=True)
-                (root / config.CONFIG_REL).write_text(text, encoding="utf-8")
+                try:
+                    write_file(root, config.CONFIG_REL, text.encode("utf-8"))
+                except ApplyError as exc:
+                    print(exc, file=sys.stderr)
+                    return 2
                 print(f"apply: wrote {root / config.CONFIG_REL}")
     if cfg is None and not (root / config.CONFIG_REL).is_file():
         print(f"apply: {root / config.CONFIG_REL} not found, so the workflow cannot be applied; create it "

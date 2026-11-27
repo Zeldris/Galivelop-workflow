@@ -1,0 +1,7 @@
+# galivelop-workflow v0.9.1 (fragment for apply.py --init, written for every stack; this line is not copied)
+.env
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+.claude/settings.local.json
