@@ -18,12 +18,14 @@ recursively, wrappers such as `sudo`/`env`/`xargs` looked through):
   git checkout -- . | git checkout . | git restore . (also `:/`, `*`)                       overwrites the whole tree
   git checkout -f | git switch -f | --discard-changes                                       drops local changes
       (`git restore --staged .` leaves the files alone and is not asked about)
-  A long option counts by any prefix git would take for it (`--forc`, `--delet`, `--mirro`, `git reset --ha`; an
-  ambiguous one such as `--f` asks too), and the words after `--` of `git push` are still refspecs (`git push -- origin
-  +main`). A command substitution, `$(...)` or backticks (not `$((...))`, not inside single quotes), is read twice: its
-  body as a command of its own, and its output as unknown words; it asks ("cannot read substituted commands") when that
-  output is the command word of a line that names `git`, `gh` or `rm`, a word of an `rm`, or a word of a git call that
-  careful.py checks (push, reset, branch, clean, checkout, switch, restore) or whose subcommand it cannot tell.
+  A long option counts by any prefix git would take for it among the subcommand's options (`--forc`, `--delet`,
+  `--mirro`, `git reset --ha`; one matching several asks if any is dangerous; `git clean -f --dry` is a dry run), as
+  `rm --recur` does for rm; the words after `--` of `git push` are still refspecs (`git push -- origin +main`). A
+  command substitution, `$(...)`, backticks or `<(...)`/`>(...)` (not `$((...))`, not inside `'...'` or `$'...'`), is
+  read twice: its body as a command of its own, and its output as unknown words; it asks ("cannot read substituted
+  commands") when that output is the command word of a line that names `git`, `gh` or `rm`, a word of an `rm`, `eval` or
+  `bash -c`, the subcommand or a `-c alias.*` of git, or a word of a git call that careful.py checks (push, reset,
+  branch, clean, checkout, switch, restore); not the value of `git -C`. Substitutions nested more than 3 deep ask.
 
 Inside a linked git worktree under a prefix of `modes.carefulWorktrees` (default `.claude/worktrees/`, relative to the main
 repository's root; an agent's worktree is disposable and a background subagent has nobody to ask; an empty list = no
@@ -73,6 +75,31 @@ NAMES_CMD = re.compile(r"(?<![\w.-])(?:git|gh|rm)(?![\w-])")
 GIT_CHECKED = {"push", "reset", "branch", "clean", "checkout", "switch", "restore"}
 DANGEROUS_LONGS = {"--force", "--force-with-lease", "--force-if-includes", "--mirror", "--prune", "--delete", "--hard",
                    "--discard-changes"}
+GIT_LONGS = {  # the long options of each checked subcommand (git 2.4x), to expand abbreviations
+    "push": {"--all", "--branches", "--prune", "--mirror", "--dry-run", "--porcelain", "--delete", "--tags",
+             "--follow-tags", "--signed", "--no-signed", "--atomic", "--no-atomic", "--push-option", "--receive-pack",
+             "--exec", "--force-with-lease", "--no-force-with-lease", "--force", "--force-if-includes",
+             "--no-force-if-includes", "--repo", "--set-upstream", "--thin", "--no-thin", "--quiet", "--verbose",
+             "--progress", "--recurse-submodules", "--no-recurse-submodules", "--verify", "--no-verify", "--ipv4",
+             "--ipv6"},
+    "reset": {"--mixed", "--soft", "--hard", "--merge", "--keep", "--quiet", "--no-quiet", "--refresh", "--no-refresh",
+              "--recurse-submodules", "--no-recurse-submodules", "--pathspec-from-file", "--pathspec-file-nul",
+              "--intent-to-add", "--patch", "--unified", "--inter-hunk-context"},
+    "branch": {"--delete", "--force", "--move", "--copy", "--list", "--verbose", "--quiet", "--track", "--no-track",
+               "--set-upstream-to", "--unset-upstream", "--color", "--no-color", "--remotes", "--all", "--abbrev",
+               "--no-abbrev", "--contains", "--no-contains", "--merged", "--no-merged", "--column", "--no-column",
+               "--sort", "--points-at", "--format", "--ignore-case", "--omit-empty", "--create-reflog",
+               "--edit-description", "--show-current", "--recurse-submodules"},
+    "clean": {"--force", "--dry-run", "--quiet", "--interactive", "--exclude"},
+    "checkout": {"--quiet", "--progress", "--no-progress", "--force", "--ours", "--theirs", "--track", "--no-track",
+                 "--guess", "--no-guess", "--detach", "--orphan", "--ignore-skip-worktree-bits", "--merge", "--conflict",
+                 "--patch", "--ignore-other-worktrees", "--overwrite-ignore", "--no-overwrite-ignore",
+                 "--recurse-submodules", "--no-recurse-submodules", "--overlay", "--no-overlay", "--pathspec-from-file",
+                 "--pathspec-file-nul"},
+    "switch": {"--create", "--force-create", "--detach", "--guess", "--no-guess", "--force", "--discard-changes",
+               "--merge", "--conflict", "--quiet", "--progress", "--no-progress", "--track", "--no-track", "--orphan",
+               "--ignore-other-worktrees", "--recurse-submodules", "--no-recurse-submodules"},
+}
 
 
 def strip_heredocs(command):
@@ -125,18 +152,58 @@ def strip_heredocs(command):
     return "".join(out)
 
 
+def closing_paren(command, j):
+    r"""(index after the `)` that closes the `(` before `command[j]`, depth left: 0 when it closed). Quotes inside count
+    (`"\")"`, `$'\''`), so a `)` in them does not close it."""
+    depth, q, n = 1, None, len(command)
+    while j < n and depth:
+        d = command[j]
+        if q == "'":
+            q = None if d == "'" else q
+        elif q in ("$'", '"'):
+            if d == "\\":
+                j += 1
+            elif d == q[-1]:
+                q = None
+        elif d == "\\":
+            j += 1
+        elif d == "$" and command.startswith("$'", j):
+            q = "$'"
+            j += 1
+        elif d in "'\"":
+            q = d
+        elif d == "(":
+            depth += 1
+        elif d == ")":
+            depth -= 1
+        j += 1
+    return j, depth
+
+
 def substitutions(command):
-    """(`command` with each outermost `$(...)` or backtick substitution replaced by SUBST, [their bodies]). Single quotes
-    hide them (they are text there); double quotes do not. `$((` is arithmetic and is left alone; an unclosed one takes
-    the rest of the text as its body (it can only make it ask more)."""
+    r"""(`command` with each outermost substitution replaced by SUBST, [their bodies]): `$(...)`, backticks (their body
+    without the `\``, `\\`, `\$` escapes) and, outside double quotes, the process substitutions `<(...)` and `>(...)`.
+    Single quotes and `$'...'` hide them (they are text there); double quotes do not. `$((` is arithmetic and is left
+    alone; an unclosed one takes the rest of the text as its body (it can only make it ask more)."""
     out, bodies, quote, i, n = [], [], None, 0, len(command)
     while i < n:
         c = command[i]
         if quote == "'":
             out.append(c)
             quote = None if c == "'" else quote
+        elif quote == "$'":  # ANSI-C quoting: `\'` does not close it
+            out.append(c)
+            if c == "\\" and i + 1 < n:
+                out.append(command[i + 1])
+                i += 1
+            elif c == "'":
+                quote = None
         elif c == "\\" and i + 1 < n:
             out.append(command[i:i + 2])
+            i += 1
+        elif quote is None and command.startswith("$'", i):
+            quote = "$'"
+            out.append("$'")
             i += 1
         elif c == "'" and quote is None:
             quote = "'"
@@ -144,21 +211,9 @@ def substitutions(command):
         elif c == '"':
             quote = None if quote == '"' else '"'
             out.append(c)
-        elif c == "$" and command.startswith("$(", i) and not command.startswith("$((", i):
-            depth, j, q = 1, i + 2, None
-            while j < n and depth:
-                d = command[j]
-                if q:
-                    q = None if d == q else q
-                elif d == "\\":
-                    j += 1
-                elif d in "'\"":
-                    q = d
-                elif d == "(":
-                    depth += 1
-                elif d == ")":
-                    depth -= 1
-                j += 1
+        elif (command.startswith("$(", i) and not command.startswith("$((", i)) \
+                or (quote is None and c in "<>" and command.startswith("(", i + 1)):
+            j, depth = closing_paren(command, i + 2)
             bodies.append(command[i + 2:j - 1] if not depth else command[i + 2:])
             out.append(SUBST)
             i = j
@@ -167,7 +222,7 @@ def substitutions(command):
             j = i + 1
             while j < n and command[j] != "`":
                 j += 2 if command[j] == "\\" else 1
-            bodies.append(command[i + 1:j])
+            bodies.append(re.sub(r"\\([`\\$])", r"\1", command[i + 1:j]))
             out.append(SUBST)
             i = j + 1
             continue
@@ -177,9 +232,25 @@ def substitutions(command):
     return "".join(out), bodies
 
 
-def has_long(longs, name):
-    """True when one of `longs` is `name` or a prefix of it git would take as an abbreviation (`--forc`, `--ha`)."""
-    return any(len(w) > 2 and name.startswith(w) for w in longs)
+def expand_longs(sub, longs):
+    """`longs` (the `--x` words of a `git <sub>` call, without `=value`) plus the full names their abbreviations stand
+    for: git takes any prefix of a long option of the subcommand (`--forc` is `--force`). A prefix of several options
+    adds all of them (git refuses it as ambiguous; asking costs nothing), except the ones that only make it safer
+    (`--dry-run`), which count when they are the only match. A word that is no known option of `sub` adds every
+    dangerous name it is a prefix of (the lists may miss one: fail closed)."""
+    known = GIT_LONGS.get(sub, set())
+    out = list(longs)
+    for w in longs:
+        if w in known or len(w) < 3:
+            continue
+        cands = [o for o in known if o.startswith(w)]
+        if not cands:
+            out += [o for o in DANGEROUS_LONGS if o.startswith(w)]
+        elif len(cands) == 1:
+            out += cands
+        else:
+            out += [o for o in cands if o in DANGEROUS_LONGS]
+    return out
 
 
 def unread_substitution(cmd, seg, i, args, line):
@@ -193,9 +264,11 @@ def unread_substitution(cmd, seg, i, args, line):
         return "it runs the output of a command substitution as commands" if NAMES_CMD.search(line) else None
     if cmd == "rm":
         return "an `rm` with a command substitution among its words"
-    if cmd == "git":
+    if cmd == "git":  # not in the value of `-C`/`--git-dir`/... (`git -C "$(git rev-parse ...)" status`)
         k = guard.git_subcommand(args)
-        if k is None or any(SUBST in w for w in args[:k + 1]) or args[k] in GIT_CHECKED:
+        aliases = any(args[m - 1] == "-c" and SUBST in w and (w.startswith(("alias.", SUBST)))
+                      for m, w in enumerate(args[:k] if k is not None else args) if m)
+        if k is None or aliases or SUBST in args[k] or (args[k] in GIT_CHECKED and any(SUBST in w for w in args[k:])):
             return "a git call with a command substitution among its words"
     return None
 
@@ -220,7 +293,7 @@ def rm_reason(args, prefixes):
             targets.append(w)
         elif w == "--":
             dd = True
-        elif w == "--recursive" or (not w.startswith("--") and re.search(r"[rR]", w)):
+        elif (len(w) > 2 and "--recursive".startswith(w)) or (not w.startswith("--") and re.search(r"[rR]", w)):
             recursive = True
     if not recursive:
         return None
@@ -270,9 +343,7 @@ def git_reason(args, k, base, cfg):
     after_dd = rest[rest.index("--") + 1:] if "--" in rest else []
     flags = "".join(w[1:] for w in before_dd if re.fullmatch(r"-[A-Za-z]+", w))
     longs = [w.split("=", 1)[0] for w in before_dd if w.startswith("--")]
-    for name in DANGEROUS_LONGS:  # git takes any unambiguous prefix: `--forc` is `--force`
-        if has_long(longs, name):
-            longs.append(name)
+    longs = expand_longs(sub, longs)  # git takes any unambiguous prefix: `--forc` is `--force`
     pos = []
     n = 0
     while n < len(before_dd):
@@ -327,7 +398,8 @@ def command_reason(command, base, cfg, depth=0):
         i, cmd = guard.command_word(seg)
         if cmd is None:
             continue
-        if cmd == "git":
+        sub = guard.git_subcommand(seg[i + 1:]) if cmd == "git" else None
+        if cmd == "git" and not (sub is not None and SUBST in seg[i + 1 + sub]):  # a substituted one: asked below
             seg, problem = guard.expand_git_alias(seg, i, base)
             if problem:
                 return f"a git alias it cannot follow ({problem}): `{' '.join(seg[i:])[:120]}`"

@@ -288,6 +288,51 @@ class CarefulTest(unittest.TestCase):
             with self.subTest(command=command):
                 self.assertAllowed(self.p.bash(command))
 
+    # The review of the E1-E3 fix (8 findings).
+    def test_r1_escaped_quote_inside_substitution_does_not_close_it(self):
+        self.assertAsks(self.p.bash('x=$(echo "\\")"; git push -f)'), "remote history")
+
+    def test_r2_ansi_c_quote_hides_no_substitution(self):
+        self.assertAsks(self.p.bash("echo $'\\'' $(rm -rf build)"), "rm -r")
+        self.assertAllowed(self.p.bash("echo $'$(rm -rf build)'"))
+
+    def test_r3_escaped_backticks_are_read(self):
+        self.assertAsks(self.p.bash("echo `echo \\`rm -rf build\\``"), "rm -r")
+
+    def test_r4_substitution_in_git_global_values(self):
+        for command in ('git -C "$(git rev-parse --show-toplevel)" status', 'git --git-dir "$(pwd)/.git" log'):
+            with self.subTest(command=command):
+                self.assertAllowed(self.p.bash(command))
+        for command in ('git -c "$(echo alias.st=push)" status', 'git -C x "$(echo push)" -f'):
+            with self.subTest(command=command):
+                self.assertAsks(self.p.bash(command), "cannot read substituted commands")
+        self.assertAsks(self.p.bash('git -C "$(pwd)" push -f'), "remote history")
+        self.assertAsks(self.p.bash('git push -u origin "$(git branch --show-current)"'), "cannot read substituted")
+
+    def test_r5_abbreviations_expand_against_the_subcommand(self):
+        for command in ("git checkout --d HEAD~1", "git clean -f --dry", "git clean --d -f", "git switch --force-create x"):
+            with self.subTest(command=command):
+                self.assertAllowed(self.p.bash(command))
+        for command, needle in (("git checkout --f main", "-f"), ("git switch --disc main", "-f"),
+                                ("git push --unknownopt --forc", "remote history")):
+            with self.subTest(command=command):
+                self.assertAsks(self.p.bash(command), needle)
+
+    def test_r6_nesting_too_deep_asks(self):
+        self.assertAsks(self.p.bash("a $(b $(c $(d $(git status))))"), "nested too deep")
+
+    def test_r7_process_substitutions_are_read(self):
+        for command, needle in (("cat <(git push -f)", "remote history"), ("tee >(rm -rf build)", "rm -r")):
+            with self.subTest(command=command):
+                self.assertAsks(self.p.bash(command), needle)
+        self.assertAllowed(self.p.bash("diff <(git show a) <(git show b)"))
+        self.assertAllowed(self.p.bash('echo "<(git push -f)"'))
+
+    def test_r8_rm_long_option_abbreviations(self):
+        for command in ("rm --recur build", "rm --rec --forc build", "rm --r build"):
+            with self.subTest(command=command):
+                self.assertAsks(self.p.bash(command), "rm -r")
+
     def test_template_and_plugin_register_it(self):
         for rel in ("templates/claude/settings.json", "hooks/hooks.json"):
             data = json.loads((ROOT / rel).read_text())
