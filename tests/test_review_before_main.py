@@ -645,6 +645,265 @@ class Hook(Snapshot):
         self.assertAllowed(self.bash("gh api repos/o/r/pulls/7/merge"))  # GET: is it merged?
         self.assertAllowed(self.bash("gh api repos/o/r/pulls/7"))
 
+    # E28 E4: other ways to merge, open or retarget a PR ----------------------------------------------------------
+    def test_gh_or_curl_inside_a_substitution_is_judged_from_its_text(self):
+        hidden = "inside a $(…), backtick or <(…) substitution"
+        for command in ('echo "$(gh pr merge 7)"', "echo `gh pr merge 7`", 'x="$(env FOO=1 gh pr create --fill)"',
+                        "cat <(gh pr merge 7)", "echo \"$(bash -c 'gh pr merge 7')\"", 'echo "$(/usr/bin/gh pr merge 7)"',
+                        'echo "$(curl -X PUT https://api.github.com/repos/o/r/pulls/7/merge)"',
+                        'echo "$(gh pr edit 7 --base main)"'):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), hidden)
+        for command in ('echo "$(gh pr view 7)"', 'gh pr view "$(git branch --show-current)"',
+                        'echo "$(gh pr edit 7 --title x)"', 'echo "$(gh api repos/o/r/pulls)"',
+                        "git commit -m \"$(cat <<'EOF'\nfix: run `gh pr merge 7` after review\nEOF\n)\"",
+                        "echo 'later: `gh pr create --base main`'"):
+            with self.subTest(command=command):
+                self.assertAllowed(self.bash(command, pr=self.pr()))
+
+    def test_gh_alias_that_hides_a_pr_action_blocked(self):
+        for command in ('gh alias set m "pr merge"; gh m 7', "gh alias set c 'pr create --fill'", "gh alias set a api",
+                        "gh alias set --shell m 'gh pr merge \"$1\"'", "gh alias set e 'pr edit --base main'"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "`gh alias set` with an expansion", "run the gh command directly")
+        for command in ("gh alias set co 'repo clone'", "gh alias list", "gh alias delete m"):
+            with self.subTest(command=command):
+                self.assertAllowed(self.bash(command))
+
+    def test_graphql_mutations_that_merge_open_or_retarget_blocked(self):
+        for command in ("gh api graphql -f query='mutation{mergePullRequest(input:{pullRequestId:\"x\"}){clientMutationId}}'",
+                        "gh api graphql -f query='mutation{enablePullRequestAutoMerge(input:{}){clientMutationId}}'",
+                        "gh api graphql -f query='mutation{createPullRequest(input:{baseRefName:\"main\"}){clientMutationId}}'",
+                        "gh api graphql -F query='mutation{updatePullRequest(input:{baseRefName:\"main\"}){clientMutationId}}'",
+                        "curl -d '{\"query\":\"mutation{mergePullRequest(input:{}){clientMutationId}}\"}' "
+                        "https://api.github.com/graphql"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "runs the mutation", "gh pr merge <number>")
+        for command in ("gh api graphql -f query='query{viewer{login}}'",
+                        "gh api graphql -f query='mutation{updatePullRequest(input:{title:\"x\"}){clientMutationId}}'"):
+            with self.subTest(command=command):
+                self.assertAllowed(self.bash(command))
+
+    def test_alias_import_and_unreadable_graphql_queries_blocked(self):
+        self.assertBlocked(self.bash("gh alias import aliases.yml"), "`gh alias import` defines aliases",
+                           "gh alias set <name>")
+        self.assertBlocked(self.bash("gh alias import - < aliases.yml"), "`gh alias import` defines aliases")
+        for command in ("gh api graphql -F query=@q.graphql", "gh api graphql --input q.json",
+                        "curl -d @q.json https://api.github.com/graphql"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "reads its query from a file or stdin",
+                                   "run the merge by hand after /code-review")
+        self.assertAllowed(self.bash("gh api graphql -f query='query{viewer{login}}'"))
+        self.assertAllowed(self.bash("gh alias list"))
+
+    # E28 E4, second review ---------------------------------------------------------------------------------------
+    def test_every_graphql_mutation_is_judged_not_only_the_first(self):
+        command = ("gh api graphql -f query='mutation{a:updatePullRequest(input:{title:\"x\"}){clientMutationId} "
+                   "b:mergePullRequest(input:{pullRequestId:\"x\"}){clientMutationId}}'")
+        self.assertBlocked(self.bash(command), "runs the mutation mergePullRequest")
+
+    def test_graphql_branch_writes_and_the_contents_api_blocked(self):
+        for name in ("mergeBranch", "createCommitOnBranch", "updateRef", "updateRefs", "deleteRef", "enqueuePullRequest"):
+            with self.subTest(mutation=name):
+                self.assertBlocked(self.bash(f"gh api graphql -f query='mutation{{{name}(input:{{}}){{clientMutationId}}}}'"),
+                                   f"runs the mutation {name}")
+        for command in ("gh api -X PUT repos/o/r/contents/a.txt -f branch=main -f message=m -f content=eA==",
+                        "gh api -X DELETE repos/o/r/contents/a.txt -f message=m -f sha=abc",
+                        "curl -X PUT https://api.github.com/repos/o/r/contents/a.txt -d '{\"branch\":\"main\"}'"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "writes main, the protected branch", "gh pr create --base main")
+        for command in ("gh api repos/o/r/contents/a.txt",
+                        "gh api -X PUT repos/o/r/contents/a.txt -f branch=feature -f message=m -f content=eA=="):
+            with self.subTest(command=command):
+                self.assertAllowed(self.bash(command))
+
+    def test_a_substitution_body_is_judged_whole_and_needs_a_write_for_the_api(self):
+        hidden = "inside a $(…), backtick or <(…) substitution"
+        for command in ('echo "$(cd /tmp && gh pr merge 7)"', 'echo "$(true; gh pr merge 7)"',
+                        'echo "$(echo 7 | xargs gh pr merge)"',
+                        'echo "$(gh api -X PATCH repos/o/r/git/refs/heads/main -f sha=abc)"'):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), hidden)
+        for command in ("SHA=$(gh api repos/o/r/git/refs/heads/main --jq .object.sha)",
+                        "B=$(gh api repos/o/r/pulls/7 --jq .base.ref)",
+                        'git commit -m "use \\`gh pr merge\\` here"', 'echo "\\$(gh pr merge 7)"'):
+            with self.subTest(command=command):
+                self.assertAllowed(self.bash(command, pr=self.pr()))
+
+    def test_combined_short_options_and_curl_config_are_read(self):
+        for command in ("curl -sX PUT https://api.github.com/repos/o/r/pulls/7/merge", "gh api -iX PUT repos/o/r/pulls/7/merge",
+                        "gh api -XPUT repos/o/r/pulls/7/merge"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), "no review mark")
+        self.assertBlocked(self.bash("curl -X PATCH -sd '{\"base\":\"main\"}' https://api.github.com/repos/o/r/pulls/7",
+                                     pr=self.pr(base="develop")), "no review mark")
+        for command in ("curl -K opts.txt https://api.github.com/repos/o/r/pulls/7/merge", "curl -sK opts.txt",
+                        "curl --config=opts.txt https://ghe.example/api/v3/repos/o/r/pulls"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "reads options from a config file", "gh pr merge <number>")
+        self.assertAllowed(self.bash("curl -sL https://api.github.com/repos/o/r/pulls/7"))
+
+    def test_aliases_with_the_word_pr_or_a_shell_blocked(self):
+        for command in ("gh alias set p pr", "gh alias set p 'pr $1'", "gh alias set -s x 'echo hi'",
+                        "gh alias set x '!gh pr merge 7'", "gh alias set v 'pr view'"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "`gh alias set` with an expansion", "run the gh command directly")
+        self.assertAllowed(self.bash("gh alias set co 'repo clone'"))
+        self.assertAllowed(self.bash("gh alias set pr-list 'issue list'"))
+
+    def test_full_api_urls_are_read_like_paths(self):
+        for command in ("gh api -X PUT https://api.github.com/repos/o/r/pulls/7/merge",
+                        "gh api -X PUT https://ghe.example/api/v3/repos/o/r/pulls/7/merge"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), "no review mark")
+        for command in ("gh api https://ghe.example/api/graphql -f query='mutation{mergePullRequest(input:{}){x}}'",
+                        "curl -d '{\"query\":\"mutation{mergePullRequest(input:{}){x}}\"}' https://ghe.example/api/graphql"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "runs the mutation mergePullRequest")
+
+    def test_a_retarget_without_a_pr_number_hints_the_edit_command(self):
+        result = self.bash("gh pr edit --base main -R o/r", pr=[])
+        self.assertBlocked(result, "pass the PR number and retry: gh pr edit <number> --base main")
+        self.assertNotIn("gh pr merge <number>", result[1])
+
+    # E28 E4, third review ----------------------------------------------------------------------------------------
+    def test_an_unreadable_method_on_a_write_path_in_a_substitution_counts_as_a_write(self):
+        hidden = "inside a $(…), backtick or <(…) substitution"
+        for command in ("echo `gh api -X 'PUT' repos/o/r/pulls/7/merge`", "cat <(gh api -X 'PUT' repos/o/r/pulls/7/merge)",
+                        'echo "$(gh api -X "$M" repos/o/r/pulls/7/merge)"',
+                        """echo "$(gh pr view 7 --jq ')' ; gh pr merge 7)\""""):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), hidden)
+        self.assertAllowed(self.bash('B="$(gh api -X GET repos/o/r/pulls/7 --jq .base.ref)"', pr=self.pr()))
+
+    def test_thousands_of_substitutions_are_judged_in_seconds(self):
+        start = time.monotonic()
+        self.assertAllowed(self.bash("echo ok"))
+        limit = time.monotonic() - start + 5.0  # the hook's start-up plus 5 s; the old scan took about a minute
+        head = "echo gh pr view " + "$(" * 20000
+        start = time.monotonic()
+        result = self.bash(head)
+        self.assertLess(time.monotonic() - start, limit, "20000 `$(` took 5 s more than a trivial command")
+        self.assertAllowed(result)
+        start = time.monotonic()
+        result = self.bash(head + " gh pr merge 7")
+        self.assertLess(time.monotonic() - start, limit)
+        self.assertBlocked(result, "substitution")
+
+    def test_any_curl_config_and_shell_alias_spellings_blocked(self):
+        for command in ("curl -K evil.cfg https://example.com/x", "curl -sSK opts.txt https://example.com/x"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "reads options from a config file")
+        for command in ("gh alias set --shell=true m 'gh \"$@\"'", "gh alias set -- m '!gh \"$@\"'",
+                        "gh alias set m '$1 merge $2'", "gh alias set m '$1 $2'"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "`gh alias set` with an expansion")
+        self.assertAllowed(self.bash("gh alias set rv 'pr-review list'"))
+        self.assertAllowed(self.bash("gh alias set il 'issue list --label $1'"))
+
+    def test_contents_branch_as_a_full_ref_and_contents_reads(self):
+        self.assertBlocked(self.bash("gh api -X PUT repos/o/r/contents/a.txt -f branch=refs/heads/main -f message=m"),
+                           "writes main, the protected branch")
+        self.assertAllowed(self.bash("gh api repos/o/r/contents/README.md --jq .content # it's the readme"))
+
+    # E28 E4, fourth review ---------------------------------------------------------------------------------------
+    def test_a_body_flag_counts_only_in_the_gh_or_curl_call_itself(self):
+        self.assertAllowed(self.bash("X=$(gh api repos/o/r/git/refs/heads/main --jq .object.sha | tr -d x)"))
+        self.assertBlocked(self.bash("X=$(gh api repos/o/r/git/refs/heads/main -f sha=abc | tr -d x)"),
+                           "inside a $(…), backtick or <(…) substitution")
+
+    def test_alias_options_in_any_spelling(self):
+        for command in ("gh alias set -s=true m 'gh \"$@\"'", "gh alias set --clobber=true m '!gh \"$@\"'",
+                        "gh alias set --shell=TRUE m 'echo hi'"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "`gh alias set` with an expansion")
+        for command in ("gh alias set --shell=false co 'repo clone'", "gh alias set --shell=0 co 'repo clone'",
+                        "gh alias set -s=F co 'repo clone'"):
+            with self.subTest(command=command):
+                self.assertAllowed(self.bash(command))
+
+    def test_a_hook_outside_the_repo_never_runs_the_projects_is_code(self):
+        # From the plugin cache the hook must not run <root>/.claude/gw/scripts/is-code.sh (D5): the built-in rule.
+        cache = self.tmp / "cache" / "scripts"  # laid out like the plugin: scripts/ and schema/
+        cache.mkdir(parents=True)
+        for name in ("review-before-main.sh", "ci-status.py", "config.py"):
+            shutil.copy2(ROOT / "scripts" / name, cache / name)
+        (cache.parent / "schema").mkdir()
+        shutil.copy2(ROOT / "schema" / "gw.schema.json", cache.parent / "schema" / "gw.schema.json")
+        ran = self.tmp / "ran"
+        project_copy = self.p.work / ".claude" / "gw" / "scripts" / "is-code.sh"
+        original = project_copy.read_text()
+        fake = f'#!/bin/sh\n: > "{ran}"\nexit 0\n'
+        self.script = cache / "review-before-main.sh"
+        env = {"CLAUDE_PROJECT_DIR": str(self.p.work)}
+        project_copy.write_text(fake)
+        self.assertBlocked(self.create(env=env), "no review mark", "src/code.py")
+        self.assertFalse(ran.exists(), "the project's is-code.sh was run")
+        project_copy.write_text(original)
+        self.mark(); self.push()
+        project_copy.write_text(fake)
+        self.assertAllowed(self.create(env=env))
+        self.assertFalse(ran.exists(), "the project's is-code.sh was run")
+
+    def test_curl_to_the_merge_endpoint_guarded(self):
+        for command in ("curl -X PUT https://api.github.com/repos/o/r/pulls/7/merge",
+                        "curl -sS --request PUT -H 'Accept: application/json' https://api.github.com/repos/o/r/pulls/7/merge",
+                        "curl -d '{\"merge_method\":\"squash\"}' https://api.github.com/repos/o/r/pulls/7/merge"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), "no review mark")
+        self.assertBlocked(self.bash("curl -X PUT https://api.github.com/repos/o5/r5/pulls/7/merge", pr=self.pr(),
+                                     env={"GH_FAIL": "1"}), "PR #7 of o5/r5")
+        self.assertAllowed(self.bash("curl https://api.github.com/repos/o/r/pulls/7"))
+        self.assertAllowed(self.bash("curl -X PUT https://example.com/repos/o/r/pulls/7/merge"))
+
+    def test_retarget_to_the_protected_branch_guarded(self):
+        develop = self.pr(base="develop")
+        for command in ("gh pr edit 7 --base main -R o/r", "gh pr edit 7 -B main -R o/r", "gh pr edit --title x 7 --base=main -R o/r",
+                        "gh api repos/o/r/pulls/7 -X PATCH -f base=main",
+                        "curl -X PATCH https://api.github.com/repos/o/r/pulls/7 -d '{\"base\":\"main\"}'"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=develop), "no review mark")
+        for command in ("gh pr edit 7 --title x", "gh pr edit 7 --base develop",
+                        "gh api repos/o/r/pulls/7 -X PATCH -f title=x", "gh api repos/o/r/pulls/7 -f base=main -X GET"):
+            with self.subTest(command=command):
+                self.assertAllowed(self.bash(command, pr=develop))
+        self.assertBlocked(self.bash("gh api -X PATCH repos/o/r/pulls/7 --input body.json", pr=develop),
+                           "sends a body this hook cannot read")
+        self.mark(); self.push()
+        self.assertAllowed(self.bash("gh pr edit 7 --base main -R o/r", pr=self.pr(base="develop")))
+
+    def test_retarget_uses_the_protected_branch_of_the_config(self):
+        self.relax(protectedBranch="release")
+        self.p.git("push", "-q", "--no-verify", "origin", f"{self.p.base}:refs/heads/release")
+        self.assertBlocked(self.bash("gh pr edit 7 --base release -R o/r", pr=self.pr(base="develop")), "no review mark")
+        self.assertBlocked(self.bash("gh api repos/o/r/git/refs/heads/release -X PATCH -f sha=abc"),
+                           "writes release, the protected branch")
+
+    def test_api_create_pr_guarded(self):
+        for command in ("gh api repos/o/r/pulls -f base=main -f head=feature -f title=t",
+                        "gh api -X POST repos/o/r/pulls -F base=main -F head=feature",
+                        "curl -X POST https://api.github.com/repos/o/r/pulls -d '{\"base\":\"main\",\"head\":\"feature\"}'"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "no review mark")
+        self.assertAllowed(self.bash("gh api repos/o/r/pulls"))  # GET: list them
+        self.assertAllowed(self.bash("gh api repos/o/r/pulls -f base=develop -f head=feature"))
+        self.assertBlocked(self.bash("gh api repos/o/r/pulls --input pr.json"), "sends a body this hook cannot read")
+        self.assertBlocked(self.bash("curl https://api.github.com/repos/o/r/pulls -d @pr.json"),
+                           "sends a body this hook cannot read")
+
+    def test_api_write_to_the_protected_branch_blocked(self):
+        for command in ("gh api repos/o/r/git/refs/heads/main -X PATCH -f sha=abc",
+                        "gh api -X DELETE repos/o/r/git/refs/heads/main",
+                        "gh api repos/o/r/git/refs -f ref=refs/heads/main -f sha=abc",
+                        "gh api repos/o/r/merges -f base=main -f head=feature",
+                        "curl -X PATCH https://api.github.com/repos/o/r/git/refs/heads/main -d '{\"sha\":\"abc\"}'"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "writes main, the protected branch", "gh pr create --base main")
+        for command in ("gh api repos/o/r/git/refs/heads/main", "gh api repos/o/r/git/refs/heads/feature -X PATCH -f sha=abc",
+                        "gh api repos/o/r/git/refs -f ref=refs/heads/topic -f sha=abc"):
+            with self.subTest(command=command):
+                self.assertAllowed(self.bash(command))
+
     def test_long_unparseable_commands_are_judged_in_seconds_not_minutes(self):
         # P4 of docs/proposals/2026-10-25-repos-x.md: the old SUSPECT regex chained three `[\\s\\S]*` and backtracked
         # for minutes on ~50 KB of `gh pr gh pr ...`. A hook that slow would stall every Bash call of every session.
@@ -840,6 +1099,39 @@ class PreFilter(unittest.TestCase):
             self.assertEqual(r.returncode, 2, tool)
             self.assertIn("python3 is missing", r.stderr)
         self.assertEqual(self.run_hook("mcp__github__update_pull_request_branch", {}).returncode, 0)
+
+    def test_other_ways_to_merge_or_retarget_fail_closed_without_python(self):
+        for command in ("gh alias set m 'pr merge'", "gh api graphql -f query='mutation{mergePullRequest}'",
+                        "gh pr edit 7 --base main", "gh pr edit 7 -B main", "gh api repos/o/r/pulls/7 -X PATCH -f base=main",
+                        "gh api repos/o/r/pulls -f base=main", "gh api repos/o/r/git/refs/heads/main -X PATCH",
+                        "curl -X PUT https://api.github.com/repos/o/r/pulls/7/merge", 'echo "$(gh pr merge 7)"'):
+            code, err = self.bash(command)
+            self.assertEqual(code, 2, command)
+            self.assertIn("python3 is missing", err)
+        for command in ("gh pr edit 7 --title x", "gh api repos/o/r/pulls", "curl https://example.com/pr",
+                        "gh alias list"):
+            self.assertEqual(self.bash(command), (0, ""), command)
+
+    def test_alias_import_unreadable_graphql_and_branch_writes_fail_closed_without_python(self):
+        for command in ("gh alias import aliases.yml", "gh api graphql --input q.json", "gh api graphql -F query=@q.graphql",
+                        "gh api graphql -f query='mutation{mergeBranch}'",
+                        "gh api -X PUT repos/o/r/contents/a.txt -f branch=main",
+                        "curl -K opts.txt https://api.github.com/repos/o/r/pulls/7/merge",
+                        "curl -sSK opts.txt https://api.github.com/repos/o/r/pulls/7/merge",
+                        "curl -T a.json https://api.github.com/repos/o/r/contents/a.txt"):
+            code, err = self.bash(command)
+            self.assertEqual(code, 2, command)
+            self.assertIn("python3 is missing", err)
+        self.assertEqual(self.bash("gh api repos/o/r/contents/a.txt"), (0, ""))
+
+    def test_curl_config_and_upload_are_read_in_curls_own_arguments_without_python(self):
+        for command in ("curl -Kcfg https://example.com/x",
+                        "curl -sSKv https://example.com/x"):
+            code, err = self.bash(command)
+            self.assertEqual(code, 2, command)
+            self.assertIn("python3 is missing", err)
+        for command in ("gh pr list | ssh -K host true", "gh api repos/o/r/contents/a.txt | sort -T /tmp"):
+            self.assertEqual(self.bash(command), (0, ""), command)
 
     def test_empty_and_odd_input_without_python(self):
         for text in ("", "not json", "{}"):

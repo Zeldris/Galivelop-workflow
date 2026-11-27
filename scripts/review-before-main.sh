@@ -11,19 +11,44 @@
 #     PR head's only when the base has none yet), so a PR cannot relax the rule that judges it.
 #   - Merge: mcp__github__merge_pull_request, mcp__github__enable_pr_auto_merge, and in Bash `gh pr merge` (also
 #     `gh -R o/r pr merge`, inside `bash -c`/`eval`, after `xargs`) and `gh api` PUT on repos/<o>/<r>/pulls/<n>/merge
-#     (-R/--repo and GH_REPO= name the repo). Same mark rule on the PR head, plus CI green: every check-run completed with success/neutral/skipped and every
+#     (-R/--repo and GH_REPO= name the repo), and the same calls through `curl` to the API (api.github.com or a
+#     GitHub Enterprise /api/v3). Same mark rule on the PR head, plus CI green: every check-run completed with success/neutral/skipped and every
 #     commit status success (a commit with no CI reported at all is not green; that block names the path the person
 #     can confirm instead: the local check, said as "checked only locally"). Check-runs that GitHub closed as failed
 #     without starting the job (billing, spending limit) and nothing else failing get that same block. In those two
 #     cases only, a green line of the config's `ciLocalLog` (written by ci-local.py --record, committed on the PR
 #     head) lets the merge through when its commit is an ancestor of the head with only content after it; a CI that
 #     started and failed is never replaced by it.
+#   - Retarget: `gh pr edit [<pr>] --base <b>`, `gh api` PATCH on repos/<o>/<r>/pulls/<n> with a `base` field (or the
+#     same through curl): guarded like update_pull_request, when <b> is protected (config, never a fixed `main`).
+#     Create through the API: POST (or -f/-F fields, which make gh send a POST) on repos/<o>/<r>/pulls, base and head
+#     from its fields. A write body this hook cannot read (--input, -F x=@file, curl -d @file, -T) on those paths is
+#     blocked.
+#   - Blocked outright, since nothing can be checked: an API write (POST/PATCH/PUT/DELETE) on
+#     repos/<o>/<r>/git/refs/heads/<protected> (or POST git/refs with ref=refs/heads/<protected>) and POST on
+#     repos/<o>/<r>/merges into <protected>, PUT/DELETE on repos/<o>/<r>/contents/… with branch <protected> (or none:
+#     the default branch); a GraphQL call (gh api graphql, curl …/graphql) with any mutation among mergePullRequest,
+#     enablePullRequestAutoMerge, enqueuePullRequest, createPullRequest, mergeBranch, createCommitOnBranch,
+#     updateRef(s), deleteRef, or updatePullRequest with baseRefName; `gh alias set` whose expansion has the word `pr`
+#     or `api`, starts with `!` or a placeholder, puts one next to merge/create/edit, or is `--shell` (it would hide
+#     the call later); `gh alias import` (its aliases cannot be read here), a GraphQL call whose query this hook cannot
+#     read (-F query=@file, --input, curl -d @file), and any curl -K/--config (its options cannot be read). Full URLs
+#     (https://api.github.com/…, GHE /api/v3/… and /api/graphql) are read like paths, and combined short options
+#     (`-sX PUT`, `-iX PUT`) are split before they are read.
+#   - A `$(…)`, backtick or `<(…)` substitution: the words inside a quoted substitution are one argument to the
+#     reader, so the raw text of its whole body is judged instead (looks_like_pr_action) and the command is blocked
+#     if it looks like any of the calls above; an API path in it (and contents anywhere) counts only with a method
+#     that is not a literal GET/HEAD or a body.
+#   - Known limits (documented, not guarded): `env -S '<command>'`, here-strings and stdin (`bash <<< '<command>'`),
+#     a command name in a variable (`$g pr merge 7`) and aliases defined before this call.
 #   - Anything else (other tools, update_pull_request_branch, other bases, Bash that only mentions `gh pr`) exits 0
 #     silently. pushToProtected does not matter: a PR is another way into the protected branch.
 #   - A PR that is already closed or merged: blocked with that fact (and `gh pr view`), no config is asked of its branch;
 #     an update_pull_request that itself reopens a closed PR (state: open) is judged like any other call on it.
 #   - Before python3 starts, a bash pre-filter lets through everything that has no PR tool name and no word `gh` followed
-#     by the word `pr`/`pulls` ("github", "projects" do not count). Without python3, a PR create/merge call is blocked
+#     by the word `pr`/`pulls`/`alias`/`graphql`/`refs`/`merges`/`contents` or -K/--config ("github", "projects" do
+#     not count), or `curl` followed
+#     by one of them. Without python3, a PR create/merge call is blocked
 #     with the command that checks it (python3 --version); any other call, `gh pr view` included, passes.
 # GitHub API: `gh api` when gh is on PATH and `gh api repos/<owner>/<repo>` answers (a GitHub App token cannot read
 # /user but can read the repo), else curl with $GITHUB_TOKEN or $GH_TOKEN, decided once
@@ -33,6 +58,9 @@
 # fixes it. Exit 0 lets the call through. Never the JSON permissionDecision, so there is one way to read it.
 # Project root: the git top level of this script's folder when it holds .claude/gw.json (the copy in
 # .claude/gw/scripts); from the plugin cache, config.py's fallback (it is the only reader of the config).
+# Code or content: the workflow's own is-code.sh next to this hook, only when the hook lives inside the project root;
+# else the same rule built in (code_files_builtin). Never a project's .claude/gw/scripts/is-code.sh from outside it:
+# in a repo that is not the workflow's that would run any script of that name (D5, E28).
 # Bash 3.2 compatible; the logic is an embedded python3 (3.8+) run isolated (-I) so project files never shadow it.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -95,28 +123,187 @@ GH_GLOBAL_VALUE = {"-R", "--repo", "--hostname"}
 API_VALUE = {"-X", "--method", "-H", "--header", "-f", "--raw-field", "-F", "--field", "--input", "-q", "--jq", "-t",
              "--template", "--hostname", "-p", "--preview", "--cache"}
 API_FIELDS = ("-f", "-F", "--field", "--raw-field", "--input")
-API_MERGE = re.compile(r"^/?repos/([^/]+)/([^/]+)/pulls/(\d+)/merge/?$")
 MERGE_VALUE_FLAGS = {"-R", "--repo", "-b", "--body", "-F", "--body-file", "-t", "--subject", "-A",
                      "--author-email", "--match-head-commit"}
 GH_WORD = re.compile(r"\bgh\b")
 PR_WORD = re.compile(r"\bpr\b")
 PR_ACTION = re.compile(r"\b(merge|create)\b")
 PULLS_TOKEN = re.compile(r"pulls/\S*")
+CURL_WORD = re.compile(r"\bcurl\b")
+ALIAS_WORD = re.compile(r"\balias\b")
+EDIT_WORD = re.compile(r"\bedit\b")
+BASE_FLAG = re.compile(r"(?<![\w-])(--base|-B)(?![\w-])")
+BASE_FIELD = re.compile(r"\bbase\b")
+PULLS_WORD = re.compile(r"\bpulls\b")
+# GraphQL mutations that merge, open or retarget a PR (updatePullRequest only with baseRefName), or write a branch.
+MUTATION = re.compile(r"\b(mergePullRequest|enablePullRequestAutoMerge|enqueuePullRequest|createPullRequest|"
+                      r"updatePullRequest|mergeBranch|createCommitOnBranch|updateRefs?|deleteRef)\b")
+WRITE_PATH = re.compile(r"git/refs|/merges\b")
+CONTENTS_PATH = re.compile(r"/contents\b")  # a read unless the call writes (a method other than GET/HEAD, or a body)
+# An alias whose expansion could run a guarded call: `gh p merge 5` would then be read as an unknown subcommand. Any
+# expansion with the word `pr` (`gh alias set p pr`) or `api`, every shell alias (`--shell`, or a leading `!`), and
+# one with a placeholder that starts it or sits next to merge/create/edit (`gh alias set m '$1 merge $2'`).
+ALIAS_RISK = re.compile(r"(?<![\w-])(?:pr|api)(?![\w-])|^\s*!|^\s*\$|\$(?:\d|@|\*|\{).*\b(?:merge|create|edit)\b|"
+                        r"\b(?:merge|create|edit)\b.*\$(?:\d|@|\*|\{)")
+# Inside a substitution (and for contents) an API call must also write to count (`SHA=$(gh api …/refs/heads/main --jq
+# …)` reads): a method that is not a literal GET/HEAD (`-X 'PUT'` and `-X "$M"` count: unreadable means a write), or a
+# body (gh -f/-F/--field/--input; curl -d/--data…/--json/-F/--form/-T/-K/--config). Fails closed when in doubt.
+METHOD_FLAG = re.compile(r"(?<![\w-])(?:-[A-Za-z]*X|--method|--request)(?:=|\s*)(\S*)")
+BODY_FLAG = re.compile(r"(?<![\w-])(?:-[A-Za-z]*[fFdTK]|--(?:field|raw-field|input|data[\w-]*|json|form[\w-]*|"
+                       r"upload-file|config)\b)")
+API_PULLS = re.compile(r"^/?repos/([^/]+)/([^/]+)/pulls(?:/(\d+)(/merge)?)?/?$")
+API_REFS = re.compile(r"^/?repos/([^/]+)/([^/]+)/git/refs(?:/heads/(.+?))?/?$")
+API_MERGES = re.compile(r"^/?repos/([^/]+)/([^/]+)/merges/?$")
+API_CONTENTS = re.compile(r"^/?repos/([^/]+)/([^/]+)/contents(?:/.*)?$")
+# gh api and curl short options that take a value: a cluster (`-iX PUT`, `-sd '{…}'`) is split before it is read.
+API_SHORT_VALUE = set("XHfFqtp")
+CURL_SHORT_VALUE = set("XdHouAewbcxmErKDTFCYyzUQtP")
+WRITE_METHODS = {"POST", "PATCH", "PUT", "DELETE"}
+EDIT_VALUE_FLAGS = {"-R", "--repo", "-t", "--title", "-b", "--body", "-F", "--body-file", "-B", "--base", "-m",
+                    "--milestone", "--add-assignee", "--add-label", "--add-project", "--add-reviewer",
+                    "--remove-assignee", "--remove-label", "--remove-project", "--remove-reviewer"}
+CURL_DATA = {"-d", "--data", "--data-raw", "--data-binary", "--data-ascii", "--data-urlencode", "--json", "-F",
+             "--form", "--form-string"}
+CURL_VALUE = {"-H", "--header", "-o", "--output", "-u", "--user", "-A", "--user-agent", "-e", "--referer", "-w",
+              "--write-out", "-b", "--cookie", "-c", "--cookie-jar", "-x", "--proxy", "-m", "--max-time",
+              "--connect-timeout", "--retry", "-E", "--cert", "--cacert", "--key", "-r", "--range", "-K", "--config",
+              "--resolve", "--connect-to", "-D", "--dump-header", "--oauth2-bearer"}
 
 
-def looks_like_pr_action(command):
+def looks_like_pr_action(command, need_write=False):
     """Does an unparseable command look like `gh ... pr ... merge|create` or `gh ... pulls/...merge`?
 
     The words must come in that order; the earliest `gh`, then the earliest `pr` after it, is enough. One scan per
     word: a single regex chaining `[\\s\\S]*` between them backtracks without end on a long command (P4 of
-    proposal 2026-10-25-repos-x.md; tests/test_review_before_main.py times it)."""
+    proposal 2026-10-25-repos-x.md; tests/test_review_before_main.py times it). With need_write (a substitution's
+    body), an API path counts only next to a write method or a body: `$(gh api …/pulls/7 --jq .base.ref)` reads."""
     gh = GH_WORD.search(command)
-    if not gh:
+    leads = [m for m in (gh, CURL_WORD.search(command)) if m]
+    if not leads:
         return False
-    pr = PR_WORD.search(command, gh.end())
-    if pr and PR_ACTION.search(command, pr.end()):
+    end = min(m.end() for m in leads)
+    if gh:
+        pr = PR_WORD.search(command, gh.end())
+        if pr and PR_ACTION.search(command, pr.end()):
+            return True
+        edit = pr and EDIT_WORD.search(command, pr.end())
+        if edit and BASE_FLAG.search(command, edit.end()):
+            return True
+        if ALIAS_WORD.search(command, gh.end()):
+            return True
+    if MUTATION.search(command, end):
         return True
-    return any("merge" in m.group()[len("pulls/"):] for m in PULLS_TOKEN.finditer(command, gh.end()))
+    writes = writes_api(command, end)
+    if need_write and not writes:
+        return False
+    if writes and CONTENTS_PATH.search(command, end):
+        return True
+    if WRITE_PATH.search(command, end):
+        return True
+    if any("merge" in m.group()[len("pulls/"):] for m in PULLS_TOKEN.finditer(command, end)):
+        return True
+    pulls = PULLS_WORD.search(command, end)
+    return bool(pulls and BASE_FIELD.search(command, pulls.end()))
+
+
+SIMPLE_END = re.compile(r"\|\|?|;|&&|\)|\n")
+
+
+def writes_api(command, end):
+    """Does the gh/curl call after `end` write: a method that is not a literal GET/HEAD, or a body flag? Only its own
+    simple command counts, up to `|`, `;`, `&&`, `||` or `)`: `$(gh api … --jq .sha | tr -d x)` reads."""
+    stop = SIMPLE_END.search(command, end)
+    call = command[end:stop.start() if stop else len(command)]
+    if BODY_FLAG.search(call):
+        return True
+    return any(m.group(1).upper() not in ("GET", "HEAD") for m in METHOD_FLAG.finditer(call))
+
+
+def substitution_runs_pr_action(command):
+    """Does a $(…), backtick or <(…) substitution run gh/curl in a way that looks like a PR create/merge/retarget?
+    Its whole body is judged, not only a gh/curl at its start: `$(cd x && gh pr merge 7)`, `$(… | xargs gh pr merge)`."""
+    command = without_literal_text(command)
+    return any(looks_like_pr_action(body, need_write=True) for body in substitution_bodies(command))
+
+
+def substitution_bodies(command):
+    """The text of each outermost $(…), <(…), >(…) and backtick substitution (an unclosed one runs to the end).
+
+    One pass with a stack, aware of quotes inside each level (`$(gh pr view 7 --jq ')' ; gh pr merge 7)` closes at the
+    last `)`), so it stays linear on thousands of `$(`. A nested one is inside its outer body, which is judged whole."""
+    stack, n, i = [[None, None, None]], len(command), 0  # frames: [opener kind, body start, quote]
+    while i < n:
+        c, top = command[i], stack[-1]
+        if c == "\\" and top[2] != "'":
+            i += 2
+            continue
+        if top[2] == "'":
+            if c == "'":
+                top[2] = None
+        elif c == '"':
+            top[2] = None if top[2] == '"' else '"'
+        elif c == "'" and top[2] is None:
+            top[2] = "'"
+        elif command.startswith("$(", i) or (top[2] is None and command[i:i + 2] in ("<(", ">(")):
+            stack.append(["$(", i + 2, None])
+            i += 2
+            continue
+        elif c == "`":
+            if top[0] == "`":
+                stack.pop()
+                if len(stack) == 1:
+                    yield command[top[1]:i]
+            else:
+                stack.append(["`", i + 1, None])
+        elif c == "(" and top[2] is None and len(stack) > 1:
+            stack.append(["(", None, None])
+        elif c == ")" and top[2] is None and top[0] in ("$(", "("):
+            stack.pop()
+            if top[0] == "$(" and len(stack) == 1:
+                yield command[top[1]:i]
+        i += 1
+    if len(stack) > 1:
+        yield command[stack[1][1]:]
+
+
+HEREDOC_QUOTED = re.compile(r"<<(-?)[ \t]*(['\"])([A-Za-z0-9_.-]+)\2")
+
+
+def without_literal_text(command):
+    """The command with the text bash never runs blanked: single-quoted strings outside double quotes and the bodies of
+    heredocs with a quoted delimiter (<<'EOF', also inside "…"), where `$(…)` and backticks are literal, and an escaped
+    backtick or dollar (`"use \\`gh pr merge\\` here"`). A commit message that names `gh pr merge` in backticks stays
+    a message; `bash -c '…'` is judged again on its own script."""
+    out, i, dq, n = [], 0, False, len(command)
+    while i < n:
+        c = command[i]
+        if c == "\\" and i + 1 < n:
+            out.append("  " if command[i + 1] in "`$" else command[i:i + 2])
+            i += 2
+            continue
+        if c == '"':
+            dq = not dq
+        elif c == "'" and not dq:
+            close = command.find("'", i + 1)
+            if close < 0:
+                out.append(command[i:])
+                break
+            out.append("'" + " " * (close - i - 1) + "'")
+            i = close + 1
+            continue
+        elif c == "<":  # also inside "$(cat <<'EOF' …)": a substitution starts its own quoting
+            m = HEREDOC_QUOTED.match(command, i)
+            eol = command.find("\n", i) if m else -1
+            if m and eol >= 0:
+                end = re.compile(r"^" + ("\t*" if m.group(1) else "") + re.escape(m.group(3)) + r"$", re.M)
+                stop = end.search(command, eol + 1)
+                body_end = stop.start() if stop else n
+                out.append(command[i:eol + 1] + re.sub(r"[^\n]", " ", command[eol + 1:body_end]))
+                i = body_end
+                continue
+        out.append(c)
+        i += 1
+    return "".join(out)
 
 
 def flag(args, names):
@@ -181,6 +368,10 @@ def join_lines(command, glue, comments_end_lines):
 def from_bash(command, depth=0):
     if depth > 5:
         block("the command nests shells too deeply to check.", "run the gh command directly and retry")
+    if substitution_runs_pr_action(command):
+        block("the command runs gh/curl inside a $(…), backtick or <(…) substitution, which this hook cannot read, "
+              "and it looks like a PR create/merge/retarget; blocked because it could not be checked.",
+              "run the gh command directly and retry, e.g.: gh pr merge <number> -R <owner>/<repo>")
     # Bash joins a backslash-newline continuation (`pulls/7/\\<nl>merge` is `pulls/7/merge`, `gh\\<nl>pr` is `ghpr`),
     # but not after an escaped backslash, and a comment ends at the newline. The reader cannot tell quoting from that
     # apart, so the union of readings is judged: the text as it is, and the continuations joined (glued, or with a
@@ -198,8 +389,8 @@ def from_bash(command, depth=0):
         found = from_text(text, depth)
         if found is None:
             if text == command and any(looks_like_pr_action(t) for t in readings):
-                block(f"cannot parse the command ({parse_error(command)}) and it looks like a PR create/merge; blocked "
-                      "because it could not be checked.",
+                block(f"cannot parse the command ({parse_error(command)}) and it looks like a PR create/merge/retarget or a "
+                      "write to a branch; blocked because it could not be checked.",
                       "write it as a plain command and retry, e.g.: gh pr merge <number> -R <owner>/<repo>")
             continue
         for action in found:
@@ -270,6 +461,8 @@ def from_words(words, depth):
         return []
     if cmd == "eval":
         return from_bash(" ".join(args), depth + 1)
+    if cmd == "curl":
+        return curl_action(args)
     if cmd != "gh":
         return []
     j, repo = gh_flags(args, 0, env_repo)
@@ -279,6 +472,33 @@ def from_words(words, depth):
         rest = ["pr"] + rest[j:]
     if len(rest) >= 2 and rest[0] == "pr" and rest[1] in ("create", "merge"):
         return [pr_action(rest[1], rest[2:], repo)]
+    if len(rest) >= 2 and rest[0] == "pr" and rest[1] == "edit":
+        return edit_action(rest[2:], repo)
+    if len(rest) >= 2 and rest[0] == "alias" and rest[1] == "import":
+        block("`gh alias import` defines aliases this hook cannot read, and one could hide a PR create/merge "
+              "(`gh <alias> …` is not read as one); blocked.",
+              "define each alias with `gh alias set <name> '<expansion>'`, or run the merge by hand after "
+              "/code-review: gh pr merge <number> -R <owner>/<repo>")
+    if len(rest) >= 2 and rest[0] == "alias" and rest[1] == "set":
+        # Every option is dropped (`--clobber=true`, `--`), wherever it is; -s/--shell, also `=<value>` unless the
+        # value is 0/f/false, makes it a shell alias.
+        shell, words, options = False, [], True
+        for a in rest[2:]:
+            if not options or not a.startswith("-") or a == "-":
+                words.append(a)
+            elif a == "--":
+                options = False
+            elif a in ("-s", "--shell") or (a.split("=", 1)[0] in ("-s", "--shell") and "=" in a and
+                                            a.split("=", 1)[1].lower() not in ("0", "f", "false")):
+                shell = True
+        expansion = " ".join(words[1:])  # past the alias name
+        risk = "a shell" if shell else ALIAS_RISK.search(expansion)
+        if risk:
+            what = risk if isinstance(risk, str) else risk.group().strip()
+            block(f"`gh alias set` with an expansion that runs `{what}` would hide a PR create/merge from this "
+                  "hook later (`gh <alias> …` is not read as one); blocked.",
+                  "run the gh command directly instead of an alias, e.g.: gh pr merge <number> -R <owner>/<repo>")
+        return []
     if rest and rest[0] == "api":
         return api_action(rest[1:], repo)
     return []
@@ -306,11 +526,17 @@ def pr_action(kind, args, repo):
     if kind == "create":
         return {"kind": "create", "base": flag(args, ("-B", "--base")), "head": flag(args, ("-H", "--head")),
                 "repo": repo, "number": None, "how": "gh pr create"}
+    number, branch, repo = pr_selector(args, MERGE_VALUE_FLAGS, repo)
+    return {"kind": "merge", "base": None, "head": branch, "repo": repo, "number": number, "how": "gh pr merge"}
+
+
+def pr_selector(args, value_flags, repo):
+    """(number, branch, repo) of the PR a `gh pr merge|edit` names: a number, a URL or a branch (None: the current one)."""
     selector, skip = None, False
     for a in args:
         if skip:
             skip = False
-        elif a in MERGE_VALUE_FLAGS:
+        elif a in value_flags:
             skip = True
         elif not a.startswith("-") and selector is None:
             selector = a
@@ -323,38 +549,211 @@ def pr_action(kind, args, repo):
             number = selector.lstrip("#")
         else:
             branch = selector
-    return {"kind": "merge", "base": None, "head": branch, "repo": repo, "number": number, "how": "gh pr merge"}
+    return number, branch, repo
+
+
+def edit_action(args, repo):
+    """`gh pr edit [<pr>] --base <b>`: a retarget, judged like update_pull_request; without --base, nothing."""
+    base = flag(args, ("-B", "--base"))
+    if not base:
+        return []
+    repo = flag(args, ("-R", "--repo")) or repo
+    number, branch, repo = pr_selector(args, EDIT_VALUE_FLAGS, repo)
+    return [{"kind": "retarget", "base": base, "head": branch, "repo": repo, "number": number,
+             "how": "gh pr edit --base", "lookup": True, "retry": f"gh pr edit <number> --base {base}"}]
+
+
+def split_short(args, takes_value):
+    """Combined short options split one per letter (`-sX` → -s -X, `-XPUT` → -X PUT): the letter that takes a value
+    gets the rest of the word as its value, or the next word. Long options, `-` and words stay as they are."""
+    out = []
+    for a in args:
+        if len(a) <= 2 or a[0] != "-" or a[1] == "-":
+            out.append(a)
+            continue
+        for k, c in enumerate(a[1:], 1):
+            out.append("-" + c)
+            if c in takes_value:
+                if a[k + 1:]:
+                    out.append(a[k + 1:])
+                break
+    return out
 
 
 def api_action(args, repo):
-    method, fields, path, skip = None, False, None, False
+    args = split_short(args, API_SHORT_VALUE)
+    method, fields, unknown, path, skip = None, {}, False, None, False
     for i, a in enumerate(args):
         if skip:
             skip = False
             continue
+        nxt = args[i + 1] if i + 1 < len(args) else ""
         if a in ("-X", "--method"):
-            method = args[i + 1] if i + 1 < len(args) else None
-            skip = True
+            method, skip = nxt or None, True
         elif a.startswith("--method="):
             method = a.split("=", 1)[1]
         elif a.startswith("-X") and len(a) > 2:
             method = a[2:]
-        elif a in API_FIELDS or any(a.startswith(f + "=") for f in API_FIELDS if f.startswith("--")) or \
-                (a[:2] in ("-f", "-F") and len(a) > 2):
-            fields = True
-            skip = a in API_FIELDS
+        elif a == "--input" or a.startswith("--input="):
+            unknown, skip = True, a == "--input"
+        elif a in API_FIELDS:
+            unknown |= add_field(fields, nxt, a in ("-F", "--field"))
+            skip = True
+        elif any(a.startswith(f + "=") for f in ("--field", "--raw-field")):
+            unknown |= add_field(fields, a.split("=", 1)[1], a.startswith("--field="))
+        elif a[:2] in ("-f", "-F") and len(a) > 2:
+            unknown |= add_field(fields, a[2:], a[:2] == "-F")
         elif a in API_VALUE:
             skip = True
         elif not a.startswith("-") and path is None:
             path = a
-    m = API_MERGE.match(path or "")
-    if not m or not ((method or "").upper() == "PUT" or (method is None and fields)):
+    method = (method or ("POST" if fields or unknown else "GET")).upper()
+    return rest_action(method, path or "", fields, unknown, repo, "gh api", "\n".join(fields.values()))
+
+
+def add_field(fields, text, typed):
+    """Add key=value to fields; True when the value is read from a file or stdin (`-F key=@file`), unseen here."""
+    key, _, value = text.partition("=")
+    fields[key] = value
+    return typed and value.startswith("@")
+
+
+def rest_action(method, path, fields, unknown, repo, how, body):
+    """The actions of one REST/GraphQL call (gh api or curl): method, path under the API root, its fields."""
+    path = path.split("?", 1)[0]
+    # A full URL (`gh api https://api.github.com/repos/…`, GHE's https://<host>/api/v3/… and /api/graphql): the path
+    # under the API root.
+    path = re.sub(r"^https?://[^/]+", "", path)
+    path = re.sub(r"^/?api/v3(?=/)", "", path)
+    path = re.sub(r"^/?api(?=/graphql/?$)", "", path)
+    if path.strip("/") == "graphql":
+        if unknown:
+            block(f"{how} graphql reads its query from a file or stdin, which this hook cannot read; it could merge, "
+                  "open or retarget a PR, so it is blocked.",
+                  "pass the query inline (-f query='…'), or run the merge by hand after /code-review: "
+                  "gh pr merge <number> -R <owner>/<repo>")
+        # Every mutation, not only the first: `mutation{a:updatePullRequest(…title…) b:mergePullRequest(…)}`.
+        for found in MUTATION.finditer(body):
+            if found.group(1) == "updatePullRequest" and "baseRefName" not in body:
+                continue
+            block(f"{how} graphql runs the mutation {found.group(1)}, which this hook cannot check (no PR number, "
+                  "head or base it can read); blocked.",
+                  "use the gh command it guards and retry, e.g.: gh pr merge <number> -R <owner>/<repo>, "
+                  "gh pr create --base <branch> or gh pr edit <number> --base <branch>")
         return []
+    if method not in WRITE_METHODS:
+        return []
+    where = f"{how} {method} {path}"
+    unread = (f"{where} sends a body this hook cannot read (a file or stdin); blocked because it could not be checked.",
+              "pass the fields inline and retry, e.g.: gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -f base=<branch>")
+    for regex in (API_PULLS, API_REFS, API_MERGES, API_CONTENTS):
+        m = regex.match(path)
+        if m:
+            break
+    else:
+        return []
+    if regex is API_CONTENTS:  # PUT/DELETE a file commits it to `branch` (none: the default branch)
+        if method not in ("PUT", "DELETE"):
+            return []
+        if unknown:
+            block(*unread)
+        branch = re.sub(r"^refs/heads/", "", fields.get("branch") or "")
+        return [{"kind": "ref", "base": branch or None, "repo": repo, "how": where}]
     owner, name = m.group(1), m.group(2)
     if "{" not in owner + name:  # {owner}/{repo} placeholders: gh fills them from the current repo
         repo = f"{owner}/{name}"
-    return [{"kind": "merge", "base": None, "head": None, "repo": repo, "number": m.group(3),
-             "how": f"gh api PUT {path}"}]
+    if regex is API_PULLS:
+        number, merge = m.group(3), m.group(4)
+        if merge:
+            return [{"kind": "merge", "base": None, "head": None, "repo": repo, "number": number,
+                     "how": f"{how} PUT {path}"}] if method in ("PUT", "POST") else []
+        if number is None and method != "POST":
+            return []
+        if unknown:
+            block(*unread)
+        if number is None:  # POST repos/<o>/<r>/pulls: a new PR
+            return [{"kind": "create", "base": fields.get("base") or None, "head": fields.get("head") or None,
+                     "repo": repo, "number": None, "how": where}]
+        if not fields.get("base"):
+            return []  # editing title/body/state takes nothing to another branch
+        return [{"kind": "retarget", "base": fields["base"], "head": None, "repo": repo, "number": number,
+                 "how": where, "reopens": fields.get("state") == "open"}]
+    if regex is API_REFS:
+        branch = m.group(3)
+        if branch is None:
+            if method != "POST":
+                return []
+            if unknown:
+                block(*unread)
+            ref = fields.get("ref", "")
+            if not ref.startswith("refs/heads/"):
+                return []
+            branch = ref[len("refs/heads/"):]
+        return [{"kind": "ref", "base": branch, "repo": repo, "how": where}]
+    if method != "POST":
+        return []
+    if unknown:
+        block(*unread)
+    return [{"kind": "ref", "base": fields.get("base") or None, "repo": repo, "how": where}]
+
+
+def curl_action(args):
+    """curl to the GitHub API: the same calls as `gh api`, the URL after api.github.com or /api/v3."""
+    args = split_short(args, CURL_SHORT_VALUE)
+    method, data, unknown, urls, skip, config = None, [], False, [], False, False
+    for i, a in enumerate(args):
+        if skip:
+            skip = False
+            continue
+        nxt = args[i + 1] if i + 1 < len(args) else ""
+        if a in ("-X", "--request"):
+            method, skip = nxt or None, True
+        elif a.startswith("--request="):
+            method = a.split("=", 1)[1]
+        elif a.startswith("-X") and len(a) > 2:
+            method = a[2:]
+        elif a in CURL_DATA:
+            skip = True
+            if nxt.startswith("@") and a not in ("--data-raw", "--form-string"):
+                unknown = True
+            else:
+                data.append(nxt)
+        elif a.startswith("--") and a.split("=", 1)[0] in CURL_DATA and "=" in a:
+            data.append(a.split("=", 1)[1])
+        elif a[:2] == "-d" and len(a) > 2:
+            unknown |= a[2:].startswith("@")
+            data.append(a[2:])
+        elif a in ("-T", "--upload-file"):
+            method, unknown, skip = method or "PUT", True, True
+        elif a == "--url":
+            urls.append(nxt)
+            skip = True
+        elif a in ("-K", "--config") or a.startswith("--config="):
+            config, skip = True, a != "--config=" and "=" not in a
+        elif a in CURL_VALUE:
+            skip = True
+        elif not a.startswith("-"):
+            urls.append(a)
+    method = (method or ("POST" if data or unknown else "GET")).upper()
+    fields = {}
+    for d in data:
+        try:
+            parsed = json.loads(d)
+        except ValueError:
+            parsed = dict(part.partition("=")[::2] for part in d.split("&"))
+        if isinstance(parsed, dict):
+            fields.update({str(k): v if isinstance(v, str) else json.dumps(v) for k, v in parsed.items()})
+    api = [m.group(1) for m in (re.match(r"^(?:https?://)?(?:api\.github\.com|[^/\s]+/api/v3|[^/\s]+/api(?=/graphql))"
+                                         r"(/[^?#\s]*)", url) for url in urls) if m]
+    if config:
+        block("curl reads options from a config file (-K/--config), which this hook cannot read (the "
+              "URL, method and body it sends); it could merge, open or retarget a PR, so it is blocked.",
+              "pass the options on the command line and retry, or run the merge by hand after /code-review: "
+              "gh pr merge <number> -R <owner>/<repo>")
+    actions = []
+    for path in api:
+        actions += rest_action(method, path, fields, unknown, None, "curl", "\n".join(data))
+    return actions
 
 
 def classify(event):
@@ -406,14 +805,15 @@ def project():
         block(f"cannot read the project config: {exc}",
               f"fix it and retry: python3 {os.path.join(HERE, 'config.py')} validate")
     root = str(cfg["_root"])
-    own = run(["git", "-C", HERE, "rev-parse", "--show-toplevel"]).stdout.strip()
-    candidates = [os.path.join(root, ".claude", "gw", "scripts")]
-    if own and os.path.realpath(own) == os.path.realpath(root):
-        candidates.append(HERE)
-    scripts = next((c for c in candidates if os.path.isfile(os.path.join(c, "is-code.sh"))), None)
-    if scripts is None:
-        block(f"the workflow scripts are missing in {root} (.claude/gw/scripts/is-code.sh).",
-              "reinstall them: /gw-update")
+    real_root = os.path.realpath(root)
+    try:
+        inside = os.path.commonpath([os.path.realpath(HERE), real_root]) == real_root
+    except ValueError:  # another drive (Windows)
+        inside = False
+    # `scripts` names reviewed.sh and ci-local.py in messages (text only); only an own copy is ever run (es_codigo).
+    scripts = HERE if inside else os.path.join(root, ".claude", "gw", "scripts")
+    global IS_CODE
+    IS_CODE = os.path.join(HERE, "is-code.sh") if inside and os.path.isfile(os.path.join(HERE, "is-code.sh")) else None
     return cfg, root, scripts
 
 
@@ -491,8 +891,46 @@ def ci_local_green(root, scripts, head, policy):
     return None
 
 
+IS_CODE = None  # the workflow's own is-code.sh next to this hook, set by project(); None: the built-in rule
+GUARD_PATHS = re.compile(r"^(\.claude/(gw\.json|settings\.json|gw/)|\.githooks/)")
+
+
+def code_files_builtin(root, a, b, rev):
+    """is-code.sh's rule in Python: the files changed from a (empty: the empty tree) to b that are code, by the config
+    of `rev` (content regexes, reviewMark and ciLocalLog are content; the workflow's policy and guards always code)."""
+    for sha in ([a] if a else []) + [b]:
+        if not has_commit(root, sha):
+            block(f"cannot tell code from content: commit {sha[:12]} is not in this clone.",
+                  f"fetch it and retry: git -C {root} fetch --deepen=200 origin")
+    cfg = config_at(root, rev, paths_at=b)
+    if cfg is None:
+        block(f"cannot tell code from content: {rev[:12]} has no .claude/gw.json.",
+              "commit a valid one on that branch and retry: git add .claude/gw.json && git commit && git push")
+    src = a or git(root, "hash-object", "-t", "tree", "/dev/null").stdout.strip()
+    r = git(root, "diff", "--no-renames", "--name-only", src, b)
+    if r.returncode != 0:
+        block(f"cannot tell code from content: git diff failed: {r.stderr.strip()[:300]}",
+              f"check both commits exist and retry: git -C {root} log -1 {src} {b}")
+    patterns = []
+    for pattern in cfg["content"]:
+        try:
+            patterns.append(re.compile(pattern))
+        except re.error as exc:
+            block(f"cannot tell code from content: content regex {json.dumps(pattern)} is invalid: {exc}",
+                  f"fix it and retry: python3 {os.path.join(HERE, 'config.py')} --rev {rev[:12]} validate")
+    code = []
+    for path in r.stdout.splitlines():
+        if not path or path == cfg["reviewMark"]:
+            continue
+        if GUARD_PATHS.search(path) or (path != cfg["ciLocalLog"] and not any(rx.search(path) for rx in patterns)):
+            code.append(path)
+    return code
+
+
 def es_codigo(root, scripts, a, b, rev):
-    r = run(["bash", os.path.join(scripts, "is-code.sh"), "--rev", rev, a, b], cwd=root)
+    if IS_CODE is None:
+        return code_files_builtin(root, a, b, rev)
+    r = run(["bash", IS_CODE, "--rev", rev, a, b], cwd=root)
     if r.returncode != 0:
         block(f"cannot tell code from content: {r.stderr.strip()[:400]}",
               f"fix the error above and retry: git -C {root} fetch origin")
@@ -600,6 +1038,13 @@ def need_repo(action, root):
 
 
 def handle(action, cfg, root, scripts):
+    if action["kind"] == "ref":  # an API write straight onto a branch: nothing to review, so never the protected one
+        branch = action["base"] or cfg["protectedBranch"]
+        if protected_tip(cfg, root, branch)[0]:
+            block(f"{action['how']} writes {branch}, the protected branch, straight through the API, where no review "
+                  "mark or CI can be checked; blocked.",
+                  f"open a pull request instead and retry: gh pr create --base {branch}")
+        return
     if action["kind"] in ("create", "retarget"):
         protected = action["base"] or cfg["protectedBranch"]  # no base: the default branch, guarded as protected
         guarded, tip = protected_tip(cfg, root, protected)
@@ -617,17 +1062,17 @@ def handle(action, cfg, root, scripts):
         return
     repo = need_repo(action, root)
     number = action["number"]
-    if number is None and action["kind"] == "merge":
+    if number is None and (action["kind"] == "merge" or action.get("lookup")):
         branch = action["head"] or git(root, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
         owner = repo.split("/")[0]
+        retry = action.get("retry") or f"{action['how']} <number>"
         try:
             found = api(f"repos/{repo}/pulls?head={owner}:{branch}&state=open")
             number = str(found[0]["number"]) if found else None
         except (ApiError, KeyError, TypeError, IndexError) as exc:
-            block(f"cannot find the open PR of {branch} in {repo}: {exc}",
-                  "pass the PR number and retry: gh pr merge <number>")
+            block(f"cannot find the open PR of {branch} in {repo}: {exc}", f"pass the PR number and retry: {retry}")
         if number is None:
-            block(f"no open PR for {branch} in {repo}.", "pass the PR number and retry: gh pr merge <number>")
+            block(f"no open PR for {branch} in {repo}.", f"pass the PR number and retry: {retry}")
     if number is None:
         block(f"{action['how']} without a PR number; cannot check it.", "pass pullNumber and retry")
     info = pr_info(repo, number)
@@ -709,9 +1154,9 @@ word='(\\([tnr]|u000[9aAdD])|[^[:alnum:]_-])'
 tool='"tool_name"[[:space:]]*:[[:space:]]*'
 pr_tools="${tool}\"mcp__[^\"]*(create_pull_request|update_pull_request|merge_pull_request|enable_pr_auto_merge)\""
 bash_tool="${tool}\"Bash\""
-gh="(^|$word)gh$word"
+gh="(^|$word)(gh|curl)$word"
 end="($word|\$)"
-any_pr="(^|$word)(pr|pulls)${end}"
+any_pr="(^|$word)((pr|pulls|alias|graphql|refs|merges|contents|--config)${end}|-[[:alpha:]]*K)"
 pr_word="(^|$word)pr$word"
 pr_action="(^|$word)(create|merge)${end}"
 # One regex per word, each on what follows the previous match: a single regex with `.*` between the words backtracks
@@ -724,18 +1169,41 @@ after_first() {
   before="${1%%"$lit"*}"
   after="${1:$((${#before} + ${#lit}))}"
 }
-# gh creating/merging: `gh ... pr ... create|merge` or `gh ... pulls/... merge`, the words in that order.
+edit_word="(^|$word)edit$word"
+base_flag="(^|$word)(--base|-B)${end}"
+curl_config="(^|$word)(-[[:alpha:]]*K|--config)"
+curl_word="(^|$word)curl$word"
+# gh/curl creating/merging/retargeting: `gh ... pr ... create|merge`, `gh ... pr ... edit ... --base|-B`,
+# `gh ... pulls/... merge`, an alias set or import, a PR or branch mutation, a graphql query from a file, a write to
+# git/refs, merges or contents, curl -K to the API; the words in that order.
 gh_does_pr() {
   local rest
   after_first "$1" "$gh" || return 1
   rest="$after"
-  if after_first "$rest" "$pr_word" && [[ $after =~ $pr_action ]]; then return 0; fi
-  # pulls/ and then merge, anywhere after it (not only in the same word): the regex for "in the same word" backtracks
+  if after_first "$rest" "$pr_word"; then
+    [[ $after =~ $pr_action ]] && return 0
+    after_first "$after" "$edit_word" && [[ $after =~ $base_flag ]] && return 0
+  fi
+  case $rest in
+    *alias*set* | *alias*import* | *mergePullRequest* | *enablePullRequestAutoMerge* | *enqueuePullRequest* | \
+      *createPullRequest* | *updatePullRequest* | *mergeBranch* | *createCommitOnBranch* | *updateRef* | *deleteRef* | \
+      *graphql*--input* | *--input*graphql* | *graphql*=@* | *=@*graphql* | *git/refs* | */merges* | \
+      *contents*branch=* | *PUT*/contents/* | */contents/*PUT* | *DELETE*/contents/* | */contents/*DELETE* | \
+      *--upload-file*/contents/*) return 0 ;;
+  esac
+  # curl's own arguments (up to | ; & or `)`): -K/--config, also in a cluster (-sSK, -Kcfg), whose options cannot be
+  # read, and an upload (-T) to contents. Not `sort -T` or `ssh -K` later in the pipeline.
+  if after_first "$1" "$curl_word"; then
+    local args="${after%%[|;&)]*}"
+    [[ $args =~ $curl_config ]] && return 0
+    case $args in *-T*/contents/* | */contents/*-T*) return 0 ;; esac
+  fi
+  # pulls and then merge or base, anywhere after it (not only in the same word): the regex for "in the same word" backtracks
   # quadratically on one long word. A looser match here only makes python3 run, or a call without python3 be refused.
-  local before="${rest%%pulls/*}"
+  local before="${rest%%pulls*}"
   [[ ${#before} -lt ${#rest} ]] || return 1
-  rest="${rest:$((${#before} + 6))}"
-  [[ $rest == *merge* ]]
+  rest="${rest:$((${#before} + 5))}"
+  [[ $rest == *merge* || $rest == *base* ]]
 }
 own=""  # 1 when the call is one this hook decides on (a PR tool, or gh creating/merging), for the python3-missing case
 if [[ $input =~ $pr_tools ]]; then own=1
