@@ -277,7 +277,7 @@ class Harvest(unittest.TestCase):
         spec = importlib.util.spec_from_file_location("harvest_mod", SCRIPT)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        self.assertEqual(mod.sizes(), {"ideaChars": 2000, "commitsShown": 30}, "the defaults are today's literals")
+        self.assertEqual(mod.sizes(), {"ideaChars": 2000, "commitsShown": 30, "retroAlias": 1}, "the defaults are today's literals")
         exact = "x" * 2000
         self.assertEqual(mod.clip(exact), exact, "exactly at the limit is not cut")
         cut = mod.clip(exact + "y")
