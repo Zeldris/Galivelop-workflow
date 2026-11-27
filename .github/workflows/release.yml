@@ -5,15 +5,16 @@ on:
     tags: ["v*.*.*"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify:
     # The cheap refusals come first: a bad tag or CHANGELOG fails in seconds, before the slow check matrix.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          persist-credentials: true  # the "on main" step runs git fetch, which needs the token on a private repo
           fetch-depth: 0
       - name: The tagged commit is on main
         run: |
@@ -59,8 +60,12 @@ jobs:
   release:
     needs: [verify, check]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
       - name: Release notes
         run: |
           version="${GITHUB_REF_NAME#v}"
