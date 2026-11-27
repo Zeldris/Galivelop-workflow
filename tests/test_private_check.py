@@ -127,6 +127,28 @@ class Emails(Repo):
         self.write("docs/a.md", PRIVATE_MAIL + " # gw-allow-secret\n")  # only skips the key check
         self.assertEqual(self.check("--all", "--no-names")[0], 1)
 
+    def test_e29_text_on_stdin_is_checked_by_line_with_the_same_rules(self):
+        self.local({"privateNames": ["Secret Client"], "allowEmails": ["ok" + AT + "corp.io"]})
+        text = f"fine\nmail {PRIVATE_MAIL}\nok{AT}corp.io\nfor secret-client\n{PRIVATE_MAIL} gw-allow-private\n"
+        code, out = self.check("--text", "-", "--label", "tag message", stdin=text)
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"tag message:2: e-mail {PRIVATE_MAIL}", out)
+        self.assertIn("tag message:4: private name secret-client", out)
+        self.assertEqual(out.count(": e-mail "), 1, out)  # the allowed address and the marked line pass
+        self.assertIn("remove it from the tag message", out)
+        self.assertNotIn("rebase", out)
+
+    def test_e29_clean_empty_and_disabled_text_pass(self):
+        for text in ("", "just words\n"):
+            self.assertEqual(self.check("--text", "-", "--no-names", stdin=text)[0], 0)
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck=False)))
+        self.assertEqual(self.check("--text", "-", "--no-names", stdin=PRIVATE_MAIL + "\n")[0], 0)
+
+    def test_e29_text_label_defaults_to_text(self):
+        code, out = self.check("--text", "-", "--no-names", stdin=PRIVATE_MAIL + "\n")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"text:1: e-mail {PRIVATE_MAIL}", out)
+
     def test_at_most_ten_hits(self):
         self.write("docs/many.md", "".join(f"u{i}" + AT + "corp.io\n" for i in range(15)))
         code, out = self.check("--all", "--no-names")
