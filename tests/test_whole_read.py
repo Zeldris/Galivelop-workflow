@@ -507,6 +507,37 @@ class RepeatOnly(Base):
             self.assertEqual(self.read(path, session="s1"), "")
         self.assertEqual(target.read_text(), "{}")
 
+    def test_a_lock_that_is_a_link_is_not_followed(self):  # B4 (E28): a planted link never creates its target
+        target = self.tmp / "elsewhere.lock"
+        (self.state / "gw-reads-s1.lock").symlink_to(target)
+        path = self.put("docs/log.md", LIMIT + 1)
+        self.read(path, session="s1")
+        self.assertIn("already read it whole", self.warning(self.read(path, session="s1")), "still fails open")
+        self.assertFalse(os.path.lexists(target), "the link's target was created")
+        self.assertTrue((self.state / "gw-reads-s1.lock").is_symlink())
+
+    def test_a_lock_that_is_a_fifo_or_a_folder_is_skipped(self):  # B4 (E28): no lock, no hang, the advice still
+        import subprocess
+        path = self.put("docs/log.md", LIMIT + 1)
+        lock = self.state / "gw-reads-s1.lock"
+        for make in (os.mkfifo, os.mkdir):
+            make(str(lock))
+            event = json.dumps({"hook_event_name": "PreToolUse", "cwd": str(self.p.work), "tool_name": "Read",
+                                "tool_input": {"file_path": str(path)}, "session_id": "s1"})
+            outs = []
+            for _ in range(2):
+                try:
+                    r = subprocess.run(["python3", str(self.scripts / SCRIPT)], input=event, capture_output=True,
+                                       text=True, cwd=self.p.work, env=dict(self.p.env, TMPDIR=str(self.state)),
+                                       timeout=20)
+                except subprocess.TimeoutExpired:
+                    self.fail(f"the hook hung on a {make.__name__} lock")
+                self.assertEqual(r.returncode, 0, r.stderr)
+                outs.append(r.stdout)
+            self.assertIn("already read it whole", self.warning(outs[1]), make.__name__)
+            (os.rmdir if make is os.mkdir else os.unlink)(str(lock))
+            (self.state / "gw-reads-s1.json").unlink()
+
 
 class Deny(Base):  # E70: wholeReadDenyPaths rejects the whole read instead of warning
     def denial(self, out):

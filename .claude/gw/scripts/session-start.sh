@@ -188,10 +188,11 @@ fi
 # log. A watchdog sleeps <seconds> and then marks the run as timed out, sends TERM to the group and, $kill_grace s
 # later (commandKillGrace, default 5), KILL.
 # Sets `timed_out` only when the watchdog fired (a command that exits 124 by itself is a plain failure). Returns the
-# command's exit status.
+# command's exit status. The watchdog's flag is <log>.timeout: the log lives in the run's private folder (mktemp -d,
+# B4 of E28), so neither name can be planted beforehand by another user of the shared temp folder.
 run_limited() {
   local limit="$1" cmd="$2" log="$3" flag pid wd status
-  flag="$(mktemp "${TMPDIR:-/tmp}/gw-timeout.XXXXXX")" || flag="${TMPDIR:-/tmp}/gw-timeout.$$"
+  flag="$log.timeout"
   rm -f "$flag"; timed_out=""
   set -m
   bash -c "$cmd" > "$log" 2>&1 < /dev/null &
@@ -241,6 +242,11 @@ if [ -n "$install_here" ] && [ -n "$config_ok" ]; then
       :
     else
       failed=""
+      logdir="$(mktemp -d "${TMPDIR:-/tmp}/gw-session-start.XXXXXX" 2>/dev/null)" || logdir=""
+      if [ -z "$logdir" ] || [ ! -d "$logdir" ]; then
+        warn "cannot create a private folder for the install and setup logs in ${TMPDIR:-/tmp}; free space or fix TMPDIR, then start a new session"
+        failed=1
+      fi
       default_limit="$(python3 "$config" --root "$root" get commandTimeout 2>/dev/null)"
       case "$default_limit" in ''|*[!0-9]*) default_limit="$(python3 "$config" default commandTimeout 2>/dev/null)" ;; esac
       kill_grace="$(python3 "$config" --root "$root" get commandKillGrace 2>/dev/null)"
@@ -249,10 +255,10 @@ if [ -n "$install_here" ] && [ -n "$config_ok" ]; then
       case "$limit" in ''|*[!0-9]*) limit="$default_limit" ;; esac
       [ "$((10#$limit))" -gt 0 ] || limit="$default_limit"   # 0 would kill every command at once
       while IFS= read -r entry; do
-        [ -n "$entry" ] || continue
+        [ -n "$entry" ] && [ -z "$failed" ] || continue
         kind="${entry%%:*}"; cmd="${entry#*:}"
         echo "gw session-start: running $kind command: $cmd"
-        log="${TMPDIR:-/tmp}/gw-$kind.log"
+        log="$logdir/$kind.log"
         run_limited "$limit" "$cmd" "$log"
         status=$?
         if [ "$status" -ne 0 ]; then
@@ -263,7 +269,10 @@ if [ -n "$install_here" ] && [ -n "$config_ok" ]; then
           break
         fi
       done <<<"$(printf '%s\n' "$installs" | sed 's/^/install:/;/^install:$/d'; printf '%s\n' "$setups" | sed 's/^/setup:/;/^setup:$/d')"
-      if [ -z "$failed" ] && [ -n "$sum" ]; then printf '%s\n' "$sum" > "$stamp" 2>/dev/null || true; fi
+      if [ -z "$failed" ]; then
+        rm -rf "$logdir"                # a failure keeps its log for the warning above
+        if [ -n "$sum" ]; then printf '%s\n' "$sum" > "$stamp" 2>/dev/null || true; fi
+      fi
     fi
   fi
 fi

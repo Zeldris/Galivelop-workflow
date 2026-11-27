@@ -597,7 +597,10 @@ def install_packages(pkg, root, fix, keep_days=0):
         shutil.copy(str(lock_file), str(cache / "package-lock.json"))
         shutil.rmtree(str(cache / "node_modules"), True)
         print(f"front: npm ci in {cache}", flush=True)
-        done = subprocess.run(["npm", "ci", "--no-audit", "--no-fund"], cwd=str(cache), stdin=subprocess.DEVNULL)
+        # --ignore-scripts (D3, E28): no package's install script runs; Playwright's browsers come from `install
+        # --browsers` (`playwright install`) or, in Docker, from the image, never from a postinstall
+        done = subprocess.run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], cwd=str(cache),
+                              stdin=subprocess.DEVNULL)
         if done.returncode != 0:
             raise Fail(f"npm ci failed in {cache} (above); fix package.json or the network, then run: {fix}", 3)
         stamp.write_bytes(wanted)
@@ -816,7 +819,7 @@ def run(root, front, tokens, mode, update=False):
             image = front["dockerImage"].replace("{playwright}", version)
             inner = shlex.quote(f"/work/{rel_dir}")
             script = " && ".join([
-                f"cd {inner}", "npm ci --no-audit --no-fund", "cd /work",
+                f"cd {inner}", "npm ci --ignore-scripts --no-audit --no-fund", "cd /work",
                 " ".join(shlex.quote(a) for a in [f"{rel_dir}/node_modules/.bin/stylelint", *lint_args]),
                 f"cd {inner}", "npx playwright " + " ".join(shlex.quote(a) for a in tests)])
             step([docker, "run", "--rm", "--ipc=host", "-v", f"{work}:/work", "-w", "/work", image, "bash", "-c", script],
