@@ -15,6 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SCRIPT = ROOT / "scripts" / "metrics.py"
 sys.path.insert(0, str(ROOT / "scripts"))
 import metrics  # noqa: E402
+import waits  # noqa: E402
 MODEL = "claude-sonnet-5-5"
 BASE_CONFIG = {"version": "0.5.1", "schemaVersion": 1, "language": "en", "log": "docs/log.md",
                "protectedBranch": "main", "pushToProtected": "direct", "check": ["true"],
@@ -227,7 +228,7 @@ class Record(Base):
                 "except metrics.MetricsError as exc:\n    print(exc)\n")
         try:
             r = subprocess.run([sys.executable, "-B", "-c", code, str(ROOT / "scripts"), str(self.root)],
-                               capture_output=True, text=True, timeout=20)
+                               capture_output=True, text=True, timeout=waits.timeout(20))
         except subprocess.TimeoutExpired:
             self.fail("ledger_target never returned when no folder above the ledger exists")
         self.assertIn("has no existing folder above it", r.stdout, r.stderr)
