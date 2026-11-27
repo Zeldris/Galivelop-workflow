@@ -1,4 +1,4 @@
-# Harvest galivelop-image-generator — 2026-11-15
+# Harvest private-project-6 — 2026-11-15
 
 De `1c178d30` a `6e73f1ec` (`scripts/harvest.py`). 108 commits; sin skills ni scripts del flujo cambiados. Lo nuevo
 sale de 4 retros. Recogida de cierre de la `0.7` (usuario, 2026-11-15).

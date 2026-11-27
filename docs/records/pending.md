@@ -268,7 +268,7 @@ Menores de la revisión del diff entero contra `main`; no se revisan otra vez en
 
 - [x] `0.5` · **Labs P3:** las skills `to-spec` y `wayfinder`, con un destino Markdown local por defecto. ✅ 2026-10-26:
   `docs/specs/<fecha>-<tema>.md` y `docs/mapas/<tema>.md` (cada ticket, una casilla); cambiable desde
-  `.claude/gw/<skill>.md`; filas nuevas en el `selector`. [`2026-10-25-labs-log-detective.md`](../proposals/2026-10-25-labs-log-detective.md)
+  `.claude/gw/<skill>.md`; filas nuevas en el `selector`. [`2026-10-25-private-project-7.md`](../proposals/2026-10-25-private-project-7.md)
 
 ## Pendiente (de la bitácora)
 

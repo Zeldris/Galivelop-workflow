@@ -16,7 +16,7 @@ nuevo sale de `docs/records/retro-2026-11-19-gw-update-0-8-1.md` y de dos cambio
 ## Joined to another proposal
 
 - Retro P1 (el ledger fuera del árbol hasta el commit de trabajo; 5 turnos y ~0,5M): con
-  `2026-11-22-galivelop-image-generator.md` P1.
+  `2026-11-22-private-project-6.md` P1.
 
 ## Stays in the project
 

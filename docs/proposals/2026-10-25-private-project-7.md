@@ -1,4 +1,4 @@
-# Harvest labs-log-detective — 2026-10-25 (primera recogida)
+# Harvest private-project-7 — 2026-10-25 (primera recogida)
 
 Hasta `bc501f91` (`scripts/recoger.py`, primera vez). El proyecto llevaba una copia a mano del flujo y en `a6a513c`
 (QA-12) instaló Galivelop-workflow `0.3.0`; sus scripts y skills del flujo son iguales a los de la `0.3.0`. Las ideas

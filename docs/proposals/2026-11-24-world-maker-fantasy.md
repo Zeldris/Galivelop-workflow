@@ -14,7 +14,7 @@ De `5590cda` a `904226bd` (`scripts/harvest.py`). 13 commits; ningún skill ni s
 
 ## Joined to another proposal
 
-- G1 (`workflowClone` distingue mayúsculas): ya decidido en D158; el resto, con `2026-11-24-galivelop-image-generator.md` P1.
+- G1 (`workflowClone` distingue mayúsculas): ya decidido en D158; el resto, con `2026-11-24-private-project-6.md` P1.
 
 ## Stays in the project
 

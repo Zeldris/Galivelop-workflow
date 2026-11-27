@@ -1464,7 +1464,7 @@ Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-2
 - `recuperar.py --estado` espera 3 s (antes 1) el `transcript_path` del gancho y, si cae al registro más nuevo de la
   carpeta, avisa de que puede ser el de otra sesión abierta en el repo (portal P3).
 - Recogida del 2026-10-25 (`docs/propuestas/2026-10-25-world-maker-fantasy.md` y
-  `2026-10-25-labs-log-detective.md`):
+  `2026-10-25-private-project-7.md`):
   - **Gancho `commit-msg` del flujo:** si el commit toca la bitácora, corre `bitacora.py check` sobre la versión del
     índice; los fallos salen al hacer el commit y no en el `pre-push`, con varios commits ya apilados (WMF P1).
   - `doctor.py` ya no da por ignorado un archivo que una regla `!` del `.gitignore` des-ignora (Labs P1).
@@ -1600,7 +1600,7 @@ Parche de correcciones de la recogida del 2026-10-26 (`docs/propuestas/2026-10-2
 - `recuperar.py --estado` waits 3 s (was 1) for the hook's `transcript_path` and, when it falls back to the folder's
   newest transcript, warns that it may belong to another session open in the repo (portal P3).
 - Harvest of 2026-10-25 (`docs/propuestas/2026-10-25-world-maker-fantasy.md` and
-  `2026-10-25-labs-log-detective.md`):
+  `2026-10-25-private-project-7.md`):
   - **Workflow `commit-msg` hook:** when the commit touches the log, it runs `bitacora.py check` on the index
     version, so errors show at commit time and not at `pre-push` with several commits already stacked (WMF P1).
   - `doctor.py` no longer reports as ignored a file that a `!` rule in `.gitignore` un-ignores (Labs P1).

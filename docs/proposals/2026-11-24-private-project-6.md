@@ -1,4 +1,4 @@
-# Harvest galivelop-image-generator — 2026-11-24
+# Harvest private-project-6 — 2026-11-24
 
 De `f025f40` a `7c2f412` (`scripts/harvest.py`). 17 commits; ningún skill ni script cambiado. Lo nuevo sale de
 `docs/records/retro-2026-11-22-gw-0.8.2.md` y `docs/records/retro-2026-11-24-gw-0.9.0.md`.
@@ -46,7 +46,7 @@ De `f025f40` a `7c2f412` (`scripts/harvest.py`). 17 commits; ningún skill ni sc
 
 ## Joined to another proposal
 
-- Retro 0.8.2 P2 (el `pre-push` ensucia el árbol con el ledger): con `2026-11-22-galivelop-image-generator.md` P1 y B2.
+- Retro 0.8.2 P2 (el `pre-push` ensucia el árbol con el ledger): con `2026-11-22-private-project-6.md` P1 y B2.
 
 ## Stays in the project
 

@@ -1,4 +1,4 @@
-# Harvest galivelop-image-generator — 2026-11-18
+# Harvest private-project-6 — 2026-11-18
 
 De `46248251` a `61ce5096` (`scripts/harvest.py`). 164 commits; sin skills ni scripts del flujo cambiados (un
 script coincidente por nombre, `gimg/doctor.py`, ver «Stays in the project»). Lo nuevo sale de 7 retros (la de la
@@ -77,9 +77,9 @@ tanda L8 no trae nada; la de `hoja-datos` @ `98c1d30` es la de la actualización
 ## Already here
 
 - W1 (`red-without-fix.sh` sin `git stash`): D98 (`scripts/red-without-fix.sh` copia los archivos aparte); ya en
-  `docs/proposals/2026-11-14-galivelop-image-generator.md` P1.
+  `docs/proposals/2026-11-14-private-project-6.md` P1.
 - W2 (check de «Al empezar» filtrado): `scripts/check.sh --quiet` y `checkTailLines`
-  (`docs/proposals/2026-11-14-galivelop-image-generator.md`).
+  (`docs/proposals/2026-11-14-private-project-6.md`).
 - W3 (tope de llamadas en el encargo) y su repetición en la retro `hoja-datos` (un encargo de arreglos sin tope hizo
   92 llamadas): la plantilla del encargo de `skills/gw-orchestrate-dealer/SKILL.md` ya lo lleva («At ~25 tool calls,
   commit…», l. 70) además del tope de ~30 del paso 2; el encargo de 92 llamadas no salió de esa plantilla.

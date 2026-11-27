@@ -8,7 +8,7 @@ apertura de la `0.9` (2026-11-18).
 ## P1. `gw-update` deja un gancho registrado dos veces cuando la plantilla le cambia el matcher
 
 - **Source:** `docs/records/retro-2026-11-18-flu-12.md` @ `a6eff94` (retro). Lo mismo, visto en la misma
-  actualización, en galivelop-image-generator, private-project-2, private-project-3 y private-project-5 (sus
+  actualización, en private-project-6, private-project-2, private-project-3 y private-project-5 (sus
   propuestas de hoy lo unen aquí).
 - **What changes:** `scripts/apply.py` (fusión de `hooks`, ~566-585) junta por evento + matcher + `command`: la `0.8.0`
   pasó `whole-read.py` de `Read` a `^(Read|Bash)$` y el proyecto se quedó con las dos entradas, así que el gancho corre

@@ -4,7 +4,7 @@ De `e1c64573` a `6cc80cc4` (`scripts/harvest.py`). 14 commits; sin skills ni scr
 sale de 1 retro (`docs/records/retro-2026-11-14-fase0.md`). Recogida de cierre de la `0.7` (usuario, 2026-11-15).
 
 Sin nada nuevo desde la recogida anterior: `private-project-2`, `private-project-3`, `instalador-wmf-tarkor` y
-`labs-log-detective`.
+`private-project-7`.
 
 ## P1. `reviewed.sh` y el `pre-push` no dejan crear la rama protegida
 

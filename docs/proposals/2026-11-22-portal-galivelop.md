@@ -10,5 +10,5 @@ ideas para el flujo. Sin propuestas.
 
 ## Projects with nothing new
 
-- labs-log-detective: nada desde `bc501f91`.
+- private-project-7: nada desde `bc501f91`.
 - private-project-4: nada desde `6cc80cc4`.
