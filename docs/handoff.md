@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.9.1` en `main`** (`664c0dd`, 2026-11-26; las tres fases hechas: revisión de B58-B61 con 3 leves arreglados, retro, `reviewed.sh`; CI de `664c0dd` en verde). Release de GitHub `v0.9.1` publicada (2026-11-26, sesión local; etiqueta sobre `664c0dd`) |
-| Siguiente paso | **`0.10` «Estable»**, barridos pequeños primero (usuario, 2026-11-26): B43, B62, D180, B63 y D181 hechos (D181 sin revisar: va en la revisión del bloque). **E28 en curso** (2026-11-27, ficha `docs/tasks/E28.md`): cuatro lectores de solo lectura (skill de Cloudflare y su licencia; ganchos; scripts; permisos, CI y secretos); sus hallazgos irán a `docs/records/security-review-E28.md` y al usuario. Después E29-E30 y al final E8/E31. Fase 7 (rodaje) en paralelo. Presupuesto de compactaciones: 2 |
+| Siguiente paso | **`0.10` «Estable»**, barridos pequeños primero (usuario, 2026-11-26): B43, B62, D180, B63 y D181 hechos (D181 sin revisar: va en la revisión del bloque). **E28 en curso** (2026-11-27, ficha `docs/tasks/E28.md`): auditoría hecha (cuatro lectores): hallazgos en `docs/records/security-review-E28.md`; decisiones pendientes del usuario en Q-43 a Q-47 (`questions.py list`). Después E29-E30 y al final E8/E31. Fase 7 (rodaje) en paralelo. Presupuesto de compactaciones: 2 |
 
 ### Fases
 
