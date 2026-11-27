@@ -168,6 +168,113 @@ class Record(Base):
         self.assertTrue((self.root / "data" / "t" / "tokens.jsonl").is_file())
         self.assertEqual(self.rows(), [])
 
+    def assert_refused(self, r, reason):
+        self.assertEqual(r.returncode, 0, r.stderr)  # a Stop hook never fails loudly
+        msg = json.loads(r.stdout)["systemMessage"]
+        self.assertIn(reason, msg)
+        self.assertIn("metrics.ledger", msg)
+
+    def test_e28_ledger_outside_the_repo_is_refused_by_the_config(self):  # B2: "../../.bashrc"
+        self.write_config({"metrics": {"ledger": "../outside/ledger.jsonl"}})
+        self.write_log([line("m1", "2026-11-09T10:00:00Z")])
+        r = self.record()
+        self.assert_refused(r, "must be a repo-relative path")
+        self.assertFalse((self.tmp / "outside").exists())
+
+    def test_e28_ledger_symlink_is_not_followed(self):  # B2: a committed ledger.jsonl -> ~/.bashrc
+        target = self.tmp / "bashrc"
+        target.write_text("export A=1\n")
+        (self.root / "docs" / "metrics").mkdir(parents=True)
+        (self.root / LEDGER).symlink_to(target)
+        self.write_log([line("m1", "2026-11-09T10:00:00Z")])
+        r = self.record()
+        self.assert_refused(r, "is a symlink")
+        self.assertEqual(target.read_text(), "export A=1\n")
+        (self.root / LEDGER).unlink()
+        (self.root / LEDGER).symlink_to(self.tmp / "missing.jsonl")  # dangling: open would create the target
+        r = self.record()
+        self.assert_refused(r, "is a symlink")
+        self.assertFalse((self.tmp / "missing.jsonl").exists())
+
+    def test_e28_ledger_folder_linked_outside_is_not_written(self):  # B2: docs/metrics -> a folder elsewhere
+        outside = self.tmp / "elsewhere"
+        outside.mkdir()
+        (self.root / "docs").mkdir()
+        (self.root / "docs" / "metrics").symlink_to(outside)
+        self.write_log([line("m1", "2026-11-09T10:00:00Z")])
+        r = self.record()
+        self.assert_refused(r, "resolves outside the repo")
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_e28_dangling_folder_link_creates_nothing_outside(self):  # B2: os.makedirs through a dangling link
+        (self.root / "docs").symlink_to(self.tmp / "nowhere" / "deep")
+        self.write_log([line("m1", "2026-11-09T10:00:00Z")])
+        r = self.record()
+        self.assert_refused(r, "resolves outside the repo")
+        self.assertFalse((self.tmp / "nowhere").exists())
+
+    def test_e28_refused_ledger_is_quiet_when_the_stop_hook_is_active(self):
+        (self.root / "docs" / "metrics").mkdir(parents=True)
+        (self.root / LEDGER).symlink_to(self.tmp / "missing.jsonl")
+        self.write_log([line("m1", "2026-11-09T10:00:00Z")])
+        r = self.record(payload={"stop_hook_active": True})
+        self.assertEqual((r.returncode, r.stdout), (0, ""), r.stderr)
+        self.assertFalse((self.tmp / "missing.jsonl").exists())
+
+    def test_e28_no_existing_folder_above_the_ledger_ends_the_search(self):  # review: dirname(x) == x looped forever
+        code = ("import os, sys; sys.path.insert(0, sys.argv[1]); import metrics; os.path.lexists = lambda p: False\n"
+                "try:\n    metrics.ledger_target(sys.argv[2], 'docs/t.jsonl')\n"
+                "except metrics.MetricsError as exc:\n    print(exc)\n")
+        try:
+            r = subprocess.run([sys.executable, "-B", "-c", code, str(ROOT / "scripts"), str(self.root)],
+                               capture_output=True, text=True, timeout=20)
+        except subprocess.TimeoutExpired:
+            self.fail("ledger_target never returned when no folder above the ledger exists")
+        self.assertIn("has no existing folder above it", r.stdout, r.stderr)
+        self.assertIn("metrics.ledger", r.stdout)
+
+    def test_e28_drive_letter_or_backslash_ledger_is_refused_at_write_time(self):  # review: Q:/t.jsonl, ..\\x
+        for rel in ("Q:/t.jsonl", "..\\..\\x.jsonl", "/abs/t.jsonl", "~/t.jsonl"):
+            with self.assertRaises(metrics.MetricsError) as ctx:
+                metrics.ledger_target(self.root, rel)
+            self.assertIn("is not a repo-relative path", str(ctx.exception), rel)
+        self.assertFalse((self.tmp / "x.jsonl").exists())
+
+    def test_e28_folder_swapped_for_a_link_while_created_stops_the_write(self):  # review: makedirs TOCTOU
+        import config as gwconfig
+        outside = self.tmp / "elsewhere"
+        outside.mkdir()
+        self.write_config({"metrics": {"ledger": "docs/metrics/deep/ledger.jsonl"}})
+        self.write_log([line("m1", "2026-11-09T10:00:00Z")])
+        real_mkdir = os.mkdir
+
+        def racing_mkdir(path, *args, **kwargs):
+            real_mkdir(path, *args, **kwargs)
+            if os.path.basename(str(path)) == "docs":  # another process swaps it right after it is made
+                os.rmdir(path)
+                os.symlink(outside, path)
+
+        cfg = gwconfig.load(self.root)
+        os.mkdir = racing_mkdir
+        try:
+            with self.assertRaises(metrics.MetricsError) as ctx:
+                metrics.record(self.root, str(self.transcript), cfg)
+        finally:
+            os.mkdir = real_mkdir
+        self.assertIn("changed into a link or a file", str(ctx.exception))
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_e28_root_reached_through_a_symlink_still_records(self):  # macOS: /tmp is a link to /private/tmp
+        link = self.tmp / "via"
+        link.symlink_to(self.root)
+        self.write_log([line("m1", "2026-11-09T10:00:00Z")])
+        r = subprocess.run([sys.executable, "-B", str(SCRIPT), "record", "--root", str(link)],
+                           input=json.dumps({"session_id": SESSION, "stop_hook_active": False,
+                                             "transcript_path": str(self.transcript)}),
+                           capture_output=True, text=True, env=self.env)
+        self.assertEqual((r.returncode, r.stdout), (0, ""), r.stderr)
+        self.assertEqual(len(self.rows()), 1)
+
     def test_refs_and_branch_come_from_head(self):
         self.git("checkout", "-q", "-b", "claude/trabajo")
         self.write_log([line("m1", "2026-11-09T10:00:00Z")])

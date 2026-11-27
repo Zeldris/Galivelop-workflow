@@ -138,7 +138,10 @@
     },
     "protectedBranch": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "^(?![^\\n]*\\n)(?![-/.])(?!@$)(?!.*\\.\\.)(?!.*@\\{)(?!.*//)(?!.*/[.])(?!.*\\.lock(/|$))(?!.*[/.]$)[^\\x00-\\x20\\x7f~^:?*\\[\\\\]+$",
+      "errorMessage": "must be a git branch name (git check-ref-format --branch): no leading -, / or ., no trailing / or ., no spaces, no .., //, @{ or a part starting with . or ending in .lock, not @ alone, none of ~^:?*[\\; e.g. main",
+      "description": "E28 (A1): the pattern keeps git from reading it as an option (--upload-pack=...) or a bad ref."
     },
     "pushToProtected": {
       "enum": [
@@ -1279,7 +1282,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "ledger": {"type": "string", "minLength": 1, "default": "docs/metrics/ledger.jsonl"},
+        "ledger": {"type": "string", "minLength": 1, "pattern": "^(?![^\\n]*\\n)(?![/\\\\~])(?![A-Za-z]:)(?!(.*[/\\\\])?\\.\\.([/\\\\]|$))", "errorMessage": "must be a repo-relative path (no leading /, \\ or ~, no drive letter, no .. segment); since E28 a ledger outside the repo is refused: move the file into the repo and set metrics.ledger in .claude/gw.json to its path from the repo root, e.g. docs/metrics/ledger.jsonl", "default": "docs/metrics/ledger.jsonl"},
         "record": {"type": "boolean", "default": true},
         "commitLedger": {"type": "boolean", "default": true, "description": "B36: the pre-commit hook (metrics.py stage-ledger) adds the changed ledger to the next work commit, so it needs no commit of its own; never during a merge, cherry-pick, revert or rebase, never in git commit <paths>/--only, never when the ledger is ignored or is the only staged change; false leaves the ledger to the user."},
         "reports": {"type": "string", "minLength": 1, "default": "docs/metrics"},
