@@ -5,3 +5,4 @@
 !.env.sample
 !.env.template
 .claude/settings.local.json
+*.gw-tmp
