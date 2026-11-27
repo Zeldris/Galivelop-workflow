@@ -83,6 +83,7 @@ import os
 import posixpath
 import re
 import select
+import stat
 import subprocess
 import sys
 
@@ -703,19 +704,50 @@ def ledger_target(root, rel):
     """E28 (B2): the absolute ledger path the record may append to; MetricsError when it is a symlink or would land
     (or create folders) outside the repo, so a config or a committed link cannot make the hook write elsewhere."""
     real_root = os.path.realpath(str(root))
-    path = os.path.join(str(root), *posixpath.normpath(rel).split("/"))
     fix = (f"set metrics.ledger in .claude/gw.json to a path inside the repo (python3 "
            f"{os.path.join(HERE, 'config.py')} validate), or turn recording off with metrics.record false")
+    norm = posixpath.normpath(rel.replace("\\", "/"))
+    if norm.startswith(("/", "~")) or norm == ".." or norm.startswith("../") or re.match(r"[A-Za-z]:", norm):
+        raise MetricsError(f"the ledger {rel} is not a repo-relative path, not written; {fix}")
+    path = os.path.join(str(root), *norm.split("/"))
     if os.path.islink(path):
         raise MetricsError(f"the ledger {rel} is a symlink (to {os.readlink(path)}), not written; replace it with a "
                            f"regular file (git rm --cached {rel} && rm {rel}) or {fix}")
     folder = os.path.dirname(path)
-    while not os.path.lexists(folder):  # the nearest existing folder decides where makedirs would create the rest
-        folder = os.path.dirname(folder)
-    real = os.path.realpath(folder)
-    if real != real_root and not real.startswith(real_root.rstrip(os.sep) + os.sep):
-        raise MetricsError(f"the ledger {rel} resolves outside the repo ({real}), not written; {fix}")
+    while not os.path.lexists(folder):  # the nearest existing folder decides where the missing ones would go
+        up = os.path.dirname(folder)
+        if up == folder:  # a root that does not exist (a drive letter elsewhere): nowhere safe to write
+            raise MetricsError(f"the ledger {rel} has no existing folder above it, not written; {fix}")
+        folder = up
+    if not inside(os.path.realpath(folder), real_root):
+        raise MetricsError(f"the ledger {rel} resolves outside the repo ({os.path.realpath(folder)}), not written; "
+                           f"{fix}")
     return path
+
+
+def inside(real, real_root):
+    return real == real_root or real.startswith(real_root.rstrip(os.sep) + os.sep)
+
+
+def make_ledger_folders(root, ledger, rel):
+    """E28: create the ledger's missing folders one level at a time, each checked with lstat right after its mkdir,
+    so a folder swapped for a symlink meanwhile stops the write instead of creating the next one elsewhere."""
+    real_root = os.path.realpath(str(root))
+    missing = []
+    folder = os.path.dirname(ledger)
+    while not os.path.lexists(folder):
+        missing.append(folder)
+        folder = os.path.dirname(folder)
+    for folder in reversed(missing):
+        try:
+            os.mkdir(folder)
+        except FileExistsError:
+            pass  # made by another hook meanwhile: checked below like ours
+        st = os.lstat(folder)
+        if stat.S_ISLNK(st.st_mode) or not stat.S_ISDIR(st.st_mode) or not inside(os.path.realpath(folder), real_root):
+            raise MetricsError(f"the ledger folder {os.path.relpath(folder, str(root))} changed into a link or a file "
+                               f"while it was being created, not written; remove it and rerun, or set metrics.ledger "
+                               f"in .claude/gw.json (ledger {rel})")
 
 
 def record(root, transcript, cfg):
@@ -742,8 +774,8 @@ def record(root, transcript, cfg):
     for (session, agent, model, day), diff in new:
         row = dict(diff, session=session, agent=agent, model=model, date=day, branch=branch, refs=refs, recorded=stamp)
         text += json.dumps(row, sort_keys=True, separators=(",", ":")) + "\n"
-    os.makedirs(os.path.dirname(ledger), exist_ok=True)
-    ledger = ledger_target(root, settings["ledger"])  # again after makedirs: nothing swapped in meanwhile
+    make_ledger_folders(root, ledger, settings["ledger"])
+    ledger = ledger_target(root, settings["ledger"])  # again after the folders: nothing swapped in meanwhile
     flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT | getattr(os, "O_NOFOLLOW", 0)
     with os.fdopen(os.open(ledger, flags, 0o666), "a", encoding="utf-8") as f:
         f.write(text)  # one write: the lines of this run go in together

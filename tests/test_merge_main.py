@@ -78,6 +78,25 @@ class MergeMain(unittest.TestCase):
             self.assertIn("validate", out)
             self.assertFalse(marker.exists(), out)
 
+    def test_e28_option_guard_holds_without_the_schema(self):  # review: the schema refused it before the guard ran
+        import contextlib
+        import importlib.util
+        import io
+        from unittest import mock
+        spec = importlib.util.spec_from_file_location("merge_main_e28", SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        marker = self.tmp / "pwned"
+        self.put(self.work, ".claude/gw.json", json.dumps(self.config(protectedBranch=f"--upload-pack=touch {marker};")))
+        out = io.StringIO()
+        with mock.patch.object(mod.config, "validate", return_value=[]), contextlib.redirect_stdout(out), \
+                contextlib.redirect_stderr(out):
+            code = mod.main(["--root", str(self.work)])
+        self.assertEqual(code, 2, out.getvalue())
+        self.assertIn("starts with '-', which git reads as an option", out.getvalue())
+        self.assertIn("config.py validate", out.getvalue())
+        self.assertFalse(marker.exists())
+
     def test_e28_fetch_updates_origin_main_with_a_narrow_fetch_refspec(self):  # A1: explicit refspec
         self.git(self.work, "config", "remote.origin.fetch", "+refs/heads/work:refs/remotes/origin/work")
         self.upstream()

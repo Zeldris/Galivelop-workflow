@@ -51,14 +51,9 @@ class Config(unittest.TestCase):
         cases = ((VALID, ["docs/metrics/ledger.jsonl"]),
                  (dict(VALID, metrics={"ledger": "var/tokens.jsonl"}), ["var/tokens.jsonl"]),
                  (dict(VALID, metrics={"ledger": "./var//tokens.jsonl"}), ["var/tokens.jsonl"]),
-                 # an absolute ledger or one with a .. segment fails validate since E28 (B2)
+                 # an absolute ledger or one with a .. segment fails validate since E28 (B2): cache_ignore_e28 below
                  (dict(VALID, metrics={"ledger": "   "}), []),  # blank: no path
                  (dict(VALID, metrics={"ledger": "var\\tokens.jsonl"}), ["var/tokens.jsonl"]),  # git's separator
-                 (dict(VALID, metrics={"ledger": "..\\tokens.jsonl"}), []),
-                 (dict(VALID, metrics={"ledger": "var\\..\\..\\tokens.jsonl"}), []),
-                 (dict(VALID, metrics={"ledger": "\\abs\\tokens.jsonl"}), []),
-                 (dict(VALID, metrics={"ledger": "C:/abs/tokens.jsonl"}), []),  # a drive letter is absolute
-                 (dict(VALID, metrics={"ledger": "c:\\abs\\tokens.jsonl"}), []),
                  (dict(VALID, metrics={"ledger": "var/tokens.jsonl"}, checkCacheIgnore=["a.txt"]), ["a.txt"]),
                  (dict(VALID, metrics={"ledger": "var/tokens.jsonl"}, checkCacheIgnore=[]), []))
         for data, want in cases:
@@ -66,6 +61,11 @@ class Config(unittest.TestCase):
                 self.write(data)
                 r = cli(self.tmp, "get", "checkCacheIgnore", "--json")
                 self.assertEqual((r.returncode, json.loads(r.stdout or "null")), (0, want), r.stderr)
+
+    def test_cache_ignore_e28_outside_ledger_gives_none(self):  # B63, called directly: validate refuses these now
+        for ledger in ("/abs/tokens.jsonl", "../tokens.jsonl", "var/../../tokens.jsonl", "..", "..\\tokens.jsonl",
+                       "var\\..\\..\\tokens.jsonl", "\\abs\\tokens.jsonl", "C:/abs/tokens.jsonl", "c:\\abs\\tokens.jsonl"):
+            self.assertEqual(config.cache_ignore_default(dict(VALID, metrics={"ledger": ledger})), [], ledger)
 
     def test_ci_install_is_unset_until_given_and_an_empty_list_is_a_value(self):
         self.write(VALID)
@@ -441,22 +441,25 @@ class Config(unittest.TestCase):
 
     def test_e28_protected_branch_must_be_a_branch_name(self):  # A1: git would read "--upload-pack=..." as an option
         for bad in ("--upload-pack=touch x;", "-x", "a b", "a..b", "a~1", "a^", "a:b", "a?", "a*", "a[b", "a\\b",
-                    "/main", "main/", "a@{1}", "main\n", "a\tb"):
+                    "/main", "main/", "a@{1}", "main\n", "a\tb", "main.lock", "a.lock/b", ".x", "a/.b",
+                    "a//b", "x.", "@"):
             self.write(dict(VALID, protectedBranch=bad))
             r = cli(self.tmp, "validate")
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn(f"$.protectedBranch: {bad!r} must be a git branch name", r.stderr)
-        for good in ("main", "master", "release/1.0", "feat-x", "v1.2", "a.b_c"):
+        for good in ("main", "master", "release/1.0", "feat-x", "feature-x", "v1.2", "a.b_c", "a@b", "x.locked"):
             self.write(dict(VALID, protectedBranch=good))
             r = cli(self.tmp, "validate")
             self.assertEqual(r.returncode, 0, (good, r.stderr))
 
     def test_e28_metrics_ledger_must_stay_inside_the_repo(self):  # B2: "../../.bashrc" got JSON rows appended
-        for bad in ("../../.bashrc", "/etc/passwd", "~/.bashrc", "docs/../../x", ".."):
+        for bad in ("../../.bashrc", "/etc/passwd", "~/.bashrc", "docs/../../x", "..", "..\\..\\.bashrc",
+                    "var\\..\\..\\x", "\\abs\\x", "C:/x", "c:\\x", "x.jsonl\n"):
             self.write(dict(VALID, metrics={"ledger": bad}))
             r = cli(self.tmp, "validate")
             self.assertEqual(r.returncode, 2, bad)
             self.assertIn(f"$.metrics.ledger: {bad!r} must be a repo-relative path", r.stderr)
+            self.assertIn("move the file into the repo and set metrics.ledger", r.stderr)
         for good in ("docs/metrics/ledger.jsonl", "ledger.jsonl", "./data/t.jsonl", "a..b/t.jsonl"):
             self.write(dict(VALID, metrics={"ledger": good}))
             r = cli(self.tmp, "validate")

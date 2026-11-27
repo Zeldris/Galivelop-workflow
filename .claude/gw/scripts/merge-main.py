@@ -83,6 +83,16 @@ def head_refs(root):
     return []
 
 
+def branch_as_option(branch):
+    """E28 (A1): True (and say why) when git would read `branch` as an option (--upload-pack=...); the schema refuses
+    it too, this guards a config that skipped validation."""
+    if not branch.startswith("-"):
+        return False
+    say(f"protectedBranch {branch!r} starts with '-', which git reads as an option; set a branch name in "
+        f".claude/gw.json and check it: python3 {HERE / 'config.py'} validate")
+    return True
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(prog=PROG, description="Merge origin/<protectedBranch>, committing the ledger first.")
     ap.add_argument("--root", help="project root (default: found from this script or the repo)")
@@ -102,9 +112,7 @@ def main(argv=None):
     if not branch or not ledger:
         say("protectedBranch or metrics.ledger is not set in .claude/gw.json; set them (docs/en/config.md)")
         return 2
-    if branch.startswith("-"):  # E28 (A1): git would read it as an option (--upload-pack=...); the schema refuses it too
-        say(f"protectedBranch {branch!r} starts with '-', which git reads as an option; set a branch name in "
-            f".claude/gw.json and check it: python3 {HERE / 'config.py'} validate")
+    if branch_as_option(branch):
         return 2
     ledger = posixpath.normpath(ledger)
     lang = config.languages(cfg)["docs"]["primary"]
