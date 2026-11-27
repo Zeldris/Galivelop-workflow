@@ -827,9 +827,10 @@ def ensure(root, sha, refs):
         if not ref:
             continue
         # --refmap= stops git updating refs/remotes/origin/<branch> on its own.
-        r = git(root, "fetch", "-q", "--no-write-fetch-head", "--refmap=", "origin", ref)
+        # `--` (E28, A1): a ref from the config or the event is never read as an option (--upload-pack=...).
+        r = git(root, "fetch", "-q", "--no-write-fetch-head", "--refmap=", "--", "origin", ref)
         if r.returncode != 0 and "no-write-fetch-head" in r.stderr:
-            git(root, "fetch", "-q", "--refmap=", "origin", ref)  # git < 2.29: FETCH_HEAD only, still no ref
+            git(root, "fetch", "-q", "--refmap=", "--", "origin", ref)  # git < 2.29: FETCH_HEAD only, still no ref
         if has_commit(root, sha):
             return True
     return False

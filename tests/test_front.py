@@ -618,6 +618,7 @@ class Run(Base):
         self.assertEqual(len(run), 1, self.calls())
         self.assertIn("mcr.microsoft.com/playwright:v1.63.0-noble", run[0][0])
         self.assertIn("npx playwright test", run[0][0])
+        self.assertIn("npm ci --ignore-scripts ", run[0][0], "D3 (E28): no install script runs as root in Docker")
         self.assertNotIn("--grep-invert", run[0][0])
         code, out = self.main("run", "full", system="Darwin", env={"FAKE_EXIT": "1"})
         self.assertEqual(code, 1, out)
@@ -741,7 +742,7 @@ class Run(Base):
         self.assertEqual(code, 0, out)
         cache = self.cache_dir()
         self.assertEqual(cache.parent, self.tmp / ".git" / "gw" / "front-node")
-        self.assertEqual([c[0] for c in self.calls()], ["npm ci --no-audit --no-fund"])
+        self.assertEqual([c[0] for c in self.calls()], ["npm ci --ignore-scripts --no-audit --no-fund"])
         self.assertEqual(Path(self.calls()[0][1]).resolve(), cache.resolve())
         self.assertEqual((cache / "installed-from").read_bytes(), b"{}\n" + PACKAGE.encode())
 
@@ -751,7 +752,7 @@ class Run(Base):
         self.assertEqual(self.main("install")[0], 0)
         self.assertEqual(self.calls(), [])
         self.assertEqual(self.main("install", "--package-dir", ".")[0], 0)
-        self.assertEqual([c[0] for c in self.calls()], ["npm ci --no-audit --no-fund"])
+        self.assertEqual([c[0] for c in self.calls()], ["npm ci --ignore-scripts --no-audit --no-fund"])
 
     def test_e7_install_matrix_asks_for_each_browser_of_the_matrix_once(self):
         self.fake(self.bin, "node", "npm")

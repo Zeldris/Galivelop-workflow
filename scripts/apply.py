@@ -123,10 +123,12 @@ import json
 import os
 import posixpath
 import re
+import shlex
 import shutil
 import stat
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 sys.dont_write_bytecode = True  # no __pycache__ next to the scripts
@@ -195,6 +197,83 @@ SENSITIVE = (".claude/settings.json", ".claude/gw/scripts/", ".githooks/")
 
 class ApplyError(Exception):
     pass
+
+
+RERUN = []  # E28: the arguments main() was called with, so a refusal's fix repeats them (--update, --init...)
+
+
+def rerun_command(root):
+    """The command that reruns this run: the original arguments, else apply.py <root>."""
+    return "python3 " + shlex.join([str(Path(__file__).resolve())] + (RERUN or [str(root)]))
+
+
+def safe_target(root, rel, make_parent=False):
+    """B1 (E28): root / rel for a write, chmod, move or delete, refused (ApplyError) when rel itself or a folder
+    between root and it is a symbolic link, or when its folder's real path is outside root: a cloned repo may track
+    `.githooks/pre-commit` or `.claude/gw` as a link to ~/.bashrc. A link is never moved either (a plan that moved it
+    would then fail half-applied). make_parent creates the missing folders, after checking the existing ones."""
+    root, rel = Path(root), Path(rel)
+    if rel.is_absolute() or ".." in rel.parts:
+        raise ApplyError(f"apply: {rel} is not a path inside {root}, so it is not written; report it, the plan "
+                         f"should never hold it: {Path(__file__).resolve()}")
+    cur = root
+    for part in rel.parts:
+        cur = cur / part
+        if cur.is_symlink():
+            raise ApplyError(f"apply: {cur} is a symbolic link, so apply.py does not write, move, change or delete "
+                             f"through it (it may point outside {root}); remove the link (rm {cur}) and rerun: "
+                             f"{rerun_command(root)}")
+    dest = root / rel
+    if make_parent:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+    if dest.parent.exists():
+        real, real_root = dest.parent.resolve(), root.resolve()
+        if real != real_root and real_root not in real.parents:
+            raise ApplyError(f"apply: the folder of {dest} is really {real}, outside {real_root}, so it is not "
+                             f"written; make it a plain folder of the project and rerun: {rerun_command(root)}")
+    return dest
+
+
+def write_file(root, rel, data):
+    """B1 (E28): write data to root / rel through safe_target, via a temporary file in the same folder and
+    os.replace (never through a link; an existing file keeps its permissions)."""
+    dest = safe_target(root, rel, make_parent=True)
+    if dest.exists():
+        mode = stat.S_IMODE(dest.stat().st_mode)
+    else:
+        umask = os.umask(0)
+        os.umask(umask)
+        mode = 0o666 & ~umask
+    fd, tmp = tempfile.mkstemp(dir=dest.parent, prefix=f".{dest.name}.", suffix=TMP_SUFFIX)
+    done = False
+    try:
+        with os.fdopen(fd, "wb") as out:
+            out.write(data)
+        os.chmod(tmp, mode)
+        os.replace(tmp, dest)
+        done = True
+    finally:
+        if not done and os.path.lexists(tmp):  # a kill -9 can still leave one: the common .gitignore block ignores it
+            os.unlink(tmp)
+    return dest
+
+
+TMP_SUFFIX = ".gw-tmp"
+
+
+def check_links(plan):
+    """B1 (E28): every path the plan writes, moves or deletes, checked before anything is written, so a link refuses
+    the whole plan (also in --dry-run). A path under a move's destination is also checked at its source, where it
+    is before the move."""
+    moves = [(Path(old), Path(rel)) for kind, rel, old, _e, _d in plan.actions if kind == "move"]
+    for kind, rel, old, _exec, _detail in plan.actions:
+        rel = Path(rel)
+        if kind == "move":
+            safe_target(plan.root, old)
+        safe_target(plan.root, rel)
+        for src, dst in moves:
+            if kind != "move" and (rel == dst or dst in rel.parents):
+                safe_target(plan.root, src / rel.relative_to(dst))
 
 
 def workflow_version():
@@ -725,10 +804,14 @@ def detect_stacks(root, cfg):
     return [s for s, marks in STACK_MARKERS.items() if any((root / m).is_file() for m in marks)]
 
 
+GITIGNORE_COMMON = "common"  # E28 (C4): templates/gitignore/common.gitignore, first in every block (secrets, local settings)
+
+
 def gitignore_block(stacks):
-    """The marked block, with a final newline: begin line, one `# <stack>` heading and fragment per stack, end line."""
+    """The marked block, with a final newline: begin line, one `# <stack>` heading and fragment per stack (the
+    common fragment is the stack GITIGNORE_COMMON, first when gitignoreCommon is on), end line."""
     out = [GITIGNORE_BEGIN]
-    for stack in stacks:
+    for stack in list(stacks):
         src = WORKFLOW / "templates" / "gitignore" / f"{stack}.gitignore"
         try:
             text = src.read_text(encoding="utf-8")
@@ -765,6 +848,8 @@ def plan_gitignore(plan, init=False):
     current = path.read_bytes() if path.is_file() else b""
     start, notes = current, []
     stacks = detect_stacks(plan.root, plan.cfg) if init else []
+    if init and config.gitignore_common(plan.cfg):  # E28 (C4): .env, settings.local.json, even with no stack
+        stacks = [GITIGNORE_COMMON] + stacks
     if stacks:
         try:
             try:
@@ -1539,7 +1624,8 @@ def mentions_script(data, old):
 def plan_old_scripts(plan):
     """Remove the Spanish-named script copies once nothing in the project runs them (hooks, CI, config)."""
     folder = plan.root / ".claude" / "gw" / "scripts"
-    old_copies = [(old, folder / old) for old in OLD_SCRIPTS if (folder / old).is_file()]
+    old_copies = [(old, folder / old) for old in OLD_SCRIPTS
+                  if (folder / old).is_file() and not (folder / old).is_symlink()]  # E28: a link is left as is
     if not old_copies:
         return
     planned = {str(a[1]): a[2] for a in plan.actions if a[2] is not None and isinstance(a[2], bytes)}
@@ -1900,7 +1986,8 @@ def report(plan):
 
 def move(root, old, new):
     """old -> new under root: git mv when git tracks something there (a folder moves whole, tracked or not)."""
-    (root / new).parent.mkdir(parents=True, exist_ok=True)
+    safe_target(root, old)
+    safe_target(root, new, make_parent=True)
     if is_tracked(root, old):
         code, out = git(root, "mv", str(old), str(new))
         if code != 0:
@@ -1915,22 +2002,22 @@ def apply(plan):
         print("apply: note: Claude Code's auto mode may ask for permission to edit .claude/settings.json, "
               ".claude/gw/scripts/ and .githooks/; approve it, or run this script yourself: "
               f"python3 {Path(__file__).resolve()} {plan.root}")
+    check_links(plan)  # B1 (E28): one link refuses the whole plan, before any write
     for kind, rel, old, _exec, _detail in plan.actions:
         if kind == "move":
             move(plan.root, old, rel)
     for kind, rel, data, want_exec, _detail in plan.actions:
-        dest = plan.root / rel
         if kind == "move":
             continue
+        dest = safe_target(plan.root, rel)  # B1 (E28): never through a symbolic link
         if kind == "remove":
-            if dest.is_dir() and not dest.is_symlink():
+            if dest.is_dir():
                 shutil.rmtree(dest)
             else:
                 dest.unlink()
             continue
         if kind != "chmod":
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_bytes(data)
+            write_file(plan.root, rel, data)
         if want_exec:
             dest.chmod(dest.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     if plan.set_hooks_path:
@@ -2029,7 +2116,9 @@ def main(argv=None):
     init.add_argument("--review-mark", metavar="PATH")
     init.add_argument("--stack", dest="stacks", action="append", default=[], metavar="STACK",
                       help="a stack whose .gitignore block --init writes (repeatable; default: detected, D127)")
-    args = parser.parse_args(config.legacy_flags(sys.argv[1:] if argv is None else argv, OLD_FLAGS, "apply"))
+    raw = list(sys.argv[1:] if argv is None else argv)
+    args = parser.parse_args(config.legacy_flags(raw, OLD_FLAGS, "apply"))
+    RERUN[:] = raw
     init_flags = [f for f, v in (("--language", args.language), ("--log", args.log),
                                  ("--code-language", args.code_languages),
                                  ("--docs-language", args.docs_languages),
@@ -2061,8 +2150,18 @@ def main(argv=None):
         print(f"apply: {start} is not inside a git repository; create it first: git init {start}", file=sys.stderr)
         return 2
     root = root.resolve()
+    if not args.project:
+        RERUN[:] = [str(root)] + RERUN
     version = workflow_version()
     cfg = None
+    wrote = []  # E28: the gw.json this --init wrote, removed again when the run then fails (so a rerun inits)
+
+    def failed():
+        for path in wrote:
+            path.unlink(missing_ok=True)
+            print(f"apply: removed {path} again, so --init runs whole on the rerun", file=sys.stderr)
+        return 2
+
     init_runs = args.init and not (root / config.CONFIG_REL).is_file()  # an existing gw.json: --init is ignored
     if args.init:
         if (root / config.CONFIG_REL).is_file():
@@ -2080,8 +2179,12 @@ def main(argv=None):
                 cfg["_root"] = root
                 cfg["_schemaFrom"] = config.SCHEMA_VERSION
             else:
-                (root / ".claude").mkdir(parents=True, exist_ok=True)
-                (root / config.CONFIG_REL).write_text(text, encoding="utf-8")
+                try:
+                    write_file(root, config.CONFIG_REL, text.encode("utf-8"))
+                except ApplyError as exc:
+                    print(exc, file=sys.stderr)
+                    return 2
+                wrote.append(root / config.CONFIG_REL)
                 print(f"apply: wrote {root / config.CONFIG_REL}")
     if cfg is None and not (root / config.CONFIG_REL).is_file():
         print(f"apply: {root / config.CONFIG_REL} not found, so the workflow cannot be applied; create it "
@@ -2095,13 +2198,15 @@ def main(argv=None):
         except config.ConfigError as exc:
             print(f"apply: {exc}\napply: fix it and validate: python3 {HERE / 'config.py'} --root {root} validate",
                   file=sys.stderr)
-            return 2
+            return failed()
     try:
         plan = build(root, version, args.update, args.extra, cfg, not (args.no_personal or args.vendored),
                      args.check or args.vendored, args.keep_paths, init_runs)
+        if not (args.check or args.vendored):
+            check_links(plan)  # E28: --dry-run refuses what the real run refuses; the real run, before gw.json stays
     except ApplyError as exc:
         print(exc, file=sys.stderr)
-        return 2
+        return failed()
 
     if args.vendored:
         for rel in sorted(set(plan.identical)):
@@ -2152,7 +2257,7 @@ def main(argv=None):
         apply(plan)
     except ApplyError as exc:
         print(exc, file=sys.stderr)
-        return 2
+        return failed()
     report(plan)
     for rel, rule in ignored_paths(root):
         print(f"apply: WARNING: git ignores {rel} ({rule}), so the commit would leave it out; add !{rel} to "

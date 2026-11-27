@@ -233,6 +233,27 @@ class Restrictive(Guard):
         self.assertEqual(self.p.run(sys.executable, "-B", str(plugin / "scripts" / "questions-guard.py"), stdin=event,
                                     env={"CLAUDE_PROJECT_DIR": str(self.p.work)})[1], "")
 
+    def test_never_runs_an_is_code_sh_of_the_project(self):  # D5 (E28): only the workflow's own copy, next to the hook
+        plugin = self.tmp / "plugin"
+        (plugin / "scripts").mkdir(parents=True)
+        (plugin / "schema").mkdir()
+        for name in ("questions-guard.py", "questions.py", "task.py", "config.py", "handoff.py", "is-code.sh"):
+            shutil.copy2(ROOT / "scripts" / name, plugin / "scripts" / name)
+        shutil.copy2(ROOT / "schema" / "gw.schema.json", plugin / "schema" / "gw.schema.json")
+        marker = self.tmp / "ran.txt"
+        for folder in (self.p.work / "scripts", self.p.work / ".claude" / "gw" / "scripts"):
+            folder.mkdir(parents=True, exist_ok=True)
+            (folder / "is-code.sh").write_text(f"echo ran >> '{marker}'\nexit 0\n")
+        outs = []
+        for rel in ("src/app.py", "docs/a.md"):
+            event = json.dumps({"tool_name": "Edit", "cwd": str(self.p.work), "tool_input": {"file_path": rel}})
+            outs.append(self.p.run(sys.executable, "-B", str(plugin / "scripts" / "questions-guard.py"), stdin=event,
+                                   env={"CLAUDE_PROJECT_DIR": str(self.p.work)}))
+        self.assertFalse(marker.exists(), "the project's is-code.sh ran")
+        self.assertEqual([code for code, _ in outs], [0, 0], outs)
+        self.assertDenies(outs[0][1], "task C4", "Q-1")   # the Python rule still tells code from content
+        self.assertEqual(outs[1][1], "")
+
     def test_questions_live_in_the_main_worktree(self):
         wt = self.tmp / "wt"
         self.p.git("worktree", "add", "-q", "-b", "agent/C9-side", str(wt))

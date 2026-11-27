@@ -175,9 +175,16 @@ def load(top):
 
 
 def is_code(rel, top, cfg):
-    """True unless `rel` is content, by the project's is-code.sh (or the same rule in Python when it has none); a
-    failure counts as code (the safe side)."""
-    for candidate in (Path(top) / ".claude" / "gw" / "scripts" / "is-code.sh", Path(top) / "scripts" / "is-code.sh"):
+    """True unless `rel` is content, by the workflow's own is-code.sh next to this hook when the hook lives in the repo
+    `top` (is-code.sh roots itself from its own path), else the same rule in Python; a failure counts as code (the
+    safe side). Never a `scripts/is-code.sh` of the project: in a repo that does not use the workflow that would run
+    any script of that name on each Edit or Write (D5, E28)."""
+    real_top = os.path.realpath(str(top))
+    try:
+        inside = os.path.commonpath([os.path.realpath(HERE), real_top]) == real_top
+    except ValueError:  # another drive (Windows)
+        inside = False
+    for candidate in ([Path(HERE) / "is-code.sh"] if inside else []):
         if candidate.is_file():
             try:
                 r = subprocess.run(["bash", str(candidate), "--list", rel], cwd=str(top), capture_output=True, text=True,

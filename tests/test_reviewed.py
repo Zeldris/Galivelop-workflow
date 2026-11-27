@@ -186,6 +186,32 @@ class MarkFooter(Base):
         self.assertNotIn("Reviewed:", self.p.git("log", "-1", "--format=%s").stdout)
 
 
+    def test_e28_protected_branch_as_an_option_runs_nothing(self):  # A1: "--upload-pack=<cmd>" ran <cmd>
+        marker = self.p.work.parent / "pwned"
+        cfg = json.loads((self.p.work / ".claude" / "gw.json").read_text())
+        cfg["protectedBranch"] = f"--upload-pack=touch {marker};"
+        self.p.write(".claude/gw.json", json.dumps(cfg))
+        code, out = self.p.run("bash", self.script)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("must be a git branch name", out)
+        self.assertIn("validate", out)
+        self.assertFalse(marker.exists(), out)
+        self.assertNotIn("Reviewed:", self.p.git("log", "-1", "--format=%s").stdout)
+
+    def test_e28_option_guard_holds_without_the_schema(self):  # review: the schema refused it before the guard ran
+        marker = self.p.work.parent / "pwned"
+        stub = self.p.work / "stub"
+        stub.mkdir()
+        shutil.copy(self.script, stub / "reviewed.sh")
+        (stub / "config.py").write_text(  # a config.py that skips validation: only the script's own guard is left
+            "import sys\nprint(%r if sys.argv[-1] == 'protectedBranch' else '')\n" % f"--upload-pack=touch {marker};")
+        code, out = self.p.run("bash", str(stub / "reviewed.sh"))
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("starts with '-', which git reads as an option", out)
+        self.assertIn("validate", out)
+        self.assertFalse(marker.exists(), out)
+        self.assertNotIn("Reviewed:", self.p.git("log", "-1", "--format=%s").stdout)
+
 class ProtectedBranchAbsentOnRemote(Base):
     """D109: a project that adopts the flow before having its protected branch: the base is the empty tree."""
 
