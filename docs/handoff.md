@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.9.1` en `main`** (`664c0dd`, 2026-11-26; las tres fases hechas: revisión de B58-B61 con 3 leves arreglados, retro, `reviewed.sh`; CI de `664c0dd` en verde). Release de GitHub `v0.9.1` publicada (2026-11-26, sesión local; etiqueta sobre `664c0dd`) |
-| Siguiente paso | **`0.10` «Estable»**. **E28 cerrada** (2026-11-27; ficha `docs/tasks/E28.md`, decisiones en `docs/records/security-review-E28.md`): subir y mirar el CI. Siguiente: **E29** (revisión de anonimización: historial, documentos, `private-check` y sus `EXCEPTIONS`), repartida con `gw-orchestrate-dealer`; después E30, E8/E31 y el resto de la sección `0.10` del roadmap. Presupuesto de compactaciones: 2 |
+| Siguiente paso | **`0.10` «Estable»**. **E29 en curso** (2026-11-27; ficha `docs/tasks/E29.md`): tres auditores de solo lectura (historial, documentos, `private-check` y sus excepciones); con sus informes, `docs/records/anonymization-review-E29.md` y las preguntas al usuario (lo que toque el historial lo decide él). E28 cerrada; su CI (`134cc4f`) estaba en curso. Después E30, E8/E31 y el resto de la sección `0.10` del roadmap. Presupuesto de compactaciones: 2 |
 
 ### Fases
 
