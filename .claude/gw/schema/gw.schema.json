@@ -720,6 +720,11 @@
       "default": [],
       "description": "D127: the stacks whose .gitignore block apply.py --init writes (templates/gitignore/<stack>.gitignore). Empty: the stacks found by their marker files in the root (pyproject.toml, package.json, go.mod, Cargo.toml...)."
     },
+    "gitignoreCommon": {
+      "type": "boolean",
+      "default": true,
+      "description": "E28: whether the .gitignore block apply.py --init writes starts with templates/gitignore/common.gitignore (.env, .env.* but the samples, .claude/settings.local.json, *.gw-tmp), also with no stack."
+    },
     "legacyNamesMax": {
       "type": "integer",
       "minimum": 1,

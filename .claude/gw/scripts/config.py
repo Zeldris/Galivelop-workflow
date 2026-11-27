@@ -746,6 +746,16 @@ def gitignore_stacks(config):
     return list(given)
 
 
+def gitignore_common(config):
+    """The `gitignoreCommon` key (E28, C4): whether apply.py --init's .gitignore block starts with the common fragment
+    (templates/gitignore/common.gitignore: .env, .env.*, .claude/settings.local.json). Fails closed on a non-boolean."""
+    given = config.get("gitignoreCommon", _schema()["properties"]["gitignoreCommon"]["default"])
+    if not isinstance(given, bool):
+        raise ConfigError(f"gitignoreCommon must be true or false, got {given!r}; fix it in {CONFIG_REL} and "
+                          f"validate: python3 scripts/config.py validate")
+    return given
+
+
 def instruction_lines(config):
     """The `instructionLines` key as (warn, fail): the line limits of AGENTS.md/CLAUDE.md."""
     limits = _section(config, "instructionLines")
@@ -1433,7 +1443,7 @@ def _commit(root, rev):
 
 
 PROFILE_DENIED = ("$schema", "version", "schemaVersion", "profiles", "languages", "agentsSkillsDir", "projectSkillPrefix",
-                  "gitignoreStacks", "ciInstall", "ciPython", "ciNodeDirs", "ciRustDirs", "ciKeepSteps", "ciOnPush",
+                  "gitignoreStacks", "gitignoreCommon", "ciInstall", "ciPython", "ciNodeDirs", "ciRustDirs", "ciKeepSteps", "ciOnPush",
                   "actionlintVersion", "front")
 PROFILE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 EMAIL_HASH = re.compile(r"^[0-9a-f]{64}$")

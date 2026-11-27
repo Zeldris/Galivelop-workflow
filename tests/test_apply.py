@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 import tempfile
 import unittest
@@ -2969,10 +2970,76 @@ class GitignoreBlock(unittest.TestCase):
         p.write("package.json", "{}\n")
         p.run_apply()
         self.assertNotIn("gitignore begin", p.read(".gitignore"))
-        self.p.write("package.json", "")
-        (p.work / "package.json").unlink()
+
+    def test_init_without_stack_writes_only_the_common_block(self):
+        # E28 (C4): secrets are ignored whatever the stack; with none detected the block holds only the common fragment
+        p = self.p
         self.assertEqual(self.init()[0], 0)
-        self.assertNotIn("gitignore begin", p.read(".gitignore"))
+        lines, a, b = self.block(p.read(".gitignore"))
+        self.assertEqual(lines[a + 1:b], ["# common", ".env", ".env.*", "!.env.example", "!.env.sample",
+                                          "!.env.template", ".claude/settings.local.json", "*.gw-tmp"])
+
+    def test_gitignore_common_is_a_boolean_key_true_by_default(self):
+        # E28 (C4): configurable, like every behaviour; a non-boolean fails closed with the fix
+        p = self.p
+        new = json.loads((ROOT / "templates" / "gw.json").read_text())
+        self.assertIs(new["gitignoreCommon"], True)
+        code, out = p.run("python3", "-c", "import sys; sys.path.insert(0, sys.argv[1]); import config; "
+                          "print(config.gitignore_common({}), config.gitignore_common({'gitignoreCommon': False}))",
+                          str(ROOT / "scripts"))
+        self.assertEqual(out.strip(), "True False", out)
+        code, out = p.run("python3", "-c", "import sys; sys.path.insert(0, sys.argv[1]); import config; "
+                          "config.gitignore_common({'gitignoreCommon': 'no'})", str(ROOT / "scripts"))
+        self.assertNotEqual(code, 0)
+        self.assertIn("gitignoreCommon must be true or false", out)
+        import types
+        mod = load_apply()
+        p.write("go.mod", "module x\n")
+        for on, expected in ((True, True), (False, False)):
+            plan = types.SimpleNamespace(root=p.work, cfg={"gitignoreCommon": on}, actions=[])
+            mod.plan_gitignore(plan, init=True)
+            text = plan.actions[0][2].decode()
+            self.assertEqual("\n.env\n" in text, expected, text)
+            self.assertIn("# go", text)
+    def test_init_refused_by_a_link_leaves_no_gw_json_so_the_rerun_inits(self):
+        # E28: gw.json is removed again when the run fails, so --init (and the common block) runs on the rerun
+        p = self.p
+        outside = self.tmp / "outside"
+        outside.mkdir()
+        (p.work / ".githooks").symlink_to(outside, target_is_directory=True)
+        code, out = self.init()
+        self.assertEqual(code, 2, out)
+        self.assertIn(".githooks is a symbolic link", out)
+        self.assertIn("--init --check-command true", out)  # the fix repeats the original arguments
+        self.assertFalse((p.work / ".claude/gw.json").exists(), out)
+        self.assertEqual(list(outside.iterdir()), [])
+        (p.work / ".githooks").unlink()
+        code, out = p.run_apply("--init", "--check-command", "true")
+        self.assertEqual(code, 0, out)
+        self.assertNotIn("already exists", out)
+        self.assertIn("\n.env\n", p.read(".gitignore"))
+
+    def test_common_block_ignores_secrets_and_keeps_the_samples_for_every_stack(self):
+        # E28 (C4): .env, .env.* and .claude/settings.local.json ignored; .env.example-style samples still committed
+        p = self.p
+        p.write("go.mod", "module x\n")
+        code, out = self.init()
+        self.assertEqual(code, 0, out)
+        lines, a, b = self.block(p.read(".gitignore"))
+        self.assertEqual(lines[a + 1], "# common")
+        self.assertLess(lines.index("# common"), lines.index("# go"))
+        for rel in (".env", ".env.local", ".env.production", ".claude/settings.local.json", "sub/.env"):
+            self.assertEqual(p.run("git", "check-ignore", "-q", rel)[0], 0, rel)
+        for rel in (".env.example", ".env.sample", ".env.template", ".claude/settings.json"):
+            self.assertEqual(p.run("git", "check-ignore", "-q", rel)[0], 1, rel)
+
+    def test_the_workflow_repo_ignores_secrets_and_local_settings(self):
+        # E28 (C4): this repo's own .gitignore
+        def ignored(rel):
+            return subprocess.run(["git", "-C", str(ROOT), "check-ignore", "-q", "--no-index", rel]).returncode == 0
+        for rel in (".env", ".env.local", ".claude/settings.local.json"):
+            self.assertTrue(ignored(rel), rel)
+        self.assertFalse(ignored(".env.example"))
 
     def test_stack_flag_overrides_detection(self):
         p = self.p
@@ -3009,6 +3076,167 @@ class GitignoreBlock(unittest.TestCase):
                 gwconfig.gitignore_stacks({"gitignoreStacks": bad})
             self.assertIn("gitignoreStacks must be a list of different stacks", str(cm.exception))
             self.assertIn("validate", str(cm.exception))
+
+
+class SymlinkTargets(unittest.TestCase):
+    """B1 (E28): apply.py never writes, chmods or deletes through a symbolic link a cloned repo tracks."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="gw-link-")).resolve()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.root = self.tmp / "repo"
+        self.root.mkdir()
+        self.outside = self.tmp / "home"
+        self.outside.mkdir()
+        self.apply = load_apply()
+
+    def plan(self, *actions):
+        import types
+        return types.SimpleNamespace(root=self.root, actions=list(actions), set_hooks_path=False)
+
+    def refused(self, plan, link):
+        with self.assertRaises(self.apply.ApplyError) as cm:
+            self.apply.apply(plan)
+        msg = str(cm.exception)
+        self.assertIn(f"{link} is a symbolic link", msg)
+        self.assertIn(f"rm {link}", msg)
+
+    def test_a_symlinked_file_is_refused_and_its_target_untouched(self):
+        bashrc = self.outside / ".bashrc"
+        bashrc.write_text("mine\n")
+        os.chmod(bashrc, 0o644)
+        (self.root / ".githooks").mkdir()
+        link = self.root / ".githooks" / "pre-commit"
+        link.symlink_to(bashrc)
+        self.refused(self.plan(("update", Path(".githooks/pre-commit"), b"evil\n", True, "")), link)
+        self.assertEqual(bashrc.read_text(), "mine\n")
+        self.assertEqual(stat.S_IMODE(bashrc.stat().st_mode), 0o644)  # nor made executable
+        self.assertTrue(link.is_symlink())
+        new = self.root / ".githooks" / "pre-commit.gw-new"
+        new.symlink_to(bashrc)
+        self.refused(self.plan(("propose", Path(".githooks/pre-commit.gw-new"), b"x\n", False, "")), new)
+        self.refused(self.plan(("chmod", Path(".githooks/pre-commit"), None, True, "")), link)
+        self.assertEqual(bashrc.read_text(), "mine\n")
+        self.assertEqual(stat.S_IMODE(bashrc.stat().st_mode), 0o644)
+
+    def test_a_symlinked_parent_folder_is_refused_and_nothing_is_written(self):
+        (self.root / ".claude").mkdir()
+        link = self.root / ".claude" / "gw"
+        link.symlink_to(self.outside, target_is_directory=True)
+        plan = self.plan(("create", Path("AGENTS.md"), b"a\n", False, ""),
+                         ("create", Path(".claude/gw/scripts/x.py"), b"evil\n", False, ""))
+        self.refused(plan, link)
+        self.assertEqual(list(self.outside.iterdir()), [])
+        self.assertFalse((self.root / "AGENTS.md").exists())  # one link refuses the whole plan, before any write
+
+    def test_a_legacy_removal_through_a_symlink_is_refused_and_the_target_kept(self):
+        (self.outside / "scripts").mkdir()
+        old = self.outside / "scripts" / "bitacora.py"
+        old.write_text("keep\n")
+        (self.root / ".claude").mkdir()
+        link = self.root / ".claude" / "gw"
+        link.symlink_to(self.outside, target_is_directory=True)
+        self.refused(self.plan(("remove", Path(".claude/gw/scripts/bitacora.py"), None, False, "")), link)
+        self.assertEqual(old.read_text(), "keep\n")
+        (self.root / ".claude" / "skills").mkdir()
+        skill = self.root / ".claude" / "skills" / "gw-viejo"
+        skill.symlink_to(self.outside, target_is_directory=True)
+        self.refused(self.plan(("remove", Path(".claude/skills/gw-viejo"), None, False, "")), skill)
+        self.assertEqual(old.read_text(), "keep\n")
+
+    def test_a_folder_whose_real_path_is_outside_the_root_is_refused(self):
+        self.apply_root = self.tmp / "repo-link"
+        self.apply_root.symlink_to(self.root, target_is_directory=True)  # the root itself may be a link (macOS /tmp)
+        plan = self.plan(("create", Path("docs/a.md"), b"a\n", False, ""))
+        plan.root = self.apply_root
+        self.apply.apply(plan)
+        self.assertEqual((self.root / "docs/a.md").read_bytes(), b"a\n")
+        with self.assertRaises(self.apply.ApplyError) as cm:
+            self.apply.safe_target(self.root, Path("../home/x"))
+        self.assertIn("is not a path inside", str(cm.exception))
+
+    def test_a_write_replaces_the_file_keeps_its_mode_and_leaves_no_temporary(self):
+        dest = self.root / "x.sh"
+        dest.write_text("old\n")
+        os.chmod(dest, 0o750)
+        self.apply.apply(self.plan(("update", Path("x.sh"), b"new\n", False, "")))
+        self.assertEqual(dest.read_bytes(), b"new\n")
+        self.assertEqual(stat.S_IMODE(dest.stat().st_mode), 0o750)
+        self.assertEqual(sorted(p.name for p in self.root.iterdir()), ["x.sh"])
+
+    def test_a_failed_write_leaves_no_temporary(self):
+        with unittest.mock.patch.object(self.apply.os, "replace", side_effect=KeyboardInterrupt):
+            with self.assertRaises(KeyboardInterrupt):
+                self.apply.write_file(self.root, Path("x.sh"), b"new\n")
+        self.assertEqual(list(self.root.iterdir()), [])
+
+    def test_a_symlink_is_never_moved_and_nothing_is_written(self):
+        (self.root / ".github").mkdir()
+        target = self.outside / "ci.yml"
+        target.write_text("theirs\n")
+        old = self.root / ".github" / "comprobar.yml"
+        old.symlink_to(target)
+        plan = self.plan(("move", Path(".github/check.yml"), Path(".github/comprobar.yml"), False, ""),
+                         ("update", Path(".github/check.yml"), b"ci\n", False, ""))
+        self.refused(plan, old)
+        self.assertTrue(old.is_symlink())
+        self.assertFalse(os.path.lexists(self.root / ".github" / "check.yml"))
+        self.assertEqual(target.read_text(), "theirs\n")
+
+    def test_a_link_inside_a_moved_folder_refuses_the_plan_before_the_move(self):
+        (self.root / "old" / "sub").mkdir(parents=True)
+        link = self.root / "old" / "sub" / "x"
+        link.symlink_to(self.outside / "x")
+        plan = self.plan(("move", Path("new"), Path("old"), False, ""),
+                         ("create", Path("new/sub/x"), b"evil\n", False, ""))
+        self.refused(plan, link)
+        self.assertTrue((self.root / "old").is_dir())
+        self.assertFalse(os.path.lexists(self.root / "new"))
+        self.assertEqual(list(self.outside.iterdir()), [])
+
+    def test_a_parent_whose_real_path_leaves_the_root_is_refused_even_if_the_link_check_misses_it(self):
+        # the per-part check can miss a link that appears after it (a race): the real-path check still refuses
+        (self.root / "docs").symlink_to(self.outside, target_is_directory=True)
+        with unittest.mock.patch.object(self.apply.Path, "is_symlink", return_value=False):
+            with self.assertRaises(self.apply.ApplyError) as cm:
+                self.apply.safe_target(self.root, Path("docs/a.md"))
+        msg = str(cm.exception)
+        self.assertIn(f"is really {self.outside}, outside {self.root}", msg)
+        self.assertIn("make it a plain folder of the project", msg)
+        self.assertEqual(list(self.outside.iterdir()), [])
+
+    def test_update_of_a_cloned_repo_with_a_symlinked_hook_fails_closed(self):
+        (self.tmp / "fx").mkdir()
+        fx = Fixture(self.tmp / "fx")
+        code, out = fx.run_apply()
+        self.assertEqual(code, 0, out)
+        hooks = fx.work / ".githooks"
+        shutil.rmtree(hooks)
+        hooks.symlink_to(self.outside, target_is_directory=True)  # e.g. ~/bin, ~/.ssh
+        code, out = fx.run_apply("--dry-run")  # the dry run refuses what the real run refuses
+        self.assertEqual(code, 2, out)
+        self.assertIn(f"{hooks} is a symbolic link", out)
+        code, out = fx.run_apply("--update")
+        self.assertEqual(code, 2, out)
+        self.assertIn(f"{hooks} is a symbolic link", out)
+        self.assertIn(f"{fx.work} --update", out)  # the fix repeats the original arguments
+        self.assertEqual(list(self.outside.iterdir()), [])
+
+    def test_a_linked_old_script_is_not_planned_for_removal(self):
+        (self.tmp / "fx").mkdir()
+        fx = Fixture(self.tmp / "fx")
+        code, out = fx.run_apply()
+        self.assertEqual(code, 0, out)
+        old = self.outside / "bitacora.py"
+        old.write_text("# galivelop-workflow v0.1.0\n")
+        link = fx.work / ".claude/gw/scripts/bitacora.py"
+        link.symlink_to(old)
+        fx.run("git", "add", "-A")
+        self.assertEqual(fx.run("git", "commit", "-qm", "cloned")[0], 0)  # tracked and clean: removable if a file
+        code, out = fx.run_apply("--update")
+        self.assertEqual(code, 0, out)
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(old.read_text(), "# galivelop-workflow v0.1.0\n")
 
 
 class TemplateAtFallback(unittest.TestCase):
