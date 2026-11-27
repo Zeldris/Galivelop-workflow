@@ -507,6 +507,15 @@ class RepeatOnly(Base):
             self.assertEqual(self.read(path, session="s1"), "")
         self.assertEqual(target.read_text(), "{}")
 
+    def test_a_lock_that_is_a_link_is_not_followed(self):  # B4 (E28): a planted link never creates its target
+        target = self.tmp / "elsewhere.lock"
+        (self.state / "gw-reads-s1.lock").symlink_to(target)
+        path = self.put("docs/log.md", LIMIT + 1)
+        self.read(path, session="s1")
+        self.assertIn("already read it whole", self.warning(self.read(path, session="s1")), "still fails open")
+        self.assertFalse(os.path.lexists(target), "the link's target was created")
+        self.assertTrue((self.state / "gw-reads-s1.lock").is_symlink())
+
 
 class Deny(Base):  # E70: wholeReadDenyPaths rejects the whole read instead of warning
     def denial(self, out):

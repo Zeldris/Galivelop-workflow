@@ -4,6 +4,7 @@ and --search) and scripts/session_log.py, in temporary projects laid out like on
 HOME points to a temp folder, so nothing reads or writes the real ~/.claude; git runs isolated as in test_hooks.
 """
 import json
+import re
 import os
 import shutil
 import subprocess
@@ -235,6 +236,27 @@ class SessionStart(Base):
         self.assertNotIn("s2", (self.p.work / "ran.log").read_text())   # the sequence stopped
         self.p.session_start(env=cloud)
         self.assertEqual((self.p.work / "ran.log").read_text().split().count("s1"), 2)
+
+    def test_logs_go_to_a_private_folder_not_a_planted_link(self):  # B4 (E28)
+        tmp = self.tmp / "shared-tmp"
+        tmp.mkdir()
+        target = self.tmp / "victim.txt"
+        target.write_text("keep")
+        for name in ("gw-install.log", "gw-setup.log"):
+            (tmp / name).symlink_to(target)
+        cloud = self.cloud_config(install=["echo ran-install"], setup=["echo boom; exit 3"])
+        cloud["TMPDIR"] = str(tmp)
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertEqual(target.read_text(), "keep", "a planted link was written through")
+        log = re.search(r"\(log: ([^)]+)\)", out)
+        self.assertTrue(log, out)
+        folder = Path(log.group(1)).parent
+        self.assertEqual(folder.parent, tmp, out)
+        self.assertTrue(folder.name.startswith("gw-session-start."), out)
+        self.assertEqual(os.stat(folder).st_mode & 0o777, 0o700)
+        self.assertIn("boom", Path(log.group(1)).read_text())
+        self.assertEqual([f.name for f in folder.iterdir() if f.name.endswith(".timeout")], [])
 
     def test_failed_install_skips_setup(self):
         cloud = self.cloud_config(install=["exit 3"], setup=["echo s >> ran.log"])
