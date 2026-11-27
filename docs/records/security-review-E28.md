@@ -77,4 +77,13 @@ Severidad: alta, media, baja. «Decisión» la rellena el usuario (pregunta de l
 
 ## Decisiones
 
-Pendientes del usuario (2026-11-27).
+Usuario, 2026-11-27 (Q-43 a Q-47, todas las recomendaciones):
+
+- **A1, B1-B4, C1, C2 y C4:** se arreglan en E28, cada uno con su test.
+- **C3:** acciones fijadas por SHA con la versión en un comentario, también en la plantilla.
+- **D:** el repo abierto es de confianza (como `make` o `npm`) y se documenta; se arreglan D3 (`--ignore-scripts`),
+  D4 (entorno mínimo y `working-directory` dentro del repo) y D5 (solo el `is-code.sh` del flujo); D1, D2, D6 y D7
+  quedan documentados.
+- **E:** se arreglan E1, E2 y E4, y una sustitución `$(…)` o con comillas invertidas junto a `git`, `gh` o `rm` pide
+  confirmación; el resto de E3, documentado como límite.
+- **F:** F1-F4 y E5, a `pending.md` como leves de la `0.10`; F5 y F6, no.

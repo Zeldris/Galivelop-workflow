@@ -379,35 +379,45 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-43
 - Refs: E28
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E28: ¿se arreglan ya las inyecciones de opciones, los enlaces simbólicos, el token de release.yml, persist-credentials y el .gitignore? a) sí; b) solo los medios
 - Recommendation: a) arreglar A1, B1-B4, C1, C2 y C4 en esta tarea, con tests
+- Answer: a
+- Answered: 2026-11-27
 
 ## Q-44
 - Refs: E28
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E28 C3: ¿acciones de CI fijadas por SHA (también en la plantilla) o por etiqueta? a) SHA; b) etiqueta, apuntado
 - Recommendation: a) fijar por SHA con comentario de versión
+- Answer: a
+- Answered: 2026-11-27
 
 ## Q-45
 - Refs: E28
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E28 D: ¿qué modelo de confianza para el repo abierto? a) de confianza, documentado, con los arreglos baratos; b) no confiable: pedir permiso antes de D1/D2 y todo D
 - Recommendation: a) el repo abierto es de confianza (como make o npm); se documenta y se arreglan los baratos: D4 entorno mínimo, D5 usar is-code.sh del flujo, D3 --ignore-scripts; D1, D2, D6 y D7 quedan documentados
+- Answer: a
+- Answered: 2026-11-27
 
 ## Q-46
 - Refs: E28
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E28 E: ¿hasta dónde se endurecen careful.py y review-before-main.sh? a) los baratos y preguntar ante sustituciones; b) todo E3; c) solo documentar
 - Recommendation: a) arreglar E1, E2 y E4 (gh pr edit --base, gh alias, graphql, gh api/curl a pulls) y que una sustitución $(…) o comilla invertida junto a git/gh/rm pida confirmación; documentar el resto como límite
+- Answer: a
+- Answered: 2026-11-27
 
 ## Q-47
 - Refs: E28
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E28 F: ¿los leves a pending.md? a) sí, menos F5 y F6; b) arreglarlos ya
 - Recommendation: a) F1-F4 y E5 a pending.md como leves de la 0.10; F5 y F6, no
+- Answer: a
+- Answered: 2026-11-27
