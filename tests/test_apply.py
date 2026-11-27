@@ -229,18 +229,20 @@ class Apply(unittest.TestCase):
         self.assertIn("merge: union", p.run("git", "check-attr", "merge", "var/spend log.jsonl")[1])
         self.assertNotIn("docs/metrics", p.read(".gitattributes"))
 
-    def test_gitattributes_skips_a_ledger_outside_the_project(self):  # B36 review
+    def test_a_ledger_outside_the_project_is_refused(self):  # B36 review, E28 B2
         p = self.p
         cfg = json.loads(p.read(".claude/gw.json"))
         for ledger in ("../outside/ledger.jsonl", str(p.work / "docs" / "l.jsonl"), "/tmp/elsewhere/l.jsonl"):
             with self.subTest(ledger=ledger):
                 cfg["metrics"] = {"ledger": ledger}
                 p.write(".claude/gw.json", json.dumps(cfg, indent=2) + "\n")
+                # Since E28 (B2) the config check refuses it before apply writes anything.
                 code, out = p.run_apply("--dry-run")
-                self.assertEqual(code, 0, out)
-                self.assertIn("is outside the project, so .gitattributes gets no merge=union line", out)
-                self.assertNotIn(".gitattributes  (", out)
-                self.applied()
+                self.assertEqual(code, 2, out)
+                self.assertIn("must be a repo-relative path", out)
+                self.assertIn("since E28 a ledger outside the repo is refused", out)
+                code, out = p.run_apply()
+                self.assertEqual(code, 2, out)
                 self.assertFalse((p.work / ".gitattributes").exists())
 
     def test_older_flow_hook_in_settings_is_listed(self):
