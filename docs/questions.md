@@ -424,70 +424,90 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-48
 - Refs: E29
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E29 A1 (docs/records/anonymization-review-E29.md): N5 se apuntó como privado y sigue con su nombre en 25 archivos de main. a) alias private-project-N; b) ya es público, se acepta
 - Recommendation: a) alias private-project-N en esta rama
+- Answer: a
+- Answered: 2026-11-27
 
 ## Q-49
 - Refs: E29
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E29 A2: N6 (47 sitios, recogida del 2026-10-25) ¿es privado? a) privado, alias; b) público, se acepta
 - Recommendation: a) si es privado, alias como A1; dime cuál
+- Answer: a
+- Answered: 2026-11-27
 
 ## Q-50
 - Refs: E29
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E29 A3, B1, B2: N1-N5 en el historial de main y en 6 ramas viejas, 140 commits con enlaces de sesión y 3 con tu nombre completo. a) no reescribir main y borrar las ramas viejas; b) reescribir todo el historial con git filter-repo y forzar main (rompe clones y etiquetas); c) nada
 - Recommendation: a) no reescribir main (rompe clones, etiquetas, releases e instalaciones, y GitHub guarda copias igual); borrar las 6 ramas viejas que aún los llevan en su árbol, tras confirmar que ninguna tiene trabajo vivo
+- Answer: a
+- Answered: 2026-11-27
 
 ## Q-51
 - Refs: E29
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E29 C1: en la nube no hay gw.local.json y los nombres nunca se miran. a) variable GW_PRIVATE_NAMES en el entorno de la nube + fallo cerrado al subir a main y al recoger sin lista; b) solo fallo cerrado; c) lista con hash pública
 - Recommendation: a) GW_PRIVATE_NAMES como segunda fuente y fallo cerrado en la rama protegida y en harvest
+- Answer: a
+- Answered: 2026-11-27
 
 ## Q-52
 - Refs: E29
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E29 C2, C3: a) detectar enlaces de sesión, rutas personales e IP privadas (privateCheck.patterns) y revisar etiquetas en pre-push; b) solo enlaces de sesión; c) nada
 - Recommendation: a) los tres patrones por defecto y revisar etiquetas y nombres de ref
+- Answer: a
+- Answered: 2026-11-27
 
 ## Q-53
 - Refs: E29
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E29 C4: la marca gw-allow-private salta todo en la línea. a) acotarla a contenido y contarla; b) quitarla; c) dejarla
 - Recommendation: a) sin efecto en rutas ni mensajes y recuento en --all
+- Answer: a
+- Answered: 2026-11-27
 
 ## Q-54
 - Refs: E29
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E29 C5: git@ y noreply@ se admiten con cualquier dominio. a) acotar git@; b) dejarlo
 - Recommendation: a) git@ solo con forma git@host:ruta; noreply@ se queda
+- Answer: a
+- Answered: 2026-11-27
 
 ## Q-55
 - Refs: E29
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E29 B3: tu correo está en allowEmails (público). a) se queda; b) pasarlo a gw.local.json y usar el noreply de GitHub en adelante
 - Recommendation: a) se queda: ya es público en el autor de todos los commits
+- Answer: a
+- Answered: 2026-11-27
 
 ## Q-56
 - Refs: E29
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E29 A4: pistas débiles en las recogidas con alias (nombres de retro, stack). a) aceptar y anonimizar los nombres de retro en adelante; b) limpiar también las ya publicadas; c) nada
 - Recommendation: a) aceptar y que harvest.py renombre los archivos de retro a retro-<fecha>-<n>
+- Answer: a
+- Answered: 2026-11-27
 
 ## Q-57
 - Refs: E29
-- Status: open
+- Status: answered
 - Asked: 2026-11-27
 - Question: E29 C6: caracteres invisibles, binarios, test de merge con conflicto y aviso de privateCheck false. a) a pending.md; b) arreglarlos ya
 - Recommendation: a) a pending.md como leves de la 0.10
+- Answer: a
+- Answered: 2026-11-27
