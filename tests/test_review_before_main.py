@@ -741,7 +741,6 @@ class Hook(Snapshot):
                         "curl --config=opts.txt https://ghe.example/api/v3/repos/o/r/pulls"):
             with self.subTest(command=command):
                 self.assertBlocked(self.bash(command), "reads options from a config file", "gh pr merge <number>")
-        self.assertAllowed(self.bash("curl -K opts.txt https://example.com/x"))
         self.assertAllowed(self.bash("curl -sL https://api.github.com/repos/o/r/pulls/7"))
 
     def test_aliases_with_the_word_pr_or_a_shell_blocked(self):
@@ -766,6 +765,46 @@ class Hook(Snapshot):
         result = self.bash("gh pr edit --base main -R o/r", pr=[])
         self.assertBlocked(result, "pass the PR number and retry: gh pr edit <number> --base main")
         self.assertNotIn("gh pr merge <number>", result[1])
+
+    # E28 E4, third review ----------------------------------------------------------------------------------------
+    def test_an_unreadable_method_on_a_write_path_in_a_substitution_counts_as_a_write(self):
+        hidden = "inside a $(…), backtick or <(…) substitution"
+        for command in ("echo `gh api -X 'PUT' repos/o/r/pulls/7/merge`", "cat <(gh api -X 'PUT' repos/o/r/pulls/7/merge)",
+                        'echo "$(gh api -X "$M" repos/o/r/pulls/7/merge)"',
+                        """echo "$(gh pr view 7 --jq ')' ; gh pr merge 7)\""""):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command, pr=self.pr()), hidden)
+        self.assertAllowed(self.bash('B="$(gh api -X GET repos/o/r/pulls/7 --jq .base.ref)"', pr=self.pr()))
+
+    def test_thousands_of_substitutions_are_judged_in_seconds(self):
+        start = time.monotonic()
+        self.assertAllowed(self.bash("echo ok"))
+        limit = time.monotonic() - start + 5.0  # the hook's start-up plus 5 s; the old scan took about a minute
+        head = "echo gh pr view " + "$(" * 20000
+        start = time.monotonic()
+        result = self.bash(head)
+        self.assertLess(time.monotonic() - start, limit, "20000 `$(` took 5 s more than a trivial command")
+        self.assertAllowed(result)
+        start = time.monotonic()
+        result = self.bash(head + " gh pr merge 7")
+        self.assertLess(time.monotonic() - start, limit)
+        self.assertBlocked(result, "substitution")
+
+    def test_any_curl_config_and_shell_alias_spellings_blocked(self):
+        for command in ("curl -K evil.cfg https://example.com/x", "curl -sSK opts.txt https://example.com/x"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "reads options from a config file")
+        for command in ("gh alias set --shell=true m 'gh \"$@\"'", "gh alias set -- m '!gh \"$@\"'",
+                        "gh alias set m '$1 merge $2'", "gh alias set m '$1 $2'"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "`gh alias set` with an expansion")
+        self.assertAllowed(self.bash("gh alias set rv 'pr-review list'"))
+        self.assertAllowed(self.bash("gh alias set il 'issue list --label $1'"))
+
+    def test_contents_branch_as_a_full_ref_and_contents_reads(self):
+        self.assertBlocked(self.bash("gh api -X PUT repos/o/r/contents/a.txt -f branch=refs/heads/main -f message=m"),
+                           "writes main, the protected branch")
+        self.assertAllowed(self.bash("gh api repos/o/r/contents/README.md --jq .content # it's the readme"))
 
     def test_a_hook_outside_the_repo_never_runs_the_projects_is_code(self):
         # From the plugin cache the hook must not run <root>/.claude/gw/scripts/is-code.sh (D5): the built-in rule.
@@ -1061,7 +1100,9 @@ class PreFilter(unittest.TestCase):
         for command in ("gh alias import aliases.yml", "gh api graphql --input q.json", "gh api graphql -F query=@q.graphql",
                         "gh api graphql -f query='mutation{mergeBranch}'",
                         "gh api -X PUT repos/o/r/contents/a.txt -f branch=main",
-                        "curl -K opts.txt https://api.github.com/repos/o/r/pulls/7/merge"):
+                        "curl -K opts.txt https://api.github.com/repos/o/r/pulls/7/merge",
+                        "curl -sSK opts.txt https://api.github.com/repos/o/r/pulls/7/merge",
+                        "curl -T a.json https://api.github.com/repos/o/r/contents/a.txt"):
             code, err = self.bash(command)
             self.assertEqual(code, 2, command)
             self.assertIn("python3 is missing", err)
