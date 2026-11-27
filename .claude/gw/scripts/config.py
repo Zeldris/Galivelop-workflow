@@ -633,7 +633,7 @@ def author_check(root, patterns):
 
 
 def harvest(config):
-    """The `harvest` key (A13) as a dict (ideaChars, commitsShown): the sizes harvest.py prints; an invalid value gives
+    """The `harvest` key (A13) as a dict (ideaChars, commitsShown sizes; retroAlias behavior, E29: retros printed as retro-<date>-<n>); an invalid value gives
     the schema default."""
     return _bounded_section(config, "harvest")
 

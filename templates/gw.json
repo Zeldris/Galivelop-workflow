@@ -54,7 +54,7 @@
   "stopSeverity": {"unpushed": "block", "logRequired": "block", "ciPending": "block"},
   "recover": {"logLines": 25, "statusLines": 15, "worktrees": 10, "otherBranches": 10, "branchRow": 120, "worktreeRow": 200, "outputCap": 9500, "gitWait": 5, "searchMax": 10, "searchWidth": 300},
   "handoff": {"rowLimit": 600, "cellLimit": 800, "cellHardLimit": 1600, "doneItems": 5, "lockWait": 10},
-  "harvest": {"ideaChars": 2000, "commitsShown": 30},
+  "harvest": {"ideaChars": 2000, "commitsShown": 30, "retroAlias": 1},
   "changelogFragments": true,
   "changelogFragmentsDir": "changelog.d",
   "applyDiffLines": 80,

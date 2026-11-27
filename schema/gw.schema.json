@@ -276,10 +276,11 @@
       "additionalProperties": false,
       "properties": {
         "ideaChars": {"type": "integer", "minimum": 50, "default": 2000, "description": "Characters of an idea harvest.py keeps (a longer one is cut and marked as cut)."},
-        "commitsShown": {"type": "integer", "minimum": 1, "default": 30, "description": "Commits harvest.py lists per project."}
+        "commitsShown": {"type": "integer", "minimum": 1, "default": 30, "description": "Commits harvest.py lists per project."},
+        "retroAlias": {"type": "integer", "minimum": 0, "maximum": 1, "default": 1, "description": "1: harvest.py prints each retro as retro-<date>-<n> instead of its file name (E29); 0: the real path."}
       },
-      "default": {"ideaChars": 2000, "commitsShown": 30},
-      "description": "Sizes of the report of harvest.py (A13): ideaChars and commitsShown; an invalid value gives the defaults."
+      "default": {"ideaChars": 2000, "commitsShown": 30, "retroAlias": 1},
+      "description": "Report of harvest.py (A13): the sizes ideaChars and commitsShown, and the behavior retroAlias (retros printed as retro-<date>-<n>, E29); an invalid value gives the defaults."
     },
     "applyDiffLines": {
       "type": "integer",
