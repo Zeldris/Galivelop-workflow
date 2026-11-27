@@ -223,6 +223,10 @@ class Config(unittest.TestCase):
         r = cli(self.tmp, "validate")
         self.assertEqual(r.returncode, 2)
         self.assertIn("ciLocalPassEnv", r.stderr)
+        self.write(dict(VALID, ciLocalPassEnv=["TOOL_HOME\n"]))  # anchored like fullmatch: no trailing newline
+        r = cli(self.tmp, "validate")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("ciLocalPassEnv", r.stderr)
         self.write(dict(VALID, ciLocalPassEnv=["TOOL_HOME"]))
         self.assertEqual(cli(self.tmp, "validate").returncode, 0)
         self.assertEqual(config.ci_local_pass_env(config.load(self.tmp)), ["TOOL_HOME"])

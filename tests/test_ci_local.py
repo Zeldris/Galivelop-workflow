@@ -2,6 +2,7 @@
 ${{ }} evaluator and the matrix as units; then whole runs against temporary repos (test_hooks.Project) with a
 workflow of plain `run:` steps, which say what ran, what not, what is not covered, the exit code and the record.
 """
+import errno
 import importlib.util
 import json
 import os
@@ -10,6 +11,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from test_hooks import ROOT, Project
 
@@ -370,6 +372,18 @@ jobs:
         self.assertEqual(code, 0, out)
         self.assertIn("green (1 step run", out)
 
+    def test_steps_keep_the_proxy_and_ca_settings_but_no_token_or_ssh_agent(self):  # E28 D4, review 1
+        keep = {"HTTPS_PROXY": "http://proxy:3128", "https_proxy": "http://proxy:3128", "NO_PROXY": "localhost",
+                "SSL_CERT_FILE": "/etc/ca.pem", "PIP_CERT": "/etc/ca.pem", "CLAUDE_CODE_REMOTE": "true", "GW_X": "1"}
+        self.p.env.update(keep)
+        self.p.env.update(GITHUB_TOKEN="leak", ANTHROPIC_API_KEY="leak", SSH_AUTH_SOCK="/tmp/agent")  # gw-allow-secret: fake
+        checks = " && ".join([f'test "${k}" = "{v}"' for k, v in keep.items()] +
+                             [f'test -z "${{{n}:-}}"' for n in ("GITHUB_TOKEN", "ANTHROPIC_API_KEY", "SSH_AUTH_SOCK")])
+        self.workflow(f"on: pull_request\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n      - run: '{checks}'\n")
+        code, out = self.ci()
+        self.assertEqual(code, 0, out)
+        self.assertIn("green (1 step run", out)
+
     def test_ci_local_pass_env_lets_the_named_variables_through_and_only_them(self):  # E28 D4
         self.p.env.update(MY_TOOL_HOME="/opt/tool", GH_TOKEN="leak")  # gw-allow-secret: a fake token
         self.set_config(ciLocalPassEnv=["MY_TOOL_HOME"])
@@ -395,6 +409,7 @@ jobs:
                 code, out = self.ci()
                 self.assertEqual(code, 1, out)
                 self.assertIn(f"working-directory {wd} is outside the repository, so it is not run", out)
+                self.assertIn("ci-local.py --event pull_request\n", out)  # the rerun repeats the real arguments
                 self.assertFalse((outside / "ran-here").exists())
                 self.assertFalse((self.p.work.parent / "ran-here").exists())
         self.workflow(f"on: pull_request\njobs:\n  j:\n    runs-on: {HOST}\n    steps:\n"
@@ -419,6 +434,7 @@ jobs:
                 code, out = self.ci("--record")
                 self.assertEqual(code, 2, out)
                 self.assertIn("docs/records/ci-local.md is a symbolic link, so nothing was recorded", out)
+                self.assertIn("ci-local.py --event pull_request --record", out)
                 self.assertEqual(target.read_text(), "keep\n")
                 self.assertFalse((outside / "missing.md").exists())
         os.remove(log)
@@ -428,6 +444,20 @@ jobs:
         self.assertEqual(code, 2, out)
         self.assertIn("the folder of docs/records/ci-local.md is outside the repository", out)
         self.assertFalse((outside / "ci-local.md").exists())
+
+    def test_record_refuses_a_link_that_appears_after_the_check_eloop(self):  # E28 B3, review 4
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+
+        def eloop(*args, **kwargs):
+            raise OSError(errno.ELOOP, os.strerror(errno.ELOOP))
+        with mock.patch.object(ci.os, "open", eloop):
+            why = ci.record(str(root), "docs/records/ci-local.md", "- line", "python3 ci-local.py --record")
+        self.assertIsNotNone(why)
+        self.assertIn(f"cannot write docs/records/ci-local.md ({os.strerror(errno.ELOOP)}), so nothing was recorded",
+                      why)
+        self.assertIn("rerun: python3 ci-local.py --record", why)
+        self.assertFalse((root / "docs" / "records" / "ci-local.md").exists())
 
     def test_nothing_ran_is_not_green(self):
         self.workflow(f"on: pull_request\njobs:\n  j:\n    runs-on: {OTHER}\n    steps:\n      - run: 'true'\n")

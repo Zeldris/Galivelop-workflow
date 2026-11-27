@@ -639,10 +639,10 @@
     },
     "ciLocalPassEnv": {
       "type": "array",
-      "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?![\\s\\S])"},
       "uniqueItems": true,
       "default": [],
-      "description": "E28 D4: names of variables of the calling shell that `ci-local.py` also passes to each `run:` step. A step starts from a minimal environment (PATH, HOME, LANG, LC_*, TMPDIR, TERM, SHELL, USER), plus the CI and GITHUB_* values the script sets and the step's own env:; tokens and keys (GITHUB_TOKEN, GH_TOKEN, ANTHROPIC_API_KEY, AWS_*...) never reach it unless listed here."
+      "description": "E28 D4: names of environment variables of the calling shell that `ci-local.py` also passes to each `run:` step. A step starts from a minimal set of this shell's environment variables (PATH, HOME, LANG, LC_*, TMPDIR, TERM, SHELL, USER, the proxy and CA settings, CLAUDE_CODE_REMOTE, GW_*), plus the CI and GITHUB_* values the script sets and the step's own env:; tokens and keys held in environment variables (GITHUB_TOKEN, GH_TOKEN, ANTHROPIC_API_KEY, AWS_*, SSH_AUTH_SOCK...) never reach it unless listed here. HOME is kept, so files under it (gh's hosts.yml, .netrc, .git-credentials) stay readable by the steps, as when run by hand. An invalid value is a config error: ci-local.py exits with 2."
     },
     "ciLocalWorkflows": {
       "type": "array",
