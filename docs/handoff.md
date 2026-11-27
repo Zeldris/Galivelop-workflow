@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.9.1` en `main`** (`664c0dd`, 2026-11-26; las tres fases hechas: revisión de B58-B61 con 3 leves arreglados, retro, `reviewed.sh`; CI de `664c0dd` en verde). Release de GitHub `v0.9.1` publicada (2026-11-26, sesión local; etiqueta sobre `664c0dd`) |
-| Siguiente paso | **`0.10` «Estable»**, barridos pequeños primero (usuario, 2026-11-26). **E28 en curso** (ficha `docs/tasks/E28.md`, hallazgos y decisiones en `docs/records/security-review-E28.md`): primera ola en worktrees `agent/E28-*` (careful, apply-symlinks, branch-ledger, ci-local, pr-guard, tmp-npm-iscode), sin fusionar. Falta: revisar y fusionar cada rama (`merge-branch.sh`), segunda ola C1-C3, docs del modelo de confianza (D1, D2, D6, D7) y límites de careful, F1-F4 y E5 a `pending.md`, check completo y CI. Después E29-E30 y al final E8/E31. Presupuesto de compactaciones: 2 |
+| Siguiente paso | **`0.10` «Estable»**. **E28 en curso** (ficha `docs/tasks/E28.md`, decisiones en `docs/records/security-review-E28.md`). Primera ola: fusionadas (`--defer-check`) `agent/E28-ci-local` y `agent/E28-tmp-npm-iscode`; revisadas y listas para fusionar `agent/E28-apply-symlinks` (`aa8c73cb`) y, tras su revisión, `agent/E28-pr-guard` (`cc405a80`) y `agent/E28-careful` (`6b30afe3`); `agent/E28-branch-ledger` (A1+B2) sin empezar: relanzarla. La última fusión, sin `--defer-check`. Luego C1-C3, docs de confianza (D1, D2, D6, D7) y límites de careful, `## Files` de la ficha, F1-F4 y E5 a `pending.md`, CI. Después E29-E30, E8/E31. Presupuesto de compactaciones: 2 |
 
 ### Fases
 
