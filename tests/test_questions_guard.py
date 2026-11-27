@@ -244,16 +244,15 @@ class Restrictive(Guard):
         for folder in (self.p.work / "scripts", self.p.work / ".claude" / "gw" / "scripts"):
             folder.mkdir(parents=True, exist_ok=True)
             (folder / "is-code.sh").write_text(f"echo ran >> '{marker}'\nexit 0\n")
-        for rel, denied in (("src/app.py", True), ("docs/a.md", False)):
+        outs = []
+        for rel in ("src/app.py", "docs/a.md"):
             event = json.dumps({"tool_name": "Edit", "cwd": str(self.p.work), "tool_input": {"file_path": rel}})
-            code, out = self.p.run(sys.executable, "-B", str(plugin / "scripts" / "questions-guard.py"), stdin=event,
-                                   env={"CLAUDE_PROJECT_DIR": str(self.p.work)})
-            self.assertEqual(code, 0, out)
-            if denied:
-                self.assertDenies(out, "task C4", "Q-1")
-            else:
-                self.assertEqual(out, "")
+            outs.append(self.p.run(sys.executable, "-B", str(plugin / "scripts" / "questions-guard.py"), stdin=event,
+                                   env={"CLAUDE_PROJECT_DIR": str(self.p.work)}))
         self.assertFalse(marker.exists(), "the project's is-code.sh ran")
+        self.assertEqual([code for code, _ in outs], [0, 0], outs)
+        self.assertDenies(outs[0][1], "task C4", "Q-1")   # the Python rule still tells code from content
+        self.assertEqual(outs[1][1], "")
 
     def test_questions_live_in_the_main_worktree(self):
         wt = self.tmp / "wt"
