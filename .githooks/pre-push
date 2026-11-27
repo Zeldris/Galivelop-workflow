@@ -12,7 +12,8 @@
 #     addresses not allowed and the private names of the local .claude/gw.local.json, in their added lines, added
 #     paths and messages; privateCheck: false in the pushed commit's config turns it off. Fails closed. A refusal says
 #     those commits are not pushed yet and gives the command that fixes only them (git commit --amend, or
-#     git rebase -i <base>).
+#     git rebase -i <base>). E29: a pushed tag is checked too: the commits it brings that no remote has, the message
+#     of an annotated tag, and the name of every pushed ref (branch or tag) go through the same rules (--text).
 #   - C12: to a branch that is not an exploration one (spikeBranch, "" = off), refuses a commit that comes from a spike
 #     (config.py spike-check: a `Spike:` trailer or git's merge subject naming a spike branch), with what to do instead.
 #     The prefix comes from the branch's remote tip, else the remote protected branch's (only a first push reads the
@@ -433,9 +434,47 @@ while read -r _pre_ref pre_sha pre_remote_ref _pre_rest; do
     protected_name="$pre_prot"
   fi
 done < "$work/input"
+# E29: private-check on text or commits that no branch loop below covers (a pushed tag, the name of a pushed ref):
+# pc_run <what> <private-check args...>, the text or shas on stdin; fails closed like the commit check.
+pc_run() {
+  pc_what="$1"; shift
+  pc_rc=0
+  python3 "$scripts/private-check.py" --root "$root" "$@" || pc_rc=$?
+  if [ "$pc_rc" = 1 ]; then
+    fail "the push carries private data or a key in $pc_what (above); nothing is pushed: remove it there (a tag: git tag -d <tag>, then create it again without it; a ref name: rename the branch or tag) and push again"
+  elif [ "$pc_rc" != 0 ]; then
+    fail "private-check could not run, exit $pc_rc (above), on $pc_what; fix that and push again, reproduce with: python3 $scripts/private-check.py --root $root --text -"
+  fi
+}
 while read -r local_ref local_sha remote_ref remote_sha; do
   [ -n "${local_sha:-}" ] || continue
   [ "$local_sha" = "$zero" ] && continue                  # deleting a ref
+  if [ -f "$scripts/private-check.py" ]; then
+    pc_cfg=()
+    pc_commit="$(git rev-parse -q --verify "$local_sha^{commit}" 2>/dev/null)" || pc_commit=""
+    [ -z "$pc_commit" ] || pc_cfg=(--rev "$pc_commit")
+    # E84: a red WIP commit may carry an invalid gw.json: then the remote tip's (or its ancestor's) config judges it,
+    # as below, else the working tree's
+    if [ "$wip" = true ] && [ -n "$pc_commit" ] && ! python3 "$config" --root "$root" --rev "$pc_commit" validate >/dev/null 2>&1; then
+      pc_cfg=()
+      for pc_c in "$remote_sha" "$(git rev-parse -q --verify "refs/remotes/$remote/${remote_ref#refs/heads/}^{commit}" 2>/dev/null)" "$(wip_ancestor "$pc_commit")"; do
+        if [ -n "$pc_c" ] && [ "$pc_c" != "$zero" ] && python3 "$config" --root "$root" --rev "$pc_c" validate >/dev/null 2>&1; then pc_cfg=(--rev "$pc_c"); break; fi
+      done
+    fi
+    pc_run "the name of $remote_ref" ${pc_cfg[@]+"${pc_cfg[@]}"} --text - --label "ref name" <<< "$remote_ref"
+    case "$remote_ref" in refs/tags/*)
+      if [ "$(git cat-file -t "$local_sha" 2>/dev/null)" = tag ]; then  # annotated: its message (the lines after the header)
+        pc_msg="$(git cat-file tag "$local_sha" | sed '1,/^$/d')"
+        [ -z "$pc_msg" ] || pc_run "the message of tag $remote_ref" ${pc_cfg[@]+"${pc_cfg[@]}"} --text - --label "tag message" <<< "$pc_msg"
+      fi
+      if [ -n "$pc_commit" ]; then  # the commits the tag brings that no remote has (a tag on a pushed commit brings none)
+        pc_known=""; if [ "$remote_sha" != "$zero" ] && git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then pc_known="$remote_sha"; fi
+        # shellcheck disable=SC2086
+        pc_new="$(git rev-list --reverse "$pc_commit" --not --remotes $pc_known)" || fail "cannot list the commits of tag $remote_ref; fetch and retry: git fetch $remote"
+        [ -z "$pc_new" ] || pc_run "the commits of tag $remote_ref" "${pc_cfg[@]}" --base "$pc_known" --remote "$remote" --ref "$remote_ref" --commits - <<< "$pc_new"
+      fi ;;
+    esac
+  fi
   case "$remote_ref" in refs/tags/*) continue ;; esac  # a tag sent to a branch is checked like any commit
   local_sha="$(git rev-parse -q --verify "$local_sha^{commit}" 2>/dev/null)" || fail "commit ${local_sha:0:7} is not in this clone; fetch it and retry: git fetch $remote"
   rev_args=(--rev "$local_sha")  # the config the guards below read: the pushed commit's

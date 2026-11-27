@@ -5,6 +5,8 @@
   python3 private-check.py --range A..B   # what the commits of A..B add, one commit at a time
   python3 private-check.py --commits -    # the same for the commit shas on stdin, one per line (the pre-push hook
                                           # passes the commits each ref pushes)
+  python3 private-check.py --text -       # the text on stdin, line by line, reported as `<label>:<line>` (--label NAME,
+                                          # default `text`): the pre-push checks a tag's message and the pushed ref names
   python3 private-check.py --all          # every tracked file as it is in the working tree (paths and content)
   options: --no-names (skip the private names), --root PATH, --rev REV (read .claude/gw.json as commit REV has it),
            --base SHA / --remote NAME / --ref BRANCH (the pre-push passes them: the remote tip already pushed, the
@@ -277,6 +279,8 @@ def main(argv=None):
     what.add_argument("--range", metavar="A..B", help="scan what the commits of A..B add")
     what.add_argument("--commits", metavar="FILE", help="scan the commits listed in FILE (- for stdin)")
     what.add_argument("--all", action="store_true", help="scan every tracked file of the working tree")
+    what.add_argument("--text", metavar="FILE", help="scan the text of FILE (- for stdin), line by line, with the same rules")
+    parser.add_argument("--label", default="text", help="what --text is called in the findings (default: text)")
     parser.add_argument("--no-names", action="store_true", help="skip the private names of .claude/gw.local.json")
     parser.add_argument("--root", help="project path (default: as config.py finds it)")
     parser.add_argument("--rev", help="read .claude/gw.json as this commit has it (the pushed one)")
@@ -305,6 +309,10 @@ def main(argv=None):
                           settings["maxHits"])
         if args.all:
             scan_tree(root, scanner)
+        elif args.text:
+            data = sys.stdin.buffer.read() if args.text == "-" else Path(args.text).read_bytes()
+            for n, text in enumerate(data.decode("utf-8", "replace").splitlines(), 1):
+                scanner.line(f"{args.label}:{n}", text)
         else:
             shas = commits_of(root, args)
             for sha in shas:
@@ -321,7 +329,9 @@ def main(argv=None):
         print(f"  … and {scanner.total - len(scanner.hits)} more", file=sys.stderr)
     allow = (f"a public address goes in privateCheck.allowEmails of .claude/gw.json, a private one in allowEmails of "
              f"{config.LOCAL_REL.as_posix()}; a checked false positive can carry {ALLOW_MARK} on its line")
-    if args.all:
+    if args.text:
+        print(f"{PROG}: remove it from the {args.label} ({allow}), then push again", file=sys.stderr)
+    elif args.all:
         print(f"{PROG}: remove it from the files ({allow}), then commit: git commit -a", file=sys.stderr)
     else:
         print(f"{PROG}: remove it from the commits that add it, not in a new one ({allow})", file=sys.stderr)

@@ -1621,6 +1621,100 @@ class PrePushPrivate(Base):
         code, out = p.push("origin", "feature")
         self.assertEqual(code, 0, out)
 
+    def leak(self):
+        """An unpushed commit on `feature` with a private name in it (the list is local, never committed)."""
+        p = self.p
+        p.write(".claude/gw.local.json", json.dumps({"privateNames": ["Secret Client"]}))
+        p.write("docs/a.md", "work for secret-client\n")
+        p.commit("notes")
+        return p.sha()
+
+    def remote_tags(self):
+        return self.p.git("tag", "-l", cwd=self.p.bare).stdout.split()
+
+    def test_e29_a_tag_on_an_unpushed_commit_is_checked_lightweight_or_annotated(self):
+        p = self.p
+        sha = self.leak()
+        for args in ((), ("-a", "-m", "release")):
+            with self.subTest(args=args):
+                p.git("tag", *args, "v1")
+                code, out = p.push("origin", "v1")
+                self.assertNotEqual(code, 0, out)
+                self.assertIn(f"docs/a.md:1 (commit {sha[:7]}): private name secret-client", out)
+                self.assertIn("the push carries private data or a key in the commits of tag refs/tags/v1", out)
+                self.assertEqual(self.remote_tags(), [])
+                p.git("tag", "-d", "v1")
+
+    def test_e29_a_tag_on_an_already_pushed_commit_brings_nothing_to_check(self):
+        p = self.p
+        self.leak()
+        p.git("push", "-q", "--no-verify", "origin", "feature")  # already public: not this push's doing
+        p.git("tag", "-a", "-m", "release", "v1")
+        code, out = p.push("origin", "v1")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.remote_tags(), ["v1"])
+
+    def test_e29_a_clean_tag_passes_and_a_deletion_is_not_checked(self):
+        p = self.p
+        p.write("docs/a.md", "fine\n")
+        p.commit("notes")
+        p.git("tag", "-a", "-m", "release 1", "v1")
+        code, out = p.push("origin", "v1")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.remote_tags(), ["v1"])
+        p.write(".claude/gw.local.json", json.dumps({"privateNames": ["v1"]}))  # even a name that now matches
+        code, out = p.push("origin", ":refs/tags/v1")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.remote_tags(), [])
+
+    def test_e29_the_message_of_an_annotated_tag_is_checked(self):
+        p = self.p
+        p.write("docs/a.md", "fine\n")
+        p.commit("notes")
+        p.git("tag", "-a", "-m", f"first line\n\nwrite to {self.mail}", "v1")
+        code, out = p.push("origin", "v1")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn(f"tag message:3: e-mail {self.mail}", out)
+        self.assertIn("in the message of tag refs/tags/v1", out)
+        self.assertEqual(self.remote_tags(), [])
+        p.git("tag", "-d", "v1")
+        p.git("tag", "-a", "-m", f"write to {self.mail}  gw-allow-private", "v1")  # the same allowance as in a commit
+        code, out = p.push("origin", "v1")
+        self.assertEqual(code, 0, out)
+
+    def test_e29_an_empty_tag_message_passes(self):
+        p = self.p
+        p.write("docs/a.md", "fine\n")
+        p.commit("notes")
+        p.git("tag", "-a", "--cleanup=verbatim", "-F", "/dev/null", "v1")
+        code, out = p.push("origin", "v1")
+        self.assertEqual(code, 0, out)
+        self.assertEqual(self.remote_tags(), ["v1"])
+
+    def test_e29_a_tag_pushed_with_its_branch_is_refused_for_the_branch_too(self):
+        p = self.p
+        sha = self.leak()
+        p.git("tag", "v1")
+        code, out = p.push("origin", "feature", "v1")
+        self.assertNotEqual(code, 0, out)
+        self.assertIn(f"docs/a.md:1 (commit {sha[:7]}): private name secret-client", out)
+        self.assertEqual(self.remote_tags(), [])
+        self.assertEqual(p.git("rev-parse", "-q", "--verify", "refs/heads/feature", cwd=p.bare, ok=False).stdout.strip(), "")
+
+    def test_e29_the_name_of_a_pushed_branch_or_tag_is_checked(self):
+        p = self.p
+        p.write(".claude/gw.local.json", json.dumps({"privateNames": ["Secret Client"]}))
+        p.write("docs/a.md", "fine\n")
+        p.commit("notes")
+        p.git("tag", "release-secret-client")
+        for ref in ("refs/tags/release-secret-client", "feature:refs/heads/secret-client-fix"):
+            with self.subTest(ref=ref):
+                code, out = p.push("origin", ref)
+                self.assertNotEqual(code, 0, out)
+                self.assertIn("ref name:1: private name secret-client", out)
+                self.assertIn("in the name of refs/", out)
+        self.assertEqual(self.remote_tags(), [])
+
 
 class PortableShell(unittest.TestCase):
     """macOS ships bash 3.2 and a BSD mktemp: no mapfile / associative arrays, and mktemp templates end in XXXXXX."""
