@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.9.1` en `main`** (`664c0dd`, 2026-11-26; las tres fases hechas: revisión de B58-B61 con 3 leves arreglados, retro, `reviewed.sh`; CI de `664c0dd` en verde). Release de GitHub `v0.9.1` publicada (2026-11-26, sesión local; etiqueta sobre `664c0dd`) |
-| Siguiente paso | **`0.10` «Estable»**. **E29 en curso** (2026-11-27; ficha `docs/tasks/E29.md`): hallazgos en `docs/records/anonymization-review-E29.md`; **esperan las respuestas Q-48 a Q-57** (`questions.py list`). Con ellas: alias de N5 (y N6 si es privado), arreglos de `private-check` con sus tests repartidos a `gw-worker`, y lo que decida sobre historial y ramas viejas (nada se borra ni reescribe sin su sí). Después E30, E8/E31 y el resto de la sección `0.10` del roadmap. Presupuesto de compactaciones: 2 |
+| Siguiente paso | **`0.10` «Estable»**. **E29 en curso** (2026-11-27; ficha `docs/tasks/E29.md`): Q-48..Q-57 respondidas (todas a). Ola 1 fusionada (W1 alias N5/N6, W3 etiquetas y refs en el `pre-push`, W2 `GW_LOCAL_JSON` y `requireNames`). Siguen: encargo `opus medium` de los dos hallazgos altos del `pre-push` (`--ref` de la rama de destino; exigir la lista al subir a la rama protegida sin commits nuevos; `docs/records/` no, revisión en el bloc); ola 2: W4 (C2 patrones, C4 marca, C5 `git@`) y W5 (A4 nombres de retro); luego `/code-review` del bloque, criterios de la ficha y roadmap. Después E30, E8/E31 y el resto de la sección `0.10`. Presupuesto de compactaciones: 2 (1 gastada) |
 
 ### Fases
 
