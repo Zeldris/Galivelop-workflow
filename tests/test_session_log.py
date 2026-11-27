@@ -258,6 +258,26 @@ class SessionStart(Base):
         self.assertIn("boom", Path(log.group(1)).read_text())
         self.assertEqual([f.name for f in folder.iterdir() if f.name.endswith(".timeout")], [])
 
+    def test_a_green_run_removes_its_log_folder_and_writes_the_stamp(self):  # B4 (E28)
+        tmp = self.tmp / "shared-tmp"
+        tmp.mkdir()
+        cloud = self.cloud_config(install=["echo i >> ran.log"], setup=["echo s >> ran.log"])
+        cloud["TMPDIR"] = str(tmp)
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertEqual((self.p.work / "ran.log").read_text().split(), ["i", "s"])
+        self.assertEqual(sorted(f.name for f in tmp.iterdir() if f.name.startswith("gw-session-start.")), [], out)
+        self.assertTrue((self.p.work / ".git" / "gw-install.sha").is_file(), out)
+
+    def test_no_private_log_folder_runs_nothing_and_says_why(self):  # B4 (E28): fails closed
+        cloud = self.cloud_config(install=["echo i >> ran.log"], setup=["echo s >> ran.log"])
+        cloud["TMPDIR"] = str(self.tmp / "missing")
+        code, out = self.p.session_start(env=cloud)
+        self.assertEqual(code, 0, out)
+        self.assertIn("cannot create a private folder for the install and setup logs", out)
+        self.assertFalse((self.p.work / "ran.log").exists(), out)
+        self.assertFalse((self.p.work / ".git" / "gw-install.sha").exists(), out)
+
     def test_failed_install_skips_setup(self):
         cloud = self.cloud_config(install=["exit 3"], setup=["echo s >> ran.log"])
         code, out = self.p.session_start(env=cloud)
