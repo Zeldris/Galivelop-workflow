@@ -1612,9 +1612,75 @@ class PrePushPrivate(Base):
         self.assertNotEqual(code, 0, out)
         self.assertIn("no local list of private names", out)
         self.assertIn("create the file or set the environment variable", out)
-        self.assertIn("private-check could not run, exit 2", out)
+        self.assertIn("the push to refs/heads/main needs the list of private names", out)
+        self.assertNotIn("could not run", out)
         code, out = p.push("origin", "main", env={"GW_LOCAL_JSON": '{"privateNames": ["Secret Client"]}'})
         self.assertEqual(code, 0, out)
+
+    def names_on_main(self, private_check=None):
+        """main pushed with the setUp commits (and `private_check` as its privateCheck), and `feature` one unpushed
+        commit ahead of it."""
+        p = self.p
+        p.git("checkout", "-q", "main")
+        if private_check is not None:
+            p.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck=private_check), indent=2))
+            p.commit("privateCheck")
+        self.assertEqual(p.push("--no-verify", "origin", "main")[0], 0)
+        p.git("checkout", "-q", "-B", "feature", "main")
+        p.write("docs/a.md", "plain notes\n")
+        p.commit("notes")
+
+    def assert_names_required(self, code, out):
+        self.assertNotEqual(code, 0, out)
+        self.assertIn("no local list of private names", out)
+        self.assertIn('requireNames is "protected"', out)
+        self.assertIn("create the file or set the environment variable", out)
+        self.assertIn("the push to refs/heads/main needs the list of private names", out)
+        self.assertNotIn("could not run", out)
+
+    def test_a_branch_pushed_onto_main_under_another_name_needs_the_list(self):
+        self.names_on_main()
+        for spec in ("feature:main", "HEAD:main", "refs/heads/feature:refs/heads/main"):
+            with self.subTest(spec=spec):
+                self.assert_names_required(*self.p.push("origin", spec))
+        code, out = self.p.push("origin", "feature:main", env={"GW_LOCAL_JSON": '{"privateNames": ["Secret Client"]}'})
+        self.assertEqual(code, 0, out)
+
+    def test_main_moved_to_an_already_pushed_tip_still_needs_the_list(self):
+        self.names_on_main()
+        p = self.p
+        code, out = p.push("origin", "feature")  # not protected: only the notice
+        self.assertEqual(code, 0, out)
+        self.assertIn("no .claude/gw.local.json, so private names are not checked", out)
+        code, out = p.push("origin", "feature:main")  # nothing new: main only fast-forwards to feature's tip
+        self.assert_names_required(code, out)
+        code, out = p.push("origin", "feature:main", env={"GW_LOCAL_JSON": '{"privateNames": ["Secret Client"]}'})
+        self.assertEqual(code, 0, out)
+
+    def test_deleting_main_or_pushing_a_tag_without_a_list_is_not_refused_for_names(self):
+        self.names_on_main()
+        p = self.p
+        p.git("tag", "v9")
+        code, out = p.push("origin", "v9")
+        self.assertNotIn("no local list of private names", out)
+        self.assertEqual(code, 0, out)
+        code, out = p.push("origin", "--delete", "main")
+        self.assertNotIn("no local list of private names", out)
+
+    def test_require_names_never_lets_main_through_without_a_list(self):
+        self.names_on_main({"requireNames": "never"})
+        code, out = self.p.push("origin", "feature:main")
+        self.assertEqual(code, 0, out)
+        self.assertIn("no .claude/gw.local.json, so private names are not checked", out)
+
+    def test_require_names_always_refuses_any_branch_without_a_list(self):
+        self.names_on_main({"requireNames": "always"})
+        p = self.p
+        p.push("--no-verify", "origin", "feature")
+        code, out = p.push("origin", "feature:other")  # nothing new: only the list can refuse it
+        self.assertNotEqual(code, 0, out)
+        self.assertIn('requireNames is "always"', out)
+        self.assertIn("the push to refs/heads/other needs the list of private names", out)
 
     def test_e_mail_refused_unless_allowed(self):
         p = self.p

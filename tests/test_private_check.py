@@ -301,6 +301,25 @@ class Names(Repo):
         self.assertEqual(code, 2, out)
         self.assertIn("requireNames", out)
 
+    def test_names_required_only_answers_whether_the_destination_needs_the_list(self):
+        code, out = self.check("--names-required", "--ref", "main")
+        self.assertEqual(code, 1, out)
+        self.assertIn("no local list of private names", out)
+        self.assertIn('requireNames is "protected"', out)
+        self.assertIn("create the file or set the environment variable", out)
+        for args, env in ((("--ref", "feature"), None), ((), None), (("--ref", "main", "--no-names"), None),
+                          (("--ref", "main"), {"GW_LOCAL_JSON": '{"privateNames": ["Acme"]}'})):
+            code, out = self.check("--names-required", *args, env=env)
+            self.assertEqual((code, out), (0, ""), args)
+        code, out = self.check("--names-required", "--ref", "main", env={"GW_LOCAL_JSON": "{not json"})
+        self.assertEqual(code, 2, out)  # a malformed list still cannot be checked
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"requireNames": "always"})))
+        code, out = self.check("--names-required", "--ref", "feature")
+        self.assertEqual(code, 1, out)
+        self.assertIn('requireNames is "always"', out)
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"requireNames": "never"})))
+        self.assertEqual(self.check("--names-required", "--ref", "main"), (0, ""))
+
     def test_config_local_command(self):
         cli = ["python3", str(CONFIG), "--root", str(self.work), "local"]
         r = subprocess.run(cli, capture_output=True, text=True, env=self.env)
