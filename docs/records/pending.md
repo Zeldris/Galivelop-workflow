@@ -31,6 +31,9 @@ Lo leve que el usuario aprobó dejar para la `0.10` y lo que la nube no puede ha
 
 - [ ] `0.10` · **leves de private-check** (see E29, hallazgo C6 del registro): `private-check` normaliza (NFKC, sin caracteres de formato ni de anchura cero) antes de buscar nombres; avisa de los binarios añadidos; test de merge con conflicto que mete un nombre; `doctor.py` avisa de `privateCheck: false`.
 - [ ] `0.10` · Related: A10, E29 · **ramas viejas** (see E29, Q-50): borrar en GitHub `version/1.0.0` (`a61cdc57ae62`), `ccr-05edcf12-0gntze` (`1b894ffc14a4`), `ccr-6dfbc880-ddr41g` (`5feaceecbc3e`), `ccr-76251061-b1yiwq` (`57a888488e60`), `claude/galivelop-workflow-inicio` (`0f364125d1c1`) y `agent/A10-mkt-sheet` (`58f340a11431`); el proxy de la nube lo rechaza (403): en una sesión local, `git push origin --delete <rama>`, o a mano en GitHub.
+- [ ] `0.10` · **retros con nombre real** (see E29): `docs/proposals/2026-10-22-portal-galivelop.md` cita los nombres de archivo de retro de una recogida anterior a `harvest.retroAlias`; cambiarlos por `retro-<fecha>-<n>`.
+- [ ] `0.10` · **regla relajable** (see E29): `requireNames` y `protectedBranch` se leen del config del commit subido, así que ese commit puede relajar la regla que lo juzga (la marca de revisión ya toma el de la punta remota); y con «protected», una etiqueta que trae commits sin subir se publica sin lista.
+- [ ] `0.10` · **observaciones de W2** (see E29): `config.py` (`unknown key '<clave>'`) puede sacar un nombre privado por stderr; `harvest.py` con `privateCheck: false` y sin lista falla cerrado sin documentarlo; los commits de una etiqueta no pasan `author-check` (`authorDeny`).
 - [ ] `0.10` · **lista local** (see E29, Q-50, Q-51): en la máquina del usuario, `gw.local.json` con los alias de N5 (`private-project-6`) y N6 (`private-project-7`) en `anonymize`, y la misma lista en la variable del entorno de la nube.
 
 ## De la recogida del 2026-10-27 (`private-project-2`)
