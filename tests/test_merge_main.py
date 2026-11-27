@@ -67,6 +67,43 @@ class MergeMain(unittest.TestCase):
     def subjects(self):
         return self.git(self.work, "log", "--format=%s").splitlines()
 
+    def test_e28_protected_branch_as_an_option_runs_nothing(self):  # A1: "--upload-pack=<cmd>" ran <cmd>
+        marker = self.tmp / "pwned"
+        for value in (f"--upload-pack=touch {marker};", "-x"):
+            self.put(self.work, ".claude/gw.json", json.dumps(self.config(protectedBranch=value)))
+            code, out = self.run_it()
+            self.assertEqual(code, 2, out)
+            self.assertIn("protectedBranch", out)
+            self.assertIn("must be a git branch name", out)
+            self.assertIn("validate", out)
+            self.assertFalse(marker.exists(), out)
+
+    def test_e28_option_guard_holds_without_the_schema(self):  # review: the schema refused it before the guard ran
+        import contextlib
+        import importlib.util
+        import io
+        from unittest import mock
+        spec = importlib.util.spec_from_file_location("merge_main_e28", SCRIPT)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        marker = self.tmp / "pwned"
+        self.put(self.work, ".claude/gw.json", json.dumps(self.config(protectedBranch=f"--upload-pack=touch {marker};")))
+        out = io.StringIO()
+        with mock.patch.object(mod.config, "validate", return_value=[]), contextlib.redirect_stdout(out), \
+                contextlib.redirect_stderr(out):
+            code = mod.main(["--root", str(self.work)])
+        self.assertEqual(code, 2, out.getvalue())
+        self.assertIn("starts with '-', which git reads as an option", out.getvalue())
+        self.assertIn("config.py validate", out.getvalue())
+        self.assertFalse(marker.exists())
+
+    def test_e28_fetch_updates_origin_main_with_a_narrow_fetch_refspec(self):  # A1: explicit refspec
+        self.git(self.work, "config", "remote.origin.fetch", "+refs/heads/work:refs/remotes/origin/work")
+        self.upstream()
+        code, out = self.run_it()
+        self.assertEqual(code, 0, out)
+        self.assertTrue((self.work / "b.txt").is_file(), out)
+
     def test_clean_tree_merges(self):
         self.upstream()
         code, out = self.run_it()

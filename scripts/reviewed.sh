@@ -39,6 +39,9 @@ cfg() {
     echo "reviewed: cannot read '$1' from the config; fix it: python3 $config --root $root validate" >&2; return 1; }
 }
 protected="$(cfg protectedBranch)" || exit 1
+case "$protected" in  # E28 (A1): git would read it as an option (--upload-pack=...); the schema refuses it too
+  -*) echo "reviewed: protectedBranch '$protected' starts with '-', which git reads as an option; set a branch name in .claude/gw.json and check it: python3 $config --root $root validate" >&2; exit 1 ;;
+esac
 mark="$(cfg reviewMark)" || exit 1
 language="$(cfg languages.docs.primary)" || exit 1
 retro="$(cfg requireRetro)" || exit 1
@@ -71,7 +74,8 @@ case "$lsr_rc" in
 esac
 push_cmd="$(printf 'bash %q %q' "$here/push.sh" "$branch")"  # quoted: the root may have spaces (D94)
 if [ "$has_protected" = "true" ]; then
-  git fetch -q origin "$protected" "$branch" || {
+  # Explicit refspecs after `--`: a value is never an option, and origin/<b> is updated in any clone (E28).
+  git fetch -q -- origin "+refs/heads/$protected:refs/remotes/origin/$protected" "+refs/heads/$branch:refs/remotes/origin/$branch" || {
     echo "reviewed: cannot fetch origin/$protected and origin/$branch; push the branch first: $push_cmd" >&2; exit 1; }
 else
   if [ "$branch" = "$protected" ]; then
@@ -80,7 +84,7 @@ else
       "$protected" "$protected" "$here/push.sh" "$here/reviewed.sh" >&2; exit 1
   fi
   echo "reviewed: origin has no $protected yet; reviewing the whole history of $branch (empty base)" >&2
-  git fetch -q origin "$branch" || {
+  git fetch -q -- origin "+refs/heads/$branch:refs/remotes/origin/$branch" || {
     echo "reviewed: cannot fetch origin/$branch; push the branch first: $push_cmd" >&2; exit 1; }
 fi
 head="$(git rev-parse HEAD)"

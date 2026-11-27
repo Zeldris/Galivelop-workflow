@@ -138,7 +138,10 @@
     },
     "protectedBranch": {
       "type": "string",
-      "minLength": 1
+      "minLength": 1,
+      "pattern": "^(?![^\\n]*\\n)(?![-/.])(?!@$)(?!.*\\.\\.)(?!.*@\\{)(?!.*//)(?!.*/[.])(?!.*\\.lock(/|$))(?!.*[/.]$)[^\\x00-\\x20\\x7f~^:?*\\[\\\\]+$",
+      "errorMessage": "must be a git branch name (git check-ref-format --branch): no leading -, / or ., no trailing / or ., no spaces, no .., //, @{ or a part starting with . or ending in .lock, not @ alone, none of ~^:?*[\\; e.g. main",
+      "description": "E28 (A1): the pattern keeps git from reading it as an option (--upload-pack=...) or a bad ref."
     },
     "pushToProtected": {
       "enum": [
@@ -637,6 +640,13 @@
       "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+\\.md$",
       "description": "Repo-relative file where `ci-local.py --record` records each local run of the GitHub CI (a Markdown file; absent: docs/records/ci-local.md, or the old docs/registros/ci-local.md when only that exists). The PR hook takes a green line of it, whose commit has only content after it, as the CI that GitHub did not start (no Actions quota, no runners); it is never code for is-code.sh."
     },
+    "ciLocalPassEnv": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*(?![\\s\\S])"},
+      "uniqueItems": true,
+      "default": [],
+      "description": "E28 D4: names of environment variables of the calling shell that `ci-local.py` also passes to each `run:` step. A step starts from a minimal set of this shell's environment variables (PATH, HOME, LANG, LC_*, TMPDIR, TERM, SHELL, USER, the proxy and CA settings, CLAUDE_CODE_REMOTE, GW_*), plus the CI and GITHUB_* values the script sets and the step's own env:; tokens and keys held in environment variables (GITHUB_TOKEN, GH_TOKEN, ANTHROPIC_API_KEY, AWS_*, SSH_AUTH_SOCK...) never reach it unless listed here. HOME is kept, so files under it (gh's hosts.yml, .netrc, .git-credentials) stay readable by the steps, as when run by hand. An invalid value is a config error: ci-local.py exits with 2."
+    },
     "ciLocalWorkflows": {
       "type": "array",
       "items": {"type": "string", "minLength": 1},
@@ -712,6 +722,11 @@
       "uniqueItems": true,
       "default": [],
       "description": "D127: the stacks whose .gitignore block apply.py --init writes (templates/gitignore/<stack>.gitignore). Empty: the stacks found by their marker files in the root (pyproject.toml, package.json, go.mod, Cargo.toml...)."
+    },
+    "gitignoreCommon": {
+      "type": "boolean",
+      "default": true,
+      "description": "E28: whether the .gitignore block apply.py --init writes starts with templates/gitignore/common.gitignore (.env, .env.* but the samples, .claude/settings.local.json, *.gw-tmp), also with no stack."
     },
     "legacyNamesMax": {
       "type": "integer",
@@ -1267,7 +1282,7 @@
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "ledger": {"type": "string", "minLength": 1, "default": "docs/metrics/ledger.jsonl"},
+        "ledger": {"type": "string", "minLength": 1, "pattern": "^(?![^\\n]*\\n)(?![/\\\\~])(?![A-Za-z]:)(?!(.*[/\\\\])?\\.\\.([/\\\\]|$))", "errorMessage": "must be a repo-relative path (no leading /, \\ or ~, no drive letter, no .. segment); since E28 a ledger outside the repo is refused: move the file into the repo and set metrics.ledger in .claude/gw.json to its path from the repo root, e.g. docs/metrics/ledger.jsonl", "default": "docs/metrics/ledger.jsonl"},
         "record": {"type": "boolean", "default": true},
         "commitLedger": {"type": "boolean", "default": true, "description": "B36: the pre-commit hook (metrics.py stage-ledger) adds the changed ledger to the next work commit, so it needs no commit of its own; never during a merge, cherry-pick, revert or rebase, never in git commit <paths>/--only, never when the ledger is ignored or is the only staged change; false leaves the ledger to the user."},
         "reports": {"type": "string", "minLength": 1, "default": "docs/metrics"},

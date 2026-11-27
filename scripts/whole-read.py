@@ -643,11 +643,26 @@ def forget(session_id):
 @contextlib.contextmanager
 def locked(path):
     """An exclusive lock on `path` with .lock for .json while the state is read and written, so two Reads in parallel do not lose one
-    of them (the last os.replace would win). No lock where fcntl is missing (Windows) or the file cannot be opened."""
+    of them (the last os.replace would win). No lock where fcntl is missing (Windows) or the file cannot be opened.
+    The .lock is opened without following a link (O_NOFOLLOW) and only used when it is a regular file of this user,
+    like the .json: a link planted in the shared temp folder is never written through (B4, E28)."""
     try:
         import fcntl
-        handle = open(path[:-len(".json")] + ".lock", "a")
+        flags = (os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0)
+                 | getattr(os, "O_CLOEXEC", 0))  # O_NONBLOCK: a FIFO with no reader fails at once (ENXIO), no hang
+        fd = os.open(path[:-len(".json")] + ".lock", flags, 0o600)
     except (ImportError, OSError):
+        yield
+        return
+    handle = None
+    try:
+        info = os.fstat(fd)
+        if stat.S_ISREG(info.st_mode) and (not hasattr(os, "getuid") or info.st_uid == os.getuid()):
+            handle = os.fdopen(fd, "a")
+    except OSError:
+        pass
+    if handle is None:
+        os.close(fd)
         yield
         return
     try:
