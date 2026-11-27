@@ -14,6 +14,8 @@
 #     those commits are not pushed yet and gives the command that fixes only them (git commit --amend, or
 #     git rebase -i <base>). E29: a pushed tag is checked too: the commits it brings that no remote has, the message
 #     of an annotated tag, and the name of every pushed ref (branch or tag) go through the same rules (--text).
+#     Before them, a destination for which privateCheck.requireNames demands the local list (the protectedBranch by
+#     default) is refused without it, even when the ref brings no new commit (--names-required --dest).
 #   - C12: to a branch that is not an exploration one (spikeBranch, "" = off), refuses a commit that comes from a spike
 #     (config.py spike-check: a `Spike:` trailer or git's merge subject naming a spike branch), with what to do instead.
 #     The prefix comes from the branch's remote tip, else the remote protected branch's (only a first push reads the
@@ -462,6 +464,16 @@ while read -r local_ref local_sha remote_ref remote_sha; do
         if [ -n "$pc_c" ] && [ "$pc_c" != "$zero" ] && python3 "$config" --root "$root" --rev "$pc_c" validate >/dev/null 2>&1; then pc_cfg=(--rev "$pc_c"); break; fi
       done
     fi
+    # E29 (Q-51 a): the list of private names, when privateCheck.requireNames asks for it for this destination, is
+    # required before any scan and whatever the ref brings: `x:main`, `HEAD:main` or main moved forward to a tip
+    # already pushed (no new commit, so the commit scan below never runs) all land on main.
+    pc_rc=0
+    python3 "$scripts/private-check.py" --root "$root" ${pc_cfg[@]+"${pc_cfg[@]}"} --names-required --dest "$pc_ref" || pc_rc=$?
+    if [ "$pc_rc" = 1 ]; then
+      fail "the push to $remote_ref needs the list of private names (privateCheck.requireNames, above); nothing is pushed: create .claude/gw.local.json or set the variable of privateCheck.localEnv, then push again"
+    elif [ "$pc_rc" != 0 ]; then
+      fail "private-check could not run, exit $pc_rc (above), on the list of private names for $remote_ref; fix that and push again, reproduce with: python3 $scripts/private-check.py --root $root --names-required --dest $pc_ref"
+    fi
     pc_run "the name of $remote_ref" ${pc_cfg[@]+"${pc_cfg[@]}"} --ref "$pc_ref" --text - --label "ref name" <<< "$remote_ref"
     case "$remote_ref" in refs/tags/*)
       if [ "$(git cat-file -t "$local_sha" 2>/dev/null)" = tag ]; then  # annotated: its message (the lines after the header)
@@ -537,7 +549,9 @@ while read -r local_ref local_sha remote_ref remote_sha; do
     scan_leftovers "$local_sha" "$files" "the push"
     if [ -f "$scripts/private-check.py" ]; then  # an older project without it: skipped, like the optional scripts
       pc_rc=0
-      printf '%s\n' "$new" | python3 "$scripts/private-check.py" --root "$root" ${rev_args[@]+"${rev_args[@]}"} --base "$known" --remote "$remote" --ref "${local_ref#refs/heads/}" --commits - || pc_rc=$?
+      # --ref is the LOCAL branch: it names the branch of the `git rebase -i` fix (`x:main` rewrites x, not main);
+      # --dest, where the push goes, is what privateCheck.requireNames judges (`main:backup` is not a push to main)
+      printf '%s\n' "$new" | python3 "$scripts/private-check.py" --root "$root" ${rev_args[@]+"${rev_args[@]}"} --base "$known" --remote "$remote" --ref "${local_ref#refs/heads/}" --dest "${remote_ref#refs/heads/}" --commits - || pc_rc=$?
       if [ "$pc_rc" = 1 ]; then
         fail "the push carries private data or a key (above); those commits are not pushed yet: fix only them with the command above, then push again"
       elif [ "$pc_rc" != 0 ]; then

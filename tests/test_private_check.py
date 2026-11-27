@@ -301,6 +301,39 @@ class Names(Repo):
         self.assertEqual(code, 2, out)
         self.assertIn("requireNames", out)
 
+    def test_names_required_only_answers_whether_the_destination_needs_the_list(self):
+        code, out = self.check("--names-required", "--ref", "main")
+        self.assertEqual(code, 1, out)
+        self.assertIn("no local list of private names", out)
+        self.assertIn('requireNames is "protected"', out)
+        self.assertIn("create the file or set the environment variable", out)
+        for args, env in ((("--ref", "feature"), None), ((), None), (("--ref", "main", "--no-names"), None),
+                          (("--ref", "main"), {"GW_LOCAL_JSON": '{"privateNames": ["Acme"]}'})):
+            code, out = self.check("--names-required", *args, env=env)
+            self.assertEqual((code, out), (0, ""), args)
+        code, out = self.check("--names-required", "--ref", "main", env={"GW_LOCAL_JSON": "{not json"})
+        self.assertEqual(code, 2, out)  # a malformed list still cannot be checked
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"requireNames": "always"})))
+        code, out = self.check("--names-required", "--ref", "feature")
+        self.assertEqual(code, 1, out)
+        self.assertIn('requireNames is "always"', out)
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"requireNames": "never"})))
+        self.assertEqual(self.check("--names-required", "--ref", "main"), (0, ""))
+
+    def test_dest_not_ref_decides_require_names(self):
+        self.write("docs/a.md", "x\n")
+        self.commit("work")
+        rng = f"{self.base}..HEAD"
+        code, out = self.check("--range", rng, "--ref", "main", "--dest", "backup")
+        self.assertEqual(code, 0, out)
+        self.assertIn("private names are not checked", out)
+        for args in (("--range", rng), ("--names-required",)):
+            code, out = self.check(*args, "--ref", "feature", "--dest", "main")
+            self.assertEqual(code, 2 if "--range" in args else 1, out)
+            self.assertIn('requireNames is "protected"', out)
+            self.assertIn("then push again", out)
+            self.assertNotIn("--no-names", out)
+
     def test_config_local_command(self):
         cli = ["python3", str(CONFIG), "--root", str(self.work), "local"]
         r = subprocess.run(cli, capture_output=True, text=True, env=self.env)
