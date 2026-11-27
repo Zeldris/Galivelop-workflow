@@ -18,6 +18,12 @@ recursively, wrappers such as `sudo`/`env`/`xargs` looked through):
   git checkout -- . | git checkout . | git restore . (also `:/`, `*`)                       overwrites the whole tree
   git checkout -f | git switch -f | --discard-changes                                       drops local changes
       (`git restore --staged .` leaves the files alone and is not asked about)
+  A long option counts by any prefix git would take for it (`--forc`, `--delet`, `--mirro`, `git reset --ha`; an
+  ambiguous one such as `--f` asks too), and the words after `--` of `git push` are still refspecs (`git push -- origin
+  +main`). A command substitution, `$(...)` or backticks (not `$((...))`, not inside single quotes), is read twice: its
+  body as a command of its own, and its output as unknown words; it asks ("cannot read substituted commands") when that
+  output is the command word of a line that names `git`, `gh` or `rm`, a word of an `rm`, or a word of a git call that
+  careful.py checks (push, reset, branch, clean, checkout, switch, restore) or whose subcommand it cannot tell.
 
 Inside a linked git worktree under a prefix of `modes.carefulWorktrees` (default `.claude/worktrees/`, relative to the main
 repository's root; an agent's worktree is disposable and a background subagent has nobody to ask; an empty list = no
@@ -34,8 +40,10 @@ Not asked about, on purpose (false positives; a hook cannot parse a shell):
     `$TMPDIR/`, `${TMPDIR}/`, the last two only while TMPDIR is set and not empty in the hook's environment; the scratchpad of a session lives under `/tmp/`). The prefix must be followed by
     something (`/tmp/` itself is not exempt) that has no `..`, `$`, backtick or glob (`/tmp/*`). Only `rm` has
     exemptions: a git command is always asked about.
-Not seen: a command built at run time (`$cmd`, `python3 -c "shutil.rmtree(...)"`), `find ... -delete`/`-exec rm -rf`,
-`git stash drop`, `git worktree remove --force`.
+Not seen: a command built at run time (`$cmd`, `$g push -f`, `python3 -c "shutil.rmtree(...)"`), `find ... -delete`/
+`-exec rm -rf`, `git stash drop`, `git worktree remove --force`, `env -S 'git push -f'`, a script fed on stdin
+(`bash <<< 'rm -rf x'`, `bash <<EOF ... EOF`), a brace group (`{ git push -f; }`), a substitution in the body of an
+unquoted heredoc. It stops model mistakes, not an attacker.
 
 Fails closed like config-guard.py for an event it cannot read or without a command (-> `ask`), except when the config
 turns the mode off. A config it cannot read leaves the mode on with the defaults. Python 3.8+ standard library only.
@@ -60,6 +68,11 @@ PUSH_VALUE = {"-o", "--push-option", "--repo", "--receive-pack", "--exec"}
 DEFAULT_EXEMPT = ["/tmp/", "/var/tmp/", "$TMPDIR/", "${TMPDIR}/"]
 DEFAULT_WORKTREES = [".claude/worktrees/"]
 CD_WORD = re.compile(r"(?:^|[;&|(\s])(?:cd|pushd)(?:\s|$)")
+SUBST = "`gw-subst`"  # what a substitution becomes before tokenizing: a backtick, so no rm exemption takes it
+NAMES_CMD = re.compile(r"(?<![\w.-])(?:git|gh|rm)(?![\w-])")
+GIT_CHECKED = {"push", "reset", "branch", "clean", "checkout", "switch", "restore"}
+DANGEROUS_LONGS = {"--force", "--force-with-lease", "--force-if-includes", "--mirror", "--prune", "--delete", "--hard",
+                   "--discard-changes"}
 
 
 def strip_heredocs(command):
@@ -110,6 +123,81 @@ def strip_heredocs(command):
             out.append(c)
         i += 1
     return "".join(out)
+
+
+def substitutions(command):
+    """(`command` with each outermost `$(...)` or backtick substitution replaced by SUBST, [their bodies]). Single quotes
+    hide them (they are text there); double quotes do not. `$((` is arithmetic and is left alone; an unclosed one takes
+    the rest of the text as its body (it can only make it ask more)."""
+    out, bodies, quote, i, n = [], [], None, 0, len(command)
+    while i < n:
+        c = command[i]
+        if quote == "'":
+            out.append(c)
+            quote = None if c == "'" else quote
+        elif c == "\\" and i + 1 < n:
+            out.append(command[i:i + 2])
+            i += 1
+        elif c == "'" and quote is None:
+            quote = "'"
+            out.append(c)
+        elif c == '"':
+            quote = None if quote == '"' else '"'
+            out.append(c)
+        elif c == "$" and command.startswith("$(", i) and not command.startswith("$((", i):
+            depth, j, q = 1, i + 2, None
+            while j < n and depth:
+                d = command[j]
+                if q:
+                    q = None if d == q else q
+                elif d == "\\":
+                    j += 1
+                elif d in "'\"":
+                    q = d
+                elif d == "(":
+                    depth += 1
+                elif d == ")":
+                    depth -= 1
+                j += 1
+            bodies.append(command[i + 2:j - 1] if not depth else command[i + 2:])
+            out.append(SUBST)
+            i = j
+            continue
+        elif c == "`":
+            j = i + 1
+            while j < n and command[j] != "`":
+                j += 2 if command[j] == "\\" else 1
+            bodies.append(command[i + 1:j])
+            out.append(SUBST)
+            i = j + 1
+            continue
+        else:
+            out.append(c)
+        i += 1
+    return "".join(out), bodies
+
+
+def has_long(longs, name):
+    """True when one of `longs` is `name` or a prefix of it git would take as an abbreviation (`--forc`, `--ha`)."""
+    return any(len(w) > 2 and name.startswith(w) for w in longs)
+
+
+def unread_substitution(cmd, seg, i, args, line):
+    """Why a substitution's output in this simple command can hide a destructive call, or None (`line`: the whole
+    command line, substitution bodies included)."""
+    if SUBST in seg[i]:
+        return "it runs the output of a command substitution as the command" if NAMES_CMD.search(line) else None
+    if not any(SUBST in w for w in args):
+        return None
+    if cmd in guard.SHELLS | {"eval"}:  # `eval "$(...)"`, `bash -c "$(...)"`: the output is run as commands
+        return "it runs the output of a command substitution as commands" if NAMES_CMD.search(line) else None
+    if cmd == "rm":
+        return "an `rm` with a command substitution among its words"
+    if cmd == "git":
+        k = guard.git_subcommand(args)
+        if k is None or any(SUBST in w for w in args[:k + 1]) or args[k] in GIT_CHECKED:
+            return "a git call with a command substitution among its words"
+    return None
 
 
 def tmpdir_set():
@@ -179,8 +267,12 @@ def git_reason(args, k, base, cfg):
 
     opts = [w for w in rest if w.startswith("-") and w != "--" and w != "-"]
     before_dd = rest[:rest.index("--")] if "--" in rest else rest
+    after_dd = rest[rest.index("--") + 1:] if "--" in rest else []
     flags = "".join(w[1:] for w in before_dd if re.fullmatch(r"-[A-Za-z]+", w))
     longs = [w.split("=", 1)[0] for w in before_dd if w.startswith("--")]
+    for name in DANGEROUS_LONGS:  # git takes any unambiguous prefix: `--forc` is `--force`
+        if has_long(longs, name):
+            longs.append(name)
     pos = []
     n = 0
     while n < len(before_dd):
@@ -192,6 +284,7 @@ def git_reason(args, k, base, cfg):
             pos.append(w)
         n += 1
     if sub == "push":
+        pos += after_dd  # `git push -- origin +main`: after `--` every word is a repository or a refspec
         if "--force" in longs or "--force-with-lease" in longs or "--force-if-includes" in longs or "f" in flags \
                 or "--mirror" in longs or "--prune" in longs or any(p.startswith("+") for p in pos):
             return "`git push --force` (or --mirror/--prune) rewrites or prunes the remote history and can lose other people's commits"
@@ -223,7 +316,14 @@ def git_reason(args, k, base, cfg):
 def command_reason(command, base, cfg, depth=0):
     if depth == 0:  # a `cd`/`pushd` or GIT_DIR=... may point a later git call at another tree: no worktree exemption
         cfg = dict(cfg, tainted=bool(CD_WORD.search(command) or re.search(guard.GIT_ENV, command)))
-    for seg in guard.segments(guard.tokenize(strip_heredocs(command))):
+    text, bodies = substitutions(strip_heredocs(command))
+    for body in bodies:  # what a substitution runs is a command of its own
+        if depth >= 3:
+            return "command substitutions nested too deep for careful.py to read"
+        found = command_reason(body, base, cfg, depth + 1)
+        if found:
+            return found
+    for seg in guard.segments(guard.tokenize(text)):
         i, cmd = guard.command_word(seg)
         if cmd is None:
             continue
@@ -248,8 +348,12 @@ def command_reason(command, base, cfg, depth=0):
         elif cmd == "git":
             k = guard.git_subcommand(args)
             reason = git_reason(args, k, base, cfg) if k is not None else None
+        shown = " ".join(seg[i:]).replace(SUBST, "$(...)")[:120]
         if reason:
-            return f"{reason}: `{' '.join(seg[i:])[:120]}`"
+            return f"{reason}: `{shown}`"
+        reason = unread_substitution(cmd, seg, i, args, command)
+        if reason:
+            return f"{reason}, and careful.py cannot read substituted commands (confirm what it runs): `{shown}`"
     return None
 
 
