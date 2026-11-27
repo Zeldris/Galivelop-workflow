@@ -22,7 +22,9 @@ What runs: the workflows of `ciLocalWorkflows`, or else every .github/workflows/
 Of each one, the jobs whose `runs-on` is this machine's OS (ubuntu/linux on Linux, macos on macOS), one per matrix
 combination, in `needs` order. Each `run:` step goes through its shell (bash, sh or python) in its working-directory,
 with the workflow, job and step `env`, `${{ }}` replaced, and CI=true plus the usual GITHUB_* / RUNNER_* variables
-(GITHUB_BASE_REF = protectedBranch for a pull_request); GITHUB_ENV and GITHUB_PATH carry over between steps. A
+(GITHUB_BASE_REF = protectedBranch for a pull_request), over a minimal environment of this shell (PATH, HOME, LANG,
+LC_*, TMPDIR, TERM, SHELL, USER and the names of `ciLocalPassEnv`: no token reaches the repo's code); a
+working-directory that leaves the repo fails the step; GITHUB_ENV and GITHUB_PATH carry over between steps. A
 failing step stops its job (later steps run only with always() or failure()); `continue-on-error` is honoured.
 Not run, on purpose: `uses:` steps and system-package installs (sudo, apt-get, brew, choco...): this machine is
 expected to have the toolchain already. Not covered, and listed as such: jobs for another OS, with `services` or a
@@ -603,11 +605,29 @@ def matrix_combos(strategy, ev):
     return combos or [{}]
 
 
+BASE_ENV = ("PATH", "HOME", "LANG", "TMPDIR", "TERM", "SHELL", "USER")
+
+
+def step_environment(source, extra):
+    """E28 D4: the environment a `run:` step starts from: BASE_ENV, the LC_* locale and the names of
+    `ciLocalPassEnv`; the GITHUB_*/CI values and the step's own `env:` go on top."""
+    keep = set(BASE_ENV) | set(extra)
+    return {k: v for k, v in source.items() if k in keep or k.startswith("LC_")}
+
+
+def inside(root, path):
+    """True when `path`, links resolved, is the repo root or under it (E28 B3, D4)."""
+    top = os.path.realpath(root)
+    real = os.path.realpath(path)
+    return real == top or real.startswith(top.rstrip(os.sep) + os.sep)
+
+
 class Run:
     def __init__(self, root, cfg, event, plan_only):
         self.root, self.cfg, self.event, self.plan_only = root, cfg, event, plan_only
         self.system = system_packages(config.ci_system_commands(cfg))
         self.step_timeout = config.ci_step_timeout(cfg)
+        self.pass_env = config.ci_local_pass_env(cfg)
         self.os = host_os()
         self.branch = git(root, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip() or "HEAD"
         self.sha = git(root, "rev-parse", "HEAD").stdout.strip()
@@ -830,13 +850,17 @@ class Run:
 
     def execute(self, sname, script, command, wd, step_env, extra_path, timeout):
         cwd = os.path.normpath(os.path.join(self.root, wd))
+        if not inside(self.root, cwd):  # E28 D4: never a step run outside the repo (`..`, an absolute path, a link)
+            self.say(f"{sname}: working-directory {wd} is outside the repository, so it is not run; point it at a "
+                     f"folder of the repo in the workflow and rerun: python3 {os.path.join(HERE, 'ci-local.py')}")
+            return 1
         if not os.path.isdir(cwd):
             self.say(f"{sname}: working-directory {wd} does not exist")
             return 1
         file = os.path.join(self.tmp, "step.py" if command[0] == sys.executable else "step.sh")
         with open(file, "w", encoding="utf-8") as fh:
             fh.write(script)
-        env = dict(os.environ)
+        env = step_environment(os.environ, self.pass_env)  # E28 D4: no token or key of this shell reaches the repo
         env.update(step_env)
         env.update(CI="true", GITHUB_EVENT_NAME=self.event, GITHUB_BASE_REF=self.github["base_ref"],
                    GITHUB_HEAD_REF=self.github["head_ref"], GITHUB_REF=self.github["ref"],
@@ -955,13 +979,22 @@ def dirty(root, log):
 
 
 def record(root, log, line):
+    """Append `line` to the log; the reason it refused (a link, or a folder outside the repo, E28 B3), or None."""
     path = os.path.join(root, log)
+    fix = (f"make {log} a plain file inside the repo (ciLocalLog in .claude/gw.json) and rerun: "
+           f"python3 {os.path.join(HERE, 'ci-local.py')} --record")
+    if os.path.islink(path):
+        return f"{log} is a symbolic link, so nothing was recorded; {fix}"
+    if not inside(root, os.path.dirname(path)):
+        return f"the folder of {log} is outside the repository (a link), so nothing was recorded; {fix}"
     os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
     text = open(path, encoding="utf-8").read() if os.path.isfile(path) else HEADER
     if text and not text.endswith("\n"):
         text += "\n"
-    with open(path, "w", encoding="utf-8") as fh:
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0), 0o666)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
         fh.write(text + line + "\n")
+    return None
 
 
 def summary(run):
@@ -1057,7 +1090,10 @@ def main(argv=None):
     if args.record:
         date = datetime.date.today().isoformat()
         line = f"- {date} · `{run.sha[:12]}`{' (uncommitted changes)' if was_dirty else ''} · {result}"
-        record(root, log, line)
+        refused = record(root, log, line)
+        if refused:
+            print(f"ci-local: {refused}", file=sys.stderr)
+            return 2
         run.say(f"recorded in {log}; commit and push it: git add {log} && git commit -m 'CI run locally' && git push")
         if was_dirty:
             run.say("the tree had uncommitted changes, so the PR hook will not take this line; commit and rerun")

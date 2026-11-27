@@ -210,6 +210,25 @@ class Config(unittest.TestCase):
         tpl = json.loads((Path(__file__).resolve().parent.parent / "templates" / "gw.json").read_text())
         self.assertEqual(tpl["review"], {"splitLines": 600})
 
+    def test_ci_local_pass_env_default_own_value_invalid_schema_and_template(self):  # E28 D4
+        self.write(VALID)
+        r = cli(self.tmp, "get", "ciLocalPassEnv")  # a list prints one item per line: none
+        self.assertEqual((r.returncode, r.stdout), (0, ""), r.stderr)
+        self.assertEqual(config.ci_local_pass_env({}), [])
+        self.assertEqual(config.ci_local_pass_env({"ciLocalPassEnv": ["GIT_CONFIG_GLOBAL", "_X1"]}),
+                         ["GIT_CONFIG_GLOBAL", "_X1"])
+        for bad in ("PATH", None, True, 3, {}, ["A B"], ["1A"], [""], ["A=1"], [3]):  # never the whole environment
+            self.assertEqual(config.ci_local_pass_env({"ciLocalPassEnv": bad}), [], bad)
+        self.write(dict(VALID, ciLocalPassEnv=["A B"]))
+        r = cli(self.tmp, "validate")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("ciLocalPassEnv", r.stderr)
+        self.write(dict(VALID, ciLocalPassEnv=["TOOL_HOME"]))
+        self.assertEqual(cli(self.tmp, "validate").returncode, 0)
+        self.assertEqual(config.ci_local_pass_env(config.load(self.tmp)), ["TOOL_HOME"])
+        tpl = json.loads((Path(__file__).resolve().parent.parent / "templates" / "gw.json").read_text())
+        self.assertEqual(tpl["ciLocalPassEnv"], [])
+
     def test_log_size_and_log_archive_defaults_and_own_values(self):
         self.write(VALID)
         self.assertEqual(json.loads(cli(self.tmp, "get", "logSize").stdout), 20000)

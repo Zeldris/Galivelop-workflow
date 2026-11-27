@@ -707,6 +707,16 @@ def ci_system_commands(config):
     return list(prop["default"])
 
 
+def ci_local_pass_env(config):
+    """The `ciLocalPassEnv` key (E28 D4): the extra variable names of this shell that ci-local.py passes to each
+    `run:` step on top of its minimal environment; a bad value gives the default (none), never the whole environment."""
+    given = config.get("ciLocalPassEnv")
+    if isinstance(given, list) and all(isinstance(x, str) and re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", x)
+                                       for x in given):
+        return list(given)
+    return list(_schema()["properties"]["ciLocalPassEnv"]["default"])
+
+
 def doctor_scan_bytes(config):
     """The `doctorScanBytes` key (A13): the size under which doctor.py reads a file that a `check` command names."""
     return _int_key(config, "doctorScanBytes")

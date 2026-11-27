@@ -637,6 +637,13 @@
       "pattern": "^(?!/)(?!(.*/)?\\.\\.(/|$)).+\\.md$",
       "description": "Repo-relative file where `ci-local.py --record` records each local run of the GitHub CI (a Markdown file; absent: docs/records/ci-local.md, or the old docs/registros/ci-local.md when only that exists). The PR hook takes a green line of it, whose commit has only content after it, as the CI that GitHub did not start (no Actions quota, no runners); it is never code for is-code.sh."
     },
+    "ciLocalPassEnv": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"},
+      "uniqueItems": true,
+      "default": [],
+      "description": "E28 D4: names of variables of the calling shell that `ci-local.py` also passes to each `run:` step. A step starts from a minimal environment (PATH, HOME, LANG, LC_*, TMPDIR, TERM, SHELL, USER), plus the CI and GITHUB_* values the script sets and the step's own env:; tokens and keys (GITHUB_TOKEN, GH_TOKEN, ANTHROPIC_API_KEY, AWS_*...) never reach it unless listed here."
+    },
     "ciLocalWorkflows": {
       "type": "array",
       "items": {"type": "string", "minLength": 1},
