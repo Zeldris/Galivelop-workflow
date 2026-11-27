@@ -280,7 +280,7 @@
         "retroAlias": {"type": "integer", "minimum": 0, "maximum": 1, "default": 1, "description": "1: harvest.py prints each retro as retro-<date>-<n> instead of its file name (E29); 0: the real path."}
       },
       "default": {"ideaChars": 2000, "commitsShown": 30, "retroAlias": 1},
-      "description": "Sizes of the report of harvest.py (A13): ideaChars and commitsShown; an invalid value gives the defaults."
+      "description": "Report of harvest.py (A13): the sizes ideaChars and commitsShown, and the behavior retroAlias (retros printed as retro-<date>-<n>, E29); an invalid value gives the defaults."
     },
     "applyDiffLines": {
       "type": "integer",

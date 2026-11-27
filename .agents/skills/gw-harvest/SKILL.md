@@ -76,7 +76,7 @@ From `<last>` to `<head>` (`scripts/harvest.py`).
 
 ## P1. <short title>
 
-- **Source:** `<path>` @ `<commit>` (<skill | script | retro | new skill>)
+- **Source:** `<path>` @ `<commit>` (<skill | script | retro | new skill>; for a retro, its `retro-<date>-<n>` alias)
 - **What changes:** <one or two sentences>
 - **Why it is general:** <the problem it solves for any project>
 - **Version bump:** patch | minor | major
@@ -89,7 +89,9 @@ From `<last>` to `<head>` (`scripts/harvest.py`).
 
 ## Rules
 
-- A proposal cites the exact source path and commit; never paraphrase without a source.
+- A proposal cites the exact source path and commit; never paraphrase without a source. A retro is the exception
+  (`harvest.retroAlias`): the report names it `retro-<date>-<n>`, so cite that alias and the commit (the idea's text is
+  already in the report) and never write the retro's real file name, nor look it up in the clone.
 - A project's local edit to a copied workflow file is a signal, not a patch: propose the general version here so the
   next update reaches every project.
 - Don't harvest secrets, personal data or private names into this repo: a private project is its

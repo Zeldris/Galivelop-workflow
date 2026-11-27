@@ -221,7 +221,7 @@ TRUNCATED = "\u2026 (truncated)"
 
 
 def sizes():
-    """The `harvest` key (ideaChars, commitsShown) of the workflow's own config; the defaults when it cannot be read."""
+    """The `harvest` key (ideaChars, commitsShown, retroAlias) of the workflow's own config; the defaults when it cannot be read."""
     try:
         return config.harvest(config.load(ROOT))
     except (config.ConfigError, OSError):
