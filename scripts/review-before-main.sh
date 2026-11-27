@@ -28,13 +28,14 @@
 #     repos/<o>/<r>/git/refs/heads/<protected> (or POST git/refs with ref=refs/heads/<protected>) and POST on
 #     repos/<o>/<r>/merges into <protected>; a GraphQL call (gh api graphql, curl …/graphql) with the mutation
 #     mergePullRequest, enablePullRequestAutoMerge, createPullRequest, or updatePullRequest with baseRefName; and
-#     `gh alias set` whose expansion runs `pr merge|create|edit` or `api` (the alias would hide the call later).
+#     `gh alias set` whose expansion runs `pr merge|create|edit` or `api` (the alias would hide the call later),
+#     `gh alias import` (its aliases cannot be read here), and a GraphQL call whose query this hook cannot read
+#     (-F query=@file, --input, curl -d @file).
 #   - A `$(…)`, backtick or `<(…)` substitution that runs gh/curl (after prefixes such as env, sudo or `bash -c`):
 #     the words inside a quoted substitution are one argument to the reader, so the raw text is judged instead
 #     (looks_like_pr_action) and the command is blocked if it looks like any of the calls above.
 #   - Known limits (documented, not guarded): `env -S '<command>'`, here-strings and stdin (`bash <<< '<command>'`),
-#     a command name in a variable (`$g pr merge 7`), aliases defined before this call or by `gh alias import`,
-#     and a GraphQL query read from a file (-F query=@q.graphql).
+#     a command name in a variable (`$g pr merge 7`) and aliases defined before this call.
 #   - Anything else (other tools, update_pull_request_branch, other bases, Bash that only mentions `gh pr`) exits 0
 #     silently. pushToProtected does not matter: a PR is another way into the protected branch.
 #   - A PR that is already closed or merged: blocked with that fact (and `gh pr view`), no config is asked of its branch;
@@ -51,6 +52,9 @@
 # fixes it. Exit 0 lets the call through. Never the JSON permissionDecision, so there is one way to read it.
 # Project root: the git top level of this script's folder when it holds .claude/gw.json (the copy in
 # .claude/gw/scripts); from the plugin cache, config.py's fallback (it is the only reader of the config).
+# Code or content: the workflow's own is-code.sh next to this hook, only when the hook lives inside the project root;
+# else the same rule built in (code_files_builtin). Never a project's .claude/gw/scripts/is-code.sh from outside it:
+# in a repo that is not the workflow's that would run any script of that name (D5, E28).
 # Bash 3.2 compatible; the logic is an embedded python3 (3.8+) run isolated (-I) so project files never shadow it.
 set -uo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
@@ -392,6 +396,11 @@ def from_words(words, depth):
         return [pr_action(rest[1], rest[2:], repo)]
     if len(rest) >= 2 and rest[0] == "pr" and rest[1] == "edit":
         return edit_action(rest[2:], repo)
+    if len(rest) >= 2 and rest[0] == "alias" and rest[1] == "import":
+        block("`gh alias import` defines aliases this hook cannot read, and one could hide a PR create/merge "
+              "(`gh <alias> …` is not read as one); blocked.",
+              "define each alias with `gh alias set <name> '<expansion>'`, or run the merge by hand after "
+              "/code-review: gh pr merge <number> -R <owner>/<repo>")
     if len(rest) >= 2 and rest[0] == "alias" and rest[1] == "set":
         expansion = " ".join(a for a in rest[2:] if a not in ("-s", "--shell", "--clobber"))
         risk = ALIAS_RISK.search(expansion)
@@ -505,6 +514,11 @@ def rest_action(method, path, fields, unknown, repo, how, body):
     """The actions of one REST/GraphQL call (gh api or curl): method, path under the API root, its fields."""
     path = path.split("?", 1)[0]
     if path.strip("/") == "graphql":
+        if unknown:
+            block(f"{how} graphql reads its query from a file or stdin, which this hook cannot read; it could merge, "
+                  "open or retarget a PR, so it is blocked.",
+                  "pass the query inline (-f query='…'), or run the merge by hand after /code-review: "
+                  "gh pr merge <number> -R <owner>/<repo>")
         found = MUTATION.search(body)
         if found and (found.group(1) != "updatePullRequest" or "baseRefName" in body):
             block(f"{how} graphql runs the mutation {found.group(1)}, which this hook cannot check (no PR number, "
@@ -661,14 +675,15 @@ def project():
         block(f"cannot read the project config: {exc}",
               f"fix it and retry: python3 {os.path.join(HERE, 'config.py')} validate")
     root = str(cfg["_root"])
-    own = run(["git", "-C", HERE, "rev-parse", "--show-toplevel"]).stdout.strip()
-    candidates = [os.path.join(root, ".claude", "gw", "scripts")]
-    if own and os.path.realpath(own) == os.path.realpath(root):
-        candidates.append(HERE)
-    scripts = next((c for c in candidates if os.path.isfile(os.path.join(c, "is-code.sh"))), None)
-    if scripts is None:
-        block(f"the workflow scripts are missing in {root} (.claude/gw/scripts/is-code.sh).",
-              "reinstall them: /gw-update")
+    real_root = os.path.realpath(root)
+    try:
+        inside = os.path.commonpath([os.path.realpath(HERE), real_root]) == real_root
+    except ValueError:  # another drive (Windows)
+        inside = False
+    # `scripts` names reviewed.sh and ci-local.py in messages (text only); only an own copy is ever run (es_codigo).
+    scripts = HERE if inside else os.path.join(root, ".claude", "gw", "scripts")
+    global IS_CODE
+    IS_CODE = os.path.join(HERE, "is-code.sh") if inside and os.path.isfile(os.path.join(HERE, "is-code.sh")) else None
     return cfg, root, scripts
 
 
@@ -745,8 +760,46 @@ def ci_local_green(root, scripts, head, policy):
     return None
 
 
+IS_CODE = None  # the workflow's own is-code.sh next to this hook, set by project(); None: the built-in rule
+GUARD_PATHS = re.compile(r"^(\.claude/(gw\.json|settings\.json|gw/)|\.githooks/)")
+
+
+def code_files_builtin(root, a, b, rev):
+    """is-code.sh's rule in Python: the files changed from a (empty: the empty tree) to b that are code, by the config
+    of `rev` (content regexes, reviewMark and ciLocalLog are content; the workflow's policy and guards always code)."""
+    for sha in ([a] if a else []) + [b]:
+        if not has_commit(root, sha):
+            block(f"cannot tell code from content: commit {sha[:12]} is not in this clone.",
+                  f"fetch it and retry: git -C {root} fetch --deepen=200 origin")
+    cfg = config_at(root, rev, paths_at=b)
+    if cfg is None:
+        block(f"cannot tell code from content: {rev[:12]} has no .claude/gw.json.",
+              "commit a valid one on that branch and retry: git add .claude/gw.json && git commit && git push")
+    src = a or git(root, "hash-object", "-t", "tree", "/dev/null").stdout.strip()
+    r = git(root, "diff", "--no-renames", "--name-only", src, b)
+    if r.returncode != 0:
+        block(f"cannot tell code from content: git diff failed: {r.stderr.strip()[:300]}",
+              f"check both commits exist and retry: git -C {root} log -1 {src} {b}")
+    patterns = []
+    for pattern in cfg["content"]:
+        try:
+            patterns.append(re.compile(pattern))
+        except re.error as exc:
+            block(f"cannot tell code from content: content regex {json.dumps(pattern)} is invalid: {exc}",
+                  f"fix it and retry: python3 {os.path.join(HERE, 'config.py')} --rev {rev[:12]} validate")
+    code = []
+    for path in r.stdout.splitlines():
+        if not path or path == cfg["reviewMark"]:
+            continue
+        if GUARD_PATHS.search(path) or (path != cfg["ciLocalLog"] and not any(rx.search(path) for rx in patterns)):
+            code.append(path)
+    return code
+
+
 def es_codigo(root, scripts, a, b, rev):
-    r = run(["bash", os.path.join(scripts, "is-code.sh"), "--rev", rev, a, b], cwd=root)
+    if IS_CODE is None:
+        return code_files_builtin(root, a, b, rev)
+    r = run(["bash", IS_CODE, "--rev", rev, a, b], cwd=root)
     if r.returncode != 0:
         block(f"cannot tell code from content: {r.stderr.strip()[:400]}",
               f"fix the error above and retry: git -C {root} fetch origin")

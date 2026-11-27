@@ -684,6 +684,41 @@ class Hook(Snapshot):
             with self.subTest(command=command):
                 self.assertAllowed(self.bash(command))
 
+    def test_alias_import_and_unreadable_graphql_queries_blocked(self):
+        self.assertBlocked(self.bash("gh alias import aliases.yml"), "`gh alias import` defines aliases",
+                           "gh alias set <name>")
+        self.assertBlocked(self.bash("gh alias import - < aliases.yml"), "`gh alias import` defines aliases")
+        for command in ("gh api graphql -F query=@q.graphql", "gh api graphql --input q.json",
+                        "curl -d @q.json https://api.github.com/graphql"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "reads its query from a file or stdin",
+                                   "run the merge by hand after /code-review")
+        self.assertAllowed(self.bash("gh api graphql -f query='query{viewer{login}}'"))
+        self.assertAllowed(self.bash("gh alias list"))
+
+    def test_a_hook_outside_the_repo_never_runs_the_projects_is_code(self):
+        # From the plugin cache the hook must not run <root>/.claude/gw/scripts/is-code.sh (D5): the built-in rule.
+        cache = self.tmp / "cache" / "scripts"  # laid out like the plugin: scripts/ and schema/
+        cache.mkdir(parents=True)
+        for name in ("review-before-main.sh", "ci-status.py", "config.py"):
+            shutil.copy2(ROOT / "scripts" / name, cache / name)
+        (cache.parent / "schema").mkdir()
+        shutil.copy2(ROOT / "schema" / "gw.schema.json", cache.parent / "schema" / "gw.schema.json")
+        ran = self.tmp / "ran"
+        project_copy = self.p.work / ".claude" / "gw" / "scripts" / "is-code.sh"
+        original = project_copy.read_text()
+        fake = f'#!/bin/sh\n: > "{ran}"\nexit 0\n'
+        self.script = cache / "review-before-main.sh"
+        env = {"CLAUDE_PROJECT_DIR": str(self.p.work)}
+        project_copy.write_text(fake)
+        self.assertBlocked(self.create(env=env), "no review mark", "src/code.py")
+        self.assertFalse(ran.exists(), "the project's is-code.sh was run")
+        project_copy.write_text(original)
+        self.mark(); self.push()
+        project_copy.write_text(fake)
+        self.assertAllowed(self.create(env=env))
+        self.assertFalse(ran.exists(), "the project's is-code.sh was run")
+
     def test_curl_to_the_merge_endpoint_guarded(self):
         for command in ("curl -X PUT https://api.github.com/repos/o/r/pulls/7/merge",
                         "curl -sS --request PUT -H 'Accept: application/json' https://api.github.com/repos/o/r/pulls/7/merge",
