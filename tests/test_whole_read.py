@@ -10,6 +10,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+import waits
 from test_hooks import BASE_CONFIG, ROOT, Project
 
 SCRIPT = "whole-read.py"
@@ -529,7 +530,7 @@ class RepeatOnly(Base):
                 try:
                     r = subprocess.run(["python3", str(self.scripts / SCRIPT)], input=event, capture_output=True,
                                        text=True, cwd=self.p.work, env=dict(self.p.env, TMPDIR=str(self.state)),
-                                       timeout=20)
+                                       timeout=waits.timeout(20))
                 except subprocess.TimeoutExpired:
                     self.fail(f"the hook hung on a {make.__name__} lock")
                 self.assertEqual(r.returncode, 0, r.stderr)
