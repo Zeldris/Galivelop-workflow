@@ -206,11 +206,17 @@ def looks_like_pr_action(command, need_write=False):
     return bool(pulls and BASE_FIELD.search(command, pulls.end()))
 
 
+SIMPLE_END = re.compile(r"\|\|?|;|&&|\)|\n")
+
+
 def writes_api(command, end):
-    """Does the gh/curl call after `end` write: a method that is not a literal GET/HEAD, or a body flag?"""
-    if BODY_FLAG.search(command, end):
+    """Does the gh/curl call after `end` write: a method that is not a literal GET/HEAD, or a body flag? Only its own
+    simple command counts, up to `|`, `;`, `&&`, `||` or `)`: `$(gh api … --jq .sha | tr -d x)` reads."""
+    stop = SIMPLE_END.search(command, end)
+    call = command[end:stop.start() if stop else len(command)]
+    if BODY_FLAG.search(call):
         return True
-    return any(m.group(1).upper() not in ("GET", "HEAD") for m in METHOD_FLAG.finditer(command, end))
+    return any(m.group(1).upper() not in ("GET", "HEAD") for m in METHOD_FLAG.finditer(call))
 
 
 def substitution_runs_pr_action(command):
@@ -474,8 +480,17 @@ def from_words(words, depth):
               "define each alias with `gh alias set <name> '<expansion>'`, or run the merge by hand after "
               "/code-review: gh pr merge <number> -R <owner>/<repo>")
     if len(rest) >= 2 and rest[0] == "alias" and rest[1] == "set":
-        shell = any(a in ("-s", "--shell") or (a.startswith("--shell=") and a != "--shell=false") for a in rest[2:])
-        words = [a for a in rest[2:] if a not in ("-s", "--shell", "--clobber", "--") and not a.startswith("--shell=")]
+        # Every option is dropped (`--clobber=true`, `--`), wherever it is; -s/--shell, also `=<value>` unless the
+        # value is 0/f/false, makes it a shell alias.
+        shell, words, options = False, [], True
+        for a in rest[2:]:
+            if not options or not a.startswith("-") or a == "-":
+                words.append(a)
+            elif a == "--":
+                options = False
+            elif a in ("-s", "--shell") or (a.split("=", 1)[0] in ("-s", "--shell") and "=" in a and
+                                            a.split("=", 1)[1].lower() not in ("0", "f", "false")):
+                shell = True
         expansion = " ".join(words[1:])  # past the alias name
         risk = "a shell" if shell else ALIAS_RISK.search(expansion)
         if risk:
@@ -1141,7 +1156,7 @@ pr_tools="${tool}\"mcp__[^\"]*(create_pull_request|update_pull_request|merge_pul
 bash_tool="${tool}\"Bash\""
 gh="(^|$word)(gh|curl)$word"
 end="($word|\$)"
-any_pr="(^|$word)(pr|pulls|alias|graphql|refs|merges|contents|-[[:alpha:]]*K|--config)${end}"
+any_pr="(^|$word)((pr|pulls|alias|graphql|refs|merges|contents|--config)${end}|-[[:alpha:]]*K)"
 pr_word="(^|$word)pr$word"
 pr_action="(^|$word)(create|merge)${end}"
 # One regex per word, each on what follows the previous match: a single regex with `.*` between the words backtracks
@@ -1157,6 +1172,7 @@ after_first() {
 edit_word="(^|$word)edit$word"
 base_flag="(^|$word)(--base|-B)${end}"
 curl_config="(^|$word)(-[[:alpha:]]*K|--config)"
+curl_word="(^|$word)curl$word"
 # gh/curl creating/merging/retargeting: `gh ... pr ... create|merge`, `gh ... pr ... edit ... --base|-B`,
 # `gh ... pulls/... merge`, an alias set or import, a PR or branch mutation, a graphql query from a file, a write to
 # git/refs, merges or contents, curl -K to the API; the words in that order.
@@ -1173,9 +1189,15 @@ gh_does_pr() {
       *createPullRequest* | *updatePullRequest* | *mergeBranch* | *createCommitOnBranch* | *updateRef* | *deleteRef* | \
       *graphql*--input* | *--input*graphql* | *graphql*=@* | *=@*graphql* | *git/refs* | */merges* | \
       *contents*branch=* | *PUT*/contents/* | */contents/*PUT* | *DELETE*/contents/* | */contents/*DELETE* | \
-      *-T*/contents/* | */contents/*-T* | *--upload-file*/contents/*) return 0 ;;
+      *--upload-file*/contents/*) return 0 ;;
   esac
-  [[ $rest =~ $curl_config ]] && return 0  # curl -K/--config, also in a cluster (-sSK): its options cannot be read
+  # curl's own arguments (up to | ; & or `)`): -K/--config, also in a cluster (-sSK, -Kcfg), whose options cannot be
+  # read, and an upload (-T) to contents. Not `sort -T` or `ssh -K` later in the pipeline.
+  if after_first "$1" "$curl_word"; then
+    local args="${after%%[|;&)]*}"
+    [[ $args =~ $curl_config ]] && return 0
+    case $args in *-T*/contents/* | */contents/*-T*) return 0 ;; esac
+  fi
   # pulls and then merge or base, anywhere after it (not only in the same word): the regex for "in the same word" backtracks
   # quadratically on one long word. A looser match here only makes python3 run, or a call without python3 be refused.
   local before="${rest%%pulls*}"

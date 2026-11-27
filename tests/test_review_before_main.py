@@ -806,6 +806,22 @@ class Hook(Snapshot):
                            "writes main, the protected branch")
         self.assertAllowed(self.bash("gh api repos/o/r/contents/README.md --jq .content # it's the readme"))
 
+    # E28 E4, fourth review ---------------------------------------------------------------------------------------
+    def test_a_body_flag_counts_only_in_the_gh_or_curl_call_itself(self):
+        self.assertAllowed(self.bash("X=$(gh api repos/o/r/git/refs/heads/main --jq .object.sha | tr -d x)"))
+        self.assertBlocked(self.bash("X=$(gh api repos/o/r/git/refs/heads/main -f sha=abc | tr -d x)"),
+                           "inside a $(…), backtick or <(…) substitution")
+
+    def test_alias_options_in_any_spelling(self):
+        for command in ("gh alias set -s=true m 'gh \"$@\"'", "gh alias set --clobber=true m '!gh \"$@\"'",
+                        "gh alias set --shell=TRUE m 'echo hi'"):
+            with self.subTest(command=command):
+                self.assertBlocked(self.bash(command), "`gh alias set` with an expansion")
+        for command in ("gh alias set --shell=false co 'repo clone'", "gh alias set --shell=0 co 'repo clone'",
+                        "gh alias set -s=F co 'repo clone'"):
+            with self.subTest(command=command):
+                self.assertAllowed(self.bash(command))
+
     def test_a_hook_outside_the_repo_never_runs_the_projects_is_code(self):
         # From the plugin cache the hook must not run <root>/.claude/gw/scripts/is-code.sh (D5): the built-in rule.
         cache = self.tmp / "cache" / "scripts"  # laid out like the plugin: scripts/ and schema/
@@ -1107,6 +1123,15 @@ class PreFilter(unittest.TestCase):
             self.assertEqual(code, 2, command)
             self.assertIn("python3 is missing", err)
         self.assertEqual(self.bash("gh api repos/o/r/contents/a.txt"), (0, ""))
+
+    def test_curl_config_and_upload_are_read_in_curls_own_arguments_without_python(self):
+        for command in ("curl -Kcfg https://example.com/x",
+                        "curl -sSKv https://example.com/x"):
+            code, err = self.bash(command)
+            self.assertEqual(code, 2, command)
+            self.assertIn("python3 is missing", err)
+        for command in ("gh pr list | ssh -K host true", "gh api repos/o/r/contents/a.txt | sort -T /tmp"):
+            self.assertEqual(self.bash(command), (0, ""), command)
 
     def test_empty_and_odd_input_without_python(self):
         for text in ("", "not json", "{}"):
