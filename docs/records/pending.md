@@ -14,15 +14,15 @@ Reparto: scripts, checks, config y git a la `0.5`; `orchestrate-dealer` y los en
 Hallazgos menores que el usuario aprobó dejar para la `0.10` (detalle en
 [`security-review-E28.md`](security-review-E28.md)).
 
-- [ ] `0.10` · **E28 F1**: `ci-status.py` codifica `--branch`, `--sha` y `--repo` en la ruta de la API.
-- [ ] `0.10` · **E28 F2**: un archivo llamado `--rootdir=/x` no llega como opción al comando de tests (`related-tests.sh`).
-- [ ] `0.10` · **E28 F3**: `harvest.py` no sigue enlaces de `.md` que salen del proyecto recogido.
-- [ ] `0.10` · **E28 F4**: el revisor (`gw-reviewer`) sin `Write` ni `Bash` libre, o con lista cerrada.
-- [ ] `0.10` · **E28 E5**: `agent-signatures.py` mira también `--body "$(cat f)"` y pone tope a los patrones del config.
-- [ ] `0.10` · **E28 ledger**: los lectores del registro de tokens (`period_rows`, `alert`) y `metrics.reports` con la
+- [ ] `0.10` · **F1** (see E28): `ci-status.py` codifica `--branch`, `--sha` y `--repo` en la ruta de la API.
+- [ ] `0.10` · **F2** (see E28): un archivo llamado `--rootdir=/x` no llega como opción al comando de tests (`related-tests.sh`).
+- [ ] `0.10` · **F3** (see E28): `harvest.py` no sigue enlaces de `.md` que salen del proyecto recogido.
+- [ ] `0.10` · **F4** (see E28): el revisor (`gw-reviewer`) sin `Write` ni `Bash` libre, o con lista cerrada.
+- [ ] `0.10` · **firmas** (see E28): `agent-signatures.py` mira también `--body "$(cat f)"` y pone tope a los patrones del config.
+- [ ] `0.10` · **ledger** (see E28): los lectores del registro de tokens (`period_rows`, `alert`) y `metrics.reports` con la
   misma contención de ruta que `ledger_target`.
-- [ ] `0.10` · **E28 push_command**: revisar que `config.py` (`push_command`) no compone órdenes con valores sin validar.
-- [ ] `0.10` · **E28 hooksPath**: `core.hooksPath` absoluto hace que un worktree corra los ganchos del checkout principal.
+- [ ] `0.10` · **push_command** (see E28): revisar que `config.py` (`push_command`) no compone órdenes con valores sin validar.
+- [ ] `0.10` · **hooksPath** (see E28): `core.hooksPath` absoluto hace que un worktree corra los ganchos del checkout principal.
 
 ## De la recogida del 2026-10-27 (`private-project-2`)
 
