@@ -281,6 +281,65 @@ usan la sintaxis de Python y, en JSON, la barra invertida se duplica (`"\\.md$"`
   un archivo con `schemaVersion` 2 que aún lleve las claves viejas se rechaza (`unknown key 'language'`). Con un bloque
   `languages` y las claves viejas a la vez (antes de migrar), manda el bloque y las viejas solo rellenan lo que le falta.
 
+## Seguridad: confianza y límites de las guardas
+
+### El repo en el que corre el flujo es de confianza
+
+El flujo trata el repo abierto como lo que es: código del proyecto, como un `Makefile` o un `package.json`. Sus
+ganchos, scripts, `.claude/gw.json` y ajustes corren **con los derechos de quien abre la sesión**. Abre solo repos de
+los que te fías; en uno ajeno, mira antes `.githooks/`, `.claude/` y `gw.json`. En la práctica (E28):
+
+- **Ganchos de git (D1):** con `core.hooksPath` vacío y `.githooks/` presente, `session-start.sh` lo activa; los
+  ganchos de un repo clonado corren en el primer commit.
+- **`install` y `setup` (D2):** en la nube, `session-start.sh` ejecuta con `bash -c` las órdenes `install` y `setup`
+  de `.claude/gw.json` al arrancar.
+- **Playwright y `workflowClone` (D6):** `mkt-sheet.py` carga Playwright del `node_modules` del repo y
+  `review-scope.py` usa el `apply.py` de la carpeta `workflowClone`.
+- **`check` y `relatedTests` (D7):** son órdenes que se ejecutan con `bash -c` (`check.sh`, `push.sh`,
+  `related-tests.sh`). Es diseño: el config manda, y los ganchos vigilan sus ediciones (`config-guard.py`).
+
+Lo que sí se endureció, porque cruzaba una frontera sin necesidad:
+
+- **A1:** `protectedBranch` se valida como nombre de rama y `git fetch` usa un refspec explícito.
+- **B1-B4:** `apply.py`, `metrics.py` y `ci-local.py` no escriben a través de enlaces simbólicos ni fuera de la raíz;
+  el candado y los registros de `/tmp` se abren sin seguir enlaces.
+- **C1-C3:** `release.yml` solo da `contents: write` al job `release`, el `checkout` no guarda el token y las acciones
+  van fijadas por SHA (también en la plantilla).
+- **C4:** `.gitignore` y las plantillas ignoran `.env`, `.env.*` y `.claude/settings.local.json`.
+- **D3-D5:** `npm ci` con `--ignore-scripts`; los pasos `run:` de `ci-local.py` reciben un entorno mínimo
+  (`ciLocalPassEnv`) y su `working-directory` no sale del repo; `questions-guard.py` solo ejecuta el `is-code.sh` del
+  flujo.
+- **E1, E2, E4:** `careful.py` y `review-before-main.sh` leen abreviaturas, refspecs tras `--` y las vías de fusión
+  alternativas (abajo).
+
+### Límites del modo `careful`
+
+`careful` **pide confirmación** (no bloquea) y es una guarda contra errores del modelo, **no un sandbox**: no frena a
+quien quiera saltársela. Pregunta por:
+
+- una sustitución `$(…)`, de comillas invertidas o `<(…)`/`>(…)` (no `$((…))`) cuya salida sea la orden o una palabra
+  de una línea con `git`, `gh` o `rm`, la subórden de `git` o un `-c alias.*`; también el cuerpo de la sustitución se
+  lee como orden propia;
+- las abreviaturas de opciones largas que git acepta (`--force-with-lea`, `--delet`, `--mirro`, `git reset --ha`; se
+  resuelven por subcomando y, si varias casan, pregunta si alguna es peligrosa), `rm --recur`, y los refspecs tras
+  `--` (`git push -- origin +main`).
+
+**No** pregunta, a propósito (falsos positivos): `git commit -m "$(cat <<'EOF'…)"`, `git log $(…)` como argumento,
+`cd "$(git rev-parse …)"`, `gh pr create --body "$(…)"` ni una sustitución en el valor de `-C` o `--git-dir`.
+Tampoco ve lo que se construye al ejecutar (`$cmd`, `$g push -f`, `python3 -c "shutil.rmtree(…)"`), `find -delete`,
+`env -S '…'`, un script por la entrada estándar (`bash <<< '…'`, `bash <<EOF`) ni un grupo `{ …; }`.
+
+### Límites de la guarda de PR
+
+`review-before-main.sh` (`PreToolUse`) bloquea lo que lleva código sin revisar, o con CI no verde, a la rama protegida:
+`gh pr create` y `gh pr merge` (también dentro de `bash -c`/`eval`), `gh api` hacia `pulls` (crear, fusionar, cambiar
+la base), los alias de `gh` que contienen `pr` o `api`, o son de shell, `gh alias import`, y `curl` a la API de GitHub,
+con cualquier `curl -K`/`--config` (sus opciones no se pueden leer). Es otra guarda contra errores, no un sandbox.
+
+Huecos conocidos, documentados y sin guardar: encadenar alias mediante la expansión de un `alias` (el alias definido
+antes de la llamada no se lee), un `)` de un patrón `case` dentro de `$(…)`, `env -S '…'`, `bash <<< '…'` y un nombre
+de orden en una variable (`$g pr merge 7`). El control real es la protección de la rama en GitHub y el CI.
+
 ## Perfiles por persona y por cargo
 
 El bloque `profiles` (E4) deja que cada persona trabaje con su propia configuración sin tocar la del proyecto. El flujo
