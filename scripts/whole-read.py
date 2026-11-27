@@ -648,7 +648,8 @@ def locked(path):
     like the .json: a link planted in the shared temp folder is never written through (B4, E28)."""
     try:
         import fcntl
-        flags = os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_CLOEXEC", 0)
+        flags = (os.O_WRONLY | os.O_CREAT | os.O_APPEND | getattr(os, "O_NONBLOCK", 0) | getattr(os, "O_NOFOLLOW", 0)
+                 | getattr(os, "O_CLOEXEC", 0))  # O_NONBLOCK: a FIFO with no reader fails at once (ENXIO), no hang
         fd = os.open(path[:-len(".json")] + ".lock", flags, 0o600)
     except (ImportError, OSError):
         yield
