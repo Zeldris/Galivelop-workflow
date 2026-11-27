@@ -279,6 +279,65 @@ flags ([apply](apply.md)). Lists are JSON arrays. Regexes use Python syntax and,
   `schemaVersion` 2 file that still carries the old keys is refused (`unknown key 'language'`). With a `languages`
   block and the old keys together (before migrating), the block wins and the old keys only fill what it lacks.
 
+## Security: trust and limits of the guards
+
+### The repo the flow runs in is trusted
+
+The flow treats the open repo as what it is: project code, like a `Makefile` or a `package.json`. Its hooks, scripts,
+`.claude/gw.json` and settings run **with the rights of whoever opens the session**. Open only repos you trust; in a
+foreign one, look at `.githooks/`, `.claude/` and `gw.json` first. In practice (E28):
+
+- **Git hooks (D1):** with an empty `core.hooksPath` and a `.githooks/` folder present, `session-start.sh` turns it on;
+  the hooks of a cloned repo run on the first commit.
+- **`install` and `setup` (D2):** in the cloud, `session-start.sh` runs the `install` and `setup` commands of
+  `.claude/gw.json` with `bash -c` at start.
+- **Playwright and `workflowClone` (D6):** `mkt-sheet.py` loads Playwright from the repo's `node_modules` and
+  `review-scope.py` uses the `apply.py` of the `workflowClone` folder.
+- **`check` and `relatedTests` (D7):** these are commands run with `bash -c` (`check.sh`, `push.sh`,
+  `related-tests.sh`). By design: the config rules, and the hooks watch its edits (`config-guard.py`).
+
+What was hardened instead, because it crossed a boundary for no need:
+
+- **A1:** `protectedBranch` is validated as a branch name and `git fetch` uses an explicit refspec.
+- **B1-B4:** `apply.py`, `metrics.py` and `ci-local.py` do not write through symlinks or outside the root; the lock
+  and logs in `/tmp` are opened without following links.
+- **C1-C3:** `release.yml` gives `contents: write` only to the `release` job, `checkout` does not keep the token, and
+  actions are pinned by SHA (also in the template).
+- **C4:** `.gitignore` and the templates ignore `.env`, `.env.*` and `.claude/settings.local.json`.
+- **D3-D5:** `npm ci` with `--ignore-scripts`; the `run:` steps of `ci-local.py` get a minimal environment
+  (`ciLocalPassEnv`) and their `working-directory` stays inside the repo; `questions-guard.py` runs only the flow's own
+  `is-code.sh`.
+- **E1, E2, E4:** `careful.py` and `review-before-main.sh` read abbreviations, refspecs after `--` and the alternative
+  merge routes (below).
+
+### Limits of `careful` mode
+
+`careful` **asks for confirmation** (it does not block) and is a guard against model mistakes, **not a sandbox**: it
+does not stop anyone set on bypassing it. It asks about:
+
+- a `$(…)`, backtick or `<(…)`/`>(…)` substitution (not `$((…))`) whose output is the command or a word of a line
+  naming `git`, `gh` or `rm`, the git subcommand or a `-c alias.*`; the body of the substitution is also read as a
+  command of its own;
+- abbreviations of long options that git accepts (`--force-with-lea`, `--delet`, `--mirro`, `git reset --ha`; resolved
+  per subcommand, and if several match it asks when any is dangerous), `rm --recur`, and refspecs after `--`
+  (`git push -- origin +main`).
+
+It deliberately does **not** ask (false positives) about `git commit -m "$(cat <<'EOF'…)"`, `git log $(…)` as an
+argument, `cd "$(git rev-parse …)"`, `gh pr create --body "$(…)"`, or a substitution in the value of `-C` or
+`--git-dir`. Nor does it see what is built at run time (`$cmd`, `$g push -f`, `python3 -c "shutil.rmtree(…)"`),
+`find -delete`, `env -S '…'`, a script on stdin (`bash <<< '…'`, `bash <<EOF`) or a `{ …; }` group.
+
+### Limits of the PR guard
+
+`review-before-main.sh` (`PreToolUse`) blocks what takes unreviewed code, or code with CI not green, into the protected
+branch: `gh pr create` and `gh pr merge` (also inside `bash -c`/`eval`), `gh api` to `pulls` (create, merge, change the
+base), `gh` aliases that contain `pr` or `api`, or are shell aliases, `gh alias import`, and `curl` to the GitHub API,
+with any `curl -K`/`--config` (its options cannot be read). It is another guard against mistakes, not a sandbox.
+
+Known gaps, documented and not guarded: chaining aliases through an `alias` expansion (an alias defined before the
+call is not read), a `case` pattern `)` inside `$(…)`, `env -S '…'`, `bash <<< '…'` and a command name in a variable
+(`$g pr merge 7`). The real control is branch protection on GitHub and the CI.
+
 ## Per-person and per-role profiles
 
 The `profiles` block (E4) lets each person work with their own configuration without touching the project's. The
