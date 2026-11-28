@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.9.1` en `main`** (`664c0dd`, 2026-11-26; las tres fases hechas: revisión de B58-B61 con 3 leves arreglados, retro, `reviewed.sh`; CI de `664c0dd` en verde). Release de GitHub `v0.9.1` publicada (2026-11-26, sesión local; etiqueta sobre `664c0dd`) |
-| Siguiente paso | **`0.10` «Estable»**. **E29 hecha** (2026-11-28; ficha `docs/tasks/E29.md`, registro `docs/records/anonymization-review-E29.md`; Q-48..Q-58, todas a). **E30 en curso** (2026-11-28; ficha `docs/tasks/E30.md`; auditoría repartida en 4 lectores de solo lectura, informes en el scratchpad `e30-A..D.md`; sigue: clasificar hallazgos en `docs/records/configurable-review-E30.md`, preguntas al usuario, claves con test). Recordar al usuario: ramas viejas, alias N5/N6 en `gw.local.json` y `GW_LOCAL_JSON` (pending.md). Después E8/E31. Presupuesto de compactaciones: 2 (3 gastadas) |
+| Siguiente paso | **`0.10` «Estable»**. **E29 hecha** (2026-11-28; ficha `docs/tasks/E29.md`, registro `docs/records/anonymization-review-E29.md`; Q-48..Q-58, todas a). **E30 en curso** (2026-11-28; ficha `docs/tasks/E30.md`, hallazgos en `docs/records/configurable-review-E30.md`; esperan respuesta Q-59..Q-64; luego la ola 1 con tests). Recordar al usuario: ramas viejas, alias N5/N6 en `gw.local.json` y `GW_LOCAL_JSON` (pending.md). Después E8/E31. Presupuesto de compactaciones: 2 (3 gastadas) |
 
 ### Fases
 
