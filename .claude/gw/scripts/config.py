@@ -60,6 +60,7 @@ CONFIG_REL = Path(".claude") / "gw.json"
 LOCAL_REL = Path(".claude") / "gw.local.json"
 LOCAL_KEYS = {"privateNames": "names that must never reach the repo (private repos, people, places)",
               "allowEmails": "e-mail addresses private-check.py lets through, on top of privateCheck.allowEmails",
+              "allowPatterns": "regexes private-check.py lets through, on top of privateCheck.allowPatterns",
               "anonymize": "private name (any spelling) -> the public alias harvest.py prints instead, "
                            "private-project-N; its names count as privateNames too"}
 ALIAS = re.compile(r"^private-project-\d+$")
@@ -1631,10 +1632,10 @@ def load(root=None, rev=None, paths_at=None, profiles=True):
 def load_local(root, env_name=None):
     """The local list of `root`: the file .claude/gw.local.json, else (E29, cloud containers, where the file never
     exists) the same JSON object in the environment variable `env_name` (privateCheck.localEnv, default GW_LOCAL_JSON;
-    an unset or empty variable is no list). The file wins when both exist. As {"privateNames": [...], "allowEmails": [...], "anonymize":
+    an unset or empty variable is no list). The file wins when both exist. As {"privateNames": [...], "allowEmails": [...], "allowPatterns": [...], "anonymize":
     {name: alias}}, or None when neither exists. The names of `anonymize` are added to privateNames, so they are
     written once and private-check.py checks them too. Raises ConfigError (fail closed) when it is not a JSON object
-    with only the LOCAL_KEYS: privateNames and allowEmails lists of non-empty strings, anonymize an object that maps
+    with only the LOCAL_KEYS: privateNames, allowEmails and allowPatterns (valid regexes) lists of non-empty strings, anonymize an object that maps
     non-empty names to aliases private-project-N."""
     path = Path(root) / LOCAL_REL
     raw = None
@@ -1669,9 +1670,16 @@ def load_local(root, env_name=None):
             continue
         if not isinstance(value, list) or not all(isinstance(v, str) and v.strip() for v in value):
             raise ConfigError(f"{source}: '{key}' must be a list of non-empty strings; {fix}")
+        if key == "allowPatterns":
+            for regex in value:
+                try:
+                    re.compile(regex)
+                except re.error as exc:
+                    raise ConfigError(f"{source}: 'allowPatterns': {regex!r} is not a valid regex ({exc}); {fix}")
         out[key] = list(value)
     out.setdefault("privateNames", [])
     out.setdefault("allowEmails", [])
+    out.setdefault("allowPatterns", [])
     out.setdefault("anonymize", {})
     out["privateNames"] += [name for name in out["anonymize"] if name not in out["privateNames"]]
     return out

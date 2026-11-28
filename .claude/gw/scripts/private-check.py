@@ -25,8 +25,8 @@ Checks:
   - key/token formats: the KEY_FORMATS regex of the pre-commit hook (.githooks/pre-commit, else
     templates/githooks/pre-commit), read at run time so it lives in one place; not found -> exit 2.
   - e-mail addresses, unless privateCheck.emails is false. Allowed: example.com/.org/.net (and subdomains), any
-    *.example domain, *@users.noreply.github.com, local part noreply/no-reply, git@<host> only in the SSH forms
-    git@<host>:<path> and ssh://git@<host>/<path> (a remote, not a person's address), privateCheck.allowEmails of
+    *.example domain, *@users.noreply.github.com, local part noreply/no-reply, git@<host> only in the remote forms
+    git@<host>:<path> and <scheme>://git@<host>/<path> (ssh://, https://...: a remote, not a person's address), privateCheck.allowEmails of
     .claude/gw.json (public) and allowEmails of .claude/gw.local.json (private).
   - privateNames of the local list (never committed), plus the names of its `anonymize` (config.py adds them):
     case-insensitive, with `-`, `_` and space taken as the same. The list is the file .claude/gw.local.json or, when
@@ -36,7 +36,10 @@ Checks:
     print a notice (--no-names skips the names whatever it says); a malformed list: exit 2.
   - privateCheck.patterns ({"name", "regex"} each; default: Claude session links, personal home paths /home/<name>
     and /Users/<name>, private IPv4 10/8, 172.16/12, 192.168/16); a match that a regex of privateCheck.allowPatterns
-    finds is let through (default: generic placeholders such as /home/user, /Users/you). Printed masked.
+    finds is let through (default: generic placeholders such as /home/user, /Users/you); the allowPatterns of the
+    local list are added to them, so a private value is exempted without publishing it. Printed masked. When
+    agentSignatures is not false, the `session link` pattern skips commit messages (Claude Code adds a
+    Claude-Session trailer there); file content and paths are still checked.
 A file line with gw-allow-private is skipped (a checked false positive); the mark does nothing in paths, commit
 messages or --text (--all counts the marked lines and prints the count). One with gw-allow-secret skips the key check
 only, as in the pre-commit hook. privateCheck: false in .claude/gw.json turns everything off.
@@ -102,7 +105,7 @@ def key_formats(root):
 
 
 def email_allowed(address, allowed, ssh=False):
-    """`ssh`: the address is followed by `:` or comes after `ssh://` in the text, so git@<host> is an SSH remote (git@github.com:owner/repo),
+    """`ssh`: the address is followed by `:` or comes right after a `://` (ssh://, https://...) in the text, so git@<host> is an SSH remote (git@github.com:owner/repo),
     not a person's address; a plain git@<domain> is checked like any other."""
     address = address.lower()
     local, _, domain = address.rpartition("@")
@@ -131,7 +134,8 @@ def mask(value):
 
 
 class Scanner:
-    def __init__(self, keys, emails, allowed, names, max_hits, patterns=(), allow_patterns=()):
+    def __init__(self, keys, emails, allowed, names, max_hits, patterns=(), allow_patterns=(), message_skip=()):
+        self.message_skip = set(message_skip)  # names of patterns not applied to commit-message lines
         self.patterns = [(p["name"], re.compile(p["regex"])) for p in patterns]
         self.allow_patterns = [re.compile(a) for a in allow_patterns]
         self.marks = 0  # file lines skipped by ALLOW_MARK
@@ -142,8 +146,9 @@ class Scanner:
         self.current = None  # the commit being scanned
         self.bad = []  # shas of the commits with a finding, in scan order
 
-    def line(self, where, text, content=True):
-        """`content`: a line of a file, the only place where ALLOW_MARK counts (not a path nor a message)."""
+    def line(self, where, text, content=True, message=False):
+        """`content`: a line of a file, the only place where ALLOW_MARK counts (not a path nor a message).
+        `message`: a commit-message line, where the patterns of message_skip do not apply."""
         if content and ALLOW_MARK in text:
             self.marks += 1
             return
@@ -155,8 +160,10 @@ class Scanner:
         if self.emails:
             found += [("e-mail", m.group(0)) for m in EMAIL.finditer(text)
                       if not email_allowed(m.group(0), self.allowed, text[m.end():m.end() + 1] == ":"
-                                         or text[:m.start()].endswith("ssh://"))]
+                                         or text[:m.start()].endswith("://"))]
         for name, regex in self.patterns:
+            if message and name in self.message_skip:
+                continue
             for m in regex.finditer(text):
                 if m.group(0) and not any(a.search(m.group(0)) for a in self.allow_patterns):
                     found.append((name, mask(m.group(0))))
@@ -215,7 +222,7 @@ def scan_commit(root, sha, scanner):
         scanner.line(f"{path}{suffix} (path)", path, content=False)
     parse_hunks(diff, scanner.line, suffix)
     for text in git(root, "log", "-1", "--format=%B", sha).splitlines():
-        scanner.line(f"commit {short} (message)", text, content=False)
+        scanner.line(f"commit {short} (message)", text, content=False, message=True)
 
 
 def scan_tree(root, scanner):
@@ -373,10 +380,12 @@ def main(argv=None):
                       f'{{"privateNames": ["..."]}}', file=sys.stderr)
             else:
                 names = name_regex(local["privateNames"])
-        local_allow = (config.load_local(root, settings["localEnv"]) or {}).get("allowEmails", [])
+        local = config.load_local(root, settings["localEnv"]) or {}
+        skip = () if cfg.get("agentSignatures", True) is False else ("session link",)
         shas = []
-        scanner = Scanner(key_formats(root), settings["emails"], settings["allowEmails"] + local_allow, names,
-                          settings["maxHits"], settings["patterns"], settings["allowPatterns"])
+        scanner = Scanner(key_formats(root), settings["emails"], settings["allowEmails"] + local.get("allowEmails", []),
+                          names, settings["maxHits"], settings["patterns"],
+                          settings["allowPatterns"] + local.get("allowPatterns", []), skip)
         if args.all:
             scan_tree(root, scanner)
         elif args.text:
@@ -400,7 +409,8 @@ def main(argv=None):
     if scanner.total > len(scanner.hits):
         print(f"  … and {scanner.total - len(scanner.hits)} more", file=sys.stderr)
     allow = (f"a public address goes in privateCheck.allowEmails of .claude/gw.json, a private one in allowEmails of "
-             f"{config.LOCAL_REL.as_posix()}, a public example of privateCheck.patterns in privateCheck.allowPatterns; a checked "
+             f"{config.LOCAL_REL.as_posix()}, a public example of privateCheck.patterns in privateCheck.allowPatterns, a private one in allowPatterns of "
+             f"{config.LOCAL_REL.as_posix()} (also for messages, paths and tags); a checked "
              f"false positive in a file can carry {ALLOW_MARK} on its line")
     if args.text:
         print(f"{PROG}: remove it from the {args.label} ({allow}), then push again", file=sys.stderr)

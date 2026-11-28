@@ -844,5 +844,14 @@ class Anonymized(unittest.TestCase):
         self.assertEqual(json.loads(r.stdout)[0]["repo"], "someone/secret-app")
 
 
+class SkillText(unittest.TestCase):
+    def test_subagents_may_read_a_retro_by_path_but_name_only_its_alias(self):
+        for base in ("skills", ".claude/skills", ".agents/skills"):
+            text = (ROOT / base / "gw-harvest" / "SKILL.md").read_text()
+            self.assertNotIn("nor look it up in the clone", text, base)
+            self.assertIn("may read a retro by its\n  real path", text, base)
+            self.assertIn("names only the alias", text, base)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -91,7 +91,8 @@ From `<last>` to `<head>` (`scripts/harvest.py`).
 
 - A proposal cites the exact source path and commit; never paraphrase without a source. A retro is the exception
   (`harvest.retroAlias`): the report names it `retro-<date>-<n>`, so cite that alias and the commit (the idea's text is
-  already in the report) and never write the retro's real file name, nor look it up in the clone.
+  already in the report) and never write the retro's real file name. A subagent of step 3 may read a retro by its
+  real path to judge it, but its summary names only the alias, never the real name.
 - A project's local edit to a copied workflow file is a signal, not a patch: propose the general version here so the
   next update reaches every project.
 - Don't harvest secrets, personal data or private names into this repo: a private project is its
