@@ -12,7 +12,7 @@
 | Check | `bash tests/check.sh` en verde en local. **El CI sí arranca** (2026-11-01, repo público). |
 | Fase en curso | **6 cerrada**. Próxima: **7. Rodaje etapa 1** |
 | Último punto estable | **`0.9.1` en `main`** (`664c0dd`, 2026-11-26; las tres fases hechas: revisión de B58-B61 con 3 leves arreglados, retro, `reviewed.sh`; CI de `664c0dd` en verde). Release de GitHub `v0.9.1` publicada (2026-11-26, sesión local; etiqueta sobre `664c0dd`) |
-| Siguiente paso | **`0.10` «Estable»**. **E29 en curso** (ficha `docs/tasks/E29.md`; Q-48..Q-57, todas a): ola 1, W5 y los altos del `pre-push` fusionados (`54f79e09`, check en verde). Sigue W4 en `agent/E29-detectors` (C2 patrones de sesión, rutas personales e IP privadas; C4 `gw-allow-private`; C5 `git@`), su revisión y fusión; luego `/code-review` del bloque, criterios de la ficha, roadmap ES/EN y CI. Recordar al usuario: ramas viejas, alias N5/N6 en `gw.local.json` y `GW_LOCAL_JSON` (pending.md). Después E30, E8/E31. Presupuesto de compactaciones: 2 (3 gastadas) |
+| Siguiente paso | **`0.10` «Estable»**. **E29 en curso** (ficha `docs/tasks/E29.md`; Q-48..Q-57, todas a): ola 1, W5 y los altos del `pre-push` fusionados (`54f79e09`, check en verde). W4 fusionado (C2 `privateCheck.patterns`/`allowPatterns`, C4, C5; check en verde en la rama). Sigue `/code-review` del bloque E29, criterios de la ficha, roadmap ES/EN y CI. Recordar al usuario: ramas viejas, alias N5/N6 en `gw.local.json` y `GW_LOCAL_JSON` (pending.md). Después E30, E8/E31. Presupuesto de compactaciones: 2 (3 gastadas) |
 
 ### Fases
 
