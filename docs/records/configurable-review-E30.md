@@ -64,4 +64,4 @@ verbos de `PACKAGE_VERB`), más C9 de arriba. Comprobar A18 (cada clave de `SUBA
 
 ## Decisiones
 
-Pendientes de las preguntas de `docs/questions.md` (E30).
+Q-59..Q-64 respondidas, todas a (2026-11-28; `docs/questions.md`): una clave de tiempo por script con su defecto actual, `privateCheck.keyFormats`/`secretNames` solo añaden, los `tail -n` leen `checkTailLines`.

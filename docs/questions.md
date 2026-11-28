@@ -523,42 +523,54 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 
 ## Q-59
 - Refs: E30
-- Status: open
+- Status: answered
 - Asked: 2026-11-28
 - Question: E30: ¿qué alcance se hace? a) la ola 1 (las que pasan a clave con un uso real: listas, timeouts, nombres) y los leves, a pendingFile; b) todas las que pasan a clave (≈43); c) solo las de gravedad alta (A1, A2, D1, D4, D14, C2)
 - Recommendation: a) Ola 1 (≈25 claves, tabla de docs/records/configurable-review-E30.md) y la ola 2 a pendingFile
+- Answer: a
+- Answered: 2026-11-28
 
 ## Q-60
 - Refs: E30
-- Status: open
+- Status: answered
 - Asked: 2026-11-28
 - Question: E30: los tiempos límite de git (10 s y 30 s fijos en task.py, questions-guard, context_guard, config-guard, scope-guard, doctor). a) una clave por script, cada una con su defecto actual; b) una sola clave común (gitTimeout) que unifica los defectos
 - Recommendation: a) una clave por script con el defecto actual: no cambia ningún comportamiento
+- Answer: a
+- Answered: 2026-11-28
 
 ## Q-61
 - Refs: E30
-- Status: open
+- Status: answered
 - Asked: 2026-11-28
 - Question: E30 D14: los detectores de secretos del pre-commit pasan a privateCheck.keyFormats y secretNames. a) solo AÑADEN a los fijos actuales; b) sustituyen a los fijos (el proyecto puede quitarlos)
 - Recommendation: a) solo añaden; un detector quitado debilitaría el gancho de secretos
+- Answer: a
+- Answered: 2026-11-28
 
 ## Q-62
 - Refs: E30
-- Status: open
+- Status: answered
 - Asked: 2026-11-28
 - Question: E30 C4/C5: las listas de rutas protegidas de config-guard.py y review-before-main.sh (tres copias). a) se quedan fijas por seguridad y se unifican en una constante; b) se hacen configurables
 - Recommendation: a) fijas, y unificar las tres copias en una constante compartida (pendingFile)
+- Answer: a
+- Answered: 2026-11-28
 
 ## Q-63
 - Refs: E30
-- Status: open
+- Status: answered
 - Asked: 2026-11-28
 - Question: E30 C2: review-before-main.sh no pone tiempo límite a sus llamadas a git. a) añadirlo con la clave reviewGitTimeout (120 s; es un arreglo, no solo una clave); b) solo documentarlo en pendingFile
 - Recommendation: a) sí, defecto 120 s; un fetch colgado bloquea hoy el gancho
+- Answer: a
+- Answered: 2026-11-28
 
 ## Q-64
 - Refs: E30
-- Status: open
+- Status: answered
 - Asked: 2026-11-28
 - Question: E30 D11/D27/D28: el pre-push, session-start, merge-branch y red-without-fix muestran 5-30 líneas del log fallido. a) todos leen checkTailLines (40; muestran más líneas que ahora); b) cada uno conserva su número con clave propia
 - Recommendation: a) checkTailLines, con un defecto de 40 líneas en todos
+- Answer: a
+- Answered: 2026-11-28
