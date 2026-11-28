@@ -243,6 +243,56 @@ class Patterns(Repo):
         self.assertNotIn("docs/a.md:2", out)
 
 
+    def test_session_link_in_messages_passes_only_while_agent_signatures_are_allowed(self):
+        self.write("docs/a.md", "x\n")
+        self.commit("add\n\nClaude-Session: " + self.SESSION)
+        for setting, code_wanted in ((None, 0), (True, 0), (False, 1)):
+            extra = {} if setting is None else {"agentSignatures": setting}
+            self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, **extra)))
+            code, out = self.check("--range", f"{self.base}..HEAD", "--no-names")
+            self.assertEqual(code, code_wanted, (setting, out))
+            if code_wanted:
+                self.assertIn("(message): session link claude.a\u2026", out)
+        self.write(".claude/gw.json", json.dumps(BASE_CONFIG))
+        self.write("docs/b.md", self.SESSION + "\n")  # file content is still checked
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/b.md:1: session link claude.a\u2026", out)
+
+    def test_home_path_at_the_end_of_a_sentence_drops_the_period(self):
+        self.write("docs/a.md", "clone it in /home/user.\nor in /Users/you.\n")
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 0, out)
+        self.write("docs/a.md", "see /home/" + "jdoe.\n")
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/a.md:1: home path /home\u2026", out)
+
+    def test_allow_patterns_of_the_local_list_add_to_the_public_ones(self):
+        self.write(".gitignore", ".claude/gw.local.json\n")
+        self.write("docs/a.md", self.HOME + "\n")
+        self.assertEqual(self.check("--all", "--no-names")[0], 1)
+        self.local({"allowPatterns": ["^/home/" + "jdoe$"]})
+        self.assertEqual(self.check("--all", "--no-names")[0], 0)
+        (self.work / ".claude/gw.local.json").unlink()
+        code, out = self.check("--all", "--no-names",
+                               env={"GW_LOCAL_JSON": json.dumps({"allowPatterns": ["^/home/" + "jdoe$"]})})
+        self.assertEqual(code, 0, out)
+        self.local({"allowPatterns": ["("]})
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 2, out)
+        self.assertIn("'allowPatterns': '(' is not a valid regex", out)
+
+    def test_git_at_right_after_any_scheme_is_a_remote(self):
+        plain = "git" + AT + "corp.io"
+        self.write("docs/a.md", f"https://{plain}/o/r.git\nssh://{plain}/o/r.git\nmail {plain} now\n")
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"docs/a.md:3: e-mail {plain}", out)
+        self.assertNotIn("docs/a.md:1", out)
+        self.assertNotIn("docs/a.md:2", out)
+
+
 class Names(Repo):
     def test_names_match_case_and_separators_in_content_paths_and_messages(self):
         self.local({"privateNames": ["Secret-Project"]})
@@ -409,7 +459,7 @@ class Names(Repo):
         self.assertEqual((r.returncode, r.stdout.strip()), (0, "null"))
         self.local({"privateNames": ["A"]})
         r = subprocess.run(cli, capture_output=True, text=True, env=self.env)
-        self.assertEqual(json.loads(r.stdout), {"privateNames": ["A"], "allowEmails": [], "anonymize": {}})
+        self.assertEqual(json.loads(r.stdout), {"privateNames": ["A"], "allowEmails": [], "allowPatterns": [], "anonymize": {}})
         # The names of anonymize are private names too, listed once.
         self.local({"privateNames": ["A"], "anonymize": {"A": "private-project-1", "b_c": "private-project-2"}})
         r = subprocess.run(cli, capture_output=True, text=True, env=self.env)
