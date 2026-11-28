@@ -22,6 +22,7 @@ Severidad: alta, media, baja. «Decisión» la rellena el usuario (pregunta de l
 | A2 | 47 sitios: `docs/proposals/2026-10-25-<N6>.md`, recogidas «sin novedades» y `CHANGELOG.md` | media | N6 aparece sin alias; no se sabe si es público | si es privado, como A1; si es público, se acepta | a (Q-49) |
 | A3 | historial de `main` (N1: 40 commits, N2: 19, N3: 14, N4: 9, N5: 27) y el árbol de 6 ramas viejas (`version/1.0.0`, `ccr-05edcf12-0gntze`, `ccr-6dfbc880-ddr41g`, `ccr-76251061-b1yiwq`, `claude/galivelop-workflow-inicio`, `agent/A10-mkt-sheet`) | alta | N1-N4 se cambiaron por alias en `0cb929bc` (2026-11-02) sin reescribir el historial («El historial no se reescribe»): siguen en los commits viejos y en el árbol de esas ramas | ver Q-50 | a (Q-50) |
 | A4 | recogidas de `private-project-1..3` (líneas «Fuente») | baja | los nombres de archivo de sus retros dicen el tema, y algunas nombran el stack y el hosting: pistas débiles, sin nombre, dominio ni cliente | aceptar; que `harvest.py` cambie los nombres de archivo de retro por `retro-<fecha>-<n>` | a (Q-56) |
+| A5 | `docs/records/pending.md` («proyectos nuevos para la próxima recogida», `c948e9bf`, 2026-11-28; en la rama, no en `main`) | media | tras los alias de W1, uno de N5/N6 vuelve a salir con su nombre real, como repo público con `.claude/gw.json` | si sigue siendo privado, su alias `private-project-N`; si ya es público, aceptarlo y quitarlo de la lista local | Q-58 |
 
 ## B. Metadatos del historial
 

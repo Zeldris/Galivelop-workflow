@@ -511,3 +511,10 @@ file (format: header of scripts/questions.py). Answer by number: `questions.py a
 - Recommendation: a) a pending.md como leves de la 0.10
 - Answer: a
 - Answered: 2026-11-27
+
+## Q-58
+- Refs: E29
+- Status: open
+- Asked: 2026-11-28
+- Question: E29 A5: docs/records/pending.md (línea «proyectos nuevos para la próxima recogida») nombra uno de N5/N6 sin alias, como repo público. a) cambiarlo por su alias private-project-N; b) ya es público: aceptarlo y quitarlo de la lista local
+- Recommendation: a) alias: N5 se apuntó como privado y la lista de repos públicos salió de una búsqueda, no de ti
