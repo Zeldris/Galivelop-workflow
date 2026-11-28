@@ -25,8 +25,8 @@ Checks:
   - key/token formats: the KEY_FORMATS regex of the pre-commit hook (.githooks/pre-commit, else
     templates/githooks/pre-commit), read at run time so it lives in one place; not found -> exit 2.
   - e-mail addresses, unless privateCheck.emails is false. Allowed: example.com/.org/.net (and subdomains), any
-    *.example domain, *@users.noreply.github.com, local part noreply/no-reply/git (git@<host> is an SSH remote),
-    privateCheck.allowEmails of
+    *.example domain, *@users.noreply.github.com, local part noreply/no-reply, git@<host> only in the SSH forms
+    git@<host>:<path> and ssh://git@<host>/<path> (a remote, not a person's address), privateCheck.allowEmails of
     .claude/gw.json (public) and allowEmails of .claude/gw.local.json (private).
   - privateNames of the local list (never committed), plus the names of its `anonymize` (config.py adds them):
     case-insensitive, with `-`, `_` and space taken as the same. The list is the file .claude/gw.local.json or, when
@@ -34,8 +34,12 @@ Checks:
     GW_LOCAL_JSON); the file wins. No list: with privateCheck.requireNames "protected" (default) a push to the
     protectedBranch (--ref) exits 2 naming both fixes, "always" exits 2 on any run, "never" and any other push only
     print a notice (--no-names skips the names whatever it says); a malformed list: exit 2.
-A line with gw-allow-private is skipped (a checked false positive); one with gw-allow-secret skips the key check only,
-as in the pre-commit hook. privateCheck: false in .claude/gw.json turns everything off.
+  - privateCheck.patterns ({"name", "regex"} each; default: Claude session links, personal home paths /home/<name>
+    and /Users/<name>, private IPv4 10/8, 172.16/12, 192.168/16); a match that a regex of privateCheck.allowPatterns
+    finds is let through (default: generic placeholders such as /home/user, /Users/you). Printed masked.
+A file line with gw-allow-private is skipped (a checked false positive); the mark does nothing in paths, commit
+messages or --text (--all counts the marked lines and prints the count). One with gw-allow-secret skips the key check
+only, as in the pre-commit hook. privateCheck: false in .claude/gw.json turns everything off.
 Exit 0 clean, 1 something found (at most 10 hits, `path:line: <kind> <match>`), 2 cannot check (fails closed).
 The config is read by config.py, the only reader of .claude/gw.json and .claude/gw.local.json. Python 3.8+.
 """
@@ -97,11 +101,14 @@ def key_formats(root):
                      f"/gw-update")
 
 
-def email_allowed(address, allowed):
+def email_allowed(address, allowed, ssh=False):
+    """`ssh`: the address is followed by `:` or comes after `ssh://` in the text, so git@<host> is an SSH remote (git@github.com:owner/repo),
+    not a person's address; a plain git@<domain> is checked like any other."""
     address = address.lower()
     local, _, domain = address.rpartition("@")
-    # git@<host> is an SSH remote (git@github.com:owner/repo), not a person's address.
-    if address in allowed or local in ("noreply", "no-reply", "git") or domain == "users.noreply.github.com":
+    if address in allowed or local in ("noreply", "no-reply") or domain == "users.noreply.github.com":
+        return True
+    if local == "git" and ssh:
         return True
     if domain == "example" or domain.endswith(".example"):
         return True
@@ -118,8 +125,16 @@ def name_regex(names):
     return re.compile("|".join(sorted(parts, key=len, reverse=True)), re.IGNORECASE) if parts else None
 
 
+def mask(value):
+    """At most 8 characters and never more than half of the value, then `…`: never a full id, path or address."""
+    return value[:min(8, len(value) // 2)] + "…"
+
+
 class Scanner:
-    def __init__(self, keys, emails, allowed, names, max_hits):
+    def __init__(self, keys, emails, allowed, names, max_hits, patterns=(), allow_patterns=()):
+        self.patterns = [(p["name"], re.compile(p["regex"])) for p in patterns]
+        self.allow_patterns = [re.compile(a) for a in allow_patterns]
+        self.marks = 0  # file lines skipped by ALLOW_MARK
         self.max_hits = max_hits  # privateCheck.maxHits: findings printed before "... and N more"
         self.keys, self.emails, self.allowed, self.names = keys, emails, {a.lower() for a in allowed}, names
         self.hits = []
@@ -127,8 +142,10 @@ class Scanner:
         self.current = None  # the commit being scanned
         self.bad = []  # shas of the commits with a finding, in scan order
 
-    def line(self, where, text):
-        if ALLOW_MARK in text:
+    def line(self, where, text, content=True):
+        """`content`: a line of a file, the only place where ALLOW_MARK counts (not a path nor a message)."""
+        if content and ALLOW_MARK in text:
+            self.marks += 1
             return
         found = []
         if SECRET_MARK not in text:
@@ -136,7 +153,13 @@ class Scanner:
                 value = re.sub(r"^(\\[nrt]|%[0-9A-Fa-f]{2}|[^A-Za-z0-9-])", "", m.group(0))
                 found.append(("key", value[:8] + "…"))
         if self.emails:
-            found += [("e-mail", m.group(0)) for m in EMAIL.finditer(text) if not email_allowed(m.group(0), self.allowed)]
+            found += [("e-mail", m.group(0)) for m in EMAIL.finditer(text)
+                      if not email_allowed(m.group(0), self.allowed, text[m.end():m.end() + 1] == ":"
+                                         or text[:m.start()].endswith("ssh://"))]
+        for name, regex in self.patterns:
+            for m in regex.finditer(text):
+                if m.group(0) and not any(a.search(m.group(0)) for a in self.allow_patterns):
+                    found.append((name, mask(m.group(0))))
         if self.names is not None:
             found += [("private name", m.group(0)) for m in self.names.finditer(text)]
         if found and self.current and self.current not in self.bad:
@@ -189,10 +212,10 @@ def scan_commit(root, sha, scanner):
                                 "--diff-filter=A", "--name-only", "-z", sha).split("\0") if p]
         diff = git(root, "diff-tree", "-p", "-U0", "--root", "--no-renames", "--no-commit-id", sha)
     for path in added:
-        scanner.line(f"{path}{suffix} (path)", path)
+        scanner.line(f"{path}{suffix} (path)", path, content=False)
     parse_hunks(diff, scanner.line, suffix)
     for text in git(root, "log", "-1", "--format=%B", sha).splitlines():
-        scanner.line(f"commit {short} (message)", text)
+        scanner.line(f"commit {short} (message)", text, content=False)
 
 
 def scan_tree(root, scanner):
@@ -201,7 +224,7 @@ def scan_tree(root, scanner):
         if not entry:
             continue
         meta, _, path = entry.partition("\t")
-        scanner.line(f"{path} (path)", path)
+        scanner.line(f"{path} (path)", path, content=False)
         if meta.split()[0] not in ("100644", "100755"):
             continue  # symlink or submodule
         try:
@@ -353,13 +376,13 @@ def main(argv=None):
         local_allow = (config.load_local(root, settings["localEnv"]) or {}).get("allowEmails", [])
         shas = []
         scanner = Scanner(key_formats(root), settings["emails"], settings["allowEmails"] + local_allow, names,
-                          settings["maxHits"])
+                          settings["maxHits"], settings["patterns"], settings["allowPatterns"])
         if args.all:
             scan_tree(root, scanner)
         elif args.text:
             data = sys.stdin.buffer.read() if args.text == "-" else Path(args.text).read_bytes()
             for n, text in enumerate(data.decode("utf-8", "replace").splitlines(), 1):
-                scanner.line(f"{args.label}:{n}", text)
+                scanner.line(f"{args.label}:{n}", text, content=False)
         else:
             shas = commits_of(root, args)
             for sha in shas:
@@ -367,6 +390,8 @@ def main(argv=None):
     except (config.ConfigError, CheckError, OSError) as exc:
         print(f"{PROG}: {exc}", file=sys.stderr)
         return 2
+    if args.all and scanner.marks:
+        print(f"{PROG}: {scanner.marks} line(s) skipped by {ALLOW_MARK}", file=sys.stderr)
     if not scanner.total:
         return 0
     print(f"{PROG}: found something that must not be public:", file=sys.stderr)
@@ -375,7 +400,8 @@ def main(argv=None):
     if scanner.total > len(scanner.hits):
         print(f"  … and {scanner.total - len(scanner.hits)} more", file=sys.stderr)
     allow = (f"a public address goes in privateCheck.allowEmails of .claude/gw.json, a private one in allowEmails of "
-             f"{config.LOCAL_REL.as_posix()}; a checked false positive can carry {ALLOW_MARK} on its line")
+             f"{config.LOCAL_REL.as_posix()}, a public example of privateCheck.patterns in privateCheck.allowPatterns; a checked "
+             f"false positive in a file can carry {ALLOW_MARK} on its line")
     if args.text:
         print(f"{PROG}: remove it from the {args.label} ({allow}), then push again", file=sys.stderr)
     elif args.all:

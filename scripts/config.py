@@ -1238,6 +1238,15 @@ def semantic_errors(config):
             re.compile(rx)
         except re.error as exc:
             errors.append(f"$.changeSize.{key}[{where!r}]: {rx!r} is not a valid regex ({exc})")
+    private = config.get("privateCheck") if isinstance(config.get("privateCheck"), dict) else {}
+    checked = [(f"patterns[{i}].regex", e["regex"]) for i, e in enumerate(private.get("patterns") or [])
+               if isinstance(e, dict) and isinstance(e.get("regex"), str)]
+    checked += [(f"allowPatterns[{i}]", rx) for i, rx in enumerate(private.get("allowPatterns") or []) if isinstance(rx, str)]
+    for where, rx in checked:
+        try:
+            re.compile(rx)
+        except re.error as exc:
+            errors.append(f"$.privateCheck.{where}: {rx!r} is not a valid regex ({exc})")
     for i, rx in enumerate(config.get("fullCheckPaths") or []):
         if isinstance(rx, str):
             try:
@@ -1670,7 +1679,8 @@ def load_local(root, env_name=None):
 
 def private_check(config):
     """The `privateCheck` key as {"emails": bool, "allowEmails": [...], "maxHits": int, "localEnv": str,
-    "requireNames": "protected"|"always"|"never"} with its defaults, or None when
+    "requireNames": "protected"|"always"|"never",
+    "patterns": [{"name", "regex"}], "allowPatterns": [regex]} with its defaults (each list replaces its default), or None when
     it is false (private-check.py off)."""
     value = config.get("privateCheck", True)
     if value is False:
@@ -1680,7 +1690,9 @@ def private_check(config):
     return {"emails": value.get("emails", True), "allowEmails": list(value.get("allowEmails") or []),
             "maxHits": value.get("maxHits", default["maxHits"]),
             "localEnv": value.get("localEnv", default["localEnv"]),
-            "requireNames": value.get("requireNames", default["requireNames"])}
+            "requireNames": value.get("requireNames", default["requireNames"]),
+            "patterns": list(value.get("patterns", default["patterns"])),
+            "allowPatterns": list(value.get("allowPatterns", default["allowPatterns"]))}
 
 
 def related_commands(config, kind, files, deleted=(), skipped=None):

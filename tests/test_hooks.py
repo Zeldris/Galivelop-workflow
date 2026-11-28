@@ -30,6 +30,8 @@ BASE_CONFIG = {"version": VERSION, "schemaVersion": 1, "language": "en", "log": 
                "content": ["^docs/", "\\.md$"]}
 # Built by concatenation so this file itself never looks like a secret or a conflict to the hooks.
 FAKE_TOKEN = "gh" + "p_" + "A1b2C3d4" * 5
+# Built by concatenation so this file passes private-check.py (privateCheck.patterns: session links).
+SESSION_URL = "https://claude.ai/code/" + "session_"
 MARK_OPEN, MARK_CLOSE = "<" * 7 + " HEAD", ">" * 7 + " other"
 
 
@@ -1772,9 +1774,10 @@ class PrePushPrivate(Base):
         self.assertIn("in the message of tag refs/tags/v1", out)
         self.assertEqual(self.remote_tags(), [])
         p.git("tag", "-d", "v1")
-        p.git("tag", "-a", "-m", f"write to {self.mail}  gw-allow-private", "v1")  # the same allowance as in a commit
+        p.git("tag", "-a", "-m", f"write to {self.mail}  gw-allow-private", "v1")  # E29 C4: no allowance in a message
         code, out = p.push("origin", "v1")
-        self.assertEqual(code, 0, out)
+        self.assertNotEqual(code, 0, out)
+        self.assertIn(f"tag message:1: e-mail {self.mail}", out)
 
     def test_e29_an_empty_tag_message_passes(self):
         p = self.p
@@ -4629,7 +4632,7 @@ class CommitMsgUnreadableConfig(Base):
     """commit-msg and pre-commit: a WIP commit is never blocked by a missing or non-JSON gw.json; elsewhere they fail closed."""
     config = {"agentSignatures": False}
     hooks = ("pre-push", "pre-commit", "commit-msg")
-    SIGNATURE = "Claude-Session: https://claude.ai/code/session_x"
+    SIGNATURE = "Claude-Session: " + SESSION_URL + "x"
 
     def break_config(self, how):
         cfg = self.p.work / ".claude" / "gw.json"
@@ -4765,7 +4768,7 @@ class CommitMsgOutsideWorkTree(Base):
     def test_a_bare_repository_with_a_separate_work_tree_is_checked_like_a_normal_one(self):
         (self.p.work / ".claude" / "gw.json").write_text(json.dumps(dict(BASE_CONFIG, agentSignatures=False)))
         msg = self.tmp / "sig.txt"
-        msg.write_text("feat(D1): algo\n\nClaude-Session: https://claude.ai/code/session_x\n")
+        msg.write_text("feat(D1): algo\n\nClaude-Session: " + SESSION_URL + "x\n")
         hooks = self.p.bare / "hooks"
         hooks.mkdir(exist_ok=True)
         shutil.copy2(ROOT / "templates" / "githooks" / "commit-msg", hooks / "commit-msg")
@@ -4846,7 +4849,7 @@ class CommitMsgSignatures(Base):
         self.refused(f"work\n\n{line}", "Generated with [Claude Code]")
 
     def test_a_session_link_is_refused(self):
-        self.refused("work\n\nhttps://claude.ai/code/session_01ABC", "https://claude.ai/code/session_01ABC")
+        self.refused("work\n\n" + SESSION_URL + "01ABC", SESSION_URL + "01ABC")
 
     def test_a_human_co_author_passes(self):
         p = self.p
@@ -4901,7 +4904,7 @@ class CommitMsgSignatures(Base):
     def test_a_body_that_quotes_the_signatures_passes(self):
         p = self.p
         p.write("docs/notes.md", "quote\n")
-        r = p.commit("work\n\nThe hook refuses Generated with Claude Code and https://claude.ai/code/session_x lines.",
+        r = p.commit("work\n\nThe hook refuses Generated with Claude Code and " + SESSION_URL + "x lines.",
                      ok=False)
         self.assertEqual(r.returncode, 0, r.stderr)
 

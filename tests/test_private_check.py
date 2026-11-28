@@ -81,7 +81,8 @@ class Emails(Repo):
     def test_built_in_public_addresses_pass(self):
         public = ["a" + AT + "example.com", "b" + AT + "mail.example.org", "c" + AT + "example.net",
                   "d" + AT + "host.example", "123+me" + AT + "users.noreply.github.com",
-                  "noreply" + AT + "anthropic.com", "No-Reply" + AT + "corp.io", "git" + AT + "github.com"]
+                  "noreply" + AT + "anthropic.com", "No-Reply" + AT + "corp.io", "git" + AT + "github.com:o/r.git",
+                  "ssh://git" + AT + "gitlab.com/o/r"]
         self.write("docs/ok.md", "\n".join(public) + "\nreact" + AT + "18.3.1 and @types/node\n")
         code, out = self.check("--all", "--no-names")
         self.assertEqual(code, 0, out)
@@ -136,7 +137,8 @@ class Emails(Repo):
         self.assertEqual(code, 1, out)
         self.assertIn(f"tag message:2: e-mail {PRIVATE_MAIL}", out)
         self.assertIn("tag message:4: private name secret-client", out)
-        self.assertEqual(out.count(": e-mail "), 1, out)  # the allowed address and the marked line pass
+        self.assertIn(f"tag message:5: e-mail {PRIVATE_MAIL}", out)  # E29 C4: the mark counts only in a file
+        self.assertEqual(out.count(": e-mail "), 2, out)  # the allowed address passes
         self.assertIn("remove it from the tag message", out)
         self.assertNotIn("rebase", out)
 
@@ -172,6 +174,73 @@ class Emails(Repo):
         self.assertEqual(code, 2, out)
         self.assertIn("$.privateCheck: matches none of the allowed forms", out)
         self.assertIn("maxHits: must be at least 1, got 0", out)
+
+
+class Patterns(Repo):
+    """E29 (C2, C4, C5): privateCheck.patterns and allowPatterns, the mark only in file lines, git@ only as SSH."""
+    SESSION = "https://claude.ai/code/" + "session_01AbCdEfGh"
+    HOME = "/home/" + "jdoe/src"
+    MAC = "/Users/" + "jdoe/repo"
+
+    def test_session_links_home_paths_and_private_ips_are_found_masked(self):
+        ips = ["10.1" + ".2.3", "172.20" + ".0.5", "192.168" + ".1.10"]  # concatenated: this file is checked too
+        self.write("docs/a.md", "\n".join([self.SESSION, self.HOME, self.MAC] + ips) + "\n")
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/a.md:1: session link claude.a\u2026", out)
+        self.assertIn("docs/a.md:2: home path /home\u2026", out)
+        self.assertIn("docs/a.md:3: home path /User\u2026", out)
+        self.assertIn("docs/a.md:4: private IP 10.1\u2026", out)
+        self.assertIn("docs/a.md:5: private IP 172.2\u2026", out)
+        self.assertIn("docs/a.md:6: private IP 192.16\u2026", out)
+        for value in [self.SESSION, "session_01", "jdoe"] + ips:
+            self.assertNotIn(value, out)  # never echoed whole
+        self.assertIn("privateCheck.allowPatterns", out)
+
+    def test_placeholders_and_public_ips_pass_by_default(self):
+        ok = ["/home/user/repo", "/root/x", "/Users/you/repo", "/home/<x>/repo", "/Users/<name>", "/home/$USER",
+              "127.0.0.1", "8.8.8.8", "172.32.0.1", "v10.2.3.4.5", "https://claude.ai/code/" + "session_",
+              "projects/home/recap", "~/home/notes"]
+        self.write("docs/ok.md", "\n".join(ok) + "\n")
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 0, out)
+
+    def test_patterns_and_allow_patterns_are_configurable(self):
+        self.write("docs/a.md", self.HOME + "\nticket ACME-123\n")
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={
+            "patterns": [{"name": "ticket", "regex": "ACME-\\d+"}]})))
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 1, out)
+        self.assertIn("docs/a.md:2: ticket ACME\u2026", out)
+        self.assertNotIn("home path", out)  # the list replaces the default one
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"allowPatterns": ["^/home/" + "jdoe$"]})))
+        self.assertEqual(self.check("--all", "--no-names")[0], 0)
+        self.write(".claude/gw.json", json.dumps(dict(BASE_CONFIG, privateCheck={"allowPatterns": ["("]})))
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 2, out)
+        self.assertIn("$.privateCheck.allowPatterns[0]: '(' is not a valid regex", out)
+
+    def test_the_mark_does_nothing_in_paths_and_messages_and_all_counts_it(self):
+        self.write("docs/a.md", PRIVATE_MAIL + "  gw-allow-private\nfine gw-allow-private\n")
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 0, out)
+        self.assertIn("2 line(s) skipped by gw-allow-private", out)
+        self.write("docs/" + PRIVATE_MAIL + "/gw-allow-private.md", "x\n")
+        self.commit("add\n\nmail " + PRIVATE_MAIL + " gw-allow-private")
+        code, out = self.check("--range", f"{self.base}..HEAD", "--no-names")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"(path): e-mail {PRIVATE_MAIL}", out)
+        self.assertIn(f"(message): e-mail {PRIVATE_MAIL}", out)
+        self.assertNotIn("docs/a.md:1", out)
+        self.assertNotIn("skipped by", out)  # counted only by --all
+
+    def test_git_at_a_domain_is_an_address_unless_it_is_an_ssh_remote(self):
+        plain = "git" + AT + "corp.io"
+        self.write("docs/a.md", f"write to {plain}.\nremote {plain}:team/repo.git\n")
+        code, out = self.check("--all", "--no-names")
+        self.assertEqual(code, 1, out)
+        self.assertIn(f"docs/a.md:1: e-mail {plain}", out)
+        self.assertNotIn("docs/a.md:2", out)
 
 
 class Names(Repo):
