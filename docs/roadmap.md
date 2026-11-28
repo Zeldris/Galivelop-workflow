@@ -455,7 +455,7 @@ Solo correcciones y revisiones, sin funciones nuevas: lo evolutivo de las recogi
 |---|---|---|
 | E8 | Repaso completo de la documentación, por subagentes | pendiente |
 | E28 | Revisión de seguridad: ganchos y scripts (entradas, rutas, `eval`), permisos de `settings.json`, CI y secretos; ideas de [`cloudflare/security-audit-skill`](https://github.com/cloudflare/security-audit-skill), leído con un subagente y con su licencia mirada antes de copiar nada (usuario, 2026-11-05) | hecho (2026-11-27) |
-| E29 | Revisión de anonimización: datos privados en el historial y en los documentos, y si `private-check` y sus `EXCEPTIONS` siguen bastando (usuario, 2026-11-05) | en curso |
+| E29 | Revisión de anonimización: datos privados en el historial y en los documentos, y si `private-check` y sus `EXCEPTIONS` siguen bastando (usuario, 2026-11-05) | hecho (2026-11-28) |
 | E30 | Revisión de valores configurables: umbrales, rutas y comportamientos fijos en el código pasan a `.claude/gw.json` y `docs/es/config.md` (regla «Todo configurable», G4; usuario, 2026-11-05) | pendiente |
 | E31 | Refactorización y mantenimiento de los `.md`: duplicados, un dato en un solo sitio, tamaños y texto obsoleto, con `writing-for-agents` (usuario, 2026-11-05) | pendiente |
 | G2 | Salidas JSON con versión en los scripts que use el MMC | pendiente |
