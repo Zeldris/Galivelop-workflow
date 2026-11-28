@@ -764,8 +764,14 @@ class Config(unittest.TestCase):
     def test_private_check_default_and_bad_values(self):
         self.write(VALID)
         r = cli(self.tmp, "get", "privateCheck")
-        self.assertEqual(json.loads(r.stdout), {"emails": True, "allowEmails": [], "maxHits": 10,
-                                                "localEnv": "GW_LOCAL_JSON", "requireNames": "protected"})
+        got = json.loads(r.stdout)
+        self.assertEqual([p["name"] for p in got.pop("patterns")], ["session link", "home path", "private IP"])
+        self.assertEqual(len(got.pop("allowPatterns")), 1)
+        self.assertEqual(got, {"emails": True, "allowEmails": [], "maxHits": 10,
+                               "localEnv": "GW_LOCAL_JSON", "requireNames": "protected"})
+        self.assertEqual(len(config.private_check({})["patterns"]), 3)
+        self.assertEqual(config.private_check({"privateCheck": {"patterns": [], "allowPatterns": ["a"]}})["patterns"], [])
+        self.assertEqual(config.private_check({"privateCheck": {"allowPatterns": ["a"]}})["allowPatterns"], ["a"])
         self.assertEqual(config.private_check({})["requireNames"], "protected")
         self.assertEqual(config.private_check({"privateCheck": {"localEnv": "X_Y"}})["localEnv"], "X_Y")
         for good in (False, True, {"emails": False}, {"allowEmails": ["me@example.com"]}, {"requireNames": "never"},
@@ -777,7 +783,10 @@ class Config(unittest.TestCase):
                  json.dumps({"localEnv": "not a name"}): "localEnv",
                  json.dumps({"localEnv": ""}): "localEnv",
                  json.dumps({"allowEmails": ["not-an-address"]}): "does not match",
-                 json.dumps({"allowEmails": "me@example.com"}): "expected", json.dumps({"emails": "yes"}): "expected"}
+                 json.dumps({"allowEmails": "me@example.com"}): "expected", json.dumps({"emails": "yes"}): "expected",
+                 json.dumps({"patterns": [{"name": "x"}]}): "regex",
+                 json.dumps({"patterns": [{"name": "x", "regex": "["}]}): "$.privateCheck.patterns[0].regex: '[' is not a valid regex",
+                 json.dumps({"allowPatterns": ["("]}): "$.privateCheck.allowPatterns[0]: '(' is not a valid regex"}
         for bad, why in cases.items():
             value = json.loads(bad) if bad.startswith("{") else bad
             self.write(dict(VALID, privateCheck=value))

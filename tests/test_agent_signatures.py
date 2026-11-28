@@ -11,7 +11,7 @@ from test_hooks import ROOT, Project
 
 SCRIPT = "agent-signatures.py"
 FOOTER = "Fix the bug.\n\n\U0001F916 Generated with [Claude Code](https://claude.com/claude-code)\n"
-SESSION = "https://claude.ai/code/session_01AbCdEf"
+SESSION = "https://claude.ai/code/" + "session_01AbCdEf"  # concatenated: private-check.py finds session links
 
 
 class SigProject(Project):
